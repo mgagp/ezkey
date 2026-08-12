@@ -1,0 +1,25 @@
+meta {
+  name: lifecycle list heartbeat incidents
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/lifecycle/incidents?page=0&size=20&sort=createdAt,DESC
+  body: none
+  auth: inherit
+}
+
+params:query {
+  page: 0
+  size: 20
+  sort: createdAt,DESC
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Paginated operational heartbeat incidents (distinct from downtime gap declarations). Global Admin only.
+}

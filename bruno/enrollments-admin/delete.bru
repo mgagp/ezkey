@@ -1,0 +1,63 @@
+meta {
+  name: delete
+  type: http
+  seq: 10
+}
+
+delete {
+  url: {{base_url_admin_api}}/api/v1/enrollments/:id?reason={{reason}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Audit justification for the deletion (min 10 characters, required for SOC 2 CC6.3 compliance)')
+  reason: {{reason}}
+}
+
+params:path {
+  @description('The enrollment ID to delete')
+  id: {{enrollmentId}}
+}
+
+script:post-response {
+  test("Status code is 204, 400 or 404", function () {
+      expect([204, 400, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 204) {
+      test("Deletion successful", function () {
+          expect(res.getStatus()).to.equal(204);
+          // DELETE returns 204 No Content with no body
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Removes an enrollment from the system, effectively unlinking the device from the integration.
+  
+  **Path Parameters:**
+  - `id` (required): Enrollment ID to delete
+  
+  **Query Parameters:**
+  - `reason` (required): Audit justification (min 10 characters) — SOC 2 CC6.3 compliance
+  
+  **Response (204 No Content):**
+  - No response body
+  - Enrollment is removed from the system
+  - Device can no longer authenticate using this enrollment
+  
+  **Status Codes:**
+  - 204: Enrollment deleted successfully
+  - 400: Missing or invalid `reason` (min 10, max 500 chars)
+  - 401: Unauthorized - admin token required
+  - 403: Access denied or enrollment constraint
+  - 404: Enrollment not found
+  - 500: Internal server error
+  
+  **Note:** This operation is irreversible. The enrollment and all associated authentication attempts are removed from the system.
+}

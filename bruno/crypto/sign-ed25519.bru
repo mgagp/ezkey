@@ -1,0 +1,51 @@
+meta {
+  name: sign-ed25519
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/sign-ed25519
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "data": "{{data}}",
+      "privateKey": "{{integration_privateKey}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200 or 400", function () {
+      expect([200, 400]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("integration_signature", jsonData.signature);
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('signature');
+          expect(jsonData).to.have.property('originalData');
+          expect(jsonData).to.have.property('algorithm');
+          expect(jsonData.algorithm).to.equal('ED25519');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Signs UTF-8 data using the Ed25519 integration private key returned by `integration keypair`.
+  
+  **Request Body:**
+  - `data`: Canonical payload to sign
+  - `privateKey`: PKCS#8 private key in standard Base64 (`integration_privateKey`)
+  
+  **Response (200 OK):**
+  - `signature`: Raw 64-byte Ed25519 signature as Base64URL without padding
+  - `algorithm`: `ED25519`
+}

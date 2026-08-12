@@ -886,7 +886,7 @@ Helpful endpoints:
 
 ### Step-By-Step Manual Validation
 
-Use the existing Postman collections under `postman/collections/v2.1/`.
+Use the Bruno collection under `bruno/` (see [`bruno/README.md`](../bruno/README.md)).
 
 Minimum useful sequence:
 
@@ -902,12 +902,12 @@ Minimum useful sequence:
    attempt proof token.
 9. Verify the integration signature in the response result payload.
 
-Relevant Postman collections:
+Relevant Bruno folders:
 
-- `EZ Key Enrollments auth.postman_collection.json`
-- `EZ Key Auth Attempts auth.postman_collection.json`
-- `EZ Key Auth Attempts integration-api.postman_collection.json`
-- `EZ Key crypto.postman_collection.json`
+- `bruno/enrollments-auth/`
+- `bruno/auth-attempts-auth/`
+- `bruno/auth-attempts-integration-api/`
+- `bruno/crypto/`
 
 ## Reference Implementation Pointers
 

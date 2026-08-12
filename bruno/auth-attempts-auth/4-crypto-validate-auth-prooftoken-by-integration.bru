@@ -1,0 +1,64 @@
+meta {
+  name: 4 crypto validate auth prooftoken by integration
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/verify-ed25519
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "data": "{{pendingPayload}}",
+      "signature": "{{authAttemptProofTokenSignedByIntegration}}",
+      "publicKey": "{{integrationPublicKey}}"
+  }
+}
+
+script:pre-request {
+  var payload = bru.getEnvVar("pendingPayload");
+  if (!payload) {
+      throw new Error("Run step 3b first — pendingPayload is missing.");
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("valid", jsonData.valid);
+      
+      test("Response contains valid field", function () {
+          expect(jsonData).to.have.property('valid');
+          expect(jsonData.valid).to.be.a('boolean');
+      });
+      
+      test("Signature is valid", function () {
+          expect(jsonData.valid).to.be.true;
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Validates the integration's Ed25519 signature on the Pending payload. Run step 3b first to build the canonical payload through Crypto API.
+  
+  **Request Body:**
+  - `data`: The full Pending payload (`pendingPayload`)
+  - `signature`: Integration's signature (`authAttemptProofTokenSignedByIntegration`)
+  - `publicKey`: Integration's public key
+  
+  **Response (200 OK):**
+  - `valid`: Boolean indicating whether the signature is valid
+  
+  **Security Note:** The mobile app must verify this signature before displaying the authentication request to the user.
+}

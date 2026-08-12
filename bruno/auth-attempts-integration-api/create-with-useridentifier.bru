@@ -1,0 +1,59 @@
+meta {
+  name: create with userIdentifier
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url_integration_api}}/api/v1/auth-attempts
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{integrationKey}}
+  password: {{secretKey}}
+}
+
+body:json {
+  {
+      "userIdentifier": "alice",
+      "challengeRequested": false
+  }
+}
+
+script:post-response {
+  test("Status code is 201", function () {
+      expect(res.getStatus()).to.equal(201);
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("authAttemptId", jsonData.authAttemptId);
+  
+      test("Response contains authAttemptId", function () {
+          expect(jsonData).to.have.property('authAttemptId');
+          expect(jsonData.authAttemptId).to.be.a('number');
+      });
+  
+      console.log('authAttemptId saved:', jsonData.authAttemptId);
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates an auth attempt using `userIdentifier` instead of `enrollmentId`. Use this variant when your application identifies users by username or user ID rather than by the internal ezkey enrollment ID.
+  
+  **When to use this variant:**
+  - Your system stores a `userIdentifier` on the enrollment (set during provisioning)
+  - The user has exactly one active enrollment in this integration
+  
+  **Multi-device constraint:**
+  If the user has multiple active enrollments (multiple devices), the API returns 400 with a message to specify `enrollmentId` instead.
+  
+  **Authentication:**
+  HTTP Basic Auth with `integrationKey:secretKey`. Integration scope is automatic.
+}

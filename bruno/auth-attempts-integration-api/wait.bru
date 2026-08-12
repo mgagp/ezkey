@@ -1,0 +1,119 @@
+meta {
+  name: wait
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url_integration_api}}/api/v1/auth-attempts/:id/wait?timeout=30&polling=2
+  body: none
+  auth: basic
+}
+
+params:query {
+  @description('Maximum wait duration in seconds (1-300, default: 30)')
+  timeout: 30
+  @description('Polling interval in seconds (1-60, default: 2)')
+  polling: 2
+}
+
+params:path {
+  @description('Authentication attempt ID to wait on (saved from create response)')
+  id: {{authAttemptId}}
+}
+
+auth:basic {
+  username: {{integrationKey}}
+  password: {{secretKey}}
+}
+
+script:post-response {
+  test("Status code is 200 or 408", function () {
+      expect([200, 408]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200 || res.getStatus() === 408) {
+      var jsonData = res.getBody();
+  
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('authAttempt');
+          expect(jsonData).to.have.property('status');
+          expect(jsonData).to.have.property('completed');
+          expect(jsonData).to.have.property('timeoutReached');
+          expect(jsonData).to.have.property('waitDuration');
+          expect(jsonData).to.have.property('completedAt');
+      });
+  
+      test("Status is a valid value", function () {
+          var validStatuses = ['PENDING', 'READ', 'INVALID', 'REJECTED', 'ACCEPTED', 'EXPIRED'];
+          expect(validStatuses).to.include(jsonData.status);
+      });
+  
+      test("completed and timeoutReached are booleans", function () {
+          expect(jsonData.completed).to.be.a('boolean');
+          expect(jsonData.timeoutReached).to.be.a('boolean');
+      });
+  
+      if (jsonData.status === 'ACCEPTED') {
+          test("Accepted attempt has proof token", function () {
+              expect(jsonData.authAttempt).to.have.property('authAttemptProofToken');
+              expect(jsonData.authAttempt.authAttemptProofToken).to.not.be.null;
+          });
+          bru.setEnvVar("authAttemptProofToken", jsonData.authAttempt.authAttemptProofToken);
+          console.log('Auth ACCEPTED - proof token saved');
+      }
+  
+      console.log('Status:', jsonData.status, '| Completed:', jsonData.completed, '| TimeoutReached:', jsonData.timeoutReached, '| WaitDuration:', jsonData.waitDuration + 's');
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Long-polls for device response on a pending authentication attempt. The endpoint blocks (up to `timeout` seconds) and returns as soon as the device responds or the timeout is reached.
+  
+  **Authentication:**
+  HTTP Basic Auth with `integrationKey:secretKey`. Access control ensures API keys can only wait on attempts belonging to their integration.
+  
+  **Path Parameters:**
+  - `id` (required): The authentication attempt ID returned by the create endpoint
+  
+  **Query Parameters:**
+  - `timeout` (optional, default 30): Maximum seconds to wait (1–300). The server-side long-poll duration.
+  - `polling` (optional, default 2): Internal polling interval in seconds (1–60). Must be strictly less than `timeout`.
+  
+  **Virtual Thread behaviour:**
+  The blocking wait parks a virtual thread — no platform thread is held. This allows many concurrent wait calls at minimal resource cost.
+  
+  **Response (200 OK — device responded):**
+  - `authAttempt`: Full auth attempt state (includes `authAttemptProofToken` when ACCEPTED)
+  - `status`: Calculated status — `PENDING`, `READ`, `INVALID`, `REJECTED`, `ACCEPTED`, `EXPIRED`
+  - `completed`: `true` when device has responded (ACCEPTED / REJECTED / INVALID)
+  - `timeoutReached`: `false`
+  - `waitDuration`: Actual seconds waited
+  - `completedAt`: Timestamp of response
+  
+  **Response (408 Request Timeout — no response yet):**
+  Same structure with `timeoutReached: true` and `completed: false`. Caller should retry.
+  
+  **Integration pattern:**
+  ```
+  loop {
+    resp = GET /wait?timeout=30
+    if resp.completed → break
+    if resp.timeoutReached → continue  // retry
+  }
+  ```
+  
+  **Status Codes:**
+  - 200: Device responded (check `status` field)
+  - 408: Timeout reached, attempt still pending
+  - 400: Invalid parameters (timeout/polling out of range, polling >= timeout)
+  - 401: Invalid or missing API key
+  - 403: Attempt does not belong to this integration
+  - 404: Auth attempt not found
+  - 429: Rate limit exceeded (200 requests per minute per integration key)
+  - 500: Internal server error
+}

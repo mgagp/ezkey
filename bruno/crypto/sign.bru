@@ -1,0 +1,61 @@
+meta {
+  name: sign
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/sign
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "data": "{{data}}",
+      "privateKey": "{{privateKey}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200 or 400", function () {
+      expect([200, 400]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("signature", jsonData.signature);
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('signature');
+          expect(jsonData).to.have.property('originalData');
+          expect(jsonData).to.have.property('algorithm');
+          expect(jsonData.signature).to.be.a('string');
+          expect(jsonData.algorithm).to.equal('EC_P256');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Signs the provided data using EC P-256 ECDSA-SHA256 signature with the given private key.
+  
+  **Request Body:**
+  - `data` (required): Data to sign (string)
+  - `privateKey` (required): EC P-256 private key in PKCS#8 format (Base64 encoded)
+  
+  **Response (200 OK):**
+  - `signature`: Base64-encoded signature (ASN.1 DER encoded, variable length)
+  - `originalData`: Original data that was signed
+  - `algorithm`: Signature algorithm used ("EC_P256")
+  
+  **Status Codes:**
+  - 200: Data signed successfully
+  - 400: Invalid request data or malformed private key
+  - 500: Signing operation failed
+  
+  **Usage:** The signature can be verified using the `/validate` endpoint with the original data and corresponding public key.
+}

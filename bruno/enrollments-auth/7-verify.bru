@@ -1,0 +1,49 @@
+meta {
+  name: 7 verify
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/api/v1/enrollments/verify
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "enrollmentId": {{enrollmentId}},
+      "challengeResponse": {{enrollmentChallenge}},
+      "devicePublicKey": "{{device_publicKey}}",
+      "enrollmentProofTokenSigned": "{{enrollmentProofTokenSigned}}",
+      "devicePrivateKeyStorageTier": "STANDARD"
+  }
+}
+
+script:post-response {
+  test("Status code is 200, 400, or 409", function () {
+      expect([200, 400, 409]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("enrollmentVerifyMessage", jsonData.enrollmentVerifyMessage != null ? jsonData.enrollmentVerifyMessage : "");
+      bru.setEnvVar("enrollmentVerifyPayloadSignedByIntegration", jsonData.enrollmentVerifyPayloadSignedByIntegration);
+      test("Response contains active field", function () {
+          expect(jsonData).to.have.property('active');
+      });
+      test("Enrollment is active", function () {
+          expect(jsonData.active).to.be.true;
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Completes enrollment verification. `enrollmentProofTokenSigned` must be ECDSA over the canonical verify-device string from step 5–6.
+  
+  **Next:** **8** and **9** validate the integration signature on the verify HTTP response.
+}

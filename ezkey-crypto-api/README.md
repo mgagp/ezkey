@@ -1,10 +1,10 @@
 # Ezkey Crypto API
 
-The Ezkey Crypto API provides cryptographic services to support testing tools like Postman that need to generate keys, sign data, and validate signatures but don't have built-in cryptographic capabilities. It also provides debugging tools for investigating encrypted database columns.
+The Ezkey Crypto API provides cryptographic services to support testing tools like Bruno that need to generate keys, sign data, and validate signatures but don't have built-in cryptographic capabilities. It also provides debugging tools for investigating encrypted database columns.
 
 ## Purpose
 
-Postman and similar testing tools cannot easily:
+Bruno and similar testing tools cannot easily:
 - Generate RSA key pairs
 - Sign data with private keys
 - Validate digital signatures

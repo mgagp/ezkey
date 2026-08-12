@@ -1,0 +1,121 @@
+meta {
+  name: get overview
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/dashboard/overview
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      
+      test("Response contains integrations", function () {
+          expect(jsonData).to.have.property('integrations');
+          expect(jsonData.integrations).to.have.property('total');
+          expect(jsonData.integrations).to.have.property('active');
+          expect(jsonData.integrations).to.have.property('retired');
+      });
+      
+      test("Response contains enrollments", function () {
+          expect(jsonData).to.have.property('enrollments');
+          expect(jsonData.enrollments).to.have.property('verified');
+          expect(jsonData.enrollments).to.have.property('inProgress');
+          expect(jsonData.enrollments).to.have.property('suspended');
+          expect(jsonData.enrollments).to.have.property('expired');
+          expect(jsonData.enrollments).to.have.property('invalid');
+          expect(jsonData.enrollments).to.have.property('revoked');
+      });
+      
+      test("Response contains auth24h", function () {
+          expect(jsonData).to.have.property('auth24h');
+          expect(jsonData.auth24h).to.have.property('total');
+          expect(jsonData.auth24h).to.have.property('accepted');
+          expect(jsonData.auth24h).to.have.property('rejected');
+          expect(jsonData.auth24h).to.have.property('invalid');
+          expect(jsonData.auth24h).to.have.property('expired');
+          expect(jsonData.auth24h).to.have.property('terminalTotal');
+          expect(jsonData.auth24h).to.have.property('successRatePct');
+      });
+      
+      test("Response contains recentActivity array", function () {
+          expect(jsonData).to.have.property('recentActivity');
+          expect(jsonData.recentActivity).to.be.an('array');
+      });
+      
+  test("Alerts if present are for Global Admin", function () {
+          if (jsonData.hasOwnProperty('alerts') && jsonData.alerts != null && jsonData.alerts.length > 0) {
+              expect(jsonData.alerts).to.be.an('array');
+              var first = jsonData.alerts[0];
+              expect(first).to.have.property('alertId');
+              expect(first).to.have.property('alertType');
+              expect(first).to.have.property('severity');
+              expect(first).to.have.property('status');
+              expect(first).to.have.property('createdAt');
+          }
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Returns the aggregated dashboard overview for the current admin. Consolidates integration, enrollment, and auth-24h stats, recent activity, and (for Global Admin only) instance-level open alerts.
+  
+  **No request body.** GET only.
+  
+  **Role-aware response:**
+  - **Tenant Admin** (`tenantId` set): `integrations`, `enrollments`, `auth24h`, `recentActivity` are tenant-scoped. `alerts` is null or empty.
+  - **Global Admin** (`tenantId` null): Same structure with instance-wide counts; `alerts` is populated with the most recent OPEN alerts from the alerts subsystem (e.g. `AUDIT_CHAIN_GAP_PENDING` raised by the audit chain scheduler when it detects an undeclared gap).
+  
+  **Response (200 OK) — main sections:**
+  - `integrations`: `{ total, active, retired }`
+  - `enrollments`: `{ verified, inProgress, suspended, expired, invalid, revoked }` (operational buckets)
+  - `auth24h`: `{ total, pending, readCount, accepted, rejected, invalid, expired, terminalTotal, successRatePct, invalidRatePct, expiredRatePct, rejectedRatePct }` (rolling 24h; rates are vs terminal outcomes)
+  - `recentActivity`: array of `{ auditLogId, eventType, eventStatus, eventAction, apiName, adminId, createdAt }` (up to 5 items)
+  - `alerts`: (optional, Global Admin only) array of `{ alertId, alertType, severity, status, createdAt, payload }`. The `payload` field is a JSON-encoded string with the alert-specific details (e.g. for `AUDIT_CHAIN_GAP_PENDING`: `gapStart`, `estimatedGapEnd`, `estimatedGapMinutes`, `anchorCheckpointId`, `message`). Use `/api/v1/alerts` for the full list.
+  
+  **Example response (Tenant Admin):**
+  ```json
+  {
+    "integrations": { "total": 3, "active": 2, "inactive": 1 },
+    "enrollments": { "verified": 10, "inProgress": 2, "suspended": 1, "expired": 3, "incidents": 0 },
+    "auth24h": { "total": 45, "pending": 0, "readCount": 0, "accepted": 40, "rejected": 2, "invalid": 1, "expired": 2, "terminalTotal": 45, "successRatePct": 89, "invalidRatePct": 2, "expiredRatePct": 4, "rejectedRatePct": 4 },
+    "recentActivity": [ { "auditLogId": 101, "eventType": "AUTH_ATTEMPT", "eventStatus": "SUCCESS", "eventAction": "login", "createdAt": "2026-03-08T14:00:00Z" } ],
+    "alerts": null
+  }
+  ```
+  
+  **Example response (Global Admin with gap alert):**
+  ```json
+  {
+    "alerts": [
+      {
+        "alertId": 7,
+        "alertType": "AUDIT_CHAIN_GAP_PENDING",
+        "severity": "WARNING",
+        "status": "OPEN",
+        "createdAt": "2026-03-08T13:30:00Z",
+        "payload": "{\"anchorCheckpointId\":42,\"gapStart\":\"2026-03-08T13:00:00Z\",\"estimatedGapEnd\":\"2026-03-08T13:25:00Z\",\"estimatedGapMinutes\":25}"
+      }
+    ]
+  }
+  ```
+  
+  Use `payload.anchorCheckpointId` with `POST /api/v1/audit-logs/lifecycle/declare-gap` to declare and resolve the gap (which auto-resolves the alert).
+  
+  **Status Codes:**
+  - 200: Overview returned successfully
+  - 401: Not authenticated
+  - 500: Internal server error
+}

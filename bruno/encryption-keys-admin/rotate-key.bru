@@ -1,0 +1,39 @@
+meta {
+  name: rotate key
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/encryption-keys/rotate
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Audit justification for the manual key rotation (min 10 characters, recommended for SOC 2 CC8.1 compliance)')
+  ~reason: {{reason}}
+}
+
+script:post-response {
+  test("Status code is 200 or 500", function () {
+      expect([200, 500]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("newPrimaryKeyId", jsonData.newPrimaryKeyId);
+      test("Rotation successful", function () {
+          expect(jsonData.newPrimaryKeyId).to.be.a('number');
+          expect(jsonData.message).to.include('successfully');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Manually triggers encryption key rotation. This creates a new primary key and demotes the old primary key to ENABLED status. Useful for emergency rotations or testing. ⚠️ Use with caution in production.
+}

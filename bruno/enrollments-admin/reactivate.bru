@@ -1,0 +1,61 @@
+meta {
+  name: reactivate
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/enrollments/:id/reactivate
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Optional justification for reactivation (max 500 characters)')
+  ~reason: Device replacement completed
+}
+
+params:path {
+  @description('The enrollment ID to reactivate')
+  id: {{enrollmentId}}
+}
+
+script:post-response {
+  test("Status code is 204 (reactivated) or 400 (conflict)", function () {
+      expect([204, 400, 403, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 204) {
+      test("Reactivation successful - no content", function () {
+          expect(res.getBody()).to.be.empty;
+      });
+  }
+  
+  if (res.getStatus() === 400) {
+      test("Cannot reactivate revoked enrollment", function () {
+          expect(res.getStatus()).to.equal(400);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Reactivates a previously deactivated enrollment.
+  
+  **Only applicable to VERIFIED enrollments**: the enrollment must have `status=VERIFIED` and `active=false`. Permanently revoked enrollments (`status=REVOKED`) cannot be reactivated — a new enrollment must be created.
+  
+  **Effects on reactivation:**
+  - `active` flag set back to `true`
+  - `deactivatedAt` and `deactivatedByAdminId` audit fields are cleared
+  - New auth attempts for this enrollment are allowed again
+  
+  **Status Codes:**
+  - 204: Enrollment reactivated
+  - 400: Enrollment is permanently revoked, not in VERIFIED status, or already active
+  - 403: Access denied
+  - 404: Enrollment not found
+  - 500: Internal server error
+}

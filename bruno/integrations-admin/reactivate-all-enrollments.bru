@@ -1,0 +1,66 @@
+meta {
+  name: reactivate all enrollments
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/integrations/:id/enrollments/reactivate-all?reason=Threat cleared - restoring access
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Optional justification (max 500 characters)')
+  reason: Threat cleared - restoring access
+}
+
+params:path {
+  @description('The integration ID whose enrollments will be bulk-reactivated')
+  id: {{integrationId}}
+}
+
+script:post-response {
+  test("Status code is 200 (summary) or 403 or 404", function () {
+      expect([200, 403, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      test("Bulk reactivation returns summary", function () {
+          var jsonData = res.getBody();
+          expect(jsonData).to.have.property('affectedCount');
+          expect(jsonData).to.have.property('skippedCount');
+          expect(jsonData).to.have.property('noOp');
+      });
+  }
+  
+  if (res.getStatus() === 403) {
+      test("RFC 9457 ProblemDetail returned", function () {
+          var jsonData = res.getBody();
+          expect(jsonData).to.have.property('type');
+          expect(jsonData.status).to.equal(403);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Bulk-reactivates all inactive VERIFIED enrollments for an integration.
+  
+  **Use case:** After a precautionary **deactivate all enrollments**, when the threat is cleared or maintenance ends.
+  
+  **Effects:**
+  - All VERIFIED + active=false enrollments set to active=true
+  - Returns an execution summary with `affectedCount`, `skippedCount`, and `noOp`
+  - A successful no-op does not emit a success audit row for this routine admin action
+  - REVOKED enrollments are not affected
+  
+  **Status Codes:**
+  - 200: Bulk reactivation completed with result summary
+  - 403: Access denied
+  - 404: Integration not found
+  - 500: Internal server error
+}

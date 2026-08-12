@@ -1,0 +1,58 @@
+meta {
+  name: 1 bind
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/v1/enrollments/bind
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "enrollmentId": {{enrollmentId}},
+      "enrollmentProofToken": "{{enrollmentProofToken}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200, 400, or 409", function () {
+      expect([200, 400, 409]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("enrollmentId", jsonData.enrollmentId);
+      bru.setEnvVar("integrationPublicKey", jsonData.integrationPublicKey);
+      bru.setEnvVar("integrationKeyAlgorithm", jsonData.integrationKeyAlgorithm);
+      bru.setEnvVar("enrollmentProofToken", jsonData.enrollmentProofToken);
+      bru.setEnvVar("enrollmentBindPayloadSignedByIntegration", jsonData.enrollmentBindPayloadSignedByIntegration);
+      bru.setEnvVar("bind_integrationName", jsonData.integrationName != null ? jsonData.integrationName : "");
+      bru.setEnvVar("bind_integrationDescription", jsonData.integrationDescription != null ? jsonData.integrationDescription : "");
+      bru.setEnvVar("bind_enrollmentName", jsonData.enrollmentName != null ? jsonData.enrollmentName : "");
+      bru.setEnvVar("bind_tenantId", jsonData.tenantId != null ? String(jsonData.tenantId) : "");
+      bru.setEnvVar("bind_tenantName", jsonData.tenantName != null ? jsonData.tenantName : "");
+      bru.setEnvVar("bind_tenantDescription", jsonData.tenantDescription != null ? jsonData.tenantDescription : "");
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('enrollmentId');
+          expect(jsonData).to.have.property('integrationPublicKey');
+          expect(jsonData).to.have.property('integrationKeyAlgorithm');
+          expect(jsonData).to.have.property('enrollmentProofToken');
+          expect(jsonData).to.have.property('enrollmentBindPayloadSignedByIntegration');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Initiates device binding. On **200**, persist integration metadata and `enrollmentBindPayloadSignedByIntegration` for the next steps.
+  
+  **Next:** Run **2** to build the canonical bind payload, then **3** to verify the integration Ed25519 signature.
+  
+  See `docs/MOBILE_DEVELOPER_GUIDE.md` (bind response).
+}

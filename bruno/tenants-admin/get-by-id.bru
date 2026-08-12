@@ -1,0 +1,91 @@
+meta {
+  name: get by ID
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/tenants/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  @description('The tenant ID')
+  id: {{tenantId}}
+}
+
+script:post-response {
+  test("Status code is 200 or 404", function () {
+      expect([200, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("tenantId", jsonData.tenantId.toString());
+      bru.setEnvVar("tenantName", jsonData.tenantName);
+  
+      test("Response contains core fields", function () {
+          expect(jsonData).to.have.property('tenantId');
+          expect(jsonData).to.have.property('tenantName');
+          expect(jsonData).to.have.property('active');
+          expect(jsonData).to.have.property('createdAt');
+          expect(jsonData).to.have.property('isSystemTenant');
+      });
+  
+      test("Response contains organizational identity fields", function () {
+          expect(jsonData).to.have.property('organizationName');
+          expect(jsonData).to.have.property('organizationDomain');
+          expect(jsonData).to.have.property('countryCode');
+          expect(jsonData).to.have.property('timezone');
+      });
+  
+      test("Response contains contact fields", function () {
+          expect(jsonData).to.have.property('primaryContactName');
+          expect(jsonData).to.have.property('primaryContactEmail');
+          expect(jsonData).to.have.property('primaryContactPhoneNumber');
+      });
+  
+      test("Response contains audit timestamp fields", function () {
+          expect(jsonData).to.have.property('updatedAt');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Retrieves details of a specific tenant by its unique identifier. Only GlobalAdmin can view tenant details.
+  
+  **Permissions:**
+  - **GlobalAdmin**: Can view any tenant
+  - **TenantAdmin**: Returns 403 Forbidden
+  
+  **Path Parameters:**
+  - `id` (required): Tenant ID to retrieve
+  
+  **Response (200 OK):**
+  - `tenantId`: Unique identifier for the tenant
+  - `tenantName`: Name of the tenant
+  - `tenantDescription`: Description of the tenant (if provided)
+  - `organizationName`: Legal organization name (if provided)
+  - `organizationDomain`: Primary domain (if provided)
+  - `countryCode`: ISO 3166-1 alpha-2 country code (if provided)
+  - `timezone`: IANA timezone identifier (if provided)
+  - `primaryContactName`: Primary contact full name (if provided)
+  - `primaryContactEmail`: Primary contact email (if provided)
+  - `primaryContactPhoneNumber`: Primary contact phone number in canonical E.164 format (if provided)
+  - `createdAt`: Timestamp when the tenant was created (UTC with timezone)
+  - `updatedAt`: Timestamp of last modification (null if never updated)
+  - `active`: Flag indicating if the tenant is active
+  - `isSystemTenant`: Flag indicating if this is the system tenant
+  
+  **Status Codes:**
+  - 200: Tenant found
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - not a GlobalAdmin
+  - 404: Tenant not found
+  - 500: Internal server error
+}

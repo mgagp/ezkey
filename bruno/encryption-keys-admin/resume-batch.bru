@@ -1,0 +1,38 @@
+meta {
+  name: resume batch
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/encryption-keys/reencryption-batches/:batchId/resume
+  body: none
+  auth: inherit
+}
+
+params:path {
+  @description('The re-encryption batch ID')
+  batchId: {{reencryptionBatchId}}
+}
+
+script:post-response {
+  test("Status code is 202, 404, or 500", function () {
+      expect([202, 404, 500]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 202) {
+      var jsonData = res.getBody();
+      test("Resume accepted", function () {
+          expect(jsonData.batchId).to.be.a('number');
+          expect(jsonData.message).to.be.a('string');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Accepts resume for a failed or paused re-encryption batch (202 Accepted). Use the batchId from the list re-encryption batches response; progress appears in the batches table.
+}

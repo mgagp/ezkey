@@ -1,0 +1,38 @@
+meta {
+  name: trigger full re-encryption
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/encryption-keys/reencrypt/trigger
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status code is 202, 400, or 500", function () {
+      expect([202, 400, 500]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 202) {
+      var jsonData = res.getBody();
+      test("Response has batchesEnqueued", function () {
+          expect(jsonData).to.have.property('batchesEnqueued');
+      });
+      test("Response has batchIds", function () {
+          expect(jsonData).to.have.property('batchIds');
+      });
+      test("Response has message", function () {
+          expect(jsonData).to.have.property('message');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Manually triggers full re-encryption: creates batches for all old keys and enqueues background processing. Returns 202 Accepted immediately; monitor progress in the re-encryption batches list.
+}

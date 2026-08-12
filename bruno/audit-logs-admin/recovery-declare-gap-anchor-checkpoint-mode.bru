@@ -1,0 +1,104 @@
+meta {
+  name: recovery declare gap — anchor checkpoint mode
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/lifecycle/declare-gap
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "anchorCheckpointId": {{gap_anchor_checkpoint_id}},
+    "justification": "{{gap_justification}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has gap declaration fields", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('gapStart');
+      expect(jsonData).to.have.property('gapEnd');
+      expect(jsonData).to.have.property('gapCheckpointId');
+      expect(jsonData).to.have.property('gapChainHmac');
+      expect(jsonData).to.have.property('auditLogId');
+      expect(jsonData).to.have.property('justification');
+  });
+  
+  test("gapCheckpointId is a positive number", function () {
+      var jsonData = res.getBody();
+      expect(jsonData.gapCheckpointId).to.be.a('number').and.to.be.above(0);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      console.log('Gap declared: checkpointId=' + jsonData.gapCheckpointId + ', gapStart (derived)=' + jsonData.gapStart + ', chainHmac=' + jsonData.gapChainHmac.substring(0, 12) + '...');
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Formally declares a downtime gap in the audit chain — **anchor checkpoint mode** (ergonomic).
+  
+  This request is kept as an exceptional recovery path. It should not be read as a normal operator workflow.
+  
+  Pass the `checkpoint_id` of the **last checkpoint recorded before the downtime**. The service automatically derives `gapStart = anchorCheckpoint.window_end` — no timestamp reading or formatting required.
+  
+  **Use this mode when:** you are looking at the DB or responding to an open `AUDIT_CHAIN_GAP_PENDING` alert (see `/api/v1/alerts` and the EZ Key Alerts admin collection). Run this query to find the anchor:
+  
+  ```sql
+  SELECT checkpoint_id, window_end
+  FROM ezkey_audit_chain_checkpoint
+  ORDER BY checkpoint_id DESC
+  LIMIT 5;
+  -- Pick the last checkpoint before the downtime
+  ```
+  
+  **`gapEnd` is optional in this mode.** If omitted, the service auto-derives it as:
+  1. The `window_start` of the first checkpoint that exists after the anchor (the exact boundary between the undeclared gap and the scheduler's catch-up checkpoints)
+  2. If no such checkpoint exists yet (scheduler hasn't ticked): falls back to the start of the current 5-minute window
+  
+  **Recommended workflow after extended downtime:**
+  1. Restart EZKey stack
+  2. Wait for the first scheduler tick (~5 min) — it creates checkpoints for the last 60 min
+  3. Call this endpoint with just `anchorCheckpointId` and `justification` — `gapEnd` is auto-derived
+  
+  **Access:** Global Admin only.
+  
+  **Operational constraint:** The scheduler already creates checkpoints for the last 60 minutes post-restart. This endpoint fills the gap BEFORE those checkpoints. If you see an open `AUDIT_CHAIN_GAP_PENDING` alert in `/api/v1/alerts`, that is the alert signal. Calling this endpoint successfully also auto-resolves the matching open alert (resolution reason `GAP_DECLARED`).
+  
+  **Collection variables:**
+  - `gap_anchor_checkpoint_id` — `checkpoint_id` of the last checkpoint before the outage
+  - `gap_end` — (optional) moment the system came back online; leave empty to auto-derive
+  - `gap_justification` — reason for the downtime
+  
+  **Response (200 OK):**
+  ```json
+  {
+    "gapStart": "2026-02-17T10:00:00Z",
+    "gapEnd": "2026-02-19T08:00:00Z",
+    "gapCheckpointId": 1024,
+    "gapChainHmac": "xyz789...",
+    "auditLogId": 4522,
+    "justification": "..."
+  }
+  ```
+  
+  `gapStart` in the response shows the derived value (anchor's `window_end`). `gapEnd` shows the final boundary used (explicit or auto-derived).
+  
+  **Status Codes:** 200 OK · 400 Anchor checkpoint not found, conflicting modes, entries found in gap, or gapEnd ≤ gapStart · 409 Conflicting checkpoints exist or HMAC not active · 401 Unauthorized · 403 Forbidden
+}

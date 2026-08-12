@@ -1,0 +1,75 @@
+meta {
+  name: wait with api key
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/auth-attempts/:id/wait
+  body: none
+  auth: basic
+}
+
+params:query {
+  @description('Maximum wait duration in seconds (1-300, default: 30)')
+  ~timeout: 30
+  @description('Polling interval in seconds (1-60, default: 2)')
+  ~polling: 2
+}
+
+params:path {
+  @description('The authentication attempt ID to wait for')
+  id: {{authAttemptId}}
+}
+
+auth:basic {
+  username: {{integrationKey}}
+  password: {{secretKey}}
+}
+
+script:post-response {
+  test("Status code is 200, 408, or 404", function () {
+      expect([200, 408, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('authAttempt');
+          expect(jsonData).to.have.property('status');
+          expect(jsonData).to.have.property('completed');
+          expect(jsonData).to.have.property('timeoutReached');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Waits for authentication response using API key authentication. Access control ensures API keys can only wait for attempts belonging to their integration.
+  
+  **Authentication:**
+  - HTTP Basic Auth with `integrationKey:secretKey`
+  
+  **Path Parameters:**
+  - `id` (required): Authentication attempt ID to wait for
+  
+  **Query Parameters:**
+  - `timeout` (optional, default: 30): Maximum wait duration in seconds (1-300)
+  - `polling` (optional, default: 2): Polling interval in seconds (1-60)
+  
+  **Response (200 OK):**
+  Same structure as wait endpoint
+  
+  **Status Codes:**
+  - 200: Authentication completed
+  - 408: Timeout reached
+  - 404: Auth attempt not found
+  - 400: Invalid parameters
+  - 401: Unauthorized - invalid API key
+  - 429: Rate limit exceeded (200 requests per hour per integration key)
+  - 500: Internal server error
+}

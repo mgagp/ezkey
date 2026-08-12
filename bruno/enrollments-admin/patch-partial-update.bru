@@ -1,0 +1,59 @@
+meta {
+  name: patch (partial update)
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{base_url_admin_api}}/api/v1/enrollments/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  @description('VERIFIED enrollment ID (run get first to set enrollmentVersion)')
+  id: {{enrollmentId}}
+}
+
+body:json {
+  {
+      "version": {{enrollmentVersion}},
+      "enrollmentName": "Updated Device Name",
+      "contactEmail": "owner@example.com",
+      "contactPhoneNumber": "+1 514 555 4001",
+      "authAttemptChallengeRequired": false,
+      "userIdentifier": "app-user-001"
+  }
+}
+
+script:post-response {
+  test("Status code is 200, 400, 403, 404, or 409", function () {
+      expect([200, 400, 403, 404, 409]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("enrollmentVersion", jsonData.version);
+      test("Response has version", function () {
+          expect(jsonData).to.have.property('version');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Partially updates enrollment metadata. Only non-null fields are applied. Requires a **VERIFIED** and **active** enrollment.
+  
+  **Run `get` first** to populate `enrollmentId` and copy `version` into environment as `enrollmentVersion` (or set manually from GET response).
+  
+  **Body fields (all optional except include only what you change):**
+  - `version`: from GET — optimistic locking (409 if stale)
+  - `enrollmentName`, `contactEmail`, `contactPhoneNumber`, `expiresAt` (future ISO-8601; invitation window semantics), `authAttemptChallengeRequired`, `userIdentifier`
+  
+  **Note:** `expiresAt` in PATCH refers to the pending invitation window, not a separate post-verify lifetime.
+  
+  **Audit:** Success writes structured JSON in audit `event_details` with a `changes` array (previous/new per field).
+}

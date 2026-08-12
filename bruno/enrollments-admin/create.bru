@@ -1,0 +1,76 @@
+meta {
+  name: create
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/enrollments
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "integrationId": {{integrationId}},
+      "name": "John Smith",
+      "authAttemptChallengeRequired": false,
+      "contactEmail": "john.smith@example.com",
+      "contactPhoneNumber": "+1 514 555 4000",
+      "userIdentifier": "john.smith"
+  }
+}
+
+script:post-response {
+  test("Status code is 201", function () {
+      expect(res.getStatus()).to.equal(201);
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("enrollmentId", jsonData.enrollmentId);
+      bru.setEnvVar("enrollmentChallenge", jsonData.enrollmentChallenge);
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('enrollmentId');
+          expect(jsonData).to.have.property('enrollmentChallenge');
+          expect(jsonData.enrollmentId).to.be.a('number');
+          expect(jsonData.enrollmentChallenge).to.be.a('number');
+      });
+      if (jsonData.expiresAt != null) {
+          test("expiresAt is ISO-8601 string when present", function () {
+              expect(jsonData.expiresAt).to.be.a('string');
+          });
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates a new enrollment that can later be bound to a mobile device. This generates an enrollment with credentials (proof token and challenge) that are used during the device binding process.
+  
+  **Request Body:**
+  - `integrationId` (required): Integration ID this enrollment belongs to
+  - `name` (required): Human-readable name for the enrollment (e.g., "John's iPhone")
+  - `authAttemptChallengeRequired` (optional, default: false): Whether authentication attempts require challenge code verification
+  - `contactEmail` (optional): Contact email for the end-user (incident response, support)
+  - `contactPhoneNumber` (optional): Contact phone number for the end-user; accepts common separators and is normalized to E.164 on write
+  - `userIdentifier` (optional): User identifier from the integrating app (username, user_id). Enables future auth attempt creation by userIdentifier.
+  - `expiresAt` (optional): ISO-8601 UTC instant for pending-phase invitation expiry (bind/verify only); must be in the future when set. Omit to use `ezkey.enrollment.pending-expiration-days` (default **7**).
+  
+  **Response (201 Created):**
+  - `enrollmentId`: Unique identifier of the created enrollment
+  - `enrollmentChallenge`: Challenge number generated for enrollment verification
+  - `expiresAt`: Pending invitation expiry when stored on the enrollment (typically present with default policy)
+  
+  **Status Codes:**
+  - 201: Enrollment created successfully
+  - 400: Invalid data (e.g., integration not found)
+  - 401: Unauthorized - admin token required
+  - 500: Internal server error
+  
+  **Usage:** After creation, use the enrollment ID and challenge to bind a mobile device via the auth API.
+}

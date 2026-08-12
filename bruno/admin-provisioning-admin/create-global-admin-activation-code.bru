@@ -1,0 +1,69 @@
+meta {
+  name: create global admin (activation code)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admins/global
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "username": "pending.global.admin",
+      "email": "pendingglobal@example.com",
+      "phoneNumber": "+1 514 555 1101",
+      "firstName": "Pending",
+      "lastName": "GlobalAdmin",
+      "onboardingMode": "ACTIVATION_CODE"
+  }
+}
+
+script:post-response {
+  test("Status code is 201 or 400", function () {
+      expect([201, 400, 403]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("adminId", jsonData.adminId.toString());
+      bru.setEnvVar("adminOnboardingMode", jsonData.onboardingMode);
+      bru.setEnvVar("adminLifecycleStatus", jsonData.lifecycleStatus);
+      bru.setEnvVar("adminActivationCode", jsonData.activationCode);
+      bru.setEnvVar("adminActivationCodeExpiresAt", jsonData.activationCodeExpiresAt);
+      bru.deleteEnvVar("adminEnrollmentId");
+      bru.deleteEnvVar("adminRecoveryCodes");
+      test("Activation-code response contains pending activation metadata", function () {
+          expect(jsonData.adminType).to.equal('GLOBAL_ADMIN');
+          expect(jsonData.onboardingMode).to.equal('ACTIVATION_CODE');
+          expect(jsonData.lifecycleStatus).to.equal('PENDING_ACTIVATION');
+          expect(jsonData.enrollmentId).to.be.null;
+          expect(jsonData.recoveryCodes).to.be.null;
+          expect(jsonData.activationCode).to.be.a('string').and.not.empty;
+          expect(jsonData.activationCodeExpiresAt).to.be.a('string').and.not.empty;
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates a new global administrator in deferred activation mode. Use this when the first enrollment must be created later by consuming a one-time activation code.
+  
+  **Request Body:**
+  - Same as immediate creation, but `onboardingMode` is set to `ACTIVATION_CODE`
+  
+  **Response (201 Created):**
+  - `lifecycleStatus`: `PENDING_ACTIVATION`
+  - `onboardingMode`: `ACTIVATION_CODE`
+  - `activationCode`: One-time operator-facing code to hand off securely
+  - `activationCodeExpiresAt`: Expiry timestamp for that code
+  - `enrollmentId`: null until activation is consumed
+  - `recoveryCodes`: null until the first enrollment exists
+  
+  **Operational Note:** Do not call GET `/api/v1/admins/{id}/onboarding` yet; that endpoint only applies after activation has created the first enrollment.
+}

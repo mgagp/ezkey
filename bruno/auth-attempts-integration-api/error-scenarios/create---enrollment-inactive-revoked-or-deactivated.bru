@@ -1,0 +1,54 @@
+meta {
+  name: create - enrollment inactive (revoked or deactivated)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url_integration_api}}/api/v1/auth-attempts
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "enrollmentId": {{inactiveEnrollmentId}},
+      "challengeRequested": false
+  }
+}
+
+script:post-response {
+  test("Status code is 403 - enrollment inactive", function () {
+      expect(res.getStatus()).to.equal(403);
+  });
+  
+  test("RFC 9457 ProblemDetail returned", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('type');
+      expect(jsonData).to.have.property('title');
+      expect(jsonData).to.have.property('status');
+      expect(jsonData.status).to.equal(403);
+  });
+  
+  test("Problem type is enrollment-inactive", function () {
+      var jsonData = res.getBody();
+      expect(jsonData.type).to.include('enrollment-inactive');
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Attempts to create an auth attempt using an enrollment that has been deactivated or revoked.
+  
+  Prerequisite: set `{{inactiveEnrollmentId}}` to an enrollment ID that has been deactivated (via `POST /api/v1/enrollments/{id}/deactivate`) or revoked (via `POST /api/v1/enrollments/{id}/revoke`).
+  
+  **Expected behavior:**
+  - 403 Forbidden with RFC 9457 ProblemDetail
+  - `type`: `https://ezkey.io/problems/enrollment/enrollment-inactive`
+  - `title`: `Enrollment Inactive`
+  
+  This verifies the security gate in `AuthAttemptService.create()` that prevents new auth attempts against revoked or deactivated enrollments.
+}

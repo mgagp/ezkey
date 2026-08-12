@@ -1,0 +1,45 @@
+meta {
+  name: proof token
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url_crypto_api}}/api/v1/crypto/prooftoken
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("proofToken", jsonData.proofToken);
+      
+      test("Response contains proofToken", function () {
+          expect(jsonData).to.have.property('proofToken');
+          expect(jsonData.proofToken).to.be.a('string');
+          expect(jsonData.proofToken.length).to.be.greaterThan(0);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Generates a cryptographically secure proof token for use in authentication flows. This token is typically used for device authentication when checking for pending authentication attempts.
+  
+  **Response (200 OK):**
+  - `proofToken`: Cryptographically secure proof token string
+  
+  **Status Codes:**
+  - 200: Proof token generated successfully
+  - 500: Internal server error
+  
+  **Usage:** The generated token should be signed with the device's private key and included in authentication requests.
+}

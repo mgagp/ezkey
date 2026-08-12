@@ -1,0 +1,136 @@
+meta {
+  name: login
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admin/auth/login
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "username": "admin.docker",
+      "challengeRequested": false,
+      "nonBlocking": false
+  }
+}
+
+script:post-response {
+  test("Status code is 200 or 400", function () {
+      expect([200, 400]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      
+      if (jsonData.success === true) {
+          // Single-call mode: token received immediately
+          bru.setEnvVar("token", jsonData.token);
+          
+          // Extract multi-tenancy fields (Phase 1)
+          if (jsonData.adminType) {
+              bru.setEnvVar("adminType", jsonData.adminType);
+          }
+          if (jsonData.tenantId !== undefined && jsonData.tenantId !== null) {
+              bru.setEnvVar("tenantId", jsonData.tenantId.toString());
+          }
+          
+          test("Response contains token", function () {
+              expect(jsonData).to.have.property('token');
+              expect(jsonData.token).to.be.a('string');
+          });
+          
+          test("Response contains adminType", function () {
+              expect(jsonData).to.have.property('adminType');
+              expect(['GLOBAL_ADMIN', 'TENANT_ADMIN']).to.include(jsonData.adminType);
+          });
+      } else if (jsonData.status === 'pending') {
+          // Two-call mode: challenge required
+          bru.setEnvVar("authAttemptId", jsonData.authAttemptId);
+          bru.setEnvVar("challengeCode", jsonData.challengeCode);
+          
+          // Extract multi-tenancy fields (Phase 1)
+          if (jsonData.adminType) {
+              bru.setEnvVar("adminType", jsonData.adminType);
+          }
+          if (jsonData.tenantId !== undefined && jsonData.tenantId !== null) {
+              bru.setEnvVar("tenantId", jsonData.tenantId.toString());
+          }
+          
+          test("Response contains challenge info", function () {
+              expect(jsonData).to.have.property('authAttemptId');
+              expect(jsonData).to.have.property('challengeCode');
+          });
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Passwordless authentication for administrators. Supports multiple authentication modes and flow types.
+  
+  **Request Body:**
+  - `username` (required): Administrator username
+  - `challengeRequested` (optional, default: false): Whether to use two-step flow with challenge code (6-digit verification)
+  - `nonBlocking` (optional, default: false): Request immediate response with authAttemptId instead of blocking wait. Allows client to display countdown timer and poll /passwordless-wait endpoint. When false (default), blocking wait is used when no challenge is required (backward compatible). This flag has no effect when challenge is required (challenge flow is always non-blocking).
+  
+  **Authentication Modes:**
+  
+  ### Mode 1: Single-Call Blocking (challengeRequested: false, nonBlocking: false)
+  - Default mode for backward compatibility
+  - Endpoint blocks until device approves authentication (long-running HTTP; server wait matches auth attempt TTL from `ezkey.core.auth-attempt.ttl-seconds`, plus small slack, max 300 seconds)
+  - Returns bearer token immediately on success
+  
+  **Response (200 OK) - Success:**
+  - `success`: true
+  - `token`: Bearer token for authenticated API requests
+  - `adminType`: Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)
+  - `username`: Administrator username
+  - `expiresAt`: Token expiration timestamp
+  - `message`: "Authentication successful"
+  
+  ### Mode 2: Single-Call Non-Blocking (challengeRequested: false, nonBlocking: true)
+  - Returns immediately with authAttemptId and expiresAt for polling
+  - Client displays countdown timer based on expiresAt
+  - Client polls /passwordless-wait endpoint to complete authentication
+  
+  **Response (200 OK) - Pending:**
+  - `success`: false
+  - `status`: "pending"
+  - `authAttemptId`: Authentication attempt ID for polling
+  - `username`: Administrator username
+  - `adminType`: Type of administrator
+  - `expiresAt`: Absolute expiry of the **authentication attempt** (same instant as persisted in DB; driven by `ezkey.core.auth-attempt.ttl-seconds`, not a fixed duration)
+  - `message`: "Waiting for device response. Poll /passwordless-wait with authAttemptId to complete authentication."
+  
+  ### Mode 3: Two-Call Challenge (challengeRequested: true, nonBlocking: any)
+  - Returns immediately with challenge info (nonBlocking flag is ignored)
+  - User enters 6-digit challenge code on device
+  - Call /passwordless-wait to get bearer token
+  
+  **Response (200 OK) - Pending:**
+  - `success`: false
+  - `status`: "pending"
+  - `authAttemptId`: Authentication attempt ID
+  - `challengeCode`: 6-digit challenge code for device verification
+  - `username`: Administrator username
+  - `adminType`: Type of administrator
+  - `expiresAt`: Same semantics as non-blocking pending (attempt expiry from core TTL)
+  - `message`: Instruction message
+  
+  **Failure Response (400 Bad Request):**
+  - `success`: false
+  - `message`: Error description (e.g., "No device enrolled", "Authentication rejected")
+  
+  **Status Codes:**
+  - 200: Authentication successful or pending
+  - 400: Authentication failed (invalid credentials, no device enrolled)
+  - 429: Rate limit exceeded (5 requests per minute per IP)
+  - 500: Internal server error
+}

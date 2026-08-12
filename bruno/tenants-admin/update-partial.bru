@@ -1,0 +1,109 @@
+meta {
+  name: update (partial)
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{base_url_admin_api}}/api/v1/tenants/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  @description('The tenant ID to update')
+  id: {{tenantId}}
+}
+
+body:json {
+  {
+      "organizationName": "Acme Corporation Inc. (Updated)",
+      "primaryContactEmail": "admin@acme.com",
+      "primaryContactPhoneNumber": "+1 514 555 2000"
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("tenantId", jsonData.tenantId.toString());
+      bru.setEnvVar("tenantName", jsonData.tenantName);
+  
+      test("Response contains core fields", function () {
+          expect(jsonData).to.have.property('tenantId');
+          expect(jsonData).to.have.property('tenantName');
+          expect(jsonData).to.have.property('active');
+          expect(jsonData).to.have.property('createdAt');
+          expect(jsonData).to.have.property('isSystemTenant');
+      });
+  
+      test("Updated fields reflect new values", function () {
+          expect(jsonData.organizationName).to.eql('Acme Corporation Inc. (Updated)');
+          expect(jsonData.primaryContactEmail).to.eql('admin@acme.com');
+          expect(jsonData.primaryContactPhoneNumber).to.eql('+15145552000');
+      });
+  
+      test("updatedAt is set after update", function () {
+          expect(jsonData.updatedAt).to.not.be.null;
+      });
+  
+      test("Tenant is still active", function () {
+          expect(jsonData.active).to.be.true;
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Updates a tenant with partial-update semantics. Only non-null fields in the request body are applied; fields omitted or set to null are preserved as-is. Only GlobalAdmin can update tenants.
+  
+  **Permissions:**
+  - **GlobalAdmin**: Can update any tenant
+  - **TenantAdmin**: Returns 403 Forbidden
+  
+  **Path Parameters:**
+  - `id` (required): Tenant ID to update
+  
+  **Request Body (all fields optional - partial update):**
+  - `tenantName`: New unique name for the tenant (3-100 characters, triggers uniqueness check)
+  - `tenantDescription`: Updated description (max 500 characters)
+  - `organizationName`: Legal name of the organization (max 255 characters)
+  - `organizationDomain`: Primary domain, e.g., acme.com (max 255 characters)
+  - `countryCode`: ISO 3166-1 alpha-2 country code, e.g., CA (2 uppercase letters)
+  - `timezone`: IANA timezone identifier, e.g., America/Montreal (max 50 characters)
+  - `primaryContactName`: Primary contact full name (max 255 characters)
+  - `primaryContactEmail`: Primary contact email address (max 255 characters)
+  - `primaryContactPhoneNumber`: Primary contact phone number; accepts common separators and is normalized to E.164 on write
+  
+  **Partial Update Semantics:**
+  - Only send the fields you want to change
+  - Omitted fields are NOT cleared — existing values are preserved
+  - To update a single field, send only that field in the JSON body
+  - The `updatedAt` and `updatedByAdminId` audit fields are set automatically
+  
+  **Validation Rules:**
+  - `tenantName`: If provided, must be 3-100 characters and unique across all tenants
+  - `organizationDomain`: Must match pattern `^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+  - `countryCode`: Must be exactly 2 uppercase letters (A-Z)
+  - `primaryContactEmail`: Must be a valid email format
+  - `primaryContactPhoneNumber`: Must not exceed 50 characters; normalized to E.164 on write
+  - Inactive tenants cannot be updated (returns 400 with RFC 9457 ProblemDetail)
+  
+  **Response (200 OK):**
+  Full tenant object with all fields (same structure as GET response).
+  
+  **Status Codes:**
+  - 200: Tenant updated successfully
+  - 400: Invalid data (validation errors, tenant name already taken, tenant inactive)
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - not a GlobalAdmin
+  - 404: Tenant not found
+  - 500: Internal server error
+}

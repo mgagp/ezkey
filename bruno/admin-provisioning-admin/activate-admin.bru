@@ -1,0 +1,71 @@
+meta {
+  name: activate admin
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admins/:id/activate
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Audit justification for the activation (min 10 characters when provided)')
+  ~reason: {{reason}}
+}
+
+params:path {
+  @description('The administrator ID to activate')
+  id: {{adminId}}
+}
+
+script:post-response {
+  test("Status code is 204, 403, or 404", function () {
+      expect([204, 403, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 204) {
+      test("Activation successful", function () {
+          expect(res.getStatus()).to.equal(204);
+      });
+  } else if (res.getStatus() === 403) {
+      test("Forbidden - not a global admin", function () {
+          expect(res.getStatus()).to.equal(403);
+      });
+  } else if (res.getStatus() === 404) {
+      test("Administrator not found", function () {
+          expect(res.getStatus()).to.equal(404);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Reactivates a previously deactivated administrator. Only GlobalAdmin can activate administrators.
+  
+  **Permissions:**
+  - **GlobalAdmin**: Can activate administrators
+  - **TenantAdmin**: Returns 403 Forbidden
+  
+  **Path Parameters:**
+  - `id` (required): Administrator ID to activate
+  
+  **Query Parameters:**
+  - `reason` (optional): Audit justification for the activation. Must be between 10 and 500 characters when provided. Enable the query param in Postman to include it.
+  
+  **Response (204 No Content):**
+  - No response body
+  - Administrator is active again
+  - The administrator must log in again to obtain a new bearer token
+  
+  **Status Codes:**
+  - 204: Administrator activated successfully
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - not a GlobalAdmin
+  - 404: Administrator not found
+  - 500: Internal server error
+}

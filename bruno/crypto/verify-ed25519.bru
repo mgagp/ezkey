@@ -1,0 +1,49 @@
+meta {
+  name: verify-ed25519
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/verify-ed25519
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "data": "{{data}}",
+      "signature": "{{integration_signature}}",
+      "publicKey": "{{integration_publicKey}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200 or 400", function () {
+      expect([200, 400]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("valid", jsonData.valid);
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('valid');
+          expect(jsonData).to.have.property('message');
+          expect(jsonData).to.have.property('algorithm');
+          expect(jsonData.algorithm).to.equal('ED25519');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Verifies an Ed25519 integration signature against the provided canonical payload.
+  
+  **Request Body:**
+  - `data`: Canonical payload to verify
+  - `signature`: Raw 64-byte Ed25519 signature as Base64URL without padding
+  - `publicKey`: Raw 32-byte Ed25519 public key as Base64URL without padding
+}

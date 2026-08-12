@@ -1,0 +1,51 @@
+meta {
+  name: hash token
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/hash-token
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "token": "{{bearerToken}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      if (jsonData.tokenHash) {
+          bru.setEnvVar("tokenHash", jsonData.tokenHash);
+      }
+      test("Response contains tokenHash", function () {
+          expect(jsonData).to.have.property('tokenHash');
+          expect(jsonData.tokenHash).to.be.a('string');
+          expect(jsonData.tokenHash).to.match(/^[a-f0-9]{64}$/);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Computes the SHA-256 hash (hexadecimal, 64 chars) of a bearer token. Used for development and debugging when admin tokens are stored as hashes in ezkey_admin_tokens.bearer_token_hash.
+  
+  **Request Body:**
+  - `token` (required): Bearer token (e.g. ezkey_... or ezkey_recovery_...)
+  
+  **Response (200 OK):**
+  - `tokenHash`: SHA-256 hash in lowercase hex (64 characters)
+  
+  **Usage:** Paste a bearer token from client or logs to get the hash that corresponds to the stored value for DB lookup or verification.
+}

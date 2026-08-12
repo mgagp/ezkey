@@ -1,0 +1,137 @@
+meta {
+  name: create
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/tenants
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "tenantName": "ACME Corporation",
+      "tenantDescription": "ACME Corp's Ezkey tenant for MFA authentication",
+      "organizationName": "Acme Corporation Inc.",
+      "organizationDomain": "acme.com",
+      "countryCode": "CA",
+      "timezone": "America/Montreal",
+      "primaryContactName": "Jane Doe",
+      "primaryContactEmail": "jane.doe@acme.com",
+      "primaryContactPhoneNumber": "+1 514 555 1234"
+  }
+}
+
+script:post-response {
+  test("Status code is 201", function () {
+      expect(res.getStatus()).to.equal(201);
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("tenantId", jsonData.tenantId.toString());
+      bru.setEnvVar("tenantName", jsonData.tenantName);
+      if (jsonData.tenantDescription) {
+          bru.setEnvVar("tenantDescription", jsonData.tenantDescription);
+      }
+  
+      test("Response contains core fields", function () {
+          expect(jsonData).to.have.property('tenantId');
+          expect(jsonData).to.have.property('tenantName');
+          expect(jsonData).to.have.property('active');
+          expect(jsonData).to.have.property('createdAt');
+          expect(jsonData).to.have.property('isSystemTenant');
+      });
+  
+      test("Response contains organizational identity fields", function () {
+          expect(jsonData).to.have.property('organizationName');
+          expect(jsonData).to.have.property('organizationDomain');
+          expect(jsonData).to.have.property('countryCode');
+          expect(jsonData).to.have.property('timezone');
+      });
+  
+      test("Response contains contact fields", function () {
+          expect(jsonData).to.have.property('primaryContactName');
+          expect(jsonData).to.have.property('primaryContactEmail');
+          expect(jsonData).to.have.property('primaryContactPhoneNumber');
+      });
+  
+      test("Tenant is active by default", function () {
+          expect(jsonData.active).to.be.true;
+      });
+  
+      test("Not a system tenant", function () {
+          expect(jsonData.isSystemTenant).to.be.false;
+      });
+  
+      test("Organizational fields match request", function () {
+          expect(jsonData.organizationName).to.eql('Acme Corporation Inc.');
+          expect(jsonData.organizationDomain).to.eql('acme.com');
+          expect(jsonData.countryCode).to.eql('CA');
+          expect(jsonData.timezone).to.eql('America/Montreal');
+          expect(jsonData.primaryContactName).to.eql('Jane Doe');
+          expect(jsonData.primaryContactEmail).to.eql('jane.doe@acme.com');
+          expect(jsonData.primaryContactPhoneNumber).to.eql('+15145551234');
+      });
+  
+      test("Location header is present", function () {
+          expect(res.getHeader('Location')).to.include('/api/v1/tenants/');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates a new tenant in the multi-tenant Ezkey system. Only GlobalAdmin can create tenants.
+  
+  **Permissions:**
+  - **GlobalAdmin**: Can create tenants
+  - **TenantAdmin**: Returns 403 Forbidden
+  
+  **Request Body:**
+  - `tenantName` (required): Unique name for the tenant (3-100 characters)
+  - `tenantDescription` (optional): Description of the tenant (max 500 characters)
+  - `organizationName` (optional): Legal name of the organization (max 255 characters)
+  - `organizationDomain` (optional): Primary domain, e.g., acme.com (max 255 characters)
+  - `countryCode` (optional): ISO 3166-1 alpha-2 country code, e.g., CA (2 uppercase letters)
+  - `timezone` (optional): IANA timezone identifier, e.g., America/Montreal (max 50 characters)
+  - `primaryContactName` (optional): Primary contact full name (max 255 characters)
+  - `primaryContactEmail` (optional): Primary contact email address (max 255 characters)
+  - `primaryContactPhoneNumber` (optional): Primary contact phone number; accepts common separators and is normalized to E.164 on write
+  
+  **Response (201 Created):**
+  - `tenantId`: Unique identifier for the newly created tenant
+  - `tenantName`: Name of the tenant
+  - `tenantDescription`: Description (if provided)
+  - `organizationName`: Legal organization name (if provided)
+  - `organizationDomain`: Primary domain (if provided)
+  - `countryCode`: ISO 3166-1 alpha-2 country code (if provided)
+  - `timezone`: IANA timezone identifier (if provided)
+  - `primaryContactName`: Primary contact full name (if provided)
+  - `primaryContactEmail`: Primary contact email (if provided)
+  - `primaryContactPhoneNumber`: Primary contact phone number in canonical E.164 format (if provided)
+  - `createdAt`: Timestamp when the tenant was created (UTC with timezone)
+  - `updatedAt`: Timestamp of last modification (null on creation)
+  - `active`: Flag indicating if the tenant is active (true by default)
+  - `isSystemTenant`: Flag indicating if this is the system tenant (false for new tenants)
+  - Location header: `/api/v1/tenants/{tenantId}`
+  
+  **Validation Rules:**
+  - `tenantName`: Required, 3-100 characters, must be unique
+  - `organizationDomain`: Must match pattern `^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+  - `countryCode`: Must be exactly 2 uppercase letters (A-Z)
+  - `primaryContactEmail`: Must be a valid email format
+  - `primaryContactPhoneNumber`: Must not exceed 50 characters; normalized to E.164 on write
+  
+  **Status Codes:**
+  - 201: Tenant created successfully
+  - 400: Invalid data (validation errors, tenant name already exists)
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - not a GlobalAdmin
+  - 500: Internal server error
+}

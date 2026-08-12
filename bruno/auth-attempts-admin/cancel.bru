@@ -1,0 +1,80 @@
+meta {
+  name: cancel
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/auth-attempts/:id/cancel
+  body: none
+  auth: inherit
+}
+
+params:path {
+  @description('The authentication attempt ID to cancel')
+  id: {{authAttemptId}}
+}
+
+script:post-response {
+  test("Status code is 200, 400, or 404", function () {
+      expect([200, 400, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('authAttemptId');
+          expect(jsonData).to.have.property('authAttemptStatus');
+          expect(jsonData).to.have.property('enrollmentId');
+      });
+      
+      test("Status is EXPIRED after cancellation", function () {
+          expect(jsonData.authAttemptStatus).to.equal('EXPIRED');
+      });
+  }
+  
+  if (res.getStatus() === 400) {
+      test("Bad request for already completed attempt", function () {
+          expect(res.getStatus()).to.equal(400);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Cancels a pending or read authentication attempt by marking it as expired. This endpoint allows client applications to proactively abort authentication requests that are still waiting for user response.
+  
+  **Multi-Tenancy:**
+  - **GlobalAdmin**: Can cancel any auth attempt (any tenant)
+  - **TenantAdmin**: Can only cancel auth attempts for enrollments within their tenant
+  - Access is validated via `AccessControlService.canAccessAuthAttempt()`
+  - Returns 403 Forbidden if TenantAdmin tries to cancel auth attempt from another tenant
+  
+  **Path Parameters:**
+  - `id` (required): Authentication attempt ID to cancel
+  
+  **Response (200 OK):**
+  - `authAttemptId`: Unique identifier for the authentication attempt
+  - `enrollmentId`: Enrollment identifier this attempt belongs to
+  - `authAttemptStatus`: Status after cancellation (EXPIRED)
+  - `createdAt`: Timestamp when the attempt was created
+  - `expiresAt`: Timestamp when the attempt expires
+  
+  **Status Codes:**
+  - 200: Authentication attempt cancelled successfully
+  - 400: Bad Request - authentication attempt already in final state (cannot be cancelled)
+  - 404: Not Found - authentication attempt not found
+  - 401: Unauthorized - authentication required
+  - 403: Forbidden - access denied to authentication attempt
+  - 500: Internal server error
+  
+  **Notes:**
+  - Only attempts in `PENDING` or `READ` status can be cancelled
+  - Attempts that are already in a final state (`ACCEPTED`, `REJECTED`, `INVALID`, `EXPIRED`) cannot be cancelled
+  - Supports both Bearer token (admin) and API key (Integration API) authentication
+  - All cancellation operations are audited for security monitoring
+}

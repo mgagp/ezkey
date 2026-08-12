@@ -1,0 +1,51 @@
+meta {
+  name: wait with short timeout
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url_integration_api}}/api/v1/auth-attempts/:id/wait?timeout=5&polling=2
+  body: none
+  auth: basic
+}
+
+params:query {
+  @description('Short timeout for quick testing — likely returns 408')
+  timeout: 5
+  @description('Polling interval in seconds')
+  polling: 2
+}
+
+params:path {
+  @description('Authentication attempt ID')
+  id: {{authAttemptId}}
+}
+
+auth:basic {
+  username: {{integrationKey}}
+  password: {{secretKey}}
+}
+
+script:post-response {
+  test("Status code is 200 or 408", function () {
+      expect([200, 408]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 408) {
+      test("Timeout reached as expected", function () {
+          var jsonData = res.getBody();
+          expect(jsonData.timeoutReached).to.be.true;
+          expect(jsonData.completed).to.be.false;
+      });
+      console.log('Timeout reached as expected — retry with /wait or cancel');
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Same as wait but with a short 5-second timeout, useful for quickly testing the 408 timeout-reached response path during exploratory testing without having to wait 30 seconds.
+}

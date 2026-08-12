@@ -1,0 +1,53 @@
+meta {
+  name: activate
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/tenants/:id/activate
+  body: json
+  auth: inherit
+}
+
+params:path {
+  @description('The tenant ID to activate')
+  id: {{tenantId}}
+}
+
+body:json {
+  {
+      "reason": "Reactivation after temporary pause"
+  }
+}
+
+script:post-response {
+  test("Status code is 204 or 404", function () {
+      expect([204, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 204) {
+      test("Activation successful", function () {
+          expect(res.getStatus()).to.equal(204);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Activates a previously deactivated tenant. Sets active = true. Idempotent if the tenant is already active. GlobalAdmin only. Deactivation metadata (deactivatedAt, deactivatedByAdminId) is preserved for audit traceability.
+  
+  **Path Parameters:**
+  - id (required): Tenant ID to activate
+  
+  **Request Body (optional):**
+  - reason (optional): Audit reason, 10-500 characters
+  
+  **Response (204 No Content):**
+  - 204: Tenant activated successfully
+  - 404: Tenant not found
+  - 403: Forbidden - not a GlobalAdmin
+}

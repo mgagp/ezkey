@@ -1,0 +1,109 @@
+meta {
+  name: regenerate recovery codes
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admins/:id/recovery-codes/regenerate
+  body: none
+  auth: inherit
+}
+
+params:path {
+  @description('The administrator ID for recovery-code regeneration')
+  id: {{adminId}}
+}
+
+script:post-response {
+  test("Status code is 200, 400, 403, or 404", function () {
+      expect([200, 400, 403, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      
+      test("Response contains required regeneration fields", function () {
+          expect(jsonData).to.have.property('adminId');
+          expect(jsonData).to.have.property('username');
+          expect(jsonData).to.have.property('recoveryCodes');
+          expect(jsonData).to.have.property('codesCount');
+          expect(jsonData).to.have.property('invalidatedPreviousCodes');
+          expect(jsonData).to.have.property('message');
+      });
+      
+      test("Recovery codes are returned once as a non-empty array", function () {
+          expect(jsonData.recoveryCodes).to.be.an('array');
+          expect(jsonData.recoveryCodes.length).to.be.greaterThan(0);
+      });
+      
+      test("Previous unused codes were invalidated", function () {
+          expect(jsonData.invalidatedPreviousCodes).to.equal(true);
+      });
+      
+      if (bru.getEnvVar('recoveryCode')) {
+          bru.setEnvVar('previousRecoveryCode', bru.getEnvVar('recoveryCode'));
+      }
+      if (jsonData.recoveryCodes && jsonData.recoveryCodes.length > 0) {
+          bru.setEnvVar('recoveryCode', jsonData.recoveryCodes[0]);
+          bru.setEnvVar('regeneratedRecoveryCode', jsonData.recoveryCodes[0]);
+      }
+  } else if (res.getStatus() === 400) {
+      var jsonData = res.getBody();
+      test("400 response is RFC 9457 Problem Detail", function () {
+          expect(jsonData).to.have.property('type');
+          expect(jsonData).to.have.property('title');
+          expect(jsonData).to.have.property('status');
+          expect(jsonData).to.have.property('detail');
+          expect(jsonData.status).to.equal(400);
+      });
+  } else if (res.getStatus() === 403) {
+      test("Forbidden - not authorized for this administrator", function () {
+          expect(res.getStatus()).to.equal(403);
+      });
+  } else if (res.getStatus() === 404) {
+      test("Administrator not found", function () {
+          expect(res.getStatus()).to.equal(404);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Generates a fresh one-time set of recovery codes for the target administrator and immediately invalidates any previous unused recovery codes.
+  
+  **Permissions:**
+  - **GlobalAdmin**: Can regenerate recovery codes for any administrator
+  - **TenantAdmin**: Can regenerate recovery codes for administrators in their tenant
+  
+  **Recommended Pre-check:**
+  - Run GET `/api/v1/admins/{id}` first and confirm `hasRecoveryCodes = true`
+  
+  **Path Parameters:**
+  - `id` (required): Administrator ID to regenerate recovery codes for
+  
+  **Response (200 OK):**
+  - `adminId`: Unique identifier for the administrator
+  - `username`: Username for the administrator
+  - `recoveryCodes`: New plain-text single-use recovery codes (**shown only in this response**)
+  - `codesCount`: Number of codes returned (default `5`, configurable)
+  - `invalidatedPreviousCodes`: Always `true` for this endpoint
+  - `message`: Operator-facing summary
+  
+  **Notes:**
+  - Previous unused recovery codes are revoked immediately.
+  - Inactive administrators cannot receive regenerated recovery codes.
+  - This endpoint is rejected when no recovery-code set exists yet; use `issue-initial` instead.
+  - Save the new `recoveryCodes` immediately; they cannot be retrieved later.
+  
+  **Status Codes:**
+  - 200: Recovery codes regenerated successfully
+  - 400: Target administrator is inactive or has no existing recovery-code set
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - not authorized for this administrator
+  - 404: Administrator not found
+  - 500: Internal server error
+}

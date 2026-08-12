@@ -1,0 +1,69 @@
+meta {
+  name: deactivate
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/enrollments/:id/deactivate
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Optional justification for deactivation (max 500 characters)')
+  ~reason: Temporary deactivation pending device replacement
+}
+
+params:path {
+  @description('The enrollment ID to deactivate')
+  id: {{enrollmentId}}
+}
+
+script:post-response {
+  test("Status code is 204 (deactivated) or 403 (forbidden)", function () {
+      expect([204, 400, 403, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 204) {
+      test("Deactivation successful - no content", function () {
+          expect(res.getBody()).to.be.empty;
+      });
+  }
+  
+  if (res.getStatus() === 403) {
+      test("RFC 9457 problem detail returned", function () {
+          var jsonData = res.getBody();
+          expect(jsonData).to.have.property('type');
+          expect(jsonData.status).to.equal(403);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Reversibly deactivates an enrollment (soft-disable).
+  
+  **Deactivation is REVERSIBLE**: the enrollment's `active` flag is set to `false` while status remains `VERIFIED`. The enrollment can be re-enabled via `/reactivate`.
+  
+  **Security Effects:**
+  - `active` flag set to `false`
+  - `deactivatedAt` and `deactivatedByAdminId` audit fields populated
+  - New auth attempts for this enrollment will be rejected with 403
+  - If the enrollment belongs to an administrator, **all their active bearer tokens are immediately invalidated**
+  
+  **Guards:**
+  - Self-deactivation is **not allowed** (returns 403 with `self-revocation-not-allowed` problem detail)
+  - Deactivating an already-inactive enrollment is a **no-op** (returns 204 silently)
+  - Deactivating a `REVOKED` enrollment returns 400 (conflict)
+  
+  **Status Codes:**
+  - 204: Enrollment deactivated
+  - 400: Enrollment is permanently revoked or invalid parameters
+  - 403: Access denied or self-deactivation attempted
+  - 404: Enrollment not found
+  - 500: Internal server error
+}

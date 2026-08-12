@@ -1,0 +1,106 @@
+meta {
+  name: issue initial recovery codes
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admins/:id/recovery-codes/issue-initial
+  body: none
+  auth: inherit
+}
+
+params:path {
+  @description('The administrator ID for initial recovery-code issuance')
+  id: {{adminId}}
+}
+
+script:post-response {
+  test("Status code is 200, 400, 403, or 404", function () {
+      expect([200, 400, 403, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      
+      test("Response contains required issuance fields", function () {
+          expect(jsonData).to.have.property('adminId');
+          expect(jsonData).to.have.property('username');
+          expect(jsonData).to.have.property('recoveryCodes');
+          expect(jsonData).to.have.property('codesCount');
+          expect(jsonData).to.have.property('invalidatedPreviousCodes');
+          expect(jsonData).to.have.property('message');
+      });
+      
+      test("Recovery codes are returned once as a non-empty array", function () {
+          expect(jsonData.recoveryCodes).to.be.an('array');
+          expect(jsonData.recoveryCodes.length).to.be.greaterThan(0);
+      });
+      
+      test("Initial issuance does not invalidate previous codes", function () {
+          expect(jsonData.invalidatedPreviousCodes).to.equal(false);
+      });
+      
+      bru.setEnvVar('adminHasRecoveryCodes', 'true');
+      bru.setEnvVar('recoveryCode', jsonData.recoveryCodes[0]);
+      bru.setEnvVar('adminRecoveryCodes', JSON.stringify(jsonData.recoveryCodes));
+      bru.setEnvVar('issuedRecoveryCode', jsonData.recoveryCodes[0]);
+  } else if (res.getStatus() === 400) {
+      var jsonData = res.getBody();
+      test("400 response is RFC 9457 Problem Detail", function () {
+          expect(jsonData).to.have.property('type');
+          expect(jsonData).to.have.property('title');
+          expect(jsonData).to.have.property('status');
+          expect(jsonData).to.have.property('detail');
+          expect(jsonData.status).to.equal(400);
+      });
+  } else if (res.getStatus() === 403) {
+      test("Forbidden - not authorized for this administrator", function () {
+          expect(res.getStatus()).to.equal(403);
+      });
+  } else if (res.getStatus() === 404) {
+      test("Administrator not found", function () {
+          expect(res.getStatus()).to.equal(404);
+      });
+  }
+  
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Generates the first one-time set of recovery codes for the target administrator. Use this after the administrator has completed a first authenticated sign-in and only when no recovery-code set exists yet.
+  
+  **Permissions:**
+  - **GlobalAdmin**: Can issue initial recovery codes for any administrator
+  - **TenantAdmin**: Can issue initial recovery codes for administrators in their tenant
+  
+  **Recommended Pre-check:**
+  - Run GET `/api/v1/admins/{id}` first and confirm `hasRecoveryCodes = false` and `lastLoginAt` is not null
+  
+  **Path Parameters:**
+  - `id` (required): Administrator ID to issue the first recovery-code set for
+  
+  **Response (200 OK):**
+  - `adminId`: Unique identifier for the administrator
+  - `username`: Username for the administrator
+  - `recoveryCodes`: New plain-text single-use recovery codes (**shown only in this response**)
+  - `codesCount`: Number of codes returned (default `5`, configurable)
+  - `invalidatedPreviousCodes`: Always `false` for this endpoint
+  - `message`: Operator-facing summary
+  
+  **Notes:**
+  - This endpoint is rejected when the administrator has not completed a first authenticated sign-in yet.
+  - This endpoint is rejected when a recovery-code set already exists; use `regenerate` instead.
+  - Save the new `recoveryCodes` immediately; they cannot be retrieved later.
+  
+  **Status Codes:**
+  - 200: Initial recovery codes issued successfully
+  - 400: Target administrator is not eligible yet or already has recovery codes
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - not authorized for this administrator
+  - 404: Administrator not found
+  - 500: Internal server error
+}

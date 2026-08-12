@@ -1,0 +1,95 @@
+meta {
+  name: 3 pending
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/v1/auth-attempts/pending
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "enrollmentId": {{enrollmentId}},
+      "enrollmentProofToken": "{{enrollmentProofToken}}",
+      "deviceProofToken": "{{device_proofToken}}",
+      "deviceProofTokenSigned": "{{device_prooftoken_signature}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200 or 204", function () {
+      expect([200, 204]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("authAttemptId", jsonData.authAttemptId);
+      bru.setEnvVar("authAttemptProofToken", jsonData.authAttemptProofToken);
+      bru.setEnvVar("authAttemptProofTokenSignedByIntegration", jsonData.authAttemptProofTokenSignedByIntegration);
+      bru.setEnvVar("authAttemptChallengeRequired", jsonData.authAttemptChallengeRequired);
+      // Always set context fields for payload building (step 4); empty string when not provided
+      bru.setEnvVar("contextTitle", jsonData.contextTitle != null ? jsonData.contextTitle : "");
+      bru.setEnvVar("contextMessage", jsonData.contextMessage != null ? jsonData.contextMessage : "");
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('authAttemptId');
+          expect(jsonData).to.have.property('authAttemptProofToken');
+          expect(jsonData).to.have.property('authAttemptProofTokenSignedByIntegration');
+          expect(jsonData).to.have.property('authAttemptChallengeRequired');
+      });
+      
+      
+      // Log context fields for manual inspection
+      if (jsonData.contextTitle || jsonData.contextMessage) {
+          console.log('--- Contextual Auth ---');
+          console.log('contextTitle:', jsonData.contextTitle);
+          console.log('contextMessage:', jsonData.contextMessage);
+      } else {
+          console.log('No contextual metadata on this auth attempt (standard MFA).');
+      }
+  } else if (res.getStatus() === 204) {
+      test("No pending requests", function () {
+          expect(res.getStatus()).to.equal(204);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Checks for pending authentication requests for the device's enrollment. This endpoint uses a **user-initiated polling model** - the mobile app polls only when the user explicitly requests to check for pending attempts.
+  
+  **Security Enhancement:** Uses `enrollmentProofToken` in the request body (not URL path) to prevent enumeration attacks.
+  
+  **Request Body:**
+  - `enrollmentId` (required): Enrollment ID to check for pending attempts
+  - `enrollmentProofToken` (required): Cryptographic proof token that authenticates the enrollment
+  - `deviceProofToken` (required): Device proof token generated in step 1
+  - `deviceProofTokenSigned` (required): Cryptographic signature of device proof token
+  
+  **Response (200 OK):**
+  - `authAttemptId`: Unique identifier of the authentication attempt
+  - `authAttemptProofToken`: Authentication proof token containing challenge data
+  - `authAttemptProofTokenSignedByIntegration`: Integration-signed proof token for integrity verification
+  - `authAttemptChallengeRequired`: Whether additional challenge validation is required
+  - `contextTitle` *(optional)*: Short title for the approval request (e.g. `"Payment Approval"`). Null if no context was attached.
+  - `contextMessage` *(optional)*: Descriptive message explaining the request (e.g. `"Authorize payment batch #1497 to Acme Corp for $1,400"`). Null if no context.
+  - `contextDetails` *(optional)*: Structured key-value JSON object for display as a table (e.g. `{"Amount":"$1,400.00","Vendor":"Acme Corp"}`). Null if not provided.
+  - `contextLevel` *(optional)*: Visual severity — `INFO` (default, blue), `WARNING` (orange), `CRITICAL` (red). Null if no context.
+  
+  **Response (204 No Content):**
+  No pending authentication attempts found. This is a normal operational state, not an error.
+  
+  **Status Codes:**
+  - 200: Pending authentication attempt found
+  - 204: No pending authentication attempts
+  - 400: Invalid request or enrollment proof token
+  - 429: Rate limit exceeded
+  
+  **Note:** The mobile app should verify the integration's signature on `authAttemptProofToken` before proceeding. Context fields are all optional — existing integrations that do not send context fields will receive `null` for these fields.
+}

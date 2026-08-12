@@ -1,0 +1,103 @@
+meta {
+  name: enrollments reset
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admin/enrollments/reset
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{recoveryToken}}
+}
+
+body:json {
+  {
+    "enrollmentId": {{enrollmentId}}
+  }
+}
+
+script:pre-request {
+  if (!bru.getEnvVar("enrollmentId")) {
+      bru.setEnvVar("enrollmentId", "1");
+  }
+}
+
+script:post-response {
+  test("Status code is 200, 400, 401, or 403", function () {
+      expect([200, 400, 401, 403]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("enrollmentProofToken", jsonData.enrollmentProofToken);
+      bru.setEnvVar("enrollmentChallenge", jsonData.enrollmentChallenge);
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('success');
+          expect(jsonData).to.have.property('enrollmentId');
+          expect(jsonData).to.have.property('enrollmentProofToken');
+          expect(jsonData).to.have.property('enrollmentChallenge');
+          expect(jsonData).to.have.property('integrationId');
+      });
+      
+      test("Reset successful", function () {
+          expect(jsonData.success).to.be.true;
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Resets enrollment after using recovery code. This unbinds the old device and generates new enrollment credentials for binding a replacement device.
+  
+  **Prerequisites:**
+  - Must have valid recovery token (obtained via `/recover` endpoint)
+  - Recovery token expires after 30 minutes or after use
+  - Set environment variable `enrollmentId` from the `/recover` response, or set it manually before calling this request
+  
+  **Request Body:**
+  - `enrollmentId` (required): Enrollment ID returned by `/recover` for this administrator
+  
+  **Response (200 OK) - Success:**
+  - `success`: true
+  - `enrollmentId`: The enrollment ID (same as before, but credentials are new)
+  - `enrollmentProofToken`: New enrollment proof token for binding
+  - `enrollmentChallenge`: New enrollment challenge code for verification
+  - `integrationId`: Integration ID for reference
+  - `message`: "Enrollment reset successfully. Old device unbound. Use these credentials to bind new device."
+  
+  **Failure Response (400 Bad Request):**
+  - `success`: false
+  - `message`: Error description (e.g. enrollment not found)
+  
+  **Failure Response (401 Unauthorized):**
+  - RFC 9457 ProblemDetail when `Authorization` header is missing
+  - `type`: `https://ezkey.io/problems/authentication/missing-authorization-header`
+  
+  **Failure Response (403 Forbidden):**
+  - `success`: false
+  - `message`: e.g. invalid recovery token, wrong enrollment for this admin, or invalid token type
+  
+  **Audit:** Success and failures are recorded (`ADMIN_RECOVERY_ENROLLMENT_RESET`); `event_details` is JSON on the server (not in this response).
+  
+  **Status Codes:**
+  - 200: Enrollment reset successfully
+  - 400: Invalid request or enrollment not found
+  - 401: Missing required Authorization header
+  - 403: Authentication failed (invalid/expired recovery token, wrong token type, or permission)
+  - 429: Rate limit exceeded for enrollment reset
+  - 500: Internal server error
+  
+  **Usage Flow:**
+  1. Use recovery code to get recovery token and `enrollmentId`
+  2. Reset enrollment (unbinds old device)
+  3. Bind new device with new credentials
+  4. Resume normal passwordless login
+}

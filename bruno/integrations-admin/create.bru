@@ -1,0 +1,84 @@
+meta {
+  name: create
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/integrations
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "code": "{{admin_code}}",
+      "name": "Administration",
+      "description": "Console d'administration"
+  }
+}
+
+script:pre-request {
+  // Generate code only if not already set or empty
+  let existingCode = bru.getEnvVar("admin_code");
+  if (!existingCode || existingCode.trim() === "") {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mi = String(now.getMinutes()).padStart(2, '0');
+    const code = `admin-${yyyy}-${mm}-${dd}-${hh}-${mi}`;
+    bru.setEnvVar("admin_code", code);
+  }
+  
+}
+
+script:post-response {
+  test("Status code is 201", function () {
+      expect(res.getStatus()).to.equal(201);
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("integrationId", jsonData.id);
+      
+      test("Response contains id", function () {
+          expect(jsonData).to.have.property('id');
+          expect(jsonData.id).to.be.a('number');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates a new integration with the provided data. Integrations represent applications or systems that will use Ezkey for MFA protection.
+  
+  **Multi-Tenancy - Automatic Tenant Assignment:**
+  - **GlobalAdmin creates integration**: Automatically assigned to "Ezkey System" tenant (tenantId: 1)
+  - **TenantAdmin creates integration**: Automatically assigned to admin's tenant
+  - **No Impersonation**: Administrators cannot create resources for other tenants (no tenantId field in request)
+  - Tenant assignment is handled automatically by `IntegrationService.createIntegration()` based on admin type
+  
+  **Request Body:**
+  - `code` (required): Unique business identifier code for the integration (2-100 characters, alphanumeric with hyphens and underscores, must be unique per tenant)
+  - `name` (required): Display name of the application (e.g., "Administration", "Billing Portal") — use application names, not organization names
+  - `description` (optional): Description of the application (e.g., "Console d'administration", "Customer-facing billing portal")
+  
+  **Response (201 Created):**
+  - `id`: Unique identifier of the newly created integration
+  - `code`: The integration code as provided in the request
+  - Location header: `/api/v1/integrations/{id}`
+  
+  **Status Codes:**
+  - 201: Integration created successfully
+  - 400: Invalid data (validation errors, including duplicate code in tenant)
+  - 401: Unauthorized - admin token required
+  - 409: Conflict - Integration code already exists for this tenant
+  - 500: Internal server error
+  
+  **Note:** The service layer automatically generates cryptographic keys for the integration. These keys are not returned in the response for security reasons.
+}

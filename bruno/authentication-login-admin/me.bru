@@ -1,0 +1,31 @@
+meta {
+  name: me
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/admin/auth/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Returns non-secret metadata for the current administrator session. Browser cookie mode uses this endpoint to rehydrate the Admin UI after refresh; Postman can call it with the normal bearer token.
+  
+  **Response (200 OK):**
+  - `username`: Administrator username
+  - `adminType`: Type of administrator
+  - `expiresAt`: Current session expiration timestamp
+  - `adminId`: Administrator ID
+  - `tenantId`: Tenant scope when applicable
+  - `csrfToken`: Present for cookie-authenticated browser sessions; not required for bearer-only Postman usage
+}

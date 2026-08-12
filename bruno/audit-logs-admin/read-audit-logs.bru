@@ -1,0 +1,113 @@
+meta {
+  name: read audit logs
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/audit-logs?page=0&size=20
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Page number (zero-based, default: 0)')
+  page: 0
+  @description('Page size (default: 20)')
+  size: 20
+  @description('Sort field and direction (e.g., auditLogId,asc or createdAt,desc). Default: createdAt,desc. Sortable fields: auditLogId, createdAt, eventType, eventStatus, apiName')
+  ~sort: createdAt,desc
+  @description('Filter by event type (e.g., AUTH_ATTEMPT_CREATED, ENROLLMENT_CREATED, ADMIN_RECOVERY_USE, ADMIN_RECOVERY_ENROLLMENT_RESET, LOGIN_SUCCESS, LOGIN_FAILURE)')
+  ~eventType: AUTH_ATTEMPT_CREATED
+  @description('Filter by event status (SUCCESS, FAILURE, ERROR)')
+  ~eventStatus: SUCCESS
+  @description('Filter by API name (ADMIN, AUTH)')
+  ~apiName: ADMIN
+  @description('Filter by enrollment ID - investigate events for a specific enrollment')
+  ~enrollmentId: 
+  @description('Filter by admin ID - investigate events by a specific administrator')
+  ~adminId: 
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response is paginated", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('content');
+      expect(jsonData.content).to.be.an('array');
+      expect(jsonData).to.have.property('page');
+      expect(jsonData.page).to.have.property('totalElements');
+      expect(jsonData.page).to.have.property('totalPages');
+      expect(jsonData.page).to.have.property('size');
+      expect(jsonData.page).to.have.property('number');
+  });
+  
+  test("Audit log entries have required fields", function () {
+      var jsonData = res.getBody();
+      if (jsonData.content.length > 0) {
+          var entry = jsonData.content[0];
+          expect(entry).to.have.property('auditLogId');
+          expect(entry).to.have.property('eventType');
+          expect(entry).to.have.property('eventStatus');
+          expect(entry).to.have.property('createdAt');
+      }
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Retrieves audit logs with optional filters and pagination for security monitoring, forensic analysis, and SOC2 compliance reporting.
+  
+  **Pagination Parameters:**
+  - `page`: Page number (zero-based, default: 0)
+  - `size`: Page size (default: 20)
+  - `sort`: Sort field and direction (e.g., `auditLogId,asc` or `createdAt,desc`). Default: `createdAt,desc`
+    - Sortable fields: `auditLogId`, `createdAt`, `eventType`, `eventStatus`, `apiName`
+    - Directions: `asc` (ascending) or `desc` (descending)
+  
+  **Filter Parameters:**
+  - `eventType`: Filter by event type (AUTH_ATTEMPT_CREATED, ENROLLMENT_CREATED, ADMIN_RECOVERY_USE, ADMIN_RECOVERY_ENROLLMENT_RESET, LOGIN_SUCCESS, etc.)
+  - `eventStatus`: Filter by event status (SUCCESS, FAILURE, ERROR)
+  - `apiName`: Filter by API name (ADMIN, AUTH)
+  - `enrollmentId`: Filter by enrollment ID
+  - `adminId`: Filter by admin ID
+  
+  **Examples:**
+  - `?page=0&size=20` - First page, 20 items per page
+  - `?sort=auditLogId,asc` - Sort by ID ascending
+  - `?eventType=AUTH_ATTEMPT_CREATED&eventStatus=SUCCESS` - Filter successful auth attempts
+  - `?enrollmentId=123&sort=createdAt,desc` - Events for specific enrollment, newest first
+  
+  **Response (200 OK):**
+  Paginated response containing `content` (array of audit log entries) and pagination metadata (`totalElements`, `totalPages`, etc.).
+  
+  **Audit Log Entry Fields:**
+  - `auditLogId`: Unique identifier
+  - `eventType`: Type of event
+  - `eventAction`: Human-readable action description
+  - `eventStatus`: SUCCESS, FAILURE, or ERROR
+  - `apiName`: Which API generated the event
+  - `ipAddress`: Client IP address
+  - `userAgent`: Client user agent
+  - `adminId`: Administrator ID (if applicable)
+  - `integrationId`: Integration ID (if applicable)
+  - `enrollmentId`: Enrollment ID (if applicable)
+  - `authAttemptId`: Auth attempt ID (if applicable)
+  - `eventDetails`: Additional event details
+  - `errorMessage`: Error message (for failures/errors)
+  - `instanceId`: Application instance that created this entry (HA traceability)
+  - `entryHmac`: HMAC-SHA256 signature for tamper-evidence (null if signing was disabled)
+  - `createdAt`: Timestamp when event occurred
+  
+  **Status Codes:**
+  - 200: Audit logs retrieved successfully
+  - 400: Invalid parameters
+  - 401: Unauthorized - admin token required
+  - 500: Internal server error
+}

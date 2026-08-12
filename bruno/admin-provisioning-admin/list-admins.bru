@@ -1,0 +1,140 @@
+meta {
+  name: list admins
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/admins?page=0&size=20&sort=createdAt,DESC
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Filter by tenant ID (GlobalAdmin only; ignored for TenantAdmin). Optional; when provided limits results to that tenant.')
+  tenantId: 
+  @description('Page number (zero-based)')
+  page: 0
+  @description('Page size')
+  size: 20
+  @description('Sort field and direction')
+  sort: createdAt,DESC
+}
+
+script:post-response {
+  test("Status code is 200 or 403", function () {
+      expect([200, 403]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      
+      test("Response contains pagination fields", function () {
+          expect(jsonData).to.have.property('content');
+          expect(jsonData).to.have.property('totalElements');
+          expect(jsonData).to.have.property('totalPages');
+          expect(jsonData).to.have.property('size');
+          expect(jsonData).to.have.property('number');
+      });
+      
+      test("Content is an array", function () {
+          expect(jsonData.content).to.be.an('array');
+      });
+      
+      if (jsonData.content && jsonData.content.length > 0) {
+          var firstAdmin = jsonData.content[0];
+          
+          test("Admin contains required fields", function () {
+              expect(firstAdmin).to.have.property('adminId');
+              expect(firstAdmin).to.have.property('version');
+              expect(firstAdmin).to.have.property('username');
+              expect(firstAdmin).to.have.property('phoneNumber');
+              expect(firstAdmin).to.have.property('adminType');
+              expect(firstAdmin).to.have.property('tenantId');
+              expect(firstAdmin).to.have.property('tenantName');
+              expect(firstAdmin).to.have.property('enrollmentId');
+              expect(firstAdmin).to.have.property('active');
+              expect(firstAdmin).to.have.property('lifecycleStatus');
+              expect(firstAdmin).to.have.property('operational');
+              expect(firstAdmin).to.have.property('createdAt');
+          });
+          
+          test("Admin type is valid", function () {
+              expect(['GLOBAL_ADMIN', 'TENANT_ADMIN', 'INTEGRATION_ADMIN']).to.include(firstAdmin.adminType);
+          });
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Lists administrators with tenant-based filtering. GlobalAdmin sees all administrators across all tenants. TenantAdmin sees only administrators from their tenant.
+  
+  **Permissions:**
+  - **GlobalAdmin**: Sees all administrators (all tenants), or pass optional tenantId to limit to one tenant
+  - **TenantAdmin**: Sees only administrators from their tenant (request tenantId is ignored)
+  
+  **Tenant Filtering:**
+  - **TenantAdmin**: tenantId is always taken from authentication; any request tenantId is ignored
+  - **GlobalAdmin**: If tenantId query param is provided, results are limited to that tenant; if omitted, returns all admins
+  
+  **Query Parameters:**
+  - `tenantId` (optional, GlobalAdmin only): When provided, limits results to that tenant. Ignored for TenantAdmin.
+  
+  **Pagination Parameters:**
+  - `page` (optional, default: 0): Page number (zero-based)
+  - `size` (optional, default: 20): Number of items per page
+  - `sort` (optional, default: createdAt,DESC): Sort field and direction (e.g., `adminId,asc`, `username,desc`)
+  
+  **Sortable Fields:**
+  - `adminId`: Administrator ID
+  - `username`: Username
+  - `adminType`: Administrator type
+  - `tenantId`: Tenant ID
+  - `active`: Active status
+  - `createdAt`: Creation timestamp
+  
+  **Response (200 OK):**
+  - `content`: Array of AdminResponseDto objects
+  - `totalElements`: Total number of administrators matching the filter
+  - `totalPages`: Total number of pages
+  - `size`: Page size
+  - `number`: Current page number (zero-based)
+  - `first`: Whether this is the first page
+  - `last`: Whether this is the last page
+  
+  **AdminResponseDto Fields:**
+  - `adminId`: Unique identifier for the administrator
+  - `version`: Optimistic lock version to reuse in PATCH requests
+  - `username`: Username for the administrator
+  - `email`: Email address (optional)
+  - `phoneNumber`: Contact phone number in canonical E.164 format (optional)
+  - `firstName`: First name (optional)
+  - `lastName`: Last name (optional)
+  - `adminType`: Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)
+  - `tenantId`: Tenant ID (null for global admins)
+  - `tenantName`: Linked tenant display name for `TENANT_ADMIN` / `INTEGRATION_ADMIN`; `null` for `GLOBAL_ADMIN` (UI convention: treat as platform scope / "Platform")
+  - `enrollmentId`: MFA enrollment ID (null if not linked)
+  - `active`: Flag indicating if the administrator is currently active
+  - `lifecycleStatus`: `PENDING_ACTIVATION`, `ACTIVE`, or `DEACTIVATED`
+  - `createdAt`: Timestamp when the administrator was created
+  - `lastLoginAt`: Timestamp of the last successful login (null if never logged in)
+  - `hasRecoveryCodes`: Whether a recovery-code set currently exists for this administrator
+  - `operational`: Whether the admin is fully operational (active and, for tenant admins, tenant also active)
+  
+  **Status Codes:**
+  - 200: List of administrators retrieved successfully
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - not an administrator
+  - 500: Internal server error
+  
+  **Example Usage:**
+  - List all admins (GlobalAdmin): `GET /api/v1/admins`
+  - List admins for tenant 1 (GlobalAdmin): `GET /api/v1/admins?tenantId=1`
+  - List with pagination: `GET /api/v1/admins?page=0&size=10`
+  - List sorted by username: `GET /api/v1/admins?sort=username,asc`
+  - List second page: `GET /api/v1/admins?page=1&size=20`
+}

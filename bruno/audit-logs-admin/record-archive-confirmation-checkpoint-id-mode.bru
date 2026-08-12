@@ -1,0 +1,72 @@
+meta {
+  name: record archive confirmation — checkpoint ID mode
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/lifecycle/confirm-archived
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "checkpointIdFrom": {{archive_checkpoint_id_from}},
+    "checkpointIdTo": {{archive_checkpoint_id_to}},
+    "exportBundleDigest": "{{export_bundle_digest}}",
+    "archivedAt": "{{archived_at}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has archive confirmation fields", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('periodStart');
+      expect(jsonData).to.have.property('periodEnd');
+      expect(jsonData).to.have.property('checkpointsExported');
+      expect(jsonData).to.have.property('exportBundleDigest');
+      expect(jsonData).to.have.property('exportedAt');
+      expect(jsonData).to.have.property('auditLogId');
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Marks a sealed checkpoint tranche as `EXPORTED` after an external archival workflow has already persisted the corresponding bundle.
+  
+  This is not the export workflow itself. It is the lifecycle confirmation step that records successful external archival in Ezkey.
+  
+  **Mode used here:** checkpoint ID mode, mirroring the ergonomic maintenance path already used for `seal-archive`.
+  
+  **Collection variables:**
+  - `archive_checkpoint_id_from` — first checkpoint ID (inclusive)
+  - `archive_checkpoint_id_to` — last checkpoint ID (inclusive)
+  - `export_bundle_digest` — digest or fingerprint of the exported bundle
+  - `archived_at` — optional archival completion time (ISO-8601)
+  
+  **Response (200 OK):**
+  ```json
+  {
+    "periodStart": "2025-01-01T00:00:00Z",
+    "periodEnd": "2026-01-01T00:00:00Z",
+    "checkpointsExported": 105120,
+    "exportBundleDigest": "sha256:...",
+    "exportedAt": "2026-04-19T09:12:00Z",
+    "auditLogId": 4523
+  }
+  ```
+  
+  **Status Codes:** 200 OK · 400 Invalid request or IDs not found · 409 External archival disabled by policy or checkpoint state conflict · 401 Unauthorized · 403 Forbidden
+}

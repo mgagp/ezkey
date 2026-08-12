@@ -1,0 +1,66 @@
+meta {
+  name: get by ID
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/auth-attempts/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  @description('The authentication attempt ID')
+  id: {{authAttemptId}}
+}
+
+script:post-response {
+  test("Status code is 200 or 404", function () {
+      expect([200, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("authAttemptId", jsonData.authAttemptId);
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('authAttemptId');
+          expect(jsonData).to.have.property('enrollmentId');
+          expect(jsonData).to.have.property('authAttemptStatus');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Retrieves details of a specific authentication attempt by its ID for administrative purposes.
+  
+  **Multi-Tenancy:**
+  - **GlobalAdmin**: Can access any auth attempt (any tenant)
+  - **TenantAdmin**: Can only access auth attempts for enrollments within their tenant
+  - Access is validated via `AccessControlService.canAccessAuthAttempt()`
+  - Returns 403 Forbidden if TenantAdmin tries to access auth attempt from another tenant
+  
+  **Path Parameters:**
+  - `id` (required): Authentication attempt ID to retrieve
+  
+  **Response (200 OK):**
+  - `authAttemptId`: Unique identifier for the authentication attempt
+  - `enrollmentId`: Enrollment identifier this attempt belongs to
+  - `authAttemptStatus`: Current lifecycle status (PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)
+  - `authAttemptChallenge`: Challenge value (null if not required)
+  - `authAttemptProofToken`: Proof token for the authentication attempt
+  - `createdAt`: Timestamp when the attempt was created
+  - `expiresAt`: Timestamp when the attempt expires
+  
+  **Status Codes:**
+  - 200: Auth attempt found
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - TenantAdmin trying to access auth attempt from another tenant
+  - 404: Auth attempt not found
+  - 500: Internal server error
+}

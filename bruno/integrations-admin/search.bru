@@ -1,0 +1,116 @@
+meta {
+  name: search
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/integrations?page=0&size=20
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Page number (zero-based, default: 0)')
+  page: 0
+  @description('Page size (default: 20)')
+  size: 20
+  @description('Sort field and direction (e.g., id,asc or createdAt,desc). Default: createdAt,desc. Sortable fields: id, createdAt, lifecycleStatus')
+  ~sort: createdAt,desc
+  @description('Filter by integration name (partial match, case-insensitive)')
+  ~integrationName: 
+  @description('Temporary compatibility filter by active flag (true = ACTIVE, false = INACTIVE)')
+  ~active: true
+  @description('Exact lifecycle filter (ACTIVE, INACTIVE, RETIRED)')
+  ~lifecycleStatus: ACTIVE
+  @description('Include retired integrations when no exact lifecycleStatus is requested')
+  ~includeRetired: true
+  @description('Filter by start date (ISO-8601)')
+  ~createdAfter: 
+  @description('Filter by end date (ISO-8601)')
+  ~createdBefore: 
+  @description('Filter by tenant ID. GlobalAdmin only; limits results to that tenant. Ignored for TenantAdmin.')
+  ~tenantId: 1
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response is paginated", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('content');
+      expect(jsonData.content).to.be.an('array');
+      expect(jsonData).to.have.property('page');
+      expect(jsonData.page).to.have.property('totalElements');
+      expect(jsonData.page).to.have.property('totalPages');
+      expect(jsonData.page).to.have.property('size');
+      expect(jsonData.page).to.have.property('number');
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      if (jsonData.content.length > 0) {
+          bru.setEnvVar("integrationId", jsonData.content[0].id);
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Retrieves integrations with optional filters and pagination for administration and compliance reporting.
+  
+  **Multi-Tenancy:**
+  - **GlobalAdmin**: Sees all integrations across all tenants; optional `tenantId` query parameter limits results to that tenant
+  - **TenantAdmin**: Sees only integrations within their tenant (automatic filtering); `tenantId` parameter is ignored
+  - Tenant scoping is applied automatically based on the authenticated admin's type
+  
+  **Pagination Parameters:**
+  - `page`: Page number (zero-based, default: 0)
+  - `size`: Page size (default: 20)
+  - `sort`: Sort field and direction (e.g., `id,asc` or `createdAt,desc`). Default: `createdAt,desc`
+    - Sortable fields: `id`, `createdAt`, `lifecycleStatus`
+    - Directions: `asc` (ascending) or `desc` (descending)
+  
+  **Filter Parameters:**
+  - `integrationName`: Filter by integration name (partial match, case-insensitive)
+  - `lifecycleStatus`: Exact lifecycle filter (`ACTIVE`, `INACTIVE`, `RETIRED`)
+  - `includeRetired`: Include retired integrations when no exact lifecycle filter is requested
+  - `active`: Temporary compatibility filter by active flag (`true` = `ACTIVE`, `false` = `INACTIVE`)
+  - `createdAfter`: Filter by start date (ISO-8601)
+  - `createdBefore`: Filter by end date (ISO-8601)
+  - `tenantId`: Filter by tenant ID (GlobalAdmin only; ignored for TenantAdmin)
+  
+  **Examples:**
+  - `?page=0&size=20` - First page, 20 items per page
+  - `?sort=id,asc` - Sort by ID ascending
+  - `?lifecycleStatus=RETIRED` - Show only retired integrations
+  - `?includeRetired=true` - Include retired integrations in a broader listing
+  - `?integrationName=Acme` - Search integrations with 'Acme' in name
+  - `?tenantId=2` - GlobalAdmin: only integrations for tenant 2
+  
+  **Response (200 OK):**
+  Paginated response containing `content` (array of integrations) and pagination metadata (`totalElements`, `totalPages`, etc.).
+  
+  **Integration Fields:**
+  - `id`: Unique identifier for the integration
+  - `code`: Business identifier code
+  - `lifecycleStatus`: Lifecycle source of truth (`ACTIVE`, `RETIRED`)
+  - `operational`: Whether the integration is currently operational (`ACTIVE` lifecycle + parent tenant active)
+  - `createdAt`: Timestamp when the integration was created (UTC with timezone)
+  - `name`: Display name for the integration
+  - `description`: Optional description
+  
+  **Note:** Retired integrations are excluded by default unless explicitly requested. System integrations are automatically excluded from the listing.
+  
+  **Status Codes:**
+  - 200: Search completed successfully
+  - 400: Invalid parameters
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - TenantAdmin trying to access integration from another tenant
+  - 500: Internal server error
+}

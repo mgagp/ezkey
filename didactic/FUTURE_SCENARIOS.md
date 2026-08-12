@@ -15,7 +15,7 @@ This file records **intentional follow-up work** that is **out of scope** for th
 - Create **enrollments** and/or **auth attempts** using **HTTP Basic / API key** posture where the product supports it (rather than leading with Global Admin Bearer for every call).
 - Optional: split article instances so **credential posture** matches **integrator documentation** (tenant admin vs integration key).
 
-When implemented, add a second Markdown template (e.g. `article-integration-api.md`) and extend [`protocol_lab`](../protocol_lab/) only if new steps are required beyond the existing Postman parity manifest.
+When implemented, add a second Markdown template (e.g. `article-integration-api.md`) and extend [`protocol_lab`](../protocol_lab/) only if new steps are required beyond the existing Bruno parity manifest.
 
 ## Why keep this split
 

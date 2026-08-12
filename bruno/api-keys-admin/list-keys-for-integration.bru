@@ -1,0 +1,66 @@
+meta {
+  name: list keys for integration
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/api-keys/integration/:integrationId?page=0&size=20&sort=createdAt,desc
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Zero-based page index')
+  page: 0
+  @description('Page size')
+  size: 20
+  @description('Sort (e.g. createdAt,desc)')
+  sort: createdAt,desc
+  @description('Optional: filter by active (omit = active only)')
+  ~active: 
+}
+
+params:path {
+  @description('Integration ID to list API keys for')
+  integrationId: {{integrationId}}
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response is paginated (content + page)", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('content');
+      expect(jsonData).to.have.property('page');
+      expect(jsonData.content).to.be.an('array');
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      if (jsonData.content && jsonData.content.length > 0) {
+          bru.setEnvVar("apiKeyId", jsonData.content[0].apiKeyId);
+          bru.setEnvVar("integrationKey", jsonData.content[0].integrationKey);
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Lists API keys for a specific integration with server-side pagination. When `active` is omitted, only active keys are returned. Secret keys are **never** included.
+  
+  **Query Parameters:**
+  - `page` (default 0), `size` (default 20), `sort` (default createdAt,desc)
+  - `active` (optional)
+  
+  **Response (200 OK):** Paginated envelope with `content` and `page` metadata.
+  
+  **Status Codes:**
+  - 200: Paginated list retrieved
+  - 401: Unauthorized
+}

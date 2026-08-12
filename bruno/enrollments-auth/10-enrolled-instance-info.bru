@@ -1,0 +1,41 @@
+meta {
+  name: 10 enrolled instance-info
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url}}/api/v1/enrollments/instance-info
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "enrollmentProofToken": "{{enrollmentProofToken}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200 or 400", function () {
+      expect([200, 400]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("instanceInfoPayloadSignedByIntegration", jsonData.instanceInfoPayloadSignedByIntegration);
+      bru.setEnvVar("instanceName", jsonData.instanceName != null ? jsonData.instanceName : "");
+      test("Response contains signed branding fields", function () {
+          expect(jsonData).to.have.property('enrollmentId');
+          expect(jsonData).to.have.property('instanceInfoPayloadSignedByIntegration');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Returns integration-signed installation branding for an enrolled client (`enrollmentProofToken` only). Verify `instanceInfoPayloadSignedByIntegration` with the stored integration public key before applying branding. See `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md` § Enrolled instance-info.
+}

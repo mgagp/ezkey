@@ -1,0 +1,55 @@
+meta {
+  name: 6b respond with context
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url}}/api/v1/auth-attempts/respond
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "authAttemptId": {{authAttemptId}},
+      "authAttemptAccepted": {{authAttemptAccepted}},
+      "authAttemptProofTokenSignedByDevice": "{{authAttemptProofTokenSignedByDevice}}",
+      "authAttemptChallengeResponse": {{authAttemptChallengeResponse}}
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("respondResultAuthAttemptResult", jsonData.authAttemptResult);
+      bru.setEnvVar("respondResultAuthAttemptMessage", jsonData.authAttemptMessage != null ? jsonData.authAttemptMessage : "");
+      bru.setEnvVar("respondResultSignature", jsonData.authAttemptProofTokenResultSignedByIntegration);
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('authAttemptId');
+          expect(jsonData).to.have.property('authAttemptResult');
+          expect(jsonData).to.have.property('authAttemptMessage');
+          expect(jsonData).to.have.property('authAttemptProofTokenResultSignedByIntegration');
+      });
+      
+      test("Result is valid", function () {
+          var validResults = ['APPROVED', 'DENIED', 'FAILED', 'EXPIRED'];
+          expect(validResults).to.include(jsonData.authAttemptResult);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Same as "6 respond"; use this when the auth attempt was created **with context** (Create with Context in the Admin collection). The backend does not include context in the Respond **request** payload — the device still signs proofToken|accepted. The **response** includes integration-signed `authAttemptProofTokenResultSignedByIntegration` (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md). This request is a duplicate for flow clarity: Create with Context → Pending (with contextTitle/contextMessage) → steps 4–5 → **6b respond with context**.
+  
+  **Next:** Run **7** to verify that signature with the Crypto API.
+}

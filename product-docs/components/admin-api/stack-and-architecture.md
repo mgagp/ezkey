@@ -67,7 +67,7 @@ Each boot module declares explicit `scanBasePackages`. Adding a new top-level pa
 
 ### Generated API artifacts
 
-OpenAPI specs under [`../../../specs/admin-api/`](../../../specs/admin-api/) are **generated** by `scripts/update-specs.sh` after a clean-start stack. Agents never hand-edit these files. Postman collections under [`../../../postman/collections/`](../../../postman/collections/) are updated in the same change set when relevant.
+OpenAPI specs under [`../../../specs/admin-api/`](../../../specs/admin-api/) are **generated** by `scripts/update-specs.sh` after a clean-start stack. Agents never hand-edit these files. Bruno collections under [`../../../bruno/`](../../../bruno/) are updated in the same change set when relevant.
 
 ### Role-aware endpoints and tenant scoping
 

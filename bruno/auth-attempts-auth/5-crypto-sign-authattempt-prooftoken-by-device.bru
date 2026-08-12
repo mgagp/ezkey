@@ -1,0 +1,68 @@
+meta {
+  name: 5 crypto sign authAttempt prooftoken by device
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/sign
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "data": "{{respondPayload}}",
+      "privateKey": "{{device_privateKey}}"
+  }
+}
+
+script:pre-request {
+  // Canonical Respond payload: proofToken|accepted. See AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md
+  var pt = bru.getEnvVar("authAttemptProofToken");
+  // Resolve from collection or environment; normalize string (trim, lowercase); default true when unset
+  var acc = bru.getVar("authAttemptAccepted");
+  if (acc === undefined || acc === null || acc === "") {
+      acc = bru.getEnvVar("authAttemptAccepted");
+  }
+  var accepted = true;
+  if (acc !== undefined && acc !== null && acc !== "") {
+      var s = String(acc).trim().toLowerCase();
+      accepted = (s === "true" || s === "1");
+  }
+  var payload = pt + "|" + (accepted ? "true" : "false");
+  bru.setEnvVar("respondPayload", payload);
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("authAttemptProofTokenSignedByDevice", jsonData.signature);
+      
+      test("Response contains signature", function () {
+          expect(jsonData).to.have.property('signature');
+          expect(jsonData.signature).to.be.a('string');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Signs the canonical Respond payload (proofToken|accepted) with the device's private key. The backend expects the device to sign exactly this payload (see docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md). A pre-request script builds respondPayload from authAttemptProofToken and authAttemptAccepted (default true).
+  
+  **Request Body:**
+  - `data`: The Respond payload (respondPayload from pre-request script)
+  - `privateKey`: Device's private key
+  
+  **Response (200 OK):**
+  - `signature`: Used in the respond request as authAttemptProofTokenSignedByDevice
+  
+  **Match with Create:** Use this request after any Create (with or without context). For "Create with Context" you may use "6b respond with context" for clarity; the payload and behaviour are the same.
+}

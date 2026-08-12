@@ -1,0 +1,113 @@
+meta {
+  name: search
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/enrollments?page=0&size=20
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Page number (zero-based, default: 0)')
+  page: 0
+  @description('Page size (default: 20)')
+  size: 20
+  @description('Sort field and direction (e.g., enrollmentId,asc or createdAt,desc). Default: createdAt,desc. Sortable fields: enrollmentId, enrollmentName, createdAt, integrationId, status')
+  ~sort: createdAt,desc
+  @description('Filter by status (CREATED, BOUND, VERIFIED, INVALID, REVOKED, EXPIRED)')
+  ~status: VERIFIED
+  @description('Filter by integration ID')
+  ~integrationId: 
+  @description('Filter by enrollment name (partial match, case-insensitive)')
+  ~enrollmentName: 
+  @description('Filter by active flag (true/false)')
+  ~active: true
+  @description('Filter by start date (ISO-8601)')
+  ~createdAfter: 
+  @description('Filter by end date (ISO-8601)')
+  ~createdBefore: 
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response is paginated", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('content');
+      expect(jsonData.content).to.be.an('array');
+      expect(jsonData).to.have.property('page');
+      expect(jsonData.page).to.have.property('totalElements');
+      expect(jsonData.page).to.have.property('totalPages');
+      expect(jsonData.page).to.have.property('size');
+      expect(jsonData.page).to.have.property('number');
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      if (jsonData.content.length > 0) {
+          bru.setEnvVar("enrollmentId", jsonData.content[0].enrollmentId);
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Retrieves enrollments with optional filters and pagination for security monitoring, forensic analysis, and compliance reporting.
+  
+  **Pagination Parameters:**
+  - `page`: Page number (zero-based, default: 0)
+  - `size`: Page size (default: 20)
+  - `sort`: Sort field and direction (e.g., `enrollmentId,asc` or `createdAt,desc`). Default: `createdAt,desc`
+    - Sortable fields: `enrollmentId`, `enrollmentName`, `createdAt`, `integrationId`, `status`
+    - Directions: `asc` (ascending) or `desc` (descending)
+  
+  **Filter Parameters:**
+  - `status`: Filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID, REVOKED, EXPIRED)
+  - `integrationId`: Filter by integration ID
+  - `enrollmentName`: Filter by enrollment name (partial match, case-insensitive)
+  - `active`: Filter by active flag (true/false)
+  - `createdAfter`: Filter by start date (ISO-8601)
+  - `createdBefore`: Filter by end date (ISO-8601)
+  
+  **Examples:**
+  - `?page=0&size=20` - First page, 20 items per page
+  - `?sort=enrollmentId,asc` - Sort by ID ascending
+  - `?status=VERIFIED&active=true` - Filter verified and active enrollments
+  - `?enrollmentName=John` - Search enrollments with 'John' in name
+  
+  **Response (200 OK):**
+  Paginated response containing `content` (array of enrollments) and pagination metadata (`totalElements`, `totalPages`, etc.).
+  
+  **Enrollment Fields:**
+  - `enrollmentId`: Unique identifier for the enrollment
+  - `integrationId`: Integration identifier this enrollment belongs to
+  - `enrollmentName`: Human-readable name for the enrollment
+  - `enrollmentStatus`: Enrollment lifecycle status
+  - `enrollmentActive`: Flag indicating if the enrollment is active
+  - `enrollmentChallenge`: Challenge value for enrollment verification
+  - `enrollmentProofToken`: Unique code for enrollment verification
+  - `authAttemptChallengeRequired`: Flag for challenge requirement
+  - `integrationPublicKey`: Public key for integration communication
+  - `devicePublicKey`: Public key for the device (null if not bound)
+  - `devicePrivateKeyStorageTier`: Client-reported device private key storage tier at verify: `NONE`, `STANDARD`, or `STRONG` (null if unknown or legacy)
+  - `verifiedAt`: When enrollment was verified (null if not yet verified)
+  - `createdByAdminId`: Admin who created (null when via API key)
+  - `lastUsedAt`: Last successful authentication (null if never used)
+  - `contactEmail`: Optional contact for end-user (null if not provided)
+  - `contactPhoneNumber`: Optional contact phone number for end-user (null if not provided)
+  - `userIdentifier`: Optional user identifier from integrating app (null if not provided)
+  
+  **Status Codes:**
+  - 200: Search completed successfully
+  - 400: Invalid parameters
+  - 401: Unauthorized - admin token required
+  - 500: Internal server error
+}

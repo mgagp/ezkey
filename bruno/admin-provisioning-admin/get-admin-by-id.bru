@@ -1,0 +1,68 @@
+meta {
+  name: get admin by ID
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/admins/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  @description('The administrator ID to retrieve')
+  id: {{adminId}}
+}
+
+script:post-response {
+  test("Status code is 200, 403, or 404", function () {
+      expect([200, 403, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("adminId", jsonData.adminId.toString());
+      if (jsonData.version !== undefined && jsonData.version !== null) {
+          bru.setEnvVar("adminVersion", jsonData.version.toString());
+      }
+  
+      test("Response contains admin profile fields", function () {
+          expect(jsonData).to.have.property('adminId');
+          expect(jsonData).to.have.property('version');
+          expect(jsonData).to.have.property('username');
+          expect(jsonData).to.have.property('email');
+          expect(jsonData).to.have.property('phoneNumber');
+          expect(jsonData).to.have.property('firstName');
+          expect(jsonData).to.have.property('lastName');
+          expect(jsonData).to.have.property('adminType');
+          expect(jsonData).to.have.property('tenantId');
+          expect(jsonData).to.have.property('tenantName');
+          expect(jsonData).to.have.property('enrollmentId');
+          expect(jsonData).to.have.property('active');
+          expect(jsonData).to.have.property('lifecycleStatus');
+          expect(jsonData).to.have.property('operational');
+          expect(jsonData).to.have.property('createdAt');
+          expect(jsonData).to.have.property('lastLoginAt');
+          expect(jsonData).to.have.property('hasRecoveryCodes');
+      });
+      bru.setEnvVar('adminHasRecoveryCodes', String(Boolean(jsonData.hasRecoveryCodes)));
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Retrieves one administrator by ID.
+  
+  **Permissions:**
+  - **GlobalAdmin**: Can retrieve any administrator
+  - **TenantAdmin**: Can retrieve administrators in their own tenant only
+  
+  **Response (200 OK):**
+  - `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName` (null for global admins; tenant display name otherwise), `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `operational`
+  
+  Use the returned `version` as `adminVersion` in the PATCH request for optimistic locking. Use `lastLoginAt` plus `hasRecoveryCodes` to decide whether to call `issue-initial` or `regenerate` for recovery-code management.
+}

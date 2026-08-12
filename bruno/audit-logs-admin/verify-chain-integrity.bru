@@ -1,0 +1,117 @@
+meta {
+  name: verify chain integrity
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/chain-integrity
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Start of verification range (inclusive, ISO-8601). Required.')
+  from: 2026-01-01T00:00:00Z
+  @description('End of verification range (exclusive, ISO-8601). Required.')
+  to: 2026-12-31T23:59:59Z
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has chain verification fields", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('totalCheckpoints');
+      expect(jsonData).to.have.property('validCheckpoints');
+      expect(jsonData).to.have.property('invalidCheckpoints');
+      expect(jsonData).to.have.property('archivedCheckpoints');
+      expect(jsonData).to.have.property('gapDeclaredCheckpoints');
+      expect(jsonData).to.have.property('violations');
+      expect(jsonData).to.have.property('intact');
+      expect(jsonData).to.have.property('status');
+      expect(jsonData.violations).to.be.an('array');
+  });
+  
+  test("Chain integrity is intact", function () {
+      var jsonData = res.getBody();
+      expect(jsonData.intact).to.be.true;
+      expect(jsonData.status).to.equal('OK');
+  });
+  
+  test("Lifecycle checkpoint counts are non-negative numbers", function () {
+      var jsonData = res.getBody();
+      expect(jsonData.archivedCheckpoints).to.be.a('number').and.to.be.at.least(0);
+      expect(jsonData.gapDeclaredCheckpoints).to.be.a('number').and.to.be.at.least(0);
+  });
+  
+  test("Response has effectiveFrom/effectiveTo when checkpoints in range", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('effectiveFrom');
+      expect(jsonData).to.have.property('effectiveTo');
+      if (jsonData.coverageStart != null && jsonData.coverageEnd != null) {
+          expect(jsonData.effectiveFrom).to.not.be.undefined;
+          expect(jsonData.effectiveTo).to.not.be.undefined;
+      }
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage between consecutive checkpoints.
+  
+  **Access:** Global Admin only (system-level security operation).
+  
+  **What it detects:**
+  - Entry insertion (entries added after checkpoint creation)
+  - Entry deletion (entries removed after checkpoint creation)
+  - Entry reordering
+  - Checkpoint tampering (chain_hmac modification)
+  - Undeclared temporal gaps (missing checkpoints between consecutive windows)
+  
+  **Parameters (required):**
+  - `from`: Start of verification range (inclusive, ISO-8601)
+  - `to`: End of verification range (exclusive, ISO-8601)
+  - Omitting either returns 400 Bad Request
+  
+  **Range handling:** The requested range may extend before the first checkpoint or after the last in the database. Such periods are not reported as undeclared gaps (they are before/after "EZKey time"). Only real gaps within the system's checkpoint extent are reported. The response fields `effectiveFrom` and `effectiveTo` indicate the range actually used for boundary gap reporting (clamped to coverageStart/coverageEnd when the request extended beyond the first/last checkpoint).
+  
+  **Response (200 OK):**
+  ```json
+  {
+    "totalCheckpoints": 288,
+    "validCheckpoints": 288,
+    "invalidCheckpoints": 0,
+    "violations": [],
+    "undeclaredGaps": [],
+    "coverageStart": "2026-03-11T16:40:00Z",
+    "coverageEnd": "2026-03-11T20:55:00Z",
+    "effectiveFrom": "2026-03-11T16:40:00Z",
+    "effectiveTo": "2026-03-11T20:55:00Z",
+    "intact": true,
+    "status": "OK"
+  }
+  ```
+  
+  **Response Fields:**
+  - `totalCheckpoints`, `validCheckpoints`, `invalidCheckpoints`: Counts
+  - `archivedCheckpoints`, `gapDeclaredCheckpoints`: Lifecycle checkpoint counts
+  - `violations`: Human-readable integrity violation descriptions
+  - `undeclaredGaps`: List of `{ gapStart, gapEnd, gapMinutes }` for temporal gaps
+  - `coverageStart`, `coverageEnd`: First/last checkpoint window boundaries in range
+  - `effectiveFrom`, `effectiveTo`: Range used for boundary gap reporting (clamped when request extended before first or after last checkpoint)
+  - `continuousCoverage`: false if any undeclared gap exists
+  - `intact`: true if cryptographically valid and no undeclared gaps
+  - `status`: `OK`, `UNDECLARED_GAP_DETECTED`, or `CHAIN_INTEGRITY_VIOLATION_DETECTED`
+  
+  **Status Codes:**
+  - 200: Chain verification completed
+  - 400: Date range required (provide from and to)
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - Global Admin role required
+}

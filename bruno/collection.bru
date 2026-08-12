@@ -1,0 +1,23 @@
+meta {
+  name: Ezkey
+}
+
+auth {
+  mode: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Ezkey API exploratory collection (Bruno).
+
+  Shared environments under environments/ drive Admin, Auth, Integration, and Crypto API chaining.
+  See README.md for install (local npm + npx bru) and scripts/bruno-health.sh suites.
+
+  Collection auth is Bearer {{token}} for Admin folders (auth: inherit). Public/Crypto/Auth device
+  folders override with auth: none / noauth as needed.
+
+  Respond path defaults: env vars authAttemptAccepted (true) and authAttemptChallengeResponse (0).
+}

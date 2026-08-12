@@ -1,0 +1,66 @@
+meta {
+  name: update admin profile
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{base_url_admin_api}}/api/v1/admins/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  @description('The administrator ID to update')
+  id: {{adminId}}
+}
+
+body:json {
+  {
+      "version": {{adminVersion}},
+      "firstName": "Updated",
+      "lastName": "Administrator",
+      "email": "updated.admin@example.com",
+      "phoneNumber": "+1 514 555 1003",
+      "challengeRequired": false
+  }
+}
+
+script:post-response {
+  test("Status code is 200, 400, 403, 404, or 409", function () {
+      expect([200, 400, 403, 404, 409]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      if (jsonData.version !== undefined && jsonData.version !== null) {
+          bru.setEnvVar("adminVersion", jsonData.version.toString());
+      }
+  
+      test("Response contains updated admin profile", function () {
+          expect(jsonData).to.have.property('adminId');
+          expect(jsonData).to.have.property('version');
+          expect(jsonData).to.have.property('phoneNumber');
+          expect(jsonData.firstName).to.eql('Updated');
+          expect(jsonData.lastName).to.eql('Administrator');
+          expect(jsonData.email).to.eql('updated.admin@example.com');
+          expect(jsonData.phoneNumber).to.eql('+15145551003');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Partially updates an administrator profile.
+  
+  **Run `get admin by ID` first** to populate `adminVersion` for optimistic locking.
+  
+  **Request Body (all fields optional):**
+  - `version`: from GET response
+  - `firstName`, `lastName`, `email`, `phoneNumber`, `challengeRequired`
+  
+  `phoneNumber` is contact metadata only and is normalized to canonical E.164 format on write.
+}

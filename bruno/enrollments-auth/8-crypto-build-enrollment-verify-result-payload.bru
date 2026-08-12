@@ -1,0 +1,49 @@
+meta {
+  name: 8 crypto build enrollment verify result payload
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/payload-helper
+  body: json
+  auth: inherit
+}
+
+script:pre-request {
+  var msg = bru.getEnvVar("enrollmentVerifyMessage");
+  if (msg === undefined) {
+      throw new Error("Run step 7 verify (200) first — enrollmentVerifyMessage is missing.");
+  }
+  var body = {
+      type: "enrollment-verify-result",
+      proofToken: bru.getEnvVar("enrollmentProofToken"),
+      enrollmentId: Number(bru.getEnvVar("enrollmentId")),
+      result: "VERIFIED",
+      message: msg
+  };
+  req.setBody(body);
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("enrollmentVerifyResultPayload", jsonData.payload);
+      test("Payload helper returned enrollment-verify-result payload", function () {
+          expect(jsonData.type).to.equal('enrollment-verify-result');
+          expect(jsonData.payload).to.be.a('string');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Builds the canonical verify-result payload for Ed25519 verification (same as server). Run after **7 verify** (200).
+}

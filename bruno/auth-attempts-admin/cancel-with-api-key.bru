@@ -1,0 +1,67 @@
+meta {
+  name: cancel with api key
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/auth-attempts/:id/cancel
+  body: none
+  auth: basic
+}
+
+params:path {
+  @description('The authentication attempt ID to cancel')
+  id: {{authAttemptId}}
+}
+
+auth:basic {
+  username: {{integrationKey}}
+  password: {{secretKey}}
+}
+
+script:post-response {
+  test("Status code is 200, 400, or 404", function () {
+      expect([200, 400, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('authAttemptId');
+          expect(jsonData).to.have.property('authAttemptStatus');
+          expect(jsonData).to.have.property('enrollmentId');
+      });
+      
+      test("Status is EXPIRED after cancellation", function () {
+          expect(jsonData.authAttemptStatus).to.equal('EXPIRED');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Cancels a pending or read authentication attempt using API key authentication. Access control ensures API keys can only cancel attempts belonging to their integration.
+  
+  **Authentication:**
+  - HTTP Basic Auth with `integrationKey:secretKey`
+  
+  **Path Parameters:**
+  - `id` (required): Authentication attempt ID to cancel
+  
+  **Response (200 OK):**
+  Same structure as cancel endpoint
+  
+  **Status Codes:**
+  - 200: Authentication attempt cancelled successfully
+  - 400: Bad Request - authentication attempt already in final state
+  - 404: Not Found - authentication attempt not found
+  - 401: Unauthorized - invalid API key
+  - 403: Forbidden - API key cannot cancel attempts from other integrations
+  - 429: Rate limit exceeded (200 requests per hour per integration key)
+  - 500: Internal server error
+}

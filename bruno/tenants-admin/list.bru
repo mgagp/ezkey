@@ -1,0 +1,101 @@
+meta {
+  name: list
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/tenants?page=0&size=20&sort=createdAt,desc
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Zero-based page index')
+  page: 0
+  @description('Page size')
+  size: 20
+  @description('Sort (e.g. tenantId,asc or tenantName,desc)')
+  sort: createdAt,desc
+  @description('Filter by name (partial, case-insensitive)')
+  ~tenantName: 
+  @description('Filter by active (true/false)')
+  ~active: 
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has paginated shape (content + page)", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('content');
+      expect(jsonData).to.have.property('page');
+      expect(jsonData.content).to.be.an('array');
+      expect(jsonData.page).to.have.property('size');
+      expect(jsonData.page).to.have.property('number');
+      expect(jsonData.page).to.have.property('totalElements');
+      expect(jsonData.page).to.have.property('totalPages');
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      var content = jsonData.content || [];
+      if (content.length > 0) {
+          bru.setEnvVar("tenantId", content[0].tenantId.toString());
+          bru.setEnvVar("tenantName", content[0].tenantName);
+  
+          test("First tenant has enriched response fields", function () {
+              var tenant = content[0];
+              expect(tenant).to.have.property('tenantId');
+              expect(tenant).to.have.property('tenantName');
+              expect(tenant).to.have.property('active');
+              expect(tenant).to.have.property('createdAt');
+              expect(tenant).to.have.property('organizationName');
+              expect(tenant).to.have.property('organizationDomain');
+              expect(tenant).to.have.property('countryCode');
+              expect(tenant).to.have.property('timezone');
+              expect(tenant).to.have.property('primaryContactName');
+              expect(tenant).to.have.property('primaryContactEmail');
+              expect(tenant).to.have.property('primaryContactPhoneNumber');
+              expect(tenant).to.have.property('updatedAt');
+              expect(tenant).to.have.property('isSystemTenant');
+          });
+  
+          test("System tenant (ID=1) has isSystemTenant=true", function () {
+              var systemTenant = content.find(t => t.tenantId === 1);
+              if (systemTenant) {
+                  expect(systemTenant.isSystemTenant).to.be.true;
+              }
+          });
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Lists tenants with server-side pagination and optional filters. GlobalAdmin only.
+  
+  **Query parameters:**
+  - `page` (default 0): Zero-based page index
+  - `size` (default 20): Page size
+  - `sort` (default createdAt,desc): Sort property and direction (tenantId, tenantName, active, createdAt)
+  - `tenantName` (optional): Filter by tenant name (partial match, case-insensitive)
+  - `active` (optional): Filter by active flag (true/false)
+  
+  **Permissions:**
+  - **GlobalAdmin**: Can list tenants (paginated)
+  - **TenantAdmin**: Returns 403 Forbidden
+  
+  **Response (200 OK):** Paginated envelope with `content` (array of tenant objects) and `page` (size, number, totalElements, totalPages). Each tenant in content has: tenantId, tenantName, tenantDescription, organizationName, organizationDomain, countryCode, timezone, primaryContactName, primaryContactEmail, primaryContactPhoneNumber, createdAt, updatedAt, active, isSystemTenant.
+  
+  **Status Codes:**
+  - 200: List retrieved successfully
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - not a GlobalAdmin
+  - 500: Internal server error
+}

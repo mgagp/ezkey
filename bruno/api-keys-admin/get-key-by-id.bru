@@ -1,0 +1,61 @@
+meta {
+  name: get key by ID
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/api-keys/:keyId
+  body: none
+  auth: inherit
+}
+
+params:path {
+  @description('The API key ID')
+  keyId: {{apiKeyId}}
+}
+
+script:post-response {
+  test("Status code is 200 or 404", function () {
+      expect([200, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("apiKeyId", jsonData.apiKeyId);
+      bru.setEnvVar("integrationKey", jsonData.integrationKey);
+      
+      test("Key ID matches", function () {
+          expect(jsonData.apiKeyId.toString()).to.equal(bru.getEnvVar('apiKeyId') || '{{apiKeyId}}');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Returns details of a specific API key by its ID. Secret key is **never** included in the response.
+  
+  **Path Parameters:**
+  - `keyId` (required): API key ID to retrieve
+  
+  **Response (200 OK):**
+  - `apiKeyId`: Database ID of the API key
+  - `integrationId`: Integration ID this key belongs to
+  - `integrationKey`: Public integration key (safe to display)
+  - `description`: Human-readable description
+  - `active`: Whether the key is active (false if revoked)
+  - `createdAt`: Creation timestamp
+  - `expiresAt`: Expiration date (null if no expiration)
+  - `lastUsedAt`: Last successful authentication timestamp (null if never used)
+  - `ipWhitelist`: IP restrictions (null if no restrictions)
+  - `revokedAt`: Revocation timestamp (null if active)
+  - `revokedByUsername`: Admin who revoked this key (null if active)
+  
+  **Status Codes:**
+  - 200: API key found
+  - 401: Unauthorized - admin token required
+  - 404: API key not found
+}

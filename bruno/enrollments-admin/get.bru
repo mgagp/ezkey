@@ -1,0 +1,91 @@
+meta {
+  name: get
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/enrollments/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  @description('The enrollment ID')
+  id: {{enrollmentId}}
+}
+
+script:post-response {
+  test("Status code is 200 or 404", function () {
+      expect([200, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("enrollmentId", jsonData.enrollmentId);
+      if (jsonData.version !== undefined && jsonData.version !== null) {
+          bru.setEnvVar("enrollmentVersion", jsonData.version);
+      }
+      bru.setEnvVar("enrollmentChallenge", jsonData.enrollmentChallenge);
+      bru.setEnvVar("enrollmentProofToken", jsonData.enrollmentProofToken);
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('enrollmentId');
+          expect(jsonData).to.have.property('integrationId');
+          expect(jsonData).to.have.property('enrollmentName');
+          expect(jsonData).to.have.property('enrollmentStatus');
+          expect(jsonData).to.have.property('enrollmentActive');
+      });
+      
+      test("Response contains audit/contact fields", function () {
+          expect(jsonData).to.have.property('verifiedAt');
+          expect(jsonData).to.have.property('createdByAdminId');
+          expect(jsonData).to.have.property('lastUsedAt');
+          expect(jsonData).to.have.property('contactEmail');
+          expect(jsonData).to.have.property('contactPhoneNumber');
+          expect(jsonData).to.have.property('userIdentifier');
+      });
+      if (jsonData.expiresAt != null) {
+          test("expiresAt is string when present", function () {
+              expect(jsonData.expiresAt).to.be.a('string');
+          });
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Retrieves details of a specific enrollment by its ID for administrative purposes.
+  
+  **Path Parameters:**
+  - `id` (required): Enrollment ID to retrieve
+  
+  **Response (200 OK):**
+  - `enrollmentId`: Unique identifier for the enrollment
+  - `integrationId`: Integration identifier this enrollment belongs to
+  - `enrollmentName`: Human-readable name for the enrollment
+  - `enrollmentStatus`: Enrollment lifecycle status (CREATED, BOUND, VERIFIED, INVALID, REVOKED, EXPIRED)
+  - `enrollmentActive`: Flag indicating if the enrollment is currently active
+  - `enrollmentChallenge`: Challenge value for enrollment verification
+  - `enrollmentProofToken`: Unique code for enrollment verification
+  - `authAttemptChallengeRequired`: Flag indicating if authentication attempts require challenge
+  - `integrationPublicKey`: Public key for integration communication
+  - `devicePublicKey`: Public key for the device (null if not bound)
+  - `devicePrivateKeyStorageTier`: Client-reported device private key storage tier at verify: `NONE`, `STANDARD`, or `STRONG` (null if unknown or legacy)
+  - `verifiedAt`: When enrollment was verified (null if not yet verified)
+  - `createdByAdminId`: Admin who created (null when via API key)
+  - `lastUsedAt`: Last successful authentication (null if never used)
+  - `contactEmail`: Optional contact for end-user (null if not provided)
+  - `contactPhoneNumber`: Optional contact phone number for end-user in canonical E.164 format (null if not provided)
+  - `userIdentifier`: Optional user identifier from integrating app (null if not provided)
+  - `expiresAt`: Optional expiration for pending phase (ISO-8601); set when ezkey.enrollment.pending-expiration-days is configured; null otherwise
+  
+  **Status Codes:**
+  - 200: Enrollment found
+  - 401: Unauthorized - admin token required
+  - 404: Enrollment not found
+  - 500: Internal server error
+}

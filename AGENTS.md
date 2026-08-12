@@ -89,8 +89,8 @@ Do not rely only on endpoint shape or isolated module behavior for this class of
 
 When the change modifies **administrator lifecycle transitions** or **activation / onboarding**
 operator paths, reconcile the implementation explicitly with `docs/LIFECYCLE_GOVERNANCE.md` and
-extend Postman (and the Admin UI workflow, when applicable) in the same change set when the
-recovery surface changes.
+extend Bruno collections under `bruno/` (and the Admin UI workflow, when applicable) in the same
+change set when the recovery surface changes.
 
 When the task is primarily about the React Native mobile app, also start with `ezkey_mobile/AGENTS.md` and `ezkey_mobile/docs/README.md`. For **Android debug build/install on a device**, use `ezkey_mobile/scripts/build-install-debug-clean.sh` (see mobile `AGENTS.md` § Android debug build; do not guess `JAVA_HOME` or use JDK 25). For Play release or publishing work, prefer the current mobile release docs (`MOBILE_RELEASE_SIGNING.md`, `MOBILE_PLAY_PUBLISHING.md`, `MOBILE_PLAY_RELEASE_READINESS_AUDIT.md`, and `MOBILE_RELEASE_DECISION_MEMO.md`) over any deleted or historical upgrade-analysis notes.
 
@@ -156,11 +156,10 @@ The symptom is a clean compile but a startup failure — not caught by unit test
 
 ---
 
-## Contract refresh and Postman collections
+## Contract refresh and Bruno collections
 
 `scripts/update-specs.sh` refreshes the generated OpenAPI artifacts under `specs/` and dispatched
-copies such as the Admin UI and SDK specs. It does **not** update Postman collections unde
-`postman/collections/`.
+copies such as the Admin UI and SDK specs. It does **not** update Bruno collections under `bruno/`.
 
 ### Controller changes imply contract review
 
@@ -171,23 +170,28 @@ Before finalizing a plan or implementation that touches controller code:
 
 - review whether the request shape, response shape, status codes, validation behavior, erro
   semantics, examples, or operator workflow changed;
-- identify the impacted Postman collection(s) up front as part of the design, not only at the end;
-- treat Postman updates as part of the same change set whenever the controller change affects how
+- identify the impacted Bruno folder(s) under `bruno/` up front as part of the design, not only at
+  the end;
+- treat Bruno updates as part of the same change set whenever the controller change affects how
   an endpoint is called, understood, tested, or demonstrated.
 
 **Rule:** whenever an endpoint, DTO, validation contract, example payload, or operator workflow
-changes and you run `update-specs`, review and update every impacted Postman collection in the
-same change set. A backend contract refresh is not considered complete until both the generated
-OpenAPI files and the affected Postman collections describe the same behavior.
+changes and you run `update-specs`, review and update every impacted Bruno request in the same
+change set. A backend contract refresh is not considered complete until both the generated OpenAPI
+files and the affected Bruno collection describe the same behavior.
 
 **Stronger practical rule:** if you modify controller behavior in a way that affects the API
-surface, you should assume the Postman collection must also be updated. Do not wait for a late
+surface, you should assume the Bruno collection must also be updated. Do not wait for a late
 "docs pass" to decide. The default should be:
 
 1. controller change,
 2. contract review,
-3. Postman collection update,
+3. Bruno collection update (`bruno/`),
 4. generated spec refresh (clean-start + `./scripts/update-specs.sh` + client regen when applicable).
+
+**Bruno CLI smoke:** after script or chaining changes, prefer
+`./scripts/bruno-health.sh --suite g0` (no auth) when Crypto/public are touched. Catalog smoke
+(`--suite g4`) needs a bearer token. See [`bruno/README.md`](bruno/README.md).
 
 **OpenAPI refresh is part of contract-changing work by default** — not a separate approval gate. See
 `.cursor/rules/openapi-specs.mdc`. Agents must never hand-edit generated OpenAPI under `specs/**`

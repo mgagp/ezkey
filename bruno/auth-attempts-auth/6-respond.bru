@@ -1,0 +1,62 @@
+meta {
+  name: 6 respond
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/api/v1/auth-attempts/respond
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "authAttemptId": {{authAttemptId}},
+      "authAttemptAccepted": {{authAttemptAccepted}},
+      "authAttemptProofTokenSignedByDevice": "{{authAttemptProofTokenSignedByDevice}}",
+      "authAttemptChallengeResponse": {{authAttemptChallengeResponse}}
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("respondResultAuthAttemptResult", jsonData.authAttemptResult);
+      bru.setEnvVar("respondResultAuthAttemptMessage", jsonData.authAttemptMessage != null ? jsonData.authAttemptMessage : "");
+      bru.setEnvVar("respondResultSignature", jsonData.authAttemptProofTokenResultSignedByIntegration);
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('authAttemptId');
+          expect(jsonData).to.have.property('authAttemptResult');
+          expect(jsonData).to.have.property('authAttemptMessage');
+          expect(jsonData).to.have.property('authAttemptProofTokenResultSignedByIntegration');
+      });
+      
+      test("Result is valid", function () {
+          var validResults = ['APPROVED', 'DENIED', 'FAILED', 'EXPIRED'];
+          expect(validResults).to.include(jsonData.authAttemptResult);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Submits the mobile device's response when the auth attempt was created **without** context (standard Create or Create with API Key / User Identifier). Use after Pending and steps 4–5. The device signature (step 5) must be over the canonical payload proofToken|accepted; see docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md.
+  
+  **Request Body:**
+  - `authAttemptId` (required), `authAttemptAccepted` (required), `authAttemptProofTokenSignedByDevice` (required), `authAttemptChallengeResponse` (0 or challenge code)
+  
+  **Response (200):** `authAttemptId`, `authAttemptResult`, `authAttemptMessage`, `authAttemptProofTokenResultSignedByIntegration` (integration signature over proofToken|authAttemptId|result|message).
+  
+  **Next:** Run **7** to verify that signature with the Crypto API.
+  
+  **Match:** Create (no context) → use this Respond.
+}

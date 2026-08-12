@@ -1,0 +1,68 @@
+meta {
+  name: get by ID
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/integrations/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  @description('The integration ID')
+  id: {{integrationId}}
+}
+
+script:post-response {
+  test("Status code is 200 or 404", function () {
+      expect([200, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("integrationId", jsonData.id);
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('id');
+          expect(jsonData).to.have.property('lifecycleStatus');
+          expect(jsonData).to.have.property('operational');
+          expect(jsonData).to.have.property('createdAt');
+          expect(jsonData).to.have.property('name');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Retrieves details of a specific integration by its unique identifier for administrative purposes.
+  
+  **Multi-Tenancy:**
+  - **GlobalAdmin**: Can access any integration (any tenant)
+  - **TenantAdmin**: Can only access integrations within their tenant
+  - Access is validated via `AccessControlService.canAccessIntegration()`
+  - Returns 403 Forbidden if TenantAdmin tries to access integration from another tenant
+  
+  **Path Parameters:**
+  - `id` (required): Integration ID to retrieve
+  
+  **Response (200 OK):**
+  - `id`: Unique identifier for the integration
+  - `code`: Business identifier code
+  - `lifecycleStatus`: Lifecycle source of truth (`ACTIVE`, `RETIRED`)
+  - `operational`: Whether the integration is currently operational (`ACTIVE` lifecycle + parent tenant active)
+  - `createdAt`: Timestamp when the integration was created (UTC with timezone)
+  - `name`: Display name for the integration
+  - `description`: Optional description
+  
+  **Status Codes:**
+  - 200: Integration found
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - TenantAdmin trying to access integration from another tenant
+  - 404: Integration not found
+  - 500: Internal server error
+}

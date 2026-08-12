@@ -1,0 +1,79 @@
+meta {
+  name: verify single entry integrity
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/{{audit_log_id}}/integrity-check
+  body: none
+  auth: inherit
+}
+
+params:path {
+  @description("The auditLogId of the entry to verify. Copy an ID from the 'query audit logs' response and paste it here.")
+  audit_log_id: 1
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has integrity report fields", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('totalEntries');
+      expect(jsonData).to.have.property('validEntries');
+      expect(jsonData).to.have.property('invalidEntries');
+      expect(jsonData).to.have.property('unsignedEntries');
+      expect(jsonData).to.have.property('intact');
+      expect(jsonData).to.have.property('status');
+  });
+  
+  test("Status is one of the expected values", function () {
+      var jsonData = res.getBody();
+      var validStatuses = ['OK', 'INTEGRITY_VIOLATION_DETECTED', 'UNSIGNED', 'NOT_FOUND', 'HMAC signing is not active'];
+      expect(validStatuses).to.include(jsonData.status);
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Recomputes the HMAC-SHA256 signature for a single audit log entry by ID and compares it to the stored value.
+  
+  **Access:** Global Admin only.
+  
+  **Path Parameter:**
+  - `{id}`: The `auditLogId` of the entry to verify (replace `1` in the URL with the target ID)
+  
+  **Tip:** Use the *query audit logs* request first to retrieve a real `auditLogId`, then paste it into this URL for a targeted check.
+  
+  **Response (200 OK) -- entry intact:**
+  ```json
+  {
+    "totalEntries": 1,
+    "validEntries": 1,
+    "invalidEntries": 0,
+    "unsignedEntries": 0,
+    "intact": true,
+    "status": "OK"
+  }
+  ```
+  
+  **Response status values:**
+  | `status` | Meaning |
+  |---|---|
+  | `OK` | HMAC matches -- entry is intact |
+  | `INTEGRITY_VIOLATION_DETECTED` | HMAC mismatch -- entry was modified |
+  | `UNSIGNED` | Entry has no HMAC (created before signing was enabled) |
+  | `NOT_FOUND` | No entry with this ID (`totalEntries: 0`) |
+  | `HMAC signing is not active` | Signing is disabled in this environment |
+  
+  **Status Codes:**
+  - 200: Check completed (see `status` field for result)
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - Global Admin role required
+}

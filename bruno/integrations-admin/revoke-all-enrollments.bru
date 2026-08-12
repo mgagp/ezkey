@@ -1,0 +1,73 @@
+meta {
+  name: revoke all enrollments
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/integrations/:id/enrollments/revoke-all?reason=Security incident - all enrollments revoked
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Mandatory justification (min 10, max 500 characters)')
+  reason: Security incident - all enrollments revoked
+}
+
+params:path {
+  @description('The integration ID whose enrollments will be bulk-revoked')
+  id: {{integrationId}}
+}
+
+script:post-response {
+  test("Status code is 200 (summary) or 403 (system integration guard)", function () {
+      expect([200, 403, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      test("Bulk revocation returns summary", function () {
+          var jsonData = res.getBody();
+          expect(jsonData).to.have.property('affectedCount');
+          expect(jsonData).to.have.property('skippedCount');
+          expect(jsonData).to.have.property('noOp');
+      });
+  }
+  
+  if (res.getStatus() === 403) {
+      test("RFC 9457 ProblemDetail returned", function () {
+          var jsonData = res.getBody();
+          expect(jsonData).to.have.property('type');
+          expect(jsonData.status).to.equal(403);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Bulk-revokes all revocable enrollments for an integration.
+  
+  **Use case:** Incident response — when an integration's API key is compromised, all associated enrollments should be immediately revoked.
+  
+  **Guards:**
+  - Cannot be applied to **system integrations** (`is_system_integration=true`) — would cause complete admin lockout (403 with `system-integration-revocation` problem detail)
+  - Calling admin's own enrollment is **skipped** (self-guard) rather than throwing
+  - Tenant Admins can only bulk-revoke enrollments in their tenant's integrations
+  
+  **Effects:**
+  - Revokes `VERIFIED` enrollments whether currently active or deactivated
+  - Revokes in-flight `CREATED` and `BOUND` enrollments as part of the stronger retirement/incident posture
+  - Bearer tokens for any admin enrollments found are immediately invalidated
+  - Returns an execution summary with `affectedCount`, `skippedCount`, and `noOp`
+  - A successful no-op does not emit a success audit row for this routine admin action
+  
+  **Status Codes:**
+  - 200: Bulk revocation completed with result summary
+  - 400: Missing or invalid `reason`
+  - 403: Access denied or system integration guard
+  - 404: Integration not found
+  - 500: Internal server error
+}
