@@ -1,0 +1,75 @@
+meta {
+  name: create
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/api-keys
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "integrationId": {{integrationId}},
+    "description": "Administration Server API Key",
+    "expiresAt": "2026-12-31T23:59:59Z",
+    "ipWhitelist": [
+      "192.168.1.0/24",
+      "10.0.0.100",
+      "172.0.0.0/8"
+    ]
+  }
+}
+
+script:post-response {
+  test("Status code is 201", function () {
+      expect(res.getStatus()).to.equal(201);
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("apiKeyId", jsonData.apiKeyId);
+      bru.setEnvVar("integrationKey", jsonData.integrationKey);
+      bru.setEnvVar("secretKey", jsonData.secretKey);
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('apiKeyId');
+          expect(jsonData).to.have.property('integrationKey');
+          expect(jsonData).to.have.property('secretKey');
+          expect(jsonData).to.have.property('warning');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates a new API key pair for an integration. The secret key is shown **ONLY ONCE** in the response and must be saved immediately.
+  
+  **Request Body:**
+  - `integrationId` (required): Integration ID this API key belongs to
+  - `description` (optional): Human-readable description
+  - `expiresAt` (optional): Expiration date in UTC (ISO 8601 format)
+  - `ipWhitelist` (optional): Array of IP addresses or CIDR ranges
+  
+  **Response (201 Created):**
+  - `apiKeyId`: Database ID of the created API key
+  - `integrationKey`: Public integration key (safe to display)
+  - `secretKey`: Secret key (**SHOWN ONCE ONLY** - save immediately!)
+  - `description`: Description provided in request
+  - `createdAt`: Creation timestamp
+  - `expiresAt`: Expiration date (null if no expiration)
+  - `ipWhitelist`: IP restrictions (null if no restrictions)
+  - `warning`: Security warning message
+  
+  **Status Codes:**
+  - 201: API key created successfully
+  - 400: Invalid request data
+  - 401: Unauthorized - admin token required
+  - 404: Integration not found or inactive
+  - 409: Maximum active keys limit reached (5 keys per integration)
+}

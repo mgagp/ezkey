@@ -1,6 +1,6 @@
 # Didactic protocol lab
 
-Reproducible **enrollment → verify → authentication attempt** flows against a local Ezkey Docker stack (clean-start). The tooling mirrors the numbered **Postman** requests in `EZ Key Enrollments auth` and `EZ Key Auth Attempts auth`, using the **Crypto API** as the cryptography oracle (same contract as demos).
+Reproducible **enrollment → verify → authentication attempt** flows against a local Ezkey Docker stack (clean-start). The tooling mirrors the numbered **Bruno** requests in `bruno/enrollments-auth/` and `bruno/auth-attempts-auth/`, using the **Crypto API** as the cryptography oracle (same contract as demos).
 
 ## Prerequisites
 
@@ -78,7 +78,7 @@ python -m protocol_lab redact --artifacts-dir DIR [--fields field1,field2]
 
 ## Parity checklist
 
-See [`POSTMAN_PARITY.md`](POSTMAN_PARITY.md) for numbered Postman alignment.
+See [`BRUNO_PARITY.md`](BRUNO_PARITY.md) for numbered Bruno alignment.
 
 ## Validation checklist (agent / CI smoke)
 

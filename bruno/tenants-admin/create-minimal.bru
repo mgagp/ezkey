@@ -1,0 +1,62 @@
+meta {
+  name: create (minimal)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/tenants
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "tenantName": "Minimal Tenant",
+      "tenantDescription": "Tenant created with minimal fields (backward compatible)"
+  }
+}
+
+script:post-response {
+  test("Status code is 201", function () {
+      expect(res.getStatus()).to.equal(201);
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("tenantId", jsonData.tenantId.toString());
+      bru.setEnvVar("tenantName", jsonData.tenantName);
+  
+      test("Response contains core fields", function () {
+          expect(jsonData).to.have.property('tenantId');
+          expect(jsonData).to.have.property('tenantName');
+          expect(jsonData).to.have.property('active');
+          expect(jsonData).to.have.property('createdAt');
+      });
+  
+      test("Optional fields are null when not provided", function () {
+          expect(jsonData.organizationName).to.be.null;
+          expect(jsonData.organizationDomain).to.be.null;
+          expect(jsonData.countryCode).to.be.null;
+          expect(jsonData.timezone).to.be.null;
+          expect(jsonData.primaryContactName).to.be.null;
+          expect(jsonData.primaryContactEmail).to.be.null;
+          expect(jsonData.primaryContactPhoneNumber).to.be.null;
+          expect(jsonData.updatedAt).to.be.null;
+      });
+  
+      test("Tenant is active by default", function () {
+          expect(jsonData.active).to.be.true;
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates a new tenant with only the required `tenantName` field (backward compatible). All organizational identity and contact fields are optional and will be null in the response.
+  
+  This demonstrates backward compatibility: existing API consumers that only send `tenantName` and `tenantDescription` will continue to work without changes.
+}

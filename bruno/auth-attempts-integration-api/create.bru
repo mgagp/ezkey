@@ -1,0 +1,98 @@
+meta {
+  name: create
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url_integration_api}}/api/v1/auth-attempts
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{integrationKey}}
+  password: {{secretKey}}
+}
+
+body:json {
+  {
+      "enrollmentId": {{enrollmentId}},
+      "challengeRequested": false
+  }
+}
+
+script:post-response {
+  test("Status code is 201", function () {
+      expect(res.getStatus()).to.equal(201);
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("authAttemptId", jsonData.authAttemptId);
+  
+      test("Response contains authAttemptId", function () {
+          expect(jsonData).to.have.property('authAttemptId');
+          expect(jsonData.authAttemptId).to.be.a('number');
+      });
+  
+      test("Response may contain authAttemptChallenge", function () {
+          if (jsonData.hasOwnProperty('authAttemptChallenge') && jsonData.authAttemptChallenge !== null) {
+              expect(jsonData.authAttemptChallenge).to.be.a('number');
+              expect(jsonData.authAttemptChallenge).to.be.at.least(0);
+              expect(jsonData.authAttemptChallenge).to.be.at.most(999999);
+          }
+      });
+  
+      test("Response contains timeoutSeconds", function () {
+          expect(jsonData).to.have.property('timeoutSeconds');
+          expect(jsonData.timeoutSeconds).to.be.a('number');
+          expect(jsonData.timeoutSeconds).to.be.above(0);
+      });
+  
+      test("Response contains expiresAt", function () {
+          expect(jsonData).to.have.property('expiresAt');
+          expect(jsonData.expiresAt).to.be.a('string');
+      });
+  
+      console.log('authAttemptId saved:', jsonData.authAttemptId);
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates a new authentication attempt for MFA validation via the Integration API.
+  
+  **Authentication:**
+  HTTP Basic Auth with `integrationKey:secretKey`. The integration is always derived from the API key — do not include `integrationId` in the body.
+  
+  **Request Body:**
+  Provide `enrollmentId` OR `userIdentifier` (at least one required):
+  - `enrollmentId` (optional): Direct enrollment ID — must belong to the API key's integration
+  - `userIdentifier` (optional): Username/user ID for enrollment lookup within the API key's integration. Returns 400 if multiple active enrollments are found for that user.
+  - `challengeRequested` (required): Whether to generate a numeric challenge code displayed to the user
+  
+  **Response (201 Created):**
+  - `authAttemptId`: Use this ID for subsequent `/wait` and `/cancel` calls
+  - `authAttemptChallenge`: Numeric challenge to display to the user (null if not requested)
+  - `timeoutSeconds`: Seconds until this attempt expires
+  - `expiresAt`: Absolute expiration timestamp (ISO-8601 with timezone)
+  
+  **Challenge Flow:**
+  When `challengeRequested: true`:
+  1. Display the challenge code to the user
+  2. User enters it on their mobile device
+  3. User approves the authentication
+  4. Call `/wait` to receive the result
+  
+  **Status Codes:**
+  - 201: Auth attempt created successfully
+  - 400: Validation error (missing fields, enrollment not found, enrollment not in ACTIVE status, multiple enrollments for userIdentifier)
+  - 401: Invalid or missing API key
+  - 403: Enrollment does not belong to this API key's integration
+  - 429: Rate limit exceeded (100 requests per minute per integration key)
+  - 500: Internal server error
+}

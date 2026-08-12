@@ -1,0 +1,30 @@
+meta {
+  name: lifecycle declare heartbeat incident closed
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/lifecycle/incidents/{{incident_id}}/declare
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "justification": "{{incident_justification}}",
+    "rootCause": "{{incident_root_cause}}"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Declare closure for an incident in RECOVERED_PENDING_DECLARATION. Global Admin only. rootCause enum: PLANNED_SYSTEM_UPGRADE | ADMIN_API_DOWN | SCHEDULER_FAILURE | DB_UNAVAILABLE | NETWORK_PARTITION | MISCONFIGURATION | UNKNOWN.
+}

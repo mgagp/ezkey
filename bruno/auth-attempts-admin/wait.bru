@@ -1,0 +1,83 @@
+meta {
+  name: wait
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/auth-attempts/:id/wait
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Maximum wait duration in seconds (1-300, default: 30)')
+  ~timeout: 30
+  @description('Polling interval in seconds (1-60, default: 2)')
+  ~polling: 2
+}
+
+params:path {
+  @description('The authentication attempt ID to wait for')
+  id: {{authAttemptId}}
+}
+
+script:post-response {
+  test("Status code is 200, 408, or 404", function () {
+      expect([200, 408, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('authAttempt');
+          expect(jsonData).to.have.property('status');
+          expect(jsonData).to.have.property('completed');
+          expect(jsonData).to.have.property('timeoutReached');
+      });
+      
+      test("Status is valid", function () {
+          var validStatuses = ['PENDING', 'READ', 'INVALID', 'REJECTED', 'ACCEPTED', 'EXPIRED'];
+          expect(validStatuses).to.include(jsonData.status);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Waits for authentication response completion with configurable timeout and polling. This endpoint enables synchronous-like behavior in the asynchronous MFA authentication flow.
+  
+  **Multi-Tenancy:**
+  - **GlobalAdmin**: Can wait for any auth attempt (any tenant)
+  - **TenantAdmin**: Can only wait for auth attempts for enrollments within their tenant
+  - Access is validated via `AccessControlService.canAccessAuthAttempt()`
+  - Returns 403 Forbidden if TenantAdmin tries to wait for auth attempt from another tenant
+  
+  **Path Parameters:**
+  - `id` (required): Authentication attempt ID to wait for
+  
+  **Query Parameters:**
+  - `timeout` (optional, default: 30): Maximum wait duration in seconds (1-300)
+  - `polling` (optional, default: 2): Polling interval in seconds (1-60)
+  
+  **Response (200 OK):**
+  - `authAttempt`: Complete authentication attempt data
+  - `status`: Calculated status (PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)
+  - `completed`: Whether authentication process is complete
+  - `timeoutReached`: Whether wait ended due to timeout
+  - `waitDuration`: Actual duration waited in seconds
+  - `completedAt`: Timestamp when wait operation completed
+  
+  **Status Codes:**
+  - 200: Authentication completed
+  - 408: Timeout reached, authentication still pending
+  - 404: Auth attempt not found
+  - 400: Invalid parameters (timeout, polling)
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - TenantAdmin trying to access auth attempt from another tenant
+  - 500: Internal server error
+}

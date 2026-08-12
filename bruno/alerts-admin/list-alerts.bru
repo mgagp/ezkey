@@ -1,0 +1,79 @@
+meta {
+  name: list alerts
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/alerts?page=0&size=20&sort=createdAt,desc&status=OPEN
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Zero-based page index')
+  page: 0
+  @description('Page size (default 20)')
+  size: 20
+  @description('Sort (e.g. createdAt,desc, severity,asc)')
+  sort: createdAt,desc
+  @description('Filter by status: OPEN, RESOLVED. Default in the Admin UI is OPEN.')
+  status: OPEN
+  @description('Filter by alert type (e.g. AUDIT_CHAIN_GAP_PENDING)')
+  ~alertType: 
+  @description('Filter by severity: INFO, WARNING, CRITICAL')
+  ~severity: 
+  @description('Filter by dedupe key (e.g. AUDIT_CHAIN_GAP_PENDING:42)')
+  ~dedupeKey: 
+  @description('ISO-8601 lower bound on createdAt')
+  ~createdAfter: 
+  @description('ISO-8601 upper bound on createdAt')
+  ~createdBefore: 
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has content and page", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('content');
+      expect(jsonData).to.have.property('page');
+      expect(jsonData.content).to.be.an('array');
+      expect(jsonData.page).to.have.property('totalElements');
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      if (jsonData.content && jsonData.content.length > 0) {
+          var first = jsonData.content[0];
+          expect(first).to.have.property('alertId');
+          expect(first).to.have.property('alertType');
+          expect(first).to.have.property('severity');
+          expect(first).to.have.property('status');
+          bru.setEnvVar('alertId', first.alertId);
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Returns the paginated list of alerts with optional filters. Server-side pagination (`content` + `page`).
+  
+  **Each alert item:**
+  - `alertId` (number)
+  - `alertType` (string, e.g. `AUDIT_CHAIN_GAP_PENDING`)
+  - `severity` (`INFO` | `WARNING` | `CRITICAL`)
+  - `status` (`OPEN` | `RESOLVED`)
+  - `dedupeKey` (string, used for de-duplication while OPEN)
+  - `payload` (string, JSON-encoded alert-type-specific details)
+  - `occurrenceCount` (number)
+  - `createdAt`, `lastSeenAt` (ISO-8601)
+  - `resolvedAt`, `resolvedByAdminId`, `resolutionReason` (when status = RESOLVED)
+  
+  **Access:** Global Admin only (403 for Tenant Admin).
+}

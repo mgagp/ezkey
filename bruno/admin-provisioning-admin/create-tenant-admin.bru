@@ -1,0 +1,147 @@
+meta {
+  name: create tenant admin
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admins/tenant
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "username": "new.tenant.admin",
+      "email": "newtenant@example.com",
+      "phoneNumber": "+1 514 555 1002",
+      "firstName": "New",
+      "lastName": "TenantAdmin",
+      "tenantId": {{tenantId}},
+      "onboardingMode": "IMMEDIATE"
+  }
+}
+
+script:post-response {
+  test("Status code is 201, 400, or 403", function () {
+      expect([201, 400, 403]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      
+      // Extract and save admin identifiers and mode metadata
+      bru.setEnvVar("adminId", jsonData.adminId.toString());
+      bru.setEnvVar("adminOnboardingMode", jsonData.onboardingMode);
+      bru.setEnvVar("adminLifecycleStatus", jsonData.lifecycleStatus);
+      bru.deleteEnvVar("adminActivationCode");
+      bru.deleteEnvVar("adminActivationCodeExpiresAt");
+      if (jsonData.enrollmentId !== null && jsonData.enrollmentId !== undefined) {
+          bru.setEnvVar("adminEnrollmentId", jsonData.enrollmentId.toString());
+      } else {
+          bru.deleteEnvVar("adminEnrollmentId");
+      }
+      
+      // Save tenant ID if present
+      if (jsonData.tenantId) {
+          bru.setEnvVar("tenantId", jsonData.tenantId.toString());
+      }
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('adminId');
+          expect(jsonData).to.have.property('username');
+          expect(jsonData).to.have.property('adminType');
+          expect(jsonData).to.have.property('tenantId');
+          expect(jsonData).to.have.property('lifecycleStatus');
+          expect(jsonData).to.have.property('onboardingMode');
+          expect(jsonData).to.have.property('enrollmentId');
+          expect(jsonData).to.have.property('createdAt');
+      });
+      
+      test("Response does NOT contain enrollment token/challenge (GET onboarding)", function () {
+          expect(jsonData).to.not.have.property('enrollmentProofToken');
+          expect(jsonData).to.not.have.property('enrollmentChallenge');
+      });
+      
+      test("Recovery codes are deferred from bootstrap response", function () {
+          expect(jsonData.recoveryCodes === null || jsonData.recoveryCodes === undefined).to.equal(true);
+      });
+      test("Immediate mode metadata is returned", function () {
+          expect(jsonData.onboardingMode).to.equal('IMMEDIATE');
+          expect(jsonData.lifecycleStatus).to.equal('ACTIVE');
+          expect(jsonData.activationCode).to.be.null;
+          expect(jsonData.activationCodeExpiresAt).to.be.null;
+      });
+      bru.deleteEnvVar("recoveryCode");
+      bru.deleteEnvVar("adminRecoveryCodes");
+      
+      test("Admin type is TENANT_ADMIN", function () {
+          expect(jsonData.adminType).to.equal('TENANT_ADMIN');
+      });
+      
+      test("Tenant ID is provided", function () {
+          expect(jsonData.tenantId).to.not.be.null;
+      });
+  } else if (res.getStatus() === 403) {
+      test("Forbidden - TenantAdmin trying to create for different tenant", function () {
+          expect(res.getStatus()).to.equal(403);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates a new tenant administrator (peer admin). GlobalAdmin can create TenantAdmins for any tenant. TenantAdmin can create TenantAdmins for their own tenant only. This request is pinned to `onboardingMode = IMMEDIATE` to preserve the existing immediate-enrollment bootstrap flow.
+  
+  **Permissions:**
+  - **GlobalAdmin**: Can create TenantAdmins for any tenant
+  - **TenantAdmin**: Can create TenantAdmins for their own tenant only
+  - **TenantAdmin for different tenant**: Returns 403 Forbidden
+  - **System Tenant**: Cannot create TenantAdmin in System Tenant (returns 400)
+  
+  **Limits:**
+  - Enforces maximum limit per tenant: `ezkey.security.admin.max-tenant-admins-per-tenant` (default: 3)
+  - Returns 400 Bad Request if limit exceeded
+  
+  **Request Body:**
+  - `username` (required): Unique username for the administrator (3-50 characters)
+  - `email` (optional): Email address (recommended but not required for TenantAdmin)
+  - `phoneNumber` (optional): Contact phone number; accepts common separators and is normalized to E.164 on write
+  - `firstName` (optional): First name (recommended but not required for TenantAdmin)
+  - `lastName` (optional): Last name (recommended but not required for TenantAdmin)
+  - `tenantId` (required): Tenant ID for the TenantAdmin (must NOT be System Tenant)
+  - `onboardingMode`: `IMMEDIATE`
+  
+  **Response (201 Created):**
+  - `adminId`: Unique identifier for the administrator
+  - `username`: Username for the administrator
+  - `email`: Email address (if provided)
+  - `phoneNumber`: Contact phone number in canonical E.164 format (if provided)
+  - `firstName`: First name (if provided)
+  - `lastName`: Last name (if provided)
+  - `adminType`: "TENANT_ADMIN"
+  - `tenantId`: Tenant ID for the TenantAdmin
+  - `enrollmentId`: Enrollment ID for passwordless authentication (use this to retrieve onboarding credentials)
+  - `lifecycleStatus`: `ACTIVE`
+  - `onboardingMode`: `IMMEDIATE`
+  - `createdAt`: Timestamp when the administrator was created
+  - `recoveryCodes`: deferred from bootstrap and expected to be `null`
+  - `activationCode` and `activationCodeExpiresAt` are null in this mode
+  - Location header: `/api/v1/admins/{adminId}`
+  
+  **Note:** `enrollmentProofToken` and `enrollmentChallenge` are **not** in this response. Use GET `/api/v1/admins/{id}/onboarding` for those. Issue initial recovery codes later after the administrator has signed in once.
+  
+  **Status Codes:**
+  - 201: Tenant administrator created successfully
+  - 400: Invalid data, limit exceeded, username exists, email exists, tenant not found, or System Tenant
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - TenantAdmin trying to create for different tenant
+  - 500: Internal server error
+  
+  **Next Steps:**
+  1. Call GET /api/v1/admins/{id}/onboarding for `enrollmentProofToken` and `enrollmentChallenge`
+  2. Issue initial recovery codes later from the authenticated admin-management flow after first sign-in
+}

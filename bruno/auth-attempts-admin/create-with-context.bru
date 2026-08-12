@@ -1,0 +1,60 @@
+meta {
+  name: create with context
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/auth-attempts
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "enrollmentId": {{enrollmentId}},
+      "challengeRequested": false,
+      "contextTitle": "Document Signature Request",
+      "contextMessage": "Please approve the signing of the NDA with partner Acme Corp."
+  }
+}
+
+script:post-response {
+  test("Status code is 201", function () {
+      expect(res.getStatus()).to.equal(201);
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("authAttemptId", jsonData.authAttemptId);
+  
+      test("Response contains authAttemptId", function () {
+          expect(jsonData).to.have.property('authAttemptId');
+          expect(jsonData.authAttemptId).to.be.a('number');
+      });
+  
+      test("Context fields echoed back in response", function () {
+          expect(jsonData.contextTitle).to.equal('Document Signature Request');
+          expect(jsonData.contextMessage).to.include('NDA');
+      });
+  
+      console.log('authAttemptId saved:', jsonData.authAttemptId);
+      console.log('contextTitle:', jsonData.contextTitle);
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates an auth attempt with contextual metadata — attaches a title and message visible to the approver on their mobile device.
+  
+  **Optional context fields:**
+  - `contextTitle`: Short heading displayed as the card header on the mobile device (max 200 chars)
+  - `contextMessage`: Descriptive message explaining what the approver is authorizing (max 2000 chars)
+  
+  Both fields are optional and fully backward-compatible — omitting them produces the standard MFA approval screen.
+  
+  **Verify in response:** `contextTitle` and `contextMessage` are echoed back so the integrating application can confirm what was persisted.
+}

@@ -1,0 +1,36 @@
+meta {
+  name: create - no identification provided
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url_integration_api}}/api/v1/auth-attempts
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{integrationKey}}
+  password: {{secretKey}}
+}
+
+body:json {
+  {
+      "challengeRequested": false
+  }
+}
+
+script:post-response {
+  test("Status code is 400", function () {
+      expect(res.getStatus()).to.equal(400);
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Neither `enrollmentId` nor `userIdentifier` is provided. Expects 400 — at least one identification field is required.
+}

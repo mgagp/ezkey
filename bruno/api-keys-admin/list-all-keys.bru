@@ -1,0 +1,73 @@
+meta {
+  name: list all keys
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/api-keys?page=0&size=20&sort=createdAt,desc
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Zero-based page index')
+  page: 0
+  @description('Page size')
+  size: 20
+  @description('Sort (e.g. apiKeyId,asc or createdAt,desc)')
+  sort: createdAt,desc
+  @description('Optional: filter by integration ID')
+  ~integrationId: 
+  @description('Optional: filter by active (true/false)')
+  ~active: 
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response is paginated (content + page)", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('content');
+      expect(jsonData).to.have.property('page');
+      expect(jsonData.content).to.be.an('array');
+      expect(jsonData.page).to.have.property('totalElements');
+      expect(jsonData.page).to.have.property('totalPages');
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      if (jsonData.content && jsonData.content.length > 0) {
+          bru.setEnvVar("apiKeyId", jsonData.content[0].apiKeyId);
+          bru.setEnvVar("integrationKey", jsonData.content[0].integrationKey);
+          
+          test("API keys contain required fields", function () {
+              expect(jsonData.content[0]).to.have.property('apiKeyId');
+              expect(jsonData.content[0]).to.have.property('integrationId');
+              expect(jsonData.content[0]).to.have.property('integrationKey');
+              expect(jsonData.content[0]).to.have.property('active');
+              expect(jsonData.content[0]).to.have.property('createdAt');
+          });
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Lists API keys visible to the current admin with server-side pagination. GlobalAdmin sees all keys; TenantAdmin sees only keys for their tenant's integrations. Optional filters: integrationId, active, description. Secret keys are **never** included.
+  
+  **Query Parameters:**
+  - `page` (default 0), `size` (default 20), `sort` (default createdAt,desc)
+  - `integrationId`, `active`, `description` (optional filters)
+  
+  **Response (200 OK):** Paginated envelope with `content` (array of API key objects) and `page` (size, number, totalElements, totalPages).
+  
+  **Status Codes:**
+  - 200: Paginated list retrieved
+  - 401: Unauthorized
+}

@@ -1,0 +1,51 @@
+meta {
+  name: read archive eligibility
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/lifecycle/archive-eligibility
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has archive eligibility fields", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('externalArchivalEnabled');
+      expect(jsonData).to.have.property('confirmationRequired');
+      expect(jsonData).to.have.property('sealedCheckpointCount');
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Returns the current lifecycle summary for archive observability. Use this to see whether external archival is enabled, whether a confirmation step is expected, and which sealed tranche is currently awaiting confirmation.
+  
+  **Access:** Global Admin only.
+  
+  **Why this matters:** this is the observability-first endpoint for lifecycle state before any exceptional maintenance action. It does not produce an export bundle and does not mutate checkpoint state.
+  
+  **Response (200 OK):**
+  ```json
+  {
+    "externalArchivalEnabled": true,
+    "confirmationRequired": true,
+    "sealedCheckpointCount": 288,
+    "oldestSealedWindowStart": "2026-03-11T16:40:00Z",
+    "newestSealedWindowEnd": "2026-03-12T16:40:00Z",
+    "checkpointIdFrom": 1201,
+    "checkpointIdTo": 1488
+  }
+  ```
+  
+  **Status Codes:** 200 OK · 401 Unauthorized · 403 Forbidden
+}

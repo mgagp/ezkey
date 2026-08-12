@@ -1,0 +1,35 @@
+meta {
+  name: create re-encryption batches
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/encryption-keys/reencrypt/create-batches
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status code is 200 or 500", function () {
+      expect([200, 500]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      test("Response has batchesCreated", function () {
+          expect(jsonData).to.have.property('batchesCreated');
+      });
+      test("Response has message", function () {
+          expect(jsonData).to.have.property('message');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates re-encryption batches for all old keys without processing them. The batches will be processed by the scheduled job. Useful for preparing batches before scheduled processing or for testing batch creation logic.
+}

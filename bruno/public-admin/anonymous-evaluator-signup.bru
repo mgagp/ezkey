@@ -1,0 +1,45 @@
+meta {
+  name: anonymous evaluator signup
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/public/evaluator-signup
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "tenantLabel": "Postman preview workspace"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      test("Response contains activationCode", function () {
+          expect(jsonData).to.have.property('activationCode');
+      });
+      test("Response does not expose adminId", function () {
+          expect(jsonData).to.not.have.property('adminId');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Anonymous EXP1 evaluator signup when `ezkey.evaluator.self-registration.enabled=true`.
+  
+  **No authentication required.** Returns 404 when disabled.
+  
+  **Response (201):** activationCode, activationCodeExpiresAt, adminUiUrl, guidedTourUrl, tenantLabel.
+}

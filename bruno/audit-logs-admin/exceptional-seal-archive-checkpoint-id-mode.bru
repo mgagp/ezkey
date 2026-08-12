@@ -1,0 +1,100 @@
+meta {
+  name: exceptional seal archive — checkpoint ID mode
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/lifecycle/seal-archive
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "checkpointIdFrom": {{archive_checkpoint_id_from}},
+    "checkpointIdTo": {{archive_checkpoint_id_to}},
+    "justification": "{{archive_justification}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has seal result fields", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('periodStart');
+      expect(jsonData).to.have.property('periodEnd');
+      expect(jsonData).to.have.property('checkpointsSealed');
+      expect(jsonData).to.have.property('sealChainHmac');
+      expect(jsonData).to.have.property('auditLogId');
+      expect(jsonData).to.have.property('justification');
+  });
+  
+  test("checkpointsSealed is a non-negative number", function () {
+      var jsonData = res.getBody();
+      expect(jsonData.checkpointsSealed).to.be.a('number').and.to.be.at.least(0);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      if (jsonData.sealChainHmac) {
+          bru.setCollectionVar('last_seal_chain_hmac', jsonData.sealChainHmac);
+          console.log('Seal HMAC (include in Git archive manifest): ' + jsonData.sealChainHmac);
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Seals an audit chain period prior to archiving and dropping the DB partition — **checkpoint ID mode** (ergonomic).
+  
+  This request is kept as an exceptional maintenance path. It should not be read as the normal product posture for lifecycle progression, which is policy-driven and system-executed.
+  
+  Identify the first and last checkpoint IDs for the partition directly in the database — no timestamp conversion needed. Both bounds are **inclusive**.
+  
+  **Use this mode when:** you are looking at the DB and can read the `checkpoint_id` values directly. Short integers are easier to work with than full ISO-8601 timestamps.
+  
+  ```sql
+  -- Find the first and last checkpoint IDs for a given month:
+  SELECT MIN(checkpoint_id), MAX(checkpoint_id)
+  FROM ezkey_audit_chain_checkpoint
+  WHERE window_start >= '2025-01-01' AND window_end <= '2026-01-01';
+  ```
+  
+  The service resolves `periodStart`/`periodEnd` automatically from the fetched checkpoints.
+  
+  **Access:** Global Admin only.
+  
+  **Pre-condition:** All checkpoints in the ID range must pass integrity verification. Rejected (409) if any violation is detected.
+  
+  **Post-condition:** DBA may safely `DROP` the partition. Include `sealChainHmac` in the Git archive manifest.
+  
+  **Collection variables:**
+  - `archive_checkpoint_id_from` — first checkpoint ID (inclusive)
+  - `archive_checkpoint_id_to` — last checkpoint ID (inclusive)
+  - `archive_justification` — reason + archival destination
+  
+  **Response (200 OK):**
+  ```json
+  {
+    "periodStart": "2025-01-01T00:00:00Z",
+    "periodEnd": "2026-01-01T00:00:00Z",
+    "checkpointsSealed": 105120,
+    "sealChainHmac": "abc123...",
+    "auditLogId": 4521,
+    "justification": "..."
+  }
+  ```
+  
+  **Status Codes:** 200 OK · 400 Invalid request or IDs not found · 409 Integrity violation or HMAC not active · 401 Unauthorized · 403 Forbidden
+}

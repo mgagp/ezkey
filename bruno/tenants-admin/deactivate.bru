@@ -1,0 +1,79 @@
+meta {
+  name: deactivate
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/tenants/:id/deactivate
+  body: json
+  auth: inherit
+}
+
+params:path {
+  @description('The tenant ID to deactivate')
+  id: {{tenantId}}
+}
+
+body:json {
+  {
+      "reason": "{{tenantDeactivateReason}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 204 or 404", function () {
+      expect([204, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 204) {
+      test("Deactivation successful", function () {
+          expect(res.getStatus()).to.equal(204);
+          // POST deactivate returns 204 No Content with no body
+          // Audit trail: deactivatedAt, deactivatedByAdminId,
+          // updatedAt, updatedByAdminId are recorded server-side
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Deactivates a tenant, preventing further operations for that tenant while preserving data for audit purposes. Only GlobalAdmin can deactivate tenants.
+  
+  **Permissions:**
+  - **GlobalAdmin**: Can deactivate any tenant
+  - **TenantAdmin**: Returns 403 Forbidden
+  
+  **Effects of Deactivation:**
+  - Sets `active = false` on the tenant
+  - Records `deactivatedAt` timestamp for audit trail
+  - Records `deactivatedByAdminId` identifying the admin who performed the action
+  - Sets `updatedAt` and `updatedByAdminId` audit fields
+  - Revokes all active tokens for admins in that tenant
+  - Prevents further resource creation for that tenant
+  - Prevents further updates to the tenant (returns 400 with RFC 9457 ProblemDetail)
+  - Data is preserved for audit purposes
+  
+  **System Tenant Protection:**
+  - The system tenant (ID=1) cannot be deactivated
+  - Attempting to deactivate the system tenant returns 400 with RFC 9457 ProblemDetail
+  
+  **Path Parameters:**
+  - `id` (required): Tenant ID to deactivate
+  
+  **Response (204 No Content):**
+  - No response body
+  - Tenant is deactivated with full audit trail
+  - All admin tokens for that tenant are revoked
+  
+  **Status Codes:**
+  - 204: Tenant deactivated successfully
+  - 400: Bad request - cannot deactivate the system tenant (RFC 9457 ProblemDetail)
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - not a GlobalAdmin
+  - 404: Tenant not found
+  - 500: Internal server error
+}

@@ -1,0 +1,44 @@
+meta {
+  name: 6c crypto build respond result payload
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/payload-helper
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "type": "respond-result",
+      "proofToken": "{{authAttemptProofToken}}",
+      "authAttemptId": {{authAttemptId}},
+      "result": "{{respondResultAuthAttemptResult}}",
+      "message": "{{respondResultAuthAttemptMessage}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("respondResultPayload", jsonData.payload);
+      test("Payload helper returned respond-result payload", function () {
+          expect(jsonData.type).to.equal('respond-result');
+          expect(jsonData.payload).to.be.a('string');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Builds the canonical Respond HTTP response payload through Crypto API. Run immediately after step 6 or 6b.
+}

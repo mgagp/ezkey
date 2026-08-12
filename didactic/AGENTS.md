@@ -10,7 +10,7 @@ When describing canonical payloads or field semantics, cite in this order:
 2. [`docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)
 3. [`docs/MOBILE_DEVELOPER_GUIDE.md`](../docs/MOBILE_DEVELOPER_GUIDE.md), [`docs/ENDPOINT.md`](../docs/ENDPOINT.md)
 
-Postman collections under `postman/collections/v2.1/` are the **parity reference** for request ordering; parity is summarized in [`POSTMAN_PARITY.md`](POSTMAN_PARITY.md).
+Bruno folders under [`bruno/`](../bruno/) are the **parity reference** for request ordering; parity is summarized in [`BRUNO_PARITY.md`](BRUNO_PARITY.md).
 
 ## Secrets and generated output
 
@@ -96,10 +96,10 @@ From repo root / `didactic/`:
 For a clean-start stack without pasting secrets into chat:
 
 1. Use a known **global admin username** enrolled on the Demo Device. The Ezkey **`username`** must match provisioning **exactly** (case-sensitive in practice). Reference didactic deployments use **`tuteur`** (“Tuteur” in conversation may map to lowercase in the DB/UI).
-2. **`POST`** `/api/v1/admin/auth/login` on Admin API (see [`docs/ENDPOINT.md`](../docs/ENDPOINT.md)) with e.g. `username: "tuteur"`, `challengeRequested: false`, `nonBlocking: false` (collection: [`EZ Key Authentication Login admin`](../postman/collections/v2.1/EZ%20Key%20Authentication%20Login%20admin.postman_collection.json)). The call **blocks** until the operator approves on the Demo Device; on success the JSON includes **`token`**.
+2. **`POST`** `/api/v1/admin/auth/login` on Admin API (see [`docs/ENDPOINT.md`](../docs/ENDPOINT.md)) with e.g. `username: "tuteur"`, `challengeRequested: false`, `nonBlocking: false` (Bruno folder: [`bruno/authentication-login-admin/`](../bruno/authentication-login-admin/)). The call **blocks** until the operator approves on the Demo Device; on success the JSON includes **`token`**.
 3. Export that value as **`EZKEY_ADMIN_TOKEN`** for `protocol_lab run` (never commit it; do not echo it in logs or PR text).
 
-Alternate **non-blocking** pattern: `nonBlocking: true` on login, then **`POST /api/v1/admin/auth/passwordless-wait`** with `authAttemptId` (same Postman folder). Matches UI countdown / long-poll ergonomics.
+Alternate **non-blocking** pattern: `nonBlocking: true` on login, then **`POST /api/v1/admin/auth/passwordless-wait`** with `authAttemptId` (same Bruno folder). Matches UI countdown / long-poll ergonomics.
 
 The agent may ask the operator explicitly: **“Approve the pending admin login for `tuteur` on the Demo Device.”** before or while the blocking request runs.
 

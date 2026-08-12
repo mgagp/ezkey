@@ -1,0 +1,67 @@
+meta {
+  name: 7 crypto validate respond result by integration
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/verify-ed25519
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "data": "{{respondResultPayload}}",
+      "signature": "{{respondResultSignature}}",
+      "publicKey": "{{integrationPublicKey}}"
+  }
+}
+
+script:pre-request {
+  var payload = bru.getEnvVar("respondResultPayload");
+  if (!payload) {
+      throw new Error("Run step 6c first — respondResultPayload is missing.");
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Integration signature present from step 6/6b", function () {
+      var sig = bru.getEnvVar("respondResultSignature");
+      expect(sig, "authAttemptProofTokenResultSignedByIntegration was null — cannot validate (some error paths omit signing)").to.be.ok;
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      test("Response contains valid field", function () {
+          expect(jsonData).to.have.property('valid');
+          expect(jsonData.valid).to.be.a('boolean');
+      });
+      test("Respond result signature cryptographically valid", function () {
+          expect(jsonData.valid).to.be.true;
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Validates the integration's Ed25519 signature on the **Respond HTTP response** body (same verifier as mobile). Run **6c** immediately before to build `respondResultPayload` through Crypto API.
+  
+  **Prerequisites:** Run **6** or **6b**, then **6c**. Step 6/6b saves the response fields; step 6c builds the canonical payload.
+  
+  **Request Body (Crypto API):**
+  - `data`: `respondResultPayload` from step 6c
+  - `signature`: `authAttemptProofTokenResultSignedByIntegration` from the Respond response
+  - `publicKey`: Same integration public key as step 4
+  
+  **Response (200 OK):** `valid: true` when the signature matches.
+  
+  **Note:** If the Auth API returned a FAILED response without a signature, step 7 will fail the "signature present" test — that is expected for that edge case.
+}

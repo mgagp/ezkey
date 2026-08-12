@@ -1,0 +1,71 @@
+meta {
+  name: deactivate all enrollments
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/integrations/:id/enrollments/deactivate-all?reason=Emergency lockdown - threat under investigation
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Optional justification (max 500 characters)')
+  reason: Emergency lockdown - threat under investigation
+}
+
+params:path {
+  @description('The integration ID whose enrollments will be bulk-deactivated')
+  id: {{integrationId}}
+}
+
+script:post-response {
+  test("Status code is 200 (summary) or 403 (system integration guard)", function () {
+      expect([200, 403, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      test("Bulk deactivation returns summary", function () {
+          var jsonData = res.getBody();
+          expect(jsonData).to.have.property('affectedCount');
+          expect(jsonData).to.have.property('skippedCount');
+          expect(jsonData).to.have.property('noOp');
+      });
+  }
+  
+  if (res.getStatus() === 403) {
+      test("RFC 9457 ProblemDetail returned", function () {
+          var jsonData = res.getBody();
+          expect(jsonData).to.have.property('type');
+          expect(jsonData.status).to.equal(403);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Bulk-deactivates all active VERIFIED enrollments for an integration (reversible lockdown).
+  
+  **Use case:** Precautionary lockdown — suspected but unconfirmed threat, emergency maintenance. Status remains VERIFIED; restore with **reactivate all enrollments**.
+  
+  **Guards:**
+  - Cannot be applied to **system integrations** (403 with system-integration-revocation)
+  - Calling admin's own enrollment is **skipped** (self-guard)
+  - Tenant Admins can only bulk-deactivate enrollments in their tenant's integrations
+  
+  **Effects:**
+  - All active VERIFIED enrollments set to active=false (VERIFIED preserved)
+  - Bearer tokens for any admin enrollments found are invalidated
+  - Returns an execution summary with `affectedCount`, `skippedCount`, and `noOp`
+  - A successful no-op does not emit a success audit row for this routine admin action
+  
+  **Status Codes:**
+  - 200: Bulk deactivation completed with result summary
+  - 403: Access denied or system integration guard
+  - 404: Integration not found
+  - 500: Internal server error
+}

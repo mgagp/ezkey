@@ -1,0 +1,75 @@
+meta {
+  name: create tenant admin (activation code)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admins/tenant
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "username": "pending.tenant.admin",
+      "email": "pendingtenant@example.com",
+      "phoneNumber": "+1 514 555 1102",
+      "firstName": "Pending",
+      "lastName": "TenantAdmin",
+      "tenantId": {{tenantId}},
+      "onboardingMode": "ACTIVATION_CODE"
+  }
+}
+
+script:post-response {
+  test("Status code is 201, 400, or 403", function () {
+      expect([201, 400, 403]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("adminId", jsonData.adminId.toString());
+      bru.setEnvVar("adminOnboardingMode", jsonData.onboardingMode);
+      bru.setEnvVar("adminLifecycleStatus", jsonData.lifecycleStatus);
+      bru.setEnvVar("adminActivationCode", jsonData.activationCode);
+      bru.setEnvVar("adminActivationCodeExpiresAt", jsonData.activationCodeExpiresAt);
+      bru.deleteEnvVar("adminEnrollmentId");
+      bru.deleteEnvVar("adminRecoveryCodes");
+      test("Activation-code response contains pending activation metadata", function () {
+          expect(jsonData.adminType).to.equal('TENANT_ADMIN');
+          expect(jsonData.tenantId).to.not.be.null;
+          expect(jsonData.onboardingMode).to.equal('ACTIVATION_CODE');
+          expect(jsonData.lifecycleStatus).to.equal('PENDING_ACTIVATION');
+          expect(jsonData.enrollmentId).to.be.null;
+          expect(jsonData.recoveryCodes).to.be.null;
+          expect(jsonData.activationCode).to.be.a('string').and.not.empty;
+          expect(jsonData.activationCodeExpiresAt).to.be.a('string').and.not.empty;
+      });
+  } else if (res.getStatus() === 403) {
+      test("Forbidden - TenantAdmin trying to create for different tenant", function () {
+          expect(res.getStatus()).to.equal(403);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates a new tenant administrator in deferred activation mode. Use this when the operator must issue a one-time activation code and let the new admin complete first-time setup later.
+  
+  **Request Body:**
+  - Same as immediate tenant-admin creation, but `onboardingMode` is set to `ACTIVATION_CODE`
+  
+  **Response (201 Created):**
+  - `lifecycleStatus`: `PENDING_ACTIVATION`
+  - `onboardingMode`: `ACTIVATION_CODE`
+  - `activationCode`: One-time operator-facing code to hand off securely
+  - `activationCodeExpiresAt`: Expiry timestamp for that code
+  - `enrollmentId`: null until activation is consumed
+  - `recoveryCodes`: null until the first enrollment exists
+  
+  **Operational Note:** Do not call GET `/api/v1/admins/{id}/onboarding` yet; that endpoint only applies after activation has created the first enrollment.
+}

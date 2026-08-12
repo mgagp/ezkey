@@ -1,0 +1,84 @@
+meta {
+  name: encrypt
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/encrypt
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "plaintext": "{{plaintext}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200 or 400", function () {
+      expect([200, 400]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      
+      if (jsonData.encryptionSuccessful && jsonData.encryptedValue) {
+          bru.setEnvVar("encryptedValue", jsonData.encryptedValue);
+      }
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('encryptedValue');
+          expect(jsonData).to.have.property('encryptionSuccessful');
+          expect(jsonData).to.have.property('keyId');
+          expect(jsonData).to.have.property('encryptedFormat');
+          expect(jsonData).to.have.property('errorMessage');
+          expect(jsonData).to.have.property('encryptionAvailable');
+          expect(jsonData.encryptionSuccessful).to.be.a('boolean');
+          expect(jsonData.encryptedFormat).to.be.a('string');
+          expect(jsonData.encryptionAvailable).to.be.a('boolean');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Encrypts a plaintext value and returns it in the standard encrypted format (ENC:keyID:Base64(ciphertext)). This endpoint is designed for testing and debugging purposes, enabling generation of encrypted test data and verification of encryption/decryption round-trips.
+  
+  **Request Body:**
+  - `plaintext` (required): Plaintext value to encrypt
+  
+  **Response (200 OK):**
+  - `encryptedValue`: Encrypted value in ENC:keyID:Base64(ciphertext) format, or original plaintext if encryption unavailable/failed
+  - `encryptionSuccessful`: Boolean indicating if the encryption operation succeeded
+  - `keyId`: Primary key ID used for encryption (null if encryption failed/unavailable)
+  - `encryptedFormat`: Format of the output ("ENC:keyID:Base64", or "PLAINTEXT" if encryption unavailable)
+  - `errorMessage`: Error message if encryption failed (null if successful)
+  - `encryptionAvailable`: Boolean indicating if EncryptionService is initialized and available
+  
+  **Status Codes:**
+  - 200: Encryption operation completed (check `encryptionSuccessful` field for actual result)
+  - 400: Invalid request data (empty plaintext value)
+  - 500: Internal server error
+  
+  **Usage Context:**
+  - **Testing**: Generate encrypted test data for integration testing
+  - **Round-trip Verification**: Encrypt a value and then decrypt it to verify encryption/decryption consistency
+  - **Debugging**: Create encrypted values that match the format used in database columns
+  
+  **Example Workflow:**
+  1. Set `plaintext` environment variable in Postman (e.g., "my-secret-value")
+  2. Call this endpoint to encrypt the value
+  3. Use the `encryptedValue` in subsequent API calls or database insertions
+  4. Verify the value can be decrypted using the `/decrypt` endpoint
+  
+  **Security Notes:**
+  - **Testing Only**: This endpoint is intended for testing and debugging purposes
+  - **Sensitive Data**: Encrypts plaintext values - use with caution in test environments only
+  - **Never Expose in Production**: This API should never be exposed in production environments
+  - **Access Control**: No authentication required (consistent with other crypto-api endpoints)
+}

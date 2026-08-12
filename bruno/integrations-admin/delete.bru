@@ -1,0 +1,78 @@
+meta {
+  name: delete
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{base_url_admin_api}}/api/v1/integrations/:id?reason={{reason}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Audit justification for the deletion (min 10 characters, required for SOC 2 CC6.3 compliance)')
+  reason: {{reason}}
+}
+
+params:path {
+  @description('The integration ID to delete')
+  id: {{integrationId}}
+}
+
+script:post-response {
+  test("Status code is 204, 400, 403, 404 or 409", function () {
+      expect([204, 400, 403, 404, 409]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 204) {
+      test("Deletion successful", function () {
+          expect(res.getStatus()).to.equal(204);
+          // DELETE returns 204 No Content with no body
+      });
+  }
+  
+  if ([400, 403, 404, 409].includes(res.getStatus())) {
+      test("ProblemDetail returned", function () {
+          var jsonData = res.getBody();
+          expect(jsonData).to.have.property('type');
+          expect(jsonData).to.have.property('status');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Permanently deletes an already-retired integration that no longer has enrollments.
+  
+  **Exceptional posture:** Deletion is narrower than retirement and should only be used for disposable records after lifecycle closure.
+  
+  **Path Parameters:**
+  - `id` (required): Integration ID to delete
+  
+  **Query Parameters:**
+  - `reason` (required): Audit justification (min 10 characters) — SOC 2 CC6.3 compliance
+  
+  **Preconditions:**
+  - Integration must already be `RETIRED`
+  - Integration must not have any remaining enrollments
+  - System integrations cannot be deleted
+  
+  **Response (204 No Content):**
+  - No response body
+  - Integration row is permanently removed
+  
+  **Status Codes:**
+  - 204: Integration deleted successfully
+  - 400: Missing or invalid `reason` (min 10, max 500 chars)
+  - 401: Unauthorized - admin token required
+  - 403: Access denied or system integration guard
+  - 404: Integration not found
+  - 409: Integration not retired yet, or enrollments still exist
+  - 500: Internal server error
+  
+  **Warning:** This operation is irreversible and is not the normal retirement mechanism.
+}

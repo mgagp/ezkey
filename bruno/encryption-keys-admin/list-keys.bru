@@ -1,0 +1,56 @@
+meta {
+  name: list keys
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/encryption-keys?page=0&size=20&sort=introducedAt,desc
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Zero-based page index')
+  page: 0
+  @description('Page size')
+  size: 20
+  @description('Sort (e.g. keyId,asc, keyStatus,desc)')
+  sort: introducedAt,desc
+  @description('Optional filter: PRIMARY, ENABLED, DISABLED, PENDING')
+  ~keyStatus: 
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has content and page", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('content');
+      expect(jsonData).to.have.property('page');
+      expect(jsonData.content).to.be.an('array');
+      expect(jsonData.page).to.have.property('totalElements');
+      expect(jsonData.page).to.have.property('totalPages');
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      if (jsonData.content && jsonData.content.length > 0) {
+          bru.setEnvVar("encryptionKeyId", jsonData.content[0].keyId);
+          var primaryKey = jsonData.content.find(k => k.keyStatus === 'PRIMARY');
+          if (primaryKey) {
+              bru.setEnvVar("primaryKeyId", primaryKey.keyId);
+          }
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Returns encryption keys with server-side pagination. Response has content (array of key objects) and page (size, number, totalElements, totalPages). Optional query param keyStatus filters by status.
+}

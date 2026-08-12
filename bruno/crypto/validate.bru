@@ -1,0 +1,63 @@
+meta {
+  name: validate
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/validate
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "data": "{{data}}",
+      "signature": "{{signature}}",
+      "publicKey": "{{publicKey}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200 or 400", function () {
+      expect([200, 400]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("valid", jsonData.valid);
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('valid');
+          expect(jsonData).to.have.property('message');
+          expect(jsonData).to.have.property('algorithm');
+          expect(jsonData.valid).to.be.a('boolean');
+          expect(jsonData.algorithm).to.equal('EC_P256');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Validates an EC P-256 ECDSA-SHA256 signature against the original data using the provided public key.
+  
+  **Request Body:**
+  - `data` (required): Original data that was signed
+  - `signature` (required): Base64-encoded signature to validate (ASN.1 DER encoded)
+  - `publicKey` (required): EC P-256 public key in X.509 SubjectPublicKeyInfo format (Base64 encoded)
+  
+  **Response (200 OK):**
+  - `valid`: Boolean indicating whether the signature is valid
+  - `message`: Validation message ("Signature is valid" or "Signature is invalid")
+  - `algorithm`: Algorithm used for validation ("EC_P256")
+  
+  **Status Codes:**
+  - 200: Signature validation completed
+  - 400: Invalid request data, malformed signature or public key
+  - 500: Validation operation failed
+  
+  **Usage:** Use this endpoint to verify that a signature was created with the corresponding private key and that the data has not been tampered with.
+}

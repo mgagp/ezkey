@@ -1,0 +1,47 @@
+meta {
+  name: 3 crypto validate enrollment bind by integration
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/verify-ed25519
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "data": "{{enrollmentBindPayload}}",
+      "signature": "{{enrollmentBindPayloadSignedByIntegration}}",
+      "publicKey": "{{integrationPublicKey}}"
+  }
+}
+
+script:pre-request {
+  var payload = bru.getEnvVar("enrollmentBindPayload");
+  if (!payload) {
+      throw new Error("Run step 2 first — enrollmentBindPayload is missing.");
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      test("Bind payload signature is valid", function () {
+          expect(jsonData.valid).to.be.true;
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Verifies the integration Ed25519 signature on the bind payload before trusting enrollment metadata (see `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`).
+}

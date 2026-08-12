@@ -1,0 +1,84 @@
+meta {
+  name: cancel
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url_integration_api}}/api/v1/auth-attempts/:id/cancel
+  body: none
+  auth: basic
+}
+
+params:path {
+  @description('Authentication attempt ID to cancel')
+  id: {{authAttemptId}}
+}
+
+auth:basic {
+  username: {{integrationKey}}
+  password: {{secretKey}}
+}
+
+script:post-response {
+  test("Status code is 200, 400, or 404", function () {
+      expect([200, 400, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+  
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('authAttemptId');
+          expect(jsonData).to.have.property('enrollmentId');
+          expect(jsonData).to.have.property('authAttemptStatus');
+          expect(jsonData).to.have.property('createdAt');
+          expect(jsonData).to.have.property('expiresAt');
+      });
+  
+      test("Status is EXPIRED after cancellation", function () {
+          expect(jsonData.authAttemptStatus).to.equal('EXPIRED');
+      });
+  
+      console.log('Auth attempt', jsonData.authAttemptId, 'cancelled — status:', jsonData.authAttemptStatus);
+  }
+  
+  if (res.getStatus() === 400) {
+      test("Bad request — attempt already in final state", function () {
+          expect(res.getStatus()).to.equal(400);
+      });
+      console.log('Cannot cancel: attempt is already in a final state');
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Cancels a pending or read authentication attempt by marking it as EXPIRED. Use this to proactively abort an authentication request — for example when the user abandons the flow in your application.
+  
+  **Authentication:**
+  HTTP Basic Auth with `integrationKey:secretKey`. Access control ensures API keys can only cancel attempts belonging to their integration.
+  
+  **Path Parameters:**
+  - `id` (required): The authentication attempt ID to cancel
+  
+  **Cancellable states:**
+  Only `PENDING` and `READ` attempts can be cancelled. Attempting to cancel an attempt in a final state (`ACCEPTED`, `REJECTED`, `INVALID`, `EXPIRED`) returns 400.
+  
+  **Response (200 OK):**
+  - `authAttemptId`: The cancelled attempt ID
+  - `enrollmentId`: Associated enrollment
+  - `authAttemptStatus`: `EXPIRED` — always EXPIRED after successful cancellation
+  - `createdAt`: When the attempt was originally created
+  - `expiresAt`: When the attempt was set to expire
+  
+  **Status Codes:**
+  - 200: Attempt cancelled successfully (status is now EXPIRED)
+  - 400: Attempt is already in a final state (cannot be cancelled)
+  - 401: Invalid or missing API key
+  - 403: Attempt does not belong to this integration
+  - 404: Auth attempt not found
+  - 500: Internal server error
+}

@@ -1,0 +1,120 @@
+meta {
+  name: create global admin
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admins/global
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "username": "new.global.admin",
+      "email": "newglobal@example.com",
+      "phoneNumber": "+1 514 555 1001",
+      "firstName": "New",
+      "lastName": "GlobalAdmin",
+      "onboardingMode": "IMMEDIATE"
+  }
+}
+
+script:post-response {
+  test("Status code is 201 or 400", function () {
+      expect([201, 400, 403]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      
+      // Extract and save admin identifiers and mode metadata
+      bru.setEnvVar("adminId", jsonData.adminId.toString());
+      bru.setEnvVar("adminOnboardingMode", jsonData.onboardingMode);
+      bru.setEnvVar("adminLifecycleStatus", jsonData.lifecycleStatus);
+      bru.deleteEnvVar("adminActivationCode");
+      bru.deleteEnvVar("adminActivationCodeExpiresAt");
+      if (jsonData.enrollmentId !== null && jsonData.enrollmentId !== undefined) {
+          bru.setEnvVar("adminEnrollmentId", jsonData.enrollmentId.toString());
+      } else {
+          bru.deleteEnvVar("adminEnrollmentId");
+      }
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('adminId');
+          expect(jsonData).to.have.property('username');
+          expect(jsonData).to.have.property('adminType');
+          expect(jsonData).to.have.property('lifecycleStatus');
+          expect(jsonData).to.have.property('onboardingMode');
+          expect(jsonData).to.have.property('enrollmentId');
+          expect(jsonData).to.have.property('createdAt');
+      });
+      
+      test("Response does NOT contain enrollment token/challenge (GET onboarding)", function () {
+          expect(jsonData).to.not.have.property('enrollmentProofToken');
+          expect(jsonData).to.not.have.property('enrollmentChallenge');
+      });
+      
+      test("Recovery codes are deferred from bootstrap response", function () {
+          expect(jsonData.recoveryCodes === null || jsonData.recoveryCodes === undefined).to.equal(true);
+      });
+      test("Immediate mode metadata is returned", function () {
+          expect(jsonData.onboardingMode).to.equal('IMMEDIATE');
+          expect(jsonData.lifecycleStatus).to.equal('ACTIVE');
+          expect(jsonData.activationCode).to.be.null;
+          expect(jsonData.activationCodeExpiresAt).to.be.null;
+      });
+      bru.deleteEnvVar("recoveryCode");
+      bru.deleteEnvVar("adminRecoveryCodes");
+      
+      test("Admin type is GLOBAL_ADMIN", function () {
+          expect(jsonData.adminType).to.equal('GLOBAL_ADMIN');
+      });
+      
+      test("Tenant ID is null for GlobalAdmin", function () {
+          expect(jsonData.tenantId).to.be.null;
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates a new global administrator (peer admin). Only GlobalAdmin can create other GlobalAdmins. This request is pinned to `onboardingMode = IMMEDIATE` to preserve the existing immediate-enrollment bootstrap flow.
+  
+  **Permissions:**
+  - **GlobalAdmin**: Can create GlobalAdmins
+  - **TenantAdmin**: Returns 403 Forbidden
+  
+  **Limits:**
+  - Enforces maximum limit: `ezkey.security.admin.max-global-admins` (default: 3)
+  - Returns 400 Bad Request if limit exceeded
+  
+  **Request Body:**
+  - `username` (required): Unique username for the administrator (3-50 characters)
+  - `email` (required for GlobalAdmin): Email address (SOC 2 compliance)
+  - `phoneNumber` (optional): Contact phone number; accepts common separators and is normalized to E.164 on write
+  - `firstName` (required for GlobalAdmin): First name (SOC 2 compliance)
+  - `lastName` (required for GlobalAdmin): Last name (SOC 2 compliance)
+  - `onboardingMode`: `IMMEDIATE`
+  - `tenantId` (ignored): Not used for GlobalAdmin creation
+  
+  **Response (201 Created):**
+  - `adminId`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId` (null), `enrollmentId`, `lifecycleStatus`, `onboardingMode`, `createdAt`
+  - `recoveryCodes`: deferred from bootstrap and expected to be `null`
+  - `activationCode` and `activationCodeExpiresAt` are null in this mode
+  - **Not in this response:** `enrollmentProofToken`, `enrollmentChallenge` — call GET `/api/v1/admins/{id}/onboarding` after creation
+  - Location header: `/api/v1/admins/{adminId}`
+  
+  **Status Codes:**
+  - 201: Global administrator created successfully
+  - 400: Invalid data, limit exceeded, or username exists
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - not a GlobalAdmin
+  - 500: Internal server error
+  
+  **Next Steps:** Retrieve onboarding material if needed, then issue initial recovery codes later from the authenticated admin-management flow after the first successful sign-in.
+}

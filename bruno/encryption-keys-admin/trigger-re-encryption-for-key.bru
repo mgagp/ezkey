@@ -1,0 +1,43 @@
+meta {
+  name: trigger re-encryption for key
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/encryption-keys/:keyId/reencrypt
+  body: none
+  auth: inherit
+}
+
+params:path {
+  @description('The old encryption key ID to re-encrypt (must not be PRIMARY)')
+  keyId: {{encryptionKeyId}}
+}
+
+script:post-response {
+  test("Status code is 202, 400, 404, or 500", function () {
+      expect([202, 400, 404, 500]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 202) {
+      var jsonData = res.getBody();
+      test("Response has keyId", function () {
+          expect(jsonData).to.have.property('keyId');
+      });
+      test("Response has batchesEnqueued", function () {
+          expect(jsonData).to.have.property('batchesEnqueued');
+      });
+      test("Response has message", function () {
+          expect(jsonData).to.have.property('message');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates and enqueues re-encryption batches for a specific old key (202 Accepted). The key must not be PRIMARY. Monitor progress in the batches list.
+}

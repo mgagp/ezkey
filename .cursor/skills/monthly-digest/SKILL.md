@@ -103,7 +103,7 @@ changelog.
 | Code hygiene | dependency bumps, `.cursor/`, `.github/`, tooling configs, React Doctor, mobile upgrades |
 | Admin UI | `ezkey-admin-ui/` |
 | Mobile app | `ezkey_mobile/` |
-| Backend & API contracts | `ezkey-core*/`, `ezkey-*-api/`, `specs/`, `postman/` |
+| Backend & API contracts | `ezkey-core*/`, `ezkey-*-api/`, `specs/`, `bruno/` |
 | The rest | `ezkey-sdk/`, `ezkey-tests/`, `docker/`, `sites/ezkey-org/`, audit/integrity code |
 
 ## Distillation rules

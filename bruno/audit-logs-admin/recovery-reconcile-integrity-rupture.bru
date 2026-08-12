@@ -1,0 +1,69 @@
+meta {
+  name: recovery reconcile integrity rupture
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/lifecycle/reconcile-integrity-rupture
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "alertId": {{integrity_rupture_alert_id}},
+    "failBoundary": "{{integrity_fail_boundary}}",
+    "resumeBoundary": "{{integrity_resume_boundary}}",
+    "justification": "{{integrity_reconcile_justification}}",
+    "externalTicketReference": "{{integrity_ticket_ref}}",
+    "category": "{{integrity_reconcile_category}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has reconciliation fields", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('failBoundary');
+      expect(jsonData).to.have.property('resumeBoundary');
+      expect(jsonData).to.have.property('conciliationCheckpointId');
+      expect(jsonData).to.have.property('conciliationChainHmac');
+      expect(jsonData).to.have.property('auditLogId');
+      expect(jsonData).to.have.property('resolvedAlertId');
+      expect(jsonData).to.have.property('justification');
+      expect(jsonData).to.have.property('category');
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Reconciles an open `AUDIT_INTEGRITY_RUPTURE` alert with a signed `MANIPULATION_CONCILIATION` checkpoint.
+  
+  **Access:** Global Admin only.
+  
+  **Prerequisites:**
+  - OPEN `AUDIT_INTEGRITY_RUPTURE` alert (see EZ Key Alerts admin collection)
+  - No OPEN `AUDIT_CHAIN_HEARTBEAT_STALE` alert
+  - `failBoundary` / `resumeBoundary` must match alert payload
+  
+  **Collection variables:**
+  - `integrity_rupture_alert_id` — alert id from GET /api/v1/alerts
+  - `integrity_fail_boundary` — ISO-8601 fail boundary from alert payload
+  - `integrity_resume_boundary` — ISO-8601 resume boundary from alert payload
+  - `integrity_reconcile_justification` — operator justification (10–500 chars)
+  - `integrity_ticket_ref` — optional external ticket reference
+  - `integrity_reconcile_category` — ACCIDENTAL_DBA_EDIT | CORRUPTION | INVESTIGATED_BENIGN | OTHER
+  
+  **Status Codes:** 200 OK · 400 Invalid alert/boundaries · 409 Conflicting checkpoints · 401 · 403
+}

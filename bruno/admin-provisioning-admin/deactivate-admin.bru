@@ -1,0 +1,125 @@
+meta {
+  name: deactivate admin
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admins/:id/deactivate
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Audit justification for the deactivation (min 10 characters, recommended for SOC 2 CC6.3 compliance)')
+  ~reason: {{reason}}
+}
+
+params:path {
+  @description('The administrator ID to deactivate')
+  id: {{adminId}}
+}
+
+script:post-response {
+  test("Status code is 204, 400, 403, or 404", function () {
+      expect([204, 400, 403, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 204) {
+      test("Deactivation successful", function () {
+          expect(res.getStatus()).to.equal(204);
+      });
+  } else if (res.getStatus() === 400) {
+      var jsonData = res.getBody();
+      // Two types of 400: RFC 9457 Problem Detail (business rules) or VALIDATION_ERROR (invalid reason length)
+      if (jsonData.code === 'VALIDATION_ERROR') {
+          test("400 validation error - reason too short", function () {
+              expect(jsonData).to.have.property('code');
+              expect(jsonData.code).to.equal('VALIDATION_ERROR');
+              expect(jsonData).to.have.property('message');
+          });
+      } else {
+          test("400 response is RFC 9457 Problem Detail", function () {
+              expect(jsonData).to.have.property('type');
+              expect(jsonData).to.have.property('title');
+              expect(jsonData).to.have.property('status');
+              expect(jsonData).to.have.property('detail');
+              expect(jsonData.status).to.equal(400);
+          });
+          test("400 response has valid problem type URI", function () {
+              const validTypes = [
+                  'https://ezkey.io/problems/admin-not-allowed',
+                  'https://ezkey.io/problems/admin-limit-violation'
+              ];
+              expect(validTypes).to.include(jsonData.type);
+          });
+      }
+  } else if (res.getStatus() === 403) {
+      test("Forbidden - not a global admin", function () {
+          expect(res.getStatus()).to.equal(403);
+      });
+  } else if (res.getStatus() === 404) {
+      test("Administrator not found", function () {
+          expect(res.getStatus()).to.equal(404);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Deactivates an administrator, preventing further authentication while preserving data for audit purposes. Only GlobalAdmin can deactivate administrators.
+  
+  **RFC 9457 Problem Detail Responses:**
+  Business logic errors are returned as RFC 9457 Problem Detail responses with specific type URIs:
+  - `https://ezkey.io/problems/admin-not-allowed` - Operation not allowed (e.g., self-deactivation)
+  - `https://ezkey.io/problems/admin-limit-violation` - Would violate admin limits
+  
+  **Rules:**
+  - A global admin can deactivate another global admin (but not themselves)
+  - A global admin can deactivate any tenant admin
+  - A global admin can deactivate a tenant admin even if they're the only admin for that tenant
+  - Deactivating a global admin must not fall below minimum global admin limit
+  
+  **Permissions:**
+  - **GlobalAdmin**: Can deactivate administrators
+  - **TenantAdmin**: Returns 403 Forbidden
+  
+  **Limits:**
+  - Enforces minimum global admin limit to prevent lockout:
+    - `ezkey.security.admin.min-global-admins` (default: 1)
+  - Returns 400 Bad Request with AdminLimitException if minimum limits violated
+  - Does NOT enforce minimum tenant admin limits per tenant (global admins can deactivate the only tenant admin)
+  
+  **Effects of Deactivation:**
+  - Sets `active = false` on the administrator
+  - Revokes all active tokens for that administrator
+  - Data is preserved for audit purposes
+  - Operation is idempotent (already inactive → returns 204)
+  
+  **Path Parameters:**
+  - `id` (required): Administrator ID to deactivate
+  
+  **Query Parameters:**
+  - `reason` (optional): Audit justification for the deactivation. Must be between 10 and 500 characters when provided. Recommended for SOC 2 CC6.3 compliance. Enable the query param in Postman to include it.
+  
+  **Response (204 No Content):**
+  - No response body
+  - Administrator is deactivated
+  - All tokens for that administrator are revoked
+  
+  **Error Responses (400):**
+  - `AdminNotAllowedException` - Self-deactivation attempt (RFC 9457)
+  - `AdminLimitException` - Would violate minimum global admin limit (RFC 9457)
+  - `VALIDATION_ERROR` - `reason` provided but shorter than 10 characters
+  
+  **Status Codes:**
+  - 204: Administrator deactivated successfully
+  - 400: Cannot deactivate - business rule violation (RFC 9457) or invalid reason length
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - not a GlobalAdmin
+  - 404: Administrator not found
+  - 500: Internal server error
+}

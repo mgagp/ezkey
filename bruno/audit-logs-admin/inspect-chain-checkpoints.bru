@@ -1,0 +1,83 @@
+meta {
+  name: inspect chain checkpoints
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/chain-checkpoints?page=0&size=20
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Page number (zero-based, default: 0)')
+  page: 0
+  @description('Page size (default: 20)')
+  size: 20
+  @description('Sort field and direction. Default: windowStart,asc. Sortable: checkpointId, windowStart, windowEnd, entryCount, createdAt, checkpointType')
+  ~sort: windowStart,asc
+  @description('Filter: window_start >= value (inclusive, ISO-8601). Target oldest periods for SEAL.')
+  ~windowStartAfter: 
+  @description('Filter: window_start < value (exclusive, ISO-8601).')
+  ~windowStartBefore: 
+  @description('Filter: entry_count >= value (e.g. 1 for non-empty windows only)')
+  ~entryCountMin: 
+  @description('Filter: entry_count <= value (e.g. 0 for empty windows only)')
+  ~entryCountMax: 
+  @description('Filter by type: REGULAR, ARCHIVE_SEAL, GAP_DECLARATION')
+  ~checkpointType: REGULAR
+  @description('Filter: created_at >= value (inclusive, ISO-8601). Aligns with UI date presets.')
+  ~createdAfter: 
+  @description('Filter: created_at < value (exclusive, ISO-8601).')
+  ~createdBefore: 
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response is paginated", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('content');
+      expect(jsonData.content).to.be.an('array');
+      expect(jsonData).to.have.property('totalElements');
+      expect(jsonData).to.have.property('totalPages');
+  });
+  
+  test("Checkpoint entries have required fields when present", function () {
+      var jsonData = res.getBody();
+      if (jsonData.content.length > 0) {
+          var cp = jsonData.content[0];
+          expect(cp).to.have.property('checkpointId');
+          expect(cp).to.have.property('windowStart');
+          expect(cp).to.have.property('windowEnd');
+          expect(cp).to.have.property('entryCount');
+          expect(cp).to.have.property('checkpointType');
+          expect(cp).to.have.property('createdAt');
+      }
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Paginated search over audit chain checkpoints with optional filters. Use this primarily for lifecycle observability, anomaly investigation, and archive-confirmation context. It can also support exceptional maintenance workflows when needed.
+  
+  **Access:** Global Admin only.
+  
+  **Pagination:** page (default 0), size (default 20), sort (default: windowStart,asc). Sortable fields: checkpointId, windowStart, windowEnd, entryCount, createdAt, checkpointType.
+  
+  **Filters (all optional):**
+  - windowStartAfter / windowStartBefore: ISO-8601 (window_start range)
+  - entryCountMin / entryCountMax: e.g. entryCountMax=0 for empty windows only
+  - checkpointType: REGULAR, ARCHIVE_SEAL, GAP_DECLARATION
+  - createdAfter / createdBefore: ISO-8601 (created_at range, for UI date presets)
+  
+  **Response (200 OK):** Paginated content array of checkpoints with checkpointId, windowStart, windowEnd, entryCount, firstEntryId, lastEntryId, entriesDigest, prevChainHmac, chainHmac, createdAt, checkpointType, lifecycleState, notes.
+  
+  **Status Codes:** 200 OK, 401 Unauthorized, 403 Forbidden (not Global Admin).
+}

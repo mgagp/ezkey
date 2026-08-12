@@ -1,0 +1,51 @@
+meta {
+  name: 9 crypto validate enrollment verify result by integration
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/verify-ed25519
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "data": "{{enrollmentVerifyResultPayload}}",
+      "signature": "{{enrollmentVerifyPayloadSignedByIntegration}}",
+      "publicKey": "{{integrationPublicKey}}"
+  }
+}
+
+script:pre-request {
+  var payload = bru.getEnvVar("enrollmentVerifyResultPayload");
+  if (!payload) {
+      throw new Error("Run step 8 first — enrollmentVerifyResultPayload is missing.");
+  }
+  var sig = bru.getEnvVar("enrollmentVerifyPayloadSignedByIntegration");
+  if (!sig) {
+      throw new Error("Run step 7 verify (200) first — enrollmentVerifyPayloadSignedByIntegration is missing.");
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      test("Verify-result signature cryptographically valid", function () {
+          expect(jsonData.valid).to.be.true;
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Verifies the integration Ed25519 signature on the verify HTTP response (`enrollmentVerifyPayloadSignedByIntegration`). End-to-end assurance in Postman.
+}

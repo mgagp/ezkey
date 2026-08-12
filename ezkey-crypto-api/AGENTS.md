@@ -8,7 +8,7 @@ This file is UTF-8 without BOM.
 
 - **Testing**: Generate keys, sign data, validate signatures, and encrypt/decrypt values for end-to-end testing flows
 - **Debugging**: Decrypt encrypted database columns to investigate issues during development
-- **Integration**: Support tools like Postman that don't have built-in cryptographic capabilities
+- **Integration**: Support tools like Bruno that don't have built-in cryptographic capabilities
 
 **⚠️ CRITICAL**: This API is **NOT for production use**. It has no authentication, exposes sensitive operations, and should only be used in secure, isolated testing environments.
 
@@ -77,7 +77,7 @@ Base64URL without padding.
 Verifies an Ed25519 signature using a raw 32-byte public key encoded as Base64URL without
 padding.
 
-**Use Case**: Validate integration signatures from Auth API payloads in Postman or Dart tests.
+**Use Case**: Validate integration signatures from Auth API payloads in Bruno or Dart tests.
 
 ### 7. Build Canonical EZKey Payload
 **POST** `/api/v1/crypto/payload-helper`
@@ -87,7 +87,7 @@ Builds canonical payload strings using the exact EZKey NFC and separator rules: 
 `enrollment-verify-device`, `enrollment-verify-result`), delegating to the same builders as
 `ezkey-core` (`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`).
 
-**Use Case**: Eliminate duplicated payload-building logic in Postman and serve as an oracle for
+**Use Case**: Eliminate duplicated payload-building logic in Bruno and serve as an oracle for
 Dart interoperability tests.
 
 ### 8. Encrypt Plaintext Value

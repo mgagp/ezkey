@@ -1,0 +1,70 @@
+meta {
+  name: update (full)
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{base_url_admin_api}}/api/v1/tenants/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  @description('The tenant ID to update')
+  id: {{tenantId}}
+}
+
+body:json {
+  {
+      "tenantName": "ACME Corporation Renamed",
+      "tenantDescription": "Updated description",
+      "organizationName": "Acme Global Inc.",
+      "organizationDomain": "acme-global.com",
+      "countryCode": "US",
+      "timezone": "America/New_York",
+      "primaryContactName": "John Smith",
+      "primaryContactEmail": "john.smith@acme-global.com",
+      "primaryContactPhoneNumber": "+1 514 555 3000"
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+  
+      test("All fields updated correctly", function () {
+          expect(jsonData.tenantName).to.eql('ACME Corporation Renamed');
+          expect(jsonData.tenantDescription).to.eql('Updated description');
+          expect(jsonData.organizationName).to.eql('Acme Global Inc.');
+          expect(jsonData.organizationDomain).to.eql('acme-global.com');
+          expect(jsonData.countryCode).to.eql('US');
+          expect(jsonData.timezone).to.eql('America/New_York');
+          expect(jsonData.primaryContactName).to.eql('John Smith');
+          expect(jsonData.primaryContactEmail).to.eql('john.smith@acme-global.com');
+          expect(jsonData.primaryContactPhoneNumber).to.eql('+15145553000');
+      });
+  
+      test("updatedAt is set", function () {
+          expect(jsonData.updatedAt).to.not.be.null;
+      });
+  
+      test("Active flag unchanged", function () {
+          expect(jsonData.active).to.be.true;
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Updates ALL fields of a tenant at once. This demonstrates a full update where every field is provided. Uses the same PUT endpoint with partial-update semantics, but all fields are explicitly set.
+  
+  **Note:** Renaming a tenant (changing `tenantName`) triggers a uniqueness check. If the new name is already taken by another tenant, the request will fail with 400.
+}

@@ -9,7 +9,7 @@ Phase 1 seeds two representative mappings and declares the contract artifact pol
 ## Contract Artifacts Policy
 
 - **OpenAPI specs under [`../../../specs/admin-api/`](../../../specs/admin-api/) are generated.** They are produced by `scripts/update-specs.sh` after a clean-start stack. Agents never hand-edit them.
-- **Postman collections under [`../../../postman/collections/`](../../../postman/collections/)** are updated in the same change set as any endpoint or DTO change, except for internal-only adjustments.
+- **Bruno collections under [`../../../bruno/`](../../../bruno/)** are updated in the same change set as any endpoint or DTO change, except for internal-only adjustments.
 - **Problem types** follow a stable URI scheme: `https://ezkey.io/problems/<family>/<name>`. Clients branch on `type` and HTTP status.
 
 ## Mapping Index

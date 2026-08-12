@@ -1,0 +1,52 @@
+meta {
+  name: key pair
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url_crypto_api}}/api/v1/crypto/keypair
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("privateKey", jsonData.privateKey);
+      bru.setEnvVar("publicKey", jsonData.publicKey);
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('privateKey');
+          expect(jsonData).to.have.property('publicKey');
+          expect(jsonData.privateKey).to.be.a('string');
+          expect(jsonData.publicKey).to.be.a('string');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Generates a new EC P-256 (secp256r1) key pair for use in device simulation. The keys are suitable for use in Ezkey authentication flows.
+  
+  **Key Formats:**
+  - **Private Key**: PKCS#8 format (ASN.1 DER encoded, Base64)
+  - **Public Key**: X.509 SubjectPublicKeyInfo format (ASN.1 DER encoded, Base64)
+  
+  **Response (200 OK):**
+  - `privateKey`: Base64-encoded EC P-256 private key (PKCS#8 format)
+  - `publicKey`: Base64-encoded EC P-256 public key (X.509 SubjectPublicKeyInfo format)
+  
+  **Status Codes:**
+  - 200: Key pair generated successfully
+  - 500: Key generation failed
+  
+  **Usage:** The private key is used for signing data, and the public key is used for signature validation. Store keys securely in test environments.
+}

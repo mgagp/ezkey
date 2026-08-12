@@ -1,0 +1,35 @@
+meta {
+  name: 4 crypto generate device keypair
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url_crypto_api}}/api/v1/crypto/keypair
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("device_privateKey", jsonData.privateKey);
+      bru.setEnvVar("device_publicKey", jsonData.publicKey);
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('privateKey');
+          expect(jsonData).to.have.property('publicKey');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Generates an EC P-256 key pair for the simulated device (production: on-device keystore).
+}

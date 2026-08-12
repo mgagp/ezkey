@@ -1,0 +1,53 @@
+meta {
+  name: 5 crypto build enrollment verify device payload
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/payload-helper
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "type": "enrollment-verify-device",
+      "proofToken": "{{enrollmentProofToken}}",
+      "enrollmentId": {{enrollmentId}},
+      "challengeResponse": {{enrollmentChallenge}},
+      "devicePublicKey": "{{device_publicKey}}"
+  }
+}
+
+script:pre-request {
+  var ch = bru.getEnvVar("enrollmentChallenge");
+  if (ch === undefined || ch === null || ch === "") {
+      throw new Error("Set enrollmentChallenge in the environment (from Admin enrollment creation).");
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("enrollmentVerifyDevicePayload", jsonData.payload);
+      test("Payload helper returned enrollment-verify-device payload", function () {
+          expect(jsonData.type).to.equal('enrollment-verify-device');
+          expect(jsonData.payload).to.be.a('string');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Builds the canonical string that the device must sign for verify: `enrollmentProofToken|enrollmentId|challengeResponse|devicePublicKey` (see `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`).
+  
+  **Prerequisite:** `enrollmentChallenge` in the environment.
+}

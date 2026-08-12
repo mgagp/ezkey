@@ -1,0 +1,54 @@
+meta {
+  name: 2 crypto build enrollment bind payload
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/payload-helper
+  body: json
+  auth: inherit
+}
+
+script:pre-request {
+  var tid = bru.getEnvVar("bind_tenantId");
+  var body = {
+      type: "enrollment-bind",
+      proofToken: bru.getEnvVar("enrollmentProofToken"),
+      enrollmentId: Number(bru.getEnvVar("enrollmentId")),
+      integrationPublicKey: bru.getEnvVar("integrationPublicKey"),
+      integrationKeyAlgorithm: bru.getEnvVar("integrationKeyAlgorithm"),
+      integrationName: bru.getEnvVar("bind_integrationName") || null,
+      integrationDescription: bru.getEnvVar("bind_integrationDescription") || null,
+      enrollmentName: bru.getEnvVar("bind_enrollmentName") || null,
+      tenantId: tid === "" || tid === undefined ? null : Number(tid),
+      tenantName: bru.getEnvVar("bind_tenantName") || null,
+      tenantDescription: bru.getEnvVar("bind_tenantDescription") || null
+  };
+  req.setBody(body);
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("enrollmentBindPayload", jsonData.payload);
+      test("Payload helper returned enrollment-bind payload", function () {
+          expect(jsonData.type).to.equal('enrollment-bind');
+          expect(jsonData.payload).to.be.a('string');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Builds the canonical bind payload via Crypto API (same rules as `EnrollmentSignaturePayload` in `ezkey-core`). Run immediately after **1 bind** (200).
+  
+  **Next:** **3** — verify `enrollmentBindPayloadSignedByIntegration` with `verify-ed25519`.
+}

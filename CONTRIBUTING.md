@@ -80,7 +80,7 @@ ezkey-tests/clean-start.sh
 mvn test -pl ezkey-tests -P all-tests
 ```
 
-Postman collections are available under `postman/collections/` for exploratory or manual validation.
+Bruno collections are available under `bruno/` for exploratory or manual validation (see `bruno/README.md` and `./scripts/bruno-health.sh`).
 
 For the testing strategy and what layer covers what, use judgment proportional to risk (unit tests
 for logic, functional tests for API contracts, Playwright for critical Admin UI workflows).

@@ -1,0 +1,74 @@
+meta {
+  name: revoke
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/enrollments/:id/revoke?reason=Security incident - enrollment revoked per security policy
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Mandatory justification for revocation (min 10, max 500 characters)')
+  reason: Security incident - enrollment revoked per security policy
+}
+
+params:path {
+  @description('The enrollment ID to permanently revoke')
+  id: {{enrollmentId}}
+}
+
+script:post-response {
+  test("Status code is 204 (revoked) or 403 (forbidden/self-revocation)", function () {
+      expect([204, 403, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 204) {
+      test("Revocation successful - no content", function () {
+          expect(res.getBody()).to.be.empty;
+      });
+  }
+  
+  if (res.getStatus() === 403) {
+      test("RFC 9457 problem detail returned", function () {
+          var jsonData = res.getBody();
+          expect(jsonData).to.have.property('type');
+          expect(jsonData).to.have.property('title');
+          expect(jsonData).to.have.property('status');
+          expect(jsonData.status).to.equal(403);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Permanently revokes an enrollment.
+  
+  **Revocation is IRREVERSIBLE**: the enrollment transitions to status `REVOKED` and `active=false`. A new enrollment must be created if the device needs re-enrolment.
+  
+  **Security Effects:**
+  - Enrollment status set to `REVOKED`
+  - `active` flag set to `false`
+  - `revokedAt` and `revokedByAdminId` audit fields populated
+  - If the enrollment belongs to an administrator, **all their active bearer tokens are immediately invalidated**
+  
+  **Guards:**
+  - Self-revocation is **not allowed** (returns 403 with `self-revocation-not-allowed` problem detail)
+  - Scoping: Tenant Admins can revoke enrollments within their tenant; Global Admins can revoke any enrollment
+  
+  **Required Parameters:**
+  - `id` (path): Enrollment ID to revoke
+  - `reason` (query): Mandatory justification (min 10 characters) — SOC 2 CC6.3 audit trail
+  
+  **Status Codes:**
+  - 204: Enrollment permanently revoked
+  - 400: Missing or invalid `reason` parameter
+  - 403: Access denied, self-revocation attempted, or system integration guard
+  - 404: Enrollment not found
+  - 500: Internal server error
+}

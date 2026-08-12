@@ -1,0 +1,58 @@
+meta {
+  name: create with challenge
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url_integration_api}}/api/v1/auth-attempts
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{integrationKey}}
+  password: {{secretKey}}
+}
+
+body:json {
+  {
+      "enrollmentId": {{enrollmentId}},
+      "challengeRequested": true
+  }
+}
+
+script:post-response {
+  test("Status code is 201", function () {
+      expect(res.getStatus()).to.equal(201);
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("authAttemptId", jsonData.authAttemptId);
+  
+      test("Response contains authAttemptChallenge when requested", function () {
+          expect(jsonData).to.have.property('authAttemptChallenge');
+          expect(jsonData.authAttemptChallenge).to.not.be.null;
+      });
+  
+      if (jsonData.authAttemptChallenge !== null) {
+          bru.setEnvVar("challengeCode", jsonData.authAttemptChallenge);
+          console.log('Challenge code:', jsonData.authAttemptChallenge);
+      }
+  
+      console.log('authAttemptId saved:', jsonData.authAttemptId);
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates an auth attempt with `challengeRequested: true`. The response includes a numeric challenge code that you must display to the user. The user must enter this code on their mobile device before approving the authentication request.
+  
+  **Use case:** High-security flows where user confirmation of the specific transaction is required, not just device presence.
+  
+  The `authAttemptChallenge` is saved to the `challengeCode` environment variable for reference.
+}

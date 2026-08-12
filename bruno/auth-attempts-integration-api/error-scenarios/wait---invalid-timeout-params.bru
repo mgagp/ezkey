@@ -1,0 +1,41 @@
+meta {
+  name: wait - invalid timeout params
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url_integration_api}}/api/v1/auth-attempts/:id/wait?timeout=5&polling=10
+  body: none
+  auth: basic
+}
+
+params:query {
+  @description('timeout=5 with polling=10 violates the constraint polling < timeout')
+  timeout: 5
+  @description('polling > timeout — invalid')
+  polling: 10
+}
+
+params:path {
+  id: {{authAttemptId}}
+}
+
+auth:basic {
+  username: {{integrationKey}}
+  password: {{secretKey}}
+}
+
+script:post-response {
+  test("Status code is 400", function () {
+      expect(res.getStatus()).to.equal(400);
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Sends `polling=10` with `timeout=5` — violates the constraint that polling must be strictly less than timeout. Expects 400 Bad Request.
+}

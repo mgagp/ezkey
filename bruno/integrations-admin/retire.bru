@@ -1,0 +1,61 @@
+meta {
+  name: retire
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/integrations/:id/retire?reason=Retiring obsolete integration after credential incident
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Optional audit justification (min 10, max 500 characters when provided)')
+  reason: Retiring obsolete integration after credential incident
+}
+
+params:path {
+  @description('The integration ID to retire')
+  id: {{integrationId}}
+}
+
+script:post-response {
+  test("Status code is 204, 400, 403 or 404", function () {
+      expect([204, 400, 403, 404]).to.include(res.getStatus());
+  });
+  
+  if ([400, 403, 404].includes(res.getStatus())) {
+      test("ProblemDetail returned", function () {
+          var jsonData = res.getBody();
+          expect(jsonData).to.have.property('type');
+          expect(jsonData).to.have.property('status');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Retires an integration while preserving historical data.
+  
+  **Normal posture:** Retirement is the standard end-of-life path for integrations that should disappear from day-to-day operations without erasing their audit-relevant history.
+  
+  **Effects:**
+  - Bulk-revokes all revocable enrollments for the integration before retirement
+  - Sets integration `lifecycleStatus` to `RETIRED`
+  - Keeps the integration available for historical visibility while removing it from default operational listings
+  
+  **Guards:**
+  - System integrations cannot be retired
+  - Tenant Admins can retire integrations only within their tenant
+  
+  **Status Codes:**
+  - 204: Integration retired successfully
+  - 400: Invalid `reason`
+  - 403: Access denied or system integration guard
+  - 404: Integration not found
+  - 500: Internal server error
+}

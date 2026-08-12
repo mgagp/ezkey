@@ -1,0 +1,44 @@
+meta {
+  name: integration keypair
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url_crypto_api}}/api/v1/crypto/integration-keypair
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("integration_privateKey", jsonData.privateKey);
+      bru.setEnvVar("integration_publicKey", jsonData.publicKey);
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('privateKey');
+          expect(jsonData).to.have.property('publicKey');
+          expect(jsonData.privateKey).to.be.a('string');
+          expect(jsonData.publicKey).to.be.a('string');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Generates an Ed25519 key pair for **integration** signing (same shape as enrollment integration keys).
+  
+  **Response (200 OK):**
+  - `privateKey`: PKCS#8 private key (standard Base64)
+  - `publicKey`: Raw 32-byte public key as **Base64URL without padding**
+  
+  **Usage:** Sign canonical Pending/Respond payloads with the private key (via server or tooling) and verify with the public key; see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`.
+}

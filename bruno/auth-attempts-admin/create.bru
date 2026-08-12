@@ -1,0 +1,97 @@
+meta {
+  name: create
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/auth-attempts
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "enrollmentId": {{enrollmentId}},
+      "challengeRequested": false
+  }
+}
+
+script:post-response {
+  test("Status code is 201", function () {
+      expect(res.getStatus()).to.equal(201);
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("authAttemptId", jsonData.authAttemptId);
+      
+      test("Response contains authAttemptId", function () {
+          expect(jsonData).to.have.property('authAttemptId');
+          expect(jsonData.authAttemptId).to.be.a('number');
+      });
+      
+      test("Response may contain authAttemptChallenge", function () {
+          if (jsonData.hasOwnProperty('authAttemptChallenge')) {
+              if (jsonData.authAttemptChallenge !== null) {
+                  expect(jsonData.authAttemptChallenge).to.be.a('number');
+                  expect(jsonData.authAttemptChallenge).to.be.at.least(0);
+                  expect(jsonData.authAttemptChallenge).to.be.at.most(99);
+              }
+          }
+      });
+      
+      test("Response contains timeoutSeconds", function () {
+          expect(jsonData).to.have.property('timeoutSeconds');
+          expect(jsonData.timeoutSeconds).to.be.a('number');
+          expect(jsonData.timeoutSeconds).to.equal(120);
+      });
+      
+      test("Response contains expiresAt", function () {
+          expect(jsonData).to.have.property('expiresAt');
+          expect(jsonData.expiresAt).to.be.a('string');
+          expect(jsonData.expiresAt).to.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates a new authentication attempt for MFA validation. This endpoint is typically used by integrating applications to initiate MFA authentication requests.
+  
+  **Multi-Tenancy:**
+  - **GlobalAdmin**: Can create auth attempts for any enrollment (any tenant)
+  - **TenantAdmin**: Can only create auth attempts for enrollments within their tenant
+  - Access is validated via `AccessControlService.canAccessEnrollment()`
+  - Returns 403 Forbidden if TenantAdmin tries to create auth attempt for enrollment from another tenant
+  
+  **Request Body:**
+  Provide either `enrollmentId` OR `userIdentifier` (plus `integrationId` when using admin token):
+  - `enrollmentId` (optional): Direct enrollment ID
+  - `userIdentifier` (optional): Username/user ID for lookup within integration scope. When used with admin token, `integrationId` is required.
+  - `integrationId` (optional): Required when `userIdentifier` is used with admin token. Ignored when using API key (derived from credentials).
+  - `challengeRequested` (required): Whether to require challenge code verification (2-digit code)
+  
+  **Response (201 Created):**
+  - `authAttemptId`: Unique identifier of the created authentication attempt
+  - `authAttemptChallenge`: Optional challenge code (2 digits, 00-99) if `challengeRequested` was true. Null if no challenge was requested.
+  - `timeoutSeconds`: Maximum time in seconds the user has to respond to the authentication request (currently 120 seconds)
+  - `expiresAt`: Absolute expiration timestamp when the authentication attempt will expire (UTC format, e.g., `2025-01-20T15:34:00.123456Z`)
+  
+  **Challenge Flow:**
+  When `challengeRequested: true`, the response includes `authAttemptChallenge`. The user must:
+  1. Display the challenge code to the user
+  2. User enters the code on their device
+  3. User approves the authentication request
+  4. Call `/wait` endpoint to check for completion
+  
+  **Status Codes:**
+  - 201: Auth attempt created successfully
+  - 400: Invalid data (e.g., enrollment not found)
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - TenantAdmin trying to create auth attempt for enrollment from another tenant
+  - 500: Internal server error
+}

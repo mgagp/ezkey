@@ -1,0 +1,42 @@
+meta {
+  name: 6 crypto sign enrollment verify device payload
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/sign
+  body: json
+  auth: inherit
+}
+
+script:pre-request {
+  var p = bru.getEnvVar("enrollmentVerifyDevicePayload");
+  if (!p) {
+      throw new Error("Run step 5 first — enrollmentVerifyDevicePayload is missing.");
+  }
+  var pk = bru.getEnvVar("device_privateKey");
+  req.setBody({ data: p, privateKey: pk });
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("enrollmentProofTokenSigned", jsonData.signature);
+      test("Response contains signature", function () {
+          expect(jsonData).to.have.property('signature');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Signs the **canonical verify-device payload** from step 5 with the device private key. The result is `enrollmentProofTokenSigned` for **7 verify** — do **not** sign the raw proof token alone.
+}

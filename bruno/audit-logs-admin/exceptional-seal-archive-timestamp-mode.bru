@@ -1,0 +1,91 @@
+meta {
+  name: exceptional seal archive — timestamp mode
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/lifecycle/seal-archive
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "periodStart": "{{archive_period_start}}",
+    "periodEnd": "{{archive_period_end}}",
+    "justification": "{{archive_justification}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has seal result fields", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('periodStart');
+      expect(jsonData).to.have.property('periodEnd');
+      expect(jsonData).to.have.property('checkpointsSealed');
+      expect(jsonData).to.have.property('sealChainHmac');
+      expect(jsonData).to.have.property('auditLogId');
+      expect(jsonData).to.have.property('justification');
+  });
+  
+  test("checkpointsSealed is a non-negative number", function () {
+      var jsonData = res.getBody();
+      expect(jsonData.checkpointsSealed).to.be.a('number').and.to.be.at.least(0);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      if (jsonData.sealChainHmac) {
+          bru.setCollectionVar('last_seal_chain_hmac', jsonData.sealChainHmac);
+          console.log('Seal HMAC (include in Git archive manifest): ' + jsonData.sealChainHmac);
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Seals an audit chain period prior to archiving and dropping the DB partition — **timestamp mode**.
+  
+  This request is kept as an exceptional maintenance path. It should not be read as the normal product posture for lifecycle progression, which is policy-driven and system-executed.
+  
+  Provide the period as ISO-8601 timestamps: `periodStart` (inclusive) and `periodEnd` (exclusive). Typically the first instant of the oldest archived month and the first instant of the following month.
+  
+  **Use this mode when:** you know the exact partition boundaries as timestamps (e.g., `2025-01-01T00:00:00Z` → `2026-01-01T00:00:00Z`).
+  
+  **Access:** Global Admin only.
+  
+  **Pre-condition:** All checkpoints in the period must pass integrity verification. Rejected (409) if any violation is detected.
+  
+  **Post-condition:** DBA may safely `DROP` the partition. Include `sealChainHmac` in the Git archive manifest.
+  
+  **Collection variables:**
+  - `archive_period_start` — start of the period (inclusive)
+  - `archive_period_end` — end of the period (exclusive)
+  - `archive_justification` — reason + archival destination
+  
+  **Response (200 OK):**
+  ```json
+  {
+    "periodStart": "2025-01-01T00:00:00Z",
+    "periodEnd": "2026-01-01T00:00:00Z",
+    "checkpointsSealed": 105120,
+    "sealChainHmac": "abc123...",
+    "auditLogId": 4521,
+    "justification": "..."
+  }
+  ```
+  
+  **Status Codes:** 200 OK · 400 Invalid request · 409 Integrity violation or HMAC not active · 401 Unauthorized · 403 Forbidden
+}

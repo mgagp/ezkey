@@ -1,0 +1,46 @@
+meta {
+  name: create (minimal)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/enrollments
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "integrationId": {{integrationId}},
+      "name": "Minimal Enrollment",
+      "authAttemptChallengeRequired": false
+  }
+}
+
+script:post-response {
+  test("Status code is 201", function () {
+      expect(res.getStatus()).to.equal(201);
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("enrollmentId", jsonData.enrollmentId);
+      bru.setEnvVar("enrollmentChallenge", jsonData.enrollmentChallenge);
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('enrollmentId');
+          expect(jsonData).to.have.property('enrollmentChallenge');
+          expect(jsonData.enrollmentId).to.be.a('number');
+          expect(jsonData.enrollmentChallenge).to.be.a('number');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates an enrollment with only the required fields (backward compatible). Omits optional contactEmail, contactPhoneNumber, userIdentifier, and expiresAt. When `expiresAt` is omitted, the server applies `ezkey.enrollment.pending-expiration-days` (default 7 days).
+}

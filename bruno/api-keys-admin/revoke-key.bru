@@ -1,0 +1,61 @@
+meta {
+  name: revoke key
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{base_url_admin_api}}/api/v1/api-keys/:keyId
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Audit justification for the revocation (min 10 characters, recommended for SOC 2 CC6.3 compliance)')
+  ~reason: {{reason}}
+}
+
+params:path {
+  @description('The API key ID to revoke')
+  keyId: {{apiKeyId}}
+}
+
+script:post-response {
+  test("Status code is 204, 400 or 404", function () {
+      expect([204, 400, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 204) {
+      test("Revocation successful", function () {
+          expect(res.getStatus()).to.equal(204);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Immediately revokes an API key, making it unusable for authentication. The key is preserved for audit purposes with revocation metadata.
+  
+  **Path Parameters:**
+  - `keyId` (required): API key ID to revoke
+  
+  **Query Parameters:**
+  - `reason` (optional): Audit justification (min 10, max 500 chars). Enable in Postman to include. Recommended for SOC 2 CC6.3 compliance.
+  
+  **Use Cases:**
+  - Compromised key security incident
+  - Key rotation cleanup (after new key is deployed)
+  - Decommissioning an application
+  
+  **Response (204 No Content):**
+  No response body. The key is immediately revoked and cannot be used for authentication.
+  
+  **Status Codes:**
+  - 204: API key revoked successfully
+  - 400: Invalid `reason` when provided (must be 10-500 chars)
+  - 401: Unauthorized - admin token required
+  - 404: API key not found
+}

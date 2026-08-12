@@ -1,0 +1,58 @@
+meta {
+  name: get public instance info
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/public/instance-info
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+  
+      test("Response contains instanceName", function () {
+          expect(jsonData).to.have.property('instanceName');
+          expect(jsonData.instanceName).to.be.a('string');
+      });
+  
+      test("Response contains instanceDescription", function () {
+          expect(jsonData).to.have.property('instanceDescription');
+      });
+  
+      test("Response contains authApiPublicBaseUrl (nullable)", function () {
+          expect(jsonData).to.have.property('authApiPublicBaseUrl');
+      });
+  
+      test("Response contains aboutUrl (nullable)", function () {
+          expect(jsonData).to.have.property('aboutUrl');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Returns read-only instance metadata for branding and operator visibility.
+  
+  **No authentication required.**
+  
+  **Response (200 OK):**
+  - `instanceName` (string): from `ezkey.organization.name`
+  - `instanceDescription` (string): from `ezkey.organization.description`
+  - `aboutUrl` (string | null): from `ezkey.organization.about-url` when set
+  - `authApiPublicBaseUrl` (string | null): from `ezkey.qr.auth-base-url`; same value as `authUrl` in enrollment QR JSON when configured
+  
+  **Status codes:**
+  - 200: OK
+  - 500: Internal server error
+}

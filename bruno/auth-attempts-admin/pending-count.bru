@@ -1,0 +1,60 @@
+meta {
+  name: pending-count
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/auth-attempts/pending-count
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      
+      test("Response contains count", function () {
+          expect(jsonData).to.have.property('count');
+          expect(jsonData.count).to.be.a('number');
+          expect(jsonData.count).to.be.at.least(0);
+      });
+      
+      console.log('Pending auth attempts count:', jsonData.count);
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Returns the number of auth attempts with status PENDING for the current admin's scope. Designed for the dashboard live widget (e.g. 10s refresh).
+  
+  **No request body.** GET only.
+  
+  **Multi-Tenancy:**
+  - **Tenant Admin**: Count only includes pending attempts for enrollments within their tenant.
+  - **Global Admin**: Count is instance-wide (all tenants).
+  
+  **Response (200 OK):**
+  ```json
+  {
+    "count": 3
+  }
+  ```
+  - `count`: Number of auth attempts currently in PENDING status (non-negative integer).
+  
+  **Use case:** The Admin UI dashboard polls this endpoint at a short interval (e.g. 10s) to show "X pending" without calling the full list endpoint. Semantically correct and minimal payload compared to `GET /api/v1/auth-attempts?size=1&status=PENDING` (which returns a full page envelope).
+  
+  **Authentication:** Supports both Bearer token (admin) and API key (Integration API).
+  
+  **Status Codes:**
+  - 200: Pending count returned successfully
+  - 401: Not authenticated
+  - 500: Internal server error
+}

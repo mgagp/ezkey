@@ -208,9 +208,9 @@ void search_ShouldSupportDynamicSorting() {
 }
 ```
 
-### Postman Collections
+### Bruno Collections
 
-Update Postman collections to include:
+Update Bruno requests under `bruno/` to include:
 - `sort` parameter in query parameters (disabled by default)
 - Examples in description showing sorting usage
 - Test scripts that validate pagination structure
@@ -229,7 +229,7 @@ When migrating existing endpoints:
 8. ✅ Update default sort logic in `Specification` (only if unsorted)
 9. ✅ Update unit tests to use `Pageable`
 10. ✅ Add tests for dynamic sorting
-11. ✅ Update Postman collections with `sort` parameter
+11. ✅ Update Bruno collections with `sort` parameter
 12. ✅ Update Swagger documentation
 
 ## Examples in Codebase
@@ -247,7 +247,7 @@ When migrating existing endpoints:
 3. **Repositories**: Extend `JpaSpecificationExecutor` for dynamic queries
 4. **Documentation**: Document sortable fields and provide examples
 5. **Testing**: Test pagination, sorting, and default values
-6. **Postman**: Include `sort` parameter in collections
+6. **Bruno**: Include `sort` parameter in collections
 
 ## Future Considerations
 

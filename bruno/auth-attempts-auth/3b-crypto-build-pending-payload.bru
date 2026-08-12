@@ -1,0 +1,44 @@
+meta {
+  name: 3b crypto build pending payload
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/payload-helper
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "type": "pending",
+      "proofToken": "{{authAttemptProofToken}}",
+      "challengeRequired": {{authAttemptChallengeRequired}},
+      "contextTitle": "{{contextTitle}}",
+      "contextMessage": "{{contextMessage}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("pendingPayload", jsonData.payload);
+      test("Payload helper returned pending payload", function () {
+          expect(jsonData.type).to.equal('pending');
+          expect(jsonData.payload).to.be.a('string');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Builds the canonical Pending payload through Crypto API instead of duplicating the NFC and separator rules in JavaScript. Run immediately after step 3.
+}

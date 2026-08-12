@@ -1,0 +1,88 @@
+meta {
+  name: decrypt
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/decrypt
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "encryptedValue": "{{encryptedValue}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200 or 400", function () {
+      expect([200, 400]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      
+      if (jsonData.decryptionSuccessful && jsonData.plaintext) {
+          bru.setEnvVar("decryptedValue", jsonData.plaintext);
+      }
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('plaintext');
+          expect(jsonData).to.have.property('isEncrypted');
+          expect(jsonData).to.have.property('decryptionSuccessful');
+          expect(jsonData).to.have.property('keyId');
+          expect(jsonData).to.have.property('encryptedFormat');
+          expect(jsonData).to.have.property('errorMessage');
+          expect(jsonData).to.have.property('encryptionAvailable');
+          expect(jsonData.isEncrypted).to.be.a('boolean');
+          expect(jsonData.decryptionSuccessful).to.be.a('boolean');
+          expect(jsonData.encryptedFormat).to.be.a('string');
+          expect(jsonData.encryptionAvailable).to.be.a('boolean');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Decrypts an encrypted database column value for debugging purposes. This endpoint enables investigation of encrypted fields such as `enrollment_proof_token`, `auth_attempt_proof_token`, `device_proof_token`, and `integration_private_key`.
+  
+  **Request Body:**
+  - `encryptedValue` (required): Encrypted value to decrypt (format: `ENC:keyID:Base64(ciphertext)`) or plaintext value
+  
+  **Response (200 OK):**
+  - `plaintext`: Decrypted plaintext value, or null if decryption failed or value was not encrypted
+  - `isEncrypted`: Boolean indicating if the input value had the ENC: prefix (was encrypted)
+  - `decryptionSuccessful`: Boolean indicating if the decryption operation succeeded
+  - `keyId`: Extracted key ID from encrypted value (null if not encrypted)
+  - `encryptedFormat`: Detected format of the input value ("ENC:keyID:Base64" or "PLAINTEXT")
+  - `errorMessage`: Error message if decryption failed (null if successful)
+  - `encryptionAvailable`: Boolean indicating if EncryptionService is initialized and available
+  
+  **Status Codes:**
+  - 200: Decryption operation completed (check `decryptionSuccessful` field for actual result)
+  - 400: Invalid request data (empty encrypted value)
+  - 500: Internal server error
+  
+  **Usage Context:**
+  - **Debugging**: Copy encrypted value from database column (e.g., `enrollment_proof_token`)
+  - **Investigation**: Compare decrypted value with trace logs to verify token matching
+  - **Troubleshooting**: Identify encryption format issues, key availability problems, or data corruption
+  
+  **Example Workflow:**
+  1. Query database to get encrypted value: `SELECT enrollment_proof_token FROM ezkey_enrollment WHERE enrollment_id = 123`
+  2. Copy the encrypted value (format: `ENC:1234567890:YWJjZGVmZ2hpams=`)
+  3. Set `encryptedValue` environment variable in Postman
+  4. Call this endpoint to decrypt
+  5. Compare `plaintext` result with trace logs or expected values
+  
+  **Security Notes:**
+  - **Debugging Tool Only**: This endpoint is intended for debugging and investigation purposes
+  - **Sensitive Data**: Returns plaintext values - use with caution in test environments only
+  - **Never Expose in Production**: This API should never be exposed in production environments
+  - **Access Control**: No authentication required (consistent with other crypto-api endpoints)
+}

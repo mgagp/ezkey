@@ -1,0 +1,51 @@
+meta {
+  name: 2 crypto device prooftoken signature
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/sign
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "data": "{{device_proofToken}}",
+      "privateKey": "{{device_privateKey}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("device_prooftoken_signature", jsonData.signature);
+      
+      test("Response contains signature", function () {
+          expect(jsonData).to.have.property('signature');
+          expect(jsonData.signature).to.be.a('string');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Signs the device proof token with the device's private key. This signature proves the device's authenticity when checking for pending authentication attempts.
+  
+  **Request Body:**
+  - `data`: The device proof token to sign
+  - `privateKey`: Device's private key (EC P-256, PKCS#8 format, Base64 encoded)
+  
+  **Response (200 OK):**
+  - `signature`: Cryptographic signature (ECDSA-SHA256, ASN.1 DER encoded, Base64)
+  
+  **Usage:** The signature is included in the pending request as `deviceProofTokenSigned`.
+}

@@ -1,0 +1,86 @@
+meta {
+  name: recovery declare gap — timestamp mode
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/lifecycle/declare-gap
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "gapStart": "{{gap_start}}",
+    "gapEnd": "{{gap_end}}",
+    "justification": "{{gap_justification}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has gap declaration fields", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('gapStart');
+      expect(jsonData).to.have.property('gapEnd');
+      expect(jsonData).to.have.property('gapCheckpointId');
+      expect(jsonData).to.have.property('gapChainHmac');
+      expect(jsonData).to.have.property('auditLogId');
+      expect(jsonData).to.have.property('justification');
+  });
+  
+  test("gapCheckpointId is a positive number", function () {
+      var jsonData = res.getBody();
+      expect(jsonData.gapCheckpointId).to.be.a('number').and.to.be.above(0);
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      console.log('Gap declared: checkpointId=' + jsonData.gapCheckpointId + ', chainHmac=' + jsonData.gapChainHmac.substring(0, 12) + '...');
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Formally declares a downtime gap in the audit chain — **timestamp mode**.
+  
+  This request is kept as an exceptional recovery path. It should not be read as a normal operator workflow.
+  
+  Provide `gapStart` (the moment the system went offline, inclusive) and `gapEnd` (the moment the system came back online, exclusive) as ISO-8601 timestamps.
+  
+  **Use this mode when:** you know the exact outage boundaries as timestamps.
+  
+  **Access:** Global Admin only.
+  
+  **Operational constraint:** Must be called before the scheduler creates regular checkpoints for the gap period (within `ezkey.audit.chain.lookback-minutes` of system restart — default 60 min). Call within the first 5 minutes after restart to be safe.
+  
+  **Collection variables:**
+  - `gap_start` — moment the system went offline (inclusive)
+  - `gap_end` — moment the system came back online (exclusive)
+  - `gap_justification` — reason for the downtime
+  
+  **Response (200 OK):**
+  ```json
+  {
+    "gapStart": "2026-02-17T10:00:00Z",
+    "gapEnd": "2026-02-19T08:00:00Z",
+    "gapCheckpointId": 1024,
+    "gapChainHmac": "xyz789...",
+    "auditLogId": 4522,
+    "justification": "..."
+  }
+  ```
+  
+  **Status Codes:** 200 OK · 400 Invalid request or entries found in gap · 409 Conflicting checkpoints exist or HMAC not active · 401 Unauthorized · 403 Forbidden
+}

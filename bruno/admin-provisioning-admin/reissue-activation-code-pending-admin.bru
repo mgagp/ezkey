@@ -1,0 +1,70 @@
+meta {
+  name: reissue activation code (pending admin)
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admins/:id/activation-code/regenerate
+  body: none
+  auth: inherit
+}
+
+params:path {
+  @description('Administrator ID (must be pending activation with no enrollment)')
+  id: {{adminId}}
+}
+
+script:post-response {
+  test("Status code is 200, 400, 403, or 404", function () {
+      expect([200, 400, 403, 404]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      test("Response contains activation reissue fields", function () {
+          expect(jsonData).to.have.property('adminId');
+          expect(jsonData).to.have.property('username');
+          expect(jsonData).to.have.property('activationCode');
+          expect(jsonData).to.have.property('activationCodeExpiresAt');
+          expect(jsonData).to.have.property('invalidatedPreviousTokens');
+          expect(jsonData).to.have.property('deactivatedActiveTokenCount');
+          expect(jsonData).to.have.property('message');
+      });
+      test("Activation code is non-empty string", function () {
+          expect(jsonData.activationCode).to.be.a('string');
+          expect(jsonData.activationCode.length).to.be.greaterThan(0);
+      });
+  } else if (res.getStatus() === 400) {
+      var jsonData = res.getBody();
+      test("400 response is RFC 9457 Problem Detail", function () {
+          expect(jsonData).to.have.property('type');
+          expect(jsonData).to.have.property('title');
+          expect(jsonData).to.have.property('status');
+          expect(jsonData).to.have.property('detail');
+          expect(jsonData.status).to.equal(400);
+      });
+  } else if (res.getStatus() === 403) {
+      test("Forbidden - GlobalAdmin only", function () {
+          expect(res.getStatus()).to.equal(403);
+      });
+  } else if (res.getStatus() === 404) {
+      test("Administrator not found", function () {
+          expect(res.getStatus()).to.equal(404);
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Re-issues a new one-time activation code for a pending administrator (`PENDING_ACTIVATION`) who has no first enrollment yet. Deactivates unused activation issuance rows for that administrator first.
+  
+  **Permissions:** GlobalAdmin only.
+  
+  **Response (200 OK):** `AdminActivationCodeReissueResponseDto` — plaintext `activationCode` is shown only in this response.
+  
+  **Status Codes:** 200 / 400 (ineligibility) / 403 / 404.
+}

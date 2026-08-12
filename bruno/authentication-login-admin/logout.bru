@@ -1,0 +1,50 @@
+meta {
+  name: logout
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admin/auth/logout
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:post-response {
+  test("Status code is 200 or 401", function () {
+      expect([200, 401]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      test("Logout successful", function () {
+          expect(res.getStatus()).to.equal(200);
+          // Logout returns 200 OK with no body
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Invalidates the current bearer token, effectively logging out the administrator from the system.
+  
+  **Authentication:**
+  - Requires valid bearer token in Authorization header
+  
+  **Response (200 OK):**
+  - No response body
+  - Token is immediately invalidated in database
+  - Subsequent requests with same token will return 401
+  
+  **Status Codes:**
+  - 200: Logout successful
+  - 401: Unauthorized - invalid or expired token
+  
+  **Note:** Recommended to call on explicit logout or session timeout. The token cannot be reused after logout.
+}

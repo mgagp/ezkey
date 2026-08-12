@@ -1,0 +1,51 @@
+meta {
+  name: run retroactive integrity validation
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/integrity-validation/run
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "from": "2026-01-01T00:00:00Z",
+    "to": "2026-01-02T00:00:00Z",
+    "raiseAlert": true
+  }
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has retroactive validation fields", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('scope');
+      expect(jsonData).to.have.property('skipped');
+      expect(jsonData).to.have.property('intact');
+      expect(jsonData).to.have.property('alertRaised');
+      expect(jsonData).to.have.property('triggerSource');
+      expect(jsonData.triggerSource).to.equal('OPERATOR');
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Runs retroactive integrity validation (detect path) over a date range. Same orchestration as the nightly batch — may raise or touch AUDIT_INTEGRITY_RUPTURE. Distinct from GET integrity-check / chain-integrity (read-only verify). Global Admin only.
+  
+  **Body:** `from` (inclusive ISO-8601), `to` (exclusive), optional `raiseAlert` (default true).
+  
+  **Status Codes:** 200 (including skipped when HMAC inactive) · 400 invalid bounds or window too large · 401 · 403
+}

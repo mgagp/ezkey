@@ -1,0 +1,80 @@
+meta {
+  name: verify entry integrity
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/integrity-check
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Start of verification window (inclusive, ISO-8601). Optional -- omit to verify all entries.')
+  ~from: 2026-01-01T00:00:00Z
+  @description('End of verification window (exclusive, ISO-8601). Optional -- omit to verify up to now.')
+  ~to: 2026-12-31T23:59:59Z
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has integrity report fields", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('totalEntries');
+      expect(jsonData).to.have.property('validEntries');
+      expect(jsonData).to.have.property('invalidEntries');
+      expect(jsonData).to.have.property('unsignedEntries');
+      expect(jsonData).to.have.property('intact');
+      expect(jsonData).to.have.property('status');
+  });
+  
+  test("Integrity is intact (no tampering detected)", function () {
+      var jsonData = res.getBody();
+      expect(jsonData.intact).to.be.true;
+      expect(jsonData.status).to.equal('OK');
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Recomputes HMAC-SHA256 signatures for audit log entries in the specified date range and reports any tampered or unsigned entries.
+  
+  **Access:** Global Admin only (system-level security operation).
+  
+  **Parameters (all optional):**
+  - `from`: Start of verification window (inclusive, ISO-8601 format, e.g. `2026-01-01T00:00:00Z`)
+  - `to`: End of verification window (exclusive, ISO-8601 format)
+  - If both are omitted, verifies ALL entries
+  
+  **Response (200 OK):**
+  ```json
+  {
+    "totalEntries": 1234,
+    "validEntries": 1230,
+    "invalidEntries": 0,
+    "unsignedEntries": 4,
+    "intact": true,
+    "status": "OK"
+  }
+  ```
+  
+  **Response Fields:**
+  - `totalEntries`: Total number of entries checked
+  - `validEntries`: Entries with valid HMAC signature
+  - `invalidEntries`: Entries with HMAC mismatch (potential tampering)
+  - `unsignedEntries`: Entries created before HMAC signing was enabled
+  - `intact`: `true` if no HMAC mismatches were found
+  - `status`: `OK` or `INTEGRITY_VIOLATION_DETECTED`
+  
+  **Status Codes:**
+  - 200: Integrity check completed
+  - 401: Unauthorized - admin token required
+  - 403: Forbidden - Global Admin role required
+}

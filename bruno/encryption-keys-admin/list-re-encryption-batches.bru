@@ -1,0 +1,68 @@
+meta {
+  name: list re-encryption batches
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/encryption-keys/reencryption-batches?page=0&size=20&sort=createdAt,desc
+  body: none
+  auth: inherit
+}
+
+params:query {
+  @description('Zero-based page index')
+  page: 0
+  @description('Page size')
+  size: 20
+  @description('Sort (e.g. batchId,asc, status,desc, targetTable)')
+  sort: createdAt,desc
+  @description('Optional: PENDING, IN_PROGRESS, COMPLETED, FAILED, PAUSED')
+  ~status: 
+  @description('Optional exact match on target table')
+  ~targetTable: 
+  @description('Optional exact match on target column')
+  ~targetColumn: 
+  @description('Optional filter on old key id')
+  ~oldKeyId: 
+  @description('Optional filter on new key id')
+  ~newKeyId: 
+  @description('Optional inclusive lower bound on createdAt (ISO-8601)')
+  ~createdAfter: 
+  @description('Optional inclusive upper bound on createdAt (ISO-8601)')
+  ~createdBefore: 
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has content and page", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('content');
+      expect(jsonData).to.have.property('page');
+      expect(jsonData.content).to.be.an('array');
+      expect(jsonData.page).to.have.property('totalElements');
+      expect(jsonData.page).to.have.property('totalPages');
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      var rows = jsonData.content || [];
+      if (rows.length > 0) {
+          var failedBatch = rows.find(b => b.status === 'FAILED' || b.status === 'PAUSED');
+          if (failedBatch) {
+              bru.setEnvVar("reencryptionBatchId", failedBatch.batchId);
+          }
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Returns re-encryption batches with server-side pagination. Response has content (array) and page (size, number, totalElements, totalPages). Optional query params filter by status, target table/column, old/new key id, and createdAt range.
+}

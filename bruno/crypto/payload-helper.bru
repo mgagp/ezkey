@@ -1,0 +1,49 @@
+meta {
+  name: payload-helper
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url_crypto_api}}/api/v1/crypto/payload-helper
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "type": "{{payloadHelperType}}",
+      "proofToken": "{{payloadHelperProofToken}}",
+      "challengeRequired": {{payloadHelperChallengeRequired}},
+      "contextTitle": "{{payloadHelperContextTitle}}",
+      "contextMessage": "{{payloadHelperContextMessage}}",
+      "accepted": {{payloadHelperAccepted}},
+      "authAttemptId": {{payloadHelperAuthAttemptId}},
+      "result": "{{payloadHelperResult}}",
+      "message": "{{payloadHelperMessage}}"
+  }
+}
+
+script:post-response {
+  test("Status code is 200 or 400", function () {
+      expect([200, 400]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("payload_helper_result", jsonData.payload);
+      test("Response contains payload", function () {
+          expect(jsonData).to.have.property('type');
+          expect(jsonData).to.have.property('payload');
+          expect(jsonData).to.have.property('encoding');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Builds the canonical EZKey payload for `pending`, `respond`, or `respond-result`. This endpoint applies the same NFC rules as the backend protocol and can be used as an oracle in Postman or Dart tests. Unused fields can be left with their current environment values when testing a specific payload type.
+}

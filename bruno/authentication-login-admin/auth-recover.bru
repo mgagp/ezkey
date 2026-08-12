@@ -1,0 +1,82 @@
+meta {
+  name: auth recover
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admin/auth/recover
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "username": "admin",
+    "recoveryCode": "4743-8097-0426-5914-7438-4180-8010-5825"
+  }
+}
+
+script:post-response {
+  test("Status code is 200, 403, or 400", function () {
+      expect([200, 403, 400]).to.include(res.getStatus());
+  });
+  
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("recoveryToken", jsonData.recoveryToken);
+      
+      test("Response contains required fields", function () {
+          expect(jsonData).to.have.property('success');
+          expect(jsonData).to.have.property('recoveryToken');
+          expect(jsonData).to.have.property('expiresAt');
+          expect(jsonData).to.have.property('codesRemaining');
+      });
+      
+      if (jsonData.enrollmentId !== undefined && jsonData.enrollmentId !== null) {
+          bru.setEnvVar("enrollmentId", jsonData.enrollmentId);
+      }
+      
+      test("Recovery successful", function () {
+          expect(jsonData.success).to.be.true;
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Emergency access using a single-use recovery code. This endpoint allows administrators who have lost access to their enrolled device to regain access.
+  
+  **Security Features:**
+  - Single-use recovery codes (removed from array after use)
+  - BCrypt hashed storage
+  - Limited token (30 min validity, enrollment binding only)
+  - Rate limited to prevent brute force
+  - Audit logged (`ADMIN_RECOVERY_USE`, structured `event_details` JSON on the server)
+  
+  **Request Body:**
+  - `username` (required): Administrator username
+  - `recoveryCode` (required): Single-use recovery code (32 digits in 8 groups of 4: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX)
+  
+  **Response (200 OK) - Success:**
+  - `success`: true
+  - `recoveryToken`: Temporary recovery token (30 minutes validity)
+  - `expiresAt`: Token expiration timestamp
+  - `codesRemaining`: Number of recovery codes remaining after this use
+  - `enrollmentId`: Enrollment ID to use as `enrollmentId` in `POST /api/v1/admin/enrollments/reset` (when the admin has an enrollment)
+  - `message`: "Recovery successful. Token valid for 30 minutes. Re-bind enrollment immediately."
+  
+  **Failure Response (403 Forbidden):**
+  - `success`: false
+  - `message`: "Recovery failed: …"
+  
+  **Status Codes:**
+  - 200: Recovery successful, temporary token issued
+  - 400: Validation error (invalid recovery code format)
+  - 403: Recovery failed (invalid or expired recovery code)
+  - 429: Rate limit exceeded (3 attempts per 15 minutes per IP)
+  - 500: Internal server error
+}

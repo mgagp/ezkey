@@ -1,0 +1,14 @@
+{
+  "name": "ezkey-bruno",
+  "private": true,
+  "description": "Pinned Bruno CLI for Ezkey API collection health runs",
+  "scripts": {
+    "bru": "bru",
+    "health": "bash ../scripts/bruno-health.sh"
+  },
+  "devDependencies": {
+    "@usebruno/cli": "4.0.0",
+    "@usebruno/converters": "0.22.0",
+    "@usebruno/filestore": "0.11.0"
+  }
+}
