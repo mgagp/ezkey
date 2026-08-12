@@ -4,7 +4,7 @@ This directory contains Docker configuration files and scripts to run the EZ Key
 
 ## Overview
 
-The HA stack runs **2 instances** of each API (admin-api and auth-api) behind **HAProxy load balancers**, plus **Crypto API** and **Demo Device** services. This setup allows testing ShedLock's distributed locking mechanism to ensure scheduled jobs execute only once across multiple instances.
+The HA stack runs **2 instances** of each API (**admin-api**, **auth-api**, and **integration-api**) behind **HAProxy load balancers**, plus **Crypto API**, **Demo Device**, and **Demo App ACME**. This setup allows testing ShedLock distributed locking and multi-instance request routing.
 
 ## Architecture
 
@@ -13,49 +13,16 @@ The HA stack runs **2 instances** of each API (admin-api and auth-api) behind **
 │              Docker Compose HA Stack                     │
 ├─────────────────────────────────────────────────────────┤
 │                                                          │
-│  ┌──────────────┐                                       │
-│  │  PostgreSQL  │                                       │
-│  │   (shared)   │                                       │
-│  └──────┬───────┘                                       │
-│         │                                                │
-│         ├──► ┌──────────────┐  ┌──────────────┐        │
-│         │    │ Admin API #1 │  │ Admin API #2 │        │
-│         │    │   (9081)     │  │   (9082)     │        │
-│         │    └──────┬───────┘  └──────┬───────┘        │
-│         │           │                 │                 │
-│         │           └────────┬────────┘                 │
-│         │                    │                          │
-│         │              ┌─────▼──────┐                  │
-│         │              │  HAProxy   │                  │
-│         │              │  Admin LB  │                  │
-│         │              │   (9080)   │                  │
-│         │              └────────────┘                  │
-│         │                                                │
-│         ├──► ┌──────────────┐  ┌──────────────┐        │
-│         │    │  Auth API #1 │  │  Auth API #2 │        │
-│         │    │   (8085)     │  │   (8085)     │        │
-│         │    └──────┬───────┘  └──────┬───────┘        │
-│         │           │                 │                 │
-│         │           └────────┬────────┘                 │
-│         │                    │                          │
-│         │              ┌─────▼──────┐                  │
-│         │              │  HAProxy   │                  │
-│         │              │  Auth LB   │                  │
-│         │              │   (8080)   │                  │
-│         │              └────────────┘                  │
-│         │                                                │
-│         ├──► ┌──────────────┐                          │
-│         │    │  Crypto API   │                          │
-│         │    │   (9090)     │                          │
-│         │    └──────────────┘                          │
-│         │                                                │
-│         ├──► ┌──────────────┐                          │
-│         │    │ Demo Device   │                          │
-│         │    │   (8083)     │                          │
-│         │    └──────────────┘                          │
-│         │                                                │
-│         └──► Migration (one-time)                       │
+│  PostgreSQL (shared) ──► 2× Admin API ──► HAProxy :9080 │
+│                      ──► 2× Auth API  ──► HAProxy :8080 │
+│                      ──► 2× Integration API ──► :7080   │
+│                      ──► Crypto API :9090                │
+│                      ──► Demo Device :8083               │
+│                      ──► Demo App ACME :8082             │
 │                                                          │
+│  HAProxy stats: Admin :9081 | Auth :8085 | Integ :7081   │
+│  docker-dev override publishes per-instance Actuator:    │
+│    Admin 19081/29081, Auth 18085/28085, Integ 17081/27081│
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -68,6 +35,14 @@ The HA stack runs **2 instances** of each API (admin-api and auth-api) behind **
 
 ### Start the HA Stack
 
+Preferred entry from a clean test baseline:
+
+```bash
+./ezkey-tests/clean-start.sh --ha
+```
+
+Or start the HA compose stack directly:
+
 ```bash
 ./docker/start-ha.sh
 ```
@@ -75,31 +50,31 @@ The HA stack runs **2 instances** of each API (admin-api and auth-api) behind **
 The script will:
 1. Build Docker images for all services
 2. Start PostgreSQL database
-3. Run database migrations (including ShedLock table V26)
-4. Start 2 instances of admin-api and auth-api
-5. Start HAProxy load balancers
-6. Start Crypto API
-7. Start Demo Device
-8. Wait for all services to be healthy
-
+3. Run database migrations (including ShedLock table)
+4. Start 2 instances each of admin-api, auth-api, and integration-api
+5. Start HAProxy load balancers (Admin, Auth, Integration)
+6. Start Crypto API, Demo Device, and Demo App ACME
+7. Wait for all services to be healthy
+8. Run bootstrap-init (Demo Device enrollment seed)
 ### Access the Services
 
 Once started, you can access:
 
 - **Admin API** (via HAProxy): http://localhost:9080
 - **Auth API** (via HAProxy): http://localhost:8080
+- **Integration API** (via HAProxy): http://localhost:7080
 - **Crypto API**: http://localhost:9090
 - **Demo Device**: http://localhost:8083
+- **Demo App ACME**: http://localhost:8082
 
 **HAProxy Statistics Pages:**
 - **Admin API Load Balancer Stats**: http://localhost:9081/stats
 - **Auth API Load Balancer Stats**: http://localhost:8085/stats
+- **Integration API Load Balancer Stats**: http://localhost:7081/stats
 
 See the [HAProxy Statistics](#haproxy-statistics) section below for detailed information about these monitoring pages.
 
-**Direct Instance Access** (for debugging):
-- Admin API Instance 1: `docker exec ezkey-admin-api-1 curl http://localhost:9080/actuator/health`
-- Admin API Instance 2: `docker exec ezkey-admin-api-2 curl http://localhost:9080/actuator/health`
+**Functional / operational-churn tests:** host ports `9081` / `8085` / `7081` are HAProxy **stats**, not Actuator. `DockerStackConfig` auto-probes HA docker-dev management ports (`19081`, `18085`, …) then public `instance-info` through the LBs so `./ezkey-tests/scripts/run-operational-churn.sh --init` works against `./clean-start.sh --ha` without extra env vars.
 
 ## Services
 
@@ -228,6 +203,7 @@ HAProxy provides real-time statistics pages for monitoring load balancer health 
 
 - **Admin API Load Balancer**: http://localhost:9081/stats
 - **Auth API Load Balancer**: http://localhost:8085/stats
+- **Integration API Load Balancer**: http://localhost:7081/stats
 
 #### What You'll See
 
@@ -268,17 +244,19 @@ The stats pages display:
 
 ### Verify Load Balancing
 
-Make multiple requests and check HAProxy stats to see requests distributed between instances:
+Make multiple requests to a **business** endpoint (Actuator lives on management ports, not on the HAProxy app ports) and check HAProxy stats:
 
 ```bash
-# Make 10 requests
+# Make 10 requests through the Admin HAProxy frontend
 for i in {1..10}; do
-  curl -s http://localhost:9080/actuator/health > /dev/null
+  curl -s http://localhost:9080/api/v1/public/instance-info > /dev/null
 done
 
 # Check stats - should see requests distributed between admin-api-1 and admin-api-2
-curl http://localhost:9081/stats | grep admin-api
+curl -s http://localhost:9081/stats | grep admin-api
 ```
+
+**Health checks:** use HAProxy stats pages, `./docker/manage-ha.sh status`, or per-instance management ports from the `docker-dev` override (`19081`/`29081`, `18085`/`28085`, `17081`/`27081`). Do not expect `/actuator/health` on `9080`/`8080`/`7080` — those are application ports only.
 
 ### Check ShedLock Locks
 
@@ -446,11 +424,14 @@ If both instances are executing the same job simultaneously:
 
 | Aspect | Standard Stack | HA Stack |
 |--------|----------------|----------|
-| **Instances** | 1 per API | 2 per API |
-| **Ports** | Direct exposure (9080, 8080, 9090, 8083) | Via HAProxy (9080, 8080), Direct (9090, 8083) |
+| **Instances** | 1 per API | 2× Admin, 2× Auth, 2× Integration |
+| **Ports** | Direct exposure (9080, 8080, 7080, 9090, 8083, 8082) | Via HAProxy (9080, 8080, 7080), Direct (9090, 8083, 8082) |
+| **HAProxy stats** | N/A | 9081 (Admin), 8085 (Auth), 7081 (Integration) |
 | **Crypto API** | Included | Included |
 | **Demo Device** | Included | Included (uses HAProxy Auth) |
+| **Demo App ACME** | Included | Included (uses HAProxy Integration) |
 | **Load Balancing** | None | HAProxy round-robin |
+| **Long-poll timeouts** | Direct to JVM | HAProxy client/server **180s** (passwordless-wait / auth wait) |
 | **Health Checks** | Docker healthchecks | HAProxy + Docker healthchecks |
 | **Container Names** | `ezkey-*` | `ezkey-*-ha` or `ezkey-*-1/2` |
 | **Network** | `ezkey-network` | `ezkey-network-ha` |

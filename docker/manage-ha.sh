@@ -125,11 +125,43 @@ function show_status() {
     else
         echo "  ❌ Auth API Instance 2: Unhealthy"
     fi
+
+    # Check Integration API instances via HAProxy
+    if curl -sf http://localhost:7081/stats > /dev/null 2>&1; then
+        echo "  ✅ Integration API Load Balancer (stats): Healthy"
+    else
+        echo "  ❌ Integration API Load Balancer (stats): Unhealthy"
+    fi
+
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T integration-api-1 curl -sf http://localhost:7081/actuator/health > /dev/null 2>&1; then
+        echo "  ✅ Integration API Instance 1: Healthy"
+    else
+        echo "  ❌ Integration API Instance 1: Unhealthy"
+    fi
+
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T integration-api-2 curl -sf http://localhost:7081/actuator/health > /dev/null 2>&1; then
+        echo "  ✅ Integration API Instance 2: Healthy"
+    else
+        echo "  ❌ Integration API Instance 2: Unhealthy"
+    fi
+
+    if curl -sf http://localhost:9090/actuator/health > /dev/null 2>&1; then
+        echo "  ✅ Crypto API: Healthy"
+    else
+        echo "  ❌ Crypto API: Unhealthy"
+    fi
+
+    if curl -sf http://localhost:8083/actuator/health > /dev/null 2>&1; then
+        echo "  ✅ Demo Device: Healthy"
+    else
+        echo "  ❌ Demo Device: Unhealthy"
+    fi
     
     echo ""
     echo "📊 HAProxy Statistics:"
-    echo "  - Admin API LB: http://localhost:9081/stats"
-    echo "  - Auth API LB:  http://localhost:8085/stats"
+    echo "  - Admin API LB:       http://localhost:9081/stats"
+    echo "  - Auth API LB:        http://localhost:8085/stats"
+    echo "  - Integration API LB: http://localhost:7081/stats"
 }
 
 function clean_all() {

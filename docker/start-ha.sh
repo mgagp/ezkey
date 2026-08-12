@@ -202,18 +202,77 @@ while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T auth-api-2 curl -sf http://loc
 done
 echo "  ✅ Auth API instances are healthy"
 
+# Wait for Integration API instances (direct instance Actuator on management port)
+echo "  - Waiting for Integration API instances..."
+timeout=120
+elapsed=0
+while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T integration-api-1 curl -sf http://localhost:7081/actuator/health > /dev/null 2>&1; do
+    if [ $elapsed -ge $timeout ]; then
+        echo "❌ Error: Integration API Instance 1 did not become healthy within ${timeout} seconds"
+        ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs integration-api-1
+        exit 1
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+done
+elapsed=0
+while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T integration-api-2 curl -sf http://localhost:7081/actuator/health > /dev/null 2>&1; do
+    if [ $elapsed -ge $timeout ]; then
+        echo "❌ Error: Integration API Instance 2 did not become healthy within ${timeout} seconds"
+        ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs integration-api-2
+        exit 1
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+done
+echo "  ✅ Integration API instances are healthy"
+
+# Wait for Crypto API and Demo Device (host-facing health)
+echo "  - Waiting for Crypto API..."
+timeout=120
+elapsed=0
+while ! curl -sf http://localhost:9090/actuator/health > /dev/null 2>&1; do
+    if [ $elapsed -ge $timeout ]; then
+        echo "❌ Error: Crypto API did not become healthy within ${timeout} seconds"
+        ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs crypto-api
+        exit 1
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+done
+echo "  ✅ Crypto API is healthy"
+
+echo "  - Waiting for Demo Device..."
+timeout=120
+elapsed=0
+while ! curl -sf http://localhost:8083/actuator/health > /dev/null 2>&1; do
+    if [ $elapsed -ge $timeout ]; then
+        echo "❌ Error: Demo Device did not become healthy within ${timeout} seconds"
+        ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs demo-device
+        exit 1
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+done
+echo "  ✅ Demo Device is healthy"
+
 echo ""
 echo "=========================================="
 echo "  ✅ EZ Key HA Stack is Ready!"
 echo "=========================================="
 echo ""
 echo "📋 Service URLs (via Load Balancers):"
-echo "  - Admin API:    http://localhost:9080 (HAProxy → admin-api-1, admin-api-2)"
-echo "  - Auth API:     http://localhost:8080 (HAProxy → auth-api-1, auth-api-2)"
+echo "  - Admin API:       http://localhost:9080 (HAProxy → admin-api-1, admin-api-2)"
+echo "  - Auth API:        http://localhost:8080 (HAProxy → auth-api-1, auth-api-2)"
+echo "  - Integration API: http://localhost:7080 (HAProxy → integration-api-1, integration-api-2)"
+echo "  - Crypto API:      http://localhost:9090"
+echo "  - Demo Device:     http://localhost:8083"
+echo "  - Demo App ACME:   http://localhost:8082"
 echo ""
 echo "📊 HAProxy Statistics:"
-echo "  - Admin API LB: http://localhost:9081/stats"
-echo "  - Auth API LB:  http://localhost:8085/stats"
+echo "  - Admin API LB:       http://localhost:9081/stats"
+echo "  - Auth API LB:        http://localhost:8085/stats"
+echo "  - Integration API LB: http://localhost:7081/stats"
 echo ""
 echo "💡 Useful commands:"
 echo "  - View logs:    ./docker/manage-ha.sh logs"
@@ -221,7 +280,7 @@ echo "  - Stop stack:   ./docker/manage-ha.sh stop"
 echo "  - View status:  ./docker/manage-ha.sh status"
 echo ""
 echo "🔍 Verify HA Setup:"
-echo "  - Check both instances are running: docker ps | grep ezkey-admin-api"
+echo "  - Check instances: docker ps | grep -E 'ezkey-(admin|auth|integration)-api'"
 echo "  - Check HAProxy stats: curl http://localhost:9081/stats"
 echo "  - View instance logs: ./docker/manage-ha.sh logs admin-api-1"
 echo ""
