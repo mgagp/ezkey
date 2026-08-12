@@ -101,7 +101,7 @@ public ReDoc show the same journey-oriented navigation defined in
 ## Incubation sources
 
 - Working plan (GitHub): [`.github/prompts/plan-openApiPresentationOrder.prompt.md`](../../../../.github/prompts/plan-openApiPresentationOrder.prompt.md)
-- Working plan (Cursor): [`.cursor/plans/openapi_ordering_strategy_86087546.plan.md`](../../../../.cursor/plans/openapi_ordering_strategy_86087546.plan.md)
+- Deleted Cursor plan (materialized); see **Related** below
 - Lane: `B` — plan incubation, materialized `2026-06-02`
 
 ## Related

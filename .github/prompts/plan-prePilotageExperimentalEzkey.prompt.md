@@ -100,7 +100,7 @@ Option B, plus légère: conserver le couplage actuel avec création d’un enro
 - `c:\github\ezkey-worktree3\ezkey-admin-api\src\main\java\org\ezkey\admin\service\AdminProvisioningService.java` — point central du provisioning admin et du couplage actuel avec l’enrollment.
 - `c:\github\ezkey-worktree3\ezkey-admin-api\src\main\java\org\ezkey\admin\service\AdminRecoveryService.java` — génération et rotation des recovery codes.
 - `c:\github\ezkey-worktree3\ezkey-admin-ui\src\pages\admins.tsx` — UX actuelle de création d’admin, affichage des recovery codes et accès onboarding.
-- `c:\github\ezkey-worktree3\ezkey_mobile_app\android\app\build.gradle` — posture actuelle de build/signing Android et limite du debug APK.
+- `ezkey_mobile/android/app/build.gradle` — posture actuelle de build/signing Android (parallel `ezkey_mobile_app/` tree retired).
 - `c:\github\ezkey-worktree3\ezkey_mobile\docs\MOBILE_PLAY_PUBLISHING.md` — jalon futur si le pilote évolue vers une distribution plus propre.
 
 **Verification**

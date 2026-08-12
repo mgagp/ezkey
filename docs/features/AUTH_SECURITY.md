@@ -88,13 +88,13 @@ public ResponseEntity<AuthAttemptPendingResponseDto> pending(@PathVariable("enro
 @PostMapping("/pending")
 public ResponseEntity<AuthAttemptPendingResponseDto> pending(@Valid @RequestBody AuthAttemptPendingRequestDto request) {
     // Uses enrollmentProofToken for secure enrollment identification
-    Enrollment enrollment = enrollmentRepository.findByEnrollmentProofTokenAndActive(
-        request.getEnrollmentProofToken(), true)
+    Enrollment enrollment = enrollmentRepository.findByEnrollmentProofTokenHashAndActive(
+        hashOf(request.getEnrollmentProofToken()), true)
         .orElseThrow(() -> new IllegalArgumentException("Authentication request failed"));
 }
 ```
 
-**Current Protection**: ✅ **FULLY RESOLVED** - Uses cryptographic enrollmentProofToken for secure identification, eliminating enumeration attacks entirely.
+**Current Protection**: ✅ **FULLY RESOLVED** - Lookup is by SHA-256 of the enrollment proof token (`findByEnrollmentProofTokenHashAndActive`), eliminating enumeration attacks entirely.
 
 ### 🟡 ACCEPTED RISK: Rate Limiting Disabled by Default
 
@@ -283,8 +283,8 @@ public ResponseEntity<AuthAttemptPendingResponseDto> pending(@PathVariable("enro
 @PostMapping("/pending")
 public ResponseEntity<AuthAttemptPendingResponseDto> pending(@Valid @RequestBody AuthAttemptPendingRequestDto request) {
     // Uses enrollmentProofToken for secure enrollment identification
-    Enrollment enrollment = enrollmentRepository.findByEnrollmentProofTokenAndActive(
-        request.getEnrollmentProofToken(), true)
+    Enrollment enrollment = enrollmentRepository.findByEnrollmentProofTokenHashAndActive(
+        hashOf(request.getEnrollmentProofToken()), true)
         .orElseThrow(() -> new IllegalArgumentException("Authentication request failed"));
 }
 ```
@@ -325,27 +325,23 @@ ezkey.rate-limit.respond.key-strategy=client-ip
 
 #### 3. IP Detection Security (If Rate Limiting Enabled)
 
-**Enhanced Configuration**:
+Client IP for rate limiting and audit is resolved by `ClientIpResolver`: proxy headers
+(`CF-Connecting-IP`, `X-Forwarded-For`, `X-Real-IP`) are trusted **only** when
+`request.getRemoteAddr()` is in a configured CIDR list. Empty list = headers ignored.
+
 ```properties
-# Trusted proxy networks (adjust for deployment)
-ezkey.rate-limit.trusted-proxies=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
-ezkey.rate-limit.strict-ip-validation=true
-ezkey.rate-limit.block-suspicious-headers=true
+# When behind a reverse proxy (see module CONFIGURATION.md and docs/OPERATIONAL.md)
+ezkey.trusted-proxies.cidrs=10.0.0.0/8,172.16.0.0/12
+ezkey.trusted-proxies.required=true
 ```
 
-**Code Enhancement**:
-```java
-private String getClientIP(HttpServletRequest request) {
-    // Only trust CF-Connecting-IP and direct connections
-    String cfConnectingIP = request.getHeader("CF-Connecting-IP");
-    if (cfConnectingIP != null && !cfConnectingIP.isEmpty() && isValidIP(cfConnectingIP)) {
-        return cfConnectingIP.trim();
-    }
-    
-    // Fallback to direct connection only
-    return request.getRemoteAddr();
-}
-```
+Docker env: `EZKEY_TRUSTED_PROXIES_CIDRS`, `EZKEY_TRUSTED_PROXIES_REQUIRED`. Local proxy path:
+`./docker/start.sh --with-proxy` and [LOCAL_STACK_PORTS.md](../LOCAL_STACK_PORTS.md).
+
+> **Drift note (plan ablation 2026-08):** older drafts cited non-existent
+> `ezkey.rate-limit.trusted-proxies` / `strict-ip-validation` / `block-suspicious-headers`.
+> The same obsolete name still appears in
+> `.github/prompts/plan-authProtocolSecurityAudit.prompt.md` — clean when that prompt is pruned.
 
 ### Priority 2: Security Enhancements (1-2 weeks)
 

@@ -69,7 +69,7 @@ See `TB-2026-06-02-openapi-presentation-order-phase2.md`.
 - Backlog idea: [`product-docs/global/backlog/ideas/I-2026-06-02-openapi-api-reference-presentation-order.md`](../../product-docs/global/backlog/ideas/I-2026-06-02-openapi-api-reference-presentation-order.md)
 - Tracer bullet: [`product-docs/global/backlog/ideas/TB-2026-06-02-openapi-presentation-order-phase2.md`](../../product-docs/global/backlog/ideas/TB-2026-06-02-openapi-presentation-order-phase2.md)
 - Design: [`product-docs/global/openapi-presentation-order-design.md`](../../product-docs/global/openapi-presentation-order-design.md)
-- Working plan (Cursor): [`.cursor/plans/openapi_ordering_strategy_86087546.plan.md`](../../.cursor/plans/openapi_ordering_strategy_86087546.plan.md)
+- Deleted Cursor plan (materialized); canonical direction lives in linked V/I/TB and design doc above
 - GitHub issue / branch: `#180`, `feature/180-i-2026-06-02-openapi-api-reference-presentation-order`
 - Methodology gate: [`product-docs/methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md`](../../product-docs/methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)
 - Plan role after materialization: **retained source**; slice closed — canonical direction and Admin reader-journey principles live in linked artifacts; implementation on `main` since PR `#181`.

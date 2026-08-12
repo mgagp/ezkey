@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `TB-2026-07-11-mobile-doctor-curated-mvp`
-- **Status:** `active` (MVP implemented; dry-run recorded 2026-07-12)
+- **Status:** `done` (MVP implemented; dry-run recorded 2026-07-12; exit criteria met)
 - **Related idea:** `I-2026-07-11-mobile-doctor-curated-hygiene`
 - **Lane:** `C` (tooling / continuous-improvement capability; hygiene posture for later campaigns)
 - **Posture:** `single-pass`
@@ -113,4 +113,4 @@ yarn doctor:curated
 - Evaluation: [`../mobile-doctor-curated-evaluation-2026-07-11.md`](../mobile-doctor-curated-evaluation-2026-07-11.md)
 - Hygiene notes: [`../hygiene/mobile-doctor/README.md`](../hygiene/mobile-doctor/README.md)
 - Comparables: `TB-2026-07-11-java-doctor-curated-mvp`, `ezkey-admin-ui/scripts/doctor-curated.mjs`
-- Working plan: [`.cursor/plans/mobile_doctor_curated_hygiene.plan.md`](../../../.cursor/plans/mobile_doctor_curated_hygiene.plan.md)
+- Deleted Cursor plan (materialized); see evaluation and linked I/TB above

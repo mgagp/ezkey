@@ -36,8 +36,8 @@ Le module PAM est un module C standalone (Rocky Linux, libcurl, cJSON) qui n'a p
 
 ### 5. Actualiser le docker-compose PAM — `ezkey-pam/docker-compose.yml`
 
-- Ajouter le réseau externe `ezkey-network` pour communiquer avec le stack principal (`m2m-api`, `auth-api`, etc.)
-- Ajouter les variables d'environnement: `EZKEY_M2M_API_URL=http://m2m-api:7080`, `EZKEY_INTEGRATION_KEY`, `EZKEY_SECRET_KEY`
+- Ajouter le réseau externe `ezkey-network` pour communiquer avec le stack principal (`integration-api`, `auth-api`, etc.)
+- Ajouter les variables d'environnement: `EZKEY_INTEGRATION_API_URL=http://integration-api:7080`, `EZKEY_INTEGRATION_KEY`, `EZKEY_SECRET_KEY`
 - Ajouter un `depends_on` conditionnel si lancé avec le stack, ou documenter l'ordre de démarrage
 - Supprimer le mapping de port `2223:2222` inutile, garder `2222:22`
 - Réseau doit être déclaré comme `external: true` (créé par le stack principal)
@@ -81,7 +81,7 @@ Le module PAM est un module C standalone (Rocky Linux, libcurl, cJSON) qui n'a p
 ## Verification
 
 - **Build**: `cd ezkey-pam && docker-compose build` — doit compiler `pam_ezkey.so` sans erreur
-- **Connectivité API**: Depuis le conteneur PAM, `curl http://m2m-api:7080/actuator/health` doit répondre (réseau partagé)
+- **Connectivité API**: Depuis le conteneur PAM, `curl http://integration-api:7080/actuator/health` doit répondre (réseau partagé)
 - **Auth flow**: `ssh -p 2222 testuser@localhost` doit déclencher une auth attempt visible dans les logs du conteneur PAM (`/tmp/pam_ezkey.out`) et en attente dans le demo-device UI
 - **Approve**: Approuver dans le demo-device → la session SSH se complète (pas d'erreur `PAM_AUTH_ERR`)
 - **Reject**: Rejeter dans le demo-device → la session SSH est refusée

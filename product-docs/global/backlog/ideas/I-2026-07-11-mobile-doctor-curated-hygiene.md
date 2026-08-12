@@ -108,6 +108,6 @@ report-only (not `validate:ci` fail path).
 
 - Evaluation: [`../mobile-doctor-curated-evaluation-2026-07-11.md`](../mobile-doctor-curated-evaluation-2026-07-11.md)
 - Tracer bullet: [`../TB-2026-07-11-mobile-doctor-curated-mvp.md`](../TB-2026-07-11-mobile-doctor-curated-mvp.md)
-- Working plan: [`.cursor/plans/mobile_doctor_curated_hygiene.plan.md`](../../../.cursor/plans/mobile_doctor_curated_hygiene.plan.md)
+- Operator entry: `ezkey_mobile/AGENTS.md` § Mobile doctor-curated pass; `yarn doctor:curated`
 - Comparables: Java doctor evaluation + `ezkey-admin-ui/scripts/doctor-curated.mjs`
 - Hygiene vs program: `product-docs/methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`

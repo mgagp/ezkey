@@ -76,10 +76,11 @@ Reduce breach impact and operational complexity for proof-token persistence by m
 - ADR: [`../../architecture-decisions.md#adr-0007-proof-token-storage-hash-only-where-protocol-allows`](../../architecture-decisions.md#adr-0007-proof-token-storage-hash-only-where-protocol-allows)
 - Related idea (re-encryption indexing): [`I-2026-0029-reencryption-indexed-encryption-key-id-columns.md`](I-2026-0029-reencryption-indexed-encryption-key-id-columns.md)
 - Security audit: [`../../../../docs/SECURITY_CHALLENGE_REPORT_2026-06.md`](../../../../docs/SECURITY_CHALLENGE_REPORT_2026-06.md) (SEC-007)
-- Bearer token precedent: [`.cursor/plans/bearer_token_hash_storage_analysis.plan.md`](../../../../.cursor/plans/bearer_token_hash_storage_analysis.plan.md)
+- Bearer token precedent: ADR-0007 § Context; shipped `bearer_token_hash` (V7), `AdminToken` lookup by
+  SHA-256; Crypto API `POST /api/v1/crypto/hash-token`
 
 ## Incubation sources
 
-- Working plan (Cursor): `.cursor/plans/proof_token_hash-only_storage.plan.md`
-- Working plan (session): `proof_token_hash-only_45368295.plan.md` (Cursor plans store)
+- Deleted Cursor plan (materialized); see ADR-0007 and
+  [`TB-2026-07-06`](../TB-2026-07-06-device-proof-token-hash-only.md)
 - Lane: `B` — plan incubation, materialized `2026-07-06`

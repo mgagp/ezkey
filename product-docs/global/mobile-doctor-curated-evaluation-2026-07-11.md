@@ -153,7 +153,8 @@ Mirror Java doctor (more evolved HITL) + Admin UI curator:
 
 ## Links
 
-- Working plan: [`.cursor/plans/mobile_doctor_curated_hygiene.plan.md`](../../.cursor/plans/mobile_doctor_curated_hygiene.plan.md)
+- Deleted Cursor plan (materialized); see backlog I/TB below, `ezkey_mobile/AGENTS.md` § Mobile
+  doctor-curated pass, `yarn doctor:curated`
 - Backlog idea: [`backlog/ideas/I-2026-07-11-mobile-doctor-curated-hygiene.md`](backlog/ideas/I-2026-07-11-mobile-doctor-curated-hygiene.md)
 - Tracer bullet: [`backlog/TB-2026-07-11-mobile-doctor-curated-mvp.md`](backlog/TB-2026-07-11-mobile-doctor-curated-mvp.md)
 - Java comparable: [`java-doctor-curated-evaluation-2026-07-11.md`](java-doctor-curated-evaluation-2026-07-11.md)

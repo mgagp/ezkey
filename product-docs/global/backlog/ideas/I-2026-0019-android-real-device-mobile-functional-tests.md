@@ -76,9 +76,11 @@ Promoted to tracer bullet pilot on `2026-05-08`: **`TB-2026-0002`** (`product-do
 
 - Tracer bullet pilot: `TB-2026-0002`
 - Direction note: `V-2026-0011`
-- Source incubation plan: `.cursor/plans/ezkey_mobile_android_real_device_automation.plan.md`
+- Source incubation plan: deleted Cursor plan (materialized); see [`TB-2026-0002`](../TB-2026-0002-android-real-device-functional-pilot.md),
+  [`V-2026-0011`](../../vision/V-2026-0011-android-real-device-validation.md),
+  `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`
 - Related documentation: `ezkey_mobile/docs/MOBILE_FUNCTIONAL_FLOWS.md`, `ezkey_mobile/docs/MOBILE_STACK_AND_ARCHITECTURE.md`, `ezkey-tests/README.md`, `docker/README.md`, `docs/ENDPOINT.md`
-- Related diagnostic context: `ezkey_mobile/MOBILE_PENDING_DEBUG_PLAN.md`
+- Related diagnostic context: `ezkey_mobile/docs/MOBILE_PENDING_DEBUG_PLAN.md`
 - Churn + evidence design (next phase): `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`
 - Test plan slice: [`TSP-2026-06-26-mobile-real-device-churn-harness.md`](../test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md)
 - Related operational pattern: `ezkey-tests/scripts/run-operational-churn.sh`

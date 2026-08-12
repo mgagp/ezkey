@@ -82,7 +82,7 @@ and four backlog ideas below — this track does not claim September operability
 | `TB-2026-08-09-mobile-signed-instance-info` | Signed enrolled instance-info | `under-review` | `I-2026-08-09-mobile-signed-instance-info-integrity` |
 | `TB-2026-07-12` | Security pentest curated MVP | `active` | `I-2026-07-12-security-pentest-curated-hygiene` |
 | `TB-2026-07-11` | Java doctor-curated curator MVP | `active` | `I-2026-07-11-java-doctor-curated-hygiene` (#326) |
-| `TB-2026-07-11-mobile-doctor` | Mobile doctor-curated curator MVP | `active` | `I-2026-07-11-mobile-doctor-curated-hygiene` |
+| `TB-2026-07-11-mobile-doctor` | Mobile doctor-curated curator MVP | `done` | `I-2026-07-11-mobile-doctor-curated-hygiene` |
 | `TB-2026-07-07-auth-attempt-challenge-protection-phase-b` | Auth attempt challenge protection — phase B | `promoted` | `I-2026-07-07-auth-attempt-challenge-protection` |
 | `TB-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement` | Enforce challenge presence on `passwordless-wait` | `promoted` | `I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement` |
 | `TB-2026-06-02-auth-api-cloudflare-schema-first-slice` | Auth API Cloudflare schema-first slice | `draft` | `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation` |

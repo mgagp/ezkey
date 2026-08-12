@@ -7,7 +7,7 @@
 ## État actuel — ce qui existe déjà
 
 - `migration` : déjà ✅ non-root (`USER spring:spring`)
-- Services (`admin-api`, `auth-api`, `m2m-api`, `crypto-api`, `demo-device`, `demo-app-acme`) : root → drop vers `spring` via `su-exec`
+- Services (`admin-api`, `auth-api`, `integration-api`, `crypto-api`, `demo-device`, `demo-app-acme`) : root → drop vers `spring` via `su-exec`
 - `bootstrap-init` : root permanent
 - `cli-test` : root permanent (utilise `/root/.ezkey`)
 - `postgres` : géré par l'image officielle (déjà non-root)
@@ -17,7 +17,7 @@
 ## Étapes
 
 1. **Modifier le `docker/Dockerfile` — stages services Spring Boot**
-   - Pour chaque stage (`admin-api`, `auth-api`, `m2m-api`, `crypto-api`, `demo-device`, `demo-app-acme`) : créer l'utilisateur `spring` (déjà fait au build pour `migration`, à dupliquer), pré-créer tous les répertoires nécessaires avec `mkdir -p` + `chown spring:spring` + `chmod` approprié depuis root *avant* de switcher
+   - Pour chaque stage (`admin-api`, `auth-api`, `integration-api`, `crypto-api`, `demo-device`, `demo-app-acme`) : créer l'utilisateur `spring` (déjà fait au build pour `migration`, à dupliquer), pré-créer tous les répertoires nécessaires avec `mkdir -p` + `chown spring:spring` + `chmod` approprié depuis root *avant* de switcher
    - Ajouter `USER spring:spring` en fin de chaque stage, avant `ENTRYPOINT`
    - Supprimer l'installation de `su-exec` de ces stages (plus besoin)
    - Désinstaller `shadow` / `su-exec` des couches finales

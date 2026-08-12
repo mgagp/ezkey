@@ -869,7 +869,7 @@ retired and only when no enrollments remain linked to it. System integrations ca
 
 ## Tenant management
 
-Tenant management endpoints allow GlobalAdmins to create, list, update, deactivate, and activate tenants. TenantAdmins can list and get only their own tenant.
+Tenant management endpoints allow GlobalAdmins to create, list, update, deactivate, and activate tenants. TenantAdmins cannot list tenants (`GET /tenants` → 403); they may get their own tenant by ID only.
 
 **Lifecycle:** A tenant is either **active** or **inactive**. Deactivation sets `active = false`, revokes all admin tokens for that tenant, and blocks new integrations, enrollments, and API keys; data is preserved for audit. Activation sets `active = true` and restores full access; deactivation metadata (who/when) is preserved for traceability. The **system tenant** cannot be deactivated.
 

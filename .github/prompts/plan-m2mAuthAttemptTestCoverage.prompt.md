@@ -1,13 +1,13 @@
 # Plan: Couverture fonctionnelle M2M vs Admin API
 
-**TL;DR** — La couverture actuelle de `create` sur l'Admin API est solide (4 tests). Cependant, `wait` n'est couvert nulle part, et le M2M API (port 7080) n'a aucun test automatisé — seulement des collections Postman. Le plan ajoute la configuration d'infrastructure pour le M2M dans le harness de tests, crée un test Admin API pour `wait` + `userIdentifier`, et crée un test M2M parallèle couvrant `create` + `wait` + `userIdentifier`. Admin API reste le défaut, M2M est configuré en supplément. Pas de duplication des scénarios déjà couverts.
+**TL;DR** — La couverture actuelle de `create` sur l'Admin API est solide (4 tests). Cependant, `wait` n'est couvert nulle part, et l'Integration API (port 7080; formerly called M2M API) n'a aucun test automatisé — seulement des collections Postman. Le plan ajoute la configuration d'infrastructure pour Integration API dans le harness de tests, crée un test Admin API pour `wait` + `userIdentifier`, et crée un test Integration API parallèle couvrant `create` + `wait` + `userIdentifier`. Admin API reste le défaut, Integration API est configuré en supplément. Pas de duplication des scénarios déjà couverts. Keep “M2M” only when referring to API-key auth as a mechanism.
 
 ---
 
 ## Décisions actées
 
 - Admin API (port 9080) : reste le défaut dans tous les tests existants et futurs
-- M2M API (port 7080) : configuré en parallèle, couverture ciblée uniquement
+- Integration API (port 7080) : configuré en parallèle, couverture ciblée uniquement
 - Scope Admin à ajouter : `wait` + création par `userIdentifier`
 - Scope M2M à créer : `create` + `wait` + création par `userIdentifier`
 - `cancel` : hors scope pour ce cycle

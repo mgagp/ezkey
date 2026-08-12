@@ -18,7 +18,7 @@ presentation order. Phase 2 implements the chosen mechanisms in code.
 ## Incubation sources
 
 - Working plan (GitHub): [`.github/prompts/plan-openApiPresentationOrder.prompt.md`](../../.github/prompts/plan-openApiPresentationOrder.prompt.md)
-- Working plan (Cursor): [`.cursor/plans/openapi_ordering_strategy_86087546.plan.md`](../../.cursor/plans/openapi_ordering_strategy_86087546.plan.md)
+- Deleted Cursor plan (materialized); see **Related IDs** above and linked I/TB artifacts
 - Lane: `B` — plan incubation, materialized `2026-06-02`
 - Methodology gate: [`2026-06-02-plan-incubation-bidirectional-traceability.md`](../methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)
 

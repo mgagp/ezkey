@@ -97,7 +97,7 @@ Un TenantAdmin ne peut pas lister les administrateurs (TenantAdmins) de son prop
 - `ezkey-admin-api/src/test/java/org/ezkey/admin/controller/AdminProvisioningControllerTest.java` - Tests d'intégration
 - `postman/collections/v2.1/EZ Key Admin Provisioning admin.postman_collection.json` - Collection mise à jour
 
-**Note additionnelle:** L'endpoint `GET /api/v1/tenants` a également été modifié pour permettre aux TenantAdmins de voir leur propre tenant, suivant le même pattern de filtrage automatique.
+**Note (canon 2026-08):** `GET /api/v1/tenants` (list) is **GlobalAdmin only** (TenantAdmin → 403). TenantAdmin may `GET /api/v1/tenants/{id}` for their own tenant only. See `docs/ENDPOINT.md` § Tenants.
 
 ### Prochaines étapes
 

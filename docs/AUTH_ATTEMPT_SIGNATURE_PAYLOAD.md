@@ -7,7 +7,7 @@ Enrollment bind and verify use a separate spec: [ENROLLMENT_SIGNATURE_PAYLOAD.md
 ## Encoding
 
 - **Character encoding**: UTF-8. The payload string is encoded as UTF-8 bytes for hashing/signing.
-- **Text normalization**: Unicode NFC (Canonical Composition), per Unicode Standard Annex #15 (UAX #15). Applied only to user-facing text fields that can contain accents: `contextTitle` and `contextMessage`. The proof token and the literals `"true"`/`"false"` are ASCII and are not normalized.
+- **Text normalization**: Unicode NFC (Canonical Composition), per Unicode Standard Annex #15 (UAX #15). Applied to user-facing text fields that can contain accents: `contextTitle`, `contextMessage`, and the Respond **result** `message` (`authAttemptMessage`). The proof token and the literals `"true"`/`"false"` are ASCII and are not normalized.
 
 ## Pending (integration signs)
 

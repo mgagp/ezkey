@@ -96,11 +96,12 @@ public class OpenApiConfig {
 springdoc.api-docs.path=/api-docs
 springdoc.swagger-ui.path=/swagger-ui/index.html
 springdoc.swagger-ui.operationsSorter=method
-springdoc.swagger-ui.tagsSorter=alpha
+# Do not set tagsSorter=alpha — curated OpenAPI tags[] order must remain visible
 springdoc.swagger-ui.doc-expansion=none
 springdoc.swagger-ui.disable-swagger-default-url=true
 springdoc.swagger-ui.custom-site-title=Ezkey API Documentation
 ```
+
 
 ### Controller Documentation Examples
 

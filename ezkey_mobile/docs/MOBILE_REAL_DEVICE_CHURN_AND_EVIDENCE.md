@@ -8,7 +8,7 @@ It complements:
 
 - `ezkey_mobile/maestro/README.md` — pilot prerequisites and selector inventory.
 - `ezkey_mobile/scripts/run-real-device-pilot-maestro.sh` — single-flow runner and report paths.
-- `ezkey_mobile/MOBILE_PENDING_DEBUG_PLAN.md` — pending/signature diagnostics.
+- `ezkey_mobile/docs/MOBILE_PENDING_DEBUG_PLAN.md` — pending/signature diagnostics.
 - `ezkey-tests/scripts/run-operational-churn.sh` — operational churn **without** phone UI (pattern for duration/iterations/seed).
 
 ## Operator motivation (problem statement)
@@ -171,7 +171,7 @@ Use a **deck** or seeded PRNG so the distribution is explicit and replayable.
 - Follow-ups: `product-docs/global/backlog/ideas/I-2026-05-31-mobile-android-stack-followups.md`
 - Test plan slice: `product-docs/global/backlog/test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md`
 - GitHub: [#239](https://github.com/mgagp/ezkey/issues/239) (F1), [#254](https://github.com/mgagp/ezkey/issues/254) (F2a)
-- Incubation plan: `.cursor/plans/ezkey_mobile_android_real_device_automation.plan.md` (Phase 3 steady-state)
+- Incubation plan: deleted Cursor plan (materialized); see `TB-2026-0002`, `I-2026-0019` (Phase 3 steady-state)
 
 ## Implementation status (2026-06-26)
 
@@ -243,7 +243,7 @@ Advance **one or two harness phases at a time**. Update **canonical** docs only 
 ### Anti-rot rules
 
 1. **One narrative home** — motivation stays in `I-2026-0019`; execution status in `TB-2026-0002`; mechanics here and in `maestro/README.md`.
-2. **No orphan plans** — if `.cursor/plans/ezkey_mobile_android_real_device_automation.plan.md` changes, add one line under TB **Links** or **Pilot status**; do not fork a second design doc.
+2. **No forked design** — do not maintain a second automation design outside `TB-2026-0002`, `I-2026-0019`, and this doc; update TB **Links** or **Pilot status** when harness scope shifts.
 3. **Evidence is files on disk** — session folders are the lab notebook; product-docs only point to the contract.
 4. **Update matrices when tests exist** — not when ideas are discussed.
 5. **Parked vs done** — use `closeout` **parked** with a review date if Phase B slips; avoid leaving TB ambiguously “almost done”.

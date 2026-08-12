@@ -41,14 +41,14 @@ Operational email remains **in-core** today (Java Mail and configuration—see *
 
 Each row is an **approved name** for a future public repository. **Repository URL** placeholders—fill after you create repos on GitHub.
 
-| Planned repository name | Capability | Draft initial content (staging) |
-|-------------------------|------------|--------------------------------|
-| *(add URL)* | SMS via Twilio | [`staging/ecosystem-shells/ezkey-sms-twilio/`](staging/ecosystem-shells/ezkey-sms-twilio/) |
-| *(add URL)* | SMS via AWS SNS | [`staging/ecosystem-shells/ezkey-sms-aws-sns/`](staging/ecosystem-shells/ezkey-sms-aws-sns/) |
-| *(add URL)* | Directory ↔ Ezkey enrollment (Microsoft AD) | [`staging/ecosystem-shells/ezkey-directory-microsoft-ad/`](staging/ecosystem-shells/ezkey-directory-microsoft-ad/) |
-| *(add URL)* | Directory ↔ Ezkey enrollment (LDAP) | [`staging/ecosystem-shells/ezkey-directory-ldap/`](staging/ecosystem-shells/ezkey-directory-ldap/) |
+| Planned repository name | Capability | Draft / publish status |
+|-------------------------|------------|------------------------|
+| *(add URL)* | SMS via Twilio | Staging tree not in git yet — drive via `I-2026-0020` |
+| *(add URL)* | SMS via AWS SNS | Staging tree not in git yet — drive via `I-2026-0020` |
+| *(add URL)* | Directory ↔ Ezkey enrollment (Microsoft AD) | Staging tree not in git yet — drive via `I-2026-0020` |
+| *(add URL)* | Directory ↔ Ezkey enrollment (LDAP) | Staging tree not in git yet — drive via `I-2026-0020` |
 
-After repositories exist, replace *(add URL)* with full `https://github.com/...` links and optionally remove staged copy trees per [`docs/staging/ecosystem-shells/README.md`](../staging/ecosystem-shells/README.md).
+After repositories exist, replace *(add URL)* with full `https://github.com/...` links. Optional local staging under `docs/staging/ecosystem-shells/` may be regenerated when publish work resumes (`I-2026-0020`).
 
 ## Standard README skeleton (for shells)
 
@@ -65,9 +65,9 @@ Suggested GitHub **topics:** `ezkey`, `ezkey-ecosystem`, `shell`, plus vendor an
 
 ## Publish checklist for maintainers
 
-1. Implement or verify shell content under `docs/staging/ecosystem-shells/<repo-name>/`.
+1. Prepare shell content (regenerate under `docs/staging/ecosystem-shells/<repo-name>/` if using a local staging tree, or author directly in the new repo).
 2. Create empty Git repository on GitHub with matching name.
-3. Copy files from the staging subdirectory into that repo root; push **initial commit**.
+3. Copy files into that repo root; push **initial commit**.
 4. Attach topics listed above.
 5. Update **Repository URL** column in this file.
-6. Delete `docs/staging/ecosystem-shells/` (or only published subtrees); commit—the staging area is ephemeral by design.
+6. If a local staging tree was used, delete published subtrees (ephemeral by design). Remaining work: `I-2026-0020`.

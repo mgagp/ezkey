@@ -629,9 +629,10 @@ public class TenantIsolation{Resource}Test extends AbstractSecurityTest {
 
 **Deliverables:**
 1. TenantController tests (P1) - **Automate existing manual validations**
-   - TenantAdmin can view own tenant (automate known scenario)
-   - TenantAdmin cannot view other tenants (automate known scenario - regression test)
-   - GlobalAdmin can view all tenants (automate known scenario)
+   - TenantAdmin cannot list tenants (`GET /api/v1/tenants` → 403; GlobalAdmin-only)
+   - TenantAdmin can get own tenant by ID (`GET /api/v1/tenants/{id}`)
+   - TenantAdmin cannot get other tenants by ID (403/404)
+   - GlobalAdmin can list and view all tenants
 
 2. Remaining controller tests (P1/P2) - **Automate existing manual validations + edge cases if needed**
    - List operations with tenant filtering (automate known scenarios)
@@ -663,13 +664,15 @@ public class TenantIsolation{Resource}Test extends AbstractSecurityTest {
 - ❌ TenantAdmin cannot create tenants
 
 **Positive Tests (P1):**
-- ✅ TenantAdmin can view own tenant
-- ✅ GlobalAdmin can view all tenants
+- ✅ TenantAdmin can get own tenant by ID
+- ✅ GlobalAdmin can list and view all tenants
 - ✅ GlobalAdmin can create tenants
 - ✅ GlobalAdmin can update any tenant
 
+**Negative / list (P0–P1):**
+- ❌ TenantAdmin list tenants → 403 (`GET /api/v1/tenants` is GlobalAdmin-only per `ENDPOINT.md`)
+
 **Edge Cases (P2):**
-- TenantAdmin list returns only own tenant
 - GlobalAdmin list returns all tenants
 - Inactive tenant filtering
 
