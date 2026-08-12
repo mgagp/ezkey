@@ -195,7 +195,7 @@ echo ""
 # Step 4: Start Docker Compose stack with test profiles
 if [ -n "$HA_MODE" ]; then
     echo "Step 4/7: Starting Docker Compose HA stack with profiles (${SPRING_PROFILES})..."
-    echo "  HA mode: 2 instances of each API behind HAProxy load balancers"
+    echo "  HA mode: 2x admin-api, 2x auth-api, 2x integration-api behind HAProxy"
 elif [ -n "$WITH_PROXY" ]; then
     echo "Step 4/7: Starting Docker Compose stack with profiles (${SPRING_PROFILES}) - Caddy reverse proxy..."
 else
@@ -290,10 +290,13 @@ echo ""
 echo "📋 Stack Status:"
 if [ -n "$HA_MODE" ]; then
     echo "  - Docker stack: Running HA mode with profiles (${SPRING_PROFILES})"
-    echo "  - Instances: 2x admin-api, 2x auth-api behind HAProxy load balancers"
+    echo "  - Instances: 2x admin-api, 2x auth-api, 2x integration-api behind HAProxy"
     echo "  - Admin API: http://localhost:9080 (via HAProxy)"
     echo "  - Auth API: http://localhost:8080 (via HAProxy)"
-    echo "  - HAProxy Stats: http://localhost:9081/stats (Admin), http://localhost:8085/stats (Auth)"
+    echo "  - Integration API: http://localhost:7080 (via HAProxy)"
+    echo "  - Crypto API: http://localhost:9090"
+    echo "  - Demo Device: http://localhost:8083"
+    echo "  - HAProxy Stats: http://localhost:9081/stats (Admin), http://localhost:8085/stats (Auth), http://localhost:7081/stats (Integration)"
 elif [ -n "$WITH_PROXY" ]; then
     echo "  - Docker stack: Running with profiles (${SPRING_PROFILES}) (Caddy reverse proxy)"
     echo "  - Admin API (via Caddy): http://localhost:19080"

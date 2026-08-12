@@ -1,11 +1,12 @@
 # Local Docker diagnostics override for HA.
 #
 # Publishes per-instance management/Actuator ports to the host so you can inspect
-# auth-api-1 vs auth-api-2 and admin-api-1 vs admin-api-2 independently.
+# auth-api-1 vs auth-api-2, admin-api-1 vs admin-api-2, and integration-api-1 vs
+# integration-api-2 independently.
 #
 # IMPORTANT:
 # - Do not use this override in staging or production.
-# - Avoid host port collisions with HAProxy stats ports (8085 and 9081).
+# - Avoid host port collisions with HAProxy stats ports (8085, 9081, 7081).
 #
 # Usage:
 #   # Windows PowerShell
@@ -29,3 +30,9 @@ services:
     ports:
       - "29081:9081"
 
+  integration-api-1:
+    ports:
+      - "17081:7081"
+  integration-api-2:
+    ports:
+      - "27081:7081"
