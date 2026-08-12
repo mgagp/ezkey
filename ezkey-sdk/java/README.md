@@ -143,18 +143,21 @@ AuthAttemptRespondResponseDto response = authAPI.respondToAuth(
 
 ### Default Configuration
 
-By default, the SDK connects to:
-- Admin API: `http://localhost:9080`
-- Auth API: `http://localhost:8080`
+By default, the Java SDK targets the **Integration API** (API-key M2M):
+- Integration API: `http://localhost:7080`
+
+Admin API (`9080`) remains the operator / bearer-token surface. API-key auth attempts on Admin API are disabled by default (`ezkey.admin.auth.api-key-auth-attempts-enabled=false`).
 
 ### Custom Configuration
 
 ```java
-EzkeyConfig config = new EzkeyConfig(
-    "https://admin-api.yourcompany.com",
-    "https://auth-api.yourcompany.com"
-);
-EzkeyClient client = new EzkeyClient(config);
+EzkeyConfig config = EzkeyConfig.of("ezkey_ikey_xxx", "ezkey_skey_xxx");
+// or override base URL:
+EzkeyClient client = EzkeyClient.builder()
+    .baseUrl("https://integration-api.yourcompany.com")
+    .integrationKey("ezkey_ikey_xxx")
+    .secretKey("ezkey_skey_xxx")
+    .build();
 ```
 
 ## Error Handling

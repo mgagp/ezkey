@@ -103,25 +103,19 @@ Request has `ROLE_API_KEY` authority AND `api-key-auth-attempts-enabled == false
 
 **Problem type URI:**
 ```
-https://docs.ezkey.org/problem/admin-api-key-auth-attempts-disabled
+https://ezkey.io/problems/admin/api-key-auth-attempts-disabled
 ```
 
 **Response shape:**
 ```json
 {
-  "type": "https://docs.ezkey.org/problem/admin-api-key-auth-attempts-disabled",
+  "type": "https://ezkey.io/problems/admin/api-key-auth-attempts-disabled",
   "title": "API-key authentication for auth attempts is not enabled on this Admin API instance",
   "status": 403,
   "detail": "API-key authentication for auth-attempt flows is disabled. Use Integration API for M2M authentication flows. To enable this feature for minimal installations, set the property 'ezkey.admin.auth.api-key-auth-attempts-enabled' to 'true'.",
   "instance": "[request URI]"
 }
 ```
-
-**Link header (optional):**
-```
-Link: <https://docs.ezkey.org/guides/api-keys/>; rel="documentation"
-```
-
 ### Integration API (no change)
 
 - Verify existing `ROLE_API_KEY` behavior on Integration API is unchanged.
@@ -220,7 +214,7 @@ No database or irreversible state changes; rollback is a clean code checkout.
 4. **SDK + Demo ACME migration** — update base URLs and documentation.
 5. **Functional test suite migration** — update auth-attempt test fixtures.
 6. **Documentation updates** — CONFIGURATION.md, API keys guide, SDK README.
-7. **Postman collection review** — update requests/examples for M2M to use Integration API base URL.
+7. **Bruno collection review** — update Admin API-key auth-attempt requests to document default 403; keep Integration API folder as happy path.
 
 ---
 
@@ -251,6 +245,7 @@ Once validated:
 ## Notes
 
 - This TB is **single-pass** — scope, risk, and cross-boundary assumptions are all explicit and settled. No follow-up TBs expected.
-- The filter placement must be **before** role-based authorization to avoid confusion with authorization failure vs. feature-disabled failure.
+- The filter placement must be **after** successful API-key authentication (`ROLE_API_KEY`) and **before** role-based authorization, to distinguish feature-disabled (403 problem) from generic auth failures.
 - The property name uses the `ezkey.admin.auth.*` prefix per existing Admin API configuration style.
-- The problem `type` URI can be refined post-implementation if needed; the structure and content are what matter for RFC 9457 compliance.
+- Problem `type` URI uses the stable catalog namespace `https://ezkey.io/problems/admin/api-key-auth-attempts-disabled` (RFC 9457 identifier; not a live docs host).
+- **2026-08-12 revision before implementation:** Demo ACME already targets Integration API; Java SDK default base URL → Integration API `7080`; Bruno (not Postman) for M2M examples; Admin Bruno `*-with-api-key` requests document default 403; functional tests migrated (`ApiKeySecurityTest`, `RateLimitingSecurityTest`).

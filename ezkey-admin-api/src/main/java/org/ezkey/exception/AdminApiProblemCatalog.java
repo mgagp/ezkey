@@ -32,9 +32,18 @@ public final class AdminApiProblemCatalog {
   public static final String TYPE_MALFORMED_REQUEST = BASE + "/malformed-request";
   public static final String TYPE_DATA_CONSTRAINT_VIOLATION = BASE + "/data-constraint-violation";
 
+  /**
+   * API-key M2M auth-attempt traffic rejected because the Admin API acceptance flag is disabled
+   * (default). Integrators should use Integration API, or opt in for minimal Admin+Auth installs.
+   */
+  public static final String TYPE_API_KEY_AUTH_ATTEMPTS_DISABLED =
+      BASE + "/api-key-auth-attempts-disabled";
+
   public static final String TITLE_INTERNAL_ERROR = "Internal error";
   public static final String TITLE_TOO_MANY_REQUESTS = "Too many requests";
   public static final String TITLE_NOT_FOUND = "Resource not found";
+  public static final String TITLE_API_KEY_AUTH_ATTEMPTS_DISABLED =
+      "API-key authentication for auth attempts is not enabled on this Admin API instance";
 
   /**
    * Safe detail for unknown routes and missing static resources (e.g. scanner traffic); does not
@@ -51,6 +60,16 @@ public final class AdminApiProblemCatalog {
 
   /** Safe detail when the server cannot complete the request (no stack or tenant internals). */
   public static final String DETAIL_UNEXPECTED = "An unexpected error occurred";
+
+  /**
+   * Safe detail when Admin API rejects {@code ROLE_API_KEY} because acceptance is disabled.
+   *
+   * <p>Points operators to Integration API and the opt-in property for minimal installs.
+   */
+  public static final String DETAIL_API_KEY_AUTH_ATTEMPTS_DISABLED =
+      "API-key authentication for auth-attempt flows is disabled. Use Integration API for M2M"
+          + " authentication flows. To enable this feature for minimal installations, set the"
+          + " property 'ezkey.admin.auth.api-key-auth-attempts-enabled' to 'true'.";
 
   private AdminApiProblemCatalog() {}
 }

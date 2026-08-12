@@ -14,6 +14,7 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAdminApi;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAuthApi;
+import static org.ezkey.tests.util.RestAssuredTestConfig.configureForIntegrationApi;
 
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
@@ -351,10 +352,9 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
       Map<String, Object> request = new HashMap<>();
       request.put("challengeRequested", false);
 
+      configureForIntegrationApi(dockerStackConfig);
       Response response =
           given()
-              .baseUri(getIntegrationApiUrl())
-              .basePath("/api/v1")
               .contentType(ContentType.JSON)
               .header("Authorization", createBasicAuthHeader(apiKeyCredentials))
               .body(request)
@@ -625,10 +625,6 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
 
   private String createBasicAuthHeader(String credentials) {
     return "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes());
-  }
-
-  private String getIntegrationApiUrl() {
-    return System.getenv().getOrDefault("EZKEY_INTEGRATION_API_URL", "http://localhost:7080");
   }
 
   private record VerifiedEnrollmentFixture(

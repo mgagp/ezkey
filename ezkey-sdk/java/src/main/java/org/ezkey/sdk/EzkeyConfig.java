@@ -16,12 +16,12 @@ import java.util.Objects;
 /**
  * Immutable configuration for the Ezkey SDK.
  *
- * <p>Contains all parameters needed to connect to an Ezkey Admin API instance. The caller is
- * responsible for providing values from whatever external source they prefer (properties, YAML,
- * environment variables, database, hardcoded, etc.) — the SDK makes no assumption about the storage
- * format.
+ * <p>Contains all parameters needed to connect to an Ezkey Integration API instance for API-key
+ * (M2M) auth-attempt flows. The caller is responsible for providing values from whatever external
+ * source they prefer (properties, YAML, environment variables, database, hardcoded, etc.) — the SDK
+ * makes no assumption about the storage format.
  *
- * @param baseUrl the Admin API base URL (e.g. {@code http://localhost:9080})
+ * @param baseUrl the Integration API base URL (e.g. {@code http://localhost:7080})
  * @param integrationKey the public integration key (e.g. {@code ezkey_ikey_xxx})
  * @param secretKey the secret key (e.g. {@code ezkey_skey_xxx})
  * @param connectTimeout HTTP connection timeout
@@ -35,8 +35,8 @@ public record EzkeyConfig(
     Duration connectTimeout,
     Duration readTimeout) {
 
-  /** Default Admin API base URL. */
-  public static final String DEFAULT_BASE_URL = "http://localhost:9080";
+  /** Default Integration API base URL (canonical M2M surface). */
+  public static final String DEFAULT_BASE_URL = "http://localhost:7080";
 
   /** Default connection timeout (10 seconds). */
   public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(10);

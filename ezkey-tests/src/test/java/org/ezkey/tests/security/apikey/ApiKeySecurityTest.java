@@ -14,6 +14,7 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAdminApi;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAuthApi;
+import static org.ezkey.tests.util.RestAssuredTestConfig.configureForIntegrationApi;
 
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
@@ -33,7 +34,8 @@ import org.junit.jupiter.api.Test;
  * <p>Validates that API keys:
  *
  * <ul>
- *   <li>Can create auth attempts for their own integration
+ *   <li>Can create auth attempts for their own integration (Integration API)
+ *   <li>Are rejected on Admin API by default when using API-key auth (403 RFC 9457)
  *   <li>Cannot access auth attempts from other integrations (403)
  *   <li>Cannot access admin endpoints (403)
  *   <li>Cannot access enrollment/integration management (403)
@@ -128,7 +130,7 @@ public class ApiKeySecurityTest extends AbstractSecurityTest {
   }
 
   @Test
-  @DisplayName("API key can create auth attempts for own integration")
+  @DisplayName("API key can create auth attempts for own integration on Integration API")
   public void testApiKeyCanCreateAuthAttemptsForOwnIntegration() {
     // Skip if admin token not available
     try {
@@ -141,11 +143,12 @@ public class ApiKeySecurityTest extends AbstractSecurityTest {
       Integer enrollmentId = createVerifiedEnrollment(integrationId, adminToken);
       String apiKey = createApiKeyForIntegration(integrationId, adminToken);
 
-      // Create auth attempt with API key
+      // Create auth attempt with API key on Integration API (canonical M2M surface)
       Map<String, Object> request = new HashMap<>();
       request.put("enrollmentId", enrollmentId);
       request.put("challengeRequested", false);
 
+      configureForIntegrationApi(dockerStackConfig);
       Response response =
           given()
               .contentType(ContentType.JSON)
@@ -162,6 +165,45 @@ public class ApiKeySecurityTest extends AbstractSecurityTest {
       // Should return 201 Created
       assertThat(response.getStatusCode()).isEqualTo(201);
       assertThat(response.jsonPath().getInt("authAttemptId")).isNotNull();
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
+
+  @Test
+  @DisplayName("Admin API rejects API-key auth-attempt create when acceptance flag is disabled")
+  public void testAdminApiRejectsApiKeyAuthAttemptByDefault() {
+    try {
+      String adminToken = authTokenManager.getAdminToken();
+      configureForAdminApi(dockerStackConfig);
+
+      Integer integrationId = testDataFactory.createIntegration();
+      Integer enrollmentId = createVerifiedEnrollment(integrationId, adminToken);
+      String apiKey = createApiKeyForIntegration(integrationId, adminToken);
+
+      Map<String, Object> request = new HashMap<>();
+      request.put("enrollmentId", enrollmentId);
+      request.put("challengeRequested", false);
+
+      configureForAdminApi(dockerStackConfig);
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header(
+                  "Authorization",
+                  createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
+              .body(request)
+              .when()
+              .post("/auth-attempts")
+              .then()
+              .extract()
+              .response();
+
+      assertThat(response.getStatusCode()).isEqualTo(403);
+      assertThat(response.getContentType()).contains("application/problem+json");
+      assertThat(response.jsonPath().getString("type"))
+          .isEqualTo("https://ezkey.io/problems/admin/api-key-auth-attempts-disabled");
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");

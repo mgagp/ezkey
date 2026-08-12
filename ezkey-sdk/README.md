@@ -34,13 +34,17 @@ Each SDK includes a demo application that demonstrates the complete Ezkey integr
 
 ## API Endpoints
 
-The SDKs interact with two main Ezkey APIs:
+The SDKs interact with Ezkey APIs as follows:
+
+### Integration API (Port 7080) — canonical M2M / API-key surface
+- Authentication attempt create, wait, cancel (HTTP Basic API key)
+- Used by the Java `EzkeyClient` defaults
 
 ### Admin API (Port 9080)
 - Integration management (CRUD)
 - Enrollment administration
-- Authentication attempt creation and monitoring
-- Wait API for synchronous authentication flows
+- Operator / bearer-token flows
+- API-key auth attempts disabled by default (opt-in for minimal Admin+Auth installs)
 
 ### Auth API (Port 8080)  
 - Device enrollment binding and verification

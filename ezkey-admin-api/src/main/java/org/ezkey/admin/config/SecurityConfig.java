@@ -13,6 +13,7 @@ package org.ezkey.admin.config;
 import org.ezkey.admin.security.AdminCookieCsrfFilter;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
+import org.ezkey.admin.security.ApiKeyAuthAttemptsAcceptanceFilter;
 import org.ezkey.admin.security.ApiKeyAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -47,6 +48,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * <ol>
  *   <li>Rate Limiting Filter (if enabled)
  *   <li>API Key Authentication Filter (HTTP Basic Auth)
+ *   <li>API Key Auth-Attempts Acceptance Filter (deny-by-default gate)
  *   <li>Admin Token Authentication Filter (Bearer tokens)
  * </ol>
  *
@@ -64,16 +66,19 @@ public class SecurityConfig {
 
   private final AdminTokenAuthenticationFilter adminTokenAuthenticationFilter;
   private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
+  private final ApiKeyAuthAttemptsAcceptanceFilter apiKeyAuthAttemptsAcceptanceFilter;
   private final AdminRateLimitFilter adminRateLimitFilter;
   private final AdminCookieCsrfFilter adminCookieCsrfFilter;
 
   public SecurityConfig(
       AdminTokenAuthenticationFilter adminTokenAuthenticationFilter,
       ApiKeyAuthenticationFilter apiKeyAuthenticationFilter,
+      ApiKeyAuthAttemptsAcceptanceFilter apiKeyAuthAttemptsAcceptanceFilter,
       AdminRateLimitFilter adminRateLimitFilter,
       AdminCookieCsrfFilter adminCookieCsrfFilter) {
     this.adminTokenAuthenticationFilter = adminTokenAuthenticationFilter;
     this.apiKeyAuthenticationFilter = apiKeyAuthenticationFilter;
+    this.apiKeyAuthAttemptsAcceptanceFilter = apiKeyAuthAttemptsAcceptanceFilter;
     this.adminRateLimitFilter = adminRateLimitFilter;
     this.adminCookieCsrfFilter = adminCookieCsrfFilter;
   }
@@ -88,7 +93,8 @@ public class SecurityConfig {
    *   <li><b>Bearer Tokens:</b> Token-based authentication for admins
    * </ul>
    *
-   * <p><b>Filter Order:</b> Rate Limiting → API Key Auth → Bearer Token Auth
+   * <p><b>Filter Order:</b> Rate Limiting → API Key Auth → API Key Acceptance Gate → Bearer Token
+   * Auth
    *
    * @param http the HttpSecurity configuration
    * @return SecurityFilterChain
@@ -153,6 +159,9 @@ public class SecurityConfig {
     // Add API key authentication filter BEFORE bearer token filter
     // This ensures API keys (HTTP Basic) are checked before bearer tokens
     http.addFilterBefore(apiKeyAuthenticationFilter, AdminTokenAuthenticationFilter.class);
+
+    // Deny-by-default gate for ROLE_API_KEY after successful API-key authentication
+    http.addFilterAfter(apiKeyAuthAttemptsAcceptanceFilter, ApiKeyAuthenticationFilter.class);
 
     return http.build();
   }

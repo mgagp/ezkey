@@ -30,6 +30,8 @@ import org.slf4j.LoggerFactory;
  *
  * <ul>
  *   <li>{@code EZKEY_ADMIN_API_URL} - Admin API base URL (default: http://localhost:9080)
+ *   <li>{@code EZKEY_INTEGRATION_API_URL} - Integration API base URL (default:
+ *       http://localhost:7080)
  *   <li>{@code EZKEY_AUTH_API_URL} - Auth API base URL (default: http://localhost:8080)
  *   <li>{@code EZKEY_CRYPTO_API_URL} - Crypto API base URL (default: http://localhost:9090)
  *   <li>{@code EZKEY_ADMIN_ACTUATOR_URL} - Admin management base (default probe: 9081, then HA
@@ -50,6 +52,7 @@ public class DockerStackConfig {
   private static final Logger log = LoggerFactory.getLogger(DockerStackConfig.class);
 
   private static final String DEFAULT_ADMIN_API_URL = "http://localhost:9080";
+  private static final String DEFAULT_INTEGRATION_API_URL = "http://localhost:7080";
   private static final String DEFAULT_AUTH_API_URL = "http://localhost:8080";
   private static final String DEFAULT_CRYPTO_API_URL = "http://localhost:9090";
   private static final String DEFAULT_ADMIN_ACTUATOR_URL = "http://localhost:9081";
@@ -66,6 +69,7 @@ public class DockerStackConfig {
   private static final String HA_AUTH_ACTUATOR_2 = "http://localhost:28085";
 
   private final String adminApiUrl;
+  private final String integrationApiUrl;
   private final String authApiUrl;
   private final String cryptoApiUrl;
   private final String adminActuatorUrl;
@@ -83,6 +87,8 @@ public class DockerStackConfig {
    */
   public DockerStackConfig() {
     this.adminApiUrl = System.getenv().getOrDefault("EZKEY_ADMIN_API_URL", DEFAULT_ADMIN_API_URL);
+    this.integrationApiUrl =
+        System.getenv().getOrDefault("EZKEY_INTEGRATION_API_URL", DEFAULT_INTEGRATION_API_URL);
     this.authApiUrl = System.getenv().getOrDefault("EZKEY_AUTH_API_URL", DEFAULT_AUTH_API_URL);
     this.cryptoApiUrl =
         System.getenv().getOrDefault("EZKEY_CRYPTO_API_URL", DEFAULT_CRYPTO_API_URL);
@@ -108,6 +114,7 @@ public class DockerStackConfig {
 
     log.info("Docker Stack Configuration:");
     log.info("  Admin API: {}", this.adminApiUrl);
+    log.info("  Integration API: {}", this.integrationApiUrl);
     log.info("  Auth API: {}", this.authApiUrl);
     log.info("  Crypto API: {}", this.cryptoApiUrl);
     log.info("  Admin Actuator: {}", this.adminActuatorUrl);
@@ -123,6 +130,15 @@ public class DockerStackConfig {
    */
   public String getAdminApiUrl() {
     return adminApiUrl;
+  }
+
+  /**
+   * Gets the Integration API base URL (canonical M2M / API-key surface).
+   *
+   * @return Integration API URL
+   */
+  public String getIntegrationApiUrl() {
+    return integrationApiUrl;
   }
 
   /**

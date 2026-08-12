@@ -101,6 +101,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SAME_SITE` | `ezkey.admin.auth.browser-session-cookie-same-site` | admin-api (optional; default `Strict`) |
 | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_COOKIE_NAME` | `ezkey.admin.auth.browser-csrf-cookie-name` | admin-api (optional; mirror in Admin UI build if changed) |
 | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_HEADER_NAME` | `ezkey.admin.auth.browser-csrf-header-name` | admin-api (optional; mirror in Admin UI build if changed) |
+| `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED` | `ezkey.admin.auth.api-key-auth-attempts-enabled` | admin-api (default false; Integration API is canonical M2M) |
 | `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` | `ezkey.demo.mitm-signature-enabled` | auth-api docker profile |
 | `EZKEY_INSTANCE_ID` | `ezkey.audit.integrity.instance-id` | all API modules |
 
