@@ -64,6 +64,24 @@
 | `.cursor/plans/archived/tenant_enrolment_audit_visibility_37e53453.plan.md` | Deleted. Option A shipped (`effectiveTenantId`, `resolveTenantIdForAudit`); Option B rejected. In-pass: auth-api AGENTS + ENDPOINT attribution. Parked P-043. |
 | `.cursor/plans/archived/tenant_ui_docker_standalone_c11b3c43.plan.md` | Deleted. `ezkey-tenant-ui/` retired; pattern in `ezkey-admin-ui` `start.sh` + Caddy. In-pass: AGENTS — keep UI Docker standalone vs main compose. Parked P-044. |
 | `.cursor/plans/archived/tenantadmin_list_admins_endpoint_cfc16d89.plan.md` | Deleted. Option 1 shipped: `GET /api/v1/admins` auto tenant scope. In-pass: `ezkey-admin-api/AGENTS.md` § Tenant-scoped list endpoints. |
+| `.cursor/plans/archived/2026-01/enrollment_uniqueness_constraint_implementation.md` | Deleted. Shipped: `idx_enrollment_unique_verified_name` (V5), `EnrollmentService` / `EnrollmentVerifyService`, uniqueness tests. In-pass: LIFECYCLE §3.3 uniqueness rules; ENDPOINT create + verify bullets. Parked P-046–P-047. |
+| `.cursor/plans/archived/2026-01/maven_pom_versioning_no_branch_collisions.md` | Deleted. Shipped: CI-friendly `${revision}${buildQualifier}${changelist}`, `scripts/mvn-branch.sh`, DEVELOPMENT + AGENTS. In-pass: DEVELOPMENT defaults + dead plan cite → AGENTS / `maven.config.example`. P-046 covers archived README inventory. |
+| `.cursor/plans/archived/2026-03/admin_api_pagination_uniformity_afd2226c.plan.md` | Deleted. Shipped: all Admin list/search → `Page` + UI `usePaginatedFromOrval`. In-pass: `ezkey-admin-api/AGENTS.md` § List/search paginated; policy sentence in `PAGINATION_GUIDELINES.md`. P-046 covers archived README. |
+| `.cursor/plans/archived/2026-03/admin_ui_login_ux_1f4a4ccf.plan.md` | Deleted. Shipped: pin toggle + `last-username-pref.ts` + `admin-ui-security.md`. In-pass: AGENTS Auth flow → security doc. Phase 2 keyboard shortcuts cancelled (no parking). |
+| `.cursor/plans/archived/2026-03/admin_ui_token_security.plan.md` | Deleted. Canon: `admin-ui-security.md` Mode A/B + Caddy headers. In-pass: AGENTS wording; validation Mode A/B rows; English section title. P-046 covers archived README. |
+| `.cursor/plans/archived/2026-03/admin-ui_recovery_codes_93295a7d.plan.md` | Deleted. Shipped: login recovery funnel + reset/rebind; canon `docs/ADMIN_UI_RECOVERY.md`. In-pass: Admin UI AGENTS § Recovery funnel. |
+| `.cursor/plans/archived/2026-03/auth_attempt_lifecycle_review_17873ad1.plan.md` | Deleted. Shipped: `AuthAttemptExpiryScheduler` + READ javadoc; no mobile cancel. In-pass: auth-api AGENTS device UX; admin-api CONFIGURATION §13 + config index. |
+| `.cursor/plans/archived/2026-03/dashboard_auth_widget_coherence_17cbb6fd.plan.md` | Deleted. Superseded by `I-2026-0030` / `dashboard-widget-signal-model.md` (separate pending+read badges). In-pass: “statu quo” → “status quo”. |
+| `.cursor/plans/archived/2026-03/enrollment-ui-review_cacd9f56.plan.md` | Deleted. Canon: `ENROLLMENT_ADMIN_UI_ATTRIBUTE_MATRIX.md` + `ENROLLMENT_WORKFLOW_GAPS.md`. In-pass: Admin UI AGENTS § Enrollment detail/metadata vs lifecycle. |
+| `.cursor/plans/archived/2026-03/ezkey_instance_init_and_branding_2f27a7f3.plan.md` | Deleted. Shipped despite stale “pending” frontmatter: instance-info, org branding, QR auth URL, bootstrap names. In-pass: Admin UI AGENTS § Instance branding. Parked P-048. |
+| `.cursor/plans/archived/2026-03/prev_next_detail_navigation_eebe3064.plan.md` | Deleted. Shipped: `useDetailNavigation` / list-detail nav across modals + full-page. In-pass: Admin UI AGENTS § Prev/Next detail navigation. |
+| `.cursor/plans/archived/2026-03/SPEC_ADMIN_RECOVERY_AUDIT_TRAIL.md` | Deleted. Shipped: `RecoveryAuditDetails` + recover/reset EventTypes. In-pass: `ADMIN_UI_RECOVERY.md` § Audit; retarget class + `AUDIT_LOGGING_IMPLEMENTATION.md` cites. Parked P-049. |
+| `.cursor/plans/archived/2026-04/acme_demo_lightsail_89788932.plan.md` | Deleted. Shipped: `--include-demo-acme`, Lightsail Compose/Caddy, progressive rollout docs in `experimental-hybrid/`. No in-pass (README/playbook already complete). |
+| `.cursor/plans/archived/2026-04/admin_api_cors_config_ee3c6b9a.plan.md` | Deleted. Shipped: `ezkey.admin.cors.*` + CONFIGURATION §11. In-pass: admin-api AGENTS § Admin API CORS. |
+| `.cursor/plans/archived/2026-04/admin_enrollmentid_exposure_7f58e2ee.plan.md` | Deleted. Shipped: `AdminResponseDto.enrollmentId` + Admin UI `EnrollmentFkLink`. In-pass: AGENTS Create administrator bullet. |
+| `.cursor/plans/archived/2026-04/admin_session_hardening_2e417673.plan.md` | Deleted. Shipped: `/me` rehydration + CSRF + SameSite=Strict. Canon: `admin-ui-security.md` / ENDPOINT. In-pass: Admin UI AGENTS Mode B bullet. |
+| `.cursor/plans/archived/2026-04/admin_session_httponly_path_c0bfa13c.plan.md` | Deleted. Shipped: Mode B HttpOnly cookie path (Phases 0–3). Canon: `admin-ui-security.md` / Pages doc / CONFIGURATION §12. Parked P-050 (cookie Max-Age vs sliding window). |
+| `.cursor/plans/archived/2026-04/admin_ui_401_redirect_fix_5c1320f5.plan.md` | Deleted. Shipped: `fetchApi` 401 → login when `requireAuth` && !recovery bearer. In-pass: AGENTS `api-client.ts` one-liner aligned. |
 
 ## Kept this pass (retained)
 
@@ -73,7 +91,17 @@
 
 ## Parking (open)
 
-_None — burn-down applied 2026-08-12 (session closeout)._
+_None — burn-down applied 2026-08-12 (session mid-pass, after corpus-ablation into 2026-04)._
+
+## Parking (closed 2026-08-12 — mid-pass burn-down)
+
+| ID | Disposition |
+|----|-------------|
+| P-046 | Fixed: rewrote `.cursor/plans/archived/README.md` as lean staging scaffold (no stale inventory). |
+| P-047 | Fixed: `LIFECYCLE_GOVERNANCE.md` §3.3 diagram/copy → `CREATED` / `BOUND` / `VERIFIED` (no fictional `PENDING`). |
+| P-048 | Fixed: `ezkey_mobile/AGENTS.md` — QR `authUrl` / `EZKEY_API_BASE_URL` fallback; no hard-coded tunnels. |
+| P-049 | Fixed: `RECOVERY_CODES_LIFECYCLE_ANALYSIS.md` historical banner + §2.6 superseded (regenerate/issue-initial shipped). |
+| P-050 | Deferred product: cookie Max-Age vs DB sliding window — remains documented in admin-api CONFIGURATION §12; no code in this burn-down. |
 
 ## Parking (closed 2026-08-12 — burn-down)
 

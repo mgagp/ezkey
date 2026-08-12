@@ -30,7 +30,7 @@ Calls the **Admin API** on port 9080. All tenant scoping is automatic via the be
 ```
 src/
   lib/
-    api-client.ts       Fetch wrapper: injects Bearer; 401 → redirect to /login only when the request used a session JWT (expired session). Unauthenticated calls (e.g. login with `requireAuth: false`) parse RFC 9457 body instead. getApiErrorMessage()
+    api-client.ts       Fetch wrapper: injects Bearer/credentials; on 401, session calls (`requireAuth` and no recovery `bearerToken`) clear local auth and `replace('/login')`. Login/public (`requireAuth: false`) and recovery `bearerToken` paths throw without redirect. getApiErrorMessage()
     api-error-i18n.ts   Maps ProblemDetail.type (https://ezkey.io/problems/...) to i18n keys under `errors` (Option B); getTranslatedApiError()
     auth.ts             sessionStorage session management (AuthSession)
     demo-mode.ts        Dev-only: isDemoMode flag and demo presets for create forms (stripped in production); locale-specific preset copy lives in `locales/*/demo.json` (e.g. Unicorn Farm FR/EN)
@@ -184,7 +184,21 @@ After a mutation that changes the current entity on a **detail** page (e.g. deac
 4. One long-running `POST /api/v1/admin/auth/passwordless-wait` — resolves when device responds
 5. `AbortController` + `finalStatusRef` guard against race conditions on success/expiry
 
-The login form also offers an optional **pin toggle** beside the username field (tooltip + `aria-pressed`) for remembering the username on this device — see `last-username-pref.ts` and `login.tsx`.
+The login form also offers an optional **pin toggle** beside the username field (tooltip + `aria-pressed`) for remembering the username on this device — see `last-username-pref.ts`, `login.tsx`, and [`docs/admin-ui-security.md`](../docs/admin-ui-security.md) § Last username preference.
+
+### Recovery funnel (login page)
+
+Recovery codes are a **secondary** path on `/login` (`LoginRecoverySection`), not a full admin session. Flow: `POST /api/v1/admin/auth/recover` → temporary `ezkey_recovery_*` token → `POST /api/v1/admin/enrollments/reset` → bind new device → normal passwordless login. Canon: [`docs/ADMIN_UI_RECOVERY.md`](../docs/ADMIN_UI_RECOVERY.md). Do not treat the recovery token as a console bearer.
+
+### Instance branding (public instance-info)
+
+Login, sidebar, and header About use unauthenticated `GET /api/v1/public/instance-info`
+(`usePublicInstanceInfo`) — `instanceName`, `instanceDescription`, `aboutUrl`,
+`authApiPublicBaseUrl` from `ezkey.organization.*` / `ezkey.qr.auth-base-url`. Bootstrap applies
+organization name/description to system tenant/integration display names (flags identify system
+rows, not the literal `"Ezkey System"`). Client-generated recovery QR must keep
+`VITE_QR_AUTH_BASE_URL` aligned with server `ezkey.qr.auth-base-url` — see
+[`docs/ADMIN_UI_RECOVERY.md`](../docs/ADMIN_UI_RECOVERY.md).
 
 ### Role-based feature gating
 
@@ -203,6 +217,9 @@ const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
 - **Tenant Admin → peer:** do **not** show a tenant selector; omit `tenantId` so the API uses the
   session tenant.
 - **Deep link:** tenant detail can open `/admins?tenantId=…&createTenantAdmin=1` to prefill.
+- **MFA enrollment id:** list/get/update admin responses include `enrollmentId` (passwordless
+  identity FK — not a secret). Admin detail links via `EnrollmentFkLink` to `/enrollments/{id}`;
+  `GET` enrollment still goes through access control.
 
 ### Test Authentication (enrollment-detail pattern)
 
@@ -211,6 +228,14 @@ Trigger a live auth attempt for a VERIFIED enrollment to confirm device binding:
 2. Poll `GET /api/v1/auth-attempts/{id}` every 3s with `refetchInterval`
 3. Polling stops on final status: `ACCEPTED | REJECTED | EXPIRED | INVALID`
 4. Cancel via `POST /api/v1/auth-attempts/{id}/cancel`
+
+### Enrollment detail / metadata vs lifecycle
+
+Attribute inventory (what GET shows, what PATCH may edit, what stays workflow-bound):
+[`docs/ENROLLMENT_ADMIN_UI_ATTRIBUTE_MATRIX.md`](../docs/ENROLLMENT_ADMIN_UI_ATTRIBUTE_MATRIX.md).
+Non-admin device replacement is **revoke + create** a new enrollment — no dedicated rebind API
+([`docs/ENROLLMENT_WORKFLOW_GAPS.md`](../docs/ENROLLMENT_WORKFLOW_GAPS.md)). Do not expand PATCH into
+crypto/lifecycle fields.
 
 ### Logout
 
@@ -231,6 +256,14 @@ Canonical matrix: [`product-docs/global/admin-ui-paginated-screens-matrix.md`](.
 - **ID first:** bounded Tier A paginated lists show the entity primary key as the **first column** (`font-mono text-xs`, server `sortKey` when supported).
 - **Labels alongside ID:** join-enriched names (tenant, integration, username) live in their business columns; they do not replace the ID column.
 - **Administrator links:** there is **no** `/admins/:id` route. Detail opens on `/admins` with `?adminId=`. Use `adminListDetailHref(id)` from `@/lib/list-detail-navigation` for every cross-screen link to an admin (audit logs, enrollment detail, tenant embedded list, etc.).
+
+### Prev/Next detail navigation
+
+When opening detail from a list (investigation / sequential review), reuse the shared pattern — do not invent ad-hoc arrow handlers:
+
+- **Modals:** `useDetailNavigation` (←/→ when focus is not in an editable field) + header chevrons (`DetailDialogHeaderNav` where used). Scope is the **current page** of results.
+- **Full-page detail:** pass list context via `buildListDetailNavState` / `list-detail-navigation`; consume with `useListDetailPageNavigation` + `DetailPageNav`.
+- **Audit detail stability** (fixed field heights, FK button reserve, `lg-wide`): [`docs/admin-ui/DETAIL_DIALOG_STABLE_LAYOUT.md`](../docs/admin-ui/DETAIL_DIALOG_STABLE_LAYOUT.md).
 
 ### Dialog (modal) — dismissible
 
@@ -393,7 +426,8 @@ Agents using the embedded browser tools should mirror the **same sequencing as P
 
 - **Daily dev:** `npm run dev` — Vite HMR; **not** the same HTTP header surface as Caddy.
 - **QA / prod-like:** `./start.sh` — **Caddy** (`docker/Caddyfile`) enforces **CSP** and other headers on the built SPA.
-- **Full write-up** (two-path model, `clean-start` + Caddy default, split UI/API, mkcert, future HttpOnly cookies): [`docs/admin-ui-security.md`](../docs/admin-ui-security.md)
+- **Full write-up** (two-path model, `clean-start` + Caddy default, split UI/API, mkcert, Mode A Bearer vs Mode B HttpOnly cookie): [`docs/admin-ui-security.md`](../docs/admin-ui-security.md)
+- **Mode B (cookie builds):** after refresh, restore via `GET /api/v1/admin/auth/me` (`auth-context`); opaque token stays HttpOnly — never put it in JS storage. `fetchApi` sends `credentials: 'include'` and `X-CSRF-TOKEN` on unsafe methods; Bearer/recovery paths remain. Do not weaken that split.
 - **How to validate** (DevTools, `curl`, first-session checklist): [`docs/admin-ui-security-validation.md`](../docs/admin-ui-security-validation.md)
 
 ## Developer/Demo mode

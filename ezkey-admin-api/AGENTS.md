@@ -43,6 +43,21 @@ integrations/enrollments): **one** `GET /api/v1/{resource}` — TenantAdmin sees
 GlobalAdmin sees all (optional `tenantId` query where documented, e.g. `GET /api/v1/admins`). Do
 **not** invent path-shaped alternatives like `/admins/tenant/{tenantId}` or `/me/peers` for listing.
 
+## List / search endpoints are paginated
+
+Admin operator **list** and **search** endpoints return Spring Data `Page<T>` with `Pageable`
+(`page`, `size`, `sort`) — not an unpaginated `List`. How-to and response shape:
+[`docs/PAGINATION_GUIDELINES.md`](../docs/PAGINATION_GUIDELINES.md). Admin UI consumers use
+`usePaginatedFromOrval` + `PaginatedTable` (see `ezkey-admin-ui/AGENTS.md`). Do not reintroduce
+full-collection `List` responses for console list screens.
+
+## Admin API CORS (browser split origins)
+
+Prefix `ezkey.admin.cors.*` — see [`CONFIGURATION.md`](CONFIGURATION.md) §11. Empty
+`allowed-origins` means CORS is **off** (same-origin Caddy / clean-start). Set explicit UI origins
+for Cloudflare Pages → Admin API; pair `allow-credentials` with Mode B HttpOnly cookies
+(`docs/admin-ui-security.md`). Do **not** add browser CORS to Auth API or Integration API.
+
 ## Logging and secrets
 
 - **Never** log enrollment proof tokens, enrollment challenge codes, plaintext recovery codes, temporary recovery tokens, bearer tokens, or raw cryptographic signatures used as proof material. If operators need correlation, log **non-secret** identifiers only (e.g. `enrollmentId`, username). Enrollment reset and onboarding secrets belong in **HTTP responses** only.

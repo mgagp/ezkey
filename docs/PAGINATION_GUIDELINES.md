@@ -4,6 +4,8 @@
 
 This document describes the standardized approach for implementing pagination and sorting in Ezkey REST APIs. This pattern ensures consistency, maintainability, and adherence to Spring Boot best practices.
 
+**Admin API policy:** Operator **list** and **search** endpoints are paginated (`Pageable` → `Page<T>`). Do not add unpaginated full-`List` responses for Admin console collection screens (tenants, API keys, encryption keys, re-encryption batches, and peers).
+
 ## Standard Pattern
 
 ### Controller Layer

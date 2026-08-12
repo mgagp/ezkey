@@ -80,6 +80,11 @@ caught, logged, and re-thrown — the audit log is the primary observability mec
   key) marks the auth attempt as **INVALID** immediately. There is no failure counter or N-attempts
   retry; this is intentional (strict security posture). Rate limiting on `POST /api/v1/auth-attempts/respond`
   is per `authAttemptId` (from request body), default 1 request per 5 minutes.
+- **Device UX for auth attempts:** Approve and Deny only (`POST /respond`). There is **no**
+  device-initiated cancel. Closing or ignoring the prompt leaves `PENDING`/`READ` until TTL; the
+  **Admin API** `AuthAttemptExpiryScheduler` persists `EXPIRED` (see `docs/ENDPOINT.md` cancel /
+  TTL notes and `ezkey.auth-attempt.expiry-scheduler.*`). Explicit cancel belongs to Admin /
+  Integration API callers.
 - The `EnrollmentController.resolveTenantId()` fallback uses
   `integrationRepository.findTenantIdByIntegrationId()` (scalar projection) — it does not load a
   full `Integration` entity. Prefer `resolveTenantIdForAudit` at audit call sites (admin MFA

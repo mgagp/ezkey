@@ -38,9 +38,10 @@ You do **not** need to master every row below on day one. Use the checklist when
 
 | Measure                                           | Why it matters                                                                                                 | How to test                                                                                                                                                                   |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Token in `sessionStorage`, not `localStorage`** | Short-lived tab scope; avoids persisting the admin token across browser restarts the way `localStorage` would. | Path A or B: DevTools → **Application** → **Storage** → confirm key `ezkey_admin_auth` under **Session** only. Log in, refresh, confirm it is still session-only (not Local). |
-| **Bearer in `Authorization`**                     | API auth contract; no cookie session yet.                                                                      | DevTools → **Network** → pick an authenticated `fetch` to `/api/v1/...` → **Headers** → request has `Authorization: Bearer …`.                                                |
-| **No auth cookie today**                          | Future HttpOnly design is documented separately; current tests should not expect `Set-Cookie` for session.     | Same Network panel: login response — token comes from JSON body, not a session cookie.                                                                                        |
+| **Mode A — token in `sessionStorage`, not `localStorage`** | Default local/QA: short-lived tab scope; opaque bearer stays out of `localStorage`. | Path A or B with cookie **off**: DevTools → **Application** → **Storage** → key `ezkey_admin_auth` under **Session** only (JSON includes `token`). |
+| **Mode A — Bearer in `Authorization`**                     | Default API auth contract when cookie mode is off.                                                                      | DevTools → **Network** → authenticated `fetch` → request has `Authorization: Bearer …`.                                                                                |
+| **Mode A — no session `Set-Cookie`**                          | Login JSON carries the token; do not expect an Admin session cookie in Mode A.     | Login response: token in JSON body; no `EZKEY_ADMIN_SESSION` (or configured name) session cookie.                                                                                        |
+| **Mode B — HttpOnly cookie (split HTTPS)** | Recommended for Cloudflare UI + API VM: secret not in JS; see [`admin-ui-security.md`](admin-ui-security.md) Mode B. | Cookie **on** + UI build flag: login JSON **omits** `token`; `Set-Cookie` HttpOnly on API host; subsequent calls use `credentials: 'include'` (+ CSRF header on unsafe methods). |
 
 
 ### HTTP headers — Admin UI (Path B, Caddy)
@@ -75,7 +76,7 @@ Serve the app with `**./start.sh`** in `ezkey-admin-ui`, then for the **main doc
 | Topic                                  | Note                                                                                                      |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `**Strict-Transport-Security` (HSTS)** | Only meaningful on **HTTPS** responses. The Admin UI Caddyfile keeps HSTS commented until TLS is enabled. |
-| `**Secure` cookies**                   | Same — needs HTTPS. Relevant only if you move to cookies later.                                           |
+| `**Secure` cookies**                   | Needs HTTPS. Required for Mode B production cookies; enable when validating cookie mode over TLS.                                           |
 
 
 **When you need HTTPS locally:** follow **[admin-ui-security.md](admin-ui-security.md)** (mkcert + Caddy `tls`); then enable the HSTS snippet only for HTTPS responses.

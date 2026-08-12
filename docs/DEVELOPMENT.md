@@ -332,8 +332,8 @@ Ezkey uses **CI-friendly Maven versions** with branch-specific qualifiers to pre
   - `revision`: Base version (default: `0.0.1`)
   - `buildQualifier`: Branch-specific qualifier (empty on `main`, `-<branch-name>` on feature branches)
   - `changelist`: Suffix (default: `-SNAPSHOT`)
-- **Default behavior**: `.mvn/maven.config` provides defaults, so `mvn clean install` works without wrappers
-- **Branch isolation**: Wrapper scripts inject `buildQualifier` based on git branch name, ensuring unique artifact coordinates per branch
+- **Defaults**: Parent POM properties supply the defaults; `mvn` / `./scripts/build.sh` work without a local config file. Optional per-checkout overrides: copy `.mvn/maven.config.example` → gitignored `.mvn/maven.config` (e.g. worktree suffix `-wt1`). See root `AGENTS.md` § Local Maven version properties.
+- **Branch isolation**: `scripts/mvn-branch.sh` injects `buildQualifier` from the current git branch so local `install` coordinates do not collide across branches
 
 #### Building Without Collisions
 
@@ -389,7 +389,7 @@ When preparing for Maven Central releases:
 - **Release branches** (optional, for maintenance): `release/X.Y` for patch releases (`X.Y.(Z+1)`)
 - **No branch-specific published versions**: Feature branches do not publish to Maven Central
 
-See plan in `.cursor/plans/maven_pom_versioning_no_branch_collisions_3e7551eb.plan.md` for complete details.
+Living entry points: this section, root `AGENTS.md` § Local Maven version properties, `.mvn/maven.config.example`, and `scripts/mvn-branch.sh`.
 
 ### Git Workflow
 - **Conventional Commits**: Use conventional commit messages

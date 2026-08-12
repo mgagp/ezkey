@@ -319,6 +319,8 @@ Canonical verify-result format: `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`.
 
 See **Error responses (RFC 9457)** above. Verification failures return **400** or **409** with stable `type` URIs under `https://ezkey.io/problems/auth/`. Wrong `challengeResponse` invalidates the enrollment; a subsequent verify call for the same enrollment may return **409**.
 
+**Uniqueness:** Verify is rejected when **any** `VERIFIED` enrollment already exists for the same `(integrationId, enrollmentName)`, including an inactive one. Partial unique index + application checks; no automatic supersession — see `docs/LIFECYCLE_GOVERNANCE.md` §3.3.
+
 ---
 
 ## 2. Admin API Endpoints (internal)
@@ -1474,6 +1476,8 @@ Authorization: Bearer ezkey_admin_token...
 #### **POST /api/v1/enrollments** (Create Enrollment)
 
 Creates a pending enrollment (`CREATED`) for an integration. Returns identifiers needed for mobile bind/verify.
+
+**Uniqueness (`name`):** At most one `VERIFIED` enrollment per `(integrationId, name)` (see `docs/LIFECYCLE_GOVERNANCE.md` §3.3). Create is rejected when an **active** `VERIFIED` enrollment already uses that name (use recovery/reset or deactivate/re-enroll rather than supersession). Create is allowed when a same-name `VERIFIED` enrollment exists but is **inactive**, or when only non-`VERIFIED` rows exist.
 
 **Request body:**
 

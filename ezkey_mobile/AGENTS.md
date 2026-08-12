@@ -58,6 +58,9 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 - Keep EC P-256 key handling on the native keystore path.
 - For Android wording, prefer `Android Keystore` and `StrongBox when available`.
 - Do not revive deleted historical analysis notes when the living corpus already states the current rule.
+- **Auth API base URL:** Prefer per-enrollment `authUrl` from the enrollment QR (server
+  `ezkey.qr.auth-base-url`). Fall back to configured `EZKEY_API_BASE_URL` only when QR omits
+  `authUrl`. Do **not** hard-code tunnel hostnames (e.g. ngrok) in committed env defaults.
 
 ## Android debug build (agents — read first)
 
