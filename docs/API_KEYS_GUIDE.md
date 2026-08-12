@@ -13,7 +13,9 @@
 
 ## Overview
 
-Ezkey API Keys provide machine-to-machine authentication for integrated applications (Integration API credentials), enabling server-to-server API calls without the login/logout overhead required for human administrators.
+Ezkey API Keys provide machine-to-machine authentication for integrated applications, enabling server-to-server API calls without the login/logout overhead required for human administrators.
+
+**Canonical M2M surface:** Integration API (`http://localhost:7080`). Admin API rejects API-key auth-attempt traffic by default (`ezkey.admin.auth.api-key-auth-attempts-enabled=false`). Set that property to `true` only for documented minimal Admin+Auth installs that do not deploy Integration API. API key **lifecycle** (create/list/revoke) remains on Admin API with bearer tokens.
 
 ### Key Concepts
 
@@ -33,7 +35,7 @@ Ezkey API Keys provide machine-to-machine authentication for integrated applicat
 ### Use API Keys For:
 
 ✅ **Backend Servers**
-- Web application servers calling Ezkey Admin API
+- Web application servers calling Ezkey **Integration API** with API keys
 - Microservices requiring MFA functionality
 - Server-to-server integrations
 
@@ -141,7 +143,7 @@ public class EzkeyClient {
     
     public AuthAttempt createAuthAttempt(int enrollmentId) {
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:9080/api/v1/auth-attempts"))
+            .uri(URI.create("http://localhost:7080/api/v1/auth-attempts"))
             .header("Authorization", getAuthHeader())
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(
@@ -166,7 +168,7 @@ class EzkeyClient:
     def __init__(self, integration_key, secret_key):
         self.integration_key = integration_key
         self.secret_key = secret_key
-        self.base_url = "http://localhost:9080/api/v1"
+        self.base_url = "http://localhost:7080/api/v1"
     
     def create_auth_attempt(self, enrollment_id):
         response = requests.post(
@@ -188,7 +190,7 @@ class EzkeyClient {
     constructor(integrationKey, secretKey) {
         this.integrationKey = integrationKey;
         this.secretKey = secretKey;
-        this.baseUrl = 'http://localhost:9080/api/v1';
+        this.baseUrl = 'http://localhost:7080/api/v1';
     }
     
     async createAuthAttempt(enrollmentId) {
@@ -860,8 +862,8 @@ SKEY=$(echo $RESPONSE | jq -r '.secretKey')
 echo "export EZKEY_IKEY=$IKEY" >> ~/.bashrc
 echo "export EZKEY_SKEY=$SKEY" >> ~/.bashrc
 
-# 4. Use in application
-curl -X POST http://localhost:9080/api/v1/auth-attempts \
+# 4. Use in application (Integration API — canonical M2M)
+curl -X POST http://localhost:7080/api/v1/auth-attempts \
   -u "$EZKEY_IKEY:$EZKEY_SKEY" \
   -H "Content-Type: application/json" \
   -d '{"enrollmentId":456,"challengeRequested":false}'

@@ -14,6 +14,7 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAdminApi;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAuthApi;
+import static org.ezkey.tests.util.RestAssuredTestConfig.configureForIntegrationApi;
 
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
@@ -67,12 +68,13 @@ public class RateLimitingSecurityTest extends AbstractSecurityTest {
       String integrationKey = keyParts[0];
       String secretKey = keyParts[1];
 
-      // Create multiple auth attempts to test rate limiting
+      // Create multiple auth attempts to test rate limiting on Integration API
       // Note: Actual rate limit depends on configuration (default: 100/15min)
       // This test validates that rate limiting exists, not that it triggers
       int successCount = 0;
       int rateLimitCount = 0;
 
+      configureForIntegrationApi(dockerStackConfig);
       for (int i = 0; i < 10; i++) {
         Map<String, Object> request = new HashMap<>();
         request.put("enrollmentId", enrollmentId);

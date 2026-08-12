@@ -1,3 +1,10 @@
+/*
+ * Ezkey - Open Source Cryptographic MFA Platform
+ *
+ * Copyright (c) 2026 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ */
+
 meta {
   name: create with api key
   type: http
@@ -23,41 +30,15 @@ body:json {
 }
 
 script:post-response {
-  test("Status code is 201", function () {
-      expect(res.getStatus()).to.equal(201);
+  test("Status code is 403 (API-key auth attempts disabled by default on Admin API)", function () {
+      expect(res.getStatus()).to.equal(403);
   });
-  
-  if (res.getStatus() === 201) {
+
+  test("RFC 9457 problem type points to api-key-auth-attempts-disabled", function () {
       var jsonData = res.getBody();
-      bru.setEnvVar("authAttemptId", jsonData.authAttemptId);
-      
-      test("Response contains authAttemptId", function () {
-          expect(jsonData).to.have.property('authAttemptId');
-          expect(jsonData.authAttemptId).to.be.a('number');
-      });
-      
-      test("Response may contain authAttemptChallenge", function () {
-          if (jsonData.hasOwnProperty('authAttemptChallenge')) {
-              if (jsonData.authAttemptChallenge !== null) {
-                  expect(jsonData.authAttemptChallenge).to.be.a('number');
-                  expect(jsonData.authAttemptChallenge).to.be.at.least(0);
-                  expect(jsonData.authAttemptChallenge).to.be.at.most(99);
-              }
-          }
-      });
-      
-      test("Response contains timeoutSeconds", function () {
-          expect(jsonData).to.have.property('timeoutSeconds');
-          expect(jsonData.timeoutSeconds).to.be.a('number');
-          expect(jsonData.timeoutSeconds).to.equal(120);
-      });
-      
-      test("Response contains expiresAt", function () {
-          expect(jsonData).to.have.property('expiresAt');
-          expect(jsonData.expiresAt).to.be.a('string');
-          expect(jsonData.expiresAt).to.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/);
-      });
-  }
+      expect(jsonData).to.have.property('type');
+      expect(jsonData.type).to.equal('https://ezkey.io/problems/admin/api-key-auth-attempts-disabled');
+  });
 }
 
 settings {
@@ -65,34 +46,14 @@ settings {
 }
 
 docs {
-  Creates a new authentication attempt using API key authentication (machine-to-machine). API keys can only create auth attempts for enrollments belonging to their associated integration.
-  
-  **Authentication:**
-  - HTTP Basic Auth with `integrationKey:secretKey`
-  
-  **Request Body:**
-  Provide either `enrollmentId` OR `userIdentifier`:
-  - `enrollmentId` (optional): Enrollment ID (must belong to API key's integration)
-  - `userIdentifier` (optional): Username/user ID for lookup (integration derived from API key)
-  - `challengeRequested` (required): Whether to require challenge code verification (2-digit code)
-  
-  **Response (201 Created):**
-  - `authAttemptId`: Unique identifier of the created authentication attempt
-  - `authAttemptChallenge`: Optional challenge code (2 digits, 00-99) if `challengeRequested` was true. Null if no challenge was requested.
-  - `timeoutSeconds`: Maximum time in seconds the user has to respond to the authentication request (currently 120 seconds)
-  - `expiresAt`: Absolute expiration timestamp when the authentication attempt will expire (UTC format, e.g., `2025-01-20T15:34:00.123456Z`)
-  
-  **Challenge Flow:**
-  When `challengeRequested: true`, the response includes `authAttemptChallenge`. The integrating application must:
-  1. Display the challenge code to the user
-  2. User enters the code on their device
-  3. User approves the authentication request
-  4. Call `/wait` endpoint to check for completion
-  
-  **Status Codes:**
-  - 201: Auth attempt created successfully
-  - 400: Invalid data or enrollment doesn't belong to API key's integration
-  - 401: Unauthorized - invalid API key
-  - 429: Rate limit exceeded (100 requests per hour per integration key)
-  - 500: Internal server error
+  **Default posture (deny):** Admin API rejects API-key M2M auth-attempt traffic with HTTP 403 and
+  RFC 9457 `https://ezkey.io/problems/admin/api-key-auth-attempts-disabled`.
+
+  **Canonical happy path:** use `auth-attempts-integration-api/create.bru` against
+  `{{base_url_integration_api}}` (port 7080).
+
+  **Minimal install opt-in:** only when Integration API is not deployed, set
+  `ezkey.admin.auth.api-key-auth-attempts-enabled=true` on Admin API; then this request can return 201.
+
+  **Authentication:** HTTP Basic Auth with `integrationKey:secretKey`
 }

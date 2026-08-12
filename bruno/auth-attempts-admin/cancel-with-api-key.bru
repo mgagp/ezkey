@@ -21,47 +21,17 @@ auth:basic {
 }
 
 script:post-response {
-  test("Status code is 200, 400, or 404", function () {
-      expect([200, 400, 404]).to.include(res.getStatus());
+  test("Status code is 403 (API-key auth attempts disabled by default on Admin API)", function () {
+      expect(res.getStatus()).to.equal(403);
   });
-  
-  if (res.getStatus() === 200) {
-      var jsonData = res.getBody();
-      
-      test("Response contains required fields", function () {
-          expect(jsonData).to.have.property('authAttemptId');
-          expect(jsonData).to.have.property('authAttemptStatus');
-          expect(jsonData).to.have.property('enrollmentId');
-      });
-      
-      test("Status is EXPIRED after cancellation", function () {
-          expect(jsonData.authAttemptStatus).to.equal('EXPIRED');
-      });
-  }
-}
 
-settings {
-  encodeUrl: true
+  test("RFC 9457 problem type points to api-key-auth-attempts-disabled", function () {
+      var jsonData = res.getBody();
+      expect(jsonData.type).to.equal('https://ezkey.io/problems/admin/api-key-auth-attempts-disabled');
+  });
 }
 
 docs {
-  Cancels a pending or read authentication attempt using API key authentication. Access control ensures API keys can only cancel attempts belonging to their integration.
-  
-  **Authentication:**
-  - HTTP Basic Auth with `integrationKey:secretKey`
-  
-  **Path Parameters:**
-  - `id` (required): Authentication attempt ID to cancel
-  
-  **Response (200 OK):**
-  Same structure as cancel endpoint
-  
-  **Status Codes:**
-  - 200: Authentication attempt cancelled successfully
-  - 400: Bad Request - authentication attempt already in final state
-  - 404: Not Found - authentication attempt not found
-  - 401: Unauthorized - invalid API key
-  - 403: Forbidden - API key cannot cancel attempts from other integrations
-  - 429: Rate limit exceeded (200 requests per hour per integration key)
-  - 500: Internal server error
+  Default Admin API posture rejects API-key cancel. Use `auth-attempts-integration-api/cancel.bru` for the
+  canonical M2M path. Opt-in: `ezkey.admin.auth.api-key-auth-attempts-enabled=true` (minimal install only).
 }

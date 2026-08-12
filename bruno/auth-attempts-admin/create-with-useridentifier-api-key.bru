@@ -22,10 +22,23 @@ body:json {
   }
 }
 
+script:post-response {
+  test("Status code is 403 (API-key auth attempts disabled by default on Admin API)", function () {
+      expect(res.getStatus()).to.equal(403);
+  });
+
+  test("RFC 9457 problem type points to api-key-auth-attempts-disabled", function () {
+      var jsonData = res.getBody();
+      expect(jsonData.type).to.equal('https://ezkey.io/problems/admin/api-key-auth-attempts-disabled');
+  });
+}
+
 settings {
   encodeUrl: true
 }
 
 docs {
-  Creates an auth attempt using userIdentifier instead of enrollmentId. Use when your app identifies users by username. Integration is derived from API key. Requires enrollment with matching user_identifier in the integration.
+  Default Admin API posture rejects API-key create (including userIdentifier). Use
+  `auth-attempts-integration-api/create-with-useridentifier.bru` for the canonical M2M path.
+  Opt-in: `ezkey.admin.auth.api-key-auth-attempts-enabled=true` (minimal install only).
 }

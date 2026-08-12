@@ -88,6 +88,17 @@ public class RestAssuredTestConfig {
   }
 
   /**
+   * Configures RestAssured with Integration API base URL (API-key M2M auth attempts).
+   *
+   * @param dockerStackConfig Docker stack configuration
+   */
+  public static void configureForIntegrationApi(DockerStackConfig dockerStackConfig) {
+    configureDefaults();
+    RestAssured.baseURI = dockerStackConfig.getIntegrationApiUrl();
+    RestAssured.basePath = "/api/v1";
+  }
+
+  /**
    * Configures RestAssured with Auth API base URL.
    *
    * @param dockerStackConfig Docker stack configuration

@@ -39,6 +39,7 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.admin.auth.browser-session-cookie-enabled` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | `false` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_NAME` | `EZKEY_ADMIN_SESSION` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-secure` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SECURE` | `true` | optionnel |
+| `ezkey.admin.auth.api-key-auth-attempts-enabled` | `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED` | `false` | optionnel |
 
 ---
 
@@ -287,7 +288,7 @@ enforce CORS. If `allowed-origins` is **empty**, the API does **not** emit CORS 
 
 **Description:** optional mode for **browser** sessions when the Admin UI and Admin API are on different **HTTPS** origins (e.g. `https://exp1-admin-ui.ezkey.org` → `https://exp1-admin-api.ezkey.org`). When enabled, successful login and passwordless-wait responses set an **HttpOnly** cookie on the API host with the same opaque value as today’s bearer token; the JSON body **omits** `token` so JavaScript cannot read the secret. The authentication filter accepts **either** `Authorization: Bearer` (priority if present) **or** the session cookie. **Postman and scripts** can keep using Bearer only.
 
-**Defined in:** `AdminBrowserSessionCookieProperties`, `AdminBrowserSessionCookieConfig`, `AdminSessionCookieService`
+**Defined in:** `AdminBrowserSessionCookieProperties`, `AdminApiKeyAuthAttemptsProperties`, `AdminBrowserSessionCookieConfig`, `AdminSessionCookieService`, `ApiKeyAuthAttemptsAcceptanceFilter`
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
@@ -297,6 +298,7 @@ enforce CORS. If `allowed-origins` is **empty**, the API does **not** emit CORS 
 | `ezkey.admin.auth.browser-session-cookie-same-site` | `String` | `Strict` | optionnel | SameSite policy for Admin browser session and CSRF cookies. Prefer `Strict` for production split deployments. |
 | `ezkey.admin.auth.browser-csrf-cookie-name` | `String` | `EZKEY_ADMIN_CSRF` | optionnel | Readable non-secret CSRF cookie name used by the Admin UI in cookie mode. |
 | `ezkey.admin.auth.browser-csrf-header-name` | `String` | `X-CSRF-TOKEN` | optionnel | Header name required on unsafe cookie-authenticated browser requests. |
+| `ezkey.admin.auth.api-key-auth-attempts-enabled` | `boolean` | `false` | optionnel | When `false` (default), Admin API rejects `ROLE_API_KEY` with RFC 9457 `403` (`https://ezkey.io/problems/admin/api-key-auth-attempts-disabled`). Set `true` only for documented minimal Admin+Auth installs without Integration API. Canonical M2M surface is Integration API (port 7080). |
 
 **Operational pairing:** set `ezkey.admin.cors.allow-credentials=true` and explicit `allowed-origins` for the UI. Build the Admin UI with `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true` and `fetch` credentials (see [docs/admin-ui-security.md](../docs/admin-ui-security.md)). If you override the CSRF cookie or header names, mirror them in the Admin UI build variables `VITE_ADMIN_AUTH_CSRF_COOKIE_NAME` and `VITE_ADMIN_AUTH_CSRF_HEADER_NAME`.
 
@@ -363,6 +365,7 @@ The following ezkey-core prefixes are also active in Admin API. See
 | `ezkey.admin.auth.browser-session-cookie-same-site` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SAME_SITE` | *(unset)* |
 | `ezkey.admin.auth.browser-csrf-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_COOKIE_NAME` | *(unset)* |
 | `ezkey.admin.auth.browser-csrf-header-name` | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_HEADER_NAME` | *(unset)* |
+| `ezkey.admin.auth.api-key-auth-attempts-enabled` | `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED` | *(unset; default false)* |
 
 ---
 

@@ -13,7 +13,13 @@ package org.ezkey.admin.config;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
-/** Binds {@link AdminBrowserSessionCookieProperties}. */
+/**
+ * Binds Admin API {@code ezkey.admin.auth.*} properties used by session cookie and API-key
+ * acceptance gates.
+ */
 @Configuration
-@EnableConfigurationProperties(AdminBrowserSessionCookieProperties.class)
+@EnableConfigurationProperties({
+  AdminBrowserSessionCookieProperties.class,
+  AdminApiKeyAuthAttemptsProperties.class
+})
 public class AdminBrowserSessionCookieConfig {}

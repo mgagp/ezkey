@@ -28,48 +28,17 @@ auth:basic {
 }
 
 script:post-response {
-  test("Status code is 200, 408, or 404", function () {
-      expect([200, 408, 404]).to.include(res.getStatus());
+  test("Status code is 403 (API-key auth attempts disabled by default on Admin API)", function () {
+      expect(res.getStatus()).to.equal(403);
   });
-  
-  if (res.getStatus() === 200) {
-      var jsonData = res.getBody();
-      
-      test("Response contains required fields", function () {
-          expect(jsonData).to.have.property('authAttempt');
-          expect(jsonData).to.have.property('status');
-          expect(jsonData).to.have.property('completed');
-          expect(jsonData).to.have.property('timeoutReached');
-      });
-  }
-}
 
-settings {
-  encodeUrl: true
+  test("RFC 9457 problem type points to api-key-auth-attempts-disabled", function () {
+      var jsonData = res.getBody();
+      expect(jsonData.type).to.equal('https://ezkey.io/problems/admin/api-key-auth-attempts-disabled');
+  });
 }
 
 docs {
-  Waits for authentication response using API key authentication. Access control ensures API keys can only wait for attempts belonging to their integration.
-  
-  **Authentication:**
-  - HTTP Basic Auth with `integrationKey:secretKey`
-  
-  **Path Parameters:**
-  - `id` (required): Authentication attempt ID to wait for
-  
-  **Query Parameters:**
-  - `timeout` (optional, default: 30): Maximum wait duration in seconds (1-300)
-  - `polling` (optional, default: 2): Polling interval in seconds (1-60)
-  
-  **Response (200 OK):**
-  Same structure as wait endpoint
-  
-  **Status Codes:**
-  - 200: Authentication completed
-  - 408: Timeout reached
-  - 404: Auth attempt not found
-  - 400: Invalid parameters
-  - 401: Unauthorized - invalid API key
-  - 429: Rate limit exceeded (200 requests per hour per integration key)
-  - 500: Internal server error
+  Default Admin API posture rejects API-key wait. Use `auth-attempts-integration-api/wait.bru` for the
+  canonical M2M path. Opt-in: `ezkey.admin.auth.api-key-auth-attempts-enabled=true` (minimal install only).
 }

@@ -47,7 +47,7 @@ import java.util.Objects;
  * EzkeyClient client = EzkeyClient.builder()
  *     .integrationKey("ezkey_ikey_xxx")
  *     .secretKey("ezkey_skey_xxx")
- *     .baseUrl("https://ezkey.example.com:9080")
+ *     .baseUrl("https://integration-api.example.com:7080")
  *     .connectTimeout(Duration.ofSeconds(15))
  *     .readTimeout(Duration.ofSeconds(60))
  *     .build();
@@ -118,7 +118,7 @@ public final class EzkeyClient {
    * <ul>
    *   <li>{@code EZKEY_INTEGRATION_KEY} (required)
    *   <li>{@code EZKEY_SECRET_KEY} (required)
-   *   <li>{@code EZKEY_BASE_URL} (optional, defaults to {@code http://localhost:9080})
+   *   <li>{@code EZKEY_BASE_URL} (optional, defaults to {@code http://localhost:7080})
    * </ul>
    *
    * @return a new client configured from environment variables
@@ -598,7 +598,7 @@ public final class EzkeyClient {
     /**
      * Sets the Admin API base URL.
      *
-     * @param paseUrl the base URL (e.g. {@code https://ezkey.example.com:9080})
+     * @param paseUrl the base URL (e.g. {@code https://integration-api.example.com:7080})
      * @return this builder
      */
     public Builder baseUrl(String paseUrl) {
