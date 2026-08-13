@@ -327,15 +327,13 @@ public class AuthAttemptController {
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     Integer respondTenantId = resolveTenantIdForAudit(request.authAttemptId());
+    boolean accepted = Boolean.TRUE.equals(request.authAttemptAccepted());
 
     try {
       AuthAttemptRespondResponse response =
           authAttemptService.respond(authAttemptMapper.toAuthAttemptRespondRequest(request));
 
-      String action =
-          request.authAttemptAccepted() != null && request.authAttemptAccepted()
-              ? "auth_attempt_approved"
-              : "auth_attempt_denied";
+      String action = accepted ? "auth_attempt_approved" : "auth_attempt_denied";
 
       auditLogService.log(
           AuditLog.builder()
@@ -350,10 +348,7 @@ public class AuthAttemptController {
               .enrollmentId(resolveEnrollmentIdFromAuthAttempt(request.authAttemptId()))
               .integrationId(resolveIntegrationIdFromAuthAttempt(request.authAttemptId()))
               .tenantId(respondTenantId)
-              .eventDetails(
-                  "User "
-                      + (request.authAttemptAccepted() ? "approved" : "denied")
-                      + " authentication")
+              .eventDetails("User " + (accepted ? "approved" : "denied") + " authentication")
               .build());
 
       return ResponseEntity.ok(authAttemptMapper.toAuthAttemptRespondResponseDto(response));

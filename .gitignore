@@ -94,6 +94,9 @@ logs/
 # Local generated security-pentest cache
 .schemathesis/
 
+# Local Python venv for Schemathesis (security-pentest-curated runner)
+.venv/
+
 # Temporary scratch copies made while adjusting local Maven config
 .mvn/*Copy.config
 

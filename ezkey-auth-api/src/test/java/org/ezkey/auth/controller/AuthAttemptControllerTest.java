@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -424,5 +425,25 @@ class AuthAttemptControllerTest {
 
     // Verify service interactions
     verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+  }
+
+  @Test
+  @DisplayName(
+      "POST /api/v1/auth-attempts/respond - Missing authAttemptAccepted returns 400 not 500")
+  void respond_WhenAcceptedMissing_ShouldReturn400() throws Exception {
+    mockMvc
+        .perform(
+            post(BASE_URL + "/respond")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"authAttemptId\":456,\"authAttemptProofTokenSignedByDevice\":\"test-proof-token\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_VALIDATION_FAILED))
+        .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_VALIDATION_FAILED))
+        .andExpect(jsonPath("$.status").value(400))
+        .andExpect(jsonPath("$.path").value("/api/v1/auth-attempts/respond"));
+
+    verify(authAttemptService, never()).respond(any(AuthAttemptRespondRequest.class));
   }
 }

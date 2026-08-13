@@ -12,6 +12,7 @@ package org.ezkey.authattempt.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * Request DTO for submitting authentication attempt responses in auth API.
@@ -92,7 +93,8 @@ public record AuthAttemptRespondRequestDto(
      * <p>Boolean flag indicating whether the user approved (true) or denied (false) the
      * authentication request through the mobile app.
      */
-    @Schema(
+    @NotNull
+        @Schema(
             description = "User's decision: true to approve, false to deny",
             example = "true",
             requiredMode = RequiredMode.REQUIRED)
