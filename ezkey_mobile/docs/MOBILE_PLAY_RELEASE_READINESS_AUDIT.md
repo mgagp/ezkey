@@ -129,7 +129,7 @@ Evidence:
 - `ezkey_mobile/package.json` uses React Native `0.86.2`
 - the same file uses React `19.2.7`
 - the React Native CLI dependencies are aligned on `20.2.0`
-- the current runtime also depends on `react-native-vision-camera` `5.1.0` and the Vision Camera 5 barcode-scanner / worklets slice
+- the current runtime also depends on `react-native-vision-camera` `5.2.2` and the Vision Camera 5 barcode-scanner / worklets slice
 
 Why it matters:
 

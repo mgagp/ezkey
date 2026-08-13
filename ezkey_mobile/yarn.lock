@@ -5997,15 +5997,15 @@ __metadata:
     react-native-gesture-handler: "npm:3.0.2"
     react-native-keychain: "npm:10.0.0"
     react-native-nitro-image: "npm:0.15.1"
-    react-native-nitro-modules: "npm:0.36.1"
+    react-native-nitro-modules: "npm:0.36.5"
     react-native-safe-area-context: "npm:5.8.0"
     react-native-screens: "npm:4.26.2"
     react-native-svg: "npm:15.15.5"
     react-native-svg-transformer: "npm:1.5.3"
-    react-native-vision-camera: "npm:5.1.0"
-    react-native-vision-camera-barcode-scanner: "npm:5.1.0"
-    react-native-vision-camera-worklets: "npm:5.1.0"
-    react-native-worklets: "npm:0.11.0"
+    react-native-vision-camera: "npm:5.2.2"
+    react-native-vision-camera-barcode-scanner: "npm:5.2.2"
+    react-native-vision-camera-worklets: "npm:5.2.2"
+    react-native-worklets: "npm:0.11.4"
     react-test-renderer: "npm:19.2.7"
     typescript: "npm:6.0.3"
     zustand: "npm:5.0.14"
@@ -9703,13 +9703,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-nitro-modules@npm:0.36.1":
-  version: 0.36.1
-  resolution: "react-native-nitro-modules@npm:0.36.1"
+"react-native-nitro-modules@npm:0.36.5":
+  version: 0.36.5
+  resolution: "react-native-nitro-modules@npm:0.36.5"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/8f0a56371d2de36531208794f81c457bbd00f00ae8f9c914fb752606585297607cbc1ad38681a1efb7d8cf4322537f300e0a822954a4b15c8d8c8f2c9d61cd12
+  checksum: 10c0/c7b2133f924967b68c0f0f678b5a5dce1a784a7e22f57ebf203ef5803a5c9c745b6d4dda8c9bcedd13f7c5ca53a8707784e98572a2ca8a864fe0b905163a34b5
   languageName: node
   linkType: hard
 
@@ -9764,47 +9764,47 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-vision-camera-barcode-scanner@npm:5.1.0":
-  version: 5.1.0
-  resolution: "react-native-vision-camera-barcode-scanner@npm:5.1.0"
+"react-native-vision-camera-barcode-scanner@npm:5.2.2":
+  version: 5.2.2
+  resolution: "react-native-vision-camera-barcode-scanner@npm:5.2.2"
   peerDependencies:
     react: "*"
     react-native: "*"
     react-native-nitro-image: "*"
     react-native-nitro-modules: "*"
     react-native-vision-camera: "*"
-  checksum: 10c0/c363d5ed8bc6a8297a450cb10790a60ad13c104e50b288038bda14a7806b631b8107de93373553655e492de06db38073faa711fc63974fbdce35cbd0dfbb661f
+  checksum: 10c0/a36499eb1a29b4bc620e03afb3cea925f28821e2a7d85f8df0eaa30e454440d861fed26335926f24b02ee501e76d4f6fa5e2764b60697f31b6d5409fdbc2d7a5
   languageName: node
   linkType: hard
 
-"react-native-vision-camera-worklets@npm:5.1.0":
-  version: 5.1.0
-  resolution: "react-native-vision-camera-worklets@npm:5.1.0"
+"react-native-vision-camera-worklets@npm:5.2.2":
+  version: 5.2.2
+  resolution: "react-native-vision-camera-worklets@npm:5.2.2"
   peerDependencies:
     react: "*"
     react-native: "*"
     react-native-nitro-modules: "*"
     react-native-vision-camera: "*"
     react-native-worklets: "*"
-  checksum: 10c0/fe58b63dc2ed5442c0196286e3343bf17f0698d98dc746315156086e65bc203cb467d07e91eb9ac9ae18ab2b54cf65582a00ec598d43307473b76154556d76f6
+  checksum: 10c0/fa78767867f7d2392a7992884e7990232d6404202bc3b66dc50e112e6e11f76d805f0be1b7d327ea3fba1470fdd2e3371b1a576a31f9820ef5f58dda6341e296
   languageName: node
   linkType: hard
 
-"react-native-vision-camera@npm:5.1.0":
-  version: 5.1.0
-  resolution: "react-native-vision-camera@npm:5.1.0"
+"react-native-vision-camera@npm:5.2.2":
+  version: 5.2.2
+  resolution: "react-native-vision-camera@npm:5.2.2"
   peerDependencies:
     react: "*"
     react-native: "*"
     react-native-nitro-image: "*"
     react-native-nitro-modules: "*"
-  checksum: 10c0/6fbac55b041048fbc5ffd96f3df87bd9b07a4b8dc79a16d0bfb55aa08f790d8cd322b754b84f8714787cd910c9b9e4920d9cbe24ab7674fdb0ed9e1bc42e6285
+  checksum: 10c0/acbdac2b54ac4f917dc7ada94455be3ff92a99c5799e6fd0043539e89cdabaed41d0f76913a26987d43fbb36b4d25f702de8d33dc6beadf025fdcf58c8e434c4
   languageName: node
   linkType: hard
 
-"react-native-worklets@npm:0.11.0":
-  version: 0.11.0
-  resolution: "react-native-worklets@npm:0.11.0"
+"react-native-worklets@npm:0.11.4":
+  version: 0.11.4
+  resolution: "react-native-worklets@npm:0.11.4"
   dependencies:
     "@babel/generator": "npm:^7.27.1"
     "@babel/plugin-transform-arrow-functions": "npm:^7.27.1"
@@ -9825,7 +9825,7 @@ __metadata:
     "@react-native/metro-config": "*"
     react: "*"
     react-native: 0.83 - 0.86
-  checksum: 10c0/c8be2a022a2afa2d631eeec3113f97680b68c8c45c5871f5fd42ecc144aec59eaad31aca16c5e56b1c244ec5e7a8e1c890dd7c3d621d700be6783f783fe7c0e7
+  checksum: 10c0/ee6bf50c790534698072a037ae8accbea02dcda05f1b9a4e1a79b86129014b116bd24e8a52f809390dc9a8055ae93c700304106cb951bf87dc4d88ee017152ed
   languageName: node
   linkType: hard
 
