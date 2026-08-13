@@ -6,7 +6,7 @@ This document describes the mobile app's technical structure at a level sufficie
 
 ## Stack
 
-- **React Native 0.85.2**, **React 19.2.3**, **TypeScript**.
+- **React Native 0.86.2**, **React 19.2.7**, **TypeScript**.
 - **Yarn 4 (Berry)** — package manager.
 - **Axios** — HTTP client wrapped by a shared service.
 - **Zustand** — lightweight state stores.
@@ -79,7 +79,7 @@ key itself as a master wrapping key that decrypts all other mobile secrets on de
 
 ### QR-first enrollment
 
-The enrollment QR payload contains `enrollmentId`, `enrollmentProofToken`, and optionally `authUrl`. Scanning is performed via `react-native-vision-camera` with the `EzkeyQrFrameProcessorPlugin` Kotlin plugin. When `authUrl` is absent, the app falls back to the configured base URL.
+The enrollment QR payload contains `enrollmentId`, `enrollmentProofToken`, and optionally `authUrl`. Scanning uses Vision Camera 5 plus `react-native-vision-camera-barcode-scanner` (ML Kit) via `useBarcodeScannerOutput`. When `authUrl` is absent, the app falls back to the configured base URL.
 
 ### Problem Details awareness
 

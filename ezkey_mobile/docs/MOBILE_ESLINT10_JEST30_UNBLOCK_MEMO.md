@@ -9,9 +9,9 @@ Keep dependency hygiene disciplined while avoiding premature major upgrades that
 
 ## Current baseline (validated)
 
-- React Native: `0.86.0`
-- `@react-native/eslint-config`: `0.86.0`
-- `@react-native/jest-preset`: `0.86.0`
+- React Native: `0.86.2`
+- `@react-native/eslint-config`: `0.86.2`
+- `@react-native/jest-preset`: `0.86.2`
 - ESLint: `9.39.4`
 - Jest: `29.7.0`
 
@@ -21,7 +21,7 @@ Keep dependency hygiene disciplined while avoiding premature major upgrades that
   - `eslint-comments/no-aggregating-enable`: `context.getSourceCode is not a function`
 - Root cause:
   - The RN lint stack is not fully aligned with ESLint 10 yet.
-  - `@react-native/eslint-config@0.86.0` peer range is `^8 || ^9`, not `^10`.
+  - `@react-native/eslint-config@0.86.2` peer range is `^8 || ^9`, not `^10`.
 
 ## Why Jest 30 is deferred
 
@@ -29,7 +29,7 @@ Keep dependency hygiene disciplined while avoiding premature major upgrades that
   - `TypeError: this._moduleMocker.clearMocksOnScope is not a function`
 - Root cause:
   - The RN preset and its Jest runtime components are pinned to the 29.x ecosystem.
-  - `@react-native/jest-preset@0.86.0` depends on Jest packages in `^29.7.0`.
+  - `@react-native/jest-preset@0.86.2` depends on Jest packages in `^29.7.0`.
 
 ## Unblock gates (all must pass)
 

@@ -21,7 +21,7 @@ Equivalent: `yarn android:install:debug:clean`.
 
 ## Why agents fail without this
 
-- Maintainer **PATH** often points at **JDK 25** — invalid for RN 0.85 Android Gradle.
+- Maintainer **PATH** often points at **JDK 25** — invalid for RN 0.86 Android Gradle.
 - **Android Studio JBR** path varies (`Android Studio` vs `Android Studio1`).
 - Long Gradle runs without a prior **`adb devices`** check waste time when wireless adb disconnects.
 
