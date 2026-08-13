@@ -16,6 +16,9 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 ## Directives
 
 - Keep the app simple. Avoid feature creep, decorative UI, and extra screens.
+- Production IA: Home list + primary add + Settings hub (About, Language, Danger Zone, Licenses).
+  Do not reintroduce a Diagnostics screen in production chrome. Delete-one and clear-all live only
+  in Danger Zone.
 - Security first: proof tokens stay in memory or secure storage only.
 - Keep the pull model: no background polling for auth attempts.
 - Do not reintroduce integration logos or related fields.
@@ -50,11 +53,18 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 - After refreshing the spec, run `yarn generate:api`.
 - Treat `app/services/api/generated/auth-api/model/` as the source of truth for Auth API DTOs.
 - Keep `app/services/api/types.ts` thin: local mobile domain types and wrapper input shapes are fine, but no second hand-maintained copy of the Auth API contract.
+- Verify `challengeResponse` is required. The UI wrapper may keep it as `string`; `enrollmentsApi.verify`
+  serializes it as a JSON number. Do not make it optional.
 
 ## Security Rules
 
 - Never break Auth API contracts without backend coordination.
-- Generate device proof tokens only via `app/utils/generateProofToken.ts`.
+- After enrollment bind, require `integrationKeyAlgorithm === "ed25519"` via
+  `integrationKeyAlgorithmBindError` (`app/utils/integrationKeyAlgorithm.ts`). Abort enrollment on
+  mismatch (fail closed). Do not assume Ed25519 from `integrationPublicKey` alone.
+- Generate device proof tokens only via `app/utils/generateProofToken.ts` (native CSPRNG in
+  `EzkeyCryptoModule`). Do not mint `deviceProofToken` with `Date.now()` or
+  `react-native-get-random-values`.
 - Keep EC P-256 key handling on the native keystore path.
 - For Android wording, prefer `Android Keystore` and `StrongBox when available`.
 - Do not revive deleted historical analysis notes when the living corpus already states the current rule.

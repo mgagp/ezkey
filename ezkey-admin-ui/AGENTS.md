@@ -45,7 +45,7 @@ src/
     auth-context.tsx    AuthProvider + useAuth; clears QueryClient cache on logout
     demo-mode-context.tsx   DemoModeProvider + useDemoModeSession (session toggle when VITE_DEMO_MODE; stripped in production)
   hooks/
-    use-paginated-query.ts   usePaginatedQuery — Spring Data pagination (see Pattern B below)
+    use-paginated-orval.ts   usePaginatedFromOrval — Spring Data pagination (see Pattern B / Paginated list)
     use-debounce.ts          useDebounce — search input debouncing
     use-integrations.ts      useIntegrations — cached integration list + lookup map
   components/
@@ -88,7 +88,7 @@ The Admin API returns pagination metadata **nested** inside a `page` sub-object:
 }
 ```
 
-`usePaginatedQuery` handles this internally. **Never** access `data.totalElements` directly —
+`usePaginatedFromOrval` handles this internally. **Never** access `data.totalElements` directly —
 always go through `pagination.totalElements` from the hook, or `data?.page?.totalElements` in
 raw `useQuery` calls when you truly need a one-off page envelope.
 
@@ -256,6 +256,8 @@ Canonical matrix: [`product-docs/global/admin-ui-paginated-screens-matrix.md`](.
 - **ID first:** bounded Tier A paginated lists show the entity primary key as the **first column** (`font-mono text-xs`, server `sortKey` when supported).
 - **Labels alongside ID:** join-enriched names (tenant, integration, username) live in their business columns; they do not replace the ID column.
 - **Administrator links:** there is **no** `/admins/:id` route. Detail opens on `/admins` with `?adminId=`. Use `adminListDetailHref(id)` from `@/lib/list-detail-navigation` for every cross-screen link to an admin (audit logs, enrollment detail, tenant embedded list, etc.).
+- **Global-scope tenant label:** when `tenantId` / `tenantName` are null, show `list.tenantPlatform` (“Platform”). Do not invent “Unknown tenant”.
+- **FK name links:** use `AdminFkLink` / `EnrollmentFkLink` from `@/components/feature/fk-detail-links` (join-enriched name + ID). Do **not** reintroduce a lazy “More details” expand that GET-by-id duplicates already-enriched list/detail payloads.
 
 ### Prev/Next detail navigation
 
@@ -315,6 +317,8 @@ the main Java `docker/docker-compose.yml` / daily `clean-start` (would slow ever
   - start the EZKey backend stack with `clean-start`
   - use the pre-seeded **Demo Device** on `http://localhost:8083`
   - run the Admin UI either with `npm run dev` or `./start.sh`
+  - `EZKEY_DEMO_DEVICE_TEST_ENROLLMENT_ID` selects a Demo Device row when multiple enrollments exist
+    (matches `data-enrollment-id` on the home list)
 - Preferred commands:
   - Local dev path: `./scripts/run-ui-tests.sh` (runs `npm run test:browser:install` for Chromium first)
   - Docker-only QA path: `./scripts/run-ui-tests-docker.sh`
@@ -341,6 +345,9 @@ the main Java `docker/docker-compose.yml` / daily `clean-start` (would slow ever
 - **Campaign decision notes (HITL):** `product-docs/global/hygiene/react-doctor/` (template + dated pass instances). Do **not** invent `I-*` / `TB-*` / GitHub issues per finding.
 - Default commands from `ezkey-admin-ui/`:
   - `npm run doctor:curated`
+  - `npm run lint:diagnostics` — `eslint . --format stylish` for compact triage. Do not rely on
+    `npm run lint -- --format` (npm may consume `--format`).
+- Do not declare helper components inside render functions (`react-hooks/static-components`).
 - Output lives under `logs/react-doctor/`:
   - `react-doctor.raw.json` — full raw tool output
   - `react-doctor.curated.json` — filtered summary for follow-up analysis
@@ -461,7 +468,7 @@ Agents using the embedded browser tools should mirror the **same sequencing as P
 ## Naming Conventions
 
 - Components: PascalCase (`AppShell`, `DataTable`)
-- Hooks: `use-*` file → `use*` export (`use-paginated-query.ts` → `usePaginatedQuery`)
+- Hooks: `use-*` file → `use*` export (`use-paginated-orval.ts` → `usePaginatedFromOrval`)
 - Pages: kebab-case file, PascalCase default export (`login.tsx` → `LoginPage`)
 - API field names: camelCase matching backend DTOs exactly
 
@@ -473,4 +480,11 @@ Agents using the embedded browser tools should mirror the **same sequencing as P
 - Token in `sessionStorage` only (never `localStorage`). Optional **remember username** on the login page may store the username string in `localStorage` (`ezkey_admin_username_pref`); see `docs/admin-ui-security.md`.
 - `nonBlocking: true` always on login requests
 - Challenge codes always zero-padded to 2 digits via `formatChallengeCode()`
+- Phone fields: normalize with `@/lib/phone-number` (`normalizePhoneNumberInput`). Displayed phone
+  is contact metadata, not a verified possession factor.
+- API timestamps stay UTC. Display via `useDisplayTimezone` / `@/lib/display-timezone-resolver`
+  (`local` | `tenant`). Formatters and date-range filters must share the same resolved zone. Do not
+  add a login-time timezone prompt.
+- Audit/chain investigation timestamps use `formatDateWithTimezone` as primary; relative age is
+  secondary muted text only. Do not revert the Time column to relative-only.
 - Every authenticated page wrapped in `<AppShell title="...">`

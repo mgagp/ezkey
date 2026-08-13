@@ -1,5 +1,12 @@
 # Exception Mapping Analysis - Wave 1
 
+> **Historical (Wave 1 execution note).** Named domain exceptions and RFC 9457 mapping for the
+> in-scope business flows were carried through **Wave 7** (April 2026). Residual generics in
+> crypto/key/audit/provisioning are expected. Living canon:
+> [`product-docs/components/admin-api/exception-and-error-model.md`](../../product-docs/components/admin-api/exception-and-error-model.md).
+> Do not treat the Wave 1 inventory below as open work. Mentions of `ErrorResponseDto` below are
+> pre-migration samples — Admin/Auth/Integration APIs return RFC 9457 `ProblemDetail`.
+
 ## Context
 
 This document starts the progressive migration from generic service-layer exceptions toward named domain exceptions and RFC 9457-aligned API mapping across:

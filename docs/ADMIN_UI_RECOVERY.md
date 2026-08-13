@@ -42,4 +42,4 @@ Break-glass steps are first-class audit events (JSON `event_details` via
 
 - API details: [ENDPOINT.md](./ENDPOINT.md) (admin auth recover, enrollments reset, administrator provisioning).
 - Audit architecture: [audit/AUDIT_LOGGING_IMPLEMENTATION.md](./audit/AUDIT_LOGGING_IMPLEMENTATION.md).
-- Postman: `postman/collections/v2.1/EZ Key Authentication Login admin.postman_collection.json`; public instance metadata (no auth): `postman/collections/v2.1/EZ Key Public admin.postman_collection.json`.
+- Bruno: `bruno/authentication-login-admin/` (recover, enrollments-reset, passwordless-wait); public instance metadata (no auth): `bruno/public-admin/get-public-instance-info.bru`. The `postman/` tree is a historical leftover — see `postman/README.md`.

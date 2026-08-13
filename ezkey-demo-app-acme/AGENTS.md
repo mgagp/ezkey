@@ -108,6 +108,8 @@ File: `data/acme-users.json`
 - **API Key Credentials Required**: Must be configured via `EZKEY_INTEGRATION_KEY` and `EZKEY_SECRET_KEY` environment variables or in external config file
 - **Users File**: Must exist and contain valid username -> enrollmentId mappings
 - **Challenge Code**: 2 digits for auth attempts (not 6 - that's enrollment)
+- **Business Approval:** when Integration API returns `authAttemptChallenge`, show the dashboard
+  `biz-challenge-*` strip. Do not hide a required challenge.
 - **Session Security**: Dashboard route validates session server-side
 - **Hot Reload**: File changes detected every N seconds (configurable, default 5s)
 

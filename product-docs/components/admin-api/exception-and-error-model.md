@@ -31,8 +31,11 @@ Exceptions to RFC 9457:
 
 ## Internal Contract
 
-- **Typed exceptions** in the domain and services layer: for example `IntegrationNotFoundException`, `AuthAttemptRequestFailedException`, `OptimisticLockException`.
+- **Typed exceptions** in the domain and services layer: for example `IntegrationNotFoundException`, `AuthAttemptRequestFailedException`, `OptimisticLockException`. Named types may extend `IllegalArgumentException` or `IllegalStateException` as a **handler-compatibility bridge**; RFC 9457 mapping is via dedicated `@ExceptionHandler` methods, not JDK type names. Do **not** centralize every problem `type` URI in `ezkey-core` (module-local catalogs / handler literals).
 - **Controller advice / exception handlers** translate internal exceptions into RFC 9457 responses.
+  Unknown routes (`NoResourceFoundException`, `NoHandlerFoundException`) map to **404** ProblemDetail
+  with **DEBUG** logs and no stack — do not let a catch-all `Exception` handler log scanner probes as
+  ERROR. Crypto API is excluded (internal tool). Demo apps use `QuietNotFoundExceptionHandler`.
 - **Validation** uses Bean Validation (`@Valid`, custom validators). Failed validation produces 400 with structured problem responses.
 
 ## Error Categories

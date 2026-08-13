@@ -10,7 +10,8 @@ extracting any remaining essence into existing canonical docs — and after chec
 
 - Cursor skill: [`.cursor/skills/corpus-ablation/SKILL.md`](../../../.cursor/skills/corpus-ablation/SKILL.md)
   (keyword **`corpus-ablation`**)
-- Active parking / Done log: [`2026-08-cursor-plans-pass.md`](2026-08-cursor-plans-pass.md)
+- Active parking / Done / **Resume** log: [`2026-08-cursor-plans-pass.md`](2026-08-cursor-plans-pass.md)
+  (cold start: read the Resume block — a pasted hand-off is optional)
 
 ## Operating rules
 

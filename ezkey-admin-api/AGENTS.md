@@ -29,6 +29,13 @@ This file is intended for coding agents working in `ezkey-admin-api/`.
   - a system integration (`isSystemIntegration=true`)
   - a global admin enrollment (EC P-256 keys)
   - recovery codes (hashed in DB; plain text is only available at generation time)
+- Recovery-code **regenerate** (`POST /api/v1/admins/{id}/recovery-codes/regenerate`) is a **full
+  replace**: unused codes from the previous set are invalidated immediately. Do not add a top-up
+  API. Plaintext codes appear only in the generation HTTP response.
+- **Reissue activation code** (`POST /api/v1/admins/{id}/activation-code/regenerate`): Global Admin
+  only; target must be `PENDING_ACTIVATION`, active, and have no first enrollment. Previous unused
+  codes are invalidated. Do not use deactivation or enrollment reset for a lost unused activation
+  code.
 - Bootstrap log/export policy: `ezkey.admin.mfa.bootstrap.credentials-output-mode` — `full` (default; enrollment secrets + optional `bootstrap-credentials.json`) vs `recovery_primary` (recovery codes + instructions only; skips JSON export for Docker).
 - **Bootstrap transaction:** `@Transactional` must be on `bootstrapAdminMfa()` (entry point), not only on `doBootstrapAdminMfa()`. Passing `this::doBootstrapAdminMfa` to `LockingTaskExecutor` bypasses the proxy; the inner method’s `@Transactional` would not apply. See `docs/plan/JPA_TRANSACTION_DESIGN_NOTES.md`.
 - **ShedLock / HA:** Admin API enables ShedLock (`ShedLockConfiguration`). Scheduled jobs use
@@ -42,6 +49,13 @@ Operator collection lists use **automatic tenant filtering from the principal** 
 integrations/enrollments): **one** `GET /api/v1/{resource}` — TenantAdmin sees own tenant only;
 GlobalAdmin sees all (optional `tenantId` query where documented, e.g. `GET /api/v1/admins`). Do
 **not** invent path-shaped alternatives like `/admins/tenant/{tenantId}` or `/me/peers` for listing.
+
+## Idempotent / bulk no-op
+
+Routine lifecycle actions that match zero eligible records are **200** with a summary (`affectedCount`,
+`skippedCount`, `noOp`), not an error. Skip success audit when nothing changed. High-sensitivity
+ops (encryption keys / re-encryption) may still audit intent. UI must not claim work that `noOp`
+says did not happen. Canon: `docs/ENDPOINT.md` § Bulk enrollment lifecycle.
 
 ## List / search endpoints are paginated
 

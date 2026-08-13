@@ -399,7 +399,7 @@ FilterModal opens with current filters
 Press 'd' on Detail Screen
          │
          ▼
-Extract integration name from i18n
+Extract integration name
          │
          ▼
 ConfirmationModal opens
@@ -431,20 +431,16 @@ Content-Type: application/json
 Authorization: Bearer {token}
 
 {
-  "i18n": [
-    {
-      "language": "en",
-      "name": "Integration Name",
-      "description": "Integration Description"
-    }
-  ],
+  "code": "my-integration",
+  "name": "Integration Name",
+  "description": "Integration Description",
   "logo": "https://example.com/logo.png"
 }
 ```
 
 **Get Integrations (with filters):**
 ```
-GET /api/v1/integrations?page=0&size=25&integrationName=ACME&active=true
+GET /api/v1/integrations?page=0&size=25&integrationName=ACME&lifecycleStatus=ACTIVE
 Authorization: Bearer {token}
 ```
 

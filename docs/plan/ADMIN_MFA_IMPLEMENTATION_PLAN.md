@@ -1,5 +1,9 @@
 # Plan d'Implémentation: MFA Ezkey pour Admin API
 
+> **Historical.** Sample JSON below that nests `mfaEnrollment` is pre-flatten. Living admin MFA
+> binding is `EzkeyAdmin.enrollment` / `enrollmentId` — see `docs/LIFECYCLE_GOVERNANCE.md` §3.5
+> and `docs/ADMIN_UI_RECOVERY.md`. Do not reintroduce a nested `mfaEnrollment` object.
+
 **Version:** 3.0  
 **Date:** 2025-10-03  
 **Updated:** 2025-10-06  

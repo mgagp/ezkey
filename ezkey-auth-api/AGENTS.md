@@ -50,6 +50,9 @@ mvn test -pl 'ezkey-auth-api,!ezkey-tests'
 `Integration` has flat `name` and `description` columns on `ezkey_integration` (V7 removed the
 historical `ezkey_integration_i18n` table). `EnrollmentBindService.loadIntegration()` uses
 standard `integrationRepository.findById()` — there is no i18n child collection to fetch.
+`POST /api/v1/enrollments/bind` accepts only `enrollmentId` and `enrollmentProofToken`. Do **not**
+reintroduce `language` on the bind body: there is no server-side locale negotiation, and unknown
+JSON properties are ignored (that recreates doc/client drift).
 
 For audit tenant resolution on bind/verify/pending/respond, controllers use
 `resolveTenantIdForAudit`: if the enrollment is an **admin MFA** enrollment, use the **admin’s

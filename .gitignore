@@ -135,3 +135,7 @@ ezkey-admin-ui/test-results/
 /origin-key.pem
 /origin.pem
 .wrangler/cache/pages.json
+
+# Historical leftover after Bruno migration — banner only
+/postman/**
+!/postman/README.md

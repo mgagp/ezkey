@@ -17,8 +17,10 @@ params:query {
   size: 20
   @description('Sort field and direction (e.g., auditLogId,asc or createdAt,desc). Default: createdAt,desc. Sortable fields: auditLogId, createdAt, eventType, eventStatus, apiName')
   ~sort: createdAt,desc
-  @description('Filter by event type (e.g., AUTH_ATTEMPT_CREATED, ENROLLMENT_CREATED, ADMIN_RECOVERY_USE, ADMIN_RECOVERY_ENROLLMENT_RESET, LOGIN_SUCCESS, LOGIN_FAILURE)')
+  @description('Filter by event type (e.g., AUTH_ATTEMPT_CREATED, ENROLLMENT_CREATED, ADMIN_RECOVERY_USE, ADMIN_RECOVERY_ENROLLMENT_RESET, LOGIN_SUCCESS, LOGIN_FAILURE). Mutually exclusive with eventTypeFamily.')
   ~eventType: AUTH_ATTEMPT_CREATED
+  @description('Filter by event family (ADMIN, ENROLLMENT, AUTH_ATTEMPT, API_KEY, SYSTEM, ENCRYPTION_KEY, REENCRYPTION, INTEGRATION, TENANT, AUDIT_CHAIN). Mutually exclusive with eventType; sending both returns 400.')
+  ~eventTypeFamily: ENROLLMENT
   @description('Filter by event status (SUCCESS, FAILURE, ERROR)')
   ~eventStatus: SUCCESS
   @description('Filter by API name (ADMIN, AUTH)')

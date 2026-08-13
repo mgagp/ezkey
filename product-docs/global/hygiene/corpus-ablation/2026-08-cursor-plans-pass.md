@@ -6,6 +6,22 @@
   delete the plan when essence is captured or already shipped
 - **Parking:** deferred adjacent findings only — burn down when the source doc is opened or at
   campaign closeout
+- **Skill:** `.cursor/skills/corpus-ablation/SKILL.md`
+
+## Resume (cold start — do not wait for a hand-off prompt)
+
+A cold agent should start here, then follow the skill. Keep this block current after every Go.
+
+| Item | Current |
+|------|---------|
+| **Next scaffold** | `.cursor/plans/archived/rejected_showing_as_expired_fix.md` (last loose archived file) |
+| **Then** | Empty dated folders `archived/2026-01/` … `2026-05/` (remove when convenient). After `archived/` is empty, continue other `.cursor/plans/` trees / prompt-plan noise per lane README — none remain at plans root except the Keep below. |
+| **Kept (do not delete)** | `.cursor/plans/authentication_wait_evolution_brainstorm.plan.md` |
+| **HITL** | One plan per turn. Propose **Go** = delete-or-keep + in-pass now + park-inside-Go. Wait. |
+| **Do not** | Invent `I-*` / `TB-*`. Re-create deleted plans. Re-rebase this branch unless `origin/main` moved. Push unless asked. Touch `docker/README-HA.md` without preserving Integration HA + V5 ShedLock wording. |
+| **Branch** | `hygiene/corpus-ablation-2026-08` |
+| **Open parking** | None (P-051–P-055 burned down 2026-08-13). New `P-NNN` only inside a later Go. |
+| **Conflict / posture** | Git history is the archive. Project files in English. |
 
 ## Done this pass
 
@@ -82,6 +98,54 @@
 | `.cursor/plans/archived/2026-04/admin_session_hardening_2e417673.plan.md` | Deleted. Shipped: `/me` rehydration + CSRF + SameSite=Strict. Canon: `admin-ui-security.md` / ENDPOINT. In-pass: Admin UI AGENTS Mode B bullet. |
 | `.cursor/plans/archived/2026-04/admin_session_httponly_path_c0bfa13c.plan.md` | Deleted. Shipped: Mode B HttpOnly cookie path (Phases 0–3). Canon: `admin-ui-security.md` / Pages doc / CONFIGURATION §12. Parked P-050 (cookie Max-Age vs sliding window). |
 | `.cursor/plans/archived/2026-04/admin_ui_401_redirect_fix_5c1320f5.plan.md` | Deleted. Shipped: `fetchApi` 401 → login when `requireAuth` && !recovery bearer. In-pass: AGENTS `api-client.ts` one-liner aligned. |
+| `.cursor/plans/archived/2026-04/admin_ui_api_error_i18n_phase2_quick_wins.plan.md` | Deleted. Shipped: inventory + en/fr + `shouldPreferI18nOverDetail` allowlist + `getTranslatedApiError` callsites. Canon: `docs/admin-ui-admin-api-error-inventory.md`, Admin UI AGENTS § Error display, `api-error-i18n.ts`. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/admin-ui_browser_tests_3ca0575c.plan.md` | Deleted. Shipped: Playwright `e2e/` + `run-ui-tests*.sh`. Canon: Admin UI AGENTS § Browser UI Tests, `docs/testing/AGENT_UI_VALIDATION.md`. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/admin-ui-doc-reframing_e5b64c6f.plan.md` | Deleted. Shipped: Admin UI + GA/TA framing in README, product-intent, ARCHITECTURE, PROJECT_POSITIONING, docs index. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/admin-ui-docs-balance_26fe42e2.plan.md` | Deleted. Shipped: `docs/ADMIN_UI.md` + entry points (README, docs index, module README). No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/audit_chain_heartbeat_20b04a41.plan.md` | Deleted. Shipped: heartbeat guard, incidents API, `AUDIT_CHAIN_HEARTBEAT_STALE`. Canon: `AUDIT_LOG_INTEGRITY.md`, CONFIGURATION, ENDPOINT, Bruno. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/audit_chain_lifecycle_b42e184a.plan.md` | Deleted. Shipped: seal-archive / declare-gap, checkpoint types, Period archive policy. Canon: `AUDIT_LOG_INTEGRITY.md`, CONFIGURATION, ENDPOINT, Bruno, Admin UI Integrity panel. Export remains `I-2026-06-28`. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/audit_event_family_filter_d00339d5.plan.md` | Deleted. Shipped: `EventTypeFamily` + UI optgroups + ENDPOINT. In-pass: core AGENTS family pointer; Bruno `eventTypeFamily` on read-audit-logs. No parking. |
+| `.cursor/plans/archived/2026-04/auth_api_public_instance-info_79f69132.plan.md` | Deleted. Shipped: shared `PublicInstanceInfoService` + Auth/Admin GET; ENDPOINT, auth-api AGENTS, mobile README, Bruno public-auth. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/auth_attempt_batch_expiry_audit_revalidation.plan.md` | Deleted. Shipped: scheduler `AUTH_ATTEMPT_EXPIRED` + `expireIfStale`. Canon: ENDPOINT TTL note, CONFIGURATION, Admin UI labels. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/auth_attempt_reencrypt_sharding_679d83ad.plan.md` | Deleted. Shipped: auth-attempt shard batches + mutex + CONFIGURATION / `REENCRYPTION_OPERATIONS.md` §9 + Admin UI. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/authattempt_respond_ie_mapping_evolution.plan.md` | Deleted. Shipped: respond catches `AuthAttemptRequestFailedException` (`RuntimeException`); ENDPOINT 200 FAILED vs 400 IAE vs 409. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/backend_error_i18n_strategy_cf455bd9.plan.md` | Deleted. Strategy parent of Phase 2 quick wins. Canon: Admin UI AGENTS Option B, error inventory, admin-api exception-and-error-model. Phase 3 remains optional product. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/bootstrap_init_hardening_266ef4ca.plan.md` | Deleted. Shipped: `credentials-output-mode` full vs recovery_primary, Docker skip-init, reset log hygiene. Canon: admin-api AGENTS § Logging, CONFIGURATION, docker README, OPERATIONAL. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/dashboard_badge_drill-downs_175c29d4.plan.md` | Deleted. Shipped: drilldown links + URL sync. Canon: `dashboard-widget-signal-model.md` (`I-2026-0030`), Admin UI AGENTS § Dashboard. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/dashboard_enrollment_widget_1aaa3560.plan.md` | Deleted. Shipped: `EnrollmentDashboardStats` buckets. Canon: signal model (`I-2026-0030`). In-pass: retargeted I-2026-0030 plan cite to DTO/stats types. No parking. |
+| `.cursor/plans/archived/2026-04/demo_device_qr_paste_d060241a.plan.md` | Deleted. Shipped: jsQR paste/drop on Demo Device new enrollment. Canon: `plan_demo_device.md`, demo-device AGENTS QR `authUrl`. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/device_private_key_storage_tier.plan.md` | Deleted. Shipped: `NONE`/`STANDARD`/`STRONG` at verify. Canon: ENDPOINT, MOBILE_DEVELOPER_GUIDE trust model. In-pass: enrollment attribute matrix row. No parking. |
+| `.cursor/plans/archived/2026-04/docker_build_workflow_449b0fcc.plan.md` | Deleted. Shipped: `scripts/build-docker.sh` + Dockerfile `build-validation`. Canon: DEVELOPMENT.md, docker README, root AGENTS. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/ed25519_doc_alignment_f4c9529b.plan.md` | Deleted. Shipped: integration signatures documented as Ed25519 + Base64URL. Canon: CRYPTO.md, AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md, DTO/OpenAPI. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/encryption_key_records_semantics_7a94c54d.plan.md` | Deleted. Shipped: demotion baseline + drain via prefix verification. Canon: SPEC lifecycle, REENCRYPTION_OPERATIONS, `EncryptionKeyMigrationScopeService`. No in-pass; no parking. |
+| `.cursor/plans/archived/2026-04/errorresponsedto_rfc9457_migration_d3394fed.plan.md` | Deleted. Shipped: ErrorResponseDto removed; ProblemDetail + catalogs. In-pass: historical banner on `ADMIN_API_EXCEPTION_HANDLING_SYNTHESIS.md`. Parked P-051. |
+| `.cursor/plans/archived/2026-04/exception-mapping-inventory_1bc3c2bb.plan.md` | Deleted. Milestone through Wave 7. In-pass: WAVE_1 analysis banner; exception-and-error-model IAE/ISE bridge + no core mega-enum. No new parking. |
+| `.cursor/plans/archived/2026-04/fk_more_details_ux_04799c66.plan.md` | Deleted. “More details” expand replaced by `fk-detail-links.tsx`. In-pass: Admin UI AGENTS FK name-link pointer. No parking. |
+| `.cursor/plans/archived/2026-04/integration_retirement_coherence_972772a3.plan.md` | Deleted. ACTIVE/RETIRED only; bulk revoke includes CREATED/BOUND. Canon: LIFECYCLE_GOVERNANCE §3.2. In-pass: ENDPOINT + Bruno search dropped INACTIVE/`active` response. No parking. |
+| `.cursor/plans/archived/2026-04/integrationkeyalgorithm_alignment_9332ba7e.plan.md` | Deleted. Bind fail-closed `ed25519`. Canon: ENDPOINT, CRYPTO, MOBILE_DEVELOPER_GUIDE, `integrationKeyAlgorithm.ts`. In-pass: mobile AGENTS Security Rules pointer. No parking. |
+| `.cursor/plans/archived/2026-04/language_preference_analysis_1df9ce3f.plan.md` | Deleted. Bind has no `language`; V7 flattened i18n. Canon: EnrollmentBindRequestDto, ENDPOINT, auth-api AGENTS. In-pass: AGENTS two-field bind; BIND_ENUM_PROTECTION historical banner. Parked P-052. |
+| `.cursor/plans/archived/2026-04/lifecycle_after_reencrypt_refactor_7721f359.plan.md` | Deleted. KeyUsageVerificationService + shared target discovery. Canon: SPEC lifecycle, REENCRYPTION_OPERATIONS. In-pass: core AGENTS remaining-counts pointer. No parking. |
+| `.cursor/plans/archived/2026-04/mobile_device_proof_token_b70b1f8e.plan.md` | Deleted. Native CSPRNG `generateProofToken` matches SignatureService. Canon: CRYPTO.md, MOBILE_CRYPTO_REFERENCE. In-pass: mobile AGENTS anti-Date.now / no RNGetRandomValues. No parking. |
+| `.cursor/plans/archived/2026-04/mobile_ux_play_alignment_0045d376.plan.md` | Deleted. Settings hub + Danger Zone; Diagnostics gone. Canon: MOBILE_SCREENS_AND_WIREFLOWS. In-pass: mobile AGENTS production IA. No parking. |
+| `.cursor/plans/archived/2026-04/mobile_verify_types_alignment_f7656ece.plan.md` | Deleted. Verify `challengeResponse` required; JSON number on the wire. Canon: EnrollmentVerifyRequestDto, ENDPOINT, types.ts. In-pass: mobile AGENTS Contract-First bullet. No parking. |
+| `.cursor/plans/archived/2026-04/normalize-admin-enrollment-name_4007c2a2.plan.md` | Deleted. `ezkey_admin.enrollment_id` / `EzkeyAdmin.enrollment`. In-pass: core AGENTS one-identifier rule. Parked P-053. |
+| `.cursor/plans/archived/2026-04/phone-number-management_66c3de73.plan.md` | Deleted. Contact phones E.164 on admin/tenant/enrollment. In-pass: core AGENTS contact-vs-assurance; Admin UI `@/lib/phone-number`. Parked P-054. |
+| `.cursor/plans/archived/2026-04/postman_enrollment_crypto_flow_b1fcbbbb.plan.md` | Deleted. payload-helper enrollment types + Bruno `enrollments-auth/`. Canon: ENROLLMENT_SIGNATURE_PAYLOAD, crypto AGENTS. In-pass: enrollment workflow no longer signs raw proof token. Parked P-055. |
+| `.cursor/plans/archived/2026-04/quiet_404_exception_handling_08a688b4.plan.md` | Deleted. Quiet 404 handlers on Admin/Auth/Integration + demo apps. In-pass: exception-and-error-model unknown-route DEBUG rule. No parking. |
+| `.cursor/plans/archived/2026-04/recovery-codes-lifecycle_764f8c67.plan.md` | Deleted. Full-set regenerate shipped. Canon: LIFECYCLE §3.8, ENDPOINT, ADMIN_UI_RECOVERY. In-pass: docs/README retarget; admin-api AGENTS replace-all / no top-up. No parking. |
+| `.cursor/plans/archived/2026-04/re-encryption_pipeline_redesign_e144738d.plan.md` | Deleted. Service split + parallel runner + Micrometer. Canon: REENCRYPTION_OPERATIONS. In-pass: core AGENTS orchestration/mutex; historical banner on reencryption-service-design-follow-up. No parking. |
+| `.cursor/plans/archived/2026-04/tenant_timezone_strategy_08096020.plan.md` | Deleted. UTC wire + IANA tenant tz + local/tenant display pref. In-pass: Admin UI AGENTS display-timezone; ENDPOINT datetime sentence. No parking. |
+| `.cursor/plans/archived/2026-04/uniform-noop-pattern_fcccfde9.plan.md` | Deleted. Bulk enrollment 200 + `noOp` summary; audit only on change. Canon: ENDPOINT bulk lifecycle. In-pass: admin-api AGENTS no-op policy. No parking. |
+| `.cursor/plans/archived/2026-05/admin-ui-activation-reissue_2d0589dd.plan.md` | Deleted. Reissue activation code shipped. Canon: ENDPOINT § e1, Bruno. In-pass: LIFECYCLE §3.5 row; admin-api AGENTS eligibility. No parking. |
+| `.cursor/plans/archived/2026-05/admin_administrators_list_operational_closeout.plan.md` | Deleted. tenantName + Platform for global scope. In-pass: Admin UI + Demo Device AGENTS Platform convention. No parking. |
+| `.cursor/plans/archived/2026-05/admin_ui_lint_cleanup_2e576db8.plan.md` | Deleted. Lint fixed at source; `lint:diagnostics` added. In-pass: Admin UI AGENTS static-components + diagnostics command. No parking. |
+| `.cursor/plans/archived/2026-05/audit_chain_heartbeat_clarity_d4a8b2c1.plan.md` | Deleted. Heartbeat timing/fail-close clarity shipped. Canon: AUDIT_LOG_INTEGRITY. In-pass: core AGENTS heartbeat pointer. No parking. |
+| `.cursor/plans/archived/2026-05/audit_log_timestamps_38aab43b.plan.md` | Deleted. Audit list absolute timezone-explicit first. In-pass: Admin UI AGENTS formatDateWithTimezone primary. No parking. |
+| `.cursor/plans/archived/2026-05/demo_device_acme_stack_closeout_2026-05-03.plan.md` | Deleted. Demo Device + ACME challenge strip + JDK 25 rule. In-pass: acme AGENTS biz-challenge; Admin UI e2e enrollment-id env. No parking. |
+| `.cursor/plans/archived/2026-05/enrollment-expiry-create_55bc637d.plan.md` | Deleted. Create `expiresAt` + 7-day default. Canon: ENDPOINT, CONFIGURATION. In-pass: core AGENTS pending expiry; LIFECYCLE §3.3 sentence. No parking. |
+| `.cursor/plans/archived/2026-05/ezkey-doc-system_f1e8054a.plan.md` | Deleted. product-docs skeleton shipped; method is methodology/README. In-pass: product-docs/README living-layer pointer. No parking. |
+| `.cursor/plans/archived/jpa_field_initialization_final_recommendations.md` | Deleted. JPA defaults already in core AGENTS. In-pass: expiresAt in service; no DefaultValueEntityListener. No parking. |
+| `.cursor/plans/archived/phase2_orval_hooks_migration_inventory.md` | Deleted. Living list pattern is `usePaginatedFromOrval` + `PaginatedTable` (`LIST_DATA_LOADING_DESIGN.md`). In-pass: Admin UI AGENTS retarget (structure, Pattern B, naming). Left `use-integrations.ts` (thin lookup helper). No parking. |
 
 ## Kept this pass (retained)
 
@@ -91,7 +155,19 @@
 
 ## Parking (open)
 
-_None — burn-down applied 2026-08-12 (session mid-pass, after corpus-ablation into 2026-04)._
+| ID | Source | Finding | Suggested receptacle |
+|----|--------|---------|----------------------|
+| *(none)* | | | |
+
+## Parking (closed 2026-08-13 — session burn-down)
+
+| ID | Disposition |
+|----|-------------|
+| P-051 | Fixed: WAVE_1 + `EXCEPTION_SECURITY_ANALYSIS_2025-10-14.md` + `SECURITY_MULTI_TENANT.md` banners — `ErrorResponseDto` samples are pre-RFC-9457; living errors are `ProblemDetail`. |
+| P-052 | Fixed: `ezkey-cli-python/TUI_GUIDE.md` create-integration flatten (`code`/`name`/`description`) + search `lifecycleStatus=ACTIVE`. |
+| P-053 | Fixed: historical banners on `docs/plan/ADMIN_MFA_*.md` + `PLAN_UPDATES_SUMMARY.md` (`mfaEnrollment` → `enrollment` / `enrollmentId`). |
+| P-054 | Fixed: `multi-tenancy-strategy.md` banner + samples → E.164 `+15551234567`. |
+| P-055 | Fixed: `postman/README.md` leftover banner; retargeted `docs/ENDPOINT.md` + `ADMIN_UI_RECOVERY.md` to Bruno. Tree not deleted. |
 
 ## Parking (closed 2026-08-12 — mid-pass burn-down)
 

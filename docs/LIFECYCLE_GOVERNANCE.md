@@ -224,7 +224,8 @@ stateDiagram-v2
 
 Living status enum values also include terminal / failure paths such as `EXPIRED` and `INVALID`
 (not shown above). Do not use a fictional `PENDING` status — the invitation window is `CREATED` /
-`BOUND` before `VERIFIED`.
+`BOUND` before `VERIFIED`. Omitted create `expiresAt` uses `ezkey.enrollment.pending-expiration-days`
+(default 7 days); that clock is the pending invitation window only, not a post-`VERIFIED` lifetime.
 
 - **CREATED** → Enrollment invitation exists; device has not bound yet.
 - **BOUND** → Device claimed the invitation; cryptographic verify not finished.
@@ -337,12 +338,14 @@ The UI may reuse related onboarding shells, but the domain semantics, tokens, an
 |--------|---------|------------|--------|--------|
 | Create / Provision | Yes | — | — | Creates admin identity |
 | Create / Provision in activation mode | Yes | — | — | Creates admin identity in `PENDING_ACTIVATION` without creating the first enrollment yet |
+| Reissue activation code | Yes ³ | No (previous unused code invalidated) | — | Global Admin only; pending + no enrollment; identity unchanged |
 | Deactivate | Yes ¹ | Yes | Optional | Suspends admin access; revokes active sessions |
 | Activate / Reactivate | Yes | Yes | Optional | Restores admin access |
 | Delete | No ² | — | — | — |
 
 ¹ Safety guards apply: you cannot deactivate yourself, and the system enforces minimum-admin rules to prevent complete administrative lockout.
 ² Admin deletion is not supported. Deactivation covers suspension and investigation; credential revocation covers security invalidation. Deleting an admin would destroy audit history of their actions.
+³ `POST /api/v1/admins/{id}/activation-code/regenerate`. Tenant must be active when the admin is tenant-scoped.
 
 **Guardrails and rationale:**
 

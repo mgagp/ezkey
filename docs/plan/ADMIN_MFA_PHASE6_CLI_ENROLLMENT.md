@@ -1,5 +1,9 @@
 # Phase 6: CLI Python - Enrollment Management (Détails)
 
+> **Historical.** Planning note for CLI enrollment management. Living bind/verify contract is
+> `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md` and `docs/ENDPOINT.md`. Admin MFA identifier is
+> `enrollment` / `enrollmentId`, not a nested `mfaEnrollment` object.
+
 **Version:** 1.0  
 **Date:** 2025-10-03  
 **Durée:** 2-3 jours  

@@ -5,8 +5,53 @@ For agents working in `ezkey-core/`.
 ## JPA entity defaults
 
 - **Timestamps** (`createdAt`, `updatedAt`): `@PrePersist` / `@PreUpdate` when null only.
+- **`expiresAt`:** set in the service (config TTL). Do not put TTL math in `@PrePersist`.
 - **Other defaults** (`active`, status): field init. No `@PrePersist` for these.
 - **MapStruct** create→entity: ignore `id`, `createdAt`, `active` (etc.). Example: `IntegrationServiceMapper.toEntity`.
+- Do not add a generic `DefaultValueEntityListener`. Leave `EncryptionEntityListener` as-is.
+
+## Admin enrollment FK naming
+
+Ezkey has one enrollment identifier. `ezkey_admin.enrollment_id` maps to `EzkeyAdmin.enrollment`.
+Do not reintroduce `mfa_enrollment_id` or `mfaEnrollment` — that was legacy wording, not a second
+domain concept.
+
+## Contact phone numbers
+
+Contact phones exist on admin (`phoneNumber`), tenant (`primaryContactPhoneNumber`), and enrollment
+(`contactPhoneNumber`) only. Persist canonical E.164 via `PhoneNumberUtils`. These fields are
+operator contact metadata, not a verified possession factor. Do not add phone to QR payloads or
+auth-attempt.
+
+## Re-encryption remaining counts
+
+Derived remaining/lifecycle snapshots go through `KeyUsageVerificationService`, which reuses
+`ReencryptionTargetQueryService` and the same `discoverReencryptableTargets()` as batch creation.
+Do not add a second counting stack. Do not treat `recordsEncrypted` as live remaining (it is the
+migration baseline). Orchestration stays in `ReencryptionService`; row work is
+`ReencryptionBatchCreationService` / `ReencryptionBatchProcessingService` /
+`ReencryptionBatchParallelRunner` (mutex per table, or per shard when auth-attempt sharding is on).
+Do not fold row crypto back into `ReencryptionService`. Canon: `docs/REENCRYPTION_OPERATIONS.md`,
+`docs/SPEC_ENCRYPTION_KEY_LIFECYCLE_STRATEGY.md`.
+
+## Pending enrollment expiry
+
+Omitted create `expiresAt` uses `ezkey.enrollment.pending-expiration-days` (default **7**). Set `0`
+to disable that default (explicit `expiresAt` still applies). The field is the pending bind/verify
+invitation window only — not a post-`VERIFIED` MFA lifetime.
+
+## Audit chain heartbeat
+
+Peripherals read the latest checkpoint vs UTC now via `AuditChainHeartbeatGuardService` (not a
+second clock). Fail-closed **503** on gated POSTs when the chain is stale. Keep `window-minutes`
+aligned across Admin, Auth, and Integration. Canon: `docs/AUDIT_LOG_INTEGRITY.md`.
+
+## Audit EventType families
+
+Each new {@code EventType} must be assigned to exactly one {@code EventTypeFamily} (exhaustive
+coverage is enforced by {@code EventTypeFamilyTest}). Admin UI optgroups live in
+{@code ezkey-admin-ui/src/lib/audit-event-type-family.ts} and must stay aligned. Filter param:
+{@code GET /api/v1/audit-logs?eventTypeFamily=} (mutually exclusive with {@code eventType}).
 
 ## Audit event_details — JSON required
 

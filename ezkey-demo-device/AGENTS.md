@@ -6,7 +6,7 @@ Monorepo copy lives under `ezkey/ezkey-demo-device/`; public standalone mirror: 
 
 ## Home screen tenant grouping
 
-Bind response `tenantId` / `tenantName` / `tenantDescription` are persisted on `EnrollmentStoreService.Record`. The Ezkey app home groups enrollments via `EnrollmentTenantGrouper` into `tenantGroups` (header + list per tenant; unknown tenant fallback). Prefer that helper over ad-hoc sorting in the controller or template.
+Bind response `tenantId` / `tenantName` / `tenantDescription` are persisted on `EnrollmentStoreService.Record`. The Ezkey app home groups enrollments via `EnrollmentTenantGrouper` into `tenantGroups` (header + list per tenant). Use `EnrollmentTenantGrouper.normalizeTenantName`: null `tenantId` / absent name → **Platform**. Do not invent “Unknown tenant”. Prefer that helper over ad-hoc sorting in the controller or template.
 
 ## QR `authUrl` routing (mobile parity)
 

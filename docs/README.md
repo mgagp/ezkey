@@ -44,7 +44,7 @@ If you are new to the repository, read these first:
 - [admin-ui-security-validation.md](admin-ui-security-validation.md): practical validation checklist for Admin UI security posture.
 - [AUDIT_REASON_AND_JUSTIFICATION_UI.md](AUDIT_REASON_AND_JUSTIFICATION_UI.md): audit `reason` and `justification` rules across API and UI.
 - [ADMIN_PROVISIONING_DEPROVISIONING_PROCEDURE.md](ADMIN_PROVISIONING_DEPROVISIONING_PROCEDURE.md): admin lifecycle and audit-oriented procedure.
-- [RECOVERY_CODES_LIFECYCLE_ANALYSIS.md](RECOVERY_CODES_LIFECYCLE_ANALYSIS.md): recovery code lifecycle analysis and recommendation.
+- [RECOVERY_CODES_LIFECYCLE_ANALYSIS.md](RECOVERY_CODES_LIFECYCLE_ANALYSIS.md): historical analysis (pre-regenerate). Living: [`LIFECYCLE_GOVERNANCE.md`](LIFECYCLE_GOVERNANCE.md) §3.8 and [`ENDPOINT.md`](ENDPOINT.md) `POST /api/v1/admins/{id}/recovery-codes/regenerate`.
 - [security/SQL_INJECTION_POSTURE_AUDIT.md](security/SQL_INJECTION_POSTURE_AUDIT.md): SQL injection posture and repository inventory.
 - [SOC2_PREPARATION.md](SOC2_PREPARATION.md): broader SOC 2 preparation roadmap.
 - [SOC2_QUICK_START.md](SOC2_QUICK_START.md): shorter first-step compliance guide.

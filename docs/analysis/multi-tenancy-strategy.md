@@ -5,7 +5,9 @@
 > [`docs/features/SECURITY_MULTI_TENANT.md`](../features/SECURITY_MULTI_TENANT.md),
 > [`docs/LIFECYCLE_GOVERNANCE.md`](../LIFECYCLE_GOVERNANCE.md), and
 > [`ezkey-tests/reference/MULTI_TENANT.md`](../../ezkey-tests/reference/MULTI_TENANT.md). Do not
-> treat Org/Unit sections below as living product direction.
+> treat Org/Unit sections below as living product direction. Phone examples that use
+> `+1-555-123-4567` are non-canonical; contact phones are E.164 (e.g. `+15551234567`) via
+> `@/lib/phone-number` / `normalizePhoneNumberInput`.
 
 **Version:** 1.0  
 **Date:** January 2025  
@@ -1234,7 +1236,7 @@ CREATE TABLE ezkey_party (
     email VARCHAR(255) NOT NULL UNIQUE,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    phone_number VARCHAR(20), -- Optional, format: +1-555-123-4567
+    phone_number VARCHAR(20), -- Optional, E.164 (e.g. +15551234567)
     
     -- Metadata
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -1330,7 +1332,7 @@ Content-Type: application/json
   "email": "john.doe@example.com",
   "firstName": "John",
   "lastName": "Doe",
-  "phoneNumber": "+1-555-123-4567"
+  "phoneNumber": "+15551234567"
 }
 ```
 
@@ -1341,7 +1343,7 @@ Content-Type: application/json
   "email": "john.doe@example.com",
   "firstName": "John",
   "lastName": "Doe",
-  "phoneNumber": "+1-555-123-4567",
+  "phoneNumber": "+15551234567",
   "createdAt": "2025-01-15T10:00:00Z",
   "active": true
 }

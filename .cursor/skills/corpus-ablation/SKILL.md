@@ -35,6 +35,19 @@ Do **not** invent `I-*` / `TB-*` per finding.
    Go / Keep / variant**. Variants (e.g. Keep, Go without fix) only when useful — never present
    “optional parking” outside Go as if it were separate from the recommendation.
 5. On Go: apply the full package; append Done (+ parking / Kept) in the active pass note.
+   After each applied Go, refresh the pass-log **Resume** block (next file, constraints, open
+   parking) so a **cold session without a pasted hand-off** can match this quality.
+
+### Go briefing shape (mandatory)
+
+One plan per turn. Lead with a single actionable **Go** the operator can accept as-is:
+
+1. **Delete or Keep** — and why (shipped / already in canon / unique option space).
+2. **In-pass now** — cheap discoverability or subject-blocking drift a cold agent would miss
+   (pointers, stale snippets, entry-path links). Say “none” when none.
+3. **Park inside Go** — adjacent / larger edits as `P-NNN` rows (receptacle + why not now).
+   Say “none” when none. Parking is part of Go, not an optional aside.
+4. **Wait** — do not edit until Go / Keep / variant.
 
 **Go = the one best package** for documentary realignment + discoverability, not a minimal
 delete. Build it with a pragmatic corpus edit budget:
@@ -80,10 +93,25 @@ discoverability pointers over re-specification.
 - Burn down when opening that source doc or at campaign closeout.
 - Prefer in-pass over parking when the fix is cheap and closes a cold-agent discoverability gap.
 
+## Cold start (no pasted hand-off)
+
+A fresh session should match a hand-off session if it loads, in order:
+
+1. This skill (Go briefing shape + discoverability rubric).
+2. Lane README + the active pass note — especially the **Resume** block (next file,
+   constraints, open parking, do-not-touch).
+3. The next scaffold named in Resume (or the next remaining file alphabetically under
+   `.cursor/plans/archived/`).
+
+Do **not** invent a richer process than that. If Resume is stale, repair it in-pass before
+briefing the next plan. Session-only judgment that is not in Resume is a method defect — write
+it down there, do not rely on chat memory or a hand-off prompt.
+
 ## Kickoff (paste-ready)
 
 ```text
 corpus-ablation — continue 2026-08 Cursor plans pass.
-Read product-docs/global/hygiene/corpus-ablation/README.md and the skill corpus-ablation.
-One plan per turn; include discoverability check; Go = best corpus package (in-pass + parking).
+Read .cursor/skills/corpus-ablation/SKILL.md, then the pass-log Resume block in
+product-docs/global/hygiene/corpus-ablation/2026-08-cursor-plans-pass.md.
+One plan per turn. Brief Go as: delete-or-keep + in-pass now + park-inside-Go. Wait for Go.
 ```

@@ -97,7 +97,7 @@ yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'
 - **Microsecond precision**: Six decimal places for timestamps
 - **Database storage**: TIMESTAMPTZ preserves original timezone internally
 - **API responses**: Always converted to UTC for consistency
-- **Client responsibility**: Convert to local timezone for display if needed
+- **Client display**: Admin UI may show timestamps in the browser local zone or the tenant IANA zone (`useDisplayTimezone`). Transport remains UTC.
 
 **Why UTC?**
 1. **Timezone independence**: Works globally without ambiguity
@@ -353,7 +353,7 @@ Returns read-only JSON for the Admin UI login shell and operators:
 
 See also: enrollment QR JSON and `authUrl` (same property as `ezkey.qr.auth-base-url` on the Admin API); search this file for `ezkey.qr.auth-base-url`.
 
-**Postman:** `postman/collections/v2.1/EZ Key Public admin.postman_collection.json` (no Bearer token; uses `{{base_url_admin_api}}`).
+**Bruno:** `bruno/public-admin/get-public-instance-info.bru` (no Bearer token; uses `{{base_url_admin_api}}`). The `postman/` tree is a historical leftover — see `postman/README.md`.
 
 ### Anonymous evaluator self-registration (unauthenticated, installation-scoped)
 
@@ -783,8 +783,8 @@ Retired integrations are excluded by default from day-to-day listings.
 - `size` (optional): Page size (default: 20)
 - `sort` (optional): Sort field and direction (e.g., `createdAt,desc`). Sortable fields: `id`, `createdAt`, `lifecycleStatus`
 - `integrationName` (optional): Filter by integration name (partial match, case-insensitive)
-- `active` (optional): Temporary compatibility filter by active flag (`true` = `ACTIVE`, `false` = `INACTIVE`). Kept only as a transition aid during the lifecycle migration and intended to be removed before final closure of this refactor.
-- `lifecycleStatus` (optional): Exact lifecycle filter (`ACTIVE`, `INACTIVE`, `RETIRED`)
+- `active` (optional): Compatibility filter mapped onto lifecycle (`true` = `ACTIVE`, `false` = `RETIRED`). Prefer `lifecycleStatus` for new callers.
+- `lifecycleStatus` (optional): Exact lifecycle filter (`ACTIVE`, `RETIRED`)
 - `includeRetired` (optional): When `true`, include retired integrations in results if no exact `lifecycleStatus` is requested
 - `createdAfter` (optional): Filter integrations created after this timestamp (ISO-8601)
 - `createdBefore` (optional): Filter integrations created before this timestamp (ISO-8601)
@@ -794,7 +794,7 @@ Retired integrations are excluded by default from day-to-day listings.
 - **GlobalAdmin**: Sees all integrations by default; use `tenantId` to restrict to a specific tenant.
 - **TenantAdmin**: Sees only integrations in their tenant; `tenantId` query parameter is ignored.
 
-**Response (200 OK):** Paginated response with `content` (array of integration objects), `totalElements`, `totalPages`, etc. Each integration includes `lifecycleStatus` (`ACTIVE`, `INACTIVE`, `RETIRED`) as the source of truth. The `active` boolean is temporarily retained as a derived compatibility field during the transition and is intended to be removed once the migration is fully completed. System integrations are excluded from the listing.
+**Response (200 OK):** Paginated response with `content` (array of integration objects), `totalElements`, `totalPages`, etc. Each integration includes `lifecycleStatus` (`ACTIVE`, `RETIRED`) as the source of truth and `operational` (`ACTIVE` lifecycle **and** parent tenant active). There is no `active` boolean on the response. System integrations are excluded from the listing.
 
 #### Bulk enrollment lifecycle for an integration
 

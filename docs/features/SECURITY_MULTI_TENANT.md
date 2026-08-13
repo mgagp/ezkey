@@ -3,7 +3,8 @@
 > **Living vs historical:** Admin authentication is **passwordless MFA** with **opaque DB bearer
 > tokens** (immediate revocation). Sections below that sketch password+MFA hybrids, JWT issuance,
 > or Integration Admin as a first-class role are **historical design drafts** — do not treat them as
-> the shipped model. Canon: [`ezkey-tests/reference/MULTI_TENANT.md`](../../ezkey-tests/reference/MULTI_TENANT.md),
+> the shipped model. OpenAPI samples that cite `ErrorResponseDto` are pre-RFC-9457; living errors
+> are `ProblemDetail`. Canon: [`ezkey-tests/reference/MULTI_TENANT.md`](../../ezkey-tests/reference/MULTI_TENANT.md),
 > [`docs/LIFECYCLE_GOVERNANCE.md`](../LIFECYCLE_GOVERNANCE.md), [`docs/ENDPOINT.md`](../ENDPOINT.md).
 
 ## Préambule - Contexte et Vision

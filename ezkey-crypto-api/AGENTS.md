@@ -183,24 +183,12 @@ Crypto API can decrypt values encrypted with:
 
 ### Complete Enrollment Flow
 
-1. **Generate device key pair**:
-   ```bash
-   curl http://localhost:9090/api/v1/crypto/keypair
-   ```
-
-2. **Generate proof token**:
-   ```bash
-   curl http://localhost:9090/api/v1/crypto/prooftoken
-   ```
-
-3. **Sign proof token**:
-   ```bash
-   curl -X POST http://localhost:9090/api/v1/crypto/sign \
-     -H "Content-Type: application/json" \
-     -d '{"data": "proof-token-here", "privateKey": "private-key-here"}'
-   ```
-
-4. **Use signature in enrollment request** to admin-api/auth-api
+Do **not** sign the raw `enrollmentProofToken`. Device ECDSA covers the canonical verify-device
+string (`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`). Exploratory chain: `bruno/enrollments-auth/`
+(payload-helper → verify Ed25519 bind → device keypair → payload-helper verify-device → sign that
+payload → Auth API verify → payload-helper verify-result → verify Ed25519). Crypto API is the
+oracle (`enrollment-bind`, `enrollment-verify-device`, `enrollment-verify-result`); Bruno is the
+source of truth, not `postman/`.
 
 ### Testing Encryption/Decryption Round-trip
 
