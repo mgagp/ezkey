@@ -11,11 +11,8 @@ the durable archive — do not rely on this folder as a discovery layer after li
 
 | Location | Notes |
 |----------|--------|
-| `2026-04/` | Large set (~40 plans); ablation in progress alphabetically |
-| `2026-05/` | Smaller set |
-| Loose files | `jpa_field_initialization_final_recommendations.md`, `phase2_orval_hooks_migration_inventory.md`, `rejected_showing_as_expired_fix.md` |
-
-Folders `2026-01/` and `2026-03/` were emptied by this pass (plans deleted after canon capture).
+| Loose files | `rejected_showing_as_expired_fix.md` (next alphabetical) |
+| Empty dated folders | `2026-01/`, `2026-03/`, `2026-04/`, `2026-05/` — emptied this pass; remove when convenient |
 
 **Retained (not under `archived/`):** `.cursor/plans/authentication_wait_evolution_brainstorm.plan.md`
 (operator Keep — Lane B option space).
