@@ -10,7 +10,7 @@ This audit is intentionally practical. It focuses on the current repository stat
 
 Status: **partially ready, not yet release-complete**.
 
-The Android project already has a credible Play-oriented foundation, especially around target API level and release signing hooks. The main unresolved items are release operations, listing/compliance inputs, and the product decision about whether React Native `0.85.2` is an acceptable first-public-release baseline.
+The Android project already has a credible Play-oriented foundation, especially around target API level and release signing hooks. The main unresolved items are release operations, listing/compliance inputs, and the product decision about whether the current React Native `0.86.2` Active baseline is acceptable for first public release, or whether a later 0.87 program should land first.
 
 ## What Looks Ready
 
@@ -126,10 +126,10 @@ Required action:
 
 Evidence:
 
-- `ezkey_mobile/package.json` uses React Native `0.85.2`
-- the same file uses React `19.2.3`
-- the React Native CLI dependencies are aligned on `20.1.3`
-- the current runtime also depends on `react-native-vision-camera` `4.7.2` and `react-native-worklets-core` `1.6.3`
+- `ezkey_mobile/package.json` uses React Native `0.86.2`
+- the same file uses React `19.2.7`
+- the React Native CLI dependencies are aligned on `20.2.0`
+- the current runtime also depends on `react-native-vision-camera` `5.2.2` and the Vision Camera 5 barcode-scanner / worklets slice
 
 Why it matters:
 

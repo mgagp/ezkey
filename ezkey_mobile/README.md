@@ -5,7 +5,7 @@
 ## Overview
 
 - **Current scope note**: The current mobile product and security posture are **Android-first**. iOS remains a later planned milestone and is **not** a short-term parity or release target. Review Android as the current implementation of record; do not treat missing iOS parity as a present defect unless documentation overclaims it.
-- **Stack**: React Native 0.85.2, React 19.2.3, and TypeScript with dedicated Android (Kotlin) and iOS (Swift/Obj-C++) native modules
+- **Stack**: React Native 0.86.2, React 19.2.7, and TypeScript with dedicated Android (Kotlin) and iOS (Swift/Obj-C++) native modules
 - **Primary Flows**: Enrollment via QR, secure key generation, pending authentication approvals/denials, challenge handling
 - **APIs Consumed**: `auth-api` endpoints documented in [`docs/ENDPOINT.md`](../docs/ENDPOINT.md)
 - **Security Alignment**: Tracks the current guarantees and constraints documented in [`docs/CRYPTO.md`](../docs/CRYPTO.md) and [`docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md)
@@ -52,7 +52,7 @@ ezkey_mobile/
 
 ## Prerequisites
 
-- Node.js **20.19.4+** and Yarn 4 (Berry) — aligned with React Native 0.85 requirements
+- Node.js **20.19.4+** and Yarn 4 (Berry) — aligned with React Native 0.86 requirements
 - JDK 17 and Android Studio with Android SDK 36 / build-tools 36.0.0 available
 - Xcode 16.1+ with CocoaPods 1.16.x recommended (macOS)
 - Watchman (macOS), Git Bash or another POSIX shell on Windows
@@ -186,7 +186,7 @@ Before opening or updating a mobile PR, run the same commands locally when possi
 
 ### Android build troubleshooting
 
-If you see **"Error resolving plugin [id: 'com.facebook.react.settings']"** or **"Unsupported class file major version 69"**, the Android build is likely using JDK 25. React Native 0.85.2 and the current Android toolchain require **JDK 17 or 21**; on this workstation, use **JDK 17**.
+If you see **"Error resolving plugin [id: 'com.facebook.react.settings']"** or **"Unsupported class file major version 69"**, the Android build is likely using JDK 25. React Native 0.86.2 and the current Android toolchain require **JDK 17 or 21**; on this workstation, use **JDK 17**.
 
 **Option 1 – Canonical clean install (Git Bash, from `ezkey_mobile/`):**
 

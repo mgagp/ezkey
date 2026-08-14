@@ -10,7 +10,7 @@
 
 ## Context
 
-- **Platform**: React Native 0.85.2; Android product floor **API 31+** (Android 12+) per
+- **Platform**: React Native 0.86.2; Android product floor **API 31+** (Android 12+) per
   [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md) (`minSdkVersion` **31**);
   iOS 15.1+ planned later, not short-term parity.
 - **Language**: TypeScript with strict compiler options
@@ -100,7 +100,7 @@ Security alignment:
 
 - Jest unit tests for hooks and service functions.
 - React Native Testing Library for component rendering.
-- Detox (optional) for end-to-end validation of enrollment and pending flows.
+- Maestro for optional real-device enrollment/auth pilot flows (`maestro/`).
 - Kotlin and iOS native modules should include instrumentation or unit tests as the native paths stabilize.
 
 ## Documentation Guardrail

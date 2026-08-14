@@ -10,7 +10,7 @@ This note does not replace the technical audit. It frames the decision that rema
 
 These points are based on the current workspace, not on previously deleted upgrade-planning notes.
 
-- The current mobile manifest is based on React Native `0.85.2` and React `19.2.3` in `ezkey_mobile/package.json`.
+- The current mobile manifest is based on React Native `0.86.2` and React `19.2.7` in `ezkey_mobile/package.json`.
 - The Android app is configured with `compileSdkVersion = 36` and `targetSdkVersion = 36` in `ezkey_mobile/android/build.gradle`.
 - The Android release path already supports signed release artifacts via external `EZKEY_UPLOAD_*` Gradle properties in `ezkey_mobile/android/app/build.gradle`.
 - The current package and Android version identifiers are not yet aligned: `package.json` uses `0.0.1`, while Android currently uses `versionName "1.0"` and `versionCode 1`.
@@ -32,7 +32,7 @@ This does not mean the current stack should remain frozen. It means the upgrade 
 
 The main release question is not Android target API compliance. The current Android configuration already looks compatible with a near-term Play submission.
 
-The real question is whether the first public Play release should ship on a React Native stack that is already archived and therefore likely to create avoidable maintenance pressure soon after release.
+The real question is whether the first public Play release should ship on the current React Native `0.86.2` Active line, or wait for a later 0.87 program (Node 22, AGP 9, Strict TypeScript API). 0.86 remains in Active support; 0.87 is too young to treat as a hygiene bump.
 
 ## Option A — Release Soon On The Current Stack
 
@@ -51,8 +51,8 @@ Advantages:
 
 Costs and risks:
 
-- React Native `0.85.2` is healthier than the old archived baseline but still recent enough that upgrade drift should be managed intentionally,
-- the current CLI is aligned on the stable `20.1.3` line in the workspace,
+- React Native `0.86.2` is the current Active 0.86 patch and is healthier than the archived 0.85 line, but upgrade drift toward 0.87 should still be managed as a dedicated program,
+- the current CLI is aligned on the stable `20.2.0` line in the workspace,
 - dependency and ecosystem drift will continue immediately after release,
 - a post-release upgrade could collide with bug-fix work from the first public listing.
 - the later upgrade still needs to respect the known React/camera convergence constraint, so the debt is not just version age but also upgrade coordination complexity.

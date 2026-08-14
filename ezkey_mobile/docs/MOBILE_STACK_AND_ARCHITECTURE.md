@@ -14,8 +14,8 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 
 | Concern | Technology | Why it is used | Notes |
 | --- | --- | --- | --- |
-| Runtime UI | React Native 0.85.3 | Shared iOS/Android UI codebase | Bumped on branch `feature/177-...` (was 0.85.2 at program start). |
-| React runtime | React 19.2.3 | Rendering model used by the current workspace manifest | Keep React and React Native versions aligned with `package.json` and the RN-renderer constraint. |
+| Runtime UI | React Native 0.86.2 | Shared iOS/Android UI codebase | Current Active 0.86 patch. 0.87 is a later program (Node 22, AGP 9, Strict TS API), not this baseline. |
+| React runtime | React 19.2.7 | Rendering model used by the current workspace manifest | Keep React and React Native versions aligned with `package.json` and the RN-renderer constraint. |
 | Language | TypeScript | Typed mobile domain and service layer | Thin wrapper types sit above generated DTOs. |
 | Navigation | React Navigation stack | Simple screen-to-screen mobile flow control | Current stack includes Home, Enrollment, Pending, and supporting screens. |
 | Localization | `i18next` plus `react-i18next` | Static message catalog, manual EN/FR language selection, and predictable fallback behavior | English is the default locale; locale preference is persisted locally and applied immediately via `i18n.changeLanguage` (also reloaded on cold start). |
@@ -26,7 +26,7 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 | Secure item storage | `react-native-keychain` wrapper | Device-local secure storage for small secret values such as enrollment proof tokens | Used by `enrollmentStorage` as the secure delegate; private key path remains native. |
 | Device crypto | Native bridge (`EzkeyCryptoModule`) | Key generation, signing, public key retrieval, proof token generation | Android path is the current reference-strength implementation. |
 | QR capture | Vision Camera 5 + `react-native-vision-camera-barcode-scanner` (ML Kit) | QR-first enrollment via `useBarcodeScannerOutput` | Android-first reference; iOS uses same ML Kit path. |
-| Testing | Jest / RTL / optional Detox | Unit/component/e2e coverage path | Native test surface still evolves separately. |
+| Testing | Jest; Maestro for real-device pilot | Unit/component coverage plus optional device flows | Native instrumented crypto tests are separate (`yarn android:test:instrumented:crypto`). |
 
 ## Stack modernization program (2026-05-29)
 
@@ -46,6 +46,10 @@ Prior exhaustive dependency review (RN 0.85.2 baseline, May 2026) is archived un
 **Program status (2026-05-31):** Steps 1–6 executed on branch `#177`: CI `yarn validate`, RN 0.85.3,
 Async Storage 3.x, Vision Camera 5 + `react-native-vision-camera-barcode-scanner`, ESLint 9 flat config.
 Device smoke PASS (Pixel 7 Pro). Maestro deferred on this branch.
+
+**Current workspace baseline (2026-08):** React Native `0.86.2` + aligned `@react-native/*` `0.86.2`,
+React `19.2.7`, CLI `20.2.0`. The 0.85.x program above is historical. Stay on the 0.86 Active line
+until a dedicated 0.87 program is opened.
 
 ## Runtime Architecture at a Glance
 
