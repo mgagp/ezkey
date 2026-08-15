@@ -70,10 +70,11 @@ Promoted to `accepted` on **2026-06-03** after PR `#181` demonstrated:
 
 ## Incubation sources
 
-- Working plan (GitHub): [`.github/prompts/plan-openApiPresentationOrder.prompt.md`](../../../.github/prompts/plan-openApiPresentationOrder.prompt.md)
+- Working plan (GitHub prompt) deleted in the 2026-08 corpus-ablation pass; canon is
+  [`openapi-presentation-order-design.md`](../openapi-presentation-order-design.md).
 - Deleted Cursor plan (materialized); see
   [`openapi-presentation-order-design.md`](../openapi-presentation-order-design.md),
   [`I-2026-06-02-openapi-api-reference-presentation-order`](../backlog/ideas/I-2026-06-02-openapi-api-reference-presentation-order.md),
   [`TB-2026-06-02-openapi-presentation-order-phase2`](../backlog/TB-2026-06-02-openapi-presentation-order-phase2.md)
 - Lane: `B` — plan incubation, materialized `2026-06-02`
-- Methodology gate: [`2026-06-02-plan-incubation-bidirectional-traceability.md`](../methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)
+- Methodology gate: bidirectional V/I/TB/design links (the 2026-06-02 methodology decision file was removed in the 2026-08 methodology ablation; git history is the archive)

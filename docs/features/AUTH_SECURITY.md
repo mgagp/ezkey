@@ -344,8 +344,8 @@ Docker env: `EZKEY_TRUSTED_PROXIES_CIDRS`, `EZKEY_TRUSTED_PROXIES_REQUIRED`. Loc
 
 > **Drift note (plan ablation 2026-08):** older drafts cited non-existent
 > `ezkey.rate-limit.trusted-proxies` / `strict-ip-validation` / `block-suspicious-headers`.
-> The same obsolete name still appears in
-> `.github/prompts/plan-authProtocolSecurityAudit.prompt.md` — clean when that prompt is pruned.
+> Living IP resolution is `ezkey.trusted-proxies.*` above. Current Android-first protocol
+> posture: [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../security/mobile-protocol-crypto-assessment-2026-07.md).
 
 ### Priority 2: Security Enhancements (1-2 weeks)
 

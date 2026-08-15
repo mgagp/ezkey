@@ -1,9 +1,9 @@
 /*
  * pam_ezkey.c - Ezkey PAM Module
  *
- * PAM module for SSH integration with Ezkey MFA system via the M2M API.
+ * PAM module for SSH integration with Ezkey MFA via the Integration API.
  * Credentials are read from environment variables:
- *   EZKEY_M2M_API_URL      - M2M API base URL (default: http://localhost:7080)
+ *   EZKEY_M2M_API_URL      - Integration API base URL (legacy name; default: http://localhost:7080)
  *   EZKEY_INTEGRATION_KEY  - API integration key
  *   EZKEY_SECRET_KEY       - API secret key
  */

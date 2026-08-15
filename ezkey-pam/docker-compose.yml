@@ -19,7 +19,7 @@ services:
       - ./logs:/var/log/container    # Logs accessibles depuis l'host
       - ./workspace:/home/testuser/workspace    # Workspace partagé
     environment:
-      - EZKEY_M2M_API_URL=http://m2m-api:7080
+      - EZKEY_M2M_API_URL=http://integration-api:7080
       - EZKEY_INTEGRATION_KEY=${EZKEY_INTEGRATION_KEY:-}
       - EZKEY_SECRET_KEY=${EZKEY_SECRET_KEY:-}
     networks:

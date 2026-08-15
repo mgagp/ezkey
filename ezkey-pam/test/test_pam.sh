@@ -55,15 +55,15 @@ else
     fail "EZKEY_SECRET_KEY is not set (PAM will reject all auth attempts)"
 fi
 
-# Test 6: M2M API health check
+# Test 6: Integration API health check
 echo ""
-echo "Checking M2M API connectivity at $M2M_URL ..."
+echo "Checking Integration API connectivity at $M2M_URL ..."
 HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
     --max-time 5 "$M2M_URL/actuator/health" 2>/dev/null || echo "000")
 if [ "$HTTP_STATUS" = "200" ]; then
-    ok "M2M API is reachable ($M2M_URL) - HTTP $HTTP_STATUS"
+    ok "Integration API is reachable ($M2M_URL) - HTTP $HTTP_STATUS"
 else
-    fail "M2M API not reachable at $M2M_URL (HTTP $HTTP_STATUS) - ensure the stack is running"
+    fail "Integration API not reachable at $M2M_URL (HTTP $HTTP_STATUS) - ensure the stack is running"
 fi
 
 # Test 7: pamtester (if available)

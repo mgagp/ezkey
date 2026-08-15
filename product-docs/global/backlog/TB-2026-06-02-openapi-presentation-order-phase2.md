@@ -85,7 +85,7 @@ public ReDoc show the same journey-oriented navigation defined in
 
 - [x] Tasks A–D, F (local ReDoc + Swagger) complete.
 - [x] Task E (spec regen) complete via maintainer `update-specs`.
-- [x] Bidirectional traceability gate (see [`2026-06-02-plan-incubation-bidirectional-traceability.md`](../../../methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)).
+- [x] Bidirectional traceability gate (V/I/TB/design cross-links; the 2026-06-02 methodology decision file was removed in the 2026-08 methodology ablation).
 - [x] PR `#181` merged to `main`; parent `I-*` moved to `done`.
 - [ ] Cloudflare preview before production portal promotion — **deferred** (optional follow-up).
 
@@ -100,7 +100,8 @@ public ReDoc show the same journey-oriented navigation defined in
 
 ## Incubation sources
 
-- Working plan (GitHub): [`.github/prompts/plan-openApiPresentationOrder.prompt.md`](../../../../.github/prompts/plan-openApiPresentationOrder.prompt.md)
+- Working plan (GitHub prompt) deleted in the 2026-08 corpus-ablation pass; canon is
+  [`openapi-presentation-order-design.md`](../../openapi-presentation-order-design.md).
 - Deleted Cursor plan (materialized); see **Related** below
 - Lane: `B` — plan incubation, materialized `2026-06-02`
 
@@ -108,4 +109,3 @@ public ReDoc show the same journey-oriented navigation defined in
 
 - [`openapi-presentation-order-design.md`](../../openapi-presentation-order-design.md)
 - [`I-2026-06-02-openapi-api-reference-presentation-order.md`](I-2026-06-02-openapi-api-reference-presentation-order.md)
-- [`2026-06-02-plan-incubation-bidirectional-traceability.md`](../../../methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)

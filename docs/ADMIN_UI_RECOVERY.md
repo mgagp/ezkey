@@ -17,9 +17,18 @@ The Admin UI implements this as a **recovery funnel** on the login page, not as 
 
 ## Provisioning
 
-- New administrators receive recovery codes at **creation** time in the provisioning API response (`recoveryCodes` on the create response).
-- Administrators can also receive a **replacement set** later through `POST /api/v1/admins/{id}/recovery-codes/regenerate`; the previous unused set is invalidated immediately.
-- `GET /api/v1/admins/{id}/onboarding` does **not** return plaintext recovery codes (hashed at rest). Operators must save codes from the create-success screen or out-of-band processes (e.g. bootstrap logs for the initial global admin).
+- **`IMMEDIATE` (default):** first enrollment is created at provisioning. Bind material comes from
+  `GET /api/v1/admins/{id}/onboarding`, not from recovery. Plaintext recovery codes are deferred
+  from bootstrap responses.
+- **`ACTIVATION_CODE`:** admin is `PENDING_ACTIVATION` with no enrollment. The new admin consumes
+  `POST /api/v1/admin/auth/activate` (login-page activation branch), then binds a device. That
+  unauthenticated response also omits recovery codes.
+- After an enrollment exists, operators obtain a **replacement set** through
+  `POST /api/v1/admins/{id}/recovery-codes/regenerate`; the previous unused set is invalidated
+  immediately.
+- `GET /api/v1/admins/{id}/onboarding` does **not** return plaintext recovery codes (hashed at rest).
+
+Canon: [LIFECYCLE_GOVERNANCE.md](LIFECYCLE_GOVERNANCE.md) §3.5 (activation ≠ recovery).
 
 ## Audit (recover + enrollment reset)
 

@@ -8,6 +8,17 @@ This file is intended for coding agents working in `ezkey-admin-api/`.
 - Do not introduce `@Autowired`. Use constructor injection.
 - Keep admin authentication **passwordless-only** (no reintroducing password schema).
 
+## Admin session tokens (opaque, not JWT)
+
+Admin sessions are **opaque DB-backed** tokens (`ezkey_admin_tokens`, lookup by
+`bearer_token_hash`). Revocation is immediate (`active = false`). Do **not** introduce JWT for
+admin sessions: Ezkey is not an IdP, and revocation would still need server state. Stay on a
+**single** session token; do **not** add an OAuth Access/Refresh pair. Idle-extend is sliding TTL
+(`ezkey.admin.token.expiration-hours`, default 2h) on each validated request — not a second token.
+Browser delivery is Mode A Bearer vs Mode B HttpOnly cookie —
+[`docs/admin-ui-security.md`](../docs/admin-ui-security.md). Hash-only precedent: ADR-0007 in
+[`product-docs/global/architecture-decisions.md`](../product-docs/global/architecture-decisions.md).
+
 ## Where the “truth” lives
 
 - **Migrations (Flyway)**: `ezkey-core/src/main/resources/db/migration/`
@@ -36,6 +47,9 @@ This file is intended for coding agents working in `ezkey-admin-api/`.
   only; target must be `PENDING_ACTIVATION`, active, and have no first enrollment. Previous unused
   codes are invalidated. Do not use deactivation or enrollment reset for a lost unused activation
   code.
+- **Consume vs reactivate:** first-time onboarding is unauthenticated
+  `POST /api/v1/admin/auth/activate`. Operator reactivation of a deactivated admin is
+  `POST /api/v1/admins/{id}/activate`. Do not collapse those paths.
 - Bootstrap log/export policy: `ezkey.admin.mfa.bootstrap.credentials-output-mode` — `full` (default; enrollment secrets + optional `bootstrap-credentials.json`) vs `recovery_primary` (recovery codes + instructions only; skips JSON export for Docker).
 - **Bootstrap transaction:** `@Transactional` must be on `bootstrapAdminMfa()` (entry point), not only on `doBootstrapAdminMfa()`. Passing `this::doBootstrapAdminMfa` to `LockingTaskExecutor` bypasses the proxy; the inner method’s `@Transactional` would not apply. See `docs/plan/JPA_TRANSACTION_DESIGN_NOTES.md`.
 - **ShedLock / HA:** Admin API enables ShedLock (`ShedLockConfiguration`). Scheduled jobs use
@@ -49,6 +63,14 @@ Operator collection lists use **automatic tenant filtering from the principal** 
 integrations/enrollments): **one** `GET /api/v1/{resource}` — TenantAdmin sees own tenant only;
 GlobalAdmin sees all (optional `tenantId` query where documented, e.g. `GET /api/v1/admins`). Do
 **not** invent path-shaped alternatives like `/admins/tenant/{tenantId}` or `/me/peers` for listing.
+
+## Admin MFA credentials vs enrollment GET
+
+Admin MFA enrollments bind to the **system integration** (system tenant). `GET /api/v1/enrollments/{id}`
+authorizes via **enrollment → integration → tenant**, so a Tenant Admin gets **403** on admin MFA
+rows. Use `GET /api/v1/admins/{id}/onboarding` and `/onboarding/qrcode` (authorize **admin → tenant**).
+`GET /enrollments/{id}` remains correct for enrollments on the Tenant Admin’s **own** integrations.
+Canon: [`docs/ENDPOINT.md`](../docs/ENDPOINT.md) § When to Use Admin Onboarding API vs Enrollment API.
 
 ## Idempotent / bulk no-op
 

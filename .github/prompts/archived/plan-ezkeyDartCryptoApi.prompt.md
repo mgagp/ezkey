@@ -37,7 +37,7 @@ Approche recommandee: option 2, complete protocolaire. Elle couvre pleinement le
    - Verification de bout en bout de l’usage oracle pour les flux pending, respond et respond-result attendus par ezkeyDart.
 
 **Relevant files**
-- c:\github\ezkey-worktree3\.github\prompts\plan-ezkeyDart.prompt.md — plan de reference a mettre a jour pour elargir le prerequis Crypto API et inclure Postman.
+- [`ezkey_dart/README.md`](../../../ezkey_dart/README.md) — Dart helpers + Crypto API oracle usage (Ed25519 and canonical payload-helper).
 - c:\github\ezkey-worktree3\ezkey-crypto-api\src\main\java\org\ezkey\crypto\controller\CryptoController.java — surface REST a etendre avec les endpoints Ed25519 et le helper de payload.
 - c:\github\ezkey-worktree3\ezkey-crypto-api\src\main\java\org\ezkey\crypto\dto\SignDataRequestDto.java — patron DTO de signature a reutiliser ou dupliquer pour Ed25519.
 - c:\github\ezkey-worktree3\ezkey-crypto-api\src\main\java\org\ezkey\crypto\dto\ValidateSignatureRequestDto.java — patron DTO de verification a reutiliser pour verify-ed25519.

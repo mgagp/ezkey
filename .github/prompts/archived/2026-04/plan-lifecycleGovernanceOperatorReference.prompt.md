@@ -65,10 +65,10 @@ The v1 governance §7 tables were written in exploratory/decision mode ("Target 
 
 ### Source Material
 
-- **Master analysis plan**: `.github/prompts/plan-ezkeyEntityLifecycleGovernance.prompt.md`
+- **Operator canon (analysis session closed):** [`docs/LIFECYCLE_GOVERNANCE.md`](../../../docs/LIFECYCLE_GOVERNANCE.md)
 - **Transverse governance v1 (canonical decisions)**: `plans/entity_lifecycle_governance_transverse_v1.plan.md`
-- **Backend implementation plan (Plan 1)**: `.github/prompts/plan-backendLifecycleGovernancePlan1.prompt.md`
-- **Admin UI plan (Plan 2)**: `.github/prompts/archived/2026-04/plan-adminUiLifecycleGovernancePlan2.prompt.md`
+- **Backend implementation (Plan 1, shipped):** `docs/LIFECYCLE_GOVERNANCE.md` (operator) + `ezkey-core` `EntityEligibilityService` (`org.ezkey.service`).
+- **Admin UI (Plan 2, shipped):** `ezkey-admin-ui/AGENTS.md` § Detail Danger Zone (`OperationalWarning` when native status looks healthy but `operational === false`). Operator canon: [`docs/LIFECYCLE_GOVERNANCE.md`](../../../docs/LIFECYCLE_GOVERNANCE.md).
 
 ---
 

@@ -376,6 +376,28 @@ yarn doctor:curated
 - Authority: `product-docs/global/mobile-doctor-curated-evaluation-2026-07-11.md`,
   `I-2026-07-11-mobile-doctor-curated-hygiene`, `TB-2026-07-11-mobile-doctor-curated-mvp`
 
+## Security pentest curated keyword
+
+- For live local Docker-stack DAST / OpenAPI fuzzing hygiene, the shared keyword is
+  **`security-pentest-curated`**.
+- Purpose: punctual curated pass — Schemathesis + ZAP baseline + first-party Nuclei → P1/P2/P3
+  shortlist against `--prod-safe --with-proxy` Caddy ports. **Not** a CI gate and **not** a
+  zero-warning campaign. Sibling lanes: `java-doctor-curated`, `doctor-curated`.
+- Default command from repo root (Git Bash on Windows):
+
+```bash
+./scripts/security-pentest-curated.sh
+```
+
+  Preflight / dry-run: `./scripts/security-pentest-curated-preflight.sh`,
+  `./scripts/security-pentest-curated.sh --dry-run`. Details: `scripts/README.md`.
+- Config: `config/security-pentest/`. Outputs under `logs/security-pentest/` (gitignored).
+- Campaign notes: `product-docs/global/hygiene/security-pentest/`
+- HITL: same one-finding loop as java-doctor — small lot, wait per finding, suppress with reason.
+  Do **not** invent `I-*` / `TB-*` per finding.
+- Authority: `product-docs/global/security-pentest-tool-evaluation-2026-07-12.md`,
+  `I-2026-07-12-security-pentest-curated-hygiene`, `TB-2026-07-12-security-pentest-curated-mvp`
+
 ## Assessment curated keyword
 
 - For **mandate-driven white-box hygiene** (focused investigation → assessment register →

@@ -11,7 +11,7 @@
 
 ## Source batch
 
-- `.github/prompts/plan-javaMelodyCollectorForEzkey.prompt.md` — active plan-prompt with phases, decisions, file map, and verification criteria.
+- Plan-prompt `.github/prompts/plan-javaMelodyCollectorForEzkey.prompt.md` (deleted 2026-08 corpus-ablation). Decisions extracted below.
 
 ## Trigger
 
@@ -36,7 +36,7 @@ User dictation (blitz `_blitz-2026-05-08-2.md`, item D11) requested observabilit
 
 ## Open question to settle (divergence between plan and user verbatim)
 
-- **Settled (grill D11, 2026-05-19):** **Opt-in** via clean-start / compose (`--with-java-melody` style). Not enabled by default. Update plan-prompt and retrofit mapping accordingly.
+- **Settled (grill D11, 2026-05-19):** **Opt-in** via clean-start / compose (`--with-java-melody` style). Not enabled by default.
 
 ## Mapping to canonical destinations
 
@@ -51,7 +51,7 @@ User dictation (blitz `_blitz-2026-05-08-2.md`, item D11) requested observabilit
 
 - **Confidence high** on the technical decisions in the plan.
 - **Residual gaps:**
-  - ~~Default-vs-opt-in for clean start~~ **settled:** opt-in (`--with-java-melody` style); update plan-prompt.
+  - ~~Default-vs-opt-in for clean start~~ **settled:** opt-in (`--with-java-melody` style).
   - Exact Java Melody collector WAR version compatibility (the plan flags this as a Phase 1 spike).
   - Long-term observability strategy beyond Java Melody (Prometheus / Grafana / OpenTelemetry) is intentionally out of scope here; should be revisited if installation profiles diverge significantly.
 
@@ -61,13 +61,12 @@ User dictation (blitz `_blitz-2026-05-08-2.md`, item D11) requested observabilit
 
 ## Next action
 
-- Update `.github/prompts/plan-javaMelodyCollectorForEzkey.prompt.md` to reflect opt-in default.
 - Run Phase 1 compatibility spike (Java Melody artifact versions) before code change.
-- Propose an `I-*` for implementation following the plan phases once retrofit mapping is complete.
+- Propose an `I-*` for implementation when funded.
 
 ## Links
 
-- Source plan-prompt: `.github/prompts/plan-javaMelodyCollectorForEzkey.prompt.md`
+- Source plan-prompt: deleted 2026-08 (git history); this retrofit holds the extracted decisions.
 - Derived vision: `V-2026-0009`
 - Adjacency: deployment profile context `V-2026-0002` (clean-start is one such profile)
 - Methodology: [`legacy-retrofit-workflow.md`](../../methodology/legacy-retrofit-workflow.md)

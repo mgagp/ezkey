@@ -14,13 +14,13 @@ A cold agent should start here, then follow the skill. Keep this block current a
 
 | Item | Current |
 |------|---------|
-| **Next scaffold** | `.cursor/plans/archived/rejected_showing_as_expired_fix.md` (last loose archived file) |
-| **Then** | Empty dated folders `archived/2026-01/` … `2026-05/` (remove when convenient). After `archived/` is empty, continue other `.cursor/plans/` trees / prompt-plan noise per lane README — none remain at plans root except the Keep below. |
-| **Kept (do not delete)** | `.cursor/plans/authentication_wait_evolution_brainstorm.plan.md` |
+| **Next scaffold** | `.github/prompts/archived/2026-04/plan-auditChainLifecycle.prompt.md` |
+| **Then** | Remaining `.github/prompts/archived/` alphabetically. Skip `ff-main.prompt.md`. Cursor `archived/` is empty (folder removed). No remaining living root `plan-*.prompt.md`. |
+| **Kept (do not delete)** | `.cursor/plans/authentication_wait_evolution_brainstorm.plan.md`; `.github/prompts/reported/plan-worktreeDockerStackNaming.prompt.md` |
 | **HITL** | One plan per turn. Propose **Go** = delete-or-keep + in-pass now + park-inside-Go. Wait. |
-| **Do not** | Invent `I-*` / `TB-*`. Re-create deleted plans. Re-rebase this branch unless `origin/main` moved. Push unless asked. Touch `docker/README-HA.md` without preserving Integration HA + V5 ShedLock wording. |
+| **Do not** | Invent `I-*` / `TB-*`. Re-create deleted plans. Re-rebase this branch unless `origin/main` moved. Push unless asked. Touch `docker/README-HA.md` without preserving Integration HA + V5 ShedLock wording. Fold experimental `ezkey-pam` / `ezkey_dart` / EXP1 facts into `docs/` or `docker/README.md` — keep those lanes in their folders (`ezkey-pam/`, `ezkey_dart/`, `experimental-hybrid/`). |
 | **Branch** | `hygiene/corpus-ablation-2026-08` |
-| **Open parking** | None (P-051–P-055 burned down 2026-08-13). New `P-NNN` only inside a later Go. |
+| **Open parking** | P-056–P-073, P-075–P-080, P-082 |
 | **Conflict / posture** | Git history is the archive. Project files in English. |
 
 ## Done this pass
@@ -146,18 +146,82 @@ A cold agent should start here, then follow the skill. Keep this block current a
 | `.cursor/plans/archived/2026-05/ezkey-doc-system_f1e8054a.plan.md` | Deleted. product-docs skeleton shipped; method is methodology/README. In-pass: product-docs/README living-layer pointer. No parking. |
 | `.cursor/plans/archived/jpa_field_initialization_final_recommendations.md` | Deleted. JPA defaults already in core AGENTS. In-pass: expiresAt in service; no DefaultValueEntityListener. No parking. |
 | `.cursor/plans/archived/phase2_orval_hooks_migration_inventory.md` | Deleted. Living list pattern is `usePaginatedFromOrval` + `PaginatedTable` (`LIST_DATA_LOADING_DESIGN.md`). In-pass: Admin UI AGENTS retarget (structure, Pattern B, naming). Left `use-integrations.ts` (thin lookup helper). No parking. |
+| `.cursor/plans/archived/rejected_showing_as_expired_fix.md` | Deleted. Shipped: `AuthAttemptWaitService` completed-before-expiry + `isAttemptExpired()` final-status guard. In-pass: ENDPOINT wait `status` vs clock expiry; Javadoc aligned; `archived/` README + empty folder removed (dated dirs already gone). Parked P-056. |
+| `.github/prompts/plan-adminAuthTokenStrategyAudit.prompt.md` | Deleted. Opaque DB admin sessions (not JWT) are the closed decision. In-pass: admin-api AGENTS § Admin session tokens; refreshToken cite retarget; `V-2026-06-30` JWT wording. Hash-only already ADR-0007. Parked P-057. |
+| `.github/prompts/plan-adminOnboardingActivationCode.prompt.md` | Deleted. Shipped: `PENDING_ACTIVATION`, `onboardingMode`, `POST /admin/auth/activate`, login activation branch, LIFECYCLE §3.5. In-pass: ENDPOINT consume vs reactivate; recovery/provisioning copy; UI + admin-api AGENTS. Remaining default-posture is `I-2026-0011`. Parked P-058. |
+| `.github/prompts/plan-adminOnboardingVsEnrollmentApiRationale.prompt.md` | Deleted. Canon already ENDPOINT § onboarding vs enrollment GET. In-pass: admin-api AGENTS pointer; ENDPOINT TenantAdmin wording; analysis-doc banner. Parked P-059. |
+| `.github/prompts/plan-adminUiConceptsGapsAndRecommendations.prompt.md` | Deleted. Critical UI gaps shipped (tenants, danger zones, GA create, integrity, pagination, breadcrumbs, toasts). Canon: `screens-and-wireflow.md`. In-pass: AGENTS breadcrumb; wireflow admin `?adminId=`; lifecycle-prompt cite. Parked P-060. |
+| `.github/prompts/plan-adminUiIntegrationModalDismiss.prompt.md` | Deleted. Shipped: `Dialog` `dismissible` (create/edit `false`). Canon: Admin UI AGENTS § Dialog. No in-pass; no parking. |
+| `.github/prompts/plan-adminUiLifecycleAndDangerZones.prompt.md` | Deleted. Shipped: Toast, enrollment/integration Danger Zones, GA create. In-pass: AGENTS § Detail Danger Zone (reason, not type-the-name); lifecycle-prompt cite. No parking. |
+| `.github/prompts/plan-adminUiOpenapiClientGeneration.prompt.md` | Deleted. Orval Phase 1+2 shipped (types, hooks, `usePaginatedFromOrval`). In-pass: AGENTS spec vs generated; drop dead `models.ts`; retarget data-model + Orval status docs. Parked P-061, P-062. |
+| `.github/prompts/plan-apiKeysScreenUxEnhancement.prompt.md` | Deleted. List+detail, PATCH, revoke-with-reason, filters, backend sort shipped. In-pass: wireflow `/api-keys/:id` + edit. Parked P-063, P-064. |
+| `.github/prompts/plan-auditLogsDatePresets.prompt.md` | Deleted. Backend `createdAfter`/`createdBefore` + shared `DateRangeFilter` shipped. In-pass: wireflow Audit Logs date presets. No parking. |
+| `.github/prompts/plan-auditReasonJustification.prompt.md` | Deleted. Column `reason`, EventTypes, HMAC field 15, `ReasonFieldRow` shipped. Canon: `AUDIT_REASON_AND_JUSTIFICATION_UI.md`. In-pass: lifecycle-prompt cite; AGENTS pointer; HMAC field 15 in integrity + reason docs. No parking. |
+| `.github/prompts/plan-auditsContextualises.prompt.md` | Deleted. Related-audits + expand-context + `/context` shipped. In-pass: ENDPOINT `integrationId`/`authAttemptId` + context GET; AGENTS + wireflow. Parked P-065. |
+| `.github/prompts/plan-authAttemptChallengeProtectionStrategy.prompt.md` | Deleted. Duplicate of `I-2026-07-07` + `TB-2026-07-07` (Phase B unshipped). In-pass: I-* cite → TB; 2 vs 3–4 digit note. No parking. |
+| `.github/prompts/plan-authProtocolSecurityAudit.prompt.md` | Deleted. Historical; `/respond` rate limit, trusted proxies, signed payloads shipped. Canon: 2026-07 mobile protocol assessment. In-pass: AUTH_SECURITY drift note. Parked P-066, P-067. |
+| `.github/prompts/plan-backendLifecycleGovernancePlan1.prompt.md` | Deleted. `EntityEligibilityService`, ACTIVE/RETIRED, `operational` DTOs shipped. Canon: `LIFECYCLE_GOVERNANCE.md`. In-pass: ezkey-core AGENTS; archived operator-reference cite. No parking. |
+| `.github/prompts/plan-dockerNonRootMigration.prompt.md` | Deleted. `USER spring:spring` / `ezkey` shipped; `su-exec` gone. In-pass: `docker/README.md` non-root note. Parked P-068. Did not edit `README-HA.md`. |
+| `.github/prompts/plan-encryptionKeysFullOperability.prompt.md` | Deleted. Per-key re-encrypt, create-batches, batch detail, PRIMARY emphasis shipped. Canon: `REENCRYPTION_OPERATIONS.md`. In-pass: wireflow Encryption Keys. No parking. |
+| `.github/prompts/plan-ezkeyAdminUiGlobalTenantRebranding.prompt.md` | Deleted. Unified `ezkey-admin-ui` (GA+TA) shipped; Encryption Keys is real. In-pass: AGENTS no-recreate `ezkey-tenant-ui`. Parked P-069. |
+| `.github/prompts/plan-ezkeyDart.prompt.md` | Deleted. `ezkey_dart/` shipped (crypto + CLI). In-pass: CRYPTO + AUTH_ATTEMPT payload pointers; archived crypto-api cite. Parked P-070. |
+| `.github/prompts/plan-ezkeyEntityLifecycleGovernance.prompt.md` | Deleted (plus `.html` preview twin). Operator canon is `LIFECYCLE_GOVERNANCE.md`. In-pass: retarget archived operator-reference + transverse v1. Parked P-071. |
+| `.github/prompts/plan-ezkeyMobileAndroidPrerelease.prompt.md` | Deleted. About/splash/signing shipped; remaining option space in release audit + decision memo. In-pass: PLAY_PUBLISHING tracks/account/privacy URL; audit finding 3. Parked P-072, P-073. |
+| `.github/prompts/plan-ezkeyMobileDeveloperGuide.prompt.md` | Deleted. `docs/MOBILE_DEVELOPER_GUIDE.md` shipped (Bruno, ports). In-pass: mobile AGENTS protocol routing. Parked P-074. |
+| `.github/prompts/plan-ezkeyPam.prompt.md` | Deleted. Experimental PAM shipped in `ezkey-pam/`. In-pass: folder-local Integration API wording + compose `integration-api:7080`; experimental banner; dropped `README.txt`. Pulled Dart pointers back out of `docs/CRYPTO.md` / payload specs into `ezkey_dart/README.md` (same experimental-lane rule). Did **not** edit `docker/README.md`. Parked P-075. |
+| `.github/prompts/plan-functional-test-docker.prompt.md` | Deleted. Host Maven against live stack is already in `ezkey-tests/`. Parked P-076. |
+| `.github/prompts/plan-javaMelodyCollectorForEzkey.prompt.md` | Deleted. Unshipped; canon is `V-2026-0009` + `R-2026-0002` (opt-in, not default). In-pass: retarget V/R; drop “update plan-prompt”. No parking. |
+| `.github/prompts/plan-m2mAuthAttemptTestCoverage.prompt.md` | Deleted. Integration API harness shipped (`configureForIntegrationApi`). In-pass: ezkey-tests AGENTS + WRITING_TESTS. Parked P-077. |
+| `.github/prompts/plan-methodologyMicroSite.prompt.md` | Deleted. Explorer shipped (`product-docs/site/`, `methodology.ezkey.org`); 2026-08 ablation simplified to one Read track. No parking. |
+| `.github/prompts/plan-openApiPresentationOrder.prompt.md` | Deleted. Shipped PR #181. Canon: design + V/I/TB 2026-06-02. In-pass: retarget working-plan cites; drop dead methodology-decision links. No parking (`I-2026-06-03` already holds intra-tag follow-on). |
+| `.github/prompts/plan-openApiSpecLifecycle.prompt.md` | Deleted. Unshipped; canon is V/I/TB 2026-06-02 host-neutral specs. In-pass: retarget V/I; Bruno env-var note. No parking. |
+| `.github/prompts/plan-paintingTheAdminUiWithAi.prompt.md` | Deleted. Essay published EN/FR 2026-05-26; research stays in `ezkey-org-editorial/`. No parking. |
+| `.github/prompts/plan-postmanEnrollmentAuthCryptoFlow.prompt.md` | Deleted. Crypto payload-helper enrollment types + Bruno `enrollments-auth/` shipped. Parked P-078. |
+| `.github/prompts/plan-prePilotageExperimentalEzkey.prompt.md` | Deleted. EXP1 lab is `experimental-hybrid/` (not September release). In-pass: README lab framing. Onboarding track remains `I-2026-05-23` (activation codes), not recovery-codes-first. Parked P-079, P-080. |
+| `.github/prompts/plan-reencryptionSqlIndexing.prompt.md` | Deleted. Option B shipped as `I-2026-0029` / `TB-2026-07-26`. In-pass: ezkey-core AGENTS indexed `*_encryption_key_id` vs LIKE. No parking. |
+| `.github/prompts/plan-refreshToken.prompt.md` | Deleted. Unshipped OAuth Access/Refresh; deferred in the prompt itself. Opaque single token + sliding 2h TTL shipped. In-pass: admin-api AGENTS. Parked P-081. |
+| `.github/prompts/plan-securityPentestCurated.prompt.md` | Deleted. Lane shipped (`I-2026-07-12` / `TB-2026-07-12`, runner, campaign notes through pass-03). In-pass: root AGENTS keyword; retarget I/TB/evaluation plan cites. Parked P-082. |
+| `.github/prompts/reported/plan-worktreeDockerStackNaming.prompt.md` | Kept. Unique Compose identity option space (`buildQualifier` → `-p` + drop `container_name`); Maven qualifier already isolates artifacts only. No `I-*`. |
+| `.github/prompts/archived/2026-04/plan-acmeDemoInternetExposureHardening.prompt.md` | Deleted. Session isolation + Lightsail ACME shipped. In-pass: demo-app-acme AGENTS per-`HttpSession` + EXP1 folder pointer. Parked P-083 (closed 2026-08-15). |
+| `.github/prompts/archived/2026-04/plan-adminUiLifecycleGovernancePlan2.prompt.md` | Deleted. `OperationalWarning` shipped. In-pass: Admin UI AGENTS § Detail Danger Zone; retarget operator-reference prompt. No parking. |
+| Documentary parking burn-down (2026-08-15) | Closed P-074 (`MOBILE_DEVELOPER_GUIDE` Ezkey rename), P-081 (TUI_GUIDE single opaque token), P-083 (ACME README/AGENTS Ezkey rename). |
 
 ## Kept this pass (retained)
 
 | Source plan | Reason |
 |-------------|--------|
 | `.cursor/plans/authentication_wait_evolution_brainstorm.plan.md` | Operator Keep (2026-08-11). Lane B retained option-space; still unique vs `V-2026-07-18` / `I-2026-07-18` (axes, comparison table, questions, evidence). Incubation sources in V/I continue to point here. |
+| `.github/prompts/reported/plan-worktreeDockerStackNaming.prompt.md` | Operator Keep (2026-08-14). Unique option space: Compose `-p` from `buildQualifier` plus dropping fixed `container_name` so worktrees can coexist. Maven `.mvn/maven.config` already isolates artifacts only. No `I-*`. |
 
 ## Parking (open)
 
 | ID | Source | Finding | Suggested receptacle |
 |----|--------|---------|----------------------|
-| *(none)* | | | |
+| P-056 | `rejected_showing_as_expired_fix.md` | `AuthAttemptWaitServiceTest` covers timeout/polling validation only; no REJECTED-with-past-`expiresAt` characterization. | `ezkey-core/.../AuthAttemptWaitServiceTest.java` |
+| P-057 | `plan-adminAuthTokenStrategyAudit.prompt.md` | Additive OIDC/SAML admin login and optional token-validation cache remain unfunded. No `I-*`. Sliding TTL stays P-050 / admin-api CONFIGURATION §12. | Future `I-*` only if operator funds SSO; else leave |
+| P-058 | `plan-adminOnboardingActivationCode.prompt.md` | Bruno `authentication-login-admin/` has recover/reset but no `POST /api/v1/admin/auth/activate` consume request. | `bruno/authentication-login-admin/` |
+| P-059 | `plan-adminOnboardingVsEnrollmentApiRationale.prompt.md` | Admin list `EnrollmentFkLink` can send a Tenant Admin to `GET /enrollments/{id}` for an admin MFA row (system integration) → 403. | `ezkey-admin-ui/src/pages/admins.tsx` / `EnrollmentFkLink` |
+| P-060 | `plan-adminUiConceptsGapsAndRecommendations.prompt.md` | Global Admin list pages still lack a tenant `Select` filter (tenant name columns link through). | Integrations / enrollments / auth-attempts list screens |
+| P-061 | `plan-adminUiOpenapiClientGeneration.prompt.md` | Remaining raw `api.get`/`api.post` on audit-chain incidents (dashboard + audit-logs) and `api.getPublic` for instance-info. | `dashboard.tsx`, `audit-logs.tsx`, `use-public-instance-info.ts` |
+| P-062 | `plan-adminUiOpenapiClientGeneration.prompt.md` | Optional `prebuild`/`predev` `generate:api`. Cloudflare build already runs it; local `build`/`dev` do not. | `ezkey-admin-ui/package.json` |
+| P-063 | `plan-apiKeysScreenUxEnhancement.prompt.md` | List still shows an **ID** column; prompt wanted it detail-only. | `ezkey-admin-ui/src/pages/api-keys.tsx` |
+| P-064 | `plan-apiKeysScreenUxEnhancement.prompt.md` | Footer status breakdown (`N keys · n active · …`) not shipped; pagination makes page vs estate totals a product choice. | `api-keys.tsx` list footer |
+| P-065 | `plan-auditsContextualises.prompt.md` | Related-audits for tenant / admin / API key / encryption key were explicitly out of MVP. | Detail pages for those entities |
+| P-066 | `plan-authProtocolSecurityAudit.prompt.md` | `/respond` still uses unlocked `findById`; `PESSIMISTIC_WRITE` exists only for re-encryption. | `AuthAttemptRespondService` / `AuthAttemptRepository` |
+| P-067 | `plan-authProtocolSecurityAudit.prompt.md` | `AuditHmacService` compares HMAC with `String.equals`, not `MessageDigest.isEqual`. | `ezkey-core/.../AuditHmacService.java` |
+| P-068 | `plan-dockerNonRootMigration.prompt.md` | Optional compose `user: "100:101"` and `security_opt: ["no-new-privileges:true"]` not added. | `docker/docker-compose.yml` |
+| P-069 | `plan-ezkeyAdminUiGlobalTenantRebranding.prompt.md` | GA-only routes (`/encryption-keys`, etc.) use auth-only `ProtectedRoute`; sidebar hides the link but TA can open the URL. | `ezkey-admin-ui/src/routes.tsx` |
+| P-070 | `plan-ezkeyDart.prompt.md` | Crypto API oracle integration tests (`dart test --tags=integration`) were planned and are not in the package. | `ezkey_dart/test/` |
+| P-071 | `plan-ezkeyEntityLifecycleGovernance.prompt.md` | Remaining temporary `plans/` lifecycle corpus (transverse v1 plus entity-specific plans the prompt listed). Larger ablation. | `plans/` |
+| P-072 | `plan-ezkeyMobileAndroidPrerelease.prompt.md` | `package.json` version `0.0.1` vs Android `versionName` `1.0` / `versionCode` 1. | `ezkey_mobile/package.json`, `android/app/build.gradle` |
+| P-073 | `plan-ezkeyMobileAndroidPrerelease.prompt.md` | Play listing closeout: Data Safety, screenshots/feature graphic, listing vs launcher name, listing copy. | `MOBILE_PLAY_PUBLISHING.md`, Play Console |
+| P-075 | `plan-ezkeyPam.prompt.md` | Env still named `EZKEY_M2M_API_URL` (C, conf, scripts). Rename to `EZKEY_INTEGRATION_API_URL` stays inside `ezkey-pam/`. | `ezkey-pam/` |
+| P-076 | `plan-functional-test-docker.prompt.md` | Optional Bash-only `scripts/test-docker.sh` if Maven-in-Docker for `ezkey-tests` is wanted later. No `.cmd`. | `scripts/test-docker.sh` |
+| P-077 | `plan-m2mAuthAttemptTestCoverage.prompt.md` | Create-by-`userIdentifier` happy path, `wait` timeout PENDING, `wait` ACCEPTED after device respond — on Admin and Integration APIs. Cancel stays out of scope. | `ezkey-tests/` |
+| P-078 | `plan-postmanEnrollmentAuthCryptoFlow.prompt.md` | Leftover Postman `EZ Key Enrollments auth` (and sibling admin) JSON under `postman/collections/v2.1/`. Bruno is the living chain. | `postman/collections/v2.1/` |
+| P-079 | `plan-prePilotageExperimentalEzkey.prompt.md` | RDS / managed Postgres when EXP1 backup/restore pain outweighs Docker-stack proximity. | `experimental-hybrid/` |
+| P-080 | `plan-prePilotageExperimentalEzkey.prompt.md` | Masked origin (dedicated tunnel) vs current orange-cloud Lightsail IP. | `experimental-hybrid/` |
+| P-082 | `plan-securityPentestCurated.prompt.md` | `I-2026-07-12` still `ready` and `TB-2026-07-12` still `active` after runner + three campaign notes. Metadata closeout only — no new `I-*`. | those I/TB files |
 
 ## Parking (closed 2026-08-13 — session burn-down)
 
@@ -168,6 +232,14 @@ A cold agent should start here, then follow the skill. Keep this block current a
 | P-053 | Fixed: historical banners on `docs/plan/ADMIN_MFA_*.md` + `PLAN_UPDATES_SUMMARY.md` (`mfaEnrollment` → `enrollment` / `enrollmentId`). |
 | P-054 | Fixed: `multi-tenancy-strategy.md` banner + samples → E.164 `+15551234567`. |
 | P-055 | Fixed: `postman/README.md` leftover banner; retargeted `docs/ENDPOINT.md` + `ADMIN_UI_RECOVERY.md` to Bruno. Tree not deleted. |
+
+## Parking (closed 2026-08-15 — documentary notes)
+
+| ID | Disposition |
+|----|-------------|
+| P-074 | Fixed: `docs/MOBILE_DEVELOPER_GUIDE.md` EZKey → Ezkey. |
+| P-081 | Fixed: `ezkey-cli-python/TUI_GUIDE.md` single opaque `token`; QUIT keeps it, LOGOUT clears; AuthManager methods match code. |
+| P-083 | Fixed: `ezkey-demo-app-acme` README/AGENTS EZKey → Ezkey. |
 
 ## Parking (closed 2026-08-12 — mid-pass burn-down)
 
@@ -218,7 +290,7 @@ A cold agent should start here, then follow the skill. Keep this block current a
 | P-010 | Fixed: living prompts prefer Integration API; archived `plan-m2mApiModule` left historical. |
 | P-011 | Captured: candidate track #6 on `I-2026-07-25` (churn cadence); no new `I-*`. |
 | P-012 | Fixed: `ECOSYSTEM_REPOSITORIES.md` softens staging links; drive via `I-2026-0020`. |
-| P-013 | Partial: pre-pilotage prompt points at `ezkey_mobile/`; other archived scaffolds opportunistic. |
+| P-013 | Partial: archived scaffolds opportunistic (pre-pilotage prompt deleted this pass). |
 | P-014 | Closed no-op: `ezkey_mobile/AGENTS.md` has no FCM push conflict; ADR-0002 stands. |
 | P-015 | Fixed: real-device anti-rot / incubation → TB/I/docs only. |
 | P-016 | Fixed: moved to `ezkey_mobile/docs/MOBILE_PENDING_DEBUG_PLAN.md`; refs updated. |

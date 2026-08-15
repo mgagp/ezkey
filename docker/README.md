@@ -57,6 +57,15 @@ coordination), use the HA compose — not the single-instance stack above.
 - Ports / stats: [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) § HA mode
 - Remaining parity / topology follow-up: `I-2026-0003` (do not treat this README as the backlog)
 
+## Non-root containers
+
+API and demo images run as **`spring` (UID 100 / GID 101)** via Dockerfile `USER` at **build** time.
+Directories used at runtime are created and `chown`'d in the image — do **not** reintroduce `su-exec`
+or entrypoint `chown`. On Linux, a **new empty named volume** copies that image ownership on first
+create. `./docker/generate-encryption-keys.sh` still seeds `encryption-secrets` with UID 100/GID 101.
+`bootstrap-init` uses the same `spring` user; `cli-test` uses `ezkey:ezkey`. Third-party images
+(`postgres`, HAProxy) keep their own users.
+
 ## Container timezone and log timestamps
 
 Docker images use **UTC** for their default timezone unless you configure otherwise. The JVM (Spring Boot) and PostgreSQL read the standard **`TZ`** environment variable. If your host clock shows 14:45 in Montréal (Eastern Daylight, UTC−4) while `docker logs` show **18:45**, that is the same instant expressed in **UTC** (14:45 + 4h).

@@ -513,7 +513,9 @@ Too many login attempts. Please try again later.
 
 **Base path:** `http://localhost:9080/api/v1/audit-logs` (Admin API). Global Admin only for chain and integrity endpoints.
 
-**GET /api/v1/audit-logs** — Paginated audit log list. Optional filters: `eventType` (a single event type enum value), `eventTypeFamily` (all types in a logical family: `ADMIN`, `ENROLLMENT`, `AUTH_ATTEMPT`, `API_KEY`, `SYSTEM`, `ENCRYPTION_KEY`, `REENCRYPTION`, `INTEGRATION`, `TENANT`, `AUDIT_CHAIN`). `eventType` and `eventTypeFamily` are mutually exclusive; sending both returns **400 Bad Request**. Also: `eventStatus`, `apiName`, `enrollmentId`, `adminId`, `targetAdminId`, `tenantId` (Global Admin scope), `createdAfter`, `createdBefore` (ISO-8601), plus standard `page`, `size`, `sort`. **Visibility:** Tenant Admins automatically see only rows where `tenant_id` matches their tenant (system events with `tenant_id` null are excluded); Global Admins see all logs and may optionally filter with `tenantId` (ignored for Tenant Admins). **Attribution:** Tenant Admin create (`ADMIN_CREATED`) audits the **target admin’s tenant**; Auth API bind/verify/pending/respond for **admin MFA** enrollments (single system integration) also use the admin’s tenant — not the system-integration tenant — so peer onboarding and MFA auth appear in that tenant’s audit view.
+**GET /api/v1/audit-logs** — Paginated audit log list. Optional filters: `eventType` (a single event type enum value), `eventTypeFamily` (all types in a logical family: `ADMIN`, `ENROLLMENT`, `AUTH_ATTEMPT`, `API_KEY`, `SYSTEM`, `ENCRYPTION_KEY`, `REENCRYPTION`, `INTEGRATION`, `TENANT`, `AUDIT_CHAIN`). `eventType` and `eventTypeFamily` are mutually exclusive; sending both returns **400 Bad Request**. Also: `eventStatus`, `apiName`, `enrollmentId`, `authAttemptId`, `integrationId`, `adminId`, `targetAdminId`, `tenantId` (Global Admin scope), `createdAfter`, `createdBefore` (ISO-8601), plus standard `page`, `size`, `sort`. **Visibility:** Tenant Admins automatically see only rows where `tenant_id` matches their tenant (system events with `tenant_id` null are excluded); Global Admins see all logs and may optionally filter with `tenantId` (ignored for Tenant Admins). **Attribution:** Tenant Admin create (`ADMIN_CREATED`) audits the **target admin’s tenant**; Auth API bind/verify/pending/respond for **admin MFA** enrollments (single system integration) also use the admin’s tenant — not the system-integration tenant — so peer onboarding and MFA auth appear in that tenant’s audit view.
+
+**GET /api/v1/audit-logs/{auditLogId}/context** — Bounded neighborhood around one anchor audit event (default 10 events before and after; max 50 each). Same tenant visibility as the list search. Query: `beforeCount`, `afterCount`, optional `tenantId` (Global Admin). Returns items plus `hasMoreBefore` / `hasMoreAfter`. This is investigation context, not a substitute for paginated search.
 
 **GET /api/v1/audit-logs/chain-checkpoints** — Search audit chain checkpoints with pagination and optional filters. Use primarily for lifecycle observability, anomaly investigation, and archive-confirmation context. Exceptional maintenance workflows may still use this surface when needed.
 
@@ -609,6 +611,44 @@ The client should use `detail` (then `title`) for user-facing messages, not assu
 - Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). If `ezkey.core.auth-attempt.ttl-seconds` is set above 300 (max 600), the wait may return HTTP 408 while the attempt row is still valid in the database.
 - Device must enter matching challenge code before approval
 - Invalid challenge on device marks attempt as INVALID
+
+---
+
+#### POST /activate (First-time activation code)
+
+Unauthenticated consume of a one-time onboarding activation code (`onboardingMode = ACTIVATION_CODE`).
+Creates the first enrollment and returns bind credentials. This is **not**
+`POST /api/v1/admins/{id}/activate` (operator reactivation of a deactivated admin). It is also
+**not** recovery (`POST /recover`).
+
+**Request:**
+```http
+POST /api/v1/admin/auth/activate
+Content-Type: application/json
+
+{
+  "activationCode": "ezkey_activation_550e8400e29b41d4a716446655440000"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Activation successful. Bind the first device now. Recovery codes remain deferred.",
+  "username": "pending.admin",
+  "enrollmentId": 123,
+  "enrollmentProofToken": "ezkey_proof_…",
+  "enrollmentChallenge": 123456
+}
+```
+
+Recovery codes are generated server-side when the first enrollment exists but are **omitted** from
+this unauthenticated response. Reveal or regenerate them later from an authenticated admin-management
+flow (`POST /api/v1/admins/{id}/recovery-codes/regenerate`). See [LIFECYCLE_GOVERNANCE.md](LIFECYCLE_GOVERNANCE.md) §3.5.
+
+**Failure:** **403** for invalid, expired, or unusable codes (neutral client-safe message). **400**
+when activation cannot proceed in the current state.
 
 ---
 
@@ -1013,11 +1053,7 @@ Content-Type: application/json
   "adminType": "GLOBAL_ADMIN",
   "tenantId": null,
   "enrollmentId": 123,
-  "createdAt": "2025-12-26T14:30:00Z",
-  "recoveryCodes": [
-    "4743-8097-0426-5914-7438-4180-8010-5825",
-    "..."
-  ]
+  "createdAt": "2025-12-26T14:30:00Z"
 }
 ```
 
@@ -1041,7 +1077,11 @@ Content-Type: application/json
 }
 ```
 
-**Note:** In `IMMEDIATE`, `recoveryCodes` are plain text, single-use, and **shown only in this response**; save them immediately. In `ACTIVATION_CODE`, no enrollment exists yet, so use the returned activation code for first-time setup and do not call `GET /api/v1/admins/{id}/onboarding` until activation has produced the first enrollment.
+**Note:** In `IMMEDIATE`, the first enrollment is created now; retrieve bind material via
+`GET /api/v1/admins/{id}/onboarding`. Plaintext `recoveryCodes` are deferred from bootstrap —
+reveal or regenerate them from an authenticated management flow. In `ACTIVATION_CODE`, no enrollment
+exists yet: the new admin consumes `POST /api/v1/admin/auth/activate`, then binds a device. Do not
+call onboarding retrieval until that consume has produced the first enrollment.
 
 **Status Codes:**
 - 201: Global administrator created successfully
@@ -1085,11 +1125,7 @@ Content-Type: application/json
   "adminType": "TENANT_ADMIN",
   "tenantId": 2,
   "enrollmentId": 124,
-  "createdAt": "2025-12-26T14:35:00Z",
-  "recoveryCodes": [
-    "4743-8097-0426-5914-7438-4180-8010-5825",
-    "..."
-  ]
+  "createdAt": "2025-12-26T14:35:00Z"
 }
 ```
 
@@ -1113,7 +1149,7 @@ Content-Type: application/json
 }
 ```
 
-**Note:** Same rule as global admin: `IMMEDIATE` returns one-time `recoveryCodes`; `ACTIVATION_CODE` defers the first enrollment and therefore defers onboarding retrieval and recovery-code issuance until activation has completed.
+**Note:** Same rule as global admin: `IMMEDIATE` creates the first enrollment now (onboarding retrieval applies); plaintext recovery codes stay deferred from bootstrap. `ACTIVATION_CODE` defers enrollment until `POST /api/v1/admin/auth/activate`.
 
 **Status Codes:**
 - 201: Tenant administrator created successfully
@@ -1430,7 +1466,7 @@ Authorization: Bearer ezkey_admin_token...
 
 **POST /api/v1/admins/{id}/activate**
 
-Reactivates a previously deactivated administrator. GlobalAdmin only. Sets `active = true`. Idempotent if the admin is already active. The admin must log in again to obtain a new bearer token.
+Reactivates a previously deactivated administrator. GlobalAdmin only. Sets `active = true`. Idempotent if the admin is already active. The admin must log in again to obtain a new bearer token. This is **not** first-time onboarding (`POST /api/v1/admin/auth/activate`).
 
 **Request:**
 ```http
@@ -1518,7 +1554,7 @@ Content-Type: application/json
 - ✅ You have an **enrollment ID** (from enrollment search or creation)
 - ✅ You want **comprehensive enrollment details** (not just onboarding credentials)
 - ✅ You're working in the **enrollment management workflow**
-- ✅ You're a **GlobalAdmin** (TenantAdmin may not have access to enrollments via this API)
+- ✅ You're a **GlobalAdmin**, or a **TenantAdmin** reading an enrollment on **your tenant’s integration** (not admin MFA)
 
 **Why this API:**
 - Validates access at the **integration tenant level** (correct for enrollment management)
@@ -1527,8 +1563,9 @@ Content-Type: application/json
 - Semantic clarity: "Get details of enrollment Y"
 
 **Important Note for TenantAdmin:**
-- ⚠️ **TenantAdmin cannot access their own enrollment via this API** (validation checks integration tenant, which is System Tenant)
-- ✅ **Use `/api/v1/admins/{id}/onboarding` instead** for TenantAdmin to access their own credentials
+- ⚠️ **Admin MFA enrollments** sit on the **system integration**. `GET /enrollments/{id}` checks integration tenant, so a Tenant Admin cannot load their own (or a peer’s) admin MFA enrollment this way.
+- ✅ Use `GET /api/v1/admins/{id}/onboarding` (and `/onboarding/qrcode`) for admin MFA credentials.
+- ✅ `GET /enrollments/{id}` is still the right API for enrollments on integrations that belong to the Tenant Admin’s tenant.
 
 **Example:**
 ```http
@@ -2037,6 +2074,9 @@ Authorization: Bearer ezkey_admin_token...
   "completedAt": "2025-01-20T15:32:05.123456Z"
 }
 ```
+
+**Notes:**
+- **Wait `status` vs clock expiry:** The wait `status` field reports a calculated outcome. Persisted final statuses (`ACCEPTED`, `REJECTED`, `INVALID`) take precedence over `expiresAt` — a deny (or accept / invalid) after the TTL clock has passed still returns that final status, not `EXPIRED`. Clock expiry applies only to `PENDING`/`READ`. Wait may also report `EXPIRED` for explicit cancel or supersession. Implementation: `AuthAttemptWaitService`.
 
 **Status Codes:**
 - 200: Authentication completed (or timeout reached)

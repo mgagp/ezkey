@@ -8,6 +8,8 @@ Web-based SPA for **EZKey administrators** — supports both **Global Admins** a
 The UI adapts dynamically based on the `adminType` returned at login: navigation items and
 features are shown or hidden accordingly.
 Calls the **Admin API** on port 9080. All tenant scoping is automatic via the bearer token.
+This is the **unified** Admin UI (`ezkey-admin-ui`, session key `ezkey_admin_auth`). Do **not**
+recreate `ezkey-tenant-ui` or `docker-compose.tenant-ui.yml`.
 
 
 ## Stack
@@ -17,9 +19,9 @@ Calls the **Admin API** on port 9080. All tenant scoping is automatic via the be
 - Tailwind CSS v4 — no `tailwind.config.ts`; all theme tokens in `src/index.css` under `@theme {}`
 - TanStack Query v5 — data fetching, caching, pagination
 - Orval **8.24.0** (exact pin) — OpenAPI → TanStack Query client (`npm run generate:api` → `src/generated/admin-api/`). Treat later minors as a new validation ladder (regenerate + build/test/lint). **`orval.config.ts` must not set global `useQuery` or `useMutation`** — Orval 8.10+ applies explicit globals to all HTTP verbs and breaks hook shapes; keep `query: { version: 5 }` only (verb-aware defaults: GET → query, mutations → `useMutation`). Migration history: [`product-docs/global/backlog/TB-2026-05-28-admin-ui-orval-upgrade.md`](../product-docs/global/backlog/TB-2026-05-28-admin-ui-orval-upgrade.md).
+- **OpenAPI spec:** `ezkey-admin-ui/openapi-spec.json` is **committed** (copied by `scripts/update-specs.sh`). `src/generated/` is gitignored — run `npm run generate:api` after a spec refresh. Prefer generated hooks / fetch functions over hand-written `api.get` / `api.post`. `@/lib/api-client` is the Orval mutator backbone plus `fetchBlobUrl` and session helpers (`fetchApi`, `ApiError`). No axios.
 - **Install scripts (npm v12 prep):** `package.json` `allowScripts` approves `esbuild@0.28.1` (Vite + Orval transitive dep; native binary postinstall). After dependency changes, run `npm approve-scripts --allow-scripts-pending` if npm warns about uncovered scripts.
 - React Hook Form + Zod — forms and validation
-- Fetch API — no axios; always use `api.*` from `@/lib/api-client`
 
 ## Path Alias
 
@@ -31,6 +33,7 @@ Calls the **Admin API** on port 9080. All tenant scoping is automatic via the be
 src/
   lib/
     api-client.ts       Fetch wrapper: injects Bearer/credentials; on 401, session calls (`requireAuth` and no recovery `bearerToken`) clear local auth and `replace('/login')`. Login/public (`requireAuth: false`) and recovery `bearerToken` paths throw without redirect. getApiErrorMessage()
+    orval-mutator.ts    Orval custom fetch instance (delegates to fetchApi)
     api-error-i18n.ts   Maps ProblemDetail.type (https://ezkey.io/problems/...) to i18n keys under `errors` (Option B); getTranslatedApiError()
     auth.ts             sessionStorage session management (AuthSession)
     demo-mode.ts        Dev-only: isDemoMode flag and demo presets for create forms (stripped in production); locale-specific preset copy lives in `locales/*/demo.json` (e.g. Unicorn Farm FR/EN)
@@ -39,8 +42,8 @@ src/
     query-keys.ts       Canonical query key prefixes for list/entity caches (invalidateQueries)
     utils.ts            cn(), formatDate(), formatCountdown(), formatChallengeCode(), formatRelativeTime()
   types/
-    api.ts              PageResponse<T>, ProblemDetail, request/response DTOs
-    models.ts           Domain models: Integration, Enrollment, AuthAttempt, Admin, AuditLog, ApiKey
+    public-instance-info.ts  GET /public/instance-info (unauthenticated; not yet Orval)
+  generated/            gitignored — Orval output (`npm run generate:api`); import DTOs from `@/generated/admin-api/model`
   context/
     auth-context.tsx    AuthProvider + useAuth; clears QueryClient cache on logout
     demo-mode-context.tsx   DemoModeProvider + useDemoModeSession (session toggle when VITE_DEMO_MODE; stripped in production)
@@ -163,6 +166,30 @@ Authoritative eligibility matrix:
 **Icon + tooltip** when space is tight and intent is unambiguous (revoke); **labeled button** when
 wording disambiguates reversible suspend (deactivate).
 
+### Detail Danger Zone
+
+Enrollment and integration **detail** pages carry a Danger Zone for lifecycle actions (deactivate /
+reactivate / revoke / retire / delete). Reuse that pattern: `ReasonFieldRow` (min 10 characters),
+success **toast**, eligibility from [`docs/LIFECYCLE_GOVERNANCE.md`](../docs/LIFECYCLE_GOVERNANCE.md).
+Optional vs required `reason` / `justification`, length rules, and preset groups:
+[`docs/AUDIT_REASON_AND_JUSTIFICATION_UI.md`](../docs/AUDIT_REASON_AND_JUSTIFICATION_UI.md).
+Do **not** use GitHub-style “type the name to confirm”. After a detail mutation, invalidate with the
+**generated query key factory**, not a custom `['enrollment', id]` key (see § Detail refresh).
+
+Show `OperationalWarning` only when the entity’s own status looks healthy and `operational === false`
+(parent chain degraded). Never on tenant (redundant with `active`). Integration: `ACTIVE` + not
+operational. Enrollment: `VERIFIED` + active + not operational. API key: active, not revoked/expired,
+not operational. Tenant Admin: active + not operational. Operator canon:
+[`docs/LIFECYCLE_GOVERNANCE.md`](../docs/LIFECYCLE_GOVERNANCE.md).
+
+### Related audits (investigation, not FK navigation)
+
+Enrollment, integration, and auth-attempt **detail** expose **View related audits**. That opens
+`/audit-logs` with the entity id (`enrollmentId` / `integrationId` / `authAttemptId`) and a rolling
+time window — it is **not** structural FK “related details” navigation. On that contextual audit
+view, **Expand context** is a bounded zoom-out (24h → 48h), not a general search. Do not add the
+same entry on tenant, admin, API key, or encryption-key detail unless product funds it.
+
 ### List refresh after mutations
 
 After a successful create/edit/delete that affects a list, **invalidate that list's query key** so the list refetches and stays in sync. Use the **same key** as the list query so `invalidateQueries` targets the right cache.
@@ -189,6 +216,14 @@ The login form also offers an optional **pin toggle** beside the username field 
 ### Recovery funnel (login page)
 
 Recovery codes are a **secondary** path on `/login` (`LoginRecoverySection`), not a full admin session. Flow: `POST /api/v1/admin/auth/recover` → temporary `ezkey_recovery_*` token → `POST /api/v1/admin/enrollments/reset` → bind new device → normal passwordless login. Canon: [`docs/ADMIN_UI_RECOVERY.md`](../docs/ADMIN_UI_RECOVERY.md). Do not treat the recovery token as a console bearer.
+
+### Activation (login page)
+
+Deferred onboarding is a **separate** secondary path (`LoginActivationSection` →
+`POST /api/v1/admin/auth/activate`). Do not reuse recover/reset for first-time setup. The activate
+response returns first-enrollment bind material and omits recovery codes. Canon:
+[`docs/LIFECYCLE_GOVERNANCE.md`](../docs/LIFECYCLE_GOVERNANCE.md) §3.5 and `docs/ENDPOINT.md`
+§ POST /activate.
 
 ### Instance branding (public instance-info)
 
@@ -217,6 +252,8 @@ const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
 - **Tenant Admin → peer:** do **not** show a tenant selector; omit `tenantId` so the API uses the
   session tenant.
 - **Deep link:** tenant detail can open `/admins?tenantId=…&createTenantAdmin=1` to prefill.
+- **Onboarding mode:** `IMMEDIATE` (default — first enrollment now) vs `ACTIVATION_CODE`
+  (`PENDING_ACTIVATION`; operator transmits the code). Do not collapse activation into recovery.
 - **MFA enrollment id:** list/get/update admin responses include `enrollmentId` (passwordless
   identity FK — not a secret). Admin detail links via `EnrollmentFkLink` to `/enrollments/{id}`;
   `GET` enrollment still goes through access control.
@@ -245,7 +282,8 @@ prevents stale data from a previous user appearing on the next login.
 ### Adding a new screen
 
 1. Create `src/pages/my-screen.tsx` → `export default function MyScreenPage()`
-2. Wrap content in `<AppShell title="Screen Name">`
+2. Wrap content in `<AppShell title="Screen Name">`. Detail pages pass `breadcrumb`
+   (e.g. `{ label, path }[]` back to the list) — see tenants, integrations, enrollments.
 3. Add a lazy route in `routes.tsx`
 4. For list views: `usePaginatedFromOrval` + `PaginatedTable` (see § Paginated list)
 

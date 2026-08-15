@@ -33,7 +33,7 @@ Running `npm run generate:api` in `ezkey-admin-ui` produces TypeScript types und
 
 | Item | Status |
 |------|--------|
-| Hand-written types removed (`src/types/`) | ✅ Done |
+| Hand-written Admin API types removed (`src/types/models.ts`, `src/types/api.ts`) | ✅ Done (`src/types/public-instance-info.ts` remains for unauthenticated instance-info) |
 | UI imports types from `@/generated/admin-api/model` | ✅ Done (all pages and components use generated DTOs) |
 | Build compiles with generated types | ✅ Yes (assuming `generate:api` has been run so `src/generated/` exists) |
 
@@ -49,7 +49,7 @@ Running `npm run generate:api` in `ezkey-admin-ui` produces TypeScript types und
 | `use-integrations.ts` uses generated `search({ size: 100 })` | ✅ Done |
 | Custom `usePaginatedQuery` | ✅ Removed; replaced by `use-paginated-orval.ts` |
 | Other pages use Orval-generated `useGet*` / `useMutation*` | ✅ Done for dashboard, tenants, tenant-detail, integration-detail, enrollment-detail, api-keys, api-key-detail, admins |
-| Raw `api.get/post/put/delete/patch` calls | ✅ None; only `fetchBlobUrl` remains for QR codes (unchanged) |
+| Raw `api.get/post/put/delete/patch` calls | Almost none. Remaining: audit-chain incidents (`dashboard.tsx`, `audit-logs.tsx`) and `api.getPublic` instance-info. `fetchBlobUrl` remains for QR codes. |
 
 **Conclusion:** Phase 2 **first and second wave are complete**. The UI now uses:
 
@@ -72,13 +72,11 @@ Running `npm run generate:api` in `ezkey-admin-ui` produces TypeScript types und
 - **Spec ↔ backend:** Aligned. Specs are up to date and include `sort` (array, form, explode true) and optional `tenantId` for admins.
 - **Orval execution:** Configured and runnable. `npm run generate:api` produces DTOs and hooks from `openapi-spec.json`.
 - **DTOs (Phase 1):** Harmonized. The UI uses only Orval-generated types; no hand-written API types remain.
-- **Hooks (Phase 2):** Both waves done. Dashboard, tenants, tenant-detail, integration-detail, enrollment-detail, api-keys, api-key-detail, admins, audit-logs (seal/gap/integrity), encryption-keys, and login/auth use Orval-generated hooks or fetch functions. All paginated lists use `usePaginatedFromOrval`; `use-paginated-query.ts` removed. No remaining `api.get`/`api.post` call sites; only `fetchBlobUrl` remains for QR codes. Build passes.
+- **Hooks (Phase 2):** Both waves done. Dashboard, tenants, tenant-detail, integration-detail, enrollment-detail, api-keys, api-key-detail, admins, audit-logs (seal/gap/integrity), encryption-keys, and login/auth use Orval-generated hooks or fetch functions. All paginated lists use `usePaginatedFromOrval`; `use-paginated-query.ts` removed. Remaining raw `api.get`/`api.post`: audit-chain incidents and public instance-info. `fetchBlobUrl` remains for QR codes.
 
-**Optional next steps:**
+**Optional next steps** (not a living plan): remaining raw call sites above; optional `prebuild` / `predev` `generate:api` (`build:cloudflare` already runs it).
 
-1. Add **prebuild** / **predev** that runs `npm run generate:api` if desired.
-
-Reference: `.cursor/plans/phase2_orval_hooks_migration_inventory.md` for the full inventory and plan.
+Canon: [`ezkey-admin-ui/AGENTS.md`](../ezkey-admin-ui/AGENTS.md) (stack + Pattern B) and [`ezkey-admin-ui/docs/LIST_DATA_LOADING_DESIGN.md`](../ezkey-admin-ui/docs/LIST_DATA_LOADING_DESIGN.md).
 
 ---
 
@@ -116,7 +114,7 @@ So: **yes** — we maximize Orval for (1) DTO generation across everything expos
 - **Future and technical debt:**  
   - **New endpoints in the spec:** New list endpoints → add one `usePaginatedFromOrval` call with the new generated fetch. New single-resource or mutation endpoints → use the new generated hooks or fetch functions. No new custom types; no new pagination logic.  
   - **Spec as contract:** As long as the OpenAPI spec is updated when the backend changes and `generate:api` is run, types and list APIs stay in sync; the UI compiles against the real contract and breaks at build time if the API changes.  
-  - **Remaining debt:** Minimal. All Admin API call sites use Orval-generated types and hooks except `fetchBlobUrl` (blob URLs). New list APIs and new DTOs are handled by Orval and the generic adapter.
+  - **Remaining debt:** Audit-chain incidents and public instance-info still use raw `api.*`. `fetchBlobUrl` remains for QR codes. New list APIs and new DTOs are handled by Orval and the generic adapter.
 
 ### Short summary
 

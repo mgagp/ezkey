@@ -266,20 +266,22 @@ Press 'c' → Modal form wizard → Submit or Esc to cancel
   "username": "admin",
   "organization": "My Organization",
   "admin_url": "https://localhost:9080",
-  "access_token": "eyJhbG...",
-  "refresh_token": "ref_...",
+  "token": "ezkey_...",
   "expiration": "2026-01-31T12:00:00Z",
   "created_at": "2026-01-30T10:00:00Z"
 }
 ```
 
+Admin sessions are a **single opaque** DB-backed token (sliding TTL). There is no OAuth
+Access/Refresh pair and no JWT. QUIT should keep the local token; LOGOUT should call `/logout`
+and clear local storage.
+
 ### Authentication Layer
 
 **AuthManager** (`auth/auth_manager.py`):
-- Passwordless authentication flows
-- Token refresh logic with background refresh
-- Session creation from auth response
-- Methods: `start_passwordless_auth()`, `wait_for_auth()`, `refresh_token()`, `get_valid_token()`, `logout()`
+- Passwordless authentication flows (`login`, `wait_for_challenge`)
+- Session creation from the auth response (`token`, not JWT / refresh)
+- Methods: `login()`, `wait_for_challenge()`, `logout()` (logout is a no-op; callers clear the local token)
 
 **LoginWizard** (`auth/login_wizard.py`):
 - Interactive first-run setup

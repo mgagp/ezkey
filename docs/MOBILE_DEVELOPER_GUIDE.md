@@ -1,4 +1,4 @@
-# EZKey Protocol - Mobile Developer Implementation Guide
+# Ezkey Protocol - Mobile Developer Implementation Guide
 
 > Status: shared repository-level protocol guide for third-party or alternative mobile clients.
 > For the Ezkey React Native reference app itself, start with `ezkey_mobile/docs/README.md` and use this guide as the
@@ -6,17 +6,17 @@
 
 ## Executive Summary
 
-EZKey is a self-hosted, backend-first cryptographic MFA platform. It is not FIDO2, not WebAuthn,
+Ezkey is a self-hosted, backend-first cryptographic MFA platform. It is not FIDO2, not WebAuthn,
 and not a passkey compatibility layer. It uses its own protocol, its own trust boundaries, and a
 deliberately explicit backend verification model.
 
-This guide is for developers who want to add EZKey protocol support to a mobile MFA application,
+This guide is for developers who want to add Ezkey protocol support to a mobile MFA application,
 especially an Android application that can protect device private keys with Android Keystore.
 The intended audience is not a casual integrator. It is a developer who wants to implement the
 protocol correctly, validate the cryptographic chain end to end, and understand what must be
 verified locally on the device.
 
-The EZKey model is opinionated:
+The Ezkey model is opinionated:
 
 - The backend remains authoritative for state and verification.
 - The mobile app participates as a cryptographic device, not as an opaque push client.
@@ -24,7 +24,7 @@ The EZKey model is opinionated:
 - One-time proof material and explicit signature validation protect the flow against replay,
   tampering, and accidental protocol drift.
 
-If you are building support for EZKey in an existing open-source authenticator application, the
+If you are building support for Ezkey in an existing open-source authenticator application, the
 main outcome of this document is simple: you should be able to implement `bind`, `verify`,
 `pending`, and `respond` correctly, store the right material securely, and validate your work
 against a local Docker stack.
@@ -38,7 +38,7 @@ user-initiated polling). Product UX is intentionally out of scope here.
 
 This guide targets:
 
-- Developers of mobile MFA applications who want to support the EZKey protocol.
+- Developers of mobile MFA applications who want to support the Ezkey protocol.
 - Android-first implementations that can rely on Android Keystore.
 - Implementers who need a concrete protocol guide rather than a product overview.
 
@@ -87,7 +87,7 @@ not** confuse this with JWT: a misleading `eyJ...` prefix is not ECDSA DER.
 
 ## Product Positioning In One Page
 
-EZKey exists for teams that want strong MFA with direct backend control, explicit cryptographic
+Ezkey exists for teams that want strong MFA with direct backend control, explicit cryptographic
 verification, and self-hosted operational visibility. Its trust anchor is the trusted backend
 installation. Its protocol strength comes from cryptographic continuity across enrollment and
 authentication.
@@ -108,7 +108,7 @@ to approve. It is asked to approve a specific cryptographic flow.
 
 This section is intentionally split into two views.
 
-- The first view shows the functional zones of the EZKey system.
+- The first view shows the functional zones of the Ezkey system.
 - The second view shows only the primary interaction paths relevant to a mobile implementer.
 
 ### View 1 - Functional Zones
@@ -122,10 +122,10 @@ flowchart TB
         device_crypto[Device key material\nEC P-256 in Android Keystore]
     end
 
-    subgraph ezkey_zone[EZKey Backend Zone]
+    subgraph ezkey_zone[Ezkey Backend Zone]
         auth[Auth API\nMobile protocol surface\n:8080]
         integration[Integration API\nBackend integration surface\n:7080]
-        core[EZKey backend state\nand verification]
+        core[Ezkey backend state\nand verification]
     end
 
     subgraph integrator_zone[Integrator Zone]
@@ -152,7 +152,7 @@ What this view is meant to clarify:
 - The mobile implementer talks to the Auth API, not directly to the Integration API.
 - The integrating backend system talks to the Integration API, which is how auth attempts enter the
   flow.
-- The EZKey backend remains the authoritative holder of state and verification.
+- The Ezkey backend remains the authoritative holder of state and verification.
 - The Crypto API is outside the production trust path and exists only to help local testing and
   diagnostics.
 
@@ -175,7 +175,7 @@ What this second view is meant to clarify:
 - `bind`, `verify`, `pending`, and `respond` are all implemented against the Auth API.
 - The Integration API matters because it creates the authentication attempt consumed later by the
   mobile app.
-- The mobile app is not a peer of the integrating backend. Each side uses a different EZKey API
+- The mobile app is not a peer of the integrating backend. Each side uses a different Ezkey API
   surface.
 
 ### Roles And Trust Boundaries
@@ -218,7 +218,7 @@ The device uses EC P-256 (`secp256r1`) and signs with `SHA256withECDSA`.
 On Android, the reference implementation uses Android Keystore and requests StrongBox when the
 device supports it.
 
-Reference behavior from the EZKey mobile implementation:
+Reference behavior from the Ezkey mobile implementation:
 
 ```kotlin
 val builder = KeyGenParameterSpec.Builder(
@@ -331,7 +331,7 @@ return signature.verify(sigRaw)
 
 ### Canonical Payload Rules
 
-EZKey depends on exact payload construction. If your payload builder differs from the server, your
+Ezkey depends on exact payload construction. If your payload builder differs from the server, your
 signatures will not verify.
 
 General rules:
@@ -502,7 +502,7 @@ The integration signs `enrollmentVerifyPayloadSignedByIntegration` over the cano
 
 At this point, the enrollment is cryptographically bound to the device key pair.
 
-The `challengeResponse` is not optional in the current EZKey enrollment protocol. A correct mobile
+The `challengeResponse` is not optional in the current Ezkey enrollment protocol. A correct mobile
 implementation must collect the six-digit challenge shown during setup and send it on every
 `verify` request.
 
@@ -549,7 +549,7 @@ sequenceDiagram
 
 ### User-Initiated Polling Model
 
-EZKey's `pending` flow is intentionally user-initiated.
+Ezkey's `pending` flow is intentionally user-initiated.
 
 - The mobile app should poll when the user deliberately asks to check pending requests.
 - The mobile app should not background-poll every few seconds as a default behavior.
@@ -671,7 +671,7 @@ If verification fails, reject the pending response. Do not show it as trustworth
 
 ### Contextual Authentication
 
-EZKey supports plain-text business context on auth attempts.
+Ezkey supports plain-text business context on auth attempts.
 
 | Field | Type | Max Length | Meaning |
 |---|---|---|---|
@@ -767,11 +767,11 @@ Rules:
 - `result` is one of `APPROVED`, `DENIED`, `FAILED`, `EXPIRED`.
 - `message` becomes an empty string if null and is NFC-normalized.
 
-This verification is mandatory for a correct high-security EZKey client.
+This verification is mandatory for a correct high-security Ezkey client.
 
 ### Failure Semantics
 
-EZKey treats failed validation strictly.
+Ezkey treats failed validation strictly.
 
 - If the device signature is invalid, the backend may invalidate the attempt immediately.
 - If the challenge response is wrong, the attempt may become invalid.
@@ -952,10 +952,10 @@ Before calling your implementation complete, verify all of the following:
 
 ## Final Notes
 
-EZKey is intentionally narrow and explicit. That is a feature, not a limitation. A correct client
+Ezkey is intentionally narrow and explicit. That is a feature, not a limitation. A correct client
 implementation should favor protocol fidelity over clever abstraction.
 
-If you are implementing EZKey support in an existing mobile authenticator, the fastest route to
+If you are implementing Ezkey support in an existing mobile authenticator, the fastest route to
 confidence is:
 
 1. Implement the canonical payload builders first.

@@ -16,6 +16,14 @@ Ezkey has one enrollment identifier. `ezkey_admin.enrollment_id` maps to `EzkeyA
 Do not reintroduce `mfa_enrollment_id` or `mfaEnrollment` — that was legacy wording, not a second
 domain concept.
 
+## Operational eligibility
+
+Runtime “can this entity be used?” is **`EntityEligibilityService`** (`org.ezkey.service`), not
+inline `!tenant.getActive()` or lifecycle-status checks. Methods: `isXxxOperational()` /
+`ensureXxxOperational()`. Parent-chain blocking has no persistent cascade. Operator canon:
+[`docs/LIFECYCLE_GOVERNANCE.md`](../docs/LIFECYCLE_GOVERNANCE.md). Boot apps that inject this bean
+must include `org.ezkey.service` in `scanBasePackages`.
+
 ## Contact phone numbers
 
 Contact phones exist on admin (`phoneNumber`), tenant (`primaryContactPhoneNumber`), and enrollment
@@ -27,8 +35,11 @@ auth-attempt.
 
 Derived remaining/lifecycle snapshots go through `KeyUsageVerificationService`, which reuses
 `ReencryptionTargetQueryService` and the same `discoverReencryptableTargets()` as batch creation.
-Do not add a second counting stack. Do not treat `recordsEncrypted` as live remaining (it is the
-migration baseline). Orchestration stays in `ReencryptionService`; row work is
+Discovery is equality on indexed `*_encryption_key_id` companion columns (`I-2026-0029` /
+`TB-2026-07-26`), not `LIKE 'ENC:{keyId}:%'` on ciphertext. Do not add a second counting stack or
+revive prefix scans. Do not treat `recordsEncrypted` as live remaining (it is the
+migration baseline). Indexed discovery: `docs/REENCRYPTION_OPERATIONS.md` §1.2.
+Orchestration stays in `ReencryptionService`; row work is
 `ReencryptionBatchCreationService` / `ReencryptionBatchProcessingService` /
 `ReencryptionBatchParallelRunner` (mutex per table, or per shard when auth-attempt sharding is on).
 Do not fold row crypto back into `ReencryptionService`. Canon: `docs/REENCRYPTION_OPERATIONS.md`,

@@ -1,6 +1,6 @@
-# EZKey Demo App ACME
+# Ezkey Demo App ACME
 
-Demo application showcasing EZKey passwordless login integration with backend-side authentication.
+Demo application showcasing Ezkey passwordless login integration with backend-side authentication.
 
 ## Quick Start
 
@@ -144,7 +144,7 @@ The file is hot-reloadable - changes are detected and reloaded automatically (if
    - `secretKey`: Secret key (e.g., `ezkey_skey_xxx`) - used as HTTP Basic Auth password
    - Set via `EZKEY_INTEGRATION_KEY` and `EZKEY_SECRET_KEY` env vars, config file, or **"Configure API Key" dialog** on login page (no restart)
 2. **Users File**: Automatically created by bootstrap-init with `admin.docker` user (enrollmentId: 1)
-3. **Enrollments**: Users must have active enrollments in EZKey system
+3. **Enrollments**: Users must have active enrollments in the Ezkey system
 
 ## Docker Setup
 

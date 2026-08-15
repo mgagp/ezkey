@@ -28,9 +28,10 @@ When `AuditLogService.log()` saves an entry, `AuditHmacService` automatically:
 
 ```
 auditLogId|eventType|eventAction|eventStatus|apiName|ipAddress|adminId|
-integrationId|enrollmentId|tenantId|eventDetails|errorMessage|createdAt|instanceId
+integrationId|enrollmentId|tenantId|eventDetails|errorMessage|createdAt|instanceId|reason
 ```
 
+`reason` is **field 15** (optional justification; null serializes as empty). Changing its position or omitting it invalidates stored HMACs.
 ### Verification
 
 `GET /api/v1/audit-logs/integrity-check` (Global Admin only) recomputes the HMAC for each entry in a date range and compares it to the stored value. Any mismatch is reported as a potential integrity violation. **Query parameters `from` and `to` (ISO-8601, inclusive start / exclusive end) are required;** omitting either returns 400 Bad Request. The response includes `entryViolations` (`items`, `totalCount`, `returnedCount`, `truncated`) with structured rows (`auditLogId`, `eventType`, `createdAt`, `reason`) — uncapped for the requested window.

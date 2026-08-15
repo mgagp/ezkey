@@ -46,7 +46,7 @@ classDiagram
 - **`AuthSession`** — the current logged-in session view (not the secret itself). Exposed by `useAuth()`.
 - **`PageResponse<T>`** — wire format for paginated lists. Metadata is nested under `page` (Spring Data Pattern B).
 - **`ProblemDetail`** — RFC 9457 envelope used across error paths. Wrapped by `ApiError` on the client.
-- **Domain models** — `Integration`, `Enrollment`, `AuthAttempt`, `Admin`, `ApiKey`, `AuditLog` (see `src/types/models.ts`). Field names match backend DTOs exactly.
+- **Domain models** — Orval-generated DTOs from `@/generated/admin-api/model` (e.g. `IntegrationResponseDto`, `EnrollmentResponseDto`). Field names match the Admin API OpenAPI contract.
 
 ## Persistence Surface
 

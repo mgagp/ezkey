@@ -1,8 +1,8 @@
-# EZKey Demo App ACME - Agent Notes
+# Ezkey Demo App ACME - Agent Notes
 
 ## Purpose
 
-Demo application for EZKey passwordless login. Demonstrates backend-side authentication using API key (machine-to-machine) against the **Integration API** via the Ezkey Java SDK (`EzkeyClient`).
+Demo application for Ezkey passwordless login. Demonstrates backend-side authentication using API key (machine-to-machine) against the **Integration API** via the Ezkey Java SDK (`EzkeyClient`).
 
 ## Key Files
 
@@ -11,7 +11,7 @@ Demo application for EZKey passwordless login. Demonstrates backend-side authent
 | `controller/HomeController.java` | Routes: `/dashboard`, `/logout` |
 | `controller/LoginController.java` | Handles POST `/login`, coordinates auth flow |
 | `config/EzkeyClientProvider.java` | Supplies EzkeyClient from current credentials (config or runtime override) |
-| `service/DemoApiKeyConfigService.java` | Holds API key credentials; supports runtime override via "Apply API Key" dialog |
+| `service/DemoApiKeyConfigService.java` | Per-`HttpSession` API key credentials (not JVM-global); "Apply API Key" override |
 | `service/UserMappingService.java` | Loads/reloads users.json mapping (username -> enrollmentId) |
 | `config/EzkeyClientConfig.java` | Spring configuration for AcmeProperties |
 | `config/AcmeProperties.java` | Type-safe configuration properties |
@@ -22,8 +22,12 @@ Demo application for EZKey passwordless login. Demonstrates backend-side authent
 
 - **Mode**: Backend-side (server calls Integration API via Ezkey SDK; base URL `ezkey.admin-api-url`)
 - **Port**: 8082
-- **Auth**: HTTP session (server-side)
-- **API Key**: API key authentication via EzkeyClient (from EzkeyClientProvider); credentials from config or "Apply API Key" dialog
+- **Auth**: HTTP session (server-side). Logout clears auth/pending and **keeps** the demo API key
+  in that same browser session.
+- **API Key**: Per-session credentials via `DemoApiKeyConfigService` + `EzkeyClientProvider` (config
+  default or "Apply API Key"). Do not store a process-wide key.
+- **Internet host:** `experimental-hybrid/` (`exp1-demo-acme`). Do not fold EXP1 facts into
+  `docs/` or `docker/README.md`.
 - **User Mapping**: External JSON file (`data/acme-users.json`) with hot-reload
 
 ## Login Flow

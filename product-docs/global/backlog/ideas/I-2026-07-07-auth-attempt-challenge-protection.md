@@ -38,6 +38,7 @@ Implement a pragmatic protection strategy for the `auth_attempt_challenge` field
 
 - The primary defense against guessing attacks is the protocol itself: a unique proof token signature is consumed on verification (1-attempt guarantee) along with standard rate limiting.
 - The `Enum` effectively replaces the need for the plaintext challenge value for audit trails or operational debugging logic post-termination.
+- Raising the challenge from 2 digits to 3–4 digits is optional UX, not required for Phase B (protocol already consumes the proof token on one verification).
 
 ## Risks and exceptions
 
@@ -51,4 +52,4 @@ Ready for implementation. See `TB-2026-07-07-auth-attempt-challenge-protection-p
 
 ## Links
 
-- Related plan: `.github/prompts/plan-authAttemptChallengeProtectionStrategy.prompt.md`
+- Related TB: [`TB-2026-07-07-auth-attempt-challenge-protection-phase-b`](../TB-2026-07-07-auth-attempt-challenge-protection-phase-b.md) (Phase B execution). Phase C encryption remains out of scope until compliance pressure.

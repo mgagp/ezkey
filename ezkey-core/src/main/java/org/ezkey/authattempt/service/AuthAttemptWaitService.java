@@ -231,9 +231,9 @@ public class AuthAttemptWaitService {
   /**
    * Checks if the authentication attempt has expired.
    *
-   * <p>Note: This method does NOT check if the status is final. Final statuses (ACCEPTED, REJECTED,
-   * INVALID) should be handled by isAttemptCompleted() before calling this method. This ensures
-   * that user decisions (REJECTED) are not overridden by expiration checks.
+   * <p>Final statuses ({@code ACCEPTED}, {@code REJECTED}, {@code INVALID}) return {@code false} so
+   * user decisions and validation results are not overridden by the TTL clock. Callers still check
+   * {@link #isAttemptCompleted(AuthAttempt)} first; this guard is defense in depth.
    *
    * @param authAttempt the authentication attempt to check
    * @return true if the attempt has expired (only for non-final statuses)

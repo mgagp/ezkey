@@ -59,6 +59,10 @@ never touch `ObjectMapper` directly.
 
 ## Testing Tips
 - Prefer per-tenant device simulation via `TenantAdminTestHelper` (full enrollment + token reuse tiers).
+- **Admin API is the default** (`configureForAdminApi`, port 9080, Bearer). For Integration API
+  auth-attempt create/wait, use `RestAssuredTestConfig.configureForIntegrationApi` and
+  `EZKEY_INTEGRATION_API_URL` (default `http://localhost:7080`). Auth is HTTP Basic
+  (`integrationKey:secretKey`), not an admin Bearer. See `guides/WRITING_TESTS.md`.
 - If a list returns empty/null fields, cross-check DB to confirm creation; Admin API logs show actual tenant assignment.
 - Logging is already verbose around auth steps—keep it enabled when debugging.
 - Tests are independent/idempotent/opportunistic: assume a fresh docker stack from `./clean-start.sh` before runs; failed cases should be investigated directly via DB and logs without reusing state.
