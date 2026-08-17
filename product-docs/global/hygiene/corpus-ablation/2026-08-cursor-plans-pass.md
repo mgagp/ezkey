@@ -16,12 +16,12 @@ A cold agent should start here, then follow the skill. Keep this block current a
 | Item | Current |
 |------|---------|
 | **Next scaffold** | None — archived `plan-*` queue empty. |
-| **Then** | Skip `ff-main.prompt.md`. Cursor `archived/` empty. No living root `plan-*.prompt.md`. Kept files remain. Remaining work is deferred parking (product/code), not another plan prune. |
+| **Then** | Kept files remain. Hors-passe (`ff-main.prompt.md`, mini-rfc) untouched. Next documentary ablation, if any: `plans/` (P-071). |
 | **Kept (do not delete)** | `.cursor/plans/authentication_wait_evolution_brainstorm.plan.md`; `.github/prompts/reported/plan-worktreeDockerStackNaming.prompt.md` |
 | **HITL** | Plan queue finished. Do not invent `I-*` / `TB-*` for leftover parking. |
 | **Do not** | Invent `I-*` / `TB-*`. Re-create deleted plans. Re-rebase this branch unless `origin/main` moved. Push unless asked. Touch `docker/README-HA.md` without preserving Integration HA + V5 ShedLock wording. Fold experimental `ezkey-pam` / `ezkey_dart` / EXP1 facts into `docs/` or `docker/README.md` — keep those lanes in their folders (`ezkey-pam/`, `ezkey_dart/`, `experimental-hybrid/`). |
 | **Branch** | `hygiene/corpus-ablation-2026-08` |
-| **Open parking** | P-056–P-057, P-059–P-073, P-075–P-080, P-085–P-091, P-093–P-094, P-096, P-098, P-100–P-101, P-103–P-109 |
+| **Open parking** | Verified residue: P-056, P-059–P-069, P-071, P-073, P-077, P-085–P-089, P-091, P-093, P-103–P-105, P-107–P-108. Grouped in the 2026-08-17 closeout note. |
 | **Conflict / posture** | Git history is the archive. Project files in English. |
 
 ## Done this pass
@@ -216,6 +216,7 @@ A cold agent should start here, then follow the skill. Keep this block current a
 | `.github/prompts/archived/plan-tenantDeactivationIntegrity.prompt.md` | Deleted. Runtime master switch + RFC 9457 shipped. In-pass: admin-api AGENTS no cascade / system tenant. Parked P-107. |
 | `.github/prompts/archived/plan-tenantEnrichmentTier1.prompt.md` | Deleted. Identity/contact/governance + PUT shipped (V5). In-pass: admin-api AGENTS partial PUT, no PATCH, system tenant not updatable. Parked P-108–P-109. |
 | Documentary parking burn-down (2026-08-17) | Closed P-058, P-082, P-084, P-092, P-095, P-097, P-099, P-102. Remaining rows are deferred product/code. |
+| Parking residue reclassification (2026-08-17) | Closed stale P-072, P-078. Closed deferred-unfunded P-057, P-070, P-075–P-076, P-079–P-080, P-090, P-094, P-096, P-098, P-100–P-101, P-106, P-109. Residue grouped in closeout note. |
 | Documentary parking burn-down (2026-08-15) | Closed P-074 (`MOBILE_DEVELOPER_GUIDE` Ezkey rename), P-081 (TUI_GUIDE single opaque token), P-083 (ACME README/AGENTS Ezkey rename). |
 
 ## Kept this pass (retained)
@@ -225,53 +226,61 @@ A cold agent should start here, then follow the skill. Keep this block current a
 | `.cursor/plans/authentication_wait_evolution_brainstorm.plan.md` | Operator Keep (2026-08-11). Lane B retained option-space; still unique vs `V-2026-07-18` / `I-2026-07-18` (axes, comparison table, questions, evidence). Incubation sources in V/I continue to point here. |
 | `.github/prompts/reported/plan-worktreeDockerStackNaming.prompt.md` | Operator Keep (2026-08-14). Unique option space: Compose `-p` from `buildQualifier` plus dropping fixed `container_name` so worktrees can coexist. Maven `.mvn/maven.config` already isolates artifacts only. No `I-*`. |
 
-## Parking (open)
+## Parking (open — verified residue)
 
-| ID | Source | Finding | Suggested receptacle |
-|----|--------|---------|----------------------|
-| P-056 | `rejected_showing_as_expired_fix.md` | `AuthAttemptWaitServiceTest` covers timeout/polling validation only; no REJECTED-with-past-`expiresAt` characterization. | `ezkey-core/.../AuthAttemptWaitServiceTest.java` |
-| P-057 | `plan-adminAuthTokenStrategyAudit.prompt.md` | Additive OIDC/SAML admin login and optional token-validation cache remain unfunded. No `I-*`. Sliding TTL stays P-050 / admin-api CONFIGURATION §12. | Future `I-*` only if operator funds SSO; else leave |
-| P-059 | `plan-adminOnboardingVsEnrollmentApiRationale.prompt.md` | Admin list `EnrollmentFkLink` can send a Tenant Admin to `GET /enrollments/{id}` for an admin MFA row (system integration) → 403. | `ezkey-admin-ui/src/pages/admins.tsx` / `EnrollmentFkLink` |
-| P-060 | `plan-adminUiConceptsGapsAndRecommendations.prompt.md` | Global Admin list pages still lack a tenant `Select` filter (tenant name columns link through). | Integrations / enrollments / auth-attempts list screens |
-| P-061 | `plan-adminUiOpenapiClientGeneration.prompt.md` | Remaining raw `api.get`/`api.post` on audit-chain incidents (dashboard + audit-logs) and `api.getPublic` for instance-info. | `dashboard.tsx`, `audit-logs.tsx`, `use-public-instance-info.ts` |
-| P-062 | `plan-adminUiOpenapiClientGeneration.prompt.md` | Optional `prebuild`/`predev` `generate:api`. Cloudflare build already runs it; local `build`/`dev` do not. | `ezkey-admin-ui/package.json` |
-| P-063 | `plan-apiKeysScreenUxEnhancement.prompt.md` | List still shows an **ID** column; prompt wanted it detail-only. | `ezkey-admin-ui/src/pages/api-keys.tsx` |
-| P-064 | `plan-apiKeysScreenUxEnhancement.prompt.md` | Footer status breakdown (`N keys · n active · …`) not shipped; pagination makes page vs estate totals a product choice. | `api-keys.tsx` list footer |
-| P-065 | `plan-auditsContextualises.prompt.md` | Related-audits for tenant / admin / API key / encryption key were explicitly out of MVP. | Detail pages for those entities |
-| P-066 | `plan-authProtocolSecurityAudit.prompt.md` | `/respond` still uses unlocked `findById`; `PESSIMISTIC_WRITE` exists only for re-encryption. | `AuthAttemptRespondService` / `AuthAttemptRepository` |
-| P-067 | `plan-authProtocolSecurityAudit.prompt.md` | `AuditHmacService` compares HMAC with `String.equals`, not `MessageDigest.isEqual`. | `ezkey-core/.../AuditHmacService.java` |
-| P-068 | `plan-dockerNonRootMigration.prompt.md` | Optional compose `user: "100:101"` and `security_opt: ["no-new-privileges:true"]` not added. | `docker/docker-compose.yml` |
-| P-069 | `plan-ezkeyAdminUiGlobalTenantRebranding.prompt.md` | GA-only routes (`/encryption-keys`, etc.) use auth-only `ProtectedRoute`; sidebar hides the link but TA can open the URL. | `ezkey-admin-ui/src/routes.tsx` |
-| P-070 | `plan-ezkeyDart.prompt.md` | Crypto API oracle integration tests (`dart test --tags=integration`) were planned and are not in the package. | `ezkey_dart/test/` |
-| P-071 | `plan-ezkeyEntityLifecycleGovernance.prompt.md` | Remaining temporary `plans/` lifecycle corpus (transverse v1 plus entity-specific plans the prompt listed). Larger ablation. | `plans/` |
-| P-072 | `plan-ezkeyMobileAndroidPrerelease.prompt.md` | `package.json` version `0.0.1` vs Android `versionName` `1.0` / `versionCode` 1. | `ezkey_mobile/package.json`, `android/app/build.gradle` |
-| P-073 | `plan-ezkeyMobileAndroidPrerelease.prompt.md` | Play listing closeout: Data Safety, screenshots/feature graphic, listing vs launcher name, listing copy. | `MOBILE_PLAY_PUBLISHING.md`, Play Console |
-| P-075 | `plan-ezkeyPam.prompt.md` | Env still named `EZKEY_M2M_API_URL` (C, conf, scripts). Rename to `EZKEY_INTEGRATION_API_URL` stays inside `ezkey-pam/`. | `ezkey-pam/` |
-| P-076 | `plan-functional-test-docker.prompt.md` | Optional Bash-only `scripts/test-docker.sh` if Maven-in-Docker for `ezkey-tests` is wanted later. No `.cmd`. | `scripts/test-docker.sh` |
-| P-077 | `plan-m2mAuthAttemptTestCoverage.prompt.md` | Create-by-`userIdentifier` happy path, `wait` timeout PENDING, `wait` ACCEPTED after device respond — on Admin and Integration APIs. Cancel stays out of scope. | `ezkey-tests/` |
-| P-078 | `plan-postmanEnrollmentAuthCryptoFlow.prompt.md` | Leftover Postman `EZ Key Enrollments auth` (and sibling admin) JSON under `postman/collections/v2.1/`. Bruno is the living chain. | `postman/collections/v2.1/` |
-| P-079 | `plan-prePilotageExperimentalEzkey.prompt.md` | RDS / managed Postgres when EXP1 backup/restore pain outweighs Docker-stack proximity. | `experimental-hybrid/` |
-| P-080 | `plan-prePilotageExperimentalEzkey.prompt.md` | Masked origin (dedicated tunnel) vs current orange-cloud Lightsail IP. | `experimental-hybrid/` |
-| P-085 | `plan-auditGapDeclarationUx.prompt.md` | Dedicated `GET .../undeclared-gaps` (Option B) + `ezkey.audit.chain.gap-scan.*` lookback/cap not shipped. UI still uses full `chain-integrity`. | Admin API + `CONFIGURATION.md` |
-| P-086 | `plan-auditGapDeclarationUx.prompt.md` | No Playwright for gap Declare / Locate. | `ezkey-admin-ui/e2e/` |
-| P-087 | `plan-auditGapDeclarationUx.prompt.md` | 409 race still has no inline dialog + refresh-list CTA. | `audit-logs.tsx` gap dialog |
-| P-088 | `plan-coreSecuritySplit.prompt.md` | Auth API and Integration API still scan `org.ezkey.security` (entities/repos). Re-encryption services stayed in `ezkey-core`. Optional further split — no new `I-*`. | `AuthApplication` / `IntegrationApiApplication` + core security services |
-| P-089 | `plan-minimalAlertSubsystem.prompt.md` | No Playwright for dashboard → `/alerts` → declare-gap → resolved. | `ezkey-admin-ui/e2e/` |
-| P-090 | `plan-mobileKeyTrustBoundary.prompt.md` | Optional signed installation snapshot on bind (anti-phishing for human-visible branding) not shipped. No new `I-*`. | bind payload / `ENROLLMENT_SIGNATURE_PAYLOAD.md` if funded |
-| P-091 | `plan-mobileDependencyReview.prompt.md` | `ios/Podfile.lock` is not in the repo (S22 leftover). Android-first; iOS lockfile needs macOS CocoaPods validation. | `ezkey_mobile/ios/` |
-| P-093 | `plan-mobileReleaseMessaging.prompt.md` | Home banner is always on (no dismiss persistence). Phase 2 leftover. | `HomeScreen.tsx` |
-| P-094 | `plan-mobileReleaseMessaging.prompt.md` | Remote signed release/security announcements not shipped. No new `I-*`. Play listing copy stays P-073. | in-app i18n / Play Console |
-| P-096 | `plan-enrollmentLifecycleRevocation.prompt.md` | Phases 2–4 not shipped: `ENROLLMENT_REVOKE` API-key scope, lookup by `externalId`, outbound HMAC webhooks, optional SCIM module. No new `I-*`. | `LIFECYCLE_GOVERNANCE.md` / Admin API if funded |
-| P-098 | `plan-extractEzkeySdk.prompt.md` | Device-side Auth API SDK (bind / verify / pending / respond) is not in the Java client. No new `I-*`. | `ezkey-sdk/java/` if funded |
-| P-100 | `plan-ezkeyDartCryptoApi.prompt.md` | Generic Base64/SPKI conversion endpoints (plan option 3) not added. Intentionally out of scope. No new `I-*`. | `ezkey-crypto-api` if a concrete case appears |
-| P-101 | `plan-fixJpaSharedReferencesIntegrationI18n.prompt.md` | `spring.jpa.open-in-view=false` still not applied (LazyInitializationException regressions). No new `I-*`. | Admin/Auth `application.properties` + service DTO returns |
-| P-103 | `plan-integrationCodeCliTui.prompt.md` | Unused `CreateIntegrationModal` / `integration_create.py` vs read-only TUI. | `ezkey-cli-python/ezkey_cli/tui/screens/` |
-| P-104 | `plan-m2mApiModule.prompt.md` | `ApiKeyAuthenticationFilter` (and related API-key security) still copied in admin-api and integration-api. No new `I-*`. | those modules / `ezkey-core-security` if funded |
-| P-105 | `plan-m2mApiModule.prompt.md` | API-key rate limits are in-memory per instance (Caffeine), not shared. No new `I-*`. | `ezkey.api-key.rate-limit.*` |
-| P-106 | `plan-qrCodeContentEnhancement.prompt.md` | `ezkey://enroll?...` native-camera deep link not shipped. No new `I-*`. | `QrCodePayloadService` + mobile linking if funded |
-| P-107 | `plan-tenantDeactivationIntegrity.prompt.md` | TUI `tenant_detail.py` shows generic `Failed to load tenant {id}` when `get_tenant` returns nothing, instead of the API Problem Detail. | `ezkey-cli-python/ezkey_cli/tui/screens/tenant_detail.py` |
-| P-108 | `plan-tenantEnrichmentTier1.prompt.md` | TUI `tenant_detail.py` still shows only id/name/description/active/createdAt, not org/contact fields. | that screen |
-| P-109 | `plan-tenantEnrichmentTier1.prompt.md` | Later-tier tenant extras not shipped (quotas, `external_id`/JSONB metadata, `ezkey_tenant_config`, per-tenant MFA/IP/session policy, `tenant_status` enum). No new `I-*`. | `Tenant` / lifecycle if funded |
+Not unfinished documentary work. Grouped in
+[`2026-08-17-cursor-plans-closeout.md`](2026-08-17-cursor-plans-closeout.md). No new `I-*`.
+
+| ID | Bucket | Finding |
+|----|--------|---------|
+| P-071 | Next ablation | Temporary `plans/` lifecycle corpus (~25 files). Next documentary pass, not this PR. |
+| P-059 | Admin UI | `EnrollmentFkLink` → `/enrollments/{id}` can 403 a Tenant Admin on an admin MFA row. |
+| P-060 | Admin UI | GA list pages still lack a tenant `Select` (name columns link through). |
+| P-061 | Admin UI | Raw `api.get` on audit-chain incidents; `api.getPublic` for instance-info. |
+| P-062 | Admin UI | Local `build`/`dev` do not run `generate:api` (`prebuild` optional). |
+| P-063 | Admin UI | API-keys list still shows an ID column. |
+| P-064 | Admin UI | API-keys footer status breakdown not shipped. |
+| P-065 | Admin UI | Related-audits for tenant / admin / API key / encryption key were out of MVP. |
+| P-069 | Admin UI | GA-only routes use auth-only `ProtectedRoute`; TA can open the URL. |
+| P-085 | Admin UI | Dedicated undeclared-gaps API + lookback/cap not shipped. |
+| P-086 | Admin UI | No Playwright for gap Declare / Locate. |
+| P-087 | Admin UI | 409 race has no inline dialog + refresh CTA. |
+| P-089 | Admin UI | No Playwright dashboard → `/alerts` → declare-gap → resolved. |
+| P-056 | Security / protocol | No REJECTED-with-past-`expiresAt` characterization test. |
+| P-066 | Security / protocol | `/respond` still uses unlocked `findById`. |
+| P-067 | Security / protocol | `AuditHmacService.verifyHmac` uses `String.equals`, not `MessageDigest.isEqual`. |
+| P-068 | Security / protocol | Compose has no optional `user:` / `no-new-privileges`. |
+| P-088 | Security / protocol | Auth + Integration API still scan `org.ezkey.security`. |
+| P-104 | Security / protocol | `ApiKeyAuthenticationFilter` still copied admin-api vs integration-api. |
+| P-105 | Security / protocol | API-key rate limits are in-memory per instance (Caffeine). |
+| P-073 | Mobile | Play listing closeout (Data Safety, screenshots, listing copy). |
+| P-091 | Mobile | `ios/Podfile.lock` not in repo (needs macOS CocoaPods). |
+| P-093 | Mobile | Home release banner is always-on (no dismiss). |
+| P-077 | Tests | Integration-API auth-attempt wait happy paths still thin. |
+| P-103 | CLI / TUI | Unused `CreateIntegrationModal` vs read-only TUI. |
+| P-107 | CLI / TUI | Tenant detail swallows API Problem Detail. |
+| P-108 | CLI / TUI | Tenant detail omits org/contact fields. |
+
+## Parking (closed 2026-08-17 — residue reclassification)
+
+| ID | Disposition |
+|----|-------------|
+| P-072 | Stale: `ezkey_mobile/package.json` is `1.0.0`; Android `versionName` reads that field. |
+| P-078 | Stale: `postman/collections/v2.1/` JSON is gone. Stub `postman/README.md` remains (ENDPOINT still cites it). |
+| P-057 | Deferred product: OIDC/SAML + token-validation cache unfunded. Sliding TTL stays CONFIGURATION §12. |
+| P-070 | Deferred experimental: Dart Crypto oracle tests stay in `ezkey_dart/`. |
+| P-075 | Deferred experimental: `EZKEY_M2M_API_URL` rename stays inside `ezkey-pam/`. |
+| P-076 | Deferred tooling: optional `scripts/test-docker.sh`. |
+| P-079 | Deferred experimental: RDS / managed Postgres for EXP1. |
+| P-080 | Deferred experimental: dedicated tunnel vs orange-cloud Lightsail. |
+| P-090 | Deferred product: signed installation snapshot on bind. |
+| P-094 | Deferred product: remote signed release announcements. |
+| P-096 | Deferred product: enrollment revoke phases 2–4 (webhooks / SCIM / `externalId`). |
+| P-098 | Deferred product: device-side Auth API Java SDK. |
+| P-100 | Deferred product: generic Base64/SPKI crypto endpoints. |
+| P-101 | Accepted posture: OSIV stays default `true`; comments in Admin/Auth `application.properties` record why. |
+| P-106 | Deferred product: `ezkey://enroll?...` native-camera deep link. |
+| P-109 | Deferred product: tenant quotas / JSONB metadata / per-tenant MFA policy. |
 
 ## Parking (closed 2026-08-17 — documentary closeout)
 
