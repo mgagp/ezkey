@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-08-02-mobile-play-official-compliance-gate`
-- **Status:** `incubating`
+- **Status:** `active`
 - **Priority:** `P2`
 - **Created at:** `2026-08-02`
-- **Updated at:** `2026-08-02`
-- **Last reviewed at:** `2026-08-02`
+- **Updated at:** `2026-08-14`
+- **Last reviewed at:** `2026-08-14`
 - **Progression markers:** `P3-distribution`
 - **Component tags:** `mobile`, `docs`
 - **Lane:** `D`
@@ -24,13 +24,13 @@ stack-baseline decision.
 
 ## Problem and value
 
-- **Problem:** The audit already states the project is "partially ready, not yet release-complete."
-  The blockers are operational and compliance-oriented, not code defects: `package.json` version
-  (`0.0.1`) does not match Android `versionName`/`versionCode`, there is no evidenced privacy-policy
-  URL, support contact, or completed Data Safety mapping, the Play/launcher product name is not
-  finalized, and the React Native `0.85.2` baseline decision (release now vs. upgrade first) has not
-  been made per
-  [`MOBILE_RELEASE_DECISION_MEMO.md`](../../../../ezkey_mobile/docs/MOBILE_RELEASE_DECISION_MEMO.md).
+- **Problem:** The audit previously stated the project was "partially ready, not yet release-complete."
+  Remaining work is operational: a validated GA publication-candidate AAB, Console paste of Data
+  Safety / listing copy, and screenshots. Version name is aligned (`package.json` `1.0.0`);
+  `versionCode` policy is documented (workspace candidate **2** pending Console confirmation).
+  Privacy URL and support contact exist on ezkey.org. The React Native **0.86.2** baseline decision
+  is **release now**; 0.87 is post-listing debt
+  ([`MOBILE_RELEASE_DECISION_MEMO.md`](../../../../ezkey_mobile/docs/MOBILE_RELEASE_DECISION_MEMO.md)).
 - **Expected value:** A publishable, compliant official Play listing with a validated release
   candidate — the last mile between "technically working app" and "app the team can submit for
   official review."
@@ -89,12 +89,13 @@ stack-baseline decision.
 
 ## Promotion notes
 
-Ready for a `TB-*` once:
+Promotion notes updated 2026-08-14: RN stack-baseline is **release now on 0.86.2**; privacy URL
+`https://ezkey.org/privacy.html`; support `support@ezkey.org`; listing/launcher name **Ezkey**.
+Remaining Console/device work: screenshots, feature graphic, GA AAB evidence, paste Data Safety.
 
-- the RN stack-baseline decision (release now vs. upgrade first) is made,
-- privacy-policy URL and support contact destinations are decided (even if hosted simply on
-  `ezkey.org`),
-- the final product/listing name is chosen.
+See [`MOBILE_PLAY_PUBLISHING.md`](../../../../ezkey_mobile/docs/MOBILE_PLAY_PUBLISHING.md),
+[`MOBILE_PLAY_DATA_SAFETY.md`](../../../../ezkey_mobile/docs/MOBILE_PLAY_DATA_SAFETY.md),
+[`MOBILE_PLAY_STORE_LISTING.md`](../../../../ezkey_mobile/docs/MOBILE_PLAY_STORE_LISTING.md).
 
 ## Links
 

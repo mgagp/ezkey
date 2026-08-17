@@ -132,7 +132,10 @@ android {
         applicationId "org.ezkey.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        // Strictly increasing Play upload integer. Confirm against Play Console App bundle
+        // explorer before each official upload; bump when the Console already has this value.
+        // Workspace default 2 assumes the experimental listing used versionCode 1.
+        versionCode 2
         versionName appVersionName
         def buildTimeUtc = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
         buildTimeUtc.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
@@ -198,6 +201,8 @@ dependencies {
     // Backports the Android 12+ splash screen API to older devices for a consistent first launch.
     implementation "androidx.core:core-splashscreen:1.2.0"
     implementation "androidx.biometric:biometric:1.1.0"
+    // Official Play In-App Updates (flexible / soft prompt). Not an RN wrapper.
+    implementation "com.google.android.play:app-update:2.1.0"
 
     // Ed25519 integration signing verification on older API levels (JCA parity with Auth API JDK path).
     implementation 'org.conscrypt:conscrypt-android:2.5.3'

@@ -3,16 +3,17 @@
 ## Metadata
 
 - **ID:** `I-2026-08-02-mobile-exit-experimental-messaging`
-- **Status:** `incubating`
+- **Status:** `active`
 - **Priority:** `P2`
 - **Created at:** `2026-08-02`
-- **Updated at:** `2026-08-02`
-- **Last reviewed at:** `2026-08-02`
+- **Updated at:** `2026-08-14`
+- **Last reviewed at:** `2026-08-14`
 - **Progression markers:** `P3-distribution`
 - **Component tags:** `mobile`, `docs`
 - **Lane:** `D`
 - **Captured by:** Marc
 - **GitHub issue:** none
+- **Tracer bullet:** [`TB-2026-08-14-mobile-exit-experimental-messaging`](../TB-2026-08-14-mobile-exit-experimental-messaging.md)
 
 ## Intent
 
@@ -79,16 +80,11 @@ release-notes and onboarding copy appropriate for an official, generally-availab
 
 ## Promotion notes
 
-Ready for a `TB-*` once:
+Promotion notes closed 2026-08-14: Coming Soon **kept** as a sober in-app roadmap; copy ships
+independently of Play Console paperwork; listing "What's new" is aligned in
+`ezkey_mobile/docs/MOBILE_PLAY_STORE_LISTING.md`.
 
-- the product decision on Coming Soon (keep as sober roadmap vs. retire) is made,
-- replacement copy for Home banner and Release Notes is drafted in English (source language) with
-  French follow-up,
-- the relationship to the Play compliance gate idea's timeline is confirmed (can ship independently
-  or should wait).
-
-This is expected to be the **first executable `TB-*`** in the mobile official-release program: low
-risk, no backend dependency, mostly copy/navigation/test changes.
+Execution: [`TB-2026-08-14-mobile-exit-experimental-messaging`](../TB-2026-08-14-mobile-exit-experimental-messaging.md).
 
 ## Links
 

@@ -38,6 +38,12 @@ import {
   type InstallationGroup,
 } from '../../utils/tenantGrouping';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {
+  checkFlexiblePlayUpdate,
+  getDismissedPlayUpdateVersionCode,
+  setDismissedPlayUpdateVersionCode,
+  startFlexiblePlayUpdate,
+} from '../../services/play/playUpdate';
 
 /**
  * Orders enrollments prioritizing favorites while preserving newest-first semantics.
@@ -134,6 +140,49 @@ export const HomeScreen: React.FC = () => {
 
     refreshInstallations(healthyEnrollments);
   }, [healthyEnrollments, isRefreshingInstallationMetadata, refreshInstallations]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const promptPlayUpdate = async () => {
+      const result = await checkFlexiblePlayUpdate();
+      if (cancelled || !result.available) {
+        return;
+      }
+      const dismissed = await getDismissedPlayUpdateVersionCode();
+      if (cancelled) {
+        return;
+      }
+      if (
+        result.availableVersionCode != null &&
+        dismissed === result.availableVersionCode
+      ) {
+        return;
+      }
+      Alert.alert(t('home.updateAvailableTitle'), t('home.updateAvailableBody'), [
+        {
+          text: t('home.updateAvailableLater'),
+          style: 'cancel',
+          onPress: () => {
+            if (result.availableVersionCode != null) {
+              void setDismissedPlayUpdateVersionCode(result.availableVersionCode);
+            }
+          },
+        },
+        {
+          text: t('home.updateAvailableAction'),
+          onPress: () => {
+            void startFlexiblePlayUpdate();
+          },
+        },
+      ]);
+    };
+
+    void promptPlayUpdate();
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
 
   const navigateToWizard = () => navigation.navigate('EnrollmentWizard');
   const navigateToReleaseNotes = () => navigation.navigate('ReleaseNotes');

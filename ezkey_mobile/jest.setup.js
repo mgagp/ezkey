@@ -64,6 +64,11 @@ jest.mock('react-native-config', () => ({
  * App imports cryptoService at load time; without a native module, CryptoService.create() throws.
  * Stub EzkeyCryptoModule so the tree can mount in Jest (no hardware keystore in Node).
  */
+NativeModules.EzkeyPlayUpdateModule = {
+  checkFlexibleUpdate: jest.fn().mockResolvedValue({available: false}),
+  startFlexibleUpdate: jest.fn().mockResolvedValue(false),
+};
+
 NativeModules.EzkeyCryptoModule = {
   generateEnrollmentKeyPair: jest.fn().mockResolvedValue(true),
   getPublicKey: jest.fn().mockResolvedValue(

@@ -22,6 +22,7 @@
 # screen end-to-end.
 
 -keep class org.ezkey.mobile.crypto.** { *; }
+-keep class org.ezkey.mobile.play.** { *; }
 
 -keep class org.conscrypt.** { *; }
 -dontwarn org.conscrypt.**

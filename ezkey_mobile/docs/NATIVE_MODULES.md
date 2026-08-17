@@ -13,8 +13,10 @@
 | Module | Platform | Responsibility | Entry Point |
 |--------|----------|----------------|-------------|
 | `EzkeyCryptoModule` | Android (Kotlin) | EC P-256 key management via `Android Keystore`, with `StrongBox` requested when available | `android/app/src/main/java/org/ezkey/mobile/crypto/EzkeyCryptoModule.kt` |
+| `EzkeyPlayUpdateModule` | Android (Kotlin) | Play Core flexible in-app update check/start; fail-open when Play is unavailable | `android/app/src/main/java/org/ezkey/mobile/play/EzkeyPlayUpdateModule.kt` |
 | `EzkeyCryptoModule` | iOS (Swift) | Native secure-hardware-backed EC P-256 parity is not yet complete | `ios/EzkeyMobile/Crypto/EzkeyCryptoModule.swift` |
 | `EzkeyCryptoPackage` | Android (Kotlin) | Registers crypto module with React Native | `android/app/src/main/java/org/ezkey/mobile/crypto/EzkeyCryptoPackage.kt` |
+| `EzkeyPlayUpdatePackage` | Android (Kotlin) | Registers Play update module with React Native | `android/app/src/main/java/org/ezkey/mobile/play/EzkeyPlayUpdatePackage.kt` |
 | `EzkeyCryptoModuleBridge` | iOS (Objective-C) | Exposes Swift crypto module to React Native bridge | `ios/EzkeyMobile/Crypto/EzkeyCryptoModuleBridge.m` |
 
 ## Communication Flow

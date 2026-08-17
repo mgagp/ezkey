@@ -16,7 +16,7 @@ const comingNextKeyOrder = ['comingNextItem1', 'comingNextItem2'] as const;
 const noteKeyOrder = ['note1'] as const;
 
 /**
- * Presents the current release notes and limited experimental access information.
+ * Presents the current release notes for the official Android app line.
  *
  * @since 2025
  */
@@ -57,8 +57,8 @@ export const ReleaseNotesScreen: React.FC = () => {
       </View>
 
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>{t('releaseNotes.accessTitle')}</Text>
-        <Text style={styles.sectionBody}>{t('releaseNotes.accessBody')}</Text>
+        <Text style={styles.sectionTitle}>{t('releaseNotes.requirementsTitle')}</Text>
+        <Text style={styles.sectionBody}>{t('releaseNotes.requirementsBody')}</Text>
       </View>
 
       <View style={styles.sectionCard}>

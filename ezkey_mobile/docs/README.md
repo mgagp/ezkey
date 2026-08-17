@@ -68,6 +68,8 @@ reference mobile app.
 | [MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md](MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md) | Supporting dependency governance | Unblock gates and trial protocol for deferred ESLint 10 / Jest 30 majors. |
 | [MOBILE_RELEASE_SIGNING.md](MOBILE_RELEASE_SIGNING.md) | Operational | When preparing signed Android release artifacts. |
 | [MOBILE_PLAY_PUBLISHING.md](MOBILE_PLAY_PUBLISHING.md) | Operational | When preparing Google Play submission. |
+| [MOBILE_PLAY_STORE_LISTING.md](MOBILE_PLAY_STORE_LISTING.md) | Operational | Play listing copy, What's new, screenshot shot list. |
+| [MOBILE_PLAY_DATA_SAFETY.md](MOBILE_PLAY_DATA_SAFETY.md) | Operational | Play Data Safety answers from current app behavior. |
 | [MOBILE_ANDROID_PLATFORM_SUPPORT.md](MOBILE_ANDROID_PLATFORM_SUPPORT.md) | Product policy — Android OS floor | Supported floor (API 31 / Android 12+), Gradle `minSdk` 31, Play minSdk lifecycle, annual review (next due 2027-07). |
 | [MOBILE_PLAY_RELEASE_READINESS_AUDIT.md](MOBILE_PLAY_RELEASE_READINESS_AUDIT.md) | Operational decision support | When deciding whether the current workspace is close enough to a Play release candidate. |
 | [MOBILE_RELEASE_DECISION_MEMO.md](MOBILE_RELEASE_DECISION_MEMO.md) | Product and engineering decision support | When deciding whether to release first on the current stack or upgrade before first publication. |
