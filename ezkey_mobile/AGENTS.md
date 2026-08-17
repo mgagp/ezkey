@@ -17,9 +17,17 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 ## Directives
 
 - Keep the app simple. Avoid feature creep, decorative UI, and extra screens.
-- Production IA: Home list + primary add + Settings hub (About, Language, Danger Zone, Licenses).
+- Production IA: Home list + primary add + Settings hub (What's new, About, Language, Danger Zone,
+  Licenses). Release announcements are a top-of-home card plus Settings → What's new — not a
+  floating bottom-left badge. About stays static identity (version, site, support).
   Do not reintroduce a Diagnostics screen in production chrome. Delete-one and clear-all live only
-  in Danger Zone.
+  in Danger Zone. Card title fallback: `enrollmentName` → `deviceLabel` → `integrationName`. After
+  a successful delete-one, `navigation.goBack()` — exceptional cleanup, not a batch-delete loop.
+- Nested `installation` on each stored enrollment is the local trust zone. Identity is the
+  normalized `authUrl` (`installation.id`). Do not re-flatten `installation*` onto enrollment,
+  and do not add a second persisted installation collection. Public `instance-info`
+  (`name` / `description` / `aboutUrl`) is display-only — never a cryptographic trust anchor
+  or identity. Canon: [`docs/MOBILE_DATA_MODEL.md`](docs/MOBILE_DATA_MODEL.md).
 - Security first: proof tokens stay in memory or secure storage only.
 - Keep the pull model: no background polling for auth attempts.
 - Do not reintroduce integration logos or related fields.
@@ -60,6 +68,9 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 ## Security Rules
 
 - Never break Auth API contracts without backend coordination.
+- Add a mobile protocol field only if removing it breaks bind, verify, pending, respond, or
+  signature verification. Do not reintroduce `authAttemptChallengeRequiredByPolicy` (rolled back:
+  it disclosed enrollment policy and was not required for protocol execution).
 - After enrollment bind, require `integrationKeyAlgorithm === "ed25519"` via
   `integrationKeyAlgorithmBindError` (`app/utils/integrationKeyAlgorithm.ts`). Abort enrollment on
   mismatch (fail closed). Do not assume Ed25519 from `integrationPublicKey` alone.
@@ -160,6 +171,8 @@ StrongBox physical checklist (MOB-006): [`docs/MOBILE_STRONGBOX_MANUAL_CHECKLIST
 - F2a availability = native **debug** build type (`BuildConfig.DEBUG`) + explicit env enable +
   ack `F2A_TEST_ONLY`. Do **not** equate this with React Native `__DEV__`.
 - Release install script runs `scripts/assert-release-production-clean-env.sh` before Gradle.
+- Do not reintroduce `RespondMitmLabControl` or in-app respond MITM tamper into a release/Play JS
+  bundle (removed 2026-04; Play malicious-behavior risk).
 - When `mobile-doctor-curated` or a skeptical review flags harness/bypass code: read the contract
   first; missing mechanical gates are P1; gated intentional harness code is not.
 

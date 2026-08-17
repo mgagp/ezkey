@@ -243,7 +243,8 @@ block purge or `ON DELETE CASCADE` that silently erase SOC 2 operator narrative.
 
 Authoritative detail: [`docs/DATABASE_PARTITIONING_IMPLEMENTATION.md`](../../docs/DATABASE_PARTITIONING_IMPLEMENTATION.md)
 (§ Flyway greenfield patterns), [`docs/AUDIT_LOG_INTEGRITY.md`](../../docs/AUDIT_LOG_INTEGRITY.md)
-(§ Entry integrity conciliation registry), [`docs/AUDIT_LOG_LIFECYCLE_NEXT_SESSION_BRIEF.md`](../../docs/AUDIT_LOG_LIFECYCLE_NEXT_SESSION_BRIEF.md).
+(§ Entry integrity conciliation registry), [`ezkey-core/CONFIGURATION.md`](../../ezkey-core/CONFIGURATION.md)
+§ Audit Log Archive.
 
 ## Out of scope (cluster R1)
 

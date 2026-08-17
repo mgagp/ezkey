@@ -40,8 +40,9 @@ Active toolchain program tracked outside this doc:
 | Tracer bullet | `TB-2026-05-29-mobile-stack-modernization` |
 | Method log | `ML-2026-05-29-mobile-stack-modernization` |
 
-Prior exhaustive dependency review (RN 0.85.2 baseline, May 2026) is archived under
-`.github/prompts/archived/2026-05/plan-mobileDependencyReview.prompt.md` — do not repeat.
+Prior exhaustive dependency review (RN 0.85.2 baseline, May 2026) is historical — do not
+repeat. Living baseline is this document (current workspace section below). Git history
+holds the S01–S23 session inventory.
 
 **Program status (2026-05-31):** Steps 1–6 executed on branch `#177`: CI `yarn validate`, RN 0.85.3,
 Async Storage 3.x, Vision Camera 5 + `react-native-vision-camera-barcode-scanner`, ESLint 9 flat config.

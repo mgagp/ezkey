@@ -32,4 +32,17 @@ extracting any remaining essence into existing canonical docs — and after chec
 
 | File | Scope |
 |------|--------|
-| [`2026-08-cursor-plans-pass.md`](2026-08-cursor-plans-pass.md) | `.cursor/plans/*` and related prompt noise; parking list for deferred doc fixes |
+| [`2026-08-cursor-plans-pass.md`](2026-08-cursor-plans-pass.md) | Working HITL inventory: Resume, Done, Parking |
+| [`2026-08-17-cursor-plans-closeout.md`](2026-08-17-cursor-plans-closeout.md) | Dated closeout when the archived `plan-*` queue emptied |
+
+## Log structure (this lane)
+
+Same split as doctor / pentest campaign notes:
+
+| Artifact | Role |
+|----------|------|
+| **Pass log** (`YYYY-MM-…-pass.md`) | Live HITL workbook. Update Resume after every Go. |
+| **Dated closeout** (`YYYY-MM-DD-…-closeout.md`) | Campaign instance when a queue empties — why remaining parking stayed deferred. |
+| **This README** | Lane entry. Do not duplicate the pass log. |
+
+Do **not** create `I-*` / `TB-*` / `ML-*` for a hygiene ablation pass.

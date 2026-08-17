@@ -8,6 +8,14 @@ This file is intended for coding agents working in `ezkey-admin-api/`.
 - Do not introduce `@Autowired`. Use constructor injection.
 - Keep admin authentication **passwordless-only** (no reintroducing password schema).
 
+## Enrollment QR payload
+
+Enrollment and admin-onboarding QR codes are **JSON** from `QrCodePayloadService`
+(`enrollmentId`, `enrollmentProofToken`, optional `authUrl`). `authUrl` comes from
+`ezkey.qr.auth-base-url` (`EZKEY_QR_AUTH_BASE_URL`). Omit the field when unset — mobile falls back
+to `EZKEY_API_BASE_URL`. Do **not** revert the generator to pipe-only. Do **not** add a URL
+shortener. Canon: [`docs/ENDPOINT.md`](../docs/ENDPOINT.md) (search `ezkey.qr.auth-base-url`).
+
 ## Admin session tokens (opaque, not JWT)
 
 Admin sessions are **opaque DB-backed** tokens (`ezkey_admin_tokens`, lookup by
@@ -78,6 +86,14 @@ Routine lifecycle actions that match zero eligible records are **200** with a su
 `skippedCount`, `noOp`), not an error. Skip success audit when nothing changed. High-sensitivity
 ops (encryption keys / re-encryption) may still audit intent. UI must not claim work that `noOp`
 says did not happen. Canon: `docs/ENDPOINT.md` § Bulk enrollment lifecycle.
+
+## Tenant deactivation and update
+
+`Tenant.active` is the runtime master switch (`TenantService.ensureTenantActive`). Do **not**
+cascade inactive onto child integrations, enrollments, or API keys. The system tenant cannot be
+deactivated **or updated**. `PUT /api/v1/tenants/{id}` is **partial** (null fields ignored) — do
+**not** add PATCH or JSON Patch. Canon: [`docs/LIFECYCLE_GOVERNANCE.md`](../docs/LIFECYCLE_GOVERNANCE.md)
+§3.1; [`docs/ENDPOINT.md`](../docs/ENDPOINT.md) tenant update/deactivate.
 
 ## List / search endpoints are paginated
 

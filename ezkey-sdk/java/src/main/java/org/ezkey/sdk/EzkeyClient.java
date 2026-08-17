@@ -6,7 +6,7 @@
  *
  * SDK: EzkeyClient
  * Description: Main entry point for the Ezkey Java SDK. Provides API key (machine-to-machine)
- *              authentication operations using the Ezkey Admin API with API key credentials.
+ *              authentication operations using the Ezkey Integration API with API key credentials.
  */
 
 package org.ezkey.sdk;
@@ -26,8 +26,8 @@ import java.util.Objects;
 /**
  * Main entry point for the Ezkey Java SDK.
  *
- * <p>Provides machine-to-machine authentication operations against the Ezkey Admin API using API
- * key credentials (integration key + secret key) transmitted via HTTP Basic Auth.
+ * <p>Provides machine-to-machine authentication operations against the Ezkey Integration API using
+ * API key credentials (integration key + secret key) transmitted via HTTP Basic Auth.
  *
  * <p>This client is <strong>immutable</strong>, <strong>thread-safe</strong>, and designed to be
  * created once and reused. It uses {@link java.net.http.HttpClient} internally with zero external
@@ -170,7 +170,7 @@ public final class EzkeyClient {
   /**
    * Creates a new authentication attempt for the given enrollment.
    *
-   * <p>Sends a {@code POST /api/v1/auth-attempts} request to the Admin API.
+   * <p>Sends a {@code POST /api/v1/auth-attempts} request to the Integration API.
    *
    * @param enrollmentId the enrollment ID to authenticate
    * @param challengeRequested whether a challenge code should be generated
@@ -190,7 +190,7 @@ public final class EzkeyClient {
    * understands exactly what they are approving. All context fields are optional — passing {@code
    * null} is equivalent to calling {@link #createAuthAttempt(int, boolean)}.
    *
-   * <p>Sends a {@code POST /api/v1/auth-attempts} request to the Admin API.
+   * <p>Sends a {@code POST /api/v1/auth-attempts} request to the Integration API.
    *
    * @param enrollmentId the enrollment ID to authenticate
    * @param challengeRequested whether a challenge code should be generated
@@ -213,7 +213,7 @@ public final class EzkeyClient {
    * The API resolves the user identifier to an enrollment within that integration. Use this when
    * your application identifies users by username or user ID rather than enrollment ID.
    *
-   * <p>Sends a {@code POST /api/v1/auth-attempts} request to the Admin API with {@code
+   * <p>Sends a {@code POST /api/v1/auth-attempts} request to the Integration API with {@code
    * userIdentifier} in the body. Requires API key auth (integration key + secret); integration is
    * derived from the key.
    *
@@ -241,7 +241,7 @@ public final class EzkeyClient {
    * understands exactly what they are approving. All context fields are optional — passing {@code
    * null} is equivalent to calling {@link #createAuthAttemptByUserIdentifier(String, boolean)}.
    *
-   * <p>Sends a {@code POST /api/v1/auth-attempts} request to the Admin API with {@code
+   * <p>Sends a {@code POST /api/v1/auth-attempts} request to the Integration API with {@code
    * userIdentifier} in the body. Requires API key auth (integration key + secret); integration is
    * derived from the key.
    *
@@ -314,7 +314,7 @@ public final class EzkeyClient {
   /**
    * Waits for an authentication attempt to complete.
    *
-   * <p>Sends a {@code GET /api/v1/auth-attempts/{id}/wait} request to the Admin API. This is a
+   * <p>Sends a {@code GET /api/v1/auth-attempts/{id}/wait} request to the Integration API. This is a
    * long-polling request that blocks until the attempt is completed (approved/rejected/expired) or
    * the server-side timeout is reached.
    *
@@ -365,7 +365,7 @@ public final class EzkeyClient {
   /**
    * Cancels a pending authentication attempt.
    *
-   * <p>Sends a {@code POST /api/v1/auth-attempts/{id}/cancel} request to the Admin API. Only
+   * <p>Sends a {@code POST /api/v1/auth-attempts/{id}/cancel} request to the Integration API. Only
    * attempts in PENDING or READ status can be cancelled.
    *
    * @param authAttemptId the authentication attempt ID to cancel
@@ -596,7 +596,7 @@ public final class EzkeyClient {
     }
 
     /**
-     * Sets the Admin API base URL.
+     * Sets the Integration API base URL.
      *
      * @param paseUrl the base URL (e.g. {@code https://integration-api.example.com:7080})
      * @return this builder

@@ -2,7 +2,7 @@
 
 The Ezkey Admin **TUI** (`ezkey --tui`) is a **read-only investigation and audit fallback**. Use it when the web Admin UI is not available (e.g. SSH session, no browser) to consult audit logs and core entities.
 
-**Primary admin interface:** Use the **Admin UI** (web) for all day-to-day operations. The TUI is not a substitute; it is a narrow, read-only tool for occasional investigation.
+**Primary admin interface:** Use the **Admin UI** (web) for all day-to-day operations. The TUI is not a substitute; it is a narrow, read-only tool for occasional investigation. Entry is `ezkey --tui`. Do not add `ezkey-admin` (or a write-capable TUI) as a competing primary admin console.
 
 ## In-scope (read-only)
 

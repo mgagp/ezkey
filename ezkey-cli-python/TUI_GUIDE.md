@@ -23,7 +23,8 @@
 
 The Ezkey TUI is a **read-only** Text User Interface built with the Textual framework. It is an investigation and audit fallback when the web Admin UI is unavailable (e.g. SSH). **Primary admin interface:** Admin UI (web). See [TUI_SCOPE.md](TUI_SCOPE.md).
 
-**Entry command**: `ezkey --tui`
+**Entry command**: `ezkey --tui` (CLI `--help` still says “interactive admin console”; the TUI is
+read-only — [TUI_SCOPE.md](TUI_SCOPE.md)).
 
 ### Key Features (read-only)
 

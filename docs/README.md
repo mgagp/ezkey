@@ -25,6 +25,7 @@ If you are new to the repository, read these first:
 - [ENROLLMENT_SIGNATURE_PAYLOAD.md](ENROLLMENT_SIGNATURE_PAYLOAD.md): canonical enrollment bind/verify signature payload construction (what is signed, with what key, in what order).
 - [AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md): canonical auth-attempt pending/respond signature payload construction.
 - [LIFECYCLE_GOVERNANCE.md](LIFECYCLE_GOVERNANCE.md): entity hierarchy, eligibility chain, and reversible/irreversible action rules across all Ezkey domain entities.
+- [ALERTS.md](ALERTS.md): operator-facing `ezkey_alert` subsystem (raise/touch/resolve, types, Admin API).
 - [DEVELOPMENT.md](DEVELOPMENT.md): build, test, and development workflow.
 - [OPERATIONAL.md](OPERATIONAL.md): deployment, operations, and production posture.
 - [configuration/README.md](configuration/README.md): index for configuration properties and per-module configuration docs.

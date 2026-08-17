@@ -6,6 +6,10 @@ Ce document contient des observations et des points à réanalyser ou compléter
 **Date de création**: 2025-12-26  
 **Canon vivant**: [`ezkey-tests/reference/MULTI_TENANT.md`](../../ezkey-tests/reference/MULTI_TENANT.md), [`docs/ENDPOINT.md`](../ENDPOINT.md) § admins / audit
 
+`integrationLogo` / `integration_logo` in the notes below is **historical**. The logo column was
+removed (Flyway V7). Do not reintroduce it. Living integrations use name + description (+ `code`
+slug).
+
 ---
 
 ## 1. TenantAdmin ne peut pas lister les admins de son tenant
@@ -535,7 +539,8 @@ L'utilisateur recommande d'inclure l'information sur le tenant pour améliorer l
 
 2. **Structure de données (EnrollmentStoreService.Record)**:
    - Contient: `enrollmentId`, `integrationId`, `enrollmentName`
-   - Contient: `integrationName`, `integrationDescription`, `integrationLogo`
+   - Contient: `integrationName`, `integrationDescription` (historical notes also listed
+     `integrationLogo` — **removed**, Flyway V7; do not reintroduce)
    - **Ne contient pas**: `tenantId`, `tenantName`, `tenantDescription`
 
 3. **DTOs d'enrollment**:
@@ -639,8 +644,9 @@ Integration Description
 **Concept**: Badge tenant comme identité visuelle (équivalent du logo d'intégration)
 
 **Contexte actuel:**
-- Les intégrations ont un `integrationLogo` qui représente la différence entre applications (bancaire, administrative, etc.)
-- Le logo permet de distinguer visuellement les différentes intégrations
+- Historical: integrations once had `integrationLogo`. That column is gone (V7). Distinction is
+  name/description (and `code`), not a logo blob.
+- Living branding for applications is name + description, not a logo field.
 
 **Évolution proposée:**
 - **Badge tenant**: Équivalent du logo pour le tenant

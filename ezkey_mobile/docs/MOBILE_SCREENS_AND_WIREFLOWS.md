@@ -7,7 +7,7 @@ which actions it owns, and how navigation moves across enrollment and authentica
 screen implementations rather than an idealized future UX.
 
 It focuses on Home, Enrollment Wizard, Enrollment Detail, and Pending Authentication first, then captures the
-secondary Settings, About, Danger Zone, and Licenses screens in an appendix.
+secondary Settings, What's new, About, Danger Zone, and Licenses screens.
 
 ## Navigation Model Overview
 
@@ -17,6 +17,8 @@ flowchart TD
   Home --> EnrollmentDetail
   EnrollmentDetail --> PendingAuth
   Home --> Settings
+  Home -->|release banner| ReleaseNotes
+  Settings --> ReleaseNotes
   Settings --> About
   Settings --> Language
   Settings --> DangerZone
@@ -31,11 +33,12 @@ server context, and Pending Authentication owns polling plus approve/deny. The a
 
 | Screen | Purpose | Primary actions | Main dependencies | In primary flow? |
 | --- | --- | --- | --- | --- |
-| Home | List locally stored enrollments grouped by installation and tenant | Open enrollment, start enrollment wizard | `useEnrollments`, `useRefreshInstallationMetadata`, tenant grouping utilities | Yes |
+| Home | List locally stored enrollments grouped by installation and tenant; top-of-home release banner | Open enrollment, start enrollment wizard, open What's new | `useEnrollments`, `useRefreshInstallationMetadata`, tenant grouping utilities | Yes |
 | Enrollment Wizard | Bind and verify a new enrollment from QR payload | Scan QR, bind, enter challenge, complete enrollment | `enrollmentsApi`, `instanceInfoApi`, `cryptoService`, save mutation | Yes |
 | Enrollment Detail | Show selected enrollment identity, own auth polling entry, and surface the latest local response summary | Check pending | `useEnrollments`, navigation store, volatile recent-auth summary state | Yes |
 | Pending Authentication | Poll for pending auth, verify context, approve or deny | Check again, approve, deny | `authAttemptsApi`, `cryptoService`, payload builders | Yes |
-| Settings | Secondary navigation hub | Open About, Language, Security, Danger Zone, or Licenses | Navigation only | No |
+| Settings | Secondary navigation hub | Open What's new, About, Language, Security, Danger Zone, or Licenses | Navigation only | No |
+| What's new | Current experimental-release notes (bundled copy) | Open ezkey.org | i18n `releaseNotes.*` | No |
 | Security | Manage the local approval-confirmation preference | Switch between Standard and Confirm before approvals | `securityPreferenceStorage`, native device confirmation for downgrade protection | No |
 | About | Show app metadata and project link | Open `ezkey.org` | Native build timestamp, app info constants | No |
 | Danger Zone | Perform destructive local actions | Delete one enrollment, clear all local data | `useEnrollments`, delete mutation, storage clear-all | No |
@@ -57,6 +60,7 @@ Its structure emphasizes installation and tenant grouping so the user understand
 | Tenant section | Tenant name and optional description | Persisted enrollment tenant fields |
 | Enrollment card | Integration name, optional enrollment/device name, optional integration description | `StoredEnrollment` |
 | Empty state | Welcome message, one-line value proposition, QR hint card | Static copy |
+| Release banner | Always-on experimental-release card (eyebrow, title, body, Learn more) | Bundled i18n `home.releaseBanner*` — not dismissible |
 | Floating action button | Entry point to enrollment wizard | Static action |
 
 | User action | Effect | Next state/navigation |
@@ -65,6 +69,7 @@ Its structure emphasizes installation and tenant grouping so the user understand
 | Tap `Remove` on an unusable row | Confirmation, then deletes the broken enrollment locally | Stays on Home; row disappears |
 | Tap installation header | Toggle expansion of installation group | Stays on Home |
 | Tap `+` button | Start enrollment flow | Navigates to Enrollment Wizard |
+| Tap release banner | Open What's new | Navigates to ReleaseNotes |
 
 | State type | How it appears | User consequence |
 | --- | --- | --- |
@@ -199,11 +204,11 @@ for request context and respond submission, then returns control to Enrollment D
 | `installation.name` | Shown in installation headers | Not primary, but derived server shown optionally | Shown | Not normally shown except fallback identity context | No |
 | `installation.host` | Optional host hint in installation header | Optional server URL in info card | Optional host hint | No | No |
 | `tenantName` | Shown in grouping headers | Shown in info card after bind | Shown | Shown as fallback identity | Danger Zone shows a minimal tenant line |
-| `integrationName` | Shown on enrollment cards | Shown in info card after bind | Shown | Shown in enrollment box | Danger Zone row title |
+| `integrationName` | Shown on enrollment cards | Shown in info card after bind | Shown | Shown in enrollment box | Danger Zone context line; title fallback if no enrollment/device name |
 | `integrationDescription` | Shown on enrollment cards when present | Shown in info card | Not shown directly | No | No |
-| `enrollmentName` | Shown on cards when present | Shown in info card | Shown | No | No |
-| `createdAt` | Not shown | Not shown | Shown in meta line | No | No |
-| `lastActivityAt` | Not shown | Not shown | Shown in meta line | No | No |
+| `enrollmentName` | Shown on cards when present | Shown in info card | Shown | No | Danger Zone title (fallback: `deviceLabel`, then `integrationName`) |
+| `createdAt` | Not shown | Not shown | Shown in meta line | No | Danger Zone sort + recency fallback |
+| `lastActivityAt` | Not shown | Not shown | Shown in meta line | No | Danger Zone recency line |
 | Latest verified response summary | No | No | Shown when available | No | No |
 | `installation.authUrl` | Hidden | Optional server line during draft stage | Shown when custom server exists | Used for routing, not display | No |
 | `enrollmentProofToken` | Hidden | Hidden | Hidden | Hidden | Hidden |
@@ -227,6 +232,8 @@ flowchart TD
 ```mermaid
 flowchart TD
   Home --> Settings
+  Home -->|release banner| ReleaseNotes
+  Settings --> ReleaseNotes
   Settings --> About
   Settings --> Language
   Settings --> DangerZone

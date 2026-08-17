@@ -77,7 +77,8 @@ Base64URL without padding.
 Verifies an Ed25519 signature using a raw 32-byte public key encoded as Base64URL without
 padding.
 
-**Use Case**: Validate integration signatures from Auth API payloads in Bruno or Dart tests.
+**Use Case**: Validate integration signatures from Auth API payloads in Bruno. Experimental Dart
+helpers live in `ezkey_dart/` only — not a first-class `docs/` consumer.
 
 ### 7. Build Canonical EZKey Payload
 **POST** `/api/v1/crypto/payload-helper`
@@ -87,8 +88,8 @@ Builds canonical payload strings using the exact EZKey NFC and separator rules: 
 `enrollment-verify-device`, `enrollment-verify-result`), delegating to the same builders as
 `ezkey-core` (`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`).
 
-**Use Case**: Eliminate duplicated payload-building logic in Bruno and serve as an oracle for
-Dart interoperability tests.
+**Use Case**: Eliminate duplicated payload-building logic in Bruno and serve as a protocol oracle.
+Experimental Dart interop stays in `ezkey_dart/`.
 
 ### 8. Encrypt Plaintext Value
 **POST** `/api/v1/crypto/encrypt`

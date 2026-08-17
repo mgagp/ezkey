@@ -321,6 +321,13 @@ The shared `Dialog` component (`@/components/ui/dialog`) accepts `dismissible` (
 
 When a screen filters by time via Admin API `createdAfter` / `createdBefore` (or the same ISO pair for integrity windows), use shared **`DateRangeFilter`** (`@/components/ui/date-range-filter`) and **`date-range-presets`** (`@/lib/date-range-presets`). Resolve named presets (Today, Yesterday, Last 7/30 days rolling, etc.) in the UI only — do not invent backend period keywords. See existing call sites on Auth Attempts, Audit Logs, Encryption Keys, and **Re-encryption batches** (same Encryption Keys page; server filters + `usePaginatedFromOrval` — ops contract in [`docs/REENCRYPTION_OPERATIONS.md`](../docs/REENCRYPTION_OPERATIONS.md) §7).
 
+### Audit Integrity panel (gap declaration)
+
+Declare a gap only from a detected row in **Undeclared gaps for consultation**
+(justification only; no free-form dates or `anchorCheckpointId`). Expanding the
+panel auto-runs chain integrity over the selected range or a 7-day UI default.
+Canon: [`docs/AUDIT_LOG_INTEGRITY.md`](../docs/AUDIT_LOG_INTEGRITY.md) § Operator workflow.
+
 ## Docker Deployment
 
 Use **start.sh** to build and run the Admin UI in Docker. Keep this path **standalone**

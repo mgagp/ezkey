@@ -39,12 +39,16 @@ Once started, you can access:
 
 - **Admin API**: http://localhost:9080
 - **Auth API**: http://localhost:8080
+- **Integration API** (API-key / M2M): http://localhost:7080
 - **Crypto API**: http://localhost:9090
 - **Demo Device**: http://localhost:8083
+
+Ports and Caddy mappings: [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md).
 
 **API Documentation (Swagger UI):**
 - Admin API: http://localhost:9080/swagger-ui/index.html
 - Auth API: http://localhost:8080/swagger-ui/index.html
+- Integration API: http://localhost:7080/swagger-ui/index.html
 - Crypto API: http://localhost:9090/swagger-ui/index.html
 
 ## High Availability (HA) stack

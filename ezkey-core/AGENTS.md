@@ -10,6 +10,13 @@ For agents working in `ezkey-core/`.
 - **MapStruct** create→entity: ignore `id`, `createdAt`, `active` (etc.). Example: `IntegrationServiceMapper.toEntity`.
 - Do not add a generic `DefaultValueEntityListener`. Leave `EncryptionEntityListener` as-is.
 
+## At-rest encryption contract
+
+New encrypted fields and JPA listeners use `EncryptionOperations` via
+`EncryptionOperationsHolder`. Do not take a compile dependency on `EncryptionService` or
+`TinkKeyManager` from `ezkey-core` — those live in `ezkey-core-security`.
+`SensitiveDataHasher` stays in core (shared hash util).
+
 ## Admin enrollment FK naming
 
 Ezkey has one enrollment identifier. `ezkey_admin.enrollment_id` maps to `EzkeyAdmin.enrollment`.
@@ -56,6 +63,19 @@ invitation window only — not a post-`VERIFIED` MFA lifetime.
 Peripherals read the latest checkpoint vs UTC now via `AuditChainHeartbeatGuardService` (not a
 second clock). Fail-closed **503** on gated POSTs when the chain is stale. Keep `window-minutes`
 aligned across Admin, Auth, and Integration. Canon: `docs/AUDIT_LOG_INTEGRITY.md`.
+
+## Operator alerts
+
+Do not emit operator-facing signals as audit `EventType` rows. Use
+`AlertService.raiseOrTouch` / `resolveByDedupeKey` (`ezkey_alert`). Canon:
+`docs/ALERTS.md` (how to add a type, dedupe keys, resolution paths).
+
+## Audit log archive lifecycle
+
+Physical deletion is the last step of one checkpoint FSM
+(`ACTIVE → SEALED → [EXPORTED] → PURGEABLE → PURGED`). Auto-seal is the product path;
+`seal-archive` is exceptional. Policy: `CONFIGURATION.md` § Audit Log Archive. Operator
+endpoints: `docs/AUDIT_LOG_INTEGRITY.md`. External export remains `I-2026-06-28`.
 
 ## Audit EventType families
 
@@ -105,7 +125,10 @@ This dual validation ensures security is enforced at both application and databa
 `Integration` stores a single `name` and optional `description` on `ezkey_integration`
 (`integration_name`, `integration_description`). The historical child table
 `ezkey_integration_i18n` was backfilled and dropped in migration V7 — do not reintroduce a
-separate i18n entity or join table.
+separate i18n entity or join table. Do not reintroduce `integration_logo` or bind-response
+`integrationLogo`. `code` is the per-tenant unique slug (`^[a-zA-Z0-9_-]+$`); uniqueness is
+`(tenant_id, integration_code)`. Duplicate create returns 409. Same code in different tenants is
+allowed. `code` is set at create; there is no update-code API.
 
 Bind and admin flows read display text from those scalar columns via standard
 `integrationRepository.findById()`.

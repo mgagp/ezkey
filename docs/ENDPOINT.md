@@ -811,6 +811,35 @@ GET /api/v1/admin/integrations
 Authorization: Bearer ezkey_abc123def456...
 ```
 
+#### Create Integration
+
+**POST /api/v1/integrations**
+
+Creates an integration in the caller's tenant: Tenant Admin → that tenant; Global Admin → the
+system tenant. There is no `tenantId` on the create body. `code` is required: 2–100 characters,
+slug `^[a-zA-Z0-9_-]+$`, unique per tenant. `name` is required; `description` is optional. There is
+no API to change `code` after create. Same `code` in a different tenant is allowed.
+
+**Request:**
+```http
+POST /api/v1/integrations
+Authorization: Bearer ezkey_admin_token...
+Content-Type: application/json
+
+{
+  "code": "web-portal",
+  "name": "Web Portal",
+  "description": "Customer-facing portal"
+}
+```
+
+**Response (201 Created):** `Location: /api/v1/integrations/{id}` plus the created integration
+(including `code`). Duplicate `code` in the same tenant returns **409** Problem Detail
+(`IntegrationCodeAlreadyExistsException`). Invalid slug/blank fields return **400**. Creating under
+an inactive tenant returns **403**.
+
+Bruno: `bruno/integrations-admin/create.bru`.
+
 #### Search Integrations
 
 **GET /api/v1/integrations**
@@ -1636,6 +1665,41 @@ Authorization: Bearer ezkey_admin_token...
 - 404: Enrollment not found (or no access; existence is not revealed for cross-tenant)
 - 409: Enrollment cannot be deleted (RFC 9457 Problem Detail). Either it has authentication history (revoke instead) or it is linked as an administrator's MFA (use the recovery flow to reset that admin's MFA first).
 - 500: Internal server error
+
+#### Single enrollment lifecycle (deactivate / reactivate / revoke)
+
+Semantics: [`docs/LIFECYCLE_GOVERNANCE.md`](LIFECYCLE_GOVERNANCE.md) §3.3. Deactivate is the reversible
+on/off switch (`VERIFIED` + `active=false`). Revoke is irreversible (`REVOKED`). Do not collapse
+those into delete. Bulk variants live under the integration (`…/enrollments/deactivate-all`,
+`reactivate-all`, `revoke-all`).
+
+**POST /api/v1/enrollments/{id}/deactivate**
+
+Reversibly deactivates a `VERIFIED` enrollment. Optional query parameter `reason` (max 500).
+Self-deactivation of the caller's own MFA is forbidden. Admin MFA deactivation invalidates that
+admin's bearer tokens.
+
+**Response:** `204 No Content`. Typical errors: `400` (not eligible), `403` (self-guard / no
+access), `404`.
+
+**POST /api/v1/enrollments/{id}/reactivate**
+
+Restores a deactivated `VERIFIED` enrollment. Optional `reason` (max 500). Cannot reactivate
+`REVOKED` enrollments.
+
+**Response:** `204 No Content`. Typical errors: `400` (already active, revoked, or not `VERIFIED`),
+`403`, `404`.
+
+**POST /api/v1/enrollments/{id}/revoke**
+
+Permanently revokes the enrollment. Query parameter `reason` is **required** (min 10, max 500).
+Self-revocation of the caller's own MFA is forbidden. Admin MFA revocation invalidates that admin's
+bearer tokens.
+
+**Response:** `204 No Content`. Typical errors: `400`, `403` (self-guard / system integration),
+`404`.
+
+Bruno: `bruno/enrollments-admin/deactivate.bru`, `reactivate.bru`, `revoke.bru`.
 
 #### **Summary Table**
 

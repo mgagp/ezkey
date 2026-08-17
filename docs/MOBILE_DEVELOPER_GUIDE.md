@@ -626,7 +626,7 @@ Critical response fields:
 | `authAttemptId` | Attempt identifier | Persist until respond completes |
 | `authAttemptProofToken` | One-time attempt token | Use later when building the respond payload |
 | `authAttemptProofTokenSignedByIntegration` | Integration signature over the pending payload | Verify before trusting the response |
-| `authAttemptChallengeRequired` | Whether user must enter a challenge code | Drive UI and respond payload |
+| `authAttemptChallengeRequired` | Whether user must enter a challenge code (effective `policy OR` ad hoc request). Do not add a separate policy-disclosure field. | Drive UI and respond payload |
 | `contextTitle` / `contextMessage` | Context shown to the user | Normalize only for signature building, not for display rewrite |
 
 ### Canonical Pending Payload

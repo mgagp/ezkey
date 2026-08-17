@@ -942,7 +942,7 @@ function IntegrityPanel({
 
   /**
    * Compute the default 7-day lookback window used by the auto-run on expand.
-   * UI-side default; the backend policy belongs in a future slice (see plan).
+   * UI-side default; a backend lookback/cap is not shipped yet.
    */
   function defaultGapScanRange(): { from: string; to: string } {
     const now = new Date();
