@@ -50,10 +50,16 @@ mvn test -pl 'ezkey-auth-api,!ezkey-tests'
 `Integration` has flat `name` and `description` columns on `ezkey_integration` (V7 removed the
 historical `ezkey_integration_i18n` table). `EnrollmentBindService.loadIntegration()` uses
 standard `integrationRepository.findById()` — there is no i18n child collection to fetch.
+`POST /api/v1/enrollments/bind` accepts only `enrollmentId` and `enrollmentProofToken`. Do **not**
+reintroduce `language` on the bind body: there is no server-side locale negotiation, and unknown
+JSON properties are ignored (that recreates doc/client drift).
 
-For audit tenant resolution, `EnrollmentController.resolveTenantId()` uses the scalar projection
-`integrationRepository.findTenantIdByIntegrationId()` so no `Integration` entity is loaded into
-the persistence context in that path.
+For audit tenant resolution on bind/verify/pending/respond, controllers use
+`resolveTenantIdForAudit`: if the enrollment is an **admin MFA** enrollment, use the **admin’s
+tenant** (so Tenant Admins see onboarding/auth events for their peers); otherwise fall back to the
+integration’s tenant via `resolveTenantId()` / `findTenantIdByIntegrationId` (scalar projection —
+no full `Integration` load). Keep a **single** system integration for all admin MFA — do **not**
+invent per-tenant “system” integrations to fix audit visibility.
 
 ---
 
@@ -77,6 +83,12 @@ caught, logged, and re-thrown — the audit log is the primary observability mec
   key) marks the auth attempt as **INVALID** immediately. There is no failure counter or N-attempts
   retry; this is intentional (strict security posture). Rate limiting on `POST /api/v1/auth-attempts/respond`
   is per `authAttemptId` (from request body), default 1 request per 5 minutes.
-- The `EnrollmentController.resolveTenantId()` method resolves tenant context via
+- **Device UX for auth attempts:** Approve and Deny only (`POST /respond`). There is **no**
+  device-initiated cancel. Closing or ignoring the prompt leaves `PENDING`/`READ` until TTL; the
+  **Admin API** `AuthAttemptExpiryScheduler` persists `EXPIRED` (see `docs/ENDPOINT.md` cancel /
+  TTL notes and `ezkey.auth-attempt.expiry-scheduler.*`). Explicit cancel belongs to Admin /
+  Integration API callers.
+- The `EnrollmentController.resolveTenantId()` fallback uses
   `integrationRepository.findTenantIdByIntegrationId()` (scalar projection) — it does not load a
-  full `Integration` entity for audit enrichment.
+  full `Integration` entity. Prefer `resolveTenantIdForAudit` at audit call sites (admin MFA
+  tenant first).

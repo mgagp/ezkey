@@ -158,3 +158,23 @@ For the public `EXP1` hostnames, raw Springdoc routes are intentionally not the 
 - `/swagger-ui.html`
 
 The Lightsail `Caddyfile` blocks those routes on the public API hostnames so the intended public reference posture stays on `ezkey.org/api-docs.html` and the per-API portal pages.
+
+## Lab framing (not September release)
+
+EXP1 is a **controlled experimental lab**, not the September 2026 operable-release path. Audience:
+a small technical cohort, APK side-load, learning Cloudflare / Lightsail / Caddy / ops — not
+multi-region HA or Play distribution. Keep EXP1 facts in this folder. Do **not** fold hostnames,
+email templates, or database-topology debate into `docs/` or `docker/README.md`.
+
+**Topology in use:** Cloudflare (proxied) in front of a public Lightsail origin with Caddy TLS and
+trusted proxies. That is the filtered-origin path. A masked origin (dedicated tunnel) is not the
+current lab.
+
+**Data:** Postgres stays in the Lightsail Docker stack until backup/restore pain justifies a
+managed database.
+
+**Onboarding:** Do not revive “recovery-codes-first deferred enrollment.” Activation-code admin
+onboarding is the shipped path. Anonymous evaluator signup (empty tenant + activation code) is
+`I-2026-05-23` — keep that idea; do not fork a second enrollment story here.
+
+**Operator runbook:** this README + [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md).

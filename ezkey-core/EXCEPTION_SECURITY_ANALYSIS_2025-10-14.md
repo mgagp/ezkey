@@ -1,5 +1,10 @@
 # Exception Security Analysis - Ezkey
 
+> **Historical (2025-10-14).** Leakage posture below is still useful as intent. Handler samples
+> that return `ErrorResponseDto` are pre-migration — Admin/Auth/Integration APIs now return RFC
+> 9457 `ProblemDetail`. Living canon:
+> [`product-docs/components/admin-api/exception-and-error-model.md`](../product-docs/components/admin-api/exception-and-error-model.md).
+
 **Date:** October 14, 2025  
 **Purpose:** Security-focused analysis of exception handling  
 **Critical:** Ensure no information leakage through exception messages

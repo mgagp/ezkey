@@ -19,6 +19,7 @@ This document maps fields persisted on `ezkey_enrollment` to how they are expose
 | `integration_public_key`                     | Yes       | Yes                   | No                 | Cryptographic binding                              |
 | `device_public_key`                          | Yes       | Yes                   | No                 | Change implies rebind; revoke + create new enrollment |
 | `device_public_key_hash`                     | Yes       | No                    | No                 | Internal uniqueness                                |
+| `device_private_key_storage_tier`            | Yes       | Yes                   | No                 | Client-reported at verify (`NONE`/`STANDARD`/`STRONG`); not independently attested — see `docs/MOBILE_DEVELOPER_GUIDE.md` |
 | `created_at`                                 | Yes       | Yes                   | No                 | Audit / sorting                                    |
 | `expires_at`                                 | Yes       | Yes                   | Yes                | Invitation window; clear supported via PATCH       |
 | `verified_at`                                | Yes       | Yes                   | No                 | Set on verify                                      |

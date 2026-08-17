@@ -55,14 +55,14 @@ grill [`2026-06-28`](../../global/backlog/grill-sessions/2026-06-28-admin-dashbo
 | **expired** | Timed out? | `warning` if > 0, else `muted` | `status=EXPIRED&preset=rolling24h` |
 | Audit trail link | Forensic event stream (not row counts)? | accent link | `/audit-logs?eventType=AUTH_ATTEMPT&…` |
 
-**Posture:** statu quo (document only).
+**Posture:** status quo (document only).
 
 ## Auth health (24h) card
 
 Success / invalid / expired / denied rates over **terminal** outcomes in the same 24h window as auth attempts.
 Percentages hidden when no terminal outcomes exist.
 
-**Posture:** statu quo (document only).
+**Posture:** status quo (document only).
 
 ## Conditional surfaces (Global Admin)
 

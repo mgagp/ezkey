@@ -164,4 +164,6 @@ Deliver a repeatable **Android-first pilot** that proves the real backend-to-pho
 - Design + artifact contract: [`ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`](../../../ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md)
 - Maestro runbook: [`ezkey_mobile/maestro/README.md`](../../../ezkey_mobile/maestro/README.md)
 - GitHub: [#239](https://github.com/mgagp/ezkey/issues/239) (F1), [#254](https://github.com/mgagp/ezkey/issues/254) (F2a)
-- Incubation plan: [`.cursor/plans/ezkey_mobile_android_real_device_automation.plan.md`](../../../.cursor/plans/ezkey_mobile_android_real_device_automation.plan.md)
+- Incubation plan: deleted Cursor plan (materialized); see
+  [`ideas/I-2026-0019-android-real-device-mobile-functional-tests.md`](ideas/I-2026-0019-android-real-device-mobile-functional-tests.md),
+  [`ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`](../../../ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md)

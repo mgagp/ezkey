@@ -165,7 +165,7 @@ if (rs != null) {
 
 **Constat :** Le `deviceProofToken` est stocké en clair dans la colonne `auth_attempts.device_proof_token`. L'unicité est vérifiée via un hash SHA-256 (`existsByDeviceProofTokenHash()`), mais la valeur en clair est persistée simultanément.
 
-L'enrollment proof token, en comparaison, est stocké **uniquement par son hash** (`findByEnrollmentProofTokenHashAndActive`). Cette asymétrie crée un traitement inégal pour deux types de secrets similaires.
+L'enrollment proof token, en comparaison, est stocké **chiffré at-rest (Tink) plus hash** pour lookup (`findByEnrollmentProofTokenHashAndActive`) — voir ADR-0007 (hash-only enrollment est un Tier 1 différé, pas l'état actuel). L'asymétrie avec le device proof token (clair + hash à l'époque de ce constat) restait néanmoins réelle pour SEC-007.
 
 **Impact :** Si la table `auth_attempts` est exfiltrée (dump DB, accès compromis, backup exposé), les device proof tokens récents pourraient être réutilisés. Le TTL des auth attempts limite la fenêtre d'exploitation, mais les rows restent en base après traitement (jusqu'au nettoyage périodique).
 

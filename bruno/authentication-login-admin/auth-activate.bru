@@ -1,0 +1,59 @@
+meta {
+  name: auth activate
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admin/auth/activate
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "activationCode": "ezkey_activation_550e8400e29b41d4a716446655440000"
+  }
+}
+
+script:post-response {
+  test("Status code is 200, 400, or 403", function () {
+      expect([200, 400, 403]).to.include(res.getStatus());
+  });
+
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+
+      test("Activation response contains bind credentials", function () {
+          expect(jsonData).to.have.property('success');
+          expect(jsonData.success).to.be.true;
+          expect(jsonData).to.have.property('enrollmentId');
+          expect(jsonData).to.have.property('enrollmentProofToken');
+          expect(jsonData).to.have.property('enrollmentChallenge');
+      });
+
+      if (jsonData.enrollmentId !== undefined && jsonData.enrollmentId !== null) {
+          bru.setEnvVar("enrollmentId", jsonData.enrollmentId);
+      }
+      if (jsonData.enrollmentProofToken) {
+          bru.setEnvVar("enrollmentProofToken", jsonData.enrollmentProofToken);
+      }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Unauthenticated consume of a one-time onboarding activation code
+  (`onboardingMode = ACTIVATION_CODE`). Creates the first enrollment and returns bind credentials.
+
+  This is **not** `POST /api/v1/admins/{id}/activate` (operator reactivation of a deactivated
+  admin). It is also **not** recovery (`POST /recover`). Recovery codes are omitted from this
+  unauthenticated response.
+
+  Replace `activationCode` with a live unused code from Global Admin provisioning.
+
+  Canon: `docs/ENDPOINT.md` § POST /activate (First-time activation code).
+}

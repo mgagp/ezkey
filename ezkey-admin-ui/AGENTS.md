@@ -8,6 +8,8 @@ Web-based SPA for **EZKey administrators** — supports both **Global Admins** a
 The UI adapts dynamically based on the `adminType` returned at login: navigation items and
 features are shown or hidden accordingly.
 Calls the **Admin API** on port 9080. All tenant scoping is automatic via the bearer token.
+This is the **unified** Admin UI (`ezkey-admin-ui`, session key `ezkey_admin_auth`). Do **not**
+recreate `ezkey-tenant-ui` or `docker-compose.tenant-ui.yml`.
 
 
 ## Stack
@@ -17,9 +19,9 @@ Calls the **Admin API** on port 9080. All tenant scoping is automatic via the be
 - Tailwind CSS v4 — no `tailwind.config.ts`; all theme tokens in `src/index.css` under `@theme {}`
 - TanStack Query v5 — data fetching, caching, pagination
 - Orval **8.24.0** (exact pin) — OpenAPI → TanStack Query client (`npm run generate:api` → `src/generated/admin-api/`). Treat later minors as a new validation ladder (regenerate + build/test/lint). **`orval.config.ts` must not set global `useQuery` or `useMutation`** — Orval 8.10+ applies explicit globals to all HTTP verbs and breaks hook shapes; keep `query: { version: 5 }` only (verb-aware defaults: GET → query, mutations → `useMutation`). Migration history: [`product-docs/global/backlog/TB-2026-05-28-admin-ui-orval-upgrade.md`](../product-docs/global/backlog/TB-2026-05-28-admin-ui-orval-upgrade.md).
+- **OpenAPI spec:** `ezkey-admin-ui/openapi-spec.json` is **committed** (copied by `scripts/update-specs.sh`). `src/generated/` is gitignored — run `npm run generate:api` after a spec refresh. Prefer generated hooks / fetch functions over hand-written `api.get` / `api.post`. `@/lib/api-client` is the Orval mutator backbone plus `fetchBlobUrl` and session helpers (`fetchApi`, `ApiError`). No axios.
 - **Install scripts (npm v12 prep):** `package.json` `allowScripts` approves `esbuild@0.28.1` (Vite + Orval transitive dep; native binary postinstall). After dependency changes, run `npm approve-scripts --allow-scripts-pending` if npm warns about uncovered scripts.
 - React Hook Form + Zod — forms and validation
-- Fetch API — no axios; always use `api.*` from `@/lib/api-client`
 
 ## Path Alias
 
@@ -30,7 +32,8 @@ Calls the **Admin API** on port 9080. All tenant scoping is automatic via the be
 ```
 src/
   lib/
-    api-client.ts       Fetch wrapper: injects Bearer; 401 → redirect to /login only when the request used a session JWT (expired session). Unauthenticated calls (e.g. login with `requireAuth: false`) parse RFC 9457 body instead. getApiErrorMessage()
+    api-client.ts       Fetch wrapper: injects Bearer/credentials; on 401, session calls (`requireAuth` and no recovery `bearerToken`) clear local auth and `replace('/login')`. Login/public (`requireAuth: false`) and recovery `bearerToken` paths throw without redirect. getApiErrorMessage()
+    orval-mutator.ts    Orval custom fetch instance (delegates to fetchApi)
     api-error-i18n.ts   Maps ProblemDetail.type (https://ezkey.io/problems/...) to i18n keys under `errors` (Option B); getTranslatedApiError()
     auth.ts             sessionStorage session management (AuthSession)
     demo-mode.ts        Dev-only: isDemoMode flag and demo presets for create forms (stripped in production); locale-specific preset copy lives in `locales/*/demo.json` (e.g. Unicorn Farm FR/EN)
@@ -39,19 +42,19 @@ src/
     query-keys.ts       Canonical query key prefixes for list/entity caches (invalidateQueries)
     utils.ts            cn(), formatDate(), formatCountdown(), formatChallengeCode(), formatRelativeTime()
   types/
-    api.ts              PageResponse<T>, ProblemDetail, request/response DTOs
-    models.ts           Domain models: Integration, Enrollment, AuthAttempt, Admin, AuditLog, ApiKey
+    public-instance-info.ts  GET /public/instance-info (unauthenticated; not yet Orval)
+  generated/            gitignored — Orval output (`npm run generate:api`); import DTOs from `@/generated/admin-api/model`
   context/
     auth-context.tsx    AuthProvider + useAuth; clears QueryClient cache on logout
     demo-mode-context.tsx   DemoModeProvider + useDemoModeSession (session toggle when VITE_DEMO_MODE; stripped in production)
   hooks/
-    use-paginated-query.ts   usePaginatedQuery — Spring Data pagination (see Pattern B below)
+    use-paginated-orval.ts   usePaginatedFromOrval — Spring Data pagination (see Pattern B / Paginated list)
     use-debounce.ts          useDebounce — search input debouncing
     use-integrations.ts      useIntegrations — cached integration list + lookup map
   components/
     ui/                 Button, Input, Label, Card, Badge, Alert, Select, Dialog, Textarea
     layout/             AppShell, Sidebar, Header
-    data-table/         DataTable<T>, Pagination
+    data-table/         DataTable<T>, Pagination, PaginatedTable (top+bottom)
     feature/            EnrollmentStatusBadge, AuthAttemptStatusBadge, ReasonQuickPick, ReasonFieldRow (production reason/justification suggestions + shared min-length line; `locales/*/reasonPresets.json` includes phase-2 `encryption_key_rotate` + `audit_chain_justification`), DemoReasonBadges (demo-only)
   pages/                One file per route (see table above)
   routes.tsx            All routes, lazy imports, ProtectedRoute
@@ -88,42 +91,46 @@ The Admin API returns pagination metadata **nested** inside a `page` sub-object:
 }
 ```
 
-`usePaginatedQuery` handles this internally. **Never** access `data.totalElements` directly —
+`usePaginatedFromOrval` handles this internally. **Never** access `data.totalElements` directly —
 always go through `pagination.totalElements` from the hook, or `data?.page?.totalElements` in
-raw `useQuery` calls (e.g. dashboard stats).
+raw `useQuery` calls when you truly need a one-off page envelope.
+
+### Dashboard overview
+
+- Prefer `GET /api/v1/dashboard/overview` (Orval/query) for landing stats — do **not** reintroduce
+  parallel `size=1` list calls just to read `totalElements`.
+- Badge / headline / drilldown semantics:
+  [`product-docs/components/admin-ui/dashboard-widget-signal-model.md`](../product-docs/components/admin-ui/dashboard-widget-signal-model.md)
+  (`I-2026-0030`).
 
 ### Paginated list (standard pattern)
 
+Prefer **`usePaginatedFromOrval`** + **`PaginatedTable`** for operator lists (see
+[`docs/LIST_DATA_LOADING_DESIGN.md`](docs/LIST_DATA_LOADING_DESIGN.md)). `PaginatedTable` renders
+the same `<Pagination />` **above and below** the table. `Pagination` already uses icon+text,
+`aria-label`, and `Tooltip` from `common.pagination.*` — do not reintroduce bottom-only bars or
+icon-only controls without labels.
+
 ```ts
-const { data, pagination, isLoading, refetch } = usePaginatedQuery<Integration>({
+const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<Integration, …>({
   queryKey: ['integrations', filter],
-  queryFn: ({ page, size, sort }) =>
-    api.get<PageResponse<Integration>>(`/api/v1/integrations?page=${page}&size=${size}&sort=${sort}`),
+  // … Orval list fn + params — see LIST_DATA_LOADING_DESIGN.md
 });
 ```
 
 ```tsx
-<DataTable
+<PaginatedTable
   columns={columns}
   data={data}
   isLoading={isLoading}
-  currentSort={pagination.sort}        // enables active sort indicator
-  onSort={pagination.setSort}          // wires column header clicks
-/>
-<Pagination
-  page={pagination.page}
-  totalPages={pagination.totalPages}
-  totalElements={pagination.totalElements}
-  isFirst={pagination.isFirst}
-  isLast={pagination.isLast}
-  onFirstPage={pagination.firstPage}
-  onLastPage={pagination.lastPage}
-  onPrevPage={pagination.prevPage}
-  onNextPage={pagination.nextPage}
-  pageSize={pagination.size}           // shows size selector (10/20/50/100)
-  onPageSizeChange={pagination.setPageSize}
+  currentSort={pagination.sort}
+  onSort={pagination.setSort}
+  pagination={pagination}
 />
 ```
+
+Use raw `<DataTable />` + `<Pagination />` only for special layouts (e.g. dual controls already
+composed by hand). Default new list screens to `PaginatedTable`.
 
 ### Sortable columns
 
@@ -142,7 +149,7 @@ const columns: ColumnDef<Integration>[] = [
 
 ### Paginated lists: sort is always server-side
 
-For any screen that uses a **paginated** list API (e.g. `usePaginatedFromOrval` + `listTenants`, `search` integrations, etc.), **sort must be sent to the backend**. The API accepts a `sort` parameter and returns the current page of the **globally** ordered result set. Do **not** implement client-side-only sort (e.g. sorting only the current page in memory): that would reorder just the visible segment and mislead users who assume "sort by name" applies to the full list. Wire `currentSort` and `onSort` from the pagination hook to `DataTable` so that clicking a sortable column triggers a new request with the updated `sort` param. If the backend does not support sort for a given list, do not add a `sortKey` to that column.
+For any screen that uses a **paginated** list API (e.g. `usePaginatedFromOrval` + `listTenants`, `search` integrations, etc.), **sort must be sent to the backend**. The API accepts a `sort` parameter and returns the current page of the **globally** ordered result set. Do **not** implement client-side-only sort (e.g. sorting only the current page in memory): that would reorder just the visible segment and mislead users who assume "sort by name" applies to the full list. Wire `currentSort` and `onSort` from the pagination hook into **`PaginatedTable`** (or `DataTable` if composing manually) so that clicking a sortable column triggers a new request with the updated `sort` param. If the backend does not support sort for a given list, do not add a `sortKey` to that column.
 
 Clicking a new column sorts DESC by default; clicking the same column toggles ASC ↔ DESC.
 The active column shows `↑` (ASC) or `↓` (DESC); inactive sortable columns show `⇅`.
@@ -159,12 +166,36 @@ Authoritative eligibility matrix:
 **Icon + tooltip** when space is tight and intent is unambiguous (revoke); **labeled button** when
 wording disambiguates reversible suspend (deactivate).
 
+### Detail Danger Zone
+
+Enrollment and integration **detail** pages carry a Danger Zone for lifecycle actions (deactivate /
+reactivate / revoke / retire / delete). Reuse that pattern: `ReasonFieldRow` (min 10 characters),
+success **toast**, eligibility from [`docs/LIFECYCLE_GOVERNANCE.md`](../docs/LIFECYCLE_GOVERNANCE.md).
+Optional vs required `reason` / `justification`, length rules, and preset groups:
+[`docs/AUDIT_REASON_AND_JUSTIFICATION_UI.md`](../docs/AUDIT_REASON_AND_JUSTIFICATION_UI.md).
+Do **not** use GitHub-style “type the name to confirm”. After a detail mutation, invalidate with the
+**generated query key factory**, not a custom `['enrollment', id]` key (see § Detail refresh).
+
+Show `OperationalWarning` only when the entity’s own status looks healthy and `operational === false`
+(parent chain degraded). Never on tenant (redundant with `active`). Integration: `ACTIVE` + not
+operational. Enrollment: `VERIFIED` + active + not operational. API key: active, not revoked/expired,
+not operational. Tenant Admin: active + not operational. Operator canon:
+[`docs/LIFECYCLE_GOVERNANCE.md`](../docs/LIFECYCLE_GOVERNANCE.md).
+
+### Related audits (investigation, not FK navigation)
+
+Enrollment, integration, and auth-attempt **detail** expose **View related audits**. That opens
+`/audit-logs` with the entity id (`enrollmentId` / `integrationId` / `authAttemptId`) and a rolling
+time window — it is **not** structural FK “related details” navigation. On that contextual audit
+view, **Expand context** is a bounded zoom-out (24h → 48h), not a general search. Do not add the
+same entry on tenant, admin, API key, or encryption-key detail unless product funds it.
+
 ### List refresh after mutations
 
 After a successful create/edit/delete that affects a list, **invalidate that list's query key** so the list refetches and stays in sync. Use the **same key** as the list query so `invalidateQueries` targets the right cache.
 
-- **Orval-generated list hooks** (e.g. tenants): use the **generated query key factory** in invalidations (e.g. `getListTenantsQueryKey()` from `@/generated/admin-api/tenants/tenants`). Orval uses path-based keys (e.g. `['/api/v1/tenants']`); invalidating `['tenants']` does not match and the list will not refresh.
-- **usePaginatedFromOrval / useQuery with custom key**: use the same prefix you pass as `queryKey` (e.g. `['integrations']`, `['enrollments']`). You can use `queryKeys` from `@/lib/query-keys` for consistency.
+- **usePaginatedFromOrval / useQuery with custom key** (standard for operator lists, including tenants): use the same prefix you pass as `queryKey` (e.g. `['tenants']`, `['integrations']`, `['enrollments']`). You can use `queryKeys` from `@/lib/query-keys` for consistency.
+- **Raw Orval-generated list hooks** (rare; path-based keys such as `['/api/v1/…']`): invalidate with the **generated query key factory** from the same module. Invalidating a short custom prefix like `['tenants']` will not match Orval's path key. Operator lists should use `usePaginatedFromOrval` instead — see `docs/LIST_DATA_LOADING_DESIGN.md`.
 - **Optional**: `await queryClient.invalidateQueries(...)` in mutation `onSuccess` so the mutation stays pending until the list refetch completes; the dialog can then close with the list already updated.
 
 ### Detail refresh after mutations
@@ -180,7 +211,29 @@ After a mutation that changes the current entity on a **detail** page (e.g. deac
 4. One long-running `POST /api/v1/admin/auth/passwordless-wait` — resolves when device responds
 5. `AbortController` + `finalStatusRef` guard against race conditions on success/expiry
 
-The login form also offers an optional **pin toggle** beside the username field (tooltip + `aria-pressed`) for remembering the username on this device — see `last-username-pref.ts` and `login.tsx`.
+The login form also offers an optional **pin toggle** beside the username field (tooltip + `aria-pressed`) for remembering the username on this device — see `last-username-pref.ts`, `login.tsx`, and [`docs/admin-ui-security.md`](../docs/admin-ui-security.md) § Last username preference.
+
+### Recovery funnel (login page)
+
+Recovery codes are a **secondary** path on `/login` (`LoginRecoverySection`), not a full admin session. Flow: `POST /api/v1/admin/auth/recover` → temporary `ezkey_recovery_*` token → `POST /api/v1/admin/enrollments/reset` → bind new device → normal passwordless login. Canon: [`docs/ADMIN_UI_RECOVERY.md`](../docs/ADMIN_UI_RECOVERY.md). Do not treat the recovery token as a console bearer.
+
+### Activation (login page)
+
+Deferred onboarding is a **separate** secondary path (`LoginActivationSection` →
+`POST /api/v1/admin/auth/activate`). Do not reuse recover/reset for first-time setup. The activate
+response returns first-enrollment bind material and omits recovery codes. Canon:
+[`docs/LIFECYCLE_GOVERNANCE.md`](../docs/LIFECYCLE_GOVERNANCE.md) §3.5 and `docs/ENDPOINT.md`
+§ POST /activate.
+
+### Instance branding (public instance-info)
+
+Login, sidebar, and header About use unauthenticated `GET /api/v1/public/instance-info`
+(`usePublicInstanceInfo`) — `instanceName`, `instanceDescription`, `aboutUrl`,
+`authApiPublicBaseUrl` from `ezkey.organization.*` / `ezkey.qr.auth-base-url`. Bootstrap applies
+organization name/description to system tenant/integration display names (flags identify system
+rows, not the literal `"Ezkey System"`). Client-generated recovery QR must keep
+`VITE_QR_AUTH_BASE_URL` aligned with server `ezkey.qr.auth-base-url` — see
+[`docs/ADMIN_UI_RECOVERY.md`](../docs/ADMIN_UI_RECOVERY.md).
 
 ### Role-based feature gating
 
@@ -191,6 +244,20 @@ const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
 {isGlobalAdmin && r.active && <Button ...>Deactivate</Button>}
 ```
 
+### Create administrator (tenant assignment)
+
+- **Global Admin → Tenant Admin:** the Create Admin dialog must require a **tenant** selector and
+  send `tenantId` on `POST /api/v1/admins/tenant`. Exclude the **system tenant**
+  (`isSystemTenant`). If no eligible tenants exist, show create-tenant guidance and disable submit.
+- **Tenant Admin → peer:** do **not** show a tenant selector; omit `tenantId` so the API uses the
+  session tenant.
+- **Deep link:** tenant detail can open `/admins?tenantId=…&createTenantAdmin=1` to prefill.
+- **Onboarding mode:** `IMMEDIATE` (default — first enrollment now) vs `ACTIVATION_CODE`
+  (`PENDING_ACTIVATION`; operator transmits the code). Do not collapse activation into recovery.
+- **MFA enrollment id:** list/get/update admin responses include `enrollmentId` (passwordless
+  identity FK — not a secret). Admin detail links via `EnrollmentFkLink` to `/enrollments/{id}`;
+  `GET` enrollment still goes through access control.
+
 ### Test Authentication (enrollment-detail pattern)
 
 Trigger a live auth attempt for a VERIFIED enrollment to confirm device binding:
@@ -198,6 +265,14 @@ Trigger a live auth attempt for a VERIFIED enrollment to confirm device binding:
 2. Poll `GET /api/v1/auth-attempts/{id}` every 3s with `refetchInterval`
 3. Polling stops on final status: `ACCEPTED | REJECTED | EXPIRED | INVALID`
 4. Cancel via `POST /api/v1/auth-attempts/{id}/cancel`
+
+### Enrollment detail / metadata vs lifecycle
+
+Attribute inventory (what GET shows, what PATCH may edit, what stays workflow-bound):
+[`docs/ENROLLMENT_ADMIN_UI_ATTRIBUTE_MATRIX.md`](../docs/ENROLLMENT_ADMIN_UI_ATTRIBUTE_MATRIX.md).
+Non-admin device replacement is **revoke + create** a new enrollment — no dedicated rebind API
+([`docs/ENROLLMENT_WORKFLOW_GAPS.md`](../docs/ENROLLMENT_WORKFLOW_GAPS.md)). Do not expand PATCH into
+crypto/lifecycle fields.
 
 ### Logout
 
@@ -207,9 +282,10 @@ prevents stale data from a previous user appearing on the next login.
 ### Adding a new screen
 
 1. Create `src/pages/my-screen.tsx` → `export default function MyScreenPage()`
-2. Wrap content in `<AppShell title="Screen Name">`
+2. Wrap content in `<AppShell title="Screen Name">`. Detail pages pass `breadcrumb`
+   (e.g. `{ label, path }[]` back to the list) — see tenants, integrations, enrollments.
 3. Add a lazy route in `routes.tsx`
-4. Use `usePaginatedQuery` + `DataTable` + `Pagination` for list views
+4. For list views: `usePaginatedFromOrval` + `PaginatedTable` (see § Paginated list)
 
 ### Tier A list conventions (ID column + cross-links)
 
@@ -218,6 +294,16 @@ Canonical matrix: [`product-docs/global/admin-ui-paginated-screens-matrix.md`](.
 - **ID first:** bounded Tier A paginated lists show the entity primary key as the **first column** (`font-mono text-xs`, server `sortKey` when supported).
 - **Labels alongside ID:** join-enriched names (tenant, integration, username) live in their business columns; they do not replace the ID column.
 - **Administrator links:** there is **no** `/admins/:id` route. Detail opens on `/admins` with `?adminId=`. Use `adminListDetailHref(id)` from `@/lib/list-detail-navigation` for every cross-screen link to an admin (audit logs, enrollment detail, tenant embedded list, etc.).
+- **Global-scope tenant label:** when `tenantId` / `tenantName` are null, show `list.tenantPlatform` (“Platform”). Do not invent “Unknown tenant”.
+- **FK name links:** use `AdminFkLink` / `EnrollmentFkLink` from `@/components/feature/fk-detail-links` (join-enriched name + ID). Do **not** reintroduce a lazy “More details” expand that GET-by-id duplicates already-enriched list/detail payloads.
+
+### Prev/Next detail navigation
+
+When opening detail from a list (investigation / sequential review), reuse the shared pattern — do not invent ad-hoc arrow handlers:
+
+- **Modals:** `useDetailNavigation` (←/→ when focus is not in an editable field) + header chevrons (`DetailDialogHeaderNav` where used). Scope is the **current page** of results.
+- **Full-page detail:** pass list context via `buildListDetailNavState` / `list-detail-navigation`; consume with `useListDetailPageNavigation` + `DetailPageNav`.
+- **Audit detail stability** (fixed field heights, FK button reserve, `lg-wide`): [`docs/admin-ui/DETAIL_DIALOG_STABLE_LAYOUT.md`](../docs/admin-ui/DETAIL_DIALOG_STABLE_LAYOUT.md).
 
 ### Dialog (modal) — dismissible
 
@@ -231,9 +317,22 @@ The shared `Dialog` component (`@/components/ui/dialog`) accepts `dismissible` (
 - **List toolbar:** The primary action (Create, New, Rotate Key, etc.) is always on the **right**. Put filters, search, and Refresh on the left; use `ml-auto` on the primary action button (or a right group with `justify-between`) so it stays right-aligned.
 - **Dialogs:** Cancel (or secondary) on the left, primary Submit/Create on the right. Use `flex justify-end gap-2` (or `justify-end pt-2`) for dialog footers.
 
+### Date range filters (list / integrity)
+
+When a screen filters by time via Admin API `createdAfter` / `createdBefore` (or the same ISO pair for integrity windows), use shared **`DateRangeFilter`** (`@/components/ui/date-range-filter`) and **`date-range-presets`** (`@/lib/date-range-presets`). Resolve named presets (Today, Yesterday, Last 7/30 days rolling, etc.) in the UI only — do not invent backend period keywords. See existing call sites on Auth Attempts, Audit Logs, Encryption Keys, and **Re-encryption batches** (same Encryption Keys page; server filters + `usePaginatedFromOrval` — ops contract in [`docs/REENCRYPTION_OPERATIONS.md`](../docs/REENCRYPTION_OPERATIONS.md) §7).
+
+### Audit Integrity panel (gap declaration)
+
+Declare a gap only from a detected row in **Undeclared gaps for consultation**
+(justification only; no free-form dates or `anchorCheckpointId`). Expanding the
+panel auto-runs chain integrity over the selected range or a 7-day UI default.
+Canon: [`docs/AUDIT_LOG_INTEGRITY.md`](../docs/AUDIT_LOG_INTEGRITY.md) § Operator workflow.
+
 ## Docker Deployment
 
-Use **start.sh** to build and run the Admin UI in Docker:
+Use **start.sh** to build and run the Admin UI in Docker. Keep this path **standalone**
+(`docker-compose.admin-ui.yml` + `docker/Dockerfile`) — do **not** fold the Node/Vite build into
+the main Java `docker/docker-compose.yml` / daily `clean-start` (would slow every backend cycle).
 
 ```bash
 ./start.sh                    # Test/QA build (demo mode on), http://localhost:3090
@@ -263,6 +362,8 @@ Use **start.sh** to build and run the Admin UI in Docker:
   - start the EZKey backend stack with `clean-start`
   - use the pre-seeded **Demo Device** on `http://localhost:8083`
   - run the Admin UI either with `npm run dev` or `./start.sh`
+  - `EZKEY_DEMO_DEVICE_TEST_ENROLLMENT_ID` selects a Demo Device row when multiple enrollments exist
+    (matches `data-enrollment-id` on the home list)
 - Preferred commands:
   - Local dev path: `./scripts/run-ui-tests.sh` (runs `npm run test:browser:install` for Chromium first)
   - Docker-only QA path: `./scripts/run-ui-tests-docker.sh`
@@ -289,6 +390,9 @@ Use **start.sh** to build and run the Admin UI in Docker:
 - **Campaign decision notes (HITL):** `product-docs/global/hygiene/react-doctor/` (template + dated pass instances). Do **not** invent `I-*` / `TB-*` / GitHub issues per finding.
 - Default commands from `ezkey-admin-ui/`:
   - `npm run doctor:curated`
+  - `npm run lint:diagnostics` — `eslint . --format stylish` for compact triage. Do not rely on
+    `npm run lint -- --format` (npm may consume `--format`).
+- Do not declare helper components inside render functions (`react-hooks/static-components`).
 - Output lives under `logs/react-doctor/`:
   - `react-doctor.raw.json` — full raw tool output
   - `react-doctor.curated.json` — filtered summary for follow-up analysis
@@ -374,7 +478,8 @@ Agents using the embedded browser tools should mirror the **same sequencing as P
 
 - **Daily dev:** `npm run dev` — Vite HMR; **not** the same HTTP header surface as Caddy.
 - **QA / prod-like:** `./start.sh` — **Caddy** (`docker/Caddyfile`) enforces **CSP** and other headers on the built SPA.
-- **Full write-up** (two-path model, `clean-start` + Caddy default, split UI/API, mkcert, future HttpOnly cookies): [`docs/admin-ui-security.md`](../docs/admin-ui-security.md)
+- **Full write-up** (two-path model, `clean-start` + Caddy default, split UI/API, mkcert, Mode A Bearer vs Mode B HttpOnly cookie): [`docs/admin-ui-security.md`](../docs/admin-ui-security.md)
+- **Mode B (cookie builds):** after refresh, restore via `GET /api/v1/admin/auth/me` (`auth-context`); opaque token stays HttpOnly — never put it in JS storage. `fetchApi` sends `credentials: 'include'` and `X-CSRF-TOKEN` on unsafe methods; Bearer/recovery paths remain. Do not weaken that split.
 - **How to validate** (DevTools, `curl`, first-session checklist): [`docs/admin-ui-security-validation.md`](../docs/admin-ui-security-validation.md)
 
 ## Developer/Demo mode
@@ -382,6 +487,7 @@ Agents using the embedded browser tools should mirror the **same sequencing as P
 - **Dev-only:** When `VITE_DEMO_MODE=true` (e.g. in `.env.development`), the UI can show "Fill demo" controls in create dialogs (tenant, integration, enrollment, admin) and allow Ctrl+click on the sidebar brand to toggle a session-level demo indicator.
 - **Production stripping:** All demo-mode code and preset data are **removed** from production builds. In `vite.config.ts`, production builds use `define: { 'import.meta.env.VITE_DEMO_MODE': '"false"' }`, so any branch guarded by `isDemoMode` (or `import.meta.env.VITE_DEMO_MODE === 'true'`) is dead code and tree-shaken. Do not rely on runtime checks for demo features; use the compile-time flag so production bundles never contain demo logic or strings.
 - **Presets:** `src/lib/demo-mode.ts` exports `isDemoMode` and typed preset arrays; they are only referenced from components that render when `isDemoMode && sessionDemoOn`, so they are eliminated in production.
+- **Form placeholder theme:** Create-form example values (i18n `*Placeholder` keys) use the light **Garage du coin** thematic — tenant/org examples and `garageducoin.ca`; admins/enrollments use **Marie Dupont**. Prefer names and brand hints only (no long “luxury garage” copy). Do not reintroduce Acme-style placeholders; match existing `locales/*/tenants|admins|enrollments.json` and `demo-mode.ts`.
 
 ## Contextual help
 
@@ -389,6 +495,7 @@ Agents using the embedded browser tools should mirror the **same sequencing as P
 - **Topics:** `HelpTopicId` and `resolveHelpTopicId()` live in `src/lib/help-topics.ts`. Copy is in the **`help`** i18n namespace (`src/locales/en/help.json`, `src/locales/fr/help.json`) under `topics.<id>.*` — **strict FR+EN parity** for every key you add.
 - **UI:** Header includes a help icon; optional `HelpInlineButton` on specific pages (e.g. integrations list). Use `useHelp()` for `openHelp` / `closeHelp`.
 - **Demo-only paragraphs:** optional `demoExtra` per topic; shown only when demo mode is on and the string is non-empty.
+- **Three help surfaces:** hover `Tooltip` (`components/ui/tooltip.tsx`) for one-sentence domain terms; click `ContextHelp` for short section concepts; `HelpDrawer` for topic-scale guidance. Explain Ezkey vocabulary (statuses, HMAC, key tiers) — not standard UI labels or labeled buttons. Tooltip/ContextHelp strings live in locale namespaces (`*help*` / `help.*` keys), same FR+EN parity rule.
 
 ## Visual Identity: Neo-Brutalism (subtle)
 
@@ -406,7 +513,7 @@ Agents using the embedded browser tools should mirror the **same sequencing as P
 ## Naming Conventions
 
 - Components: PascalCase (`AppShell`, `DataTable`)
-- Hooks: `use-*` file → `use*` export (`use-paginated-query.ts` → `usePaginatedQuery`)
+- Hooks: `use-*` file → `use*` export (`use-paginated-orval.ts` → `usePaginatedFromOrval`)
 - Pages: kebab-case file, PascalCase default export (`login.tsx` → `LoginPage`)
 - API field names: camelCase matching backend DTOs exactly
 
@@ -418,4 +525,11 @@ Agents using the embedded browser tools should mirror the **same sequencing as P
 - Token in `sessionStorage` only (never `localStorage`). Optional **remember username** on the login page may store the username string in `localStorage` (`ezkey_admin_username_pref`); see `docs/admin-ui-security.md`.
 - `nonBlocking: true` always on login requests
 - Challenge codes always zero-padded to 2 digits via `formatChallengeCode()`
+- Phone fields: normalize with `@/lib/phone-number` (`normalizePhoneNumberInput`). Displayed phone
+  is contact metadata, not a verified possession factor.
+- API timestamps stay UTC. Display via `useDisplayTimezone` / `@/lib/display-timezone-resolver`
+  (`local` | `tenant`). Formatters and date-range filters must share the same resolved zone. Do not
+  add a login-time timezone prompt.
+- Audit/chain investigation timestamps use `formatDateWithTimezone` as primary; relative age is
+  secondary muted text only. Do not revert the Time column to relative-only.
 - Every authenticated page wrapped in `<AppShell title="...">`

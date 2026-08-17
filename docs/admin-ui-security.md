@@ -44,7 +44,7 @@ This document implements the operational guidance from the security hardening pl
 - **XSS**: Any script running in the page origin can read `sessionStorage`. **CSP** and safe rendering (React, no unsafe HTML) are the primary mitigations. **Mode B** removes the session secret from JS, reducing XSS token theft when correctly deployed over **HTTPS** with **`Secure`** cookies.
 - **CSRF**: Mode A (Bearer only) avoids classic cross-site cookie CSRF. Mode B uses **`SameSite=Strict`** by default, strict CORS origins, and a signed double-submit CSRF token for unsafe cookie-authenticated requests.
 
-## Session navigateur (cookie HttpOnly) — résumé technique
+## Browser session (HttpOnly cookie) — technical summary
 
 - Cookie **host-only** on the API hostname (default when issuing from `Set-Cookie` without a `Domain` attribute). Avoid widening to `Domain=.ezkey.org` unless there is a clear requirement.
 - **`SameSite=Strict`** by default: appropriate for the production split deployment where the Admin UI and Admin API are same-site subdomains under `ezkey.org`; change only if a documented deployment needs a looser policy.

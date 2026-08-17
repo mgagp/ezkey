@@ -1,5 +1,11 @@
 # Single Synthesis: Admin API Exception Handling (RFC 9457)
 
+> **Historical (Feb 2026).** Dual `ErrorResponseDto` / `ProblemDetail` coexistence described below
+> is **shipped past**. Admin API 4xx/5xx are RFC 9457 `ProblemDetail` (`AdminApiProblemCatalog`).
+> Living canon: [`product-docs/components/admin-api/exception-and-error-model.md`](../product-docs/components/admin-api/exception-and-error-model.md),
+> [`docs/admin-ui-admin-api-error-inventory.md`](admin-ui-admin-api-error-inventory.md). Do not treat
+> the “current state” or Phase 0 steps below as open work.
+
 **Date:** 2026-02-12
 **Scope:** Admin API only (Auth API excluded, no RFC 9457 in Auth API)
 **Goal:** One clear, pragmatic, actionable document.

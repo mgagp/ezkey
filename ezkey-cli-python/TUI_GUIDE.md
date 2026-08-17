@@ -23,7 +23,8 @@
 
 The Ezkey TUI is a **read-only** Text User Interface built with the Textual framework. It is an investigation and audit fallback when the web Admin UI is unavailable (e.g. SSH). **Primary admin interface:** Admin UI (web). See [TUI_SCOPE.md](TUI_SCOPE.md).
 
-**Entry command**: `ezkey --tui`
+**Entry command**: `ezkey --tui` (CLI `--help` still says “interactive admin console”; the TUI is
+read-only — [TUI_SCOPE.md](TUI_SCOPE.md)).
 
 ### Key Features (read-only)
 
@@ -266,20 +267,22 @@ Press 'c' → Modal form wizard → Submit or Esc to cancel
   "username": "admin",
   "organization": "My Organization",
   "admin_url": "https://localhost:9080",
-  "access_token": "eyJhbG...",
-  "refresh_token": "ref_...",
+  "token": "ezkey_...",
   "expiration": "2026-01-31T12:00:00Z",
   "created_at": "2026-01-30T10:00:00Z"
 }
 ```
 
+Admin sessions are a **single opaque** DB-backed token (sliding TTL). There is no OAuth
+Access/Refresh pair and no JWT. QUIT should keep the local token; LOGOUT should call `/logout`
+and clear local storage.
+
 ### Authentication Layer
 
 **AuthManager** (`auth/auth_manager.py`):
-- Passwordless authentication flows
-- Token refresh logic with background refresh
-- Session creation from auth response
-- Methods: `start_passwordless_auth()`, `wait_for_auth()`, `refresh_token()`, `get_valid_token()`, `logout()`
+- Passwordless authentication flows (`login`, `wait_for_challenge`)
+- Session creation from the auth response (`token`, not JWT / refresh)
+- Methods: `login()`, `wait_for_challenge()`, `logout()` (logout is a no-op; callers clear the local token)
 
 **LoginWizard** (`auth/login_wizard.py`):
 - Interactive first-run setup
@@ -399,7 +402,7 @@ FilterModal opens with current filters
 Press 'd' on Detail Screen
          │
          ▼
-Extract integration name from i18n
+Extract integration name
          │
          ▼
 ConfirmationModal opens
@@ -431,20 +434,16 @@ Content-Type: application/json
 Authorization: Bearer {token}
 
 {
-  "i18n": [
-    {
-      "language": "en",
-      "name": "Integration Name",
-      "description": "Integration Description"
-    }
-  ],
+  "code": "my-integration",
+  "name": "Integration Name",
+  "description": "Integration Description",
   "logo": "https://example.com/logo.png"
 }
 ```
 
 **Get Integrations (with filters):**
 ```
-GET /api/v1/integrations?page=0&size=25&integrationName=ACME&active=true
+GET /api/v1/integrations?page=0&size=25&integrationName=ACME&lifecycleStatus=ACTIVE
 Authorization: Bearer {token}
 ```
 

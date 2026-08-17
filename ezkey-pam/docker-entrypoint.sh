@@ -17,14 +17,14 @@ for key_type in rsa ecdsa ed25519; do
     fi
 done
 
-# Validate that M2M credentials are provided
+# Validate that Integration API credentials are provided
 if [ -z "$EZKEY_INTEGRATION_KEY" ] || [ -z "$EZKEY_SECRET_KEY" ]; then
     echo "[entrypoint] WARNING: EZKEY_INTEGRATION_KEY or EZKEY_SECRET_KEY is not set."
     echo "[entrypoint] SSH PAM authentication will fail until credentials are provided."
 fi
 
 echo "[entrypoint] Ezkey PAM container ready."
-echo "[entrypoint] M2M API URL: ${EZKEY_M2M_API_URL:-http://localhost:7080}"
+echo "[entrypoint] Integration API URL: ${EZKEY_M2M_API_URL:-http://localhost:7080}"
 
 # Execute the main command (typically sshd -D)
 exec "$@"

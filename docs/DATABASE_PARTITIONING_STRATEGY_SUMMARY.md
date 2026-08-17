@@ -131,16 +131,13 @@ Ezkey has two high-volume tables that grow continuously in production:
 **Runs as:** `EZKEY_owner` (database owner role with DDL privileges)  
 **When:** During deployment/migration  
 **Migrations:**
-- **V23** - Create `ezkey_auth_attempt` partitioned table + initial partitions
-- **V24** - Create `ezkey_audit_log` composite (RANGE + LIST api_name) + initial partitions and sub-partitions
-- **V25** - Create `create_monthly_partition()` SECURITY DEFINER function
+- **V4** - Create `ezkey_auth_attempt` / `ezkey_audit_log` partitioned tables + initial
+  partitions + `create_monthly_partition()` SECURITY DEFINER function (`RETURNS BOOLEAN`)
 
 **Key Files:**
 ```
 ezkey-core/src/main/resources/db/migration/
-├── V23__partition_auth_attempt_by_month.sql
-├── V24__partition_audit_log_by_month.sql
-└── V25__create_partition_management_function.sql
+└── V4__partitioning_auth_audit_and_function.sql
 ```
 
 **What Flyway Does:**
@@ -564,9 +561,7 @@ $$;
 ### SQL Migrations
 ```
 ezkey-core/src/main/resources/db/migration/
-├── V23__partition_auth_attempt_by_month.sql  # Create auth_attempt partitions
-├── V24__partition_audit_log_by_month.sql     # Create audit_log partitions
-└── V25__create_partition_management_function.sql  # Create SECURITY DEFINER function
+└── V4__partitioning_auth_audit_and_function.sql  # Partitions + create_monthly_partition
 ```
 
 ### Java Service

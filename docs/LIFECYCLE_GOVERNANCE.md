@@ -210,8 +210,9 @@ Existing enrollments and API keys retain their local state — if the design eve
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PENDING : Create enrollment
-    PENDING --> VERIFIED : Complete verification
+    [*] --> CREATED : Create enrollment
+    CREATED --> BOUND : Bind device
+    BOUND --> VERIFIED : Complete verification
     VERIFIED --> REVOKED : Revoke (reason required)
 
     state VERIFIED {
@@ -221,7 +222,13 @@ stateDiagram-v2
     }
 ```
 
-- **PENDING** → The enrollment has been initiated but not yet verified (the user has not completed the cryptographic handshake).
+Living status enum values also include terminal / failure paths such as `EXPIRED` and `INVALID`
+(not shown above). Do not use a fictional `PENDING` status — the invitation window is `CREATED` /
+`BOUND` before `VERIFIED`. Omitted create `expiresAt` uses `ezkey.enrollment.pending-expiration-days`
+(default 7 days); that clock is the pending invitation window only, not a post-`VERIFIED` lifetime.
+
+- **CREATED** → Enrollment invitation exists; device has not bound yet.
+- **BOUND** → Device claimed the invitation; cryptographic verify not finished.
 - **VERIFIED + Active** → The enrollment is fully operational. Authentication attempts are allowed.
 - **VERIFIED + Inactive** → The enrollment is temporarily suspended. Authentication is blocked, but the credential can be reactivated.
 - **REVOKED** → The enrollment is permanently invalidated. It cannot be reactivated or used again.
@@ -250,7 +257,8 @@ This is the most important operational distinction in Ezkey:
 - **No delete with authentication history.** If an enrollment was ever used for authentication, its record is part of the audit trail. Deleting it would create gaps in the security log. Delete is reserved for cleanup of test, mistaken, or never-used enrollments.
 - **No delete of admin MFA enrollments.** An admin's MFA enrollment is a critical security binding. Deleting it directly would bypass the admin lifecycle — if an admin's credential needs to be invalidated, revoke it through the normal revocation flow.
 - **Reason required for revoke and delete.** Both are irreversible and security-significant. The reason documents the real-world event that triggered the action.
-- **Dual model (status + active flag) is intentional.** The `status` enum tracks the credential's lifecycle stage (pending → verified → revoked). The `active` flag is the operator's independent on/off switch within the verified stage. Collapsing these into a single enum would lose expressiveness: you would not be able to distinguish "temporarily suspended for investigation" from "permanently invalidated."
+- **Dual model (status + active flag) is intentional.** The `status` enum tracks the credential's lifecycle stage (`CREATED` / `BOUND` → `VERIFIED` → `REVOKED`, plus failure/expiry terminals). The `active` flag is the operator's independent on/off switch within the verified stage. Collapsing these into a single enum would lose expressiveness: you would not be able to distinguish "temporarily suspended for investigation" from "permanently invalidated."
+- **Name uniqueness is status-based, not active-based.** At most one `VERIFIED` enrollment may exist per `(integration_id, enrollment_name)` (partial unique index `idx_enrollment_unique_verified_name`). Multiple non-`VERIFIED` rows with the same name are allowed (retry). Create rejects when an **active** `VERIFIED` enrollment already exists for that name; create may proceed when a `VERIFIED` row exists but is **inactive**. Verify rejects when **any** `VERIFIED` row already exists for that name (including inactive). There is **no** auth-attempt-style supersession: replacing an active verified credential goes through the explicit recovery / reset path (`POST /api/v1/admin/auth/recover` then `POST /api/v1/admin/enrollments/reset` for admins; operators re-enroll end users after deactivate/revoke as appropriate). Enforcement: DB index plus `EnrollmentService` / `EnrollmentVerifyService`.
 
 **Downstream impact.** A deactivated or revoked enrollment blocks:
 - All authentication attempts using that credential
@@ -310,6 +318,13 @@ The critical distinction is that **admin identity lifecycle and admin MFA enroll
 - Revoking an admin's MFA enrollment invalidates their login credential. Their admin identity remains in the system.
 - To fully lock out an already active admin, you deactivate their identity **and** revoke their MFA enrollment. This two-step approach is intentional — it lets you investigate (deactivate the identity) before making a final decision (revoke the credential).
 
+**Single system integration for admin MFA.** All administrator MFA enrollments bind to the **one**
+system integration (system tenant). Do **not** create per-tenant “system” integrations for audit
+visibility. Audit `tenant_id` for admin MFA bind/verify/pending/respond and for Tenant Admin
+`ADMIN_CREATED` uses the **admin’s tenant** (not the system-integration tenant) so Tenant Admins
+see peer onboarding and MFA auth in their audit view — see Auth API `resolveTenantIdForAudit` and
+`docs/ENDPOINT.md` § Audit log.
+
 **Activation vs. recovery.** Ezkey treats first activation and recovery as separate concepts:
 
 - **Activation** establishes the first normal enrollment for an admin who does not yet have one.
@@ -323,12 +338,14 @@ The UI may reuse related onboarding shells, but the domain semantics, tokens, an
 |--------|---------|------------|--------|--------|
 | Create / Provision | Yes | — | — | Creates admin identity |
 | Create / Provision in activation mode | Yes | — | — | Creates admin identity in `PENDING_ACTIVATION` without creating the first enrollment yet |
+| Reissue activation code | Yes ³ | No (previous unused code invalidated) | — | Global Admin only; pending + no enrollment; identity unchanged |
 | Deactivate | Yes ¹ | Yes | Optional | Suspends admin access; revokes active sessions |
 | Activate / Reactivate | Yes | Yes | Optional | Restores admin access |
 | Delete | No ² | — | — | — |
 
 ¹ Safety guards apply: you cannot deactivate yourself, and the system enforces minimum-admin rules to prevent complete administrative lockout.
 ² Admin deletion is not supported. Deactivation covers suspension and investigation; credential revocation covers security invalidation. Deleting an admin would destroy audit history of their actions.
+³ `POST /api/v1/admins/{id}/activation-code/regenerate`. Tenant must be active when the admin is tenant-scoped.
 
 **Guardrails and rationale:**
 

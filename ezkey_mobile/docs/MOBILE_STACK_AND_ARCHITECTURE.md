@@ -40,8 +40,9 @@ Active toolchain program tracked outside this doc:
 | Tracer bullet | `TB-2026-05-29-mobile-stack-modernization` |
 | Method log | `ML-2026-05-29-mobile-stack-modernization` |
 
-Prior exhaustive dependency review (RN 0.85.2 baseline, May 2026) is archived under
-`.github/prompts/archived/2026-05/plan-mobileDependencyReview.prompt.md` — do not repeat.
+Prior exhaustive dependency review (RN 0.85.2 baseline, May 2026) is historical — do not
+repeat. Living baseline is this document (current workspace section below). Git history
+holds the S01–S23 session inventory.
 
 **Program status (2026-05-31):** Steps 1–6 executed on branch `#177`: CI `yarn validate`, RN 0.85.3,
 Async Storage 3.x, Vision Camera 5 + `react-native-vision-camera-barcode-scanner`, ESLint 9 flat config.
@@ -121,7 +122,7 @@ flowchart LR
 | Enrollment bind | Enrollment Wizard plus `enrollmentsApi.bind` | QR payload and effective `authUrl` | Bind response draft | No durable local write yet. |
 | Enrollment verify | Enrollment Wizard plus `cryptoService` plus `enrollmentsApi.verify` | User challenge, device public key, device signature | Verify response and persisted enrollment record | Durable write occurs only after verify-result trust check. |
 | Installation refresh | `useRefreshInstallationMetadata` | Persisted enrollments | Refreshed nested installation objects | Uses public instance-info endpoint opportunistically. |
-| Pending load | Pending screen plus `authAttemptsApi.pending` plus `cryptoService` | Enrollment proof token, fresh device proof token, signature | Pending attempt in memory | Request context is shown only after signature verification. |
+| Pending load | Pending screen plus `authAttemptsApi.pending` plus `cryptoService` | Enrollment proof token, signed device proof token (reuse OK on empty **204** polls; uniqueness on claim), signature | Pending attempt in memory | Request context is shown only after signature verification. See `docs/ENDPOINT.md` § Retrieve pending request. |
 | Respond submit | Pending screen plus `authAttemptsApi.respond` plus `cryptoService` | User decision, optional challenge, one-time proof token signature | Trusted latest-response summary on Enrollment Detail | Current implementation does not persist detailed auth history. |
 
 ## Trust Boundaries and Security-Sensitive Responsibilities

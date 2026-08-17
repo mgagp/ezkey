@@ -5,8 +5,84 @@ For agents working in `ezkey-core/`.
 ## JPA entity defaults
 
 - **Timestamps** (`createdAt`, `updatedAt`): `@PrePersist` / `@PreUpdate` when null only.
+- **`expiresAt`:** set in the service (config TTL). Do not put TTL math in `@PrePersist`.
 - **Other defaults** (`active`, status): field init. No `@PrePersist` for these.
 - **MapStruct** create→entity: ignore `id`, `createdAt`, `active` (etc.). Example: `IntegrationServiceMapper.toEntity`.
+- Do not add a generic `DefaultValueEntityListener`. Leave `EncryptionEntityListener` as-is.
+
+## At-rest encryption contract
+
+New encrypted fields and JPA listeners use `EncryptionOperations` via
+`EncryptionOperationsHolder`. Do not take a compile dependency on `EncryptionService` or
+`TinkKeyManager` from `ezkey-core` — those live in `ezkey-core-security`.
+`SensitiveDataHasher` stays in core (shared hash util).
+
+## Admin enrollment FK naming
+
+Ezkey has one enrollment identifier. `ezkey_admin.enrollment_id` maps to `EzkeyAdmin.enrollment`.
+Do not reintroduce `mfa_enrollment_id` or `mfaEnrollment` — that was legacy wording, not a second
+domain concept.
+
+## Operational eligibility
+
+Runtime “can this entity be used?” is **`EntityEligibilityService`** (`org.ezkey.service`), not
+inline `!tenant.getActive()` or lifecycle-status checks. Methods: `isXxxOperational()` /
+`ensureXxxOperational()`. Parent-chain blocking has no persistent cascade. Operator canon:
+[`docs/LIFECYCLE_GOVERNANCE.md`](../docs/LIFECYCLE_GOVERNANCE.md). Boot apps that inject this bean
+must include `org.ezkey.service` in `scanBasePackages`.
+
+## Contact phone numbers
+
+Contact phones exist on admin (`phoneNumber`), tenant (`primaryContactPhoneNumber`), and enrollment
+(`contactPhoneNumber`) only. Persist canonical E.164 via `PhoneNumberUtils`. These fields are
+operator contact metadata, not a verified possession factor. Do not add phone to QR payloads or
+auth-attempt.
+
+## Re-encryption remaining counts
+
+Derived remaining/lifecycle snapshots go through `KeyUsageVerificationService`, which reuses
+`ReencryptionTargetQueryService` and the same `discoverReencryptableTargets()` as batch creation.
+Discovery is equality on indexed `*_encryption_key_id` companion columns (`I-2026-0029` /
+`TB-2026-07-26`), not `LIKE 'ENC:{keyId}:%'` on ciphertext. Do not add a second counting stack or
+revive prefix scans. Do not treat `recordsEncrypted` as live remaining (it is the
+migration baseline). Indexed discovery: `docs/REENCRYPTION_OPERATIONS.md` §1.2.
+Orchestration stays in `ReencryptionService`; row work is
+`ReencryptionBatchCreationService` / `ReencryptionBatchProcessingService` /
+`ReencryptionBatchParallelRunner` (mutex per table, or per shard when auth-attempt sharding is on).
+Do not fold row crypto back into `ReencryptionService`. Canon: `docs/REENCRYPTION_OPERATIONS.md`,
+`docs/SPEC_ENCRYPTION_KEY_LIFECYCLE_STRATEGY.md`.
+
+## Pending enrollment expiry
+
+Omitted create `expiresAt` uses `ezkey.enrollment.pending-expiration-days` (default **7**). Set `0`
+to disable that default (explicit `expiresAt` still applies). The field is the pending bind/verify
+invitation window only — not a post-`VERIFIED` MFA lifetime.
+
+## Audit chain heartbeat
+
+Peripherals read the latest checkpoint vs UTC now via `AuditChainHeartbeatGuardService` (not a
+second clock). Fail-closed **503** on gated POSTs when the chain is stale. Keep `window-minutes`
+aligned across Admin, Auth, and Integration. Canon: `docs/AUDIT_LOG_INTEGRITY.md`.
+
+## Operator alerts
+
+Do not emit operator-facing signals as audit `EventType` rows. Use
+`AlertService.raiseOrTouch` / `resolveByDedupeKey` (`ezkey_alert`). Canon:
+`docs/ALERTS.md` (how to add a type, dedupe keys, resolution paths).
+
+## Audit log archive lifecycle
+
+Physical deletion is the last step of one checkpoint FSM
+(`ACTIVE → SEALED → [EXPORTED] → PURGEABLE → PURGED`). Auto-seal is the product path;
+`seal-archive` is exceptional. Policy: `CONFIGURATION.md` § Audit Log Archive. Operator
+endpoints: `docs/AUDIT_LOG_INTEGRITY.md`. External export remains `I-2026-06-28`.
+
+## Audit EventType families
+
+Each new {@code EventType} must be assigned to exactly one {@code EventTypeFamily} (exhaustive
+coverage is enforced by {@code EventTypeFamilyTest}). Admin UI optgroups live in
+{@code ezkey-admin-ui/src/lib/audit-event-type-family.ts} and must stay aligned. Filter param:
+{@code GET /api/v1/audit-logs?eventTypeFamily=} (mutually exclusive with {@code eventType}).
 
 ## Audit event_details — JSON required
 
@@ -49,7 +125,10 @@ This dual validation ensures security is enforced at both application and databa
 `Integration` stores a single `name` and optional `description` on `ezkey_integration`
 (`integration_name`, `integration_description`). The historical child table
 `ezkey_integration_i18n` was backfilled and dropped in migration V7 — do not reintroduce a
-separate i18n entity or join table.
+separate i18n entity or join table. Do not reintroduce `integration_logo` or bind-response
+`integrationLogo`. `code` is the per-tenant unique slug (`^[a-zA-Z0-9_-]+$`); uniqueness is
+`(tenant_id, integration_code)`. Duplicate create returns 409. Same code in different tenants is
+allowed. `code` is set at create; there is no update-code API.
 
 Bind and admin flows read display text from those scalar columns via standard
 `integrationRepository.findById()`.
@@ -142,6 +221,11 @@ High-volume tables `ezkey_audit_log` and `ezkey_auth_attempt` are **range-partit
 - **When FK is appropriate:** reference non-partitioned tables (`ezkey_alert`, `ezkey_admin`) or
   use composite FK to partitioned tables only when the dependent row lifecycle matches the target
   (same purge window or `ON DELETE` semantics explicitly designed).
+- **`create_monthly_partition` call pattern:** the SECURITY DEFINER helper (in
+  `V4__partitioning_auth_audit_and_function.sql`) returns **BOOLEAN** (`true` created,
+  `false` already existed). Call it with `SELECT …` + `getSingleResult()` (see
+  `PartitionSchedulerService`). Do **not** use `executeUpdate()` on that SELECT — Hibernate
+  expects no result set and fails with “A result was returned when none was expected”.
 
 Authoritative detail: `docs/DATABASE_PARTITIONING_IMPLEMENTATION.md` (§ Flyway greenfield patterns),
 `.cursor/rules/flyway-partitioned-tables.mdc`.

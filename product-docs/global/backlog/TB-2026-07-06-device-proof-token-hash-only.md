@@ -118,5 +118,7 @@ See [`test-plans/TSP-2026-07-06-device-proof-token-hash-only.md`](test-plans/TSP
 
 ## Incubation sources
 
-- Working plan (repo): [`.cursor/plans/proof_token_hash-only_storage.plan.md`](../../../.cursor/plans/proof_token_hash-only_storage.plan.md)
+- Deleted Cursor plan (materialized); see
+  [`ideas/I-2026-0032-proof-token-hash-only-storage.md`](ideas/I-2026-0032-proof-token-hash-only-storage.md)
+  and ADR-0007
 - Lane: `B` — plan incubation, materialized `2026-07-06`

@@ -10,12 +10,24 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 
 - Start with `docs/README.md` for the current mobile documentation corpus.
 - Treat `docs/MOBILE_API_MAPPINGS.md`, `docs/MOBILE_FUNCTIONAL_FLOWS.md`, `docs/MOBILE_DATA_MODEL.md`, `docs/MOBILE_SCREENS_AND_WIREFLOWS.md`, `docs/MOBILE_STACK_AND_ARCHITECTURE.md`, and `docs/MOBILE_POSITIONING.md` as the primary conceptual set.
+- Wire protocol for third-party or alternative mobile clients is the repository-level companion [`docs/MOBILE_DEVELOPER_GUIDE.md`](../docs/MOBILE_DEVELOPER_GUIDE.md) — not the RN screen corpus.
 - For release and publishing work, read `docs/MOBILE_RELEASE_SIGNING.md`, `docs/MOBILE_PLAY_PUBLISHING.md`, `docs/MOBILE_PLAY_RELEASE_READINESS_AUDIT.md`, and `docs/MOBILE_RELEASE_DECISION_MEMO.md` before proposing release conclusions.
 - Treat `package.json`, Android Gradle files, and manifests as the source of truth for the current workspace stack and release configuration.
 
 ## Directives
 
 - Keep the app simple. Avoid feature creep, decorative UI, and extra screens.
+- Production IA: Home list + primary add + Settings hub (What's new, About, Language, Danger Zone,
+  Licenses). Release announcements are a top-of-home card plus Settings → What's new — not a
+  floating bottom-left badge. About stays static identity (version, site, support).
+  Do not reintroduce a Diagnostics screen in production chrome. Delete-one and clear-all live only
+  in Danger Zone. Card title fallback: `enrollmentName` → `deviceLabel` → `integrationName`. After
+  a successful delete-one, `navigation.goBack()` — exceptional cleanup, not a batch-delete loop.
+- Nested `installation` on each stored enrollment is the local trust zone. Identity is the
+  normalized `authUrl` (`installation.id`). Do not re-flatten `installation*` onto enrollment,
+  and do not add a second persisted installation collection. Public `instance-info`
+  (`name` / `description` / `aboutUrl`) is display-only — never a cryptographic trust anchor
+  or identity. Canon: [`docs/MOBILE_DATA_MODEL.md`](docs/MOBILE_DATA_MODEL.md).
 - Security first: proof tokens stay in memory or secure storage only.
 - Keep the pull model: no background polling for auth attempts.
 - Do not reintroduce integration logos or related fields.
@@ -50,14 +62,27 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 - After refreshing the spec, run `yarn generate:api`.
 - Treat `app/services/api/generated/auth-api/model/` as the source of truth for Auth API DTOs.
 - Keep `app/services/api/types.ts` thin: local mobile domain types and wrapper input shapes are fine, but no second hand-maintained copy of the Auth API contract.
+- Verify `challengeResponse` is required. The UI wrapper may keep it as `string`; `enrollmentsApi.verify`
+  serializes it as a JSON number. Do not make it optional.
 
 ## Security Rules
 
 - Never break Auth API contracts without backend coordination.
-- Generate device proof tokens only via `app/utils/generateProofToken.ts`.
+- Add a mobile protocol field only if removing it breaks bind, verify, pending, respond, or
+  signature verification. Do not reintroduce `authAttemptChallengeRequiredByPolicy` (rolled back:
+  it disclosed enrollment policy and was not required for protocol execution).
+- After enrollment bind, require `integrationKeyAlgorithm === "ed25519"` via
+  `integrationKeyAlgorithmBindError` (`app/utils/integrationKeyAlgorithm.ts`). Abort enrollment on
+  mismatch (fail closed). Do not assume Ed25519 from `integrationPublicKey` alone.
+- Generate device proof tokens only via `app/utils/generateProofToken.ts` (native CSPRNG in
+  `EzkeyCryptoModule`). Do not mint `deviceProofToken` with `Date.now()` or
+  `react-native-get-random-values`.
 - Keep EC P-256 key handling on the native keystore path.
 - For Android wording, prefer `Android Keystore` and `StrongBox when available`.
 - Do not revive deleted historical analysis notes when the living corpus already states the current rule.
+- **Auth API base URL:** Prefer per-enrollment `authUrl` from the enrollment QR (server
+  `ezkey.qr.auth-base-url`). Fall back to configured `EZKEY_API_BASE_URL` only when QR omits
+  `authUrl`. Do **not** hard-code tunnel hostnames (e.g. ngrok) in committed env defaults.
 
 ## Android debug build (agents — read first)
 
@@ -146,6 +171,8 @@ StrongBox physical checklist (MOB-006): [`docs/MOBILE_STRONGBOX_MANUAL_CHECKLIST
 - F2a availability = native **debug** build type (`BuildConfig.DEBUG`) + explicit env enable +
   ack `F2A_TEST_ONLY`. Do **not** equate this with React Native `__DEV__`.
 - Release install script runs `scripts/assert-release-production-clean-env.sh` before Gradle.
+- Do not reintroduce `RespondMitmLabControl` or in-app respond MITM tamper into a release/Play JS
+  bundle (removed 2026-04; Play malicious-behavior risk).
 - When `mobile-doctor-curated` or a skeptical review flags harness/bypass code: read the contract
   first; missing mechanical gates are P1; gated intentional harness code is not.
 

@@ -138,7 +138,7 @@ These rules run server-side and must never depend solely on client-side validati
 - **Storage.** PostgreSQL as the primary store; Tink handles encryption at rest for encrypted fields.
 - **Migrations.** Flyway; source in `ezkey-core/src/main/resources/db/migration/`. Initial global admin and system tenant are created by `V1__core_domain_and_multi_tenant.sql`.
 - **Encryption at rest.** Rotatable keys via the encryption key lifecycle. Field-level encryption for device public keys and other sensitive material.
-- **Retention.** Audit entries are append-only; archival follows the audit chain lifecycle documented in [`../../../docs/AUDIT_LOG_LIFECYCLE_REFRAMING.md`](../../../docs/AUDIT_LOG_LIFECYCLE_REFRAMING.md).
+- **Retention.** Audit entries are append-only; archival follows the single checkpoint lifecycle in [`../../../ezkey-core/CONFIGURATION.md`](../../../ezkey-core/CONFIGURATION.md) § Audit Log Archive and [`../../../docs/AUDIT_LOG_INTEGRITY.md`](../../../docs/AUDIT_LOG_INTEGRITY.md). External export remains [`I-2026-06-28`](../../global/backlog/ideas/I-2026-06-28-audit-archive-export-spi.md).
 - **Consistency.** Transactional boundaries are defined on service entry points; concurrent mutations use optimistic locking (`version`) where applicable.
 
 ## Cross-Boundary Effects

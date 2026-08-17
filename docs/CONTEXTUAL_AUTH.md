@@ -14,7 +14,7 @@ are authorizing, making the decision informed and meaningful.
 
 ---
 
-## Context Fields (Phase 1)
+## Context Fields
 
 | Field            | Type   | Max Size    | Description                                                  |
 |------------------|--------|-------------|--------------------------------------------------------------|
@@ -24,11 +24,6 @@ are authorizing, making the decision informed and meaningful.
 Both fields are **optional** and **nullable**. Existing integrations that do not send these fields
 continue to work without any changes — the mobile device falls back to the standard MFA approval
 screen.
-
-> **Phase 2 — Richer Business Approvals (future):** A dedicated business-approval workflow will
-> extend this foundation with structured metadata (key-value detail pairs), severity levels, and
-> longer-lived approval lifecycles suited to asynchronous business processes. Phase 1 is
-> intentionally minimal: keep the surface small, prove the concept, ship value now.
 
 ---
 
@@ -150,10 +145,14 @@ authentication occurred, but what was approved (CC6.1, CC7.2).
 
 ## Security Notes
 
-- Context fields are **display-only** and have no effect on the cryptographic proof/signature model
+- Pending delivery cryptographically binds `contextTitle` and `contextMessage` into the
+  integration-signed payload (`proofToken|challengeRequired|contextTitle|contextMessage`). Clients
+  must verify that signature before display. See
+  [`AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md).
 - `contextTitle` and `contextMessage` are stored as plain VARCHAR/TEXT columns alongside the auth
   attempt in the database
-- The existing one-time token, anti-replay, and cryptographic validation mechanisms are unchanged
+- The existing one-time token, anti-replay, and cryptographic validation mechanisms otherwise
+  unchanged
 - Integrations are responsible for ensuring the content is appropriate and does not include
   sensitive data beyond what is needed for the approval decision
 

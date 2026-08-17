@@ -9,7 +9,7 @@
 #define EZKEY_MODULE_NAME "pam_ezkey"
 #define EZKEY_VERSION "1.1.0"
 
-/* Default Ezkey M2M API endpoint (overridable via environment variable) */
+/* Default Integration API endpoint (legacy env name EZKEY_M2M_API_URL) */
 #define EZKEY_M2M_API_URL "http://localhost:7080"
 
 /* Environment variable names for runtime configuration */

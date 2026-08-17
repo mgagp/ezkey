@@ -1,8 +1,14 @@
 # Recovery codes lifecycle analysis
 
-**Status:** Draft for review  
+**Status:** Historical analysis (pre–regenerate / issue-initial shipping)  
 **Audience:** Product, Engineering, Security, Operations  
 **Scope:** Admin recovery-code lifecycle for Global Admin and Tenant Admin accounts
+
+> **Living canon (2026):** Peer/admin **regenerate** and **issue-initial** recovery-code APIs and
+> Admin UI surfaces are shipped. Prefer [`docs/ENDPOINT.md`](ENDPOINT.md) (recovery-codes endpoints),
+> [`docs/ADMIN_UI_RECOVERY.md`](ADMIN_UI_RECOVERY.md), and Admin UI admins detail over the “gaps”
+> narrative in §1–§2.6 below. Keep this file only as design history; do not re-open regenerate as
+> unimplemented work without checking those docs first.
 
 ---
 
@@ -17,24 +23,10 @@ Ezkey already implements the core break-glass recovery flow correctly:
 - a successful recovery code grants only a temporary recovery token,
 - that token is limited to MFA enrollment reset and rebind.
 
-The main product gap is not recovery-code consumption. The gap is **lifecycle management after provisioning**.
-
-Today, Ezkey has no product-level mechanism to:
-
-- regenerate a fresh set of recovery codes,
-- invalidate an old set intentionally,
-- support a peer administrator when another administrator has exhausted their codes,
-- present a coherent operator workflow for this case.
-
-The recommended direction is intentionally simple:
-
-1. Keep the current recovery consumption flow unchanged.
-2. Add one narrow authenticated endpoint to generate a **new full set** of recovery codes for an administrator.
-3. Treat regeneration as **full replacement**, not top-up.
-4. Allow the action within existing admin scope rules, with peer-admin support as the primary operational fallback.
-5. Audit the regeneration action itself, but do not add passive low-stock alerting in V1.
-
-This aligns with Ezkey's product values: pragmatic, low-complexity, and operationally clear.
+**Historical note:** When this analysis was written, the main product gap was **lifecycle
+management after provisioning** (regenerate / peer replenishment). That gap is **closed** in the
+living product — see the banner above. Sections below retain the original recommendation framing
+for traceability.
 
 ---
 
@@ -128,19 +120,14 @@ The structured audit payload is built in `ezkey-admin-api/src/main/java/org/ezke
 
 This means Ezkey already captures the sensitive break-glass events that matter during consumption.
 
-### 2.6 Current product gaps
+### 2.6 Product gaps (historical — superseded)
 
-The current implementation leaves five practical gaps:
-
-1. There is no endpoint or UI to regenerate recovery codes.
-2. There is no operator workflow for "another admin has exhausted their codes."
-3. There is no intentional invalidation step for unused codes.
-4. There is no steady-state operator surface for lifecycle management outside the recovery funnel.
-5. There is an internal `rotateRecoveryCodes(EzkeyAdmin)` service method, but it is not exposed through product APIs.
-
-There is also a smaller implementation note worth remembering:
-
-- recovery-specific rate-limit properties exist in configuration, but the currently visible product behavior is centered on the login/recovery funnel and not on a dedicated regeneration flow.
+The five “gaps” listed when this note was drafted (no regenerate endpoint/UI, no peer replenishment,
+no intentional invalidation of unused codes, no steady-state lifecycle surface, internal-only
+`rotateRecoveryCodes`) are **superseded**. Living product: `POST …/recovery-codes/regenerate`,
+`POST …/recovery-codes/issue-initial`, Admin UI dialogs, and audits
+(`ADMIN_RECOVERY_CODES_REGENERATED` / `ADMIN_RECOVERY_CODES_ISSUED`). See ENDPOINT +
+`ADMIN_UI_RECOVERY.md`.
 
 ---
 

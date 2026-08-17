@@ -44,12 +44,13 @@ Creating partitions requires **DDL privileges** (CREATE TABLE), which the applic
 
 ```sql
 -- Create function owned by owner role (executed by Flyway)
+-- Living definition: V4__partitioning_auth_audit_and_function.sql
 CREATE OR REPLACE FUNCTION create_monthly_partition(
     p_table_name TEXT,
     p_partition_name TEXT,
     p_start_date TIMESTAMPTZ,
     p_end_date TIMESTAMPTZ
-) RETURNS VOID
+) RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER  -- Execute with owner privileges
 SET search_path = public
@@ -58,10 +59,10 @@ BEGIN
     -- Check if partition already exists
     IF EXISTS (
         SELECT 1 FROM pg_class 
-        WHERE relname = p_partition_name AND relkind = 'r'
+        WHERE relname = p_partition_name AND relkind IN ('r', 'p')
     ) THEN
         RAISE NOTICE 'Partition % already exists, skipping', p_partition_name;
-        RETURN;
+        RETURN false;
     END IF;
     
     -- Create partition
@@ -74,6 +75,7 @@ BEGIN
     );
     
     RAISE NOTICE 'Created partition: % for table: %', p_partition_name, p_table_name;
+    RETURN true;
 END;
 $$;
 
@@ -87,14 +89,15 @@ REVOKE EXECUTE ON FUNCTION create_monthly_partition(TEXT, TEXT, TIMESTAMPTZ, TIM
 **Application Code:**
 ```java
 // Application calls function (no DDL privileges needed)
-entityManager.createNativeQuery(
+// SELECT returns a row; use getSingleResult() — not executeUpdate()
+Boolean wasCreated = (Boolean) entityManager.createNativeQuery(
     "SELECT create_monthly_partition(:tableName, :partitionName, :startDate, :endDate)"
 )
 .setParameter("tableName", "ezkey_auth_attempt")
 .setParameter("partitionName", "ezkey_auth_attempt_2025_02")
 .setParameter("startDate", startDateTime)
 .setParameter("endDate", endDateTime)
-.executeUpdate();
+.getSingleResult();
 ```
 
 **Pros:**
@@ -329,7 +332,7 @@ EOF
 
 ### Phase 1: Create SECURITY DEFINER Function (Migration)
 
-**Migration:** `V25__create_partition_management_function.sql`
+**Migration:** `V4__partitioning_auth_audit_and_function.sql`
 
 ```sql
 -- Create function for partition creation (owned by owner role)
@@ -338,7 +341,7 @@ CREATE OR REPLACE FUNCTION create_monthly_partition(
     p_partition_name TEXT,
     p_start_date TIMESTAMPTZ,
     p_end_date TIMESTAMPTZ
-) RETURNS VOID
+) RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
@@ -352,10 +355,10 @@ BEGIN
     -- Check if partition already exists
     IF EXISTS (
         SELECT 1 FROM pg_class 
-        WHERE relname = p_partition_name AND relkind = 'r'
+        WHERE relname = p_partition_name AND relkind IN ('r', 'p')
     ) THEN
         RAISE NOTICE 'Partition % already exists, skipping', p_partition_name;
-        RETURN;
+        RETURN false;
     END IF;
     
     -- Create partition
@@ -368,6 +371,7 @@ BEGIN
     );
     
     RAISE NOTICE 'Created partition: % for table: %', p_partition_name, p_table_name;
+    RETURN true;
 END;
 $$;
 
@@ -380,7 +384,7 @@ REVOKE EXECUTE ON FUNCTION create_monthly_partition(TEXT, TEXT, TIMESTAMPTZ, TIM
 
 -- Add comment
 COMMENT ON FUNCTION create_monthly_partition IS 
-'Creates monthly partition for partitioned tables. Executes with owner privileges via SECURITY DEFINER. Application role only needs EXECUTE privilege.';
+'Creates monthly partition for partitioned tables. Executes with owner privileges via SECURITY DEFINER. Idempotent - returns BOOLEAN: true if created, false if already existed. Application role only needs EXECUTE privilege.';
 ```
 
 ### Phase 2: Update Application Service
@@ -388,15 +392,15 @@ COMMENT ON FUNCTION create_monthly_partition IS
 **Update:** `PartitionSchedulerService.java`
 
 ```java
-// Use function instead of direct DDL
-entityManager.createNativeQuery(
+// Use function instead of direct DDL; SELECT returns BOOLEAN — use getSingleResult()
+Boolean wasCreated = (Boolean) entityManager.createNativeQuery(
     "SELECT create_monthly_partition(:tableName, :partitionName, :startDate, :endDate)"
 )
 .setParameter("tableName", tableName)
 .setParameter("partitionName", partitionName)
 .setParameter("startDate", startDateTime)
 .setParameter("endDate", endDateTime)
-.executeUpdate();
+.getSingleResult();
 ```
 
 ### Phase 3: Production Configuration (Optional)

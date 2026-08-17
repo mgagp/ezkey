@@ -17,11 +17,38 @@ The Admin UI implements this as a **recovery funnel** on the login page, not as 
 
 ## Provisioning
 
-- New administrators receive recovery codes at **creation** time in the provisioning API response (`recoveryCodes` on the create response).
-- Administrators can also receive a **replacement set** later through `POST /api/v1/admins/{id}/recovery-codes/regenerate`; the previous unused set is invalidated immediately.
-- `GET /api/v1/admins/{id}/onboarding` does **not** return plaintext recovery codes (hashed at rest). Operators must save codes from the create-success screen or out-of-band processes (e.g. bootstrap logs for the initial global admin).
+- **`IMMEDIATE` (default):** first enrollment is created at provisioning. Bind material comes from
+  `GET /api/v1/admins/{id}/onboarding`, not from recovery. Plaintext recovery codes are deferred
+  from bootstrap responses.
+- **`ACTIVATION_CODE`:** admin is `PENDING_ACTIVATION` with no enrollment. The new admin consumes
+  `POST /api/v1/admin/auth/activate` (login-page activation branch), then binds a device. That
+  unauthenticated response also omits recovery codes.
+- After an enrollment exists, operators obtain a **replacement set** through
+  `POST /api/v1/admins/{id}/recovery-codes/regenerate`; the previous unused set is invalidated
+  immediately.
+- `GET /api/v1/admins/{id}/onboarding` does **not** return plaintext recovery codes (hashed at rest).
+
+Canon: [LIFECYCLE_GOVERNANCE.md](LIFECYCLE_GOVERNANCE.md) §3.5 (activation ≠ recovery).
+
+## Audit (recover + enrollment reset)
+
+Break-glass steps are first-class audit events (JSON `event_details` via
+`org.ezkey.admin.audit.RecoveryAuditDetails`):
+
+| Step | Typical `EventType` | Notes |
+|------|---------------------|--------|
+| Recovery code validated / rejected | `ADMIN_RECOVERY_USE` | Actions such as `recovery_code_used` / failure variants |
+| Enrollment reset success / failure | `ADMIN_RECOVERY_ENROLLMENT_RESET` | Security-critical unbind + new proof material |
+
+- Payload includes `schema_version`, `flow: "admin_recovery"`, `step`, and
+  **`recovery_token_fingerprint`** (first 16 hex chars of SHA-256 of the temporary recovery
+  token) so SIEM/operators can **join** recover → reset rows. Correlation is **audit-only** (not
+  exposed on REST DTOs).
+- **Never** log plaintext recovery codes, full `ezkey_recovery_*` tokens, enrollment proof tokens,
+  or device keys in `event_details`.
 
 ## References
 
 - API details: [ENDPOINT.md](./ENDPOINT.md) (admin auth recover, enrollments reset, administrator provisioning).
-- Postman: `postman/collections/v2.1/EZ Key Authentication Login admin.postman_collection.json`; public instance metadata (no auth): `postman/collections/v2.1/EZ Key Public admin.postman_collection.json`.
+- Audit architecture: [audit/AUDIT_LOGGING_IMPLEMENTATION.md](./audit/AUDIT_LOGGING_IMPLEMENTATION.md).
+- Bruno: `bruno/authentication-login-admin/` (recover, enrollments-reset, passwordless-wait); public instance metadata (no auth): `bruno/public-admin/get-public-instance-info.bru`. The `postman/` tree is a historical leftover — see `postman/README.md`.

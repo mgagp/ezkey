@@ -1,5 +1,9 @@
 # Product Documentation System
 
+This directory is the living product and method layer. `docs/` remains API/ops canon. New ideas
+start at [`methodology/README.md`](methodology/README.md). Do not invent a second documentation-system
+plan.
+
 This directory is the home of the Ezkey product documentation system: a unified, spec-first, test-driven documentation corpus designed for healthy collaboration between humans and AI coding agents.
 
 It is intentionally isolated from the legacy `docs/` and module-level documentation so it can be evaluated, iterated, and adopted progressively without disrupting what already exists.

@@ -1,82 +1,40 @@
 # Ezkey SDK
 
-This directory contains Software Development Kits (SDKs) for integrating with Ezkey APIs in multiple programming languages.
+Client libraries for Ezkey APIs. Language folders are independent; do not assume they share one
+generated Admin+Auth surface.
 
-## Overview
+## Java (canonical Integration API client)
 
-Ezkey SDKs provide easy-to-use client libraries for both Admin API and Auth API endpoints. Each SDK is generated from OpenAPI specifications and includes:
+Handwritten, **zero compile-scope dependency** client for the **Integration API** (API-key / M2M)
+on port **7080**: authentication-attempt create, wait, and cancel only.
 
-- **Admin API Client**: For managing integrations, enrollments, and authentication attempts
-- **Auth API Client**: For device enrollment and authentication flows  
-- **Configuration**: Configurable endpoint URLs
-- **Zero Dependencies**: No external library dependencies beyond language standards
-- **Demo Applications**: Complete integration examples
+It is **not** a generated Admin or Auth wrapper, and it is **not** a device client (bind / verify /
+pending / respond). Details: [`java/README.md`](java/). Living demo: `ezkey-demo-app-acme`.
 
-## Available SDKs
+## Other language folders
 
-| Language | Directory | Description |
-|----------|-----------|-------------|
-| Java | [`java/`](java/) | Java 8+ compatible SDK using standard HTTP client |
-| JavaScript/TypeScript | [`javascript/`](javascript/) | Node.js and browser compatible SDK |
-| Python | [`python/`](python/) | Python 3.7+ compatible SDK |
-| .NET | [`dotnet/`](dotnet/) | .NET 6+ compatible SDK |
+| Language | Directory | Notes |
+|----------|-----------|--------|
+| JavaScript/TypeScript | [`javascript/`](javascript/) | Generated Admin + Auth OpenAPI clients (separate from the Java Integration API client) |
+| Python | [`python/`](python/) | Experimental / incomplete vs the Java Integration API client |
+| .NET | [`dotnet/`](dotnet/) | Experimental / incomplete vs the Java Integration API client |
 
-## Quick Start
+## API surfaces (do not mix)
 
-Each SDK includes a demo application that demonstrates the complete Ezkey integration workflow:
-
-1. **Create Integration** - Set up a new application integration
-2. **Create Enrollment** - Generate enrollment for a user device
-3. **Bind & Verify** - Complete device enrollment process
-4. **Create Auth Attempt** - Request user authentication
-5. **Check Pending** - Poll for pending authentication requests
-6. **Accept/Deny** - Handle authentication responses
-
-## API Endpoints
-
-The SDKs interact with Ezkey APIs as follows:
-
-### Integration API (Port 7080) — canonical M2M / API-key surface
-- Authentication attempt create, wait, cancel (HTTP Basic API key)
-- Used by the Java `EzkeyClient` defaults
-
-### Admin API (Port 9080)
-- Integration management (CRUD)
-- Enrollment administration
-- Operator / bearer-token flows
-- API-key auth attempts disabled by default (opt-in for minimal Admin+Auth installs)
-
-### Auth API (Port 8080)  
-- Device enrollment binding and verification
-- Authentication attempt responses
-- Mobile-optimized endpoints
+| API | Port | Who | Auth |
+|-----|------|-----|------|
+| Integration API | 7080 | Applications (M2M) | HTTP Basic API key |
+| Admin API | 9080 | Operators | Bearer / cookie; API-key auth attempts **off** by default |
+| Auth API | 8080 | Devices | Enrollment / device proof tokens |
 
 ## Documentation
 
-- [Admin API OpenAPI Spec](../ezkey-demo-app-acme/openapi-spec.json)
-- [Auth API OpenAPI Spec](../ezkey-demo-device/openapi-spec.json)
-- [Ezkey Documentation](../ezkey-docs/)
+- [`docs/ENDPOINT.md`](../docs/ENDPOINT.md) — canonical endpoint semantics
+- [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) — local ports
+- OpenAPI (generated artifacts, do not hand-edit): [`specs/`](../specs/)
 
-## Building SDKs
-
-Each SDK includes build scripts for easy compilation:
-
-```bash
-# Build specific SDK
-cd java && ./build.sh
-cd javascript && ./build.sh  
-cd python && ./build.sh
-cd dotnet && ./build.sh
-```
-
-## Security Considerations
-
-All SDKs implement Ezkey's security model:
-- **One-time proof tokens** for authentication attempts
-- **Cryptographic signatures** for request validation
-- **Secure key management** in demo applications
-- **HTTPS support** for production deployments
+There is no `ezkey-docs/` tree in this repository.
 
 ## License
 
-All SDKs are released under the MIT License, same as the main Ezkey project.
+MIT, same as the main Ezkey project.

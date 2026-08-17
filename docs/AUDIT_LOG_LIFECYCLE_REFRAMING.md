@@ -1,5 +1,11 @@
 # Audit Log Lifecycle Reframing
 
+> **Historical (2026-04).** Session-start reframing. The opinionated lifecycle shipped. Living
+> canon: [`ezkey-core/CONFIGURATION.md`](../ezkey-core/CONFIGURATION.md) § Audit Log Archive,
+> [`docs/AUDIT_LOG_INTEGRITY.md`](AUDIT_LOG_INTEGRITY.md) (FSM + exceptional `seal-archive`).
+> Remaining export work is [`I-2026-06-28`](../product-docs/global/backlog/ideas/I-2026-06-28-audit-archive-export-spi.md).
+> Do not treat this file as an implementation kickoff.
+
 ## Purpose
 
 This document captures the conceptual shift between the earlier audit-log lifecycle posture and the

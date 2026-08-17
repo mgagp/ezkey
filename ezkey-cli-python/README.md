@@ -9,6 +9,9 @@ The Ezkey CLI provides a unified interface for interacting with all Ezkey APIs. 
 **Key Features:**
 - Passwordless admin authentication
 - API key management for machine-to-machine integrations
+- **Device simulation** (`ezkey device`) — bind/verify plus pending/respond from the CLI for
+  development and testing. Device private keys are stored in plaintext under `~/.ezkey/devices/`;
+  this is not a production device. Prefer Demo Device or the mobile app for realistic UX.
 - **TUI** (`ezkey --tui`) — read-only investigation/audit fallback (e.g. over SSH when the web Admin UI is unavailable)
 - Configuration management
 - JSON file input support
@@ -45,6 +48,10 @@ ezkey admin auth login --username admin
 
 # 3. List integrations
 ezkey admin integration list
+
+# Device simulation (dev/test — plaintext keys under ~/.ezkey/devices/)
+ezkey device enroll --enrollment-id 456 --enrollment-proof-token EZK-ABC123 --challenge 123456
+ezkey device auth --enrollment-id 456 --approve
 ```
 
 ### TUI Mode (Read-only investigation and audit)
@@ -64,6 +71,8 @@ The CLI follows the pattern: `ezkey <api> <object> <action> [options]`
 - **admin** - Admin API commands (integrations, enrollments, auth attempts, authentication, API keys)
 - **auth** - Auth API commands (enrollment binding/verification, auth responses)
 - **crypto** - Crypto API commands (cryptographic operations for testing)
+- **device** - Device simulation (enroll, auth, list, show, remove). Development/testing only;
+  private keys are stored in plaintext. Not a production authenticator.
 
 ### Utility Commands
 - **configure** - Configuration management

@@ -1,241 +1,85 @@
 # Ezkey Java SDK
 
-The Ezkey Java SDK provides easy integration with Ezkey Admin and Auth APIs for Java applications.
+Minimal **zero compile-scope dependency** client for the Ezkey **Integration API** (API-key / M2M).
+It covers authentication-attempt **create**, **wait**, and **cancel** only. It is not a generated
+Admin or Auth API wrapper, and it is not a device client (bind / verify / pending / respond).
 
-## Features
+- Java **17+** (`java.net.http.HttpClient`, records)
+- HTTP Basic (`integrationKey:secretKey`)
+- Default base URL: `http://localhost:7080`
+- JSON via an internal helper — no Jackson (or other) compile dependency
+- Logging via `System.Logger`
 
-- **Zero External Dependencies**: Uses only Java standard libraries and minimal Jackson for JSON
-- **Configurable Endpoints**: Support for custom Admin and Auth API URLs
-- **Complete API Coverage**: All Admin and Auth API operations
-- **Type-Safe**: Generated from OpenAPI specifications with strong typing
-- **Simple Interface**: Easy-to-use wrapper classes over generated clients
-- **Java 8+ Compatible**: Works with Java 8 and higher
+Living demo: `ezkey-demo-app-acme` (reactor module `ezkey-sdk/java`).
 
-## Quick Start
+Admin API (`9080`) remains the operator / bearer-token surface. API-key auth attempts on Admin API
+are disabled by default (`ezkey.admin.auth.api-key-auth-attempts-enabled=false`).
 
-### 1. Build the SDK
+## Build
+
+From the repository root (preferred, reactor):
+
+```bash
+./scripts/build.sh
+```
+
+Or the module after a parent install:
 
 ```bash
 mvn -f ezkey-sdk/java/pom.xml package
 ```
 
-### 2. Add to Your Project
+Artifact: `org.ezkey:ezkey-sdk` (parent POM version).
 
-Add the generated JAR to your classpath:
-
-```bash
-java -cp "ezkey-java-sdk-1.0.0.jar:your-app.jar" com.yourcompany.App
-```
-
-### 3. Basic Usage
+## Usage
 
 ```java
-import org.ezkey.sdk.*;
+import java.time.Duration;
+import org.ezkey.sdk.EzkeyClient;
+import org.ezkey.sdk.EzkeyException;
 
-// Initialize client with default localhost URLs
-EzkeyClient client = EzkeyClient.create();
+EzkeyClient client = new EzkeyClient("ezkey_ikey_xxx", "ezkey_skey_xxx");
 
-// Or with custom URLs
-EzkeyClient client = EzkeyClient.create(
-    "https://admin.yourcompany.com", 
-    "https://auth.yourcompany.com"
-);
-
-// Use Admin API
-IntegrationCreateResponseDto integration = client.admin().createIntegration(
-    "https://company.com/logo.png",
-    "My App", 
-    "My application description"
-);
-
-// Use Auth API
-EnrollmentBindResponseDto binding = client.auth().bindEnrollment(enrollmentId);
-```
-
-## Complete Integration Example
-
-The SDK includes a comprehensive demo application that showcases the complete Ezkey integration workflow:
-
-```bash
-# Run the demo
-java -cp "target/ezkey-java-sdk-1.0.0.jar:target/demo-classes" org.ezkey.sdk.demo.EzkeyDemoApplication
-```
-
-The demo demonstrates:
-
-1. **Creating an Integration** - Set up a new application integration
-2. **Creating an Enrollment** - Generate enrollment for a user device
-3. **Binding & Verifying** - Complete device enrollment process
-4. **Creating Auth Attempt** - Request user authentication
-5. **Checking Pending** - Poll for pending authentication requests
-6. **Accepting/Denying** - Handle authentication responses
-
-## API Reference
-
-### EzkeyClient
-
-Main entry point for the SDK:
-
-```java
-// Create with default config (localhost)
-EzkeyClient client = EzkeyClient.create();
-
-// Create with custom URLs
-EzkeyClient client = EzkeyClient.create(adminUrl, authUrl);
-
-// Access APIs
-EzkeyAdminAPI adminAPI = client.admin();
-EzkeyAuthAPI authAPI = client.auth();
-```
-
-### Admin API Operations
-
-```java
-// Integration management
-IntegrationCreateResponseDto integration = adminAPI.createIntegration(logo, name, description);
-List<IntegrationResponseDto> integrations = adminAPI.getAllIntegrations();
-IntegrationResponseDto integration = adminAPI.getIntegration(integrationId);
-adminAPI.deleteIntegration(integrationId);
-
-// Enrollment management
-EnrollmentCreateResponseDto enrollment = adminAPI.createEnrollment(integrationId, name, challengeRequired);
-List<EnrollmentResponseDto> enrollments = adminAPI.getAllEnrollments();
-EnrollmentResponseDto enrollment = adminAPI.getEnrollment(enrollmentId);
-adminAPI.deleteEnrollment(enrollmentId);
-
-// Auth attempt management
-AuthAttemptCreateResponseDto authAttempt = adminAPI.createAuthAttempt(enrollmentId, challengeRequested);
-List<AuthAttemptDto> authAttempts = adminAPI.getAllAuthAttempts();
-AuthAttemptDto authAttempt = adminAPI.getAuthAttempt(authAttemptId);
-
-// Wait for authentication completion
-AuthAttemptWaitResponseDto result = adminAPI.waitForResponse(authAttemptId);
-AuthAttemptWaitResponseDto result = adminAPI.waitForResponse(authAttemptId, "60", "5"); // Custom timeout/polling
-
-adminAPI.deleteAuthAttempt(authAttemptId);
-```
-
-### Auth API Operations
-
-```java
-// Enrollment operations
-EnrollmentBindResponseDto binding = authAPI.bindEnrollment(enrollmentId);
-
-EnrollmentVerifyResponseDto verification = authAPI.verifyEnrollment(
-    enrollmentId, challengeResponse, devicePublicKey, enrollmentProofTokenSigned
-);
-
-// Authentication operations
-AuthAttemptPendingResponseDto pending = authAPI.checkPendingAuth(
-    enrollmentId, deviceProofToken, deviceProofTokenSigned
-);
-
-AuthAttemptRespondResponseDto response = authAPI.respondToAuth(
-    authAttemptId, authAttemptProofTokenSigned, accepted
-);
-
-AuthAttemptRespondResponseDto response = authAPI.respondToAuth(
-    authAttemptId, authAttemptProofTokenSigned, accepted, challengeResponse
-);
-```
-
-## Configuration
-
-### Default Configuration
-
-By default, the Java SDK targets the **Integration API** (API-key M2M):
-- Integration API: `http://localhost:7080`
-
-Admin API (`9080`) remains the operator / bearer-token surface. API-key auth attempts on Admin API are disabled by default (`ezkey.admin.auth.api-key-auth-attempts-enabled=false`).
-
-### Custom Configuration
-
-```java
-EzkeyConfig config = EzkeyConfig.of("ezkey_ikey_xxx", "ezkey_skey_xxx");
-// or override base URL:
 EzkeyClient client = EzkeyClient.builder()
-    .baseUrl("https://integration-api.yourcompany.com")
     .integrationKey("ezkey_ikey_xxx")
     .secretKey("ezkey_skey_xxx")
+    .baseUrl("https://integration-api.example.com:7080")
+    .connectTimeout(Duration.ofSeconds(15))
+    .readTimeout(Duration.ofSeconds(60))
     .build();
+
+EzkeyClient client = EzkeyClient.fromEnvironment();
+// EZKEY_INTEGRATION_KEY, EZKEY_SECRET_KEY, optional EZKEY_BASE_URL
 ```
-
-## Error Handling
-
-All SDK operations can throw `EzkeyException`:
 
 ```java
 try {
-    IntegrationCreateResponseDto integration = client.admin().createIntegration(logo, name, description);
+  var created = client.createAuthAttempt(enrollmentId, false);
+  var waited = client.waitForAuthAttempt(created.authAttemptId(), 30, 2);
+  client.cancelAuthAttempt(created.authAttemptId());
 } catch (EzkeyException e) {
-    System.err.println("Error: " + e.getMessage());
-    System.err.println("Status code: " + e.getStatusCode());
-    System.err.println("Response body: " + e.getResponseBody());
-    
-    if (e.isClientError()) {
-        // Handle 4xx errors (bad request, etc.)
-    } else if (e.isServerError()) {
-        // Handle 5xx errors (server issues)
-    }
+  if (e.isClientError()) {
+    // 4xx
+  } else if (e.isServerError()) {
+    // 5xx
+  }
 }
 ```
 
-## Security Considerations
+`createAuthAttemptByUserIdentifier` and optional `AuthAttemptContext` are also on `EzkeyClient`.
 
-### Cryptographic Operations
+## Maven
 
-The demo application includes examples of:
-- RSA key pair generation
-- Digital signature creation and verification
-- Base64 encoding for key transport
-
-```java
-// Generate device key pair
-KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-keyGen.initialize(2048);
-KeyPair deviceKeys = keyGen.generateKeyPair();
-
-// Sign data
-Signature signature = Signature.getInstance("SHA256withRSA");
-signature.initSign(privateKey);
-signature.update(data.getBytes("UTF-8"));
-byte[] signatureBytes = signature.sign();
-String signedData = Base64.getEncoder().encodeToString(signatureBytes);
-```
-
-### Production Recommendations
-
-- Use HTTPS endpoints in production
-- Store private keys securely
-- Implement proper key rotation
-- Validate all signatures server-side
-- Use secure random number generation
-
-## Dependencies
-
-The SDK uses minimal dependencies:
-- Jackson 2.15.2 for JSON processing
-- Java 8+ standard libraries
-
-## Maven Integration
-
-To use in a Maven project, add the JAR as a system dependency:
+Use the reactor artifact (same version as the parent), not a `system` JAR:
 
 ```xml
 <dependency>
-    <groupId>org.ezkey</groupId>
-    <artifactId>ezkey-java-sdk</artifactId>
-    <version>1.0.0</version>
-    <scope>system</scope>
-    <systemPath>${project.basedir}/lib/ezkey-java-sdk-1.0.0.jar</systemPath>
+  <groupId>org.ezkey</groupId>
+  <artifactId>ezkey-sdk</artifactId>
+  <version>${ezkey.version}</version>
 </dependency>
 ```
 
-## Requirements
-
-- Java 8+
-- Maven 3.6+ (for building)
-
 ## License
 
-MIT License - see LICENSE file in the project root.
+MIT License — see `LICENSE` in the project root.

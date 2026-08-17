@@ -78,7 +78,16 @@ Rotation and re-encryption jobs run **only in Admin API**; Auth API and Integrat
 **Concurrency model:** `TinkKeyManager` uses a read/write lock and a throttled async keyset
 version check so encrypt/decrypt does not serialize on DB sync. See
 [ADR-0008](../product-docs/global/architecture-decisions.md#adr-0008-tink-keyset-sync-concurrent-read-path)
-(SEC-009).
+(SEC-009). Envelope shape in the DB row:
+[ADR-0011](../product-docs/global/architecture-decisions.md#adr-0011-tink-native-database-keyset-envelope).
+
+**HA keyset sync (operator summary):** Use `storage-mode=DATABASE` so `ezkey_keyset_blob` is the
+shared source of truth across Admin/Auth/Integration instances. On introduce, a new key stays
+`PENDING` for `rotation.sync-window-seconds` before promotion to `PRIMARY`, giving instances time
+to reload the updated keyset (async check in ADR-0008) while encrypt still uses the previous
+primary; Tink can decrypt with older ENABLED keys throughout. In the Docker stack the mode remains
+`DATABASE`, but the shared `encryption-secrets` volume also mounts the keyset file as a
+cache/backup path — do not treat that shared file alone as the multi-instance sync contract.
 
 **Defined in:** `TinkProperties`
 

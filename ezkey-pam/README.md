@@ -1,16 +1,24 @@
 # Ezkey PAM Module
 
-PAM module for SSH integration with the Ezkey MFA system via the **M2M API** (port 7080).
+**Experimental.** Personal lab for SSH/PAM MFA against a running Ezkey stack. Not on the
+September 2026 operable-release roadmap. Keep PAM facts in this folder; do not add PAM to
+`docs/` or `docker/README.md`.
+
+Linux PAM module that calls the **Integration API** (port 7080, Docker service `integration-api`).
 When a user connects over SSH, the module:
-1. Creates an auth attempt on the M2M API (`POST /api/v1/auth-attempts`) using the Linux username as `userIdentifier`.
-2. Waits for the user to approve or reject from the demo-device UI (`GET /api/v1/auth-attempts/{id}/wait`).
-3. Grants or denies SSH access based on the response.
+
+1. Creates an auth attempt (`POST /api/v1/auth-attempts`) using the Linux username as `userIdentifier`.
+2. Waits for approve or reject from the Demo Device UI (`GET /api/v1/auth-attempts/{id}/wait`).
+3. Grants or denies SSH access based on the wait `status` (`ACCEPTED` vs anything else).
+
+The environment variable is still named `EZKEY_M2M_API_URL` (legacy). It must point at the
+Integration API. In Compose on `ezkey-network`, that is `http://integration-api:7080`.
 
 ## Prerequisites
 
 - Rocky Linux 10 (or compatible RHEL 10 system)
 - `gcc`, `make`, `pam-devel`, `libcurl-devel`, `cjson-devel`
-- Running Ezkey stack with M2M API accessible
+- Running Ezkey stack with Integration API reachable
 - An active API key pair (integration key + secret key)
 - An enrollment with `userIdentifier` matching the Linux username (`testuser`)
 
@@ -18,7 +26,7 @@ When a user connects over SSH, the module:
 
 | Variable | Default | Description |
 |---|---|---|
-| `EZKEY_M2M_API_URL` | `http://localhost:7080` | M2M API base URL |
+| `EZKEY_M2M_API_URL` | `http://localhost:7080` | Integration API base URL (legacy name) |
 | `EZKEY_INTEGRATION_KEY` | *(required)* | API integration key |
 | `EZKEY_SECRET_KEY` | *(required)* | API secret key |
 
@@ -40,7 +48,7 @@ EZKEY_INTEGRATION_KEY=<key> EZKEY_SECRET_KEY=<secret> docker-compose up --build
 # 4. SSH into the PAM container
 ssh -p 2222 testuser@localhost
 
-# 5. Approve the auth attempt in the demo-device UI
+# 5. Approve the auth attempt in the Demo Device UI
 open http://localhost:8083/phone/ezkey
 ```
 
@@ -58,8 +66,8 @@ open http://localhost:8083/phone/ezkey
 6. cd ezkey-pam
 7. EZKEY_INTEGRATION_KEY=<key> EZKEY_SECRET_KEY=<secret> docker-compose up --build
 8. ssh -p 2222 testuser@localhost           # SSH triggers PAM -> POST /api/v1/auth-attempts
-9. Open http://localhost:8083/phone/ezkey   # Demo-device UI
-10. Check pending -> Approve                # Demo-device approves the auth attempt
+9. Open http://localhost:8083/phone/ezkey   # Demo Device UI
+10. Check pending -> Approve                # Demo Device approves the auth attempt
 11. SSH session completes successfully      # PAM received ACCEPTED from wait API
 ```
 
@@ -71,7 +79,7 @@ sudo dnf install -y gcc make pam-devel libcurl-devel epel-release
 sudo dnf install -y cjson-devel
 
 # Build and install
-export EZKEY_M2M_API_URL=http://your-m2m-api:7080
+export EZKEY_M2M_API_URL=http://integration-api:7080
 export EZKEY_INTEGRATION_KEY=your-integration-key
 export EZKEY_SECRET_KEY=your-secret-key
 sudo ./install.sh
@@ -116,12 +124,12 @@ docker exec ezkey-pam-test /opt/pam-ezkey/test/test_pam.sh
 
 ### `PAM_AUTH_ERR` immediately
 - Check that `EZKEY_INTEGRATION_KEY` and `EZKEY_SECRET_KEY` are set in the container environment.
-- Verify M2M API is reachable: `curl http://m2m-api:7080/actuator/health`
+- Verify Integration API is reachable: `curl http://integration-api:7080/actuator/health`
 - Check that an enrollment with `userIdentifier=testuser` exists.
 
 ### SSH connection hangs forever
 - The wait API has a 30-second timeout by default (`EZKEY_WAIT_TIMEOUT`).
-  Make sure you approve/reject in the demo-device UI within that window.
+  Make sure you approve/reject in the Demo Device UI within that window.
 
 ### No logs in `/var/log/secure`
 ```bash
@@ -154,4 +162,3 @@ ezkey-pam/
 ├── docker-compose.yml
 └── sshd                     # PAM sshd configuration
 ```
-

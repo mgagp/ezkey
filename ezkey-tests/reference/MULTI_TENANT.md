@@ -35,7 +35,10 @@ This document defines the philosophy, rationale, and testing approach for this a
 
 ## Fundamental Rule: No Impersonation
 
-**Source:** `.cursor/plans/phase_1_multi-tenant_6ba5f673.plan.md` (line 193)
+**Source:** Living canon — [`docs/features/SECURITY_MULTI_TENANT.md`](../../docs/features/SECURITY_MULTI_TENANT.md),
+[`docs/LIFECYCLE_GOVERNANCE.md`](../../docs/LIFECYCLE_GOVERNANCE.md), and Admin API
+[`AdminPrincipal`](../../ezkey-admin-api/src/main/java/org/ezkey/admin/security/AdminPrincipal.java)
+(system tenant = tenantId `1`; GA creates integrations there, TA in own tenant).
 
 > **"No impersonation: Administrators cannot create resources (integrations, enrollments, API keys, auth attempts) for other tenants. If a Global Admin needs to create resources for a specific tenant, they must become a Tenant Admin for that tenant."**
 
@@ -421,15 +424,22 @@ void testTenantAdminACannotAccessOtherTenantIntegration() {
 
 ### Specification Documents
 
-1. **Phase 1 Multi-Tenant Plan**
-   - File: `.cursor/plans/phase_1_multi-tenant_6ba5f673.plan.md`
-   - Lines 190-270: "No Impersonation" rule, tenant assignment logic
+1. **Multi-tenant security & actors**
+   - File: `docs/features/SECURITY_MULTI_TENANT.md`
+   - GlobalAdmin / TenantAdmin / API-key scope; no impersonation
 
-2. **Multi-Tenant Test Plan**
+2. **Lifecycle & deactivation guardrails**
+   - File: `docs/LIFECYCLE_GOVERNANCE.md`
+   - Tenant/admin deactivate, min-admin floors, eligibility chain
+
+3. **Admin API contracts**
+   - File: `docs/ENDPOINT.md` (tenants, admins provisioning/lifecycle sections)
+
+4. **Multi-Tenant Test Plan**
    - File: `docs/testing/MULTI_TENANT_TEST_PLAN.md`
    - Sections 1.1-1.3: Tenant isolation test scenarios
 
-3. **Tenant Permissions Test Strategy**
+5. **Tenant Permissions Test Strategy**
    - File: `docs/testing/TENANT_PERMISSIONS_TEST_STRATEGY.md`
    - Matrices 1-3: Comprehensive permission matrices
 

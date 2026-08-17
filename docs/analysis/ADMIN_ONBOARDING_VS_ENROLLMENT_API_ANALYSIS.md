@@ -1,5 +1,10 @@
 # Analysis: Admin Onboarding API vs Enrollment API
 
+> **Historical write-up.** The living rule is
+> [`docs/ENDPOINT.md`](../ENDPOINT.md) § When to Use Admin Onboarding API vs Enrollment API and
+> [`ezkey-admin-api/AGENTS.md`](../../ezkey-admin-api/AGENTS.md) § Admin MFA credentials vs enrollment GET.
+> Do not treat this file as the cold-start entry.
+
 ## Context
 
 Two APIs exist that can retrieve enrollment onboarding credentials:

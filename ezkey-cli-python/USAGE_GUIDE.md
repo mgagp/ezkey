@@ -6,9 +6,10 @@
 3. [Authentication](#authentication)
 4. [Command Categories](#command-categories)
 5. [Common Workflows](#common-workflows)
-6. [TUI Admin Console](#tui-admin-console)
-7. [Troubleshooting](#troubleshooting)
-8. [Best Practices](#best-practices)
+6. [Device simulation](#device-simulation)
+7. [TUI Admin Console](#tui-admin-console)
+8. [Troubleshooting](#troubleshooting)
+9. [Best Practices](#best-practices)
 
 ---
 
@@ -73,6 +74,8 @@ Should show:
 ```
 --tui                          Start interactive admin console
 ```
+
+(`admin console` is the CLI help string; the TUI itself is **read-only** — see [TUI_SCOPE.md](TUI_SCOPE.md).)
 
 ---
 
@@ -168,8 +171,8 @@ ezkey admin integration list
 # Get integration details
 ezkey admin integration get --id 1
 
-# Create integration
-ezkey admin integration create --data @integration.json
+# Create integration (code is required; slug: alphanumeric, hyphens, underscores)
+ezkey admin integration create --code test-app --name "Test App"
 
 # Delete integration
 ezkey admin integration delete --id 1
@@ -267,6 +270,30 @@ ezkey admin api-key get --id 42
 # Revoke API key
 ezkey admin api-key revoke --id 42
 ```
+
+### Device simulation
+
+`ezkey device` is a **development/testing** authenticator: bind/verify plus pending/respond from
+the CLI. Private keys are stored in **plaintext** under `~/.ezkey/devices/`. It is not a production
+device. Prefer Demo Device or the mobile app for realistic UX. See the CLI
+[README.md](README.md).
+
+```bash
+# Bind + verify (enrollment id, proof token, and challenge from Admin API / QR)
+ezkey device enroll --enrollment-id 456 --enrollment-proof-token EZK-ABC123 --challenge 123456
+
+# Check pending and approve (default) or deny
+ezkey device auth --enrollment-id 456 --approve
+ezkey device auth --enrollment-id 456 --deny
+ezkey device auth --enrollment-id 456 --challenge 123456
+
+# Local inventory
+ezkey device list
+ezkey device show --enrollment-id 456
+ezkey device remove --enrollment-id 456
+```
+
+Requires `ezkey configure set --auth-url … --crypto-url …` (Auth API + Crypto API).
 
 ### Auth Commands (Device/Mobile)
 
@@ -385,16 +412,7 @@ ezkey configure set --admin-url http://localhost:9080 --auth-url http://localhos
 ezkey admin auth login --username admin
 
 # 3. Create integration
-ezkey admin integration create --data '{
-  "logo": "https://example.com/logo.png",
-  "i18n": [
-    {
-      "language": "en",
-      "name": "My Application",
-      "description": "Secure authentication for my app"
-    }
-  ]
-}'
+ezkey admin integration create --code my-app --name "My Application" --description "Secure authentication for my app"
 
 # 4. List integrations to verify
 ezkey admin integration list
@@ -689,19 +707,9 @@ All datetime fields are in UTC with Z suffix:
 **integration.json:**
 ```json
 {
-  "logo": "https://example.com/logo.png",
-  "i18n": [
-    {
-      "language": "en",
-      "name": "My Application",
-      "description": "Secure authentication for my application"
-    },
-    {
-      "language": "fr",
-      "name": "Mon Application",
-      "description": "Authentification sécurisée pour mon application"
-    }
-  ]
+  "code": "my-app",
+  "name": "My Application",
+  "description": "Secure authentication for my application"
 }
 ```
 

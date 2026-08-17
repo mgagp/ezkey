@@ -91,9 +91,9 @@ Required action:
 - repeat the signed AAB build and device validation for the final publication candidate,
 - keep the final Play upload artifact and its validation logs as release evidence.
 
-### 3. Listing and compliance inputs are not evidenced in the workspace
+### 3. Listing and compliance inputs are not closed
 
-Evidence in the current workspace is limited to the checklist in `MOBILE_PLAY_PUBLISHING.md`. There is no discovered mobile-specific privacy-policy URL, support-contact artifact, or completed Data Safety mapping in the mobile corpus.
+The public privacy-policy URL exists: `https://ezkey.org/privacy.html` (`sites/ezkey-org/privacy.html`). [`MOBILE_PLAY_PUBLISHING.md`](MOBILE_PLAY_PUBLISHING.md) points at it. What is still missing from the mobile corpus is a support-contact artifact, completed Play Data Safety answers, and listing copy/assets.
 
 Why it matters:
 
@@ -102,7 +102,7 @@ Why it matters:
 
 Required action:
 
-- define the public privacy-policy URL,
+- paste the privacy URL into Play Console at submission,
 - define the support contact used in the listing,
 - complete the Play Data Safety answers from the real app behavior.
 
