@@ -41,6 +41,8 @@ import org.junit.jupiter.api.TestMethodOrder;
  * <ul>
  *   <li>TenantAdmin A cannot list/read/modify integrations of Tenant B
  *   <li>TenantAdmin A cannot list/read/modify enrollments of Tenant B
+ *   <li>TenantAdmin A cannot read enrollment sub-resources of Tenant B (QR encodes the bind handle;
+ *       same isolation as {@code GET /enrollments/{id}})
  *   <li>TenantAdmin A cannot list/read/modify API keys of Tenant B
  *   <li>TenantAdmin A listings only show Tenant A resources
  * </ul>
@@ -344,6 +346,59 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
             .response();
 
     assertThat(response.getStatusCode()).isIn(403, 404);
+  }
+
+  /**
+   * Sub-resource companion to {@link #testTenantAdminACannotGetTenantBEnrollment()}.
+   *
+   * <p>{@code GET /enrollments/{id}/qrcode} encodes the same bind handle as JSON GET. Isolation
+   * must apply to the parent id <em>and</em> this derived representation. Cross-tenant deny is 404
+   * (hide-existence), not 403.
+   */
+  @Test
+  @Order(27)
+  @DisplayName("TenantAdmin A cannot get Tenant B enrollment QR (404)")
+  public void testTenantAdminACannotGetTenantBEnrollmentQr() {
+    configureForAdminApi(dockerStackConfig);
+
+    Response response =
+        given()
+            .header("Authorization", "Bearer " + tenantAdminAToken)
+            .accept("image/png")
+            .when()
+            .get("/enrollments/" + enrollmentBId + "/qrcode")
+            .then()
+            .extract()
+            .response();
+
+    assertThat(response.getStatusCode())
+        .as("Cross-tenant enrollment QR must hide existence")
+        .isEqualTo(404);
+  }
+
+  /**
+   * Positive counterpart: owning Tenant Admin still receives the PNG for an enrollment in their
+   * tenant.
+   */
+  @Test
+  @Order(28)
+  @DisplayName("TenantAdmin A can get own enrollment QR (200)")
+  public void testTenantAdminACanGetOwnEnrollmentQr() {
+    configureForAdminApi(dockerStackConfig);
+
+    Response response =
+        given()
+            .header("Authorization", "Bearer " + tenantAdminAToken)
+            .accept("image/png")
+            .when()
+            .get("/enrollments/" + enrollmentAId + "/qrcode")
+            .then()
+            .extract()
+            .response();
+
+    assertThat(response.getStatusCode()).isEqualTo(200);
+    assertThat(response.getContentType()).contains("image/png");
+    assertThat(response.getBody().asByteArray()).isNotEmpty();
   }
 
   @Test

@@ -725,6 +725,9 @@ public class EnrollmentController {
    * configured. This QR code can be scanned by the Ezkey mobile application to automatically
    * populate enrollment credentials and connect to the correct auth-api instance.
    *
+   * <p>Tenant Admins may only fetch a QR for an enrollment in their tenant. Cross-tenant and
+   * unknown ids return 404 (hide-existence), the same posture as enrollment delete.
+   *
    * <p><b>Usage in Postman:</b>
    *
    * <ol>
@@ -734,7 +737,8 @@ public class EnrollmentController {
    * </ol>
    *
    * @param id the enrollment ID
-   * @return ResponseEntity containing PNG image bytes with HTTP 200 status, or 404 if not found
+   * @return ResponseEntity containing PNG image bytes with HTTP 200 status, or 404 if not found or
+   *     not visible to this admin (hide-existence)
    */
   @Operation(
       summary = "Generate QR code for enrollment",
@@ -745,7 +749,9 @@ public class EnrollmentController {
       value = {
         @ApiResponse(responseCode = "200", description = "QR code generated successfully"),
         @ApiResponse(responseCode = "400", description = "Enrollment missing proof token"),
-        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Enrollment not found or not visible to this admin"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -754,7 +760,12 @@ public class EnrollmentController {
       @Parameter(description = "Enrollment ID", example = "4") @PathVariable("id") Integer id) {
 
     try {
-      // Get enrollment details
+      Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+      if (!accessControlService.canAccessEnrollment(auth, id)) {
+        // Hide existence of cross-tenant enrollments (same posture as delete)
+        throw new ResourceNotFoundException("Enrollment", id);
+      }
+
       var enrollment = enrollmentService.getById(id);
 
       // Validate enrollment has proof token

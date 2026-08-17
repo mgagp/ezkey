@@ -302,6 +302,12 @@ ezkey-tests/src/test/java/org/ezkey/tests/security/
 2. ✅ List filtering (TenantAdmin sees only own tenant, GlobalAdmin sees all)
 3. ✅ Creation tenant assignment (GlobalAdmin → System, TenantAdmin → own)
 
+**Sub-resources inherit parent isolation.** A get-by-id check on `/enrollments/{id}` does not
+cover `/enrollments/{id}/qrcode` (or any other `/{id}/…` that re-exposes the same object).
+When adding a sub-resource on a tenant-owned entity, add a deny row (and an own-tenant 200)
+next to the parent GET in `TenantCrossIsolationSecurityTest`. Do not invent a second isolation
+harness.
+
 **P1 - High (Should Pass):**
 1. ✅ Permission boundaries (TenantAdmin cannot perform GlobalAdmin operations)
 2. ✅ API key tenant scoping validation
