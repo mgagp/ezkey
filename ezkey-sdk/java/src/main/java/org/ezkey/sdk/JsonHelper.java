@@ -53,7 +53,7 @@ final class JsonHelper {
    *
    * <p>Values are returned as raw strings (unquoted for strings, literal for numbers/booleans).
    * Null JSON values are stored as {@code null} in the map. This parser handles the simple flat
-   * JSON objects returned by the Ezkey Admin API.
+   * JSON objects returned by the Ezkey Integration API.
    *
    * @param json the JSON string to parse
    * @return map of field names to raw string values

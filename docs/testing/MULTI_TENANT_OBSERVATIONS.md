@@ -2,8 +2,13 @@
 
 Ce document contient des observations et des points à réanalyser ou compléter avant de prendre action. Ces éléments nécessitent une investigation plus approfondie ou une décision architecturale.
 
-**Statut**: En cours d'analyse
-**Date de création**: 2025-12-26
+**Statut**: Archive d'observations (plusieurs items **résolus** — vérifier le statut par section)  
+**Date de création**: 2025-12-26  
+**Canon vivant**: [`ezkey-tests/reference/MULTI_TENANT.md`](../../ezkey-tests/reference/MULTI_TENANT.md), [`docs/ENDPOINT.md`](../ENDPOINT.md) § admins / audit
+
+`integrationLogo` / `integration_logo` in the notes below is **historical**. The logo column was
+removed (Flyway V7). Do not reintroduce it. Living integrations use name + description (+ `code`
+slug).
 
 ---
 
@@ -11,8 +16,8 @@ Ce document contient des observations et des points à réanalyser ou compléter
 
 **Date**: 2025-12-26
 **Observateur**: Utilisateur
-**Endpoint concerné**: `GET /api/v1/admins` (ou équivalent)
-**Statut**: ✅ **RÉSOLU** - 2025-12-26
+**Endpoint concerné**: `GET /api/v1/admins`
+**Statut**: ✅ **RÉSOLU** — `GET /api/v1/admins` avec filtrage automatique par tenant (Option 1). Voir `docs/ENDPOINT.md` § List Administrators et `AdminProvisioningController.listAdmins`.
 
 ### Observation
 
@@ -97,7 +102,7 @@ Un TenantAdmin ne peut pas lister les administrateurs (TenantAdmins) de son prop
 - `ezkey-admin-api/src/test/java/org/ezkey/admin/controller/AdminProvisioningControllerTest.java` - Tests d'intégration
 - `postman/collections/v2.1/EZ Key Admin Provisioning admin.postman_collection.json` - Collection mise à jour
 
-**Note additionnelle:** L'endpoint `GET /api/v1/tenants` a également été modifié pour permettre aux TenantAdmins de voir leur propre tenant, suivant le même pattern de filtrage automatique.
+**Note (canon 2026-08):** `GET /api/v1/tenants` (list) is **GlobalAdmin only** (TenantAdmin → 403). TenantAdmin may `GET /api/v1/tenants/{id}` for their own tenant only. See `docs/ENDPOINT.md` § Tenants.
 
 ### Prochaines étapes
 
@@ -534,7 +539,8 @@ L'utilisateur recommande d'inclure l'information sur le tenant pour améliorer l
 
 2. **Structure de données (EnrollmentStoreService.Record)**:
    - Contient: `enrollmentId`, `integrationId`, `enrollmentName`
-   - Contient: `integrationName`, `integrationDescription`, `integrationLogo`
+   - Contient: `integrationName`, `integrationDescription` (historical notes also listed
+     `integrationLogo` — **removed**, Flyway V7; do not reintroduce)
    - **Ne contient pas**: `tenantId`, `tenantName`, `tenantDescription`
 
 3. **DTOs d'enrollment**:
@@ -638,8 +644,9 @@ Integration Description
 **Concept**: Badge tenant comme identité visuelle (équivalent du logo d'intégration)
 
 **Contexte actuel:**
-- Les intégrations ont un `integrationLogo` qui représente la différence entre applications (bancaire, administrative, etc.)
-- Le logo permet de distinguer visuellement les différentes intégrations
+- Historical: integrations once had `integrationLogo`. That column is gone (V7). Distinction is
+  name/description (and `code`), not a logo blob.
+- Living branding for applications is name + description, not a logo field.
 
 **Évolution proposée:**
 - **Badge tenant**: Équivalent du logo pour le tenant

@@ -117,12 +117,23 @@ docker compose exec cli-test ezkey --help
 docker compose exec cli-test bash
 ```
 
-### 2. Extract Bootstrap Credentials (First Time Only)
+### 2. Bootstrap credentials (Docker-first)
 
-After the first Docker stack startup, extract bootstrap credentials from logs:
+**Default path:** `./clean-start.sh` (and the base Docker stack) use the **`bootstrap-init`** container.
+Admin API writes `bootstrap-credentials.json` into the `bootstrap-artifacts` volume; init performs
+bind+verify and seeds demo-device. No host Maven/JDK is required for that flow. See
+[`docker/README.md`](../docker/README.md) § Bootstrap Init / Retrieving Bootstrap Artifacts.
 
 ```bash
-# Extract credentials from Docker logs
+# Inspect exported credentials (volume name may include a compose project prefix)
+docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/bootstrap-credentials.json
+```
+
+**Optional Maven path** (functional checks / non-Docker tooling): `clean-start.sh --mvn-bootstrap`
+or run the extraction/token tests manually. Prefer the Docker volume when the stack is up.
+
+```bash
+# Optional: extract from Admin API logs into .ezkey-test/ (legacy / CI helpers)
 mvn test -pl ezkey-tests -Dtest=BootstrapCredentialsExtractionTest
 ```
 
@@ -131,7 +142,8 @@ This will:
 - Extract enrollment credentials (ID, proof token, challenge code, recovery codes)
 - Save to `.ezkey-test/bootstrap-credentials.json` for future use
 
-**Note**: This only needs to be done once after initial Docker stack startup. The credentials file will be reused for subsequent test runs.
+**Note**: With Docker bootstrap-init, demo-device is already seeded after clean-start. Log extraction
+is only needed for suites that explicitly consume `.ezkey-test/` caches.
 
 ### 3. Create Admin Token (Optional but Recommended)
 
@@ -573,6 +585,8 @@ String adminToken = bootstrapService.ensureAdminToken();
 On Windows, use Bash as well, for example through Git Bash.
 
 **Common options:**
+- `--ha`: High Availability stack (2× Admin API + 2× Auth API behind HAProxy). See
+  [`docker/README-HA.md`](../docker/README-HA.md) and [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) § HA mode.
 - `--prod-safe`: start with production-safe docker profile only (rate limits enabled, minimal Actuator exposure). Also defaults **Auth API demo MITM** to off (`EZKEY_DEMO_MITM_SIGNATURE_ENABLED=false`) unless you pre-set the variable.
 - `--jmx`: enable JMX port publishing for VisualVM (DEV ONLY; unauthenticated, non-SSL)
 

@@ -41,9 +41,25 @@ Switch the active environment in Bruno (or `./scripts/bruno-health.sh --env …`
 
 Pointing demos at `host.docker.internal:18080` by default would add fragility and rarely helps the nominal integration flow. **Default:** demos and bootstrap flows stay on **direct service URLs** inside Compose; use **Caddy host ports** from the **host** (Bruno on your machine, browser to localhost) when you explicitly want the proxy path.
 
+## HA mode (`docker-compose.ha.yml`)
+
+Separate compose project (`ezkey-ha`): **2×** Admin API + **2×** Auth API behind HAProxy. Not the
+same as the daily Caddy overlay — do not mix HA and single-stack assumptions.
+
+| Role | Host port | Notes |
+|------|-----------|--------|
+| Admin API (via HAProxy) | `9080` | Round-robin to `admin-api-1` / `admin-api-2` |
+| Auth API (via HAProxy) | `8080` | Round-robin to `auth-api-1` / `auth-api-2` |
+| HAProxy Admin stats | `9081` | `http://localhost:9081/stats` |
+| HAProxy Auth stats | `8085` | `http://localhost:8085/stats` |
+
+Entrypoints: `./docker/start-ha.sh`, `./ezkey-tests/clean-start.sh --ha`. Full runbook:
+[`docker/README-HA.md`](../docker/README-HA.md). Parity follow-up: `I-2026-0003`.
+
 ## Related docs
 
 - **[admin-ui-security.md](admin-ui-security.md)** — Admin UI token handling, Caddy headers, clean-start proxy default.
 - **[admin-ui-security-validation.md](admin-ui-security-validation.md)** — How to validate headers and token behavior (checklist).
 - **[../docker/caddy/Caddyfile](../docker/caddy/Caddyfile)** — API proxy blocks and comments for host port mapping.
+- **[../docker/README-HA.md](../docker/README-HA.md)** — HA stack architecture, ShedLock checks, HAProxy stats.
 

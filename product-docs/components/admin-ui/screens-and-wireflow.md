@@ -77,15 +77,16 @@ flowchart LR
 
 ### Admins List and Detail
 
-- **Routes.** `/admins`, `/admins/:id`.
+- **Routes.** `/admins` (list). There is **no** `/admins/:id` — detail opens on `/admins?adminId=` via `adminListDetailHref`.
 - **Primary actor.** Both roles (Global Admin for Global Admins; Tenant Admin limited to own tenant).
 - **Purpose.** Provision and manage admin identities; regenerate recovery codes; retrieve onboarding credentials (and QR) when applicable.
 
 ### API Keys
 
-- **Route.** `/api-keys` and `/integrations/:id/api-keys`.
+- **Routes.** `/api-keys` (list), `/api-keys/:id` (detail), and `/integrations/:id/api-keys`.
 - **Primary actor.** Both roles (scope applies).
-- **Purpose.** Create new API keys (secret shown once), list, filter, revoke.
+- **Purpose.** Create new API keys (secret shown once), list, filter, revoke; on detail, copy the
+  full key, edit description and IP whitelist (`PATCH`), revoke with reason.
 
 ### Tenants List and Detail
 
@@ -97,7 +98,10 @@ flowchart LR
 
 - **Route.** `/audit-logs`.
 - **Primary actor.** Both roles.
-- **Purpose.** Search audit entries; inspect chain checkpoints and lifecycle observability (Global Admin).
+- **Purpose.** Search audit entries with date-range presets (`DateRangeFilter`); inspect chain
+  checkpoints and lifecycle observability (Global Admin). Enrollment, integration, and auth-attempt
+  detail pages open this screen via **View related audits** (entity filter + rolling window).
+  **Expand context** is a bounded 24h → 48h zoom-out, not a general investigation console.
 - **Reading model.** `eventType` answers what happened; `eventStatus` answers how that audited step
     ended (`SUCCESS`, `FAILURE`, `ERROR`); `eventAction` is the stable filter/export key for
     automation and SIEM.
@@ -110,7 +114,9 @@ flowchart LR
 
 - **Route.** `/encryption-keys`.
 - **Primary actor.** Global Admin.
-- **Purpose.** Observe encryption key status; trigger rotation; view re-encryption batches.
+- **Purpose.** Observe encryption key status (PRIMARY row emphasis); rotate; per-key re-encrypt;
+  create batches vs trigger full re-encryption; inspect/resume batches (row detail). Ops contract:
+  [`docs/REENCRYPTION_OPERATIONS.md`](../../../docs/REENCRYPTION_OPERATIONS.md).
 
 ### Account / Session
 

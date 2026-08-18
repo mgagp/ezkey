@@ -1,5 +1,9 @@
 # Re-encryption batch pipeline — phased plan (design, parallelism, observability)
 
+> **Historical.** Phase 1/2 framing below is superseded. Living operator and collaborator canon is
+> [`docs/REENCRYPTION_OPERATIONS.md`](../REENCRYPTION_OPERATIONS.md) (service split, parallel mutex,
+> Micrometer, sharding). Do not treat Micrometer as still out of scope.
+
 **Purpose:** Actionable scope for **Phase 1** implementation (solid refactor + cross-target parallelism + operator-grade feedback), and explicit **Phase 2** follow-up (heavy-table sharding). Updates the earlier planning note with agreed boundaries so work stays **pragmatic** (avoid accidental complexity).
 
 **Audience:** Engineers and coding assistants implementing or reviewing changes to `ReencryptionService` and related code in `ezkey-core`, Admin API, and Admin UI.

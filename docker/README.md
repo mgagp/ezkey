@@ -39,13 +39,36 @@ Once started, you can access:
 
 - **Admin API**: http://localhost:9080
 - **Auth API**: http://localhost:8080
+- **Integration API** (API-key / M2M): http://localhost:7080
 - **Crypto API**: http://localhost:9090
 - **Demo Device**: http://localhost:8083
+
+Ports and Caddy mappings: [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md).
 
 **API Documentation (Swagger UI):**
 - Admin API: http://localhost:9080/swagger-ui/index.html
 - Auth API: http://localhost:8080/swagger-ui/index.html
+- Integration API: http://localhost:7080/swagger-ui/index.html
 - Crypto API: http://localhost:9090/swagger-ui/index.html
+
+## High Availability (HA) stack
+
+For **multi-instance** local testing (2× Admin API + 2× Auth API behind HAProxy, ShedLock
+coordination), use the HA compose — not the single-instance stack above.
+
+- Docs: [`README-HA.md`](README-HA.md)
+- Start: `./docker/start-ha.sh` (or from tests: `./ezkey-tests/clean-start.sh --ha`)
+- Ports / stats: [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) § HA mode
+- Remaining parity / topology follow-up: `I-2026-0003` (do not treat this README as the backlog)
+
+## Non-root containers
+
+API and demo images run as **`spring` (UID 100 / GID 101)** via Dockerfile `USER` at **build** time.
+Directories used at runtime are created and `chown`'d in the image — do **not** reintroduce `su-exec`
+or entrypoint `chown`. On Linux, a **new empty named volume** copies that image ownership on first
+create. `./docker/generate-encryption-keys.sh` still seeds `encryption-secrets` with UID 100/GID 101.
+`bootstrap-init` uses the same `spring` user; `cli-test` uses `ezkey:ezkey`. Third-party images
+(`postgres`, HAProxy) keep their own users.
 
 ## Container timezone and log timestamps
 

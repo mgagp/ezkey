@@ -9,7 +9,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | Module | CONFIGURATION.md | Role |
 |---|---|---|
 | `ezkey-core` | [ezkey-core/CONFIGURATION.md](../../ezkey-core/CONFIGURATION.md) | Shared library — defines all `ezkey.encryption.*`, `ezkey.audit.*`, `ezkey.organization.*`, `ezkey.qr.*`, `ezkey.enrollment.*`, `ezkey.demo.*`, and `ezkey.core.*` prefixes |
-| `ezkey-admin-api` | [ezkey-admin-api/CONFIGURATION.md](../../ezkey-admin-api/CONFIGURATION.md) | Defines `ezkey.admin.*` (including `ezkey.admin.cors.*`, `ezkey.admin.auth.*`), `ezkey.admin-operations.*`, `ezkey.security.admin.*`, `ezkey.api-key.*`, `ezkey.trusted-proxies.*` |
+| `ezkey-admin-api` | [ezkey-admin-api/CONFIGURATION.md](../../ezkey-admin-api/CONFIGURATION.md) | Defines `ezkey.admin.*` (including `ezkey.admin.cors.*`, `ezkey.admin.auth.*`), `ezkey.admin-operations.*`, `ezkey.security.admin.*`, `ezkey.api-key.*`, `ezkey.trusted-proxies.*`, `ezkey.auth-attempt.expiry-scheduler.*` |
 | `ezkey-auth-api` | [ezkey-auth-api/CONFIGURATION.md](../../ezkey-auth-api/CONFIGURATION.md) | Defines `ezkey.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
 | `ezkey-integration-api` | [ezkey-integration-api/CONFIGURATION.md](../../ezkey-integration-api/CONFIGURATION.md) | Defines `ezkey.api-key.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
 | `ezkey-crypto-api` | [ezkey-crypto-api/CONFIGURATION.md](../../ezkey-crypto-api/CONFIGURATION.md) | No database; inherits `ezkey.encryption.*` from core |
@@ -32,6 +32,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.admin.bootstrap.export` | `ezkey-admin-api` | admin-api | [admin-api §9](../../ezkey-admin-api/CONFIGURATION.md#9-bootstrap-credentials-export-ezkeyadminbootstrapexport) |
 | `ezkey.admin.cors` | `ezkey-admin-api` | admin-api | [admin-api §11](../../ezkey-admin-api/CONFIGURATION.md#11-admin-cors--browser-cross-origin-ezkeyadmincors) |
 | `ezkey.admin.auth` | `ezkey-admin-api` | admin-api | [admin-api §12](../../ezkey-admin-api/CONFIGURATION.md#12-browser-httponly-session-cookie) |
+| `ezkey.auth-attempt.expiry-scheduler` | `ezkey-admin-api` (scheduler bean in core) | admin-api | [admin-api §13](../../ezkey-admin-api/CONFIGURATION.md#13-auth-attempt-ttl-persistence-ezkeyauth-attemptexpiry-scheduler) |
 | `ezkey.trusted-proxies` | `ezkey-admin-api` (copy ×3) | admin-api, auth-api, integration-api | [admin-api §10](../../ezkey-admin-api/CONFIGURATION.md#10-trusted-proxies-ezkeytrusted-proxies) · [auth-api §2](../../ezkey-auth-api/CONFIGURATION.md#2-trusted-proxies-ezkeytrusted-proxies) · [integration-api §2](../../ezkey-integration-api/CONFIGURATION.md#2-trusted-proxies-ezkeytrusted-proxies) |
 | `ezkey.rate-limit` | `ezkey-auth-api` | auth-api | [auth-api §1](../../ezkey-auth-api/CONFIGURATION.md#1-auth-api-rate-limiting-ezkeyrate-limit) |
 | `ezkey.encryption` | `ezkey-core` (`TinkProperties`) | admin-api, auth-api, integration-api, crypto-api | [core §encryption](../../ezkey-core/CONFIGURATION.md#encryption-at-rest-ezkeyencryption) |

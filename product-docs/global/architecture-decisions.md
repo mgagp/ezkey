@@ -350,9 +350,11 @@ not bcrypt, because lookup is by the token value itself.
 
 ### Related Decisions
 
-- Admin bearer hash-only analysis: [`.cursor/plans/bearer_token_hash_storage_analysis.plan.md`](../../.cursor/plans/bearer_token_hash_storage_analysis.plan.md).
+- Admin bearer hash-only precedent: shipped `bearer_token_hash` (Flyway V7), `AdminToken` lookup by
+  SHA-256; Crypto API `POST /api/v1/crypto/hash-token` — see § Context above.
 - Dual signing payloads: [ADR-0006](#adr-0006-dual-signing-algorithms-device-ec-p256-integration-ed25519).
-- Incubation source: [`.cursor/plans/proof_token_hash-only_storage.plan.md`](../../.cursor/plans/proof_token_hash-only_storage.plan.md).
+- Incubation materialized (deleted Cursor plan): [`I-2026-0032`](backlog/ideas/I-2026-0032-proof-token-hash-only-storage.md),
+  [`TB-2026-07-06`](backlog/TB-2026-07-06-device-proof-token-hash-only.md).
 - Concurrent Tink keyset access: [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path).
 - Detective integrity windows: [ADR-0009](#adr-0009-detective-integrity-windows-align-to-checkpoint-grid).
 

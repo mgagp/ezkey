@@ -54,7 +54,8 @@ surface and the most valuable initial Cloudflare schema-validation target.
   domains in Java annotations.
 - `scripts/update-specs.sh` should remain the canonical extraction and dispatch entrypoint, while
   deployment localization should be a separately runnable packaging step.
-- Postman host behavior is already mostly aligned because environments own base URLs.
+- Postman host behavior is already mostly aligned because environments own base URLs. Living
+  operator collections under `bruno/` follow the same pattern.
 - Auth API is the right first slice because it is exposed frequently and represents Ezkey's core MFA
   business flow.
 
@@ -77,7 +78,7 @@ and verification evidence are known. Promote through
 
 ## Traceability notes
 
-- Source incubation plan: [`plan-openApiSpecLifecycle.prompt.md`](../../../../.github/prompts/plan-openApiSpecLifecycle.prompt.md)
+- Source incubation plan: GitHub prompt deleted in the 2026-08 corpus-ablation pass; this idea and the linked V/TB are canon.
 - Direction note: [`V-2026-06-02-openapi-spec-lifecycle`](../../vision/V-2026-06-02-openapi-spec-lifecycle.md)
 - Existing posture baseline: [`../../openapi-exposure-matrix.md`](../../openapi-exposure-matrix.md)
 - Related completed portal work: `I-2026-0026`, `TB-2026-0003`
@@ -87,7 +88,7 @@ and verification evidence are known. Promote through
 
 ## Links
 
-- Source working plan: [`plan-openApiSpecLifecycle.prompt.md`](../../../../.github/prompts/plan-openApiSpecLifecycle.prompt.md)
+- Source working plan: GitHub prompt deleted in the 2026-08 corpus-ablation pass; this idea and the linked V/TB are canon.
 - First tracer bullet: [`TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md`](TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md)
 - Auth OpenAPI config: [`../../../../ezkey-auth-api/src/main/java/org/ezkey/auth/config/OpenApiConfig.java`](../../../../ezkey-auth-api/src/main/java/org/ezkey/auth/config/OpenApiConfig.java)
 - Spec update script: [`../../../../scripts/update-specs.sh`](../../../../scripts/update-specs.sh)

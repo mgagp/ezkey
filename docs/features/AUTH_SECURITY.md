@@ -1,5 +1,10 @@
 # Authentication Security Analysis - PENDING & RESPOND APIs
 
+> **Hygiene note (2026-08):** Device crypto is **EC P-256 / Ed25519** (see `docs/CRYPTO.md`), not
+> RSA-2048. Device proof token uniqueness applies on **claim** (HTTP 200), not empty **204** polls
+> (`docs/ENDPOINT.md` § Retrieve pending request). Rate-limit defaults evolve with configuration —
+> prefer module `CONFIGURATION.md` / rate-limit policy over narrative in this file.
+
 ## Overview
 
 This document provides a comprehensive security analysis of the authentication flow APIs (`PENDING` and `RESPOND`) in the ezkey-auth-api. These endpoints represent the most critical and frequently used components of the Ezkey authentication system, handling the core MFA validation process between mobile devices and the authentication service.
@@ -88,13 +93,13 @@ public ResponseEntity<AuthAttemptPendingResponseDto> pending(@PathVariable("enro
 @PostMapping("/pending")
 public ResponseEntity<AuthAttemptPendingResponseDto> pending(@Valid @RequestBody AuthAttemptPendingRequestDto request) {
     // Uses enrollmentProofToken for secure enrollment identification
-    Enrollment enrollment = enrollmentRepository.findByEnrollmentProofTokenAndActive(
-        request.getEnrollmentProofToken(), true)
+    Enrollment enrollment = enrollmentRepository.findByEnrollmentProofTokenHashAndActive(
+        hashOf(request.getEnrollmentProofToken()), true)
         .orElseThrow(() -> new IllegalArgumentException("Authentication request failed"));
 }
 ```
 
-**Current Protection**: ✅ **FULLY RESOLVED** - Uses cryptographic enrollmentProofToken for secure identification, eliminating enumeration attacks entirely.
+**Current Protection**: ✅ **FULLY RESOLVED** - Lookup is by SHA-256 of the enrollment proof token (`findByEnrollmentProofTokenHashAndActive`), eliminating enumeration attacks entirely.
 
 ### 🟡 ACCEPTED RISK: Rate Limiting Disabled by Default
 
@@ -218,14 +223,11 @@ if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
 
 ### ✅ STRENGTHS: Well-Implemented Security Features
 
-**Device Proof Token Anti-Replay**:
-```java
-// Check device proof token uniqueness
-if (authAttemptRepository.existsByDeviceProofToken(request.getDeviceProofToken())){
-    logger.warn("Device proof token already used for enrollment: {}", request.getEnrollmentId());
-    throw new IllegalArgumentException("Authentication request failed");
-}
-```
+**Device Proof Token Anti-Replay (on claim)**:
+Device proof token uniqueness is enforced when a **PENDING** attempt is **claimed** (HTTP 200):
+the hash is persisted on `AuthAttempt` and must not be reused on a later claim. On **HTTP 204**
+(no pending), nothing is stored — the same signed token may be resent on later empty polls.
+See `docs/ENDPOINT.md` § Retrieve pending request and `AuthAttemptPendingService`.
 
 **Secure Error Messaging**:
 ```java
@@ -236,7 +238,7 @@ logger.warn("Invalid signature for enrollment: {}", request.getEnrollmentId());
 ```
 
 **Cryptographic Signature Validation**:
-- RSA-2048 key pairs for strong cryptographic security
+- EC P-256 / Ed25519 device and integration signatures (see `docs/CRYPTO.md`)
 - Proper signature verification workflow
 - Integration-signed proof tokens for authenticity
 
@@ -254,9 +256,11 @@ logger.warn("Invalid signature for enrollment: {}", request.getEnrollmentId());
 
 ### ✅ **MAJOR IMPROVEMENTS ACHIEVED**
 - **Critical vulnerability eliminated**: Enrollment enumeration completely resolved
-- **Strong cryptographic foundation**: RSA-2048 signatures with proper validation
+- **Strong cryptographic foundation**: EC P-256 / Ed25519 signatures with proper validation
 - **Secure error handling**: Generic error messages prevent information leakage
-- **Anti-replay protection**: Device proof tokens prevent replay attacks
+- **Anti-replay protection**: Device proof token uniqueness applies when a pending attempt is
+  **claimed** (persisted hash); empty polls (**204**) do not consume that constraint — see
+  `docs/ENDPOINT.md` § Retrieve pending request
 
 ### 🟡 **ACCEPTED RISKS**
 - **Rate limiting disabled**: Acceptable for development and small deployments
@@ -283,8 +287,8 @@ public ResponseEntity<AuthAttemptPendingResponseDto> pending(@PathVariable("enro
 @PostMapping("/pending")
 public ResponseEntity<AuthAttemptPendingResponseDto> pending(@Valid @RequestBody AuthAttemptPendingRequestDto request) {
     // Uses enrollmentProofToken for secure enrollment identification
-    Enrollment enrollment = enrollmentRepository.findByEnrollmentProofTokenAndActive(
-        request.getEnrollmentProofToken(), true)
+    Enrollment enrollment = enrollmentRepository.findByEnrollmentProofTokenHashAndActive(
+        hashOf(request.getEnrollmentProofToken()), true)
         .orElseThrow(() -> new IllegalArgumentException("Authentication request failed"));
 }
 ```
@@ -325,27 +329,23 @@ ezkey.rate-limit.respond.key-strategy=client-ip
 
 #### 3. IP Detection Security (If Rate Limiting Enabled)
 
-**Enhanced Configuration**:
+Client IP for rate limiting and audit is resolved by `ClientIpResolver`: proxy headers
+(`CF-Connecting-IP`, `X-Forwarded-For`, `X-Real-IP`) are trusted **only** when
+`request.getRemoteAddr()` is in a configured CIDR list. Empty list = headers ignored.
+
 ```properties
-# Trusted proxy networks (adjust for deployment)
-ezkey.rate-limit.trusted-proxies=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
-ezkey.rate-limit.strict-ip-validation=true
-ezkey.rate-limit.block-suspicious-headers=true
+# When behind a reverse proxy (see module CONFIGURATION.md and docs/OPERATIONAL.md)
+ezkey.trusted-proxies.cidrs=10.0.0.0/8,172.16.0.0/12
+ezkey.trusted-proxies.required=true
 ```
 
-**Code Enhancement**:
-```java
-private String getClientIP(HttpServletRequest request) {
-    // Only trust CF-Connecting-IP and direct connections
-    String cfConnectingIP = request.getHeader("CF-Connecting-IP");
-    if (cfConnectingIP != null && !cfConnectingIP.isEmpty() && isValidIP(cfConnectingIP)) {
-        return cfConnectingIP.trim();
-    }
-    
-    // Fallback to direct connection only
-    return request.getRemoteAddr();
-}
-```
+Docker env: `EZKEY_TRUSTED_PROXIES_CIDRS`, `EZKEY_TRUSTED_PROXIES_REQUIRED`. Local proxy path:
+`./docker/start.sh --with-proxy` and [LOCAL_STACK_PORTS.md](../LOCAL_STACK_PORTS.md).
+
+> **Drift note (plan ablation 2026-08):** older drafts cited non-existent
+> `ezkey.rate-limit.trusted-proxies` / `strict-ip-validation` / `block-suspicious-headers`.
+> Living IP resolution is `ezkey.trusted-proxies.*` above. Current Android-first protocol
+> posture: [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../security/mobile-protocol-crypto-assessment-2026-07.md).
 
 ### Priority 2: Security Enhancements (1-2 weeks)
 

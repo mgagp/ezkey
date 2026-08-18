@@ -28,9 +28,10 @@ When `AuditLogService.log()` saves an entry, `AuditHmacService` automatically:
 
 ```
 auditLogId|eventType|eventAction|eventStatus|apiName|ipAddress|adminId|
-integrationId|enrollmentId|tenantId|eventDetails|errorMessage|createdAt|instanceId
+integrationId|enrollmentId|tenantId|eventDetails|errorMessage|createdAt|instanceId|reason
 ```
 
+`reason` is **field 15** (optional justification; null serializes as empty). Changing its position or omitting it invalidates stored HMACs.
 ### Verification
 
 `GET /api/v1/audit-logs/integrity-check` (Global Admin only) recomputes the HMAC for each entry in a date range and compares it to the stored value. Any mismatch is reported as a potential integrity violation. **Query parameters `from` and `to` (ISO-8601, inclusive start / exclusive end) are required;** omitting either returns 400 Bad Request. The response includes `entryViolations` (`items`, `totalCount`, `returnedCount`, `truncated`) with structured rows (`auditLogId`, `eventType`, `createdAt`, `reason`) — uncapped for the requested window.
@@ -289,6 +290,13 @@ Relative to **`latest.window_end`** (exclusive end boundary of the most recent p
 
 ## 4. API Endpoints Summary
 
+**Archive lifecycle (policy-owned):** checkpoints progress
+`ACTIVE → SEALED → [EXPORTED] → PURGEABLE → PURGED`. Auto-seal under `ezkey.audit.archive.*`
+is the product path (`ezkey-core/CONFIGURATION.md` § Audit Log Archive). When
+`external-archival-enabled=false` (default), the FSM skips `EXPORTED`. Physical deletion is
+never a parallel age-only mode. `POST .../lifecycle/seal-archive` is exceptional maintenance,
+not the normal operator workflow. Real external export remains `I-2026-06-28`.
+
 | Endpoint | Access | Description |
 |----------|--------|-------------|
 | `GET /api/v1/audit-logs` | Admin | Query audit logs with filters and pagination |
@@ -298,7 +306,7 @@ Relative to **`latest.window_end`** (exclusive end boundary of the most recent p
 | `POST /api/v1/audit-logs/integrity-validation/run` | Global Admin | Run retroactive detect (may raise/touch rupture alert) |
 | `GET /api/v1/audit-logs/lifecycle/archive-eligibility` | Global Admin | Read lifecycle archive eligibility and awaiting-confirmation tranche |
 | `POST /api/v1/audit-logs/lifecycle/confirm-archived` | Global Admin | Record that a sealed tranche was archived externally |
-| `POST /api/v1/audit-logs/lifecycle/seal-archive` | Global Admin | Seal a period for archival |
+| `POST /api/v1/audit-logs/lifecycle/seal-archive` | Global Admin | Exceptional: seal a period for archival |
 | `POST /api/v1/audit-logs/lifecycle/declare-gap` | Global Admin | Declare a downtime gap |
 | `GET /api/v1/audit-logs/lifecycle/incidents` | Global Admin | List operational heartbeat incidents |
 | `POST /api/v1/audit-logs/lifecycle/incidents/{id}/declare` | Global Admin | Declare closure after recovery |
@@ -322,7 +330,9 @@ Both verification endpoints **require** `from` and `to` query parameters (ISO-86
 
 The Integrity panel (Global Admin only) drives gap declaration from detection, not from manual input:
 
-1. Open the panel and select a date range, then run **Chain integrity**.
+1. Expand the Integrity panel. Chain integrity **auto-runs** over the selected date
+   range, or a 7-day UI default when none is set. Use **Chain integrity** to re-run
+   after changing the range.
 2. Review the **Undeclared gaps for consultation** list. For each row:
    - **Locate in timeline** focuses the audit-log table on the gap window for context (toggle off with **Clear focus**).
    - **Declare** opens a dialog prefilled with the detected period and duration; the operator only enters a justification.

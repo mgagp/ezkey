@@ -1,5 +1,10 @@
 # Bind Endpoint Enumeration Protection
 
+> **Historical.** This note records the bind enumeration-protection design. Sample DTOs below
+> (including a `language` field) are **not** the current Auth API contract. Living bind request is
+> `enrollmentId` + `enrollmentProofToken` only — see `docs/ENDPOINT.md` and
+> `EnrollmentBindRequestDto`.
+
 ## Overview
 
 This document describes the implementation of protection against enumeration attacks on the enrollment bind endpoint in the auth-api. The legacy `GET /api/v1/enrollments/bind/{enrollmentId}` endpoint allowed attackers to systematically test enrollment IDs to discover valid enrollments and obtain sensitive enrollment proof tokens. This document captures that risk and the now-adopted mitigation.

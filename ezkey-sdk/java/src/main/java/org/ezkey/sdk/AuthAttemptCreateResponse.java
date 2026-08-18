@@ -11,7 +11,7 @@
 package org.ezkey.sdk;
 
 /**
- * Response from creating an authentication attempt via the Admin API.
+ * Response from creating an authentication attempt via the Integration API.
  *
  * <p>Contains the scheduling fields required to drive the polling/wait flow, plus optional
  * contextual metadata echoed back from the server so the integrating application can confirm what

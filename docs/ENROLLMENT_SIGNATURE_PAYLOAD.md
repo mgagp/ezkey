@@ -71,4 +71,3 @@ public `GET /api/v1/public/instance-info` on the enrolled path.
 
 - **Java**: `org.ezkey.enrollment.service.EnrollmentSignaturePayload` (`ezkey-core`).
 - **TypeScript (mobile)**: `app/services/crypto/enrollmentPayload.ts` (`ezkey_mobile`).
-- **Dart (experimental SDK)**: `ezkey_dart/lib/src/payload.dart` (`buildEnrollmentBindPayload`, `buildEnrollmentVerifyDevicePayload`, `buildEnrollmentVerifyResultPayload`).

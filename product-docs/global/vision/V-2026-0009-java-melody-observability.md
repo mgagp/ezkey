@@ -7,11 +7,9 @@
   R1. **Opt-in** via clean-start / compose flag (`--with-java-melody` style) — not enabled by
   default (grill D11). DX/troubleshooting, not prod APM. Canon via **`R-2026-0002`** before
   `I-*`.
-- **Signals:** Grilling D11 Blitz 2 (2026-05-19); plan-prompt
-  `.github/prompts/plan-javaMelodyCollectorForEzkey.prompt.md`.
+- **Signals:** Grilling D11 Blitz 2 (2026-05-19). Plan-prompt deleted in the 2026-08 corpus-ablation pass; decisions live here and in `R-2026-0002`.
 - **Potential impact:** `infra`, boot modules, docs.
-- **Next step:** finish `R-2026-0002` retrofit; update plan-prompt default to opt-in; then
-  `I-*` implementation.
+- **Next step:** finish `R-2026-0002` residual gaps (collector WAR compatibility spike), then `I-*` for implementation when funded.
 - **Captured by:** Marc
 
 ## Related artifacts

@@ -1,7 +1,17 @@
 # ezkey_dart
 
-Pure Dart cryptographic helpers for the EZKey protocol, plus a small CLI bridge for using real
-enrollments from a live `clean-start` stack.
+**Experimental.** Personal-lab Dart helpers for the Ezkey protocol. Not on the September 2026
+operable-release roadmap. Keep Dart facts in this folder. Protocol canon stays in `docs/` and does
+not list this package as a first-class consumer.
+
+This package implements the same dual-algorithm contract and canonical payload builders as:
+
+- [`docs/CRYPTO.md`](../docs/CRYPTO.md)
+- [`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`](../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md)
+- [`docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)
+
+Pure Dart cryptographic helpers, plus a small CLI bridge for using real enrollments from a live
+`clean-start` stack.
 
 ## Prerequisites
 
@@ -84,3 +94,12 @@ device to sign a **canonical verify string** (not the raw proof token alone). Th
 `EzkeyAuthSession.enroll` verifies the bind signature before generating device keys, signs the verify
 payload, POSTs verify, then verifies the verify-response signature. `EzKeyCrypto` exposes the same
 builders for tests and CLI code.
+
+## Auth-attempt signatures (pending / respond)
+
+The Dart helpers in `lib/src/payload.dart` match
+[`docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md):
+
+- `buildPendingPayload` — string the integration signs on pending
+- `buildRespondPayload` — string the device signs on respond
+- `buildRespondResultPayload` — string the integration signs on the respond HTTP result

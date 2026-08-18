@@ -9,6 +9,22 @@ Companion copy and form answers:
 - Signing: [`MOBILE_RELEASE_SIGNING.md`](MOBILE_RELEASE_SIGNING.md)
 - Readiness snapshot: [`MOBILE_PLAY_RELEASE_READINESS_AUDIT.md`](MOBILE_PLAY_RELEASE_READINESS_AUDIT.md)
 
+## Developer account
+
+Prefer a **Google Play organization** account (DUNS, verified address, public organization name) when a legal entity exists or can be created quickly. A personal account is cheaper up front ($25 one-time) but migrating to an organization later is not trivial on Google's side. Organization accounts also match Ezkey's self-hosted / enterprise-facing posture.
+
+## Release tracks
+
+Use the same app, stacked tracks:
+
+1. **Internal testing** — up to 100 email testers, minutes to propagate, no Play review. Validate the signed AAB and critical flows first.
+2. **Closed testing** — email lists or Google Groups; light Play review. New developer accounts must have **12 testers active for 14 days** before production.
+3. **Production** — public listing.
+
+Recommended path: **Internal → Closed → Production**. Open testing (public early access) is optional.
+
+Delivery is **AAB** (not APK). Play App Signing holds the app-signing key; you keep the **upload key** — see [`MOBILE_RELEASE_SIGNING.md`](MOBILE_RELEASE_SIGNING.md).
+
 ## Store listing
 
 - [x] **App name** — launcher and listing default **Ezkey** (`app.json` `displayName`, `strings.xml` `app_name`). Optional search subtitle "Authenticator" may be used in the short description only.

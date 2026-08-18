@@ -5,8 +5,8 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Utility: RecoveryAuditDetails
- * Description: Structured JSON for admin recovery audit {@code event_details} (see {@code
- * .cursor/plans/archived/2026-03/SPEC_ADMIN_RECOVERY_AUDIT_TRAIL.md}).
+ * Description: Structured JSON for admin recovery audit event_details (see docs/ADMIN_UI_RECOVERY.md
+ * § Audit).
  */
 
 package org.ezkey.admin.audit;
@@ -16,7 +16,8 @@ import org.ezkey.security.SensitiveDataHasher;
 
 /**
  * Builds JSON {@code event_details} for the admin recovery funnel (recovery code + enrollment
- * reset). Never includes secrets (recovery codes, proof tokens, bearer tokens).
+ * reset). Never includes secrets (recovery codes, proof tokens, bearer tokens). Contract summary:
+ * {@code docs/ADMIN_UI_RECOVERY.md} § Audit.
  */
 public final class RecoveryAuditDetails {
 

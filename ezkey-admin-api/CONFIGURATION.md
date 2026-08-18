@@ -40,6 +40,8 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.admin.auth.browser-session-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_NAME` | `EZKEY_ADMIN_SESSION` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-secure` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SECURE` | `true` | optionnel |
 | `ezkey.admin.auth.api-key-auth-attempts-enabled` | `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED` | `false` | optionnel |
+| `ezkey.auth-attempt.expiry-scheduler.enabled` | — | `true` | optionnel |
+| `ezkey.auth-attempt.expiry-scheduler.fixed-delay-ms` | — | `60000` | optionnel |
 
 ---
 
@@ -307,6 +309,27 @@ enforce CORS. If `allowed-origins` is **empty**, the API does **not** emit CORS 
 **Cookie `Max-Age` vs token in the database:** On successful login or passwordless-wait, `Set-Cookie` uses a `Max-Age` derived from the response **`expiresAt`** (same instant as for Bearer mode). That initial window comes from **`ezkey.admin.token.expiration-hours`** (see §9 — sliding expiration also **extends the token row** on each validated request). The HttpOnly cookie is **not** re-issued on every API call today, so the browser’s cookie lifetime stays tied to **`expiresAt` at authentication success**. If the cookie expires, the browser stops sending it even though the server might still have considered an extended token valid in edge cases — operators usually fix perceived “short sessions” by increasing **`expiration-hours`** or by planning a future enhancement to refresh `Set-Cookie` when the token slides.
 
 **Concrete example (default `expiration-hours=2`):** Suppose login succeeds at **14:00** UTC. The API creates a token with **`expiresAt` = 16:00** UTC. The `Set-Cookie` header sets **`Max-Age`** to the number of seconds from 14:00 to 16:00 (7200 seconds). The browser keeps sending that cookie on API requests until about **16:00** — then the cookie is gone and the next call behaves as **unauthenticated** unless the user logs in again. If you change **`ezkey.admin.token.expiration-hours`** to `8`, the same login at 14:00 would yield **`expiresAt`** 22:00 and a longer **`Max-Age`** (~8 hours) for that cookie.
+
+---
+
+### 13. Auth-attempt TTL persistence (`ezkey.auth-attempt.expiry-scheduler.*`)
+
+**Prefix:** `ezkey.auth-attempt.expiry-scheduler.*`
+
+**Description:** scheduled job (runs in the **Admin API** process) that bulk-updates `PENDING` /
+`READ` auth attempts whose `expires_at` has passed to terminal **`EXPIRED`**, and emits
+`AUTH_ATTEMPT_EXPIRED` audit (`event_action` `auth_attempt_expired_scheduler`). Distinct from
+explicit cancel (`AUTH_ATTEMPT_CANCELLED`). Device clients do not cancel attempts — Approve/Deny
+only; ignore/close relies on this scheduler. See `docs/ENDPOINT.md` and
+`AuthAttemptExpiryScheduler`.
+
+**Defined in:** `org.ezkey.authattempt.service.AuthAttemptExpiryScheduler` (`@Value` / `@ConditionalOnProperty`)
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.auth-attempt.expiry-scheduler.enabled` | `boolean` | `true` | optionnel | Enable the TTL persistence job. |
+| `ezkey.auth-attempt.expiry-scheduler.fixed-delay-ms` | `long` | `60000` | optionnel | Delay between job runs (ms). |
+| `ezkey.auth-attempt.expiry-scheduler.initial-delay-ms` | `long` | `60000` | optionnel | Delay before the first run (ms). |
 
 ---
 

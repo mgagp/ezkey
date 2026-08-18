@@ -97,7 +97,7 @@ yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'
 - **Microsecond precision**: Six decimal places for timestamps
 - **Database storage**: TIMESTAMPTZ preserves original timezone internally
 - **API responses**: Always converted to UTC for consistency
-- **Client responsibility**: Convert to local timezone for display if needed
+- **Client display**: Admin UI may show timestamps in the browser local zone or the tenant IANA zone (`useDisplayTimezone`). Transport remains UTC.
 
 **Why UTC?**
 1. **Timezone independence**: Works globally without ambiguity
@@ -213,6 +213,7 @@ Content-Type: application/json
 - **Description**: The mobile device submits the user's response (approved, denied, signature, etc.) for the received authentication request.
 - **Rate limiting**: When rate limiting is enabled (`ezkey.rate-limit.enabled=true`), this endpoint is limited **per auth attempt** (by `authAttemptId` from the request body). Default: 1 request per 5 minutes per `authAttemptId`. If the body is missing or invalid, the limit is applied per client IP. When exceeded, the API returns **429 Too Many Requests** with a `Retry-After` header.
 - **One attempt per auth request**: The backend invalidates the authentication attempt on **first failed validation** (invalid signature, wrong challenge, or missing device key). There is no retry: after one failure the attempt is marked INVALID and the user must start a new authentication flow from the integrating application (e.g. log in again and receive a new pending request).
+- **Deny vs challenge:** When `authAttemptAccepted` is `false`, challenge response is not required after a valid device signature — the attempt is stored as `REJECTED`. Wrong or missing challenge on **accept** still marks the attempt `INVALID`.
 
 **Request**
 ```http
@@ -269,9 +270,14 @@ Content-Type: application/json
   "integrationName": "Acme Bank",
   "integrationDescription": "Acme Bank provides secure online banking services.",
   "enrollmentName": "John's iPhone",
+  "tenantId": 1,
+  "tenantName": "Acme Corporation",
+  "tenantDescription": "Acme Corp primary tenant",
   "enrollmentBindPayloadSignedByIntegration": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 }
 ```
+
+`tenantId`, `tenantName`, and `tenantDescription` come from the enrollment’s integration tenant (nullable if unset). Clients may persist them for multi-tenant enrollment lists (e.g. Demo Device groups by tenant on the home screen).
 
 `integrationPublicKey` is the **raw 32-byte** Ed25519 public key, **Base64URL without padding** (43 characters). `integrationKeyAlgorithm` is a **required** JSON field in the Auth API contract (OpenAPI); for phase 1 it is always the literal string `ed25519` (lowercase). **Clients should treat it as part of the cryptographic contract:** validate that the value is exactly `ed25519` before decoding `integrationPublicKey` or verifying `enrollmentBindPayloadSignedByIntegration`. If the field is missing or any other string is received, **fail closed** (abort enrollment)—do not assume Ed25519 wire format. `enrollmentBindPayloadSignedByIntegration` is an Ed25519 signature over the canonical bind payload; clients must verify it before trusting the integration key (see `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`). Device keys in verify requests remain **EC P-256** SPKI (standard Base64).
 
@@ -313,6 +319,8 @@ Canonical verify-result format: `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`.
 
 See **Error responses (RFC 9457)** above. Verification failures return **400** or **409** with stable `type` URIs under `https://ezkey.io/problems/auth/`. Wrong `challengeResponse` invalidates the enrollment; a subsequent verify call for the same enrollment may return **409**.
 
+**Uniqueness:** Verify is rejected when **any** `VERIFIED` enrollment already exists for the same `(integrationId, enrollmentName)`, including an inactive one. Partial unique index + application checks; no automatic supersession — see `docs/LIFECYCLE_GOVERNANCE.md` §3.3.
+
 ---
 
 ## 2. Admin API Endpoints (internal)
@@ -345,7 +353,7 @@ Returns read-only JSON for the Admin UI login shell and operators:
 
 See also: enrollment QR JSON and `authUrl` (same property as `ezkey.qr.auth-base-url` on the Admin API); search this file for `ezkey.qr.auth-base-url`.
 
-**Postman:** `postman/collections/v2.1/EZ Key Public admin.postman_collection.json` (no Bearer token; uses `{{base_url_admin_api}}`).
+**Bruno:** `bruno/public-admin/get-public-instance-info.bru` (no Bearer token; uses `{{base_url_admin_api}}`). The `postman/` tree is a historical leftover — see `postman/README.md`.
 
 ### Anonymous evaluator self-registration (unauthenticated, installation-scoped)
 
@@ -495,11 +503,19 @@ Too many login attempts. Please try again later.
 
 ---
 
+### Dashboard overview
+
+**Base path:** `http://localhost:9080/api/v1/dashboard` (Admin API).
+
+**GET /api/v1/dashboard/overview** — Single aggregated payload for the Admin UI landing page: integration and enrollment stats, auth-attempt 24h totals (including pending), recent audit activity, and (Global Admin) optional open operator alerts such as audit-chain follow-ups. Tenant Admins receive tenant-scoped stats; Global Admins receive instance-wide stats. Prefer this over parallel `size=1` list/`count` storms. Related: `GET /api/v1/auth-attempts/pending-count` (Admin-only) when a live pending tally is needed outside the overview. Widget badge semantics: [`product-docs/components/admin-ui/dashboard-widget-signal-model.md`](../product-docs/components/admin-ui/dashboard-widget-signal-model.md).
+
 ### Audit log and chain checkpoint APIs
 
 **Base path:** `http://localhost:9080/api/v1/audit-logs` (Admin API). Global Admin only for chain and integrity endpoints.
 
-**GET /api/v1/audit-logs** — Paginated audit log list. Optional filters: `eventType` (a single event type enum value), `eventTypeFamily` (all types in a logical family: `ADMIN`, `ENROLLMENT`, `AUTH_ATTEMPT`, `API_KEY`, `SYSTEM`, `ENCRYPTION_KEY`, `REENCRYPTION`, `INTEGRATION`, `TENANT`, `AUDIT_CHAIN`). `eventType` and `eventTypeFamily` are mutually exclusive; sending both returns **400 Bad Request**. Also: `eventStatus`, `apiName`, `enrollmentId`, `adminId`, `targetAdminId`, `tenantId` (Global Admin scope), `createdAfter`, `createdBefore` (ISO-8601), plus standard `page`, `size`, `sort`.
+**GET /api/v1/audit-logs** — Paginated audit log list. Optional filters: `eventType` (a single event type enum value), `eventTypeFamily` (all types in a logical family: `ADMIN`, `ENROLLMENT`, `AUTH_ATTEMPT`, `API_KEY`, `SYSTEM`, `ENCRYPTION_KEY`, `REENCRYPTION`, `INTEGRATION`, `TENANT`, `AUDIT_CHAIN`). `eventType` and `eventTypeFamily` are mutually exclusive; sending both returns **400 Bad Request**. Also: `eventStatus`, `apiName`, `enrollmentId`, `authAttemptId`, `integrationId`, `adminId`, `targetAdminId`, `tenantId` (Global Admin scope), `createdAfter`, `createdBefore` (ISO-8601), plus standard `page`, `size`, `sort`. **Visibility:** Tenant Admins automatically see only rows where `tenant_id` matches their tenant (system events with `tenant_id` null are excluded); Global Admins see all logs and may optionally filter with `tenantId` (ignored for Tenant Admins). **Attribution:** Tenant Admin create (`ADMIN_CREATED`) audits the **target admin’s tenant**; Auth API bind/verify/pending/respond for **admin MFA** enrollments (single system integration) also use the admin’s tenant — not the system-integration tenant — so peer onboarding and MFA auth appear in that tenant’s audit view.
+
+**GET /api/v1/audit-logs/{auditLogId}/context** — Bounded neighborhood around one anchor audit event (default 10 events before and after; max 50 each). Same tenant visibility as the list search. Query: `beforeCount`, `afterCount`, optional `tenantId` (Global Admin). Returns items plus `hasMoreBefore` / `hasMoreAfter`. This is investigation context, not a substitute for paginated search.
 
 **GET /api/v1/audit-logs/chain-checkpoints** — Search audit chain checkpoints with pagination and optional filters. Use primarily for lifecycle observability, anomaly investigation, and archive-confirmation context. Exceptional maintenance workflows may still use this surface when needed.
 
@@ -595,6 +611,44 @@ The client should use `detail` (then `title`) for user-facing messages, not assu
 - Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). If `ezkey.core.auth-attempt.ttl-seconds` is set above 300 (max 600), the wait may return HTTP 408 while the attempt row is still valid in the database.
 - Device must enter matching challenge code before approval
 - Invalid challenge on device marks attempt as INVALID
+
+---
+
+#### POST /activate (First-time activation code)
+
+Unauthenticated consume of a one-time onboarding activation code (`onboardingMode = ACTIVATION_CODE`).
+Creates the first enrollment and returns bind credentials. This is **not**
+`POST /api/v1/admins/{id}/activate` (operator reactivation of a deactivated admin). It is also
+**not** recovery (`POST /recover`).
+
+**Request:**
+```http
+POST /api/v1/admin/auth/activate
+Content-Type: application/json
+
+{
+  "activationCode": "ezkey_activation_550e8400e29b41d4a716446655440000"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Activation successful. Bind the first device now. Recovery codes remain deferred.",
+  "username": "pending.admin",
+  "enrollmentId": 123,
+  "enrollmentProofToken": "ezkey_proof_…",
+  "enrollmentChallenge": 123456
+}
+```
+
+Recovery codes are generated server-side when the first enrollment exists but are **omitted** from
+this unauthenticated response. Reveal or regenerate them later from an authenticated admin-management
+flow (`POST /api/v1/admins/{id}/recovery-codes/regenerate`). See [LIFECYCLE_GOVERNANCE.md](LIFECYCLE_GOVERNANCE.md) §3.5.
+
+**Failure:** **403** for invalid, expired, or unusable codes (neutral client-safe message). **400**
+when activation cannot proceed in the current state.
 
 ---
 
@@ -757,6 +811,35 @@ GET /api/v1/admin/integrations
 Authorization: Bearer ezkey_abc123def456...
 ```
 
+#### Create Integration
+
+**POST /api/v1/integrations**
+
+Creates an integration in the caller's tenant: Tenant Admin → that tenant; Global Admin → the
+system tenant. There is no `tenantId` on the create body. `code` is required: 2–100 characters,
+slug `^[a-zA-Z0-9_-]+$`, unique per tenant. `name` is required; `description` is optional. There is
+no API to change `code` after create. Same `code` in a different tenant is allowed.
+
+**Request:**
+```http
+POST /api/v1/integrations
+Authorization: Bearer ezkey_admin_token...
+Content-Type: application/json
+
+{
+  "code": "web-portal",
+  "name": "Web Portal",
+  "description": "Customer-facing portal"
+}
+```
+
+**Response (201 Created):** `Location: /api/v1/integrations/{id}` plus the created integration
+(including `code`). Duplicate `code` in the same tenant returns **409** Problem Detail
+(`IntegrationCodeAlreadyExistsException`). Invalid slug/blank fields return **400**. Creating under
+an inactive tenant returns **403**.
+
+Bruno: `bruno/integrations-admin/create.bru`.
+
 #### Search Integrations
 
 **GET /api/v1/integrations**
@@ -769,8 +852,8 @@ Retired integrations are excluded by default from day-to-day listings.
 - `size` (optional): Page size (default: 20)
 - `sort` (optional): Sort field and direction (e.g., `createdAt,desc`). Sortable fields: `id`, `createdAt`, `lifecycleStatus`
 - `integrationName` (optional): Filter by integration name (partial match, case-insensitive)
-- `active` (optional): Temporary compatibility filter by active flag (`true` = `ACTIVE`, `false` = `INACTIVE`). Kept only as a transition aid during the lifecycle migration and intended to be removed before final closure of this refactor.
-- `lifecycleStatus` (optional): Exact lifecycle filter (`ACTIVE`, `INACTIVE`, `RETIRED`)
+- `active` (optional): Compatibility filter mapped onto lifecycle (`true` = `ACTIVE`, `false` = `RETIRED`). Prefer `lifecycleStatus` for new callers.
+- `lifecycleStatus` (optional): Exact lifecycle filter (`ACTIVE`, `RETIRED`)
 - `includeRetired` (optional): When `true`, include retired integrations in results if no exact `lifecycleStatus` is requested
 - `createdAfter` (optional): Filter integrations created after this timestamp (ISO-8601)
 - `createdBefore` (optional): Filter integrations created before this timestamp (ISO-8601)
@@ -780,7 +863,7 @@ Retired integrations are excluded by default from day-to-day listings.
 - **GlobalAdmin**: Sees all integrations by default; use `tenantId` to restrict to a specific tenant.
 - **TenantAdmin**: Sees only integrations in their tenant; `tenantId` query parameter is ignored.
 
-**Response (200 OK):** Paginated response with `content` (array of integration objects), `totalElements`, `totalPages`, etc. Each integration includes `lifecycleStatus` (`ACTIVE`, `INACTIVE`, `RETIRED`) as the source of truth. The `active` boolean is temporarily retained as a derived compatibility field during the transition and is intended to be removed once the migration is fully completed. System integrations are excluded from the listing.
+**Response (200 OK):** Paginated response with `content` (array of integration objects), `totalElements`, `totalPages`, etc. Each integration includes `lifecycleStatus` (`ACTIVE`, `RETIRED`) as the source of truth and `operational` (`ACTIVE` lifecycle **and** parent tenant active). There is no `active` boolean on the response. System integrations are excluded from the listing.
 
 #### Bulk enrollment lifecycle for an integration
 
@@ -869,7 +952,7 @@ retired and only when no enrollments remain linked to it. System integrations ca
 
 ## Tenant management
 
-Tenant management endpoints allow GlobalAdmins to create, list, update, deactivate, and activate tenants. TenantAdmins can list and get only their own tenant.
+Tenant management endpoints allow GlobalAdmins to create, list, update, deactivate, and activate tenants. TenantAdmins cannot list tenants (`GET /tenants` → 403); they may get their own tenant by ID only.
 
 **Lifecycle:** A tenant is either **active** or **inactive**. Deactivation sets `active = false`, revokes all admin tokens for that tenant, and blocks new integrations, enrollments, and API keys; data is preserved for audit. Activation sets `active = true` and restores full access; deactivation metadata (who/when) is preserved for traceability. The **system tenant** cannot be deactivated.
 
@@ -999,11 +1082,7 @@ Content-Type: application/json
   "adminType": "GLOBAL_ADMIN",
   "tenantId": null,
   "enrollmentId": 123,
-  "createdAt": "2025-12-26T14:30:00Z",
-  "recoveryCodes": [
-    "4743-8097-0426-5914-7438-4180-8010-5825",
-    "..."
-  ]
+  "createdAt": "2025-12-26T14:30:00Z"
 }
 ```
 
@@ -1027,7 +1106,11 @@ Content-Type: application/json
 }
 ```
 
-**Note:** In `IMMEDIATE`, `recoveryCodes` are plain text, single-use, and **shown only in this response**; save them immediately. In `ACTIVATION_CODE`, no enrollment exists yet, so use the returned activation code for first-time setup and do not call `GET /api/v1/admins/{id}/onboarding` until activation has produced the first enrollment.
+**Note:** In `IMMEDIATE`, the first enrollment is created now; retrieve bind material via
+`GET /api/v1/admins/{id}/onboarding`. Plaintext `recoveryCodes` are deferred from bootstrap —
+reveal or regenerate them from an authenticated management flow. In `ACTIVATION_CODE`, no enrollment
+exists yet: the new admin consumes `POST /api/v1/admin/auth/activate`, then binds a device. Do not
+call onboarding retrieval until that consume has produced the first enrollment.
 
 **Status Codes:**
 - 201: Global administrator created successfully
@@ -1071,11 +1154,7 @@ Content-Type: application/json
   "adminType": "TENANT_ADMIN",
   "tenantId": 2,
   "enrollmentId": 124,
-  "createdAt": "2025-12-26T14:35:00Z",
-  "recoveryCodes": [
-    "4743-8097-0426-5914-7438-4180-8010-5825",
-    "..."
-  ]
+  "createdAt": "2025-12-26T14:35:00Z"
 }
 ```
 
@@ -1099,7 +1178,7 @@ Content-Type: application/json
 }
 ```
 
-**Note:** Same rule as global admin: `IMMEDIATE` returns one-time `recoveryCodes`; `ACTIVATION_CODE` defers the first enrollment and therefore defers onboarding retrieval and recovery-code issuance until activation has completed.
+**Note:** Same rule as global admin: `IMMEDIATE` creates the first enrollment now (onboarding retrieval applies); plaintext recovery codes stay deferred from bootstrap. `ACTIVATION_CODE` defers enrollment until `POST /api/v1/admin/auth/activate`.
 
 **Status Codes:**
 - 201: Tenant administrator created successfully
@@ -1416,7 +1495,7 @@ Authorization: Bearer ezkey_admin_token...
 
 **POST /api/v1/admins/{id}/activate**
 
-Reactivates a previously deactivated administrator. GlobalAdmin only. Sets `active = true`. Idempotent if the admin is already active. The admin must log in again to obtain a new bearer token.
+Reactivates a previously deactivated administrator. GlobalAdmin only. Sets `active = true`. Idempotent if the admin is already active. The admin must log in again to obtain a new bearer token. This is **not** first-time onboarding (`POST /api/v1/admin/auth/activate`).
 
 **Request:**
 ```http
@@ -1463,6 +1542,8 @@ Authorization: Bearer ezkey_admin_token...
 
 Creates a pending enrollment (`CREATED`) for an integration. Returns identifiers needed for mobile bind/verify.
 
+**Uniqueness (`name`):** At most one `VERIFIED` enrollment per `(integrationId, name)` (see `docs/LIFECYCLE_GOVERNANCE.md` §3.3). Create is rejected when an **active** `VERIFIED` enrollment already uses that name (use recovery/reset or deactivate/re-enroll rather than supersession). Create is allowed when a same-name `VERIFIED` enrollment exists but is **inactive**, or when only non-`VERIFIED` rows exist.
+
 **Request body:**
 
 | Field | Required | Notes |
@@ -1502,7 +1583,7 @@ Content-Type: application/json
 - ✅ You have an **enrollment ID** (from enrollment search or creation)
 - ✅ You want **comprehensive enrollment details** (not just onboarding credentials)
 - ✅ You're working in the **enrollment management workflow**
-- ✅ You're a **GlobalAdmin** (TenantAdmin may not have access to enrollments via this API)
+- ✅ You're a **GlobalAdmin**, or a **TenantAdmin** reading an enrollment on **your tenant’s integration** (not admin MFA)
 
 **Why this API:**
 - Validates access at the **integration tenant level** (correct for enrollment management)
@@ -1511,8 +1592,9 @@ Content-Type: application/json
 - Semantic clarity: "Get details of enrollment Y"
 
 **Important Note for TenantAdmin:**
-- ⚠️ **TenantAdmin cannot access their own enrollment via this API** (validation checks integration tenant, which is System Tenant)
-- ✅ **Use `/api/v1/admins/{id}/onboarding` instead** for TenantAdmin to access their own credentials
+- ⚠️ **Admin MFA enrollments** sit on the **system integration**. `GET /enrollments/{id}` checks integration tenant, so a Tenant Admin cannot load their own (or a peer’s) admin MFA enrollment this way.
+- ✅ Use `GET /api/v1/admins/{id}/onboarding` (and `/onboarding/qrcode`) for admin MFA credentials.
+- ✅ `GET /enrollments/{id}` is still the right API for enrollments on integrations that belong to the Tenant Admin’s tenant.
 
 **Example:**
 ```http
@@ -1583,6 +1665,41 @@ Authorization: Bearer ezkey_admin_token...
 - 404: Enrollment not found (or no access; existence is not revealed for cross-tenant)
 - 409: Enrollment cannot be deleted (RFC 9457 Problem Detail). Either it has authentication history (revoke instead) or it is linked as an administrator's MFA (use the recovery flow to reset that admin's MFA first).
 - 500: Internal server error
+
+#### Single enrollment lifecycle (deactivate / reactivate / revoke)
+
+Semantics: [`docs/LIFECYCLE_GOVERNANCE.md`](LIFECYCLE_GOVERNANCE.md) §3.3. Deactivate is the reversible
+on/off switch (`VERIFIED` + `active=false`). Revoke is irreversible (`REVOKED`). Do not collapse
+those into delete. Bulk variants live under the integration (`…/enrollments/deactivate-all`,
+`reactivate-all`, `revoke-all`).
+
+**POST /api/v1/enrollments/{id}/deactivate**
+
+Reversibly deactivates a `VERIFIED` enrollment. Optional query parameter `reason` (max 500).
+Self-deactivation of the caller's own MFA is forbidden. Admin MFA deactivation invalidates that
+admin's bearer tokens.
+
+**Response:** `204 No Content`. Typical errors: `400` (not eligible), `403` (self-guard / no
+access), `404`.
+
+**POST /api/v1/enrollments/{id}/reactivate**
+
+Restores a deactivated `VERIFIED` enrollment. Optional `reason` (max 500). Cannot reactivate
+`REVOKED` enrollments.
+
+**Response:** `204 No Content`. Typical errors: `400` (already active, revoked, or not `VERIFIED`),
+`403`, `404`.
+
+**POST /api/v1/enrollments/{id}/revoke**
+
+Permanently revokes the enrollment. Query parameter `reason` is **required** (min 10, max 500).
+Self-revocation of the caller's own MFA is forbidden. Admin MFA revocation invalidates that admin's
+bearer tokens.
+
+**Response:** `204 No Content`. Typical errors: `400`, `403` (self-guard / system integration),
+`404`.
+
+Bruno: `bruno/enrollments-admin/deactivate.bru`, `reactivate.bru`, `revoke.bru`.
 
 #### **Summary Table**
 
@@ -2021,6 +2138,9 @@ Authorization: Bearer ezkey_admin_token...
   "completedAt": "2025-01-20T15:32:05.123456Z"
 }
 ```
+
+**Notes:**
+- **Wait `status` vs clock expiry:** The wait `status` field reports a calculated outcome. Persisted final statuses (`ACCEPTED`, `REJECTED`, `INVALID`) take precedence over `expiresAt` — a deny (or accept / invalid) after the TTL clock has passed still returns that final status, not `EXPIRED`. Clock expiry applies only to `PENDING`/`READ`. Wait may also report `EXPIRED` for explicit cancel or supersession. Implementation: `AuthAttemptWaitService`.
 
 **Status Codes:**
 - 200: Authentication completed (or timeout reached)

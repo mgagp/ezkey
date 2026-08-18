@@ -1,5 +1,9 @@
 # Résumé des Mises à Jour du Plan MFA Admin
 
+> **Historical checklist.** Mentions of `mfaEnrollment` below are pre-flatten sample edits.
+> Living admin MFA binding is `EzkeyAdmin.enrollment` / `enrollmentId` — see
+> `docs/LIFECYCLE_GOVERNANCE.md` §3.5. Do not treat this file as open work.
+
 **Date:** 2025-10-03  
 **Status:** ✅ Validé et Approuvé
 

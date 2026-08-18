@@ -6,7 +6,9 @@ A comprehensive event audit logging system has been implemented across all Ezkey
 
 ## Related specifications
 
-- **[Admin recovery audit trail (recovery code + enrollment reset)](../../.cursor/plans/archived/2026-03/SPEC_ADMIN_RECOVERY_AUDIT_TRAIL.md)** — Implemented and tested; archived design spec (structured `event_details`, correlation, SOC2-oriented visibility).
+- **[Admin recovery funnel + audit](../ADMIN_UI_RECOVERY.md)** (§ Audit) — living summary; structured
+  `event_details` built by `org.ezkey.admin.audit.RecoveryAuditDetails` (fingerprint correlation,
+  no secrets in audit).
 
 ## What Has Been Implemented
 

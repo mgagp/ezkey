@@ -106,6 +106,19 @@ public void setUp() {
 }
 ```
 
+### Integration API (API-key auth)
+
+Admin API (port 9080, Bearer) remains the default for functional tests. The Integration API (port
+7080) is a parallel surface for machine callers.
+
+- Call `RestAssuredTestConfig.configureForIntegrationApi(dockerStackConfig)` before those requests.
+- Base URL: `EZKEY_INTEGRATION_API_URL` (default `http://localhost:7080`).
+- Auth: HTTP Basic `integrationKey:secretKey` — not an admin Bearer token.
+- After Integration API calls, switch back with `configureForAdminApi` or `configureForAuthApi`
+  before the next Admin/Auth request.
+
+Keep “M2M” only when referring to API-key auth as a mechanism. The service name is Integration API.
+
 ## Test Independence and Idempotence
 
 ### Principles

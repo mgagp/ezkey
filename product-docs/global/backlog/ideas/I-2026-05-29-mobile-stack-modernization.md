@@ -31,7 +31,8 @@ real execution informs methodology tuning while it is still being refined.
 - Working plan: `.cursor/plans/mobile_stack_upgrade_a92a7f09.plan.md` (Plan mode incubation; not canonical)
 - Tracer bullet: `TB-2026-05-29-mobile-stack-modernization.md`
 - Method log: `ML-2026-05-29-mobile-stack-modernization.md`
-- Historical evidence (do not redo): `.github/prompts/archived/2026-05/plan-mobileDependencyReview.prompt.md`
+- Historical evidence (do not redo): May 2026 S01–S23 dependency review; living baseline is
+  [`ezkey_mobile/docs/MOBILE_STACK_AND_ARCHITECTURE.md`](../../../../ezkey_mobile/docs/MOBILE_STACK_AND_ARCHITECTURE.md)
 
 ## Outcome (2026-05-31)
 

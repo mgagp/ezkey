@@ -17,10 +17,13 @@ In a distributed deployment with multiple Admin API instances:
 
 | Job | Frequency | Criticality | Nature | Daily Operations |
 |-----|-----------|-------------|--------|------------------|
-| `checkAndPromotePendingKeys()` | **5 seconds** | 🔴 Critical | Short, transactional | ~17,280 |
-| `checkAndRotate()` | Daily 2 AM | 🟡 Important | Short, transactional | 1 |
-| `processReencryptionBatches()` | Daily 3 AM | 🟡 Important | Batch, transactional | 1 |
-| `purgeLifecycleEligibleAuditLogs()` | Daily 2 AM | 🟢 Maintenance | Short, transactional | 1 |
+| `checkAndPromotePendingKeys()` (`KEY_PROMOTION`) | **5 seconds** | Critical | Short, transactional | ~17,280 |
+| `checkAndRotate()` (`KEY_ROTATION`) | Daily 2 AM | Important | Short, transactional | 1 |
+| `processReencryptionBatches()` (`REENCRYPTION`) | Daily 3 AM | Important | Batch, transactional | 1 |
+| `purgeLifecycleEligibleAuditLogs()` (`AUDIT_LIFECYCLE_PURGE`) | Daily 2 AM | Maintenance | Short, transactional | 1 |
+| `createNextMonthPartitions()` (`DB_PARTITION_CREATION`) | Daily | Maintenance | DDL via SECURITY DEFINER | 1 |
+| `cleanupExpiredTokens()` (`ADMIN_TOKEN_CLEANUP`) | Scheduled | Maintenance | Short | — |
+| Other Admin-scheduled jobs (`AUTH_ATTEMPT_EXPIRY`, `ENROLLMENT_EXPIRED_CLEANUP`, audit chain / integrity, …) | Varies | — | Each has `@SchedulerLock` | — |
 
 **Key Observations:**
 - All jobs are **short-lived** (seconds, not minutes)
@@ -30,9 +33,14 @@ In a distributed deployment with multiple Admin API instances:
 
 ---
 
-## Decision: ShedLock (Recommended)
+## Decision: ShedLock (shipped)
 
-After critical analysis of the requirements and ezkey's philosophy, **ShedLock** is the recommended solution for HA job coordination.
+After critical analysis of the requirements and ezkey's philosophy, **ShedLock** is the solution
+for HA job coordination. It is **implemented** in Admin API (`ShedLockConfiguration`,
+`@SchedulerLock` on schedulers, programmatic `ADMIN_STARTUP_BOOTSTRAP` for startup MFA/global
+admin). Lock rows live in PostgreSQL table **`ezkey_shedlock`** (created in Flyway
+`V5__operations_tenant_integration_enrollment.sql`, not a separate V26). HA exercise:
+[`docker/README-HA.md`](../docker/README-HA.md), `ShedLockDistributedTest`.
 
 ### Rationale
 
@@ -166,7 +174,9 @@ COMMENT ON COLUMN ezkey_shedlock.locked_by IS
 
 ### Phase 3: Configuration Class
 
-Create `ShedLockConfig.java` in `ezkey-core`:
+Living config: `ezkey-admin-api` → `org.ezkey.admin.config.ShedLockConfiguration` (not
+`ShedLockConfig` in `ezkey-core`). Default `EnableSchedulerLock` / JDBC provider with table
+`ezkey_shedlock`. Illustrative snippet below is historical naming — follow the Admin API class.
 
 ```java
 /*
@@ -176,7 +186,7 @@ Create `ShedLockConfig.java` in `ezkey-core`:
  * Licensed under the MIT License.
  */
 
-package org.ezkey.config;
+package org.ezkey.admin.config;
 
 import javax.sql.DataSource;
 import net.javacrumbs.shedlock.core.LockProvider;
@@ -201,8 +211,8 @@ import org.springframework.context.annotation.Configuration;
  * @since 2025
  */
 @Configuration
-@EnableSchedulerLock(defaultLockAtMostFor = "PT5M")
-public class ShedLockConfig {
+@EnableSchedulerLock(defaultLockAtMostFor = "PT10M")
+public class ShedLockConfiguration {
 
   /**
    * Creates the JDBC-based lock provider using the application's DataSource.
@@ -434,18 +444,15 @@ The full design is preserved in [Appendix A](#appendix-a-custom-leader-election-
 
 ## Implementation Checklist
 
-- [ ] Add ShedLock dependencies to `ezkey-core/pom.xml`
-- [ ] Create database migration `V_XX__create_ezkey_shedlock_table.sql`
-- [ ] Create `ShedLockConfig.java` configuration class
-- [ ] Add `@SchedulerLock` to `KeyRotationService.checkAndPromotePendingKeys()`
-- [ ] Add `@SchedulerLock` to `KeyRotationService.checkAndRotate()`
-- [ ] Add `@SchedulerLock` to `ReencryptionService.processReencryptionBatches()`
-- [ ] Add `@SchedulerLock` to `AuditLifecyclePurgeScheduler.purgeLifecycleEligibleAuditLogs()`
-- [ ] Add ShedLockHealthIndicator (optional)
-- [ ] Test with 2+ Admin API instances
-- [ ] Document in OPERATIONAL.md
+- [x] Add ShedLock dependencies (reactor / Admin API classpath)
+- [x] Create database table `ezkey_shedlock` (Flyway **V5**)
+- [x] Create `ShedLockConfiguration` in `ezkey-admin-api` (`EnableSchedulerLock` + JDBC lock provider)
+- [x] Add `@SchedulerLock` to key rotation, re-encryption, audit purge, partition creation, admin token cleanup (and related schedulers as added)
+- [x] Add `ShedLockHealthIndicator`
+- [x] HA validation path: `docker/README-HA.md` + `ShedLockDistributedTest`
+- [x] Optional: deeper refresh of sample snippets in this doc (class name / full job inventory) — see corpus-ablation parking
 
-**Estimated Effort:** 1-2 hours
+**Estimated Effort (historical):** 1-2 hours for the initial slice; shipped.
 
 ---
 
@@ -541,6 +548,6 @@ Required code for leader election pattern:
 ---
 
 *Document created: 2025-12-04*
-*Last updated: 2025-12-04*
-*Status: Planning - ShedLock Recommended*
-*Related: Key Rotation Strategy, SOC 2 Compliance*
+*Last updated: 2026-08-12*
+*Status: Implemented — ShedLock on Admin API (JVM); native HA exercise via docker HA stack*
+*Related: Key Rotation Strategy, SOC 2 Compliance, `docker/README-HA.md`*

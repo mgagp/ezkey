@@ -12,6 +12,7 @@ For HTTP details, see **`docs/ENDPOINT.md`**. For Admin UI conventions (i18n, de
 - **Mandatory reason:** Only where the product requires it (notably **single enrollment revoke**). Same length rules: **10–500**.
 - **Audit trail:** Values remain **free text**; there is no normalized reason code in the log for this feature set.
 - **Naming:** Most lifecycle APIs use **`reason`**. Audit chain lifecycle (archive seal, gap declaration) uses **`justification`** in the body.
+- **Integrity:** `reason` is stored on `ezkey_audit_log` and is **HMAC canonical field 15** (null → empty). See [`docs/AUDIT_LOG_INTEGRITY.md`](AUDIT_LOG_INTEGRITY.md) §1.
 
 ---
 

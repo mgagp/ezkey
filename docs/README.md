@@ -25,6 +25,7 @@ If you are new to the repository, read these first:
 - [ENROLLMENT_SIGNATURE_PAYLOAD.md](ENROLLMENT_SIGNATURE_PAYLOAD.md): canonical enrollment bind/verify signature payload construction (what is signed, with what key, in what order).
 - [AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md): canonical auth-attempt pending/respond signature payload construction.
 - [LIFECYCLE_GOVERNANCE.md](LIFECYCLE_GOVERNANCE.md): entity hierarchy, eligibility chain, and reversible/irreversible action rules across all Ezkey domain entities.
+- [ALERTS.md](ALERTS.md): operator-facing `ezkey_alert` subsystem (raise/touch/resolve, types, Admin API).
 - [DEVELOPMENT.md](DEVELOPMENT.md): build, test, and development workflow.
 - [OPERATIONAL.md](OPERATIONAL.md): deployment, operations, and production posture.
 - [configuration/README.md](configuration/README.md): index for configuration properties and per-module configuration docs.
@@ -44,7 +45,7 @@ If you are new to the repository, read these first:
 - [admin-ui-security-validation.md](admin-ui-security-validation.md): practical validation checklist for Admin UI security posture.
 - [AUDIT_REASON_AND_JUSTIFICATION_UI.md](AUDIT_REASON_AND_JUSTIFICATION_UI.md): audit `reason` and `justification` rules across API and UI.
 - [ADMIN_PROVISIONING_DEPROVISIONING_PROCEDURE.md](ADMIN_PROVISIONING_DEPROVISIONING_PROCEDURE.md): admin lifecycle and audit-oriented procedure.
-- [RECOVERY_CODES_LIFECYCLE_ANALYSIS.md](RECOVERY_CODES_LIFECYCLE_ANALYSIS.md): recovery code lifecycle analysis and recommendation.
+- [RECOVERY_CODES_LIFECYCLE_ANALYSIS.md](RECOVERY_CODES_LIFECYCLE_ANALYSIS.md): historical analysis (pre-regenerate). Living: [`LIFECYCLE_GOVERNANCE.md`](LIFECYCLE_GOVERNANCE.md) §3.8 and [`ENDPOINT.md`](ENDPOINT.md) `POST /api/v1/admins/{id}/recovery-codes/regenerate`.
 - [security/SQL_INJECTION_POSTURE_AUDIT.md](security/SQL_INJECTION_POSTURE_AUDIT.md): SQL injection posture and repository inventory.
 - [SOC2_PREPARATION.md](SOC2_PREPARATION.md): broader SOC 2 preparation roadmap.
 - [SOC2_QUICK_START.md](SOC2_QUICK_START.md): shorter first-step compliance guide.

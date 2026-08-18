@@ -42,7 +42,7 @@ This is **architecture**, not an accidental omission:
 1. **Published SDK scope** — Java and TypeScript SDKs target **Integration API** M2M flows:
    API key + secret, `createAuthAttempt`, `wait`, `cancel`. TypeScript SDK explicitly excludes
    browser-first usage (`PRODUCT_BRIEF.md` non-goals).
-2. **Admin UI shape** — Browser SPA calling **Admin API** with session JWT or cookie build;
+2. **Admin UI shape** — Browser SPA calling **Admin API** with an opaque session token (Bearer or HttpOnly cookie);
    passwordless login uses **admin-specific** endpoints (`/api/v1/admin/auth/*`), not Integration
    API credentials.
 3. **Admin API shape** — Passwordless admin auth calls **`ezkey-core` domain services in-process**

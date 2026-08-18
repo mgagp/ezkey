@@ -123,7 +123,7 @@ when grill + `I-*` already carry decisions and evidence).
 - Grill: [`../grill-sessions/2026-06-28-admin-dashboard-widget-signal-model-grill-me.md`](../grill-sessions/2026-06-28-admin-dashboard-widget-signal-model-grill-me.md)
 - Values: [`../../operator-alignment-guide.md`](../../operator-alignment-guide.md)
 - Wireflow: [`../../../components/admin-ui/screens-and-wireflow.md`](../../../components/admin-ui/screens-and-wireflow.md)
-- Prior enrollment widget: `.cursor/plans/archived/2026-04/dashboard_enrollment_widget_1aaa3560.plan.md`
+- Enrollment aggregation: [`EnrollmentDashboardStats`](../../../../ezkey-core/src/main/java/org/ezkey/enrollment/domain/EnrollmentDashboardStats.java) / [`DashboardEnrollmentStatsDto`](../../../../ezkey-admin-api/src/main/java/org/ezkey/admin/dto/response/DashboardEnrollmentStatsDto.java)
 - Future widgets: [`I-2026-0007-admin-dashboard-integrity-widgets.md`](I-2026-0007-admin-dashboard-integrity-widgets.md)
 - Code: [`../../../../ezkey-admin-ui/src/pages/dashboard.tsx`](../../../../ezkey-admin-ui/src/pages/dashboard.tsx)
 - Signal model: [`../../../components/admin-ui/dashboard-widget-signal-model.md`](../../../components/admin-ui/dashboard-widget-signal-model.md)

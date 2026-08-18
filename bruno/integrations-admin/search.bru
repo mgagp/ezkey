@@ -19,9 +19,9 @@ params:query {
   ~sort: createdAt,desc
   @description('Filter by integration name (partial match, case-insensitive)')
   ~integrationName: 
-  @description('Temporary compatibility filter by active flag (true = ACTIVE, false = INACTIVE)')
+  @description('Compatibility filter mapped onto lifecycle (true = ACTIVE, false = RETIRED). Prefer lifecycleStatus for new callers.')
   ~active: true
-  @description('Exact lifecycle filter (ACTIVE, INACTIVE, RETIRED)')
+  @description('Exact lifecycle filter (ACTIVE, RETIRED)')
   ~lifecycleStatus: ACTIVE
   @description('Include retired integrations when no exact lifecycleStatus is requested')
   ~includeRetired: true
@@ -78,9 +78,9 @@ docs {
   
   **Filter Parameters:**
   - `integrationName`: Filter by integration name (partial match, case-insensitive)
-  - `lifecycleStatus`: Exact lifecycle filter (`ACTIVE`, `INACTIVE`, `RETIRED`)
+  - `lifecycleStatus`: Exact lifecycle filter (`ACTIVE`, `RETIRED`)
   - `includeRetired`: Include retired integrations when no exact lifecycle filter is requested
-  - `active`: Temporary compatibility filter by active flag (`true` = `ACTIVE`, `false` = `INACTIVE`)
+  - `active`: Compatibility filter mapped onto lifecycle (`true` = `ACTIVE`, `false` = `RETIRED`). Prefer `lifecycleStatus` for new callers.
   - `createdAfter`: Filter by start date (ISO-8601)
   - `createdBefore`: Filter by end date (ISO-8601)
   - `tenantId`: Filter by tenant ID (GlobalAdmin only; ignored for TenantAdmin)

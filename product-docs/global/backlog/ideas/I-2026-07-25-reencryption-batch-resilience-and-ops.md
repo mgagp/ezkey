@@ -58,6 +58,8 @@ operator-facing controls.
 3. Progress semantics and optional chunk-level visibility improvements.
 4. UI operator controls (batches-only refresh, polling strategy for off-page active work).
 5. Recovery/ops docs with explicit fail-open/fail-closed behavior for batch processing paths.
+6. Optional operational-churn profile: frequent key introduce (~15m) + re-encryption (~20m) for
+   soak/resilience evidence — promote into churn canon or a bounded slice only if still wanted.
 
 ## Key assumptions
 

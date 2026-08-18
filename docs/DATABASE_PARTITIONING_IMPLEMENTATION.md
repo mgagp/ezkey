@@ -44,7 +44,7 @@ This document summarizes the implementation of database table partitioning for E
 
 ### Security Design: SECURITY DEFINER Function
 
-**Migration:** `V25__create_partition_management_function.sql`
+**Migration:** `V4__partitioning_auth_audit_and_function.sql`
 
 **Approach:** Uses PostgreSQL `SECURITY DEFINER` function to maintain role separation:
 
@@ -398,9 +398,8 @@ See also: `ezkey-core/AGENTS.md` (§ Partitioned tables and Flyway),
 - **PostgreSQL Partitioning:** https://www.postgresql.org/docs/current/ddl-partitioning.html
 - **PostgreSQL SECURITY DEFINER:** https://www.postgresql.org/docs/current/sql-createfunction.html
 - **Migration Files:**
-  - `ezkey-core/src/main/resources/db/migration/V23__partition_auth_attempt_by_month.sql`
-  - `ezkey-core/src/main/resources/db/migration/V24__partition_audit_log_by_month.sql`
-  - `ezkey-core/src/main/resources/db/migration/V25__create_partition_management_function.sql`
+  - `ezkey-core/src/main/resources/db/migration/V4__partitioning_auth_audit_and_function.sql`
+    (partitioned tables + `create_monthly_partition`)
 - **Service Implementation:**
   - `ezkey-core/src/main/java/org/ezkey/database/service/PartitionSchedulerService.java`
 

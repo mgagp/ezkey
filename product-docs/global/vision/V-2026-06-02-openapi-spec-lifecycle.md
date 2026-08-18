@@ -38,7 +38,7 @@ and blurs the boundary between portable Ezkey contracts and one installation's r
   `*.ezkey.org` hosts.
 - `Integration API` does not declare `@Server`, but Springdoc still emits a generated localhost
   server in the canonical spec output, so annotation cleanup alone is not sufficient.
-- Postman already models hosts through environments, which supports the host-neutral direction.
+- Postman historically modeled hosts through environments. Living operator collections under `bruno/` do the same (environment base URLs); that is the host-neutral proof to follow, not the Postman tree.
 - `EXP1` has concrete Cloudflare/Lightsail public hosts in `experimental-hybrid/lightsail/Caddyfile`.
 - Ezkey's self-hosting posture argues against embedding project-specific or operator-specific
   domains in portable source annotations.
@@ -50,12 +50,12 @@ that Ezkey can:
 
 - generate a host-neutral canonical Auth API spec;
 - generate an EXP1-localized Cloudflare upload artifact from that canonical spec;
-- keep downstream clients and Postman aligned without broad host-related churn;
+- keep downstream clients and Bruno (and leftover Postman environments) aligned without broad host-related churn;
 - record enough evidence to generalize the rule to Admin API and Integration API.
 
 ## Related documents
 
-- Source working plan: [`plan-openApiSpecLifecycle.prompt.md`](../../../.github/prompts/plan-openApiSpecLifecycle.prompt.md)
+- Source working plan: GitHub prompt deleted in the 2026-08 corpus-ablation pass; this vision note and the linked I/TB are canon.
 - Backlog idea: [`I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation`](../backlog/ideas/I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation.md)
 - First tracer bullet: [`TB-2026-06-02-auth-api-cloudflare-schema-first-slice`](../backlog/TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md)
 - Existing exposure posture: [`openapi-exposure-matrix.md`](../openapi-exposure-matrix.md)

@@ -45,7 +45,7 @@ The main operating stance recommended in this v1 is:
 
 ### Canonical framing
 
-- `.github/prompts/plan-ezkeyEntityLifecycleGovernance.prompt.md`
+- [`docs/LIFECYCLE_GOVERNANCE.md`](../docs/LIFECYCLE_GOVERNANCE.md) — operator canon (analysis session closed)
 - `PRD.md`
 - `README.md`
 
