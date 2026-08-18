@@ -89,6 +89,9 @@ fleet yet). Provenance:
   per-installation seal-key isolation (two installation scopes cannot unseal each other's
   ciphertext) and for `deleteAllSealKeys` sweeping every installation's alias. Run with
   `yarn android:test:instrumented:crypto` (JDK 17 via `scripts/resolve-android-jdk.sh`).
+  Required when native seal/sign code changes; not required for Jest-only or documentation work.
+  Jest trust-zone workflows assert JS forwarding of installation scopes — they do not replace
+  `sealSecret_isIsolatedPerInstallationScope_MOB017`.
 - StrongBox `STRONG` tier and StrongBox→Keystore fallback evidence are **manual / physical device**
   only — see [`MOBILE_STRONGBOX_MANUAL_CHECKLIST.md`](MOBILE_STRONGBOX_MANUAL_CHECKLIST.md).
   Do not claim CI StrongBox.

@@ -25,7 +25,7 @@ flowchart TD
 | --- | --- | --- |
 | Jest hooks / services / utils | Business logic and fail-closed contracts | Yes — `yarn validate:ci` |
 | Jest critical screens | Navigation and user-initiated gates (Home, Enrollment Detail check-pending, Settings-style hubs) | Yes |
-| Jest workflow zones | Product stories that must stay linked under evolution (protocol continuity; trust-zone crypto) | Yes, as those files land |
+| Jest workflow zones | Product stories that must stay linked under evolution (protocol continuity; trust-zone crypto) | Yes — `yarn validate:ci` |
 | Android JVM unit tests | Ed25519 verifier, sealed-secret envelope, ECDSA low-S | Yes — `testDebugUnitTest` |
 | Instrumented `androidTest` | `EzkeyCryptoModule` Keystore round-trip, per-installation seal isolation (MOB-017) | No — run on device/emulator when native crypto changes: `yarn android:test:instrumented:crypto` |
 | Maestro | Real-device evidence (`TB-2026-0002`) | No |
@@ -54,11 +54,22 @@ continuity. Each zone has one nominal `it()` and one fail-closed `it()`. Detail 
 
 Do not duplicate every exception row from the functional-flow tables here. Workflows own **linkage**.
 
-## Trust-zone crypto (commit 3)
+## Trust-zone crypto
 
-Placeholder. The matrix for installation trust-zone identity, complementary Keystore families
-(signing vs per-installation seal), sealed-secret isolation, and honest StrongBox wording lands
-with the trust-zone isolation workflow.
+Canon: [`MOBILE_DATA_MODEL.md`](MOBILE_DATA_MODEL.md) § Cornerstone. Jest owns **JS forwarding** of
+installation-scoped handles. Native AES isolation stays on instrumented `androidTest`. StrongBox
+`STRONG` is never asserted in Jest or CI.
+
+| Zone | Product intent | Nominal story | Fail-closed break | Primary files |
+| --- | --- | --- | --- | --- |
+| Installation identity | two Auth URLs, same server id | Distinct `deriveLocalEnrollmentId` / `deriveInstallationScopeId`; both rehydrate | — | `app/services/storage/__tests__/trustZoneIsolation.workflow.test.ts` |
+| Seal isolation | per-installation AES scope | `sealSecret` called with distinct `installationScopeId`s | Unseal fail on A → A broken, B still claimable | `trustZoneIsolation.workflow.test.ts` |
+| Signing alias | per-enrollment Keystore handle | Claim on A signs with A's local id and A's `authUrl` only | — | `trustZoneIsolation.workflow.test.ts` |
+| Complementary split | signing key does not unseal; seal key is per-installation | `sign(localId)` vs `sealSecret(scopeId, logicalKey, …)` are distinct first arguments | `clearAll` deletes both signing aliases and every seal key | `app/services/crypto/__tests__/complementaryProtections.workflow.test.ts` |
+| StrongBox `STRONG` | honest hardware evidence | — | Never assert `STRONG` in CI | [`MOBILE_STRONGBOX_MANUAL_CHECKLIST.md`](MOBILE_STRONGBOX_MANUAL_CHECKLIST.md) |
+
+Native Keystore ciphertext isolation (`sealSecret_isIsolatedPerInstallationScope_MOB017`) is not
+replaced by these Jest files.
 
 ## When to run instrumented crypto tests
 
