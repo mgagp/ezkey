@@ -92,7 +92,7 @@ payloads or proof material). Working files may live under a gitignored maintaine
 Capture on a physical device with **release** or production-clean debug, English first, no real
 customer enrollments (use a clean-start Demo Device / lab installation).
 
-1. **Home empty** — welcome copy and add-enrollment FAB. No experimental banner.
+1. **Home empty** — welcome copy and add-enrollment FAB. No changelog banner.
 2. **Home with one enrollment** — grouped installation list.
 3. **Enrollment wizard QR** — scanner or pre-scan explanation (no live secret QR in the asset if
    it would leak a real enrollment).

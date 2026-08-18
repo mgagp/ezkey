@@ -55,8 +55,9 @@ Data Safety draft: [`MOBILE_PLAY_DATA_SAFETY.md`](MOBILE_PLAY_DATA_SAFETY.md).
 
 ### Official in-app messaging
 
-Home banner, Release Notes, and Settings no longer use invited-audience / activation-code copy
-(`TB-2026-08-14-mobile-exit-experimental-messaging`). Coming Soon remains a sober roadmap.
+Release Notes and Settings no longer use invited-audience / activation-code copy
+(`TB-2026-08-14-mobile-exit-experimental-messaging`). Home has no permanent changelog banner;
+What's new lives in Settings. Coming Soon remains a sober roadmap.
 
 ### Monochrome adaptive icon
 

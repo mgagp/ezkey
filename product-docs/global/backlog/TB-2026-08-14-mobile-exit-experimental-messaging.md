@@ -20,7 +20,7 @@ Console paperwork.
 
 ## Boundaries in scope
 
-- Home release banner, Release Notes screen, Settings "What's new" subtitle
+- Release Notes screen, Settings "What's new" subtitle (Home has no permanent changelog banner)
 - EN/FR strings in `ezkey_mobile/app/i18n/resources.ts`
 - Unit tests that asserted experimental strings
 - Coming Soon remains as a sober near-term roadmap (auth policy / local-auth + certificate pinning)
@@ -43,7 +43,7 @@ Revert the copy and tests. No data migration and no native contract.
 
 ## Critical flows
 
-- **Nominal:** Home banner → Release Notes describes capabilities, Android 12+, no activation code.
+- **Nominal:** Settings → What's new describes capabilities, Android 12+, no activation code.
 - **Settings:** "What's new" subtitle no longer says "experimental."
 - **Coming Soon:** still reachable; still sets expectations for pinning and local-auth.
 
