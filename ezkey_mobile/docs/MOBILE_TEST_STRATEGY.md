@@ -38,11 +38,21 @@ Detox is not in the stack. There is no `collectCoverage` threshold.
 Thin interaction tests when a screen owns navigation or a pull-model gate. Do not chase About,
 Licenses, logos, or presentation-only copy.
 
-## Protocol workflow zones (commit 2)
+## Protocol workflow zones
 
-Placeholder. The matrix mapping [`MOBILE_FUNCTIONAL_FLOWS.md`](MOBILE_FUNCTIONAL_FLOWS.md) and
-product-intent cryptographic continuity (`bind`↔`verify`, `pending`↔`respond`, pull gate, MOB-015)
-lands with the workflow Jest files.
+Canon: [`MOBILE_FUNCTIONAL_FLOWS.md`](MOBILE_FUNCTIONAL_FLOWS.md) and
+[`product-docs/global/product-intent.md`](../../product-docs/global/product-intent.md) § cryptographic
+continuity. Each zone has one nominal `it()` and one fail-closed `it()`. Detail stays in unit files.
+
+| Zone | Product intent | Nominal story | Fail-closed break | Primary files |
+| --- | --- | --- | --- | --- |
+| Enrollment continuity | bind↔verify linked | QR → bind + bind-sig OK → draft → 6-digit → verify + result-sig OK → persist → Home | Invalid verify-result signature → no persist, key deleted | `app/hooks/__tests__/enrollmentContinuity.workflow.test.ts` |
+| Authentication continuity | pending↔respond linked | Detail check-pending → PendingAuth → approve → respond-sig OK → trusted summary | Invalid respond-result signature → no trusted outcome | `__tests__/authenticationContinuity.workflow.test.tsx` |
+| Pull-model gate | user-initiated only | Home never calls pending; only Detail `Check pending` starts a claim | Broken enrollment offers no check-pending | `__tests__/HomeScreen.test.tsx`, `__tests__/EnrollmentDetailScreen.test.tsx` |
+| Local honesty | MOB-015 fail-open visibility, fail-closed auth | Unusable row visible; Detail has no pending action | Collection error never looks like first-use empty Home | `__tests__/HomeScreen.test.tsx`, `__tests__/EnrollmentDetailScreen.test.tsx` |
+| Protected-mode downgrade | local confirmation before lowering protection | Already owned | Cancel keeps protected | `__tests__/SecurityScreen.test.tsx`, `approvalRequirement.test.ts` |
+
+Do not duplicate every exception row from the functional-flow tables here. Workflows own **linkage**.
 
 ## Trust-zone crypto (commit 3)
 
