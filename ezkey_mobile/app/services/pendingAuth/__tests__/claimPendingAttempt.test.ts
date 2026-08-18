@@ -235,4 +235,23 @@ describe('claimPendingAttempt', () => {
 
     await expect(claimPendingAttempt(sampleEnrollment)).rejects.toThrow('Network error');
   });
+
+  it('generates a fresh deviceProofToken on every user-initiated pull', async () => {
+    mockAuthAttemptsApi.pending.mockResolvedValue(undefined);
+    mockGenerateProofToken
+      .mockResolvedValueOnce('device-proof-token-1')
+      .mockResolvedValueOnce('device-proof-token-2');
+
+    await claimPendingAttempt(sampleEnrollment);
+    await claimPendingAttempt(sampleEnrollment);
+
+    expect(mockGenerateProofToken).toHaveBeenCalledTimes(2);
+    expect(mockAuthAttemptsApi.pending.mock.calls[0][0].deviceProofToken).toBe(
+      'device-proof-token-1',
+    );
+    expect(mockAuthAttemptsApi.pending.mock.calls[1][0].deviceProofToken).toBe(
+      'device-proof-token-2',
+    );
+  });
 });
+

@@ -63,6 +63,7 @@ reference mobile app.
 | [MOBILE_STRONGBOX_MANUAL_CHECKLIST.md](MOBILE_STRONGBOX_MANUAL_CHECKLIST.md) | Physical-device StrongBox evidence | When recording STRONG tier / StrongBox fallback on a phone (MOB-006); not CI. |
 | [MOBILE_CRYPTO_REFERENCE.md](MOBILE_CRYPTO_REFERENCE.md) | Supporting security detail | When reviewing mobile-specific crypto wording and storage caveats. |
 | [MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md](MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md) | Supporting security practice | When validating local secret handling, sandbox artifacts, log hygiene, and debug-only instrumentation choices. |
+| [MOBILE_TEST_STRATEGY.md](MOBILE_TEST_STRATEGY.md) | Test strategy | Layer contract (Jest, JVM, instrumented, Maestro) and what each layer is allowed to prove. |
 | [MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md](MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md) | Test automation / release posture | When adding Maestro, F2a bypass, or other test-only surfaces — mechanical gates and scrutiny resistance. |
 | [MOBILE_LOCAL_AUTH_POLICY_AND_AUDIT_FUTURE_WORK.md](MOBILE_LOCAL_AUTH_POLICY_AND_AUDIT_FUTURE_WORK.md) | Supporting future design note | When revisiting local-auth integrity, future enrollment policy, or audit/protocol extensions around `respond`. |
 | [MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md](MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md) | Supporting dependency governance | Unblock gates and trial protocol for deferred ESLint 10 / Jest 30 majors. |

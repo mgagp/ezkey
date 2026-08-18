@@ -9,6 +9,7 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 ## Documentation Routing
 
 - Start with `docs/README.md` for the current mobile documentation corpus.
+- Test layer contract (Jest vs JVM vs instrumented vs Maestro): [`docs/MOBILE_TEST_STRATEGY.md`](docs/MOBILE_TEST_STRATEGY.md).
 - Treat `docs/MOBILE_API_MAPPINGS.md`, `docs/MOBILE_FUNCTIONAL_FLOWS.md`, `docs/MOBILE_DATA_MODEL.md`, `docs/MOBILE_SCREENS_AND_WIREFLOWS.md`, `docs/MOBILE_STACK_AND_ARCHITECTURE.md`, and `docs/MOBILE_POSITIONING.md` as the primary conceptual set.
 - Wire protocol for third-party or alternative mobile clients is the repository-level companion [`docs/MOBILE_DEVELOPER_GUIDE.md`](../docs/MOBILE_DEVELOPER_GUIDE.md) — not the RN screen corpus.
 - For release and publishing work, read `docs/MOBILE_RELEASE_SIGNING.md`, `docs/MOBILE_PLAY_PUBLISHING.md`, `docs/MOBILE_PLAY_RELEASE_READINESS_AUDIT.md`, and `docs/MOBILE_RELEASE_DECISION_MEMO.md` before proposing release conclusions.
