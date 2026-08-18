@@ -24,7 +24,7 @@ export const resources = {
         aboutLabel: 'About',
         aboutSubtitle: 'App version and project info',
         releaseNotesLabel: "What's new",
-        releaseNotesSubtitle: 'Current release and experimental information',
+        releaseNotesSubtitle: 'What this release includes',
         comingSoonLabel: 'Coming soon',
         comingSoonSubtitle: 'Near-term roadmap and expectation-setting notes',
         languageLabel: 'Language',
@@ -67,26 +67,28 @@ export const resources = {
       },
       releaseNotes: {
         accessibilityLabel: 'What is new in Ezkey Mobile',
-        eyebrow: 'Experimental release',
-        title: 'First experimental release',
-        intro: 'Ezkey Mobile is now available for a limited experimental audience.',
-        siteLinkText: 'Read the article and activation guide on ezkey.org',
-        siteLinkLabel: 'Open ezkey.org article and activation guide',
-        siteLinkHint: 'Opens ezkey.org in the browser for more details about the experiment',
+        eyebrow: 'Version 1.0',
+        title: 'Ezkey Mobile for Android',
+        intro:
+          'Approve sign-ins from a trusted Android device. Scan an enrollment QR from your Ezkey installation, then approve or deny authentication requests on this phone.',
+        siteLinkText: 'Learn more on ezkey.org',
+        siteLinkLabel: 'Open ezkey.org',
+        siteLinkHint: 'Opens ezkey.org in the browser',
         includedTitle: 'Included in this release',
         includedItem1: 'Enroll a trusted device by scanning a QR code.',
         includedItem2: 'Approve or deny authentication requests from the mobile device.',
         includedItem3: 'Local storage for enrollments and device cryptographic keys.',
-        accessTitle: 'Experimental access',
-        accessBody:
-          'If you want to participate in the experiment, start with the article on ezkey.org, then email info@ezkey.org to request an activation code.',
+        requirementsTitle: 'Requirements',
+        requirementsBody:
+          'Android 12 or later. Camera access is used only to scan enrollment QR codes. Optional device confirmation (biometrics or screen lock) stays on this phone.',
         comingNextTitle: 'Coming next',
         comingNextItem1:
           'Further work is planned on authentication policy, local-auth rules, and stronger cryptographic validation boundaries.',
         comingNextItem2:
           'Certificate pinning is planned in a lightweight Ezkey form, starting with trust on first use during enrollment and a controlled refresh path later if the pin changes.',
         notesTitle: 'Important notes',
-        note1: 'This publication is intended for a limited experimental audience.',
+        note1:
+          'Your organization runs its own Ezkey installation. This app does not collect analytics or advertising identifiers.',
       },
       comingSoon: {
         accessibilityLabel: 'Coming soon in Ezkey Mobile',
@@ -308,12 +310,10 @@ export const resources = {
         groupedByInstallation: 'Enrollments grouped by Ezkey installation',
         addEnrollment: 'Add enrollment',
         addEnrollmentHint: 'Starts enrollment with QR scan',
-        releaseBannerEyebrow: "What's new",
-        releaseBannerTitle: 'First experimental release',
-        releaseBannerBody:
-          'Limited experimental access is now available for an invited audience.',
-        releaseBannerAction: 'Learn more',
-        releaseBannerHint: 'Opens the current release notes and experimental access details',
+        updateAvailableTitle: 'Update available',
+        updateAvailableBody: 'A newer version of Ezkey is available on Google Play.',
+        updateAvailableAction: 'Update',
+        updateAvailableLater: 'Later',
         emptyAccessibilityLabel:
           'Welcome to Ezkey. No enrollments yet. Tap the plus button to scan a QR code and add your first device.',
         emptyTitle: 'Welcome to Ezkey',
@@ -387,7 +387,7 @@ export const resources = {
         aboutLabel: 'À propos',
         aboutSubtitle: 'Version de l’application et informations du projet',
         releaseNotesLabel: 'Nouveautés',
-        releaseNotesSubtitle: 'Version en cours et informations expérimentales',
+        releaseNotesSubtitle: 'Contenu de cette version',
         comingSoonLabel: 'À venir',
         comingSoonSubtitle: 'Feuille de route rapprochée et notes de cadrage',
         languageLabel: 'Langue',
@@ -430,27 +430,28 @@ export const resources = {
       },
       releaseNotes: {
         accessibilityLabel: 'Nouveautés de Ezkey Mobile',
-        eyebrow: 'Version expérimentale',
-        title: 'Première version expérimentale',
-        intro: 'Ezkey Mobile est maintenant disponible pour un auditoire expérimental limité.',
-        siteLinkText: 'Lire l’article et le guide d’activation sur ezkey.org',
-        siteLinkLabel: 'Ouvrir l’article et le guide d’activation sur ezkey.org',
-        siteLinkHint:
-          'Ouvre ezkey.org dans le navigateur pour plus de détails sur l’expérimentation',
+        eyebrow: 'Version 1.0',
+        title: 'Ezkey Mobile pour Android',
+        intro:
+          'Approuvez les connexions depuis un appareil Android de confiance. Scannez un QR d’enrôlement de votre installation Ezkey, puis approuvez ou refusez les demandes d’authentification sur ce téléphone.',
+        siteLinkText: 'En savoir plus sur ezkey.org',
+        siteLinkLabel: 'Ouvrir ezkey.org',
+        siteLinkHint: 'Ouvre ezkey.org dans le navigateur',
         includedTitle: 'Ce qui est inclus',
         includedItem1: 'Enrôlement d’un appareil de confiance par code QR.',
         includedItem2: 'Approbation ou refus des demandes d’authentification depuis l’appareil mobile.',
         includedItem3: 'Stockage local des enrôlements et des clés cryptographiques de l’appareil.',
-        accessTitle: 'Accès expérimental',
-        accessBody:
-          'Si vous souhaitez participer à l’expérimentation, commencez par l’article sur ezkey.org, puis écrivez à info@ezkey.org pour demander un code d’activation.',
+        requirementsTitle: 'Prérequis',
+        requirementsBody:
+          'Android 12 ou plus récent. L’accès à la caméra sert uniquement à scanner les QR d’enrôlement. La confirmation facultative sur l’appareil (biométrie ou verrouillage) reste sur ce téléphone.',
         comingNextTitle: 'À venir',
         comingNextItem1:
           'Du travail supplémentaire est prévu sur la policy d’authentification, les règles de réauthentification locale et des frontières de validation cryptographique plus fortes.',
         comingNextItem2:
           'Le certificate pinning est prévu sous une forme légère à la manière Ezkey, en commençant par un trust on first use pendant l’enrôlement et un parcours contrôlé de rafraîchissement si le pin change par la suite.',
         notesTitle: 'Notes importantes',
-        note1: 'Cette publication s’adresse à un auditoire expérimental limité.',
+        note1:
+          'Votre organisation exploite sa propre installation Ezkey. Cette application ne collecte pas d’analytique ni d’identifiants publicitaires.',
       },
       comingSoon: {
         accessibilityLabel: 'À venir dans Ezkey Mobile',
@@ -675,13 +676,10 @@ export const resources = {
         groupedByInstallation: 'Enrôlements groupés par installation Ezkey',
         addEnrollment: 'Ajouter un enrôlement',
         addEnrollmentHint: 'Démarre l’enrôlement par scan QR',
-        releaseBannerEyebrow: 'Nouveauté',
-        releaseBannerTitle: 'Première version expérimentale',
-        releaseBannerBody:
-          'Un accès expérimental limité est maintenant disponible pour un auditoire invité.',
-        releaseBannerAction: 'En savoir plus',
-        releaseBannerHint:
-          'Ouvre les nouveautés en cours et les détails d’accès expérimental',
+        updateAvailableTitle: 'Mise à jour disponible',
+        updateAvailableBody: 'Une version plus récente d’Ezkey est disponible sur Google Play.',
+        updateAvailableAction: 'Mettre à jour',
+        updateAvailableLater: 'Plus tard',
         emptyAccessibilityLabel:
           'Bienvenue dans Ezkey. Aucun enrôlement pour le moment. Touchez le bouton plus pour scanner un code QR et ajouter votre premier appareil.',
         emptyTitle: 'Bienvenue dans Ezkey',

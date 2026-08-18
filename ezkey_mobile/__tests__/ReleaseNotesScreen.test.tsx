@@ -4,7 +4,7 @@ import renderer from 'react-test-renderer';
 import {ReleaseNotesScreen} from '../app/screens/ReleaseNotes';
 
 describe('ReleaseNotesScreen', () => {
-  it('renders the experimental release content', async () => {
+  it('renders the official release content', async () => {
     let tree: renderer.ReactTestRenderer;
 
     await renderer.act(async () => {
@@ -13,12 +13,14 @@ describe('ReleaseNotesScreen', () => {
 
     const textContent = tree!.root.findAllByType(Text).map(node => node.props.children).flat().join(' ');
 
-    expect(textContent).toContain('First experimental release');
+    expect(textContent).toContain('Ezkey Mobile for Android');
     expect(textContent).toContain('ezkey.org');
-    expect(textContent).toContain('Experimental access');
+    expect(textContent).toContain('Requirements');
+    expect(textContent).toContain('Android 12');
     expect(textContent).toContain('Coming next');
     expect(textContent).toContain('Certificate pinning');
-    expect(textContent).toContain('info@ezkey.org');
-    expect(textContent).toContain('limited experimental audience');
+    expect(textContent).not.toContain('experimental');
+    expect(textContent).not.toContain('info@ezkey.org');
+    expect(textContent).not.toContain('activation code');
   });
 });

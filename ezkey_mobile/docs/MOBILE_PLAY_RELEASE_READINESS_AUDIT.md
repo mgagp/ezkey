@@ -2,177 +2,117 @@
 
 Focused audit for deciding whether Ezkey Mobile can move toward a Play Store release from the current workspace state.
 
+**Last refreshed:** 2026-08-14 (official Play-release work order).
+
 ## Audit Scope
 
 This audit is intentionally practical. It focuses on the current repository state rather than on deleted migration plans or hypothetical target stacks.
 
 ## Executive Summary
 
-Status: **partially ready, not yet release-complete**.
+Status: **listing-close remaining; in-app official copy and version policy are in the workspace.**
 
-The Android project already has a credible Play-oriented foundation, especially around target API level and release signing hooks. The main unresolved items are release operations, listing/compliance inputs, and the product decision about whether the current React Native `0.86.2` Active baseline is acceptable for first public release, or whether a later 0.87 program should land first.
+The Android project has a Play-oriented foundation (`targetSdk` 36, `minSdk` 31, upload signing hooks, aligned `versionName`). Experimental in-app messaging is retired. Flexible Play in-app updates ship in release builds (fail-open). Remaining blockers are **Console assets and a final signed GA AAB**, not product-copy or stack-baseline indecision.
+
+React Native **0.86.2** is the accepted first-listing baseline; 0.87 is post-listing debt. See [`MOBILE_RELEASE_DECISION_MEMO.md`](MOBILE_RELEASE_DECISION_MEMO.md).
 
 ## What Looks Ready
 
 ### Android target and build posture
 
-- `compileSdkVersion = 36` in `ezkey_mobile/android/build.gradle`
-- `targetSdkVersion = 36` in `ezkey_mobile/android/build.gradle`
-- `minSdkVersion = 31` in `ezkey_mobile/android/build.gradle` — matches product floor (Android 12+;
-  see [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md))
-- Android Gradle Plugin `8.12.0` and Kotlin `2.1.20` are already configured in the workspace
+- `compileSdkVersion = 36` / `targetSdkVersion = 36` / `minSdkVersion = 31` in `ezkey_mobile/android/build.gradle`
+- Matches product floor (Android 12+; [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md))
+- Android Gradle Plugin `8.12.0` and Kotlin `2.1.20`
 
-Conclusion: modern `targetSdk`/`compileSdk` and policy-aligned `minSdk` are fine for Play
-submission shape.
+### Version identifiers
+
+- `ezkey_mobile/package.json` `"version": "1.0.0"` — Gradle `versionName` is injected from this file
+- Settings / About show `APP_VERSION` from the same source
+- `versionCode` **2** in `android/app/build.gradle` (assumes experimental Play/`org.ezkey.mobile` used `1`; **confirm in Play Console App bundle explorer before upload**)
+- Bump recipe: [`MOBILE_PLAY_PUBLISHING.md`](MOBILE_PLAY_PUBLISHING.md) § Version bump recipe
 
 ### Release signing path exists
 
-- `ezkey_mobile/android/app/build.gradle` already supports release signing from external `EZKEY_UPLOAD_*` Gradle properties
-- fallback behavior is explicit and loud when credentials are missing
-- `ezkey_mobile/docs/MOBILE_RELEASE_SIGNING.md` already documents the upload-key workflow
-
-Conclusion: the release-signing process is designed and has now been exercised locally with a real signed AAB and device installation. Operational release readiness still depends on keeping credentials managed safely and repeating the same flow for the final publication candidate.
+- `EZKEY_UPLOAD_*` Gradle properties, documented in [`MOBILE_RELEASE_SIGNING.md`](MOBILE_RELEASE_SIGNING.md)
+- A signed AAB has been built on this workstation (2026-08-14):
+  `ezkey_mobile/android/app/build/outputs/bundle/release/app-release.aab` (~48 MB, gitignored).
+  `jarsigner -verify` reported `jar verified` (upload key is self-signed, as expected; Play App
+  Signing re-signs on upload). Matching release APK dumps `versionCode=2` `versionName=1.0.0`
+  `minSdk=31` `targetSdk=36` label **Ezkey**.
+- Wireless adb dropped before `adb install -r` of that APK. Re-run
+  `./scripts/build-install-release-clean.sh` (or `adb install -r` of the APK) when the Pixel is
+  connected for on-device smoke of Home / Release Notes / Settings / Coming Soon.
 
 ### Permission surface is narrow
 
-`AndroidManifest.xml` currently declares only:
+`AndroidManifest.xml` currently declares:
 
 - `android.permission.INTERNET`
 - `android.permission.CAMERA`
+- `android.permission.USE_BIOMETRIC` (optional local confirmation)
 
-Conclusion: the permission profile is easier to justify in Play Data Safety than many mobile apps.
+Data Safety draft: [`MOBILE_PLAY_DATA_SAFETY.md`](MOBILE_PLAY_DATA_SAFETY.md).
 
-### Monochrome adaptive icon support exists
+### Official in-app messaging
 
-`ezkey_mobile/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml` already includes a `monochrome` drawable.
+Release Notes and Settings no longer use invited-audience / activation-code copy
+(`TB-2026-08-14-mobile-exit-experimental-messaging`). Home has no permanent changelog banner;
+What's new lives in Settings. Coming Soon remains a sober roadmap.
 
-Conclusion: the Android 13+ themed icon requirement is already covered.
+### Monochrome adaptive icon
+
+`mipmap-anydpi-v26/ic_launcher.xml` includes a `monochrome` drawable.
+
+### Client update mechanism
+
+Release builds include Play Core **flexible** in-app updates (`EzkeyPlayUpdateModule`). Debug and
+sideload fail-open (no prompt). Hard min-version gate is out of scope.
 
 ## Findings That Still Need Action
 
-### 1. Versioning is not aligned yet
+### 2. On-device smoke of the 2026-08-14 candidate
 
-Evidence:
+A signed AAB and matching release APK exist on this workstation (see above). Wireless adb dropped
+before install. Reconnect the Pixel and install (`adb install -r` of the APK, or
+`./scripts/build-install-release-clean.sh`) then smoke Home, Release Notes, Settings, Coming Soon
+in EN and FR.
 
-- `ezkey_mobile/package.json` uses `"version": "0.0.1"`
-- `ezkey_mobile/android/app/build.gradle` uses `versionCode 1`
-- `ezkey_mobile/android/app/build.gradle` uses `versionName "1.0"`
+### 3. Console listing assets
 
-Why it matters:
+Privacy URL and support email are decided (`https://ezkey.org/privacy.html`, `support@ezkey.org`).
+Still needed in Play Console: screenshots, feature graphic (1024×500), paste Data Safety and
+What's new from [`MOBILE_PLAY_STORE_LISTING.md`](MOBILE_PLAY_STORE_LISTING.md).
 
-- release artifacts and in-app surfaced version information should tell the same story,
-- Play uploads require disciplined `versionCode` progression,
-- the current mismatch is small but signals that release versioning has not been finalized.
+### 4. Confirm `versionCode` in Play Console before upload
 
-Required action:
-
-- choose the first public version string,
-- align `package.json` and Android `versionName`,
-- set a release-ready `versionCode` policy.
-
-### 2. Release signing is supported and now proven locally, but not yet operationally closed
-
-Evidence:
-
-- the build falls back to the debug keystore if `EZKEY_UPLOAD_*` properties are absent,
-- the docs explicitly state that such an artifact cannot be uploaded to Play.
-- on this workstation, the real `EZKEY_UPLOAD_*` properties are configured outside the repo,
-- a signed release AAB was built successfully,
-- the signed AAB was converted to device-specific APKs with `bundletool` and installed on a connected Pixel 7 Pro.
-
-Why it matters:
-
-- proving the local signed path reduces uncertainty around release tooling,
-- but Play readiness still depends on repeatability, key management hygiene, and final candidate validation rather than a single successful local installation.
-
-Required action:
-
-- preserve and document the upload-key operational process,
-- repeat the signed AAB build and device validation for the final publication candidate,
-- keep the final Play upload artifact and its validation logs as release evidence.
-
-### 3. Listing and compliance inputs are not closed
-
-The public privacy-policy URL exists: `https://ezkey.org/privacy.html` (`sites/ezkey-org/privacy.html`). [`MOBILE_PLAY_PUBLISHING.md`](MOBILE_PLAY_PUBLISHING.md) points at it. What is still missing from the mobile corpus is a support-contact artifact, completed Play Data Safety answers, and listing copy/assets.
-
-Why it matters:
-
-- Play publication is blocked as much by listing/compliance inputs as by code,
-- these items tend to slip if they are treated as external paperwork rather than release deliverables.
-
-Required action:
-
-- paste the privacy URL into Play Console at submission,
-- define the support contact used in the listing,
-- complete the Play Data Safety answers from the real app behavior.
-
-### 4. Product naming still needs an explicit release decision
-
-Evidence:
-
-- `ezkey_mobile/app.json` currently uses `displayName: "Ezkey"`
-- the publishing checklist uses `Ezkey Authenticator` only as an example, not as the chosen final name.
-
-Why it matters:
-
-- the Play listing, launcher name, and brand positioning should be intentional and consistent.
-
-Required action:
-
-- choose the release name for the Play listing,
-- decide whether launcher and listing names stay identical.
-
-### 5. The stack is publishable in principle, but not ideal as a long-lived baseline
-
-Evidence:
-
-- `ezkey_mobile/package.json` uses React Native `0.86.2`
-- the same file uses React `19.2.7`
-- the React Native CLI dependencies are aligned on `20.2.0`
-- the current runtime also depends on `react-native-vision-camera` `5.2.2` and the Vision Camera 5 barcode-scanner / worklets slice
-
-Why it matters:
-
-- this is not the same as a Play API-level blocker,
-- but it is a meaningful maintainability and support-risk discussion for the first public release.
-- team context also indicates that the present versions were reached after real compatibility churn between the React stack and the camera stack, so future upgrades should not assume independent version movement.
-
-Required action:
-
-- make an explicit product/engineering decision: release now and upgrade later, or upgrade before first public launch.
-- when planning modernization, treat React, React Native, Vision Camera, and related camera/runtime packages as a single convergence workstream with explicit validation time.
-
-See [MOBILE_RELEASE_DECISION_MEMO.md](MOBILE_RELEASE_DECISION_MEMO.md).
+Workspace uses `2` based on the known experimental `versionCode` `1`. If Console already has a
+higher code, bump before upload. License snapshot regenerated 2026-08-14 (`yarn license:app-data`).
 
 ## Release Recommendation Matrix
 
 ### Ready enough to continue toward release now
 
-The project looks ready enough to continue toward a release candidate if the team completes:
-
-- release signing setup,
-- aligned versioning,
-- privacy policy and support contact,
-- Data Safety answers,
-- release-mode device validation.
+Yes, on the current RN 0.86.2 stack, once Console screenshots/feature graphic are uploaded and the
+Pixel smoke of the 2026-08-14 candidate is done.
 
 ### Not yet ready to call “Play release complete”
 
-The project is not yet ready to declare Play release readiness complete because:
-
-- operational release inputs are still incomplete,
-- publication metadata is not yet evidenced,
-- the stack-baseline decision is still open.
+Until screenshots/feature graphic are in Console and the signed candidate is smoked on a device.
 
 ## Suggested Go/No-Go Checklist
 
-- [ ] Upload key configured and verified with a signed AAB
-- [ ] Release-mode device test passed on the AAB path
-- [ ] `package.json` version aligned with Android `versionName`
-- [ ] `versionCode` selected for first public upload
-- [ ] Privacy-policy URL decided and published
-- [ ] Support contact decided and visible
-- [ ] Data Safety answers prepared from the real permission/data behavior
-- [ ] Product name for the Play listing finalized
-- [ ] Explicit decision taken on release-now versus upgrade-first
-- [x] Confirm [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md) (floor API 31); Gradle `minSdkVersion` is **31**. Before publishing that binary: release notes say Android 12+; Play listing / Data Safety / support text must not claim older OS support.
+- [x] Upload key configured (workstation `~/.gradle`; not in git)
+- [x] Signed GA AAB + matching release APK built 2026-08-14 (`versionCode` 2 / `1.0.0`)
+- [ ] On-device smoke of that candidate (adb dropped before install; reconnect Pixel and install)
+- [x] `package.json` version aligned with Android `versionName` (`1.0.0`)
+- [x] `versionCode` selected for next public upload (`2`, confirm in Console)
+- [x] Privacy-policy URL decided and published
+- [x] Support contact decided and visible
+- [x] Data Safety answers prepared from the real permission/data behavior
+- [x] Product name for the Play listing finalized (**Ezkey**)
+- [x] Explicit decision taken on release-now versus upgrade-first (**release now**, RN 0.86.2)
+- [x] Confirm [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md) (floor API 31)
+- [x] In-app experimental messaging retired
+- [x] Flexible Play in-app update check present in release builds
+- [ ] Screenshots + feature graphic uploaded
+- [ ] Store What's new pasted from [`MOBILE_PLAY_STORE_LISTING.md`](MOBILE_PLAY_STORE_LISTING.md)

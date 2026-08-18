@@ -14,6 +14,7 @@ package org.ezkey.mobile
 
 import android.app.Application
 import org.ezkey.mobile.crypto.EzkeyCryptoPackage
+import org.ezkey.mobile.play.EzkeyPlayUpdatePackage
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -41,6 +42,7 @@ class MainApplication : Application(), ReactApplication {
         override fun getPackages(): List<ReactPackage> =
             PackageList(this).packages.apply {
               add(EzkeyCryptoPackage())
+              add(EzkeyPlayUpdatePackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

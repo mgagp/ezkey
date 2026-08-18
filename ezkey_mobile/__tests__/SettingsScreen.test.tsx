@@ -19,7 +19,7 @@ describe('SettingsScreen', () => {
 
     const textContent = tree!.root.findAllByType(Text).map(node => node.props.children).flat().join(' ');
     expect(textContent).toContain("What's new");
-    expect(textContent).toContain('Current release and experimental information');
+    expect(textContent).toContain('What this release includes');
 
     const releaseNotesItem = tree!.root.findAll(
       node =>

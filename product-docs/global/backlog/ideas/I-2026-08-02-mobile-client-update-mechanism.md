@@ -3,16 +3,17 @@
 ## Metadata
 
 - **ID:** `I-2026-08-02-mobile-client-update-mechanism`
-- **Status:** `incubating`
+- **Status:** `active`
 - **Priority:** `P3`
 - **Created at:** `2026-08-02`
-- **Updated at:** `2026-08-02`
-- **Last reviewed at:** `2026-08-02`
+- **Updated at:** `2026-08-14`
+- **Last reviewed at:** `2026-08-14`
 - **Progression markers:** `P3-distribution`
 - **Component tags:** `mobile`, `docs`
 - **Lane:** `D`
 - **Captured by:** Marc
 - **GitHub issue:** none
+- **Tracer bullet:** [`TB-2026-08-14-mobile-play-flexible-in-app-updates`](../TB-2026-08-14-mobile-play-flexible-in-app-updates.md)
 
 ## Intent
 
@@ -74,17 +75,11 @@ backend the app happens to be enrolled with.
 
 ## Promotion notes
 
-**Incubating** — a light grill session is recommended before promotion to `ready`, to settle
-whether any hard gate is warranted at all (see Scope) and to confirm the boundary against
-`I-2026-0025` and against
-[`I-2026-08-02-mobile-installation-version-and-compat-discovery`](I-2026-08-02-mobile-installation-version-and-compat-discovery.md).
-Keep `incubating` until:
+Promotion notes updated 2026-08-14: first official binary ships **flexible** Play in-app updates
+only (fail-open; no hard gate). Full UI proof still needs a second Play upload. Hard min-version
+gate remains out of scope until a protocol generation is actually retired (`I-2026-0025`).
 
-- the official release (messaging + compliance gate ideas) has shipped and a real install base
-  exists to justify prioritizing this,
-- Play's native in-app update capability has been evaluated against Ezkey's actual Play Console
-  setup,
-- the grill session above has run.
+Execution: [`TB-2026-08-14-mobile-play-flexible-in-app-updates`](../TB-2026-08-14-mobile-play-flexible-in-app-updates.md).
 
 ## Links
 

@@ -38,6 +38,12 @@ import {
   type InstallationGroup,
 } from '../../utils/tenantGrouping';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {
+  checkFlexiblePlayUpdate,
+  getDismissedPlayUpdateVersionCode,
+  setDismissedPlayUpdateVersionCode,
+  startFlexiblePlayUpdate,
+} from '../../services/play/playUpdate';
 
 /**
  * Orders enrollments prioritizing favorites while preserving newest-first semantics.
@@ -135,8 +141,50 @@ export const HomeScreen: React.FC = () => {
     refreshInstallations(healthyEnrollments);
   }, [healthyEnrollments, isRefreshingInstallationMetadata, refreshInstallations]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const promptPlayUpdate = async () => {
+      const result = await checkFlexiblePlayUpdate();
+      if (cancelled || !result.available) {
+        return;
+      }
+      const dismissed = await getDismissedPlayUpdateVersionCode();
+      if (cancelled) {
+        return;
+      }
+      if (
+        result.availableVersionCode != null &&
+        dismissed === result.availableVersionCode
+      ) {
+        return;
+      }
+      Alert.alert(t('home.updateAvailableTitle'), t('home.updateAvailableBody'), [
+        {
+          text: t('home.updateAvailableLater'),
+          style: 'cancel',
+          onPress: () => {
+            if (result.availableVersionCode != null) {
+              void setDismissedPlayUpdateVersionCode(result.availableVersionCode);
+            }
+          },
+        },
+        {
+          text: t('home.updateAvailableAction'),
+          onPress: () => {
+            void startFlexiblePlayUpdate();
+          },
+        },
+      ]);
+    };
+
+    void promptPlayUpdate();
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
+
   const navigateToWizard = () => navigation.navigate('EnrollmentWizard');
-  const navigateToReleaseNotes = () => navigation.navigate('ReleaseNotes');
 
   const handleSelect = useCallback(
     (enrollment: EnrollmentMetadataRecord) => {
@@ -184,18 +232,6 @@ export const HomeScreen: React.FC = () => {
         <ScrollView
           contentContainerStyle={[styles.listContent, {paddingBottom: fabBottom + 56 + spacing.md}]}
           accessibilityLabel={t('home.groupedByInstallation')}>
-          <TouchableOpacity
-            style={styles.releaseBanner}
-            onPress={navigateToReleaseNotes}
-            activeOpacity={0.9}
-            accessibilityRole="button"
-            accessibilityLabel={t('home.releaseBannerTitle')}
-            accessibilityHint={t('home.releaseBannerHint')}>
-            <Text style={styles.releaseBannerEyebrow}>{t('home.releaseBannerEyebrow')}</Text>
-            <Text style={styles.releaseBannerTitle}>{t('home.releaseBannerTitle')}</Text>
-            <Text style={styles.releaseBannerBody}>{t('home.releaseBannerBody')}</Text>
-            <Text style={styles.releaseBannerLink}>{t('home.releaseBannerAction')}</Text>
-          </TouchableOpacity>
           {showUnusableLocalNotice ? <UnusableLocalDataNotice /> : null}
           {installationGroups.length === 0 ? (
             collectionError ? null : <EmptyState />
@@ -465,37 +501,6 @@ const styles = StyleSheet.create({
     gap: spacing.xl,
     paddingBottom: spacing.xxl,
   },
-  releaseBanner: {
-    backgroundColor: colors.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.borderFocus,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    gap: spacing.xs,
-  },
-  releaseBannerEyebrow: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.warning,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  releaseBannerTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  releaseBannerBody: {
-    fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  releaseBannerLink: {
-    marginTop: spacing.xs,
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.primaryLight,
-  },
   installationShell: {
     borderWidth: 1,
     borderColor: colors.borderFocusStrong,
@@ -566,10 +571,8 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 6,
+    gap: spacing.sm,
   },
   cardTitle: {
     fontSize: typography.fontSize.xl,
@@ -609,6 +612,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(245, 194, 107, 0.45)',
   },
   brokenBadge: {
+    alignSelf: 'flex-start',
+    flexShrink: 0,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
     color: colors.warning,

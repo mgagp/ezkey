@@ -6,7 +6,7 @@
 - **Status:** `draft`
 - **Lane:** `D`
 - **Created at:** `2026-08-02`
-- **Updated at:** `2026-08-02`
+- **Updated at:** `2026-08-14`
 - **Captured by:** Marc
 
 ## Intent
@@ -85,14 +85,13 @@ about compatibility as the sole gate for a hard block.
 
 ## Signals and constraints
 
-- Experimental/invited-audience copy is **not** gated by any build flavor or environment flag today
-  — it ships in the release binary exactly as in debug
-  ([`HomeScreen.tsx`](../../../ezkey_mobile/app/screens/Home/HomeScreen.tsx),
-  [`ReleaseNotesScreen.tsx`](../../../ezkey_mobile/app/screens/ReleaseNotes/ReleaseNotesScreen.tsx),
-  [`resources.ts`](../../../ezkey_mobile/app/i18n/resources.ts)). Removing it is a straightforward,
-  low-risk product change, independent of the harness production-clean gating already in place for
-  F2a / debug panels
-  ([`MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`](../../../ezkey_mobile/docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md)).
+- Experimental/invited-audience copy is **retired** in-app as of 2026-08-14
+  (`TB-2026-08-14-mobile-exit-experimental-messaging`). Coming Soon remains a sober roadmap.
+- First official listing ships on **React Native 0.86.2** (release now). 0.87 is post-listing debt.
+- Flexible Play in-app updates ship in the official binary
+  (`TB-2026-08-14-mobile-play-flexible-in-app-updates`); fail-open; no `instance-info` hard gate.
+- Remaining Play gaps are Console assets and the final GA AAB — see
+  [`MOBILE_PLAY_RELEASE_READINESS_AUDIT.md`](../../../ezkey_mobile/docs/MOBILE_PLAY_RELEASE_READINESS_AUDIT.md).
 - The release-readiness audit and decision memo already own the non-messaging Play gaps (version
   alignment, publication-candidate AAB evidence, listing/compliance inputs, RN stack-baseline
   decision) — see

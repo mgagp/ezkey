@@ -69,9 +69,9 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-07-25-mobile-certificate-pinning-middle-path` | Mobile certificate pinning middle path | `incubating` | `P2` | `mobile`, `auth-api`, `admin-api`, `docs`, `security` | `2026-07-25` |
 | `I-2026-07-25-reencryption-batch-resilience-and-ops` | Re-encryption batch resilience and ops hardening | `incubating` | `P2` | `core`, `admin-api`, `admin-ui`, `infra`, `docs`, `security` | `2026-07-25` |
 | `I-2026-07-26-tink-native-keyset-blob-envelope` | Tink-native keyset blob envelope | `done` | `P2` | `core-security`, `core`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto` | `2026-08-02` |
-| `I-2026-08-02-mobile-exit-experimental-messaging` | Mobile: exit experimental release messaging | `incubating` | `P2` | `mobile`, `docs` | `2026-08-02` |
-| `I-2026-08-02-mobile-play-official-compliance-gate` | Mobile: Play official release compliance gate | `incubating` | `P2` | `mobile`, `docs` | `2026-08-02` |
-| `I-2026-08-02-mobile-client-update-mechanism` | Mobile: client app-update mechanism | `incubating` | `P3` | `mobile`, `docs` | `2026-08-02` |
+| `I-2026-08-02-mobile-exit-experimental-messaging` | Mobile: exit experimental release messaging | `active` | `P2` | `mobile`, `docs` | `2026-08-14` |
+| `I-2026-08-02-mobile-play-official-compliance-gate` | Mobile: Play official release compliance gate | `active` | `P2` | `mobile`, `docs` | `2026-08-14` |
+| `I-2026-08-02-mobile-client-update-mechanism` | Mobile: client app-update mechanism | `active` | `P3` | `mobile`, `docs` | `2026-08-14` |
 | `I-2026-08-02-mobile-installation-version-and-compat-discovery` | Mobile: installation product-version and compatibility discovery | `incubating` | `P3` | `mobile`, `auth-api`, `admin-api`, `core`, `docs`, `security` | `2026-08-02` |
 | `I-2026-08-09-mobile-signed-instance-info-integrity` | Mobile: signed Public Instance Info integrity | `active` | `P2` | `mobile`, `auth-api`, `core`, `docs`, `security` | `2026-08-09` |
 
@@ -79,6 +79,8 @@ and four backlog ideas below — this track does not claim September operability
 
 | ID | Title | Status | Related idea |
 |----|-------|--------|--------------|
+| `TB-2026-08-14-mobile-exit-experimental-messaging` | Exit experimental in-app messaging | `under-review` | `I-2026-08-02-mobile-exit-experimental-messaging` |
+| `TB-2026-08-14-mobile-play-flexible-in-app-updates` | Soft Play in-app updates | `under-review` | `I-2026-08-02-mobile-client-update-mechanism` |
 | `TB-2026-08-09-mobile-signed-instance-info` | Signed enrolled instance-info | `under-review` | `I-2026-08-09-mobile-signed-instance-info-integrity` |
 | `TB-2026-07-12` | Security pentest curated MVP | `done` | `I-2026-07-12-security-pentest-curated-hygiene` |
 | `TB-2026-07-11` | Java doctor-curated curator MVP | `active` | `I-2026-07-11-java-doctor-curated-hygiene` (#326) |
