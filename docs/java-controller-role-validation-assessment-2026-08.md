@@ -74,7 +74,7 @@ check**. This pass found that residual on the enrollment QR.
 
 | ID | Title | Severity | Confidence | Quick win | Disposition |
 | --- | --- | --- | --- | --- | --- |
-| CTRL-ROLE-001 | Admin enrollment QR skips object-level tenant check (invite-secret distribution) | P1 | High | Yes — same `canAccessEnrollment` as `GET /{id}` | **Implemented** (branch `fix/ctrl-role-001-enrollment-qr-tenant`, 2026-08-18; HITL 2026-08-16) |
+| CTRL-ROLE-001 | Admin enrollment QR skips object-level tenant check (invite-secret distribution) | P1 | High | Yes — same `canAccessEnrollment` as `GET /{id}` | **Implemented** ([PR #470](https://github.com/mgagp/ezkey/pull/470); HITL 2026-08-16) |
 | CTRL-ROLE-002 | Shared `ROLE_ADMIN` gate makes tenant isolation opt-in | P1 | High | Document + treat missing object check as the defect class | **Fix accepted (HITL 2026-08-16)** |
 | CTRL-ROLE-003 | Cross-tenant deny is 403 on some routes, 404 on others | P2 | High | Align with the hide-existence rule already used on delete/retire | **Fix accepted (HITL 2026-08-16); 003b analysis separate** |
 | CTRL-ROLE-004 | Mixed enforcement dialects on the same controller | P2 | High | Prefer `AccessControlService` at get-by-id / mutate | **Fix accepted (HITL 2026-08-16); 004b analysis separate** |
@@ -187,6 +187,7 @@ distribution hardening on Admin QR, not an Auth API tenant filter.
 denies with HTTP 404 (hide-existence, same posture as delete). Auth API bind is unchanged.
 Coverage: `EnrollmentControllerQrAccessTest` plus
 `TenantCrossIsolationSecurityTest` deny-404 / own-tenant-200.
+Landed in [PR #470](https://github.com/mgagp/ezkey/pull/470).
 
 #### Human walkthrough (two envelopes)
 
