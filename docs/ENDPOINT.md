@@ -1604,6 +1604,22 @@ Authorization: Bearer ezkey_admin_token...
 
 **Response (high level):** Returns the full enrollment record including integration display fields where applicable (`integrationName`, `isSystemIntegration`), cryptographic material references (`integrationPublicKey`, `devicePublicKey`), client-reported `devicePrivateKeyStorageTier` when set at verify (`NONE`, `STANDARD`, `STRONG`; not independently verified by the server — see `docs/MOBILE_DEVELOPER_GUIDE.md`), and lifecycle audit timestamps such as `createdAt`, `createdByAdminId`, `deactivatedAt`, `deactivatedByAdminId`, `revokedAt`, and `revokedByAdminId` when set.
 
+#### **GET /api/v1/enrollments/{id}/qrcode** (Enrollment bind-handle QR)
+
+Returns a PNG QR encoding the bind handle (`enrollmentId` + `enrollmentProofToken`, plus optional `authUrl`). Same tenant gate as JSON GET (`canAccessEnrollment`). Cross-tenant and unknown ids return **404** (hide-existence), not 403. Auth API bind stays token-gated and is not tenant-filtered.
+
+**Request:**
+```http
+GET /api/v1/enrollments/123/qrcode
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Status Codes:**
+- 200: PNG QR generated
+- 400: Enrollment missing proof token
+- 404: Enrollment not found or not visible to this admin
+- 500: Internal server error
+
 #### **PATCH /api/v1/enrollments/{id}** (Partial Update of Enrollment Metadata)
 
 Partially updates enrollment metadata. Only non-null fields in the request body are applied. Supports `enrollmentName`, `contactEmail`, `expiresAt`, `authAttemptChallengeRequired`, `userIdentifier`, `clearContactEmail`, and `clearExpiresAt`. Only active, non-revoked VERIFIED enrollments can be updated. Include `version` from the GET response for optimistic locking.
@@ -1708,6 +1724,7 @@ Bruno: `bruno/enrollments-admin/deactivate.bru`, `reactivate.bru`, `revoke.bru`.
 | Admin provisioning workflow | `/api/v1/admins/{id}/onboarding` | Validates admin tenant, returns minimal credentials |
 | TenantAdmin accessing own credentials | `/api/v1/admins/{id}/onboarding` | Only API that works for TenantAdmin |
 | Enrollment management workflow | `/api/v1/enrollments/{id}` | Validates integration tenant, returns full details |
+| Enrollment bind-handle QR | `/api/v1/enrollments/{id}/qrcode` | Same tenant gate as JSON GET; 404 hide-existence |
 | GlobalAdmin monitoring enrollments | `/api/v1/enrollments/{id}` | Works for GlobalAdmin, comprehensive information |
 
 **Security Note:**

@@ -87,6 +87,9 @@ When tests that were previously stable start failing, **first ask: what changed 
 - ⚠️ **GlobalAdmin-created resources → System Tenant**: Always use TenantAdmin tokens for tenant-specific resources in isolation tests
 - ⚠️ **GET endpoints filter differently**: GlobalAdmin sees all, TenantAdmin sees only own tenant (automatic filtering via `AdminPrincipal.tenantId()`)
 - ⚠️ **Cross-tenant access returns 403 or 404**: Implementation may vary between endpoints
+- ⚠️ **Sub-resources inherit parent isolation**: `GET /{id}` coverage does not include
+  `GET /{id}/qrcode` (or other `/{id}/…` that re-expose the same object). Add a deny +
+  own-tenant 200 in `TenantCrossIsolationSecurityTest` when you add such a route.
 - ⚠️ **List endpoints don't fail**: TenantAdmin accessing cross-tenant lists gets empty/filtered results, not 403
 
 ### General Testing
