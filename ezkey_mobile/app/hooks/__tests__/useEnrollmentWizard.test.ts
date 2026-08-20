@@ -22,9 +22,7 @@ jest.mock('../../services/api/enrollments', () => ({
 }));
 
 jest.mock('../../services/api/instanceInfo', () => ({
-  instanceInfoApi: {
-    get: jest.fn(),
-  },
+  fetchVerifiedInstanceInfo: jest.fn(),
 }));
 
 jest.mock('../../services/crypto', () => ({
@@ -72,10 +70,16 @@ import {act, create} from 'react-test-renderer';
 import {Alert} from 'react-native';
 import {useSaveEnrollment} from '../useEnrollments';
 import {enrollmentsApi} from '../../services/api/enrollments';
+import {fetchVerifiedInstanceInfo} from '../../services/api/instanceInfo';
 import {cryptoService} from '../../services/crypto';
 import {parseQrPayload} from '../../utils/qrPayload';
-import {buildBindPayload} from '../../services/crypto/enrollmentPayload';
+import {
+  buildBindPayload,
+  buildVerifyDevicePayload,
+  buildVerifyResultPayload,
+} from '../../services/crypto/enrollmentPayload';
 import {integrationKeyAlgorithmBindError} from '../../utils/integrationKeyAlgorithm';
+import {buildInstallation, resolveEnrollmentAuthUrl} from '../../utils/installationMetadata';
 import {useEnrollmentWizard} from '../useEnrollmentWizard';
 import type {EnrollmentWizardState} from '../useEnrollmentWizard';
 
@@ -84,7 +88,12 @@ const mockEnrollmentsApi = jest.mocked(enrollmentsApi);
 const mockCryptoService = jest.mocked(cryptoService);
 const mockParseQrPayload = jest.mocked(parseQrPayload);
 const mockBuildBindPayload = jest.mocked(buildBindPayload);
+const mockBuildVerifyDevicePayload = jest.mocked(buildVerifyDevicePayload);
+const mockBuildVerifyResultPayload = jest.mocked(buildVerifyResultPayload);
 const mockAlgoError = jest.mocked(integrationKeyAlgorithmBindError);
+const mockFetchVerifiedInstanceInfo = jest.mocked(fetchVerifiedInstanceInfo);
+const mockBuildInstallation = jest.mocked(buildInstallation);
+const mockResolveEnrollmentAuthUrl = jest.mocked(resolveEnrollmentAuthUrl);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -136,6 +145,30 @@ async function renderHookWithDraft(): Promise<{result: {current: EnrollmentWizar
   });
 
   return hook;
+}
+
+function stubVerifyPath() {
+  mockCryptoService.ensureEnrollmentKeyPair.mockResolvedValue(true);
+  mockCryptoService.getPublicKey.mockResolvedValue('device-pub');
+  mockCryptoService.getEnrollmentPrivateKeyStorageTier.mockResolvedValue('STANDARD');
+  mockCryptoService.sign.mockResolvedValue('verify-device-sig');
+  mockCryptoService.deleteEnrollmentKeyPair.mockResolvedValue(undefined as never);
+  mockEnrollmentsApi.verify.mockResolvedValue({
+    active: true,
+    enrollmentVerifyMessage: 'ok',
+    enrollmentVerifyPayloadSignedByIntegration: 'verify-result-sig',
+  });
+  mockBuildVerifyDevicePayload.mockReturnValue('verify-device-payload');
+  mockBuildVerifyResultPayload.mockReturnValue('verify-result-payload');
+  mockResolveEnrollmentAuthUrl.mockReturnValue('https://auth.example.com');
+  mockFetchVerifiedInstanceInfo.mockResolvedValue(null);
+  mockBuildInstallation.mockReturnValue({
+    id: 'https://auth.example.com',
+    authUrl: 'https://auth.example.com',
+    host: 'auth.example.com',
+    name: 'auth.example.com',
+  });
+  mockSaveEnrollmentMutateAsync.mockResolvedValue(undefined);
 }
 
 // ---------------------------------------------------------------------------
@@ -403,5 +436,99 @@ describe('handleQrScanned — bind success', () => {
 
     expect(result.current.hasDraft).toBe(false);
     expect(result.current.bindError).toBe('Unsupported algorithm: rsa');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// handlePrimary — verify / finalize
+// ---------------------------------------------------------------------------
+
+describe('handlePrimary — verify', () => {
+  it('sets challengeError and does not call verify when the challenge is not 6 digits', async () => {
+    const {result} = await renderHookWithDraft();
+    stubVerifyPath();
+
+    await act(async () => {
+      result.current.setEnrollmentChallenge('12345');
+    });
+    await act(async () => {
+      result.current.handlePrimary(true, jest.fn());
+    });
+
+    expect(result.current.challengeError).toBeDefined();
+    expect(mockEnrollmentsApi.verify).not.toHaveBeenCalled();
+    expect(mockSaveEnrollmentMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('persists the enrollment and returns home after a valid verify-result signature', async () => {
+    const {result} = await renderHookWithDraft();
+    stubVerifyPath();
+    mockCryptoService.verify.mockResolvedValue(true);
+
+    await act(async () => {
+      result.current.setEnrollmentChallenge('123456');
+    });
+    await act(async () => {
+      result.current.handlePrimary(true, jest.fn());
+    });
+
+    expect(mockCryptoService.ensureEnrollmentKeyPair).toHaveBeenCalled();
+    expect(mockEnrollmentsApi.verify).toHaveBeenCalled();
+    expect(mockSaveEnrollmentMutateAsync).toHaveBeenCalled();
+    expect(mockPopToTop).toHaveBeenCalledTimes(1);
+    expect(result.current.hasDraft).toBe(false);
+  });
+
+  it('deletes the key and does not persist when the verify-result signature is invalid', async () => {
+    const {result} = await renderHookWithDraft();
+    stubVerifyPath();
+    mockCryptoService.verify.mockResolvedValue(false);
+
+    await act(async () => {
+      result.current.setEnrollmentChallenge('123456');
+    });
+    await act(async () => {
+      result.current.handlePrimary(true, jest.fn());
+    });
+
+    expect(mockSaveEnrollmentMutateAsync).not.toHaveBeenCalled();
+    expect(mockPopToTop).not.toHaveBeenCalled();
+    expect(mockCryptoService.deleteEnrollmentKeyPair).toHaveBeenCalled();
+    expect(result.current.challengeError).toBeDefined();
+    expect(result.current.enrollmentChallenge).toBe('');
+  });
+
+  it('deletes the key and surfaces challengeError when verify throws after key creation', async () => {
+    const {result} = await renderHookWithDraft();
+    stubVerifyPath();
+    mockEnrollmentsApi.verify.mockRejectedValue(new Error('verify failed'));
+
+    await act(async () => {
+      result.current.setEnrollmentChallenge('123456');
+    });
+    await act(async () => {
+      result.current.handlePrimary(true, jest.fn());
+    });
+
+    expect(mockSaveEnrollmentMutateAsync).not.toHaveBeenCalled();
+    expect(mockCryptoService.deleteEnrollmentKeyPair).toHaveBeenCalled();
+    expect(result.current.challengeError).toBe('verify failed');
+  });
+
+  it('still persists when signed instance-info is unavailable', async () => {
+    const {result} = await renderHookWithDraft();
+    stubVerifyPath();
+    mockCryptoService.verify.mockResolvedValue(true);
+    mockFetchVerifiedInstanceInfo.mockResolvedValue(null);
+
+    await act(async () => {
+      result.current.setEnrollmentChallenge('123456');
+    });
+    await act(async () => {
+      result.current.handlePrimary(true, jest.fn());
+    });
+
+    expect(mockSaveEnrollmentMutateAsync).toHaveBeenCalled();
+    expect(mockPopToTop).toHaveBeenCalledTimes(1);
   });
 });

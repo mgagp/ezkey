@@ -157,8 +157,9 @@ yarn lint                  # ESLint + TypeScript checks
 yarn typecheck             # tsc --noEmit
 yarn test                  # Jest unit/component tests
 yarn validate:ci           # lint + typecheck + test --runInBand (same as GitHub Actions)
-# yarn detox:test          # Optional end-to-end suite (requires Detox setup)
 ```
+
+Device UI evidence uses Maestro (`maestro/README.md`), not Detox. See [`docs/MOBILE_TEST_STRATEGY.md`](docs/MOBILE_TEST_STRATEGY.md).
 
 On Windows, prefer **Corepack** so Yarn matches `package.json` (`yarn@4.10.3`):
 

@@ -26,7 +26,7 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 | Secure item storage | `react-native-keychain` wrapper | Device-local secure storage for small secret values such as enrollment proof tokens | Used by `enrollmentStorage` as the secure delegate; private key path remains native. |
 | Device crypto | Native bridge (`EzkeyCryptoModule`) | Key generation, signing, public key retrieval, proof token generation | Android path is the current reference-strength implementation. |
 | QR capture | Vision Camera 5 + `react-native-vision-camera-barcode-scanner` (ML Kit) | QR-first enrollment via `useBarcodeScannerOutput` | Android-first reference; iOS uses same ML Kit path. |
-| Testing | Jest; Maestro for real-device pilot | Unit/component coverage plus optional device flows | Native instrumented crypto tests are separate (`yarn android:test:instrumented:crypto`). |
+| Testing | Jest; Maestro for real-device pilot | Unit/component coverage plus optional device flows | Layer contract: [`MOBILE_TEST_STRATEGY.md`](MOBILE_TEST_STRATEGY.md). Native instrumented crypto tests are separate (`yarn android:test:instrumented:crypto`). |
 
 ## Stack modernization program (2026-05-29)
 
