@@ -21,7 +21,7 @@ under *Already deferred — skip HITL*, then triage only unlabeled (or non-defer
 
 | PRs | Topic | Re-evaluate when |
 |-----|--------|------------------|
-| `#337`, `#342`, `#347` | TypeScript 7 (SDK + Admin UI group + migration idea) | TS 7.1 / typescript-eslint Node API readiness (~months), not routine weekly passes |
+| `#337`, `#450`, `#347` | TypeScript 7 (SDK + Admin UI group + migration idea) | TS 7.1 / typescript-eslint Node API readiness (~months), not routine weekly passes |
 
 To park a new disruptor for weeks/months: comment + `gh pr edit <n> --add-label deferred:later-train`.
 
