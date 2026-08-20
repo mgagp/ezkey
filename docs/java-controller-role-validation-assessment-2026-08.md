@@ -76,7 +76,7 @@ check**. This pass found that residual on the enrollment QR.
 | --- | --- | --- | --- | --- | --- |
 | CTRL-ROLE-001 | Admin enrollment QR skips object-level tenant check (invite-secret distribution) | P1 | High | Yes — same `canAccessEnrollment` as `GET /{id}` | **Implemented** ([PR #470](https://github.com/mgagp/ezkey/pull/470); HITL 2026-08-16) |
 | CTRL-ROLE-002 | Shared `ROLE_ADMIN` gate makes tenant isolation opt-in | P1 | High | Document + treat missing object check as the defect class | **Implemented** (2026-08-20; HITL 2026-08-16) |
-| CTRL-ROLE-003 | Cross-tenant deny is 403 on some routes, 404 on others | P2 | High | Align with the hide-existence rule already used on delete/retire | **Fix accepted (HITL 2026-08-16); 003b analysis separate** |
+| CTRL-ROLE-003 | Cross-tenant deny is 403 on some routes, 404 on others | P2 | High | Align with the hide-existence rule already used on delete/retire | **Implemented** (2026-08-20; HITL 2026-08-16); 003b analysis separate |
 | CTRL-ROLE-004 | Mixed enforcement dialects on the same controller | P2 | High | Prefer `AccessControlService` at get-by-id / mutate | **Fix accepted (HITL 2026-08-16); 004b analysis separate** |
 | CTRL-ROLE-005 | Living security matrix still describes `ROLE_ADMIN` as unrestricted | P3 | High | Correct `docs/API_SECURITY_MATRIX.md` | **Fix accepted (HITL 2026-08-16)** |
 
@@ -357,6 +357,14 @@ incoherence is real; a second confirmed enumerator beyond QR was **not** demonst
 **Suggested fix:** pick one hide-existence policy for get-by-id and mutations (404 is the
 delete/retire precedent) and apply it when touching CTRL-ROLE-001. Do not boil the ocean in
 the same PR unless the operator expands scope.
+
+**Closeout 2026-08-20:** living rule in
+[`ezkey-admin-api/AGENTS.md`](../ezkey-admin-api/AGENTS.md) § Authorization at
+controllers (get-by-id style reads → HTTP 404). QR already 404 from CTRL-ROLE-001
+([PR #470](https://github.com/mgagp/ezkey/pull/470)). JSON GET 403s unchanged.
+Unifying the rest stays
+[`HANDOFF-ctrl-role-003b-cross-tenant-deny-semantics-analysis.md`](../product-docs/global/backlog/handoffs/HANDOFF-ctrl-role-003b-cross-tenant-deny-semantics-analysis.md).
+Ephemeral 003 handoff deleted.
 
 ### CTRL-ROLE-004 — Mixed enforcement dialects on the same controller
 

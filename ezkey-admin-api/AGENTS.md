@@ -34,6 +34,13 @@ way as a missing `canAccess*` (enrollment QR) or a missing `GLOBAL_ADMIN` gate
   `hasAnyRole('GLOBAL_ADMIN','TENANT_ADMIN')` still admits her to enrollment routes.
 - **Greenfield note:** if assigning authorities from scratch, issue only the two type
   roles (no umbrella). Isolation still is not a Spring role.
+- **Cross-tenant deny (hide existence):** get-by-id style reads (JSON, PNG QR,
+  onboarding artifacts) return **HTTP 404** when the caller must not see the row
+  (foreign tenant or not found). Do not return 200 with a secret, and do not prefer
+  403 for that class of endpoint going forward. Enrollment QR already follows this
+  (`canAccessEnrollment` then 404). Existing JSON GETs that still return 403 on
+  `canAccess*` false are known debt; do not mass-change them here. Unifying the rest
+  vs documenting a read/mutate split is out of band.
 
 Do not drop an object check because the annotation looks precise. Role-model
 remodeling (filter cutover, mass `@PreAuthorize` rewrite) is out of band.
