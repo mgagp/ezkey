@@ -7,6 +7,36 @@ This file is intended for coding agents working in `ezkey-admin-api/`.
 - All new/updated project content must be **in English**.
 - Do not introduce `@Autowired`. Use constructor injection.
 - Keep admin authentication **passwordless-only** (no reintroducing password schema).
+- Controller authorization is **two checks**, not one annotation — see
+  [Authorization at controllers](#authorization-at-controllers).
+
+## Authorization at controllers
+
+`AdminTokenAuthenticationFilter` always grants `ROLE_ADMIN`, then adds
+`ROLE_GLOBAL_ADMIN` or `ROLE_TENANT_ADMIN`. `@PreAuthorize("hasRole('ADMIN')")` means
+**any authenticated human admin**. It is not tenant isolation and not a Global-only
+gate. Reviewers must still look for the function split and the object split. A new
+`GET /{id}/…` copied from a neighbor that only has the umbrella will fail the same
+way as a missing `canAccess*` (enrollment QR) or a missing `GLOBAL_ADMIN` gate
+(encryption keys / SEC-017).
+
+- **`ROLE_ADMIN`:** umbrella for every authenticated human administrator. Do **not**
+  remove it from the filter unless every `hasRole('ADMIN')` is migrated in the same
+  change.
+- **Function split (who may call this class of API):** `hasRole('GLOBAL_ADMIN')` on
+  platform surfaces (encryption keys, alerts, audit-chain ops, tenant CRUD). Shared
+  operator surfaces (enrollments, integrations, API keys, dashboard) may keep the
+  umbrella **or** use `hasAnyRole('GLOBAL_ADMIN','TENANT_ADMIN')`. Annotation honesty
+  is optional; it is **not** a substitute for the object check.
+- **Object split (which row):** `AccessControlService.canAccess*` (or principal
+  `tenantId`) on get-by-id and mutations of tenant-owned resources. Required even
+  when the annotation names both type roles. A Tenant Admin has `TENANT_ADMIN`;
+  `hasAnyRole('GLOBAL_ADMIN','TENANT_ADMIN')` still admits her to enrollment routes.
+- **Greenfield note:** if assigning authorities from scratch, issue only the two type
+  roles (no umbrella). Isolation still is not a Spring role.
+
+Do not drop an object check because the annotation looks precise. Role-model
+remodeling (filter cutover, mass `@PreAuthorize` rewrite) is out of band.
 
 ## Enrollment QR payload
 
