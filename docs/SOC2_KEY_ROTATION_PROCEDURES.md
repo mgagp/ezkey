@@ -654,7 +654,7 @@ See `docs/ENCRYPTION_KEY_ROTATION_IMPLEMENTATION.md` for complete configuration 
 ### D. Related Documentation
 
 - `docs/ENCRYPTION_KEY_ROTATION_IMPLEMENTATION.md` - Technical implementation details
-- `docs/SOC2_PREPARATION.md` - SOC2 compliance roadmap
+- [`product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md) - SOC 2 as vocabulary, not a certification roadmap
 - `docs/OPERATIONAL.md` - General operational procedures
 
 ### E. Contact Information

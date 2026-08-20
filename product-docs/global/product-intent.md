@@ -163,6 +163,7 @@ Ezkey is not trying to be:
 - a WebAuthn compatibility layer,
 - a browser-first authentication product,
 - a claim of standards equivalence by association,
+- a SOC 2 Type I/II or other formal-attestation program,
 - a feature-maximal identity platform.
 
 Its goal is narrower and more opinionated: provide a coherent, strong, developer-oriented cryptographic MFA path with clear backend control.
@@ -183,5 +184,6 @@ Ezkey is succeeding when:
 - [`features-and-phases.md`](features-and-phases.md) — feature catalog.
 - [`architecture-overview.md`](architecture-overview.md) — architectural view and component boundaries.
 - [`design-principles.md`](design-principles.md) — cross-product principles.
+- [`normative-posture.md`](normative-posture.md) — SOC 2-oriented operational discipline, not certification.
 - [`lifecycle-model.md`](lifecycle-model.md) — global entity lifecycle rules.
 - Repository entry points: [`../../README.md`](../../README.md), [`../../PRD.md`](../../PRD.md) (stub → this document), [`../../docs/PROJECT_POSITIONING.md`](../../docs/PROJECT_POSITIONING.md), [`../../docs/ENDPOINT.md`](../../docs/ENDPOINT.md) (section-scoped API reference), [`../../AGENTS.md`](../../AGENTS.md) (cold-start compass).

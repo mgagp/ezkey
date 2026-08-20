@@ -297,7 +297,7 @@ If an incompatible license is detected:
 - [Third-Party Dependency Inventory](compliance/third-party-inventory.md) - Complete dependency list
 - [License Risk Assessment](compliance/license-risk-assessment.md) - Detailed risk analysis
 - [License Management Procedure](compliance/procedures/license-management.md) - Detailed procedures
-- [SOC 2 Preparation](../docs/SOC2_PREPARATION.md) - SOC 2 compliance roadmap
+- [SOC 2-oriented discipline](../product-docs/global/normative-posture.md) — vocabulary, not a certification roadmap
 
 ## FAQ
 

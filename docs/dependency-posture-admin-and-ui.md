@@ -34,7 +34,7 @@ Lockfile: committed [`ezkey-admin-ui/package-lock.json`](../ezkey-admin-ui/packa
   [`.cursor/skills/dependabot-curated/SKILL.md`](../.cursor/skills/dependabot-curated/SKILL.md),
   campaign notes under [`product-docs/global/hygiene/dependabot/`](../product-docs/global/hygiene/dependabot/))
   to batch PRs by risk tier with human–AI HITL — not silent auto-merge.
-- **OWASP Dependency-Check** is mentioned in [`SOC2_QUICK_START.md`](SOC2_QUICK_START.md) but is **not** wired as a Maven profile in this repo; run ad hoc or add a CI job if you want continuous CVE reports.
+- **OWASP Dependency-Check** is **not** wired as a Maven profile in this repo; run ad hoc or add a CI job if you want continuous CVE reports. Dependency hygiene is part of continuous operational discipline — see [`../product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md).
 
 ## 2026-05 pass — what was done
 
