@@ -106,6 +106,9 @@ accepts the host-boundary limit described above.
 | "Audit rows that were stored are sealed and tamper-evident; write failures are logged and do not block business operations." | "Guaranteed audit delivery for every security-relevant operation" / "comprehensive audit trail with no omissions." |
 | "Self-hosted, opinionated, stronger than passwords and classic TOTP for backend-oriented contexts." | Formal attestation chains, SOC 2 equivalence, or certification-grade assurance. |
 
+SOC 2 remains a **reference vocabulary** for operational discipline, not a certification target.
+See [`../product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md).
+
 ## Traceability
 
 - Internal analysis & decision compass:

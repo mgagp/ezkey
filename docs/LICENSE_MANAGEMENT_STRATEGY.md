@@ -341,7 +341,7 @@ License management directly supports multiple SOC 2 controls:
 
 - [Third-Party Inventory](compliance/third-party-inventory.md) - Complete dependency inventory
 - [License Risk Assessment](compliance/license-risk-assessment.md) - Risk analysis
-- [SOC 2 Preparation](SOC2_PREPARATION.md) - Overall SOC 2 roadmap
+- [SOC 2-oriented discipline](../product-docs/global/normative-posture.md) — vocabulary, not a certification roadmap
 
 ### For AI Assistants
 

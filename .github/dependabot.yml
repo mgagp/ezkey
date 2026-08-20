@@ -1,5 +1,5 @@
 # Dependabot configuration for automated dependency update PRs.
-# See also: docs/SOC2_QUICK_START.md (Day 1–2: GitHub Security Features).
+# See also: product-docs/global/normative-posture.md (dependency hygiene as operational discipline).
 
 version: 2
 updates:

@@ -58,7 +58,7 @@ Lifecycle rules prefer reversible actions first. Irreversible actions (revoke, r
 
 ### 12. Security is not a feature, it is a posture
 
-Security posture is continuous: signed payloads, one-time proof tokens, encryption at rest with rotatable keys, audit chain integrity, and explicit error behavior. There is no "security module" to bolt on; security shows up in every component pack.
+Security posture is continuous: signed payloads, one-time proof tokens, encryption at rest with rotatable keys, audit chain integrity, and explicit error behavior. There is no "security module" to bolt on; security shows up in every component pack. SOC 2 Trust Service Criteria may be used as mapping vocabulary for that discipline; they are not a certification target — see [`normative-posture.md`](normative-posture.md).
 
 ### 13. Open-source transparency
 

@@ -336,7 +336,7 @@ ORDER BY access_count DESC;
 - SOC2 Trust Service Criteria: https://www.aicpa.org/interestareas/frc/assuranceadvisoryservices/trustdataintegritytaskforce.html
 - GDPR Article 17 (Right to Erasure): https://gdpr-info.eu/art-17-gdpr/
 - PostgreSQL Partitioning: https://www.postgresql.org/docs/current/ddl-partitioning.html
-- EZKEY SOC2 Preparation: `docs/SOC2_PREPARATION.md`
+- EZKEY normative posture: [`../product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md)
 - EZKEY Database Partitioning Plan: `docs/DATABASE_PARTITIONING_PLAN.md` (to be created)
 
 ---

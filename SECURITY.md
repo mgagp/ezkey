@@ -123,7 +123,10 @@ Ezkey implements multiple layers of security:
 
 ### Compliance
 
-Ezkey is working towards SOC2 compliance. See [docs/SOC2_PREPARATION.md](docs/SOC2_PREPARATION.md) for details on our compliance roadmap.
+Ezkey aligns operational practices with SOC 2-oriented discipline and does not claim SOC 2
+certification or standards equivalence. See
+[product-docs/global/normative-posture.md](product-docs/global/normative-posture.md) and the honest
+claims in [docs/SECURITY_POSTURE.md](docs/SECURITY_POSTURE.md).
 
 ### Security Advisories
 

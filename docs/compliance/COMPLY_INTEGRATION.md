@@ -309,7 +309,7 @@ git commit -m "docs(compliance): update license management evidence"
 - [License Management Procedure](procedures/license-management.md) - Detailed procedures
 - [Third-Party Inventory](third-party-inventory.md) - Dependency inventory
 - [License Risk Assessment](license-risk-assessment.md) - Risk analysis
-- [SOC 2 Preparation](../SOC2_PREPARATION.md) - Overall SOC 2 roadmap
+- [SOC 2-oriented discipline](../../product-docs/global/normative-posture.md) — vocabulary, not a certification roadmap
 
 ## Next Steps
 

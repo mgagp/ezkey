@@ -135,6 +135,10 @@ Backlog **progression markers** on `I-*` / `V-*` metadata use the same milestone
 
 ### Milestone `P4-compliance-readiness` — Operational Discipline
 
+Operational discipline as a product quality (SOC 2 as mapping vocabulary, not a certification
+program). Current funded work remains the operable-release compass, not P4-as-certification. See
+[`normative-posture.md`](normative-posture.md) and [`roadmap.md`](roadmap.md).
+
 #### `F-provisioning-procedures`
 
 - **Intent.** Document and operationalize admin provisioning and deprovisioning procedures with audit alignment.
@@ -142,7 +146,7 @@ Backlog **progression markers** on `I-*` / `V-*` metadata use the same milestone
 
 #### `F-recovery-codes-lifecycle`
 
-- **Intent.** Align recovery code lifecycle with admin lifecycle and SOC 2-oriented expectations.
+- **Intent.** Align recovery code lifecycle with admin lifecycle and durable operator-visible evidence.
 - **Status.** `planned`.
 
 #### `F-audit-artifacts`
