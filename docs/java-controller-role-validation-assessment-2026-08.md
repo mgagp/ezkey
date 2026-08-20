@@ -77,7 +77,7 @@ check**. This pass found that residual on the enrollment QR.
 | CTRL-ROLE-001 | Admin enrollment QR skips object-level tenant check (invite-secret distribution) | P1 | High | Yes — same `canAccessEnrollment` as `GET /{id}` | **Implemented** ([PR #470](https://github.com/mgagp/ezkey/pull/470); HITL 2026-08-16) |
 | CTRL-ROLE-002 | Shared `ROLE_ADMIN` gate makes tenant isolation opt-in | P1 | High | Document + treat missing object check as the defect class | **Implemented** (2026-08-20; HITL 2026-08-16) |
 | CTRL-ROLE-003 | Cross-tenant deny is 403 on some routes, 404 on others | P2 | High | Align with the hide-existence rule already used on delete/retire | **Implemented** (2026-08-20; HITL 2026-08-16); 003b analysis separate |
-| CTRL-ROLE-004 | Mixed enforcement dialects on the same controller | P2 | High | Prefer `AccessControlService` at get-by-id / mutate | **Fix accepted (HITL 2026-08-16); 004b analysis separate** |
+| CTRL-ROLE-004 | Mixed enforcement dialects on the same controller | P2 | High | Prefer `AccessControlService` at get-by-id / mutate | **Implemented** (2026-08-20; HITL 2026-08-16); 004b analysis separate |
 | CTRL-ROLE-005 | Living security matrix still describes `ROLE_ADMIN` as unrestricted | P3 | High | Correct `docs/API_SECURITY_MATRIX.md` | **Fix accepted (HITL 2026-08-16)** |
 
 ## Category 2 — noted, not in this HITL lot
@@ -391,6 +391,14 @@ touch; QR is dialect 1 not a fourth style. Complementary analysis:
 **Suggested fix:** when a method is touched, prefer dialect 1 for resource-by-id. Do not
 rewrite Integration retire/delete solely for style unless 004b (and 003b deny overlap)
 says so.
+
+**Closeout 2026-08-20:** living dialect convention in
+[`ezkey-admin-api/AGENTS.md`](../ezkey-admin-api/AGENTS.md) § Authorization at
+controllers (dialect 1 default on touch; 2 retire/delete legacy; 3 service
+principal). QR already dialect 1 from CTRL-ROLE-001. No Java rewrite of
+retire/delete. Convergence stays
+[`HANDOFF-ctrl-role-004b-authorization-dialect-coherence-analysis.md`](../product-docs/global/backlog/handoffs/HANDOFF-ctrl-role-004b-authorization-dialect-coherence-analysis.md).
+Ephemeral 004 handoff deleted.
 
 ### CTRL-ROLE-005 — Living security matrix still describes `ROLE_ADMIN` as unrestricted
 

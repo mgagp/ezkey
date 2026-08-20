@@ -41,6 +41,19 @@ way as a missing `canAccess*` (enrollment QR) or a missing `GLOBAL_ADMIN` gate
   (`canAccessEnrollment` then 404). Existing JSON GETs that still return 403 on
   `canAccess*` false are known debt; do not mass-change them here. Unifying the rest
   vs documenting a read/mutate split is out of band.
+- **Object-check dialects:** three live styles; all can be tenant-correct. Do **not**
+  add a fourth (an unscoped load like the old QR). `@PreAuthorize` spelling
+  (`ADMIN` vs `GLOBAL_ADMIN` vs `ROLE_GLOBAL_ADMIN`) is noise, not a dialect.
+  - **Dialect 1 (default on touch):** `AccessControlService.canAccess*` (or
+    `canRevokeEnrollment`) after the role gate. New endpoints and methods you open
+    use this. Combine with hide-existence: get-by-id style deny → 404. Enrollment QR
+    is dialect 1.
+  - **Dialect 2 (legacy, valid):** inline `TENANT_ADMIN` + tenant id on integration
+    retire/delete (404). Do not copy onto new methods. Do not delete that check
+    without putting dialect 1 in the same change.
+  - **Dialect 3 (service principal):** acceptable when the service already takes
+    `AdminPrincipal` and encodes tenant rules (admin provisioning /
+    `getAdminOnboarding`). The controller must not skip that call.
 
 Do not drop an object check because the annotation looks precise. Role-model
 remodeling (filter cutover, mass `@PreAuthorize` rewrite) is out of band.
