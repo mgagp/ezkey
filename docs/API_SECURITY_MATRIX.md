@@ -2,14 +2,27 @@
 
 ## Overview
 
-This document provides a comprehensive security matrix for all endpoints in the Ezkey Admin API, detailing the required roles and permissions for each operation. This matrix serves as the source of truth for access control validation and testing.
+This document describes Admin API access control: who may call a class of endpoint
+(roles) and which row they may touch (object checks).
+
+The **role story** in this file (Security Roles, For Admins, Scenario 4) is what must
+stay true. Endpoint tables below are a historical sketch: they may omit routes (QR,
+retire, encryption keys, …) and ownership ticks. On conflict, running code,
+[`ezkey-admin-api/AGENTS.md`](../ezkey-admin-api/AGENTS.md) § Authorization at
+controllers, and [`LIFECYCLE_GOVERNANCE.md`](LIFECYCLE_GOVERNANCE.md) §3.5 win.
 
 ## Security Roles
 
 | Role | Description | Scope |
 |------|-------------|-------|
-| `ROLE_ADMIN` | Full administrative access | Global - all endpoints |
+| `ROLE_ADMIN` | Umbrella granted to every authenticated human admin JWT | Not tenant isolation and not Global-only. Means any admin. |
+| `ROLE_GLOBAL_ADMIN` | Platform / instance functions | Tenants, encryption keys, alerts, audit-chain ops, and the designed cross-tenant operator |
+| `ROLE_TENANT_ADMIN` | Tenant-scoped operator functions | Shared operator surfaces (enrollments, integrations, API keys, dashboard) inside one tenant |
 | `ROLE_API_KEY` | Machine-to-machine authentication | Integration-scoped - auth attempts only |
+
+Object scope is **not** a role. Get-by-id and mutations of tenant-owned resources still
+need `AccessControlService.canAccess*` (dialect 1). See Admin API `AGENTS.md` §
+Authorization at controllers.
 
 ## Endpoint Security Matrix
 
@@ -91,12 +104,25 @@ This document provides a comprehensive security matrix for all endpoints in the 
 - **Rate Limit Exceeded:** Returns HTTP 429 Too Many Requests
 - **Rate Limit Reset:** Every 15 minutes (sliding window)
 
-### For Admins (`ROLE_ADMIN`)
+### For Admins (`ROLE_ADMIN` plus type role)
 
-**Allowed Operations:**
-- ✅ All operations on all endpoints
-- ✅ No ownership restrictions
-- ✅ Full administrative access
+`ROLE_ADMIN` only means an authenticated human administrator. Isolation is not a Spring
+role.
+
+**Tenant Admin** (`ROLE_TENANT_ADMIN`):
+- Collection lists are filtered to the session tenant.
+- Get-by-id and mutations of tenant-owned resources require an object check
+  (`AccessControlService.canAccess*`, dialect 1). Annotation honesty is not a substitute.
+
+**Global Admin** (`ROLE_GLOBAL_ADMIN`):
+- Cross-tenant operator on shared surfaces (intentional).
+- Platform / instance functions (tenants, encryption keys, alerts, audit-chain ops).
+- Distinct from the no-impersonation rule on **integration create** (Global Admin →
+  system tenant only).
+
+Function vs object split: [`ezkey-admin-api/AGENTS.md`](../ezkey-admin-api/AGENTS.md) §
+Authorization at controllers. Lifecycle: [`LIFECYCLE_GOVERNANCE.md`](LIFECYCLE_GOVERNANCE.md)
+§3.5.
 
 ## Test Scenarios
 
@@ -172,24 +198,16 @@ GET /api/v1/audit-logs
 
 ### Scenario 4: Admin Access (Baseline)
 
-**Setup:**
-- Admin with `ROLE_ADMIN`
+`ROLE_ADMIN` is granted to every authenticated human admin. It is not a Global-only or
+unrestricted grant. Do not expect one admin token to succeed on all endpoints.
 
-**Tests:**
-```bash
-# ✅ Should succeed on all endpoints
-GET /api/v1/enrollments
-POST /api/v1/enrollments
-GET /api/v1/integrations
-POST /api/v1/integrations
-GET /api/v1/auth-attempts
-POST /api/v1/auth-attempts
-GET /api/v1/api-keys/integration/2
-POST /api/v1/api-keys
-GET /api/v1/audit-logs
-```
+| Caller | Own-tenant operator surfaces | Other tenant | Platform (encryption keys, tenant CRUD, …) |
+|--------|------------------------------|--------------|--------------------------------------------|
+| Global Admin | succeed | succeed (intentional operator) | succeed |
+| Tenant Admin | succeed (lists filtered; get-by-id/mutate via `canAccess*`) | deny (404 hide-existence, or residual 403 on some JSON GETs) | deny |
 
-**Expected Results:** HTTP 200/201/204 (success)
+Details: [`ezkey-admin-api/AGENTS.md`](../ezkey-admin-api/AGENTS.md) § Authorization at
+controllers. Do not skip `canAccess*` because the caller already has `ROLE_ADMIN`.
 
 ## Design Questions & Challenges
 
@@ -299,6 +317,6 @@ mvn test -Dtest=ApiKeyControllerTest
 
 ---
 
-**Last Updated:** 2025-10-23
-**Version:** 1.0
-**Status:** Implementation Complete, Testing In Progress
+**Last Updated:** 2026-08-20
+**Version:** 1.1
+**Status:** Role story aligned with Admin API `AGENTS.md` (CTRL-ROLE-005). Endpoint rows remain a historical sketch.

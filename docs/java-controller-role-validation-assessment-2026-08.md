@@ -78,7 +78,7 @@ check**. This pass found that residual on the enrollment QR.
 | CTRL-ROLE-002 | Shared `ROLE_ADMIN` gate makes tenant isolation opt-in | P1 | High | Document + treat missing object check as the defect class | **Implemented** (2026-08-20; HITL 2026-08-16) |
 | CTRL-ROLE-003 | Cross-tenant deny is 403 on some routes, 404 on others | P2 | High | Align with the hide-existence rule already used on delete/retire | **Implemented** (2026-08-20; HITL 2026-08-16); 003b analysis separate |
 | CTRL-ROLE-004 | Mixed enforcement dialects on the same controller | P2 | High | Prefer `AccessControlService` at get-by-id / mutate | **Implemented** (2026-08-20; HITL 2026-08-16); 004b analysis separate |
-| CTRL-ROLE-005 | Living security matrix still describes `ROLE_ADMIN` as unrestricted | P3 | High | Correct `docs/API_SECURITY_MATRIX.md` | **Fix accepted (HITL 2026-08-16)** |
+| CTRL-ROLE-005 | Living security matrix still describes `ROLE_ADMIN` as unrestricted | P3 | High | Correct `docs/API_SECURITY_MATRIX.md` | **Implemented** (2026-08-20; HITL 2026-08-16) |
 
 ## Category 2 — noted, not in this HITL lot
 
@@ -402,21 +402,25 @@ Ephemeral 004 handoff deleted.
 
 ### CTRL-ROLE-005 — Living security matrix still describes `ROLE_ADMIN` as unrestricted
 
-`docs/API_SECURITY_MATRIX.md` still lists:
+`docs/API_SECURITY_MATRIX.md` previously listed:
 
 - `ROLE_ADMIN` — “Full administrative access / Global - all endpoints”
 - For Admins: “No ownership restrictions”
 
-That description matches the **pre-SEC-017** mental model and would instruct a cold agent to
-skip object checks. The code and Lifecycle Governance no longer match it.
+That description matched the **pre-SEC-017** mental model and would instruct a cold agent to
+skip object checks. The code and Lifecycle Governance no longer matched it.
 
 **HITL:** operator accepted **fix** (2026-08-16), option 1 only (no 005b). Role story
 and Scenario 4; endpoint rows stay a lagging sketch.
 
-**Suggested fix:** rewrite the role table to `ROLE_ADMIN` (any admin) + `ROLE_GLOBAL_ADMIN` /
-`ROLE_TENANT_ADMIN` + object scope via `AccessControlService`. Out of scope: boiling every
-endpoint row in the same PR. Handoff:
-[`HANDOFF-ctrl-role-005-security-matrix-role-story.md`](../product-docs/global/backlog/handoffs/HANDOFF-ctrl-role-005-security-matrix-role-story.md).
+Convention already written: [`ezkey-admin-api/AGENTS.md`](../ezkey-admin-api/AGENTS.md) §
+Authorization at controllers (002/003/004, 2026-08-20).
+
+**Closeout 2026-08-20:** `docs/API_SECURITY_MATRIX.md` now states umbrella `ROLE_ADMIN` +
+type roles + object checks via `canAccess*`; Scenario 4 is Global vs Tenant own-tenant vs
+cross-tenant deny; honesty banner says endpoint rows may lag. Living convention remains
+[`ezkey-admin-api/AGENTS.md`](../ezkey-admin-api/AGENTS.md) § Authorization at controllers.
+Ephemeral 005 handoff deleted.
 
 ## Checked clean (for this mandate)
 
