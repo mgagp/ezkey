@@ -75,9 +75,9 @@ check**. This pass found that residual on the enrollment QR.
 | ID | Title | Severity | Confidence | Quick win | Disposition |
 | --- | --- | --- | --- | --- | --- |
 | CTRL-ROLE-001 | Admin enrollment QR skips object-level tenant check (invite-secret distribution) | P1 | High | Yes — same `canAccessEnrollment` as `GET /{id}` | **Implemented** ([PR #470](https://github.com/mgagp/ezkey/pull/470); HITL 2026-08-16) |
-| CTRL-ROLE-002 | Shared `ROLE_ADMIN` gate makes tenant isolation opt-in | P1 | High | Document + treat missing object check as the defect class | **Implemented** (2026-08-20; HITL 2026-08-16) |
-| CTRL-ROLE-003 | Cross-tenant deny is 403 on some routes, 404 on others | P2 | High | Align with the hide-existence rule already used on delete/retire | **Implemented** (2026-08-20; HITL 2026-08-16); 003b analysis separate |
-| CTRL-ROLE-004 | Mixed enforcement dialects on the same controller | P2 | High | Prefer `AccessControlService` at get-by-id / mutate | **Implemented** (2026-08-20; HITL 2026-08-16); 004b analysis separate |
+| CTRL-ROLE-002 | Shared `ROLE_ADMIN` gate makes tenant isolation opt-in | P1 | High | Document + treat missing object check as the defect class | **Implemented** (2026-08-20; HITL 2026-08-16); 002b settled Path A (keep umbrella) |
+| CTRL-ROLE-003 | Cross-tenant deny is 403 on some routes, 404 on others | P2 | High | Align with the hide-existence rule already used on delete/retire | **Implemented** (2026-08-20; HITL 2026-08-16); 003b settled (target 404; later peels) |
+| CTRL-ROLE-004 | Mixed enforcement dialects on the same controller | P2 | High | Prefer `AccessControlService` at get-by-id / mutate | **Implemented** (2026-08-20; HITL 2026-08-16); 004b settled Path B (later peel) |
 | CTRL-ROLE-005 | Living security matrix still describes `ROLE_ADMIN` as unrestricted | P3 | High | Correct `docs/API_SECURITY_MATRIX.md` | **Implemented** (2026-08-20; HITL 2026-08-16) |
 
 ## Category 2 — noted, not in this HITL lot
@@ -324,9 +324,12 @@ without behavior change.
 **Closeout 2026-08-20:** living convention in
 [`ezkey-admin-api/AGENTS.md`](../ezkey-admin-api/AGENTS.md) § Authorization at
 controllers (`ROLE_ADMIN` umbrella; function split vs object split; greenfield note).
-No annotation rewrite and no filter cutover. Remodeling stays
-[`HANDOFF-ctrl-role-002b-role-model-remodeling-analysis.md`](../product-docs/global/backlog/handoffs/HANDOFF-ctrl-role-002b-role-model-remodeling-analysis.md).
-Ephemeral 002 handoff deleted.
+No annotation rewrite and no filter cutover. Ephemeral 002 handoff deleted.
+
+**002b settled 2026-08-20:** Path A — keep issuing `ROLE_ADMIN`. Do not remodel
+assignment. Annotation honesty is optional later hygiene, not isolation. Unified
+analysis with 003b/004b; ephemeral 002b handoff deleted. Living rule remains Admin
+API `AGENTS.md`.
 
 ### CTRL-ROLE-003 — Cross-tenant deny is 403 on some routes, 404 on others
 
@@ -350,9 +353,8 @@ ids, so 403 on GET does **not** currently distinguish those two cases. Retire/de
 incoherence is real; a second confirmed enumerator beyond QR was **not** demonstrated.
 
 **HITL:** operator accepted **fix** (2026-08-16) as convention + QR only, parallel to
-002 / 002b. Intended get-by-id posture is **404 hide-existence** (apply to QR with
-001). Existing JSON GET 403s stay until
-[`HANDOFF-ctrl-role-003b-cross-tenant-deny-semantics-analysis.md`](../product-docs/global/backlog/handoffs/HANDOFF-ctrl-role-003b-cross-tenant-deny-semantics-analysis.md).
+002. Intended get-by-id posture is **404 hide-existence** (apply to QR with
+001). Existing JSON GET 403s stayed until the unified 002b/003b/004b analysis.
 
 **Suggested fix:** pick one hide-existence policy for get-by-id and mutations (404 is the
 delete/retire precedent) and apply it when touching CTRL-ROLE-001. Do not boil the ocean in
@@ -361,10 +363,14 @@ the same PR unless the operator expands scope.
 **Closeout 2026-08-20:** living rule in
 [`ezkey-admin-api/AGENTS.md`](../ezkey-admin-api/AGENTS.md) § Authorization at
 controllers (get-by-id style reads → HTTP 404). QR already 404 from CTRL-ROLE-001
-([PR #470](https://github.com/mgagp/ezkey/pull/470)). JSON GET 403s unchanged.
-Unifying the rest stays
-[`HANDOFF-ctrl-role-003b-cross-tenant-deny-semantics-analysis.md`](../product-docs/global/backlog/handoffs/HANDOFF-ctrl-role-003b-cross-tenant-deny-semantics-analysis.md).
-Ephemeral 003 handoff deleted.
+([PR #470](https://github.com/mgagp/ezkey/pull/470)). JSON GET 403s unchanged in that
+slice. Ephemeral 003 handoff deleted.
+
+**003b settled 2026-08-20:** target 404 + `admin/resource-not-found` (same type as miss).
+Reject unify-to-403 and reject a deliberate JSON-403 vs mutate-404 story. Known
+oracles for later peels: admin GET foreign 403 / onboarding 400; API-key missing 404
+vs foreign 403. JSON empty-403 is a later HITL contract slice, not this closeout.
+Ephemeral 003b handoff deleted.
 
 ### CTRL-ROLE-004 — Mixed enforcement dialects on the same controller
 
@@ -384,21 +390,23 @@ are tenant-correct today; they will drift independently.
 `hasRole('ROLE_GLOBAL_ADMIN')`. Spring’s `hasRole` does not double-prefix when `ROLE_` is
 already present, so both Global spellings work. That is not a hole; it is noise.
 
-**HITL:** operator accepted **fix + 004b** (2026-08-16). Immediate: dialect 1 on
-touch; QR is dialect 1 not a fourth style. Complementary analysis:
-[`HANDOFF-ctrl-role-004b-authorization-dialect-coherence-analysis.md`](../product-docs/global/backlog/handoffs/HANDOFF-ctrl-role-004b-authorization-dialect-coherence-analysis.md).
+**HITL:** operator accepted **fix + later dialect analysis** (2026-08-16). Immediate:
+dialect 1 on touch; QR is dialect 1 not a fourth style.
 
 **Suggested fix:** when a method is touched, prefer dialect 1 for resource-by-id. Do not
-rewrite Integration retire/delete solely for style unless 004b (and 003b deny overlap)
-says so.
+rewrite Integration retire/delete solely for style unless a funded peel moves them to
+dialect 1 while keeping 404.
 
 **Closeout 2026-08-20:** living dialect convention in
 [`ezkey-admin-api/AGENTS.md`](../ezkey-admin-api/AGENTS.md) § Authorization at
 controllers (dialect 1 default on touch; 2 retire/delete legacy; 3 service
 principal). QR already dialect 1 from CTRL-ROLE-001. No Java rewrite of
-retire/delete. Convergence stays
-[`HANDOFF-ctrl-role-004b-authorization-dialect-coherence-analysis.md`](../product-docs/global/backlog/handoffs/HANDOFF-ctrl-role-004b-authorization-dialect-coherence-analysis.md).
-Ephemeral 004 handoff deleted.
+retire/delete. Ephemeral 004 handoff deleted.
+
+**004b settled 2026-08-20:** Path B — later hygiene may move retire/delete to
+`canAccessIntegration` and keep 404; add a foreign-tenant retire test. Do not add
+`canAccessAdmin`. Do not extract a generic deny helper. Ephemeral 004b handoff
+deleted.
 
 ### CTRL-ROLE-005 — Living security matrix still describes `ROLE_ADMIN` as unrestricted
 

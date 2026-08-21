@@ -35,12 +35,16 @@ way as a missing `canAccess*` (enrollment QR) or a missing `GLOBAL_ADMIN` gate
 - **Greenfield note:** if assigning authorities from scratch, issue only the two type
   roles (no umbrella). Isolation still is not a Spring role.
 - **Cross-tenant deny (hide existence):** get-by-id style reads (JSON, PNG QR,
-  onboarding artifacts) return **HTTP 404** when the caller must not see the row
-  (foreign tenant or not found). Do not return 200 with a secret, and do not prefer
-  403 for that class of endpoint going forward. Enrollment QR already follows this
-  (`canAccessEnrollment` then 404). Existing JSON GETs that still return 403 on
-  `canAccess*` false are known debt; do not mass-change them here. Unifying the rest
-  vs documenting a read/mutate split is out of band.
+  onboarding artifacts) return **HTTP 404** with Problem type
+  `https://ezkey.io/problems/admin/resource-not-found` when the caller must not see
+  the row (foreign tenant or not found). Do not return 200 with a secret, and do not
+  404 with `authorization/access-denied` (that re-leaks). Do not prefer 403 for that
+  class of endpoint going forward. Enrollment QR already follows HTTP 404
+  (`canAccessEnrollment`). **Known debt (do not mass-change in a drive-by):** JSON
+  GET/PATCH/revoke still often return empty 403 on `canAccess*` false; API-key get
+  after load is 403 when foreign vs 404 when missing; admin GET foreign is 403,
+  onboarding/PATCH foreign is 400. Future execution slices may peel those to 404;
+  do not document a deliberate JSON-403 vs mutate-404 split as the product story.
 - **Object-check dialects:** three live styles; all can be tenant-correct. Do **not**
   add a fourth (an unscoped load like the old QR). `@PreAuthorize` spelling
   (`ADMIN` vs `GLOBAL_ADMIN` vs `ROLE_GLOBAL_ADMIN`) is noise, not a dialect.
@@ -50,13 +54,19 @@ way as a missing `canAccess*` (enrollment QR) or a missing `GLOBAL_ADMIN` gate
     is dialect 1.
   - **Dialect 2 (legacy, valid):** inline `TENANT_ADMIN` + tenant id on integration
     retire/delete (404). Do not copy onto new methods. Do not delete that check
-    without putting dialect 1 in the same change.
+    without putting dialect 1 in the same change. A later hygiene peel may move
+    retire/delete to `canAccessIntegration` while keeping 404.
   - **Dialect 3 (service principal):** acceptable when the service already takes
     `AdminPrincipal` and encodes tenant rules (admin provisioning /
-    `getAdminOnboarding`). The controller must not skip that call.
+    `getAdminOnboarding`). The controller must not skip that call. Do not invent
+    `canAccessAdmin` solely for vocabulary. Foreign-admin deny should match
+    hide-existence 404 (today GET 403 / onboarding 400 is known debt).
 
-Do not drop an object check because the annotation looks precise. Role-model
-remodeling (filter cutover, mass `@PreAuthorize` rewrite) is out of band.
+Do not drop an object check because the annotation looks precise. **Settled
+2026-08-20:** keep issuing `ROLE_ADMIN`. Do not remodel assignment or drop the
+umbrella from the filter. Annotation honesty (`hasAnyRole('GLOBAL_ADMIN','TENANT_ADMIN')`)
+is optional later hygiene and is **not** a substitute for the object check. Provenance:
+campaign `product-docs/global/hygiene/java-controller-role-validation/2026-08-16-pass-1.md`.
 
 ## Enrollment QR payload
 
