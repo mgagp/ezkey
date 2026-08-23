@@ -121,8 +121,8 @@ On every `dependabot-curated` pass, before proposing lots:
 Out of this pulse (operator-owned, separate hygiene): Docker image tags (e.g. `postgres:18-alpine`).
 Do not add a `docker` ecosystem or invent a Compose-image lot unless the operator asks.
 
-Parked observation (not weekly work): duplicated child pins for Tink / ShedLock / ipaddress —
-handoff prompt
+Tink / ShedLock / ipaddress now live in parent properties (`tink.version`, `shedlock.version`,
+`ipaddress.version`). Do not re-propose that lift; see
 [`product-docs/global/hygiene/dependabot/handoff-centralize-core-pins.md`](../../product-docs/global/hygiene/dependabot/handoff-centralize-core-pins.md).
 
 ## Autonomous validation mode

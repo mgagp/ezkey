@@ -1,7 +1,7 @@
 # Handoff — centralize Tink / ShedLock / ipaddress pins in the parent POM
 
-**Status:** `open` — analysis parked; **do not implement** until the operator pastes this prompt
-and authorizes the slice.
+**Status:** `implemented` on `hygiene/java-dependency-pins` — property-only lift, versions unchanged.
+Mark `done` (or delete this file) after the PR merges so a cold agent does not re-propose it.
 **Keyword:** hygiene (not `assessment-curated`, not a weekly `dependabot-curated` lot)
 **Origin:** 2026-08-21 Java Dependabot coverage evaluation (after Spring Boot 4.1.1)
 

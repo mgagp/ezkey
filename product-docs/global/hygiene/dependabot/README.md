@@ -13,7 +13,7 @@ without inventing `I-*` / `TB-*` for routine bumps.
 |------|------|
 | [`TEMPLATE.md`](TEMPLATE.md) | Copy for each new campaign |
 | `YYYY-MM-DD-pass-N.md` | Dated instance (lots table + validation evidence) |
-| [`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md) | Parked hygiene handoff: lift Tink / ShedLock / ipaddress pins into the parent POM |
+| [`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md) | Implemented on `hygiene/java-dependency-pins`: Tink / ShedLock / ipaddress now parent-pinned |
 
 ## Standing deferrals (`deferred:later-train`)
 
@@ -56,8 +56,9 @@ On every `dependabot-curated` pass the agent must:
 4. Check `google-java-format.version` (Spotless nested pin; Dependabot typically misses it).
    Bump only when Spotless, JDK compatibility, or a real formatter bug requires it (T2 tooling).
 
-Do **not** add Docker image tags to this pulse unless the operator asks. Parked parent-pin lift
-for Tink / ShedLock / ipaddress: [`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md).
+Do **not** add Docker image tags to this pulse unless the operator asks. Tink / ShedLock /
+ipaddress now follow parent properties (see
+[`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md)).
 
 Authority: skill `dependabot-curated` § *Java BOM pulse*. Provenance: Boot 4.1.1 pass
 [`2026-08-21-pass-1.md`](2026-08-21-pass-1.md) (hygiene branch; no Dependabot PR).

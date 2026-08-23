@@ -54,7 +54,8 @@ pin. No Dependabot group added (still not a GAV Dependabot reliably updates).
 
 ## Holds and deferrals
 
-- Tink / ShedLock / ipaddress parent-pin lift: [`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md)
+- Tink / ShedLock / ipaddress parent-pin lift: implemented later the same day on this branch
+  ([`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md))
 - Docker Compose image tags: operator-owned, out of this pulse
 
 ## Out of scope this pass
