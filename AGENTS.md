@@ -333,12 +333,15 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
 When the operator asks for a **`dependabot-curated`** pass:
 
 1. List open Dependabot PRs (`gh pr list --author "app/dependabot" --state open`).
-2. Peel off any PR labeled `deferred:*` (skip weekly lots); classify remaining PRs T1–T4; propose
-   **3–6 lots** (overview only).
-3. **Default — interactive HITL:** iterate **one lot at a time** (members, tier, blast radius, CI
+2. Peel off any PR labeled `deferred:*` (skip weekly lots). Run the **Java BOM pulse** (skill
+   `dependabot-curated` § *Java BOM pulse*): compare `spring-boot.version` to the latest
+   same-minor Boot release; if newer and no Dependabot PR, propose a hygiene-branch lot. After a
+   Boot bump, review SEC-019 overrides. Check `google-java-format.version` only as a tooling pin.
+3. Classify remaining PRs T1–T4; propose **3–6 lots** (overview only).
+4. **Default — interactive HITL:** iterate **one lot at a time** (members, tier, blast radius, CI
    status) → wait for Go / No-Go / hold / defer on **that** lot before merging or presenting the
    next. Do not replace this with a bulk options matrix.
-4. **Autonomous validation mode** (opt-in): when the operator explicitly delegates validation /
+5. **Autonomous validation mode** (opt-in): when the operator explicitly delegates validation /
    waives per-lot Go (e.g. “full ladder yourself”, “autonomous”), proceed on T1–T3 without waiting;
    still pause on T4 / hard escalators unless also waived. **Still merge the existing Dependabot
    PRs in each lot** so GitHub closes them — autonomy does not mean re-applying bumps on a second
@@ -346,12 +349,12 @@ When the operator asks for a **`dependabot-curated`** pass:
    only for explicit single-PR review or unmergeable Dependabot branches + companion fixes; then
    close superseded PRs after land. Details: skill `dependabot-curated` § *Autonomous validation
    mode*.
-5. On Go / autonomous proceed: merge each green Dependabot PR in the lot individually. On defer:
+6. On Go / autonomous proceed: merge each green Dependabot PR in the lot individually. On defer:
    comment; apply `deferred:later-train` when the PR should stay out of weekly lots; optional one
    `I-*` if the investigation should not be lost.
-6. Session closeout proportional to highest accepted tier (always `./scripts/build.sh`; stack /
+7. Session closeout proportional to highest accepted tier (always `./scripts/build.sh`; stack /
    functional / Playwright per skill ladder; T1-only shortcut allowed when recorded).
-7. Write a dated campaign note under `product-docs/global/hygiene/dependabot/` (copy `TEMPLATE.md`).
+8. Write a dated campaign note under `product-docs/global/hygiene/dependabot/` (copy `TEMPLATE.md`).
 
 ## Mobile doctor-curated keyword
 
