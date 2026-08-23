@@ -42,6 +42,9 @@ Do not paste full chat transcripts.
 | Step | Ran? | Result |
 |------|------|--------|
 | Dependabot PR CI (per merged PR) | yes / no | |
+| Java BOM pulse (`spring-boot.version` vs current same-minor) | yes / n/a | newer? applied? none |
+| SEC-019 overrides reviewed after Boot bump | yes / n/a | kept / dropped |
+| Nested pin: `google-java-format` | yes / n/a | current / bump proposed |
 | `./scripts/build.sh` | yes / no / n/a | |
 | Clean-start stack | yes / no / deferred | |
 | Functional tests | yes / no / deferred | |

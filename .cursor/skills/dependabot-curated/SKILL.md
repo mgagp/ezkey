@@ -71,22 +71,59 @@ not a mandatory top-level sort.
    **Already deferred — skip HITL** in the overview. Do **not** put them in weekly lots or re-ask
    Go/No-Go unless the operator explicitly reopens that train. Non-Dependabot parked PRs with the
    same label (e.g. a migration-idea PR) may be mentioned once for traceability.
-3. Classify each **remaining** PR **T1–T4** from the title SemVer digits and ecosystem path.
+3. **Java BOM pulse** (mandatory on every weekly pass — see below). Silence in the Dependabot
+   queue is not proof that the Boot line is current.
+4. Classify each **remaining** PR **T1–T4** from the title SemVer digits and ecosystem path.
    Surface ambiguity to the operator (e.g. icon library minor spanning several patch bumps → T3).
-4. Propose **3–6 lots max** for the session (80/20). Prefer fewer lots over one-PR theater.
-5. Present a **short lots overview** (deferred block first, then active lots).
+5. Propose **3–6 lots max** for the session (80/20). Prefer fewer lots over one-PR theater.
+   A BOM-pulse Boot bump counts as one lot even when no Dependabot PR exists.
+6. Present a **short lots overview** (deferred block first, then active lots).
    - **Default (HITL):** then **HITL one lot at a time** — wait for Go / No-Go / hold / defer
      before merging that lot or presenting the next. Do **not** ask for a bulk `1A, 2B, 3B…`
      reply as the primary vehicle.
    - **Autonomous validation mode** (see below): after the overview, proceed without waiting for
      per-lot Go when the operator explicitly delegated autonomy for this pass.
-6. On **Go** (or autonomous proceed): apply the lot (see **Apply modes**), then continue.
-7. On **Defer:** leave open or close with a rationale comment; apply `deferred:later-train` (or a
+7. On **Go** (or autonomous proceed): apply the lot (see **Apply modes**), then continue.
+8. On **Defer:** leave open or close with a rationale comment; apply `deferred:later-train` (or a
    more specific `deferred:*` label) when the PR should stay out of weekly lots for weeks/months.
    If investigation cost should not be lost, create **one** `I-*` for that dependency (program
    deferral), not a Dependabot methodology program.
-8. After all lot decisions: run **session closeout**, then write
+9. After all lot decisions: run **session closeout**, then write
    `product-docs/global/hygiene/dependabot/YYYY-MM-DD-pass-N.md` from the template.
+
+## Java BOM pulse
+
+Dependabot Maven at `directory: "/"` walks the reactor and updates **declared** POM versions. It
+does **not** inventory the effective graph. Hibernate, Spring Framework, Spring Security, Flyway,
+and most other Boot-managed libraries move only when `spring-boot.version` moves. The weekly PR
+queue (`open-pull-requests-limit: 5`) can also starve a Boot property bump behind Rewrite /
+Checkstyle noise. **Do not treat an empty Maven Dependabot list as "Java is current."**
+
+On every `dependabot-curated` pass, before proposing lots:
+
+1. Read `spring-boot.version` in the root `pom.xml`.
+2. Compare it to the latest **same-minor** Spring Boot release (today the `4.1.x` line) on Maven
+   Central or [endoflife.date/spring-boot](https://endoflife.date/spring-boot). Do not jump a Boot
+   **major** here — that remains a T4 hard escalator.
+3. If a newer patch exists and there is **no** Dependabot PR for it, propose one hygiene-branch
+   lot (SemVer patch, closeout as T3 runtime because the BOM is shipped). Provenance example:
+   `hygiene/spring-boot-4.1.1` / campaign `2026-08-21-pass-1`.
+4. After any accepted Boot bump (Dependabot or manual), review the SEC-019 overrides in the parent
+   `dependencyManagement` (`postgresql.version`, `logback.version`, `tomcat.version`,
+   `jackson-bom.version`, `jackson-2-bom.version`, and the Caffeine pin when present). **Drop** an
+   override when Boot has caught up. **Keep** it only when Ezkey is still intentionally ahead
+   (CVE or compatibility). Record the keep/drop table in the campaign note.
+5. **Nested pin Dependabot typically misses:** `google-java-format.version` in the root
+   `pom.xml` (Spotless `<googleJavaFormat>`). Check Maven Central in this same pulse — do
+   **not** invent a weekly lot if unchanged. Bump only when Spotless itself moved, JDK
+   compatibility requires it, or a real formatter bug exists. Treat a bump as T2 tooling.
+
+Out of this pulse (operator-owned, separate hygiene): Docker image tags (e.g. `postgres:18-alpine`).
+Do not add a `docker` ecosystem or invent a Compose-image lot unless the operator asks.
+
+Tink / ShedLock / ipaddress now live in parent properties (`tink.version`, `shedlock.version`,
+`ipaddress.version`). Do not re-propose that lift; see
+[`product-docs/global/hygiene/dependabot/handoff-centralize-core-pins.md`](../../product-docs/global/hygiene/dependabot/handoff-centralize-core-pins.md).
 
 ## Autonomous validation mode
 
@@ -151,6 +188,9 @@ Run **once** at end of session (or at a milestone if the session is split), not 
 CIs were green, closeout may be `./scripts/build.sh` only, with an explicit campaign-note line that
 stack/Playwright were deferred to the next T2+ session or weekly milestone.
 
+Record the **Java BOM pulse** result in the campaign note even when no Boot bump was needed
+(`none` is a valid outcome). Same for the nested `google-java-format` check.
+
 ## Pin, install, and codegen hygiene (after merges)
 
 Run this checklist in the **same closeout** whenever a merged PR changed a declared pin or a
@@ -187,7 +227,8 @@ are already **T4 hard escalators** — this checklist is the operational tail of
 
 ## HITL contract (default for cold agents)
 
-1. List and classify; peel off `deferred:*` first; propose lots overview (3–6 active lots).
+1. List and classify; peel off `deferred:*` first; run the **Java BOM pulse**; propose lots
+   overview (3–6 active lots, including a Boot lot when the pulse found a newer same-minor).
 2. Iterate **one lot at a time**: members, tier, blast radius, CI status, open question → wait
    for Go / No-Go / hold / defer — **unless** autonomous validation mode was granted for the
    session (then proceed for T1–T3 and only pause on T4 / hard escalators).

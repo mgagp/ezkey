@@ -13,6 +13,7 @@ without inventing `I-*` / `TB-*` for routine bumps.
 |------|------|
 | [`TEMPLATE.md`](TEMPLATE.md) | Copy for each new campaign |
 | `YYYY-MM-DD-pass-N.md` | Dated instance (lots table + validation evidence) |
+| [`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md) | Implemented on `hygiene/java-dependency-pins`: Tink / ShedLock / ipaddress now parent-pinned |
 
 ## Standing deferrals (`deferred:later-train`)
 
@@ -39,6 +40,28 @@ After the hygiene PR lands on `main`, **close superseded Dependabot PRs** with a
 **Autonomous validation:** opt-in phrase for cold agents is documented in the skill
 (`dependabot-curated` § *Autonomous validation mode*). Autonomy means the agent owns the closeout
 ladder and evidence; it does **not** mean inventing a second integration path by default.
+
+## Java BOM pulse (weekly, not optional)
+
+Dependabot Maven updates **declared** POM versions. It does not inventory Boot-managed transitives
+(Hibernate, Spring Framework, Spring Security, Flyway, …). Those move only with
+`spring-boot.version`. An empty Maven PR queue is not proof that Java is current — the weekly
+limit of 5 open PRs can starve a Boot property bump.
+
+On every `dependabot-curated` pass the agent must:
+
+1. Compare root `spring-boot.version` to the latest **same-minor** Boot release.
+2. If newer and no Dependabot PR exists, propose a hygiene-branch lot (closeout as T3 runtime).
+3. After an accepted Boot bump, review SEC-019 overrides (keep only when still ahead of Boot).
+4. Check `google-java-format.version` (Spotless nested pin; Dependabot typically misses it).
+   Bump only when Spotless, JDK compatibility, or a real formatter bug requires it (T2 tooling).
+
+Do **not** add Docker image tags to this pulse unless the operator asks. Tink / ShedLock /
+ipaddress now follow parent properties (see
+[`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md)).
+
+Authority: skill `dependabot-curated` § *Java BOM pulse*. Provenance: Boot 4.1.1 pass
+[`2026-08-21-pass-1.md`](2026-08-21-pass-1.md) (hygiene branch; no Dependabot PR).
 
 ## Related
 

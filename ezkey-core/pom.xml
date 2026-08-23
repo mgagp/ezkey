@@ -66,7 +66,6 @@
 		<dependency>
 			<groupId>com.google.crypto.tink</groupId>
 			<artifactId>tink</artifactId>
-			<version>1.23.0</version>
 		</dependency>
 
 	<!-- QR Code Generation -->
@@ -96,19 +95,16 @@
 	<dependency>
 		<groupId>com.github.seancfoley</groupId>
 		<artifactId>ipaddress</artifactId>
-		<version>5.6.2</version>
 	</dependency>
 
 	<!-- ShedLock for distributed job locking -->
 	<dependency>
 		<groupId>net.javacrumbs.shedlock</groupId>
 		<artifactId>shedlock-spring</artifactId>
-		<version>7.7.0</version>
 	</dependency>
 		<dependency>
 			<groupId>net.javacrumbs.shedlock</groupId>
 			<artifactId>shedlock-provider-jdbc-template</artifactId>
-			<version>7.7.0</version>
 		</dependency>
 
 		<!-- Micrometer for re-encryption batch timers/counters (MeterRegistry from consuming apps) -->

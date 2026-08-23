@@ -11,12 +11,12 @@ This note captures the **baseline inventory**, **2026-05 hygiene pass**, and **f
 | MapStruct | `mapstruct.version` in root `pom.xml` | 1.6.3 |
 | Admin UI toolchain | [`ezkey-admin-ui/package.json`](../ezkey-admin-ui/package.json) | React 19, Vite 7, TypeScript ~5.9, Tailwind 4 |
 
-Bumped third-party libraries under the parent [`dependencyManagement`](../pom.xml) (ZXing, Bucket4j, Caffeine, etc.) should move together when security or compatibility requires it.
+Bumped third-party libraries under the parent [`dependencyManagement`](../pom.xml) (ZXing, Bucket4j, Caffeine, Tink, ShedLock, ipaddress) should move together when security or compatibility requires it.
 
 ## Admin API / shared core — direct dependency surfaces
 
 - **Admin API** [`ezkey-admin-api/pom.xml`](../ezkey-admin-api/pom.xml): `ezkey-core`, `ezkey-core-security`, Spring Web MVC, validation, security, actuator, SpringDoc, Bucket4j, Caffeine, ZXing, MapStruct.
-- **Core** [`ezkey-core/pom.xml`](../ezkey-core/pom.xml): JPA, security, PostgreSQL, Tink (pinned explicitly), ZXing, SpringDoc, Commons Codec, IPAddress (`com.github.seancfoley:ipaddress`), ShedLock, Micrometer.
+- **Core** [`ezkey-core/pom.xml`](../ezkey-core/pom.xml): JPA, security, PostgreSQL, Tink, ZXing, SpringDoc, Commons Codec, IPAddress (`com.github.seancfoley:ipaddress`), ShedLock, Micrometer. Versions for Tink, ShedLock, and ipaddress follow the parent, same as ZXing / Bucket4j.
 
 Test-only starters **`spring-boot-starter-security-test`** and **`spring-boot-starter-data-jpa-test`** are managed by the **Spring Boot BOM** (no per-module `4.0.6` pin). **`spring-boot-starter-flyway`** in [`ezkey-migration/pom.xml`](../ezkey-migration/pom.xml) likewise follows the BOM.
 
@@ -50,7 +50,7 @@ Lockfile: committed [`ezkey-admin-ui/package-lock.json`](../ezkey-admin-ui/packa
 | Medium | Evaluate later **Spring Boot 4.1.x** patches when available | Single property change in root `pom.xml`; keep Tomcat / Logback / Jackson overrides; full [`scripts/build.sh`](../scripts/build.sh) baseline |
 | Lower | **Major** bumps (e.g. Vitest 4, Vite 8, ESLint 10) | Higher regression risk; schedule explicitly |
 | Lower | Add optional **Maven dependency-scan** job (OWASP or `mvnd`) in CI | Operational quick win from SOC2 guidance |
-| Lower | Periodically refresh **Tink**, **ShedLock**, **ipaddress** in `ezkey-core` when CVEs or bugfix releases appear | Each needs a short test pass around crypto / scheduling |
+| Lower | Periodically refresh **Tink**, **ShedLock**, **ipaddress** via the parent properties (`tink.version`, `shedlock.version`, `ipaddress.version`) when CVEs or bugfix releases appear | Each needs a short test pass around crypto / scheduling |
 | Lower | **Mockito / ByteBuddy** “dynamic Java agent” and inline-mock-maker messages on JDK 25+ tests | Harmless today; future JDK may require explicit Mockito agent config (see Mockito docs) |
 
 ## Validation commands

@@ -56,7 +56,6 @@
         <dependency>
             <groupId>com.github.seancfoley</groupId>
             <artifactId>ipaddress</artifactId>
-            <version>5.6.2</version>
         </dependency>
 
         <!-- Ezkey SDK for API key (machine-to-machine) authentication -->

@@ -314,9 +314,9 @@ public final class EzkeyClient {
   /**
    * Waits for an authentication attempt to complete.
    *
-   * <p>Sends a {@code GET /api/v1/auth-attempts/{id}/wait} request to the Integration API. This is a
-   * long-polling request that blocks until the attempt is completed (approved/rejected/expired) or
-   * the server-side timeout is reached.
+   * <p>Sends a {@code GET /api/v1/auth-attempts/{id}/wait} request to the Integration API. This is
+   * a long-polling request that blocks until the attempt is completed (approved/rejected/expired)
+   * or the server-side timeout is reached.
    *
    * @param authAttemptId the authentication attempt ID
    * @param timeoutSeconds server-side maximum wait duration (1-300, default 30)
