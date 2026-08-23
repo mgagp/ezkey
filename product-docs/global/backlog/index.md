@@ -73,7 +73,8 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-08-02-mobile-play-official-compliance-gate` | Mobile: Play official release compliance gate | `active` | `P2` | `mobile`, `docs` | `2026-08-14` |
 | `I-2026-08-02-mobile-client-update-mechanism` | Mobile: client app-update mechanism | `active` | `P3` | `mobile`, `docs` | `2026-08-14` |
 | `I-2026-08-02-mobile-installation-version-and-compat-discovery` | Mobile: installation product-version and compatibility discovery | `incubating` | `P3` | `mobile`, `auth-api`, `admin-api`, `core`, `docs`, `security` | `2026-08-02` |
-| `I-2026-08-09-mobile-signed-instance-info-integrity` | Mobile: signed Public Instance Info integrity | `active` | `P2` | `mobile`, `auth-api`, `core`, `docs`, `security` | `2026-08-09` |
+| `I-2026-08-09-mobile-signed-instance-info-integrity` | Mobile: signed Public Instance Info integrity | `active` | `P2` | `mobile`, `auth-api`, `core`, `docs`, `security` | `2026-08-23` |
+| `I-2026-08-23-auth-unsigned-public-instance-info-retirement` | Auth unsigned public instance-info retirement | `captured` | `P3` | `auth-api`, `docs`, `mobile`, `testing`, `security` | `2026-08-23` |
 
 ## Tracer bullets (draft / ready / in progress)
 

@@ -69,8 +69,8 @@ flowchart TB
 
 ## Types That Matter
 
-- **`Installation`** — first-class local trust zone; `id` = normalized Auth URL; branding from `instance-info` is
-  display-only.
+- **`Installation`** — first-class local trust zone; `id` = normalized Auth URL; branding from
+  signed enrolled instance-info is display-only.
 - **`EnrollmentSummary`** — local metadata for a bound enrollment that belongs to one installation. Never stores the
   private key.
 - **`StoredEnrollment` (runtime)** — metadata plus rehydrated `enrollmentProofToken` and `integrationPublicKey`.

@@ -118,6 +118,8 @@ Keep `incubating` until a `TB-*` is opened from the design pack. Promote toward 
   [`R-2026-0001-mobile-certificate-pinning-spki`](../../legacy-retrofit/R-2026-0001-mobile-certificate-pinning-spki.md)
 - Adjacent response-integrity track (branding / instance-info, complementary to transport pinning):
   [I-2026-08-09-mobile-signed-instance-info-integrity.md](I-2026-08-09-mobile-signed-instance-info-integrity.md)
+- Auth unsigned GET retirement is blocked while this idea still needs `spkiPinningMode` on that GET:
+  [`I-2026-08-23-auth-unsigned-public-instance-info-retirement`](I-2026-08-23-auth-unsigned-public-instance-info-retirement.md)
 - Security claim boundary:
   [`docs/SECURITY_POSTURE.md`](../../../../docs/SECURITY_POSTURE.md)
 - StrongBox trust-model boundary:
