@@ -6,7 +6,7 @@ This note captures the **baseline inventory**, **2026-05 hygiene pass**, and **f
 
 | Layer | Source of truth | Current anchor |
 | --- | --- | --- |
-| Spring Boot (Java reactor) | `spring-boot.version` in root [`pom.xml`](../pom.xml) | 4.0.6 |
+| Spring Boot (Java reactor) | `spring-boot.version` in root [`pom.xml`](../pom.xml) | 4.1.1 |
 | SpringDoc OpenAPI | `springdoc.version` in root `pom.xml` | 3.0.3 |
 | MapStruct | `mapstruct.version` in root `pom.xml` | 1.6.3 |
 | Admin UI toolchain | [`ezkey-admin-ui/package.json`](../ezkey-admin-ui/package.json) | React 19, Vite 7, TypeScript ~5.9, Tailwind 4 |
@@ -47,7 +47,7 @@ Lockfile: committed [`ezkey-admin-ui/package-lock.json`](../ezkey-admin-ui/packa
 | Priority | Item | Rationale |
 | --- | --- | --- |
 | Medium | Grouped **patch/minor** npm updates within current majors (e.g. `@tanstack/react-query`, `react-router-dom`, `zod`, Tailwind patch) | Reduces drift; test `npm run lint`, `npm run build`, optional Playwright if auth/routing touched |
-| Medium | Evaluate **Spring Boot 4.0.x** patch releases when available | Single property change in root `pom.xml`; full [`scripts/build.sh`](../scripts/build.sh) baseline |
+| Medium | Evaluate later **Spring Boot 4.1.x** patches when available | Single property change in root `pom.xml`; keep Tomcat / Logback / Jackson overrides; full [`scripts/build.sh`](../scripts/build.sh) baseline |
 | Lower | **Major** bumps (e.g. Vitest 4, Vite 8, ESLint 10) | Higher regression risk; schedule explicitly |
 | Lower | Add optional **Maven dependency-scan** job (OWASP or `mvnd`) in CI | Operational quick win from SOC2 guidance |
 | Lower | Periodically refresh **Tink**, **ShedLock**, **ipaddress** via the parent properties (`tink.version`, `shedlock.version`, `ipaddress.version`) when CVEs or bugfix releases appear | Each needs a short test pass around crypto / scheduling |
