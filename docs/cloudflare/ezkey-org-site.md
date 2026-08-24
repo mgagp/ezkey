@@ -94,7 +94,9 @@ When Cloudflare usage grows, document (in this folder or short linked notes):
 These are **directional** only; validate against product roadmap and budget before treating as roadmap items:
 
 - Host **Admin UI** static build on Cloudflare while **Admin API / Auth API** run on another cloud.
-- **JSON schema validation** or other request filtering at the edge (only where it matches threat model and cost).
+- **JSON schema validation** — Auth API EXP1 first slice is documented in
+  [auth-api-schema-validation.md](auth-api-schema-validation.md) (manual upload; EXP1 may Block).
+  Broader edge filtering still belongs here only where it matches threat model and cost.
 - Deeper **WAF** posture — may intersect paid tiers; document facts when evaluated.
 
 ## Related

@@ -25,6 +25,16 @@ When an Admin UI enrollment QR includes `authUrl`, the demo device routes **bind
 
 Standalone Docker default remains Exp1 (`https://exp1-auth-api.ezkey.org`); QR local enrollments override without `.env` change.
 
+## EXP1 / Cloudflare error bodies
+
+When Auth is the Cloudflare hostname, HTTP errors may be **origin** RFC 9457
+(`type` under `https://ezkey.io/problems/`) or **edge** Cloudflare 403/1020
+(`cloudflare_error: true`). Schema-invalid probes fail at the edge; a well-formed Demo Device
+request should not. Do not treat Cloudflare `detail` / `what_you_should_do` as Auth API copy.
+Operator distinction: [`docs/cloudflare/auth-api-schema-validation.md`](../docs/cloudflare/auth-api-schema-validation.md)
+§ Reading responses. The Demo Device is a lab UI — keep bind/pending messages actionable for the
+maintainer, but do not invent a Cloudflare error catalog here.
+
 ## Jackson 3 posture (Boot 4)
 
 Ezkey uses the **Jackson 3 engine** with **FasterXML annotations** unchanged ([JSTEP-1](https://github.com/FasterXML/jackson-future-ideas/wiki/JSTEP-1)):

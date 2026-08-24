@@ -3,12 +3,12 @@
 ## Metadata
 
 - **ID:** `TB-2026-06-02-auth-api-cloudflare-schema-first-slice`
-- **Status:** `draft`
+- **Status:** `under-review`
 - **Related idea:** `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation`
 - **Lane:** `B` - plan incubation promoted into executable slice
 - **Posture:** `iterative`
 - **Created at:** `2026-06-02`
-- **Updated at:** `2026-06-02`
+- **Updated at:** `2026-08-23`
 - **Captured by:** Marc
 
 ## Objective
@@ -16,6 +16,20 @@
 Prove the OpenAPI lifecycle direction through the smallest meaningful end-to-end slice: generate a
 host-neutral canonical Auth API spec, derive an EXP1-localized Cloudflare schema artifact from it,
 and manually validate Cloudflare's endpoint enumeration before any blocking enforcement.
+
+The Auth API operations that must appear **once** under `https://exp1-auth-api.ezkey.org` are:
+
+- `GET /api/v1/public/instance-info` (unsigned, display-only)
+- `POST /api/v1/enrollments/bind`
+- `POST /api/v1/enrollments/verify`
+- `POST /api/v1/enrollments/instance-info` (integration-signed installation trust surface)
+- `POST /api/v1/auth-attempts/pending`
+- `POST /api/v1/auth-attempts/respond`
+
+Cloudflare schema validation is ingress *shape* enforcement. It does not verify
+`instanceInfoPayloadSignedByIntegration`. Cryptographic authority stays on the enrolled client
+(`TB-2026-08-09-mobile-signed-instance-info`). This slice does not wait for that TB's closeout —
+the Auth API contract is already in the live spec.
 
 ## Boundaries in scope
 
@@ -25,7 +39,8 @@ and manually validate Cloudflare's endpoint enumeration before any blocking enfo
 - Generated EXP1/Cloudflare Auth API schema artifact.
 - Downstream Auth API spec consumers: `ezkey_mobile`, `ezkey-sdk`, `ezkey-demo-device`, and
   `sites/ezkey-org` copied spec.
-- Operator documentation for EXP1 manual Cloudflare upload.
+- Operator documentation for EXP1 manual Cloudflare upload (observe/log-first; both instance-info
+  operations included in the enumeration check).
 
 ## Out of scope
 
@@ -62,9 +77,13 @@ and manually validate Cloudflare's endpoint enumeration before any blocking enfo
   host-neutral spec to consumers.
 - **Deployment localization path:** a generated packaging step reads the canonical Auth API spec and
   produces an EXP1 Cloudflare artifact with a single real public host.
-- **Cloudflare manual validation path:** the operator uploads the localized spec, confirms each Auth
-  endpoint is listed once under `exp1-auth-api.ezkey.org`, and keeps validation in observe/log mode
-  before blocking.
+- **Cloudflare manual validation path:** the operator uploads the localized spec and confirms each
+  Auth endpoint above is listed once under `exp1-auth-api.ezkey.org`. Product default remains
+  observe/None for any host that might see third-party traffic. **EXP1 exception (2026-08-23):**
+  the operator confirmed EXP1 has no external evaluators and that the maintainer is the only
+  tester; **Block** is accepted on that hostname so schema mismatches fail at the edge. Flip back
+  to None if a maintainer test locks out enroll or MFA. Do not copy EXP1 Block to a later
+  multi-user install without a fresh observe period.
 - **Consumer safety path:** mobile and SDK generation still route by runtime configuration rather
   than by canonical `servers` metadata.
 
@@ -78,7 +97,8 @@ and manually validate Cloudflare's endpoint enumeration before any blocking enfo
 - Client check: `yarn generate:api` succeeds in `ezkey_mobile/`; Auth SDK generation/build succeeds
   in `ezkey-sdk/javascript/`.
 - Documentation check: operator docs describe manual Cloudflare upload and observe/log-first posture.
-- Cloudflare check: uploaded schema enumerates each Auth endpoint once under the EXP1 host.
+- Cloudflare check: uploaded schema enumerates each Auth endpoint once under the EXP1 host,
+  including both instance-info operations.
 
 ## Test strategy
 
@@ -116,5 +136,39 @@ and manually validate Cloudflare's endpoint enumeration before any blocking enfo
 2. every Auth API dispatch copy is host-neutral;
 3. the EXP1 Cloudflare artifact has one and only one target server;
 4. downstream Auth API generation still succeeds;
-5. the manual Cloudflare upload shows each Auth endpoint once under `exp1-auth-api.ezkey.org`;
+5. the manual Cloudflare upload shows each Auth endpoint once under `exp1-auth-api.ezkey.org`,
+   including `GET /api/v1/public/instance-info` and `POST /api/v1/enrollments/instance-info`;
 6. the next-phase context artifact exists with enough evidence to resume global rollout cleanly.
+
+## Implementation outcome (2026-08-23)
+
+Shipped on branch `tb/2026-06-02-auth-api-cloudflare-schema`. The operator has uploaded the
+localized schema (drag-and-drop). Mitigation on EXP1 is **Block** per the 2026-08-23 exception
+below; product default elsewhere remains None.
+
+| Criterion | Evidence |
+| --------- | -------- |
+| Canonical Auth spec is host-neutral | `specs/auth-api/openapi-spec.json` has no top-level `servers` after `./scripts/update-specs.sh --auth-only` |
+| Dispatch copies match | Same 10-line `servers` deletion on demo-device, mobile, JS SDK, and ezkey.org copies |
+| EXP1 artifact has one server | `./scripts/package-auth-api-cloudflare-schema.sh` writes `https://exp1-auth-api.ezkey.org` |
+| Cloudflare OAS 3.0 | Packaging downlevels 3.1 `type` arrays to `nullable` (Cloudflare error 50010) |
+| Structural diff is servers-only | Packaging script asserts canonical vs localized differ only by `servers` |
+| Client generation | Mobile Orval succeeded; `npm run generate-auth` succeeded (JS SDK uses `config.authApiUrl`) |
+| Docs | [`docs/cloudflare/auth-api-schema-validation.md`](../../../docs/cloudflare/auth-api-schema-validation.md) |
+| Next-phase context | [`TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md`](TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md) |
+| EXP1 upload | Operator uploaded the localized OAS 3.0 artifact; six Auth operations expected once under `exp1-auth-api.ezkey.org` |
+| EXP1 Set action | **Block** (2026-08-23 operator exception: no external EXP1 traffic; maintainer-only tests). Not the product default. |
+| EXP1 Bruno negative probe | Schema-invalid bind (`enrollmentId` string) → Cloudflare **403 / 1020** (`cloudflare_error`). Schema-valid pending with bad binding → origin **400** `auth-attempt-binding-failed`. Env: `bruno/environments/exp1.bru`. |
+
+Notes:
+
+- **EXP1 Set action (2026-08-23):** Block is an operator exception because EXP1 has no
+  third-party testers. Escape hatch is None if the maintainer locks themselves out. Do not
+  treat Block as the default for Admin/Integration or a later public host.
+
+- Rebuild Auth API (clean-start) before the next `--auth-only` if you want
+  `POST /enrollments/instance-info` in the curated presentation order. The 2026-08-23 refresh
+  used the already-running container, so that path is present but not yet reordered.
+- Do not commit Orval or OpenAPI Generator version churn from a generate-only check.
+- Global `spec-test-traceability.md` was not updated: this slice changes host packaging, not
+  endpoint behavior.

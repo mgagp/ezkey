@@ -41,6 +41,7 @@ public final class OpenApiPresentationCustomizer implements OpenApiCustomizer {
           "/api/v1/public/instance-info",
           "/api/v1/enrollments/bind",
           "/api/v1/enrollments/verify",
+          "/api/v1/enrollments/instance-info",
           "/api/v1/auth-attempts/pending",
           "/api/v1/auth-attempts/respond");
 

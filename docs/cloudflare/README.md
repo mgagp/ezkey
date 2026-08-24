@@ -14,10 +14,11 @@ This directory holds **workflow notes, scope, and time-horizon planning** for us
 | Proxies, client IP (`CF-Connecting-IP`), rate limiting context | [OPERATIONAL.md](../OPERATIONAL.md) |
 | Admin UI CSP, split UI/API deployment, mirroring headers at the edge | [admin-ui-security.md](../admin-ui-security.md) |
 | Admin UI on Cloudflare Pages (build, CORS on API, Wrangler, edge headers) | [admin-ui-pages.md](admin-ui-pages.md) |
+| Auth API EXP1 schema validation (package + upload script; EXP1 Block exception) | [auth-api-schema-validation.md](auth-api-schema-validation.md) |
 
 ## Repository root `.env`
 
-Wrangler deploy scripts source a gitignored **`.env`** at the **repository root** when present. Copy **[`.env.example`](../../.env.example)** to `.env` and set at least `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. For Admin UI Cloudflare builds, the same file may set **`VITE_API_BASE_URL`** (defaults to `https://exp1-admin-api.ezkey.org` in `deploy-admin-ui-preview.sh` if omitted). See [admin-ui-pages.md](admin-ui-pages.md).
+Wrangler deploy scripts source a gitignored **`.env`** at the **repository root** when present. Copy **[`.env.example`](../../.env.example)** to `.env` and set at least `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Schema upload uses a **separate** `CLOUDFLARE_API_SHIELD_TOKEN` (and optional `CLOUDFLARE_ZONE_ID`) — do not reuse the Pages token. For Admin UI Cloudflare builds, the same file may set **`VITE_API_BASE_URL`** (defaults to `https://exp1-admin-api.ezkey.org` in `deploy-admin-ui-preview.sh` if omitted). See [admin-ui-pages.md](admin-ui-pages.md).
 
 ## Automation (`scripts/cloudflare/`)
 
@@ -30,8 +31,13 @@ Wrangler deploy scripts source a gitignored **`.env`** at the **repository root*
 | [cleanup-pages-deployments.sh](../../scripts/cloudflare/cleanup-pages-deployments.sh) | **Age-aware** cleanup of Pages **preview** deployments (default dry-run, >24h, both `ezkey-org` and `methodology-ezkey-org`). Use `--profile prudent` for 7d, `--apply` to delete, `--env production` for production history (with safeguards). |
 | [cleanup-ezkey-org-previews.sh](../../scripts/cloudflare/cleanup-ezkey-org-previews.sh) | Legacy: list/delete **all** preview deployments for `ezkey-org` (no age filter). Prefer `cleanup-pages-deployments.sh`. |
 | [cleanup-methodology-previews.sh](../../scripts/cloudflare/cleanup-methodology-previews.sh) | Legacy: same as above for `methodology-ezkey-org`. Prefer `cleanup-pages-deployments.sh`. |
+| [upload-auth-api-schema-exp1.sh](../../scripts/cloudflare/upload-auth-api-schema-exp1.sh) | List, upload, or delete Auth API schemas (`--list` / `--upload` / `--delete <id>`). Requires `CLOUDFLARE_API_SHIELD_TOKEN`. Does not use Wrangler or the Pages token. |
 
 Add more scripts here only when a **repeated** automation need appears (e.g. standardized production promotion, DNS verification).
+
+Auth API schema packaging (local, no Cloudflare call):
+[`scripts/package-auth-api-cloudflare-schema.sh`](../../scripts/package-auth-api-cloudflare-schema.sh)
+— see [auth-api-schema-validation.md](auth-api-schema-validation.md).
 
 ## Site source
 
