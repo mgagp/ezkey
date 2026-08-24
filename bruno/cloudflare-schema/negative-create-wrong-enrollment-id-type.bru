@@ -1,0 +1,64 @@
+meta {
+  name: negative create wrong enrollmentId type
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url_integration_api}}/api/v1/auth-attempts
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{integrationKey}}
+  password: {{secretKey}}
+}
+
+headers {
+  Accept: application/problem+json
+}
+
+body:json {
+  {
+      "enrollmentId": "not-an-integer",
+      "challengeRequested": false
+  }
+}
+
+script:post-response {
+  test("Status is 4xx (schema or request validation)", function () {
+      expect(res.getStatus()).to.be.at.least(400);
+      expect(res.getStatus()).to.be.below(500);
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Deliberately invalid Integration create body: `enrollmentId` is a string, but the OpenAPI
+  schema requires `integer` (`int32`). A well-formed SDK or Demo App client cannot produce this
+  request. `challengeRequested` stays a valid boolean so the type mismatch is the probe.
+
+  Cloudflare validates request shape only (method, path, JSON body). It does not check API-key
+  validity, IP whitelist, or enrollment ownership. Dummy Basic credentials are enough for the
+  edge check.
+
+  **Use with environment `exp1`.** `base_url_integration_api` is
+  `https://exp1-integration-api.ezkey.org`.
+
+  On EXP1 Cloudflare schema validation **Block**, expect HTTP **403** Error **1020** (API Shield
+  / WAF). Bruno sends `Accept` JSON / problem+json, so the body is Cloudflare's RFC 9457 JSON
+  (`cloudflare_error: true`, `error_code: 1020`, `ray_id`, `type` under
+  `developers.cloudflare.com`), not an Ezkey `https://ezkey.io/problems/…` ProblemDetail.
+
+  A Spring ProblemDetail (`type` under `https://ezkey.io/problems/`, often HTTP 400 or 401)
+  means the request **reached origin** — not schema-Block evidence. That is the expected
+  outcome when Set action is **None** (product default). Against **local**, Jackson/Bean
+  Validation also returns 4xx; that is not a Cloudflare check.
+
+  **Do not add this request to `bruno-health.sh` suites.** Operator reading:
+  `docs/cloudflare/integration-api-schema-validation.md` § Reading responses.
+}

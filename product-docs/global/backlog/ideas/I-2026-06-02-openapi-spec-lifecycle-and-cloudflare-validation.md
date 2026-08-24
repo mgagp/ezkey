@@ -53,9 +53,12 @@ client.
   - Verify downstream generation impact for mobile Orval and the JavaScript Auth SDK.
   - Record that Bruno (and leftover Postman) remain environment-driven unless endpoint contracts
     change.
+  - Integration API EXP1 slice: host-neutral canonical spec, one-host Cloudflare artifact, and
+    operator upload on `https://exp1-integration-api.ezkey.org`
+    (`TB-2026-08-23-integration-api-cloudflare-schema`).
 - **Out of scope:**
   - Immediate automated Cloudflare schema upload.
-  - Immediate rollout to Admin API and Integration API.
+  - Immediate Admin API Cloudflare upload (Integration EXP1 is the current slice).
   - Broad Postman variable cleanup.
   - Cloudflare blocking enforcement before observation evidence exists.
   - Treating deployment-localized specs as auditable release artifacts before the manual workflow
@@ -100,16 +103,24 @@ client.
 First Auth API slice is implemented. EXP1 schema is uploaded. Mitigation on EXP1 is **Block**
 (maintainer-only exception, 2026-08-23). Product default elsewhere remains None.
 
-- Tracer bullet: [`TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md`](../TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md)
-- Next-phase context (Admin / Integration rollout): [`TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md`](../TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md)
-- Operator runbook: [`docs/cloudflare/auth-api-schema-validation.md`](../../../../docs/cloudflare/auth-api-schema-validation.md)
+- Tracer bullet (Auth): [`TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md`](../TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md)
+- Tracer bullet (Integration EXP1): [`TB-2026-08-23-integration-api-cloudflare-schema.md`](../TB-2026-08-23-integration-api-cloudflare-schema.md)
+- Next-phase context (Admin still deferred): [`TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md`](../TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md)
+- Operator runbook (Auth): [`docs/cloudflare/auth-api-schema-validation.md`](../../../../docs/cloudflare/auth-api-schema-validation.md)
+- Operator runbook (Integration): [`docs/cloudflare/integration-api-schema-validation.md`](../../../../docs/cloudflare/integration-api-schema-validation.md)
 
 ## Close-out notes (2026-08-23)
 
 - Host-neutral Auth canonical spec + EXP1 packaging path are in repo.
-- EXP1 Cloudflare upload succeeded; Set action is Block (EXP1-only exception).
-- Do not start Admin / Integration normalize until Auth EXP1 Block/None evidence is recorded.
-  Do not assume Block is the next-host default.
+- EXP1 Auth Cloudflare upload succeeded; Set action is Block (EXP1-only exception).
+- Integration EXP1 is uploaded and on **Block** (maintainer-only exception, 2026-08-23),
+  same reason as Auth. Schema `ezkey-integration-api-exp1`
+  (`bf5cab36-d09c-4b0e-b551-5c23bc17682f`). Functional check: schema-invalid create → 403 /
+  1020; schema-valid create with dummy Basic → origin 401. See
+  [`TB-2026-08-23-integration-api-cloudflare-schema.md`](../TB-2026-08-23-integration-api-cloudflare-schema.md).
+- Admin Cloudflare upload remains deferred pending analysis (plan size, body-inspection limit,
+  contract volatility). Optional Admin host-neutral `servers` strip is not in the Integration
+  slice.
 - `product-docs/global/spec-test-traceability.md` is unchanged: no endpoint contract change.
 
 ## Traceability notes
@@ -128,8 +139,10 @@ First Auth API slice is implemented. EXP1 schema is uploaded. Mitigation on EXP1
 
 - Source working plan: GitHub prompt deleted in the 2026-08 corpus-ablation pass; this idea and the linked V/TB are canon.
 - First tracer bullet: [`TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md`](../TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md)
+- Integration tracer bullet: [`TB-2026-08-23-integration-api-cloudflare-schema.md`](../TB-2026-08-23-integration-api-cloudflare-schema.md)
 - Next-phase context: [`TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md`](../TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md)
-- Operator runbook: [`../../../../docs/cloudflare/auth-api-schema-validation.md`](../../../../docs/cloudflare/auth-api-schema-validation.md)
+- Operator runbook (Auth): [`../../../../docs/cloudflare/auth-api-schema-validation.md`](../../../../docs/cloudflare/auth-api-schema-validation.md)
+- Operator runbook (Integration): [`../../../../docs/cloudflare/integration-api-schema-validation.md`](../../../../docs/cloudflare/integration-api-schema-validation.md)
 - Auth OpenAPI config: [`../../../../ezkey-auth-api/src/main/java/org/ezkey/auth/config/OpenApiConfig.java`](../../../../ezkey-auth-api/src/main/java/org/ezkey/auth/config/OpenApiConfig.java)
 - Spec update script: [`../../../../scripts/update-specs.sh`](../../../../scripts/update-specs.sh)
 - EXP1 Caddy host source: [`../../../../experimental-hybrid/lightsail/Caddyfile`](../../../../experimental-hybrid/lightsail/Caddyfile)

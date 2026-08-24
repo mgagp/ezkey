@@ -181,7 +181,8 @@ Cloudflare format and `Accept` negotiation:
 ## What this does not prove
 
 - Ed25519 verification of `instanceInfoPayloadSignedByIntegration`
-- Admin API or Integration API schema validation
+- Admin API schema validation (Integration EXP1 is a sibling runbook:
+  [integration-api-schema-validation.md](integration-api-schema-validation.md))
 - Automated schema deploy from Lightsail
 - That **Block** is the product default outside this EXP1 maintainer-only exception
 
