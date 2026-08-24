@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Module: instanceInfoApi
- * Description: Enrolled signed instance-info (Auth API) and legacy public GET helper.
+ * Description: Enrolled signed instance-info (Auth API). Public GET helper has no first-party caller.
  * @since 2025
  */
 
@@ -35,15 +35,16 @@ export type FetchVerifiedInstanceInfoParams = {
 /**
  * Lightweight wrapper around Auth API instance-info endpoints.
  *
- * Enrolled clients must use {@link fetchVerifiedInstanceInfo} (signed POST). The public GET is
- * retained only for non-enrolled / operator tooling and must not be used as a fallback on the
- * enrolled path.
+ * Enrolled clients must use {@link fetchVerifiedInstanceInfo} (signed POST). The public GET helper
+ * has no first-party mobile caller; do not use it as a fallback on the enrolled path. Possible Auth
+ * GET retirement: I-2026-08-23-auth-unsigned-public-instance-info-retirement.
  *
  * @since 2025
  */
 export const instanceInfoApi = {
   /**
-   * Fetches unsigned public installation metadata (not for enrolled refresh paths).
+   * Fetches unsigned public installation metadata. Not for enrolled refresh paths; no first-party
+   * mobile caller.
    *
    * @param authUrl Optional Auth API base URL.
    * @return Public Ezkey installation metadata.

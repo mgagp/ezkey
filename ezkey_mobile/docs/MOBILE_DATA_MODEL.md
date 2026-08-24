@@ -76,7 +76,7 @@ Product-docs summary: [`data-model-and-persistence.md`](../../product-docs/compo
 
 | Concept | Purpose | Source | Persisted | Sensitive |
 | --- | --- | --- | --- | --- |
-| `PublicInstanceInfoResponse` | Public installation branding metadata from Auth API | `instanceInfoApi.get(...)` | Indirectly, after normalization into installation summary fields | No |
+| `PublicInstanceInfoResponse` | Installation branding fields after signed enrolled instance-info verifies | `fetchVerifiedInstanceInfo(...)` | Indirectly, after normalization into installation summary fields | No |
 | `Installation` | Local **trust zone** for one Ezkey site (identity = normalized Auth URL) | Derived from normalized `authUrl`; optional `instance-info` enriches display only | Yes, nested inside each enrollment record (pragmatic packaging) | No |
 | `EnrollmentSummary` | Core local view of an enrolled device that **belongs to** one installation | Local mobile contract layer in `app/services/api/types.ts` | Yes | Mostly no |
 | `StoredEnrollment` | Runtime enrollment record used by Home, Detail, and auth flows | `EnrollmentSummary` plus secure proof-token material and integration verification metadata | Yes, after secure rehydration | Yes, because it contains `enrollmentProofToken` and `integrationPublicKey` |
@@ -121,7 +121,7 @@ attempt, respond intent) remains in-memory only.
 
 `Installation` is the mobile app’s first-class local representation of an Ezkey site / trust zone. Its **identity
 anchor is always the normalized Auth API URL** (`normalizeInstallationId` / `validateAuthUrl`). Mutable public
-branding from `instance-info` (`name`, `description`, `aboutUrl`) enriches Home and Detail only; it never replaces
+branding from signed enrolled instance-info (`name`, `description`, `aboutUrl`) enriches Home and Detail only; it never replaces
 URL identity and must never be treated as a cryptographic trust anchor.
 
 There is **no installation UUID**. Uniqueness of a trust zone is the normalization contract (host case, trailing
@@ -133,9 +133,9 @@ when branding was missing on one enrollment path.
 | `installation.id` | Canonical trust-zone identifier (= normalized Auth URL) | `normalizeInstallationId(authUrl)` | Yes | Not shown directly |
 | `installation.authUrl` | Effective Auth API base URL for the installation | QR payload override or global environment fallback | Yes | Detail screen technical server block |
 | `installation.host` | Host component of the effective Auth API URL | Derived from `authUrl` | Yes | Home installation headers, Detail hint |
-| `installation.name` | Human-facing installation name | Public instance-info response or host fallback | Yes | Home installation headers, Detail identity zone |
-| `installation.description` | Installation description text | Public instance-info response | Yes | Home installation headers, Detail description line |
-| `installation.aboutUrl` | About URL for the installation | Public instance-info response | Yes | Not currently displayed in primary flow |
+| `installation.name` | Human-facing installation name | Signed enrolled instance-info or host fallback | Yes | Home installation headers, Detail identity zone |
+| `installation.description` | Installation description text | Signed enrolled instance-info | Yes | Home installation headers, Detail description line |
+| `installation.aboutUrl` | About URL for the installation | Signed enrolled instance-info | Yes | Not currently displayed in primary flow |
 | `installation.lastRefreshedAt` | Timestamp for local metadata freshness | Local refresh process | Yes | Not shown directly |
 
 Display fields may refresh silently when stale. Identity fields (`id`, `authUrl`) stay tied to URL normalization.
@@ -146,8 +146,8 @@ Enrollment → installation association is ownership, not optional UI decoration
 
 1. Resolve the effective `authUrl` from the QR payload override or the configured mobile environment fallback.
 2. Normalize that URL with `validateAuthUrl()` / `normalizeInstallationId()` — that value **is** the trust-zone id.
-3. Build or hydrate the `Installation` object from the normalized URL plus any cached or freshly fetched public
-  instance-info metadata (branding only).
+3. Build or hydrate the `Installation` object from the normalized URL plus any cached or freshly fetched
+  signed enrolled instance-info metadata (branding only; never the unsigned public GET).
 4. Persist the resulting `installation` object inside `StoredEnrollment` (nested packaging).
 5. Group Home data by `installation.id`, then by tenant metadata inside each installation.
 

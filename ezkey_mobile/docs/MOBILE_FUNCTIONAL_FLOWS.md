@@ -42,7 +42,7 @@ flowchart TD
 | 6 | Enrollment Wizard | App ensures device key pair and prepares request | None | Device public key and storage tier derived locally | Device signs canonical verify payload | Verify request ready |
 | 7 | Enrollment Wizard | Wizard submits verify | `POST /api/v1/enrollments/verify` | None yet | None before response | Verify response received |
 | 8 | Enrollment Wizard | App validates verify result | None | Installation metadata may be fetched and assembled | Verify-result signature checked with stored integration public key | Enrollment completion becomes trustworthy |
-| 9 | Enrollment Wizard | App persists record | Optional `GET /api/v1/public/instance-info` | `StoredEnrollment` written locally | None beyond prior checks | Wizard clears state and returns to Home |
+| 9 | Enrollment Wizard | App persists record | Optional signed `POST /api/v1/enrollments/instance-info` | `StoredEnrollment` written locally | Integration signature verified before branding apply; host-only fallback if unavailable | Wizard clears state and returns to Home |
 
 ## Enrollment Exception Flow
 

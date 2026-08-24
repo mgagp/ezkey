@@ -121,7 +121,15 @@ HTTP **4xx** and **5xx** responses from the Auth API use **RFC 9457** Problem De
 
 **Base path:** `GET http://localhost:8080/api/v1/public/instance-info` (no `Authorization` header, no cryptographic signature).
 
-Returns the same read-only JSON as the Admin API public instance-info (see **§2 Admin API — Public instance metadata**). Mobile clients can use this endpoint on the **Auth API** base URL so they do not depend on the Admin API.
+**Posture:** This Auth GET is **not** the official mobile display path. Branding shown in the official app after enrollment comes only from **Enrolled instance-info** below (integration-signed POST). Do not treat this GET as a trust anchor, and do not use it as a fallback on the enrolled path.
+
+| Surface | Role |
+| ----- | ----- |
+| `POST /api/v1/enrollments/instance-info` (Auth) | Enrolled branding. Official mobile verifies the integration Ed25519 signature before applying `instanceName` / `instanceDescription` / `aboutUrl`. |
+| `GET /api/v1/public/instance-info` (Auth) | Unsigned. Operators, reachability probes, Bruno `g0`. Same JSON as Admin. Possible later retirement: [`I-2026-08-23-auth-unsigned-public-instance-info-retirement`](../product-docs/global/backlog/ideas/I-2026-08-23-auth-unsigned-public-instance-info-retirement.md). |
+| `GET /api/v1/public/instance-info` (Admin) | Same JSON on the Admin host. Admin UI login / header. Out of Auth-surface retirement scope. |
+
+Returns the same read-only JSON as the Admin API public instance-info (see **§2 Admin API — Public instance metadata**).
 
 | Field | Source | Notes |
 | ----- | ------ | ----- |
@@ -135,6 +143,10 @@ Configure these properties on the Auth API process (e.g. `EZKEY_QR_AUTH_BASE_URL
 ### Enrolled instance-info (integration-signed)
 
 **Base path:** `POST http://localhost:8080/api/v1/enrollments/instance-info`
+
+**Posture:** Official mobile display path after enrollment (wizard post-verify and Home stale /
+incomplete refresh). Verify the integration signature before applying branding; never fall back to
+the unsigned public GET.
 
 Returns the same branding fields as public instance-info, plus `enrollmentId` and an Ed25519
 signature (`instanceInfoPayloadSignedByIntegration`) over the canonical `INSTANCE_INFO` payload
@@ -331,7 +343,9 @@ See **Error responses (RFC 9457)** above. Verification failures return **400** o
 
 **Base path:** `GET http://localhost:9080/api/v1/public/instance-info` (no `Authorization` header).
 
-Returns read-only JSON for the Admin UI login shell and operators:
+Returns read-only JSON for the Admin UI login shell and operators. This is the **Admin** host copy
+of the same DTO; official mobile branding does **not** call this endpoint (see **§1** Auth public
+vs enrolled instance-info).
 
 | Field | Source | Notes |
 | ----- | ------ | ----- |

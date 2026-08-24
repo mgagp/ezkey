@@ -6,8 +6,8 @@
 - **Status:** `active`
 - **Priority:** `P2`
 - **Created at:** `2026-08-09`
-- **Updated at:** `2026-08-09`
-- **Last reviewed at:** `2026-08-09`
+- **Updated at:** `2026-08-23`
+- **Last reviewed at:** `2026-08-23`
 - **Component tags:** `mobile`, `auth-api`, `core`, `docs`, `security`
 - **Captured by:** Marc
 - **GitHub issue:** none
@@ -66,6 +66,12 @@ server-advertised labels used for social engineering — while keeping the exist
 | After successful verify (wizard) | Best-effort unsigned `instanceInfoApi.get(authUrl)` then `buildInstallation`; on failure keep host-only installation ([`useEnrollmentWizard.ts`](../../../../ezkey_mobile/app/hooks/useEnrollmentWizard.ts)) |
 | Home load | One unsigned call per stale/incomplete trust zone; deduped by installation id ([`useRefreshInstallationMetadata`](../../../../ezkey_mobile/app/hooks/useEnrollments.ts), [`installationMetadata.ts`](../../../../ezkey_mobile/app/utils/installationMetadata.ts)) |
 | Skipped | No enrollments; fresh complete metadata; missing resolvable Auth URL |
+
+**Posture as of 2026-08-23:** the first TB is implemented in code. Official mobile wizard post-verify
+and Home refresh use signed `POST /api/v1/enrollments/instance-info` only; no unsigned GET fallback.
+The table above is the pre-TB snapshot. Honesty UI + branding-change confirmation remain on this
+idea. Possible later retirement of Auth unsigned GET is a separate captured idea:
+[`I-2026-08-23-auth-unsigned-public-instance-info-retirement`](I-2026-08-23-auth-unsigned-public-instance-info-retirement.md).
 
 Post-verify fetch already runs **after** the mobile holds `integrationPublicKey` from bind — so a
 signed branding response on the enrolled path does not require a new chicken-egg key.
@@ -159,6 +165,8 @@ stay on this idea as a follow-up slice after the TB promotes.
 
 - Tracer bullet:
   [`TB-2026-08-09-mobile-signed-instance-info.md`](../TB-2026-08-09-mobile-signed-instance-info.md)
+- Later Auth GET retirement (not this idea):
+  [`I-2026-08-23-auth-unsigned-public-instance-info-retirement`](I-2026-08-23-auth-unsigned-public-instance-info-retirement.md)
 - Adjacent transport hardening:
   [`I-2026-07-25-mobile-certificate-pinning-middle-path.md`](I-2026-07-25-mobile-certificate-pinning-middle-path.md),
   [`V-2026-0006-mobile-certificate-pinning`](../../vision/V-2026-0006-mobile-certificate-pinning.md)
