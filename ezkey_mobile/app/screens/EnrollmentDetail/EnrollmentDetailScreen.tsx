@@ -21,7 +21,6 @@ import {
   View,
 } from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import axios from 'axios';
 import {useTranslation} from 'react-i18next';
 import {
   useDeleteEnrollment,
@@ -29,6 +28,7 @@ import {
   useMarkEnrollmentPendingChecked,
 } from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
+import {userFacingAuthApiError} from '../../services/api/authApiProblem';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 import {claimPendingAttempt} from '../../services/pendingAuth/claimPendingAttempt';
 
@@ -77,18 +77,9 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
 
   const extractErrorMessage = useCallback(
     (error: unknown) => {
-      if (axios.isAxiosError(error)) {
-        return (
-          error.response?.data?.message ??
-          error.response?.data?.error ??
-          error.message ??
-          t('pendingAuth.requestFailed')
-        );
-      }
-      if (error instanceof Error) {
-        return error.message;
-      }
-      return t('pendingAuth.unexpectedError');
+      const fallback =
+        error instanceof Error ? t('pendingAuth.requestFailed') : t('pendingAuth.unexpectedError');
+      return userFacingAuthApiError(error, fallback);
     },
     [t],
   );

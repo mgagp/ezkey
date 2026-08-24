@@ -42,7 +42,10 @@ settings {
 }
 
 docs {
-  Returns read-only instance metadata for branding and mobile visibility.
+  Returns unsigned read-only instance metadata for operators and reachability probes.
+  
+  **Not** the official mobile display path. Enrolled branding uses signed
+  `POST /api/v1/enrollments/instance-info`.
   
   **No authentication required.** Same payload as Admin API `GET /api/v1/public/instance-info`.
   

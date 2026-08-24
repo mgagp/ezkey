@@ -36,7 +36,10 @@ Rules:
 | Enrollment verify | `POST /api/v1/enrollments/verify` | `EnrollmentVerifyRequestDto` | `EnrollmentVerifyResponseDto` | Enrollment Wizard |
 | Auth attempt pending | `POST /api/v1/auth-attempts/pending` | `AuthAttemptPendingRequestDto` | `AuthAttemptPendingResponseDto` or `204 No Content` | Pending Authentication |
 | Auth attempt respond | `POST /api/v1/auth-attempts/respond` | `AuthAttemptRespondRequestDto` | `AuthAttemptRespondResponseDto` | Pending Authentication |
-| Installation public info | `GET /api/v1/public/instance-info` | none | `PublicInstanceInfoResponseDto` | Enrollment Wizard and installation metadata refresh |
+| Installation branding (enrolled) | `POST /api/v1/enrollments/instance-info` | `EnrollmentInstanceInfoRequestDto` | `EnrollmentInstanceInfoResponseDto` | Enrollment Wizard (post-verify) and Home installation metadata refresh |
+
+Unsigned Auth `GET /api/v1/public/instance-info` is **not** used by this app. It remains an operator /
+probe surface. Canon: [../../docs/ENDPOINT.md](../../docs/ENDPOINT.md) § Public instance metadata.
 
 ## Enrollment Bind Mapping
 
@@ -147,7 +150,7 @@ metadata continues through the AsyncStorage-backed enrollment collection.
 | `StoredEnrollment.integrationPublicKey` | Bind response | Pending and respond verification | Securely rehydrated for future integration-signature checks. |
 | `StoredEnrollment.enrollmentProofToken` | Draft proof token | Pending flow | Sensitive enrollment token rehydrated from secure storage into the runtime local record. |
 | `StoredEnrollment.installation.authUrl` | QR or resolved installation URL | All subsequent API calls | Allows per-installation server targeting. |
-| `StoredEnrollment.installation` | `instanceInfoApi.get(...)` plus URL derivation | Home and Detail | Trust zone the enrollment belongs to; supports grouping and display. |
+| `StoredEnrollment.installation` | `fetchVerifiedInstanceInfo(...)` plus URL derivation | Home and Detail | Trust zone the enrollment belongs to; supports grouping and display. |
 
 ### Installation Association and Refresh Mapping
 
@@ -171,7 +174,8 @@ Association pipeline:
 1. Resolve the effective `authUrl` from QR or environment fallback.
 2. Normalize it into the canonical installation trust-zone identity.
 3. Build `installation` immediately, even if only host fallback metadata is available.
-4. Enrich it with `GET /api/v1/public/instance-info` when the call succeeds.
+4. Enrich it with signed `POST /api/v1/enrollments/instance-info` when the response signature verifies.
+   Do not fall back to unsigned `GET /api/v1/public/instance-info` on this path.
 5. Refresh stale installations opportunistically by installation ID so all enrollments sharing the same
 	installation receive the same updated metadata.
 
@@ -358,13 +362,13 @@ response updates a volatile latest-response summary for the enrollment and retur
 
 ## Notes on Contract Drift and Verification Rules
 
-- Auth API origin errors use RFC 9457 `type` URIs under `https://ezkey.io/problems/`. A
-  Cloudflare-fronted host (EXP1) may instead return edge JSON (403 / 1020, `cloudflare_error`).
-  User-visible `detail` is only for the Ezkey prefix; other Problem Details are transport /
-  installation-unreachable. Wire-protocol canon:
+- User-visible Auth API HTTP errors show RFC 9457 `detail` only when `type` is under
+  `https://ezkey.io/problems/` (origin Auth catalog). Other Problem Details, including
+  Cloudflare 1020 JSON, plus HTML or transport failures, use the generic localized fallback.
+  Structural parsing stays in `parseAuthApiProblemDetail`; production UI uses
+  `userFacingAuthApiError`. Wire-protocol canon:
   [`docs/MOBILE_DEVELOPER_GUIDE.md`](../../docs/MOBILE_DEVELOPER_GUIDE.md) § Error Handling
-  Expectations. Implementation of that allowlist is a separate mobile slice (not done in the
-  schema-validation TB).
+  Expectations.
 - The app intentionally validates `integrationKeyAlgorithm` during bind before trusting `integrationPublicKey`.
 - Home does not trigger `pending`; the explicit user path is Home -> Enrollment Detail -> Pending Authentication.
 - The current implementation persists `enrollmentProofToken` and `integrationPublicKey` through the secure secret delegate so later pending/respond trust checks can run without refetching bind state or leaving those values in AsyncStorage cleartext.

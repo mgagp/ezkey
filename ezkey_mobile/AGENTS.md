@@ -26,9 +26,11 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
   a successful delete-one, `navigation.goBack()` — exceptional cleanup, not a batch-delete loop.
 - Nested `installation` on each stored enrollment is the local trust zone. Identity is the
   normalized `authUrl` (`installation.id`). Do not re-flatten `installation*` onto enrollment,
-  and do not add a second persisted installation collection. Public `instance-info`
-  (`name` / `description` / `aboutUrl`) is display-only — never a cryptographic trust anchor
-  or identity. Canon: [`docs/MOBILE_DATA_MODEL.md`](docs/MOBILE_DATA_MODEL.md).
+  and do not add a second persisted installation collection. Enrolled branding
+  (`name` / `description` / `aboutUrl`) comes from signed
+  `POST /api/v1/enrollments/instance-info` and is display-only — never a cryptographic trust
+  anchor or identity. Do not call or fall back to public `GET /api/v1/public/instance-info` on
+  enrolled paths. Canon: [`docs/MOBILE_DATA_MODEL.md`](docs/MOBILE_DATA_MODEL.md).
 - Security first: proof tokens stay in memory or secure storage only.
 - Keep the pull model: no background polling for auth attempts.
 - Do not reintroduce integration logos or related fields.

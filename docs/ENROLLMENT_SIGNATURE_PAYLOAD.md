@@ -64,8 +64,10 @@ The JSON includes `enrollmentVerifyPayloadSignedByIntegration` (Ed25519) and `en
 
 The JSON includes `instanceInfoPayloadSignedByIntegration` (Base64URL Ed25519) plus the branding
 fields and `enrollmentId`. Enrolled clients reconstruct the payload from the JSON fields and verify
-with the stored integration public key before applying branding. Do not fall back to the unsigned
-public `GET /api/v1/public/instance-info` on the enrolled path.
+with the stored integration public key before applying branding. Official mobile uses this signed
+path for display; do not fall back to the unsigned public `GET /api/v1/public/instance-info` on the
+enrolled path. Role split and possible Auth GET retirement:
+[ENDPOINT.md](ENDPOINT.md) § Public instance metadata.
 
 ## Implementation references
 

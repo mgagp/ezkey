@@ -132,6 +132,9 @@ Keep `incubating` until:
 - Adjacent integrity track for enrolled instance-info refresh (complementary if version fields ride
   the same metadata family):
   [`I-2026-08-09-mobile-signed-instance-info-integrity.md`](I-2026-08-09-mobile-signed-instance-info-integrity.md)
+- Auth unsigned GET retirement is blocked while this idea still needs that GET as the discovery
+  vehicle:
+  [`I-2026-08-23-auth-unsigned-public-instance-info-retirement`](I-2026-08-23-auth-unsigned-public-instance-info-retirement.md)
 - Fail-open/fail-closed design compass:
   [`design-principles.md`](../../design-principles.md) §17,
   [`../../methodology/decisions/2026-07-18-fail-open-fail-closed-design-compass.md`](../../../methodology/decisions/2026-07-18-fail-open-fail-closed-design-compass.md)

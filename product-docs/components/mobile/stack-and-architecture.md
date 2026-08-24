@@ -19,7 +19,7 @@ This document describes the mobile app's technical structure at a level sufficie
 
 - **Platforms.** Android (primary for current release work) and iOS (alignment in progress).
 - **Default API targets.** `EZKEY_API_BASE_URL` in `.env` for local work; QR-embedded `authUrl` when enrollment is QR-first.
-- **Public instance metadata.** The app calls `GET /api/v1/public/instance-info` on the configured Auth base URL to surface instance branding without depending on the Admin API.
+- **Installation branding.** After enrollment, the app calls signed `POST /api/v1/enrollments/instance-info` on the enrollment `authUrl` (not the Admin API). Unsigned Auth `GET /api/v1/public/instance-info` is not a mobile display path.
 
 ## Module Layout
 
