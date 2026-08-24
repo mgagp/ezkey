@@ -7,7 +7,6 @@
  * RFC 9457 Problem Details parser and user-facing Auth API error tests.
  */
 
-import {AxiosError} from 'axios';
 import {
   isEzkeyProblemType,
   parseAuthApiProblemDetail,
@@ -27,14 +26,11 @@ const CLOUDFLARE_1020_BODY = {
   what_you_should_do: 'Do not retry. Contact the site owner.',
 };
 
-function axiosErrorWithData(data: unknown, status = 400): AxiosError {
-  return new AxiosError('Request failed with status code 400', AxiosError.ERR_BAD_REQUEST, undefined, undefined, {
-    status,
-    statusText: 'Bad Request',
-    headers: {},
-    config: {} as AxiosError['config'],
-    data,
-  });
+function httpErrorWithData(
+  data: unknown,
+  status = 400,
+): {response: {status: number; data: unknown}} {
+  return {response: {status, data}};
 }
 
 describe('parseAuthApiProblemDetail', () => {
@@ -101,7 +97,7 @@ describe('isEzkeyProblemType', () => {
 
 describe('userFacingAuthApiError', () => {
   it('shows origin detail when type is under the Ezkey namespace', () => {
-    const error = axiosErrorWithData({
+    const error = httpErrorWithData({
       type: 'https://ezkey.io/problems/auth/auth-attempt-binding-failed',
       title: 'Authentication request binding failed',
       status: 400,
@@ -113,7 +109,7 @@ describe('userFacingAuthApiError', () => {
   });
 
   it('returns the fallback for Cloudflare 1020 JSON and never leaks edge fields', () => {
-    const error = axiosErrorWithData(CLOUDFLARE_1020_BODY, 403);
+    const error = httpErrorWithData(CLOUDFLARE_1020_BODY, 403);
     const message = userFacingAuthApiError(error, FALLBACK);
     expect(message).toBe(FALLBACK);
     expect(message).not.toContain('1020');
@@ -124,19 +120,19 @@ describe('userFacingAuthApiError', () => {
   });
 
   it('returns the fallback for title-only, about:blank, HTML, and non-object bodies', () => {
-    expect(userFacingAuthApiError(axiosErrorWithData({title: 'Bad Request', status: 400}), FALLBACK)).toBe(
+    expect(userFacingAuthApiError(httpErrorWithData({title: 'Bad Request', status: 400}), FALLBACK)).toBe(
       FALLBACK,
     );
     expect(
       userFacingAuthApiError(
-        axiosErrorWithData({type: 'about:blank', detail: 'Generic failure'}),
+        httpErrorWithData({type: 'about:blank', detail: 'Generic failure'}),
         FALLBACK,
       ),
     ).toBe(FALLBACK);
     expect(
-      userFacingAuthApiError(axiosErrorWithData('<html><body>Error 1020</body></html>', 403), FALLBACK),
+      userFacingAuthApiError(httpErrorWithData('<html><body>Error 1020</body></html>', 403), FALLBACK),
     ).toBe(FALLBACK);
-    expect(userFacingAuthApiError(axiosErrorWithData(null, 502), FALLBACK)).toBe(FALLBACK);
+    expect(userFacingAuthApiError(httpErrorWithData(null, 502), FALLBACK)).toBe(FALLBACK);
     expect(userFacingAuthApiError(new Error('Network Error'), FALLBACK)).toBe(FALLBACK);
     expect(userFacingAuthApiError('not-json', FALLBACK)).toBe(FALLBACK);
   });
@@ -144,7 +140,7 @@ describe('userFacingAuthApiError', () => {
   it('returns the fallback when the Ezkey type has no usable detail', () => {
     expect(
       userFacingAuthApiError(
-        axiosErrorWithData({
+        httpErrorWithData({
           type: 'https://ezkey.io/problems/auth/auth-attempt-binding-failed',
           title: 'Authentication request binding failed',
         }),
