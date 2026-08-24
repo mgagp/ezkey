@@ -88,6 +88,7 @@
 		<caffeine.version>3.2.4</caffeine.version>
 		<tink.version>1.23.0</tink.version>
 		<shedlock.version>7.7.0</shedlock.version>
+		<javamelody.version>2.8.0</javamelody.version>
 		<ipaddress.version>5.6.2</ipaddress.version>
 		<license-maven-plugin.version>2.7.1</license-maven-plugin.version>
 	</properties>
@@ -199,6 +200,11 @@
 				<groupId>com.github.seancfoley</groupId>
 				<artifactId>ipaddress</artifactId>
 				<version>${ipaddress.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>net.bull.javamelody</groupId>
+				<artifactId>javamelody-spring-boot4-starter</artifactId>
+				<version>${javamelody.version}</version>
 			</dependency>
 
 			<!-- Modules internes -->
