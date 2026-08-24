@@ -16,10 +16,10 @@
 
 import {useCallback, useState} from 'react';
 import {Alert} from 'react-native';
-import axios from 'axios';
 import {useTranslation} from 'react-i18next';
 import {useSaveEnrollment} from './useEnrollments';
 import {enrollmentsApi} from '../services/api/enrollments';
+import {userFacingAuthApiError} from '../services/api/authApiProblem';
 import {fetchVerifiedInstanceInfo} from '../services/api/instanceInfo';
 import {BindEnrollmentResponse} from '../services/api/types';
 import {cryptoService} from '../services/crypto';
@@ -173,21 +173,11 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
 
   const extractErrorMessage = useCallback(
     (error: unknown): string => {
-      if (axios.isAxiosError(error)) {
-        const data = error.response?.data as Record<string, unknown> | undefined;
-        return (
-          (typeof data?.message === 'string' ? data.message : null) ??
-          (typeof data?.detail === 'string' ? data.detail : null) ??
-          (typeof data?.error === 'string' ? data.error : null) ??
-          (typeof data?.code === 'string' ? data.code : null) ??
-          error.message ??
-          t('enrollmentWizard.requestFailed')
-        );
-      }
-      if (error instanceof Error) {
-        return error.message;
-      }
-      return t('enrollmentWizard.unexpectedError');
+      const fallback =
+        error instanceof Error
+          ? t('enrollmentWizard.requestFailed')
+          : t('enrollmentWizard.unexpectedError');
+      return userFacingAuthApiError(error, fallback);
     },
     [t],
   );
