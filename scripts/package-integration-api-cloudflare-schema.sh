@@ -1,51 +1,48 @@
 #!/usr/bin/env bash
-# Package an EXP1-localized Auth API OpenAPI artifact for Cloudflare schema upload.
+# Package an EXP1-localized Integration API OpenAPI artifact for Cloudflare schema upload.
 #
 # Reads the host-neutral canonical spec and writes a deployment-localized copy with
-# exactly one server: https://exp1-auth-api.ezkey.org
+# exactly one server: https://exp1-integration-api.ezkey.org
 #
 # Cloudflare API Shield accepts OpenAPI 3.0 only. The packaging step therefore
 # downlevels OAS 3.1 nullable type arrays (["string","null"]) to type + nullable.
 #
 # Usage (from repo root, Git Bash):
-#   ./scripts/package-auth-api-cloudflare-schema.sh
-#   ./scripts/package-auth-api-cloudflare-schema.sh --output path/to/file.json
-#   ./scripts/package-auth-api-cloudflare-schema.sh --self-test
+#   ./scripts/package-integration-api-cloudflare-schema.sh
+#   ./scripts/package-integration-api-cloudflare-schema.sh --output path/to/file.json
+#   ./scripts/package-integration-api-cloudflare-schema.sh --self-test
 #
 # This script does not upload to Cloudflare and does not modify the canonical spec.
-# Upload: ./scripts/cloudflare/upload-auth-api-schema-exp1.sh --upload
-# Operator runbook: docs/cloudflare/auth-api-schema-validation.md
+# Upload: ./scripts/cloudflare/upload-integration-api-schema-exp1.sh --upload
+# Operator runbook: docs/cloudflare/integration-api-schema-validation.md
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CANONICAL="${EZKEY_AUTH_CANONICAL_SPEC:-$ROOT/specs/auth-api/openapi-spec.json}"
-DEFAULT_OUTPUT="$ROOT/specs/auth-api/deployments/exp1-cloudflare-openapi.json"
+CANONICAL="${EZKEY_INTEGRATION_CANONICAL_SPEC:-$ROOT/specs/integration-api/openapi-spec.json}"
+DEFAULT_OUTPUT="$ROOT/specs/integration-api/deployments/exp1-cloudflare-openapi.json"
 OUTPUT="$DEFAULT_OUTPUT"
-EXP1_SERVER_URL="https://exp1-auth-api.ezkey.org"
+EXP1_SERVER_URL="https://exp1-integration-api.ezkey.org"
 SELF_TEST=false
 
 EXPECTED_PATHS=(
-  "/api/v1/public/instance-info"
-  "/api/v1/enrollments/bind"
-  "/api/v1/enrollments/verify"
-  "/api/v1/enrollments/instance-info"
-  "/api/v1/auth-attempts/pending"
-  "/api/v1/auth-attempts/respond"
+  "/api/v1/auth-attempts"
+  "/api/v1/auth-attempts/{id}/wait"
+  "/api/v1/auth-attempts/{id}/cancel"
 )
 
 usage() {
   cat <<'EOF'
-Package an EXP1 Cloudflare Auth API schema from the canonical host-neutral spec.
+Package an EXP1 Cloudflare Integration API schema from the canonical host-neutral spec.
 
 Usage:
-  ./scripts/package-auth-api-cloudflare-schema.sh
-  ./scripts/package-auth-api-cloudflare-schema.sh --output path/to/file.json
-  ./scripts/package-auth-api-cloudflare-schema.sh --self-test
+  ./scripts/package-integration-api-cloudflare-schema.sh
+  ./scripts/package-integration-api-cloudflare-schema.sh --output path/to/file.json
+  ./scripts/package-integration-api-cloudflare-schema.sh --self-test
 
 Options:
   --output PATH   Write the localized artifact here (default:
-                  specs/auth-api/deployments/exp1-cloudflare-openapi.json)
+                  specs/integration-api/deployments/exp1-cloudflare-openapi.json)
   --self-test     Run fixture-based checks without touching the live spec
   --help          Show this help
 EOF
@@ -111,7 +108,7 @@ localize_spec() {
       end;
     walk(downlevel_nullable_type)
     | .openapi = "3.0.3"
-    | .servers = [{url: $url, description: "EXP1 Auth API"}]
+    | .servers = [{url: $url, description: "EXP1 Integration API"}]
   ' "$source_spec" | tr -d '\r' >"$dest_spec.tmp"
   mv "$dest_spec.tmp" "$dest_spec"
 }
@@ -159,20 +156,17 @@ run_self_test() {
   "openapi": "3.1.0",
   "info": { "title": "fixture", "version": "1.0.0" },
   "paths": {
-    "/api/v1/public/instance-info": {},
-    "/api/v1/enrollments/bind": {},
-    "/api/v1/enrollments/verify": {},
-    "/api/v1/enrollments/instance-info": {},
-    "/api/v1/auth-attempts/pending": {},
-    "/api/v1/auth-attempts/respond": {}
+    "/api/v1/auth-attempts": {},
+    "/api/v1/auth-attempts/{id}/wait": {},
+    "/api/v1/auth-attempts/{id}/cancel": {}
   },
   "components": {
     "schemas": {
-      "PublicInstanceInfoResponseDto": {
+      "AuthAttemptCreateRequestDto": {
         "type": "object",
         "properties": {
-          "aboutUrl": { "type": ["string", "null"] },
-          "authAttemptChallengeResponse": { "type": ["integer", "null"], "format": "int32" }
+          "userIdentifier": { "type": ["string", "null"] },
+          "enrollmentId": { "type": ["integer", "null"], "format": "int32" }
         }
       }
     }
@@ -190,12 +184,12 @@ EOF
   assert_expected_paths "$tmp/localized.json"
   assert_same_paths "$tmp/canonical.json" "$tmp/localized.json"
   assert_cloudflare_oas30 "$tmp/localized.json"
-  if [ "$(jq -r '.components.schemas.PublicInstanceInfoResponseDto.properties.aboutUrl.type' "$tmp/localized.json")" != "string" ]; then
-    echo "error: self-test expected aboutUrl.type string after OAS 3.0 downlevel" >&2
+  if [ "$(jq -r '.components.schemas.AuthAttemptCreateRequestDto.properties.userIdentifier.type' "$tmp/localized.json")" != "string" ]; then
+    echo "error: self-test expected userIdentifier.type string after OAS 3.0 downlevel" >&2
     exit 1
   fi
-  if [ "$(jq -r '.components.schemas.PublicInstanceInfoResponseDto.properties.aboutUrl.nullable' "$tmp/localized.json")" != "true" ]; then
-    echo "error: self-test expected aboutUrl.nullable true after OAS 3.0 downlevel" >&2
+  if [ "$(jq -r '.components.schemas.AuthAttemptCreateRequestDto.properties.userIdentifier.nullable' "$tmp/localized.json")" != "true" ]; then
+    echo "error: self-test expected userIdentifier.nullable true after OAS 3.0 downlevel" >&2
     exit 1
   fi
   echo "self-test passed"
@@ -212,7 +206,7 @@ package_from_canonical() {
     exit 1
   fi
   if jq -e '.servers != null' "$CANONICAL" >/dev/null; then
-    echo "warning: canonical spec still has top-level servers; run ./scripts/update-specs.sh --auth-only" >&2
+    echo "warning: canonical spec still has top-level servers; run ./scripts/update-specs.sh --integration-only" >&2
   fi
 
   localize_spec "$CANONICAL" "$OUTPUT"

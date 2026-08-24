@@ -38,13 +38,18 @@ while Auth calls go to EXP1. Integration management (`7081`) has no public EXP1 
 
 For Cloudflare Auth schema **Block** on EXP1, select environment **exp1**, then
 `public-auth/get-public-instance-info` (positive) and
-`cloudflare-schema/negative-bind-wrong-enrollment-id-type` (negative). Do not treat
-`./scripts/bruno-health.sh --suite g0` as Cloudflare evidence.
+`cloudflare-schema/negative-bind-wrong-enrollment-id-type` (negative). For Integration,
+`cloudflare-schema/negative-create-wrong-enrollment-id-type` uses
+`base_url_integration_api`. Product default on Integration is **None**; 1020 appears only if
+the operator sets Block. Do not treat `./scripts/bruno-health.sh --suite g0` as Cloudflare
+evidence.
 
-**How to read EXP1 error JSON:** a schema-valid Auth failure is origin RFC 9457
+**How to read EXP1 error JSON:** a schema-valid Auth or Integration failure is origin RFC 9457
 (`type` starts with `https://ezkey.io/problems/`). A schema **Block** is Cloudflare 403 / 1020
 (`cloudflare_error: true`). Same hostname, two contracts — see
 [`docs/cloudflare/auth-api-schema-validation.md`](../docs/cloudflare/auth-api-schema-validation.md)
+and
+[`docs/cloudflare/integration-api-schema-validation.md`](../docs/cloudflare/integration-api-schema-validation.md)
 § Reading responses.
 
 Port map: [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md).
@@ -85,7 +90,7 @@ Each former Postman collection is a folder (138 requests total), for example:
 - `auth-attempts-auth/` — numbered pending/respond + Crypto oracle
 - `crypto/` — Crypto API surface
 - `auth-attempts-integration-api/` — M2M Basic auth
-- `cloudflare-schema/` — EXP1 Auth schema-validation probes (not part of health suites)
+- `cloudflare-schema/` — EXP1 Auth and Integration schema-validation probes (not part of health suites)
 - Admin catalogs: `tenants-admin`, `integrations-admin`, `enrollments-admin`, …
 
 ## Maintainer notes

@@ -1,5 +1,5 @@
 {
-  "openapi": "3.1.0",
+  "openapi": "3.0.3",
   "info": {
     "title": "Ezkey Integration API",
     "description": "Integration API for auth attempt lifecycle operations (create / wait / cancel) authenticated via API key (machine-to-machine). Ezkey is intentionally distinct from FIDO2/WebAuthn and uses its own cryptographic MFA model.",
@@ -471,5 +471,11 @@
         "scheme": "basic"
       }
     }
-  }
+  },
+  "servers": [
+    {
+      "url": "https://exp1-integration-api.ezkey.org",
+      "description": "EXP1 Integration API"
+    }
+  ]
 }

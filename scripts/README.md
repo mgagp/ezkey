@@ -70,6 +70,7 @@ Current health probe behavior:
 
 - [`cloudflare/deploy-ezkey-org-preview.sh`](cloudflare/deploy-ezkey-org-preview.sh) — deploy [`sites/ezkey-org/`](../sites/ezkey-org/) to Cloudflare Pages as a **preview** (requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`). See [`docs/cloudflare/ezkey-org-site.md`](../docs/cloudflare/ezkey-org-site.md).
 - [`cloudflare/deploy-ezkey-org-production.sh`](cloudflare/deploy-ezkey-org-production.sh) — deploy the same folder to the Pages **production** branch (serves the custom domain, e.g. `ezkey.org`, when configured in Cloudflare). Same environment variables.
+- [`cloudflare/upload-auth-api-schema-exp1.sh`](cloudflare/upload-auth-api-schema-exp1.sh) / [`cloudflare/upload-integration-api-schema-exp1.sh`](cloudflare/upload-integration-api-schema-exp1.sh) — API Shield schema list/upload/delete (`CLOUDFLARE_API_SHIELD_TOKEN`, not the Pages token).
 
 ## Initial Problem
 
@@ -175,25 +176,31 @@ Ezkey now uses a centralized approach for managing OpenAPI specifications. All s
 #### Available Options
 - `--admin-only` : Update only admin-api specification
 - `--auth-only` : Update only auth-api specification
+- `--integration-only` : Update only integration-api specification
 - `--all` : Update all specifications (default)
 - `--help` : Display help
 
-Auth API canonical output is host-neutral: `update-specs.sh --auth-only` strips top-level
-`servers` after fetch. Do not put EXP1 or localhost hosts back into Java `@Server` annotations.
-To build the EXP1 Cloudflare upload artifact:
+Auth API and Integration API canonical output is host-neutral: `update-specs.sh --auth-only`
+and `--integration-only` strip top-level `servers` after fetch. Do not put EXP1 or localhost
+hosts back into Java `@Server` annotations. To build the EXP1 Cloudflare upload artifacts:
 
 ```bash
 ./scripts/package-auth-api-cloudflare-schema.sh
 ./scripts/cloudflare/upload-auth-api-schema-exp1.sh --list
+./scripts/package-integration-api-cloudflare-schema.sh
+./scripts/cloudflare/upload-integration-api-schema-exp1.sh --list
 ```
 
-See [`docs/cloudflare/auth-api-schema-validation.md`](../docs/cloudflare/auth-api-schema-validation.md).
+See [`docs/cloudflare/auth-api-schema-validation.md`](../docs/cloudflare/auth-api-schema-validation.md)
+and [`docs/cloudflare/integration-api-schema-validation.md`](../docs/cloudflare/integration-api-schema-validation.md).
 
 ## Additional Scripts
 
 - `format-specs.sh` - Format existing JSON specifications for better readability
 - `package-auth-api-cloudflare-schema.sh` - EXP1-localized Auth API schema for Cloudflare upload
 - `cloudflare/upload-auth-api-schema-exp1.sh` - list or upload that artifact (`CLOUDFLARE_API_SHIELD_TOKEN`)
+- `package-integration-api-cloudflare-schema.sh` - EXP1-localized Integration API schema for Cloudflare upload
+- `cloudflare/upload-integration-api-schema-exp1.sh` - list or upload that artifact (same shield token; does not delete Auth)
 
 ## Recommended Workflow
 

@@ -14,12 +14,6 @@
     },
     "version": "1.0.0"
   },
-  "servers": [
-    {
-      "url": "http://localhost:7080",
-      "description": "Generated server url"
-    }
-  ],
   "security": [
     {
       "ApiKeyAuth": []

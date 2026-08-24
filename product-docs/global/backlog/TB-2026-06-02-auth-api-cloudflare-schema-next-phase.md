@@ -1,11 +1,13 @@
 # Next-phase context — OpenAPI Cloudflare schema after Auth API first slice
 
-Resume notes for Admin API and Integration API host-neutral rollout. Do not start that
-work until EXP1 Auth schema-validation evidence (upload + maintainer tests) is recorded.
+Resume notes after the Auth first slice. Integration EXP1 is the next executable slice
+(`TB-2026-08-23-integration-api-cloudflare-schema`). Admin Cloudflare upload stays deferred.
 
 - **Parent idea:** `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation`
 - **First slice:** `TB-2026-06-02-auth-api-cloudflare-schema-first-slice`
+- **Integration slice:** `TB-2026-08-23-integration-api-cloudflare-schema`
 - **Created at:** `2026-08-23`
+- **Updated at:** `2026-08-23`
 
 ## What the Auth slice proved
 
@@ -38,19 +40,30 @@ Still useful to record from maintainer tests: schema-validation events on
 
 Runbook: [`docs/cloudflare/auth-api-schema-validation.md`](../../../docs/cloudflare/auth-api-schema-validation.md).
 
-## How to generalize (next slice, not this one)
+## How to generalize
 
-1. Keep Admin API and Integration API annotations free of deployment hosts (Integration already
-   has no `@Server`; Springdoc still emits localhost).
-2. Extend `update-specs.sh` normalize to those APIs only after Auth observe evidence is in.
-3. Add one packaging target per public hostname (do not put multiple hosts in one Cloudflare
+Integration EXP1 copied the Auth recipe and is uploaded. Mitigation on
+`exp1-integration-api.ezkey.org` is **Block** (2026-08-23 maintainer-only exception, same
+reason as Auth). Escape hatch remains None. Do not treat that as the Admin or later-host
+default.
+
+Admin remains the later analysis, not this Integration slice:
+
+1. Keep Admin API annotations free of deployment hosts (optional cheap `del(.servers)` only if
+   it stays a script change with no Admin Cloudflare upload).
+2. One packaging target per public hostname (do not put multiple hosts in one Cloudflare
    artifact).
-4. Leave Bruno / leftover Postman on environment base URLs.
-5. Automate Cloudflare upload only after the manual Auth path shows stable schema IDs and no
-   false drops.
+3. Leave Bruno / leftover Postman on environment base URLs.
+4. Do not couple schema upload to Lightsail deploy.
+5. Admin upload waits on plan size, Cloudflare body-inspection limit, and Admin contract
+   volatility.
 
-## Out of scope until EXP1 maintainer evidence exists
+## Out of scope for the Integration slice
 
-- Copying EXP1 Block to Admin API, Integration API, or a multi-user host
+- Copying EXP1 Auth Block to Integration or Admin by default
+- Admin API Cloudflare upload
 - Coupling schema upload to Lightsail deploy
 - Treating localized specs as versioned release artifacts
+
+Integration runbook:
+[`docs/cloudflare/integration-api-schema-validation.md`](../../../docs/cloudflare/integration-api-schema-validation.md).

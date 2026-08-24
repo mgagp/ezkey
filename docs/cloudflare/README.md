@@ -15,6 +15,7 @@ This directory holds **workflow notes, scope, and time-horizon planning** for us
 | Admin UI CSP, split UI/API deployment, mirroring headers at the edge | [admin-ui-security.md](../admin-ui-security.md) |
 | Admin UI on Cloudflare Pages (build, CORS on API, Wrangler, edge headers) | [admin-ui-pages.md](admin-ui-pages.md) |
 | Auth API EXP1 schema validation (package + upload script; EXP1 Block exception) | [auth-api-schema-validation.md](auth-api-schema-validation.md) |
+| Integration API EXP1 schema validation (package + upload script; default None) | [integration-api-schema-validation.md](integration-api-schema-validation.md) |
 
 ## Repository root `.env`
 
@@ -32,12 +33,16 @@ Wrangler deploy scripts source a gitignored **`.env`** at the **repository root*
 | [cleanup-ezkey-org-previews.sh](../../scripts/cloudflare/cleanup-ezkey-org-previews.sh) | Legacy: list/delete **all** preview deployments for `ezkey-org` (no age filter). Prefer `cleanup-pages-deployments.sh`. |
 | [cleanup-methodology-previews.sh](../../scripts/cloudflare/cleanup-methodology-previews.sh) | Legacy: same as above for `methodology-ezkey-org`. Prefer `cleanup-pages-deployments.sh`. |
 | [upload-auth-api-schema-exp1.sh](../../scripts/cloudflare/upload-auth-api-schema-exp1.sh) | List, upload, or delete Auth API schemas (`--list` / `--upload` / `--delete <id>`). Requires `CLOUDFLARE_API_SHIELD_TOKEN`. Does not use Wrangler or the Pages token. |
+| [upload-integration-api-schema-exp1.sh](../../scripts/cloudflare/upload-integration-api-schema-exp1.sh) | List, upload, or delete Integration API schemas (`--list` / `--upload` / `--delete <id>`). Same shield token. Refuses to delete the Auth schema. |
 
 Add more scripts here only when a **repeated** automation need appears (e.g. standardized production promotion, DNS verification).
 
-Auth API schema packaging (local, no Cloudflare call):
+Schema packaging (local, no Cloudflare call):
 [`scripts/package-auth-api-cloudflare-schema.sh`](../../scripts/package-auth-api-cloudflare-schema.sh)
-— see [auth-api-schema-validation.md](auth-api-schema-validation.md).
+and
+[`scripts/package-integration-api-cloudflare-schema.sh`](../../scripts/package-integration-api-cloudflare-schema.sh)
+— see [auth-api-schema-validation.md](auth-api-schema-validation.md) and
+[integration-api-schema-validation.md](integration-api-schema-validation.md).
 
 ## Site source
 
