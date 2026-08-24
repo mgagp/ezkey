@@ -54,16 +54,24 @@ the uploaded artifact is not the localized package. Stop and regenerate.
 
 ## Cloudflare upload
 
-Dashboard labels move; look for **API Shield** / **Schema validation** on the zone that fronts
-`exp1-auth-api.ezkey.org`.
+Preferred path (Git Bash, repo-root `.env` with `CLOUDFLARE_API_SHIELD_TOKEN`):
 
-1. Open schema validation for that hostname.
-2. Upload `specs/auth-api/deployments/exp1-cloudflare-openapi.json`.
-3. Bind the schema to **`exp1-auth-api.ezkey.org`** only.
-4. Confirm the six operations above appear once.
-5. Set the **Set action** mitigation (see below).
+```bash
+./scripts/cloudflare/upload-auth-api-schema-exp1.sh --list
+./scripts/cloudflare/upload-auth-api-schema-exp1.sh --upload --package
+./scripts/cloudflare/upload-auth-api-schema-exp1.sh --delete <schema-id>
+```
 
-Do not automate the upload in this slice.
+`--list` verifies the zone-scoped token and prints uploaded schemas. `--upload` POSTs
+`specs/auth-api/deployments/exp1-cloudflare-openapi.json` only. `--delete` removes one
+schema UUID from `--list` (repeatable). The script never uses `CLOUDFLARE_API_TOKEN`
+(Pages) and does not change Block / None mitigation.
+
+Dashboard remains valid for the first bind and for Set action. Labels move; look for
+**API Shield** / **Schema validation** on the zone that fronts `exp1-auth-api.ezkey.org`.
+
+1. Confirm the six operations above appear once under **`exp1-auth-api.ezkey.org`**.
+2. Set the **Set action** mitigation (see below).
 
 ### Set action (EXP1 operator decision, 2026-08-23)
 

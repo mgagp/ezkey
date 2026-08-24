@@ -184,6 +184,7 @@ To build the EXP1 Cloudflare upload artifact:
 
 ```bash
 ./scripts/package-auth-api-cloudflare-schema.sh
+./scripts/cloudflare/upload-auth-api-schema-exp1.sh --list
 ```
 
 See [`docs/cloudflare/auth-api-schema-validation.md`](../docs/cloudflare/auth-api-schema-validation.md).
@@ -192,6 +193,7 @@ See [`docs/cloudflare/auth-api-schema-validation.md`](../docs/cloudflare/auth-ap
 
 - `format-specs.sh` - Format existing JSON specifications for better readability
 - `package-auth-api-cloudflare-schema.sh` - EXP1-localized Auth API schema for Cloudflare upload
+- `cloudflare/upload-auth-api-schema-exp1.sh` - list or upload that artifact (`CLOUDFLARE_API_SHIELD_TOKEN`)
 
 ## Recommended Workflow
 

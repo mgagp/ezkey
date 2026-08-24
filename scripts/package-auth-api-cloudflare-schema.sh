@@ -13,7 +13,8 @@
 #   ./scripts/package-auth-api-cloudflare-schema.sh --self-test
 #
 # This script does not upload to Cloudflare and does not modify the canonical spec.
-# Operator upload: docs/cloudflare/auth-api-schema-validation.md
+# Upload: ./scripts/cloudflare/upload-auth-api-schema-exp1.sh --upload
+# Operator runbook: docs/cloudflare/auth-api-schema-validation.md
 
 set -euo pipefail
 
