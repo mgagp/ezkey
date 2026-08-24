@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation`
-- **Status:** `ready`
+- **Status:** `active`
 - **Priority:** `P1`
 - **Created at:** `2026-06-02`
-- **Updated at:** `2026-06-02`
-- **Last reviewed at:** `2026-06-02`
+- **Updated at:** `2026-08-23`
+- **Last reviewed at:** `2026-08-23`
 - **Progression markers:** `P1-operability`, `P2-hardening`
 - **Component tags:** `auth-api`, `admin-api`, `integration-api`, `specs`, `scripts`, `postman`, `cloudflare`, `experimental-hybrid`, `sdk`, `mobile`
 - **Lane:** `B` - plan incubation materialized into Lane A backlog scope
@@ -19,6 +19,17 @@ Define and implement an Ezkey-wide OpenAPI spec lifecycle that keeps canonical s
 then generates deployment-localized schema artifacts for Cloudflare and other ingress validators.
 Use Auth API and EXP1 as the first concrete slice because Auth API is the highest-volume public API
 surface and the most valuable initial Cloudflare schema-validation target.
+
+The Auth API public/enrolled surface now includes, besides bind / verify / pending / respond:
+
+- `GET /api/v1/public/instance-info` — unsigned, display-only branding.
+- `POST /api/v1/enrollments/instance-info` — integration-signed installation branding; this is the
+  enrolled **trust surface** used by mobile to validate installation metadata
+  (`I-2026-08-09-mobile-signed-instance-info-integrity`).
+
+Cloudflare schema validation is complementary ingress hardening (HTTP method, path, and request
+shape). It does **not** verify Ed25519 signatures. Cryptographic authority stays on the enrolled
+client.
 
 ## Problem and value
 
@@ -37,9 +48,11 @@ surface and the most valuable initial Cloudflare schema-validation target.
   - Generate an EXP1/Cloudflare Auth API schema artifact with exactly one target server:
     `https://exp1-auth-api.ezkey.org`.
   - Document first-slice operator workflow for manual Cloudflare upload and observe/log-first
-    validation posture.
+    validation posture. The Cloudflare enumeration check must include both instance-info
+    operations once under `exp1-auth-api.ezkey.org`.
   - Verify downstream generation impact for mobile Orval and the JavaScript Auth SDK.
-  - Record that Postman remains environment-driven unless endpoint contracts change.
+  - Record that Bruno (and leftover Postman) remain environment-driven unless endpoint contracts
+    change.
 - **Out of scope:**
   - Immediate automated Cloudflare schema upload.
   - Immediate rollout to Admin API and Integration API.
@@ -57,7 +70,11 @@ surface and the most valuable initial Cloudflare schema-validation target.
 - Postman host behavior is already mostly aligned because environments own base URLs. Living
   operator collections under `bruno/` follow the same pattern.
 - Auth API is the right first slice because it is exposed frequently and represents Ezkey's core MFA
-  business flow.
+  business flow, including the signed enrolled instance-info trust refresh.
+- Cloudflare schema validation checks request/response *shape* against OpenAPI. It is not a
+  substitute for `instanceInfoPayloadSignedByIntegration` verification on the device.
+- The signed instance-info Auth API contract is already in the live spec; this slice does not wait
+  for `TB-2026-08-09-mobile-signed-instance-info` closeout.
 
 ## Risks and exceptions
 
@@ -69,12 +86,31 @@ surface and the most valuable initial Cloudflare schema-validation target.
   not be automated until the manual upload path is observed.
 - A too-tight coupling between Lightsail deployment and Cloudflare schema upload would make routine
   backend deployments more fragile.
+- Observe/log-first remains the default whenever third-party traffic is possible: a false Block
+  on `POST /api/v1/enrollments/instance-info` (or bind / verify / pending / respond) would
+  interrupt the enrolled trust-refresh path.
+- **EXP1 exception (2026-08-23):** the operator confirmed EXP1 has no external evaluators and
+  that the maintainer is the only tester. **Block** is accepted on `exp1-auth-api.ezkey.org`
+  only, so schema mismatches fail at the edge. Flip to None if a maintainer test locks out
+  enroll or MFA. Do not copy that action to a later multi-user host without a fresh observe
+  period.
 
 ## Promotion notes
 
-This idea is ready for the first tracer bullet because the first executable slice, scope exclusions,
-and verification evidence are known. Promote through
-[`TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md`](TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md).
+First Auth API slice is implemented. EXP1 schema is uploaded. Mitigation on EXP1 is **Block**
+(maintainer-only exception, 2026-08-23). Product default elsewhere remains None.
+
+- Tracer bullet: [`TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md`](../TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md)
+- Next-phase context (Admin / Integration rollout): [`TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md`](../TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md)
+- Operator runbook: [`docs/cloudflare/auth-api-schema-validation.md`](../../../../docs/cloudflare/auth-api-schema-validation.md)
+
+## Close-out notes (2026-08-23)
+
+- Host-neutral Auth canonical spec + EXP1 packaging path are in repo.
+- EXP1 Cloudflare upload succeeded; Set action is Block (EXP1-only exception).
+- Do not start Admin / Integration normalize until Auth EXP1 Block/None evidence is recorded.
+  Do not assume Block is the next-host default.
+- `product-docs/global/spec-test-traceability.md` is unchanged: no endpoint contract change.
 
 ## Traceability notes
 
@@ -82,14 +118,18 @@ and verification evidence are known. Promote through
 - Direction note: [`V-2026-06-02-openapi-spec-lifecycle`](../../vision/V-2026-06-02-openapi-spec-lifecycle.md)
 - Existing posture baseline: [`../../openapi-exposure-matrix.md`](../../openapi-exposure-matrix.md)
 - Related completed portal work: `I-2026-0026`, `TB-2026-0003`
-- Global spec-test matrix is not updated in this intake step because no endpoint behavior, test
-  evidence, or feature status has changed yet. The first implementation slice must update
-  traceability after evidence is produced.
+- Adjacent trust-surface work (already in Auth API contract; complementary, not a dependency):
+  [`I-2026-08-09-mobile-signed-instance-info-integrity`](I-2026-08-09-mobile-signed-instance-info-integrity.md),
+  [`TB-2026-08-09-mobile-signed-instance-info`](../TB-2026-08-09-mobile-signed-instance-info.md)
+- Global spec-test matrix stays unchanged: this slice is host-metadata packaging, not an endpoint
+  behavior change.
 
 ## Links
 
 - Source working plan: GitHub prompt deleted in the 2026-08 corpus-ablation pass; this idea and the linked V/TB are canon.
-- First tracer bullet: [`TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md`](TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md)
+- First tracer bullet: [`TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md`](../TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md)
+- Next-phase context: [`TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md`](../TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md)
+- Operator runbook: [`../../../../docs/cloudflare/auth-api-schema-validation.md`](../../../../docs/cloudflare/auth-api-schema-validation.md)
 - Auth OpenAPI config: [`../../../../ezkey-auth-api/src/main/java/org/ezkey/auth/config/OpenApiConfig.java`](../../../../ezkey-auth-api/src/main/java/org/ezkey/auth/config/OpenApiConfig.java)
 - Spec update script: [`../../../../scripts/update-specs.sh`](../../../../scripts/update-specs.sh)
 - EXP1 Caddy host source: [`../../../../experimental-hybrid/lightsail/Caddyfile`](../../../../experimental-hybrid/lightsail/Caddyfile)

@@ -832,12 +832,32 @@ Recommended secure storage split for Android:
 
 Auth API error responses use RFC 9457 Problem Details for HTTP `4xx` and `5xx` failures.
 
+Stable `type` URIs for origin errors are under **`https://ezkey.io/problems/`** (Auth catalog
+`https://ezkey.io/problems/auth/…`, plus
+`https://ezkey.io/problems/system/audit-chain-heartbeat-degraded`). Those are the only Problem
+Details a client should treat as Ezkey domain copy (`detail` / `title` from the API).
+
+When Auth is reached through Cloudflare (for example EXP1 `https://exp1-auth-api.ezkey.org`), a
+schema-validation **Block** or other WAF rule can return **before** origin. Clients that send
+`Accept: application/json` or `application/problem+json` then receive Cloudflare's own RFC 9457
+JSON (HTTP 403, Error 1020, `cloudflare_error: true`, `type` under
+`https://developers.cloudflare.com/…`). That is an **edge** contract, not Auth API. Do not show
+Cloudflare `detail`, `what_you_should_do`, or `ray_id` as a protocol error. Do not retry 1020
+(`retryable` is false). A well-formed client must not send a schema-invalid body; if a legitimate
+client sees 1020, treat it as installation unreachable and fix the edge schema or mitigation
+(operator), not the wire protocol.
+
 Client guidance:
 
 - Treat `204 No Content` from `pending` as a success case with no pending attempt.
 - Treat `200 OK` from `respond` as transport success, then inspect `authAttemptResult` and verify
   `authAttemptProofTokenResultSignedByIntegration`.
-- Branch primarily on HTTP status and stable problem `type`, not on free-form human message text.
+- Branch primarily on HTTP status and stable **Ezkey** problem `type` (`https://ezkey.io/problems/…`),
+  not on free-form human message text and not on any Problem Details object.
+- If `type` is missing or is not under `https://ezkey.io/problems/`, use a generic local
+  “request failed / installation unreachable” string. Operator reading of the two shapes:
+  [`docs/cloudflare/auth-api-schema-validation.md`](cloudflare/auth-api-schema-validation.md)
+  § Reading responses.
 
 ## Local Validation With Docker
 

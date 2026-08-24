@@ -139,3 +139,6 @@ ezkey-admin-ui/test-results/
 # Historical leftover after Bruno migration — banner only
 /postman/**
 !/postman/README.md
+
+# OpenAPI fetch backups created by scripts/update-specs.sh
+specs/**/*.backup

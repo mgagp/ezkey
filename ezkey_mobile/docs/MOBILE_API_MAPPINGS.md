@@ -358,6 +358,13 @@ response updates a volatile latest-response summary for the enrollment and retur
 
 ## Notes on Contract Drift and Verification Rules
 
+- Auth API origin errors use RFC 9457 `type` URIs under `https://ezkey.io/problems/`. A
+  Cloudflare-fronted host (EXP1) may instead return edge JSON (403 / 1020, `cloudflare_error`).
+  User-visible `detail` is only for the Ezkey prefix; other Problem Details are transport /
+  installation-unreachable. Wire-protocol canon:
+  [`docs/MOBILE_DEVELOPER_GUIDE.md`](../../docs/MOBILE_DEVELOPER_GUIDE.md) § Error Handling
+  Expectations. Implementation of that allowlist is a separate mobile slice (not done in the
+  schema-validation TB).
 - The app intentionally validates `integrationKeyAlgorithm` during bind before trusting `integrationPublicKey`.
 - Home does not trigger `pending`; the explicit user path is Home -> Enrollment Detail -> Pending Authentication.
 - The current implementation persists `enrollmentProofToken` and `integrationPublicKey` through the secure secret delegate so later pending/respond trust checks can run without refetching bind state or leaving those values in AsyncStorage cleartext.

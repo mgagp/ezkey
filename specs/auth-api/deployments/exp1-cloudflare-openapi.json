@@ -1,5 +1,5 @@
 {
-  "openapi": "3.1.0",
+  "openapi": "3.0.3",
   "info": {
     "title": "Ezkey Auth API",
     "description": "Authentication API for Ezkey - Open Source Cryptographic MFA Platform\n\nThis API enables mobile device authentication operations:\n- **Enrollments**: Device binding and verification for user accounts\n- **Auth Attempts**: Mobile authentication request handling and responses\n\nThe API follows a pull-based model where mobile devices poll for pending\nauthentication requests and submit cryptographic signatures for validation.\nEzkey is intentionally distinct from FIDO2/WebAuthn and uses its own\ncryptographic MFA model. All operations use DTOs for requests and responses\nwith comprehensive validation.\n",
@@ -14,16 +14,6 @@
     },
     "version": "1.0.0"
   },
-  "servers": [
-    {
-      "url": "http://localhost:8080",
-      "description": "Development server Auth API"
-    },
-    {
-      "url": "https://auth-api.ezkey.org",
-      "description": "Production server Auth API"
-    }
-  ],
   "security": [
     {
       "signatureAuth": []
@@ -299,6 +289,58 @@
           }
         }
       }
+    },
+    "/api/v1/enrollments/instance-info": {
+      "post": {
+        "tags": [
+          "Enrollments"
+        ],
+        "summary": "Get integration-signed installation branding",
+        "description": "Returns instance branding signed with the enrollment integration key for enrolled clients",
+        "operationId": "instanceInfo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentInstanceInfoRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Signed installation branding returned successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentInstanceInfoResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or unknown enrollment proof token",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -399,6 +441,63 @@
             "additionalProperties": {}
           }
         }
+      },
+      "EnrollmentInstanceInfoRequestDto": {
+        "type": "object",
+        "description": "Request DTO for integration-signed installation branding",
+        "properties": {
+          "enrollmentProofToken": {
+            "type": "string",
+            "description": "Enrollment proof token for authentication",
+            "example": "abc123-def456-ghi789"
+          }
+        },
+        "required": [
+          "enrollmentProofToken"
+        ]
+      },
+      "EnrollmentInstanceInfoResponseDto": {
+        "type": "object",
+        "description": "Integration-signed installation branding for enrolled clients",
+        "properties": {
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment ID that authenticated the request",
+            "example": 123
+          },
+          "authApiPublicBaseUrl": {
+            "type": "string",
+            "description": "Public base URL of the Auth API (same as authUrl in enrollment QR JSON when configured)",
+            "example": "https://auth.example.com:8080",
+            "nullable": true
+          },
+          "instanceName": {
+            "type": "string",
+            "description": "Instance / organization display name",
+            "example": "Acme Corporation"
+          },
+          "instanceDescription": {
+            "type": "string",
+            "description": "Optional instance or organization description",
+            "example": "Acme Corp Ezkey MFA",
+            "nullable": true
+          },
+          "aboutUrl": {
+            "type": "string",
+            "description": "Optional URL for About / learn more",
+            "example": "https://www.example.com/about-ezkey",
+            "nullable": true
+          },
+          "instanceInfoPayloadSignedByIntegration": {
+            "type": "string",
+            "description": "Base64URL (no padding) Ed25519 signature over the canonical INSTANCE_INFO payload"
+          }
+        },
+        "required": [
+          "enrollmentId",
+          "instanceInfoPayloadSignedByIntegration"
+        ]
       },
       "EnrollmentBindRequestDto": {
         "type": "object",
@@ -507,13 +606,11 @@
             "example": "eyJhbGciOiJSUzI1NiJ9..."
           },
           "authAttemptChallengeResponse": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": "integer",
             "format": "int32",
             "description": "User's response to authentication challenge (if required)",
-            "example": 123456
+            "example": 123456,
+            "nullable": true
           },
           "authAttemptAccepted": {
             "type": "boolean",
@@ -646,12 +743,10 @@
         "description": "Public instance metadata (branding, optional public Auth API URL for QR alignment)",
         "properties": {
           "authApiPublicBaseUrl": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": "string",
             "description": "Public base URL of the Auth API (same as authUrl in enrollment QR JSON when configured)",
-            "example": "https://auth.example.com:8080"
+            "example": "https://auth.example.com:8080",
+            "nullable": true
           },
           "instanceName": {
             "type": "string",
@@ -659,20 +754,16 @@
             "example": "Acme Corporation"
           },
           "instanceDescription": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": "string",
             "description": "Optional instance or organization description",
-            "example": "Acme Corp Ezkey MFA"
+            "example": "Acme Corp Ezkey MFA",
+            "nullable": true
           },
           "aboutUrl": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": "string",
             "description": "Optional URL for About / learn more (e.g. company instance page)",
-            "example": "https://www.example.com/about-ezkey"
+            "example": "https://www.example.com/about-ezkey",
+            "nullable": true
           }
         }
       }
@@ -685,5 +776,11 @@
         "bearerFormat": "Signature"
       }
     }
-  }
+  },
+  "servers": [
+    {
+      "url": "https://exp1-auth-api.ezkey.org",
+      "description": "EXP1 Auth API"
+    }
+  ]
 }

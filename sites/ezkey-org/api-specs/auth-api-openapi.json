@@ -14,16 +14,6 @@
     },
     "version": "1.0.0"
   },
-  "servers": [
-    {
-      "url": "http://localhost:8080",
-      "description": "Development server Auth API"
-    },
-    {
-      "url": "https://auth-api.ezkey.org",
-      "description": "Production server Auth API"
-    }
-  ],
   "security": [
     {
       "signatureAuth": []

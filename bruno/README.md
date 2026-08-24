@@ -27,8 +27,25 @@ Bruno **desktop** is separate: open this `bruno/` folder as a collection for GUI
 | `environments/local.bru` | Direct localhost ports (default) |
 | `environments/local-via-caddy-proxy.bru` | Caddy proxy ports |
 | `environments/local-ngrok.bru` | Ngrok / tunnel workflows |
+| `environments/exp1.bru` | Public EXP1 hosts (`exp1-*-api.ezkey.org`) |
 
 Runtime secrets (`token`, `secretKey`, device keys, …) stay empty in git. Scripts populate them during a run. Never commit filled tokens.
+
+**EXP1 notes:** Auth (`base_url`), Admin, and Integration use the public Cloudflare hostnames from
+[`experimental-hybrid/lightsail/Caddyfile`](../experimental-hybrid/lightsail/Caddyfile). Crypto API
+is not published on EXP1, so `base_url_crypto_api` stays `http://localhost:9090` for a local oracle
+while Auth calls go to EXP1. Integration management (`7081`) has no public EXP1 hostname.
+
+For Cloudflare Auth schema **Block** on EXP1, select environment **exp1**, then
+`public-auth/get-public-instance-info` (positive) and
+`cloudflare-schema/negative-bind-wrong-enrollment-id-type` (negative). Do not treat
+`./scripts/bruno-health.sh --suite g0` as Cloudflare evidence.
+
+**How to read EXP1 error JSON:** a schema-valid Auth failure is origin RFC 9457
+(`type` starts with `https://ezkey.io/problems/`). A schema **Block** is Cloudflare 403 / 1020
+(`cloudflare_error: true`). Same hostname, two contracts — see
+[`docs/cloudflare/auth-api-schema-validation.md`](../docs/cloudflare/auth-api-schema-validation.md)
+§ Reading responses.
 
 Port map: [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md).
 
@@ -68,6 +85,7 @@ Each former Postman collection is a folder (138 requests total), for example:
 - `auth-attempts-auth/` — numbered pending/respond + Crypto oracle
 - `crypto/` — Crypto API surface
 - `auth-attempts-integration-api/` — M2M Basic auth
+- `cloudflare-schema/` — EXP1 Auth schema-validation probes (not part of health suites)
 - Admin catalogs: `tenants-admin`, `integrations-admin`, `enrollments-admin`, …
 
 ## Maintainer notes

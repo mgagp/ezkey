@@ -16,7 +16,6 @@ import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Contact;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.info.License;
-import io.swagger.v3.oas.annotations.servers.Server;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
@@ -29,14 +28,14 @@ import org.springframework.context.annotation.Configuration;
  * Global OpenAPI configuration for Ezkey auth API.
  *
  * <p>This configuration defines global metadata for the Swagger/OpenAPI documentation of the Ezkey
- * authentication API. It includes project information, available servers, and security
- * configuration for mobile device authentication.
+ * authentication API. It includes project information and security configuration for mobile device
+ * authentication. Runtime and deployment hosts are not declared here; canonical specs stay
+ * host-neutral and Cloudflare artifacts are packaged separately.
  *
  * <p><b>Configured features:</b>
  *
  * <ul>
  *   <li><b>API Metadata:</b> Title, version, description, contact and license
- *   <li><b>Servers:</b> Development and production environments
  *   <li><b>Security:</b> Cryptographic signature authentication scheme
  * </ul>
  *
@@ -79,11 +78,7 @@ import org.springframework.context.annotation.Configuration;
                 """,
             contact =
                 @Contact(name = "Ezkey Team", email = "info@ezkey.org", url = "https://ezkey.org"),
-            license = @License(name = "MIT License", url = "https://opensource.org/licenses/MIT")),
-    servers = {
-      @Server(url = "http://localhost:8080", description = "Development server Auth API"),
-      @Server(url = "https://auth-api.ezkey.org", description = "Production server Auth API")
-    })
+            license = @License(name = "MIT License", url = "https://opensource.org/licenses/MIT")))
 public class OpenApiConfig {
 
   /**

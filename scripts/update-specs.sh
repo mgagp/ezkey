@@ -75,6 +75,12 @@ update_spec() {
         # Validate and format JSON if jq is available
         if command -v jq > /dev/null 2>&1; then
             if jq empty "$spec_file" 2>/dev/null; then
+                if [ "$api_name" = "auth-api" ]; then
+                    # Host-neutral canonical spec: strip Springdoc/annotation servers.
+                    # Deployment hosts belong in package-auth-api-cloudflare-schema.sh.
+                    jq 'del(.servers)' "$spec_file" > "$spec_file.tmp" && mv "$spec_file.tmp" "$spec_file"
+                    print_status "Normalized auth-api: removed top-level servers"
+                fi
                 # Format JSON with proper indentation for better readability
                 jq . "$spec_file" > "$spec_file.tmp" && mv "$spec_file.tmp" "$spec_file"
                 print_success "$api_name specification updated, validated, and formatted"
@@ -88,6 +94,14 @@ update_spec() {
                 return 1
             fi
         else
+            if [ "$api_name" = "auth-api" ]; then
+                print_error "jq is required to normalize the Auth API canonical spec (strip servers)"
+                if [ -f "$backup_file" ]; then
+                    mv "$backup_file" "$spec_file"
+                    print_warning "Restored backup for $api_name"
+                fi
+                return 1
+            fi
             print_success "$api_name specification updated (validation and formatting skipped - jq not available)"
             print_warning "Consider installing jq for JSON validation and formatting"
         fi
@@ -189,7 +203,10 @@ show_help() {
     echo "Prerequisites:"
     echo "  - APIs must be running on localhost:9080 (admin), localhost:8080 (auth), and localhost:7080 (integration) as needed"
     echo "  - curl must be available for downloading specifications"
-    echo "  - jq is optional but recommended for JSON validation and formatting"
+    echo "  - jq is required for auth-api (host-neutral normalize) and recommended for other APIs"
+    echo ""
+    echo "Auth API: top-level servers are stripped after fetch. Package the EXP1 Cloudflare"
+    echo "artifact with ./scripts/package-auth-api-cloudflare-schema.sh (does not upload)."
 }
 
 # Main function

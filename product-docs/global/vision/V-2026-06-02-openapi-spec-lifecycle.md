@@ -6,7 +6,7 @@
 - **Status:** `draft`
 - **Lane:** `B` - plan incubation materialized into canonical direction
 - **Created at:** `2026-06-02`
-- **Updated at:** `2026-06-02`
+- **Updated at:** `2026-08-23`
 - **Captured by:** Marc
 
 ## Intent
@@ -22,6 +22,11 @@ Cloudflare API schema validation makes OpenAPI specs operationally valuable beyo
 The first Cloudflare upload experiment for Auth API exposed that current specs mix `localhost` and
 non-real or deployment-specific public hosts. That creates duplicate endpoint views in Cloudflare
 and blurs the boundary between portable Ezkey contracts and one installation's runtime topology.
+
+The Auth API public/enrolled surface now also includes unsigned `GET /api/v1/public/instance-info`
+and integration-signed `POST /api/v1/enrollments/instance-info` (the enrolled installation trust
+surface). Cloudflare schema validation remains HTTP/OpenAPI *shape* enforcement. It does not
+replace device-side Ed25519 verification of `instanceInfoPayloadSignedByIntegration`.
 
 ## Potential impact
 
@@ -45,8 +50,12 @@ and blurs the boundary between portable Ezkey contracts and one installation's r
 
 ## Promotion criteria
 
-Promote this direction through backlog and tracer-bullet work when the first Auth API slice proves
-that Ezkey can:
+The Auth API first slice is implemented (2026-08-23). EXP1 may use **Block** as a
+maintainer-only exception; that is not the default for later hosts. Promote Admin /
+Integration only after EXP1 maintainer evidence is recorded. See
+[`TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md`](../backlog/TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md).
+
+The first Auth API slice needed to prove that Ezkey can:
 
 - generate a host-neutral canonical Auth API spec;
 - generate an EXP1-localized Cloudflare upload artifact from that canonical spec;
@@ -58,5 +67,6 @@ that Ezkey can:
 - Source working plan: GitHub prompt deleted in the 2026-08 corpus-ablation pass; this vision note and the linked I/TB are canon.
 - Backlog idea: [`I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation`](../backlog/ideas/I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation.md)
 - First tracer bullet: [`TB-2026-06-02-auth-api-cloudflare-schema-first-slice`](../backlog/TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md)
+- Next-phase context: [`TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md`](../backlog/TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md)
 - Existing exposure posture: [`openapi-exposure-matrix.md`](../openapi-exposure-matrix.md)
 - Prior portal/exposure direction: `V-2026-0014`, `I-2026-0026`, `TB-2026-0003`

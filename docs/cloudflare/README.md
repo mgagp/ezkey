@@ -14,6 +14,7 @@ This directory holds **workflow notes, scope, and time-horizon planning** for us
 | Proxies, client IP (`CF-Connecting-IP`), rate limiting context | [OPERATIONAL.md](../OPERATIONAL.md) |
 | Admin UI CSP, split UI/API deployment, mirroring headers at the edge | [admin-ui-security.md](../admin-ui-security.md) |
 | Admin UI on Cloudflare Pages (build, CORS on API, Wrangler, edge headers) | [admin-ui-pages.md](admin-ui-pages.md) |
+| Auth API EXP1 schema validation (manual upload; EXP1 Block exception) | [auth-api-schema-validation.md](auth-api-schema-validation.md) |
 
 ## Repository root `.env`
 
@@ -32,6 +33,10 @@ Wrangler deploy scripts source a gitignored **`.env`** at the **repository root*
 | [cleanup-methodology-previews.sh](../../scripts/cloudflare/cleanup-methodology-previews.sh) | Legacy: same as above for `methodology-ezkey-org`. Prefer `cleanup-pages-deployments.sh`. |
 
 Add more scripts here only when a **repeated** automation need appears (e.g. standardized production promotion, DNS verification).
+
+Auth API schema packaging (not a Wrangler deploy):
+[`scripts/package-auth-api-cloudflare-schema.sh`](../../scripts/package-auth-api-cloudflare-schema.sh)
+— see [auth-api-schema-validation.md](auth-api-schema-validation.md).
 
 ## Site source
 

@@ -1,0 +1,49 @@
+meta {
+  name: negative bind wrong enrollmentId type
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/v1/enrollments/bind
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "enrollmentId": "not-an-integer",
+      "enrollmentProofToken": "schema-validation-probe"
+  }
+}
+
+script:post-response {
+  test("Status is 4xx (schema or request validation)", function () {
+      expect(res.getStatus()).to.be.at.least(400);
+      expect(res.getStatus()).to.be.below(500);
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Deliberately invalid Auth bind body: `enrollmentId` is a string, but the OpenAPI schema
+  requires `integer` (`int32`). The mobile app cannot produce this request.
+
+  **Use with environment `exp1`.** On EXP1 Cloudflare schema validation **Block**, expect HTTP
+  **403** Error **1020** (API Shield / WAF). Bruno sends `Accept` JSON, so the body is Cloudflare's
+  RFC 9457 JSON (`cloudflare_error: true`, `error_code: 1020`, `ray_id`, `type` under
+  `developers.cloudflare.com`), not an Ezkey `https://ezkey.io/problems/…` ProblemDetail.
+
+  A Spring ProblemDetail (`type` under `https://ezkey.io/problems/`, often HTTP 400) means the
+  request **reached origin** — not schema-Block evidence. Against **local**, Jackson/Bean
+  Validation also returns 4xx; that is not a Cloudflare check.
+
+  Extra undeclared properties are a weak probe: `EnrollmentBindRequestDto` does not set
+  `additionalProperties: false`, so Cloudflare may accept them.
+
+  **Do not add this request to `bruno-health.sh` suites.** Operator reading:
+  `docs/cloudflare/auth-api-schema-validation.md` § Reading responses.
+}

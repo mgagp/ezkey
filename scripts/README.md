@@ -178,9 +178,20 @@ Ezkey now uses a centralized approach for managing OpenAPI specifications. All s
 - `--all` : Update all specifications (default)
 - `--help` : Display help
 
+Auth API canonical output is host-neutral: `update-specs.sh --auth-only` strips top-level
+`servers` after fetch. Do not put EXP1 or localhost hosts back into Java `@Server` annotations.
+To build the EXP1 Cloudflare upload artifact:
+
+```bash
+./scripts/package-auth-api-cloudflare-schema.sh
+```
+
+See [`docs/cloudflare/auth-api-schema-validation.md`](../docs/cloudflare/auth-api-schema-validation.md).
+
 ## Additional Scripts
 
 - `format-specs.sh` - Format existing JSON specifications for better readability
+- `package-auth-api-cloudflare-schema.sh` - EXP1-localized Auth API schema for Cloudflare upload
 
 ## Recommended Workflow
 
