@@ -17,9 +17,9 @@
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Keyboard} from 'react-native';
-import axios from 'axios';
 import {useTranslation} from 'react-i18next';
 import {useEnrollmentById, useMarkEnrollmentPendingChecked} from './useEnrollments';
+import {userFacingAuthApiError} from '../services/api/authApiProblem';
 import {authAttemptsApi} from '../services/api/authAttempts';
 import {buildRespondPayload, buildRespondResultPayload} from '../services/crypto/authAttemptPayload';
 import {cryptoService} from '../services/crypto';
@@ -192,18 +192,9 @@ export function usePendingAuth(
       if (nativeCode === 'EZK_KEY_INVALIDATED') {
         return t('pendingAuth.localAuthReenroll');
       }
-      if (axios.isAxiosError(error)) {
-        const message =
-          error.response?.data?.message ??
-          error.response?.data?.error ??
-          error.message ??
-          t('pendingAuth.requestFailed');
-        return message;
-      }
-      if (error instanceof Error) {
-        return error.message;
-      }
-      return t('pendingAuth.unexpectedError');
+      const fallback =
+        error instanceof Error ? t('pendingAuth.requestFailed') : t('pendingAuth.unexpectedError');
+      return userFacingAuthApiError(error, fallback);
     },
     [t],
   );

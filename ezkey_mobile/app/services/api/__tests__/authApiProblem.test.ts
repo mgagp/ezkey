@@ -4,10 +4,34 @@
  * Copyright (c) 2026 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * RFC 9457 Problem Details parser tests.
+ * RFC 9457 Problem Details parser and user-facing Auth API error tests.
  */
 
-import {parseAuthApiProblemDetail} from '../authApiProblem';
+import {
+  isEzkeyProblemType,
+  parseAuthApiProblemDetail,
+  userFacingAuthApiError,
+} from '../authApiProblem';
+
+const FALLBACK = 'Request failed.';
+
+const CLOUDFLARE_1020_BODY = {
+  type: 'https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1020/',
+  title: 'Error 1020',
+  status: 403,
+  detail: 'Access denied. Contact the site owner if you believe this is a mistake.',
+  cloudflare_error: true,
+  retryable: false,
+  ray_id: '0123456789abcdef',
+  what_you_should_do: 'Do not retry. Contact the site owner.',
+};
+
+function httpErrorWithData(
+  data: unknown,
+  status = 400,
+): {response: {status: number; data: unknown}} {
+  return {response: {status, data}};
+}
 
 describe('parseAuthApiProblemDetail', () => {
   it('parses type, title, detail, and status', () => {
@@ -48,5 +72,80 @@ describe('parseAuthApiProblemDetail', () => {
   it('returns null when neither type nor title is a string', () => {
     expect(parseAuthApiProblemDetail({status: 500, detail: 'oops'})).toBeNull();
     expect(parseAuthApiProblemDetail({})).toBeNull();
+  });
+});
+
+describe('isEzkeyProblemType', () => {
+  it('accepts Auth catalog and system types under https://ezkey.io/problems/', () => {
+    expect(isEzkeyProblemType('https://ezkey.io/problems/auth/auth-attempt-binding-failed')).toBe(
+      true,
+    );
+    expect(isEzkeyProblemType('https://ezkey.io/problems/system/audit-chain-heartbeat-degraded')).toBe(
+      true,
+    );
+  });
+
+  it('rejects Cloudflare, about:blank, example fixtures, and the bare namespace', () => {
+    expect(isEzkeyProblemType(CLOUDFLARE_1020_BODY.type)).toBe(false);
+    expect(isEzkeyProblemType('about:blank')).toBe(false);
+    expect(isEzkeyProblemType('https://ezkey.example/problems/enrollment-not-found')).toBe(false);
+    expect(isEzkeyProblemType('https://ezkey.io/problems')).toBe(false);
+    expect(isEzkeyProblemType('https://ezkey.io/problems/')).toBe(false);
+    expect(isEzkeyProblemType(undefined)).toBe(false);
+  });
+});
+
+describe('userFacingAuthApiError', () => {
+  it('shows origin detail when type is under the Ezkey namespace', () => {
+    const error = httpErrorWithData({
+      type: 'https://ezkey.io/problems/auth/auth-attempt-binding-failed',
+      title: 'Authentication request binding failed',
+      status: 400,
+      detail: 'The authentication request could not be processed.',
+    });
+    expect(userFacingAuthApiError(error, FALLBACK)).toBe(
+      'The authentication request could not be processed.',
+    );
+  });
+
+  it('returns the fallback for Cloudflare 1020 JSON and never leaks edge fields', () => {
+    const error = httpErrorWithData(CLOUDFLARE_1020_BODY, 403);
+    const message = userFacingAuthApiError(error, FALLBACK);
+    expect(message).toBe(FALLBACK);
+    expect(message).not.toContain('1020');
+    expect(message).not.toContain('ray_id');
+    expect(message).not.toContain('0123456789abcdef');
+    expect(message).not.toContain('what_you_should_do');
+    expect(message).not.toContain(CLOUDFLARE_1020_BODY.detail);
+  });
+
+  it('returns the fallback for title-only, about:blank, HTML, and non-object bodies', () => {
+    expect(userFacingAuthApiError(httpErrorWithData({title: 'Bad Request', status: 400}), FALLBACK)).toBe(
+      FALLBACK,
+    );
+    expect(
+      userFacingAuthApiError(
+        httpErrorWithData({type: 'about:blank', detail: 'Generic failure'}),
+        FALLBACK,
+      ),
+    ).toBe(FALLBACK);
+    expect(
+      userFacingAuthApiError(httpErrorWithData('<html><body>Error 1020</body></html>', 403), FALLBACK),
+    ).toBe(FALLBACK);
+    expect(userFacingAuthApiError(httpErrorWithData(null, 502), FALLBACK)).toBe(FALLBACK);
+    expect(userFacingAuthApiError(new Error('Network Error'), FALLBACK)).toBe(FALLBACK);
+    expect(userFacingAuthApiError('not-json', FALLBACK)).toBe(FALLBACK);
+  });
+
+  it('returns the fallback when the Ezkey type has no usable detail', () => {
+    expect(
+      userFacingAuthApiError(
+        httpErrorWithData({
+          type: 'https://ezkey.io/problems/auth/auth-attempt-binding-failed',
+          title: 'Authentication request binding failed',
+        }),
+        FALLBACK,
+      ),
+    ).toBe(FALLBACK);
   });
 });
