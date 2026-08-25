@@ -13,7 +13,7 @@ package org.ezkey.alert.domain;
 /**
  * Reason an alert transitioned from {@code OPEN} to {@code RESOLVED}.
  *
- * <p>Stored on the resolved row for SOC 2-oriented traceability. New reasons are added at the
+ * <p>Stored on the resolved row for operator-visible traceability. New reasons are added at the
  * bottom as new producers and resolution paths land.
  *
  * @since 2026

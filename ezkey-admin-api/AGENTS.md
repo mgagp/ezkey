@@ -91,7 +91,7 @@ Browser delivery is Mode A Bearer vs Mode B HttpOnly cookie —
 
 - **Migrations (Flyway)**: `ezkey-core/src/main/resources/db/migration/`
   - Initial global admin + system tenant are created in `V1__core_domain_and_multi_tenant.sql` (consolidated migrations).
-- **Initial global admin identity (SOC 2)**: `org.ezkey.admin.service.InitialGlobalAdminService`
+- **Initial global admin identity**: `org.ezkey.admin.service.InitialGlobalAdminService`
 - **Admin MFA bootstrap** (system integration + enrollment + recovery codes):
   `org.ezkey.admin.service.AdminBootstrapService`
 - **Organization/system tenant config**: `org.ezkey.admin.config.OrganizationProperties`

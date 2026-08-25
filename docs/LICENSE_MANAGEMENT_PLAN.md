@@ -14,11 +14,11 @@ All planned tasks have been completed successfully:
 ✅ **React Native License Management**: Tools installed, license files generated  
 ✅ **Python CLI License Management**: pip-licenses configured, license file generated  
 ✅ **JavaScript SDK License Management**: license-checker configured, license file generated  
-✅ **SOC 2 Documentation**: Complete compliance documentation created  
+✅ **License documentation**: OSS license docs created (not a certification claim)  
 ✅ **User Documentation**: Comprehensive license guide created  
 ✅ **Distribution Integration**: License files configured for inclusion in distributions  
 ✅ **CI/CD Integration**: Documentation and examples created for CI/CD integration  
-✅ **Comply Integration**: Integration guide created for Comply framework  
+✅ **Comply Integration**: Retired — see `docs/compliance/COMPLY_INTEGRATION.md`  
 
 ## Original Plan
 
@@ -36,7 +36,7 @@ Ezkey is an MIT-licensed open source project with dependencies across multiple e
 - **Python CLI**: setup.py with click, requests, pyyaml dependencies
 - **JavaScript SDK**: package.json with node-fetch and dev dependencies
 
-Currently, there is **no systematic license attribution** for third-party dependencies, which is a compliance gap for both open source license obligations and SOC 2 requirements.
+Currently, there is **no systematic license attribution** for third-party dependencies, which is a gap for open source license obligations.
 
 ## Legal and Compliance Obligations
 
@@ -58,42 +58,15 @@ For Apache 2.0 dependencies (e.g., Spring Boot, Spring Framework):
 - Currently no GPL dependencies detected (good - avoids copyleft obligations)
 - Must monitor to avoid GPL dependencies that would require full source disclosure
 
-### SOC 2 Compliance Requirements
+### License / dependency hygiene Requirements
 
-**Critical Link**: License management directly supports SOC 2 compliance:
+**Critical Link**: License management is OSS hygiene (not a certification claim):
 
-#### CC9.1 - Third-Party Service Provider Management
-- **Requirement**: Entity identifies, selects, and manages third-party service providers
-- **License Aspect**: Software dependencies are third-party service providers
-- **Evidence Needed**: 
-  - Inventory of all third-party dependencies
-  - License compatibility assessment
-  - Risk assessment of dependencies
-
-#### CC9.2 - Third-Party Risk Assessment
-- **Requirement**: Entity establishes requirements and assesses third parties
-- **License Aspect**: Must assess legal and security risks of dependencies
-- **Evidence Needed**:
-  - License compatibility matrix
-  - Security vulnerability assessment of dependencies
-  - Legal compliance verification
-  - Documentation of license obligations
-
-#### CC7.1 - Risk Mitigation Activities
-- **Requirement**: Entity identifies, selects, and develops risk mitigation activities
-- **License Aspect**: License compliance is a legal risk that must be mitigated
-- **Evidence Needed**:
-  - License management process documentation
-  - Regular license audits
-  - Remediation procedures for license violations
-
-#### CC2.1 - Information Quality
-- **Requirement**: Entity obtains/generates relevant, quality information
-- **License Aspect**: Accurate license information for all dependencies
-- **Evidence Needed**:
-  - Complete license inventory
-  - Up-to-date license documentation
-  - License change tracking
+- Inventory of all third-party dependencies
+- License compatibility assessment
+- Risk notes on dependencies
+- Documented license management process
+- License change tracking
 
 ## Implementation Strategy
 
@@ -105,7 +78,7 @@ For Apache 2.0 dependencies (e.g., Spring Boot, Spring Framework):
 
 1. **Automated License Generation**: Using tools like License Maven Plugin and license-checker significantly streamlined the process
 2. **Comprehensive Documentation**: Creating detailed documentation upfront helped ensure nothing was missed
-3. **SOC 2 Integration**: Linking license management to SOC 2 controls provided clear compliance framework
+3. **License procedure**: Linking license management to a documented review process
 
 ### Challenges Encountered
 

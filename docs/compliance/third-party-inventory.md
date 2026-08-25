@@ -1,12 +1,12 @@
 # Third-Party Dependency Inventory
 
-**SOC 2 Control**: CC9.1 - Third-Party Service Provider Management  
+**Product term**: license / dependency hygiene  
 **Last Updated**: 2025-12-11  
 **Owner**: Ezkey Project Team
 
 ## Overview
 
-This document provides a comprehensive inventory of all third-party dependencies used across the Ezkey project. This inventory supports SOC 2 compliance by documenting all third-party service providers (software dependencies) that are integrated into the Ezkey system.
+This document provides a comprehensive inventory of all third-party dependencies used across the Ezkey project. This inventory supports identifiable operator identity by documenting all third-party service providers (software dependencies) that are integrated into the Ezkey system.
 
 ## Inventory Summary
 
@@ -255,13 +255,13 @@ All dependencies are tracked in their respective dependency management files:
 - `ezkey-cli-python/THIRD-PARTY-LICENSES.txt` - Python CLI dependencies
 - `ezkey-sdk/javascript/THIRD-PARTY-LICENSES.txt` - JavaScript SDK dependencies
 
-## Evidence for SOC 2 Audit
+## Operational evidence
 
-This document serves as evidence for:
+This document records OSS license hygiene:
 
-- **CC9.1**: Third-party service provider identification and management
-- **CC9.2**: Third-party risk assessment (license compatibility)
-- **CC2.1**: Information quality (complete and accurate dependency inventory)
+- Dependency inventory
+- License compatibility review
+- Complete and accurate dependency listing
 
 ## Maintenance
 

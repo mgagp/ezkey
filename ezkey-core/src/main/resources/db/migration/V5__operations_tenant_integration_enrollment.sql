@@ -10,7 +10,7 @@
 -- - If instance crashes, lock auto-expires after lock_until
 -- - Any instance can acquire lock for next execution
 --
--- SOC2 Auditability:
+-- Operator-visible audit trail:
 -- - locked_by: identifies which instance executed the job
 -- - locked_at: timestamp of lock acquisition
 -- - Query this table to audit job execution history
@@ -38,9 +38,9 @@ COMMENT ON COLUMN ezkey_shedlock.name IS
 COMMENT ON COLUMN ezkey_shedlock.lock_until IS 
     'Lock expiry timestamp - allows automatic failover if instance crashes';
 COMMENT ON COLUMN ezkey_shedlock.locked_at IS 
-    'Lock acquisition timestamp - for SOC2 audit trail';
+    'Lock acquisition timestamp - for encryption-at-rest key lifecycle audit trail';
 COMMENT ON COLUMN ezkey_shedlock.locked_by IS 
-    'Instance identifier that holds the lock - for SOC2 audit trail';
+    'Instance identifier that holds the lock - for encryption-at-rest key lifecycle audit trail';
 -- ============================================================================
 -- Ezkey Migration V27: Add System Tenant Flag
 -- ============================================================================
@@ -137,8 +137,8 @@ ADD CONSTRAINT unique_integration_code_per_tenant UNIQUE (tenant_id, integration
 --
 -- V30: Enrich tenant with organizational identity, contact, and governance fields
 --
--- SOC 2 Controls: CC2.1 (Communication), CC6.1 (Logical Access),
---                 CC6.3 (Access Removal), CC7.2 (Change Management)
+-- Product terms: identifiable operator identity, rapid access removal,
+--                 operator-visible audit trail, identifiable tenant contact.
 --
 -- All new columns are nullable for backward compatibility with existing tenants.
 --
@@ -199,18 +199,18 @@ ALTER TABLE ezkey_tenant
   ADD COLUMN updated_by_admin_id INT
     REFERENCES ezkey_admin(admin_id);
 COMMENT ON COLUMN ezkey_tenant.updated_by_admin_id
-  IS 'Admin who last modified this tenant record (SOC 2 CC7.2)';
+  IS 'Admin who last modified this tenant record (tamper-evident monitoring)';
 
 ALTER TABLE ezkey_tenant
   ADD COLUMN deactivated_at TIMESTAMPTZ;
 COMMENT ON COLUMN ezkey_tenant.deactivated_at
-  IS 'Timestamp when the tenant was deactivated (SOC 2 CC6.3)';
+  IS 'Timestamp when the tenant was deactivated (rapid access removal)';
 
 ALTER TABLE ezkey_tenant
   ADD COLUMN deactivated_by_admin_id INT
     REFERENCES ezkey_admin(admin_id);
 COMMENT ON COLUMN ezkey_tenant.deactivated_by_admin_id
-  IS 'Admin who deactivated this tenant (SOC 2 CC6.3)';
+  IS 'Admin who deactivated this tenant (rapid access removal)';
 
 -- ============================================================
 -- 4. Indexes
@@ -245,7 +245,7 @@ ALTER TABLE ezkey_tenant
 -- ============================================================================
 -- Ezkey Migration V31: Enrollment Contact and Audit Columns (Phase 1 & 2)
 -- ============================================================================
--- Description: Adds columns for normative (SOC 2), operational, and contact
+-- Description: Adds columns for identifiable identity, operational, and contact
 --              purposes as per enrollment enhancement plan.
 --
 -- Phase 1 (Normative + Operational):
@@ -275,7 +275,7 @@ ALTER TABLE ezkey_enrollment
     ADD COLUMN created_by_admin_id INT REFERENCES ezkey_admin(admin_id);
 
 COMMENT ON COLUMN ezkey_enrollment.created_by_admin_id IS
-'Admin who created this enrollment (SOC 2 CC6.1, CC7.2). Populated when created via Admin API; null when created via API key (M2M).';
+'Admin who created this enrollment (identifiable operator identity). Populated when created via Admin API; null when created via API key (M2M).';
 
 ALTER TABLE ezkey_enrollment
     ADD COLUMN last_used_at TIMESTAMPTZ;

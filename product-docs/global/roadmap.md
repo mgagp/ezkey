@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document describes the major product steps for Ezkey. It captures the current intent of the roadmap — not a detailed change history. Feature-level detail lives in [`features-and-phases.md`](features-and-phases.md), which remains the historical filename for the features and milestones catalog. SOC 2-oriented operational discipline is canon in [`normative-posture.md`](normative-posture.md), not a separate certification program in [`../../docs/`](../../docs/).
+This document describes the major product steps for Ezkey. It captures the current intent of the roadmap — not a detailed change history. Feature-level detail lives in [`features-and-phases.md`](features-and-phases.md), which remains the historical filename for the features and milestones catalog. Operational discipline (identifiable identity, audit trail, key lifecycle) is canon in [`normative-posture.md`](normative-posture.md), not a certification program in [`../../docs/`](../../docs/).
 
 ## Reading Model
 
@@ -18,7 +18,7 @@ This document describes the major product steps for Ezkey. It captures the curre
 | `P1-operability` | Make the product practical to operate and administer. | `in-progress` | Admin UI workflows, admin lifecycle, tenant management, auditability. |
 | `P2-hardening` | Strengthen operational posture and security observability. | `in-progress` | Encryption key rotation, audit-chain integrity, rate limiting, RFC 9457 error model. |
 | `P3-distribution` | Broaden integration and distribution paths. | `planned` | Integration API maturity, API key lifecycle, SDK/CLI, public static site. |
-| `P4-compliance-readiness` | Operational discipline as a quality (SOC 2 as vocabulary, not certification). | `planned` | Provisioning and deprovisioning procedures, recovery-code lifecycle, audit artifacts. |
+| `P4-compliance-readiness` | Operational discipline as a quality (not a certification program). | `planned` | Provisioning and deprovisioning procedures, recovery-code lifecycle, audit artifacts. |
 
 Milestone identifiers are stable; adding a milestone appends a new entry. Reordering requires explicit decision records in [`architecture-decisions.md`](architecture-decisions.md).
 
@@ -99,7 +99,7 @@ Integrity cluster (`I-2026-0005`–`0007`) precedes Alerts UI polish.
 
 ### Milestone `P4-compliance-readiness` — Operational Discipline
 
-**Intent.** Raise operational discipline as a product quality: documented provisioning, recovery-code lifecycle, and stable audit artifacts. SOC 2 Trust Service Criteria may be used as mapping vocabulary. This milestone is not a Comply setup, mock audit, or Type I/II engagement. Current funded work remains the [September operable-release compass](operational-readiness-prioritization-2026-09.md), not P4-as-certification. See [`normative-posture.md`](normative-posture.md).
+**Intent.** Raise operational discipline as a product quality: documented provisioning, recovery-code lifecycle, and stable audit artifacts. This milestone is not a Comply setup, mock audit, or Type I/II engagement. Current funded work remains the [September operable-release compass](operational-readiness-prioritization-2026-09.md). Mapping vocabulary, if needed later, lives only in [`normative-posture.md`](normative-posture.md).
 
 **Status.** `planned`.
 
@@ -122,7 +122,7 @@ These themes shape decisions without being scheduled milestones yet:
 
 - [`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md) — **current release-order compass** (September 2026 target)
 - [`product-intent.md`](product-intent.md)
-- [`normative-posture.md`](normative-posture.md) — SOC 2-oriented discipline, not certification
+- [`normative-posture.md`](normative-posture.md) — operational discipline; not a certification program
 - [`features-and-phases.md`](features-and-phases.md)
 - [`architecture-overview.md`](architecture-overview.md)
 - [`spec-test-traceability.md`](spec-test-traceability.md)

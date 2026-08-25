@@ -311,7 +311,7 @@ private boolean shouldApplyRateLimit(String requestUri, String requestMethod) {
 
 Si la base de données est exfiltrée, un attaquant obtient les BCrypt hashes de tous les secrets API. BCrypt avec un coût approprié rend le crackage difficile (mais pas impossible pour des mots de passe faibles, or ici les secrets sont générés par SecureRandom sur 40 hex chars = 160 bits d'entropie → crackage impossible).
 
-**Impact :** Dans le contexte Ezkey, l'entropie des secrets générés rend le crackage des hashes infaisable. L'impact réel est **limité**. Cependant, du point de vue de la posture et de la perception (SOC 2, etc.), le traitement asymétrique des secrets API vs. d'autres champs sensibles est notable.
+**Impact :** Dans le contexte Ezkey, l'entropie des secrets générés rend le crackage des hashes infaisable. L'impact réel est **limité**. Cependant, du point de vue de la posture (chiffrement at-rest cohérent), le traitement asymétrique des secrets API vs. d'autres champs sensibles est notable.
 
 **Mitigation :** Appliquer le chiffrement Tink via `@Convert(converter = EncryptedStringConverter.class)` sur la colonne `secret_key_hash`, identique à d'autres champs sensibles. Impact sur les performances : minimal (déchiffrement uniquement lors de la validation).
 
@@ -532,7 +532,7 @@ if (keyFilePath == null || keyFilePath.isBlank()) {
 
 Identique à F-07-A (dégradation Tink) mais pour la couche intégrité des logs.
 
-**Impact :** Compromet la piste d'audit en cas d'incident. Particulièrement problématique pour la posture SOC 2 (CC7.2 — audit trail integrity).
+**Impact :** Compromet la piste d'audit en cas d'incident. Particulièrement problématique pour la piste d'audit opérable (intégrité HMAC / tamper-evident monitoring).
 
 **Mitigation :**
 1. Ajouter `isActive()` dans le health endpoint Actuator.
@@ -636,7 +636,7 @@ Voir F-07-B. Applicable aussi en Domaine 10 : sous re-encryption concurrente, to
 - SEC-007 : Device proof token hash-only
 - SEC-008 : Health check HMAC audit
 
-### Phase 3 — Milestone 4 / SOC 2 prep
+### Phase 3 — Milestone 4 / operational discipline
 - SEC-005 : Rate limiting Auth API (**fait** — profil `docker` / EXP1)
 - SEC-009 : `ReadWriteLock` Tink (**fait** — [`ADR-0008`](../product-docs/global/architecture-decisions.md#adr-0008-tink-keyset-sync-concurrent-read-path))
 - SEC-010 : Chiffrement hash API key (**fait** — PR #312)

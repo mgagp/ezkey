@@ -206,13 +206,13 @@ public class Enrollment implements Reencryptable {
 
   /**
    * When the enrollment transitioned to VERIFIED status. Set once when device completes binding.
-   * Used for audit trail and lifecycle metrics (SOC 2 CC7.2).
+   * Used for audit trail and lifecycle metrics (tamper-evident monitoring).
    */
   @Column(name = "verified_at")
   private OffsetDateTime verifiedAt;
 
   /**
-   * Admin who created this enrollment (SOC 2 CC6.1, CC7.2). Populated when created via Admin API;
+   * Admin who created this enrollment (identifiable operator identity). Populated when created via Admin API;
    * null when created via API key.
    */
   @Column(name = "created_by_admin_id")
@@ -227,29 +227,29 @@ public class Enrollment implements Reencryptable {
 
   /**
    * When this enrollment was deactivated by an administrator (reversible). Null if never
-   * deactivated. Combined with {@link #deactivatedByAdminId} for SOC 2 CC6.3 audit trail.
+   * deactivated. Combined with {@link #deactivatedByAdminId} for rapid access removal audit trail.
    */
   @Column(name = "deactivated_at")
   private OffsetDateTime deactivatedAt;
 
   /**
    * ID of the administrator who deactivated this enrollment. Null if never deactivated. Used for
-   * SOC 2 CC6.3 audit trail (who performed the access removal).
+   * rapid access removal audit trail (who performed the access removal).
    */
   @Column(name = "deactivated_by_admin_id")
   private Integer deactivatedByAdminId;
 
   /**
    * When this enrollment was permanently revoked by an administrator. Null if never revoked. Once
-   * set, the enrollment cannot be reactivated. Combined with {@link #revokedByAdminId} for SOC 2
-   * CC6.3 audit trail.
+   * set, the enrollment cannot be reactivated. Combined with {@link #revokedByAdminId} for rapid
+   * access removal on the operator-visible audit trail.
    */
   @Column(name = "revoked_at")
   private OffsetDateTime revokedAt;
 
   /**
    * ID of the administrator who permanently revoked this enrollment. Null if never revoked. Used
-   * for SOC 2 CC6.3 audit trail (who performed the irrevocable access removal).
+   * for rapid access removal audit trail (who performed the irrevocable access removal).
    */
   @Column(name = "revoked_by_admin_id")
   private Integer revokedByAdminId;

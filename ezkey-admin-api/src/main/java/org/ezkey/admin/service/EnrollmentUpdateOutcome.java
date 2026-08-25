@@ -17,7 +17,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
  * org.ezkey.admin.dto.request.EnrollmentUpdateRequestDto)}.
  *
  * <p>Carries the persisted enrollment and a JSON string for {@code event_details} on {@code
- * ENROLLMENT_UPDATED} (SOC 2 friendly: who changed what, previous vs new values).
+ * ENROLLMENT_UPDATED} (operator-visible: who changed what, previous vs new values).
  *
  * @param enrollment the updated enrollment entity
  * @param auditEventDetailsJson valid JSON for audit log {@code event_details}

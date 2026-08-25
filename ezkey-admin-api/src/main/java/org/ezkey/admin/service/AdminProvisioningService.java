@@ -223,9 +223,9 @@ public class AdminProvisioningService {
    * maximum limit and creates enrollment + recovery codes for passwordless authentication.
    *
    * @param username the unique username for the new admin
-   * @param email the email address (required for SOC 2 compliance)
-   * @param firstName the first name (required for SOC 2 compliance)
-   * @param lastName the last name (required for SOC 2 compliance)
+   * @param email the email address (required for identifiable Global Admin identity)
+   * @param firstName the first name (required for identifiable Global Admin identity)
+   * @param lastName the last name (required for identifiable Global Admin identity)
    * @param creatorPrincipal the principal of the creating administrator (must be global admin)
    * @return ProvisioningResult with admin, enrollment, and onboarding credentials
    * @throws GlobalAdminLimitException if the active global administrator count is at the configured

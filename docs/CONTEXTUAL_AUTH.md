@@ -137,9 +137,9 @@ authentication must be cryptographically bound to transaction details (amount, p
 the approval to a specific attempt, Ezkey becomes PSD2-compliant-ready for payment authorization
 workflows.
 
-**SOC 2 Audit Trail:** Context fields are persisted with the authentication attempt in the
+**Operator-visible audit trail:** Context fields are persisted with the authentication attempt in the
 database, enriching the audit trail with business context. Reviewers can see not just that an
-authentication occurred, but what was approved (CC6.1, CC7.2).
+authentication occurred, but what was approved (identifiable operator identity).
 
 ---
 

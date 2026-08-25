@@ -24,7 +24,7 @@ This analysis has been prepared after comprehensive review of:
 - ✅ **Current Database Schema**: Migrations V1-V13, entity relationships
 - ✅ **API Endpoints**: Complete Admin API and Auth API endpoint documentation
 - ✅ **Security Implementation**: Admin API security guide, authentication flows
-- ✅ **Compliance Requirements**: SOC 2 controls, privacy law considerations
+- ✅ **Operational discipline**: identifiable identity, audit trail, privacy law considerations
 
 The proposed strategy aligns with Ezkey's existing architecture, API patterns, and operational requirements while introducing enhanced multi-tenancy capabilities.
 
@@ -39,7 +39,7 @@ The proposed strategy aligns with Ezkey's existing architecture, API patterns, a
 5. [Capability Matrix](#capability-matrix)
 6. [Scope and Delegation Analysis](#scope-and-delegation-analysis)
 7. [Traceability and Audit Considerations](#traceability-and-audit-considerations)
-8. [SOC 2 Compliance Considerations](#soc-2-compliance-considerations)
+8. [Retention and access product notes](#retention-and-access-product-notes)
 9. [Personal Information Management](#personal-information-management)
 10. [Privacy Compliance: Loi 25 Québec](#privacy-compliance-loi-25-québec)
 11. [Implementation Recommendations](#implementation-recommendations)
@@ -81,7 +81,7 @@ This document proposes an expanded hierarchy that better aligns with enterprise 
 4. **Enhanced delegation capabilities** with proper scope control
 5. **Improved traceability** for compliance and audit requirements
 6. **Personal information management** with support for administrators with multiple roles
-7. **Privacy compliance** considerations (SOC 2, Loi 25 Québec)
+7. **Privacy** considerations (Loi 25 Québec)
 
 ### Key Design Principles
 
@@ -89,7 +89,7 @@ This document proposes an expanded hierarchy that better aligns with enterprise 
 - **Least Privilege**: Administrators have minimum necessary permissions
 - **Delegation Support**: Higher-level admins can create and manage lower-level admins
 - **Audit Trail**: All actions are traceable with proper attribution
-- **SOC 2 Compliance**: Design supports compliance requirements from the start
+- **Operational discipline**: Design supports identifiable identity and audit from the start
 - **Privacy by Design**: Minimal personal information collection aligned with operational needs
 - **Multi-Role Support**: Same individual can have multiple administrative roles
 
@@ -367,7 +367,7 @@ The administrator types described below (Organization Admin, Unit Admin, Integra
 - Security team managing cryptographic keys
 - System administrators handling technical maintenance
 
-**SOC 2 Considerations**:
+**Product considerations**:
 - Must have identifiable username (not "admin")
 - Email address required for audit trail
 - All actions logged with admin ID
@@ -569,7 +569,7 @@ This is the central question that requires careful analysis from both **pragmati
 
 **Pros**:
 - Clear separation of responsibilities
-- Strong SOC 2 compliance (clear audit trail)
+- Strong identifiable operator identity (clear audit trail)
 - Prevents privilege escalation
 - Easier to reason about permissions
 
@@ -578,7 +578,7 @@ This is the central question that requires careful analysis from both **pragmati
 - Requires more delegation
 - May slow down operations
 
-**SOC 2 Alignment**: ✅ Strong - Clear separation of duties (CC6.1)
+**Product alignment**: Strong — clear separation of duties (least privilege / role split)
 
 #### Option B: Delegated Operations (Moderate)
 
@@ -600,7 +600,7 @@ This is the central question that requires careful analysis from both **pragmati
 - Requires careful audit trail design
 - Potential for confusion about scope
 
-**SOC 2 Alignment**: ⚠️ Moderate - Requires careful audit trail design
+**Product alignment**: Moderate — requires careful operator-visible audit trail design
 
 #### Option C: Full Delegation (Most Flexible)
 
@@ -620,7 +620,7 @@ This is the central question that requires careful analysis from both **pragmati
 - Harder to audit
 - Potential security concerns
 
-**SOC 2 Alignment**: ❌ Weak - Poor separation of duties
+**Product alignment**: Weak — poor separation of duties
 
 ### Recommended Approach: **Option B with Constraints**
 
@@ -660,7 +660,7 @@ We recommend **Option B (Delegated Operations)** with the following constraints:
 - Common enterprise pattern (manager can act on behalf of team)
 
 **Arguments AGAINST allowing**:
-- Separation of duties (SOC 2 requirement)
+- Separation of duties (least privilege / role split)
 - Clear accountability (who is responsible?)
 - Potential for abuse
 - Complexity in audit trail
@@ -823,44 +823,44 @@ ORDER BY created_at DESC;
 
 ---
 
-## SOC 2 Compliance Considerations
+## Retention and access product notes
 
-### Relevant SOC 2 Controls
+### Relevant product terms
 
-#### CC6.1 - Logical and Physical Access Controls
-**Requirement**: Implement logical access security software, infrastructure, and architectures over protected information assets.
+#### Least privilege / role split
+Logical access over protected information assets.
 
-**Ezkey Implementation**:
-- ✅ Hierarchical access control (admin types)
-- ✅ Scope-based filtering (admins see only their scope)
-- ✅ Audit trail for all actions
-- ⚠️ **Requires**: Clear separation of duties documentation
+**Ezkey implementation**:
+- Hierarchical access control (admin types)
+- Scope-based filtering (admins see only their scope)
+- Operator-visible audit trail for actions
+- Documented separation of duties (Global Admin vs Tenant Admin)
 
-#### CC6.2 - Access Credentials
-**Requirement**: Prior to issuing system credentials and granting system access, the entity registers and authorizes new internal and external users.
+#### Identifiable operator identity
+Before granting access, the instance registers a named person (not `admin` / `root`).
 
-**Ezkey Implementation**:
-- ✅ Admin creation requires higher-level admin approval
-- ✅ Admin types enforce scope restrictions
-- ✅ Username must be identifiable (not generic)
+**Ezkey implementation**:
+- Admin creation requires a higher-level admin
+- Admin types enforce scope restrictions
+- Username must be identifiable (not generic)
 
-#### CC6.3 - Removal of Access
-**Requirement**: The entity authorizes, modifies, or removes access to data, software, and systems based on roles.
+#### Rapid access removal
+Authorize, modify, or remove access based on roles.
 
-**Ezkey Implementation**:
-- ✅ Admin deactivation (soft delete)
-- ✅ Scope-based access removal
-- ✅ Audit trail for access changes
+**Ezkey implementation**:
+- Admin deactivation (soft delete)
+- Scope-based access removal
+- Operator-visible audit trail for access changes
 
-#### CC7.2 - System Communications
-**Requirement**: The entity restricts the transmission, movement, and removal of information to authorized internal and external users.
+#### Operator-visible audit trail
+Restrict transmission and removal of information to authorized users; record who / what / when.
 
-**Ezkey Implementation**:
-- ✅ Cryptographic authentication (API keys, admin tokens)
-- ✅ Scope-based data filtering
-- ✅ Audit trail for data access
+**Ezkey implementation**:
+- Cryptographic authentication (API keys, admin tokens)
+- Scope-based data filtering
+- Audit trail for data access
 
-### SOC 2 Compliance Recommendations
+### Product recommendations
 
 1. **Separation of Duties**:
    - Document which admin types can perform which operations
@@ -1207,7 +1207,7 @@ The current `ezkey_admin` table includes:
 1. **Unique Identification**: Identify administrators uniquely for audit and accountability
 2. **Communication**: Contact administrators for security alerts, notifications, and operational needs
 3. **Multi-Role Support**: Same individual may have multiple administrative roles (e.g., Unit Admin for one unit, Integration Admin for another)
-4. **Compliance**: Support SOC 2 and privacy law requirements (Loi 25 Québec)
+4. **Privacy**: Support Loi 25 Québec and identifiable-identity / audit practices
 
 **Information to Collect:**
 - ✅ **Email**: Required for communication and notifications
@@ -1370,7 +1370,7 @@ Content-Type: application/json
 
 **Collected Information:**
 - Email: Required for notifications and account recovery
-- Name: Required for audit trail and identification (SOC 2)
+- Name: Required for audit trail and identifiable operator identity
 - Phone: Optional, for emergency contact only
 
 **Not Collected:**
@@ -1580,7 +1580,7 @@ This analysis proposes a comprehensive multi-tenancy strategy for Ezkey that:
 
 1. **Supports Enterprise Needs**: Four-level hierarchy (Global → Organization → Unit → Integration)
 2. **Maintains Pragmatism**: 80/20 approach with sensible defaults
-3. **Ensures Compliance**: SOC 2 considerations built-in from the start
+3. **Operational discipline**: identifiable identity and audit built-in from the start
 4. **Provides Flexibility**: Delegation with proper attribution
 5. **Enables Traceability**: Complete audit trail for all actions
 
@@ -1614,7 +1614,7 @@ This analysis document has been prepared after reviewing:
 - API Key authentication mechanisms
 
 ✅ **Security and Compliance**:
-- SOC 2 requirements and implementation
+- Identifiable identity and audit practices
 - Admin API security guide
 - Multi-tenant security features
 
@@ -1627,5 +1627,5 @@ The proposed multi-tenancy strategy aligns with:
 - Ezkey's 80/20 pragmatism principle
 - Existing database schema and entity relationships
 - Current API endpoint patterns and capabilities
-- SOC 2 compliance requirements
+- identifiable operator identity requirements
 - Privacy law considerations (Loi 25 Québec)

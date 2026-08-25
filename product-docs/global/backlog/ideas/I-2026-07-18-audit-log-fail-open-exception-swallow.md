@@ -87,7 +87,7 @@ business TX ──► AuditLogService.log()
 
 - Treating this as “integrity is broken” would mis-state the system; over-correcting to global
   fail-closed could harm availability of core MFA.
-- Under-stating it leaves SOC 2 / external readers with an inflated completeness narrative.
+- Under-stating it leaves external readers with an inflated completeness narrative.
 - Silent swallow + grant mistakes during INSERT-only migration could look like “no audit” without
   API failures — already called out as a **required** elective gate on the sibling TB.
 

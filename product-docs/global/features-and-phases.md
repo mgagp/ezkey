@@ -135,9 +135,9 @@ Backlog **progression markers** on `I-*` / `V-*` metadata use the same milestone
 
 ### Milestone `P4-compliance-readiness` — Operational Discipline
 
-Operational discipline as a product quality (SOC 2 as mapping vocabulary, not a certification
-program). Current funded work remains the operable-release compass, not P4-as-certification. See
-[`normative-posture.md`](normative-posture.md) and [`roadmap.md`](roadmap.md).
+Operational discipline as a product quality. Mapping vocabulary lives only in
+[`normative-posture.md`](normative-posture.md) (not a certification program). Current funded work
+remains the operable-release compass, not P4-as-certification. See also [`roadmap.md`](roadmap.md).
 
 #### `F-provisioning-procedures`
 

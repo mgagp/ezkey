@@ -252,17 +252,17 @@ License metadata included in Docker images:
 - Risk assessment update
 - Procedure review
 
-## SOC 2 Compliance
+## License / dependency hygiene
 
-License management supports SOC 2 compliance:
+License management supports identifiable operator identity:
 
-- **CC9.1**: Third-party service provider management (dependency inventory)
-- **CC9.2**: Third-party risk assessment (license compatibility)
-- **CC7.1**: Risk mitigation activities (license management process)
-- **CC8.1**: Change management (license review in changes)
-- **CC2.1**: Information quality (accurate license information)
+- Dependency inventory
+- License compatibility review
+- Documented license management process
+- License review when dependencies change
+- Accurate license information in the inventory
 
-See `docs/compliance/` for detailed SOC 2 documentation.
+See `docs/compliance/` for OSS license hygiene. Mapping vocabulary: `product-docs/global/normative-posture.md`.
 
 ## Troubleshooting
 
@@ -297,7 +297,7 @@ If an incompatible license is detected:
 - [Third-Party Dependency Inventory](compliance/third-party-inventory.md) - Complete dependency list
 - [License Risk Assessment](compliance/license-risk-assessment.md) - Detailed risk analysis
 - [License Management Procedure](compliance/procedures/license-management.md) - Detailed procedures
-- [SOC 2-oriented discipline](../product-docs/global/normative-posture.md) — vocabulary, not a certification roadmap
+- [operator-visible discipline](../product-docs/global/normative-posture.md) — vocabulary, not a certification roadmap
 
 ## FAQ
 

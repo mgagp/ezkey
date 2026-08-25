@@ -319,7 +319,7 @@ CREATE INDEX idx_tenant_name ON ezkey_tenant(tenant_name) WHERE active = TRUE;
 --   - Flyway (this migration): Transform schema, create structural data
 --   - Bootstrap service: Create enrollment + recovery codes + crypto keys
 -- 
--- IMPORTANT: The username 'admin' is a placeholder. For SOC 2 compliance,
+-- IMPORTANT: The username 'admin' is a placeholder. For identifiable operator identity,
 --            the initial global admin must be configured with an identifiable
 --            username via application properties (ezkey.admin.initial.username).
 --            The bootstrap service will update the admin with the configured username.
@@ -374,7 +374,7 @@ COMMENT ON TABLE ezkey_tenant IS
 
 -- Initial global admin is the first global administrator with passwordless authentication
 -- Bootstrap service will complete setup by creating enrollment and recovery codes
--- NOTE: Username 'admin' is a placeholder. For SOC 2 compliance, the initial global
+-- NOTE: Username 'admin' is a placeholder. For identifiable operator identity, the initial global
 --       admin must be configured with an identifiable username via application properties.
 --       The bootstrap service will update the admin with the configured username and email.
 INSERT INTO ezkey_admin (
@@ -458,7 +458,7 @@ COMMENT ON COLUMN ezkey_admin.admin_type IS
 -- ============================================================================
 -- Initial global admin created with passwordless infrastructure ready.
 -- Bootstrap service will complete setup on first application startup:
---   - Update admin with configured username and email (SOC 2 compliance)
+--   - Update admin with configured username and email (identifiable operator identity)
 --   - Create system integration + global admin enrollment
 --   - Generate 10 recovery codes (32-digit each)
 --   - Display credentials in logs (one-time opportunity to save)

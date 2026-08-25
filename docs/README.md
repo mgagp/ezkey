@@ -47,8 +47,8 @@ If you are new to the repository, read these first:
 - [ADMIN_PROVISIONING_DEPROVISIONING_PROCEDURE.md](ADMIN_PROVISIONING_DEPROVISIONING_PROCEDURE.md): admin lifecycle and audit-oriented procedure.
 - [RECOVERY_CODES_LIFECYCLE_ANALYSIS.md](RECOVERY_CODES_LIFECYCLE_ANALYSIS.md): historical analysis (pre-regenerate). Living: [`LIFECYCLE_GOVERNANCE.md`](LIFECYCLE_GOVERNANCE.md) §3.8 and [`ENDPOINT.md`](ENDPOINT.md) `POST /api/v1/admins/{id}/recovery-codes/regenerate`.
 - [security/SQL_INJECTION_POSTURE_AUDIT.md](security/SQL_INJECTION_POSTURE_AUDIT.md): SQL injection posture and repository inventory.
-- [../product-docs/global/normative-posture.md](../product-docs/global/normative-posture.md): SOC 2-oriented operational discipline (vocabulary, not certification).
-- [SOC2_KEY_ROTATION_PROCEDURES.md](SOC2_KEY_ROTATION_PROCEDURES.md): encryption key rotation operational procedures.
+- [../product-docs/global/normative-posture.md](../product-docs/global/normative-posture.md): operational discipline (mapping vocabulary only on that page; not a certification claim).
+- [KEY_ROTATION_PROCEDURES.md](KEY_ROTATION_PROCEDURES.md): encryption key rotation operational procedures.
 - [dependency-posture-admin-and-ui.md](dependency-posture-admin-and-ui.md): Admin API / Admin UI dependency anchors, audits, and backlog.
 - [../SECURITY.md](../SECURITY.md): security policy and disclosure process.
 

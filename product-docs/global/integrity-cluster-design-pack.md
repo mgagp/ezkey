@@ -239,7 +239,7 @@ archive** (Phase 2 SPI), not live audit rows. Conciliation registries preserve *
 even when the tampered row no longer exists in the primary store.
 
 **Schema implication:** do not assume audit entries are permanent; do not add restrictive FKs that
-block purge or `ON DELETE CASCADE` that silently erase SOC 2 operator narrative.
+block purge or `ON DELETE CASCADE` that silently erase operator-visible narrative.
 
 Authoritative detail: [`docs/DATABASE_PARTITIONING_IMPLEMENTATION.md`](../../docs/DATABASE_PARTITIONING_IMPLEMENTATION.md)
 (§ Flyway greenfield patterns), [`docs/AUDIT_LOG_INTEGRITY.md`](../../docs/AUDIT_LOG_INTEGRITY.md)

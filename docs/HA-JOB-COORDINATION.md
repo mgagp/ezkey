@@ -50,7 +50,7 @@ admin). Lock rows live in PostgreSQL table **`ezkey_shedlock`** (created in Flyw
 | **Complexity** | ✅ ~30 lines configuration | ❌ ~600 lines custom code |
 | **Time to implement** | ✅ 1-2 hours | ❌ 2-3 days |
 | **Maintenance** | ✅ Dependency updates only | ❌ Ongoing code maintenance |
-| **SOC2 Auditability** | ✅ Database table + logs | ✅ Database table + logs |
+| **Operator-visible audit** | ✅ Database table + logs | ✅ Database table + logs |
 | **Philosophy alignment** | ✅ "Pragmatic, simple" | ⚠️ Over-engineering risk |
 
 ### Why "Lock per Execution" is Correct for Ezkey
@@ -139,7 +139,7 @@ Create `V_XX__create_shedlock_table.sql`:
 -- - If instance crashes, lock auto-expires after lock_until
 -- - Any instance can acquire lock for next execution
 --
--- SOC2 Auditability:
+-- Operator-visible audit:
 -- - locked_by: identifies which instance executed the job
 -- - locked_at: timestamp of lock acquisition
 -- - Query this table to audit job execution history
@@ -167,9 +167,9 @@ COMMENT ON COLUMN ezkey_shedlock.name IS
 COMMENT ON COLUMN ezkey_shedlock.lock_until IS 
     'Lock expiry timestamp - allows automatic failover if instance crashes';
 COMMENT ON COLUMN ezkey_shedlock.locked_at IS 
-    'Lock acquisition timestamp - for SOC2 audit trail';
+    'Lock acquisition timestamp - for encryption-at-rest key lifecycle audit trail';
 COMMENT ON COLUMN ezkey_shedlock.locked_by IS 
-    'Instance identifier that holds the lock - for SOC2 audit trail';
+    'Instance identifier that holds the lock - for encryption-at-rest key lifecycle audit trail';
 ```
 
 ### Phase 3: Configuration Class
@@ -363,7 +363,7 @@ Database time (`usingDbTime()`) ensures consistent lock expiry across instances.
 
 ---
 
-## Monitoring and SOC2 Auditability
+## Monitoring and operator-visible audit
 
 ### Query for Audit Trail
 
@@ -374,7 +374,7 @@ SELECT name, locked_by, locked_at, lock_until,
 FROM ezkey_shedlock
 ORDER BY locked_at DESC;
 
--- Job execution frequency by instance (SOC2 evidence)
+-- Job execution frequency by instance (execution evidence)
 SELECT locked_by, name, COUNT(*) as executions
 FROM ezkey_shedlock
 GROUP BY locked_by, name
@@ -383,7 +383,7 @@ ORDER BY name, executions DESC;
 
 ### Combined with Existing Audit Logs
 
-ShedLock table provides **execution evidence**, while existing `AuditLogService` provides **business event details**. Together they satisfy SOC2 requirements:
+ShedLock table provides **execution evidence**, while existing `AuditLogService` provides **business event details**. Together they support operator-visible job evidence:
 
 - **Who**: `locked_by` column
 - **What**: `name` column + audit log details
@@ -550,4 +550,4 @@ Required code for leader election pattern:
 *Document created: 2025-12-04*
 *Last updated: 2026-08-12*
 *Status: Implemented — ShedLock on Admin API (JVM); native HA exercise via docker HA stack*
-*Related: Key Rotation Strategy, SOC 2 Compliance, `docker/README-HA.md`*
+*Related: Key Rotation Strategy, `docker/README-HA.md`*

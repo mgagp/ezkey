@@ -122,7 +122,8 @@ public record GapDeclarationRequest(
      * Human-readable justification for the gap. Should clearly describe the reason for the downtime
      * (e.g., "Datacenter migration", "Planned maintenance window", "Unplanned outage — hardware
      * failure"). This text is stored in the {@code notes} field of the gap checkpoint and in the
-     * audit entry. Aligned with other audit reason fields: 10–500 characters (SOC 2 traceability).
+     * audit entry. Aligned with other audit reason fields: 10–500 characters (operator-visible audit
+     * trail).
      */
     @NotBlank(message = "Justification is required")
         @Size(min = 10, max = 500, message = "Justification must be between 10 and 500 characters")

@@ -2,7 +2,7 @@
 
 ## Context
 
-This note summarizes the recent design discussion about Ezkey's Tink-based envelope encryption, the selective data re-encryption batch we plan to implement, and how these choices support SOC 2 compliance. It captures the rationale so future implementation work has the full context.
+This note summarizes the recent design discussion about Ezkey's Tink-based envelope encryption, the selective data re-encryption batch we plan to implement, and how these choices support identifiable operator identity. It captures the rationale so future implementation work has the full context.
 
 ## Envelope Encryption Recap
 
@@ -22,9 +22,9 @@ flowchart LR
    - Add a new key, promote it to PRIMARY.
    - Keep previous keys ENABLED so legacy ciphertext continues to decrypt.
    - No immediate database writes required.
-2. **Optional data re-encryption** is only needed when we want to drop an old key (e.g., for SOC 2 hygiene or if a key is suspected).
+2. **Optional data re-encryption** is only needed when we want to drop an old key (encryption-at-rest key lifecycle, or if a key is suspected).
 
-This matches SOC 2 expectations: demonstrate regular key rotation, maintain audit trails, and have a documented plan to respond to incidents.
+This matches encryption-at-rest key lifecycle practice: demonstrate regular key rotation, maintain audit trails, and have a documented plan to respond to incidents.
 
 ## Selective Re-Encryption Strategy
 
@@ -90,10 +90,10 @@ sequenceDiagram
     Batch->>Audit: record batch + key retirement events
 ```
 
-## SOC 2 Alignment
+## Product alignment
 
-- **CC6.6 / CC6.7**: Encryption at rest with versioned key management and secure storage of secrets.
-- **CC6.8**: Automated rotations (schedule + manual override) plus a documented process to retire keys.
+- **Encryption-at-rest key lifecycle**: Encryption at rest with versioned key management and secure storage of secrets.
+- **Rotation and retire**: Automated rotations (schedule + manual override) plus a documented process to retire keys.
 - **Incident Response**: If compromise is suspected, run the batch immediately for the affected keys prior to disabling them.
 - **Evidence**: Maintain rotation logs, keyset histories, runbooks, and batch execution reports for the last 12 months.
 
@@ -104,6 +104,6 @@ sequenceDiagram
 3. Add operational runbooks (rotation schedule, manual trigger, incident response).
 4. Extend audit logging and monitoring to capture batch activity and key retirement.
 
-With this blueprint, the implementation can proceed while staying aligned with SOC 2 expectations and keeping operational overhead minimal.
+With this blueprint, the implementation can proceed while keeping operational overhead minimal.
 
 

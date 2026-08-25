@@ -1011,7 +1011,7 @@ class ApiClient:
     Args:
         payload: Dict with keys:
             - username (required): Unique username (3-50 chars)
-            - email (required): Email address for SOC 2 compliance
+            - email (required): Email address for identifiable operator identity
             - firstName (required): First name
             - lastName (required): Last name
 

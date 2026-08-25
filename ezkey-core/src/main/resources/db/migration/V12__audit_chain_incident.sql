@@ -4,7 +4,7 @@
 -- Description: Stores operator-declared explanations for periods where Auth API /
 --              Integration API observed Admin API checkpoint heartbeat degradation.
 --              Cryptographic checkpoint rows remain REGULAR / GAP_DECLARATION only;
---              this table is operational SOC 2 narrative, not chain linkage.
+--              this table is operational operator-visible narrative, not chain linkage.
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS ezkey_audit_chain_incident (

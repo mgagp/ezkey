@@ -271,7 +271,7 @@ public class ReencryptionBatchCreationService {
 
     if (primaryKey.getKeyStatus() != EncryptionKey.KeyStatus.PRIMARY) {
       logger.warn(
-          "⚠️ SOC2 AUDIT: PRIMARY key mismatch detected! "
+          "⚠️ KEY AUDIT: PRIMARY key mismatch detected! "
               + "Keyset PRIMARY: {} (unsigned: {}), "
               + "Database status: {}. "
               + "Database may need synchronization. Using keyset value (source of truth).",

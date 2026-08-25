@@ -34,8 +34,8 @@ This specification recommends:
 5. Base all lifecycle decisions on an explicit **zero remaining records** verification model, not on
    historical counters alone.
 
-This delivers a simpler and safer operator experience while preserving strong auditability and SOC 2
-alignment.
+This delivers a simpler and safer operator experience while preserving a strong operator-visible
+audit trail.
 
 ---
 
@@ -452,9 +452,9 @@ Structured `event_details` should include:
 - `scheduled_by`
 - `blocking_reasons`
 
-### 10.3 Compliance posture
+### 10.3 Operator-visible trail
 
-This strategy supports high-level SOC 2 expectations by making it possible to show:
+This strategy supports encryption-at-rest key lifecycle review by making it possible to show:
 
 - who initiated a lifecycle action,
 - why it was done,

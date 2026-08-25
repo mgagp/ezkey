@@ -15,9 +15,10 @@ import jakarta.validation.constraints.Size;
 /**
  * Optional request body for the tenant deactivation endpoint.
  *
- * <p>Carries an optional {@code reason} field that is recorded in the audit log to satisfy SOC 2
- * CC6.3/CC8.1 traceability requirements. When provided the reason must be between 10 and 500
- * characters so that it is descriptive enough to be operationally useful.
+ * <p>Carries an optional {@code reason} field that is recorded in the audit log for
+ * reason/justification on sensitive change (who/what/when, and why when provided). When provided
+ * the reason must be between 10 and 500 characters so that it is descriptive enough to be
+ * operationally useful.
  *
  * @author Ezkey contributors
  * @since 2025

@@ -21,7 +21,7 @@ Ezkey uses Flyway for database schema versioning and migration management. Migra
 | **V1** | `initial_schema` | Core tables (enrollments, auth attempts, integrations) | 108 | ✅ Stable |
 | **V2** | `add_multi_tenant_security` | Multi-tenant tables (tenants, admins with password schema, tokens) | 79 | ✅ Stable |
 | **V3** | `create_system_tenant_and_admin_zero` | Transform to passwordless schema + system tenant + initial global admin | 150 | ✅ Stable |
-| **V13** | `add_admin_email_for_soc2` | Add email column to ezkey_admin for SOC 2 compliance | 70 | ✅ Stable |
+| **V13** | `add_admin_email_for_soc2` | Add email column to ezkey_admin for identifiable operator identity | 70 | ✅ Stable |
 
 **Total:** 3 migrations, ~337 lines
 
@@ -32,9 +32,9 @@ Ezkey uses Flyway for database schema versioning and migration management. Migra
 - Creates system tenant "Ezkey System"
 - Creates initial global admin with placeholder username (bootstrap service updates with configured credentials)
 
-**V13:** Adds email column for SOC 2 compliance:
+**V13:** Adds email column for identifiable operator identity:
 - Adds `email` column to `ezkey_admin` table
-- Required for GLOBAL_ADMIN type (SOC 2 CC6.1, CC7.2)
+- Required for GLOBAL_ADMIN type (identifiable operator identity)
 - Unique constraint on email
 - Email format validation
 
@@ -98,23 +98,23 @@ Ezkey uses Flyway for database schema versioning and migration management. Migra
 
 **Bootstrap Completion:**
 Bootstrap services will complete initial global admin setup on first startup:
-- InitialGlobalAdminService: Update admin with configured username and email (SOC 2 compliance)
+- InitialGlobalAdminService: Update admin with configured username and email (identifiable operator identity)
 - AdminBootstrapService: Create system integration (for global admin authentication)
 - AdminBootstrapService: Create global admin enrollment (device binding)
 - Generate 10 recovery codes (32-digit, 106-bit entropy)
 - Display credentials in logs (one-time opportunity)
 
-### V13: Add Email Column for SOC 2 Compliance
+### V13: Add Email Column for identifiable operator identity
 
-**Purpose:** Add email column to ezkey_admin table for SOC 2 compliance requirements
+**Purpose:** Add email column to ezkey_admin table for identifiable operator identity requirements
 
 **Schema Changes:**
 - **ADDED:** `email` column (VARCHAR(255), nullable, unique)
 - **ADDED:** Email format validation constraint
 - **ADDED:** Unique constraint on email
 
-**SOC 2 Requirements:**
-- Email required for GLOBAL_ADMIN type (CC6.1, CC7.2)
+**Identifiable operator identity:**
+- Email required for GLOBAL_ADMIN type (identifiable operator identity)
 - Enables proper audit trail and accountability
 - Individual identification (not generic accounts)
 
@@ -153,8 +153,8 @@ Bootstrap services will complete initial global admin setup on first startup:
 #### Bootstrap Services (Dynamic)
 
 **InitialGlobalAdminService (Order 1):**
-- Update placeholder admin with configured username and email (SOC 2 compliance)
-- Validate configuration meets SOC 2 requirements
+- Update placeholder admin with configured username and email (identifiable operator identity)
+- Validate configuration meets identifiable-identity rules
 
 **AdminBootstrapService (Order 2):**
 - Generate recovery codes (10 × 32-digit, 106-bit entropy)
@@ -348,7 +348,7 @@ WHERE admin_type = 'GLOBAL_ADMIN';
 
 After V3 migration completes, bootstrap services run on first Admin API startup:
 
-**InitialGlobalAdminService (Order 1) - SOC 2 Compliance:**
+**InitialGlobalAdminService (Order 1) — identifiable operator identity:**
 ```java
 // Validate configuration
 validateConfiguration(); // Ensures username and email are configured

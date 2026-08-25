@@ -9,7 +9,7 @@ License validation should be integrated into the CI/CD pipeline to ensure:
 - License files are always up-to-date
 - No incompatible licenses are added
 - License changes are detected
-- SOC 2 evidence is collected
+- License review evidence is collected
 
 ## Recommended CI/CD Checks
 
@@ -202,7 +202,7 @@ if git diff --cached --name-only | grep -E "(pom.xml|package.json|setup.py|requi
 fi
 ```
 
-## SOC 2 Evidence Collection
+## Operational evidence
 
 ### Automated Evidence Collection
 

@@ -6,12 +6,12 @@
 
 ## Executive Summary
 
-Ezkey implements a comprehensive license management strategy to ensure compliance with open source license obligations and support SOC 2 compliance requirements. This strategy covers all dependency ecosystems (Maven, npm, Python, JavaScript), includes automated license generation, and provides complete documentation for both human and AI reference.
+Ezkey implements a comprehensive license management strategy to ensure compliance with open source license obligations and support identifiable operator identity requirements. This strategy covers all dependency ecosystems (Maven, npm, Python, JavaScript), includes automated license generation, and provides complete documentation for both human and AI reference.
 
 ## Strategic Objectives
 
 1. **Legal Compliance**: Ensure full compliance with open source license obligations
-2. **SOC 2 Support**: Provide evidence for SOC 2 third-party management controls
+2. **License hygiene**: Keep a dependency inventory and license review trail
 3. **Risk Mitigation**: Prevent license compatibility issues and legal risks
 4. **Transparency**: Maintain clear and accessible license attribution
 5. **Automation**: Minimize manual effort through automated license generation
@@ -24,14 +24,14 @@ Ezkey implements a comprehensive license management strategy to ensure complianc
 1. **Legal Obligations**: Open source licenses require attribution and compliance
 2. **Risk Management**: Incompatible licenses can create legal risks
 3. **Enterprise Adoption**: Clear license management enables enterprise customers
-4. **SOC 2 Compliance**: Third-party management is a SOC 2 requirement
+4. **Third-party inventory**: Know which OSS dependencies the instance ships
 5. **Project Maturity**: Professional license management demonstrates project maturity
 
 ### Why This Approach
 
 1. **Comprehensive Coverage**: Covers all dependency ecosystems used in Ezkey
 2. **Automated Where Possible**: Reduces manual effort and human error
-3. **SOC 2 Aligned**: Directly supports SOC 2 compliance requirements
+3. **Named operators**: Identifiable operator identity stays a separate bootstrap rule
 4. **Developer Friendly**: Clear processes and documentation for developers
 5. **Audit Ready**: Complete documentation for compliance audits
 
@@ -208,17 +208,17 @@ Ezkey implements a comprehensive license management strategy to ensure complianc
 3. **Monitoring**: Regular audits and license change detection
 4. **Documentation**: Complete license compatibility documentation
 
-## SOC 2 Integration Strategy
+## License hygiene (no certification claim)
 
 ### Control Mapping
 
-License management directly supports multiple SOC 2 controls:
+License management is OSS hygiene. Do not treat it as TSC evidence. Product term: license / dependency hygiene.
 
-- **CC9.1**: Third-party service provider management (dependency inventory)
-- **CC9.2**: Third-party risk assessment (license compatibility)
-- **CC7.1**: Risk mitigation activities (license management process)
-- **CC8.1**: Change management (license review in changes)
-- **CC2.1**: Information quality (accurate license information)
+- Dependency inventory
+- License compatibility review
+- Documented license management process
+- License review when dependencies change
+- Accurate license information
 
 ### Evidence Collection
 
@@ -227,12 +227,10 @@ License management directly supports multiple SOC 2 controls:
 3. **Process Documentation**: Procedures and checklists
 4. **Audit Logs**: CI/CD logs and audit reports
 
-### Compliance Framework Integration
+### Framework notes
 
-- **Comply Framework**: License management integrated into Comply structure
-- **Control Descriptions**: License management documented as control activities
-- **Evidence Links**: License files and documentation linked to controls
-- **Testing Procedures**: License management included in control testing
+- Comply-as-goal is **retired** — see `docs/compliance/COMPLY_INTEGRATION.md`
+- Keep the license procedure and inventory as OSS hygiene
 
 ## Distribution Strategy
 
@@ -305,13 +303,13 @@ License management directly supports multiple SOC 2 controls:
 - ✅ CI/CD integration documented
 - ✅ Complete documentation
 
-### SOC 2 Metrics
+### Hygiene metrics
 
-- ✅ CC9.1 evidence: Dependency inventory complete
-- ✅ CC9.2 evidence: Risk assessment documented
-- ✅ CC7.1 evidence: Process documented
-- ✅ CC8.1 evidence: License review in change process
-- ✅ CC2.1 evidence: Accurate license information
+- Dependency inventory complete
+- Risk assessment documented
+- Process documented
+- License review in change process
+- Accurate license information
 
 ## Future Enhancements
 
@@ -321,7 +319,7 @@ License management directly supports multiple SOC 2 controls:
 2. **Docker Labels**: License metadata in Docker images
 3. **CI/CD Integration**: Automated license checks in GitHub Actions
 4. **License Change Alerts**: Automated alerts for license changes
-5. **Comply Site**: Generate compliance site with Comply framework
+5. **Comply Site**: Retired — see `docs/compliance/COMPLY_INTEGRATION.md`
 
 ### Continuous Improvement
 
@@ -341,7 +339,7 @@ License management directly supports multiple SOC 2 controls:
 
 - [Third-Party Inventory](compliance/third-party-inventory.md) - Complete dependency inventory
 - [License Risk Assessment](compliance/license-risk-assessment.md) - Risk analysis
-- [SOC 2-oriented discipline](../product-docs/global/normative-posture.md) — vocabulary, not a certification roadmap
+- [operator-visible discipline](../product-docs/global/normative-posture.md) — vocabulary, not a certification roadmap
 
 ### For AI Assistants
 
@@ -350,7 +348,7 @@ This document provides comprehensive context for AI assistants working on licens
 - All dependency ecosystems covered
 - Tools and automation approach
 - Process workflows
-- SOC 2 integration
+- License procedure (OSS hygiene)
 - Risk management
 
 ## Metadata for AI Context
@@ -367,7 +365,7 @@ This document provides comprehensive context for AI assistants working on licens
 
 **Key Concepts**:
 - License compatibility (MIT, Apache 2.0, BSD, EPL compatible)
-- SOC 2 compliance (CC9.1, CC9.2, CC7.1, CC8.1, CC2.1)
+- license / dependency hygiene (see normative-posture.md)
 - Automated license generation
 - Risk mitigation
 - Distribution compliance

@@ -482,7 +482,7 @@ function renderMarkdown(summary, apps) {
   lines.push('- Integration API near-zero HTTP — churn creates API keys then never uses them for auth-attempt create.');
   lines.push('- Collector `GET /actuator/monitoring` scrape (dropped).');
   lines.push('- SQL `cpuTimeSum` negative sentinels — JavaMelody does not measure CPU on JDBC.');
-  lines.push('- Audit-log inserts and HMAC — expected SOC 2 cost unless mean grows vs siblings.');
+  lines.push('- Audit-log inserts and HMAC — expected tamper-evident monitoring cost unless mean grows vs siblings.');
   lines.push('- Auth `SELECT … FOR NO KEY UPDATE` on pending — expected lock; only a signal if mean is out of line.');
   lines.push('');
   lines.push('## Complementary search hints');

@@ -50,7 +50,7 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 ### 1. Bootstrap — Initial Global Admin (`ezkey.admin.initial.*`)
 
 **Description:** seeds the first Global Admin account on first startup. The system bootstraps
-only if no Global Admin exists yet. SOC 2 compliance requires a real individual's identity
+only if no Global Admin exists yet. Identifiable operator identity is required
 (not `admin` or `root`).
 
 **Defined in:** `InitialGlobalAdminProperties`
@@ -58,9 +58,9 @@ only if no Global Admin exists yet. SOC 2 compliance requires a real individual'
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.admin.initial.username` | `String` | *(none)* | requis | Username for the initial Global Admin. Must identify an individual. Forbidden values: `admin`, `administrator`, `root`, `superuser`, `super`, `user`, `test`, `demo`. |
-| `ezkey.admin.initial.email` | `String` | *(none)* | requis | Email for the initial Global Admin (SOC 2 CC6.1, CC7.2). Must be valid format. |
-| `ezkey.admin.initial.first-name` | `String` | *(none)* | requis | First name (SOC 2 CC6.1, CC7.2). |
-| `ezkey.admin.initial.last-name` | `String` | *(none)* | requis | Last name (SOC 2 CC6.1, CC7.2). |
+| `ezkey.admin.initial.email` | `String` | *(none)* | requis | Email for the initial Global Admin (operator-visible audit trail). Must be valid format. |
+| `ezkey.admin.initial.first-name` | `String` | *(none)* | requis | First name (identifiable Global Admin identity). |
+| `ezkey.admin.initial.last-name` | `String` | *(none)* | requis | Last name (identifiable Global Admin identity). |
 
 **Docker values (docker-compose.yml defaults):**
 

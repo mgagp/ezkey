@@ -46,7 +46,7 @@ package org.ezkey.exception;
  * }
  * }</pre>
  *
- * <p><b>SOC 2 Relevance:</b> CC7.1 — system monitoring; CC6.3 — logical access removal.
+ * <p>Inactive enrollments must not authenticate (rapid access removal; operator-visible trail).
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *

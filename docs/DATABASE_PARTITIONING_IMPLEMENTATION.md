@@ -54,7 +54,7 @@ This document summarizes the implementation of database table partitioning for E
 
 **Why This Approach:**
 - ✅ Maintains security best practices (principle of least privilege)
-- ✅ Supports SOC2 compliance (separation of DDL vs DML privileges)
+- ✅ Supports operator-visible audit (separation of DDL vs DML privileges)
 - ✅ Application role doesn't need DDL privileges
 - ✅ Function validates inputs to prevent SQL injection
 
@@ -207,7 +207,7 @@ CREATE TABLE ezkey_audit_log_2025_03_integration PARTITION OF ezkey_audit_log_20
 
 ### Archiving Old Partitions
 
-For SOC2 compliance (7-year retention for audit logs):
+For operator-visible audit (7-year retention for audit logs):
 
 ```sql
 -- Example: Archive partition older than retention period
@@ -354,12 +354,12 @@ only). A hypothetical FK to audit log would need `(audit_log_id, created_at, api
 `(audit_log_id, audit_log_created_at)` **without FK**. Used by
 `ezkey_audit_entry_integrity_conciliation` (B2.6): the operator act must persist after
 archive-sealed audit partitions are physically deleted. `audit_log_id` is globally unique; the
-snapshot is sufficient for lookup and SOC 2 narrative without encoding `api_name`.
+snapshot is sufficient for lookup and operator-visible narrative without encoding `api_name`.
 
 Do **not** assume audit rows are permanent. Lifecycle progression
 (`ACTIVE → SEALED → [EXPORTED] → PURGEABLE → PURGED`) authorizes physical deletion via
 `AuditLogService.purgeLifecycleEligibleLogs()` once covering checkpoints are `PURGEABLE`.
-A FK without `ON DELETE` semantics would block purge; `CASCADE` would destroy SOC 2 narrative.
+A FK without `ON DELETE` semantics would block purge; `CASCADE` would destroy operator-visible narrative.
 
 ### Agent rule of thumb
 
@@ -386,7 +386,7 @@ See also: `ezkey-core/AGENTS.md` (§ Partitioned tables and Flyway),
 **Implementation:**
 - Partition creation uses `SECURITY DEFINER` function
 - Application role only needs EXECUTE privilege (not CREATE TABLE)
-- Maintains SOC2 compliance (separation of duties)
+- Maintains operator-visible audit (separation of duties)
 
 **See:** `docs/DATABASE_PARTITIONING_SECURITY_ANALYSIS.md` for detailed security analysis
 

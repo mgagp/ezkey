@@ -11,7 +11,7 @@
 --
 -- Reference model: conciliation stores (audit_log_id, audit_log_created_at) as an immutable
 -- snapshot at reconcile time. No FK to ezkey_audit_log — sealed/purged partitions drop audit
--- rows while this registry must persist for SOC 2 operator narrative (see docs).
+-- rows while this registry must persist for operator-visible narrative (see docs).
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS ezkey_audit_entry_integrity_conciliation (

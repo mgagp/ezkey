@@ -72,7 +72,7 @@ capping.
 
 **Nightly completion audit event (`NIGHTLY_INTEGRITY_VALIDATION_COMPLETED`):** cap **10** entry, **5**
 chain in `event_details` (choice **A**). Lists include totals + `truncated` when capped. Role:
-lightweight **immutable compliance footprint** — sample IDs + counts for SOC2-style traceability;
+lightweight **immutable compliance footprint** — sample IDs + counts for encryption-at-rest key lifecycle-style traceability;
 full investigation remains alert + API re-verify.
 
 **Snapshot vs live divergence:** UI labels **“At detection”** (alert payload) vs **“Verified now”**

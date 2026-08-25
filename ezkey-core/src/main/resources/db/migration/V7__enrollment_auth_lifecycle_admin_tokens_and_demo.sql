@@ -15,7 +15,7 @@ COMMENT ON COLUMN ezkey_auth_attempt.context_message IS 'Optional descriptive bo
 -- V40: Add enrollment revocation audit fields
 --
 -- Adds four nullable audit columns to ezkey_enrollment to support the enrollment
--- revocation lifecycle (SOC 2 CC6.3 — removal of access).
+-- revocation lifecycle (rapid access removal — removal of access).
 --
 -- deactivated_at / deactivated_by_admin_id : set when an admin soft-deactivates an
 --   enrollment (reversible). Cleared on reactivation.

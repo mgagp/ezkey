@@ -119,7 +119,7 @@ Boolean wasCreated = (Boolean) entityManager.createNativeQuery(
 - Function can be audited via PostgreSQL logging
 
 **Compliance:**
-- ✅ SOC2: Principle of least privilege maintained
+- ✅ Principle of least privilege maintained
 - ✅ Separation of duties (DDL vs DML)
 - ✅ Audit trail available
 
@@ -194,7 +194,7 @@ SELECT cron.schedule(
 - Application has no involvement
 
 **Compliance:**
-- ✅ SOC2: Separation of duties maintained
+- ✅ Separation of duties maintained
 - ⚠️ May require additional documentation for extension management
 
 ---
@@ -275,7 +275,7 @@ EOF
 - Execution should be logged
 
 **Compliance:**
-- ✅ SOC2: Complete separation of duties
+- ✅ Complete separation of duties
 - ⚠️ Requires credential management procedures
 
 ---
@@ -288,11 +288,11 @@ EOF
 - ❌ Violates principle of least privilege
 - ❌ Application has unnecessary DDL privileges
 - ❌ Security risk (compromised application could modify schema)
-- ❌ Compliance issues (SOC2, PCI-DSS)
+- ❌ Compliance issues (PCI-DSS)
 - ❌ Not aligned with security best practices
 
 **Compliance Impact:**
-- ❌ SOC2: Fails separation of duties requirement
+- ❌ Fails separation of duties
 - ❌ PCI-DSS: Violates least privilege principle
 - ❌ General: Security best practice violation
 
@@ -444,13 +444,15 @@ SELECT cron.schedule(
 
 ---
 
-## Compliance Considerations
+## Product notes
 
-### SOC2
+### Least privilege / role split
 
-- ✅ **CC6.1 (Logical Access Controls):** Application role has minimal privileges
-- ✅ **CC6.2 (Access Authorization):** DDL privileges restricted to owner role
-- ✅ **CC7.2 (System Monitoring):** Function calls can be audited
+- Application role has minimal privileges
+- DDL privileges restricted to the owner role
+- Function calls can be audited (operator-visible trail)
+
+Mapping vocabulary (not a claim): [`product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md).
 
 ### PCI-DSS
 
@@ -481,7 +483,6 @@ This approach:
 
 - PostgreSQL SECURITY DEFINER: https://www.postgresql.org/docs/current/sql-createfunction.html
 - PostgreSQL pg_cron: https://github.com/citusdata/pg_cron
-- SOC2 Trust Service Criteria: https://www.aicpa.org/interestareas/frc/assuranceadvisoryservices/trustdataintegritytaskforce.html
 - Principle of Least Privilege: https://owasp.org/www-community/Least_Privilege
 
 ---

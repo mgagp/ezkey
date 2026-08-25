@@ -6,7 +6,7 @@
  *
  * Test: AuditReasonPropagationTest
  * Description: Unit tests verifying that the optional `reason` justification field is correctly
- *     propagated to AuditLog entries for SOC 2 CC6.3 / CC8.1 compliance.
+ *     propagated to AuditLog entries for reason/justification on sensitive change.
  */
 
 package org.ezkey.admin.controller;
@@ -75,7 +75,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * Unit tests verifying that the optional {@code reason} justification field is correctly propagated
- * to {@link AuditLog} entries for SOC 2 CC6.3 / CC8.1 compliance.
+ * to {@link AuditLog} entries for reason/justification on sensitive change.
  *
  * <p>Tests cover controllers that propagate a {@code reason} (query or body) into {@link AuditLog}:
  * {@link ApiKeyController}, {@link EnrollmentController}, {@link EncryptionKeyController}, and

@@ -101,7 +101,7 @@ public class EnrollmentCreateRequest {
 
   /**
    * Admin who created this enrollment. Set by the controller when request comes from admin (bearer
-   * token); null when created via API key. For SOC 2 audit (CC6.1, CC7.2).
+   * token); null when created via API key. For identifiable operator identity on the audit trail.
    */
   private Integer createdByAdminId;
 

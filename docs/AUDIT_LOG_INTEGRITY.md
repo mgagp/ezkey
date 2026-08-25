@@ -1,6 +1,6 @@
 # Audit Log Integrity -- HMAC Signing & Chain Checkpoints
 
-> **SOC 2 Controls:** CC7.2 (System Monitoring), CC6.1 (Logical Access)
+> **Product terms:** tamper-evident monitoring; identifiable operator identity
 > **Normative standard:** Tamper-evidence, not tamper-proof (same approach as HashiCorp Vault audit backend)
 
 ## Overview
@@ -82,7 +82,7 @@ The key must be identical across instances because:
 There is currently **no automatic key rotation** for the audit HMAC key. This is intentional:
 
 - Rotating the key would make all previously signed entries unverifiable unless you also store which key version signed each entry
-- For SOC 2, key rotation is recommended but not mandatory for HMAC signing keys (they are not encryption keys)
+- HMAC signing keys are not encryption keys; rotate only if compromise is suspected
 - If rotation becomes necessary, the procedure is:
 
 1. Generate a new key file
@@ -369,7 +369,7 @@ Per-entry HMAC violations can be **acknowledged** by Global Admin reconcile with
 | Entry reference | Immutable snapshot `(audit_log_id, audit_log_created_at)` at conciliation time |
 | FK to audit log | **None** — registry must survive audit partition purge after archive seal |
 | Fingerprint | SHA-256 of canonical entry form at conciliation; gates re-alert skip vs re-tamper |
-| Meta-audit | `AUDIT_ENTRY_INTEGRITY_CONCILIATED` event + conciliation row for SOC 2 lookup |
+| Meta-audit | `AUDIT_ENTRY_INTEGRITY_CONCILIATED` event + conciliation row for operator lookup |
 
 After reconcile, verify still reports HMAC KO on the entry (tamper-evident); conciliation only
 records that the organization accepted the known invalid state under justification.
@@ -387,4 +387,4 @@ designed for purge-surviving reference semantics; see
 - **Real-time hash chain per entry:** rejected due to HA write-contention complexity; the 5-minute batch approach provides equivalent normative value
 - **Automatic HMAC key rotation:** not implemented; rotation only needed if key is compromised
 - **Google Tink for HMAC:** intentionally not used; standard JDK `javax.crypto.Mac` keeps the integrity layer independent from the confidentiality layer
-- **Tamper-proof (absolute prevention):** SOC 2 requires tamper-evidence and detectability, which this design satisfies
+- **Tamper-proof (absolute prevention):** this design provides tamper-evidence and detectability, not absolute prevention

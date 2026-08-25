@@ -1443,7 +1443,7 @@ Authorization: Bearer ezkey_admin_token...
 }
 ```
 
-**Response fields:** `tenantName` is the display name of the tenant (`ezkey_tenant.tenant_name`) when `tenantId` is set; it is `null` for global administrators. `enrollmentId` is the MFA enrollment linked to this administrator (passwordless identity); null if not linked. `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). `operational` summarizes whether the admin account and (for tenant-scoped admins) the tenant are in an operable state for login. Useful for access reviews and SOC 2 procedures.
+**Response fields:** `tenantName` is the display name of the tenant (`ezkey_tenant.tenant_name`) when `tenantId` is set; it is `null` for global administrators. `enrollmentId` is the MFA enrollment linked to this administrator (passwordless identity); null if not linked. `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). `operational` summarizes whether the admin account and (for tenant-scoped admins) the tenant are in an operable state for login. Useful for access reviews.
 
 **Status Codes:**
 - 200: List of administrators retrieved successfully
@@ -1642,7 +1642,7 @@ Omitted fields are left unchanged. Sending `null` for optional fields does **not
 
 **Semantics — `expiresAt`:** This field governs the **pending invitation window** (creation → bind → verify). It is **not** a post-verification “MFA valid until” lifetime for the whole enrollment; after `VERIFIED`, ongoing authentication does not use this field as an automatic cutoff (a separate product concept may be introduced later).
 
-**Audit (SOC 2):** On success, `ENROLLMENT_UPDATED` stores structured JSON in `event_details` with `enrollment_id`, `integration_id`, and a `changes` array listing each modified field with `previous` and `new` values.
+**Audit:** On success, `ENROLLMENT_UPDATED` stores structured JSON in `event_details` with `enrollment_id`, `integration_id`, and a `changes` array listing each modified field with `previous` and `new` values.
 
 **Request:**
 ```http
@@ -1679,7 +1679,7 @@ Content-Type: application/json
 
 #### **DELETE /api/v1/enrollments/{id}** (Delete Enrollment)
 
-Removes an enrollment from the system. Optional query parameter `reason` (min 10, max 500 characters) is recorded in the audit log for SOC 2 compliance.
+Removes an enrollment from the system. Optional query parameter `reason` (min 10, max 500 characters) is recorded in the audit log for identifiable operator identity.
 
 **Request:**
 ```http

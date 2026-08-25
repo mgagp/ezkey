@@ -49,7 +49,7 @@ Lockfile: committed [`ezkey-admin-ui/package-lock.json`](../ezkey-admin-ui/packa
 | Medium | Grouped **patch/minor** npm updates within current majors (e.g. `@tanstack/react-query`, `react-router-dom`, `zod`, Tailwind patch) | Reduces drift; test `npm run lint`, `npm run build`, optional Playwright if auth/routing touched |
 | Medium | Evaluate later **Spring Boot 4.1.x** patches when available | Single property change in root `pom.xml`; keep Tomcat / Logback / Jackson overrides; full [`scripts/build.sh`](../scripts/build.sh) baseline |
 | Lower | **Major** bumps (e.g. Vitest 4, Vite 8, ESLint 10) | Higher regression risk; schedule explicitly |
-| Lower | Add optional **Maven dependency-scan** job (OWASP or `mvnd`) in CI | Operational quick win from SOC2 guidance |
+| Lower | Add optional **Maven dependency-scan** job (OWASP or `mvnd`) in CI | Operational quick win |
 | Lower | Periodically refresh **Tink**, **ShedLock**, **ipaddress** via the parent properties (`tink.version`, `shedlock.version`, `ipaddress.version`) when CVEs or bugfix releases appear | Each needs a short test pass around crypto / scheduling |
 | Lower | **Mockito / ByteBuddy** “dynamic Java agent” and inline-mock-maker messages on JDK 25+ tests | Harmless today; future JDK may require explicit Mockito agent config (see Mockito docs) |
 

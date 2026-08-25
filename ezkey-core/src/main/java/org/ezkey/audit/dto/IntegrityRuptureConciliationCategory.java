@@ -14,7 +14,7 @@ package org.ezkey.audit.dto;
  * Operator-facing category for an {@code AUDIT_INTEGRITY_RUPTURE} reconciliation.
  *
  * <p>All categories share the same cryptographic bridge path; the category distinguishes intent for
- * SOC 2 traceability.
+ * operator-visible audit trail.
  *
  * @since 2026
  */

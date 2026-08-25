@@ -42,7 +42,7 @@ import org.springframework.stereotype.Component;
  *       CREATE TABLE
  *   <li><b>Owner Privileges:</b> Function executes with owner role (EZKEY_owner) privileges via
  *       SECURITY DEFINER
- *   <li><b>Compliance:</b> Maintains SOC2 separation of duties (DDL vs DML privileges)
+ *   <li><b>Compliance:</b> Maintains separation of duties (DDL vs DML privileges)
  * </ul>
  *
  * <p><b>Function Return Value:</b>
