@@ -34,6 +34,7 @@ import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { queryKeys } from '@/lib/query-keys';
 import { adminListDetailHref } from '@/lib/list-detail-navigation';
 import { cn, formatDateOnly, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
+import { copyUrlOnlyAuditLogParams } from '@/lib/audit-log-list-url';
 import {
   loadIntegrityInvestigationSession,
   mergeSingleEntryVerificationIntoSession,
@@ -2123,7 +2124,7 @@ export default function AuditLogsPage() {
     const parsed = Number.parseInt(raw, 10);
     return Number.isFinite(parsed) ? parsed : null;
   }, [searchParams]);
-  const isIntegrityAlertContext = searchParams.get('source') === 'integrity-alert';
+  const isIntegrityAlertContext = contextSource === 'integrity-alert';
   const [integritySession, setIntegritySession] = useState<IntegrityInvestigationSession | null>(
     () => loadIntegrityInvestigationSession(),
   );
@@ -2207,22 +2208,7 @@ export default function AuditLogsPage() {
       next.set('contextBaseCreatedAfter', contextBaseDateRange.createdAfter);
       next.set('contextBaseCreatedBefore', contextBaseDateRange.createdBefore);
     }
-    const integrityFlag = searchParams.get('integrity');
-    if (integrityFlag) {
-      next.set('integrity', integrityFlag);
-    }
-    const investigationSource = searchParams.get('source');
-    if (investigationSource) {
-      next.set('source', investigationSource);
-    }
-    const highlightParam = searchParams.get('highlightAuditLogIds');
-    if (highlightParam) {
-      next.set('highlightAuditLogIds', highlightParam);
-    }
-    const focusCheckpointParam = searchParams.get('focusCheckpointId');
-    if (focusCheckpointParam) {
-      next.set('focusCheckpointId', focusCheckpointParam);
-    }
+    copyUrlOnlyAuditLogParams(searchParams, next);
 
     if (next.toString() !== searchParams.toString()) {
       setSearchParams(next, { replace: true });
@@ -2421,12 +2407,17 @@ export default function AuditLogsPage() {
 
   const clearIntegrityInvestigationContext = useCallback(() => {
     setShowAffectedOnly(false);
-    const next = new URLSearchParams(searchParams);
-    next.delete('source');
-    next.delete('highlightAuditLogIds');
-    next.delete('focusCheckpointId');
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+    if (contextSource === 'integrity-alert') {
+      setContextSource('');
+    }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('source');
+      next.delete('highlightAuditLogIds');
+      next.delete('focusCheckpointId');
+      return next;
+    }, { replace: true });
+  }, [contextSource, setSearchParams]);
 
   const violatedEntryIds = integritySession?.violatedEntryIds.length
     ? integritySession.violatedEntryIds
