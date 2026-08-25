@@ -66,6 +66,21 @@ Current health probe behavior:
 - classifies `200`, `401`, `403` as reachable/observable
 - checks both proxy and direct URLs to surface Caddy vs Actuator routing drift
 
+## JavaMelody curated (live-stack performance)
+
+Keyword: **`javamelody-curated`**. Report-only extract from the opt-in JavaMelody collector after a
+known workload (typically operational churn). Ranks HTTP/SQL/Spring by total time, drops Actuator
+scrape noise, and proposes a small HITL lot. Not a CI gate. See root [`AGENTS.md`](../AGENTS.md)
+§ JavaMelody curated.
+
+```bash
+./scripts/javamelody-curated.sh
+./scripts/javamelody-curated.sh --offline
+```
+
+Config: [`config/javamelody/`](../config/javamelody/). Outputs: `logs/javamelody/` (gitignored).
+Campaign notes: [`product-docs/global/hygiene/javamelody/`](../product-docs/global/hygiene/javamelody/).
+
 ## Cloudflare (ezkey.org static site)
 
 - [`cloudflare/deploy-ezkey-org-preview.sh`](cloudflare/deploy-ezkey-org-preview.sh) — deploy [`sites/ezkey-org/`](../sites/ezkey-org/) to Cloudflare Pages as a **preview** (requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`). See [`docs/cloudflare/ezkey-org-site.md`](../docs/cloudflare/ezkey-org-site.md).

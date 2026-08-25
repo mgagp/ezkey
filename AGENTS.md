@@ -402,13 +402,41 @@ yarn doctor:curated
 - Authority: `product-docs/global/security-pentest-tool-evaluation-2026-07-12.md`,
   `I-2026-07-12-security-pentest-curated-hygiene`, `TB-2026-07-12-security-pentest-curated-mvp`
 
+## JavaMelody curated keyword
+
+- For live local Docker-stack JavaMelody extracts after a **known workload**, the shared keyword is
+  **`javamelody-curated`**.
+- Purpose: punctual performance pass — freeze collector XML → filter Actuator/scrape noise → rank
+  HTTP/SQL/Spring by total time → small P1/P2/P3 HITL lot. **Not** a CI gate and **not** a
+  zero-warning campaign. Sibling lanes: `java-doctor-curated`, `security-pentest-curated`.
+- Default command from repo root (Git Bash on Windows):
+
+```bash
+./scripts/javamelody-curated.sh
+```
+
+  Re-parse a frozen dump without HTTP: `./scripts/javamelody-curated.sh --offline`.
+- Do **not** clean-start until `logs/javamelody/raw/` holds the current counters (in-memory
+  per-request stats are lost on API restart).
+- Outputs under `logs/javamelody/` (gitignored):
+  - `javamelody.curated.md` — human-readable shortlist + workload-bias banner
+  - `javamelody.curated.json` — machine-readable summary
+  - `raw/` — collector XML + lastValue dumps
+- Config: `config/javamelody/` (noise paths, expected-hot churn routes).
+- Campaign notes: `product-docs/global/hygiene/javamelody/`
+- HITL: same one-finding loop as java-doctor — small lot, wait per finding. High hit count on
+  churn protocol paths is **not** a signal; look for mean, SQL-per-request, errors, or pool wait.
+  Integration API silence under operational churn is **coverage**, not health. Do **not** invent
+  `I-*` / `TB-*` per finding.
+
 ## Assessment curated keyword
 
 - For **mandate-driven white-box hygiene** (focused investigation → assessment register →
   one-finding HITL → handoff), the shared keyword is **`assessment-curated`**.
 - Purpose: punctual deep look when OSS doctor/pentest shortlists are the wrong entry signal (e.g.
   mobile crypto/protocol, Java transactional boundaries). **Not** a methodology program lane and
-  **not** a substitute for `doctor-curated` / `dependabot-curated` / `security-pentest-curated`.
+  **not** a substitute for `doctor-curated` / `dependabot-curated` / `security-pentest-curated` /
+  `javamelody-curated`.
 - Method canon: [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md)
 - Cursor skill: [`.cursor/skills/assessment-curated/SKILL.md`](.cursor/skills/assessment-curated/SKILL.md)
 - Copilot mirror: `.github/copilot-instructions.md` § Assessment curated

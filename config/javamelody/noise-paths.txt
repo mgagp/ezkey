@@ -1,0 +1,8 @@
+# Prefixes or substrings matched against JavaMelody HTTP request names.
+# Collector scrape and Actuator noise — never a product signal.
+/actuator/health
+/actuator/info
+/actuator/metrics
+/actuator/monitoring
+/actuator/threaddump
+/actuator/prometheus
