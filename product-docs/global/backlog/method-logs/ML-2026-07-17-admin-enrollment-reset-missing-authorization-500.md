@@ -6,7 +6,7 @@
 - **Program context:** Security pentest curated MVP follow-up
 - **Trigger:** Schemathesis finding LGbal6 replay
 - **Scope:** deterministic reproduction and RCA preparation
-- **Status:** recorded
+- **Status:** closed (remediation merged 2026-07-19; canon synced 2026-08-24)
 
 ## Symptom
 
@@ -60,6 +60,12 @@ specific 4xx handler and falls through to generic global fallback, producing 500
 2. Decide contract posture for this endpoint when header missing (401 target).
 3. Add explicit exception mapping and endpoint regression tests.
 4. Refresh generated contracts and Postman collections if status contract changes.
+
+## Closeout
+
+PR `#388` (2026-07-19) implemented the mapping and regression tests. Pentest pass-02 (2026-08-12)
+replayed the unauthenticated reset and observed **401**. Idea
+`I-2026-07-17-admin-enrollment-reset-missing-authorization-header-500` is `done`.
 
 ## Links
 

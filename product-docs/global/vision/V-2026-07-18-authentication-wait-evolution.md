@@ -114,7 +114,7 @@ Promote this vision only after:
 - Orthogonal API-key / topology posture (not transport):
   [`V-2026-0003-api-key-acceptance-posture.md`](V-2026-0003-api-key-acceptance-posture.md),
   [`I-2026-0004`](../backlog/ideas/I-2026-0004-admin-api-key-acceptance-flag.md)
-- Orthogonal passwordless-wait security correction:
+- Orthogonal passwordless-wait security correction (**done** 2026-06-26):
   [`I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement`](../backlog/ideas/I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement.md)
 
 ## Incubation sources

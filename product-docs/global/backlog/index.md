@@ -10,17 +10,18 @@ This index provides a lightweight list of active ideas and their current state.
 
 → [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
 
-**Summary (2026-08-02):** Wave B integrity cluster R1 **closed** (GitHub #269). Wave C operator UI
+**Summary (2026-08-24):** Wave B integrity cluster R1 **closed** (GitHub #269). Wave C operator UI
 residuals **closed** (alerts list polish, dashboard signal model, audit-chain checkpoints). Wave D
-EXP1 soak is the release compass next gate. Canon sync this pass closed two delivered-but-stale
-items (`I-2026-07-10`, `TB-2026-07-06` Tier 0). Wave B closeout:
-[`method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
-Same pass materialized a **parallel** mobile Play official-release track (state-of-play from the
-current limited-experimental Android release): vision
+EXP1 soak is the release compass next gate. There is **no remaining P0** on the active backlog.
+Canon sync this pass closed two delivered-but-stale items (`I-2026-06-23` / `TB-2026-06-23` SEC-001,
+`I-2026-07-17` reset 401). The 2026-08-02 sync closed `I-2026-07-10` and `TB-2026-07-06` Tier 0,
+and materialized a **parallel** mobile Play official-release track (state-of-play from the current
+limited-experimental Android release): vision
 [`V-2026-08-02-mobile-official-play-release-posture`](../vision/V-2026-08-02-mobile-official-play-release-posture.md)
 and four backlog ideas below — this track does not claim September operability scope; see
 [`operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
-§ Parallel tracks.
+§ Parallel tracks. Wave B closeout:
+[`method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
 
 ## Active ideas
 
@@ -49,7 +50,6 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-05-31-mobile-android-stack-followups` | Mobile Android stack follow-ups (post-#177) | `incubating` | `P2` | `mobile`, `android`, `ezkey-tests` | `2026-05-31` |
 | `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation` | OpenAPI spec lifecycle and Cloudflare validation | `active` | `P1` | `auth-api`, `admin-api`, `integration-api`, `specs`, `scripts`, `postman`, `cloudflare`, `sdk`, `mobile` | `2026-08-23` |
 | `I-2026-06-03-admin-api-openapi-intra-tag-journey-order` | Admin API OpenAPI intra-tag journey order | `captured` | `P3` | `admin-api`, `docs`, `specs`, `sites/ezkey-org` | `2026-06-02` |
-| `I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement` | Enforce challenge presence on `passwordless-wait` | `ready` | `P0` | `admin-api`, `security`, `authentication`, `admin-ui-contract` | `2026-06-23` |
 | `I-2026-06-28-audit-archive-export-spi` | Audit archive export SPI: sealed-batch detachment + vendor-neutral immutable retention | `incubating` | `P3` | `core`, `admin-api`, `admin-ui`, `audit`, `infra`, `docs`, peripheral | `2026-06-28` |
 | `I-2026-07-07-auth-attempt-challenge-protection` | Auth attempt challenge protection strategy (lifecycle minimization) | `ready` | `P1` | `core`, `auth-api` | `2026-07-07` |
 | `I-2026-07-05-distilled-admin-platform-starter` | Distilled admin platform starter (Spring Boot + operator UI) | `parked` | `P3` | `admin-api`, `admin-ui`, `docs`, ecosystem GitHub, `sdk-java` | `2026-07-05` |
@@ -60,7 +60,6 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-07-11-java-doctor-curated-hygiene` | Java doctor-curated continuous hygiene (SpotBugs + Semgrep + narrow PMD) | `ready` | `P3` | `core`, `admin-api`, `auth-api`, `integration-api`, `docs`, `tooling` | `2026-07-11` |
 | `I-2026-07-11-mobile-doctor-curated-hygiene` | Mobile doctor-curated continuous hygiene (react-doctor + Semgrep + Detekt) | `ready` | `P3` | `mobile`, `android`, `docs`, `tooling` | `2026-07-11` |
 | `I-2026-07-12-security-pentest-curated-hygiene` | Security pentest curated hygiene (Schemathesis + ZAP + first-party Nuclei) | `done` | `P2` | `security`, `tooling`, `infra`, `admin-api`, `auth-api`, `integration-api`, `docs` | `2026-08-17` |
-| `I-2026-07-17-admin-enrollment-reset-missing-authorization-header-500` | Admin enrollment reset: missing Authorization header returns 500 instead of 401 | `captured` | `P1` | `admin-api`, `security`, `testing`, `docs` | `2026-07-17` |
 | `I-2026-07-17-alert-resolved-retention-purge` | Alert resolved-row retention and purge (no DELETE today by design) | `captured` | `P3` | `core`, `admin-api`, `admin-ui`, `infra`, `docs`, `audit` | `2026-07-17` |
 | `I-2026-07-17-keyset-blob-admin-first-bootstrap` | Keyset blob: Admin-first bootstrap before peripheral SELECT-only | `captured` | `P3` | `core`, `core-security`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto` | `2026-07-17` |
 | `I-2026-07-17-desktop-authenticator-reference-app` | Desktop authenticator reference app (mobile-like enrollment and approval) | `incubating` | `P3` | `desktop-authenticator`, `demo-device`, `auth-api`, `docs`, `mobile` | `2026-07-18` |
@@ -88,7 +87,6 @@ and four backlog ideas below — this track does not claim September operability
 | `TB-2026-07-11` | Java doctor-curated curator MVP | `active` | `I-2026-07-11-java-doctor-curated-hygiene` (#326) |
 | `TB-2026-07-11-mobile-doctor` | Mobile doctor-curated curator MVP | `done` | `I-2026-07-11-mobile-doctor-curated-hygiene` |
 | `TB-2026-07-07-auth-attempt-challenge-protection-phase-b` | Auth attempt challenge protection — phase B | `promoted` | `I-2026-07-07-auth-attempt-challenge-protection` |
-| `TB-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement` | Enforce challenge presence on `passwordless-wait` | `promoted` | `I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement` |
 | `TB-2026-08-24-java-melody-collector` | JavaMelody collector (opt-in Docker, baseline + HA) | `under-review` | `I-2026-08-24-java-melody-collector` |
 | `TB-2026-08-23-integration-api-cloudflare-schema` | Integration API Cloudflare schema (EXP1) | `under-review` | `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation` |
 | `TB-2026-06-02-auth-api-cloudflare-schema-first-slice` | Auth API Cloudflare schema-first slice | `under-review` | `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation` |
@@ -101,6 +99,8 @@ and four backlog ideas below — this track does not claim September operability
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
+| `I-2026-07-17-admin-enrollment-reset-missing-authorization-header-500` | Admin enrollment reset: missing Authorization header returns 500 instead of 401 | `2026-07-19` | PR `#388`. `MissingRequestHeaderException` → RFC 9457 401. Delivered on `I-*` (no `TB-*`). Canon status synced 2026-08-24 after merge closeout gap. Pentest LGbal6. |
+| `I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement` | Enforce challenge presence on `passwordless-wait` | `2026-06-26` | PR `#255` / `#251` / TB `TB-2026-06-23`. SEC-001. Canon status synced 2026-08-24 after merge closeout gap. Residual S3 replay after ACCEPTED stays out of scope. |
 | `I-2026-07-10-nightly-integrity-boundary-false-positives` | Nightly integrity: boundary false positives (grid align + alert honesty) | `2026-07-11` | PR `#318` / `#315`. Delivered on `I-*` (no `TB-*`). Canon status synced 2026-08-02 after merge closeout gap. ADR-0009 + design-pack pitfall. |
 | `TB-2026-07-06` | Device proof token hash-only storage (Tier 0) | `2026-07-07` | PR `#297` / `#296`. Parent `I-2026-0032` stays `incubating` for Tier 1 / Tier 2. Canon status synced 2026-08-02. |
 | `TB-2026-0001` | Mobile local-auth capability discovery | `2026-07-26` | Android capability matrix + three-tier policy direction delivered. Parent `I-2026-0001` stays `incubating` pending operator `ready` decision. Canon status synced 2026-08-02. |

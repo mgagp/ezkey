@@ -53,7 +53,7 @@ SDK constraints justify an internal optimization or an additive alternative.
     mobile polling / no platform push) unless a later analysis explicitly widens scope.
   - API-key acceptance or Admin vs Integration topology (`I-2026-0004` / `V-2026-0003`).
   - Passwordless-wait challenge-enforcement security semantics
-    (`I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement`).
+    (`I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement`, **done** 2026-06-26).
   - Replacing PostgreSQL as authoritative auth-attempt state.
   - Hand-editing generated OpenAPI artifacts.
   - Creating a broad real-time messaging platform for hypothetical future use.
@@ -133,7 +133,7 @@ adopt it by default.
   [`I-2026-0025-auth-api-protocol-capability-versioning`](I-2026-0025-auth-api-protocol-capability-versioning.md)
 - Orthogonal API-key / topology posture:
   [`I-2026-0004-admin-api-key-acceptance-flag`](I-2026-0004-admin-api-key-acceptance-flag.md)
-- Orthogonal passwordless-wait security correction:
+- Orthogonal passwordless-wait security correction (**done** 2026-06-26):
   [`I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement`](I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement.md)
 
 ## Incubation sources

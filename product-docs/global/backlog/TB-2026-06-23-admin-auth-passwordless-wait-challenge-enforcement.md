@@ -3,14 +3,16 @@
 ## Metadata
 
 - **ID:** `TB-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement`
-- **Status:** `promoted`
+- **Status:** `done`
 - **Related idea:** `I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement`
 - **Lane:** `D`
 - **Posture:** `single-pass`
-- **GitHub issue:** `#251`
+- **GitHub issue:** `#251` (closed)
 - **GitHub branch:** `feature/251-i-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement`
+- **GitHub PR:** `#255` (merged 2026-06-26)
 - **Created at:** `2026-06-23`
-- **Updated at:** `2026-06-23`
+- **Updated at:** `2026-08-24`
+- **Closed at:** `2026-06-26`
 - **Captured by:** Copilot
 
 ## Objective
@@ -85,9 +87,15 @@ non-challenge flow behavior.
 3. Targeted tests capture the bypass regression and pass.
 4. Contract references and Postman examples are aligned with enforced behavior.
 
+## Closeout (2026-06-26 / canon synced 2026-08-24)
+
+Exit criteria 1–4 met on merge of PR `#255` (issue `#251`). Residual S3 (replay after `ACCEPTED`)
+remains an explicit non-goal of this tracer bullet.
+
 ## Links
 
 - Idea: `I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement.md`
+- GitHub PR: `#255`
 - Service: `ezkey-admin-api/src/main/java/org/ezkey/admin/service/AdminAuthService.java`
 - Controller: `ezkey-admin-api/src/main/java/org/ezkey/admin/controller/AdminAuthController.java`
 - DTO: `ezkey-admin-api/src/main/java/org/ezkey/admin/dto/request/AdminPasswordlessWaitRequestDto.java`
