@@ -2,8 +2,9 @@
 
 Peripheral HITL decision tracks for punctual **doctor-curated** passes (Admin UI React, Java,
 mobile static analysis), weekly **Dependabot** triage, **security-pentest** campaigns,
-mandate-driven **assessment-curated** white-box investigation follow-ups, and **corpus-ablation**
-passes that prune ephemeral plans/prompts into existing canon.
+**javamelody-curated** live-stack performance extracts, mandate-driven **assessment-curated**
+white-box investigation follow-ups, and **corpus-ablation** passes that prune ephemeral
+plans/prompts into existing canon.
 
 These folders are **not** product vision, ADR, or backlog execution. They record per-campaign triage
 (fix / suppress / skip / defer, or Dependabot merge / hold / defer) so cold sessions can see *why* a
@@ -32,6 +33,7 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 | [`mobile-doctor/`](mobile-doctor/) | `mobile-doctor-curated` | Ezkey Mobile static-analysis curated passes |
 | [`dependabot/`](dependabot/) | `dependabot-curated` | Weekly Dependabot PR triage, Java BOM pulse, and batched merges |
 | [`security-pentest/`](security-pentest/) | `security-pentest-curated` | Live API / DAST-style security campaigns |
+| [`javamelody/`](javamelody/) | `javamelody-curated` | Live JavaMelody extract after a known workload (typically operational churn) |
 | [`corpus-ablation/`](corpus-ablation/) | `corpus-ablation` | Cursor plans / prompt scaffolds → canon + discoverability; skill `.cursor/skills/corpus-ablation` |
 
 ## Hygiene vs program

@@ -46,6 +46,13 @@ function show_usage() {
 }
 
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
+JAVAMELODY_OVERRIDE_FILE="${SCRIPT_DIR}/docker-compose.javamelody.yml"
+
+# Include the collector overlay on stop/clean/status/logs so an opt-in collector is not orphaned.
+COMPOSE_MANAGE_ARGS="-f ${COMPOSE_FILE}"
+if [ -f "${JAVAMELODY_OVERRIDE_FILE}" ]; then
+    COMPOSE_MANAGE_ARGS="${COMPOSE_MANAGE_ARGS} -f ${JAVAMELODY_OVERRIDE_FILE}"
+fi
 
 # Determine docker compose command
 if docker compose version > /dev/null 2>&1; then
@@ -68,23 +75,23 @@ function start_services() {
 function stop_services() {
     echo "🛑 Stopping EZ Key stack..."
     cd "${SCRIPT_DIR}/.."
-    ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" stop
+    ${DOCKER_COMPOSE} ${COMPOSE_MANAGE_ARGS} stop
     echo "✅ Services stopped"
 }
 
 function restart_services() {
     echo "🔄 Restarting EZ Key stack..."
     cd "${SCRIPT_DIR}/.."
-    ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" restart
+    ${DOCKER_COMPOSE} ${COMPOSE_MANAGE_ARGS} restart
     echo "✅ Services restarted"
 }
 
 function show_logs() {
     cd "${SCRIPT_DIR}/.."
     if [ -z "$2" ]; then
-        ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" logs -f
+        ${DOCKER_COMPOSE} ${COMPOSE_MANAGE_ARGS} logs -f
     else
-        ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" logs -f "$2"
+        ${DOCKER_COMPOSE} ${COMPOSE_MANAGE_ARGS} logs -f "$2"
     fi
 }
 
@@ -92,7 +99,7 @@ function show_status() {
     echo "📊 EZ Key Stack Status:"
     echo ""
     cd "${SCRIPT_DIR}/.."
-    ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" ps
+    ${DOCKER_COMPOSE} ${COMPOSE_MANAGE_ARGS} ps
     echo ""
     echo "🔍 Health Checks:"
     echo ""
@@ -145,6 +152,10 @@ function show_status() {
     else
         echo "  ⚠️  Demo App ACME: Not available"
     fi
+
+    if curl -sf http://localhost:8088/ > /dev/null 2>&1; then
+        echo "  ✅ JavaMelody collector: http://localhost:8088"
+    fi
 }
 
 function clean_all() {
@@ -157,7 +168,7 @@ function clean_all() {
         exit 0
     fi
     cd "${SCRIPT_DIR}/.."
-    ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" down -v --remove-orphans
+    ${DOCKER_COMPOSE} ${COMPOSE_MANAGE_ARGS} down -v --remove-orphans
     echo "✅ Cleanup completed"
 }
 

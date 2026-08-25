@@ -1,0 +1,61 @@
+# Local Docker JavaMelody collector overlay (DEV / troubleshooting only).
+#
+# Enables JavaMelody on Admin / Auth / Integration API management ports and runs the
+# official collector WAR. Crypto API is intentionally excluded.
+#
+# Usage (prefer the flag):
+#   ./ezkey-tests/clean-start.sh --with-java-melody
+#   EZKEY_ENABLE_JAVA_MELODY=true ./docker/start.sh
+#
+# Collector UI: http://localhost:8088
+# Per-API reports remain on management ports: 9081 / 8085 / 7081 /actuator/monitoring
+
+x-javamelody-env: &javamelody-env
+  JAVAMELODY_ENABLED: "true"
+  JAVAMELODY_MANAGEMENT_ENDPOINT_MONITORING_ENABLED: "true"
+  JAVAMELODY_SPRING_MONITORING_ENABLED: "true"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,metrics,threaddump,monitoring"
+  MANAGEMENT_ENDPOINT_MONITORING_ACCESS: unrestricted
+  JAVAMELODY_INIT_PARAMETERS_HTTP_TRANSFORM_PATTERN: "\\d+"
+
+services:
+  admin-api:
+    environment:
+      <<: *javamelody-env
+      JAVAMELODY_INIT_PARAMETERS_APPLICATION_NAME: admin-api
+
+  auth-api:
+    environment:
+      <<: *javamelody-env
+      JAVAMELODY_INIT_PARAMETERS_APPLICATION_NAME: auth-api
+
+  integration-api:
+    environment:
+      <<: *javamelody-env
+      JAVAMELODY_INIT_PARAMETERS_APPLICATION_NAME: integration-api
+
+  javamelody-collector:
+    build:
+      context: ./javamelody
+      dockerfile: Dockerfile
+    container_name: ezkey-javamelody-collector
+    depends_on:
+      admin-api:
+        condition: service_healthy
+      auth-api:
+        condition: service_healthy
+      integration-api:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./javamelody/applications.properties:/opt/javamelody/applications.properties:ro
+      - javamelody-data:/tmp/javamelody
+    ports:
+      - "8088:8080"
+    networks:
+      - ezkey-network
+    restart: unless-stopped
+
+volumes:
+  javamelody-data:

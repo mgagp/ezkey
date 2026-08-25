@@ -426,3 +426,12 @@ code. Disabled by default; enable only on experimental preview installations.
 6. For split UI/API hosting, set `ezkey.admin.cors.allowed-origins` to the Admin UI origin(s); align CSP `connect-src` on the static host.
 7. If using the HttpOnly browser session cookie, set `ezkey.admin.auth.browser-session-cookie-enabled=true`, `ezkey.admin.cors.allow-credentials=true`, keep `SameSite=Strict` unless a documented deployment requires otherwise, and deploy a matching Admin UI build (`VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true`).
 8. Configure `ezkey.encryption.master-key-file` and `ezkey.audit.integrity.hmac-key-file` via volume mounts.
+
+---
+
+## JavaMelody (opt-in Docker diagnostics)
+
+JavaMelody is **disabled by default** (`javamelody.enabled=false`). Enable it only via
+`./ezkey-tests/clean-start.sh --with-java-melody` (combinable with `--ha`). Reports are on the
+management port at `/actuator/monitoring`; the collector UI is `http://localhost:8088`. Crypto API
+is out of scope. Operator details: [`docker/README.md`](../docker/README.md) § JavaMelody collector.

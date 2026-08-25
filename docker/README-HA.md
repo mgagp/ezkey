@@ -75,6 +75,10 @@ Once started, you can access:
 
 See the [HAProxy Statistics](#haproxy-statistics) section below for detailed information about these monitoring pages.
 
+**JavaMelody (opt-in):** `./ezkey-tests/clean-start.sh --ha --with-java-melody` adds a collector at
+http://localhost:8088. Each of `admin-api`, `auth-api`, and `integration-api` aggregates **both**
+replicas. Crypto API is excluded. See [`README.md`](README.md) § JavaMelody collector.
+
 **Functional / operational-churn tests:** host ports `9081` / `8085` / `7081` are HAProxy **stats**, not Actuator. `DockerStackConfig` auto-probes HA docker-dev management ports (`19081`, `18085`, …) then public `instance-info` through the LBs so `./ezkey-tests/scripts/run-operational-churn.sh --init` works against `./clean-start.sh --ha` without extra env vars.
 
 ## Services

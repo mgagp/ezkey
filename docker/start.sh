@@ -89,6 +89,20 @@ if [[ "${EZKEY_ENABLE_JMX:-}" == "1" || "${EZKEY_ENABLE_JMX:-}" == "true" ]]; th
     fi
 fi
 
+# Optional: JavaMelody collector (DEV / troubleshooting).
+# Enable by setting EZKEY_ENABLE_JAVA_MELODY=true (or 1), or via clean-start --with-java-melody.
+if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
+    JAVAMELODY_OVERRIDE_FILE="${SCRIPT_DIR}/docker-compose.javamelody.yml"
+    if [ -f "${JAVAMELODY_OVERRIDE_FILE}" ]; then
+        COMPOSE_ARGS="${COMPOSE_ARGS} -f ${JAVAMELODY_OVERRIDE_FILE}"
+        echo "🔧 JavaMelody collector enabled: $(basename "${JAVAMELODY_OVERRIDE_FILE}")"
+        # Host port 8088 is shared with the HA collector container.
+        docker rm -f ezkey-javamelody-collector-ha >/dev/null 2>&1 || true
+    else
+        echo "⚠️  Warning: EZKEY_ENABLE_JAVA_MELODY is set but override file not found: ${JAVAMELODY_OVERRIDE_FILE}"
+    fi
+fi
+
 echo "=========================================="
 echo "  EZ Key Docker - Starting Stack"
 echo "=========================================="
@@ -280,6 +294,22 @@ while ! curl -sf http://localhost:9090/actuator/health > /dev/null 2>&1; do
 done
 echo "  ✅ Crypto API is healthy"
 
+if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
+    echo "  - Waiting for JavaMelody collector..."
+    timeout=120
+    elapsed=0
+    while ! curl -sf http://localhost:8088/ > /dev/null 2>&1; do
+        if [ $elapsed -ge $timeout ]; then
+            echo "❌ Error: JavaMelody collector did not become ready within ${timeout} seconds"
+            ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs javamelody-collector
+            exit 1
+        fi
+        sleep 2
+        elapsed=$((elapsed + 2))
+    done
+    echo "  ✅ JavaMelody collector is ready"
+fi
+
 echo ""
 echo "=========================================="
 echo "  ✅ EZ Key Stack is Ready!"
@@ -298,6 +328,9 @@ else
 fi
 echo "  - Crypto API:   http://localhost:9090"
 echo "  - Demo Device:  http://localhost:8083"
+if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
+    echo "  - JavaMelody:   http://localhost:8088"
+fi
 echo ""
 echo "📚 API Documentation:"
 echo "  - Admin API:    http://localhost:9080/swagger-ui/index.html"

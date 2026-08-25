@@ -66,6 +66,18 @@ if [[ ",${SPRING_PROFILES_ACTIVE:-}," == *",docker-dev,"* ]] && [ -f "${DEV_OVER
     echo "🔧 HA Docker diagnostics override enabled: $(basename "${DEV_OVERRIDE_FILE}")"
 fi
 
+if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
+    JAVAMELODY_OVERRIDE_FILE="${SCRIPT_DIR}/docker-compose.ha.javamelody.yml"
+    if [ -f "${JAVAMELODY_OVERRIDE_FILE}" ]; then
+        COMPOSE_ARGS="${COMPOSE_ARGS} -f ${JAVAMELODY_OVERRIDE_FILE}"
+        echo "🔧 HA JavaMelody collector enabled: $(basename "${JAVAMELODY_OVERRIDE_FILE}")"
+        # Host port 8088 is shared with the baseline collector container.
+        docker rm -f ezkey-javamelody-collector >/dev/null 2>&1 || true
+    else
+        echo "⚠️  Warning: EZKEY_ENABLE_JAVA_MELODY is set but override file not found: ${JAVAMELODY_OVERRIDE_FILE}"
+    fi
+fi
+
 # Enable BuildKit for Maven cache mount support
 export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1
@@ -256,6 +268,22 @@ while ! curl -sf http://localhost:8083/actuator/health > /dev/null 2>&1; do
 done
 echo "  ✅ Demo Device is healthy"
 
+if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
+    echo "  - Waiting for JavaMelody collector..."
+    timeout=120
+    elapsed=0
+    while ! curl -sf http://localhost:8088/ > /dev/null 2>&1; do
+        if [ $elapsed -ge $timeout ]; then
+            echo "❌ Error: JavaMelody collector did not become ready within ${timeout} seconds"
+            ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs javamelody-collector
+            exit 1
+        fi
+        sleep 2
+        elapsed=$((elapsed + 2))
+    done
+    echo "  ✅ JavaMelody collector is ready"
+fi
+
 echo ""
 echo "=========================================="
 echo "  ✅ EZ Key HA Stack is Ready!"
@@ -268,6 +296,9 @@ echo "  - Integration API: http://localhost:7080 (HAProxy → integration-api-1,
 echo "  - Crypto API:      http://localhost:9090"
 echo "  - Demo Device:     http://localhost:8083"
 echo "  - Demo App ACME:   http://localhost:8082"
+if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
+    echo "  - JavaMelody:      http://localhost:8088 (aggregates both replicas per API)"
+fi
 echo ""
 echo "📊 HAProxy Statistics:"
 echo "  - Admin API LB:       http://localhost:9081/stats"

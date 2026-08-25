@@ -26,6 +26,7 @@ and four backlog ideas below — this track does not claim September operability
 
 | ID | Title | Status | Priority | Components | Last reviewed |
 |----|-------|--------|----------|------------|---------------|
+| `I-2026-08-24-java-melody-collector` | JavaMelody collector (opt-in Docker, baseline + HA) | `active` | `P2` | `infra`, `admin-api`, `auth-api`, `integration-api`, `docs` | `2026-08-24` |
 | `I-2026-0001` | Per-enrollment local authentication policy for mobile respond | `incubating` | `P1` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-07-26` |
 | `I-2026-0003` | High-availability Docker stack: parity review with `cleanstart.sh` | `incubating` | `P2` | `infra`, `admin-api`, `auth-api`, `integration-api` | `2026-05-19` |
 | `I-2026-0004` | Admin API: configurable acceptance of API-key authentication | `promoted` | `P1` | `admin-api`, `sdk-java`, `docs` | `2026-05-25` |
@@ -88,6 +89,7 @@ and four backlog ideas below — this track does not claim September operability
 | `TB-2026-07-11-mobile-doctor` | Mobile doctor-curated curator MVP | `done` | `I-2026-07-11-mobile-doctor-curated-hygiene` |
 | `TB-2026-07-07-auth-attempt-challenge-protection-phase-b` | Auth attempt challenge protection — phase B | `promoted` | `I-2026-07-07-auth-attempt-challenge-protection` |
 | `TB-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement` | Enforce challenge presence on `passwordless-wait` | `promoted` | `I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement` |
+| `TB-2026-08-24-java-melody-collector` | JavaMelody collector (opt-in Docker, baseline + HA) | `under-review` | `I-2026-08-24-java-melody-collector` |
 | `TB-2026-08-23-integration-api-cloudflare-schema` | Integration API Cloudflare schema (EXP1) | `under-review` | `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation` |
 | `TB-2026-06-02-auth-api-cloudflare-schema-first-slice` | Auth API Cloudflare schema-first slice | `under-review` | `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation` |
 | `TB-2026-05-25-admin-api-key-acceptance-flag` | Admin API key acceptance flag | `ready-for-implementation` | `I-2026-0004` |

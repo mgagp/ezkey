@@ -9,12 +9,13 @@
 # 5. Extracts bootstrap credentials
 # 6. Initializes admin token
 #
-# Usage: ./clean-start.sh [--ha] [--mvn-bootstrap] [--no-proxy] [--with-proxy] [--jmx] [--prod-safe]
+# Usage: ./clean-start.sh [--ha] [--mvn-bootstrap] [--no-proxy] [--with-proxy] [--jmx] [--with-java-melody] [--prod-safe]
 #   --ha: Use HA stack with 2 instances of each API behind HAProxy load balancers
 #   --mvn-bootstrap: Enable Maven-based bootstrap steps (default: disabled, Docker bootstrap-init handles this)
 #   --no-proxy: Do not start Caddy in front of APIs (default: Caddy is enabled for prod-like security headers on the proxy path)
 #   --with-proxy: Same as default — Caddy reverse proxy; EZKEY_TRUSTED_PROXIES set so tests can use ports 19080/18080/17080 (trusted proxy path)
 #   --jmx: Enable JMX port publishing for VisualVM (DEV ONLY; unauthenticated, non-SSL)
+#   --with-java-melody: Enable JavaMelody collector (DEV / troubleshooting; UI on http://localhost:8088)
 #   --prod-safe: Start using production-safe Spring profile only (docker). Disables docker-dev and docker-test.
 #
 # Optional environment (passed to Docker Compose for auth-api):
@@ -40,6 +41,7 @@ MVN_BOOTSTRAP=""
 # Default: include Caddy (docker-compose.with-proxy.yml) so the dev stack matches security-hardened proxy behavior.
 WITH_PROXY="--with-proxy"
 ENABLE_JMX=""
+ENABLE_JAVA_MELODY=""
 PROD_SAFE=""
 SPRING_PROFILES=""
 
@@ -61,12 +63,15 @@ for arg in "$@"; do
         --jmx)
             ENABLE_JMX="true"
             ;;
+        --with-java-melody)
+            ENABLE_JAVA_MELODY="true"
+            ;;
         --prod-safe)
             PROD_SAFE="true"
             ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: ./clean-start.sh [--ha] [--mvn-bootstrap] [--no-proxy] [--with-proxy] [--jmx] [--prod-safe]"
+            echo "Usage: ./clean-start.sh [--ha] [--mvn-bootstrap] [--no-proxy] [--with-proxy] [--jmx] [--with-java-melody] [--prod-safe]"
             exit 1
             ;;
     esac
@@ -88,6 +93,11 @@ if [ -n "$ENABLE_JMX" ]; then
     export EZKEY_ENABLE_JMX=true
 fi
 
+# Export JavaMelody flag so docker/start.sh and start-ha.sh include the collector overlay.
+if [ -n "$ENABLE_JAVA_MELODY" ]; then
+    export EZKEY_ENABLE_JAVA_MELODY=true
+fi
+
 # Auth API demo MITM (simulated Pending tamper): default ON for local demo / clean start.
 # --prod-safe defaults OFF so the stack behaves closer to production unless overridden.
 if [ -n "$PROD_SAFE" ]; then
@@ -106,11 +116,20 @@ if [ -n "$HA_MODE" ]; then
     echo "Step 1/7: Stopping Docker Compose HA stack (including volumes)..."
     COMPOSE_FILE="${DOCKER_DIR}/docker-compose.ha.yml"
     COMPOSE_EXTRA=""
+    if [ -f "${DOCKER_DIR}/docker-compose.ha.docker-dev.yml" ]; then
+        COMPOSE_EXTRA="${COMPOSE_EXTRA} -f ${DOCKER_DIR}/docker-compose.ha.docker-dev.yml"
+    fi
+    if [ -f "${DOCKER_DIR}/docker-compose.ha.javamelody.yml" ]; then
+        COMPOSE_EXTRA="${COMPOSE_EXTRA} -f ${DOCKER_DIR}/docker-compose.ha.javamelody.yml"
+    fi
 else
     echo "Step 1/7: Stopping Docker Compose stack (including volumes)..."
     COMPOSE_FILE="${DOCKER_DIR}/docker-compose.yml"
     # Include with-proxy override so Caddy is torn down if it was running
     COMPOSE_EXTRA="-f ${DOCKER_DIR}/docker-compose.with-proxy.yml"
+    if [ -f "${DOCKER_DIR}/docker-compose.javamelody.yml" ]; then
+        COMPOSE_EXTRA="${COMPOSE_EXTRA} -f ${DOCKER_DIR}/docker-compose.javamelody.yml"
+    fi
 fi
 cd "${PROJECT_ROOT}"
 
@@ -125,7 +144,7 @@ fi
 # Try both compose files to ensure cleanup
 if [ -f "${COMPOSE_FILE}" ]; then
     echo "  Stopping containers..."
-    ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" ${COMPOSE_EXTRA} down -v 2>/dev/null || {
+    ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" ${COMPOSE_EXTRA} down -v --remove-orphans 2>/dev/null || {
         echo "  ⚠️  Warning: Some containers may not have been running"
     }
     echo "  ✅ Docker stack stopped and volumes removed"
@@ -133,19 +152,30 @@ else
     echo "  ⚠️  Warning: ${COMPOSE_FILE} not found"
 fi
 
-# Also try to stop the other compose files if they exist (for cleanup)
+# Also try to stop the other compose files if they exist (for cleanup).
+# Include JavaMelody overlays so host port 8088 is released when switching stacks.
 if [ -n "$HA_MODE" ]; then
-    # Stop standard stack (and with-proxy) if running
+    # Stop standard stack (and with-proxy + JavaMelody collector) if running
     if [ -f "${DOCKER_DIR}/docker-compose.yml" ]; then
-        ${DOCKER_COMPOSE} -f "${DOCKER_DIR}/docker-compose.yml" -f "${DOCKER_DIR}/docker-compose.with-proxy.yml" down -v 2>/dev/null || true
+        STANDARD_DOWN_ARGS="-f ${DOCKER_DIR}/docker-compose.yml -f ${DOCKER_DIR}/docker-compose.with-proxy.yml"
+        if [ -f "${DOCKER_DIR}/docker-compose.javamelody.yml" ]; then
+            STANDARD_DOWN_ARGS="${STANDARD_DOWN_ARGS} -f ${DOCKER_DIR}/docker-compose.javamelody.yml"
+        fi
+        ${DOCKER_COMPOSE} ${STANDARD_DOWN_ARGS} down -v --remove-orphans 2>/dev/null || true
     fi
 else
-    # Stop HA stack if running
+    # Stop HA stack (and HA JavaMelody collector) if running
     HA_COMPOSE_FILE="${DOCKER_DIR}/docker-compose.ha.yml"
     if [ -f "${HA_COMPOSE_FILE}" ] && [ "${COMPOSE_FILE}" != "${HA_COMPOSE_FILE}" ]; then
-        ${DOCKER_COMPOSE} -f "${HA_COMPOSE_FILE}" down -v 2>/dev/null || true
+        HA_DOWN_ARGS="-f ${HA_COMPOSE_FILE}"
+        if [ -f "${DOCKER_DIR}/docker-compose.ha.javamelody.yml" ]; then
+            HA_DOWN_ARGS="${HA_DOWN_ARGS} -f ${DOCKER_DIR}/docker-compose.ha.javamelody.yml"
+        fi
+        ${DOCKER_COMPOSE} ${HA_DOWN_ARGS} down -v --remove-orphans 2>/dev/null || true
     fi
 fi
+# Shared host port 8088: drop either collector name if a previous project left it running.
+docker rm -f ezkey-javamelody-collector ezkey-javamelody-collector-ha >/dev/null 2>&1 || true
 
 echo ""
 
@@ -305,6 +335,9 @@ elif [ -n "$WITH_PROXY" ]; then
     echo "  - Direct ports still available: Admin 9080, Auth 8080, Integration API 7080"
 else
     echo "  - Docker stack: Running with profiles (${SPRING_PROFILES})"
+fi
+if [ -n "$ENABLE_JAVA_MELODY" ]; then
+    echo "  - JavaMelody collector: http://localhost:8088 (opt-in troubleshooting UI)"
 fi
 if [ -z "$PROD_SAFE" ]; then
     echo "  - Auth API demo MITM: EZKEY_DEMO_MITM_SIGNATURE_ENABLED=${EZKEY_DEMO_MITM_SIGNATURE_ENABLED} (Pending tamper when attempt is flagged)"

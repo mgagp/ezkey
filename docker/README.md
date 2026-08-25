@@ -399,6 +399,34 @@ SPRING_PROFILES_ACTIVE=docker,docker-dev EZKEY_ENABLE_JMX=true ./docker/start.sh
 - Add JMX connection to `localhost:9010` (auth-api)
 - Add JMX connection to `localhost:9011` (admin-api)
 
+#### JavaMelody collector (opt-in)
+
+Lightweight HTTP / memory / CPU dashboard for **Admin API**, **Auth API**, and **Integration API**.
+**Crypto API is excluded.** This is a local troubleshooting tool, not a production APM. Reports
+are on the **management port** (`/actuator/monitoring`); the collector UI is a dedicated
+container. There is no Caddy hop.
+
+**Start (baseline):**
+
+```bash
+./ezkey-tests/clean-start.sh --with-java-melody
+```
+
+**Start (HA, both replicas per API):**
+
+```bash
+./ezkey-tests/clean-start.sh --ha --with-java-melody
+```
+
+**Collector UI:** http://localhost:8088 (shared host port for baseline and HA collectors;
+`clean-start` releases the previous collector when switching stacks)
+
+After functional-test traffic, the collector should list `admin-api`, `auth-api`, and
+`integration-api`. In HA mode each application shows **two nodes**. Default clean-start
+without the flag leaves JavaMelody disabled.
+
+See also [`README-HA.md`](README-HA.md) and [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md).
+
 ## Data Persistence
 
 ### Database Data

@@ -25,8 +25,11 @@ User dictation (blitz `_blitz-2026-05-08-2.md`, item D11) requested observabilit
 - **Run a dedicated collector container.** Standalone official WAR (`javamelody-collector-server.war`) in its own Docker service, with a persistent volume for the collector state.
 - **Expose monitoring through the management port (`/actuator/monitoring`), not on the business port.** This avoids opening monitoring endpoints on application traffic interfaces.
 - **No Caddy proxy for the collector at this stage.** Direct local port exposure only.
-- **Auto-registration on startup.** Each monitored API registers and deregisters itself with the collector via the Java Melody node API at lifecycle hooks.
+- **Collector pull (Docker).** The collector scrapes `/actuator/monitoring` from explicit Docker DNS URLs in `applications.properties`. App-advertised auto-register is not the Docker source of truth (HA hostnames are known and stable).
 - **Stable application names** (`admin-api`, `auth-api`, `integration-api`) — not derived from hostname or context, so the same names persist across environments.
+- **HA:** one application name per API with **two node URLs** (replicas). Do not invent six collector applications.
+- **Versions:** `javamelody-spring-boot4-starter` **2.8.0** and collector WAR **2.8.0** (spike settled 2026-08-24 against Spring Boot 4.1.x).
+- **Validation topologies (funded 2026-08-24):** baseline `clean-start.sh --with-java-melody` **and** `clean-start.sh --ha --with-java-melody`.
 
 ## Patterns
 
@@ -43,8 +46,8 @@ User dictation (blitz `_blitz-2026-05-08-2.md`, item D11) requested observabilit
 | Canonical destination | Mapping action | Status |
 |-----------------------|----------------|--------|
 | `product-docs/global/vision/product-orientation-notes.md` (`V-2026-0009`) | Captures the lightweight observability posture | **integrated** in this slice |
-| `docs/DEVELOPMENT.md` (or operator-facing observability doc) | Document the collector URL, auto-registration, and `crypto-api` exclusion | gap (pending follow-up at implementation time) |
-| Per-module component docs (`admin-api`, `auth-api`, `integration-api`) | Note the management endpoint extension and the Java Melody dependency | gap (pending follow-up at implementation time) |
+| `docker/README.md` + `docs/LOCAL_STACK_PORTS.md` | Collector URL, `--with-java-melody`, crypto-api exclusion, HA node URLs | **in this slice** |
+| Per-module `CONFIGURATION.md` (`admin-api`, `auth-api`, `integration-api`) | Note the management endpoint and the JavaMelody dependency | **in this slice** |
 | `product-docs/global/architecture-decisions.md` | Optional ADR if opt-in vs management-port exposure needs formal record | gap (low priority) |
 
 ## Confidence and residual gaps
@@ -52,7 +55,7 @@ User dictation (blitz `_blitz-2026-05-08-2.md`, item D11) requested observabilit
 - **Confidence high** on the technical decisions in the plan.
 - **Residual gaps:**
   - ~~Default-vs-opt-in for clean start~~ **settled:** opt-in (`--with-java-melody` style).
-  - Exact Java Melody collector WAR version compatibility (the plan flags this as a Phase 1 spike).
+  - ~~Exact Java Melody collector WAR version compatibility~~ **settled 2026-08-24:** starter + collector WAR **2.8.0**.
   - Long-term observability strategy beyond Java Melody (Prometheus / Grafana / OpenTelemetry) is intentionally out of scope here; should be revisited if installation profiles diverge significantly.
 
 ## Grill outcome (2026-05-19)
@@ -61,12 +64,12 @@ User dictation (blitz `_blitz-2026-05-08-2.md`, item D11) requested observabilit
 
 ## Next action
 
-- Run Phase 1 compatibility spike (Java Melody artifact versions) before code change.
-- Propose an `I-*` for implementation when funded.
+- Execute funded slice `I-2026-08-24-java-melody-collector` / `TB-2026-08-24-java-melody-collector`.
 
 ## Links
 
 - Source plan-prompt: deleted 2026-08 (git history); this retrofit holds the extracted decisions.
 - Derived vision: `V-2026-0009`
+- Implementation: `I-2026-08-24-java-melody-collector`, `TB-2026-08-24-java-melody-collector`
 - Adjacency: deployment profile context `V-2026-0002` (clean-start is one such profile)
 - Methodology: [`legacy-retrofit-workflow.md`](../../methodology/legacy-retrofit-workflow.md)

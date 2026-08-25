@@ -14,6 +14,7 @@ For **what to test** on each URL (headers, Bruno, `curl`), see **[admin-ui-secur
 | Integration API              | `7080`                             | `17080` → forwards to `integration-api:7080`              |
 | Crypto API                   | `9090`                             | **No Caddy hop in the current compose file** — use `9090` |
 | Integration API (management) | `7081`                             | **Not exposed through this Caddy file** — use `7081`      |
+| JavaMelody collector (opt-in `--with-java-melody`) | `8088` | **No Caddy hop** — collector UI only |
 
 
 **Default for day-to-day manual testing (Bruno, curl, OpenAPI links):** use **direct** URLs (`8080`, `9080`, `7080`, …). Same semantics as the services; minimal moving parts.
@@ -52,6 +53,7 @@ same as the daily Caddy overlay — do not mix HA and single-stack assumptions.
 | Auth API (via HAProxy) | `8080` | Round-robin to `auth-api-1` / `auth-api-2` |
 | HAProxy Admin stats | `9081` | `http://localhost:9081/stats` |
 | HAProxy Auth stats | `8085` | `http://localhost:8085/stats` |
+| JavaMelody collector (opt-in) | `8088` | `./clean-start.sh --ha --with-java-melody` — both replicas per API |
 
 Entrypoints: `./docker/start-ha.sh`, `./ezkey-tests/clean-start.sh --ha`. Full runbook:
 [`docker/README-HA.md`](../docker/README-HA.md). Parity follow-up: `I-2026-0003`.

@@ -156,3 +156,11 @@ for the full description.
    Docker development stack sets it `true` by default for demo convenience.
 4. Docker profile also sets `ezkey.encryption.required=true` and `ezkey.audit.integrity.required=true`
    (SEC-002 / SEC-008). Behind Caddy, set `EZKEY_TRUSTED_PROXIES_REQUIRED=true` (SEC-011).
+
+---
+
+## JavaMelody (opt-in Docker diagnostics)
+
+Disabled by default. Enable with `./ezkey-tests/clean-start.sh --with-java-melody`. Management-port
+reports: `/actuator/monitoring`. Collector UI: `http://localhost:8088`. See
+[`docker/README.md`](../docker/README.md) § JavaMelody collector.

@@ -110,3 +110,11 @@ for the full description.
 
 > No `EZKEY_*` env vars are surfaced in `docker-compose.yml` for Integration API beyond
 > standard infra variables (`SPRING_DATASOURCE_*`, `MANAGEMENT_SERVER_PORT`).
+
+---
+
+## JavaMelody (opt-in Docker diagnostics)
+
+Disabled by default. Enable with `./ezkey-tests/clean-start.sh --with-java-melody`. Management-port
+reports: `/actuator/monitoring`. Collector UI: `http://localhost:8088`. See
+[`docker/README.md`](../docker/README.md) § JavaMelody collector.
