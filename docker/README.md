@@ -67,8 +67,8 @@ API and demo images run as **`spring` (UID 100 / GID 101)** via Dockerfile `USER
 Directories used at runtime are created and `chown`'d in the image — do **not** reintroduce `su-exec`
 or entrypoint `chown`. On Linux, a **new empty named volume** copies that image ownership on first
 create. `./docker/generate-encryption-keys.sh` still seeds `encryption-secrets` with UID 100/GID 101.
-`bootstrap-init` uses the same `spring` user; `cli-test` uses `ezkey:ezkey`. Third-party images
-(`postgres`, HAProxy) keep their own users.
+`bootstrap-init` uses the same `spring` user. Third-party images (`postgres`, HAProxy) keep their
+own users.
 
 ## Container timezone and log timestamps
 
@@ -174,22 +174,10 @@ Compose passes `TZ: ${TZ:-UTC}` into services; if `TZ` is unset, behavior stays 
 - **Health Check**: http://localhost:8083/actuator/health
 - **Bootstrap**: Pre-seeded with global admin enrollment on first startup
 
-### CLI Test Container (cli-test)
-- **Container**: `ezkey-cli-test`
-- **Purpose**: Interactive Ezkey CLI in a container for QA, demos, and functional tests
-- **Depends on**: Admin API, Auth API, Crypto API (healthy)
-- **Config Volume**: `/root/.ezkey` (persisted)
-- **Working Dir**: `/work` (persisted)
-
-**Quick Usage:**
-
-```bash
-# Run CLI commands
-docker compose exec cli-test ezkey --help
-
-# Open an interactive shell in the CLI container
-docker compose exec cli-test bash
-```
+The Python CLI is a **host-side** optional tool, not a stack service. Clean-start does not start
+it. Do **not** reintroduce an idle `cli-test` sidecar into the default compose files. Install and
+use it from [`ezkey-cli-python/README.md`](../ezkey-cli-python/README.md) against localhost API
+ports after the stack is up.
 
 ### Bootstrap Init (bootstrap-init)
 - **Type**: One-time job

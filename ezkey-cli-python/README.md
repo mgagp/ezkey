@@ -19,6 +19,8 @@ The Ezkey CLI provides a unified interface for interacting with all Ezkey APIs. 
 
 **Primary admin interface:** Use the **Admin UI** (web) for day-to-day operations. It is the main human administration surface for both **Global Admin** and **Tenant Admin** workflows. The TUI is a narrow, read-only tool for audit logs and entity lookup. See [TUI_SCOPE.md](TUI_SCOPE.md).
 
+The CLI is **not** started by `./ezkey-tests/clean-start.sh`. After the Docker stack is up, install it on the host and point at localhost APIs (`http://localhost:9080` Admin, `http://localhost:8080` Auth, `http://localhost:9090` Crypto).
+
 ## Installation
 
 ### From Source (Development)
