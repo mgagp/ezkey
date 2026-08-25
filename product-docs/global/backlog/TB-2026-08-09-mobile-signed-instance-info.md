@@ -3,13 +3,14 @@
 ## Metadata
 
 - **ID:** `TB-2026-08-09-mobile-signed-instance-info`
-- **Status:** `under-review`
+- **Status:** `done`
 - **Related idea:** `I-2026-08-09-mobile-signed-instance-info-integrity`
 - **GitHub issue:** none
 - **GitHub branch:** `feature/tb-2026-08-09-mobile-signed-instance-info`
-- **GitHub PR:** none
+- **GitHub PR:** `#445` (merged 2026-08-10)
 - **Created at:** `2026-08-09`
-- **Updated at:** `2026-08-09`
+- **Updated at:** `2026-08-25`
+- **Closed at:** `2026-08-10`
 - **Captured by:** Marc
 
 ## Objective
@@ -108,6 +109,14 @@ MITM rewrite channel on the enrolled refresh path without changing the public un
 Request: `{ "enrollmentProofToken": "..." }`  
 Response fields: `enrollmentId`, `authApiPublicBaseUrl`, `instanceName`, `instanceDescription`,
 `aboutUrl`, `instanceInfoPayloadSignedByIntegration`.
+
+## Closeout (2026-08-10 / canon synced 2026-08-25)
+
+Exit criteria 1–5 met on merge of PR `#445`. Auth API
+`POST /api/v1/enrollments/instance-info` returns integration-signed branding
+(`EnrollmentInstanceInfoService`). Official mobile wizard post-verify and Home refresh use
+`fetchVerifiedInstanceInfo` (Ed25519 verify before apply; no unsigned GET fallback on the enrolled
+path). Parent idea stays `active` for honesty UI + branding-change confirmation.
 
 ## Links
 

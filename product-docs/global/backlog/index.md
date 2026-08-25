@@ -10,11 +10,17 @@ This index provides a lightweight list of active ideas and their current state.
 
 → [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
 
-**Summary (2026-08-24):** Wave B integrity cluster R1 **closed** (GitHub #269). Wave C operator UI
-residuals **closed** (alerts list polish, dashboard signal model, audit-chain checkpoints). Wave D
-EXP1 soak is the release compass next gate. There is **no remaining P0** on the active backlog.
-Canon sync this pass closed two delivered-but-stale items (`I-2026-06-23` / `TB-2026-06-23` SEC-001,
-`I-2026-07-17` reset 401). The 2026-08-02 sync closed `I-2026-07-10` and `TB-2026-07-06` Tier 0,
+**Summary (2026-08-25):** Wave B integrity cluster R1 **closed** (GitHub #269). Wave C operator UI
+residuals **closed** (alerts list polish, dashboard signal model, audit-chain checkpoints). Waves
+A–C are complete. Wave D was an **attention freeze**, not a backlog item: it preserved calendar
+time on EXP1 and is **closed** as a release-order gate. EXP1 is the live experimental host;
+operator watch is human and continuous — if a signal appears, open analysis. There is **no
+remaining P0** on the active backlog.
+Canon sync 2026-08-24 closed two delivered-but-stale items (`I-2026-06-23` / `TB-2026-06-23` SEC-001,
+`I-2026-07-17` reset 401). Canon sync 2026-08-25 closed three delivered TBs whose index lagged
+(`TB-2026-08-09` signed instance-info; `TB-2026-06-02` Auth Cloudflare schema; `TB-2026-08-23`
+Integration Cloudflare schema). Parents `I-2026-08-09` and `I-2026-06-02` stay `active` for
+UX follow-up and Admin Cloudflare. The 2026-08-02 sync closed `I-2026-07-10` and `TB-2026-07-06` Tier 0,
 and materialized a **parallel** mobile Play official-release track (state-of-play from the current
 limited-experimental Android release): vision
 [`V-2026-08-02-mobile-official-play-release-posture`](../vision/V-2026-08-02-mobile-official-play-release-posture.md)
@@ -48,7 +54,7 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-0027` | iOS app implementation — fresh native rebuild | `ready` | `P1` | `mobile` | `2026-05-24` |
 | `I-2026-05-23-exp1-anonymous-evaluator-onboarding` | EXP1 anonymous evaluator onboarding | `active` | `P2` | `admin-api`, `admin-ui`, `ezkey-org`, `infra (EXP1)`, `docs` | `2026-05-23` |
 | `I-2026-05-31-mobile-android-stack-followups` | Mobile Android stack follow-ups (post-#177) | `incubating` | `P2` | `mobile`, `android`, `ezkey-tests` | `2026-05-31` |
-| `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation` | OpenAPI spec lifecycle and Cloudflare validation | `active` | `P1` | `auth-api`, `admin-api`, `integration-api`, `specs`, `scripts`, `postman`, `cloudflare`, `sdk`, `mobile` | `2026-08-23` |
+| `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation` | OpenAPI spec lifecycle and Cloudflare validation | `active` | `P1` | `auth-api`, `admin-api`, `integration-api`, `specs`, `scripts`, `postman`, `cloudflare`, `sdk`, `mobile` | `2026-08-25` |
 | `I-2026-06-03-admin-api-openapi-intra-tag-journey-order` | Admin API OpenAPI intra-tag journey order | `captured` | `P3` | `admin-api`, `docs`, `specs`, `sites/ezkey-org` | `2026-06-02` |
 | `I-2026-06-28-audit-archive-export-spi` | Audit archive export SPI: sealed-batch detachment + vendor-neutral immutable retention | `incubating` | `P3` | `core`, `admin-api`, `admin-ui`, `audit`, `infra`, `docs`, peripheral | `2026-06-28` |
 | `I-2026-07-07-auth-attempt-challenge-protection` | Auth attempt challenge protection strategy (lifecycle minimization) | `ready` | `P1` | `core`, `auth-api` | `2026-07-07` |
@@ -73,7 +79,7 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-08-02-mobile-play-official-compliance-gate` | Mobile: Play official release compliance gate | `active` | `P2` | `mobile`, `docs` | `2026-08-14` |
 | `I-2026-08-02-mobile-client-update-mechanism` | Mobile: client app-update mechanism | `active` | `P3` | `mobile`, `docs` | `2026-08-14` |
 | `I-2026-08-02-mobile-installation-version-and-compat-discovery` | Mobile: installation product-version and compatibility discovery | `incubating` | `P3` | `mobile`, `auth-api`, `admin-api`, `core`, `docs`, `security` | `2026-08-02` |
-| `I-2026-08-09-mobile-signed-instance-info-integrity` | Mobile: signed Public Instance Info integrity | `active` | `P2` | `mobile`, `auth-api`, `core`, `docs`, `security` | `2026-08-23` |
+| `I-2026-08-09-mobile-signed-instance-info-integrity` | Mobile: signed Public Instance Info integrity | `active` | `P2` | `mobile`, `auth-api`, `core`, `docs`, `security` | `2026-08-25` |
 | `I-2026-08-23-auth-unsigned-public-instance-info-retirement` | Auth unsigned public instance-info retirement | `captured` | `P3` | `auth-api`, `docs`, `mobile`, `testing`, `security` | `2026-08-23` |
 
 ## Tracer bullets (draft / ready / in progress)
@@ -82,14 +88,11 @@ and four backlog ideas below — this track does not claim September operability
 |----|-------|--------|--------------|
 | `TB-2026-08-14-mobile-exit-experimental-messaging` | Exit experimental in-app messaging | `under-review` | `I-2026-08-02-mobile-exit-experimental-messaging` |
 | `TB-2026-08-14-mobile-play-flexible-in-app-updates` | Soft Play in-app updates | `under-review` | `I-2026-08-02-mobile-client-update-mechanism` |
-| `TB-2026-08-09-mobile-signed-instance-info` | Signed enrolled instance-info | `under-review` | `I-2026-08-09-mobile-signed-instance-info-integrity` |
 | `TB-2026-07-12` | Security pentest curated MVP | `done` | `I-2026-07-12-security-pentest-curated-hygiene` |
 | `TB-2026-07-11` | Java doctor-curated curator MVP | `active` | `I-2026-07-11-java-doctor-curated-hygiene` (#326) |
 | `TB-2026-07-11-mobile-doctor` | Mobile doctor-curated curator MVP | `done` | `I-2026-07-11-mobile-doctor-curated-hygiene` |
 | `TB-2026-07-07-auth-attempt-challenge-protection-phase-b` | Auth attempt challenge protection — phase B | `promoted` | `I-2026-07-07-auth-attempt-challenge-protection` |
 | `TB-2026-08-24-java-melody-collector` | JavaMelody collector (opt-in Docker, baseline + HA) | `under-review` | `I-2026-08-24-java-melody-collector` |
-| `TB-2026-08-23-integration-api-cloudflare-schema` | Integration API Cloudflare schema (EXP1) | `under-review` | `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation` |
-| `TB-2026-06-02-auth-api-cloudflare-schema-first-slice` | Auth API Cloudflare schema-first slice | `under-review` | `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation` |
 | `TB-2026-05-25-admin-api-key-acceptance-flag` | Admin API key acceptance flag | `ready-for-implementation` | `I-2026-0004` |
 | `TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut` | EXP1 anonymous evaluator signup — first cut | `under-review` | `I-2026-05-23-exp1-anonymous-evaluator-onboarding` |
 | `TB-2026-0004-mobile-ios-phase2-apple-stack-baseline` | Mobile iOS phase 2 — Apple stack baseline | `draft` | `I-2026-0027` |
@@ -99,6 +102,9 @@ and four backlog ideas below — this track does not claim September operability
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
+| `TB-2026-08-09-mobile-signed-instance-info` | Signed enrolled instance-info | `2026-08-10` | PR `#445`. Auth `POST /enrollments/instance-info` + mobile Ed25519 verify. Parent `I-2026-08-09` stays `active` for honesty UI + branding-change confirmation. Canon status synced 2026-08-25 after index lag. |
+| `TB-2026-08-23-integration-api-cloudflare-schema` | Integration API Cloudflare schema (EXP1) | `2026-08-23` | PR `#479`. EXP1 Integration schema upload; Set action **Block** (maintainer-only). Parent `I-2026-06-02` stays `active` for Admin Cloudflare. Canon status synced 2026-08-25. |
+| `TB-2026-06-02-auth-api-cloudflare-schema-first-slice` | Auth API Cloudflare schema-first slice | `2026-08-23` | PR `#478`. Host-neutral Auth spec + EXP1 schema; Set action **Block** (maintainer-only). Parent `I-2026-06-02` stays `active`. Canon status synced 2026-08-25. |
 | `I-2026-07-17-admin-enrollment-reset-missing-authorization-header-500` | Admin enrollment reset: missing Authorization header returns 500 instead of 401 | `2026-07-19` | PR `#388`. `MissingRequestHeaderException` → RFC 9457 401. Delivered on `I-*` (no `TB-*`). Canon status synced 2026-08-24 after merge closeout gap. Pentest LGbal6. |
 | `I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement` | Enforce challenge presence on `passwordless-wait` | `2026-06-26` | PR `#255` / `#251` / TB `TB-2026-06-23`. SEC-001. Canon status synced 2026-08-24 after merge closeout gap. Residual S3 replay after ACCEPTED stays out of scope. |
 | `I-2026-07-10-nightly-integrity-boundary-false-positives` | Nightly integrity: boundary false positives (grid align + alert honesty) | `2026-07-11` | PR `#318` / `#315`. Delivered on `I-*` (no `TB-*`). Canon status synced 2026-08-02 after merge closeout gap. ADR-0009 + design-pack pitfall. |

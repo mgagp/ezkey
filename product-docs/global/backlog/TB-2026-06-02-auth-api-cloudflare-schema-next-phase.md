@@ -1,13 +1,14 @@
 # Next-phase context — OpenAPI Cloudflare schema after Auth API first slice
 
-Resume notes after the Auth first slice. Integration EXP1 is the next executable slice
-(`TB-2026-08-23-integration-api-cloudflare-schema`). Admin Cloudflare upload stays deferred.
+Resume notes after the Auth and Integration EXP1 slices (`done`, canon synced 2026-08-25).
+Admin Cloudflare upload stays deferred — that is the remaining executable work on
+`I-2026-06-02`.
 
 - **Parent idea:** `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation`
-- **First slice:** `TB-2026-06-02-auth-api-cloudflare-schema-first-slice`
-- **Integration slice:** `TB-2026-08-23-integration-api-cloudflare-schema`
+- **First slice:** `TB-2026-06-02-auth-api-cloudflare-schema-first-slice` (`done`, PR `#478`)
+- **Integration slice:** `TB-2026-08-23-integration-api-cloudflare-schema` (`done`, PR `#479`)
 - **Created at:** `2026-08-23`
-- **Updated at:** `2026-08-23`
+- **Updated at:** `2026-08-25`
 
 ## What the Auth slice proved
 

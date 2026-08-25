@@ -5,7 +5,7 @@
 - **Document ID:** `operational-readiness-prioritization-2026-09`
 - **Status:** `active`
 - **Created at:** `2026-06-28`
-- **Last reviewed at:** `2026-06-28`
+- **Last reviewed at:** `2026-08-25`
 - **Target milestone:** First **formally operable** Ezkey release line (experimental deployment posture; not production SLA)
 - **Horizon:** **September 2026** (~10 weeks from this exercise)
 - **Owner:** Marc (maintainer discussion captured below)
@@ -16,6 +16,11 @@
 > **“Where are we?” / “What should be next?”** → Read this document first, then the
 > [Integrity cluster grill session](backlog/grill-sessions/integrity-cluster-D4-D6-grill-me.md)
 > and backlog items **`I-2026-0005`**, **`I-2026-0006`**, **`I-2026-0007`**.
+
+**2026-08-25:** Waves A–C are **closed**. Wave D (EXP1 soak) is **closed as an attention freeze**,
+not a remaining executable gate. “What should be next?” is the active backlog in
+[`backlog/index.md`](backlog/index.md), not soak. EXP1 is the live experimental host; operator
+watch is human — open analysis only if a signal appears.
 
 This is the canonical **release-order compass** until the September milestone is reached or this
 document is explicitly superseded.
@@ -128,9 +133,10 @@ stop/start scenarios).
 2. GitHub program issue **#269** — **closed** (PRs #270, #287, #288, #289 + B2/B2.5 lineage).
 3. B1–B3 + B2.6/B2.7 — **shipped**. Closeout:
    [`backlog/method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](backlog/method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
-4. Scenario tests / EXP1 soak — **ongoing** (Wave D; not blocking Wave C).
+4. Scenario tests / EXP1 soak — recast 2026-08-25: Wave D was the **attention freeze** after R1,
+   not a remaining work item. EXP1 stays the live experimental host (operator watch only).
 
-**Exit gate for Wave B:** met for R1 implementation; runtime soak continues on EXP1.
+**Exit gate for Wave B:** met for R1 implementation. Do not treat EXP1 soak as an open wave.
 
 ### Wave C — Operator UI residuals (**closed** 2026-07-05)
 
@@ -143,11 +149,17 @@ stop/start scenarios).
 
 **Wave C exit gate:** met when checkpoints TB merges and matrix row is `implemented`.
 
-### Wave D — EXP1 soak & simulation (after Wave B gate)
+### Wave D — EXP1 soak (attention freeze; **closed** 2026-08-25)
 
-- Deploy current `main` to **EXP1** with extended runtime (days/weeks).
-- Run scripted and ad hoc scenarios (maintainer-operated).
-- Capture findings as backlog ideas or TB fixes — **not** as premature production support.
+Wave D was **never** an `I-*` / `TB-*`. It was a release-order pause: after Waves A–C, do not
+pile more structural work; leave calendar time on the live EXP1 host.
+
+That freeze **did its job**. Findings that appeared were opened as analysis (hygiene or a new
+idea), not as a soak program. Residual watch is **human operator activity**: look at EXP1 from
+time to time; if a signal appears, open analysis. Do **not** treat soak as the next executable
+gate or invent soak backlog.
+
+EXP1 remains the experimental host. Soak is observation, not a deliverable.
 
 ## Explicitly deferred (September release lens)
 
@@ -175,7 +187,8 @@ For the **September 2026** target, “operable” means:
 2. **Degraded mode** behavior under Admin API loss is **predictable** and **tested**.
 3. **Nightly detection** runs and surfaces anomalies through the **alert model**.
 4. Dashboard gives an honest **health snapshot** (batch last-run + open alerts).
-5. The team has **calendar time on EXP1** to simulate failures without release pressure.
+5. EXP1 exists as the **live experimental host** so the maintainer can observe (and, if needed,
+   simulate failures) without treating soak as a backlog slice.
 
 It does **not** mean: full SOC 2 certification, iOS mobile parity, HA stack, or every P2 backlog
 idea closed.

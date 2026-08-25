@@ -3,15 +3,16 @@
 ## Metadata
 
 - **ID:** `I-2026-08-09-mobile-signed-instance-info-integrity`
-- **Status:** `active`
+- **Status:** `active` (first TB done; honesty UI + branding-change confirmation remain)
 - **Priority:** `P2`
 - **Created at:** `2026-08-09`
-- **Updated at:** `2026-08-23`
-- **Last reviewed at:** `2026-08-23`
+- **Updated at:** `2026-08-25`
+- **Last reviewed at:** `2026-08-25`
 - **Component tags:** `mobile`, `auth-api`, `core`, `docs`, `security`
 - **Captured by:** Marc
 - **GitHub issue:** none
-- **Tracer bullet:** [`TB-2026-08-09-mobile-signed-instance-info`](../TB-2026-08-09-mobile-signed-instance-info.md)
+- **GitHub PR:** `#445` (first TB merged 2026-08-10)
+- **Tracer bullet:** [`TB-2026-08-09-mobile-signed-instance-info`](../TB-2026-08-09-mobile-signed-instance-info.md) (`done`)
 
 ## Intent
 
@@ -156,10 +157,16 @@ signed branding response on the enrolled path does not require a new chicken-egg
 
 ## Promotion notes
 
-**Ready (grill closed 2026-08-09).** First execution slice is
-[`TB-2026-08-09-mobile-signed-instance-info`](../TB-2026-08-09-mobile-signed-instance-info.md).
-Idea remains `ready` / later `active` while that TB runs; honesty UI + branding-change confirmation
-stay on this idea as a follow-up slice after the TB promotes.
+**Ready (grill closed 2026-08-09).** First execution slice
+[`TB-2026-08-09-mobile-signed-instance-info`](../TB-2026-08-09-mobile-signed-instance-info.md)
+is `done` (PR `#445`, 2026-08-10; canon synced 2026-08-25). Idea stays `active` for honesty UI +
+branding-change confirmation.
+
+## Closeout — first TB (2026-08-10 / canon synced 2026-08-25)
+
+Signed enrolled instance-info is in product: Auth API POST + integration Ed25519 signature; mobile
+verifies before apply. Residual on this idea is UX only. Unsigned Auth GET retirement stays on
+[`I-2026-08-23-auth-unsigned-public-instance-info-retirement`](I-2026-08-23-auth-unsigned-public-instance-info-retirement.md).
 
 ## Links
 

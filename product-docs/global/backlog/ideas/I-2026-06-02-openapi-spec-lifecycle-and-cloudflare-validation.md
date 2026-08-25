@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation`
-- **Status:** `active`
+- **Status:** `active` (Auth + Integration EXP1 TBs done; Admin Cloudflare deferred)
 - **Priority:** `P1`
 - **Created at:** `2026-06-02`
-- **Updated at:** `2026-08-23`
-- **Last reviewed at:** `2026-08-23`
+- **Updated at:** `2026-08-25`
+- **Last reviewed at:** `2026-08-25`
 - **Progression markers:** `P1-operability`, `P2-hardening`
 - **Component tags:** `auth-api`, `admin-api`, `integration-api`, `specs`, `scripts`, `postman`, `cloudflare`, `experimental-hybrid`, `sdk`, `mobile`
 - **Lane:** `B` - plan incubation materialized into Lane A backlog scope
@@ -109,18 +109,21 @@ First Auth API slice is implemented. EXP1 schema is uploaded. Mitigation on EXP1
 - Operator runbook (Auth): [`docs/cloudflare/auth-api-schema-validation.md`](../../../../docs/cloudflare/auth-api-schema-validation.md)
 - Operator runbook (Integration): [`docs/cloudflare/integration-api-schema-validation.md`](../../../../docs/cloudflare/integration-api-schema-validation.md)
 
-## Close-out notes (2026-08-23)
+## Close-out notes (2026-08-23 / canon synced 2026-08-25)
 
-- Host-neutral Auth canonical spec + EXP1 packaging path are in repo.
+- Host-neutral Auth canonical spec + EXP1 packaging path are in repo. Auth TB
+  [`TB-2026-06-02-auth-api-cloudflare-schema-first-slice`](../TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md)
+  is `done` (PR `#478`).
 - EXP1 Auth Cloudflare upload succeeded; Set action is Block (EXP1-only exception).
 - Integration EXP1 is uploaded and on **Block** (maintainer-only exception, 2026-08-23),
   same reason as Auth. Schema `ezkey-integration-api-exp1`
   (`bf5cab36-d09c-4b0e-b551-5c23bc17682f`). Functional check: schema-invalid create → 403 /
-  1020; schema-valid create with dummy Basic → origin 401. See
-  [`TB-2026-08-23-integration-api-cloudflare-schema.md`](../TB-2026-08-23-integration-api-cloudflare-schema.md).
+  1020; schema-valid create with dummy Basic → origin 401. Integration TB
+  [`TB-2026-08-23-integration-api-cloudflare-schema.md`](../TB-2026-08-23-integration-api-cloudflare-schema.md)
+  is `done` (PR `#479`).
 - Admin Cloudflare upload remains deferred pending analysis (plan size, body-inspection limit,
   contract volatility). Optional Admin host-neutral `servers` strip is not in the Integration
-  slice.
+  slice. This idea stays `active` for that residual.
 - `product-docs/global/spec-test-traceability.md` is unchanged: no endpoint contract change.
 
 ## Traceability notes

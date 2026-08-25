@@ -3,12 +3,14 @@
 ## Metadata
 
 - **ID:** `TB-2026-06-02-auth-api-cloudflare-schema-first-slice`
-- **Status:** `under-review`
+- **Status:** `done`
 - **Related idea:** `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation`
 - **Lane:** `B` - plan incubation promoted into executable slice
 - **Posture:** `iterative`
+- **GitHub PR:** `#478` (merged 2026-08-23)
 - **Created at:** `2026-06-02`
-- **Updated at:** `2026-08-23`
+- **Updated at:** `2026-08-25`
+- **Closed at:** `2026-08-23`
 - **Captured by:** Marc
 
 ## Objective
@@ -172,3 +174,8 @@ Notes:
 - Do not commit Orval or OpenAPI Generator version churn from a generate-only check.
 - Global `spec-test-traceability.md` was not updated: this slice changes host packaging, not
   endpoint behavior.
+
+## Closeout (2026-08-23 / canon synced 2026-08-25)
+
+Exit criteria met on merge of PR `#478`. EXP1 Auth schema validation is live with Set action
+**Block** (maintainer-only exception). Parent `I-2026-06-02` stays `active` for Admin Cloudflare.

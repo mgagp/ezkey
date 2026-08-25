@@ -6,7 +6,7 @@
 - **Status:** `draft`
 - **Lane:** `B` - plan incubation materialized into canonical direction
 - **Created at:** `2026-06-02`
-- **Updated at:** `2026-08-23`
+- **Updated at:** `2026-08-25`
 - **Captured by:** Marc
 
 ## Intent
@@ -50,10 +50,11 @@ replace device-side Ed25519 verification of `instanceInfoPayloadSignedByIntegrat
 
 ## Promotion criteria
 
-The Auth API first slice is implemented (2026-08-23). Integration EXP1 is uploaded
-([`TB-2026-08-23-integration-api-cloudflare-schema.md`](../backlog/TB-2026-08-23-integration-api-cloudflare-schema.md)).
-EXP1 Auth and Integration may use **Block** as a maintainer-only exception; that is not the
-default for later hosts. Admin Cloudflare upload stays deferred. See
+The Auth API first slice is `done` (PR `#478`, 2026-08-23). Integration EXP1 is `done`
+(PR `#479`; [`TB-2026-08-23-integration-api-cloudflare-schema.md`](../backlog/TB-2026-08-23-integration-api-cloudflare-schema.md)).
+Canon status synced 2026-08-25. EXP1 Auth and Integration may use **Block** as a
+maintainer-only exception; that is not the default for later hosts. Admin Cloudflare upload
+stays deferred. See
 [`TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md`](../backlog/TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md).
 
 The first Auth API slice needed to prove that Ezkey can:

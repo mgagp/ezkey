@@ -82,7 +82,7 @@ or `TB-*` (bounded Lane D single-pass on `I-*`).
   ADR-0009 + design-pack pitfall note.
 - **Evidence:** unit coverage on scheduler/verification; PR `#318` merged; issue `#315` closed.
 - **Residual:** historical EXP1 OPEN false-positive alerts remain for manual resolve (by design).
-- **Next:** Wave D EXP1 soak continues to watch nightly quietness; no further code debt on this idea.
+- **Next:** none on this idea. Nightly quietness on EXP1 is operator watch, not remaining debt.
 
 ## Links
 

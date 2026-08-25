@@ -3,12 +3,14 @@
 ## Metadata
 
 - **ID:** `TB-2026-08-23-integration-api-cloudflare-schema`
-- **Status:** `under-review`
+- **Status:** `done`
 - **Related idea:** `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation`
 - **Lane:** `A` — next executable slice of an existing program
 - **Posture:** `iterative`
+- **GitHub PR:** `#479` (merged 2026-08-23)
 - **Created at:** `2026-08-23`
-- **Updated at:** `2026-08-23`
+- **Updated at:** `2026-08-25`
+- **Closed at:** `2026-08-23`
 - **Captured by:** Marc
 
 ## Objective
@@ -190,3 +192,9 @@ Notes:
   `ezkey-sdk-typescript` repo and is not dispatched by `update-specs.sh`.
 - Admin host-neutral strip was left out of this slice (optional cheap add; would expand
   dispatch-copy review).
+
+## Closeout (2026-08-23 / canon synced 2026-08-25)
+
+Exit criteria met on merge of PR `#479`. EXP1 Integration schema validation is live with Set
+action **Block** (maintainer-only exception, same reason as Auth). Parent `I-2026-06-02` stays
+`active`; Admin Cloudflare remains deferred.

@@ -61,7 +61,7 @@ operable** handling of audit log integrity at **two cryptographic layers**:
 | **C9** | Snooze | Deferred |
 | **Wave C** | `I-2026-0028` P3 Alerts list polish | Next operator UI slice per release compass |
 | **Wave C** | Audit chain checkpoints matrix row | After alerts polish |
-| **EXP1 soak** | Extended runtime scenarios | Wave D |
+| **EXP1 watch** | Live experimental host; human observation | Not a remaining wave (Wave D closed 2026-08-25 as attention freeze, not backlog) |
 
 ---
 
