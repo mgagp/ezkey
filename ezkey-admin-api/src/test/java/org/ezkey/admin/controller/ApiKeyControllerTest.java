@@ -647,8 +647,8 @@ class ApiKeyControllerTest {
   private EzkeyAdmin createMockAdmin() {
     EzkeyAdmin admin = new EzkeyAdmin();
     admin.setAdminId(1);
-    admin.setUsername("john.doe"); // SOC 2 compliant: identifiable username
-    admin.setEmail("john.doe@example.com"); // SOC 2 compliant: email required
+    admin.setUsername("john.doe"); // identifiable operator identity
+    admin.setEmail("john.doe@example.com"); // email required for Global Admin
     admin.setActive(true);
     admin.setAdminType(EzkeyAdmin.AdminType.GLOBAL_ADMIN);
     admin.setTenant(null);

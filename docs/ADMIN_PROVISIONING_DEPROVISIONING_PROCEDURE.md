@@ -1,6 +1,6 @@
 # Administrator Provisioning and Deprovisioning Procedure
 
-This procedure describes how to create, deactivate, and reactivate administrators in Ezkey, and how to use the audit trail for SOC 2 and operational review.
+This procedure describes how to create, deactivate, and reactivate administrators in Ezkey, and how to use the operator-visible audit trail for operational review.
 
 ## Scope
 
@@ -32,7 +32,7 @@ System tenant (tenant_id=1) cannot have Tenant Admins created in it.
 ## Deprovisioning (Deactivate Admin)
 
 1. **Deactivate** via API: `POST /api/v1/admins/{id}/deactivate`.
-2. **Optional:** Supply a `reason` query parameter (10–500 characters) for the audit trail (recommended for SOC 2 and internal procedures).
+2. **Optional:** Supply a `reason` query parameter (10–500 characters) for the audit trail (recommended for internal procedures).
 3. **Effect:** The admin’s account is set to inactive and all active bearer tokens are revoked. Data is preserved for audit. The operation is idempotent if the admin is already inactive.
 4. **Limits:** A Global Admin cannot deactivate themselves. Deactivation cannot reduce the number of active Global Admins below the configured minimum (to avoid lockout).
 5. **Audit:** Event `ADMIN_DEACTIVATED` with action `admin_deactivated` is logged. The deactivated admin ID is stored as `target_admin_id`. The optional `reason` is stored in the audit entry.
@@ -52,12 +52,14 @@ System tenant (tenant_id=1) cannot have Tenant Admins created in it.
 - **Retention:** Controlled by the audit lifecycle policy via `ezkey.audit.archive.*`; physical
   deletion happens only after checkpoint lifecycle progression reaches a purgeable state.
 
-## SOC 2 Relevance
+## Product terms
 
-- **CC6.2:** Authorize, modify, and remove access — Create and deactivate/activate cover this.
-- **CC6.3:** Provision and deprovision credentials — Creation provisions credentials (onboarding); deactivation revokes tokens (deprovisioning). Credentials are issued once at create; recovery codes cannot be retrieved after creation.
-- **CC6.5:** Discontinue logical access — Deactivation discontinues access and revokes tokens.
-- **CC7.2:** Monitor system components — Audit events and optional `reason` on deactivation support monitoring and review.
+- **Least privilege / role split** — Create and deactivate/activate are Global Admin vs Tenant Admin scoped as above.
+- **Identifiable operator identity** — Creation provisions onboarding credentials once; recovery codes cannot be retrieved after creation.
+- **Rapid access removal** — Deactivation discontinues access and revokes tokens.
+- **Operator-visible audit trail** — Audit events and optional `reason` on deactivation support review.
+
+Mapping vocabulary (not a claim): [`product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md).
 
 ## Quick Reference
 

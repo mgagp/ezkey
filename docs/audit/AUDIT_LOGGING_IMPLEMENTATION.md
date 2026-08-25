@@ -2,7 +2,7 @@
 
 ## Overview
 
-A comprehensive event audit logging system has been implemented across all Ezkey APIs to support security monitoring, forensic analysis, and future SOC2 certification requirements.
+A comprehensive event audit logging system has been implemented across all Ezkey APIs to support security monitoring, forensic analysis, and operator-visible audit.
 
 ## Related specifications
 
@@ -210,4 +210,4 @@ CREATE TABLE ezkey_audit_log (
 
 ## Conclusion
 
-The audit logging system is now fully functional for core operations. All critical security events are tracked with comprehensive context. The system is SOC2-ready with configurable retention policies. Remaining work is primarily UI (demo app page) and documentation/testing.
+The audit logging system is now fully functional for core operations. All critical security events are tracked with comprehensive context. The system has configurable retention policies. Remaining work is primarily UI (demo app page) and documentation/testing.

@@ -5,7 +5,8 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Configuration: InitialGlobalAdminProperties
- * Description: Configuration properties for initial global administrator creation with SOC 2 compliance.
+ * Description: Configuration properties for initial global administrator creation with
+ *              identifiable operator identity.
  */
 
 package org.ezkey.admin.config;
@@ -21,8 +22,9 @@ import org.springframework.validation.annotation.Validated;
  * Configuration properties for initial global administrator creation.
  *
  * <p>These properties control the creation of the first global administrator during system
- * initialization. For SOC 2 compliance, the username must identify a specific individual (not a
- * generic account like "admin"), and an email address is required for audit trail purposes.
+ * initialization. The username must identify a specific individual (not a
+ * generic account like "admin"), and an email address is required for the operator-visible
+ * audit trail.
  *
  * <p><b>Configuration Example:</b>
  *
@@ -33,13 +35,13 @@ import org.springframework.validation.annotation.Validated;
  * ezkey.admin.initial.last-name=Doe
  * </pre>
  *
- * <p><b>SOC 2 Compliance Requirements:</b>
+ * <p><b>Identifiable operator identity:</b>
  *
  * <ul>
  *   <li><b>Username:</b> Must identify a specific individual (NOT "admin" or generic)
- *   <li><b>Email:</b> Required for audit trail and accountability (CC6.1, CC7.2)
- *   <li><b>First Name:</b> Required for GLOBAL_ADMIN for SOC 2 compliance (CC6.1, CC7.2)
- *   <li><b>Last Name:</b> Required for GLOBAL_ADMIN for SOC 2 compliance (CC6.1, CC7.2)
+ *   <li><b>Email:</b> Required for audit trail and accountability
+ *   <li><b>First Name:</b> Required for GLOBAL_ADMIN identification
+ *   <li><b>Last Name:</b> Required for GLOBAL_ADMIN identification
  * </ul>
  *
  * <p><b>Validation Rules:</b>
@@ -63,10 +65,9 @@ import org.springframework.validation.annotation.Validated;
 public class InitialGlobalAdminProperties {
 
   /**
-   * Generic usernames that are not allowed for SOC 2 compliance.
+   * Generic usernames that are not allowed for identifiable operator identity.
    *
-   * <p>These usernames are too generic and do not identify a specific individual, violating SOC 2
-   * requirements for individual accountability.
+   * <p>These usernames are too generic and do not identify a specific individual.
    */
   private static final String[] GENERIC_USERNAMES = {
     "admin", "administrator", "root", "superuser", "super", "user", "test", "demo"
@@ -75,7 +76,7 @@ public class InitialGlobalAdminProperties {
   /**
    * Username for the initial global administrator.
    *
-   * <p>This username must identify a specific individual for SOC 2 compliance. Generic usernames
+   * <p>This username must identify a specific individual. Generic usernames
    * like "admin" are not allowed.
    *
    * <p><b>Examples of valid usernames:</b> "john.doe", "jane.smith", "admin.john"
@@ -84,42 +85,43 @@ public class InitialGlobalAdminProperties {
    */
   @NotBlank(
       message =
-          "Initial global admin username is REQUIRED for SOC 2 compliance. "
+          "Initial global admin username is required for identifiable operator identity. "
               + "Must identify a specific individual, not a generic account.")
   @Pattern(
       regexp = "^(?!(admin|administrator|root|superuser|super|user|test|demo)$).*",
       flags = Pattern.Flag.CASE_INSENSITIVE,
       message =
-          "Username cannot be a generic identifier (admin, administrator, root, etc.) "
-              + "for SOC 2 compliance. Must identify a specific individual.")
+          "Username cannot be a generic identifier (admin, administrator, root, etc.). "
+              + "Must identify a specific individual.")
   private String username;
 
   /**
    * Email address for the initial global administrator.
    *
-   * <p>Required for SOC 2 compliance (CC6.1, CC7.2) to ensure proper audit trail and
-   * accountability. The email must be valid and unique.
+   * <p>Required for identifiable Global Admin identity so the operator-visible audit trail can
+   * name a person. The email must be valid and unique.
    */
-  @NotBlank(message = "Initial global admin email is REQUIRED for SOC 2 compliance (CC6.1, CC7.2).")
+  @NotBlank(message = "Initial global admin email is required for identifiable operator identity.")
   @Email(message = "Initial global admin email must be a valid email address.")
   private String email;
 
   /**
    * First name of the initial global administrator.
    *
-   * <p>Required for GLOBAL_ADMIN type for SOC 2 compliance (CC6.1, CC7.2) to ensure proper
-   * identification and accountability. Used for audit trail and display purposes.
+   * <p>Required for GLOBAL_ADMIN type for identifiable operator identity. Used for audit trail
+   * and display purposes.
    */
-  @NotBlank(message = "Initial global admin first name is REQUIRED for SOC 2 compliance.")
+  @NotBlank(message = "Initial global admin first name is required for identifiable operator identity.")
   private String firstName;
 
   /**
    * Last name of the initial global administrator.
    *
-   * <p>Required for GLOBAL_ADMIN type for SOC 2 compliance (CC6.1, CC7.2) to ensure proper
-   * identification and accountability. Used for audit trail and display purposes.
+   * <p>Required for GLOBAL_ADMIN type for identifiable operator identity. Used for audit trail
+   * and display purposes.
    */
-  @NotBlank(message = "Initial global admin last name is REQUIRED for SOC 2 compliance.")
+  @NotBlank(
+      message = "Initial global admin last name is required for identifiable operator identity.")
   private String lastName;
 
   /**
@@ -143,7 +145,7 @@ public class InitialGlobalAdminProperties {
   /**
    * Gets the email address for the initial global administrator.
    *
-   * @return the email address (required for SOC 2 compliance)
+   * @return the email address (required for identifiable operator identity)
    */
   public String getEmail() {
     return email;
@@ -152,7 +154,7 @@ public class InitialGlobalAdminProperties {
   /**
    * Sets the email address for the initial global administrator.
    *
-   * @param email the email address (required for SOC 2 compliance)
+   * @param email the email address (required for identifiable operator identity)
    */
   public void setEmail(String email) {
     this.email = email;
@@ -161,7 +163,7 @@ public class InitialGlobalAdminProperties {
   /**
    * Gets the first name of the initial global administrator.
    *
-   * @return the first name (required for SOC 2 compliance)
+   * @return the first name (required for identifiable operator identity)
    */
   public String getFirstName() {
     return firstName;
@@ -170,7 +172,7 @@ public class InitialGlobalAdminProperties {
   /**
    * Sets the first name of the initial global administrator.
    *
-   * @param firstName the first name (required for SOC 2 compliance)
+   * @param firstName the first name (required for identifiable operator identity)
    */
   public void setFirstName(String firstName) {
     this.firstName = firstName;
@@ -179,7 +181,7 @@ public class InitialGlobalAdminProperties {
   /**
    * Gets the last name of the initial global administrator.
    *
-   * @return the last name (required for SOC 2 compliance)
+   * @return the last name (required for identifiable operator identity)
    */
   public String getLastName() {
     return lastName;
@@ -188,7 +190,7 @@ public class InitialGlobalAdminProperties {
   /**
    * Sets the last name of the initial global administrator.
    *
-   * @param lastName the last name (required for SOC 2 compliance)
+   * @param lastName the last name (required for identifiable operator identity)
    */
   public void setLastName(String lastName) {
     this.lastName = lastName;
@@ -197,8 +199,8 @@ public class InitialGlobalAdminProperties {
   /**
    * Validates that the username is not generic.
    *
-   * <p>This method performs additional validation beyond the pattern annotation to ensure SOC 2
-   * compliance.
+   * <p>This method performs additional validation beyond the pattern annotation to reject generic
+   * usernames.
    *
    * @return true if username is valid (not generic), false otherwise
    */

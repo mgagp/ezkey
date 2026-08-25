@@ -31,7 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Functional tests verifying SOC 2 CC6.3 / CC8.1 audit reason justification field.
+ * Functional tests verifying reason/justification on sensitive change audit reason justification field.
  *
  * <p><b>Scenarios covered:</b>
  *

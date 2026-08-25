@@ -22,7 +22,7 @@ Default config is in `ezkey-admin-api/config/application.properties`. Profile-sp
 - `ezkey-admin-api/config/application-docker.properties`
 - `ezkey-admin-api/config/application-windows.properties`
 
-## Required bootstrap configuration (SOC 2)
+## Required bootstrap configuration (identifiable identity)
 
 The initial global admin identity is enforced at startup by `InitialGlobalAdminService`.
 
@@ -52,7 +52,7 @@ bootstrap. Rationale and history:
 
 ## Documentation index
 
-- `README_INITIAL_GLOBAL_ADMIN.md`: initial global admin + passwordless bootstrap (SOC 2)
+- `README_INITIAL_GLOBAL_ADMIN.md`: initial global admin + passwordless bootstrap
 - `README_RATE_LIMITING.md`: rate limiting strategy and configuration
 
 Token cleanup + rotation are documented in `docs/ADMIN_API_SECURITY_GUIDE.md` (Token Management).

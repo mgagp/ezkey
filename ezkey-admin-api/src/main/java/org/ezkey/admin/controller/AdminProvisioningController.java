@@ -213,7 +213,7 @@ public class AdminProvisioningController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    // Validate required fields for global admin (SOC 2 compliance)
+    // Validate required fields for global admin (identifiable operator identity)
     if (request.email() == null || request.email().isBlank()) {
       return badRequest(
           httpRequest,

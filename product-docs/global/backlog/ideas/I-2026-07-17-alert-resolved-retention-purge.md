@@ -63,7 +63,7 @@ traceability, but it implies unbounded growth of the alerts table over long-runn
 
 ## Risks and exceptions
 
-- Premature purge could erase SOC 2–oriented evidence that operators still need for recent
+- Premature purge could erase operator-visible evidence that operators still need for recent
   incidents — retention window must be conservative and configurable.
 - Coupling alert purge to audit-log archive SPI would over-scope; keep them separate unless a later
   design pack unifies retention vocabulary.

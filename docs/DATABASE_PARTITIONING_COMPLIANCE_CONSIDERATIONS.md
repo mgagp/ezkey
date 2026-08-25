@@ -5,7 +5,7 @@
 This document addresses critical compliance and security considerations for database table partitioning in EZKEY, specifically regarding:
 
 1. **Non-repudiation and electronic signature chaining** for audit logs (future feature)
-2. **SOC2 compliance requirements** for audit log retention and integrity
+2. **operator-visible audit requirements** for audit log retention and integrity
 3. **Other regulatory considerations** (GDPR, PCI-DSS, HIPAA if applicable)
 
 ---
@@ -108,13 +108,13 @@ ON ezkey_audit_log(chain_generation_id, created_at ASC);
 
 ---
 
-## SOC2 Compliance Requirements
+## Retention and integrity product notes
 
-### Audit Log Retention (CC7.2)
+### Audit log retention
 
 **Requirement:**
 - **Minimum Retention:** 1 year for security logs
-- **Recommended Retention:** 7 years for audit logs (SOC2 Type II best practice)
+- **Recommended Retention:** 7 years for audit logs
 - **Legal Hold:** Must support legal hold capabilities (prevent deletion during investigations)
 
 **Partitioning Benefits:**
@@ -149,7 +149,7 @@ BEGIN
 END $$;
 ```
 
-### Log Integrity (CC5.3, CC7.2)
+### Log integrity
 
 **Requirement:**
 - Audit logs must be **tamper-evident**
@@ -167,7 +167,7 @@ END $$;
 - Chain verification ensures no gaps or modifications
 - Partition pruning improves verification query performance
 
-### Access Controls (CC6.1, CC6.2)
+### Access controls
 
 **Requirement:**
 - Access to audit logs must be controlled and logged
@@ -287,7 +287,7 @@ ORDER BY access_count DESC;
    - Indexes will be local to each partition
    - Ensures optimal chain verification performance
 
-### For SOC2 Compliance
+### For retention and integrity
 
 1. **✅ Implement 7-Year Retention:**
    - Use partitioning to enable efficient archival
@@ -323,7 +323,7 @@ ORDER BY access_count DESC;
 **Key Finding:** Database partitioning by month is **fully compatible** with:
 
 - ✅ Non-repudiation and electronic signature chaining (future feature)
-- ✅ SOC2 compliance requirements
+- ✅ operator-visible audit requirements
 - ✅ GDPR compliance principles (if applicable)
 - ✅ Other regulatory requirements
 
@@ -333,7 +333,6 @@ ORDER BY access_count DESC;
 
 ## References
 
-- SOC2 Trust Service Criteria: https://www.aicpa.org/interestareas/frc/assuranceadvisoryservices/trustdataintegritytaskforce.html
 - GDPR Article 17 (Right to Erasure): https://gdpr-info.eu/art-17-gdpr/
 - PostgreSQL Partitioning: https://www.postgresql.org/docs/current/ddl-partitioning.html
 - EZKEY normative posture: [`../product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md)

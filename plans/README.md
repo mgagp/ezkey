@@ -19,7 +19,7 @@ The purpose of this corpus is to keep only the highest-signal plans that directl
 - `api_key_lifecycle_review_40070814.plan.md`
 - `key_lifecycle_strategy_e4debaae.plan.md`
 - `reason_ux_review_53ddefc2.plan.md`
-- `admin_management_gaps_and_soc2_36506da5.plan.md`
+- `admin_management_gaps_and_soc2_36506da5.plan.md` (historical filename; living mapping is [`product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md))
 - `admin_deactivation_reason_and_justification_coherence_a83a5a0c.plan.md`
 - `audit_reason_alignment_f39d1c7b.plan.md`
 - `bulk_deactivate_reactivate_enrollments_8b203bfc.plan.md`

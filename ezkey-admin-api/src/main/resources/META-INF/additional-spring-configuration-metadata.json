@@ -4,7 +4,7 @@
       "name": "ezkey.admin.initial",
       "type": "org.ezkey.admin.config.InitialGlobalAdminProperties",
       "sourceType": "org.ezkey.admin.config.InitialGlobalAdminProperties",
-      "description": "Initial Global Admin bootstrap — SOC 2 compliant identity required."
+      "description": "Initial Global Admin bootstrap — identifiable operator identity required."
     },
     {
       "name": "ezkey.admin.mfa",

@@ -34,8 +34,8 @@ import org.springframework.stereotype.Service;
  * HMAC-SHA256 signing and verification service for audit log entries.
  *
  * <p>Provides tamper-evidence for audit log entries in self-hosted deployments by computing and
- * verifying HMAC-SHA256 signatures. This is the cryptographic foundation for SOC 2 audit log
- * integrity (CC7.2, CC6.1).
+ * verifying HMAC-SHA256 signatures. This is the cryptographic foundation for tamper-evident
+ * monitoring of the operator-visible audit trail.
  *
  * <p><b>Design Decisions:</b>
  *
@@ -45,7 +45,7 @@ import org.springframework.stereotype.Service;
  *   <li><b>Key:</b> Dedicated 256-bit key, separate from the Tink encryption master key
  *   <li><b>Canonical form:</b> Pipe-delimited fields, null as empty string, timestamps in ISO-8601
  *       UTC -- deterministic and unambiguous
- *   <li><b>Inspired by:</b> HashiCorp Vault audit backend (per-entry HMAC, proven SOC 2 acceptable)
+ *   <li><b>Inspired by:</b> HashiCorp Vault audit backend (per-entry HMAC)
  * </ul>
  *
  * <p><b>Thread Safety:</b> This service is thread-safe. Each HMAC computation creates a new {@link
@@ -97,7 +97,7 @@ public class AuditHmacService {
     if (keyFilePath == null || keyFilePath.isBlank()) {
       logger.warn(
           "Audit HMAC key file not configured (ezkey.audit.integrity.hmac-key-file). "
-              + "HMAC signing will be disabled. Configure a key file for SOC 2 compliance.");
+              + "HMAC signing will be disabled. Configure a key file for identifiable operator identity.");
       enforceRequiredIntegrity();
       return;
     }

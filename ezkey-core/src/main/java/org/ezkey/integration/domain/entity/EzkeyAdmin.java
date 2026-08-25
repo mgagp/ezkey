@@ -136,7 +136,7 @@ public class EzkeyAdmin {
    * Unique username for the administrator.
    *
    * <p>This field is required and must be unique across all administrators. Used for authentication
-   * and identification purposes. For SOC 2 compliance, must identify a specific individual (not
+   * and identification purposes. Must identify a specific individual (not
    * generic like "admin").
    */
   @Column(name = "username", nullable = false, length = 50)
@@ -145,8 +145,8 @@ public class EzkeyAdmin {
   /**
    * Email address for the administrator.
    *
-   * <p>Required for GLOBAL_ADMIN type for SOC 2 compliance (CC6.1, CC7.2) to ensure proper audit
-   * trail and accountability. Must be unique and valid email format. Optional for other admin types
+   * <p>Required for GLOBAL_ADMIN type for identifiable operator identity so the audit trail can
+   * name a person. Must be unique and valid email format. Optional for other admin types
    * but recommended.
    */
   @Column(name = "email", length = 255)
@@ -164,9 +164,8 @@ public class EzkeyAdmin {
   /**
    * First name of the administrator.
    *
-   * <p>Required for GLOBAL_ADMIN type for SOC 2 compliance (CC6.1, CC7.2) to ensure proper
-   * identification and accountability. Used for audit trail and display purposes. Optional for
-   * other admin types but recommended.
+   * <p>Required for GLOBAL_ADMIN type for identifiable operator identity. Used for audit trail
+   * and display purposes. Optional for other admin types but recommended.
    */
   @Column(name = "first_name", length = 100)
   private String firstName;
@@ -174,9 +173,8 @@ public class EzkeyAdmin {
   /**
    * Last name of the administrator.
    *
-   * <p>Required for GLOBAL_ADMIN type for SOC 2 compliance (CC6.1, CC7.2) to ensure proper
-   * identification and accountability. Used for audit trail and display purposes. Optional for
-   * other admin types but recommended.
+   * <p>Required for GLOBAL_ADMIN type for identifiable operator identity. Used for audit trail
+   * and display purposes. Optional for other admin types but recommended.
    */
   @Column(name = "last_name", length = 100)
   private String lastName;
@@ -374,7 +372,7 @@ public class EzkeyAdmin {
   /**
    * Sets the email address.
    *
-   * @param email the email address (required for GLOBAL_ADMIN for SOC 2 compliance)
+   * @param email the email address (required for GLOBAL_ADMIN for identifiable operator identity)
    */
   public void setEmail(String email) {
     this.email = email;
@@ -410,7 +408,7 @@ public class EzkeyAdmin {
   /**
    * Sets the first name.
    *
-   * @param firstName the first name (required for GLOBAL_ADMIN for SOC 2 compliance)
+   * @param firstName the first name (required for GLOBAL_ADMIN for identifiable operator identity)
    */
   public void setFirstName(String firstName) {
     this.firstName = firstName;
@@ -428,7 +426,7 @@ public class EzkeyAdmin {
   /**
    * Sets the last name.
    *
-   * @param lastName the last name (required for GLOBAL_ADMIN for SOC 2 compliance)
+   * @param lastName the last name (required for GLOBAL_ADMIN for identifiable operator identity)
    */
   public void setLastName(String lastName) {
     this.lastName = lastName;

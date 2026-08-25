@@ -11,7 +11,7 @@ post {
 }
 
 params:query {
-  @description('Audit justification for the deactivation (min 10 characters, recommended for SOC 2 CC6.3 compliance)')
+  @description('Audit justification for the deactivation (min 10 characters, recommended for reason/justification on sensitive change)')
   ~reason: {{reason}}
 }
 
@@ -103,7 +103,7 @@ docs {
   - `id` (required): Administrator ID to deactivate
   
   **Query Parameters:**
-  - `reason` (optional): Audit justification for the deactivation. Must be between 10 and 500 characters when provided. Recommended for SOC 2 CC6.3 compliance. Enable the query param in Postman to include it.
+  - `reason` (optional): Audit justification for the deactivation. Must be between 10 and 500 characters when provided. Recommended for reason/justification on sensitive change. Enable the query param in Postman to include it.
   
   **Response (204 No Content):**
   - No response body

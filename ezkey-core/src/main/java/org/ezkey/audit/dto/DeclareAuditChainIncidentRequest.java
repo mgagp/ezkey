@@ -18,7 +18,7 @@ import org.ezkey.audit.integrity.AuditChainIncidentRootCause;
 /**
  * Declares closure for an incident awaiting operator narrative after heartbeat recovery.
  *
- * @param justification operator narrative for SOC 2 traceability (10–500 chars)
+ * @param justification operator narrative for the operator-visible audit trail (10–500 chars)
  * @param rootCause classified operator-selected cause bucket
  * @author Ezkey contributors
  * @since 2026

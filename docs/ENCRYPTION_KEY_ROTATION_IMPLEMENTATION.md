@@ -13,7 +13,7 @@
 
 ## Executive Summary
 
-This document outlines the implementation strategy for securing sensitive data in Ezkey using Google's Tink cryptographic library, with a focus on encryption at rest and automated key rotation to meet SOC2 compliance requirements.
+This document outlines the implementation strategy for securing sensitive data in Ezkey using Google's Tink cryptographic library, with a focus on encryption at rest and automated key rotation to meet operator-visible audit requirements.
 
 **Status**: Superseded historical implementation plan
 **Date**: October 2025  
@@ -97,10 +97,9 @@ Phase 5 (Testing):             ███░░░░░░░  30%
 4. [Proposed Architecture](#4-proposed-architecture)
 5. [Implementation Plan](#5-implementation-plan)
 6. [Key Rotation Strategy](#6-key-rotation-strategy)
-7. [SOC2 Compliance Mapping](#7-soc2-compliance-mapping)
-8. [Migration Strategy](#8-migration-strategy)
-9. [Testing and Validation](#9-testing-and-validation)
-10. [Rollout Plan](#10-rollout-plan)
+7. [Migration Strategy](#8-migration-strategy)
+8. [Testing and Validation](#9-testing-and-validation)
+9. [Rollout Plan](#10-rollout-plan)
 
 ---
 
@@ -108,7 +107,7 @@ Phase 5 (Testing):             ███░░░░░░░  30%
 
 ### 1.1 Business Requirements
 
-Ezkey aims to achieve SOC2 Type II certification, which requires:
+Ezkey implements encryption-at-rest key lifecycle, which includes:
 - **Encryption at rest** for sensitive data
 - **Automated key rotation** with documented procedures
 - **Audit trail** for cryptographic operations
@@ -130,7 +129,7 @@ Ezkey aims to achieve SOC2 Type II certification, which requires:
 - ✅ **Keysets encrypted with master key** (critical fix required)
 - ✅ **Automated key rotation** with zero-downtime
 - ✅ **Comprehensive audit trail**
-- ✅ **SOC2 compliant key management**
+- ✅ **Encryption-at-rest key management**
 
 **Immediate Priority**: Fix keyset cleartext storage before any production deployment.
 
@@ -146,7 +145,7 @@ Ezkey aims to achieve SOC2 Type II certification, which requires:
 6. **Battle-tested** - Used by Google in production at scale
 7. **Multiple Algorithms** - AES-GCM, ChaCha20-Poly1305, RSA, ECDSA support
 8. **Key Management** - Keyset management with versioning
-9. **SOC2 Ready** - Industry best practices built-in
+9. **Industry practice** - Misuse-resistant defaults built-in
 
 ---
 
@@ -170,7 +169,7 @@ Based on database schema analysis, the following data requires encryption:
 **Impact** (if keyset compromised):
 - Exposure of keyset would allow attackers to decrypt all encrypted data
 - Complete compromise of encryption security
-- SOC2 compliance failure
+- operator-visible audit failure
 
 #### **HIGH - Encryption Recommended**
 
@@ -749,7 +748,7 @@ ezkey:
     rotation:
       enabled: true
       schedule: "0 0 2 * * ?"  # Daily at 2 AM (checks if rotation needed)
-      max-key-age-days: 90     # SOC2 requirement
+      max-key-age-days: 90     # default max key age
       backup-before-rotation: true
       
     # Algorithm selection
@@ -1076,7 +1075,7 @@ ezkey:
     rotation:
       enabled: true
       schedule: "0 0 2 * * ?" # Daily check at 2 AM
-      max-key-age-days: 90   # SOC2 compliance requirement
+      max-key-age-days: 90   # operator-visible audit requirement
       backup-before-rotation: true
       
     # Algorithm configuration
@@ -1377,7 +1376,7 @@ public class KeyRotationService {
 **Recommended Schedule**:
 - **Development**: Manual rotation (testing purposes)
 - **Staging**: Weekly rotation (simulate production)
-- **Production**: Quarterly rotation (SOC2 requirement: 90 days)
+- **Production**: Quarterly rotation (default max key age: 90 days)
 
 **Triggers for Immediate Rotation**:
 - Security incident or breach
@@ -1467,55 +1466,6 @@ public void rollbackRotation(String backupKeysetFile) throws Exception {
 4. Investigate root cause
 5. Fix issue
 6. Retry rotation
-
----
-
-## 7. SOC2 Compliance Mapping
-
-### 7.1 SOC2 Trust Services Criteria
-
-| Criterion | Requirement | Tink Implementation | Status |
-|-----------|-------------|---------------------|--------|
-| **CC6.1** | Logical and physical access controls | Master key in secure location, RBAC | ✅ |
-| **CC6.6** | Encryption of data at rest | AES-256-GCM encryption | ✅ |
-| **CC6.7** | Encryption key management | Tink keyset with versioning | ✅ |
-| **CC6.8** | Key rotation procedures | Automated rotation every 90 days | ✅ |
-| **CC7.2** | Detection of security events | Audit logging for key operations | ✅ |
-| **CC8.1** | Change management for encryption | Version-controlled keyset files | ✅ |
-
-### 7.2 Evidence Collection
-
-**For SOC2 Audit**:
-
-1. **Encryption at Rest**
-   - Database schema showing encrypted columns
-   - Tink configuration files
-   - Unit tests demonstrating encryption
-
-2. **Key Rotation**
-   - Rotation job logs (last 12 months)
-   - Keyset version history
-   - Rotation runbook documentation
-
-3. **Access Controls**
-   - RBAC configuration for key access
-   - Master key access logs
-   - Admin authentication logs
-
-4. **Audit Trail**
-   - Encryption operation logs
-   - Key rotation event logs
-   - Access attempt logs
-
-### 7.3 Documentation Requirements
-
-**Required Documents for SOC2**:
-- [x] This implementation plan
-- [ ] Key rotation runbook
-- [ ] Incident response plan (key compromise)
-- [ ] Access control policy
-- [ ] Data classification policy
-- [ ] Encryption standard operating procedures
 
 ---
 
@@ -2323,9 +2273,8 @@ jobs:
 - ✅ Zero security incidents
 
 **Business Metrics**:
-- ✅ SOC2 audit readiness improved
+- ✅ Operator-visible key lifecycle improved
 - ✅ Customer confidence increased
-- ✅ Compliance gaps closed
 - ✅ Security posture enhanced
 
 ---
@@ -2395,10 +2344,8 @@ jobs:
 - **Releases**: https://github.com/tink-crypto/tink-java/releases
 - **Java Quickstart**: https://developers.google.com/tink/java/howtos
 
-### 12.2 SOC2 Resources
+### 12.2 Related resources
 
-- **AICPA SOC2 Guide**: https://www.aicpa.org/soc2
-- **Encryption Requirements**: CC6.6, CC6.7, CC6.8
 - **Key Rotation Best Practices**: https://csrc.nist.gov/publications
 
 ### 12.3 Spring Boot Integration

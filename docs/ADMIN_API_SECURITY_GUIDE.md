@@ -125,7 +125,7 @@ mvn spring-boot:run
 - V1: Initial schema (core tables for enrollments, auth attempts, integrations)
 - V2: Multi-tenant security (tenant isolation, admin types)
 - V3: System tenant and initial global admin (passwordless infrastructure)
-- V13: Add email column for SOC 2 compliance
+- V1–V2: Consolidated schema including admin identity columns (email, first name, last name)
 
 **Result:**
 - `ezkey_admin` table with passwordless-only schema (no password columns)
@@ -133,9 +133,9 @@ mvn spring-boot:run
 - Initial global admin created (bootstrap will complete with enrollment + recovery codes)
 - `challenge_required` per-admin flag
 - `recovery_codes` array column (BCrypt hashed, populated by bootstrap)
-- `email` column for SOC 2 compliance (required for GLOBAL_ADMIN)
+- `email` column for identifiable Global Admin identity
 
-### Step 2: Configure Initial Global Admin (SOC 2 Compliance)
+### Step 2: Configure Initial Global Admin (identifiable operator identity)
 
 Before starting the Admin API, configure the initial global admin:
 
@@ -143,7 +143,7 @@ Before starting the Admin API, configure the initial global admin:
 # REQUIRED: Username must identify a specific individual (not generic)
 ezkey.admin.initial.username=john.doe
 
-# REQUIRED: Email for audit trail (SOC 2 CC6.1, CC7.2)
+# REQUIRED: Email for operator-visible audit trail
 ezkey.admin.initial.email=john.doe@example.com
 ```
 
@@ -639,7 +639,6 @@ If failed: Contact support immediately
 **Use challenge=true (security) when:**
 - Public networks (coffee shop, airport)
 - High-risk operations (user deletion, key changes)
-- Compliance requirements (SOC2, PCI-DSS)
 - Production systems
 
 **Per-Admin Configuration:**

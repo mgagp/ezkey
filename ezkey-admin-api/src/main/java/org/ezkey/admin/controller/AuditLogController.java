@@ -113,7 +113,7 @@ import org.springframework.web.server.ResponseStatusException;
  *       pagination
  * </ul>
  *
- * <p><b>Usage Context:</b> Part of the admin-api for security monitoring and SOC2 compliance
+ * <p><b>Usage Context:</b> Part of the admin-api for security monitoring and operator-visible audit
  * reporting. Provides comprehensive audit trail access with proper tenant isolation.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform

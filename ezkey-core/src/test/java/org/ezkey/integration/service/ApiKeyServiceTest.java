@@ -101,8 +101,8 @@ class ApiKeyServiceTest {
     // Setup test admin
     testAdmin = new EzkeyAdmin();
     testAdmin.setAdminId(1);
-    testAdmin.setUsername("john.doe"); // SOC 2 compliant: identifiable username
-    testAdmin.setEmail("john.doe@example.com"); // SOC 2 compliant: email required
+    testAdmin.setUsername("john.doe"); // identifiable operator identity
+    testAdmin.setEmail("john.doe@example.com"); // email required for Global Admin
 
     // Setup test API key
     // Note: Using a real BCrypt hash for "testSecret" for consistency

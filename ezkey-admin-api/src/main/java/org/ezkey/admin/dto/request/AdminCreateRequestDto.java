@@ -21,7 +21,7 @@ import org.ezkey.admin.domain.AdminOnboardingMode;
  * Request DTO for creating an administrator (global or tenant).
  *
  * <p>This DTO contains the information required to create a new administrator. For global admins,
- * email, firstName, and lastName are required for SOC 2 compliance. For tenant admins, these fields
+ * email, firstName, and lastName are required for identifiable Global Admin identity. For tenant admins, these fields
  * are optional but recommended.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform

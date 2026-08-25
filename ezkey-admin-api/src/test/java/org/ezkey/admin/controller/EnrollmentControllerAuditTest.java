@@ -64,7 +64,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 /**
  * Unit tests for enrollment creation audit logging with uniqueness validation.
  *
- * <p>Tests validate that audit logs are correctly written with required fields for SOC2 compliance
+ * <p>Tests validate that audit logs are correctly written with required fields for operator-visible audit
  * when enrollment creation is rejected or allowed due to uniqueness constraints.
  *
  * @author Ezkey contributors

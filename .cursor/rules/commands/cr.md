@@ -236,7 +236,7 @@ return ResponseEntity.badRequest()
 ### Compliance
 - [ ] **Follows project coding standards** and conventions
 - [ ] **Meets security requirements** for the Ezkey project
-- [ ] **Complies with SOC2** requirements where applicable
+- [ ] **Uses product terms** (identifiable identity, operator-visible audit) — see normative-posture.md
 - [ ] **Follows RESTful API** design principles
 
 ## Review Notes Template

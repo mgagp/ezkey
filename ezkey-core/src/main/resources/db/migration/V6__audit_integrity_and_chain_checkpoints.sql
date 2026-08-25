@@ -2,7 +2,7 @@
 -- Ezkey Migration V33: Add Audit Log Integrity Columns
 -- ============================================================================
 -- Description: Adds per-entry HMAC signing and instance tracking columns to
---              the audit log table for SOC 2 tamper-evidence in self-hosted
+--              the audit log table for tamper-evident monitoring in self-hosted
 --              deployments.
 --
 -- New Columns:
@@ -43,7 +43,7 @@ ALTER TABLE ezkey_audit_log
 
 COMMENT ON COLUMN ezkey_audit_log.entry_hmac IS
 'HMAC-SHA256 signature of the canonical entry content, Base64-encoded. '
-'Provides per-entry tamper-evidence for SOC 2 compliance in self-hosted deployments. '
+'Provides per-entry tamper-evidence for identifiable operator identity in self-hosted deployments. '
 'Computed at write time using a dedicated HMAC key separate from the encryption master key. '
 'NULL for entries created before integrity signing was enabled.';
 
@@ -271,7 +271,7 @@ COMMENT ON COLUMN ezkey_audit_log.enrollment_id_hmac_snapshot IS
 -- ============================================================
 -- V37: Add optional reason/justification column to audit log
 -- ============================================================
--- Purpose   : SOC 2 CC6.3 (access deprovisioning) and CC8.1 (authorized changes)
+-- Purpose   : rapid access removal and reason/justification on sensitive change
 -- Design    : Optional VARCHAR(500) — no obligation to provide, validated ≥10 chars if supplied
 -- HMAC      : Field is included in per-entry canonical form as position 15
 --             (null reason → empty string in canonical form, consistent with nullSafe() convention)
@@ -285,7 +285,7 @@ ALTER TABLE ezkey_audit_log
 
 COMMENT ON COLUMN ezkey_audit_log.reason IS
   'Optional justification for sensitive operations (revoke, delete, deactivate). '
-  'Supports SOC 2 CC6.3 / CC8.1. Included in per-entry HMAC canonical form.';
+  'Supports reason/justification on sensitive change. Included in per-entry HMAC canonical form.';
 -- ============================================================================
 -- Ezkey Migration V38: Add integration_id Snapshot for HMAC Integrity
 -- ============================================================================

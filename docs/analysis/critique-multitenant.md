@@ -73,7 +73,7 @@ L'analyse multi-tenancy est **techniquement solide** mais présente plusieurs **
 **L'analyse propose:**
 - Des concepts enterprise (Organization → Unit → Integration)
 - Une gestion de "Party" séparée des admins
-- Des considérations Loi 25 Québec et SOC 2
+- Des considérations Loi 25 Québec et de discipline opérationnelle
 
 **Contradiction:** Un développeur qui veut "get MFA working in hours, not weeks" ne veut pas configurer une hiérarchie Organization/Unit avant de pouvoir créer sa première intégration.
 
@@ -240,7 +240,7 @@ WHERE i.unit_id = ?
 **Problème:** Le document mélange:
 1. État actuel (implémenté)
 2. Propositions futures (non implémentées)
-3. Considérations de compliance (Loi 25, SOC 2)
+3. Considérations de conformité (Loi 25)
 4. Schémas SQL proposés
 5. Diagrammes conceptuels
 6. Recommandations d'implémentation
@@ -250,7 +250,7 @@ WHERE i.unit_id = ?
 **Bonne pratique:** Séparer en plusieurs documents:
 - `current-state.md` - Ce qui existe
 - `proposed-hierarchy.md` - La proposition
-- `compliance-considerations.md` - Loi 25, SOC 2
+- `compliance-considerations.md` - Loi 25
 - `implementation-plan.md` - Plan d'implémentation
 
 ### 4.2 Antipattern: "YAGNI" Violation
@@ -276,17 +276,16 @@ WHERE i.unit_id = ?
 
 **Alternative possible:** Composition plutôt qu'héritage - des entités séparées par type d'admin avec une interface commune.
 
-### 4.4 Pratique discutable: SOC 2 comme driver principal
+### 4.4 Pratique discutable: certification comme driver principal
 
-**Le document semble faire de SOC 2 un driver important:**
-> *"SOC 2 Compliance: Design supports compliance requirements from the start"*
+**Le document source traitait un langage de certification comme un driver de design** (formulation historique).
 
 **Réalité Ezkey (PRD):**
 - Open source, self-hosted
 - Cible: développeurs et PME
 - Phase 4 "in progress" - pas encore en production enterprise
 
-**Risque:** Optimiser pour SOC 2 avant d'avoir validé le product-market fit peut ralentir inutilement le développement.
+**Risque:** Optimiser pour une certification avant d'avoir validé le product-market fit peut ralentir inutilement le développement.
 
 ---
 
@@ -414,7 +413,7 @@ Avant d'implémenter la hiérarchie proposée:
 ### Points positifs de l'analyse originale
 
 1. ✅ Bonne compréhension de l'état actuel
-2. ✅ Considérations SOC 2 pertinentes pour le futur enterprise
+2. ✅ Considérations de discipline opérationnelle pertinentes pour un futur usage enterprise
 3. ✅ Diagrammes Mermaid clairs et complets
 4. ✅ Réflexion approfondie sur la délégation
 5. ✅ Identification des limites actuelles

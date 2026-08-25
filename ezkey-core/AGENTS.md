@@ -217,7 +217,7 @@ High-volume tables `ezkey_audit_log` and `ezkey_auth_attempt` are **range-partit
 - **Durable overlays vs purgeable facts:** tables that must **outlive** audit partition purge
   (e.g. `ezkey_audit_entry_integrity_conciliation`) store an **immutable composite snapshot** and
   **omit FK** to `ezkey_audit_log`. A restrictive FK would block
-  `AuditLogService.purgeLifecycleEligibleLogs()` or destroy SOC 2 narrative on `ON DELETE CASCADE`.
+  `AuditLogService.purgeLifecycleEligibleLogs()` or destroy the operator-visible audit narrative on `ON DELETE CASCADE`.
 - **When FK is appropriate:** reference non-partitioned tables (`ezkey_alert`, `ezkey_admin`) or
   use composite FK to partitioned tables only when the dependent row lifecycle matches the target
   (same purge window or `ON DELETE` semantics explicitly designed).

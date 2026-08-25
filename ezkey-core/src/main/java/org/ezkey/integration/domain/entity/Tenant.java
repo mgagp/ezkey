@@ -176,8 +176,8 @@ public class Tenant {
   /**
    * Name of the primary technical contact for this tenant.
    *
-   * <p>SOC 2 CC2.1 requires an identifiable point of contact for security communications and
-   * incident response.
+   * <p>Provides an identifiable point of contact for security communications and incident
+   * response.
    */
   @Column(name = "primary_contact_name", length = 255)
   private String primaryContactName;
@@ -203,7 +203,7 @@ public class Tenant {
   /**
    * Timestamp of the last modification to this tenant record.
    *
-   * <p>SOC 2 CC7.2 requires change tracking. This field is set automatically by the service layer
+   * <p>operator-visible audit trail requires change tracking. This field is set automatically by the service layer
    * on every update.
    */
   @Column(name = "updated_at")
@@ -212,7 +212,7 @@ public class Tenant {
   /**
    * Administrator who last modified this tenant record.
    *
-   * <p>Provides accountability for changes (SOC 2 CC7.2).
+   * <p>Provides accountability for changes (tamper-evident monitoring).
    */
   @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
   @JoinColumn(name = "updated_by_admin_id")
@@ -221,7 +221,7 @@ public class Tenant {
   /**
    * Timestamp when the tenant was deactivated.
    *
-   * <p>Records the exact moment of deactivation for audit trail (SOC 2 CC6.3 — access removal
+   * <p>Records the exact moment of deactivation for audit trail (rapid access removal — access removal
    * tracking).
    */
   @Column(name = "deactivated_at")
@@ -230,7 +230,7 @@ public class Tenant {
   /**
    * Administrator who deactivated this tenant.
    *
-   * <p>Provides accountability for deactivation (SOC 2 CC6.3).
+   * <p>Provides accountability for deactivation (rapid access removal).
    */
   @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
   @JoinColumn(name = "deactivated_by_admin_id")

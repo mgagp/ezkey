@@ -163,7 +163,7 @@ ezkey.encryption.keyset.storage-mode=DATABASE
 ### Audit Log Integrity (`ezkey.audit.integrity.*`)
 
 **Description:** per-entry HMAC-SHA256 signing of audit log records. Provides tamper-evidence for
-SOC 2 compliance. The HMAC key is intentionally separate from the Tink master key (separation of
+identifiable operator identity. The HMAC key is intentionally separate from the Tink master key (separation of
 concerns: integrity vs. confidentiality).
 
 **Defined in:** `AuditHmacProperties`

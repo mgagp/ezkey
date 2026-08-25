@@ -194,7 +194,7 @@ Yes. The test (manually delete checkpoints 21–30 in the DB, then run analysis 
 **Analysis:**
 
 1. **Who can do what**
-   - **Admin with Admin UI only (recommended / SOC 2 practice):** Can call declare-gap. **Cannot** delete checkpoints or audit log rows. So they **cannot** create a "fake" gap by deleting data. The re-chain does not give them any new capability. The only way they see a gap is after **real** downtime (no checkpoints created during that period).
+   - **Admin with Admin UI only (recommended practice):** Can call declare-gap. **Cannot** delete checkpoints or audit log rows. So they **cannot** create a "fake" gap by deleting data. The re-chain does not give them any new capability. The only way they see a gap is after **real** downtime (no checkpoints created during that period).
    - **Actor with direct DB access:** Can delete checkpoints (or audit entries). They could already create a gap and call declare-gap; before the fix the chain **failed** at the first post-gap checkpoint (visible break); after the fix the chain **passes** after re-chain. So with DB access, an attacker can delete evidence and then use declare-gap to get a consistent chain.
 
 2. **What the re-chain does and does not do**

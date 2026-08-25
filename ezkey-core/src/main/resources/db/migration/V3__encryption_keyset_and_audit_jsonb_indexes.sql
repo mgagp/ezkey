@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Ezkey Migration V17: Create Encryption Key Tracking Table
 -- ============================================================================
--- Description: Creates table to track encryption key lifecycle for SOC2
+-- Description: Creates table to track encryption key lifecycle for encryption-at-rest key lifecycle
 --              compliance. Tracks Tink keyset keys with metadata, status,
 --              and usage statistics.
 --
@@ -57,7 +57,7 @@ CREATE INDEX idx_encryption_key_introduced ON ezkey_encryption_key(introduced_at
 -- ============================================================================
 
 COMMENT ON TABLE ezkey_encryption_key IS 
-'Tracks encryption key lifecycle for SOC2 audit compliance. Each row represents a key in the Tink keyset with metadata about its status, usage, and rotation history.';
+'Tracks encryption key lifecycle for encryption-at-rest key lifecycle. Each row represents a key in the Tink keyset with metadata about its status, usage, and rotation history.';
 
 COMMENT ON COLUMN ezkey_encryption_key.key_id IS 
 'Tink keyset key ID (unsigned 64-bit integer, enforced via CHECK constraint). Primary key matching Tink KeysetInfo.getPrimaryKeyId(). Values must be >= 0 to match ENC:keyID: format representation.';
@@ -103,7 +103,7 @@ COMMENT ON COLUMN ezkey_encryption_key.notes IS
 -- Ezkey Migration V18: Create Re-encryption Batch Tracking Table
 -- ============================================================================
 -- Description: Creates table to track batch re-encryption progress for
---              resumability, monitoring, and SOC2 audit compliance.
+--              resumability, monitoring, and encryption-at-rest key lifecycle.
 --
 -- Context: Part of encryption key rotation strategy implementation.
 --          Enables fault-tolerant batch processing with progress tracking.
@@ -281,7 +281,7 @@ COMMENT ON COLUMN ezkey_reencryption_batch.created_by IS
 --              batches. Enables fast lookups without requiring foreign keys.
 --
 -- Context: Part of encryption key rotation strategy implementation.
---          Supports SOC2 compliance reporting and audit trail queries.
+--          Supports operator-visible audit queries and audit trail queries.
 --
 -- Author: Ezkey contributors
 -- Date: 2025-12-03

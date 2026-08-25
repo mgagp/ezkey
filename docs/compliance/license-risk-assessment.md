@@ -1,6 +1,6 @@
 # License Risk Assessment
 
-**SOC 2 Control**: CC9.2 - Third-Party Risk Assessment  
+**Product term**: license / dependency hygiene  
 **Last Updated**: 2025-12-11  
 **Owner**: Ezkey Project Team
 
@@ -374,13 +374,13 @@ All Gradle plugins use Apache 2.0 or MIT licenses:
 3. Regular license compatibility reviews
 4. Annual comprehensive legal review
 
-## Evidence for SOC 2 Audit
+## Operational evidence
 
-This document serves as evidence for:
+This document records OSS license hygiene:
 
-- **CC9.2**: Third-party risk assessment (license compatibility analysis)
-- **CC7.1**: Risk mitigation activities (license management process)
-- **CC2.1**: Information quality (accurate risk assessment)
+- License compatibility analysis
+- Documented license management process
+- Accurate risk assessment of licenses
 
 ## Related Documents
 

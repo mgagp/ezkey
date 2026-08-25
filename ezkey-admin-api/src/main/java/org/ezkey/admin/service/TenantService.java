@@ -141,7 +141,7 @@ public class TenantService {
     // Deactivate the tenant
     tenant.setActive(false);
 
-    // Record deactivation audit trail (SOC 2 CC6.3)
+    // Record deactivation audit trail (rapid access removal)
     OffsetDateTime now = OffsetDateTime.now();
     tenant.setDeactivatedAt(now);
     tenant.setUpdatedAt(now);
@@ -238,7 +238,7 @@ public class TenantService {
           PhoneNumberUtils.normalizeToE164OrNull(request.primaryContactPhoneNumber()));
     }
 
-    // Audit trail (SOC 2 CC7.2)
+    // Audit trail (tamper-evident monitoring)
     tenant.setUpdatedAt(OffsetDateTime.now());
     EzkeyAdmin actor = adminRepository.findById(principal.adminId()).orElse(null);
     tenant.setUpdatedByAdmin(actor);

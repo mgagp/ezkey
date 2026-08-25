@@ -125,7 +125,7 @@ ezkey.rate-limit.verify.key-strategy=client-ip
 
 ## Admin API Authentication & Security
 
-### Initial Global Admin Bootstrap (SOC 2 Compliant)
+### Initial Global Admin Bootstrap
 
 On first startup, Ezkey automatically initializes the admin authentication system:
 
@@ -136,13 +136,13 @@ On first startup, Ezkey automatically initializes the admin authentication syste
 
 2. **Initial Global Admin Configuration (REQUIRED)**
    - Username: Must identify a specific individual (configured via `ezkey.admin.initial.username`)
-   - Email: Required for SOC 2 compliance (configured via `ezkey.admin.initial.email`)
+   - Email: Required for identifiable operator identity (configured via `ezkey.admin.initial.email`)
    - Type: `GLOBAL_ADMIN` (full instance access)
    - Passwordless authentication: Enabled via System Integration and Global Admin Enrollment
 
-3. **SOC 2 Compliance**
+3. **Identifiable operator identity**
    - Username must not be generic (not "admin", "administrator", "root")
-   - Email required for audit trail and accountability (CC6.1, CC7.2)
+   - Email required for audit trail and accountability (identifiable operator identity)
    - System fails to start if requirements not met
 
 4. **Security Features**

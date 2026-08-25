@@ -226,7 +226,7 @@ ALTER SEQUENCE ezkey_audit_log_id_seq OWNED BY ezkey_audit_log.audit_log_id;
 
 -- Add table-level comment
 COMMENT ON TABLE ezkey_audit_log IS
-'Comprehensive audit logging with composite partitioning: RANGE (created_at) by month, LIST (api_name) per month (ADMIN_API, AUTH_API, INTEGRATION_API). Enables partition pruning by date and API for security monitoring, forensic analysis, and SOC2 compliance.';
+'Comprehensive audit logging with composite partitioning: RANGE (created_at) by month, LIST (api_name) per month (ADMIN_API, AUTH_API, INTEGRATION_API). Enables partition pruning by date and API for security monitoring, forensic analysis, and operator-visible audit.';
 
 -- Add column-level comments (same as original, with partitioning note)
 COMMENT ON COLUMN ezkey_audit_log.audit_log_id IS
@@ -364,7 +364,7 @@ WHERE event_type IN ('REENCRYPTION_STARTED', 'REENCRYPTION_COMPLETED', 'REENCRYP
 --
 -- Next Steps:
 -- 1. Partition scheduler creates future months via create_monthly_partition (with sub-partitions)
--- 2. Plan for 7-year retention policy (SOC2 compliance)
+-- 2. Plan for 7-year retention policy (operator-visible audit)
 -- ============================================================================
 -- ============================================================================
 -- Ezkey Migration V25: Create Partition Management Function with SECURITY DEFINER

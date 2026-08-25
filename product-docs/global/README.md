@@ -12,7 +12,7 @@ This folder holds the product-wide living truth for Ezkey. It is the canonical e
 | [`architecture-overview.md`](architecture-overview.md) | Architectural view, components, boundaries, patterns. |
 | [`architecture-decisions.md`](architecture-decisions.md) | Global decision log. |
 | [`design-principles.md`](design-principles.md) | Cross-product design principles. |
-| [`normative-posture.md`](normative-posture.md) | SOC 2-oriented operational discipline as a quality, not a certification project. |
+| [`normative-posture.md`](normative-posture.md) | Operational discipline as a quality, not a certification project. |
 | [`lifecycle-model.md`](lifecycle-model.md) | Entity relationships and global lifecycle rules. |
 | [`spec-test-traceability.md`](spec-test-traceability.md) | Global spec-test traceability matrix. |
 | [`vision/`](vision/README.md) | Product orientation notes and evolving direction. |

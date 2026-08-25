@@ -55,7 +55,7 @@ acts, not derived integrity state on `ezkey_audit_log`).
 
 - **Operator fatigue:** Re-alerts on already-investigated entry tamper erode alert queue trust and
   block EXP1 soak / lab iteration (including on-demand validation without waiting for cron).
-- **SOC2 narrative:** An explained integrity exception needs a **durable, queryable record** (who,
+- **Operator-visible narrative:** An explained integrity exception needs a **durable, queryable record** (who,
   when, category, justification) — not only a resolved alert row whose payload is window-scoped.
 - **Honest security posture:** We **do not** claim the entry became cryptographically valid. We claim
   the organization **acknowledged** a known invalid state under audited justification
@@ -150,7 +150,7 @@ Parallel alert types (`AUDIT_ENTRY_HMAC_*`) are **rejected** for R1.
 **Entry reference (partition + purge aware):** store composite snapshot `(audit_log_id,
 audit_log_created_at)` matching partitioned `ezkey_audit_log` identity. **No FK** to
 `ezkey_audit_log` — archive-sealed partitions are physically purged (`SEALED → PURGEABLE → delete`)
-while this registry must survive for SOC 2 operator narrative. Audit log uses RANGE+LIST
+while this registry must survive for operator-visible narrative. Audit log uses RANGE+LIST
 (`created_at`, `api_name`) partitioning — a FK target would need `(audit_log_id, created_at,
 api_name)`; V15 does **not** add a parent PK (conciliation needs no FK). See
 `docs/DATABASE_PARTITIONING_IMPLEMENTATION.md` § Flyway greenfield patterns.
@@ -202,7 +202,7 @@ observed_state_fingerprint = SHA-256_hex( AuditHmacService.buildCanonicalForm(en
 `MISSING_ENTRY_HMAC`); skip logic uses **fingerprint gate**, not reason alone.
 
 **Re-conciliation after re-tamper:** on new reconcile for the same `audit_log_id`, transition prior
-`ACTIVE` row → `SUPERSEDED`, then insert new `ACTIVE` with fresh fingerprint (preserves SOC2 history;
+`ACTIVE` row → `SUPERSEDED`, then insert new `ACTIVE` with fresh fingerprint (preserves operator-visible history;
 satisfies partial unique index).
 
 **Re-tamper before re-conciliation:** mismatch makes the row alert-eligible immediately; prior

@@ -1,4 +1,4 @@
-# SOC2 Key Rotation Procedures
+# Encryption Key Rotation Procedures
 
 **Document Version**: 1.0  
 **Last Updated**: December 2025  
@@ -12,7 +12,7 @@
 1. [Overview](#overview)
 2. [Key Rotation Policy](#key-rotation-policy)
 3. [Operational Procedures](#operational-procedures)
-4. [Audit and Compliance](#audit-and-compliance)
+4. [Audit](#audit)
 5. [Recovery Procedures](#recovery-procedures)
 6. [Runbook for Operators](#runbook-for-operators)
 7. [Appendix](#appendix)
@@ -23,12 +23,12 @@
 
 ### Purpose
 
-This document defines the operational procedures for encryption key rotation in Ezkey, ensuring compliance with SOC2 Trust Service Criteria, specifically:
+This document defines the operational procedures for encryption key rotation in Ezkey (encryption-at-rest key lifecycle):
 
-- **CC6.1**: Logical and physical access controls
-- **CC6.2**: Encryption of data at rest
-- **CC6.6**: Key management and rotation
-- **CC7.2**: System monitoring and logging
+- Access controls around the Tink master key and Admin API key operations
+- Encryption of sensitive data at rest
+- Key management, rotation, and re-encryption
+- Operator-visible audit of key lifecycle events
 
 ### Scope
 
@@ -279,7 +279,7 @@ Authorization: Bearer <admin-token>
 
 ---
 
-## Audit and Compliance
+## Audit
 
 ### Audit Trail Requirements
 
@@ -654,7 +654,7 @@ See `docs/ENCRYPTION_KEY_ROTATION_IMPLEMENTATION.md` for complete configuration 
 ### D. Related Documentation
 
 - `docs/ENCRYPTION_KEY_ROTATION_IMPLEMENTATION.md` - Technical implementation details
-- [`product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md) - SOC 2 as vocabulary, not a certification roadmap
+- [`product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md) — mapping vocabulary only; not a certification claim
 - `docs/OPERATIONAL.md` - General operational procedures
 
 ### E. Contact Information

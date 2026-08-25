@@ -1,16 +1,16 @@
-# Initial Global Administrator - SOC 2 Compliant Bootstrap
+# Initial Global Administrator — identity bootstrap
 
 ## Overview
 
 Ezkey Admin API automatically initializes the initial global administrator when the database is empty or when a placeholder admin exists. This ensures that the system can always be accessed and managed, even after a fresh installation or database reset.
 
-**Important**: For SOC 2 compliance, the initial global admin must be configured with an identifiable username (not generic like "admin") and an email address.
+The first Global Admin must be an **identifiable operator identity**: a username that names a person (not a generic account such as `admin`) plus email, first name, and last name so audit rows can attribute actions. Mapping vocabulary for that discipline lives in [`product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md); this bootstrap is not a certification claim.
 
 ## How It Works
 
 The `InitialGlobalAdminService` runs automatically when the application starts up (before MFA bootstrap). It performs the following checks:
 
-1. **Validate configuration**: Ensures username and email are configured and meet SOC 2 requirements
+1. **Validate configuration**: Ensures username, email, first name, and last name are configured and the username is not generic
 2. **Check if global admin exists**: Looks for admin with configured username
 3. **Update placeholder admin**: If placeholder admin (username "admin") exists, updates it with configured credentials
 4. **Create new admin**: If no admin exists, creates initial global admin with configured credentials
@@ -19,46 +19,46 @@ The `InitialGlobalAdminService` runs automatically when the application starts u
 
 The initial global admin creation works in tandem with Flyway migrations:
 
-- **V3__create_system_tenant_and_admin_zero.sql**: Creates placeholder admin with username "admin" (will be updated by service)
-- **V13__add_admin_email_for_soc2.sql**: Adds email column to ezkey_admin table
-- **InitialGlobalAdminService**: Updates placeholder admin with configured username and email (SOC 2 compliance)
+- **V1** (consolidated core domain): Creates placeholder admin with username "admin" (updated by this service)
+- **V2** (admin identity columns): Adds email, first name, and last name on `ezkey_admin` (historical slice names in git: `V13__add_admin_email_for_soc2`, `V14` name columns)
+- **InitialGlobalAdminService**: Updates placeholder admin with configured identifiable identity
 
 ## Configuration (REQUIRED)
 
-The initial global admin must be configured via application properties for SOC 2 compliance:
+The initial global admin must be configured via application properties. Startup **fails closed** if identity is missing or generic:
 
 ```properties
 # REQUIRED: Username must identify a specific individual (not generic)
 ezkey.admin.initial.username=john.doe
 
-# REQUIRED: Email for audit trail and accountability (SOC 2 CC6.1, CC7.2)
+# REQUIRED: Email for operator-visible audit trail and accountability
 ezkey.admin.initial.email=john.doe@example.com
 
-# OPTIONAL: Full name (recommended but not strictly required)
-ezkey.admin.initial.full-name=John Doe
+# REQUIRED: Given name and family name for identifiable Global Admin identity
+ezkey.admin.initial.first-name=John
+ezkey.admin.initial.last-name=Doe
 ```
 
-### SOC 2 Compliance Requirements
+### Identity rules
 
 1. **Username**: Must identify a specific individual
-   - ✅ Valid: "john.doe", "jane.smith", "admin.john"
-   - ❌ Invalid: "admin", "administrator", "root", "superuser"
+   - Valid: "john.doe", "jane.smith", "admin.john"
+   - Invalid: "admin", "administrator", "root", "superuser"
 
 2. **Email**: Required for audit trail and accountability
    - Must be valid email format
    - Must be unique
    - Required for GLOBAL_ADMIN type
 
-3. **Full Name**: Optional but recommended
-   - Not strictly required if username clearly identifies individual
-   - Recommended for better audit trail clarity
+3. **First name and last name**: Required for GLOBAL_ADMIN so audit and display can name a person
 
 ## Initial Global Admin Properties
 
 When the initial global admin is created or updated, it has the following properties:
 
 - **Username**: Configured via `ezkey.admin.initial.username` (identifiable, not generic)
-- **Email**: Configured via `ezkey.admin.initial.email` (required for SOC 2)
+- **Email**: Configured via `ezkey.admin.initial.email`
+- **First name / last name**: Configured via `ezkey.admin.initial.first-name` / `last-name`
 - **Admin Type**: `GLOBAL_ADMIN` (full system access)
 - **Tenant**: System tenant (Ezkey System)
 - **Passwordless Authentication**: Enabled via System Integration and Global Admin Enrollment
@@ -71,7 +71,7 @@ On first application startup:
 
 1. **InitialGlobalAdminService** (Order 1):
    - Validates configuration
-   - Creates or updates initial global admin with configured username and email
+   - Creates or updates initial global admin with configured identity
 
 2. **AdminBootstrapService** (Order 2):
    - Creates System Integration (for global admin authentication)
@@ -81,12 +81,12 @@ On first application startup:
 
 ## Security Considerations
 
-### SOC 2 Compliance
+### Identifiable operator identity
 
-The initial global admin configuration enforces SOC 2 compliance:
+The initial global admin configuration enforces individual accountability:
 
 - **Individual Accountability**: Username must identify a specific person
-- **Audit Trail**: Email required for tracking who performed actions
+- **Audit Trail**: Email and name required so operators can see who performed actions
 - **No Generic Accounts**: System fails to start if username is generic
 
 ### Initial Credentials Logging
@@ -112,7 +112,7 @@ The enrollment credentials are **logged to the console** during creation. This i
 For production deployments:
 
 1. **Configure identifiable username**: Set `ezkey.admin.initial.username` to identify a specific individual
-2. **Configure email**: Set `ezkey.admin.initial.email` to a valid email address
+2. **Configure email and name**: Set `ezkey.admin.initial.email`, `first-name`, and `last-name`
 3. **Configure logging**: Set logging level appropriately for production
 4. **Save credentials**: Store enrollment credentials securely (password manager)
 5. **Bind enrollment**: Complete enrollment binding before first login
@@ -145,6 +145,8 @@ Change the configuration and restart:
 ```properties
 ezkey.admin.initial.username=new.username
 ezkey.admin.initial.email=new.email@example.com
+ezkey.admin.initial.first-name=New
+ezkey.admin.initial.last-name=Name
 ```
 
 The service will update the existing admin on next startup.
@@ -155,7 +157,7 @@ Delete admin and let the service recreate it:
 
 ```sql
 -- Delete tokens first (foreign key constraint)
-DELETE FROM ezkey_admin_tokens 
+DELETE FROM ezkey_admin_tokens
 WHERE admin_id = (SELECT admin_id FROM ezkey_admin WHERE admin_type = 'GLOBAL_ADMIN' LIMIT 1);
 
 -- Delete global admin
@@ -172,10 +174,10 @@ For a complete fresh start:
 # Run Flyway clean (removes all objects)
 mvn flyway:clean -pl ezkey-migration
 
-# Run all migrations (V1-V13)
+# Run all migrations
 mvn flyway:migrate -pl ezkey-migration
 
-# Start application - V3 creates placeholder admin, service updates it with configured credentials
+# Start application — placeholder admin is created, then this service updates it
 ```
 
 ## Troubleshooting
@@ -187,7 +189,7 @@ mvn flyway:migrate -pl ezkey-migration
 **Solution**:
 - Set `ezkey.admin.initial.username` in application.properties
 - Ensure username is not generic (not "admin", "administrator", etc.)
-- Set `ezkey.admin.initial.email` with valid email address
+- Set `ezkey.admin.initial.email`, `first-name`, and `last-name`
 
 ### Generic Username Error
 
@@ -205,7 +207,7 @@ mvn flyway:migrate -pl ezkey-migration
 **Solution**:
 - Set `ezkey.admin.initial.email` in application.properties
 - Ensure email is valid format (e.g., "user@example.com")
-- Email is required for SOC 2 compliance (CC6.1, CC7.2)
+- Email is required so audit rows can name a person
 
 ### Global Admin Not Found
 
@@ -220,7 +222,7 @@ mvn flyway:migrate -pl ezkey-migration
 - Check application logs for InitialGlobalAdminService errors
 - Verify configuration is correct
 - Check database connectivity
-- Ensure migrations have run (V3, V13)
+- Ensure migrations have run
 
 ## Related Files
 
@@ -228,23 +230,20 @@ mvn flyway:migrate -pl ezkey-migration
 - **Configuration**: `org.ezkey.admin.config.InitialGlobalAdminProperties`
 - **Entity**: `org.ezkey.integration.domain.entity.EzkeyAdmin`
 - **Repository**: `org.ezkey.integration.domain.repository.EzkeyAdminRepository`
-- **Migration V3**: `V3__create_system_tenant_and_admin_zero.sql`
-- **Migration V13**: `V13__add_admin_email_for_soc2.sql`
 
 ## "Eat Your Own Dog Food" Integration
 
 The initial global admin is secured with Ezkey's own MFA solution. This follows the "eat your own dog food" principle where Ezkey uses its own authentication system to secure its admin API.
 
 **Implementation**:
-1. ✅ Initial global admin created with identifiable username and email (SOC 2 compliant)
-2. ✅ System Integration created for global admin authentication
-3. ✅ Global Admin Enrollment created with RSA-2048 keys
-4. ✅ Passwordless authentication enabled
-5. ✅ Recovery codes generated for emergency access
+1. Initial global admin created with identifiable username, email, and name
+2. System Integration created for global admin authentication
+3. Global Admin Enrollment created with device keys
+4. Passwordless authentication enabled
+5. Recovery codes generated for emergency access
 
 ## See Also
 
-- [Admin API Security Plan](../docs/plan/archives/plan.md) (archived)
 - [Rate Limiting Documentation](README_RATE_LIMITING.md)
 - [Multi-Tenant Security](../docs/features/SECURITY_MULTI_TENANT.md)
-- [SOC 2-oriented discipline](../product-docs/global/normative-posture.md)
+- [Normative posture](../product-docs/global/normative-posture.md)

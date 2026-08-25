@@ -5,8 +5,8 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Service: InitialGlobalAdminService
- * Description: Service for initializing the initial global administrator with SOC 2 compliant
- *              username and email.
+ * Description: Service for initializing the initial global administrator with identifiable
+ *              username, email, and name.
  */
 
 package org.ezkey.admin.service;
@@ -25,11 +25,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service for initializing the initial global administrator with SOC 2 compliant credentials.
+ * Service for initializing the initial global administrator with identifiable operator identity.
  *
- * <p>This service ensures that the initial global admin has an identifiable username and email
- * address for SOC 2 compliance. It runs before the MFA bootstrap service to ensure the admin exists
- * with proper credentials.
+ * <p>This service ensures that the initial global admin has an identifiable username, email, and
+ * name. It runs before the MFA bootstrap service to ensure the admin exists with those
+ * credentials.
  *
  * <p><b>Responsibilities:</b>
  *
@@ -37,7 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>Validate that initial global admin configuration is provided
  *   <li>Find or create the initial global admin with configured username and email
  *   <li>Update existing admin if it has placeholder username
- *   <li>Ensure SOC 2 compliance (identifiable username, email required)
+ *   <li>Ensure identifiable operator identity (username, email, and name required)
  * </ul>
  *
  * <p><b>Execution Order:</b> Runs before AdminBootstrapService (Order 1) to ensure admin exists
@@ -71,8 +71,8 @@ public class InitialGlobalAdminService {
   /**
    * Initialize the initial global administrator on application startup.
    *
-   * <p>This method validates the configuration and ensures the initial global admin exists with SOC
-   * 2 compliant credentials. It runs before the MFA bootstrap service.
+   * <p>This method validates the configuration and ensures the initial global admin exists with
+   * identifiable operator identity. It runs before the MFA bootstrap service.
    *
    * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance performs bootstrap in
    * HA deployments.
@@ -215,7 +215,7 @@ public class InitialGlobalAdminService {
   }
 
   /**
-   * Validate that the initial global admin configuration meets SOC 2 requirements.
+   * Validate that the initial global admin configuration meets identifiable-identity rules.
    *
    * @throws IllegalStateException if configuration is invalid
    */
@@ -227,7 +227,7 @@ public class InitialGlobalAdminService {
 
     if (username == null || username.isBlank()) {
       throw new IllegalStateException(
-          "Initial global admin username is REQUIRED for SOC 2 compliance. "
+          "Initial global admin username is required for identifiable operator identity. "
               + "Set ezkey.admin.initial.username to identify a specific individual.");
     }
 
@@ -235,26 +235,26 @@ public class InitialGlobalAdminService {
       throw new IllegalStateException(
           "Initial global admin username '"
               + username
-              + "' is generic and violates SOC 2 compliance. "
+              + "' is generic and is not allowed. "
               + "Username must identify a specific individual (e.g., 'john.doe', not 'admin'). "
               + "Set ezkey.admin.initial.username to an identifiable username.");
     }
 
     if (email == null || email.isBlank()) {
       throw new IllegalStateException(
-          "Initial global admin email is REQUIRED for SOC 2 compliance (CC6.1, CC7.2). "
+          "Initial global admin email is required for identifiable operator identity. "
               + "Set ezkey.admin.initial.email to a valid email address.");
     }
 
     if (firstName == null || firstName.isBlank()) {
       throw new IllegalStateException(
-          "Initial global admin first name is REQUIRED for SOC 2 compliance (CC6.1, CC7.2). "
+          "Initial global admin first name is required for identifiable operator identity. "
               + "Set ezkey.admin.initial.first-name to the administrator's first name.");
     }
 
     if (lastName == null || lastName.isBlank()) {
       throw new IllegalStateException(
-          "Initial global admin last name is REQUIRED for SOC 2 compliance (CC6.1, CC7.2). "
+          "Initial global admin last name is required for identifiable operator identity. "
               + "Set ezkey.admin.initial.last-name to the administrator's last name.");
     }
 

@@ -1,12 +1,12 @@
 # License Management Procedure
 
-**SOC 2 Control**: CC7.1 - Risk Mitigation Activities  
+**Product term**: license / dependency hygiene  
 **Last Updated**: 2025-12-11  
 **Owner**: Ezkey Project Team
 
 ## Purpose
 
-This procedure defines the process for managing third-party software licenses in the Ezkey project to ensure compliance with open source license obligations and support SOC 2 compliance requirements.
+This procedure defines the process for managing third-party software licenses in the Ezkey project to ensure compliance with open source license obligations and support identifiable operator identity requirements.
 
 ## Scope
 
@@ -33,7 +33,7 @@ This procedure applies to:
 ### Compliance Team
 - Quarterly license audits
 - Annual legal review
-- SOC 2 evidence collection
+- License review evidence (OSS hygiene, not a certification claim)
 
 ## Process Overview
 
@@ -432,14 +432,14 @@ Before adding any dependency:
 - `docs/LICENSES.md` - User-facing license documentation
 - `THIRD-PARTY.txt` - Maven license file
 
-## Evidence for SOC 2 Audit
+## Operational evidence
 
-This procedure serves as evidence for:
+This procedure records OSS license hygiene:
 
-- **CC7.1**: Risk mitigation activities (license management process)
-- **CC8.1**: Change management (license review in change process)
-- **CC9.1**: Third-party management (dependency management process)
-- **CC9.2**: Third-party risk assessment (license compatibility process)
+- Documented license management process
+- License review when dependencies change
+- Dependency inventory
+- License compatibility review
 
 ## Maintenance
 

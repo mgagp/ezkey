@@ -80,7 +80,7 @@ public enum EnrollmentStatus {
    * failure or cryptographic compromise). A revoked enrollment cannot be reactivated. The
    * associated cryptographic credentials are considered destroyed from a security standpoint.
    *
-   * <p>SOC 2 CC6.3 — removal of access.
+   * <p>rapid access removal — removal of access.
    */
   REVOKED("REVOKED"),
 

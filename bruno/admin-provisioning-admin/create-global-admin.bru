@@ -95,10 +95,10 @@ docs {
   
   **Request Body:**
   - `username` (required): Unique username for the administrator (3-50 characters)
-  - `email` (required for GlobalAdmin): Email address (SOC 2 compliance)
+  - `email` (required for GlobalAdmin): Email address (identifiable operator identity)
   - `phoneNumber` (optional): Contact phone number; accepts common separators and is normalized to E.164 on write
-  - `firstName` (required for GlobalAdmin): First name (SOC 2 compliance)
-  - `lastName` (required for GlobalAdmin): Last name (SOC 2 compliance)
+  - `firstName` (required for GlobalAdmin): First name (identifiable operator identity)
+  - `lastName` (required for GlobalAdmin): Last name (identifiable operator identity)
   - `onboardingMode`: `IMMEDIATE`
   - `tenantId` (ignored): Not used for GlobalAdmin creation
   

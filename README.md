@@ -71,7 +71,7 @@ For stack details, modes, and test-oriented workflow:
 
 ## Security and Compliance
 
-Ezkey is developed with strong cryptographic validation and self-hosted operational control in mind. The project also aims to move in a direction that is favorable to SOC 2-oriented operational discipline, without claiming certification or standards equivalence. See [`product-docs/global/normative-posture.md`](product-docs/global/normative-posture.md).
+Ezkey is developed with strong cryptographic validation and self-hosted operational control in mind. The project also aims to move in a direction that is favorable to operator-visible operational discipline, without claiming certification or standards equivalence. See [`product-docs/global/normative-posture.md`](product-docs/global/normative-posture.md).
 
 ## License
 

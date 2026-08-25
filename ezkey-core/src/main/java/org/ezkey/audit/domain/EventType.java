@@ -14,7 +14,7 @@ package org.ezkey.audit.domain;
  * Enumeration of audit event types.
  *
  * <p>Defines all types of security-relevant events that are tracked in the audit log system for
- * monitoring, forensic analysis, and SOC2 compliance requirements.
+ * monitoring, forensic analysis, and operator-visible audit requirements.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -55,7 +55,7 @@ public enum EventType {
   ENROLLMENT_DELETED,
   ENROLLMENT_BIND,
   ENROLLMENT_VERIFY,
-  ENROLLMENT_REVOKED, // Admin permanently revoked an enrollment (SOC 2 CC6.3)
+  ENROLLMENT_REVOKED, // Admin permanently revoked an enrollment (rapid access removal)
   ENROLLMENT_DEACTIVATED, // Admin deactivated an enrollment (reversible)
   ENROLLMENT_REACTIVATED, // Admin reactivated a previously deactivated enrollment
   ENROLLMENT_AUTH_ATTEMPT_BLOCKED, // Auth attempt rejected because enrollment is inactive/revoked

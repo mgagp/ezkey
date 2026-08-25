@@ -41,7 +41,7 @@ Ezkey has two high-volume tables that grow continuously in production:
 - Slow queries (full table scans)
 - Large indexes (expensive to maintain)
 - Complex data lifecycle management (archival, deletion)
-- SOC2 compliance challenges (7-year audit log retention)
+- operator-visible audit challenges (7-year audit log retention)
 
 ### Solution: Monthly Range Partitioning
 
@@ -106,7 +106,7 @@ Ezkey has two high-volume tables that grow continuously in production:
 | Table | Partition Key | Naming Convention | Rationale |
 |-------|----------------|-------------------|-----------|
 | `ezkey_auth_attempt` | `created_at` | `ezkey_auth_attempt_YYYY_MM` | High insert volume, time-based queries |
-| `ezkey_audit_log` | `created_at` then `api_name` | `ezkey_audit_log_YYYY_MM` + `_admin`, `_auth`, `_integration` | SOC2, 7-year retention; sub-partition by API for pruning |
+| `ezkey_audit_log` | `created_at` then `api_name` | `ezkey_audit_log_YYYY_MM` + `_admin`, `_auth`, `_integration` | 7-year retention; sub-partition by API for pruning |
 
 ### Key Design Principles
 
@@ -211,7 +211,7 @@ ezkey.database.partition.scheduler.cron=0 0 1 * * ?
 **Security Benefits:**
 - ✅ Application never has DDL privileges (principle of least privilege)
 - ✅ Function validates inputs to prevent SQL injection
-- ✅ SOC2 compliant (separation of duties)
+- ✅ Separation of duties
 - ✅ Auditable (function calls can be logged)
 
 ---
@@ -274,7 +274,7 @@ Month: Dec 2024    Jan 2025         Feb 2025         Mar 2025
 **Planned Approach:**
 1. **Retention Policy Definition**
    - Auth attempts: 90 days retention (operational data)
-   - Audit logs: 7 years retention (SOC2 compliance)
+   - Audit logs: 7 years retention (operator-visible audit)
 
 2. **Archival Process**
    - Identify partitions older than retention period
