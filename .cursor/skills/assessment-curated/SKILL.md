@@ -54,10 +54,16 @@ is a **human mandate + white-box assessment**, not an OSS linter shortlist.
 
 1. Present a short lot overview once.
 2. For **each** finding, one at a time:
-   - Briefing: verdict, code citations, observation scenario, options table.
-   - Wait for operator questions / Go for handoff / decision.
-   - On decision: write or update `HANDOFF-…` if analysis or fix will leave this session; amend the
-     campaign note decisions + rationale.
+   - Briefing: verdict, code citations, observation scenario, options table, and a
+     **recommended GO for this item** (what the handoff would do; what it would not do).
+   - Wait for a **HITL reply** — do not ask a bare “GO / No-Go.” Canon:
+     method README § **HITL replies**.
+   - **GO** / **fix** = accept as work; write `HANDOFF-…`; **do not code** unless the operator
+     also says implement now. **GO is not** “next finding” and **not** “I agree with the
+     write-up.”
+   - **defer** / **suppress** / **skip** = record that decision; no handoff unless asked;
+     then the next finding.
+   - On any decision: amend the campaign note decisions + rationale.
 3. Do **not** replace HITL with a bulk options matrix.
 
 ### C — Closeout hygiene

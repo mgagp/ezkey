@@ -80,6 +80,8 @@ Findings use ID **F-xxx** for cross-reference in Section 5. Each subsection belo
 
 **Notes:** Behavior is likely correct because the **public** method is transactional and `LockingTaskExecutor` runs the runnable **in the same thread** inside that call. The inner `@Transactional` does not apply via the proxy.
 
+**Status:** Resolved (2026-08-25) as hygiene TX-004. Private `doBootstrapAdminMfa()` no longer carries `@Transactional`. Public `bootstrapAdminMfa()` remains the Spring transaction boundary.
+
 ---
 
 ### 2.3 F-003 — `this::` in controllers (mapping)
@@ -133,6 +135,13 @@ Findings use ID **F-xxx** for cross-reference in Section 5. Each subsection belo
 **Effort:** M
 
 **Notes:** Documented design in `AdminAuthAttemptTxHelper`; not a defect by itself.
+
+**Status:** Closed as intentional (2026-08 transactional-boundary assessment). The wait triad
+(`AdminAuthService` class-level TX → helper `REQUIRES_NEW` → `AuthAttemptWaitService`
+`NOT_SUPPORTED`) is the documented exception that confirms the proxy rule. Do not re-open as
+an SRP / nested-transaction finding. Canon:
+[`../java-transactional-boundaries-assessment-2026-08.md`](../java-transactional-boundaries-assessment-2026-08.md)
+§ *Documented exception: auth-attempt wait*.
 
 ---
 
@@ -242,8 +251,8 @@ Findings use ID **F-xxx** for cross-reference in Section 5. Each subsection belo
 | Priority | ID(s) | Summary | Suggested follow-on session |
 |----------|-------|---------|-----------------------------|
 | — | **F-001 (§2.1) — done** | ~~Fix `InitialGlobalAdminService` transactional boundary~~ **Resolved 2026-04-14** (see §2.1 Status) | — |
-| P2 | F-002 (§2.2) | Clarify `AdminBootstrapService` annotations (remove redundant private `@Transactional` or comment) | **§2.2** — small cleanup PR |
-| P3 | F-005 (§2.5) | Review `AdminAuthService` class-level transaction scope when touching auth flows | When changing passwordless auth |
+| — | **F-002 (§2.2) — done as TX-004** | ~~Remove private `@Transactional` on `doBootstrapAdminMfa`~~ **Resolved 2026-08-25** (see §2.2 Status) | — |
+| — | **F-005 (§2.5) — closed 2026-08** | Wait triad is the documented exception | [`../java-transactional-boundaries-assessment-2026-08.md`](../java-transactional-boundaries-assessment-2026-08.md) |
 | — | — | Size/complexity outliers (Section 4) | Schedule refactors by module need; not blocking this audit |
 
 ---

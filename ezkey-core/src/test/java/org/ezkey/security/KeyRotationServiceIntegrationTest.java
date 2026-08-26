@@ -279,12 +279,9 @@ class KeyRotationServiceIntegrationTest {
     org.mockito.Mockito.when(keyManagementOperations.getCurrentPrimaryKeyId())
         .thenReturn(PRIMARY_KEY_ID_1);
 
-    // Act - Initialize sync (this happens via @PostConstruct, but we can test the logic)
-    // Since we can't easily test @PostConstruct, we'll test the sync method directly
-    // by creating a scenario where sync is needed
-
+    // Act - Initialize sync (startup now uses ApplicationReadyEvent; this test checks readiness)
     // Assert - Keys should be synchronized
-    // Note: In real scenario, @PostConstruct would trigger this
+    // Note: In a real boot, initializeKeysetSync() runs after ApplicationReadyEvent
     // For this test, we verify the repository is ready for sync
     assertThat(keyRepository.count()).isZero();
   }

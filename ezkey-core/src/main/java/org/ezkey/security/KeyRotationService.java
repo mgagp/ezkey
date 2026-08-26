@@ -10,7 +10,6 @@
 
 package org.ezkey.security;
 
-import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.OffsetDateTime;
@@ -29,6 +28,8 @@ import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.dao.DataAccessException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -112,8 +113,12 @@ public class KeyRotationService {
    * <p><b>Note:</b> This synchronization runs independently of rotation.enabled setting, as it is
    * necessary for the system to function correctly. Constructor wiring ensures the key management
    * dependency is initialized before this method runs.
+   *
+   * <p><b>Transaction boundary:</b> {@code @Transactional} is on this public {@link
+   * ApplicationReadyEvent} entry so the empty-table sync runs in one Spring-managed transaction.
+   * {@code @PostConstruct} would run on the raw target and would not apply the annotation.
    */
-  @PostConstruct
+  @EventListener(ApplicationReadyEvent.class)
   @Transactional
   public void initializeKeysetSync() {
     // Check if Tink encryption is enabled (not rotation, but encryption itself)
@@ -172,6 +177,10 @@ public class KeyRotationService {
    *
    * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance executes this job at
    * a time.
+   *
+   * <p><b>Transaction boundary:</b> this scheduled method is the Spring transaction entry. It calls
+   * {@link #promotePendingToPrimary(EncryptionKey)} on {@code this}, so that method's annotation
+   * would not apply (self-invocation).
    */
   @Scheduled(fixedRateString = "${ezkey.encryption.rotation.promotion-check-interval-seconds:5}000")
   @SchedulerLock(name = "KEY_PROMOTION", lockAtMostFor = "PT1M", lockAtLeastFor = "PT4S")
@@ -224,9 +233,12 @@ public class KeyRotationService {
    *   <li>Database metadata stays synchronized with actual Tink state
    * </ul>
    *
+   * <p><b>Transaction boundary:</b> not a Spring transaction entry. Joins the caller: {@link
+   * #checkAndPromotePendingKeys()} (scheduled) or an outer test transaction. A
+   * {@code @Transactional} here would not apply on the scheduled {@code this} path.
+   *
    * @param pendingKey the PENDING key to promote
    */
-  @Transactional
   public void promotePendingToPrimary(EncryptionKey pendingKey) {
     logger.info(
         "🔄 Promoting PENDING key {} (unsigned: {}) to PRIMARY...",
@@ -342,6 +354,10 @@ public class KeyRotationService {
    *
    * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance executes this job at
    * a time.
+   *
+   * <p><b>Transaction boundary:</b> this scheduled method is the Spring transaction entry. It calls
+   * {@link #introduceNewKey(String)} and {@link #cleanupOldKeys()} on {@code this}, so those
+   * methods' annotations would not apply (self-invocation).
    */
   @Scheduled(cron = "${ezkey.encryption.rotation.schedule:0 0 2 * * ?}")
   @SchedulerLock(name = "KEY_ROTATION", lockAtMostFor = "PT10M", lockAtLeastFor = "PT0S")
@@ -463,6 +479,11 @@ public class KeyRotationService {
    *   <li>Uses keyset primary key as source of truth
    *   <li>Checks for existing PENDING keys before creating new one
    * </ul>
+   *
+   * <p><b>Transaction boundary:</b> this public overload is the Admin API proxy entry. It delegates
+   * to {@link #introduceNewKey(String, boolean)} on {@code this}, so the two-arg annotation does
+   * not apply on this path. When {@link #checkAndRotate()} calls this overload on {@code this},
+   * both annotations are unused and the scheduler transaction is shared.
    *
    * @param createdBy identifier of who/what triggered the rotation (SYSTEM or admin username)
    * @return the new key ID (will be PRIMARY after sync window expires)
@@ -1004,8 +1025,10 @@ public class KeyRotationService {
    *   <li>Double-checks that key is not PRIMARY before disabling (safety net)
    *   <li>Logs warning if PRIMARY key is somehow in the disable list
    * </ul>
+   *
+   * <p><b>Transaction boundary:</b> not a Spring transaction entry. Joins {@link #checkAndRotate()}
+   * when called on {@code this}. A {@code @Transactional} here would not apply on that path.
    */
-  @Transactional
   public void cleanupOldKeys() {
     int autoDisableDays = properties.getRotation().getAutoDisableDays();
     if (autoDisableDays <= 0) {
@@ -1112,7 +1135,6 @@ public class KeyRotationService {
    * @param correctPrimaryKeyId the key ID that should be PRIMARY (from keyset)
    * @param reason reason for correction (for logging and audit)
    */
-  @Transactional
   private void ensureSinglePrimaryKey(long correctPrimaryKeyId, String reason) {
     List<EncryptionKey> allPrimaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
     if (allPrimaryKeys.size() <= 1) {

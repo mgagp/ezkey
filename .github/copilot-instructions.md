@@ -32,7 +32,10 @@ doctor/Dependabot/pentest tool lanes):
    `.cursor/skills/assessment-curated/SKILL.md` when available in the agent.
 2. Lock mandate (surface / attention axes / non-goals), write or update an assessment register,
    open a dated campaign note under `product-docs/global/hygiene/<topic-lane>/`.
-3. Walk findings **one at a time** (briefing + code citations + options → decision → handoff).
+3. Walk findings **one at a time** (briefing + code citations + options → HITL reply →
+   decision → handoff). **GO** means `fix` + write the handoff; it is not “next finding” and
+   does not start coding unless the operator also says implement now. Do not ask a bare
+   “GO / No-Go.” See assessment-curated README § *HITL replies*.
 4. Do not create methodology backlog artifacts per finding unless the operator funds a program.
 
 If the operator only asks **how to invoke** an assessment-curated session, summarize

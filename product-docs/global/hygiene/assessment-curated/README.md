@@ -41,6 +41,7 @@ lot.” Write it into the assessment header and the campaign note metadata.
    `product-docs/global/hygiene/<lane>/YYYY-MM-DD-pass-N.md` (create the lane folder if needed).
 4. **HITL per finding** — human briefing with code citations + short scenario → options
    (`fix` / `defer` / `suppress` / `skip`) → discussion → decision. **One finding at a time.**
+   Operator reply words: see **HITL replies** below. **GO** means `fix`, not “next finding.”
 5. **Handoff** — ephemeral `product-docs/global/backlog/handoffs/HANDOFF-…` from
    [`HANDOFF-TEMPLATE.md`](HANDOFF-TEMPLATE.md); delete on PR/closeout after consolidating into the
    campaign note.
@@ -63,8 +64,30 @@ happens, so closeout cannot skip it. First instance: MOB-015 (2026-07-25).
 - Context + code citations (why it matters in *this* tree).
 - Scenario that led to the observation (preserve in the handoff).
 - Options table (fix / defer / suppress / skip).
-- Wait for operator clarity / decision before writing the handoff (unless they say “handoff + fix”
-  in one go).
+- **Recommended GO for this item** — one short paragraph: which option is recommended, what
+  the handoff would contain, and what is *not* in that GO (the other fix variants stay
+  optional). Do not leave the operator to infer GO from a list of equally weighted options.
+- Wait for operator clarity / a **HITL reply** (below) before writing the handoff (unless they
+  say “handoff + implement in this session” in one go).
+
+## HITL replies (what the operator says)
+
+Agents must not ask for a bare “GO / No-Go” without this table. **GO is a work decision, not
+agreement with the analysis and not permission to show the next finding.**
+
+| Operator says | Campaign decision | What the agent does next |
+| --- | --- | --- |
+| **GO** or **fix** | `fix` | Finding accepted as work. Write the ephemeral `HANDOFF-*.md` so implementation can leave this session. **Do not start coding** in the assessment chat unless the operator also says **implement now** (or “handoff + implement here”). Then present the **next** finding. |
+| **defer** | `defer` | Finding is real; not this pass. Record rationale. No handoff unless the operator asks to park one. Next finding. |
+| **suppress** | `suppress` | Understood and intentionally left as-is. Record the reason. No code change. Next finding. |
+| **skip** | `skip` | Not a finding, duplicate, or too fuzzy. Record why. No code change. Next finding. |
+| questions / challenge | _(none yet)_ | Stay on **this** finding. Do not treat discussion as GO. |
+
+Do **not** say **No-Go**. It collides with `defer`, `suppress`, and `skip`. Ask for one of those
+four words (or **GO** as the synonym of **fix**).
+
+When briefing, prefer: “Decision on `ID`: **GO** (fix + handoff), **defer**, **suppress**, or
+**skip**?” — not “GO / No-Go?”
 
 ## Anti-patterns
 
