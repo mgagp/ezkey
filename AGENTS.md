@@ -453,7 +453,10 @@ When the operator asks for an **`assessment-curated`** pass:
 2. Produce or update a durable assessment register with a small lot (usually 3–6).
 3. Open/amend a dated campaign note under `product-docs/global/hygiene/<lane>/`.
 4. **One finding at a time:** briefing with code citations + observation scenario + options →
-   wait → decision → handoff if work leaves the session → amend campaign note.
+   wait for a HITL reply → decision → handoff if `fix`. **GO means `fix` + write the handoff;
+   it does not mean “next finding” and does not start coding** unless the operator also says
+   implement now. Do not ask a bare “GO / No-Go.” Canon: assessment-curated README § *HITL
+   replies*. Then amend the campaign note.
 5. Delete completed handoffs on closeout; consolidate PR links into the campaign note.
 6. If the operator only asks **how to invoke** / how to phrase a kickoff: summarize
    `product-docs/global/hygiene/assessment-curated/README.md` § **How to invoke (operator cheat sheet)**

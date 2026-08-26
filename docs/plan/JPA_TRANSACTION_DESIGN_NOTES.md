@@ -37,6 +37,8 @@ Brief design notes for JPA transaction and persistence context usage in Ezkey. I
 
 **Baseline inventory (2026-04):** [`SERVICE_LAYER_SPRING_AUDIT_2026-04.md`](SERVICE_LAYER_SPRING_AUDIT_2026-04.md) — sectioned findings for follow-on coding sessions.
 
+**Hygiene refresh (2026-08):** [`../java-transactional-boundaries-assessment-2026-08.md`](../java-transactional-boundaries-assessment-2026-08.md) — self-invocation / `*TxHelper` / placement. **Documented exception:** `AuthAttemptWaitService` (`NOT_SUPPORTED`) plus `AdminAuthAttemptTxHelper` (`REQUIRES_NEW`) so wait can poll a committed pending row for the device respond. That triad confirms the rule; it is not a self-invocation smell.
+
 ---
 
 ## Audit TODO

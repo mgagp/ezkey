@@ -28,6 +28,7 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 | [`java-native-compilation/`](java-native-compilation/) | `assessment-curated` (instance) | Java GraalVM / native-image residual cleanup |
 | [`java-controller-dead-paths/`](java-controller-dead-paths/) | `assessment-curated` (instance) | Java controller dead / phantom path hygiene |
 | [`java-controller-role-validation/`](java-controller-role-validation/) | `assessment-curated` (instance) | Java controller role / tenant-boundary coherence |
+| [`java-transactional-boundaries/`](java-transactional-boundaries/) | `assessment-curated` (instance) | Java `@Transactional` placement, self-invocation, `*TxHelper` |
 | [`react-doctor/`](react-doctor/) | `doctor-curated` | Admin UI React Doctor curated passes |
 | [`java-doctor/`](java-doctor/) | `java-doctor-curated` | Java SpotBugs / Semgrep / PMD curated passes |
 | [`mobile-doctor/`](mobile-doctor/) | `mobile-doctor-curated` | Ezkey Mobile static-analysis curated passes |

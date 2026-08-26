@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Orchestrates re-encryption batch creation and processing (scheduled and manual entry points).
@@ -84,7 +83,6 @@ public class ReencryptionService {
 
   @Scheduled(cron = "${ezkey.encryption.reencryption.schedule:0 0 3 * * ?}")
   @SchedulerLock(name = "REENCRYPTION", lockAtMostFor = "PT2H")
-  @Transactional
   public void processReencryptionBatches() {
     if (!properties.getReencryption().isEnabled()) {
       logger.debug("Re-encryption is disabled via configuration");

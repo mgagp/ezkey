@@ -373,7 +373,7 @@ All audit events include:
 
 3. **Synchronize Database**
    - Database may be out of sync after restore
-   - Service will auto-sync on startup via `@PostConstruct`
+   - Service will auto-sync on startup via `ApplicationReadyEvent`
    - Verify sync in logs: `"Keyset synchronized to database"`
 
 4. **Restart Application**
@@ -396,7 +396,7 @@ All audit events include:
 
 1. **Automatic Recovery** (Preferred)
    - Service automatically detects empty table on startup
-   - `KeyRotationService.initializeKeysetSync()` runs via `@PostConstruct`
+   - `KeyRotationService.initializeKeysetSync()` runs via `ApplicationReadyEvent`
    - Logs: `"Keyset exists but encryption_key table is empty. Synchronizing..."`
 
 2. **Manual Recovery** (If automatic fails)

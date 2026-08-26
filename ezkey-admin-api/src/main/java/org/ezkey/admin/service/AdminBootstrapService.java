@@ -145,6 +145,11 @@ public class AdminBootstrapService {
    *
    * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance performs bootstrap in
    * HA deployments.
+   *
+   * <p><b>Transaction boundary:</b> {@code @Transactional} is on this public entry point so the
+   * work executed inside {@link LockingTaskExecutor} (including {@code this::doBootstrapAdminMfa})
+   * runs in one Spring-managed transaction. {@code @Transactional} on the private task method would
+   * not apply (proxy bypass via self-invocation).
    */
   @EventListener(ApplicationReadyEvent.class)
   @Transactional
@@ -171,8 +176,9 @@ public class AdminBootstrapService {
    *
    * <p>This method creates System Integration and optionally Global Admin Enrollment if they don't
    * already exist.
+   *
+   * <p>Only {@link #bootstrapAdminMfa()} is the Spring transaction boundary.
    */
-  @Transactional
   private void doBootstrapAdminMfa() {
     try {
       syncSystemTenantFromOrganization();

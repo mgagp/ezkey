@@ -24,12 +24,16 @@ Do not paste raw tool dumps.
 | --- | --- | --- | --- | --- |
 | 1 | `ID-NNN` | P1/P2/P3 | fix / defer / suppress / skip | PR / handoff path / evidence |
 
-Decision values:
+Decision values (operator may say **GO** as a synonym of **fix** — see method README
+§ *HITL replies*):
 
-- **fix** — change accepted after HITL; ephemeral `HANDOFF-*.md` while coding; delete handoff on closeout
+- **fix** (**GO**) — finding accepted as work; write ephemeral `HANDOFF-*.md`; implement only
+  if the operator also opens coding; delete handoff on closeout
 - **defer** — acknowledged; later program or next pass
 - **suppress** — intentional posture; reason recorded
 - **skip** — duplicate, fuzzy, or not worth acting on
+
+Do not record **No-Go**. Pick `defer`, `suppress`, or `skip`.
 
 ## Rationale (short)
 
