@@ -512,7 +512,7 @@ describe('handlePrimary — verify', () => {
 
     expect(mockSaveEnrollmentMutateAsync).not.toHaveBeenCalled();
     expect(mockCryptoService.deleteEnrollmentKeyPair).toHaveBeenCalled();
-    expect(result.current.challengeError).toBe('verify failed');
+    expect(result.current.challengeError).toBe('Request failed.');
   });
 
   it('still persists when signed instance-info is unavailable', async () => {
