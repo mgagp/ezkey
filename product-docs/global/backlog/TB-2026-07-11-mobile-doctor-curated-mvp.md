@@ -7,9 +7,9 @@
 - **Related idea:** `I-2026-07-11-mobile-doctor-curated-hygiene`
 - **Lane:** `C` (tooling / continuous-improvement capability; hygiene posture for later campaigns)
 - **Posture:** `single-pass`
-- **GitHub issue:** _(optional)_
+- **GitHub issue:** `#235` (closed 2026-08-25 as completed; this TB is the successor MVP)
 - **Created at:** `2026-07-11`
-- **Updated at:** `2026-07-12`
+- **Updated at:** `2026-08-25`
 - **Captured by:** Marc (Go on evaluation shortlist; handoff implementation)
 
 ## Objective

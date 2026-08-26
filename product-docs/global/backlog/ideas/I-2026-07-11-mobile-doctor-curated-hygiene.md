@@ -6,13 +6,13 @@
 - **Status:** `ready` (evaluation Go 2026-07-11; MVP under `TB-2026-07-11-mobile-doctor-curated-mvp`)
 - **Priority:** `P3`
 - **Created at:** `2026-07-11`
-- **Updated at:** `2026-07-11`
-- **Last reviewed at:** `2026-07-11`
+- **Updated at:** `2026-08-25`
+- **Last reviewed at:** `2026-08-25`
 - **Progression markers:** `P3-polish`
 - **Component tags:** `mobile`, `android`, `docs`, `tooling`
 - **Lane:** `C`
 - **Captured by:** Marc (continuous-improvement intent; plan incubation 2026-07-11)
-- **GitHub issue:** _(optional — open when board visibility helps)_
+- **GitHub issue:** `#235` (closed 2026-08-25; original June quality-pipeline ticket; this I-* is the successor)
 - **Tracer bullet:** `TB-2026-07-11-mobile-doctor-curated-mvp`
 
 ## Intent
@@ -106,6 +106,7 @@ report-only (not `validate:ci` fail path).
 
 ## Links
 
+- GitHub issue: [#235](https://github.com/mgagp/ezkey/issues/235) (closed 2026-08-25; original quality-pipeline ticket)
 - Evaluation: [`../mobile-doctor-curated-evaluation-2026-07-11.md`](../mobile-doctor-curated-evaluation-2026-07-11.md)
 - Tracer bullet: [`../TB-2026-07-11-mobile-doctor-curated-mvp.md`](../TB-2026-07-11-mobile-doctor-curated-mvp.md)
 - Operator entry: `ezkey_mobile/AGENTS.md` § Mobile doctor-curated pass; `yarn doctor:curated`

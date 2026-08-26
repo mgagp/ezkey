@@ -64,7 +64,7 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-07-10-admin-recovery-codes-exhausted-label-ux` | Admin recovery codes: exhausted-set vs initial-issuance label UX | `captured` | `P3` | `admin-ui`, `admin-api`, `docs` | `2026-07-09` |
 | `I-2026-07-11-api-key-expires-at-edit` | API key PATCH: edit or clear `expiresAt` | `captured` | `P2` | `admin-api`, `admin-ui`, `core`, `docs` | `2026-07-11` |
 | `I-2026-07-11-java-doctor-curated-hygiene` | Java doctor-curated continuous hygiene (SpotBugs + Semgrep + narrow PMD) | `ready` | `P3` | `core`, `admin-api`, `auth-api`, `integration-api`, `docs`, `tooling` | `2026-07-11` |
-| `I-2026-07-11-mobile-doctor-curated-hygiene` | Mobile doctor-curated continuous hygiene (react-doctor + Semgrep + Detekt) | `ready` | `P3` | `mobile`, `android`, `docs`, `tooling` | `2026-07-11` |
+| `I-2026-07-11-mobile-doctor-curated-hygiene` | Mobile doctor-curated continuous hygiene (react-doctor + Semgrep + Detekt) | `ready` | `P3` | `mobile`, `android`, `docs`, `tooling` | `2026-08-25` |
 | `I-2026-07-12-security-pentest-curated-hygiene` | Security pentest curated hygiene (Schemathesis + ZAP + first-party Nuclei) | `done` | `P2` | `security`, `tooling`, `infra`, `admin-api`, `auth-api`, `integration-api`, `docs` | `2026-08-17` |
 | `I-2026-07-17-alert-resolved-retention-purge` | Alert resolved-row retention and purge (no DELETE today by design) | `captured` | `P3` | `core`, `admin-api`, `admin-ui`, `infra`, `docs`, `audit` | `2026-07-17` |
 | `I-2026-07-17-keyset-blob-admin-first-bootstrap` | Keyset blob: Admin-first bootstrap before peripheral SELECT-only | `captured` | `P3` | `core`, `core-security`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto` | `2026-07-17` |

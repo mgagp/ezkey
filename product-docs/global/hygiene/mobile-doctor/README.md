@@ -16,8 +16,7 @@ issues per finding.
 
 ## Related
 
-- Keyword contract: root `AGENTS.md` § Mobile doctor-curated (to be added with MVP) and
-  `ezkey_mobile/AGENTS.md`
+- Keyword contract: root `AGENTS.md` § Mobile doctor-curated and `ezkey_mobile/AGENTS.md`
 - Evaluation: [`../mobile-doctor-curated-evaluation-2026-07-11.md`](../mobile-doctor-curated-evaluation-2026-07-11.md)
 - Idea / TB: `I-2026-07-11-mobile-doctor-curated-hygiene`, `TB-2026-07-11-mobile-doctor-curated-mvp`
 - Java comparable: [`../hygiene/java-doctor/README.md`](../hygiene/java-doctor/README.md)
