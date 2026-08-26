@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataAccessException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -117,8 +118,13 @@ public class KeyRotationService {
    * <p><b>Transaction boundary:</b> {@code @Transactional} is on this public {@link
    * ApplicationReadyEvent} entry so the empty-table sync runs in one Spring-managed transaction.
    * {@code @PostConstruct} would run on the raw target and would not apply the annotation.
+   *
+   * <p><b>Startup order:</b> {@code @Order} is {@link ApplicationReadyStartupOrder#KEYSET_SYNC} so
+   * this runs before Admin API MFA bootstrap. Enrollment insert writes encryption-key foreign keys;
+   * those rows must exist first.
    */
   @EventListener(ApplicationReadyEvent.class)
+  @Order(ApplicationReadyStartupOrder.KEYSET_SYNC)
   @Transactional
   public void initializeKeysetSync() {
     // Check if Tink encryption is enabled (not rotation, but encryption itself)

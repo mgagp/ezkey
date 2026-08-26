@@ -11,6 +11,8 @@
 package org.ezkey.security;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -31,6 +33,7 @@ import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
@@ -107,6 +110,15 @@ class KeyRotationServiceTransactionBoundaryTest {
   @DisplayName("Public initializeKeysetSync() opens a transaction for empty-table sync saves")
   void publicReadyEntryOpensTransactionForSyncSaves() {
     assertDoesNotThrow(() -> keyRotationService.initializeKeysetSync());
+  }
+
+  @Test
+  @DisplayName("initializeKeysetSync @Order is KEYSET_SYNC so it runs before admin MFA bootstrap")
+  void readyEntryOrderIsKeysetSync() throws NoSuchMethodException {
+    Order order =
+        KeyRotationService.class.getMethod("initializeKeysetSync").getAnnotation(Order.class);
+    assertNotNull(order, "initializeKeysetSync must declare @Order");
+    assertEquals(ApplicationReadyStartupOrder.KEYSET_SYNC, order.value());
   }
 
   /**

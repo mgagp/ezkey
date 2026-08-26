@@ -81,7 +81,7 @@ is misleading.
 | ID | Title | Severity | Confidence | Quick win | Disposition |
 | --- | --- | --- | --- | --- | --- |
 | TX-001 | `KeyRotationService` public-to-public self-invocation | P2 | High | Yes — drop dead inner annotations **or** extract a collaborator | **implemented** (2026-08-25; honest annotations) |
-| TX-002 | `@PostConstruct` + `@Transactional` on keyset startup sync | P2 | High | Yes — move to `ApplicationReadyEvent` public entry (F-001 pattern) | **implemented** (2026-08-25; ReadyEvent TX + slim test) |
+| TX-002 | `@PostConstruct` + `@Transactional` on keyset startup sync | P2 | High | Yes — move to `ApplicationReadyEvent` public entry (F-001 pattern) | **implemented** (2026-08-25 ReadyEvent TX; 2026-08-26 `@Order` before MFA bootstrap) |
 | TX-003 | `ReencryptionService` scheduled orchestrator holds an outer `REQUIRED` TX | P2 | High | Yes — remove orchestrator annotation (siblings already have none) | **implemented** (2026-08-25; outer TX dropped) |
 | TX-004 | `AdminBootstrapService` private `@Transactional` leftover (F-002) | P3 | High | Yes — delete the private annotation | **implemented** (2026-08-25; private annotation dropped) |
 

@@ -120,6 +120,7 @@ Browser delivery is Mode A Bearer vs Mode B HttpOnly cookie —
   `POST /api/v1/admins/{id}/activate`. Do not collapse those paths.
 - Bootstrap log/export policy: `ezkey.admin.mfa.bootstrap.credentials-output-mode` — `full` (default; enrollment secrets + optional `bootstrap-credentials.json`) vs `recovery_primary` (recovery codes + instructions only; skips JSON export for Docker).
 - **Bootstrap transaction:** `@Transactional` must be on `bootstrapAdminMfa()` (entry point), not only on `doBootstrapAdminMfa()`. Passing `this::doBootstrapAdminMfa` to `LockingTaskExecutor` bypasses the proxy; the inner method’s `@Transactional` would not apply. See `docs/plan/JPA_TRANSACTION_DESIGN_NOTES.md`.
+- **Bootstrap startup order:** `ApplicationReadyEvent` listeners must keep keyset empty-table sync (`ApplicationReadyStartupOrder.KEYSET_SYNC`) before MFA bootstrap. Enrollment insert writes `*_encryption_key_id` FKs; a missing `ezkey_encryption_key` row fails clean-start.
 - **ShedLock / HA:** Admin API enables ShedLock (`ShedLockConfiguration`). Scheduled jobs use
   `@SchedulerLock`; startup bootstrap shares lock name `ADMIN_STARTUP_BOOTSTRAP`. Table:
   `ezkey_shedlock` (Flyway V5). Strategy: [`docs/HA-JOB-COORDINATION.md`](../docs/HA-JOB-COORDINATION.md);

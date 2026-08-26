@@ -16,6 +16,12 @@ Brief design notes for JPA transaction and persistence context usage in Ezkey. I
 
 **Future:** Audit for self-invocation patterns that bypass transactional boundaries. Higher risk under multi-thread and high transaction load.
 
+### 1b. ApplicationReadyEvent order vs encryption-key FKs
+
+**Issue:** Moving `KeyRotationService.initializeKeysetSync()` from `@PostConstruct` to `ApplicationReadyEvent` (so `@Transactional` applies) put it in the same listener set as Admin MFA bootstrap. Unordered listeners can run bootstrap first. Enrollment insert then writes `*_encryption_key_id` while `ezkey_encryption_key` is still empty → FK violation, transactional rollback, ShedLock still held, `bootstrap-init` never sees credentials.
+
+**Mitigation:** Shared `@Order` values in `ApplicationReadyStartupOrder`: keyset sync (0), initial global admin (1), MFA bootstrap (2).
+
 ---
 
 ### 2. Nested @Transactional Anti-Pattern

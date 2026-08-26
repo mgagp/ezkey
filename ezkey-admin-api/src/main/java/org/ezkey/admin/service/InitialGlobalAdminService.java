@@ -16,6 +16,7 @@ import java.util.Optional;
 import org.ezkey.admin.config.InitialGlobalAdminProperties;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.security.ApplicationReadyStartupOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -28,8 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Service for initializing the initial global administrator with identifiable operator identity.
  *
  * <p>This service ensures that the initial global admin has an identifiable username, email, and
- * name. It runs before the MFA bootstrap service to ensure the admin exists with those
- * credentials.
+ * name. It runs before the MFA bootstrap service to ensure the admin exists with those credentials.
  *
  * <p><b>Responsibilities:</b>
  *
@@ -40,8 +40,8 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>Ensure identifiable operator identity (username, email, and name required)
  * </ul>
  *
- * <p><b>Execution Order:</b> Runs before AdminBootstrapService (Order 1) to ensure admin exists
- * with proper credentials before MFA bootstrap.
+ * <p><b>Execution Order:</b> {@link ApplicationReadyStartupOrder#INITIAL_GLOBAL_ADMIN} — after
+ * keyset empty-table sync, before Admin MFA bootstrap.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -83,7 +83,7 @@ public class InitialGlobalAdminService {
    * apply (proxy bypass via self-invocation).
    */
   @EventListener(ApplicationReadyEvent.class)
-  @Order(1) // Run before AdminBootstrapService (which has default Order)
+  @Order(ApplicationReadyStartupOrder.INITIAL_GLOBAL_ADMIN)
   @Transactional
   public void initializeGlobalAdmin() {
     logger.info("🔧 Initializing initial global administrator...");

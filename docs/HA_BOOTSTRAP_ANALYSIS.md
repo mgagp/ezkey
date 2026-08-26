@@ -74,18 +74,19 @@ Lors de l'exécution du stack Docker en mode High Availability (HA) avec 2 insta
 **Analyse du code** :
 
 #### InitialGlobalAdminService
-- **Ligne 80-88** : Utilise `@EventListener(ApplicationReadyEvent.class)` avec `@Order(1)`
+- **Ligne 80-88** : Utilise `@EventListener(ApplicationReadyEvent.class)` avec `@Order(ApplicationReadyStartupOrder.INITIAL_GLOBAL_ADMIN)` (1)
 - **Ligne 87** : Appelle `lockingTaskExecutor.executeWithLock("ADMIN_STARTUP_BOOTSTRAP", Duration.ofMinutes(5), this::doInitializeGlobalAdmin)`
 - ✅ **Protection ShedLock confirmée**
 
 #### AdminBootstrapService
-- **Ligne 136-148** : Utilise `@EventListener(ApplicationReadyEvent.class)` (Order par défaut, donc après Order(1))
+- **Ligne 136-148** : Utilise `@EventListener(ApplicationReadyEvent.class)` avec `@Order(ApplicationReadyStartupOrder.ADMIN_MFA_BOOTSTRAP)` (2)
 - **Ligne 147** : Appelle `lockingTaskExecutor.executeWithLock("ADMIN_STARTUP_BOOTSTRAP", Duration.ofMinutes(5), this::doBootstrapAdminMfa)`
 - ✅ **Protection ShedLock confirmée**
 
 **Observation importante** :
-- Les deux services utilisent le **même nom de lock** (`ADMIN_STARTUP_BOOTSTRAP`)
-- `InitialGlobalAdminService` s'exécute en premier (`@Order(1)`)
+- `KeyRotationService.initializeKeysetSync()` s'exécute d'abord (`@Order` 0) pour peupler `ezkey_encryption_key` avant l'insert d'enrollment
+- Les deux services de bootstrap utilisent le **même nom de lock** (`ADMIN_STARTUP_BOOTSTRAP`)
+- `InitialGlobalAdminService` s'exécute ensuite (`@Order` 1)
 - Une fois `InitialGlobalAdminService` terminé, le lock est libéré
 - `AdminBootstrapService` peut alors acquérir le lock et s'exécuter
 

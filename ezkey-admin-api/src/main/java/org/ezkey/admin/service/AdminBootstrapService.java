@@ -27,12 +27,14 @@ import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
+import org.ezkey.security.ApplicationReadyStartupOrder;
 import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -150,8 +152,13 @@ public class AdminBootstrapService {
    * work executed inside {@link LockingTaskExecutor} (including {@code this::doBootstrapAdminMfa})
    * runs in one Spring-managed transaction. {@code @Transactional} on the private task method would
    * not apply (proxy bypass via self-invocation).
+   *
+   * <p><b>Startup order:</b> {@code @Order} is {@link
+   * ApplicationReadyStartupOrder#ADMIN_MFA_BOOTSTRAP} so keyset empty-table sync and initial global
+   * admin identity run first. Enrollment rows write encryption-key foreign keys.
    */
   @EventListener(ApplicationReadyEvent.class)
+  @Order(ApplicationReadyStartupOrder.ADMIN_MFA_BOOTSTRAP)
   @Transactional
   public void bootstrapAdminMfa() {
     if (!mfaProperties.getBootstrap().isEnabled()) {
