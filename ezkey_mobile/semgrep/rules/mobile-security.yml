@@ -6,11 +6,25 @@ rules:
     patterns:
       - pattern: fetch($URL, ...)
 
+  # Match dumped identifiers / interpolations, not the word "signature" in operational prose
+  # (mobile-doctor 2026-08-25 pass-1: instanceInfo.ts warn was a false positive).
   - id: ezkey-js-sensitive-console-logging
     languages: [javascript, typescript]
     severity: ERROR
     message: Avoid logging sensitive auth/crypto data (token/signature/challenge/secret/key).
-    pattern-regex: '(?i)console[.](log|warn|error|info|debug).*(enrollmentProofToken|proofToken|integrationPublicKey|signature)'
+    patterns:
+      - pattern-either:
+          - pattern: console.$METHOD(..., enrollmentProofToken, ...)
+          - pattern: console.$METHOD(..., proofToken, ...)
+          - pattern: console.$METHOD(..., integrationPublicKey, ...)
+          - pattern: console.$METHOD(..., signature, ...)
+          - pattern: console.$METHOD(`...${enrollmentProofToken}...`)
+          - pattern: console.$METHOD(`...${proofToken}...`)
+          - pattern: console.$METHOD(`...${integrationPublicKey}...`)
+          - pattern: console.$METHOD(`...${signature}...`)
+      - metavariable-regex:
+          metavariable: $METHOD
+          regex: '^(log|warn|error|info|debug)$'
 
   # MOB-004: catch the historical default __DEV__ QR dump labels (and similar regressions).
   # Intentional opt-in dumps use "Seed raw dump enabled" via enrollmentSeedLogRedaction.ts only.

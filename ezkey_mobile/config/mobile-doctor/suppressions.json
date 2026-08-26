@@ -21,6 +21,29 @@
       "tool": "react-doctor",
       "rule": "rn-prefer-pressable",
       "reason": "High-volume Touchable*→Pressable preference (10+ hits on first smoke). Valid improvement as a deliberate UI migration campaign, not default punctual triage noise."
+    },
+    {
+      "tool": "react-doctor",
+      "rule": "async-await-in-loop",
+      "pathFragment": "useEnrollments.ts",
+      "reason": "Sequential instance-info refresh is intentional: per-installation fail-open/fail-closed isolation and no Auth API stampede. Not a hot path. Campaign 2026-08-25 pass-1."
+    },
+    {
+      "tool": "react-doctor",
+      "rule": "async-await-in-loop",
+      "pathFragment": "enrollmentStorage.ts",
+      "reason": "Sequential Keystore/seal rehydration isolates MOB-015 broken vs healthy rows. Native crypto is typically serialized; Promise.all would add accidental complexity. Campaign 2026-08-25 pass-1."
+    },
+    {
+      "tool": "react-doctor",
+      "rule": "rn-no-metro-babel-runtime-version",
+      "reason": "RN 0.86.2 already enables transform-runtime. Explicit enableBabelRuntime version string is a compiler hint, not a missing library pin (@babel/runtime is already 8.0.0). Deferred: Babel 8 + Metro is a sensitive surface and there is no measured bundle defect. Campaign 2026-08-25 pass-1."
+    },
+    {
+      "tool": "react-doctor",
+      "rule": "no-unowned-async-error-clear",
+      "pathFragment": "usePendingAuth.ts",
+      "reason": "Stale overlapping loadPendingAttempt is a real pattern but rare (enrollment switch / double refresh). No generation-counter rewrite in the pending-auth path without an observed race. Campaign 2026-08-25 pass-1."
     }
   ]
 }
