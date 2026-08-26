@@ -19,6 +19,7 @@ linked skill/README). Do **not** invent `I-*` / `TB-*` per routine finding.
 | `dependabot-curated` | Weekly Dependabot triage — `AGENTS.md` § Dependabot curated; skill `.cursor/skills/dependabot-curated/` |
 | `security-pentest-curated` | Live API / DAST-style campaigns — `AGENTS.md` § Security pentest curated; `product-docs/global/hygiene/security-pentest/` |
 | **`assessment-curated`** | Mandate-driven white-box assessment → HITL → handoff — `AGENTS.md` § Assessment curated; canon `product-docs/global/hygiene/assessment-curated/README.md`; skill `.cursor/skills/assessment-curated/SKILL.md` |
+| **`document-hygiene-curated`** | Legacy document canonicality / discoverability / archive-vs-delete — `AGENTS.md` keyword table; canon `product-docs/global/hygiene/document-hygiene/README.md`; skill `.cursor/skills/document-hygiene-curated/SKILL.md` |
 
 Hygiene index: `product-docs/global/hygiene/README.md`. Hygiene vs program:
 `product-docs/methodology/README.md` § *Three rules worth keeping*.

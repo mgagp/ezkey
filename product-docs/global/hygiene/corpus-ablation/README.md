@@ -4,6 +4,10 @@ HITL pass to prune ephemeral scaffolds (Cursor plans, GitHub prompt-style plans)
 extracting any remaining essence into existing canonical docs — and after checking that
 **discoverability** for design signals cold agents need is preserved.
 
+For broader legacy-document decisions, use [`../document-hygiene/`](../document-hygiene/) and the
+`document-hygiene-curated` skill. This lane stays focused on scaffolding that should usually
+disappear once the substance is canonized.
+
 **Not** product vision, ADR, or backlog execution. No `I-*` / `TB-*` per finding.
 
 ## Invoke
