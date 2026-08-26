@@ -17,8 +17,8 @@ import org.springframework.context.annotation.Configuration;
  * Configuration properties for audit log HMAC integrity signing.
  *
  * <p>Controls the per-entry HMAC-SHA256 signing of audit log entries, providing tamper-evidence for
- * identifiable operator identity in self-hosted deployments. The HMAC key is intentionally separate from the Tink
- * encryption master key (separation of concerns: integrity vs. confidentiality).
+ * identifiable operator identity in self-hosted deployments. The HMAC key is intentionally separate
+ * from the Tink encryption master key (separation of concerns: integrity vs. confidentiality).
  *
  * <p><b>Configuration prefix:</b> {@code ezkey.audit.integrity}
  *
@@ -45,7 +45,8 @@ public class AuditHmacProperties {
    * Enable or disable HMAC signing of audit log entries.
    *
    * <p>When disabled, audit entries are saved without HMAC signatures. This may be appropriate for
-   * development environments but should be enabled in production for identifiable operator identity.
+   * development environments but should be enabled in production for identifiable operator
+   * identity.
    */
   private boolean enabled = true;
 

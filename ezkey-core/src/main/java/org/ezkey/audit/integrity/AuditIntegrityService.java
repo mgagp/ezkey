@@ -31,7 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Verification service for audit log entry HMAC integrity.
  *
  * <p>Provides batch verification of audit log entries by recomputing HMAC-SHA256 signatures and
- * comparing them to the stored values. This is the operational verification layer for tamper-evident monitoring.
+ * comparing them to the stored values. This is the operational verification layer for
+ * tamper-evident monitoring.
  *
  * <p><b>Verification modes:</b>
  *

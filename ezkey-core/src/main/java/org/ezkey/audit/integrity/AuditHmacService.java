@@ -96,8 +96,8 @@ public class AuditHmacService {
     String keyFilePath = properties.getHmacKeyFile();
     if (keyFilePath == null || keyFilePath.isBlank()) {
       logger.warn(
-          "Audit HMAC key file not configured (ezkey.audit.integrity.hmac-key-file). "
-              + "HMAC signing will be disabled. Configure a key file for identifiable operator identity.");
+          "Audit HMAC key file not configured (ezkey.audit.integrity.hmac-key-file). HMAC signing"
+              + " will be disabled. Configure a key file for identifiable operator identity.");
       enforceRequiredIntegrity();
       return;
     }

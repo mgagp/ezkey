@@ -22,9 +22,8 @@ import org.springframework.validation.annotation.Validated;
  * Configuration properties for initial global administrator creation.
  *
  * <p>These properties control the creation of the first global administrator during system
- * initialization. The username must identify a specific individual (not a
- * generic account like "admin"), and an email address is required for the operator-visible
- * audit trail.
+ * initialization. The username must identify a specific individual (not a generic account like
+ * "admin"), and an email address is required for the operator-visible audit trail.
  *
  * <p><b>Configuration Example:</b>
  *
@@ -76,8 +75,8 @@ public class InitialGlobalAdminProperties {
   /**
    * Username for the initial global administrator.
    *
-   * <p>This username must identify a specific individual. Generic usernames
-   * like "admin" are not allowed.
+   * <p>This username must identify a specific individual. Generic usernames like "admin" are not
+   * allowed.
    *
    * <p><b>Examples of valid usernames:</b> "john.doe", "jane.smith", "admin.john"
    *
@@ -98,8 +97,8 @@ public class InitialGlobalAdminProperties {
   /**
    * Email address for the initial global administrator.
    *
-   * <p>Required for identifiable Global Admin identity so the operator-visible audit trail can
-   * name a person. The email must be valid and unique.
+   * <p>Required for identifiable Global Admin identity so the operator-visible audit trail can name
+   * a person. The email must be valid and unique.
    */
   @NotBlank(message = "Initial global admin email is required for identifiable operator identity.")
   @Email(message = "Initial global admin email must be a valid email address.")
@@ -108,17 +107,18 @@ public class InitialGlobalAdminProperties {
   /**
    * First name of the initial global administrator.
    *
-   * <p>Required for GLOBAL_ADMIN type for identifiable operator identity. Used for audit trail
-   * and display purposes.
+   * <p>Required for GLOBAL_ADMIN type for identifiable operator identity. Used for audit trail and
+   * display purposes.
    */
-  @NotBlank(message = "Initial global admin first name is required for identifiable operator identity.")
+  @NotBlank(
+      message = "Initial global admin first name is required for identifiable operator identity.")
   private String firstName;
 
   /**
    * Last name of the initial global administrator.
    *
-   * <p>Required for GLOBAL_ADMIN type for identifiable operator identity. Used for audit trail
-   * and display purposes.
+   * <p>Required for GLOBAL_ADMIN type for identifiable operator identity. Used for audit trail and
+   * display purposes.
    */
   @NotBlank(
       message = "Initial global admin last name is required for identifiable operator identity.")

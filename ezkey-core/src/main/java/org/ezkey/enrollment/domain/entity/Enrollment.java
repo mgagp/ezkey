@@ -212,8 +212,8 @@ public class Enrollment implements Reencryptable {
   private OffsetDateTime verifiedAt;
 
   /**
-   * Admin who created this enrollment (identifiable operator identity). Populated when created via Admin API;
-   * null when created via API key.
+   * Admin who created this enrollment (identifiable operator identity). Populated when created via
+   * Admin API; null when created via API key.
    */
   @Column(name = "created_by_admin_id")
   private Integer createdByAdminId;

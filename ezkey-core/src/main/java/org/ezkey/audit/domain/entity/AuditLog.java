@@ -29,8 +29,8 @@ import org.springframework.data.domain.Persistable;
  * JPA entity representing an audit log entry.
  *
  * <p>Captures comprehensive information about security-relevant events across all Ezkey APIs for
- * monitoring, forensic analysis, and operator-visible audit requirements. Supports per-entry HMAC signing
- * for tamper-evidence in self-hosted deployments.
+ * monitoring, forensic analysis, and operator-visible audit requirements. Supports per-entry HMAC
+ * signing for tamper-evidence in self-hosted deployments.
  *
  * <p><b>Integrity Fields:</b>
  *
@@ -138,9 +138,9 @@ public class AuditLog implements Persistable<Long> {
    * Optional justification supplied by the admin for sensitive operations (revocation, deletion,
    * deactivation, key rotation).
    *
-   * <p>Supports rapid access removal and authorized-change audit (reason/justification). Validated to be
-   * between 10 and 500 characters when provided. Included in per-entry HMAC canonical form as field
-   * 15 (null → empty string).
+   * <p>Supports rapid access removal and authorized-change audit (reason/justification). Validated
+   * to be between 10 and 500 characters when provided. Included in per-entry HMAC canonical form as
+   * field 15 (null → empty string).
    */
   @Column(name = "reason", length = 500)
   private String reason;

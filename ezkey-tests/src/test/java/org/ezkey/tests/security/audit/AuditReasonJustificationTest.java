@@ -31,7 +31,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Functional tests verifying reason/justification on sensitive change audit reason justification field.
+ * Functional tests verifying reason/justification on sensitive change audit reason justification
+ * field.
  *
  * <p><b>Scenarios covered:</b>
  *

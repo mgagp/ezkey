@@ -51,8 +51,8 @@ import org.springframework.transaction.annotation.Transactional;
  * idempotent: resolving an already-resolved (or absent) alert is a no-op.
  *
  * <p>Every alert lifecycle transition (raise of a new row, resolve) is mirrored in the audit log
- * via {@link EventType#ALERT_RAISED} / {@link EventType#ALERT_RESOLVED} so the operator-visible audit trail
- * stays complete without polluting the audit table with the alert content itself.
+ * via {@link EventType#ALERT_RAISED} / {@link EventType#ALERT_RESOLVED} so the operator-visible
+ * audit trail stays complete without polluting the audit table with the alert content itself.
  *
  * @since 2026
  */

@@ -176,8 +176,7 @@ public class Tenant {
   /**
    * Name of the primary technical contact for this tenant.
    *
-   * <p>Provides an identifiable point of contact for security communications and incident
-   * response.
+   * <p>Provides an identifiable point of contact for security communications and incident response.
    */
   @Column(name = "primary_contact_name", length = 255)
   private String primaryContactName;
@@ -203,8 +202,8 @@ public class Tenant {
   /**
    * Timestamp of the last modification to this tenant record.
    *
-   * <p>operator-visible audit trail requires change tracking. This field is set automatically by the service layer
-   * on every update.
+   * <p>operator-visible audit trail requires change tracking. This field is set automatically by
+   * the service layer on every update.
    */
   @Column(name = "updated_at")
   private OffsetDateTime updatedAt;
@@ -221,8 +220,8 @@ public class Tenant {
   /**
    * Timestamp when the tenant was deactivated.
    *
-   * <p>Records the exact moment of deactivation for audit trail (rapid access removal — access removal
-   * tracking).
+   * <p>Records the exact moment of deactivation for audit trail (rapid access removal — access
+   * removal tracking).
    */
   @Column(name = "deactivated_at")
   private OffsetDateTime deactivatedAt;

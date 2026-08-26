@@ -136,8 +136,7 @@ public class EzkeyAdmin {
    * Unique username for the administrator.
    *
    * <p>This field is required and must be unique across all administrators. Used for authentication
-   * and identification purposes. Must identify a specific individual (not
-   * generic like "admin").
+   * and identification purposes. Must identify a specific individual (not generic like "admin").
    */
   @Column(name = "username", nullable = false, length = 50)
   private String username;
@@ -146,8 +145,8 @@ public class EzkeyAdmin {
    * Email address for the administrator.
    *
    * <p>Required for GLOBAL_ADMIN type for identifiable operator identity so the audit trail can
-   * name a person. Must be unique and valid email format. Optional for other admin types
-   * but recommended.
+   * name a person. Must be unique and valid email format. Optional for other admin types but
+   * recommended.
    */
   @Column(name = "email", length = 255)
   private String email;
@@ -164,8 +163,8 @@ public class EzkeyAdmin {
   /**
    * First name of the administrator.
    *
-   * <p>Required for GLOBAL_ADMIN type for identifiable operator identity. Used for audit trail
-   * and display purposes. Optional for other admin types but recommended.
+   * <p>Required for GLOBAL_ADMIN type for identifiable operator identity. Used for audit trail and
+   * display purposes. Optional for other admin types but recommended.
    */
   @Column(name = "first_name", length = 100)
   private String firstName;
@@ -173,8 +172,8 @@ public class EzkeyAdmin {
   /**
    * Last name of the administrator.
    *
-   * <p>Required for GLOBAL_ADMIN type for identifiable operator identity. Used for audit trail
-   * and display purposes. Optional for other admin types but recommended.
+   * <p>Required for GLOBAL_ADMIN type for identifiable operator identity. Used for audit trail and
+   * display purposes. Optional for other admin types but recommended.
    */
   @Column(name = "last_name", length = 100)
   private String lastName;

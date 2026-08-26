@@ -68,7 +68,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Non-Impersonation Principle:</b> Revoking an enrollment is an administrative control action
  * — it is not impersonation. Global Admins may revoke any enrollment (including regular user
  * enrollments across all integrations). Tenant Admins may revoke enrollments within their tenant.
- * This is consistent with rapid access removal (rapid access removal) and industry standards (Okta, Duo).
+ * This is consistent with rapid access removal (rapid access removal) and industry standards (Okta,
+ * Duo).
  *
  * <p><b>Peer Revocation:</b> Tenant Admins may revoke other Tenant Admins' enrollments within the
  * same tenant (scoping enforced by the controller via {@code AccessControlService}). A mandatory
