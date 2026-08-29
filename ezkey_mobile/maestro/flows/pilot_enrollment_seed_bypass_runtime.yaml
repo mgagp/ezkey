@@ -27,9 +27,18 @@
     timeout: 60000
 - tapOn:
     id: "ezkey.e2e.enrollmentWizard.controlledBypassSeedInput"
+    point: "50%,50%"
+    retryTapIfNoChange: true
+- waitForAnimationToEnd:
+    timeout: 1500
 - inputText: "${ENROLLMENT_ID}|${ENROLLMENT_PROOF_TOKEN}|${ENROLLMENT_AUTH_URL}"
+- waitForAnimationToEnd:
+    timeout: 1500
+- hideKeyboard
 - tapOn:
     id: "ezkey.e2e.enrollmentWizard.controlledBypassSeed"
+    point: "50%,50%"
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible:
       id: "ezkey.e2e.enrollmentWizard.verifyStep"

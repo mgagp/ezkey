@@ -71,6 +71,9 @@ yarn-error.log
 # testing
 /coverage
 
+# Real-device Maestro campaign sessions (local evidence; see docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md)
+/maestro/sessions/
+
 # Yarn
 .yarn/*
 !.yarn/patches

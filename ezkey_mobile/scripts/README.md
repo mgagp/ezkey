@@ -1,5 +1,20 @@
 # Ezkey mobile — utility scripts
 
+## Canonical campaign (Git Bash)
+
+Prefer **`../../ezkey-tests/scripts/run-mobile-real-device.sh`** from the repo root (JUnit creates
+attempts, Maestro drives the Pixel, Bash writes `logs/mobile-churn/<session>/` with `rca.md` per
+iteration). PowerShell helpers below are **interim**. Do **not** use recover+reset as the default
+F2a bootstrap — the Bash runner uses a fresh Admin API `POST` enrollment.
+
+On failure, agent read-order: `SESSION.md` / `SESSION-table.md` → `iterations/<n>/rca.md` →
+`logcat-filtered.txt` → full `maestro.log` only if still inconclusive.
+
+Stay-awake (screen-on for the run, restore on exit) is in
+`scripts/lib/android-stay-awake.sh`. Opt out with `--no-stay-awake` on the campaign runner, or
+`EZKEY_ANDROID_STAY_AWAKE=0`. Wi-Fi ADB is not a plug source, so the wrapper also raises
+`screen_off_timeout` for the session.
+
 ## `get-fresh-enrollment-seed.ps1`
 
 PowerShell helper for autonomous Maestro enrollment runs on a one-shot enrollment backend.

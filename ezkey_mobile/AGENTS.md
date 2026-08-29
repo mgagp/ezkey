@@ -162,7 +162,11 @@ yarn android:test:instrumented:crypto
 yarn doctor:curated
 ```
 
-Real-device Maestro pilot (`TB-2026-0002`): see [`maestro/README.md`](maestro/README.md) and `scripts/run-real-device-pilot-maestro.sh`.
+Real-device Maestro campaign (`TB-2026-0002`): canonical runner
+`./ezkey-tests/scripts/run-mobile-real-device.sh` (JUnit API + Maestro UI + compact RCA). Single-flow
+inventory still uses [`maestro/README.md`](maestro/README.md) and `scripts/run-real-device-pilot-maestro.sh`.
+On failure, read `SESSION-table.md` then `iterations/<n>/rca.md` before full Maestro logs. F2b camera/QR
+is out of scope. Campaigns keep the screen awake for the run (see `maestro/README.md` § Screen stay-awake).
 StrongBox physical checklist (MOB-006): [`docs/MOBILE_STRONGBOX_MANUAL_CHECKLIST.md`](docs/MOBILE_STRONGBOX_MANUAL_CHECKLIST.md).
 
 ## Production-clean test automation

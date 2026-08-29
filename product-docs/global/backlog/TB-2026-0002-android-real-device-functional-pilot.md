@@ -6,82 +6,50 @@
 - **Status:** `active`
 - **Related idea:** `I-2026-0019`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-07-13`
+- **Updated at:** `2026-08-26`
 - **Captured by:** Marc
-- **GitHub issues:** [#239](https://github.com/mgagp/ezkey/issues/239) (F1 churn harness), [#254](https://github.com/mgagp/ezkey/issues/254) (F2a enrollment seed bypass). Supersedes umbrella tracking in [#179](https://github.com/mgagp/ezkey/issues/179) — prefer #239/#254 for execution.
+- **GitHub issues:** [#254](https://github.com/mgagp/ezkey/issues/254) (F2a, closed). F1 GitHub tracking [#239](https://github.com/mgagp/ezkey/issues/239) and umbrella [#179](https://github.com/mgagp/ezkey/issues/179) **closed 2026-08-26** (`not_planned`); execution continues on this TB.
 - **Test plan slice:** [`TSP-2026-06-26-mobile-real-device-churn-harness.md`](../test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md)
-- **Related follow-ups:** `I-2026-05-31-mobile-android-stack-followups` — **F1** = churn harness (**in progress**); **F2a** = controlled enrollment bootstrap (**in progress**); **F2b** = full QR automation (future)
+- **Related follow-ups:** `I-2026-05-31-mobile-android-stack-followups` — **F1** = JUnit + Bash + Maestro campaign (**active**); **F2a** = shipped; **F2b** = full QR automation (out of this slice)
 
 ## Pilot status (Maestro slice — pending/respond)
 
 The **single-attempt** Maestro flows (`pilot_pending_respond`, with and without 2-digit challenge) are **validated on hardware** after clean-start + **manual** enrollment. That satisfies TB exit criterion **#2** (one full pending/respond slice).
 
-**Active work (F1):** extend this pilot into a **JUnit-coordinated churn loop** — orchestration and documentation aligned **2026-06-26**; **Phase A hardware validation pending**. See **Next slice — auth churn harness** below.
+**Active work (F1):** JUnit building blocks + Bash campaign runner with compact RCA landed **2026-08-26**. Canonical command: `./ezkey-tests/scripts/run-mobile-real-device.sh`. GitHub #239/#179 tracking retired.
 
-**Active work (F2a):** controlled enrollment seed bypass for debug/test builds ([#254](https://github.com/mgagp/ezkey/issues/254)) — app + Maestro flows landed; **2026-07-13** production-clean mechanical gate (`BuildConfig.DEBUG` + env + ack, release env preflight). Contract: `ezkey_mobile/docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`. **Not** a substitute for F1 artifact contract or manual enroll path for churn v1 steady state.
+**F2a:** shipped (debug-only seed bypass). Compose path: `--bootstrap-f2a --auth-url <phone-reachable Auth API>`. Contract: `ezkey_mobile/docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`.
 
 ## Next slice — auth churn harness (F1 — priority)
 
-**Owner:** [`I-2026-05-31-mobile-android-stack-followups`](I-2026-05-31-mobile-android-stack-followups.md) (**F1**, `in progress`). **GitHub:** [#239](https://github.com/mgagp/ezkey/issues/239).
+**Owner:** [`I-2026-05-31-mobile-android-stack-followups`](I-2026-05-31-mobile-android-stack-followups.md) (**F1**). GitHub execution tracking retired 2026-08-26 (#239/#179).
 
-**Goal:** After **one manual enrollment per session**, run an **autonomous seeded loop** (target ~2 h or N iterations): **`ezkey-tests` / JUnit** creates auth attempts (challenge on/off, etc.) → **Maestro** consumes on device (approve, deny, challenge, timeout / not-consumed) → **correlated artifacts** per iteration to investigate intermittent **first check-pending / device-proof** failures.
+**Canonical runner:** `./ezkey-tests/scripts/run-mobile-real-device.sh` (Git Bash). JUnit tag `mobile-real-device` / Maven profile `mobile-real-device-tests`.
 
-**Prerequisites (v1)**
+**Scenarios:** `approve`, `approve-challenge`, `deny`, `skip-consume`. Enrollment: `--enrollment-id` or `--bootstrap-f2a` (fresh POST, not recover+reset).
 
-- Clean-start Docker stack; debug APK on device (`build-install-debug-clean.sh`).
-- **Manual enrollment once** per session; known `ENROLLMENT_ID`.
-- Existing Maestro flows + runner; design in `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`.
+**RCA:** per-iteration `rca.md` + `logcat-filtered.txt`; session `SESSION-table.md`. Read digest before full Maestro logs.
 
-**In scope**
+**Status:** harness implemented 2026-08-26; hardware proof on Pixel 7 Pro in the same change set.
 
-- Session orchestrator with iteration folders, `summary.jsonl` / TSV (contract in
-  `MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`). **Interim:** PowerShell campaign/churn scripts
-  (`run-mobile-test-campaign.ps1`, `run-mobile-churn-no-recovery.ps1`) — Phase A layout and JUnit
-  layer still open.
-- JUnit or thin wrapper using `TestDataFactory#createAuthAttempt` (and related API truth).
-- Maestro: existing flows + **deny** flow; parameterized env per iteration.
-- Seeded scenario picker (approve / deny / challenge / skip consume).
-- Documented operator path; target Git Bash per repo convention (Windows interim PowerShell noted in
-  `ezkey_mobile/scripts/README.md`).
+**Execution (2026-08-26):**
 
-**Out of scope v1**
+- JUnit: `MobileRealDeviceCreateEnrollmentTest`, `MobileRealDeviceCreateAuthAttemptTest`, `MobileRealDeviceAssertAuthAttemptTest`.
+- Maestro: `pilot_pending_deny.yaml`, `pilot_home_enrollment_visible.yaml`.
+- Bash: `ezkey-tests/scripts/run-mobile-real-device.sh` + `lib/mobile-real-device-rca.sh`.
+- GitHub #179 and #239 closed (`not_planned`); remaining canon is this TB.
 
-- Maestro enrollment / QR automation (**F2** — future generalization).
-- Full unattended cold device from install.
+PowerShell campaign scripts remain **interim** (`run-mobile-test-campaign.ps1`, `run-mobile-churn-no-recovery.ps1`). Prefer the Bash runner above. Manual enroll remains a fallback when F2a compose is not used.
 
-**Delivery order**
-
-1. Phase A: one iteration end-to-end (JUnit create → Maestro consume → artifacts).
-2. Phase B: deterministic multi-iteration loop.
-3. Phase C: seeded variance + long run (~2 h).
-4. Phase D (optional): lightweight post-pass summarizer.
-
-**Quality gates**
-
-- `yarn validate:ci` green if mobile/JS touched.
-- Churn session produces expected artifact layout; Maestro + attempt ids correlate in `meta.md`.
-
-**Status:** `in progress` — Phase A (documentation + orchestration prep **2026-06-26**); hardware
-validation and full artifact contract **pending**.
-
-**Execution (2026-06-26):**
-
-- Test plan slice [`TSP-2026-06-26-mobile-real-device-churn-harness.md`](../test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md) created.
-- Design doc and operator runbooks updated (`MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`, `maestro/README.md`, `scripts/README.md`, `AGENTS.md`).
-- Interim orchestration scripts documented (campaign 3-phase model, churn-no-recovery loop).
-- **Deferred to next hardware session:** Phase A green run, JUnit wrapper, deny flow, session folder layout.
+**Quality gates:** `yarn validate:ci` if mobile JS/TS changes; `./scripts/build.sh` if `ezkey-tests` Java changes; real-device session folder with `rca.md` per iteration.
 
 ## Future slice — Android enrollment automation (F2)
 
 **Owner:** same `I-2026-05-31`.
 
-### F2a — controlled seed bypass (`in progress`)
+### F2a — controlled seed bypass (`done`)
 
-**GitHub:** [#254](https://github.com/mgagp/ezkey/issues/254). **Branch:** `feat/mobile-f2a-enrollment-seed-bypass-issue-254`.
-
-Debug/test-only wizard bypass (`EZKEY_ENROLLMENT_SEED_BYPASS_*`), Maestro flows
-`pilot_enrollment_seed_bypass*.yaml`, optional `get-fresh-enrollment-seed.ps1` (recovery-based fresh
-seed — explicit opt-in, not for steady-state churn loops). Hardware re-validation pending.
+**GitHub:** [#254](https://github.com/mgagp/ezkey/issues/254) (closed). Debug/test-only wizard bypass. Compose via `--bootstrap-f2a`. Recover+reset PowerShell is **not** the default (lockout risk).
 
 ### F2b — full QR / camera path (`pending`)
 
@@ -98,13 +66,13 @@ recovery-based reset. **Status:** `pending` — do not start before F1 Phase B a
 
 - **`ezkey-tests` / JUnit:** create and characterize each auth attempt; optional post-phone API assertions; emit **correlation metadata** (e.g. `auth_attempt_id`) into per-iteration artifact folders.
 - **Maestro:** consume the attempt on device using existing or extended flows.
-- **Bash:** session-scoped working directory, per-iteration subfolders, Maestro JUnit/XML + transcript + logcat slice; optional later **post-pass** summarizer (`summary.jsonl` → compact table).
+- **Bash:** session-scoped working directory, per-iteration subfolders, Maestro JUnit/XML + transcript + logcat slice; **required** post-pass `SESSION-table.md` from `summary.jsonl`.
 
 **Artifact contract** (dated session root, `iterations/<nnnnn>/` with `meta.md`, `maestro.xml`, `maestro.log`, `logcat.txt`) is specified in:
 
 - `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`
 
-**Delivery order:** Phase A = skeleton + one iteration end-to-end; Phase B = deterministic multi-iteration happy path; Phase C = seeded randomization / long runs; Phase D = optional lightweight post-processing—avoid log “AI” or heavy parsers in v1.
+**Delivery order:** Phase A = skeleton + one iteration end-to-end; Phase B = deterministic multi-iteration happy path; Phase C = seeded bounded deck; Phase D = required `SESSION-table.md` + per-iteration `rca.md` (no NLP on logcat). Unbounded ~2 h runs are a flag after the deck is stable, not a design goal. F2b camera/QR stays out.
 
 **Exit criteria (TB) reminder:** item **3** (“short loop”) moves from backlog follow-up to **met** once Phase B runs unattended after hybrid enrollment handoff; item **1** is partially met today (hybrid documented); operability gate remains for a second developer.
 

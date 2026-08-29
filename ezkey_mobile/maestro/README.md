@@ -1,6 +1,30 @@
 # Maestro — Android real-device pilot (`TB-2026-0002`)
 
-Maestro drives **critical-path UI** on a **physical Android device** (`adb`). Backend setup and queueing of pending auth attempts stay with the **clean-start Docker stack**, **Admin UI / Postman**, or **`ezkey-tests`** (see touchpoints below).
+Maestro drives **critical-path UI** on a **physical Android device** (`adb`). Backend setup and queueing of pending auth attempts stay with the **clean-start Docker stack** and **`ezkey-tests` JUnit** building blocks. Do not re-queue attempts in Admin UI when using the campaign runner.
+
+## Campaign runner (canonical)
+
+From the **repository root** (Git Bash):
+
+```bash
+./ezkey-tests/scripts/run-mobile-real-device.sh --enrollment-id 12 --iterations 3
+./ezkey-tests/scripts/run-mobile-real-device.sh --bootstrap-f2a --auth-url https://your-auth-host.example --scenarios approve,deny,skip-consume --iterations 4 --seed 42
+```
+
+`--auth-url` must be reachable **from the phone** (LAN IP, ngrok, or `EZKEY_QR_AUTH_BASE_URL`), not `localhost`.
+
+Maven profile: `-P mobile-real-device-tests` (excluded from default Surefire).
+
+### Agent RCA read-order (do not dump full Maestro logs first)
+
+1. `logs/mobile-churn/<session>/SESSION.md` and `SESSION-table.md`
+2. `iterations/<n>/rca.md`
+3. `iterations/<n>/logcat-filtered.txt`
+4. Full `maestro.log` / `logcat.txt` only if still inconclusive
+
+Debug APK for campaigns: `EZKEY_PENDING_AUTH_FLOW_TRACE=true` and F2a flags in local `.env`, then `./scripts/build-install-debug-clean.sh`. Logcat capture is **on by default** in the campaign runner (`--no-logcat` to skip).
+
+Single-flow inventory still uses `scripts/run-real-device-pilot-maestro.sh` below.
 
 ## Prerequisites
 
@@ -8,7 +32,26 @@ Maestro drives **critical-path UI** on a **physical Android device** (`adb`). Ba
 - **`adb`**: one device in `device` state (`adb devices`).
 - **Maestro CLI**: [Maestro installation](https://docs.maestro.dev/getting-started/installing-maestro).
 - **Shell**: Git Bash on Windows (repo convention); use `scripts/run-real-device-pilot-maestro.sh`.
-- **Enrollment**: complete enrollment once (QR/bootstrap). Note the numeric **enrollment id** from Admin UI or API — it must match the row `testID` on Home (`ezkey.e2e.home.enrollment.<id>`). That row exists in the accessibility tree **only when its installation section is expanded** (see **Home list** below).
+- **Screen stay-awake**: campaigns and the Maestro wrapper keep the display on for the run, then restore the previous settings on `EXIT` / `INT` / `TERM`. See **Screen stay-awake** below.
+- **Enrollment**: complete enrollment once (QR/bootstrap). Note the numeric **server enrollment id** from Admin UI or API. Home `testID` is `ezkey.e2e.home.enrollment.<serverId>` (not the local `i{hex}_e{serverId}` storage handle). Until a debug APK with that testID is installed, Maestro flows also match the local-handle form. That row exists in the accessibility tree **only when its installation section is expanded** (see **Home list** below).
+
+## Screen stay-awake
+
+Pixel display timeout (often **30 seconds**) will lock the device between JUnit steps and Maestro waits, which looks like flaky taps. The wrappers apply, then restore:
+
+| Setting | During the run | Why |
+| --- | --- | --- |
+| `settings put global stay_on_while_plugged_in` | OR of the previous value with `3` (USB+AC). `EZKEY_ANDROID_STAY_ON_WHILE_PLUGGED_IN` to request more bits (`7` wireless, `15` dock). | Does not strip an existing fuller mask. **Not enough if the phone is unplugged.** |
+| `settings put system screen_off_timeout 1800000` | 30 minutes (`EZKEY_ANDROID_SCREEN_OFF_TIMEOUT_MS`). | **Required on Wi-Fi debugging.** Wi-Fi ADB is not USB/AC, so `stay_on_while_plugged_in` alone does nothing if the phone is unplugged. |
+
+Opt out: campaign `--no-stay-awake`, or `EZKEY_ANDROID_STAY_AWAKE=0` for a standalone Maestro run. Nested Maestro under the campaign runner does not restore (parent owns the setting via `EZKEY_ANDROID_STAY_AWAKE_OWNED=1`).
+
+Verify:
+
+```bash
+adb shell settings get global stay_on_while_plugged_in
+adb shell settings get system screen_off_timeout
+```
 
 ## Home list (installations accordion)
 
@@ -90,7 +133,7 @@ If **Settings → Security** uses a protected mode in which the app requests bio
 | `ezkey.e2e.home.root` | Home — full-screen container (prefer this over the FAB for Maestro “visible” waits; small absolute FABs can fail visibility heuristics near the gesture bar) |
 | `ezkey.e2e.home.fabAddEnrollment` | Home — FAB add enrollment |
 | `ezkey.e2e.home.installation.<installationId>` | Home — installation section header (expand/collapse) |
-| `ezkey.e2e.home.enrollment.<enrollmentId>` | Home — enrollment row |
+| `ezkey.e2e.home.enrollment.<serverEnrollmentId>` | Home — enrollment row (server id; Maestro also matches local `i{hex}_e{serverId}` on older debug APKs) |
 | `ezkey.e2e.enrollmentDetail.screen` | Enrollment detail — root screen container (after content loaded) |
 | `ezkey.e2e.enrollmentDetail.loading` | Enrollment detail — loading branch (no `checkPending` in hierarchy yet) |
 | `ezkey.e2e.enrollmentDetail.checkPending` | Enrollment detail — Check pending |
@@ -109,8 +152,11 @@ If **Settings → Security** uses a protected mode in which the app requests bio
 | --- | --- |
 | `flows/pilot_pending_respond.yaml` | Home → detail → check pending → approve (no challenge input). |
 | `flows/pilot_pending_respond_with_challenge.yaml` | Same, plus 2-digit challenge entry. |
+| `flows/pilot_pending_deny.yaml` | Home → detail → check pending → deny (no challenge). |
+| `flows/pilot_home_enrollment_visible.yaml` | Preflight: Home row for `ENROLLMENT_ID` is visible. |
 | `flows/pilot_enrollment_seed_bypass.yaml` | Home → wizard → controlled test seed (F2a) to reach verify stage without camera scan. |
-| `flows/pilot_enrollment_seed_bypass_visibility.yaml` | Home → wizard; asserts controlled bypass entry is visible (fast smoke gate for F2a enablement). |
+| `flows/pilot_enrollment_seed_bypass_visibility.yaml` | Home → wizard; asserts controlled bypass entry is visible (does **not** type a seed). |
+| `flows/pilot_enrollment_full_runtime.yaml` | F2a bind+verify with runtime `ENROLLMENT_*` env (used by `--bootstrap-f2a`). |
 
 ## Controlled Seed Bypass (F2a)
 
@@ -199,21 +245,17 @@ for i in 1 2 3; do
 done
 ```
 
-**Planned:** JUnit-driven loops, per-iteration artifact folders, and seeded scenario variance are specified in `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md` (`TB-2026-0002` F1). Test plan: `product-docs/global/backlog/test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md`.
+**Campaign (2026-08-26):** JUnit-driven loops, per-iteration artifact folders, compact RCA, and seeded scenario variance: `./ezkey-tests/scripts/run-mobile-real-device.sh`. Residual out of scope: F2b camera/QR, wall-clock admin-timeout, unbounded 2 h vanity runs. Design: `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`.
 
-## Campaign and churn orchestration (F1 — interim)
+## Campaign and churn orchestration
 
-Full design: [`docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`](../docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md). Operator commands: [`scripts/README.md`](../scripts/README.md).
+Canonical Bash runner (JUnit + Maestro + RCA): see **Campaign runner** at the top of this file.
 
-| Script | Purpose |
-| --- | --- |
-| `run-mobile-test-campaign.ps1` | 3-phase model: Demo Device token → Admin API provisioning → phone churn loop |
-| `run-mobile-churn-no-recovery.ps1` | Simple N-iteration loop when enrollment is already on device (no recovery/reset) |
-| `get-fresh-enrollment-seed.ps1` | F2a: fresh bind material via recover+reset (**explicit opt-in**; not for steady-state churn) |
+Interim PowerShell (`run-mobile-test-campaign.ps1`, `run-mobile-churn-no-recovery.ps1`, `get-fresh-enrollment-seed.ps1`) remains for historical sessions. Prefer `--bootstrap-f2a` (fresh enrollment POST) over recover+reset.
 
-**Lane rule:** Demo Device enrollment JSON does **not** populate the phone Home list. Phase 3 and churn scripts fail fast if `ezkey.e2e.home.enrollment.<id>` is missing on the device.
+**Lane rule:** Demo Device enrollment JSON does **not** populate the phone Home list.
 
-**GitHub:** [#239](https://github.com/mgagp/ezkey/issues/239) (F1), [#254](https://github.com/mgagp/ezkey/issues/254) (F2a).
+**GitHub:** F2a [#254](https://github.com/mgagp/ezkey/issues/254) (closed). F1 GitHub #239/#179 tracking retired 2026-08-26; canon is `TB-2026-0002`.
 
 ## `ezkey-tests` touchpoints
 

@@ -6,11 +6,9 @@
 - **Status:** `active`
 - **Priority:** `P1`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-06-26`
-- **Last reviewed at:** `2026-06-26`
-- **Phase tags:** `P1-operability`, `P2-hardening`
-- **Component tags:** `ezkey-mobile`, `ezkey-tests`, `auth-api`, `admin-api`, `docker`
-- **GitHub issues:** [#239](https://github.com/mgagp/ezkey/issues/239) (F1), [#254](https://github.com/mgagp/ezkey/issues/254) (F2a). Umbrella [#179](https://github.com/mgagp/ezkey/issues/179) superseded by #239 for execution tracking.
+- **Updated at:** `2026-08-26`
+- **Last reviewed at:** `2026-08-26`
+- **GitHub issues:** [#254](https://github.com/mgagp/ezkey/issues/254) (F2a, closed). Umbrella [#179](https://github.com/mgagp/ezkey/issues/179) and F1 [#239](https://github.com/mgagp/ezkey/issues/239) closed 2026-08-26 (`not_planned`); execution continues on `TB-2026-0002`.
 - **Captured by:** Marc
 
 ## Intent
@@ -68,9 +66,9 @@ Promoted to tracer bullet pilot on `2026-05-08`: **`TB-2026-0002`** (`product-do
 
 **Execution (`2026-05-08`):** Maestro flows, Bash runner, and `ezkey.e2e.*` testIDs landed under `ezkey_mobile/maestro/` and `ezkey_mobile/scripts/run-real-device-pilot-maestro.sh`. **TB exit #2 validated on hardware** (single pending/respond slice).
 
-**Execution (`2026-06-26`):** Documentation alignment for F1 churn harness and F2a enrollment bypass. Test plan slice [`TSP-2026-06-26-mobile-real-device-churn-harness.md`](../test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md). Phase A hardware validation and JUnit integration **pending** (device session deferred).
+**Execution (`2026-08-26`):** Canonical Bash campaign `./ezkey-tests/scripts/run-mobile-real-device.sh` (JUnit building blocks, deny flow, skip-consume, compact RCA). GitHub #179/#239 tracking retired. F2b camera/QR remains future.
 
-**Next execution slice:** **F1 auth churn harness** (Phase A → B) — see [`I-2026-05-31-mobile-android-stack-followups`](I-2026-05-31-mobile-android-stack-followups.md) and `TB-2026-0002` F1 section. **F2a** enrollment bootstrap in progress ([#254](https://github.com/mgagp/ezkey/issues/254)); **F2b** full QR automation remains future.
+**Next:** bounded seeded campaigns on hardware; do not treat unbounded 2 h runs as a design goal.
 
 ## Links
 

@@ -91,8 +91,8 @@
           <includes>
             <include>**/*Test.java</include>
           </includes>
-          <!-- Default: exclude slow, time-dependent, elective, operational churn, and churn init -->
-          <excludedGroups>slow,time-dependent,elective,operational-churn,operational-churn-init</excludedGroups>
+          <!-- Default: exclude slow, time-dependent, elective, operational churn, churn init, mobile real-device -->
+          <excludedGroups>slow,time-dependent,elective,operational-churn,operational-churn-init,mobile-real-device</excludedGroups>
           <systemPropertyVariables>
             <!-- Anchors .ezkey-test/ to this module's basedir regardless of the shell cwd.
                  Prevents stale-cache cross-contamination when running from a worktree or a
@@ -140,6 +140,11 @@
     operational-churn-init (once per environment — peer Global Admin + state file):
       mvn test -pl ezkey-tests -P operational-churn-init
       Or: ./ezkey-tests/scripts/run-operational-churn.sh with the init flag
+
+    mobile-real-device-tests (physical Android + Maestro; not CI):
+      mvn test -pl ezkey-tests -P mobile-real-device-tests
+      Or: ./ezkey-tests/scripts/run-mobile-real-device.sh
+      See ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md
   -->
   <profiles>
     <!-- Slow tests only (nightly, pre-release) -->
@@ -170,7 +175,7 @@
             <configuration>
               <!-- No groups filter = run all standard tests; elective always excluded -->
               <groups combine.self="override"></groups>
-              <excludedGroups>elective,operational-churn,operational-churn-init</excludedGroups>
+              <excludedGroups>elective,operational-churn,operational-churn-init,mobile-real-device</excludedGroups>
             </configuration>
           </plugin>
         </plugins>
@@ -258,6 +263,35 @@
             <configuration>
               <groups>operational-churn-init</groups>
               <excludedGroups combine.self="override"></excludedGroups>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- Real-device Android: JUnit API building blocks for Maestro campaigns (not CI) -->
+    <profile>
+      <id>mobile-real-device-tests</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <groups>mobile-real-device</groups>
+              <excludedGroups combine.self="override"></excludedGroups>
+              <forkCount>1</forkCount>
+              <reuseForks>false</reuseForks>
+              <systemPropertyVariables>
+                <mobile.enrollmentId>${mobile.enrollmentId}</mobile.enrollmentId>
+                <mobile.challengeRequested>${mobile.challengeRequested}</mobile.challengeRequested>
+                <mobile.outputFile>${mobile.outputFile}</mobile.outputFile>
+                <mobile.authUrl>${mobile.authUrl}</mobile.authUrl>
+                <mobile.integrationId>${mobile.integrationId}</mobile.integrationId>
+                <mobile.enrollmentName>${mobile.enrollmentName}</mobile.enrollmentName>
+                <mobile.authAttemptId>${mobile.authAttemptId}</mobile.authAttemptId>
+                <mobile.expectedStatus>${mobile.expectedStatus}</mobile.expectedStatus>
+              </systemPropertyVariables>
             </configuration>
           </plugin>
         </plugins>

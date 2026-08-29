@@ -6,11 +6,8 @@
 - **Status:** `active`
 - **Priority:** `P2`
 - **Created at:** `2026-05-31`
-- **Updated at:** `2026-06-26`
-- **Phase tags:** `P2-maintainability`, `toolchain`, `mobile-quality`, `android`, `P2-hardening`
-- **Component tags:** `mobile`, `android`, `ezkey-tests`
-- **Lane:** `A` (promote per-slice `TB-*` when execution starts)
-- **GitHub issues:** [#239](https://github.com/mgagp/ezkey/issues/239) (F1), [#254](https://github.com/mgagp/ezkey/issues/254) (F2a)
+- **Updated at:** `2026-08-26`
+- **GitHub issues:** [#254](https://github.com/mgagp/ezkey/issues/254) (F2a, closed). F1 [#239](https://github.com/mgagp/ezkey/issues/239) closed 2026-08-26.
 - **Spawned from:** `I-2026-05-29-mobile-stack-modernization` (GitHub **#177**, `done` 2026-05-31)
 - **Captured by:** Marc (post-merge planning session after mobile stack closeout)
 
@@ -82,8 +79,8 @@ Promote a row to **`TB-*`** execution when starting a branch. Runtime gates: `va
 
 | ID | Slice | Target / note | TB when started | Status |
 |----|-------|---------------|-----------------|--------|
-| **F1** | **Auth churn harness** (JUnit + Maestro) | Extend **`TB-2026-0002`**; manual enroll **once per session** (or F2a bootstrap when opted-in); seeded loop; deny flow; artifacts | **`TB-2026-0002`** · [#239](https://github.com/mgagp/ezkey/issues/239) | **`in progress`** |
-| **F2a** | Controlled **enrollment seed bypass** (debug/test) | Maestro bind+verify without camera; **not** steady-state churn default | [#254](https://github.com/mgagp/ezkey/issues/254) · `feat/mobile-f2a-enrollment-seed-bypass-issue-254` | **`in progress`** |
+| **F1** | **Auth churn harness** (JUnit + Maestro) | `./ezkey-tests/scripts/run-mobile-real-device.sh` | **`TB-2026-0002`** | **`done` (harness)** |
+| **F2a** | Controlled **enrollment seed bypass** (debug/test) | `--bootstrap-f2a`; not QR | [#254](https://github.com/mgagp/ezkey/issues/254) | **`done`** |
 | F2b | Maestro **enrollment + QR** (Android) | **Future generalization** after F1 Phase B | `TB-2026-0002` or new TB | `pending` |
 | F3 | **react-native-gesture-handler** 3.x | Major; navigation / gestures | `TB-2026-…-gesture-handler-3` | `pending` |
 | F4 | **react-native-nitro-image** 0.15.x | Minor Nitro | Sub-step of F3 or own TB | `pending` |
