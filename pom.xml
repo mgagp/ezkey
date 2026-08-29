@@ -74,8 +74,8 @@
 		<mapstruct.version>1.6.3</mapstruct.version>
 		<springdoc.version>3.1.0</springdoc.version>
 		<!-- SpotBugs engine + Maven plugin (report-only via java-doctor-curated; not a build gate) -->
-		<spotbugs.version>4.10.3</spotbugs.version>
-		<spotbugs-maven-plugin.version>4.10.3.0</spotbugs-maven-plugin.version>
+		<spotbugs.version>4.10.4</spotbugs.version>
+		<spotbugs-maven-plugin.version>4.10.4.0</spotbugs-maven-plugin.version>
 		<checkstyle.version>3.6.0</checkstyle.version>
 		<!-- maven-pmd-plugin version (narrow ruleset under config/java-doctor/; not a build gate) -->
 		<pmd.version>3.28.0</pmd.version>
