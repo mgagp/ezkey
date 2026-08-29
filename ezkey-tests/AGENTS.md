@@ -67,6 +67,18 @@ never touch `ObjectMapper` directly.
 - Logging is already verbose around auth steps—keep it enabled when debugging.
 - Tests are independent/idempotent/opportunistic: assume a fresh docker stack from `./clean-start.sh` before runs; failed cases should be investigated directly via DB and logs without reusing state.
 
+### Real-device Maestro campaigns
+
+Tag `mobile-real-device` / profile `mobile-real-device-tests` is excluded from default Surefire
+(same pattern as elective and operational-churn). Canonical orchestrator:
+
+`./ezkey-tests/scripts/run-mobile-real-device.sh`
+
+JUnit building blocks live in `org.ezkey.tests.mobile`. On failure, read session `rca.md` before
+full Maestro logs. Design: `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`.
+The runner keeps the device screen on for the session (`--no-stay-awake` to skip) so a 30s
+display timeout does not lock the Pixel between JUnit and Maestro.
+
 ### Test Values
 - **Data accumulation is a feature**: tests intentionally create new tenants/integrations/admins over time (production-like dataset). Avoid cleanup unless a test *must* reset state for correctness.
 - **Independence**: each test must pass regardless of existing data (use unique identifiers, avoid relying on ordering or “first page” defaults).

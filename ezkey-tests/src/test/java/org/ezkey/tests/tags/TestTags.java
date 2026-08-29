@@ -354,4 +354,13 @@ public final class TestTags {
    * docs/plan/operational-churn-strategy-and-implementation.md.
    */
   public static final String OPERATIONAL_CHURN_INIT = "operational-churn-init";
+
+  /**
+   * Real-device Android campaigns: JUnit owns Admin/Auth API truth; Maestro owns the physical phone
+   * UI. Excluded from default and all-tests Surefire runs. Invoke with {@code -P
+   * mobile-real-device-tests} or {@code ./ezkey-tests/scripts/run-mobile-real-device.sh}.
+   *
+   * <p>See {@code ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md}.
+   */
+  public static final String MOBILE_REAL_DEVICE = "mobile-real-device";
 }

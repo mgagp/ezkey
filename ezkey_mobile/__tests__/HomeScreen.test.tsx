@@ -99,7 +99,9 @@ describe('HomeScreen', () => {
     ).toBeGreaterThan(0);
     expect(
       tree!.root.findAll(
-        node => node.props.testID === `ezkey.e2e.home.enrollment.${healthyEnrollment.id}`,
+        node =>
+          node.props.testID ===
+          `ezkey.e2e.home.enrollment.${healthyEnrollment.enrollmentId}`,
       ).length,
     ).toBeGreaterThan(0);
   });
@@ -117,7 +119,8 @@ describe('HomeScreen', () => {
     });
 
     const row = tree!.root.find(
-      node => node.props.testID === `ezkey.e2e.home.enrollment.${healthyEnrollment.id}`,
+      node =>
+        node.props.testID === `ezkey.e2e.home.enrollment.${healthyEnrollment.enrollmentId}`,
     );
 
     await renderer.act(async () => {

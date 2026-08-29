@@ -168,6 +168,11 @@ mvn test -pl ezkey-tests -X
 # Run specific test class
 mvn test -pl ezkey-tests -Dtest=AdminTokenCreationTest
 mvn test -pl ezkey-tests -Dtest=AdminAuthenticationSecurityTest
+
+# Real-device Android + Maestro (excluded from default Surefire)
+./ezkey-tests/scripts/run-mobile-real-device.sh --enrollment-id N --iterations 3
+# Default: keep the Pixel screen on for the run (stay_on_while_plugged_in + screen_off_timeout), then restore.
+# ./ezkey-tests/scripts/run-mobile-real-device.sh --enrollment-id N --no-stay-awake
 ```
 
 ## Test Structure

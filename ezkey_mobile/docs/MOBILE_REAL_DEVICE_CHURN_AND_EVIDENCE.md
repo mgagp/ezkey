@@ -90,7 +90,7 @@ Until those gates pass, keep dedicated mobile test admin setup as an explicit st
 2. **Shortest path to the hypothesis domain:** JUnit owns **API truth** (create auth attempt, optional cancel, read attempt state); Maestro owns **phone UX** (navigate, check pending, approve/deny, challenge entry).
 3. **Bounded complexity:** start with a **deterministic happy-path loop** (fixed sequence, few iterations) to validate orchestration and the **artifact folder contract**; only then add randomization and long runs.
 4. **Reproducibility:** support a fixed **random seed** (same spirit as `run-operational-churn.sh --seed`) for any randomized scenario picker.
-5. **No over-engineering on “live log intelligence”:** iteration `meta.md` plus raw logs first; optional **second-pass** script that aggregates pass/fail into a small table is explicitly a later add-on.
+5. **Mechanical RCA, no NLP:** each iteration writes compact `rca.md` + `logcat-filtered.txt`; session post-pass writes `SESSION-table.md`. Agents read those before full Maestro/logcat dumps.
 
 ## High-level architecture
 
@@ -108,15 +108,17 @@ All paths below are **conventions** for local developer runs (gitignored parent 
 
 ```text
 <session-root>/
-  SESSION.md                 # human-readable: git sha, device serial, stack profile, seed, enrollment id, start/end time
-  summary.jsonl              # one JSON object per iteration (machine-friendly rollup)
+  SESSION.md
+  SESSION-table.md           # generated from summary.jsonl
+  summary.jsonl
   iterations/
     00001/
-      meta.md                # short Markdown: timestamp, enrollment id, scenario flags, auth_attempt_id, intended outcome
-      maestro.xml            # JUnit report from Maestro (--format junit)
-      maestro.log            # full Maestro transcript (stdout/stderr)
-      logcat.txt             # adb logcat slice for this iteration (tags TBD; include ReactNativeJS + app tag)
-      junit-side.log         # optional: snippet of Surefire output for this iteration if split per iteration
+      meta.md
+      rca.md                 # compact digest — read first on failure
+      maestro.xml
+      maestro.log            # full transcript; not the default agent read
+      logcat.txt             # per-iteration slice (default on)
+      logcat-filtered.txt    # PendingAuthRespond / errors only
     00002/
       ...
 ```
@@ -156,13 +158,13 @@ Use a **deck** or seeded PRNG so the distribution is explicit and replayable.
 | **A — Harness skeleton** | Bash creates `session-root` + one iteration folder; JUnit **or** a stub script creates **one** attempt; Maestro runs **one** known-good flow; all files listed above appear in the right places. |
 | **B — Deterministic multi-iteration** | N iterations, fixed scenario, assert minimal API state after each Maestro run. |
 | **C — Randomized long run** | Duration or iteration cap, seeded randomizer, optional `docker-test` profile to reduce rate-limit noise. |
-| **D — Optional post-pass** | Small script reads `summary.jsonl` + `meta.md` and emits `SESSION-table.md` (human glance); no requirement for NLP on logcat in v1. |
+| **D — Session table** | **Required.** Bash post-pass writes `SESSION-table.md` from `summary.jsonl`. No NLP on logcat. |
 
 ## Open questions (explicit)
 
-- **Deny flow:** add `pilot_pending_deny.yaml` (or equivalent) with stable selectors.
-- **Timeout injection:** needs a **supported** mechanism (test profile, mock delay, or documented MITM) before encoding in the scenario matrix.
-- **Correlation id in logcat:** consider a single log line from JUnit or a test-only Auth API header echoed by the app when `EZKEY_*_TRACE` flags are on—**optional** once Phase A is stable.
+- **Deny flow:** `pilot_pending_deny.yaml` (approve-style gestures on `ezkey.e2e.pendingAuth.deny`).
+- **Not-consumed:** `--scenarios skip-consume` (no Maestro; JUnit asserts still `PENDING`). Do not wait on wall-clock admin timeout.
+- **Correlation:** `auth_attempt_id` in `meta.md` / `rca.md`; optional JS log line not required.
 
 ## Traceability
 
@@ -170,24 +172,26 @@ Use a **deck** or seeded PRNG so the distribution is explicit and replayable.
 - Idea: `product-docs/global/backlog/ideas/I-2026-0019-android-real-device-mobile-functional-tests.md`
 - Follow-ups: `product-docs/global/backlog/ideas/I-2026-05-31-mobile-android-stack-followups.md`
 - Test plan slice: `product-docs/global/backlog/test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md`
-- GitHub: [#239](https://github.com/mgagp/ezkey/issues/239) (F1), [#254](https://github.com/mgagp/ezkey/issues/254) (F2a)
+- GitHub: [#254](https://github.com/mgagp/ezkey/issues/254) (F2a, closed). F1 [#239](https://github.com/mgagp/ezkey/issues/239) and umbrella [#179](https://github.com/mgagp/ezkey/issues/179) closed 2026-08-26; canon is `TB-2026-0002`.
 - Incubation plan: deleted Cursor plan (materialized); see `TB-2026-0002`, `I-2026-0019` (Phase 3 steady-state)
 
-## Implementation status (2026-06-26)
+## Implementation status (2026-08-26)
 
 | Layer | Status | Notes |
 | --- | --- | --- |
 | Maestro pilot (pending/respond) | **Validated** | TB exit #2 |
-| F2a enrollment bypass | **Shipped + production-clean gate** | Native debug + env + ack; release env preflight; see `MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md` |
-| 3-phase campaign model | **Documented** | `run-mobile-test-campaign.ps1` (interim PowerShell) |
-| Churn loop (no recovery) | **Documented** | `run-mobile-churn-no-recovery.ps1` (interim) |
-| JUnit `TestDataFactory` wrapper | **Open** | Phase A deliverable |
-| Session artifact folders (`iterations/<nnnnn>/`) | **Open** | Phase A deliverable |
-| Deny Maestro flow | **Open** | Phase B |
-| Seeded long run (`--seed`) | **Open** | Phase C |
+| F2a enrollment bypass | **Shipped + production-clean gate** | Native debug + env + ack; `--bootstrap-f2a` compose |
+| Canonical Bash campaign | **Shipped** | `ezkey-tests/scripts/run-mobile-real-device.sh` |
+| Compact RCA (`rca.md`, filtered logcat, SESSION-table) | **Shipped** | Default-on logcat; agent read-order in runner `--help` |
+| JUnit building blocks | **Shipped** | `org.ezkey.tests.mobile.*` + profile `mobile-real-device-tests` |
+| Deny Maestro flow | **Shipped** | `pilot_pending_deny.yaml` |
+| Seeded bounded deck (`--seed`) | **Shipped** | Shuffle then cycle; not an unbounded 2 h vanity run |
+| Screen stay-awake | **Shipped** | `stay_on_while_plugged_in` + `screen_off_timeout` for the run; restore on exit; `--no-stay-awake` |
+| PowerShell campaign scripts | **Interim** | Prefer Bash; recover+reset is not the default bootstrap |
 
-**Next hardware session:** Phase A — one iteration end-to-end with full artifact contract; then
-`traceability-sync` and TB execution bullet update.
+**Named command:** `./ezkey-tests/scripts/run-mobile-real-device.sh --enrollment-id N --iterations 3`
+
+**Agent RCA read-order:** `SESSION.md` / `SESSION-table.md` → `iterations/<n>/rca.md` → `logcat-filtered.txt` → full `maestro.log` only if still inconclusive.
 
 ## Documentation cadence (avoid rot)
 
@@ -228,14 +232,14 @@ Advance **one or two harness phases at a time**. Update **canonical** docs only 
 - [x] TB: mark Phase A **in progress**; link script/test class names once they exist.
 - [x] This doc: confirm artifact paths match implementation (contract unchanged; interim scripts noted in **Implementation status**).
 - [x] `maestro/README.md`: link to session runner when added (pilot runner + campaign scripts documented).
-- [ ] After green run: TB **Execution** line + `traceability-sync` (gap: “real-device churn harness — Phase A” until matrix row is formal).
+- [x] After green run: TB **Execution** line + named Bash command; matrix row in `spec-test-traceability.md` (2026-08-26).
 - [ ] `closeout` for Phase A only (TB stays `active`).
 
 **Phase B — deterministic multi-iteration happy path**
 
-- [ ] Test plan slice: operational layer marked **run now** for bounded N iterations.
-- [ ] `spec-test-traceability.md`: one matrix row or open-gap closure for `F-auth-pending-respond` + real-device loop.
-- [ ] TB exit criterion **3** (short loop): honest yes/partial with link to command.
+- [x] Test plan slice: operational layer marked **run now** for bounded N iterations.
+- [x] `spec-test-traceability.md`: matrix row for real-device campaign runner.
+- [x] TB exit criterion **3** (short loop): `run-mobile-real-device.sh --iterations N`.
 - [ ] `closeout` + traceability sync.
 
 **Phase C / D** — repeat checklist; add post-pass script to operator doc only when the script exists.

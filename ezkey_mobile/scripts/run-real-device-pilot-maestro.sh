@@ -10,11 +10,23 @@
 #   MAESTRO_VERBOSE=0        — disable maestro --verbose (quieter CI-style runs).
 #   MAESTRO_DEBUG_OUTPUT=1   — also pass --debug-output (maestro.log under a debug subfolder).
 #   MAESTRO_LOGCAT=1         — clear logcat, then tee adb logcat (ReactNative tags) to maestro-pilot-<UTC>-logcat.txt during the run.
+#   EZKEY_ANDROID_STAY_AWAKE=0 — skip stay-awake (also set by campaign --no-stay-awake).
+#   EZKEY_ANDROID_STAY_AWAKE_OWNED=1 — parent campaign already applied stay-awake; do not restore on exit.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MOBILE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPORT_DIR="${REPORT_DIR:-${MOBILE_ROOT}/maestro/reports}"
+# shellcheck source=lib/android-stay-awake.sh
+source "${SCRIPT_DIR}/lib/android-stay-awake.sh"
+
+LOGCAT_PID=""
+maestro_cleanup() {
+  if [[ -n "${LOGCAT_PID}" ]] && kill -0 "${LOGCAT_PID}" 2>/dev/null; then
+    kill "${LOGCAT_PID}" 2>/dev/null || true
+  fi
+  ezkey_android_stay_awake_restore
+}
 
 echo "== Ezkey Maestro pilot (TB-2026-0002) =="
 
@@ -47,6 +59,8 @@ if ! adb devices 2>/dev/null | grep -v '^List' | grep -E '[[:space:]]device$' >/
   exit 1
 fi
 echo "  [ok] at least one adb device in state 'device'"
+trap maestro_cleanup EXIT INT TERM
+ezkey_android_stay_awake_begin
 
 if ! command -v maestro >/dev/null 2>&1; then
   echo "Maestro CLI not found in PATH. See https://docs.maestro.dev/getting-started/installing-maestro" >&2
@@ -68,11 +82,19 @@ TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 REPORT_FILE="${REPORT_DIR}/maestro-pilot-${TIMESTAMP}.xml"
 LOG_FILE="${REPORT_DIR}/maestro-pilot-${TIMESTAMP}.log"
 LOGCAT_FILE="${REPORT_DIR}/maestro-pilot-${TIMESTAMP}-logcat.txt"
-LOGCAT_PID=""
 
 MAESTRO_ARGS=(test "${FLOW}" -e "ENROLLMENT_ID=${ENROLLMENT_ID}")
 if [[ -n "${CHALLENGE_CODE:-}" ]]; then
   MAESTRO_ARGS+=( -e "CHALLENGE_CODE=${CHALLENGE_CODE}" )
+fi
+if [[ -n "${ENROLLMENT_PROOF_TOKEN:-}" ]]; then
+  MAESTRO_ARGS+=( -e "ENROLLMENT_PROOF_TOKEN=${ENROLLMENT_PROOF_TOKEN}" )
+fi
+if [[ -n "${ENROLLMENT_AUTH_URL:-}" ]]; then
+  MAESTRO_ARGS+=( -e "ENROLLMENT_AUTH_URL=${ENROLLMENT_AUTH_URL}" )
+fi
+if [[ -n "${ENROLLMENT_CHALLENGE:-}" ]]; then
+  MAESTRO_ARGS+=( -e "ENROLLMENT_CHALLENGE=${ENROLLMENT_CHALLENGE}" )
 fi
 
 EXTRA_END=(--format junit --output "${REPORT_FILE}")
@@ -97,12 +119,6 @@ if [[ "${MAESTRO_LOGCAT:-0}" == "1" ]]; then
   # RN JS logs typically use ReactNativeJS; include ReactNative for native bridge noise if needed.
   adb logcat -v time '*:S' 'ReactNativeJS:V' 'ReactNative:V' 2>&1 | tee "${LOGCAT_FILE}" &
   LOGCAT_PID=$!
-  cleanup_logcat() {
-    if [[ -n "${LOGCAT_PID}" ]] && kill -0 "${LOGCAT_PID}" 2>/dev/null; then
-      kill "${LOGCAT_PID}" 2>/dev/null || true
-    fi
-  }
-  trap cleanup_logcat EXIT INT TERM
 fi
 
 VERBOSE_PREFIX=()

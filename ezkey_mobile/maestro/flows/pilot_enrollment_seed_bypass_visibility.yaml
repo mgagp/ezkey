@@ -1,6 +1,7 @@
 appId: org.ezkey.mobile
 ---
 ## Pilot: validate F2a controlled bypass entry is present in debug/test mode.
+## Does not type a seed — Maestro exits once the bypass control is visible (wizard may stay open).
 ## Preconditions: app built with F2a flags enabled.
 - launchApp:
     clearState: false

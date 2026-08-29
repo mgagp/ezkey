@@ -1,0 +1,25 @@
+appId: org.ezkey.mobile
+---
+## Preflight: Home shell visible and the target enrollment row is in the accessibility tree.
+- launchApp:
+    clearState: false
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.home.root"
+    timeout: 60000
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "ezkey\\.e2e\\.home\\.enrollment\\.(?:i[0-9a-f]{16}_e)?${ENROLLMENT_ID}"
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: "ezkey\\.e2e\\.home\\.enrollment\\.(?:i[0-9a-f]{16}_e)?${ENROLLMENT_ID}"
+    direction: DOWN
+    timeout: 20000
+    speed: 60
+    visibilityPercentage: 10
+- assertVisible:
+    id: "ezkey\\.e2e\\.home\\.enrollment\\.(?:i[0-9a-f]{16}_e)?${ENROLLMENT_ID}"

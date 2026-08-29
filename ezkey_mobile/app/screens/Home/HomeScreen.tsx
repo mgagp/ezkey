@@ -37,6 +37,7 @@ import {
   groupEnrollmentsByInstallation,
   type InstallationGroup,
 } from '../../utils/tenantGrouping';
+import {resolveServerEnrollmentId} from '../../utils/localEnrollmentIdentity';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
 import {
   checkFlexiblePlayUpdate,
@@ -445,7 +446,7 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({
 
   return (
     <TouchableOpacity
-      testID={`ezkey.e2e.home.enrollment.${enrollment.id}`}
+      testID={`ezkey.e2e.home.enrollment.${resolveServerEnrollmentId(enrollment)}`}
       style={[styles.card, broken && styles.cardBroken]}
       onPress={() => onPress(enrollment)}
       accessibilityRole="button"
@@ -466,7 +467,7 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({
         <>
           <Text style={styles.brokenSubtitle}>{t('home.brokenRowSubtitle')}</Text>
           <TouchableOpacity
-            testID={`ezkey.e2e.home.enrollment.${enrollment.id}.remove`}
+            testID={`ezkey.e2e.home.enrollment.${resolveServerEnrollmentId(enrollment)}.remove`}
             style={styles.brokenRemoveButton}
             onPress={() => onRemove(enrollment)}
             accessibilityRole="button"
