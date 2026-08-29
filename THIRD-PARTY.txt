@@ -1,7 +1,7 @@
 
 Lists of 232 third-party dependencies.
-     (EPL-2.0) (LGPL-2.1-only) Logback Classic Module (ch.qos.logback:logback-classic:1.6.1 - http://logback.qos.ch/logback-classic)
-     (EPL-2.0) (LGPL-2.1-only) Logback Core Module (ch.qos.logback:logback-core:1.6.1 - http://logback.qos.ch/logback-core)
+     (EPL-2.0) (LGPL-2.1-only) Logback Classic Module (ch.qos.logback:logback-classic:1.6.3 - http://logback.qos.ch/logback-classic)
+     (EPL-2.0) (LGPL-2.1-only) Logback Core Module (ch.qos.logback:logback-core:1.6.3 - http://logback.qos.ch/logback-core)
      (The Apache Software License, Version 2.0) bucket4j_jdk17-core (com.bucket4j:bucket4j_jdk17-core:8.19.0 - http://github.com/bucket4j/bucket4j/bucket4j_jdk17-core)
      (The Apache Software License, Version 2.0) ClassMate (com.fasterxml:classmate:1.7.3 - https://github.com/FasterXML/java-classmate)
      (The Apache Software License, Version 2.0) Jackson-annotations (com.fasterxml.jackson.core:jackson-annotations:2.22 - https://github.com/FasterXML/jackson)
@@ -230,5 +230,5 @@ Lists of 232 third-party dependencies.
      (The Apache Software License, Version 2.0) jsqr (org.webjars.npm:jsqr:1.4.0 - https://www.webjars.org)
      (The Apache Software License, Version 2.0) org.xmlunit:xmlunit-core (org.xmlunit:xmlunit-core:2.11.0 - https://www.xmlunit.org/)
      (The Apache Software License, Version 2.0) SnakeYAML (org.yaml:snakeyaml:2.6 - https://bitbucket.org/snakeyaml/snakeyaml)
-     (The Apache Software License, Version 2.0) Jackson-core (tools.jackson.core:jackson-core:3.2.1 - https://github.com/FasterXML/jackson-core)
-     (The Apache Software License, Version 2.0) jackson-databind (tools.jackson.core:jackson-databind:3.2.1 - https://github.com/FasterXML/jackson)
+     (The Apache Software License, Version 2.0) Jackson-core (tools.jackson.core:jackson-core:3.2.2 - https://github.com/FasterXML/jackson-core)
+     (The Apache Software License, Version 2.0) jackson-databind (tools.jackson.core:jackson-databind:3.2.2 - https://github.com/FasterXML/jackson)
