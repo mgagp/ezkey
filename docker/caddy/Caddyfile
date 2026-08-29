@@ -3,30 +3,46 @@
 # Requests forward proxy headers so apps can resolve client IP when EZKEY_TRUSTED_PROXIES_CIDRS is set.
 #
 # Response headers: baseline hardening for API JSON responses (no HTML CSP needed).
+#
+# Springdoc (/api-docs, Swagger UI) stays on the direct service ports so
+# scripts/update-specs.sh can pull live specs (localhost:9080/8080/7080).
+# Those paths are not proxied on the Caddy surface (OWASP API9 inventory).
 
-:9080 {
-	reverse_proxy admin-api:9080
+(springdoc_deny) {
+	@springdoc path /api-docs* /swagger-ui* /webjars/swagger-ui*
+	handle @springdoc {
+		respond 404
+	}
+}
+
+(api_headers) {
 	header {
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
+
+:9080 {
+	import api_headers
+	import springdoc_deny
+	handle {
+		reverse_proxy admin-api:9080
 	}
 }
 
 :8080 {
-	reverse_proxy auth-api:8080
-	header {
-		X-Content-Type-Options "nosniff"
-		X-Frame-Options "DENY"
-		Referrer-Policy "strict-origin-when-cross-origin"
+	import api_headers
+	import springdoc_deny
+	handle {
+		reverse_proxy auth-api:8080
 	}
 }
 
 :7080 {
-	reverse_proxy integration-api:7080
-	header {
-		X-Content-Type-Options "nosniff"
-		X-Frame-Options "DENY"
-		Referrer-Policy "strict-origin-when-cross-origin"
+	import api_headers
+	import springdoc_deny
+	handle {
+		reverse_proxy integration-api:7080
 	}
 }

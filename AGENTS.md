@@ -385,9 +385,10 @@ yarn doctor:curated
 
 - For live local Docker-stack DAST / OpenAPI fuzzing hygiene, the shared keyword is
   **`security-pentest-curated`**.
-- Purpose: punctual curated pass — Schemathesis + ZAP baseline + first-party Nuclei → P1/P2/P3
-  shortlist against `--prod-safe --with-proxy` Caddy ports. **Not** a CI gate and **not** a
+- Purpose: punctual curated pass — Schemathesis + OpenAPI-aware ZAP + first-party Nuclei →
+  P1/P2/P3 shortlist against `--prod-safe --with-proxy` Caddy ports. **Not** a CI gate and **not** a
   zero-warning campaign. Sibling lanes: `java-doctor-curated`, `doctor-curated`.
+- Skill: [`.cursor/skills/security-pentest-curated/SKILL.md`](.cursor/skills/security-pentest-curated/SKILL.md)
 - Default command from repo root (Git Bash on Windows):
 
 ```bash
@@ -399,7 +400,8 @@ yarn doctor:curated
 - Config: `config/security-pentest/`. Outputs under `logs/security-pentest/` (gitignored).
 - Campaign notes: `product-docs/global/hygiene/security-pentest/`
 - HITL: same one-finding loop as java-doctor — small lot, wait per finding, suppress with reason.
-  Do **not** invent `I-*` / `TB-*` per finding.
+  Do **not** invent `I-*` / `TB-*` per finding. Do not re-lot Auth device **200** + domain
+  `FAILED` (charter § expected-context; pass-04).
 - Authority: `product-docs/global/security-pentest-tool-evaluation-2026-07-12.md`,
   `I-2026-07-12-security-pentest-curated-hygiene`, `TB-2026-07-12-security-pentest-curated-mvp`
 

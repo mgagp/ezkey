@@ -6,8 +6,10 @@
 #   - Auth API:   http://localhost:18080
 #   - Integration API: http://localhost:17080
 #
-# Direct ports (unchanged) still work for health checks and internal use:
+# Direct ports (unchanged) still work for health checks, Swagger UI, and
+# scripts/update-specs.sh (OpenAPI JSON at /api-docs):
 #   - Admin API: 9080, Auth API: 8080, Integration API: 7080
+# Caddy does not proxy /api-docs or Swagger UI (inventory on the proxy surface).
 #
 # EZKEY_TRUSTED_PROXIES_REQUIRED defaults to true here (SEC-011): startup fails if CIDRs are empty.
 

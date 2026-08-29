@@ -47,7 +47,8 @@ Config: [`config/java-doctor/`](../config/java-doctor/). Outputs: `logs/java-doc
 ## Security pentest curated (runtime hygiene)
 
 Keyword: **`security-pentest-curated`**. Local-first bounded runtime campaign runner for
-Schemathesis + ZAP baseline + first-party Nuclei templates. Report-oriented, not a CI gate.
+Schemathesis + OpenAPI-aware ZAP (`zap-api-scan.py`; `--zap-baseline` is opt-in) + first-party
+Nuclei templates. Report-oriented, not a CI gate.
 Nuclei prefers a local binary, then Docker (`NUCLEI_IMAGE` in `config/security-pentest/targets.env`).
 
 ```bash

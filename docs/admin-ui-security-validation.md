@@ -66,7 +66,7 @@ Serve the app with `**./start.sh`** in `ezkey-admin-ui`, then for the **main doc
 
 | Measure                                                                                       | Why it matters                                                                   | How to test                                                                                                                                                                                                                |
 | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Baseline headers on JSON** (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`) | Consistent hardening on API responses when traffic passes through the dev proxy. | With stack up and **not** `--no-proxy`: `curl -sI http://localhost:19080/api-docs` (or `18080`/`17080` as appropriate) and inspect **response** headers. Compare with **direct** `9080` if you want to see the difference. |
+| **Baseline headers on JSON** (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`) | Consistent hardening on API responses when traffic passes through the dev proxy. | With stack up and **not** `--no-proxy`: `curl -sI http://localhost:19080/api/v1/public/instance-info` (or `18080` as appropriate) and inspect **response** headers. Compare with **direct** `9080` if you want to see the difference. Caddy does not proxy `/api-docs` or Swagger UI; those stay on the direct ports for `scripts/update-specs.sh`. |
 | **Trusted proxy / client IP**                                                                 | Apps read `CF-Connecting-IP` / `X-Forwarded-For` when `EZKEY_TRUSTED_PROXIES_CIDRS` is set. | Use the **Caddy** ports from the host; trigger a request that logs client IP and confirm behavior matches docs (see operational / rate-limit docs as needed).                                                              |
 
 
@@ -89,7 +89,7 @@ Serve the app with `**./start.sh`** in `ezkey-admin-ui`, then for the **main doc
 2. `cd ezkey-admin-ui && ./start.sh` — open the printed URL.
 3. DevTools → **Network** — reload — confirm CSP and frame-related headers on the document.
 4. Log in — confirm **sessionStorage** + **Bearer** as above.
-5. (Optional) `curl -sI http://localhost:19080/swagger-ui/index.html` or `/api-docs` — see Caddy in front of Admin API.
+5. (Optional) `curl -sI http://localhost:19080/api/v1/public/instance-info` — see Caddy headers on the Admin API. Live `/api-docs` and Swagger UI stay on direct `9080` (not Caddy).
 
 That gives you **end-to-end confidence** on the measures most people mean by “security headers for the Admin UI” without reading the whole plan.
 
