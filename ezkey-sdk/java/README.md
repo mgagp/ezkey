@@ -12,8 +12,8 @@ Admin or Auth API wrapper, and it is not a device client (bind / verify / pendin
 
 Living demo: `ezkey-demo-app-acme` (reactor module `ezkey-sdk/java`).
 
-Admin API (`9080`) remains the operator / bearer-token surface. API-key auth attempts on Admin API
-are disabled by default (`ezkey.admin.auth.api-key-auth-attempts-enabled=false`).
+Admin API (`9080`) remains the operator / bearer-token surface. Admin API does not authenticate
+API keys; use this client against Integration API.
 
 ## Build
 

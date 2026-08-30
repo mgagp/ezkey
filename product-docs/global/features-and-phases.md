@@ -117,6 +117,8 @@ Backlog **progression markers** on `I-*` / `V-*` metadata use the same milestone
 
 - **Intent.** Stabilize the Integration API surface for machine-to-machine workflows.
 - **Status.** `planned`.
+- **Boundary closeout.** Remove the leftover Admin API API-key hatch:
+  [`backlog/TB-2026-08-29-admin-api-remove-m2m-hatch.md`](backlog/TB-2026-08-29-admin-api-remove-m2m-hatch.md).
 
 #### `F-api-key-lifecycle`
 

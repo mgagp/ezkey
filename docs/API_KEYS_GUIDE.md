@@ -15,7 +15,7 @@
 
 Ezkey API Keys provide machine-to-machine authentication for integrated applications, enabling server-to-server API calls without the login/logout overhead required for human administrators.
 
-**Canonical M2M surface:** Integration API (`http://localhost:7080`). Admin API rejects API-key auth-attempt traffic by default (`ezkey.admin.auth.api-key-auth-attempts-enabled=false`). Set that property to `true` only for documented minimal Admin+Auth installs that do not deploy Integration API. API key **lifecycle** (create/list/revoke) remains on Admin API with bearer tokens.
+**Canonical M2M surface:** Integration API (`http://localhost:7080`). Admin API does not authenticate API keys; HTTP Basic credentials there return **401**. API key **lifecycle** (create/list/revoke) remains on Admin API with bearer tokens.
 
 ### Key Concepts
 
@@ -483,7 +483,7 @@ stringData:
 - Limits are per instance (no distributed coordination); see [ENDPOINT.md](ENDPOINT.md) for details
 - Returns 429 Too Many Requests when exceeded
 
-**Tuning for machine-to-machine traffic:** If your server or CI/CD needs higher throughput, you can raise the Admin API limits in configuration (e.g. `ezkey.api-key.rate-limit.create-auth-attempt.requests=30` or 60 per minute). For dedicated integration traffic, prefer the Integration API (port 7080), which uses higher defaults.
+**Tuning for machine-to-machine traffic:** Raise Integration API limits in configuration (e.g. `ezkey.api-key.rate-limit.create-auth-attempt.requests`). Admin API does not authenticate API keys.
 
 **Monitoring:**
 ```bash

@@ -2,8 +2,8 @@
 
 **Scope note:** this document covers a **historical config-naming collision** only
 (`ezkey.admin.rate-limit.api-key.*`, dead/unread). For the **current cross-module rate-limit
-model** — including how API key usage is rate-limited by **API key id** (not IP) on both Admin
-API and Integration API — see
+model** — including how API key usage is rate-limited by **API key id** (not IP) on
+Integration API — see
 [`../product-docs/global/rate-limit-baseline-policy.md`](../product-docs/global/rate-limit-baseline-policy.md)
 (inventory) and
 [`ADR-0010`](../product-docs/global/architecture-decisions.md#adr-0010-rate-limiting-scoped-by-actor-identity-not-by-ip)
@@ -39,12 +39,9 @@ ezkey.admin.rate-limit.api-key.key-strategy=integration-key
 - **Config**: `ezkey.admin.rate-limit.login.*`
 - **Applies to**: `POST /api/v1/admin/auth/login`
 
-### 2. API Key Operations Rate Limiting ✅
-- **Service**: `RateLimitService`
-- **Config**: `ezkey.api-key.rate-limit.*` (note: different prefix!)
-- **Applies to**: 
-  - `POST /api/v1/auth-attempts` (create auth attempt)
-  - `POST /api/v1/auth-attempts/{id}/wait` (wait auth attempt)
+### 2. API-key usage rate limiting (Integration API)
+- **Config**: `ezkey.api-key.rate-limit.*` on Integration API
+- Admin API does not authenticate API keys
 
 ### 3. Admin Operations Rate Limiting ✅
 - **Service**: `AdminOperationsRateLimitService`
@@ -108,5 +105,4 @@ Tests that use API keys (like `testApiKeyCannotCreateIntegration`) were failing 
 - `ezkey-admin-api/config/application.properties` - Configuration (now disabled)
 - `ezkey-admin-api/src/main/java/org/ezkey/admin/config/AdminRateLimitProperties.java` - Properties class (no API key config)
 - `ezkey-admin-api/src/main/java/org/ezkey/admin/security/AdminRateLimitFilter.java` - Login rate limiting filter
-- `ezkey-admin-api/src/main/java/org/ezkey/admin/security/ApiKeyAuthenticationFilter.java` - API key auth filter (no rate limiting)
 

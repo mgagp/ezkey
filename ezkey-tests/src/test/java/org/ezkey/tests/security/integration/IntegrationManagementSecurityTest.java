@@ -396,7 +396,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(9)
-  @DisplayName("API key cannot list integrations (403)")
+  @DisplayName("API key cannot list integrations (401)")
   public void testApiKeyCannotListIntegrations() {
     try {
       String adminToken = authTokenManager.getAdminToken();
@@ -419,7 +419,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      assertThat(response.getStatusCode()).isEqualTo(403);
+      assertThat(response.getStatusCode()).isEqualTo(401);
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
@@ -428,7 +428,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(10)
-  @DisplayName("API key cannot get integration by ID (403)")
+  @DisplayName("API key cannot get integration by ID (401)")
   public void testApiKeyCannotGetIntegrationById() {
     try {
       String adminToken = authTokenManager.getAdminToken();
@@ -451,7 +451,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      assertThat(response.getStatusCode()).isEqualTo(403);
+      assertThat(response.getStatusCode()).isEqualTo(401);
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
@@ -460,7 +460,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(11)
-  @DisplayName("API key cannot create integration (403)")
+  @DisplayName("API key cannot create integration (401)")
   public void testApiKeyCannotCreateIntegration() {
     try {
       String adminToken = authTokenManager.getAdminToken();
@@ -477,7 +477,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       request.put("code", code);
       request.put("name", "API Key Blocked Integration");
 
-      // Try to create integration with API key (expect 403 Forbidden)
+      // Try to create integration with API key (expect 401 Unauthorized)
       Response response =
           given()
               .contentType(ContentType.JSON)
@@ -491,7 +491,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      assertThat(response.getStatusCode()).isEqualTo(403);
+      assertThat(response.getStatusCode()).isEqualTo(401);
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
@@ -500,7 +500,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(12)
-  @DisplayName("API key cannot delete integration (403)")
+  @DisplayName("API key cannot delete integration (401)")
   public void testApiKeyCannotDeleteIntegration() {
     try {
       String adminToken = authTokenManager.getAdminToken();
@@ -524,7 +524,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      assertThat(response.getStatusCode()).isEqualTo(403);
+      assertThat(response.getStatusCode()).isEqualTo(401);
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");

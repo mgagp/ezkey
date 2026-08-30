@@ -1,5 +1,12 @@
 # How API Keys Work in Ezkey
 
+**Canon (2026-08-29):** Integration API is the only backend that authenticates API keys
+for auth-attempt M2M traffic. Admin API authenticates administrators (Bearer / session)
+and hosts API-key **lifecycle** (create / list / get / revoke) only. HTTP Basic API-key
+credentials on Admin API return **401 Unauthorized**. Older diagrams in this file that
+still say “Admin API” for `POST /auth-attempts` with Basic auth are historical — treat
+Integration API (`7080`) as the live path.
+
 ## Overview
 
 This document explains the technical implementation and architecture of the API Keys authentication system in Ezkey, using visual diagrams and detailed explanations.
@@ -29,7 +36,7 @@ graph TB
         B[Configuration<br/>ikey + skey]
     end
     
-    subgraph "Ezkey Admin API"
+    subgraph "Ezkey Integration API"
         C[HTTP Basic Auth<br/>Parser]
         D[ApiKeyAuthenticationFilter]
         E[ApiKeyService]

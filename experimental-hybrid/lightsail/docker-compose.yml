@@ -203,11 +203,13 @@ services:
     depends_on:
       admin-api:
         condition: service_healthy
+      integration-api:
+        condition: service_healthy
     environment:
       <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_CONFIG_ADDITIONAL_LOCATION: optional:file:/app/config/,optional:file:./config/
-      EZKEY_ADMIN_API_URL: http://admin-api:9080
+      EZKEY_ADMIN_API_URL: http://integration-api:7080
       EZKEY_DEMO_APP_SESSION_COOKIE_SECURE: "true"
       # Same CIDRs as other APIs: trust Caddy on the Docker network for CF-Connecting-IP / X-Forwarded-For.
       EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}

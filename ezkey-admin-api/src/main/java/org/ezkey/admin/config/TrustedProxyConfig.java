@@ -18,8 +18,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Enables {@link TrustedProxyProperties} for admin-api. The trusted proxy CIDR list is used by
- * {@link org.ezkey.admin.security.AdminRateLimitFilter} and {@link
- * org.ezkey.admin.security.ApiKeyAuthenticationFilter} for rate limiting and audit.
+ * {@link org.ezkey.admin.security.AdminRateLimitFilter} for rate limiting and audit.
  *
  * @author Ezkey contributors
  * @since 2025

@@ -78,17 +78,19 @@ DELETE /api/v1/api-keys/{id}               → Revoke key
 
 ### 4. Security Layer
 
-**Authentication Filter:** `ApiKeyAuthenticationFilter.java`
+**Authentication Filter:** Integration API `ApiKeyAuthenticationFilter.java`
 - HTTP Basic Auth parsing
 - Integration key + secret key validation
 - IP whitelist enforcement
 - Client IP extraction (proxy-aware)
-- Security context setup with ROLE_ADMIN
+- Security context setup with `ROLE_API_KEY`
+
+Admin API does not authenticate API keys (HTTP Basic → 401). API-key **lifecycle**
+(create/list/revoke) stays on Admin API with admin Bearer/session.
 
 **Security Configuration:**
-- API Key filter integrated into security chain
-- Correct filter ordering
-- Default HTTP Basic disabled (custom only)
+- API-key filter lives on Integration API only
+- Admin API HTTP Basic is disabled
 - Auth API security disabled (public endpoints)
 
 **Filter Chain Order:**

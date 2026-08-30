@@ -44,9 +44,9 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 /**
  * SEC-017 regression: every encryption-key route requires {@code ROLE_GLOBAL_ADMIN}.
  *
- * <p>Tenant Admins still carry {@code ROLE_ADMIN}; API keys carry {@code ROLE_API_KEY}. Both must
- * receive 403. Global Admin retains read access verified here; mutation behavior remains in unit
- * tests.
+ * <p>Tenant Admins still carry {@code ROLE_ADMIN} and must receive 403. HTTP Basic API-key
+ * credentials do not authenticate on Admin API and must receive 401. Global Admin retains read
+ * access verified here; mutation behavior remains in unit tests.
  *
  * @since 2026
  */
@@ -92,9 +92,22 @@ class EncryptionKeyControllerSecurityWebMvcTest {
   }
 
   @Test
-  @DisplayName("API key role receives 403 on all routes")
-  void apiKeyForbiddenOnAllRoutes() throws Exception {
-    assertForbiddenOnAllRoutes(user("apikey").roles("API_KEY"));
+  @DisplayName("HTTP Basic API-key credentials receive 401 on all routes")
+  void apiKeyBasicUnauthorizedOnAllRoutes() throws Exception {
+    String basic =
+        "Basic "
+            + java.util.Base64.getEncoder()
+                .encodeToString("ezkey_ikey_test:ezkey_skey_test".getBytes());
+    for (String path : GET_PATHS) {
+      mockMvc
+          .perform(get(path).header("Authorization", basic))
+          .andExpect(status().isUnauthorized());
+    }
+    for (String path : POST_PATHS) {
+      mockMvc
+          .perform(post(path).header("Authorization", basic))
+          .andExpect(status().isUnauthorized());
+    }
   }
 
   @Test

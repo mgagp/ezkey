@@ -35,10 +35,9 @@ import org.junit.jupiter.api.Test;
  *
  * <ul>
  *   <li>Can create auth attempts for their own integration (Integration API)
- *   <li>Are rejected on Admin API by default when using API-key auth (403 RFC 9457)
- *   <li>Cannot access auth attempts from other integrations (403)
- *   <li>Cannot access admin endpoints (403)
- *   <li>Cannot access enrollment/integration management (403)
+ *   <li>Do not authenticate on Admin API (401)
+ *   <li>Cannot access Admin operator endpoints (401)
+ *   <li>Cannot access Admin enrollment management (401)
  * </ul>
  *
  * <p>Note: These tests require admin token to create API keys and test data.
@@ -88,8 +87,7 @@ public class ApiKeySecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      // Should return 403 Forbidden
-      assertThat(response.getStatusCode()).isEqualTo(403);
+      assertThat(response.getStatusCode()).isEqualTo(401);
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
@@ -121,8 +119,7 @@ public class ApiKeySecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      // Should return 403 Forbidden
-      assertThat(response.getStatusCode()).isEqualTo(403);
+      assertThat(response.getStatusCode()).isEqualTo(401);
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
@@ -172,7 +169,7 @@ public class ApiKeySecurityTest extends AbstractSecurityTest {
   }
 
   @Test
-  @DisplayName("Admin API rejects API-key auth-attempt create when acceptance flag is disabled")
+  @DisplayName("Admin API does not authenticate API-key credentials on auth-attempt create")
   public void testAdminApiRejectsApiKeyAuthAttemptByDefault() {
     try {
       String adminToken = authTokenManager.getAdminToken();
@@ -200,10 +197,7 @@ public class ApiKeySecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      assertThat(response.getStatusCode()).isEqualTo(403);
-      assertThat(response.getContentType()).contains("application/problem+json");
-      assertThat(response.jsonPath().getString("type"))
-          .isEqualTo("https://ezkey.io/problems/admin/api-key-auth-attempts-disabled");
+      assertThat(response.getStatusCode()).isEqualTo(401);
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");

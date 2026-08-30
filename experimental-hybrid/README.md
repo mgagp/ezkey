@@ -80,7 +80,7 @@ Use this when the stack and Postgres data **already run** and you only add or up
 3. **Build and transfer** — `docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest .`, then run **`./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --include-demo-acme`** (optionally with **`--apis-only`** if you skip migration tars), or `docker save` / `scp` / `docker load` manually per [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
 4. **Sync files** — If the VM is older than the repo, **`scp`** current [`lightsail/docker-compose.yml`](lightsail/docker-compose.yml) and [`lightsail/Caddyfile`](lightsail/Caddyfile) to `~/ezkey/experimental-hybrid/lightsail/` (see [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *VM initialization*). Do not run a destructive `clean-start`.
 5. **Recreate services** — On the VM: `docker compose up -d --no-deps --force-recreate demo-app-acme` after `docker load`; add `--force-recreate caddy` if Caddyfile or TLS PEMs changed. See [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
-6. **App configuration** — Ensure `/app/data/acme-users.json` exists (volume **`demo-app-acme-data`**), set **API key** credentials for the Admin API (`EZKEY_INTEGRATION_KEY` / `EZKEY_SECRET_KEY` in `.env` or `demo-app-acme-config`), and IP whitelist the integration for the container network. **`EZKEY_TRUSTED_PROXIES_CIDRS`** is set in [`lightsail/docker-compose.yml`](lightsail/docker-compose.yml) for the demo; align with [`lightsail/.env`](lightsail/.env.example) if you override. End-to-end login still needs a **device approval** path (e.g. mobile app) against your public Auth API.
+6. **App configuration** — Ensure `/app/data/acme-users.json` exists (volume **`demo-app-acme-data`**), set **API key** credentials for the **Integration API** (`EZKEY_INTEGRATION_KEY` / `EZKEY_SECRET_KEY` in `.env` or `demo-app-acme-config`), and IP whitelist the integration for the container network. Compose sets `EZKEY_ADMIN_API_URL` to `http://integration-api:7080` (the env name is historical; do not point it at Admin API). **`EZKEY_TRUSTED_PROXIES_CIDRS`** is set in [`lightsail/docker-compose.yml`](lightsail/docker-compose.yml) for the demo; align with [`lightsail/.env`](lightsail/.env.example) if you override. End-to-end login still needs a **device approval** path (e.g. mobile app) against your public Auth API.
 
 ## Run on Lightsail
 
@@ -120,7 +120,7 @@ Set **`EZKEY_TRUSTED_PROXIES_CIDRS`** (comma-separated CIDRs) so Spring trusts `
 
 Use when APIs run on Lightsail but you want **Crypto API**, **Demo Device**, or **Demo ACME** on your workstation.
 
-1. Copy `local/.env.example` to `local/.env` and set **`EZKEY_AUTH_API_URL`** and **`EZKEY_ADMIN_API_URL`** to the **public HTTPS** URLs served by Caddy.
+1. Copy `local/.env.example` to `local/.env` and set **`EZKEY_AUTH_API_URL`** to the public Auth API URL and **`EZKEY_ADMIN_API_URL`** to the public **Integration API** URL (`https://exp1-integration-api.ezkey.org` — the env name is historical; ACME uses it as the M2M base).
 2. **Crypto API** needs the same **`/etc/ezkey`** key material as the VM. Copy the directory from the VM into `local/encryption-secrets-local/` (see below), then set `EZKEY_ENCRYPTION_SECRETS_DIR` if you use a different path.
 3. From `local/`:
 

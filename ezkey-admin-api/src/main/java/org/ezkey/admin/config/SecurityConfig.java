@@ -13,8 +13,6 @@ package org.ezkey.admin.config;
 import org.ezkey.admin.security.AdminCookieCsrfFilter;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
-import org.ezkey.admin.security.ApiKeyAuthAttemptsAcceptanceFilter;
-import org.ezkey.admin.security.ApiKeyAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -29,14 +27,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * Spring Security configuration for admin API.
  *
- * <p>This configuration provides security settings for the admin API, supporting multiple
- * authentication methods:
- *
- * <ul>
- *   <li><b>API Keys:</b> HTTP Basic Auth for machine-to-machine (Integration API) authentication
- *   <li><b>Bearer Tokens:</b> Token-based authentication for human administrators
- *   <li><b>Rate Limiting:</b> Protection against brute force attacks
- * </ul>
+ * <p>Admin API authenticates human operators (Bearer token or browser session cookie). API-key
+ * machine-to-machine traffic belongs on Integration API. HTTP Basic is disabled; credentials of
+ * that form do not authenticate here.
  *
  * <p><b>CORS:</b> When {@code ezkey.admin.cors.allowed-origins} is non-empty, Spring Security
  * applies {@link org.springframework.web.cors.CorsConfigurationSource} for browser clients on a
@@ -47,9 +40,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *
  * <ol>
  *   <li>Rate Limiting Filter (if enabled)
- *   <li>API Key Authentication Filter (HTTP Basic Auth)
- *   <li>API Key Auth-Attempts Acceptance Filter (deny-by-default gate)
  *   <li>Admin Token Authentication Filter (Bearer tokens)
+ *   <li>Cookie CSRF Filter (browser session cookie only)
  * </ol>
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
@@ -65,36 +57,27 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
   private final AdminTokenAuthenticationFilter adminTokenAuthenticationFilter;
-  private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
-  private final ApiKeyAuthAttemptsAcceptanceFilter apiKeyAuthAttemptsAcceptanceFilter;
   private final AdminRateLimitFilter adminRateLimitFilter;
   private final AdminCookieCsrfFilter adminCookieCsrfFilter;
 
+  /**
+   * Creates the Admin API security configuration.
+   *
+   * @param adminTokenAuthenticationFilter Bearer / session token filter
+   * @param adminRateLimitFilter login and admin-ops rate limit filter
+   * @param adminCookieCsrfFilter CSRF check for cookie-authenticated unsafe methods
+   */
   public SecurityConfig(
       AdminTokenAuthenticationFilter adminTokenAuthenticationFilter,
-      ApiKeyAuthenticationFilter apiKeyAuthenticationFilter,
-      ApiKeyAuthAttemptsAcceptanceFilter apiKeyAuthAttemptsAcceptanceFilter,
       AdminRateLimitFilter adminRateLimitFilter,
       AdminCookieCsrfFilter adminCookieCsrfFilter) {
     this.adminTokenAuthenticationFilter = adminTokenAuthenticationFilter;
-    this.apiKeyAuthenticationFilter = apiKeyAuthenticationFilter;
-    this.apiKeyAuthAttemptsAcceptanceFilter = apiKeyAuthAttemptsAcceptanceFilter;
     this.adminRateLimitFilter = adminRateLimitFilter;
     this.adminCookieCsrfFilter = adminCookieCsrfFilter;
   }
 
   /**
    * Security filter chain configuration.
-   *
-   * <p>This configuration supports multiple authentication methods:
-   *
-   * <ul>
-   *   <li><b>API Keys:</b> HTTP Basic Auth for Integration API (API key) authentication
-   *   <li><b>Bearer Tokens:</b> Token-based authentication for admins
-   * </ul>
-   *
-   * <p><b>Filter Order:</b> Rate Limiting → API Key Auth → API Key Acceptance Gate → Bearer Token
-   * Auth
    *
    * @param http the HttpSecurity configuration
    * @return SecurityFilterChain
@@ -143,25 +126,15 @@ public class SecurityConfig {
             exceptions ->
                 exceptions.authenticationEntryPoint(
                     new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-        .httpBasic(httpBasic -> httpBasic.disable()) // Disable default HTTP Basic
-        .formLogin(formLogin -> formLogin.disable()); // Disable form login
+        .httpBasic(httpBasic -> httpBasic.disable())
+        .formLogin(formLogin -> formLogin.disable());
 
-    // Add rate limiting filter before all authentication filters
     http.addFilterBefore(adminRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
 
-    // Add bearer token authentication filter
     http.addFilterBefore(
         adminTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-    // Validate CSRF only for unsafe requests authenticated via the browser session cookie.
     http.addFilterAfter(adminCookieCsrfFilter, AdminTokenAuthenticationFilter.class);
-
-    // Add API key authentication filter BEFORE bearer token filter
-    // This ensures API keys (HTTP Basic) are checked before bearer tokens
-    http.addFilterBefore(apiKeyAuthenticationFilter, AdminTokenAuthenticationFilter.class);
-
-    // Deny-by-default gate for ROLE_API_KEY after successful API-key authentication
-    http.addFilterAfter(apiKeyAuthAttemptsAcceptanceFilter, ApiKeyAuthenticationFilter.class);
 
     return http.build();
   }

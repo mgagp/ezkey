@@ -1977,7 +1977,7 @@ HTTP/1.1 204 No Content
 
 ### g) Using API Keys for Authentication
 
-Once created, use API keys with HTTP Basic Auth for all admin API calls:
+Once created, use API keys with HTTP Basic Auth against **Integration API** (port 7080). Admin API does not authenticate API keys (HTTP Basic there returns **401**).
 
 **Example: Create Auth Attempt with API Key**
 ```http
@@ -1991,10 +1991,10 @@ Content-Type: application/json
 }
 ```
 
-**Rate Limiting:**
-- Create auth attempt: 10 requests per minute per API key (Admin API); Integration API uses higher defaults (e.g. 100/min)
-- Wait and cancel: 20 requests per minute per API key (Admin API); Integration API uses higher defaults (e.g. 200/min)
-- Limits are per instance (no distributed coordination); higher than admin login (designed for server usage)
+**Rate Limiting (Integration API):**
+- Create auth attempt: 100 requests per minute per API key (default)
+- Wait: 200 requests per minute per API key (default)
+- Limits are per instance (no distributed coordination)
 - Returns 429 Too Many Requests when limit exceeded
 
 ---
@@ -2061,7 +2061,7 @@ Content-Type: application/json
 **Request Fields:**
 - `enrollmentId`: Enrollment to authenticate (use this OR `userIdentifier`)
 - `userIdentifier`: User identifier for lookup within integration scope (use this OR `enrollmentId`)
-- `integrationId`: Required when `userIdentifier` is used with admin token; ignored with API key
+- `integrationId`: Required when `userIdentifier` is used on Admin API; Integration API ignores it (scope is the API key's integration)
 - `challengeRequested` (**required**): Whether a challenge code is requested
 - `contextTitle` (optional): Short heading displayed as card header on mobile, max 200 chars
 - `contextMessage` (optional): Descriptive body explaining what the approver is authorizing, max 2 000 chars
@@ -2130,7 +2130,7 @@ Authorization: Bearer ezkey_admin_token...
 **Notes:**
 - Only attempts in `PENDING` or `READ` status can be cancelled
 - Attempts that are already in a final state (`ACCEPTED`, `REJECTED`, `INVALID`, `EXPIRED`) cannot be cancelled
-- Supports both Bearer token (admin) and API key (Integration API) authentication
+- Admin API: Bearer token or browser session. Integration API: API-key HTTP Basic.
 - All cancellation operations are audited for security monitoring
 - **Automatic TTL expiry (no HTTP call):** When `expires_at` passes without a response, a scheduled job in the Admin API process (default interval `ezkey.auth-attempt.expiry-scheduler.fixed-delay-ms`, often 60s) persists `EXPIRED` for eligible `PENDING`/`READ` rows and writes an `AUTH_ATTEMPT_EXPIRED` audit row with `event_action` `auth_attempt_expired_scheduler`. This is distinct from explicit cancel (`AUTH_ATTEMPT_CANCELLED`).
 
