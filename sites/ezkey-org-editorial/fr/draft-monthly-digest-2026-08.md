@@ -33,46 +33,44 @@ ezkey-org:exclude-end -->
 <!-- Meta line: "Monthly digest · August 2026" -->
 <!-- Eyebrow label: "August 2026 in review" -->
 
-# Subtraction, adversarial passes, and a narrower blast radius
+# Radical ablation, adversarial testing, and strict least privilege
 
-A distilled look at August: the written corpus was cut hard, security testing turned adversarial, and the services lost privileges they never needed.
+A distilled look at August: the written corpus was cut hard, security testing turned adversarial, and services surrendered unnecessary privileges.
 
 ## In short
 
-August was a subtraction month. The methodology corpus was condensed from dozens of workflow documents, dated decisions, skills, and templates into a single core document plus four templates, and two dedicated pruning lanes kept burning down stale plans and reports behind it. Security work moved from reasoning to probing: three scanner-driven passes with human triage, alongside a deliberate narrowing of which service may authenticate machines or write encryption keys. Mobile gained a real test pyramid and a real-device campaign runner. The admin console stayed comparatively quiet, mostly absorbing dependency upgrades.
+August was defined by simplification and privilege reduction. The methodology corpus was condensed from dozens of workflow documents, skills, and templates into a single core guide plus four templates, supported by ongoing pruning of living plans. Security transitioned from theoretical reasoning to active probing through three scanner-driven passes with human triage, while machine credentials and encryption key materialization were locked down to dedicated services. Mobile established a layered test pyramid and a real-device test harness. Meanwhile, the admin console remained quiet, focusing on dependency maintenance and clearer operator indicators.
 
 ## Documentation & methodology
 
-The dominant theme was deletion, not accumulation. The methodology corpus was reduced to one core document and four templates, on the explicit principle of removing first and then observing what a cold agent actually needs — git history is the archive, so nothing was relocated into an archive folder. Every coupling point that referenced the removed material was rewired in the same move, and the public methodology explorer was republished on top of the reduced corpus. Two curated lanes were created to continue the work: one pruning living planning prompts and plans, another for written documents, both biased toward deleting or folding content when a canonical source already carries the signal. Separately, SOC 2 language was stripped from living code and documentation and collapsed into a plain statement of posture, so the project does not imply attestation it does not have.
+The dominant priority was deliberate deletion. The methodology corpus was reduced to one core document and four templates on the principle of removing context first and observing what an AI agent actually needs—relying on Git history as the sole archive. Every coupling point was rewired simultaneously, and the public explorer was republished on the slimmed-down foundation. Two curated pruning lanes now continuously retire stale planning prompts and non-canonical documents. In the same spirit of precision, aspirational planning language around SOC 2 audit readiness was reframed into a plain, grounded statement of actual operational discipline—avoiding any suggestion of a formal certification roadmap while upholding honest security claims.
 
 ## Code hygiene
 
-Weekly dependency triage continued at a steady rhythm across the Java stack, the admin console, the SDK, and mobile — including a Spring Boot point upgrade, and version pins for shared libraries centralized in the parent build file rather than scattered across modules. A rule banning broad exception catching was activated and then remediated module by module, with tests added to lock the error contracts at those boundaries so the cleanup cannot silently regress. Transaction boundaries were reviewed and reduced to the places where they actually apply. Windows-only script wrappers were purged in favour of a single portable shell contract.
+Weekly dependency triage maintained a steady rhythm across the Java stack, admin console, SDK, and mobile, incorporating a Spring Boot point release and centralizing shared library versions in the parent build configuration. To improve failure transparency, broad exception catching was prohibited and systematically remediated across modules, backed by dedicated tests to permanently lock error handling boundaries. Transaction boundaries were audited and restricted strictly to state-mutating operations, and Windows-specific script wrappers were eliminated in favor of a single, portable Bash contract.
 
 ## Admin UI
 
-A quieter month, mostly maintenance. Key rotation was relabelled as pending introduction so operators are not shown a capability that is not there yet, shard numbering became human-readable, and the estimated completion time for a drained key was corrected. One fix keeps an audit integrity investigation from being reopened after the operator leaves it. The rest was dependency floors, upgrade pinning, and clearing high-severity advisories.
+A quieter maintenance period centered on operational transparency. Key rotation UI feedback was refined to accurately represent its asynchronous background execution (replacing premature completion indicators with active progress states while the operation finalizes), shard counters were switched to human-readable indices, and the completion estimate for key draining was corrected. An audit integrity workflow fix now prevents closed investigation views from inadvertently reopening. The remaining effort addressed baseline dependency updates, version pinning, and resolving high-severity security advisories.
 
 ## Mobile app
 
-Testing was the centre of gravity. The app now has an explicit layered test contract, with coverage on the critical enrollment and verification paths, on the isolation of installation-scoped cryptography, and on the bind, verify, and pending-response workflows — so protocol regressions fail in continuous integration instead of on a device. A campaign runner drives real-device runs. On the product side, experimental messaging was retired and flexible in-app updates were adopted for the store channel; error handling now only interprets structured API errors that Ezkey actually emits. Stack maintenance continued across React Native, camera, and navigation, and the first curated mobile static-analysis pass was applied.
+Reliability and protocol integrity took center stage. The mobile application introduced an explicit layered test contract covering critical enrollment, verification, and installation-scoped key isolation—ensuring cryptographic protocol regressions are caught in continuous integration rather than on physical devices. A dedicated campaign runner now automates validation against real hardware. On the user experience side, experimental messaging was retired, in-app updates were enabled for the app store channel, and client-side error handling was tightened to interpret only structured API errors explicitly emitted by Ezkey. Routine platform upgrades continued across React Native, camera, and navigation libraries, alongside the first curated mobile static analysis pass.
 
 ## Backend & API contracts
 
-The theme was reducing what each service is allowed to do. Machine-to-machine credentials are now accepted by the integration service only; the admin service refuses them outright, first behind a configuration flag and then by removal. In the same spirit, only the admin service may materialize the encryption keyset — the peripheral services lost write access at the database level, which also removes a startup failure mode where a read-only role could kill the boot sequence. Enrollment material belonging to another tenant no longer reveals its own existence. Deeper in the crypto layer, the database key blob moved to a proper keyset envelope, and several re-encryption defects were fixed around shard counting, worker scheduling, and completion estimates. The mobile client can now receive a signed description of the instance it is enrolled with, and a host-neutral API description was packaged so the edge can validate request shapes.
+The core focus was strict privilege separation across architectural boundaries. Machine-to-machine (M2M) API keys are now authenticated exclusively by the Integration API; the Admin API rejects them outright, removing a legacy administrative bypass. Similarly, database-level write permissions for encryption keysets were restricted solely to the Admin service, eliminating a startup deadlock where a read-only role could abort the boot sequence. Tenant data isolation was hardened so cross-tenant queries never leak enrollment existence. In the cryptographic tier, key storage transitioned to a standardized envelope format, and re-encryption mechanics were corrected across shard calculations and worker scheduling. Lastly, mobile devices can now fetch signed instance metadata, and OpenAPI schemas were packaged for automated Cloudflare Schema Validation on the edge.
 
 ## The rest worth mentioning
 
-- **Security testing:** three scanner-driven passes with recorded human decisions — an unauthenticated baseline, a first-party vulnerability scanner wired through containers with regression checks on proxy headers, then an API-description-driven scan that led to hiding the interactive API documentation behind the public proxy. One of those runs surfaced a real server error on a missing request field, now rejected properly.
-- **Tooling:** the exploratory API collections left Postman for a git-native equivalent, with command-line health suites so operators and agents no longer depend on a hybrid sync model.
-- **Edge:** scripts to package, upload, inventory, and delete API schemas on the evaluation environment's edge protection, for both the auth and integration surfaces.
-- **Observability:** an opt-in metrics collector for the local container stack, plus a small routine for extracting and ranking what it captures after known workloads.
-- **Infrastructure:** high-availability stack parity restored, an unused sidecar dropped from the clean-start path, and a demo device health check repaired.
-- **Public site:** an article on the ablation published in both locales.
+- **Security testing:** three scanner-driven passes with logged human decisions—an unauthenticated surface baseline, containerized vulnerability scans verifying reverse proxy headers, and schema-driven fuzzing that led to hiding interactive API docs behind the edge proxy. One finding resolved an unhandled server error on missing request fields.
+- **API testing & edge validation:** exploratory API collections migrated from Postman to Git-native Bruno collections with CLI test suites, paired with automated packaging and deployment of OpenAPI schemas to Cloudflare Schema Validation rules.
+- **Observability & performance:** an opt-in metrics collector for local container environments, accompanied by an analysis routine to profile resource consumption after realistic workloads.
+- **Infrastructure & public site:** restored multi-node high-availability parity, streamlined clean-start scripts, and published a bilingual technical article detailing the methodology ablation.
 
 ## Where this is heading
 
-Last month's closing note guessed that documentation consolidation would claim a larger share of the work. It did, and it went further than consolidation — the answer turned out to be removal rather than reorganization. With the September operable-release target now immediate, the balance should shift back toward the release surface itself: mobile store readiness, the last of the privilege-narrowing work, and the operator paths that need to hold on day one.
+July's digest anticipated that documentation consolidation would require significant attention. August went a step further, demonstrating that radical simplification delivers far higher clarity than mere reorganization. With the September operable-release target immediately ahead, focus now pivots entirely to the runtime surface: finalizing mobile app store readiness, completing the remaining privilege restrictions, and verifying that day-one operational paths perform reliably in production.
 
 <!-- ezkey-org:exclude-start
 Index excerpt — draft only; published into monthly-digest.html / RSS, NOT into the detail page HTML.
@@ -80,8 +78,8 @@ ezkey-org:exclude-end -->
 
 ## Index excerpt (draft only)
 
-A hard cut to the written corpus, three scanner-driven security passes, a narrower blast radius for machine credentials and encryption keys, and a real test pyramid for mobile.
+Radical simplification of the written corpus, three scanner-driven security passes, strict least-privilege boundaries for machine credentials and encryption keys, and a layered test pyramid for mobile.
 
 ## Index excerpt FR (draft only)
 
-Une coupe franche dans le corpus &eacute;crit, trois passes de s&eacute;curit&eacute; outill&eacute;es, un p&eacute;rim&egrave;tre resserr&eacute; pour les identifiants machine et les cl&eacute;s de chiffrement, et une vraie pyramide de tests pour le mobile.
+&Eacute;puration radicale du corpus &eacute;crit, trois passes de s&eacute;curit&eacute; outill&eacute;es, cloisonnement strict des identifiants machine et des cl&eacute;s de chiffrement, et une v&eacute;ritable pyramide de tests pour le mobile.
