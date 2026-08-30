@@ -110,26 +110,48 @@ changelog.
 
 - One executive paragraph that states the dominant theme(s) and the month's rhythm.
 - Aggregate by subject; translate volume into a qualitative trend, not raw counts.
+- **State architectural intent and operational guarantees before internal mechanics (Polarity Inversion).**
+  - Lead with the operator benefit, security boundary, or system guarantee rather than the modified file, script, or config flag.
+  - *Avoid:* "Broad exceptions were banned and script wrappers were deleted."
+  - *Prefer:* "To improve failure transparency and contract resilience, broad exception catching was prohibited across modules, backed by dedicated error-boundary tests."
 - **Summarize the nature and intent of the work, not internal tracking notations.** The activity
   narrative (what changed and why it matters to a reader) wins over internal milestone bookkeeping.
   Translate or drop notations that do not communicate on their own:
-  - Drop tier labels (`Tier A/B`), wave/cluster codenames (`Wave B`), security-finding IDs
-    (`SEC-001`), issue/PR numbers (`#251`), and HTTP status codes (`202 Accepted`).
-  - Keep concrete facts that are self-explanatory (e.g. *"Spring Boot 4.1 / Jackson 3
-    modernization"*, *"a move to the latest React"*).
-  - Restate internal motion as plain meaning, e.g. `Tier A/B list enrichment` →
+  - **Strictly drop internal tokens:** Drop tier labels (`Tier A/B`), wave/cluster codenames (`Wave B`),
+    security-finding IDs (`SEC-001`), methodology codes (`TB-*`, `I-*`, `ADR-*`), issue/PR numbers (`#251`),
+    and HTTP status codes (`202 Accepted`).
+  - **Explicitly name recognized industry technologies & features:** Do not confuse internal tracking
+    jargon with industry-standard tooling. Explicitly naming established frameworks, tools, and platform
+    features (**Cloudflare Schema Validation**, **Bruno**, **Google Tink**, **Spring Boot**, **Checkstyle**,
+    **React Native**) provides credible, concrete landmarks for technical readers.
+  - **Restate internal motion as plain meaning:** e.g. `Tier A/B list enrichment` →
     *"lists and detail screens now show meaningful names and context instead of bare identifiers"*;
     `Wave B integrity cluster` → *"work began on letting operators verify the audit trail has not
     been tampered with"*.
+- **Accurately interpret UI commits and asynchronous workflows:**
+  - Do not mistake an in-progress or pending status label change for a missing or non-existent feature.
+  - When commits adjust button labels or status indicators (e.g. *Pending*, *Draining*, *In progress*), verify
+    whether the UI is reflecting an active asynchronous background process before concluding a capability is
+    unreleased.
+- **Sober, precise framing on compliance & governance:**
+  - Frame compliance/governance refactorings (such as SOC 2 posture) as grounding aspirational planning into
+    sober statements of real operational discipline—never as correcting an untrue past claim or attestation.
+- **Sentence rhythm and pacing:**
+  - Avoid dense run-on sentences packing 4+ disparate ideas. Limit sentences to 1-2 subordinate clauses.
+  - Aim for 2-3 clear sentences per active section: (1) core theme/intent, (2) concrete architectural guarantee/impact,
+    (3) secondary maintenance or stabilization.
 - Sober, factual tone; no inflated or marketing language; honest about scope and quiet months.
 - English canonical, then a faithful French mirror — do not invent content in either locale.
+- **Natural French & international technical vocabulary:**
+  - Avoid awkward calques of English idioms (*blast radius* → *périmètre d'exposition* / *moindre privilège*;
+    *subtraction* → *épuration* / *simplification radicale*).
+  - Use natural, international French phrasing; avoid Franco-French administrative terms not universally
+    used across the Francophonie (e.g. use *démarche de normalisation* or *certification*, not *labellisation*).
+  - Use **`framework`** (not *cadriciel* or *cadre applicatif*).
 - **French HTML accents use named HTML entities** (`&eacute;`, `&egrave;`, `&agrave;`, `&ccedil;`,
   `&ocirc;`, ...), never raw accented characters. This is a deliberate convention adopted after
   repeated UTF-8 handling problems: verbose but infallible across the toolchain. Match the existing
   published French digests.
-- **French technical vocabulary follows common developer usage, not the most formal OQLF term**
-  when the two diverge. Clear, expected wording wins. In particular, use **`framework`** (not
-  *cadriciel* or *cadre applicatif*).
 
 ## Detail page conventions
 

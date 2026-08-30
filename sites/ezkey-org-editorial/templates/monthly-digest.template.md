@@ -18,8 +18,18 @@ How to use this template:
 - Keep the subject palette stable across months so readers can compare month over month,
   but only include the subjects that actually saw activity.
 - Tone: sober, factual, concrete. No inflated or marketing language. Honest about scope.
+- Polarity inversion: lead with architectural intent and operational guarantees rather than
+  internal files or script names.
+- Industry tech vs tracking jargon: drop internal codes (TB-*, SEC-*, #NNN), but explicitly
+  name standard industry tools (Cloudflare Schema Validation, Bruno, Google Tink, Spring Boot).
+- Discerning Git signals: do not mistake asynchronous progress states (Pending, Draining)
+  for missing features.
+- Pacing: 2-3 clear, readable sentences per section. Avoid packing 4+ ideas in one sentence.
 - Target length: a comfortable scan (roughly 1 short executive paragraph + 3-6 short
   subject blocks + an optional closing). Longer than a day note, but still distilled.
+- French mirror: avoid literal calques (e.g. blast radius -> perimetre d'exposition / moindre
+  privilege); use international French (e.g. normalisation/certification, not labellisation);
+  use named HTML entities (&eacute;, &egrave;, ...) in HTML outputs.
 - Light section headers ARE allowed in the detailed digest HTML.
 
 Subject palette (include only the active ones, in this order):
