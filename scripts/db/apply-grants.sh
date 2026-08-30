@@ -4,7 +4,7 @@
 # Usage:
 #   ./scripts/db/apply-grants.sh
 #   # or against Docker:
-#   ./scripts/db/apply-grants.sh --docke
+#   ./scripts/db/apply-grants.sh --docker
 #
 # Env: PGHOST PGPORT PGDATABASE PGUSER PGPASSWORD (superuser; default postgres/ezkey)
 

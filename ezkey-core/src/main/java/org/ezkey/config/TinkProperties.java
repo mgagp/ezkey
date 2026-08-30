@@ -1,5 +1,6 @@
 package org.ezkey.config;
 
+import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -424,6 +425,21 @@ public class TinkProperties {
      */
     private int maxReloadRetries = 1;
 
+    /**
+     * When true, this process may materialize {@code ezkey_keyset_blob} and {@code
+     * ezkey_encryption_key} metadata. Default false (Auth / Integration). Admin API sets true.
+     */
+    private boolean writer = false;
+
+    /**
+     * How long a non-writer waits for {@code ezkey_keyset_blob} on DATABASE/HYBRID boot before
+     * failing required encryption.
+     */
+    private Duration bootstrapWait = Duration.ofSeconds(90);
+
+    /** Sleep between blob polls while waiting. Tests may set a millisecond interval. */
+    private Duration bootstrapPollInterval = Duration.ofSeconds(1);
+
     public StorageMode getStorageMode() {
       return storageMode;
     }
@@ -446,6 +462,30 @@ public class TinkProperties {
 
     public void setMaxReloadRetries(int maxReloadRetries) {
       this.maxReloadRetries = maxReloadRetries;
+    }
+
+    public boolean isWriter() {
+      return writer;
+    }
+
+    public void setWriter(boolean writer) {
+      this.writer = writer;
+    }
+
+    public Duration getBootstrapWait() {
+      return bootstrapWait == null ? Duration.ofSeconds(90) : bootstrapWait;
+    }
+
+    public void setBootstrapWait(Duration bootstrapWait) {
+      this.bootstrapWait = bootstrapWait;
+    }
+
+    public Duration getBootstrapPollInterval() {
+      return bootstrapPollInterval == null ? Duration.ofSeconds(1) : bootstrapPollInterval;
+    }
+
+    public void setBootstrapPollInterval(Duration bootstrapPollInterval) {
+      this.bootstrapPollInterval = bootstrapPollInterval;
     }
 
     /** Enum for keyset storage modes. */

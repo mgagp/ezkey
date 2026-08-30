@@ -79,6 +79,9 @@ class KeyRotationServiceTransactionBoundaryTest {
 
   @BeforeEach
   void stubSyncPath() {
+    TinkProperties.Keyset keyset = new TinkProperties.Keyset();
+    keyset.setWriter(true);
+    when(properties.getKeyset()).thenReturn(keyset);
     when(properties.isEnabled()).thenReturn(true);
     when(properties.getAlgorithm()).thenReturn("AES256_GCM");
     when(keyManagementOperations.isInitialized()).thenReturn(true);

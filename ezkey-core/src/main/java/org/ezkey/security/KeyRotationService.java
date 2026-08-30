@@ -122,6 +122,10 @@ public class KeyRotationService {
    * <p><b>Startup order:</b> {@code @Order} is {@link ApplicationReadyStartupOrder#KEYSET_SYNC} so
    * this runs before Admin API MFA bootstrap. Enrollment insert writes encryption-key foreign keys;
    * those rows must exist first.
+   *
+   * <p><b>Writer gate:</b> only the Admin API process ({@code ezkey.encryption.keyset.writer=true})
+   * materializes {@code ezkey_encryption_key} rows. Peripherals return immediately so a SELECT-only
+   * role cannot mark this transactional listener rollback-only (ADR-0012).
    */
   @EventListener(ApplicationReadyEvent.class)
   @Order(ApplicationReadyStartupOrder.KEYSET_SYNC)
@@ -130,6 +134,11 @@ public class KeyRotationService {
     // Check if Tink encryption is enabled (not rotation, but encryption itself)
     if (!properties.isEnabled()) {
       logger.debug("Tink encryption is disabled, skipping keyset synchronization");
+      return;
+    }
+
+    if (!properties.getKeyset().isWriter()) {
+      logger.debug("Skipping encryption-key metadata sync; this process is not the keyset writer");
       return;
     }
 

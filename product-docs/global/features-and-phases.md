@@ -90,7 +90,7 @@ Backlog **progression markers** on `I-*` / `V-*` metadata use the same milestone
 - **Intent.** Allow safe encryption key rotation and background re-encryption without service disruption.
 - **Status.** `in-progress`.
 - **Primary components.** [admin-api](../components/admin-api/README.md).
-- **Related decisions.** [ADR-0008](architecture-decisions.md#adr-0008-tink-keyset-sync-concurrent-read-path) — concurrent read path for Tink keyset sync (SEC-009); [ADR-0011](architecture-decisions.md#adr-0011-tink-native-database-keyset-envelope) — Tink-native database keyset envelope.
+- **Related decisions.** [ADR-0008](architecture-decisions.md#adr-0008-tink-keyset-sync-concurrent-read-path) — concurrent read path for Tink keyset sync (SEC-009); [ADR-0011](architecture-decisions.md#adr-0011-tink-native-database-keyset-envelope) — Tink-native database keyset envelope; [ADR-0012](architecture-decisions.md#adr-0012-admin-owned-keyset-materialization) — Admin-owned keyset materialization.
 
 #### `F-audit-chain`
 

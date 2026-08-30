@@ -67,7 +67,7 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-07-11-mobile-doctor-curated-hygiene` | Mobile doctor-curated continuous hygiene (react-doctor + Semgrep + Detekt) | `ready` | `P3` | `mobile`, `android`, `docs`, `tooling` | `2026-08-25` |
 | `I-2026-07-12-security-pentest-curated-hygiene` | Security pentest curated hygiene (Schemathesis + ZAP + first-party Nuclei) | `done` | `P2` | `security`, `tooling`, `infra`, `admin-api`, `auth-api`, `integration-api`, `docs` | `2026-08-17` |
 | `I-2026-07-17-alert-resolved-retention-purge` | Alert resolved-row retention and purge (no DELETE today by design) | `captured` | `P3` | `core`, `admin-api`, `admin-ui`, `infra`, `docs`, `audit` | `2026-07-17` |
-| `I-2026-07-17-keyset-blob-admin-first-bootstrap` | Keyset blob: Admin-first bootstrap before peripheral SELECT-only | `captured` | `P3` | `core`, `core-security`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto` | `2026-07-17` |
+| `I-2026-07-17-keyset-blob-admin-first-bootstrap` | Keyset blob: Admin-first bootstrap before peripheral SELECT-only | `ready` | `P1` | `core`, `core-security`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto` | `2026-08-28` |
 | `I-2026-07-17-desktop-authenticator-reference-app` | Desktop authenticator reference app (mobile-like enrollment and approval) | `incubating` | `P3` | `desktop-authenticator`, `demo-device`, `auth-api`, `docs`, `mobile` | `2026-07-18` |
 | `I-2026-07-14-admin-ui-native-html-dialog` | Admin UI native HTML `<dialog>` migration | `triaged` | `P2` | `admin-ui` | `2026-07-14` |
 | `I-2026-07-18-audit-log-fail-open-exception-swallow` | Audit-log write fail-open (exception swallow) and delivery honesty | `captured` | `P2` | `core`, `audit`, `admin-api`, `auth-api`, `integration-api`, `docs`, `security` | `2026-07-18` |
@@ -86,6 +86,7 @@ and four backlog ideas below — this track does not claim September operability
 
 | ID | Title | Status | Related idea |
 |----|-------|--------|--------------|
+| `TB-2026-08-28-admin-first-keyset-bootstrap` | Admin-first keyset bootstrap | `implemented` | `I-2026-07-17-keyset-blob-admin-first-bootstrap` |
 | `TB-2026-08-14-mobile-exit-experimental-messaging` | Exit experimental in-app messaging | `under-review` | `I-2026-08-02-mobile-exit-experimental-messaging` |
 | `TB-2026-08-14-mobile-play-flexible-in-app-updates` | Soft Play in-app updates | `under-review` | `I-2026-08-02-mobile-client-update-mechanism` |
 | `TB-2026-07-12` | Security pentest curated MVP | `done` | `I-2026-07-12-security-pentest-curated-hygiene` |

@@ -4,7 +4,7 @@
 #
 # Usage:
 #   ./scripts/db/verify-grants.sh
-#   ./scripts/db/verify-grants.sh --docke
+#   ./scripts/db/verify-grants.sh --docker
 
 set -euo pipefail
 
@@ -96,6 +96,108 @@ expect_fail "integration cannot SELECT ezkey_admin_tokens" \
 
 expect_ok "admin can SELECT ezkey_shedlock" \
   run_psql ezkey_admin "${ADMIN_PASS}" -c "SELECT 1 FROM ezkey_shedlock LIMIT 0;"
+
+expect_ok "auth can SELECT ezkey_encryption_key" \
+  run_psql ezkey_auth "${AUTH_PASS}" -c "SELECT 1 FROM ezkey_encryption_key LIMIT 0;"
+
+expect_ok "auth can SELECT ezkey_keyset_blob" \
+  run_psql ezkey_auth "${AUTH_PASS}" -c "SELECT 1 FROM ezkey_keyset_blob LIMIT 0;"
+
+expect_ok "integration can SELECT ezkey_encryption_key" \
+  run_psql ezkey_integration "${INTEGRATION_PASS}" -c "SELECT 1 FROM ezkey_encryption_key LIMIT 0;"
+
+expect_ok "integration can SELECT ezkey_keyset_blob" \
+  run_psql ezkey_integration "${INTEGRATION_PASS}" -c "SELECT 1 FROM ezkey_keyset_blob LIMIT 0;"
+
+auth_enc_ins="$(run_psql ezkey_auth "${AUTH_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_auth', 'ezkey_encryption_key', 'INSERT');" \
+  | tr -d '[:space:]')"
+if [[ "${auth_enc_ins}" == "t" ]]; then
+  echo "FAIL: ezkey_auth must not INSERT ezkey_encryption_key" >&2
+  exit 1
+fi
+echo "OK (denied): auth cannot INSERT ezkey_encryption_key"
+
+auth_enc_upd="$(run_psql ezkey_auth "${AUTH_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_auth', 'ezkey_encryption_key', 'UPDATE');" \
+  | tr -d '[:space:]')"
+if [[ "${auth_enc_upd}" == "t" ]]; then
+  echo "FAIL: ezkey_auth must not UPDATE ezkey_encryption_key" >&2
+  exit 1
+fi
+echo "OK (denied): auth cannot UPDATE ezkey_encryption_key"
+
+int_enc_ins="$(run_psql ezkey_integration "${INTEGRATION_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_integration', 'ezkey_encryption_key', 'INSERT');" \
+  | tr -d '[:space:]')"
+if [[ "${int_enc_ins}" == "t" ]]; then
+  echo "FAIL: ezkey_integration must not INSERT ezkey_encryption_key" >&2
+  exit 1
+fi
+echo "OK (denied): integration cannot INSERT ezkey_encryption_key"
+
+int_enc_upd="$(run_psql ezkey_integration "${INTEGRATION_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_integration', 'ezkey_encryption_key', 'UPDATE');" \
+  | tr -d '[:space:]')"
+if [[ "${int_enc_upd}" == "t" ]]; then
+  echo "FAIL: ezkey_integration must not UPDATE ezkey_encryption_key" >&2
+  exit 1
+fi
+echo "OK (denied): integration cannot UPDATE ezkey_encryption_key"
+
+auth_blob_ins="$(run_psql ezkey_auth "${AUTH_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_auth', 'ezkey_keyset_blob', 'INSERT');" \
+  | tr -d '[:space:]')"
+if [[ "${auth_blob_ins}" == "t" ]]; then
+  echo "FAIL: ezkey_auth must not INSERT ezkey_keyset_blob" >&2
+  exit 1
+fi
+echo "OK (denied): auth cannot INSERT ezkey_keyset_blob"
+
+auth_blob_upd="$(run_psql ezkey_auth "${AUTH_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_auth', 'ezkey_keyset_blob', 'UPDATE');" \
+  | tr -d '[:space:]')"
+if [[ "${auth_blob_upd}" == "t" ]]; then
+  echo "FAIL: ezkey_auth must not UPDATE ezkey_keyset_blob" >&2
+  exit 1
+fi
+echo "OK (denied): auth cannot UPDATE ezkey_keyset_blob"
+
+int_blob_ins="$(run_psql ezkey_integration "${INTEGRATION_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_integration', 'ezkey_keyset_blob', 'INSERT');" \
+  | tr -d '[:space:]')"
+if [[ "${int_blob_ins}" == "t" ]]; then
+  echo "FAIL: ezkey_integration must not INSERT ezkey_keyset_blob" >&2
+  exit 1
+fi
+echo "OK (denied): integration cannot INSERT ezkey_keyset_blob"
+
+int_blob_upd="$(run_psql ezkey_integration "${INTEGRATION_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_integration', 'ezkey_keyset_blob', 'UPDATE');" \
+  | tr -d '[:space:]')"
+if [[ "${int_blob_upd}" == "t" ]]; then
+  echo "FAIL: ezkey_integration must not UPDATE ezkey_keyset_blob" >&2
+  exit 1
+fi
+echo "OK (denied): integration cannot UPDATE ezkey_keyset_blob"
+
+admin_enc_ins="$(run_psql ezkey_admin "${ADMIN_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_admin', 'ezkey_encryption_key', 'INSERT');" \
+  | tr -d '[:space:]')"
+if [[ "${admin_enc_ins}" != "t" ]]; then
+  echo "FAIL: ezkey_admin should INSERT ezkey_encryption_key (got '${admin_enc_ins}')" >&2
+  exit 1
+fi
+echo "OK: admin can INSERT ezkey_encryption_key"
+
+admin_blob_ins="$(run_psql ezkey_admin "${ADMIN_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_admin', 'ezkey_keyset_blob', 'INSERT');" \
+  | tr -d '[:space:]')"
+if [[ "${admin_blob_ins}" != "t" ]]; then
+  echo "FAIL: ezkey_admin should INSERT ezkey_keyset_blob (got '${admin_blob_ins}')" >&2
+  exit 1
+fi
+echo "OK: admin can INSERT ezkey_keyset_blob"
 
 admin_exec="$(run_psql ezkey_admin "${ADMIN_PASS}" -tAc \
   "SELECT has_function_privilege('ezkey_admin', 'create_monthly_partition(text,text,timestamptz,timestamptz)', 'EXECUTE');" \

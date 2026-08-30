@@ -17,6 +17,8 @@ instance metadata. Applications that depend on ezkey-core declare these properti
 | `ezkey.encryption.keyset-file` | — | *(null)* | requis [docker] lors du mode FILE/HYBRID |
 | `ezkey.encryption.algorithm` | — | `AES256_GCM` | optionnel |
 | `ezkey.encryption.keyset.storage-mode` | — | `DATABASE` | optionnel |
+| `ezkey.encryption.keyset.writer` | `EZKEY_ENCRYPTION_KEYSET_WRITER` | `false` | **true [admin]** |
+| `ezkey.encryption.keyset.bootstrap-wait` | `EZKEY_ENCRYPTION_KEYSET_BOOTSTRAP_WAIT` | `PT90S` | optionnel |
 | `ezkey.audit.integrity.enabled` | — | `true` | optionnel |
 | `ezkey.audit.integrity.required` | `EZKEY_AUDIT_INTEGRITY_REQUIRED` | `false` | optionnel [prod] / **true [docker]** |
 | `ezkey.audit.integrity.hmac-key-file` | — | *(null)* | requis [docker] |
@@ -80,6 +82,8 @@ version check so encrypt/decrypt does not serialize on DB sync. See
 [ADR-0008](../product-docs/global/architecture-decisions.md#adr-0008-tink-keyset-sync-concurrent-read-path)
 (SEC-009). Envelope shape in the DB row:
 [ADR-0011](../product-docs/global/architecture-decisions.md#adr-0011-tink-native-database-keyset-envelope).
+Admin-only materialization of the blob and of `ezkey_encryption_key` metadata:
+[ADR-0012](../product-docs/global/architecture-decisions.md#adr-0012-admin-owned-keyset-materialization).
 
 **HA keyset sync (operator summary):** Use `storage-mode=DATABASE` so `ezkey_keyset_blob` is the
 shared source of truth across Admin/Auth/Integration instances. On introduce, a new key stays
@@ -111,6 +115,9 @@ treated as non-secret operational metadata.
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.encryption.keyset.storage-mode` | `StorageMode` | `DATABASE` | optionnel | Enum: `FILE` (file only), `DATABASE` (DB as source of truth), `HYBRID` (both, DB preferred). Use `DATABASE` in multi-instance deployments. |
+| `ezkey.encryption.keyset.writer` | `boolean` | `false` | **requis [admin]** | When `true`, this process may upsert `ezkey_keyset_blob` and `ezkey_encryption_key` metadata. Admin API sets `true`. Auth/Integration keep the default `false` (ADR-0012). Do not reuse `rotation.enabled`. |
+| `ezkey.encryption.keyset.bootstrap-wait` | `Duration` | `PT90S` | optionnel | How long a non-writer waits for `ezkey_keyset_blob` on DATABASE/HYBRID boot before fail-closed (`required=true`). |
+| `ezkey.encryption.keyset.bootstrap-poll-interval` | `Duration` | `PT1S` | optionnel | Sleep between blob polls during `bootstrap-wait`. Tests may use a millisecond interval. |
 | `ezkey.encryption.keyset.degraded-mode-enabled` | `boolean` | `false` | optionnel | When true, a decryption failure triggers a DB reload and a read-only degraded mode instead of a hard failure. |
 | `ezkey.encryption.keyset.max-reload-retries` | `int` | `1` | optionnel | Maximum keyset reload attempts on decryption failure. |
 
