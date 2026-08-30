@@ -354,6 +354,7 @@ class TinkKeyManagerConcurrencyTest {
     properties.setMasterKeyFile(masterKeyPath.toString());
     properties.setKeysetFile(keysetPath.toString());
     properties.getKeyset().setStorageMode(storageMode);
+    properties.getKeyset().setWriter(true);
 
     TinkKeyManager manager = new TinkKeyManager(properties, fixedProvider(repository));
     manager.initialize();

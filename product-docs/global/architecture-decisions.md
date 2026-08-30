@@ -28,6 +28,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0009](#adr-0009-detective-integrity-windows-align-to-checkpoint-grid) | Detective integrity windows align to checkpoint grid | accepted | 2026-07-10 |
 | [ADR-0010](#adr-0010-rate-limiting-scoped-by-actor-identity-not-by-ip) | Rate limiting scoped by actor identity, not by IP, across device and M2M surfaces | accepted | 2026-05-08 |
 | [ADR-0011](#adr-0011-tink-native-database-keyset-envelope) | Tink-native database keyset envelope | accepted | 2026-08-02 |
+| [ADR-0012](#adr-0012-admin-owned-keyset-materialization) | Admin-owned keyset materialization | accepted | 2026-08-28 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -701,3 +702,77 @@ dual-read migration because there are no production installations to preserve at
 
 - Tink keyset concurrent read / reload path: [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path).
 - Proof-token storage tiers on related encrypted data surfaces: [ADR-0007](#adr-0007-proof-token-storage-hash-only-where-protocol-allows).
+- Admin-owned keyset materialization: [ADR-0012](#adr-0012-admin-owned-keyset-materialization).
+
+## ADR-0012 — Admin-owned keyset materialization
+
+### Metadata
+
+- **ID:** ADR-0012.
+- **Date:** 2026-08-28.
+- **Status:** accepted.
+- **Scope:** global (core encryption / `TinkKeyManager` / `KeyRotationService` / DB roles).
+- **Owners:** Platform architecture / security.
+
+### Context
+
+`TB-2026-07-16` split runtime PostgreSQL roles. `ezkey_encryption_key` is Admin-write /
+peripheral-SELECT. Shared `KeyRotationService.initializeKeysetSync()` still attempted
+`STARTUP_SYNC` inserts on Auth and Integration. `TinkKeyManager` could upsert `ezkey_keyset_blob`
+from any boot API. After TX-002 moved empty-table sync onto a transactional
+`ApplicationReadyEvent` listener, a denied INSERT left the transaction rollback-only and Spring
+failed Auth startup with `UnexpectedRollbackException`. The July 17 observation was the same
+denied INSERT with Auth still up. The crash is therefore ownership plus a transactional boundary,
+not a missing grant.
+
+### Decision
+
+Admin API is the sole writer of `ezkey_keyset_blob` and `ezkey_encryption_key` metadata. Encode
+that with `ezkey.encryption.keyset.writer=true` on Admin only (default `false`). Do not reuse
+`rotation.enabled`. In DATABASE/HYBRID mode, non-writer processes poll for the blob up to
+`bootstrap-wait` (default 90s) and never generate or upsert a keyset. If the blob is still missing
+and `ezkey.encryption.required=true`, fail-closed. After the Java gate, peripheral roles are
+SELECT-only on `ezkey_keyset_blob`. Compose `depends_on: admin-api: service_healthy` is
+acceleration for clean-start, not the HA contract.
+
+### Alternatives Considered
+
+- **Reuse `rotation.enabled` as the writer flag.** Rejected. Admin must still seed metadata when
+  scheduled rotation is off.
+- **Infer writer from the JDBC role name.** Rejected. Fragile and hard to unit-test.
+- **ShedLock or audit-chain heartbeat as readiness.** Rejected. Overkill or the wrong table and
+  grace window.
+- **Compose-only start order.** Rejected as the sole contract. Manual or HA restart of Auth must
+  wait in-process.
+
+### Consequences
+
+- **Positive.** Grants match the trust boundary; Auth-first empty-blob boot no longer attempts
+  INSERT; TX-002 fail-open catch cannot kill a peripheral; operators get a loud not-ready signal.
+- **Negative.** Auth/Integration delay or fail if Admin never materializes the blob (intentional
+  fail-closed when encryption is required).
+- **Neutral.** ADR-0008 reload and ADR-0011 envelope shape are unchanged. FILE mode still loads an
+  existing file; non-writers must not generate a missing file.
+
+### Impact
+
+- **Affected components:** `ezkey-core` (`TinkProperties`, `KeyRotationService`),
+  `ezkey-core-security` (`TinkKeyManager`), Admin / Auth / Integration APIs, `scripts/db` grants.
+- **Affected features:** [`F-encryption-key-rotation`](features-and-phases.md#f-encryption-key-rotation).
+- **Backlog:** [`I-2026-07-17-keyset-blob-admin-first-bootstrap`](backlog/ideas/I-2026-07-17-keyset-blob-admin-first-bootstrap.md),
+  [`TB-2026-08-28-admin-first-keyset-bootstrap`](backlog/TB-2026-08-28-admin-first-keyset-bootstrap.md).
+- **Configuration pointer:** [`../../ezkey-core/CONFIGURATION.md`](../../ezkey-core/CONFIGURATION.md)
+  (Encryption at Rest / Keyset Storage).
+
+### Validation
+
+- Unit locks: non-writer never saves encryption-key rows; Tink non-writer never upserts or
+  generates; wait-then-load with a stub that appears on the second poll.
+- Forced Docker: [`scripts/repro-auth-keyset-readiness.sh`](../../scripts/repro-auth-keyset-readiness.sh)
+  Auth-first negative and positive (not a lucky full-stack clean-start).
+- `scripts/db/verify-grants.sh` asserts SELECT-only blob and encryption-key for Auth/Integration.
+
+### Related Decisions
+
+- Tink keyset concurrent read / reload path: [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path).
+- Tink-native database keyset envelope: [ADR-0011](#adr-0011-tink-native-database-keyset-envelope).

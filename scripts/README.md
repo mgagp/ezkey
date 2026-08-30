@@ -133,6 +133,14 @@ The migration tool is aligned with the PostgreSQL role split documented in
   ./scripts/db/verify-grants.sh  # optional privilege smoke check
   ```
 
+Forced Auth-first keyset readiness (ADR-0012 / TB-2026-08-28), not a lucky clean-start:
+
+```bash
+./scripts/repro-auth-keyset-readiness.sh
+./scripts/repro-auth-keyset-readiness.sh negative
+./scripts/repro-auth-keyset-readiness.sh positive
+```
+
 `ezkey-flyway.sh` and `ezkey-flyway-jar.sh` run Flyway only. They intentionally do not create
 LOGIN roles or apply runtime grants. This keeps schema evolution separate from credential
 provisioning and authorization policy.

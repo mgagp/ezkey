@@ -469,13 +469,16 @@ This script:
 2. Generates a cryptographically secure master key
 3. Sets proper file permissions (600)
 
-**Note**: The keyset file will be automatically generated on first startup by `TinkKeyManager` if it doesn't exist.
+**Note**: In Docker `DATABASE` mode, only Admin API (`ezkey.encryption.keyset.writer=true`)
+materializes `ezkey_keyset_blob` and encryption-key metadata (ADR-0012). Auth/Integration wait
+for that blob and do not generate a keyset.
 
 #### Encryption Behavior
 
-- **First Boot** (master key exists, keyset missing):
-  - `TinkKeyManager` automatically generates a new keyset
-  - Keyset is encrypted with the master key and saved to the volume
+- **First Boot** (master key exists, keyset / blob missing):
+  - Admin API generates the Tink keyset and upserts `ezkey_keyset_blob`
+  - Keyset is encrypted with the master key and saved to the volume / database
+  - Auth/Integration poll the blob (or fail-closed if `required=true` and Admin never arrives)
 
 - **Subsequent Starts** (both files exist):
   - `TinkKeyManager` loads the existing keyset

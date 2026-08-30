@@ -17,6 +17,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.List;
@@ -170,84 +172,52 @@ public class TinkKeyManager implements KeyManagementOperations {
       StorageMode storageMode = properties.getKeyset().getStorageMode();
       logger.info("Keyset storage mode: {}", storageMode);
 
+      boolean writer = properties.getKeyset().isWriter();
+      boolean databaseBacked =
+          (storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
+              && keysetBlobRepository != null;
+
       boolean loadedFromDatabase = false;
-      if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
-          && keysetBlobRepository != null) {
+      if (databaseBacked) {
         try {
           loadedFromDatabase = loadKeysetFromDatabase();
           if (loadedFromDatabase) {
             logger.info("✅ Keyset loaded from database");
+          } else if (!writer) {
+            loadedFromDatabase = awaitDatabaseKeyset();
           }
         } catch (DataAccessException | IllegalStateException e) {
-          logger.warn(
-              "Failed to load keyset from database, falling back to file: {}", e.getMessage());
-          logger.debug("Database keyset load error", e);
+          if (writer) {
+            logger.warn(
+                "Failed to load keyset from database, falling back to file: {}", e.getMessage());
+            logger.debug("Database keyset load error", e);
+          } else {
+            logger.warn(
+                "Failed to load keyset from database while waiting for Admin materialization: {}",
+                e.getMessage());
+            loadedFromDatabase = awaitDatabaseKeyset();
+          }
         }
       }
 
       if (!loadedFromDatabase) {
-        if (keysetPath == null || keysetPath.isBlank()) {
-          logger.warn("ezkey.encryption.keyset-file is not configured. Encryption disabled.");
-          return;
-        }
-
-        String normalizedKeysetPath = normalizePath(keysetPath);
-        File keysetFile = new File(normalizedKeysetPath);
-
-        logger.debug(
-            "Keyset file check - Original path: {}, Normalized path: {}, Exists: {}",
-            keysetPath,
-            normalizedKeysetPath,
-            keysetFile.exists());
-
-        if (keysetFile.exists()) {
-          logger.info("Loading existing keyset from: {}", normalizedKeysetPath);
-          this.keysetHandle = loadEncryptedKeyset(normalizedKeysetPath);
-          this.keysetFilePath = normalizedKeysetPath;
-          this.keysetFileLastModified = keysetFile.lastModified();
-          logger.info("✅ Keyset loaded successfully from: {}", normalizedKeysetPath);
-
-          if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
-              && keysetBlobRepository != null) {
-            try {
-              saveKeysetToDatabase("STARTUP_FILE_SYNC");
-              logger.info("✅ Keyset synchronized to database from file");
-            } catch (GeneralSecurityException
-                | IOException
-                | DataAccessException
-                | IllegalStateException e) {
-              logger.warn("Failed to sync keyset to database: {}", e.getMessage());
-            }
+        if (!writer) {
+          if (storageMode == StorageMode.FILE) {
+            loadedFromDatabase = loadExistingKeysetFileOnly(keysetPath);
+          } else {
+            logger.warn(
+                "Timed out waiting for keyset blob; this process is not the keyset writer and"
+                    + " will not generate or upsert a keyset");
           }
         } else {
-          logger.warn(
-              "Keyset file not found at: {}. Generating new keyset. "
-                  + "NOTE: If this is not the first startup, check that the keyset file exists "
-                  + "and is accessible. All APIs must use the same keyset file.",
-              normalizedKeysetPath);
-          this.keysetHandle = generateAndSaveKeyset(normalizedKeysetPath);
-          this.keysetFilePath = normalizedKeysetPath;
-          this.keysetFileLastModified = keysetFile.lastModified();
-          logger.info("🆕 New keyset created and saved to: {}", normalizedKeysetPath);
-
-          if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
-              && keysetBlobRepository != null) {
-            try {
-              saveKeysetToDatabase("STARTUP_NEW_KEYSET");
-              logger.info("✅ New keyset saved to database");
-            } catch (GeneralSecurityException
-                | IOException
-                | DataAccessException
-                | IllegalStateException e) {
-              logger.warn("Failed to save new keyset to database: {}", e.getMessage());
-            }
-          }
+          materializeWriterKeyset(keysetPath, storageMode);
         }
       }
 
-      verifyKeyset();
-
-      logger.info("Tink encryption ready for operation");
+      if (isInitialized()) {
+        verifyKeyset();
+        logger.info("Tink encryption ready for operation");
+      }
     } catch (FileNotFoundException e) {
       logger.warn(
           "Master key file not found. Encryption will be disabled. "
@@ -265,6 +235,143 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
 
     enforceRequiredEncryption();
+  }
+
+  /**
+   * Polls {@code ezkey_keyset_blob} until Admin materializes it or {@code bootstrap-wait} elapses.
+   *
+   * @return {@code true} if the keyset was loaded
+   */
+  private boolean awaitDatabaseKeyset() {
+    Duration wait = properties.getKeyset().getBootstrapWait();
+    Duration interval = properties.getKeyset().getBootstrapPollInterval();
+    if (wait.isNegative() || wait.isZero()) {
+      logger.warn("Timed out waiting for keyset blob (bootstrap-wait is zero)");
+      return false;
+    }
+    Instant deadline = Instant.now().plus(wait);
+    logger.info(
+        "Waiting up to {} for Admin to materialize ezkey_keyset_blob (poll {})", wait, interval);
+    while (Instant.now().isBefore(deadline)) {
+      long sleepMs = Math.max(0L, interval.toMillis());
+      try {
+        Thread.sleep(sleepMs);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Interrupted while waiting for keyset blob");
+        return false;
+      }
+      try {
+        if (loadKeysetFromDatabase()) {
+          logger.info("✅ Keyset blob became available during bootstrap wait");
+          return true;
+        }
+      } catch (DataAccessException | IllegalStateException e) {
+        logger.debug("Keyset blob still unavailable: {}", e.getMessage());
+      }
+    }
+    logger.warn("Timed out waiting for keyset blob after {}", wait);
+    return false;
+  }
+
+  /**
+   * FILE-mode peripheral: load an existing keyset file, never generate one.
+   *
+   * @param keysetPath configured keyset file path
+   * @return {@code true} if a file was loaded
+   */
+  private boolean loadExistingKeysetFileOnly(String keysetPath) {
+    if (keysetPath == null || keysetPath.isBlank()) {
+      logger.warn("ezkey.encryption.keyset-file is not configured. Encryption disabled.");
+      return false;
+    }
+    String normalizedKeysetPath = normalizePath(keysetPath);
+    File keysetFile = new File(normalizedKeysetPath);
+    if (!keysetFile.exists()) {
+      logger.warn(
+          "Keyset file not found at {}. This process is not the keyset writer and will not"
+              + " generate a new keyset.",
+          normalizedKeysetPath);
+      return false;
+    }
+    try {
+      this.keysetHandle = loadEncryptedKeyset(normalizedKeysetPath);
+      this.keysetFilePath = normalizedKeysetPath;
+      this.keysetFileLastModified = keysetFile.lastModified();
+      logger.info("✅ Keyset loaded from file (non-writer FILE mode): {}", normalizedKeysetPath);
+      return true;
+    } catch (GeneralSecurityException | IOException e) {
+      logger.error("Failed to load existing keyset file: {}", e.getMessage());
+      return false;
+    }
+  }
+
+  /**
+   * Admin writer path: load or generate the file keyset and upsert the database blob.
+   *
+   * @param keysetPath configured keyset file path
+   * @param storageMode current storage mode
+   */
+  private void materializeWriterKeyset(String keysetPath, StorageMode storageMode)
+      throws GeneralSecurityException, IOException {
+    if (keysetPath == null || keysetPath.isBlank()) {
+      logger.warn("ezkey.encryption.keyset-file is not configured. Encryption disabled.");
+      return;
+    }
+
+    String normalizedKeysetPath = normalizePath(keysetPath);
+    File keysetFile = new File(normalizedKeysetPath);
+
+    logger.debug(
+        "Keyset file check - Original path: {}, Normalized path: {}, Exists: {}",
+        keysetPath,
+        normalizedKeysetPath,
+        keysetFile.exists());
+
+    if (keysetFile.exists()) {
+      logger.info("Loading existing keyset from: {}", normalizedKeysetPath);
+      this.keysetHandle = loadEncryptedKeyset(normalizedKeysetPath);
+      this.keysetFilePath = normalizedKeysetPath;
+      this.keysetFileLastModified = keysetFile.lastModified();
+      logger.info("✅ Keyset loaded successfully from: {}", normalizedKeysetPath);
+
+      if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
+          && keysetBlobRepository != null) {
+        try {
+          saveKeysetToDatabase("STARTUP_FILE_SYNC");
+          logger.info("✅ Keyset synchronized to database from file");
+        } catch (GeneralSecurityException
+            | IOException
+            | DataAccessException
+            | IllegalStateException e) {
+          logger.warn("Failed to sync keyset to database: {}", e.getMessage());
+        }
+      }
+      return;
+    }
+
+    logger.warn(
+        "Keyset file not found at: {}. Generating new keyset. "
+            + "NOTE: If this is not the first startup, check that the keyset file exists "
+            + "and is accessible. All APIs must use the same keyset file.",
+        normalizedKeysetPath);
+    this.keysetHandle = generateAndSaveKeyset(normalizedKeysetPath);
+    this.keysetFilePath = normalizedKeysetPath;
+    this.keysetFileLastModified = keysetFile.lastModified();
+    logger.info("🆕 New keyset created and saved to: {}", normalizedKeysetPath);
+
+    if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
+        && keysetBlobRepository != null) {
+      try {
+        saveKeysetToDatabase("STARTUP_NEW_KEYSET");
+        logger.info("✅ New keyset saved to database");
+      } catch (GeneralSecurityException
+          | IOException
+          | DataAccessException
+          | IllegalStateException e) {
+        logger.warn("Failed to save new keyset to database: {}", e.getMessage());
+      }
+    }
   }
 
   /** Shuts down the async keyset version check executor on application stop. */
@@ -1182,6 +1289,12 @@ public class TinkKeyManager implements KeyManagementOperations {
   }
 
   public void saveKeysetToDatabase(String updatedBy) throws GeneralSecurityException, IOException {
+    if (!properties.getKeyset().isWriter()) {
+      logger.warn(
+          "Refusing keyset database save; this process is not the keyset writer (updatedBy={})",
+          updatedBy);
+      return;
+    }
     if (keysetBlobRepository == null) {
       logger.debug("KeysetBlobRepository not available, cannot save to database");
       return;

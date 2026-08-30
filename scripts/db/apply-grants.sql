@@ -74,6 +74,7 @@ GRANT SELECT ON TABLE
   ezkey_admin,
   ezkey_integration,
   ezkey_encryption_key,
+  ezkey_keyset_blob,
   ezkey_audit_chain_checkpoint
 TO ezkey_auth;
 
@@ -87,7 +88,6 @@ TO ezkey_auth;
 GRANT SELECT, INSERT ON TABLE ezkey_audit_log TO ezkey_auth;
 
 GRANT SELECT, INSERT, UPDATE ON TABLE
-  ezkey_keyset_blob,
   ezkey_audit_chain_incident,
   ezkey_alert
 TO ezkey_auth;
@@ -101,6 +101,7 @@ GRANT SELECT ON TABLE
   ezkey_integration,
   ezkey_enrollment,
   ezkey_encryption_key,
+  ezkey_keyset_blob,
   ezkey_audit_chain_checkpoint
 TO ezkey_integration;
 
@@ -112,7 +113,6 @@ GRANT SELECT, UPDATE ON TABLE ezkey_api_key TO ezkey_integration;
 GRANT SELECT, INSERT ON TABLE ezkey_audit_log TO ezkey_integration;
 
 GRANT SELECT, INSERT, UPDATE ON TABLE
-  ezkey_keyset_blob,
   ezkey_audit_chain_incident,
   ezkey_alert
 TO ezkey_integration;

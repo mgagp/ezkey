@@ -197,7 +197,7 @@ spring.jpa.open-in-view=false
 
 - **Self-invocation bypasses proxy:** Calling `this::method` or `this.helper()` does not go through the Spring proxy. `@Transactional` on the called method is ignored. Place `@Transactional` on the entry point (e.g. event listener, controller-called service) so the whole flow runs in one transaction.
 - **Avoid nested @Transactional:** Prefer a single transactional boundary at the top-level use case. Inner services should not declare `@Transactional` unless they need `REQUIRES_NEW`.
-- **ApplicationReadyEvent order:** keyset empty-table sync (`ApplicationReadyStartupOrder.KEYSET_SYNC`) must run before Admin API MFA bootstrap. Enrollment rows write `*_encryption_key_id` FKs.
+- **ApplicationReadyEvent order:** keyset empty-table sync (`ApplicationReadyStartupOrder.KEYSET_SYNC`) must run before Admin API MFA bootstrap. Enrollment rows write `*_encryption_key_id` FKs. Only Admin (`ezkey.encryption.keyset.writer=true`) performs that sync (ADR-0012). Auth/Integration skip it and wait for `ezkey_keyset_blob`.
 - **See:** `docs/plan/JPA_TRANSACTION_DESIGN_NOTES.md` for full lessons learned.
 
 ---

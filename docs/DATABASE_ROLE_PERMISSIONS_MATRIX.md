@@ -82,7 +82,7 @@ Legend: **S**=SELECT · **I**=INSERT · **U**=UPDATE · **D**=DELETE · **X**=EX
 | `ezkey_audit_log` | owner | S I U D | S I | S I | **DELETE admin only** (lifecycle purge). Peripherals are **SELECT + INSERT** only (single-INSERT HMAC seal via named sequence `ezkey_audit_log_id_seq`; no UPDATE). `ezkey_admin` retains UPDATE/DELETE. |
 | `ezkey_encryption_key` | owner | S I U | S | S | Writers: key rotation (admin) |
 | `ezkey_reencryption_batch` | owner | S I U | — | — | Admin schedulers only |
-| `ezkey_keyset_blob` | owner | S I U | S I U | S I U | Shared `TinkKeyManager` startup can upsert from any API today. Desired hardening: Admin-first bootstrap, then peripheral **SELECT-only** — [`I-2026-07-17-keyset-blob-admin-first-bootstrap`](../product-docs/global/backlog/ideas/I-2026-07-17-keyset-blob-admin-first-bootstrap.md) |
+| `ezkey_keyset_blob` | owner | S I U | S | S | Writers: Admin keyset materialization only (ADR-0012). Peripherals SELECT + reload. |
 | `ezkey_audit_chain_checkpoint` | owner | S I U D | S | S | Writers: admin chain schedulers |
 | `ezkey_audit_chain_incident` | owner | S I U | S I U | S I U | Heartbeat on all three APIs |
 | `ezkey_audit_entry_integrity_conciliation` | owner | S I U | — | — | Admin reconcile only |
