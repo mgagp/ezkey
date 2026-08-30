@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Monthly digest: August 2026 in review — Ezkey">
+    <meta property="og:description" content="A distilled digest of Ezkey's August 2026 work: the written corpus was cut hard, security testing turned adversarial, and services lost privileges they never needed.">
+    <meta property="og:url" content="https://ezkey.org/monthly-digest-2026-08.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Monthly digest: August 2026 in review — Ezkey">
+    <meta name="twitter:description" content="A distilled digest of Ezkey's August 2026 work: the written corpus was cut hard, security testing turned adversarial, and services lost privileges they never needed.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/monthly-digest-2026-08.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/monthly-digest-2026-08.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/monthly-digest-2026-08.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/monthly-digest-2026-08.html">
+    <title>Monthly digest: August 2026 in review — Ezkey</title>
+    <meta name="description" content="A distilled digest of Ezkey's August 2026 work: the written corpus was cut hard, security testing turned adversarial, and services lost privileges they never needed.">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a1a2e; line-height: 1.65; }
+        .shell { max-width: 820px; margin: 0 auto; padding: 28px 20px 48px; }
+        .nav-top, footer { color: rgba(255,255,255,0.9); font-size: 0.92rem; }
+        .nav-top { margin-bottom: 20px; }
+        .nav-top a, footer a { color: rgba(255,255,255,0.95); text-decoration: underline; }
+        article { background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.18); padding: 40px 36px 48px; }
+        .doc-meta { color: #555; font-size: 0.85rem; margin-bottom: 16px; }
+        .hero-title { text-align: center; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 2px solid #667eea; }
+        .hero-title .label { color: #667eea; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 8px; text-transform: uppercase; }
+        h1 { color: #111; font-size: 1.72rem; line-height: 1.25; margin-bottom: 12px; }
+        .tagline { color: #444; font-size: 1.05rem; font-weight: 600; }
+        h2 { color: #667eea; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 28px 0 10px; }
+        p { font-size: 0.98rem; margin-bottom: 12px; }
+        .lead { font-size: 1.02rem; color: #222; }
+        ul { margin: 0 0 12px 22px; }
+        li { font-size: 0.96rem; margin-bottom: 6px; }
+        .closing { margin-top: 24px; padding: 18px 20px; background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08)); border-left: 4px solid #667eea; border-radius: 12px; }
+        .doc-link-sibling { font-size: 0.92rem; margin-top: 14px; }
+        footer { margin-top: 24px; text-align: center; }
+        @media (max-width: 600px) { article { padding: 28px 20px 36px; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top"><a href="/monthly-digest.html">Monthly digests</a> &middot; <a href="/fr/monthly-digest-2026-08.html">Lire en francais</a></p>
+        <article>
+            <p class="doc-meta">Monthly digest &middot; August 2026</p>
+            <header class="hero-title">
+                <p class="label">August 2026 in review</p>
+                <h1>Subtraction, adversarial passes, and a narrower blast radius</h1>
+                <p class="tagline">A distilled look at August: the written corpus was cut hard, security testing turned adversarial, and the services lost privileges they never needed.</p>
+            </header>
+
+            <h2>In short</h2>
+            <p class="lead">August was a subtraction month. The methodology corpus was condensed from dozens of workflow documents, dated decisions, skills, and templates into a single core document plus four templates, and two dedicated pruning lanes kept burning down stale plans and reports behind it. Security work moved from reasoning to probing: three scanner-driven passes with human triage, alongside a deliberate narrowing of which service may authenticate machines or write encryption keys. Mobile gained a real test pyramid and a real-device campaign runner. The admin console stayed comparatively quiet, mostly absorbing dependency upgrades.</p>
+
+            <h2>Documentation &amp; methodology</h2>
+            <p>The dominant theme was deletion, not accumulation. The methodology corpus was reduced to one core document and four templates, on the explicit principle of removing first and then observing what a cold agent actually needs — git history is the archive, so nothing was relocated into an archive folder. Every coupling point that referenced the removed material was rewired in the same move, and the public methodology explorer was republished on top of the reduced corpus. Two curated lanes were created to continue the work: one pruning living planning prompts and plans, another for written documents, both biased toward deleting or folding content when a canonical source already carries the signal. Separately, SOC 2 language was stripped from living code and documentation and collapsed into a plain statement of posture, so the project does not imply attestation it does not have.</p>
+
+            <h2>Code hygiene</h2>
+            <p>Weekly dependency triage continued at a steady rhythm across the Java stack, the admin console, the SDK, and mobile — including a Spring Boot point upgrade, and version pins for shared libraries centralized in the parent build file rather than scattered across modules. A rule banning broad exception catching was activated and then remediated module by module, with tests added to lock the error contracts at those boundaries so the cleanup cannot silently regress. Transaction boundaries were reviewed and reduced to the places where they actually apply. Windows-only script wrappers were purged in favour of a single portable shell contract.</p>
+
+            <h2>Admin UI</h2>
+            <p>A quieter month, mostly maintenance. Key rotation was relabelled as pending introduction so operators are not shown a capability that is not there yet, shard numbering became human-readable, and the estimated completion time for a drained key was corrected. One fix keeps an audit integrity investigation from being reopened after the operator leaves it. The rest was dependency floors, upgrade pinning, and clearing high-severity advisories.</p>
+
+            <h2>Mobile app</h2>
+            <p>Testing was the centre of gravity. The app now has an explicit layered test contract, with coverage on the critical enrollment and verification paths, on the isolation of installation-scoped cryptography, and on the bind, verify, and pending-response workflows — so protocol regressions fail in continuous integration instead of on a device. A campaign runner drives real-device runs. On the product side, experimental messaging was retired and flexible in-app updates were adopted for the store channel; error handling now only interprets structured API errors that Ezkey actually emits. Stack maintenance continued across React Native, camera, and navigation, and the first curated mobile static-analysis pass was applied.</p>
+
+            <h2>Backend &amp; API contracts</h2>
+            <p>The theme was reducing what each service is allowed to do. Machine-to-machine credentials are now accepted by the integration service only; the admin service refuses them outright, first behind a configuration flag and then by removal. In the same spirit, only the admin service may materialize the encryption keyset — the peripheral services lost write access at the database level, which also removes a startup failure mode where a read-only role could kill the boot sequence. Enrollment material belonging to another tenant no longer reveals its own existence. Deeper in the crypto layer, the database key blob moved to a proper keyset envelope, and several re-encryption defects were fixed around shard counting, worker scheduling, and completion estimates. The mobile client can now receive a signed description of the instance it is enrolled with, and a host-neutral API description was packaged so the edge can validate request shapes.</p>
+
+            <h2>The rest worth mentioning</h2>
+            <ul>
+                <li><strong>Security testing:</strong> three scanner-driven passes with recorded human decisions — an unauthenticated baseline, a first-party vulnerability scanner wired through containers with regression checks on proxy headers, then an API-description-driven scan that led to hiding the interactive API documentation behind the public proxy. One of those runs surfaced a real server error on a missing request field, now rejected properly.</li>
+                <li><strong>Tooling:</strong> the exploratory API collections left Postman for a git-native equivalent, with command-line health suites so operators and agents no longer depend on a hybrid sync model.</li>
+                <li><strong>Edge:</strong> scripts to package, upload, inventory, and delete API schemas on the evaluation environment's edge protection, for both the auth and integration surfaces.</li>
+                <li><strong>Observability:</strong> an opt-in metrics collector for the local container stack, plus a small routine for extracting and ranking what it captures after known workloads.</li>
+                <li><strong>Infrastructure:</strong> high-availability stack parity restored, an unused sidecar dropped from the clean-start path, and a demo device health check repaired.</li>
+                <li><strong>Public site:</strong> an article on the ablation published in both locales.</li>
+            </ul>
+
+            <div class="closing">
+                <p>Last month's closing note guessed that documentation consolidation would claim a larger share of the work. It did, and it went further than consolidation — the answer turned out to be removal rather than reorganization. With the September operable-release target now immediate, the balance should shift back toward the release surface itself: mobile store readiness, the last of the privilege-narrowing work, and the operator paths that need to hold on day one.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>Francais:</strong> <a href="/fr/monthly-digest-2026-08.html">Version francaise de cette note</a></p>
+            <p class="doc-link-sibling"><strong>Back to index:</strong> <a href="/monthly-digest.html">Monthly digests</a></p>
+        </article>
+        <footer><p>Ezkey &middot; <a href="/">ezkey.org</a></p></footer>
+    </div>
+</body>
+</html>

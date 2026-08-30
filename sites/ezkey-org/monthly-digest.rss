@@ -7,6 +7,13 @@
     <language>en</language>
     <atom:link href="https://ezkey.org/monthly-digest.rss" rel="self" type="application/rss+xml"/>
     <item>
+      <title>August 2026 — Subtraction, adversarial passes, and a narrower blast radius</title>
+      <link>https://ezkey.org/monthly-digest-2026-08.html</link>
+      <guid isPermaLink="true">https://ezkey.org/monthly-digest-2026-08.html</guid>
+      <pubDate>Sun, 30 Aug 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[A hard cut to the written corpus, three scanner-driven security passes, a narrower blast radius for machine credentials and encryption keys, and a real test pyramid for mobile.]]></description>
+    </item>
+    <item>
       <title>July 2026 — Hardening, hygiene systems, and documentation under review</title>
       <link>https://ezkey.org/monthly-digest-2026-07.html</link>
       <guid isPermaLink="true">https://ezkey.org/monthly-digest-2026-07.html</guid>
