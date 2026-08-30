@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: AuthAttemptPendingCountSecurityWebMvcTest
- * Description: SEC-025 — pending-count is Admin-only (API key → 403).
+ * Description: SEC-025 — pending-count is Admin-only (API-key Basic → 401).
  */
 
 package org.ezkey.admin.controller;
@@ -14,7 +14,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -24,7 +23,6 @@ import org.ezkey.admin.config.AdminCorsTestFilterBeans;
 import org.ezkey.admin.config.SecurityConfig;
 import org.ezkey.admin.config.TrustedProxyConfig;
 import org.ezkey.admin.security.AccessControlService;
-import org.ezkey.admin.security.RateLimitService;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
@@ -47,8 +45,8 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * SEC-025 regression: {@code GET /api/v1/auth-attempts/pending-count} requires {@code ROLE_ADMIN}.
  *
- * <p>This endpoint is operator dashboard telemetry. Integration API keys must receive 403 so they
- * cannot observe instance-wide pending MFA volume.
+ * <p>This endpoint is operator dashboard telemetry. HTTP Basic API-key credentials do not
+ * authenticate on Admin API (401), so they cannot observe instance-wide pending MFA volume.
  *
  * @since 2026
  */
@@ -64,18 +62,21 @@ class AuthAttemptPendingCountSecurityWebMvcTest {
   @MockitoBean private AuthAttemptService authAttemptService;
   @MockitoBean private AuthAttemptAdminApiMapper authAttemptMapper;
   @MockitoBean private AuditLogService auditLogService;
-  @MockitoBean private RateLimitService rateLimitService;
   @MockitoBean private EnrollmentRepository enrollmentRepository;
   @MockitoBean private AccessControlService accessControlService;
   @MockitoBean private IntegrationRepository integrationRepository;
   @MockitoBean private AuditEntityFkResolver auditEntityFkResolver;
 
   @Test
-  @DisplayName("API key role receives 403 on pending-count")
-  void apiKeyForbiddenOnPendingCount() throws Exception {
+  @DisplayName("HTTP Basic API-key credentials receive 401 on pending-count")
+  void apiKeyBasicUnauthorizedOnPendingCount() throws Exception {
+    String basic =
+        "Basic "
+            + java.util.Base64.getEncoder()
+                .encodeToString("ezkey_ikey_test:ezkey_skey_test".getBytes());
     mockMvc
-        .perform(get(PENDING_COUNT_PATH).with(user("apikey").roles("API_KEY")))
-        .andExpect(status().isForbidden());
+        .perform(get(PENDING_COUNT_PATH).header("Authorization", basic))
+        .andExpect(status().isUnauthorized());
   }
 
   @Test

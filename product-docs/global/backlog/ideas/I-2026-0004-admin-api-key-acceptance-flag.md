@@ -8,8 +8,9 @@
 - **GitHub issue:** [#169](https://github.com/mgagp/ezkey/issues/169)
 - **Priority:** `P1`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-25`
-- **Last reviewed at:** `2026-05-25`
+- **Updated at:** `2026-08-29`
+- **Last reviewed at:** `2026-08-29`
+- **Successor (deferred removal):** `I-2026-08-29-admin-api-remove-m2m-hatch` / `TB-2026-08-29-admin-api-remove-m2m-hatch`
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `admin-api`, `sdk-java`, `docs`
 - **Captured by:** Marc
@@ -33,7 +34,7 @@ See [`../grill-sessions/blitz-2026-05-08-1-D3-api-key-grill-me.md`](../grill-ses
 | Default | **`false`** everywhere (clean-start, dev, HA, new installs) |
 | Opt-in `true` | Minimal Admin+Auth deployment only (documented) |
 | Scope | `ROLE_API_KEY` auth-attempt M2M only; no per-endpoint flag |
-| Removal | Deferred — flag sufficient for R1 |
+| Removal | Deferred in R1 — now `I-2026-08-29` / `TB-2026-08-29` |
 | Errors | RFC 9457; point to Integration API + property |
 | Migration | Brief docs/release note; no production fleet today |
 | Profiles | Phase 2 elaboration refines; not blocked on catalog |
@@ -77,7 +78,8 @@ Ready for implementation.
 
 ## Links
 
-- **Tracer bullet:** `TB-2026-05-25-admin-api-key-acceptance-flag`
+- **Tracer bullet (R1):** `TB-2026-05-25-admin-api-key-acceptance-flag`
+- **Successor (R2 removal):** [`I-2026-08-29-admin-api-remove-m2m-hatch.md`](I-2026-08-29-admin-api-remove-m2m-hatch.md), [`../TB-2026-08-29-admin-api-remove-m2m-hatch.md`](../TB-2026-08-29-admin-api-remove-m2m-hatch.md)
 - **Vision:** `V-2026-0003`, `V-2026-0010`
 - **Grill session:** `../grill-sessions/blitz-2026-05-08-1-D3-api-key-grill-me.md`
 - **Features:** `F-integration-api-maturity`, `F-api-key-lifecycle`

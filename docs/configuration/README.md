@@ -9,7 +9,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | Module | CONFIGURATION.md | Role |
 |---|---|---|
 | `ezkey-core` | [ezkey-core/CONFIGURATION.md](../../ezkey-core/CONFIGURATION.md) | Shared library — defines all `ezkey.encryption.*`, `ezkey.audit.*`, `ezkey.organization.*`, `ezkey.qr.*`, `ezkey.enrollment.*`, `ezkey.demo.*`, and `ezkey.core.*` prefixes |
-| `ezkey-admin-api` | [ezkey-admin-api/CONFIGURATION.md](../../ezkey-admin-api/CONFIGURATION.md) | Defines `ezkey.admin.*` (including `ezkey.admin.cors.*`, `ezkey.admin.auth.*`), `ezkey.admin-operations.*`, `ezkey.security.admin.*`, `ezkey.api-key.*`, `ezkey.trusted-proxies.*`, `ezkey.auth-attempt.expiry-scheduler.*` |
+| `ezkey-admin-api` | [ezkey-admin-api/CONFIGURATION.md](../../ezkey-admin-api/CONFIGURATION.md) | Defines `ezkey.admin.*` (including `ezkey.admin.cors.*`, `ezkey.admin.auth.*`), `ezkey.admin-operations.*`, `ezkey.security.admin.*`, `ezkey.trusted-proxies.*`, `ezkey.auth-attempt.expiry-scheduler.*` |
 | `ezkey-auth-api` | [ezkey-auth-api/CONFIGURATION.md](../../ezkey-auth-api/CONFIGURATION.md) | Defines `ezkey.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
 | `ezkey-integration-api` | [ezkey-integration-api/CONFIGURATION.md](../../ezkey-integration-api/CONFIGURATION.md) | Defines `ezkey.api-key.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
 | `ezkey-crypto-api` | [ezkey-crypto-api/CONFIGURATION.md](../../ezkey-crypto-api/CONFIGURATION.md) | No database; inherits `ezkey.encryption.*` from core |
@@ -102,7 +102,6 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SAME_SITE` | `ezkey.admin.auth.browser-session-cookie-same-site` | admin-api (optional; default `Strict`) |
 | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_COOKIE_NAME` | `ezkey.admin.auth.browser-csrf-cookie-name` | admin-api (optional; mirror in Admin UI build if changed) |
 | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_HEADER_NAME` | `ezkey.admin.auth.browser-csrf-header-name` | admin-api (optional; mirror in Admin UI build if changed) |
-| `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED` | `ezkey.admin.auth.api-key-auth-attempts-enabled` | admin-api (default false; Integration API is canonical M2M) |
 | `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` | `ezkey.demo.mitm-signature-enabled` | auth-api docker profile |
 | `EZKEY_INSTANCE_ID` | `ezkey.audit.integrity.instance-id` | all API modules |
 

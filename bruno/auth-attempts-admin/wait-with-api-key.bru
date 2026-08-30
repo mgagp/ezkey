@@ -28,17 +28,12 @@ auth:basic {
 }
 
 script:post-response {
-  test("Status code is 403 (API-key auth attempts disabled by default on Admin API)", function () {
-      expect(res.getStatus()).to.equal(403);
-  });
-
-  test("RFC 9457 problem type points to api-key-auth-attempts-disabled", function () {
-      var jsonData = res.getBody();
-      expect(jsonData.type).to.equal('https://ezkey.io/problems/admin/api-key-auth-attempts-disabled');
+  test("Status code is 401 (Admin API does not authenticate API keys)", function () {
+      expect(res.getStatus()).to.equal(401);
   });
 }
 
 docs {
-  Default Admin API posture rejects API-key wait. Use `auth-attempts-integration-api/wait.bru` for the
-  canonical M2M path. Opt-in: `ezkey.admin.auth.api-key-auth-attempts-enabled=true` (minimal install only).
+  Admin API does not authenticate API keys (401). Use `auth-attempts-integration-api/wait.bru`
+  for the canonical M2M path.
 }

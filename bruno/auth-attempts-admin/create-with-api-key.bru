@@ -1,10 +1,3 @@
-/*
- * Ezkey - Open Source Cryptographic MFA Platform
- *
- * Copyright (c) 2026 Ezkey contributors
- * Licensed under the MIT License. See LICENSE file in the project root for full license information.
- */
-
 meta {
   name: create with api key
   type: http
@@ -30,14 +23,8 @@ body:json {
 }
 
 script:post-response {
-  test("Status code is 403 (API-key auth attempts disabled by default on Admin API)", function () {
-      expect(res.getStatus()).to.equal(403);
-  });
-
-  test("RFC 9457 problem type points to api-key-auth-attempts-disabled", function () {
-      var jsonData = res.getBody();
-      expect(jsonData).to.have.property('type');
-      expect(jsonData.type).to.equal('https://ezkey.io/problems/admin/api-key-auth-attempts-disabled');
+  test("Status code is 401 (Admin API does not authenticate API keys)", function () {
+      expect(res.getStatus()).to.equal(401);
   });
 }
 
@@ -46,14 +33,9 @@ settings {
 }
 
 docs {
-  **Default posture (deny):** Admin API rejects API-key M2M auth-attempt traffic with HTTP 403 and
-  RFC 9457 `https://ezkey.io/problems/admin/api-key-auth-attempts-disabled`.
+  **Negative contract:** Admin API does not authenticate API keys. HTTP Basic credentials
+  on this host return HTTP 401 Unauthorized.
 
   **Canonical happy path:** use `auth-attempts-integration-api/create.bru` against
   `{{base_url_integration_api}}` (port 7080).
-
-  **Minimal install opt-in:** only when Integration API is not deployed, set
-  `ezkey.admin.auth.api-key-auth-attempts-enabled=true` on Admin API; then this request can return 201.
-
-  **Authentication:** HTTP Basic Auth with `integrationKey:secretKey`
 }

@@ -22,8 +22,6 @@ import java.io.IOException;
 import org.ezkey.admin.security.AdminCookieCsrfFilter;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
-import org.ezkey.admin.security.ApiKeyAuthAttemptsAcceptanceFilter;
-import org.ezkey.admin.security.ApiKeyAuthenticationFilter;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.springframework.context.annotation.Bean;
@@ -43,18 +41,6 @@ public class AdminCorsTestFilterBeans {
   @Primary
   AdminTokenAuthenticationFilter adminTokenAuthenticationFilter() {
     return passThrough(AdminTokenAuthenticationFilter.class);
-  }
-
-  @Bean
-  @Primary
-  ApiKeyAuthenticationFilter apiKeyAuthenticationFilter() {
-    return passThrough(ApiKeyAuthenticationFilter.class);
-  }
-
-  @Bean
-  @Primary
-  ApiKeyAuthAttemptsAcceptanceFilter apiKeyAuthAttemptsAcceptanceFilter() {
-    return passThrough(ApiKeyAuthAttemptsAcceptanceFilter.class);
   }
 
   @Bean

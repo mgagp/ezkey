@@ -36,7 +36,8 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-08-24-java-melody-collector` | JavaMelody collector (opt-in Docker, baseline + HA) | `active` | `P2` | `infra`, `admin-api`, `auth-api`, `integration-api`, `docs` | `2026-08-24` |
 | `I-2026-0001` | Per-enrollment local authentication policy for mobile respond | `incubating` | `P1` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-07-26` |
 | `I-2026-0003` | High-availability Docker stack: parity review with `cleanstart.sh` | `incubating` | `P2` | `infra`, `admin-api`, `auth-api`, `integration-api` | `2026-05-19` |
-| `I-2026-0004` | Admin API: configurable acceptance of API-key authentication | `promoted` | `P1` | `admin-api`, `sdk-java`, `docs` | `2026-05-25` |
+| `I-2026-08-29-admin-api-remove-m2m-hatch` | Remove the Admin API API-key M2M hatch | `done` | `P1` | `admin-api`, `integration-api`, `demo-acme`, `infra (EXP1)`, `docs`, `ezkey-tests` | `2026-08-29` |
+| `I-2026-0004` | Admin API: configurable acceptance of API-key authentication | `promoted` | `P1` | `admin-api`, `sdk-java`, `docs` | `2026-08-29` |
 | `I-2026-0010` | Phone-to-phone enrollment transfer ceremony | `ready` | `P2` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-05-24` |
 | `I-2026-0011` | Bootstrap clean-start: activation-code mode as default | `incubating` | `P1` | `admin-api`, `infra`, `bootstrap`, `docs` | `2026-05-19` |
 | `I-2026-0012` | Hard-coded Ezkey System user sensitivity audit | `incubating` | `P2` | `admin-api`, `core`, `infra` | `2026-05-19` |
@@ -86,6 +87,7 @@ and four backlog ideas below — this track does not claim September operability
 
 | ID | Title | Status | Related idea |
 |----|-------|--------|--------------|
+| `TB-2026-08-29-admin-api-remove-m2m-hatch` | Remove Admin API API-key M2M hatch | `done` | `I-2026-08-29-admin-api-remove-m2m-hatch` |
 | `TB-2026-08-28-admin-first-keyset-bootstrap` | Admin-first keyset bootstrap | `implemented` | `I-2026-07-17-keyset-blob-admin-first-bootstrap` |
 | `TB-2026-08-14-mobile-exit-experimental-messaging` | Exit experimental in-app messaging | `under-review` | `I-2026-08-02-mobile-exit-experimental-messaging` |
 | `TB-2026-08-14-mobile-play-flexible-in-app-updates` | Soft Play in-app updates | `under-review` | `I-2026-08-02-mobile-client-update-mechanism` |
@@ -94,7 +96,7 @@ and four backlog ideas below — this track does not claim September operability
 | `TB-2026-07-11-mobile-doctor` | Mobile doctor-curated curator MVP | `done` | `I-2026-07-11-mobile-doctor-curated-hygiene` |
 | `TB-2026-07-07-auth-attempt-challenge-protection-phase-b` | Auth attempt challenge protection — phase B | `promoted` | `I-2026-07-07-auth-attempt-challenge-protection` |
 | `TB-2026-08-24-java-melody-collector` | JavaMelody collector (opt-in Docker, baseline + HA) | `under-review` | `I-2026-08-24-java-melody-collector` |
-| `TB-2026-05-25-admin-api-key-acceptance-flag` | Admin API key acceptance flag | `ready-for-implementation` | `I-2026-0004` |
+| `TB-2026-05-25-admin-api-key-acceptance-flag` | Admin API key acceptance flag (R1 shipped; removal is `TB-2026-08-29`) | `promoted` | `I-2026-0004` |
 | `TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut` | EXP1 anonymous evaluator signup — first cut | `under-review` | `I-2026-05-23-exp1-anonymous-evaluator-onboarding` |
 | `TB-2026-0004-mobile-ios-phase2-apple-stack-baseline` | Mobile iOS phase 2 — Apple stack baseline | `draft` | `I-2026-0027` |
 | `TB-2026-0002-android-real-device-functional-pilot` | Android real-device functional pilot (Maestro) | `in progress` | `I-2026-0019` |

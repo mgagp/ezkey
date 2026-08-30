@@ -55,10 +55,10 @@ Authorization at controllers.
 
 | Endpoint | Method | Required Role | Description | API Key Access | Rate Limit |
 |----------|--------|---------------|-------------|----------------|------------|
-| `/api/v1/auth-attempts` | GET | `ROLE_ADMIN` | List auth attempts | ❌ No | N/A |
-| `/api/v1/auth-attempts/{id}` | GET | `ROLE_ADMIN` or `ROLE_API_KEY` | Get auth attempt by ID | ✅ Yes (ownership check) | N/A |
-| `/api/v1/auth-attempts` | POST | `ROLE_ADMIN` or `ROLE_API_KEY` | Create new auth attempt | ✅ Yes | ✅ 100/15min |
-| `/api/v1/auth-attempts/{id}/wait` | GET | `ROLE_ADMIN` or `ROLE_API_KEY` | Wait for auth response | ✅ Yes (ownership check) | ✅ 200/15min |
+| `/api/v1/auth-attempts` | GET | `ROLE_ADMIN` | List auth attempts | ❌ No (401 if Basic) | N/A |
+| `/api/v1/auth-attempts/{id}` | GET | `ROLE_ADMIN` | Get auth attempt by ID | ❌ No (401 if Basic) | N/A |
+| `/api/v1/auth-attempts` | POST | `ROLE_ADMIN` | Create new auth attempt | ❌ No (401 if Basic) | N/A |
+| `/api/v1/auth-attempts/{id}/wait` | GET | `ROLE_ADMIN` | Wait for auth response | ❌ No (401 if Basic) | N/A |
 
 ### API Key Management
 
@@ -79,7 +79,10 @@ Authorization at controllers.
 
 ### For API Keys (`ROLE_API_KEY`)
 
-**Allowed Operations:**
+`ROLE_API_KEY` is issued only on **Integration API**. Admin API does not authenticate API keys
+(HTTP Basic → 401). The allowed operations below apply to Integration API.
+
+**Allowed Operations (Integration API):**
 - ✅ Create authentication attempts (with rate limiting: 100/15min, **own integration only**)
 - ✅ Read authentication attempts by ID (own integration only)
 - ✅ Wait for authentication responses (own integration only, with rate limiting: 200/15min)

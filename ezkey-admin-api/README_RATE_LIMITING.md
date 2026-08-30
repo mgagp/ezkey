@@ -8,11 +8,12 @@ The Ezkey Admin API implements comprehensive rate limiting using the Bucket4j li
 
 ### Rate Limiting Systems
 
-The admin API implements **three distinct rate limiting systems**:
+The admin API implements **two distinct rate limiting systems**:
 
 1. **Admin Login Rate Limiting** (IP-based) - `AdminRateLimitFilter`
-2. **API Key Operations Rate Limiting** (key-based) - `RateLimitService`  
-3. **Admin Operations Rate Limiting** (admin-based) - `AdminOperationsRateLimitService`
+2. **Admin Operations Rate Limiting** (admin-based) - `AdminOperationsRateLimitService`
+
+API-key create/wait rate limits live on Integration API (`ezkey.api-key.rate-limit.*`).
 
 ### Technology Stack
 
@@ -46,27 +47,11 @@ ezkey.admin.rate-limit.login.block-duration-minutes=30
 - Automatic IP blocking after repeated failures
 - Configurable block duration and failure thresholds
 
-### 2. API Key Operations Rate Limiting
+### 2. API-key usage rate limiting (Integration API)
 
-**Namespace**: `ezkey.api-key.rate-limit.*`
+Admin API does not authenticate API keys. Configure `ezkey.api-key.rate-limit.*` on
+Integration API for M2M create/wait.
 
-```properties
-# API key operations rate limiting (key-based)
-ezkey.api-key.rate-limit.enabled=true
-ezkey.api-key.rate-limit.create-auth-attempt.requests=100
-ezkey.api-key.rate-limit.create-auth-attempt.window-minutes=15
-ezkey.api-key.rate-limit.wait-auth-attempt.requests=200
-ezkey.api-key.rate-limit.wait-auth-attempt.window-minutes=15
-```
-
-**Protected Endpoints**:
-- `POST /api/v1/auth-attempts` (create auth attempt)
-- `GET /api/v1/auth-attempts/{id}/wait` (wait for response)
-
-**Features**:
-- Per-API-key rate limiting
-- Separate limits for different operation types
-- Token bucket algorithm with burst capacity
 
 ### 3. Admin Operations Rate Limiting
 
@@ -300,22 +285,18 @@ This will show:
 
 ### Core Components
 
-- `RateLimitService.java` - API key operations rate limiting
-- `AdminOperationsRateLimitService.java` - Admin operations rate limiting  
+- `AdminOperationsRateLimitService.java` - Admin operations rate limiting
 - `AdminRateLimitFilter.java` - Admin login rate limiting
-- `ApiKeyRateLimitProperties.java` - API key configuration
 - `AdminOperationsRateLimitProperties.java` - Admin operations configuration
 
 ### Configuration
 
-- `ApiKeyRateLimitConfig.java` - API key Spring configuration
 - `AdminOperationsRateLimitConfig.java` - Admin operations Spring configuration
 - `AdminRateLimitConfig.java` - Admin login Spring configuration
 - `application.properties` - External configuration
 
 ### Controllers
 
-- `AuthAttemptController.java` - Rate limiting for auth attempts
 - `ApiKeyController.java` - Rate limiting for API key creation
 - `AdminEnrollmentController.java` - Rate limiting for enrollment reset
 

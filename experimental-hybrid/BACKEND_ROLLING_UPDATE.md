@@ -4,6 +4,20 @@ Use this when you **already run** the experimental Lightsail stack ([`README.md`
 
 **Full stack in one go (Caddy, Compose, migration, all backends, optional demo):** from the repo root run **`./experimental-hybrid/scripts/full-exp-environment-upgrade.sh rolling`** (add **`--include-demo-acme`** for the demo). That builds the images, loads them on the VM, syncs `docker-compose.yml` / `Caddyfile` / `clean-start.sh`, and runs **`docker compose up -d`** remotely — **Postgres data and other named volumes are kept**; the **`migration`** service runs Flyway from the new image. Alternatively call [`export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) with **`--sync-operator-files`**, **`--remote-up`**, and the image flags you need.
 
+### ACME M2M cutover (Admin API hatch removed)
+
+After this branch is on the tree you deploy, apply Compose **and** recreate ACME together:
+
+```text
+./experimental-hybrid/scripts/full-exp-environment-upgrade.sh rolling --include-demo-acme
+```
+
+A partial recreate that updates Admin API without syncing Compose and recreating `demo-app-acme` leaves EXP1 pointing ACME at Admin API. After sync:
+
+- Confirm `demo-app-acme` env is `EZKEY_ADMIN_API_URL=http://integration-api:7080` (name is historical).
+- Remove `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED` from the live `.env` if present.
+- Smoke: ACME login create/wait succeeds against Integration API; Admin API `POST /api/v1/auth-attempts` with API-key Basic returns **401**.
+
 **Per-service notes:** if you only changed one service, you can still use **`docker compose up -d --no-deps --force-recreate <service>`** after `docker load` instead of a full `up` (smaller blast radius). If schema changed, always deploy a new **migration** image before or with the API upgrades.
 
 ## Image tag

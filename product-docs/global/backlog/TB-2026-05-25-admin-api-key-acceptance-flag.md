@@ -3,11 +3,14 @@
 ## Metadata
 
 - **ID:** `TB-2026-05-25-admin-api-key-acceptance-flag`
-- **Status:** `ready-for-implementation`
+- **Status:** `promoted`
 - **Related idea:** `I-2026-0004`
 - **GitHub issue:** [#169](https://github.com/mgagp/ezkey/issues/169)
 - **Created at:** `2026-05-25`
+- **Updated at:** `2026-08-29`
 - **Posture:** `single-pass`
+- **R1 note:** Flag + deny-by-default filter shipped in code. Remaining hatch removal is
+  [`TB-2026-08-29-admin-api-remove-m2m-hatch.md`](TB-2026-08-29-admin-api-remove-m2m-hatch.md).
 
 ---
 

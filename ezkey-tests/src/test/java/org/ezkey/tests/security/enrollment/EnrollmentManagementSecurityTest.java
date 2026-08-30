@@ -355,7 +355,7 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(9)
-  @DisplayName("API key cannot list enrollments (403)")
+  @DisplayName("API key cannot list enrollments (401)")
   public void testApiKeyCannotListEnrollments() {
     try {
       String adminToken = authTokenManager.getAdminToken();
@@ -378,7 +378,7 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      assertThat(response.getStatusCode()).isEqualTo(403);
+      assertThat(response.getStatusCode()).isEqualTo(401);
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
@@ -387,7 +387,7 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(10)
-  @DisplayName("API key cannot get enrollment by ID (403)")
+  @DisplayName("API key cannot get enrollment by ID (401)")
   public void testApiKeyCannotGetEnrollmentById() {
     try {
       String adminToken = authTokenManager.getAdminToken();
@@ -411,7 +411,7 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      assertThat(response.getStatusCode()).isEqualTo(403);
+      assertThat(response.getStatusCode()).isEqualTo(401);
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
@@ -420,7 +420,7 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(11)
-  @DisplayName("API key cannot create enrollment (403)")
+  @DisplayName("API key cannot create enrollment (401)")
   public void testApiKeyCannotCreateEnrollment() {
     try {
       String adminToken = authTokenManager.getAdminToken();
@@ -448,7 +448,7 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      assertThat(response.getStatusCode()).isEqualTo(403);
+      assertThat(response.getStatusCode()).isEqualTo(401);
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
@@ -457,7 +457,7 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(12)
-  @DisplayName("API key cannot delete enrollment (403)")
+  @DisplayName("API key cannot delete enrollment (401)")
   public void testApiKeyCannotDeleteEnrollment() {
     try {
       String adminToken = authTokenManager.getAdminToken();
@@ -482,7 +482,7 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      assertThat(response.getStatusCode()).isEqualTo(403);
+      assertThat(response.getStatusCode()).isEqualTo(401);
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");

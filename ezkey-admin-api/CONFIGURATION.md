@@ -29,7 +29,6 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.admin.recovery.codes-count` | — | `5` | optionnel |
 | `ezkey.admin.rate-limit.enabled` | — | `true` | optionnel |
 | `ezkey.admin-operations.rate-limit.enabled` | — | `true` | optionnel |
-| `ezkey.api-key.rate-limit.enabled` | — | `true` | optionnel |
 | `ezkey.security.admin.max-global-admins` | — | `3` | optionnel |
 | `ezkey.admin.bootstrap.export.enabled` | — | `false` | optionnel |
 | `ezkey.trusted-proxies.required` | — | `false` | optionnel [prod] |
@@ -39,7 +38,6 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.admin.auth.browser-session-cookie-enabled` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | `false` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_NAME` | `EZKEY_ADMIN_SESSION` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-secure` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SECURE` | `true` | optionnel |
-| `ezkey.admin.auth.api-key-auth-attempts-enabled` | `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED` | `false` | optionnel |
 | `ezkey.auth-attempt.expiry-scheduler.enabled` | — | `true` | optionnel |
 | `ezkey.auth-attempt.expiry-scheduler.fixed-delay-ms` | — | `60000` | optionnel |
 
@@ -185,22 +183,10 @@ update, enrollment reset). Keyed per admin session, not by IP.
 
 ---
 
-### 7. API Key Usage Rate Limiting (`ezkey.api-key.rate-limit.*`)
+### 7. API-key usage rate limiting (Integration API only)
 
-**Description:** rate limiting for Integration API key operations when called through the Admin
-API. Keyed by integration ID (API key bearer).
-
-**Defined in:** `ApiKeyRateLimitProperties`
-
-> The same prefix (`ezkey.api-key.rate-limit.*`) is also used by [ezkey-integration-api](../ezkey-integration-api/CONFIGURATION.md).
-
-| Property | Type | Default | Obligation | Description |
-|---|---|---|---|---|
-| `ezkey.api-key.rate-limit.enabled` | `boolean` | `true` | optionnel | Global on/off. |
-| `ezkey.api-key.rate-limit.create-auth-attempt.requests` | `int` | `100` | optionnel | Max `POST /auth-attempts` requests per window per API key. Docker uses `10`. |
-| `ezkey.api-key.rate-limit.create-auth-attempt.window-minutes` | `int` | `15` | optionnel | Window for create-auth-attempt (minutes). Docker uses `1`. |
-| `ezkey.api-key.rate-limit.wait-auth-attempt.requests` | `int` | `200` | optionnel | Max `GET /auth-attempts/{id}/wait` requests per window. Docker uses `20`. |
-| `ezkey.api-key.rate-limit.wait-auth-attempt.window-minutes` | `int` | `15` | optionnel | Window for wait-auth-attempt (minutes). Docker uses `1`. |
+Admin API no longer authenticates API keys and does not apply `ezkey.api-key.rate-limit.*`.
+M2M create/wait limits live on [ezkey-integration-api](../ezkey-integration-api/CONFIGURATION.md).
 
 ---
 
@@ -290,7 +276,7 @@ enforce CORS. If `allowed-origins` is **empty**, the API does **not** emit CORS 
 
 **Description:** optional mode for **browser** sessions when the Admin UI and Admin API are on different **HTTPS** origins (e.g. `https://exp1-admin-ui.ezkey.org` → `https://exp1-admin-api.ezkey.org`). When enabled, successful login and passwordless-wait responses set an **HttpOnly** cookie on the API host with the same opaque value as today’s bearer token; the JSON body **omits** `token` so JavaScript cannot read the secret. The authentication filter accepts **either** `Authorization: Bearer` (priority if present) **or** the session cookie. **Postman and scripts** can keep using Bearer only.
 
-**Defined in:** `AdminBrowserSessionCookieProperties`, `AdminApiKeyAuthAttemptsProperties`, `AdminBrowserSessionCookieConfig`, `AdminSessionCookieService`, `ApiKeyAuthAttemptsAcceptanceFilter`
+**Defined in:** `AdminBrowserSessionCookieProperties`, `AdminBrowserSessionCookieConfig`, `AdminSessionCookieService`
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
@@ -300,7 +286,6 @@ enforce CORS. If `allowed-origins` is **empty**, the API does **not** emit CORS 
 | `ezkey.admin.auth.browser-session-cookie-same-site` | `String` | `Strict` | optionnel | SameSite policy for Admin browser session and CSRF cookies. Prefer `Strict` for production split deployments. |
 | `ezkey.admin.auth.browser-csrf-cookie-name` | `String` | `EZKEY_ADMIN_CSRF` | optionnel | Readable non-secret CSRF cookie name used by the Admin UI in cookie mode. |
 | `ezkey.admin.auth.browser-csrf-header-name` | `String` | `X-CSRF-TOKEN` | optionnel | Header name required on unsafe cookie-authenticated browser requests. |
-| `ezkey.admin.auth.api-key-auth-attempts-enabled` | `boolean` | `false` | optionnel | When `false` (default), Admin API rejects `ROLE_API_KEY` with RFC 9457 `403` (`https://ezkey.io/problems/admin/api-key-auth-attempts-disabled`). Set `true` only for documented minimal Admin+Auth installs without Integration API. Canonical M2M surface is Integration API (port 7080). |
 
 **Operational pairing:** set `ezkey.admin.cors.allow-credentials=true` and explicit `allowed-origins` for the UI. Build the Admin UI with `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true` and `fetch` credentials (see [docs/admin-ui-security.md](../docs/admin-ui-security.md)). If you override the CSRF cookie or header names, mirror them in the Admin UI build variables `VITE_ADMIN_AUTH_CSRF_COOKIE_NAME` and `VITE_ADMIN_AUTH_CSRF_HEADER_NAME`.
 
@@ -358,7 +343,6 @@ The following ezkey-core prefixes are also active in Admin API. See
 | `ezkey.admin.mfa.bootstrap.auto-enrollment` | `true` | `true` | `true` |
 | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `FULL` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:full}` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:full}` |
 | `ezkey.admin.rate-limit.enabled` | `true` | `true` | `false` |
-| `ezkey.api-key.rate-limit.enabled` | `true` | `true` | `false` |
 | `ezkey.admin-operations.rate-limit.enabled` | `true` | `true` | `false` |
 | `ezkey.admin.bootstrap.export.enabled` | `false` | `true` | `true` |
 | `ezkey.admin.token.expiration-hours` | `2` | `2` | `2` |
@@ -388,7 +372,6 @@ The following ezkey-core prefixes are also active in Admin API. See
 | `ezkey.admin.auth.browser-session-cookie-same-site` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SAME_SITE` | *(unset)* |
 | `ezkey.admin.auth.browser-csrf-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_COOKIE_NAME` | *(unset)* |
 | `ezkey.admin.auth.browser-csrf-header-name` | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_HEADER_NAME` | *(unset)* |
-| `ezkey.admin.auth.api-key-auth-attempts-enabled` | `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED` | *(unset; default false)* |
 
 ---
 

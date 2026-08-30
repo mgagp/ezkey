@@ -26,25 +26,21 @@ import org.springframework.stereotype.Service;
 /**
  * Service for checking access control permissions based on authentication context.
  *
- * <p>This service provides methods to verify whether the current authentication context (API key or
- * admin) has permission to access specific resources. It implements the principle of least
- * privilege with tenant-aware scoping for multi-tenant isolation.
+ * <p>This service verifies whether the current administrator authentication context has permission
+ * to access specific resources. It implements the principle of least privilege with tenant-aware
+ * scoping for multi-tenant isolation. API-key machine-to-machine access is not authenticated on
+ * Admin API (Integration API owns that surface).
  *
  * <p><b>Access Control Rules:</b>
  *
  * <ul>
  *   <li><b>Global Admins (ROLE_GLOBAL_ADMIN):</b> Can access all resources across all tenants
  *   <li><b>Tenant Admins (ROLE_TENANT_ADMIN):</b> Can only access resources within their tenant
- *   <li><b>API Keys (ROLE_API_KEY):</b> Can only access auth attempts for their integration
- *   <li><b>Enrollments:</b> Always admin-only (API keys cannot access)
  * </ul>
  *
  * <p><b>Tenant Scoping:</b> Tenant admins are restricted to resources (integrations, enrollments,
  * auth attempts, API keys) that belong to their tenant. This is enforced by checking the tenant_id
  * of the target resource.
- *
- * <p><b>Integration Scope:</b> API keys are associated with a specific integration and can only
- * access auth attempts that belong to enrollments of that integration.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -86,7 +82,6 @@ public class AccessControlService {
    * <ul>
    *   <li><b>Global Admins:</b> Can access any auth attempt
    *   <li><b>Tenant Admins:</b> Can only access auth attempts for enrollments in their tenant
-   *   <li><b>API Keys:</b> Can only access auth attempts for their integration
    * </ul>
    *
    * @param auth the authentication context
@@ -108,11 +103,6 @@ public class AccessControlService {
       return canAccessAuthAttemptForTenant(auth, authAttemptId);
     }
 
-    // API keys can only access auth attempts for their integration
-    if (hasRole(auth, "ROLE_API_KEY")) {
-      return canAccessAuthAttemptForIntegration(auth, authAttemptId);
-    }
-
     return false;
   }
 
@@ -124,7 +114,6 @@ public class AccessControlService {
    * <ul>
    *   <li><b>Global Admins:</b> Can access any enrollment
    *   <li><b>Tenant Admins:</b> Can only access enrollments for integrations in their tenant
-   *   <li><b>API Keys:</b> Cannot access enrollments (always false)
    * </ul>
    *
    * @param auth the authentication context
@@ -146,7 +135,6 @@ public class AccessControlService {
       return canAccessEnrollmentForTenant(auth, enrollmentId);
     }
 
-    // API keys cannot access enrollments
     return false;
   }
 
@@ -154,8 +142,7 @@ public class AccessControlService {
    * Checks if the authenticated user can revoke or deactivate a specific enrollment.
    *
    * <p>The scoping rules for revocation are identical to those for read access: Global Admins can
-   * revoke any enrollment; Tenant Admins can only revoke enrollments within their tenant; API Keys
-   * cannot revoke enrollments.
+   * revoke any enrollment; Tenant Admins can only revoke enrollments within their tenant.
    *
    * <p><b>Self-revocation prevention</b> is enforced at the service layer ({@link
    * org.ezkey.admin.service.EnrollmentRevocationService}), not here. This method only enforces
@@ -181,7 +168,6 @@ public class AccessControlService {
    * <ul>
    *   <li><b>Global Admins:</b> Can access any integration
    *   <li><b>Tenant Admins:</b> Can only access integrations in their tenant
-   *   <li><b>API Keys:</b> Can only access their own integration
    * </ul>
    *
    * @param auth the authentication context
@@ -203,69 +189,7 @@ public class AccessControlService {
       return canAccessIntegrationForTenant(auth, integrationId);
     }
 
-    // API keys can only access their own integration
-    if (hasRole(auth, "ROLE_API_KEY")) {
-      return canAccessOwnIntegration(auth, integrationId);
-    }
-
     return false;
-  }
-
-  /**
-   * Checks if an API key can access an auth attempt for its integration.
-   *
-   * <p>This method verifies that the auth attempt belongs to an enrollment of the API key's
-   * integration.
-   *
-   * @param auth the authentication context (must be API key)
-   * @param authAttemptId the auth attempt ID
-   * @return true if the auth attempt belongs to the API key's integration
-   */
-  private boolean canAccessAuthAttemptForIntegration(Authentication auth, Integer authAttemptId) {
-    try {
-      // Get the auth attempt
-      Optional<AuthAttempt> authAttemptOpt = authAttemptRepository.findById(authAttemptId);
-      if (authAttemptOpt.isEmpty()) {
-        logger.warn("Auth attempt {} not found for access control check", authAttemptId);
-        return false;
-      }
-
-      AuthAttempt authAttempt = authAttemptOpt.get();
-      Integer enrollmentId = authAttempt.getEnrollmentId();
-      logger.debug("Auth attempt {} belongs to enrollment {}", authAttemptId, enrollmentId);
-
-      // Get the enrollment
-      Optional<Enrollment> enrollmentOpt = enrollmentRepository.findById(enrollmentId);
-      if (enrollmentOpt.isEmpty()) {
-        logger.warn("Enrollment {} not found for auth attempt {}", enrollmentId, authAttemptId);
-        return false;
-      }
-
-      Enrollment enrollment = enrollmentOpt.get();
-      Integer enrollmentIntegrationId = enrollment.getIntegrationId();
-      logger.debug(
-          "Enrollment {} belongs to integration {}", enrollmentId, enrollmentIntegrationId);
-
-      // Check if this matches the API key's integration
-      boolean canAccess = canAccessOwnIntegration(auth, enrollmentIntegrationId);
-      if (!canAccess) {
-        Object principal = auth.getPrincipal();
-        Integer apiKeyIntegrationId = principal instanceof Integer ? (Integer) principal : null;
-        logger.warn(
-            "API key from integration {} attempted to access auth attempt {} belonging to"
-                + " integration {}",
-            apiKeyIntegrationId,
-            authAttemptId,
-            enrollmentIntegrationId);
-      } else {
-        logger.debug("API key access to auth attempt {}: {}", authAttemptId, canAccess);
-      }
-      return canAccess;
-    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-      logger.error(
-          "Error checking access to auth attempt {}: {}", authAttemptId, e.getMessage(), e);
-      return false;
-    }
   }
 
   /**
@@ -393,40 +317,6 @@ public class AccessControlService {
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error(
           "Error checking tenant access to integration {}: {}", integrationId, e.getMessage(), e);
-      return false;
-    }
-  }
-
-  /**
-   * Checks if an API key can access its own integration.
-   *
-   * @param auth the authentication context (must be API key)
-   * @param integrationId the integration ID to check
-   * @return true if this is the API key's integration
-   */
-  private boolean canAccessOwnIntegration(Authentication auth, Integer integrationId) {
-    try {
-      // Extract integration ID from authentication principal
-      Object principal = auth.getPrincipal();
-      logger.debug(
-          "Authentication principal type: {}, value: {}",
-          principal != null ? principal.getClass().getSimpleName() : "null",
-          principal);
-
-      if (principal instanceof Integer authenticatedIntegrationId) {
-        boolean matches = authenticatedIntegrationId.equals(integrationId);
-        logger.debug(
-            "API key integration {} matches requested integration {}: {}",
-            authenticatedIntegrationId,
-            integrationId,
-            matches);
-        return matches;
-      }
-
-      logger.warn("Authentication principal is not an Integer: {}", principal);
-      return false;
-    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-      logger.error("Error checking integration access: {}", e.getMessage(), e);
       return false;
     }
   }

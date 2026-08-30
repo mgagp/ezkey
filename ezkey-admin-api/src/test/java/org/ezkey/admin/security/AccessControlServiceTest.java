@@ -12,14 +12,9 @@ package org.ezkey.admin.security;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.when;
 
-import java.util.Optional;
-import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
-import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
-import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,8 +30,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 /**
  * Unit tests for AccessControlService.
  *
- * <p>This test class validates the access control logic for different authentication contexts
- * (admin vs API key) and resource ownership checks.
+ * <p>This test class validates the access control logic for administrator authentication contexts
+ * and resource ownership checks.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -57,37 +52,11 @@ class AccessControlServiceTest {
 
   private AccessControlService accessControlService;
 
-  private Integration testIntegration;
-
-  private Integration otherIntegration;
-
-  private AuthAttempt testAuthAttempt;
-
-  private Enrollment testEnrollment;
-
   @BeforeEach
   void setUp() {
     accessControlService =
         new AccessControlService(
             authAttemptRepository, enrollmentRepository, integrationRepository);
-
-    // Setup test integration
-    testIntegration = new Integration();
-    testIntegration.setId(123);
-
-    // Setup other integration
-    otherIntegration = new Integration();
-    otherIntegration.setId(456);
-
-    // Setup test enrollment
-    testEnrollment = new Enrollment();
-    testEnrollment.setEnrollmentId(789);
-    testEnrollment.setIntegrationId(123); // Belongs to testIntegration
-
-    // Setup test auth attempt
-    testAuthAttempt = new AuthAttempt();
-    testAuthAttempt.setAuthAttemptId(101);
-    testAuthAttempt.setEnrollmentId(789);
   }
 
   @Nested
@@ -123,98 +92,6 @@ class AccessControlServiceTest {
       // Act & Assert
       assertTrue(accessControlService.canAccessIntegration(adminAuth, 123));
       assertTrue(accessControlService.canAccessIntegration(adminAuth, 456));
-    }
-  }
-
-  @Nested
-  @DisplayName("API Key Access Tests")
-  class ApiKeyAccessTests {
-
-    @Test
-    @DisplayName("API key can access auth attempt for its integration")
-    void apiKeyCanAccessOwnIntegrationAuthAttempt() {
-      // Arrange
-      Authentication apiKeyAuth = createApiKeyAuthentication(testIntegration);
-      when(authAttemptRepository.findById(101)).thenReturn(Optional.of(testAuthAttempt));
-      when(enrollmentRepository.findById(789)).thenReturn(Optional.of(testEnrollment));
-
-      // Act & Assert
-      assertTrue(accessControlService.canAccessAuthAttempt(apiKeyAuth, 101));
-    }
-
-    @Test
-    @DisplayName("API key cannot access auth attempt for other integration")
-    void apiKeyCannotAccessOtherIntegrationAuthAttempt() {
-      // Arrange
-      Authentication apiKeyAuth = createApiKeyAuthentication(testIntegration);
-
-      // Create auth attempt for other integration
-      AuthAttempt otherAuthAttempt = new AuthAttempt();
-      otherAuthAttempt.setAuthAttemptId(102);
-      otherAuthAttempt.setEnrollmentId(999);
-
-      Enrollment otherEnrollment = new Enrollment();
-      otherEnrollment.setEnrollmentId(999);
-      otherEnrollment.setIntegrationId(456); // Belongs to otherIntegration
-
-      when(authAttemptRepository.findById(102)).thenReturn(Optional.of(otherAuthAttempt));
-      when(enrollmentRepository.findById(999)).thenReturn(Optional.of(otherEnrollment));
-
-      // Act & Assert
-      assertFalse(accessControlService.canAccessAuthAttempt(apiKeyAuth, 102));
-    }
-
-    @Test
-    @DisplayName("API key cannot access enrollments")
-    void apiKeyCannotAccessEnrollments() {
-      // Arrange
-      Authentication apiKeyAuth = createApiKeyAuthentication(testIntegration);
-
-      // Act & Assert
-      assertFalse(accessControlService.canAccessEnrollment(apiKeyAuth, 789));
-    }
-
-    @Test
-    @DisplayName("API key can access its own integration")
-    void apiKeyCanAccessOwnIntegration() {
-      // Arrange
-      Authentication apiKeyAuth = createApiKeyAuthentication(testIntegration);
-
-      // Act & Assert
-      assertTrue(accessControlService.canAccessIntegration(apiKeyAuth, 123));
-    }
-
-    @Test
-    @DisplayName("API key cannot access other integration")
-    void apiKeyCannotAccessOtherIntegration() {
-      // Arrange
-      Authentication apiKeyAuth = createApiKeyAuthentication(testIntegration);
-
-      // Act & Assert
-      assertFalse(accessControlService.canAccessIntegration(apiKeyAuth, 456));
-    }
-
-    @Test
-    @DisplayName("API key access fails when auth attempt not found")
-    void apiKeyAccessFailsWhenAuthAttemptNotFound() {
-      // Arrange
-      Authentication apiKeyAuth = createApiKeyAuthentication(testIntegration);
-      when(authAttemptRepository.findById(999)).thenReturn(Optional.empty());
-
-      // Act & Assert
-      assertFalse(accessControlService.canAccessAuthAttempt(apiKeyAuth, 999));
-    }
-
-    @Test
-    @DisplayName("API key access fails when enrollment not found")
-    void apiKeyAccessFailsWhenEnrollmentNotFound() {
-      // Arrange
-      Authentication apiKeyAuth = createApiKeyAuthentication(testIntegration);
-      when(authAttemptRepository.findById(101)).thenReturn(Optional.of(testAuthAttempt));
-      when(enrollmentRepository.findById(789)).thenReturn(Optional.empty());
-
-      // Act & Assert
-      assertFalse(accessControlService.canAccessAuthAttempt(apiKeyAuth, 101));
     }
   }
 
@@ -273,16 +150,5 @@ class AccessControlServiceTest {
         java.util.List.of(
             new SimpleGrantedAuthority("ROLE_ADMIN"),
             new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN")));
-  }
-
-  /**
-   * Creates an API key authentication context.
-   *
-   * @param integration the integration for the API key
-   * @return authentication with ROLE_API_KEY and integration as principal
-   */
-  private Authentication createApiKeyAuthentication(Integration integration) {
-    return new UsernamePasswordAuthenticationToken(
-        integration.getId(), null, java.util.List.of(new SimpleGrantedAuthority("ROLE_API_KEY")));
   }
 }

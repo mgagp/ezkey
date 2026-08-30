@@ -192,6 +192,18 @@ Without **`/etc/ezkey/secrets/master.key`**, Tink may stay disabled. Prefer **`c
 
 ---
 
+## ACME M2M cutover (Admin API hatch removed)
+
+The next rolling upgrade must retarget Demo ACME at Integration API. Do **not** re-enable an Admin API API-key hatch on the VM.
+
+```text
+./experimental-hybrid/scripts/full-exp-environment-upgrade.sh rolling --include-demo-acme
+```
+
+That syncs Compose (`EZKEY_ADMIN_API_URL=http://integration-api:7080`), recreates Admin API (no API-key authentication) and ACME, and keeps Postgres. After sync, delete `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED` from the live `.env` if present. Details: [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
+
+---
+
 ## Phase 6 — Checkpoint
 
 - HTTPS on all three API hostnames through **Cloudflare**; origin presents **Origin CA** to Cloudflare.

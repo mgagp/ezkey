@@ -24,7 +24,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.admin.security.AccessControlService;
-import org.ezkey.admin.security.RateLimitService;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
@@ -75,7 +74,6 @@ class AuthAttemptControllerTest {
   @Mock private AuthAttemptService authAttemptService;
   @Mock private AuthAttemptAdminApiMapper authAttemptMapper;
   @Mock private AuditLogService auditLogService;
-  @Mock private RateLimitService rateLimitService;
   @Mock private EnrollmentRepository enrollmentRepository;
   @Mock private AccessControlService accessControlService;
 
@@ -95,7 +93,6 @@ class AuthAttemptControllerTest {
             authAttemptService,
             authAttemptMapper,
             auditLogService,
-            rateLimitService,
             enrollmentRepository,
             accessControlService,
             integrationRepository,
