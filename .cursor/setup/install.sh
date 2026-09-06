@@ -81,4 +81,10 @@ echo "[install] Admin UI dependencies (npm ci)"
 cd "$REPO_ROOT/ezkey-admin-ui"
 npm ci
 
+echo "[install] Admin UI API client (Orval codegen from committed openapi-spec.json)"
+# src/generated/ is gitignored; the Vite dev server imports these modules, so
+# generate them at install time (otherwise the first page load fails to resolve
+# @/generated/admin-api/*).
+npm run generate:api
+
 echo "[install] done"
