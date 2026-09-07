@@ -2,7 +2,7 @@
 /* eslint-disable */
 /**
  * Ezkey Admin API
- * Administration API for Ezkey - Open Source Cryptographic MFA Platform  This API enables administrative management of Ezkey\'s main entities: - **Integrations**: Applications or systems protected by MFA - **Enrollments**: Associations between users, devices and integrations - **Auth Attempts**: MFA authentication attempts  The API follows REST conventions and uses DTOs for all requests and responses. 
+ * Administration API for Ezkey - Open Source Cryptographic MFA Platform  This API enables administrative management of Ezkey\'s main entities: - **Integrations**: Applications or systems protected by MFA - **Enrollments**: Associations between users, devices and integrations - **Auth Attempts**: MFA authentication attempts - **Admin Management**: Administrator authentication,                         enrollment recovery, and admin operations  Ezkey is intentionally distinct from FIDO2/WebAuthn and follows its own cryptographic MFA model. The API uses REST conventions and DTOs for all requests and responses. 
  *
  * The version of the OpenAPI document: 1.0.0
  * Contact: info@ezkey.org
@@ -18,24 +18,116 @@ import type {
   EnrollmentCreateRequestDto,
   EnrollmentCreateResponseDto,
   EnrollmentResponseDto,
+  EnrollmentUpdateRequestDto,
+  PagedModelEnrollmentResponseDto,
 } from '../models/index';
+
+export interface DeleteRequest {
+    id: number;
+    reason: string;
+}
 
 export interface Create1Request {
     enrollmentCreateRequestDto: EnrollmentCreateRequestDto;
 }
 
-export interface Delete1Request {
+export interface DeactivateRequest {
+    id: number;
+    reason?: string;
+}
+
+export interface GetByIdRequest {
     id: number;
 }
 
-export interface GetById1Request {
+export interface GetQrCodeRequest {
     id: number;
+}
+
+export interface ReactivateRequest {
+    id: number;
+    reason?: string;
+}
+
+export interface RevokeRequest {
+    id: number;
+    reason: string;
+}
+
+export interface Search1Request {
+    status?: Search1StatusEnum;
+    integrationId?: number;
+    enrollmentName?: string;
+    active?: boolean;
+    createdAfter?: string;
+    createdBefore?: string;
+    page?: number;
+    size?: number;
+    sort?: Array<string>;
+}
+
+export interface UpdateRequest {
+    id: number;
+    enrollmentUpdateRequestDto: EnrollmentUpdateRequestDto;
 }
 
 /**
  * 
  */
 export class EnrollmentsApi extends runtime.BaseAPI {
+
+    /**
+     * Removes an enrollment from the system
+     * Delete enrollment
+     */
+    async _deleteRaw(requestParameters: DeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling _delete().'
+            );
+        }
+
+        if (requestParameters['reason'] == null) {
+            throw new runtime.RequiredError(
+                'reason',
+                'Required parameter "reason" was null or undefined when calling _delete().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['reason'] != null) {
+            queryParameters['reason'] = requestParameters['reason'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/enrollments/{id}`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Removes an enrollment from the system
+     * Delete enrollment
+     */
+    async _delete(requestParameters: DeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this._deleteRaw(requestParameters, initOverrides);
+    }
 
     /**
      * Creates a new enrollment that can later be bound to a mobile device
@@ -84,14 +176,60 @@ export class EnrollmentsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Removes an enrollment from the system
-     * Delete enrollment
+     * Reversibly deactivates an enrollment (active=false). Status remains VERIFIED. Can be undone with /reactivate. If the enrollment belongs to an admin, their active bearer tokens are immediately invalidated. Self-deactivation is not allowed.
+     * Deactivate an enrollment
      */
-    async delete1Raw(requestParameters: Delete1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async deactivateRaw(requestParameters: DeactivateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
-                'Required parameter "id" was null or undefined when calling delete1().'
+                'Required parameter "id" was null or undefined when calling deactivate().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['reason'] != null) {
+            queryParameters['reason'] = requestParameters['reason'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/enrollments/{id}/deactivate`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Reversibly deactivates an enrollment (active=false). Status remains VERIFIED. Can be undone with /reactivate. If the enrollment belongs to an admin, their active bearer tokens are immediately invalidated. Self-deactivation is not allowed.
+     * Deactivate an enrollment
+     */
+    async deactivate(requestParameters: DeactivateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deactivateRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Returns details of a specific enrollment
+     * Retrieve enrollment by ID
+     */
+    async getByIdRaw(requestParameters: GetByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EnrollmentResponseDto>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getById().'
             );
         }
 
@@ -109,7 +247,101 @@ export class EnrollmentsApi extends runtime.BaseAPI {
         }
         const response = await this.request({
             path: `/api/v1/enrollments/{id}`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
-            method: 'DELETE',
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Returns details of a specific enrollment
+     * Retrieve enrollment by ID
+     */
+    async getById(requestParameters: GetByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponseDto> {
+        const response = await this.getByIdRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl})
+     * Generate QR code for enrollment
+     */
+    async getQrCodeRaw(requestParameters: GetQrCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<string>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getQrCode().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/enrollments/{id}/qrcode`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<string>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl})
+     * Generate QR code for enrollment
+     */
+    async getQrCode(requestParameters: GetQrCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<string> {
+        const response = await this.getQrCodeRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Reactivates an enrollment that was previously deactivated via /deactivate. Only applicable to VERIFIED enrollments. Cannot reactivate REVOKED enrollments.
+     * Reactivate a deactivated enrollment
+     */
+    async reactivateRaw(requestParameters: ReactivateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling reactivate().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['reason'] != null) {
+            queryParameters['reason'] = requestParameters['reason'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/enrollments/{id}/reactivate`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
         }, initOverrides);
@@ -118,19 +350,108 @@ export class EnrollmentsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Removes an enrollment from the system
-     * Delete enrollment
+     * Reactivates an enrollment that was previously deactivated via /deactivate. Only applicable to VERIFIED enrollments. Cannot reactivate REVOKED enrollments.
+     * Reactivate a deactivated enrollment
      */
-    async delete1(requestParameters: Delete1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.delete1Raw(requestParameters, initOverrides);
+    async reactivate(requestParameters: ReactivateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.reactivateRaw(requestParameters, initOverrides);
     }
 
     /**
-     * Returns the complete list of enrollments in the system
-     * Retrieve all enrollments
+     * Irrevocably revokes an enrollment. Sets status to REVOKED and active=false. If the enrollment belongs to an admin, their active bearer tokens are immediately invalidated. Self-revocation is not allowed.
+     * Permanently revoke an enrollment
      */
-    async getAll1Raw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<EnrollmentResponseDto>>> {
+    async revokeRaw(requestParameters: RevokeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling revoke().'
+            );
+        }
+
+        if (requestParameters['reason'] == null) {
+            throw new runtime.RequiredError(
+                'reason',
+                'Required parameter "reason" was null or undefined when calling revoke().'
+            );
+        }
+
         const queryParameters: any = {};
+
+        if (requestParameters['reason'] != null) {
+            queryParameters['reason'] = requestParameters['reason'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/enrollments/{id}/revoke`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Irrevocably revokes an enrollment. Sets status to REVOKED and active=false. If the enrollment belongs to an admin, their active bearer tokens are immediately invalidated. Self-revocation is not allowed.
+     * Permanently revoke an enrollment
+     */
+    async revoke(requestParameters: RevokeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.revokeRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Retrieves enrollments with optional filters and pagination for security monitoring, forensic analysis, and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=enrollmentId,asc). Default sort is by creation date descending (newest first).
+     * Search enrollments
+     */
+    async search1Raw(requestParameters: Search1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PagedModelEnrollmentResponseDto>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['integrationId'] != null) {
+            queryParameters['integrationId'] = requestParameters['integrationId'];
+        }
+
+        if (requestParameters['enrollmentName'] != null) {
+            queryParameters['enrollmentName'] = requestParameters['enrollmentName'];
+        }
+
+        if (requestParameters['active'] != null) {
+            queryParameters['active'] = requestParameters['active'];
+        }
+
+        if (requestParameters['createdAfter'] != null) {
+            queryParameters['createdAfter'] = requestParameters['createdAfter'];
+        }
+
+        if (requestParameters['createdBefore'] != null) {
+            queryParameters['createdBefore'] = requestParameters['createdBefore'];
+        }
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['size'] != null) {
+            queryParameters['size'] = requestParameters['size'];
+        }
+
+        if (requestParameters['sort'] != null) {
+            queryParameters['sort'] = requestParameters['sort'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -153,29 +474,38 @@ export class EnrollmentsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Returns the complete list of enrollments in the system
-     * Retrieve all enrollments
+     * Retrieves enrollments with optional filters and pagination for security monitoring, forensic analysis, and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=enrollmentId,asc). Default sort is by creation date descending (newest first).
+     * Search enrollments
      */
-    async getAll1(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<EnrollmentResponseDto>> {
-        const response = await this.getAll1Raw(initOverrides);
+    async search1(requestParameters: Search1Request = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PagedModelEnrollmentResponseDto> {
+        const response = await this.search1Raw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
-     * Returns details of a specific enrollment
-     * Retrieve enrollment by ID
+     * Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments. Include version from GET for optimistic locking.
+     * Partially update enrollment metadata
      */
-    async getById1Raw(requestParameters: GetById1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EnrollmentResponseDto>> {
+    async updateRaw(requestParameters: UpdateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EnrollmentResponseDto>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
-                'Required parameter "id" was null or undefined when calling getById1().'
+                'Required parameter "id" was null or undefined when calling update().'
+            );
+        }
+
+        if (requestParameters['enrollmentUpdateRequestDto'] == null) {
+            throw new runtime.RequiredError(
+                'enrollmentUpdateRequestDto',
+                'Required parameter "enrollmentUpdateRequestDto" was null or undefined when calling update().'
             );
         }
 
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
 
         if (this.configuration && this.configuration.accessToken) {
             const token = this.configuration.accessToken;
@@ -187,21 +517,35 @@ export class EnrollmentsApi extends runtime.BaseAPI {
         }
         const response = await this.request({
             path: `/api/v1/enrollments/{id}`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
-            method: 'GET',
+            method: 'PATCH',
             headers: headerParameters,
             query: queryParameters,
+            body: requestParameters['enrollmentUpdateRequestDto'],
         }, initOverrides);
 
         return new runtime.JSONApiResponse(response);
     }
 
     /**
-     * Returns details of a specific enrollment
-     * Retrieve enrollment by ID
+     * Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments. Include version from GET for optimistic locking.
+     * Partially update enrollment metadata
      */
-    async getById1(requestParameters: GetById1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponseDto> {
-        const response = await this.getById1Raw(requestParameters, initOverrides);
+    async update(requestParameters: UpdateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponseDto> {
+        const response = await this.updateRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
 }
+
+/**
+ * @export
+ */
+export const Search1StatusEnum = {
+    Created: 'CREATED',
+    Bound: 'BOUND',
+    Verified: 'VERIFIED',
+    Invalid: 'INVALID',
+    Revoked: 'REVOKED',
+    Expired: 'EXPIRED'
+} as const;
+export type Search1StatusEnum = typeof Search1StatusEnum[keyof typeof Search1StatusEnum];

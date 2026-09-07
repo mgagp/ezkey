@@ -3,7 +3,7 @@
 /* eslint-disable */
 /**
  * Ezkey Admin API
- * Administration API for Ezkey - Open Source MFA/Passkey Alternative  This API enables administrative management of Ezkey\'s main entities: - **Integrations**: Applications or systems protected by MFA - **Enrollments**: Associations between users, devices and integrations - **Auth Attempts**: MFA authentication attempts  The API follows REST conventions and uses DTOs for all requests and responses.
+ * Administration API for Ezkey - Open Source Cryptographic MFA Platform  This API enables administrative management of Ezkey\'s main entities: - **Integrations**: Applications or systems protected by MFA - **Enrollments**: Associations between users, devices and integrations - **Auth Attempts**: MFA authentication attempts - **Admin Management**: Administrator authentication,                         enrollment recovery, and admin operations  Ezkey is intentionally distinct from FIDO2/WebAuthn and follows its own cryptographic MFA model. The API uses REST conventions and DTOs for all requests and responses.
  *
  * The version of the OpenAPI document: 1.0.0
  * Contact: info@ezkey.org
@@ -46,12 +46,45 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AuthAttemptsApi = void 0;
+exports.Search2StatusEnum = exports.AuthAttemptsApi = void 0;
 const runtime = __importStar(require("../runtime"));
 /**
  *
  */
 class AuthAttemptsApi extends runtime.BaseAPI {
+    /**
+     * Cancels a pending or read authentication attempt by marking it as expired. Allows client applications to proactively abort authentication requests.
+     * Cancel auth attempt
+     */
+    async cancelRaw(requestParameters, initOverrides) {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError('id', 'Required parameter "id" was null or undefined when calling cancel().');
+        }
+        const queryParameters = {};
+        const headerParameters = {};
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/auth-attempts/{id}/cancel`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+        return new runtime.JSONApiResponse(response);
+    }
+    /**
+     * Cancels a pending or read authentication attempt by marking it as expired. Allows client applications to proactively abort authentication requests.
+     * Cancel auth attempt
+     */
+    async cancel(requestParameters, initOverrides) {
+        const response = await this.cancelRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
     /**
      * Creates a new authentication attempt for MFA validation
      * Create new auth attempt
@@ -88,68 +121,6 @@ class AuthAttemptsApi extends runtime.BaseAPI {
         return await response.value();
     }
     /**
-     * Removes an authentication attempt from the system
-     * Delete auth attempt
-     */
-    async delete2Raw(requestParameters, initOverrides) {
-        if (requestParameters['id'] == null) {
-            throw new runtime.RequiredError('id', 'Required parameter "id" was null or undefined when calling delete2().');
-        }
-        const queryParameters = {};
-        const headerParameters = {};
-        if (this.configuration && this.configuration.accessToken) {
-            const token = this.configuration.accessToken;
-            const tokenString = await token("bearerAuth", []);
-            if (tokenString) {
-                headerParameters["Authorization"] = `Bearer ${tokenString}`;
-            }
-        }
-        const response = await this.request({
-            path: `/api/v1/auth-attempts/{id}`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
-            method: 'DELETE',
-            headers: headerParameters,
-            query: queryParameters,
-        }, initOverrides);
-        return new runtime.VoidApiResponse(response);
-    }
-    /**
-     * Removes an authentication attempt from the system
-     * Delete auth attempt
-     */
-    async delete2(requestParameters, initOverrides) {
-        await this.delete2Raw(requestParameters, initOverrides);
-    }
-    /**
-     * Returns the complete list of authentication attempts in the system
-     * Retrieve all auth attempts
-     */
-    async getAll2Raw(initOverrides) {
-        const queryParameters = {};
-        const headerParameters = {};
-        if (this.configuration && this.configuration.accessToken) {
-            const token = this.configuration.accessToken;
-            const tokenString = await token("bearerAuth", []);
-            if (tokenString) {
-                headerParameters["Authorization"] = `Bearer ${tokenString}`;
-            }
-        }
-        const response = await this.request({
-            path: `/api/v1/auth-attempts`,
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        }, initOverrides);
-        return new runtime.JSONApiResponse(response);
-    }
-    /**
-     * Returns the complete list of authentication attempts in the system
-     * Retrieve all auth attempts
-     */
-    async getAll2(initOverrides) {
-        const response = await this.getAll2Raw(initOverrides);
-        return await response.value();
-    }
-    /**
      * Returns details of a specific authentication attempt
      * Retrieve auth attempt by ID
      */
@@ -180,6 +151,90 @@ class AuthAttemptsApi extends runtime.BaseAPI {
      */
     async getById2(requestParameters, initOverrides) {
         const response = await this.getById2Raw(requestParameters, initOverrides);
+        return await response.value();
+    }
+    /**
+     * Returns the number of auth attempts with status PENDING for the current administrator scope. Designed for the Admin UI dashboard live widget (e.g. 10s refresh). Administrator Bearer only — Integration API keys are not permitted.
+     * Get pending auth attempt count
+     */
+    async getPendingCountRaw(initOverrides) {
+        const queryParameters = {};
+        const headerParameters = {};
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/auth-attempts/pending-count`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+        return new runtime.JSONApiResponse(response);
+    }
+    /**
+     * Returns the number of auth attempts with status PENDING for the current administrator scope. Designed for the Admin UI dashboard live widget (e.g. 10s refresh). Administrator Bearer only — Integration API keys are not permitted.
+     * Get pending auth attempt count
+     */
+    async getPendingCount(initOverrides) {
+        const response = await this.getPendingCountRaw(initOverrides);
+        return await response.value();
+    }
+    /**
+     * Retrieves authentication attempts with optional filters and pagination for security monitoring, forensic analysis, and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=authAttemptId,asc). Default sort is by creation date descending (newest first).
+     * Search auth attempts
+     */
+    async search2Raw(requestParameters, initOverrides) {
+        const queryParameters = {};
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+        if (requestParameters['enrollmentId'] != null) {
+            queryParameters['enrollmentId'] = requestParameters['enrollmentId'];
+        }
+        if (requestParameters['integrationId'] != null) {
+            queryParameters['integrationId'] = requestParameters['integrationId'];
+        }
+        if (requestParameters['createdAfter'] != null) {
+            queryParameters['createdAfter'] = requestParameters['createdAfter'];
+        }
+        if (requestParameters['createdBefore'] != null) {
+            queryParameters['createdBefore'] = requestParameters['createdBefore'];
+        }
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+        if (requestParameters['size'] != null) {
+            queryParameters['size'] = requestParameters['size'];
+        }
+        if (requestParameters['sort'] != null) {
+            queryParameters['sort'] = requestParameters['sort'];
+        }
+        const headerParameters = {};
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/auth-attempts`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+        return new runtime.JSONApiResponse(response);
+    }
+    /**
+     * Retrieves authentication attempts with optional filters and pagination for security monitoring, forensic analysis, and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=authAttemptId,asc). Default sort is by creation date descending (newest first).
+     * Search auth attempts
+     */
+    async search2(requestParameters = {}, initOverrides) {
+        const response = await this.search2Raw(requestParameters, initOverrides);
         return await response.value();
     }
     /**
@@ -223,4 +278,15 @@ class AuthAttemptsApi extends runtime.BaseAPI {
     }
 }
 exports.AuthAttemptsApi = AuthAttemptsApi;
+/**
+ * @export
+ */
+exports.Search2StatusEnum = {
+    Pending: 'PENDING',
+    Read: 'READ',
+    Invalid: 'INVALID',
+    Rejected: 'REJECTED',
+    Accepted: 'ACCEPTED',
+    Expired: 'EXPIRED'
+};
 //# sourceMappingURL=AuthAttemptsApi.js.map

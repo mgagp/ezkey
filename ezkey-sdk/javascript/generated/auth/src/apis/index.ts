@@ -1,4 +1,5 @@
 /* tslint:disable */
 /* eslint-disable */
-export * from './AuthAttemptControllerApi';
-export * from './EnrollmentControllerApi';
+export * from './AuthenticationAttemptsApi';
+export * from './EnrollmentsApi';
+export * from './PublicApi';

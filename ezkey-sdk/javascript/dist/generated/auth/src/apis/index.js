@@ -16,6 +16,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 /* tslint:disable */
 /* eslint-disable */
-__exportStar(require("./AuthAttemptControllerApi"), exports);
-__exportStar(require("./EnrollmentControllerApi"), exports);
+__exportStar(require("./AuthenticationAttemptsApi"), exports);
+__exportStar(require("./EnrollmentsApi"), exports);
+__exportStar(require("./PublicApi"), exports);
 //# sourceMappingURL=index.js.map

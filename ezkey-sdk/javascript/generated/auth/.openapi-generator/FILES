@@ -3,8 +3,9 @@
 .openapi-generator-ignore
 README.md
 package.json
-src/apis/AuthAttemptControllerApi.ts
-src/apis/EnrollmentControllerApi.ts
+src/apis/AuthenticationAttemptsApi.ts
+src/apis/EnrollmentsApi.ts
+src/apis/PublicApi.ts
 src/apis/index.ts
 src/index.ts
 src/models/index.ts

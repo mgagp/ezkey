@@ -1,6 +1,6 @@
 /**
  * Ezkey Admin API
- * Administration API for Ezkey - Open Source Cryptographic MFA Platform  This API enables administrative management of Ezkey\'s main entities: - **Integrations**: Applications or systems protected by MFA - **Enrollments**: Associations between users, devices and integrations - **Auth Attempts**: MFA authentication attempts  The API follows REST conventions and uses DTOs for all requests and responses.
+ * Administration API for Ezkey - Open Source Cryptographic MFA Platform  This API enables administrative management of Ezkey\'s main entities: - **Integrations**: Applications or systems protected by MFA - **Enrollments**: Associations between users, devices and integrations - **Auth Attempts**: MFA authentication attempts - **Admin Management**: Administrator authentication,                         enrollment recovery, and admin operations  Ezkey is intentionally distinct from FIDO2/WebAuthn and follows its own cryptographic MFA model. The API uses REST conventions and DTOs for all requests and responses.
  *
  * The version of the OpenAPI document: 1.0.0
  * Contact: info@ezkey.org
@@ -10,20 +10,61 @@
  * Do not edit the class manually.
  */
 import * as runtime from '../runtime';
-import type { EnrollmentCreateRequestDto, EnrollmentCreateResponseDto, EnrollmentResponseDto } from '../models/index';
+import type { EnrollmentCreateRequestDto, EnrollmentCreateResponseDto, EnrollmentResponseDto, EnrollmentUpdateRequestDto, PagedModelEnrollmentResponseDto } from '../models/index';
+export interface DeleteRequest {
+    id: number;
+    reason: string;
+}
 export interface Create1Request {
     enrollmentCreateRequestDto: EnrollmentCreateRequestDto;
 }
-export interface Delete1Request {
+export interface DeactivateRequest {
+    id: number;
+    reason?: string;
+}
+export interface GetByIdRequest {
     id: number;
 }
-export interface GetById1Request {
+export interface GetQrCodeRequest {
     id: number;
+}
+export interface ReactivateRequest {
+    id: number;
+    reason?: string;
+}
+export interface RevokeRequest {
+    id: number;
+    reason: string;
+}
+export interface Search1Request {
+    status?: Search1StatusEnum;
+    integrationId?: number;
+    enrollmentName?: string;
+    active?: boolean;
+    createdAfter?: string;
+    createdBefore?: string;
+    page?: number;
+    size?: number;
+    sort?: Array<string>;
+}
+export interface UpdateRequest {
+    id: number;
+    enrollmentUpdateRequestDto: EnrollmentUpdateRequestDto;
 }
 /**
  *
  */
 export declare class EnrollmentsApi extends runtime.BaseAPI {
+    /**
+     * Removes an enrollment from the system
+     * Delete enrollment
+     */
+    _deleteRaw(requestParameters: DeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+    /**
+     * Removes an enrollment from the system
+     * Delete enrollment
+     */
+    _delete(requestParameters: DeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
     /**
      * Creates a new enrollment that can later be bound to a mobile device
      * Create new enrollment
@@ -35,34 +76,86 @@ export declare class EnrollmentsApi extends runtime.BaseAPI {
      */
     create1(requestParameters: Create1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentCreateResponseDto>;
     /**
-     * Removes an enrollment from the system
-     * Delete enrollment
+     * Reversibly deactivates an enrollment (active=false). Status remains VERIFIED. Can be undone with /reactivate. If the enrollment belongs to an admin, their active bearer tokens are immediately invalidated. Self-deactivation is not allowed.
+     * Deactivate an enrollment
      */
-    delete1Raw(requestParameters: Delete1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+    deactivateRaw(requestParameters: DeactivateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
     /**
-     * Removes an enrollment from the system
-     * Delete enrollment
+     * Reversibly deactivates an enrollment (active=false). Status remains VERIFIED. Can be undone with /reactivate. If the enrollment belongs to an admin, their active bearer tokens are immediately invalidated. Self-deactivation is not allowed.
+     * Deactivate an enrollment
      */
-    delete1(requestParameters: Delete1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
-    /**
-     * Returns the complete list of enrollments in the system
-     * Retrieve all enrollments
-     */
-    getAll1Raw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<EnrollmentResponseDto>>>;
-    /**
-     * Returns the complete list of enrollments in the system
-     * Retrieve all enrollments
-     */
-    getAll1(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<EnrollmentResponseDto>>;
+    deactivate(requestParameters: DeactivateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
     /**
      * Returns details of a specific enrollment
      * Retrieve enrollment by ID
      */
-    getById1Raw(requestParameters: GetById1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EnrollmentResponseDto>>;
+    getByIdRaw(requestParameters: GetByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EnrollmentResponseDto>>;
     /**
      * Returns details of a specific enrollment
      * Retrieve enrollment by ID
      */
-    getById1(requestParameters: GetById1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponseDto>;
+    getById(requestParameters: GetByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponseDto>;
+    /**
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl})
+     * Generate QR code for enrollment
+     */
+    getQrCodeRaw(requestParameters: GetQrCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<string>>;
+    /**
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl})
+     * Generate QR code for enrollment
+     */
+    getQrCode(requestParameters: GetQrCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<string>;
+    /**
+     * Reactivates an enrollment that was previously deactivated via /deactivate. Only applicable to VERIFIED enrollments. Cannot reactivate REVOKED enrollments.
+     * Reactivate a deactivated enrollment
+     */
+    reactivateRaw(requestParameters: ReactivateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+    /**
+     * Reactivates an enrollment that was previously deactivated via /deactivate. Only applicable to VERIFIED enrollments. Cannot reactivate REVOKED enrollments.
+     * Reactivate a deactivated enrollment
+     */
+    reactivate(requestParameters: ReactivateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+    /**
+     * Irrevocably revokes an enrollment. Sets status to REVOKED and active=false. If the enrollment belongs to an admin, their active bearer tokens are immediately invalidated. Self-revocation is not allowed.
+     * Permanently revoke an enrollment
+     */
+    revokeRaw(requestParameters: RevokeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+    /**
+     * Irrevocably revokes an enrollment. Sets status to REVOKED and active=false. If the enrollment belongs to an admin, their active bearer tokens are immediately invalidated. Self-revocation is not allowed.
+     * Permanently revoke an enrollment
+     */
+    revoke(requestParameters: RevokeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+    /**
+     * Retrieves enrollments with optional filters and pagination for security monitoring, forensic analysis, and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=enrollmentId,asc). Default sort is by creation date descending (newest first).
+     * Search enrollments
+     */
+    search1Raw(requestParameters: Search1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PagedModelEnrollmentResponseDto>>;
+    /**
+     * Retrieves enrollments with optional filters and pagination for security monitoring, forensic analysis, and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=enrollmentId,asc). Default sort is by creation date descending (newest first).
+     * Search enrollments
+     */
+    search1(requestParameters?: Search1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PagedModelEnrollmentResponseDto>;
+    /**
+     * Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments. Include version from GET for optimistic locking.
+     * Partially update enrollment metadata
+     */
+    updateRaw(requestParameters: UpdateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EnrollmentResponseDto>>;
+    /**
+     * Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments. Include version from GET for optimistic locking.
+     * Partially update enrollment metadata
+     */
+    update(requestParameters: UpdateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponseDto>;
 }
+/**
+ * @export
+ */
+export declare const Search1StatusEnum: {
+    readonly Created: "CREATED";
+    readonly Bound: "BOUND";
+    readonly Verified: "VERIFIED";
+    readonly Invalid: "INVALID";
+    readonly Revoked: "REVOKED";
+    readonly Expired: "EXPIRED";
+};
+export type Search1StatusEnum = typeof Search1StatusEnum[keyof typeof Search1StatusEnum];
 //# sourceMappingURL=EnrollmentsApi.d.ts.map

@@ -1,6 +1,6 @@
 /**
  * Ezkey Admin API
- * Administration API for Ezkey - Open Source Cryptographic MFA Platform  This API enables administrative management of Ezkey\'s main entities: - **Integrations**: Applications or systems protected by MFA - **Enrollments**: Associations between users, devices and integrations - **Auth Attempts**: MFA authentication attempts  The API follows REST conventions and uses DTOs for all requests and responses.
+ * Administration API for Ezkey - Open Source Cryptographic MFA Platform  This API enables administrative management of Ezkey\'s main entities: - **Integrations**: Applications or systems protected by MFA - **Enrollments**: Associations between users, devices and integrations - **Auth Attempts**: MFA authentication attempts - **Admin Management**: Administrator authentication,                         enrollment recovery, and admin operations  Ezkey is intentionally distinct from FIDO2/WebAuthn and follows its own cryptographic MFA model. The API uses REST conventions and DTOs for all requests and responses.
  *
  * The version of the OpenAPI document: 1.0.0
  * Contact: info@ezkey.org
@@ -10,15 +10,25 @@
  * Do not edit the class manually.
  */
 import * as runtime from '../runtime';
-import type { AuthAttemptCreateRequestDto, AuthAttemptCreateResponseDto, AuthAttemptDto, AuthAttemptWaitResponseDto } from '../models/index';
+import type { AuthAttemptCreateRequestDto, AuthAttemptDto, AuthAttemptWaitResponseDto, PagedModelAuthAttemptDto } from '../models/index';
+export interface CancelRequest {
+    id: number;
+}
 export interface Create2Request {
     authAttemptCreateRequestDto: AuthAttemptCreateRequestDto;
 }
-export interface Delete2Request {
-    id: number;
-}
 export interface GetById2Request {
     id: number;
+}
+export interface Search2Request {
+    status?: Search2StatusEnum;
+    enrollmentId?: number;
+    integrationId?: number;
+    createdAfter?: string;
+    createdBefore?: string;
+    page?: number;
+    size?: number;
+    sort?: Array<string>;
 }
 export interface WaitForResponseRequest {
     id: number;
@@ -30,35 +40,25 @@ export interface WaitForResponseRequest {
  */
 export declare class AuthAttemptsApi extends runtime.BaseAPI {
     /**
-     * Creates a new authentication attempt for MFA validation
-     * Create new auth attempt
+     * Cancels a pending or read authentication attempt by marking it as expired. Allows client applications to proactively abort authentication requests.
+     * Cancel auth attempt
      */
-    create2Raw(requestParameters: Create2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AuthAttemptCreateResponseDto>>;
+    cancelRaw(requestParameters: CancelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AuthAttemptDto>>;
+    /**
+     * Cancels a pending or read authentication attempt by marking it as expired. Allows client applications to proactively abort authentication requests.
+     * Cancel auth attempt
+     */
+    cancel(requestParameters: CancelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthAttemptDto>;
     /**
      * Creates a new authentication attempt for MFA validation
      * Create new auth attempt
      */
-    create2(requestParameters: Create2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthAttemptCreateResponseDto>;
+    create2Raw(requestParameters: Create2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<object>>;
     /**
-     * Removes an authentication attempt from the system
-     * Delete auth attempt
+     * Creates a new authentication attempt for MFA validation
+     * Create new auth attempt
      */
-    delete2Raw(requestParameters: Delete2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
-    /**
-     * Removes an authentication attempt from the system
-     * Delete auth attempt
-     */
-    delete2(requestParameters: Delete2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
-    /**
-     * Returns the complete list of authentication attempts in the system
-     * Retrieve all auth attempts
-     */
-    getAll2Raw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<AuthAttemptDto>>>;
-    /**
-     * Returns the complete list of authentication attempts in the system
-     * Retrieve all auth attempts
-     */
-    getAll2(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AuthAttemptDto>>;
+    create2(requestParameters: Create2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<object>;
     /**
      * Returns details of a specific authentication attempt
      * Retrieve auth attempt by ID
@@ -70,6 +70,30 @@ export declare class AuthAttemptsApi extends runtime.BaseAPI {
      */
     getById2(requestParameters: GetById2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthAttemptDto>;
     /**
+     * Returns the number of auth attempts with status PENDING for the current administrator scope. Designed for the Admin UI dashboard live widget (e.g. 10s refresh). Administrator Bearer only — Integration API keys are not permitted.
+     * Get pending auth attempt count
+     */
+    getPendingCountRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<{
+        [key: string]: number;
+    }>>;
+    /**
+     * Returns the number of auth attempts with status PENDING for the current administrator scope. Designed for the Admin UI dashboard live widget (e.g. 10s refresh). Administrator Bearer only — Integration API keys are not permitted.
+     * Get pending auth attempt count
+     */
+    getPendingCount(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<{
+        [key: string]: number;
+    }>;
+    /**
+     * Retrieves authentication attempts with optional filters and pagination for security monitoring, forensic analysis, and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=authAttemptId,asc). Default sort is by creation date descending (newest first).
+     * Search auth attempts
+     */
+    search2Raw(requestParameters: Search2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PagedModelAuthAttemptDto>>;
+    /**
+     * Retrieves authentication attempts with optional filters and pagination for security monitoring, forensic analysis, and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=authAttemptId,asc). Default sort is by creation date descending (newest first).
+     * Search auth attempts
+     */
+    search2(requestParameters?: Search2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PagedModelAuthAttemptDto>;
+    /**
      * Blocks until authentication attempt is completed or timeout is reached. Provides polling mechanism for synchronous-like behavior in MFA flow.
      * Wait for authentication response
      */
@@ -80,4 +104,16 @@ export declare class AuthAttemptsApi extends runtime.BaseAPI {
      */
     waitForResponse(requestParameters: WaitForResponseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthAttemptWaitResponseDto>;
 }
+/**
+ * @export
+ */
+export declare const Search2StatusEnum: {
+    readonly Pending: "PENDING";
+    readonly Read: "READ";
+    readonly Invalid: "INVALID";
+    readonly Rejected: "REJECTED";
+    readonly Accepted: "ACCEPTED";
+    readonly Expired: "EXPIRED";
+};
+export type Search2StatusEnum = typeof Search2StatusEnum[keyof typeof Search2StatusEnum];
 //# sourceMappingURL=AuthAttemptsApi.d.ts.map
