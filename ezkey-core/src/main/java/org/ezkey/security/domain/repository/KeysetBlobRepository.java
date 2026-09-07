@@ -63,9 +63,9 @@ public interface KeysetBlobRepository extends JpaRepository<KeysetBlob, Integer>
   /**
    * Inserts the singleton keyset row only when the table is empty.
    *
-   * <p>Used for first-boot materialization so two Admin writers cannot overwrite each other's
-   * newly generated keysets. Returns {@code 1} when this process claimed the row, or {@code 0}
-   * when a peer already inserted {@code id=1}.
+   * <p>Used for first-boot materialization so two Admin writers cannot overwrite each other's newly
+   * generated keysets. Returns {@code 1} when this process claimed the row, or {@code 0} when a
+   * peer already inserted {@code id=1}.
    *
    * @param keysetData encrypted Tink keyset envelope
    * @param lastUpdatedAt claim timestamp
