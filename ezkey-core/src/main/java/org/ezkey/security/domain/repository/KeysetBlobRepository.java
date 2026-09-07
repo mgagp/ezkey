@@ -10,11 +10,15 @@
 
 package org.ezkey.security.domain.repository;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.security.domain.entity.KeysetBlob;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Spring Data JPA repository for KeysetBlob entity.
@@ -55,6 +59,33 @@ public interface KeysetBlobRepository extends JpaRepository<KeysetBlob, Integer>
   default boolean keysetExists() {
     return existsById(KeysetBlob.SINGLETON_ID);
   }
+
+  /**
+   * Inserts the singleton keyset row only when the table is empty.
+   *
+   * <p>Used for first-boot materialization so two Admin writers cannot overwrite each other's newly
+   * generated keysets. Returns {@code 1} when this process claimed the row, or {@code 0} when a
+   * peer already inserted {@code id=1}.
+   *
+   * @param keysetData encrypted Tink keyset envelope
+   * @param lastUpdatedAt claim timestamp
+   * @param updatedBy actor recorded on the new row
+   * @return {@code 1} if inserted, {@code 0} if the singleton already existed
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      value =
+          """
+          INSERT INTO ezkey_keyset_blob (id, keyset_data, last_updated_at, updated_by, version)
+          VALUES (1, :keysetData, :lastUpdatedAt, :updatedBy, 1)
+          ON CONFLICT (id) DO NOTHING
+          """,
+      nativeQuery = true)
+  int insertSingletonIfAbsent(
+      @Param("keysetData") byte[] keysetData,
+      @Param("lastUpdatedAt") OffsetDateTime lastUpdatedAt,
+      @Param("updatedBy") String updatedBy);
 
   /**
    * Get the last updated timestamp of the keyset blob.

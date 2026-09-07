@@ -350,6 +350,14 @@ public class TinkKeyManager implements KeyManagementOperations {
       return;
     }
 
+    if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
+        && keysetBlobRepository != null
+        && loadKeysetFromDatabase()) {
+      persistHandleToKeysetFile(normalizedKeysetPath);
+      logger.info("✅ Keyset adopted from database before generate (peer already materialized)");
+      return;
+    }
+
     logger.warn(
         "Keyset file not found at: {}. Generating new keyset. "
             + "NOTE: If this is not the first startup, check that the keyset file exists "
@@ -363,8 +371,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
         && keysetBlobRepository != null) {
       try {
-        saveKeysetToDatabase("STARTUP_NEW_KEYSET");
-        logger.info("✅ New keyset saved to database");
+        claimOrAdoptGeneratedKeyset(normalizedKeysetPath);
       } catch (GeneralSecurityException
           | IOException
           | DataAccessException
@@ -372,6 +379,63 @@ public class TinkKeyManager implements KeyManagementOperations {
         logger.warn("Failed to save new keyset to database: {}", e.getMessage());
       }
     }
+  }
+
+  /**
+   * Claims the singleton blob for a newly generated keyset, or adopts a peer's winning row.
+   *
+   * <p>Two Admin writers can pass the empty-table check on HA first boot ({@code
+   * docker-compose.ha.yml} starts {@code admin-api-1} and {@code admin-api-2} in parallel). {@code
+   * INSERT … ON CONFLICT DO NOTHING} makes exactly one row. The loser reloads that row instead of
+   * overwriting it via {@code save()}.
+   *
+   * <p>If the singleton exists but cannot be loaded (legacy envelope), falls back to overwrite so
+   * ADR-0011 first-boot upgrade still replaces the unloadable blob.
+   *
+   * @param normalizedKeysetPath file path to keep in sync after adopting a peer keyset
+   * @throws GeneralSecurityException if the adopted keyset cannot be parsed or rewritten
+   * @throws IOException if the adopted keyset cannot be written to disk
+   */
+  private void claimOrAdoptGeneratedKeyset(String normalizedKeysetPath)
+      throws GeneralSecurityException, IOException {
+    String encryptedKeysetJson =
+        TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
+            keysetHandle, masterAead, KEYSET_ASSOCIATED_DATA, RegistryConfiguration.get());
+    byte[] encryptedData = encryptedKeysetJson.getBytes(StandardCharsets.UTF_8);
+    int claimed =
+        keysetBlobRepository.insertSingletonIfAbsent(
+            encryptedData, OffsetDateTime.now(), "STARTUP_NEW_KEYSET");
+    if (claimed > 0) {
+      var version = keysetBlobRepository.findVersion();
+      this.databaseKeysetVersion = version.orElse(1L);
+      logger.info("✅ New keyset claimed in database (version: {})", databaseKeysetVersion);
+      return;
+    }
+    if (loadKeysetFromDatabase()) {
+      persistHandleToKeysetFile(normalizedKeysetPath);
+      logger.info("✅ Adopted peer keyset blob after losing first-boot claim");
+      return;
+    }
+    saveKeysetToDatabase("STARTUP_NEW_KEYSET");
+    logger.info("✅ Replaced unloadable keyset blob with newly generated keyset");
+  }
+
+  /**
+   * Writes the in-memory keyset to the configured file after adopting a database blob.
+   *
+   * @param normalizedKeysetPath destination keyset file
+   * @throws GeneralSecurityException if the keyset cannot be serialized
+   * @throws IOException if the file cannot be written
+   */
+  private void persistHandleToKeysetFile(String normalizedKeysetPath)
+      throws GeneralSecurityException, IOException {
+    if (keysetHandle == null || normalizedKeysetPath == null || normalizedKeysetPath.isBlank()) {
+      return;
+    }
+    saveKeyset(keysetHandle, normalizedKeysetPath);
+    File keysetFile = new File(normalizedKeysetPath);
+    this.keysetFilePath = normalizedKeysetPath;
+    this.keysetFileLastModified = keysetFile.lastModified();
   }
 
   /** Shuts down the async keyset version check executor on application stop. */
