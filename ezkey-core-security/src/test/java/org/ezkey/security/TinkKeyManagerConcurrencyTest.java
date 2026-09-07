@@ -33,9 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
-import java.security.SecureRandom;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -363,10 +361,7 @@ class TinkKeyManagerConcurrencyTest {
   }
 
   private static byte[] writeMasterKey(Path masterKeyPath) throws Exception {
-    byte[] masterKey = new byte[32];
-    new SecureRandom().nextBytes(masterKey);
-    Files.writeString(masterKeyPath, Base64.getEncoder().encodeToString(masterKey));
-    return masterKey;
+    return TestMasterKeys.write(masterKeyPath);
   }
 
   @SuppressWarnings("deprecation")

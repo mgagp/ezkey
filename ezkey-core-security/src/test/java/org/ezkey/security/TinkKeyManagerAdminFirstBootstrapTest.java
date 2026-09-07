@@ -27,9 +27,7 @@ import com.google.crypto.tink.subtle.AesGcmJce;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.SecureRandom;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.ezkey.config.TinkProperties;
@@ -137,10 +135,7 @@ class TinkKeyManagerAdminFirstBootstrapTest {
   }
 
   private static byte[] writeMasterKey(Path masterKeyPath) throws Exception {
-    byte[] masterKey = new byte[32];
-    new SecureRandom().nextBytes(masterKey);
-    Files.writeString(masterKeyPath, Base64.getEncoder().encodeToString(masterKey));
-    return masterKey;
+    return TestMasterKeys.write(masterKeyPath);
   }
 
   private static KeysetBlob encryptedBlob(byte[] masterKey) throws Exception {
