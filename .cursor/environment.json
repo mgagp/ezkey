@@ -1,0 +1,20 @@
+{
+  "name": "Ezkey full-stack dev",
+  "install": "bash .cursor/setup/install.sh",
+  "start": "bash .cursor/setup/start.sh",
+  "terminals": [
+    {
+      "name": "admin-ui",
+      "command": "cd ezkey-admin-ui && npm run dev -- --host 0.0.0.0",
+      "description": "Admin UI Vite dev server on http://localhost:5173 (proxies /api/v1 to the Admin API on :9080)."
+    }
+  ],
+  "ports": [
+    { "name": "admin-ui", "port": 5173 },
+    { "name": "admin-api", "port": 9080 },
+    { "name": "auth-api", "port": 8080 },
+    { "name": "integration-api", "port": 7080 },
+    { "name": "crypto-api", "port": 9090 },
+    { "name": "demo-device", "port": 8083 }
+  ]
+}
