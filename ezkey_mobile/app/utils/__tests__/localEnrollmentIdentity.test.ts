@@ -79,4 +79,8 @@ describe('resolveServerEnrollmentId', () => {
   it('falls back to id for legacy rows', () => {
     expect(resolveServerEnrollmentId({...base, id: '3', enrollmentId: undefined})).toBe('3');
   });
+
+  it('accepts display metadata without a proof token', () => {
+    expect(resolveServerEnrollmentId({id: base.id, enrollmentId: '9'})).toBe('9');
+  });
 });

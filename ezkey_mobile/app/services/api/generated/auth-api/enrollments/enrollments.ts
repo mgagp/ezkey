@@ -87,11 +87,17 @@ export const getBindUrl = () => {
  */
 export const bind = async (enrollmentBindRequestDto: EnrollmentBindRequestDto, options?: Parameters<typeof customInstance>[1]): Promise<bindResponse> => {
 
-  return customInstance<bindResponse>(getBindUrl(),
+    const getHeaders = (h?: HeadersInit | Headers): Record<string, string> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<bindResponse>(getBindUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(enrollmentBindRequestDto)
   }
 );}
@@ -187,11 +193,17 @@ export const getVerifyUrl = () => {
  */
 export const verify = async (enrollmentVerifyRequestDto: EnrollmentVerifyRequestDto, options?: Parameters<typeof customInstance>[1]): Promise<verifyResponse> => {
 
-  return customInstance<verifyResponse>(getVerifyUrl(),
+    const getHeaders = (h?: HeadersInit | Headers): Record<string, string> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<verifyResponse>(getVerifyUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(enrollmentVerifyRequestDto)
   }
 );}
@@ -282,11 +294,17 @@ export const getInstanceInfoUrl = () => {
  */
 export const instanceInfo = async (enrollmentInstanceInfoRequestDto: EnrollmentInstanceInfoRequestDto, options?: Parameters<typeof customInstance>[1]): Promise<instanceInfoResponse> => {
 
-  return customInstance<instanceInfoResponse>(getInstanceInfoUrl(),
+    const getHeaders = (h?: HeadersInit | Headers): Record<string, string> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<instanceInfoResponse>(getInstanceInfoUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(enrollmentInstanceInfoRequestDto)
   }
 );}
