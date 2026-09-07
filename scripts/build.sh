@@ -70,6 +70,15 @@ if [ "$DIAGNOSE_ONLY" = "--diagnose-only" ]; then
 fi
 
 mvn spotless:apply
+
+# Bootstrap the reactor-internal Checkstyle ruleset module into the local Maven
+# repository BEFORE `checkstyle:check`. The maven-checkstyle-plugin declares
+# `org.ezkey:checkstyle-config` as a plugin dependency, so on a fresh ~/.m2 (a new
+# machine, CI runner, or cloud cold start) `checkstyle:check` fails trying to fetch
+# that never-published artifact from remote. Installing it first is cheap and
+# idempotent, and makes this script self-bootstrapping regardless of ~/.m2 state.
+mvn -pl checkstyle-config install -DskipTests
+
 mvn checkstyle:check
 mvn clean
 mvn install -DskipTests
