@@ -87,4 +87,11 @@ echo "[install] Admin UI API client (Orval codegen from committed openapi-spec.j
 # @/generated/admin-api/*).
 npm run generate:api
 
+echo "[install] Playwright Chromium + system libraries (for the Admin UI e2e suite)"
+# scripts/run-ui-tests.sh only runs `playwright install chromium` (browser binary,
+# no OS libraries). On a fresh Linux VM the browser fails to launch without system
+# deps (libnss3, libgbm, ...). Install both here so the e2e suite works on a cold
+# start. Non-fatal: a browser hiccup must not block bringing up the stack.
+npx playwright install --with-deps chromium || echo "[install] WARN: Playwright browser install failed; run 'npx playwright install --with-deps chromium' in ezkey-admin-ui before e2e tests"
+
 echo "[install] done"
