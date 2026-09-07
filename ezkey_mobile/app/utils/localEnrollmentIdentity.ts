@@ -68,17 +68,28 @@ export function deriveLocalEnrollmentId(
 }
 
 /**
- * Resolves the Auth API enrollment id from a stored record.
+ * Identity fields needed to resolve the Auth API enrollment id.
+ *
+ * Intentionally narrower than {@link StoredEnrollment}: Home and Danger Zone list
+ * rows are {@code EnrollmentMetadataRecord}s whose proof token may be absent
+ * (MOB-015 locked UI). This helper only reads {@code enrollmentId} / {@code id}.
+ *
+ * @since 2026
+ */
+export type EnrollmentIdSource = Pick<StoredEnrollment, 'id' | 'enrollmentId'>;
+
+/**
+ * Resolves the Auth API enrollment id from a stored or display record.
  *
  * New records persist {@link StoredEnrollment.enrollmentId} as the server id and
  * {@link StoredEnrollment.id} as the local handle. Legacy rows may still have
  * {@code id === server id}.
  *
- * @param enrollment Stored enrollment.
- * @return Server enrollment id string for Auth API request bodies.
+ * @param enrollment Stored enrollment or display metadata with the same id fields.
+ * @return Server enrollment id string for Auth API request bodies and list test ids.
  * @since 2026
  */
-export function resolveServerEnrollmentId(enrollment: StoredEnrollment): string {
+export function resolveServerEnrollmentId(enrollment: EnrollmentIdSource): string {
   if (enrollment.enrollmentId != null && String(enrollment.enrollmentId).trim() !== '') {
     return String(enrollment.enrollmentId).trim();
   }

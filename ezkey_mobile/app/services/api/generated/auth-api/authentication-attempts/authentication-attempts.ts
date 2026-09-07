@@ -85,11 +85,17 @@ export const getPendingUrl = () => {
  */
 export const pending = async (authAttemptPendingRequestDto: AuthAttemptPendingRequestDto, options?: Parameters<typeof customInstance>[1]): Promise<pendingResponse> => {
 
-  return customInstance<pendingResponse>(getPendingUrl(),
+    const getHeaders = (h?: HeadersInit | Headers): Record<string, string> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<pendingResponse>(getPendingUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(authAttemptPendingRequestDto)
   }
 );}
@@ -185,11 +191,17 @@ export const getRespondUrl = () => {
  */
 export const respond = async (authAttemptRespondRequestDto: AuthAttemptRespondRequestDto, options?: Parameters<typeof customInstance>[1]): Promise<respondResponse> => {
 
-  return customInstance<respondResponse>(getRespondUrl(),
+    const getHeaders = (h?: HeadersInit | Headers): Record<string, string> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<respondResponse>(getRespondUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(authAttemptRespondRequestDto)
   }
 );}
