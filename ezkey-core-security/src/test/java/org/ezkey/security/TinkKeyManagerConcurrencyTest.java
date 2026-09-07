@@ -314,6 +314,8 @@ class TinkKeyManagerConcurrencyTest {
   private static KeysetBlobRepository slowVersionRepository(int sleepMs) {
     KeysetBlobRepository repository = Mockito.mock(KeysetBlobRepository.class);
     when(repository.findKeyset()).thenReturn(Optional.empty());
+    when(repository.keysetExists()).thenReturn(false);
+    when(repository.insertSingletonIfAbsent(any(), any(), any())).thenReturn(1);
     when(repository.findVersion())
         .thenAnswer(
             _ -> {
@@ -326,6 +328,20 @@ class TinkKeyManagerConcurrencyTest {
   private static KeysetBlobRepository versionedRepository(AtomicReference<KeysetBlob> storedBlob) {
     KeysetBlobRepository repository = Mockito.mock(KeysetBlobRepository.class);
     when(repository.findKeyset()).thenAnswer(_ -> Optional.ofNullable(storedBlob.get()));
+    when(repository.keysetExists()).thenAnswer(_ -> storedBlob.get() != null);
+    when(repository.insertSingletonIfAbsent(any(), any(), any()))
+        .thenAnswer(
+            invocation -> {
+              if (storedBlob.get() != null) {
+                return 0;
+              }
+              KeysetBlob blob =
+                  new KeysetBlob(invocation.getArgument(0), invocation.getArgument(2));
+              blob.setLastUpdatedAt(invocation.getArgument(1));
+              blob.setVersion(1L);
+              storedBlob.set(blob);
+              return 1;
+            });
     when(repository.findVersion())
         .thenAnswer(_ -> Optional.ofNullable(storedBlob.get()).map(KeysetBlob::getVersion));
     when(repository.save(any(KeysetBlob.class)))
@@ -442,6 +458,9 @@ class TinkKeyManagerConcurrencyTest {
 
     KeysetBlobRepository repository = Mockito.mock(KeysetBlobRepository.class);
     when(repository.findKeyset()).thenReturn(Optional.empty());
+    when(repository.keysetExists()).thenReturn(false);
+    when(repository.insertSingletonIfAbsent(any(), any(), any())).thenReturn(1);
+    when(repository.findVersion()).thenReturn(Optional.of(1L));
     when(repository.save(any(KeysetBlob.class))).thenReturn(null);
 
     TinkKeyManager manager =

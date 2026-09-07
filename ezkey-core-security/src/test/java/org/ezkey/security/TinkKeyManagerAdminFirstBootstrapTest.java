@@ -9,11 +9,13 @@
  */
 package org.ezkey.security;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -100,6 +102,62 @@ class TinkKeyManagerAdminFirstBootstrapTest {
   }
 
   @Test
+  @DisplayName("writer DATABASE boot claims an empty blob slot without overwriting via save")
+  void initialize_writerEmptyBlob_claimsSingleton(@TempDir Path tempDir) throws Exception {
+    Path masterKeyPath = tempDir.resolve("master.key");
+    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
+    writeMasterKey(masterKeyPath);
+
+    KeysetBlobRepository repository = Mockito.mock(KeysetBlobRepository.class);
+    when(repository.findKeyset()).thenReturn(Optional.empty());
+    when(repository.keysetExists()).thenReturn(false);
+    when(repository.insertSingletonIfAbsent(any(), any(), any())).thenReturn(1);
+    when(repository.findVersion()).thenReturn(Optional.of(1L));
+
+    TinkKeyManager manager =
+        new TinkKeyManager(
+            writerDatabaseProperties(masterKeyPath, keysetPath), fixedProvider(repository));
+    try {
+      manager.initialize();
+      assertTrue(manager.isInitialized());
+      assertTrue(Files.exists(keysetPath));
+      verify(repository, times(1)).insertSingletonIfAbsent(any(), any(), any());
+      verify(repository, never()).save(any(KeysetBlob.class));
+    } finally {
+      manager.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  @Test
+  @DisplayName("writer DATABASE boot adopts the peer blob after losing the first-boot claim")
+  void initialize_writerLosesClaim_adoptsPeerBlob(@TempDir Path tempDir) throws Exception {
+    Path masterKeyPath = tempDir.resolve("master.key");
+    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
+    byte[] masterKey = writeMasterKey(masterKeyPath);
+    EncryptedBlob peer = encryptedBlobWithId(masterKey);
+
+    AtomicInteger finds = new AtomicInteger();
+    KeysetBlobRepository repository = Mockito.mock(KeysetBlobRepository.class);
+    when(repository.findKeyset())
+        .thenAnswer(
+            _ -> finds.incrementAndGet() >= 3 ? Optional.of(peer.blob()) : Optional.empty());
+    when(repository.keysetExists()).thenReturn(false);
+    when(repository.insertSingletonIfAbsent(any(), any(), any())).thenReturn(0);
+
+    TinkKeyManager manager =
+        new TinkKeyManager(
+            writerDatabaseProperties(masterKeyPath, keysetPath), fixedProvider(repository));
+    try {
+      manager.initialize();
+      assertTrue(manager.isInitialized());
+      assertEquals(peer.primaryKeyId(), manager.getCurrentPrimaryKeyId());
+      verify(repository, never()).save(any(KeysetBlob.class));
+    } finally {
+      manager.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  @Test
   @DisplayName("non-writer FILE boot does not generate a missing keyset file")
   void initialize_nonWriterFileMissing_doesNotGenerate(@TempDir Path tempDir) throws Exception {
     Path masterKeyPath = tempDir.resolve("master.key");
@@ -134,11 +192,21 @@ class TinkKeyManagerAdminFirstBootstrapTest {
     return properties;
   }
 
+  private static TinkProperties writerDatabaseProperties(Path masterKeyPath, Path keysetPath) {
+    TinkProperties properties = peripheralDatabaseProperties(masterKeyPath, keysetPath);
+    properties.getKeyset().setWriter(true);
+    return properties;
+  }
+
   private static byte[] writeMasterKey(Path masterKeyPath) throws Exception {
     return TestMasterKeys.write(masterKeyPath);
   }
 
   private static KeysetBlob encryptedBlob(byte[] masterKey) throws Exception {
+    return encryptedBlobWithId(masterKey).blob();
+  }
+
+  private static EncryptedBlob encryptedBlobWithId(byte[] masterKey) throws Exception {
     AeadConfig.register();
     Aead masterAead = new AesGcmJce(masterKey);
     KeysetHandle handle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
@@ -147,8 +215,16 @@ class TinkKeyManagerAdminFirstBootstrapTest {
             handle, masterAead, new byte[0], RegistryConfiguration.get());
     KeysetBlob blob = new KeysetBlob(encrypted.getBytes(StandardCharsets.UTF_8), "TEST");
     blob.setVersion(1L);
-    return blob;
+    return new EncryptedBlob(blob, Integer.toUnsignedLong(handle.getPrimary().getId()));
   }
+
+  /**
+   * Encrypted keyset fixture plus its Tink primary id.
+   *
+   * @param blob persisted singleton row
+   * @param primaryKeyId unsigned primary key id inside the envelope
+   */
+  private record EncryptedBlob(KeysetBlob blob, long primaryKeyId) {}
 
   private static ObjectProvider<KeysetBlobRepository> fixedProvider(KeysetBlobRepository repo) {
     return new ObjectProvider<>() {
