@@ -11,8 +11,11 @@ export declare class EzkeyAuthAPI {
     constructor(config: EzkeyConfig);
     /**
      * Binds a device to an enrollment.
+     *
+     * @param enrollmentId enrollment to bind
+     * @param enrollmentProofToken proof token from the enrollment QR / create flow
      */
-    bindEnrollment(enrollmentId: number): Promise<EnrollmentBindResponseDto>;
+    bindEnrollment(enrollmentId: number, enrollmentProofToken: string): Promise<EnrollmentBindResponseDto>;
     /**
      * Verifies and completes the enrollment process.
      */
@@ -21,7 +24,7 @@ export declare class EzkeyAuthAPI {
      * Checks for pending authentication requests.
      * @returns Pending authentication details or null if no pending requests
      */
-    checkPendingAuth(enrollmentId: number, deviceProofToken: string, deviceProofTokenSigned: string): Promise<AuthAttemptPendingResponseDto | null>;
+    checkPendingAuth(enrollmentId: number, enrollmentProofToken: string, deviceProofToken: string, deviceProofTokenSigned: string): Promise<AuthAttemptPendingResponseDto | null>;
     /**
      * Responds to an authentication attempt.
      */

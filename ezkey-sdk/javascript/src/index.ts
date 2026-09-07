@@ -27,7 +27,6 @@ export type {
   IntegrationResponseDto,
   EnrollmentCreateResponseDto,
   EnrollmentResponseDto,
-  AuthAttemptCreateResponseDto,
   AuthAttemptDto,
   AuthAttemptWaitResponseDto
 } from '../generated/admin/src/models';

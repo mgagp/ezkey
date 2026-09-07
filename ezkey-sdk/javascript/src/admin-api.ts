@@ -18,17 +18,21 @@ import {
   IntegrationCreateRequestDto,
   IntegrationCreateResponseDto,
   IntegrationResponseDto,
-  IntegrationI18nCreateDto,
   EnrollmentCreateRequestDto,
   EnrollmentCreateResponseDto,
   EnrollmentResponseDto,
   AuthAttemptCreateRequestDto,
-  AuthAttemptCreateResponseDto,
   AuthAttemptDto,
   AuthAttemptWaitResponseDto
 } from '../generated/admin/src/models';
 import { EzkeyConfig } from './config';
 import { EzkeyException } from './exception';
+
+/** Default page size when adapting paginated Admin list endpoints to array helpers. */
+const DEFAULT_LIST_PAGE_SIZE = 100;
+
+/** Default reason when the Admin API requires an operator reason and the caller omits one. */
+const DEFAULT_OPERATOR_REASON = 'Deleted via Ezkey SDK';
 
 /**
  * Wrapper for Ezkey Admin API.
@@ -54,18 +58,17 @@ export class EzkeyAdminAPI {
 
   /**
    * Creates a new integration.
+   *
+   * @param code unique business identifier
+   * @param name display name
+   * @param description optional description
    */
-  async createIntegration(logo: string, name: string, description: string): Promise<IntegrationCreateResponseDto> {
+  async createIntegration(code: string, name: string, description?: string): Promise<IntegrationCreateResponseDto> {
     try {
-      const i18n: IntegrationI18nCreateDto = {
-        language: 'en',
+      const request: IntegrationCreateRequestDto = {
+        code,
         name,
         description
-      };
-
-      const request: IntegrationCreateRequestDto = {
-        logo,
-        i18n: [i18n]
       };
 
       return await this.integrationsApi.create({ integrationCreateRequestDto: request });
@@ -79,7 +82,8 @@ export class EzkeyAdminAPI {
    */
   async getAllIntegrations(): Promise<IntegrationResponseDto[]> {
     try {
-      return await this.integrationsApi.getAll();
+      const page = await this.integrationsApi.search({ size: DEFAULT_LIST_PAGE_SIZE });
+      return page.content ?? [];
     } catch (error) {
       throw EzkeyException.fromError('Failed to get integrations', error);
     }
@@ -90,7 +94,7 @@ export class EzkeyAdminAPI {
    */
   async getIntegration(integrationId: number): Promise<IntegrationResponseDto> {
     try {
-      return await this.integrationsApi.getById({ id: integrationId });
+      return await this.integrationsApi.getById1({ id: integrationId });
     } catch (error) {
       throw EzkeyException.fromError('Failed to get integration', error);
     }
@@ -98,10 +102,13 @@ export class EzkeyAdminAPI {
 
   /**
    * Deletes an integration.
+   *
+   * @param integrationId integration to delete
+   * @param reason operator reason required by Admin API (default when omitted)
    */
-  async deleteIntegration(integrationId: number): Promise<void> {
+  async deleteIntegration(integrationId: number, reason: string = DEFAULT_OPERATOR_REASON): Promise<void> {
     try {
-      await this.integrationsApi._delete({ id: integrationId });
+      await this.integrationsApi.delete1({ id: integrationId, reason });
     } catch (error) {
       throw EzkeyException.fromError('Failed to delete integration', error);
     }
@@ -131,7 +138,8 @@ export class EzkeyAdminAPI {
    */
   async getAllEnrollments(): Promise<EnrollmentResponseDto[]> {
     try {
-      return await this.enrollmentsApi.getAll1();
+      const page = await this.enrollmentsApi.search1({ size: DEFAULT_LIST_PAGE_SIZE });
+      return page.content ?? [];
     } catch (error) {
       throw EzkeyException.fromError('Failed to get enrollments', error);
     }
@@ -142,7 +150,7 @@ export class EzkeyAdminAPI {
    */
   async getEnrollment(enrollmentId: number): Promise<EnrollmentResponseDto> {
     try {
-      return await this.enrollmentsApi.getById1({ id: enrollmentId });
+      return await this.enrollmentsApi.getById({ id: enrollmentId });
     } catch (error) {
       throw EzkeyException.fromError('Failed to get enrollment', error);
     }
@@ -150,10 +158,13 @@ export class EzkeyAdminAPI {
 
   /**
    * Deletes an enrollment.
+   *
+   * @param enrollmentId enrollment to delete
+   * @param reason operator reason required by Admin API (default when omitted)
    */
-  async deleteEnrollment(enrollmentId: number): Promise<void> {
+  async deleteEnrollment(enrollmentId: number, reason: string = DEFAULT_OPERATOR_REASON): Promise<void> {
     try {
-      await this.enrollmentsApi.delete1({ id: enrollmentId });
+      await this.enrollmentsApi._delete({ id: enrollmentId, reason });
     } catch (error) {
       throw EzkeyException.fromError('Failed to delete enrollment', error);
     }
@@ -164,14 +175,15 @@ export class EzkeyAdminAPI {
   /**
    * Creates a new authentication attempt.
    */
-  async createAuthAttempt(enrollmentId: number, challengeRequested: boolean): Promise<AuthAttemptCreateResponseDto> {
+  async createAuthAttempt(enrollmentId: number, challengeRequested: boolean): Promise<AuthAttemptDto> {
     try {
       const request: AuthAttemptCreateRequestDto = {
         enrollmentId,
         challengeRequested
       };
 
-      return await this.authAttemptsApi.create2({ authAttemptCreateRequestDto: request });
+      // Generator 7.9.0 types the create response as object; runtime payload is AuthAttemptDto.
+      return await this.authAttemptsApi.create2({ authAttemptCreateRequestDto: request }) as AuthAttemptDto;
     } catch (error) {
       throw EzkeyException.fromError('Failed to create auth attempt', error);
     }
@@ -182,7 +194,8 @@ export class EzkeyAdminAPI {
    */
   async getAllAuthAttempts(): Promise<AuthAttemptDto[]> {
     try {
-      return await this.authAttemptsApi.getAll2();
+      const page = await this.authAttemptsApi.search2({ size: DEFAULT_LIST_PAGE_SIZE });
+      return page.content ?? [];
     } catch (error) {
       throw EzkeyException.fromError('Failed to get auth attempts', error);
     }
@@ -218,11 +231,11 @@ export class EzkeyAdminAPI {
   }
 
   /**
-   * Deletes an authentication attempt.
+   * Cancels an authentication attempt (Admin API no longer exposes a hard delete).
    */
   async deleteAuthAttempt(authAttemptId: number): Promise<void> {
     try {
-      await this.authAttemptsApi.delete2({ id: authAttemptId });
+      await this.authAttemptsApi.cancel({ id: authAttemptId });
     } catch (error) {
       throw EzkeyException.fromError('Failed to delete auth attempt', error);
     }

@@ -1,4 +1,4 @@
-import { IntegrationCreateResponseDto, IntegrationResponseDto, EnrollmentCreateResponseDto, EnrollmentResponseDto, AuthAttemptCreateResponseDto, AuthAttemptDto, AuthAttemptWaitResponseDto } from '../generated/admin/src/models';
+import { IntegrationCreateResponseDto, IntegrationResponseDto, EnrollmentCreateResponseDto, EnrollmentResponseDto, AuthAttemptDto, AuthAttemptWaitResponseDto } from '../generated/admin/src/models';
 import { EzkeyConfig } from './config';
 /**
  * Wrapper for Ezkey Admin API.
@@ -12,8 +12,12 @@ export declare class EzkeyAdminAPI {
     constructor(config: EzkeyConfig);
     /**
      * Creates a new integration.
+     *
+     * @param code unique business identifier
+     * @param name display name
+     * @param description optional description
      */
-    createIntegration(logo: string, name: string, description: string): Promise<IntegrationCreateResponseDto>;
+    createIntegration(code: string, name: string, description?: string): Promise<IntegrationCreateResponseDto>;
     /**
      * Gets all integrations.
      */
@@ -24,8 +28,11 @@ export declare class EzkeyAdminAPI {
     getIntegration(integrationId: number): Promise<IntegrationResponseDto>;
     /**
      * Deletes an integration.
+     *
+     * @param integrationId integration to delete
+     * @param reason operator reason required by Admin API (default when omitted)
      */
-    deleteIntegration(integrationId: number): Promise<void>;
+    deleteIntegration(integrationId: number, reason?: string): Promise<void>;
     /**
      * Creates a new enrollment.
      */
@@ -40,12 +47,15 @@ export declare class EzkeyAdminAPI {
     getEnrollment(enrollmentId: number): Promise<EnrollmentResponseDto>;
     /**
      * Deletes an enrollment.
+     *
+     * @param enrollmentId enrollment to delete
+     * @param reason operator reason required by Admin API (default when omitted)
      */
-    deleteEnrollment(enrollmentId: number): Promise<void>;
+    deleteEnrollment(enrollmentId: number, reason?: string): Promise<void>;
     /**
      * Creates a new authentication attempt.
      */
-    createAuthAttempt(enrollmentId: number, challengeRequested: boolean): Promise<AuthAttemptCreateResponseDto>;
+    createAuthAttempt(enrollmentId: number, challengeRequested: boolean): Promise<AuthAttemptDto>;
     /**
      * Gets all authentication attempts.
      */
@@ -63,7 +73,7 @@ export declare class EzkeyAdminAPI {
      */
     waitForResponseWithOptions(authAttemptId: number, timeout: string, polling: string): Promise<AuthAttemptWaitResponseDto>;
     /**
-     * Deletes an authentication attempt.
+     * Cancels an authentication attempt (Admin API no longer exposes a hard delete).
      */
     deleteAuthAttempt(authAttemptId: number): Promise<void>;
 }

@@ -1,13 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AuthAttemptRespondResponseDtoResultEnum = void 0;
+exports.EnrollmentVerifyRequestDtoDevicePrivateKeyStorageTierEnum = exports.AuthAttemptRespondResponseDtoAuthAttemptResultEnum = void 0;
 /**
  * @export
  */
-exports.AuthAttemptRespondResponseDtoResultEnum = {
+exports.AuthAttemptRespondResponseDtoAuthAttemptResultEnum = {
     Approved: 'APPROVED',
     Denied: 'DENIED',
     Failed: 'FAILED',
     Expired: 'EXPIRED'
+};
+/**
+ * @export
+ */
+exports.EnrollmentVerifyRequestDtoDevicePrivateKeyStorageTierEnum = {
+    None: 'NONE',
+    Standard: 'STANDARD',
+    Strong: 'STRONG'
 };
 //# sourceMappingURL=index.js.map

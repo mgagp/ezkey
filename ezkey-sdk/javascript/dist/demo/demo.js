@@ -1,6 +1,6 @@
 "use strict";
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
@@ -73,7 +73,7 @@ class EzkeyDemo {
             console.log(`  Auth API: ${this.client.getConfig().authApiUrl}\n`);
             // Step 1: Create Integration
             console.log('Step 1: Creating integration...');
-            const integration = await this.client.admin().createIntegration('https://acme.com/logo.png', 'ACME Demo App', 'Demo application for Ezkey integration testing');
+            const integration = await this.client.admin().createIntegration('acme-demo', 'ACME Demo App', 'Demo application for Ezkey integration testing');
             console.log(`✓ Created integration with ID: ${integration.id}\n`);
             // Step 2: Create Enrollment
             console.log('Step 2: Creating enrollment...');
@@ -81,6 +81,7 @@ class EzkeyDemo {
             );
             console.log(`✓ Created enrollment with ID: ${enrollment.enrollmentId}`);
             console.log(`✓ Enrollment challenge: ${enrollment.enrollmentChallenge}\n`);
+            const enrollmentProofToken = await this.askQuestion('Paste enrollmentProofToken from the Admin UI QR / enrollment details: ');
             // Step 3: Bind and Verify Enrollment (Device Side)
             console.log('Step 3: Binding and verifying enrollment...');
             // Generate device key pair
@@ -88,7 +89,7 @@ class EzkeyDemo {
             const devicePublicKey = this.encodePublicKey(deviceKeys.publicKey);
             console.log('✓ Generated device key pair');
             // Bind enrollment
-            const bindResponse = await this.client.auth().bindEnrollment(enrollment.enrollmentId);
+            const bindResponse = await this.client.auth().bindEnrollment(enrollment.enrollmentId, enrollmentProofToken);
             console.log('✓ Bound enrollment');
             console.log(`  Integration: ${bindResponse.integrationName}`);
             console.log(`  Description: ${bindResponse.integrationDescription}`);
@@ -107,7 +108,7 @@ class EzkeyDemo {
             // Generate device proof token for this session
             const deviceProofToken = `device-proof-${Date.now()}`;
             const deviceProofTokenSigned = this.signData(deviceProofToken, deviceKeys.privateKey);
-            const pendingAuth = await this.client.auth().checkPendingAuth(enrollment.enrollmentId, deviceProofToken, deviceProofTokenSigned);
+            const pendingAuth = await this.client.auth().checkPendingAuth(enrollment.enrollmentId, enrollmentProofToken, deviceProofToken, deviceProofTokenSigned);
             if (pendingAuth) {
                 console.log(`✓ Found pending auth attempt with ID: ${pendingAuth.authAttemptId}`);
                 console.log(`  Challenge required: ${pendingAuth.authAttemptChallengeRequired}\n`);
@@ -120,8 +121,8 @@ class EzkeyDemo {
                 // Respond to auth attempt
                 const respondResponse = await this.client.auth().respondToAuth(pendingAuth.authAttemptId, authProofTokenSigned, shouldAccept, shouldAccept ? 123456 : undefined // Challenge response if accepting
                 );
-                console.log(`✓ Auth response sent: ${respondResponse.result}`);
-                console.log(`  Message: ${respondResponse.message}\n`);
+                console.log(`✓ Auth response sent: ${respondResponse.authAttemptResult}`);
+                console.log(`  Message: ${respondResponse.authAttemptMessage}\n`);
                 // Wait for completion (Admin Side)
                 console.log('Waiting for authentication completion...');
                 const waitResponse = await this.client.admin().waitForResponse(authAttempt.authAttemptId);

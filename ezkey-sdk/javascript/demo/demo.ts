@@ -48,7 +48,7 @@ class EzkeyDemo {
       // Step 1: Create Integration
       console.log('Step 1: Creating integration...');
       const integration = await this.client.admin().createIntegration(
-        'https://acme.com/logo.png',
+        'acme-demo',
         'ACME Demo App',
         'Demo application for Ezkey integration testing'
       );
@@ -64,6 +64,10 @@ class EzkeyDemo {
       console.log(`✓ Created enrollment with ID: ${enrollment.enrollmentId}`);
       console.log(`✓ Enrollment challenge: ${enrollment.enrollmentChallenge}\n`);
 
+      const enrollmentProofToken = await this.askQuestion(
+        'Paste enrollmentProofToken from the Admin UI QR / enrollment details: '
+      );
+
       // Step 3: Bind and Verify Enrollment (Device Side)
       console.log('Step 3: Binding and verifying enrollment...');
 
@@ -73,7 +77,10 @@ class EzkeyDemo {
       console.log('✓ Generated device key pair');
 
       // Bind enrollment
-      const bindResponse = await this.client.auth().bindEnrollment(enrollment.enrollmentId!);
+      const bindResponse = await this.client.auth().bindEnrollment(
+        enrollment.enrollmentId!,
+        enrollmentProofToken
+      );
       console.log('✓ Bound enrollment');
       console.log(`  Integration: ${bindResponse.integrationName}`);
       console.log(`  Description: ${bindResponse.integrationDescription}`);
@@ -107,6 +114,7 @@ class EzkeyDemo {
 
       const pendingAuth = await this.client.auth().checkPendingAuth(
         enrollment.enrollmentId!,
+        enrollmentProofToken,
         deviceProofToken,
         deviceProofTokenSigned
       );
@@ -131,8 +139,8 @@ class EzkeyDemo {
           shouldAccept ? 123456 : undefined // Challenge response if accepting
         );
 
-        console.log(`✓ Auth response sent: ${respondResponse.result}`);
-        console.log(`  Message: ${respondResponse.message}\n`);
+        console.log(`✓ Auth response sent: ${respondResponse.authAttemptResult}`);
+        console.log(`  Message: ${respondResponse.authAttemptMessage}\n`);
 
         // Wait for completion (Admin Side)
         console.log('Waiting for authentication completion...');
@@ -169,7 +177,7 @@ class EzkeyDemo {
   /**
    * Generates an RSA key pair for device simulation.
    */
-  private generateKeyPair(): crypto.KeyPairSyncResult<string, string> {
+  private generateKeyPair(): { publicKey: string; privateKey: string } {
     return crypto.generateKeyPairSync('rsa', {
       modulusLength: 2048,
       publicKeyEncoding: {

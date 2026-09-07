@@ -40,13 +40,13 @@ const client = EzkeyClient.createWithUrls(
 try {
   // Use Admin API
   const integration = await client.admin().createIntegration(
-    'https://company.com/logo.png',
+    'my-app',
     'My App',
     'My application description'
   );
 
   // Use Auth API
-  const binding = await client.auth().bindEnrollment(enrollmentId);
+  const binding = await client.auth().bindEnrollment(enrollmentId, enrollmentProofToken);
 } catch (error) {
   if (error instanceof EzkeyException) {
     console.error(`API Error: ${error.message}`);
@@ -63,7 +63,7 @@ const { EzkeyClient, EzkeyException } = require('./dist');
 const client = EzkeyClient.create();
 
 client.admin().createIntegration(
-  'https://company.com/logo.png',
+  'my-app',
   'My App',
   'My application description'
 ).then(integration => {
@@ -116,7 +116,7 @@ const authAPI = client.auth();
 
 ```typescript
 // Integration management
-const integration = await adminAPI.createIntegration(logo, name, description);
+const integration = await adminAPI.createIntegration(code, name, description);
 const integrations = await adminAPI.getAllIntegrations();
 const integration = await adminAPI.getIntegration(integrationId);
 await adminAPI.deleteIntegration(integrationId);
@@ -143,7 +143,7 @@ await adminAPI.deleteAuthAttempt(authAttemptId);
 
 ```typescript
 // Enrollment operations
-const binding = await authAPI.bindEnrollment(enrollmentId);
+const binding = await authAPI.bindEnrollment(enrollmentId, enrollmentProofToken);
 
 const verification = await authAPI.verifyEnrollment(
   enrollmentId, challengeResponse, devicePublicKey, enrollmentProofTokenSigned
@@ -151,7 +151,7 @@ const verification = await authAPI.verifyEnrollment(
 
 // Authentication operations
 const pending = await authAPI.checkPendingAuth(
-  enrollmentId, deviceProofToken, deviceProofTokenSigned
+  enrollmentId, enrollmentProofToken, deviceProofToken, deviceProofTokenSigned
 );
 
 const response = await authAPI.respondToAuth(
@@ -190,7 +190,7 @@ All SDK operations can throw `EzkeyException`:
 
 ```typescript
 try {
-  const integration = await client.admin().createIntegration(logo, name, description);
+  const integration = await client.admin().createIntegration(code, name, description);
 } catch (error) {
   if (error instanceof EzkeyException) {
     console.error(`Error: ${error.message}`);

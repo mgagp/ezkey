@@ -1,6 +1,6 @@
 /**
  * Ezkey Admin API
- * Administration API for Ezkey - Open Source Cryptographic MFA Platform  This API enables administrative management of Ezkey\'s main entities: - **Integrations**: Applications or systems protected by MFA - **Enrollments**: Associations between users, devices and integrations - **Auth Attempts**: MFA authentication attempts  The API follows REST conventions and uses DTOs for all requests and responses.
+ * Administration API for Ezkey - Open Source Cryptographic MFA Platform  This API enables administrative management of Ezkey\'s main entities: - **Integrations**: Applications or systems protected by MFA - **Enrollments**: Associations between users, devices and integrations - **Auth Attempts**: MFA authentication attempts - **Admin Management**: Administrator authentication,                         enrollment recovery, and admin operations  Ezkey is intentionally distinct from FIDO2/WebAuthn and follows its own cryptographic MFA model. The API uses REST conventions and DTOs for all requests and responses.
  *
  * The version of the OpenAPI document: 1.0.0
  * Contact: info@ezkey.org
@@ -10,59 +10,136 @@
  * Do not edit the class manually.
  */
 import * as runtime from '../runtime';
-import type { IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto } from '../models/index';
-export interface DeleteRequest {
-    id: number;
-}
+import type { BulkEnrollmentOperationResultDto, IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto, PagedModelIntegrationResponseDto } from '../models/index';
 export interface CreateRequest {
     integrationCreateRequestDto: IntegrationCreateRequestDto;
 }
-export interface GetByIdRequest {
+export interface DeactivateAllEnrollmentsRequest {
     id: number;
+    reason?: string;
+}
+export interface Delete1Request {
+    id: number;
+    reason: string;
+}
+export interface GetById1Request {
+    id: number;
+}
+export interface ReactivateAllEnrollmentsRequest {
+    id: number;
+    reason?: string;
+}
+export interface RetireRequest {
+    id: number;
+    reason: string;
+}
+export interface RevokeAllEnrollmentsRequest {
+    id: number;
+    reason?: string;
+}
+export interface SearchRequest {
+    integrationName?: string;
+    active?: boolean;
+    lifecycleStatus?: SearchLifecycleStatusEnum;
+    includeRetired?: boolean;
+    createdAfter?: string;
+    createdBefore?: string;
+    tenantId?: number;
+    page?: number;
+    size?: number;
+    sort?: Array<string>;
 }
 /**
  *
  */
 export declare class IntegrationsApi extends runtime.BaseAPI {
     /**
-     * Removes an integration from the system
-     * Delete integration
-     */
-    _deleteRaw(requestParameters: DeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
-    /**
-     * Removes an integration from the system
-     * Delete integration
-     */
-    _delete(requestParameters: DeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
-    /**
-     * Creates a new integration with the provided data
+     * Creates a new integration with the provided data. Integration code must be unique per tenant.
      * Create new integration
      */
     createRaw(requestParameters: CreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<IntegrationCreateResponseDto>>;
     /**
-     * Creates a new integration with the provided data
+     * Creates a new integration with the provided data. Integration code must be unique per tenant.
      * Create new integration
      */
     create(requestParameters: CreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IntegrationCreateResponseDto>;
     /**
-     * Returns the complete list of integrations configured in the system
-     * Retrieve all integrations
+     * Reversibly deactivates all active VERIFIED enrollments for the specified integration. Use for precautionary lockdowns. Restore with POST .../enrollments/reactivate-all. Cannot be applied to system integrations.
+     * Bulk-deactivate all enrollments for an integration
      */
-    getAllRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<IntegrationResponseDto>>>;
+    deactivateAllEnrollmentsRaw(requestParameters: DeactivateAllEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkEnrollmentOperationResultDto>>;
     /**
-     * Returns the complete list of integrations configured in the system
-     * Retrieve all integrations
+     * Reversibly deactivates all active VERIFIED enrollments for the specified integration. Use for precautionary lockdowns. Restore with POST .../enrollments/reactivate-all. Cannot be applied to system integrations.
+     * Bulk-deactivate all enrollments for an integration
      */
-    getAll(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<IntegrationResponseDto>>;
+    deactivateAllEnrollments(requestParameters: DeactivateAllEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkEnrollmentOperationResultDto>;
+    /**
+     * Permanently deletes an already-retired integration that no longer has enrollments.
+     * Delete integration
+     */
+    delete1Raw(requestParameters: Delete1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+    /**
+     * Permanently deletes an already-retired integration that no longer has enrollments.
+     * Delete integration
+     */
+    delete1(requestParameters: Delete1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
     /**
      * Returns details of a specific integration
      * Retrieve integration by ID
      */
-    getByIdRaw(requestParameters: GetByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<IntegrationResponseDto>>;
+    getById1Raw(requestParameters: GetById1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<IntegrationResponseDto>>;
     /**
      * Returns details of a specific integration
      * Retrieve integration by ID
      */
-    getById(requestParameters: GetByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IntegrationResponseDto>;
+    getById1(requestParameters: GetById1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IntegrationResponseDto>;
+    /**
+     * Reactivates all inactive VERIFIED enrollments for the specified integration. Use after a precautionary deactivate-all.
+     * Bulk-reactivate all enrollments for an integration
+     */
+    reactivateAllEnrollmentsRaw(requestParameters: ReactivateAllEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkEnrollmentOperationResultDto>>;
+    /**
+     * Reactivates all inactive VERIFIED enrollments for the specified integration. Use after a precautionary deactivate-all.
+     * Bulk-reactivate all enrollments for an integration
+     */
+    reactivateAllEnrollments(requestParameters: ReactivateAllEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkEnrollmentOperationResultDto>;
+    /**
+     * Retires an integration from day-to-day use while preserving historical data. The operation bulk-revokes revocable enrollments before marking the integration RETIRED.
+     * Retire integration
+     */
+    retireRaw(requestParameters: RetireRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+    /**
+     * Retires an integration from day-to-day use while preserving historical data. The operation bulk-revokes revocable enrollments before marking the integration RETIRED.
+     * Retire integration
+     */
+    retire(requestParameters: RetireRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+    /**
+     * Permanently revokes all revocable enrollments for the specified integration, including deactivated VERIFIED enrollments and in-flight CREATED or BOUND enrollments. Intended for incident response (e.g., compromised API key). Cannot be applied to system integrations.
+     * Bulk-revoke all enrollments for an integration
+     */
+    revokeAllEnrollmentsRaw(requestParameters: RevokeAllEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkEnrollmentOperationResultDto>>;
+    /**
+     * Permanently revokes all revocable enrollments for the specified integration, including deactivated VERIFIED enrollments and in-flight CREATED or BOUND enrollments. Intended for incident response (e.g., compromised API key). Cannot be applied to system integrations.
+     * Bulk-revoke all enrollments for an integration
+     */
+    revokeAllEnrollments(requestParameters: RevokeAllEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkEnrollmentOperationResultDto>;
+    /**
+     * Retrieves integrations with optional filters and pagination for administration and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=id,asc). Default sort is by creation date descending (newest first). Retired integrations are excluded by default unless explicitly requested. Optional tenantId filter: GlobalAdmin only; TenantAdmin scope is always their tenant.
+     * Search integrations
+     */
+    searchRaw(requestParameters: SearchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PagedModelIntegrationResponseDto>>;
+    /**
+     * Retrieves integrations with optional filters and pagination for administration and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=id,asc). Default sort is by creation date descending (newest first). Retired integrations are excluded by default unless explicitly requested. Optional tenantId filter: GlobalAdmin only; TenantAdmin scope is always their tenant.
+     * Search integrations
+     */
+    search(requestParameters?: SearchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PagedModelIntegrationResponseDto>;
 }
+/**
+ * @export
+ */
+export declare const SearchLifecycleStatusEnum: {
+    readonly Active: "ACTIVE";
+    readonly Retired: "RETIRED";
+};
+export type SearchLifecycleStatusEnum = typeof SearchLifecycleStatusEnum[keyof typeof SearchLifecycleStatusEnum];
 //# sourceMappingURL=IntegrationsApi.d.ts.map

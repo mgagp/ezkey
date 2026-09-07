@@ -2,7 +2,7 @@
 /* eslint-disable */
 /**
  * Ezkey Admin API
- * Administration API for Ezkey - Open Source Cryptographic MFA Platform  This API enables administrative management of Ezkey\'s main entities: - **Integrations**: Applications or systems protected by MFA - **Enrollments**: Associations between users, devices and integrations - **Auth Attempts**: MFA authentication attempts  The API follows REST conventions and uses DTOs for all requests and responses. 
+ * Administration API for Ezkey - Open Source Cryptographic MFA Platform  This API enables administrative management of Ezkey\'s main entities: - **Integrations**: Applications or systems protected by MFA - **Enrollments**: Associations between users, devices and integrations - **Auth Attempts**: MFA authentication attempts - **Admin Management**: Administrator authentication,                         enrollment recovery, and admin operations  Ezkey is intentionally distinct from FIDO2/WebAuthn and follows its own cryptographic MFA model. The API uses REST conventions and DTOs for all requests and responses. 
  *
  * The version of the OpenAPI document: 1.0.0
  * Contact: info@ezkey.org
@@ -15,21 +15,58 @@
 
 import * as runtime from '../runtime';
 import type {
+  BulkEnrollmentOperationResultDto,
   IntegrationCreateRequestDto,
   IntegrationCreateResponseDto,
   IntegrationResponseDto,
+  PagedModelIntegrationResponseDto,
+  ProblemDetail,
 } from '../models/index';
-
-export interface DeleteRequest {
-    id: number;
-}
 
 export interface CreateRequest {
     integrationCreateRequestDto: IntegrationCreateRequestDto;
 }
 
-export interface GetByIdRequest {
+export interface DeactivateAllEnrollmentsRequest {
     id: number;
+    reason?: string;
+}
+
+export interface Delete1Request {
+    id: number;
+    reason: string;
+}
+
+export interface GetById1Request {
+    id: number;
+}
+
+export interface ReactivateAllEnrollmentsRequest {
+    id: number;
+    reason?: string;
+}
+
+export interface RetireRequest {
+    id: number;
+    reason: string;
+}
+
+export interface RevokeAllEnrollmentsRequest {
+    id: number;
+    reason?: string;
+}
+
+export interface SearchRequest {
+    integrationName?: string;
+    active?: boolean;
+    lifecycleStatus?: SearchLifecycleStatusEnum;
+    includeRetired?: boolean;
+    createdAfter?: string;
+    createdBefore?: string;
+    tenantId?: number;
+    page?: number;
+    size?: number;
+    sort?: Array<string>;
 }
 
 /**
@@ -38,49 +75,7 @@ export interface GetByIdRequest {
 export class IntegrationsApi extends runtime.BaseAPI {
 
     /**
-     * Removes an integration from the system
-     * Delete integration
-     */
-    async _deleteRaw(requestParameters: DeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
-        if (requestParameters['id'] == null) {
-            throw new runtime.RequiredError(
-                'id',
-                'Required parameter "id" was null or undefined when calling _delete().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        if (this.configuration && this.configuration.accessToken) {
-            const token = this.configuration.accessToken;
-            const tokenString = await token("bearerAuth", []);
-
-            if (tokenString) {
-                headerParameters["Authorization"] = `Bearer ${tokenString}`;
-            }
-        }
-        const response = await this.request({
-            path: `/api/v1/integrations/{id}`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
-            method: 'DELETE',
-            headers: headerParameters,
-            query: queryParameters,
-        }, initOverrides);
-
-        return new runtime.VoidApiResponse(response);
-    }
-
-    /**
-     * Removes an integration from the system
-     * Delete integration
-     */
-    async _delete(requestParameters: DeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this._deleteRaw(requestParameters, initOverrides);
-    }
-
-    /**
-     * Creates a new integration with the provided data
+     * Creates a new integration with the provided data. Integration code must be unique per tenant.
      * Create new integration
      */
     async createRaw(requestParameters: CreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<IntegrationCreateResponseDto>> {
@@ -117,7 +112,7 @@ export class IntegrationsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Creates a new integration with the provided data
+     * Creates a new integration with the provided data. Integration code must be unique per tenant.
      * Create new integration
      */
     async create(requestParameters: CreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IntegrationCreateResponseDto> {
@@ -126,11 +121,22 @@ export class IntegrationsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Returns the complete list of integrations configured in the system
-     * Retrieve all integrations
+     * Reversibly deactivates all active VERIFIED enrollments for the specified integration. Use for precautionary lockdowns. Restore with POST .../enrollments/reactivate-all. Cannot be applied to system integrations.
+     * Bulk-deactivate all enrollments for an integration
      */
-    async getAllRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<IntegrationResponseDto>>> {
+    async deactivateAllEnrollmentsRaw(requestParameters: DeactivateAllEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkEnrollmentOperationResultDto>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deactivateAllEnrollments().'
+            );
+        }
+
         const queryParameters: any = {};
+
+        if (requestParameters['reason'] != null) {
+            queryParameters['reason'] = requestParameters['reason'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -143,8 +149,8 @@ export class IntegrationsApi extends runtime.BaseAPI {
             }
         }
         const response = await this.request({
-            path: `/api/v1/integrations`,
-            method: 'GET',
+            path: `/api/v1/integrations/{id}/enrollments/deactivate-all`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
         }, initOverrides);
@@ -153,23 +159,76 @@ export class IntegrationsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Returns the complete list of integrations configured in the system
-     * Retrieve all integrations
+     * Reversibly deactivates all active VERIFIED enrollments for the specified integration. Use for precautionary lockdowns. Restore with POST .../enrollments/reactivate-all. Cannot be applied to system integrations.
+     * Bulk-deactivate all enrollments for an integration
      */
-    async getAll(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<IntegrationResponseDto>> {
-        const response = await this.getAllRaw(initOverrides);
+    async deactivateAllEnrollments(requestParameters: DeactivateAllEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkEnrollmentOperationResultDto> {
+        const response = await this.deactivateAllEnrollmentsRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Permanently deletes an already-retired integration that no longer has enrollments.
+     * Delete integration
+     */
+    async delete1Raw(requestParameters: Delete1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling delete1().'
+            );
+        }
+
+        if (requestParameters['reason'] == null) {
+            throw new runtime.RequiredError(
+                'reason',
+                'Required parameter "reason" was null or undefined when calling delete1().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['reason'] != null) {
+            queryParameters['reason'] = requestParameters['reason'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/integrations/{id}`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Permanently deletes an already-retired integration that no longer has enrollments.
+     * Delete integration
+     */
+    async delete1(requestParameters: Delete1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.delete1Raw(requestParameters, initOverrides);
     }
 
     /**
      * Returns details of a specific integration
      * Retrieve integration by ID
      */
-    async getByIdRaw(requestParameters: GetByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<IntegrationResponseDto>> {
+    async getById1Raw(requestParameters: GetById1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<IntegrationResponseDto>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
-                'Required parameter "id" was null or undefined when calling getById().'
+                'Required parameter "id" was null or undefined when calling getById1().'
             );
         }
 
@@ -199,9 +258,241 @@ export class IntegrationsApi extends runtime.BaseAPI {
      * Returns details of a specific integration
      * Retrieve integration by ID
      */
-    async getById(requestParameters: GetByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IntegrationResponseDto> {
-        const response = await this.getByIdRaw(requestParameters, initOverrides);
+    async getById1(requestParameters: GetById1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IntegrationResponseDto> {
+        const response = await this.getById1Raw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Reactivates all inactive VERIFIED enrollments for the specified integration. Use after a precautionary deactivate-all.
+     * Bulk-reactivate all enrollments for an integration
+     */
+    async reactivateAllEnrollmentsRaw(requestParameters: ReactivateAllEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkEnrollmentOperationResultDto>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling reactivateAllEnrollments().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['reason'] != null) {
+            queryParameters['reason'] = requestParameters['reason'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/integrations/{id}/enrollments/reactivate-all`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Reactivates all inactive VERIFIED enrollments for the specified integration. Use after a precautionary deactivate-all.
+     * Bulk-reactivate all enrollments for an integration
+     */
+    async reactivateAllEnrollments(requestParameters: ReactivateAllEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkEnrollmentOperationResultDto> {
+        const response = await this.reactivateAllEnrollmentsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Retires an integration from day-to-day use while preserving historical data. The operation bulk-revokes revocable enrollments before marking the integration RETIRED.
+     * Retire integration
+     */
+    async retireRaw(requestParameters: RetireRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling retire().'
+            );
+        }
+
+        if (requestParameters['reason'] == null) {
+            throw new runtime.RequiredError(
+                'reason',
+                'Required parameter "reason" was null or undefined when calling retire().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['reason'] != null) {
+            queryParameters['reason'] = requestParameters['reason'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/integrations/{id}/retire`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Retires an integration from day-to-day use while preserving historical data. The operation bulk-revokes revocable enrollments before marking the integration RETIRED.
+     * Retire integration
+     */
+    async retire(requestParameters: RetireRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.retireRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Permanently revokes all revocable enrollments for the specified integration, including deactivated VERIFIED enrollments and in-flight CREATED or BOUND enrollments. Intended for incident response (e.g., compromised API key). Cannot be applied to system integrations.
+     * Bulk-revoke all enrollments for an integration
+     */
+    async revokeAllEnrollmentsRaw(requestParameters: RevokeAllEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkEnrollmentOperationResultDto>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling revokeAllEnrollments().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['reason'] != null) {
+            queryParameters['reason'] = requestParameters['reason'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/integrations/{id}/enrollments/revoke-all`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Permanently revokes all revocable enrollments for the specified integration, including deactivated VERIFIED enrollments and in-flight CREATED or BOUND enrollments. Intended for incident response (e.g., compromised API key). Cannot be applied to system integrations.
+     * Bulk-revoke all enrollments for an integration
+     */
+    async revokeAllEnrollments(requestParameters: RevokeAllEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkEnrollmentOperationResultDto> {
+        const response = await this.revokeAllEnrollmentsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Retrieves integrations with optional filters and pagination for administration and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=id,asc). Default sort is by creation date descending (newest first). Retired integrations are excluded by default unless explicitly requested. Optional tenantId filter: GlobalAdmin only; TenantAdmin scope is always their tenant.
+     * Search integrations
+     */
+    async searchRaw(requestParameters: SearchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PagedModelIntegrationResponseDto>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['integrationName'] != null) {
+            queryParameters['integrationName'] = requestParameters['integrationName'];
+        }
+
+        if (requestParameters['active'] != null) {
+            queryParameters['active'] = requestParameters['active'];
+        }
+
+        if (requestParameters['lifecycleStatus'] != null) {
+            queryParameters['lifecycleStatus'] = requestParameters['lifecycleStatus'];
+        }
+
+        if (requestParameters['includeRetired'] != null) {
+            queryParameters['includeRetired'] = requestParameters['includeRetired'];
+        }
+
+        if (requestParameters['createdAfter'] != null) {
+            queryParameters['createdAfter'] = requestParameters['createdAfter'];
+        }
+
+        if (requestParameters['createdBefore'] != null) {
+            queryParameters['createdBefore'] = requestParameters['createdBefore'];
+        }
+
+        if (requestParameters['tenantId'] != null) {
+            queryParameters['tenantId'] = requestParameters['tenantId'];
+        }
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['size'] != null) {
+            queryParameters['size'] = requestParameters['size'];
+        }
+
+        if (requestParameters['sort'] != null) {
+            queryParameters['sort'] = requestParameters['sort'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/integrations`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Retrieves integrations with optional filters and pagination for administration and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=id,asc). Default sort is by creation date descending (newest first). Retired integrations are excluded by default unless explicitly requested. Optional tenantId filter: GlobalAdmin only; TenantAdmin scope is always their tenant.
+     * Search integrations
+     */
+    async search(requestParameters: SearchRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PagedModelIntegrationResponseDto> {
+        const response = await this.searchRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
 }
+
+/**
+ * @export
+ */
+export const SearchLifecycleStatusEnum = {
+    Active: 'ACTIVE',
+    Retired: 'RETIRED'
+} as const;
+export type SearchLifecycleStatusEnum = typeof SearchLifecycleStatusEnum[keyof typeof SearchLifecycleStatusEnum];

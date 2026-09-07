@@ -9,8 +9,8 @@
  */
 
 import {
-  AuthAttemptControllerApi,
-  EnrollmentControllerApi,
+  AuthenticationAttemptsApi,
+  EnrollmentsApi,
   Configuration
 } from '../generated/auth/src';
 import {
@@ -31,27 +31,33 @@ import { EzkeyException } from './exception';
  * enrollment and authentication flows.
  */
 export class EzkeyAuthAPI {
-  private readonly enrollmentApi: EnrollmentControllerApi;
-  private readonly authAttemptApi: AuthAttemptControllerApi;
+  private readonly enrollmentApi: EnrollmentsApi;
+  private readonly authAttemptApi: AuthenticationAttemptsApi;
 
   constructor(config: EzkeyConfig) {
     const configuration = new Configuration({
       basePath: config.authApiUrl
     });
 
-    this.enrollmentApi = new EnrollmentControllerApi(configuration);
-    this.authAttemptApi = new AuthAttemptControllerApi(configuration);
+    this.enrollmentApi = new EnrollmentsApi(configuration);
+    this.authAttemptApi = new AuthenticationAttemptsApi(configuration);
   }
 
   // Enrollment Operations
 
   /**
    * Binds a device to an enrollment.
+   *
+   * @param enrollmentId enrollment to bind
+   * @param enrollmentProofToken proof token from the enrollment QR / create flow
    */
-  async bindEnrollment(enrollmentId: number): Promise<EnrollmentBindResponseDto> {
+  async bindEnrollment(enrollmentId: number, enrollmentProofToken: string): Promise<EnrollmentBindResponseDto> {
     try {
       return await this.enrollmentApi.bind({
-        enrollmentId,
+        enrollmentBindRequestDto: {
+          enrollmentId,
+          enrollmentProofToken
+        }
       });
     } catch (error) {
       throw EzkeyException.fromError('Failed to bind enrollment', error);
@@ -89,20 +95,21 @@ export class EzkeyAuthAPI {
    */
   async checkPendingAuth(
     enrollmentId: number,
+    enrollmentProofToken: string,
     deviceProofToken: string,
     deviceProofTokenSigned: string
   ): Promise<AuthAttemptPendingResponseDto | null> {
     try {
       const request: AuthAttemptPendingRequestDto = {
         enrollmentId,
+        enrollmentProofToken,
         deviceProofToken,
         deviceProofTokenSigned
       };
 
-      return await this.authAttemptApi.pending({ 
-        enrollmentId, 
-        authAttemptPendingRequestDto: request 
-      });
+      return await this.authAttemptApi.pending({
+        authAttemptPendingRequestDto: request
+      }) ?? null;
     } catch (error: any) {
       // Handle 204 No Content as no pending requests
       if (error?.status === 204) {
@@ -129,9 +136,8 @@ export class EzkeyAuthAPI {
         authAttemptChallengeResponse: challengeResponse
       };
 
-      return await this.authAttemptApi.respond({ 
-        authAttemptId, 
-        authAttemptRespondRequestDto: request 
+      return await this.authAttemptApi.respond({
+        authAttemptRespondRequestDto: request
       });
     } catch (error) {
       throw EzkeyException.fromError('Failed to respond to auth attempt', error);

@@ -1,6 +1,6 @@
 "use strict";
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
@@ -22,17 +22,23 @@ class EzkeyAuthAPI {
         const configuration = new src_1.Configuration({
             basePath: config.authApiUrl
         });
-        this.enrollmentApi = new src_1.EnrollmentControllerApi(configuration);
-        this.authAttemptApi = new src_1.AuthAttemptControllerApi(configuration);
+        this.enrollmentApi = new src_1.EnrollmentsApi(configuration);
+        this.authAttemptApi = new src_1.AuthenticationAttemptsApi(configuration);
     }
     // Enrollment Operations
     /**
      * Binds a device to an enrollment.
+     *
+     * @param enrollmentId enrollment to bind
+     * @param enrollmentProofToken proof token from the enrollment QR / create flow
      */
-    async bindEnrollment(enrollmentId) {
+    async bindEnrollment(enrollmentId, enrollmentProofToken) {
         try {
             return await this.enrollmentApi.bind({
-                enrollmentId,
+                enrollmentBindRequestDto: {
+                    enrollmentId,
+                    enrollmentProofToken
+                }
             });
         }
         catch (error) {
@@ -61,17 +67,18 @@ class EzkeyAuthAPI {
      * Checks for pending authentication requests.
      * @returns Pending authentication details or null if no pending requests
      */
-    async checkPendingAuth(enrollmentId, deviceProofToken, deviceProofTokenSigned) {
+    async checkPendingAuth(enrollmentId, enrollmentProofToken, deviceProofToken, deviceProofTokenSigned) {
+        var _a;
         try {
             const request = {
                 enrollmentId,
+                enrollmentProofToken,
                 deviceProofToken,
                 deviceProofTokenSigned
             };
-            return await this.authAttemptApi.pending({
-                enrollmentId,
+            return (_a = await this.authAttemptApi.pending({
                 authAttemptPendingRequestDto: request
-            });
+            })) !== null && _a !== void 0 ? _a : null;
         }
         catch (error) {
             // Handle 204 No Content as no pending requests
@@ -93,7 +100,6 @@ class EzkeyAuthAPI {
                 authAttemptChallengeResponse: challengeResponse
             };
             return await this.authAttemptApi.respond({
-                authAttemptId,
                 authAttemptRespondRequestDto: request
             });
         }
