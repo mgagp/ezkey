@@ -121,14 +121,16 @@ class AdminAuthControllerBrowserSessionCookieTest {
     OffsetDateTime exp = OffsetDateTime.now().plusHours(2);
     AdminLoginResponseDto ok =
         AdminLoginResponseDto.success("secret-token", "GLOBAL_ADMIN", "u1", exp, 9, null);
-    when(authService.waitForPasswordlessAuth(1, null)).thenReturn(ok);
+    when(authService.waitForPasswordlessAuth(1, null, "waiter-secret")).thenReturn(ok);
     when(browserSessionCookieProperties.getBrowserSessionCookieName())
         .thenReturn("EZKEY_ADMIN_SESSION");
     when(csrfTokenService.createToken("secret-token")).thenReturn("csrf-token");
 
     ResponseEntity<AdminLoginResponseDto> response =
         controller.passwordlessWait(
-            new AdminPasswordlessWaitRequestDto(1, null), httpRequest, httpResponse);
+            new AdminPasswordlessWaitRequestDto(1, null, "waiter-secret"),
+            httpRequest,
+            httpResponse);
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
     assertNull(response.getBody().token());

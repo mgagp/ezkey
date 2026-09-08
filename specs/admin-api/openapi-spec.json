@@ -3166,7 +3166,7 @@
             }
           },
           "401": {
-            "description": "Unauthorized - Invalid challenge code. Returns RFC 9457 ProblemDetail: type='...invalid-credentials'",
+            "description": "Unauthorized - Missing/invalid waiter secret capability, invalid challenge code, or attempt already consumed. Returns RFC 9457 ProblemDetail: type='...invalid-credentials'",
             "content": {
               "*/*": {
                 "schema": {
@@ -7617,10 +7617,15 @@
           "challengeCode": {
             "type": "integer",
             "format": "int32"
+          },
+          "waiterSecret": {
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": [
-          "authAttemptId"
+          "authAttemptId",
+          "waiterSecret"
         ]
       },
       "AdminLoginResponseDto": {
@@ -7700,6 +7705,11 @@
           "csrfToken": {
             "type": "string",
             "description": "Non-secret CSRF token to send in X-CSRF-TOKEN for cookie-authenticated unsafe requests. Present only in browser session cookie mode."
+          },
+          "waiterSecret": {
+            "type": "string",
+            "description": "One-time waiter secret capability required for /passwordless-wait. Present only when status is pending.",
+            "example": "a1b2c3d4e5..."
           }
         }
       },

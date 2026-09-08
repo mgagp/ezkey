@@ -70,6 +70,12 @@ public class AuthAttemptCreateRequest {
   private Boolean demoMitmSignatureRequested;
 
   /**
+   * SHA-256 hex digest of the client waiter secret capability minted at login. NULL for Integration
+   * API attempts.
+   */
+  private String waiterSecretHash;
+
+  /**
    * Gets the enrollment ID for this authentication attempt.
    *
    * @return the enrollment ID
@@ -157,5 +163,23 @@ public class AuthAttemptCreateRequest {
    */
   public void setDemoMitmSignatureRequested(Boolean demoMitmSignatureRequested) {
     this.demoMitmSignatureRequested = demoMitmSignatureRequested;
+  }
+
+  /**
+   * Gets the SHA-256 hex digest of the waiter secret capability.
+   *
+   * @return the waiter secret hash, or null if not applicable
+   */
+  public String getWaiterSecretHash() {
+    return waiterSecretHash;
+  }
+
+  /**
+   * Sets the SHA-256 hex digest of the waiter secret capability.
+   *
+   * @param waiterSecretHash the waiter secret hash to set
+   */
+  public void setWaiterSecretHash(String waiterSecretHash) {
+    this.waiterSecretHash = waiterSecretHash;
   }
 }

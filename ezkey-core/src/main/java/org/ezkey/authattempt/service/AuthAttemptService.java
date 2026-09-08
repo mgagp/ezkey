@@ -436,6 +436,7 @@ public class AuthAttemptService {
     authAttempt.setContextMessage(authRequest.getContextMessage());
     authAttempt.setDemoMitmSignatureEnabled(
         Boolean.TRUE.equals(authRequest.getDemoMitmSignatureRequested()));
+    authAttempt.setWaiterSecretHash(authRequest.getWaiterSecretHash());
 
     int ttlSeconds = ezkeyCoreProperties.getAuthAttempt().getTtlSeconds();
     authAttempt.setCreatedAt(OffsetDateTime.now());

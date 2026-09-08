@@ -48,9 +48,14 @@ script:post-response {
               expect(['GLOBAL_ADMIN', 'TENANT_ADMIN']).to.include(jsonData.adminType);
           });
       } else if (jsonData.status === 'pending') {
-          // Two-call mode: challenge required
+          // Two-call mode: challenge or waiter capability
           bru.setEnvVar("authAttemptId", jsonData.authAttemptId);
-          bru.setEnvVar("challengeCode", jsonData.challengeCode);
+          if (jsonData.challengeCode !== undefined && jsonData.challengeCode !== null) {
+              bru.setEnvVar("challengeCode", jsonData.challengeCode);
+          }
+          if (jsonData.waiterSecret) {
+              bru.setEnvVar("waiterSecret", jsonData.waiterSecret);
+          }
           
           // Extract multi-tenancy fields (Phase 1)
           if (jsonData.adminType) {
