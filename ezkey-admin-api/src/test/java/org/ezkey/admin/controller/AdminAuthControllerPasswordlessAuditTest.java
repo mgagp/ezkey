@@ -103,11 +103,11 @@ class AdminAuthControllerPasswordlessAuditTest {
             java.time.OffsetDateTime.now().plusHours(1),
             42,
             null);
-    when(authService.waitForPasswordlessAuth(10, 7)).thenReturn(ok);
+    when(authService.waitForPasswordlessAuth(10, 7, "secret123")).thenReturn(ok);
 
     ResponseEntity<AdminLoginResponseDto> response =
         controller.passwordlessWait(
-            new AdminPasswordlessWaitRequestDto(10, 7), httpRequest, httpResponse);
+            new AdminPasswordlessWaitRequestDto(10, 7, "secret123"), httpRequest, httpResponse);
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
     verify(auditLogService).log(auditCaptor.capture());
@@ -122,12 +122,12 @@ class AdminAuthControllerPasswordlessAuditTest {
   @DisplayName("passwordlessWait expired emits login_mfa_expired FAILURE audit")
   void expired_emitsExpiredAudit() {
     when(authService.findAuditContextForAuthAttempt(10)).thenReturn(Optional.of(auditCtx));
-    when(authService.waitForPasswordlessAuth(10, null))
+    when(authService.waitForPasswordlessAuth(10, null, "secret123"))
         .thenThrow(new AdminAuthenticationExpiredException("expired"));
 
     try {
       controller.passwordlessWait(
-          new AdminPasswordlessWaitRequestDto(10, null), httpRequest, httpResponse);
+          new AdminPasswordlessWaitRequestDto(10, null, "secret123"), httpRequest, httpResponse);
     } catch (AdminAuthenticationExpiredException e) {
       // expected
     }
@@ -142,12 +142,12 @@ class AdminAuthControllerPasswordlessAuditTest {
   @DisplayName("passwordlessWait rejected emits login_mfa_rejected FAILURE audit")
   void rejected_emitsRejectedAudit() {
     when(authService.findAuditContextForAuthAttempt(10)).thenReturn(Optional.of(auditCtx));
-    when(authService.waitForPasswordlessAuth(10, null))
+    when(authService.waitForPasswordlessAuth(10, null, "secret123"))
         .thenThrow(new AdminAuthenticationRejectedException("no"));
 
     try {
       controller.passwordlessWait(
-          new AdminPasswordlessWaitRequestDto(10, null), httpRequest, httpResponse);
+          new AdminPasswordlessWaitRequestDto(10, null, "secret123"), httpRequest, httpResponse);
     } catch (AdminAuthenticationRejectedException e) {
       // expected
     }
@@ -160,12 +160,12 @@ class AdminAuthControllerPasswordlessAuditTest {
   @DisplayName("passwordlessWait does not emit session audit when service throws before success")
   void failure_doesNotEmitSuccessAudit() {
     when(authService.findAuditContextForAuthAttempt(10)).thenReturn(Optional.of(auditCtx));
-    when(authService.waitForPasswordlessAuth(10, null))
+    when(authService.waitForPasswordlessAuth(10, null, "secret123"))
         .thenThrow(new AdminAuthenticationExpiredException("expired"));
 
     try {
       controller.passwordlessWait(
-          new AdminPasswordlessWaitRequestDto(10, null), httpRequest, httpResponse);
+          new AdminPasswordlessWaitRequestDto(10, null, "secret123"), httpRequest, httpResponse);
     } catch (AdminAuthenticationExpiredException e) {
       // expected
     }
@@ -182,12 +182,12 @@ class AdminAuthControllerPasswordlessAuditTest {
   @DisplayName("findAuditContext empty still logs failure with null tenant")
   void emptyContext_stillLogsFailure() {
     when(authService.findAuditContextForAuthAttempt(99)).thenReturn(Optional.empty());
-    when(authService.waitForPasswordlessAuth(99, null))
+    when(authService.waitForPasswordlessAuth(99, null, "secret123"))
         .thenThrow(new AdminAuthenticationExpiredException("expired"));
 
     try {
       controller.passwordlessWait(
-          new AdminPasswordlessWaitRequestDto(99, null), httpRequest, httpResponse);
+          new AdminPasswordlessWaitRequestDto(99, null, "secret123"), httpRequest, httpResponse);
     } catch (AdminAuthenticationExpiredException e) {
       // expected
     }

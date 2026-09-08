@@ -638,8 +638,9 @@ public class AdminAuthController {
         @ApiResponse(
             responseCode = "401",
             description =
-                "Unauthorized - Invalid challenge code. "
-                    + "Returns RFC 9457 ProblemDetail: type='...invalid-credentials'"),
+                "Unauthorized - Missing/invalid waiter secret capability, invalid challenge code,"
+                    + " or attempt already consumed. Returns RFC 9457 ProblemDetail:"
+                    + " type='...invalid-credentials'"),
         @ApiResponse(
             responseCode = "408",
             description =
@@ -661,7 +662,8 @@ public class AdminAuthController {
 
     try {
       AdminLoginResponseDto response =
-          authService.waitForPasswordlessAuth(request.authAttemptId(), request.challengeCode());
+          authService.waitForPasswordlessAuth(
+              request.authAttemptId(), request.challengeCode(), request.waiterSecret());
 
       auditCtx.ifPresent(
           ctx ->

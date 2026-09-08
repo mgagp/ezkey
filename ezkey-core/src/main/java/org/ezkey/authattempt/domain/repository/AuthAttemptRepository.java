@@ -354,4 +354,17 @@ public interface AuthAttemptRepository
       @Param("shardIndex") Integer shardIndex,
       @Param("shardCount") Integer shardCount,
       @Param("limit") int limit);
+
+  /**
+   * Atomically marks the auth attempt as consumed for admin session issuance.
+   *
+   * @param id the auth attempt ID
+   * @param now the timestamp when the session is being issued
+   * @return 1 if successfully marked, 0 if already consumed
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "UPDATE AuthAttempt a SET a.sessionIssuedAt = :now WHERE a.authAttemptId = :id AND"
+          + " a.sessionIssuedAt IS NULL")
+  int markSessionIssued(@Param("id") Integer id, @Param("now") OffsetDateTime now);
 }

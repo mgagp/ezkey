@@ -10,7 +10,11 @@
 
 package org.ezkey.admin.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.time.OffsetDateTime;
+import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
@@ -71,6 +75,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminAuthService {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminAuthService.class);
+
+  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
   /** Generic client-facing message for all pre-authentication login failures (SEC-006). */
   private static final String GENERIC_LOGIN_FAILURE_MESSAGE = "Invalid username or password";
@@ -198,6 +204,13 @@ public class AdminAuthService {
     attemptReq.setEnrollmentId(admin.getEnrollment().getEnrollmentId());
     attemptReq.setChallengeRequested(challengeRequested);
 
+    String waiterSecret = null;
+    if (challengeRequested || Boolean.TRUE.equals(request.nonBlocking())) {
+      waiterSecret = generateWaiterSecret();
+      String waiterSecretHash = SensitiveDataHasher.sha256Hex(waiterSecret);
+      attemptReq.setWaiterSecretHash(waiterSecretHash);
+    }
+
     AuthAttemptCreateResponse attemptResponse = authAttemptTxHelper.createAuthAttempt(attemptReq);
 
     logger.info(
@@ -236,7 +249,8 @@ public class AdminAuthService {
           admin.getUsername(),
           admin.getAdminType().name(),
           message,
-          attemptResponse.getExpiresAt());
+          attemptResponse.getExpiresAt(),
+          waiterSecret);
     } else if (Boolean.TRUE.equals(request.nonBlocking())) {
       // NO CHALLENGE + NON-BLOCKING MODE: Return immediately with authAttemptId
       // Client will poll /passwordless-wait and display countdown based on expiresAt
@@ -254,7 +268,8 @@ public class AdminAuthService {
           admin.getUsername(),
           admin.getAdminType().name(),
           message,
-          attemptResponse.getExpiresAt());
+          attemptResponse.getExpiresAt(),
+          waiterSecret);
     } else {
       // NO CHALLENGE + BLOCKING MODE: Block and wait (original behavior, backward
       // compatible)
@@ -268,6 +283,15 @@ public class AdminAuthService {
       String status = waitResp.getStatus();
 
       if ("ACCEPTED".equals(status)) {
+        int updated =
+            authAttemptRepository.markSessionIssued(
+                attemptResponse.getAuthAttemptId(), OffsetDateTime.now());
+        if (updated == 0) {
+          logger.warn(
+              "❌ Auth attempt {} session already issued or claimed",
+              attemptResponse.getAuthAttemptId());
+          throw new AdminAuthenticationException("Authentication failed");
+        }
         rotateTokensIfEnabled(admin);
         TokenIssueResult result = generateAndPersistToken(admin);
         updateLastLogin(admin);
@@ -311,19 +335,21 @@ public class AdminAuthService {
    * Waits for passwordless authentication completion (two-step flow).
    *
    * <p>Supports challenge mode (validates {@code challengeCode} against the stored challenge to
-   * prevent enumeration) and non-blocking mode ({@code challengeCode} null). Uses a wait window
-   * aligned with the persisted attempt expiry (see {@link AdminAuthAttemptWaitRequestFactory}).
+   * prevent enumeration) and non-blocking mode ({@code challengeCode} null). Requires a valid
+   * {@code waiterSecret} issued exclusively to the client that initiated login, and enforces
+   * single-issuance atomic CAS on {@code sessionIssuedAt}. Uses a wait window aligned with the
+   * persisted attempt expiry (see {@link AdminAuthAttemptWaitRequestFactory}).
    *
    * @param authAttemptId the authentication attempt ID
    * @param challengeCode the challenge code from the login response when challenge mode; null for
    *     non-blocking flow
+   * @param waiterSecret the one-time waiter secret capability received at login
    * @return authentication response with token on success
-   * @throws IllegalArgumentException if auth attempt is not found
-   * @throws org.ezkey.admin.exception.AdminAuthenticationException if challenge code is missing for
-   *     challenge-backed attempts or does not match persisted challenge
+   * @throws AdminAuthenticationException if auth attempt is not found, already consumed, waiter
+   *     secret is missing or invalid, or challenge code does not match
    */
   public AdminLoginResponseDto waitForPasswordlessAuth(
-      Integer authAttemptId, Integer challengeCode) {
+      Integer authAttemptId, Integer challengeCode, String waiterSecret) {
     logger.info(
         "⏳ Waiting for passwordless auth completion (authAttemptId: {}, hasChallenge: {})",
         authAttemptId,
@@ -333,9 +359,36 @@ public class AdminAuthService {
     AuthAttempt authAttempt =
         authAttemptRepository
             .findById(authAttemptId)
-            .orElseThrow(() -> new IllegalArgumentException("Auth attempt not found"));
+            .orElseThrow(
+                () -> {
+                  logger.warn("❌ Auth attempt not found for id: {}", authAttemptId);
+                  return new AdminAuthenticationException("Authentication failed");
+                });
 
-    // 2. SECURITY: Enforce challenge requirement from persisted auth attempt state.
+    // 2. Pre-check CAS: attempt must not already have issued a session
+    if (authAttempt.getSessionIssuedAt() != null) {
+      logger.warn("❌ Auth attempt {} already consumed for session issuance", authAttemptId);
+      throw new AdminAuthenticationException("Authentication failed");
+    }
+
+    // 3. SECURITY: Verify one-time waiter secret capability
+    if (authAttempt.getWaiterSecretHash() == null
+        || waiterSecret == null
+        || waiterSecret.isBlank()) {
+      logger.warn("❌ Missing waiter secret for authAttemptId: {}", authAttemptId);
+      throw new AdminAuthenticationException("Authentication failed");
+    }
+    String incomingHash = SensitiveDataHasher.sha256Hex(waiterSecret.trim());
+    if (incomingHash == null
+        || !MessageDigest.isEqual(
+            incomingHash.getBytes(StandardCharsets.UTF_8),
+            authAttempt.getWaiterSecretHash().getBytes(StandardCharsets.UTF_8))) {
+      logger.warn("❌ Invalid waiter secret for authAttemptId: {}", authAttemptId);
+      throw new AdminAuthenticationException("Authentication failed");
+    }
+    logger.debug("✅ Waiter secret verified for authAttemptId: {}", authAttemptId);
+
+    // 4. SECURITY: Enforce challenge requirement from persisted auth attempt state.
     // If an attempt has a stored challenge, clients must provide a matching challengeCode.
     Integer persistedChallenge = authAttempt.getAuthAttemptChallenge();
     if (persistedChallenge != null) {
@@ -363,22 +416,28 @@ public class AdminAuthService {
       logger.debug("ℹ️ No challenge code (non-blocking flow) for authAttemptId: {}", authAttemptId);
     }
 
-    // 3. Get admin from enrollment
+    // 5. Get admin from enrollment
     EzkeyAdmin admin =
         adminRepository
             .findByEnrollmentId(authAttempt.getEnrollmentId())
             .orElseThrow(
                 () -> new IllegalArgumentException("Admin not found for this auth attempt"));
 
-    // 4. Wait for device response (timeout aligned with persisted expiresAt, capped at 300s)
+    // 6. Wait for device response (timeout aligned with persisted expiresAt, capped at 300s)
     AuthAttemptWaitRequest waitReq =
         AdminAuthAttemptWaitRequestFactory.forLoadedAttempt(authAttempt);
     AuthAttemptWaitResponse waitResp = authAttemptService.waitForResponse(authAttemptId, waitReq);
 
-    // 5. Process response
+    // 7. Process response
     String status = waitResp.getStatus();
 
     if ("ACCEPTED".equals(status)) {
+      int updated = authAttemptRepository.markSessionIssued(authAttemptId, OffsetDateTime.now());
+      if (updated == 0) {
+        logger.warn(
+            "❌ Auth attempt {} session already issued (concurrent wait or replay)", authAttemptId);
+        throw new AdminAuthenticationException("Authentication failed");
+      }
       rotateTokensIfEnabled(admin);
       TokenIssueResult result = generateAndPersistToken(admin);
       updateLastLogin(admin);
@@ -493,6 +552,17 @@ public class AdminAuthService {
    */
   private String generateBearerToken() {
     return "ezkey_" + UUID.randomUUID().toString().replace("-", "");
+  }
+
+  /**
+   * Generate a secure waiter secret capability string.
+   *
+   * @return the generated 32-byte URL-safe base64 waiter secret
+   */
+  private String generateWaiterSecret() {
+    byte[] bytes = new byte[32];
+    SECURE_RANDOM.nextBytes(bytes);
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
   }
 
   /**

@@ -651,7 +651,8 @@ public class AdminBootstrapService {
       log.info("STEP 7: Waiting for authentication completion...");
       log.info("═══════════════════════════════════════════════════════════════");
       String token =
-          waitForPasswordlessAuth(loginResult.authAttemptId(), loginResult.challengeCode());
+          waitForPasswordlessAuth(
+              loginResult.authAttemptId(), loginResult.challengeCode(), loginResult.waiterSecret());
       log.info("✅ Step 7 Complete - Token obtained:");
       log.info("   Token: {}...", token.substring(0, Math.min(30, token.length())));
 
@@ -887,8 +888,10 @@ public class AdminBootstrapService {
    *
    * @param authAttemptId Auth attempt ID
    * @param challengeCode Challenge code
+   * @param waiterSecret One-time waiter secret capability
    */
-  private record AdminLoginResult(Integer authAttemptId, Integer challengeCode) {}
+  private record AdminLoginResult(
+      Integer authAttemptId, Integer challengeCode, String waiterSecret) {}
 
   /**
    * Logs in admin via Admin API (creates auth attempt).
@@ -930,12 +933,14 @@ public class AdminBootstrapService {
 
     Integer authAttemptId = response.jsonPath().getInt("authAttemptId");
     Integer challengeCode = response.jsonPath().getInt("challengeCode");
+    String waiterSecret = response.jsonPath().getString("waiterSecret");
 
     assertThat(authAttemptId).isNotNull();
     assertThat(challengeCode).isNotNull();
+    assertThat(waiterSecret).isNotNull();
 
     log.info("   ✅ Login successful - Auth attempt created");
-    return new AdminLoginResult(authAttemptId, challengeCode);
+    return new AdminLoginResult(authAttemptId, challengeCode, waiterSecret);
   }
 
   /**
@@ -1056,9 +1061,11 @@ public class AdminBootstrapService {
    *
    * @param authAttemptId Auth attempt ID
    * @param challengeCode Challenge code
+   * @param waiterSecret One-time waiter secret capability
    * @return Admin bearer token
    */
-  private String waitForPasswordlessAuth(Integer authAttemptId, Integer challengeCode) {
+  private String waitForPasswordlessAuth(
+      Integer authAttemptId, Integer challengeCode, String waiterSecret) {
     log.info("   Calling: POST /api/v1/admin/auth/passwordless-wait");
     log.info("   Auth Attempt ID: {}", authAttemptId);
     log.info("   Challenge Code: {}", challengeCode);
@@ -1067,6 +1074,7 @@ public class AdminBootstrapService {
     Map<String, Object> waitRequest = new HashMap<>();
     waitRequest.put("authAttemptId", authAttemptId);
     waitRequest.put("challengeCode", challengeCode);
+    waitRequest.put("waiterSecret", waiterSecret);
 
     Response response =
         given()

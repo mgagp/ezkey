@@ -111,6 +111,20 @@ public class AuthAttempt implements Reencryptable {
   @Column(name = "demo_mitm_signature_enabled", nullable = false)
   private boolean demoMitmSignatureEnabled = false;
 
+  /**
+   * SHA-256 hex digest of the client waiter secret capability minted at login. NULL for Integration
+   * API attempts.
+   */
+  @Column(name = "waiter_secret_hash", length = 64)
+  private String waiterSecretHash;
+
+  /**
+   * Timestamp when an admin session token was first minted for this attempt. Used for atomic CAS
+   * consume to prevent replay/hijack.
+   */
+  @Column(name = "session_issued_at")
+  private OffsetDateTime sessionIssuedAt;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
@@ -399,6 +413,42 @@ public class AuthAttempt implements Reencryptable {
 
   public String getDeviceProofTokenHash() {
     return deviceProofTokenHash;
+  }
+
+  /**
+   * Gets the waiter secret hash for this auth attempt.
+   *
+   * @return the SHA-256 hex digest of the waiter secret, or null
+   */
+  public String getWaiterSecretHash() {
+    return waiterSecretHash;
+  }
+
+  /**
+   * Sets the waiter secret hash for this auth attempt.
+   *
+   * @param waiterSecretHash the SHA-256 hex digest of the waiter secret
+   */
+  public void setWaiterSecretHash(String waiterSecretHash) {
+    this.waiterSecretHash = waiterSecretHash;
+  }
+
+  /**
+   * Gets the timestamp when an admin session token was first minted for this attempt.
+   *
+   * @return the timestamp when session was issued, or null if not yet issued
+   */
+  public OffsetDateTime getSessionIssuedAt() {
+    return sessionIssuedAt;
+  }
+
+  /**
+   * Sets the timestamp when an admin session token was first minted for this attempt.
+   *
+   * @param sessionIssuedAt the timestamp when session was issued
+   */
+  public void setSessionIssuedAt(OffsetDateTime sessionIssuedAt) {
+    this.sessionIssuedAt = sessionIssuedAt;
   }
 
   private EncryptionOperations getEncryptionOperations() {

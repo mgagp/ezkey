@@ -35,6 +35,19 @@ import java.time.OffsetDateTime;
  *
  * @author Ezkey contributors
  * @since 2025
+ * @param success Indicates if the authentication was successful
+ * @param message Response message describing authentication result
+ * @param status Authentication attempt status (pending, accepted, rejected)
+ * @param token Bearer token for authenticated API requests
+ * @param adminType Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)
+ * @param username Administrator username
+ * @param expiresAt Expiration timestamp (UTC)
+ * @param authAttemptId Authentication attempt ID for two-step flow
+ * @param challengeCode 6-digit challenge code for device verification
+ * @param adminId Administrator ID for the authenticated session
+ * @param tenantId Tenant scope ID when administrator is tenant- or integration-scoped
+ * @param csrfToken Non-secret CSRF token for cookie-authenticated browser requests
+ * @param waiterSecret One-time waiter secret capability required for /passwordless-wait
  */
 @Schema(description = "Response DTO for passwordless administrator login")
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -88,7 +101,14 @@ public record AdminLoginResponseDto(
                 "Non-secret CSRF token to send in X-CSRF-TOKEN for cookie-authenticated unsafe"
                     + " requests. Present only in browser session cookie mode.",
             requiredMode = RequiredMode.NOT_REQUIRED)
-        String csrfToken) {
+        String csrfToken,
+    @Schema(
+            description =
+                "One-time waiter secret capability required for /passwordless-wait. Present only"
+                    + " when status is pending.",
+            example = "a1b2c3d4e5...",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String waiterSecret) {
 
   /**
    * Constructor for error responses.
@@ -96,7 +116,7 @@ public record AdminLoginResponseDto(
    * @param message the error message
    */
   public AdminLoginResponseDto(String message) {
-    this(false, message, null, null, null, null, null, null, null, null, null, null);
+    this(false, message, null, null, null, null, null, null, null, null, null, null, null);
   }
 
   /**
@@ -128,6 +148,7 @@ public record AdminLoginResponseDto(
         null,
         adminId,
         tenantId,
+        null,
         null);
   }
 
@@ -137,8 +158,10 @@ public record AdminLoginResponseDto(
    * @param authAttemptId the authentication attempt ID
    * @param challengeCode the 6-digit challenge code
    * @param username the administrator username
+   * @param adminType the administrator type
    * @param message the instruction message
    * @param expiresAt when the auth attempt expires
+   * @param waiterSecret the one-time waiter secret capability
    * @return a pending passwordless response
    */
   public static AdminLoginResponseDto pendingPasswordless(
@@ -147,7 +170,8 @@ public record AdminLoginResponseDto(
       String username,
       String adminType,
       String message,
-      OffsetDateTime expiresAt) {
+      OffsetDateTime expiresAt,
+      String waiterSecret) {
     return new AdminLoginResponseDto(
         false,
         message,
@@ -160,7 +184,8 @@ public record AdminLoginResponseDto(
         challengeCode,
         null,
         null,
-        null);
+        null,
+        waiterSecret);
   }
 
   /**
@@ -193,6 +218,7 @@ public record AdminLoginResponseDto(
         null,
         adminId,
         tenantId,
+        null,
         null);
   }
 
@@ -204,7 +230,7 @@ public record AdminLoginResponseDto(
    */
   public static AdminLoginResponseDto error(String message) {
     return new AdminLoginResponseDto(
-        false, message, null, null, null, null, null, null, null, null, null, null);
+        false, message, null, null, null, null, null, null, null, null, null, null, null);
   }
 
   /**
@@ -229,7 +255,8 @@ public record AdminLoginResponseDto(
         challengeCode,
         adminId,
         tenantId,
-        csrfToken);
+        csrfToken,
+        waiterSecret);
   }
 
   /**
@@ -252,7 +279,8 @@ public record AdminLoginResponseDto(
         challengeCode,
         adminId,
         tenantId,
-        newCsrfToken);
+        newCsrfToken,
+        waiterSecret);
   }
 
   @Override

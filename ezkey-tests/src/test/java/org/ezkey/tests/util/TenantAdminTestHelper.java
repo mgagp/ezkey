@@ -401,6 +401,7 @@ public class TenantAdminTestHelper {
 
     Integer authAttemptId = loginResponse.jsonPath().getInt("authAttemptId");
     Integer challengeCode = loginResponse.jsonPath().getInt("challengeCode");
+    String waiterSecret = loginResponse.jsonPath().getString("waiterSecret");
     log.info("✅ Auth attempt created with ID: {}, challengeCode: {}", authAttemptId, challengeCode);
 
     // Step 2: Generate device proof token
@@ -477,6 +478,7 @@ public class TenantAdminTestHelper {
     Map<String, Object> waitRequest = new HashMap<>();
     waitRequest.put("authAttemptId", authAttemptId);
     waitRequest.put("challengeCode", challengeCode);
+    waitRequest.put("waiterSecret", waiterSecret);
 
     log.info(
         "📤 Waiting for token with authAttemptId={}, challengeCode={}",

@@ -566,9 +566,9 @@ See [AUDIT_LOG_INTEGRITY.md](AUDIT_LOG_INTEGRITY.md) for integrity verification,
 ---
 
 #### POST /passwordless-wait (Two-Step Flow)
-Wait for device approval in challenge-based authentication.
+Wait for device approval in challenge-based or non-blocking authentication.
 
-**Usage:** After receiving `authAttemptId` and `challengeCode` from `/login` with `challengeRequested: true`, call this endpoint to wait for device approval.
+**Usage:** After receiving `authAttemptId`, optional `challengeCode`, and `waiterSecret` capability from `/login`, call this endpoint to wait for device approval.
 
 **Request:**
 ```http
@@ -577,7 +577,8 @@ Content-Type: application/json
 
 {
   "authAttemptId": 123,
-  "challengeCode": 654321
+  "challengeCode": 654321,
+  "waiterSecret": "xK8_j9L2mNp..."
 }
 ```
 
@@ -602,7 +603,7 @@ Errors use `Content-Type: application/problem+json` (or JSON with the same field
 | 400 | `.../authentication/auth-rejected` | Authentication Rejected |
 | 400 | `.../authentication/auth-expired` | Authentication Expired |
 | 400 | `.../authentication/invalid-signature` | Invalid Signature |
-| 401 | `.../authentication/invalid-credentials` (or similar) | Invalid challenge or credentials |
+| 401 | `.../authentication/invalid-credentials` | Authentication failed (invalid/missing waiter secret, challenge mismatch, or attempt already consumed) |
 | 408 | `.../authentication/auth-timeout` | Authentication Timeout |
 
 **Example (device denied):**
@@ -621,6 +622,8 @@ The client should use `detail` (then `title`) for user-facing messages, not assu
 **Audit:** Each call to `/passwordless-wait` that reaches a terminal outcome writes an `ADMIN_LOGIN` audit row with a distinct `event_action` (for example `login_mfa_session_issued`, `login_mfa_expired`, `login_mfa_rejected`). See [AUDIT_ADMIN_LOGIN_ACTIONS.md](AUDIT_ADMIN_LOGIN_ACTIONS.md) for the full list and SIEM notes.
 
 **Security Notes:**
+- `waiterSecret` capability token prevents replay and session hijacking by requiring the unguessable CSPRNG secret returned only to the initial `/login` caller.
+- Atomic CAS guarantees a session is issued at most once per authentication attempt; replays after session issuance are rejected with generic 401 and cannot trigger token rotation or mint survivor tokens.
 - `challengeCode` prevents enumeration attacks (proof of legitimate login initiation)
 - Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). If `ezkey.core.auth-attempt.ttl-seconds` is set above 300 (max 600), the wait may return HTTP 408 while the attempt row is still valid in the database.
 - Device must enter matching challenge code before approval

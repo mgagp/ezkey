@@ -184,6 +184,7 @@ public final class PeerGlobalAdminHelper {
 
     Integer authAttemptId = loginResponse.jsonPath().getInt("authAttemptId");
     Integer challengeCode = loginResponse.jsonPath().getInt("challengeCode");
+    String waiterSecret = loginResponse.jsonPath().getString("waiterSecret");
 
     String deviceProofToken = cryptoApiClient.generateProofToken();
     String deviceProofTokenSigned =
@@ -238,6 +239,7 @@ public final class PeerGlobalAdminHelper {
     Map<String, Object> waitRequest = new HashMap<>();
     waitRequest.put("authAttemptId", authAttemptId);
     waitRequest.put("challengeCode", challengeCode);
+    waitRequest.put("waiterSecret", waiterSecret);
 
     Response tokenResponse =
         given()

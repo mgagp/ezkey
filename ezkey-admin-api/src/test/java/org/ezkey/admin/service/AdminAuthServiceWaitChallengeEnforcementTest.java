@@ -31,6 +31,7 @@ import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.security.SensitiveDataHasher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,6 +51,9 @@ class AdminAuthServiceWaitChallengeEnforcementTest {
 
   @InjectMocks private AdminAuthService adminAuthService;
 
+  private static final String VALID_SECRET = "valid-waiter-secret-capability-token-12345678";
+  private static final String VALID_SECRET_HASH = SensitiveDataHasher.sha256Hex(VALID_SECRET);
+
   @Test
   @DisplayName("waitForPasswordlessAuth rejects missing challenge when attempt is challenge-backed")
   void waitRejectsMissingChallengeForChallengeBackedAttempt() {
@@ -59,7 +63,7 @@ class AdminAuthServiceWaitChallengeEnforcementTest {
     AdminAuthenticationException exception =
         assertThrows(
             AdminAuthenticationException.class,
-            () -> adminAuthService.waitForPasswordlessAuth(15, null));
+            () -> adminAuthService.waitForPasswordlessAuth(15, null, VALID_SECRET));
 
     assertEquals("Invalid challenge code - authentication failed", exception.getMessage());
     verify(authAttemptService, never()).waitForResponse(any(), any());
@@ -74,7 +78,7 @@ class AdminAuthServiceWaitChallengeEnforcementTest {
     AdminAuthenticationException exception =
         assertThrows(
             AdminAuthenticationException.class,
-            () -> adminAuthService.waitForPasswordlessAuth(15, 654321));
+            () -> adminAuthService.waitForPasswordlessAuth(15, 654321, VALID_SECRET));
 
     assertEquals("Invalid challenge code - authentication failed", exception.getMessage());
     verify(authAttemptService, never()).waitForResponse(any(), any());
@@ -91,7 +95,7 @@ class AdminAuthServiceWaitChallengeEnforcementTest {
 
     assertThrows(
         AdminAuthenticationExpiredException.class,
-        () -> adminAuthService.waitForPasswordlessAuth(16, null));
+        () -> adminAuthService.waitForPasswordlessAuth(16, null, VALID_SECRET));
 
     verify(authAttemptService).waitForResponse(eq(16), any());
   }
@@ -107,7 +111,7 @@ class AdminAuthServiceWaitChallengeEnforcementTest {
 
     assertThrows(
         AdminAuthenticationExpiredException.class,
-        () -> adminAuthService.waitForPasswordlessAuth(17, 222333));
+        () -> adminAuthService.waitForPasswordlessAuth(17, 222333, VALID_SECRET));
 
     verify(authAttemptService).waitForResponse(eq(17), any());
   }
@@ -117,6 +121,7 @@ class AdminAuthServiceWaitChallengeEnforcementTest {
     attempt.setAuthAttemptId(id);
     attempt.setEnrollmentId(enrollmentId);
     attempt.setAuthAttemptChallenge(challenge);
+    attempt.setWaiterSecretHash(VALID_SECRET_HASH);
     attempt.setExpiresAt(OffsetDateTime.now().plusMinutes(2));
     return attempt;
   }

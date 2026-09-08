@@ -32,6 +32,7 @@ interface WaitingData {
   authAttemptId: number;
   challengeCode: number | null;
   expiresAt: string;
+  waiterSecret: string;
 }
 
 export default function LoginPage() {
@@ -130,6 +131,7 @@ export default function LoginPage() {
           {
             authAttemptId: waitingData.authAttemptId,
             ...(waitingData.challengeCode != null && { challengeCode: waitingData.challengeCode }),
+            waiterSecret: waitingData.waiterSecret,
           },
           waitOptions,
         );
@@ -223,12 +225,13 @@ export default function LoginPage() {
         },
         loginRequestOptions,
       ) as unknown as AdminLoginResponseDto;
-      if (result.authAttemptId && result.expiresAt) {
+      if (result.authAttemptId && result.expiresAt && result.waiterSecret) {
         persistUsernamePref(formData.username, formData.rememberUsername);
         setWaitingData({
           authAttemptId: result.authAttemptId,
           challengeCode: result.challengeCode ?? null,
           expiresAt: result.expiresAt,
+          waiterSecret: result.waiterSecret,
         });
         setLoginState('waiting');
       } else {
