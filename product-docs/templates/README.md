@@ -8,6 +8,7 @@ ablation note for what used to be here.
 - [backlog-idea.template.md](backlog-idea.template.md) — `I-*` one concrete idea.
 - [tracer-bullet-brief.template.md](tracer-bullet-brief.template.md) — `TB-*` bounded execution slice.
 - [architecture-decision.template.md](architecture-decision.template.md) — `ADR-*` design decision, global or component-scoped.
+- [cold-agent-plan-review.prompt.md](cold-agent-plan-review.prompt.md) — Prompt template for fresh-session plan review and hardening before cold-agent execution.
 
 ## Using a template
 

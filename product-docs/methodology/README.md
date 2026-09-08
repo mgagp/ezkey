@@ -16,6 +16,32 @@ That capability improves with every model release, funded and refined at a scale
 can match. This methodology is not a competing workflow — it exists only to carry what a Plan mode
 session, by design, does not: continuity across sessions and months.
 
+### The two-stage plan hardening pattern (fresh-session review)
+
+When a task involves high operational risk (security boundaries, session management, database
+migrations on partitioned tables, or cross-component contracts) or is targeted for fully
+autonomous execution by a cold agent, single-session planning often suffers from author bias and
+accumulated conversational drift.
+
+In these situations, apply a two-stage hardening pattern:
+
+1. **Stage 1 (Scaffold):** Draft the initial direction and plan in a standard Plan mode session.
+2. **Stage 2 (Fresh-session review & hardening):** Open a **fresh session** (clearing context,
+   optionally using a distinct reasoning model) and submit the draft using the canonical hardening
+   prompt ([`../templates/cold-agent-plan-review.prompt.md`](../templates/cold-agent-plan-review.prompt.md)).
+   - **Evaluate product intent:** Verify the plan solves the root problem rather than patching
+     symptoms or leaving default paths unprotected.
+   - **Expose edge cases & eliminate non-dits:** Specify exact database migrations, atomic CAS
+     queries, DTO constraints, and strict tooling rules (e.g. no manual spec edits).
+   - **Construct the proof ladder & collateral invariance:** RED baseline reproduction,
+     positive/negative automated tests, collateral invariance proof (verifying that rejections,
+     collisions, or attacks leave legitimate state unharmed), and live clean-start stack
+     verification.
+   - **HITL gate:** Require a concise diagnostic summary and human alignment before amending the
+     plan file.
+3. **Stage 3 (Cold execution):** Pass the hardened plan to a fresh agent, which can then execute
+   start-to-finish autonomously with deterministic acceptance criteria.
+
 ## The three things this methodology carries
 
 ### 1. Documentary levels
@@ -129,8 +155,8 @@ of duplicating its content.
 
 ## Templates
 
-Four kept, under [`../templates/`](../templates/): `vision-note`, `backlog-idea`,
-`tracer-bullet-brief`, `architecture-decision`. Copy, fill in, delete sections that do not apply.
+Maintained under [`../templates/`](../templates/): `vision-note`, `backlog-idea`,
+`tracer-bullet-brief`, `architecture-decision`, plus the `cold-agent-plan-review` prompt template. Copy, fill in, delete sections that do not apply.
 
 ## Versioning
 
