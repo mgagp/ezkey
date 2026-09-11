@@ -1041,6 +1041,7 @@ def admin_login(ctx, username, challenge, no_save_token):
         if data.get('status') == 'pending' and data.get('challengeCode') and data.get('authAttemptId'):
             auth_attempt_id = data['authAttemptId']
             challenge_code = data['challengeCode']
+            waiter_secret = data.get('waiterSecret')
 
             OutputUtils.info("")
             OutputUtils.warning("⏳ Authentication pending - Challenge verification required")
@@ -1053,10 +1054,14 @@ def admin_login(ctx, username, challenge, no_save_token):
             OutputUtils.info("")
             OutputUtils.info(f"   ezkey admin auth passwordless-wait \\")
             OutputUtils.info(f"     --auth-attempt-id {auth_attempt_id} \\")
-            OutputUtils.info(f"     --challenge-code {challenge_code}")
+            OutputUtils.info(f"     --challenge-code {challenge_code} \\")
+            OutputUtils.info(f"     --waiter-secret {waiter_secret}")
             OutputUtils.info("")
             OutputUtils.info("   Or copy-paste this:")
-            OutputUtils.info(f"   ezkey admin auth passwordless-wait --auth-attempt-id {auth_attempt_id} --challenge-code {challenge_code}")
+            OutputUtils.info(
+                f"   ezkey admin auth passwordless-wait --auth-attempt-id {auth_attempt_id} "
+                f"--challenge-code {challenge_code} --waiter-secret {waiter_secret}"
+            )
             OutputUtils.info("")
 
             if pretty_print:
@@ -1120,14 +1125,17 @@ def admin_login(ctx, username, challenge, no_save_token):
 @auth_group.command('passwordless-wait')
 @click.option('--auth-attempt-id', required=True, type=int, help='Auth attempt ID from login')
 @click.option('--challenge-code', type=int, help='Challenge code from login (optional, shown in login output)')
+@click.option('--waiter-secret', required=True, help='One-time waiter secret from login (shown in login output)')
 @click.option('--no-save-token', is_flag=True, default=False, help='Do NOT save bearer token to config (default: save token)')
 @click.pass_context
-def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, no_save_token):
+def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, waiter_secret, no_save_token):
     """
     Wait for device approval in two-step passwordless authentication.
 
     Use this after 'ezkey admin auth login --challenge' to complete authentication.
-    The device must enter the matching challenge code before approval.
+    The device must enter the matching challenge code before approval. The waiter
+    secret proves this CLI session is the one that initiated the login; the Admin API
+    rejects the request without it.
 
     By default, the bearer token is saved to the configuration file
     (~/.ezkey/ezkey.json) so subsequent commands don't require re-authentication.
@@ -1160,7 +1168,8 @@ def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, no_save_token)
 
     json_data = {
         'authAttemptId': auth_attempt_id,
-        'challengeCode': challenge_code
+        'challengeCode': challenge_code,
+        'waiterSecret': waiter_secret
     }
 
     url = f"{admin_url}/api/v1/admin/auth/passwordless-wait"

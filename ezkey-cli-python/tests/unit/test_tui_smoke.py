@@ -161,15 +161,27 @@ class TestAuthManager:
     mock_post.return_value = mock_response
 
     manager = AuthManager("http://localhost:9080", verify_ssl=False)
-    result = manager.wait_for_challenge(42, challenge_code=7)
+    result = manager.wait_for_challenge(42, challenge_code=7, waiter_secret="ws-secret")
 
     assert result == {"token": "approved-token"}
     mock_post.assert_called_once_with(
       "http://localhost:9080/api/v1/admin/auth/passwordless-wait",
-      json={"authAttemptId": 42, "challengeCode": 7},
+      json={"authAttemptId": 42, "challengeCode": 7, "waiterSecret": "ws-secret"},
       timeout=365,
       verify=False,
     )
+
+  @patch("ezkey_cli.auth.auth_manager.requests.post")
+  def test_wait_for_challenge_non_blocking_sends_waiter_secret_without_challenge(self, mock_post):
+    mock_response = Mock()
+    mock_response.text = '{"token": "approved-token"}'
+    mock_response.json.return_value = {"token": "approved-token"}
+    mock_post.return_value = mock_response
+
+    manager = AuthManager("http://localhost:9080", verify_ssl=False)
+    manager.wait_for_challenge(42, waiter_secret="ws-secret")
+
+    assert mock_post.call_args.kwargs["json"] == {"authAttemptId": 42, "waiterSecret": "ws-secret"}
 
   @patch("ezkey_cli.auth.auth_manager.requests.post", side_effect=TimeoutError("network"))
   def test_login_returns_none_on_request_failure(self, _mock_post):

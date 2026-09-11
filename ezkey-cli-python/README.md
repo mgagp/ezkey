@@ -95,7 +95,7 @@ ezkey admin auth login --username admin
 
 # Two-call mode with challenge code
 ezkey admin auth login --username admin --challenge
-ezkey admin auth passwordless-wait --auth-attempt-id 123 --challenge-code 654321
+ezkey admin auth passwordless-wait --auth-attempt-id 123 --challenge-code 654321 --waiter-secret <secret-from-login-output>
 
 # Emergency recovery
 ezkey admin auth recover --username admin --recovery-code "XXXX-XXXX-..."

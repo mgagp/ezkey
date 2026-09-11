@@ -93,6 +93,7 @@ class QuickReAuthScreen(ModalScreen):
     self.api_client = api_client
     self.auth_manager = None
     self.auth_attempt_id = None
+    self.waiter_secret = None
 
   def compose(self):
     """Compose the quick re-auth screen."""
@@ -181,6 +182,7 @@ class QuickReAuthScreen(ModalScreen):
           login_response.get('authAttemptId')):
 
         self.auth_attempt_id = login_response.get('authAttemptId')
+        self.waiter_secret = login_response.get('waiterSecret')
         challenge_code = login_response.get('challengeCode')
 
         # Show challenge code and wait
@@ -211,7 +213,8 @@ class QuickReAuthScreen(ModalScreen):
         challenge_response = self.auth_manager.wait_for_challenge(
             auth_attempt_id=self.auth_attempt_id,
             challenge_code=challenge_code or "quick-reauth",
-            timeout=10
+            timeout=10,
+            waiter_secret=self.waiter_secret
         )
 
         if challenge_response and challenge_response.get('success'):

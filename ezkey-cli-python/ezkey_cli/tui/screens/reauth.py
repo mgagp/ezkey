@@ -122,6 +122,7 @@ class ReAuthScreen(ModalScreen):
     self.auth_manager = None
     self.auth_attempt_id = None
     self.challenge_code = None
+    self.waiter_secret = None
 
   def compose(self):
     """Compose the re-auth screen."""
@@ -221,6 +222,7 @@ class ReAuthScreen(ModalScreen):
       # Save for non-blocking mode
       self.auth_attempt_id = auth_attempt_id
       self.challenge_code = ch_code
+      self.waiter_secret = login_response.get('waiterSecret')
 
       # Hide username input
       self.query_one("#username_input", Input).display = False
@@ -261,7 +263,8 @@ class ReAuthScreen(ModalScreen):
       wait_response = self.auth_manager.wait_for_challenge(
           auth_attempt_id=self.auth_attempt_id,
           challenge_code=self.challenge_code,
-          timeout=360
+          timeout=360,
+          waiter_secret=self.waiter_secret
       )
 
       log.info(f"Device response: {wait_response}")
@@ -300,7 +303,8 @@ class ReAuthScreen(ModalScreen):
       wait_response = self.auth_manager.wait_for_challenge(
           auth_attempt_id=self.auth_attempt_id,
           challenge_code=self.challenge_code,
-          timeout=360
+          timeout=360,
+          waiter_secret=self.waiter_secret
       )
 
       log.info(f"Device response: {wait_response}")
