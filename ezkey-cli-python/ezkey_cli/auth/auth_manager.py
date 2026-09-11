@@ -81,7 +81,8 @@ class AuthManager:
       self,
       auth_attempt_id: int,
       challenge_code: Optional[int] = None,
-      timeout: int = 360
+      timeout: int = 360,
+      waiter_secret: Optional[str] = None
   ) -> Optional[Dict[str, Any]]:
     """
     Wait for device to approve authentication (two-step or non-blocking flow).
@@ -94,6 +95,8 @@ class AuthManager:
         auth_attempt_id: Auth attempt ID from login response
         challenge_code: Challenge code from login response (required for challenge flow)
         timeout: Timeout in seconds
+        waiter_secret: One-time waiter secret from the login response. The Admin API
+            rejects the wait request with HTTP 400 when it is missing.
 
     Returns:
         Response dict with 'token' on success, or None if failed
@@ -106,6 +109,9 @@ class AuthManager:
 
       if challenge_code is not None:
         payload["challengeCode"] = challenge_code
+
+      if waiter_secret:
+        payload["waiterSecret"] = waiter_secret
 
       response = requests.post(
           url,

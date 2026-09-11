@@ -100,8 +100,8 @@ ezkey admin auth login --username admin
 # Step 1: Request authentication with challenge
 ezkey admin auth login --username admin --challenge
 
-# Step 2: Wait for device approval
-ezkey admin auth passwordless-wait --auth-attempt-id <id> --challenge-code <code>
+# Step 2: Wait for device approval (all three values are printed by step 1)
+ezkey admin auth passwordless-wait --auth-attempt-id <id> --challenge-code <code> --waiter-secret <secret>
 ```
 
 **Emergency Recovery:**
@@ -242,7 +242,7 @@ ezkey admin auth login --username admin
 ezkey admin auth login --username admin --challenge
 
 # Wait for challenge approval
-ezkey admin auth passwordless-wait --auth-attempt-id 123 --challenge-code 654321
+ezkey admin auth passwordless-wait --auth-attempt-id 123 --challenge-code 654321 --waiter-secret <secret-from-login-output>
 
 # Emergency recovery
 ezkey admin auth recover --username admin --recovery-code "XXXX-XXXX-..."
