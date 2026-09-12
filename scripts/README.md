@@ -55,11 +55,23 @@ Nuclei prefers a local binary, then Docker (`NUCLEI_IMAGE` in `config/security-p
 ./scripts/security-pentest-curated-preflight.sh
 ./scripts/security-pentest-curated.sh --dry-run
 ./scripts/security-pentest-curated.sh
+# Deeper, more intrusive pass (pass-05+): all Schemathesis checks/phases, ZAP active scan,
+# X-Forwarded-For rate-limit probe. Attack one API at a time with --only.
+./scripts/security-pentest-curated.sh --deep --zap-active --probe-forwarded-ip
+./scripts/security-pentest-curated.sh --deep --only admin
 ```
+
+Profiles and flags: `--profile default|deep` (`--deep`), `--only admin|auth|integration`
+(repeatable), `--zap-active` (drops `-S`), `--probe-forwarded-ip`. Deep knobs live in
+`config/security-pentest/targets.env` (`SCHEMATHESIS_DEEP_*`, `SCHEMATHESIS_HEADERS` for a
+bearer-authenticated tier, `FORWARDED_IP_PROBE_*`). Docker-run tools reach host ports through
+`host.docker.internal` (`host-gateway`), and ZAP / Nuclei runs are wrapped in `timeout`.
 
 Configuration: [`config/security-pentest/`](../config/security-pentest/)
 
-Output (gitignored): `logs/security-pentest/`
+Output (gitignored): `logs/security-pentest/` — `security-pentest.curated.{md,json,html}` plus
+`raw/`. Schemathesis findings are one row per operation x check (Server error P1; auth ignored /
+negative data accepted with a 2xx P2; contract drift P3).
 
 Current health probe behavior:
 
