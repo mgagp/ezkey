@@ -220,6 +220,12 @@ export interface AdminLoginResponseDto {
      * @memberof AdminLoginResponseDto
      */
     csrfToken?: string;
+    /**
+     * One-time waiter secret capability required for /passwordless-wait. Present only when status is pending.
+     * @type {string}
+     * @memberof AdminLoginResponseDto
+     */
+    waiterSecret?: string;
 }
 /**
  * @export
@@ -257,6 +263,12 @@ export interface AdminPasswordlessWaitRequestDto {
      * @memberof AdminPasswordlessWaitRequestDto
      */
     challengeCode?: number;
+    /**
+     *
+     * @type {string}
+     * @memberof AdminPasswordlessWaitRequestDto
+     */
+    waiterSecret: string;
 }
 /**
  *
@@ -1612,12 +1624,6 @@ export interface AuthAttemptCreateRequestDto {
      * @memberof AuthAttemptCreateRequestDto
      */
     contextMessage?: string;
-    /**
-     * Demo only: when true, this attempt is flagged for simulated MITM (tampered Pending body after signing) if Auth API ezkey.demo.mitm-signature-enabled is true.
-     * @type {boolean}
-     * @memberof AuthAttemptCreateRequestDto
-     */
-    demoMitmSignatureRequested?: boolean;
 }
 /**
  * Authentication attempt details
@@ -1679,12 +1685,6 @@ export interface AuthAttemptDto {
      * @memberof AuthAttemptDto
      */
     contextMessage?: string;
-    /**
-     * Demo MITM opt-in at creation time (Pending tampering only when Auth API demo flag is on)
-     * @type {boolean}
-     * @memberof AuthAttemptDto
-     */
-    demoMitmSignatureEnabled?: boolean;
     /**
      * Integration ID resolved via enrollment (admin enrichment)
      * @type {number}
