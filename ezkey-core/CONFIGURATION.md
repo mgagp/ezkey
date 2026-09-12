@@ -35,7 +35,6 @@ instance metadata. Applications that depend on ezkey-core declare these properti
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(null)* | optionnel |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(null)* | requis [docker] |
 | `ezkey.enrollment.pending-expiration-days` | — | `7` | optionnel |
-| `ezkey.demo.mitm-signature-enabled` | `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` | `false` | optionnel |
 | `ezkey.core.crypto.rsa-key-size` | — | `2048` | optionnel |
 | `ezkey.core.auth-attempt.challenge-digits` | — | `2` | optionnel |
 | `ezkey.core.auth-attempt.ttl-seconds` | — | `120` | optionnel |
@@ -337,19 +336,6 @@ enrollments. Used only by Admin API.
 
 ---
 
-### Demo (`ezkey.demo.*`)
-
-**Description:** optional demonstration / lab settings for MITM simulation. **Must never be
-enabled in production.** Disabled by default.
-
-**Defined in:** `EzkeyDemoProperties`
-
-| Property | Type | Default | Obligation | Description |
-|---|---|---|---|---|
-| `ezkey.demo.mitm-signature-enabled` | `boolean` | `false` | optionnel | When `true`, auth attempts flagged `demo_mitm_signature_enabled` receive a tampered Pending response. For demos and security training only. |
-
----
-
 ## Profile Matrix
 
 The following table shows the effective values in each profile. Blank cells indicate the property
@@ -394,7 +380,6 @@ is not set in that profile (Java class default applies).
 | `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | Per-instance. E.g. `admin-api-1`. |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | Set in `docker-compose.yml`. |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | Public Auth API URL for mobile QR. |
-| `ezkey.demo.mitm-signature-enabled` | `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` | Auth API only. Default `true` in dev stack (false in prod). |
 
 > The master key and HMAC key files are not passed as env vars — they are mounted via the
 > `encryption-secrets` Docker volume at `/etc/ezkey/`.
@@ -405,7 +390,5 @@ is not set in that profile (Java class default applies).
 
 1. **Master key and HMAC key files** must never be committed to source control. Use Docker secrets
    or a secure vault.
-2. **Demo MITM flag** (`ezkey.demo.mitm-signature-enabled`) must be `false` in any production
-   environment.
-3. **RSA key size** must be ≥ 2048 bits; never override to a lower value.
-4. **Key rotation** is enabled by default and should remain so in production (Admin API only).
+2. **RSA key size** must be ≥ 2048 bits; never override to a lower value.
+3. **Key rotation** is enabled by default and should remain so in production (Admin API only).

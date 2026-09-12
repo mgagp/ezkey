@@ -237,11 +237,10 @@ public class AuthAttemptController {
 
     Integer pendingTenantId = resolveTenantIdForAudit(response.getAuthAttemptId());
     Integer pendingAuthAttemptId = response.getAuthAttemptId();
-    boolean demoMitm = response.isDemoMitmTamperApplied();
     auditLogService.log(
         AuditLog.builder()
             .eventType(EventType.AUTH_ATTEMPT_PENDING)
-            .eventAction(demoMitm ? "auth_attempt_pending_demo_mitm" : "auth_attempt_pending_found")
+            .eventAction("auth_attempt_pending_found")
             .eventStatus(EventStatus.SUCCESS)
             .apiName(ApiName.AUTH_API)
             .ipAddress(clientIp)
@@ -251,7 +250,6 @@ public class AuthAttemptController {
             .enrollmentId(resolveEnrollmentIdFromAuthAttempt(pendingAuthAttemptId))
             .integrationId(resolveIntegrationIdFromAuthAttempt(pendingAuthAttemptId))
             .tenantId(pendingTenantId)
-            .eventDetails(demoMitmPendingAuditDetails(response))
             .build());
 
     return ResponseEntity.ok(authAttemptMapper.toAuthAttemptPendingResponseDto(response));
@@ -463,19 +461,5 @@ public class AuthAttemptController {
         .flatMap(enrollmentRepository::findById)
         .map(Enrollment::getIntegrationId)
         .orElse(null);
-  }
-
-  /**
-   * Demo-only narrative for audit when simulated MITM tampering altered the pending JSON body after
-   * signing. Returns {@code null} when no tamper was applied so the audit row has no extra detail.
-   *
-   * @param response domain pending response from the service layer
-   * @return business-oriented text from the service layer, or null
-   */
-  private static String demoMitmPendingAuditDetails(AuthAttemptPendingResponse response) {
-    if (!response.isDemoMitmTamperApplied()) {
-      return null;
-    }
-    return response.getDemoMitmPendingAuditNarrative();
   }
 }

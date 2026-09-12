@@ -36,8 +36,6 @@ import org.ezkey.authattempt.domain.AuthAttemptStatus;
  * @param expiresAt timestamp when the authentication attempt expires
  * @param contextTitle optional short title describing the action requiring approval
  * @param contextMessage optional descriptive message explaining the approval request
- * @param demoMitmSignatureEnabled when true, attempt was created with demo MITM opt-in (see Auth
- *     API demo settings)
  * @param integrationId integration ID resolved via enrollment (list/detail enrichment; null when
  *     not enriched)
  * @param integrationName integration display name from batch join (admin list enrichment)
@@ -112,17 +110,6 @@ public record AuthAttemptDto(
             example = "Authorize payment batch #1497 to Acme Corp for $1,400",
             requiredMode = RequiredMode.NOT_REQUIRED)
         String contextMessage,
-    /**
-     * True when the attempt was created with demo MITM simulation requested (tampering applies only
-     * if Auth API {@code ezkey.demo.mitm-signature-enabled} is true).
-     */
-    @Schema(
-            description =
-                "Demo MITM opt-in at creation time (Pending tampering only when Auth API demo flag"
-                    + " is on)",
-            example = "false",
-            requiredMode = RequiredMode.NOT_REQUIRED)
-        Boolean demoMitmSignatureEnabled,
     /** Integration ID for the enrollment (admin list enrichment). */
     @Schema(
             description = "Integration ID resolved via enrollment (admin enrichment)",

@@ -74,7 +74,6 @@ class AuthAttemptDtoTest {
             null,
             null,
             null,
-            null,
             null);
 
     // Assert
@@ -93,8 +92,7 @@ class AuthAttemptDtoTest {
     // Act
     AuthAttemptDto dto =
         new AuthAttemptDto(
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-            null);
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
     // Assert
     assertThat(dto.authAttemptId()).isNull();
@@ -126,7 +124,6 @@ class AuthAttemptDtoTest {
               null,
               null,
               null,
-              null,
               null);
 
       assertThat(dto.authAttemptStatus()).isEqualTo(status);
@@ -146,7 +143,6 @@ class AuthAttemptDtoTest {
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
-            null,
             null,
             null,
             null,
@@ -174,7 +170,6 @@ class AuthAttemptDtoTest {
             null,
             null,
             null,
-            null,
             null);
     assertThat(dtoMax.authAttemptId()).isEqualTo(Integer.MAX_VALUE);
     assertThat(dtoMax.enrollmentId()).isEqualTo(Integer.MAX_VALUE);
@@ -190,7 +185,6 @@ class AuthAttemptDtoTest {
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
-            null,
             null,
             null,
             null,
@@ -222,7 +216,6 @@ class AuthAttemptDtoTest {
             null,
             null,
             null,
-            null,
             null);
     assertThat(dtoEmpty.authAttemptProofToken()).isEmpty();
 
@@ -237,7 +230,6 @@ class AuthAttemptDtoTest {
             longToken,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
-            null,
             null,
             null,
             null,
@@ -268,7 +260,6 @@ class AuthAttemptDtoTest {
             null,
             null,
             null,
-            null,
             null);
     assertThat(dtoUtc.createdAt()).isEqualTo(utcTime);
     assertThat(dtoUtc.expiresAt()).isEqualTo(utcTime);
@@ -285,7 +276,6 @@ class AuthAttemptDtoTest {
             TEST_PROOF_TOKEN,
             negativeOffset,
             negativeOffset,
-            null,
             null,
             null,
             null,
@@ -315,7 +305,6 @@ class AuthAttemptDtoTest {
             null,
             null,
             null,
-            null,
             null);
 
     AuthAttemptDto dto2 =
@@ -333,7 +322,6 @@ class AuthAttemptDtoTest {
             null,
             null,
             null,
-            null,
             null);
 
     AuthAttemptDto dto3 =
@@ -345,7 +333,6 @@ class AuthAttemptDtoTest {
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
-            null,
             null,
             null,
             null,
@@ -373,7 +360,6 @@ class AuthAttemptDtoTest {
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
-            null,
             null,
             null,
             null,
@@ -412,7 +398,6 @@ class AuthAttemptDtoTest {
             null,
             null,
             null,
-            null,
             null);
     assertThat(pendingDto.authAttemptStatus()).isEqualTo(AuthAttemptStatus.PENDING);
 
@@ -426,7 +411,6 @@ class AuthAttemptDtoTest {
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
-            null,
             null,
             null,
             null,
@@ -452,7 +436,6 @@ class AuthAttemptDtoTest {
             null,
             null,
             null,
-            null,
             null);
     assertThat(rejectedDto.authAttemptStatus()).isEqualTo(AuthAttemptStatus.REJECTED);
 
@@ -466,7 +449,6 @@ class AuthAttemptDtoTest {
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
-            null,
             null,
             null,
             null,

@@ -8,7 +8,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 
 | Module | CONFIGURATION.md | Role |
 |---|---|---|
-| `ezkey-core` | [ezkey-core/CONFIGURATION.md](../../ezkey-core/CONFIGURATION.md) | Shared library — defines all `ezkey.encryption.*`, `ezkey.audit.*`, `ezkey.organization.*`, `ezkey.qr.*`, `ezkey.enrollment.*`, `ezkey.demo.*`, and `ezkey.core.*` prefixes |
+| `ezkey-core` | [ezkey-core/CONFIGURATION.md](../../ezkey-core/CONFIGURATION.md) | Shared library — defines all `ezkey.encryption.*`, `ezkey.audit.*`, `ezkey.organization.*`, `ezkey.qr.*`, `ezkey.enrollment.*`, and `ezkey.core.*` prefixes |
 | `ezkey-admin-api` | [ezkey-admin-api/CONFIGURATION.md](../../ezkey-admin-api/CONFIGURATION.md) | Defines `ezkey.admin.*` (including `ezkey.admin.cors.*`, `ezkey.admin.auth.*`), `ezkey.admin-operations.*`, `ezkey.security.admin.*`, `ezkey.trusted-proxies.*`, `ezkey.auth-attempt.expiry-scheduler.*` |
 | `ezkey-auth-api` | [ezkey-auth-api/CONFIGURATION.md](../../ezkey-auth-api/CONFIGURATION.md) | Defines `ezkey.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
 | `ezkey-integration-api` | [ezkey-integration-api/CONFIGURATION.md](../../ezkey-integration-api/CONFIGURATION.md) | Defines `ezkey.api-key.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
@@ -40,7 +40,6 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.organization` | `ezkey-core` (`OrganizationProperties`) | admin-api, auth-api | [core §org](../../ezkey-core/CONFIGURATION.md#organization-ezkeyorganization) |
 | `ezkey.core` | `ezkey-core` (`EzkeyCoreProperties`) | admin-api, auth-api | [core §core](../../ezkey-core/CONFIGURATION.md#core-crypto--auth-attempt-ezkeycore) |
 | `ezkey.enrollment` | `ezkey-core` (`EnrollmentProperties`) | admin-api | [core §enrollment](../../ezkey-core/CONFIGURATION.md#enrollment-ezkeyenrollment) |
-| `ezkey.demo` | `ezkey-core` (`EzkeyDemoProperties`) | auth-api | [core §demo](../../ezkey-core/CONFIGURATION.md#demo-ezkeydemo) |
 | `ezkey.audit.integrity` | `ezkey-core` (`AuditHmacProperties`) | admin-api, auth-api, integration-api | [core §audit-integrity](../../ezkey-core/CONFIGURATION.md#audit-log-integrity-ezkeyauditintegrity) |
 | `ezkey.audit.chain` | `ezkey-core` (`AuditChainProperties`) | admin-api | [core §audit-chain](../../ezkey-core/CONFIGURATION.md#audit-log-chain-ezkeyauditchain) |
 | `ezkey.audit.chain.heartbeat` | `ezkey-core` (`AuditChainHeartbeatProperties`) | admin-api, auth-api, integration-api | [core §heartbeat](../../ezkey-core/CONFIGURATION.md#peripheral-heartbeat-ezkeyauditchainheartbeat) |
@@ -68,7 +67,6 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.organization.*` | ✓ | ✓ | — | — |
 | `ezkey.qr.*` | ✓ | ✓ | — | — |
 | `ezkey.enrollment.*` | ✓ | — | — | — |
-| `ezkey.demo.*` | — | ✓ | — | — |
 | `ezkey.core.*` | ✓ | ✓ | — | — |
 
 ¹ Auth API and Integration API set `ezkey.audit.chain.enabled=false` (no scheduler) but still bind `AuditChainProperties`; **`ezkey.audit.chain.window-minutes` must match Admin API** wherever heartbeat supervision runs — Docker profiles declare it explicitly on all three services.
@@ -102,7 +100,6 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SAME_SITE` | `ezkey.admin.auth.browser-session-cookie-same-site` | admin-api (optional; default `Strict`) |
 | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_COOKIE_NAME` | `ezkey.admin.auth.browser-csrf-cookie-name` | admin-api (optional; mirror in Admin UI build if changed) |
 | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_HEADER_NAME` | `ezkey.admin.auth.browser-csrf-header-name` | admin-api (optional; mirror in Admin UI build if changed) |
-| `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` | `ezkey.demo.mitm-signature-enabled` | auth-api docker profile |
 | `EZKEY_INSTANCE_ID` | `ezkey.audit.integrity.instance-id` | all API modules |
 
 ---

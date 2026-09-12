@@ -298,11 +298,6 @@
             "example": "Authorize payment batch #1497 to Acme Corp for $1,400",
             "maxLength": 2000,
             "minLength": 0
-          },
-          "demoMitmSignatureRequested": {
-            "type": "boolean",
-            "description": "Demo only: when true, flags the attempt for simulated MITM on Pending if Auth API ezkey.demo.mitm-signature-enabled is true.",
-            "example": false
           }
         },
         "required": [
@@ -369,11 +364,6 @@
             "type": "string",
             "description": "Descriptive approval message (null if no context provided)",
             "example": "Authorize payment batch #1497 to Acme Corp for $1,400"
-          },
-          "demoMitmSignatureEnabled": {
-            "type": "boolean",
-            "description": "Demo MITM opt-in at creation time (Pending tampering only when Auth API demo flag is on)",
-            "example": false
           },
           "integrationId": {
             "type": "integer",
