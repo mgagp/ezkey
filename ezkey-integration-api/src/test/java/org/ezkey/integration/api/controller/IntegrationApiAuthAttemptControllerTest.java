@@ -122,8 +122,7 @@ class IntegrationApiAuthAttemptControllerTest {
                 "No verified enrollment found for userIdentifier 'alice'."));
 
     HttpServletRequest request = new MockHttpServletRequest();
-    AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(123, null, false, null, null);
+    AuthAttemptCreateRequestDto dto = new AuthAttemptCreateRequestDto(123, null, false, null, null);
 
     AuthAttemptCreateValidationException exception =
         assertThrows(
@@ -150,8 +149,7 @@ class IntegrationApiAuthAttemptControllerTest {
     when(enrollmentRepository.findById(123)).thenReturn(Optional.of(enrollment));
     when(integrationRepository.findById(77)).thenReturn(Optional.of(integration));
     HttpServletRequest request = new MockHttpServletRequest();
-    AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(123, null, false, null, null);
+    AuthAttemptCreateRequestDto dto = new AuthAttemptCreateRequestDto(123, null, false, null, null);
 
     EnrollmentInactiveException exception =
         assertThrows(EnrollmentInactiveException.class, () -> controller.create(dto, request));

@@ -124,7 +124,6 @@ class AuthAttemptDtoTest {
               null,
               null,
               null,
-              null,
               null);
 
       assertThat(dto.authAttemptStatus()).isEqualTo(status);

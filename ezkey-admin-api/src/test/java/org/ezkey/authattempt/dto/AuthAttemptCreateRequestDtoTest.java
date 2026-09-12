@@ -145,8 +145,7 @@ class AuthAttemptCreateRequestDtoTest {
     // Controller validates at least one identifier - DTO allows both null, challengeRequested only
     // required at DTO level
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(
-            null, null, null, TEST_CHALLENGE_REQUESTED, null, null);
+        new AuthAttemptCreateRequestDto(null, null, null, TEST_CHALLENGE_REQUESTED, null, null);
 
     Set<ConstraintViolation<AuthAttemptCreateRequestDto>> violations = validator.validate(dto);
     assertThat(violations).isEmpty(); // DTO validation passes; controller rejects
@@ -180,8 +179,7 @@ class AuthAttemptCreateRequestDtoTest {
         new AuthAttemptCreateRequestDto(
             TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED, null, null);
     AuthAttemptCreateRequestDto dto3 =
-        new AuthAttemptCreateRequestDto(
-            999, null, null, TEST_CHALLENGE_REQUESTED, null, null);
+        new AuthAttemptCreateRequestDto(999, null, null, TEST_CHALLENGE_REQUESTED, null, null);
     AuthAttemptCreateRequestDto dto4 =
         new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, true, null, null);
 
