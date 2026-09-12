@@ -124,7 +124,6 @@ function TestAuthDialog({
   );
   const [contextTitle, setContextTitle] = useState('');
   const [contextMessage, setContextMessage] = useState('');
-  const [demoMitmSignatureRequested, setDemoMitmSignatureRequested] = useState(false);
   const [createdAttempt, setCreatedAttempt] = useState<AuthAttemptCreateResponse | null>(null);
   const [doneReason, setDoneReason] = useState<DoneReason | null>(null);
   const [countdown, setCountdown] = useState(0);
@@ -191,7 +190,6 @@ function TestAuthDialog({
     setChallengeRequested(enrollment.authAttemptChallengeRequired ?? false);
     setContextTitle('');
     setContextMessage('');
-    setDemoMitmSignatureRequested(false);
     setCreatedAttempt(null);
     setDoneReason(null);
     setCountdown(0);
@@ -279,21 +277,6 @@ function TestAuthDialog({
             )}
           </div>
 
-          {isDemoMode && sessionDemoOn && (
-            <label className="flex items-start gap-3 cursor-pointer select-none p-3 border-2 border-dashed border-warning/50 bg-warning/5 hover:border-warning/70 transition-colors">
-              <input
-                type="checkbox"
-                className="mt-0.5 size-4 accent-warning"
-                checked={demoMitmSignatureRequested}
-                onChange={(e) => setDemoMitmSignatureRequested(e.target.checked)}
-              />
-              <div>
-                <p className="text-sm font-bold">{t('testAuth.demoMitmLabel')}</p>
-                <p className="text-xs text-fg-muted mt-0.5">{t('testAuth.demoMitmHint')}</p>
-              </div>
-            </label>
-          )}
-
           {createMutation.isError && (
             <Alert variant="error">
               {getTranslatedApiError(createMutation.error, t, t('testAuth.errorCreateAttempt'))}
@@ -311,9 +294,6 @@ function TestAuthDialog({
                 };
                 if (contextTitle.trim()) data.contextTitle = contextTitle.trim();
                 if (contextMessage.trim()) data.contextMessage = contextMessage.trim();
-                if (isDemoMode && sessionDemoOn && demoMitmSignatureRequested) {
-                  data.demoMitmSignatureRequested = true;
-                }
                 createMutation.mutate({ data });
               }}
               className="gap-1.5"
@@ -328,9 +308,6 @@ function TestAuthDialog({
       {/* ── Step 2: Live ── */}
       {effectiveStep === 'live' && createdAttempt && (
         <div className="space-y-4">
-          {liveStatus?.demoMitmSignatureEnabled && (
-            <Alert variant="warning">{t('testAuth.demoMitmLiveHint')}</Alert>
-          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="border-2 border-fg/30 p-3">
               <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">

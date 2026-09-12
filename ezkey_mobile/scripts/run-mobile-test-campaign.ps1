@@ -473,7 +473,6 @@ function Invoke-ChurnIteration {
     challengeRequested = $challengeRequested
     contextTitle = 'Mobile campaign churn'
     contextMessage = "Iteration $Iteration / $Scenario"
-    demoMitmSignatureRequested = $false
   }
 
   $createResp = Invoke-Api -Method 'POST' -Url $createUrl -Headers $headers -Body $createBody

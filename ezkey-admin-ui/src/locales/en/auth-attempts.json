@@ -43,9 +43,7 @@
     "labelChallenge": "Challenge",
     "labelCreated": "Created",
     "labelExpires": "Expires",
-    "labelProofToken": "Proof Token",
-    "labelDemoMitm": "Demo MITM",
-    "demoMitmOn": "Opt-in"
+    "labelProofToken": "Proof Token"
   },
   "status": {
     "labelPending": "Pending",

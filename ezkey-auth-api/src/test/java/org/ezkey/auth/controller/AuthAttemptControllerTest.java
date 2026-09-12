@@ -10,9 +10,6 @@
 
 package org.ezkey.auth.controller;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -23,7 +20,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.auth.config.SecurityConfig;
 import org.ezkey.auth.config.TrustedProxyConfig;
@@ -46,7 +42,6 @@ import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -220,41 +215,6 @@ class AuthAttemptControllerTest {
         .toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class));
     verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class));
     verify(authAttemptMapper, times(1)).toAuthAttemptPendingResponseDto(pendingResponse);
-  }
-
-  @Test
-  @DisplayName(
-      "POST /api/v1/auth-attempts/pending — audit includes demo MITM business narrative in"
-          + " eventDetails")
-  void pending_WhenDemoMitmTamperApplied_ShouldLogAuditWithNarrativeDetails() throws Exception {
-    pendingResponse.setDemoMitmTamperApplied(true);
-    pendingResponse.setDemoMitmPendingAuditNarrative(
-        "Demo MITM (simulated): After signing, the contextual approval shown to the user was"
-            + " altered on the wire. What the integration signed — title: (none), message: (none)."
-            + " What the device received — title: (none), message: (none)."
-            + " The authenticator rejects the request because the approval details no longer match"
-            + " what was signed.");
-    when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
-        .thenReturn(pendingRequest);
-    when(authAttemptService.pending(any(AuthAttemptPendingRequest.class)))
-        .thenReturn(pendingResponse);
-    when(authAttemptMapper.toAuthAttemptPendingResponseDto(pendingResponse))
-        .thenReturn(pendingResponseDto);
-
-    String json = objectMapper.writeValueAsString(pendingRequestDto);
-
-    mockMvc
-        .perform(post(BASE_URL + "/pending").contentType(MediaType.APPLICATION_JSON).content(json))
-        .andExpect(status().isOk());
-
-    ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
-    verify(auditLogService).log(captor.capture());
-    AuditLog audit = captor.getValue();
-    assertEquals("auth_attempt_pending_demo_mitm", audit.getEventAction());
-    assertNotNull(audit.getEventDetails());
-    assertTrue(audit.getEventDetails().startsWith("Demo MITM (simulated):"));
-    assertTrue(audit.getEventDetails().contains("What the integration signed"));
-    assertTrue(audit.getEventDetails().contains("contextual approval"));
   }
 
   @Test

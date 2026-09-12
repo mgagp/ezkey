@@ -9,7 +9,6 @@ import { AuthAttemptStatusBadge } from '@/components/feature/auth-attempt-status
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { Dialog } from '@/components/ui/dialog';
 import { DetailInfoRow } from '@/components/ui/detail-info-row';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -161,11 +160,6 @@ function AttemptDetailDialog({
             ? <span className="font-mono font-bold">{String(attempt.authAttemptChallenge).padStart(2, '0')}</span>
             : <span className="text-fg-muted">—</span>}
         </DetailInfoRow>
-        {attempt.demoMitmSignatureEnabled && (
-          <DetailInfoRow label={t('detail.labelDemoMitm')}>
-            <Badge variant="warning">{t('detail.demoMitmOn')}</Badge>
-          </DetailInfoRow>
-        )}
         <DetailInfoRow label={t('detail.labelCreated')}><span className="text-fg-muted">{formatDate(attempt.createdAt)}</span></DetailInfoRow>
         <DetailInfoRow label={t('detail.labelExpires')}><span className="text-fg-muted">{formatDate(attempt.expiresAt)}</span></DetailInfoRow>
         {attempt.authAttemptProofToken && (

@@ -45,7 +45,6 @@ import jakarta.validation.constraints.Size;
  * @param challengeRequested whether a numeric challenge should be generated and sent to the device
  * @param contextTitle optional short title for the approval request (max 200 chars)
  * @param contextMessage optional descriptive message for the approver (max 2 000 chars)
- * @param demoMitmSignatureRequested optional demo MITM opt-in (see Auth API demo settings)
  * @author Ezkey contributors
  * @since 2025
  */
@@ -53,8 +52,7 @@ import jakarta.validation.constraints.Size;
     description =
         "Request body for creating a new authentication attempt. Optional context fields "
             + "(contextTitle, contextMessage) attach business context visible to the approver "
-            + "on the mobile device. Optional demoMitmSignatureRequested flags the attempt for "
-            + "tampered Pending in demo mode.")
+            + "on the mobile device.")
 public record AuthAttemptCreateRequestDto(
     /**
      * Direct reference to the enrollment. Optional when userIdentifier is provided; when both are
@@ -107,12 +105,4 @@ public record AuthAttemptCreateRequestDto(
             requiredMode = RequiredMode.NOT_REQUIRED)
         @Size(max = 2000, message = "contextMessage must not exceed 2000 characters")
         @JsonProperty("contextMessage")
-        String contextMessage,
-    @Schema(
-            description =
-                "Demo only: when true, flags the attempt for simulated MITM on Pending if Auth API"
-                    + " ezkey.demo.mitm-signature-enabled is true.",
-            example = "false",
-            requiredMode = RequiredMode.NOT_REQUIRED)
-        @JsonProperty("demoMitmSignatureRequested")
-        Boolean demoMitmSignatureRequested) {}
+        String contextMessage) {}

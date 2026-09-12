@@ -130,7 +130,6 @@ public interface AuthAttemptAdminApiMapper {
         base.expiresAt(),
         base.contextTitle(),
         base.contextMessage(),
-        base.demoMitmSignatureEnabled(),
         integrationId,
         integrationName,
         enrollmentName,

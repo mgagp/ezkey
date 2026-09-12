@@ -43,9 +43,7 @@
     "labelChallenge": "Défi",
     "labelCreated": "Créé",
     "labelExpires": "Expire",
-    "labelProofToken": "Jeton de preuve",
-    "labelDemoMitm": "Démo MITM",
-    "demoMitmOn": "Opt-in"
+    "labelProofToken": "Jeton de preuve"
   },
   "status": {
     "labelPending": "En attente",

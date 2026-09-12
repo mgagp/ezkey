@@ -82,7 +82,6 @@ for ($i = 1; $i -le $Iterations; $i++) {
     challengeRequested = [bool]$ChallengeRequested
     contextTitle = "Mobile churn"
     contextMessage = "Iteration $i"
-    demoMitmSignatureRequested = $false
   } | ConvertTo-Json -Depth 5
 
   $attempt = Invoke-RestMethod -Method Post -Uri $createAttemptUrl -Headers $headers -Body $body

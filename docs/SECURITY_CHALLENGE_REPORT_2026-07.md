@@ -679,7 +679,7 @@ unmistakable:
 2. never deploy Crypto API, Demo Device, or bootstrap-init on a production-facing host;
 3. remove direct API/management host mappings in production overlays;
 4. use `recovery_primary` bootstrap output outside isolated local development;
-5. disable demo MITM behavior and replace example database credentials before shared deployment;
+5. replace example database credentials before shared deployment;
 6. expose Swagger only through an explicit non-production profile.
 
 ---

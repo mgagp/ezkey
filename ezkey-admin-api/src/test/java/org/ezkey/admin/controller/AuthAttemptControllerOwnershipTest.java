@@ -104,7 +104,7 @@ class AuthAttemptControllerOwnershipTest {
                 1, null, 120, OffsetDateTime.now().plusSeconds(120), null, null));
 
     AuthAttemptCreateRequestDto request =
-        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false, null, null, null);
+        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false, null, null);
 
     ResponseEntity<?> response = controller.create(request, null);
 

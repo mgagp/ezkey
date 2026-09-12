@@ -131,7 +131,6 @@ class AuthAttemptControllerTest {
             null,
             null,
             null,
-            null,
             null);
 
     when(authAttemptService.findByFilters(
@@ -190,7 +189,6 @@ class AuthAttemptControllerTest {
             "token",
             OffsetDateTime.now(),
             OffsetDateTime.now().plusMinutes(5),
-            null,
             null,
             null,
             null,
@@ -257,7 +255,6 @@ class AuthAttemptControllerTest {
             null,
             null,
             null,
-            null,
             null);
 
     when(authAttemptService.findByFilters(
@@ -309,7 +306,6 @@ class AuthAttemptControllerTest {
             "token", // proof token
             OffsetDateTime.now(), // createdAt
             OffsetDateTime.now().plusMinutes(5), // expiresAt
-            null,
             null,
             null,
             null,
@@ -394,7 +390,7 @@ class AuthAttemptControllerTest {
   void create_ShouldRethrowCreateValidationException_WhenResolutionFails() {
     HttpServletRequest request = new MockHttpServletRequest();
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(null, null, null, false, null, null, null);
+        new AuthAttemptCreateRequestDto(null, null, null, false, null, null);
 
     AuthAttemptCreateValidationException exception =
         assertThrows(
@@ -411,7 +407,7 @@ class AuthAttemptControllerTest {
   void create_ShouldRethrowCreateValidationException_WhenServiceRejectsRequest() {
     HttpServletRequest request = new MockHttpServletRequest();
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(123, null, null, false, null, null, null);
+        new AuthAttemptCreateRequestDto(123, null, null, false, null, null);
 
     Enrollment enrollment = new Enrollment();
     enrollment.setEnrollmentId(123);
@@ -439,7 +435,7 @@ class AuthAttemptControllerTest {
   void create_ShouldAuditFailure_WhenEnrollmentIsInactive() {
     HttpServletRequest request = new MockHttpServletRequest();
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(123, null, null, false, null, null, null);
+        new AuthAttemptCreateRequestDto(123, null, null, false, null, null);
 
     Enrollment enrollment = new Enrollment();
     enrollment.setEnrollmentId(123);

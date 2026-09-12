@@ -18,12 +18,6 @@
 #   --with-java-melody: Enable JavaMelody collector (DEV / troubleshooting; UI on http://localhost:8088)
 #   --prod-safe: Start using production-safe Spring profile only (docker). Disables docker-dev and docker-test.
 #
-# Optional environment (passed to Docker Compose for auth-api):
-#   EZKEY_DEMO_MITM_SIGNATURE_ENABLED  Maps to ezkey.demo.mitm-signature-enabled. When true, Auth API may
-#     tamper Pending JSON after signing for attempts flagged at creation (Admin UI demo checkbox).
-#     Default for this script: true (demo-friendly). With --prod-safe: default false unless you set this
-#     explicitly before running. See docs/DEMO_MITM_SIGNATURE.md.
-#
 # Prerequisites:
 #   - Docker and Docker Compose installed and running
 #   - Maven installed (only if --mvn-bootstrap is used)
@@ -96,14 +90,6 @@ fi
 # Export JavaMelody flag so docker/start.sh and start-ha.sh include the collector overlay.
 if [ -n "$ENABLE_JAVA_MELODY" ]; then
     export EZKEY_ENABLE_JAVA_MELODY=true
-fi
-
-# Auth API demo MITM (simulated Pending tamper): default ON for local demo / clean start.
-# --prod-safe defaults OFF so the stack behaves closer to production unless overridden.
-if [ -n "$PROD_SAFE" ]; then
-    export EZKEY_DEMO_MITM_SIGNATURE_ENABLED="${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-false}"
-else
-    export EZKEY_DEMO_MITM_SIGNATURE_ENABLED="${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}"
 fi
 
 echo "=========================================="
@@ -338,11 +324,6 @@ else
 fi
 if [ -n "$ENABLE_JAVA_MELODY" ]; then
     echo "  - JavaMelody collector: http://localhost:8088 (opt-in troubleshooting UI)"
-fi
-if [ -z "$PROD_SAFE" ]; then
-    echo "  - Auth API demo MITM: EZKEY_DEMO_MITM_SIGNATURE_ENABLED=${EZKEY_DEMO_MITM_SIGNATURE_ENABLED} (Pending tamper when attempt is flagged)"
-else
-    echo "  - Auth API demo MITM: EZKEY_DEMO_MITM_SIGNATURE_ENABLED=${EZKEY_DEMO_MITM_SIGNATURE_ENABLED} (use false for prod-like; override before running if needed)"
 fi
 if [ -n "$MVN_BOOTSTRAP" ]; then
     echo "  - Bootstrap credentials: Extracted to .ezkey-test/bootstrap-credentials.json"

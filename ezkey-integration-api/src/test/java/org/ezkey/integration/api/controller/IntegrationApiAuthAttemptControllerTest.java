@@ -91,7 +91,7 @@ class IntegrationApiAuthAttemptControllerTest {
 
     HttpServletRequest request = new MockHttpServletRequest();
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(null, null, false, null, null, null);
+        new AuthAttemptCreateRequestDto(null, null, false, null, null);
 
     AuthAttemptCreateValidationException exception =
         assertThrows(
@@ -123,7 +123,7 @@ class IntegrationApiAuthAttemptControllerTest {
 
     HttpServletRequest request = new MockHttpServletRequest();
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(123, null, false, null, null, null);
+        new AuthAttemptCreateRequestDto(123, null, false, null, null);
 
     AuthAttemptCreateValidationException exception =
         assertThrows(
@@ -151,7 +151,7 @@ class IntegrationApiAuthAttemptControllerTest {
     when(integrationRepository.findById(77)).thenReturn(Optional.of(integration));
     HttpServletRequest request = new MockHttpServletRequest();
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(123, null, false, null, null, null);
+        new AuthAttemptCreateRequestDto(123, null, false, null, null);
 
     EnrollmentInactiveException exception =
         assertThrows(EnrollmentInactiveException.class, () -> controller.create(dto, request));

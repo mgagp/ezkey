@@ -576,11 +576,9 @@ On Windows, use Bash as well, for example through Git Bash.
 **Common options:**
 - `--ha`: High Availability stack (2× Admin API + 2× Auth API behind HAProxy). See
   [`docker/README-HA.md`](../docker/README-HA.md) and [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) § HA mode.
-- `--prod-safe`: start with production-safe docker profile only (rate limits enabled, minimal Actuator exposure). Also defaults **Auth API demo MITM** to off (`EZKEY_DEMO_MITM_SIGNATURE_ENABLED=false`) unless you pre-set the variable.
+- `--prod-safe`: start with production-safe docker profile only (rate limits enabled, minimal Actuator exposure).
 - `--jmx`: enable JMX port publishing for VisualVM (DEV ONLY; unauthenticated, non-SSL)
 - `--with-java-melody`: enable the JavaMelody collector (DEV / troubleshooting UI on `http://localhost:8088`; Admin / Auth / Integration APIs only)
-
-**Demo MITM (Pending signature mismatch demo):** By default, `docker-compose.yml` and `clean-start` enable `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` for the Auth API so a flagged auth attempt can receive a tampered Pending body. See [docs/DEMO_MITM_SIGNATURE.md](../docs/DEMO_MITM_SIGNATURE.md).
 
 **Examples:**
 - Production-safe stack:

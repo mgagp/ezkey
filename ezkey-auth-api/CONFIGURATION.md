@@ -25,7 +25,6 @@ serves them to enrolled mobile devices, and processes responses. It runs **no sc
 | `ezkey.rate-limit.bind.requests` | — | `10` | optionnel |
 | `ezkey.trusted-proxies.required` | — | `false` | optionnel [prod] |
 | `ezkey.trusted-proxies.cidrs` | — | *(empty list)* | optionnel |
-| `ezkey.demo.mitm-signature-enabled` | `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` | `false` | optionnel |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(null)* | requis [docker] |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(null)* | optionnel |
 
@@ -111,7 +110,6 @@ for the full description.
 | `ezkey.organization.*` | ✓ | Exposed via `GET /api/v1/public/instance-info` (same contract as Admin API). |
 | `ezkey.qr.*` | ✓ | Embedded in `GET /api/v1/public/instance-info` response. |
 | `ezkey.core.*` | ✓ | Auth-attempt challenge digits and TTL. |
-| `ezkey.demo.*` | ✓ | MITM simulation gate. Default `false`. |
 
 ---
 
@@ -129,7 +127,6 @@ for the full description.
 | `ezkey.encryption.reencryption.enabled` | `true` | `false` | `false` |
 | `ezkey.audit.chain.enabled` | `true` | `false` | `false` |
 | `ezkey.audit.chain.window-minutes` | `5` | `5` | `5` |
-| `ezkey.demo.mitm-signature-enabled` | `false` | `${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}` | `${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}` |
 | `ezkey.qr.auth-base-url` | *(null)* | `${EZKEY_QR_AUTH_BASE_URL:}` | `${EZKEY_QR_AUTH_BASE_URL:}` |
 
 **docker-test:** HTTP rate limiting is disabled for churn-friendly tests; peripheral audit-chain heartbeat supervision keeps the same defaults as `docker` (`ezkey.audit.chain.heartbeat.enabled=true`, `required=true`). See `config/application-docker-test.properties`.
@@ -140,7 +137,6 @@ for the full description.
 
 | Spring property | Docker env var | docker-compose default |
 |---|---|---|
-| `ezkey.demo.mitm-signature-enabled` | `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` | `true` (dev stack); set `false` for production-like runs |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(empty)* |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(empty)* |
 | `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | `auth-api` |
@@ -152,9 +148,7 @@ for the full description.
 1. `ezkey.rate-limit.enabled` is `false` by default — the **docker** profile sets `true` (SEC-005). Keep it on for EXP1 / production.
 2. Do not change `ezkey.rate-limit.respond.key-strategy`; `auth-attempt-id` is required for
    correct per-attempt throttling.
-3. `ezkey.demo.mitm-signature-enabled` must be `false` in every production environment. The
-   Docker development stack sets it `true` by default for demo convenience.
-4. Docker profile also sets `ezkey.encryption.required=true` and `ezkey.audit.integrity.required=true`
+3. Docker profile also sets `ezkey.encryption.required=true` and `ezkey.audit.integrity.required=true`
    (SEC-002 / SEC-008). Behind Caddy, set `EZKEY_TRUSTED_PROXIES_REQUIRED=true` (SEC-011).
 
 ---

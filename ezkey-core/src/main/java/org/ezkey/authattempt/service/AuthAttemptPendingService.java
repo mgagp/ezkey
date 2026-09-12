@@ -19,7 +19,6 @@ import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
-import org.ezkey.config.EzkeyDemoProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.NoPendingAuthAttemptException;
@@ -77,7 +76,6 @@ public class AuthAttemptPendingService {
   private final AuthAttemptRepository authAttemptRepository;
   private final EnrollmentRepository enrollmentRepository;
   private final SignatureService signatureService;
-  private final EzkeyDemoProperties ezkeyDemoProperties;
 
   /**
    * Constructs the pending service with required dependencies.
@@ -85,17 +83,14 @@ public class AuthAttemptPendingService {
    * @param authAttemptRepository the JPA repository for authentication attempts
    * @param enrollmentRepository the JPA repository for enrollments
    * @param signatureService the signature service for cryptographic operations
-   * @param ezkeyDemoProperties optional demonstration settings (MITM simulation gate)
    */
   public AuthAttemptPendingService(
       AuthAttemptRepository authAttemptRepository,
       EnrollmentRepository enrollmentRepository,
-      SignatureService signatureService,
-      EzkeyDemoProperties ezkeyDemoProperties) {
+      SignatureService signatureService) {
     this.authAttemptRepository = authAttemptRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.signatureService = signatureService;
-    this.ezkeyDemoProperties = ezkeyDemoProperties;
   }
 
   /**
@@ -331,60 +326,7 @@ public class AuthAttemptPendingService {
           authAttempt.getAuthAttemptId());
     }
 
-    if (ezkeyDemoProperties.isMitmSignatureEnabled() && authAttempt.isDemoMitmSignatureEnabled()) {
-      applyDemoMitmTamperAfterSigning(response, authAttempt, enrollment);
-    }
-
     return response;
-  }
-
-  /**
-   * Alters the pending JSON after signing so the integration signature no longer matches. Prefers
-   * changing contextual approval text (e.g. a CAD amount) for presentation-friendly audit
-   * narrative; falls back to the proof token when no suitable context is present.
-   */
-  private void applyDemoMitmTamperAfterSigning(
-      AuthAttemptPendingResponse response, AuthAttempt authAttempt, Enrollment enrollment) {
-    String signedTitle = authAttempt.getContextTitle();
-    String signedMessage = authAttempt.getContextMessage();
-
-    String tamperedMessage =
-        DemoMitmSignatureTamper.tamperContextMessageForDemoNarrative(signedMessage);
-    if (tamperedMessage != null && !tamperedMessage.equals(signedMessage)) {
-      response.setContextMessage(tamperedMessage);
-      response.setDemoMitmTamperApplied(true);
-      response.setDemoMitmPendingAuditNarrative(
-          DemoMitmAuditNarrative.contextAltered(
-              signedTitle, signedMessage, signedTitle, tamperedMessage));
-      logDemoMitmTamper(enrollment, authAttempt);
-      return;
-    }
-
-    String tamperedTitle = DemoMitmSignatureTamper.tamperContextTitleForDemoNarrative(signedTitle);
-    if (tamperedTitle != null && !tamperedTitle.equals(signedTitle)) {
-      response.setContextTitle(tamperedTitle);
-      response.setDemoMitmTamperApplied(true);
-      response.setDemoMitmPendingAuditNarrative(
-          DemoMitmAuditNarrative.contextAltered(
-              signedTitle, signedMessage, tamperedTitle, signedMessage));
-      logDemoMitmTamper(enrollment, authAttempt);
-      return;
-    }
-
-    String originalProofToken = authAttempt.getAuthAttemptProofToken();
-    String tamperedProofToken = DemoMitmSignatureTamper.tamperProofToken(originalProofToken);
-    response.setAuthAttemptProofToken(tamperedProofToken);
-    response.setDemoMitmTamperApplied(true);
-    response.setDemoMitmPendingAuditNarrative(DemoMitmAuditNarrative.noContextFallback());
-    logDemoMitmTamper(enrollment, authAttempt);
-  }
-
-  private void logDemoMitmTamper(Enrollment enrollment, AuthAttempt authAttempt) {
-    logger.warn(
-        "DEMO_MITM_TAMPER enrollmentId={} authAttemptId={} — Pending JSON altered after signing"
-            + " (simulated MITM; signature no longer matches body)",
-        enrollment.getEnrollmentId(),
-        authAttempt.getAuthAttemptId());
   }
 
   /** SHA-256 over UTF-8 bytes, lowercase hex — same convention as mobile {@code sha256HexUtf8}. */
