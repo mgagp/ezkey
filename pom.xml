@@ -75,7 +75,7 @@
 		<springdoc.version>3.1.0</springdoc.version>
 		<!-- SpotBugs engine + Maven plugin (report-only via java-doctor-curated; not a build gate) -->
 		<spotbugs.version>4.10.4</spotbugs.version>
-		<spotbugs-maven-plugin.version>4.10.4.0</spotbugs-maven-plugin.version>
+		<spotbugs-maven-plugin.version>4.10.4.1</spotbugs-maven-plugin.version>
 		<checkstyle.version>3.6.0</checkstyle.version>
 		<!-- maven-pmd-plugin version (narrow ruleset under config/java-doctor/; not a build gate) -->
 		<pmd.version>3.28.0</pmd.version>
@@ -87,7 +87,7 @@
 		<bucket4j.version>8.19.0</bucket4j.version>
 		<caffeine.version>3.2.4</caffeine.version>
 		<tink.version>1.23.0</tink.version>
-		<shedlock.version>7.9.0</shedlock.version>
+		<shedlock.version>7.10.0</shedlock.version>
 		<javamelody.version>2.8.0</javamelody.version>
 		<ipaddress.version>5.6.2</ipaddress.version>
 		<license-maven-plugin.version>2.7.1</license-maven-plugin.version>
@@ -314,7 +314,7 @@
     					<dependency>
       						<groupId>com.puppycrawl.tools</groupId>
       						<artifactId>checkstyle</artifactId>
-      						<version>14.0.0</version> <!-- Override default -->
+      						<version>14.1.0</version> <!-- Override default -->
     					</dependency>
 						<dependency>
 							<groupId>org.ezkey</groupId>
@@ -347,7 +347,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-compiler-plugin</artifactId>
-					<version>3.15.0</version>
+					<version>3.16.0</version>
 					<configuration>
 						<release>${java.version}</release>
 						<parameters>true</parameters>
@@ -365,7 +365,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-surefire-plugin</artifactId>
-					<version>3.5.6</version>
+					<version>3.6.0</version>
 					<configuration>
 						<includes>
 							<include>**/*Test.java</include>
