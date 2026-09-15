@@ -12,6 +12,7 @@ package org.ezkey.enrollment.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -75,6 +76,17 @@ class EnrollmentVerifyServiceTest {
     verifyRequest.setDevicePublicKey("device-public-key");
     verifyRequest.setEnrollmentProofTokenSigned("signature");
     verifyRequest.setChallengeResponse(123456);
+  }
+
+  @Test
+  @DisplayName("verify() - When enrollment ID is missing should throw EnrollmentVerifyFailed")
+  void verify_WhenEnrollmentIdMissing_ShouldThrowFailed() {
+    verifyRequest.setEnrollmentId(null);
+
+    assertThrows(
+        EnrollmentVerifyFailedException.class, () -> enrollmentVerifyService.verify(verifyRequest));
+
+    verify(enrollmentRepository, never()).findById(any());
   }
 
   @Test

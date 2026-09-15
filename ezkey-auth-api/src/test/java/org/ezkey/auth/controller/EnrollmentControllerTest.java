@@ -12,10 +12,13 @@ package org.ezkey.auth.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.ezkey.audit.domain.EventStatus;
@@ -33,6 +36,7 @@ import org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAuthMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.exception.AuthApiProblemCatalog;
 import org.ezkey.exception.GlobalExceptionHandler;
 import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
 import org.ezkey.exception.auth.EnrollmentBindingFailedException;
@@ -325,6 +329,24 @@ class EnrollmentControllerTest {
         .toEnrollmentVerifyRequest(any(EnrollmentVerifyRequestDto.class));
     verify(enrollmentService, times(1)).verify(any(EnrollmentVerifyRequest.class));
     verify(enrollmentMapper, times(1)).toEnrollmentVerifyResponseDto(verifyResponse);
+  }
+
+  @Test
+  @DisplayName("POST /api/v1/enrollments/verify - Should return 400 when enrollmentId is omitted")
+  void verify_WhenEnrollmentIdMissing_ShouldReturn400() throws Exception {
+    String json =
+        """
+        {"challengeResponse":123456,"devicePublicKey":"x","enrollmentProofTokenSigned":"y",\
+        "devicePrivateKeyStorageTier":"STANDARD"}
+        """;
+
+    mockMvc
+        .perform(post(BASE_URL + "/verify").contentType(MediaType.APPLICATION_JSON).content(json))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_VALIDATION_FAILED));
+
+    verify(enrollmentService, never()).verify(any(EnrollmentVerifyRequest.class));
   }
 
   @Test

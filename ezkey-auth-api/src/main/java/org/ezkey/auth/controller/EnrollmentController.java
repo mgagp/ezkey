@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -355,7 +356,7 @@ public class EnrollmentController {
                             implementation = ProblemDetail.class)))
       })
   public ResponseEntity<EnrollmentVerifyResponseDto> verify(
-      @RequestBody EnrollmentVerifyRequestDto req, HttpServletRequest httpRequest) {
+      @Valid @RequestBody EnrollmentVerifyRequestDto req, HttpServletRequest httpRequest) {
 
     String clientIp =
         AuditHelper.extractClientIp(
