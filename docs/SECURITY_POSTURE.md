@@ -61,6 +61,10 @@ meant to be linked from trust-facing material without inflating the top-level pi
   see "What it aims to do." Until then, integrity evidence lives on the same host as the data.
 - **It does not claim standards equivalence or certification.** Ezkey is not WebAuthn/FIDO2, not a
   passkey compatibility layer, and makes no SOC 2 / formal-attestation equivalence claim.
+- **It does not claim post-quantum resistance of enrollment identity.** Device signatures are
+  EC P-256 and integration signatures are Ed25519; both are pre-quantum. Proof tokens and
+  AES-256/HMAC-SHA256 are a different class (symmetric). Orientation:
+  [`../product-docs/global/vision/V-2026-09-15-post-quantum-crypto-posture.md`](../product-docs/global/vision/V-2026-09-15-post-quantum-crypto-posture.md).
 - **It does not depend on, or guarantee, any third-party channel.** SMS and email are optional,
   operator-triggered, peripheral capabilities; Ezkey is fully operational without them.
 - **It does not claim guaranteed delivery of every audit event.** Audit writes use a dedicated
@@ -105,6 +109,7 @@ accepts the host-boundary limit described above.
 | "Detects accidental corruption and DB-level tampering via nightly cryptographic validation." | "Detects any tampering, including by a compromised host." |
 | "Audit rows that were stored are sealed and tamper-evident; write failures are logged and do not block business operations." | "Guaranteed audit delivery for every security-relevant operation" / "comprehensive audit trail with no omissions." |
 | "Self-hosted, opinionated, stronger than passwords and classic TOTP for backend-oriented contexts." | Formal attestation chains, SOC 2 equivalence, or certification-grade assurance. |
+| "Proof tokens and at-rest AES-256/HMAC-SHA256 are symmetric and sized without relying on elliptic-curve hardness." | "Post-quantum MFA" / "quantum-resistant enrollment signatures" (device P-256 and integration Ed25519 remain pre-quantum). |
 
 SOC 2 remains a **reference vocabulary** for operational discipline, not a certification target.
 See [`../product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md).
@@ -120,6 +125,8 @@ See [`../product-docs/global/normative-posture.md`](../product-docs/global/norma
   [`../product-docs/global/backlog/ideas/I-2026-07-18-audit-log-fail-open-exception-swallow.md`](../product-docs/global/backlog/ideas/I-2026-07-18-audit-log-fail-open-exception-swallow.md)
 - Runtime alert reference: [`ALERTS.md`](ALERTS.md)
 - Product identity: [`PROJECT_POSITIONING.md`](PROJECT_POSITIONING.md)
+- Post-quantum protocol map (orientation; not a current-release claim):
+  [`../product-docs/global/vision/V-2026-09-15-post-quantum-crypto-posture.md`](../product-docs/global/vision/V-2026-09-15-post-quantum-crypto-posture.md)
 
 ## Review note
 
