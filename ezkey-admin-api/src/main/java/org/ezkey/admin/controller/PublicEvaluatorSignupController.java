@@ -67,7 +67,8 @@ public class PublicEvaluatorSignupController {
       summary = "Anonymous evaluator self-registration",
       description =
           "Creates an empty preview tenant and a pending Tenant Admin with a one-time activation"
-              + " code. Available only on installations with evaluator self-registration enabled.")
+              + " code. Available only on installations with evaluator self-registration enabled.",
+      security = {})
   @ApiResponse(
       responseCode = "201",
       description = "Preview tenant and activation code created",

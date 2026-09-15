@@ -135,6 +135,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       },
@@ -208,6 +211,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -299,6 +305,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       },
@@ -349,6 +358,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -395,6 +407,9 @@
           },
           "403": {
             "description": "Forbidden - not a global administrator"
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -438,6 +453,9 @@
           },
           "403": {
             "description": "Forbidden - not a global administrator"
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -490,7 +508,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/api/v1/integrations": {
@@ -643,6 +662,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       },
@@ -703,6 +725,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -762,6 +787,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -848,6 +876,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -924,6 +955,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -1000,6 +1034,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -1148,6 +1185,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       },
@@ -1218,6 +1258,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -1269,6 +1312,9 @@
           },
           "500": {
             "description": "Internal server error"
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -1320,6 +1366,9 @@
           },
           "500": {
             "description": "Internal server error"
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -1371,6 +1420,9 @@
           },
           "500": {
             "description": "Internal server error"
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -1855,6 +1907,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       },
@@ -1905,6 +1960,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -1970,6 +2028,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -2641,6 +2702,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -2706,6 +2770,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -2754,6 +2821,9 @@
           },
           "404": {
             "description": "Administrator not found"
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -2819,6 +2889,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -2864,6 +2937,9 @@
           },
           "404": {
             "description": "Administrator not found"
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -2916,6 +2992,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -2968,6 +3047,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -3122,6 +3204,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -3158,9 +3243,9 @@
           "400": {
             "description": "Bad Request - Device denied, signature failed, or challenge invalid. Returns RFC 9457 ProblemDetail with specific error type URI.",
             "content": {
-              "*/*": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -3168,9 +3253,9 @@
           "401": {
             "description": "Unauthorized - Missing/invalid waiter secret capability, invalid challenge code, or attempt already consumed. Returns RFC 9457 ProblemDetail: type='...invalid-credentials'",
             "content": {
-              "*/*": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -3178,9 +3263,9 @@
           "408": {
             "description": "Request Timeout - No device response within the wait window (max 300 seconds). Returns RFC 9457 ProblemDetail: type='...auth-timeout'",
             "content": {
-              "*/*": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -3188,9 +3273,21 @@
           "500": {
             "description": "Internal Server Error",
             "content": {
-              "*/*": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests. Retry-After is seconds until the rate-limit budget refills.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry is allowed",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
                 }
               }
             }
@@ -3217,6 +3314,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -3253,9 +3353,9 @@
           "400": {
             "description": "Bad Request - Authentication failed with temporal issues (expired, rejected, invalid signature). Returns RFC 9457 ProblemDetail with specific error type URI.",
             "content": {
-              "*/*": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -3263,9 +3363,9 @@
           "401": {
             "description": "Unauthorized - Invalid credentials or login not permitted (generic message; SEC-006). Returns RFC 9457 ProblemDetail: type='...invalid-credentials'",
             "content": {
-              "*/*": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -3273,19 +3373,21 @@
           "408": {
             "description": "Request Timeout - No device response within the wait window (aligned with auth attempt TTL, maximum 300 seconds). Returns RFC 9457 ProblemDetail: type='...auth-timeout'",
             "content": {
-              "*/*": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
           },
           "429": {
             "description": "Too Many Requests - Rate limit exceeded for this IP address. Applies after 10 failed attempts in 15 minutes.",
-            "content": {
-              "*/*": {
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry is allowed",
                 "schema": {
-                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                  "type": "integer",
+                  "format": "int32"
                 }
               }
             }
@@ -3293,9 +3395,9 @@
           "500": {
             "description": "Internal Server Error",
             "content": {
-              "*/*": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -3361,6 +3463,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -3416,6 +3521,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       },
@@ -3465,6 +3573,9 @@
           },
           "500": {
             "description": "Internal server error"
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       },
@@ -3548,6 +3659,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -3755,6 +3869,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -3810,6 +3927,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       },
@@ -3893,6 +4013,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -3916,7 +4039,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/api/v1/integrations/{id}": {
@@ -3970,6 +4094,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       },
@@ -4047,6 +4174,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -4116,6 +4246,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -4600,6 +4733,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -4701,6 +4837,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -6053,6 +6192,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -6108,6 +6250,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -6173,6 +6318,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -6591,7 +6739,8 @@
           },
           "instance": {
             "type": "string",
-            "format": "uri"
+            "format": "uri-reference",
+            "description": "URI-reference of the occurrence. Ezkey uses the request path (relative), matching RFC 9457; it is not an absolute URI."
           },
           "properties": {
             "type": "object",
@@ -9764,42 +9913,42 @@
   },
   "x-tagGroups": [
     {
+      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ],
-      "name": "Getting started"
+      ]
     },
     {
+      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ],
-      "name": "Tenant and integration setup"
+      ]
     },
     {
+      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ],
-      "name": "MFA operations"
+      ]
     },
     {
+      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ],
-      "name": "Administration"
+      ]
     },
     {
+      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ],
-      "name": "Platform operations"
+      ]
     }
   ]
 }

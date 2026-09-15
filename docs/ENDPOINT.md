@@ -111,7 +111,11 @@ yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'
 
 ### Error responses (RFC 9457)
 
-HTTP **4xx** and **5xx** responses from the Auth API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`). The JSON body includes `type` (URI identifying the problem category), `title`, `status`, `detail` (operator-safe text; do not rely on it for security-sensitive branching), and extension properties `path` and `timestamp`. Clients should branch on **`type`** and HTTP status.
+HTTP **4xx** and **5xx** responses from the Auth API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`). The JSON body includes `type` (URI identifying the problem category), `title`, `status`, `detail` (operator-safe text; do not rely on it for security-sensitive branching), and extension properties `path` and `timestamp`. RFC 9457 `instance` is the request path (a URI-reference, not an absolute URI). Clients should branch on **`type`** and HTTP status.
+
+Unauthenticated public operations (`GET /api/v1/public/instance-info`) declare no HTTP security requirement in OpenAPI (`security: []`). Device POSTs authenticate with signatures in the JSON body, not a Bearer header.
+
+Rate-limit **429** on `bind` / `verify` / enrolled `instance-info` / `pending` / `respond` is emitted by the servlet filter: **empty body**, `Retry-After` in seconds. It is not a Problem Details document.
 
 Unsupported HTTP methods on a mapped path return **405** Problem Details (`type` `https://ezkey.io/problems/auth/method-not-allowed`) with an `Allow` header listing the supported methods. They are not mapped as **500**.
 
@@ -245,8 +249,8 @@ Content-Type: application/json
 ```
 
 **Response**
-- **200 OK** + validation result (integration-signed; verify `authAttemptProofTokenResultSignedByIntegration` with the integration public key)
-- **429 Too Many Requests** when rate limit is exceeded (same `authAttemptId` or same client IP when body cannot be parsed); response includes a `Retry-After` header (seconds).
+- **200 OK** + validation result (integration-signed; verify `authAttemptProofTokenResultSignedByIntegration` with the integration public key). That signature field is **null** when the server could not sign (for example the integration key is unavailable); treat a missing signature as untrusted.
+- **429 Too Many Requests** when rate limit is exceeded (same `authAttemptId` or same client IP when body cannot be parsed); **empty body** plus a `Retry-After` header (seconds).
 ```json
 {
   "authAttemptId": 123,
@@ -293,6 +297,8 @@ Content-Type: application/json
 }
 ```
 
+**429 Too Many Requests** when the bind (or shared instance-info) rate-limit or per-instance backstop is exceeded: empty body, `Retry-After` in seconds.
+
 `tenantId`, `tenantName`, and `tenantDescription` come from the enrollment’s integration tenant (nullable if unset). Clients may persist them for multi-tenant enrollment lists (e.g. Demo Device groups by tenant on the home screen).
 
 `integrationPublicKey` is the **raw 32-byte** Ed25519 public key, **Base64URL without padding** (43 characters). `integrationKeyAlgorithm` is a **required** JSON field in the Auth API contract (OpenAPI); for phase 1 it is always the literal string `ed25519` (lowercase). **Clients should treat it as part of the cryptographic contract:** validate that the value is exactly `ed25519` before decoding `integrationPublicKey` or verifying `enrollmentBindPayloadSignedByIntegration`. If the field is missing or any other string is received, **fail closed** (abort enrollment)—do not assume Ed25519 wire format. `enrollmentBindPayloadSignedByIntegration` is an Ed25519 signature over the canonical bind payload; clients must verify it before trusting the integration key (see `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`). Device keys in verify requests remain **EC P-256** SPKI (standard Base64).
@@ -333,7 +339,7 @@ Canonical verify-result format: `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`.
 
 **Error responses**
 
-See **Error responses (RFC 9457)** above. Verification failures return **400** or **409** with stable `type` URIs under `https://ezkey.io/problems/auth/`. Wrong `challengeResponse` invalidates the enrollment; a subsequent verify call for the same enrollment may return **409**.
+See **Error responses (RFC 9457)** above. Verification failures return **400** or **409** with stable `type` URIs under `https://ezkey.io/problems/auth/`. Wrong `challengeResponse` invalidates the enrollment; a subsequent verify call for the same enrollment may return **409**. Rate-limit **429** is an empty body plus `Retry-After` (per client IP and per-instance backstop).
 
 **Uniqueness:** Verify is rejected when **any** `VERIFIED` enrollment already exists for the same `(integrationId, enrollmentName)`, including an inactive one. Partial unique index + application checks; no automatic supersession — see `docs/LIFECYCLE_GOVERNANCE.md` §3.3.
 
@@ -341,7 +347,9 @@ See **Error responses (RFC 9457)** above. Verification failures return **400** o
 
 ## 2. Admin API Endpoints (internal)
 
-**Error responses (RFC 9457):** HTTP **4xx** and **5xx** responses from the Admin API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`) with `type`, `title`, `status`, `detail`, and extension property `path`. Some problems include an optional extension property **`parameters`** (JSON object of scalar values, **camelCase** keys) for client-side localization when `detail` contains dynamic fragments; clients should still branch on **`type`** and HTTP status. Unsupported HTTP methods on a mapped path return **405** (`type` `https://ezkey.io/problems/admin/method-not-allowed`) with an `Allow` header; they are not mapped as **500**.
+**Error responses (RFC 9457):** HTTP **4xx** and **5xx** responses from the Admin API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`) with `type`, `title`, `status`, `detail`, and extension property `path`. RFC 9457 `instance` is the request path (a URI-reference, not an absolute URI). Some problems include an optional extension property **`parameters`** (JSON object of scalar values, **camelCase** keys) for client-side localization when `detail` contains dynamic fragments; clients should still branch on **`type`** and HTTP status. Unsupported HTTP methods on a mapped path return **405** (`type` `https://ezkey.io/problems/admin/method-not-allowed`) with an `Allow` header; they are not mapped as **500**. Missing or invalid session credentials on protected operations return **401** with an empty body (Spring `HttpStatusEntryPoint`). Login-family **400 / 401 / 408 / 500** remain Problem Details. Login and passwordless-wait **429** from the rate-limit filter are an **empty body** plus `Retry-After`.
+
+Public operations (`GET /api/v1/public/instance-info`, `POST /api/v1/public/evaluator-signup`) declare no HTTP security requirement in OpenAPI (`security: []`).
 
 ### Public instance metadata (unauthenticated)
 
@@ -508,10 +516,9 @@ Content-Type: application/json
 ```http
 HTTP/1.1 429 Too Many Requests
 Retry-After: 300
-Content-Type: text/plain
-
-Too many login attempts. Please try again later.
 ```
+
+Empty body (servlet filter). `Retry-After` is seconds until the per-IP or per-instance backstop budget refills.
 
 **Rate Limiting:**
 - 5 requests per minute per IP address
@@ -2002,7 +2009,7 @@ Content-Type: application/json
 - Create auth attempt: 100 requests per minute per API key (default)
 - Wait: 200 requests per minute per API key (default)
 - Limits are per instance (no distributed coordination)
-- Returns 429 Too Many Requests when limit exceeded
+- Returns 429 Too Many Requests when limit exceeded (Problem Details from the Integration API rate-limit service). Missing API-key credentials return **401** with an empty body (`HttpStatusEntryPoint`).
 
 ---
 

@@ -94,6 +94,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -183,6 +186,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }
@@ -258,6 +264,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Not authenticated"
           }
         }
       }

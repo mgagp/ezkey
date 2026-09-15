@@ -17,6 +17,7 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.ezkey.openapi.OpenApiContractCustomizer;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -80,5 +81,15 @@ public class OpenApiConfig {
   @Bean
   public OpenApiCustomizer openApiPresentationCustomizer() {
     return new OpenApiPresentationCustomizer();
+  }
+
+  /**
+   * Documents empty 401 from the API-key authentication entry point.
+   *
+   * @return contract customizer
+   */
+  @Bean
+  public OpenApiCustomizer openApiContractCustomizer() {
+    return OpenApiContractCustomizer.forIntegrationApi();
   }
 }

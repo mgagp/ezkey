@@ -69,5 +69,6 @@ public record AuthAttemptRespondResponseDto(
                     + " AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)",
             example =
                 "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-            requiredMode = RequiredMode.NOT_REQUIRED)
+            requiredMode = RequiredMode.NOT_REQUIRED,
+            nullable = true)
         String authAttemptProofTokenResultSignedByIntegration) {}
