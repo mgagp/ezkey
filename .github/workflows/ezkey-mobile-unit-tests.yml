@@ -93,6 +93,10 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          # Default is `tools platform-tools`. Google retired the obsolete `tools`
+          # package; sdkmanager then fails with "Failed to find package 'tools'".
+          packages: platform-tools
 
       - name: Run Android unit tests
         working-directory: ezkey_mobile/android
