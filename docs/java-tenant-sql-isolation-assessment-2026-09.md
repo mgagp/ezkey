@@ -335,11 +335,24 @@ audit.
 ## 8. Runtime evidence
 
 Clean-start Docker stack (2026-09-15, this environment): Admin API `:9080`, Integration API
-`:7080` healthy. Functional probes live in
-`ezkey-tests` `TenantSqlIsolationOracleSecurityTest` (rejection + captured Problem details)
-plus regression `TenantCrossIsolationSecurityTest`.
+`:7080` healthy.
 
-See the campaign note for command output once the probe has been executed.
+`mvn test -pl ezkey-tests -Dtest=TenantSqlIsolationOracleSecurityTest` — **3 tests, 0 failures**:
+
+| Probe | Result |
+| --- | --- |
+| SQL-ISO-001 foreign enrollment id `5` (Tenant B) with Tenant A API key | HTTP **400** `detail=Enrollment does not belong to this integration.` Body does not contain Tenant B names. |
+| SQL-ISO-001 unknown enrollment id `2000000000` | HTTP **400** `detail=Enrollment not found for ID: 2000000000` |
+| SQL-ISO-002 Tenant Admin GET `/admins/1` (bootstrap Global Admin) | HTTP **403** (no username in body) |
+| SQL-ISO-002 Tenant Admin GET `/admins/2000000000` | HTTP **404** |
+| SQL-ISO-003 Tenant Admin `POST /admins/tenant` with username `admin.docker` | HTTP **400** `detail=Username already exists: admin.docker` |
+
+Authorization remains fail-closed (no 201, no foreign row payload). The **dialects** above are
+the oracles.
+
+Regression: `TenantCrossIsolationSecurityTest` list/get samples (own integrations only; foreign
+enrollment GET 403/404; own API keys only) — **3 tests, 0 failures**.
+
 
 ## 9. Related assessments (avoid duplicate HITL)
 
