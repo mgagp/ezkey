@@ -1,110 +1,86 @@
-# ==================================================
-# Dockerfile - Environnement de test PAM Ezkey
-# ==================================================
+# Ezkey PAM module — Docker build (compile) + SSH demo runtime.
+# All compilation happens in the builder stage. The runtime image is an
+# SSH virtual machine that loads pam_ezkey.so at login time.
 
-FROM rockylinux/rockylinux:10
+ARG ROCKY_IMAGE=rockylinux/rockylinux:10
 
-# Métadonnées
-LABEL maintainer="Ezkey Development Team"
-LABEL description="Environment de test pour le module PAM Ezkey (Rocky Linux 10)"
-LABEL version="1.1.0"
+# ---------------------------------------------------------------------------
+# Builder — dedicated compile image (same idea as the repo BuildKit pack)
+# ---------------------------------------------------------------------------
+FROM ${ROCKY_IMAGE} AS builder
 
-# Variables d'environnement de base
-ENV CONTAINER=docker
+LABEL org.ezkey.component="pam-builder"
+LABEL org.ezkey.version="2.0.0"
+
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 
-# Credentials M2M API (injecter via docker-compose ou docker run -e)
-ENV EZKEY_M2M_API_URL=""
-ENV EZKEY_INTEGRATION_KEY=""
-ENV EZKEY_SECRET_KEY=""
+RUN dnf -y install epel-release \
+    && dnf -y install gcc make pam-devel libcurl-devel cjson-devel \
+    && dnf clean all
 
-# Installation des packages en une seule commande (réduit les layers)
-RUN dnf update -y && \
-    dnf install -y epel-release && \
-    dnf install -y \
+WORKDIR /src
+COPY src/ /src/src/
+COPY Makefile /src/Makefile
+
+RUN make clean && make all \
+    && test -f /src/build/pam_ezkey.so
+
+# ---------------------------------------------------------------------------
+# Runtime — SSH demo VM with the compiled PAM module
+# ---------------------------------------------------------------------------
+FROM ${ROCKY_IMAGE} AS runtime
+
+LABEL org.ezkey.component="pam-ssh-demo"
+LABEL org.ezkey.version="2.0.0"
+LABEL description="Rocky Linux SSH demo VM authenticated by Ezkey PAM"
+
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+ENV EZKEY_INTEGRATION_API_URL=http://integration-api:7080
+ENV EZKEY_SSH_USER=testuser
+ENV EZKEY_WAIT_TIMEOUT=90
+
+RUN dnf -y install epel-release \
+    && dnf -y install \
         openssh-server \
         openssh-clients \
-        pam-devel \
-        gcc \
-        make \
+        pam \
+        libcurl \
+        cjson \
         rsyslog \
-        sudo \
         passwd \
-        which \
+        shadow-utils \
         procps-ng \
-        net-tools \
-        wget \
-        vim \
-        less \
-        grep \
-        sed \
-        gawk \
-        libcurl-devel \
-        cjson-devel && \
-    dnf clean all
-    
-# Configuration SSH
-RUN ssh-keygen -A && \
-    mkdir -p /var/run/sshd
+        curl \
+        hostname \
+    && dnf clean all
 
-# Création d'un utilisateur de test
-RUN useradd -m -s /bin/bash testuser && \
-    echo "testuser:password123" | chpasswd && \
-    usermod -aG wheel testuser
+RUN ssh-keygen -A \
+    && mkdir -p /var/run/sshd /run/sshd
 
-# Configuration sudo sans mot de passe pour testuser
-RUN echo "testuser ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+# Demo Linux account. userIdentifier on the Ezkey enrollment must match.
+ARG EZKEY_SSH_USER=testuser
+RUN useradd -m -s /bin/bash "${EZKEY_SSH_USER}" \
+    && usermod -aG wheel "${EZKEY_SSH_USER}" || true
 
-# Configuration SSH pour permettre les connexions par mot de passe
-RUN sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
-    sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
-    echo "UsePAM yes" >> /etc/ssh/sshd_config && \
-    echo "ChallengeResponseAuthentication yes" >> /etc/ssh/sshd_config && \
-    echo "KbdInteractiveAuthentication yes" >> /etc/ssh/sshd_config
+COPY --from=builder /src/build/pam_ezkey.so /lib64/security/pam_ezkey.so
+RUN chmod 755 /lib64/security/pam_ezkey.so
 
-# Copie des sources PAM dans le conteneur
-COPY src/ /opt/pam-ezkey/src/
-COPY config/ /opt/pam-ezkey/config/
-COPY test/ /opt/pam-ezkey/test/
-COPY Makefile /opt/pam-ezkey/
-COPY install.sh /opt/pam-ezkey/
-COPY README.md /opt/pam-ezkey/
+COPY config/pam_ezkey.conf /etc/security/pam_ezkey.conf
+RUN chmod 600 /etc/security/pam_ezkey.conf
 
-# Build et installation du module PAM
-WORKDIR /opt/pam-ezkey
-RUN make clean && make all
-
-# Installation manuelle du module (sans utiliser install.sh dans le build)
-RUN cp build/pam_ezkey.so /lib64/security/ && \
-    chmod 755 /lib64/security/pam_ezkey.so && \
-    cp config/pam_ezkey.conf /etc/security/ && \
-    chmod 644 /etc/security/pam_ezkey.conf
-
-# Configuration PAM pour SSH
 COPY sshd /etc/pam.d/sshd
+COPY sshd_config /etc/ssh/sshd_config
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY test/test_pam.sh /opt/pam-ezkey/test/test_pam.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh /opt/pam-ezkey/test/test_pam.sh \
+    && echo "authpriv.*    /var/log/secure" >> /etc/rsyslog.conf \
+    && mkdir -p /var/log \
+    && touch /var/log/secure \
+    && chmod 640 /var/log/secure
 
-# Script de démarrage
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-# Configuration rsyslog pour les logs PAM
-RUN echo "authpriv.*    /var/log/secure" >> /etc/rsyslog.conf
-
-# Création des répertoires de logs
-RUN mkdir -p /var/log && \
-    touch /var/log/secure && \
-    chmod 640 /var/log/secure
-
-# Permissions sur le répertoire de travail
-RUN chown -R testuser:testuser /opt/pam-ezkey && \
-    chmod +x /opt/pam-ezkey/test/test_pam.sh && \
-    chmod +x /opt/pam-ezkey/install.sh
-
-# Exposition du port SSH
 EXPOSE 22
 
-# Point d'entrée
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["/usr/sbin/sshd", "-D"]
+CMD ["/usr/sbin/sshd", "-D", "-e"]

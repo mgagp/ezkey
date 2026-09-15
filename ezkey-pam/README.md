@@ -1,164 +1,128 @@
 # Ezkey PAM Module
 
-**Experimental.** Personal lab for SSH/PAM MFA against a running Ezkey stack. Not on the
+**Experimental.** Personal lab for SSH MFA against a running Ezkey stack. Not on the
 September 2026 operable-release roadmap. Keep PAM facts in this folder; do not add PAM to
 `docs/` or `docker/README.md`.
 
-Linux PAM module that calls the **Integration API** (port 7080, Docker service `integration-api`).
-When a user connects over SSH, the module:
+Linux PAM module that calls the **Integration API** (port 7080, Docker service
+`integration-api`). When a user connects over SSH, the module:
 
-1. Creates an auth attempt (`POST /api/v1/auth-attempts`) using the Linux username as `userIdentifier`.
-2. Waits for approve or reject from the Demo Device UI (`GET /api/v1/auth-attempts/{id}/wait`).
-3. Grants or denies SSH access based on the wait `status` (`ACCEPTED` vs anything else).
+1. Reads runtime settings from `/etc/security/pam_ezkey.conf` (written at container start).
+2. Creates an auth attempt (`POST /api/v1/auth-attempts`) using the Linux username as
+   `userIdentifier`, with `challengeRequested=false`.
+3. Waits for approve or reject (`GET /api/v1/auth-attempts/{id}/wait`).
+4. Grants SSH access when wait `status` is `ACCEPTED`.
 
-The environment variable is still named `EZKEY_M2M_API_URL` (legacy). It must point at the
-Integration API. In Compose on `ezkey-network`, that is `http://integration-api:7080`.
+The Linux username must match a **verified** enrollment `userIdentifier` on the integration
+that owns the API key.
+
+## What changed in 2.x
+
+The original lab module (2025) talked to a preliminary API, left `pam_ezkey.conf` unparsed,
+and omitted the now-required `challengeRequested` field. This version:
+
+- Loads API URL, keys, and timeouts from a config file at PAM runtime
+- Accepts Docker env vars as overrides (entrypoint writes the file, because `sshd` does not
+  pass container ENV into PAM)
+- Speaks the current Integration API contract
+- Builds the `.so` in a dedicated Docker builder stage, then runs a slim SSH demo VM
+
+Configuration stays small on purpose: URL, key pair, wait timeout, optional context title.
 
 ## Prerequisites
 
-- Rocky Linux 10 (or compatible RHEL 10 system)
-- `gcc`, `make`, `pam-devel`, `libcurl-devel`, `cjson-devel`
-- Running Ezkey stack with Integration API reachable
-- An active API key pair (integration key + secret key)
-- An enrollment with `userIdentifier` matching the Linux username (`testuser`)
+- Running Ezkey stack (`cd ezkey-tests && ./clean-start.sh`)
+- Docker Compose
+- An enrollment whose `userIdentifier` matches the SSH user (default `testuser`)
 
-## Environment Variables
+## Quick start (Docker)
 
-| Variable | Default | Description |
+```bash
+cd ezkey-tests && ./clean-start.sh
+
+cd ../ezkey-pam
+./scripts/provision.sh    # integration + API key + Demo Device enrollment
+./scripts/up.sh           # compile PAM in Docker and start the SSH VM
+./scripts/demo-ssh.sh     # ssh + approve on Demo Device
+```
+
+Manual SSH:
+
+```bash
+ssh -p 2222 \
+  -o PreferredAuthentications=keyboard-interactive \
+  -o PubkeyAuthentication=no \
+  testuser@127.0.0.1
+```
+
+Then open http://localhost:8083/phone/ezkey , open the **SSH testuser** enrollment, and
+Approve.
+
+## Runtime configuration
+
+`/etc/security/pam_ezkey.conf` (also `config/pam_ezkey.conf` in this folder):
+
+| Key | Default | Description |
 |---|---|---|
-| `EZKEY_M2M_API_URL` | `http://localhost:7080` | Integration API base URL (legacy name) |
-| `EZKEY_INTEGRATION_KEY` | *(required)* | API integration key |
-| `EZKEY_SECRET_KEY` | *(required)* | API secret key |
+| `integration_api_url` | `http://localhost:7080` | Integration API base URL |
+| `integration_key` | *(required)* | API integration key |
+| `secret_key` | *(required)* | API secret key |
+| `wait_timeout` | `90` | Seconds to wait for device approval |
+| `wait_polling` | `2` | Wait poll interval |
+| `api_timeout` | `10` | Timeout for the create call |
+| `challenge_requested` | `false` | Extra numeric challenge (off for SSH demo) |
+| `context_title` | `SSH login` | Title shown on the device |
+| `context_message` | *(generated)* | Message shown on the device |
+| `debug` | `true` | Extra syslog |
 
-## Quick Start (Docker)
+Environment overrides (Docker): `EZKEY_INTEGRATION_API_URL` (legacy:
+`EZKEY_M2M_API_URL`), `EZKEY_INTEGRATION_KEY`, `EZKEY_SECRET_KEY`,
+`EZKEY_WAIT_TIMEOUT`.
 
-```bash
-# 1. Start the main Ezkey stack
-cd docker && ./manage.sh start
+PAM arguments: `debug` and `conf=/path/to/file`.
 
-# 2. In the Admin UI, create an integration and generate an API key
-open http://localhost:9080   # Admin UI
-# -> Integrations -> New integration -> Generate API key
-# -> Enrollments -> New enrollment -> set userIdentifier=testuser
+## Docker layout
 
-# 3. Start the PAM container
-cd ezkey-pam
-EZKEY_INTEGRATION_KEY=<key> EZKEY_SECRET_KEY=<secret> docker-compose up --build
+| Service | Role |
+|---|---|
+| `pam-builder` | Compile-only image (`docker compose --profile build build pam-builder`) |
+| `ezkey-pam-ssh` | Rocky Linux SSH VM with `pam_ezkey.so` |
 
-# 4. SSH into the PAM container
-ssh -p 2222 testuser@localhost
-
-# 5. Approve the auth attempt in the Demo Device UI
-open http://localhost:8083/phone/ezkey
-```
-
-## E2E Test Procedure
-
-```
-1. cd docker && ./manage.sh clean          # Clean start
-2. cd docker && ./manage.sh start          # Start the full stack
-3. Open the Admin UI at http://localhost:9080
-4. Create an integration and generate an API key
-   -> Integrations -> New integration -> Generate API key
-   -> Note the integration key and secret key
-5. Create an enrollment for the test user
-   -> Enrollments -> New enrollment -> userIdentifier = testuser
-6. cd ezkey-pam
-7. EZKEY_INTEGRATION_KEY=<key> EZKEY_SECRET_KEY=<secret> docker-compose up --build
-8. ssh -p 2222 testuser@localhost           # SSH triggers PAM -> POST /api/v1/auth-attempts
-9. Open http://localhost:8083/phone/ezkey   # Demo Device UI
-10. Check pending -> Approve                # Demo Device approves the auth attempt
-11. SSH session completes successfully      # PAM received ACCEPTED from wait API
-```
-
-## Manual Installation (bare metal)
-
-```bash
-# Install dependencies
-sudo dnf install -y gcc make pam-devel libcurl-devel epel-release
-sudo dnf install -y cjson-devel
-
-# Build and install
-export EZKEY_M2M_API_URL=http://integration-api:7080
-export EZKEY_INTEGRATION_KEY=your-integration-key
-export EZKEY_SECRET_KEY=your-secret-key
-sudo ./install.sh
-```
-
-## PAM Configuration
-
-The `/etc/pam.d/sshd` auth line:
-```
-auth  required  pam_ezkey.so debug
-```
-Only the `debug` argument is supported (enables verbose logging).
+The SSH VM joins the main stack network (`ezkey_ezkey-network` by default) so it can reach
+`http://integration-api:7080`.
 
 ## Logging
 
 ```bash
-# Real-time auth logs
-tail -f /var/log/secure
-
-# Short-form log from within the container
-docker exec ezkey-pam-test cat /tmp/pam_ezkey.out
-docker exec ezkey-pam-test cat /tmp/pam_ezkey.err
-```
-
-Example log output:
-```
-=== EZKEY PAM MODULE STARTED ===
-Authentication requested for user: testuser
-Auth attempt created, id=42
-=== EZKEY PAM MODULE FINISHED ===
-Authentication result for testuser: SUCCESS
-```
-
-## Testing
-
-```bash
-# Run basic tests from within the container
-docker exec ezkey-pam-test /opt/pam-ezkey/test/test_pam.sh
+docker exec ezkey-pam-ssh cat /tmp/pam_ezkey.out
+docker exec ezkey-pam-ssh cat /tmp/pam_ezkey.err
+docker exec ezkey-pam-ssh tail -n 50 /var/log/secure
 ```
 
 ## Troubleshooting
 
-### `PAM_AUTH_ERR` immediately
-- Check that `EZKEY_INTEGRATION_KEY` and `EZKEY_SECRET_KEY` are set in the container environment.
-- Verify Integration API is reachable: `curl http://integration-api:7080/actuator/health`
-- Check that an enrollment with `userIdentifier=testuser` exists.
+### Immediate `PAM_AUTH_ERR`
+- Confirm `/etc/security/pam_ezkey.conf` inside the container has both keys.
+- `curl http://integration-api:7080/actuator/health` from the SSH VM.
+- Confirm a **VERIFIED** enrollment exists with `userIdentifier=testuser` on that integration.
 
-### SSH connection hangs forever
-- The wait API has a 30-second timeout by default (`EZKEY_WAIT_TIMEOUT`).
-  Make sure you approve/reject in the Demo Device UI within that window.
+### SSH hangs then fails
+- Approve on Demo Device within `wait_timeout` (default 90s).
+- Open the PAM enrollment card, not the bootstrap `admin.docker` card.
 
-### No logs in `/var/log/secure`
-```bash
-# Check rsyslog is running
-pgrep rsyslogd || rsyslogd
-```
+### API key 401 / IP whitelist
+The demo key is created without an IP whitelist. If you add one, include the Docker bridge
+range (`172.16.0.0/12`) used by the SSH VM.
 
-### Module not found
-```bash
-ls -la /lib64/security/pam_ezkey.so
-make clean && make all && sudo cp build/pam_ezkey.so /lib64/security/
-```
-
-## Directory Structure
+## Directory structure
 
 ```
 ezkey-pam/
-├── src/
-│   ├── pam_ezkey.c          # PAM module source
-│   └── ezkey_config.h       # Compile-time defaults and env var names
-├── config/
-│   └── pam_ezkey.conf       # Reference config (credentials via env vars)
-├── test/
-│   └── test_pam.sh          # Basic test suite
-├── build/                   # Generated build files
-├── Makefile
-├── install.sh               # Automated installer
-├── docker-entrypoint.sh     # Container startup script
-├── Dockerfile
+├── src/                 PAM module (C)
+├── config/              Reference pam_ezkey.conf
+├── scripts/             provision, Docker up, SSH demo
+├── test/                Container self-checks
+├── Dockerfile           Builder + SSH runtime
 ├── docker-compose.yml
-└── sshd                     # PAM sshd configuration
+└── sshd / sshd_config   PAM + sshd for the demo VM
 ```

@@ -1,18 +1,11 @@
 #%PAM-1.0
-auth       required     pam_ezkey.so debug
-auth       substack     password-auth
-auth       include      postlogin
-account    required     pam_sepermit.so
-account    required     pam_nologin.so
-account    include      password-auth
-password   include      password-auth
-# pam_selinux.so close should be the first session rule
-session    required     pam_selinux.so close
+# Ezkey PAM SSH stack for the demo container.
+# Ezkey is the authenticator. Local Unix password is not required.
+auth       required     pam_ezkey.so debug conf=/etc/security/pam_ezkey.conf
+auth       required     pam_permit.so
+account    required     pam_permit.so
+password   required     pam_deny.so
 session    required     pam_loginuid.so
-# pam_selinux.so open should only be followed by sessions to be executed in the user context
-session    required     pam_selinux.so open env_params
-session    required     pam_namespace.so
 session    optional     pam_keyinit.so force revoke
 session    optional     pam_motd.so
-session    include      password-auth
-session    include      postlogin
+session    required     pam_unix.so
