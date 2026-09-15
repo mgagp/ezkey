@@ -7,6 +7,7 @@
 - **Skill:** `dependabot-curated`
 - **Open Dependabot PRs at start:** _(list or count)_
 - **Highest accepted tier:** T1 / T2 / T3 / T4
+- **GitHub write identity:** `GH_TOKEN as <login>` / harness-only (read-only) / n/a
 
 ## Lots overview
 

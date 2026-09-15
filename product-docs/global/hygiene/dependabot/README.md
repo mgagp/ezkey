@@ -41,6 +41,30 @@ After the hygiene PR lands on `main`, **close superseded Dependabot PRs** with a
 (`dependabot-curated` § *Autonomous validation mode*). Autonomy means the agent owns the closeout
 ladder and evidence; it does **not** mean inventing a second integration path by default.
 
+## Cursor Cloud — `GH_TOKEN` vs read-only `gh`
+
+A cold Cloud Agent will see a harness line that `gh` is **read-only**. That refers to the default
+agent identity (`cursor` / `ghs_`) and to creating *the agent's own* PRs (`ManagePullRequest`).
+The operator PAT is a **separate** env var, `GH_TOKEN`, injected as a Cursor environment secret
+(not in `.cursor/environment.json`). When it is present, `gh` authenticates as `mgagp` and **can**
+squash-merge, comment, and close Dependabot PRs.
+
+**Probe (agents, never print the value):** `test -n "${GH_TOKEN:-}" && gh auth status`
+
+Do not treat a missing MCP GitHub server, or the harness read-only sentence, as “PAT absent.”
+Campaign `2026-09-15-pass-1` stumbled on that: the secret was injected; the agent still opened a
+hygiene branch and deferred Dependabot closeout.
+
+### Operator kickoff (paste-ready)
+
+```text
+dependabot-curated, autonomous.
+GH_TOKEN write authorized: squash-merge Dependabot PRs; comment/close superseded PRs after a hygiene PR lands.
+```
+
+That last sentence is the explicit write waiver the Cloud harness asks for. Without it, a cold
+agent may still pick the hygiene-branch exception even though `GH_TOKEN` is in the environment.
+
 ## Java BOM pulse (weekly, not optional)
 
 Dependabot Maven updates **declared** POM versions. It does not inventory Boot-managed transitives

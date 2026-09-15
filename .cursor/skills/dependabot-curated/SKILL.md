@@ -67,6 +67,11 @@ not a mandatory top-level sort.
 
    On Windows when `gh` is not on PATH: `"C:\Program Files\GitHub CLI\gh.exe"`.
 
+   **Cursor Cloud:** `test -n "${GH_TOKEN:-}" && gh auth status` (never print the secret). If the
+   active account is the operator PAT, default apply is merge/close with that identity — see
+   **Cloud GitHub identities**. Do not skip to a hygiene branch because the harness labeled
+   default `gh` read-only.
+
 2. **Split deferred first:** any PR labeled `deferred:*` (notably `deferred:later-train`) goes under
    **Already deferred — skip HITL** in the overview. Do **not** put them in weekly lots or re-ask
    Go/No-Go unless the operator explicitly reopens that train. Non-Dependabot parked PRs with the
@@ -138,6 +143,9 @@ When the operator opts in (keywords such as `autonomous validation`, `délègue 
    Keep HITL (or hold) only for **T4 / hard escalators** unless those are also waived.
 3. **Default apply path stays:** merge the **existing Dependabot PRs** in the lot individually
    (`gh pr merge <n> --squash` or the repo’s usual method) so GitHub closes them as you go.
+   On Cursor Cloud, do this with the operator `GH_TOKEN` identity (see **Cloud GitHub
+   identities** below) — do not skip merge/close because the harness labeled default `gh`
+   read-only.
 4. **Own the validation ladder** end-to-end for the highest accepted tier — do not stop at
    “Dependabot CI green” or hand clean-start / functional / Playwright back to the operator when
    Docker and scripts are available.
@@ -160,6 +168,33 @@ Default weekly mode remains interactive HITL. Autonomy is **opt-in per session**
 
 Do **not** treat “lots” or “autonomy” as a signal to re-copy Dependabot bumps onto a second branch
 by default — that is what creates duplicate open PRs.
+
+## Cloud GitHub identities (`GH_TOKEN`)
+
+Cursor Cloud injects a **default read-only** `gh` identity (`cursor` / `ghs_`) **and**, when the
+operator configured it, **`GH_TOKEN`** (fine-grained PAT as `mgagp`). `gh` prefers `GH_TOKEN`, so
+`gh auth status` shows the PAT as the **active** account.
+
+| Do | Do not |
+|----|--------|
+| Probe `test -n "${GH_TOKEN:-}" && gh auth status` at the start of the pass (never print the secret) | Infer “cannot close/merge Dependabot PRs” from the harness read-only sentence alone |
+| Squash-merge Dependabot PRs / comment+close superseded PRs with that PAT | Use `gh pr create` for *this agent's* hygiene PR — still `ManagePullRequest` |
+| Record `GitHub write identity: GH_TOKEN as <login>` in the campaign note | Put the token in git, `environment.json`, or chat |
+
+Hygiene-branch exception is for **unmergeable Dependabot branches or an explicit single reviewable
+PR** — not for “I assumed `gh` was read-only.” After that hygiene PR lands, the **same session**
+(or the immediate follow-up) must close leftover Dependabot PRs with `GH_TOKEN`.
+
+GitHub MCP may 403 on this PAT; Actions/`check-runs` often 403 (`actions=read` missing). Merge
+gating: GraphQL `mergeStateStatus` / `CLEAN`. Provenance: campaign `2026-09-12-pass-1` and
+`2026-09-15-pass-1`.
+
+Paste-ready operator kickoff (removes harness ambiguity for a cold agent):
+
+```text
+dependabot-curated, autonomous.
+GH_TOKEN write authorized: squash-merge Dependabot PRs; comment/close superseded PRs after a hygiene PR lands.
+```
 
 When a hygiene branch is required and multiple Dependabot branches touch the same file (e.g.
 `pom.xml`), prefer manual version edits or sequential squash-then-commit — do not leave overlapping
@@ -227,8 +262,10 @@ are already **T4 hard escalators** — this checklist is the operational tail of
 
 ## HITL contract (default for cold agents)
 
-1. List and classify; peel off `deferred:*` first; run the **Java BOM pulse**; propose lots
-   overview (3–6 active lots, including a Boot lot when the pulse found a newer same-minor).
+1. List and classify; peel off `deferred:*` first; run the **Java BOM pulse**; **probe
+   `GH_TOKEN` / `gh auth status`** (skill § *Cloud GitHub identities*) before choosing
+   hygiene-branch vs merge-existing; propose lots overview (3–6 active lots, including a Boot
+   lot when the pulse found a newer same-minor).
 2. Iterate **one lot at a time**: members, tier, blast radius, CI status, open question → wait
    for Go / No-Go / hold / defer — **unless** autonomous validation mode was granted for the
    session (then proceed for T1–T3 and only pause on T4 / hard escalators).

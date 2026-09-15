@@ -323,6 +323,12 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
   ladder with evidence. **Not** silent auto-merge and **not** a full `I-*` / `TB-*` program for
   routine bumps. Sibling hygiene lanes: `doctor-curated` and `java-doctor-curated` above.
 - Skill: [`.cursor/skills/dependabot-curated/SKILL.md`](.cursor/skills/dependabot-curated/SKILL.md).
+- **Cursor Cloud `GH_TOKEN`:** the harness read-only `gh` note is the default `cursor`/`ghs_`
+  identity. If env `GH_TOKEN` is set, probe `gh auth status` (never print the secret) and use that
+  PAT to squash-merge Dependabot PRs and to comment/close superseded PRs after a hygiene PR lands.
+  Do **not** invent a hygiene branch solely because `gh` was labeled read-only. Kickoff line and
+  identity table: skill § *Cloud GitHub identities*; rule
+  [`.cursor/rules/cloud-gh-token.mdc`](.cursor/rules/cloud-gh-token.mdc).
 - Campaign decision notes: `product-docs/global/hygiene/dependabot/` (template + dated pass
   instances). Index: `product-docs/global/hygiene/README.md`.
 - **Primary axis:** SemVer risk + known disruptors. **Secondary axis:** ecosystem / surface
@@ -337,7 +343,9 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
 
 When the operator asks for a **`dependabot-curated`** pass:
 
-1. List open Dependabot PRs (`gh pr list --author "app/dependabot" --state open`).
+1. List open Dependabot PRs (`gh pr list --author "app/dependabot" --state open`). Probe
+   Cursor Cloud `GH_TOKEN` (`gh auth status`; never print the secret) before choosing
+   hygiene-branch vs merging the existing Dependabot PRs.
 2. Peel off any PR labeled `deferred:*` (skip weekly lots). Run the **Java BOM pulse** (skill
    `dependabot-curated` § *Java BOM pulse*): compare `spring-boot.version` to the latest
    same-minor Boot release; if newer and no Dependabot PR, propose a hygiene-branch lot. After a
