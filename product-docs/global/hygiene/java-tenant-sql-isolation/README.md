@@ -12,3 +12,4 @@ Admin, an Integration API key, or an Auth API device.
 - Method canon: [`../assessment-curated/README.md`](../assessment-curated/README.md)
 - Assessment register: [`../../../../docs/java-tenant-sql-isolation-assessment-2026-09.md`](../../../../docs/java-tenant-sql-isolation-assessment-2026-09.md)
 - Sibling: [`../java-controller-role-validation/`](../java-controller-role-validation/)
+- Pass-1 campaign: [`2026-09-15-pass-1.md`](2026-09-15-pass-1.md) — HITL lot complete (five `fix`); remediations not started
