@@ -124,7 +124,7 @@ dynamic evidence.
 | ID | Title | Severity | Confidence | Quick win |
 | --- | --- | --- | --- | --- |
 | SQL-ISO-001 | Integration API unscoped `enrollmentRepository.findById` + distinct Problem details (missing vs other-integration) | P2 | Confirmed | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-001-integration-api-enrollment-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-001-integration-api-enrollment-oracle.md) |
-| SQL-ISO-002 | Admin `getAdminById` unscoped `findById` then 404 vs 403 (Global Admin existence) | P2 | Confirmed | Yes — hide-existence 404; next CTRL-ROLE-003 peel |
+| SQL-ISO-002 | Admin `getAdminById` unscoped `findById` then 404 vs 403 (Global Admin existence) | P2 | Confirmed | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-002-admin-get-by-id-existence-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-002-admin-get-by-id-existence-oracle.md) |
 | SQL-ISO-003 | `existsByUsername` / `existsByEmail` instance-global; Tenant Admin peer-create identity oracle | P2 | Confirmed | Medium — generic "cannot create" vs distinct exists; product choice on global unique usernames |
 | SQL-ISO-004 | Admin auth-attempt create Path 2/3 looks up `userIdentifier` by **request** `integrationId` before ACS | P2 | Confirmed (static) | Yes — `canAccessIntegration` first; then same hide-existence as Path 1 |
 | SQL-ISO-005 | Core `findById` / `findAll` / `revokeKey` remain unscoped; isolation is caller discipline | P2 | Confirmed residual | Document service contract or fail-closed helpers; no live `findAll` HTTP caller |
@@ -265,6 +265,11 @@ than treated as generic 403/404 noise.
 **Recommended GO:** Same hide-existence 404 + `admin/resource-not-found` as enrollment QR.
 Do not return 403 for foreign-or-missing. Tests: TA GET GA id and TA GET unused id share 404;
 TA GET own peer remains 200. Out of GO: dropping global unique usernames; changing list SQL.
+
+**HITL 2026-09-15:** operator **GO** (`fix`). Implementation not started. Handoff:
+[`HANDOFF-SQL-ISO-002-admin-get-by-id-existence-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-002-admin-get-by-id-existence-oracle.md).
+Authorized: Tenant Admin missing / other-tenant / GA share 404; PATCH foreign follows;
+onboarding 400 is a related peel, not required in this slice.
 
 ---
 
