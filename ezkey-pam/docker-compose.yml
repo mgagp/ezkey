@@ -1,33 +1,45 @@
-# ==================================================
-# docker-compose.yml
-# ==================================================
-# Usage:
-#   EZKEY_INTEGRATION_KEY=<key> EZKEY_SECRET_KEY=<secret> docker-compose up --build
-# Or set the variables in a .env file in this directory.
-# The ezkey-network must already exist (created by the main stack: cd docker && ./manage.sh start)
+# Ezkey PAM SSH demo
+#
+# Usage (from this directory, after the main stack is up):
+#   ./scripts/up.sh
+#
+# The ezkey Docker network is created by the main stack
+# (`cd ezkey-tests && ./clean-start.sh`). Compose project name is `ezkey`,
+# so the bridge is typically `ezkey_ezkey-network`.
 
 services:
-  ezkey-pam-test:
+  pam-builder:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ezkey-pam-test
-    hostname: ezkey-test
+      target: builder
+    image: ezkey-pam-builder:local
+    profiles: ["build"]
+
+  ezkey-pam-ssh:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ezkey-pam-ssh:local
+    container_name: ezkey-pam-ssh
+    hostname: ezkey-pam-ssh
     ports:
-      - "2222:22"    # SSH accessible sur localhost:2222
-    volumes:
-      - ./logs:/var/log/container    # Logs accessibles depuis l'host
-      - ./workspace:/home/testuser/workspace    # Workspace partagé
+      - "${EZKEY_PAM_SSH_PORT:-2222}:22"
     environment:
-      - EZKEY_M2M_API_URL=http://integration-api:7080
-      - EZKEY_INTEGRATION_KEY=${EZKEY_INTEGRATION_KEY:-}
-      - EZKEY_SECRET_KEY=${EZKEY_SECRET_KEY:-}
+      EZKEY_INTEGRATION_API_URL: ${EZKEY_INTEGRATION_API_URL:-http://integration-api:7080}
+      EZKEY_INTEGRATION_KEY: ${EZKEY_INTEGRATION_KEY:-}
+      EZKEY_SECRET_KEY: ${EZKEY_SECRET_KEY:-}
+      EZKEY_WAIT_TIMEOUT: ${EZKEY_WAIT_TIMEOUT:-90}
+      EZKEY_WAIT_POLLING: ${EZKEY_WAIT_POLLING:-2}
+      EZKEY_SSH_USER: ${EZKEY_SSH_USER:-testuser}
+      EZKEY_CONTEXT_TITLE: ${EZKEY_CONTEXT_TITLE:-SSH login}
+      EZKEY_CONTEXT_MESSAGE: ${EZKEY_CONTEXT_MESSAGE:-}
     networks:
       - ezkey-network
     restart: unless-stopped
-    tty: true
-    stdin_open: true
 
 networks:
   ezkey-network:
     external: true
+    name: ${EZKEY_DOCKER_NETWORK:-ezkey_ezkey-network}
