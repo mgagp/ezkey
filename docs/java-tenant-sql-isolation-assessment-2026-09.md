@@ -126,7 +126,7 @@ dynamic evidence.
 | SQL-ISO-001 | Integration API unscoped `enrollmentRepository.findById` + distinct Problem details (missing vs other-integration) | P2 | Confirmed | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-001-integration-api-enrollment-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-001-integration-api-enrollment-oracle.md) |
 | SQL-ISO-002 | Admin `getAdminById` unscoped `findById` then 404 vs 403 (Global Admin existence) | P2 | Confirmed | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-002-admin-get-by-id-existence-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-002-admin-get-by-id-existence-oracle.md) |
 | SQL-ISO-003 | `existsByUsername` / `existsByEmail` instance-global; Tenant Admin peer-create identity oracle | P2 | Confirmed | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-003-tenant-admin-username-email-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-003-tenant-admin-username-email-oracle.md) |
-| SQL-ISO-004 | Admin auth-attempt create Path 2/3 looks up `userIdentifier` by **request** `integrationId` before ACS | P2 | Confirmed (static) | Yes — `canAccessIntegration` first; then same hide-existence as Path 1 |
+| SQL-ISO-004 | Admin auth-attempt create Path 2/3 looks up `userIdentifier` by **request** `integrationId` before ACS | P2 | Confirmed (static) | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-004-admin-auth-attempt-useridentifier-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-004-admin-auth-attempt-useridentifier-oracle.md) |
 | SQL-ISO-005 | Core `findById` / `findAll` / `revokeKey` remain unscoped; isolation is caller discipline | P2 | Confirmed residual | Document service contract or fail-closed helpers; no live `findAll` HTTP caller |
 
 ### Category 2 — noted, not in this HITL lot
@@ -327,6 +327,11 @@ on a foreign integration → ACS 403. That pair is a cross-tenant
 **Recommended GO:** If `integrationId` is present, `canAccessIntegration` first (foreign and
 missing → 404). Only then run the userIdentifier SQL. Align empty and unauthorized to the same
 client outcome. Out of GO: changing userIdentifier uniqueness rules.
+
+**HITL 2026-09-15:** operator **GO** (`fix`). Implementation not started. Handoff:
+[`HANDOFF-SQL-ISO-004-admin-auth-attempt-useridentifier-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-004-admin-auth-attempt-useridentifier-oracle.md).
+Authorized: ACS-first on request `integrationId`; Tenant Admin missing/foreign share 404;
+own-integration empty may stay 400. No live probe in pass-1; implementing session adds it.
 
 ---
 
