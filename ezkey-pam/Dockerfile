@@ -42,18 +42,15 @@ ENV EZKEY_SSH_USER=testuser
 ENV EZKEY_WAIT_TIMEOUT=90
 
 RUN dnf -y install epel-release \
-    && dnf -y install \
+    && dnf -y install --allowerasing \
         openssh-server \
         openssh-clients \
-        pam \
-        libcurl \
-        cjson \
         rsyslog \
         passwd \
-        shadow-utils \
         procps-ng \
-        curl \
-        hostname \
+        iproute \
+        libcurl \
+        cjson \
     && dnf clean all
 
 RUN ssh-keygen -A \

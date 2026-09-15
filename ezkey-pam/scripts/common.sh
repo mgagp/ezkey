@@ -18,15 +18,35 @@ DEMO_DEVICE_HEALTH_URL="${EZKEY_DEMO_DEVICE_HEALTH_URL:-http://localhost:8083/ac
 SSH_USER="${EZKEY_SSH_USER:-testuser}"
 SSH_PORT="${EZKEY_PAM_SSH_PORT:-2222}"
 
-mkdir -p "${RUNTIME_DIR}"
+load_env_file() {
+  local path="$1"
+  if [ ! -f "${path}" ]; then
+    return 0
+  fi
+  eval "$(python3 - "${path}" <<'PY'
+import shlex, sys
+path = sys.argv[1]
+with open(path, encoding="utf-8") as fh:
+    for raw in fh:
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        print(f"export {key}={shlex.quote(value)}")
+PY
+)"
+}
 
-if [ -f "${ENV_FILE}" ]; then
-  # shellcheck disable=SC1090
-  set -a
-  # shellcheck disable=SC1091
-  . "${ENV_FILE}"
-  set +a
-fi
+mkdir -p "${RUNTIME_DIR}"
+load_env_file "${ENV_FILE}"
+SSH_USER="${EZKEY_SSH_USER:-${SSH_USER}}"
+SSH_PORT="${EZKEY_PAM_SSH_PORT:-${SSH_PORT}}"
 
 json_get() {
   local json="$1"

@@ -415,7 +415,7 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, const EzkeyConfig *cf
     cJSON *id_val;
     cJSON *status_val;
     int accepted;
-    char msg[512];
+    char msg[2048];
 
     if (cfg->integration_key[0] == '\0' || cfg->secret_key[0] == '\0') {
         log_pam_error(pamh,
@@ -555,7 +555,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     int retval;
     EzkeyConfig cfg;
     const char *env_conf;
-    char user_msg[256];
+    char user_msg[768];
     char result_msg[256];
 
     (void)flags;
@@ -594,6 +594,10 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     snprintf(user_msg, sizeof(user_msg), "Authentication requested for user: %s",
              username);
     log_pam_info(pamh, &cfg, user_msg);
+
+    pam_info(pamh,
+             "Approve this SSH login on your Ezkey device for user %s.",
+             username);
 
     retval = ezkey_authenticate_user_api(pamh, &cfg, username);
 

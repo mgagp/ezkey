@@ -44,9 +44,10 @@ else
     fail "secret_key is empty (PAM will reject all auth attempts)"
 fi
 
+HEALTH_URL="${EZKEY_INTEGRATION_HEALTH_URL:-http://integration-api:7081/actuator/health}"
 echo ""
-echo "Checking Integration API connectivity at $API_URL ..."
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$API_URL/actuator/health" || echo "000")
+echo "Checking Integration API connectivity at $HEALTH_URL ..."
+HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$HEALTH_URL" || echo "000")
 if [ "$HTTP_STATUS" = "200" ]; then
     ok "Integration API is reachable ($API_URL) - HTTP $HTTP_STATUS"
 else
