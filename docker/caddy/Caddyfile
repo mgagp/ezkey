@@ -1,6 +1,7 @@
 # Caddy reverse proxy for EZkey APIs (docker-compose.with-proxy.yml).
 # Host ports 19080, 18080, 17080 map to Admin API, Auth API, Integration API.
-# Requests forward proxy headers so apps can resolve client IP when EZKEY_TRUSTED_PROXIES_CIDRS is set.
+# reverse_proxy overwrites X-Forwarded-For with the Caddy peer address so a client-supplied
+# header cannot rotate IP-keyed buckets. Apps still resolve client IP via EZKEY_TRUSTED_PROXIES_CIDRS.
 #
 # Response headers: baseline hardening for API JSON responses (no HTML CSP needed).
 #
@@ -27,7 +28,9 @@
 	import api_headers
 	import springdoc_deny
 	handle {
-		reverse_proxy admin-api:9080
+		reverse_proxy admin-api:9080 {
+			header_up X-Forwarded-For {remote_host}
+		}
 	}
 }
 
@@ -35,7 +38,9 @@
 	import api_headers
 	import springdoc_deny
 	handle {
-		reverse_proxy auth-api:8080
+		reverse_proxy auth-api:8080 {
+			header_up X-Forwarded-For {remote_host}
+		}
 	}
 }
 
@@ -43,6 +48,8 @@
 	import api_headers
 	import springdoc_deny
 	handle {
-		reverse_proxy integration-api:7080
+		reverse_proxy integration-api:7080 {
+			header_up X-Forwarded-For {remote_host}
+		}
 	}
 }

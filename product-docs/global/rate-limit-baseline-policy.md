@@ -64,8 +64,11 @@ Global flag: `ezkey.rate-limit.enabled` (default `false`; **`true` in docker pro
 | `/api/v1/auth-attempts/respond` | POST | D | `auth-attempt-id` | **1 / 5 min** | 1 / 5 min | **critical** — do not loosen |
 | `/api/v1/enrollments/verify` | POST | D | `client-ip` | 10 / 1 min | 5 / 5 min | high |
 | `/api/v1/enrollments/bind` | POST | D | `client-ip` | 10 / 1 min | 3 / 5 min | high |
+| `/api/v1/enrollments/instance-info` | POST | D | `client-ip` (shares bind) | same as bind | same as bind | high |
+| Backstop `verify` | POST | D | **none** (per-instance) | 100 / 1 min | 50 / 5 min | high — IP-rotation residual |
+| Backstop `bind` (+ instance-info) | POST | D | **none** (per-instance) | 60 / 1 min | 30 / 5 min | high — IP-rotation residual |
 
-**Unrate-limited Auth API:** `GET /api/v1/public/instance-info` (public metadata).
+**Unrate-limited Auth API:** `GET /api/v1/public/instance-info` (public metadata). `pending` / `respond` stay target-id keyed and have no process-wide backstop.
 
 Reference: [`ezkey-auth-api/CONFIGURATION.md`](../../ezkey-auth-api/CONFIGURATION.md), [`RateLimitFilter.java`](../../ezkey-auth-api/src/main/java/org/ezkey/auth/config/RateLimitFilter.java).
 
@@ -109,6 +112,7 @@ Reference: [`AdminOperationsRateLimitService.java`](../../ezkey-admin-api/src/ma
 | Endpoint | Family | Key | Default (Java) | Docker profile (typical) | Notes |
 |----------|--------|-----|----------------|--------------------------|-------|
 | `POST /api/v1/admin/auth/login` | L | client IP | 5 / 5 min | 5 / 1 min | + block after 10 failures / 30 min |
+| Backstop login (+ passwordless-wait) | L | **none** (per-instance) | 50 / 1 min | 50 / 1 min | IP-rotation residual; N replicas ⇒ N× headroom |
 
 Reference: [`AdminRateLimitFilter.java`](../../ezkey-admin-api/src/main/java/org/ezkey/admin/security/AdminRateLimitFilter.java).
 
@@ -150,7 +154,7 @@ See module `CONFIGURATION.md` profile tables for authoritative values.
 | `ezkey.admin.rate-limit.recovery.*` in some `application*.properties` | **Not bound** to `AdminRateLimitProperties` — dead config keys; remove or implement in a future slice |
 | `ezkey.admin.rate-limit.api-key.*` | Documented as **unused** in docker comments — API key usage uses `ezkey.api-key.rate-limit.*`. Incident detail: [`ezkey-admin-api/API_KEY_RATE_LIMIT_NOTE.md`](../../ezkey-admin-api/API_KEY_RATE_LIMIT_NOTE.md) |
 | Integration vs Admin duplicate `RateLimitService` | **Known duplication** — deferred extraction (#1); document together via this policy |
-| Distributed rate limits | **Per-instance** (Caffeine); acceptable R1; Redis noted in Integration service Javadoc when scale warrants |
+| Distributed rate limits | **Per-instance** (Caffeine); acceptable R1 / PME HA (typically 1–2 replicas per API). Unkeyed backstops on IP-keyed device and admin-login surfaces follow the same rule. Redis noted in Integration service Javadoc when scale warrants |
 
 ## R1 recommendations
 

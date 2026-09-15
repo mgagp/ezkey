@@ -130,4 +130,39 @@ class AdminRateLimitFilterTest {
 
     assertThat(filter.failureTrackingEntryCount()).isLessThanOrEqualTo(10_000);
   }
+
+  @Test
+  @DisplayName("Rotating IPs on login trip the unkeyed per-instance backstop")
+  void rotatingIpsOnLogin_tripBackstop() throws Exception {
+    properties.getLogin().setRequests(100);
+    properties.getBackstop().setEnabled(true);
+    properties.getBackstop().getLogin().setRequests(2);
+    properties.getBackstop().getLogin().setWindowMinutes(1);
+    meterRegistry = new SimpleMeterRegistry();
+    filter = new AdminRateLimitFilter(properties, trustedProxyProperties, meterRegistry);
+
+    MockHttpServletRequest ip1 = new MockHttpServletRequest("POST", LOGIN_PATH);
+    ip1.setRemoteAddr("198.51.100.10");
+    MockHttpServletResponse r1 = new MockHttpServletResponse();
+    filter.doFilter(ip1, r1, filterChain);
+    assertThat(r1.getStatus()).isEqualTo(HttpStatus.OK.value());
+
+    MockHttpServletRequest ip2 = new MockHttpServletRequest("POST", LOGIN_PATH);
+    ip2.setRemoteAddr("198.51.100.11");
+    MockHttpServletResponse r2 = new MockHttpServletResponse();
+    filter.doFilter(ip2, r2, filterChain);
+    assertThat(r2.getStatus()).isEqualTo(HttpStatus.OK.value());
+
+    MockHttpServletRequest ip3 = new MockHttpServletRequest("POST", LOGIN_PATH);
+    ip3.setRemoteAddr("198.51.100.12");
+    MockHttpServletResponse r3 = new MockHttpServletResponse();
+    filter.doFilter(ip3, r3, filterChain);
+    assertThat(r3.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+    assertThat(r3.getHeader("Retry-After")).isEqualTo("60");
+    assertThat(
+            meterRegistry
+                .counter("ezkey.rate_limit.backstop.rejected", "endpoint", "login")
+                .count())
+        .isEqualTo(1);
+  }
 }

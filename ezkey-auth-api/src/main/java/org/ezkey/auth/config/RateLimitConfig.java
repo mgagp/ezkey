@@ -12,6 +12,7 @@
 
 package org.ezkey.auth.config;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,8 +99,9 @@ public class RateLimitConfig {
   public RateLimitFilter rateLimitFilter(
       RateLimitProperties properties,
       TrustedProxyProperties trustedProxyProperties,
-      ObjectMapper objectMapper) {
-    return new RateLimitFilter(properties, trustedProxyProperties, objectMapper);
+      ObjectMapper objectMapper,
+      MeterRegistry meterRegistry) {
+    return new RateLimitFilter(properties, trustedProxyProperties, objectMapper, meterRegistry);
   }
 
   /**

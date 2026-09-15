@@ -50,6 +50,12 @@ public class AdminRateLimitProperties {
   /** Rate limiting configuration for login endpoint. */
   private LoginConfig login = new LoginConfig();
 
+  /**
+   * Process-wide (no key) budget on admin login / passwordless-wait. Per-instance, not distributed
+   * (ADR-0010).
+   */
+  private BackstopConfig backstop = new BackstopConfig();
+
   /** Configuration for login endpoint rate limiting behavior. */
   public static class LoginConfig {
     /**
@@ -134,5 +140,46 @@ public class AdminRateLimitProperties {
 
   public void setLogin(LoginConfig login) {
     this.login = login;
+  }
+
+  public BackstopConfig getBackstop() {
+    return backstop;
+  }
+
+  public void setBackstop(BackstopConfig backstop) {
+    this.backstop = backstop;
+  }
+
+  /** Unkeyed per-process cap for IP-keyed admin auth surfaces. */
+  public static class BackstopConfig {
+
+    /** When false, only the keyed login buckets apply. Default true. */
+    private boolean enabled = true;
+
+    /** Process-wide login + passwordless-wait budget. Default: 50 / 1 minute. */
+    private LoginConfig login = defaultBackstopLogin();
+
+    private static LoginConfig defaultBackstopLogin() {
+      LoginConfig config = new LoginConfig();
+      config.setRequests(50);
+      config.setWindowMinutes(1);
+      return config;
+    }
+
+    public boolean isEnabled() {
+      return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+      this.enabled = enabled;
+    }
+
+    public LoginConfig getLogin() {
+      return login;
+    }
+
+    public void setLogin(LoginConfig login) {
+      this.login = login;
+    }
   }
 }

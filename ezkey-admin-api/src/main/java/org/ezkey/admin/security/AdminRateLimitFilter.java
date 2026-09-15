@@ -79,6 +79,7 @@ public class AdminRateLimitFilter implements Filter {
   private static final String LOGIN_ENDPOINT_PATH = "/api/v1/admin/auth/login";
   private static final String PASSWORDLESS_WAIT_ENDPOINT_PATH =
       "/api/v1/admin/auth/passwordless-wait";
+  private static final String BACKSTOP_METRIC = "ezkey.rate_limit.backstop.rejected";
 
   /** POST admin auth endpoints sharing the login rate-limit bucket (per client IP). */
   private static final List<String> RATE_LIMITED_PATHS =
@@ -193,6 +194,18 @@ public class AdminRateLimitFilter implements Filter {
             "X-Rate-Limit-Window", String.valueOf(properties.getLogin().getWindowMinutes()));
         return;
       }
+
+      RateLimitResult backstop = checkBackstop();
+      if (!backstop.allowed) {
+        logger.warn(
+            "Rate-limit backstop exceeded for admin login (per-instance, unkeyed) - Retry after {}"
+                + " seconds",
+            backstop.retryAfterSeconds);
+        meterRegistry.counter(BACKSTOP_METRIC, "endpoint", "login").increment();
+        res.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+        res.setHeader("Retry-After", String.valueOf(backstop.retryAfterSeconds));
+        return;
+      }
     }
 
     chain.doFilter(request, response);
@@ -231,6 +244,29 @@ public class AdminRateLimitFilter implements Filter {
       long retryAfter = properties.getLogin().getWindowMinutes() * 60L;
       return new RateLimitResult(false, retryAfter);
     }
+  }
+
+  private RateLimitResult checkBackstop() {
+    AdminRateLimitProperties.BackstopConfig backstop = properties.getBackstop();
+    if (backstop == null || !backstop.isEnabled() || backstop.getLogin() == null) {
+      return new RateLimitResult(true, 0);
+    }
+    AdminRateLimitProperties.LoginConfig config = backstop.getLogin();
+    Bucket bucket = bucketCache.get("backstop:login", _ -> createBackstopBucket(config));
+    if (bucket.tryConsume(1)) {
+      return new RateLimitResult(true, 0);
+    }
+    long retryAfter = Math.max(1L, config.getWindowMinutes() * 60L);
+    return new RateLimitResult(false, retryAfter);
+  }
+
+  private static Bucket createBackstopBucket(AdminRateLimitProperties.LoginConfig config) {
+    Bandwidth limit =
+        Bandwidth.builder()
+            .capacity(config.getRequests())
+            .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
+            .build();
+    return Bucket.builder().addLimit(limit).build();
   }
 
   /**

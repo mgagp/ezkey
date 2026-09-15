@@ -115,6 +115,8 @@ HTTP **4xx** and **5xx** responses from the Auth API use **RFC 9457** Problem De
 
 Unsupported HTTP methods on a mapped path return **405** Problem Details (`type` `https://ezkey.io/problems/auth/method-not-allowed`) with an `Allow` header listing the supported methods. They are not mapped as **500**.
 
+IP-keyed enrollment surfaces (`verify`, `bind`, enrolled `instance-info`) also have a **process-wide** rate-limit backstop (unkeyed Bucket4j, per Auth instance). A distributed rotation of client IPs can still receive **429** after that instance budget. The cap is not aggregated across replicas (ADR-0010).
+
 **204 No Content** on `POST /api/v1/auth-attempts/pending` when there is no pending attempt is a **success** (no body), not an error.
 
 **200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level `FAILED` result in the JSON body when validation or cryptographic checks fail in a way modeled as `AuthAttemptRequestFailedException` in the respond service (integration-signed; see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`). HTTP-level failures for state conflicts (e.g. superseded or expired attempt) use **409** Problem Details as above.
