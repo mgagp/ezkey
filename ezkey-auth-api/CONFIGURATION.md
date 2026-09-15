@@ -23,6 +23,7 @@ serves them to enrolled mobile devices, and processes responses. It runs **no sc
 | `ezkey.rate-limit.respond.window-minutes` | — | `5` | optionnel |
 | `ezkey.rate-limit.verify.requests` | — | `10` | optionnel |
 | `ezkey.rate-limit.bind.requests` | — | `10` | optionnel |
+| `ezkey.rate-limit.backstop.verify.requests` | — | `100` | optionnel |
 | `ezkey.trusted-proxies.required` | — | `false` | optionnel [prod] |
 | `ezkey.trusted-proxies.cidrs` | — | *(empty list)* | optionnel |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(null)* | requis [docker] |
@@ -56,6 +57,13 @@ inventory: [rate-limit-baseline-policy.md](../product-docs/global/rate-limit-bas
 | `ezkey.rate-limit.bind.requests` | `int` | `10` | optionnel | Max enrollment-bind requests per window. |
 | `ezkey.rate-limit.bind.window-minutes` | `int` | `1` | optionnel | Window for `bind` endpoint (minutes). |
 | `ezkey.rate-limit.bind.key-strategy` | `String` | `client-ip` | optionnel | Key strategy. Docker: `client-ip`. |
+| `ezkey.rate-limit.backstop.enabled` | `boolean` | `true` | optionnel | Unkeyed per-process cap on `verify` / `bind` / enrolled `instance-info`. Follows ADR-0010 (not distributed). |
+| `ezkey.rate-limit.backstop.verify.requests` | `int` | `100` | optionnel | Process-wide verify budget. Docker: `50` / 5 min. |
+| `ezkey.rate-limit.backstop.verify.window-minutes` | `int` | `1` | optionnel | Window for the verify backstop. |
+| `ezkey.rate-limit.backstop.bind.requests` | `int` | `60` | optionnel | Process-wide bind + enrolled instance-info budget. Docker: `30` / 5 min. |
+| `ezkey.rate-limit.backstop.bind.window-minutes` | `int` | `1` | optionnel | Window for the bind backstop. |
+
+`pending` and `respond` are keyed on a target id and are **not** covered by this backstop. N Auth replicas imply N times the backstop headroom; edge rate limiting remains the public-host control.
 
 **Key strategy options:**
 
@@ -81,6 +89,11 @@ ezkey.rate-limit.verify.key-strategy=client-ip
 ezkey.rate-limit.bind.requests=3
 ezkey.rate-limit.bind.window-minutes=5
 ezkey.rate-limit.bind.key-strategy=client-ip
+ezkey.rate-limit.backstop.enabled=true
+ezkey.rate-limit.backstop.verify.requests=50
+ezkey.rate-limit.backstop.verify.window-minutes=5
+ezkey.rate-limit.backstop.bind.requests=30
+ezkey.rate-limit.backstop.bind.window-minutes=5
 ```
 
 ---
@@ -150,6 +163,8 @@ for the full description.
    correct per-attempt throttling.
 3. Docker profile also sets `ezkey.encryption.required=true` and `ezkey.audit.integrity.required=true`
    (SEC-002 / SEC-008). Behind Caddy, set `EZKEY_TRUSTED_PROXIES_REQUIRED=true` (SEC-011).
+5. The unkeyed `ezkey.rate-limit.backstop.*` budgets are **per Auth process** (ADR-0010). Do not
+   treat them as a cluster-wide aggregate; public hosts should also apply edge rate limiting.
 
 ---
 

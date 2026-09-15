@@ -146,6 +146,11 @@ a blocking mechanism that locks out IPs after repeated failures.
 | `ezkey.admin.rate-limit.login.key-strategy` | `String` | `client-ip` | optionnel | Key strategy. Only `client-ip` is implemented. |
 | `ezkey.admin.rate-limit.login.block-after-failures` | `int` | `10` | optionnel | Consecutive failures before IP block. `0` disables blocking. |
 | `ezkey.admin.rate-limit.login.block-duration-minutes` | `int` | `30` | optionnel | Duration in minutes for an IP block. |
+| `ezkey.admin.rate-limit.backstop.enabled` | `boolean` | `true` | optionnel | Unkeyed per-process cap on login / passwordless-wait. Follows ADR-0010 (not distributed). |
+| `ezkey.admin.rate-limit.backstop.login.requests` | `int` | `50` | optionnel | Process-wide admin-auth budget. |
+| `ezkey.admin.rate-limit.backstop.login.window-minutes` | `int` | `1` | optionnel | Window for the login backstop. |
+
+N Admin replicas imply N times the backstop headroom; edge rate limiting remains the public-host control.
 
 **`docker` profile values:**
 
@@ -156,6 +161,9 @@ ezkey.admin.rate-limit.login.window-minutes=1
 ezkey.admin.rate-limit.login.key-strategy=client-ip
 ezkey.admin.rate-limit.login.block-after-failures=10
 ezkey.admin.rate-limit.login.block-duration-minutes=30
+ezkey.admin.rate-limit.backstop.enabled=true
+ezkey.admin.rate-limit.backstop.login.requests=50
+ezkey.admin.rate-limit.backstop.login.window-minutes=1
 ```
 
 **`docker-test` profile:** rate limiting disabled (`ezkey.admin.rate-limit.enabled=false`).
