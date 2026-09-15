@@ -52,7 +52,8 @@ public class PublicInstanceInfoController {
       description =
           "Returns read-only instance metadata for the Admin UI (login shell) and operators."
               + " authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when"
-              + " ezkey.qr.auth-base-url is set.")
+              + " ezkey.qr.auth-base-url is set.",
+      security = {})
   @ApiResponse(
       responseCode = "200",
       description = "Instance metadata",

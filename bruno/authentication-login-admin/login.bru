@@ -129,13 +129,12 @@ docs {
   - `expiresAt`: Same semantics as non-blocking pending (attempt expiry from core TTL)
   - `message`: Instruction message
   
-  **Failure Response (400 Bad Request):**
-  - `success`: false
-  - `message`: Error description (e.g., "No device enrolled", "Authentication rejected")
+  **Failure Response (400 / 401 / 408):**
+  - RFC 9457 Problem Details (`application/problem+json`), not the 200 login DTO.
   
   **Status Codes:**
-  - 200: Authentication successful or pending
-  - 400: Authentication failed (invalid credentials, no device enrolled)
-  - 429: Rate limit exceeded (5 requests per minute per IP)
-  - 500: Internal server error
+  - 200: Authentication successful or pending (login DTO)
+  - 400 / 401 / 408: Problem Details (invalid credentials, timeout, device rejected)
+  - 429: Rate limit exceeded — empty body, `Retry-After` in seconds (per IP and per-instance backstop)
+  - 500: Problem Details
 }

@@ -163,6 +163,11 @@ export type respondResponse409 = {
   status: 409
 }
 
+export type respondResponse429 = {
+  data: void
+  status: 429
+}
+
 export type respondResponse500 = {
   data: ProblemDetail
   status: 500
@@ -171,7 +176,7 @@ export type respondResponse500 = {
 export type respondResponseSuccess = (respondResponse200) & {
   headers: Headers;
 };
-export type respondResponseError = (respondResponse400 | respondResponse409 | respondResponse500) & {
+export type respondResponseError = (respondResponse400 | respondResponse409 | respondResponse429 | respondResponse500) & {
   headers: Headers;
 };
 
@@ -210,7 +215,7 @@ return customInstance<respondResponse>(getRespondUrl(),
 
 
 
-export const getRespondMutationOptions = <TError = ErrorType<ProblemDetail>,
+export const getRespondMutationOptions = <TError = ErrorType<ProblemDetail | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof respond>>, TError,{data: BodyType<AuthAttemptRespondRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof respond>>, TError,{data: BodyType<AuthAttemptRespondRequestDto>}, TContext> => {
 
@@ -239,12 +244,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RespondMutationResult = NonNullable<Awaited<ReturnType<typeof respond>>>
     export type RespondMutationBody = BodyType<AuthAttemptRespondRequestDto>
-    export type RespondMutationError = ErrorType<ProblemDetail>
+    export type RespondMutationError = ErrorType<ProblemDetail | void>
 
     /**
  * @summary Submit authentication response
  */
-export const useRespond = <TError = ErrorType<ProblemDetail>,
+export const useRespond = <TError = ErrorType<ProblemDetail | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof respond>>, TError,{data: BodyType<AuthAttemptRespondRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof respond>>,

@@ -20,6 +20,7 @@ import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.ezkey.openapi.OpenApiContractCustomizer;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -112,5 +113,15 @@ public class OpenApiConfig {
   @Bean
   public OpenApiCustomizer openApiPresentationCustomizer() {
     return new OpenApiPresentationCustomizer();
+  }
+
+  /**
+   * Documents public {@code security: []} and empty 429 on rate-limited device POSTs.
+   *
+   * @return contract customizer
+   */
+  @Bean
+  public OpenApiCustomizer openApiContractCustomizer() {
+    return OpenApiContractCustomizer.forAuthApi();
   }
 }

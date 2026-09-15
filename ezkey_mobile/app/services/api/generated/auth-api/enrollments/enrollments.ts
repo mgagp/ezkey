@@ -59,6 +59,11 @@ export type bindResponse409 = {
   status: 409
 }
 
+export type bindResponse429 = {
+  data: void
+  status: 429
+}
+
 export type bindResponse500 = {
   data: ProblemDetail
   status: 500
@@ -67,7 +72,7 @@ export type bindResponse500 = {
 export type bindResponseSuccess = (bindResponse200) & {
   headers: Headers;
 };
-export type bindResponseError = (bindResponse400 | bindResponse409 | bindResponse500) & {
+export type bindResponseError = (bindResponse400 | bindResponse409 | bindResponse429 | bindResponse500) & {
   headers: Headers;
 };
 
@@ -106,7 +111,7 @@ return customInstance<bindResponse>(getBindUrl(),
 
 
 
-export const getBindMutationOptions = <TError = ErrorType<ProblemDetail>,
+export const getBindMutationOptions = <TError = ErrorType<ProblemDetail | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bind>>, TError,{data: BodyType<EnrollmentBindRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof bind>>, TError,{data: BodyType<EnrollmentBindRequestDto>}, TContext> => {
 
@@ -135,12 +140,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type BindMutationResult = NonNullable<Awaited<ReturnType<typeof bind>>>
     export type BindMutationBody = BodyType<EnrollmentBindRequestDto>
-    export type BindMutationError = ErrorType<ProblemDetail>
+    export type BindMutationError = ErrorType<ProblemDetail | void>
 
     /**
  * @summary Initiate device binding with proof token
  */
-export const useBind = <TError = ErrorType<ProblemDetail>,
+export const useBind = <TError = ErrorType<ProblemDetail | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bind>>, TError,{data: BodyType<EnrollmentBindRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof bind>>,
@@ -165,6 +170,11 @@ export type verifyResponse409 = {
   status: 409
 }
 
+export type verifyResponse429 = {
+  data: void
+  status: 429
+}
+
 export type verifyResponse500 = {
   data: ProblemDetail
   status: 500
@@ -173,7 +183,7 @@ export type verifyResponse500 = {
 export type verifyResponseSuccess = (verifyResponse200) & {
   headers: Headers;
 };
-export type verifyResponseError = (verifyResponse400 | verifyResponse409 | verifyResponse500) & {
+export type verifyResponseError = (verifyResponse400 | verifyResponse409 | verifyResponse429 | verifyResponse500) & {
   headers: Headers;
 };
 
@@ -212,7 +222,7 @@ return customInstance<verifyResponse>(getVerifyUrl(),
 
 
 
-export const getVerifyMutationOptions = <TError = ErrorType<ProblemDetail>,
+export const getVerifyMutationOptions = <TError = ErrorType<ProblemDetail | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verify>>, TError,{data: BodyType<EnrollmentVerifyRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof verify>>, TError,{data: BodyType<EnrollmentVerifyRequestDto>}, TContext> => {
 
@@ -241,12 +251,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type VerifyMutationResult = NonNullable<Awaited<ReturnType<typeof verify>>>
     export type VerifyMutationBody = BodyType<EnrollmentVerifyRequestDto>
-    export type VerifyMutationError = ErrorType<ProblemDetail>
+    export type VerifyMutationError = ErrorType<ProblemDetail | void>
 
     /**
  * @summary Complete enrollment verification
  */
-export const useVerify = <TError = ErrorType<ProblemDetail>,
+export const useVerify = <TError = ErrorType<ProblemDetail | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verify>>, TError,{data: BodyType<EnrollmentVerifyRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof verify>>,
@@ -266,6 +276,11 @@ export type instanceInfoResponse400 = {
   status: 400
 }
 
+export type instanceInfoResponse429 = {
+  data: void
+  status: 429
+}
+
 export type instanceInfoResponse500 = {
   data: ProblemDetail
   status: 500
@@ -274,7 +289,7 @@ export type instanceInfoResponse500 = {
 export type instanceInfoResponseSuccess = (instanceInfoResponse200) & {
   headers: Headers;
 };
-export type instanceInfoResponseError = (instanceInfoResponse400 | instanceInfoResponse500) & {
+export type instanceInfoResponseError = (instanceInfoResponse400 | instanceInfoResponse429 | instanceInfoResponse500) & {
   headers: Headers;
 };
 
@@ -313,7 +328,7 @@ return customInstance<instanceInfoResponse>(getInstanceInfoUrl(),
 
 
 
-export const getInstanceInfoMutationOptions = <TError = ErrorType<ProblemDetail>,
+export const getInstanceInfoMutationOptions = <TError = ErrorType<ProblemDetail | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof instanceInfo>>, TError,{data: BodyType<EnrollmentInstanceInfoRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof instanceInfo>>, TError,{data: BodyType<EnrollmentInstanceInfoRequestDto>}, TContext> => {
 
@@ -342,12 +357,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type InstanceInfoMutationResult = NonNullable<Awaited<ReturnType<typeof instanceInfo>>>
     export type InstanceInfoMutationBody = BodyType<EnrollmentInstanceInfoRequestDto>
-    export type InstanceInfoMutationError = ErrorType<ProblemDetail>
+    export type InstanceInfoMutationError = ErrorType<ProblemDetail | void>
 
     /**
  * @summary Get integration-signed installation branding
  */
-export const useInstanceInfo = <TError = ErrorType<ProblemDetail>,
+export const useInstanceInfo = <TError = ErrorType<ProblemDetail | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof instanceInfo>>, TError,{data: BodyType<EnrollmentInstanceInfoRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof instanceInfo>>,

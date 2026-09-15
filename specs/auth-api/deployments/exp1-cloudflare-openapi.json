@@ -53,7 +53,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/api/v1/enrollments/bind": {
@@ -111,6 +112,18 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests. Retry-After is seconds until the rate-limit budget refills.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry is allowed",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
                 }
               }
             }
@@ -176,6 +189,82 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many requests. Retry-After is seconds until the rate-limit budget refills.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry is allowed",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/enrollments/instance-info": {
+      "post": {
+        "tags": [
+          "Enrollments"
+        ],
+        "summary": "Get integration-signed installation branding",
+        "description": "Returns instance branding signed with the enrollment integration key for enrolled clients",
+        "operationId": "instanceInfo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentInstanceInfoRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Signed installation branding returned successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentInstanceInfoResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or unknown enrollment proof token",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests. Retry-After is seconds until the rate-limit budget refills.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry is allowed",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         }
       }
@@ -223,7 +312,16 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded"
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry is allowed",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         }
       }
@@ -286,55 +384,15 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/v1/enrollments/instance-info": {
-      "post": {
-        "tags": [
-          "Enrollments"
-        ],
-        "summary": "Get integration-signed installation branding",
-        "description": "Returns instance branding signed with the enrollment integration key for enrolled clients",
-        "operationId": "instanceInfo",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EnrollmentInstanceInfoRequestDto"
-              }
-            }
           },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Signed installation branding returned successfully",
-            "content": {
-              "*/*": {
+          "429": {
+            "description": "Too many requests. Retry-After is seconds until the rate-limit budget refills.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry is allowed",
                 "schema": {
-                  "$ref": "#/components/schemas/EnrollmentInstanceInfoResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid or unknown enrollment proof token",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
+                  "type": "integer",
+                  "format": "int32"
                 }
               }
             }
@@ -434,7 +492,8 @@
           },
           "instance": {
             "type": "string",
-            "format": "uri"
+            "format": "uri-reference",
+            "description": "URI-reference of the occurrence. Ezkey uses the request path (relative), matching RFC 9457; it is not an absolute URI."
           },
           "properties": {
             "type": "object",
@@ -653,7 +712,8 @@
           "authAttemptProofTokenResultSignedByIntegration": {
             "type": "string",
             "description": "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over proofToken|authAttemptId|result|message (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)",
-            "example": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            "example": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "nullable": true
           }
         },
         "required": [

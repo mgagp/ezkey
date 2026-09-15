@@ -20,6 +20,7 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.ezkey.openapi.OpenApiContractCustomizer;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -152,5 +153,16 @@ public class OpenApiConfig {
   @Bean
   public OpenApiCustomizer openApiPresentationCustomizer() {
     return new OpenApiPresentationCustomizer();
+  }
+
+  /**
+   * Documents public {@code security: []}, empty 401 on secured ops, login-family ProblemDetail
+   * errors, and filter 429s.
+   *
+   * @return contract customizer
+   */
+  @Bean
+  public OpenApiCustomizer openApiContractCustomizer() {
+    return OpenApiContractCustomizer.forAdminApi();
   }
 }
