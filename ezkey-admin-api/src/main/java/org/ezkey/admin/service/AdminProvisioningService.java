@@ -23,6 +23,7 @@ import org.ezkey.admin.exception.AdminNotAllowedException;
 import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.admin.exception.GlobalAdminLimitException;
 import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.admin.util.AdminEnrollmentDisplayNames;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -499,21 +500,23 @@ public class AdminProvisioningService {
     // Generate enrollment challenge code (6 digits)
     Integer enrollmentChallenge = signatureService.generateSecureChallenge(6);
 
-    // Create enrollment name (include username for uniqueness)
+    String preferredName =
+        AdminEnrollmentDisplayNames.personDisplayName(
+            admin.getFirstName(), admin.getLastName(), admin.getUsername());
+    List<Enrollment> preferredNameHits =
+        enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
+            systemIntegration.getId(), preferredName, EnrollmentStatus.VERIFIED);
     String enrollmentName =
-        "%s Admin MFA - %s %s (%s)"
-            .formatted(
-                admin.getAdminType() == AdminType.GLOBAL_ADMIN ? "Global" : "Tenant",
-                admin.getFirstName() != null ? admin.getFirstName() : "",
-                admin.getLastName() != null ? admin.getLastName() : "",
-                admin.getUsername())
-            .trim();
+        AdminEnrollmentDisplayNames.uniqueEnrollmentName(
+            preferredName, admin.getUsername(), !preferredNameHits.isEmpty());
 
     // Security validation: Check for existing VERIFIED enrollment with same name
     // This ensures idempotence and prevents conflicts when tests are re-executed
     List<Enrollment> existingVerifiedEnrollments =
-        enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
-            systemIntegration.getId(), enrollmentName.trim(), EnrollmentStatus.VERIFIED);
+        enrollmentName.equals(preferredName)
+            ? preferredNameHits
+            : enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
+                systemIntegration.getId(), enrollmentName, EnrollmentStatus.VERIFIED);
 
     if (!existingVerifiedEnrollments.isEmpty()) {
       Enrollment existing = existingVerifiedEnrollments.get(0);

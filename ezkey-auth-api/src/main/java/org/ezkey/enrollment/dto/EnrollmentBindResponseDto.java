@@ -37,7 +37,9 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * @param enrollmentProofToken The enrollment proof token to be signed by the device
  * @param integrationName The display name of the integration
  * @param integrationDescription The description of the integration
- * @param enrollmentName The human-readable name for the enrollment
+ * @param enrollmentName Person-facing enrollment label shown on the device (admin MFA uses
+ *     first+last; do not encode Global/Tenant Admin here — see
+ *     I-2026-09-15-mobile-admin-enrollment-account-label)
  * @param tenantId The tenant ID of the integration associated with this enrollment
  * @param tenantName The tenant display name of the integration associated with this enrollment
  * @param tenantDescription The tenant description of the integration associated with this
@@ -84,8 +86,10 @@ public record EnrollmentBindResponseDto(
             requiredMode = RequiredMode.NOT_REQUIRED)
         String integrationDescription,
     @Schema(
-            description = "Human-readable name for the enrollment",
-            example = "John's iPhone",
+            description =
+                "Person-facing enrollment label shown on the device (for admin MFA: first and last"
+                    + " name; not a role or username blob)",
+            example = "Marie Dupont",
             requiredMode = RequiredMode.NOT_REQUIRED)
         String enrollmentName,
     @Schema(

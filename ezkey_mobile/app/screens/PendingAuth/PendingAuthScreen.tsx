@@ -30,6 +30,7 @@ import {env} from '../../config/env';
 import {RootStackParamList} from '../../navigation/types';
 import PinCodeInput from '../../components/PinCodeInput';
 import {usePendingAuth, AUTH_CHALLENGE_LENGTH, tracePendingAuthRespond} from '../../hooks/usePendingAuth';
+import {buildEnrollmentIdentityDisplay} from '../../utils/enrollmentDisplay';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
 
@@ -72,13 +73,23 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     navigateToEnrollmentDetail,
   });
 
+  const emptyIdentity = enrollment
+    ? buildEnrollmentIdentityDisplay(enrollment, t('enrollmentDetail.installationFallback'))
+    : undefined;
+
   return (
     <View style={styles.container}>
-      {!attempt && enrollment ? (
+      {!attempt && emptyIdentity ? (
         <View style={styles.enrollmentBox}>
-          <Text style={styles.enrollmentIntegration}>{enrollment.integrationName}</Text>
-          {enrollment.tenantName ? (
-            <Text style={styles.enrollmentTenant}>{enrollment.tenantName}</Text>
+          <Text style={styles.enrollmentIntegration}>{emptyIdentity.heroTitle}</Text>
+          {emptyIdentity.integrationLabel ? (
+            <Text style={styles.enrollmentTenant}>{emptyIdentity.integrationLabel}</Text>
+          ) : null}
+          {emptyIdentity.tenantLabel ? (
+            <Text style={styles.enrollmentTenant}>{emptyIdentity.tenantLabel}</Text>
+          ) : null}
+          {emptyIdentity.installationContext ? (
+            <Text style={styles.enrollmentTenant}>{emptyIdentity.installationContext}</Text>
           ) : null}
         </View>
       ) : null}

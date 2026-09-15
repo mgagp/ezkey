@@ -99,9 +99,10 @@ public class EnrollmentBindResponse {
   /**
    * The human-readable name for the enrollment.
    *
-   * <p>Human-readable name of the enrollment, shown to the user during enrollment to help identify
-   * the specific device or user account being enrolled. This name provides personal context for the
-   * enrollment within the integration.
+   * <p>Shown on the authenticator as the person (or device) hero. Admin MFA names are person-first
+   * ({@code first last}); Global/Tenant Admin is Admin UI chrome. If two enrollments on one phone
+   * cannot be told apart, add a dedicated bind field rather than encoding role here — see {@code
+   * I-2026-09-15-mobile-admin-enrollment-account-label}.
    */
   private String enrollmentName;
 
