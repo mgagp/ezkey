@@ -4,6 +4,9 @@
 September 2026 operable-release roadmap. Keep PAM facts in this folder; do not add PAM to
 `docs/` or `docker/README.md`.
 
+Current status, product geometry, and what “operable” would mean (EXP1 dogfood vs generic
+Linux extract): [`STATUS.md`](STATUS.md).
+
 Linux PAM module that calls the **Integration API** (port 7080, Docker service
 `integration-api`). When a user connects over SSH, the module:
 
