@@ -12,6 +12,7 @@ package org.ezkey.enrollment.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
+import jakarta.validation.constraints.NotNull;
 import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
 
 /**
@@ -48,7 +49,8 @@ import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
  */
 @Schema(description = "Request DTO for enrollment verification completion")
 public record EnrollmentVerifyRequestDto(
-    @Schema(
+    @NotNull
+        @Schema(
             description = "Enrollment ID being verified",
             example = "123",
             requiredMode = RequiredMode.REQUIRED)
@@ -58,12 +60,14 @@ public record EnrollmentVerifyRequestDto(
             example = "123456",
             requiredMode = RequiredMode.REQUIRED)
         Integer challengeResponse,
-    @Schema(
+    @NotNull
+        @Schema(
             description = "Mobile device's generated public key",
             example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
             requiredMode = RequiredMode.REQUIRED)
         String devicePublicKey,
-    @Schema(
+    @NotNull
+        @Schema(
             description = "Device-signed enrollment proof token",
             example = "eyJhbGciOiJSUzI1NiJ9...",
             requiredMode = RequiredMode.REQUIRED)

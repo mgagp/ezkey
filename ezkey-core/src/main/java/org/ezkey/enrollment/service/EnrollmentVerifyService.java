@@ -148,11 +148,16 @@ public class EnrollmentVerifyService {
    * @param request the verify request
    * @return the validated enrollment
    * @throws EnrollmentVerifyStateConflictException if enrollment is not found or in invalid state
-   * @throws EnrollmentVerifyFailedException if invitation expired
+   * @throws EnrollmentVerifyFailedException if invitation expired or enrollment ID is missing
    */
   private Enrollment validateEnrollmentState(EnrollmentVerifyRequest request) {
     logger.debug(
         "Step 1: Performing read-only pre-checks for enrollment ID: {}", request.getEnrollmentId());
+
+    if (request.getEnrollmentId() == null) {
+      logger.warn("Validation failed: enrollment ID is missing");
+      throw new EnrollmentVerifyFailedException("Enrollment verification failed");
+    }
 
     Enrollment enrollment =
         enrollmentRepository
