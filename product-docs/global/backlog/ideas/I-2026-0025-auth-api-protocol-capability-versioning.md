@@ -39,3 +39,6 @@ See [`../grill-sessions/blitz-2026-05-08-2-D7-auth-api-versioning-grill-me.md`](
   distribution-anchored client-update guidance is explored in
   [`I-2026-08-02-mobile-client-update-mechanism`](I-2026-08-02-mobile-client-update-mechanism.md).
   Neither idea changes this idea's scope or contract.
+- Post-quantum algorithm agility (unfunded parent): hybrid signatures would ride this capability
+  surface — [`I-2026-09-15-post-quantum-protocol-evolution`](I-2026-09-15-post-quantum-protocol-evolution.md),
+  map [`V-2026-09-15-post-quantum-crypto-posture`](../../vision/V-2026-09-15-post-quantum-crypto-posture.md).
