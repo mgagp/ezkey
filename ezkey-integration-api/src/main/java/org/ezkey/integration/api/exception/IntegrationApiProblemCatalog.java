@@ -23,7 +23,14 @@ public final class IntegrationApiProblemCatalog {
   public static final String TYPE_AUDIT_CHAIN_HEARTBEAT_DEGRADED =
       "https://ezkey.io/problems/system/audit-chain-heartbeat-degraded";
 
+  public static final String TYPE_METHOD_NOT_ALLOWED =
+      "https://ezkey.io/problems/http/method-not-allowed";
+
   public static final String TITLE_SERVICE_UNAVAILABLE = "Service unavailable";
+  public static final String TITLE_METHOD_NOT_ALLOWED = "Method not allowed";
+
+  public static final String DETAIL_METHOD_NOT_ALLOWED =
+      "The HTTP method is not allowed for this resource.";
 
   public static final String DETAIL_AUDIT_CHAIN_HEARTBEAT_DEGRADED =
       "The service is temporarily unavailable because audit-chain supervision cannot confirm "

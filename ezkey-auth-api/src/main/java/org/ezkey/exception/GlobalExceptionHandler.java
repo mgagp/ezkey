@@ -9,6 +9,7 @@ package org.ezkey.exception;
 
 import java.net.URI;
 import java.time.OffsetDateTime;
+import java.util.Set;
 import org.ezkey.audit.integrity.AuditChainHeartbeatEvaluation;
 import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
@@ -26,10 +27,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -228,6 +231,31 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
         AuthApiProblemCatalog.TITLE_RESOURCE_NOT_FOUND,
         AuthApiProblemCatalog.DETAIL_RESOURCE_NOT_FOUND,
         pathFrom(request));
+  }
+
+  /**
+   * Unsupported verb on a mapped path. Must be handled before {@link #handleGenericException} so
+   * scanners cannot flood ERROR logs or inflate 5xx metrics.
+   */
+  @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ProblemDetail> handleHttpRequestMethodNotSupported(
+      HttpRequestMethodNotSupportedException ex, WebRequest request) {
+    LOG.debug("Method not allowed: {} {}", ex.getMethod(), pathFrom(request));
+    ResponseEntity<ProblemDetail> response =
+        problemResponse(
+            HttpStatus.METHOD_NOT_ALLOWED,
+            AuthApiProblemCatalog.TYPE_METHOD_NOT_ALLOWED,
+            AuthApiProblemCatalog.TITLE_METHOD_NOT_ALLOWED,
+            AuthApiProblemCatalog.DETAIL_METHOD_NOT_ALLOWED,
+            pathFrom(request));
+    Set<HttpMethod> allowed = ex.getSupportedHttpMethods();
+    if (allowed == null || allowed.isEmpty()) {
+      return response;
+    }
+    return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+        .headers(response.getHeaders())
+        .allow(allowed.toArray(HttpMethod[]::new))
+        .body(response.getBody());
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)

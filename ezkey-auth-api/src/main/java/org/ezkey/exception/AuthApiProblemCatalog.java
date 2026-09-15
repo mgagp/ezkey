@@ -18,6 +18,7 @@ public final class AuthApiProblemCatalog {
   public static final String BASE = "https://ezkey.io/problems/auth";
 
   public static final String TYPE_RESOURCE_NOT_FOUND = BASE + "/resource-not-found";
+  public static final String TYPE_METHOD_NOT_ALLOWED = BASE + "/method-not-allowed";
   public static final String TYPE_ENROLLMENT_ALREADY_BOUND = BASE + "/enrollment-already-bound";
   public static final String TYPE_ENROLLMENT_BINDING_FAILED = BASE + "/enrollment-binding-failed";
   public static final String TYPE_ENROLLMENT_INVITATION_EXPIRED =
@@ -44,6 +45,7 @@ public final class AuthApiProblemCatalog {
       "https://ezkey.io/problems/system/audit-chain-heartbeat-degraded";
 
   public static final String TITLE_RESOURCE_NOT_FOUND = "Resource not found";
+  public static final String TITLE_METHOD_NOT_ALLOWED = "Method not allowed";
   public static final String TITLE_CONFLICT = "Request cannot be completed";
   public static final String TITLE_BAD_REQUEST = "Request not acceptable";
   public static final String TITLE_VALIDATION_FAILED = "Validation failed";
@@ -54,6 +56,9 @@ public final class AuthApiProblemCatalog {
   /** Safe detail when the resource type must not be disclosed. */
   public static final String DETAIL_RESOURCE_NOT_FOUND =
       "The requested resource could not be found.";
+
+  public static final String DETAIL_METHOD_NOT_ALLOWED =
+      "The HTTP method is not allowed for this resource.";
 
   public static final String DETAIL_ENROLLMENT_ALREADY_BOUND =
       "This enrollment is no longer available for binding.";

@@ -14,6 +14,7 @@ package org.ezkey.integration.api.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.time.OffsetDateTime;
+import java.util.Set;
 import org.ezkey.audit.integrity.AuditChainHeartbeatEvaluation;
 import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.exception.EnrollmentInactiveException;
@@ -28,9 +29,11 @@ import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -246,6 +249,29 @@ public class GlobalExceptionHandler {
         "https://ezkey.io/problems/resource/not-found",
         "Resource Not Found",
         request);
+  }
+
+  /**
+   * Unsupported verb on a mapped path. Must be handled before {@link #handleGenericException} so
+   * scanners cannot flood ERROR logs or inflate 5xx metrics. Integration API-key filter may still
+   * return 401 first on unauthenticated traffic.
+   */
+  @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ProblemDetail> handleHttpRequestMethodNotSupported(
+      HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+    logger.debug("Method not allowed: {} {}", ex.getMethod(), request.getRequestURI());
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.METHOD_NOT_ALLOWED, IntegrationApiProblemCatalog.DETAIL_METHOD_NOT_ALLOWED);
+    problem.setType(URI.create(IntegrationApiProblemCatalog.TYPE_METHOD_NOT_ALLOWED));
+    problem.setTitle(IntegrationApiProblemCatalog.TITLE_METHOD_NOT_ALLOWED);
+    problem.setProperty("path", request.getRequestURI());
+    ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED);
+    Set<HttpMethod> allowed = ex.getSupportedHttpMethods();
+    if (allowed != null && !allowed.isEmpty()) {
+      builder.allow(allowed.toArray(HttpMethod[]::new));
+    }
+    return builder.body(problem);
   }
 
   /**

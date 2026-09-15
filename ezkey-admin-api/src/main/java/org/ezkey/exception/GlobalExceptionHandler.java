@@ -11,12 +11,15 @@
 package org.ezkey.exception;
 
 import java.net.URI;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -163,6 +166,28 @@ public class GlobalExceptionHandler {
         AdminApiProblemCatalog.TITLE_NOT_FOUND,
         AdminApiProblemCatalog.DETAIL_NOT_FOUND,
         request);
+  }
+
+  /**
+   * Unsupported verb on a mapped path. Must be handled before {@link #handleGenericException} so
+   * scanners cannot flood ERROR logs or inflate 5xx metrics.
+   */
+  @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ProblemDetail> handleHttpRequestMethodNotSupported(
+      HttpRequestMethodNotSupportedException ex, WebRequest request) {
+    LOG.debug("Method not allowed: {} {}", ex.getMethod(), pathFrom(request));
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.METHOD_NOT_ALLOWED, AdminApiProblemCatalog.DETAIL_METHOD_NOT_ALLOWED);
+    problem.setType(URI.create(AdminApiProblemCatalog.TYPE_METHOD_NOT_ALLOWED));
+    problem.setTitle(AdminApiProblemCatalog.TITLE_METHOD_NOT_ALLOWED);
+    problem.setProperty("path", pathFrom(request));
+    ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED);
+    Set<HttpMethod> allowed = ex.getSupportedHttpMethods();
+    if (allowed != null && !allowed.isEmpty()) {
+      builder.allow(allowed.toArray(HttpMethod[]::new));
+    }
+    return builder.body(problem);
   }
 
   @ExceptionHandler(ResourceNotFoundException.class)

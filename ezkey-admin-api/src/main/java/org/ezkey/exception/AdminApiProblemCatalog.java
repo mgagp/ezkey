@@ -21,6 +21,7 @@ public final class AdminApiProblemCatalog {
   public static final String TYPE_SYSTEM_NOT_CONFIGURED = BASE + "/system-tenant-not-configured";
   public static final String TYPE_RATE_LIMIT_EXCEEDED = BASE + "/rate-limit-exceeded";
   public static final String TYPE_RESOURCE_NOT_FOUND = BASE + "/resource-not-found";
+  public static final String TYPE_METHOD_NOT_ALLOWED = BASE + "/method-not-allowed";
   public static final String TYPE_INTERNAL_ERROR = BASE + "/internal-error";
 
   /** Bean validation, {@code @RequestParam} constraint violations, etc. */
@@ -35,12 +36,20 @@ public final class AdminApiProblemCatalog {
   public static final String TITLE_INTERNAL_ERROR = "Internal error";
   public static final String TITLE_TOO_MANY_REQUESTS = "Too many requests";
   public static final String TITLE_NOT_FOUND = "Resource not found";
+  public static final String TITLE_METHOD_NOT_ALLOWED = "Method not allowed";
 
   /**
    * Safe detail for unknown routes and missing static resources (e.g. scanner traffic); does not
    * echo request paths or exception internals to the client.
    */
   public static final String DETAIL_NOT_FOUND = "The requested resource could not be found.";
+
+  /**
+   * Safe detail for an unsupported HTTP method on a mapped path; does not echo the verb or
+   * exception internals to the client.
+   */
+  public static final String DETAIL_METHOD_NOT_ALLOWED =
+      "The HTTP method is not allowed for this resource.";
 
   public static final String TITLE_VALIDATION_FAILED = "Validation failed";
   public static final String TITLE_INVALID_ARGUMENT = "Invalid argument";
