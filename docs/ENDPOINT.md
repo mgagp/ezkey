@@ -113,6 +113,8 @@ yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'
 
 HTTP **4xx** and **5xx** responses from the Auth API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`). The JSON body includes `type` (URI identifying the problem category), `title`, `status`, `detail` (operator-safe text; do not rely on it for security-sensitive branching), and extension properties `path` and `timestamp`. Clients should branch on **`type`** and HTTP status.
 
+Unsupported HTTP methods on a mapped path return **405** Problem Details (`type` `https://ezkey.io/problems/auth/method-not-allowed`) with an `Allow` header listing the supported methods. They are not mapped as **500**.
+
 **204 No Content** on `POST /api/v1/auth-attempts/pending` when there is no pending attempt is a **success** (no body), not an error.
 
 **200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level `FAILED` result in the JSON body when validation or cryptographic checks fail in a way modeled as `AuthAttemptRequestFailedException` in the respond service (integration-signed; see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`). HTTP-level failures for state conflicts (e.g. superseded or expired attempt) use **409** Problem Details as above.
@@ -337,7 +339,7 @@ See **Error responses (RFC 9457)** above. Verification failures return **400** o
 
 ## 2. Admin API Endpoints (internal)
 
-**Error responses (RFC 9457):** HTTP **4xx** and **5xx** responses from the Admin API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`) with `type`, `title`, `status`, `detail`, and extension property `path`. Some problems include an optional extension property **`parameters`** (JSON object of scalar values, **camelCase** keys) for client-side localization when `detail` contains dynamic fragments; clients should still branch on **`type`** and HTTP status.
+**Error responses (RFC 9457):** HTTP **4xx** and **5xx** responses from the Admin API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`) with `type`, `title`, `status`, `detail`, and extension property `path`. Some problems include an optional extension property **`parameters`** (JSON object of scalar values, **camelCase** keys) for client-side localization when `detail` contains dynamic fragments; clients should still branch on **`type`** and HTTP status. Unsupported HTTP methods on a mapped path return **405** (`type` `https://ezkey.io/problems/admin/method-not-allowed`) with an `Allow` header; they are not mapped as **500**.
 
 ### Public instance metadata (unauthenticated)
 
