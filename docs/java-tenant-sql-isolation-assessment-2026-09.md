@@ -123,7 +123,7 @@ dynamic evidence.
 
 | ID | Title | Severity | Confidence | Quick win |
 | --- | --- | --- | --- | --- |
-| SQL-ISO-001 | Integration API unscoped `enrollmentRepository.findById` + distinct Problem details (missing vs other-integration) | P2 | Confirmed | Yes — one generic 404/`resource-not-found` (or one generic 400) before returning `detail` |
+| SQL-ISO-001 | Integration API unscoped `enrollmentRepository.findById` + distinct Problem details (missing vs other-integration) | P2 | Confirmed | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-001-integration-api-enrollment-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-001-integration-api-enrollment-oracle.md) |
 | SQL-ISO-002 | Admin `getAdminById` unscoped `findById` then 404 vs 403 (Global Admin existence) | P2 | Confirmed | Yes — hide-existence 404; next CTRL-ROLE-003 peel |
 | SQL-ISO-003 | `existsByUsername` / `existsByEmail` instance-global; Tenant Admin peer-create identity oracle | P2 | Confirmed | Medium — generic "cannot create" vs distinct exists; product choice on global unique usernames |
 | SQL-ISO-004 | Admin auth-attempt create Path 2/3 looks up `userIdentifier` by **request** `integrationId` before ACS | P2 | Confirmed (static) | Yes — `canAccessIntegration` first; then same hide-existence as Path 1 |
@@ -219,6 +219,11 @@ Problem (prefer hide-existence 404 `resource-not-found`, or one generic 400). Do
 numeric id in `detail`. Keep WARN logs server-side. Add a functional test that both cases share
 status + type (or `detail`). Out of GO: Hibernate tenant filters; changing API-key principal
 shape.
+
+**HITL 2026-09-15:** operator **GO** (`fix`). Implementation not started. Handoff:
+[`HANDOFF-SQL-ISO-001-integration-api-enrollment-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-001-integration-api-enrollment-oracle.md).
+Authorized default: keep HTTP 400 + one generic `detail`; 404 `resource-not-found` also
+authorized.
 
 ---
 
