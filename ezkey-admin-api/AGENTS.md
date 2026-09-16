@@ -67,6 +67,8 @@ Do not drop an object check because the annotation looks precise. **Settled
 umbrella from the filter. Annotation honesty (`hasAnyRole('GLOBAL_ADMIN','TENANT_ADMIN')`)
 is optional later hygiene and is **not** a substitute for the object check. Provenance:
 campaign `product-docs/global/hygiene/java-controller-role-validation/2026-08-16-pass-1.md`.
+Proposed elevation to the global ADR log (confirm/challenge): **ADR-0013** and pack
+`product-docs/global/decisions/2026-09-16-admin-role-umbrella/`.
 
 ## Enrollment QR payload
 
