@@ -155,7 +155,7 @@ Encrypts a plaintext value and returns it in the standard encrypted format (`ENC
 ### 6. Decrypt Encrypted Database Column Value
 **POST** `/api/v1/crypto/decrypt`
 
-Decrypts an encrypted database column value for debugging purposes. This endpoint enables investigation of encrypted fields such as `enrollment_proof_token`, `auth_attempt_proof_token`, `device_proof_token`, and `integration_private_key`.
+Decrypts an encrypted database column value for debugging purposes. This endpoint enables investigation of encrypted fields such as `enrollment_proof_token`, `auth_attempt_proof_token`, and `integration_private_key`. Device proof is hash-only (`device_proof_token_hash`); there is no recoverable `device_proof_token` column (ADR-0007 Tier 0).
 
 **Request:**
 ```json

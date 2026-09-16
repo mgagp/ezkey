@@ -16,7 +16,7 @@ This file is UTF-8 without BOM.
 
 Crypto API is **included in the Docker stack** and starts automatically with `./clean-start.sh`:
 
-- **Port**: `9090` (not 8085 - that's auth-api)
+- **Port**: `9090` (Auth API direct is `8080`; `8085` is HAProxy Auth stats — see `docs/LOCAL_STACK_PORTS.md`)
 - **Container**: `ezkey-crypto-api`
 - **Base URL**: `http://localhost:9090`
 - **Swagger UI**: `http://localhost:9090/swagger-ui/index.html`
@@ -124,7 +124,8 @@ Experimental Dart interop stays in `ezkey_dart/`.
 **⚠️ DEBUGGING TOOL**: Decrypts encrypted database column values for investigation.
 
 **Use Case**:
-- Investigate encrypted fields: `enrollment_proof_token`, `auth_attempt_proof_token`, `device_proof_token`, `integration_private_key`
+- Investigate encrypted fields: `enrollment_proof_token`, `auth_attempt_proof_token`, `integration_private_key`
+- Device proof is hash-only (`device_proof_token_hash`); there is no recoverable `device_proof_token` column (ADR-0007 Tier 0)
 - Compare decrypted values with trace logs
 - Troubleshoot encryption/decryption issues
 
@@ -235,7 +236,8 @@ source of truth, not `postman/`.
 
 ### Port Configuration
 - ✅ **Crypto API**: Port `9090`
-- ❌ **NOT Port 8085**: That's auth-api
+- ✅ **Auth API (direct)**: Port `8080`
+- ❌ **Port 8085**: HAProxy Auth stats, not Auth API
 - Always verify you're calling the correct port
 
 ### Security Warnings

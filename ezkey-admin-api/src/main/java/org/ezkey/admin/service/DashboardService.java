@@ -164,22 +164,21 @@ public class DashboardService {
             ? CompletableFuture.completedFuture(buildIntegrityConfigSummary())
             : CompletableFuture.completedFuture(null);
 
-    DashboardOverviewDto dto = new DashboardOverviewDto();
     try {
-      dto.setIntegrations(integrationsFuture.join());
-      dto.setEnrollments(enrollmentsFuture.join());
-      dto.setAuth24h(auth24hFuture.join());
-      dto.setRecentActivity(recentActivityFuture.join());
-      dto.setOpenAlertCount(openAlertCountFuture.join());
-      dto.setAlerts(alertsFuture.join());
-      dto.setIntegrityJobs(integrityJobsFuture.join());
-      dto.setOperationalJobs(operationalJobsFuture.join());
-      dto.setIntegrityConfigSummary(integrityConfigFuture.join());
+      return new DashboardOverviewDto(
+          integrationsFuture.join(),
+          enrollmentsFuture.join(),
+          auth24hFuture.join(),
+          recentActivityFuture.join(),
+          openAlertCountFuture.join(),
+          alertsFuture.join(),
+          integrityJobsFuture.join(),
+          operationalJobsFuture.join(),
+          integrityConfigFuture.join());
     } catch (CompletionException | CancellationException e) {
       logger.error("Dashboard overview build failed", e);
       throw new RuntimeException("Failed to build dashboard overview", e);
     }
-    return dto;
   }
 
   private DashboardIntegrityConfigSummaryDto buildIntegrityConfigSummary() {
@@ -206,14 +205,13 @@ public class DashboardService {
   }
 
   private static DashboardScheduledJobRowDto toJobRowDto(ScheduledJobLastRun row) {
-    DashboardScheduledJobRowDto dto = new DashboardScheduledJobRowDto();
-    dto.setJobKey(row.getJobKey().name());
-    dto.setLastExecutionAt(row.getLastExecutionAt());
     ScheduledJobLastRunStatus status = row.getLastStatus();
-    dto.setLastStatus(status != null ? status.name() : ScheduledJobLastRunStatus.NEVER_RUN.name());
-    dto.setLastRunScope(row.getLastRunScope());
-    dto.setLastErrorSummary(row.getLastErrorSummary());
-    return dto;
+    return new DashboardScheduledJobRowDto(
+        row.getJobKey().name(),
+        row.getLastExecutionAt(),
+        status != null ? status.name() : ScheduledJobLastRunStatus.NEVER_RUN.name(),
+        row.getLastRunScope(),
+        row.getLastErrorSummary());
   }
 
   private DashboardIntegrationStatsDto buildIntegrationStats(
@@ -243,20 +241,19 @@ public class DashboardService {
 
   private DashboardAuth24hStatsDto buildAuth24hStats(Integer tenantId, OffsetDateTime since24h) {
     AuthAttemptDashboard24hStats s = authAttemptService.aggregateDashboard24h(since24h, tenantId);
-    DashboardAuth24hStatsDto dto = new DashboardAuth24hStatsDto();
-    dto.setTotal(s.total());
-    dto.setPending(s.pending());
-    dto.setReadCount(s.readCount());
-    dto.setAccepted(s.accepted());
-    dto.setRejected(s.rejected());
-    dto.setInvalid(s.invalid());
-    dto.setExpired(s.expired());
-    dto.setTerminalTotal(s.terminalTotal());
-    dto.setSuccessRatePct(s.successRatePct());
-    dto.setInvalidRatePct(s.invalidRatePct());
-    dto.setExpiredRatePct(s.expiredRatePct());
-    dto.setRejectedRatePct(s.rejectedRatePct());
-    return dto;
+    return new DashboardAuth24hStatsDto(
+        s.total(),
+        s.pending(),
+        s.readCount(),
+        s.accepted(),
+        s.rejected(),
+        s.invalid(),
+        s.expired(),
+        s.terminalTotal(),
+        s.successRatePct(),
+        s.invalidRatePct(),
+        s.expiredRatePct(),
+        s.rejectedRatePct());
   }
 
   private List<DashboardRecentActivityItemDto> buildRecentActivity(
@@ -279,15 +276,15 @@ public class DashboardService {
             pageRequest);
     List<DashboardRecentActivityItemDto> list = new ArrayList<>();
     for (AuditLog log : page.getContent()) {
-      DashboardRecentActivityItemDto item = new DashboardRecentActivityItemDto();
-      item.setAuditLogId(log.getAuditLogId());
-      item.setEventType(log.getEventType() != null ? log.getEventType().name() : null);
-      item.setEventStatus(log.getEventStatus() != null ? log.getEventStatus().name() : null);
-      item.setEventAction(log.getEventAction());
-      item.setApiName(log.getApiName() != null ? log.getApiName().name() : null);
-      item.setAdminId(log.getAdminId());
-      item.setCreatedAt(log.getCreatedAt());
-      list.add(item);
+      list.add(
+          new DashboardRecentActivityItemDto(
+              log.getAuditLogId(),
+              log.getEventType() != null ? log.getEventType().name() : null,
+              log.getEventStatus() != null ? log.getEventStatus().name() : null,
+              log.getEventAction(),
+              log.getApiName() != null ? log.getApiName().name() : null,
+              log.getAdminId(),
+              log.getCreatedAt()));
     }
     return list;
   }
@@ -296,14 +293,14 @@ public class DashboardService {
     List<Alert> openAlerts = alertService.findRecentOpen(ALERTS_SIZE);
     List<DashboardAlertItemDto> list = new ArrayList<>(openAlerts.size());
     for (Alert a : openAlerts) {
-      DashboardAlertItemDto item = new DashboardAlertItemDto();
-      item.setAlertId(a.getAlertId());
-      item.setAlertType(a.getAlertType());
-      item.setSeverity(a.getSeverity());
-      item.setStatus(a.getStatus());
-      item.setCreatedAt(a.getCreatedAt());
-      item.setPayload(a.getPayload());
-      list.add(item);
+      list.add(
+          new DashboardAlertItemDto(
+              a.getAlertId(),
+              a.getAlertType(),
+              a.getSeverity(),
+              a.getStatus(),
+              a.getCreatedAt(),
+              a.getPayload()));
     }
     return list;
   }
