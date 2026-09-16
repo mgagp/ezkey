@@ -4,7 +4,7 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * DTO: DashboardEnrollmentStatsDto
+ * Record: DashboardEnrollmentStatsDto
  * Description: Operational enrollment counts (by status and active flag) for dashboard overview.
  */
 
@@ -27,88 +27,22 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *   <li>{@code revoked} — administrator revocations (REVOKED, any active)
  * </ul>
  *
+ * @param verified devices ready for MFA: VERIFIED + active=true
+ * @param inProgress onboarding in progress: CREATED or BOUND (any active state)
+ * @param suspended admin-disabled devices: VERIFIED + active=false
+ * @param expired timed out before verification: EXPIRED (any active state)
+ * @param invalid failed validation: INVALID (any active state)
+ * @param revoked administrator revocations: REVOKED (any active state)
  * @since 2025
  */
 @Schema(
     description =
         "Operational enrollment counts (by status and active flag) for dashboard overview")
-public class DashboardEnrollmentStatsDto {
-
-  @Schema(description = "Devices ready for MFA: VERIFIED + active=true")
-  private long verified;
-
-  @Schema(description = "Onboarding in progress: CREATED or BOUND (any active state)")
-  private long inProgress;
-
-  @Schema(description = "Admin-disabled devices: VERIFIED + active=false")
-  private long suspended;
-
-  @Schema(description = "Timed out before verification: EXPIRED (any active state)")
-  private long expired;
-
-  @Schema(description = "Failed validation: INVALID (any active state)")
-  private long invalid;
-
-  @Schema(description = "Administrator revocations: REVOKED (any active state)")
-  private long revoked;
-
-  public DashboardEnrollmentStatsDto() {}
-
-  public DashboardEnrollmentStatsDto(
-      long verified, long inProgress, long suspended, long expired, long invalid, long revoked) {
-    this.verified = verified;
-    this.inProgress = inProgress;
-    this.suspended = suspended;
-    this.expired = expired;
-    this.invalid = invalid;
-    this.revoked = revoked;
-  }
-
-  public long getVerified() {
-    return verified;
-  }
-
-  public void setVerified(long verified) {
-    this.verified = verified;
-  }
-
-  public long getInProgress() {
-    return inProgress;
-  }
-
-  public void setInProgress(long inProgress) {
-    this.inProgress = inProgress;
-  }
-
-  public long getSuspended() {
-    return suspended;
-  }
-
-  public void setSuspended(long suspended) {
-    this.suspended = suspended;
-  }
-
-  public long getExpired() {
-    return expired;
-  }
-
-  public void setExpired(long expired) {
-    this.expired = expired;
-  }
-
-  public long getInvalid() {
-    return invalid;
-  }
-
-  public void setInvalid(long invalid) {
-    this.invalid = invalid;
-  }
-
-  public long getRevoked() {
-    return revoked;
-  }
-
-  public void setRevoked(long revoked) {
-    this.revoked = revoked;
-  }
-}
+public record DashboardEnrollmentStatsDto(
+    @Schema(description = "Devices ready for MFA: VERIFIED + active=true") long verified,
+    @Schema(description = "Onboarding in progress: CREATED or BOUND (any active state)")
+        long inProgress,
+    @Schema(description = "Admin-disabled devices: VERIFIED + active=false") long suspended,
+    @Schema(description = "Timed out before verification: EXPIRED (any active state)") long expired,
+    @Schema(description = "Failed validation: INVALID (any active state)") long invalid,
+    @Schema(description = "Administrator revocations: REVOKED (any active state)") long revoked) {}
