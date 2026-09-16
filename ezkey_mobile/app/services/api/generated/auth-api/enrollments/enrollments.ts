@@ -92,11 +92,19 @@ export const getBindUrl = () => {
  */
 export const bind = async (enrollmentBindRequestDto: EnrollmentBindRequestDto, options?: Parameters<typeof customInstance>[1]): Promise<bindResponse> => {
 
-    const getHeaders = (h?: HeadersInit | Headers): Record<string, string> => {
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
     if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Array.isArray(h)) return Object.fromEntries(h);
-    return h;
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
   };
 return customInstance<bindResponse>(getBindUrl(),
   {
@@ -111,11 +119,13 @@ return customInstance<bindResponse>(getBindUrl(),
 
 
 
-export const getBindMutationOptions = <TError = ErrorType<ProblemDetail | void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bind>>, TError,{data: BodyType<EnrollmentBindRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof bind>>, TError,{data: BodyType<EnrollmentBindRequestDto>}, TContext> => {
+export const getBindMutationKey = () => ['bind'] as const;
 
-const mutationKey = ['bind'];
+export const getBindMutationOptions = <TError = ErrorType<ProblemDetail | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bind>>, TError,BindMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof bind>>, TError,BindMutationVariables, TContext> => {
+
+const mutationKey = getBindMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -125,7 +135,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bind>>, {data: BodyType<EnrollmentBindRequestDto>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bind>>, BindMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  bind(data,requestOptions)
@@ -141,16 +151,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type BindMutationResult = NonNullable<Awaited<ReturnType<typeof bind>>>
     export type BindMutationBody = BodyType<EnrollmentBindRequestDto>
     export type BindMutationError = ErrorType<ProblemDetail | void>
+    export type BindMutationVariables = {data: BodyType<EnrollmentBindRequestDto>}
 
     /**
  * @summary Initiate device binding with proof token
  */
 export const useBind = <TError = ErrorType<ProblemDetail | void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bind>>, TError,{data: BodyType<EnrollmentBindRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bind>>, TError,BindMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof bind>>,
         TError,
-        {data: BodyType<EnrollmentBindRequestDto>},
+        BindMutationVariables,
         TContext
       > => {
       return useMutation(getBindMutationOptions(options), queryClient);
@@ -203,11 +214,19 @@ export const getVerifyUrl = () => {
  */
 export const verify = async (enrollmentVerifyRequestDto: EnrollmentVerifyRequestDto, options?: Parameters<typeof customInstance>[1]): Promise<verifyResponse> => {
 
-    const getHeaders = (h?: HeadersInit | Headers): Record<string, string> => {
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
     if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Array.isArray(h)) return Object.fromEntries(h);
-    return h;
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
   };
 return customInstance<verifyResponse>(getVerifyUrl(),
   {
@@ -222,11 +241,13 @@ return customInstance<verifyResponse>(getVerifyUrl(),
 
 
 
-export const getVerifyMutationOptions = <TError = ErrorType<ProblemDetail | void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verify>>, TError,{data: BodyType<EnrollmentVerifyRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof verify>>, TError,{data: BodyType<EnrollmentVerifyRequestDto>}, TContext> => {
+export const getVerifyMutationKey = () => ['verify'] as const;
 
-const mutationKey = ['verify'];
+export const getVerifyMutationOptions = <TError = ErrorType<ProblemDetail | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verify>>, TError,VerifyMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof verify>>, TError,VerifyMutationVariables, TContext> => {
+
+const mutationKey = getVerifyMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -236,7 +257,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verify>>, {data: BodyType<EnrollmentVerifyRequestDto>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verify>>, VerifyMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  verify(data,requestOptions)
@@ -252,16 +273,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type VerifyMutationResult = NonNullable<Awaited<ReturnType<typeof verify>>>
     export type VerifyMutationBody = BodyType<EnrollmentVerifyRequestDto>
     export type VerifyMutationError = ErrorType<ProblemDetail | void>
+    export type VerifyMutationVariables = {data: BodyType<EnrollmentVerifyRequestDto>}
 
     /**
  * @summary Complete enrollment verification
  */
 export const useVerify = <TError = ErrorType<ProblemDetail | void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verify>>, TError,{data: BodyType<EnrollmentVerifyRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verify>>, TError,VerifyMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof verify>>,
         TError,
-        {data: BodyType<EnrollmentVerifyRequestDto>},
+        VerifyMutationVariables,
         TContext
       > => {
       return useMutation(getVerifyMutationOptions(options), queryClient);
@@ -309,11 +331,19 @@ export const getInstanceInfoUrl = () => {
  */
 export const instanceInfo = async (enrollmentInstanceInfoRequestDto: EnrollmentInstanceInfoRequestDto, options?: Parameters<typeof customInstance>[1]): Promise<instanceInfoResponse> => {
 
-    const getHeaders = (h?: HeadersInit | Headers): Record<string, string> => {
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
     if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Array.isArray(h)) return Object.fromEntries(h);
-    return h;
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
   };
 return customInstance<instanceInfoResponse>(getInstanceInfoUrl(),
   {
@@ -328,11 +358,13 @@ return customInstance<instanceInfoResponse>(getInstanceInfoUrl(),
 
 
 
-export const getInstanceInfoMutationOptions = <TError = ErrorType<ProblemDetail | void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof instanceInfo>>, TError,{data: BodyType<EnrollmentInstanceInfoRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof instanceInfo>>, TError,{data: BodyType<EnrollmentInstanceInfoRequestDto>}, TContext> => {
+export const getInstanceInfoMutationKey = () => ['instanceInfo'] as const;
 
-const mutationKey = ['instanceInfo'];
+export const getInstanceInfoMutationOptions = <TError = ErrorType<ProblemDetail | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof instanceInfo>>, TError,InstanceInfoMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof instanceInfo>>, TError,InstanceInfoMutationVariables, TContext> => {
+
+const mutationKey = getInstanceInfoMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -342,7 +374,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof instanceInfo>>, {data: BodyType<EnrollmentInstanceInfoRequestDto>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof instanceInfo>>, InstanceInfoMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  instanceInfo(data,requestOptions)
@@ -358,16 +390,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type InstanceInfoMutationResult = NonNullable<Awaited<ReturnType<typeof instanceInfo>>>
     export type InstanceInfoMutationBody = BodyType<EnrollmentInstanceInfoRequestDto>
     export type InstanceInfoMutationError = ErrorType<ProblemDetail | void>
+    export type InstanceInfoMutationVariables = {data: BodyType<EnrollmentInstanceInfoRequestDto>}
 
     /**
  * @summary Get integration-signed installation branding
  */
 export const useInstanceInfo = <TError = ErrorType<ProblemDetail | void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof instanceInfo>>, TError,{data: BodyType<EnrollmentInstanceInfoRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof instanceInfo>>, TError,InstanceInfoMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof instanceInfo>>,
         TError,
-        {data: BodyType<EnrollmentInstanceInfoRequestDto>},
+        InstanceInfoMutationVariables,
         TContext
       > => {
       return useMutation(getInstanceInfoMutationOptions(options), queryClient);

@@ -57,11 +57,12 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 
 ## Contract-First Rules
 
-- Orval is pinned at **8.25.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
+- Orval is pinned at **8.33.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
   no global `useQuery` / `useMutation`). Same Option B as Admin UI `TB-2026-05-28` checkpoints 8.10 / 8.11.
-  Treat later **8.26+** minors as a new validation ladder (regenerate + typecheck/test/lint).
+  Treat later **8.34+** minors as a new validation ladder (regenerate + typecheck/test/lint).
   Do not enable `useDatesTransform` unless Admin UI does — it is opt-in date deserialization.
-  `orval-dom-shim.d.ts` declares Fetch `HeadersInit` because RN `tsc` has no DOM lib.
+  Orval 8.33 types `getHeaders` via `RequestInit['headers']` (RN types already cover this); the
+  former `orval-dom-shim.d.ts` (`HeadersInit`) is no longer required.
 - Never hand-edit `openapi-spec.json` in `ezkey_mobile/`.
 - Refresh specs only through the root script `scripts/update-specs.sh` (Git Bash) after a human has started a clean Docker stack.
 - After refreshing the spec, run `yarn generate:api`.
