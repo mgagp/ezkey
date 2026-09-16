@@ -622,8 +622,8 @@
           },
           "enrollmentName": {
             "type": "string",
-            "description": "Human-readable name for the enrollment",
-            "example": "John's iPhone"
+            "description": "Person-facing enrollment label shown on the device (for admin MFA: first and last name; not a role or username blob)",
+            "example": "Marie Dupont"
           },
           "tenantId": {
             "type": "integer",
@@ -641,6 +641,16 @@
             "description": "Tenant description of the integration associated with this enrollment",
             "example": "Acme Corp tenant workspace"
           },
+          "isSystemIntegration": {
+            "type": "boolean",
+            "description": "True when this enrollment is administrator MFA on the system integration",
+            "example": false
+          },
+          "adminType": {
+            "type": "string",
+            "description": "Administrator type when this enrollment is admin MFA (GLOBAL_ADMIN or TENANT_ADMIN); absent for regular enrollments",
+            "example": "TENANT_ADMIN"
+          },
           "enrollmentBindPayloadSignedByIntegration": {
             "type": "string",
             "description": "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over the canonical bind payload (see docs/ENROLLMENT_SIGNATURE_PAYLOAD.md)",
@@ -652,7 +662,8 @@
           "enrollmentId",
           "enrollmentProofToken",
           "integrationKeyAlgorithm",
-          "integrationPublicKey"
+          "integrationPublicKey",
+          "isSystemIntegration"
         ]
       },
       "AuthAttemptRespondRequestDto": {

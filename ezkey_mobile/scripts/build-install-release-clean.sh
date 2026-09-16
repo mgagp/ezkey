@@ -30,7 +30,7 @@ echo "Uninstalling ${PKG} (ignore failure if not installed)..."
 adb uninstall "${PKG}" 2>/dev/null || true
 
 echo "Clean Gradle release build..."
-rm -rf "${MOBILE_ROOT}/android/app/build" "${MOBILE_ROOT}/android/build"
+rm -rf "${MOBILE_ROOT}/android/app/build" "${MOBILE_ROOT}/android/build" "${MOBILE_ROOT}/android/app/.cxx"
 (cd "${MOBILE_ROOT}/android" && ./gradlew clean assembleRelease --no-daemon)
 
 if [[ ! -f "$APK" ]]; then

@@ -22,8 +22,11 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
   Licenses). Release announcements are a top-of-home card plus Settings → What's new — not a
   floating bottom-left badge. About stays static identity (version, site, support).
   Do not reintroduce a Diagnostics screen in production chrome. Delete-one and clear-all live only
-  in Danger Zone. Card title fallback: `enrollmentName` → `deviceLabel` → `integrationName`. After
-  a successful delete-one, `navigation.goBack()` — exceptional cleanup, not a batch-delete loop.
+  in Danger Zone.   Home card title is Purpose (localized Administration for admin MFA, else
+  `integrationName`); subtitle is Account (`enrollmentName`); Role line for every
+  system-integration enrollment (FR Role: `Admin tenant`, not *locataire*). After a
+  successful delete-one, `navigation.goBack()` —
+  exceptional cleanup, not a batch-delete loop.
 - Nested `installation` on each stored enrollment is the local trust zone. Identity is the
   normalized `authUrl` (`installation.id`). Do not re-flatten `installation*` onto enrollment,
   and do not add a second persisted installation collection. Enrolled branding

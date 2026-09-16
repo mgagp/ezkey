@@ -61,6 +61,29 @@ type EnrollmentDraft = {
   integrationDescription?: string;
   enrollmentName?: string;
   deviceLabel?: string;
+  isSystemIntegration?: boolean;
+  adminType?: 'GLOBAL_ADMIN' | 'TENANT_ADMIN';
+};
+
+type BindIdentityFields = {
+  isSystemIntegration?: boolean | null;
+  adminType?: string | null;
+};
+
+const readBindIdentityFields = (
+  response: BindEnrollmentResponse,
+): {
+  isSystemIntegration?: boolean;
+  adminType?: 'GLOBAL_ADMIN' | 'TENANT_ADMIN';
+} => {
+  const identity = response as BindEnrollmentResponse & BindIdentityFields;
+  return {
+    isSystemIntegration: identity.isSystemIntegration === true,
+    adminType:
+      identity.adminType === 'GLOBAL_ADMIN' || identity.adminType === 'TENANT_ADMIN'
+        ? identity.adminType
+        : undefined,
+  };
 };
 
 type EnrollmentSeedSource = 'camera' | 'controlled-bypass';
@@ -211,6 +234,7 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
         integrationDescription: response.integrationDescription,
         enrollmentName: response.enrollmentName,
         deviceLabel: response.enrollmentName,
+        ...readBindIdentityFields(response),
       };
     },
     [t],
@@ -382,6 +406,8 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
         integrationPublicKey: draft.integrationPublicKey,
         enrollmentName: draft.enrollmentName,
         deviceLabel: draft.deviceLabel,
+        isSystemIntegration: draft.isSystemIntegration,
+        adminType: draft.adminType,
         approvalPolicy: DEFAULT_ENROLLMENT_APPROVAL_POLICY,
         installation,
       };

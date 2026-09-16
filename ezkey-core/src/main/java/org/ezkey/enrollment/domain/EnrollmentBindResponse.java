@@ -131,6 +131,22 @@ public class EnrollmentBindResponse {
   private String tenantDescription;
 
   /**
+   * Whether this enrollment belongs to the system integration (administrator MFA).
+   *
+   * <p>Clients use this to show localized Administration as Purpose and a Role line. Included in
+   * the signed bind payload.
+   */
+  private Boolean isSystemIntegration;
+
+  /**
+   * Linked administrator type when this enrollment is admin MFA.
+   *
+   * <p>Literal {@code GLOBAL_ADMIN} or {@code TENANT_ADMIN}. Absent for regular enrollments. Shown
+   * as a localized Role line — never encoded in {@code enrollmentName}.
+   */
+  private String adminType;
+
+  /**
    * Ed25519 signature (Base64URL, raw 64 bytes) over the canonical bind payload (see {@code
    * docs/ENROLLMENT_SIGNATURE_PAYLOAD.md}).
    */
@@ -314,6 +330,42 @@ public class EnrollmentBindResponse {
    */
   public void setTenantDescription(String tenantDescription) {
     this.tenantDescription = tenantDescription;
+  }
+
+  /**
+   * Gets whether the enrollment belongs to the system integration.
+   *
+   * @return {@code true} for admin MFA; {@code false} or {@code null} otherwise
+   */
+  public Boolean getIsSystemIntegration() {
+    return isSystemIntegration;
+  }
+
+  /**
+   * Sets whether the enrollment belongs to the system integration.
+   *
+   * @param isSystemIntegration {@code true} for admin MFA
+   */
+  public void setIsSystemIntegration(Boolean isSystemIntegration) {
+    this.isSystemIntegration = isSystemIntegration;
+  }
+
+  /**
+   * Gets the linked administrator type for admin MFA.
+   *
+   * @return {@code GLOBAL_ADMIN}, {@code TENANT_ADMIN}, or {@code null}
+   */
+  public String getAdminType() {
+    return adminType;
+  }
+
+  /**
+   * Sets the linked administrator type for admin MFA.
+   *
+   * @param adminType {@code GLOBAL_ADMIN}, {@code TENANT_ADMIN}, or {@code null}
+   */
+  public void setAdminType(String adminType) {
+    this.adminType = adminType;
   }
 
   /**

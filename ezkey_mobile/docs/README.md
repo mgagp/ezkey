@@ -34,6 +34,7 @@ reference mobile app.
 | What does each primary screen show and do? | [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md) | Screen-level responsibilities and navigation model. |
 | How is the mobile app assembled technically? | [MOBILE_STACK_AND_ARCHITECTURE.md](MOBILE_STACK_AND_ARCHITECTURE.md) | Stack, module structure, boundaries, and generation workflow. |
 | How should Ezkey Mobile be positioned conceptually? | [MOBILE_POSITIONING.md](MOBILE_POSITIONING.md) | Product-facing positioning and scope boundaries. |
+| How should Home, Wizard, Detail, and Pending name an enrollment? | [MOBILE_POSITIONING.md](MOBILE_POSITIONING.md) § Enrollment identity vocabulary | Installation / Purpose / Account / Role / Device. Field mapping: [MOBILE_API_MAPPINGS.md](MOBILE_API_MAPPINGS.md). |
 | How does the app handle unusable local enrollment data (broken secrets, corrupt collection, unusable enrollment UX)? | [MOBILE_DATA_MODEL.md](MOBILE_DATA_MODEL.md) § Enrollment Rehydration Outcomes, [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md) § Home local-failure honesty | MOB-015 locked contract: fail-open visibility, fail-closed auth, clear-all true reset. |
 
 ## Canonical Root-Level References

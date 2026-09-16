@@ -132,6 +132,9 @@ async function renderHookWithDraft(): Promise<{result: {current: EnrollmentWizar
     integrationPublicKey: 'pubkey',
     integrationKeyAlgorithm: 'ed25519',
     integrationName: 'Acme',
+    tenantId: 3,
+    tenantName: 'Unicorn farm accountability',
+    tenantDescription: 'Ops',
     enrollmentBindPayloadSignedByIntegration: 'bind-sig',
   });
   mockBuildBindPayload.mockReturnValue('bind-payload');
@@ -363,6 +366,8 @@ describe('handleQrScanned — bind success', () => {
     expect(result.current.hasDraft).toBe(true);
     expect(result.current.bindError).toBeUndefined();
     expect(result.current.scannerVisible).toBe(false);
+    expect(result.current.draft?.tenantName).toBe('Unicorn farm accountability');
+    expect(result.current.draft?.tenantId).toBe(3);
   });
 
   it('sets bindError when the integration signature is invalid', async () => {
@@ -474,7 +479,13 @@ describe('handlePrimary — verify', () => {
 
     expect(mockCryptoService.ensureEnrollmentKeyPair).toHaveBeenCalled();
     expect(mockEnrollmentsApi.verify).toHaveBeenCalled();
-    expect(mockSaveEnrollmentMutateAsync).toHaveBeenCalled();
+    expect(mockSaveEnrollmentMutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 3,
+        tenantName: 'Unicorn farm accountability',
+        tenantDescription: 'Ops',
+      }),
+    );
     expect(mockPopToTop).toHaveBeenCalledTimes(1);
     expect(result.current.hasDraft).toBe(false);
   });

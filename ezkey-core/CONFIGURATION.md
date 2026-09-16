@@ -31,7 +31,8 @@ instance metadata. Applications that depend on ezkey-core declare these properti
 | `ezkey.audit.archive.purge-delay` | — | `P30D` | optionnel |
 | `ezkey.audit.archive.purge.enabled` | — | `true` | optionnel |
 | `ezkey.audit.archive.purge.cron` | — | `0 0 2 * * ?` | optionnel |
-| `ezkey.organization.name` | — | `Ezkey System` | optionnel |
+| `ezkey.organization.name` | `EZKEY_ORGANIZATION_NAME` | `Ezkey System` | optionnel |
+| `ezkey.organization.description` | `EZKEY_ORGANIZATION_DESCRIPTION` | `Ezkey MFA instance for your organization` | optionnel |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(null)* | optionnel |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(null)* | requis [docker] |
 | `ezkey.enrollment.pending-expiration-days` | — | `7` | optionnel |
@@ -367,8 +368,8 @@ is not set in that profile (Java class default applies).
 
 | Property | default | docker |
 |---|---|---|
-| `name` | `Ezkey System` | `Ezkey System` |
-| `description` | `Ezkey MFA instance for your organization` | `Ezkey MFA instance for your organization` |
+| `name` | `Ezkey System` | `${EZKEY_ORGANIZATION_NAME:Ezkey System}` |
+| `description` | `Ezkey MFA instance for your organization` | `${EZKEY_ORGANIZATION_DESCRIPTION:Ezkey MFA instance for your organization}` |
 | `about-url` | *(null)* | `${EZKEY_ORGANIZATION_ABOUT_URL:}` |
 
 ---
@@ -378,6 +379,8 @@ is not set in that profile (Java class default applies).
 | Spring property | Docker env var | Notes |
 |---|---|---|
 | `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | Per-instance. E.g. `admin-api-1`. |
+| `ezkey.organization.name` | `EZKEY_ORGANIZATION_NAME` | Set in `docker-compose.yml`. Default `Ezkey System`. |
+| `ezkey.organization.description` | `EZKEY_ORGANIZATION_DESCRIPTION` | Set in `docker-compose.yml`. |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | Set in `docker-compose.yml`. |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | Public Auth API URL for mobile QR. |
 

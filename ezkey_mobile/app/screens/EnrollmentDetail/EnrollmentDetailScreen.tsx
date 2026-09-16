@@ -31,7 +31,10 @@ import {RootStackParamList} from '../../navigation/types';
 import {userFacingAuthApiError} from '../../services/api/authApiProblem';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 import {claimPendingAttempt} from '../../services/pendingAuth/claimPendingAttempt';
-import {buildEnrollmentIdentityDisplay} from '../../utils/enrollmentDisplay';
+import {
+  buildEnrollmentIdentityDisplay,
+  identityDisplayCopy,
+} from '../../utils/enrollmentDisplay';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
@@ -76,6 +79,7 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         ? buildEnrollmentIdentityDisplay(
             identitySource,
             t('enrollmentDetail.installationFallback'),
+            identityDisplayCopy(t),
           )
         : undefined,
     [identitySource, t],
@@ -193,11 +197,17 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
       <View style={styles.container} testID="ezkey.e2e.enrollmentDetail.unusable">
         <View style={styles.identityZone}>
           <Text style={styles.integrationName}>{identity?.heroTitle ?? metadata.integrationName}</Text>
-          {identity?.integrationLabel ? (
-            <Text style={styles.deviceLine}>{identity.integrationLabel}</Text>
+          {identity?.purposeLabel ? (
+            <Text style={styles.deviceLine}>{identity.purposeLabel}</Text>
+          ) : null}
+          {identity?.roleLabel ? (
+            <Text style={styles.deviceLine}>{identity.roleLabel}</Text>
           ) : null}
           {identity?.tenantLabel ? (
             <Text style={styles.tenantLine}>{identity.tenantLabel}</Text>
+          ) : null}
+          {identity?.tenantDescription ? (
+            <Text style={styles.tenantDescriptionLine}>{identity.tenantDescription}</Text>
           ) : null}
           {identity?.installationContext ? (
             <Text style={styles.installationLine}>{identity.installationContext}</Text>
@@ -239,7 +249,11 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   });
   const resolvedIdentity =
     identity ??
-    buildEnrollmentIdentityDisplay(enrollment, t('enrollmentDetail.installationFallback'));
+    buildEnrollmentIdentityDisplay(
+      enrollment,
+      t('enrollmentDetail.installationFallback'),
+      identityDisplayCopy(t),
+    );
   const recentResultTimeStr = recentAuthResult
     ? new Date(recentAuthResult.completedAt).toLocaleString(undefined, {
         dateStyle: 'medium',
@@ -267,11 +281,17 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         <Text style={styles.integrationName} testID="ezkey.e2e.enrollmentDetail.hero">
           {resolvedIdentity.heroTitle}
         </Text>
-        {resolvedIdentity.integrationLabel ? (
-          <Text style={styles.deviceLine}>{resolvedIdentity.integrationLabel}</Text>
+        {resolvedIdentity.purposeLabel ? (
+          <Text style={styles.deviceLine}>{resolvedIdentity.purposeLabel}</Text>
+        ) : null}
+        {resolvedIdentity.roleLabel ? (
+          <Text style={styles.deviceLine}>{resolvedIdentity.roleLabel}</Text>
         ) : null}
         {resolvedIdentity.tenantLabel ? (
           <Text style={styles.tenantLine}>{resolvedIdentity.tenantLabel}</Text>
+        ) : null}
+        {resolvedIdentity.tenantDescription ? (
+          <Text style={styles.tenantDescriptionLine}>{resolvedIdentity.tenantDescription}</Text>
         ) : null}
         {resolvedIdentity.installationContext ? (
           <Text style={styles.installationLine}>{resolvedIdentity.installationContext}</Text>
@@ -357,6 +377,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9aa3b6',
     marginTop: 6,
+  },
+  tenantDescriptionLine: {
+    fontSize: 13,
+    color: '#7d8699',
+    marginTop: 4,
+    lineHeight: 18,
   },
   deviceLine: {
     fontSize: 13,

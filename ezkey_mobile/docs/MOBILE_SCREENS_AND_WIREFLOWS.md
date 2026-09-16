@@ -57,8 +57,8 @@ Its structure emphasizes installation and tenant grouping so the user understand
 | Content block | What it shows/collects | Data source |
 | --- | --- | --- |
 | Installation shell | Installation name, description, host hint, expand/collapse control | Derived installation metadata from persisted enrollments |
-| Tenant section | Tenant name and optional description | Persisted enrollment tenant fields |
-| Enrollment card | Integration name, optional enrollment/device name, optional integration description | `StoredEnrollment` |
+| Tenant section | Eyebrow `Tenant`, tenant name, optional description — only when the tenant is a distinct business org (not the installation name, not an admin-MFA-only system-tenant group) | Persisted enrollment tenant fields; `shouldShowHomeTenantSection` |
+| Enrollment card | Purpose (Administration or integration name), Account subtitle, Role line for admin MFA. No tenant line on the card. | `StoredEnrollment` via `enrollmentDisplay` |
 | Empty state | Welcome message, one-line value proposition, QR hint card | Static copy |
 | Release banner | Always-on experimental-release card (eyebrow, title, body, Learn more) | Bundled i18n `home.releaseBanner*` — not dismissible |
 | Floating action button | Entry point to enrollment wizard | Static action |
@@ -102,7 +102,7 @@ in memory, collects the six-digit challenge, then persists the record only after
 | Content block | What it shows/collects | Data source |
 | --- | --- | --- |
 | Scan stage | CTA to open scanner, camera-permission guidance, bind errors; hidden after a successful bind | Local wizard state |
-| Enrollment info card | Integration name, description, organization, device label, optional server URL | Trusted bind response draft |
+| Enrollment info card | Purpose title, Account row (never Device), Role for admin MFA; hide tenant/integration when they equal the installation | Trusted bind response draft via `enrollmentDisplay` |
 | Challenge stage | Six-box challenge input | User input |
 | Primary/secondary actions | Open scanner, complete enrollment, cancel, learn more | Local wizard state |
 
@@ -124,8 +124,9 @@ in memory, collects the six-digit challenge, then persists the record only after
 
 ## Enrollment Detail
 
-Enrollment Detail is a narrow identity and routing screen. It confirms which installation, tenant, integration, and
-device the user is about to use, and exposes the single primary action `Check pending`.
+Enrollment Detail is a narrow identity and routing screen. It confirms Account, Purpose, and Role (admin MFA), and
+exposes the single primary action `Check pending`. Vocabulary:
+[MOBILE_POSITIONING.md § Enrollment identity vocabulary](MOBILE_POSITIONING.md#enrollment-identity-vocabulary).
 
 | Entry condition | Description |
 | --- | --- |
@@ -134,7 +135,7 @@ device the user is about to use, and exposes the single primary action `Check pe
 
 | Content block | What it shows/collects | Data source |
 | --- | --- | --- |
-| Identity zone | Installation name, tenant name, integration name, enrollment/device name, installation description | Persisted enrollment record |
+| Identity zone | Account hero, Purpose, Role (admin MFA), installation only when distinct; host hint when branding equals host | Persisted enrollment via `enrollmentDisplay` |
 | Meta lines | Created and last verification timestamps | Persisted enrollment timestamps |
 | Server zone | Custom Auth API URL when present | Persisted `authUrl` |
 | Primary button | `Check pending` | Static action |
@@ -164,7 +165,7 @@ for request context and respond submission, then returns control to Enrollment D
 
 | Content block | What it shows/collects | Data source |
 | --- | --- | --- |
-| Enrollment identity box | Integration name and optional tenant fallback | Persisted enrollment |
+| Enrollment identity box | Account / Purpose / Role from `enrollmentDisplay`; pending card uses `contextTitle` then Account | Persisted enrollment + trusted pending response |
 | Request context block | `contextTitle`, `contextMessage`, challenge requirement | Trusted pending response |
 | Two-digit challenge input | Challenge entry when required | User input |
 | Action buttons | Approve, deny, retry/check again | Screen state |
@@ -203,7 +204,8 @@ for request context and respond submission, then returns control to Enrollment D
 | --- | --- | --- | --- | --- | --- |
 | `installation.name` | Shown in installation headers | Not primary, but derived server shown optionally | Shown | Not normally shown except fallback identity context | No |
 | `installation.host` | Optional host hint in installation header | Optional server URL in info card | Optional host hint | No | No |
-| `tenantName` | Shown in grouping headers | Shown in info card after bind | Shown | Shown as fallback identity | Danger Zone shows a minimal tenant line |
+| `tenantName` | Shown in grouping headers when distinct from the installation and the group is not admin-MFA-only | Shown in info card after bind when distinct | Shown when distinct | Shown as fallback identity when distinct | Danger Zone shows a minimal tenant line |
+| `tenantDescription` | Shown under the tenant section name when the section is visible | Shown under the tenant name after bind | Shown under the tenant name when the tenant is shown | No | No |
 | `integrationName` | Shown on enrollment cards | Shown in info card after bind | Shown | Shown in enrollment box | Danger Zone context line; title fallback if no enrollment/device name |
 | `integrationDescription` | Shown on enrollment cards when present | Shown in info card | Not shown directly | No | No |
 | `enrollmentName` | Shown on cards when present | Shown in info card | Shown | No | Danger Zone title (fallback: `deviceLabel`, then `integrationName`) |

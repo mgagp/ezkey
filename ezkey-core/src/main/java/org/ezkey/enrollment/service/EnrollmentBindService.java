@@ -11,6 +11,7 @@
 package org.ezkey.enrollment.service;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
@@ -363,6 +364,14 @@ public class EnrollmentBindService {
     response.setEnrollmentProofToken(enrollment.getEnrollmentProofToken());
     response.setIntegrationName(integrationName);
     response.setIntegrationDescription(integrationDescription);
+    boolean systemIntegration = Boolean.TRUE.equals(integration.getIsSystemIntegration());
+    response.setIsSystemIntegration(systemIntegration);
+    if (systemIntegration) {
+      ezkeyAdminRepository
+          .findByEnrollmentId(enrollment.getEnrollmentId())
+          .map(admin -> admin.getAdminType() != null ? admin.getAdminType().name() : null)
+          .ifPresent(response::setAdminType);
+    }
 
     // Tenant resolution: use scalar queries only to avoid loading Tenant entity and its
     // administrators collection (prevents "Found shared references to collection:
@@ -372,20 +381,24 @@ public class EnrollmentBindService {
     //   use integration's tenant via scalar query.
     // - For non-system integrations: use integration's tenant via scalar query.
     if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
-      Optional<Object[]> tenantInfo =
+      List<Object[]> adminTenantRows =
           ezkeyAdminRepository.findTenantInfoByAdminEnrollmentId(enrollment.getEnrollmentId());
-      if (tenantInfo.isPresent()) {
-        applyTenantInfoFromRow(response, tenantInfo.get());
+      if (!adminTenantRows.isEmpty()) {
+        applyTenantInfoFromRow(response, adminTenantRows.getFirst());
       } else {
         // Global admin (no tenant): use integration's tenant (system tenant) via scalar query
-        integrationRepository
-            .findTenantInfoByIntegrationId(integration.getId())
-            .ifPresent(row -> applyTenantInfoFromRow(response, row));
+        List<Object[]> integrationTenantRows =
+            integrationRepository.findTenantInfoByIntegrationId(integration.getId());
+        if (!integrationTenantRows.isEmpty()) {
+          applyTenantInfoFromRow(response, integrationTenantRows.getFirst());
+        }
       }
     } else {
-      integrationRepository
-          .findTenantInfoByIntegrationId(integration.getId())
-          .ifPresent(row -> applyTenantInfoFromRow(response, row));
+      List<Object[]> integrationTenantRows =
+          integrationRepository.findTenantInfoByIntegrationId(integration.getId());
+      if (!integrationTenantRows.isEmpty()) {
+        applyTenantInfoFromRow(response, integrationTenantRows.getFirst());
+      }
     }
 
     String bindPayload =
@@ -399,7 +412,9 @@ public class EnrollmentBindService {
             response.getEnrollmentName(),
             response.getTenantId(),
             response.getTenantName(),
-            response.getTenantDescription());
+            response.getTenantDescription(),
+            response.getIsSystemIntegration(),
+            response.getAdminType());
     String bindSignature =
         signatureService.signIntegrationPayload(bindPayload, enrollment.getIntegrationPrivateKey());
     response.setEnrollmentBindPayloadSignedByIntegration(bindSignature);
@@ -416,19 +431,37 @@ public class EnrollmentBindService {
   }
 
   /**
-   * Applies tenant info from a native query row [tenantId, tenantName, tenantDescription].
+   * Applies tenant info from a native query row {@code [tenantId, tenantName, tenantDescription]}.
    *
    * <p>Uses safe extraction for tenantId since PostgreSQL JDBC may return Integer, Long, or
-   * BigDecimal depending on column type and driver version.
+   * BigDecimal depending on column type and driver version. Unwraps a nested {@code Object[]} when
+   * Spring Data delivers a three-column row as {@code Object[]{Object[]{...}}}.
+   *
+   * @param response bind response to enrich
+   * @param row native scalar row, possibly nested
    */
   private void applyTenantInfoFromRow(EnrollmentBindResponse response, Object[] row) {
-    if (row == null || row.length == 0) {
+    Object[] cells = unwrapTenantInfoRow(row);
+    if (cells == null || cells.length == 0) {
       return;
     }
-    Object tenantIdVal = row[0];
+    Object tenantIdVal = cells[0];
     Integer tenantId = tenantIdVal instanceof Number n ? n.intValue() : null;
     response.setTenantId(tenantId);
-    response.setTenantName(row.length > 1 ? (String) row[1] : null);
-    response.setTenantDescription(row.length > 2 ? (String) row[2] : null);
+    response.setTenantName(cells.length > 1 ? (String) cells[1] : null);
+    response.setTenantDescription(cells.length > 2 ? (String) cells[2] : null);
+  }
+
+  /**
+   * Unwraps a native scalar row that Spring Data may nest as a single-element {@code Object[]}.
+   *
+   * @param row repository result row
+   * @return the three-column cell array, or {@code row} when already flat
+   */
+  static Object[] unwrapTenantInfoRow(Object[] row) {
+    if (row != null && row.length == 1 && row[0] instanceof Object[] nested) {
+      return nested;
+    }
+    return row;
   }
 }

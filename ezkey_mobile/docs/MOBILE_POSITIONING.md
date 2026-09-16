@@ -68,6 +68,57 @@ Current implementation note: the codebase now includes a `DangerZone` screen for
 broader than the original PRD's read-only v1 positioning for destructive management. That deviation should be treated
 as an explicit product reality, not hidden.
 
+## Enrollment identity vocabulary
+
+The authenticator must let a person tell **which hat they are wearing** on every screen. One noun has one meaning.
+Field-to-screen mapping lives in [MOBILE_API_MAPPINGS.md](MOBILE_API_MAPPINGS.md); helper:
+`app/utils/enrollmentDisplay.ts`.
+
+| Noun | Meaning | Shown when |
+| --- | --- | --- |
+| **Installation** | Ezkey instance / trust zone (for example Unicorn Farm). Zone chrome only. | Home group header; Detail/Pending only when it is distinct from the hero. |
+| **Purpose** | What this enrollment signs in to. Regular: integration name (Ride Booking). Admin MFA: localized **Administration**. Never repeat the installation name. | Home card title; Wizard card title; Detail/Pending secondary when distinct from the zone. |
+| **Account** | `enrollmentName` — person for admin MFA; operator-chosen name for a regular enrollment. Never call this Device. | Hero on Detail; Wizard Account row; Home subtitle; Pending when there is no request `contextTitle`. |
+| **Role** | Localized Global Admin or Tenant Admin. French UI keeps the English loanword **tenant** (`Admin tenant`), not *locataire* — same convention as Admin UI (`TB-2026-07-26`). Never in the hero. Never stuffed into `enrollmentName`. | Every system-integration (admin MFA) enrollment, on Home, Wizard, Detail, Pending, and Danger Zone. Hidden for regular integrations. |
+| **Device** | This phone. | Destructive copy and Security settings only. |
+
+Collision rule: the same string must not appear as two hierarchy levels.
+
+### Decision grid
+
+Design density for **one hat per person**, which is the real-life default. A tester phone that stacks Global Admin + Tenant Admin + a regular integration is an integrity check, not the layout target. Do not put every field on every Home card to make that stack scannable.
+
+**Regular integration user** (Ride Booking QR, or an integration such as admin1)
+
+- Wizard: purpose = integration name; account = enrollment name; hide tenant if it equals the installation; show tenant **description** under the tenant name when both are present and distinct; no Device row; challenge copy is QR-adjacent, not “admin console”.
+- Home: installation shell stays the Ezkey instance (Unicorn Farm). Cards stay Purpose + Account. The **business tenant** is a section inside that shell — eyebrow `Tenant`, name, and description — only when the tenant name differs from the installation **and** the group is not admin-MFA-only.
+- Detail / pending: hero account (or pending `contextTitle`); secondary = purpose if distinct from the zone; tenant name + description when they add information the installation does not already say.
+
+**Global Admin MFA**
+
+- Purpose = Administration (localized).
+- Account = person.
+- Role line = Global Admin (localized).
+- Do not show the system tenant or a business tenant they do not enroll against. Home: no tenant section for an admin-MFA-only group.
+
+**Tenant Admin MFA** (MFA is still on the system integration)
+
+- Same as Global Admin, role line = Tenant Admin.
+- Do **not** put their managed business tenant on this MFA card. Administration + Tenant Admin is the honest story. Which tenant they **operate** in the Admin console is Admin UI chrome, not authenticator chrome.
+
+**Mix on one phone** (integrity case, not the density target)
+
+- Regular vs admin: purpose (Ride Booking vs Administration).
+- Global vs Tenant: role line.
+- Same person name twice: role and/or the existing ` (username)` uniqueness suffix. No client parser of old blobs.
+- Regular enrollments of a distinct business tenant sit in that tenant section; admin MFA stays under the installation with no extra folder.
+
+**EXP1 / generic branding**
+
+- Host hint when the installation name equals the host. No full URL.
+
+Settings and About stay unchanged unless they reprint enrollment labels.
+
 ## Relationship to Shared Ezkey Positioning Docs
 
 | Document | Why it remains canonical | How this document uses it |

@@ -3,72 +3,57 @@
 ## Metadata
 
 - **ID:** `I-2026-09-15-mobile-admin-enrollment-account-label`
-- **Status:** `parked`
-- **Priority:** `P3`
-- **Lane:** `D` — post-delivery evolution (deferred from mobile identity UX, 2026-09-15)
+- **Status:** `done`
+- **Priority:** `P1`
+- **Lane:** `A` — delivery (unparked for pre-release identity integrity, 2026-09-15)
 - **Created at:** `2026-09-15`
 - **Updated at:** `2026-09-15`
 - **Last reviewed at:** `2026-09-15`
 - **Component tags:** `auth-api`, `admin-api`, `mobile`, `docs`
 - **Captured by:** Marc
-- **GitHub issue:** _(none — canon sufficient until the trigger below is observed)_
+- **GitHub issue:** _(none — shipped in the mobile identity display-grid slice)_
 
 ## Intent
 
 When one phone holds **two admin enrollments that a person cannot tell apart** (same
 person-first `enrollmentName`, same installation), give the authenticator a **dedicated,
-non-parsed** label for the operator role — for example `accountLabel` / `adminType` on
-Auth bind (and pending if the card still needs it). Do **not** stuff Global/Tenant Admin
-into `enrollmentName`, and do **not** parse that blob on mobile.
+non-parsed** label for the operator role — `adminType` on Auth bind, persisted locally.
+Do **not** stuff Global/Tenant Admin into `enrollmentName`, and do **not** parse that
+blob on mobile.
 
-## Why this is parked
+## Why this is shipping
 
-2026-09-15 product decision: mobile identity is **person-first**. Admin MFA enrollments
-are generated as `{firstName} {lastName}`, with ` ({username})` only when the VERIFIED
-uniqueness constraint on the system integration requires it. Role, username, and the
-word “MFA” do not belong in the authenticator hero.
+Pre-release integrity: the authenticator must show which hat the user is wearing on
+every screen. Person-first `enrollmentName` stays. Role is a dedicated bind field,
+shown as a localized Role line for every system-integration (admin MFA) enrollment.
 
-That covers the common case (one Global Admin or one Tenant Admin on the phone, Unicorn
-Farm / all-in-one SME). Global vs Tenant remains **Admin UI chrome** (`adminType` on
-`AdminResponseDto`), not an authenticator title.
+Canon: [`ezkey_mobile/docs/MOBILE_POSITIONING.md`](../../../../ezkey_mobile/docs/MOBILE_POSITIONING.md)
+§ Enrollment identity vocabulary.
 
-## Trigger (unpark when this is real)
+## Contract
 
-Unpark when **any** of these is observed in use, not as speculative completeness:
-
-- The same person has **both** a Global Admin and a Tenant Admin MFA enrollment on one
-  device, and Home/Detail/Pending cannot tell them apart.
-- An admin MFA enrollment and a **business** enrollment share the same person-first
-  name under the same installation, and the user cannot choose the right card.
-- An explicit product decision to show a short secondary line (“Global Admin” /
-  “Tenant Admin”) even without collision.
-
-Search vocabulary for cold agents: `accountLabel`, `adminType`, bind `enrollmentName`,
-`Global Admin MFA`, dual admin on one phone, person-first enrollment display.
-
-## Suggested shape (not committed)
-
-- Optional Auth API field on **bind** (persisted locally with the enrollment), e.g.
-  `accountLabel` (`Global Admin` / `Tenant Admin`) or a stable `adminType` enum.
-  Pending can reuse the stored enrollment; a pending-only field is a last resort.
-- Mobile: secondary line **only when it is distinct** from hero and installation
-  (same collision rule as `buildEnrollmentIdentityDisplay` /
-  `buildPendingRequestTitles`).
-- Fail-closed uniqueness stays on `enrollmentName`; the new field is display-only.
+- Bind: `isSystemIntegration` (boolean) and optional `adminType`
+  (`GLOBAL_ADMIN` | `TENANT_ADMIN`), both included in the signed bind payload
+  (`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`).
+- Persist both on the local enrollment record. Pending reuses storage.
+- Mobile: Purpose = localized Administration for system integrations; Role line
+  for every admin MFA enrollment; never in the hero.
+- Fail-closed uniqueness stays on `enrollmentName`; the new fields are display-only
+  after bind signature verification.
 - OpenAPI refresh via live `/api-docs` (never hand-edit `specs/`).
 
 ## Out of scope
 
 - Parsing `Global Admin MFA - Marie Dupont (marie.dupont)` on the client.
-- Putting role or username in the hero by default.
-- A new mobile API surface beyond bind (and pending only if bind is insufficient).
+- Putting role or username in the hero.
+- Showing which business tenant a Tenant Admin manages on the MFA card.
+- Hard-coding English “Administration” as the stored system integration name.
 
 ## Current shipped baseline (do not regress)
 
 - Generator: `org.ezkey.admin.util.AdminEnrollmentDisplayNames`
 - Callers: `AdminBootstrapService`, `AdminProvisioningService`
-- Mobile display: `ezkey_mobile/app/utils/enrollmentDisplay.ts` (shows `enrollmentName`
-  as-is; leftover pre-change blobs remain unparsed)
+- Mobile display: `ezkey_mobile/app/utils/enrollmentDisplay.ts`
 
 ## Links
 
@@ -77,5 +62,5 @@ Search vocabulary for cold agents: `accountLabel`, `adminType`, bind `enrollment
   [`../../operator-alignment-guide.md`](../../operator-alignment-guide.md)
 - Mobile positioning (authenticator, not admin console):
   [`../../../../ezkey_mobile/docs/MOBILE_POSITIONING.md`](../../../../ezkey_mobile/docs/MOBILE_POSITIONING.md)
-- Bind DTO (where a future field would land):
+- Bind DTO:
   `ezkey-auth-api/.../enrollment/dto/EnrollmentBindResponseDto.java`

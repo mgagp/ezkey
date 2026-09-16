@@ -44,6 +44,9 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * @param tenantName The tenant display name of the integration associated with this enrollment
  * @param tenantDescription The tenant description of the integration associated with this
  *     enrollment
+ * @param isSystemIntegration Whether this enrollment is admin MFA on the system integration
+ * @param adminType {@code GLOBAL_ADMIN} or {@code TENANT_ADMIN} when linked to an administrator;
+ *     absent for regular enrollments
  * @param enrollmentBindPayloadSignedByIntegration Ed25519 signature over the canonical bind payload
  * @author Ezkey contributors
  * @since 2025
@@ -107,6 +110,19 @@ public record EnrollmentBindResponseDto(
             example = "Acme Corp tenant workspace",
             requiredMode = RequiredMode.NOT_REQUIRED)
         String tenantDescription,
+    @Schema(
+            description =
+                "True when this enrollment is administrator MFA on the system integration",
+            example = "false",
+            requiredMode = RequiredMode.REQUIRED)
+        Boolean isSystemIntegration,
+    @Schema(
+            description =
+                "Administrator type when this enrollment is admin MFA (GLOBAL_ADMIN or"
+                    + " TENANT_ADMIN); absent for regular enrollments",
+            example = "TENANT_ADMIN",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String adminType,
     @Schema(
             description =
                 "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over the canonical bind"

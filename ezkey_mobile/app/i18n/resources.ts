@@ -5,6 +5,11 @@ export const resources = {
         loading: 'Loading...',
         back: 'Back',
       },
+      identity: {
+        administration: 'Administration',
+        globalAdmin: 'Global Admin',
+        tenantAdmin: 'Tenant Admin',
+      },
       navigation: {
         home: 'Ezkey Authenticator',
         enrollmentDetail: 'Enrollment Detail',
@@ -199,10 +204,12 @@ export const resources = {
         integrationFallback: 'Integration',
         description: 'Description',
         organization: 'Organization',
+        account: 'Account',
+        role: 'Role',
         device: 'Device',
         server: 'Server',
         challengeInput: 'Challenge code input',
-        challengeInputHint: 'Enter the 6-digit code shown in the admin console',
+        challengeInputHint: 'Enter the 6-digit code shown with the QR code',
         requestFailed: 'Request failed.',
         unexpectedError: 'Unexpected error.',
         missingIdOrToken: 'Enrollment ID and proof token are required.',
@@ -231,7 +238,7 @@ export const resources = {
         scanDescription:
           'Have the enrollment QR visible on your workstation. Tap Open scanner to use the camera.',
         verifyLabel: 'Verify',
-        verifyTitle: 'Enter the 6-digit code from the admin console',
+        verifyTitle: 'Enter the 6-digit code shown with the QR code',
         verifyHint:
           'Tap Complete enrollment below to finish linking this device to {{name}}.',
         enrollmentDetails: 'Enrollment details',
@@ -254,7 +261,7 @@ export const resources = {
       },
       pendingAuth: {
         challengeInput: 'Challenge code input',
-        challengeInputHint: 'Enter the 2-digit code shown in the admin console',
+        challengeInputHint: 'Enter the 2-digit code shown on the sign-in screen',
         requestFailed: 'Request failed.',
         unexpectedError: 'Unexpected error.',
         missingPendingPublicKey:
@@ -262,7 +269,7 @@ export const resources = {
         invalidPendingSignature: 'Invalid integration signature on pending response.',
         malformedPendingResponse:
           'Pending response was incomplete or malformed; cannot continue safely.',
-        enterChallenge: 'Enter the 2-digit code from the admin console.',
+        enterChallenge: 'Enter the 2-digit code shown on the sign-in screen.',
         missingRespondPublicKey:
           'Enrollment missing integration public key; cannot verify respond response.',
         missingRespondSignature: 'Missing integration signature on respond response.',
@@ -299,7 +306,7 @@ export const resources = {
         createdAt: 'Created {{value}}',
         lastVerificationAt: 'Last verification {{value}}',
         pendingSuffix: 'Pending',
-        challengeHeading: 'Enter the 2-digit code from the admin console',
+        challengeHeading: 'Enter the 2-digit code shown on the sign-in screen',
         deny: 'Deny',
         sending: 'Sending...',
         approve: 'Approve',
@@ -321,6 +328,7 @@ export const resources = {
         emptyHint:
           'Tap the + button below and scan a QR code from your Ezkey-enabled service to enroll your first device.',
         tenantSection: 'Section {{tenantName}}',
+        tenantSectionEyebrow: 'Tenant',
         installationLabel: '{{name}} installation',
         collapseInstallation: 'Collapses this installation section',
         expandInstallation: 'Expands this installation section',
@@ -367,6 +375,11 @@ export const resources = {
       common: {
         loading: 'Chargement...',
         back: 'Retour',
+      },
+      identity: {
+        administration: 'Administration',
+        globalAdmin: 'Admin global',
+        tenantAdmin: 'Admin tenant',
       },
       navigation: {
         home: 'Authentificateur Ezkey',
@@ -563,10 +576,12 @@ export const resources = {
         integrationFallback: 'Intégration',
         description: 'Description',
         organization: 'Organisation',
+        account: 'Compte',
+        role: 'Rôle',
         device: 'Appareil',
         server: 'Serveur',
         challengeInput: 'Saisie du code de challenge',
-        challengeInputHint: 'Entrez le code à 6 chiffres affiché dans la console d’administration',
+        challengeInputHint: 'Entrez le code à 6 chiffres affiché avec le code QR',
         requestFailed: 'Échec de la requête.',
         unexpectedError: 'Erreur inattendue.',
         missingIdOrToken: 'L’identifiant d’enrôlement et le proof token sont requis.',
@@ -596,7 +611,7 @@ export const resources = {
         scanDescription:
           'Gardez le QR d’enrôlement visible sur votre poste de travail. Touchez Ouvrir le scanner pour utiliser la caméra.',
         verifyLabel: 'Vérification',
-        verifyTitle: 'Entrez le code à 6 chiffres de la console d’administration',
+        verifyTitle: 'Entrez le code à 6 chiffres affiché avec le code QR',
         verifyHint:
           'Touchez Terminer l’enrôlement ci-dessous pour finaliser la liaison de cet appareil à {{name}}.',
         enrollmentDetails: 'Détails de l’enrôlement',
@@ -619,7 +634,7 @@ export const resources = {
       },
       pendingAuth: {
         challengeInput: 'Saisie du code de challenge',
-        challengeInputHint: 'Entrez le code à 2 chiffres affiché dans la console d’administration',
+        challengeInputHint: 'Entrez le code à 2 chiffres affiché sur l’écran de connexion',
         requestFailed: 'Échec de la requête.',
         unexpectedError: 'Erreur inattendue.',
         missingPendingPublicKey:
@@ -627,7 +642,7 @@ export const resources = {
         invalidPendingSignature: 'Signature d’intégration invalide sur la réponse pending.',
         malformedPendingResponse:
           'La réponse pending était incomplète ou mal formée; impossible de continuer en sécurité.',
-        enterChallenge: 'Entrez le code à 2 chiffres depuis la console d’administration.',
+        enterChallenge: 'Entrez le code à 2 chiffres affiché sur l’écran de connexion.',
         missingRespondPublicKey:
           'L’enrôlement ne contient pas de clé publique d’intégration; impossible de vérifier la réponse respond.',
         missingRespondSignature: 'Signature d’intégration manquante sur la réponse respond.',
@@ -665,7 +680,7 @@ export const resources = {
         createdAt: 'Créé {{value}}',
         lastVerificationAt: 'Dernière vérification {{value}}',
         pendingSuffix: 'En attente',
-        challengeHeading: 'Entrez le code à 2 chiffres de la console d’administration',
+        challengeHeading: 'Entrez le code à 2 chiffres affiché sur l’écran de connexion',
         deny: 'Refuser',
         sending: 'Envoi...',
         approve: 'Approuver',
@@ -687,6 +702,7 @@ export const resources = {
         emptyHint:
           'Touchez le bouton + ci-dessous puis scannez un code QR de votre service compatible Ezkey pour enrôler votre premier appareil.',
         tenantSection: 'Section {{tenantName}}',
+        tenantSectionEyebrow: 'Tenant',
         installationLabel: 'Installation {{name}}',
         collapseInstallation: 'Replie cette section d’installation',
         expandInstallation: 'Déplie cette section d’installation',

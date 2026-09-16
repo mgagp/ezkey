@@ -92,6 +92,8 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `EZKEY_ADMIN_INITIAL_FIRST_NAME` | `ezkey.admin.initial.first-name` | admin-api docker profile |
 | `EZKEY_ADMIN_INITIAL_LAST_NAME` | `ezkey.admin.initial.last-name` | admin-api docker profile |
 | `EZKEY_QR_AUTH_BASE_URL` | `ezkey.qr.auth-base-url` | admin-api and auth-api docker profile |
+| `EZKEY_ORGANIZATION_NAME` | `ezkey.organization.name` | admin-api and auth-api docker profile |
+| `EZKEY_ORGANIZATION_DESCRIPTION` | `ezkey.organization.description` | admin-api and auth-api docker profile |
 | `EZKEY_ORGANIZATION_ABOUT_URL` | `ezkey.organization.about-url` | admin-api and auth-api docker profile |
 | `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE` | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | admin-api docker profile |
 | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | `ezkey.admin.cors.allowed-origins` | admin-api (split UI/API only; unset for clean-start) |

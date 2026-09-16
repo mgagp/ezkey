@@ -33,7 +33,7 @@ export interface EnrollmentBindResponseDto {
   integrationName?: string;
   /** Description of the integration */
   integrationDescription?: string;
-  /** Human-readable name for the enrollment */
+  /** Person-facing enrollment label shown on the device (for admin MFA: first and last name; not a role or username blob) */
   enrollmentName?: string;
   /** Tenant ID of the integration associated with this enrollment */
   tenantId?: number;
@@ -41,6 +41,10 @@ export interface EnrollmentBindResponseDto {
   tenantName?: string;
   /** Tenant description of the integration associated with this enrollment */
   tenantDescription?: string;
+  /** True when this enrollment is administrator MFA on the system integration */
+  isSystemIntegration: boolean;
+  /** Administrator type when this enrollment is admin MFA (GLOBAL_ADMIN or TENANT_ADMIN); absent for regular enrollments */
+  adminType?: string;
   /** Ed25519 signature (Base64URL, no padding, raw 64 bytes) over the canonical bind payload (see docs/ENROLLMENT_SIGNATURE_PAYLOAD.md) */
   enrollmentBindPayloadSignedByIntegration: string;
 }

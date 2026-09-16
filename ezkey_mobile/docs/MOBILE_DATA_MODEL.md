@@ -168,15 +168,16 @@ proof token and integration verification material needed for later auth flows.
 | Aspect | `EnrollmentSummary` | `StoredEnrollment` | Notes |
 | --- | --- | --- | --- |
 | Identity | `id`, `integrationId` | same | `id` is the installation-scoped local enrollment handle (navigation, storage, Keystore). |
-| Integration display | `integrationName` | same | Primary end-user label across Home, Detail, and Pending flows. |
-| Tenant grouping | `tenantName`, `tenantId`, `tenantDescription` | same | Supports tenant grouping in Home. |
+| Integration display | `integrationName` | same | Raw integration name. Home card title uses Purpose (localized Administration when `isSystemIntegration`). |
+| Admin MFA flags | `isSystemIntegration`, `adminType` | same | From bind. Purpose + Role; never parsed from `enrollmentName`. |
+| Tenant grouping | `tenantName`, `tenantId`, `tenantDescription` | same | Home section (name + description) when the tenant is a distinct business org. Hidden on admin MFA cards and when the name repeats the installation. |
 | Trust-zone ownership | `installation` object | same | Enrollment belongs to this installation; identity = normalized Auth URL. |
 | Activity timestamps | `createdAt`, `lastActivityAt` | same | Current app uses these as the minimal durable activity snapshot. |
 | Favorites | `favorited` | same | A purely local ordering preference. |
 | Server routing | `installation.authUrl` | same | Allows per-installation server targeting. |
 | Proof token | absent | `enrollmentProofToken` | Needed for later `pending` requests and rehydrated from secure storage. |
 | Integration verification key | absent | `integrationPublicKey` | Needed to verify bind, verify result, pending, and respond result signatures. |
-| Device naming | absent | `enrollmentName`, `deviceLabel` | Friendly local display material originating from bind. |
+| Account naming | absent | `enrollmentName`, `deviceLabel` | Account (`enrollmentName`) originates from bind. `deviceLabel` is a local alias of the same value — not a Device noun. |
 | Backward-compatible alias field | absent | `enrollmentId` | Auth API / DB enrollment id for the trust zone (wire bodies). Required on new saves. |
 
 The practical consequence is simple: only a verified enrollment is persisted as `StoredEnrollment`. Bind-stage data

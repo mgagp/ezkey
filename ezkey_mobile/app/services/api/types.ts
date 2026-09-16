@@ -58,6 +58,10 @@ export type EnrollmentSummary = {
   favorited?: boolean;
   /** Trust zone this enrollment belongs to (normalized Auth URL identity). */
   installation?: Installation;
+  /** True when this enrollment is administrator MFA on the system integration. */
+  isSystemIntegration?: boolean;
+  /** Linked administrator type when {@link isSystemIntegration} is true. */
+  adminType?: 'GLOBAL_ADMIN' | 'TENANT_ADMIN';
 };
 
 export type BindEnrollmentRequest = {

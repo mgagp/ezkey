@@ -117,6 +117,9 @@ services:
       # Public Auth API base URL for enrollment QR authUrl + GET /api/v1/public/instance-info.
       # Set when phones reach Auth API via tunnel or public hostname (not http://auth-api:8080).
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
+      # Instance branding (maps to ezkey.organization.*). Override in docker/.env for local evaluation.
+      EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
+      EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
       # Optional "About / learn more" link (maps to ezkey.organization.about-url).
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
       # full (default) = logs + bootstrap-credentials.json for clean-start. recovery_primary = recovery-only logs, no JSON export.
@@ -163,6 +166,8 @@ services:
       MANAGEMENT_SERVER_PORT: 8085
       # Same public metadata as admin-api for GET /api/v1/public/instance-info (mobile, operators).
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
+      EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
+      EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
       # Always a valid Duration. Empty host value would fail Spring bind.
       EZKEY_ENCRYPTION_KEYSET_BOOTSTRAP_WAIT: ${EZKEY_ENCRYPTION_KEYSET_BOOTSTRAP_WAIT:-PT90S}

@@ -35,6 +35,8 @@ script:post-response {
       bru.setEnvVar("bind_tenantId", jsonData.tenantId != null ? String(jsonData.tenantId) : "");
       bru.setEnvVar("bind_tenantName", jsonData.tenantName != null ? jsonData.tenantName : "");
       bru.setEnvVar("bind_tenantDescription", jsonData.tenantDescription != null ? jsonData.tenantDescription : "");
+      bru.setEnvVar("bind_isSystemIntegration", jsonData.isSystemIntegration === true ? "true" : "false");
+      bru.setEnvVar("bind_adminType", jsonData.adminType != null ? jsonData.adminType : "");
       test("Response contains required fields", function () {
           expect(jsonData).to.have.property('enrollmentId');
           expect(jsonData).to.have.property('integrationPublicKey');

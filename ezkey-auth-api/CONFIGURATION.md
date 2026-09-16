@@ -27,6 +27,8 @@ serves them to enrolled mobile devices, and processes responses. It runs **no sc
 | `ezkey.trusted-proxies.required` | — | `false` | optionnel [prod] |
 | `ezkey.trusted-proxies.cidrs` | — | *(empty list)* | optionnel |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(null)* | requis [docker] |
+| `ezkey.organization.name` | `EZKEY_ORGANIZATION_NAME` | `Ezkey System` | optionnel |
+| `ezkey.organization.description` | `EZKEY_ORGANIZATION_DESCRIPTION` | `Ezkey MFA instance for your organization` | optionnel |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(null)* | optionnel |
 
 ---
@@ -151,6 +153,8 @@ for the full description.
 | Spring property | Docker env var | docker-compose default |
 |---|---|---|
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(empty)* |
+| `ezkey.organization.name` | `EZKEY_ORGANIZATION_NAME` | `Ezkey System` |
+| `ezkey.organization.description` | `EZKEY_ORGANIZATION_DESCRIPTION` | `Ezkey MFA instance for your organization` |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(empty)* |
 | `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | `auth-api` |
 

@@ -29,6 +29,11 @@ import {
 } from '../../services/storage/enrollmentStorage';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
 import {shouldShowInstallationHostHint} from '../../utils/installationMetadata';
+import {
+  buildEnrollmentIdentityDisplay,
+  buildHomeCardLabels,
+  identityDisplayCopy,
+} from '../../utils/enrollmentDisplay';
 
 const RECENT_ACTIVITY_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -43,10 +48,17 @@ const sortEnrollments = (items: EnrollmentMetadataRecord[]) =>
     return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
   });
 
-const getEnrollmentDisplayName = (enrollment: EnrollmentMetadataRecord) =>
-  enrollment.enrollmentName?.trim() ||
-  enrollment.deviceLabel?.trim() ||
-  enrollment.integrationName;
+const getEnrollmentDisplayName = (
+  enrollment: EnrollmentMetadataRecord,
+  t: (key: string) => string,
+) => {
+  const identity = buildEnrollmentIdentityDisplay(
+    enrollment,
+    t('dangerZone.installationFallback'),
+    identityDisplayCopy(t),
+  );
+  return identity.accountLabel ?? identity.heroTitle;
+};
 
 const formatAbsoluteDateTime = (value?: string) => {
   if (!value) {
@@ -139,13 +151,29 @@ const buildDeleteMessage = (
   t: (key: string, options?: Record<string, string | number>) => string,
 ) => {
   const lines = [
-    t('dangerZone.removeQuestion', {name: getEnrollmentDisplayName(enrollment)}),
+    t('dangerZone.removeQuestion', {name: getEnrollmentDisplayName(enrollment, t)}),
     '',
-    t('dangerZone.integration', {value: enrollment.integrationName}),
+    t('dangerZone.integration', {
+      value:
+        buildHomeCardLabels(
+          enrollment,
+          t('dangerZone.installationFallback'),
+          identityDisplayCopy(t),
+        ).title,
+    }),
   ];
 
-  if (enrollment.tenantName) {
-    lines.push(t('dangerZone.tenant', {value: enrollment.tenantName}));
+  const identity = buildEnrollmentIdentityDisplay(
+    enrollment,
+    t('dangerZone.installationFallback'),
+    identityDisplayCopy(t),
+  );
+  if (identity.roleLabel) {
+    lines.push(identity.roleLabel);
+  }
+
+  if (identity.tenantLabel) {
+    lines.push(t('dangerZone.tenant', {value: identity.tenantLabel}));
   }
 
   const installationLabel = enrollment.installation?.name || enrollment.installation?.host;
@@ -292,7 +320,12 @@ export const DangerZoneScreen: React.FC = () => {
           </View>
         }
         renderItem={({item}) => {
-          const displayName = getEnrollmentDisplayName(item);
+          const card = buildHomeCardLabels(
+            item,
+            t('dangerZone.installationFallback'),
+            identityDisplayCopy(t),
+          );
+          const displayName = getEnrollmentDisplayName(item, t);
           const showHostHint = shouldShowInstallationHostHint(item);
           const installationLabel = showHostHint && item.installation?.host
             ? `${item.installation?.name ?? t('dangerZone.installationFallback')} · ${item.installation.host}`
@@ -308,9 +341,16 @@ export const DangerZoneScreen: React.FC = () => {
                   ) : null}
                   {item.favorited ? <Text style={styles.favoriteBadge}>{t('dangerZone.favorite')}</Text> : null}
                 </View>
-                <Text style={styles.rowMeta}>{item.integrationName}</Text>
                 <Text style={styles.rowMeta}>
-                  {[item.tenantName, installationLabel].filter(Boolean).join(' · ')}
+                  {[card.title, card.roleLabel].filter(Boolean).join(' · ')}
+                </Text>
+                <Text style={styles.rowMeta}>
+                  {[
+                    item.isSystemIntegration ? undefined : item.tenantName,
+                    installationLabel,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </Text>
                 <Text
                   style={[
