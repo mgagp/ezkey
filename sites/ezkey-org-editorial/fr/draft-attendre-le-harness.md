@@ -10,15 +10,16 @@ source_of_truth: draft
 <!-- ezkey-org:exclude-start
 Editorial context (not publishable):
 - Lane: Craft & engineering. Companion tone to hygiene-continue, ablation, intention — short field note, not a long essay.
-- Thesis: recent significance is less « smarter models alone » than harness + integration (orchestration, memory, dedicated computers, cloud parallel work).
-- Lived arc: chat agents → plan mode → worktrees/multi-agents → Cursor cloud builds (Ezkey Docker single-instance / ports) → Grok Bot (specialized teammates).
+- Thesis: recent significance is less « smarter models alone » than harness + integration (orchestration, memory, dedicated computers, cloud parallel work, and now phone→desktop remote execution when Grok Bot is open on the workstation).
+- Lived arc: chat agents → plan mode → worktrees/multi-agents → Cursor cloud builds (Ezkey Docker single-instance / ports) → Grok Bot (specialized teammates) → early phone/desktop distributed pilotage.
 - Naming: Cursor / Grok Bot / Docker as situated facts of the path — same register as Docker; never product pitch, never parity claims, never tutorial.
 - Intentional delay on skills & agent customization = cognitive load management (slow AI); MCP wake → minimal hygiene skills; full specialist team only once harness felt mature.
-- Honesty: preliminary — just starting to use the team. Cursor Project mode: suspicion only, not claimed lived experience.
+- Honesty: preliminary — just starting to use the team; phone→poste remote jobs are a fresh discovery, not a mature playbook. Cursor Project mode: suspicion only, not claimed lived experience.
 - Do not invent security/product maturity claims. Product name: Ezkey. Avoid Duo/Okta/Keycloak parity. Avoid corporate hype.
 - Cross-links for HTML later: hygiene-continue-du-code, ablation-methodologie (or published ablation slug), l-intention-prochaine-frontiere, facture-ia / pas-de-côté if slow AI fits.
 - Length target: ~550–750 words FR.
 - Decision 2026-09-16: name Cursor and Grok Bot soberly, like Docker — facts of the journey, not pitch.
+- Decision 2026-09-16: light beat on phone→desktop remote execution via Grok Bot (app open on poste); keep short, in « Encore préliminaire ».
 ezkey-org:exclude-end -->
 
 # Attendre le harness
@@ -49,6 +50,8 @@ C’est l’arrivée de Grok Bot, dans Cursor, qui a servi de déclencheur. Pas 
 
 ## Encore préliminaire
 
-Je commence à peine à exploiter ces collaborateurs. J’aurai plus à dire. Le mode projet que je vois apparaître dans Cursor me semble, en soupçon seulement — je ne l’ai pas encore vraiment utilisé — une porte d’entrée possible vers une prise de décision encore plus déplacée vers cette couche de coordination. Je préfère le nommer comme hypothèse plutôt que comme vécu.
+Je commence à peine à exploiter ces collaborateurs. J’aurai plus à dire. Déjà, un détail d’intégration m’a surpris : avec Grok Bot ouvert sur mon poste, je peux depuis le téléphone lancer certains jobs qui s’exécutent là-bas. L’équipe suit sur les deux appareils ; le pilotage n’exige plus d’être physiquement devant l’écran. Il y a peu, mon flux s’arrêtait au bureau. Là, le harness commence à tenir un mode distribué que je n’osais pas espérer si vite.
 
-Ce que je peux affirmer déjà : le pattern se tient. Worktrees et cloud pour le parallèle ; Grok Bot pour l’intention et la continuité entre spécialistes. Sous Ezkey, c’est la réalisation concrète de ce que j’attendais d’un mode agent distribué. Il est temps d’embarquer — sans précipiter la suite, et sans prétendre que le récit est terminé.
+Le mode projet que je vois apparaître dans Cursor me semble, en soupçon seulement — je ne l’ai pas encore vraiment utilisé — une porte d’entrée possible vers une prise de décision encore plus déplacée vers cette couche de coordination. Je préfère le nommer comme hypothèse plutôt que comme vécu.
+
+Ce que je peux affirmer déjà : le pattern se tient. Worktrees et cloud pour le parallèle ; Grok Bot pour l’intention, la continuité entre spécialistes, et maintenant un fil de pilotage qui traverse le téléphone et le poste. Sous Ezkey, c’est la réalisation concrète de ce que j’attendais d’un mode agent distribué. Il est temps d’embarquer — sans précipiter la suite, et sans prétendre que le récit est terminé.
