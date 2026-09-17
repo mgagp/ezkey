@@ -171,7 +171,7 @@ check). Missing the second check fails **open** for Tenant Admins who already ho
 | SEC-017 / July challenge | Yes | `docs/SECURITY_CHALLENGE_REPORT_2026-07.md` |
 | Lifecycle Global vs Tenant purpose | Yes | `docs/LIFECYCLE_GOVERNANCE.md` §3.5 |
 | Greenfield “drop umbrella” note | Yes (one paragraph) | Admin API `AGENTS.md` |
-| Formal ADR keep vs split | **No until this pack** | Proposed ADR-0013 |
+| Formal ADR keep vs split | Yes — **accepted** 2026-09-17 | ADR-0013 + this pack |
 | Cursor always-applied rule mirroring AGENTS | **No** | Risk: agents that skip module `AGENTS.md` |
 | Complete annotation honesty (`hasAnyRole` everywhere shared) | **Not done** (optional hygiene) | 002b explicitly deferred |
 | Unit tests for Tenant Admin `canAccess*` deny/allow | **Thin** | `AccessControlServiceTest` covers Global Admin + invalid auth only (see decision brief) |
@@ -186,6 +186,7 @@ check). Missing the second check fails **open** for Tenant Admins who already ho
 | `docs/API_SECURITY_MATRIX.md` (post-fix) | Explicitly: `ROLE_ADMIN` is not tenant isolation and not Global-only |
 | `plan-securityChallengeCryptographicBackendAudit.prompt.md` Domaine 5 | Asks whether `@PreAuthorize` is correctly used for Global vs Tenant |
 | Admin API `AGENTS.md` greenfield note | Already states how a from-scratch model would look |
+| **ADR-0013 (accepted 2026-09-17)** | Keep umbrella (C→A); reopen B only per pack criteria |
 
 ## 10. Related but distinct workstreams
 

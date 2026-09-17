@@ -11,7 +11,7 @@ This folder holds the product-wide living truth for Ezkey. It is the canonical e
 | [`features-and-phases.md`](features-and-phases.md) | Feature catalog linked to phases, status, and ownership. |
 | [`architecture-overview.md`](architecture-overview.md) | Architectural view, components, boundaries, patterns. |
 | [`architecture-decisions.md`](architecture-decisions.md) | Global decision log (ADRs). |
-| [`decisions/`](decisions/) | Supporting decision packs for proposed / contested ADRs (inventory + options). |
+| [`decisions/`](decisions/) | Supporting decision packs for ADRs (inventory + options; status follows the ADR). |
 | [`design-principles.md`](design-principles.md) | Cross-product design principles. |
 | [`normative-posture.md`](normative-posture.md) | Operational discipline as a quality, not a certification project. |
 | [`lifecycle-model.md`](lifecycle-model.md) | Entity relationships and global lifecycle rules. |

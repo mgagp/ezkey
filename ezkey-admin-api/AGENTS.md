@@ -63,12 +63,13 @@ way as a missing `canAccess*` (enrollment QR) or a missing `GLOBAL_ADMIN` gate
     hide-existence 404 (today GET 403 / onboarding 400 is known debt).
 
 Do not drop an object check because the annotation looks precise. **Settled
-2026-08-20:** keep issuing `ROLE_ADMIN`. Do not remodel assignment or drop the
-umbrella from the filter. Annotation honesty (`hasAnyRole('GLOBAL_ADMIN','TENANT_ADMIN')`)
-is optional later hygiene and is **not** a substitute for the object check. Provenance:
-campaign `product-docs/global/hygiene/java-controller-role-validation/2026-08-16-pass-1.md`.
-Proposed elevation to the global ADR log (confirm/challenge): **ADR-0013** and pack
-`product-docs/global/decisions/2026-09-16-admin-role-umbrella/`.
+2026-08-20** (hygiene) and **accepted 2026-09-17 as ADR-0013** (Option C → A): keep issuing
+`ROLE_ADMIN`. Do not remodel assignment or drop the umbrella from the filter. Annotation
+honesty (`hasAnyRole('GLOBAL_ADMIN','TENANT_ADMIN')`) is optional later hygiene and is **not**
+a substitute for the object check. Provenance: campaign
+`product-docs/global/hygiene/java-controller-role-validation/2026-08-16-pass-1.md`; ADR and pack
+`product-docs/global/decisions/2026-09-16-admin-role-umbrella/` /
+[`ADR-0013`](../product-docs/global/architecture-decisions.md#adr-0013-admin-role-admin-umbrella-keep-vs-split).
 
 ## Enrollment QR payload
 

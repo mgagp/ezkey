@@ -3,10 +3,12 @@
 ## Metadata
 
 - **Date:** 2026-09-16
-- **Status:** proposed (decision pack for Marc / Patrick)
+- **Status:** accepted (2026-09-17 by Marc / Patrick)
 - **Scope:** Admin API human authorization model (Global Admin vs Tenant Admin)
 - **Related ADR:** [ADR-0013](../../architecture-decisions.md#adr-0013-admin-role-admin-umbrella-keep-vs-split)
-  (status `proposed`)
+  (status `accepted`)
+- **Verdict:** Option C executing Option A — keep `ROLE_ADMIN` umbrella; reopen B only per pack
+  criteria
 - **Prior hygiene settlement:** Path A keep-umbrella (2026-08-20) in
   [`../hygiene/java-controller-role-validation/2026-08-16-pass-1.md`](../hygiene/java-controller-role-validation/2026-08-16-pass-1.md)
   (`CTRL-ROLE-002` / `002b`)
@@ -21,25 +23,24 @@ look safe but do not isolate tenants; SEC-017 showed Global-only surfaces can fa
 the umbrella is present).
 
 Hygiene pass 2026-08 already **documented** the model and settled Path A (keep issuing
-`ROLE_ADMIN`). This pack reopens the question as a **product / architecture decision** for Marc
-and Patrick: keep and harden discoverability, split authorities greenfield-style, or hybrid /
-phased — with distance, characterization tests, and a draft verdict.
+`ROLE_ADMIN`). This pack elevated that call to a product / architecture decision (options A / B /
+C, distance, characterization tests). **Accepted 2026-09-17:** Option C executing A.
 
 ## Artefacts
 
 | File | Role |
 |------|------|
 | [`inventory-status-quo.md`](inventory-status-quo.md) | How the umbrella works today; failure modes; what is documented vs tribal |
-| [`decision-brief.md`](decision-brief.md) | Options A / B / C, test preamble, phasing, recommended verdict draft |
+| [`decision-brief.md`](decision-brief.md) | Options A / B / C, test preamble, phasing, accepted verdict |
 
-## Recommended next step for Patrick
+## Follow-through (after acceptance)
 
-1. Read the inventory (skimmable tables + cited paths).
-2. Decide on the brief’s **Option A / B / C** (draft leans **C → execute A now**).
-3. Either **accept ADR-0013** (edit judgment in place) or request a short grill on one contested
-   point (usually: whether annotation honesty is worth a funded peel).
-4. Do **not** start a filter / authority remodel until the test preamble gaps are funded if Option
-   B is chosen.
+1. Living canon remains `ezkey-admin-api/AGENTS.md` § Authorization at controllers (backed by
+   ADR-0013).
+2. Optional: fund characterization gaps in the brief’s test preamble (ACS Tenant Admin unit
+   matrix; keep isolation / SEC-017 WebMvc suites green on authz-touching PRs).
+3. Do **not** start a filter / authority remodel unless Option B reopen criteria in the brief
+   are met and characterization is green.
 
 ## Provenance (already in the tree)
 
@@ -47,4 +48,4 @@ phased — with distance, characterization tests, and a draft verdict.
 - `docs/API_SECURITY_MATRIX.md` (role story corrected 2026-08-20; endpoint tables lag)
 - `docs/java-controller-role-validation-assessment-2026-08.md` (CTRL-ROLE-001…005)
 - `docs/SECURITY_CHALLENGE_REPORT_2026-07.md` (SEC-017 encryption keys)
-- Companion open PR context: tenant SQL isolation assessment ([PR #539](https://github.com/mgagp/ezkey/pull/539)) — object / SQL dialects, not the Spring role umbrella itself
+- Companion context: tenant SQL isolation assessment ([PR #539](https://github.com/mgagp/ezkey/pull/539)) — object / SQL dialects, not the Spring role umbrella itself

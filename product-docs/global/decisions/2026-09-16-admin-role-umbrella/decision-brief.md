@@ -6,16 +6,16 @@
 - **Inventory:** [`inventory-status-quo.md`](inventory-status-quo.md)
 - **Audience:** Marc / Patrick
 - **Date:** 2026-09-16
-- **Prior settlement:** Path A keep-umbrella (hygiene 2026-08-20) — this brief reopens as an
-  explicit architecture decision, not a silent override
+- **Prior settlement:** Path A keep-umbrella (hygiene 2026-08-20); elevated and **accepted** as
+  ADR-0013 on 2026-09-17 (Option C → A)
 
 ## Problem statement
 
 `ROLE_ADMIN` means “authenticated human admin.” Isolation and Global-only privilege are **not**
 that role. Agents and humans who treat `@PreAuthorize("hasRole('ADMIN')")` as sufficient will
-reproduce SEC-017 / CTRL-ROLE-001 class defects. The question is whether the **status quo
-umbrella** remains the best fit for a solo-maintained lab that still wants clean structure, or
-whether authorities should be split greenfield-style (and how far that is from today).
+reproduce SEC-017 / CTRL-ROLE-001 class defects. This brief compared keep-and-harden (A),
+greenfield split (B), and hybrid phased (C). **Accepted outcome:** C executing A — keep the
+umbrella; reopen B only per criteria below.
 
 ---
 
@@ -165,7 +165,7 @@ the filter+annotation pair (unsafe to drop filter grant without migrating annota
 
 - Matches pragmatism and prior Path A without pretending B is free.
 - Separates deny-shape / dialect debt from authority remodel.
-- Gives Patrick a clear “accept now” vs “schedule B” fork.
+- Clear reopen criteria for B without forcing a frontal cutover now.
 
 ### Risks
 
@@ -179,8 +179,8 @@ tests.
 
 ### Characterization tests prerequisite?
 
-Yes for any step that removes `ROLE_ADMIN` from the filter. Recommended (not blocking) for
-accepting C/A as the decision.
+Yes for any step that removes `ROLE_ADMIN` from the filter. Recommended (not a blocker for the
+already-accepted C→A decision) before claiming discoverability is fully hardened.
 
 ---
 
@@ -238,7 +238,7 @@ drop). Prefer rebase/atomic PR over multi-week half-migrated main.
 
 | Phase | Content | Safe alone? |
 |-------|---------|-------------|
-| **P0** | Accept decision (ADR-0013); publish this pack; optional root AGENTS / cursor rule pointer | Yes |
+| **P0** | Decision accepted (ADR-0013, 2026-09-17); publish this pack; optional root AGENTS / cursor rule pointer | Yes (done for ADR + pack) |
 | **P1** | Characterization: ACS Tenant Admin unit matrix + one extra Global-only WebMvc sample | Yes |
 | **P2** | Independent hygiene: hide-existence 404 peels / dialect 1 (funded separately) | Yes |
 | **P3** | Optional annotation honesty (`hasAnyRole` on shared surfaces) while still issuing umbrella | Yes |
@@ -249,18 +249,20 @@ edits (prior hygiene explicitly: “Do not bundle dropping `ROLE_ADMIN` with tho
 
 ---
 
-## Recommended verdict draft (for Patrick to edit)
+## Accepted verdict (2026-09-17)
 
-**Verdict: Option C, executing Option A now — keep the umbrella; do not fund a role-model
+**Verdict: Option C, executing Option A — keep the umbrella; do not fund a role-model
 redesign unless isolation defects recur after discoverability + characterization.**
+
+Accepted by Marc / Patrick on 2026-09-17 as **ADR-0013**.
 
 ### Why (evidence-based, pragmatic)
 
 1. **Isolation is not a Spring role today and would not become one under B.** Object checks and
    list filters remain the real tenant boundary. B improves honesty for Global-only gates; it
    does not delete the SEC-017/QR class of “forgot the second check.”
-2. **Path A already settled 2026-08-20** after HITL; this pack elevates that hygiene call to an
-   ADR without discarding it. Reversing to B should be a conscious program, not a drive-by.
+2. **Path A already settled 2026-08-20** after HITL; this pack elevated that hygiene call to an
+   ADR. Reversing to B remains a conscious program, not a drive-by.
 3. **Distance vs gain for B** is poor for a solo-maintainer lab: filter + ~36 annotations + test
    rewrites, for a property AGENTS can teach in one screen.
 4. **Real residual risks** (403 vs 404, dialects, SQL existence oracles) are **orthogonal** and
@@ -268,20 +270,14 @@ redesign unless isolation defects recur after discoverability + characterization
 5. **Invest where fail-open hurts:** characterization tests (especially ACS Tenant Admin) +
    agent discoverability. That is the high-leverage redressement.
 
-### What “done” looks like if Patrick accepts
+### What “done” looks like (acceptance recorded)
 
-- ADR-0013 status → `accepted` (or edited judgment).
-- Optional: one root/agent pointer to Admin API AGENTS authz section.
-- Backlog optional P1 tests — no production Java authority change required.
+- ADR-0013 status → `accepted` (2026-09-17).
+- Optional follow-through: root/agent pointer polish; backlog optional P1 characterization
+  tests — no production Java authority change required by this ADR.
 
 ### When to reopen B
 
 - Repeated SEC-017-class bugs after P0–P1, or
 - A third human role / customer RBAC that makes a two-role umbrella actively harmful, or
 - Maintainer capacity for an atomic P3→P4 cutover with the characterization suite green.
-
-### Explicit ask
-
-Patrick: **merge this decision pack + accept ADR-0013 (Option C→A)**, or reply with the single
-challenge to grill (typically: “is annotation honesty worth funding as P3?”). No application
-redesign in the same breath.
