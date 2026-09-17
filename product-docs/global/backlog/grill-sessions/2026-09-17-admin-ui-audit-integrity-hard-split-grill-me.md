@@ -6,55 +6,37 @@
 |-------|--------|
 | **Intention note** | [`../../admin-ui-audit-integrity-hard-split-intention.md`](../../admin-ui-audit-integrity-hard-split-intention.md) |
 | **Started** | `2026-09-17` |
-| **Status** | `open` |
+| **Status** | `complete` |
 | **Griller** | Julie |
 | **Operator** | Marc |
 | **Product witness** | Alex |
-| **Security witness** | Christophe (replied 2026-09-17) |
-| **Resume at** | G5 |
+| **Security witness** | Christophe |
+| **Resume at** | — |
 
-## Settled before grilling
+## Settled decisions
 
 | ID | Topic | Decision |
 |----|--------|----------|
-| **S0** | Split shape | **Hard split** — Integrity is first-class; not declutter-in-place. No crypto shadow zones under ordinary browsing. |
-| **S1** | Priority | Not P0 / no hard date. Deliberate Admin UI opérabilité **after Wave B R1** — IA matches shipped semantics. Not a demoted re-read; no new September gate. (Alex) |
-| **S2** | Phase order | UI hard split until **walkable**, then API↔UI gap closure before calling the area done. |
+| **S0** | Split shape | **Hard split** — Integrity first-class; not declutter-in-place. |
+| **S1** | Priority | Not P0 / no hard date. After Wave B R1 — IA matches shipped semantics. No new September gate. (Alex) |
+| **S2** | Phase order | UI hard split until walkable, then API↔UI gap closure before “done.” |
 | **S3** | QA | Isabelle exploratory once walkable. |
-| **S4** | Roles baseline | Prior integrity grill A2: GA for crypto ops; Tenant Admin consults trail only. |
-| **S5** | Alerts vs Integrity | Alerts = exceptional **signal list**; Integrity = **investigation + remediation** home. Do not merge. (Alex) |
-| **S6** | Naming | **G4-A** — Nav label **Integrity**; seal/archive/confirm = remediation under it. (Marc 2026-09-17; Alex boundary) |
-| **S7** | Proof model | **One proof, multiple views** on the same `audit_log` (HMAC + chain). No second event journal. Complementary tables = operational indexes. Conciliation = explanation not rewrite. (Christophe) |
-| **G1** | Nav | **A** — New GA-only sidebar item; `/audit-logs` trail for all. |
-| **G2** | Remediation home | **A** — Alerts Resolve → Integrity. |
-| **G3** | Investigation landing | **C** — Integrity investigate/resolve; trail only around-event; same `audit_log`. |
-| **G4** | Nav label | **A** — **Integrity**. |
+| **S4** | Roles | GA for crypto ops; Tenant Admin trail only. |
+| **S5** | Alerts vs Integrity | Alerts = signal list; Integrity = investigation + remediation. Do not merge. (Alex) |
+| **S6** | Nav label | **Integrity** (G4). Seal/archive/confirm = remediation under that screen. |
+| **S7** | Proof model | **One proof, multiple views** on the same `audit_log`. No second event journal. Complementary tables = operational indexes. Conciliation = explanation not rewrite. (Christophe) |
+| **S8** | Delivery posture | **Fully greenfield** — private repo, no prod installs, EXP1 disposable. No migration / redirect / dual-read / transition shims. (Marc 2026-09-17) |
+| **G1** | Nav | New GA-only sidebar item; `/audit-logs` trail for all. |
+| **G2** | Remediation | Alerts Resolve → Integrity (single atelier). |
+| **G3** | Investigation | Integrity for investigate/verify/resolve; trail only for around-event; same `audit_log`. (Christophe-aligned) |
+| **G4** | Label | Sidebar **Integrity**. |
+| **G5** | Deep-links | **Greenfield clean-cut:** rewrite in-app emitters to the new Integrity route. **No** redirects, dual-read, or dead transition code for old `/audit-logs?integrity=…` params — not even for local-dev comfort. |
 
-## Open questions
+## Closed questions (no open IA items)
 
-### G5 — Deep-link compatibility — resume here
+G1–G5 settled. Implementation may proceed from the intention note + this grill.
 
-Today bookmarks / alert links use params on `/audit-logs` (`integrity=1`, `source=integrity-alert`, `focusCheckpointId`, highlights, etc.).
-
-| Option | Meaning |
-|--------|---------|
-| **A** | **Redirect** old `/audit-logs?…` integrity params to the new Integrity route (preserve operator muscle memory / alert payloads). |
-| **B** | **Break** old links; update only in-app emitters (alerts, dashboard) — bookmarks may 404-intent until manually fixed. |
-| **C** | Dual-read for a transition window (both old and new URLs work), then remove dual-read later. |
-
-Default lean: **A** or **C** — silent break is hostile for GA incident response.
-
----
-
-## Operator answers
-
-| ID | Answer | Date |
-|----|--------|------|
-| G1 | **A** — GA-only sidebar; `/audit-logs` trail for all | 2026-09-17 |
-| G2 | **A** — Alerts Resolve → Integrity | 2026-09-17 |
-| G3 | **C** — Integrity + trail around-event bridge; same audit_log | 2026-09-17 |
-| G4 | **A** — Nav label **Integrity** | 2026-09-17 |
-| G5 | _pending_ | |
+**Note on letter labels:** G1–G4 used A/B/C options during grilling. G5 is recorded in plain language only (no letter) to avoid remapping ambiguity after the greenfield reframe.
 
 ## Links
 
