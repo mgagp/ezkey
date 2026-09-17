@@ -3,9 +3,10 @@
 ## Metadata
 
 - **Document ID:** `admin-ui-audit-integrity-hard-split-intention`
-- **Status:** `ready` (grilling complete — 2026-09-17)
+- **Status:** `ready` (grilling complete — 2026-09-17; Marc accepted the pack)
 - **Owner (intention):** Julie (Admin UI opérabilité)
 - **Product direction:** Alex
+- **Engineering sequencing:** Patrick (refactor craft — asked 2026-09-17)
 - **Security posture:** Christophe
 - **Exploratory QA (later):** Isabelle
 - **Purpose:** Intention / IA compass for splitting the overgrown Audit Logs surface.
@@ -32,7 +33,7 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 | Direction | **Hard split** — Integrity first-class; not declutter-in-place on `/audit-logs`. |
 | Priority | Not P0 / no hard date. After Wave B R1 — IA matches shipped semantics. No new September gate. |
 | Delivery posture | **Fully greenfield** — no prod installs to spare; EXP1 disposable. No migration redirects, dual-read, or transition shims. |
-| Phase 2 | After split is walkable: close API↔UI gaps (`reconcile-integrity-rupture`, `confirm-archived`, peers) before calling the area done. |
+| API gap pass | After split is walkable: close API↔UI gaps (`reconcile-integrity-rupture`, `confirm-archived`, peers) before calling the area done. |
 | Alerts vs Integrity | Alerts = signal list. Integrity = investigation + remediation. Do not merge. |
 | Proof model | **One proof, multiple views** on the same `audit_log` (HMAC + chain). No second event journal. Alerts / incidents / conciliation = operational indexes. Conciliation = explanation not rewrite. |
 | Nav | New **Global Admin only** sidebar item. `/audit-logs` trail for all roles. |
@@ -65,14 +66,28 @@ See [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job
 
 ---
 
+## Delivery cuts (Marc 2026-09-17)
+
+| Cut | What | What it is not |
+|-----|------|----------------|
+| **1 — First-class surface** | Refactor: lift today’s Integrity panel onto its own route + GA nav, rewire in-app deep-links (greenfield, no shims). Prove the locked journeys still work. | Not a visual redesign. Not pixel polish. Not a new forensic product. |
+| **2 — UI detail inside Integrity** | Later: challenge layout, hierarchy, and chrome **inside** the Integrity surface. | Not blocking cut 1. |
+| **3 — API↔UI gap pass** | After cut 1 is walkable: surface OpenAPI ops still missing a caller (`reconcile-integrity-rupture`, `confirm-archived`, peers) on Integrity. | Not a second audit store. |
+| **QA** | Isabelle exploratory once cut 1 (then cut 3) is walkable. | Not exploratory QA as the design phase. |
+
+Engineering sequencing of cut 1: Patrick (craft / file split). IA is not reopened.
+
+---
+
 ## Non-goals
 
-No API redesign in this note; no second audit store; no pixel work; no crypto semantics change; no Alerts merged into Integrity; no dead transition/compat code for deep-links.
+No API redesign in this note; no second audit store; no pixel campaign in cut 1; no crypto semantics change; no Alerts merged into Integrity; no dead transition/compat code for deep-links.
 
 ---
 
 ## Next artifacts
 
-1. ~~Job → surface map~~ — done.
-2. Engineering sequencing (Patrick / domain owners); Isabelle walks live UI when walkable.
-3. Phase 2 API↔UI gap pass after walkable split.
+1. ~~Job → surface map~~ — done. Marc accepted the pack on PR #562.
+2. Patrick sequencing read on the cut-1 refactor (in flight).
+3. Implementation of cut 1, then Isabelle.
+4. Cut 3 API↔UI gap pass before “done.” Cut 2 (UI detail) is a later phase.
