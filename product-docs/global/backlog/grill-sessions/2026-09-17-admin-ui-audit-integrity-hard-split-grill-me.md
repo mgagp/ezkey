@@ -1,4 +1,4 @@
-# Grill Me — Admin UI Audit trail vs Integrity & Lifecycle hard split
+# Grill Me — Admin UI Audit trail vs Integrity hard split
 
 ## Session control
 
@@ -16,17 +16,19 @@
 
 | ID | Topic | Decision |
 |----|--------|----------|
-| **S0** | Split shape | **Hard split** — Integrity & Lifecycle is first-class; not declutter-in-place. |
-| **S1** | Cadence | No hard pub date; do it properly; Alex reflects priority. |
-| **S2** | Phase order | UI hard split first; API↔UI gap closure second (end-to-end intention for final tests). |
+| **S0** | Split shape | **Hard split** — Integrity is first-class; not declutter-in-place. No crypto shadow zones under ordinary browsing. |
+| **S1** | Priority | Not P0 / no hard date. Deliberate Admin UI opérabilité **after Wave B R1** — IA matches shipped semantics. Not a demoted re-read; no new September gate. (Alex) |
+| **S2** | Phase order | UI hard split until **walkable**, then API↔UI gap closure before calling the area done. |
 | **S3** | QA | Isabelle exploratory once walkable. |
 | **S4** | Roles baseline | Prior integrity grill A2: GA for crypto ops; Tenant Admin consults trail only. |
+| **S5** | Alerts vs Integrity | Alerts = exceptional **signal list**; Integrity = **investigation + remediation** home. Do not merge. (Alex) |
+| **S6** | Naming boundary | If “Lifecycle” appears in the label, it means only audit seal/archive/confirm — **not** [`lifecycle-model.md`](../../lifecycle-model.md). Prefer nav **Integrity** if collision risk. (Alex — finalize in G4) |
 
 ## Open questions
 
 ### G1 — Nav for the Integrity citizen (resume here)
 
-After hard split, how does Global Admin **find** Integrity & Lifecycle?
+After hard split, how does Global Admin **find** Integrity?
 
 | Option | Meaning |
 |--------|---------|
@@ -36,15 +38,15 @@ After hard split, how does Global Admin **find** Integrity & Lifecycle?
 
 **Constraint:** Tenant Admin must not stumble into crypto-ops chrome.
 
-### G2 — Home for unfinished / uneven lifecycle actions
+### G2 — Home for remediation actions (within S5)
 
-OpenAPI includes ops such as **reconcile integrity rupture** and **confirm archived**. Wave B compass places **Reconcile** on the alert → resolve journey. After hard split:
+OpenAPI includes **reconcile integrity rupture** and **confirm archived**. Alex rule: Alerts signal, Integrity remediates. Detail:
 
 | Option | Meaning |
 |--------|---------|
-| **A** | Resolution actions live on **Alerts detail**; Integrity surface is verify / timeline / exceptional maintenance. |
-| **B** | Resolution actions live on **Integrity** surface; Alerts only deep-link in. |
-| **C** | Split by family (e.g. rupture reconcile on Alerts; archive confirm on Integrity). |
+| **A** | Alerts detail keeps a **Resolve** entry that deep-links into Integrity remediation UI (single home for reconcile / confirm). |
+| **B** | Full remediation UI embedded on Alerts detail; Integrity is verify/timeline only — **risk:** blurs S5; flag Alex if chosen. |
+| **C** | Split by family only if needed (e.g. rupture reconcile vs archive confirm on different Integrity sections) — Alerts still only signals + deep-link. |
 
 ### G3 — Integrity-alert investigation landing
 
@@ -53,12 +55,15 @@ Today `source=integrity-alert` lands on Audit Logs with sessionStorage + affecte
 | Option | Meaning |
 |--------|---------|
 | **A** | Stay on **Audit trail** as investigation table (Integrity remains ops console). |
-| **B** | Move investigation landing to **Integrity** (trail stays calm). |
+| **B** | Move investigation landing to **Integrity** (trail stays calm) — aligns with S5. |
 | **C** | Thin bridge: Alerts → Integrity for verify/resolve; trail only for “view around event”. |
 
-### G4 — Surface naming (i18n label)
+### G4 — Surface naming (i18n / nav label)
 
-Working label **Integrity & Lifecycle** matches current panel title. Confirm or rename for sidebar.
+| Option | Meaning |
+|--------|---------|
+| **A** | Nav label **Integrity**; seal/archive/confirm are remediation actions under it. |
+| **B** | Nav label **Integrity & Lifecycle**, with Lifecycle **narrowly** = seal/archive/confirm only (not entity lifecycle-model). |
 
 ### G5 — Deep-link compatibility
 
