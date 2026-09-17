@@ -11,6 +11,7 @@
 - **Purpose:** Intention / IA compass for splitting the overgrown Audit Logs surface.
   **Not** an implementation plan, API redesign, or pixel spec.
 - **Related:**
+  - [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job-surface-map.md) ← job → surface map
   - [`integrity-wave-b-operator-end-state-compass.md`](integrity-wave-b-operator-end-state-compass.md)
   - [`integrity-cluster-design-pack.md`](integrity-cluster-design-pack.md)
   - [`admin-ui-paginated-screens-matrix.md`](admin-ui-paginated-screens-matrix.md)
@@ -60,6 +61,8 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 2. **Integrity** (GA only): investigate → verify → remediate on the same `audit_log` rows.
 3. **Alerts**: signal list; deep-link into Integrity.
 
+See [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job-surface-map.md) for the full job → surface table and journeys.
+
 ---
 
 ## Non-goals
@@ -70,6 +73,6 @@ No API redesign in this note; no second audit store; no pixel work; no crypto se
 
 ## Next artifacts
 
-1. Job → surface map (one page).
-2. Engineering sequencing (Patrick / domain owners); Isabelle walks live UI.
+1. ~~Job → surface map~~ — done.
+2. Engineering sequencing (Patrick / domain owners); Isabelle walks live UI when walkable.
 3. Phase 2 API↔UI gap pass after walkable split.
