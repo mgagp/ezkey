@@ -6,6 +6,7 @@
 - **Status:** `draft` (grilling open — 2026-09-17)
 - **Owner (intention):** Julie (Admin UI opérabilité)
 - **Product direction:** Alex (priority / roadmap framing)
+- **Security posture:** Christophe (G3 / one-proof constraint)
 - **Exploratory QA (later):** Isabelle
 - **Purpose:** Short intention / IA compass for splitting the overgrown Audit Logs surface.
   **Not** an implementation plan, API redesign, or pixel spec.
@@ -23,7 +24,7 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 
 ---
 
-## Settled (2026-09-17 — Marc + Alex)
+## Settled (2026-09-17 — Marc + Alex + Christophe)
 
 | Decision | Value |
 |----------|--------|
@@ -31,20 +32,27 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 | Priority framing | **Not P0** and **no hard date**. Not a demoted re-read. Frame as: deliberate Admin UI opérabilité program **after Wave B integrity R1 landed** — the semantics exist; the IA should now match them honestly. Pace = do it properly. Does **not** invent a new September gate. |
 | Phase 2 | After the split is **walkable**: close **API ↔ UI** gaps (`reconcile-integrity-rupture`, `confirm-archived`, and any peers) so product intention is testable end-to-end — before calling the area “done.” |
 | Alerts vs Integrity | **Alerts** = exceptional signal list. **Integrity** = investigation + remediation home. Do **not** merge Alerts into Integrity chrome. |
+| Proof model | **One proof, multiple views** on the same `audit_log` (HMAC + chain). No second event journal. Alerts / incidents / conciliation = operational indexes, not audit citizens. Conciliation = explanation not rewrite. (Christophe) |
 | Nav (G1) | New **sidebar item**, **Global Admin only**. `/audit-logs` stays trail-only for all roles. Tenant Admin never sees Integrity nav. |
 | Remediation (G2) | Alerts detail **Resolve** deep-links into **Integrity** remediation UI — single atelier for reconcile / confirm archived / peers. |
+| Investigation (G3) | **C** — Alerts → Integrity for investigate / verify / resolve; trail only for view-around-event; same `audit_log`; crypto unchanged. (Marc; Christophe reco) |
 | Verification | Isabelle exploratory QA once walkable. |
-| Quality bar | Clean split; careful refactor; no shadow zones for cryptographic audit integrity management. |
+| Quality bar | Clean split; careful refactor; no shadow zones; proportional SME atelier (not Phase-1 forensics factory). |
 
 **Vocabulary (closed):**
 
 - **Declutter** = stay on `/audit-logs`, reorganize the accordion / sections in place.
-- **Hard split** = two distinct citizens (separate nav / journeys): everyday **audit trail** vs **integrity** (investigation + remediation) ops.
+- **Hard split** = two distinct citizens (separate nav / journeys): everyday **audit trail** vs **integrity** (investigation + remediation) ops — both views of the **same** cryptographic journal.
 
 **Naming boundary (Alex — pick one in grill G4):**
 
 - If the nav keeps “Integrity & Lifecycle”, **Lifecycle** means only audit **seal / archive / confirm** paths — **not** the global entity model in [`lifecycle-model.md`](lifecycle-model.md).
 - Prefer nav label **Integrity** if “Lifecycle” would confuse operators or docs; archive / confirm sit under it as remediation actions.
+
+**Copy red lines (Christophe):**
+
+- Say: tamper-**evident**; Integrity verifies chain/HMAC of trail rows; alerts = signals; remediation explains/reconciles, does not replace the journal; host-trust ceiling remains honest.
+- Never say: tamper-proof / immutable (while export SPI not shipped); “complete audit guaranteed” (fail-open writes); SOC 2 equivalence; that Alerts or incident stores **are** the audit; that Resolve silently “fixes” integrity as a rewrite.
 
 ---
 
@@ -53,13 +61,13 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 | Job family | Examples | Belongs after split |
 |------------|----------|---------------------|
 | **Browse / search trail** | Filters, pagination, row detail | Audit trail |
-| **Entity / event context** | From enrollment / auth / integration; around-one-event | Audit trail |
-| **Integrity investigation landing** | Deep link from rupture alert; affected rows; HMAC honesty | **Grill G3** |
+| **Entity / event context** | From enrollment / auth / integration; around-one-event | Audit trail (including G3 bridge) |
+| **Integrity investigation** | Affected rows from rupture alert | Integrity (G3) — same `audit_log` rows |
 | **Verify (read-only)** | Chain verify, entry HMAC verify | Integrity |
 | **Detect + alert** | Run validation (may raise/touch rupture alert) | Integrity |
 | **Observability** | Overview, checkpoint timeline | Integrity |
-| **Exceptional remediation** | Seal archive, declare gap, confirm archived | Integrity (via G2) |
-| **Heartbeat incidents** | List + declare closure | Integrity (remediation) — signal still via Alerts |
+| **Exceptional remediation** | Seal archive, declare gap, confirm archived | Integrity (G2) |
+| **Heartbeat incidents** | List + declare closure | Integrity (remediation) — signal via Alerts |
 | **Rupture resolution** | Reconcile / conciliation | Integrity (G2); Alerts deep-link only |
 
 ---
@@ -76,13 +84,13 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 ## Proposed mental model
 
 1. **`/audit-logs` — Audit trail (everyday, all roles)**  
-   Who did what? Filter, read, open detail, enter/exit bounded entity/event contexts. Not the ops console for integrity rupture.
+   Who did what? Filter, read, open detail, entity/event context, and **view-around-event** bridges from Integrity. Not the rupture investigation home.
 
 2. **Integrity — first-class sidebar (Global Admin only)**  
-   Observability → verification → detective run → remediation (including narrow seal/archive/confirm). Single atelier reached from Alerts Resolve (G2).
+   Investigate affected trail rows → verify → detective run → remediate (seal/archive/confirm included). Reached from Alerts Resolve (G2) and as investigation landing (G3).
 
 3. **Alerts — exceptional signal list**  
-   Detection entry for rupture / gap / heartbeat. Resolve deep-links into Integrity. Not merged into Integrity chrome.
+   Detection entry. Resolve / Investigate deep-link into Integrity. Not merged into Integrity chrome; not presented as the cryptographic audit.
 
 ---
 
@@ -92,7 +100,7 @@ See grill session file. Still open:
 
 1. ~~Nav / roles~~ — **settled G1-A**.
 2. ~~Remediation home~~ — **settled G2-A**.
-3. Where integrity-alert **investigation table** lives (trail, Integrity, or thin bridge).
+3. ~~Investigation landing~~ — **settled G3-C**.
 4. Nav label: **Integrity** vs **Integrity & Lifecycle** (with Lifecycle narrowly defined).
 5. Deep-link compatibility (`integrity=1`, `source=integrity-alert`, etc.).
 
@@ -108,13 +116,14 @@ Already settled in integrity cluster grilling (**A2**): Global Admin only for cr
 
 ## Relationship to Alerts
 
-Detect → Alert (signal) → Resolve deep-link → Integrity (investigate / verify / remediate). Everyday trail is not the ops sink.
+Detect → Alert (signal) → Investigate/Resolve deep-link → Integrity (same `audit_log` rows + verify + remediate). Optional bridge back to trail for around-event context only.
 
 ---
 
 ## Non-goals
 
 - No API contract redesign in this note.
+- No second audit event store.
 - No pixel / branding work.
 - No implementation sequencing beyond “UI hard split first (walkable), API↔UI gap pass second (before done).”
 - No change to cryptographic semantics (tamper-evident, Explained ≠ valid, etc.).
