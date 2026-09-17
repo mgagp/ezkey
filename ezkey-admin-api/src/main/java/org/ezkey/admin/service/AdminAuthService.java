@@ -431,7 +431,7 @@ public class AdminAuthService {
     Integer scopedTenantId = null;
     String scopedTenantName = null;
     if (admin.getAdminType() != EzkeyAdmin.AdminType.GLOBAL_ADMIN) {
-      java.util.List<Object[]> tenantRows =
+      List<Object[]> tenantRows =
           adminRepository.findTenantInfoByAdminEnrollmentId(authAttempt.getEnrollmentId());
       Object[] row = tenantRows.isEmpty() ? null : normalizeTenantInfoRow(tenantRows.get(0));
       if (row != null && row.length > 0) {
