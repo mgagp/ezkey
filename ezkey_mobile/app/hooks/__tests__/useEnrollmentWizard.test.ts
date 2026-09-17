@@ -135,6 +135,7 @@ async function renderHookWithDraft(): Promise<{result: {current: EnrollmentWizar
     tenantId: 3,
     tenantName: 'Unicorn farm accountability',
     tenantDescription: 'Ops',
+    isSystemIntegration: false,
     enrollmentBindPayloadSignedByIntegration: 'bind-sig',
   });
   mockBuildBindPayload.mockReturnValue('bind-payload');
@@ -382,6 +383,7 @@ describe('handleQrScanned — bind success', () => {
       integrationPublicKey: 'pubkey',
       integrationKeyAlgorithm: 'ed25519',
       integrationName: 'Acme',
+      isSystemIntegration: false,
       enrollmentBindPayloadSignedByIntegration: 'bad-sig',
     });
     mockBuildBindPayload.mockReturnValue('bind-payload');
@@ -429,6 +431,7 @@ describe('handleQrScanned — bind success', () => {
       integrationPublicKey: 'pubkey',
       integrationKeyAlgorithm: 'rsa',
       integrationName: 'Acme',
+      isSystemIntegration: false,
       enrollmentBindPayloadSignedByIntegration: 'sig',
     });
     mockAlgoError.mockReturnValue('Unsupported algorithm: rsa');
