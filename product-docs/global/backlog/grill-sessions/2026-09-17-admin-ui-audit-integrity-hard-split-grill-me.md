@@ -10,7 +10,7 @@
 | **Griller** | Julie |
 | **Operator** | Marc |
 | **Product witness** | Alex |
-| **Resume at** | G1 |
+| **Resume at** | G3 |
 
 ## Settled before grilling
 
@@ -23,40 +23,28 @@
 | **S4** | Roles baseline | Prior integrity grill A2: GA for crypto ops; Tenant Admin consults trail only. |
 | **S5** | Alerts vs Integrity | Alerts = exceptional **signal list**; Integrity = **investigation + remediation** home. Do not merge. (Alex) |
 | **S6** | Naming boundary | If “Lifecycle” appears in the label, it means only audit seal/archive/confirm — **not** [`lifecycle-model.md`](../../lifecycle-model.md). Prefer nav **Integrity** if collision risk. (Alex — finalize in G4) |
+| **G1** | Nav | **A** — New **sidebar item** (Global Admin only); `/audit-logs` stays trail-only for all roles. (Marc 2026-09-17) |
+| **G2** | Remediation home | **A** — Alerts detail **Resolve** deep-links into Integrity remediation UI (single home for reconcile / confirm). (Marc 2026-09-17) |
 
 ## Open questions
 
-### G1 — Nav for the Integrity citizen (resume here)
+### G1 — Nav — **settled A**
 
-After hard split, how does Global Admin **find** Integrity?
+New Global-Admin-only sidebar item; `/audit-logs` remains the journal for all roles.
 
-| Option | Meaning |
-|--------|---------|
-| **A** | New **sidebar item** (Global Admin only); `/audit-logs` stays for all roles as trail-only. |
-| **B** | Keep a single “Audit” nav parent with two children (Trail / Integrity) — only if we accept a nested nav pattern. |
-| **C** | Other (operator specifies). |
+### G2 — Remediation home — **settled A**
 
-**Constraint:** Tenant Admin must not stumble into crypto-ops chrome.
+Alerts stay the signal list; Resolve deep-links into Integrity. Reconcile / confirm archived (and peers) live on Integrity — one atelier.
 
-### G2 — Home for remediation actions (within S5)
+### G3 — Integrity-alert investigation landing — resume here
 
-OpenAPI includes **reconcile integrity rupture** and **confirm archived**. Alex rule: Alerts signal, Integrity remediates. Detail:
+Today `source=integrity-alert` lands on Audit Logs with sessionStorage + affected-only table. After hard split + G2-A, where does the operator **look at the affected rows** before / while repairing?
 
 | Option | Meaning |
 |--------|---------|
-| **A** | Alerts detail keeps a **Resolve** entry that deep-links into Integrity remediation UI (single home for reconcile / confirm). |
-| **B** | Full remediation UI embedded on Alerts detail; Integrity is verify/timeline only — **risk:** blurs S5; flag Alex if chosen. |
-| **C** | Split by family only if needed (e.g. rupture reconcile vs archive confirm on different Integrity sections) — Alerts still only signals + deep-link. |
-
-### G3 — Integrity-alert investigation landing
-
-Today `source=integrity-alert` lands on Audit Logs with sessionStorage + affected-only table.
-
-| Option | Meaning |
-|--------|---------|
-| **A** | Stay on **Audit trail** as investigation table (Integrity remains ops console). |
-| **B** | Move investigation landing to **Integrity** (trail stays calm) — aligns with S5. |
-| **C** | Thin bridge: Alerts → Integrity for verify/resolve; trail only for “view around event”. |
+| **A** | Keep the investigation table on **Audit trail** (Integrity = verify + remediate only). |
+| **B** | Move investigation landing to **Integrity** (trail stays everyday-calm). |
+| **C** | Thin bridge: Alerts → Integrity for investigate/verify/resolve; trail only for “view around event”. |
 
 ### G4 — Surface naming (i18n / nav label)
 
@@ -75,8 +63,8 @@ Preserve or redirect: `integrity=1`, `focusCheckpointId`, `source=integrity-aler
 
 | ID | Answer | Date |
 |----|--------|------|
-| G1 | _pending_ | |
-| G2 | _pending_ | |
+| G1 | **A** — GA-only sidebar item; `/audit-logs` trail for all | 2026-09-17 |
+| G2 | **A** — Alerts Resolve → Integrity remediation (single home) | 2026-09-17 |
 | G3 | _pending_ | |
 | G4 | _pending_ | |
 | G5 | _pending_ | |
