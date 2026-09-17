@@ -51,7 +51,9 @@ public class AdminSessionTenantNameSecurityTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    assertThat(globalMe.getStatusCode()).as("global /me body: %s", globalMe.asString()).isEqualTo(200);
+    assertThat(globalMe.getStatusCode())
+        .as("global /me body: %s", globalMe.asString())
+        .isEqualTo(200);
     assertThat(globalMe.jsonPath().getString("adminType")).isEqualTo("GLOBAL_ADMIN");
     assertThat(globalMe.jsonPath().getString("tenantName")).isNull();
     assertThat(globalMe.jsonPath().getObject("tenantId", Integer.class)).isNull();
@@ -77,7 +79,9 @@ public class AdminSessionTenantNameSecurityTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    assertThat(tenantMe.getStatusCode()).as("tenant /me body: %s", tenantMe.asString()).isEqualTo(200);
+    assertThat(tenantMe.getStatusCode())
+        .as("tenant /me body: %s", tenantMe.asString())
+        .isEqualTo(200);
     assertThat(tenantMe.jsonPath().getString("adminType")).isEqualTo("TENANT_ADMIN");
     assertThat(tenantMe.jsonPath().getInt("tenantId")).isEqualTo(tenantId);
     assertThat(tenantMe.jsonPath().getString("tenantName")).isEqualTo(tenantName);

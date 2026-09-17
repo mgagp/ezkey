@@ -607,28 +607,11 @@ public class AdminAuthService {
   }
 
   /**
-   * Unwraps Spring Data native multi-column nesting when present ({@code row[0]} is itself an
-   * {@code Object[]}).
-   *
-   * @param row raw repository row
-   * @return flat {@code [tenantId, tenantName, tenantDescription]} or null
-   */
-  private static Object[] normalizeTenantInfoRow(Object[] row) {
-    if (row == null || row.length == 0) {
-      return null;
-    }
-    if (row.length == 1 && row[0] instanceof Object[] nested) {
-      return nested;
-    }
-    return row;
-  }
-
-  /**
    * Build success response DTO with optional pre-resolved tenant scope.
    *
-   * <p>When {@code scopedTenantId}/{@code scopedTenantName} are provided (resolved before a
-   * {@code NOT_SUPPORTED} wait), they are preferred so login does not touch a lazy {@code Tenant}
-   * proxy after the persistence context was suspended.
+   * <p>When {@code scopedTenantId}/{@code scopedTenantName} are provided (resolved before a {@code
+   * NOT_SUPPORTED} wait), they are preferred so login does not touch a lazy {@code Tenant} proxy
+   * after the persistence context was suspended.
    *
    * @param admin the authenticated administrator
    * @param token the generated token entity
@@ -665,6 +648,23 @@ public class AdminAuthService {
         admin.getAdminId(),
         tenantId,
         tenantName);
+  }
+
+  /**
+   * Unwraps Spring Data native multi-column nesting when present ({@code row[0]} is itself an
+   * {@code Object[]}).
+   *
+   * @param row raw repository row
+   * @return flat {@code [tenantId, tenantName, tenantDescription]} or null
+   */
+  private static Object[] normalizeTenantInfoRow(Object[] row) {
+    if (row == null || row.length == 0) {
+      return null;
+    }
+    if (row.length == 1 && row[0] instanceof Object[] nested) {
+      return nested;
+    }
+    return row;
   }
 
   /**
