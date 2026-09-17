@@ -135,10 +135,7 @@ export default function LoginPage() {
           },
           waitOptions,
         );
-        const data = response as unknown as AdminLoginResponseDto & {
-          csrfToken?: string;
-          tenantName?: string | null;
-        };
+        const data = response as unknown as AdminLoginResponseDto;
 
         // Ignore result if the countdown or cancel already set a final state
         if (finalStatusRef.current !== null) return;

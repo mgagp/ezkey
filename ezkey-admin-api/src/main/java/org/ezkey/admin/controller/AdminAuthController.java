@@ -487,8 +487,7 @@ public class AdminAuthController {
     OffsetDateTime expiresAt =
         (OffsetDateTime) httpRequest.getAttribute(AdminAuthRequestAttributes.EXPIRES_AT);
     String plainToken = (String) httpRequest.getAttribute(AdminAuthRequestAttributes.PLAIN_TOKEN);
-    String tenantName =
-        (String) httpRequest.getAttribute(AdminAuthRequestAttributes.TENANT_NAME);
+    String tenantName = (String) httpRequest.getAttribute(AdminAuthRequestAttributes.TENANT_NAME);
     String csrfToken =
         httpRequest.getAttribute(AdminAuthRequestAttributes.AUTH_SOURCE)
                 == AdminAuthRequestAttributes.AuthSource.COOKIE
