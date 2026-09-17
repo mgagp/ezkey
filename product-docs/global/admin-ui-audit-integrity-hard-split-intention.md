@@ -3,16 +3,16 @@
 ## Metadata
 
 - **Document ID:** `admin-ui-audit-integrity-hard-split-intention`
-- **Status:** `ready` (grilling complete — 2026-09-17; Marc accepted the pack)
+- **Status:** `ready` (grilling complete — 2026-09-17; Marc accepted the pack; cut-1 sequencing locked)
 - **Owner (intention):** Julie (Admin UI opérabilité)
 - **Product direction:** Alex
-- **Engineering sequencing:** Patrick (refactor craft — asked 2026-09-17)
+- **Engineering sequencing:** Patrick (cut 1 locked 2026-09-17 — not implementing)
 - **Security posture:** Christophe
 - **Exploratory QA (later):** Isabelle
 - **Purpose:** Intention / IA compass for splitting the overgrown Audit Logs surface.
   **Not** an implementation plan, API redesign, or pixel spec.
 - **Related:**
-  - [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job-surface-map.md) ← job → surface map
+  - [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job-surface-map.md)
   - [`integrity-wave-b-operator-end-state-compass.md`](integrity-wave-b-operator-end-state-compass.md)
   - [`integrity-cluster-design-pack.md`](integrity-cluster-design-pack.md)
   - [`admin-ui-paginated-screens-matrix.md`](admin-ui-paginated-screens-matrix.md)
@@ -62,7 +62,7 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 2. **Integrity** (GA only): investigate → verify → remediate on the same `audit_log` rows.
 3. **Alerts**: signal list; deep-link into Integrity.
 
-See [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job-surface-map.md) for the full job → surface table and journeys.
+See [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job-surface-map.md).
 
 ---
 
@@ -70,12 +70,24 @@ See [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job
 
 | Cut | What | What it is not |
 |-----|------|----------------|
-| **1 — First-class surface** | Refactor: lift today’s Integrity panel onto its own route + GA nav, rewire in-app deep-links (greenfield, no shims). Prove the locked journeys still work. | Not a visual redesign. Not pixel polish. Not a new forensic product. |
-| **2 — UI detail inside Integrity** | Later: challenge layout, hierarchy, and chrome **inside** the Integrity surface. | Not blocking cut 1. |
-| **3 — API↔UI gap pass** | After cut 1 is walkable: surface OpenAPI ops still missing a caller (`reconcile-integrity-rupture`, `confirm-archived`, peers) on Integrity. | Not a second audit store. |
-| **QA** | Isabelle exploratory once cut 1 (then cut 3) is walkable. | Not exploratory QA as the design phase. |
+| **1 — First-class surface** | Refactor: lift today’s Integrity panel onto its own route + GA nav, rewire in-app deep-links (greenfield, no shims). | Not a visual redesign. Not a new forensic product. |
+| **2 — UI detail inside Integrity** | Later: challenge layout and chrome **inside** Integrity. | Not blocking cut 1. |
+| **3 — API↔UI gap pass** | After cut 1 is walkable: surface missing OpenAPI callers on Integrity. | Not a second audit store. |
+| **QA** | Isabelle exploratory once cut 1 (then cut 3) is walkable. | Not the design phase. |
 
-Engineering sequencing of cut 1: Patrick (craft / file split). IA is not reopened.
+---
+
+## Cut 1 sequencing (Patrick 2026-09-17)
+
+IA holds. This cut is a **move**, not a second journal. Patrick is not implementing.
+
+1. **One PR.** New Global-Admin-only route. Move the existing Integrity panel body onto that page. Do **not** split the panel into presentational files yet. `audit-logs.tsx` keeps the everyday trail only.
+2. **Same PR, not a follow-up.** Rewrite every in-app emitter (Alerts Resolve / Investigate, any query that opened integrity inside audit-logs) onto the new route, then delete the embedded panel. No redirect, dual-read, or shim.
+3. **One module** for the integrity surface (route + existing panel + its current API calls). Shared code with the trail is generated API types and existing audit-log reads only. Do not invent a client-side chain, a second event store, or a parallel integrity-journal model.
+4. **Role gate:** `adminType` Global Admin (or `ROLE_GLOBAL_ADMIN`). Not a generic authenticated-admin gate. Tenant Admin must not see the surface.
+5. **Do not touch:** HMAC/chain semantics, server emitters, tamper-proof copy, Alerts list behavior (only the link target), visual redesign, cut-3 API gaps. Those gaps stay documented holes, not mocked UI.
+
+**Done:** trail page has no integrity atelier; Integrity is a first-class Global-only page; every in-app link lands there; one proof, same `audit_log` reads; no dead panel left in `audit-logs.tsx`.
 
 ---
 
@@ -87,7 +99,7 @@ No API redesign in this note; no second audit store; no pixel campaign in cut 1;
 
 ## Next artifacts
 
-1. ~~Job → surface map~~ — done. Marc accepted the pack on PR #562.
-2. Patrick sequencing read on the cut-1 refactor (in flight).
-3. Implementation of cut 1, then Isabelle.
-4. Cut 3 API↔UI gap pass before “done.” Cut 2 (UI detail) is a later phase.
+1. ~~Job → surface map~~ — done. Marc accepted the pack.
+2. ~~Cut-1 sequencing~~ — locked above.
+3. Implementation of cut 1 when Marc says go, then Isabelle.
+4. Cut 3 after walkable. Cut 2 is a later phase.
