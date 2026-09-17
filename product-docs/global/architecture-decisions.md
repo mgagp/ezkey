@@ -29,6 +29,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0010](#adr-0010-rate-limiting-scoped-by-actor-identity-not-by-ip) | Rate limiting scoped by actor identity, not by IP, across device and M2M surfaces | accepted | 2026-05-08 |
 | [ADR-0011](#adr-0011-tink-native-database-keyset-envelope) | Tink-native database keyset envelope | accepted | 2026-08-02 |
 | [ADR-0012](#adr-0012-admin-owned-keyset-materialization) | Admin-owned keyset materialization | accepted | 2026-08-28 |
+| [ADR-0013](#adr-0013-admin-role-admin-umbrella-keep-vs-split) | Admin `ROLE_ADMIN` umbrella — keep vs split | proposed | 2026-09-16 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -776,3 +777,91 @@ acceleration for clean-start, not the HA contract.
 
 - Tink keyset concurrent read / reload path: [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path).
 - Tink-native database keyset envelope: [ADR-0011](#adr-0011-tink-native-database-keyset-envelope).
+
+## ADR-0013 — Admin `ROLE_ADMIN` umbrella — keep vs split
+
+### Metadata
+
+- **ID:** ADR-0013.
+- **Date:** 2026-09-16.
+- **Status:** proposed.
+- **Scope:** global (Admin API human authorization; Admin UI role chrome).
+- **Owners:** Marc / Patrick (decision); platform architecture.
+- **Decision pack:** [`decisions/2026-09-16-admin-role-umbrella/`](decisions/2026-09-16-admin-role-umbrella/README.md)
+  (inventory, options A/B/C, test preamble, phasing, verdict draft).
+- **Prior hygiene:** Path A keep-umbrella settled 2026-08-20 in
+  [`hygiene/java-controller-role-validation/2026-08-16-pass-1.md`](hygiene/java-controller-role-validation/2026-08-16-pass-1.md)
+  (`CTRL-ROLE-002` / `002b`). This ADR elevates that call to the global decision log for
+  confirm / challenge.
+
+### Context
+
+Every authenticated human admin JWT-equivalent session receives Spring authority `ROLE_ADMIN`,
+then `ROLE_GLOBAL_ADMIN` or `ROLE_TENANT_ADMIN`
+(`AdminTokenAuthenticationFilter`). Shared operator controllers commonly use
+`@PreAuthorize("hasRole('ADMIN')")`. Tenant isolation and Global-only privilege are **not**
+implied by that umbrella; they require a second check (`AccessControlService.canAccess*`,
+principal tenant scope, or an explicit `GLOBAL_ADMIN` gate). SEC-017 and CTRL-ROLE-001 showed
+the fail-open class when the second check is missing. Service-level `@PreAuthorize("hasRole('ADMIN')")`
+would not fix isolation either — Admin API services today do not use method-security annotations
+for that reason.
+
+The product still wants a sober model for a solo-maintained lab: either keep the umbrella and
+make agent discoverability fail-closed in process, or split authorities greenfield-style and
+estimate the cutover.
+
+### Decision
+
+**Proposed (draft for Patrick):** Option C executing Option A — **keep issuing `ROLE_ADMIN`**;
+do **not** remodel filter assignment in application code in this decision cycle. Harden
+discoverability and characterization tests. Treat dropping the umbrella as an optional later
+atomic peel only if isolation defects recur after that hardening, or if a new role model is
+funded as an explicit program. See the decision pack verdict for the full rationale.
+
+Until status becomes `accepted`, treat Admin API `AGENTS.md` § Authorization at controllers as
+the living operational canon (including the 2026-08-20 Path A sentence).
+
+### Alternatives Considered
+
+- **A — Keep umbrella + harden discoverability.** Preferred near-term execution path. Isolation
+  remains object/list scoped; docs/rules/tests carry the load.
+- **B — Split authorities greenfield-style.** Issue only type roles; annotate
+  `hasAnyRole(GLOBAL,TENANT)` vs `hasRole(GLOBAL)`. Honesty gain for Global-only gates; does
+  **not** replace `canAccess*`. Requires coordinated filter + ~36 annotation migration.
+- **C — Hybrid / phased.** Accept A now; independent peels for 403→404 / dialects; optional
+  annotation honesty; stop issuing `ROLE_ADMIN` only in an atomic final step. **Draft
+  recommendation.**
+
+### Consequences
+
+- **Positive (if accepted as drafted).** No risky authz cutover; elevates prior hygiene to ADR;
+  clear reopen criteria for B; separates deny-shape debt from role remodel.
+- **Negative (if accepted as drafted).** Isolation stays opt-in per endpoint; agents that skip
+  AGENTS can still ship umbrella-only get-by-id.
+- **Neutral.** Admin UI continues to branch on `adminType`. Hide-existence and SQL-isolation
+  workstreams remain separate.
+
+### Impact
+
+- **Affected components:** `ezkey-admin-api` (authz model), `ezkey-admin-ui` (role chrome only),
+  `ezkey-tests` (isolation characterization).
+- **Affected boundaries:** Admin human session authorities; not Auth API device protocol; not
+  Integration API `ROLE_API_KEY`.
+- **Living canon until accepted:** [`../../ezkey-admin-api/AGENTS.md`](../../ezkey-admin-api/AGENTS.md)
+  § Authorization at controllers; [`../../docs/API_SECURITY_MATRIX.md`](../../docs/API_SECURITY_MATRIX.md)
+  role story.
+
+### Validation
+
+- Decision acceptance is documentary (Patrick edits status).
+- If accepted as drafted: optional root/agent pointer; fund ACS Tenant Admin unit matrix and
+  keep `TenantCrossIsolationSecurityTest` + `EncryptionKeyControllerSecurityWebMvcTest` green on
+  authz-touching changes.
+- If B is later funded: characterization suite green before removing `ROLE_ADMIN` from the
+  filter (see decision pack test preamble).
+
+### Related Decisions
+
+- None superseded yet. Hygiene Path A is provenance, not an ADR.
+- Orthogonal: encryption key Global-only (SEC-017) remains; keyset writer ownership is
+  [ADR-0012](#adr-0012-admin-owned-keyset-materialization).
