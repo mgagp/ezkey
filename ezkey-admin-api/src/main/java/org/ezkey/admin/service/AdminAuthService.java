@@ -587,8 +587,12 @@ public class AdminAuthService {
       EzkeyAdmin admin, AdminToken token, String plainToken) {
     logger.info("Authentication successful for: {}", admin.getUsername());
 
-    Integer tenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
-    String tenantName = admin.getTenant() != null ? admin.getTenant().getTenantName() : null;
+    Integer tenantId = null;
+    String tenantName = null;
+    if (admin.getAdminType() != EzkeyAdmin.AdminType.GLOBAL_ADMIN && admin.getTenant() != null) {
+      tenantId = admin.getTenant().getTenantId();
+      tenantName = admin.getTenant().getTenantName();
+    }
     return new AdminLoginResponseDto(
         plainToken,
         admin.getAdminType().name(),
