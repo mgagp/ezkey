@@ -15,6 +15,8 @@ public final class AdminAuthRequestAttributes {
   public static final String PLAIN_TOKEN = "org.ezkey.admin.auth.plainToken";
   public static final String EXPIRES_AT = "org.ezkey.admin.auth.expiresAt";
   public static final String USERNAME = "org.ezkey.admin.auth.username";
+  /** Tenant display name for tenant- or integration-scoped sessions; omitted for global admins. */
+  public static final String TENANT_NAME = "org.ezkey.admin.auth.tenantName";
 
   private AdminAuthRequestAttributes() {}
 

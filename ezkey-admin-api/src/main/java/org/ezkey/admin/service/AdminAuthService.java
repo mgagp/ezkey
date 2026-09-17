@@ -588,13 +588,15 @@ public class AdminAuthService {
     logger.info("Authentication successful for: {}", admin.getUsername());
 
     Integer tenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
+    String tenantName = admin.getTenant() != null ? admin.getTenant().getTenantName() : null;
     return new AdminLoginResponseDto(
         plainToken,
         admin.getAdminType().name(),
         admin.getUsername(),
         token.getExpiresAt(),
         admin.getAdminId(),
-        tenantId);
+        tenantId,
+        tenantName);
   }
 
   /**

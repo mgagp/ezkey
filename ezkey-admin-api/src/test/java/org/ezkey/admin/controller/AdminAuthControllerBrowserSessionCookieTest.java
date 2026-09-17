@@ -97,6 +97,7 @@ class AdminAuthControllerBrowserSessionCookieTest {
         .thenReturn("secret-token");
     when(httpRequest.getAttribute(AdminAuthRequestAttributes.AUTH_SOURCE))
         .thenReturn(AdminAuthRequestAttributes.AuthSource.COOKIE);
+    when(httpRequest.getAttribute(AdminAuthRequestAttributes.TENANT_NAME)).thenReturn(null);
     when(csrfTokenService.createToken("secret-token")).thenReturn("csrf-token");
     SecurityContextHolder.getContext()
         .setAuthentication(
@@ -109,8 +110,34 @@ class AdminAuthControllerBrowserSessionCookieTest {
     assertEquals("u1", response.getBody().username());
     assertEquals("GLOBAL_ADMIN", response.getBody().adminType());
     assertEquals(exp, response.getBody().expiresAt());
+    assertNull(response.getBody().tenantName());
     assertEquals("csrf-token", response.getBody().csrfToken());
     verify(sessionCookieService).addCsrfCookie(httpResponse, "csrf-token", exp);
+  }
+
+  @Test
+  @DisplayName("me returns tenant display name for tenant-scoped administrators")
+  void me_tenantAdmin_includesTenantName() {
+    OffsetDateTime exp = OffsetDateTime.now().plusHours(2);
+    when(httpRequest.getAttribute(AdminAuthRequestAttributes.USERNAME)).thenReturn("tenant.admin");
+    when(httpRequest.getAttribute(AdminAuthRequestAttributes.EXPIRES_AT)).thenReturn(exp);
+    when(httpRequest.getAttribute(AdminAuthRequestAttributes.PLAIN_TOKEN)).thenReturn("tok");
+    when(httpRequest.getAttribute(AdminAuthRequestAttributes.AUTH_SOURCE))
+        .thenReturn(AdminAuthRequestAttributes.AuthSource.BEARER);
+    when(httpRequest.getAttribute(AdminAuthRequestAttributes.TENANT_NAME)).thenReturn("Acme Corp");
+    SecurityContextHolder.getContext()
+        .setAuthentication(
+            new UsernamePasswordAuthenticationToken(
+                new AdminPrincipal(12, AdminType.TENANT_ADMIN, 3, null), null));
+
+    ResponseEntity<AdminSessionResponseDto> response = controller.me(httpRequest, httpResponse);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertEquals("tenant.admin", response.getBody().username());
+    assertEquals("TENANT_ADMIN", response.getBody().adminType());
+    assertEquals(Integer.valueOf(3), response.getBody().tenantId());
+    assertEquals("Acme Corp", response.getBody().tenantName());
+    assertNull(response.getBody().csrfToken());
   }
 
   @Test
@@ -120,7 +147,7 @@ class AdminAuthControllerBrowserSessionCookieTest {
     when(authService.findAuditContextForAuthAttempt(1)).thenReturn(Optional.empty());
     OffsetDateTime exp = OffsetDateTime.now().plusHours(2);
     AdminLoginResponseDto ok =
-        AdminLoginResponseDto.success("secret-token", "GLOBAL_ADMIN", "u1", exp, 9, null);
+        AdminLoginResponseDto.success("secret-token", "GLOBAL_ADMIN", "u1", exp, 9, null, null);
     when(authService.waitForPasswordlessAuth(1, null, "waiter-secret")).thenReturn(ok);
     when(browserSessionCookieProperties.getBrowserSessionCookieName())
         .thenReturn("EZKEY_ADMIN_SESSION");
