@@ -97,6 +97,11 @@ export const HomeScreen: React.FC = () => {
     [brokenEnrollments],
   );
 
+  const expandedInstallationIds = useMemo(
+    () => new Set(expandedInstallations),
+    [expandedInstallations],
+  );
+
   const installationGroups = useMemo(() => {
     const rows: EnrollmentMetadataRecord[] = [
       ...(healthyEnrollments ?? []),
@@ -253,7 +258,7 @@ export const HomeScreen: React.FC = () => {
               <InstallationSection
                 key={group.installation.id}
                 group={group}
-                expanded={expandedInstallations.includes(group.installation.id)}
+                expanded={expandedInstallationIds.has(group.installation.id)}
                 onToggle={toggleInstallation}
                 onSelectEnrollment={handleSelect}
                 brokenIds={brokenIds}
