@@ -31,6 +31,7 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 | Priority framing | **Not P0** and **no hard date**. Not a demoted re-read. Frame as: deliberate Admin UI opérabilité program **after Wave B integrity R1 landed** — the semantics exist; the IA should now match them honestly. Pace = do it properly. Does **not** invent a new September gate. |
 | Phase 2 | After the split is **walkable**: close **API ↔ UI** gaps (`reconcile-integrity-rupture`, `confirm-archived`, and any peers) so product intention is testable end-to-end — before calling the area “done.” |
 | Alerts vs Integrity | **Alerts** = exceptional signal list. **Integrity** = investigation + remediation home. Do **not** merge Alerts into Integrity chrome. |
+| Nav (G1) | New **sidebar item**, **Global Admin only**. `/audit-logs` stays trail-only for all roles. Tenant Admin never sees Integrity nav. |
 | Verification | Isabelle exploratory QA once walkable. |
 | Quality bar | Clean split; careful refactor; no shadow zones for cryptographic audit integrity management. |
 
@@ -73,10 +74,10 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 
 ## Proposed mental model
 
-1. **`/audit-logs` — Audit trail (everyday)**  
+1. **`/audit-logs` — Audit trail (everyday, all roles)**  
    Who did what? Filter, read, open detail, enter/exit bounded investigation contexts. HMAC column remains **honest badges** when an integrity session exists, but the page is not the ops console.
 
-2. **Integrity — first-class (Global Admin)**  
+2. **Integrity — first-class sidebar (Global Admin only)**  
    Observability → verification → detective run → remediation (including narrow seal/archive/confirm). Clear hierarchy; help copy already calls seal/gap **exceptional** — the IA must match.
 
 3. **Alerts — exceptional signal list**  
@@ -86,9 +87,9 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 
 ## Open IA options (grilling)
 
-See grill session file. High-level:
+See grill session file. Still open:
 
-1. Nav / roles for the new Integrity citizen (GA-only sidebar item vs other patterns).
+1. ~~Nav / roles~~ — **settled G1-A**.
 2. Exact home for reconcile vs confirm-archived (within Alerts-signal / Integrity-remediation rule).
 3. Where integrity-alert **investigation table** lives (trail, Integrity, or thin bridge).
 4. Nav label: **Integrity** vs **Integrity & Lifecycle** (with Lifecycle narrowly defined).
@@ -100,7 +101,7 @@ Flag Alex only if a choice would dilute the hard split or blur Alerts vs Integri
 
 ## Role story (baseline from prior integrity grill)
 
-Already settled in integrity cluster grilling (**A2**): Global Admin only for cryptographic investigation / declaration / reattachment; Tenant Admin may consult audits but must not gain crypto-ops visibility. Hard split should **make that asymmetry obvious in nav**, not only via a panel that appears for GA on the same URL.
+Already settled in integrity cluster grilling (**A2**): Global Admin only for cryptographic investigation / declaration / reattachment; Tenant Admin may consult audits but must not gain crypto-ops visibility. **G1** makes that asymmetry obvious in nav.
 
 ---
 
