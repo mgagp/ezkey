@@ -589,9 +589,12 @@ public class AdminAuthService {
 
     Integer tenantId = null;
     String tenantName = null;
-    if (admin.getAdminType() != EzkeyAdmin.AdminType.GLOBAL_ADMIN && admin.getTenant() != null) {
-      tenantId = admin.getTenant().getTenantId();
-      tenantName = admin.getTenant().getTenantName();
+    // Prefer tenant already attached on the issued token (same instance set in
+    // generateAndPersistToken). EntityGraph on findByEnrollmentId initializes it before wait.
+    var tenant = token.getTenant() != null ? token.getTenant() : admin.getTenant();
+    if (admin.getAdminType() != EzkeyAdmin.AdminType.GLOBAL_ADMIN && tenant != null) {
+      tenantId = tenant.getTenantId();
+      tenantName = tenant.getTenantName();
     }
     return new AdminLoginResponseDto(
         plainToken,

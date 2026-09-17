@@ -278,11 +278,15 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
    * Find admin by enrollment ID.
    *
    * <p>Used during passwordless authentication to identify which admin is associated with a
-   * specific enrollment when processing auth attempts.
+   * specific enrollment when processing auth attempts. Eagerly loads {@code tenant} so
+   * passwordless-wait can read {@code tenantName} after {@code AuthAttemptWaitService}'s
+   * {@code NOT_SUPPORTED} wait suspends the outer persistence context (lazy proxies would otherwise
+   * throw {@code LazyInitializationException}).
    *
    * @param enrollmentId the enrollment ID
    * @return Optional containing the admin if found
    */
+  @EntityGraph(attributePaths = {"tenant"})
   @Query("SELECT a FROM EzkeyAdmin a WHERE a.enrollment.enrollmentId = :enrollmentId")
   Optional<EzkeyAdmin> findByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 
