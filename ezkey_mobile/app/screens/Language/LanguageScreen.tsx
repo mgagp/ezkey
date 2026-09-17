@@ -33,7 +33,7 @@ export const LanguageScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const {t} = useTranslation();
   const [selectedLocale, setSelectedLocale] = useState<SupportedLocale>(
-    normalizeLocale(i18n.resolvedLanguage ?? i18n.language ?? DEFAULT_LOCALE),
+    () => normalizeLocale(i18n.resolvedLanguage ?? i18n.language ?? DEFAULT_LOCALE),
   );
   const [pendingLocale, setPendingLocale] = useState<SupportedLocale | undefined>();
 
