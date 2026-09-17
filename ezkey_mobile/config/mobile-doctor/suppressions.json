@@ -44,6 +44,18 @@
       "rule": "no-unowned-async-error-clear",
       "pathFragment": "usePendingAuth.ts",
       "reason": "Stale overlapping loadPendingAttempt is a real pattern but rare (enrollment switch / double refresh). No generation-counter rewrite in the pending-auth path without an observed race. Campaign 2026-08-25 pass-1."
+    },
+    {
+      "tool": "detekt",
+      "rule": "UnusedParameter",
+      "pathFragment": "EzkeyCryptoModule.kt",
+      "reason": "Level 2 policy at respond; keygen securityLevel reserved for deferred MOB-001 Track B; do not wire in hygiene. Live product not broken: ensureEnrollmentKeyPair does not pass securityLevel; keys stay setUserAuthenticationRequired(false). Christophe 2026-09-17; campaign 2026-09-17 pass-1."
+    },
+    {
+      "tool": "detekt",
+      "rule": "UnusedPrivateProperty",
+      "pathFragment": "EzkeyCryptoModule.kt",
+      "reason": "SECURITY_LEVEL_CONFIRM_BEFORE_APPROVALS reserved for deferred MOB-001 Track B; Level 2 policy at respond — do not wire in hygiene. Live product not broken. Christophe 2026-09-17; campaign 2026-09-17 pass-1."
     }
   ]
 }

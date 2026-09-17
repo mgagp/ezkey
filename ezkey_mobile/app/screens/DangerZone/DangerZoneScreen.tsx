@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  ListRenderItemInfo,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -198,6 +199,76 @@ const buildDeleteMessage = (
   return lines.join('\n');
 };
 
+type DangerZoneEnrollmentRowProps = {
+  item: EnrollmentMetadataRecord;
+  isBroken: boolean;
+  deletePending: boolean;
+  onDelete: (enrollment: EnrollmentMetadataRecord) => void;
+};
+
+/**
+ * Single Danger Zone enrollment row. Memoized so FlatList can keep stable row callbacks.
+ */
+const DangerZoneEnrollmentRow = React.memo(function DangerZoneEnrollmentRow({
+  item,
+  isBroken,
+  deletePending,
+  onDelete,
+}: DangerZoneEnrollmentRowProps) {
+  const {t} = useTranslation();
+
+  const handlePress = useCallback(() => {
+    onDelete(item);
+  }, [item, onDelete]);
+
+  const card = buildHomeCardLabels(
+    item,
+    t('dangerZone.installationFallback'),
+    identityDisplayCopy(t),
+  );
+  const displayName = getEnrollmentDisplayName(item, t);
+  const showHostHint = shouldShowInstallationHostHint(item);
+  const installationLabel =
+    showHostHint && item.installation?.host
+      ? `${item.installation?.name ?? t('dangerZone.installationFallback')} · ${item.installation.host}`
+      : item.installation?.name;
+
+  return (
+    <View style={styles.row}>
+      <View style={styles.rowInfo}>
+        <View style={styles.rowTitleLine}>
+          <Text style={styles.rowTitle}>{displayName}</Text>
+          {isBroken ? (
+            <Text style={styles.unusableBadge}>{t('dangerZone.unusableBadge')}</Text>
+          ) : null}
+          {item.favorited ? <Text style={styles.favoriteBadge}>{t('dangerZone.favorite')}</Text> : null}
+        </View>
+        <Text style={styles.rowMeta}>
+          {[card.title, card.roleLabel].filter(Boolean).join(' · ')}
+        </Text>
+        <Text style={styles.rowMeta}>
+          {[item.isSystemIntegration ? undefined : item.tenantName, installationLabel]
+            .filter(Boolean)
+            .join(' · ')}
+        </Text>
+        <Text
+          style={[styles.rowRecency, wasRecentlyActive(item) && styles.rowRecencyRecent]}>
+          {buildRecencyLabel(item, t)}
+        </Text>
+      </View>
+      <TouchableOpacity
+        style={[styles.deleteButton, deletePending && styles.deleteButtonDisabled]}
+        onPress={handlePress}
+        disabled={deletePending}
+        accessibilityRole="button"
+        accessibilityLabel={t('dangerZone.deleteAccessibility', {name: displayName})}
+        accessibilityHint={t('dangerZone.deleteAccessibilityHint')}>
+        <Text style={styles.deleteLabel}>{t('dangerZone.delete')}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+});
+
 /**
  * Administrative screen for deleting enrollments and clearing all local data.
  * Separated from the main flow to avoid accidental deletion.
@@ -281,6 +352,18 @@ export const DangerZoneScreen: React.FC = () => {
     );
   }, [refetch, t]);
 
+  const renderEnrollmentItem = useCallback(
+    ({item}: ListRenderItemInfo<EnrollmentMetadataRecord>) => (
+      <DangerZoneEnrollmentRow
+        item={item}
+        isBroken={brokenIds.has(item.id)}
+        deletePending={deleteMutation.isPending}
+        onDelete={handleDelete}
+      />
+    ),
+    [brokenIds, deleteMutation.isPending, handleDelete],
+  );
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer} accessibilityLabel={t('dangerZone.loading')}>
@@ -319,59 +402,7 @@ export const DangerZoneScreen: React.FC = () => {
             <Text style={styles.footerHint}>{t('dangerZone.footerHint')}</Text>
           </View>
         }
-        renderItem={({item}) => {
-          const card = buildHomeCardLabels(
-            item,
-            t('dangerZone.installationFallback'),
-            identityDisplayCopy(t),
-          );
-          const displayName = getEnrollmentDisplayName(item, t);
-          const showHostHint = shouldShowInstallationHostHint(item);
-          const installationLabel = showHostHint && item.installation?.host
-            ? `${item.installation?.name ?? t('dangerZone.installationFallback')} · ${item.installation.host}`
-            : item.installation?.name;
-
-          return (
-            <View style={styles.row}>
-              <View style={styles.rowInfo}>
-                <View style={styles.rowTitleLine}>
-                  <Text style={styles.rowTitle}>{displayName}</Text>
-                  {brokenIds.has(item.id) ? (
-                    <Text style={styles.unusableBadge}>{t('dangerZone.unusableBadge')}</Text>
-                  ) : null}
-                  {item.favorited ? <Text style={styles.favoriteBadge}>{t('dangerZone.favorite')}</Text> : null}
-                </View>
-                <Text style={styles.rowMeta}>
-                  {[card.title, card.roleLabel].filter(Boolean).join(' · ')}
-                </Text>
-                <Text style={styles.rowMeta}>
-                  {[
-                    item.isSystemIntegration ? undefined : item.tenantName,
-                    installationLabel,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-                <Text
-                  style={[
-                    styles.rowRecency,
-                    wasRecentlyActive(item) && styles.rowRecencyRecent,
-                  ]}>
-                  {buildRecencyLabel(item, t)}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.deleteButton, deleteMutation.isPending && styles.deleteButtonDisabled]}
-                onPress={() => handleDelete(item)}
-                disabled={deleteMutation.isPending}
-                accessibilityRole="button"
-                accessibilityLabel={t('dangerZone.deleteAccessibility', {name: displayName})}
-                accessibilityHint={t('dangerZone.deleteAccessibilityHint')}>
-                <Text style={styles.deleteLabel}>{t('dangerZone.delete')}</Text>
-              </TouchableOpacity>
-            </View>
-          );
-        }}
+        renderItem={renderEnrollmentItem}
       />
     </View>
   );
