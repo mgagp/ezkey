@@ -113,7 +113,7 @@ class AdminProvisioningActivationCompletionTest {
     when(signatureService.generateSecureChallenge(6)).thenReturn(654321);
     when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
             integration.getId(),
-            "Tenant Admin MFA - Pending Admin (pending.admin)",
+            "Pending Admin",
             org.ezkey.enrollment.domain.EnrollmentStatus.VERIFIED))
         .thenReturn(List.of());
     when(enrollmentRepository.save(any(Enrollment.class)))

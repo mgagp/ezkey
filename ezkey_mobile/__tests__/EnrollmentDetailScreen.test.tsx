@@ -17,6 +17,7 @@ import {
   useMarkEnrollmentPendingChecked,
 } from '../app/hooks/useEnrollments';
 import {claimPendingAttempt} from '../app/services/pendingAuth/claimPendingAttempt';
+import {useEnrollmentStore} from '../app/state/enrollmentStore';
 
 jest.mock('../app/hooks/useEnrollments', () => ({
   useEnrollments: jest.fn(),
@@ -78,7 +79,32 @@ function renderDetail() {
   return {navigation, route};
 }
 
+const mountedTrees: renderer.ReactTestRenderer[] = [];
+
+async function renderScreen(
+  navigation: ReturnType<typeof renderDetail>['navigation'],
+  route: ReturnType<typeof renderDetail>['route'],
+): Promise<renderer.ReactTestRenderer> {
+  let tree!: renderer.ReactTestRenderer;
+  await renderer.act(async () => {
+    tree = renderer.create(
+      <EnrollmentDetailScreen navigation={navigation as never} route={route as never} />,
+    );
+  });
+  mountedTrees.push(tree);
+  return tree;
+}
+
 describe('EnrollmentDetailScreen', () => {
+  afterEach(() => {
+    renderer.act(() => {
+      while (mountedTrees.length > 0) {
+        mountedTrees.pop()?.unmount();
+      }
+      useEnrollmentStore.getState().clear();
+    });
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseDeleteEnrollment.mockReturnValue({isPending: false, mutate: jest.fn()} as never);
@@ -94,12 +120,7 @@ describe('EnrollmentDetailScreen', () => {
 
   it('shows Check pending for a healthy enrollment', async () => {
     const {navigation, route} = renderDetail();
-    let tree: renderer.ReactTestRenderer;
-    await renderer.act(async () => {
-      tree = renderer.create(
-        <EnrollmentDetailScreen navigation={navigation as never} route={route as never} />,
-      );
-    });
+    const tree = await renderScreen(navigation, route);
 
     expect(
       tree!.root.findAll(node => node.props.testID === 'ezkey.e2e.enrollmentDetail.checkPending')
@@ -107,15 +128,100 @@ describe('EnrollmentDetailScreen', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('shows enrollment as hero and omits URL, created date, and host hint when branded', async () => {
+    const {navigation, route} = renderDetail();
+    const tree = await renderScreen(navigation, route);
+
+    expect(
+      tree!.root.find(node => node.props.testID === 'ezkey.e2e.enrollmentDetail.hero').props
+        .children,
+    ).toBe('Pixel 7 Pro');
+    expect(
+      tree!.root.findAll(node => node.props.testID === 'ezkey.e2e.enrollmentDetail.hostHint')
+        .length,
+    ).toBe(0);
+
+    const textContent = tree!.root
+      .findAllByType(Text)
+      .map(node => node.props.children)
+      .flat()
+      .join(' ');
+    expect(textContent).toContain('Admin Console');
+    expect(textContent).toContain('Tenant Red');
+    expect(textContent).toContain('Acme EU');
+    expect(textContent).not.toContain('https://auth.acme.example');
+    expect(textContent).not.toContain('Created');
+  });
+
+  it('shows a host hint when installation branding fell back to the host', async () => {
+    mockUseEnrollments.mockReturnValue({
+      data: {
+        enrollments: [
+          {
+            ...healthyEnrollment,
+            integrationName: 'exp1-auth-api.ezkey.org',
+            tenantName: 'exp1-auth-api.ezkey.org',
+            installation: {
+              id: 'https://exp1-auth-api.ezkey.org',
+              authUrl: 'https://exp1-auth-api.ezkey.org',
+              name: 'exp1-auth-api.ezkey.org',
+              host: 'exp1-auth-api.ezkey.org',
+            },
+          },
+        ],
+        broken: [],
+        collectionError: false,
+      },
+      isLoading: false,
+      refetch: jest.fn(),
+    } as never);
+
+    const {navigation, route} = renderDetail();
+    const tree = await renderScreen(navigation, route);
+
+    expect(
+      tree!.root.findAll(node => node.props.testID === 'ezkey.e2e.enrollmentDetail.hostHint')
+        .length,
+    ).toBeGreaterThan(0);
+    const textContent = tree!.root
+      .findAllByType(Text)
+      .map(node => node.props.children)
+      .flat()
+      .join(' ');
+    expect(textContent).toContain('exp1-auth-api.ezkey.org');
+    expect(textContent).not.toContain('https://exp1-auth-api.ezkey.org');
+  });
+
+  it('shows latest response as status, not the stored title', async () => {
+    await renderer.act(async () => {
+      useEnrollmentStore.getState().setRecentAuthResult(enrollmentId, {
+        status: 'approved',
+        title: 'Unicorn Farm',
+        message: 'Auth attempt completed',
+        completedAt: '2026-09-15T12:00:00.000Z',
+      });
+    });
+
+    const {navigation, route} = renderDetail();
+    const tree = await renderScreen(navigation, route);
+
+    expect(
+      tree!.root.find(node => node.props.testID === 'ezkey.e2e.enrollmentDetail.recentActionStatus')
+        .props.children,
+    ).toBe('Approved');
+    const textContent = tree!.root
+      .findAllByType(Text)
+      .map(node => node.props.children)
+      .flat()
+      .join(' ');
+    expect(textContent).not.toContain('Unicorn Farm');
+    expect(textContent).not.toContain('Auth attempt completed');
+  });
+
   it('navigates to PendingAuth when claim returns an attempt', async () => {
     mockClaimPendingAttempt.mockResolvedValue({kind: 'attempt', attempt: pendingAttempt});
     const {navigation, route} = renderDetail();
-    let tree: renderer.ReactTestRenderer;
-    await renderer.act(async () => {
-      tree = renderer.create(
-        <EnrollmentDetailScreen navigation={navigation as never} route={route as never} />,
-      );
-    });
+    const tree = await renderScreen(navigation, route);
 
     const checkPending = tree!.root.find(
       node => node.props.testID === 'ezkey.e2e.enrollmentDetail.checkPending',
@@ -134,12 +240,7 @@ describe('EnrollmentDetailScreen', () => {
   it('stays on Detail with feedback when there is no pending attempt', async () => {
     mockClaimPendingAttempt.mockResolvedValue({kind: 'none'});
     const {navigation, route} = renderDetail();
-    let tree: renderer.ReactTestRenderer;
-    await renderer.act(async () => {
-      tree = renderer.create(
-        <EnrollmentDetailScreen navigation={navigation as never} route={route as never} />,
-      );
-    });
+    const tree = await renderScreen(navigation, route);
 
     const checkPending = tree!.root.find(
       node => node.props.testID === 'ezkey.e2e.enrollmentDetail.checkPending',
@@ -164,12 +265,7 @@ describe('EnrollmentDetailScreen', () => {
       reason: 'invalid_pending_signature',
     });
     const {navigation, route} = renderDetail();
-    let tree: renderer.ReactTestRenderer;
-    await renderer.act(async () => {
-      tree = renderer.create(
-        <EnrollmentDetailScreen navigation={navigation as never} route={route as never} />,
-      );
-    });
+    const tree = await renderScreen(navigation, route);
 
     const checkPending = tree!.root.find(
       node => node.props.testID === 'ezkey.e2e.enrollmentDetail.checkPending',
@@ -206,12 +302,7 @@ describe('EnrollmentDetailScreen', () => {
     } as never);
 
     const {navigation, route} = renderDetail();
-    let tree: renderer.ReactTestRenderer;
-    await renderer.act(async () => {
-      tree = renderer.create(
-        <EnrollmentDetailScreen navigation={navigation as never} route={route as never} />,
-      );
-    });
+    const tree = await renderScreen(navigation, route);
 
     expect(
       tree!.root.findAll(node => node.props.testID === 'ezkey.e2e.enrollmentDetail.unusable').length,

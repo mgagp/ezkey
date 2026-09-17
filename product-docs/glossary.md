@@ -56,7 +56,7 @@ For feature, milestone, and traceability entries:
 | Role | Meaning |
 | --- | --- |
 | **Global Admin** | Operator responsible for platform-wide, IT-level concerns (e.g. cryptographic keys, system configuration). |
-| **Tenant Admin** | Operator responsible for day-to-day tenant administration (integrations, enrollments, API keys). |
+| **Tenant Admin** | Operator responsible for day-to-day tenant administration (integrations, enrollments, API keys). French UI copy keeps the English loanword **tenant** (`Admin tenant`); do not use *locataire*. |
 | **End user** | A person being authenticated through an integration. |
 | **Integrating application** | A backend system that uses the product to authenticate its users. |
 

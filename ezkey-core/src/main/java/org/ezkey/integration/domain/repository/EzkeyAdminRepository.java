@@ -293,14 +293,10 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
    * shared references to a collection: Tenant.administrators" hazard when building bind responses
    * for system integrations (administrator enrollments).
    *
-   * <p>Returns {@link List} rather than {@code Optional<Object[]>} — Spring Data's {@code
-   * Optional<Object[]>} handling for native multi-column queries nests the row so {@code row[0]} is
-   * itself an {@code Object[]}, which breaks callers that cast columns to {@link Number}/{@link
-   * String}.
-   *
    * @param enrollmentId the enrollment ID
-   * @return list with one {@code Object[]} row {@code [tenantId, tenantName, tenantDescription]},
-   *     or empty if admin has no tenant
+   * @return one row {@code [tenantId, tenantName, tenantDescription]}, or empty if the admin has no
+   *     tenant. Uses {@code List} rather than {@code Optional<Object[]>} so a native three-column
+   *     row is not unwrapped to the first scalar only.
    */
   @Query(
       value =

@@ -367,6 +367,8 @@ The following ezkey-core prefixes are also active in Admin API. See
 | `ezkey.admin.initial.first-name` | `EZKEY_ADMIN_INITIAL_FIRST_NAME` | `Admin` |
 | `ezkey.admin.initial.last-name` | `EZKEY_ADMIN_INITIAL_LAST_NAME` | `Docker` |
 | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE` | `full` |
+| `ezkey.organization.name` | `EZKEY_ORGANIZATION_NAME` | `Ezkey System` |
+| `ezkey.organization.description` | `EZKEY_ORGANIZATION_DESCRIPTION` | `Ezkey MFA instance for your organization` |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(empty)* |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(empty)* |
 | `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | `admin-api` |

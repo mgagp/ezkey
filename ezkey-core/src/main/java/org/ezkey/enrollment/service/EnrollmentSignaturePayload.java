@@ -46,7 +46,7 @@ public final class EnrollmentSignaturePayload {
    * Builds the payload signed by the integration in the bind response.
    *
    * <p>Format: {@code
-   * enrollmentProofToken|enrollmentId|integrationPublicKey|algorithm|integrationName|integrationDescription|enrollmentName|tenantId|tenantName|tenantDescription}
+   * enrollmentProofToken|enrollmentId|integrationPublicKey|algorithm|integrationName|integrationDescription|enrollmentName|tenantId|tenantName|tenantDescription|isSystemIntegration|adminType}
    */
   public static String buildBindPayload(
       String enrollmentProofToken,
@@ -58,7 +58,9 @@ public final class EnrollmentSignaturePayload {
       String enrollmentName,
       Integer tenantId,
       String tenantName,
-      String tenantDescription) {
+      String tenantDescription,
+      Boolean isSystemIntegration,
+      String adminType) {
     String pt = enrollmentProofToken != null ? enrollmentProofToken : "";
     String idStr = enrollmentId != null ? String.valueOf(enrollmentId) : "";
     String integPk = integrationPublicKeyNormalized != null ? integrationPublicKeyNormalized : "";
@@ -82,7 +84,19 @@ public final class EnrollmentSignaturePayload {
         + SEP
         + nfcOrEmpty(tenantName)
         + SEP
-        + nfcOrEmpty(tenantDescription);
+        + nfcOrEmpty(tenantDescription)
+        + SEP
+        + booleanSegment(isSystemIntegration)
+        + SEP
+        + literalOrEmpty(adminType);
+  }
+
+  private static String booleanSegment(Boolean value) {
+    return Boolean.TRUE.equals(value) ? "true" : "false";
+  }
+
+  private static String literalOrEmpty(String value) {
+    return value != null ? value : "";
   }
 
   /**

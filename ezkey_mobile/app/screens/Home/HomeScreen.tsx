@@ -38,6 +38,11 @@ import {
   type InstallationGroup,
 } from '../../utils/tenantGrouping';
 import {resolveServerEnrollmentId} from '../../utils/localEnrollmentIdentity';
+import {
+  buildHomeCardLabels,
+  identityDisplayCopy,
+  shouldShowHomeTenantSection,
+} from '../../utils/enrollmentDisplay';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
 import {
   checkFlexiblePlayUpdate,
@@ -197,9 +202,16 @@ export const HomeScreen: React.FC = () => {
 
   const handleRemoveBroken = useCallback(
     (enrollment: EnrollmentMetadataRecord) => {
+      const card = buildHomeCardLabels(
+        enrollment,
+        t('enrollmentWizard.integrationFallback'),
+        identityDisplayCopy(t),
+      );
       Alert.alert(
         t('home.brokenRemoveConfirmTitle'),
-        t('home.brokenRemoveConfirmMessage', {name: enrollment.integrationName}),
+        t('home.brokenRemoveConfirmMessage', {
+          name: card.subtitle ?? card.title,
+        }),
         [
           {text: t('home.brokenRemoveCancel'), style: 'cancel'},
           {
@@ -333,6 +345,7 @@ const TenantSectionHeader: React.FC<TenantSectionHeaderProps> = ({
     <View
       style={styles.tenantHeader}
       accessibilityLabel={t('home.tenantSection', {tenantName})}>
+      <Text style={styles.tenantEyebrow}>{t('home.tenantSectionEyebrow')}</Text>
       <Text style={styles.tenantName}>{tenantName}</Text>
       {tenantDescription ? (
         <Text style={styles.tenantDescription}>{tenantDescription}</Text>
@@ -387,10 +400,16 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
         <View style={styles.installationBody}>
           {group.tenantGroups.map(tenantGroup => (
             <View key={`${group.installation.id}:${tenantGroup.tenantId ?? tenantGroup.tenantName}`}>
-              <TenantSectionHeader
-                tenantName={tenantGroup.tenantName}
-                tenantDescription={tenantGroup.tenantDescription}
-              />
+              {shouldShowHomeTenantSection(
+                tenantGroup.tenantName,
+                group.installation.name,
+                tenantGroup.enrollments,
+              ) ? (
+                <TenantSectionHeader
+                  tenantName={tenantGroup.tenantName}
+                  tenantDescription={tenantGroup.tenantDescription}
+                />
+              ) : null}
               {tenantGroup.enrollments.map(enrollment => (
                 <EnrollmentListItem
                   key={enrollment.id}
@@ -443,6 +462,14 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({
   onRemove,
 }) => {
   const {t} = useTranslation();
+  const card = buildHomeCardLabels(
+    enrollment,
+    t('enrollmentWizard.integrationFallback'),
+    identityDisplayCopy(t),
+  );
+  const accessibilityName = card.subtitle
+    ? `${card.title}, ${card.subtitle}${card.roleLabel ? `, ${card.roleLabel}` : ''}`
+    : card.title;
 
   return (
     <TouchableOpacity
@@ -451,18 +478,15 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({
       onPress={() => onPress(enrollment)}
       accessibilityRole="button"
       accessibilityLabel={
-        broken
-          ? t('home.brokenRowAccessibility', {name: enrollment.integrationName})
-          : enrollment.integrationName
+        broken ? t('home.brokenRowAccessibility', {name: accessibilityName}) : accessibilityName
       }
       accessibilityHint={t('home.openEnrollmentDetails')}>
       <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{enrollment.integrationName}</Text>
+        <Text style={styles.cardTitle}>{card.title}</Text>
         {broken ? <Text style={styles.brokenBadge}>{t('home.brokenBadge')}</Text> : null}
       </View>
-      {enrollment.enrollmentName ? (
-        <Text style={styles.cardSubtitle}>{enrollment.enrollmentName}</Text>
-      ) : null}
+      {card.subtitle ? <Text style={styles.cardSubtitle}>{card.subtitle}</Text> : null}
+      {card.roleLabel ? <Text style={styles.cardSubtitle}>{card.roleLabel}</Text> : null}
       {broken ? (
         <>
           <Text style={styles.brokenSubtitle}>{t('home.brokenRowSubtitle')}</Text>
@@ -472,12 +496,12 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({
             onPress={() => onRemove(enrollment)}
             accessibilityRole="button"
             accessibilityLabel={t('home.brokenRowRemoveAccessibility', {
-              name: enrollment.integrationName,
+              name: accessibilityName,
             })}>
             <Text style={styles.brokenRemoveLabel}>{t('home.brokenRowRemove')}</Text>
           </TouchableOpacity>
         </>
-      ) : enrollment.integrationDescription ? (
+      ) : enrollment.integrationDescription && !enrollment.isSystemIntegration ? (
         <Text numberOfLines={2} style={styles.cardDescription}>
           {enrollment.integrationDescription}
         </Text>
@@ -549,6 +573,14 @@ const styles = StyleSheet.create({
   tenantHeader: {
     marginTop: spacing.sm,
     paddingHorizontal: spacing.xs,
+  },
+  tenantEyebrow: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
+    marginBottom: 2,
   },
   tenantName: {
     fontSize: typography.fontSize.md,

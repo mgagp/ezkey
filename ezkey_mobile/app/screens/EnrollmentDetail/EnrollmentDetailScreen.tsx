@@ -31,6 +31,10 @@ import {RootStackParamList} from '../../navigation/types';
 import {userFacingAuthApiError} from '../../services/api/authApiProblem';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 import {claimPendingAttempt} from '../../services/pendingAuth/claimPendingAttempt';
+import {
+  buildEnrollmentIdentityDisplay,
+  identityDisplayCopy,
+} from '../../utils/enrollmentDisplay';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
@@ -68,12 +72,24 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     return data.broken.find(item => item.id === targetId);
   }, [data, targetId]);
 
+  const identitySource = enrollment ?? brokenEnrollment?.metadata;
+  const identity = useMemo(
+    () =>
+      identitySource
+        ? buildEnrollmentIdentityDisplay(
+            identitySource,
+            t('enrollmentDetail.installationFallback'),
+            identityDisplayCopy(t),
+          )
+        : undefined,
+    [identitySource, t],
+  );
+
   useEffect(() => {
-    const title = enrollment?.integrationName ?? brokenEnrollment?.metadata.integrationName;
-    if (title) {
-      navigation.setOptions({title});
+    if (identity?.navTitle) {
+      navigation.setOptions({title: identity.navTitle});
     }
-  }, [enrollment, brokenEnrollment, navigation]);
+  }, [identity, navigation]);
 
   const extractErrorMessage = useCallback(
     (error: unknown) => {
@@ -180,15 +196,21 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     return (
       <View style={styles.container} testID="ezkey.e2e.enrollmentDetail.unusable">
         <View style={styles.identityZone}>
-          <Text style={styles.installationLine}>
-            {metadata.installation?.name ?? t('enrollmentDetail.installationFallback')}
-          </Text>
-          {metadata.tenantName ? (
-            <Text style={styles.tenantLine}>{metadata.tenantName}</Text>
+          <Text style={styles.integrationName}>{identity?.heroTitle ?? metadata.integrationName}</Text>
+          {identity?.purposeLabel ? (
+            <Text style={styles.deviceLine}>{identity.purposeLabel}</Text>
           ) : null}
-          <Text style={styles.integrationName}>{metadata.integrationName}</Text>
-          {metadata.enrollmentName ? (
-            <Text style={styles.deviceLine}>{metadata.enrollmentName}</Text>
+          {identity?.roleLabel ? (
+            <Text style={styles.deviceLine}>{identity.roleLabel}</Text>
+          ) : null}
+          {identity?.tenantLabel ? (
+            <Text style={styles.tenantLine}>{identity.tenantLabel}</Text>
+          ) : null}
+          {identity?.tenantDescription ? (
+            <Text style={styles.tenantDescriptionLine}>{identity.tenantDescription}</Text>
+          ) : null}
+          {identity?.installationContext ? (
+            <Text style={styles.installationLine}>{identity.installationContext}</Text>
           ) : null}
         </View>
 
@@ -221,16 +243,17 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     );
   }
 
-  const createdStr = new Date(enrollment.createdAt).toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
   const lastStr = new Date(enrollment.lastActivityAt).toLocaleString(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
-  const installation = enrollment.installation;
-  const hasCustomServer = !!installation?.authUrl;
+  const resolvedIdentity =
+    identity ??
+    buildEnrollmentIdentityDisplay(
+      enrollment,
+      t('enrollmentDetail.installationFallback'),
+      identityDisplayCopy(t),
+    );
   const recentResultTimeStr = recentAuthResult
     ? new Date(recentAuthResult.completedAt).toLocaleString(undefined, {
         dateStyle: 'medium',
@@ -255,32 +278,36 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   return (
     <View style={styles.container} testID="ezkey.e2e.enrollmentDetail.screen">
       <View style={styles.identityZone}>
-        <Text style={styles.installationLine}>
-          {installation?.name ?? t('enrollmentDetail.installationFallback')}
+        <Text style={styles.integrationName} testID="ezkey.e2e.enrollmentDetail.hero">
+          {resolvedIdentity.heroTitle}
         </Text>
-        {enrollment.tenantName ? (
-          <Text style={styles.tenantLine}>{enrollment.tenantName}</Text>
+        {resolvedIdentity.purposeLabel ? (
+          <Text style={styles.deviceLine}>{resolvedIdentity.purposeLabel}</Text>
         ) : null}
-        <Text style={styles.integrationName}>{enrollment.integrationName}</Text>
-        {enrollment.enrollmentName ? (
-          <Text style={styles.deviceLine}>{enrollment.enrollmentName}</Text>
+        {resolvedIdentity.roleLabel ? (
+          <Text style={styles.deviceLine}>{resolvedIdentity.roleLabel}</Text>
         ) : null}
-        {installation?.description ? (
-          <Text style={styles.descriptionLine}>{installation.description}</Text>
+        {resolvedIdentity.tenantLabel ? (
+          <Text style={styles.tenantLine}>{resolvedIdentity.tenantLabel}</Text>
+        ) : null}
+        {resolvedIdentity.tenantDescription ? (
+          <Text style={styles.tenantDescriptionLine}>{resolvedIdentity.tenantDescription}</Text>
+        ) : null}
+        {resolvedIdentity.installationContext ? (
+          <Text style={styles.installationLine}>{resolvedIdentity.installationContext}</Text>
         ) : null}
       </View>
 
       <View style={styles.metaZone}>
-        <Text style={styles.metaLine}>{t('enrollmentDetail.createdAt', {value: createdStr})}</Text>
         <Text style={styles.metaLine}>
           {t('enrollmentDetail.lastVerificationAt', {value: lastStr})}
         </Text>
       </View>
 
-      {hasCustomServer ? (
-        <View style={styles.serverZone}>
+      {resolvedIdentity.showHostHint && resolvedIdentity.host ? (
+        <View style={styles.serverZone} testID="ezkey.e2e.enrollmentDetail.hostHint">
           <Text style={styles.serverLabel}>{t('enrollmentDetail.server')}</Text>
-          <Text style={styles.serverValue}>{installation?.authUrl}</Text>
+          <Text style={styles.serverValue}>{resolvedIdentity.host}</Text>
         </View>
       ) : null}
 
@@ -303,14 +330,12 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
       {recentAuthResult ? (
         <View style={styles.recentActionCard}>
           <Text style={styles.recentActionEyebrow}>{t('enrollmentDetail.recentActionLabel')}</Text>
-          <Text style={styles.recentActionTitleLine}>
-            {recentAuthResult.title}
-            <Text style={[styles.recentActionBadge, recentResultBadgeStyle]}>
-              {' '}
-              {recentResultStatusLabel}
-            </Text>
+          <Text
+            style={[styles.recentActionTitleLine, recentResultBadgeStyle]}
+            testID="ezkey.e2e.enrollmentDetail.recentActionStatus">
+            {recentResultStatusLabel}
           </Text>
-          {recentAuthResult.message ? (
+          {recentAuthResult.status === 'failed' && recentAuthResult.message ? (
             <Text style={styles.recentActionMessage}>{recentAuthResult.message}</Text>
           ) : null}
           {recentResultTimeStr ? (
@@ -347,23 +372,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#f4f7ff',
-    marginTop: 10,
   },
   tenantLine: {
     fontSize: 14,
     color: '#9aa3b6',
     marginTop: 6,
   },
+  tenantDescriptionLine: {
+    fontSize: 13,
+    color: '#7d8699',
+    marginTop: 4,
+    lineHeight: 18,
+  },
   deviceLine: {
     fontSize: 13,
     color: '#c2c8d5',
-    marginTop: 2,
-  },
-  descriptionLine: {
-    fontSize: 13,
-    color: '#9aa3b6',
-    marginTop: 10,
-    lineHeight: 18,
+    marginTop: 6,
   },
   metaZone: {
     paddingHorizontal: 4,
@@ -440,10 +464,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#f4f7ff',
-  },
-  recentActionBadge: {
-    fontSize: 16,
-    fontWeight: '700',
   },
   recentActionBadgeApproved: {
     color: '#61d095',

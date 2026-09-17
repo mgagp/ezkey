@@ -120,13 +120,12 @@ public interface IntegrationRepository
    * administrators} collection, which causes "Found shared references to a collection:
    * Tenant.administrators" when the same Tenant is loaded through multiple paths.
    *
-   * <p>Returns {@link List} rather than {@code Optional<Object[]>} — Spring Data's {@code
-   * Optional<Object[]>} handling for native multi-column queries nests the row so {@code row[0]} is
-   * itself an {@code Object[]}.
+   * <p>Return type is {@code List<Object[]>} rather than {@code Optional<Object[]>} because Spring
+   * Data native queries with {@code Optional<Object[]>} can unwrap a three-column row to the first
+   * scalar only, dropping tenant name and description from the bind response.
    *
    * @param id the integration ID
-   * @return list with one {@code Object[]} row {@code [tenantId, tenantName, tenantDescription]},
-   *     or empty if not found
+   * @return one row {@code [tenantId, tenantName, tenantDescription]}, or empty if not found
    */
   @Query(
       value =

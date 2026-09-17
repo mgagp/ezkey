@@ -25,6 +25,7 @@ Use a simple role-aware vs role-agnostic split for operator-facing copy:
 
 - **Post-login shell identity is role-aware** (for example, Global Admin vs Tenant Admin labels in the main console chrome).
 - **Pre-auth product messaging is role-agnostic** (shared login-level positioning that does not assume operator role before session context exists).
+- **French product vocabulary:** keep the English loanword **tenant** (`Admin tenant`, `Tenants`, `Nom du tenant`). Do not translate the concept as *locataire* / *admin de locataire*. Canon: `TB-2026-07-26-admin-ui-help-corpus-overhaul` (Admin UI FR corpus); mobile Role copy follows the same strings (`ezkey_mobile/docs/MOBILE_POSITIONING.md` § Enrollment identity vocabulary).
 
 When copy can become inaccurate across scopes, prefer neutral wording such as "within your scope" over tenant-only phrasing.
 

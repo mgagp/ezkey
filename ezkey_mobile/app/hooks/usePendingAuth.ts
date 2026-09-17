@@ -33,6 +33,12 @@ import {securityPreferenceStorage} from '../services/storage/securityPreferenceS
 import type {StoredEnrollment} from '../services/storage/enrollmentStorage';
 import {useEnrollmentStore} from '../state/enrollmentStore';
 import {env} from '../config/env';
+import {
+  buildEnrollmentIdentityDisplay,
+  buildPendingRequestTitles,
+  identityDisplayCopy,
+  resolveEnrollmentPurpose,
+} from '../utils/enrollmentDisplay';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -125,10 +131,12 @@ export type PendingAuthState = {
   debugInfo: PendingAuthDebugInfo | undefined;
   /** True when the screen should show the "no pending" empty state. */
   showEmptyState: boolean;
-  /** Primary card title: contextTitle if present, otherwise integrationName. */
+  /** Primary card title: contextTitle, else enrollment name, else integration. */
   primaryTitle: string | undefined;
-  /** Secondary card title: integrationName or tenantName when contextTitle is set. */
+  /** Secondary: enrollment name when context is the title; else distinct purpose. */
   secondaryTitle: string | undefined;
+  /** Localized Role for admin MFA; hidden for regular enrollments. */
+  roleLabel: string | undefined;
   loadPendingAttempt: () => void;
   handleRespond: (accepted: boolean) => Promise<void>;
 };
@@ -490,11 +498,26 @@ export function usePendingAuth(
   const hasSecureInfo = true; // With Ed25519, keys are always available if root key exists
   const showEmptyState =
     !loading && !attempt && !globalError && !isEnrollmentLoading && hasSecureInfo;
-  const primaryTitle = attempt?.contextTitle?.trim() || attempt?.integrationName;
-  const secondaryTitle =
-    attempt?.contextTitle?.trim() && attempt.integrationName !== attempt.contextTitle.trim()
-      ? attempt.integrationName
-      : attempt?.tenantName;
+  const copy = identityDisplayCopy(t);
+  const identity = enrollment
+    ? buildEnrollmentIdentityDisplay(
+        enrollment,
+        t('enrollmentDetail.installationFallback'),
+        copy,
+      )
+    : undefined;
+  const pendingTitles = buildPendingRequestTitles({
+    contextTitle: attempt?.contextTitle,
+    enrollmentName: enrollment?.enrollmentName,
+    purposeLabel:
+      resolveEnrollmentPurpose(enrollment ?? {}, copy) ??
+      attempt?.integrationName ??
+      enrollment?.integrationName,
+    installationName: enrollment?.installation?.name,
+  });
+  const primaryTitle = pendingTitles.primaryTitle;
+  const secondaryTitle = pendingTitles.secondaryTitle;
+  const roleLabel = identity?.roleLabel;
 
   return {
     enrollment,
@@ -511,6 +534,7 @@ export function usePendingAuth(
     showEmptyState,
     primaryTitle,
     secondaryTitle,
+    roleLabel,
     loadPendingAttempt,
     handleRespond,
   };

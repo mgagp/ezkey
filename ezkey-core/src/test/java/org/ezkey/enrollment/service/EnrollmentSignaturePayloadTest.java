@@ -22,10 +22,30 @@ class EnrollmentSignaturePayloadTest {
   void buildBindPayload_NormalizesText() {
     String payload =
         EnrollmentSignaturePayload.buildBindPayload(
-            "pt", 1, "integPk", "ed25519", "caf\u0301e", "desc", "name", 2, "tn", "td");
+            "pt",
+            1,
+            "integPk",
+            "ed25519",
+            "caf\u0301e",
+            "desc",
+            "name",
+            2,
+            "tn",
+            "td",
+            false,
+            null);
     assertTrue(payload.startsWith("pt|1|integPk|ed25519|"));
-    assertTrue(payload.endsWith("|desc|name|2|tn|td"));
+    assertTrue(payload.endsWith("|desc|name|2|tn|td|false|"));
     assertTrue(payload.contains(Normalizer.normalize("caf\u0301e", Normalizer.Form.NFC)));
+  }
+
+  @Test
+  @DisplayName("buildBindPayload appends system-integration and admin-type literals")
+  void buildBindPayload_SystemIntegrationAdminType() {
+    assertEquals(
+        "pt|1|pk|ed25519|n|d|Marie|2|tn|td|true|GLOBAL_ADMIN",
+        EnrollmentSignaturePayload.buildBindPayload(
+            "pt", 1, "pk", "ed25519", "n", "d", "Marie", 2, "tn", "td", true, "GLOBAL_ADMIN"));
   }
 
   @Test

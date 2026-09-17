@@ -226,7 +226,7 @@ if [ -z "$INTEGRATION_PUBLIC_KEY" ]; then
   exit 1
 fi
 if [ -z "$ENROLLMENT_NAME" ]; then
-  ENROLLMENT_NAME="Global Admin MFA"
+  ENROLLMENT_NAME="${USERNAME:-Administrator}"
 fi
 
 ENROLLMENT_JSON=$(jq -n \

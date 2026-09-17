@@ -70,7 +70,9 @@ probe surface. Canon: [../../docs/ENDPOINT.md](../../docs/ENDPOINT.md) § Public
 | `tenantId` | Tenant identifier | Enrollment Wizard | Yes, after verify | No | Used as local metadata. |
 | `tenantName` | Tenant display name | Enrollment Wizard, later Home/Detail | Yes, after verify | Yes | Supports grouping and identity display. |
 | `tenantDescription` | Tenant descriptive text | Enrollment Wizard, later Home | Yes, after verify | Sometimes | Optional supporting metadata. |
-| `enrollmentName` | Friendly enrollment/device label | Enrollment Wizard, later Detail | Yes, after verify | Yes | Copied into `deviceLabel` locally. |
+| `enrollmentName` | Account label (person for admin MFA; operator-chosen name for a regular enrollment) | Enrollment Wizard, later Home/Detail/Pending | Yes, after verify | Yes | Copied into `deviceLabel` locally. Never parse role out of this string. |
+| `isSystemIntegration` | Whether the enrollment is admin MFA on the system integration | Enrollment Wizard | Yes, after verify | Indirect | When true, Purpose is localized Administration and Role is shown. Included in the signed bind payload. |
+| `adminType` | `GLOBAL_ADMIN` or `TENANT_ADMIN` when the enrollment is linked to an `EzkeyAdmin` | Enrollment Wizard | Yes, after verify | Indirect | Absent for regular enrollments. Localized Role line only; never the hero. Included in the signed bind payload. |
 | `enrollmentBindPayloadSignedByIntegration` | Integration signature on bind payload | Enrollment Wizard | No | No | Must verify before the bind response is trusted. |
 
 ### Bind Local Mapping Narrative
@@ -84,8 +86,11 @@ surface the bind result and allow the user to enter the six-digit challenge.
 | Local concept | Mapped from | Used by | Notes |
 | --- | --- | --- | --- |
 | `EnrollmentDraft.id` | `enrollmentId` | Enrollment Wizard | Normalized as string. |
-| `EnrollmentDraft.integrationName` | `integrationName` | Enrollment Wizard UI, later persisted record | Primary display label. |
-| `EnrollmentDraft.tenantName` | `tenantName` | Enrollment Wizard UI, later grouping | Optional. |
+| `EnrollmentDraft.integrationName` | `integrationName` | Enrollment Wizard UI, later persisted record | Raw integration name. Card title uses Purpose (Administration when `isSystemIntegration`). |
+| `EnrollmentDraft.tenantName` | `tenantName` | Enrollment Wizard UI, later grouping | Hidden when it equals the installation or when the enrollment is admin MFA. Home section uses the same rule via `shouldShowHomeTenantSection`. |
+| `EnrollmentDraft.tenantDescription` | `tenantDescription` | Enrollment Wizard UI, Home tenant section, Detail | Shown only when the tenant name itself is shown. |
+| `EnrollmentDraft.isSystemIntegration` | `isSystemIntegration` | Enrollment Wizard UI, later persisted record | Selects Administration purpose and Role visibility. |
+| `EnrollmentDraft.adminType` | `adminType` | Enrollment Wizard UI, later persisted record | `GLOBAL_ADMIN` or `TENANT_ADMIN`; localized Role line. |
 | `EnrollmentDraft.enrollmentProofToken` | `enrollmentProofToken` | Verify flow | Retained in memory until enrollment completes. |
 | `EnrollmentDraft.integrationPublicKey` | `integrationPublicKey` | Verify-result trust check and later auth flows | Long-lived persisted crypto material. |
 

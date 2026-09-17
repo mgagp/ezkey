@@ -16,6 +16,7 @@ import java.util.Optional;
 import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.BootstrapCredentialsOutputMode;
 import org.ezkey.admin.config.InitialGlobalAdminProperties;
+import org.ezkey.admin.util.AdminEnrollmentDisplayNames;
 import org.ezkey.config.OrganizationProperties;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -408,16 +409,11 @@ public class AdminBootstrapService {
     // Generate enrollment challenge code (6 digits)
     Integer enrollmentChallenge = signatureService.generateSecureChallenge(6);
 
-    // Create Global Admin Enrollment with personalized name (include username for
-    // uniqueness)
+    // Person-first authenticator label. Role is Admin UI chrome, not enrollmentName
+    // (I-2026-09-15-mobile-admin-enrollment-account-label).
     String enrollmentName =
-        "Global Admin MFA - "
-            + globalAdmin.getFirstName()
-            + " "
-            + globalAdmin.getLastName()
-            + " ("
-            + globalAdmin.getUsername()
-            + ")";
+        AdminEnrollmentDisplayNames.personDisplayName(
+            globalAdmin.getFirstName(), globalAdmin.getLastName(), globalAdmin.getUsername());
     Enrollment globalAdminEnrollment = new Enrollment();
     globalAdminEnrollment.setIntegrationId(systemIntegration.getId());
     globalAdminEnrollment.setEnrollmentName(enrollmentName);

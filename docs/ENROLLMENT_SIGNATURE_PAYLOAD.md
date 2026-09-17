@@ -15,7 +15,7 @@ instance-info when that surface exists).
 ## Bind response (integration signs)
 
 **Payload to sign:**  
-`{enrollmentProofToken}|{enrollmentId}|{integrationPublicKey}|{integrationKeyAlgorithm}|{integrationName}|{integrationDescription}|{enrollmentName}|{tenantId}|{tenantName}|{tenantDescription}`
+`{enrollmentProofToken}|{enrollmentId}|{integrationPublicKey}|{integrationKeyAlgorithm}|{integrationName}|{integrationDescription}|{enrollmentName}|{tenantId}|{tenantName}|{tenantDescription}|{isSystemIntegration}|{adminType}`
 
 - **Separator**: Single character `|` (U+007C). No spaces.
 - **enrollmentProofToken**: Exact token string (unchanged).
@@ -24,6 +24,8 @@ instance-info when that surface exists).
 - **integrationKeyAlgorithm**: Literal from JSON (e.g. `ed25519`).
 - **integrationName**, **integrationDescription**, **enrollmentName**, **tenantName**, **tenantDescription**: NFC-normalized; null becomes `""`.
 - **tenantId**: Decimal string of the tenant id, or `""` if null.
+- **isSystemIntegration**: Literal `true` or `false` (never empty). Matches the JSON boolean.
+- **adminType**: Exact JSON literal `GLOBAL_ADMIN` or `TENANT_ADMIN`, or `""` when absent (regular enrollment).
 
 The mobile device receives `enrollmentBindPayloadSignedByIntegration` (Base64URL Ed25519 signature). It reconstructs the same UTF-8 string from the JSON fields, then verifies the signature with `integrationPublicKey` (same encoding rules as Pending).
 

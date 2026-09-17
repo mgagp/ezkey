@@ -75,6 +75,8 @@ export type StoredEnrollment = EnrollmentSummary & {
   integrationDescription?: string;
   enrollmentName?: string;
   deviceLabel?: string;
+  isSystemIntegration?: boolean;
+  adminType?: 'GLOBAL_ADMIN' | 'TENANT_ADMIN';
   approvalPolicy?: EnrollmentApprovalPolicy;
   securityLevel?: SecurityLevel;
 };

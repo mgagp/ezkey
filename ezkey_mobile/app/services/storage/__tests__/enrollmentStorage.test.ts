@@ -115,6 +115,9 @@ describe('enrollmentStorage', () => {
       id: 'enrollment-1',
       integrationId: 'integration-1',
       integrationName: 'Admin Console',
+      tenantId: 3,
+      tenantName: 'Unicorn farm accountability',
+      tenantDescription: 'Ops',
       createdAt: '2026-05-01T12:00:00.000Z',
       lastActivityAt: '2026-05-01T12:00:00.000Z',
       enrollmentProofToken: 'token-1',
@@ -143,6 +146,9 @@ describe('enrollmentStorage', () => {
     expect(JSON.parse(payload as string)).toEqual([
       expect.objectContaining({
         id: 'enrollment-1',
+        tenantId: 3,
+        tenantName: 'Unicorn farm accountability',
+        tenantDescription: 'Ops',
         installation: {
           id: 'https://login.red.example',
           authUrl: 'https://login.red.example',

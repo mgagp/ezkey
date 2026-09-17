@@ -163,6 +163,8 @@ class EnrollmentControllerTest {
             null,
             null,
             null,
+            false,
+            null,
             "bind-signature");
 
     // Setup verify request test data

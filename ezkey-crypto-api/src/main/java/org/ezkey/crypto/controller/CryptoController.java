@@ -572,7 +572,9 @@ public class CryptoController {
         request.getEnrollmentName(),
         request.getTenantId(),
         request.getTenantName(),
-        request.getTenantDescription());
+        request.getTenantDescription(),
+        request.getIsSystemIntegration(),
+        request.getAdminType());
   }
 
   private static String buildEnrollmentVerifyDevicePayload(PayloadHelperRequestDto request) {

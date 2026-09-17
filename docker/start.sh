@@ -50,8 +50,12 @@ if contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker-test" && ! contains_pr
 fi
 
 BASE_COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
+ENV_FILE="${SCRIPT_DIR}/.env"
 
 COMPOSE_ARGS="-f ${BASE_COMPOSE_FILE}"
+if [ -f "${ENV_FILE}" ]; then
+  COMPOSE_ARGS="--env-file ${ENV_FILE} ${COMPOSE_ARGS}"
+fi
 
 # If docker-dev profile is active, auto-include the local diagnostics override to publish management ports.
 if contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker-dev"; then

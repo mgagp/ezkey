@@ -350,7 +350,7 @@ class CryptoControllerTest {
         .andExpect(jsonPath("$.type").value("enrollment-bind"))
         .andExpect(
             jsonPath("$.payload")
-                .value("ptok|99|integPk|ed25519|Acme|Desc|Device A|1|Tenant|TDesc"))
+                .value("ptok|99|integPk|ed25519|Acme|Desc|Device A|1|Tenant|TDesc|false|"))
         .andExpect(jsonPath("$.encoding").value("UTF-8 + NFC where applicable"));
   }
 

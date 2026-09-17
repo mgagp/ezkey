@@ -136,7 +136,7 @@ The `AdminBootstrapService.ensureAdminToken()` method follows a three-tier strat
   "integrationName": "Ezkey System Admin",
   "integrationDescription": "System integration for admin authentication",
   "integrationLogo": null,
-  "enrollmentName": "Global Admin MFA - John Doe"
+  "enrollmentName": "John Doe"
 }
 ```
 

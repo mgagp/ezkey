@@ -20,8 +20,26 @@ describe('enrollmentPayload', () => {
       tenantDescription: 'td',
     });
     expect(p.startsWith('pt|1|pk|ed25519|')).toBe(true);
-    expect(p.endsWith('|d|n|2|tn|td')).toBe(true);
+    expect(p.endsWith('|d|n|2|tn|td|false|')).toBe(true);
     expect(p).toContain('caf\u00e9');
+  });
+
+  it('buildBindPayload appends system-integration and admin-type literals', () => {
+    const p = buildBindPayload({
+      enrollmentProofToken: 'pt',
+      enrollmentId: 1,
+      integrationPublicKey: 'pk',
+      integrationKeyAlgorithm: 'ed25519',
+      integrationName: 'n',
+      integrationDescription: 'd',
+      enrollmentName: 'Marie',
+      tenantId: 2,
+      tenantName: 'tn',
+      tenantDescription: 'td',
+      isSystemIntegration: true,
+      adminType: 'GLOBAL_ADMIN',
+    });
+    expect(p).toBe('pt|1|pk|ed25519|n|d|Marie|2|tn|td|true|GLOBAL_ADMIN');
   });
 
   it('buildVerifyDevicePayload matches server format', () => {

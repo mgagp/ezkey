@@ -28,6 +28,11 @@ import {RootStackParamList} from '../../navigation/types';
 import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
 import PinCodeInput from '../../components/PinCodeInput';
 import {useEnrollmentWizard} from '../../hooks/useEnrollmentWizard';
+import {
+  buildEnrollmentIdentityDisplay,
+  identityDisplayCopy,
+  resolveEnrollmentPurpose,
+} from '../../utils/enrollmentDisplay';
 
 type Props = StackScreenProps<RootStackParamList, 'EnrollmentWizard'>;
 
@@ -43,6 +48,8 @@ type EnrollmentDraft = {
   integrationDescription?: string;
   enrollmentName?: string;
   deviceLabel?: string;
+  isSystemIntegration?: boolean;
+  adminType?: 'GLOBAL_ADMIN' | 'TENANT_ADMIN';
 };
 
 type EnrollmentInfoCardProps = {
@@ -66,37 +73,56 @@ const EnrollmentInfoCard: React.FC<EnrollmentInfoCardProps> = ({
   compact,
 }) => {
   const {t} = useTranslation();
+  const copy = identityDisplayCopy(t);
+  const identity = buildEnrollmentIdentityDisplay(
+    draft,
+    t('enrollmentWizard.integrationFallback'),
+    copy,
+  );
+  const purposeTitle =
+    resolveEnrollmentPurpose(draft, copy) ?? draft.integrationName;
+  const showDescription =
+    Boolean(draft.integrationDescription) && !draft.isSystemIntegration;
 
   return (
     <View style={[styles.infoCard, compact && styles.infoCardCompact]}>
       <View style={[styles.infoCardHeader, compact && styles.infoCardHeaderCompact]}>
-        <Text style={styles.infoCardTitle}>{draft.integrationName}</Text>
+        <Text style={styles.infoCardTitle}>{purposeTitle}</Text>
       </View>
       <View style={[styles.infoCardBody, compact && styles.infoCardBodyCompact]}>
-        {draft.integrationDescription ? (
+        {showDescription ? (
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{t('enrollmentWizard.description')}</Text>
             <Text style={styles.infoValue}>{draft.integrationDescription}</Text>
           </View>
         ) : null}
-        {draft.tenantName ? (
+        {identity.tenantLabel ? (
           <>
             <View style={styles.infoDivider} />
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>{t('enrollmentWizard.organization')}</Text>
-              <Text style={styles.infoValue}>{draft.tenantName}</Text>
+              <Text style={styles.infoValue}>{identity.tenantLabel}</Text>
             </View>
-            {draft.tenantDescription ? (
-              <Text style={styles.infoValueMuted}>{draft.tenantDescription}</Text>
+            {identity.tenantDescription ? (
+              <Text style={styles.infoValueMuted}>{identity.tenantDescription}</Text>
             ) : null}
           </>
         ) : null}
-        {draft.enrollmentName ? (
+        {identity.accountLabel ? (
           <>
             <View style={styles.infoDivider} />
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{t('enrollmentWizard.device')}</Text>
-              <Text style={styles.infoValue}>{draft.enrollmentName}</Text>
+              <Text style={styles.infoLabel}>{t('enrollmentWizard.account')}</Text>
+              <Text style={styles.infoValue}>{identity.accountLabel}</Text>
+            </View>
+          </>
+        ) : null}
+        {identity.roleLabel ? (
+          <>
+            <View style={styles.infoDivider} />
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>{t('enrollmentWizard.role')}</Text>
+              <Text style={styles.infoValue}>{identity.roleLabel}</Text>
             </View>
           </>
         ) : null}
@@ -222,7 +248,11 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
                 style={styles.challengeSection}>
                 <Text style={styles.challengeHeading}>{t('enrollmentWizard.verifyTitle')}</Text>
                 <Text style={styles.challengeHint}>
-                  {t('enrollmentWizard.verifyHint', {name: draft.integrationName})}
+                  {t('enrollmentWizard.verifyHint', {
+                    name:
+                      resolveEnrollmentPurpose(draft, identityDisplayCopy(t)) ??
+                      draft.integrationName,
+                  })}
                 </Text>
                 <PinCodeInput
                   testID="ezkey.e2e.enrollmentWizard.challengeInput"

@@ -30,6 +30,10 @@ import {env} from '../../config/env';
 import {RootStackParamList} from '../../navigation/types';
 import PinCodeInput from '../../components/PinCodeInput';
 import {usePendingAuth, AUTH_CHALLENGE_LENGTH, tracePendingAuthRespond} from '../../hooks/usePendingAuth';
+import {
+  buildEnrollmentIdentityDisplay,
+  identityDisplayCopy,
+} from '../../utils/enrollmentDisplay';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
 
@@ -64,6 +68,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     showEmptyState,
     primaryTitle,
     secondaryTitle,
+    roleLabel,
     loadPendingAttempt,
     handleRespond,
   } = usePendingAuth(enrollmentId, initialAttempt, {
@@ -72,13 +77,30 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     navigateToEnrollmentDetail,
   });
 
+  const emptyIdentity = enrollment
+    ? buildEnrollmentIdentityDisplay(
+        enrollment,
+        t('enrollmentDetail.installationFallback'),
+        identityDisplayCopy(t),
+      )
+    : undefined;
+
   return (
     <View style={styles.container}>
-      {!attempt && enrollment ? (
+      {!attempt && emptyIdentity ? (
         <View style={styles.enrollmentBox}>
-          <Text style={styles.enrollmentIntegration}>{enrollment.integrationName}</Text>
-          {enrollment.tenantName ? (
-            <Text style={styles.enrollmentTenant}>{enrollment.tenantName}</Text>
+          <Text style={styles.enrollmentIntegration}>{emptyIdentity.heroTitle}</Text>
+          {emptyIdentity.purposeLabel ? (
+            <Text style={styles.enrollmentTenant}>{emptyIdentity.purposeLabel}</Text>
+          ) : null}
+          {emptyIdentity.roleLabel ? (
+            <Text style={styles.enrollmentTenant}>{emptyIdentity.roleLabel}</Text>
+          ) : null}
+          {emptyIdentity.tenantLabel ? (
+            <Text style={styles.enrollmentTenant}>{emptyIdentity.tenantLabel}</Text>
+          ) : null}
+          {emptyIdentity.installationContext ? (
+            <Text style={styles.enrollmentTenant}>{emptyIdentity.installationContext}</Text>
           ) : null}
         </View>
       ) : null}
@@ -171,6 +193,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
               {secondaryTitle ? (
                 <Text style={styles.cardSubtitle}>{secondaryTitle}</Text>
               ) : null}
+              {roleLabel ? <Text style={styles.cardSubtitle}>{roleLabel}</Text> : null}
 
               {attempt.contextMessage ? (
                 <View style={[styles.contextMessageBox, styles.borderInfo]}>

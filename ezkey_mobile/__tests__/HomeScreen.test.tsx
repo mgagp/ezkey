@@ -104,6 +104,13 @@ describe('HomeScreen', () => {
           `ezkey.e2e.home.enrollment.${healthyEnrollment.enrollmentId}`,
       ).length,
     ).toBeGreaterThan(0);
+    const textContent = tree!.root
+      .findAllByType(Text)
+      .map(node => node.props.children)
+      .flat()
+      .join(' ');
+    expect(textContent).toContain('Tenant');
+    expect(textContent).toContain('Tenant Red');
   });
 
   it('navigates to EnrollmentDetail and records the selected enrollment', async () => {

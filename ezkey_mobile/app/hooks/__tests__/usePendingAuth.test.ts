@@ -103,6 +103,7 @@ const sampleEnrollment: StoredEnrollment = {
   integrationId: 'int-1',
   integrationName: 'Acme',
   tenantName: 'ACME Corp',
+  enrollmentName: 'Marie Dupont',
   createdAt: '2026-01-01T00:00:00.000Z',
   lastActivityAt: '2026-01-01T00:00:00.000Z',
   enrollmentProofToken: 'enrollment-token',
@@ -496,37 +497,56 @@ describe('handleRespond', () => {
 // ---------------------------------------------------------------------------
 
 describe('derived state', () => {
-  it('uses contextTitle as primaryTitle when present', () => {
+  it('uses contextTitle as primaryTitle and enrollmentName as secondary', () => {
     const {result} = renderHook('enr-1', sampleAttempt);
 
-    // sampleAttempt.contextTitle = 'Login Request'
     expect(result.current.primaryTitle).toBe('Login Request');
+    expect(result.current.secondaryTitle).toBe('Marie Dupont');
   });
 
-  it('falls back to integrationName as primaryTitle when contextTitle is absent', () => {
+  it('falls back to enrollmentName as primaryTitle when contextTitle is absent', () => {
     const noTitleAttempt: PendingAttempt = {
       ...sampleAttempt,
       contextTitle: undefined,
     };
     const {result} = renderHook('enr-1', noTitleAttempt);
 
-    expect(result.current.primaryTitle).toBe('Acme');
-  });
-
-  it('uses integrationName as secondaryTitle when contextTitle is set and different', () => {
-    const {result} = renderHook('enr-1', sampleAttempt);
-
-    // contextTitle='Login Request', integrationName='Acme' → different → show integrationName
+    expect(result.current.primaryTitle).toBe('Marie Dupont');
     expect(result.current.secondaryTitle).toBe('Acme');
   });
 
-  it('uses tenantName as secondaryTitle when contextTitle equals integrationName', () => {
-    const sameNameAttempt: PendingAttempt = {
-      ...sampleAttempt,
-      contextTitle: 'Acme', // same as integrationName
-    };
-    const {result} = renderHook('enr-1', sameNameAttempt);
+  it('uses distinct integration as secondary when contextTitle is set and enrollmentName is absent', () => {
+    mockUseEnrollmentById.mockReturnValue({
+      data: {...sampleEnrollment, enrollmentName: undefined},
+      isLoading: false,
+    } as unknown as ReturnType<typeof useEnrollmentById>);
+    const {result} = renderHook('enr-1', sampleAttempt);
 
-    expect(result.current.secondaryTitle).toBe('ACME Corp');
+    expect(result.current.primaryTitle).toBe('Login Request');
+    expect(result.current.secondaryTitle).toBe('Acme');
+  });
+
+  it('hides a duplicate integration when it matches the installation', () => {
+    mockUseEnrollmentById.mockReturnValue({
+      data: {
+        ...sampleEnrollment,
+        enrollmentName: undefined,
+        integrationName: 'Acme EU',
+        installation: {
+          ...sampleEnrollment.installation,
+          name: 'Acme EU',
+        },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useEnrollmentById>);
+    const noTitleAttempt: PendingAttempt = {
+      ...sampleAttempt,
+      contextTitle: undefined,
+      integrationName: 'Acme EU',
+    };
+    const {result} = renderHook('enr-1', noTitleAttempt);
+
+    expect(result.current.primaryTitle).toBe('Acme EU');
+    expect(result.current.secondaryTitle).toBeUndefined();
   });
 });

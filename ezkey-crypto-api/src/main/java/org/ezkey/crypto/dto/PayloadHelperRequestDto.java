@@ -104,6 +104,17 @@ public class PayloadHelperRequestDto {
   @Schema(description = "Tenant description for enrollment-bind payload")
   private String tenantDescription;
 
+  @Schema(
+      description =
+          "Whether the enrollment is admin MFA on the system integration (enrollment-bind payload)",
+      example = "false")
+  private Boolean isSystemIntegration;
+
+  @Schema(
+      description = "Administrator type for enrollment-bind payload (GLOBAL_ADMIN or TENANT_ADMIN)",
+      example = "TENANT_ADMIN")
+  private String adminType;
+
   public PayloadHelperRequestDto() {}
 
   public String getType() {
@@ -264,5 +275,21 @@ public class PayloadHelperRequestDto {
 
   public void setTenantDescription(String tenantDescription) {
     this.tenantDescription = tenantDescription;
+  }
+
+  public Boolean getIsSystemIntegration() {
+    return isSystemIntegration;
+  }
+
+  public void setIsSystemIntegration(Boolean isSystemIntegration) {
+    this.isSystemIntegration = isSystemIntegration;
+  }
+
+  public String getAdminType() {
+    return adminType;
+  }
+
+  public void setAdminType(String adminType) {
+    this.adminType = adminType;
   }
 }
