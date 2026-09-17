@@ -30,6 +30,12 @@ public record AdminSessionResponseDto(
         Integer tenantId,
     @Schema(
             description =
+                "Tenant display name when the administrator is tenant- or integration-scoped; null"
+                    + " for global administrators",
+            example = "Acme Corp")
+        String tenantName,
+    @Schema(
+            description =
                 "Non-secret CSRF token to send in X-CSRF-TOKEN for cookie-authenticated unsafe"
                     + " requests")
         String csrfToken) {}

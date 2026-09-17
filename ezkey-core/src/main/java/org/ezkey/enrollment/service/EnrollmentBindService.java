@@ -11,6 +11,7 @@
 package org.ezkey.enrollment.service;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
@@ -372,20 +373,24 @@ public class EnrollmentBindService {
     //   use integration's tenant via scalar query.
     // - For non-system integrations: use integration's tenant via scalar query.
     if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
-      Optional<Object[]> tenantInfo =
+      List<Object[]> tenantInfo =
           ezkeyAdminRepository.findTenantInfoByAdminEnrollmentId(enrollment.getEnrollmentId());
-      if (tenantInfo.isPresent()) {
-        applyTenantInfoFromRow(response, tenantInfo.get());
+      if (!tenantInfo.isEmpty()) {
+        applyTenantInfoFromRow(response, tenantInfo.get(0));
       } else {
         // Global admin (no tenant): use integration's tenant (system tenant) via scalar query
-        integrationRepository
-            .findTenantInfoByIntegrationId(integration.getId())
-            .ifPresent(row -> applyTenantInfoFromRow(response, row));
+        List<Object[]> integrationTenant =
+            integrationRepository.findTenantInfoByIntegrationId(integration.getId());
+        if (!integrationTenant.isEmpty()) {
+          applyTenantInfoFromRow(response, integrationTenant.get(0));
+        }
       }
     } else {
-      integrationRepository
-          .findTenantInfoByIntegrationId(integration.getId())
-          .ifPresent(row -> applyTenantInfoFromRow(response, row));
+      List<Object[]> integrationTenant =
+          integrationRepository.findTenantInfoByIntegrationId(integration.getId());
+      if (!integrationTenant.isEmpty()) {
+        applyTenantInfoFromRow(response, integrationTenant.get(0));
+      }
     }
 
     String bindPayload =
@@ -419,16 +424,35 @@ public class EnrollmentBindService {
    * Applies tenant info from a native query row [tenantId, tenantName, tenantDescription].
    *
    * <p>Uses safe extraction for tenantId since PostgreSQL JDBC may return Integer, Long, or
-   * BigDecimal depending on column type and driver version.
+   * BigDecimal depending on column type and driver version. Also unwraps a single-element nested
+   * {@code Object[]} — a Spring Data {@code Optional<Object[]>} native-query quirk that can leave
+   * {@code row[0]} as another array.
    */
   private void applyTenantInfoFromRow(EnrollmentBindResponse response, Object[] row) {
-    if (row == null || row.length == 0) {
+    Object[] normalized = normalizeTenantInfoRow(row);
+    if (normalized == null || normalized.length == 0) {
       return;
     }
-    Object tenantIdVal = row[0];
+    Object tenantIdVal = normalized[0];
     Integer tenantId = tenantIdVal instanceof Number n ? n.intValue() : null;
     response.setTenantId(tenantId);
-    response.setTenantName(row.length > 1 ? (String) row[1] : null);
-    response.setTenantDescription(row.length > 2 ? (String) row[2] : null);
+    response.setTenantName(normalized.length > 1 ? (String) normalized[1] : null);
+    response.setTenantDescription(normalized.length > 2 ? (String) normalized[2] : null);
+  }
+
+  /**
+   * Unwraps Spring Data native multi-column nesting when present.
+   *
+   * @param row raw repository row
+   * @return flat {@code [tenantId, tenantName, tenantDescription]} or null
+   */
+  private static Object[] normalizeTenantInfoRow(Object[] row) {
+    if (row == null || row.length == 0) {
+      return null;
+    }
+    if (row.length == 1 && row[0] instanceof Object[] nested) {
+      return nested;
+    }
+    return row;
   }
 }

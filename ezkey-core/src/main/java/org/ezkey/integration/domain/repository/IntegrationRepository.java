@@ -120,13 +120,18 @@ public interface IntegrationRepository
    * administrators} collection, which causes "Found shared references to a collection:
    * Tenant.administrators" when the same Tenant is loaded through multiple paths.
    *
+   * <p>Returns {@link List} rather than {@code Optional<Object[]>} — Spring Data's {@code
+   * Optional<Object[]>} handling for native multi-column queries nests the row so {@code row[0]} is
+   * itself an {@code Object[]}.
+   *
    * @param id the integration ID
-   * @return Object[] with [tenantId, tenantName, tenantDescription], or empty if not found
+   * @return list with one {@code Object[]} row {@code [tenantId, tenantName, tenantDescription]},
+   *     or empty if not found
    */
   @Query(
       value =
           "SELECT t.tenant_id, t.tenant_name, t.tenant_description FROM ezkey_tenant t JOIN"
               + " ezkey_integration i ON i.tenant_id = t.tenant_id WHERE i.integration_id = :id",
       nativeQuery = true)
-  Optional<Object[]> findTenantInfoByIntegrationId(@Param("id") Integer id);
+  List<Object[]> findTenantInfoByIntegrationId(@Param("id") Integer id);
 }

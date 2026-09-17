@@ -46,6 +46,7 @@ import java.time.OffsetDateTime;
  * @param challengeCode 6-digit challenge code for device verification
  * @param adminId Administrator ID for the authenticated session
  * @param tenantId Tenant scope ID when administrator is tenant- or integration-scoped
+ * @param tenantName Tenant display name when scoped; null for global administrators
  * @param csrfToken Non-secret CSRF token for cookie-authenticated browser requests
  * @param waiterSecret One-time waiter secret capability required for /passwordless-wait
  */
@@ -98,6 +99,12 @@ public record AdminLoginResponseDto(
         Integer tenantId,
     @Schema(
             description =
+                "Tenant display name when the administrator is tenant- or integration-scoped; null"
+                    + " for global administrators",
+            example = "Acme Corp")
+        String tenantName,
+    @Schema(
+            description =
                 "Non-secret CSRF token to send in X-CSRF-TOKEN for cookie-authenticated unsafe"
                     + " requests. Present only in browser session cookie mode.",
             requiredMode = RequiredMode.NOT_REQUIRED)
@@ -116,7 +123,7 @@ public record AdminLoginResponseDto(
    * @param message the error message
    */
   public AdminLoginResponseDto(String message) {
-    this(false, message, null, null, null, null, null, null, null, null, null, null, null);
+    this(false, message, null, null, null, null, null, null, null, null, null, null, null, null);
   }
 
   /**
@@ -128,6 +135,7 @@ public record AdminLoginResponseDto(
    * @param expiresAt the token expiration time
    * @param adminId the administrator ID
    * @param tenantId tenant scope when applicable, otherwise null
+   * @param tenantName tenant display name when applicable, otherwise null
    */
   public AdminLoginResponseDto(
       String token,
@@ -135,7 +143,8 @@ public record AdminLoginResponseDto(
       String username,
       OffsetDateTime expiresAt,
       Integer adminId,
-      Integer tenantId) {
+      Integer tenantId,
+      String tenantName) {
     this(
         true,
         "Authentication successful",
@@ -148,6 +157,7 @@ public record AdminLoginResponseDto(
         null,
         adminId,
         tenantId,
+        tenantName,
         null,
         null);
   }
@@ -185,6 +195,7 @@ public record AdminLoginResponseDto(
         null,
         null,
         null,
+        null,
         waiterSecret);
   }
 
@@ -197,6 +208,7 @@ public record AdminLoginResponseDto(
    * @param expiresAt the token expiration time
    * @param adminId the administrator ID
    * @param tenantId tenant scope when applicable
+   * @param tenantName tenant display name when applicable
    * @return a success response
    */
   public static AdminLoginResponseDto success(
@@ -205,7 +217,8 @@ public record AdminLoginResponseDto(
       String username,
       OffsetDateTime expiresAt,
       Integer adminId,
-      Integer tenantId) {
+      Integer tenantId,
+      String tenantName) {
     return new AdminLoginResponseDto(
         true,
         "Authentication successful",
@@ -218,6 +231,7 @@ public record AdminLoginResponseDto(
         null,
         adminId,
         tenantId,
+        tenantName,
         null,
         null);
   }
@@ -230,7 +244,7 @@ public record AdminLoginResponseDto(
    */
   public static AdminLoginResponseDto error(String message) {
     return new AdminLoginResponseDto(
-        false, message, null, null, null, null, null, null, null, null, null, null, null);
+        false, message, null, null, null, null, null, null, null, null, null, null, null, null);
   }
 
   /**
@@ -255,6 +269,7 @@ public record AdminLoginResponseDto(
         challengeCode,
         adminId,
         tenantId,
+        tenantName,
         csrfToken,
         waiterSecret);
   }
@@ -279,6 +294,7 @@ public record AdminLoginResponseDto(
         challengeCode,
         adminId,
         tenantId,
+        tenantName,
         newCsrfToken,
         waiterSecret);
   }

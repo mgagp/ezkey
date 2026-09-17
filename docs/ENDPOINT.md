@@ -824,6 +824,8 @@ Bearer clients may also call this endpoint with `Authorization: Bearer ...`.
 }
 ```
 
+For tenant- or integration-scoped administrators, `tenantId` and `tenantName` are populated (display name from `ezkey_tenant.tenant_name`). Global administrators omit both (`null` / absent with `NON_NULL` serialization).
+
 `csrfToken` is present in browser cookie mode and must be sent as `X-CSRF-TOKEN` on unsafe cookie-authenticated requests (`POST`, `PUT`, `PATCH`, `DELETE`). The opaque session token is never returned by `/me`.
 
 **Unauthorized Response:**

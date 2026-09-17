@@ -15,6 +15,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
@@ -423,6 +424,22 @@ public class AdminAuthService {
             .orElseThrow(
                 () -> new IllegalArgumentException("Admin not found for this auth attempt"));
 
+    // Resolve tenant display fields before waitForResponse (NOT_SUPPORTED suspends the persistence
+    // context). Use the scalar query — do not EntityGraph-load Tenant here (system-tenant shared
+    // collection hazard on administrator MFA enrollments). Prefer List<Object[]> over
+    // Optional<Object[]> to avoid Spring Data native multi-column nesting.
+    Integer scopedTenantId = null;
+    String scopedTenantName = null;
+    if (admin.getAdminType() != EzkeyAdmin.AdminType.GLOBAL_ADMIN) {
+      List<Object[]> tenantRows =
+          adminRepository.findTenantInfoByAdminEnrollmentId(authAttempt.getEnrollmentId());
+      Object[] row = tenantRows.isEmpty() ? null : normalizeTenantInfoRow(tenantRows.get(0));
+      if (row != null && row.length > 0) {
+        scopedTenantId = row[0] instanceof Number n ? n.intValue() : null;
+        scopedTenantName = row.length > 1 && row[1] != null ? row[1].toString() : null;
+      }
+    }
+
     // 6. Wait for device response (timeout aligned with persisted expiresAt, capped at 300s)
     AuthAttemptWaitRequest waitReq =
         AdminAuthAttemptWaitRequestFactory.forLoadedAttempt(authAttempt);
@@ -449,7 +466,8 @@ public class AdminAuthService {
           admin.getUsername(),
           waitResp.getWaitDuration());
 
-      return buildSuccessResponse(admin, result.token(), result.plainToken());
+      return buildSuccessResponse(
+          admin, result.token(), result.plainToken(), scopedTenantId, scopedTenantName);
     } else if ("REJECTED".equals(status)) {
       logger.warn("❌ Passwordless auth rejected by device for admin: {}", admin.getUsername());
       throw new AdminAuthenticationRejectedException("Device rejected the authentication request");
@@ -585,16 +603,68 @@ public class AdminAuthService {
    */
   private AdminLoginResponseDto buildSuccessResponse(
       EzkeyAdmin admin, AdminToken token, String plainToken) {
+    return buildSuccessResponse(admin, token, plainToken, null, null);
+  }
+
+  /**
+   * Build success response DTO with optional pre-resolved tenant scope.
+   *
+   * <p>When {@code scopedTenantId}/{@code scopedTenantName} are provided (resolved before a {@code
+   * NOT_SUPPORTED} wait), they are preferred so login does not touch a lazy {@code Tenant} proxy
+   * after the persistence context was suspended.
+   *
+   * @param admin the authenticated administrator
+   * @param token the generated token entity
+   * @param plainToken the plain bearer token to return to the client (not stored in DB)
+   * @param scopedTenantId pre-resolved tenant id, or null
+   * @param scopedTenantName pre-resolved tenant display name, or null
+   * @return success response DTO
+   */
+  private AdminLoginResponseDto buildSuccessResponse(
+      EzkeyAdmin admin,
+      AdminToken token,
+      String plainToken,
+      Integer scopedTenantId,
+      String scopedTenantName) {
     logger.info("Authentication successful for: {}", admin.getUsername());
 
-    Integer tenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
+    Integer tenantId = null;
+    String tenantName = null;
+    if (admin.getAdminType() != EzkeyAdmin.AdminType.GLOBAL_ADMIN) {
+      if (scopedTenantId != null || scopedTenantName != null) {
+        tenantId = scopedTenantId;
+        tenantName = scopedTenantName;
+      } else if (admin.getTenant() != null) {
+        // Paths that already initialized tenant (e.g. authenticatePasswordless tenant-active check)
+        tenantId = admin.getTenant().getTenantId();
+        tenantName = admin.getTenant().getTenantName();
+      }
+    }
     return new AdminLoginResponseDto(
         plainToken,
         admin.getAdminType().name(),
         admin.getUsername(),
         token.getExpiresAt(),
         admin.getAdminId(),
-        tenantId);
+        tenantId,
+        tenantName);
+  }
+
+  /**
+   * Unwraps Spring Data native multi-column nesting when present ({@code row[0]} is itself an
+   * {@code Object[]}).
+   *
+   * @param row raw repository row
+   * @return flat {@code [tenantId, tenantName, tenantDescription]} or null
+   */
+  private static Object[] normalizeTenantInfoRow(Object[] row) {
+    if (row == null || row.length == 0) {
+      return null;
+    }
+    if (row.length == 1 && row[0] instanceof Object[] nested) {
+      return nested;
+    }
+    return row;
   }
 
   /**

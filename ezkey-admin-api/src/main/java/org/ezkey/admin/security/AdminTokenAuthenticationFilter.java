@@ -122,9 +122,12 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
         AdminToken adminToken = tokenOptional.get();
         var admin = adminToken.getAdmin();
 
+        // Tenant scope for TENANT_ADMIN and INTEGRATION_ADMIN (null for GLOBAL_ADMIN).
         Integer tenantId = null;
-        if (admin.getAdminType() == AdminType.TENANT_ADMIN) {
-          tenantId = adminToken.getTenant() != null ? adminToken.getTenant().getTenantId() : null;
+        String tenantName = null;
+        if (admin.getAdminType() != AdminType.GLOBAL_ADMIN && adminToken.getTenant() != null) {
+          tenantId = adminToken.getTenant().getTenantId();
+          tenantName = adminToken.getTenant().getTenantName();
         }
         Integer integrationId =
             adminToken.getIntegration() != null ? adminToken.getIntegration().getId() : null;
@@ -153,6 +156,9 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
         request.setAttribute(AdminAuthRequestAttributes.PLAIN_TOKEN, token);
         request.setAttribute(AdminAuthRequestAttributes.EXPIRES_AT, updatedExpiresAt);
         request.setAttribute(AdminAuthRequestAttributes.USERNAME, admin.getUsername());
+        if (tenantName != null) {
+          request.setAttribute(AdminAuthRequestAttributes.TENANT_NAME, tenantName);
+        }
 
         logger.debug(
             "✅ Token validated successfully for admin: {} (type: {}, tenant: {}, integration:"
