@@ -15,6 +15,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
@@ -425,16 +426,17 @@ public class AdminAuthService {
 
     // Resolve tenant display fields before waitForResponse (NOT_SUPPORTED suspends the persistence
     // context). Use the scalar query — do not EntityGraph-load Tenant here (system-tenant shared
-    // collection hazard on administrator MFA enrollments).
+    // collection hazard on administrator MFA enrollments). Prefer List<Object[]> over
+    // Optional<Object[]> to avoid Spring Data native multi-column nesting.
     Integer scopedTenantId = null;
     String scopedTenantName = null;
     if (admin.getAdminType() != EzkeyAdmin.AdminType.GLOBAL_ADMIN) {
-      Optional<Object[]> tenantInfo =
+      java.util.List<Object[]> tenantRows =
           adminRepository.findTenantInfoByAdminEnrollmentId(authAttempt.getEnrollmentId());
-      if (tenantInfo.isPresent()) {
-        Object[] row = tenantInfo.get();
-        scopedTenantId = row[0] != null ? ((Number) row[0]).intValue() : null;
-        scopedTenantName = row[1] != null ? row[1].toString() : null;
+      Object[] row = tenantRows.isEmpty() ? null : normalizeTenantInfoRow(tenantRows.get(0));
+      if (row != null && row.length > 0) {
+        scopedTenantId = row[0] instanceof Number n ? n.intValue() : null;
+        scopedTenantName = row.length > 1 && row[1] != null ? row[1].toString() : null;
       }
     }
 
@@ -602,6 +604,23 @@ public class AdminAuthService {
   private AdminLoginResponseDto buildSuccessResponse(
       EzkeyAdmin admin, AdminToken token, String plainToken) {
     return buildSuccessResponse(admin, token, plainToken, null, null);
+  }
+
+  /**
+   * Unwraps Spring Data native multi-column nesting when present ({@code row[0]} is itself an
+   * {@code Object[]}).
+   *
+   * @param row raw repository row
+   * @return flat {@code [tenantId, tenantName, tenantDescription]} or null
+   */
+  private static Object[] normalizeTenantInfoRow(Object[] row) {
+    if (row == null || row.length == 0) {
+      return null;
+    }
+    if (row.length == 1 && row[0] instanceof Object[] nested) {
+      return nested;
+    }
+    return row;
   }
 
   /**
