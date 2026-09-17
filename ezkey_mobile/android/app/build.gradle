@@ -119,15 +119,15 @@ def ezkeyUseMetroInDebug =
         (project.findProperty("ezkey.useMetroInDebug") ?: "false").toString().toBoolean()
 
 android {
-    ndkVersion rootProject.ext.ndkVersion
+    ndkVersion = rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
     buildFeatures {
-        buildConfig true
+        buildConfig = true
     }
 
-    namespace "org.ezkey.mobile"
+    namespace = "org.ezkey.mobile"
     defaultConfig {
         applicationId "org.ezkey.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -172,7 +172,7 @@ android {
     }
     buildTypes {
         debug {
-            signingConfig signingConfigs.debug
+            signingConfig = signingConfigs.debug
             buildConfigField "boolean", "USE_DEVELOPER_SUPPORT", String.valueOf(ezkeyUseMetroInDebug)
         }
         release {
@@ -181,13 +181,13 @@ android {
             // absent we fall back to the debug keystore with a loud warning so that local debug
             // workflows keep working but the resulting AAB cannot be uploaded to the Play Console.
             if (releaseSigningProps != null) {
-                signingConfig signingConfigs.release
+                signingConfig = signingConfigs.release
             } else {
                 logger.warn("Ezkey: release signing credentials not provided (set EZKEY_UPLOAD_* gradle properties); falling back to debug keystore. The resulting artifact CANNOT be uploaded to the Play Console.")
-                signingConfig signingConfigs.debug
+                signingConfig = signingConfigs.debug
             }
             minifyEnabled enableProguardInReleaseBuilds
-            shrinkResources enableProguardInReleaseBuilds
+            shrinkResources = enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             // Release builds never load the Metro dev server.
             buildConfigField "boolean", "USE_DEVELOPER_SUPPORT", "false"
