@@ -32,6 +32,7 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 | Phase 2 | After the split is **walkable**: close **API ↔ UI** gaps (`reconcile-integrity-rupture`, `confirm-archived`, and any peers) so product intention is testable end-to-end — before calling the area “done.” |
 | Alerts vs Integrity | **Alerts** = exceptional signal list. **Integrity** = investigation + remediation home. Do **not** merge Alerts into Integrity chrome. |
 | Nav (G1) | New **sidebar item**, **Global Admin only**. `/audit-logs` stays trail-only for all roles. Tenant Admin never sees Integrity nav. |
+| Remediation (G2) | Alerts detail **Resolve** deep-links into **Integrity** remediation UI — single atelier for reconcile / confirm archived / peers. |
 | Verification | Isabelle exploratory QA once walkable. |
 | Quality bar | Clean split; careful refactor; no shadow zones for cryptographic audit integrity management. |
 
@@ -53,13 +54,13 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 |------------|----------|---------------------|
 | **Browse / search trail** | Filters, pagination, row detail | Audit trail |
 | **Entity / event context** | From enrollment / auth / integration; around-one-event | Audit trail |
-| **Integrity investigation landing** | Deep link from rupture alert; affected rows; HMAC honesty | Trail *and/or* Integrity — **grill** |
+| **Integrity investigation landing** | Deep link from rupture alert; affected rows; HMAC honesty | **Grill G3** |
 | **Verify (read-only)** | Chain verify, entry HMAC verify | Integrity |
 | **Detect + alert** | Run validation (may raise/touch rupture alert) | Integrity |
 | **Observability** | Overview, checkpoint timeline | Integrity |
-| **Exceptional remediation** | Seal archive, declare gap, confirm archived | Integrity |
+| **Exceptional remediation** | Seal archive, declare gap, confirm archived | Integrity (via G2) |
 | **Heartbeat incidents** | List + declare closure | Integrity (remediation) — signal still via Alerts |
-| **Rupture resolution** | Reconcile / conciliation | Integrity home; Alerts deep-link — **grill detail** |
+| **Rupture resolution** | Reconcile / conciliation | Integrity (G2); Alerts deep-link only |
 
 ---
 
@@ -75,13 +76,13 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 ## Proposed mental model
 
 1. **`/audit-logs` — Audit trail (everyday, all roles)**  
-   Who did what? Filter, read, open detail, enter/exit bounded investigation contexts. HMAC column remains **honest badges** when an integrity session exists, but the page is not the ops console.
+   Who did what? Filter, read, open detail, enter/exit bounded entity/event contexts. Not the ops console for integrity rupture.
 
 2. **Integrity — first-class sidebar (Global Admin only)**  
-   Observability → verification → detective run → remediation (including narrow seal/archive/confirm). Clear hierarchy; help copy already calls seal/gap **exceptional** — the IA must match.
+   Observability → verification → detective run → remediation (including narrow seal/archive/confirm). Single atelier reached from Alerts Resolve (G2).
 
 3. **Alerts — exceptional signal list**  
-   Detection entry for rupture / gap / heartbeat. Deep-links into Integrity (and trail when “view around event” is enough). Not merged into Integrity chrome.
+   Detection entry for rupture / gap / heartbeat. Resolve deep-links into Integrity. Not merged into Integrity chrome.
 
 ---
 
@@ -90,7 +91,7 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 See grill session file. Still open:
 
 1. ~~Nav / roles~~ — **settled G1-A**.
-2. Exact home for reconcile vs confirm-archived (within Alerts-signal / Integrity-remediation rule).
+2. ~~Remediation home~~ — **settled G2-A**.
 3. Where integrity-alert **investigation table** lives (trail, Integrity, or thin bridge).
 4. Nav label: **Integrity** vs **Integrity & Lifecycle** (with Lifecycle narrowly defined).
 5. Deep-link compatibility (`integrity=1`, `source=integrity-alert`, etc.).
@@ -107,7 +108,7 @@ Already settled in integrity cluster grilling (**A2**): Global Admin only for cr
 
 ## Relationship to Alerts
 
-Wave B compass journey: Detect → Alert → Investigate → Verify → Resolve. Hard split restates that journey: Alerts stay the signal list; Integrity owns investigation + remediation; the everyday trail is not the ops sink.
+Detect → Alert (signal) → Resolve deep-link → Integrity (investigate / verify / remediate). Everyday trail is not the ops sink.
 
 ---
 
