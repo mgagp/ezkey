@@ -26,6 +26,10 @@ export interface AuthSession {
    * administrators and legacy sessions saved before this field existed.
    */
   tenantId?: number | null;
+  /**
+   * Tenant display name when scoped; omitted for global administrators and legacy sessions.
+   */
+  tenantName?: string | null;
   /** Non-secret CSRF token used only by cookie-authenticated browser sessions. */
   csrfToken?: string;
 }

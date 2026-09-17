@@ -102,6 +102,7 @@ class AdminAuthControllerPasswordlessAuditTest {
             "admin1",
             java.time.OffsetDateTime.now().plusHours(1),
             42,
+            null,
             null);
     when(authService.waitForPasswordlessAuth(10, 7, "secret123")).thenReturn(ok);
 

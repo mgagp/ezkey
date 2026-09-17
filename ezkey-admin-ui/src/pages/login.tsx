@@ -135,7 +135,7 @@ export default function LoginPage() {
           },
           waitOptions,
         );
-        const data = response as unknown as AdminLoginResponseDto & { csrfToken?: string };
+        const data = response as unknown as AdminLoginResponseDto;
 
         // Ignore result if the countdown or cancel already set a final state
         if (finalStatusRef.current !== null) return;
@@ -160,6 +160,7 @@ export default function LoginPage() {
             expiresAt: typeof data.expiresAt === 'string' ? data.expiresAt : String(data.expiresAt),
             ...(data.adminId != null && { adminId: data.adminId }),
             ...(data.tenantId != null && { tenantId: data.tenantId }),
+            ...(data.tenantName != null && data.tenantName !== '' && { tenantName: data.tenantName }),
             ...(data.csrfToken != null && { csrfToken: data.csrfToken }),
           });
           navigate('/dashboard', { replace: true });

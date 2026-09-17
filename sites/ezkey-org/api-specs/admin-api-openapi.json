@@ -7841,6 +7841,11 @@
             "description": "Tenant scope ID when the administrator is tenant- or integration-scoped; null for global administrators",
             "example": 3
           },
+          "tenantName": {
+            "type": "string",
+            "description": "Tenant display name when the administrator is tenant- or integration-scoped; null for global administrators",
+            "example": "Acme Corp"
+          },
           "csrfToken": {
             "type": "string",
             "description": "Non-secret CSRF token to send in X-CSRF-TOKEN for cookie-authenticated unsafe requests. Present only in browser session cookie mode."
@@ -8822,10 +8827,12 @@
         "properties": {
           "alertId": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Alert primary key"
           },
           "alertType": {
             "type": "string",
+            "description": "Alert type",
             "enum": [
               "AUDIT_CHAIN_GAP_PENDING",
               "AUDIT_CHAIN_HEARTBEAT_STALE",
@@ -8834,6 +8841,7 @@
           },
           "severity": {
             "type": "string",
+            "description": "Alert severity",
             "enum": [
               "INFO",
               "WARNING",
@@ -8842,6 +8850,7 @@
           },
           "status": {
             "type": "string",
+            "description": "Alert status",
             "enum": [
               "OPEN",
               "RESOLVED"
@@ -8849,7 +8858,8 @@
           },
           "createdAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Alert creation timestamp"
           },
           "payload": {
             "type": "string",
@@ -8977,15 +8987,18 @@
         "properties": {
           "total": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Total integrations in scope"
           },
           "active": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Integrations in ACTIVE lifecycle status"
           },
           "retired": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Integrations in RETIRED lifecycle status"
           }
         }
       },
@@ -9018,16 +9031,20 @@
         "description": "Aggregated dashboard overview (stats, recent activity, optional alerts)",
         "properties": {
           "integrations": {
-            "$ref": "#/components/schemas/DashboardIntegrationStatsDto"
+            "$ref": "#/components/schemas/DashboardIntegrationStatsDto",
+            "description": "Integration counts for the current scope"
           },
           "enrollments": {
-            "$ref": "#/components/schemas/DashboardEnrollmentStatsDto"
+            "$ref": "#/components/schemas/DashboardEnrollmentStatsDto",
+            "description": "Operational enrollment counts"
           },
           "auth24h": {
-            "$ref": "#/components/schemas/DashboardAuth24hStatsDto"
+            "$ref": "#/components/schemas/DashboardAuth24hStatsDto",
+            "description": "Auth attempt stats for the last 24 hours"
           },
           "recentActivity": {
             "type": "array",
+            "description": "Recent audit log entries",
             "items": {
               "$ref": "#/components/schemas/DashboardRecentActivityItemDto"
             }
@@ -9070,27 +9087,34 @@
         "properties": {
           "auditLogId": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Audit log primary key"
           },
           "eventType": {
-            "type": "string"
+            "type": "string",
+            "description": "Event type name"
           },
           "eventStatus": {
-            "type": "string"
+            "type": "string",
+            "description": "Event status name"
           },
           "eventAction": {
-            "type": "string"
+            "type": "string",
+            "description": "Free-text event action"
           },
           "apiName": {
-            "type": "string"
+            "type": "string",
+            "description": "API name that produced the event"
           },
           "adminId": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "description": "Administrator id when applicable"
           },
           "createdAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Event creation timestamp"
           }
         }
       },
@@ -9884,6 +9908,11 @@
             "type": "integer",
             "format": "int32",
             "description": "Tenant scope ID when applicable; null for global administrators"
+          },
+          "tenantName": {
+            "type": "string",
+            "description": "Tenant display name when the administrator is tenant- or integration-scoped; null for global administrators",
+            "example": "Acme Corp"
           },
           "csrfToken": {
             "type": "string",

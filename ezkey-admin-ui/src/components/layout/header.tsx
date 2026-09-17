@@ -91,12 +91,21 @@ export function Header({ title }: HeaderProps) {
         {session && (
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end text-sm min-w-0">
             <span className="text-fg-muted text-xs hidden sm:inline shrink-0">{t('layout:header.signedInAs')}</span>
-            <div className="flex items-center gap-1.5 min-w-0 max-w-[min(100%,14rem)]">
+            <div className="flex items-center gap-1.5 min-w-0 max-w-[min(100%,22rem)]">
               <User className="size-3.5 shrink-0 text-fg-muted" aria-hidden />
               <span className="font-bold text-fg truncate">{session.username}</span>
               <span className="text-[10px] px-1.5 py-0.5 bg-fg text-surface font-black uppercase tracking-widest shrink-0">
                 {session.adminType.replace('_ADMIN', '')}
               </span>
+              {session.tenantName ? (
+                <span
+                  className="text-xs text-fg-muted truncate max-w-[10rem]"
+                  title={session.tenantName}
+                  data-testid="app-header-tenant-name"
+                >
+                  {session.tenantName}
+                </span>
+              ) : null}
             </div>
             <DisplayTimezoneMenu />
             <HeaderLogoutButton />
