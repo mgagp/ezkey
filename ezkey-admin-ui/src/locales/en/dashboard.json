@@ -96,7 +96,7 @@
       "REENCRYPTION": "Re-encryption"
     },
     "links": {
-      "integrityPanel": "Open integrity panel →",
+      "integrityPanel": "Open Integrity →",
       "encryptionKeys": "Open encryption keys →"
     }
   },

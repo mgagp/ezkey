@@ -60,7 +60,7 @@
       "estimatedGapEnd": "Estimated gap end",
       "estimatedGapMinutes": "Estimated duration (min)",
       "message": "Message",
-      "viewAuditLogs": "Open in audit logs"
+      "viewAuditLogs": "Open in Integrity"
     },
     "auditIntegrityRupture": {
       "windowStart": "Window start",
@@ -82,7 +82,7 @@
       "livePending": "Waiting for live verification…",
       "liveVerifyFailed": "Live verification failed",
       "truncatedList": "Showing {{returned}} of {{total}} (truncated in alert snapshot)",
-      "investigateCta": "Investigate in Audit Logs",
+      "investigateCta": "Investigate in Integrity",
       "viewCheckpoint": "View checkpoint",
       "conciliationStatus": {
         "ACKNOWLEDGED": "Acknowledged (known invalid)",

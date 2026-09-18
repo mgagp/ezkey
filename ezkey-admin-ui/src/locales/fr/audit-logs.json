@@ -259,6 +259,7 @@
     "labelInstance": "Instance"
   },
   "integrity": {
+    "pageTitle": "Intégrité",
     "title": "Intégrité et cycle de vie",
     "globalAdmin": "Admin global",
     "verification": "Vérification",
@@ -306,6 +307,7 @@
       "showAffectedOnly": "Afficher seulement les entrées affectées",
       "affectedOnlyTitle": "Entrées affectées (selon vérification)",
       "backToList": "Retour à la liste complète",
+      "backToPanel": "Retour au panneau Intégrité",
       "reasonColumn": "Raison",
       "viewAround": "Voir autour de l'événement",
       "noAffectedEntries": "Aucune entrée affectée en session"

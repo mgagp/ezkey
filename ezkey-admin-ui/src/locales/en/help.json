@@ -110,7 +110,13 @@
       "eventTypeVsStatus": "Two columns work together:\n\n• Event type — the category of operation (for example admin login, enrollment created, API key revoked). It answers “what kind of event is this?”\n\n• Status — how that operation finished for the audited step. Success means the step completed as intended. Failure means an expected outcome stopped the flow (validation, policy, or a normal terminal result such as an expired or rejected MFA attempt). Error means something unexpected went wrong while processing the request and may warrant investigation.\n\nFor automation and exports: Failure is the usual status for “expected” denials and terminal MFA outcomes; Error points to unexpected processing failures—correlate with server logs if needed. The event action value is the stable field for filters and SIEM rules.",
       "statusLegend": "Success — the audited step completed successfully.\nFailure — the step did not complete in the expected success path; details often appear in the row or error message.\nError — unexpected failure; treat as worth reviewing in logs or support.",
       "mfaAndLogin": "Passwordless admin sign-in can take two steps. The first step may only create an MFA request on your enrolled device: a Success status there means the request was accepted by the server, not that you already hold a session. A separate entry shows when a session is issued or when the attempt ended without a session (for example expired, rejected, or timed out), once those outcomes are recorded for the wait step.",
-      "integrityNote": "Chain checkpoints, seal archive, and declare gap are advanced integrity operations. Use the inline help (?) next to each section on this page for how and when to use them.",
+      "demoExtra": ""
+    },
+    "integrity": {
+      "title": "Integrity",
+      "summary": "Global Admin surface for verifying and remediating the audit journal HMAC and chain — same audit_log proof as the everyday trail, different job.",
+      "body": "Use Integrity to verify chain checkpoints and entry HMACs, run detective validation, declare detected gaps, seal archive periods, and close operational heartbeat incidents. Investigation from Alerts lands here; open View around event when you need the everyday trail window around one row.\n\nThis screen does not rewrite the journal. Conciliation and gap declaration explain or mark known conditions on the same cryptographic trail. Tenant Admins do not see Integrity.",
+      "globalOps": "As a Global Admin you own instance-level integrity monitoring and remediation. Inline help (?) next to each section explains when to use verify vs run validation, seal, and declare gap.",
       "demoExtra": ""
     },
     "alerts": {
@@ -122,7 +128,7 @@
     "alert-detail": {
       "title": "Alert detail",
       "summary": "One alert's details, payload, and — for integrity ruptures — the reconciliation action.",
-      "body": "Most alerts are informational once you open them: the Details and Resolution cards show when the alert was raised, how many times the same condition recurred, and — once resolved — when, and why. Gap and heartbeat alerts typically resolve on their own once you declare the gap or supervision recovers; there is nothing to click here for those.\n\nAudit integrity rupture alerts are the exception. While the alert is Open, a Reconcile action re-verifies the affected window live, asks you to acknowledge any entry violations that still need it, and records a signed conciliation checkpoint together with a classification and justification. This is the only way an integrity rupture alert moves to Resolved, and it is irreversible for that alert.\n\nUse the “Open in audit logs” / “Investigate in Audit Logs” links on the payload to jump straight to the affected window.",
+      "body": "Most alerts are informational once you open them: the Details and Resolution cards show when the alert was raised, how many times the same condition recurred, and — once resolved — when, and why. Gap and heartbeat alerts typically resolve on their own once you declare the gap or supervision recovers; there is nothing to click here for those.\n\nAudit integrity rupture alerts are the exception. While the alert is Open, a Reconcile action re-verifies the affected window live, asks you to acknowledge any entry violations that still need it, and records a signed conciliation checkpoint together with a classification and justification. This is the only way an integrity rupture alert moves to Resolved, and it is irreversible for that alert.\n\nUse the Investigate in Integrity links on the payload to jump straight to the Integrity atelier for the affected window.",
       "demoExtra": ""
     }
   }

@@ -33,6 +33,7 @@ test('@smoke @device-backed real login through Demo Device reaches the authentic
   await expect(page.getByTestId('sidebar-link-dashboard')).toBeVisible();
   await expect(page.getByTestId('sidebar-link-tenants')).toBeVisible();
   await expect(page.getByTestId('sidebar-link-encryptionKeys')).toBeVisible();
+  await expect(page.getByTestId('sidebar-link-integrity')).toBeVisible();
 
   await demoPage.close();
 });

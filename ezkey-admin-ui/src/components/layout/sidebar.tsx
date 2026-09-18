@@ -16,6 +16,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Puzzle,
+  ShieldAlert,
   ShieldCheck,
   UserCog,
   Users,
@@ -28,6 +29,7 @@ type NavLabelKey =
   | 'enrollments'
   | 'authAttempts'
   | 'auditLogs'
+  | 'integrity'
   | 'alerts'
   | 'admins'
   | 'apiKeys'
@@ -48,6 +50,7 @@ const navItems: NavItem[] = [
   { labelKey: 'enrollments', path: '/enrollments', icon: Users },
   { labelKey: 'authAttempts', path: '/auth-attempts', icon: ShieldCheck },
   { labelKey: 'auditLogs', path: '/audit-logs', icon: FileText },
+  { labelKey: 'integrity', path: '/integrity', icon: ShieldAlert, roles: ['GLOBAL_ADMIN'] },
   { labelKey: 'alerts', path: '/alerts', icon: AlertTriangle, roles: ['GLOBAL_ADMIN'] },
   { labelKey: 'admins', path: '/admins', icon: UserCog },
   { labelKey: 'apiKeys', path: '/api-keys', icon: Key },

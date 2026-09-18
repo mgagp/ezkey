@@ -18,6 +18,7 @@ export type HelpTopicId =
   | 'admins'
   | 'encryption-keys'
   | 'audit-logs'
+  | 'integrity'
   | 'alerts'
   | 'alert-detail';
 
@@ -40,6 +41,7 @@ export function resolveHelpTopicId(pathname: string): HelpTopicId {
   if (path === '/admins') return 'admins';
   if (path === '/encryption-keys') return 'encryption-keys';
   if (path === '/audit-logs') return 'audit-logs';
+  if (path === '/integrity') return 'integrity';
   if (path === '/alerts') return 'alerts';
   if (path.startsWith('/alerts/')) return 'alert-detail';
   return 'default';
@@ -87,6 +89,8 @@ export const HELP_EXTRA_SECTIONS: Partial<Record<HelpTopicId, HelpExtraSection[]
     { key: 'eventTypeVsStatus' },
     { key: 'statusLegend', tone: 'muted' },
     { key: 'mfaAndLogin' },
-    { key: 'integrityNote', tone: 'muted' },
+  ],
+  integrity: [
+    { key: 'globalOps', audience: 'global' },
   ],
 };

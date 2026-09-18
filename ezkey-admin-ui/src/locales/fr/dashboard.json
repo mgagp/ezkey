@@ -96,7 +96,7 @@
       "REENCRYPTION": "Re-chiffrement"
     },
     "links": {
-      "integrityPanel": "Ouvrir le panneau intégrité →",
+      "integrityPanel": "Ouvrir Intégrité →",
       "encryptionKeys": "Ouvrir les clés de chiffrement →"
     }
   },

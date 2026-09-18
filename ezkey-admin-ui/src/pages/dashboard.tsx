@@ -90,7 +90,7 @@ function jobDeepLink(jobKey: string | undefined): string | null {
   switch (jobKey) {
     case 'AUDIT_CHAIN_CHECKPOINT':
     case 'NIGHTLY_INTEGRITY_VALIDATION':
-      return '/audit-logs?integrity=1#integrity-lifecycle-panel';
+      return '/integrity';
     case 'REENCRYPTION':
       return '/encryption-keys';
     default:
@@ -413,7 +413,7 @@ export default function DashboardPage() {
                   </div>
                 )}
                 <Link
-                  to="/audit-logs?integrity=1#integrity-lifecycle-panel"
+                  to="/integrity"
                   className="inline-block text-sm font-bold text-accent hover:underline"
                 >
                   {t('dashboard:batchHealth.links.integrityPanel')}
@@ -486,7 +486,7 @@ export default function DashboardPage() {
                 ))}
               </ul>
               <Link
-                to="/audit-logs?integrity=1#integrity-lifecycle-panel"
+                to="/integrity"
                 className="inline-flex items-center gap-1.5 text-sm font-bold text-accent hover:underline"
               >
                 {t('dashboard:followUp.openIntegrity')}
