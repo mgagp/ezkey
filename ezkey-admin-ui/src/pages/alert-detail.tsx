@@ -23,6 +23,7 @@ import type {
 } from '@/generated/admin-api/model';
 import {
   buildIntegrityDeepLink,
+  buildIntegrityReconcileDeepLink,
   buildInvestigationSession,
   type CappedViolationListPayload,
   entryViolationDisplayState,
@@ -116,6 +117,8 @@ interface AuditIntegrityRupturePayload {
   message?: string;
   entryViolations?: CappedViolationListPayload<EntryIntegrityViolation>;
   chainViolations?: CappedViolationListPayload<ChainIntegrityViolation>;
+  /** Optional; only forwarded in deep-links when already present on the alert payload. */
+  ruptureId?: string | number;
 }
 
 function isAuditIntegrityRupturePayload(value: unknown): value is AuditIntegrityRupturePayload {
@@ -310,19 +313,14 @@ function IntegrityRuptureInvestigationSection({
   }, [windowFrom, windowTo, alertId, liveEntries]);
 
   const reconcileHref = useMemo(() => {
-    if (!windowFrom || !windowTo || !alertOpen) {
+    if (!alertOpen) {
       return null;
     }
-    return buildIntegrityDeepLink({
-      failBoundary: windowFrom,
-      resumeBoundary: windowTo,
+    return buildIntegrityReconcileDeepLink({
       alertId,
-      action: 'reconcile',
-      highlightAuditLogIds: liveEntries
-        .map((v) => v.auditLogId)
-        .filter((id): id is number => id != null && id > 0),
+      ruptureId: payload.ruptureId,
     });
-  }, [windowFrom, windowTo, alertId, alertOpen, liveEntries]);
+  }, [alertId, alertOpen, payload.ruptureId]);
 
   const handleInvestigateClick = () => {
     if (!windowFrom || !windowTo) {
@@ -505,25 +503,20 @@ export default function AlertDetailPage() {
     return parsedPayload;
   }, [isIntegrityRuptureAlert, parsedPayload]);
 
-  const failBoundary = rupturePayload?.failBoundary ?? rupturePayload?.windowStart;
-  const resumeBoundary = rupturePayload?.resumeBoundary ?? rupturePayload?.windowEnd;
   const canDeepLinkReconcile =
     alert?.status === 'OPEN'
     && isIntegrityRuptureAlert
-    && Boolean(failBoundary && resumeBoundary)
     && !Number.isNaN(id);
 
   const resolveHref = useMemo(() => {
-    if (!canDeepLinkReconcile || !failBoundary || !resumeBoundary) {
+    if (!canDeepLinkReconcile) {
       return null;
     }
-    return buildIntegrityDeepLink({
-      failBoundary,
-      resumeBoundary,
+    return buildIntegrityReconcileDeepLink({
       alertId: id,
-      action: 'reconcile',
+      ruptureId: rupturePayload?.ruptureId,
     });
-  }, [canDeepLinkReconcile, failBoundary, resumeBoundary, id]);
+  }, [canDeepLinkReconcile, id, rupturePayload?.ruptureId]);
 
   return (
     <AppShell

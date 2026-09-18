@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EntryIntegrityViolation, IntegrityReport } from '@/generated/admin-api/model';
 import {
   buildIntegrityDeepLink,
+  buildIntegrityReconcileDeepLink,
   entryViolationDisplayState,
   mergeSingleEntryVerificationIntoSession,
   resolveEntryIntegrityReportSummaryState,
@@ -139,15 +140,20 @@ describe('buildIntegrityDeepLink', () => {
     expect(href).toContain('highlightAuditLogIds=3%2C7');
     expect(href).not.toContain('action=reconcile');
   });
+});
 
-  it('adds action=reconcile for Integrity atelier remediation', () => {
-    const href = buildIntegrityDeepLink({
-      failBoundary: '2026-09-01T00:00:00Z',
-      resumeBoundary: '2026-09-02T00:00:00Z',
-      alertId: 9,
-      action: 'reconcile',
-    });
-    expect(href).toContain('action=reconcile');
-    expect(href).toContain('alertId=9');
+describe('buildIntegrityReconcileDeepLink', () => {
+  it('uses frozen Julie contract action + alertId only', () => {
+    const href = buildIntegrityReconcileDeepLink({ alertId: 9 });
+    expect(href).toBe('/integrity?action=reconcile&alertId=9');
+  });
+
+  it('forwards ruptureId only when provided', () => {
+    expect(buildIntegrityReconcileDeepLink({ alertId: 9, ruptureId: null })).toBe(
+      '/integrity?action=reconcile&alertId=9',
+    );
+    expect(buildIntegrityReconcileDeepLink({ alertId: 9, ruptureId: 'abc' })).toBe(
+      '/integrity?action=reconcile&alertId=9&ruptureId=abc',
+    );
   });
 });

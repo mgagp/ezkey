@@ -41,14 +41,32 @@ export function parseHighlightAuditLogIds(raw: string | null): number[] {
 }
 
 /**
- * Build an Integrity deep-link from an Alerts signal (investigation and/or reconcile).
+ * Frozen Julie contract: Alerts → Integrity reconcile deep-link.
+ * Stable minimal query: {@code /integrity?action=reconcile&alertId=<id>}.
+ * Optional {@code ruptureId} only when already present on the alert payload (not invented).
+ */
+export function buildIntegrityReconcileDeepLink(opts: {
+  alertId: number;
+  ruptureId?: string | number | null;
+}): string {
+  const params = new URLSearchParams();
+  params.set('action', 'reconcile');
+  params.set('alertId', String(opts.alertId));
+  if (opts.ruptureId != null && String(opts.ruptureId).length > 0) {
+    params.set('ruptureId', String(opts.ruptureId));
+  }
+  return `/integrity?${params.toString()}`;
+}
+
+/**
+ * Build an Integrity investigation deep-link (window context, highlights).
  * Greenfield: lands on `/integrity` only — no `/audit-logs?integrity=…` shims.
+ * For remediation, use {@link buildIntegrityReconcileDeepLink} instead.
  */
 export function buildIntegrityDeepLink(opts: {
   failBoundary: string;
   resumeBoundary: string;
   alertId?: number;
-  action?: 'reconcile';
   highlightAuditLogIds?: number[];
   focusCheckpointId?: number;
 }): string {
@@ -58,9 +76,6 @@ export function buildIntegrityDeepLink(opts: {
   params.set('createdBefore', opts.resumeBoundary);
   if (opts.alertId != null && opts.alertId > 0) {
     params.set('alertId', String(opts.alertId));
-  }
-  if (opts.action === 'reconcile') {
-    params.set('action', 'reconcile');
   }
   if (opts.highlightAuditLogIds && opts.highlightAuditLogIds.length > 0) {
     params.set('highlightAuditLogIds', formatHighlightAuditLogIds(opts.highlightAuditLogIds));

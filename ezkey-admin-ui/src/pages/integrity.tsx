@@ -39,6 +39,7 @@ import { useToast } from '@/context/use-toast';
 import { EntryIntegrityReportBadge } from '@/components/feature/entry-integrity-report-badge';
 import { EntryIntegrityViolationLine } from '@/components/feature/entry-integrity-violation-line';
 import { IntegrityReconcileDialog } from '@/components/feature/integrity-reconcile-dialog';
+import { useGetAlert } from '@/generated/admin-api/alerts/alerts';
 import {
   checkChainIntegrity,
   checkIntegrity,
@@ -50,6 +51,7 @@ import {
   useSealArchive,
 } from '@/generated/admin-api/audit-logs/audit-logs';
 import type {
+  AlertResponseDto,
   AuditChainCheckpointResponseDto,
   ArchiveConfirmArchivedResult,
   ArchiveEligibilityResult,
@@ -331,6 +333,8 @@ function IntegrityPanel({
   focusCheckpointId = null,
   initialCheckRange = null,
   reconcileAlertId = null,
+  reconcileFailBoundary = null,
+  reconcileResumeBoundary = null,
   autoOpenReconcile = false,
 }: {
   expandFromQuery?: boolean;
@@ -338,6 +342,9 @@ function IntegrityPanel({
   initialCheckRange?: { createdAfter: string; createdBefore: string } | null;
   /** Open AUDIT_INTEGRITY_RUPTURE alert id for Integrity-atelier reconcile. */
   reconcileAlertId?: number | null;
+  /** Boundaries resolved from the alert payload (not from URL window params). */
+  reconcileFailBoundary?: string | null;
+  reconcileResumeBoundary?: string | null;
   /** When true (deep-link `action=reconcile`), open the reconcile dialog once boundaries are ready. */
   autoOpenReconcile?: boolean;
 }) {
@@ -793,7 +800,7 @@ function IntegrityPanel({
   const canReconcileOnIntegrity =
     reconcileAlertId != null
     && reconcileAlertId > 0
-    && Boolean(initialCheckRange?.createdAfter && initialCheckRange?.createdBefore);
+    && Boolean(reconcileFailBoundary && reconcileResumeBoundary);
 
   const [autoReconcileConsumed, setAutoReconcileConsumed] = useState(false);
   useEffect(() => {
@@ -801,8 +808,8 @@ function IntegrityPanel({
       !autoOpenReconcile
       || autoReconcileConsumed
       || !canReconcileOnIntegrity
-      || !initialCheckRange?.createdAfter
-      || !initialCheckRange?.createdBefore
+      || !reconcileFailBoundary
+      || !reconcileResumeBoundary
     ) {
       return;
     }
@@ -812,8 +819,8 @@ function IntegrityPanel({
     autoOpenReconcile,
     autoReconcileConsumed,
     canReconcileOnIntegrity,
-    initialCheckRange?.createdAfter,
-    initialCheckRange?.createdBefore,
+    reconcileFailBoundary,
+    reconcileResumeBoundary,
   ]);
 
   function resetGapForm() {
@@ -1684,14 +1691,14 @@ function IntegrityPanel({
 
       {canReconcileOnIntegrity
         && reconcileAlertId != null
-        && initialCheckRange?.createdAfter
-        && initialCheckRange?.createdBefore && (
+        && reconcileFailBoundary
+        && reconcileResumeBoundary && (
         <IntegrityReconcileDialog
           open={reconcileOpen}
           onClose={() => setReconcileOpen(false)}
           alertId={reconcileAlertId}
-          failBoundary={initialCheckRange.createdAfter}
-          resumeBoundary={initialCheckRange.createdBefore}
+          failBoundary={reconcileFailBoundary}
+          resumeBoundary={reconcileResumeBoundary}
         />
       )}
 
@@ -1868,6 +1875,38 @@ function InfoPair({ label, value, mono }: { label: string; value: string; mono?:
 
 // ── Integrity page (GLOBAL_ADMIN only) ────────────────────────────────────────
 
+function parseAlertPayload(raw?: string | null): unknown {
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function extractRuptureBoundariesFromAlertPayload(
+  payload: unknown,
+): { failBoundary: string; resumeBoundary: string } | null {
+  if (typeof payload !== 'object' || payload === null) {
+    return null;
+  }
+  const record = payload as Record<string, unknown>;
+  const fail =
+    (typeof record.failBoundary === 'string' && record.failBoundary)
+    || (typeof record.windowStart === 'string' && record.windowStart)
+    || null;
+  const resume =
+    (typeof record.resumeBoundary === 'string' && record.resumeBoundary)
+    || (typeof record.windowEnd === 'string' && record.windowEnd)
+    || null;
+  if (!fail || !resume) {
+    return null;
+  }
+  return { failBoundary: fail, resumeBoundary: resume };
+}
+
 export default function IntegrityPage() {
   const { t } = useTranslation('audit-logs');
   const { session } = useAuth();
@@ -1894,14 +1933,44 @@ export default function IntegrityPage() {
 
   const autoOpenReconcile = searchParams.get('action') === 'reconcile';
 
+  const { data: reconcileAlert } = useGetAlert<AlertResponseDto>(
+    reconcileAlertIdParam ?? 0,
+    {
+      query: {
+        enabled:
+          isGlobalAdmin
+          && autoOpenReconcile
+          && reconcileAlertIdParam != null
+          && reconcileAlertIdParam > 0,
+      },
+    },
+  );
+
+  const reconcileBoundaries = useMemo(() => {
+    if (!autoOpenReconcile || !reconcileAlertIdParam) {
+      return null;
+    }
+    if (reconcileAlert?.alertType !== 'AUDIT_INTEGRITY_RUPTURE') {
+      return null;
+    }
+    return extractRuptureBoundariesFromAlertPayload(parseAlertPayload(reconcileAlert.payload));
+  }, [autoOpenReconcile, reconcileAlertIdParam, reconcileAlert]);
+
   const initialCheckRange = useMemo(() => {
     const createdAfter = searchParams.get('createdAfter');
     const createdBefore = searchParams.get('createdBefore');
     if (createdAfter && createdBefore) {
       return { createdAfter, createdBefore };
     }
+    // Frozen reconcile deep-link has no window params — seed the check range from the alert.
+    if (reconcileBoundaries) {
+      return {
+        createdAfter: reconcileBoundaries.failBoundary,
+        createdBefore: reconcileBoundaries.resumeBoundary,
+      };
+    }
     return null;
-  }, [searchParams]);
+  }, [searchParams, reconcileBoundaries]);
 
   const [integritySession, setIntegritySession] = useState<IntegrityInvestigationSession | null>(
     () => loadIntegrityInvestigationSession(),
@@ -1912,7 +1981,9 @@ export default function IntegrityPage() {
     setIntegritySession(loadIntegrityInvestigationSession());
   }, [searchParams]);
 
-  const isIntegrityAlertContext = searchParams.get('source') === 'integrity-alert';
+  const isIntegrityAlertContext =
+    searchParams.get('source') === 'integrity-alert'
+    || (autoOpenReconcile && reconcileAlertIdParam != null);
 
   const clearIntegrityInvestigationContext = useCallback(() => {
     setShowAffectedOnly(false);
@@ -1923,6 +1994,7 @@ export default function IntegrityPage() {
       next.delete('focusCheckpointId');
       next.delete('alertId');
       next.delete('action');
+      next.delete('ruptureId');
       return next;
     }, { replace: true });
   }, [setSearchParams]);
@@ -2004,7 +2076,9 @@ export default function IntegrityPage() {
               expandFromQuery
               focusCheckpointId={focusCheckpointIdParam}
               initialCheckRange={initialCheckRange}
-              reconcileAlertId={reconcileAlertIdParam}
+              reconcileAlertId={autoOpenReconcile ? reconcileAlertIdParam : null}
+              reconcileFailBoundary={reconcileBoundaries?.failBoundary ?? null}
+              reconcileResumeBoundary={reconcileBoundaries?.resumeBoundary ?? null}
               autoOpenReconcile={autoOpenReconcile}
             />
           </>
