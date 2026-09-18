@@ -89,9 +89,9 @@ Use this when the stack and Postgres data **already run** and you only add or up
 1. After the tree exists, ensure [`lightsail/`](lightsail/) on the VM includes `docker-compose.yml`, `Caddyfile`, `.env`, and [`clean-start.sh`](lightsail/clean-start.sh) with [`docker/generate-encryption-keys.sh`](../docker/generate-encryption-keys.sh) at **`~/ezkey/docker/`** (required for [`clean-start.sh`](lightsail/clean-start.sh)).
 2. Copy `lightsail/.env.example` to `lightsail/.env` and set **`EZKEY_QR_AUTH_BASE_URL`** to your **public** Auth API URL (must match the auth hostname in `Caddyfile`).
 
-   Optional **runtime profile**: default is integrity. For eval (MFA crypto on; audit-integrity
-   monitoring off), set `EZKEY_RUNTIME_PROFILE=eval` and
-   `SPRING_PROFILES_ACTIVE=docker,docker-eval` (see `.env.example` comments and
+   Optional **runtime profile**: default is integrity. For base (MFA crypto on; audit-integrity
+   monitoring off), set `EZKEY_RUNTIME_PROFILE=base` and
+   `SPRING_PROFILES_ACTIVE=docker,docker-base` (see `.env.example` comments and
    [`docker/README.md`](../docker/README.md) § Runtime profiles). Orthogonal to
    `EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED`.
 3. Edit **`lightsail/Caddyfile`** hostnames if yours differ from `exp1-*-api.ezkey.org`.

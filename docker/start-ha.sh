@@ -34,7 +34,7 @@ if [[ ",${SPRING_PROFILES_ACTIVE:-}," == *",docker-test,"* ]] && [[ ",${SPRING_P
     export SPRING_PROFILES_ACTIVE="docker,${SPRING_PROFILES_ACTIVE}"
 fi
 
-# Product runtime profile (integrity default / eval opt-in). See docker/runtime-profile.sh.
+# Product runtime profile (integrity default / base opt-in). See docker/runtime-profile.sh.
 # shellcheck source=runtime-profile.sh
 source "${SCRIPT_DIR}/runtime-profile.sh"
 resolve_ezkey_runtime_profile || exit 1

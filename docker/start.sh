@@ -49,7 +49,7 @@ if contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker-test" && ! contains_pr
     export SPRING_PROFILES_ACTIVE="docker,${SPRING_PROFILES_ACTIVE}"
 fi
 
-# Product runtime profile (integrity default / eval opt-in). See docker/runtime-profile.sh.
+# Product runtime profile (integrity default / base opt-in). See docker/runtime-profile.sh.
 # shellcheck source=runtime-profile.sh
 source "${SCRIPT_DIR}/runtime-profile.sh"
 resolve_ezkey_runtime_profile || exit 1
@@ -74,10 +74,10 @@ if contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker-dev"; then
     fi
 fi
 
-# Optional eval compose marker (labels). Property matrix lives in application-docker-eval.properties.
-if [ "${EZKEY_RUNTIME_PROFILE:-}" = "eval" ] && [ -f "${SCRIPT_DIR}/docker-compose.eval.yml" ]; then
-    COMPOSE_ARGS="${COMPOSE_ARGS} -f ${SCRIPT_DIR}/docker-compose.eval.yml"
-    echo "🔧 Eval runtime overlay enabled: docker-compose.eval.yml"
+# Optional base compose marker (labels). Property matrix lives in application-docker-base.properties.
+if [ "${EZKEY_RUNTIME_PROFILE:-}" = "base" ] && [ -f "${SCRIPT_DIR}/docker-compose.base.yml" ]; then
+    COMPOSE_ARGS="${COMPOSE_ARGS} -f ${SCRIPT_DIR}/docker-compose.base.yml"
+    echo "🔧 Base runtime overlay enabled: docker-compose.base.yml"
 fi
 
 # Optional: Caddy reverse proxy for trusted-proxy E2E (client IP from X-Forwarded-For).
@@ -362,8 +362,8 @@ echo "  - Start in test mode: SPRING_PROFILES_ACTIVE=docker,docker-test ./docker
 echo "  - Default mode (production): ./docker/start.sh"
 echo ""
 echo "🧭 Runtime profile (product key; default integrity):"
-echo "  - Eval (opt-in): EZKEY_RUNTIME_PROFILE=eval ./docker/start.sh"
-echo "  - Or: ./ezkey-tests/clean-start.sh --runtime=eval"
+echo "  - Base (opt-in): EZKEY_RUNTIME_PROFILE=base ./docker/start.sh"
+echo "  - Or: ./ezkey-tests/clean-start.sh --runtime=base"
 echo "  - Claim boundary: MFA crypto on; audit-integrity monitoring off (not tamper-evident)"
 echo "  - Verify: ./docker/verify-runtime-profile.sh"
 echo ""

@@ -9,7 +9,7 @@
 # 5. Extracts bootstrap credentials
 # 6. Initializes admin token
 #
-# Usage: ./clean-start.sh [--ha] [--mvn-bootstrap] [--no-proxy] [--with-proxy] [--jmx] [--with-java-melody] [--prod-safe] [--runtime=integrity|eval]
+# Usage: ./clean-start.sh [--ha] [--mvn-bootstrap] [--no-proxy] [--with-proxy] [--jmx] [--with-java-melody] [--prod-safe] [--runtime=integrity|base]
 #   --ha: Use HA stack with 2 instances of each API behind HAProxy load balancers
 #   --mvn-bootstrap: Enable Maven-based bootstrap steps (default: disabled, Docker bootstrap-init handles this)
 #   --no-proxy: Do not start Caddy in front of APIs (default: Caddy is enabled for prod-like security headers on the proxy path)
@@ -17,8 +17,8 @@
 #   --jmx: Enable JMX port publishing for VisualVM (DEV ONLY; unauthenticated, non-SSL)
 #   --with-java-melody: Enable JavaMelody collector (DEV / troubleshooting; UI on http://localhost:8088)
 #   --prod-safe: Start using production-safe Spring profile only (docker). Disables docker-dev and docker-test.
-#   --runtime=integrity|eval: Product runtime profile (default integrity). eval = MFA crypto on, audit-integrity monitoring off.
-#                             Same as EZKEY_RUNTIME_PROFILE=eval (also usable on Lightsail .env).
+#   --runtime=integrity|base: Product runtime profile (default integrity). base = MFA crypto on, audit-integrity monitoring off.
+#                             Same as EZKEY_RUNTIME_PROFILE=base (also usable on Lightsail .env).
 #
 # Prerequisites:
 #   - Docker and Docker Compose installed and running
@@ -40,7 +40,7 @@ ENABLE_JMX=""
 ENABLE_JAVA_MELODY=""
 PROD_SAFE=""
 SPRING_PROFILES=""
-# Product runtime profile: integrity (default) or eval (opt-in). Flag overrides env when set.
+# Product runtime profile: integrity (default) or base (opt-in). Flag overrides env when set.
 RUNTIME_PROFILE_FLAG=""
 
 # Parse flags
@@ -71,12 +71,12 @@ for arg in "$@"; do
             RUNTIME_PROFILE_FLAG="${arg#--runtime=}"
             ;;
         --runtime)
-            echo "Use --runtime=eval or --runtime=integrity (equals form required)"
+            echo "Use --runtime=base or --runtime=integrity (equals form required)"
             exit 1
             ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: ./clean-start.sh [--ha] [--mvn-bootstrap] [--no-proxy] [--with-proxy] [--jmx] [--with-java-melody] [--prod-safe] [--runtime=integrity|eval]"
+            echo "Usage: ./clean-start.sh [--ha] [--mvn-bootstrap] [--no-proxy] [--with-proxy] [--jmx] [--with-java-melody] [--prod-safe] [--runtime=integrity|base]"
             exit 1
             ;;
     esac
@@ -87,7 +87,7 @@ done
 # - docker: base production-like docker profile (required for bootstrap export configuration)
 # - docker-dev: local diagnostics (Actuator exposed on management ports)
 # - docker-test: permissive test mode (rate limiting disabled)
-# Eval appends docker-eval last via docker/runtime-profile.sh (not ops language — product key is --runtime / EZKEY_RUNTIME_PROFILE).
+# Base appends docker-base last via docker/runtime-profile.sh (not ops language — product key is --runtime / EZKEY_RUNTIME_PROFILE).
 if [ -n "$PROD_SAFE" ]; then
     SPRING_PROFILES="docker"
 else
@@ -98,7 +98,7 @@ if [ -n "$RUNTIME_PROFILE_FLAG" ]; then
     export EZKEY_RUNTIME_PROFILE="$RUNTIME_PROFILE_FLAG"
 fi
 
-# Resolve product runtime profile → may append docker-eval to SPRING_PROFILES.
+# Resolve product runtime profile → may append docker-base to SPRING_PROFILES.
 # shellcheck source=../docker/runtime-profile.sh
 source "${DOCKER_DIR}/runtime-profile.sh"
 export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES}"
@@ -327,7 +327,7 @@ echo "  ✅ Clean Start Complete!"
 echo "=========================================="
 echo ""
 echo "📋 Stack Status:"
-echo "  - Runtime profile: ${EZKEY_RUNTIME_PROFILE:-integrity} (product key; Spring may include docker-eval under eval)"
+echo "  - Runtime profile: ${EZKEY_RUNTIME_PROFILE:-integrity} (product key; Spring may include docker-base under base)"
 if [ -n "$HA_MODE" ]; then
     echo "  - Docker stack: Running HA mode with profiles (${SPRING_PROFILES})"
     echo "  - Instances: 2x admin-api, 2x auth-api, 2x integration-api behind HAProxy"

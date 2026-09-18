@@ -43,10 +43,10 @@ The supported local quick-start path is the Bash clean start from `ezkey-tests`:
 ```
 
 Default product **runtime profile** is **integrity** (audit-chain + heartbeat on). For an opt-in
-**eval** stack (MFA crypto on; audit-integrity monitoring off):
+**base** stack (MFA crypto on; audit-integrity monitoring off — limited claims, not “eval-only lab”):
 
 ```bash
-./ezkey-tests/clean-start.sh --runtime=eval
+./ezkey-tests/clean-start.sh --runtime=base
 ```
 
 See [`docker/README.md`](docker/README.md) § Runtime profiles.

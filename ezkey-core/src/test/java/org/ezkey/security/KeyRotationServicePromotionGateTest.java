@@ -27,7 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Eval / ops: encryption ON + rotation OFF must idle KEY_PROMOTION without disabling Tink.
+ * Base / ops: encryption ON + rotation OFF must idle KEY_PROMOTION without disabling Tink.
  *
  * @since 2026
  */

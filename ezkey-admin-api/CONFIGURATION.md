@@ -345,7 +345,7 @@ The following ezkey-core prefixes are also active in Admin API. See
 
 ## Profile Matrix
 
-| Property | default | docker | docker-test | docker-eval² |
+| Property | default | docker | docker-test | docker-base² |
 |---|---|---|---|---|
 | `ezkey.admin.mfa.mode` | `dev` | `prod` | `prod` | *(inherits)* |
 | `ezkey.admin.mfa.bootstrap.auto-enrollment` | `true` | `true` | `true` | *(inherits)* |
@@ -359,8 +359,8 @@ The following ezkey-core prefixes are also active in Admin API. See
 | `ezkey.audit.chain.heartbeat.enabled` | `true` | `true` | `true` | `false` |
 | `ezkey.encryption.rotation.enabled` | `true` | `true` | `true` | `false` |
 
-² Spring profile `docker-eval` is the mechanism for product runtime **eval**
-(`EZKEY_RUNTIME_PROFILE=eval` / clean-start `--runtime=eval`). Default runtime is **integrity**
+² Spring profile `docker-base` is the mechanism for product runtime **base**
+(`EZKEY_RUNTIME_PROFILE=base` / clean-start `--runtime=base`). Default runtime is **integrity**
 (this profile not loaded). See [`docker/README.md`](../docker/README.md) § Runtime profiles.
 
 ---

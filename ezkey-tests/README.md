@@ -95,19 +95,19 @@ On Windows, use Bash as well, for example through Git Bash.
 
 **Mode selection:**
 - **Default clean start**: recommended for the standard local workflow. Product **runtime profile** defaults to **integrity** (audit-chain checkpoints + heartbeat supervision on).
-- **`--runtime=eval`**: opt-in eval runtime (MFA crypto on; audit-integrity *monitoring* off). Same as `EZKEY_RUNTIME_PROFILE=eval`. Unset / `integrity` = default. See [`docker/README.md`](../docker/README.md) § Runtime profiles.
+- **`--runtime=base`**: opt-in base runtime (MFA crypto on; audit-integrity *monitoring* off). Same as `EZKEY_RUNTIME_PROFILE=base`. Unset / `integrity` = default. See [`docker/README.md`](../docker/README.md) § Runtime profiles.
 - **`--prod-safe`**: keeps a production-safe docker profile only, with rate limits enabled and reduced diagnostics exposure.
 - **`--jmx`**: enables JMX port publishing for local diagnostics.
 - **`--with-java-melody`**: enables the JavaMelody collector UI on `http://localhost:8088` (Admin / Auth / Integration APIs).
 
-**Eval runtime (opt-in):**
+**Base runtime (opt-in):**
 ```bash
-./ezkey-tests/clean-start.sh --runtime=eval
+./ezkey-tests/clean-start.sh --runtime=base
 # or
-EZKEY_RUNTIME_PROFILE=eval ./ezkey-tests/clean-start.sh
+EZKEY_RUNTIME_PROFILE=base ./ezkey-tests/clean-start.sh
 ```
 
-Claim boundary: eval keeps MFA encryption and HMAC audit *write* on; it turns off audit-integrity monitoring (checkpoints, heartbeat, nightly validation, archive seal/purge). Tamper-evident claims apply only under the integrity preset.
+Claim boundary: base keeps MFA encryption and HMAC audit *write* on; it turns off audit-integrity monitoring (checkpoints, heartbeat, nightly validation, archive seal/purge). Legitimate ops posture with limited claims — not an “eval-only lab”. Tamper-evident claims apply only under the integrity preset.
 
 Wait for all services to be healthy (check logs or health endpoints).
 
@@ -586,7 +586,7 @@ On Windows, use Bash as well, for example through Git Bash.
 **Common options:**
 - `--ha`: High Availability stack (2× Admin API + 2× Auth API behind HAProxy). See
   [`docker/README-HA.md`](../docker/README-HA.md) and [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) § HA mode.
-- `--runtime=integrity|eval`: product runtime profile (default **integrity**). `eval` is opt-in
+- `--runtime=integrity|base`: product runtime profile (default **integrity**). `base` is opt-in
   (MFA crypto on; audit-integrity monitoring off). Env equivalent: `EZKEY_RUNTIME_PROFILE`.
 - `--prod-safe`: start with production-safe docker profile only (rate limits enabled, minimal Actuator exposure).
 - `--jmx`: enable JMX port publishing for VisualVM (DEV ONLY; unauthenticated, non-SSL)
@@ -595,8 +595,8 @@ On Windows, use Bash as well, for example through Git Bash.
 **Examples:**
 - Default integrity posture:
   - `./clean-start.sh`
-- Eval (alpha / demo-friendly ops):
-  - `./clean-start.sh --runtime=eval`
+- Base (opt-in ops posture with limited claims):
+  - `./clean-start.sh --runtime=base`
 - Production-safe stack:
   - `./clean-start.sh --prod-safe`
 - Production-safe + JMX (local only):
