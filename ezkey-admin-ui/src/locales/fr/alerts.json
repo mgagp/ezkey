@@ -60,7 +60,7 @@
       "estimatedGapEnd": "Fin estimée",
       "estimatedGapMinutes": "Durée estimée (min)",
       "message": "Message",
-      "viewAuditLogs": "Ouvrir dans les journaux d'audit"
+      "viewAuditLogs": "Ouvrir dans Intégrité"
     },
     "auditIntegrityRupture": {
       "windowStart": "Début de fenêtre",
@@ -82,7 +82,7 @@
       "livePending": "En attente de la vérification en direct…",
       "liveVerifyFailed": "Échec de la vérification en direct",
       "truncatedList": "{{returned}} sur {{total}} affichés (liste tronquée dans l'alerte)",
-      "investigateCta": "Investiguer dans les journaux d'audit",
+      "investigateCta": "Investiguer dans Intégrité",
       "viewCheckpoint": "Voir le checkpoint",
       "conciliationStatus": {
         "ACKNOWLEDGED": "Concilié (invalidité connue)",

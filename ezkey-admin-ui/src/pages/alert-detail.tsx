@@ -171,7 +171,7 @@ function AuditChainGapPayloadView({ payload }: { payload: AuditChainGapPayload }
           <span className="font-mono">{payload.anchorCheckpointId}</span>
           {' '}
           <Link
-            to={`/audit-logs?focusCheckpointId=${payload.anchorCheckpointId}`}
+            to={`/integrity?focusCheckpointId=${payload.anchorCheckpointId}`}
             className="ml-2 inline-flex items-center gap-1 text-xs font-bold text-accent hover:underline"
           >
             {t('alerts:detail.auditChainGap.viewAuditLogs')}
@@ -287,7 +287,6 @@ function IntegrityRuptureInvestigationSection({
       return null;
     }
     const params = new URLSearchParams();
-    params.set('integrity', '1');
     params.set('source', 'integrity-alert');
     params.set('createdAfter', windowFrom);
     params.set('createdBefore', windowTo);
@@ -297,7 +296,7 @@ function IntegrityRuptureInvestigationSection({
     if (highlightIds.length > 0) {
       params.set('highlightAuditLogIds', formatHighlightAuditLogIds(highlightIds));
     }
-    return `/audit-logs?${params.toString()}`;
+    return `/integrity?${params.toString()}`;
   }, [windowFrom, windowTo, liveEntries]);
 
   const handleInvestigateClick = () => {
@@ -413,7 +412,7 @@ function IntegrityRuptureInvestigationSection({
                         <span className="font-mono">#{v.checkpointId}</span> — {v.violationType}
                         {v.checkpointId != null && (
                           <Link
-                            to={`/audit-logs?integrity=1&focusCheckpointId=${v.checkpointId}&createdAfter=${encodeURIComponent(windowFrom ?? '')}&createdBefore=${encodeURIComponent(windowTo ?? '')}`}
+                            to={`/integrity?focusCheckpointId=${v.checkpointId}&createdAfter=${encodeURIComponent(windowFrom ?? '')}&createdBefore=${encodeURIComponent(windowTo ?? '')}`}
                             className="ml-2 text-accent underline text-[10px]"
                           >
                             {t('alerts:detail.auditIntegrityRupture.viewCheckpoint')}

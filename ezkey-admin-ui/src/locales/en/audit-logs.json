@@ -259,8 +259,8 @@
     "labelInstance": "Instance"
   },
   "integrity": {
-    "title": "Integrity & Lifecycle",
-    "globalAdmin": "Global Admin",
+    "pageTitle": "Integrity",
+    "subtitle": "Verify the audit journal HMAC chain and manage exceptional archive lifecycle.",
     "verification": "Verification",
     "dateRangeSelect": "Select a range",
     "selectDateRangeToRun": "Select a date range to run verification",
@@ -306,6 +306,7 @@
       "showAffectedOnly": "Show only affected entries",
       "affectedOnlyTitle": "Affected entries (from verification)",
       "backToList": "Back to full list",
+      "backToPanel": "Back to Integrity panel",
       "reasonColumn": "Reason",
       "viewAround": "View around event",
       "noAffectedEntries": "No affected entries in session"
