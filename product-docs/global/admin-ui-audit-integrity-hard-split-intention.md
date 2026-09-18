@@ -14,6 +14,7 @@
 - **GitHub:** docs PR `#562`; implementation PR `#563` (merged to `main` as `848c89aa`)
 - **Related:**
   - [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job-surface-map.md)
+  - [`admin-ui-integrity-eval-monitoring-honesty.md`](admin-ui-integrity-eval-monitoring-honesty.md) — draft: Integrity honesty when monitoring jobs are off (eval)
   - [`integrity-wave-b-operator-end-state-compass.md`](integrity-wave-b-operator-end-state-compass.md)
   - [`integrity-cluster-design-pack.md`](integrity-cluster-design-pack.md)
   - [`admin-ui-paginated-screens-matrix.md`](admin-ui-paginated-screens-matrix.md)
