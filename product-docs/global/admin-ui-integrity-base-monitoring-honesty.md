@@ -1,15 +1,15 @@
-# Admin UI — Integrity honesty when monitoring is off (eval / jobs disabled)
+# Admin UI — Integrity honesty when monitoring is off (base / jobs disabled)
 
 ## Metadata
 
-- **Document ID:** `admin-ui-integrity-eval-monitoring-honesty`
+- **Document ID:** `admin-ui-integrity-base-monitoring-honesty`
 - **Status:** `draft` (awaiting Marc / Alex acceptance)
 - **Owner (intention):** Julie (Admin UI opérabilité)
 - **Product direction:** Alex
-- **QA observation:** Isabelle (soft honesty gaps after eval-runtime walk; not a merge blocker for the runtime profile)
-- **Purpose:** Intention lock for **honest operator copy and chrome** on Integrity (and a soft Alerts cue only if needed) when scheduled integrity **monitoring** is not active — especially under the opt-in **eval** runtime profile. **Not** an implementation plan, layout redesign, or API invention.
+- **QA observation:** Isabelle (soft honesty gaps after runtime-profile walk; not a merge blocker for the runtime profile)
+- **Purpose:** Intention lock for **honest operator copy and chrome** on Integrity (and a soft Alerts cue only if needed) when scheduled integrity **monitoring** is not active — especially under the opt-in **base** runtime profile. **Not** an implementation plan, layout redesign, or API invention.
 - **Related:**
-  - PR [`#566`](https://github.com/mgagp/ezkey/pull/566) — opt-in eval runtime profile (`--runtime=eval` / `EZKEY_RUNTIME_PROFILE=eval`); monitoring jobs off; default **integrity** unchanged. Admin UI Integrity badge deferred there by design.
+  - PR [`#566`](https://github.com/mgagp/ezkey/pull/566) — opt-in runtime profile with monitoring jobs off; default **integrity** unchanged. Admin UI Integrity badge deferred there by design. **Product vocabulary lock (Alex): `base` (opt-in) / `integrity` (default).** See [Code drift](#code-drift-pr-566-still-says-eval) — landed #566 code still uses the old token `eval`.
   - [`admin-ui-audit-integrity-hard-split-intention.md`](admin-ui-audit-integrity-hard-split-intention.md) — Alerts = signal / Integrity = atelier
   - [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job-surface-map.md) — job → surface map (Dashboard batch-health = signal; Integrity = atelier)
   - [`integrity-assurance-honest-line.md`](integrity-assurance-honest-line.md) — honesty of integrity claims
@@ -17,9 +17,32 @@
 
 ---
 
+## Product vocabulary (locked)
+
+| Profile | Role | Monitoring Integrity jobs |
+|---------|------|---------------------------|
+| **`integrity`** | Default | On (unchanged posture) |
+| **`base`** | Opt-in | Off (MFA crypto on; audit-integrity monitoring off by design) |
+
+Operator-facing product keys (target): `--runtime=base|integrity` and `EZKEY_RUNTIME_PROFILE=base|integrity` (unset = integrity).
+
+Do **not** use “eval runtime” / `--runtime=eval` as the product name in Admin UI or product-docs going forward.
+
+### Code drift (PR #566 still says `eval`)
+
+Verified against PR #566 branch (`cursor/eval-runtime-profile-ed51`): the **shipped/landing code and docs still use `eval`**, not `base`:
+
+- Product key today: `EZKEY_RUNTIME_PROFILE=eval` / `--runtime=eval`
+- Spring mechanism: profile `docker-eval` → `application-docker-eval.properties`
+- Helper: `docker/runtime-profile.sh` case `eval)`
+
+This intention note uses the **product rename target `base`**. Implementers (and any follow-up on #566 or a rename PR) should retarget flags, property files, compose markers, and verify scripts from `eval` → `base` consistently (Spring mechanism may become `docker-base` / `application-docker-base.properties`, or keep an internal alias briefly — product language must be `base`). Until that rename lands, local stacks still activate via `--runtime=eval`.
+
+---
+
 ## Problem (Isabelle / Alex)
 
-Under **eval** (or any posture where audit-integrity monitoring jobs are off), the Integrity atelier correctly tends toward an **empty** lifecycle / checkpoint view. That empty state is fine.
+Under **base** (or any posture where audit-integrity monitoring jobs are off), the Integrity atelier correctly tends toward an **empty** lifecycle / checkpoint view. That empty state is fine.
 
 What is not fine: **present-tense copy that assumes scheduled monitoring is live**. The operator then reads “detection is active” when it is not.
 
@@ -44,6 +67,7 @@ Empty atelier + schedule-assuming prose = honesty gap. Keep the **Alerts = signa
 - Not blocking merge or close-out of PR #566 (runtime profile).
 - Not inventing a new Admin API solely for this slice without evidence that existing server truth is insufficient.
 - No Admin UI code in **this** docs PR.
+- Renaming #566 code tokens `eval` → `base` is **out of scope** for this docs PR (flagged only).
 
 ---
 
@@ -51,7 +75,7 @@ Empty atelier + schedule-assuming prose = honesty gap. Keep the **Alerts = signa
 
 **Prefer server truth the Admin UI can already consume.** Do not invent an API in this intention.
 
-### What exists today (no dedicated “eval” flag)
+### What exists today (no dedicated runtime-profile flag)
 
 Admin API `GET /api/v1/dashboard/overview` (Global Admin) already returns:
 
@@ -63,9 +87,9 @@ Admin API `GET /api/v1/dashboard/overview` (Global Admin) already returns:
 
 Dashboard already surfaces config as **disabled** and jobs as **Never run** (`ezkey-admin-ui/src/pages/dashboard.tsx` + `locales/*/dashboard.json` → `batchHealth.configDisabled`, `batchHealth.status.NEVER_RUN`).
 
-Under eval (#566), Admin/Auth/Integration load `docker-eval` with chain + heartbeat + nightly (+ archive auto-seal/purge, etc.) **off**. Config booleans and `NEVER_RUN` therefore align with “monitoring not active.”
+Under **base** (monitoring-off matrix from #566), Admin/Auth/Integration turn chain + heartbeat + nightly (+ archive auto-seal/purge, etc.) **off**. Config booleans and `NEVER_RUN` therefore align with “monitoring not active.” (Today that matrix is activated via the still-coded `eval` / `docker-eval` path — see [Code drift](#code-drift-pr-566-still-says-eval).)
 
-**There is no dedicated Admin API field today that names the product runtime profile (`eval` vs `integrity`).** PR #566 documents the operator-facing key as `--runtime` / `EZKEY_RUNTIME_PROFILE`; Spring `docker-eval` is the mechanism. That product label is **not** exposed on dashboard overview or Integrity endpoints.
+**There is no dedicated Admin API field today that names the product runtime profile (`base` vs `integrity`).** PR #566 documents the operator-facing key as `--runtime` / `EZKEY_RUNTIME_PROFILE`; Spring `docker-eval` is the current mechanism name. That product label is **not** exposed on dashboard overview or Integrity endpoints.
 
 `/integrity` (`ezkey-admin-ui/src/pages/integrity.tsx`) does **not** currently read `integrityConfigSummary`; schedule claims in locale strings are unconditional.
 
@@ -77,9 +101,9 @@ Treat **monitoring as not active** when server says so, without waiting for a pr
 - `integrityConfigSummary.nightlyValidationEnabled === false` (for copy that mentions the nightly path) **and/or**
 - integrity job rows stuck at `NEVER_RUN` with empty lifecycle / no checkpoints
 
-Practical rule for chrome: if **chain checkpoints are disabled** (the ★ coupling in eval also turns heartbeat off), show the persistent “monitoring off” cue on Integrity. Nightly-only disable is rarer; still condition any “nightly job” present-tense claim.
+Practical rule for chrome: if **chain checkpoints are disabled** (the ★ coupling under base also turns heartbeat off), show the persistent “monitoring off” cue on Integrity. Nightly-only disable is rarer; still condition any “nightly job” present-tense claim.
 
-Optional future (not required to ship honesty): a small non-secret field such as `runtimeProfile` or `integrityMonitoringActive` on overview (or a thin Integrity bootstrap). Only if product wants the badge to say **« Monitoring off (eval) »** with the product word **eval** rather than generic “scheduled detection inactive.” Until then, honest generic wording is enough — do not invent the API in this docs slice.
+Optional future (not required to ship honesty): a small non-secret field such as `runtimeProfile` or `integrityMonitoringActive` on overview (or a thin Integrity bootstrap). Only if product wants the badge to say **« Monitoring off (base) »** with the product word **base** rather than generic “scheduled detection inactive.” Until then, honest generic wording is enough — do not invent the API in this docs slice.
 
 ---
 
@@ -91,8 +115,8 @@ Keep Alerts = signal list; Integrity = atelier. Manual atelier actions stay avai
 
 When monitoring is not active (server truth above):
 
-- Show a calm, persistent **badge or banner** on Integrity — e.g. EN « Monitoring off » / « Scheduled detection inactive »; FR « Détection planifiée inactive » / « Monitoring désactivé (eval) » **only if** the UI can truthfully know eval (today: prefer generic wording unless a profile field lands).
-- Wording: honest, not alarming — eval is a **deliberate** profile, not an incident.
+- Show a calm, persistent **badge or banner** on Integrity — e.g. EN « Monitoring off » / « Scheduled detection inactive »; FR « Détection planifiée inactive » / « Monitoring désactivé (base) » **only if** the UI can truthfully know **base** (today: prefer generic wording unless a profile field lands).
+- Wording: honest, not alarming — **base** is a **deliberate** profile, not an incident.
 - Soft cue on Alerts empty/help **only if** needed so empty Alerts is not misread as “all clear while detectors run.” Default: **Integrity carries the badge**; Alerts stay signal-only.
 
 ### 2. Conditional copy (locale)
@@ -121,9 +145,9 @@ Do **not** merge detection chrome into Alerts. Do not redesign Alerts list. Deep
 
 | Step | What |
 |------|------|
-| **This PR** | Intention note only (`draft`). No Admin UI code. |
+| **This PR** | Intention note only (`draft`). No Admin UI code. Vocabulary: **base** / **integrity**. |
 | **After Marc / Alex accept** | One small Admin UI follow-up PR: badge/banner + conditional locale (and wire Integrity to existing overview config summary or equivalent server truth). **Not** part of #566. |
-| **Optional later** | Tiny API field if product insists on the word **eval** in the badge. |
+| **Optional later** | Tiny API field if product insists on the word **base** in the badge; and/or rename #566 code tokens `eval` → `base`. |
 
 ---
 
@@ -131,14 +155,15 @@ Do **not** merge detection chrome into Alerts. Do not redesign Alerts list. Deep
 
 - [x] Note complete under `product-docs/global/`
 - [x] Cites real locale keys / files and links hard-split + job-surface map
-- [x] States that no dedicated eval flag exists in Admin API today; recommends minimal existing truth
+- [x] Product vocabulary `base` / `integrity` throughout; code drift `eval` flagged
+- [x] States that no dedicated runtime-profile flag exists in Admin API today; recommends minimal existing truth
 - [ ] Marc / Alex accept → status `accepted` (or `promoted`) and Admin UI follow-up may start
 
 ---
 
 ## Acceptance checklist (for the later Admin UI PR)
 
-- Under `--runtime=eval` (or chain monitoring disabled), `/integrity` shows monitoring-off chrome; schedule claims are conditional or absent.
+- Under `--runtime=base` (or chain monitoring disabled; until rename lands, exercise via current `--runtime=eval`), `/integrity` shows monitoring-off chrome; schedule claims are conditional or absent.
 - Manual verify / run validation still described as atelier actions.
 - Alerts remain signal-only; no detection atelier chrome merged in.
 - Dashboard batch-health remains the job last-run signal (already shows disabled / never-run); Integrity does not contradict it.

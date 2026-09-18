@@ -5,7 +5,7 @@
 - **Document ID:** `admin-ui-audit-integrity-job-surface-map`
 - **Status:** `promoted` (IA 2026-09-17; cut 1 route `/integrity` shipped 2026-09-18 — PR `#563`)
 - **Parent intention:** [`admin-ui-audit-integrity-hard-split-intention.md`](admin-ui-audit-integrity-hard-split-intention.md)
-- **Related (draft):** [`admin-ui-integrity-eval-monitoring-honesty.md`](admin-ui-integrity-eval-monitoring-honesty.md) — Integrity honesty when monitoring is off (eval / jobs disabled)
+- **Related (draft):** [`admin-ui-integrity-base-monitoring-honesty.md`](admin-ui-integrity-base-monitoring-honesty.md) — Integrity honesty when monitoring is off (base / jobs disabled)
 - **Grill:** [`backlog/grill-sessions/2026-09-17-admin-ui-audit-integrity-hard-split-grill-me.md`](backlog/grill-sessions/2026-09-17-admin-ui-audit-integrity-hard-split-grill-me.md)
 - **Purpose:** One-page map from operator jobs to Admin UI surfaces after the hard split.
   Proof constraint: **one** cryptographic journal (`audit_log` + chain); surfaces are views / ateliers, not second audit citizens.
