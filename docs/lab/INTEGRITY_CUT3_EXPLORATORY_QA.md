@@ -1,6 +1,6 @@
 # Integrity cut-3 — exploratory QA seed (lab only)
 
-**Audience:** Isabelle / operators validating Admin UI Integrity cut-3 on a **warm local Docker stack**  
+**Audience:** Isabelle / Marc / operators validating Admin UI Integrity cut-3 on a **warm local Docker stack**  
 **PR context:** Alerts signal-only + Integrity deep-link reconcile; conditional **Confirm archived**  
 **Non-goals:** no second journal, no Integrity API mocks, no product redesign, no permanent compose default change
 
@@ -10,13 +10,29 @@ Related canon: [`docs/AUDIT_LOG_INTEGRITY.md`](../AUDIT_LOG_INTEGRITY.md) (HMAC 
 
 ---
 
+## Operator order (read this first)
+
+> **Prefer path (A) before path (B) on one warm stack.**  
+> Or use **separate stacks**, or run **full cleanup between A and B**.  
+> **Do not** seal (B) and then re-Resolve / reconcile an OPEN seed rupture (A) whose validation window still contains an `ARCHIVE_SEAL` checkpoint — the API correctly rejects with `checkpoint … not REGULAR (type=ARCHIVE_SEAL)`. That is expected product behavior, not a UI bug.
+
+Suggested single-stack sequence:
+
+1. **(A)** tamper → Run validation → Alerts deep-link → **finish Reconcile**  
+2. **`./scripts/lab/cleanup-integrity-cut3-qa.sh`** (default = full lab reset) **or** leave seals absent  
+3. **(B)** `--enable-archival` → Seal Archive (empty window) → Confirm archived  
+
+Between re-runs: always prefer full cleanup so OPEN seed alerts and `ARCHIVE_SEAL` / `EXPORTED` rows are not silent landmines.
+
+---
+
 ## Prerequisites
 
 1. Warm stack (e.g. `ezkey-tests/clean-start.sh` already completed; Admin API healthy).
 2. Global Admin session (`admin.docker` + Demo Device) in Admin UI.
 3. From repo root, Bash available.
 
-**Do not** use `scripts/lab/seed-alerts-ui-review.sh` for reconcile QA. That inserts a **fake** rupture payload for Alerts list polish and also seeds an OPEN `AUDIT_CHAIN_HEARTBEAT_STALE`, which **blocks** real reconcile. If it was applied:
+**Do not** use `scripts/lab/seed-alerts-ui-review.sh` for reconcile QA. That inserts a **fake** rupture payload for Alerts list polish and also seeds an OPEN `AUDIT_CHAIN_HEARTBEAT_STALE`, which **blocks** real reconcile. Full cut-3 cleanup also removes those rows; or run:
 
 ```bash
 ./scripts/lab/cleanup-alerts-ui-review.sh
@@ -30,18 +46,25 @@ Related canon: [`docs/AUDIT_LOG_INTEGRITY.md`](../AUDIT_LOG_INTEGRITY.md) (HMAC 
 # (A) Induce a real per-entry HMAC mismatch (SQL only)
 ./scripts/lab/seed-integrity-cut3-qa.sh
 
-# (B) Also flip Admin API external-archival-enabled=true (brief admin-api recreate)
+# (B) Flip Admin API external-archival-enabled=true (brief admin-api recreate)
+# Prefer AFTER path A is finished (or after full cleanup / on another stack)
 ./scripts/lab/seed-integrity-cut3-qa.sh --enable-archival
 
 # Archival flag only
 ./scripts/lab/seed-integrity-cut3-qa.sh --archival-only
 ```
 
-Cleanup:
+Cleanup (default = **full** reset for re-runs):
 
 ```bash
-./scripts/lab/cleanup-integrity-cut3-qa.sh              # remove tamper marker
-./scripts/lab/cleanup-integrity-cut3-qa.sh --all        # untamper + drop archival override
+./scripts/lab/cleanup-integrity-cut3-qa.sh
+# untamper + OPEN lab alerts + ARCHIVE_SEAL/EXPORTED → REGULAR/ACTIVE
+# + drop lab external-archival compose override
+
+./scripts/lab/cleanup-integrity-cut3-qa.sh --keep-evidence   # leave tamper/alerts/seals/override
+./scripts/lab/cleanup-integrity-cut3-qa.sh --alerts-seals-only
+./scripts/lab/cleanup-integrity-cut3-qa.sh --keep-seals
+./scripts/lab/cleanup-integrity-cut3-qa.sh --keep-alerts
 ```
 
 Lab files:
@@ -51,7 +74,9 @@ Lab files:
 | `scripts/lab/seed-integrity-cut3-qa.sh` | Entry point |
 | `scripts/lab/seed-integrity-rupture-lab.sql` | Mutate one signed `reason`, leave `entry_hmac` |
 | `scripts/lab/docker-compose.lab-external-archival.yml` | Override only; not a product default |
-| `scripts/lab/cleanup-integrity-cut3-qa.sh` | Untamper / disable override |
+| `scripts/lab/cleanup-integrity-cut3-qa.sh` | Full lab reset (default) |
+| `scripts/lab/cleanup-integrity-cut3-alerts.sql` | OPEN rupture / heartbeat / polish-seed alerts |
+| `scripts/lab/cleanup-integrity-cut3-seals.sql` | Reset ARCHIVE_SEAL / SEALED / EXPORTED |
 
 ---
 
@@ -68,7 +93,8 @@ Lab files:
 
 Notes:
 
-- Reconcile rejects when an OPEN `AUDIT_CHAIN_HEARTBEAT_STALE` exists — clear fake lab alerts first.
+- Reconcile rejects when an OPEN `AUDIT_CHAIN_HEARTBEAT_STALE` exists — clear via full cleanup (or `cleanup-alerts-ui-review.sh`).
+- Reconcile rejects when any checkpoint in the rupture window is not `REGULAR` (e.g. leftover `ARCHIVE_SEAL` from path B). **Do not re-Resolve that seed alert after B** without cleanup / a window free of seals — use cleanup or finish A before sealing.
 - Boundaries come from the **alert payload** loaded by `alertId` on Integrity (no fabricated second journal).
 
 ---
@@ -77,30 +103,18 @@ Notes:
 
 Default Docker keeps `ezkey.audit.archive.external-archival-enabled=false`, so `confirmationRequired` stays false even after sealing.
 
-1. Run `./scripts/lab/seed-integrity-cut3-qa.sh --enable-archival` (or `--all` with tamper).
-2. Wait until Admin API is healthy again.
-3. Admin UI → **Integrity** → **Lifecycle overview**: `externalArchivalEnabled` should read **Yes**.
-4. Under **Exceptional maintenance**, open **Seal Archive**.
-5. Use **checkpoint ID mode** on a **single empty** `REGULAR` / `ACTIVE` window (script prints candidates; prefer `entry_count = 0` so a prior lab tamper in another window does not fail seal pre-flight).
-6. Justification ≥ 10 characters → seal.
-7. Lifecycle overview: `confirmationRequired` → **Yes**; sealed tranche ids shown.
-8. **Confirm archived** appears → open it, supply a lab `exportBundleDigest` (≥ 16 chars), confirm.
-9. Expect tranche → `EXPORTED` and the button to clear on refresh.
+1. Prefer path A already complete, or a clean stack / post-cleanup state (no OPEN seed rupture you still plan to reconcile over sealed windows).
+2. Run `./scripts/lab/seed-integrity-cut3-qa.sh --enable-archival`.
+3. Wait until Admin API is healthy again.
+4. Admin UI → **Integrity** → **Lifecycle overview**: `externalArchivalEnabled` should read **Yes**.
+5. Under **Exceptional maintenance**, open **Seal Archive**.
+6. Use **checkpoint ID mode** on a **single empty** `REGULAR` / `ACTIVE` window (script prints candidates; prefer `entry_count = 0`).
+7. Justification ≥ 10 characters → seal (optional: include `LAB_CUT3` in the text for readability in DB notes).
+8. Lifecycle overview: `confirmationRequired` → **Yes**; sealed tranche ids shown.
+9. **Confirm archived** appears → open it, supply a lab `exportBundleDigest` (≥ 16 chars), confirm.
+10. Expect tranche → `EXPORTED` and the button to clear on refresh.
 
-To return Admin API to default archival policy:
-
-```bash
-./scripts/lab/cleanup-integrity-cut3-qa.sh --disable-archival
-```
-
----
-
-## Suggested order on one warm stack
-
-1. **(B)** enable archival → seal empty checkpoint → exercise Confirm archived.  
-2. **(A)** tamper → Run validation → Alerts deep-link → Reconcile.  
-
-Or run `--enable-archival` once, seal an empty window, then tamper + validate (tamper lives in the earliest signed row’s window — keep seal off that window).
+If you still have an OPEN seed rupture from path A: **do not** deep-link Reconcile it after this seal if the alert window covers the sealed checkpoint — run full cleanup first or reconcile only before sealing.
 
 ---
 
@@ -108,4 +122,4 @@ Or run `--enable-archival` once, seal an empty window, then tamper + validate (t
 
 - Lab override and SQL markers are **local/demo only**.
 - Do not commit a permanent `external-archival-enabled=true` flip in Docker product defaults for this QA path.
-- Untamper restores `reason` text only; if you already reconciled, leave the conciliation registry as historical lab evidence or clean-start for a fresh DB.
+- Default cleanup restores `reason`, clears OPEN lab alerts, and resets lab `ARCHIVE_SEAL` / `EXPORTED` rows. `MANIPULATION_CONCILIATION` from a successful reconcile is left intact; use clean-start for a fully fresh DB.

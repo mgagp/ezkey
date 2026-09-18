@@ -389,7 +389,10 @@ Warm clean-start stacks usually have **no** open `AUDIT_INTEGRITY_RUPTURE` and
 off). For Admin UI cut-3 walks (Alerts deep-link → real reconcile; Confirm archived),
 use the lab-only seed and operator steps in
 [`docs/lab/INTEGRITY_CUT3_EXPLORATORY_QA.md`](lab/INTEGRITY_CUT3_EXPLORATORY_QA.md)
-(`scripts/lab/seed-integrity-cut3-qa.sh`). Do not use `seed-alerts-ui-review` for
+(`scripts/lab/seed-integrity-cut3-qa.sh`). **Prefer path A (rupture/reconcile) before
+path B (seal/confirm)** on one warm stack — or separate stacks / full
+`cleanup-integrity-cut3-qa.sh` between them. Leftover `ARCHIVE_SEAL` in a rupture
+window correctly blocks reconcile. Do not use `seed-alerts-ui-review` for
 reconcile — that seed is Alerts list polish only.
 
 ---

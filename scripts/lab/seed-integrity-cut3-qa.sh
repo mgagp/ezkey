@@ -150,7 +150,12 @@ cat <<'EOF'
 ========================================================================
 Next operator steps (Global Admin) — see docs/lab/INTEGRITY_CUT3_EXPLORATORY_QA.md
 ------------------------------------------------------------------------
-(A) Real rupture alert → Alerts deep-link → Reconcile
+ORDER: prefer (A) then (B) on one warm stack — or separate stacks /
+       full cleanup between. Do NOT seal (B) then re-Resolve an OPEN
+       seed rupture whose window still has ARCHIVE_SEAL (API reject is
+       expected: checkpoint … not REGULAR).
+
+(A) Real rupture alert → Alerts deep-link → Reconcile  << do this first
   1. Do NOT use scripts/lab/seed-alerts-ui-review.sh for this path
      (fake payload; also seeds OPEN HEARTBEAT_STALE which blocks reconcile).
      If that seed was applied: ./scripts/lab/cleanup-alerts-ui-review.sh
@@ -159,7 +164,7 @@ Next operator steps (Global Admin) — see docs/lab/INTEGRITY_CUT3_EXPLORATORY_Q
   4. Alerts → open the OPEN AUDIT_INTEGRITY_RUPTURE → Integrity deep-link
   5. On Integrity, use Reconcile (acknowledge live entry ids + justification)
 
-(B) Confirm archived (confirmationRequired)
+(B) Confirm archived (confirmationRequired)  << after A finished / cleaned
   1. Ensure archival flag is on: re-run with --enable-archival if needed
   2. Integrity → Lifecycle overview should show externalArchivalEnabled=yes
   3. Exceptional maintenance → Seal Archive on one empty REGULAR checkpoint
@@ -167,6 +172,6 @@ Next operator steps (Global Admin) — see docs/lab/INTEGRITY_CUT3_EXPLORATORY_Q
   4. confirmationRequired becomes Yes → Confirm archived appears
   5. Confirm with a lab exportBundleDigest (≥16 chars)
 
-Cleanup: ./scripts/lab/cleanup-integrity-cut3-qa.sh
+Cleanup (default FULL): ./scripts/lab/cleanup-integrity-cut3-qa.sh
 ========================================================================
 EOF
