@@ -69,3 +69,7 @@ The mobile app already carries a well-structured documentation set. This pack:
 6. [`exception-and-error-model.md`](exception-and-error-model.md)
 7. [`design-decisions.md`](design-decisions.md)
 8. [`spec-test-traceability.md`](spec-test-traceability.md)
+
+## Related observations (global)
+
+- [`../../global/mobile-orphan-enrollment-after-admin-delete.md`](../../global/mobile-orphan-enrollment-after-admin-delete.md) — draft alpha constat: local orphan cards after admin delete + recreate under pull-only (no push wipe).
