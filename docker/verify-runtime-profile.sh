@@ -109,29 +109,41 @@ if [[ -z "$LIVE" ]]; then
   exit 0
 fi
 
-# --- Live: read effective config from Actuator (docker-dev management ports) ---
-admin_env="$(curl -sf http://localhost:9081/actuator/env/ezkey.audit.chain.enabled 2>/dev/null || true)"
-auth_hb="$(curl -sf http://localhost:8085/actuator/env/ezkey.audit.chain.heartbeat.enabled 2>/dev/null || true)"
-
-if [[ -z "$admin_env" || -z "$auth_hb" ]]; then
-  fail "Live check needs a running stack with docker-dev management ports (9081 / 8085)."
+# --- Live: profiles + startup logs + MFA gate (no env actuator exposure in docker-dev) ---
+if ! docker inspect ezkey-admin-api >/dev/null 2>&1; then
+  fail "Live check: container ezkey-admin-api not running"
+fi
+if ! docker inspect ezkey-auth-api >/dev/null 2>&1; then
+  fail "Live check: container ezkey-auth-api not running"
 fi
 
-profiles="$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' ezkey-admin-api 2>/dev/null | grep '^SPRING_PROFILES_ACTIVE=' || true)"
-echo "  Container SPRING_PROFILES_ACTIVE: ${profiles#SPRING_PROFILES_ACTIVE=}"
+profiles="$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' ezkey-admin-api | grep '^SPRING_PROFILES_ACTIVE=' || true)"
+profiles="${profiles#SPRING_PROFILES_ACTIVE=}"
+echo "  Container SPRING_PROFILES_ACTIVE: ${profiles}"
+
+admin_logs="$(docker logs ezkey-admin-api 2>&1 || true)"
+auth_logs="$(docker logs ezkey-auth-api 2>&1 || true)"
+
+pending_code="$(curl -s -o /tmp/ezkey-runtime-pending.txt -w '%{http_code}' \
+  -X POST http://localhost:8080/api/v1/auth-attempts/pending \
+  -H 'Content-Type: application/json' -d '{}' || echo '000')"
 
 if echo "$profiles" | grep -q 'docker-eval'; then
-  echo "$admin_env" | grep -q '"value":"false"' \
-    || fail "eval live: expected ezkey.audit.chain.enabled=false on Admin"
-  echo "$auth_hb" | grep -q '"value":"false"' \
-    || fail "eval live: expected ezkey.audit.chain.heartbeat.enabled=false on Auth"
-  pass "Live eval: checkpoints + Auth heartbeat disabled (no heartbeat 503 path)"
+  echo "$admin_logs" | grep -F 'docker-eval' >/dev/null \
+    || fail "eval live: Admin logs should mention docker-eval profile"
+  grep -Fq 'heartbeat supervision is disabled' <<<"$admin_logs" \
+    || fail "eval live: Admin should log heartbeat supervision disabled"
+  grep -Fq 'heartbeat supervision is disabled' <<<"$auth_logs" \
+    || fail "eval live: Auth should log heartbeat supervision disabled"
+  [[ "$pending_code" != "503" ]] \
+    || fail "eval live: Auth pending must not return 503 (heartbeat fail-closed); got ${pending_code}"
+  pass "Live eval: docker-eval active, heartbeat off, Auth pending HTTP ${pending_code} (not 503)"
 else
-  echo "$admin_env" | grep -q '"value":"true"' \
-    || fail "integrity live: expected ezkey.audit.chain.enabled=true on Admin"
-  echo "$auth_hb" | grep -q '"value":"true"' \
-    || fail "integrity live: expected ezkey.audit.chain.heartbeat.enabled=true on Auth"
-  pass "Live integrity: checkpoints + Auth heartbeat enabled (default posture)"
+  echo "$admin_logs" | grep -F 'docker-eval' >/dev/null \
+    && fail "integrity live: Admin must not activate docker-eval"
+  grep -Fq 'heartbeat supervision is disabled' <<<"$auth_logs" \
+    && fail "integrity live: Auth heartbeat should remain enabled by default"
+  pass "Live integrity: no docker-eval; Auth heartbeat supervision remains enabled"
 fi
 
 echo ""
