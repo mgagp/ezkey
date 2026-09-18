@@ -345,16 +345,23 @@ The following ezkey-core prefixes are also active in Admin API. See
 
 ## Profile Matrix
 
-| Property | default | docker | docker-test |
-|---|---|---|---|
-| `ezkey.admin.mfa.mode` | `dev` | `prod` | `prod` |
-| `ezkey.admin.mfa.bootstrap.auto-enrollment` | `true` | `true` | `true` |
-| `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `FULL` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:full}` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:full}` |
-| `ezkey.admin.rate-limit.enabled` | `true` | `true` | `false` |
-| `ezkey.admin-operations.rate-limit.enabled` | `true` | `true` | `false` |
-| `ezkey.admin.bootstrap.export.enabled` | `false` | `true` | `true` |
-| `ezkey.admin.token.expiration-hours` | `2` | `2` | `2` |
-| `ezkey.audit.chain.window-minutes` | `5` | `5` | `5` |
+| Property | default | docker | docker-test | docker-eval² |
+|---|---|---|---|---|
+| `ezkey.admin.mfa.mode` | `dev` | `prod` | `prod` | *(inherits)* |
+| `ezkey.admin.mfa.bootstrap.auto-enrollment` | `true` | `true` | `true` | *(inherits)* |
+| `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `FULL` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:full}` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:full}` | *(inherits)* |
+| `ezkey.admin.rate-limit.enabled` | `true` | `true` | `false` | *(inherits)* |
+| `ezkey.admin-operations.rate-limit.enabled` | `true` | `true` | `false` | *(inherits)* |
+| `ezkey.admin.bootstrap.export.enabled` | `false` | `true` | `true` | *(inherits)* |
+| `ezkey.admin.token.expiration-hours` | `2` | `2` | `2` | *(inherits)* |
+| `ezkey.audit.chain.window-minutes` | `5` | `5` | `5` | *(inherits)* |
+| `ezkey.audit.chain.enabled` | `true` | `true` | `true` | `false` |
+| `ezkey.audit.chain.heartbeat.enabled` | `true` | `true` | `true` | `false` |
+| `ezkey.encryption.rotation.enabled` | `true` | `true` | `true` | `false` |
+
+² Spring profile `docker-eval` is the mechanism for product runtime **eval**
+(`EZKEY_RUNTIME_PROFILE=eval` / clean-start `--runtime=eval`). Default runtime is **integrity**
+(this profile not loaded). See [`docker/README.md`](../docker/README.md) § Runtime profiles.
 
 ---
 

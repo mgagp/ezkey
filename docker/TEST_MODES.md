@@ -82,6 +82,21 @@ SPRING_PROFILES_ACTIVE=docker,docker-test ./docker/start.sh
 
 ---
 
+### 3. Eval runtime profile (opt-in product key)
+
+**Product key**: `--runtime=eval` / `EZKEY_RUNTIME_PROFILE=eval`  
+**Spring mechanism**: profile `docker-eval` (last) → `application-docker-eval.properties`
+
+**Default**: integrity (this mode is **not** the clean-start default).
+
+**Claim boundary**: MFA crypto on; audit-integrity **monitoring** off. Not tamper-evident.
+
+**Hard coupling**: checkpoints OFF and heartbeat OFF together on Admin, Auth, and Integration.
+
+See [`docker/README.md`](README.md) § Runtime profiles and `./docker/verify-runtime-profile.sh`.
+
+---
+
 ## How It Works
 
 ### Profile Inheritance
@@ -90,8 +105,11 @@ Spring Boot profiles work hierarchically:
 1. `application.properties` - Base configuration
 2. `application-docker.properties` - Docker-specific (production values)
 3. `application-docker-test.properties` - Test mode overrides (disables rate limits)
+4. `application-docker-eval.properties` - Eval runtime overrides (when product key selects eval)
 
 When `docker-test` profile is active, it **extends** `docker` profile and overrides **rate limiting** settings only — heartbeat thresholds inherit docker defaults unless explicitly overridden.
+
+When `docker-eval` is active (appended last by `docker/runtime-profile.sh`), it overrides the eval feature matrix on top of docker / docker-test.
 
 ### Configuration Files
 

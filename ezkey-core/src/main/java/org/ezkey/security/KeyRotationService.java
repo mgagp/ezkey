@@ -193,6 +193,10 @@ public class KeyRotationService {
    * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance executes this job at
    * a time.
    *
+   * <p><b>Idle gate:</b> returns immediately when {@code ezkey.encryption.enabled=false} <em>or</em>
+   * {@code ezkey.encryption.rotation.enabled=false}. Eval runtime keeps encryption on while
+   * rotation (and therefore promotion) stays idle.
+   *
    * <p><b>Transaction boundary:</b> this scheduled method is the Spring transaction entry. It calls
    * {@link #promotePendingToPrimary(EncryptionKey)} on {@code this}, so that method's annotation
    * would not apply (self-invocation).
@@ -203,6 +207,13 @@ public class KeyRotationService {
   public void checkAndPromotePendingKeys() {
     if (!properties.isEnabled()) {
       return; // Encryption disabled
+    }
+
+    // Promotion is part of the rotation lifecycle. When rotation is off (e.g. eval runtime
+    // profile), keep encryption/Tink on but idle KEY_PROMOTION — do not require disabling
+    // ezkey.encryption.enabled.
+    if (!properties.getRotation().isEnabled()) {
+      return;
     }
 
     if (!keyManagementOperations.isInitialized()) {

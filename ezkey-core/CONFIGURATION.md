@@ -125,7 +125,7 @@ treated as non-secret operational metadata.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.encryption.rotation.enabled` | `boolean` | `true` | optionnel | Enable scheduled key rotation. Disable in Auth API and Integration API. |
+| `ezkey.encryption.rotation.enabled` | `boolean` | `true` | optionnel | Enable scheduled key rotation **and** `KEY_PROMOTION`. When `false`, encryption/Tink may stay on while promotion idles (eval runtime). Disable in Auth API and Integration API. |
 | `ezkey.encryption.rotation.schedule` | `String` | `0 0 2 * * ?` | optionnel | Cron schedule for rotation checks (daily at 2 AM by default). |
 | `ezkey.encryption.rotation.max-key-age-days` | `int` | `90` | optionnel | Maximum primary key age in days before automatic rotation. |
 | `ezkey.encryption.rotation.backup-before-rotation` | `boolean` | `true` | optionnel | Create a keyset backup before each rotation for rollback capability. |

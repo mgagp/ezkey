@@ -18,6 +18,14 @@ Spring profile **`docker`** (used by EXP1 Lightsail and `clean-start --prod-safe
 
 See module `CONFIGURATION.md` files and [`experimental-hybrid/lightsail/.env.example`](../experimental-hybrid/lightsail/.env.example).
 
+### Runtime profile (integrity vs eval)
+
+Product key `EZKEY_RUNTIME_PROFILE` / clean-start `--runtime=` selects **integrity** (default) or
+**eval** (opt-in). Eval keeps MFA encryption and HMAC audit write on, and turns off audit-integrity
+**monitoring** (checkpoints + heartbeat together, nightly validation, archive seal/purge, rotation /
+re-encryption jobs). Tamper-evident claims apply only under integrity. Details:
+[`docker/README.md`](../docker/README.md) § Runtime profiles.
+
 ## Table of Contents
 
 1. [Rate Limiting Security](#rate-limiting-security)
