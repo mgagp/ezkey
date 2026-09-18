@@ -260,8 +260,7 @@
   },
   "integrity": {
     "pageTitle": "Integrity",
-    "title": "Integrity & Lifecycle",
-    "globalAdmin": "Global Admin",
+    "subtitle": "Verify the audit journal HMAC chain and manage exceptional archive lifecycle.",
     "verification": "Verification",
     "dateRangeSelect": "Select a range",
     "selectDateRangeToRun": "Select a date range to run verification",

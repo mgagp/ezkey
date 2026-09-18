@@ -337,18 +337,10 @@ function IntegrityPanel({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const forceTimelineOpen = expandFromQuery || focusCheckpointId != null;
-  const [expanded, setExpanded] = useState(expandFromQuery);
   const [timelineExpanded, setTimelineExpanded] = useState(forceTimelineOpen);
-  const [prevExpandFromQuery, setPrevExpandFromQuery] = useState(expandFromQuery);
   const [prevForceTimelineOpen, setPrevForceTimelineOpen] = useState(forceTimelineOpen);
 
   // Deep-link props: open during render (no post-paint flash) when the query turns on.
-  if (expandFromQuery !== prevExpandFromQuery) {
-    setPrevExpandFromQuery(expandFromQuery);
-    if (expandFromQuery) {
-      setExpanded(true);
-    }
-  }
   if (forceTimelineOpen !== prevForceTimelineOpen) {
     setPrevForceTimelineOpen(forceTimelineOpen);
     if (forceTimelineOpen) {
@@ -369,14 +361,6 @@ function IntegrityPanel({
 
   // ── Date range for integrity checks (shared DateRangeFilter) ──
   const [checkRange, setCheckRange] = useState({ from: '', to: '' });
-
-  /** Scroll integrity section into view after opening from dashboard link. */
-  useEffect(() => {
-    if (!expanded || !expandFromQuery) return;
-    requestAnimationFrame(() => {
-      document.getElementById('integrity-lifecycle-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }, [expanded, expandFromQuery]);
 
   useEffect(() => {
     if (!initialCheckRange?.createdAfter || !initialCheckRange.createdBefore) {
@@ -427,7 +411,6 @@ function IntegrityPanel({
   } = useQuery({
     queryKey: ['audit-archive-eligibility'],
     queryFn: () => getArchiveEligibility() as Promise<ArchiveEligibilityResult>,
-    enabled: expanded,
   });
 
   const {
@@ -440,7 +423,6 @@ function IntegrityPanel({
       api.get<{ content: AuditChainIncidentRow[] }>(
         '/api/v1/audit-logs/lifecycle/incidents?page=0&size=50&sort=createdAt,DESC',
       ),
-    enabled: expanded,
   });
 
   const declareIncidentMutation = useMutation({
@@ -776,11 +758,10 @@ function IntegrityPanel({
     resetGapForm();
   }
 
-  // Auto-run chain check on integrity section expand: populates the gaps list
+  // Auto-run chain check on page load: populates the gaps list
   // without requiring the operator to click *Run integrity check* first.
   // UX shortcut only — backend discoverability is owned by AuditChainScheduler.
   useEffect(() => {
-    if (!expanded) return;
     if (chainReport || chainLoading) return;
 
     const effectiveRange =
@@ -792,29 +773,20 @@ function IntegrityPanel({
 
     void runChainCheck(effectiveRange);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded]);
+  }, []);
 
   return (
-    <div id="integrity-lifecycle-panel" className="border-2 border-fg/20 bg-main shadow-brutal scroll-mt-4">
-      {/* Header — always visible */}
-      <button
-        type="button"
-        className="w-full flex items-center justify-between p-4 text-left hover:bg-fg/5 transition-colors"
-        onClick={() => setExpanded((v) => !v)}
-      >
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="size-5 text-accent" />
-          <h2 className="font-black text-sm uppercase tracking-wider">{t('integrity.title')}</h2>
-          <span onClick={(e) => e.stopPropagation()}>
-            <ContextHelp title={t('integrity.title')} content={<Trans i18nKey="audit-logs:help.integrityLifecycle.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.title') })} />
-          </span>
-          <Badge variant="muted">{t('integrity.globalAdmin')}</Badge>
-        </div>
-        {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-      </button>
+    <div id="integrity-lifecycle-panel" className="space-y-6">
+      <div className="flex items-center gap-2">
+        <ShieldAlert className="size-4 text-fg-muted" />
+        <p className="text-sm text-fg-muted">{t('integrity.subtitle')}</p>
+        <ContextHelp
+          title={t('integrity.pageTitle')}
+          content={<Trans i18nKey="audit-logs:help.integrityLifecycle.content" components={{ strong: <strong /> }} />}
+          ariaLabel={t('common:help.ariaLabel', { title: t('integrity.pageTitle') })}
+        />
+      </div>
 
-      {expanded && (
-        <div className="border-t-2 border-fg/20 p-4 space-y-6">
           {/* ── Verification section ── */}
           <div className="space-y-3">
             <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.verification')}</h3>
@@ -1275,17 +1247,18 @@ function IntegrityPanel({
 
           {/* ── Checkpoint timeline (nested expandable) ── */}
           <div className="space-y-3">
-            <button
-              type="button"
-              className="flex items-center gap-2 w-full text-left hover:bg-fg/5 p-2 -m-2 transition-colors"
-              onClick={() => setTimelineExpanded((v) => !v)}
-            >
-              <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.checkpointTimeline')}</h3>
-              <span onClick={(e) => e.stopPropagation()}>
-                <ContextHelp title={t('integrity.checkpointTimeline')} content={<Trans i18nKey="audit-logs:help.checkpointTimeline.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.checkpointTimeline') })} />
-              </span>
-              {timelineExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-            </button>
+            <div className="flex items-center gap-2 p-2 -m-2">
+              <button
+                type="button"
+                className="flex items-center gap-2 text-left hover:bg-fg/5 transition-colors"
+                onClick={() => setTimelineExpanded((v) => !v)}
+                aria-expanded={timelineExpanded}
+              >
+                <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.checkpointTimeline')}</h3>
+                {timelineExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+              </button>
+              <ContextHelp title={t('integrity.checkpointTimeline')} content={<Trans i18nKey="audit-logs:help.checkpointTimeline.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.checkpointTimeline') })} />
+            </div>
             {timelineExpanded && (
               <div className="border-2 border-fg/10 bg-bg p-3 space-y-3">
                 <div className="flex gap-3 items-center flex-wrap">
@@ -1363,8 +1336,6 @@ function IntegrityPanel({
               </div>
             )}
           </div>
-        </div>
-      )}
 
       {/* ── Seal Archive Dialog ── */}
       <Dialog open={sealOpen} onClose={() => setSealOpen(false)} title={t('sealDialog.title')} size="lg" dismissible={false}>

@@ -98,14 +98,16 @@
     "links": {
       "integrityPanel": "Ouvrir Intégrité →",
       "encryptionKeys": "Ouvrir les clés de chiffrement →"
-    }
+    },
+    "expand": "Afficher le détail des tâches",
+    "collapse": "Masquer le détail des tâches"
   },
   "followUp": {
     "title": "Suivi opérationnel",
     "description": "La supervision de la chaîne d'audit est rétablie, mais il reste au moins un incident opérationnel à clôturer par une déclaration formelle (justification et cause racine). Ceci est distinct des alertes urgentes.",
     "awaitingDeclaration": "En attente de déclaration",
     "anchorCheckpoint": "Point d'ancrage · #{{id}}",
-    "openIntegrity": "Ouvrir les journaux d'audit → Intégrité et cycle de vie →"
+    "openIntegrity": "Ouvrir Intégrité →"
   },
   "recentActivity": {
     "title": "Activité récente",

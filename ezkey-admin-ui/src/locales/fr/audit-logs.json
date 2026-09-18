@@ -260,8 +260,7 @@
   },
   "integrity": {
     "pageTitle": "Intégrité",
-    "title": "Intégrité et cycle de vie",
-    "globalAdmin": "Admin global",
+    "subtitle": "Vérifier la chaîne HMAC du journal d'audit et gérer le cycle de vie exceptionnel des archives.",
     "verification": "Vérification",
     "dateRangeSelect": "Choisir une période",
     "selectDateRangeToRun": "Sélectionnez une plage de dates pour lancer la vérification",
