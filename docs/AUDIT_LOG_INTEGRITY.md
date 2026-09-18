@@ -328,17 +328,17 @@ Both verification endpoints **require** `from` and `to` query parameters (ISO-86
 
 ### Operator workflow (Admin UI)
 
-The Integrity panel (Global Admin only) drives gap declaration from detection, not from manual input:
+The Integrity page (`/integrity`, Global Admin only) drives gap declaration from detection, not from manual input:
 
-1. Expand the Integrity panel. Chain integrity **auto-runs** over the selected date
+1. Open **Integrity**. Chain integrity **auto-runs** over the selected date
    range, or a 7-day UI default when none is set. Use **Chain integrity** to re-run
    after changing the range.
 2. Review the **Undeclared gaps for consultation** list. For each row:
-   - **Locate in timeline** focuses the audit-log table on the gap window for context (toggle off with **Clear focus**).
+   - **Locate in timeline** focuses the checkpoint timeline on the gap window for context (toggle off with **Clear focus**).
    - **Declare** opens a dialog prefilled with the detected period and duration; the operator only enters a justification.
 3. On success the dialog reports the new `GAP_DECLARATION` checkpoint and the chain check is automatically re-run, removing the row from the list.
 
-When no undeclared gaps remain for the selected range the panel shows an explicit "no undeclared gaps detected" confirmation rather than an empty list, so operators can distinguish "nothing to do" from "not yet checked".
+When no undeclared gaps remain for the selected range the page shows an explicit "no undeclared gaps detected" confirmation rather than an empty list, so operators can distinguish "nothing to do" from "not yet checked".
 
 ### Operator alerts (`AUDIT_CHAIN_GAP_PENDING`)
 
@@ -347,7 +347,7 @@ When the audit-chain scheduler detects an undeclared gap during one of its perio
 The alert payload carries the anchor checkpoint id, the detected gap window, and an estimated duration.
 While the gap remains undeclared, repeated detections **touch** the same open alert (incrementing
 `occurrenceCount` and `lastSeenAt`) instead of producing duplicates. As soon as a Global Admin runs
-**Declare gap** for that anchor (either from the Integrity panel or via `POST /api/v1/audit-logs/lifecycle/declare-gap`),
+**Declare gap** for that anchor (either from `/integrity` or via `POST /api/v1/audit-logs/lifecycle/declare-gap`),
 the matching open alert is automatically resolved with reason `GAP_DECLARED`. This is the canonical
 operator signal for chain-continuity issues; the dashboard surfaces the most recent open alerts for Global Admins.
 

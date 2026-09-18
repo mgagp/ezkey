@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Document ID:** `admin-ui-audit-integrity-job-surface-map`
-- **Status:** `ready` (2026-09-17)
+- **Status:** `promoted` (IA 2026-09-17; cut 1 route `/integrity` shipped 2026-09-18 — PR `#563`)
 - **Parent intention:** [`admin-ui-audit-integrity-hard-split-intention.md`](admin-ui-audit-integrity-hard-split-intention.md)
 - **Grill:** [`backlog/grill-sessions/2026-09-17-admin-ui-audit-integrity-hard-split-grill-me.md`](backlog/grill-sessions/2026-09-17-admin-ui-audit-integrity-hard-split-grill-me.md)
 - **Purpose:** One-page map from operator jobs to Admin UI surfaces after the hard split.
@@ -16,8 +16,9 @@
 | Surface | Who sees it | Role |
 |---------|-------------|------|
 | **Audit trail** (`/audit-logs`) | All admins | Everyday “who did what?” + around-event context |
-| **Integrity** (new GA-only sidebar route; label **Integrity**) | Global Admin | Investigate / verify / remediate on the **same** `audit_log` rows |
+| **Integrity** (`/integrity`, GA-only sidebar; label **Integrity**) | Global Admin | Investigate / verify / remediate on the **same** `audit_log` rows |
 | **Alerts** (`/alerts`, detail) | Global Admin (as today) | Exceptional **signal list** only — deep-link into Integrity |
+| **Dashboard** (`/dashboard`) | Role-scoped widgets | Batch-health **signal** for scheduled jobs (checkpoint, nightly validation, re-encryption). Exit / follow-up to Integrity. Not the atelier. |
 
 Complementary stores (alert rows, heartbeat incidents, conciliation / justification records) remain **operational indexes**. They are not a second audit trail.
 
@@ -40,6 +41,7 @@ Complementary stores (alert rows, heartbeat incidents, conciliation / justificat
 | Heartbeat incident declare closure | Integrity | Alert may signal | Incident index + audit events as today |
 | Reconcile integrity rupture | Integrity | Alerts **Resolve** deep-links here | Conciliation = explanation / reattach, not rewrite |
 | Notice that something needs attention | Alerts | → Integrity | Alert row = signal, not the proof |
+| See whether integrity jobs last ran clean | Dashboard | → Integrity | `ezkey_scheduled_job_last_run` (not the proof) |
 
 ---
 
@@ -61,7 +63,7 @@ Tenant Admin stops here. No Integrity chrome.
 
 ### Greenfield deep-links
 
-In-app emitters (alerts, dashboard, etc.) point at the **Integrity** route directly. No redirects, dual-read, or shims for former `/audit-logs?integrity=…` params.
+In-app emitters (alerts, dashboard, etc.) point at **`/integrity`** directly. No redirects, dual-read, or shims for former `/audit-logs?integrity=…` params.
 
 ---
 
@@ -84,6 +86,7 @@ Ensure Admin UI callers exist end-to-end for ops already in OpenAPI but unevenly
 
 ## Handoff
 
-- **Intention + this map** = IA lock for engineering.
-- **Isabelle** = exploratory walk once the split is on a stack.
+- **Intention + this map** = IA lock. Cut 1 is on `main` (PR `#563`).
+- **Isabelle** = exploratory walk (cut 1 is walkable).
 - **Alex** = priority framing already settled (not P0; do it properly).
+- **Remaining:** cut 2 (layout inside Integrity); cut 3 (OpenAPI callers still missing on the page).

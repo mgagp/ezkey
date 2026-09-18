@@ -3,14 +3,15 @@
 ## Metadata
 
 - **Document ID:** `admin-ui-audit-integrity-hard-split-intention`
-- **Status:** `ready` (grilling complete — 2026-09-17; Marc accepted the pack; cut-1 sequencing locked)
+- **Status:** `promoted` (IA lock 2026-09-17; **cut 1 delivered** 2026-09-18 — PR `#563`. Cut 2/3 remain.)
 - **Owner (intention):** Julie (Admin UI opérabilité)
 - **Product direction:** Alex
-- **Engineering sequencing:** Patrick (cut 1 locked 2026-09-17 — not implementing)
+- **Engineering sequencing:** Patrick (cut 1 locked 2026-09-17; implemented 2026-09-18)
 - **Security posture:** Christophe
 - **Exploratory QA (later):** Isabelle
 - **Purpose:** Intention / IA compass for splitting the overgrown Audit Logs surface.
   **Not** an implementation plan, API redesign, or pixel spec.
+- **GitHub:** docs PR `#562`; implementation PR `#563` (merged to `main` as `848c89aa`)
 - **Related:**
   - [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job-surface-map.md)
   - [`integrity-wave-b-operator-end-state-compass.md`](integrity-wave-b-operator-end-state-compass.md)
@@ -89,6 +90,24 @@ IA holds. This cut is a **move**, not a second journal. Patrick is not implement
 
 **Done:** trail page has no integrity atelier; Integrity is a first-class Global-only page; every in-app link lands there; one proof, same `audit_log` reads; no dead panel left in `audit-logs.tsx`.
 
+### Cut 1 delivery (2026-09-18)
+
+Shipped on `cursor/admin-ui-integrity-first-class-1035` / PR `#563`. Alignment check against this pack:
+
+| Criterion | Result |
+|-----------|--------|
+| Trail has no integrity atelier | Met — `audit-logs.tsx` is everyday trail only. |
+| Integrity is a first-class Global-only page | Met — `/integrity`, sidebar `GLOBAL_ADMIN` only. |
+| In-app emitters land on Integrity | Met — Alerts Resolve / Investigate, dashboard follow-up and job-card exit. No `/audit-logs?integrity=` shim. |
+| One proof, same `audit_log` reads | Met — no second journal. |
+| No dead panel in `audit-logs.tsx` | Met. |
+| Cut 1 is a move, not a visual redesign | Met as the split. A **cut-1 leftover** was closed in the same PR: page-level caret / outer boxing still made Integrity look like an embedded panel. Removing that chrome is **not** the full cut-2 layout challenge. |
+| Dashboard companion (same PR) | Job cards may collapse when every listed job is `SUCCESS`; recovered-incident CTA copy is **Open Integrity**. Hygiene, not a new program. |
+
+Do **not** invent an `I-*` / `TB-*` for this split. The grill + this note were the execution compass.
+
+**Stale historical pointers** (do not revive the panel): `TB-2026-06-30-integrity-investigation-operability` and `TB-2026-07-05-admin-ui-audit-chain-checkpoints-polish` still describe `/audit-logs?integrity=1` and **Integrity & Lifecycle**. Living operator API canon is [`docs/AUDIT_LOG_INTEGRITY.md`](../../docs/AUDIT_LOG_INTEGRITY.md); IA lock is this note + the job-surface map.
+
 ---
 
 ## Non-goals
@@ -101,5 +120,7 @@ No API redesign in this note; no second audit store; no pixel campaign in cut 1;
 
 1. ~~Job → surface map~~ — done. Marc accepted the pack.
 2. ~~Cut-1 sequencing~~ — locked above.
-3. Implementation of cut 1 when Marc says go, then Isabelle.
-4. Cut 3 after walkable. Cut 2 is a later phase.
+3. ~~Implementation of cut 1~~ — PR `#563`, 2026-09-18.
+4. Cut 2 — later: challenge layout and chrome **inside** Integrity (not the leftover unbox already shipped).
+5. Cut 3 — after walkable: surface missing OpenAPI callers on Integrity (`confirm-archived`, `reconcile-integrity-rupture`, peers).
+6. Isabelle exploratory once the split is on a stack (cut 1 is walkable; cut 3 when that pass lands).

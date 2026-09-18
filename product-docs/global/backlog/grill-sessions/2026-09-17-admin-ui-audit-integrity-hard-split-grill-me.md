@@ -38,6 +38,19 @@ G1–G5 settled. Implementation may proceed from the intention note + this grill
 
 **Note on letter labels:** G1–G4 used A/B/C options during grilling. G5 is recorded in plain language only (no letter) to avoid remapping ambiguity after the greenfield reframe.
 
+## Delivery closeout (2026-09-18)
+
+Cut 1 implemented on PR `#563` (merged to `main`). Docs pack remains this grill + the parent intention + job-surface map — **no** `I-*` / `TB-*` invented for the split.
+
+| Item | Disposition |
+|------|-------------|
+| Cut 1 — first-class `/integrity` | **Delivered.** Trail without atelier; GA sidebar; in-app emitters rewritten; no shims. |
+| Cut-1 leftover chrome (page caret / outer box) | **Delivered** in the same PR. Not the full cut-2 layout challenge. |
+| Dashboard job-card collapse + Open Integrity CTA | Companion hygiene in the same PR. |
+| Cut 2 — layout inside Integrity | **Open.** Later. |
+| Cut 3 — API↔UI gaps | **Open.** After walkable (cut 1 is walkable). |
+| Isabelle exploratory | **Open.** Cut 1 is on a stack. |
+
 ## Links
 
 - Intention note (parent)

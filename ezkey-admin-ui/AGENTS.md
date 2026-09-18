@@ -324,7 +324,7 @@ When a screen filters by time via Admin API `createdAfter` / `createdBefore` (or
 ### Audit Integrity page (gap declaration)
 
 Declare a gap only from a detected row in **Undeclared gaps for consultation**
-(justification only; no free-form dates or `anchorCheckpointId`). Expanding the
+(justification only; no free-form dates or `anchorCheckpointId`). Opening the
 Integrity page (Global Admin `/integrity`) auto-runs chain integrity over the
 selected range or a 7-day UI default.
 Canon: [`docs/AUDIT_LOG_INTEGRITY.md`](../docs/AUDIT_LOG_INTEGRITY.md) § Operator workflow.
