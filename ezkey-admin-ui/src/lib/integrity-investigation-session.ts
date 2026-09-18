@@ -40,6 +40,37 @@ export function parseHighlightAuditLogIds(raw: string | null): number[] {
     .filter((id) => Number.isFinite(id) && id > 0);
 }
 
+/**
+ * Build an Integrity deep-link from an Alerts signal (investigation and/or reconcile).
+ * Greenfield: lands on `/integrity` only — no `/audit-logs?integrity=…` shims.
+ */
+export function buildIntegrityDeepLink(opts: {
+  failBoundary: string;
+  resumeBoundary: string;
+  alertId?: number;
+  action?: 'reconcile';
+  highlightAuditLogIds?: number[];
+  focusCheckpointId?: number;
+}): string {
+  const params = new URLSearchParams();
+  params.set('source', 'integrity-alert');
+  params.set('createdAfter', opts.failBoundary);
+  params.set('createdBefore', opts.resumeBoundary);
+  if (opts.alertId != null && opts.alertId > 0) {
+    params.set('alertId', String(opts.alertId));
+  }
+  if (opts.action === 'reconcile') {
+    params.set('action', 'reconcile');
+  }
+  if (opts.highlightAuditLogIds && opts.highlightAuditLogIds.length > 0) {
+    params.set('highlightAuditLogIds', formatHighlightAuditLogIds(opts.highlightAuditLogIds));
+  }
+  if (opts.focusCheckpointId != null && opts.focusCheckpointId > 0) {
+    params.set('focusCheckpointId', String(opts.focusCheckpointId));
+  }
+  return `/integrity?${params.toString()}`;
+}
+
 export function formatHighlightAuditLogIds(ids: number[]): string {
   return [...new Set(ids)].sort((a, b) => a - b).join(',');
 }

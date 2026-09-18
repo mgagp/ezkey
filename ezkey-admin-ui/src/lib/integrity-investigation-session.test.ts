@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EntryIntegrityViolation, IntegrityReport } from '@/generated/admin-api/model';
 import {
+  buildIntegrityDeepLink,
   entryViolationDisplayState,
   mergeSingleEntryVerificationIntoSession,
   resolveEntryIntegrityReportSummaryState,
@@ -119,5 +120,34 @@ describe('mergeSingleEntryVerificationIntoSession', () => {
     expect(session?.entryViolations).toHaveLength(1);
     expect(session?.conciliationByAuditLogId[1104]).toBe('ACKNOWLEDGED');
     expect(session?.source).toBe('manual');
+  });
+});
+
+describe('buildIntegrityDeepLink', () => {
+  it('builds investigate deep-link with alert id and window', () => {
+    const href = buildIntegrityDeepLink({
+      failBoundary: '2026-09-01T00:00:00Z',
+      resumeBoundary: '2026-09-02T00:00:00Z',
+      alertId: 42,
+      highlightAuditLogIds: [7, 3],
+    });
+    expect(href).toContain('/integrity?');
+    expect(href).toContain('source=integrity-alert');
+    expect(href).toContain('alertId=42');
+    expect(href).toContain('createdAfter=2026-09-01T00%3A00%3A00Z');
+    expect(href).toContain('createdBefore=2026-09-02T00%3A00%3A00Z');
+    expect(href).toContain('highlightAuditLogIds=3%2C7');
+    expect(href).not.toContain('action=reconcile');
+  });
+
+  it('adds action=reconcile for Integrity atelier remediation', () => {
+    const href = buildIntegrityDeepLink({
+      failBoundary: '2026-09-01T00:00:00Z',
+      resumeBoundary: '2026-09-02T00:00:00Z',
+      alertId: 9,
+      action: 'reconcile',
+    });
+    expect(href).toContain('action=reconcile');
+    expect(href).toContain('alertId=9');
   });
 });
