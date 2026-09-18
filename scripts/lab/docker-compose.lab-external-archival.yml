@@ -1,0 +1,12 @@
+# Lab-only override: enable SEALED → EXPORTED confirmation branch on Admin API.
+#
+# Do NOT use outside local/demo exploratory QA. Default product posture keeps
+# ezkey.audit.archive.external-archival-enabled=false.
+#
+# Applied by scripts/lab/seed-integrity-cut3-qa.sh (--enable-archival).
+# Removed by scripts/lab/cleanup-integrity-cut3-qa.sh (--disable-archival).
+
+services:
+  admin-api:
+    environment:
+      EZKEY_AUDIT_ARCHIVE_EXTERNAL_ARCHIVAL_ENABLED: "true"

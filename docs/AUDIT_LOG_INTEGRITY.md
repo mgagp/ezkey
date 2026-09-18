@@ -382,7 +382,22 @@ designed for purge-surviving reference semantics; see
 
 ---
 
-## 5. What This Does NOT Cover (Accepted Limitations)
+## 5. Lab exploratory QA (Integrity cut-3)
+
+Warm clean-start stacks usually have **no** open `AUDIT_INTEGRITY_RUPTURE` and
+**no** sealed tranche with `confirmationRequired=true` (external archival defaults
+off). For Admin UI cut-3 walks (Alerts deep-link → real reconcile; Confirm archived),
+use the lab-only seed and operator steps in
+[`docs/lab/INTEGRITY_CUT3_EXPLORATORY_QA.md`](lab/INTEGRITY_CUT3_EXPLORATORY_QA.md)
+(`scripts/lab/seed-integrity-cut3-qa.sh`). **Prefer path A (rupture/reconcile) before
+path B (seal/confirm)** on one warm stack — or separate stacks / full
+`cleanup-integrity-cut3-qa.sh` between them. Leftover `ARCHIVE_SEAL` in a rupture
+window correctly blocks reconcile. Do not use `seed-alerts-ui-review` for
+reconcile — that seed is Alerts list polish only.
+
+---
+
+## 6. What This Does NOT Cover (Accepted Limitations)
 
 - **Real-time hash chain per entry:** rejected due to HA write-contention complexity; the 5-minute batch approach provides equivalent normative value
 - **Automatic HMAC key rotation:** not implemented; rotation only needed if key is compromised

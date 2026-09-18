@@ -38,17 +38,22 @@ import { useDisplayTimezone } from '@/context/use-display-timezone';
 import { useToast } from '@/context/use-toast';
 import { EntryIntegrityReportBadge } from '@/components/feature/entry-integrity-report-badge';
 import { EntryIntegrityViolationLine } from '@/components/feature/entry-integrity-violation-line';
+import { IntegrityReconcileDialog } from '@/components/feature/integrity-reconcile-dialog';
+import { useGetAlert } from '@/generated/admin-api/alerts/alerts';
 import {
   checkChainIntegrity,
   checkIntegrity,
   getArchiveEligibility,
   getChainCheckpoints,
   runRetroactiveIntegrityValidation,
+  useConfirmArchived,
   useDeclareGap,
   useSealArchive,
 } from '@/generated/admin-api/audit-logs/audit-logs';
 import type {
+  AlertResponseDto,
   AuditChainCheckpointResponseDto,
+  ArchiveConfirmArchivedResult,
   ArchiveEligibilityResult,
   ChainVerificationReport,
   GetChainCheckpointsParams,
@@ -327,10 +332,21 @@ function IntegrityPanel({
   expandFromQuery = false,
   focusCheckpointId = null,
   initialCheckRange = null,
+  reconcileAlertId = null,
+  reconcileFailBoundary = null,
+  reconcileResumeBoundary = null,
+  autoOpenReconcile = false,
 }: {
   expandFromQuery?: boolean;
   focusCheckpointId?: number | null;
   initialCheckRange?: { createdAfter: string; createdBefore: string } | null;
+  /** Open AUDIT_INTEGRITY_RUPTURE alert id for Integrity-atelier reconcile. */
+  reconcileAlertId?: number | null;
+  /** Boundaries resolved from the alert payload (not from URL window params). */
+  reconcileFailBoundary?: string | null;
+  reconcileResumeBoundary?: string | null;
+  /** When true (deep-link `action=reconcile`), open the reconcile dialog once boundaries are ready. */
+  autoOpenReconcile?: boolean;
 }) {
   const { t } = useTranslation('audit-logs');
   const { effectiveTimeZoneId } = useDisplayTimezone();
@@ -375,8 +391,12 @@ function IntegrityPanel({
   // ── Dialogs ──
   const [sealOpen, setSealOpen] = useState(false);
   const [gapOpen, setGapOpen] = useState(false);
+  const [confirmArchivedOpen, setConfirmArchivedOpen] = useState(false);
+  const [reconcileOpen, setReconcileOpen] = useState(false);
   const [sealResult, setSealResult] = useState<ArchiveSealResult | null>(null);
   const [gapResult, setGapResult] = useState<GapDeclarationResult | null>(null);
+  const [confirmArchivedResult, setConfirmArchivedResult] =
+    useState<ArchiveConfirmArchivedResult | null>(null);
 
   // ── Seal archive form state ──
   const [sealPeriodStart, setSealPeriodStart] = useState('');
@@ -384,6 +404,10 @@ function IntegrityPanel({
   const [sealCheckpointFrom, setSealCheckpointFrom] = useState('');
   const [sealCheckpointTo, setSealCheckpointTo] = useState('');
   const [sealJustification, setSealJustification] = useState('');
+
+  // ── Confirm archived form state ──
+  const [confirmDigest, setConfirmDigest] = useState('');
+  const [confirmArchivedAt, setConfirmArchivedAt] = useState('');
 
   // ── Gap declaration state (driven by selection from the detected-gaps list) ──
   const [selectedGapForDeclaration, setSelectedGapForDeclaration] = useState<
@@ -703,6 +727,24 @@ function IntegrityPanel({
     },
   });
 
+  const confirmArchivedMutation = useConfirmArchived({
+    mutation: {
+      onSuccess: (data) => {
+        const result = data as unknown as ArchiveConfirmArchivedResult;
+        setConfirmArchivedResult(result);
+        toast(
+          t('confirmArchivedDialog.toastSuccess', { count: result.checkpointsExported ?? 0 }),
+          'success',
+        );
+        queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs });
+        queryClient.invalidateQueries({ queryKey: queryKeys.auditChainCheckpoints });
+        queryClient.invalidateQueries({ queryKey: ['audit-archive-eligibility'] });
+      },
+      onError: (e) =>
+        toast(getTranslatedApiError(e, t, t('confirmArchivedDialog.errorFailed')), 'error'),
+    },
+  });
+
   const gapMutation = useDeclareGap({
     mutation: {
       onSuccess: (data, variables) => {
@@ -738,6 +780,48 @@ function IntegrityPanel({
     setSealJustification('');
     setSealResult(null);
   }
+
+  function resetConfirmArchivedForm() {
+    setConfirmDigest('');
+    setConfirmArchivedAt('');
+    setConfirmArchivedResult(null);
+  }
+
+  function openConfirmArchivedDialog() {
+    resetConfirmArchivedForm();
+    setConfirmArchivedOpen(true);
+  }
+
+  const awaitingConfirmTranche =
+    archiveEligibility?.confirmationRequired === true
+    && archiveEligibility.checkpointIdFrom != null
+    && archiveEligibility.checkpointIdTo != null;
+
+  const canReconcileOnIntegrity =
+    reconcileAlertId != null
+    && reconcileAlertId > 0
+    && Boolean(reconcileFailBoundary && reconcileResumeBoundary);
+
+  const [autoReconcileConsumed, setAutoReconcileConsumed] = useState(false);
+  useEffect(() => {
+    if (
+      !autoOpenReconcile
+      || autoReconcileConsumed
+      || !canReconcileOnIntegrity
+      || !reconcileFailBoundary
+      || !reconcileResumeBoundary
+    ) {
+      return;
+    }
+    setReconcileOpen(true);
+    setAutoReconcileConsumed(true);
+  }, [
+    autoOpenReconcile,
+    autoReconcileConsumed,
+    canReconcileOnIntegrity,
+    reconcileFailBoundary,
+    reconcileResumeBoundary,
+  ]);
 
   function resetGapForm() {
     setSelectedGapForDeclaration(null);
@@ -1076,6 +1160,40 @@ function IntegrityPanel({
               <span onClick={(e) => e.stopPropagation()}>
                 <ContextHelp title={t('integrity.sealArchive')} content={<Trans i18nKey="audit-logs:help.sealArchive.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.sealArchive') })} />
               </span>
+              {awaitingConfirmTranche && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={openConfirmArchivedDialog}
+                    className="gap-1.5"
+                    title={t('integrity.confirmArchivedHint')}
+                  >
+                    <CheckCircle className="size-3.5" />
+                    {t('integrity.confirmArchived')}
+                  </Button>
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <ContextHelp
+                      title={t('integrity.confirmArchived')}
+                      content={t('integrity.confirmArchivedHint')}
+                      ariaLabel={t('common:help.ariaLabel', { title: t('integrity.confirmArchived') })}
+                    />
+                  </span>
+                </>
+              )}
+              {canReconcileOnIntegrity && (
+                <>
+                  <Button
+                    size="sm"
+                    onClick={() => setReconcileOpen(true)}
+                    className="gap-1.5"
+                    title={t('integrity.reconcileRuptureHint')}
+                  >
+                    <ShieldAlert className="size-3.5" />
+                    {t('integrity.reconcileRupture')}
+                  </Button>
+                </>
+              )}
               <span className="text-xs text-fg-muted italic">{t('integrity.declareGapHint')}</span>
               <span onClick={(e) => e.stopPropagation()}>
                 <ContextHelp title={t('integrity.declareGap')} content={<Trans i18nKey="audit-logs:help.declareGap.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.declareGap') })} />
@@ -1422,6 +1540,168 @@ function IntegrityPanel({
         )}
       </Dialog>
 
+      {/* ── Confirm Archived Dialog ── */}
+      <Dialog
+        open={confirmArchivedOpen}
+        onClose={() => setConfirmArchivedOpen(false)}
+        title={t('confirmArchivedDialog.title')}
+        size="lg"
+        dismissible={false}
+      >
+        {confirmArchivedResult ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-success">
+              <CheckCircle className="size-5" />
+              <span className="font-bold">{t('confirmArchivedDialog.successTitle')}</span>
+            </div>
+            <dl className="space-y-1.5 text-sm">
+              <InfoPair
+                label={t('confirmArchivedDialog.resultPeriod')}
+                value={
+                  confirmArchivedResult.periodStart && confirmArchivedResult.periodEnd
+                    ? `${confirmArchivedResult.periodStart} → ${confirmArchivedResult.periodEnd}`
+                    : '—'
+                }
+              />
+              <InfoPair
+                label={t('confirmArchivedDialog.resultCheckpointsExported')}
+                value={String(confirmArchivedResult.checkpointsExported ?? 0)}
+              />
+              <InfoPair
+                label={t('confirmArchivedDialog.resultDigest')}
+                value={confirmArchivedResult.exportBundleDigest ?? '—'}
+                mono
+              />
+              <InfoPair
+                label={t('confirmArchivedDialog.resultExportedAt')}
+                value={
+                  confirmArchivedResult.exportedAt
+                    ? formatDateWithTimezone(confirmArchivedResult.exportedAt)
+                    : '—'
+                }
+              />
+              <InfoPair
+                label={t('confirmArchivedDialog.resultAuditLogId')}
+                value={String(confirmArchivedResult.auditLogId ?? '—')}
+              />
+            </dl>
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setConfirmArchivedOpen(false)}>
+                {t('confirmArchivedDialog.done')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!archiveEligibility?.checkpointIdFrom || !archiveEligibility.checkpointIdTo) {
+                return;
+              }
+              const digest = confirmDigest.trim();
+              if (digest.length < 16) {
+                toast(t('confirmArchivedDialog.digestTooShort'), 'error');
+                return;
+              }
+              confirmArchivedMutation.mutate({
+                data: {
+                  checkpointIdFrom: archiveEligibility.checkpointIdFrom,
+                  checkpointIdTo: archiveEligibility.checkpointIdTo,
+                  exportBundleDigest: digest,
+                  archivedAt: confirmArchivedAt
+                    ? new Date(confirmArchivedAt).toISOString()
+                    : undefined,
+                },
+              });
+            }}
+            className="space-y-4"
+          >
+            <p className="text-xs text-fg-muted">{t('confirmArchivedDialog.intro')}</p>
+            {archiveEligibility && (
+              <div className="border-2 border-fg/15 bg-bg p-3 space-y-1 text-xs">
+                <p className="text-[10px] uppercase tracking-wider text-fg-muted font-bold">
+                  {t('confirmArchivedDialog.trancheHeading')}
+                </p>
+                <p className="font-bold">
+                  {archiveEligibility.oldestSealedWindowStart
+                    && archiveEligibility.newestSealedWindowEnd
+                    ? t('integrity.lifecycleWindowFromTo', {
+                        from: formatDateWithTimezone(archiveEligibility.oldestSealedWindowStart),
+                        to: formatDateWithTimezone(archiveEligibility.newestSealedWindowEnd),
+                      })
+                    : t('integrity.noLifecycleWindow')}
+                </p>
+                <p className="font-mono text-fg-muted">
+                  {archiveEligibility.checkpointIdFrom != null
+                    && archiveEligibility.checkpointIdTo != null
+                    ? t('integrity.lifecycleCheckpointRange', {
+                        from: archiveEligibility.checkpointIdFrom,
+                        to: archiveEligibility.checkpointIdTo,
+                      })
+                    : '—'}
+                </p>
+              </div>
+            )}
+            <div className="space-y-1">
+              <Label htmlFor="confirm-digest" className="text-xs">
+                {t('confirmArchivedDialog.exportBundleDigest')}{' '}
+                <span className="text-fg-muted font-normal">
+                  {t('confirmArchivedDialog.exportBundleDigestHint')}
+                </span>
+              </Label>
+              <Input
+                id="confirm-digest"
+                value={confirmDigest}
+                onChange={(e) => setConfirmDigest(e.target.value)}
+                maxLength={88}
+                placeholder={t('confirmArchivedDialog.exportBundleDigestPlaceholder')}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="confirm-archived-at" className="text-xs">
+                {t('confirmArchivedDialog.archivedAt')}
+              </Label>
+              <Input
+                id="confirm-archived-at"
+                type="datetime-local"
+                value={confirmArchivedAt}
+                onChange={(e) => setConfirmArchivedAt(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setConfirmArchivedOpen(false)}
+              >
+                {t('confirmArchivedDialog.cancel')}
+              </Button>
+              <Button
+                type="submit"
+                disabled={confirmArchivedMutation.isPending || confirmDigest.trim().length < 16}
+              >
+                {confirmArchivedMutation.isPending
+                  ? t('confirmArchivedDialog.submitting')
+                  : t('confirmArchivedDialog.submit')}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Dialog>
+
+      {canReconcileOnIntegrity
+        && reconcileAlertId != null
+        && reconcileFailBoundary
+        && reconcileResumeBoundary && (
+        <IntegrityReconcileDialog
+          open={reconcileOpen}
+          onClose={() => setReconcileOpen(false)}
+          alertId={reconcileAlertId}
+          failBoundary={reconcileFailBoundary}
+          resumeBoundary={reconcileResumeBoundary}
+        />
+      )}
+
       {/* ── Gap Declaration Dialog ── */}
       <Dialog open={gapOpen} onClose={closeGapDialog} title={t('gapDialog.title')} size="md" dismissible={false}>
         {gapResult ? (
@@ -1595,6 +1875,38 @@ function InfoPair({ label, value, mono }: { label: string; value: string; mono?:
 
 // ── Integrity page (GLOBAL_ADMIN only) ────────────────────────────────────────
 
+function parseAlertPayload(raw?: string | null): unknown {
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function extractRuptureBoundariesFromAlertPayload(
+  payload: unknown,
+): { failBoundary: string; resumeBoundary: string } | null {
+  if (typeof payload !== 'object' || payload === null) {
+    return null;
+  }
+  const record = payload as Record<string, unknown>;
+  const fail =
+    (typeof record.failBoundary === 'string' && record.failBoundary)
+    || (typeof record.windowStart === 'string' && record.windowStart)
+    || null;
+  const resume =
+    (typeof record.resumeBoundary === 'string' && record.resumeBoundary)
+    || (typeof record.windowEnd === 'string' && record.windowEnd)
+    || null;
+  if (!fail || !resume) {
+    return null;
+  }
+  return { failBoundary: fail, resumeBoundary: resume };
+}
+
 export default function IntegrityPage() {
   const { t } = useTranslation('audit-logs');
   const { session } = useAuth();
@@ -1610,14 +1922,55 @@ export default function IntegrityPage() {
     return Number.isFinite(parsed) ? parsed : null;
   }, [searchParams]);
 
+  const reconcileAlertIdParam = useMemo(() => {
+    const raw = searchParams.get('alertId');
+    if (!raw) {
+      return null;
+    }
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }, [searchParams]);
+
+  const autoOpenReconcile = searchParams.get('action') === 'reconcile';
+
+  const { data: reconcileAlert } = useGetAlert<AlertResponseDto>(
+    reconcileAlertIdParam ?? 0,
+    {
+      query: {
+        enabled:
+          isGlobalAdmin
+          && autoOpenReconcile
+          && reconcileAlertIdParam != null
+          && reconcileAlertIdParam > 0,
+      },
+    },
+  );
+
+  const reconcileBoundaries = useMemo(() => {
+    if (!autoOpenReconcile || !reconcileAlertIdParam) {
+      return null;
+    }
+    if (reconcileAlert?.alertType !== 'AUDIT_INTEGRITY_RUPTURE') {
+      return null;
+    }
+    return extractRuptureBoundariesFromAlertPayload(parseAlertPayload(reconcileAlert.payload));
+  }, [autoOpenReconcile, reconcileAlertIdParam, reconcileAlert]);
+
   const initialCheckRange = useMemo(() => {
     const createdAfter = searchParams.get('createdAfter');
     const createdBefore = searchParams.get('createdBefore');
     if (createdAfter && createdBefore) {
       return { createdAfter, createdBefore };
     }
+    // Frozen reconcile deep-link has no window params — seed the check range from the alert.
+    if (reconcileBoundaries) {
+      return {
+        createdAfter: reconcileBoundaries.failBoundary,
+        createdBefore: reconcileBoundaries.resumeBoundary,
+      };
+    }
     return null;
-  }, [searchParams]);
+  }, [searchParams, reconcileBoundaries]);
 
   const [integritySession, setIntegritySession] = useState<IntegrityInvestigationSession | null>(
     () => loadIntegrityInvestigationSession(),
@@ -1628,7 +1981,9 @@ export default function IntegrityPage() {
     setIntegritySession(loadIntegrityInvestigationSession());
   }, [searchParams]);
 
-  const isIntegrityAlertContext = searchParams.get('source') === 'integrity-alert';
+  const isIntegrityAlertContext =
+    searchParams.get('source') === 'integrity-alert'
+    || (autoOpenReconcile && reconcileAlertIdParam != null);
 
   const clearIntegrityInvestigationContext = useCallback(() => {
     setShowAffectedOnly(false);
@@ -1637,6 +1992,9 @@ export default function IntegrityPage() {
       next.delete('source');
       next.delete('highlightAuditLogIds');
       next.delete('focusCheckpointId');
+      next.delete('alertId');
+      next.delete('action');
+      next.delete('ruptureId');
       return next;
     }, { replace: true });
   }, [setSearchParams]);
@@ -1718,6 +2076,10 @@ export default function IntegrityPage() {
               expandFromQuery
               focusCheckpointId={focusCheckpointIdParam}
               initialCheckRange={initialCheckRange}
+              reconcileAlertId={autoOpenReconcile ? reconcileAlertIdParam : null}
+              reconcileFailBoundary={reconcileBoundaries?.failBoundary ?? null}
+              reconcileResumeBoundary={reconcileBoundaries?.resumeBoundary ?? null}
+              autoOpenReconcile={autoOpenReconcile}
             />
           </>
         )}
