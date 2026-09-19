@@ -86,6 +86,7 @@ export const AboutScreen: React.FC = () => {
         </View>
       </View>
       <Text style={styles.description}>{t('about.description')}</Text>
+      <Text style={styles.privacyNote}>{t('about.privacyNote')}</Text>
       <TouchableOpacity
         style={styles.linkButton}
         onPress={openSite}
@@ -153,6 +154,15 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 22,
     marginTop: spacing.xl,
+    paddingHorizontal: spacing.sm,
+    textAlign: 'center',
+    alignSelf: 'stretch',
+  },
+  privacyNote: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textMuted,
+    lineHeight: 20,
+    marginTop: spacing.md,
     paddingHorizontal: spacing.sm,
     textAlign: 'center',
     alignSelf: 'stretch',

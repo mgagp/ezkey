@@ -94,12 +94,12 @@ describe('SecurityScreen', () => {
     });
 
     expect(() =>
-      tree!.root.findByProps({children: 'This protection is enforced by the app'}),
+      tree!.root.findByProps({children: 'Honest limits'}),
     ).not.toThrow();
     expect(() =>
       tree!.root.findByProps({
         children:
-          'The app asks for local device confirmation before responding. The signing key itself does not require that confirmation, and the backend receives no cryptographic proof that it occurred or was bound to the signature.',
+          'Confirmation happens on this phone. The server is not cryptographically told that it took place.',
       }),
     ).not.toThrow();
   });

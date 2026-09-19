@@ -39,10 +39,6 @@ export const ComingSoonScreen: React.FC = () => {
           <Text style={styles.sectionBody}>{t(`comingSoon.${key}.body`)}</Text>
         </View>
       ))}
-
-      <View style={styles.footerCard}>
-        <Text style={styles.footerText}>{t('comingSoon.footer')}</Text>
-      </View>
     </ScrollView>
   );
 };
@@ -98,17 +94,5 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     color: colors.textSecondary,
     lineHeight: 22,
-  },
-  footerCard: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-  },
-  footerText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textMuted,
-    lineHeight: 20,
   },
 });

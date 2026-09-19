@@ -31,7 +31,7 @@ export const resources = {
         releaseNotesLabel: "What's new",
         releaseNotesSubtitle: 'What this release includes',
         comingSoonLabel: 'Coming soon',
-        comingSoonSubtitle: 'Near-term roadmap and expectation-setting notes',
+        comingSoonSubtitle: 'What we plan next for this app',
         languageLabel: 'Language',
         languageSubtitle: 'English by default; French available',
         securityLabel: 'Security',
@@ -56,13 +56,13 @@ export const resources = {
         unavailableBody:
           'This device does not currently support the stronger device confirmation mode required for protected approvals.',
         preferenceNoteEyebrow: 'This phone',
-        preferenceNoteTitle: 'This setting is your device preference',
+        preferenceNoteTitle: 'Device confirmation on this phone',
         preferenceNoteBody:
-          'When enabled, this phone asks for device confirmation before it approves or denies requests. Android may use strong biometrics or the device credential, depending on what is available.',
+          'When enabled, this phone asks for biometrics or your screen lock before approving or denying.',
         declarativeNoteEyebrow: 'Current version',
-        declarativeNoteTitle: 'This protection is enforced by the app',
+        declarativeNoteTitle: 'Honest limits',
         declarativeNoteBody:
-          'The app asks for local device confirmation before responding. The signing key itself does not require that confirmation, and the backend receives no cryptographic proof that it occurred or was bound to the signature.',
+          'Confirmation happens on this phone. The server is not cryptographically told that it took place.',
         settingChangeCancelled:
           'The change was canceled. Protected confirmation remains enabled.',
         settingChangeUnavailable:
@@ -82,37 +82,26 @@ export const resources = {
         includedTitle: 'Included in this release',
         includedItem1: 'Enroll a trusted device by scanning a QR code.',
         includedItem2: 'Approve or deny authentication requests from the mobile device.',
-        includedItem3: 'Local storage for enrollments and device cryptographic keys.',
+        includedItem3: 'Local storage for enrollments and the keys used on this phone.',
         requirementsTitle: 'Requirements',
         requirementsBody:
           'Android 12 or later. Camera access is used only to scan enrollment QR codes. Optional device confirmation (biometrics or screen lock) stays on this phone.',
-        comingNextTitle: 'Coming next',
-        comingNextItem1:
-          'Further work is planned on authentication policy, local-auth rules, and stronger cryptographic validation boundaries.',
-        comingNextItem2:
-          'Certificate pinning is planned in a lightweight Ezkey form, starting with trust on first use during enrollment and a controlled refresh path later if the pin changes.',
-        notesTitle: 'Important notes',
-        note1:
-          'Your organization runs its own Ezkey installation. This app does not collect analytics or advertising identifiers.',
       },
       comingSoon: {
         accessibilityLabel: 'Coming soon in Ezkey Mobile',
-        eyebrow: 'Near-term roadmap',
+        eyebrow: 'Coming up',
         title: 'Coming soon',
-        intro:
-          'These are the next mobile improvements that matter most for expectation-setting and practical security. This is a focused roadmap, not an exhaustive feature list.',
+        intro: 'A short look at what we plan next. Not a full feature list.',
         auth: {
-          title: 'Authentication policy and stronger validation',
+          title: 'Clearer approval rules',
           body:
-            'Future work will continue on authentication policy, local-auth enforcement, and stronger cryptographic validation. The goal is to keep the current protection honest while preparing a clearer policy model and stronger proof boundaries over time.',
+            'Make it clearer when this phone must confirm before you approve or deny — and keep that honest.',
         },
         pinning: {
-          title: 'Certificate pinning, Ezkey-style',
+          title: 'Stronger connection checks',
           body:
-            'Certificate pinning is planned in a pragmatic lightweight form. The initial direction is trust on first use during enrollment, followed by a controlled refresh path if the pin no longer matches, so later authentication cycles get meaningful network trust hardening without pretending to reach the most extreme pinning model.',
+            'Remember the server you enrolled with, so later check-ins have a clearer network trust path.',
         },
-        footer:
-          'Ezkey Mobile is intentionally aiming for practical, explicit security improvements rather than over-claiming perfection. Future work will continue in that same spirit.',
       },
       unsupportedOs: {
         accessibilityLabel: 'Unsupported Android version',
@@ -132,7 +121,7 @@ export const resources = {
       about: {
         accessibilityLabel: 'About Ezkey Authenticator',
         title: 'Ezkey Authenticator',
-        tagline: 'Cryptographic MFA - backend-first, self-hosted, open source.',
+        tagline: 'Confirm sign-ins from a trusted phone. Self-hosted. Open source.',
         version: 'Version',
         buildUtc: 'Build (UTC)',
         buildTimeAccessibility: 'Native app build time UTC',
@@ -140,7 +129,9 @@ export const resources = {
         license: 'License',
         licenseValue: 'MIT - Open Source',
         description:
-          'Ezkey lets you enroll trusted devices and approve sign-in requests from your admin console. It is a proprietary cryptographic protocol, intentionally distinct from FIDO2/WebAuthn and passkeys, designed for operators who want full control over their authentication backend.',
+          'Ezkey lets you enroll this phone as a trusted device and approve or deny sign-in requests when an app asks you to confirm. Your organization runs Ezkey; this app is the trusted phone that confirms those sign-ins.',
+        privacyNote:
+          'This app does not collect analytics or advertising identifiers.',
         openWebsite: 'Open Ezkey website',
         openWebsiteHint: 'Opens ezkey.org in the browser',
         projectSite: 'ezkey.org - project site and updates',
@@ -402,7 +393,7 @@ export const resources = {
         releaseNotesLabel: 'Nouveautés',
         releaseNotesSubtitle: 'Contenu de cette version',
         comingSoonLabel: 'À venir',
-        comingSoonSubtitle: 'Feuille de route rapprochée et notes de cadrage',
+        comingSoonSubtitle: 'Ce que nous prévoyons ensuite pour cette application',
         languageLabel: 'Langue',
         languageSubtitle: 'Anglais par défaut; français disponible',
         securityLabel: 'Sécurité',
@@ -427,13 +418,13 @@ export const resources = {
         unavailableBody:
           'Cet appareil ne prend pas actuellement en charge le mode de confirmation renforcée requis pour les approbations protégées.',
         preferenceNoteEyebrow: 'Ce téléphone',
-        preferenceNoteTitle: 'Ce réglage correspond à votre préférence locale',
+        preferenceNoteTitle: 'Confirmation sur cet appareil',
         preferenceNoteBody:
-          'Lorsque ce mode est activé, ce téléphone demande une confirmation de l’appareil avant d’approuver ou de refuser une demande. Android peut utiliser une biométrie forte ou le code de l’appareil selon ce qui est disponible.',
+          'Lorsque ce mode est activé, ce téléphone demande la biométrie ou le verrouillage de l’écran avant d’approuver ou de refuser.',
         declarativeNoteEyebrow: 'Version actuelle',
-        declarativeNoteTitle: 'Cette protection est appliquée par l’application',
+        declarativeNoteTitle: 'Limites honnêtes',
         declarativeNoteBody:
-          'L’application demande une confirmation locale de l’appareil avant de répondre. La clé de signature elle-même n’exige pas cette confirmation et le backend ne reçoit aucune preuve cryptographique qu’elle a eu lieu ou qu’elle était liée à la signature.',
+          'La confirmation a lieu sur ce téléphone. Le serveur n’en reçoit pas de preuve cryptographique.',
         settingChangeCancelled:
           'Le changement a été annulé. La confirmation renforcée reste activée.',
         settingChangeUnavailable:
@@ -453,37 +444,27 @@ export const resources = {
         includedTitle: 'Ce qui est inclus',
         includedItem1: 'Enrôlement d’un appareil de confiance par code QR.',
         includedItem2: 'Approbation ou refus des demandes d’authentification depuis l’appareil mobile.',
-        includedItem3: 'Stockage local des enrôlements et des clés cryptographiques de l’appareil.',
+        includedItem3: 'Stockage local des enrôlements et des clés utilisées sur ce téléphone.',
         requirementsTitle: 'Prérequis',
         requirementsBody:
           'Android 12 ou plus récent. L’accès à la caméra sert uniquement à scanner les QR d’enrôlement. La confirmation facultative sur l’appareil (biométrie ou verrouillage) reste sur ce téléphone.',
-        comingNextTitle: 'À venir',
-        comingNextItem1:
-          'Du travail supplémentaire est prévu sur la policy d’authentification, les règles de réauthentification locale et des frontières de validation cryptographique plus fortes.',
-        comingNextItem2:
-          'Le certificate pinning est prévu sous une forme légère à la manière Ezkey, en commençant par un trust on first use pendant l’enrôlement et un parcours contrôlé de rafraîchissement si le pin change par la suite.',
-        notesTitle: 'Notes importantes',
-        note1:
-          'Votre organisation exploite sa propre installation Ezkey. Cette application ne collecte pas d’analytique ni d’identifiants publicitaires.',
       },
       comingSoon: {
         accessibilityLabel: 'À venir dans Ezkey Mobile',
-        eyebrow: 'Feuille de route rapprochée',
+        eyebrow: 'Prochaines étapes',
         title: 'À venir',
         intro:
-          'Voici les prochains chantiers mobiles les plus utiles pour cadrer les attentes et faire progresser la sécurité de façon pragmatique. Il s’agit d’une feuille de route ciblée, pas d’une liste exhaustive.',
+          'Un aperçu court de ce que nous prévoyons ensuite. Pas une liste exhaustive.',
         auth: {
-          title: 'Policy d’authentification et validation plus forte',
+          title: 'Règles d’approbation plus claires',
           body:
-            'Le travail futur va continuer sur la policy d’authentification, l’application locale des exigences et une validation cryptographique plus forte. L’objectif est de garder la protection actuelle honnête tout en préparant avec le temps un modèle de policy plus clair et de meilleures frontières de preuve.',
+            'Rendre plus clair le moment où ce téléphone doit confirmer avant d’approuver ou de refuser — en restant honnête.',
         },
         pinning: {
-          title: 'Certificate pinning, à la manière Ezkey',
+          title: 'Contrôles de connexion plus solides',
           body:
-            'Le certificate pinning est prévu sous une forme légère et assumée. La direction initiale est un trust on first use pendant l’enrôlement, suivi d’un petit cycle de rafraîchissement contrôlé si le pin ne correspond plus, afin de renforcer utilement la confiance réseau des cycles d’authentification suivants sans prétendre atteindre le modèle de pinning le plus extrême.',
+            'Mémoriser le serveur auquel vous vous êtes enrôlé, pour que les vérifications suivantes aient un chemin de confiance réseau plus clair.',
         },
-        footer:
-          'Ezkey Mobile vise volontairement des améliorations de sécurité pratiques et explicites plutôt que des promesses excessives. La suite du travail restera dans ce même esprit.',
       },
       unsupportedOs: {
         accessibilityLabel: 'Version Android non prise en charge',
@@ -504,7 +485,8 @@ export const resources = {
       about: {
         accessibilityLabel: 'À propos de l’authentificateur Ezkey',
         title: 'Authentificateur Ezkey',
-        tagline: 'AMF cryptographique - backend-first, auto-hébergée, open source.',
+        tagline:
+          'Confirmez les connexions depuis un téléphone de confiance. Auto-hébergé. Open source.',
         version: 'Version',
         buildUtc: 'Build (UTC)',
         buildTimeAccessibility: 'Heure de build native de l’application en UTC',
@@ -512,7 +494,9 @@ export const resources = {
         license: 'Licence',
         licenseValue: 'MIT - Open Source',
         description:
-          'Ezkey vous permet d’enrôler des appareils de confiance et d’approuver des demandes de connexion depuis votre console d’administration. Il s’agit d’un protocole cryptographique propriétaire, volontairement distinct de FIDO2/WebAuthn et des passkeys, conçu pour les opérateurs qui veulent un contrôle complet sur leur backend d’authentification.',
+          'Ezkey vous permet d’enrôler ce téléphone comme appareil de confiance et d’approuver ou de refuser les demandes de connexion lorsqu’une application vous demande de confirmer. Votre organisation exploite Ezkey ; cette application est le téléphone de confiance qui confirme ces connexions.',
+        privacyNote:
+          'Cette application ne collecte ni analytiques ni identifiants publicitaires.',
         openWebsite: 'Ouvrir le site web Ezkey',
         openWebsiteHint: 'Ouvre ezkey.org dans le navigateur',
         projectSite: 'ezkey.org - site du projet et mises à jour',

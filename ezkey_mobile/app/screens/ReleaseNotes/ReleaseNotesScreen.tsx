@@ -12,8 +12,6 @@ import {useTranslation} from 'react-i18next';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
 
 const releaseNoteKeyOrder = ['includedItem1', 'includedItem2', 'includedItem3'] as const;
-const comingNextKeyOrder = ['comingNextItem1', 'comingNextItem2'] as const;
-const noteKeyOrder = ['note1'] as const;
 
 /**
  * Presents the current release notes for the official Android app line.
@@ -59,26 +57,6 @@ export const ReleaseNotesScreen: React.FC = () => {
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>{t('releaseNotes.requirementsTitle')}</Text>
         <Text style={styles.sectionBody}>{t('releaseNotes.requirementsBody')}</Text>
-      </View>
-
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>{t('releaseNotes.comingNextTitle')}</Text>
-        {comingNextKeyOrder.map(key => (
-          <View key={key} style={styles.bulletRow}>
-            <Text style={styles.bulletMarker}>•</Text>
-            <Text style={styles.bulletText}>{t(`releaseNotes.${key}`)}</Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>{t('releaseNotes.notesTitle')}</Text>
-        {noteKeyOrder.map(key => (
-          <View key={key} style={styles.bulletRow}>
-            <Text style={styles.bulletMarker}>•</Text>
-            <Text style={styles.bulletText}>{t(`releaseNotes.${key}`)}</Text>
-          </View>
-        ))}
       </View>
     </ScrollView>
   );
