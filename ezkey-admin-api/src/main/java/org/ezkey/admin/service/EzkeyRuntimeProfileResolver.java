@@ -17,9 +17,9 @@ import org.springframework.stereotype.Component;
  * Resolves the operator-facing product runtime profile from the live Spring environment.
  *
  * <p>Product vocabulary (locked): {@code base} (opt-in; integrity monitoring jobs off) and {@code
- * integrity} (default). Spring mechanism for base is active profile {@code docker-base} (see
- * {@code EZKEY_RUNTIME_PROFILE} / {@code --runtime=base}). This resolver does not expose the job
- * matrix — only the product label.
+ * integrity} (default). Spring mechanism for base is active profile {@code docker-base} (see {@code
+ * EZKEY_RUNTIME_PROFILE} / {@code --runtime=base}). This resolver does not expose the job matrix —
+ * only the product label.
  *
  * @since 2026
  */

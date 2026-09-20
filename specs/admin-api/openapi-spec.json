@@ -9078,6 +9078,15 @@
           "integrityConfigSummary": {
             "$ref": "#/components/schemas/DashboardIntegrityConfigSummaryDto",
             "description": "Active integrity configuration summary (non-secret). Global Admin only."
+          },
+          "runtimeProfile": {
+            "type": "string",
+            "description": "Product runtime profile: base (opt-in; integrity monitoring off) or integrity (default). Non-secret. Global Admin only.",
+            "enum": [
+              "base",
+              "integrity"
+            ],
+            "example": "integrity"
           }
         }
       },

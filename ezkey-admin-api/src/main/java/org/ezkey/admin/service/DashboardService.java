@@ -168,8 +168,7 @@ public class DashboardService {
             ? CompletableFuture.completedFuture(buildIntegrityConfigSummary())
             : CompletableFuture.completedFuture(null);
 
-    String runtimeProfile =
-        principal.isGlobalAdmin() ? runtimeProfileResolver.resolve() : null;
+    String runtimeProfile = principal.isGlobalAdmin() ? runtimeProfileResolver.resolve() : null;
 
     try {
       return new DashboardOverviewDto(
