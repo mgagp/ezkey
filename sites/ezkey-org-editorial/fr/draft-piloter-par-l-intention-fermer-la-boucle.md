@@ -53,9 +53,9 @@ Autrement dit, le système savait avancer. Il ne savait pas encore fermer la bou
 
 ## Savoir ne suffit pas
 
-Ce qui rend cette expérience intéressante à mes yeux, c’est que je ne pars pas de zéro sur ces sujets-là. J’ai déjà écrit sur [l’importance des tests](/fr/hygiene-continue-du-code-outils-curated.html). J’ai déjà insisté, dans [mon retour aux sources](/fr/retour-aux-sources-developpeur-ere-ia.html), sur le fait qu’il ne suffit pas d’avoir « des tests », mais qu’il faut savoir lesquels exécuter, à quel niveau, et ce qu’ils doivent vraiment vérifier. J’ai déjà écrit aussi sur [le passage du code aux spécifications, puis des spécifications à l’intention](/fr/l-intention-prochaine-frontiere-partenariat-humain-ia.html), justement pour donner aux modèles en évolution une boussole plus haute que le simple code immédiat.
+Ce qui rend cette expérience intéressante à mes yeux, c’est que je ne pars pas de zéro sur ces sujets-là. J’ai déjà écrit sur [l’importance des tests](/fr/strategie-de-test.html). J’ai déjà insisté, dans [mon retour aux sources](/fr/retour-aux-sources-developpeur-ere-ia.html), sur le fait qu’il ne suffit pas d’avoir « des tests », mais qu’il faut savoir lesquels exécuter, à quel niveau, et ce qu’ils doivent vraiment vérifier. J’ai déjà écrit aussi sur [le passage du code aux spécifications, puis des spécifications à l’intention](/fr/l-intention-prochaine-frontiere-partenariat-humain-ia.html), justement pour donner aux modèles en évolution une boussole plus haute que le simple code immédiat.
 
-J’ai même déjà soutenu, y compris dans [mon texte sur l’ablation](/fr/ablation-methodologie-mode-plan.html), qu’il ne fallait pas couper les ailes probabilistes du moteur. Autrement dit : éviter le micromanagement, garder des voies ouvertes, et fournir plutôt des valeurs de projet qui aident à décider intelligemment.
+J’ai même déjà soutenu, dans [Rendre ses ailes à l’IA](/fr/l-intention-prochaine-frontiere-partenariat-humain-ia.html), qu’il ne fallait pas couper les ailes probabilistes du moteur. Autrement dit : éviter le micromanagement, garder des voies ouvertes, et fournir plutôt des valeurs de projet qui aident à décider intelligemment.
 
 Tout ça, je le savais déjà. Et pourtant, dans ce nouveau mode de travail distribué, ce savoir ne s’est pas traduit tout seul en comportement fiable.
 
