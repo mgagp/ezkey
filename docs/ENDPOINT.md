@@ -552,6 +552,8 @@ Empty body (servlet filter). `Retry-After` is seconds until the per-IP or per-in
 
 **Response (200 OK):** Paginated response with `content` (array of checkpoint objects: `checkpointId`, `windowStart`, `windowEnd`, `entryCount`, `firstEntryId`, `lastEntryId`, `entriesDigest`, `prevChainHmac`, `chainHmac`, `createdAt`, `checkpointType`, `lifecycleState`, `notes`), `totalElements`, `totalPages`, etc.
 
+**GET /api/v1/audit-logs/integrity/bootstrap** — Thin Global Admin Integrity atelier bootstrap for Admin UI honesty chrome. Returns product `runtimeProfile` (`base`|`integrity`, from Spring `docker-base`) plus live `chainCheckpointsEnabled` / `nightlyValidationEnabled` config flags. Dual source: profile name is not derived from flags; flags are not derived from the profile name. Not a job matrix or second journal.
+
 **GET /api/v1/audit-logs/lifecycle/archive-eligibility** — Read lifecycle archive observability state. Returns whether external archival is enabled, whether confirmation is required, and the sealed checkpoint tranche currently awaiting confirmation.
 
 **POST /api/v1/audit-logs/lifecycle/confirm-archived** — Record successful external archival for a sealed tranche by marking it `EXPORTED`. This confirms the result of an external archival workflow; it does not perform the export itself.

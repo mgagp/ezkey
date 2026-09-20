@@ -1,7 +1,8 @@
 {
   "help": {
     "integrityLifecycle": {
-      "content": "Chain checkpoints seal batches of audit entries every 5 minutes. Use <strong>Verify chain</strong> and <strong>Verify entry HMAC</strong> for read-only forensic checks (no alert side effects). Use <strong>Run validation</strong> for the detective batch path — same semantics as the nightly job — which may raise or touch an <strong>AUDIT_INTEGRITY_RUPTURE</strong> alert when alert-eligible violations remain. Use <strong>Lifecycle overview</strong> to understand what is currently sealed, awaiting archive confirmation, or approaching purge eligibility. Manual lifecycle actions remain exceptional maintenance paths, not the normal operator workflow."
+      "content": "Chain checkpoints seal batches of audit entries every 5 minutes. Use <strong>Verify chain</strong> and <strong>Verify entry HMAC</strong> for read-only forensic checks (no alert side effects). Use <strong>Run validation</strong> for the detective batch path — same semantics as the nightly job — which may raise or touch an <strong>AUDIT_INTEGRITY_RUPTURE</strong> alert when alert-eligible violations remain. Use <strong>Lifecycle overview</strong> to understand what is currently sealed, awaiting archive confirmation, or approaching purge eligibility. Manual lifecycle actions remain exceptional maintenance paths, not the normal operator workflow.",
+      "contentMonitoringOff": "Scheduled detection is not active on this instance. When monitoring is enabled, chain checkpoints seal on a schedule and a nightly job runs the same detective path as <strong>Run validation</strong>. Use <strong>Verify chain</strong> and <strong>Verify entry HMAC</strong> for on-demand read-only forensic checks (no alert side effects). Use <strong>Run validation</strong> as the operator-driven detective batch. Manual lifecycle actions remain exceptional maintenance paths."
     },
     "sealArchive": {
       "content": "Seals a range of checkpoints for archival (e.g. before dropping a DB partition). You can specify a period by timestamps or by checkpoint IDs. A pre-flight integrity check runs automatically."
@@ -10,7 +11,8 @@
       "content": "When the system was offline longer than the scheduler lookback (e.g. 60 min), declare each detected gap from the list below to keep lifecycle continuity explicit. Use <strong>Locate in timeline</strong> to see the gap in context, then <strong>Declare</strong> to formally close it with a justification. This is a recovery action, not a normal operator workflow."
     },
     "exceptionalMaintenance": {
-      "content": "Use these actions only for exceptional maintenance or recovery. Normal lifecycle progression is policy-driven and system-executed; the primary UI posture is observability, not manual lifecycle orchestration."
+      "content": "Use these actions only for exceptional maintenance or recovery. Normal lifecycle progression is policy-driven and system-executed; the primary UI posture is observability, not manual lifecycle orchestration.",
+      "contentMonitoringOff": "Use these actions only for exceptional maintenance or recovery. Normal lifecycle progression is policy-driven and system-executed when scheduled monitoring is enabled; with monitoring inactive, this atelier stays available for operator-driven checks. The primary UI posture remains observability, not manual lifecycle orchestration."
     },
     "incidents": {
       "content": "Operational incidents record stalled Admin API checkpoints as seen by peripheral supervision (heartbeat). With default Docker settings, peripherals refuse only <strong>new MFA work</strong> (narrow HTTP routes — see <strong>docs/AUDIT_LOG_INTEGRITY.md</strong>) after about <strong>9 minutes beyond the latest checkpoint <code>window_end</code></strong>; audit rows elsewhere may continue. Use <strong>Declare gap</strong> for undeclared <em>cryptographic</em> time holes — a different lifecycle. After recovery, declare closure here whenever an incident still awaits justification."
@@ -340,6 +342,11 @@
     "lifecycleOverview": "Lifecycle Overview",
     "lifecyclePolicyTitle": "Policy-driven lifecycle",
     "lifecyclePolicyHint": "The system progresses checkpoint lifecycle states automatically. This panel is primarily for operator visibility.",
+    "lifecyclePolicyHintMonitoringOff": "Scheduled detection is inactive — checkpoint lifecycle does not progress automatically on this instance. This panel is primarily for operator visibility; use atelier actions for on-demand checks.",
+    "monitoringInactiveBadge": {
+      "base": "Base profile — scheduled detection inactive",
+      "generic": "Scheduled detection inactive"
+    },
     "policyDriven": "Policy-driven",
     "loadingLifecycleOverview": "Loading lifecycle overview…",
     "noLifecycleOverview": "No lifecycle overview is currently available.",

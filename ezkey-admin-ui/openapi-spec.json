@@ -5488,6 +5488,48 @@
         }
       }
     },
+    "/api/v1/audit-logs/integrity/bootstrap": {
+      "get": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Integrity atelier bootstrap",
+        "description": "Thin Global Admin payload for Integrity honesty chrome: product runtimeProfile (base|integrity from Spring docker-base) plus chainCheckpointsEnabled and nightlyValidationEnabled config flags. Not a job matrix or second journal.",
+        "operationId": "getIntegrityBootstrap",
+        "responses": {
+          "200": {
+            "description": "Integrity bootstrap returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityBootstrapResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/audit-logs/integrity-check": {
       "get": {
         "tags": [
@@ -9573,6 +9615,29 @@
           "checkpointIdTo": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "IntegrityBootstrapResponseDto": {
+        "type": "object",
+        "description": "Thin Integrity atelier bootstrap: product runtime profile plus monitoring enable flags (non-secret). Global Admin only.",
+        "properties": {
+          "runtimeProfile": {
+            "type": "string",
+            "description": "Product runtime profile from Spring environment (docker-base → base; else integrity). Not derived from enable flags.",
+            "enum": [
+              "base",
+              "integrity"
+            ],
+            "example": "integrity"
+          },
+          "chainCheckpointsEnabled": {
+            "type": "boolean",
+            "description": "Whether rolling audit chain checkpoints are enabled (config flag for monitoring honesty)."
+          },
+          "nightlyValidationEnabled": {
+            "type": "boolean",
+            "description": "Whether nightly retroactive integrity validation is enabled (config flag for monitoring honesty)."
           }
         }
       },

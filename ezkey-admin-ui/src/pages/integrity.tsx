@@ -45,6 +45,8 @@ import {
   checkIntegrity,
   getArchiveEligibility,
   getChainCheckpoints,
+  getGetIntegrityBootstrapQueryKey,
+  getIntegrityBootstrap,
   runRetroactiveIntegrityValidation,
   useConfirmArchived,
   useDeclareGap,
@@ -57,6 +59,7 @@ import type {
   ArchiveEligibilityResult,
   ChainVerificationReport,
   GetChainCheckpointsParams,
+  IntegrityBootstrapResponseDto,
   IntegrityReport,
   ArchiveSealResult,
   GapDeclarationResult,
@@ -64,6 +67,44 @@ import type {
   RetroactiveIntegrityValidationRunResponse,
 } from '@/generated/admin-api/model';
 
+type IntegrityRuntimeProfile = 'base' | 'integrity';
+
+type IntegrityMonitoringTruth = {
+  runtimeProfile?: IntegrityRuntimeProfile;
+  chainCheckpointsEnabled?: boolean;
+  nightlyValidationEnabled?: boolean;
+};
+
+function resolveIntegrityMonitoringTruth(
+  bootstrap: IntegrityBootstrapResponseDto | undefined,
+): IntegrityMonitoringTruth {
+  const runtimeProfile = bootstrap?.runtimeProfile;
+  const profile: IntegrityRuntimeProfile | undefined =
+    runtimeProfile === 'base' || runtimeProfile === 'integrity' ? runtimeProfile : undefined;
+  return {
+    runtimeProfile: profile,
+    chainCheckpointsEnabled: bootstrap?.chainCheckpointsEnabled,
+    nightlyValidationEnabled: bootstrap?.nightlyValidationEnabled,
+  };
+}
+
+/**
+ * Inactive badge when either monitoring flag is off (config flags — not derived from profile name).
+ * Base naming still requires runtimeProfile === 'base'.
+ */
+function isScheduledDetectionInactive(truth: IntegrityMonitoringTruth): boolean {
+  return (
+    truth.chainCheckpointsEnabled === false
+    || truth.nightlyValidationEnabled === false
+  );
+}
+
+/**
+ * Present-tense schedule copy is unsafe when either chain or nightly monitoring is off.
+ */
+function shouldUseMonitoringOffCopy(truth: IntegrityMonitoringTruth): boolean {
+  return isScheduledDetectionInactive(truth);
+}
 type AuditChainIncidentRow = {
   incidentId: number;
   status: 'IN_PROGRESS' | 'RECOVERED_PENDING_DECLARATION' | 'CLOSED';
@@ -336,6 +377,7 @@ function IntegrityPanel({
   reconcileFailBoundary = null,
   reconcileResumeBoundary = null,
   autoOpenReconcile = false,
+  monitoringTruth,
 }: {
   expandFromQuery?: boolean;
   focusCheckpointId?: number | null;
@@ -347,11 +389,14 @@ function IntegrityPanel({
   reconcileResumeBoundary?: string | null;
   /** When true (deep-link `action=reconcile`), open the reconcile dialog once boundaries are ready. */
   autoOpenReconcile?: boolean;
+  /** Server truth for runtime profile + integrity monitoring flags (from Integrity bootstrap). */
+  monitoringTruth: IntegrityMonitoringTruth;
 }) {
   const { t } = useTranslation('audit-logs');
   const { effectiveTimeZoneId } = useDisplayTimezone();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const monitoringOffCopy = shouldUseMonitoringOffCopy(monitoringTruth);
   const forceTimelineOpen = expandFromQuery || focusCheckpointId != null;
   const [timelineExpanded, setTimelineExpanded] = useState(forceTimelineOpen);
   const [prevForceTimelineOpen, setPrevForceTimelineOpen] = useState(forceTimelineOpen);
@@ -866,7 +911,16 @@ function IntegrityPanel({
         <p className="text-sm text-fg-muted">{t('integrity.subtitle')}</p>
         <ContextHelp
           title={t('integrity.pageTitle')}
-          content={<Trans i18nKey="audit-logs:help.integrityLifecycle.content" components={{ strong: <strong /> }} />}
+          content={
+            <Trans
+              i18nKey={
+                monitoringOffCopy
+                  ? 'audit-logs:help.integrityLifecycle.contentMonitoringOff'
+                  : 'audit-logs:help.integrityLifecycle.content'
+              }
+              components={{ strong: <strong /> }}
+            />
+          }
           ariaLabel={t('common:help.ariaLabel', { title: t('integrity.pageTitle') })}
         />
       </div>
@@ -1094,9 +1148,17 @@ function IntegrityPanel({
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
                   <p className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.lifecyclePolicyTitle')}</p>
-                  <p className="text-xs text-fg-muted">{t('integrity.lifecyclePolicyHint')}</p>
+                  <p className="text-xs text-fg-muted">
+                    {t(
+                      monitoringOffCopy
+                        ? 'integrity.lifecyclePolicyHintMonitoringOff'
+                        : 'integrity.lifecyclePolicyHint',
+                    )}
+                  </p>
                 </div>
-                <Badge variant="muted">{t('integrity.policyDriven')}</Badge>
+                {!monitoringOffCopy && (
+                  <Badge variant="muted">{t('integrity.policyDriven')}</Badge>
+                )}
               </div>
 
               {archiveEligibilityLoading ? (
@@ -1149,7 +1211,20 @@ function IntegrityPanel({
               <div className="flex items-center gap-2">
                 <p className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.exceptionalMaintenance')}</p>
                 <span onClick={(e) => e.stopPropagation()}>
-                  <ContextHelp title={t('integrity.exceptionalMaintenance')} content={<Trans i18nKey="audit-logs:help.exceptionalMaintenance.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.exceptionalMaintenance') })} />
+                  <ContextHelp
+                    title={t('integrity.exceptionalMaintenance')}
+                    content={
+                      <Trans
+                        i18nKey={
+                          monitoringOffCopy
+                            ? 'audit-logs:help.exceptionalMaintenance.contentMonitoringOff'
+                            : 'audit-logs:help.exceptionalMaintenance.content'
+                        }
+                        components={{ strong: <strong /> }}
+                      />
+                    }
+                    ariaLabel={t('common:help.ariaLabel', { title: t('integrity.exceptionalMaintenance') })}
+                  />
                 </span>
               </div>
               <div className="flex gap-3 flex-wrap items-center">
@@ -1913,6 +1988,19 @@ export default function IntegrityPage() {
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const { data: integrityBootstrap } = useQuery({
+    queryKey: getGetIntegrityBootstrapQueryKey(),
+    queryFn: () =>
+      getIntegrityBootstrap() as Promise<IntegrityBootstrapResponseDto>,
+    enabled: isGlobalAdmin,
+  });
+  const monitoringTruth = useMemo(
+    () => resolveIntegrityMonitoringTruth(integrityBootstrap),
+    [integrityBootstrap],
+  );
+  const showMonitoringInactiveBadge =
+    monitoringTruth.runtimeProfile === 'base' || isScheduledDetectionInactive(monitoringTruth);
+
   const focusCheckpointIdParam = useMemo(() => {
     const raw = searchParams.get('focusCheckpointId');
     if (!raw) {
@@ -2006,6 +2094,19 @@ export default function IntegrityPage() {
   return (
     <AppShell title={t('integrity.pageTitle')}>
       <div className="space-y-4">
+        {showMonitoringInactiveBadge && (
+          <div
+            className="border-2 border-fg/20 bg-fg/[0.03] px-3 py-2 text-sm flex flex-wrap items-center gap-2"
+            data-testid="integrity-monitoring-inactive-badge"
+            role="status"
+          >
+            <Badge variant="muted">
+              {monitoringTruth.runtimeProfile === 'base'
+                ? t('integrity.monitoringInactiveBadge.base')
+                : t('integrity.monitoringInactiveBadge.generic')}
+            </Badge>
+          </div>
+        )}
         {isIntegrityAlertContext && (
           <div className="border-2 border-fg/20 bg-fg/[0.03] px-3 py-2 text-sm flex flex-wrap items-center gap-2">
             <span>{t('integrity.investigation.contextBanner')}</span>
@@ -2080,6 +2181,7 @@ export default function IntegrityPage() {
               reconcileFailBoundary={reconcileBoundaries?.failBoundary ?? null}
               reconcileResumeBoundary={reconcileBoundaries?.resumeBoundary ?? null}
               autoOpenReconcile={autoOpenReconcile}
+              monitoringTruth={monitoringTruth}
             />
           </>
         )}
