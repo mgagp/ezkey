@@ -9,6 +9,7 @@ ablation note for what used to be here.
 - [tracer-bullet-brief.template.md](tracer-bullet-brief.template.md) — `TB-*` bounded execution slice.
 - [architecture-decision.template.md](architecture-decision.template.md) — `ADR-*` design decision, global or component-scoped.
 - [cold-agent-plan-review.prompt.md](cold-agent-plan-review.prompt.md) — Prompt template for fresh-session plan review and hardening before cold-agent execution.
+- [ui-walk-gate.template.md](ui-walk-gate.template.md) — Admin UI walk/done gate checklist for Isabelle (and intention owners).
 
 ## Using a template
 
