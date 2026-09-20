@@ -45,6 +45,8 @@ import {
   checkIntegrity,
   getArchiveEligibility,
   getChainCheckpoints,
+  getGetIntegrityBootstrapQueryKey,
+  getIntegrityBootstrap,
   runRetroactiveIntegrityValidation,
   useConfirmArchived,
   useDeclareGap,
@@ -57,6 +59,7 @@ import type {
   ArchiveEligibilityResult,
   ChainVerificationReport,
   GetChainCheckpointsParams,
+  IntegrityBootstrapResponseDto,
   IntegrityReport,
   ArchiveSealResult,
   GapDeclarationResult,
@@ -66,13 +69,6 @@ import type {
 
 type IntegrityRuntimeProfile = 'base' | 'integrity';
 
-/** Thin Integrity bootstrap (OpenAPI: IntegrityBootstrapResponseDto after Orval refresh). */
-type IntegrityBootstrapResponse = {
-  runtimeProfile?: IntegrityRuntimeProfile;
-  chainCheckpointsEnabled?: boolean;
-  nightlyValidationEnabled?: boolean;
-};
-
 type IntegrityMonitoringTruth = {
   runtimeProfile?: IntegrityRuntimeProfile;
   chainCheckpointsEnabled?: boolean;
@@ -80,7 +76,7 @@ type IntegrityMonitoringTruth = {
 };
 
 function resolveIntegrityMonitoringTruth(
-  bootstrap: IntegrityBootstrapResponse | undefined,
+  bootstrap: IntegrityBootstrapResponseDto | undefined,
 ): IntegrityMonitoringTruth {
   const runtimeProfile = bootstrap?.runtimeProfile;
   const profile: IntegrityRuntimeProfile | undefined =
@@ -1993,9 +1989,9 @@ export default function IntegrityPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { data: integrityBootstrap } = useQuery({
-    queryKey: ['integrity-bootstrap'],
+    queryKey: getGetIntegrityBootstrapQueryKey(),
     queryFn: () =>
-      api.get<IntegrityBootstrapResponse>('/api/v1/audit-logs/integrity/bootstrap'),
+      getIntegrityBootstrap() as Promise<IntegrityBootstrapResponseDto>,
     enabled: isGlobalAdmin,
   });
   const monitoringTruth = useMemo(

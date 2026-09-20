@@ -17,11 +17,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * <p><b>Dual source (do not collapse):</b>
  *
  * <ul>
- *   <li>{@code runtimeProfile} — product label from the live Spring runtime ({@code docker-base}
- *       → {@code base}; otherwise {@code integrity}). Not derived from enable flags.
- *   <li>{@code chainCheckpointsEnabled} / {@code nightlyValidationEnabled} — live config flags
- *       that drive monitoring-off copy and the inactive badge. Not derived from the profile name
- *       alone (an integrity profile can still disable jobs via config).
+ *   <li>{@code runtimeProfile} — product label from the live Spring runtime ({@code docker-base} →
+ *       {@code base}; otherwise {@code integrity}). Not derived from enable flags.
+ *   <li>{@code chainCheckpointsEnabled} / {@code nightlyValidationEnabled} — live config flags that
+ *       drive monitoring-off copy and the inactive badge. Not derived from the profile name alone
+ *       (an integrity profile can still disable jobs via config).
  * </ul>
  *
  * <p>Global Admin only. No job matrix, no second journal.
