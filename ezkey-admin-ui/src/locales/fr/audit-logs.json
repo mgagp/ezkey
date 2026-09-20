@@ -1,7 +1,8 @@
 {
   "help": {
     "integrityLifecycle": {
-      "content": "Les checkpoints de chaîne scellent des lots d'entrées d'audit toutes les 5 minutes. Utilisez <strong>Vérifier la chaîne</strong> et <strong>Vérifier le HMAC entrée</strong> pour des contrôles forensiques en lecture seule (sans effet sur les alertes). Utilisez <strong>Lancer la validation</strong> pour le chemin detective (même sémantique que le job nocturne) — peut créer ou mettre à jour une alerte <strong>AUDIT_INTEGRITY_RUPTURE</strong> si des violations alert-eligible subsistent. Utilisez <strong>Vue lifecycle</strong> pour comprendre ce qui est scellé, en attente de confirmation d'archive, ou proche de l'éligibilité à la purge. Les actions manuelles restent des chemins de maintenance exceptionnels."
+      "content": "Les checkpoints de chaîne scellent des lots d'entrées d'audit toutes les 5 minutes. Utilisez <strong>Vérifier la chaîne</strong> et <strong>Vérifier le HMAC entrée</strong> pour des contrôles forensiques en lecture seule (sans effet sur les alertes). Utilisez <strong>Lancer la validation</strong> pour le chemin detective (même sémantique que le job nocturne) — peut créer ou mettre à jour une alerte <strong>AUDIT_INTEGRITY_RUPTURE</strong> si des violations alert-eligible subsistent. Utilisez <strong>Vue lifecycle</strong> pour comprendre ce qui est scellé, en attente de confirmation d'archive, ou proche de l'éligibilité à la purge. Les actions manuelles restent des chemins de maintenance exceptionnels.",
+      "contentMonitoringOff": "La détection planifiée n'est pas active sur cette instance. Lorsque le monitoring est activé, les checkpoints de chaîne scellent selon un calendrier et un job nocturne exécute le même chemin detective que <strong>Lancer la validation</strong>. Utilisez <strong>Vérifier la chaîne</strong> et <strong>Vérifier le HMAC entrée</strong> pour des contrôles forensiques à la demande (sans effet sur les alertes). Utilisez <strong>Lancer la validation</strong> comme lot detective piloté par l'opérateur. Les actions manuelles restent des chemins de maintenance exceptionnels."
     },
     "sealArchive": {
       "content": "Scelle une plage de checkpoints pour archivage (ex. avant suppression d'une partition BDD). Vous pouvez indiquer la période par horodatages ou par ID de checkpoints. Une vérification d'intégrité préalable s'exécute automatiquement."
@@ -10,7 +11,8 @@
       "content": "Lorsque le système a été indisponible plus longtemps que la fenêtre du planificateur (ex. 60 min), déclarez chaque lacune détectée dans la liste ci-dessous afin de rendre la continuité lifecycle explicite. Utilisez <strong>Localiser dans la chronologie</strong> pour situer la lacune, puis <strong>Déclarer</strong> pour la clôturer formellement avec une justification. C'est une action de récupération, pas un workflow opérateur normal."
     },
     "exceptionalMaintenance": {
-      "content": "Utilisez ces actions uniquement pour une maintenance exceptionnelle ou une récupération. La progression normale du lifecycle est pilotée par policy et exécutée par le système ; la posture principale de l'UI doit rester l'observabilité."
+      "content": "Utilisez ces actions uniquement pour une maintenance exceptionnelle ou une récupération. La progression normale du lifecycle est pilotée par policy et exécutée par le système ; la posture principale de l'UI doit rester l'observabilité.",
+      "contentMonitoringOff": "Utilisez ces actions uniquement pour une maintenance exceptionnelle ou une récupération. La progression normale du lifecycle est pilotée par policy et exécutée par le système lorsque le monitoring planifié est activé ; avec le monitoring inactif, cet atelier reste disponible pour des contrôles pilotés par l'opérateur. La posture principale de l'UI reste l'observabilité."
     },
     "incidents": {
       "content": "Les incidents opérationnels enregistrent des checkpoints Admin API jugés bloqués par la supervision périphérique (battement). En configuration Docker par défaut, les périphériques refusent seulement les <strong>nouveaux travaux MFA</strong> (routes HTTP étroites — voir <strong>docs/AUDIT_LOG_INTEGRITY.md</strong>) après environ <strong>9 minutes au-delà du dernier <code>window_end</code> de checkpoint</strong> ; d'autres écritures d'audit peuvent continuer. Utilisez <strong>Déclarer une lacune</strong> pour les trous temporels <em>cryptographiques</em> non déclarés — un autre lifecycle. Après rétablissement, déclarez la clôture ici lorsqu'une justification est encore requise."
@@ -340,6 +342,11 @@
     "lifecycleOverview": "Vue lifecycle",
     "lifecyclePolicyTitle": "Lifecycle piloté par policy",
     "lifecyclePolicyHint": "Le système fait progresser automatiquement les états lifecycle des checkpoints. Ce panneau sert d'abord à la visibilité opérateur.",
+    "lifecyclePolicyHintMonitoringOff": "La détection planifiée est inactive — les états lifecycle des checkpoints ne progressent pas automatiquement sur cette instance. Ce panneau sert d'abord à la visibilité opérateur ; utilisez les actions de l'atelier pour des contrôles à la demande.",
+    "monitoringInactiveBadge": {
+      "base": "Profil base — détection planifiée inactive",
+      "generic": "Détection planifiée inactive"
+    },
     "policyDriven": "Policy-driven",
     "loadingLifecycleOverview": "Chargement de la vue lifecycle…",
     "noLifecycleOverview": "Aucune vue lifecycle n'est actuellement disponible.",

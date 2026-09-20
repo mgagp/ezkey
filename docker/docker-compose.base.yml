@@ -1,0 +1,24 @@
+# =============================================================================
+# Optional compose marker for BASE runtime profile (opt-in).
+#
+# Prefer activating via product key:
+#   EZKEY_RUNTIME_PROFILE=base
+#   ./ezkey-tests/clean-start.sh --runtime=base
+#
+# docker/start.sh appends Spring profile `docker-base` when EZKEY_RUNTIME_PROFILE=base.
+# This overlay is optional documentation/visibility; it does not replace property files
+# under application-docker-base.properties.
+#
+# Claim boundary: MFA crypto on; audit-integrity monitoring off. Not tamper-evident.
+# =============================================================================
+
+services:
+  admin-api:
+    labels:
+      ezkey.runtime.profile: base
+  auth-api:
+    labels:
+      ezkey.runtime.profile: base
+  integration-api:
+    labels:
+      ezkey.runtime.profile: base

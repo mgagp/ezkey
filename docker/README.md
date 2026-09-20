@@ -325,6 +325,33 @@ export POSTGRES_PASSWORD=mysecurepassword
 All services use the `docker` Spring profile by default, which loads configuration from:
 - `application-docker.properties` files in each module's `config/` directory
 
+#### Runtime profiles (product language)
+
+Operators select a **runtime profile** with `--runtime=integrity|base` on
+`ezkey-tests/clean-start.sh`, or env `EZKEY_RUNTIME_PROFILE` (also usable on Lightsail `.env`).
+
+| Product key | Default? | Meaning |
+|-------------|----------|---------|
+| `integrity` (or unset) | **Yes** | Current Docker posture: MFA crypto + audit-chain checkpoints + peripheral heartbeat supervision. Tamper-evident claims apply here. |
+| `base` | Opt-in only | MFA crypto on; audit-integrity **monitoring** off (checkpoints, heartbeat, nightly validation, archive seal/purge, key rotation/re-encryption jobs, enrollment/token cleanup). HMAC audit *write* stays on — legitimate ops posture with limited claims; do **not** call base tamper-evident. |
+
+Spring profile `docker-base` is the **mechanism** under the preset (property files
+`application-docker-base.properties`). Do not treat Spring profile names as the ops language
+(V-2026-0010). Verify statically with `./docker/verify-runtime-profile.sh`.
+
+```bash
+./ezkey-tests/clean-start.sh --runtime=base
+EZKEY_RUNTIME_PROFILE=base ./docker/start.sh
+```
+
+**Lightsail `.env`:** set `EZKEY_RUNTIME_PROFILE=base` and ensure
+`SPRING_PROFILES_ACTIVE` includes `docker-base` last (e.g. `docker,docker-base`), or use a start
+path that sources `docker/runtime-profile.sh`. Orthogonal flags
+(`EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED`, demo-device, Caddy, HA, JMX, JavaMelody) are unchanged.
+
+Admin UI Integrity / Alerts surfaces may still be visible under base; monitoring jobs behind them
+are inactive — UI badge/mask is a separate track.
+
 #### Available Profiles
 
 **Default: `docker` (Production Mode)**
@@ -343,6 +370,11 @@ All services use the `docker` Spring profile by default, which loads configurati
 - Peripheral audit-chain heartbeat supervision stays enabled on Auth API and Integration API unless explicitly overridden — stack integrity semantics match production docker profiles for checkpoint staleness gates (default thresholds align with **`latest.window_end + 9 minutes`** for five-minute checkpoints; see **`docs/AUDIT_LOG_INTEGRITY.md`**).
 - Allows unrestricted churn testing without 429 noise from rate limits
 - Useful for development and debugging
+
+**Optional: `docker-base` (Base runtime mechanism — activate via product key above)**
+- Loaded only when `EZKEY_RUNTIME_PROFILE=base` / `--runtime=base`
+- Turns off audit-chain checkpoints + heartbeat together (★ hard coupling — never leave heartbeat on if checkpoints off)
+- Keeps encryption required / HMAC write / auth-attempt expiry scheduler
 
 #### Using Test Mode
 
