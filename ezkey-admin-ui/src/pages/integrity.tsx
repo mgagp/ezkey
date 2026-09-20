@@ -389,7 +389,7 @@ function IntegrityPanel({
   reconcileResumeBoundary?: string | null;
   /** When true (deep-link `action=reconcile`), open the reconcile dialog once boundaries are ready. */
   autoOpenReconcile?: boolean;
-  /** Server truth for runtime profile + integrity monitoring flags (from dashboard overview). */
+  /** Server truth for runtime profile + integrity monitoring flags (from Integrity bootstrap). */
   monitoringTruth: IntegrityMonitoringTruth;
 }) {
   const { t } = useTranslation('audit-logs');
