@@ -75,6 +75,7 @@ class AuditLogControllerChainCheckpointsTest {
   @Mock private AuditLifecycleService auditLifecycleService;
   @Mock private RetroactiveIntegrityValidationService retroactiveIntegrityValidationService;
   @Mock private AuditChainIncidentService auditChainIncidentService;
+  @Mock private org.ezkey.admin.service.IntegrityBootstrapService integrityBootstrapService;
   @Mock private EzkeyAdminRepository adminRepository;
   @Mock private EnrollmentRepository enrollmentRepository;
   @Mock private IntegrationRepository integrationRepository;
@@ -101,6 +102,7 @@ class AuditLogControllerChainCheckpointsTest {
             auditLifecycleService,
             retroactiveIntegrityValidationService,
             auditChainIncidentService,
+            integrityBootstrapService,
             adminRepository,
             enrollmentRepository,
             integrationRepository,
@@ -229,6 +231,21 @@ class AuditLogControllerChainCheckpointsTest {
     assertEquals(200, response.getStatusCode().value());
     assertEquals(result, response.getBody());
     verify(auditLifecycleService).getArchiveEligibility();
+  }
+
+  @Test
+  @DisplayName("getIntegrityBootstrap returns 200 and delegates to bootstrap service")
+  void getIntegrityBootstrap_returnsPayload() {
+    org.ezkey.admin.dto.response.IntegrityBootstrapResponseDto dto =
+        new org.ezkey.admin.dto.response.IntegrityBootstrapResponseDto("base", false, false);
+    when(integrityBootstrapService.build()).thenReturn(dto);
+
+    ResponseEntity<org.ezkey.admin.dto.response.IntegrityBootstrapResponseDto> response =
+        controller.getIntegrityBootstrap();
+
+    assertEquals(200, response.getStatusCode().value());
+    assertEquals(dto, response.getBody());
+    verify(integrityBootstrapService).build();
   }
 
   @Test

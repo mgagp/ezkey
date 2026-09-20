@@ -54,6 +54,7 @@ class AuditLogControllerContextTest {
   @Mock private AuditLifecycleService auditLifecycleService;
   @Mock private RetroactiveIntegrityValidationService retroactiveIntegrityValidationService;
   @Mock private AuditChainIncidentService auditChainIncidentService;
+  @Mock private org.ezkey.admin.service.IntegrityBootstrapService integrityBootstrapService;
   @Mock private EzkeyAdminRepository adminRepository;
   @Mock private EnrollmentRepository enrollmentRepository;
   @Mock private IntegrationRepository integrationRepository;
@@ -74,6 +75,7 @@ class AuditLogControllerContextTest {
             auditLifecycleService,
             retroactiveIntegrityValidationService,
             auditChainIncidentService,
+            integrityBootstrapService,
             adminRepository,
             enrollmentRepository,
             integrationRepository,

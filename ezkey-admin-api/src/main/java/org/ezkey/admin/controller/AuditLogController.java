@@ -26,7 +26,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.ezkey.admin.dto.response.IntegrityBootstrapResponseDto;
 import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.admin.service.IntegrityBootstrapService;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -139,6 +141,7 @@ public class AuditLogController {
   private final AuditLifecycleService auditLifecycleService;
   private final RetroactiveIntegrityValidationService retroactiveIntegrityValidationService;
   private final AuditChainIncidentService auditChainIncidentService;
+  private final IntegrityBootstrapService integrityBootstrapService;
   private final EzkeyAdminRepository adminRepository;
   private final EnrollmentRepository enrollmentRepository;
   private final IntegrationRepository integrationRepository;
@@ -158,6 +161,7 @@ public class AuditLogController {
    * @param retroactiveIntegrityValidationService retroactive detect orchestration (nightly +
    *     operator POST)
    * @param auditChainIncidentService heartbeat operational incident listing and declaration
+   * @param integrityBootstrapService thin Integrity atelier bootstrap (runtime profile + flags)
    * @param adminRepository repository for actor/target admin label enrichment
    * @param enrollmentRepository repository for enrollment label enrichment
    * @param integrationRepository repository for integration label enrichment
@@ -173,6 +177,7 @@ public class AuditLogController {
       AuditLifecycleService auditLifecycleService,
       RetroactiveIntegrityValidationService retroactiveIntegrityValidationService,
       AuditChainIncidentService auditChainIncidentService,
+      IntegrityBootstrapService integrityBootstrapService,
       EzkeyAdminRepository adminRepository,
       EnrollmentRepository enrollmentRepository,
       IntegrationRepository integrationRepository,
@@ -186,6 +191,7 @@ public class AuditLogController {
     this.auditLifecycleService = auditLifecycleService;
     this.retroactiveIntegrityValidationService = retroactiveIntegrityValidationService;
     this.auditChainIncidentService = auditChainIncidentService;
+    this.integrityBootstrapService = integrityBootstrapService;
     this.adminRepository = adminRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
@@ -726,6 +732,39 @@ public class AuditLogController {
   public ResponseEntity<ArchiveSealResult> sealArchive(
       @Valid @RequestBody ArchiveSealRequest request) {
     return ResponseEntity.ok(auditLifecycleService.sealArchive(request));
+  }
+
+  /**
+   * Returns the thin Integrity atelier bootstrap for Admin UI honesty chrome.
+   *
+   * <p>Exposes product {@code runtimeProfile} (Spring {@code docker-base} → {@code base}) and live
+   * monitoring enable flags. Dual source: profile name is not derived from flags; flags are not
+   * derived from the profile name. Global Admin only.
+   *
+   * @return Integrity bootstrap payload
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @GetMapping("/integrity/bootstrap")
+  @Operation(
+      summary = "Integrity atelier bootstrap",
+      description =
+          "Thin Global Admin payload for Integrity honesty chrome: product runtimeProfile"
+              + " (base|integrity from Spring docker-base) plus chainCheckpointsEnabled and"
+              + " nightlyValidationEnabled config flags. Not a job matrix or second journal.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Integrity bootstrap returned"),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Not authenticated",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Not a Global Admin",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+      })
+  public ResponseEntity<IntegrityBootstrapResponseDto> getIntegrityBootstrap() {
+    return ResponseEntity.ok(integrityBootstrapService.build());
   }
 
   /**

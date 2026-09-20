@@ -40,7 +40,6 @@ import { EntryIntegrityReportBadge } from '@/components/feature/entry-integrity-
 import { EntryIntegrityViolationLine } from '@/components/feature/entry-integrity-violation-line';
 import { IntegrityReconcileDialog } from '@/components/feature/integrity-reconcile-dialog';
 import { useGetAlert } from '@/generated/admin-api/alerts/alerts';
-import { useGetOverview } from '@/generated/admin-api/dashboard/dashboard';
 import {
   checkChainIntegrity,
   checkIntegrity,
@@ -57,7 +56,6 @@ import type {
   ArchiveConfirmArchivedResult,
   ArchiveEligibilityResult,
   ChainVerificationReport,
-  DashboardOverviewDto,
   GetChainCheckpointsParams,
   IntegrityReport,
   ArchiveSealResult,
@@ -68,14 +66,11 @@ import type {
 
 type IntegrityRuntimeProfile = 'base' | 'integrity';
 
-type DashboardOverviewWithRuntimeProfile = DashboardOverviewDto & {
+/** Thin Integrity bootstrap (OpenAPI: IntegrityBootstrapResponseDto after Orval refresh). */
+type IntegrityBootstrapResponse = {
   runtimeProfile?: IntegrityRuntimeProfile;
-  integrityConfigSummary?: {
-    chainLookbackMinutes?: number;
-    nightlyWindowHours?: number;
-    chainCheckpointsEnabled?: boolean;
-    nightlyValidationEnabled?: boolean;
-  };
+  chainCheckpointsEnabled?: boolean;
+  nightlyValidationEnabled?: boolean;
 };
 
 type IntegrityMonitoringTruth = {
@@ -85,31 +80,34 @@ type IntegrityMonitoringTruth = {
 };
 
 function resolveIntegrityMonitoringTruth(
-  overview: DashboardOverviewWithRuntimeProfile | undefined,
+  bootstrap: IntegrityBootstrapResponse | undefined,
 ): IntegrityMonitoringTruth {
-  const runtimeProfile = overview?.runtimeProfile;
+  const runtimeProfile = bootstrap?.runtimeProfile;
   const profile: IntegrityRuntimeProfile | undefined =
     runtimeProfile === 'base' || runtimeProfile === 'integrity' ? runtimeProfile : undefined;
   return {
     runtimeProfile: profile,
-    chainCheckpointsEnabled: overview?.integrityConfigSummary?.chainCheckpointsEnabled,
-    nightlyValidationEnabled: overview?.integrityConfigSummary?.nightlyValidationEnabled,
+    chainCheckpointsEnabled: bootstrap?.chainCheckpointsEnabled,
+    nightlyValidationEnabled: bootstrap?.nightlyValidationEnabled,
   };
 }
 
-/** Scheduled detection inactive when chain checkpoints are disabled (★ base coupling). */
+/**
+ * Inactive badge when either monitoring flag is off (config flags — not derived from profile name).
+ * Base naming still requires runtimeProfile === 'base'.
+ */
 function isScheduledDetectionInactive(truth: IntegrityMonitoringTruth): boolean {
-  return truth.chainCheckpointsEnabled === false;
+  return (
+    truth.chainCheckpointsEnabled === false
+    || truth.nightlyValidationEnabled === false
+  );
 }
 
 /**
  * Present-tense schedule copy is unsafe when either chain or nightly monitoring is off.
  */
 function shouldUseMonitoringOffCopy(truth: IntegrityMonitoringTruth): boolean {
-  return (
-    truth.chainCheckpointsEnabled === false
-    || truth.nightlyValidationEnabled === false
-  );
+  return isScheduledDetectionInactive(truth);
 }
 type AuditChainIncidentRow = {
   incidentId: number;
@@ -1162,7 +1160,9 @@ function IntegrityPanel({
                     )}
                   </p>
                 </div>
-                <Badge variant="muted">{t('integrity.policyDriven')}</Badge>
+                {!monitoringOffCopy && (
+                  <Badge variant="muted">{t('integrity.policyDriven')}</Badge>
+                )}
               </div>
 
               {archiveEligibilityLoading ? (
@@ -1992,14 +1992,15 @@ export default function IntegrityPage() {
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { data: overview } = useGetOverview<DashboardOverviewWithRuntimeProfile>({
-    query: {
-      enabled: isGlobalAdmin,
-    },
+  const { data: integrityBootstrap } = useQuery({
+    queryKey: ['integrity-bootstrap'],
+    queryFn: () =>
+      api.get<IntegrityBootstrapResponse>('/api/v1/audit-logs/integrity/bootstrap'),
+    enabled: isGlobalAdmin,
   });
   const monitoringTruth = useMemo(
-    () => resolveIntegrityMonitoringTruth(overview),
-    [overview],
+    () => resolveIntegrityMonitoringTruth(integrityBootstrap),
+    [integrityBootstrap],
   );
   const showMonitoringInactiveBadge =
     monitoringTruth.runtimeProfile === 'base' || isScheduledDetectionInactive(monitoringTruth);

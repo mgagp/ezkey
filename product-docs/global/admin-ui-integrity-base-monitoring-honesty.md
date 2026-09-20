@@ -3,13 +3,15 @@
 ## Metadata
 
 - **Document ID:** `admin-ui-integrity-base-monitoring-honesty`
-- **Status:** `accepted` (product GO; delivery in progress — Admin UI + `runtimeProfile` on dashboard overview)
+- **Status:** `accepted` (product GO; delivery — thin Integrity bootstrap + Admin UI honesty chrome)
 - **Owner (intention):** Julie (Admin UI opérabilité)
 - **Product direction:** Alex
+- **Engineering craft:** Patrick (bootstrap placement lock — not fat dashboard overview)
 - **QA observation:** Isabelle (soft honesty gaps after runtime-profile walk; not a merge blocker for the runtime profile)
-- **Purpose:** Intention lock for **honest operator copy and chrome** on Integrity when scheduled integrity **monitoring** is not active — especially under the opt-in **base** runtime profile. Delivery adds a small non-secret `runtimeProfile` field and conditional Integrity copy. **Not** a layout redesign.
+- **Purpose:** Intention lock for **honest operator copy and chrome** on Integrity when scheduled integrity **monitoring** is not active — especially under the opt-in **base** runtime profile. **Not** a layout redesign.
 - **Related:**
   - PR [`#566`](https://github.com/mgagp/ezkey/pull/566) — opt-in runtime profile with monitoring jobs off; default **integrity** unchanged. Admin UI Integrity badge deferred there by design. **Product vocabulary lock (Alex): `base` (opt-in) / `integrity` (default).**
+  - PR [`#569`](https://github.com/mgagp/ezkey/pull/569) — Admin UI honesty delivery (bootstrap + badge + conditional locale)
   - [`admin-ui-audit-integrity-hard-split-intention.md`](admin-ui-audit-integrity-hard-split-intention.md) — Alerts = signal / Integrity = atelier
   - [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job-surface-map.md) — job → surface map (Dashboard batch-health = signal; Integrity = atelier)
   - [`integrity-assurance-honest-line.md`](integrity-assurance-honest-line.md) — honesty of integrity claims (Christophe: no tamper-proof claims; base = limited monitoring claims)
@@ -57,26 +59,32 @@ Empty atelier + schedule-assuming prose = honesty gap. Keep the **Alerts = signa
 - Not inventing fake job health or a fake “green” monitoring story.
 - Not claiming push / real-time detection.
 - Not inventing a second journal or putting the job matrix into `runtimeProfile`.
+- **Not** loading fat `GET /api/v1/dashboard/overview` from `/integrity` solely for honesty chrome (Patrick craft gate).
 
 ---
 
 ## Signal source (server truth)
 
-### Monitoring flags (existing)
+### Thin Integrity bootstrap (delivery — craft lock)
 
-Admin API `GET /api/v1/dashboard/overview` (Global Admin) returns:
+Admin API `GET /api/v1/audit-logs/integrity/bootstrap` (Global Admin only) returns:
 
-1. **`integrityConfigSummary`** — `DashboardIntegrityConfigSummaryDto`:
-   - `chainCheckpointsEnabled` ← `ezkey.audit.chain.enabled`
-   - `nightlyValidationEnabled` ← nightly integrity enabled flag
-   - lookback / nightly window sizes (non-secret)
-2. **`integrityJobs`** — last-run rows with `lastStatus` including **`NEVER_RUN`**.
+| Field | Source | Role |
+|-------|--------|------|
+| `runtimeProfile` | Spring active profiles (`docker-base` → `base`; else `integrity`) | Product label for naming the base badge |
+| `chainCheckpointsEnabled` | `ezkey.audit.chain.enabled` | Config flag for monitoring-off copy / inactive badge |
+| `nightlyValidationEnabled` | nightly integrity enabled flag | Config flag for monitoring-off copy / inactive badge |
 
-### Runtime profile (delivery)
+**Dual source (do not collapse):**
 
-Non-secret field **`runtimeProfile: "base" | "integrity"`** on the same overview response (Global Admin only). Resolved from the live Spring environment: active profile `docker-base` → `base`; otherwise `integrity`.
+- `runtimeProfile` is the **Spring / product profile name**. It is **not** derived from enable flags.
+- Monitoring-off UI is driven by the **config enable flags**. It is **not** derived from the profile name alone (an integrity profile can still disable jobs via config).
 
-`/integrity` loads overview for this field + `integrityConfigSummary` (no second journal, no Alerts chrome).
+No job matrix. No second journal. Dashboard overview keeps `integrityConfigSummary` for batch-health widgets only — Integrity does **not** fetch overview for this chrome.
+
+### Dashboard overview (unchanged role)
+
+`GET /api/v1/dashboard/overview` still exposes `integrityConfigSummary` + `integrityJobs` for Dashboard batch-health signal. That is **not** the Integrity honesty bootstrap.
 
 ---
 
@@ -87,12 +95,13 @@ Keep Alerts = signal list; Integrity = atelier. Manual atelier actions stay avai
 ### 1. Persistent badge on `/integrity`
 
 - When `runtimeProfile === "base"`: **« Base profile — scheduled detection inactive »** / FR **« Profil base — détection planifiée inactive »**.
-- When monitoring is off but profile is integrity: generic **« Scheduled detection inactive »** / FR twin (no fake “base”).
+- When monitoring flags are off but profile is integrity: generic **« Scheduled detection inactive »** / FR twin (no fake “base”).
 - Under default integrity with monitoring enabled: **no** base chrome.
+- When monitoring is off, do **not** keep a competing always-visible « Policy-driven » badge next to the inactive story.
 
 ### 2. Conditional copy (locale)
 
-When monitoring is off, switch to `*MonitoringOff` variants for:
+When either chain or nightly monitoring flag is off, switch to `*MonitoringOff` variants for:
 
 - `integrity.lifecyclePolicyHint`
 - `help.integrityLifecycle.content`
@@ -113,7 +122,7 @@ Do **not** merge detection chrome into Alerts.
 | Step | What |
 |------|------|
 | Docs PR `#567` | Intention note (draft → accepted here) |
-| This delivery | Admin API `runtimeProfile` on overview + Integrity badge + conditional locale; Orval after OpenAPI refresh |
+| PR `#569` | Thin `GET …/integrity/bootstrap` + Integrity badge + conditional locale; Orval after OpenAPI refresh |
 | Runtime profile mechanism | PR `#566` (`docker-base` / `--runtime=base`) |
 
 ---
@@ -121,6 +130,7 @@ Do **not** merge detection chrome into Alerts.
 ## Acceptance checklist (Isabelle re-walk)
 
 - [ ] Under `--runtime=base` / `EZKEY_RUNTIME_PROFILE=base`, `/integrity` shows **base** monitoring-off badge; schedule claims are conditional.
+- [ ] `/integrity` loads **thin bootstrap**, not fat dashboard overview, for honesty chrome.
 - [ ] Under default **integrity** with monitoring on: no base chrome; normal schedule copy OK.
 - [ ] Monitoring off without base (config): generic inactive badge; no present-tense schedule claims.
 - [ ] Manual verify / run validation still described as atelier actions.
