@@ -26,6 +26,9 @@ import java.util.List;
  * <p><b>Batch health:</b> Global Admin only — {@code integrityJobs}, {@code operationalJobs}, and
  * {@code integrityConfigSummary} expose scheduled job last-run metadata from the registry.
  *
+ * <p><b>Runtime profile:</b> Global Admin only — {@code runtimeProfile} is the product label {@code
+ * base} or {@code integrity} (not a job matrix). Used by Admin UI Integrity honesty chrome.
+ *
  * @param integrations integration counts for the current scope
  * @param enrollments operational enrollment counts
  * @param auth24h auth attempt stats for the last 24 hours
@@ -35,6 +38,8 @@ import java.util.List;
  * @param integrityJobs system/integrity scheduled jobs (Global Admin only)
  * @param operationalJobs other operational scheduled jobs (Global Admin only)
  * @param integrityConfigSummary active integrity configuration summary (Global Admin only)
+ * @param runtimeProfile product runtime profile {@code base} or {@code integrity} (Global Admin
+ *     only; null for Tenant Admin)
  */
 @Schema(description = "Aggregated dashboard overview (stats, recent activity, optional alerts)")
 public record DashboardOverviewDto(
@@ -61,4 +66,11 @@ public record DashboardOverviewDto(
                 "Other operational scheduled jobs (e.g. re-encryption). Global Admin only.")
         List<DashboardScheduledJobRowDto> operationalJobs,
     @Schema(description = "Active integrity configuration summary (non-secret). Global Admin only.")
-        DashboardIntegrityConfigSummaryDto integrityConfigSummary) {}
+        DashboardIntegrityConfigSummaryDto integrityConfigSummary,
+    @Schema(
+            description =
+                "Product runtime profile: base (opt-in; integrity monitoring off) or integrity"
+                    + " (default). Non-secret. Global Admin only.",
+            allowableValues = {"base", "integrity"},
+            example = "integrity")
+        String runtimeProfile) {}

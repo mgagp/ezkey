@@ -68,6 +68,8 @@ class DashboardServiceTest {
   private AuditChainProperties auditChainProperties;
   private NightlyIntegrityProperties nightlyIntegrityProperties;
 
+  @Mock private EzkeyRuntimeProfileResolver runtimeProfileResolver;
+
   private DashboardService service;
 
   @BeforeEach
@@ -88,7 +90,8 @@ class DashboardServiceTest {
             alertService,
             scheduledJobLastRunRepository,
             auditChainProperties,
-            nightlyIntegrityProperties);
+            nightlyIntegrityProperties,
+            runtimeProfileResolver);
   }
 
   @Test
@@ -107,6 +110,7 @@ class DashboardServiceTest {
     assertThat(overview.integrityJobs()).isNull();
     assertThat(overview.operationalJobs()).isNull();
     assertThat(overview.integrityConfigSummary()).isNull();
+    assertThat(overview.runtimeProfile()).isNull();
   }
 
   @Test
@@ -129,6 +133,8 @@ class DashboardServiceTest {
                     "Validated 24 h ending 2026-07-03T02:00Z")));
     when(scheduledJobLastRunRepository.findById(ScheduledJobKey.REENCRYPTION))
         .thenReturn(Optional.of(neverRunRow(ScheduledJobKey.REENCRYPTION)));
+    when(runtimeProfileResolver.resolve())
+        .thenReturn(EzkeyRuntimeProfileResolver.PROFILE_INTEGRITY);
 
     var overview = service.buildOverview(principal);
 
@@ -144,6 +150,28 @@ class DashboardServiceTest {
     assertThat(overview.integrityConfigSummary().nightlyWindowHours()).isEqualTo(24);
     assertThat(overview.integrityConfigSummary().chainCheckpointsEnabled()).isTrue();
     assertThat(overview.integrityConfigSummary().nightlyValidationEnabled()).isTrue();
+    assertThat(overview.runtimeProfile()).isEqualTo(EzkeyRuntimeProfileResolver.PROFILE_INTEGRITY);
+  }
+
+  @Test
+  @DisplayName("Global Admin should expose runtimeProfile base when resolver reports base")
+  void buildOverview_globalAdmin_shouldExposeRuntimeProfileBase() {
+    AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+    stubCommonTenantStats(null);
+
+    when(alertService.countOpen()).thenReturn(0L);
+    when(alertService.findRecentOpen(10)).thenReturn(List.of());
+    when(scheduledJobLastRunRepository.findById(ScheduledJobKey.AUDIT_CHAIN_CHECKPOINT))
+        .thenReturn(Optional.of(neverRunRow(ScheduledJobKey.AUDIT_CHAIN_CHECKPOINT)));
+    when(scheduledJobLastRunRepository.findById(ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION))
+        .thenReturn(Optional.of(neverRunRow(ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION)));
+    when(scheduledJobLastRunRepository.findById(ScheduledJobKey.REENCRYPTION))
+        .thenReturn(Optional.of(neverRunRow(ScheduledJobKey.REENCRYPTION)));
+    when(runtimeProfileResolver.resolve()).thenReturn(EzkeyRuntimeProfileResolver.PROFILE_BASE);
+
+    var overview = service.buildOverview(principal);
+
+    assertThat(overview.runtimeProfile()).isEqualTo(EzkeyRuntimeProfileResolver.PROFILE_BASE);
   }
 
   private void stubCommonTenantStats(Integer tenantId) {

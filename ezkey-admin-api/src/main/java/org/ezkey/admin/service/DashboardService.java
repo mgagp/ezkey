@@ -79,6 +79,7 @@ public class DashboardService {
   private final ScheduledJobLastRunRepository scheduledJobLastRunRepository;
   private final AuditChainProperties auditChainProperties;
   private final NightlyIntegrityProperties nightlyIntegrityProperties;
+  private final EzkeyRuntimeProfileResolver runtimeProfileResolver;
 
   /**
    * Constructs the dashboard service.
@@ -91,6 +92,7 @@ public class DashboardService {
    * @param scheduledJobLastRunRepository batch job last-run registry
    * @param auditChainProperties rolling checkpoint configuration
    * @param nightlyIntegrityProperties nightly validation configuration
+   * @param runtimeProfileResolver product runtime profile (base | integrity)
    */
   public DashboardService(
       IntegrationService integrationService,
@@ -100,7 +102,8 @@ public class DashboardService {
       AlertService alertService,
       ScheduledJobLastRunRepository scheduledJobLastRunRepository,
       AuditChainProperties auditChainProperties,
-      NightlyIntegrityProperties nightlyIntegrityProperties) {
+      NightlyIntegrityProperties nightlyIntegrityProperties,
+      EzkeyRuntimeProfileResolver runtimeProfileResolver) {
     this.integrationService = integrationService;
     this.enrollmentService = enrollmentService;
     this.authAttemptService = authAttemptService;
@@ -109,6 +112,7 @@ public class DashboardService {
     this.scheduledJobLastRunRepository = scheduledJobLastRunRepository;
     this.auditChainProperties = auditChainProperties;
     this.nightlyIntegrityProperties = nightlyIntegrityProperties;
+    this.runtimeProfileResolver = runtimeProfileResolver;
   }
 
   /**
@@ -164,6 +168,9 @@ public class DashboardService {
             ? CompletableFuture.completedFuture(buildIntegrityConfigSummary())
             : CompletableFuture.completedFuture(null);
 
+    String runtimeProfile =
+        principal.isGlobalAdmin() ? runtimeProfileResolver.resolve() : null;
+
     try {
       return new DashboardOverviewDto(
           integrationsFuture.join(),
@@ -174,7 +181,8 @@ public class DashboardService {
           alertsFuture.join(),
           integrityJobsFuture.join(),
           operationalJobsFuture.join(),
-          integrityConfigFuture.join());
+          integrityConfigFuture.join(),
+          runtimeProfile);
     } catch (CompletionException | CancellationException e) {
       logger.error("Dashboard overview build failed", e);
       throw new RuntimeException("Failed to build dashboard overview", e);
