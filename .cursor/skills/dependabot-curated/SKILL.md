@@ -78,23 +78,26 @@ not a mandatory top-level sort.
    same label (e.g. a migration-idea PR) may be mentioned once for traceability.
 3. **Java BOM pulse** (mandatory on every weekly pass — see below). Silence in the Dependabot
    queue is not proof that the Boot line is current.
-4. Classify each **remaining** PR **T1–T4** from the title SemVer digits and ecosystem path.
+4. **Mobile RN pulse** (mandatory on every weekly pass — same weight as Java BOM pulse; see
+   below). Empty Dependabot mobile queue ≠ stack current.
+5. Classify each **remaining** PR **T1–T4** from the title SemVer digits and ecosystem path.
    Surface ambiguity to the operator (e.g. icon library minor spanning several patch bumps → T3).
-5. Propose **3–6 lots max** for the session (80/20). Prefer fewer lots over one-PR theater.
-   A BOM-pulse Boot bump counts as one lot even when no Dependabot PR exists.
-6. Present a **short lots overview** (deferred block first, then active lots).
+6. Propose **3–6 lots max** for the session (80/20). Prefer fewer lots over one-PR theater.
+   A BOM-pulse Boot bump or a Mobile RN pulse actionable lot counts even when no Dependabot PR
+   exists.
+7. Present a **short lots overview** (deferred block first, then active lots).
    - **Default (HITL):** then **HITL one lot at a time** — wait for Go / No-Go / hold / defer
      before merging that lot or presenting the next. Do **not** ask for a bulk `1A, 2B, 3B…`
      reply as the primary vehicle.
    - **Autonomous validation mode** (see below): after the overview, proceed without waiting for
      per-lot Go when the operator explicitly delegated autonomy for this pass.
-7. On **Go** (or autonomous proceed): apply the lot (see **Apply modes**), then continue.
-8. On **Defer:** leave open or close with a rationale comment; apply `deferred:later-train` (or a
+8. On **Go** (or autonomous proceed): apply the lot (see **Apply modes**), then continue.
+9. On **Defer:** leave open or close with a rationale comment; apply `deferred:later-train` (or a
    more specific `deferred:*` label) when the PR should stay out of weekly lots for weeks/months.
    If investigation cost should not be lost, create **one** `I-*` for that dependency (program
    deferral), not a Dependabot methodology program.
-9. After all lot decisions: run **session closeout**, then write
-   `product-docs/global/hygiene/dependabot/YYYY-MM-DD-pass-N.md` from the template.
+10. After all lot decisions: run **session closeout**, then write
+    `product-docs/global/hygiene/dependabot/YYYY-MM-DD-pass-N.md` from the template.
 
 ## Java BOM pulse
 
@@ -129,6 +132,48 @@ Do not add a `docker` ecosystem or invent a Compose-image lot unless the operato
 Tink / ShedLock / ipaddress now live in parent properties (`tink.version`, `shedlock.version`,
 `ipaddress.version`). Do not re-propose that lift; see
 [`product-docs/global/hygiene/dependabot/handoff-centralize-core-pins.md`](../../product-docs/global/hygiene/dependabot/handoff-centralize-core-pins.md).
+
+## Mobile RN pulse
+
+Dependabot npm at `directory: "/ezkey_mobile"` (Yarn 4; `packageManager: yarn@4.x`) opens grouped
+PRs for declared `package.json` / `yarn.lock` bumps. It does **not** replace the mobile stack
+inventory. Groups keep tooling, RN-core, vision-camera, and navigation from naive cross-batching;
+**`orval` is intentionally ungrouped** (solo PRs → T4 hard escalator). **Do not treat an empty
+Dependabot mobile list as "mobile is current."**
+
+On every `dependabot-curated` pass, before proposing lots (same weight as **Java BOM pulse**):
+
+1. Record declared `react`, `react-native`, and key coupled libs from
+   `ezkey_mobile/package.json` (at least VisionCamera / worklets / nitro family, navigation, and
+   the Orval exact pin).
+2. Prefer existing tooling from `ezkey_mobile/`:
+
+   ```bash
+   yarn deps:monitor
+   # or: node scripts/dependency-monitor.mjs
+   ```
+
+   The monitor already classifies **actionable** vs **ecosystem-gated deferred** (e.g. ESLint 10,
+   Jest 30, TypeScript 7). Capture actionable / deferred / high-audit highlights in the campaign
+   note.
+3. Peel Dependabot mobile PRs into lots under normal T1–T4 rules (see escalators below).
+4. If there are **no** Dependabot mobile PRs but `deps:monitor` shows **actionable** upgrades,
+   propose lots from the pulse. Hygiene-branch exception applies **only** when no Dependabot PR
+   exists for that bump (same posture as a Boot property bump with no Maven PR).
+
+### Mobile escalators
+
+| Surface | Posture |
+|---------|---------|
+| `react` + `react-native` + aligned `@react-native/*` presets / CLI | **Coupled slice** → **T3 minimum**; major RN line → **T4 HITL** |
+| `react-native-vision-camera` / `react-native-vision-camera-*` / `react-native-worklets` / `react-native-nitro-*` | Coupled with RN — **do not** silent-batch with eslint / prettier tooling |
+| `orval` / OpenAPI generate path | **T4 hard escalator**; keep **exact pin** (no caret); after bump run `yarn generate:api` + unit tests; phone / Justin native path only if native / Gradle / bridge touched |
+| Autonomy mode | T1–T3 **tooling-only** mobile lots OK; **never** auto-merge RN-core / vision-camera / orval without Marc unless an Orval-mobile cheap exception is already in the standing routine (regen empty/trivial + unit tests green) |
+
+Do **not** invent a Docker or Gradle Dependabot ecosystem for mobile unless already patterned
+in-repo. Authority: lane
+[`product-docs/global/hygiene/dependabot/README.md`](../../product-docs/global/hygiene/dependabot/README.md)
+§ *Mobile RN pulse*.
 
 ## Autonomous validation mode
 
@@ -224,7 +269,9 @@ CIs were green, closeout may be `./scripts/build.sh` only, with an explicit camp
 stack/Playwright were deferred to the next T2+ session or weekly milestone.
 
 Record the **Java BOM pulse** result in the campaign note even when no Boot bump was needed
-(`none` is a valid outcome). Same for the nested `google-java-format` check.
+(`none` is a valid outcome). Same for the nested `google-java-format` check. Record the
+**Mobile RN pulse** (`deps:monitor` + declared RN versions + Dependabot mobile PRs peeled) even
+when no mobile lot was proposed.
 
 ## Pin, install, and codegen hygiene (after merges)
 
@@ -262,10 +309,11 @@ are already **T4 hard escalators** — this checklist is the operational tail of
 
 ## HITL contract (default for cold agents)
 
-1. List and classify; peel off `deferred:*` first; run the **Java BOM pulse**; **probe
+1. List and classify; peel off `deferred:*` first; run the **Java BOM pulse** and the **Mobile
+   RN pulse**; **probe
    `GH_TOKEN` / `gh auth status`** (skill § *Cloud GitHub identities*) before choosing
    hygiene-branch vs merge-existing; propose lots overview (3–6 active lots, including a Boot
-   lot when the pulse found a newer same-minor).
+   lot or Mobile RN pulse lot when the pulse found actionable work with no Dependabot PR).
 2. Iterate **one lot at a time**: members, tier, blast radius, CI status, open question → wait
    for Go / No-Go / hold / defer — **unless** autonomous validation mode was granted for the
    session (then proceed for T1–T3 and only pause on T4 / hard escalators).

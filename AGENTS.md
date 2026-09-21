@@ -350,6 +350,9 @@ When the operator asks for a **`dependabot-curated`** pass:
    `dependabot-curated` § *Java BOM pulse*): compare `spring-boot.version` to the latest
    same-minor Boot release; if newer and no Dependabot PR, propose a hygiene-branch lot. After a
    Boot bump, review SEC-019 overrides. Check `google-java-format.version` only as a tooling pin.
+   Same weight: run the **Mobile RN pulse** (skill § *Mobile RN pulse*): record declared
+   `react` / `react-native` from `ezkey_mobile/package.json`, prefer `yarn deps:monitor`, peel
+   Dependabot mobile PRs; empty mobile queue ≠ stack current.
 3. Classify remaining PRs T1–T4; propose **3–6 lots** (overview only).
 4. **Default — interactive HITL:** iterate **one lot at a time** (members, tier, blast radius, CI
    status) → wait for Go / No-Go / hold / defer on **that** lot before merging or presenting the

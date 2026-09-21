@@ -7,6 +7,23 @@ This folder is **peripheral** to product vision / ADR / backlog execution. It re
 lot decisions (merge / hold / defer) so cold sessions can see *why* a PR was batched or left alone —
 without inventing `I-*` / `TB-*` for routine bumps.
 
+## What we cover
+
+Weekly Dependabot ecosystems in [`.github/dependabot.yml`](../../../.github/dependabot.yml), plus
+mandatory pulses that Dependabot alone cannot prove current:
+
+| Surface | Dependabot | Mandatory pulse |
+|---------|------------|-----------------|
+| Java / Maven (reactor root) | `maven` at `/` | **Java BOM pulse** (`spring-boot.version`, SEC-019, `google-java-format`) |
+| Admin UI | `npm` at `/ezkey-admin-ui` | — (PRs + groups) |
+| Ezkey Mobile (Yarn 4) | `npm` at `/ezkey_mobile` | **Mobile RN pulse** (`yarn deps:monitor` + coupled RN escalators) |
+| SDK JS | `npm` at `/ezkey-sdk/javascript` | — |
+| GitHub Actions | `github-actions` at `/` | — |
+| Python CLI | `pip` at `/ezkey-cli-python` | — |
+
+Empty Dependabot queue for Maven or mobile ≠ stack current. Authority: skill
+`dependabot-curated` §§ *Java BOM pulse*, *Mobile RN pulse*.
+
 ## Contents
 
 | Path | Role |
@@ -89,6 +106,35 @@ ipaddress now follow parent properties (see
 
 Authority: skill `dependabot-curated` § *Java BOM pulse*. Provenance: Boot 4.1.1 pass
 [`2026-08-21-pass-1.md`](2026-08-21-pass-1.md) (hygiene branch; no Dependabot PR).
+
+## Mobile RN pulse (weekly, not optional — parity with Java BOM pulse)
+
+Dependabot npm at `/ezkey_mobile` (Yarn 4) opens grouped PRs for declared bumps. It does not
+replace the mobile stack inventory. Groups:
+
+| Group | Intent |
+|-------|--------|
+| `mobile-tooling` | ESLint / Prettier / Husky / lint-staged / Jest / TypeScript / Babel |
+| `mobile-rn-core` | `react` / `react-native` / presets / CLI / test-renderer types |
+| `mobile-vision-camera` | VisionCamera + worklets + nitro family (coupled with RN) |
+| `mobile-navigation` | `@react-navigation/*` |
+
+**`orval` is not grouped** — solo PRs, T4 hard escalator, exact pin (no caret).
+
+On every `dependabot-curated` pass the agent must:
+
+1. Record declared `react` / `react-native` / key coupled libs from `ezkey_mobile/package.json`.
+2. Run `yarn deps:monitor` (or `node scripts/dependency-monitor.mjs`) from `ezkey_mobile/` and
+   capture actionable vs ecosystem-gated deferred (ESLint 10, Jest 30, TS7) plus high audit in
+   the campaign note. Empty Dependabot mobile queue ≠ stack current.
+3. Peel Dependabot mobile PRs under T1–T4. If no mobile PRs but the monitor shows actionable
+   upgrades, propose lots from the pulse (hygiene-branch only when no PR exists).
+4. Escalators: RN-core coupled slice = T3 minimum (major RN line → T4 HITL); vision-camera /
+   worklets / nitro stay coupled with RN (never silent-batch with tooling); Orval = T4 + generate
+   + unit tests. Autonomy may merge tooling-only T1–T3; never auto-merge RN-core / vision-camera /
+   orval without Marc unless an Orval-mobile cheap exception is already standing routine.
+
+Authority: skill `dependabot-curated` § *Mobile RN pulse*.
 
 ## Related
 

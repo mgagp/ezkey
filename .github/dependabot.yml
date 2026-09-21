@@ -55,6 +55,54 @@ updates:
     labels:
       - "dependencies"
 
+  # Yarn 4 workspace (packageManager: yarn@4.x). Dependabot npm ecosystem updates
+  # package.json + yarn.lock. Keep RN-core / vision-camera / Orval out of tooling batches —
+  # see skill dependabot-curated § Mobile RN pulse. Do not group orval (solo PRs → T4).
+  - package-ecosystem: "npm"
+    directory: "/ezkey_mobile"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    groups:
+      mobile-tooling:
+        patterns:
+          - "eslint"
+          - "eslint-*"
+          - "@eslint/*"
+          - "prettier"
+          - "prettier-*"
+          - "eslint-config-prettier"
+          - "husky"
+          - "lint-staged"
+          - "jest"
+          - "@types/jest"
+          - "typescript"
+          - "@babel/*"
+      mobile-rn-core:
+        patterns:
+          - "react"
+          - "react-native"
+          - "react-test-renderer"
+          - "@types/react"
+          - "@types/react-test-renderer"
+          - "@react-native/babel-preset"
+          - "@react-native/eslint-config"
+          - "@react-native/jest-preset"
+          - "@react-native/metro-config"
+          - "@react-native/typescript-config"
+          - "@react-native-community/cli*"
+      mobile-vision-camera:
+        patterns:
+          - "react-native-vision-camera"
+          - "react-native-vision-camera-*"
+          - "react-native-worklets"
+          - "react-native-nitro-*"
+      mobile-navigation:
+        patterns:
+          - "@react-navigation/*"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
