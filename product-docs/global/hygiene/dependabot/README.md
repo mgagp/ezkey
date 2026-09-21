@@ -114,12 +114,14 @@ replace the mobile stack inventory. Groups:
 
 | Group | Intent |
 |-------|--------|
-| `mobile-tooling` | ESLint / Prettier / Husky / lint-staged / Jest / TypeScript / Babel |
+| `mobile-tooling` | Prettier / Husky / lint-staged / TypeScript / Babel **only**. Excludes `eslint`, `eslint-*`, `@eslint/*`, `jest`, `@types/jest` so gated majors stay **ungrouped** (solo PRs; never auto-merged). Provenance: #581 closed after HITL — that group had bundled ESLint 10 + Jest 30 with safe Babel patches. |
 | `mobile-rn-core` | `react` / `react-native` / presets / CLI / test-renderer types |
 | `mobile-vision-camera` | VisionCamera + worklets + nitro family (coupled with RN) |
 | `mobile-navigation` | `@react-navigation/*` |
 
 **`orval` is not grouped** — solo PRs, T4 hard escalator, exact pin (no caret).
+
+**Standing policy — mobile ESLint / Jest:** leave them ungrouped. `deps:monitor` ecosystem gates (`ESLint 10`, `Jest 30`) mean those majors are not clear T1–T3 tooling-only; batching them inside `mobile-tooling` hides the gate and invites false autonomy.
 
 On every `dependabot-curated` pass the agent must:
 

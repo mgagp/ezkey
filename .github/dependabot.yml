@@ -58,6 +58,7 @@ updates:
   # Yarn 4 workspace (packageManager: yarn@4.x). Dependabot npm ecosystem updates
   # package.json + yarn.lock. Keep RN-core / vision-camera / Orval out of tooling batches —
   # see skill dependabot-curated § Mobile RN pulse. Do not group orval (solo PRs → T4).
+  # mobile-tooling excludes eslint / jest (ungrouped) — RN deps:monitor gates.
   - package-ecosystem: "npm"
     directory: "/ezkey_mobile"
     schedule:
@@ -66,18 +67,15 @@ updates:
     labels:
       - "dependencies"
     groups:
+      # ESLint / Jest majors stay ungrouped (visible solo PRs). RN preset gates
+      # (`yarn deps:monitor`) block ESLint 10 / Jest 30; do not batch them with
+      # Babel/Prettier patches. See product-docs/.../hygiene/dependabot/README.md.
       mobile-tooling:
         patterns:
-          - "eslint"
-          - "eslint-*"
-          - "@eslint/*"
           - "prettier"
           - "prettier-*"
-          - "eslint-config-prettier"
           - "husky"
           - "lint-staged"
-          - "jest"
-          - "@types/jest"
           - "typescript"
           - "@babel/*"
       mobile-rn-core:
