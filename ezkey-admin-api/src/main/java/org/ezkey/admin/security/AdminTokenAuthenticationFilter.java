@@ -150,8 +150,12 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
+        // A1 / JM-001: reuse the entity already loaded by validateTokenWithRelations
+        // (no second findByBearerTokenHashAndActiveTrue).
         OffsetDateTime updatedExpiresAt =
-            tokenValidationService.updateTokenLastUsed(token).orElse(adminToken.getExpiresAt());
+            tokenValidationService
+                .updateTokenLastUsed(adminToken)
+                .orElse(adminToken.getExpiresAt());
         request.setAttribute(AdminAuthRequestAttributes.AUTH_SOURCE, authSource);
         request.setAttribute(AdminAuthRequestAttributes.PLAIN_TOKEN, token);
         request.setAttribute(AdminAuthRequestAttributes.EXPIRES_AT, updatedExpiresAt);
