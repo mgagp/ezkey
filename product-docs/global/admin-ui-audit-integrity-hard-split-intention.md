@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Document ID:** `admin-ui-audit-integrity-hard-split-intention`
-- **Status:** `promoted` (IA lock 2026-09-17; **cut 1 delivered** 2026-09-18 — PR `#563`. Cut 2 phase A delivered 2026-09-21 — PR `#588`; phase B+B′ intention-locked. Cut 3 remains.)
+- **Status:** `promoted` (IA lock 2026-09-17; **cut 1 delivered** 2026-09-18 — PR `#563`. Cut 2 phase A delivered 2026-09-21 — PR `#588`; phase B+B′ in-delivery. Cut 3 remains.)
 - **Owner (intention):** Julie (Admin UI opérabilité)
 - **Product direction:** Alex
 - **Engineering sequencing:** Patrick (cut 1 locked 2026-09-17; implemented 2026-09-18)
@@ -16,7 +16,7 @@
   - [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job-surface-map.md)
   - [`admin-ui-integrity-base-monitoring-honesty.md`](admin-ui-integrity-base-monitoring-honesty.md) — Integrity honesty when monitoring jobs are off (base)
   - [`admin-ui-integrity-cut2-phase-a.md`](admin-ui-integrity-cut2-phase-a.md) — cut 2 phase A density / progressive disclosure (**delivered**)
-  - [`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md) — cut 2 phase B + B′ (Observe / Verify / Remediate modes + incidents pager; **intention-locked**)
+  - [`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md) — cut 2 phase B + B′ (Observe / Verify / Remediate modes + incidents pager; **in-delivery**)
   - [`integrity-wave-b-operator-end-state-compass.md`](integrity-wave-b-operator-end-state-compass.md)
   - [`integrity-cluster-design-pack.md`](integrity-cluster-design-pack.md)
   - [`admin-ui-paginated-screens-matrix.md`](admin-ui-paginated-screens-matrix.md)
@@ -126,7 +126,7 @@ No API redesign in this note; no second audit store; no pixel campaign in cut 1;
 3. ~~Implementation of cut 1~~ — PR `#563`, 2026-09-18.
 4. Cut 2 — layout and chrome **inside** Integrity (still **one** `/integrity` surface; no new nav):
    - **Phase A (density / progressive disclosure):** [`admin-ui-integrity-cut2-phase-a.md`](admin-ui-integrity-cut2-phase-a.md) + Walk Gate [`backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-a.md`](backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-a.md) — **delivered** (PR `#588`).
-   - **Phase B + B′ (modes + incidents pager):** [`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md) + Walk Gate [`backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-b.md`](backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-b.md) — **intention-locked** 2026-09-21 (Observe | Verify | Remediate in-page; B′ pager on existing incidents `Page` API). Phase A density stays inside modes.
+   - **Phase B + B′ (modes + incidents pager):** [`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md) + Walk Gate [`backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-b.md`](backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-b.md) — **in-delivery** (Observe | Verify | Remediate in-page; B′ pager on existing incidents `Page` API). Phase A density stays inside modes.
    - **Phase C (later):** richer status-strip / API — out of B+B′ delivery.
 5. Cut 3 — after walkable: surface missing OpenAPI callers on Integrity (`confirm-archived`, `reconcile-integrity-rupture`, peers).
 6. Isabelle exploratory once the split is on a stack (cut 1 is walkable; cut 2 phase A via its Walk Gate; cut 2 phase B+B′ via its Walk Gate when the impl SHA is filled; cut 3 when that pass lands).

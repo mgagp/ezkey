@@ -8,8 +8,8 @@ Canon: [`../../templates/ui-walk-gate.template.md`](../../templates/ui-walk-gate
 - **ID:** `WALK-2026-09-21-integrity-cut2-phase-b`
 - **Owner (intention):** Julie / Marc
 - **Walk executor:** Isabelle (default)
-- **Single walkable SHA / PR:** `TBD` — **do not walk until SHA / PR is filled** by the implementation PR
-- **Related craft PR(s):** none yet (this gate ships with the docs lock; impl PR will fill the SHA)
+- **Single walkable SHA / PR:** _fill after PR open_ — walk **PR head** (`git fetch && git rev-parse origin/cursor/integrity-cut2-phase-b-936e`); tip SHA recorded in PR description after push
+- **Related craft PR(s):** implementation PR for Integrity cut-2 phase B+B′ (this change set)
 - **Created:** `2026-09-21`
 - **Intention note:** [`../../admin-ui-integrity-cut2-phase-b.md`](../../admin-ui-integrity-cut2-phase-b.md)
 - **Parent IA:** [`../../admin-ui-audit-integrity-hard-split-intention.md`](../../admin-ui-audit-integrity-hard-split-intention.md) (cut 2)

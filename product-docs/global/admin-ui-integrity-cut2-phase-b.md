@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Document ID:** `admin-ui-integrity-cut2-phase-b`
-- **Status:** `intention-locked` (Marc + Julie, 2026-09-21 — **docs lock only**; implementation not started)
+- **Status:** `in-delivery` (UI implementation in progress — Walk Gate SHA filled by implementation PR)
 - **Owner (intention):** Julie / Marc
 - **QA:** Isabelle via Walk Gate (after an implementation PR fills the walkable SHA)
 - **Purpose:** Intention lock for **cut-2 phase B + B′** together, still on the **single** `/integrity` atelier: in-page **Observe | Verify | Remediate** modes, plus incidents-list pagination UI. **Not** a new sidebar item, **not** sub-routes, **not** Alerts redesign, **not** phase C status-strip / API work.
@@ -105,8 +105,8 @@ Manual mode switch must always be available once the page is loaded (operator ca
 ## Implementation locus (when coding starts)
 
 - Admin UI: `ezkey-admin-ui/src/pages/integrity.tsx` (mode chrome + regroup; incidents pager).
-- Phase A helpers remain authoritative for open/closed density: `ezkey-admin-ui/src/lib/integrity-progressive-disclosure.ts` (extend only if mode mapping needs shared pure rules).
-- **Docs-only this PR:** no Admin UI / API code in the intention lock.
+- Phase A helpers remain authoritative for open/closed density: `ezkey-admin-ui/src/lib/integrity-progressive-disclosure.ts`.
+- Mode resolution (pure, unit-tested): `ezkey-admin-ui/src/lib/integrity-atelier-mode.ts`.
 
 ---
 

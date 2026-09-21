@@ -33,6 +33,8 @@ export const queryKeys = {
   auditLogs: ['audit-logs'] as const,
   /** Audit chain checkpoints (Global Admin, paginated). */
   auditChainCheckpoints: ['audit-logs', 'chain-checkpoints'] as const,
+  /** Audit-chain heartbeat incidents (Global Admin, paginated). */
+  auditChainIncidents: ['audit-logs', 'lifecycle-incidents'] as const,
   /** Dashboard / stats aggregates. */
   stats: ['stats'] as const,
   /** Single integration detail. */

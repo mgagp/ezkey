@@ -263,6 +263,13 @@
   "integrity": {
     "pageTitle": "Integrity",
     "subtitle": "Verify the audit journal HMAC chain and manage exceptional archive lifecycle.",
+    "modes": {
+      "ariaLabel": "Integrity atelier modes",
+      "observe": "Observe",
+      "verify": "Verify",
+      "remediate": "Remediate",
+      "observeHint": "Switch to Verify to run chain or entry checks, or to Remediate when maintenance is needed."
+    },
     "verification": "Verification",
     "dateRangeSelect": "Select a range",
     "selectDateRangeToRun": "Select a date range to run verification",
@@ -420,6 +427,8 @@
       "title": "Operational incidents",
       "loading": "Loading incidents…",
       "empty": "No heartbeat incidents recorded.",
+      "loadError": "Could not load operational incidents.",
+      "retry": "Retry",
       "refresh": "Refresh",
       "refreshing": "Refreshing…",
       "declare": "Declare closure",
