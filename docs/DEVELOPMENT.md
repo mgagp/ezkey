@@ -3,7 +3,7 @@
 ## Table of Contents
 1. [OpenAPI Documentation](#openapi-documentation)
 2. [Testing Strategy](#testing-strategy)
-3. [Development Workflow](#development-workflow)
+3. [Development Workflow](#development-workflow) — [first clone](#first-clone-on-a-new-workstation)
 4. [Quality Assurance](#quality-assurance)
 
 ---
@@ -243,6 +243,37 @@ class OpenApiIntegrationTest {
 
 ## Development Workflow
 
+### First clone on a new workstation
+
+A fresh git clone plus an empty `~/.m2` is the expected first-build situation on **Windows, macOS, or Linux**. It is not a Mac-only problem, and it does not require a custom Checkstyle remote repository.
+
+**Prerequisites**
+
+- JDK 25 (`JAVA_HOME` recommended; `java` and `mvn` must agree on that JDK)
+- Maven 3.9+
+- Bash — `./scripts/*.sh` from Git Bash on Windows, or the system Bash on macOS/Linux
+- Docker Desktop (or Engine + Compose) for the local stack
+- Node.js 20.19.4+ (optional for Java-only; required for Admin UI, Bruno CLI, and mobile JS tests). After `npm ci` in `ezkey-admin-ui/`, run `npm run generate:api` — the Orval client under `src/generated/` is gitignored.
+
+**Do this**
+
+```bash
+./scripts/build.sh --diagnose-only
+./scripts/build.sh
+```
+
+`build.sh` installs the unpublished `org.ezkey:checkstyle-config` module into the local Maven repository **before** `mvn checkstyle:check`. That artifact is not on Maven Central or Apache Snapshots. A first `checkstyle:check` on an empty `~/.m2` fails with a cached "not found in apache.snapshots" error that looks like a missing plugin repository.
+
+On macOS, Temurin via SDKMAN is not registered with `/usr/libexec/java_home`. `build.sh` therefore also probes `~/.sdkman/candidates/java/current` when `JAVA_HOME` is unset. A login shell that already exports SDKMAN `JAVA_HOME` needs no extra step. System `/bin/bash` is 3.2: scripts with `set -u` must not expand empty arrays as `"${arr[@]}"` (that fails before Playwright even starts).
+
+**Do not** treat `mvn checkstyle:check` or `mvn -pl some-module …` as the first command on a machine that has never built this reactor. Use the script, or see [Reliable Local Maven Validation](#reliable-local-maven-validation) for the expanded sequence.
+
+**POSIX vs Windows in Tink tests:** `TinkKeyManager` requires master-key files at mode `600` on macOS/Linux and skips that check on Windows. Tests must write temp keys through `TestMasterKeys` (owner-only permissions). Copying `Files.writeString` without that helper fails on a POSIX first build even when Windows is green.
+
+**Postgres first-boot roles:** `docker/postgres/init/01-create-roles.sh` is bind-mounted into `postgres:18-alpine` and must be executable (`git` mode `100755`). A `644` checkout plus Docker Desktop on macOS fails first init with `/bin/sh: bad interpreter: Permission denied`; Postgres can still become healthy while application roles are missing and the rest of the stack stays `Created`.
+
+Without a host JDK, use [`./scripts/build-docker.sh`](../scripts/build-docker.sh) instead ([Docker-only Java validation](#docker-only-java-validation-no-host-jdkmaven)).
+
 ### Code Quality Standards
 - **Java 25+**: Use modern Java features
 - **Spring Boot 3.x**: Follow Spring Boot best practices
@@ -278,15 +309,19 @@ below before any targeted module optimization:
 
 ```bash
 mvn spotless:apply
+mvn -pl checkstyle-config install -DskipTests
 mvn checkstyle:check
 mvn clean
 mvn install -DskipTests
 ```
 
 This is the most reliable path because Checkstyle depends on the internal `checkstyle-config`
-module from the Maven reactor. **`./scripts/build.sh`** is the single portable entrypoint (Git Bash
-on Windows, Linux, or macOS). It auto-detects the canonical JDK 25 path on the maintainer Windows
-workstation when `JAVA_HOME` is unset. From a Windows-hosted agent shell (PowerShell), invoke Git
+module. That artifact is not published to a remote repository, so a fresh `~/.m2` must install it
+locally before `checkstyle:check` can resolve the plugin dependency. **`./scripts/build.sh`** is the
+single portable entrypoint (Git Bash on Windows, Linux, or macOS); it performs this bootstrap
+automatically. It auto-detects the canonical JDK 25 path on the maintainer Windows
+workstation when `JAVA_HOME` is unset, and SDKMAN's `~/.sdkman/candidates/java/current` on macOS/Linux.
+From a Windows-hosted agent shell (PowerShell), invoke Git
 Bash explicitly: `& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/build.sh'`.
 
 ### Docker-only Java validation (no host JDK/Maven)

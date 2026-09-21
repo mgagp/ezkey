@@ -18,6 +18,7 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 
 | Need | Read |
 |------|------|
+| Fresh clone / first host Java build (empty `~/.m2`, Windows or macOS/Linux) | [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § *First clone on a new workstation*; entrypoint `./scripts/build.sh` (`--diagnose-only` if JDK/Maven look wrong). Do not start with bare `mvn checkstyle:check`. |
 | Product intent, thesis, audience | [`product-docs/global/product-intent.md`](product-docs/global/product-intent.md) |
 | Priority / what to implement next | [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md), [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) |
 | Protocol crypto (Auth API ↔ mobile / Demo Device) | [`docs/CRYPTO.md`](docs/CRYPTO.md), [`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`](docs/ENROLLMENT_SIGNATURE_PAYLOAD.md), [`docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md); relevant **section** of [`docs/ENDPOINT.md`](docs/ENDPOINT.md) only |
@@ -110,9 +111,10 @@ After implementing or changing Java (or other Spotless-covered) code, use the sa
 from the repository root in **Bash**:
 
 1. `mvn spotless:apply`
-2. `mvn checkstyle:check`
-3. `mvn clean`
-4. `mvn install -DskipTests`
+2. `mvn -pl checkstyle-config install -DskipTests` (fresh `~/.m2`)
+3. `mvn checkstyle:check`
+4. `mvn clean`
+5. `mvn install -DskipTests`
 
 This is the default autonomous validation path because Checkstyle depends on the reactor-built
 `checkstyle-config` module. Only after that baseline succeeds should you run targeted follow-up

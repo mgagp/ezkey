@@ -456,6 +456,8 @@ PostgreSQL data is persisted in a Docker volume named `postgres-data`. This mean
 - Data persists when containers are stopped
 - Data is removed only when using `clean` command or `docker-compose down -v`
 
+First boot (empty volume) runs [`postgres/init/01-create-roles.sh`](postgres/init/01-create-roles.sh). That file **must be executable**. If a fresh clone left it `644`, Postgres logs `/bin/sh: bad interpreter: Permission denied`, application roles are missing, and dependent services stay `Created`. Fix: `chmod +x docker/postgres/init/01-create-roles.sh`, then `./ezkey-tests/clean-start.sh` (or `down -v` + `./docker/start.sh`) so init runs on a new volume.
+
 ### Viewing Volume Data
 
 ```bash

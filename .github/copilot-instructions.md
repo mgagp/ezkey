@@ -212,8 +212,8 @@ src/main/java/org/ezkey/{domain}/
 - Ensure that code compiles and follows project conventions
 
 ### Quality Assurance
-- Run quality checks: `mvn checkstyle:check`
-- Build verification: `mvn clean verify`
+- Java validation entrypoint: `./scripts/build.sh` (Git Bash on Windows). On a fresh clone, do **not**
+  start with bare `mvn checkstyle:check` — see `docs/DEVELOPMENT.md` § *First clone on a new workstation*.
 - Follow Google Java Style Guide (`google_checks.xml`)
 - For Java changes, run validation from repository root so Checkstyle is executed in the full
   reactor with `checkstyle-config`; do not treat Checkstyle/reactor failures as optional.
@@ -331,12 +331,9 @@ app/
 
 ### Development Commands
 ```bash
-# Build all modules
-mvn clean install
-
-# Run quality checks
-mvn checkstyle:check
-mvn clean verify
+# First clone and later Java validation (bootstraps checkstyle-config)
+./scripts/build.sh --diagnose-only
+./scripts/build.sh
 
 # Database migrations
 ./scripts/ezkey-flyway.sh --migrate

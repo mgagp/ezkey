@@ -6,6 +6,9 @@
 # Roles: ezkey_migrate (DDL/Flyway), ezkey_admin, ezkey_auth, ezkey_integration.
 # DML grants are applied later by scripts/db/apply-grants.sh after Flyway.
 # Use /bin/sh (Alpine postgres image has no bash).
+# Must be executable (git mode 100755). Docker Desktop on macOS can report -x on a
+# 644 bind-mount, then the official postgres image execs the script and fails with
+# /bin/sh: bad interpreter: Permission denied — roles never exist, APIs stay Created.
 
 set -eu
 
