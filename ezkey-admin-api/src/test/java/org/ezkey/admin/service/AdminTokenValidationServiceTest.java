@@ -121,33 +121,93 @@ class AdminTokenValidationServiceTest {
   }
 
   @Test
-  @DisplayName("updateTokenLastUsed extends expiration for SESSION token (sliding expiration)")
-  void updateTokenLastUsed_extendsExpiration_forSessionToken() {
+  @DisplayName(
+      "updateTokenLastUsed(String) finds by hash then saves; SESSION gets sliding expiration")
+  void updateTokenLastUsed_stringPath_findsAndExtendsExpiration_forSessionToken() {
     String normalToken = "ezkey_normal";
     String hash = SensitiveDataHasher.sha256Hex(normalToken);
+    OffsetDateTime extendedExpiresAt = OffsetDateTime.now().plusHours(2);
     when(rotationProperties.getExpirationHours()).thenReturn(2);
     when(tokenRepository.findByBearerTokenHashAndActiveTrue(eq(hash)))
         .thenReturn(Optional.of(adminToken));
     when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.SESSION);
+    when(adminToken.getExpiresAt()).thenReturn(extendedExpiresAt);
 
-    service.updateTokenLastUsed(normalToken);
+    Optional<OffsetDateTime> result = service.updateTokenLastUsed(normalToken);
 
+    assertThat(result).contains(extendedExpiresAt);
+    verify(tokenRepository).findByBearerTokenHashAndActiveTrue(eq(hash));
     verify(adminToken).setLastUsedAt(any(OffsetDateTime.class));
     verify(adminToken).setExpiresAt(any(OffsetDateTime.class));
     verify(tokenRepository).save(adminToken);
   }
 
   @Test
-  @DisplayName("updateTokenLastUsed does not extend expiration for RECOVERY token")
-  void updateTokenLastUsed_doesNotExtendExpiration_forRecoveryToken() {
+  @DisplayName(
+      "updateTokenLastUsed(String) finds by hash then saves; RECOVERY does not extend (SEC-021)")
+  void updateTokenLastUsed_stringPath_findsAndDoesNotExtendExpiration_forRecoveryToken() {
     String recoveryToken = "ezkey_recovery_abc123";
     String hash = SensitiveDataHasher.sha256Hex(recoveryToken);
+    OffsetDateTime fixedExpiresAt = OffsetDateTime.now().plusMinutes(15);
     when(tokenRepository.findByBearerTokenHashAndActiveTrue(eq(hash)))
         .thenReturn(Optional.of(adminToken));
     when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.RECOVERY);
+    when(adminToken.getExpiresAt()).thenReturn(fixedExpiresAt);
 
-    service.updateTokenLastUsed(recoveryToken);
+    Optional<OffsetDateTime> result = service.updateTokenLastUsed(recoveryToken);
 
+    assertThat(result).contains(fixedExpiresAt);
+    verify(tokenRepository).findByBearerTokenHashAndActiveTrue(eq(hash));
+    verify(adminToken).setLastUsedAt(any(OffsetDateTime.class));
+    verify(adminToken, never()).setExpiresAt(any(OffsetDateTime.class));
+    verify(tokenRepository).save(adminToken);
+  }
+
+  @Test
+  @DisplayName("updateTokenLastUsed(String) returns empty when token hash is not found")
+  void updateTokenLastUsed_stringPath_returnsEmpty_whenTokenNotFound() {
+    String missingToken = "ezkey_missing";
+    String hash = SensitiveDataHasher.sha256Hex(missingToken);
+    when(tokenRepository.findByBearerTokenHashAndActiveTrue(eq(hash))).thenReturn(Optional.empty());
+
+    Optional<OffsetDateTime> result = service.updateTokenLastUsed(missingToken);
+
+    assertThat(result).isEmpty();
+    verify(tokenRepository).findByBearerTokenHashAndActiveTrue(eq(hash));
+    verify(tokenRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName(
+      "updateTokenLastUsed(AdminToken) saves without re-find; SESSION gets sliding expiration")
+  void updateTokenLastUsed_entityPath_neverReFinds_andExtendsExpiration_forSessionToken() {
+    OffsetDateTime extendedExpiresAt = OffsetDateTime.now().plusHours(2);
+    when(rotationProperties.getExpirationHours()).thenReturn(2);
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.SESSION);
+    when(adminToken.getExpiresAt()).thenReturn(extendedExpiresAt);
+
+    Optional<OffsetDateTime> result = service.updateTokenLastUsed(adminToken);
+
+    assertThat(result).contains(extendedExpiresAt);
+    verify(tokenRepository, never()).findByBearerTokenHashAndActiveTrue(any());
+    verify(tokenRepository, never()).findByBearerTokenHashAndActiveTrueWithRelations(any());
+    verify(adminToken).setLastUsedAt(any(OffsetDateTime.class));
+    verify(adminToken).setExpiresAt(any(OffsetDateTime.class));
+    verify(tokenRepository).save(adminToken);
+  }
+
+  @Test
+  @DisplayName(
+      "updateTokenLastUsed(AdminToken) saves without re-find; RECOVERY does not extend (SEC-021)")
+  void updateTokenLastUsed_entityPath_neverReFinds_andDoesNotExtend_forRecoveryToken() {
+    OffsetDateTime fixedExpiresAt = OffsetDateTime.now().plusMinutes(15);
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.RECOVERY);
+    when(adminToken.getExpiresAt()).thenReturn(fixedExpiresAt);
+
+    Optional<OffsetDateTime> result = service.updateTokenLastUsed(adminToken);
+
+    assertThat(result).contains(fixedExpiresAt);
+    verify(tokenRepository, never()).findByBearerTokenHashAndActiveTrue(any());
     verify(adminToken).setLastUsedAt(any(OffsetDateTime.class));
     verify(adminToken, never()).setExpiresAt(any(OffsetDateTime.class));
     verify(tokenRepository).save(adminToken);

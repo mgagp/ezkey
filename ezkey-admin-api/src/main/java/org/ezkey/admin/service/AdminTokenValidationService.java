@@ -144,9 +144,10 @@ public class AdminTokenValidationService {
    * Updates the last used timestamp and, for non-recovery tokens, extends expiration (sliding
    * expiration).
    *
-   * <p>This method requires a separate transaction for the update. For normal admin tokens, the
-   * token's expiration is extended to now + expirationHours on each validated request, so the
-   * session stays valid as long as the user is active. Recovery tokens are not extended.
+   * <p>Looks up the token by bearer hash, then delegates to {@link
+   * #updateTokenLastUsed(AdminToken)}. Prefer the entity overload on the authenticated request hot
+   * path when {@link #validateTokenWithRelations(String)} already loaded the row (JavaMelody A1 /
+   * JM-001: avoid a second SELECT).
    *
    * @param token the bearer token to update
    * @return updated expiration timestamp when the token was found and updated
@@ -160,18 +161,40 @@ public class AdminTokenValidationService {
       }
       Optional<AdminToken> tokenOptional = tokenRepository.findByBearerTokenHashAndActiveTrue(hash);
       if (tokenOptional.isPresent()) {
-        AdminToken adminToken = tokenOptional.get();
-        OffsetDateTime now = OffsetDateTime.now();
-        adminToken.setLastUsedAt(now);
-        // Sliding expiration for SESSION tokens only (SEC-021: never extend RECOVERY).
-        if (adminToken.getTokenPurpose() != AdminTokenPurpose.RECOVERY) {
-          int hours = Math.max(1, rotationProperties.getExpirationHours());
-          adminToken.setExpiresAt(now.plusHours(hours));
-        }
-        tokenRepository.save(adminToken);
-        logger.debug("✅ Updated last used and expiration for token");
-        return Optional.ofNullable(adminToken.getExpiresAt());
+        return updateTokenLastUsed(tokenOptional.get());
       }
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
+      logger.error("❌ Error updating token timestamp: {}", e.getMessage());
+    }
+    return Optional.empty();
+  }
+
+  /**
+   * Updates last used and sliding expiration on an already-loaded {@link AdminToken}.
+   *
+   * <p>Does not re-query by bearer hash. For SESSION tokens, expiration is extended to now +
+   * expirationHours. Recovery tokens update {@code lastUsedAt} only (SEC-021: never extend).
+   *
+   * @param adminToken the loaded token entity (must be managed or attachable for save)
+   * @return updated expiration timestamp when the update succeeds; empty if {@code adminToken} is
+   *     null or the update fails
+   */
+  @Transactional
+  public Optional<OffsetDateTime> updateTokenLastUsed(AdminToken adminToken) {
+    if (adminToken == null) {
+      return Optional.empty();
+    }
+    try {
+      OffsetDateTime now = OffsetDateTime.now();
+      adminToken.setLastUsedAt(now);
+      // Sliding expiration for SESSION tokens only (SEC-021: never extend RECOVERY).
+      if (adminToken.getTokenPurpose() != AdminTokenPurpose.RECOVERY) {
+        int hours = Math.max(1, rotationProperties.getExpirationHours());
+        adminToken.setExpiresAt(now.plusHours(hours));
+      }
+      tokenRepository.save(adminToken);
+      logger.debug("✅ Updated last used and expiration for token");
+      return Optional.ofNullable(adminToken.getExpiresAt());
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("❌ Error updating token timestamp: {}", e.getMessage());
     }
