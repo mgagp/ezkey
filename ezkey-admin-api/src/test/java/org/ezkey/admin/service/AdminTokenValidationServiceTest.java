@@ -168,8 +168,7 @@ class AdminTokenValidationServiceTest {
   void updateTokenLastUsed_stringPath_returnsEmpty_whenTokenNotFound() {
     String missingToken = "ezkey_missing";
     String hash = SensitiveDataHasher.sha256Hex(missingToken);
-    when(tokenRepository.findByBearerTokenHashAndActiveTrue(eq(hash)))
-        .thenReturn(Optional.empty());
+    when(tokenRepository.findByBearerTokenHashAndActiveTrue(eq(hash))).thenReturn(Optional.empty());
 
     Optional<OffsetDateTime> result = service.updateTokenLastUsed(missingToken);
 

@@ -74,7 +74,8 @@ class AdminTokenAuthenticationFilterTest {
 
   @Test
   @DisplayName(
-      "After validate present, updateTokenLastUsed receives the loaded entity (no String re-lookup)")
+      "After validate present, updateTokenLastUsed receives the loaded entity (no String"
+          + " re-lookup)")
   void authenticatesWithBearer_updatesLastUsedWithLoadedEntity_andSetsRequestAttributes()
       throws Exception {
     OffsetDateTime updatedExpiresAt = OffsetDateTime.now().plusHours(2);
@@ -82,8 +83,6 @@ class AdminTokenAuthenticationFilterTest {
     when(admin.getAdminType()).thenReturn(AdminType.GLOBAL_ADMIN);
     when(admin.getUsername()).thenReturn("global.admin");
     when(adminToken.getAdmin()).thenReturn(admin);
-    when(adminToken.getTenant()).thenReturn(null);
-    when(adminToken.getIntegration()).thenReturn(null);
     when(tokenValidationService.validateTokenWithRelations(PLAIN_TOKEN))
         .thenReturn(Optional.of(adminToken));
     when(tokenValidationService.updateTokenLastUsed(adminToken))
