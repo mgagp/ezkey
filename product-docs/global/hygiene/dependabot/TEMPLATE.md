@@ -46,6 +46,9 @@ Do not paste full chat transcripts.
 | Java BOM pulse (`spring-boot.version` vs current same-minor) | yes / n/a | newer? applied? none |
 | SEC-019 overrides reviewed after Boot bump | yes / n/a | kept / dropped |
 | Nested pin: `google-java-format` | yes / n/a | current / bump proposed |
+| Mobile RN pulse (declared `react` / `react-native` + coupled libs) | yes / n/a | versions recorded |
+| Mobile `yarn deps:monitor` (actionable / deferred / high audit) | yes / n/a | summary or none |
+| Dependabot mobile PRs peeled | yes / n/a / none | PR #s or empty queue |
 | `./scripts/build.sh` | yes / no / n/a | |
 | Clean-start stack | yes / no / deferred | |
 | Functional tests | yes / no / deferred | |
