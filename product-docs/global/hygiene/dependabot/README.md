@@ -22,7 +22,10 @@ under *Already deferred — skip HITL*, then triage only unlabeled (or non-defer
 
 | PRs | Topic | Re-evaluate when |
 |-----|--------|------------------|
-| `#337`, `#450`, `#347` | TypeScript 7 (SDK + Admin UI group + migration idea) | TS 7.1 / typescript-eslint Node API readiness (~months), not routine weekly passes |
+| `#337`, `#498`, `#347` | TypeScript 7 (SDK + Admin UI group + migration idea) | TS 7.1 / typescript-eslint Node API readiness (~months), not routine weekly passes |
+
+Note: Dependabot `#450` (Admin UI TS 7 group) was superseded/closed when `#498` opened; keep `#498`
+in the standing set. See empty-queue pass [`2026-09-21-pass-1.md`](2026-09-21-pass-1.md).
 
 To park a new disruptor for weeks/months: comment + `gh pr edit <n> --add-label deferred:later-train`.
 
