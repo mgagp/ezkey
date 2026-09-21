@@ -72,10 +72,11 @@ not a mandatory top-level sort.
    **Cloud GitHub identities**. Do not skip to a hygiene branch because the harness labeled
    default `gh` read-only.
 
-2. **Split deferred first:** any PR labeled `deferred:*` (notably `deferred:later-train`) goes under
-   **Already deferred — skip HITL** in the overview. Do **not** put them in weekly lots or re-ask
-   Go/No-Go unless the operator explicitly reopens that train. Non-Dependabot parked PRs with the
-   same label (e.g. a migration-idea PR) may be mentioned once for traceability.
+2. **Split deferred first:** any PR labeled `deferred:*` — notably `deferred:later-train` **or**
+   `deferred:rn-upgrade` — goes under **Already deferred — skip HITL** in the overview. Do **not**
+   put them in weekly lots or re-ask Go/No-Go unless the operator explicitly reopens that train.
+   Non-Dependabot parked PRs with the same label (e.g. a migration-idea PR) may be mentioned once
+   for traceability.
 3. **Java BOM pulse** (mandatory on every weekly pass — see below). Silence in the Dependabot
    queue is not proof that the Boot line is current.
 4. **Mobile RN pulse** (mandatory on every weekly pass — same weight as Java BOM pulse; see
@@ -328,8 +329,15 @@ are already **T4 hard escalators** — this checklist is the operational tail of
 | Label | Meaning |
 |-------|---------|
 | `deferred:later-train` | Parked for a later release-train / disruptor review. Skip weekly lots until the operator reopens. |
+| `deferred:rn-upgrade` | Mobile deps that must move with a React Native line bump. Skip weekly lots until a scheduled RN upgrade. |
 
-Create with: `gh label create "deferred:later-train" --description "…" --color "6E7781"` (once per repo).
+Create once per repo (descriptions must be ≤100 characters for GitHub):
+
+```bash
+gh label create "deferred:later-train" --description "…" --color "6E7781"
+gh label create "deferred:rn-upgrade" --description "…" --color "B76E3F"
+```
+
 Standing parked set is recorded in [`product-docs/global/hygiene/dependabot/README.md`](../../product-docs/global/hygiene/dependabot/README.md).
 
 ## Windows shell notes

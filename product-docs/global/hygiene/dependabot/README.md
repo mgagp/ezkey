@@ -32,10 +32,13 @@ Empty Dependabot queue for Maven or mobile ≠ stack current. Authority: skill
 | `YYYY-MM-DD-pass-N.md` | Dated instance (lots table + validation evidence) |
 | [`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md) | Implemented on `hygiene/java-dependency-pins`: Tink / ShedLock / ipaddress now parent-pinned |
 
-## Standing deferrals (`deferred:later-train`)
+## Standing deferrals (`deferred:*`)
 
-PRs labeled **`deferred:later-train`** are **out of weekly lot HITL**. Cold agents list them once
-under *Already deferred — skip HITL*, then triage only unlabeled (or non-deferred) Dependabot PRs.
+PRs labeled **`deferred:later-train`** or **`deferred:rn-upgrade`** (any `deferred:*`) are **out of
+weekly lot HITL**. Cold agents list them once under *Already deferred — skip HITL*, then triage
+only unlabeled (or non-deferred) Dependabot PRs. The weekly peel skips **both** labels.
+
+### `deferred:later-train`
 
 | PRs | Topic | Re-evaluate when |
 |-----|--------|------------------|
@@ -44,7 +47,15 @@ under *Already deferred — skip HITL*, then triage only unlabeled (or non-defer
 Note: Dependabot `#450` (Admin UI TS 7 group) was superseded/closed when `#498` opened; keep `#498`
 in the standing set. See empty-queue pass [`2026-09-21-pass-1.md`](2026-09-21-pass-1.md).
 
-To park a new disruptor for weeks/months: comment + `gh pr edit <n> --add-label deferred:later-train`.
+To park a new later-train disruptor: comment + `gh pr edit <n> --add-label deferred:later-train`.
+
+### `deferred:rn-upgrade`
+
+| PRs | Topic | Re-evaluate when |
+|-----|--------|------------------|
+| `#582`, `#583`, `#584`, `#585` | RN 0.87 platform lot (`mobile-rn-core`, vision-camera, navigation, safe-area-context) | Scheduled React Native desktop+device upgrade; not routine weekly passes |
+
+To park RN-coupled mobile deps until a line bump: comment + `gh pr edit <n> --add-label deferred:rn-upgrade`.
 
 ## Preferred weekly posture (lots without duplication)
 
