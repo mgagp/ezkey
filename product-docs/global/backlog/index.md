@@ -106,7 +106,7 @@ and four backlog ideas below — this track does not claim September operability
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
-| `admin-ui-audit-integrity-hard-split-intention` | Audit trail vs Integrity hard split (cut 1) | `2026-09-18` | Compass (no `I-*`/`TB-*`). Docs PR `#562`; implementation PR `#563`. `/integrity` first-class GA page. Cut 2 (layout inside Integrity) and cut 3 (API↔UI gaps) remain on the intention note. |
+| `admin-ui-audit-integrity-hard-split-intention` | Audit trail vs Integrity hard split (cut 1) | `2026-09-18` | Compass (no `I-*`/`TB-*`). Docs PR `#562`; implementation PR `#563`. `/integrity` first-class GA page. Cut 2 phase A (density): [`admin-ui-integrity-cut2-phase-a.md`](../admin-ui-integrity-cut2-phase-a.md) + Walk Gate `WALK-2026-09-21-integrity-cut2-phase-a`. Cut 3 (API↔UI gaps) remains. |
 | `TB-2026-08-09-mobile-signed-instance-info` | Signed enrolled instance-info | `2026-08-10` | PR `#445`. Auth `POST /enrollments/instance-info` + mobile Ed25519 verify. Parent `I-2026-08-09` stays `active` for honesty UI + branding-change confirmation. Canon status synced 2026-08-25 after index lag. |
 | `TB-2026-08-23-integration-api-cloudflare-schema` | Integration API Cloudflare schema (EXP1) | `2026-08-23` | PR `#479`. EXP1 Integration schema upload; Set action **Block** (maintainer-only). Parent `I-2026-06-02` stays `active` for Admin Cloudflare. Canon status synced 2026-08-25. |
 | `TB-2026-06-02-auth-api-cloudflare-schema-first-slice` | Auth API Cloudflare schema-first slice | `2026-08-23` | PR `#478`. Host-neutral Auth spec + EXP1 schema; Set action **Block** (maintainer-only). Parent `I-2026-06-02` stays `active`. Canon status synced 2026-08-25. |
