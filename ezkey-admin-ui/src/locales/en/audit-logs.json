@@ -363,6 +363,9 @@
     "statusYes": "Yes",
     "statusNo": "No",
     "exceptionalMaintenance": "Exceptional Maintenance",
+    "disclosure": {
+      "attention": "Needs attention"
+    },
     "sealArchive": "Seal Archive",
     "confirmArchived": "Confirm archived",
     "confirmArchivedHint": "Record that the sealed tranche was archived externally (marks checkpoints EXPORTED).",

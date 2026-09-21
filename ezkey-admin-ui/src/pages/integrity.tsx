@@ -33,6 +33,13 @@ import {
   resolveEntryIntegrityReportSummaryState,
   type IntegrityInvestigationSession,
 } from '@/lib/integrity-investigation-session';
+import {
+  isActionableIncidentStatus,
+  isChainReportNonGreen,
+  shouldAutoOpenRemediateCluster,
+  shouldForceTimelineOpen,
+  undeclaredGapCountFromReport,
+} from '@/lib/integrity-progressive-disclosure';
 import { useAuth } from '@/context/use-auth';
 import { useDisplayTimezone } from '@/context/use-display-timezone';
 import { useToast } from '@/context/use-toast';
@@ -370,8 +377,9 @@ function CheckpointTimelineTable({
 // ── Integrity Panel (GLOBAL_ADMIN only) ───────────────────────────────────────
 
 function IntegrityPanel({
-  expandFromQuery = false,
   focusCheckpointId = null,
+  investigationSource = null,
+  reconcileAction = false,
   initialCheckRange = null,
   reconcileAlertId = null,
   reconcileFailBoundary = null,
@@ -379,8 +387,11 @@ function IntegrityPanel({
   autoOpenReconcile = false,
   monitoringTruth,
 }: {
-  expandFromQuery?: boolean;
   focusCheckpointId?: number | null;
+  /** Deep-link `source` (e.g. integrity-alert) — investigation context may open the timeline. */
+  investigationSource?: string | null;
+  /** True when deep-link `action=reconcile` (Remediate cluster; not timeline by itself). */
+  reconcileAction?: boolean;
   initialCheckRange?: { createdAfter: string; createdBefore: string } | null;
   /** Open AUDIT_INTEGRITY_RUPTURE alert id for Integrity-atelier reconcile. */
   reconcileAlertId?: number | null;
@@ -397,9 +408,27 @@ function IntegrityPanel({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const monitoringOffCopy = shouldUseMonitoringOffCopy(monitoringTruth);
-  const forceTimelineOpen = expandFromQuery || focusCheckpointId != null;
+  const disclosureQuery = useMemo(
+    () => ({
+      action: reconcileAction || autoOpenReconcile ? 'reconcile' : null,
+      source: investigationSource,
+      focusCheckpointId,
+    }),
+    [reconcileAction, autoOpenReconcile, investigationSource, focusCheckpointId],
+  );
+  const forceTimelineOpen = shouldForceTimelineOpen(disclosureQuery, false);
+  const forceRemediateFromQuery = shouldAutoOpenRemediateCluster(disclosureQuery, {
+    undeclaredGapCount: 0,
+    hasActionableIncident: false,
+    awaitingConfirmTranche: false,
+    chainNonGreen: false,
+  });
   const [timelineExpanded, setTimelineExpanded] = useState(forceTimelineOpen);
   const [prevForceTimelineOpen, setPrevForceTimelineOpen] = useState(forceTimelineOpen);
+  const [maintenanceExpanded, setMaintenanceExpanded] = useState(forceRemediateFromQuery);
+  const [incidentsExpanded, setIncidentsExpanded] = useState(forceRemediateFromQuery);
+  /** Gaps list: collapsed by default; auto-opens with Remediate when gaps exist. */
+  const [gapsListExpanded, setGapsListExpanded] = useState(false);
 
   // Deep-link props: open during render (no post-paint flash) when the query turns on.
   if (forceTimelineOpen !== prevForceTimelineOpen) {
@@ -466,7 +495,6 @@ function IntegrityPanel({
   const [hideEmptyWindows, setHideEmptyWindows] = useState(false);
   /** Focused gap from "Undeclared gaps for consultation" – highlights bordering checkpoints in timeline */
   const [focusedGap, setFocusedGap] = useState<{ gapStart: string; gapEnd: string; gapMinutes: number } | null>(null);
-  const [gapsListExpanded, setGapsListExpanded] = useState(true);
 
   const [incidentDeclareOpen, setIncidentDeclareOpen] = useState(false);
   const [incidentActive, setIncidentActive] = useState<AuditChainIncidentRow | null>(null);
@@ -842,6 +870,49 @@ function IntegrityPanel({
     && archiveEligibility.checkpointIdFrom != null
     && archiveEligibility.checkpointIdTo != null;
 
+  const undeclaredGapCount = undeclaredGapCountFromReport(
+    chainReport as { undeclaredGaps?: unknown[] } | null,
+  );
+  const hasActionableIncident = (incidentsPage?.content ?? []).some((row) =>
+    isActionableIncidentStatus(row.status),
+  );
+  const chainNonGreen = isChainReportNonGreen(
+    chainReport as {
+      intact?: boolean;
+      status?: string;
+      undeclaredGaps?: unknown[];
+      invalidCheckpoints?: number;
+    } | null,
+  );
+  const autoOpenRemediate = shouldAutoOpenRemediateCluster(disclosureQuery, {
+    undeclaredGapCount,
+    hasActionableIncident,
+    awaitingConfirmTranche,
+    chainNonGreen,
+  });
+
+  // Non-green server/UI state (or deep-link): expand Remediate cluster once signals arrive.
+  // Does not force the checkpoint timeline open — that stays query/operator-driven.
+  useEffect(() => {
+    if (!autoOpenRemediate) {
+      return;
+    }
+    setMaintenanceExpanded(true);
+    setIncidentsExpanded(true);
+    if (undeclaredGapCount > 0) {
+      setGapsListExpanded(true);
+    }
+  }, [autoOpenRemediate, undeclaredGapCount]);
+
+  // Gap locate: keep timeline open when a gap is focused.
+  useEffect(() => {
+    if (focusedGap != null) {
+      setTimelineExpanded(true);
+      setGapsListExpanded(true);
+      setMaintenanceExpanded(true);
+    }
+  }, [focusedGap]);
+
   const canReconcileOnIntegrity =
     reconcileAlertId != null
     && reconcileAlertId > 0
@@ -1209,7 +1280,19 @@ function IntegrityPanel({
 
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <p className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.exceptionalMaintenance')}</p>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 text-left hover:bg-fg/5 p-1 -m-1 transition-colors"
+                  onClick={() => setMaintenanceExpanded((v) => !v)}
+                  aria-expanded={maintenanceExpanded}
+                  data-testid="integrity-maintenance-toggle"
+                >
+                  <p className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.exceptionalMaintenance')}</p>
+                  {awaitingConfirmTranche && (
+                    <Badge variant="warning">{t('integrity.confirmationRequired')}</Badge>
+                  )}
+                  {maintenanceExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                </button>
                 <span onClick={(e) => e.stopPropagation()}>
                   <ContextHelp
                     title={t('integrity.exceptionalMaintenance')}
@@ -1227,7 +1310,8 @@ function IntegrityPanel({
                   />
                 </span>
               </div>
-              <div className="flex gap-3 flex-wrap items-center">
+              {maintenanceExpanded && (
+              <div className="flex gap-3 flex-wrap items-center" data-testid="integrity-maintenance-body">
               <Button size="sm" variant="secondary" onClick={() => { resetSealForm(); setSealOpen(true); }} className="gap-1.5">
                 <Archive className="size-3.5" />
                 {t('integrity.sealArchive')}
@@ -1274,13 +1358,26 @@ function IntegrityPanel({
                 <ContextHelp title={t('integrity.declareGap')} content={<Trans i18nKey="audit-logs:help.declareGap.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.declareGap') })} />
               </span>
             </div>
+              )}
             </div>
 
             {/* Operational heartbeat incidents (distinct from cryptographic gap declarations) */}
             <div className="border-2 border-fg/10 bg-bg p-3 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.incidents.title')}</span>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 text-left hover:bg-fg/5 p-1 -m-1 transition-colors"
+                    onClick={() => setIncidentsExpanded((v) => !v)}
+                    aria-expanded={incidentsExpanded}
+                    data-testid="integrity-incidents-toggle"
+                  >
+                    <span className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.incidents.title')}</span>
+                    {hasActionableIncident && (
+                      <Badge variant="warning">{t('integrity.disclosure.attention')}</Badge>
+                    )}
+                    {incidentsExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                  </button>
                   <span onClick={(e) => e.stopPropagation()}>
                     <ContextHelp
                       title={t('integrity.incidents.title')}
@@ -1289,10 +1386,14 @@ function IntegrityPanel({
                     />
                   </span>
                 </div>
+                {incidentsExpanded && (
                 <Button type="button" size="sm" variant="secondary" className="gap-1.5" onClick={() => void refetchIncidents()}>
                   {incidentsLoading ? t('integrity.incidents.refreshing') : t('integrity.incidents.refresh')}
                 </Button>
+                )}
               </div>
+              {incidentsExpanded && (
+              <div data-testid="integrity-incidents-body" className="space-y-3">
               {incidentsLoading && (
                 <p className="text-xs text-fg-muted">{t('integrity.incidents.loading')}</p>
               )}
@@ -1355,6 +1456,8 @@ function IntegrityPanel({
                   ))}
                 </ul>
               )}
+              </div>
+              )}
             </div>
 
             {/* Undeclared gaps for consultation (from last chain verification) */}
@@ -1372,6 +1475,8 @@ function IntegrityPanel({
                   type="button"
                   className="flex items-center gap-2 w-full text-left hover:bg-fg/5 p-1 -m-1 transition-colors"
                   onClick={() => setGapsListExpanded((v) => !v)}
+                  aria-expanded={gapsListExpanded}
+                  data-testid="integrity-gaps-toggle"
                 >
                   <span className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.undeclaredGapsForConsultation')}</span>
                   <Badge variant="warning">{(chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0}</Badge>
@@ -1446,6 +1551,7 @@ function IntegrityPanel({
                 className="flex items-center gap-2 text-left hover:bg-fg/5 transition-colors"
                 onClick={() => setTimelineExpanded((v) => !v)}
                 aria-expanded={timelineExpanded}
+                data-testid="integrity-timeline-toggle"
               >
                 <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.checkpointTimeline')}</h3>
                 {timelineExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
@@ -2174,8 +2280,9 @@ export default function IntegrityPage() {
               </div>
             )}
             <IntegrityPanel
-              expandFromQuery
               focusCheckpointId={focusCheckpointIdParam}
+              investigationSource={searchParams.get('source')}
+              reconcileAction={autoOpenReconcile}
               initialCheckRange={initialCheckRange}
               reconcileAlertId={autoOpenReconcile ? reconcileAlertIdParam : null}
               reconcileFailBoundary={reconcileBoundaries?.failBoundary ?? null}

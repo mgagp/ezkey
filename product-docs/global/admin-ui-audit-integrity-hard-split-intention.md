@@ -15,6 +15,7 @@
 - **Related:**
   - [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job-surface-map.md)
   - [`admin-ui-integrity-base-monitoring-honesty.md`](admin-ui-integrity-base-monitoring-honesty.md) — Integrity honesty when monitoring jobs are off (base)
+  - [`admin-ui-integrity-cut2-phase-a.md`](admin-ui-integrity-cut2-phase-a.md) — cut 2 phase A density / progressive disclosure
   - [`integrity-wave-b-operator-end-state-compass.md`](integrity-wave-b-operator-end-state-compass.md)
   - [`integrity-cluster-design-pack.md`](integrity-cluster-design-pack.md)
   - [`admin-ui-paginated-screens-matrix.md`](admin-ui-paginated-screens-matrix.md)
@@ -122,6 +123,8 @@ No API redesign in this note; no second audit store; no pixel campaign in cut 1;
 1. ~~Job → surface map~~ — done. Marc accepted the pack.
 2. ~~Cut-1 sequencing~~ — locked above.
 3. ~~Implementation of cut 1~~ — PR `#563`, 2026-09-18.
-4. Cut 2 — later: challenge layout and chrome **inside** Integrity (not the leftover unbox already shipped).
+4. Cut 2 — layout and chrome **inside** Integrity:
+   - **Phase A (density / progressive disclosure):** [`admin-ui-integrity-cut2-phase-a.md`](admin-ui-integrity-cut2-phase-a.md) + Walk Gate [`backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-a.md`](backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-a.md).
+   - Later phases: Observe/Verify/Remediate mode chrome, etc. — not phase A.
 5. Cut 3 — after walkable: surface missing OpenAPI callers on Integrity (`confirm-archived`, `reconcile-integrity-rupture`, peers).
-6. Isabelle exploratory once the split is on a stack (cut 1 is walkable; cut 3 when that pass lands).
+6. Isabelle exploratory once the split is on a stack (cut 1 is walkable; cut 2 phase A via its Walk Gate; cut 3 when that pass lands).
