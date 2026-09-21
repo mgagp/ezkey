@@ -8,7 +8,7 @@ Canon: [`../../templates/ui-walk-gate.template.md`](../../templates/ui-walk-gate
 - **ID:** `WALK-2026-09-21-integrity-cut2-phase-b`
 - **Owner (intention):** Julie / Marc
 - **Walk executor:** Isabelle (default)
-- **Single walkable SHA / PR:** https://github.com/mgagp/ezkey/pull/598 — walk **PR head** (`git fetch && git rev-parse origin/cursor/integrity-cut2-phase-b-936e`); tip at authoring was `a151065d6ab7a4c5916f5370ff32eff56d2851be`
+- **Single walkable SHA / PR:** https://github.com/mgagp/ezkey/pull/598 — walk **PR head** (`git fetch && git rev-parse origin/cursor/integrity-cut2-phase-b-936e`); authoring snapshot `3daaedf9e9d077adf4b7013e90adb8dc08d9cf69`
 - **Related craft PR(s):** https://github.com/mgagp/ezkey/pull/598
 - **Created:** `2026-09-21`
 - **Intention note:** [`../../admin-ui-integrity-cut2-phase-b.md`](../../admin-ui-integrity-cut2-phase-b.md)
