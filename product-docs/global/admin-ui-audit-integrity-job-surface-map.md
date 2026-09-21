@@ -8,7 +8,7 @@
 - **Grill:** [`backlog/grill-sessions/2026-09-17-admin-ui-audit-integrity-hard-split-grill-me.md`](backlog/grill-sessions/2026-09-17-admin-ui-audit-integrity-hard-split-grill-me.md)
 - **Purpose:** One-page map from operator jobs to Admin UI surfaces after the hard split.
   Proof constraint: **one** cryptographic journal (`audit_log` + chain); surfaces are views / ateliers, not second audit citizens.
-- **Related:** [`admin-ui-integrity-base-monitoring-honesty.md`](admin-ui-integrity-base-monitoring-honesty.md) — Integrity honesty when monitoring is off (base / jobs disabled)
+- **Related:** [`admin-ui-integrity-base-monitoring-honesty.md`](admin-ui-integrity-base-monitoring-honesty.md) — Integrity honesty when monitoring is off (base / jobs disabled); cut-2 phase A [`admin-ui-integrity-cut2-phase-a.md`](admin-ui-integrity-cut2-phase-a.md); cut-2 phase B+B′ [`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md) (in-page modes — still one Integrity surface)
 
 ---
 
@@ -17,7 +17,7 @@
 | Surface | Who sees it | Role |
 |---------|-------------|------|
 | **Audit trail** (`/audit-logs`) | All admins | Everyday “who did what?” + around-event context |
-| **Integrity** (`/integrity`, GA-only sidebar; label **Integrity**) | Global Admin | Investigate / verify / remediate on the **same** `audit_log` rows |
+| **Integrity** (`/integrity`, GA-only sidebar; label **Integrity**) | Global Admin | Investigate / verify / remediate on the **same** `audit_log` rows. Cut-2 phase B locks **in-page** Observe / Verify / Remediate modes on this **one** surface — not new nav items or sub-routes ([`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md)). |
 | **Alerts** (`/alerts`, detail) | Global Admin (as today) | Exceptional **signal list** only — deep-link into Integrity |
 | **Dashboard** (`/dashboard`) | Role-scoped widgets | Batch-health **signal** for scheduled jobs (checkpoint, nightly validation, re-encryption). Exit / follow-up to Integrity. Not the atelier. |
 
@@ -90,4 +90,4 @@ Ensure Admin UI callers exist end-to-end for ops already in OpenAPI but unevenly
 - **Intention + this map** = IA lock. Cut 1 is on `main` (PR `#563`).
 - **Isabelle** = exploratory walk (cut 1 is walkable).
 - **Alex** = priority framing already settled (not P0; do it properly).
-- **Remaining:** cut 2 (layout inside Integrity); cut 3 (OpenAPI callers still missing on the page).
+- **Remaining:** cut 2 phase B+B′ (modes + incidents pager — [`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md)); cut 2 phase C later; cut 3 (OpenAPI callers still missing on the page). Phase A density is delivered ([`admin-ui-integrity-cut2-phase-a.md`](admin-ui-integrity-cut2-phase-a.md)).

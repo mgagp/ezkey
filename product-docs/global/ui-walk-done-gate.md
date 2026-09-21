@@ -42,3 +42,6 @@ Standing rules:
 - Template: [`../templates/ui-walk-gate.template.md`](../templates/ui-walk-gate.template.md)
 - Example unified delivery: GitHub PR #570
 - Integrity IA pack: [`admin-ui-audit-integrity-hard-split-intention.md`](admin-ui-audit-integrity-hard-split-intention.md)
+- Filled Walk Gates (Integrity cut 2):
+  - [`backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-a.md`](backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-a.md) — phase A density
+  - [`backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-b.md`](backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-b.md) — phase B+B′ modes + incidents pager (`TBD` SHA until impl PR)
