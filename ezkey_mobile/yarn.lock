@@ -6008,16 +6008,16 @@ __metadata:
     react-native-config: "npm:1.6.1"
     react-native-gesture-handler: "npm:3.0.2"
     react-native-keychain: "npm:10.0.0"
-    react-native-nitro-image: "npm:0.15.1"
-    react-native-nitro-modules: "npm:0.36.5"
+    react-native-nitro-image: "npm:0.15.2"
+    react-native-nitro-modules: "npm:0.37.1"
     react-native-safe-area-context: "npm:5.8.0"
     react-native-screens: "npm:4.27.0"
     react-native-svg: "npm:15.15.5"
     react-native-svg-transformer: "npm:1.5.3"
-    react-native-vision-camera: "npm:5.2.2"
-    react-native-vision-camera-barcode-scanner: "npm:5.2.2"
-    react-native-vision-camera-worklets: "npm:5.2.2"
-    react-native-worklets: "npm:0.11.4"
+    react-native-vision-camera: "npm:5.2.3"
+    react-native-vision-camera-barcode-scanner: "npm:5.2.3"
+    react-native-vision-camera-worklets: "npm:5.2.3"
+    react-native-worklets: "npm:0.13.0"
     react-test-renderer: "npm:19.2.7"
     typescript: "npm:6.0.3"
     zustand: "npm:5.0.15"
@@ -9654,24 +9654,27 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-nitro-image@npm:0.15.1":
-  version: 0.15.1
-  resolution: "react-native-nitro-image@npm:0.15.1"
+"react-native-nitro-image@npm:0.15.2":
+  version: 0.15.2
+  resolution: "react-native-nitro-image@npm:0.15.2"
   peerDependencies:
     react: "*"
     react-native: "*"
     react-native-nitro-modules: "*"
-  checksum: 10c0/c8599543167ce1f53c838c2ec4a38923b617945d6dbea9717383a21688fa30d409f91a03a4d2645efa2fcd3523a4f06bdc97484507e99ebf10ac7236da55d735
+  peerDependenciesMeta:
+    react-native-nitro-modules:
+      optional: true
+  checksum: 10c0/25ac98e5bdbdaf05bfdab704e7098e54541b053e6022b03f1d3053297f84e13b876006fc4d600223fb82b322b271f74ba42fff1234dc6474b35bf244326eab0c
   languageName: node
   linkType: hard
 
-"react-native-nitro-modules@npm:0.36.5":
-  version: 0.36.5
-  resolution: "react-native-nitro-modules@npm:0.36.5"
+"react-native-nitro-modules@npm:0.37.1":
+  version: 0.37.1
+  resolution: "react-native-nitro-modules@npm:0.37.1"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/c7b2133f924967b68c0f0f678b5a5dce1a784a7e22f57ebf203ef5803a5c9c745b6d4dda8c9bcedd13f7c5ca53a8707784e98572a2ca8a864fe0b905163a34b5
+  checksum: 10c0/5178f2ee891cb746b084fdf382b6020e366d8e4a81922a3f1d60a453d34fca6ebb1b00c4c28785c36385bc182ab76a30cba70441c39abbc25d3ad54db612e46e
   languageName: node
   linkType: hard
 
@@ -9726,47 +9729,56 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-vision-camera-barcode-scanner@npm:5.2.2":
-  version: 5.2.2
-  resolution: "react-native-vision-camera-barcode-scanner@npm:5.2.2"
+"react-native-vision-camera-barcode-scanner@npm:5.2.3":
+  version: 5.2.3
+  resolution: "react-native-vision-camera-barcode-scanner@npm:5.2.3"
   peerDependencies:
     react: "*"
     react-native: "*"
     react-native-nitro-image: "*"
     react-native-nitro-modules: "*"
     react-native-vision-camera: "*"
-  checksum: 10c0/a36499eb1a29b4bc620e03afb3cea925f28821e2a7d85f8df0eaa30e454440d861fed26335926f24b02ee501e76d4f6fa5e2764b60697f31b6d5409fdbc2d7a5
+  peerDependenciesMeta:
+    react-native-nitro-modules:
+      optional: true
+  checksum: 10c0/3081afe648ef397a074c4bbc3c421d2b03d5bca4cff550b61e23904bb78c0f9fd75176b5b0c91040c040e395091b9c64f84a39f743da4f358f55f41ed82f5f28
   languageName: node
   linkType: hard
 
-"react-native-vision-camera-worklets@npm:5.2.2":
-  version: 5.2.2
-  resolution: "react-native-vision-camera-worklets@npm:5.2.2"
+"react-native-vision-camera-worklets@npm:5.2.3":
+  version: 5.2.3
+  resolution: "react-native-vision-camera-worklets@npm:5.2.3"
   peerDependencies:
     react: "*"
     react-native: "*"
     react-native-nitro-modules: "*"
     react-native-vision-camera: "*"
     react-native-worklets: "*"
-  checksum: 10c0/fa78767867f7d2392a7992884e7990232d6404202bc3b66dc50e112e6e11f76d805f0be1b7d327ea3fba1470fdd2e3371b1a576a31f9820ef5f58dda6341e296
+  peerDependenciesMeta:
+    react-native-nitro-modules:
+      optional: true
+  checksum: 10c0/a102e89ed12785daf98117b254d9960323e81b2eb6f9ba1330c6c97773e8a83c779b20c1ba69559cdf8b26f6047b367527b761e4cf6645dfa59594d71d913aab
   languageName: node
   linkType: hard
 
-"react-native-vision-camera@npm:5.2.2":
-  version: 5.2.2
-  resolution: "react-native-vision-camera@npm:5.2.2"
+"react-native-vision-camera@npm:5.2.3":
+  version: 5.2.3
+  resolution: "react-native-vision-camera@npm:5.2.3"
   peerDependencies:
     react: "*"
     react-native: "*"
     react-native-nitro-image: "*"
     react-native-nitro-modules: "*"
-  checksum: 10c0/acbdac2b54ac4f917dc7ada94455be3ff92a99c5799e6fd0043539e89cdabaed41d0f76913a26987d43fbb36b4d25f702de8d33dc6beadf025fdcf58c8e434c4
+  peerDependenciesMeta:
+    react-native-nitro-modules:
+      optional: true
+  checksum: 10c0/4c55b4e2dc659f38d3247e300c1a462493ea22e3d704b61d457dcb261399a23f57418e5caa6793456a0c557999f50439a4b4143bd467b3c5bb91dbb1aee2a324
   languageName: node
   linkType: hard
 
-"react-native-worklets@npm:0.11.4":
-  version: 0.11.4
-  resolution: "react-native-worklets@npm:0.11.4"
+"react-native-worklets@npm:0.13.0":
+  version: 0.13.0
+  resolution: "react-native-worklets@npm:0.13.0"
   dependencies:
     "@babel/generator": "npm:^7.27.1"
     "@babel/plugin-transform-arrow-functions": "npm:^7.27.1"
@@ -9780,14 +9792,16 @@ __metadata:
     "@babel/preset-typescript": "npm:^7.28.5"
     "@babel/traverse": "npm:^7.27.1"
     "@babel/types": "npm:^7.27.1"
+    "@jridgewell/remapping": "npm:^2.3.5"
     convert-source-map: "npm:^2.0.0"
     semver: "npm:^7.7.4"
+    whatwg-fetch: "npm:^3.6.20"
   peerDependencies:
     "@babel/core": "*"
     "@react-native/metro-config": "*"
     react: "*"
-    react-native: 0.83 - 0.86
-  checksum: 10c0/ee6bf50c790534698072a037ae8accbea02dcda05f1b9a4e1a79b86129014b116bd24e8a52f809390dc9a8055ae93c700304106cb951bf87dc4d88ee017152ed
+    react-native: 0.86 - 0.88
+  checksum: 10c0/bf35b75c9711019a9de757317afab7bc5f4015bf3770c64f1bb13fc5c8edae86b145642b721f6b3c886e4b52c69ea38c6331a3e59de6a1db3386976a6aadfc79
   languageName: node
   linkType: hard
 
@@ -11408,7 +11422,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"whatwg-fetch@npm:^3.0.0":
+"whatwg-fetch@npm:^3.0.0, whatwg-fetch@npm:^3.6.20":
   version: 3.6.20
   resolution: "whatwg-fetch@npm:3.6.20"
   checksum: 10c0/fa972dd14091321d38f36a4d062298df58c2248393ef9e8b154493c347c62e2756e25be29c16277396046d6eaa4b11bd174f34e6403fff6aaca9fb30fa1ff46d
