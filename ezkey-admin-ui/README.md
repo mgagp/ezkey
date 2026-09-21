@@ -31,8 +31,11 @@ Use this module README for frontend setup, local development, and UI-specific im
 
 ```bash
 npm install
+npm run generate:api
 npm run dev
 ```
+
+`src/generated/` is gitignored (Orval). A fresh clone must run `npm run generate:api` before `npm run dev` or Playwright. The committed `openapi-spec.json` is the input; do not hand-edit it.
 
 The dev server starts on `http://localhost:5173`. API calls are proxied to `http://localhost:9080` via the Vite proxy config (see `vite.config.ts`).
 

@@ -69,4 +69,5 @@ cd "$ROOT_DIR"
 echo "Ensuring Playwright Chromium is installed..."
 npm run test:browser:install
 
-npm run test:browser -- "${PLAYWRIGHT_ARGS[@]}" 2>&1 | tee "$RESULTS_DIR/summary.txt"
+# Bash 3.2 (macOS /bin/bash) treats an empty array as unbound under `set -u`.
+npm run test:browser -- ${PLAYWRIGHT_ARGS[@]+"${PLAYWRIGHT_ARGS[@]}"} 2>&1 | tee "$RESULTS_DIR/summary.txt"

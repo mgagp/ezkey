@@ -16,7 +16,11 @@ Single entrypoint for the full validation baseline (Spotless, Checkstyle, clean,
 
 Diagnostics only: `./scripts/build.sh --diagnose-only`
 
-Docker-only alternative (no host JDK/Maven): `./scripts/build-docker.sh`. See [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md).
+On a fresh clone with an empty `~/.m2`, use this script rather than a bare `mvn checkstyle:check`.
+The plugin depends on unpublished `org.ezkey:checkstyle-config`; `build.sh` installs that module first.
+See [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md) § *First clone on a new workstation*.
+
+Docker-only alternative (no host JDK/Maven): `./scripts/build-docker.sh`. Same DEVELOPMENT.md section.
 
 ## Git fast-forward helper
 

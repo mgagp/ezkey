@@ -15,6 +15,8 @@ If you are new to the repository, read these first:
 4. [ENDPOINT.md](ENDPOINT.md) for canonical API semantics.
 5. [CRYPTO.md](CRYPTO.md) for shared cryptographic wording and guarantees.
 
+Installing a **host JDK** to build Java modules from a fresh clone is a different path: [DEVELOPMENT.md](DEVELOPMENT.md) § *First clone on a new workstation* (`./scripts/build.sh`).
+
 ## Core References
 
 - [PROJECT_POSITIONING.md](PROJECT_POSITIONING.md): what Ezkey is, what it is not, and why it exists.
@@ -26,7 +28,7 @@ If you are new to the repository, read these first:
 - [AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md): canonical auth-attempt pending/respond signature payload construction.
 - [LIFECYCLE_GOVERNANCE.md](LIFECYCLE_GOVERNANCE.md): entity hierarchy, eligibility chain, and reversible/irreversible action rules across all Ezkey domain entities.
 - [ALERTS.md](ALERTS.md): operator-facing `ezkey_alert` subsystem (raise/touch/resolve, types, Admin API).
-- [DEVELOPMENT.md](DEVELOPMENT.md): build, test, and development workflow.
+- [DEVELOPMENT.md](DEVELOPMENT.md): first clone on a new workstation, host JDK 25 / Maven baseline, tests, and development workflow.
 - [OPERATIONAL.md](OPERATIONAL.md): deployment, operations, and production posture.
 - [configuration/README.md](configuration/README.md): index for configuration properties and per-module configuration docs.
 - [MAINTENANCE.md](MAINTENANCE.md): documentation maintenance expectations and standards.

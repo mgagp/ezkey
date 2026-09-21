@@ -1,6 +1,6 @@
 # Contributing to Ezkey
 
-Thank you for your interest in contributing. This document summarises how we work and the values that guide analysis and design decisions. For build, setup, and project organisation, see **README.md**. For product intent, see **`product-docs/global/product-intent.md`** (root **PRD.md** is a stub).
+Thank you for your interest in contributing. This document summarises how we work and the values that guide analysis and design decisions. For product intent, see **`product-docs/global/product-intent.md`** (root **PRD.md** is a stub). For a first clone on a new machine, see **README.md** § *Host Java reactor* and **`docs/DEVELOPMENT.md`** § *First clone on a new workstation*.
 
 ## Project values (analysis and design)
 
@@ -15,7 +15,8 @@ These values guide feature analysis, design, and implementation across the proje
 
 ## Where to read more
 
-- **README.md** — Overview, build, and setup
+- **README.md** — Overview, Docker quick start, and host Java reactor entrypoint
+- **docs/DEVELOPMENT.md** — First clone, JDK 25 / Maven baseline, Checkstyle bootstrap
 - **product-docs/global/product-intent.md** — Product intent (canonical); root **PRD.md** is a stub
 - **docs/ENDPOINT.md** — API endpoints and behaviour (section-scoped)
 - **AGENTS.md** (root and per-module) — Cold-start compass and agent patterns
@@ -60,13 +61,14 @@ See `AGENTS.md` § *GitHub pull request on Windows (agent shell)* and
 
 ## Build and verification
 
-Run the standard build from the repository root:
+On a fresh clone (empty `~/.m2`), from the repository root in Bash (Git Bash on Windows):
 
 ```bash
-scripts/build.sh
+./scripts/build.sh --diagnose-only
+./scripts/build.sh
 ```
 
-This runs Spotless apply, Checkstyle, and `mvn clean install`. See **README.md** for prerequisites and module layout.
+Prerequisites are JDK 25 and Maven 3.9+. Do not start with a bare `mvn checkstyle:check`: the plugin depends on the unpublished in-repo `checkstyle-config` module, and `build.sh` installs it first. Canonical notes: **`docs/DEVELOPMENT.md`** § *First clone on a new workstation*.
 
 ## Functional validation
 

@@ -36,7 +36,7 @@ This is what makes Ezkey a distinct backend-to-mobile security model rather than
 
 ## Quick Start
 
-The supported local quick-start path is the Bash clean start from `ezkey-tests`:
+The supported local **stack** path is the Bash clean start from `ezkey-tests`:
 
 ```bash
 ./ezkey-tests/clean-start.sh
@@ -58,6 +58,17 @@ For stack details, modes, and test-oriented workflow:
 - [`ezkey-tests/README.md`](ezkey-tests/README.md)
 - [`docker/README.md`](docker/README.md)
 - [`docs/LOCAL_STACK_PORTS.md`](docs/LOCAL_STACK_PORTS.md)
+
+### Host Java reactor (fresh clone)
+
+To compile and unit-test the Java modules on the host (Windows, macOS, or Linux), install **JDK 25** and **Maven 3.9+**, then from the repository root:
+
+```bash
+./scripts/build.sh --diagnose-only
+./scripts/build.sh
+```
+
+Use Git Bash on Windows. Do not start with a bare `mvn checkstyle:check` on an empty `~/.m2`: Checkstyle depends on an unpublished in-repo module, and `build.sh` installs it first. Full notes: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § *First clone on a new workstation*.
 
 ## Documentation
 
