@@ -363,6 +363,9 @@
     "statusYes": "Oui",
     "statusNo": "Non",
     "exceptionalMaintenance": "Maintenance exceptionnelle",
+    "disclosure": {
+      "attention": "À traiter"
+    },
     "sealArchive": "Sceller l'archive",
     "confirmArchived": "Confirmer l'archivage",
     "confirmArchivedHint": "Enregistrer que la tranche scellée a été archivée en externe (marque les checkpoints EXPORTED).",
