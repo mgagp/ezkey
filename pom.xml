@@ -84,7 +84,7 @@
 		<spotless.version>3.10.2</spotless.version>
 		<!-- Nested Spotless pin; Dependabot typically misses the plugin XML. Pulse in dependabot-curated. -->
 		<google-java-format.version>1.36.1</google-java-format.version>
-		<bucket4j.version>8.19.0</bucket4j.version>
+		<bucket4j.version>8.20.0</bucket4j.version>
 		<caffeine.version>3.2.4</caffeine.version>
 		<tink.version>1.23.0</tink.version>
 		<shedlock.version>7.10.1</shedlock.version>
