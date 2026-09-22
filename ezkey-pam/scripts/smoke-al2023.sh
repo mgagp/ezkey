@@ -11,10 +11,10 @@ require_cmd docker
 
 cd "${PAM_ROOT}"
 echo "== Building AL2023 builder =="
-docker build --target builder-al2023 -t ezkey-pam-builder-al2023:local .
+docker build -f Dockerfile.al2023 --target builder-al2023 -t ezkey-pam-builder-al2023:local .
 
 echo "== Building AL2023 smoke runtime =="
-docker build --target smoke-al2023 -t ezkey-pam-smoke-al2023:local .
+docker build -f Dockerfile.al2023 --target smoke-al2023 -t ezkey-pam-smoke-al2023:local .
 
 echo "== Running smoke checks =="
 docker run --rm ezkey-pam-smoke-al2023:local

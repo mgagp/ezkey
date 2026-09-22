@@ -19,7 +19,7 @@ services:
   pam-builder-al2023:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.al2023
       target: builder-al2023
     image: ezkey-pam-builder-al2023:local
     profiles: ["al2023", "build"]
@@ -51,7 +51,7 @@ services:
   ezkey-pam-ssh-al2023:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.al2023
       target: runtime-al2023
     image: ezkey-pam-ssh-al2023:local
     container_name: ezkey-pam-ssh-al2023
