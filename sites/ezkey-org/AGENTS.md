@@ -17,12 +17,13 @@ For repo-wide rules (Maven, Java, etc.), see **[../../AGENTS.md](../../AGENTS.md
 - **Trust / diligence (short):** [`trust.html`](trust.html) / [`fr/trust.html`](fr/trust.html) — plain-language trust model, disclosure posture, security reporting (`security@ezkey.org`), and **on-site** pointers (no public GitHub URLs while the repository stays private).
 - **Source & evaluation hub:** [`source-and-evaluation.html`](source-and-evaluation.html) / [`fr/source-and-evaluation.html`](fr/source-and-evaluation.html) — explains that Ezkey is **planned** as MIT open source but the **main repository is private** until the scheduled public opening; anchors `#documentation` and `#run-locally` are the nav targets for **Docs** / **Run locally**.
 - **Monthly digests (reverse chronological):** [`monthly-digest.html`](monthly-digest.html) / [`fr/monthly-digest.html`](fr/monthly-digest.html) — distilled month-by-month activity from Git history; optional type pill on legacy index-only entries. Full months link to detail pages (`monthly-digest-YYYY-MM.html`). Cross-links to the changelog for future versioned release notes.
-- **Guides & walkthroughs hub:** [`guides.html`](guides.html) / [`fr/guides.html`](fr/guides.html) — dedicated hub for evaluator-oriented step-by-step content (exp1 guided tour, upcoming guides). Linked from the primary nav as **Guides**.
+- **Guides & walkthroughs hub:** [`guides.html`](guides.html) / [`fr/guides.html`](fr/guides.html) — dedicated hub for evaluator-oriented step-by-step content (community guided tour, upcoming guides). Linked from the primary nav as **Guides**.
 - **Articles & notes index:** [`articles.html`](articles.html) / [`fr/articles.html`](fr/articles.html) — two labeled sections: **About Ezkey** (product-explaining content, newest first) and **Craft & engineering** (independent essays, newest first). No longer contains a guides lane.
 - **Changelog placeholder (technical release notes later):** [`changelog.html`](changelog.html) / [`fr/changelog.html`](fr/changelog.html) — reserved for versioned technical notes. **Not** listed on the primary navigation of the landing page or content hubs so an empty section does not dilute IA integrity; the changelog page itself repeats full nav **plus** a contextual “Changelog” / “Notes de version” item with `aria-current="page"`. Discoverable by URL and from copy on **Monthly digests**.
 - **Discovery & sharing (static):** [`sitemap.xml`](sitemap.xml) and [`robots.txt`](robots.txt) at the site root; [`monthly-digest.rss`](monthly-digest.rss) / [`fr/monthly-digest.rss`](fr/monthly-digest.rss) mirror the monthly digest entries (newest items first in the feed). All published `*.html` pages include **Open Graph** and **Twitter Card** meta tags (`og:*`, `twitter:*`), using `https://ezkey.org/logo.svg` as the share image unless you introduce a dedicated social image later.
 - **Logo / hero signature:** landing and inner hub pages reuse the same gradient, floating logo treatment, and particle background as before (`<img src="/logo.svg">` on published pages).
 - **Public hostname:** **`ezkey.org`** (canonical production URL for this site).
+- **Community runtime hostname:** **`ezkey.online`** (alpha community instance; service hosts such as `admin-ui.ezkey.online`, `admin-api.ezkey.online`, `demo-acme.ezkey.online`). Spelling is always **ezkey.online** (never “easykey”). Public posture is **product in alpha**, not EXP1 / experimental lab.
 - **Cloudflare:** The live site is deployed via **Cloudflare Pages** (project `ezkey-org`, domain `ezkey.org`). **Always use the dedicated scripts** — never invoke Wrangler ad hoc:
   - Preview: `scripts/cloudflare/deploy-ezkey-org-preview.sh` (sources `.env`, no git push required)
   - Production: `scripts/cloudflare/deploy-ezkey-org-production.sh` (same credentials, `--branch=main`)
@@ -159,11 +160,11 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 
 ---
 
-## Guides & experimenter content (Exp1)
+## Guides & community evaluator content (alpha)
 
 - **Purpose:** Step-by-step evaluator flows (e.g. mobile preview) live in the **Guides & walkthroughs** lane on [`articles.html`](articles.html) / [`fr/articles.html`](fr/articles.html), not mixed with generic essay cards without labeling.
-- **Published (bilingual):** [`exp1-guided-tour.html`](exp1-guided-tour.html) and [`fr/exp1-guided-tour.html`](fr/exp1-guided-tour.html) — canonical `hreflang` pair with `x-default` on the English URL. Screenshots and other assets: **ASCII kebab-case** filenames under [`exp1-guided-tour/`](exp1-guided-tour/) (e.g. `exp1-tour-04-enrollment-qr-challenge.webp`); both locale pages reference the same paths.
-- **Working drafts (French, not linked from indexes):** e.g. [`fr/draft-exp1-guided-tour.md`](fr/draft-exp1-guided-tour.md) (source notes), [`fr/draft-exp1-admin-ui-overview.md`](fr/draft-exp1-admin-ui-overview.md) (not yet a published page). Do **not** link `draft-*.md` from live navigation or the article index.
+- **Published (bilingual):** [`community-guided-tour.html`](community-guided-tour.html) and [`fr/community-guided-tour.html`](fr/community-guided-tour.html) — canonical `hreflang` pair with `x-default` on the English URL. Screenshots and other assets: **ASCII kebab-case** filenames under [`exp1-guided-tour/`](exp1-guided-tour/) (legacy asset folder name; e.g. `exp1-tour-04-enrollment-qr-challenge.webp`); both locale pages reference the same paths. Public titles use **community / alpha**, not EXP1.
+- **Working drafts (French, not linked from indexes):** e.g. historical drafts may still use `draft-exp1-*` filenames under `sites/ezkey-org-editorial/` (not linked from live navigation). Do **not** link `draft-*.md` from live navigation or the article index.
 - **Checklist when adding or changing a guide page:** update the `guides.html` / `fr/guides.html` hub, add or bump URLs in [`sitemap.xml`](sitemap.xml), and mirror Open Graph / Twitter / `hreflang` like other standalone articles.
 
 ---
@@ -183,7 +184,9 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 | `/admin-api-reference.html` | `/fr/admin-api-reference.html` | Admin API public reference |
 | `/auth-api-reference.html` | `/fr/auth-api-reference.html` | Auth API public reference |
 | `/integration-api-reference.html` | `/fr/integration-api-reference.html` | Integration API public reference |
-| `/exp1-guided-tour.html` | `/fr/exp1-guided-tour.html` | Exp1 evaluator walkthrough (bilingual) |
+| `/community-guided-tour.html` | `/fr/community-guided-tour.html` | Community guided tour (bilingual)
+| `/community-instance.html` | `/fr/community-instance.html` | Alpha community instance overview (ezkey.online)
+| `/community-signup.html` | `/fr/community-signup.html` | Instant community signup (bilingual) |
 | `/changelog.html` | `/fr/changelog.html` | Technical changelog (placeholder) |
 
 **Rules:**
@@ -253,7 +256,7 @@ This section records the design decisions made during active development, in rev
 - Pill (`span`): `font-size: 0.78rem`, `font-weight: 700`, `letter-spacing: 0.14em`, `text-transform: uppercase`, `color: #fef3c7` (warm cream), `padding: 5px 15px`, `border-radius: 20px`, `background: rgba(251,191,36,0.13)`, `border: 1px solid rgba(251,191,36,0.48)`, `box-shadow: 0 0 14px rgba(251,191,36,0.2)`.
 - HTML pattern: `<p class="page-subheading"><span>Section title</span></p>`.
 
-**Rationale:** The pill is immediately recognisable during fast scroll; it creates a visual pause without being aggressive. It borrows directly from the EXP1 badge color vocabulary on the homepage, creating site-wide coherence without introducing a new palette.
+**Rationale:** The pill is immediately recognisable during fast scroll; it creates a visual pause without being aggressive. It borrows directly from the amber Alpha / community badge color vocabulary on the homepage, creating site-wide coherence without introducing a new palette.
 
 **Sections using this pattern:** "About Ezkey" / "À propos d'Ezkey" and "Craft & engineering" / "Craft & ingénierie" on `articles.html` / `fr/articles.html`.
 
@@ -280,7 +283,7 @@ The site uses a **single coherent palette** derived from the background gradient
 | Role | Color / value | Usage |
 | ---- | ------------- | ----- |
 | Background gradient | `#667eea → #764ba2` (135°) | `body` on all pages |
-| Brand amber (primary accent) | `#f59e0b` / `#ea580c` / `#fde68a` gradient | EXP1 badge, pill dividers, amber glow effects |
+| Brand amber (primary accent) | `#f59e0b` / `#ea580c` / `#fde68a` gradient | Alpha / community badge, pill dividers, amber glow effects |
 | Pill accent | `rgba(251, 191, 36, …)` at various opacities | Section divider pills, divider lines |
 | Warm cream text | `#fef3c7` | Pill label text, accent headings |
 | White primary | `#ffffff` | Card titles, nav links |
@@ -305,7 +308,9 @@ The site uses a **single coherent palette** derived from the background gradient
 | [monthly-digest-YYYY-MM.html](monthly-digest-2026-06.html) / [fr/monthly-digest-YYYY-MM.html](fr/monthly-digest-2026-06.html) | Full monthly digest detail pages |
 | [guides.html](guides.html) / [fr/guides.html](fr/guides.html) | Evaluator guides & walkthroughs hub |
 | [articles.html](articles.html) / [fr/articles.html](fr/articles.html) | About Ezkey + Craft & engineering sections |
-| [exp1-guided-tour.html](exp1-guided-tour.html) / [fr/exp1-guided-tour.html](fr/exp1-guided-tour.html) | Exp1 guided tour (EN/FR) |
+| [community-guided-tour.html](community-guided-tour.html) / [fr/community-guided-tour.html](fr/community-guided-tour.html) | Community guided tour (EN/FR)
+| [community-instance.html](community-instance.html) / [fr/community-instance.html](fr/community-instance.html) | Alpha community instance (EN/FR)
+| [community-signup.html](community-signup.html) / [fr/community-signup.html](fr/community-signup.html) | Community signup (EN/FR) |
 | [changelog.html](changelog.html) / [fr/changelog.html](fr/changelog.html) | Changelog placeholder |
 | [sitemap.xml](sitemap.xml) | Sitemap for crawlers |
 | [robots.txt](robots.txt) | Robots + sitemap URL |
