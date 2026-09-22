@@ -263,6 +263,13 @@
   "integrity": {
     "pageTitle": "Intégrité",
     "subtitle": "Vérifier la chaîne HMAC du journal d'audit et gérer le cycle de vie exceptionnel des archives.",
+    "modes": {
+      "ariaLabel": "Modes de l'atelier Intégrité",
+      "observe": "Observer",
+      "verify": "Vérifier",
+      "remediate": "Remédier",
+      "observeHint": "Passez à Vérifier pour lancer les contrôles chaîne ou entrée, ou à Remédier lorsque la maintenance est nécessaire."
+    },
     "verification": "Vérification",
     "dateRangeSelect": "Choisir une période",
     "selectDateRangeToRun": "Sélectionnez une plage de dates pour lancer la vérification",
@@ -423,6 +430,8 @@
       "title": "Incidents opérationnels",
       "loading": "Chargement des incidents…",
       "empty": "Aucun incident de battement enregistré.",
+      "loadError": "Impossible de charger les incidents opérationnels.",
+      "retry": "Réessayer",
       "refresh": "Actualiser",
       "refreshing": "Actualisation…",
       "declare": "Déclarer la clôture",
