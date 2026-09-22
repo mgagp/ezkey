@@ -278,6 +278,41 @@ div.logo-container div.logo img {
             animation: slideInUp 1s ease-out 0.2s both;
         }
 
+        .home-status-line {
+            max-width: 640px;
+            margin: -8px auto 24px;
+            padding: 10px 14px;
+            text-align: left;
+            background: rgba(0, 0, 0, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            border-left: 4px solid #fbbf24;
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 0.9rem;
+            line-height: 1.45;
+            animation: slideInUp 1s ease-out 0.25s both;
+        }
+
+        .home-status-line .status-label {
+            display: block;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #fde68a;
+            margin-bottom: 4px;
+        }
+
+        .home-status-line a {
+            color: #fde68a;
+            font-weight: 600;
+            text-decoration: underline;
+        }
+
+        .home-status-line a:hover {
+            color: #fff;
+        }
+
         .description {
             font-size: 1.1rem;
             color: rgba(255, 255, 255, 0.8);
@@ -649,16 +684,21 @@ div.logo-container div.logo img {
 
         <div class="title-row">
             <h1 class="title">Ezkey</h1>
-            <a class="exp-preview-badge" href="/guides.html" aria-label="Try Exp1 — open guest guides and walkthroughs on Articles" title="Try Exp1 — opens step-by-step guides on Articles">
+            <a class="exp-preview-badge" href="/community-instance.html" aria-label="Alpha — open the ezkey.online community instance overview" title="Alpha — community instance on ezkey.online">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path fill="currentColor" fill-rule="evenodd" d="M15.75 1.5a6.75 6.75 0 0 0-6.651 7.906c.067.39-.032.717-.221.906l-6.5 6.499a3 3 0 0 0-.878 2.121v2.818c0 .414.336.75.75.75H6a.75.75 0 0 0 .75-.75v-1.5h1.5A.75.75 0 0 0 9 19.5V18h1.5a.75.75 0 0 0 .53-.22l2.658-2.658c.19-.189.517-.288.906-.22A6.75 6.75 0 1 0 15.75 1.5Zm0 3a.75.75 0 0 0 0 1.5A2.25 2.25 0 0 1 18 8.25a.75.75 0 0 0 1.5 0 3.75 3.75 0 0 0-3.75-3.75Z" clip-rule="evenodd"/>
                 </svg>
                 <span class="exp-preview-badge-label--stack">
-                    <span class="exp-preview-badge-main">Try Exp1</span>
-                    <span class="exp-preview-badge-sub">Guest guide</span>
+                    <span class="exp-preview-badge-main">Alpha</span>
+                    <span class="exp-preview-badge-sub">Community instance</span>
                 </span>
             </a>
         </div>
+        <!-- TEMP: migration downtime banner — remove when ezkey.online is back -->
+        <p class="home-status-line" role="status">
+            <span class="status-label">Status</span>
+            Community instance temporarily unavailable — migration in progress. We'll be back shortly on <a href="/community-instance.html">ezkey.online</a>.
+        </p>
         <p class="subtitle">Open-source MFA for developers — self-hosted, pragmatic, in active development</p>
         <p class="description">
             Cryptographic MFA with a clear chain: your backend, your devices.
