@@ -77,7 +77,7 @@ cd ezkey-pam
 # → artifacts/pam_ezkey-al2023.so
 
 # Equivalent manual steps:
-docker build --target builder-al2023 -t ezkey-pam-builder-al2023:local .
+docker build -f Dockerfile.al2023 --target builder-al2023 -t ezkey-pam-builder-al2023:local .
 docker create --name ezkey-pam-extract-al2023 ezkey-pam-builder-al2023:local
 docker cp ezkey-pam-extract-al2023:/src/build/pam_ezkey.so ./pam_ezkey-al2023.so
 docker rm ezkey-pam-extract-al2023
@@ -178,7 +178,8 @@ ezkey-pam/
 ├── config/              Reference pam_ezkey.conf (debug=false)
 ├── scripts/             provision, Docker up, AL2023 build/smoke, SSH demo
 ├── test/                Container self-checks + AL2023 smoke
-├── Dockerfile           Rocky + AL2023 builder/runtime/smoke targets
+├── Dockerfile           Rocky builder + SSH runtime
+├── Dockerfile.al2023    AL2023 builder + smoke + SSH mirror
 ├── docker-compose.yml
 ├── sshd / sshd_config   PAM + sshd for the demo VMs (Ezkey-only)
 └── sshd.host-sketch     EXP1-style stack sketch (not applied live)

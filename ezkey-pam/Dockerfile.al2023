@@ -1,0 +1,125 @@
+# Ezkey PAM — Amazon Linux 2023 builder, smoke, and SSH mirror.
+# Separate from Dockerfile (Rocky) so classic docker build --target does not
+# walk Rocky stages. cJSON is built from a pinned source (not in AL2023 repos).
+#
+# Targets: builder-al2023 | smoke-al2023 | runtime-al2023
+
+ARG AL2023_IMAGE=amazonlinux:2023
+ARG CJSON_VERSION=1.7.18
+
+# ---------------------------------------------------------------------------
+# Builder — Amazon Linux 2023
+# ---------------------------------------------------------------------------
+FROM ${AL2023_IMAGE} AS builder-al2023
+
+LABEL org.ezkey.component="pam-builder-al2023"
+LABEL org.ezkey.version="2.1.0"
+
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+ARG CJSON_VERSION
+
+RUN dnf -y install --allowerasing gcc make cmake pam-devel libcurl-devel tar gzip \
+    && dnf clean all \
+    && curl -fsSL \
+        "https://github.com/DaveGamble/cJSON/archive/refs/tags/v${CJSON_VERSION}.tar.gz" \
+        | tar -xz -C /tmp \
+    && cmake -S "/tmp/cJSON-${CJSON_VERSION}" -B /tmp/cjson-build \
+        -DENABLE_CJSON_UTILS=OFF \
+        -DBUILD_SHARED_LIBS=ON \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_LIBDIR=lib64 \
+    && cmake --build /tmp/cjson-build --target install \
+    && ldconfig \
+    && test -f /usr/lib64/libcjson.so \
+    && rm -rf /tmp/cJSON-${CJSON_VERSION} /tmp/cjson-build
+
+WORKDIR /src
+COPY src/ /src/src/
+COPY Makefile /src/Makefile
+
+RUN make clean && make all \
+    && test -f /src/build/pam_ezkey.so \
+    && ldd /src/build/pam_ezkey.so
+
+# ---------------------------------------------------------------------------
+# Smoke — module load check (no SSH, no Ezkey stack)
+# ---------------------------------------------------------------------------
+FROM ${AL2023_IMAGE} AS smoke-al2023
+
+LABEL org.ezkey.component="pam-smoke-al2023"
+LABEL org.ezkey.version="2.1.0"
+
+# Base image already ships libcurl-minimal (conflicts with full libcurl package).
+RUN dnf -y install pam binutils gcc \
+    && dnf clean all
+
+COPY --from=builder-al2023 /usr/lib64/libcjson.so* /usr/lib64/
+RUN ldconfig \
+    && mkdir -p /usr/lib64/security
+
+COPY --from=builder-al2023 /src/build/pam_ezkey.so /usr/lib64/security/pam_ezkey.so
+COPY test/smoke_al2023.sh /opt/pam-ezkey/test/smoke_al2023.sh
+RUN chmod +x /opt/pam-ezkey/test/smoke_al2023.sh \
+    && chmod 755 /usr/lib64/security/pam_ezkey.so
+
+CMD ["/opt/pam-ezkey/test/smoke_al2023.sh"]
+
+# ---------------------------------------------------------------------------
+# Runtime — SSH mirror (approve/reject/timeout parity with Rocky demo)
+# ---------------------------------------------------------------------------
+FROM ${AL2023_IMAGE} AS runtime-al2023
+
+LABEL org.ezkey.component="pam-ssh-demo-al2023"
+LABEL org.ezkey.version="2.1.0"
+LABEL description="Amazon Linux 2023 SSH mirror authenticated by Ezkey PAM"
+
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+ENV EZKEY_INTEGRATION_API_URL=http://integration-api:7080
+ENV EZKEY_SSH_USER=testuser
+ENV EZKEY_WAIT_TIMEOUT=90
+ENV EZKEY_DEBUG=true
+
+# Do not install full libcurl — AL2023 base has libcurl-minimal and the packages conflict.
+RUN dnf -y install \
+        openssh-server \
+        openssh-clients \
+        rsyslog \
+        passwd \
+        procps-ng \
+        iproute \
+    && dnf clean all
+
+COPY --from=builder-al2023 /usr/lib64/libcjson.so* /usr/lib64/
+RUN ldconfig
+
+RUN ssh-keygen -A \
+    && mkdir -p /var/run/sshd /run/sshd /usr/lib64/security
+
+ARG EZKEY_SSH_USER=testuser
+RUN useradd -m -s /bin/bash "${EZKEY_SSH_USER}" \
+    && usermod -aG wheel "${EZKEY_SSH_USER}" || true
+
+COPY --from=builder-al2023 /src/build/pam_ezkey.so /usr/lib64/security/pam_ezkey.so
+# On AL2023, /lib64 is typically the same path as /usr/lib64 — no second install needed.
+RUN chmod 755 /usr/lib64/security/pam_ezkey.so
+
+COPY config/pam_ezkey.conf /etc/security/pam_ezkey.conf
+RUN chmod 600 /etc/security/pam_ezkey.conf
+
+COPY sshd /etc/pam.d/sshd
+COPY sshd_config /etc/ssh/sshd_config
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY test/test_pam.sh /opt/pam-ezkey/test/test_pam.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh /opt/pam-ezkey/test/test_pam.sh \
+    && echo "authpriv.*    /var/log/secure" >> /etc/rsyslog.conf \
+    && mkdir -p /var/log \
+    && touch /var/log/secure \
+    && chmod 640 /var/log/secure
+
+EXPOSE 22
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["/usr/sbin/sshd", "-D", "-e"]

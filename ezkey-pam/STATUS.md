@@ -248,10 +248,15 @@ is a protocol need, not an i18n project. French (or any locale) belongs in `cont
 Preferred contract, same idea as the current Dockerfile:
 
 ```text
+# Rocky (lab demo)
 docker build --target builder -t ezkey-pam-builder .
 docker create --name ezkey-pam-extract ezkey-pam-builder
 docker cp ezkey-pam-extract:/src/build/pam_ezkey.so ./pam_ezkey.so
 docker rm ezkey-pam-extract
+
+# Amazon Linux 2023 (EXP1 ABI)
+docker build -f Dockerfile.al2023 --target builder-al2023 -t ezkey-pam-builder-al2023:local .
+# or: ./scripts/build-al2023.sh --extract
 ```
 
 Then on the host: install the `.so` next to other PAM modules, install conf `0600`, add one

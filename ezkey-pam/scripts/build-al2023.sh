@@ -19,7 +19,7 @@ fi
 
 cd "${PAM_ROOT}"
 echo "== Building Amazon Linux 2023 PAM builder =="
-docker build --target builder-al2023 -t ezkey-pam-builder-al2023:local .
+docker build -f Dockerfile.al2023 --target builder-al2023 -t ezkey-pam-builder-al2023:local .
 
 if [ "${EXTRACT}" -eq 1 ]; then
   mkdir -p "${PAM_ROOT}/artifacts"
