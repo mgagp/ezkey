@@ -67,6 +67,8 @@ La bonne lecture, c’était plutôt : qu’est-ce qui manque dans le système p
 
 J’ai donc fait une petite rétrospective avec mon agent coordonnateur, mon bras droit générique. Ensemble, on a regardé ce qui avait manqué : une définition de « terminé » plus explicite, des attentes de validation plus observables, et une manière plus ferme d’imposer ces garde-fous dans le cycle normal du travail. La correction a ensuite été réinjectée à deux endroits : dans le corpus documentaire, pour poser la règle, et dans la description de tâche des bots concernés, pour en faire un réflexe de fonctionnement plutôt qu’un rappel improvisé.
 
+Cette première correction touchait la profondeur : pouvoir dire que c’est terminé parce qu’on l’a observé, pas parce que ça avait l’air correct. Le même chantier, une fois testé pour de vrai, a montré l’autre facette. Le mode base coupe des traitements. Une rotation de clés qui ne peut plus aboutir doit alors être refusée par l’API, et l’interface ne doit pas continuer à la proposer. Tant que le processus, la surface d’API et l’écran ne tiennent pas ensemble, le travail n’est pas complet. Une software factory devient plus autonome quand elle porte ce genre de cohérence, le rayon d’impact d’un choix, jusque dans ses propres règles.
+
 Ça, pour moi, c’est peut-être le point le plus intéressant de toute l’expérience. La software factory agentique n’est pas seulement une équipe de bots qui se parlent. Elle commence vraiment à devenir sérieuse quand le système de travail apprend sur lui-même et se corrige à même ses propres règles.
 
 ## Encore préliminaire, mais déjà instructif
