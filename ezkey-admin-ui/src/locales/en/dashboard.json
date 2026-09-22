@@ -85,6 +85,7 @@
     "scope": "Scope",
     "error": "Error",
     "neverRun": "Never run",
+    "quietInactive": "Inactive",
     "status": {
       "SUCCESS": "Success",
       "FAILED": "Failed",

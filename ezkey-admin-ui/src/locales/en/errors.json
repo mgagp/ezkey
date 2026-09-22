@@ -30,6 +30,9 @@
   "domain": {
     "integration-has-enrollments": "Cannot delete this integration while enrollments exist. Remove or revoke enrollments first.",
     "pending-encryption-key-exists": "A pending encryption key already exists. Promote it or use immediate promotion before introducing another key.",
+    "encryption-rotation-disabled": "Key rotation is inactive on this instance.",
+    "encryption-reencryption-disabled": "Re-encryption is inactive on this instance.",
+    "integrity-validation-disabled": "Nightly integrity validation is inactive on this instance.",
     "integration-code-already-exists": "An integration with this code already exists for this tenant.",
     "integration-lifecycle-state": "This action is not valid for the integration's current lifecycle state.",
     "system-integration-lifecycle": "The system integration is reserved for administrator MFA and cannot be changed this way.",

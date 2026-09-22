@@ -258,7 +258,7 @@ raw wall-clock `now()` with sub-second precision into chain range queries.
 **Registry:** successful runs update `NIGHTLY_INTEGRITY_VALIDATION` in `ezkey_scheduled_job_last_run`.
 Batch infrastructure failures record `FAILED` on the registry row only (C9 — no “batch did not run” alert).
 
-`enabled=false` idles the **scheduler only** — operator `POST /api/v1/audit-logs/integrity-validation/run` remains available when HMAC is active.
+`enabled=false` idles the **scheduler** and fail-closes operator `POST /api/v1/audit-logs/integrity-validation/run` with HTTP 409 (`integrity-validation-disabled`). HMAC-inactive remains a 200 skipped result when the flag is on. Gate on this flag, not on the product runtime profile name.
 
 ---
 

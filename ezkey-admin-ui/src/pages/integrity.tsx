@@ -423,6 +423,7 @@ function IntegrityPanel({
     awaitingConfirmTranche: false,
     chainNonGreen: false,
   });
+  const nightlyValidationEnabled = monitoringTruth.nightlyValidationEnabled === true;
   const [timelineExpanded, setTimelineExpanded] = useState(forceTimelineOpen);
   const [prevForceTimelineOpen, setPrevForceTimelineOpen] = useState(forceTimelineOpen);
   const [maintenanceExpanded, setMaintenanceExpanded] = useState(forceRemediateFromQuery);
@@ -1030,27 +1031,57 @@ function IntegrityPanel({
                 <ShieldCheck className="size-3.5" />
                 {integrityLoading ? t('integrity.checking') : t('integrity.verifyEntry')}
               </Button>
-              <Button
-                size="sm"
-                onClick={() => void runRetroactiveValidation()}
-                disabled={
-                  validationRunLoading
-                  || !checkRange.from
-                  || !checkRange.to
-                }
-                className="gap-1.5 ml-auto"
-                title={
-                  !checkRange.from || !checkRange.to
-                    ? t('integrity.selectDateRangeToRun')
-                    : undefined
-                }
-              >
-                <ShieldAlert className="size-3.5" />
-                {validationRunLoading ? t('integrity.validationRun.running') : t('integrity.runValidation')}
-              </Button>
+              <div className="ml-auto flex items-center gap-2">
+                {!nightlyValidationEnabled && (
+                  <span
+                    className="text-xs text-fg-muted"
+                    data-testid="integrity-run-validation-inactive-hint"
+                  >
+                    {t('integrity.runValidationInactiveHint')}
+                  </span>
+                )}
+                {nightlyValidationEnabled ? (
+                  <Button
+                    size="sm"
+                    onClick={() => void runRetroactiveValidation()}
+                    disabled={
+                      validationRunLoading
+                      || !checkRange.from
+                      || !checkRange.to
+                    }
+                    className="gap-1.5"
+                    title={
+                      !checkRange.from || !checkRange.to
+                        ? t('integrity.selectDateRangeToRun')
+                        : undefined
+                    }
+                    data-testid="integrity-run-validation"
+                  >
+                    <ShieldAlert className="size-3.5" />
+                    {validationRunLoading ? t('integrity.validationRun.running') : t('integrity.runValidation')}
+                  </Button>
+                ) : (
+                  <Tooltip content={t('integrity.runValidationInactiveTooltip')}>
+                    <span className="inline-flex">
+                      <Button
+                        size="sm"
+                        onClick={() => void runRetroactiveValidation()}
+                        disabled
+                        className="gap-1.5"
+                        data-testid="integrity-run-validation"
+                      >
+                        <ShieldAlert className="size-3.5" />
+                        {t('integrity.runValidation')}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                )}
+              </div>
             </div>
             <p className="text-xs text-fg-muted">
-              {t('integrity.verifyVsRunHint')}
+              {nightlyValidationEnabled
+                ? t('integrity.verifyVsRunHint')
+                : t('integrity.verifyVsRunHintInactive')}
             </p>
 
             {/* Chain report */}

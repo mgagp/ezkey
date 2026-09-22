@@ -30,6 +30,7 @@ import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
+import org.ezkey.security.exception.EncryptionLifecycleDisabledException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -79,6 +80,22 @@ public class ReencryptionService {
     this.batchProcessingService = batchProcessingService;
     this.parallelRunner = parallelRunner;
     this.jobLastRunService = jobLastRunService;
+  }
+
+  /**
+   * Whether scheduled and manual re-encryption is enabled.
+   *
+   * @return {@code true} when {@code ezkey.encryption.reencryption.enabled} is on
+   */
+  public boolean isReencryptionEnabled() {
+    return properties.getReencryption().isEnabled();
+  }
+
+  private void ensureReencryptionEnabled() {
+    if (!isReencryptionEnabled()) {
+      throw new EncryptionLifecycleDisabledException(
+          EncryptionLifecycleDisabledException.Operation.REENCRYPTION);
+    }
   }
 
   @Scheduled(cron = "${ezkey.encryption.reencryption.schedule:0 0 3 * * ?}")
@@ -183,11 +200,13 @@ public class ReencryptionService {
    * @param batches batches to process asynchronously
    */
   public void enqueueBatchProcessing(List<ReencryptionBatch> batches) {
+    ensureReencryptionEnabled();
     submitBatchesForBackgroundProcessing(batches);
   }
 
   /** Enqueues batches for all applicable old keys and targets (no row crypto). */
   public void createBatchesForOldKeys() {
+    ensureReencryptionEnabled();
     batchCreationService.createBatchesForOldKeys();
   }
 
@@ -198,6 +217,7 @@ public class ReencryptionService {
    * @return enqueue summary with batch ids submitted for processing
    */
   public ManualReencryptionEnqueueResult enqueueFullReencryption() {
+    ensureReencryptionEnabled();
     if (!encryptionOperations.isEncryptionAvailable()) {
       throw new IllegalStateException("Encryption not available");
     }
@@ -224,6 +244,7 @@ public class ReencryptionService {
    * @return enqueue summary with batch ids submitted for processing
    */
   public ManualReencryptionEnqueueResult enqueueReencryptionForKey(Long keyId) {
+    ensureReencryptionEnabled();
     if (!encryptionOperations.isEncryptionAvailable()) {
       throw new IllegalStateException("Encryption not available");
     }

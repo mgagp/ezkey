@@ -658,6 +658,12 @@ public class AuditLogController {
             responseCode = "400",
             description = "Invalid bounds or window exceeds configured maximum",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Nightly integrity validation is inactive on this instance"
+                    + " (ezkey.audit.integrity.nightly.enabled=false)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(responseCode = "401", description = "Not authenticated"),
         @ApiResponse(responseCode = "403", description = "Not a Global Admin")
       })

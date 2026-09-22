@@ -10,6 +10,9 @@
     "filterStatusPending": "Pending",
     "refresh": "Refresh",
     "rotateKey": "Rotate Key",
+    "rotateInactiveHint": "Inactive on this instance",
+    "rotateInactiveTooltip": "Key rotation is inactive on this instance.",
+    "reencryptInactiveTooltip": "Re-encryption is inactive on this instance.",
     "emptyMessage": "No encryption keys found.",
     "columns": {
       "id": "ID",
@@ -151,6 +154,7 @@
     "helpCreateBatches": "Creates batch rows for every applicable old key and encrypted column. Does not re-encrypt data—use for the next scheduled run or inspection.",
     "helpTriggerFull": "Creates missing batches, then processes all pending and resumable batches immediately (heavy—use for tests or emergencies).",
     "helpResume": "Runs processing for this batch (pending or failed). Same as POST …/reencryption-batches/{id}/resume.",
+    "lifecycleInactiveHint": "Inactive on this instance",
     "filterAll": "All statuses",
     "filterPending": "Pending",
     "filterInProgress": "In Progress",

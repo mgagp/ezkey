@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -36,6 +37,7 @@ import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
 import org.ezkey.audit.dto.EntryIntegrityConciliationStatus;
 import org.ezkey.audit.dto.EntryIntegrityViolation;
+import org.ezkey.audit.exception.IntegrityValidationDisabledException;
 import org.ezkey.audit.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -81,6 +83,21 @@ class RetroactiveIntegrityValidationServiceTest {
             alertRepository,
             auditLogService,
             entryIntegrityViolationClassifier);
+    lenient().when(nightlyProperties.isEnabled()).thenReturn(true);
+  }
+
+  @Test
+  void runValidation_whenNightlyDisabled_throwsAndWritesNoAudit() {
+    when(nightlyProperties.isEnabled()).thenReturn(false);
+
+    assertThrows(
+        IntegrityValidationDisabledException.class,
+        () ->
+            service.runValidation(
+                WINDOW_START, WINDOW_END, RetroactiveIntegrityValidationOptions.operator(true, 3)));
+
+    verify(auditHmacService, never()).isActive();
+    verify(auditLogService, never()).log(any());
   }
 
   private void stubNightlyWindowHours() {

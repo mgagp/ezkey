@@ -24,6 +24,7 @@ import java.time.ZoneOffset;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.audit.dto.RetroactiveIntegrityValidationRunRequest;
 import org.ezkey.audit.dto.RetroactiveIntegrityValidationRunResponse;
+import org.ezkey.audit.exception.IntegrityValidationDisabledException;
 import org.ezkey.audit.integrity.AuditChainCheckpointService;
 import org.ezkey.audit.integrity.AuditChainIncidentService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
@@ -138,6 +139,19 @@ class AuditLogControllerRetroactiveValidationTest {
     assertTrue(body.alertRaised());
     assertEquals(RetroactiveIntegrityValidationTriggerSource.OPERATOR, body.triggerSource());
     verify(retroactiveIntegrityValidationService).validateOperatorWindow(FROM, TO);
+  }
+
+  @Test
+  void runRetroactiveIntegrityValidation_propagatesNightlyDisabled() {
+    when(retroactiveIntegrityValidationService.runValidation(
+            eq(FROM), eq(TO), any(RetroactiveIntegrityValidationOptions.class)))
+        .thenThrow(new IntegrityValidationDisabledException());
+
+    assertThrows(
+        IntegrityValidationDisabledException.class,
+        () ->
+            controller.runRetroactiveIntegrityValidation(
+                new RetroactiveIntegrityValidationRunRequest(FROM, TO, true)));
   }
 
   @Test

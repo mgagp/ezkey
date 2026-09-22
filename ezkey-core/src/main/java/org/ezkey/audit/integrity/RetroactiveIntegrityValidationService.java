@@ -30,6 +30,7 @@ import org.ezkey.audit.domain.repository.AuditLogRepository;
 import org.ezkey.audit.dto.ChainIntegrityViolation;
 import org.ezkey.audit.dto.EntryIntegrityViolation;
 import org.ezkey.audit.dto.IntegrityViolationCappedList;
+import org.ezkey.audit.exception.IntegrityValidationDisabledException;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.slf4j.Logger;
@@ -42,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
  * checkpoint chain verification via {@link AuditChainVerificationService}.
  *
  * <p>Used by the nightly scheduler and by Global Admin {@code POST …/integrity-validation/run}.
+ * Both paths fail closed when {@code ezkey.audit.integrity.nightly.enabled} is false.
  *
  * @since 2026
  */
@@ -116,10 +118,15 @@ public class RetroactiveIntegrityValidationService {
    * @param to exclusive window end
    * @param options per-run alert and trigger metadata
    * @return structured result for API, registry, and audit logging
+   * @throws IntegrityValidationDisabledException if {@code ezkey.audit.integrity.nightly.enabled}
+   *     is false
    */
   @Transactional
   public RetroactiveIntegrityValidationResult runValidation(
       OffsetDateTime from, OffsetDateTime to, RetroactiveIntegrityValidationOptions options) {
+    if (!nightlyProperties.isEnabled()) {
+      throw new IntegrityValidationDisabledException();
+    }
     String scope = formatScope(from, to);
 
     if (!auditHmacService.isActive()) {

@@ -35,6 +35,7 @@ import {
   buildEnrollmentsDrilldownUrl,
   buildIntegrationsDrilldownUrl,
 } from '@/lib/dashboard-drilldown-links';
+import { resolveBatchHealthQuietReason } from '@/lib/dashboard-batch-health-quiet';
 import { api } from '@/lib/api-client';
 
 /** Minimal row shape for dashboard follow-up widget (lifecycle incidents API). */
@@ -88,8 +89,12 @@ function jobStatusBadgeVariant(
   return 'muted';
 }
 
-function allJobsSucceeded(jobs: DashboardScheduledJobRow[]): boolean {
-  return jobs.length > 0 && jobs.every((row) => (row.lastStatus ?? 'NEVER_RUN') === 'SUCCESS');
+function monitoringJobsExpectedIdle(config: DashboardIntegrityConfigSummary | undefined): boolean {
+  return (
+    config != null &&
+    config.chainCheckpointsEnabled === false &&
+    config.nightlyValidationEnabled === false
+  );
 }
 
 function jobDeepLink(jobKey: string | undefined): string | null {
@@ -172,6 +177,7 @@ function BatchHealthCard({
   jobs,
   isLoading,
   configSummary,
+  jobsExpectedIdle = false,
   exitTo,
   exitLabel,
   testId,
@@ -181,12 +187,14 @@ function BatchHealthCard({
   jobs: DashboardScheduledJobRow[];
   isLoading: boolean;
   configSummary?: ReactNode;
+  jobsExpectedIdle?: boolean;
   exitTo: string;
   exitLabel: string;
   testId: string;
 }) {
   const { t } = useTranslation('dashboard');
-  const canCollapse = !isLoading && allJobsSucceeded(jobs);
+  const quietReason = isLoading ? null : resolveBatchHealthQuietReason(jobs, jobsExpectedIdle);
+  const canCollapse = quietReason != null;
   const [operatorExpanded, setOperatorExpanded] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -196,6 +204,9 @@ function BatchHealthCard({
   }, [canCollapse]);
 
   const expanded = !canCollapse || operatorExpanded === true;
+  const quietBadgeVariant = quietReason === 'success' ? 'success' : 'muted';
+  const quietBadgeLabel =
+    quietReason === 'never-run' ? t('batchHealth.quietInactive') : t('batchHealth.status.SUCCESS');
 
   return (
     <Card data-testid={testId}>
@@ -208,7 +219,9 @@ function BatchHealthCard({
           <div className="flex items-center gap-2 shrink-0">
             {canCollapse ? (
               <>
-                <Badge variant="success">{t('batchHealth.status.SUCCESS')}</Badge>
+                <Badge variant={quietBadgeVariant} data-testid={`${testId}-quiet-badge`}>
+                  {quietBadgeLabel}
+                </Badge>
                 <button
                   type="button"
                   className="p-1 hover:bg-fg/5 transition-colors"
@@ -399,6 +412,7 @@ export default function DashboardPage() {
   const integrityJobs = overview?.integrityJobs ?? [];
   const operationalJobs = overview?.operationalJobs ?? [];
   const integrityConfig = overview?.integrityConfigSummary;
+  const jobsExpectedIdle = monitoringJobsExpectedIdle(integrityConfig);
 
   const updatedLabel = getUpdatedLabelKeyAndParams(overviewUpdatedAt ?? 0);
   const updatedText =
@@ -477,6 +491,7 @@ export default function DashboardPage() {
               icon={ShieldCheck}
               jobs={integrityJobs}
               isLoading={overviewLoading}
+              jobsExpectedIdle={jobsExpectedIdle}
               testId="dashboard-batch-health-integrity"
               exitTo="/integrity"
               exitLabel={t('dashboard:batchHealth.links.integrityPanel')}
@@ -500,6 +515,7 @@ export default function DashboardPage() {
               icon={Key}
               jobs={operationalJobs}
               isLoading={overviewLoading}
+              jobsExpectedIdle={jobsExpectedIdle}
               testId="dashboard-batch-health-operational"
               exitTo="/encryption-keys"
               exitLabel={t('dashboard:batchHealth.links.encryptionKeys')}

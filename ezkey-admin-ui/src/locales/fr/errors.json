@@ -30,6 +30,9 @@
   "domain": {
     "integration-has-enrollments": "Impossible de supprimer cette intégration tant qu'il existe des enrôlements. Retirez ou révoquez les enrôlements d'abord.",
     "pending-encryption-key-exists": "Une clé de chiffrement en attente existe déjà. Promouvez-la ou utilisez la promotion immédiate avant d'en introduire une autre.",
+    "encryption-rotation-disabled": "La rotation de clé est inactive sur cette instance.",
+    "encryption-reencryption-disabled": "Le re-chiffrement est inactif sur cette instance.",
+    "integrity-validation-disabled": "La validation d'intégrité nocturne est inactive sur cette instance.",
     "integration-code-already-exists": "Une intégration avec ce code existe déjà pour ce tenant.",
     "integration-lifecycle-state": "Cette action n'est pas valide pour l'état du cycle de vie actuel de l'intégration.",
     "system-integration-lifecycle": "L'intégration système est réservée à l'authentification multifacteur des administrateurs et ne peut pas être modifiée ainsi.",

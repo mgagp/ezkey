@@ -1562,7 +1562,7 @@
             }
           },
           "409": {
-            "description": "A PENDING encryption key already exists; wait for promotion or use immediate promotion",
+            "description": "A PENDING encryption key already exists, or key rotation is inactive on this instance",
             "content": {
               "*/*": {
                 "schema": {
@@ -2439,6 +2439,16 @@
           },
           "400": {
             "description": "Invalid bounds or window exceeds configured maximum",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nightly integrity validation is inactive on this instance (ezkey.audit.integrity.nightly.enabled=false)",
             "content": {
               "*/*": {
                 "schema": {
@@ -4643,6 +4653,48 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/EncryptionKeyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encryption-keys/lifecycle-config": {
+      "get": {
+        "tags": [
+          "Encryption Keys"
+        ],
+        "summary": "Encryption lifecycle config",
+        "description": "Returns whether key rotation and re-encryption are enabled. Flags come from config, not from the product runtime profile name. Global Admin only.",
+        "operationId": "getLifecycleConfig",
+        "responses": {
+          "200": {
+            "description": "Lifecycle enable flags",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EncryptionLifecycleConfigDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EncryptionLifecycleConfigDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (not a Global Admin)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EncryptionLifecycleConfigDto"
                 }
               }
             }
@@ -8860,6 +8912,20 @@
           "shardCount": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "EncryptionLifecycleConfigDto": {
+        "type": "object",
+        "description": "Encryption lifecycle enable flags (non-secret). Global Admin only. Not a job matrix.",
+        "properties": {
+          "rotationEnabled": {
+            "type": "boolean",
+            "description": "Whether encryption key rotation is enabled"
+          },
+          "reencryptionEnabled": {
+            "type": "boolean",
+            "description": "Whether re-encryption is enabled"
           }
         }
       },

@@ -23,9 +23,9 @@ import org.springframework.stereotype.Component;
  * Runs the nightly retroactive integrity validation batch (detective layer per {@code
  * V-2026-0004}).
  *
- * <p>Delegates orchestration to {@link RetroactiveIntegrityValidationService}; disabling {@code
- * ezkey.audit.integrity.nightly.enabled} idles this scheduler only — operator POST detect remains
- * available when HMAC is active.
+ * <p>Delegates orchestration to {@link RetroactiveIntegrityValidationService}. Disabling {@code
+ * ezkey.audit.integrity.nightly.enabled} idles this scheduler <strong>and</strong> fail-closes
+ * operator {@code POST …/integrity-validation/run} (same flag, not the product profile name).
  *
  * @since 2026
  */

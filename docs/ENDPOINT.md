@@ -554,6 +554,8 @@ Empty body (servlet filter). `Retry-After` is seconds until the per-IP or per-in
 
 **GET /api/v1/audit-logs/integrity/bootstrap** — Thin Global Admin Integrity atelier bootstrap for Admin UI honesty chrome. Returns product `runtimeProfile` (`base`|`integrity`, from Spring `docker-base`) plus live `chainCheckpointsEnabled` / `nightlyValidationEnabled` config flags. Dual source: profile name is not derived from flags; flags are not derived from the profile name. Not a job matrix or second journal.
 
+**POST /api/v1/audit-logs/integrity-validation/run** — Global Admin detective-layer validation over `[from, to)`. Same orchestration as the nightly batch (may raise/touch `AUDIT_INTEGRITY_RUPTURE`; emits `NIGHTLY_INTEGRITY_VALIDATION_COMPLETED` with `triggerSource=OPERATOR`). Distinct from GET `integrity-check` / `chain-integrity` (read-only verify). When `ezkey.audit.integrity.nightly.enabled=false` (typical on opt-in `--runtime=base`): **409 Conflict** RFC 9457 type `https://ezkey.io/problems/domain/integrity-validation-disabled`. HMAC inactive while the flag is on still returns 200 skipped. Full contract: [AUDIT_LOG_INTEGRITY.md](AUDIT_LOG_INTEGRITY.md).
+
 **GET /api/v1/audit-logs/lifecycle/archive-eligibility** — Read lifecycle archive observability state. Returns whether external archival is enabled, whether confirmation is required, and the sealed checkpoint tranche currently awaiting confirmation.
 
 **POST /api/v1/audit-logs/lifecycle/confirm-archived** — Record successful external archival for a sealed tranche by marking it `EXPORTED`. This confirms the result of an external archival workflow; it does not perform the export itself.
@@ -2214,12 +2216,29 @@ Ezkey uses encryption at rest with Tink cryptographic library. Encryption keys a
 ### Encryption Key Endpoints
 
 **GET    /api/v1/encryption-keys**                    // List encryption keys (paginated) — Global Admin
+**GET    /api/v1/encryption-keys/lifecycle-config**  // Rotation / re-encryption enable flags — Global Admin
 **GET    /api/v1/encryption-keys/primary**           // Get current primary key — Global Admin
 **GET    /api/v1/encryption-keys/{keyId}**           // Get key details — Global Admin
 **POST   /api/v1/encryption-keys/rotate**            // Manually trigger key rotation — Global Admin
 **GET    /api/v1/encryption-keys/reencryption-batches** // List re-encryption batches (paginated, optional filters) — Global Admin
 **POST   /api/v1/encryption-keys/reencryption-batches/{batchId}/resume** // Resume failed batch — Global Admin
 **POST   /api/v1/encryption-keys/reencrypt/create-batches** // Create re-encryption batches without processing — Global Admin
+
+#### Lifecycle enable flags
+
+**GET /api/v1/encryption-keys/lifecycle-config**
+
+Thin honesty chrome for the Admin UI. Returns whether manual (and scheduled) key rotation and re-encryption are enabled.
+
+**Response (200 OK):**
+```json
+{
+  "rotationEnabled": false,
+  "reencryptionEnabled": false
+}
+```
+
+Flags come from `ezkey.encryption.rotation.enabled` and `ezkey.encryption.reencryption.enabled`, not from the product runtime profile name. Typical on opt-in `--runtime=base`: both `false`. Encryption at rest stays on.
 
 #### Manual key rotation
 
@@ -2229,7 +2248,7 @@ Optional query parameter: `reason` (10–500 characters) for audit.
 
 **Responses:**
 - **200 OK:** Body includes `newPrimaryKeyId` (the newly introduced key's ID) and a message describing the current state. The key is `PENDING`, not yet primary; a scheduled job promotes it to `PRIMARY` automatically once the sync window elapses. Re-encrypting existing records to the new key is a separate step (scheduled job or manual trigger).
-- **409 Conflict:** RFC 9457 `ProblemDetail` (`type`, `title`, `status`, `detail`, `path`) when a `PENDING` key already exists and another introduction is not allowed yet.
+- **409 Conflict:** RFC 9457 `ProblemDetail` (`type`, `title`, `status`, `detail`, `path`) when a `PENDING` key already exists and another introduction is not allowed yet, or when key rotation is inactive (`ezkey.encryption.rotation.enabled=false`; typical on opt-in `--runtime=base`). Problem types: `https://ezkey.io/problems/domain/pending-encryption-key-exists` or `https://ezkey.io/problems/domain/encryption-rotation-disabled`. The gate uses the config flag, not the product runtime profile name.
 - **500 Internal Server Error:** Unexpected failure; body may include a legacy error payload for this endpoint.
 
 #### List encryption keys
@@ -2329,7 +2348,8 @@ Authorization: Bearer ezkey_admin_token...
 **Semantics note (QA):** `batchesCreated` is the **size of the batch set processed in this request** (pending and resumable batches after `createBatchesForOldKeys()` runs), not necessarily “only rows inserted in this call.” See `ReencryptionService.triggerFullReencryption()` and [REENCRYPTION_OPERATIONS.md](./REENCRYPTION_OPERATIONS.md).
 
 **Error Responses:**
-- **400 Bad Request**: Encryption not available or re-encryption disabled
+- **400 Bad Request**: Encryption not available or other rejected state
+- **409 Conflict**: Re-encryption is inactive (`ezkey.encryption.reencryption.enabled=false`; typical on opt-in `--runtime=base`). Problem type: `https://ezkey.io/problems/domain/encryption-reencryption-disabled`. Same 409 on create-batches, per-key re-encrypt, and batch resume. The gate uses the config flag, not the product runtime profile name.
 - **500 Internal Server Error**: Re-encryption processing failed
 
 **Security Considerations:**
