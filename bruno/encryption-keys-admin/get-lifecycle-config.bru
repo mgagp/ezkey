@@ -1,0 +1,35 @@
+meta {
+  name: get lifecycle config
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/encryption-keys/lifecycle-config
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      test("Returns rotation and re-encryption flags", function () {
+          expect(jsonData).to.have.property('rotationEnabled');
+          expect(jsonData).to.have.property('reencryptionEnabled');
+          expect(jsonData.rotationEnabled).to.be.a('boolean');
+          expect(jsonData.reencryptionEnabled).to.be.a('boolean');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Returns whether key rotation and re-encryption are enabled on this instance (config flags, not the product runtime profile name). Global Admin only. Used by Admin UI to disable Rotate / re-encrypt when those jobs are inactive.
+}

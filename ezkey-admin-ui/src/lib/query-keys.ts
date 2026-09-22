@@ -29,6 +29,8 @@ export const queryKeys = {
   /** Encryption keys and reencryption batches. */
   encryptionKeys: ['encryption-keys'] as const,
   reencryptionBatches: ['reencryption-batches'] as const,
+  /** Rotation / re-encryption enable flags (config, not profile name). */
+  encryptionLifecycleConfig: ['encryption-lifecycle-config'] as const,
   /** Audit logs list (paginated). */
   auditLogs: ['audit-logs'] as const,
   /** Audit chain checkpoints (Global Admin, paginated). */

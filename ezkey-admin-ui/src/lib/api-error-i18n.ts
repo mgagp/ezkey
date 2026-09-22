@@ -14,6 +14,9 @@ export const EZKEY_PROBLEM_TYPE_BASE = 'https://ezkey.io/problems';
 const PREFER_I18N_OVER_DETAIL_RELS = new Set<string>([
   'domain.integration-has-enrollments',
   'domain.pending-encryption-key-exists',
+  'domain.encryption-rotation-disabled',
+  'domain.encryption-reencryption-disabled',
+  'domain.integrity-validation-disabled',
   'enrollment.system-integration-create-not-allowed',
   'enrollment.active-verified-enrollment-exists',
   'enrollment.cannot-delete-with-history',

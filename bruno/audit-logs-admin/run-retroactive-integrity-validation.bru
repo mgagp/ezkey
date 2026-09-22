@@ -23,19 +23,29 @@ body:json {
 }
 
 script:post-response {
-  test("Status code is 200", function () {
-      expect(res.getStatus()).to.equal(200);
+  test("Status code is 200 or 409", function () {
+      expect([200, 409]).to.include(res.getStatus());
   });
-  
-  test("Response has retroactive validation fields", function () {
-      var jsonData = res.getBody();
-      expect(jsonData).to.have.property('scope');
-      expect(jsonData).to.have.property('skipped');
-      expect(jsonData).to.have.property('intact');
-      expect(jsonData).to.have.property('alertRaised');
-      expect(jsonData).to.have.property('triggerSource');
-      expect(jsonData.triggerSource).to.equal('OPERATOR');
-  });
+
+  if (res.getStatus() === 200) {
+      test("Response has retroactive validation fields", function () {
+          var jsonData = res.getBody();
+          expect(jsonData).to.have.property('scope');
+          expect(jsonData).to.have.property('skipped');
+          expect(jsonData).to.have.property('intact');
+          expect(jsonData).to.have.property('alertRaised');
+          expect(jsonData).to.have.property('triggerSource');
+          expect(jsonData.triggerSource).to.equal('OPERATOR');
+      });
+  }
+
+  if (res.getStatus() === 409) {
+      test("Nightly validation inactive ProblemDetail", function () {
+          var jsonData = res.getBody();
+          expect(jsonData.type).to.equal(
+              'https://ezkey.io/problems/domain/integrity-validation-disabled');
+      });
+  }
 }
 
 settings {
@@ -47,5 +57,5 @@ docs {
   
   **Body:** `from` (inclusive ISO-8601), `to` (exclusive), optional `raiseAlert` (default true).
   
-  **Status Codes:** 200 (including skipped when HMAC inactive) · 400 invalid bounds or window too large · 401 · 403
+  **Status Codes:** 200 (including skipped when HMAC inactive) · 400 invalid bounds or window too large · 409 nightly validation inactive · 401 · 403
 }

@@ -11,12 +11,14 @@
 package org.ezkey.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.ezkey.audit.exception.IntegrityValidationDisabledException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.IntegrationCodeAlreadyExistsException;
 import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.ezkey.integration.exception.SystemIntegrationLifecycleException;
+import org.ezkey.security.exception.EncryptionLifecycleDisabledException;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -225,6 +227,51 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
         HttpStatus.CONFLICT,
         "https://ezkey.io/problems/domain/auth-attempt-state-conflict",
         "Auth Attempt State Conflict",
+        request);
+  }
+
+  /**
+   * Handles EncryptionLifecycleDisabledException and returns HTTP 409 Conflict.
+   *
+   * <p>Triggered when rotation or re-encryption is requested while that lifecycle flag is off
+   * (typical on the opt-in base runtime).
+   *
+   * @param ex the EncryptionLifecycleDisabledException that was thrown
+   * @param request the HTTP servlet request for path extraction
+   * @return ResponseEntity containing ProblemDetail and HTTP 409 status
+   */
+  @ExceptionHandler(EncryptionLifecycleDisabledException.class)
+  public ResponseEntity<ProblemDetail> handleEncryptionLifecycleDisabledException(
+      EncryptionLifecycleDisabledException ex, HttpServletRequest request) {
+    boolean rotation = ex.getOperation() == EncryptionLifecycleDisabledException.Operation.ROTATION;
+    return buildProblemDetail(
+        ex,
+        HttpStatus.CONFLICT,
+        rotation
+            ? "https://ezkey.io/problems/domain/encryption-rotation-disabled"
+            : "https://ezkey.io/problems/domain/encryption-reencryption-disabled",
+        rotation ? "Encryption rotation inactive" : "Re-encryption inactive",
+        request);
+  }
+
+  /**
+   * Handles IntegrityValidationDisabledException and returns HTTP 409 Conflict.
+   *
+   * <p>Triggered when operator (or any) retroactive validation is requested while nightly integrity
+   * is off (typical on the opt-in base runtime).
+   *
+   * @param ex the IntegrityValidationDisabledException that was thrown
+   * @param request the HTTP servlet request for path extraction
+   * @return ResponseEntity containing ProblemDetail and HTTP 409 status
+   */
+  @ExceptionHandler(IntegrityValidationDisabledException.class)
+  public ResponseEntity<ProblemDetail> handleIntegrityValidationDisabledException(
+      IntegrityValidationDisabledException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/domain/integrity-validation-disabled",
+        "Integrity validation inactive",
         request);
   }
 }

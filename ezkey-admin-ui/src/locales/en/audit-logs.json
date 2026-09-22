@@ -2,7 +2,7 @@
   "help": {
     "integrityLifecycle": {
       "content": "Chain checkpoints seal batches of audit entries every 5 minutes. Use <strong>Verify chain</strong> and <strong>Verify entry HMAC</strong> for read-only forensic checks (no alert side effects). Use <strong>Run validation</strong> for the detective batch path — same semantics as the nightly job — which may raise or touch an <strong>AUDIT_INTEGRITY_RUPTURE</strong> alert when alert-eligible violations remain. Use <strong>Lifecycle overview</strong> to understand what is currently sealed, awaiting archive confirmation, or approaching purge eligibility. Manual lifecycle actions remain exceptional maintenance paths, not the normal operator workflow.",
-      "contentMonitoringOff": "Scheduled detection is not active on this instance. When monitoring is enabled, chain checkpoints seal on a schedule and a nightly job runs the same detective path as <strong>Run validation</strong>. Use <strong>Verify chain</strong> and <strong>Verify entry HMAC</strong> for on-demand read-only forensic checks (no alert side effects). Use <strong>Run validation</strong> as the operator-driven detective batch. Manual lifecycle actions remain exceptional maintenance paths."
+      "contentMonitoringOff": "Scheduled detection is not active on this instance. When monitoring is enabled, chain checkpoints seal on a schedule and a nightly job runs the same detective path as <strong>Run validation</strong>. Use <strong>Verify chain</strong> and <strong>Verify entry HMAC</strong> for on-demand read-only forensic checks (no alert side effects). <strong>Run validation</strong> stays visible but inactive while nightly detection is off, so an accidental click cannot write a completion audit. Manual lifecycle actions remain exceptional maintenance paths."
     },
     "sealArchive": {
       "content": "Seals a range of checkpoints for archival (e.g. before dropping a DB partition). You can specify a period by timestamps or by checkpoint IDs. A pre-flight integrity check runs automatically."
@@ -269,7 +269,10 @@
     "verifyChain": "Verify chain",
     "verifyEntry": "Verify entry HMAC",
     "runValidation": "Run validation and raise alert if needed",
+    "runValidationInactiveHint": "Inactive on this instance",
+    "runValidationInactiveTooltip": "Nightly integrity validation is inactive on this instance.",
     "verifyVsRunHint": "Verify recomputes HMAC and chain links without opening or updating alerts. Run validation uses the detective batch path and may raise or touch an integrity rupture alert. Both actions scan the same date range shown above — verify first, then run validation on that range when you are ready to detect and alert.",
+    "verifyVsRunHintInactive": "Verify recomputes HMAC and chain links without opening or updating alerts. Run validation (the detective batch that may raise alerts and write a completion audit) is inactive on this instance.",
     "chainIntegrity": "Chain Integrity",
     "entryIntegrity": "Entry Integrity",
     "checking": "Checking…",

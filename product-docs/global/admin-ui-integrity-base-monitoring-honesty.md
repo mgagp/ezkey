@@ -109,7 +109,9 @@ When either chain or nightly monitoring flag is off, switch to `*MonitoringOff` 
 
 ### 3. Manual actions remain the atelier
 
-**Verify chain**, **Verify entry HMAC**, **Run validation** stay available and described as operator-driven atelier work.
+**Verify chain** and **Verify entry HMAC** stay available (read-only forensic checks; no completion-audit side effect).
+
+**Run validation** stays visible but is **disabled** when `nightlyValidationEnabled` is off (typical on opt-in **base**). That button is the same detective path as the nightly job and emits `NIGHTLY_INTEGRITY_VALIDATION_COMPLETED`; disabling it avoids accidental audit-trail pollution. Gate on the config flag, not on the product profile name. The same flag fail-closes `POST /api/v1/audit-logs/integrity-validation/run` with HTTP 409 (`https://ezkey.io/problems/domain/integrity-validation-disabled`) — the muted-orange control is not UI-only.
 
 ### 4. Alerts stay signal-only
 

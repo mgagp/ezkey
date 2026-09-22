@@ -16,6 +16,9 @@ These are allowlisted in `shouldPreferI18nOverDetail` because messages are fixed
 | `authentication/*` | Pilot coverage |
 | `domain/integration-has-enrollments` | Fixed `IntegrationHasEnrollmentsException` message |
 | `domain/pending-encryption-key-exists` | Fixed message from key introduction path |
+| `domain/encryption-rotation-disabled` | Fixed message when `ezkey.encryption.rotation.enabled` is false |
+| `domain/encryption-reencryption-disabled` | Fixed message when `ezkey.encryption.reencryption.enabled` is false |
+| `domain/integrity-validation-disabled` | Fixed message when `ezkey.audit.integrity.nightly.enabled` is false |
 | `enrollment/system-integration-create-not-allowed` | Single fixed message |
 | `enrollment/active-verified-enrollment-exists` | Single fixed message |
 | `enrollment/cannot-delete-with-history` | Single fixed message |

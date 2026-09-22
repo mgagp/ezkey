@@ -16,8 +16,8 @@ params:query {
 }
 
 script:post-response {
-  test("Status code is 200 or 500", function () {
-      expect([200, 500]).to.include(res.getStatus());
+  test("Status code is 200, 409, or 500", function () {
+      expect([200, 409, 500]).to.include(res.getStatus());
   });
   
   if (res.getStatus() === 200) {
