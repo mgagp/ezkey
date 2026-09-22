@@ -7,6 +7,10 @@
 > [`multi-tenancy-strategy.md`](multi-tenancy-strategy.md) (historical).
 > **Living canon already documenting name uniqueness:**
 > [`docs/LIFECYCLE_GOVERNANCE.md`](../LIFECYCLE_GOVERNANCE.md) §3.3 (status-based name uniqueness).
+> **80/20 complement (read before paradigm work):**
+> [`ENROLLMENT_UNIQUENESS_QUICK_WINS_80_20.md`](ENROLLMENT_UNIQUENESS_QUICK_WINS_80_20.md) —
+> ranked quick wins (docs/UX, status/`SUPERSEDED`, partial-unique+active) that unlock re-enroll
+> after deactivate **without** per-tenant uniqueness.
 
 ---
 
@@ -15,6 +19,11 @@
 This note inventories **how enrollment identity fields are constrained today**, and sketches what
 **per-tenant uniqueness** would mean if product later chooses that direction. It does **not**
 propose schema or service changes in this PR.
+
+**Before deeper per-tenant analysis or validation-paradigm programs:** prefer the complement
+[`ENROLLMENT_UNIQUENESS_QUICK_WINS_80_20.md`](ENROLLMENT_UNIQUENESS_QUICK_WINS_80_20.md). Most of
+today’s re-create pain is the deactivate/`VERIFIED` unique-slot trap, not missing tenant-scoped
+indexes.
 
 **Product context (hypothesis):**
 
@@ -374,8 +383,9 @@ lock. **No phase is authorized by this document alone.**
 | Gate | Recommendation |
 |------|----------------|
 | **Marc / Alex product intent** | **Keep this as exploration** until they lock: (1) which fields must be unique, (2) per-tenant vs per-integration, (3) multi-device vs unique `user_identifier`, (4) whether deactivate should free the name slot. |
-| **Christophe** | Flag **only if** device-key uniqueness becomes tenant-scoped, or email uniqueness is used as an anti-abuse trust boundary. Name-per-integration and admin global username are existing posture. |
-| **Patrick craft** | Prefer explicit `(tenant_id, …)` or keep honest per-integration keys; do not “fix” deactivate with a status-only soft-unique that still surprises operators. Soft-deactivate holding a VERIFIED unique key **is** the trap. |
+| **Pre-paradigm 80/20** | Decide quick wins in [`ENROLLMENT_UNIQUENESS_QUICK_WINS_80_20.md`](ENROLLMENT_UNIQUENESS_QUICK_WINS_80_20.md) **before** funding per-tenant uniqueness work. Recommended: docs/UI (A), then one of explicit `SUPERSEDED`/Replace (D) vs partial-unique+active (C). |
+| **Christophe** | Flag **only if** device-key uniqueness becomes tenant-scoped, or email uniqueness is used as an anti-abuse trust boundary. Name-per-integration and admin global username are existing posture. Quick-win Option E (end-user reset / key clear) also warrants a glance. |
+| **Patrick craft** | Prefer explicit `(tenant_id, …)` or keep honest per-integration keys; do not “fix” deactivate with a status-only soft-unique that still surprises operators. Soft-deactivate holding a VERIFIED unique key **is** the trap — see complement craft verdict (explicit Replace/`SUPERSEDED` over clever `active` predicates). |
 | **Isabelle** | Not required unless inventory gaps above stay ambiguous after characterization tests. |
 | **This PR** | Documentary only — **no merge urgency**. |
 
@@ -413,3 +423,4 @@ lock. **No phase is authorized by this document alone.**
 | `ezkey-integration-api/.../IntegrationApiAuthAttemptController.java` | userIdentifier lookup |
 | `docs/LIFECYCLE_GOVERNANCE.md` §3.3 | Living uniqueness prose |
 | `ezkey-tests/.../EnrollmentUniquenessIntegrationTest.java` | DB + API characterization |
+| `docs/analysis/ENROLLMENT_UNIQUENESS_QUICK_WINS_80_20.md` | 80/20 complement — ranked quick wins before paradigm |
