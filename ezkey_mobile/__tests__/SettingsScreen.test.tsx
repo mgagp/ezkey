@@ -83,7 +83,7 @@ describe('SettingsScreen', () => {
 
     const textContent = tree!.root.findAllByType(Text).map(node => node.props.children).flat().join(' ');
     expect(textContent).toContain('Coming soon');
-    expect(textContent).toContain('Near-term roadmap and expectation-setting notes');
+    expect(textContent).toContain('What we plan next for this app');
 
     const comingSoonItem = tree!.root.findAll(
       node =>
