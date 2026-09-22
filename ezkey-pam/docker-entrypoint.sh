@@ -12,6 +12,9 @@ API_TIMEOUT="${EZKEY_API_TIMEOUT:-10}"
 TITLE="${EZKEY_CONTEXT_TITLE:-SSH login}"
 MESSAGE="${EZKEY_CONTEXT_MESSAGE:-}"
 SSH_USER="${EZKEY_SSH_USER:-testuser}"
+# Demo containers default debug on so /tmp transcripts and verbose syslog help
+# lab debugging. Host-oriented sample conf defaults to false (see config/).
+DEBUG="${EZKEY_DEBUG:-true}"
 
 if ! id "${SSH_USER}" >/dev/null 2>&1; then
     echo "[entrypoint] Creating Linux user ${SSH_USER}"
@@ -31,7 +34,7 @@ api_timeout=${API_TIMEOUT}
 challenge_requested=false
 context_title=${TITLE}
 context_message=${MESSAGE}
-debug=true
+debug=${DEBUG}
 EOF
 chmod 600 "${CONF}"
 

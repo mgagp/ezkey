@@ -45,12 +45,19 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.0.0** is a **working lab demo**, not a host-operable MFA agent.
+Version **2.1.0** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** (hygiene, PAM
+return codes, AL2023 builder/mirror). It is still **not** a host-operable MFA agent on EXP1
+(sshd cutover remains slice #4+).
 
 Proven in this repository (clean-start stack + Demo Device + Admin UI):
 
 - Docker **builder** compiles `pam_ezkey.so` on Rocky Linux 10.
+- Docker **builder-al2023** compiles an ABI-matched `.so` on Amazon Linux 2023 (cJSON pinned
+  from source; not in AL2023 repos).
 - Docker **runtime** is a small SSH VM (`ezkey-pam-ssh`, host port 2222).
+- Docker **runtime-al2023** mirror (`ezkey-pam-ssh-al2023`, host port 2223) for approve/reject/
+  timeout against the same Integration API.
+- `scripts/smoke-al2023.sh` verifies the AL2023 `.so` loads without the Ezkey stack.
 - `scripts/provision.sh` creates a System Tenant integration, API key, and a VERIFIED enrollment
   whose `userIdentifier` matches the Linux account (`testuser`).
 - `scripts/demo-ssh.sh` starts keyboard-interactive SSH, the module creates an auth attempt,
@@ -65,11 +72,15 @@ The Linux username is the Ezkey `userIdentifier`. There is no mapping table.
 1. Read `/etc/security/pam_ezkey.conf` (optional PAM arg `conf=`, optional env overrides).
 2. `POST /api/v1/auth-attempts` with HTTP Basic (`integration_key` / `secret_key`).
 3. `GET /api/v1/auth-attempts/{id}/wait`.
-4. `PAM_SUCCESS` only when wait `status` is `ACCEPTED`; otherwise `PAM_AUTH_ERR`.
+4. Return codes (fail-closed; never `PAM_IGNORE` / `PAM_SUCCESS` on API failure):
 
-The demo PAM stack (`sshd`) is **Ezkey-only**: `pam_ezkey` + `pam_permit`. There is no Unix
-password and no SSH public key. That is acceptable for a disposable container you can
-`docker exec` into. It is **not** acceptable on EXP1.
+| Situation | Return |
+|---|---|
+| Wait `ACCEPTED` | `PAM_SUCCESS` |
+| Reject, expire, not ACCEPTED | `PAM_AUTH_ERR` |
+| Conf unreadable / missing keys / DNS / TLS / HTTP unexpected / curl fail | `PAM_AUTHINFO_UNAVAIL` |
+| Empty username | `PAM_USER_UNKNOWN` |
+| OOM / internal | `PAM_SERVICE_ERR` |
 
 ### Configuration today
 
@@ -83,29 +94,32 @@ That path and style match Linux-PAM convention (`pam_access`, `pam_limits`, `pam
 | `wait_timeout` / `wait_polling` / `api_timeout` | HTTP waits | Yes |
 | `challenge_requested` | Extra numeric challenge | Yes (keep `false` for SSH) |
 | `context_title` / `context_message` | Device copy | Yes |
-| `debug` | Extra syslog + `/tmp` files | Demo-only; default should become `false` |
+| `debug` | Extra syslog + `/tmp` files | Default **false** in sample conf; demo entrypoint may set `true` via `EZKEY_DEBUG` |
 
 PAM args: `debug`, `conf=/path`. Env overrides exist for Docker because **sshd does not pass
 container ENV into PAM**; the entrypoint writes the conf file. That lesson stays.
 
 **Verdict:** the current parameter set is **enough for the demo** and is the right *shape* for
-v1 operable use. It is not missing a second config system. Gaps are operational (TLS, secrets
-hygiene, PAM return codes, host stack, distro), not “more keys.”
+v1 operable use. It is not missing a second config system. Remaining gaps for EXP1 are
+operational (TLS, live sshd cutover), not “more keys.”
 
 ### Known demo limits (honest)
 
-- **Rocky 10 only** in Docker. EXP1 is Amazon Linux 2023. The `.so` must be built for the
-  target ABI; do not copy a Rocky binary onto AL2023 and hope.
 - **HTTP** to `integration-api:7080`. No TLS verify knobs. Fine on a compose network; not fine
-  on a public hostname.
-- **Every failure is `PAM_AUTH_ERR`.** Transport failure, HTTP 401, reject, and timeout look
-  the same to the stack.
-- **Debug logs can include the wait JSON**, including `authAttemptProofToken`. `/tmp/pam_ezkey.out`
-  is a lab convenience, not a production log path.
-- **Missing `curl_global_init` / secret wipe.** libcurl happens to work; it is not tidy PAM C.
-- **Silent conf open failure** then empty keys → auth error. Should be an explicit syslog.
-- **`install.sh` builds on the host.** Prefer image-matched extract for real hosts.
-- **`debug=true` in the sample conf.** Wrong default outside the demo VM.
+  on a public hostname. (Slice #4+)
+- **Demo PAM stack is Ezkey-only** (`pam_ezkey` + `pam_permit`). Host-oriented sketch lives in
+  [`sshd.host-sketch`](sshd.host-sketch) — not applied to EXP1.
+- **`install.sh` can still build on the host.** Prefer image-matched extract for real hosts
+  (`./scripts/build-al2023.sh --extract` for AL2023).
+
+### Slices #1–#3 done (this eval)
+
+1. Hygiene: AUTHPRIV syslog; no bodies/secrets in logs; `/tmp` gated on debug; conf-open errors;
+   curl init/cleanup; `explicit_bzero` on Basic `userpwd` and secret copies after HTTP.
+2. PAM return-code map + fail-closed / break-glass stack docs (`STATUS` + `sshd.host-sketch`).
+3. AL2023 builder + extract + smoke + SSH mirror compose profile.
+
+Still out of scope here: EXP1 sshd cutover, TLS enrollment, packages, `failmode=safe`.
 
 ---
 
@@ -247,7 +261,7 @@ pre-built `.so` instead of compiling on EXP1.
 | Path | Builder image | Notes |
 |---|---|---|
 | Lab demo (done) | Rocky Linux 10 | Nested SSH VM |
-| EXP1 dogfood | Amazon Linux 2023 | Build in Docker; install on the Lightsail VM (host sshd), not inside `ezkey-pam-ssh` |
+| EXP1 ABI (done for build/mirror) | Amazon Linux 2023 | `builder-al2023` + `runtime-al2023` / smoke; install on Lightsail host is slice #5 |
 | Later generic EL | Rocky / RHEL 9–10 | Same family as the demo |
 | Debian/Ubuntu | later | New builder stage when a host exists |
 
@@ -283,9 +297,11 @@ required by a real host — not as a prerequisite for EXP1.
 
 Each slice should stay mergeable on its own:
 
-1. Hygiene: syslog-only, no proof tokens in logs, `debug` default false, conf-open errors logged.
-2. PAM return codes + documented fail-closed / break-glass stack (still Rocky demo).
-3. Amazon Linux 2023 builder target + extract instructions; test in an AL2023 container.
+1. ~~Hygiene: syslog-only, no proof tokens in logs, `debug` default false, conf-open errors logged.~~ **Done (2.1.0 eval).**
+2. ~~PAM return codes + documented fail-closed / break-glass stack (still Rocky demo).~~ **Done**
+   (`sshd.host-sketch`).
+3. ~~Amazon Linux 2023 builder target + extract instructions; test in an AL2023 container.~~ **Done**
+   (`builder-al2023`, `smoke-al2023`, `ezkey-pam-ssh-al2023`).
 4. TLS + EXP1 integration/enrollment/key; dry-run on a spare user before changing `ec2-user`.
 5. EXP1 sshd cutover with rollback window.
 6. Only then: a generic “copy this snippet onto EL10” note. Packages if a second distro appears.
