@@ -109,6 +109,39 @@
             font-size: 0.9em;
         }
 
+        
+        .status-banner {
+            margin: 16px 0 20px;
+            padding: 14px 16px;
+            background: #f4f4f5;
+            border: 1px solid #a1a1aa;
+            border-left: 4px solid #52525b;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            color: #1a1a2e;
+        }
+
+        .status-banner .status-label {
+            display: block;
+            font-size: 0.72rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #52525b;
+            margin-bottom: 6px;
+        }
+
+        .status-banner p {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .status-banner .status-note {
+            margin-top: 8px;
+            font-size: 0.88rem;
+            color: #3f3f46;
+        }
+
         .callout {
             margin: 16px 0;
             padding: 14px 16px;
@@ -176,6 +209,13 @@
                 <p class="tagline">Une succession d’étapes admin, mobile et démo pour juger Ezkey sur un scénario bout-en-bout.</p>
                 <p class="kicker">Public visé : personnes ayant accès à l’instance communautaire ezkey.online, à l’aise avec une UI technique — pas un grand public novice.</p>
             </header>
+
+            <!-- TEMP: migration downtime banner — remove when ezkey.online is back -->
+            <div class="status-banner" role="status">
+                <span class="status-label">État</span>
+                <p>Instance communautaire temporairement indisponible — migration en cours. De retour sous peu sur ezkey.online.</p>
+            </div>
+
 
             <p><em>Les figures reprennent chaque étape numérotée.</em></p>
 

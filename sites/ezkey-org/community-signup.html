@@ -103,6 +103,39 @@
         }
         button:disabled { opacity: 0.6; cursor: not-allowed; }
 
+        
+        .status-banner {
+            margin: 16px 0 20px;
+            padding: 14px 16px;
+            background: #f4f4f5;
+            border: 1px solid #a1a1aa;
+            border-left: 4px solid #52525b;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            color: #1a1a2e;
+        }
+
+        .status-banner .status-label {
+            display: block;
+            font-size: 0.72rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #52525b;
+            margin-bottom: 6px;
+        }
+
+        .status-banner p {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .status-banner .status-note {
+            margin-top: 8px;
+            font-size: 0.88rem;
+            color: #3f3f46;
+        }
+
         .callout {
             margin: 16px 0;
             padding: 14px 16px;
@@ -168,6 +201,14 @@
                 <p class="label">Alpha · ezkey.online</p>
                 <h1>Instant community access (limited daily slots)</h1>
             </header>
+
+            <!-- TEMP: migration downtime banner — remove when ezkey.online is back -->
+            <div class="status-banner" role="status">
+                <span class="status-label">Status</span>
+                <p>Community instance temporarily unavailable — migration in progress. We'll be back shortly on ezkey.online.</p>
+                <p class="status-note">Instant signup and activation are unavailable until the community instance is back.</p>
+            </div>
+
 
             <p>When slots are available, you can create a <strong>private workspace</strong> on the <strong>ezkey.online</strong> community instance (Ezkey alpha) and receive a <strong>one-time activation code</strong> immediately — no email required for this path.</p>
 

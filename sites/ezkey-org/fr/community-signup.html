@@ -103,6 +103,39 @@
         }
         button:disabled { opacity: 0.6; cursor: not-allowed; }
 
+        
+        .status-banner {
+            margin: 16px 0 20px;
+            padding: 14px 16px;
+            background: #f4f4f5;
+            border: 1px solid #a1a1aa;
+            border-left: 4px solid #52525b;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            color: #1a1a2e;
+        }
+
+        .status-banner .status-label {
+            display: block;
+            font-size: 0.72rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #52525b;
+            margin-bottom: 6px;
+        }
+
+        .status-banner p {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .status-banner .status-note {
+            margin-top: 8px;
+            font-size: 0.88rem;
+            color: #3f3f46;
+        }
+
         .callout {
             margin: 16px 0;
             padding: 14px 16px;
@@ -168,6 +201,14 @@
                 <p class="label">Alpha · ezkey.online</p>
                 <h1>Accès communautaire instantané (places limitées par jour)</h1>
             </header>
+
+            <!-- TEMP: migration downtime banner — remove when ezkey.online is back -->
+            <div class="status-banner" role="status">
+                <span class="status-label">État</span>
+                <p>Instance communautaire temporairement indisponible — migration en cours. De retour sous peu sur ezkey.online.</p>
+                <p class="status-note">L’inscription instantanée et l’activation sont indisponibles jusqu’au retour de l’instance communautaire.</p>
+            </div>
+
 
             <p>Lorsque des places sont disponibles, vous pouvez créer un <strong>espace privé</strong> sur l’instance communautaire <strong>ezkey.online</strong> (Ezkey alpha) et recevoir immédiatement un <strong>code d’activation à usage unique</strong> — sans courriel pour ce chemin.</p>
 
