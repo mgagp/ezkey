@@ -22,11 +22,11 @@ not a remaining executable gate. “What should be next?” is the active backlo
 [`backlog/index.md`](backlog/index.md), not soak. EXP1 is the live experimental host; operator
 watch is human — open analysis only if a signal appears.
 
-**2026-09-22 (public posture):** Public EXP1 / “experimental lab” branding is retiring in favor of
+**2026-09-22 (public posture):** Public EXP1 / “experimental lab” branding is retired in favor of
 **Ezkey product in alpha** + a maintained **community instance** on **ezkey.online** (ezkey.org
-remains the product site). Decision record:
+remains the product site; editorial pass live via PR #609). Decision record (promoted):
 [`vision/V-2026-09-22-exp1-to-ezkey-online-alpha.md`](vision/V-2026-09-22-exp1-to-ezkey-online-alpha.md).
-Wave D history above is unchanged; only the **public** label and cutover order are superseded.
+Wave D history above is unchanged; DNS / VM recycle remain open ops follow-up.
 
 This is the canonical **release-order compass** until the September milestone is reached or this
 document is explicitly superseded.

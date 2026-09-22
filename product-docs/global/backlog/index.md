@@ -14,7 +14,8 @@ This index provides a lightweight list of active ideas and their current state.
 residuals **closed** (alerts list polish, dashboard signal model, audit-chain checkpoints). Waves
 A–C are complete. Wave D was an **attention freeze**, not a backlog item: it preserved calendar
 time on EXP1 and is **closed** as a release-order gate. EXP1 remains the historical name for the
-live host; **public** posture is moving to alpha + community instance on **ezkey.online** — see
+live host; **public** posture is alpha + community instance on **ezkey.online** (site step done
+via PR #609) — see promoted
 [`V-2026-09-22-exp1-to-ezkey-online-alpha`](../vision/V-2026-09-22-exp1-to-ezkey-online-alpha.md).
 Operator watch is human and continuous — if a signal appears, open analysis. There is **no
 remaining P0** on the active backlog.

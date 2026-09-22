@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `V-2026-09-22-exp1-to-ezkey-online-alpha`
-- **Status:** `under-review`
+- **Status:** `promoted`
 - **Lane:** `D`
 - **Created at:** `2026-09-22`
 - **Updated at:** `2026-09-22`
@@ -18,8 +18,8 @@ at **ezkey.online**. Keep **ezkey.org** as the product site. Recycle the current
 community offering. Do **not** claim production readiness, vendor parity, or WebAuthn/passkey
 equivalence.
 
-This note records the product locks. The full `sites/ezkey-org/` editorial rewrite and DNS /
-Cloudflare cutover are **follow-up execution**, not this artifact.
+This note is the **decision record** for those locks. Site repositioning on ezkey.org is **done**
+(PR #609). DNS / Cloudflare and VM recycle remain open follow-up with Edgar / ops.
 
 ## Motivation — why the EXP1 public label retires
 
@@ -33,24 +33,32 @@ Cloudflare cutover are **follow-up execution**, not this artifact.
 ## Product locks (settled)
 
 1. **Community offering on ezkey.online** — Recycle the current EXP1 AWS Lightsail VM into the
-   community instance. Hostnames follow the product domain (e.g. `admin-api.ezkey.online`).
-   Spelling is always **ezkey.online** (never “easykey”).
+   community instance. Hostnames follow the product domain (see hostname map below). Spelling is
+   always **ezkey.online** (never “easykey”).
 2. **Public posture** — Stop positioning the live host as « EXP1 / experimental lab ». Public
    language is: Ezkey product in **alpha**, with a maintained **community instance** on
    ezkey.online.
 3. **ezkey.org remains the product site** — Marketing, guides, and evaluator journey stay on
-   ezkey.org. A later editorial pass must retarget all EXP1 journey copy, badges, and URLs to
-   this alpha + ezkey.online reality.
+   ezkey.org. EXP1 journey copy, badges, and URLs are retargeted to this alpha + ezkey.online
+   reality (editorial pass shipped in PR #609).
 4. **Honesty bounds** — Alpha is **not** a production SLA. Ezkey is **not** Duo / Okta /
    Keycloak parity. Ezkey is **not** WebAuthn / passkey equivalence (see
    [`../product-intent.md`](../product-intent.md)).
+5. **Hostname map (Marc confirmed 2026-09-22 via Alex)** — explicit product lock, not assumed:
+
+| Former EXP1 hostname | Community hostname |
+|----------------------|--------------------|
+| `exp1-admin-ui.ezkey.org` | `admin-ui.ezkey.online` |
+| `exp1-admin-api.ezkey.org` | `admin-api.ezkey.online` |
+| `exp1-demo-acme.ezkey.org` | `demo-acme.ezkey.online` |
+| Auth API (EXP1 Auth host) | `auth-api.ezkey.online` |
 
 ## Domain map
 
 | Surface | Role | Notes |
 |---------|------|--------|
-| **ezkey.org** | Product site (static / Cloudflare Pages) | Narrative, guides, API portal posture, evaluator entry. Remains the public face. |
-| **ezkey.online** | Community runtime (recycled Lightsail VM) | Live Admin / Auth / Integration (and related) endpoints for community alpha use. |
+| **ezkey.org** | Product site (static / Cloudflare Pages) | Narrative, guides, API portal posture, evaluator entry. Remains the public face. Repositioned 2026-09-22 (PR #609). |
+| **ezkey.online** | Community runtime (recycled Lightsail VM) | Live Admin / Auth / demo-acme (and related) endpoints for community alpha use. Hostnames per lock table above. |
 | **EXP1** (historical label) | Retired public name for that VM | Internal ops history and old docs may still say EXP1; new public copy must not. |
 
 Internal repo paths, method logs, and closed Wave D language that say “EXP1” remain valid as
@@ -61,54 +69,52 @@ copy should prefer **community instance** / **ezkey.online**.
 
 Order is intentional: **comms and site first**, infrastructure rename second.
 
-1. **Publish repositioning on ezkey.org** — Editorial pass: retire EXP1 journey language; point
-   evaluators at alpha + ezkey.online; keep honesty bounds visible. *(Follow-up; not this PR.)*
-2. **DNS / Cloudflare with Edgar** — Point ezkey.online (and service hostnames) at the recycled
-   community host; TLS and routing aligned with the new names.
-3. **VM recycle / EXP1 branding shutdown** — Only after the site no longer sends people into an
-   EXP1-framed journey: retire EXP1 public branding on the host, confirm community hostnames,
-   and treat residual EXP1 URLs as redirects or explicit deprecation.
+1. **Publish repositioning on ezkey.org** — **DONE** (2026-09-22). PR #609 squash-merged to
+   `main` (tip `0ec2e91e` / merge commit `e6ff68a`) and published to production
+   [https://ezkey.org/](https://ezkey.org/). Temporary migration downtime banner remains in place
+   until ezkey.online is back.
+2. **DNS / Cloudflare with Edgar** — Point ezkey.online (and service hostnames from the lock
+   table) at the recycled community host; TLS and routing aligned with the new names. **Open.**
+3. **VM recycle / EXP1 branding shutdown** — Retire residual EXP1 public branding on the host,
+   confirm community hostnames, and treat residual EXP1 URLs as redirects or explicit
+   deprecation. **Open** — after DNS is live.
 
-Do **not** shut down EXP1-branded entry points before ezkey.org has been updated. That ordering
-avoids a window where the site still promises EXP1 while the host has already moved.
+Do **not** shut down EXP1-branded entry points before ezkey.org has been updated. Step 1
+satisfied that precondition; steps 2–3 may proceed.
 
 ## Non-goals
 
 - No production-readiness claim, uptime SLA, or “enterprise support” posture.
 - No claim of feature parity with Duo, Okta, Keycloak, or similar suites.
 - No claim of WebAuthn / FIDO2 / passkey protocol equivalence.
-- No full rewrite of `sites/ezkey-org/` in the same change set as this note.
+- No further ezkey.org rewrite in this decision-record PR (site pass already shipped as #609).
 - No mandatory rename of every historical “EXP1” string in closed backlog, method logs, or
   ADRs — only public and forward-looking operator surfaces need the new framing first.
 - No new methodology program (`I-*` / `TB-*`) required solely to record these locks; promote
-  execution slices only when site rewrite, DNS, or infra work needs a bounded tracer.
+  execution slices only when DNS or infra work needs a bounded tracer.
 
-## Follow-up execution (out of scope for this note’s PR)
+## Follow-up execution
 
-| Work | Owner hint | Depends on |
-|------|------------|------------|
-| ezkey.org EXP1 → alpha / ezkey.online editorial pass | Product / site | This note |
-| DNS + Cloudflare cutover | Edgar + ops | Site publish (step 1) |
-| Lightsail VM recycle / hostname cut | Ops | DNS + site |
-| Canon sync (operational-readiness, backlog index EXP1 wording, OpenAPI exposure matrix “evaluator EXP1”) | Docs hygiene | After public cutover or in parallel once locks are accepted |
+| Work | Status | Owner hint | Notes |
+|------|--------|------------|-------|
+| ezkey.org EXP1 → alpha / ezkey.online editorial pass | **Done** | Product / site | PR #609 merged + live on https://ezkey.org/ (2026-09-22); migration banner until ezkey.online is back |
+| DNS + Cloudflare cutover | Open | Edgar + ops | Hostnames per product-lock table |
+| Lightsail VM recycle / hostname cut | Open | Ops | After DNS |
+| Canon sync (operational-readiness residual EXP1 wording, OpenAPI exposure matrix “evaluator EXP1”, `product-orientation-notes.md` index row) | Open | Docs hygiene | Index row is post-merge-on-`main` only |
 
 ## Related artifacts
 
 - [`../product-intent.md`](../product-intent.md) — protocol identity and non-equivalence honesty
-- [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md) — still describes EXP1 as live experimental host (historical Wave D); superseded for **public** posture by this note
-- [`../openapi-exposure-matrix.md`](../openapi-exposure-matrix.md) — evaluator / EXP1 exposure rows; revisit naming when community posture lands
+- [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md) — Wave D history unchanged; public-posture pointer to this note
+- [`../openapi-exposure-matrix.md`](../openapi-exposure-matrix.md) — evaluator / EXP1 exposure rows; revisit naming when community runtime is live
 - [`V-2026-0014`](V-2026-0014-api-docs-exposure-portal.md) — public API docs vs raw tooling; still relevant for community host exposure
 - [`I-2026-05-23-exp1-anonymous-evaluator-onboarding`](../backlog/ideas/I-2026-05-23-exp1-anonymous-evaluator-onboarding.md) — evaluator signup track; retarget host naming when executed against ezkey.online
-- `sites/ezkey-org/` — product site; editorial rewrite is the primary follow-up consumer of this note
+- PR #609 — ezkey.org editorial rewrite (shipped)
+- `sites/ezkey-org/` — product site; no further edits in this PR
 
-## Promotion path
+## Promotion
 
-When the orientation is absorbed:
-
-1. Short public-posture paragraph (or link) in `product-intent.md` and/or operator-facing deploy docs.
-2. Soften or footnote EXP1-as-current-host wording in `operational-readiness-prioritization-2026-09.md`
-   and `backlog/index.md`.
-3. Set this `V-*` to `promoted` (or `archived` if a successor vision supersedes it).
-
-Until then, treat the **Product locks** and **Cutover sequence** sections as the decision record
-for agents and humans touching public copy, DNS, or the Lightsail host.
+Promoted 2026-09-22 after Marc approved merge of this decision record and the ezkey.org
+repositioning (#609) landed on production. Remaining open work is ops cutover (DNS /
+Cloudflare, VM recycle) and light canon sync — not a blocker for treating the **Product locks**,
+**Hostname map**, and **Cutover sequence** as durable guidance.
