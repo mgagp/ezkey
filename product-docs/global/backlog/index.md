@@ -13,8 +13,11 @@ This index provides a lightweight list of active ideas and their current state.
 **Summary (2026-08-25):** Wave B integrity cluster R1 **closed** (GitHub #269). Wave C operator UI
 residuals **closed** (alerts list polish, dashboard signal model, audit-chain checkpoints). Waves
 A–C are complete. Wave D was an **attention freeze**, not a backlog item: it preserved calendar
-time on EXP1 and is **closed** as a release-order gate. EXP1 is the live experimental host;
-operator watch is human and continuous — if a signal appears, open analysis. There is **no
+time on EXP1 and is **closed** as a release-order gate. EXP1 remains the historical name for the
+live host; **public** posture is alpha + community instance on **ezkey.online** (site step done
+via PR #609) — see promoted
+[`V-2026-09-22-exp1-to-ezkey-online-alpha`](../vision/V-2026-09-22-exp1-to-ezkey-online-alpha.md).
+Operator watch is human and continuous — if a signal appears, open analysis. There is **no
 remaining P0** on the active backlog.
 Canon sync 2026-08-24 closed two delivered-but-stale items (`I-2026-06-23` / `TB-2026-06-23` SEC-001,
 `I-2026-07-17` reset 401). Canon sync 2026-08-25 closed three delivered TBs whose index lagged
