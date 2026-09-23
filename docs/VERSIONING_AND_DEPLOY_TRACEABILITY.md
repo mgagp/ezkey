@@ -22,7 +22,8 @@ what is live on a deploy surface. Sibling ops context: [`OPERATIONAL.md`](OPERAT
   3. At worst `0.1.0-alpha · <sha7>` — still **never** `v0.1.0` alone
 
 Maven / npm module versions remain **internal build identity**. Do not conflate them with the
-public alpha label.
+public alpha label. (`ezkey-admin-ui/package.json` may say `0.0.0` — that is npm scaffolding,
+not a product claim.)
 
 ## Source of truth for “what is live”
 
@@ -33,20 +34,37 @@ source of truth (SOOT):
 - Fields: surface, full git SHA, short SHA, UTC timestamp, operator, optional note
 - History: **git log of that file** (amend by commit after a successful publish)
 
+### Community surface shape (inventory lock)
+
+As operated today (Seb read-only inventory of ezkey.online):
+
+| Piece | Where it runs | Traceability note |
+|-------|---------------|-------------------|
+| **Admin UI** | **Cloudflare Pages** (not a Lightsail container) | Record the **git SHA of the tree that was built and published** to Pages. Pages deploy id alone is not enough unless mapped back to that SHA. |
+| **APIs / Demo ACME** | Lightsail Docker VM | Images tagged `*:latest` are **not** deploy traceability. Ledger must record the **full git SHA** that produced (or was intended for) those images. |
+| **Demo ACME / health / actuator** | same VM | Typically expose **no** product version string — do not invent one. |
+
+Closing the pre-convention gap: until the first post-publish ledger row exists, live SHA is
+**unknown** even if containers are `latest`. The procedure below is how that gap is closed.
+
 ### Update procedure (after a successful publish)
 
-Operators (e.g. Edgar on community/Lightsail) update the ledger **only after** the deploy
-actually succeeded:
+Operators (e.g. Edgar on community/Lightsail + Pages) update the ledger **only after** the
+deploy actually succeeded:
 
-1. Confirm the running stack matches the intended commit (images / Pages deployment /
-   containers as applicable).
-2. Edit `docs/lightsail/community/DEPLOYED.md`: set full SHA, short SHA (7 chars), UTC time
+1. Confirm the running stack matches the intended commit:
+   - Admin UI: Cloudflare Pages deployment from the build that stamped `VITE_GIT_SHA`.
+   - Backend: Lightsail containers rebuilt/reloaded from that same monorepo SHA (or note a
+     known split in the ledger **Note** field — prefer same SHA).
+2. Edit `docs/lightsail/community/DEPLOYED.md`: set **full** SHA, short SHA (7 chars), UTC time
    (`date -u +%Y-%m-%dT%H:%M:%SZ`), operator handle, optional note.
 3. Commit on a normal ops PR/branch (conventional message, e.g.
    `docs(ops): community deploy <sha7>`).
 4. Optionally move the lightweight tag `deploy/community` to the same SHA (see below).
 
 Do **not** update the ledger “in advance” of a failed or rolled-back publish.
+Do **not** treat Docker image tag `:latest` (or npm `0.0.0`) as a substitute for the full SHA.
+
 
 ## Optional deploy tags
 
