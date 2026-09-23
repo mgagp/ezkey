@@ -14,7 +14,8 @@ Editorial context (not publishable):
 - Lived arc: chat agents → plan mode → worktrees/multi-agents → Cursor cloud builds (Ezkey Docker single-instance / ports) → Grok Bot (specialized teammates) → early phone/desktop distributed pilotage.
 - Naming: Cursor / Grok Bot / Docker as situated facts of the path — same register as Docker; never product pitch, never parity claims, never tutorial.
 - Voice: Quebec French, natural (Marc’s chat register) — not France-FR literary, not joual/caricature. Ban « Pas par mépris » / « je ne le méprise pas ». Prefer: par contre, là, déjà, je crois, jobs, workflow when he uses them.
-- Intentional delay on skills & agent customization = cognitive load management (slow AI); MCP wake → minimal hygiene skills; full specialist team only once harness felt mature.
+- Intentional delay on skills & agent customization = cognitive load management (slow AI); MCP wake via « une conversation » (no person/role — avoid identifiable ex-director/friend) → minimal hygiene skills; full specialist team only once harness felt mature.
+- Decision 2026-09-17: anonymize MCP anecdote — « L’éveil aux MCP est venu d’une conversation. »
 - Honesty: preliminary — just starting to use the team; phone→poste remote jobs are a fresh discovery, not a mature playbook. Cursor Project mode: suspicion only, not claimed lived experience.
 - Do not invent security/product maturity claims. Product name: Ezkey. Avoid Duo/Okta/Keycloak parity. Avoid corporate hype.
 - Cross-links for HTML later: hygiene-continue-du-code, ablation-methodologie (or published ablation slug), l-intention-prochaine-frontiere, facture-ia / pas-de-côté if slow AI fits.
@@ -46,7 +47,7 @@ Début 2025, il y avait déjà plein de nouveautés autour du multi-agents et de
 
 Entre paresse assumée et volonté éclairée — ce que j’appelle ici mon mode *slow AI* — j’ai surfé le milieu. L’adoption ne faisait aucun doute ; la forme finale, si. Attendre m’a permis de capitaliser sur la qualité d’interaction avec l’agent, plutôt que de disperser mon attention à être early adopter de chaque volet.
 
-Pour les MCP, c’est un échange avec un ancien directeur et ami qui m’a mis sur la piste. J’en ai tiré surtout des skills d’hygiène de code, gardés au minimum. Ça me suffit. La personnalisation poussée d’agents, par contre, je la repoussais encore : trop de complexité pour mon workflow, tant que le cadre d’équipe n’était pas là.
+L’éveil aux MCP est venu d’une conversation. J’en ai tiré surtout des skills d’hygiène de code, gardés au minimum. Ça me suffit. La personnalisation poussée d’agents, par contre, je la repoussais encore : trop de complexité pour mon workflow, tant que le cadre d’équipe n’était pas là.
 
 C’est l’arrivée de Grok Bot, dans Cursor, qui a servi de déclencheur. Pas un détour perdu : un détour utile. Pour être early adopter d’agents personnalisés, ça valait la peine d’attendre que le harness rende l’équipe réelle.
 
