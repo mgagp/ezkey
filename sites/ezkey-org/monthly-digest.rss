@@ -39,7 +39,7 @@
       <link>https://ezkey.org/monthly-digest-2026-04.html</link>
       <guid isPermaLink="true">https://ezkey.org/monthly-digest-2026-04.html</guid>
       <pubDate>Tue, 01 Apr 2026 12:00:00 GMT</pubDate>
-      <description><![CDATA[The Ezkey Android app is being submitted to Google Play as a technology preview for early adopters. The source code is currently kept private while we finalize hardening and documentation. The current plan is to open the repository publicly in September 2026, with the first official release, subject to the usual pre-release work.]]></description>
+      <description><![CDATA[In April, the Ezkey Android app was advancing toward a Google Play technology-preview path for early adopters. The source was still private then, with a plan (at that time) to open the repository publicly around September 2026 alongside a first official release, subject to pre-release work. That timeline reflection is historical — see the detail page for the April narrative.]]></description>
     </item>
     <item>
       <title>March 2026 — The console takes shape, with mobile and contracts in motion</title>
@@ -53,7 +53,7 @@
       <link>https://ezkey.org/monthly-digest-2026-02.html</link>
       <guid isPermaLink="true">https://ezkey.org/monthly-digest-2026-02.html</guid>
       <pubDate>Sun, 01 Feb 2026 12:00:00 GMT</pubDate>
-      <description><![CDATA[Building an authentication system is challenging. Making it safe and reliable is harder. Ezkey will ship in phases; the first is due in the coming months. It will be a technology preview: it will show what the system can do, but it will not be production-ready. On the activity side: a web Admin UI began taking shape this month — initially scoped to tenant administration — alongside audit log integrity through HMAC-signed chains, admin deactivation, and a non-blocking authentication option. The construction had begun in earnest.]]></description>
+      <description><![CDATA[Building an authentication system is challenging. Making it safe and reliable is harder. At that time, Ezkey was expected to ship in phases, with a first technology preview due in the following months — showing what the system can do, but not production-ready. On the activity side: a web Admin UI began taking shape that month — initially scoped to tenant administration — alongside audit log integrity through HMAC-signed chains, admin deactivation, and a non-blocking authentication option. The construction had begun in earnest.]]></description>
     </item>
     <item>
       <title>January 2026 — Admin by terminal first — the TUI choice, doc consolidation, and platform groundwork</title>
