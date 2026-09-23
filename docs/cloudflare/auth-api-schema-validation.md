@@ -17,17 +17,26 @@ Authority: `TB-2026-06-02-auth-api-cloudflare-schema-first-slice`,
    ./scripts/update-specs.sh --auth-only
    ```
 
-2. Package the EXP1-localized artifact (separately runnable; does not change the canonical spec):
+2. Package a deployment-localized artifact (separately runnable; does not change the canonical
+   spec). Default is EXP1:
 
    ```bash
    ./scripts/package-auth-api-cloudflare-schema.sh
    ```
 
-   Output: `specs/auth-api/deployments/exp1-cloudflare-openapi.json`
+   Output: `specs/auth-api/deployments/exp1-cloudflare-openapi.json` with **exactly one** server:
+   `https://exp1-auth-api.ezkey.org`.
 
-   That file must contain **exactly one** server:
+   Community (`ezkey.online`) — distinct artifact path and server URL:
 
-   `https://exp1-auth-api.ezkey.org`
+   ```bash
+   ./scripts/package-auth-api-cloudflare-schema.sh --community
+   # or: --server https://auth-api.ezkey.online
+   # or: EZKEY_AUTH_CLOUDFLARE_SERVER_URL=https://auth-api.ezkey.online ./scripts/package-auth-api-cloudflare-schema.sh
+   ```
+
+   Output: `specs/auth-api/deployments/community-cloudflare-openapi.json` with server
+   `https://auth-api.ezkey.online`.
 
    Cloudflare API Shield accepts **OpenAPI 3.0 only**. The packaging step downlevels the
    canonical 3.1 spec (`type: ["string","null"]` → `type: string` + `nullable: true`) and sets
@@ -67,10 +76,23 @@ Preferred path (Git Bash, repo-root `.env` with `CLOUDFLARE_API_SHIELD_TOKEN`):
 schema UUID from `--list` (repeatable). The script never uses `CLOUDFLARE_API_TOKEN`
 (Pages) and does not change Block / None mitigation.
 
-Dashboard remains valid for the first bind and for Set action. Labels move; look for
-**API Shield** / **Schema validation** on the zone that fronts `exp1-auth-api.ezkey.org`.
+Community zone (`ezkey.online`) — thin wrapper sets schema name `ezkey-auth-api-community`,
+artifact path, packaging server, and `CLOUDFLARE_ZONE_NAME=ezkey.online`:
 
-1. Confirm the six operations above appear once under **`exp1-auth-api.ezkey.org`**.
+```bash
+./scripts/cloudflare/upload-auth-api-schema-community.sh --list
+./scripts/cloudflare/upload-auth-api-schema-community.sh --upload --package
+```
+
+Env overrides alone also work on the EXP1 upload script
+(`EZKEY_AUTH_CLOUDFLARE_SCHEMA`, `EZKEY_AUTH_CLOUDFLARE_SCHEMA_NAME`,
+`EZKEY_AUTH_CLOUDFLARE_SERVER_URL`, `CLOUDFLARE_ZONE_NAME`).
+
+Dashboard remains valid for the first bind and for Set action. Labels move; look for
+**API Shield** / **Schema validation** on the zone that fronts `exp1-auth-api.ezkey.org`
+(or `auth-api.ezkey.online` for community).
+
+1. Confirm the six operations above appear once under the packaged hostname only.
 2. Set the **Set action** mitigation (see below).
 
 ### Set action (EXP1 operator decision, 2026-08-23)
@@ -89,6 +111,12 @@ mismatches fail at the edge and give immediate feedback.
   inspect the schema-validation events, then return to **Block** after the mismatch is understood.
 - Do **not** copy EXP1 Block to a later public or multi-user install without a fresh observe
   period.
+
+### Set action (community / ezkey.online)
+
+**Mitigation stays None.** Community hosts third-party traffic; do not automate or copy EXP1
+**Block** onto `auth-api.ezkey.online`. Observe / log only until an explicit operator decision
+says otherwise.
 
 ## Functional checks after upload
 
@@ -189,5 +217,7 @@ Cloudflare format and `Accept` negotiation:
 ## Related
 
 - Packaging script: [`scripts/package-auth-api-cloudflare-schema.sh`](../../scripts/package-auth-api-cloudflare-schema.sh)
+- Upload (EXP1): [`scripts/cloudflare/upload-auth-api-schema-exp1.sh`](../../scripts/cloudflare/upload-auth-api-schema-exp1.sh)
+- Upload (community): [`scripts/cloudflare/upload-auth-api-schema-community.sh`](../../scripts/cloudflare/upload-auth-api-schema-community.sh)
 - Canonical refresh: [`scripts/update-specs.sh`](../../scripts/update-specs.sh)
 - Cloudflare docs index: [README.md](README.md)
