@@ -5,8 +5,8 @@
         <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
         <!-- statusBarColor and navigationBarColor removed: Android 15 (API 35) forces edge-to-edge
-             and ignores these attributes. Bar appearance is handled via StatusBar (translucent)
-             and useSafeAreaInsets in the React Native layer. -->
+             and ignores these attributes. Icon contrast is windowLightStatusBar=false; RN StatusBar
+             sets barStyle, and useSafeAreaInsets handles insets. -->
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
     </style>

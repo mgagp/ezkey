@@ -64,7 +64,9 @@ const PinCodeInput: React.FC<PinCodeInputProps> = ({
   testID,
   autoFocus = false,
 }) => {
-  const inputRef = useRef<TextInput>(null);
+  // RN 0.87: TextInput is a function component; ref instance is TextInputInstance
+  // (ReactNativeElement), not the component type.
+  const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
   const digits = value
     .split('')
     .concat(Array(length).fill(''))
