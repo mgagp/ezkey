@@ -210,6 +210,8 @@ services:
       SPRING_CONFIG_ADDITIONAL_LOCATION: optional:file:/app/config/,optional:file:./config/
       EZKEY_ADMIN_API_URL: http://integration-api:7080
       EZKEY_DEMO_APP_SESSION_COOKIE_SECURE: "true"
+      # So redirect:/login keeps https when Caddy terminates TLS (X-Forwarded-Proto).
+      SERVER_FORWARD_HEADERS_STRATEGY: ${SERVER_FORWARD_HEADERS_STRATEGY:-framework}
       # Same CIDRs as other APIs: trust Caddy on the Docker network for CF-Connecting-IP / X-Forwarded-For.
       EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
     volumes:

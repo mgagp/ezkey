@@ -93,7 +93,12 @@ Do these **after** VM create → ports → Docker bootstrap (below). No secrets 
    **Export sync note:** `--sync-operator-files` / `--clean-start` on [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) always copies the EXP1-named `Caddyfile`. After any such sync to the community VM, **re-scp** `Caddyfile.ezkey-online` → remote `Caddyfile` (or `scp` the variant then `ssh … 'cp …/Caddyfile.ezkey-online …/Caddyfile'`). Prefer this explicit copy for now over rewriting the export script.
 3. **Origin CA** — Cloudflare Origin Server cert covering all API + demo hostnames above; place `origin.pem` / `origin-key.pem` in `~/ezkey/experimental-hybrid/lightsail/caddy-certs/` on the VM (`chmod 700` dir, `chmod 600` key). Never commit.
 4. **DNS** — Cloudflare **A** records (orange / proxied) for those API/demo names → instance public IP (from `./scripts/lightsail/status.sh`). Admin UI name points at Pages, not the Lightsail IP.
-5. **`.env`** — on the VM: copy [`.env.example`](../../experimental-hybrid/lightsail/.env.example) → `.env`, then set community URLs/CORS from [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example) (no real secrets in either example).
+5. **`.env`** — on the VM: copy [`.env.example`](../../experimental-hybrid/lightsail/.env.example) → `.env`, then overlay community URLs/CORS from [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example). **Mode B (Pages cookie)** requires all of:
+   - `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online` (exact UI origin)
+   - `EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS=true`
+   - `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED=true`
+   - UI build: `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true`  
+   Recreate Admin API after changing these. Do not leave credentials/cookie flags at `false` for the community cookie path.
 6. **Images** — export with optional demo:
    ```bash
    export LIGHTSAIL_SSH_HOST=ezkey-online
@@ -108,7 +113,57 @@ Do these **after** VM create → ports → Docker bootstrap (below). No secrets 
    ssh ezkey-online 'cd ~/ezkey/experimental-hybrid/lightsail && docker compose up -d --no-deps --force-recreate caddy'
    ```
    Or run `./clean-start.sh` on the VM from `~/ezkey/experimental-hybrid/lightsail/` after files are in place (see playbook).
-8. **Pages Admin UI** — separate Cloudflare Pages project (or branch) for `admin-ui.ezkey.online` with `VITE_API_BASE_URL=https://admin-api.ezkey.online`. Not automated by `scripts/lightsail/`.
+8. **Pages Admin UI** — separate Cloudflare Pages project (or branch) for `admin-ui.ezkey.online` with `VITE_API_BASE_URL=https://admin-api.ezkey.online` and Mode B UI flag above. Not automated by `scripts/lightsail/`.
+
+---
+
+## Mode B (Admin UI cookie) — do not regress
+
+Community Pages Admin UI uses **Mode B** (`credentials: 'include'` + HttpOnly session cookie on the API host). Bootstrap examples must keep:
+
+```bash
+EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS=true
+EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED=true
+EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online
+```
+
+Canon: [`docs/cloudflare/admin-ui-pages.md`](../cloudflare/admin-ui-pages.md), [`docs/admin-ui-security.md`](../admin-ui-security.md). Shared EXP1 [`.env.example`](../../experimental-hybrid/lightsail/.env.example) may still show `false` for lab Bearer mode; community overlay is [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example).
+
+---
+
+## demo-acme HTTPS redirects
+
+**Symptom:** `curl -sI https://demo-acme.ezkey.online/` returned `Location: http://demo-acme.ezkey.online/login` while the session cookie is `Secure` — broken behind Cloudflare Full (strict).
+
+**Cause:** Caddy → `demo-app-acme:8082` is plain HTTP. Spring `redirect:/login` built an absolute URL from the *inbound* scheme unless forwarded headers are applied. Trusted-proxy CIDRs alone do not fix redirect scheme.
+
+**In-repo fix:**
+- `server.forward-headers-strategy=framework` in demo-acme `application.properties` (honours `X-Forwarded-Proto` / `Host`)
+- Lightsail compose sets `SERVER_FORWARD_HEADERS_STRATEGY=framework` on `demo-app-acme` (works on an existing image without rebuild — Spring Boot env binding)
+- Community Caddyfile passes `header_up X-Forwarded-Proto` / `Host` on the demo-acme site block
+
+**Edgar — apply on live `ezkey-online` (no secrets):**
+
+```bash
+# From workstation: sync compose + community Caddyfile, recreate demo + caddy
+export LIGHTSAIL_SSH_HOST=ezkey-online
+scp experimental-hybrid/lightsail/docker-compose.yml \
+  "${LIGHTSAIL_SSH_HOST}:ezkey/experimental-hybrid/lightsail/"
+scp experimental-hybrid/lightsail/Caddyfile.ezkey-online \
+  "${LIGHTSAIL_SSH_HOST}:ezkey/experimental-hybrid/lightsail/Caddyfile"
+ssh "${LIGHTSAIL_SSH_HOST}" 'cd ~/ezkey/experimental-hybrid/lightsail && \
+  docker compose up -d --no-deps --force-recreate demo-app-acme caddy'
+```
+
+Optional one-liner if compose is not synced yet: set `SERVER_FORWARD_HEADERS_STRATEGY=framework` in the VM `.env` or compose service env, then recreate `demo-app-acme`.
+
+**Verify (after recreate):**
+
+```bash
+curl -sI https://demo-acme.ezkey.online/ | tr -d '\r' | grep -i '^location:'
+# Expect: Location: https://demo-acme.ezkey.online/login
+# Not:    Location: http://demo-acme.ezkey.online/login
+```
 
 ---
 

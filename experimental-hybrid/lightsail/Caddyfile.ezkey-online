@@ -67,7 +67,11 @@ demo-acme.ezkey.online {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem {
 		protocols tls1.3 tls1.3
 	}
-	reverse_proxy demo-app-acme:8082
+	# Explicit forwarded headers so Spring (forward-headers-strategy) keeps https on redirects.
+	reverse_proxy demo-app-acme:8082 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+	}
 	header {
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
