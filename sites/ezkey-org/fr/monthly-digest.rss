@@ -39,7 +39,7 @@
       <link>https://ezkey.org/fr/monthly-digest-2026-04.html</link>
       <guid isPermaLink="true">https://ezkey.org/fr/monthly-digest-2026-04.html</guid>
       <pubDate>Tue, 01 Apr 2026 12:00:00 GMT</pubDate>
-      <description><![CDATA[L'application Android Ezkey est soumise a Google Play comme preversion technologique destinee aux premiers adoptants. Le code source est pour l'instant prive, le temps de finaliser le durcissement et la documentation. L'objectif actuel est d'ouvrir le depot publiquement en septembre 2026, avec la premiere version officielle, sous reserve du travail de preversion habituel.]]></description>
+      <description><![CDATA[En avril, l'application Android Ezkey avancait vers une voie Google Play en preversion technologique pour les premiers adoptants. Le code etait encore prive a l'epoque, avec un objectif (alors) d'ouvrir le depot publiquement vers septembre 2026 avec une premiere version officielle, sous reserve du travail de preversion. Ce cadrage est historique — voir la page detail pour le recit d'avril.]]></description>
     </item>
     <item>
       <title>Mars 2026 — La console prend forme, mobile et contrats en mouvement</title>
@@ -53,7 +53,7 @@
       <link>https://ezkey.org/fr/monthly-digest-2026-02.html</link>
       <guid isPermaLink="true">https://ezkey.org/fr/monthly-digest-2026-02.html</guid>
       <pubDate>Sun, 01 Feb 2026 12:00:00 GMT</pubDate>
-      <description><![CDATA[Construire un systeme d'authentification, c'est exigeant. Le rendre sur et fiable, c'est encore plus dur. Ezkey sera publie par phases ; la premiere est prevue dans les prochains mois. Ce sera une preversion technologique : elle montrera le potentiel du systeme mais ne sera pas prete pour la production. Cote activites : une interface d'administration web a commence a prendre forme ce mois-ci — d'abord centree sur l'administration de locataires — accompagnee d'une integrite des logs d'audit par chaine HMAC signee, de la desactivation d'administrateurs et d'une option d'authentification non bloquante. La construction avait vraiment commence.]]></description>
+      <description><![CDATA[Construire un systeme d'authentification, c'est exigeant. Le rendre sur et fiable, c'est encore plus dur. A l'epoque, Ezkey devait etre publie par phases, avec une premiere preversion technologique attendue dans les mois suivants — pour montrer le potentiel du systeme, mais pas prete pour la production. Cote activites : une interface d'administration web a commence a prendre forme ce mois-la — d'abord centree sur l'administration de locataires — accompagnee d'une integrite des logs d'audit par chaine HMAC signee, de la desactivation d'administrateurs et d'une option d'authentification non bloquante. La construction avait vraiment commence.]]></description>
     </item>
     <item>
       <title>Janvier 2026 — Admin d'abord en terminal — le pari TUI, consolidation doc et fondations plateforme</title>
