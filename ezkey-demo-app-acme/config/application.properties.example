@@ -59,3 +59,6 @@ ezkey.rate-limit.apply-api-key.window-minutes=10
 
 # Session cookie security for HTTPS deployments (recommended true behind Caddy/TLS)
 # EZKEY_DEMO_APP_SESSION_COOKIE_SECURE=true
+
+# Behind Caddy/Cloudflare: keep https on redirects (Location). Compose sets this for Lightsail.
+# SERVER_FORWARD_HEADERS_STRATEGY=framework

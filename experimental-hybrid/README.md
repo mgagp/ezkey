@@ -2,7 +2,7 @@
 
 This folder contains **operator-focused** artifacts to run Ezkey on **Amazon Lightsail** (Postgres, migration, Admin API, Auth API, Integration API, optional Demo ACME, **Caddy** with Let’s Encrypt) and optionally run **local** companions (Crypto API, Demo Device, Demo ACME) against the **public** HTTPS APIs.
 
-- **Lightsail:** [`lightsail/`](lightsail/) — `docker-compose.yml`, `Caddyfile`, `.env.example`
+- **Lightsail:** [`lightsail/`](lightsail/) — `docker-compose.yml`, `Caddyfile` (EXP1), `Caddyfile.ezkey-online` (community), `.env.example`, `.env.ezkey-online.example`
 - **Local (optional):** [`local/`](local/) — `docker-compose.yml`, `.env.example`
 - **Runbook:** [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) — phases, **`~/ezkey` VM tree**, **`scp` from a dev clone** (default), optional clone-on-VM, Cloudflare split (manual vs repo)
 - **Single-backend image update (Lightsail):** [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md) — `docker save` / `scp` / `docker load` / `compose up --force-recreate`
@@ -16,6 +16,8 @@ Image build targets and behaviour match the main repo [`docker/Dockerfile`](../d
 ## Default Lightsail SSH host: ezkey
 
 For the **experimental hybrid** path, **`LIGHTSAIL_SSH_HOST`** in [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) and [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) **defaults to `ezkey`** (the `Host` in `~/.ssh/config` for this VM). Doc examples use the same name to keep steps short. *If your alias differs, set `LIGHTSAIL_SSH_HOST` when running those scripts.*
+
+**Community / ezkey.online (parallel VM):** create and bootstrap a **new** Lightsail instance with [`scripts/lightsail/`](../scripts/lightsail/) (default SSH alias **`ezkey-online`**, separate from EXP1). Those scripts own **VM lifecycle** only; this tree remains the OSS app/compose path. See [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) (§ *Ownership boundary*) and [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) § *Community host / ezkey.online*.
 
 ## Prerequisites
 
