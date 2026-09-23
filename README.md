@@ -11,6 +11,8 @@ Ezkey is designed for developers, especially backend developers, who want a self
 It also includes an Admin UI for human administration, giving operators a direct surface for platform and tenant workflows without changing Ezkey's backend-first trust model.
 
 > **Status:** Ezkey is currently in **alpha**. There are **no published release artifacts** to install or consume yet. The evaluation journey and community-oriented walkthrough live on [ezkey.org](https://ezkey.org/) (see also the French pages under `/fr/`).
+>
+> **Mobile app:** in **internal testing**. There is no store release yet. To try it, sideload the APK in developer mode, or use the separate **demo device** GitHub project described in the evaluation journey on [ezkey.org](https://ezkey.org/).
 
 ## What Exists Today
 
