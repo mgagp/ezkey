@@ -3,6 +3,7 @@
 # Create a NEW Amazon Lightsail instance for the ezkey.online community-host evaluation path.
 # Defaults match EXP1 shape (AL2023, medium_3_0, ca-central-1a) but use a separate instance name.
 # Does NOT touch exp1-ezkey. Does NOT change Cloudflare DNS or certificates.
+# VM lifecycle only — app stack stays in experimental-hybrid/lightsail/ (see docs/lightsail/community-host.md).
 #
 # AWS CLI only (no Terraform / CloudFormation). Default is dry-run; pass --apply to create.
 #

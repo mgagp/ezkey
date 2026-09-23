@@ -17,7 +17,7 @@ Image build targets and behaviour match the main repo [`docker/Dockerfile`](../d
 
 For the **experimental hybrid** path, **`LIGHTSAIL_SSH_HOST`** in [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) and [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) **defaults to `ezkey`** (the `Host` in `~/.ssh/config` for this VM). Doc examples use the same name to keep steps short. *If your alias differs, set `LIGHTSAIL_SSH_HOST` when running those scripts.*
 
-**Community / ezkey.online (parallel VM):** create and bootstrap a **new** Lightsail instance with [`scripts/lightsail/`](../scripts/lightsail/) (default SSH alias **`ezkey-online`**, separate from EXP1). See [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) and [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) § *Community host / ezkey.online*.
+**Community / ezkey.online (parallel VM):** create and bootstrap a **new** Lightsail instance with [`scripts/lightsail/`](../scripts/lightsail/) (default SSH alias **`ezkey-online`**, separate from EXP1). Those scripts own **VM lifecycle** only; this tree remains the OSS app/compose path. See [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) (§ *Ownership boundary*) and [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) § *Community host / ezkey.online*.
 
 ## Prerequisites
 

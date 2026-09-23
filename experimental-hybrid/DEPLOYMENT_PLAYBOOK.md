@@ -228,4 +228,6 @@ That syncs Compose (`EZKEY_ADMIN_API_URL=http://integration-api:7080`), recreate
 
 For a **NEW** all-in-one Lightsail instance aimed at **ezkey.online** evaluation (parallel to live EXP1 `exp1-ezkey` — do **not** shut down or rebrand EXP1 here), use the AWS CLI helpers under [`scripts/lightsail/`](../scripts/lightsail/) and the short runbook [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).
 
+**Layer split:** `scripts/lightsail/` = **VM lifecycle** only; this folder’s [`lightsail/`](lightsail/) + [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) = **OSS app stack** (same as EXP1). Keep community-only secrets / ezkey.online-only DNS checklists out of the public compose tree. The VM-lifecycle tree may later extract to a **private** ops repo after e2e validation (see runbook § *Ownership boundary*); no private repo is created by that automation.
+
 **Handoff:** create VM → `open-ports.sh` → `bootstrap-host.sh` (this playbook’s Phase 0b/0c) → reuse [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) with a **dedicated** SSH Host alias (`LIGHTSAIL_SSH_HOST=ezkey-online`, not `ezkey`) → Origin CA / DNS later with human OK. App Compose/Caddy stay in [`lightsail/`](lightsail/); no production DNS or cert changes in the Lightsail create scripts.

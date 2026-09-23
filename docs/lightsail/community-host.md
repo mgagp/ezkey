@@ -10,6 +10,21 @@ Short runbook for creating a **NEW** Amazon Lightsail VM for the **ezkey.online*
 
 ---
 
+## Ownership boundary (monorepo now, extractable later)
+
+Starting these scripts in the **monorepo** is intentional and pragmatic (one clone, reuse the EXP1 image-export path). Longer-term, the **Marc-operated canonical community host** (`ezkey.online`) may move its *operator* scripting into a separate **private** GitHub repo: that instance is owned/operated by Marc and is **not** the same story as the public OSS “how to stand up an experimental hybrid” path (which stays in [`experimental-hybrid/`](../../experimental-hybrid/), like EXP1).
+
+| Layer | Lives in | Owns |
+|-------|----------|------|
+| **VM lifecycle** | [`scripts/lightsail/`](../../scripts/lightsail/) (+ this runbook) | create / ports / bootstrap Docker / status / delete |
+| **App stack (OSS)** | [`experimental-hybrid/lightsail/`](../../experimental-hybrid/lightsail/) + [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) | Compose, Caddyfile, clean-start, image save/scp/load |
+
+**Extraction note:** after e2e validation, `scripts/lightsail/` + this runbook may be copied into a private ops repo with minimal edits. Keep the tree **self-contained**. Do **not** scatter community-only secrets, ezkey.online-only DNS checklists, or laptop-specific absolute paths into the public product compose tree beyond the existing OSS pattern (env vars, SSH Host aliases, gitignored PEMs / `.env` on the operator machine).
+
+This PR does **not** create that private repo.
+
+---
+
 ## Defaults (match EXP1 shape, new name)
 
 | Setting | Default | Override |

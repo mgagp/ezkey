@@ -106,7 +106,7 @@ Campaign notes: [`product-docs/global/hygiene/javamelody/`](../product-docs/glob
 
 ## Lightsail (community / ezkey.online host)
 
-AWS CLI helpers to create and bootstrap a **NEW** all-in-one Lightsail VM parallel to EXP1 (`exp1-ezkey`). Dry-run by default for create / delete / ports. Does **not** change DNS or certificates. Runbook: [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).
+AWS CLI helpers under [`lightsail/`](lightsail/) to create and bootstrap a **NEW** all-in-one Lightsail VM parallel to EXP1 (`exp1-ezkey`). **VM lifecycle only** (create / ports / bootstrap / status / delete). Dry-run by default for create / delete / ports. Does **not** change DNS or certificates. Self-contained tree — may later extract to a private ops repo after e2e validation (see runbook). Runbook: [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).
 
 ```bash
 export AWS_PROFILE=ezkey-lightsail
@@ -117,7 +117,7 @@ export AWS_PROFILE=ezkey-lightsail
 ./scripts/lightsail/delete-instance.sh --help
 ```
 
-App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with `LIGHTSAIL_SSH_HOST=ezkey-online`.
+App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with `LIGHTSAIL_SSH_HOST=ezkey-online`. Do not put community-only secrets or ezkey.online-only DNS checklists into the public compose tree.
 
 ## Initial Problem
 

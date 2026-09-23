@@ -2,6 +2,11 @@
 # Shared helpers for scripts/lightsail/*.sh (community / ezkey.online host automation).
 # Sourced by sibling scripts; not meant to be run directly.
 #
+# Scope: VM lifecycle only (create / ports / bootstrap / status / delete). App layer stays in
+# experimental-hybrid/lightsail/ + export-backend-images-to-lightsail.sh.
+# This tree is monorepo-pragmatic and may later extract to a private ops repo after e2e
+# validation (see docs/lightsail/community-host.md § Ownership boundary).
+#
 # Defaults match the live EXP1 experimental-hybrid instance shape (AL2023, medium_3_0,
 # ca-central-1) but target a NEW parallel instance name. They never touch exp1-ezkey.
 #
