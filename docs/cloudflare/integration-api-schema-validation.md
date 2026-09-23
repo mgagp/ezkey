@@ -19,17 +19,26 @@ Auth API already proved this recipe. Do not invent a third packaging stack. Auth
    ./scripts/update-specs.sh --integration-only
    ```
 
-2. Package the EXP1-localized artifact (separately runnable; does not change the canonical spec):
+2. Package a deployment-localized artifact (separately runnable; does not change the canonical
+   spec). Default is EXP1:
 
    ```bash
    ./scripts/package-integration-api-cloudflare-schema.sh
    ```
 
-   Output: `specs/integration-api/deployments/exp1-cloudflare-openapi.json`
+   Output: `specs/integration-api/deployments/exp1-cloudflare-openapi.json` with **exactly one**
+   server: `https://exp1-integration-api.ezkey.org`.
 
-   That file must contain **exactly one** server:
+   Community (`ezkey.online`) — distinct artifact path and server URL:
 
-   `https://exp1-integration-api.ezkey.org`
+   ```bash
+   ./scripts/package-integration-api-cloudflare-schema.sh --community
+   # or: --server https://integration-api.ezkey.online
+   # or: EZKEY_INTEGRATION_CLOUDFLARE_SERVER_URL=https://integration-api.ezkey.online ./scripts/package-integration-api-cloudflare-schema.sh
+   ```
+
+   Output: `specs/integration-api/deployments/community-cloudflare-openapi.json` with server
+   `https://integration-api.ezkey.online`.
 
    Cloudflare API Shield accepts **OpenAPI 3.0 only**. The packaging step downlevels the
    canonical 3.1 spec (`type: ["string","null"]` → `type: string` + `nullable: true`) and sets
@@ -64,18 +73,30 @@ Preferred path (Git Bash, repo-root `.env` with `CLOUDFLARE_API_SHIELD_TOKEN`):
 `--list` verifies the zone-scoped token and prints uploaded schemas. `--upload` POSTs
 `specs/integration-api/deployments/exp1-cloudflare-openapi.json` only. `--delete` removes one
 schema UUID from `--list` (repeatable). The script refuses to delete the Auth schema
-(`ezkey-auth-api-exp1`). The script never uses `CLOUDFLARE_API_TOKEN` (Pages) and does not
-change Block / None mitigation.
+(`ezkey-auth-api-exp1` on EXP1; community wrapper protects `ezkey-auth-api-community`). The
+script never uses `CLOUDFLARE_API_TOKEN` (Pages) and does not change Block / None mitigation.
+
+Community zone (`ezkey.online`) — thin wrapper sets schema name
+`ezkey-integration-api-community`, artifact path, packaging server, and
+`CLOUDFLARE_ZONE_NAME=ezkey.online`:
+
+```bash
+./scripts/cloudflare/upload-integration-api-schema-community.sh --list
+./scripts/cloudflare/upload-integration-api-schema-community.sh --upload --package
+```
+
+Env overrides alone also work on the EXP1 upload script
+(`EZKEY_INTEGRATION_CLOUDFLARE_SCHEMA`, `EZKEY_INTEGRATION_CLOUDFLARE_SCHEMA_NAME`,
+`EZKEY_INTEGRATION_CLOUDFLARE_SERVER_URL`, `CLOUDFLARE_ZONE_NAME`).
 
 Do not couple this upload to Lightsail deploy. Do not use Wrangler.
 
 Dashboard remains valid for the first bind and for Set action. Labels move; look for
 **API Shield** / **Schema validation** on the zone that fronts
-`exp1-integration-api.ezkey.org`.
+`exp1-integration-api.ezkey.org` (or `integration-api.ezkey.online` for community).
 
-1. Confirm the three operations above appear once under **`exp1-integration-api.ezkey.org`**.
-2. Confirm the Auth schema remains (`9d7d279b-9eff-4661-b536-8afb5a9b6dbf` at first Auth
-   upload; re-check `--list` if Auth was re-uploaded).
+1. Confirm the three operations above appear once under the packaged hostname only.
+2. Confirm the Auth schema remains (re-check `--list` if Auth was re-uploaded).
 3. Add the three operations to the Web Assets inventory if they have no `operation_id` yet,
    then set per-operation mitigation (same Auth pattern). Zone default stays **None**.
 4. Set the **Set action** mitigation only after an explicit operator decision (see below).
@@ -101,6 +122,12 @@ Auth schema `9d7d279b-9eff-4661-b536-8afb5a9b6dbf` remains.
   mismatch is understood.
 - Do **not** copy EXP1 Block to a later public or multi-user install without a fresh observe
   period. Escape hatch remains **None**.
+
+### Set action (community / ezkey.online)
+
+**Mitigation stays None.** Community hosts third-party / M2M traffic; do not automate or copy
+EXP1 **Block** onto `integration-api.ezkey.online`. Observe / log only until an explicit
+operator decision says otherwise.
 
 ## Functional checks after upload
 
@@ -164,7 +191,8 @@ Cloudflare format and `Accept` negotiation:
 ## Related
 
 - Packaging script: [`scripts/package-integration-api-cloudflare-schema.sh`](../../scripts/package-integration-api-cloudflare-schema.sh)
-- Upload script: [`scripts/cloudflare/upload-integration-api-schema-exp1.sh`](../../scripts/cloudflare/upload-integration-api-schema-exp1.sh)
+- Upload (EXP1): [`scripts/cloudflare/upload-integration-api-schema-exp1.sh`](../../scripts/cloudflare/upload-integration-api-schema-exp1.sh)
+- Upload (community): [`scripts/cloudflare/upload-integration-api-schema-community.sh`](../../scripts/cloudflare/upload-integration-api-schema-community.sh)
 - Canonical refresh: [`scripts/update-specs.sh`](../../scripts/update-specs.sh)
 - Auth sibling: [auth-api-schema-validation.md](auth-api-schema-validation.md)
 - Cloudflare docs index: [README.md](README.md)

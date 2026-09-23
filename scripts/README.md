@@ -237,13 +237,18 @@ Ezkey now uses a centralized approach for managing OpenAPI specifications. All s
 
 Auth API and Integration API canonical output is host-neutral: `update-specs.sh --auth-only`
 and `--integration-only` strip top-level `servers` after fetch. Do not put EXP1 or localhost
-hosts back into Java `@Server` annotations. To build the EXP1 Cloudflare upload artifacts:
+hosts back into Java `@Server` annotations. To build Cloudflare upload artifacts:
 
 ```bash
+# EXP1 (default)
 ./scripts/package-auth-api-cloudflare-schema.sh
 ./scripts/cloudflare/upload-auth-api-schema-exp1.sh --list
 ./scripts/package-integration-api-cloudflare-schema.sh
 ./scripts/cloudflare/upload-integration-api-schema-exp1.sh --list
+
+# Community (ezkey.online)
+./scripts/package-auth-api-cloudflare-schema.sh --community
+./scripts/package-integration-api-cloudflare-schema.sh --community
 ```
 
 See [`docs/cloudflare/auth-api-schema-validation.md`](../docs/cloudflare/auth-api-schema-validation.md)
@@ -252,10 +257,12 @@ and [`docs/cloudflare/integration-api-schema-validation.md`](../docs/cloudflare/
 ## Additional Scripts
 
 - `format-specs.sh` - Format existing JSON specifications for better readability
-- `package-auth-api-cloudflare-schema.sh` - EXP1-localized Auth API schema for Cloudflare upload
-- `cloudflare/upload-auth-api-schema-exp1.sh` - list or upload that artifact (`CLOUDFLARE_API_SHIELD_TOKEN`)
-- `package-integration-api-cloudflare-schema.sh` - EXP1-localized Integration API schema for Cloudflare upload
-- `cloudflare/upload-integration-api-schema-exp1.sh` - list or upload that artifact (same shield token; does not delete Auth)
+- `package-auth-api-cloudflare-schema.sh` - Auth API Cloudflare schema (EXP1 default; `--community` / `--server`)
+- `cloudflare/upload-auth-api-schema-exp1.sh` - list or upload EXP1 Auth artifact (`CLOUDFLARE_API_SHIELD_TOKEN`)
+- `cloudflare/upload-auth-api-schema-community.sh` - thin community defaults for Auth (`ezkey.online`, None mitigation)
+- `package-integration-api-cloudflare-schema.sh` - Integration API Cloudflare schema (EXP1 default; `--community` / `--server`)
+- `cloudflare/upload-integration-api-schema-exp1.sh` - list or upload EXP1 Integration artifact (same shield token; does not delete Auth)
+- `cloudflare/upload-integration-api-schema-community.sh` - thin community defaults for Integration
 
 ## Recommended Workflow
 

@@ -850,8 +850,8 @@
   },
   "servers": [
     {
-      "url": "https://exp1-auth-api.ezkey.org",
-      "description": "EXP1 Auth API"
+      "url": "https://auth-api.ezkey.online",
+      "description": "Community Auth API"
     }
   ]
 }
