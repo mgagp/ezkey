@@ -14,8 +14,8 @@ For repo-wide rules (Maven, Java, etc.), see **[../../AGENTS.md](../../AGENTS.md
 - **ReDoc CE re-evaluation rule:** do **not** rotate versions on a calendar just to stay “current”. Re-evaluate only on one of three triggers: (1) security / availability / CDN-trust issue, (2) rendering or compatibility problem that affects the portal, or (3) explicit decision to revisit renderer posture (for example self-hosting or replacement). When triggered: pin explicit version -> preview -> human visual validation -> production.
 - **French API portal posture:** localize the **portal shell** (navigation, summary, guidance) in French. Do **not** hand-translate generated OpenAPI annotation text in the site pages; the detailed spec content may remain in the source-language generated artifacts unless a dedicated contract-localization effort is explicitly approved.
 - **Landing pages (compact):** [`index.html`](index.html) (en), [`fr/index.html`](fr/index.html) (fr) — hero, pillars, primary navigation, evaluation CTAs (run locally, docs, trust), and secondary links into product writing. They are **not** the archive for updates or articles.
-- **Trust / diligence (short):** [`trust.html`](trust.html) / [`fr/trust.html`](fr/trust.html) — plain-language trust model, disclosure posture, security reporting (`security@ezkey.org`), and **on-site** pointers (no public GitHub URLs while the repository stays private).
-- **Source & evaluation hub:** [`source-and-evaluation.html`](source-and-evaluation.html) / [`fr/source-and-evaluation.html`](fr/source-and-evaluation.html) — explains that Ezkey is **planned** as MIT open source but the **main repository is private** until the scheduled public opening; anchors `#documentation` and `#run-locally` are the nav targets for **Docs** / **Run locally**.
+- **Trust / diligence (short):** [`trust.html`](trust.html) / [`fr/trust.html`](fr/trust.html) — plain-language trust model, disclosure posture, security reporting (`security@ezkey.org`), and pointers to the **public** GitHub repository plus on-site evaluation pages.
+- **Source & evaluation hub:** [`source-and-evaluation.html`](source-and-evaluation.html) / [`fr/source-and-evaluation.html`](fr/source-and-evaluation.html) — public MIT repo (`https://github.com/mgagp/ezkey`), alpha status, docs and **Run locally** (clean-start); anchors `#documentation` and `#run-locally` are the nav targets for **Docs** / **Run locally**.
 - **Monthly digests (reverse chronological):** [`monthly-digest.html`](monthly-digest.html) / [`fr/monthly-digest.html`](fr/monthly-digest.html) — distilled month-by-month activity from Git history; optional type pill on legacy index-only entries. Full months link to detail pages (`monthly-digest-YYYY-MM.html`). Cross-links to the changelog for future versioned release notes.
 - **Guides & walkthroughs hub:** [`guides.html`](guides.html) / [`fr/guides.html`](fr/guides.html) — dedicated hub for evaluator-oriented step-by-step content (community guided tour, upcoming guides). Linked from the primary nav as **Guides**.
 - **Articles & notes index:** [`articles.html`](articles.html) / [`fr/articles.html`](fr/articles.html) — two labeled sections: **About Ezkey** (product-explaining content, newest first) and **Craft & engineering** (independent essays, newest first). No longer contains a guides lane.
@@ -50,9 +50,16 @@ Hub pages (`index`, `monthly-digest`, `articles`, `trust`) share a consistent **
 
 **Changelog** is intentionally **omitted** from that primary strip until the page carries real versioned notes. **Methodology** (`/methodology.html` / `/fr/methodologie.html`) is a short hand-written pointer to the canonical explorer at **`https://methodology.ezkey.org`** (v2.0.0+ after the 2026-08 ablation). Do **not** regenerate a rich view or revive `scripts/publish-methodology-view.ps1` — that pipeline was retired with the ablation. Update the explorer via `product-docs/site` and `scripts/cloudflare/deploy-methodology-*.sh`. On **changelog** pages only, append the changelog item with `aria-current="page"`.
 
-**Public site and private repository:** Do **not** link from **ezkey.org** to GitHub (or any authenticated-only host) for Ezkey source, docs, or `SECURITY.md` while the repository remains **private**. The intended public URL and onboarding copy will be wired when the repository opens (planned alongside the first public release — see **Monthly digests**). Internal package metadata or future **`SECURITY.md`** in git may still name a future canonical repo URL for maintainers; that does not override this public-site rule.
+**Public site and public repository:** The main monorepo is **public** under MIT at
+[`https://github.com/mgagp/ezkey`](https://github.com/mgagp/ezkey). Hub pages (**Docs** /
+**Run locally** / **Trust**) may link to that repository, the README Quick Start
+(`./ezkey-tests/clean-start.sh`), in-repo `docs/`, and `SECURITY.md`. Keep product copy
+**alpha-honest**: no published release packages yet; never claim Duo/Okta/Keycloak parity or
+production-ready status.
 
-When the repository is **public**, replace **Docs** / **Run locally** nav targets and homepage CTAs with the canonical README and docs index URLs in **one** coordinated edit (and trim redundant wording on [`source-and-evaluation.html`](source-and-evaluation.html) if appropriate).
+When editing evaluation CTAs, keep **Source & evaluation** as the on-site hub and point
+evaluators at the public README / clean-start path rather than inventing parallel setup docs
+on ezkey.org.
 
 ---
 
@@ -174,7 +181,7 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 | English path | French path | Purpose |
 | ------------ | ----------- | ------- |
 | `/` → `index.html` | `/fr/` → `fr/index.html` | Compact landing; evaluation CTAs |
-| `/source-and-evaluation.html` | `/fr/source-and-evaluation.html` | Private-repo posture; docs/run-local explanation |
+| `/source-and-evaluation.html` | `/fr/source-and-evaluation.html` | Public MIT repo; docs/run-local explanation |
 | `/api-docs.html` | `/fr/api-docs.html` | API portal landing page |
 | `/trust.html` | `/fr/trust.html` | Trust, reporting, on-site pointers |
 | `/monthly-digest.html` | `/fr/monthly-digest.html` | Monthly digests index (newest first) |
@@ -302,7 +309,7 @@ The site uses a **single coherent palette** derived from the background gradient
 | [../../sites/ezkey-org-editorial/fr/](../../sites/ezkey-org-editorial/fr/) | Editorial drafts — NOT deployed by Wrangler |
 | [index.html](index.html) | English landing page |
 | [fr/index.html](fr/index.html) | French landing page |
-| [source-and-evaluation.html](source-and-evaluation.html) / [fr/source-and-evaluation.html](fr/source-and-evaluation.html) | Private repo; docs/run-local framing |
+| [source-and-evaluation.html](source-and-evaluation.html) / [fr/source-and-evaluation.html](fr/source-and-evaluation.html) | Public MIT repo; docs/run-local framing |
 | [trust.html](trust.html) / [fr/trust.html](fr/trust.html) | Trust & security diligence |
 | [monthly-digest.html](monthly-digest.html) / [fr/monthly-digest.html](fr/monthly-digest.html) | Monthly digests index |
 | [monthly-digest-YYYY-MM.html](monthly-digest-2026-06.html) / [fr/monthly-digest-YYYY-MM.html](fr/monthly-digest-2026-06.html) | Full monthly digest detail pages |

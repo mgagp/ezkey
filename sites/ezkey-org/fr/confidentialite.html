@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta property="og:title" content="Politique de confidentialité — Ezkey">
-    <meta property="og:description" content="Politique de confidentialité de l">
+    <meta property="og:description" content="Politique de confidentialité de l'application mobile Ezkey, du site ezkey.org et de l'instance communautaire alpha sur ezkey.online.">
     <meta property="og:url" content="https://ezkey.org/fr/confidentialite.html">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Ezkey">
@@ -12,14 +12,14 @@
     <meta property="og:locale" content="fr_FR">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Politique de confidentialité — Ezkey">
-    <meta name="twitter:description" content="Politique de confidentialité de l">
+    <meta name="twitter:description" content="Politique de confidentialité de l'application mobile Ezkey, du site ezkey.org et de l'instance communautaire alpha sur ezkey.online.">
     <meta name="twitter:image" content="https://ezkey.org/logo.svg">
 
     <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/confidentialite.html">
     <link rel="alternate" hreflang="en" href="https://ezkey.org/privacy.html">
     <link rel="alternate" hreflang="x-default" href="https://ezkey.org/privacy.html">
     <title>Politique de confidentialité — Ezkey</title>
-    <meta name="description" content="Politique de confidentialité de l'application mobile Ezkey et du site ezkey.org. Ezkey ne collecte aucune donnée personnelle.">
+    <meta name="description" content="Politique de confidentialité de l'application mobile Ezkey, du site ezkey.org et de l'instance communautaire alpha sur ezkey.online.">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -224,59 +224,106 @@
     </div>
 
     <article>
-        <div class="doc-meta">Dernière mise à jour&nbsp;: 24 avril 2026</div>
+        <div class="doc-meta">Dernière mise à jour&nbsp;: 23 septembre 2026</div>
 
         <div class="hero-title">
             <div class="label">Légal</div>
             <h1>Politique de confidentialité</h1>
-            <p class="tagline">Application mobile Ezkey &amp; site ezkey.org</p>
+            <p class="tagline">Application mobile Ezkey, site ezkey.org et instance communautaire alpha</p>
         </div>
 
         <div class="no-data-badge">
             <strong>Version abrégée</strong>
-            Le projet Ezkey ne collecte, ne stocke et ne traite aucune donnée personnelle sur ses
-            propres serveurs &mdash; parce qu&rsquo;il n&rsquo;exploite aucun serveur central.
-            Toutes les données restent sur votre appareil ou transitent directement vers le serveur
-            auto-hébergé de votre organisation.
+            Ezkey est d&rsquo;abord un logiciel auto-hébergeable&nbsp;: lorsque vous vous inscrivez
+            auprès d&rsquo;une organisation qui exploite son propre serveur, cette organisation
+            est responsable du traitement des données sur ce serveur. Le projet Ezkey exploite
+            aussi une <strong>instance communautaire alpha</strong> distincte sur
+            <strong>ezkey.online</strong> pour l&rsquo;évaluation&nbsp;; pour cette instance, le
+            projet est l&rsquo;opérateur. L&rsquo;application mobile n&rsquo;envoie pas
+            d&rsquo;analytique au projet. Le site statique ezkey.org reste léger en témoins
+            (cookies), comme décrit ci-dessous.
         </div>
 
         <h2>1. Qui sommes-nous</h2>
         <p>
             Ezkey est un projet logiciel indépendant dirigé par Marc Gagnon (Pincourt, Québec,
-            Canada). Il produit l&rsquo;<strong>application mobile Android Ezkey</strong>,
-            disponible sur Google Play, et le <strong>site ezkey.org</strong>. Le projet est en
-            développement actif.
+            Canada). Il produit l&rsquo;<strong>application mobile Android Ezkey</strong>
+            (actuellement en <strong>test interne</strong> — non listée sur Google Play ni sur
+            d&rsquo;autres boutiques d&rsquo;applications), le <strong>site ezkey.org</strong>,
+            et une <strong>instance communautaire alpha</strong> optionnelle sur
+            <strong>ezkey.online</strong>. Le projet est en développement actif et reste en
+            <strong>alpha</strong>.
         </p>
         <p>
             Confidentialité&nbsp;: <a href="mailto:privacy@ezkey.org">privacy@ezkey.org</a> &mdash;
             Général&nbsp;: <a href="mailto:support@ezkey.org">support@ezkey.org</a>
         </p>
 
-        <h2>2. Le modèle à deux couches — ce qu&rsquo;Ezkey est et n&rsquo;est pas</h2>
+        <h2>2. Le modèle à deux couches — logiciel auto-hébergé</h2>
         <div class="callout important">
-            <strong>Distinction importante.</strong> Ezkey est une <em>plateforme logicielle</em>,
-            non un service. Comprendre cette distinction est essentiel pour comprendre la présente
+            <strong>Distinction importante.</strong> Ezkey est une <em>plateforme logicielle</em>
+            que des organisations peuvent auto-héberger. Publier du code sous licence MIT n&rsquo;équivaut
+            pas à vendre un service SaaS. Cette distinction est essentielle pour la présente
             politique.
         </div>
         <p>
-            <strong>Couche 1 &mdash; Ezkey le projet (cette politique).</strong> Le projet Ezkey
-            publie des logiciels. Il n&rsquo;exploite aucun service infonuagique, aucun serveur
-            d&rsquo;authentification central et aucune base de données centrale. Il n&rsquo;a
-            aucune visibilité sur votre utilisation de l&rsquo;application.
+            <strong>Couche 1 &mdash; Ezkey le projet (éditeur logiciel).</strong> Le projet Ezkey
+            publie des logiciels (application mobile, backends, Admin UI, documentation) sous MIT.
+            Pour les déploiements auto-hébergés ordinaires, le projet n&rsquo;exploite pas les
+            serveurs d&rsquo;authentification ni les bases de données de votre organisation et
+            n&rsquo;a aucune visibilité sur l&rsquo;usage d&rsquo;un backend que vous (ou un tiers)
+            hébergez. L&rsquo;application mobile n&rsquo;intègre pas de SDK d&rsquo;analytique, de
+            rapport de plantage ou de publicité exploité par le projet.
         </p>
         <p>
             <strong>Couche 2 &mdash; Le serveur auto-hébergé de votre organisation.</strong>
-            Pour utiliser Ezkey, vous vous inscrivez auprès d&rsquo;une organisation qui exploite
-            son propre serveur Ezkey sur sa propre infrastructure. Cette organisation est le
-            responsable du traitement des données personnelles traitées sur son serveur. Consultez
-            <em>leur</em> politique de confidentialité pour savoir comment ils gèrent vos données.
+            Pour utiliser Ezkey avec votre propre stack, vous vous inscrivez auprès d&rsquo;une
+            organisation qui exploite son propre serveur Ezkey sur sa propre infrastructure.
+            Cette organisation est le responsable du traitement des données personnelles
+            traitées sur son serveur. Consultez <em>leur</em> politique de confidentialité pour
+            savoir comment ils gèrent vos données.
         </p>
         <p>
-            La présente politique couvre uniquement l&rsquo;application mobile Ezkey et le site
-            ezkey.org. Elle ne couvre pas le serveur Ezkey auto-hébergé d&rsquo;une organisation.
+            Cette section <strong>ne couvre pas</strong> l&rsquo;instance communautaire sur
+            ezkey.online — voir la section suivante.
         </p>
 
-        <h2>3. Données stockées sur votre appareil</h2>
+        <h2>3. Instance communautaire (ezkey.online)</h2>
+        <div class="callout important">
+            <strong>Évaluation alpha uniquement.</strong> L&rsquo;instance communautaire est
+            exploitée par le projet Ezkey / Marc Gagnon afin que les évaluateurs puissent essayer
+            une stack en ligne sans auto-héberger. Ce n&rsquo;est pas un produit SaaS vendu, il
+            n&rsquo;y a pas de SLA, et ce n&rsquo;est pas un service de production.
+        </div>
+        <p>
+            Pour l&rsquo;instance communautaire hébergée sur <strong>ezkey.online</strong>
+            (y compris des hôtes connexes tels que admin-ui.ezkey.online, admin-api.ezkey.online
+            et demo-acme.ezkey.online), le projet Ezkey <strong>est</strong> l&rsquo;opérateur de
+            ce backend et le responsable du traitement des données personnelles qui y sont
+            traitées dans le cadre de l&rsquo;évaluation (par exemple les données de compte ou
+            d&rsquo;inscription que vous créez en utilisant l&rsquo;instance).
+        </p>
+        <ul>
+            <li><strong>Finalité&nbsp;:</strong> évaluation et démonstration alpha uniquement.</li>
+            <li><strong>Disponibilité&nbsp;:</strong> au mieux (best-effort)&nbsp;; pas de SLA
+                de disponibilité&nbsp;; l&rsquo;instance peut être mise en pause, réinitialisée
+                (reseed) ou arrêtée sans préavis.</li>
+            <li><strong>Conservation / sauvegardes&nbsp;:</strong> <strong>aucune garantie de
+                sauvegarde</strong>. Les données de tenant ou d&rsquo;évaluation peuvent être
+                effacées lors d&rsquo;un reseed, d&rsquo;une maintenance ou d&rsquo;un arrêt.
+                Nous ne publions pas de calendrier de conservation détaillé que nous ne
+                pourrions pas vérifier en pratique.</li>
+            <li><strong>Posture commerciale&nbsp;:</strong> l&rsquo;instance communautaire
+                n&rsquo;est pas vendue comme un service.</li>
+            <li><strong>Contact&nbsp;:</strong>
+                <a href="mailto:privacy@ezkey.org">privacy@ezkey.org</a>.</li>
+        </ul>
+        <p>
+            D&rsquo;autres limites d&rsquo;honnêteté pour les évaluateurs sont décrites dans
+            <a href="/fr/community-instance.html">Instance communautaire — alpha sur ezkey.online</a>.
+        </p>
+
+        <h2>4. Données stockées sur votre appareil</h2>
         <p>L&rsquo;application Ezkey stocke les données suivantes localement sur votre appareil uniquement&nbsp;:</p>
         <ul>
             <li><strong>Paires de clés cryptographiques</strong> &mdash; Générées lors de
@@ -310,12 +357,13 @@
             des données.
         </p>
 
-        <h2>4. Données transmises sur le réseau</h2>
+        <h2>5. Données transmises sur le réseau</h2>
         <p>
             L&rsquo;application communique exclusivement avec l&rsquo;URL du serveur obtenue
             depuis le code QR que vous scannez lors de l&rsquo;inscription. Cette URL correspond
-            au point d&rsquo;accès du serveur Ezkey auto-hébergé de votre organisation.
-            L&rsquo;application envoie&nbsp;:
+            au point d&rsquo;accès d&rsquo;un serveur Ezkey — en général le déploiement
+            auto-hébergé de votre organisation, ou, pour l&rsquo;évaluation communautaire,
+            l&rsquo;instance ezkey.online du projet. L&rsquo;application envoie&nbsp;:
         </p>
         <ul>
             <li><strong>Lors de l&rsquo;inscription (étape verify)&nbsp;:</strong> la clé
@@ -334,21 +382,24 @@
                 personnelle ni contextuelle ne provient de l&rsquo;appareil.</li>
         </ul>
         <p>
-            L&rsquo;application <strong>reçoit</strong> également des données du serveur de votre
-            organisation. Lorsqu&rsquo;une demande d&rsquo;approbation contextuelle est initiée
-            par votre organisation, la réponse peut inclure un titre et un message décrivant
-            l&rsquo;action à approuver (par exemple&nbsp;: &laquo;&nbsp;Demande de signature de
-            document &mdash; Veuillez approuver la signature du NDA avec le partenaire Acme
-            Corp.&nbsp;&raquo;). Ces données proviennent du serveur de votre organisation, sont
-            affichées après vérification de leur signature cryptographique par l&rsquo;application,
-            et ne sont pas conservées au-delà de la session d&rsquo;authentification. Le projet
-            Ezkey n&rsquo;a aucune visibilité sur ce contenu.
+            L&rsquo;application <strong>reçoit</strong> également des données de ce backend.
+            Lorsqu&rsquo;une demande d&rsquo;approbation contextuelle est initiée, la réponse
+            peut inclure un titre et un message décrivant l&rsquo;action à approuver (par
+            exemple&nbsp;: &laquo;&nbsp;Demande de signature de document &mdash; Veuillez
+            approuver la signature du NDA avec le partenaire Acme Corp.&nbsp;&raquo;). Ces
+            données proviennent de l&rsquo;opérateur du backend, sont affichées après
+            vérification de leur signature cryptographique par l&rsquo;application, et ne sont
+            pas conservées au-delà de la session d&rsquo;authentification.
         </p>
-        <p>Aucune donnée n&rsquo;est envoyée à un serveur exploité par le projet Ezkey.</p>
+        <p>
+            Pour un backend <strong>auto-hébergé par un tiers</strong>, le projet Ezkey ne reçoit
+            pas ce trafic. Pour l&rsquo;<strong>instance communautaire</strong>, le trafic de
+            protocole est traité par le backend exploité par le projet (voir section&nbsp;3).
+        </p>
         <p>Aucune donnée d&rsquo;analyse, de rapport de plantage, de télémétrie ou de publicité
-            n&rsquo;est transmise par l&rsquo;application.</p>
+            n&rsquo;est transmise par l&rsquo;application au projet Ezkey.</p>
 
-        <h2>5. Permissions Android</h2>
+        <h2>6. Permissions Android</h2>
         <table class="perms">
             <thead>
                 <tr>
@@ -368,7 +419,7 @@
                 <tr>
                     <td><strong>Internet</strong></td>
                     <td>Pour communiquer avec le serveur auto-hébergé de votre organisation.</td>
-                    <td>Non (voir section&nbsp;4)</td>
+                    <td>Non (voir section&nbsp;5)</td>
                 </tr>
                 <tr>
                     <td><strong>Biométrie / identifiant de l&rsquo;appareil</strong>
@@ -386,7 +437,7 @@
             </tbody>
         </table>
 
-        <h2>6. Bibliothèques tierces et services externes</h2>
+        <h2>7. Bibliothèques tierces et services externes</h2>
         <p>
             L&rsquo;application Ezkey n&rsquo;intègre aucun SDK collectant des données
             utilisateur, notamment aucun SDK publicitaire, analytique (Firebase Analytics,
@@ -407,7 +458,7 @@
         </ul>
         <p>Aucune de ces bibliothèques ne transmet de données à leurs auteurs ni à un tiers.</p>
 
-        <h2>7. Le site ezkey.org</h2>
+        <h2>8. Le site ezkey.org</h2>
         <p>
             Le site ezkey.org est un site statique hébergé sur Cloudflare Pages. Il n&rsquo;utilise
             pas de témoins (cookies), ne pose pas de pixels de suivi et ne charge pas de scripts
@@ -420,7 +471,7 @@
             Le projet Ezkey ne reçoit ni ne traite ces journaux.
         </p>
 
-        <h2>8. Mineurs</h2>
+        <h2>9. Mineurs</h2>
         <p>
             L&rsquo;application Ezkey ne s&rsquo;adresse pas aux enfants de moins de 13 ans.
             Nous ne collectons pas sciemment de renseignements personnels auprès d&rsquo;enfants
@@ -428,7 +479,7 @@
             l&rsquo;application.
         </p>
 
-        <h2>9. Vos droits</h2>
+        <h2>10. Vos droits</h2>
         <h3>Données sur votre appareil</h3>
         <p>
             Vous pouvez supprimer toutes les données stockées par l&rsquo;application à tout moment
@@ -436,35 +487,46 @@
             les paramètres de l&rsquo;application produit le même résultat sans désinstallation.
         </p>
 
-        <h3>Données sur le serveur de votre organisation</h3>
+        <h3>Données sur un serveur auto-hébergé d&rsquo;organisation</h3>
         <p>
             Tout enregistrement d&rsquo;inscription ou historique d&rsquo;authentification détenu
-            par le serveur Ezkey de votre organisation est soumis à leurs propres politiques de
-            conservation et de suppression. Contactez l&rsquo;administrateur de votre organisation
-            pour exercer vos droits (accès, rectification, effacement, portabilité) concernant
-            ces données.
+            par le serveur Ezkey auto-hébergé d&rsquo;une organisation est soumis à leurs propres
+            politiques de conservation et de suppression. Contactez l&rsquo;administrateur de
+            cette organisation pour exercer vos droits (accès, rectification, effacement,
+            portabilité) concernant ces données.
+        </p>
+
+        <h3>Données sur l&rsquo;instance communautaire</h3>
+        <p>
+            Pour les données traitées sur ezkey.online, contactez
+            <a href="mailto:privacy@ezkey.org">privacy@ezkey.org</a>. Rappelez-vous que
+            l&rsquo;instance est une infrastructure d&rsquo;évaluation alpha&nbsp;: les données
+            peuvent déjà avoir été effacées par un reseed ou une maintenance, et il n&rsquo;y a
+            aucune garantie de sauvegarde.
         </p>
 
         <h3>Résidents du Québec (Loi 25 &mdash; Loi sur la protection des renseignements personnels dans le secteur privé)</h3>
         <p>
-            Le projet Ezkey ne collectant pas de renseignements personnels, il n&rsquo;existe
-            aucun renseignement personnel détenu par nous qui serait accessible, rectifiable ou
-            supprimable. Pour toute question ou préoccupation, contactez-nous à
+            Pour l&rsquo;application mobile et les backends auto-hébergés par des tiers, le projet
+            ne collecte pas de renseignements personnels au-delà de ce qui est décrit ci-dessus.
+            Pour l&rsquo;instance communautaire, le projet peut traiter des données personnelles
+            liées à l&rsquo;évaluation en tant qu&rsquo;opérateur. Questions ou demandes&nbsp;:
             <a href="mailto:privacy@ezkey.org">privacy@ezkey.org</a>.
         </p>
 
         <h3>Résidents de l&rsquo;Union européenne (RGPD)</h3>
         <p>
-            Le projet Ezkey n&rsquo;agissant pas en tant que responsable du traitement ou
-            sous-traitant de données personnelles (il n&rsquo;exploite aucun serveur et ne reçoit
-            aucune donnée utilisateur), les obligations RGPD de responsable du traitement ne
-            s&rsquo;appliquent pas au projet. Le serveur auto-hébergé de votre organisation est
-            le responsable du traitement pertinent. Pour les données personnelles détenues par
-            Cloudflare (journaux de serveur web), référez-vous à la documentation RGPD de
-            Cloudflare.
+            Pour les déploiements auto-hébergés ordinaires, le serveur de votre organisation est
+            le responsable du traitement pertinent&nbsp;; le projet Ezkey n&rsquo;est pas le
+            responsable du traitement de ce trafic. Pour l&rsquo;instance communautaire, le projet
+            agit comme responsable du traitement des données traitées sur ce backend
+            d&rsquo;évaluation. Pour les données personnelles détenues par Cloudflare (journaux
+            de serveur web pour ezkey.org), référez-vous à la documentation RGPD de Cloudflare.
+            Contactez <a href="mailto:privacy@ezkey.org">privacy@ezkey.org</a> pour les demandes
+            relatives à l&rsquo;instance communautaire.
         </p>
 
-        <h2>10. Sécurité des données</h2>
+        <h2>11. Sécurité des données</h2>
         <p>
             Les clés cryptographiques générées par l&rsquo;application sont stockées dans le
             trousseau Android, qui offre une protection matérielle sur les appareils compatibles.
@@ -483,7 +545,7 @@
             déchiffrer tous les autres secrets locaux.
         </p>
 
-        <h2>11. Modifications de la présente politique</h2>
+        <h2>12. Modifications de la présente politique</h2>
         <p>
             Nous pouvons mettre à jour cette politique au fil de l&rsquo;évolution du projet.
             Les modifications significatives seront consignées dans le tableau ci-dessous.
@@ -499,14 +561,20 @@
             </thead>
             <tbody>
                 <tr>
+                    <td>23 septembre 2026</td>
+                    <td>Divulgation de l&rsquo;instance communautaire (ezkey.online)&nbsp;; dépôt MIT
+                        public&nbsp;; correction des affirmations Google Play / «&nbsp;aucun
+                        serveur&nbsp;» pour la posture alpha.</td>
+                </tr>
+                <tr>
                     <td>24 avril 2026</td>
-                    <td>Publication initiale &mdash; première soumission Google Play.</td>
+                    <td>Publication initiale.</td>
                 </tr>
             </tbody>
         </table>
 
         <div class="contact-box">
-            <h2 style="margin-top:0;border:none;padding:0;font-size:1.05rem;">12. Contact</h2>
+            <h2 style="margin-top:0;border:none;padding:0;font-size:1.05rem;">13. Contact</h2>
             <p>Pour toute question relative à la présente politique de confidentialité&nbsp;:</p>
             <p>
                 <strong>Projet Ezkey &mdash; Marc Gagnon</strong><br>
