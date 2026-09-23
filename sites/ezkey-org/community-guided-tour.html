@@ -281,7 +281,7 @@
             </figure>
 
             <h2>Step 4 — Enrollment: QR + six-digit challenge</h2>
-            <p>Create a <strong>new enrollment</strong> attached to the integration. Set <strong>User ID</strong> (user identifier) to the <strong>exact string</strong> you will type as the username on the Acme demo (for example <code>alice</code>). <strong>Name</strong> is only a human-readable label — it is <strong>not</strong> the demo login key. Leaving User ID blank causes demo sign-in to fail even after a successful QR enrollment.</p>
+            <p>When you create the enrollment, set <strong>User ID</strong> (<code>userIdentifier</code>) to exactly the username you will type on the ACME demo (for example <code>alice</code>). <strong>Name</strong> is only a display label — it is not used for login. If User ID is empty or different from that username, the demo login will fail.</p>
             <p>When the product shows <strong>QR + numeric challenge</strong> (for example six digits), on the mobile app or Demo Device: <strong>scan, then enter</strong>.</p>
             <div class="callout">
                 <strong>Community alpha vs hardened deployments.</strong> On ezkey.online, the QR and numeric challenge often appear <strong>on one Admin UI screen</strong>. In stricter production setups, teams usually <strong>split delivery across channels</strong> (for example QR by email and challenge by SMS). The community instance does not include every carrier or messaging integration you would expect in a mature product.
@@ -305,7 +305,7 @@
             </figure>
 
             <h2>Step 6 — Sign-in with the enrollment user, mobile approval</h2>
-            <p>On the demo: start a <strong>sign-in</strong> with the username matching that enrollment <strong>User ID</strong> exactly (same value you set in Step 4; also shown in enrollment detail in the Admin UI).</p>
+            <p>At login, use the same identifier (the User ID value, not the Name).</p>
             <p>On the mobile app or Demo Device: open the pending request, then <strong>approve</strong> within the window shown by the demo.</p>
             <figure class="guide-figure">
                 <img src="/exp1-guided-tour/exp1-tour-06-demo-acme-login-pending.webp" alt="Acme demo: waiting screen during mobile approval" width="960" height="540" loading="lazy" decoding="async">

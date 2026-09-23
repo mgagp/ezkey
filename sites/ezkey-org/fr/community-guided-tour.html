@@ -281,7 +281,7 @@
             </figure>
 
             <h2>Étape 4 — Enrôlement : QR + défi à six chiffres</h2>
-            <p>Créer un <strong>nouvel enrôlement</strong> rattaché à l’intégration. Renseigner l’<strong>ID utilisateur</strong> (identifiant utilisateur) avec la <strong>chaîne exacte</strong> que vous saisirez comme nom d’utilisateur sur la démo Acme (par exemple <code>alice</code>). Le <strong>Nom</strong> n’est qu’un libellé lisible — ce n’est <strong>pas</strong> la clé de connexion de la démo. Laisser l’ID utilisateur vide fait échouer la connexion démo même après un enrôlement QR réussi.</p>
+            <p>À la création de l’enrollment, renseignez l’<strong>Identifiant utilisateur</strong> (<code>userIdentifier</code>) avec exactement le username que vous saisirez sur la démo ACME (par exemple <code>alice</code>). Le <strong>Nom</strong> n’est qu’un libellé d’affichage : il ne sert pas au login. Si l’Identifiant utilisateur est vide ou différent de ce username, le login démo échouera.</p>
             <p>Lorsque le produit affiche <strong>QR + défi numérique</strong> (par ex. six chiffres), sur l’app mobile ou le Demo Device : <strong>scanner puis saisir</strong>.</p>
             <div class="callout">
                 <strong>Alpha communautaire et déploiement durci.</strong> Sur ezkey.online, le QR et le défi numérique apparaissent souvent <strong>sur un même écran</strong> de l’Admin UI. Dans des environnements plus stricts, on <strong>répartit plutôt les canaux</strong> (par ex. QR par courriel, défi par SMS). L’instance communautaire n’intègre pas tous les connecteurs de messagerie ou d’opérateurs qu’on attendrait d’un produit mature.
@@ -305,7 +305,7 @@
             </figure>
 
             <h2>Étape 6 — Login avec l’utilisateur d’enrôlement, approbation mobile</h2>
-            <p>Sur la démo : lancer une demande de <strong>login</strong> avec le nom d’utilisateur qui correspond <strong>exactement</strong> à l’<strong>ID utilisateur</strong> de l’enrôlement (même valeur qu’à l’étape 4 ; aussi affichée dans le détail enrollment côté Admin UI).</p>
+            <p>Au login, utilisez le même identifiant (la valeur de l’Identifiant utilisateur, pas le Nom).</p>
             <p>Sur l’app mobile ou le Demo Device : ouvrir la demande en attente, puis <strong>approuver</strong> dans la fenêtre affichée par la démo.</p>
             <figure class="guide-figure">
                 <img src="/exp1-guided-tour/exp1-tour-06-demo-acme-login-pending.webp" alt="Demo Acme : écran d’attente pendant la validation mobile" width="960" height="540" loading="lazy" decoding="async">
