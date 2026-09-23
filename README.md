@@ -10,6 +10,8 @@ Ezkey is designed for developers, especially backend developers, who want a self
 
 It also includes an Admin UI for human administration, giving operators a direct surface for platform and tenant workflows without changing Ezkey's backend-first trust model.
 
+> **Status:** Ezkey is currently in **alpha**. There are **no published release artifacts** to install or consume yet. The evaluation journey and community-oriented walkthrough live on [ezkey.org](https://ezkey.org/) (see also the French pages under `/fr/`).
+
 ## What Exists Today
 
 - `Admin UI` for day-to-day human administration across Global Admin and Tenant Admin workflows.
