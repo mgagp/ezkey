@@ -10,10 +10,11 @@
 # Usage (from repository root, Git Bash):
 #   export AWS_PROFILE=ezkey-lightsail
 #   ./scripts/lightsail/create-instance.sh
-#   ./scripts/lightsail/create-instance.sh --apply --key-pair-name ezkey-online
+#   ./scripts/lightsail/create-instance.sh --apply --key-pair-name ezkey-online-kp
 #   ./scripts/lightsail/create-instance.sh --import-public-key ~/.ssh/id_ed25519.pub --apply
 #
-# Prefer ImportKeyPair of an existing workstation public key over CreateKeyPair.
+# Lightsail resource names are unique across types: key-pair name must differ from instance name
+# (default key pair: ezkey-online-kp). Prefer ImportKeyPair of an existing workstation public key.
 # Scripts never print private keys or other secrets.
 #
 set -euo pipefail
@@ -52,7 +53,7 @@ Options:
   --az ZONE                   Availability zone (default: ca-central-1a)
   --blueprint ID              Blueprint id (default: amazon_linux_2023)
   --bundle ID                 Bundle id (default: medium_3_0)
-  --key-pair-name NAME        Lightsail key pair to attach (default: ezkey-online)
+  --key-pair-name NAME        Lightsail key pair to attach (default: ezkey-online-kp)
   --no-key-pair               Omit --key-pair-name on create-instances
   --import-public-key PATH    Import OpenSSH .pub into Lightsail as --key-pair-name (preferred)
   --create-key-pair           Create a Lightsail key pair; write private key to ~/.ssh/ only
@@ -61,11 +62,17 @@ Options:
   --apply                     Actually create (and import/create key pair if requested)
   -h, --help                  Show this help
 
+Important:
+  Lightsail resource names are unique across types. The key-pair name MUST differ from the
+  instance name (e.g. instance ezkey-online + key pair ezkey-online-kp). Reusing the same
+  string for both fails CreateInstances with InvalidInputException "names are already in use".
+
 Environment:
   AWS_PROFILE                 default ezkey-lightsail
   LIGHTSAIL_REGION            default ca-central-1
   LIGHTSAIL_INSTANCE_NAME     default ezkey-online (use community-ezkey if taken)
-  LIGHTSAIL_AZ / LIGHTSAIL_BLUEPRINT / LIGHTSAIL_BUNDLE / LIGHTSAIL_KEY_PAIR_NAME
+  LIGHTSAIL_KEY_PAIR_NAME     default ezkey-online-kp (must differ from instance name)
+  LIGHTSAIL_AZ / LIGHTSAIL_BLUEPRINT / LIGHTSAIL_BUNDLE
 
 Next steps after create: ./scripts/lightsail/open-ports.sh then bootstrap-host.sh
   See docs/lightsail/community-host.md
@@ -138,6 +145,10 @@ done
 
 if [[ "${INSTANCE_NAME}" == "${LIGHTSAIL_EXP1_INSTANCE_NAME}" ]]; then
   lightsail_die "refusing to create/replace live EXP1 instance '${LIGHTSAIL_EXP1_INSTANCE_NAME}'. Choose another --name."
+fi
+
+if [[ -n "${USE_KEY_PAIR}" && "${KEY_PAIR_NAME}" == "${INSTANCE_NAME}" ]]; then
+  lightsail_die "Lightsail resource names are unique across types: key-pair name '${KEY_PAIR_NAME}' must differ from instance name '${INSTANCE_NAME}' (e.g. use '${INSTANCE_NAME}-kp')."
 fi
 
 if [[ -n "${IMPORT_PUBLIC_KEY}" && -n "${CREATE_KEY_PAIR}" ]]; then

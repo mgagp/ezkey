@@ -35,8 +35,10 @@ This PR does **not** create that private repo.
 | Blueprint | `amazon_linux_2023` | `--blueprint` |
 | Bundle | `medium_3_0` | `--bundle` |
 | AZ | `ca-central-1a` | `--az` |
-| Key pair name | `ezkey-online` | `--key-pair-name` |
+| Key pair name | **`ezkey-online-kp`** | `--key-pair-name` / `LIGHTSAIL_KEY_PAIR_NAME` |
 | SSH Host alias | `ezkey-online` | `LIGHTSAIL_SSH_HOST` / `--host` |
+
+**Lightsail name uniqueness:** resource names are unique **across types**. The key-pair name **must differ** from the instance name (e.g. instance `ezkey-online` + key pair `ezkey-online-kp`). Using the same string for both fails `CreateInstances` with `InvalidInputException` (“names are already in use”). `create-instance.sh` refuses that combination.
 
 **Live EXP1 (leave alone):** name `exp1-ezkey`, public IP `3.99.189.207`, AZ `ca-central-1a`, same blueprint/bundle. Scripts refuse to create or delete that name unless you force delete (discouraged).
 
@@ -72,11 +74,11 @@ export AWS_PROFILE=ezkey-lightsail
 # Prefer import of an existing workstation public key:
 ./scripts/lightsail/create-instance.sh \
   --import-public-key ~/.ssh/id_ed25519.pub \
-  --key-pair-name ezkey-online \
+  --key-pair-name ezkey-online-kp \
   --apply
 ```
 
-If `ezkey-online` already exists: `--name community-ezkey` (and align SSH Host / key pair names).
+If `ezkey-online` already exists as an instance: `--name community-ezkey` (and use a distinct key-pair name such as `community-ezkey-kp`; align SSH Host).
 
 ### 2. Open ports
 
@@ -136,6 +138,8 @@ Cloudflare **A** records for ezkey.online API hostnames, Origin CA PEMs on the V
 |----------|------|
 | **Import** (preferred) | `--import-public-key ~/.ssh/….pub` on `create-instance.sh` — reuses workstation keys; no private key leaves the box |
 | **Create** | `--create-key-pair` — writes private key **only** to `~/.ssh/lightsail-<name>.pem` (chmod 600); **never** printed; **never** committed |
+
+Default Lightsail key-pair name is **`ezkey-online-kp`** (not `ezkey-online`). Instance name and key-pair name must always differ.
 
 Do not commit private keys, PEMs, Origin CA files, or `.env`.
 

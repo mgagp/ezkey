@@ -26,7 +26,8 @@ _EZKEY_LIGHTSAIL_COMMON_SOURCED=1
 : "${LIGHTSAIL_AZ:=ca-central-1a}"
 : "${LIGHTSAIL_BLUEPRINT:=amazon_linux_2023}"
 : "${LIGHTSAIL_BUNDLE:=medium_3_0}"
-: "${LIGHTSAIL_KEY_PAIR_NAME:=ezkey-online}"
+# Lightsail resource names are unique across types — key pair must not equal instance name.
+: "${LIGHTSAIL_KEY_PAIR_NAME:=ezkey-online-kp}"
 : "${LIGHTSAIL_SSH_HOST:=ezkey-online}"
 : "${LIGHTSAIL_SSH_USER:=ec2-user}"
 
@@ -94,5 +95,7 @@ Defaults (env overrides):
 Live EXP1 (do not modify with these scripts): ${LIGHTSAIL_EXP1_INSTANCE_NAME}
 Preferred new name: ezkey-online (override with --name / LIGHTSAIL_INSTANCE_NAME;
   use community-ezkey if the preferred name is taken).
+Key pair default: ezkey-online-kp — must differ from the instance name (Lightsail
+  names are unique across resource types).
 EOF
 }
