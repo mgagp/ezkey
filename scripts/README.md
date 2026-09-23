@@ -104,6 +104,21 @@ Campaign notes: [`product-docs/global/hygiene/javamelody/`](../product-docs/glob
 - [`cloudflare/deploy-ezkey-org-production.sh`](cloudflare/deploy-ezkey-org-production.sh) — deploy the same folder to the Pages **production** branch (serves the custom domain, e.g. `ezkey.org`, when configured in Cloudflare). Same environment variables.
 - [`cloudflare/upload-auth-api-schema-exp1.sh`](cloudflare/upload-auth-api-schema-exp1.sh) / [`cloudflare/upload-integration-api-schema-exp1.sh`](cloudflare/upload-integration-api-schema-exp1.sh) — API Shield schema list/upload/delete (`CLOUDFLARE_API_SHIELD_TOKEN`, not the Pages token).
 
+## Lightsail (community / ezkey.online host)
+
+AWS CLI helpers to create and bootstrap a **NEW** all-in-one Lightsail VM parallel to EXP1 (`exp1-ezkey`). Dry-run by default for create / delete / ports. Does **not** change DNS or certificates. Runbook: [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).
+
+```bash
+export AWS_PROFILE=ezkey-lightsail
+./scripts/lightsail/create-instance.sh
+./scripts/lightsail/open-ports.sh
+./scripts/lightsail/bootstrap-host.sh --dry-run
+./scripts/lightsail/status.sh --help
+./scripts/lightsail/delete-instance.sh --help
+```
+
+App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with `LIGHTSAIL_SSH_HOST=ezkey-online`.
+
 ## Initial Problem
 
 Demo projects were using two different approaches for OpenAPI specifications:

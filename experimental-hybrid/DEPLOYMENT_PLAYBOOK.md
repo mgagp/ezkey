@@ -221,3 +221,11 @@ That syncs Compose (`EZKEY_ADMIN_API_URL=http://integration-api:7080`), recreate
 | `clean-start.sh`, `generate-encryption-keys.sh` | Run on VM; wipe vs keep DB |
 | | `caddy-certs` PEM placement, root `.env` for Pages deploy |
 | | Device / browser smoke tests |
+
+---
+
+## Community host / ezkey.online (parallel Lightsail VM)
+
+For a **NEW** all-in-one Lightsail instance aimed at **ezkey.online** evaluation (parallel to live EXP1 `exp1-ezkey` — do **not** shut down or rebrand EXP1 here), use the AWS CLI helpers under [`scripts/lightsail/`](../scripts/lightsail/) and the short runbook [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).
+
+**Handoff:** create VM → `open-ports.sh` → `bootstrap-host.sh` (this playbook’s Phase 0b/0c) → reuse [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) with a **dedicated** SSH Host alias (`LIGHTSAIL_SSH_HOST=ezkey-online`, not `ezkey`) → Origin CA / DNS later with human OK. App Compose/Caddy stay in [`lightsail/`](lightsail/); no production DNS or cert changes in the Lightsail create scripts.
