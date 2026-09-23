@@ -8,7 +8,7 @@ This folder is the **source of truth** for the static public site served at **ez
 |------|---------|
 | `index.html` | English (`lang="en"`): compact landing — hero, pillars, evaluation CTAs (run locally, docs, trust), secondary links to monthly digests/articles. Inline CSS. |
 | `fr/index.html` | French (`lang="fr"`): same structure, translated copy. Served at **`/fr/`** when deployed. |
-| `source-and-evaluation.html` / `fr/source-and-evaluation.html` | Explains private repository until public opening; targets for **Docs** / **Run locally** in nav (anchors `#documentation`, `#run-locally`). |
+| `source-and-evaluation.html` / `fr/source-and-evaluation.html` | Public MIT repository, alpha status, docs and **Run locally** (clean-start); nav anchors `#documentation`, `#run-locally`. |
 | `api-docs.html` | English-first public API portal landing page. |
 | `admin-api-reference.html` | English-first Admin API public reference page powered by ReDoc CE. |
 | `auth-api-reference.html` | English-first Auth API public reference page powered by ReDoc CE. |
@@ -17,7 +17,7 @@ This folder is the **source of truth** for the static public site served at **ez
 | `fr/admin-api-reference.html` | French Admin API public reference page powered by ReDoc CE. |
 | `fr/auth-api-reference.html` | French Auth API public reference page powered by ReDoc CE. |
 | `fr/integration-api-reference.html` | French Integration API public reference page powered by ReDoc CE. |
-| `trust.html` / `fr/trust.html` | Short trust / security diligence (no off-site repo links while private). |
+| `trust.html` / `fr/trust.html` | Short trust / security diligence (links to public GitHub + on-site evaluation). |
 | `monthly-digest.html` / `fr/monthly-digest.html` | Monthly digests: reverse-chronological index (Git-distilled months link to detail pages; legacy entries index-only). |
 | `articles.html` / `fr/articles.html` | Guides & walkthroughs lane + index of essays (cards link to standalone HTML pages). |
 | `changelog.html` / `fr/changelog.html` | Placeholder for future technical release notes; linked from Monthly digests; omitted from primary nav until filled. |
