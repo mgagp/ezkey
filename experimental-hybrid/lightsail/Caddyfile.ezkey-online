@@ -1,0 +1,76 @@
+# Community Lightsail (ezkey.online) — TLS termination and reverse proxy for Ezkey APIs.
+#
+# Product hostnames (PR #609 / Marc lock). EXP1 keeps experimental-hybrid/lightsail/Caddyfile
+# (exp1-*.ezkey.org). Do NOT overwrite EXP1's Caddyfile with this file.
+#
+# On the community VM, install as the active Caddyfile (Compose bind-mounts ./Caddyfile):
+#   scp experimental-hybrid/lightsail/Caddyfile.ezkey-online \
+#       ezkey-online:ezkey/experimental-hybrid/lightsail/Caddyfile
+# Or after any --sync-operator-files that copied the EXP1 Caddyfile, replace it:
+#   ssh ezkey-online 'cp ~/ezkey/experimental-hybrid/lightsail/Caddyfile.ezkey-online \
+#        ~/ezkey/experimental-hybrid/lightsail/Caddyfile'
+# (scp the variant first if it is not on the VM yet.)
+#
+# Model: Cloudflare proxied (orange) DNS → this host. Use a Cloudflare Origin Certificate
+# covering the hostnames below; place PEM files in ./caddy-certs/ on the VM.
+# See docs/lightsail/community-host.md and DEPLOYMENT_PLAYBOOK.md (Cloudflare / TLS).
+#
+# TLS: Ezkey is opinionated — only TLS 1.3 is offered here (no TLS 1.2). Older clients cannot connect.
+
+(ezkey_online_public_docs_block) {
+	@blockedDocs {
+		path /api-docs /api-docs/* /swagger-ui /swagger-ui/* /swagger-ui.html /swagger-ui.html*
+	}
+	respond @blockedDocs 404
+}
+
+auth-api.ezkey.online {
+	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem {
+		protocols tls1.3 tls1.3
+	}
+	import ezkey_online_public_docs_block
+	reverse_proxy auth-api:8080
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
+
+admin-api.ezkey.online {
+	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem {
+		protocols tls1.3 tls1.3
+	}
+	import ezkey_online_public_docs_block
+	reverse_proxy admin-api:9080
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
+
+integration-api.ezkey.online {
+	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem {
+		protocols tls1.3 tls1.3
+	}
+	import ezkey_online_public_docs_block
+	reverse_proxy integration-api:7080
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
+
+demo-acme.ezkey.online {
+	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem {
+		protocols tls1.3 tls1.3
+	}
+	reverse_proxy demo-app-acme:8082
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}

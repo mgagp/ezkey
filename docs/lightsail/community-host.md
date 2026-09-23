@@ -63,7 +63,56 @@ These scripts **never** change production DNS or certificates. They **never** co
 
 ---
 
-## Operator sequence (Git Bash on Windows)
+## Product hostnames (ezkey.online)
+
+Locked for the community host (Marc / PR #609). EXP1 keeps `exp1-*.ezkey.org` on the live EXP1 stack — do **not** replace [`experimental-hybrid/lightsail/Caddyfile`](../../experimental-hybrid/lightsail/Caddyfile).
+
+| Role | Hostname |
+|------|----------|
+| Admin UI (Pages) | `admin-ui.ezkey.online` |
+| Admin API | `admin-api.ezkey.online` |
+| Auth API | `auth-api.ezkey.online` |
+| Integration API | `integration-api.ezkey.online` |
+| Demo ACME | `demo-acme.ezkey.online` |
+
+Community Caddy site blocks: [`experimental-hybrid/lightsail/Caddyfile.ezkey-online`](../../experimental-hybrid/lightsail/Caddyfile.ezkey-online) (TLS 1.3 Origin CA paths, docs block, reverse_proxy targets — mirrors EXP1 structure).
+
+---
+
+## Ordered path to a working community host
+
+Do these **after** VM create → ports → Docker bootstrap (below). No secrets in git; Origin CA / DNS / Pages stay human OK.
+
+1. **Hostnames** — use the table above (Caddy + DNS + Origin CA SANs must match).
+2. **Community Caddyfile on the VM** — Compose bind-mounts `./Caddyfile`. Keep the repo’s EXP1 [`Caddyfile`](../../experimental-hybrid/lightsail/Caddyfile) unchanged. Install the community variant as the active file on the **community** host only:
+   ```bash
+   export LIGHTSAIL_SSH_HOST=ezkey-online
+   scp experimental-hybrid/lightsail/Caddyfile.ezkey-online \
+     "${LIGHTSAIL_SSH_HOST}:ezkey/experimental-hybrid/lightsail/Caddyfile"
+   ```
+   **Export sync note:** `--sync-operator-files` / `--clean-start` on [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) always copies the EXP1-named `Caddyfile`. After any such sync to the community VM, **re-scp** `Caddyfile.ezkey-online` → remote `Caddyfile` (or `scp` the variant then `ssh … 'cp …/Caddyfile.ezkey-online …/Caddyfile'`). Prefer this explicit copy for now over rewriting the export script.
+3. **Origin CA** — Cloudflare Origin Server cert covering all API + demo hostnames above; place `origin.pem` / `origin-key.pem` in `~/ezkey/experimental-hybrid/lightsail/caddy-certs/` on the VM (`chmod 700` dir, `chmod 600` key). Never commit.
+4. **DNS** — Cloudflare **A** records (orange / proxied) for those API/demo names → instance public IP (from `./scripts/lightsail/status.sh`). Admin UI name points at Pages, not the Lightsail IP.
+5. **`.env`** — on the VM: copy [`.env.example`](../../experimental-hybrid/lightsail/.env.example) → `.env`, then set community URLs/CORS from [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example) (no real secrets in either example).
+6. **Images** — export with optional demo:
+   ```bash
+   export LIGHTSAIL_SSH_HOST=ezkey-online
+   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --include-demo-acme
+   # then re-apply community Caddyfile (step 2) if sync overwrote it
+   ```
+7. **Remote clean-start** (destructive first bring-up) — after layout + `.env` + certs + images:
+   ```bash
+   export LIGHTSAIL_SSH_HOST=ezkey-online
+   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --include-demo-acme --clean-start
+   # re-scp Caddyfile.ezkey-online → remote Caddyfile, then:
+   ssh ezkey-online 'cd ~/ezkey/experimental-hybrid/lightsail && docker compose up -d --no-deps --force-recreate caddy'
+   ```
+   Or run `./clean-start.sh` on the VM from `~/ezkey/experimental-hybrid/lightsail/` after files are in place (see playbook).
+8. **Pages Admin UI** — separate Cloudflare Pages project (or branch) for `admin-ui.ezkey.online` with `VITE_API_BASE_URL=https://admin-api.ezkey.online`. Not automated by `scripts/lightsail/`.
+
+---
+
+## Operator sequence (Git Bash on Windows) — VM lifecycle
 
 ### 1. Create the VM (dry-run first)
 
@@ -116,19 +165,20 @@ Then open a **new** SSH session so the `docker` group applies.
 
 ### 5. Reuse the EXP1 image export path
 
-App compose/Caddy stay under `experimental-hybrid/lightsail/`. Push images with the **existing** export script and the **new** SSH host:
+App compose stays under `experimental-hybrid/lightsail/`. Push images with the **existing** export script and the **new** SSH host, then follow **Ordered path** steps 2–8 (community Caddyfile, Origin CA, DNS, `.env`, optional `--include-demo-acme`, clean-start, Pages).
 
 ```bash
 export LIGHTSAIL_SSH_HOST=ezkey-online
 ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --dry-run
-# then real run; optional --sync-operator-files / --clean-start per playbook
+# then real run; optional --include-demo-acme / --sync-operator-files / --clean-start
+# After any sync that copies Caddyfile, re-install Caddyfile.ezkey-online as remote Caddyfile
 ```
 
 Full Phase 0–3 detail: [`experimental-hybrid/DEPLOYMENT_PLAYBOOK.md`](../../experimental-hybrid/DEPLOYMENT_PLAYBOOK.md).
 
-### 6. Origin CA / DNS (human OK — out of scope for these scripts)
+### 6. Origin CA / DNS / Pages (human OK)
 
-Cloudflare **A** records for ezkey.online API hostnames, Origin CA PEMs on the VM, and Pages project setup remain **manual** after human approval. Do not automate production DNS or cert changes in `scripts/lightsail/`.
+Covered in **Ordered path** steps 3–4 and 8. Do not automate production DNS or cert changes in `scripts/lightsail/`.
 
 ---
 
@@ -169,5 +219,7 @@ After recreate, update Cloudflare **A** records if the public IP changed (no sta
 ## Related
 
 - [`experimental-hybrid/DEPLOYMENT_PLAYBOOK.md`](../../experimental-hybrid/DEPLOYMENT_PLAYBOOK.md) — Phase 0 fresh AL2023; community section cross-link
+- [`experimental-hybrid/lightsail/Caddyfile.ezkey-online`](../../experimental-hybrid/lightsail/Caddyfile.ezkey-online) — community hostnames
+- [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example) — community URL/CORS overlay (no secrets)
 - [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh)
 - [`docs/cloudflare/README.md`](../cloudflare/README.md) — Cloudflare script style sibling

@@ -2,7 +2,7 @@
 
 This folder contains **operator-focused** artifacts to run Ezkey on **Amazon Lightsail** (Postgres, migration, Admin API, Auth API, Integration API, optional Demo ACME, **Caddy** with Let’s Encrypt) and optionally run **local** companions (Crypto API, Demo Device, Demo ACME) against the **public** HTTPS APIs.
 
-- **Lightsail:** [`lightsail/`](lightsail/) — `docker-compose.yml`, `Caddyfile`, `.env.example`
+- **Lightsail:** [`lightsail/`](lightsail/) — `docker-compose.yml`, `Caddyfile` (EXP1), `Caddyfile.ezkey-online` (community), `.env.example`, `.env.ezkey-online.example`
 - **Local (optional):** [`local/`](local/) — `docker-compose.yml`, `.env.example`
 - **Runbook:** [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) — phases, **`~/ezkey` VM tree**, **`scp` from a dev clone** (default), optional clone-on-VM, Cloudflare split (manual vs repo)
 - **Single-backend image update (Lightsail):** [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md) — `docker save` / `scp` / `docker load` / `compose up --force-recreate`
