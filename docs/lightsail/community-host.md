@@ -94,7 +94,7 @@ Do these **after** VM create → ports → Docker bootstrap (below). No secrets 
 3. **Origin CA** — Cloudflare Origin Server cert covering all API + demo hostnames above; place `origin.pem` / `origin-key.pem` in `~/ezkey/experimental-hybrid/lightsail/caddy-certs/` on the VM (`chmod 700` dir, `chmod 600` key). Never commit.
 4. **DNS** — Cloudflare **A** records (orange / proxied) for those API/demo names → instance public IP (from `./scripts/lightsail/status.sh`). Admin UI name points at Pages, not the Lightsail IP.
 5. **`.env`** — on the VM: copy [`.env.example`](../../experimental-hybrid/lightsail/.env.example) → `.env`, then overlay community URLs/CORS from [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example). **Mode B (Pages cookie)** requires all of:
-   - `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online` (exact UI origin)
+   - `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online,https://ezkey.org,https://www.ezkey.org` (UI + community-signup marketing origins)
    - `EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS=true`
    - `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED=true`
    - UI build: `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true`  
@@ -124,10 +124,37 @@ Community Pages Admin UI uses **Mode B** (`credentials: 'include'` + HttpOnly se
 ```bash
 EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS=true
 EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED=true
-EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online
+EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online,https://ezkey.org,https://www.ezkey.org
 ```
 
 Canon: [`docs/cloudflare/admin-ui-pages.md`](../cloudflare/admin-ui-pages.md), [`docs/admin-ui-security.md`](../admin-ui-security.md). Shared EXP1 [`.env.example`](../../experimental-hybrid/lightsail/.env.example) may still show `false` for lab Bearer mode; community overlay is [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example).
+
+
+
+## Community signup CORS + Admin UI link (do not regress)
+
+Anonymous evaluator signup from the marketing site (https://ezkey.org/community-signup.html, and www) posts cross-origin to `https://admin-api.ezkey.online`. Two env settings must stay aligned on the community host:
+
+1. **CORS allowlist** � include the Pages Admin UI origin **and** both marketing origins (signup form):
+
+```bash
+EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online,https://ezkey.org,https://www.ezkey.org
+```
+
+2. **Post-signup "Open Admin UI" URL** � Spring property `ezkey.evaluator.self-registration.admin-ui-url` (env `EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL`). Code default is EXP1 (`https://exp1-admin-ui.ezkey.org`). On community, override to the public Pages URL (**no trailing slash / path**):
+
+```bash
+EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED=true
+EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL=https://admin-ui.ezkey.online
+```
+
+After changing either, recreate **admin-api** only (no full wipe):
+
+```bash
+ssh ezkey-online 'cd ~/ezkey/experimental-hybrid/lightsail && docker compose up -d --no-deps --force-recreate admin-api'
+```
+
+Canon overlay: [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example).
 
 ---
 
