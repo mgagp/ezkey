@@ -278,3 +278,15 @@ After recreate, update Cloudflare **A** records if the public IP changed (no sta
 - [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example) — community URL/CORS overlay (no secrets)
 - [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh)
 - [`docs/cloudflare/README.md`](../cloudflare/README.md) — Cloudflare script style sibling
+
+## Naming lock (Audrey/Marc)
+
+Community instance branding and bootstrap admin (exact spelling **Ezkey**, never EasyKey):
+
+- `EZKEY_ORGANIZATION_NAME=Ezkey Community`
+- `EZKEY_ORGANIZATION_DESCRIPTION=Public community MFA instance for evaluation — alpha, best-effort, no SLA.`
+- `EZKEY_ORGANIZATION_ABOUT_URL=https://ezkey.org/community-instance.html`
+- Bootstrap admin username: `admin.community` (not `admin.docker`)
+
+Set these in the VM `experimental-hybrid/lightsail/.env` (see `.env.ezkey-online.example`). Public `GET /api/v1/public/instance-info` reads organization env at process start; clean-start reseeds the system tenant/admin from the same values. Do not claim production/SLA in these strings.
+
