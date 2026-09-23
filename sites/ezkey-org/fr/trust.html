@@ -233,26 +233,31 @@
             <span class="section-eyebrow">Due diligence</span>
             <h1>Confiance et s&eacute;curit&eacute;</h1>
             <p class="page-intro">
-                Page courte pour les &eacute;valuateurs. La documentation technique canonique accompagnera le d&eacute;p&ocirc;t <strong>public</strong> ; en attendant, voir <a href="/fr/source-and-evaluation.html">Code source et &eacute;valuation</a> pour le d&eacute;p&ocirc;t priv&eacute; et ce qui est disponible sur ce site.
+                Page courte pour les &eacute;valuateurs. Le code, la documentation et le d&eacute;marrage local sont dans le d&eacute;p&ocirc;t MIT <strong>public</strong>&nbsp;:
+                <a href="https://github.com/mgagp/ezkey" rel="noopener noreferrer">github.com/mgagp/ezkey</a>.
+                Voir aussi <a href="/fr/source-and-evaluation.html">Code source et &eacute;valuation</a>.
             </p>
 
             <h2>Mod&egrave;le de confiance (langage simple)</h2>
             <p>Ezkey est une MFA cryptographique backend-first : le backend d&rsquo;int&eacute;gration et l&rsquo;application mobile participent &agrave; une cha&icirc;ne explicite d&rsquo;inscription et d&rsquo;authentification. Le navigateur n&rsquo;est pas au centre de la c&eacute;r&eacute;monie.</p>
 
             <h2>Ce qu&rsquo;Ezkey revendique — et ce qu&rsquo;il ne revendique pas</h2>
-            <p>Le projet vise &agrave; &ecirc;tre nettement plus solide que les mots de passe et les flux de type TOTP classiques pour certains contextes auto-h&eacute;berg&eacute;s, orient&eacute;s backend. Ce n&rsquo;est pas une impl&eacute;mentation WebAuthn / FIDO2 et le projet ne revendique pas l&rsquo;&eacute;quivalence formelle avec ces &eacute;cosyst&egrave;mes.</p>
+            <p>Le projet vise &agrave; &ecirc;tre nettement plus solide que les mots de passe et les flux de type TOTP classiques pour certains contextes auto-h&eacute;berg&eacute;s, orient&eacute;s backend. Ce n&rsquo;est pas une impl&eacute;mentation WebAuthn / FIDO2 et le projet ne revendique pas l&rsquo;&eacute;quivalence formelle avec ces &eacute;cosyst&egrave;mes. Ezkey est en <strong>alpha</strong> — pas pr&ecirc;t pour la production, et sans parit&eacute; Duo / Okta / Keycloak.</p>
             <p>La posture de s&eacute;curit&eacute; refl&egrave;te des compromis d&rsquo;opinion assum&eacute;s. Pour le cadrage des limites et de l&rsquo;ambition par le mainteneur, voir <a href="/fr/why-ezkey-exists.html">Pourquoi Ezkey existe</a>.</p>
 
             <h2>Open source et visibilit&eacute;</h2>
-            <p>Licence : <strong>MIT</strong> (pr&eacute;vue pour l&rsquo;arborescence publique). Le <strong>d&eacute;p&ocirc;t principal est priv&eacute;</strong> jusqu&rsquo;&agrave; l&rsquo;ouverture publique pr&eacute;vue vers <strong>septembre&nbsp;2026</strong> ; les &eacute;ch&eacute;ances et la visibilit&eacute; sont r&eacute;sum&eacute;es dans les <a href="/fr/monthly-digest.html">Sommaires mensuels</a>. Il n&rsquo;y a <strong>pas d&rsquo;URL GitHub publiques</strong> pour Ezkey d&rsquo;ici l&agrave;.</p>
+            <p>Licence : <strong>MIT</strong>. Le d&eacute;p&ocirc;t principal est <strong>public</strong> sur GitHub&nbsp;:
+                <a href="https://github.com/mgagp/ezkey" rel="noopener noreferrer">https://github.com/mgagp/ezkey</a>.
+                Il n&rsquo;y a toujours <strong>pas de paquets de version publi&eacute;s</strong>. Les notes d&rsquo;avancement restent dans les <a href="/fr/monthly-digest.html">Sommaires mensuels</a>.</p>
 
             <h2>Signaler un probl&egrave;me de s&eacute;curit&eacute;</h2>
-            <p>Utiliser <a href="mailto:security@ezkey.org">security@ezkey.org</a>. N&rsquo;utilisez pas de tickets publics fournisseurs pour des vuln&eacute;rabilit&eacute;s pr&eacute;sum&eacute;es. Une politique de s&eacute;curit&eacute; publi&eacute;e accompagnera le d&eacute;p&ocirc;t public.</p>
+            <p>Utiliser <a href="mailto:security@ezkey.org">security@ezkey.org</a>. N&rsquo;utilisez pas les issues GitHub publiques pour des vuln&eacute;rabilit&eacute;s pr&eacute;sum&eacute;es. La politique publi&eacute;e est <a href="https://github.com/mgagp/ezkey/blob/main/SECURITY.md" rel="noopener noreferrer">SECURITY.md</a> dans le d&eacute;p&ocirc;t.</p>
 
             <h2>Documentation technique</h2>
-            <p>Jusqu&rsquo;&agrave; l&rsquo;ouverture du d&eacute;p&ocirc;t, utilisez ce site pour le niveau &laquo; grand public technique &raquo; :</p>
+            <p>Privil&eacute;giez les docs du d&eacute;p&ocirc;t ; utilisez ce site pour le niveau &eacute;valuation&nbsp;:</p>
             <ul>
-                <li><a href="/fr/source-and-evaluation.html">Code source et &eacute;valuation</a> (d&eacute;p&ocirc;t priv&eacute;, parcours d&rsquo;&eacute;valuation)</li>
+                <li><a href="/fr/source-and-evaluation.html">Code source et &eacute;valuation</a> (d&eacute;p&ocirc;t public, docs, ex&eacute;cution en local)</li>
+                <li><a href="https://github.com/mgagp/ezkey" rel="noopener noreferrer">D&eacute;p&ocirc;t GitHub</a> (README, <code>docs/</code>, clean-start)</li>
                 <li><a href="/fr/monthly-digest.html">Sommaires mensuels</a> et <a href="/fr/articles.html">Articles et notes</a> (avancement et contexte technique s&eacute;lectif)</li>
                 <li><a href="/fr/community-instance.html">Instance communautaire</a> (alpha sur ezkey.online, limites d&rsquo;honn&ecirc;tet&eacute;)</li>
             </ul>

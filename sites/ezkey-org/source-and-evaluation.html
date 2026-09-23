@@ -3,7 +3,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta property="og:title" content="Ezkey — Source code &amp; evaluation">
-    <meta property="og:description" content="Ezkey is planned as MIT open source; the repository is private until public opening. How to evaluate the project in the meantime.">
+    <meta property="og:description" content="Ezkey is public alpha under MIT on GitHub. Where to find the repo, docs, and how to run locally.">
     <meta property="og:url" content="https://ezkey.org/source-and-evaluation.html">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Ezkey">
@@ -11,14 +11,14 @@
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Ezkey — Source code &amp; evaluation">
-    <meta name="twitter:description" content="Ezkey is planned as MIT open source; the repository is private until public opening. How to evaluate the project in the meantime.">
+    <meta name="twitter:description" content="Ezkey is public alpha under MIT on GitHub. Where to find the repo, docs, and how to run locally.">
     <meta name="twitter:image" content="https://ezkey.org/logo.svg">
 
     <link rel="alternate" hreflang="en" href="https://ezkey.org/source-and-evaluation.html">
     <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/source-and-evaluation.html">
     <link rel="alternate" hreflang="x-default" href="https://ezkey.org/source-and-evaluation.html">
     <title>Ezkey — Source code &amp; evaluation</title>
-    <meta name="description" content="Ezkey is planned as MIT open source; the repository is private until public opening. How to evaluate the project in the meantime.">
+    <meta name="description" content="Ezkey is public alpha under MIT on GitHub. Where to find the repo, docs, and how to run locally.">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -234,21 +234,24 @@
             <span class="section-eyebrow">Evaluation</span>
             <h1>Source code &amp; evaluation</h1>
             <p class="page-intro">
-                Ezkey is intended to ship as <strong>open source</strong> under the MIT License. The <strong>main repository is private</strong> for now and is planned to open publicly around <strong>September&nbsp;2026</strong> with the first official release, alongside in-repo documentation and supported local setup (see <a href="/monthly-digest.html">Monthly digests</a> for the current timeline).
+                Ezkey is <strong>open source</strong> under the <strong>MIT</strong> License. The main repository is <strong>public</strong> on GitHub:
+                <a href="https://github.com/mgagp/ezkey" rel="noopener noreferrer">https://github.com/mgagp/ezkey</a>.
             </p>
             <p class="page-intro" style="margin-bottom:0;">
-                This page replaces public GitHub links until the repository is readable without authentication.
+                The project remains <strong>alpha</strong> — not production-ready. There are <strong>no published release packages</strong> yet (no GitHub Releases or installable binaries to consume). Evaluate the source, the docs, a local stack, or the live community instance; do not treat Ezkey as a drop-in replacement for Duo, Okta, or Keycloak.
             </p>
 
             <h2 id="documentation">Documentation</h2>
-            <p>Canonical technical documentation (architecture, APIs, configuration, operations) lives in the repository. While the repository stays private, this site publishes <a href="/api-docs.html">API Docs</a>, <a href="/monthly-digest.html">Monthly digests</a>, and <a href="/articles.html">Articles &amp; notes</a> for progress and selected technical context — not a full substitute for the in-repo docs.</p>
+            <p>Canonical technical documentation (architecture, APIs, configuration, operations) lives in the repository — start from the <a href="https://github.com/mgagp/ezkey#documentation" rel="noopener noreferrer">README Documentation section</a> and the in-repo <code>docs/</code> tree. This site publishes <a href="/api-docs.html">API Docs</a>, <a href="/community-instance.html">community</a> pages, <a href="/monthly-digest.html">Monthly digests</a>, and <a href="/articles.html">Articles &amp; notes</a> as evaluation aids — not a full substitute for the in-repo docs.</p>
 
             <h2 id="run-locally">Run locally</h2>
-            <p>The supported developer workflow (including clean start) is maintained inside the private repository. Those instructions will be linked from ezkey.org once the repository is public.</p>
-            <p>If you are evaluating the <strong>alpha community instance</strong> on ezkey.online, context and honesty bounds are described in <a href="/community-instance.html">Community instance — alpha on ezkey.online</a>.</p>
+            <p>Clone the public repository and follow the Quick Start in the <a href="https://github.com/mgagp/ezkey#quick-start" rel="noopener noreferrer">README</a>. The supported developer stack path is the Bash clean start:</p>
+            <p><code>./ezkey-tests/clean-start.sh</code></p>
+            <p>Further notes live under <code>ezkey-tests/README.md</code> and <code>docker/README.md</code> in the repo. On Windows, use Git Bash.</p>
+            <p>If you prefer a live alpha evaluation without standing up a stack, use the <strong>community instance</strong> on ezkey.online — see <a href="/community-instance.html">Community instance — alpha on ezkey.online</a>.</p>
 
             <h2>Security contact</h2>
-            <p>For suspected vulnerabilities, use <a href="mailto:security@ezkey.org">security@ezkey.org</a>. Do not rely on public issue trackers until a published security policy ships with the public repository.</p>
+            <p>For suspected vulnerabilities, use <a href="mailto:security@ezkey.org">security@ezkey.org</a>. The project&rsquo;s <a href="https://github.com/mgagp/ezkey/blob/main/SECURITY.md" rel="noopener noreferrer">SECURITY.md</a> policy lives in the public repository; the email remains valid either way. Do not use public GitHub issues for vulnerability reports.</p>
         </div>
 
         <p style="text-align:center;margin-bottom:20px;"><a href="/" style="color:rgba(255,255,255,0.9);font-weight:600;text-decoration:underline;">← Back to home</a></p>
