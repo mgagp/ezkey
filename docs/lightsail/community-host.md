@@ -135,13 +135,13 @@ Canon: [`docs/cloudflare/admin-ui-pages.md`](../cloudflare/admin-ui-pages.md), [
 
 Anonymous evaluator signup from the marketing site (https://ezkey.org/community-signup.html, and www) posts cross-origin to `https://admin-api.ezkey.online`. Two env settings must stay aligned on the community host:
 
-1. **CORS allowlist** � include the Pages Admin UI origin **and** both marketing origins (signup form):
+1. **CORS allowlist** � include the Pages Admin UI origin **and** both marketing origins (signup form):
 
 ```bash
 EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online,https://ezkey.org,https://www.ezkey.org
 ```
 
-2. **Post-signup "Open Admin UI" URL** � Spring property `ezkey.evaluator.self-registration.admin-ui-url` (env `EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL`). Code default is EXP1 (`https://exp1-admin-ui.ezkey.org`). On community, override to the public Pages URL (**no trailing slash / path**):
+2. **Post-signup "Open Admin UI" URL** � Spring property `ezkey.evaluator.self-registration.admin-ui-url` (env `EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL`). Code default is EXP1 (`https://exp1-admin-ui.ezkey.org`). On community, override to the public Pages URL (**no trailing slash / path**):
 
 ```bash
 EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED=true
@@ -300,11 +300,13 @@ After recreate, update Cloudflare **A** records if the public IP changed (no sta
 
 ## Related
 
-- [`experimental-hybrid/DEPLOYMENT_PLAYBOOK.md`](../../experimental-hybrid/DEPLOYMENT_PLAYBOOK.md) — Phase 0 fresh AL2023; community section cross-link
-- [`experimental-hybrid/lightsail/Caddyfile.ezkey-online`](../../experimental-hybrid/lightsail/Caddyfile.ezkey-online) — community hostnames
-- [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example) — community URL/CORS overlay (no secrets)
+- [`experimental-hybrid/DEPLOYMENT_PLAYBOOK.md`](../../experimental-hybrid/DEPLOYMENT_PLAYBOOK.md) -- Phase 0 fresh AL2023; community section cross-link
+- [`experimental-hybrid/lightsail/Caddyfile.ezkey-online`](../../experimental-hybrid/lightsail/Caddyfile.ezkey-online) -- community hostnames
+- [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example) -- community URL/CORS overlay (no secrets)
 - [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh)
-- [`docs/cloudflare/README.md`](../cloudflare/README.md) — Cloudflare script style sibling
+- [`docs/cloudflare/README.md`](../cloudflare/README.md) -- Cloudflare script style sibling
+- [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md) -- Public alpha claim + git-SHA identity
+- [`community/DEPLOYED.md`](community/DEPLOYED.md) -- live state ledger for ezkey.online (update after successful publish)
 
 ## Naming lock (Audrey/Marc)
 

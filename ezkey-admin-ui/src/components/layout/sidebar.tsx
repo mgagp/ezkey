@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/use-auth';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { usePublicInstanceInfo } from '@/hooks/use-public-instance-info';
+import { getBuildShortSha } from '@/lib/build-identity';
 import { isDemoMode } from '@/lib/demo-mode';
 import { cn } from '@/lib/utils';
 import { Dialog } from '@/components/ui/dialog';
@@ -166,7 +167,9 @@ export function Sidebar() {
         >
           {t('sidebar.about')}
         </button>
-        <p className="text-[10px] text-sidebar-fg/25 font-mono tracking-wide">v0.1.0</p>
+        <p className="text-[10px] text-sidebar-fg/25 font-mono tracking-wide">
+          {t('sidebar.buildIdentity', { sha: getBuildShortSha() })}
+        </p>
       </div>
 
       <Dialog open={aboutOpen} onClose={() => setAboutOpen(false)} title={t('about.title')} size="md">

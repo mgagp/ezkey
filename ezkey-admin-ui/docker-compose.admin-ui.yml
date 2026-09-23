@@ -7,6 +7,7 @@ services:
       dockerfile: docker/Dockerfile
       args:
         BUILD_MODE: ${BUILD_MODE:-test}
+        VITE_GIT_SHA: ${VITE_GIT_SHA:-unknown}
     container_name: ezkey-admin-ui
     ports:
       - "${ADMIN_UI_PORT:-3090}:8080"
