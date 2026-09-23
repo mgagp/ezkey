@@ -142,3 +142,7 @@ ezkey-admin-ui/test-results/
 
 # OpenAPI fetch backups created by scripts/update-specs.sh
 specs/**/*.backup
+
+# Operator-only Lightsail env snapshots / working secrets (never commit)
+experimental-hybrid/lightsail/.local/
+
