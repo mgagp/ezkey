@@ -210,13 +210,6 @@
                 <p class="kicker">Audience: people with access to the ezkey.online community instance who are comfortable with a technical UI — not a novice consumer audience.</p>
             </header>
 
-            <!-- TEMP: migration downtime banner — remove when ezkey.online is back -->
-            <div class="status-banner" role="status">
-                <span class="status-label">Status</span>
-                <p>Community instance temporarily unavailable — migration in progress. We'll be back shortly on ezkey.online.</p>
-            </div>
-
-
             <p><em>Figures mirror each numbered step.</em></p>
 
             <h2>What this guide is for</h2>
@@ -288,7 +281,8 @@
             </figure>
 
             <h2>Step 4 — Enrollment: QR + six-digit challenge</h2>
-            <p>Create a <strong>new enrollment</strong> attached to the integration. When the product shows <strong>QR + numeric challenge</strong> (for example six digits), on the mobile app or Demo Device: <strong>scan, then enter</strong>.</p>
+            <p>When you create the enrollment, set <strong>User ID</strong> (<code>userIdentifier</code>) to exactly the username you will type on the ACME demo (for example <code>alice</code>). <strong>Name</strong> is only a display label — it is not used for login. If User ID is empty or different from that username, the demo login will fail.</p>
+            <p>When the product shows <strong>QR + numeric challenge</strong> (for example six digits), on the mobile app or Demo Device: <strong>scan, then enter</strong>.</p>
             <div class="callout">
                 <strong>Community alpha vs hardened deployments.</strong> On ezkey.online, the QR and numeric challenge often appear <strong>on one Admin UI screen</strong>. In stricter production setups, teams usually <strong>split delivery across channels</strong> (for example QR by email and challenge by SMS). The community instance does not include every carrier or messaging integration you would expect in a mature product.
             </div>
@@ -311,7 +305,7 @@
             </figure>
 
             <h2>Step 6 — Sign-in with the enrollment user, mobile approval</h2>
-            <p>On the demo: start a <strong>sign-in</strong> with the user identifier tied to the enrollment (as shown in enrollment detail in the Admin UI).</p>
+            <p>At login, use the same identifier (the User ID value, not the Name).</p>
             <p>On the mobile app or Demo Device: open the pending request, then <strong>approve</strong> within the window shown by the demo.</p>
             <figure class="guide-figure">
                 <img src="/exp1-guided-tour/exp1-tour-06-demo-acme-login-pending.webp" alt="Acme demo: waiting screen during mobile approval" width="960" height="540" loading="lazy" decoding="async">

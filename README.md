@@ -10,6 +10,14 @@ Ezkey is designed for developers, especially backend developers, who want a self
 
 It also includes an Admin UI for human administration, giving operators a direct surface for platform and tenant workflows without changing Ezkey's backend-first trust model.
 
+## Status
+
+Ezkey is in **alpha**. This repository is the product source; there are **no published release packages** yet (no GitHub Releases / installable binaries to consume).
+
+**Try the live stack** via the community path on [ezkey.org](https://ezkey.org/) — [community instance](https://ezkey.org/community-instance.html) and [community guided tour](https://ezkey.org/community-guided-tour.html) (French under `/fr/`).
+
+**Mobile app:** still in **internal testing** — not on app stores. For the community walkthrough, build and sideload the Android app from this monorepo in developer mode, or use the separate [Ezkey Demo Device](https://github.com/mgagp/ezkey-demo-device) (simulated phone for demos only; not a store client).
+
 ## What Exists Today
 
 - `Admin UI` for day-to-day human administration across Global Admin and Tenant Admin workflows.
