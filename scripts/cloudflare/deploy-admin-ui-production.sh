@@ -8,7 +8,11 @@
 #   ./scripts/cloudflare/deploy-admin-ui-production.sh
 #
 # Sources gitignored `.env` at repo root when present (same as deploy-admin-ui-preview.sh).
-# Optional `VITE_API_BASE_URL` in `.env` (see `.env.example`); defaults to https://exp1-admin-api.ezkey.org
+# When using `--build`, `VITE_API_BASE_URL` is **required** (root `.env` or environment).
+# No product default hostname — set the Admin API origin for your surface explicitly.
+#
+# Public alpha chrome: `VITE_GIT_SHA` is stamped into the Admin UI build (override via env;
+# else short git SHA when available). See docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md.
 #
 # Optional:
 #   ./scripts/cloudflare/deploy-admin-ui-production.sh --build
@@ -27,8 +31,6 @@ if [[ -f "$ROOT/.env" ]]; then
   source "$ROOT/.env"
   set +a
 fi
-
-export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://exp1-admin-api.ezkey.org}"
 
 # Public alpha chrome: short SHA (override via env; else git when available).
 if [[ -z "${VITE_GIT_SHA:-}" ]]; then
@@ -57,7 +59,15 @@ if [[ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
 fi
 
 if [[ "$DO_BUILD" == true ]]; then
-  echo "Building Admin UI (VITE_API_BASE_URL=$VITE_API_BASE_URL)..."
+  if [[ -z "${VITE_API_BASE_URL:-}" ]]; then
+    echo "error: VITE_API_BASE_URL is required when using --build" >&2
+    echo "       Set it in the repo-root .env (see .env.example) or export it." >&2
+    echo "       Examples: https://exp1-admin-api.ezkey.org (EXP1)" >&2
+    echo "                 https://admin-api.ezkey.online (community)" >&2
+    exit 1
+  fi
+  export VITE_API_BASE_URL
+  echo "Building Admin UI (VITE_API_BASE_URL=$VITE_API_BASE_URL${VITE_GIT_SHA:+, VITE_GIT_SHA=$VITE_GIT_SHA})..."
   (cd "$ROOT/ezkey-admin-ui" && npm run build:cloudflare)
 fi
 

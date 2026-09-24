@@ -51,14 +51,15 @@ Set `VITE_API_BASE_URL` in `.env.production` to the Admin API base URL if the UI
 
 ### Cloudflare Pages (split UI / API)
 
-For a static deploy where the Admin API is a separate HTTPS origin (e.g. `https://exp1-admin-api.ezkey.org`):
+For a static deploy where the Admin API is a separate HTTPS origin (set `VITE_API_BASE_URL` explicitly — e.g. EXP1 `https://exp1-admin-api.ezkey.org` or community `https://admin-api.ezkey.online`):
 
 ```bash
 npm ci
+# export VITE_API_BASE_URL=https://admin-api.ezkey.online   # required; no product default
 npm run build:cloudflare
 ```
 
-This uses [`.env.cloudflare`](.env.cloudflare) (`vite --mode cloudflare`) to embed the API base URL at build time. Output is still `dist/`, including [`public/_redirects`](public/_redirects) for SPA routing on Pages.
+This uses [`.env.cloudflare`](.env.cloudflare) (`vite --mode cloudflare`) plus any exported `VITE_API_BASE_URL`. The committed `.env.cloudflare` has **commented** surface examples only — uncomment one, use `.env.cloudflare.local`, or export the variable. Output is still `dist/`, including [`public/_redirects`](public/_redirects) for SPA routing on Pages.
 
 Operator runbook (CORS on the API VM, Wrangler deploy, edge CSP): [`../docs/cloudflare/admin-ui-pages.md`](../docs/cloudflare/admin-ui-pages.md).
 

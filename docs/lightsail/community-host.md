@@ -135,17 +135,18 @@ Canon: [`docs/cloudflare/admin-ui-pages.md`](../cloudflare/admin-ui-pages.md), [
 
 Anonymous evaluator signup from the marketing site (https://ezkey.org/community-signup.html, and www) posts cross-origin to `https://admin-api.ezkey.online`. Two env settings must stay aligned on the community host:
 
-1. **CORS allowlist** � include the Pages Admin UI origin **and** both marketing origins (signup form):
+1. **CORS allowlist** — include the Pages Admin UI origin **and** both marketing origins (signup form):
 
 ```bash
 EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online,https://ezkey.org,https://www.ezkey.org
 ```
 
-2. **Post-signup "Open Admin UI" URL** � Spring property `ezkey.evaluator.self-registration.admin-ui-url` (env `EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL`). Code default is EXP1 (`https://exp1-admin-ui.ezkey.org`). On community, override to the public Pages URL (**no trailing slash / path**):
+2. **Post-signup "Open Admin UI" URL** — Spring property `ezkey.evaluator.self-registration.admin-ui-url` (env `EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL`) and guided tour URL (`EZKEY_EVALUATOR_SELF_REGISTRATION_GUIDED_TOUR_URL`). There is **no product default hostname**; when `enabled=true`, Admin API fails startup if either URL is blank. On community, set both to the public Pages / marketing URLs (**no trailing slash / path** on the Admin UI origin):
 
 ```bash
 EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED=true
 EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL=https://admin-ui.ezkey.online
+EZKEY_EVALUATOR_SELF_REGISTRATION_GUIDED_TOUR_URL=https://ezkey.org/community-guided-tour.html
 ```
 
 After changing either, recreate **admin-api** only (no full wipe):

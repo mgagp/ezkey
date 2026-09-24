@@ -13,7 +13,21 @@ package org.ezkey.admin.config;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
-/** Binds {@link EvaluatorSelfRegistrationProperties} for EXP1 anonymous evaluator signup. */
+/**
+ * Enables {@link EvaluatorSelfRegistrationProperties} and fail-closes at startup when signup is
+ * enabled without required navigation URLs.
+ */
 @Configuration
 @EnableConfigurationProperties(EvaluatorSelfRegistrationProperties.class)
-public class EvaluatorSelfRegistrationConfig {}
+public class EvaluatorSelfRegistrationConfig {
+
+  /**
+   * Validates evaluator self-registration URL configuration before the application accepts traffic.
+   *
+   * @param properties bound evaluator self-registration settings
+   */
+  public EvaluatorSelfRegistrationConfig(EvaluatorSelfRegistrationProperties properties) {
+    EvaluatorSelfRegistrationStartupValidator.enforceUrlsWhenEnabled(
+        properties.isEnabled(), properties.getAdminUiUrl(), properties.getGuidedTourUrl());
+  }
+}
