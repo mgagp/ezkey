@@ -89,7 +89,7 @@ Use this when the stack and Postgres data **already run** and you only add or up
 **First-time VM layout:** use a single root **`~/ezkey`** on the instance that mirrors the repo (contains **`docker/`** and **`experimental-hybrid/lightsail/`**). The documented default is to **`scp`** from a machine that already has the **Git clone** (repo root → `ssh`/`mkdir`/`scp`); an optional **clone on the VM** is described in the same place. Full steps and migration from an older folder layout are in [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) (*VM initialization*).
 
 1. After the tree exists, ensure [`lightsail/`](lightsail/) on the VM includes `docker-compose.yml`, `Caddyfile`, `.env`, and [`clean-start.sh`](lightsail/clean-start.sh) with [`docker/generate-encryption-keys.sh`](../docker/generate-encryption-keys.sh) at **`~/ezkey/docker/`** (required for [`clean-start.sh`](lightsail/clean-start.sh)).
-2. Copy `lightsail/.env.example` to `lightsail/.env` and set **`EZKEY_QR_AUTH_BASE_URL`** to your **public** Auth API URL (must match the auth hostname in `Caddyfile`).
+2. Copy `lightsail/.env.example` to `lightsail/.env` and set **`EZKEY_QR_AUTH_BASE_URL`** to your **public** Auth API URL (must match the auth hostname in `Caddyfile`). Compose does **not** silent-default to EXP1 — leave it unset only for local/relative use. For community hostnames, overlay [`.env.ezkey-online.example`](lightsail/.env.ezkey-online.example).
 
    Optional **runtime profile**: default is integrity. For base (MFA crypto on; audit-integrity
    monitoring off), set `EZKEY_RUNTIME_PROFILE=base` and

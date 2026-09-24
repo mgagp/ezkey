@@ -394,8 +394,9 @@ The following ezkey-core prefixes are also active in Admin API. See
 
 ### 12. Evaluator self-registration (`ezkey.evaluator.self-registration.*`)
 
-**Description:** anonymous EXP1 preview signup — empty tenant + pending Tenant Admin + activation
-code. Disabled by default; enable only on experimental preview installations.
+**Description:** anonymous evaluator signup on experimental / community preview installations —
+empty tenant + pending Tenant Admin + activation code. Disabled by default; enable only on
+installations that intentionally expose public signup.
 
 **Defined in:** `EvaluatorSelfRegistrationProperties`
 
@@ -405,14 +406,20 @@ code. Disabled by default; enable only on experimental preview installations.
 | `ezkey.evaluator.self-registration.daily-cap` | `int` | `5` | optionnel | Max successful signups per UTC day (global). |
 | `ezkey.evaluator.self-registration.per-ip-window-hours` | `int` | `24` | optionnel | Per-IP success window. |
 | `ezkey.evaluator.self-registration.per-ip-max-success` | `int` | `1` | optionnel | Max successful signups per IP within the window. |
-| `ezkey.evaluator.self-registration.admin-ui-url` | `String` | `https://exp1-admin-ui.ezkey.org` | optionnel | Returned to clients after signup. |
-| `ezkey.evaluator.self-registration.guided-tour-url` | `String` | `https://ezkey.org/exp1-guided-tour.html` | optionnel | Returned to clients after signup. |
+| `ezkey.evaluator.self-registration.admin-ui-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
+| `ezkey.evaluator.self-registration.guided-tour-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
 
-**EXP1 operator notes:**
+**Fail-closed:** when `enabled=true`, Admin API startup aborts if `admin-ui-url` or
+`guided-tour-url` is blank (`EvaluatorSelfRegistrationStartupValidator`).
 
-- Set `ezkey.evaluator.self-registration.enabled=true` on the preview Admin API only.
-- Add `https://ezkey.org` (and Cloudflare Pages preview origins if needed) to `ezkey.admin.cors.allowed-origins`.
-- Signup page: `https://ezkey.org/exp1-signup.html` (calls the Admin API cross-origin).
+**Operator notes:**
+
+- Set URLs via env (`EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL`,
+  `EZKEY_EVALUATOR_SELF_REGISTRATION_GUIDED_TOUR_URL`) or overlay — never rely on a code default
+  hostname.
+- Community overlay example: [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../experimental-hybrid/lightsail/.env.ezkey-online.example).
+- EXP1 lab example values: [`experimental-hybrid/lightsail/.env.example`](../experimental-hybrid/lightsail/.env.example) (commented block when enabling).
+- Add marketing / Pages origins to `ezkey.admin.cors.allowed-origins` for cross-origin signup POSTs.
 
 ---
 

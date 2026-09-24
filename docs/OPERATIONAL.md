@@ -20,6 +20,25 @@ Spring profile **`docker`** (used by EXP1 Lightsail and `clean-start --prod-safe
 
 See module `CONFIGURATION.md` files and [`experimental-hybrid/lightsail/.env.example`](../experimental-hybrid/lightsail/.env.example).
 
+### No public hostname in generic defaults
+
+Product defaults (Spring properties, generic Compose `${VAR:-…}` fallbacks, Cloudflare Admin UI
+deploy scripts) must **not** embed a named public hostname such as `exp1-*.ezkey.org` or
+`*.ezkey.online`. Local / Docker uses localhost, Compose DNS, or relative URLs. Live surfaces set
+URLs via **explicit env or overlay only**. When a feature is enabled and a required URL is
+missing, fail closed at startup (or script exit ≠ 0).
+
+| Surface | Where operators set it |
+|---------|------------------------|
+| Community (ezkey.online) | [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../experimental-hybrid/lightsail/.env.ezkey-online.example), [`docs/lightsail/community-host.md`](lightsail/community-host.md) |
+| EXP1 lab | [`experimental-hybrid/lightsail/.env.example`](../experimental-hybrid/lightsail/.env.example) (EXP1 playbook values); repo [`Caddyfile`](../experimental-hybrid/lightsail/Caddyfile) stays EXP1-named — community installs [`Caddyfile.ezkey-online`](../experimental-hybrid/lightsail/Caddyfile.ezkey-online) |
+| Admin UI Pages build | Root `.env` `VITE_API_BASE_URL` (required for `deploy-admin-ui-*.sh --build`); commented examples in `ezkey-admin-ui/.env.cloudflare` |
+
+Seb inventory context (community already overrides most live values): QR Auth base, evaluator
+`admin-ui-url` / `guided-tour-url`, Admin UI `VITE_API_BASE_URL`, and Caddyfile choice were the
+remaining silent footguns if an override dropped — closed in code/docs above; do not reintroduce
+EXP1 (or community) hostnames into generic defaults.
+
 ### Runtime profile (integrity vs base)
 
 Product key `EZKEY_RUNTIME_PROFILE` / clean-start `--runtime=` selects **integrity** (default) or

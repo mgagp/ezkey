@@ -50,8 +50,8 @@ class EvaluatorSelfRegistrationServiceTest {
   void setUp() {
     properties = new EvaluatorSelfRegistrationProperties();
     properties.setEnabled(true);
-    properties.setAdminUiUrl("https://exp1-admin-ui.ezkey.org");
-    properties.setGuidedTourUrl("https://ezkey.org/exp1-guided-tour.html");
+    properties.setAdminUiUrl("https://admin-ui.example.local");
+    properties.setGuidedTourUrl("https://ezkey.org/community-guided-tour.html");
     service =
         new EvaluatorSelfRegistrationService(
             properties, rateLimiter, provisioningService, adminRepository, tenantRepository);
@@ -115,8 +115,8 @@ class EvaluatorSelfRegistrationServiceTest {
 
     assertEquals("ABCD-1234", response.activationCode());
     assertEquals(expiresAt, response.activationCodeExpiresAt());
-    assertEquals("https://exp1-admin-ui.ezkey.org", response.adminUiUrl());
-    assertEquals("https://ezkey.org/exp1-guided-tour.html", response.guidedTourUrl());
+    assertEquals("https://admin-ui.example.local", response.adminUiUrl());
+    assertEquals("https://ezkey.org/community-guided-tour.html", response.guidedTourUrl());
     org.junit.jupiter.api.Assertions.assertTrue(response.tenantLabel().startsWith("eval-"));
     verify(rateLimiter).verifyAndRecordSuccess("203.0.113.5");
   }

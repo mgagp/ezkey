@@ -59,7 +59,7 @@ npm ci
 npm run build:cloudflare
 ```
 
-This runs Orval codegen and a **production** Vite build with `VITE_API_BASE_URL` from [`.env.cloudflare`](../../ezkey-admin-ui/.env.cloudflare) (exp1 Admin API URL).
+This runs Orval codegen and a **production** Vite build. Set `VITE_API_BASE_URL` explicitly (env, root `.env`, or uncomment an example in [`.env.cloudflare`](../../ezkey-admin-ui/.env.cloudflare)) — there is no product default hostname.
 
 Optional check (no demo strings in `dist/`):
 
@@ -73,7 +73,7 @@ Publish **`dist/`** contents to Pages (not the whole monorepo).
 
 **Prerequisites:** `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (see [README.md](README.md)). If you already use a gitignored **`.env`** at the **repository root** for the marketing site deploy script, the same file is **sourced automatically** by `deploy-admin-ui-preview.sh` — you do not need to export the variables again unless you prefer to.
 
-Add **`VITE_API_BASE_URL`** there if the public Admin API is not `https://exp1-admin-api.ezkey.org`. If you omit it, the deploy script still defaults to that URL when you use **`--build`**. Template: **[`.env.example`](../../.env.example)** at the repo root.
+Add **`VITE_API_BASE_URL`** in the repo-root `.env` (or export it) before `--build`. Deploy scripts **require** it and exit ≠ 0 if missing — there is no product default hostname. Template: **[`.env.example`](../../.env.example)** at the repo root (commented EXP1 / community examples). Committed Vite mode file [`ezkey-admin-ui/.env.cloudflare`](../../ezkey-admin-ui/.env.cloudflare) also uses commented examples only.
 
 Create a **dedicated** Pages project (do not reuse `ezkey-org`). Example project name: `ezkey-admin-ui` or `exp1-admin-ui`.
 
@@ -83,7 +83,7 @@ Create a **dedicated** Pages project (do not reuse `ezkey-org`). Example project
 ./scripts/cloudflare/deploy-admin-ui-preview.sh
 ```
 
-Build and deploy in one step (uses `VITE_API_BASE_URL` from root `.env`, or `https://exp1-admin-api.ezkey.org` by default):
+Build and deploy in one step (requires `VITE_API_BASE_URL` in root `.env` or the environment):
 
 ```bash
 ./scripts/cloudflare/deploy-admin-ui-preview.sh --build
