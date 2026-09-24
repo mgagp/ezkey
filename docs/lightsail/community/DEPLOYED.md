@@ -1,4 +1,4 @@
-# Community deploy ledger (ezkey.online)
+﻿# Community deploy ledger (ezkey.online)
 
 **Source of truth** for what is live on the **community** surface:
 
@@ -18,11 +18,11 @@ actuator/health with no version string are **not** deploy identity.
 | Field | Value |
 |-------|-------|
 | **Surface** | community (ezkey.online) |
-| **Full git SHA** | _not yet recorded_ |
-| **Short SHA** | _—_ |
-| **Deployed at (UTC)** | _—_ |
-| **Operator** | _—_ |
-| **Note** | Stub. Pre-convention live state: Admin UI on Pages (SHA unknown); VM images `*:latest` (~2026-09-22 inventory) — `:latest` alone is not traceability. First real row lands after the next successful community publish (Edgar / ops): same monorepo SHA for Pages UI build + backend images when possible. |
+| **Full git SHA** | `435f9cf0f32580bfa3e55f8906d17e5dfc45baab` |
+| **Short SHA** | `435f9cf` |
+| **Deployed at (UTC)** | 2026-09-24T13:07:05Z |
+| **Operator** | Edgar |
+| **Note** | Pages-only republish for Public alpha SHA chrome (#619); backend VM images unchanged (`*:latest`); fail-closed env overrides already live (#620 posture). GUIDED_TOUR/admin-ui/QR already set. |
 
 ## Optional tag
 
