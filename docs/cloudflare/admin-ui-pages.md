@@ -13,6 +13,7 @@ Cross-links: [admin-ui-security.md](../admin-ui-security.md) (CSP, token model),
 - `VITE_API_BASE_URL` → `https://<same-instance>-admin-api.ezkey.org`
 - `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE` → `true` when that API uses the HttpOnly session cookie
 - Optional only if the API defaults are changed: `VITE_ADMIN_AUTH_CSRF_COOKIE_NAME` and `VITE_ADMIN_AUTH_CSRF_HEADER_NAME`
+- Optional `VITE_GIT_SHA` → short git SHA for sidebar **Public alpha · \<sha\>** chrome (see [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md)); Vite/deploy scripts resolve from git when unset
 
 This keeps mental load low: open the project → you see exactly one API target.
 

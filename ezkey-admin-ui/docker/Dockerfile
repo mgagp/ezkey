@@ -22,6 +22,9 @@ COPY . .
 
 # BUILD_MODE: test (default) = demo mode on for QA/demos; production = optimized, no demo.
 ARG BUILD_MODE=test
+# Short git SHA for Public alpha chrome (pass from host: git rev-parse --short=7 HEAD).
+ARG VITE_GIT_SHA=unknown
+ENV VITE_GIT_SHA=$VITE_GIT_SHA
 # Generate API client (Orval) then build. Must run before build — app imports from src/generated/admin-api.
 RUN npm run generate:api && \
     if [ "$BUILD_MODE" = "production" ]; then npm run build; else npm run build:test; fi

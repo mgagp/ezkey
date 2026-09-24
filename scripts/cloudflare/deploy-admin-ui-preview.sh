@@ -34,6 +34,13 @@ fi
 # Default public Admin API for Vite (overridable via root `.env` or environment).
 export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://exp1-admin-api.ezkey.org}"
 
+# Public alpha chrome: short SHA (override via env; else git when available).
+if [[ -z "${VITE_GIT_SHA:-}" ]]; then
+  if VITE_GIT_SHA="$(git -C "$ROOT" rev-parse --short=7 HEAD 2>/dev/null)"; then
+    export VITE_GIT_SHA
+  fi
+fi
+
 DO_BUILD=false
 if [[ "${1:-}" == "--build" ]]; then
   DO_BUILD=true

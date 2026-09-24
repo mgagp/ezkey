@@ -30,6 +30,7 @@ Installing a **host JDK** to build Java modules from a fresh clone is a differen
 - [ALERTS.md](ALERTS.md): operator-facing `ezkey_alert` subsystem (raise/touch/resolve, types, Admin API).
 - [DEVELOPMENT.md](DEVELOPMENT.md): first clone on a new workstation, host JDK 25 / Maven baseline, tests, and development workflow.
 - [OPERATIONAL.md](OPERATIONAL.md): deployment, operations, and production posture.
+- [VERSIONING_AND_DEPLOY_TRACEABILITY.md](VERSIONING_AND_DEPLOY_TRACEABILITY.md): public alpha claim, git-SHA identity, and live deploy ledger (no product semver until published artefacts).
 - [configuration/README.md](configuration/README.md): index for configuration properties and per-module configuration docs.
 - [MAINTENANCE.md](MAINTENANCE.md): documentation maintenance expectations and standards.
 
@@ -59,6 +60,8 @@ Installing a **host JDK** to build Java modules from a fresh clone is a differen
 - [monitoring/](monitoring/): dashboards, monitoring setup, and supporting notes.
 - [cloudflare/](cloudflare/): site and edge workflow notes.
 - [lightsail/community-host.md](lightsail/community-host.md): create/bootstrap a NEW community Lightsail host for ezkey.online (parallel to EXP1; AWS CLI scripts under `scripts/lightsail/`).
+- [lightsail/community/DEPLOYED.md](lightsail/community/DEPLOYED.md): live state ledger for the community surface (update after successful publish).
+- [VERSIONING_AND_DEPLOY_TRACEABILITY.md](VERSIONING_AND_DEPLOY_TRACEABILITY.md): public alpha + git-SHA deploy traceability (pointer for cold agents).
 - [dev-tools/](dev-tools/): internal development tools and helper assets.
 - [plan/operational-churn-ezkey.plan.md](plan/operational-churn-ezkey.plan.md): operational churn testing plan.
 

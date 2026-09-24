@@ -36,7 +36,8 @@
   },
   "sidebar": {
     "demoModeTitle": "Ctrl+clic pour basculer le mode démo",
-    "about": "À propos"
+    "about": "À propos",
+    "buildIdentity": "Alpha publique · {{sha}}"
   },
   "about": {
     "title": "À propos de EZKey",
