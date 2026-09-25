@@ -117,7 +117,8 @@ class IntegrityAsyncJobServiceTest {
             true);
 
     assertThrows(
-        IntegrityValidationDisabledException.class, () -> service.start(request, 1, "admin.docker"));
+        IntegrityValidationDisabledException.class,
+        () -> service.start(request, 1, "admin.docker"));
   }
 
   @Test
@@ -145,8 +146,7 @@ class IntegrityAsyncJobServiceTest {
     IntegrityAsyncJob running = runningJob();
     when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of(running));
 
-    assertThrows(
-        IntegrityAsyncJobAbandonNotAllowedException.class, () -> service.abandon(1));
+    assertThrows(IntegrityAsyncJobAbandonNotAllowedException.class, () -> service.abandon(1));
   }
 
   @Test

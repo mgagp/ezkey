@@ -87,7 +87,8 @@ public class IntegrityAsyncJobController {
             responseCode = "202",
             description = "Job accepted",
             content =
-                @Content(schema = @Schema(implementation = IntegrityAsyncJobAcceptedResponse.class))),
+                @Content(
+                    schema = @Schema(implementation = IntegrityAsyncJobAcceptedResponse.class))),
         @ApiResponse(
             responseCode = "400",
             description = "Invalid request",

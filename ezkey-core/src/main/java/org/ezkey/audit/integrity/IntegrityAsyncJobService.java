@@ -46,9 +46,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * Owns the single global Integrity async job slot: start (202), status, abandon, and background
  * execution with heartbeat / TTL expiry.
  *
- * <p>Does <strong>not</strong> write {@code ezkey_scheduled_job_last_run} (dashboard last-run signal
- * only). Raise-alert happens only when a {@code RUN_VALIDATION} job completes successfully through
- * the existing retroactive path — never mid-run, never on cancel/abandon.
+ * <p>Does <strong>not</strong> write {@code ezkey_scheduled_job_last_run} (dashboard last-run
+ * signal only). Raise-alert happens only when a {@code RUN_VALIDATION} job completes successfully
+ * through the existing retroactive path — never mid-run, never on cancel/abandon.
  *
  * @since 2026
  */
@@ -283,7 +283,8 @@ public class IntegrityAsyncJobService {
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
     job.setAbandonedAt(now);
     job.setAbandonedByAdminId(adminId);
-    if (status == IntegrityAsyncJobStatus.EXPIRED || status == IntegrityAsyncJobStatus.INTERRUPTED) {
+    if (status == IntegrityAsyncJobStatus.EXPIRED
+        || status == IntegrityAsyncJobStatus.INTERRUPTED) {
       job.setStatus(IntegrityAsyncJobStatus.CANCELLED);
       if (job.getResultSummary() == null) {
         job.setResultSummary("Abandoned by operator");
@@ -308,8 +309,7 @@ public class IntegrityAsyncJobService {
 
   private void runJob(UUID jobId) {
     if (!heavyCryptoGate.tryEnter()) {
-      stateService.markFailed(
-          jobId, "Integrity crypto path busy (scheduled nightly or peer work)");
+      stateService.markFailed(jobId, "Integrity crypto path busy (scheduled nightly or peer work)");
       return;
     }
     try {

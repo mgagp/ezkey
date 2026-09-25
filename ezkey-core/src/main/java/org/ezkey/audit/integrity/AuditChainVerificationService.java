@@ -260,7 +260,8 @@ public class AuditChainVerificationService {
         invalidCheckpoints++;
       }
 
-      if (onChunkHeartbeat != null && (i == 0 || (i + 1) % 10 == 0 || i == checkpoints.size() - 1)) {
+      if (onChunkHeartbeat != null
+          && (i == 0 || (i + 1) % 10 == 0 || i == checkpoints.size() - 1)) {
         onChunkHeartbeat.run();
       }
     }

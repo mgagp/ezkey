@@ -89,13 +89,11 @@ public class NightlyIntegrityValidationScheduler {
     String scope = "Validated " + nightlyProperties.getWindowHours() + " h ending " + windowEnd;
 
     if (integrityAsyncJobService.isOperatorSlotRunning()) {
-      logger.info(
-          "Skipping nightly integrity validation: operator Integrity async job is RUNNING");
+      logger.info("Skipping nightly integrity validation: operator Integrity async job is RUNNING");
       return;
     }
     if (!heavyCryptoGate.tryEnter()) {
-      logger.info(
-          "Skipping nightly integrity validation: Integrity heavy crypto gate is busy");
+      logger.info("Skipping nightly integrity validation: Integrity heavy crypto gate is busy");
       return;
     }
     try {
