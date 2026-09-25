@@ -13,9 +13,9 @@ package org.ezkey.audit.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 import java.util.UUID;
-import org.ezkey.audit.integrity.IntegrityAsyncJob;
-import org.ezkey.audit.integrity.IntegrityAsyncJobStatus;
-import org.ezkey.audit.integrity.IntegrityAsyncJobType;
+import org.ezkey.audit.asyncjob.IntegrityAsyncJob;
+import org.ezkey.audit.asyncjob.IntegrityAsyncJobStatus;
+import org.ezkey.audit.asyncjob.IntegrityAsyncJobType;
 
 /**
  * Operator-visible Integrity async job status (no HMAC secrets or raw crypto material).

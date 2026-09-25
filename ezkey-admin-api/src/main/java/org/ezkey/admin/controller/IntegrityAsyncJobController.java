@@ -22,7 +22,7 @@ import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.audit.dto.IntegrityAsyncJobAcceptedResponse;
 import org.ezkey.audit.dto.IntegrityAsyncJobResponse;
 import org.ezkey.audit.dto.IntegrityAsyncJobStartRequest;
-import org.ezkey.audit.integrity.IntegrityAsyncJobService;
+import org.ezkey.audit.asyncjob.IntegrityAsyncJobService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.springframework.http.HttpStatus;

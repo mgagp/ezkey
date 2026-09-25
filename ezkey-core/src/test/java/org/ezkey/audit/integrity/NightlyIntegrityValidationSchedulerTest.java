@@ -18,11 +18,13 @@ import static org.mockito.Mockito.when;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import org.ezkey.audit.asyncjob.IntegrityAsyncJobService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 
 /**
  * Unit tests for {@link NightlyIntegrityValidationScheduler}.
@@ -38,11 +40,13 @@ class NightlyIntegrityValidationSchedulerTest {
   @Mock private ScheduledJobLastRunService jobLastRunService;
   @Mock private IntegrityHeavyCryptoGate heavyCryptoGate;
   @Mock private IntegrityAsyncJobService integrityAsyncJobService;
+  @Mock private ObjectProvider<IntegrityAsyncJobService> integrityAsyncJobServiceProvider;
 
   private NightlyIntegrityValidationScheduler scheduler;
 
   @BeforeEach
   void setUp() {
+    when(integrityAsyncJobServiceProvider.getIfAvailable()).thenReturn(integrityAsyncJobService);
     scheduler =
         new NightlyIntegrityValidationScheduler(
             nightlyProperties,
@@ -50,7 +54,7 @@ class NightlyIntegrityValidationSchedulerTest {
             validationService,
             jobLastRunService,
             heavyCryptoGate,
-            integrityAsyncJobService);
+            integrityAsyncJobServiceProvider);
   }
 
   @Test

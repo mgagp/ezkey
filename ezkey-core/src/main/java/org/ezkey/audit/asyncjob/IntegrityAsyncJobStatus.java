@@ -8,7 +8,7 @@
  * Description: Lifecycle status for Integrity async operator jobs.
  */
 
-package org.ezkey.audit.integrity;
+package org.ezkey.audit.asyncjob;
 
 /**
  * Lifecycle status for Integrity async operator jobs.

@@ -8,7 +8,7 @@
  * Description: Unit tests for Integrity async job slot, 409, TTL, abandon rules.
  */
 
-package org.ezkey.audit.integrity;
+package org.ezkey.audit.asyncjob;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -30,6 +30,11 @@ import org.ezkey.audit.dto.IntegrityAsyncJobStartRequest;
 import org.ezkey.audit.exception.IntegrityAsyncJobAbandonNotAllowedException;
 import org.ezkey.audit.exception.IntegrityAsyncJobBusyException;
 import org.ezkey.audit.exception.IntegrityValidationDisabledException;
+import org.ezkey.audit.integrity.AuditChainVerificationService;
+import org.ezkey.audit.integrity.AuditIntegrityService;
+import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
+import org.ezkey.audit.integrity.NightlyIntegrityProperties;
+import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

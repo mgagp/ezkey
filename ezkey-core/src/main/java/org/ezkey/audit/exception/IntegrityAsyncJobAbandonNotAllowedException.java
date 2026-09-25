@@ -10,7 +10,7 @@
 
 package org.ezkey.audit.exception;
 
-import org.ezkey.audit.integrity.IntegrityAsyncJobStatus;
+import org.ezkey.audit.asyncjob.IntegrityAsyncJobStatus;
 
 /**
  * Thrown when abandon/free-slot is refused (e.g. healthy RUNNING).

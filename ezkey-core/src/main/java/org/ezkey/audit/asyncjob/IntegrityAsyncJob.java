@@ -8,7 +8,7 @@
  * Description: DB-backed Integrity async job slot / outcome row.
  */
 
-package org.ezkey.audit.integrity;
+package org.ezkey.audit.asyncjob;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

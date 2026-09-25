@@ -272,6 +272,7 @@ entry HMAC range verify, run validation). DB-backed (`ezkey_integrity_async_job`
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
+| `ezkey.audit.integrity.async-job.enabled` | `boolean` | `false` | **true [admin runtime]** | When `true`, Admin API loads Integrity async job beans (`org.ezkey.audit.asyncjob`). Auth/Integration leave unset/`false` (least privilege on `ezkey_integrity_async_job`). |
 | `ezkey.audit.integrity.async-job.ttl` | `Duration` | `PT60M` | optionnel | Max age of RUNNING without heartbeat before EXPIRED on next GET/POST. |
 
 **API:** `POST/GET /api/v1/audit-logs/integrity/jobs`, `GET …/current`, `POST …/current/abandon`. Sync single-entry verify stays outside the slot.

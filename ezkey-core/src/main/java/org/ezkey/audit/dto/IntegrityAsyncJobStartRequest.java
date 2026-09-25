@@ -13,7 +13,7 @@ package org.ezkey.audit.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import java.time.OffsetDateTime;
-import org.ezkey.audit.integrity.IntegrityAsyncJobType;
+import org.ezkey.audit.asyncjob.IntegrityAsyncJobType;
 
 /**
  * Request body for {@code POST …/integrity/jobs}.
