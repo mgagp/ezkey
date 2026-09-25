@@ -9,6 +9,8 @@ alwaysApply: false
 
 When building or installing the React Native Android app, **read `ezkey_mobile/AGENTS.md` § Android debug build** and follow it. Do not trial-and-error `JAVA_HOME`.
 
+When the change bumps React, React Native, Gradle, Android Gradle Plugin, or Kotlin, also read `ezkey_mobile/AGENTS.md` § *Toolchain upgrade gate* and `ezkey_mobile/docs/MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md` § *Cold release gate*. A cached release APK is not proof that `bundleRelease` works.
+
 ## First-try command (Git Bash, from `ezkey_mobile/`)
 
 ```bash

@@ -12,7 +12,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
 import {RootStackParamList} from '../../navigation/types';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
-import {APP_DISPLAY_NAME, APP_VERSION} from '../../config/appInfo';
+import {APP_DISPLAY_NAME} from '../../config/appInfo';
 import {
   DEFAULT_SECURITY_LEVEL,
   normalizeSecurityLevel,
@@ -130,8 +130,8 @@ export const SettingsScreen: React.FC<Props> = ({navigation}) => {
       <Text
         style={styles.versionFooter}
         accessibilityRole="text"
-        accessibilityLabel={`${APP_DISPLAY_NAME} version ${APP_VERSION}`}>
-        {APP_DISPLAY_NAME} v{APP_VERSION}
+        accessibilityLabel={`${APP_DISPLAY_NAME} ${t('settings.publicAlpha')}`}>
+        {APP_DISPLAY_NAME} · {t('settings.publicAlpha')}
       </Text>
     </ScrollView>
   );
