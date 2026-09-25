@@ -449,14 +449,21 @@ function IntegrityPanel({
     useState<RetroactiveIntegrityValidationRunResponse | null>(null);
   const [asyncJob, setAsyncJob] = useState<IntegrityAsyncJobResponse | null>(null);
   const asyncSlotRunning = asyncJob?.status === 'RUNNING';
+  const asyncEscapeSticky =
+    asyncJob != null
+    && asyncJob.abandonedAt == null
+    && isIntegrityAsyncEscapeStatus(asyncJob.status);
+  const asyncStartsBlocked = asyncSlotRunning || asyncEscapeSticky;
 
   // ── Date range for integrity checks (shared DateRangeFilter) ──
   const [checkRange, setCheckRange] = useState({ from: '', to: '' });
   const asyncStartsDisabledReason = asyncSlotRunning
     ? t('integrity.asyncJob.startsDisabledTooltip')
-    : !checkRange.from || !checkRange.to
-      ? t('integrity.selectDateRangeToRun')
-      : undefined;
+    : asyncEscapeSticky
+      ? t('integrity.asyncJob.startsDisabledEscapeTooltip')
+      : !checkRange.from || !checkRange.to
+        ? t('integrity.selectDateRangeToRun')
+        : undefined;
 
   useEffect(() => {
     if (!initialCheckRange?.createdAfter || !initialCheckRange.createdBefore) {
@@ -989,8 +996,9 @@ function IntegrityPanel({
   // Auto-run chain check on page load: populates the gaps list
   // without requiring the operator to click *Run integrity check* first.
   // UX shortcut only — backend discoverability is owned by AuditChainScheduler.
-  // Do not clobber sticky Escape (EXPIRED|CANCELLED|INTERRUPTED): wait for GET
+  // Do not clobber sticky Escape (EXPIRED|CANCELLED): wait for GET
   // current first so « Abandon and restart » stays reachable (Isabelle ronde 1).
+  // Crash INTERRUPTED is auto-abandoned and is not Escape-sticky (Marc posture).
   useEffect(() => {
     if (chainReport || chainLoading) return;
 
@@ -1170,7 +1178,7 @@ function IntegrityPanel({
                 size="sm"
                 variant="secondary"
                 onClick={() => void runChainCheck()}
-                disabled={chainLoading || asyncSlotRunning || !checkRange.from || !checkRange.to}
+                disabled={chainLoading || asyncStartsBlocked || !checkRange.from || !checkRange.to}
                 className="gap-1.5"
                 title={asyncStartsDisabledReason}
                 data-testid="integrity-verify-chain"
@@ -1184,7 +1192,7 @@ function IntegrityPanel({
                 size="sm"
                 variant="secondary"
                 onClick={() => void runIntegrityCheck()}
-                disabled={integrityLoading || asyncSlotRunning || !checkRange.from || !checkRange.to}
+                disabled={integrityLoading || asyncStartsBlocked || !checkRange.from || !checkRange.to}
                 className="gap-1.5"
                 title={asyncStartsDisabledReason}
                 data-testid="integrity-verify-entry-range"
@@ -1209,7 +1217,7 @@ function IntegrityPanel({
                     onClick={() => void runRetroactiveValidation()}
                     disabled={
                       validationRunLoading
-                      || asyncSlotRunning
+                      || asyncStartsBlocked
                       || !checkRange.from
                       || !checkRange.to
                     }

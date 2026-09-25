@@ -11,6 +11,7 @@
 package org.ezkey.audit.integrity;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -106,6 +107,7 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty());
+    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     when(nightlyIntegrityProperties.isEnabled()).thenReturn(false);
 
@@ -127,6 +129,7 @@ class IntegrityAsyncJobServiceTest {
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty())
         .thenReturn(Optional.of(runningJob()));
+    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     when(jobRepository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("uq"));
 
@@ -166,6 +169,115 @@ class IntegrityAsyncJobServiceTest {
   }
 
   @Test
+  void markInterruptedOnStartup_autoAbandonsSoStartIsFree() {
+    IntegrityAsyncJob running = runningJob();
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.of(running));
+    when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service.markInterruptedOnStartup(null);
+
+    ArgumentCaptor<IntegrityAsyncJob> captor = ArgumentCaptor.forClass(IntegrityAsyncJob.class);
+    verify(jobRepository).save(captor.capture());
+    IntegrityAsyncJob saved = captor.getValue();
+    assertEquals(IntegrityAsyncJobStatus.INTERRUPTED, saved.getStatus());
+    assertTrue(saved.getAbandonedAt() != null);
+    assertFalse(IntegrityAsyncJobService.isEscapeStickyStatus(saved.getStatus()));
+  }
+
+  @Test
+  void start_whenExpiredSticky_throwsBusy() {
+    IntegrityAsyncJob expired = runningJob();
+    expired.setStatus(IntegrityAsyncJobStatus.EXPIRED);
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.empty());
+    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of(expired));
+
+    IntegrityAsyncJobStartRequest request =
+        new IntegrityAsyncJobStartRequest(
+            IntegrityAsyncJobType.VERIFY_CHAIN_RANGE,
+            OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+            OffsetDateTime.parse("2026-01-02T00:00:00Z"),
+            null);
+
+    IntegrityAsyncJobBusyException ex =
+        assertThrows(
+            IntegrityAsyncJobBusyException.class, () -> service.start(request, 1, "admin.docker"));
+    assertEquals(expired.getJobId(), ex.getCurrentJob().getJobId());
+    verify(jobRepository, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void start_afterInterruptedAbandoned_allowed() {
+    IntegrityAsyncJob interrupted = runningJob();
+    interrupted.setStatus(IntegrityAsyncJobStatus.INTERRUPTED);
+    interrupted.setAbandonedAt(OffsetDateTime.now(ZoneOffset.UTC));
+    interrupted.setFinishedAt(interrupted.getAbandonedAt());
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.empty());
+    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of(interrupted));
+    when(heavyCryptoGate.isBusy()).thenReturn(false);
+    AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
+    when(jobRepository.saveAndFlush(any()))
+        .thenAnswer(
+            inv -> {
+              IntegrityAsyncJob job = inv.getArgument(0);
+              saved.set(job);
+              return job;
+            });
+
+    IntegrityAsyncJobStartRequest request =
+        new IntegrityAsyncJobStartRequest(
+            IntegrityAsyncJobType.VERIFY_CHAIN_RANGE,
+            OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+            OffsetDateTime.parse("2026-01-02T00:00:00Z"),
+            null);
+
+    var accepted = service.start(request, 3, "ga.one");
+    assertEquals(saved.get().getJobId(), accepted.jobId());
+    assertEquals(IntegrityAsyncJobStatus.RUNNING, saved.get().getStatus());
+  }
+
+  @Test
+  void getCurrent_healsLegacyInterruptedWithoutAbandonedAt() {
+    IntegrityAsyncJob interrupted = runningJob();
+    interrupted.setStatus(IntegrityAsyncJobStatus.INTERRUPTED);
+    interrupted.setFinishedAt(OffsetDateTime.now(ZoneOffset.UTC));
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.empty());
+    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of(interrupted));
+    when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    assertTrue(service.getCurrent().isEmpty());
+    ArgumentCaptor<IntegrityAsyncJob> captor = ArgumentCaptor.forClass(IntegrityAsyncJob.class);
+    verify(jobRepository).save(captor.capture());
+    assertTrue(captor.getValue().getAbandonedAt() != null);
+  }
+
+  @Test
+  void abandon_interrupted_healsWithoutEscapeCeremony() {
+    IntegrityAsyncJob interrupted = runningJob();
+    interrupted.setStatus(IntegrityAsyncJobStatus.INTERRUPTED);
+    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of(interrupted));
+    when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    var response = service.abandon(1);
+    assertEquals(IntegrityAsyncJobStatus.INTERRUPTED, response.status());
+    assertTrue(response.abandonedAt() != null);
+  }
+
+  @Test
+  void escapeStickyStatus_excludesInterrupted() {
+    assertTrue(IntegrityAsyncJobService.isEscapeStickyStatus(IntegrityAsyncJobStatus.EXPIRED));
+    assertTrue(IntegrityAsyncJobService.isEscapeStickyStatus(IntegrityAsyncJobStatus.CANCELLED));
+    assertFalse(IntegrityAsyncJobService.isEscapeStickyStatus(IntegrityAsyncJobStatus.INTERRUPTED));
+  }
+
+  @Test
   void getCurrent_expiresStaleThenReturnsRunning() {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
@@ -180,6 +292,7 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty());
+    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
     when(jobRepository.saveAndFlush(any()))

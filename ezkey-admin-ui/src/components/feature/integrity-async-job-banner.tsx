@@ -86,6 +86,12 @@ export function IntegrityAsyncJobBanner({ job, onJobChange, active }: IntegrityA
   const who = job.startedByUsername ?? '—';
   const since =
     job.startedAt != null ? formatRelativeTime(job.startedAt) : '—';
+  const when =
+    job.finishedAt != null
+      ? formatRelativeTime(job.finishedAt)
+      : job.startedAt != null
+        ? formatRelativeTime(job.startedAt)
+        : '—';
 
   let message: string;
   switch (job.status) {
@@ -95,12 +101,16 @@ export function IntegrityAsyncJobBanner({ job, onJobChange, active }: IntegrityA
     case 'SUCCEEDED':
       message = t('integrity.asyncJob.banner.succeeded', {
         jobTypeLabel: typeLabel,
+        when,
+        who,
         summary: job.resultSummary ?? '—',
       });
       break;
     case 'FAILED':
       message = t('integrity.asyncJob.banner.failed', {
         jobTypeLabel: typeLabel,
+        when,
+        who,
         reason: truncate(job.errorSummary ?? job.resultSummary ?? '—', 120),
       });
       break;

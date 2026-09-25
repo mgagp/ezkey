@@ -168,8 +168,8 @@ public class IntegrityAsyncJobController {
   }
 
   /**
-   * Abandons / frees the sticky EXPIRED, CANCELLED, or INTERRUPTED slot (UI « Abandon and restart
-   * »). Does not kill a healthy RUNNING job.
+   * Abandons / frees the sticky EXPIRED or CANCELLED slot (UI « Abandon and restart »). Does not
+   * kill a healthy RUNNING job. Crash/restart INTERRUPTED is auto-abandoned at boot.
    *
    * @return abandoned job summary
    */
@@ -178,9 +178,9 @@ public class IntegrityAsyncJobController {
   @Operation(
       summary = "Abandon Integrity async job slot",
       description =
-          "Frees sticky EXPIRED / CANCELLED / INTERRUPTED state so Starts can be used cleanly."
-              + " Refuses healthy RUNNING. Does not erase prior FAILED evidence. Global Admin"
-              + " only.")
+          "Frees sticky EXPIRED / CANCELLED state so Starts can be used cleanly."
+              + " Crash/restart INTERRUPTED is auto-abandoned (not Escape-sticky). Refuses healthy"
+              + " RUNNING. Does not erase prior FAILED evidence. Global Admin only.")
   @ApiResponses(
       value = {
         @ApiResponse(

@@ -292,17 +292,18 @@
       },
       "banner": {
         "running": "En cours — {{jobTypeLabel}} · depuis {{since}} · démarré par {{who}}",
-        "succeeded": "Dernier résultat — réussi · {{jobTypeLabel}} · {{summary}}",
-        "failed": "Dernier résultat — échec · {{jobTypeLabel}} · {{reason}}",
+        "succeeded": "Dernier résultat — réussi · {{jobTypeLabel}} · {{when}} · {{who}} · {{summary}}",
+        "failed": "Dernier résultat — échec · {{jobTypeLabel}} · {{when}} · {{who}} · {{reason}}",
         "expired": "Job expiré — plus de heartbeat · {{jobTypeLabel}} · {{who}} · relançable",
         "interrupted": "Job interrompu — {{jobTypeLabel}} · {{summary}}"
       },
-      "startsDisabledTooltip": "Un job d'intégrité est déjà en cours. Attendez la fin, ou utilisez Abandonner et relancer seulement si le job a expiré ou a été interrompu.",
+      "startsDisabledTooltip": "Un job d'intégrité est déjà en cours. Attendez la fin, ou utilisez Abandonner et relancer seulement si le job a expiré ou a été annulé.",
+      "startsDisabledEscapeTooltip": "Abandonnez le job d'intégrité expiré ou annulé avant d'en démarrer un autre.",
       "abandon": "Abandonner et relancer",
       "cancel": "Annuler",
       "abandoning": "Abandon…",
       "abandonConfirmTitle": "Abandonner le job d'intégrité ?",
-      "abandonConfirmBody": "Cela efface le job expiré ou interrompu pour pouvoir relancer. Cela n'arrête pas un job en cours sain.",
+      "abandonConfirmBody": "Cela efface le job expiré ou annulé pour pouvoir relancer. Cela n'arrête pas un job en cours sain.",
       "abandonError": "Impossible d'abandonner le job d'intégrité.",
       "busyToast": "Job d'intégrité déjà en cours : {{resume}}"
     },

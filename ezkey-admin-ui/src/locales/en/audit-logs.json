@@ -292,17 +292,18 @@
       },
       "banner": {
         "running": "Running — {{jobTypeLabel}} · since {{since}} · started by {{who}}",
-        "succeeded": "Last result — succeeded · {{jobTypeLabel}} · {{summary}}",
-        "failed": "Last result — failed · {{jobTypeLabel}} · {{reason}}",
+        "succeeded": "Last result — succeeded · {{jobTypeLabel}} · {{when}} · {{who}} · {{summary}}",
+        "failed": "Last result — failed · {{jobTypeLabel}} · {{when}} · {{who}} · {{reason}}",
         "expired": "Job expired — no heartbeat · {{jobTypeLabel}} · {{who}} · can restart",
         "interrupted": "Job interrupted — {{jobTypeLabel}} · {{summary}}"
       },
-      "startsDisabledTooltip": "An Integrity job is already running. Wait for it to finish, or use Abandon and restart only if the job expired or was interrupted.",
+      "startsDisabledTooltip": "An Integrity job is already running. Wait for it to finish, or use Abandon and restart only if the job expired or was cancelled.",
+      "startsDisabledEscapeTooltip": "Abandon the expired or cancelled Integrity job before starting another.",
       "abandon": "Abandon and restart",
       "cancel": "Cancel",
       "abandoning": "Abandoning…",
       "abandonConfirmTitle": "Abandon Integrity job?",
-      "abandonConfirmBody": "This clears the expired or interrupted job so you can start again. It does not cancel a healthy running job.",
+      "abandonConfirmBody": "This clears the expired or cancelled job so you can start again. It does not cancel a healthy running job.",
       "abandonError": "Could not abandon the Integrity job.",
       "busyToast": "Integrity job already running: {{resume}}"
     },
