@@ -11,6 +11,9 @@
 package org.ezkey.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.ezkey.audit.dto.IntegrityAsyncJobResponse;
+import org.ezkey.audit.exception.IntegrityAsyncJobAbandonNotAllowedException;
+import org.ezkey.audit.exception.IntegrityAsyncJobBusyException;
 import org.ezkey.audit.exception.IntegrityValidationDisabledException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
@@ -273,5 +276,55 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
         "https://ezkey.io/problems/domain/integrity-validation-disabled",
         "Integrity validation inactive",
         request);
+  }
+
+  /**
+   * Handles IntegrityAsyncJobBusyException and returns HTTP 409 with current job resume summary.
+   *
+   * @param ex the busy exception
+   * @param request the HTTP servlet request
+   * @return ProblemDetail with {@code currentJob} extension
+   */
+  @ExceptionHandler(IntegrityAsyncJobBusyException.class)
+  public ResponseEntity<ProblemDetail> handleIntegrityAsyncJobBusyException(
+      IntegrityAsyncJobBusyException ex, HttpServletRequest request) {
+    ResponseEntity<ProblemDetail> response =
+        buildProblemDetail(
+            ex,
+            HttpStatus.CONFLICT,
+            "https://ezkey.io/problems/domain/integrity-async-job-busy",
+            "Integrity async slot busy",
+            request);
+    ProblemDetail problem = response.getBody();
+    if (problem != null && ex.getCurrentJob() != null) {
+      IntegrityAsyncJobResponse current = IntegrityAsyncJobResponse.from(ex.getCurrentJob());
+      problem.setProperty("currentJob", current);
+      problem.setProperty("resumeOneLiner", current.resumeOneLiner());
+    }
+    return response;
+  }
+
+  /**
+   * Handles IntegrityAsyncJobAbandonNotAllowedException and returns HTTP 409.
+   *
+   * @param ex the abandon refusal
+   * @param request the HTTP servlet request
+   * @return ProblemDetail
+   */
+  @ExceptionHandler(IntegrityAsyncJobAbandonNotAllowedException.class)
+  public ResponseEntity<ProblemDetail> handleIntegrityAsyncJobAbandonNotAllowedException(
+      IntegrityAsyncJobAbandonNotAllowedException ex, HttpServletRequest request) {
+    ResponseEntity<ProblemDetail> response =
+        buildProblemDetail(
+            ex,
+            HttpStatus.CONFLICT,
+            "https://ezkey.io/problems/domain/integrity-async-job-abandon-not-allowed",
+            "Integrity async job abandon not allowed",
+            request);
+    ProblemDetail problem = response.getBody();
+    if (problem != null && ex.getStatus() != null) {
+      problem.setProperty("status", ex.getStatus().name());
+    }
+    return response;
   }
 }

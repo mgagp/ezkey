@@ -146,7 +146,10 @@
     "AUDIT_CHAIN_GAP_DECLARED": "Lacune chaîne d'audit déclarée",
     "AUDIT_INTEGRITY_RUPTURE_CONCILIATED": "Rupture d'intégrité conciliée",
     "AUDIT_CHAIN_GAP_PENDING": "Trou de chaîne d'audit en attente",
-    "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED": "Validation d'intégrité nocturne terminée"
+    "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED": "Validation d'intégrité nocturne terminée",
+    "INTEGRITY_ASYNC_JOB_STARTED": "Job d'intégrité asynchrone démarré",
+    "INTEGRITY_ASYNC_JOB_COMPLETED": "Job d'intégrité asynchrone terminé",
+    "INTEGRITY_ASYNC_JOB_ABANDONED": "Job d'intégrité asynchrone abandonné"
   },
   "eventAction": {
     "login_success": "Connexion réussie",
@@ -280,6 +283,29 @@
     "runValidationInactiveTooltip": "La validation d'intégrité nocturne est inactive sur cette instance.",
     "verifyVsRunHint": "Vérifier recalcule le HMAC et les liens de chaîne sans ouvrir ni mettre à jour d'alerte. Lancer la validation utilise le chemin detective et peut créer ou mettre à jour une alerte de rupture d'intégrité. Les deux actions portent sur la même plage affichée ci-dessus — vérifiez d'abord, puis lancez la validation sur cette plage lorsque vous êtes prêt à détecter et alerter.",
     "verifyVsRunHintInactive": "Vérifier recalcule le HMAC et les liens de chaîne sans ouvrir ni mettre à jour d'alerte. Lancer la validation (le lot detective qui peut créer des alertes et écrire un audit de completion) est inactif sur cette instance.",
+    "asyncJob": {
+      "type": {
+        "verifyChain": "Vérifier la chaîne",
+        "verifyEntry": "Vérifier le HMAC entrée",
+        "runValidation": "Lancer la validation",
+        "unknown": "Job d'intégrité"
+      },
+      "banner": {
+        "running": "En cours — {{jobTypeLabel}} · depuis {{since}} · démarré par {{who}}",
+        "succeeded": "Dernier résultat — réussi · {{jobTypeLabel}} · {{summary}}",
+        "failed": "Dernier résultat — échec · {{jobTypeLabel}} · {{reason}}",
+        "expired": "Job expiré — plus de heartbeat · {{jobTypeLabel}} · {{who}} · relançable",
+        "interrupted": "Job interrompu — {{jobTypeLabel}} · {{summary}}"
+      },
+      "startsDisabledTooltip": "Un job d'intégrité est déjà en cours. Attendez la fin, ou utilisez Abandonner et relancer seulement si le job a expiré ou a été interrompu.",
+      "abandon": "Abandonner et relancer",
+      "cancel": "Annuler",
+      "abandoning": "Abandon…",
+      "abandonConfirmTitle": "Abandonner le job d'intégrité ?",
+      "abandonConfirmBody": "Cela efface le job expiré ou interrompu pour pouvoir relancer. Cela n'arrête pas un job en cours sain.",
+      "abandonError": "Impossible d'abandonner le job d'intégrité.",
+      "busyToast": "Job d'intégrité déjà en cours : {{resume}}"
+    },
     "chainIntegrity": "Intégrité de la chaîne",
     "entryIntegrity": "Intégrité des entrées",
     "checking": "Vérification…",

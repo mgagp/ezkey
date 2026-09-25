@@ -1,0 +1,28 @@
+meta {
+  name: get current integrity async job
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/integrity/jobs/current
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status is 200 or 204", function () {
+      expect([200, 204]).to.include(res.getStatus());
+  });
+
+  test("200 body has status and no secrets", function () {
+      if (res.getStatus() !== 200) {
+          return;
+      }
+      var body = res.getBody();
+      expect(body).to.have.property('jobId');
+      expect(body).to.have.property('status');
+      expect(body).to.have.property('type');
+      expect(JSON.stringify(body)).to.not.match(/hmacSecret|rawKey|privateKey/i);
+  });
+}

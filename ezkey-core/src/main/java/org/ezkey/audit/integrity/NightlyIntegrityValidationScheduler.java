@@ -43,6 +43,8 @@ public class NightlyIntegrityValidationScheduler {
   private final AuditChainProperties chainProperties;
   private final RetroactiveIntegrityValidationService validationService;
   private final ScheduledJobLastRunService jobLastRunService;
+  private final IntegrityHeavyCryptoGate heavyCryptoGate;
+  private final IntegrityAsyncJobService integrityAsyncJobService;
 
   /**
    * Constructs the scheduler.
@@ -51,16 +53,22 @@ public class NightlyIntegrityValidationScheduler {
    * @param chainProperties rolling checkpoint window size (grid alignment)
    * @param validationService retroactive validation orchestration
    * @param jobLastRunService registry updates
+   * @param heavyCryptoGate process-local exclusion vs operator async jobs
+   * @param integrityAsyncJobService operator slot probe (skip when RUNNING)
    */
   public NightlyIntegrityValidationScheduler(
       NightlyIntegrityProperties nightlyProperties,
       AuditChainProperties chainProperties,
       RetroactiveIntegrityValidationService validationService,
-      ScheduledJobLastRunService jobLastRunService) {
+      ScheduledJobLastRunService jobLastRunService,
+      IntegrityHeavyCryptoGate heavyCryptoGate,
+      IntegrityAsyncJobService integrityAsyncJobService) {
     this.nightlyProperties = nightlyProperties;
     this.chainProperties = chainProperties;
     this.validationService = validationService;
     this.jobLastRunService = jobLastRunService;
+    this.heavyCryptoGate = heavyCryptoGate;
+    this.integrityAsyncJobService = integrityAsyncJobService;
   }
 
   /**
@@ -80,6 +88,16 @@ public class NightlyIntegrityValidationScheduler {
             OffsetDateTime.now(ZoneOffset.UTC), chainProperties.getWindowMinutes());
     String scope = "Validated " + nightlyProperties.getWindowHours() + " h ending " + windowEnd;
 
+    if (integrityAsyncJobService.isOperatorSlotRunning()) {
+      logger.info(
+          "Skipping nightly integrity validation: operator Integrity async job is RUNNING");
+      return;
+    }
+    if (!heavyCryptoGate.tryEnter()) {
+      logger.info(
+          "Skipping nightly integrity validation: Integrity heavy crypto gate is busy");
+      return;
+    }
     try {
       RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
           validationService.validateWindow(windowEnd);
@@ -91,6 +109,8 @@ public class NightlyIntegrityValidationScheduler {
       logger.error("Nightly integrity validation batch failed: {}", e.getMessage(), e);
       jobLastRunService.recordFailure(
           ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope, e.getMessage());
+    } finally {
+      heavyCryptoGate.exit();
     }
   }
 }

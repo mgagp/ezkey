@@ -258,7 +258,23 @@ raw wall-clock `now()` with sub-second precision into chain range queries.
 **Registry:** successful runs update `NIGHTLY_INTEGRITY_VALIDATION` in `ezkey_scheduled_job_last_run`.
 Batch infrastructure failures record `FAILED` on the registry row only (C9 — no “batch did not run” alert).
 
-`enabled=false` idles the **scheduler** and fail-closes operator `POST /api/v1/audit-logs/integrity-validation/run` with HTTP 409 (`integrity-validation-disabled`). HMAC-inactive remains a 200 skipped result when the flag is on. Gate on this flag, not on the product runtime profile name.
+`enabled=false` idles the **scheduler** and fail-closes operator `POST /api/v1/audit-logs/integrity-validation/run` and async `POST …/integrity/jobs` with type `RUN_VALIDATION` with HTTP 409 (`integrity-validation-disabled`). HMAC-inactive remains a 200 skipped result when the flag is on. Gate on this flag, not on the product runtime profile name.
+
+---
+
+### Integrity async operator jobs (`ezkey.audit.integrity.async-job.*`)
+
+**Description:** Single global slot for long Integrity Admin UI/API operations (chain range verify,
+entry HMAC range verify, run validation). DB-backed (`ezkey_integrity_async_job`); distinct from
+`ezkey_scheduled_job_last_run`. Occupied slot → HTTP 409. TTL expiry without heartbeat → EXPIRED.
+
+**Defined in:** `IntegrityAsyncJobProperties`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.audit.integrity.async-job.ttl` | `Duration` | `PT60M` | optionnel | Max age of RUNNING without heartbeat before EXPIRED on next GET/POST. |
+
+**API:** `POST/GET /api/v1/audit-logs/integrity/jobs`, `GET …/current`, `POST …/current/abandon`. Sync single-entry verify stays outside the slot.
 
 ---
 

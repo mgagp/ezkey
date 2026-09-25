@@ -66,6 +66,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE ezkey_audit_log TO ezkey_admin;
 
 GRANT SELECT, UPDATE ON TABLE ezkey_scheduled_job_last_run TO ezkey_admin;
 
+GRANT SELECT, INSERT, UPDATE ON TABLE ezkey_integrity_async_job TO ezkey_admin;
+
 -- ---------------------------------------------------------------------------
 -- ezkey_auth — device-facing Auth API
 -- ---------------------------------------------------------------------------

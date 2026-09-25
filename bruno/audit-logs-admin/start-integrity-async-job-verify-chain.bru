@@ -1,0 +1,42 @@
+meta {
+  name: start integrity async job - verify chain
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/integrity/jobs
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "type": "VERIFY_CHAIN_RANGE",
+    "from": "2026-01-01T00:00:00Z",
+    "to": "2026-01-08T00:00:00Z"
+  }
+}
+
+script:post-response {
+  test("Status is 202 or 409", function () {
+      var status = res.getStatus();
+      expect([202, 409]).to.include(status);
+  });
+
+  test("Accepted body has jobId; 409 has resumeOneLiner and no secrets", function () {
+      var status = res.getStatus();
+      var body = res.getBody();
+      if (status === 202) {
+          expect(body).to.have.property('jobId');
+          expect(body.jobId).to.match(/^[0-9a-f-]{36}$/i);
+          expect(body).to.not.have.property('entryHmac');
+          expect(JSON.stringify(body)).to.not.match(/hmacSecret|rawKey|privateKey/i);
+      } else {
+          expect(body).to.have.property('status', 409);
+          expect(body.type).to.include('integrity-async-job-busy');
+          expect(body.resumeOneLiner || (body.currentJob && body.currentJob.resumeOneLiner)).to.be.ok;
+          expect(JSON.stringify(body)).to.not.match(/hmacSecret|rawKey|privateKey/i);
+      }
+  });
+}
