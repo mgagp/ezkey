@@ -1,6 +1,6 @@
 {
   "authentication": {
-    "invalid-credentials": "Nom d'utilisateur ou mot de passe invalide.",
+    "invalid-credentials": "Nom d'utilisateur invalide.",
     "account-inactive": "Ce compte administrateur est inactif.",
     "no-enrollment": "Aucun appareil enrôlé n'est disponible pour ce compte.",
     "auth-expired": "La tentative d'authentification a expiré. Veuillez réessayer.",

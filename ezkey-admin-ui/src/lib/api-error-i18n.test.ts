@@ -51,7 +51,7 @@ describe('getTranslatedApiError', () => {
       },
     );
     const t = i18n.t.bind(i18n);
-    expect(getTranslatedApiError(err, t, 'fallback')).toBe('Invalid username or password.');
+    expect(getTranslatedApiError(err, t, 'fallback')).toBe('Invalid username.');
   });
 
   it('prefers curated i18n over English detail for domain.integration-has-enrollments (quick win)', async () => {

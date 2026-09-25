@@ -63,7 +63,7 @@ class AdminAuthServicePendingActivationTest {
                 adminAuthService.authenticate(
                     new AdminLoginRequestDto("pending.admin", false, false)));
 
-    assertEquals("Invalid username or password", exception.getMessage());
+    assertEquals("Invalid username", exception.getMessage());
     verify(adminRepository).findByUsernameWithEnrollment("pending.admin");
     verify(authAttemptTxHelper, never()).createAuthAttempt(org.mockito.ArgumentMatchers.any());
   }
