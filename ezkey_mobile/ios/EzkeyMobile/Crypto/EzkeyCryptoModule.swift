@@ -152,6 +152,13 @@ class EzkeyCryptoModule: NSObject, RCTBridgeModule {
     resolve(formatter.string(from: date))
   }
 
+  /// Android stamps a git short SHA at compile time. iOS has no equivalent yet.
+  @objc
+  func getGitShortSha(_ resolve: @escaping RCTPromiseResolveBlock,
+                      rejecter reject: @escaping RCTPromiseRejectBlock) {
+    resolve("")
+  }
+
   /// Device proof token: same format as Java `SignatureService.generateProofToken()` (SecRandomCopyBytes + Base64URL, no padding).
   @objc
   func generateProofToken(_ resolve: @escaping RCTPromiseResolveBlock,

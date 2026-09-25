@@ -94,6 +94,10 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
   `ezkey.qr.auth-base-url`). Fall back to configured `EZKEY_API_BASE_URL` only when QR omits
   `authUrl`. Do **not** hard-code tunnel hostnames (e.g. ngrok) in committed env defaults.
 
+## Toolchain upgrade gate (React, Gradle, AGP, Kotlin)
+
+A warm `assembleRelease` or a debug install does **not** prove a Play AAB. When a change touches React, React Native, the Gradle wrapper, Android Gradle Plugin, or Kotlin, follow [`docs/MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md`](docs/MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md) § *Cold release gate*. Delete the included plugin build under `node_modules/@react-native/gradle-plugin` and produce both a release APK and `app-release.aab` from a cold `--no-daemon` run. Incident: 2026-09-22 phone install (`versionCode` 2 / `1.0.0`, RN 0.87.1) succeeded from cache; a later cold `bundleRelease` failed because the RN Gradle plugin (Kotlin 2.1.20) cannot read Gradle 9.4.1's Kotlin 2.3 metadata, and AGP 9.2.1 will not run on an older Gradle.
+
 ## Android debug build (agents — read first)
 
 **Do not improvise `JAVA_HOME` or bare `./gradlew` on Windows.** The maintainer PATH often exposes **JDK 25** (`C:\Tools\jdk-25…`), which breaks React Native 0.86 Android (`Unsupported class file major version 69`, `com.facebook.react.settings` plugin errors). Android Studio JBR is also **not** always at `C:\Program Files\Android\Android Studio\jbr` (this workstation uses `Android Studio1\jbr`).

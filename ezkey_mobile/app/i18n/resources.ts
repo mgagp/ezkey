@@ -41,6 +41,7 @@ export const resources = {
         dangerZoneSubtitle: 'Delete enrollments or clear all data',
         licensesLabel: 'Open Source Licenses',
         licensesSubtitle: 'Third-party license listing',
+        publicAlpha: 'Public alpha',
       },
       security: {
         title: 'Security',
@@ -123,6 +124,10 @@ export const resources = {
         title: 'Ezkey Authenticator',
         tagline: 'Confirm sign-ins from a trusted phone. Self-hosted. Open source.',
         version: 'Version',
+        channel: 'Channel',
+        publicAlpha: 'Public alpha',
+        revision: 'Revision',
+        revisionAccessibility: 'Git revision of this build',
         buildUtc: 'Build (UTC)',
         buildTimeAccessibility: 'Native app build time UTC',
         unavailable: 'unavailable',
@@ -403,6 +408,7 @@ export const resources = {
         dangerZoneSubtitle: 'Supprimer des enrôlements ou effacer toutes les données',
         licensesLabel: 'Licences open source',
         licensesSubtitle: 'Liste des licences tierces',
+        publicAlpha: 'Alpha publique',
       },
       security: {
         title: 'Sécurité',
@@ -488,6 +494,10 @@ export const resources = {
         tagline:
           'Confirmez les connexions depuis un téléphone de confiance. Auto-hébergé. Open source.',
         version: 'Version',
+        channel: 'Canal',
+        publicAlpha: 'Alpha publique',
+        revision: 'Révision',
+        revisionAccessibility: 'Révision Git de ce build',
         buildUtc: 'Build (UTC)',
         buildTimeAccessibility: 'Heure de build native de l’application en UTC',
         unavailable: 'indisponible',

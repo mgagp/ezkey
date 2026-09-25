@@ -54,7 +54,7 @@ reference mobile app.
 | --- | --- | --- |
 | [../../docs/security/mobile-protocol-crypto-assessment-2026-07.md](../../docs/security/mobile-protocol-crypto-assessment-2026-07.md) | Security assessment — protocol / crypto / Keystore | Formal Android-first white-box assessment (2026-07); MOB-* register + claim verdict. Lot A closed — [`../../product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md). Pass-2 open (2026-07-19, §14) — HITL: [`../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md). |
 | [../../docs/security/mobile-security-assessment-2026-05.md](../../docs/security/mobile-security-assessment-2026-05.md) | Security assessment — prior | May 2026 mobile posture assessment; reconcile before re-opening storage/pinning topics. |
-| [MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md](MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md) | Maintenance workflow | Lightweight and repeatable dependency-update routine (monitor, isolate, validate, decide, trace). |
+| [MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md](MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md) | Maintenance workflow | Lightweight and repeatable dependency-update routine (monitor, isolate, validate, decide, trace). § *Cold release gate* is mandatory for React / React Native / Gradle / AGP / Kotlin lots. |
 
 ## Supporting and Operational Docs
 

@@ -114,6 +114,22 @@ def jscFlavor = 'org.webkit:android-jsc:+'
 def packageJson = new JsonSlurper().parse(file("$rootDir/../package.json"))
 def appVersionName = packageJson.version
 
+def gitShortSha = "unknown"
+try {
+    def stdout = new ByteArrayOutputStream()
+    exec {
+        commandLine "git", "rev-parse", "--short=7", "HEAD"
+        standardOutput = stdout
+        workingDir rootDir
+    }
+    def parsed = stdout.toString("UTF-8").trim()
+    if (parsed ==~ /[0-9a-fA-F]{7,}/) {
+        gitShortSha = parsed.substring(0, 7)
+    }
+} catch (Exception ignored) {
+    gitShortSha = "unknown"
+}
+
 /** When false, debug builds behave like offline installs: JS from APK assets only (no Metro). */
 def ezkeyUseMetroInDebug =
         (project.findProperty("ezkey.useMetroInDebug") ?: "false").toString().toBoolean()
@@ -134,12 +150,13 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Strictly increasing Play upload integer. Confirm against Play Console App bundle
         // explorer before each official upload; bump when the Console already has this value.
-        // Workspace default 2 assumes the experimental listing used versionCode 1.
-        versionCode 2
+        // Internal-testing drop used versionCode 2. Next closed-testing upload is 3.
+        versionCode 3
         versionName appVersionName
         def buildTimeUtc = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
         buildTimeUtc.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
         buildConfigField "String", "BUILD_TIMESTAMP", "\"${buildTimeUtc.format(new Date())}\""
+        buildConfigField "String", "GIT_SHORT_SHA", "\"${gitShortSha}\""
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters "arm64-v8a", "x86_64"

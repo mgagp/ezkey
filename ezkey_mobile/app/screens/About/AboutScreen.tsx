@@ -27,6 +27,7 @@ export const AboutScreen: React.FC = () => {
   const [buildTimestampUtc, setBuildTimestampUtc] = useState<string | 'loading' | 'unavailable'>(
     'loading',
   );
+  const [gitShortSha, setGitShortSha] = useState<string | 'loading' | 'unavailable'>('loading');
 
   useEffect(() => {
     let cancelled = false;
@@ -41,6 +42,19 @@ export const AboutScreen: React.FC = () => {
       .catch(() => {
         if (!cancelled) {
           setBuildTimestampUtc('unavailable');
+        }
+      });
+    nativeCrypto
+      .getGitShortSha()
+      .then(value => {
+        const trimmed = value.trim();
+        if (!cancelled) {
+          setGitShortSha(trimmed.length > 0 && trimmed !== 'unknown' ? trimmed : 'unavailable');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setGitShortSha('unavailable');
         }
       });
     return () => {
@@ -65,6 +79,23 @@ export const AboutScreen: React.FC = () => {
           <Text style={styles.metaLabel}>{t('about.version')}</Text>
           <Text style={styles.metaValue} selectable accessibilityLabel={`App version ${APP_VERSION}`}>
             {APP_VERSION}
+          </Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>{t('about.channel')}</Text>
+          <Text style={styles.metaValue}>{t('about.publicAlpha')}</Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>{t('about.revision')}</Text>
+          <Text
+            style={styles.metaValue}
+            selectable
+            accessibilityLabel={t('about.revisionAccessibility')}>
+            {gitShortSha === 'loading'
+              ? '…'
+              : gitShortSha === 'unavailable'
+                ? t('about.unavailable')
+                : gitShortSha}
           </Text>
         </View>
         <View style={styles.metaRow}>
