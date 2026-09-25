@@ -36,6 +36,8 @@ class NightlyIntegrityValidationSchedulerTest {
   @Mock private AuditChainProperties chainProperties;
   @Mock private RetroactiveIntegrityValidationService validationService;
   @Mock private ScheduledJobLastRunService jobLastRunService;
+  @Mock private IntegrityHeavyCryptoGate heavyCryptoGate;
+  @Mock private IntegrityAsyncJobService integrityAsyncJobService;
 
   private NightlyIntegrityValidationScheduler scheduler;
 
@@ -43,13 +45,20 @@ class NightlyIntegrityValidationSchedulerTest {
   void setUp() {
     scheduler =
         new NightlyIntegrityValidationScheduler(
-            nightlyProperties, chainProperties, validationService, jobLastRunService);
+            nightlyProperties,
+            chainProperties,
+            validationService,
+            jobLastRunService,
+            heavyCryptoGate,
+            integrityAsyncJobService);
   }
 
   @Test
   void runNightlyValidation_passesGridAlignedWindowEnd() {
     when(chainProperties.getWindowMinutes()).thenReturn(5);
     when(nightlyProperties.getWindowHours()).thenReturn(24);
+    when(integrityAsyncJobService.isOperatorSlotRunning()).thenReturn(false);
+    when(heavyCryptoGate.tryEnter()).thenReturn(true);
     when(validationService.validateWindow(any()))
         .thenReturn(
             RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult.skipped(
@@ -70,5 +79,6 @@ class NightlyIntegrityValidationSchedulerTest {
                       && windowEnd.getNano() == 0
                       && windowEnd.getMinute() % 5 == 0;
                 }));
+    verify(heavyCryptoGate).exit();
   }
 }

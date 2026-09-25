@@ -127,6 +127,9 @@ public enum EventType {
 
   // Scheduled integrity validation
   NIGHTLY_INTEGRITY_VALIDATION_COMPLETED, // Nightly retroactive integrity batch finished
+  INTEGRITY_ASYNC_JOB_STARTED, // Operator Integrity async job accepted
+  INTEGRITY_ASYNC_JOB_COMPLETED, // Operator Integrity async job finished (success or fail)
+  INTEGRITY_ASYNC_JOB_ABANDONED, // Operator freed expired/interrupted/cancelled slot
 
   // Alert subsystem lifecycle events (raised/resolved by org.ezkey.alert.service.AlertService)
   ALERT_RAISED, // A new operator-facing alert row was created in ezkey_alert

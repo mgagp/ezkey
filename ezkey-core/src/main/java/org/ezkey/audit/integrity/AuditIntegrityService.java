@@ -81,6 +81,21 @@ public class AuditIntegrityService {
    */
   @Transactional(readOnly = true)
   public IntegrityReport verifyRange(OffsetDateTime from, OffsetDateTime to) {
+    return verifyRange(from, to, null);
+  }
+
+  /**
+   * Verifies HMAC integrity of all audit log entries within a date range, invoking {@code
+   * onChunkHeartbeat} after each verification batch when non-null (async job heartbeat).
+   *
+   * @param from start of the verification window (inclusive)
+   * @param to end of the verification window (exclusive)
+   * @param onChunkHeartbeat optional callback after each page batch
+   * @return integrity verification report
+   */
+  @Transactional(readOnly = true)
+  public IntegrityReport verifyRange(
+      OffsetDateTime from, OffsetDateTime to, Runnable onChunkHeartbeat) {
     if (!auditHmacService.isActive()) {
       return inactiveReport();
     }
@@ -126,6 +141,10 @@ public class AuditIntegrityService {
             diagnosticFailuresLogged++;
           }
         }
+      }
+
+      if (onChunkHeartbeat != null) {
+        onChunkHeartbeat.run();
       }
 
       hasMore = batch.hasNext();

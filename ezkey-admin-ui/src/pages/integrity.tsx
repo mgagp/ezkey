@@ -28,8 +28,6 @@ import { queryKeys } from '@/lib/query-keys';
 import { cn, formatDateOnly, formatDateWithTimezone } from '@/lib/utils';
 import {
   loadIntegrityInvestigationSession,
-  saveIntegrityInvestigationSession,
-  buildInvestigationSession,
   resolveEntryIntegrityReportSummaryState,
   type IntegrityInvestigationSession,
 } from '@/lib/integrity-investigation-session';
@@ -50,17 +48,15 @@ import { useDisplayTimezone } from '@/context/use-display-timezone';
 import { useToast } from '@/context/use-toast';
 import { EntryIntegrityReportBadge } from '@/components/feature/entry-integrity-report-badge';
 import { EntryIntegrityViolationLine } from '@/components/feature/entry-integrity-violation-line';
+import { IntegrityAsyncJobBanner } from '@/components/feature/integrity-async-job-banner';
 import { IntegrityReconcileDialog } from '@/components/feature/integrity-reconcile-dialog';
 import { useGetAlert } from '@/generated/admin-api/alerts/alerts';
 import {
-  checkChainIntegrity,
-  checkIntegrity,
   getArchiveEligibility,
   getChainCheckpoints,
   getGetIntegrityBootstrapQueryKey,
   getIntegrityBootstrap,
   listLifecycleIncidents,
-  runRetroactiveIntegrityValidation,
   useConfirmArchived,
   useDeclareGap,
   useSealArchive,
@@ -82,6 +78,13 @@ import type {
   PagedModelAuditChainIncidentResponseDto,
   RetroactiveIntegrityValidationRunResponse,
 } from '@/generated/admin-api/model';
+import {
+  getCurrentIntegrityAsyncJob,
+  integrityAsyncBusyResumeLine,
+  isIntegrityAsyncEscapeStatus,
+  startIntegrityAsyncJob,
+  type IntegrityAsyncJobResponse,
+} from '@/lib/integrity-async-jobs';
 
 type IntegrityRuntimeProfile = 'base' | 'integrity';
 
@@ -444,9 +447,23 @@ function IntegrityPanel({
   const [validationRunLoading, setValidationRunLoading] = useState(false);
   const [validationRunResult, setValidationRunResult] =
     useState<RetroactiveIntegrityValidationRunResponse | null>(null);
+  const [asyncJob, setAsyncJob] = useState<IntegrityAsyncJobResponse | null>(null);
+  const asyncSlotRunning = asyncJob?.status === 'RUNNING';
+  const asyncEscapeSticky =
+    asyncJob != null
+    && asyncJob.abandonedAt == null
+    && isIntegrityAsyncEscapeStatus(asyncJob.status);
+  const asyncStartsBlocked = asyncSlotRunning || asyncEscapeSticky;
 
   // ── Date range for integrity checks (shared DateRangeFilter) ──
   const [checkRange, setCheckRange] = useState({ from: '', to: '' });
+  const asyncStartsDisabledReason = asyncSlotRunning
+    ? t('integrity.asyncJob.startsDisabledTooltip')
+    : asyncEscapeSticky
+      ? t('integrity.asyncJob.startsDisabledEscapeTooltip')
+      : !checkRange.from || !checkRange.to
+        ? t('integrity.selectDateRangeToRun')
+        : undefined;
 
   useEffect(() => {
     if (!initialCheckRange?.createdAfter || !initialCheckRange.createdBefore) {
@@ -664,31 +681,6 @@ function IntegrityPanel({
     return { from: toYYYYMMDD(past), to: toYYYYMMDD(now) };
   }
 
-  function persistInvestigationSession(
-    entry: IntegrityReport,
-    chain: ChainVerificationReport,
-    range: { from: string; to: string },
-  ) {
-    if (!initialCheckRange?.createdAfter || !initialCheckRange.createdBefore) {
-      return;
-    }
-    const { createdAfter, createdBefore } = dateRangeToApiParams(
-      range.from,
-      range.to,
-      effectiveTimeZoneId,
-    );
-    saveIntegrityInvestigationSession(
-      buildInvestigationSession({
-        source: 'integrity-alert',
-        windowFrom: createdAfter ?? initialCheckRange.createdAfter,
-        windowTo: createdBefore ?? initialCheckRange.createdBefore,
-        entryViolations: entry.entryViolations?.items ?? [],
-        chainViolations: chain.chainViolations ?? [],
-        focusCheckpointId: focusCheckpointId ?? undefined,
-      }),
-    );
-  }
-
   function integrityRangeToApiParams(range: { from: string; to: string }) {
     const { createdAfter, createdBefore } = integrityExclusiveDateRangeToApiParams(
       range.from,
@@ -698,51 +690,67 @@ function IntegrityPanel({
     return { from: createdAfter, to: createdBefore };
   }
 
-  async function runChainCheck(rangeOverride?: { from: string; to: string }) {
-    const range = rangeOverride ?? checkRange;
+  async function runChainCheck(_rangeOverride?: { from: string; to: string }) {
+    const range = _rangeOverride ?? checkRange;
+    if (!range.from || !range.to) {
+      return;
+    }
     setChainLoading(true);
     setChainReport(null);
     setChainReportRange(null);
     setFocusedGap(null);
     try {
-      const params =
-        range.from && range.to
-          ? integrityRangeToApiParams(range)
-          : { from: undefined as string | undefined, to: undefined as string | undefined };
-      const report = await checkChainIntegrity(params) as unknown as ChainVerificationReport;
-      setChainReport(report);
-      if (range.from && range.to) {
-        setChainReportRange({ from: range.from, to: range.to });
+      const { from: createdAfter, to: createdBefore } = integrityRangeToApiParams(range);
+      if (!createdAfter || !createdBefore) {
+        return;
       }
-      if (initialCheckRange && integrityReport) {
-        persistInvestigationSession(integrityReport, report, range);
-      }
+      await startIntegrityAsyncJob({
+        type: 'VERIFY_CHAIN_RANGE',
+        from: createdAfter,
+        to: createdBefore,
+      });
+      setChainReportRange({ from: range.from, to: range.to });
+      setAsyncJob(await getCurrentIntegrityAsyncJob());
     } catch (e) {
-      toast(getTranslatedApiError(e, t, t('integrity.errorChainCheck')), 'error');
+      const resume = integrityAsyncBusyResumeLine(e);
+      if (resume) {
+        toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
+        setAsyncJob(await getCurrentIntegrityAsyncJob());
+      } else {
+        toast(getTranslatedApiError(e, t, t('integrity.errorChainCheck')), 'error');
+      }
     } finally {
       setChainLoading(false);
     }
   }
 
   async function runIntegrityCheck() {
+    if (!checkRange.from || !checkRange.to) {
+      return;
+    }
     setIntegrityLoading(true);
     setIntegrityReport(null);
     setIntegrityReportRange(null);
     try {
-      const params =
-        checkRange.from && checkRange.to
-          ? integrityRangeToApiParams(checkRange)
-          : { from: undefined as string | undefined, to: undefined as string | undefined };
-      const report = await checkIntegrity(params) as unknown as IntegrityReport;
-      setIntegrityReport(report);
-      if (checkRange.from && checkRange.to) {
-        setIntegrityReportRange({ from: checkRange.from, to: checkRange.to });
+      const { from: createdAfter, to: createdBefore } = integrityRangeToApiParams(checkRange);
+      if (!createdAfter || !createdBefore) {
+        return;
       }
-      if (initialCheckRange && chainReport) {
-        persistInvestigationSession(report, chainReport, checkRange);
-      }
+      await startIntegrityAsyncJob({
+        type: 'VERIFY_ENTRY_HMAC_RANGE',
+        from: createdAfter,
+        to: createdBefore,
+      });
+      setIntegrityReportRange({ from: checkRange.from, to: checkRange.to });
+      setAsyncJob(await getCurrentIntegrityAsyncJob());
     } catch (e) {
-      toast(getTranslatedApiError(e, t, t('integrity.errorIntegrityCheck')), 'error');
+      const resume = integrityAsyncBusyResumeLine(e);
+      if (resume) {
+        toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
+        setAsyncJob(await getCurrentIntegrityAsyncJob());
+      } else {
+        toast(getTranslatedApiError(e, t, t('integrity.errorIntegrityCheck')), 'error');
+      }
     } finally {
       setIntegrityLoading(false);
     }
@@ -759,29 +767,21 @@ function IntegrityPanel({
       if (!createdAfter || !createdBefore) {
         return;
       }
-      const result = (await runRetroactiveIntegrityValidation({
+      await startIntegrityAsyncJob({
+        type: 'RUN_VALIDATION',
         from: createdAfter,
         to: createdBefore,
         raiseAlert: true,
-      })) as unknown as RetroactiveIntegrityValidationRunResponse;
-      setValidationRunResult(result);
-      if (result.skipped) {
-        toast(
-          t('integrity.validationRun.skipped', { reason: result.skipReason ?? '—' }),
-          'info',
-        );
-      } else if (result.alertRaised && result.alertId != null) {
-        toast(t('integrity.validationRun.alertRaised', { id: result.alertId }), 'success');
-        await queryClient.invalidateQueries({ queryKey: ['/api/v1/alerts'] });
-      } else if (result.intact) {
-        toast(t('integrity.validationRun.intact'), 'success');
-      } else if ((result.entryHmacViolationCount ?? 0) > 0 || (result.chainViolationCount ?? 0) > 0) {
-        toast(t('integrity.validationRun.violationsNoAlert'), 'info');
-      } else {
-        toast(t('integrity.validationRun.completed'), 'info');
-      }
+      });
+      setAsyncJob(await getCurrentIntegrityAsyncJob());
     } catch (e) {
-      toast(getTranslatedApiError(e, t, t('integrity.validationRun.error')), 'error');
+      const resume = integrityAsyncBusyResumeLine(e);
+      if (resume) {
+        toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
+        setAsyncJob(await getCurrentIntegrityAsyncJob());
+      } else {
+        toast(getTranslatedApiError(e, t, t('integrity.validationRun.error')), 'error');
+      }
     } finally {
       setValidationRunLoading(false);
     }
@@ -996,6 +996,9 @@ function IntegrityPanel({
   // Auto-run chain check on page load: populates the gaps list
   // without requiring the operator to click *Run integrity check* first.
   // UX shortcut only — backend discoverability is owned by AuditChainScheduler.
+  // Do not clobber sticky Escape (EXPIRED|CANCELLED): wait for GET
+  // current first so « Abandon and restart » stays reachable (Isabelle ronde 1).
+  // Crash INTERRUPTED is auto-abandoned and is not Escape-sticky (Marc posture).
   useEffect(() => {
     if (chainReport || chainLoading) return;
 
@@ -1006,7 +1009,33 @@ function IntegrityPanel({
       setCheckRange(effectiveRange);
     }
 
-    void runChainCheck(effectiveRange);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const current = await getCurrentIntegrityAsyncJob();
+        if (cancelled) {
+          return;
+        }
+        if (current != null) {
+          setAsyncJob(current);
+          if (
+            current.status === 'RUNNING'
+            || (isIntegrityAsyncEscapeStatus(current.status) && current.abandonedAt == null)
+          ) {
+            return;
+          }
+        }
+      } catch {
+        // Fall through to auto-start when status cannot be read (idle / network).
+      }
+      if (!cancelled) {
+        await runChainCheck(effectiveRange);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1031,6 +1060,7 @@ function IntegrityPanel({
         />
       </div>
 
+      <IntegrityAsyncJobBanner job={asyncJob} onJobChange={setAsyncJob} active />
 
       <div
         role="tablist"
@@ -1147,24 +1177,30 @@ function IntegrityPanel({
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => runChainCheck()}
-                disabled={chainLoading || !checkRange.from || !checkRange.to}
+                onClick={() => void runChainCheck()}
+                disabled={chainLoading || asyncStartsBlocked || !checkRange.from || !checkRange.to}
                 className="gap-1.5"
-                title={!checkRange.from || !checkRange.to ? t('integrity.selectDateRangeToRun') : undefined}
+                title={asyncStartsDisabledReason}
+                data-testid="integrity-verify-chain"
               >
                 <ShieldCheck className="size-3.5" />
-                {chainLoading ? t('integrity.checking') : t('integrity.verifyChain')}
+                {chainLoading || (asyncSlotRunning && asyncJob?.type === 'VERIFY_CHAIN_RANGE')
+                  ? t('integrity.checking')
+                  : t('integrity.verifyChain')}
               </Button>
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={runIntegrityCheck}
-                disabled={integrityLoading || !checkRange.from || !checkRange.to}
+                onClick={() => void runIntegrityCheck()}
+                disabled={integrityLoading || asyncStartsBlocked || !checkRange.from || !checkRange.to}
                 className="gap-1.5"
-                title={!checkRange.from || !checkRange.to ? t('integrity.selectDateRangeToRun') : undefined}
+                title={asyncStartsDisabledReason}
+                data-testid="integrity-verify-entry-range"
               >
                 <ShieldCheck className="size-3.5" />
-                {integrityLoading ? t('integrity.checking') : t('integrity.verifyEntry')}
+                {integrityLoading || (asyncSlotRunning && asyncJob?.type === 'VERIFY_ENTRY_HMAC_RANGE')
+                  ? t('integrity.checking')
+                  : t('integrity.verifyEntry')}
               </Button>
               <div className="ml-auto flex items-center gap-2">
                 {!nightlyValidationEnabled && (
@@ -1181,19 +1217,18 @@ function IntegrityPanel({
                     onClick={() => void runRetroactiveValidation()}
                     disabled={
                       validationRunLoading
+                      || asyncStartsBlocked
                       || !checkRange.from
                       || !checkRange.to
                     }
                     className="gap-1.5"
-                    title={
-                      !checkRange.from || !checkRange.to
-                        ? t('integrity.selectDateRangeToRun')
-                        : undefined
-                    }
+                    title={asyncStartsDisabledReason}
                     data-testid="integrity-run-validation"
                   >
                     <ShieldAlert className="size-3.5" />
-                    {validationRunLoading ? t('integrity.validationRun.running') : t('integrity.runValidation')}
+                    {validationRunLoading || (asyncSlotRunning && asyncJob?.type === 'RUN_VALIDATION')
+                      ? t('integrity.validationRun.running')
+                      : t('integrity.runValidation')}
                   </Button>
                 ) : (
                   <Tooltip content={t('integrity.runValidationInactiveTooltip')}>

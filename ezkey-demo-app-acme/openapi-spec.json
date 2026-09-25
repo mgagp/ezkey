@@ -2408,6 +2408,130 @@
         }
       }
     },
+    "/api/v1/audit-logs/integrity/jobs": {
+      "post": {
+        "tags": [
+          "Integrity Async Jobs"
+        ],
+        "summary": "Start Integrity async job",
+        "description": "Accepts a long Integrity operation on the single global slot and returns immediately. Second start while occupied returns 409 with the current job summary. Global Admin only.",
+        "operationId": "start",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntegrityAsyncJobStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Job accepted",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobAcceptedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Slot busy, or nightly validation inactive for RUN_VALIDATION (integrity-validation-disabled)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobAcceptedResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobAcceptedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs/integrity/jobs/current/abandon": {
+      "post": {
+        "tags": [
+          "Integrity Async Jobs"
+        ],
+        "summary": "Abandon Integrity async job slot",
+        "description": "Frees sticky EXPIRED / CANCELLED state so Starts can be used cleanly. Crash/restart INTERRUPTED is auto-abandoned (not Escape-sticky). Refuses healthy RUNNING. Does not erase prior FAILED evidence. Global Admin only.",
+        "operationId": "abandon",
+        "responses": {
+          "200": {
+            "description": "Slot abandoned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Abandon not allowed for current status",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/audit-logs/integrity-validation/run": {
       "post": {
         "tags": [
@@ -5030,6 +5154,9 @@
                 "AUDIT_INTEGRITY_RUPTURE_CONCILIATED",
                 "AUDIT_ENTRY_INTEGRITY_CONCILIATED",
                 "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED",
+                "INTEGRITY_ASYNC_JOB_STARTED",
+                "INTEGRITY_ASYNC_JOB_COMPLETED",
+                "INTEGRITY_ASYNC_JOB_ABANDONED",
                 "ALERT_RAISED",
                 "ALERT_RESOLVED"
               ]
@@ -5533,6 +5660,120 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs/integrity/jobs/{jobId}": {
+      "get": {
+        "tags": [
+          "Integrity Async Jobs"
+        ],
+        "summary": "Get Integrity async job by id",
+        "operationId": "getById_3",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown job id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs/integrity/jobs/current": {
+      "get": {
+        "tags": [
+          "Integrity Async Jobs"
+        ],
+        "summary": "Get current Integrity async job",
+        "description": "Any Global Admin may read the current slot status and last result. Applies TTL expiry for stale RUNNING heartbeats. Returns 204 when idle.",
+        "operationId": "getCurrent",
+        "responses": {
+          "200": {
+            "description": "Current or last visible job",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No job to show",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
                 }
               }
             }
@@ -7511,6 +7752,130 @@
           }
         }
       },
+      "IntegrityAsyncJobStartRequest": {
+        "type": "object",
+        "description": "Start an Integrity async job on the single global slot.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Job type",
+            "enum": [
+              "VERIFY_CHAIN_RANGE",
+              "VERIFY_ENTRY_HMAC_RANGE",
+              "RUN_VALIDATION"
+            ]
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Inclusive window start (ISO-8601)"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Exclusive window end (ISO-8601)"
+          },
+          "raiseAlert": {
+            "type": "boolean",
+            "description": "When type is RUN_VALIDATION, whether to raise/touch alert on eligible violations. Default true. Ignored for verify job types."
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "type"
+        ]
+      },
+      "IntegrityAsyncJobAcceptedResponse": {
+        "type": "object",
+        "description": "Accepted Integrity async job (minimal body).",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Opaque job id"
+          }
+        },
+        "required": [
+          "jobId"
+        ]
+      },
+      "IntegrityAsyncJobResponse": {
+        "type": "object",
+        "description": "Integrity async job status and result summary (non-secret).",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "VERIFY_CHAIN_RANGE",
+              "VERIFY_ENTRY_HMAC_RANGE",
+              "RUN_VALIDATION"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "RUNNING",
+              "SUCCEEDED",
+              "FAILED",
+              "CANCELLED",
+              "EXPIRED",
+              "INTERRUPTED"
+            ]
+          },
+          "startedByUsername": {
+            "type": "string"
+          },
+          "startedByAdminId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "heartbeatAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scopeFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scopeTo": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resultSummary": {
+            "type": "string"
+          },
+          "errorSummary": {
+            "type": "string"
+          },
+          "intact": {
+            "type": "boolean"
+          },
+          "alertId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "abandonedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resumeOneLiner": {
+            "type": "string"
+          }
+        }
+      },
       "RetroactiveIntegrityValidationRunRequest": {
         "type": "object",
         "properties": {
@@ -9403,6 +9768,9 @@
               "AUDIT_INTEGRITY_RUPTURE_CONCILIATED",
               "AUDIT_ENTRY_INTEGRITY_CONCILIATED",
               "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED",
+              "INTEGRITY_ASYNC_JOB_STARTED",
+              "INTEGRITY_ASYNC_JOB_COMPLETED",
+              "INTEGRITY_ASYNC_JOB_ABANDONED",
               "ALERT_RAISED",
               "ALERT_RESOLVED"
             ]

@@ -103,6 +103,21 @@ public class AuditChainVerificationService {
    */
   @Transactional(readOnly = true)
   public ChainVerificationReport verifyChain(OffsetDateTime from, OffsetDateTime to) {
+    return verifyChain(from, to, null);
+  }
+
+  /**
+   * Verifies chain checkpoint integrity, invoking {@code onChunkHeartbeat} periodically when
+   * non-null (async job heartbeat).
+   *
+   * @param from start of the verification range (inclusive)
+   * @param to end of the verification range (exclusive)
+   * @param onChunkHeartbeat optional callback during the checkpoint loop
+   * @return chain verification report
+   */
+  @Transactional(readOnly = true)
+  public ChainVerificationReport verifyChain(
+      OffsetDateTime from, OffsetDateTime to, Runnable onChunkHeartbeat) {
     if (!auditHmacService.isActive()) {
       return new ChainVerificationReport(
           0,
@@ -243,6 +258,11 @@ public class AuditChainVerificationService {
         validCheckpoints++;
       } else {
         invalidCheckpoints++;
+      }
+
+      if (onChunkHeartbeat != null
+          && (i == 0 || (i + 1) % 10 == 0 || i == checkpoints.size() - 1)) {
+        onChunkHeartbeat.run();
       }
     }
 
