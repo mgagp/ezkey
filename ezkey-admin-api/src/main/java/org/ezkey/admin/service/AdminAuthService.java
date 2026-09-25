@@ -80,7 +80,7 @@ public class AdminAuthService {
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
   /** Generic client-facing message for all pre-authentication login failures (SEC-006). */
-  private static final String GENERIC_LOGIN_FAILURE_MESSAGE = "Invalid username or password";
+  private static final String GENERIC_LOGIN_FAILURE_MESSAGE = "Invalid username";
 
   private final EzkeyAdminRepository adminRepository;
   private final AdminTokenRepository tokenRepository;

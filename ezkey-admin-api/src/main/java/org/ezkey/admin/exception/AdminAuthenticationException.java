@@ -36,7 +36,7 @@ import java.io.Serial;
  * "type": "https://ezkey.io/problems/authentication/invalid-credentials",
  * "title": "Invalid Credentials",
  * "status": 401,
- * "detail": "Invalid username or password",
+ * "detail": "Invalid username",
  * "instance": "/api/v1/admin/auth/login"
  * }
  *
