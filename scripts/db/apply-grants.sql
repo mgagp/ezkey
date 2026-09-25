@@ -77,7 +77,8 @@ GRANT SELECT ON TABLE
   ezkey_integration,
   ezkey_encryption_key,
   ezkey_keyset_blob,
-  ezkey_audit_chain_checkpoint
+  ezkey_audit_chain_checkpoint,
+  ezkey_integrity_async_job
 TO ezkey_auth;
 
 GRANT SELECT, UPDATE ON TABLE
@@ -104,7 +105,8 @@ GRANT SELECT ON TABLE
   ezkey_enrollment,
   ezkey_encryption_key,
   ezkey_keyset_blob,
-  ezkey_audit_chain_checkpoint
+  ezkey_audit_chain_checkpoint,
+  ezkey_integrity_async_job
 TO ezkey_integration;
 
 GRANT SELECT, INSERT, UPDATE ON TABLE ezkey_auth_attempt TO ezkey_integration;

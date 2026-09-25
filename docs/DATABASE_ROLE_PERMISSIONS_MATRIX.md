@@ -88,7 +88,7 @@ Legend: **S**=SELECT · **I**=INSERT · **U**=UPDATE · **D**=DELETE · **X**=EX
 | `ezkey_audit_entry_integrity_conciliation` | owner | S I U | — | — | Admin reconcile only |
 | `ezkey_alert` | owner | S I U | S I U | S I U | Resolve = UPDATE; no hard DELETE (intentional). Future retention/purge of aged `RESOLVED` rows: [`I-2026-07-17-alert-resolved-retention-purge`](../product-docs/global/backlog/ideas/I-2026-07-17-alert-resolved-retention-purge.md) |
 | `ezkey_scheduled_job_last_run` | owner | S U | — | — | Seeded by migration; admin updates |
-| `ezkey_integrity_async_job` | owner | S I U | — | — | Global Integrity async slot (operator long jobs) |
+| `ezkey_integrity_async_job` | owner | S I U | S | S | Admin writes the global Integrity async slot; peripherals SELECT only (Hibernate validate / shared `org.ezkey.audit` entity scan — same posture as checkpoints) |
 | `ezkey_shedlock` | owner | S I U | — | — | Admin ShedLock only |
 | `create_monthly_partition(...)` | owner | X | — | — | SECURITY DEFINER; admin `PartitionSchedulerService` |
 

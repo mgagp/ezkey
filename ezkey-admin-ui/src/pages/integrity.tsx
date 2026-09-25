@@ -81,6 +81,7 @@ import type {
 import {
   getCurrentIntegrityAsyncJob,
   integrityAsyncBusyResumeLine,
+  isIntegrityAsyncEscapeStatus,
   startIntegrityAsyncJob,
   type IntegrityAsyncJobResponse,
 } from '@/lib/integrity-async-jobs';
@@ -988,6 +989,8 @@ function IntegrityPanel({
   // Auto-run chain check on page load: populates the gaps list
   // without requiring the operator to click *Run integrity check* first.
   // UX shortcut only — backend discoverability is owned by AuditChainScheduler.
+  // Do not clobber sticky Escape (EXPIRED|CANCELLED|INTERRUPTED): wait for GET
+  // current first so « Abandon and restart » stays reachable (Isabelle ronde 1).
   useEffect(() => {
     if (chainReport || chainLoading) return;
 
@@ -998,7 +1001,33 @@ function IntegrityPanel({
       setCheckRange(effectiveRange);
     }
 
-    void runChainCheck(effectiveRange);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const current = await getCurrentIntegrityAsyncJob();
+        if (cancelled) {
+          return;
+        }
+        if (current != null) {
+          setAsyncJob(current);
+          if (
+            current.status === 'RUNNING'
+            || (isIntegrityAsyncEscapeStatus(current.status) && current.abandonedAt == null)
+          ) {
+            return;
+          }
+        }
+      } catch {
+        // Fall through to auto-start when status cannot be read (idle / network).
+      }
+      if (!cancelled) {
+        await runChainCheck(effectiveRange);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

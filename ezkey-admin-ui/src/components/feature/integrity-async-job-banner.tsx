@@ -10,8 +10,8 @@ import { formatRelativeTime } from '@/lib/utils';
 import {
   abandonIntegrityAsyncJob,
   getCurrentIntegrityAsyncJob,
+  isIntegrityAsyncEscapeStatus,
   type IntegrityAsyncJobResponse,
-  type IntegrityAsyncJobStatus,
   type IntegrityAsyncJobType,
 } from '@/lib/integrity-async-jobs';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
@@ -30,10 +30,6 @@ function jobTypeLabelKey(type: IntegrityAsyncJobType): string {
     default:
       return 'integrity.asyncJob.type.unknown';
   }
-}
-
-function isEscapeStatus(status: IntegrityAsyncJobStatus): boolean {
-  return status === 'EXPIRED' || status === 'CANCELLED' || status === 'INTERRUPTED';
 }
 
 export interface IntegrityAsyncJobBannerProps {
@@ -155,7 +151,7 @@ export function IntegrityAsyncJobBanner({ job, onJobChange, active }: IntegrityA
         role="status"
       >
         <span className="min-w-0 flex-1">{message}</span>
-        {isEscapeStatus(job.status) && (
+        {isIntegrityAsyncEscapeStatus(job.status) && (
           <Button
             type="button"
             size="sm"

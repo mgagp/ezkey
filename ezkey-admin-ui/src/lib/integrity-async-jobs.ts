@@ -72,6 +72,16 @@ export async function abandonIntegrityAsyncJob(): Promise<IntegrityAsyncJobRespo
   });
 }
 
+/**
+ * Sticky Escape statuses — Abandon and restart is available; mount auto-start must not
+ * overwrite these before the operator can abandon.
+ */
+export function isIntegrityAsyncEscapeStatus(
+  status: IntegrityAsyncJobStatus | undefined | null,
+): boolean {
+  return status === 'EXPIRED' || status === 'CANCELLED' || status === 'INTERRUPTED';
+}
+
 export function integrityAsyncBusyResumeLine(error: unknown): string | null {
   if (!(error instanceof ApiError) || error.status !== 409) {
     return null;
