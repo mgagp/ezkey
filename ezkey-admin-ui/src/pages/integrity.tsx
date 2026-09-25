@@ -28,8 +28,6 @@ import { queryKeys } from '@/lib/query-keys';
 import { cn, formatDateOnly, formatDateWithTimezone } from '@/lib/utils';
 import {
   loadIntegrityInvestigationSession,
-  saveIntegrityInvestigationSession,
-  buildInvestigationSession,
   resolveEntryIntegrityReportSummaryState,
   type IntegrityInvestigationSession,
 } from '@/lib/integrity-investigation-session';
@@ -673,31 +671,6 @@ function IntegrityPanel({
     const past = new Date(now);
     past.setDate(past.getDate() - 7);
     return { from: toYYYYMMDD(past), to: toYYYYMMDD(now) };
-  }
-
-  function persistInvestigationSession(
-    entry: IntegrityReport,
-    chain: ChainVerificationReport,
-    range: { from: string; to: string },
-  ) {
-    if (!initialCheckRange?.createdAfter || !initialCheckRange.createdBefore) {
-      return;
-    }
-    const { createdAfter, createdBefore } = dateRangeToApiParams(
-      range.from,
-      range.to,
-      effectiveTimeZoneId,
-    );
-    saveIntegrityInvestigationSession(
-      buildInvestigationSession({
-        source: 'integrity-alert',
-        windowFrom: createdAfter ?? initialCheckRange.createdAfter,
-        windowTo: createdBefore ?? initialCheckRange.createdBefore,
-        entryViolations: entry.entryViolations?.items ?? [],
-        chainViolations: chain.chainViolations ?? [],
-        focusCheckpointId: focusCheckpointId ?? undefined,
-      }),
-    );
   }
 
   function integrityRangeToApiParams(range: { from: string; to: string }) {
