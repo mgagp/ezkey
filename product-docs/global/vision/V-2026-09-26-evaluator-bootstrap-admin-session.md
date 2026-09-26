@@ -4,7 +4,8 @@
 ## Metadata
 
 - **ID:** `V-2026-09-26-evaluator-bootstrap-admin-session`
-- **Status:** `draft`
+- **Status:** `archived`
+- **Superseded by:** [`V-2026-09-26-temporary-evaluator-console-access`](V-2026-09-26-temporary-evaluator-console-access.md)
 - **Lane:** `D` (post-delivery evolution of evaluator self-registration / community alpha funnel)
 - **Created at:** `2026-09-26`
 - **Updated at:** `2026-09-26`
@@ -13,6 +14,11 @@
 - **Marc defaults confirmed:** `2026-09-26` — same self-reg flag only; auto-redirect after emit + QR in account; one-sentence expiry message
 
 ## Intent
+
+> **Archived.** Path B bridled BOOTSTRAP abandoned as product intent (#631 closed without merge);
+> see the superseding note
+> [`V-2026-09-26-temporary-evaluator-console-access`](V-2026-09-26-temporary-evaluator-console-access.md)
+> for temporary navigable console access (Mode C restart).
 
 On the **community / alpha** instance only, when public evaluator signup emits an activation code,
 **also mint an opaque Admin UI bootstrap session** so the evaluator can reach the console without
