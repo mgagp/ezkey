@@ -9,7 +9,7 @@
   **operator-complete** closure criteria.
 - **Program:** GitHub #269 (closed 2026-07-03); historical milestone compass
   [`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md);
-  live product posture [`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md)
+  live product posture [`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md)
 - **Closeout:** [`backlog/method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](backlog/method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md)
 
 ---
@@ -82,7 +82,7 @@ Steady     → no duplicate alert; entry HMAC still invalid but Explained; chain
 
 1. Read **this compass** + [`integrity-cluster-design-pack.md`](integrity-cluster-design-pack.md).
 2. Wave B and Wave C code for this cluster are **done**. Live product priority:
-   [`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md)
+   [`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md)
    + [`backlog/index.md`](backlog/index.md) — not a remaining integrity P0.
 3. Runtime: [`docs/ALERTS.md`](../../docs/ALERTS.md), [`docs/AUDIT_LOG_INTEGRITY.md`](../../docs/AUDIT_LOG_INTEGRITY.md).
 4. Honest limits: [`integrity-assurance-honest-line.md`](integrity-assurance-honest-line.md).

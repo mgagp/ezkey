@@ -1,24 +1,29 @@
 # Operational Readiness Prioritization — September 2026 Target (historical)
 
+> **Superseded as next-P0 gate** by
+> [`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md).
+> Keep **Waves A–C + freeze D** history intact below. Do not treat this file as the live
+> “what should be next?” compass.
+
 ## Metadata
 
 - **Document ID:** `operational-readiness-prioritization-2026-09`
-- **Status:** `historical` (superseded as live priority compass)
+- **Status:** `historical` (superseded as next-P0 gate by `V-2026-09-26-public-alpha-posture-closeout`)
 - **Created at:** `2026-06-28`
 - **Last reviewed at:** `2026-09-26`
 - **Target milestone:** First **formally operable** Ezkey release line (experimental deployment posture; not production SLA) — **horizon reached / program closed**
-- **Horizon:** **September 2026** (exercise from 2026-06-28; Waves A–D closed)
+- **Horizon:** **September 2026** (exercise from 2026-06-28; Waves A–C + freeze D closed)
 - **Owner:** Marc (maintainer discussion captured below)
 - **Supersedes:** Ad-hoc “next P3 slice” choice (Alerts list polish) as the default cold-start priority
-- **Superseded by (live compass):** [`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md)
+- **Superseded by (next-P0 gate):** [`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md)
 
 ## Session restart phrase (cold start)
 
 > **“Where are we?” / “What should be next?”** → Do **not** treat this document as the live next-P0
 > gate. Read
-> [`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md)
-> and [`backlog/index.md`](backlog/index.md) first. Keep this file for **Waves A–D history** and the
-> integrity-cluster ordering narrative.
+> [`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md)
+> and [`backlog/index.md`](backlog/index.md) first. Keep this file for **Waves A–C + freeze D**
+> history and the integrity-cluster ordering narrative.
 
 **2026-08-25:** Waves A–C are **closed**. Wave D (EXP1 soak) is **closed as an attention freeze**,
 not a remaining executable gate. “What should be next?” is the active backlog in
@@ -29,10 +34,10 @@ not a remaining executable gate. “What should be next?” is the active backlo
 remains the product site; editorial pass live via PR #609). Decision record (promoted):
 [`vision/V-2026-09-22-exp1-to-ezkey-online-alpha.md`](vision/V-2026-09-22-exp1-to-ezkey-online-alpha.md).
 
-**2026-09-26 (posture lock):** Live cold-start compass is
-[`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md)
-(laboratory / alpha community / GitHub open / Play closed testing / intention-first; no P0 backlog).
-This document remains the **historical** Waves A–D release-order record.
+**2026-09-26 (public alpha posture closeout):** Live cold-start compass is
+[`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md)
+(lab · discrete · alpha ≠ prod · no SLA; public **base** / **integrity** naming; intention-first;
+no P0 backlog). This document remains the **historical** Waves A–C + freeze D release-order record.
 
 ## Context — maintainer discussion (2026-06-28)
 
@@ -208,8 +213,8 @@ idea closed.
 
 | Entry point | Link |
 |-------------|------|
-| **Live cold-start compass** | [`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md) |
-| **This document** | Historical Waves A–D release-order record |
+| **Live cold-start compass** | [`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md) |
+| **This document** | Historical Waves A–C + freeze D release-order record |
 | Backlog index | [`backlog/index.md`](backlog/index.md) § Current prioritization anchor |
 | Roadmap P2 | [`roadmap.md`](roadmap.md) → Milestone `P2-hardening` |
 | Integrity vision | [`V-2026-0004`](vision/V-2026-0004-integrity-validation-strategy.md) |
@@ -220,6 +225,6 @@ idea closed.
 
 ## Review cadence
 
-- **Closed as live compass** on **2026-09-26** — superseded by
-  [`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md).
-- Keep Waves A–D sections intact for historical traceability; do not revive this file as a P0 gate.
+- **Closed as next-P0 gate** on **2026-09-26** — superseded by
+  [`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md).
+- Keep Waves A–C + freeze D sections intact for historical traceability; do not revive this file as a P0 gate.

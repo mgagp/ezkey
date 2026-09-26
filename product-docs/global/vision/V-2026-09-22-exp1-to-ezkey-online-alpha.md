@@ -20,7 +20,7 @@ equivalence.
 
 This note is the **decision record** for those locks. Site repositioning on ezkey.org is **done**
 (PR #609). Community host cutover on **ezkey.online** is live (ops ledger). Residual canon sync
-closed with [`V-2026-09-26-laboratory-alpha-posture-lock`](V-2026-09-26-laboratory-alpha-posture-lock.md).
+closed with [`V-2026-09-26-public-alpha-posture-closeout`](V-2026-09-26-public-alpha-posture-closeout.md).
 
 ## Motivation — why the EXP1 public label retires
 
@@ -100,13 +100,13 @@ Order is intentional: **comms and site first**, infrastructure rename second.
 | ezkey.org EXP1 → alpha / ezkey.online editorial pass | **Done** | Product / site | PR #609 merged + live on https://ezkey.org/ (2026-09-22); migration banner until ezkey.online is back |
 | DNS + Cloudflare cutover | Done (ops) | Edgar + ops | Community host live; ledger [`../../../docs/lightsail/community/DEPLOYED.md`](../../../docs/lightsail/community/DEPLOYED.md) |
 | Lightsail VM recycle / hostname cut | Done (ops) | Ops | Residual EXP1 public branding retired for forward-looking surfaces |
-| Canon sync (operational-readiness residual EXP1 wording, OpenAPI exposure matrix “evaluator EXP1”, orientation index) | **Done** (docs) | Docs hygiene | Closed with [`V-2026-09-26-laboratory-alpha-posture-lock`](V-2026-09-26-laboratory-alpha-posture-lock.md); `product-orientation-notes.md` index row remains post-merge on `main` |
+| Canon sync (operational-readiness residual EXP1 wording, OpenAPI exposure matrix “evaluator EXP1”, orientation index) | **Done** (docs) | Docs hygiene | Closed with [`V-2026-09-26-public-alpha-posture-closeout`](V-2026-09-26-public-alpha-posture-closeout.md); orientation index rows included |
 
 ## Related artifacts
 
 - [`../product-intent.md`](../product-intent.md) — protocol identity and non-equivalence honesty
-- [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md) — historical Waves A–D; superseded as live compass by `V-2026-09-26`
-- [`V-2026-09-26-laboratory-alpha-posture-lock`](V-2026-09-26-laboratory-alpha-posture-lock.md) — live laboratory / alpha community posture lock
+- [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md) — historical Waves A–C + freeze D; superseded as next-P0 gate by `V-2026-09-26`
+- [`V-2026-09-26-public-alpha-posture-closeout`](V-2026-09-26-public-alpha-posture-closeout.md) — live public alpha posture closeout
 - [`../openapi-exposure-matrix.md`](../openapi-exposure-matrix.md) — community / ezkey.online exposure row (historical EXP1 label noted)
 - [`V-2026-0014`](V-2026-0014-api-docs-exposure-portal.md) — public API docs vs raw tooling; still relevant for community host exposure
 - [`I-2026-05-23-exp1-anonymous-evaluator-onboarding`](../backlog/ideas/I-2026-05-23-exp1-anonymous-evaluator-onboarding.md) — evaluator signup track; retarget host naming when executed against ezkey.online
@@ -118,5 +118,5 @@ Order is intentional: **comms and site first**, infrastructure rename second.
 Promoted 2026-09-22 after Marc approved merge of this decision record and the ezkey.org
 repositioning (#609) landed on production. Community host cutover proceeded on ops (see deploy
 ledger). Canon residuals closed 2026-09-26 with
-[`V-2026-09-26-laboratory-alpha-posture-lock`](V-2026-09-26-laboratory-alpha-posture-lock.md).
+[`V-2026-09-26-public-alpha-posture-closeout`](V-2026-09-26-public-alpha-posture-closeout.md).
 Treat the **Product locks**, **Hostname map**, and **Cutover sequence** as durable guidance.

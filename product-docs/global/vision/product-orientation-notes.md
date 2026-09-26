@@ -33,6 +33,8 @@ this index is updated only post-merge on `main`, never on feature branches.
 
 | ID | Title | Promoted date | Canonical destination |
 |----|-------|---------------|-----------------------|
+| `V-2026-09-26-public-alpha-posture-closeout` | Public alpha posture closeout (lab · discrete · alpha ≠ prod) | `2026-09-26` | Live cold-start / next-P0 compass; supersedes September operational-readiness as gate |
+| `V-2026-09-22-exp1-to-ezkey-online-alpha` | EXP1 → ezkey.online alpha community instance | `2026-09-22` | Domain/host locks; site PR #609; community ledger |
 | `V-2026-0014` | API documentation exposure and portal posture | `2026-05-22` | `I-2026-0026` → `TB-2026-0003` |
 
 ## Archived

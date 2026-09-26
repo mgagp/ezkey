@@ -21,10 +21,10 @@ This page is the single canon for that stance. Honest security claims live in
 
 Current funded work is **continuous product and code hygiene** under an intention-first laboratory
 / public-alpha posture — not a September P0 release gate. See
-[`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md).
-Historical Waves A–D ordering lives in
+[`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md).
+Historical Waves A–C + freeze D ordering lives in
 [`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md)
-(superseded as live compass). That history already stated that operable does **not** mean full
+(superseded as next-P0 gate). That history already stated that operable does **not** mean full
 SOC 2 certification.
 
 Normative posture **orients** design. It does not outrank the live posture lock, invent control
@@ -99,7 +99,7 @@ a parallel compliance program.
 - [`design-principles.md`](design-principles.md) — especially security as posture, not a bolted-on
   feature.
 - [`docs/SECURITY_POSTURE.md`](../../docs/SECURITY_POSTURE.md) — honest claims and threat model.
-- [`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md)
-  — live laboratory / public-alpha posture lock.
+- [`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md)
+  — live public alpha posture closeout.
 - [`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md)
-  — historical Waves A–D release-order record.
+  — historical Waves A–C + freeze D release-order record.

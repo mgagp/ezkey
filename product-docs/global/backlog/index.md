@@ -6,19 +6,19 @@ This index provides a lightweight list of active ideas and their current state.
 
 ## Current prioritization anchor (read first)
 
-**“Where are we?” / “What should be next?”** — live posture lock:
+**“Where are we?” / “What should be next?”** — live posture closeout:
 
-→ [`../vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](../vision/V-2026-09-26-laboratory-alpha-posture-lock.md)
+→ [`../vision/V-2026-09-26-public-alpha-posture-closeout.md`](../vision/V-2026-09-26-public-alpha-posture-closeout.md)
 
-**Summary (2026-09-26):** Laboratory / opinionated / experimental posture; public alpha community
-on **ezkey.online**; GitHub open; Play Store **closed testing** only (not mobile production);
-intention-first collaboration. Waves A–C and Wave D (attention freeze) are **closed**. There is
-**no remaining P0** on the active backlog. Evaluator self-registration stays **off by default**
-(`ezkey.evaluator.self-registration.enabled`); community may enable it explicitly.
+**Summary (2026-09-26):** Public alpha posture closeout — laboratory · discrete · alpha ≠ prod ·
+no SLA; public runtime names **`base`** / **`integrity`** (not « eval profile »); GitHub open;
+Play Store **closed testing** only; intention-first. Waves A–C and Wave D (attention freeze) are
+**closed**. There is **no remaining P0** on the active backlog. Evaluator self-registration stays
+**OFF by default**; community may enable it **explicitly**.
 
-Historical September operable-release compass (Waves A–D narrative only):
+Historical September operable-release compass (Waves A–C + freeze D narrative only):
 [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
-— superseded as live priority gate by `V-2026-09-26`.
+— superseded as next-P0 gate by `V-2026-09-26-public-alpha-posture-closeout`.
 
 **Earlier summary (2026-08-25 / 2026-09-22):** Wave B integrity cluster R1 **closed** (GitHub #269).
 Wave C operator UI residuals **closed**. Wave D was an **attention freeze**, not a backlog item.
