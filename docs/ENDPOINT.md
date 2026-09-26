@@ -690,7 +690,7 @@ when activation cannot proceed in the current state.
 
 ---
 
-#### POST /evaluator-temp (temporary evaluator console — Mode C)
+#### POST /evaluator-temp (temporary evaluator console)
 
 Available only when `ezkey.evaluator.self-registration.enabled=true` (same gate as anonymous
 evaluator signup). After activation, the Admin UI may offer temporary console explore without a

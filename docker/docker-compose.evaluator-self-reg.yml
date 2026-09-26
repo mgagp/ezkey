@@ -1,4 +1,4 @@
-# Overlay: enable evaluator self-registration + temporary console explore (Mode C)
+# Overlay: enable evaluator self-registration + temporary evaluator console explore
 # for local QA. Clean-start stays OFF by default — use this overlay only when testing
 # the community/lab funnel.
 #

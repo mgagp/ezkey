@@ -408,14 +408,14 @@ installations that intentionally expose public signup.
 | `ezkey.evaluator.self-registration.per-ip-max-success` | `int` | `1` | optionnel | Max successful signups per IP within the window. |
 | `ezkey.evaluator.self-registration.admin-ui-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
 | `ezkey.evaluator.self-registration.guided-tour-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
-| `ezkey.evaluator.self-registration.temporary-session-ttl-hours` | `int` | `8` | optionnel | Absolute TTL for Mode C `EVALUATOR_TEMP` temporary console sessions when `enabled=true`. |
+| `ezkey.evaluator.self-registration.temporary-session-ttl-hours` | `int` | `8` | optionnel | Absolute TTL for temporary evaluator console (`EVALUATOR_TEMP`) sessions when `enabled=true`. |
 
 **Fail-closed:** when `enabled=true`, Admin API startup aborts if `admin-ui-url` or
 `guided-tour-url` is blank (`EvaluatorSelfRegistrationStartupValidator`).
 
-**Temporary console (Mode C):** same flag only — no second toggle. When ON, after activation the
-Admin UI offers « Explorer la console — accès temporaire (~8 h) » (mint `EVALUATOR_TEMP`) beside
-classic device enroll. See
+**Temporary evaluator console:** same self-registration flag only — no second temporary-console
+toggle. When ON, after activation the Admin UI offers « Explorer la console — accès temporaire
+(~8 h) » (mint `EVALUATOR_TEMP`) beside classic device enroll. See
 [`product-docs/global/vision/V-2026-09-26-temporary-evaluator-console-access.md`](../product-docs/global/vision/V-2026-09-26-temporary-evaluator-console-access.md).
 Local QA overlay: [`docker/docker-compose.evaluator-self-reg.yml`](../docker/docker-compose.evaluator-self-reg.yml).
 
