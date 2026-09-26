@@ -432,7 +432,7 @@ passwordless login. Community / alpha only — not a clean-start or production d
 | `sessionExpiresAt` | Absolute expiry (~8h). |
 | `username` | Generated evaluator Tenant Admin username. |
 
-**BOOTSTRAP allowlist** (while using that session): `POST /admin/auth/activate`, `GET /admin/auth/me`, `GET /admins/{id}/onboarding` (+ `/qrcode`), `GET /enrollments/{id}`, `POST /admin/auth/logout`. Logout invalidates the session server-side; the incomplete tenant/admin persists.
+**BOOTSTRAP allowlist** (while using that session): `POST /admin/auth/activate`, `POST /admin/auth/login`, `POST /admin/auth/passwordless-wait`, `POST /admin/auth/recover`, `POST /admin/auth/onboarding-resume`, `GET /admin/auth/me`, `GET /admins/{id}/onboarding` (+ `/qrcode`), `GET /enrollments/{id}`, `POST /admin/auth/logout`. The permitAll auth family is allowlisted so a leftover Mode B HttpOnly BOOTSTRAP cookie does not 403 passwordless login (`credentials: include`). Logout invalidates the session server-side; the incomplete tenant/admin persists. After bind reaches `VERIFIED`, Admin UI releases BOOTSTRAP then navigates to `/login`.
 
 **CORS:** cross-origin signup from `ezkey.org` requires `ezkey.admin.cors.allowed-origins` to include the static site origin(s). Auto-redirect target: Admin UI `/evaluator-bootstrap` (handoff via cookie or sessionStorage — not query string).
 

@@ -114,3 +114,29 @@ export function isBootstrapAllowedPath(pathname: string): boolean {
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   );
 }
+
+/**
+ * Invalidate a BOOTSTRAP foothold after device bind reaches VERIFIED so passwordless login is
+ * not blocked by a sticky Mode B HttpOnly cookie (and so /login is not bounced by isAuthenticated).
+ *
+ * Does <strong>not</strong> mark the bootstrap-expired resume hint — enrollment is complete.
+ *
+ * @returns true when local session was cleared (server logout succeeded, or Mode A local fallback)
+ */
+export async function releaseBootstrapSessionAfterBind(params: {
+  callLogout: () => Promise<unknown>;
+  clearLocalSession: () => void;
+  mayCompleteLocallyAfterApiFailure: boolean;
+}): Promise<boolean> {
+  try {
+    await params.callLogout();
+    params.clearLocalSession();
+    return true;
+  } catch {
+    if (params.mayCompleteLocallyAfterApiFailure) {
+      params.clearLocalSession();
+      return true;
+    }
+    return false;
+  }
+}

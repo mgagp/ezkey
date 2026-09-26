@@ -5,6 +5,7 @@ import {
   isBootstrapConsoleRestricted,
   isBootstrapSession,
   markBootstrapSessionExpired,
+  releaseBootstrapSessionAfterBind,
   storeEvaluatorBootstrapHandoff,
   takeBootstrapSessionExpiredFlag,
   takeEvaluatorBootstrapHandoff,
@@ -83,5 +84,44 @@ describe('evaluator-bootstrap-session', () => {
     expect(isBootstrapAllowedPath('/evaluator-onboarding')).toBe(true);
     expect(isBootstrapAllowedPath('/dashboard')).toBe(false);
     expect(isBootstrapAllowedPath('/tenants')).toBe(false);
+  });
+
+  it('releaseBootstrapSessionAfterBind clears local session without expiry flag', async () => {
+    const clearLocalSession = vi.fn();
+    const ok = await releaseBootstrapSessionAfterBind({
+      callLogout: async () => undefined,
+      clearLocalSession,
+      mayCompleteLocallyAfterApiFailure: false,
+    });
+    expect(ok).toBe(true);
+    expect(clearLocalSession).toHaveBeenCalledOnce();
+    // Successful bind handoff must not arm the "session expired / resume" login hint.
+    expect(takeBootstrapSessionExpiredFlag()).toBe(false);
+  });
+
+  it('releaseBootstrapSessionAfterBind fails closed in cookie mode when logout API fails', async () => {
+    const clearLocalSession = vi.fn();
+    const ok = await releaseBootstrapSessionAfterBind({
+      callLogout: async () => {
+        throw new Error('network');
+      },
+      clearLocalSession,
+      mayCompleteLocallyAfterApiFailure: false,
+    });
+    expect(ok).toBe(false);
+    expect(clearLocalSession).not.toHaveBeenCalled();
+  });
+
+  it('releaseBootstrapSessionAfterBind allows Mode A local wipe after logout API failure', async () => {
+    const clearLocalSession = vi.fn();
+    const ok = await releaseBootstrapSessionAfterBind({
+      callLogout: async () => {
+        throw new Error('network');
+      },
+      clearLocalSession,
+      mayCompleteLocallyAfterApiFailure: true,
+    });
+    expect(ok).toBe(true);
+    expect(clearLocalSession).toHaveBeenCalledOnce();
   });
 });

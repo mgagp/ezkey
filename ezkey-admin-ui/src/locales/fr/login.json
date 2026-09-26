@@ -133,6 +133,8 @@
     "onboardingHint": "Connecté temporairement en tant que {{username}}. Activez et liez un appareil — le QR d'enrôlement reste accessible ici.",
     "onboardingLoadFailed": "Impossible de charger le QR d'enrôlement. Utilisez le secret de reprise d'enrôlement reçu à l'activation, ou terminez la liaison depuis une autre session.",
     "afterBindLogin": "Après la liaison, connectez-vous avec EZKey sans mot de passe pour une session normale.",
+    "releasingAfterBind": "Appareil lié — fin de la session temporaire pour vous connecter avec EZKey…",
+    "releaseAfterBindFailed": "Impossible de terminer la session temporaire. Utilisez Déconnexion, puis connectez-vous avec EZKey sur la page de connexion.",
     "sessionExpired": "Session console temporaire terminée — utilisez le secret de reprise d'enrôlement ci-dessous pour continuer.",
     "resume": {
       "summary": "Redémarrer l'accès console temporaire",

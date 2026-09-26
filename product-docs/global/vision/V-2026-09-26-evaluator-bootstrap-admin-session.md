@@ -7,7 +7,7 @@
 - **Status:** `draft`
 - **Lane:** `D` (post-delivery evolution of evaluator self-registration / community alpha funnel)
 - **Created at:** `2026-09-26`
-- **Updated at:** `2026-09-26` (Christophe RED — Patrick craft: resume gate + BOOTSTRAP self-only)
+- **Updated at:** `2026-09-26` (sticky BOOTSTRAP cookie — allowlist permitAll auth + UI release after VERIFIED)
 - **Captured by:** Marc / Alex
 - **Priority:** `P2` (friction reduction on community alpha path; gated; not a platform default)
 - **Marc defaults confirmed:** `2026-09-26` — same self-reg flag only; auto-redirect after emit + QR in account; one-sentence expiry message
@@ -162,6 +162,13 @@ Flag-alone mint after any activate (including Global Admin) opened a resume → 
 1. Mint gate: flag ON + `TENANT_ADMIN` + evaluator provenance; never `GLOBAL_ADMIN`.
 2. Redeem gate: reject `GLOBAL_ADMIN` (leaked-secret resistant); keep `CREATED|BOUND`.
 3. BOOTSTRAP reads: onboarding/`qrcode` self-only.
+
+### Sticky BOOTSTRAP cookie after bind (Mode B / HttpOnly) — Patrick craft
+
+After activate → bind, passwordless `POST /admin/auth/login` (and `/passwordless-wait`) with `credentials: include` still carries the BOOTSTRAP cookie. Without an allowlist, `AdminBootstrapTokenScopeFilter` returned **403** (login not on the narrow surface). Cleared by:
+
+1. **Hard:** allowlist the SecurityConfig `permitAll` auth family on BOOTSTRAP (`login`, `passwordless-wait`, `recover`, `onboarding-resume`, plus existing activate/logout/me/onboarding/enrollment GET). Fail-closed elsewhere.
+2. **Soft:** when enrollment reaches `VERIFIED` on `/evaluator-onboarding`, logout BOOTSTRAP (invalidate cookie) then navigate to `/login` — no sticky foothold for passwordless.
 
 ## Honesty
 

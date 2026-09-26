@@ -31,6 +31,19 @@ class AdminBootstrapTokenScopeFilterTest {
   }
 
   @Test
+  @DisplayName("allows permitAll auth family so sticky BOOTSTRAP cookie does not 403 login")
+  void allowlistsPermitAllAuthFamily() {
+    assertTrue(AdminBootstrapTokenScopeFilter.isAllowlisted("POST", "/api/v1/admin/auth/login"));
+    assertTrue(
+        AdminBootstrapTokenScopeFilter.isAllowlisted(
+            "POST", "/api/v1/admin/auth/passwordless-wait"));
+    assertTrue(AdminBootstrapTokenScopeFilter.isAllowlisted("POST", "/api/v1/admin/auth/recover"));
+    assertTrue(
+        AdminBootstrapTokenScopeFilter.isAllowlisted(
+            "POST", "/api/v1/admin/auth/onboarding-resume"));
+  }
+
+  @Test
   @DisplayName("denies full Admin API surfaces")
   void deniesFullApi() {
     assertFalse(AdminBootstrapTokenScopeFilter.isAllowlisted("GET", "/api/v1/tenants"));
@@ -38,5 +51,7 @@ class AdminBootstrapTokenScopeFilterTest {
     assertFalse(AdminBootstrapTokenScopeFilter.isAllowlisted("POST", "/api/v1/integrations"));
     assertFalse(AdminBootstrapTokenScopeFilter.isAllowlisted("GET", "/api/v1/admins"));
     assertFalse(AdminBootstrapTokenScopeFilter.isAllowlisted("DELETE", "/api/v1/enrollments/7"));
+    assertFalse(AdminBootstrapTokenScopeFilter.isAllowlisted("GET", "/api/v1/admin/auth/login"));
+    assertFalse(AdminBootstrapTokenScopeFilter.isAllowlisted("POST", "/api/v1/admin/mfa/verify"));
   }
 }

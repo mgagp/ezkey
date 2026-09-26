@@ -77,6 +77,7 @@ public class AdminCookieCsrfFilter extends OncePerRequestFilter {
     return "/api/v1/admin/auth/activate".equals(path)
         || "/api/v1/admin/auth/login".equals(path)
         || "/api/v1/admin/auth/passwordless-wait".equals(path)
-        || "/api/v1/admin/auth/recover".equals(path);
+        || "/api/v1/admin/auth/recover".equals(path)
+        || "/api/v1/admin/auth/onboarding-resume".equals(path);
   }
 }

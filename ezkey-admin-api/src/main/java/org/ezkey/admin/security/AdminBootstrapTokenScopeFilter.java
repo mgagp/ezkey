@@ -29,7 +29,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
  *
  * <p>BOOTSTRAP tokens authenticate through {@link AdminTokenAuthenticationFilter} like SESSION
  * tokens, but must not grant the full Admin API surface while the evaluator completes activation
- * and device bind (V-2026-09-26).
+ * and device bind (V-2026-09-26). The SecurityConfig {@code permitAll} auth family remains
+ * allowlisted so a leftover Mode B cookie cannot 403 passwordless login.
  *
  * @author Ezkey contributors
  * @since 2026
@@ -71,6 +72,18 @@ public class AdminBootstrapTokenScopeFilter extends OncePerRequestFilter {
         "Bootstrap session is limited to activation and enrollment onboarding");
   }
 
+  /**
+   * Returns whether a BOOTSTRAP session may call {@code method} {@code path}.
+   *
+   * <p>Includes the SecurityConfig {@code permitAll} auth family ({@code login}, {@code
+   * passwordless-wait}, {@code recover}, {@code onboarding-resume}, {@code activate}, {@code
+   * logout}) so a leftover Mode B HttpOnly BOOTSTRAP cookie does not 403 anonymous credential
+   * flows that send {@code credentials: include} (Patrick craft / sticky-cookie RCA).
+   *
+   * @param method HTTP method
+   * @param path normalized request path
+   * @return true when the path is on the narrow BOOTSTRAP allowlist
+   */
   static boolean isAllowlisted(String method, String path) {
     if (path == null || method == null) {
       return false;
@@ -79,10 +92,7 @@ public class AdminBootstrapTokenScopeFilter extends OncePerRequestFilter {
     if ("GET".equals(m) && "/api/v1/admin/auth/me".equals(path)) {
       return true;
     }
-    if ("POST".equals(m) && "/api/v1/admin/auth/activate".equals(path)) {
-      return true;
-    }
-    if ("POST".equals(m) && "/api/v1/admin/auth/logout".equals(path)) {
+    if ("POST".equals(m) && isPermitAllAuthBootstrapPath(path)) {
       return true;
     }
     if ("GET".equals(m) && ADMIN_ONBOARDING.matcher(path).matches()) {
@@ -92,6 +102,22 @@ public class AdminBootstrapTokenScopeFilter extends OncePerRequestFilter {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Same permitAll auth-bootstrap family as {@link
+   * org.ezkey.admin.config.SecurityConfig} (sticky BOOTSTRAP must not block these).
+   *
+   * @param path normalized request path
+   * @return true for public auth bootstrap POST paths
+   */
+  private static boolean isPermitAllAuthBootstrapPath(String path) {
+    return "/api/v1/admin/auth/activate".equals(path)
+        || "/api/v1/admin/auth/login".equals(path)
+        || "/api/v1/admin/auth/passwordless-wait".equals(path)
+        || "/api/v1/admin/auth/recover".equals(path)
+        || "/api/v1/admin/auth/onboarding-resume".equals(path)
+        || "/api/v1/admin/auth/logout".equals(path);
   }
 
   private static String normalizePath(String requestUri, String contextPath) {
