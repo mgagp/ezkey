@@ -114,6 +114,7 @@ Promote to backlog execution when:
 - [LIFECYCLE_GOVERNANCE.md](../../../docs/LIFECYCLE_GOVERNANCE.md)
 - `I-2026-05-23-exp1-anonymous-evaluator-onboarding.md` — backlog seed
 - `TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut.md` — first implementation slice
+- [`V-2026-09-26-evaluator-bootstrap-admin-session`](V-2026-09-26-evaluator-bootstrap-admin-session.md) — next friction layer: signup also mints opaque Admin UI bootstrap session (community/alpha; same gate family)
 - `I-2026-0011`, `I-2026-0026`, `F-public-site`, `F-provisioning-procedures`
 
 ## Grill outcome (2026-05-23)

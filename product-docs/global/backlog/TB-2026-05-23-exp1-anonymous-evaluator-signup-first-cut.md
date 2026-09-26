@@ -106,4 +106,5 @@ Pending operator validation on EXP1 deploy (enable flag + CORS + redeploy site).
 
 - [`I-2026-05-23-exp1-anonymous-evaluator-onboarding.md`](I-2026-05-23-exp1-anonymous-evaluator-onboarding.md)
 - [`../../vision/V-2026-05-23-anonymous-evaluator-self-registration.md`](../../vision/V-2026-05-23-anonymous-evaluator-self-registration.md)
+- [`../../vision/V-2026-09-26-evaluator-bootstrap-admin-session.md`](../../vision/V-2026-09-26-evaluator-bootstrap-admin-session.md) — follow-on: activation emit also mints opaque bootstrap session (not in this TB)
 - [`../../../../sites/ezkey-org/exp1-guided-tour.html`](../../../../sites/ezkey-org/exp1-guided-tour.html)

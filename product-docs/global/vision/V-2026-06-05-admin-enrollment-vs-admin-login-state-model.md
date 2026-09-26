@@ -81,3 +81,4 @@ broad admin lifecycle redesign is not implied by this closeout.
 - `ezkey-admin-ui/src/pages/admins.tsx`
 - `product-docs/global/backlog/ideas/I-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity.md`
 - `product-docs/global/backlog/grill-sessions/2026-06-05-admin-enrollment-vs-login-state-clarification-grill-me.md`
+- [`V-2026-09-26-evaluator-bootstrap-admin-session`](V-2026-09-26-evaluator-bootstrap-admin-session.md) — community bootstrap session must keep enrollment ≠ login distinct

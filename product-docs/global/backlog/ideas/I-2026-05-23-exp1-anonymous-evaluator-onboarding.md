@@ -91,6 +91,7 @@ when operator prioritizes the slice.
 ## Links
 
 - Vision: [`../../vision/V-2026-05-23-anonymous-evaluator-self-registration.md`](../../vision/V-2026-05-23-anonymous-evaluator-self-registration.md)
+- Follow-on vision: [`../../vision/V-2026-09-26-evaluator-bootstrap-admin-session.md`](../../vision/V-2026-09-26-evaluator-bootstrap-admin-session.md) — signup also mints Admin UI bootstrap session (community/alpha)
 - Tracer bullet: [`TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut.md`](TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut.md)
 - Grill: [`../grill-sessions/2026-05-23-exp1-anonymous-evaluator-onboarding-grill-me.md`](../grill-sessions/2026-05-23-exp1-anonymous-evaluator-onboarding-grill-me.md)
 - Site: [`../../../../sites/ezkey-org/experimental-preview-exp1.html`](../../../../sites/ezkey-org/experimental-preview-exp1.html)
