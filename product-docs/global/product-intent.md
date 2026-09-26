@@ -153,6 +153,13 @@ At a high level, Ezkey currently includes:
 - local stack and test tooling,
 - self-hosted deployment support.
 
+**Community instance vs self-host:** A maintained **public alpha** community instance runs on
+**ezkey.online** for evaluation (lab · discreet; alpha ≠ production; no SLA; no IdP parity).
+Self-hosted and clean-start deployments remain first-class. Anonymous evaluator self-registration
+(`ezkey.evaluator.self-registration.enabled`) is **OFF by default**; the community host may turn
+it **ON explicitly**. Self-host operators do not inherit an open signup path unless they choose it.
+Public runtime presets are named **`base`** and **`integrity`** — not an « eval profile ».
+
 Detailed architecture and boundaries are described in [`architecture-overview.md`](architecture-overview.md). Component-specific behavior lives in the [component packs](../components/README.md).
 
 ## Non-Goals and Boundaries

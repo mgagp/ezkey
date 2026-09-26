@@ -12,7 +12,9 @@
 - **Owner:** Marc (maintainer reflection captured below)
 - **Discussion / method log:** [`backlog/method-logs/ML-2026-06-28-integrity-honesty-and-export-spi.md`](backlog/method-logs/ML-2026-06-28-integrity-honesty-and-export-spi.md)
 - **Kind:** Values compass / scope guard (normative for the audit-integrity cluster)
-- **Companion compass:** [`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md)
+- **Companion compass:** [`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md)
+  (live); historical Waves:
+  [`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md)
 - **Governs scope of:** [`V-2026-0004`](vision/V-2026-0004-integrity-validation-strategy.md),
   [`integrity-cluster-design-pack.md`](integrity-cluster-design-pack.md),
   `I-2026-0005` / `I-2026-0006` / `I-2026-0007`
@@ -197,13 +199,14 @@ complexity judgments as the project's perception, not objective claims.*
 |---|---|
 | [`V-2026-0004`](vision/V-2026-0004-integrity-validation-strategy.md) | Two-layer integrity strategy this compass scopes |
 | [`integrity-cluster-design-pack.md`](integrity-cluster-design-pack.md) | Wave B design pack; "Out of scope" should reference this line |
-| [`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md) | Release-order compass; this is the complementary *complexity* compass |
+| [`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md) | Historical Waves A–C + freeze D release-order; complementary *complexity* compass is this doc |
+| [`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md) | Live public alpha posture closeout |
 | [`design-principles.md`](design-principles.md) | #1 simplicity, #2 essential vs accidental, #5 operator-first / no certification narrative, #14 beautiful problems |
 | [`docs/ALERTS.md`](../../docs/ALERTS.md) | Runtime alert reference (`AUDIT_INTEGRITY_RUPTURE`, etc.) |
 | `AuditHmacService` / `AuditLifecycleService` | Code evidence: off-DB key; seal/export stub |
 
 ## Review cadence
 
-- Revisit at the **Wave B exit gate** and at the **2026-08-01** mid-horizon check.
+- Wave B exit and 2026-08-01 mid-horizon checks are **past**. Integrity-cluster R1 is closed.
 - **Supersede, do not silently edit**, if the threat model or target market changes (e.g. a move
-  from SME experimental posture toward regulated/enterprise customers with a real security team).
+  from laboratory / public-alpha posture toward regulated/enterprise customers with a real security team).

@@ -20,7 +20,7 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 |------|------|
 | Fresh clone / first host Java build (empty `~/.m2`, Windows or macOS/Linux) | [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § *First clone on a new workstation*; entrypoint `./scripts/build.sh` (`--diagnose-only` if JDK/Maven look wrong). Do not start with bare `mvn checkstyle:check`. |
 | Product intent, thesis, audience | [`product-docs/global/product-intent.md`](product-docs/global/product-intent.md) |
-| Priority / what to implement next | [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md), [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) |
+| Priority / what to implement next | [`product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md`](product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md), [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) (historical Waves A–C + freeze D: [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md)) |
 | Protocol crypto (Auth API ↔ mobile / Demo Device) | [`docs/CRYPTO.md`](docs/CRYPTO.md), [`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`](docs/ENROLLMENT_SIGNATURE_PAYLOAD.md), [`docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md); relevant **section** of [`docs/ENDPOINT.md`](docs/ENDPOINT.md) only |
 | At-rest encryption / Tink keyset storage | [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md), [`ezkey-core/CONFIGURATION.md`](ezkey-core/CONFIGURATION.md) § Encryption at Rest, [`product-docs/global/architecture-decisions.md`](product-docs/global/architecture-decisions.md) ADR-0008 + ADR-0011 |
 | Normative posture | [`product-docs/global/normative-posture.md`](product-docs/global/normative-posture.md) — operational discipline; mapping vocabulary lives only there. Honest claims: [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) |
@@ -43,11 +43,13 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 
 ## Where are we? (release priority compass)
 
-When the question is **what to implement next** or **current release priority** (September 2026
-operable-release target), read first:
+When the question is **what to implement next** or **current release priority**, read first:
 
-- [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md)
-- [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) § Current prioritization ancho
+- [`product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md`](product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md)
+  — live public alpha posture closeout (lab · discreet · alpha ≠ prod · no SLA; no P0 backlog)
+- [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) § Current prioritization anchor
+- Historical Waves A–C + freeze D only:
+  [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md)
 
 ## Fresh-session workflow bootstrap (product-docs method)
 

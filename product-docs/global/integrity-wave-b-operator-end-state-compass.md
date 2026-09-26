@@ -3,13 +3,13 @@
 ## Metadata
 
 - **Document ID:** `integrity-wave-b-operator-end-state-compass`
-- **Status:** `active` (Wave B R1 closed — 2026-07-03)
-- **Purpose:** Single entry point for fresh sessions: target end-state, shipped vs planned, doc map,
-  implementation order, open clarifications. Supplements
+- **Status:** `historical` (Wave B R1 closed — 2026-07-03; Waves C–D and September live-compass use closed 2026-09-26)
+- **Purpose:** Single entry point for integrity-cluster operator end-state: target end-state, shipped vs deferred, doc map. Supplements
   [`integrity-cluster-design-pack.md`](integrity-cluster-design-pack.md) (normative design) with
   **operator-complete** closure criteria.
-- **Program:** GitHub #269 (closed 2026-07-03); milestone compass
-  [`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md)
+- **Program:** GitHub #269 (closed 2026-07-03); historical milestone compass
+  [`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md);
+  live product posture [`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md)
 - **Closeout:** [`backlog/method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](backlog/method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md)
 
 ---
@@ -59,9 +59,9 @@ operable** handling of audit log integrity at **two cryptographic layers**:
 | ID | Item | Role |
 |----|------|------|
 | **C9** | Snooze | Deferred |
-| **Wave C** | `I-2026-0028` P3 Alerts list polish | Next operator UI slice per release compass |
-| **Wave C** | Audit chain checkpoints matrix row | After alerts polish |
-| **EXP1 watch** | Live experimental host; human observation | Not a remaining wave (Wave D closed 2026-08-25 as attention freeze, not backlog) |
+| **Wave C** | `I-2026-0028` P3 Alerts list polish | **Done** (historical Wave C) |
+| **Wave C** | Audit chain checkpoints matrix row | **Done** (historical Wave C) |
+| **Community watch** | Live community host (ezkey.online; historical EXP1); human observation | Not a remaining wave (Wave D closed 2026-08-25 as attention freeze) |
 
 ---
 
@@ -81,8 +81,9 @@ Steady     → no duplicate alert; entry HMAC still invalid but Explained; chain
 ## Fresh-session bootstrap (agents)
 
 1. Read **this compass** + [`integrity-cluster-design-pack.md`](integrity-cluster-design-pack.md).
-2. Wave B code is **done**; next product slice: **Wave C** —
-   [`TB-2026-07-03-admin-ui-alerts-list-polish.md`](backlog/TB-2026-07-03-admin-ui-alerts-list-polish.md).
+2. Wave B and Wave C code for this cluster are **done**. Live product priority:
+   [`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md)
+   + [`backlog/index.md`](backlog/index.md) — not a remaining integrity P0.
 3. Runtime: [`docs/ALERTS.md`](../../docs/ALERTS.md), [`docs/AUDIT_LOG_INTEGRITY.md`](../../docs/AUDIT_LOG_INTEGRITY.md).
 4. Honest limits: [`integrity-assurance-honest-line.md`](integrity-assurance-honest-line.md).
 
@@ -97,7 +98,6 @@ Steady     → no duplicate alert; entry HMAC still invalid but Explained; chain
 | No duplicate alerts | Yes | B2.6 D4, D6 |
 | Explain + persist (entry) | Yes | B2.6 shipped |
 | Batch visibility | Yes | B3 shipped |
-| Alerts list polish | Planned | Wave C TB (draft) |
+| Alerts list polish | Done | Wave C TB (historical) |
 
-**Next execution:** promote and implement
-[`TB-2026-07-03-admin-ui-alerts-list-polish.md`](backlog/TB-2026-07-03-admin-ui-alerts-list-polish.md).
+**Next execution:** ordinary backlog triage under the live posture lock — not a Wave C residual.
