@@ -265,7 +265,8 @@ Canonical wire formats and payload rules live in [`../../docs/CRYPTO.md`](../../
 
 - **Positive.** Device keys align with platform secure storage; integration signatures stay compact, deterministic, and JDK-native; mobile verifies integration Ed25519 without holding integration private keys.
 - **Negative.** Operators and integrators must understand two algorithm columns in protocol docs; SDKs and tests must implement both paths.
-- **Neutral.** Both families are pre-quantum elliptic-curve schemes; post-quantum migration would be a separate, protocol-wide effort.
+- **Neutral.** Both families are pre-quantum elliptic-curve schemes; post-quantum migration would be a separate, protocol-wide effort. Orientation map:
+  [`V-2026-09-15-post-quantum-crypto-posture`](vision/V-2026-09-15-post-quantum-crypto-posture.md).
 
 ### Impact
 

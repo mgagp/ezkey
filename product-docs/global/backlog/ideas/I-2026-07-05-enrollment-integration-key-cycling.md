@@ -126,6 +126,9 @@ Move toward `ready` / `TB-*` when:
 ## Links
 
 - Vision: [`V-2026-07-05-enrollment-integration-key-cycling-posture`](../../vision/V-2026-07-05-enrollment-integration-key-cycling-posture.md)
+- Parent PQ map (2026-09-15): [`V-2026-09-15-post-quantum-crypto-posture`](../../vision/V-2026-09-15-post-quantum-crypto-posture.md),
+  [`I-2026-09-15-post-quantum-protocol-evolution`](I-2026-09-15-post-quantum-protocol-evolution.md)
+  — this idea stays the **window-management** child, not algorithm replacement.
 - Grill: [`2026-07-05-enrollment-integration-key-cycling-grill-me.md`](../grill-sessions/2026-07-05-enrollment-integration-key-cycling-grill-me.md)
 - Crypto canon: [`docs/CRYPTO.md`](../../../docs/CRYPTO.md), [`docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](../../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)
 - Lifecycle: [`docs/LIFECYCLE_GOVERNANCE.md`](../../../docs/LIFECYCLE_GOVERNANCE.md)
