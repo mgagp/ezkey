@@ -32,6 +32,7 @@ import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav'
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { fetchApi, fetchBlobUrl } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
+import { isEvaluatorTempSession } from '@/lib/auth';
 import { adminDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { canReissuePendingAdministratorActivationCode } from '@/lib/admin-pending-activation-eligibility';
@@ -1673,14 +1674,17 @@ export default function AdminsPage() {
   const { t } = useTranslation('admins');
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
+  const isTempSession = isEvaluatorTempSession(session);
+  const canCreateAdmin = !isTempSession;
   const [searchParams, setSearchParams] = useSearchParams();
 
   const defaultTenantIdFromUrl = useMemo(() => {
+    if (!canCreateAdmin) return null;
     const flag = searchParams.get('createTenantAdmin');
     if (flag !== '1' && flag !== 'true') return null;
     const n = Number(searchParams.get('tenantId'));
     return Number.isFinite(n) && n > 0 ? n : null;
-  }, [searchParams]);
+  }, [searchParams, canCreateAdmin]);
 
   /** Deep-link from other screens (e.g. tenant admins table, enrollment “created by”). */
   const adminIdFromUrl = useMemo(() => {
@@ -1894,14 +1898,17 @@ export default function AdminsPage() {
               {t('list.refresh')}
             </Button>
           </div>
-          <Button
-            size="sm"
-            onClick={() => setCreateOpen(true)}
-            className="gap-1.5"
-          >
-            <Plus className="size-3.5" />
-            {t('list.newAdmin')}
-          </Button>
+          {canCreateAdmin && (
+            <Button
+              size="sm"
+              onClick={() => setCreateOpen(true)}
+              className="gap-1.5"
+              data-testid="admins-new-admin"
+            >
+              <Plus className="size-3.5" />
+              {t('list.newAdmin')}
+            </Button>
+          )}
         </div>
 
         <div>
@@ -1943,7 +1950,7 @@ export default function AdminsPage() {
         showNav={showRowNav}
         showEndOfPageHint={showEndOfPageHint}
       />
-      {(createOpen || defaultTenantIdFromUrl != null) && (
+      {canCreateAdmin && (createOpen || defaultTenantIdFromUrl != null) && (
         <CreateAdminDialog
           open
           onClose={handleCloseCreateDialog}
