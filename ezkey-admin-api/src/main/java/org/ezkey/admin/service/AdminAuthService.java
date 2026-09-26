@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
+import org.ezkey.admin.config.EvaluatorSelfRegistrationProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.AdminAuthAuditContext;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
@@ -92,6 +93,7 @@ public class AdminAuthService {
   private final AuthAttemptService authAttemptService;
   private final AuthAttemptRepository authAttemptRepository;
   private final AdminAuthAttemptTxHelper authAttemptTxHelper;
+  private final EvaluatorSelfRegistrationProperties evaluatorSelfRegistrationProperties;
 
   public AdminAuthService(
       EzkeyAdminRepository adminRepository,
@@ -99,13 +101,15 @@ public class AdminAuthService {
       AdminTokenRotationProperties rotationProperties,
       AuthAttemptService authAttemptService,
       AuthAttemptRepository authAttemptRepository,
-      AdminAuthAttemptTxHelper authAttemptTxHelper) {
+      AdminAuthAttemptTxHelper authAttemptTxHelper,
+      EvaluatorSelfRegistrationProperties evaluatorSelfRegistrationProperties) {
     this.adminRepository = adminRepository;
     this.tokenRepository = tokenRepository;
     this.rotationProperties = rotationProperties;
     this.authAttemptService = authAttemptService;
     this.authAttemptRepository = authAttemptRepository;
     this.authAttemptTxHelper = authAttemptTxHelper;
+    this.evaluatorSelfRegistrationProperties = evaluatorSelfRegistrationProperties;
   }
 
   /**
@@ -627,15 +631,30 @@ public class AdminAuthService {
   /**
    * Mints an opaque onboarding-resume capability after successful activation.
    *
-   * <p>Hashed at rest ({@link AdminTokenPurpose#ONBOARDING_RESUME}). Not a bearer session. Absolute
-   * {@value #ONBOARDING_RESUME_TTL_HOURS}h TTL; up to {@value #ONBOARDING_RESUME_MAX_USES} redeems.
-   * Deactivates any prior active resume secrets for this admin.
+   * <p>Patrick craft (Christophe RED): only when evaluator self-registration is
+   * <strong>enabled</strong> and the admin is a {@code TENANT_ADMIN} with evaluator provenance
+   * ({@code eval-admin-*} / {@code eval-*} tenant). Never for {@code GLOBAL_ADMIN}. Hashed at rest
+   * ({@link AdminTokenPurpose#ONBOARDING_RESUME}). Absolute {@value #ONBOARDING_RESUME_TTL_HOURS}h
+   * TTL; up to {@value #ONBOARDING_RESUME_MAX_USES} redeems. Deactivates any prior active resume
+   * secrets for this admin.
    *
    * @param admin activated administrator with incomplete enrollment
    * @return plain resume secret (shown once) and expiration
    */
   @Transactional
   public TokenIssueResult issueOnboardingResumeSecret(EzkeyAdmin admin) {
+    if (admin == null || admin.getAdminType() == EzkeyAdmin.AdminType.GLOBAL_ADMIN) {
+      throw new IllegalArgumentException(
+          "Onboarding-resume secrets cannot be minted for global administrators");
+    }
+    if (admin.getAdminType() != EzkeyAdmin.AdminType.TENANT_ADMIN) {
+      throw new IllegalArgumentException(
+          "Onboarding-resume secrets require a tenant administrator");
+    }
+    if (!evaluatorSelfRegistrationProperties.isEnabled()) {
+      throw new IllegalArgumentException(
+          "Onboarding-resume secrets require evaluator self-registration to be enabled");
+    }
     if (!EvaluatorSelfRegistrationService.isEvaluatorSelfRegisteredAdmin(admin)) {
       throw new IllegalArgumentException(
           "Onboarding-resume secrets are limited to evaluator self-registration administrators");
@@ -725,7 +744,11 @@ public class AdminAuthService {
     if (admin == null || !Boolean.TRUE.equals(admin.getActive())) {
       throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
     }
-    if (!EvaluatorSelfRegistrationService.isEvaluatorSelfRegisteredAdmin(admin)) {
+    // Christophe RED / Patrick craft: never remint BOOTSTRAP for GLOBAL_ADMIN (including leaked
+    // secrets from a prior tip that minted resume too broadly).
+    if (admin.getAdminType() == EzkeyAdmin.AdminType.GLOBAL_ADMIN
+        || admin.getAdminType() != EzkeyAdmin.AdminType.TENANT_ADMIN
+        || !EvaluatorSelfRegistrationService.isEvaluatorSelfRegisteredAdmin(admin)) {
       throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
     }
     if (admin.getLifecycleStatus() != AdminLifecycleStatus.ACTIVE) {

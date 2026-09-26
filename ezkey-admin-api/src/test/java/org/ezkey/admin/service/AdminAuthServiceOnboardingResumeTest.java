@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
+import org.ezkey.admin.config.EvaluatorSelfRegistrationProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.admin.service.AdminAuthService.TokenIssueResult;
@@ -54,6 +55,7 @@ class AdminAuthServiceOnboardingResumeTest {
   @Mock private AuthAttemptRepository authAttemptRepository;
   @Mock private AdminTokenRotationProperties rotationProperties;
   @Mock private AdminAuthAttemptTxHelper authAttemptTxHelper;
+  @Mock private EvaluatorSelfRegistrationProperties evaluatorSelfRegistrationProperties;
 
   private AdminAuthService service;
 
@@ -66,12 +68,14 @@ class AdminAuthServiceOnboardingResumeTest {
             rotationProperties,
             authAttemptService,
             authAttemptRepository,
-            authAttemptTxHelper);
+            authAttemptTxHelper,
+            evaluatorSelfRegistrationProperties);
   }
 
   @Test
   @DisplayName("issueOnboardingResumeSecret stores hashed ONBOARDING_RESUME with 8h TTL")
   void issueOnboardingResumeSecret_hashesAndSetsPurpose() {
+    when(evaluatorSelfRegistrationProperties.isEnabled()).thenReturn(true);
     EzkeyAdmin admin = activeAdminWithCreatedEnrollment();
     when(tokenRepository.deactivateActiveTokensForAdminByPurpose(
             eq(11), eq(AdminTokenPurpose.ONBOARDING_RESUME)))
@@ -176,6 +180,46 @@ class AdminAuthServiceOnboardingResumeTest {
     EzkeyAdmin global = new EzkeyAdmin("ops.global", AdminType.GLOBAL_ADMIN);
     global.setAdminId(1);
     assertThrows(IllegalArgumentException.class, () -> service.issueOnboardingResumeSecret(global));
+  }
+
+  @Test
+  @DisplayName("issueOnboardingResumeSecret rejects when self-reg flag is OFF")
+  void issueOnboardingResumeSecret_rejectsWhenFlagOff() {
+    when(evaluatorSelfRegistrationProperties.isEnabled()).thenReturn(false);
+    EzkeyAdmin admin = activeAdminWithCreatedEnrollment();
+    assertThrows(IllegalArgumentException.class, () -> service.issueOnboardingResumeSecret(admin));
+  }
+
+  @Test
+  @DisplayName("redeemOnboardingResume rejects GLOBAL_ADMIN even with a leaked resume secret")
+  void redeemOnboardingResume_rejectsGlobalAdminLeakedSecret() {
+    EzkeyAdmin global = new EzkeyAdmin("ops.global", AdminType.GLOBAL_ADMIN);
+    global.setAdminId(1);
+    global.setActive(true);
+    global.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(9);
+    enrollment.setStatus(EnrollmentStatus.CREATED);
+    enrollment.setActive(true);
+    global.setEnrollment(enrollment);
+
+    String plain =
+        AdminAuditConstants.ONBOARDING_RESUME_TOKEN_PREFIX + "leakedglobalsecret0123456789abcd";
+    String hash = SensitiveDataHasher.sha256Hex(plain);
+    AdminToken resume =
+        new AdminToken(
+            hash,
+            global,
+            AdminType.GLOBAL_ADMIN.name(),
+            OffsetDateTime.now().plusHours(8),
+            AdminTokenPurpose.ONBOARDING_RESUME);
+    resume.setTokenUseCount(0);
+    when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(hash))
+        .thenReturn(Optional.of(resume));
+
+    AuthenticationException ex =
+        assertThrows(AuthenticationException.class, () -> service.redeemOnboardingResume(plain));
+    assertEquals("Invalid or expired onboarding resume secret", ex.getMessage());
   }
 
   @Test
