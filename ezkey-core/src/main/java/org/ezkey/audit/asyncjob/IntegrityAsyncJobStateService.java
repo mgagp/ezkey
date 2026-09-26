@@ -8,7 +8,7 @@
  * Description: REQUIRES_NEW state mutations for Integrity async jobs (heartbeat, terminal).
  */
 
-package org.ezkey.audit.integrity;
+package org.ezkey.audit.asyncjob;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -22,6 +22,7 @@ import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,9 +32,15 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Separate bean so {@code REQUIRES_NEW} applies through the Spring proxy (no self-invocation).
  *
+ * <p>Admin-only: see {@code ezkey.audit.integrity.async-job.enabled}.
+ *
  * @since 2026
  */
 @Service
+@ConditionalOnProperty(
+    name = "ezkey.audit.integrity.async-job.enabled",
+    havingValue = "true",
+    matchIfMissing = false)
 public class IntegrityAsyncJobStateService {
 
   private static final Logger logger = LoggerFactory.getLogger(IntegrityAsyncJobStateService.class);

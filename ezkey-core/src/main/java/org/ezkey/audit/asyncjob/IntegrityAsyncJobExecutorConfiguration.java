@@ -8,8 +8,9 @@
  * Description: Single-thread executor for Integrity async operator jobs.
  */
 
-package org.ezkey.audit.integrity;
+package org.ezkey.audit.asyncjob;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -17,9 +18,15 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 /**
  * Single-worker executor for Integrity async operator jobs (one global slot).
  *
+ * <p>Admin-only: see {@code ezkey.audit.integrity.async-job.enabled}.
+ *
  * @since 2026
  */
 @Configuration
+@ConditionalOnProperty(
+    name = "ezkey.audit.integrity.async-job.enabled",
+    havingValue = "true",
+    matchIfMissing = false)
 public class IntegrityAsyncJobExecutorConfiguration {
 
   /**

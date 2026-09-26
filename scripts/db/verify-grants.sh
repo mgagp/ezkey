@@ -97,6 +97,33 @@ expect_fail "integration cannot SELECT ezkey_admin_tokens" \
 expect_ok "admin can SELECT ezkey_shedlock" \
   run_psql ezkey_admin "${ADMIN_PASS}" -c "SELECT 1 FROM ezkey_shedlock LIMIT 0;"
 
+expect_ok "admin can SELECT ezkey_integrity_async_job" \
+  run_psql ezkey_admin "${ADMIN_PASS}" -c "SELECT 1 FROM ezkey_integrity_async_job LIMIT 0;"
+
+expect_fail "auth cannot SELECT ezkey_integrity_async_job" \
+  run_psql ezkey_auth "${AUTH_PASS}" -c "SELECT 1 FROM ezkey_integrity_async_job LIMIT 0;"
+
+expect_fail "integration cannot SELECT ezkey_integrity_async_job" \
+  run_psql ezkey_integration "${INTEGRATION_PASS}" -c "SELECT 1 FROM ezkey_integrity_async_job LIMIT 0;"
+
+admin_async_ins="$(run_psql ezkey_admin "${ADMIN_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_admin', 'ezkey_integrity_async_job', 'INSERT');" \
+  | tr -d '[:space:]')"
+if [[ "${admin_async_ins}" != "t" ]]; then
+  echo "FAIL: ezkey_admin should INSERT ezkey_integrity_async_job (got '${admin_async_ins}')" >&2
+  exit 1
+fi
+echo "OK: admin can INSERT ezkey_integrity_async_job"
+
+admin_async_upd="$(run_psql ezkey_admin "${ADMIN_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_admin', 'ezkey_integrity_async_job', 'UPDATE');" \
+  | tr -d '[:space:]')"
+if [[ "${admin_async_upd}" != "t" ]]; then
+  echo "FAIL: ezkey_admin should UPDATE ezkey_integrity_async_job (got '${admin_async_upd}')" >&2
+  exit 1
+fi
+echo "OK: admin can UPDATE ezkey_integrity_async_job"
+
 expect_ok "auth can SELECT ezkey_encryption_key" \
   run_psql ezkey_auth "${AUTH_PASS}" -c "SELECT 1 FROM ezkey_encryption_key LIMIT 0;"
 

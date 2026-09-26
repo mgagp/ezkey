@@ -8,7 +8,7 @@
  * Description: Long-running Integrity operator job kinds sharing the global async slot.
  */
 
-package org.ezkey.audit.integrity;
+package org.ezkey.audit.asyncjob;
 
 /**
  * Long-running Integrity operator job kinds that share the single global async slot.

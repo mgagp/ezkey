@@ -8,7 +8,7 @@
  * Description: Persistence for Integrity async job slot rows.
  */
 
-package org.ezkey.audit.integrity;
+package org.ezkey.audit.asyncjob;
 
 import java.util.List;
 import java.util.Optional;

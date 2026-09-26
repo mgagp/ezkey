@@ -5,7 +5,7 @@
 - **Document ID:** `database-role-permissions-matrix`
 - **Status:** `active`
 - **Created at:** `2026-07-16`
-- **Last reviewed at:** `2026-07-16`
+- **Last reviewed at:** `2026-09-25`
 - **Related backlog:** [`I-2026-0021`](../product-docs/global/backlog/ideas/I-2026-0021-postgresql-application-role-permissions-matrix.md)
 - **Related TB:** [`TB-2026-07-16`](../product-docs/global/backlog/TB-2026-07-16-postgresql-application-role-split.md)
 - **Companion docs:** [`DATABASE_PARTITIONING_SECURITY_ANALYSIS.md`](DATABASE_PARTITIONING_SECURITY_ANALYSIS.md), [`OPERATIONAL.md`](OPERATIONAL.md)
@@ -88,7 +88,7 @@ Legend: **S**=SELECT · **I**=INSERT · **U**=UPDATE · **D**=DELETE · **X**=EX
 | `ezkey_audit_entry_integrity_conciliation` | owner | S I U | — | — | Admin reconcile only |
 | `ezkey_alert` | owner | S I U | S I U | S I U | Resolve = UPDATE; no hard DELETE (intentional). Future retention/purge of aged `RESOLVED` rows: [`I-2026-07-17-alert-resolved-retention-purge`](../product-docs/global/backlog/ideas/I-2026-07-17-alert-resolved-retention-purge.md) |
 | `ezkey_scheduled_job_last_run` | owner | S U | — | — | Seeded by migration; admin updates |
-| `ezkey_integrity_async_job` | owner | S I U | S | S | Admin writes the global Integrity async slot; peripherals SELECT only (Hibernate validate / shared `org.ezkey.audit` entity scan — same posture as checkpoints) |
+| `ezkey_integrity_async_job` | owner | S I U | — | — | Admin-only Integrity async operator slot. Auth/Integration must not SELECT (no runtime path; Hibernate `ddl-auto=none` + Admin-only `org.ezkey.audit.asyncjob` EntityScan). |
 | `ezkey_shedlock` | owner | S I U | — | — | Admin ShedLock only |
 | `create_monthly_partition(...)` | owner | X | — | — | SECURITY DEFINER; admin `PartitionSchedulerService` |
 
@@ -126,5 +126,9 @@ Grants on parents `ezkey_audit_log` and `ezkey_auth_attempt` apply to partitions
 
 ## Verification
 
-- [`scripts/db/verify-grants.sh`](../scripts/db/verify-grants.sh) — connect as each role; assert forbidden ops (e.g. auth DELETE on `ezkey_audit_log`).
+- [`scripts/db/verify-grants.sh`](../scripts/db/verify-grants.sh) — connect as each role; assert forbidden ops (e.g. auth DELETE on `ezkey_audit_log`; auth/integration must **not** SELECT `ezkey_integrity_async_job`).
 - `clean-start` + functional suite after role wiring.
+
+## Hibernate DDL mode (runtime APIs)
+
+Admin, Auth, and Integration runtime profiles use `spring.jpa.hibernate.ddl-auto=none`. Schema is owned by Flyway (`ezkey_migrate`). Do **not** widen DML grants solely so Hibernate `validate` can see Admin-only tables.

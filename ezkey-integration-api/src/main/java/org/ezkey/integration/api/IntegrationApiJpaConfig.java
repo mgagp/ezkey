@@ -23,6 +23,10 @@ import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerial
  * API: integration (API key validation), auth attempt, enrollment (ownership checks), audit, and
  * security (Tink encryption key management).
  *
+ * <p><b>Least privilege:</b> does <strong>not</strong> scan {@code org.ezkey.audit.asyncjob}
+ * (Admin-only Integrity async job entity). Integration must not map or grant on {@code
+ * ezkey_integrity_async_job}.
+ *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT

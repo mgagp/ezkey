@@ -13,8 +13,10 @@ package org.ezkey.audit.integrity;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.ezkey.audit.asyncjob.IntegrityAsyncJobService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -44,7 +46,7 @@ public class NightlyIntegrityValidationScheduler {
   private final RetroactiveIntegrityValidationService validationService;
   private final ScheduledJobLastRunService jobLastRunService;
   private final IntegrityHeavyCryptoGate heavyCryptoGate;
-  private final IntegrityAsyncJobService integrityAsyncJobService;
+  private final ObjectProvider<IntegrityAsyncJobService> integrityAsyncJobService;
 
   /**
    * Constructs the scheduler.
@@ -54,7 +56,7 @@ public class NightlyIntegrityValidationScheduler {
    * @param validationService retroactive validation orchestration
    * @param jobLastRunService registry updates
    * @param heavyCryptoGate process-local exclusion vs operator async jobs
-   * @param integrityAsyncJobService operator slot probe (skip when RUNNING)
+   * @param integrityAsyncJobService operator slot probe (Admin-only bean; empty on peripherals)
    */
   public NightlyIntegrityValidationScheduler(
       NightlyIntegrityProperties nightlyProperties,
@@ -62,7 +64,7 @@ public class NightlyIntegrityValidationScheduler {
       RetroactiveIntegrityValidationService validationService,
       ScheduledJobLastRunService jobLastRunService,
       IntegrityHeavyCryptoGate heavyCryptoGate,
-      IntegrityAsyncJobService integrityAsyncJobService) {
+      ObjectProvider<IntegrityAsyncJobService> integrityAsyncJobService) {
     this.nightlyProperties = nightlyProperties;
     this.chainProperties = chainProperties;
     this.validationService = validationService;
@@ -88,7 +90,8 @@ public class NightlyIntegrityValidationScheduler {
             OffsetDateTime.now(ZoneOffset.UTC), chainProperties.getWindowMinutes());
     String scope = "Validated " + nightlyProperties.getWindowHours() + " h ending " + windowEnd;
 
-    if (integrityAsyncJobService.isOperatorSlotRunning()) {
+    IntegrityAsyncJobService asyncJobs = integrityAsyncJobService.getIfAvailable();
+    if (asyncJobs != null && asyncJobs.isOperatorSlotRunning()) {
       logger.info("Skipping nightly integrity validation: operator Integrity async job is RUNNING");
       return;
     }

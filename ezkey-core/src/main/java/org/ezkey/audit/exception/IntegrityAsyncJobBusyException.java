@@ -10,7 +10,7 @@
 
 package org.ezkey.audit.exception;
 
-import org.ezkey.audit.integrity.IntegrityAsyncJob;
+import org.ezkey.audit.asyncjob.IntegrityAsyncJob;
 
 /**
  * Thrown when a start is refused because the global Integrity async slot is occupied (HTTP 409).

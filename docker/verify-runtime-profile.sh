@@ -76,6 +76,14 @@ require_prop "$INTEG_BASE" "ezkey.audit.chain.heartbeat.enabled" "false"
 require_prop "$INTEG_BASE" "ezkey.audit.chain.heartbeat.required" "false"
 pass "Auth/Integration heartbeat OFF under base (★ coupling)"
 
+require_prop "$ADMIN_DOCKER" "spring.jpa.hibernate.ddl-auto" "none"
+require_prop "${ROOT}/ezkey-auth-api/config/application-docker.properties" \
+  "spring.jpa.hibernate.ddl-auto" "none"
+require_prop "${ROOT}/ezkey-integration-api/config/application-docker.properties" \
+  "spring.jpa.hibernate.ddl-auto" "none"
+require_prop "$ADMIN_DOCKER" "ezkey.audit.integrity.async-job.enabled" "true"
+pass "Runtime ddl-auto=none + Admin Integrity async-job enabled"
+
 # --- Integrity default unchanged in docker base ---
 require_prop "$ADMIN_DOCKER" "ezkey.audit.chain.enabled" "true"
 require_prop "$ADMIN_DOCKER" "ezkey.encryption.rotation.enabled" "true"

@@ -8,7 +8,7 @@
  * Description: Single global Integrity async job slot — start, status, abandon, run workers.
  */
 
-package org.ezkey.audit.integrity;
+package org.ezkey.audit.asyncjob;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -25,12 +25,19 @@ import org.ezkey.audit.dto.IntegrityAsyncJobStartRequest;
 import org.ezkey.audit.exception.IntegrityAsyncJobAbandonNotAllowedException;
 import org.ezkey.audit.exception.IntegrityAsyncJobBusyException;
 import org.ezkey.audit.exception.IntegrityValidationDisabledException;
+import org.ezkey.audit.integrity.AuditChainVerificationService;
+import org.ezkey.audit.integrity.AuditIntegrityService;
+import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
+import org.ezkey.audit.integrity.NightlyIntegrityProperties;
+import org.ezkey.audit.integrity.RetroactiveIntegrityValidationOptions;
+import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.security.ApplicationReadyStartupOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
@@ -50,9 +57,16 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * signal only). Raise-alert happens only when a {@code RUN_VALIDATION} job completes successfully
  * through the existing retroactive path — never mid-run, never on cancel/abandon.
  *
+ * <p>Admin-only: enabled via {@code ezkey.audit.integrity.async-job.enabled=true}. Auth and
+ * Integration must not load this bean (least privilege on {@code ezkey_integrity_async_job}).
+ *
  * @since 2026
  */
 @Service
+@ConditionalOnProperty(
+    name = "ezkey.audit.integrity.async-job.enabled",
+    havingValue = "true",
+    matchIfMissing = false)
 public class IntegrityAsyncJobService {
 
   private static final Logger logger = LoggerFactory.getLogger(IntegrityAsyncJobService.class);
