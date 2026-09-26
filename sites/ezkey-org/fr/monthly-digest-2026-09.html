@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Sommaire mensuel : septembre 2026 en revue — Ezkey">
+    <meta property="og:description" content="Un sommaire distill&eacute; du travail de septembre 2026 chez Ezkey : alpha publique honn&ecirc;te, Int&eacute;grit&eacute; pour les admins globaux, et une communaut&eacute; qu'on peut essayer — sans promesse de production ni de SLA.">
+    <meta property="og:url" content="https://ezkey.org/fr/monthly-digest-2026-09.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="fr_FR">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Sommaire mensuel : septembre 2026 en revue — Ezkey">
+    <meta name="twitter:description" content="Un sommaire distill&eacute; du travail de septembre 2026 chez Ezkey : alpha publique honn&ecirc;te, Int&eacute;grit&eacute; pour les admins globaux, et une communaut&eacute; qu'on peut essayer — sans promesse de production ni de SLA.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/fr/monthly-digest-2026-09.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/monthly-digest-2026-09.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/monthly-digest-2026-09.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/monthly-digest-2026-09.html">
+    <title>Sommaire mensuel : septembre 2026 en revue — Ezkey</title>
+    <meta name="description" content="Un sommaire distill&eacute; du travail de septembre 2026 chez Ezkey : alpha publique honn&ecirc;te, Int&eacute;grit&eacute; pour les admins globaux, et une communaut&eacute; qu'on peut essayer — sans promesse de production ni de SLA.">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a1a2e; line-height: 1.65; }
+        .shell { max-width: 820px; margin: 0 auto; padding: 28px 20px 48px; }
+        .nav-top, footer { color: rgba(255,255,255,0.9); font-size: 0.92rem; }
+        .nav-top { margin-bottom: 20px; }
+        .nav-top a, footer a { color: rgba(255,255,255,0.95); text-decoration: underline; }
+        article { background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.18); padding: 40px 36px 48px; }
+        .doc-meta { color: #555; font-size: 0.85rem; margin-bottom: 16px; }
+        .hero-title { text-align: center; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 2px solid #667eea; }
+        .hero-title .label { color: #667eea; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 8px; text-transform: uppercase; }
+        h1 { color: #111; font-size: 1.72rem; line-height: 1.25; margin-bottom: 12px; }
+        .tagline { color: #444; font-size: 1.05rem; font-weight: 600; }
+        h2 { color: #667eea; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 28px 0 10px; }
+        p { font-size: 0.98rem; margin-bottom: 12px; }
+        .lead { font-size: 1.02rem; color: #222; }
+        ul { margin: 0 0 12px 22px; }
+        li { font-size: 0.96rem; margin-bottom: 6px; }
+        .closing { margin-top: 24px; padding: 18px 20px; background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08)); border-left: 4px solid #667eea; border-radius: 12px; }
+        .doc-link-sibling { font-size: 0.92rem; margin-top: 14px; }
+        footer { margin-top: 24px; text-align: center; }
+        @media (max-width: 600px) { article { padding: 28px 20px 36px; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top"><a href="/fr/monthly-digest.html">Sommaires mensuels</a> &middot; <a href="/monthly-digest-2026-09.html">Read in English</a></p>
+        <article>
+            <p class="doc-meta">Sommaire mensuel &middot; septembre 2026</p>
+            <header class="hero-title">
+                <p class="label">Septembre 2026 en revue</p>
+                <h1>Alpha publique honn&ecirc;te, int&eacute;grit&eacute; que les op&eacute;rateurs peuvent examiner</h1>
+                <p class="tagline">Septembre a ouvert Ezkey en alpha publique qu'on peut essayer, a nomm&eacute; les limites sans maquillage, et a donn&eacute; aux admins globaux un moyen de premier plan de surveiller l'int&eacute;grit&eacute; de la piste d'audit.</p>
+            </header>
+
+            <h2>En bref</h2>
+            <p class="lead">Ezkey a cess&eacute; de sonner comme une exp&eacute;rience de labo interne et a commenc&eacute; &agrave; parler en alpha publique : code sous MIT, instance communautaire sur ezkey.online, et un langage clair — travail de laboratoire, sans SLA, sans promesse de production, et sans &eacute;quivalence Duo, Okta ou Keycloak. Une grande part de l'&eacute;nergie du mois a servi &agrave; faire tenir cette honn&ecirc;tet&eacute; sur le site et dans les outils op&eacute;rateur. Les admins globaux disposent d&eacute;sormais d'une surface Int&eacute;grit&eacute; d&eacute;di&eacute;e pour examiner le mat&eacute;riel d'audit scell&eacute; sans chercher dans des chemins lat&eacute;raux. L'hygi&egrave;ne et le triage des d&eacute;pendances ont maintenu la stack &agrave; jour sans devenir le r&eacute;cit principal.</p>
+
+            <h2>Documentation &amp; m&eacute;thodologie</h2>
+            <p>L'&eacute;quipe a referm&eacute; le cadrage &laquo; mise en service op&eacute;rationnelle &raquo; et a nomm&eacute; ce qui est r&eacute;ellement en ligne : une alpha publique discr&egrave;te, Android en tests ferm&eacute;s seulement, et l'inscription &eacute;valuateur d&eacute;sactiv&eacute;e par d&eacute;faut. Les textes produit et ezkey.org ont laiss&eacute; tomber les anciens noms d'h&ocirc;tes de labo au profit d'un langage communaut&eacute; alpha, avec une tra&ccedil;abilit&eacute; de version et de d&eacute;ploiement pour que le lecteur voie ce qui tourne. Un essai craft sur le pilotage par intention a &eacute;t&eacute; publi&eacute;, avec un sch&eacute;ma plus l&eacute;ger de durcissement de plan en deux &eacute;tapes pour les changements &agrave; risque. Des notes &agrave; plus long horizon, encore en cours, cartographient la posture post-quantique du protocole et le comportement attendu des enr&ocirc;lements quand les identit&eacute;s sont r&eacute;utilis&eacute;es.</p>
+
+            <h2>Hygi&egrave;ne de code</h2>
+            <p>Le triage hebdomadaire des d&eacute;pendances s'est poursuivi sur la stack Java, la console d'administration, le mobile et le SDK. Le mobile est pass&eacute; &agrave; une ligne React Native plus r&eacute;cente ; les pins de g&eacute;n&eacute;ration de clients et d'outillage sont rest&eacute;s align&eacute;s entre surfaces. Les passes d'analyse statique curat&eacute;es et les habitudes Dependabot ont gard&eacute; la maintenance visible sans transformer le mois en journal de mises &agrave; niveau.</p>
+
+            <h2>Admin UI</h2>
+            <p>L'Int&eacute;grit&eacute; est pass&eacute;e d'une pr&eacute;occupation lat&eacute;rale &agrave; une destination de premier plan pour l'admin global : modes plus clairs, divulgation progressive, et libell&eacute;s honn&ecirc;tes quand une installation tourne sans surveillance d'int&eacute;grit&eacute; compl&egrave;te. Les travaux longs de scellement et d'investigation peuvent s'ex&eacute;cuter sans geler la console. Les admins de tenant voient le nom de leur tenant dans l'en-t&ecirc;te. Les &eacute;checs de connexion sans mot de passe n'impliquent plus qu'un mot de passe &eacute;tait erron&eacute;. En cours : une console &eacute;valuateur temporaire pour explorer l'Admin UI pendant une fen&ecirc;tre born&eacute;e sans enr&ocirc;ler d'abord un appareil — toujours verrouill&eacute;e et d&eacute;sactiv&eacute;e par d&eacute;faut.</p>
+
+            <h2>Application mobile</h2>
+            <p>React Native a avanc&eacute; ; les textes des R&eacute;glages ont &eacute;t&eacute; r&eacute;&eacute;crits pour l'utilisateur final ; l'accueil peut regrouper les enr&ocirc;lements dans une grille d'identit&eacute; plus claire. Les builds de tests ferm&eacute;s portent l'&eacute;tiquette alpha publique pour que les testeurs Play ne re&ccedil;oivent pas une histoire de production. Reste ouvert : ce qui se passe quand un admin supprime puis recr&eacute;e un enr&ocirc;lement alors que le t&eacute;l&eacute;phone conserve encore l'ancienne liaison locale — constat&eacute; comme cas limite alpha, pas encore corrig&eacute; produit.</p>
+
+            <h2>Backend &amp; contrats d'API</h2>
+            <p>Les grants de moindre privilege en base ont &eacute;t&eacute; resserr&eacute;s ; la mise &agrave; jour automatique de sch&eacute;ma est rest&eacute;e d&eacute;sactiv&eacute;e sur les API en ex&eacute;cution. Les sessions d'attente sans mot de passe ont &eacute;t&eacute; durcies contre la relecture et le d&eacute;tournement de session. La rotation de cl&eacute;s inactive et la validation d'int&eacute;grit&eacute; &eacute;chouent en fermeture stricte quand continuer affaiblirait silencieusement la garantie. Les sondages de s&eacute;curit&eacute; se sont approfondis avec des correctifs de limitation de d&eacute;bit et de m&eacute;thodes HTTP. Les sp&eacute;cifications OpenAPI ont &eacute;t&eacute; rafra&icirc;chies pour la bordure publique, y compris l'empaquetage Cloudflare Schema Validation pour l'h&ocirc;te communautaire.</p>
+
+            <h2>Le reste, digne de mention</h2>
+            <ul>
+                <li><strong>Ops communautaires :</strong> chemin d'amor&ccedil;age Lightsail, routage Caddy et empaquetage de sch&eacute;mas Cloudflare pour lever et tenir ezkey.online comme h&ocirc;te communaut&eacute; alpha — sans promesse de production.</li>
+                <li><strong>Module SSH MFA labo seulement :</strong> hygi&egrave;ne et constructeur Amazon Linux pour dogfood interne ; explicitement hors du parcours alpha publique.</li>
+                <li><strong>Revue d'isolation en bo&icirc;te blanche :</strong> regard curat&eacute; sur le respect des fronti&egrave;res de tenant dans le SQL des services — constats enregistr&eacute;s pour rem&eacute;diations ult&eacute;rieures, pas tacitement tenus pour r&eacute;solus.</li>
+                <li><strong>SDK et outillage agent :</strong> builds du client JavaScript d&eacute;bloqu&eacute;s sur TypeScript actuel ; les environnements Cloud Agent ont gagn&eacute; une stack locale plus compl&egrave;te pour que la revue parte plus pr&egrave;s du r&eacute;el.</li>
+            </ul>
+
+            <div class="closing">
+                <p>Ao&ucirc;t visait un septembre op&eacute;rationnel. Ce qui a atterri est plus clair : une alpha publique aux bornes honn&ecirc;tes, une Int&eacute;grit&eacute; que les op&eacute;rateurs peuvent examiner, et une communaut&eacute; qu'on peut essayer — sans pr&eacute;tendre que le produit est termin&eacute;. L'attention suivante porte sur un acc&egrave;s &eacute;valuateur qui reste temporaire et honn&ecirc;te, sur les asp&eacute;rit&eacute;s alpha &eacute;videntes du mobile, et sur un visage public align&eacute; avec ce que la stack fait vraiment.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>English:</strong> <a href="/monthly-digest-2026-09.html">English version of this note</a></p>
+            <p class="doc-link-sibling"><strong>Retour &agrave; l'index:</strong> <a href="/fr/monthly-digest.html">Sommaires mensuels</a></p>
+        </article>
+        <footer><p>Ezkey &middot; <a href="/fr/">ezkey.org</a></p></footer>
+    </div>
+</body>
+</html>
