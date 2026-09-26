@@ -47,15 +47,28 @@ only unlabeled (or non-deferred) Dependabot PRs. The weekly peel skips **both** 
 Note: Dependabot `#450` (Admin UI TS 7 group) was superseded/closed when `#498` opened; keep `#498`
 in the standing set. See empty-queue pass [`2026-09-21-pass-1.md`](2026-09-21-pass-1.md).
 
+Unlike the RN platform lot (versions can land outside Dependabot PRs), these **open PRs** remain
+the visible backlog until the TypeScript 7 bump actually merges — do not replace them with an
+issue while the Dependabot PRs stay open.
+
 To park a new later-train disruptor: comment + `gh pr edit <n> --add-label deferred:later-train`.
 
 ### `deferred:rn-upgrade`
 
-| PRs | Topic | Re-evaluate when |
-|-----|--------|------------------|
-| `#582`, `#583`, `#584`, `#585` | RN 0.87 platform lot (`mobile-rn-core`, vision-camera, navigation, safe-area-context) | Scheduled React Native desktop+device upgrade; not routine weekly passes |
+| Tracker | Topic | Status / re-evaluate when |
+|---------|--------|---------------------------|
+| `#627` | RN 0.87 platform lot closeout (ex-`#582`–`#585`) | Versions on main **done** (RN 0.87.1 / React 19.3.0 + navigation / vision-camera / safe-area); **Pixel smoke pending** — close `#627` when smoke is recorded |
 
-To park RN-coupled mobile deps until a line bump: comment + `gh pr edit <n> --add-label deferred:rn-upgrade`.
+As of 2026-09-26: Dependabot PRs `#582`–`#585` were **closed without merge** (Dependabot
+supersede 2026-09-22) after chantier F landed the versions otherwise. Residual human closeout is
+**issue `#627`**, not those PRs — do not reopen them.
+
+Weekly peel still skips any PR labeled `deferred:rn-upgrade`. To park *future* RN-coupled mobile
+deps until a line bump: comment + `gh pr edit <n> --add-label deferred:rn-upgrade`.
+
+**Process rule:** when Dependabot closes a deferred lot (supersede / recreate) but human
+validation remains, open a tracking **issue** (like `#627`) so residual work stays visible — open
+PRs alone are not enough after supersede.
 
 ## Preferred weekly posture (lots without duplication)
 
