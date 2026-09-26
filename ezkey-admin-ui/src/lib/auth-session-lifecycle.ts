@@ -6,8 +6,10 @@
  */
 
 import { clearSession } from '@/lib/auth';
+import { markBootstrapSessionExpired } from '@/lib/evaluator-bootstrap-session';
 import { clearIntegrityInvestigationSession } from '@/lib/integrity-investigation-session';
 import { clearRecoverySession } from '@/lib/recovery-session';
+import { getSession } from '@/lib/auth';
 
 /** Drop recovery state when a normal admin session starts. */
 export function clearRecoveryOnSuccessfulLogin(): void {
@@ -26,6 +28,10 @@ export function clearLocalAuthOnLogout(): void {
 
 /** Clear local auth + recovery when the server rejects the session (401). */
 export function clearLocalAuthOnSessionInvalidation(): void {
+  const session = getSession();
+  if (session?.tokenPurpose === 'BOOTSTRAP') {
+    markBootstrapSessionExpired();
+  }
   clearSession();
   clearRecoverySession();
 }

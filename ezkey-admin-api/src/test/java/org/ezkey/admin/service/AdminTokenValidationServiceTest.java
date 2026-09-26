@@ -122,6 +122,34 @@ class AdminTokenValidationServiceTest {
 
   @Test
   @DisplayName(
+      "BOOTSTRAP purpose is accepted by session validation (allowlist enforced separately)")
+  void validateTokenWithRelations_shouldReturnToken_whenTokenPurposeIsBootstrap() {
+    stubValidNonExpiredToken();
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.BOOTSTRAP);
+    when(admin.getEnrollment()).thenReturn(null);
+
+    Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
+
+    assertThat(result).isPresent();
+  }
+
+  @Test
+  @DisplayName("updateTokenLastUsed does not extend BOOTSTRAP (absolute TTL)")
+  void updateTokenLastUsed_doesNotExtendExpiration_forBootstrapToken() {
+    OffsetDateTime fixedExpiresAt = OffsetDateTime.now().plusHours(8);
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.BOOTSTRAP);
+    when(adminToken.getExpiresAt()).thenReturn(fixedExpiresAt);
+
+    Optional<OffsetDateTime> result = service.updateTokenLastUsed(adminToken);
+
+    assertThat(result).contains(fixedExpiresAt);
+    verify(adminToken).setLastUsedAt(any(OffsetDateTime.class));
+    verify(adminToken, never()).setExpiresAt(any(OffsetDateTime.class));
+    verify(tokenRepository).save(adminToken);
+  }
+
+  @Test
+  @DisplayName(
       "updateTokenLastUsed(String) finds by hash then saves; SESSION gets sliding expiration")
   void updateTokenLastUsed_stringPath_findsAndExtendsExpiration_forSessionToken() {
     String normalToken = "ezkey_normal";

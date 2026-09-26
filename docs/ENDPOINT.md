@@ -391,9 +391,13 @@ See also: enrollment QR JSON and `authUrl` (same property as `ezkey.qr.auth-base
 
 Available only when `ezkey.evaluator.self-registration.enabled=true` (intended for EXP1 preview). When disabled, returns **404 Not Found** (no response body enumeration).
 
-Creates an **empty tenant** and a **pending Tenant Admin** with **`ACTIVATION_CODE`** onboarding. Does **not** create integrations, API keys, or enrollments — evaluators follow the [Exp1 guided tour](https://ezkey.org/exp1-guided-tour.html) from step 1.
+Creates an **empty tenant** and a **pending Tenant Admin** with **`ACTIVATION_CODE`** onboarding.
+When the feature flag is on, also mints an opaque Admin UI **`BOOTSTRAP`** session (absolute **8
+hours**, no sliding; purpose `BOOTSTRAP`; distinct from the activation code). Does **not** create
+integrations, API keys, or enrollments — evaluators follow activation + device bind, then normal
+passwordless login. Community / alpha only — not a clean-start or production default.
 
-**Rate limits (defaults):** global **5 successful signups per UTC day**; **1 successful signup per client IP per 24h**. Failures return **429** with a generic capacity message.
+**Rate limits (defaults):** global **5 successful signups per UTC day**; **1 successful signup per client IP per 24h**. Failures return **429** with a generic capacity message. Activation redeem (`POST /api/v1/admin/auth/activate`) shares the admin login rate-limit bucket.
 
 **Request body (optional JSON):**
 
@@ -411,17 +415,28 @@ Creates an **empty tenant** and a **pending Tenant Admin** with **`ACTIVATION_CO
 
 ```json
 {
-  "activationCode": "ABCD-1234",
+  "activationCode": "ezkey_activation_…",
   "activationCodeExpiresAt": "2026-05-30T12:00:00Z",
-  "adminUiUrl": "https://exp1-admin-ui.ezkey.org",
-  "guidedTourUrl": "https://ezkey.org/exp1-guided-tour.html",
-  "tenantLabel": "eval-a1b2c3d4"
+  "adminUiUrl": "https://admin-ui.ezkey.online",
+  "guidedTourUrl": "https://ezkey.org/community-guided-tour.html",
+  "tenantLabel": "eval-a1b2c3d4",
+  "sessionToken": "ezkey_bootstrap_…",
+  "sessionExpiresAt": "2026-05-23T20:00:00Z",
+  "username": "eval-admin-a1b2c3d4"
 }
 ```
 
-**CORS:** cross-origin signup from `ezkey.org` requires `ezkey.admin.cors.allowed-origins` to include the static site origin(s).
+| Field | Notes |
+| ----- | ----- |
+| `sessionToken` | Opaque BOOTSTRAP bearer; omitted from JSON when HttpOnly browser session cookies are enabled (Mode B). Never put in URL query or audit payloads. |
+| `sessionExpiresAt` | Absolute expiry (~8h). |
+| `username` | Generated evaluator Tenant Admin username. |
 
-See `ezkey-admin-api/CONFIGURATION.md` (evaluator self-registration group).
+**BOOTSTRAP allowlist** (while using that session): `POST /admin/auth/activate`, `GET /admin/auth/me`, `GET /admins/{id}/onboarding` (+ `/qrcode`), `GET /enrollments/{id}`, `POST /admin/auth/logout`. Logout invalidates the session server-side; the incomplete tenant/admin persists.
+
+**CORS:** cross-origin signup from `ezkey.org` requires `ezkey.admin.cors.allowed-origins` to include the static site origin(s). Auto-redirect target: Admin UI `/evaluator-bootstrap` (handoff via cookie or sessionStorage — not query string).
+
+See `ezkey-admin-api/CONFIGURATION.md` (evaluator self-registration group) and vision `V-2026-09-26-evaluator-bootstrap-admin-session`.
 
 ### Admin Authentication (Passwordless-Only)
 

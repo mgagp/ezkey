@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Enum: AdminTokenPurpose
- * Description: Distinguishes passwordless session tokens from recovery reset-only tokens.
+ * Description: Distinguishes passwordless session tokens from recovery and bootstrap tokens.
  */
 
 package org.ezkey.integration.domain;
@@ -15,7 +15,8 @@ package org.ezkey.integration.domain;
  *
  * <p>{@link #SESSION} tokens authenticate ordinary Admin API calls. {@link #RECOVERY} tokens are
  * issued after recovery-code validation and may only be used on the enrollment-reset funnel
- * (SEC-021).
+ * (SEC-021). {@link #BOOTSTRAP} tokens are issued with anonymous evaluator self-registration and
+ * authenticate a narrow pending-activation allowlist only (absolute TTL, no sliding).
  *
  * @author Ezkey contributors
  * @since 2026
@@ -26,5 +27,11 @@ public enum AdminTokenPurpose {
   SESSION,
 
   /** Temporary break-glass token scoped to enrollment reset. */
-  RECOVERY
+  RECOVERY,
+
+  /**
+   * Temporary evaluator console foothold minted with public self-registration when that feature is
+   * enabled. Narrow path allowlist only; not a full operator session.
+   */
+  BOOTSTRAP
 }

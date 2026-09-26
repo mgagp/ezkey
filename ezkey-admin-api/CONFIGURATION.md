@@ -35,6 +35,7 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.trusted-proxies.cidrs` | — | *(empty list)* | optionnel |
 | `ezkey.admin.cors.allowed-origins` | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | *(empty list)* | optionnel |
 | `ezkey.evaluator.self-registration.enabled` | `EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED` | `false` | optionnel |
+| `ezkey.evaluator.self-registration.bootstrap-session-ttl-hours` | `EZKEY_EVALUATOR_SELF_REGISTRATION_BOOTSTRAP_SESSION_TTL_HOURS` | `8` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-enabled` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | `false` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_NAME` | `EZKEY_ADMIN_SESSION` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-secure` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SECURE` | `true` | optionnel |
@@ -395,8 +396,10 @@ The following ezkey-core prefixes are also active in Admin API. See
 ### 12. Evaluator self-registration (`ezkey.evaluator.self-registration.*`)
 
 **Description:** anonymous evaluator signup on experimental / community preview installations —
-empty tenant + pending Tenant Admin + activation code. Disabled by default; enable only on
-installations that intentionally expose public signup.
+empty tenant + pending Tenant Admin + activation code **and** (when enabled) an opaque Admin UI
+`BOOTSTRAP` session (absolute 8h, narrow allowlist). Disabled by default; enable only on
+installations that intentionally expose public signup. There is **no separate** bootstrap-session
+flag — minting is gated by `enabled` alone (V-2026-09-26).
 
 **Defined in:** `EvaluatorSelfRegistrationProperties`
 
@@ -408,6 +411,7 @@ installations that intentionally expose public signup.
 | `ezkey.evaluator.self-registration.per-ip-max-success` | `int` | `1` | optionnel | Max successful signups per IP within the window. |
 | `ezkey.evaluator.self-registration.admin-ui-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
 | `ezkey.evaluator.self-registration.guided-tour-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
+| `ezkey.evaluator.self-registration.bootstrap-session-ttl-hours` | `int` | `8` | optionnel | Absolute TTL for the Admin UI BOOTSTRAP session minted with signup. Product lock: **exactly 8 hours** (no sliding). Misconfigured values are ignored at mint time. |
 
 **Fail-closed:** when `enabled=true`, Admin API startup aborts if `admin-ui-url` or
 `guided-tour-url` is blank (`EvaluatorSelfRegistrationStartupValidator`).

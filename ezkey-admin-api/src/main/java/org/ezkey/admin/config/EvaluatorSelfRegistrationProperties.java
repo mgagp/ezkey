@@ -40,6 +40,13 @@ public class EvaluatorSelfRegistrationProperties {
   /** Guided tour URL returned after signup; empty until set for a live surface. */
   private String guidedTourUrl = "";
 
+  /**
+   * Absolute TTL in hours for the Admin UI bootstrap session minted with signup.
+   *
+   * <p>Product lock: exactly 8 hours, no sliding. Separate from activation-code TTL (7 days).
+   */
+  private int bootstrapSessionTtlHours = 8;
+
   public boolean isEnabled() {
     return enabled;
   }
@@ -86,5 +93,13 @@ public class EvaluatorSelfRegistrationProperties {
 
   public void setGuidedTourUrl(String guidedTourUrl) {
     this.guidedTourUrl = guidedTourUrl;
+  }
+
+  public int getBootstrapSessionTtlHours() {
+    return bootstrapSessionTtlHours;
+  }
+
+  public void setBootstrapSessionTtlHours(int bootstrapSessionTtlHours) {
+    this.bootstrapSessionTtlHours = bootstrapSessionTtlHours;
   }
 }

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
+import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.AdminAuthAuditContext;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
@@ -529,15 +530,6 @@ public class AdminAuthService {
     }
   }
 
-  /** Result of issuing a bearer token: entity (with hash stored) and plain token for the client. */
-  private record TokenIssueResult(AdminToken token, String plainToken) {}
-
-  /**
-   * Generate a new bearer token and persist only its SHA-256 hash to database.
-   *
-   * @param admin the administrator for whom to generate the token
-   * @return the persisted token entity and the plain token to return to the client
-   */
   private TokenIssueResult generateAndPersistToken(EzkeyAdmin admin) {
     String plainToken = generateBearerToken();
     String hash = SensitiveDataHasher.sha256Hex(plainToken);
@@ -560,6 +552,52 @@ public class AdminAuthService {
 
     return new TokenIssueResult(token, plainToken);
   }
+
+  /**
+   * Issues an absolute-TTL BOOTSTRAP session for evaluator self-registration.
+   *
+   * <p>Distinct secret from the activation code. No sliding expiration — {@code ttlHours} is
+   * absolute from mint time. Call only when evaluator self-registration is enabled.
+   *
+   * @param admin the pending Tenant Admin
+   * @param ttlHours absolute TTL in hours (product lock: 8)
+   * @return plain token and expiration
+   */
+  public TokenIssueResult issueBootstrapSession(EzkeyAdmin admin, int ttlHours) {
+    int hours = Math.max(1, ttlHours);
+    String plainToken =
+        AdminAuditConstants.BOOTSTRAP_TOKEN_PREFIX + UUID.randomUUID().toString().replace("-", "");
+    String hash = SensitiveDataHasher.sha256Hex(plainToken);
+    if (hash == null) {
+      throw new IllegalStateException("Bootstrap token hash could not be computed");
+    }
+    OffsetDateTime expiresAt = OffsetDateTime.now().plusHours(hours);
+
+    AdminToken token =
+        new AdminToken(
+            hash, admin, admin.getAdminType().name(), expiresAt, AdminTokenPurpose.BOOTSTRAP);
+    token.setTenant(admin.getTenant());
+    token.setIntegration(admin.getIntegration());
+    token.setCreatedAt(OffsetDateTime.now());
+    token.setActive(true);
+
+    tokenRepository.save(token);
+    logger.info(
+        "BOOTSTRAP session minted for admin {} (expiresAt={}, ttlHours={})",
+        admin.getUsername(),
+        expiresAt,
+        hours);
+
+    return new TokenIssueResult(token, plainToken);
+  }
+
+  /**
+   * Result of issuing a bearer token: entity (with hash stored) and plain token for the client.
+   *
+   * @param token persisted token entity
+   * @param plainToken opaque token returned to the client once
+   */
+  public record TokenIssueResult(AdminToken token, String plainToken) {}
 
   /**
    * Generate a secure bearer token string.

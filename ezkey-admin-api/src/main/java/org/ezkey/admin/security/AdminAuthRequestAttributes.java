@@ -19,6 +19,12 @@ public final class AdminAuthRequestAttributes {
   /** Tenant display name for tenant- or integration-scoped sessions; omitted for global admins. */
   public static final String TENANT_NAME = "org.ezkey.admin.auth.tenantName";
 
+  /** {@link org.ezkey.integration.domain.AdminTokenPurpose} of the authenticated token. */
+  public static final String TOKEN_PURPOSE = "org.ezkey.admin.auth.tokenPurpose";
+
+  /** Administrator lifecycle status name (e.g. PENDING_ACTIVATION). */
+  public static final String LIFECYCLE_STATUS = "org.ezkey.admin.auth.lifecycleStatus";
+
   private AdminAuthRequestAttributes() {}
 
   /** Authentication source for the current request. */

@@ -12,16 +12,22 @@ package org.ezkey.admin.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.ezkey.admin.config.EvaluatorSelfRegistrationProperties;
 import org.ezkey.admin.domain.AdminOnboardingMode;
 import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.admin.service.AdminAuthService.TokenIssueResult;
+import org.ezkey.integration.domain.AdminTokenPurpose;
+import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Tenant;
@@ -31,6 +37,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -40,6 +47,7 @@ class EvaluatorSelfRegistrationServiceTest {
 
   @Mock private EvaluatorSelfRegistrationRateLimiter rateLimiter;
   @Mock private AdminProvisioningService provisioningService;
+  @Mock private AdminAuthService authService;
   @Mock private EzkeyAdminRepository adminRepository;
   @Mock private TenantRepository tenantRepository;
 
@@ -52,9 +60,15 @@ class EvaluatorSelfRegistrationServiceTest {
     properties.setEnabled(true);
     properties.setAdminUiUrl("https://admin-ui.example.local");
     properties.setGuidedTourUrl("https://ezkey.org/community-guided-tour.html");
+    properties.setBootstrapSessionTtlHours(8);
     service =
         new EvaluatorSelfRegistrationService(
-            properties, rateLimiter, provisioningService, adminRepository, tenantRepository);
+            properties,
+            rateLimiter,
+            provisioningService,
+            authService,
+            adminRepository,
+            tenantRepository);
   }
 
   @Test
@@ -66,8 +80,8 @@ class EvaluatorSelfRegistrationServiceTest {
   }
 
   @Test
-  @DisplayName("register provisions empty tenant and activation-code admin")
-  void register_happyPath() {
+  @DisplayName("register provisions tenant, activation code, and BOOTSTRAP session with 8h TTL")
+  void register_mintsBootstrapSession_eightHourAbsoluteTtl() {
     EzkeyAdmin globalAdmin = new EzkeyAdmin("bootstrap", AdminType.GLOBAL_ADMIN);
     globalAdmin.setAdminId(1);
     when(adminRepository.findByAdminTypeAndActiveTrue(AdminType.GLOBAL_ADMIN))
@@ -89,17 +103,20 @@ class EvaluatorSelfRegistrationServiceTest {
             any(AdminPrincipal.class)))
         .thenReturn(tenant);
 
-    OffsetDateTime expiresAt = OffsetDateTime.now().plusDays(7);
+    OffsetDateTime activationExpires = OffsetDateTime.now().plusDays(7);
+    EzkeyAdmin pendingAdmin = new EzkeyAdmin("eval-admin-deadbeef", AdminType.TENANT_ADMIN);
+    pendingAdmin.setAdminId(99);
+    pendingAdmin.setTenant(tenant);
     AdminProvisioningService.ProvisioningResult provisioningResult =
         new AdminProvisioningService.ProvisioningResult(
-            new EzkeyAdmin("eval-admin-deadbeef", AdminType.TENANT_ADMIN),
+            pendingAdmin,
             null,
             null,
             null,
             null,
             AdminOnboardingMode.ACTIVATION_CODE,
             "ABCD-1234",
-            expiresAt);
+            activationExpires);
     when(provisioningService.createTenantAdmin(
             any(),
             eq(null),
@@ -111,13 +128,92 @@ class EvaluatorSelfRegistrationServiceTest {
             any(AdminPrincipal.class)))
         .thenReturn(provisioningResult);
 
+    OffsetDateTime bootstrapExpires = OffsetDateTime.now().plusHours(8);
+    AdminToken bootstrapToken =
+        new AdminToken(
+            "hash",
+            pendingAdmin,
+            AdminType.TENANT_ADMIN.name(),
+            bootstrapExpires,
+            AdminTokenPurpose.BOOTSTRAP);
+    when(authService.issueBootstrapSession(eq(pendingAdmin), eq(8)))
+        .thenReturn(new TokenIssueResult(bootstrapToken, "ezkey_bootstrap_plain"));
+
     var response = service.register("My lab", "203.0.113.5");
 
     assertEquals("ABCD-1234", response.activationCode());
-    assertEquals(expiresAt, response.activationCodeExpiresAt());
-    assertEquals("https://admin-ui.example.local", response.adminUiUrl());
-    assertEquals("https://ezkey.org/community-guided-tour.html", response.guidedTourUrl());
-    org.junit.jupiter.api.Assertions.assertTrue(response.tenantLabel().startsWith("eval-"));
+    assertEquals(activationExpires, response.activationCodeExpiresAt());
+    assertEquals("ezkey_bootstrap_plain", response.sessionToken());
+    assertEquals(bootstrapExpires, response.sessionExpiresAt());
+    assertEquals("eval-admin-deadbeef", response.username());
+    assertTrue(response.tenantLabel().startsWith("eval-"));
     verify(rateLimiter).verifyAndRecordSuccess("203.0.113.5");
+    verify(authService).issueBootstrapSession(pendingAdmin, 8);
+
+    long hoursBetween =
+        ChronoUnit.HOURS.between(OffsetDateTime.now().minusMinutes(1), response.sessionExpiresAt());
+    assertTrue(hoursBetween >= 7 && hoursBetween <= 8);
+  }
+
+  @Test
+  @DisplayName("register forces 8h TTL even when property is misconfigured")
+  void register_ignoresMisconfiguredTtlProperty() {
+    properties.setBootstrapSessionTtlHours(12);
+
+    EzkeyAdmin globalAdmin = new EzkeyAdmin("bootstrap", AdminType.GLOBAL_ADMIN);
+    globalAdmin.setAdminId(1);
+    when(adminRepository.findByAdminTypeAndActiveTrue(AdminType.GLOBAL_ADMIN))
+        .thenReturn(List.of(globalAdmin));
+    when(tenantRepository.existsByTenantName(any())).thenReturn(false);
+
+    Tenant tenant = new Tenant("eval-aabbccdd", "desc");
+    tenant.setTenantId(7);
+    when(provisioningService.createTenant(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(AdminPrincipal.class)))
+        .thenReturn(tenant);
+
+    EzkeyAdmin pendingAdmin = new EzkeyAdmin("eval-admin-aabbccdd", AdminType.TENANT_ADMIN);
+    pendingAdmin.setTenant(tenant);
+    when(provisioningService.createTenantAdmin(
+            any(),
+            eq(null),
+            eq(null),
+            any(),
+            any(),
+            eq(7),
+            eq(AdminOnboardingMode.ACTIVATION_CODE),
+            any(AdminPrincipal.class)))
+        .thenReturn(
+            new AdminProvisioningService.ProvisioningResult(
+                pendingAdmin,
+                null,
+                null,
+                null,
+                null,
+                AdminOnboardingMode.ACTIVATION_CODE,
+                "CODE",
+                OffsetDateTime.now().plusDays(7)));
+
+    OffsetDateTime expires = OffsetDateTime.now().plusHours(8);
+    AdminToken token =
+        new AdminToken(
+            "h", pendingAdmin, AdminType.TENANT_ADMIN.name(), expires, AdminTokenPurpose.BOOTSTRAP);
+    when(authService.issueBootstrapSession(any(), anyInt()))
+        .thenReturn(new TokenIssueResult(token, "ezkey_bootstrap_x"));
+
+    service.register(null, "127.0.0.1");
+
+    ArgumentCaptor<Integer> ttlCaptor = ArgumentCaptor.forClass(Integer.class);
+    verify(authService).issueBootstrapSession(eq(pendingAdmin), ttlCaptor.capture());
+    assertEquals(8, ttlCaptor.getValue());
   }
 }

@@ -488,6 +488,10 @@ public class AdminAuthController {
         (OffsetDateTime) httpRequest.getAttribute(AdminAuthRequestAttributes.EXPIRES_AT);
     String plainToken = (String) httpRequest.getAttribute(AdminAuthRequestAttributes.PLAIN_TOKEN);
     String tenantName = (String) httpRequest.getAttribute(AdminAuthRequestAttributes.TENANT_NAME);
+    Object purposeAttr = httpRequest.getAttribute(AdminAuthRequestAttributes.TOKEN_PURPOSE);
+    String tokenPurpose = purposeAttr != null ? purposeAttr.toString() : null;
+    String lifecycleStatus =
+        (String) httpRequest.getAttribute(AdminAuthRequestAttributes.LIFECYCLE_STATUS);
     String csrfToken =
         httpRequest.getAttribute(AdminAuthRequestAttributes.AUTH_SOURCE)
                 == AdminAuthRequestAttributes.AuthSource.COOKIE
@@ -502,7 +506,9 @@ public class AdminAuthController {
             principal.adminId(),
             principal.tenantId(),
             tenantName,
-            csrfToken));
+            csrfToken,
+            tokenPurpose,
+            lifecycleStatus));
   }
 
   /**

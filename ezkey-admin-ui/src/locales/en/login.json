@@ -121,5 +121,14 @@
       "codeRequired": "Enter an activation code",
       "codeFormat": "Use an activation code in the format ezkey_activation_..."
     }
+  },
+  "bootstrap": {
+    "establishing": "Opening your temporary console session…",
+    "handoffMissing": "No bootstrap session was found. Complete signup again, or use activation on this login page.",
+    "handoffFailed": "Could not restore the temporary console session. Complete enrollment with your activation code, then sign in.",
+    "onboardingTitle": "Complete enrollment",
+    "onboardingHint": "Signed in temporarily as {{username}}. Activate and bind a device — the enrollment QR stays available here.",
+    "afterBindLogin": "After binding, sign in with passwordless EZKey for a normal session.",
+    "sessionExpired": "Your temporary console session has ended. Complete enrollment with your activation code, then sign in again."
   }
 }

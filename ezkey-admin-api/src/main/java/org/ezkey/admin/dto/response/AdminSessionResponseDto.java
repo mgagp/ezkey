@@ -38,4 +38,14 @@ public record AdminSessionResponseDto(
             description =
                 "Non-secret CSRF token to send in X-CSRF-TOKEN for cookie-authenticated unsafe"
                     + " requests")
-        String csrfToken) {}
+        String csrfToken,
+    @Schema(
+            description = "Token purpose for this session",
+            example = "SESSION",
+            allowableValues = {"SESSION", "BOOTSTRAP"})
+        String tokenPurpose,
+    @Schema(
+            description = "Administrator lifecycle status",
+            example = "ACTIVE",
+            allowableValues = {"PENDING_ACTIVATION", "ACTIVE", "DEACTIVATED"})
+        String lifecycleStatus) {}

@@ -26,6 +26,10 @@ script:post-response {
       test("Response contains activationCode", function () {
           expect(jsonData).to.have.property('activationCode');
       });
+      test("Response contains bootstrap session fields", function () {
+          expect(jsonData).to.have.property('sessionExpiresAt');
+          expect(jsonData).to.have.property('username');
+      });
       test("Response does not expose adminId", function () {
           expect(jsonData).to.not.have.property('adminId');
       });
@@ -37,9 +41,11 @@ settings {
 }
 
 docs {
-  Anonymous EXP1 evaluator signup when `ezkey.evaluator.self-registration.enabled=true`.
+  Anonymous EXP1 / community evaluator signup when `ezkey.evaluator.self-registration.enabled=true`.
   
   **No authentication required.** Returns 404 when disabled.
   
-  **Response (201):** activationCode, activationCodeExpiresAt, adminUiUrl, guidedTourUrl, tenantLabel.
+  **Response (201):** activationCode, activationCodeExpiresAt, adminUiUrl, guidedTourUrl, tenantLabel,
+  sessionToken (BOOTSTRAP), sessionExpiresAt (absolute 8h), username.
+  Mode B cookie builds omit sessionToken from JSON after Set-Cookie.
 }

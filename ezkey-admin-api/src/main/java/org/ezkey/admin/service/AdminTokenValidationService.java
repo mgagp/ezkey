@@ -119,6 +119,7 @@ public class AdminTokenValidationService {
           // Defence-in-depth: EnrollmentRevocationService already invalidates tokens
           // immediately on revocation, but this guard catches any window where the
           // enrollment was deactivated without explicit token revocation.
+          // BOOTSTRAP sessions may exist before first enrollment (PENDING_ACTIVATION).
           Enrollment enrollment = admin.getEnrollment();
           if (enrollment != null && !Boolean.TRUE.equals(enrollment.getActive())) {
             logger.warn("❌ Token rejected: enrollment inactive for admin: {}", admin.getUsername());
@@ -187,8 +188,9 @@ public class AdminTokenValidationService {
     try {
       OffsetDateTime now = OffsetDateTime.now();
       adminToken.setLastUsedAt(now);
-      // Sliding expiration for SESSION tokens only (SEC-021: never extend RECOVERY).
-      if (adminToken.getTokenPurpose() != AdminTokenPurpose.RECOVERY) {
+      // Sliding expiration for SESSION tokens only.
+      // SEC-021: never extend RECOVERY. V-2026-09-26: never extend BOOTSTRAP (absolute 8h).
+      if (adminToken.getTokenPurpose() == AdminTokenPurpose.SESSION) {
         int hours = Math.max(1, rotationProperties.getExpirationHours());
         adminToken.setExpiresAt(now.plusHours(hours));
       }

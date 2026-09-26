@@ -10,6 +10,7 @@
 
 package org.ezkey.admin.config;
 
+import org.ezkey.admin.security.AdminBootstrapTokenScopeFilter;
 import org.ezkey.admin.security.AdminCookieCsrfFilter;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
@@ -41,6 +42,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * <ol>
  *   <li>Rate Limiting Filter (if enabled)
  *   <li>Admin Token Authentication Filter (Bearer tokens)
+ *   <li>BOOTSTRAP token path allowlist
  *   <li>Cookie CSRF Filter (browser session cookie only)
  * </ol>
  *
@@ -59,6 +61,7 @@ public class SecurityConfig {
   private final AdminTokenAuthenticationFilter adminTokenAuthenticationFilter;
   private final AdminRateLimitFilter adminRateLimitFilter;
   private final AdminCookieCsrfFilter adminCookieCsrfFilter;
+  private final AdminBootstrapTokenScopeFilter adminBootstrapTokenScopeFilter;
 
   /**
    * Creates the Admin API security configuration.
@@ -66,14 +69,17 @@ public class SecurityConfig {
    * @param adminTokenAuthenticationFilter Bearer / session token filter
    * @param adminRateLimitFilter login and admin-ops rate limit filter
    * @param adminCookieCsrfFilter CSRF check for cookie-authenticated unsafe methods
+   * @param adminBootstrapTokenScopeFilter BOOTSTRAP session path allowlist
    */
   public SecurityConfig(
       AdminTokenAuthenticationFilter adminTokenAuthenticationFilter,
       AdminRateLimitFilter adminRateLimitFilter,
-      AdminCookieCsrfFilter adminCookieCsrfFilter) {
+      AdminCookieCsrfFilter adminCookieCsrfFilter,
+      AdminBootstrapTokenScopeFilter adminBootstrapTokenScopeFilter) {
     this.adminTokenAuthenticationFilter = adminTokenAuthenticationFilter;
     this.adminRateLimitFilter = adminRateLimitFilter;
     this.adminCookieCsrfFilter = adminCookieCsrfFilter;
+    this.adminBootstrapTokenScopeFilter = adminBootstrapTokenScopeFilter;
   }
 
   /**
@@ -134,7 +140,9 @@ public class SecurityConfig {
     http.addFilterBefore(
         adminTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-    http.addFilterAfter(adminCookieCsrfFilter, AdminTokenAuthenticationFilter.class);
+    http.addFilterAfter(adminBootstrapTokenScopeFilter, AdminTokenAuthenticationFilter.class);
+
+    http.addFilterAfter(adminCookieCsrfFilter, AdminBootstrapTokenScopeFilter.class);
 
     return http.build();
   }

@@ -22,6 +22,7 @@ import { persistUsernamePref, readUsernamePref } from '@/lib/last-username-pref'
 import { LoginActivationSection } from '@/components/feature/login-activation-section';
 import { LoginRecoverySection } from '@/components/feature/login-recovery-section';
 import { getRecoverySession } from '@/lib/recovery-session';
+import { takeBootstrapSessionExpiredFlag } from '@/lib/evaluator-bootstrap-session';
 import { cn, formatChallengeCode, formatCountdown } from '@/lib/utils';
 import { login as loginApi, passwordlessWait } from '@/generated/admin-api/admin-authentication/admin-authentication';
 import type { AdminLoginResponseDto } from '@/generated/admin-api/model';
@@ -57,6 +58,9 @@ export default function LoginPage() {
   const [waitingData, setWaitingData] = useState<WaitingData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [bootstrapExpiredMessage] = useState<string | null>(() =>
+    takeBootstrapSessionExpiredFlag() ? t('login:bootstrap.sessionExpired') : null,
+  );
 
   // Guards against race conditions — once a final state is set, ignore further callbacks.
   const finalStatusRef = useRef<string | null>(null);
@@ -346,6 +350,15 @@ export default function LoginPage() {
             expandedLayout ? 'p-4 sm:p-6' : 'p-6',
           )}
         >
+          {bootstrapExpiredMessage && (
+            <Alert
+              variant="info"
+              className="mb-4"
+              data-testid="bootstrap-session-expired-message"
+            >
+              {bootstrapExpiredMessage}
+            </Alert>
+          )}
           {authFlow === 'activation' && (
             <LoginActivationSection
               onBackToPasswordless={() => setAuthFlow('passwordless')}

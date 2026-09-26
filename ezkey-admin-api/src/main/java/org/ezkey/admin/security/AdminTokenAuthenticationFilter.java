@@ -160,6 +160,12 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
         request.setAttribute(AdminAuthRequestAttributes.PLAIN_TOKEN, token);
         request.setAttribute(AdminAuthRequestAttributes.EXPIRES_AT, updatedExpiresAt);
         request.setAttribute(AdminAuthRequestAttributes.USERNAME, admin.getUsername());
+        request.setAttribute(
+            AdminAuthRequestAttributes.TOKEN_PURPOSE, adminToken.getTokenPurpose());
+        if (admin.getLifecycleStatus() != null) {
+          request.setAttribute(
+              AdminAuthRequestAttributes.LIFECYCLE_STATUS, admin.getLifecycleStatus().name());
+        }
         if (tenantName != null) {
           request.setAttribute(AdminAuthRequestAttributes.TENANT_NAME, tenantName);
         }

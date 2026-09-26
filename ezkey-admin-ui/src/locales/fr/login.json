@@ -121,5 +121,14 @@
       "codeRequired": "Saisissez un code d'activation",
       "codeFormat": "Utilisez un code d'activation au format ezkey_activation_..."
     }
+  },
+  "bootstrap": {
+    "establishing": "Ouverture de votre session console temporaire…",
+    "handoffMissing": "Aucune session bootstrap trouvée. Recommencez l'inscription, ou utilisez l'activation sur cette page.",
+    "handoffFailed": "Impossible de restaurer la session console temporaire. Terminez l'enrôlement avec votre code d'activation, puis connectez-vous.",
+    "onboardingTitle": "Terminer l'enrôlement",
+    "onboardingHint": "Connecté temporairement en tant que {{username}}. Activez et liez un appareil — le QR d'enrôlement reste accessible ici.",
+    "afterBindLogin": "Après la liaison, connectez-vous avec EZKey sans mot de passe pour une session normale.",
+    "sessionExpired": "Votre session console temporaire est terminée. Terminez l'enrôlement avec votre code d'activation, puis reconnectez-vous."
   }
 }

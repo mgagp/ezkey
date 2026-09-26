@@ -248,6 +248,13 @@ public final class AdminAuditConstants {
   /** Prefix for activation tokens to distinguish them from bearer and recovery tokens. */
   public static final String ACTIVATION_TOKEN_PREFIX = "ezkey_activation_";
 
+  /**
+   * Prefix for evaluator bootstrap session tokens (community/alpha self-registration foothold).
+   *
+   * <p>Distinct from activation codes and from ordinary {@code ezkey_} session tokens.
+   */
+  public static final String BOOTSTRAP_TOKEN_PREFIX = "ezkey_bootstrap_";
+
   /** Prefix for bearer tokens in Authorization header. */
   public static final String BEARER_PREFIX = "Bearer ";
 

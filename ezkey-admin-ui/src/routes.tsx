@@ -4,6 +4,8 @@ import { RouteErrorBoundary } from '@/components/route-error-boundary';
 import { ProtectedRoute, RootLayout, SuspensePage } from '@/route-shells';
 
 const LoginPage = lazy(() => import('@/pages/login'));
+const EvaluatorBootstrapPage = lazy(() => import('@/pages/evaluator-bootstrap'));
+const EvaluatorOnboardingPage = lazy(() => import('@/pages/evaluator-onboarding'));
 const DashboardPage = lazy(() => import('@/pages/dashboard'));
 const TenantsPage = lazy(() => import('@/pages/tenants'));
 const TenantDetailPage = lazy(() => import('@/pages/tenant-detail'));
@@ -38,8 +40,26 @@ export const router = createBrowserRouter([
       </SuspensePage>
     ),
   },
+  {
+    path: '/evaluator-bootstrap',
+    element: (
+      <SuspensePage>
+        <EvaluatorBootstrapPage />
+      </SuspensePage>
+    ),
+  },
 
   // Protected
+  {
+    path: '/evaluator-onboarding',
+    element: (
+      <ProtectedRoute>
+        <SuspensePage>
+          <EvaluatorOnboardingPage />
+        </SuspensePage>
+      </ProtectedRoute>
+    ),
+  },
   {
     path: '/dashboard',
     element: (

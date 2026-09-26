@@ -32,6 +32,12 @@ export interface AuthSession {
   tenantName?: string | null;
   /** Non-secret CSRF token used only by cookie-authenticated browser sessions. */
   csrfToken?: string;
+  /**
+   * Token purpose from `/me` — `BOOTSTRAP` for evaluator self-registration foothold sessions.
+   */
+  tokenPurpose?: string | null;
+  /** Administrator lifecycle status from `/me` (e.g. PENDING_ACTIVATION). */
+  lifecycleStatus?: string | null;
 }
 
 const AUTH_KEY = 'ezkey_admin_auth';

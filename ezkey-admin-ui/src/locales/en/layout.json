@@ -47,5 +47,9 @@
     "learnMore": "Learn more",
     "learnMoreDefaultUrl": "https://github.com/your-org/ezkey"
   },
-  "demoQuickReason": "Quick reason (demo):"
+  "demoQuickReason": "Quick reason (demo):",
+  "bootstrap": {
+    "incompleteEnrollmentBanner": "Enrollment is incomplete — activate and bind a device to finish this alpha preview foothold.",
+    "completeEnrollmentLink": "Continue enrollment"
+  }
 }

@@ -16,10 +16,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.EvaluatorSelfRegistrationRequestDto;
 import org.ezkey.admin.dto.response.EvaluatorSelfRegistrationResponseDto;
+import org.ezkey.admin.security.AdminCsrfTokenService;
+import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.EvaluatorSelfRegistrationService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
@@ -36,7 +40,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Public anonymous evaluator signup for experimental preview instances (EXP1).
  *
- * <p>Responds with HTTP 404 when the installation-scoped feature flag is disabled.
+ * <p>Responds with HTTP 404 when the installation-scoped feature flag is disabled. When enabled,
+ * also mints a BOOTSTRAP Admin UI session (JSON and optional HttpOnly cookie).
  */
 @RestController
 @RequestMapping("/api/v1/public")
@@ -48,12 +53,21 @@ public class PublicEvaluatorSignupController {
 
   private final EvaluatorSelfRegistrationService evaluatorSelfRegistrationService;
   private final AuditLogService auditLogService;
+  private final AdminBrowserSessionCookieProperties browserSessionCookieProperties;
+  private final AdminSessionCookieService sessionCookieService;
+  private final AdminCsrfTokenService csrfTokenService;
 
   public PublicEvaluatorSignupController(
       EvaluatorSelfRegistrationService evaluatorSelfRegistrationService,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      AdminBrowserSessionCookieProperties browserSessionCookieProperties,
+      AdminSessionCookieService sessionCookieService,
+      AdminCsrfTokenService csrfTokenService) {
     this.evaluatorSelfRegistrationService = evaluatorSelfRegistrationService;
     this.auditLogService = auditLogService;
+    this.browserSessionCookieProperties = browserSessionCookieProperties;
+    this.sessionCookieService = sessionCookieService;
+    this.csrfTokenService = csrfTokenService;
   }
 
   /**
@@ -61,17 +75,19 @@ public class PublicEvaluatorSignupController {
    *
    * @param request optional tenant label
    * @param httpRequest HTTP request for client context
+   * @param httpResponse HTTP response for optional session cookie
    * @return activation material when enabled and within limits
    */
   @Operation(
       summary = "Anonymous evaluator self-registration",
       description =
           "Creates an empty preview tenant and a pending Tenant Admin with a one-time activation"
-              + " code. Available only on installations with evaluator self-registration enabled.",
+              + " code and an opaque Admin UI BOOTSTRAP session (community/alpha when enabled)."
+              + " Available only on installations with evaluator self-registration enabled.",
       security = {})
   @ApiResponse(
       responseCode = "201",
-      description = "Preview tenant and activation code created",
+      description = "Preview tenant, activation code, and bootstrap session created",
       content =
           @Content(
               mediaType = "application/json",
@@ -81,7 +97,8 @@ public class PublicEvaluatorSignupController {
   @PostMapping("/evaluator-signup")
   public ResponseEntity<EvaluatorSelfRegistrationResponseDto> evaluatorSignup(
       @Valid @RequestBody(required = false) EvaluatorSelfRegistrationRequestDto request,
-      HttpServletRequest httpRequest) {
+      HttpServletRequest httpRequest,
+      HttpServletResponse httpResponse) {
     if (!evaluatorSelfRegistrationService.isEnabled()) {
       return ResponseEntity.notFound().build();
     }
@@ -93,6 +110,7 @@ public class PublicEvaluatorSignupController {
       EvaluatorSelfRegistrationResponseDto response =
           evaluatorSelfRegistrationService.register(tenantLabel, context.clientIp());
 
+      // Never put the session token in audit payloads (security guard).
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
@@ -102,10 +120,14 @@ public class PublicEvaluatorSignupController {
               .eventDetails(
                   AuditDetailsBuilder.builder()
                       .custom("tenant_label", response.tenantLabel())
+                      .custom("username", response.username())
+                      .custom("bootstrap_session", true)
                       .toJson())
               .build());
 
-      return ResponseEntity.status(201).body(response);
+      EvaluatorSelfRegistrationResponseDto body =
+          maybeAttachBrowserSessionCookie(response, httpResponse);
+      return ResponseEntity.status(201).body(body);
     } catch (RuntimeException ex) { // CHECKSTYLE IGNORE IllegalCatch
       auditLogService.log(
           AuditHelper.createAdminAudit(
@@ -117,5 +139,31 @@ public class PublicEvaluatorSignupController {
               .build());
       throw ex;
     }
+  }
+
+  /**
+   * When HttpOnly browser session cookies are enabled, store the bootstrap token in the cookie and
+   * omit the secret from the JSON body (Mode B). Mode A callers keep {@code sessionToken} in JSON.
+   */
+  private EvaluatorSelfRegistrationResponseDto maybeAttachBrowserSessionCookie(
+      EvaluatorSelfRegistrationResponseDto response, HttpServletResponse httpResponse) {
+    if (!browserSessionCookieProperties.isBrowserSessionCookieEnabled()
+        || response.sessionToken() == null
+        || response.sessionExpiresAt() == null) {
+      return response;
+    }
+    sessionCookieService.addSessionCookie(
+        httpResponse, response.sessionToken(), response.sessionExpiresAt());
+    String csrf = csrfTokenService.createToken(response.sessionToken());
+    sessionCookieService.addCsrfCookie(httpResponse, csrf, response.sessionExpiresAt());
+    return new EvaluatorSelfRegistrationResponseDto(
+        response.activationCode(),
+        response.activationCodeExpiresAt(),
+        response.adminUiUrl(),
+        response.guidedTourUrl(),
+        response.tenantLabel(),
+        null,
+        response.sessionExpiresAt(),
+        response.username());
   }
 }

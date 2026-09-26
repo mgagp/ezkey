@@ -18,6 +18,7 @@ import org.ezkey.admin.config.EvaluatorSelfRegistrationProperties;
 import org.ezkey.admin.domain.AdminOnboardingMode;
 import org.ezkey.admin.dto.response.EvaluatorSelfRegistrationResponseDto;
 import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.admin.service.AdminAuthService.TokenIssueResult;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
@@ -32,8 +33,10 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Anonymous evaluator self-registration: empty tenant + pending Tenant Admin + activation code.
  *
- * <p>Reuses {@link AdminProvisioningService} provisioning semantics under a Global Admin system
- * principal. Does not create integrations, API keys, or enrollments.
+ * <p>When enabled, also mints an opaque Admin UI {@code BOOTSTRAP} session (absolute TTL) so the
+ * evaluator can land in the console immediately. Reuses {@link AdminProvisioningService}
+ * provisioning semantics under a Global Admin system principal. Does not create integrations, API
+ * keys, or enrollments.
  */
 @Service
 public class EvaluatorSelfRegistrationService {
@@ -51,9 +54,13 @@ public class EvaluatorSelfRegistrationService {
   private static final String DEFAULT_TENANT_DESCRIPTION =
       "EXP1 anonymous evaluator preview tenant";
 
+  /** Product lock: bootstrap session absolute TTL hours (ignore misconfigured property). */
+  private static final int BOOTSTRAP_SESSION_TTL_HOURS_LOCK = 8;
+
   private final EvaluatorSelfRegistrationProperties properties;
   private final EvaluatorSelfRegistrationRateLimiter rateLimiter;
   private final AdminProvisioningService provisioningService;
+  private final AdminAuthService authService;
   private final EzkeyAdminRepository adminRepository;
   private final TenantRepository tenantRepository;
 
@@ -61,11 +68,13 @@ public class EvaluatorSelfRegistrationService {
       EvaluatorSelfRegistrationProperties properties,
       EvaluatorSelfRegistrationRateLimiter rateLimiter,
       AdminProvisioningService provisioningService,
+      AdminAuthService authService,
       EzkeyAdminRepository adminRepository,
       TenantRepository tenantRepository) {
     this.properties = properties;
     this.rateLimiter = rateLimiter;
     this.provisioningService = provisioningService;
+    this.authService = authService;
     this.adminRepository = adminRepository;
     this.tenantRepository = tenantRepository;
   }
@@ -82,9 +91,13 @@ public class EvaluatorSelfRegistrationService {
   /**
    * Registers an anonymous evaluator tenant and pending Tenant Admin.
    *
+   * <p>When the self-registration flag is on (caller must gate), mints activation material and a
+   * BOOTSTRAP Admin UI session. Bootstrap mint is coupled to the same flag only — there is no
+   * separate bootstrap toggle.
+   *
    * @param optionalTenantLabel optional short label from the client
    * @param clientIp client IP for rate limiting
-   * @return activation material and navigation URLs
+   * @return activation material, bootstrap session fields, and navigation URLs
    */
   @Transactional
   public EvaluatorSelfRegistrationResponseDto register(
@@ -117,6 +130,18 @@ public class EvaluatorSelfRegistrationService {
             AdminOnboardingMode.ACTIVATION_CODE,
             systemPrincipal);
 
+    EzkeyAdmin pendingAdmin = adminResult.admin();
+    // Enforce product lock: absolute 8h regardless of mis-set property (still document the prop).
+    int ttlHours = BOOTSTRAP_SESSION_TTL_HOURS_LOCK;
+    if (properties.getBootstrapSessionTtlHours() != BOOTSTRAP_SESSION_TTL_HOURS_LOCK) {
+      logger.warn(
+          "Ignoring ezkey.evaluator.self-registration.bootstrap-session-ttl-hours={} — product"
+              + " lock requires {}",
+          properties.getBootstrapSessionTtlHours(),
+          BOOTSTRAP_SESSION_TTL_HOURS_LOCK);
+    }
+    TokenIssueResult bootstrap = authService.issueBootstrapSession(pendingAdmin, ttlHours);
+
     logger.info(
         "Anonymous evaluator self-registration completed for tenant slug {} (tenantId={})",
         slug,
@@ -127,7 +152,10 @@ public class EvaluatorSelfRegistrationService {
         adminResult.activationCodeExpiresAt(),
         properties.getAdminUiUrl(),
         properties.getGuidedTourUrl(),
-        slug);
+        slug,
+        bootstrap.plainToken(),
+        bootstrap.token().getExpiresAt(),
+        pendingAdmin.getUsername());
   }
 
   private AdminPrincipal resolveSystemGlobalAdminPrincipal() {

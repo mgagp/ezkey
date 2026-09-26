@@ -26,6 +26,10 @@ interface AdminActivationResponseShape {
 interface LoginActivationSectionProps {
   onBackToPasswordless: () => void;
   authApiPublicBaseUrl?: string | null;
+  /** Hide the back-to-passwordless control (evaluator onboarding shell). */
+  hideBackLink?: boolean;
+  /** Prefill activation code (e.g. from evaluator signup handoff). */
+  initialActivationCode?: string;
 }
 
 type QrRenderState = {
@@ -37,6 +41,8 @@ type QrRenderState = {
 export function LoginActivationSection({
   onBackToPasswordless,
   authApiPublicBaseUrl,
+  hideBackLink = false,
+  initialActivationCode,
 }: LoginActivationSectionProps) {
   const { t } = useTranslation(['login']);
 
@@ -61,7 +67,7 @@ export function LoginActivationSection({
     formState: { errors },
   } = useForm<ActivationForm>({
     resolver: zodResolver(activationSchema),
-    defaultValues: { activationCode: '' },
+    defaultValues: { activationCode: initialActivationCode ?? '' },
   });
 
   const [activationResult, setActivationResult] =
@@ -369,15 +375,17 @@ export function LoginActivationSection({
         <Button className="w-full" isLoading={submitting} type="submit">
           {t('login:activation.submitActivate')}
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="w-full"
-          onClick={handleBackToLogin}
-        >
-          {t('login:activation.backToPasswordless')}
-        </Button>
+        {!hideBackLink && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="w-full"
+            onClick={handleBackToLogin}
+          >
+            {t('login:activation.backToPasswordless')}
+          </Button>
+        )}
       </div>
     </form>
   );
