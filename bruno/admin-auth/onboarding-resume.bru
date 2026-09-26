@@ -1,0 +1,49 @@
+meta {
+  name: onboarding resume
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/admin/auth/onboarding-resume
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "onboardingResumeSecret": "{{onboarding_resume_secret}}"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      test("Response remints bootstrap session fields", function () {
+          expect(jsonData).to.have.property('sessionExpiresAt');
+          expect(jsonData).to.have.property('username');
+          expect(jsonData).to.have.property('adminId');
+      });
+      test("Response does not expose enrollment QR proof", function () {
+          expect(jsonData).to.not.have.property('enrollmentProofToken');
+          expect(jsonData).to.not.have.property('enrollmentChallenge');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Redeem opaque onboarding-resume secret minted at activate (when evaluator self-registration is enabled).
+  
+  **No Authorization required.** Returns 404 when feature disabled. Opaque 401 on invalid/exhausted/expired secret.
+  
+  **Success (200):** reminted BOOTSTRAP sessionToken (Mode A), sessionExpiresAt (absolute ~2h), username, adminId.
+  Fetch QR via authenticated GET /api/v1/admins/{adminId}/onboarding under that session.
+}

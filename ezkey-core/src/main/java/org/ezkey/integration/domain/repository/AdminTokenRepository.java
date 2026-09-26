@@ -13,6 +13,7 @@ package org.ezkey.integration.domain.repository;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -325,6 +326,20 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
       "UPDATE AdminToken t SET t.active = false WHERE t.admin.adminId = :adminId AND t.active ="
           + " true")
   int deactivateAllTokensForAdmin(@Param("adminId") Integer adminId);
+
+  /**
+   * Deactivates active tokens of a specific purpose for an administrator.
+   *
+   * @param adminId administrator id
+   * @param purpose token purpose to deactivate
+   * @return number of tokens deactivated
+   */
+  @Modifying
+  @Query(
+      "UPDATE AdminToken t SET t.active = false WHERE t.admin.adminId = :adminId AND t.active ="
+          + " true AND t.tokenPurpose = :purpose")
+  int deactivateActiveTokensForAdminByPurpose(
+      @Param("adminId") Integer adminId, @Param("purpose") AdminTokenPurpose purpose);
 
   /**
    * Deactivates all active tokens for administrators belonging to a specific tenant.

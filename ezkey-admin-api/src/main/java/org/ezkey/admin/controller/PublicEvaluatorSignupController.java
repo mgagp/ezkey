@@ -19,9 +19,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
-import org.ezkey.admin.dto.request.EvaluatorOnboardingReissueRequestDto;
 import org.ezkey.admin.dto.request.EvaluatorSelfRegistrationRequestDto;
-import org.ezkey.admin.dto.response.EvaluatorOnboardingReissueResponseDto;
 import org.ezkey.admin.dto.response.EvaluatorSelfRegistrationResponseDto;
 import org.ezkey.admin.security.AdminCsrfTokenService;
 import org.ezkey.admin.security.AdminSessionCookieService;
@@ -42,8 +40,9 @@ import org.springframework.web.bind.annotation.RestController;
  * Public anonymous evaluator signup for experimental preview instances (EXP1).
  *
  * <p>Responds with HTTP 404 when the installation-scoped feature flag is disabled. When enabled,
- * also mints a BOOTSTRAP Admin UI session (JSON and optional HttpOnly cookie). Bounded re-issue
- * resumes incomplete enrollment after session death under the same flag.
+ * also mints a BOOTSTRAP Admin UI session (JSON and optional HttpOnly cookie). After activation,
+ * incomplete-enrollment resume uses {@code POST /api/v1/admin/auth/onboarding-resume} (capability
+ * secret) — not a public username oracle.
  */
 @RestController
 @RequestMapping("/api/v1/public")
@@ -144,80 +143,6 @@ public class PublicEvaluatorSignupController {
   }
 
   /**
-   * Re-issues activation or enrollment QR material plus a fresh BOOTSTRAP session for incomplete
-   * evaluator onboarding after logout or absolute session TTL.
-   *
-   * @param request username from signup
-   * @param httpRequest HTTP request for client context
-   * @param httpResponse HTTP response for optional session cookie
-   * @return phase-specific onboarding material when enabled and eligible
-   */
-  @Operation(
-      summary = "Resume incomplete evaluator onboarding",
-      description =
-          "Bounded re-issue for community/alpha evaluator self-registration: returns a fresh"
-              + " BOOTSTRAP session and either a new activation code (still pending activation) or"
-              + " rotated enrollment QR proof (activated, device not bound yet). Same feature flag"
-              + " as signup. Rate-limited. Not available after device bind. No permanent password.",
-      security = {})
-  @ApiResponse(
-      responseCode = "200",
-      description = "Onboarding material and bootstrap session re-issued",
-      content =
-          @Content(
-              mediaType = "application/json",
-              schema = @Schema(implementation = EvaluatorOnboardingReissueResponseDto.class)))
-  @ApiResponse(
-      responseCode = "404",
-      description = "Feature disabled, username unknown, or enrollment no longer incomplete")
-  @ApiResponse(responseCode = "429", description = "Re-issue rate limit reached")
-  @PostMapping("/evaluator-onboarding/reissue")
-  public ResponseEntity<EvaluatorOnboardingReissueResponseDto> evaluatorOnboardingReissue(
-      @Valid @RequestBody EvaluatorOnboardingReissueRequestDto request,
-      HttpServletRequest httpRequest,
-      HttpServletResponse httpResponse) {
-    if (!evaluatorSelfRegistrationService.isEnabled()) {
-      return ResponseEntity.notFound().build();
-    }
-
-    ClientContext context = ClientContext.from(httpRequest);
-
-    try {
-      EvaluatorOnboardingReissueResponseDto response =
-          evaluatorSelfRegistrationService.reissueOnboarding(
-              request.username(), context.clientIp());
-
-      auditLogService.log(
-          AuditHelper.createAdminAudit(
-                  context,
-                  EventType.EVALUATOR_SELF_REGISTRATION,
-                  AdminAuditConstants.EVALUATOR_ONBOARDING_REISSUE_COMPLETED)
-              .eventStatus(EventStatus.SUCCESS)
-              .eventDetails(
-                  AuditDetailsBuilder.builder()
-                      .custom("username", response.username())
-                      .custom("phase", response.phase())
-                      .custom("bootstrap_session", true)
-                      .toJson())
-              .build());
-
-      EvaluatorOnboardingReissueResponseDto body =
-          maybeAttachBrowserSessionCookie(response, httpResponse);
-      return ResponseEntity.ok(body);
-    } catch (RuntimeException ex) { // CHECKSTYLE IGNORE IllegalCatch
-      auditLogService.log(
-          AuditHelper.createAdminAudit(
-                  context,
-                  EventType.EVALUATOR_SELF_REGISTRATION,
-                  AdminAuditConstants.EVALUATOR_ONBOARDING_REISSUE_FAILED)
-              .eventStatus(EventStatus.FAILURE)
-              .errorMessage(ex.getMessage())
-              .build());
-      throw ex;
-    }
-  }
-
-  /**
    * When HttpOnly browser session cookies are enabled, store the bootstrap token in the cookie and
    * omit the secret from the JSON body (Mode B). Mode A callers keep {@code sessionToken} in JSON.
    */
@@ -241,30 +166,5 @@ public class PublicEvaluatorSignupController {
         null,
         response.sessionExpiresAt(),
         response.username());
-  }
-
-  private EvaluatorOnboardingReissueResponseDto maybeAttachBrowserSessionCookie(
-      EvaluatorOnboardingReissueResponseDto response, HttpServletResponse httpResponse) {
-    if (!browserSessionCookieProperties.isBrowserSessionCookieEnabled()
-        || response.sessionToken() == null
-        || response.sessionExpiresAt() == null) {
-      return response;
-    }
-    sessionCookieService.addSessionCookie(
-        httpResponse, response.sessionToken(), response.sessionExpiresAt());
-    String csrf = csrfTokenService.createToken(response.sessionToken());
-    sessionCookieService.addCsrfCookie(httpResponse, csrf, response.sessionExpiresAt());
-    return new EvaluatorOnboardingReissueResponseDto(
-        response.phase(),
-        response.username(),
-        response.activationCode(),
-        response.activationCodeExpiresAt(),
-        response.enrollmentId(),
-        response.enrollmentProofToken(),
-        response.enrollmentChallenge(),
-        null,
-        response.sessionExpiresAt(),
-        response.adminUiUrl(),
-        response.guidedTourUrl());
   }
 }

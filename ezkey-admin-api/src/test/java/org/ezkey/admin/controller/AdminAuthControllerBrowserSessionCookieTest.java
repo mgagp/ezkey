@@ -31,6 +31,7 @@ import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminRecoveryService;
+import org.ezkey.admin.service.EvaluatorSelfRegistrationService;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
@@ -54,6 +55,7 @@ class AdminAuthControllerBrowserSessionCookieTest {
   @Mock private AdminAuthService authService;
   @Mock private AdminProvisioningService provisioningService;
   @Mock private AdminRecoveryService recoveryService;
+  @Mock private EvaluatorSelfRegistrationService evaluatorSelfRegistrationService;
   @Mock private AuditLogService auditLogService;
   @Mock private AdminRateLimitFilter rateLimitFilter;
   @Mock private AdminRecoveryProperties recoveryProperties;
@@ -74,6 +76,7 @@ class AdminAuthControllerBrowserSessionCookieTest {
             authService,
             provisioningService,
             recoveryService,
+            evaluatorSelfRegistrationService,
             auditLogService,
             rateLimitFilter,
             recoveryProperties,

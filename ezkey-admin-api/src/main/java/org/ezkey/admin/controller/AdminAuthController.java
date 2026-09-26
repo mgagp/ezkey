@@ -27,10 +27,12 @@ import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.AdminAuthAuditContext;
 import org.ezkey.admin.dto.request.AdminActivationRequestDto;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
+import org.ezkey.admin.dto.request.AdminOnboardingResumeRequestDto;
 import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
 import org.ezkey.admin.dto.request.AdminRecoveryRequestDto;
 import org.ezkey.admin.dto.response.AdminActivationResponseDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
+import org.ezkey.admin.dto.response.AdminOnboardingResumeResponseDto;
 import org.ezkey.admin.dto.response.AdminRecoveryResponseDto;
 import org.ezkey.admin.dto.response.AdminSessionResponseDto;
 import org.ezkey.admin.exception.AdminAuthenticationException;
@@ -46,6 +48,7 @@ import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.admin.service.EvaluatorSelfRegistrationService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -95,6 +98,8 @@ public class AdminAuthController {
 
   private final org.ezkey.admin.service.AdminRecoveryService recoveryService;
 
+  private final EvaluatorSelfRegistrationService evaluatorSelfRegistrationService;
+
   private final AuditLogService auditLogService;
 
   private final AdminRateLimitFilter rateLimitFilter;
@@ -113,6 +118,7 @@ public class AdminAuthController {
       AdminAuthService authService,
       AdminProvisioningService provisioningService,
       org.ezkey.admin.service.AdminRecoveryService recoveryService,
+      EvaluatorSelfRegistrationService evaluatorSelfRegistrationService,
       AuditLogService auditLogService,
       AdminRateLimitFilter rateLimitFilter,
       AdminRecoveryProperties recoveryProperties,
@@ -123,6 +129,7 @@ public class AdminAuthController {
     this.authService = authService;
     this.provisioningService = provisioningService;
     this.recoveryService = recoveryService;
+    this.evaluatorSelfRegistrationService = evaluatorSelfRegistrationService;
     this.auditLogService = auditLogService;
     this.rateLimitFilter = rateLimitFilter;
     this.recoveryProperties = recoveryProperties;
@@ -170,13 +177,24 @@ public class AdminAuthController {
       AdminProvisioningService.ProvisioningResult result =
           provisioningService.activatePendingAdmin(request.activationCode());
 
+      String resumeSecret = null;
+      OffsetDateTime resumeExpiresAt = null;
+      if (evaluatorSelfRegistrationService.isEnabled()) {
+        AdminAuthService.TokenIssueResult resume =
+            authService.issueOnboardingResumeSecret(result.admin());
+        resumeSecret = resume.plainToken();
+        resumeExpiresAt = resume.token().getExpiresAt();
+      }
+
       AdminActivationResponseDto response =
           AdminActivationResponseDto.success(
               result.admin().getUsername(),
               result.enrollment() != null ? result.enrollment().getEnrollmentId() : null,
               result.enrollmentProofToken(),
               result.enrollmentChallenge(),
-              null);
+              null,
+              resumeSecret,
+              resumeExpiresAt);
 
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
 
@@ -196,9 +214,9 @@ public class AdminAuthController {
                       + ", username: "
                       + result.admin().getUsername()
                       + ", enrollmentId: "
-                      + (result.enrollment() != null
-                          ? result.enrollment().getEnrollmentId()
-                          : null))
+                      + (result.enrollment() != null ? result.enrollment().getEnrollmentId() : null)
+                      + ", onboardingResume="
+                      + (resumeSecret != null))
               .build());
 
       return ResponseEntity.ok(response);
@@ -239,6 +257,117 @@ public class AdminAuthController {
       return ResponseEntity.status(500)
           .body(AdminActivationResponseDto.error("An error occurred during activation"));
     }
+  }
+
+  /**
+   * Redeems an onboarding-resume secret and remints a short absolute BOOTSTRAP session.
+   *
+   * <p>Same evaluator self-registration flag as signup. Rate-limited with login/activate. Does not
+   * return QR material — use authenticated onboarding endpoints under the reminted BOOTSTRAP
+   * session. Opaque 401 on failure (no tenant oracle).
+   *
+   * @param request resume secret from activation
+   * @param httpRequest HTTP request for client context and rate limiting
+   * @param httpResponse HTTP response for optional session cookie
+   * @return reminted BOOTSTRAP session fields when successful
+   */
+  @Operation(
+      summary = "Resume incomplete onboarding (remint BOOTSTRAP)",
+      description =
+          "Redeems an opaque onboarding-resume secret minted at activation. Remints a BOOTSTRAP"
+              + " Admin UI session (absolute short TTL, no sliding). Available when evaluator"
+              + " self-registration is enabled. Does not reopen the activation code and does not"
+              + " return enrollment QR — use GET /admins/{id}/onboarding under the reminted"
+              + " session.",
+      security = {})
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "BOOTSTRAP session reminted"),
+        @ApiResponse(responseCode = "401", description = "Invalid or expired resume secret"),
+        @ApiResponse(responseCode = "404", description = "Feature disabled on this installation"),
+        @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+      })
+  @PostMapping("/onboarding-resume")
+  public ResponseEntity<AdminOnboardingResumeResponseDto> onboardingResume(
+      @Valid @RequestBody AdminOnboardingResumeRequestDto request,
+      HttpServletRequest httpRequest,
+      HttpServletResponse httpResponse) {
+    if (!evaluatorSelfRegistrationService.isEnabled()) {
+      return ResponseEntity.notFound().build();
+    }
+
+    ClientContext context = ClientContext.from(httpRequest);
+    try {
+      AdminAuthService.TokenIssueResult bootstrap =
+          authService.redeemOnboardingResume(request.onboardingResumeSecret());
+
+      rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
+
+      EzkeyAdmin admin = bootstrap.token().getAdmin();
+      Integer tenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_ACTIVATION,
+                  AdminAuditConstants.ONBOARDING_RESUME_REDEEMED,
+                  tenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(admin.getAdminId())
+              .eventDetails(
+                  "Onboarding resume redeemed for adminId: "
+                      + admin.getAdminId()
+                      + ", username: "
+                      + admin.getUsername())
+              .build());
+
+      AdminOnboardingResumeResponseDto body =
+          maybeAttachBootstrapCookie(
+              new AdminOnboardingResumeResponseDto(
+                  bootstrap.plainToken(),
+                  bootstrap.token().getExpiresAt(),
+                  admin.getUsername(),
+                  admin.getAdminId()),
+              httpResponse);
+      return ResponseEntity.ok(body);
+    } catch (AuthenticationException e) {
+      rateLimitFilter.recordFailedAttempt(context.clientIp());
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_ACTIVATION,
+                  AdminAuditConstants.ONBOARDING_RESUME_REDEEM_FAILED,
+                  null)
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage(e.getMessage())
+              .build());
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_ACTIVATION,
+                  AdminAuditConstants.ONBOARDING_RESUME_REDEEM_FAILED,
+                  null)
+              .eventStatus(EventStatus.ERROR)
+              .errorMessage(e.getMessage())
+              .build());
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+  }
+
+  private AdminOnboardingResumeResponseDto maybeAttachBootstrapCookie(
+      AdminOnboardingResumeResponseDto response, HttpServletResponse httpResponse) {
+    if (!browserSessionCookieProperties.isBrowserSessionCookieEnabled()
+        || response.sessionToken() == null
+        || response.sessionExpiresAt() == null) {
+      return response;
+    }
+    sessionCookieService.addSessionCookie(
+        httpResponse, response.sessionToken(), response.sessionExpiresAt());
+    String csrf = csrfTokenService.createToken(response.sessionToken());
+    sessionCookieService.addCsrfCookie(httpResponse, csrf, response.sessionExpiresAt());
+    return new AdminOnboardingResumeResponseDto(
+        null, response.sessionExpiresAt(), response.username(), response.adminId());
   }
 
   /**

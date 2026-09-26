@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Service: EvaluatorSelfRegistrationRateLimiter
- * Description: In-memory rate limits for anonymous evaluator self-registration and re-issue.
+ * Description: In-memory rate limits for anonymous evaluator self-registration.
  */
 package org.ezkey.admin.service;
 
@@ -14,17 +14,16 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.ezkey.admin.config.EvaluatorSelfRegistrationProperties;
 import org.ezkey.admin.exception.EvaluatorSelfRegistrationCapacityException;
 import org.springframework.stereotype.Service;
 
 /**
- * Applies global daily and per-IP success limits for evaluator self-registration, plus separate
- * per-IP / per-username hourly limits for onboarding re-issue.
+ * Applies global daily and per-IP success limits for evaluator self-registration.
  *
- * <p>In-memory counters are acceptable for single-node EXP1 preview instances.
+ * <p>In-memory counters are acceptable for single-node EXP1 preview instances. Onboarding-resume
+ * redeem shares the Admin login/activate rate-limit bucket (not this limiter).
  */
 @Service
 public class EvaluatorSelfRegistrationRateLimiter {
@@ -35,8 +34,6 @@ public class EvaluatorSelfRegistrationRateLimiter {
   private final AtomicInteger dailySuccessCount = new AtomicInteger(0);
 
   private final Cache<String, Boolean> ipSuccessMarkers;
-  private final Cache<String, AtomicInteger> reissueIpCounters;
-  private final Cache<String, AtomicInteger> reissueUsernameCounters;
 
   public EvaluatorSelfRegistrationRateLimiter(EvaluatorSelfRegistrationProperties properties) {
     this.properties = properties;
@@ -45,10 +42,6 @@ public class EvaluatorSelfRegistrationRateLimiter {
             .expireAfterWrite(Duration.ofHours(Math.max(1, properties.getPerIpWindowHours())))
             .maximumSize(10_000)
             .build();
-    this.reissueIpCounters =
-        Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(1)).maximumSize(10_000).build();
-    this.reissueUsernameCounters =
-        Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(1)).maximumSize(10_000).build();
   }
 
   /**
@@ -69,30 +62,6 @@ public class EvaluatorSelfRegistrationRateLimiter {
     dailySuccessCount.incrementAndGet();
     if (ipKey != null) {
       ipSuccessMarkers.put(ipKey, Boolean.TRUE);
-    }
-  }
-
-  /**
-   * Verifies and records a successful onboarding re-issue (separate from signup caps).
-   *
-   * @param clientIp client IP for per-IP hourly budget
-   * @param username evaluator username for per-username hourly budget
-   * @throws EvaluatorSelfRegistrationCapacityException when a re-issue limit is reached
-   */
-  public void verifyAndRecordReissue(String clientIp, String username) {
-    String ipKey = normalizeIpKey(clientIp);
-    if (ipKey != null) {
-      AtomicInteger ipCount = reissueIpCounters.get(ipKey, _ -> new AtomicInteger(0));
-      if (ipCount.incrementAndGet() > Math.max(1, properties.getReissuePerIpMaxPerHour())) {
-        throw new EvaluatorSelfRegistrationCapacityException();
-      }
-    }
-    String userKey = normalizeUsernameKey(username);
-    if (userKey != null) {
-      AtomicInteger userCount = reissueUsernameCounters.get(userKey, _ -> new AtomicInteger(0));
-      if (userCount.incrementAndGet() > Math.max(1, properties.getReissuePerUsernameMaxPerHour())) {
-        throw new EvaluatorSelfRegistrationCapacityException();
-      }
     }
   }
 
@@ -120,12 +89,5 @@ public class EvaluatorSelfRegistrationRateLimiter {
       return null;
     }
     return clientIp.trim();
-  }
-
-  private static String normalizeUsernameKey(String username) {
-    if (username == null || username.isBlank()) {
-      return null;
-    }
-    return username.trim().toLowerCase(Locale.ROOT);
   }
 }

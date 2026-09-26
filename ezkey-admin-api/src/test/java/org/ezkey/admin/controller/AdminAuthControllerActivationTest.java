@@ -17,6 +17,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
 import org.ezkey.admin.config.AdminRecoveryProperties;
@@ -30,7 +31,9 @@ import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.admin.service.EvaluatorSelfRegistrationService;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
@@ -50,6 +53,7 @@ class AdminAuthControllerActivationTest {
   @Mock private AdminAuthService authService;
   @Mock private AdminProvisioningService provisioningService;
   @Mock private org.ezkey.admin.service.AdminRecoveryService recoveryService;
+  @Mock private EvaluatorSelfRegistrationService evaluatorSelfRegistrationService;
   @Mock private AuditLogService auditLogService;
   @Mock private AdminRateLimitFilter rateLimitFilter;
   @Mock private AdminRecoveryProperties recoveryProperties;
@@ -68,6 +72,7 @@ class AdminAuthControllerActivationTest {
             authService,
             provisioningService,
             recoveryService,
+            evaluatorSelfRegistrationService,
             auditLogService,
             rateLimitFilter,
             recoveryProperties,
@@ -116,7 +121,53 @@ class AdminAuthControllerActivationTest {
     assertEquals(123, body.enrollmentId());
     assertEquals("ezkey_proof_demo", body.enrollmentProofToken());
     assertEquals(null, body.recoveryCodes());
+    assertEquals(null, body.onboardingResumeSecret());
     verify(auditLogService).log(any());
+  }
+
+  @Test
+  @DisplayName("activate mints onboarding-resume secret when evaluator self-reg enabled")
+  void activateMintsOnboardingResumeWhenSelfRegEnabled() {
+    when(evaluatorSelfRegistrationService.isEnabled()).thenReturn(true);
+    EzkeyAdmin admin = new EzkeyAdmin("eval-admin-x", AdminType.TENANT_ADMIN);
+    admin.setAdminId(9);
+    admin.setActive(true);
+    admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
+    org.ezkey.enrollment.domain.entity.Enrollment enrollment =
+        new org.ezkey.enrollment.domain.entity.Enrollment();
+    enrollment.setEnrollmentId(123);
+    when(provisioningService.activatePendingAdmin(
+            AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "demo123"))
+        .thenReturn(
+            new AdminProvisioningService.ProvisioningResult(
+                admin,
+                enrollment,
+                "ezkey_proof_demo",
+                654321,
+                null,
+                AdminOnboardingMode.ACTIVATION_CODE,
+                null,
+                null));
+    OffsetDateTime resumeExpires = OffsetDateTime.now().plusHours(8);
+    AdminToken resumeToken =
+        new AdminToken(
+            "hash",
+            admin,
+            AdminType.TENANT_ADMIN.name(),
+            resumeExpires,
+            org.ezkey.integration.domain.AdminTokenPurpose.ONBOARDING_RESUME);
+    when(authService.issueOnboardingResumeSecret(admin))
+        .thenReturn(
+            new AdminAuthService.TokenIssueResult(resumeToken, "ezkey_onboarding_resume_abc"));
+
+    ResponseEntity<AdminActivationResponseDto> response =
+        controller.activate(
+            new AdminActivationRequestDto(AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "demo123"),
+            httpRequest);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertEquals("ezkey_onboarding_resume_abc", response.getBody().onboardingResumeSecret());
+    assertEquals(resumeExpires, response.getBody().onboardingResumeExpiresAt());
   }
 
   @Test

@@ -13,7 +13,7 @@
   "logout": {
     "inProgress": "Signing out…",
     "cookieRevocationFailed": "Logout failed on the server. Your session is still active — try again.",
-    "bootstrapSessionWarn": "This temporary console session expires on logout. You’ll need to restart access (username resume) to return before device bind. Continue?"
+    "bootstrapSessionWarn": "This temporary console session expires on logout. Save your onboarding resume secret from activation to remint access before device bind. Continue?"
   },
   "pagination": {
     "page": "Page",

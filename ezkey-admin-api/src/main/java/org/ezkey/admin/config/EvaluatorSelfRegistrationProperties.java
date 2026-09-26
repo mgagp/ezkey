@@ -47,16 +47,6 @@ public class EvaluatorSelfRegistrationProperties {
    */
   private int bootstrapSessionTtlHours = 8;
 
-  /**
-   * Max successful onboarding re-issues per client IP per rolling hour (community resume path).
-   *
-   * <p>Separate from signup caps so a same-day logout can still resume incomplete enrollment.
-   */
-  private int reissuePerIpMaxPerHour = 10;
-
-  /** Max successful onboarding re-issues per username per rolling hour. */
-  private int reissuePerUsernameMaxPerHour = 5;
-
   public boolean isEnabled() {
     return enabled;
   }
@@ -111,21 +101,5 @@ public class EvaluatorSelfRegistrationProperties {
 
   public void setBootstrapSessionTtlHours(int bootstrapSessionTtlHours) {
     this.bootstrapSessionTtlHours = bootstrapSessionTtlHours;
-  }
-
-  public int getReissuePerIpMaxPerHour() {
-    return reissuePerIpMaxPerHour;
-  }
-
-  public void setReissuePerIpMaxPerHour(int reissuePerIpMaxPerHour) {
-    this.reissuePerIpMaxPerHour = reissuePerIpMaxPerHour;
-  }
-
-  public int getReissuePerUsernameMaxPerHour() {
-    return reissuePerUsernameMaxPerHour;
-  }
-
-  public void setReissuePerUsernameMaxPerHour(int reissuePerUsernameMaxPerHour) {
-    this.reissuePerUsernameMaxPerHour = reissuePerUsernameMaxPerHour;
   }
 }

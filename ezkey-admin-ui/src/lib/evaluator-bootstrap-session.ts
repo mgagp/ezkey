@@ -22,10 +22,8 @@ export interface EvaluatorBootstrapHandoff {
   username: string;
   /** Optional activation code for onboarding prefill — not the session secret. */
   activationCode?: string;
-  /** Optional enrollment QR material when re-issuing after activation. */
-  enrollmentId?: number;
-  enrollmentProofToken?: string;
-  enrollmentChallenge?: number | null;
+  /** Admin id for fetching QR via authenticated onboarding after resume. */
+  adminId?: number;
   adminType?: string;
 }
 
@@ -74,6 +72,7 @@ export function establishBootstrapAuthSession(input: {
   tenantId?: number | null;
   tenantName?: string | null;
   csrfToken?: string;
+  lifecycleStatus?: string;
 }): AuthSession {
   const session: AuthSession = {
     username: input.username,
@@ -84,7 +83,7 @@ export function establishBootstrapAuthSession(input: {
     tenantName: input.tenantName,
     csrfToken: input.csrfToken,
     tokenPurpose: 'BOOTSTRAP',
-    lifecycleStatus: 'PENDING_ACTIVATION',
+    lifecycleStatus: input.lifecycleStatus ?? 'PENDING_ACTIVATION',
   };
   if (!isBrowserSessionCookieBuild() && input.sessionToken) {
     session.token = input.sessionToken;

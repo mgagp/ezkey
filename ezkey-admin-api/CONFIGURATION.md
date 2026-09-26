@@ -412,8 +412,8 @@ flag — minting is gated by `enabled` alone (V-2026-09-26).
 | `ezkey.evaluator.self-registration.admin-ui-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
 | `ezkey.evaluator.self-registration.guided-tour-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
 | `ezkey.evaluator.self-registration.bootstrap-session-ttl-hours` | `int` | `8` | optionnel | Absolute TTL for the Admin UI BOOTSTRAP session minted with signup. Product lock: **exactly 8 hours** (no sliding). Misconfigured values are ignored at mint time. |
-| `ezkey.evaluator.self-registration.reissue-per-ip-max-per-hour` | `int` | `10` | optionnel | Max successful onboarding re-issues per client IP per rolling hour (`POST /api/v1/public/evaluator-onboarding/reissue`). Separate from signup caps. |
-| `ezkey.evaluator.self-registration.reissue-per-username-max-per-hour` | `int` | `5` | optionnel | Max successful onboarding re-issues per username per rolling hour. |
+
+When the same flag is ON, successful `POST /api/v1/admin/auth/activate` also mints an opaque **onboarding-resume** secret (`ezkey_onboarding_resume_*`, purpose `ONBOARDING_RESUME`, hashed at rest, absolute **8h** TTL, max **3** redeems). Redeem via `POST /api/v1/admin/auth/onboarding-resume` (login/activate rate-limit bucket) remints BOOTSTRAP at absolute **2h**. Activation codes stay one-shot; no public username QR oracle.
 
 **Fail-closed:** when `enabled=true`, Admin API startup aborts if `admin-ui-url` or
 `guided-tour-url` is blank (`EvaluatorSelfRegistrationStartupValidator`).

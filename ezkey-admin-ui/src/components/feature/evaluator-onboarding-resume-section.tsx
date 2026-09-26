@@ -12,20 +12,16 @@ import { fetchApi } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { storeEvaluatorBootstrapHandoff } from '@/lib/evaluator-bootstrap-session';
 
-interface ReissueResponse {
-  phase?: string;
-  username?: string;
-  activationCode?: string | null;
-  enrollmentId?: number | null;
-  enrollmentProofToken?: string | null;
-  enrollmentChallenge?: number | null;
+interface OnboardingResumeResponse {
   sessionToken?: string | null;
   sessionExpiresAt?: string;
+  username?: string;
+  adminId?: number;
 }
 
 /**
- * Minimal public resume for incomplete evaluator onboarding after BOOTSTRAP session death.
- * Same self-reg flag on the API; rate-limited; no permanent password.
+ * Minimal resume for incomplete evaluator onboarding after BOOTSTRAP session death.
+ * Capability secret from activation — not a public username oracle.
  */
 export function EvaluatorOnboardingResumeSection() {
   const { t } = useTranslation(['login']);
@@ -36,14 +32,22 @@ export function EvaluatorOnboardingResumeSection() {
   const schema = useMemo(
     () =>
       z.object({
-        username: z
+        onboardingResumeSecret: z
           .string()
-          .min(3, t('login:bootstrap.resume.validation.usernameRequired'))
-          .max(80),
+          .min(20, t('login:bootstrap.resume.validation.secretRequired'))
+          .regex(
+            /^ezkey_onboarding_resume_[A-Za-z0-9]+$/,
+            t('login:bootstrap.resume.validation.secretFormat'),
+          ),
       }),
     [t],
   );
   type FormValues = z.infer<typeof schema>;
+
+  const storedPrefill =
+    typeof sessionStorage !== 'undefined'
+      ? sessionStorage.getItem('ezkey_evaluator_onboarding_resume_secret') ?? ''
+      : '';
 
   const {
     register,
@@ -51,47 +55,34 @@ export function EvaluatorOnboardingResumeSection() {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { username: '' },
+    defaultValues: { onboardingResumeSecret: storedPrefill },
   });
 
   const onSubmit = async (values: FormValues) => {
     setErrorMessage(null);
     setSubmitting(true);
     try {
-      const data = await fetchApi<ReissueResponse>('/api/v1/public/evaluator-onboarding/reissue', {
-        method: 'POST',
-        requireAuth: false,
-        body: JSON.stringify({ username: values.username.trim() }),
-      });
+      const data = await fetchApi<OnboardingResumeResponse>(
+        '/api/v1/admin/auth/onboarding-resume',
+        {
+          method: 'POST',
+          requireAuth: false,
+          body: JSON.stringify({
+            onboardingResumeSecret: values.onboardingResumeSecret.trim(),
+          }),
+        },
+      );
 
       if (!data.sessionExpiresAt || !data.username) {
         setErrorMessage(t('login:bootstrap.resume.failed'));
         return;
       }
 
-      if (data.activationCode) {
-        sessionStorage.setItem('ezkey_evaluator_activation_code_prefill', data.activationCode);
-      }
-      if (data.enrollmentProofToken && data.enrollmentId != null) {
-        sessionStorage.setItem(
-          'ezkey_evaluator_enrollment_prefill',
-          JSON.stringify({
-            username: data.username,
-            enrollmentId: data.enrollmentId,
-            enrollmentProofToken: data.enrollmentProofToken,
-            enrollmentChallenge: data.enrollmentChallenge ?? null,
-          }),
-        );
-      }
-
       storeEvaluatorBootstrapHandoff({
         sessionToken: data.sessionToken ?? undefined,
         sessionExpiresAt: data.sessionExpiresAt,
         username: data.username,
-        activationCode: data.activationCode ?? undefined,
-        enrollmentId: data.enrollmentId ?? undefined,
-        enrollmentProofToken: data.enrollmentProofToken ?? undefined,
-        enrollmentChallenge: data.enrollmentChallenge ?? undefined,
+        adminId: data.adminId,
       });
       navigate('/evaluator-bootstrap', { replace: true });
     } catch (err) {
@@ -102,26 +93,28 @@ export function EvaluatorOnboardingResumeSection() {
   };
 
   return (
-    <details className="mt-4 rounded border-2 border-fg/30 bg-bg p-3 text-sm" data-testid="evaluator-onboarding-resume">
+    <details
+      className="mt-4 rounded border-2 border-fg/30 bg-bg p-3 text-sm"
+      data-testid="evaluator-onboarding-resume"
+    >
       <summary className="cursor-pointer font-semibold text-fg outline-none">
         {t('login:bootstrap.resume.summary')}
       </summary>
       <p className="mt-2 text-xs text-fg-muted leading-snug">{t('login:bootstrap.resume.hint')}</p>
-      <form
-        className="mt-3 space-y-3"
-        onSubmit={handleSubmit(onSubmit)}
-        noValidate
-      >
+      <form className="mt-3 space-y-3" onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="space-y-1.5">
-          <Label htmlFor="evaluator-resume-username">{t('login:bootstrap.resume.usernameLabel')}</Label>
+          <Label htmlFor="evaluator-resume-secret">
+            {t('login:bootstrap.resume.secretLabel')}
+          </Label>
           <Input
-            id="evaluator-resume-username"
-            autoComplete="username"
-            data-testid="evaluator-resume-username"
-            {...register('username')}
+            id="evaluator-resume-secret"
+            autoComplete="off"
+            spellCheck={false}
+            data-testid="evaluator-resume-secret"
+            {...register('onboardingResumeSecret')}
           />
-          {errors.username && (
-            <p className="text-xs text-danger">{errors.username.message}</p>
+          {errors.onboardingResumeSecret && (
+            <p className="text-xs text-danger">{errors.onboardingResumeSecret.message}</p>
           )}
         </div>
         {errorMessage && (

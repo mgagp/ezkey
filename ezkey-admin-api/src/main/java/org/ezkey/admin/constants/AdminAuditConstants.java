@@ -255,6 +255,12 @@ public final class AdminAuditConstants {
    */
   public static final String BOOTSTRAP_TOKEN_PREFIX = "ezkey_bootstrap_";
 
+  /**
+   * Prefix for onboarding-resume capability secrets (minted at activation; redeem remints
+   * BOOTSTRAP). Distinct from activation codes and from session/bootstrap bearers.
+   */
+  public static final String ONBOARDING_RESUME_TOKEN_PREFIX = "ezkey_onboarding_resume_";
+
   /** Prefix for bearer tokens in Authorization header. */
   public static final String BEARER_PREFIX = "Bearer ";
 
@@ -333,6 +339,12 @@ public final class AdminAuditConstants {
   /** Audit action for failed evaluator onboarding re-issue. */
   public static final String EVALUATOR_ONBOARDING_REISSUE_FAILED =
       "evaluator_onboarding_reissue_failed";
+
+  /** Audit action for successful onboarding-resume redeem (BOOTSTRAP remint). */
+  public static final String ONBOARDING_RESUME_REDEEMED = "onboarding_resume_redeemed";
+
+  /** Audit action for failed onboarding-resume redeem. */
+  public static final String ONBOARDING_RESUME_REDEEM_FAILED = "onboarding_resume_redeem_failed";
 
   // ═══════════════════════════════════════════════════════════════════════════════════════════════
   // Admin Provisioning Actions

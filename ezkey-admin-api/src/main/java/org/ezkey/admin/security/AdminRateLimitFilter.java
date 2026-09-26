@@ -47,6 +47,7 @@ import org.springframework.http.HttpStatus;
  *   <li>POST /api/v1/admin/auth/login
  *   <li>POST /api/v1/admin/auth/passwordless-wait
  *   <li>POST /api/v1/admin/auth/activate (activation redeem)
+ *   <li>POST /api/v1/admin/auth/onboarding-resume (resume-secret redeem)
  * </ul>
  *
  * <p><b>Rate Limiting Strategy:</b>
@@ -81,11 +82,17 @@ public class AdminRateLimitFilter implements Filter {
   private static final String PASSWORDLESS_WAIT_ENDPOINT_PATH =
       "/api/v1/admin/auth/passwordless-wait";
   private static final String ACTIVATE_ENDPOINT_PATH = "/api/v1/admin/auth/activate";
+  private static final String ONBOARDING_RESUME_ENDPOINT_PATH =
+      "/api/v1/admin/auth/onboarding-resume";
   private static final String BACKSTOP_METRIC = "ezkey.rate_limit.backstop.rejected";
 
   /** POST admin auth endpoints sharing the login rate-limit bucket (per client IP). */
   private static final List<String> RATE_LIMITED_PATHS =
-      List.of(LOGIN_ENDPOINT_PATH, PASSWORDLESS_WAIT_ENDPOINT_PATH, ACTIVATE_ENDPOINT_PATH);
+      List.of(
+          LOGIN_ENDPOINT_PATH,
+          PASSWORDLESS_WAIT_ENDPOINT_PATH,
+          ACTIVATE_ENDPOINT_PATH,
+          ONBOARDING_RESUME_ENDPOINT_PATH);
 
   private static final int FAILURE_COUNT_CACHE_MAX_SIZE = 10_000;
   private static final Duration FAILURE_COUNT_CACHE_TTL = Duration.ofHours(1);

@@ -11,13 +11,11 @@
 package org.ezkey.admin.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,15 +24,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.ezkey.admin.config.EvaluatorSelfRegistrationProperties;
 import org.ezkey.admin.domain.AdminOnboardingMode;
-import org.ezkey.admin.exception.EvaluatorOnboardingUnavailableException;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminAuthService.TokenIssueResult;
-import org.ezkey.enrollment.domain.EnrollmentStatus;
-import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
-import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
@@ -221,121 +215,5 @@ class EvaluatorSelfRegistrationServiceTest {
     ArgumentCaptor<Integer> ttlCaptor = ArgumentCaptor.forClass(Integer.class);
     verify(authService).issueBootstrapSession(eq(pendingAdmin), ttlCaptor.capture());
     assertEquals(8, ttlCaptor.getValue());
-  }
-
-  @Test
-  @DisplayName("reissueOnboarding returns new activation + BOOTSTRAP while pending activation")
-  void reissue_pendingActivation_returnsActivationAndBootstrap() {
-    Tenant tenant = new Tenant("eval-deadbeef", "desc");
-    tenant.setTenantId(42);
-    tenant.setActive(true);
-    EzkeyAdmin pendingAdmin = new EzkeyAdmin("eval-admin-deadbeef", AdminType.TENANT_ADMIN);
-    pendingAdmin.setAdminId(99);
-    pendingAdmin.setActive(true);
-    pendingAdmin.setLifecycleStatus(AdminLifecycleStatus.PENDING_ACTIVATION);
-    pendingAdmin.setTenant(tenant);
-    pendingAdmin.setEnrollment(null);
-
-    when(adminRepository.findByUsernameWithEnrollment("eval-admin-deadbeef"))
-        .thenReturn(java.util.Optional.of(pendingAdmin));
-    OffsetDateTime activationExpires = OffsetDateTime.now().plusDays(7);
-    when(provisioningService.reissueActivationCodeForEvaluatorResume(pendingAdmin))
-        .thenReturn(
-            new AdminProvisioningService.ActivationCodeReissueResult(
-                pendingAdmin, "ezkey_activation_new", activationExpires, true, 1));
-    OffsetDateTime bootstrapExpires = OffsetDateTime.now().plusHours(8);
-    AdminToken bootstrapToken =
-        new AdminToken(
-            "hash",
-            pendingAdmin,
-            AdminType.TENANT_ADMIN.name(),
-            bootstrapExpires,
-            AdminTokenPurpose.BOOTSTRAP);
-    when(authService.issueBootstrapSession(eq(pendingAdmin), eq(8)))
-        .thenReturn(new TokenIssueResult(bootstrapToken, "ezkey_bootstrap_reissue"));
-
-    var response = service.reissueOnboarding("eval-admin-deadbeef", "203.0.113.9");
-
-    assertEquals(EvaluatorSelfRegistrationService.PHASE_PENDING_ACTIVATION, response.phase());
-    assertEquals("ezkey_activation_new", response.activationCode());
-    assertEquals("ezkey_bootstrap_reissue", response.sessionToken());
-    assertNull(response.enrollmentProofToken());
-    verify(rateLimiter).verifyAndRecordReissue("203.0.113.9", "eval-admin-deadbeef");
-  }
-
-  @Test
-  @DisplayName("reissueOnboarding rotates QR proof + BOOTSTRAP for ACTIVE CREATED enrollment")
-  void reissue_deviceBind_returnsRotatedProofAndBootstrap() {
-    Tenant tenant = new Tenant("eval-cafebabe", "desc");
-    tenant.setTenantId(5);
-    tenant.setActive(true);
-    Enrollment enrollment = new Enrollment();
-    enrollment.setEnrollmentId(77);
-    enrollment.setStatus(EnrollmentStatus.CREATED);
-    enrollment.setActive(true);
-    EzkeyAdmin admin = new EzkeyAdmin("eval-admin-cafebabe", AdminType.TENANT_ADMIN);
-    admin.setAdminId(11);
-    admin.setActive(true);
-    admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
-    admin.setTenant(tenant);
-    admin.setEnrollment(enrollment);
-
-    when(adminRepository.findByUsernameWithEnrollment("eval-admin-cafebabe"))
-        .thenReturn(java.util.Optional.of(admin));
-    when(provisioningService.rotateIncompleteEnrollmentProofForEvaluatorResume(admin))
-        .thenReturn(
-            new AdminProvisioningService.OnboardingCredentialsResult(
-                77, "ezkey_proof_rotated", 654321, null));
-    OffsetDateTime bootstrapExpires = OffsetDateTime.now().plusHours(8);
-    AdminToken bootstrapToken =
-        new AdminToken(
-            "hash",
-            admin,
-            AdminType.TENANT_ADMIN.name(),
-            bootstrapExpires,
-            AdminTokenPurpose.BOOTSTRAP);
-    when(authService.issueBootstrapSession(eq(admin), eq(8)))
-        .thenReturn(new TokenIssueResult(bootstrapToken, "ezkey_bootstrap_bind"));
-
-    var response = service.reissueOnboarding("eval-admin-cafebabe", "203.0.113.10");
-
-    assertEquals(EvaluatorSelfRegistrationService.PHASE_DEVICE_BIND, response.phase());
-    assertEquals(77, response.enrollmentId());
-    assertEquals("ezkey_proof_rotated", response.enrollmentProofToken());
-    assertEquals(654321, response.enrollmentChallenge());
-    assertNull(response.activationCode());
-    assertEquals("ezkey_bootstrap_bind", response.sessionToken());
-  }
-
-  @Test
-  @DisplayName("reissueOnboarding rejects verified enrollment (device already bound)")
-  void reissue_rejectsVerifiedEnrollment() {
-    Tenant tenant = new Tenant("eval-done", "desc");
-    tenant.setActive(true);
-    Enrollment enrollment = new Enrollment();
-    enrollment.setEnrollmentId(1);
-    enrollment.setStatus(EnrollmentStatus.VERIFIED);
-    enrollment.setActive(true);
-    EzkeyAdmin admin = new EzkeyAdmin("eval-admin-done", AdminType.TENANT_ADMIN);
-    admin.setActive(true);
-    admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
-    admin.setTenant(tenant);
-    admin.setEnrollment(enrollment);
-    when(adminRepository.findByUsernameWithEnrollment("eval-admin-done"))
-        .thenReturn(java.util.Optional.of(admin));
-
-    assertThrows(
-        EvaluatorOnboardingUnavailableException.class,
-        () -> service.reissueOnboarding("eval-admin-done", "203.0.113.11"));
-    verify(authService, never()).issueBootstrapSession(any(), anyInt());
-  }
-
-  @Test
-  @DisplayName("reissueOnboarding rejects non-evaluator username prefix")
-  void reissue_rejectsNonEvaluatorUsername() {
-    assertThrows(
-        EvaluatorOnboardingUnavailableException.class,
-        () -> service.reissueOnboarding("ops.admin", "203.0.113.12"));
-    verify(adminRepository, never()).findByUsernameWithEnrollment(any());
   }
 }

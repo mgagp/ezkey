@@ -99,6 +99,12 @@ public class AdminTokenValidationService {
                   + " requests");
           return Optional.empty();
         }
+        // Onboarding-resume is a capability secret, not a bearer session
+        if (adminToken.getTokenPurpose() == AdminTokenPurpose.ONBOARDING_RESUME) {
+          logger.warn(
+              "❌ Token rejected: onboarding-resume secret cannot authenticate Admin API requests");
+          return Optional.empty();
+        }
 
         // Check if token is expired
         if (adminToken.getExpiresAt().isAfter(OffsetDateTime.now())) {
@@ -189,7 +195,8 @@ public class AdminTokenValidationService {
       OffsetDateTime now = OffsetDateTime.now();
       adminToken.setLastUsedAt(now);
       // Sliding expiration for SESSION tokens only.
-      // SEC-021: never extend RECOVERY. V-2026-09-26: never extend BOOTSTRAP (absolute 8h).
+      // SEC-021: never extend RECOVERY. V-2026-09-26: never extend BOOTSTRAP (absolute TTL).
+      // ONBOARDING_RESUME is not a bearer path (rejected at validate).
       if (adminToken.getTokenPurpose() == AdminTokenPurpose.SESSION) {
         int hours = Math.max(1, rotationProperties.getExpirationHours());
         adminToken.setExpiresAt(now.plusHours(hours));

@@ -53,18 +53,4 @@ class EvaluatorSelfRegistrationRateLimiterTest {
         EvaluatorSelfRegistrationCapacityException.class,
         () -> limiter.verifyAndRecordSuccess("203.0.113.10"));
   }
-
-  @Test
-  @DisplayName("reissue allows multiple successes within hourly budget")
-  void reissueAllowsWithinBudget() {
-    properties.setReissuePerIpMaxPerHour(3);
-    properties.setReissuePerUsernameMaxPerHour(2);
-    limiter = new EvaluatorSelfRegistrationRateLimiter(properties);
-
-    limiter.verifyAndRecordReissue("203.0.113.50", "eval-admin-a");
-    limiter.verifyAndRecordReissue("203.0.113.50", "eval-admin-a");
-    assertThrows(
-        EvaluatorSelfRegistrationCapacityException.class,
-        () -> limiter.verifyAndRecordReissue("203.0.113.50", "eval-admin-a"));
-  }
 }

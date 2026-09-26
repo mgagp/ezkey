@@ -28,6 +28,7 @@ import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
 import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
 import org.ezkey.admin.exception.AdminAuthenticationTimeoutException;
 import org.ezkey.admin.exception.AdminDeviceSignatureInvalidException;
+import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
@@ -35,6 +36,8 @@ import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.authattempt.service.AuthAttemptService;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
+import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -589,6 +592,147 @@ public class AdminAuthService {
         hours);
 
     return new TokenIssueResult(token, plainToken);
+  }
+
+  /** Absolute TTL hours for onboarding-resume capability (align pending enrollment window). */
+  private static final int ONBOARDING_RESUME_TTL_HOURS = 8;
+
+  /** Max successful redeems of an onboarding-resume secret (band 1–3; product choice: 3). */
+  private static final int ONBOARDING_RESUME_MAX_USES = 3;
+
+  /** Absolute TTL hours for BOOTSTRAP reminted via onboarding-resume (band 1–2h; choice: 2). */
+  public static final int ONBOARDING_RESUME_BOOTSTRAP_TTL_HOURS = 2;
+
+  private static final String ONBOARDING_RESUME_OPAQUE_FAILURE =
+      "Invalid or expired onboarding resume secret";
+
+  /**
+   * Mints an opaque onboarding-resume capability after successful activation.
+   *
+   * <p>Hashed at rest ({@link AdminTokenPurpose#ONBOARDING_RESUME}). Not a bearer session. Absolute
+   * {@value #ONBOARDING_RESUME_TTL_HOURS}h TTL; up to {@value #ONBOARDING_RESUME_MAX_USES} redeems.
+   * Deactivates any prior active resume secrets for this admin.
+   *
+   * @param admin activated administrator with incomplete enrollment
+   * @return plain resume secret (shown once) and expiration
+   */
+  @Transactional
+  public TokenIssueResult issueOnboardingResumeSecret(EzkeyAdmin admin) {
+    tokenRepository.deactivateActiveTokensForAdminByPurpose(
+        admin.getAdminId(), AdminTokenPurpose.ONBOARDING_RESUME);
+
+    String plainToken =
+        AdminAuditConstants.ONBOARDING_RESUME_TOKEN_PREFIX
+            + UUID.randomUUID().toString().replace("-", "");
+    String hash = SensitiveDataHasher.sha256Hex(plainToken);
+    if (hash == null) {
+      throw new IllegalStateException("Onboarding resume token hash could not be computed");
+    }
+    OffsetDateTime expiresAt = OffsetDateTime.now().plusHours(ONBOARDING_RESUME_TTL_HOURS);
+
+    AdminToken token =
+        new AdminToken(
+            hash,
+            admin,
+            admin.getAdminType().name(),
+            expiresAt,
+            AdminTokenPurpose.ONBOARDING_RESUME);
+    token.setTenant(admin.getTenant());
+    token.setIntegration(admin.getIntegration());
+    token.setCreatedAt(OffsetDateTime.now());
+    token.setActive(true);
+    token.setTokenUseCount(0);
+
+    tokenRepository.save(token);
+    logger.info(
+        "ONBOARDING_RESUME secret minted for admin {} (expiresAt={}, maxUses={})",
+        admin.getUsername(),
+        expiresAt,
+        ONBOARDING_RESUME_MAX_USES);
+    return new TokenIssueResult(token, plainToken);
+  }
+
+  /**
+   * Redeems an onboarding-resume secret and remints an absolute-TTL BOOTSTRAP session.
+   *
+   * <p>Does not return QR / enrollment proof — caller uses authenticated onboarding endpoints under
+   * the reminted BOOTSTRAP session. Opaque failure for all reject paths (no tenant oracle).
+   *
+   * @param plainResumeSecret plaintext resume secret from activation
+   * @return reminted BOOTSTRAP session (absolute {@value #ONBOARDING_RESUME_BOOTSTRAP_TTL_HOURS}h)
+   * @throws AuthenticationException when the secret is invalid, exhausted, expired, or enrollment
+   *     is no longer incomplete
+   */
+  @Transactional
+  public TokenIssueResult redeemOnboardingResume(String plainResumeSecret) {
+    if (plainResumeSecret == null
+        || plainResumeSecret.isBlank()
+        || !plainResumeSecret.startsWith(AdminAuditConstants.ONBOARDING_RESUME_TOKEN_PREFIX)) {
+      throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
+    }
+
+    String hash = SensitiveDataHasher.sha256Hex(plainResumeSecret.trim());
+    if (hash == null) {
+      throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
+    }
+
+    AdminToken resumeToken =
+        tokenRepository
+            .findByBearerTokenHashAndActiveTrueWithRelations(hash)
+            .orElseThrow(() -> new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE));
+
+    if (resumeToken.getTokenPurpose() != AdminTokenPurpose.ONBOARDING_RESUME) {
+      throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
+    }
+    if (resumeToken.getExpiresAt() == null
+        || !resumeToken.getExpiresAt().isAfter(OffsetDateTime.now())) {
+      resumeToken.setActive(false);
+      tokenRepository.save(resumeToken);
+      throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
+    }
+    if (resumeToken.getTokenUseCount() >= ONBOARDING_RESUME_MAX_USES) {
+      resumeToken.setActive(false);
+      tokenRepository.save(resumeToken);
+      throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
+    }
+
+    EzkeyAdmin admin = resumeToken.getAdmin();
+    if (admin == null || !Boolean.TRUE.equals(admin.getActive())) {
+      throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
+    }
+    if (admin.getLifecycleStatus() != AdminLifecycleStatus.ACTIVE) {
+      throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
+    }
+    Enrollment enrollment = admin.getEnrollment();
+    if (enrollment == null
+        || !Boolean.TRUE.equals(enrollment.getActive())
+        || enrollment.getStatus() != EnrollmentStatus.CREATED) {
+      throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
+    }
+    if (admin.getTenant() != null && !Boolean.TRUE.equals(admin.getTenant().getActive())) {
+      throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
+    }
+
+    int nextUses = resumeToken.getTokenUseCount() + 1;
+    resumeToken.setTokenUseCount(nextUses);
+    resumeToken.setLastUsedAt(OffsetDateTime.now());
+    if (nextUses >= ONBOARDING_RESUME_MAX_USES) {
+      resumeToken.setActive(false);
+    }
+    tokenRepository.save(resumeToken);
+
+    tokenRepository.deactivateActiveTokensForAdminByPurpose(
+        admin.getAdminId(), AdminTokenPurpose.BOOTSTRAP);
+
+    TokenIssueResult bootstrap =
+        issueBootstrapSession(admin, ONBOARDING_RESUME_BOOTSTRAP_TTL_HOURS);
+    logger.info(
+        "ONBOARDING_RESUME redeemed for admin {} (useCount={}/{}, bootstrapExpiresAt={})",
+        admin.getUsername(),
+        nextUses,
+        ONBOARDING_RESUME_MAX_USES,
+        bootstrap.token().getExpiresAt());
+    return bootstrap;
   }
 
   /**

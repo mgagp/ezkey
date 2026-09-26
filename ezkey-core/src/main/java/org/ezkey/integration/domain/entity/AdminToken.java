@@ -102,14 +102,22 @@ public class AdminToken {
   private String adminType;
 
   /**
-   * Purpose of this token: SESSION (full Admin API), RECOVERY (enrollment reset only), or BOOTSTRAP
-   * (evaluator pending-activation allowlist).
+   * Purpose of this token: SESSION (full Admin API), RECOVERY (enrollment reset only), BOOTSTRAP
+   * (evaluator pending-activation allowlist), or ONBOARDING_RESUME (capability redeem only).
    *
    * <p>Enforced by {@code AdminTokenValidationService} and {@code AdminBootstrapTokenScopeFilter}.
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "token_purpose", nullable = false, length = 20)
   private AdminTokenPurpose tokenPurpose = AdminTokenPurpose.SESSION;
+
+  /**
+   * Successful redeem count for limited-use purposes ({@link AdminTokenPurpose#ONBOARDING_RESUME}).
+   *
+   * <p>Unused (stays 0) for SESSION / RECOVERY / BOOTSTRAP.
+   */
+  @Column(name = "token_use_count", nullable = false)
+  private int tokenUseCount = 0;
 
   /**
    * Reference to the tenant associated with this token.
@@ -321,6 +329,24 @@ public class AdminToken {
    */
   public void setTokenPurpose(AdminTokenPurpose tokenPurpose) {
     this.tokenPurpose = tokenPurpose;
+  }
+
+  /**
+   * Gets the successful redeem count for limited-use token purposes.
+   *
+   * @return use count
+   */
+  public int getTokenUseCount() {
+    return tokenUseCount;
+  }
+
+  /**
+   * Sets the successful redeem count for limited-use token purposes.
+   *
+   * @param tokenUseCount use count
+   */
+  public void setTokenUseCount(int tokenUseCount) {
+    this.tokenUseCount = tokenUseCount;
   }
 
   /**

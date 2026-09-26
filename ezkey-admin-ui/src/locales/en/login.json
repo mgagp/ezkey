@@ -101,6 +101,8 @@
     "previewNotice": "This screen shows the enrollment QR, binding challenge, and proof token together so first-time activation works without email or SMS adapters. For stronger assurance, you may split them across your own channels (for example, send a screenshot of the QR by email and the 6-digit binding challenge by SMS or chat). Optional SMTP-assisted delivery can be configured later when the email channel is available.",
     "recoveryCodesDeferredTitle": "Recovery codes are intentionally deferred",
     "recoveryCodesDeferredBody": "Recovery codes are not created in this unauthenticated bootstrap step. Issue them later from an authenticated admin-management flow after the administrator has completed a first sign-in.",
+    "resumeSecretTitle": "Save your onboarding resume secret",
+    "resumeSecretBody": "If this temporary console session ends before device bind, paste this secret on the login page to remint access. It is not a password. Limited uses; expires with the pending enrollment window.",
     "qrTitle": "Bind with QR code",
     "qrLoading": "Generating QR code…",
     "qrHint": "Open EZKey on your phone and scan this code to continue enrollment.",
@@ -128,17 +130,19 @@
     "handoffFailed": "Could not restore the temporary console session. Complete enrollment with your activation code, then sign in.",
     "onboardingTitle": "Complete enrollment",
     "onboardingHint": "Signed in temporarily as {{username}}. Activate and bind a device — the enrollment QR stays available here.",
+    "onboardingLoadFailed": "Could not load enrollment QR. Use your onboarding resume secret from activation, or complete bind from another session.",
     "afterBindLogin": "After binding, sign in with passwordless EZKey for a normal session.",
-    "sessionExpired": "Your temporary console session has ended. Restart temporary access below with your evaluator username, or complete enrollment and sign in.",
+    "sessionExpired": "Your temporary console session has ended. Use your onboarding resume secret below to restart temporary access, or complete enrollment and sign in.",
     "resume": {
       "summary": "Restart temporary console access",
-      "hint": "Community / alpha only. Use the username from signup if you logged out or the session expired before device bind. Rate-limited — not a password.",
-      "usernameLabel": "Evaluator username",
+      "hint": "Community / alpha only. Paste the onboarding resume secret shown once at activation (not your username). Rate-limited with login — not a password.",
+      "secretLabel": "Onboarding resume secret",
       "submit": "Resume onboarding",
       "submitting": "Resuming…",
-      "failed": "Unable to resume onboarding for this username.",
+      "failed": "Unable to resume onboarding with this secret.",
       "validation": {
-        "usernameRequired": "Enter your evaluator username"
+        "secretRequired": "Enter your onboarding resume secret",
+        "secretFormat": "Use a secret in the format ezkey_onboarding_resume_…"
       }
     }
   }

@@ -11,7 +11,7 @@ import {
 import { isBrowserSessionCookieBuild, type AuthSession } from '@/lib/auth';
 
 /**
- * Landing route after evaluator signup auto-redirect.
+ * Landing route after evaluator signup auto-redirect or onboarding-resume redeem.
  *
  * Mode B: restores via `/me` + HttpOnly cookie. Mode A: consumes sessionStorage handoff
  * (token never placed in the URL).
@@ -34,15 +34,10 @@ export default function EvaluatorBootstrapPage() {
             handoff.activationCode,
           );
         }
-        if (handoff?.enrollmentProofToken && handoff.enrollmentId != null) {
+        if (handoff?.adminId != null) {
           sessionStorage.setItem(
-            'ezkey_evaluator_enrollment_prefill',
-            JSON.stringify({
-              username: handoff.username,
-              enrollmentId: handoff.enrollmentId,
-              enrollmentProofToken: handoff.enrollmentProofToken,
-              enrollmentChallenge: handoff.enrollmentChallenge ?? null,
-            }),
+            'ezkey_evaluator_resume_admin_id',
+            String(handoff.adminId),
           );
         }
 
@@ -67,6 +62,8 @@ export default function EvaluatorBootstrapPage() {
             sessionExpiresAt: handoff.sessionExpiresAt,
             username: handoff.username,
             adminType: handoff.adminType,
+            adminId: handoff.adminId,
+            lifecycleStatus: handoff.adminId != null ? 'ACTIVE' : 'PENDING_ACTIVATION',
           });
           if (cancelled) return;
           login(session);

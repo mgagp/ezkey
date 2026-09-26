@@ -438,48 +438,40 @@ passwordless login. Community / alpha only — not a clean-start or production d
 
 See `ezkey-admin-api/CONFIGURATION.md` (evaluator self-registration group) and vision `V-2026-09-26-evaluator-bootstrap-admin-session`.
 
-### Resume incomplete evaluator onboarding (unauthenticated, same flag)
+### Resume incomplete evaluator onboarding (capability secret, same flag)
 
-**Base path:** `POST http://localhost:9080/api/v1/public/evaluator-onboarding/reissue` (no `Authorization` header).
+**Base path:** `POST http://localhost:9080/api/v1/admin/auth/onboarding-resume` (no `Authorization` header).
 
-Same gate as signup (`ezkey.evaluator.self-registration.enabled`). When disabled → **404**. Bounded re-issue so logout / absolute BOOTSTRAP TTL before device bind is not a dead end (product option B). Does **not** block logout. No permanent password.
+Same gate as signup (`ezkey.evaluator.self-registration.enabled`). When disabled → **404**.
 
-**Eligible only when enrollment is incomplete:**
+Patrick craft (Alex lock B): after successful **activate**, when the flag is ON, the activation response includes a distinct opaque **onboarding-resume** secret (`ezkey_onboarding_resume_*`). The secret is **hashed at rest** (AdminToken purpose `ONBOARDING_RESUME`), absolute TTL **8h**, max **3** successful redeems. Activation codes stay **one-shot** (never reopened). There is **no** public username QR oracle.
 
-| Phase | Condition | Material returned |
-| ----- | --------- | ----------------- |
-| `PENDING_ACTIVATION` | Lifecycle pending, no enrollment yet | New activation code + fresh BOOTSTRAP session |
-| `DEVICE_BIND` | Lifecycle ACTIVE, enrollment status `CREATED` (no device bind yet) | Rotated enrollment proof / challenge + fresh BOOTSTRAP session |
-
-After device bind (`BOUND` / `VERIFIED`) → **404** (use normal passwordless login). Non-evaluator usernames and inactive tenants → **404** (anti-enumeration).
-
-**Rate limits (defaults, separate from signup):** **10** successful re-issues per client IP per hour; **5** per username per hour.
+**Rate limit:** shares the Admin login / activate IP bucket.
 
 **Request body:**
 
 ```json
 {
-  "username": "eval-admin-a1b2c3d4"
+  "onboardingResumeSecret": "ezkey_onboarding_resume_…"
 }
 ```
 
-**Response (200 OK)** — phase-specific fields omitted when null:
+**Success (200 OK)** — remints BOOTSTRAP only (absolute **2h**, no sliding). Does **not** return enrollment QR / proof:
 
 ```json
 {
-  "phase": "DEVICE_BIND",
-  "username": "eval-admin-a1b2c3d4",
-  "enrollmentId": 42,
-  "enrollmentProofToken": "ezkey_proof_…",
-  "enrollmentChallenge": 123456,
   "sessionToken": "ezkey_bootstrap_…",
-  "sessionExpiresAt": "2026-05-23T20:00:00Z",
-  "adminUiUrl": "https://admin-ui.ezkey.online",
-  "guidedTourUrl": "https://ezkey.org/community-guided-tour.html"
+  "sessionExpiresAt": "2026-05-23T14:00:00Z",
+  "username": "eval-admin-a1b2c3d4",
+  "adminId": 42
 }
 ```
 
-**Bruno:** `bruno/public-admin/evaluator-onboarding-reissue.bru`.
+QR via existing authenticated `GET /api/v1/admins/{id}/onboarding` (+ `/qrcode`) under the reminted BOOTSTRAP session.
+
+**Failure:** opaque **401** (invalid / expired / exhausted / enrollment already bound) — no tenant oracle. Feature OFF → **404**.
+
+**Bruno:** `bruno/admin-auth/onboarding-resume.bru` (when present) or call the path above after activate with flag ON.
 
 ### Admin Authentication (Passwordless-Only)
 

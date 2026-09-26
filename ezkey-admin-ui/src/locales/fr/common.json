@@ -13,7 +13,7 @@
   "logout": {
     "inProgress": "Déconnexion…",
     "cookieRevocationFailed": "La déconnexion a échoué côté serveur. Votre session est encore active — réessayez.",
-    "bootstrapSessionWarn": "Cette session console temporaire expire à la déconnexion. Vous devrez redémarrer l’accès (reprise par nom d’utilisateur) pour revenir avant la liaison d’appareil. Continuer ?"
+    "bootstrapSessionWarn": "Cette session console temporaire expire à la déconnexion. Conservez le secret de reprise d’enrôlement reçu à l’activation pour rétablir l’accès avant la liaison d’appareil. Continuer ?"
   },
   "pagination": {
     "page": "Page",

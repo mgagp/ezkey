@@ -99,6 +99,7 @@ public class SecurityConfig {
                     // Allow public access to authentication bootstrap endpoints
                     .requestMatchers(
                         "/api/v1/admin/auth/activate",
+                        "/api/v1/admin/auth/onboarding-resume",
                         "/api/v1/admin/auth/login",
                         "/api/v1/admin/auth/passwordless-wait",
                         "/api/v1/admin/auth/recover")

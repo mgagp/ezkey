@@ -29,6 +29,7 @@ import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminRecoveryService;
+import org.ezkey.admin.service.EvaluatorSelfRegistrationService;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
@@ -55,6 +56,7 @@ class AdminAuthControllerPasswordlessAuditTest {
   @Mock private AdminAuthService authService;
   @Mock private AdminProvisioningService provisioningService;
   @Mock private AdminRecoveryService recoveryService;
+  @Mock private EvaluatorSelfRegistrationService evaluatorSelfRegistrationService;
   @Mock private AuditLogService auditLogService;
   @Mock private AdminRateLimitFilter rateLimitFilter;
   @Mock private AdminRecoveryProperties recoveryProperties;
@@ -78,6 +80,7 @@ class AdminAuthControllerPasswordlessAuditTest {
             authService,
             provisioningService,
             recoveryService,
+            evaluatorSelfRegistrationService,
             auditLogService,
             rateLimitFilter,
             recoveryProperties,

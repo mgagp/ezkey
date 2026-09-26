@@ -21,6 +21,8 @@ interface AdminActivationResponseShape {
   enrollmentId?: number;
   enrollmentProofToken?: string;
   enrollmentChallenge?: number;
+  onboardingResumeSecret?: string;
+  onboardingResumeExpiresAt?: string;
 }
 
 interface LoginActivationSectionProps {
@@ -75,6 +77,12 @@ export function LoginActivationSection({
 
   const [activationResult, setActivationResult] =
     useState<AdminActivationResponseShape | null>(initialEnrollmentResult ?? null);
+
+  useEffect(() => {
+    if (initialEnrollmentResult?.enrollmentProofToken != null) {
+      setActivationResult(initialEnrollmentResult);
+    }
+  }, [initialEnrollmentResult]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
@@ -181,6 +189,14 @@ export function LoginActivationSection({
         return;
       }
 
+      if (data.onboardingResumeSecret) {
+        sessionStorage.setItem(
+          'ezkey_evaluator_onboarding_resume_secret',
+          data.onboardingResumeSecret,
+        );
+      }
+      sessionStorage.removeItem('ezkey_evaluator_activation_code_prefill');
+
       setActivationResult(data);
     } catch (err) {
       setErrorMessage(getTranslatedApiError(err, t, t('login:activation.activateFailed')));
@@ -234,6 +250,17 @@ export function LoginActivationSection({
           <Alert variant="info" title={t('login:activation.recoveryCodesDeferredTitle')}>
             {t('login:activation.recoveryCodesDeferredBody')}
           </Alert>
+          {activationResult.onboardingResumeSecret != null && (
+            <Alert variant="info" title={t('login:activation.resumeSecretTitle')}>
+              <p className="text-sm mb-2">{t('login:activation.resumeSecretBody')}</p>
+              <code
+                className="block break-all text-xs font-mono"
+                data-testid="onboarding-resume-secret"
+              >
+                {activationResult.onboardingResumeSecret}
+              </code>
+            </Alert>
+          )}
         </section>
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 md:items-start">
