@@ -10,6 +10,7 @@
 - **Updated at:** `2026-09-26`
 - **Captured by:** Marc / Alex
 - **Priority:** `P2` (friction reduction on community alpha path; gated; not a platform default)
+- **Marc defaults confirmed:** `2026-09-26` — same self-reg flag only; auto-redirect after emit + QR in account; one-sentence expiry message
 
 ## Intent
 
@@ -38,28 +39,49 @@ logout must **not** destroy the incomplete tenant/admin.
 Settled by Alex / Marc. Do not re-litigate in execution planning unless a security boundary forces
 a documented supersession.
 
-1. **Scope = community / alpha only.** Same gating family as evaluator self-registration:
-   - Flag **OFF by default**.
-   - **ON** only via explicit install config:
-     env `EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED` /
-     property `ezkey.evaluator.self-registration.enabled`.
-   - **Refuse** enabling this as a clean-start self-host default.
-2. **When public signup emits an activation code, ALSO mint** an opaque Admin UI **session** token
-   (not a permanent password, not a recovery secret).
-3. **Bootstrap session TTL = exactly 8 hours, absolute** (no sliding for this bootstrap session).
+### Marc-confirmed product defaults (2026-09-26)
+
+These three are **explicit product defaults** — capture them in execution UX/API, do not invent a
+second flag or a silent expiry.
+
+1. **Same flag as self-reg — bootstrap session only when ON.** There is **no separate** bootstrap
+   session flag. Minting the opaque Admin UI bootstrap session happens **if and only if**
+   evaluator self-registration is enabled via the existing gate:
+   env `EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED` /
+   property `ezkey.evaluator.self-registration.enabled`.
+   When the flag is **OFF**, public signup must not mint a bootstrap session and must not advertise
+   one. Flag remains **OFF by default**; refuse clean-start self-host default.
+2. **Auto-redirect to Admin UI after emission; QR stays on the account.** After successful public
+   signup emit (activation code + bootstrap session), the evaluator funnel **auto-redirects** into
+   the Admin UI under that bootstrap session. The enrollment **QR remains accessible and
+   completable inside the account** (incomplete-enrollment surfaces) — redirect must not hide or
+   drop the QR path.
+3. **Clear one-sentence message when the bootstrap session expires.** On absolute 8h expiry (or
+   equivalent server rejection of an expired bootstrap session), the UI shows a **single clear
+   sentence** stating that the temporary console session has ended and how to continue (e.g.
+   complete enrollment / sign in again) — not a blank failure or a stack-trace page.
+
+### Additional settled locks
+
+4. **Scope = community / alpha only** (lab / discrete instance with the flag explicitly ON). Not a
+   platform-wide default.
+5. **When public signup emits an activation code and the flag is ON, ALSO mint** an opaque Admin UI
+   **session** token (not a permanent password, not a recovery secret).
+6. **Bootstrap session TTL = exactly 8 hours, absolute** (no sliding for this bootstrap session).
    Separate from activation-code TTL (**keep 7 days**).
-4. **Activation code remains one-shot** enrollment bootstrap (redeem once; independent of session).
-5. **Logout kills the session**; tenant / admin account **persists** as incomplete enrollment
+7. **Activation code remains one-shot** enrollment bootstrap (redeem once; independent of session).
+8. **Logout kills the session**; tenant / admin account **persists** as incomplete enrollment
    (not dead-on-logout). Evaluator can return later via activation / device bind / normal login as
    applicable.
-6. **QR / enrollment always visible and completable** during the incomplete-enrollment window
-   (bootstrap session or otherwise).
-7. **Delivery includes ezkey.org alpha-path honesty update.** Cloudflare publish = Edgar later —
-   **not** in the first docs/vision PR and not required to promote this note.
-8. **Julie (Admin UI):** minimal chrome — honesty line / small banner when enrollment is incomplete;
-   default = little chrome + one honesty line (no heavy onboarding wizard in v1).
-9. **Isabelle (QA) later:** exhaustive clean-start QA + a local profile with the mode **ON**.
-10. **Lab / discrete / alpha ≠ prod.** No SLA claims. No IdP parity claims.
+9. **QR / enrollment always visible and completable** during the incomplete-enrollment window
+   (bootstrap session or otherwise) — reinforces Marc default #2 inside the account.
+10. **Delivery includes ezkey.org alpha-path honesty update.** Cloudflare publish = Edgar later —
+    **not** in the first docs/vision PR and not required to promote this note.
+11. **Julie (Admin UI):** minimal chrome — honesty line / small banner when enrollment is incomplete;
+    default = little chrome + one honesty line (no heavy onboarding wizard in v1). Expiry UX follows
+    Marc default #3 (one sentence).
+12. **Isabelle (QA) later:** exhaustive clean-start QA + a local profile with the mode **ON**.
+13. **Lab / discrete / alpha ≠ prod.** No SLA claims. No IdP parity claims.
 
 ## Security guards (Christophe — capture for execution)
 
@@ -75,10 +97,12 @@ These are product-level security obligations for any later `I-*` / `TB-*` / impl
 | No long-lived refresh | No refresh token / remember-me for this bootstrap path. Absolute 8h only. |
 | Honesty scope | Public claims scoped to **community / lab / alpha** only — never imply this is the self-host or prod default. |
 
-Fail-closed preference at the gate: if the feature flag is off, public signup must not mint a
-bootstrap session (and must not advertise one). Prefer fail-closed on session mint failure during
-signup only if product decides “no half-provisioned console promise”; record that choice in the
-execution slice (activation code may still be the durable enrollment path).
+Fail-closed at the shared self-reg gate (Marc default #1): if
+`EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED` / `ezkey.evaluator.self-registration.enabled` is off,
+public signup must not mint a bootstrap session and must not advertise one. Prefer fail-closed on
+session mint failure during signup only if product decides “no half-provisioned console promise”;
+record that choice in the execution slice (activation code may still be the durable enrollment
+path).
 
 ## Craft gap (Patrick — current vs intended)
 
@@ -98,6 +122,10 @@ Documented for V-* consequences. **Not** implemented in this note’s PR.
   finalize in DTO/OpenAPI during implementation).
 - Dedicated **bootstrap TTL** configuration property = **8h absolute** (distinct from normal
   session TTL and from activation-code TTL).
+- **No new enablement property** for bootstrap session — reuse the self-reg flag only.
+- Post-emit UX: **auto-redirect** into Admin UI with bootstrap session established; account UI keeps
+  enrollment QR reachable.
+- Expiry UX: **one-sentence** clear message when bootstrap session TTL elapses.
 
 ## Consequences (when executed later)
 
@@ -105,11 +133,11 @@ Orientation only — promote via `I-*` / `TB-*` when funded. No application code
 
 | Surface | Consequence |
 | ------- | ----------- |
-| **Flag / config** | Remain on the existing evaluator self-registration gate family; add bootstrap-session TTL prop (8h); document OFF default and community-only enablement. |
-| **Admin API** | Signup emit path mints activation **and** bootstrap session; activate/redeem stays one-shot for the code; logout invalidates session server-side; rate limits on emit + redeem. |
-| **Admin UI** | Accept bootstrap session; show Julie’s minimal incomplete-enrollment honesty line/banner; keep QR/enrollment completable; no heavy chrome. |
-| **ezkey.org** | Alpha-path honesty copy update (community/lab only; friction-reduction narrative without SLA/IdP parity). Publish via Edgar / Cloudflare later. |
-| **QA** | Isabelle: clean-start remains flag-OFF; separate local/community profile with mode ON; cover logout-persists-account, 8h absolute expiry, activation still one-shot. |
+| **Flag / config** | **Same flag only** (`EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED`); add bootstrap-session TTL prop (8h); document OFF default and community-only enablement; no second bootstrap toggle. |
+| **Admin API** | When flag ON, signup emit path mints activation **and** bootstrap session; activate/redeem stays one-shot for the code; logout invalidates session server-side; rate limits on emit + redeem. |
+| **Admin UI** | Accept bootstrap session; **auto-land** after emit redirect; Julie’s minimal incomplete-enrollment honesty line/banner; **QR/enrollment completable in account**; **one-sentence expiry message** when 8h absolute TTL ends; no heavy chrome. |
+| **ezkey.org** | Alpha-path honesty copy update (community/lab only; friction-reduction narrative without SLA/IdP parity); signup success path hands off via auto-redirect. Publish via Edgar / Cloudflare later. |
+| **QA** | Isabelle: clean-start remains flag-OFF (no bootstrap mint); separate local/community profile with mode ON; cover auto-redirect + QR-in-account, logout-persists-account, 8h absolute expiry + one-sentence message, activation still one-shot. |
 
 ## Honesty
 
@@ -122,10 +150,13 @@ Orientation only — promote via `I-*` / `TB-*` when funded. No application code
 ## Non-goals
 
 - Enabling the flag (or bootstrap session mint) on clean-start / self-host defaults.
+- A **separate** feature flag for bootstrap session (must stay coupled to self-reg).
 - Permanent password issuance, email password reset, or remember-me / refresh tokens.
 - Sliding TTL for the bootstrap session.
 - Changing activation-code TTL away from 7 days.
 - Killing tenant/admin on logout.
+- Hiding enrollment QR after auto-redirect into Admin UI.
+- Opaque / empty UX when the bootstrap session expires (must be one clear sentence).
 - Full IdP / SSO / WebAuthn parity claims on the public site.
 - Cloudflare / DNS publish work (Edgar) as part of this vision PR.
 - Exhaustive QA in the vision PR (Isabelle track is a later execution gate).
@@ -146,9 +177,11 @@ Orientation only — promote via `I-*` / `TB-*` when funded. No application code
 Promote (or spawn `I-*` / `TB-*`) when:
 
 1. Execution owners accept the locked TTL split (activation 7d vs bootstrap session 8h absolute).
-2. `BOOTSTRAP` allowlist while `PENDING_ACTIVATION` is sketched enough to avoid accidental full-privilege session.
-3. Site honesty copy outline is agreed (community/lab only).
-4. QA profile plan (flag OFF clean-start + flag ON community/lab) is acknowledged.
+2. Marc defaults are accepted in the execution slice: same self-reg flag only; post-emit
+   auto-redirect + QR in account; one-sentence expiry message.
+3. `BOOTSTRAP` allowlist while `PENDING_ACTIVATION` is sketched enough to avoid accidental full-privilege session.
+4. Site honesty copy outline is agreed (community/lab only).
+5. QA profile plan (flag OFF clean-start + flag ON community/lab) is acknowledged.
 
 ## Next step
 
