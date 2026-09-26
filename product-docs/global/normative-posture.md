@@ -19,11 +19,15 @@ This page is the single canon for that stance. Honest security claims live in
 
 ## Priority
 
-Current funded work is **operable release quality** and **continuous code hygiene**. See
-[`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md).
-That compass already states that operable does **not** mean full SOC 2 certification.
+Current funded work is **continuous product and code hygiene** under an intention-first laboratory
+/ public-alpha posture — not a September P0 release gate. See
+[`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md).
+Historical Waves A–D ordering lives in
+[`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md)
+(superseded as live compass). That history already stated that operable does **not** mean full
+SOC 2 certification.
 
-Normative posture **orients** design. It does not outrank the release compass, invent control
+Normative posture **orients** design. It does not outrank the live posture lock, invent control
 coverage percentages, or justify ceremony that does not improve the product.
 
 ## What we aim for
@@ -95,5 +99,7 @@ a parallel compliance program.
 - [`design-principles.md`](design-principles.md) — especially security as posture, not a bolted-on
   feature.
 - [`docs/SECURITY_POSTURE.md`](../../docs/SECURITY_POSTURE.md) — honest claims and threat model.
+- [`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md)
+  — live laboratory / public-alpha posture lock.
 - [`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md)
-  — current release-order compass.
+  — historical Waves A–D release-order record.

@@ -1,35 +1,38 @@
-# Operational Readiness Prioritization — September 2026 Target
+# Operational Readiness Prioritization — September 2026 Target (historical)
 
 ## Metadata
 
 - **Document ID:** `operational-readiness-prioritization-2026-09`
-- **Status:** `active`
+- **Status:** `historical` (superseded as live priority compass)
 - **Created at:** `2026-06-28`
-- **Last reviewed at:** `2026-08-25`
-- **Target milestone:** First **formally operable** Ezkey release line (experimental deployment posture; not production SLA)
-- **Horizon:** **September 2026** (~10 weeks from this exercise)
+- **Last reviewed at:** `2026-09-26`
+- **Target milestone:** First **formally operable** Ezkey release line (experimental deployment posture; not production SLA) — **horizon reached / program closed**
+- **Horizon:** **September 2026** (exercise from 2026-06-28; Waves A–D closed)
 - **Owner:** Marc (maintainer discussion captured below)
 - **Supersedes:** Ad-hoc “next P3 slice” choice (Alerts list polish) as the default cold-start priority
+- **Superseded by (live compass):** [`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md)
 
 ## Session restart phrase (cold start)
 
-> **“Where are we?” / “What should be next?”** → Read this document first, then the
-> [Integrity cluster grill session](backlog/grill-sessions/integrity-cluster-D4-D6-grill-me.md)
-> and backlog items **`I-2026-0005`**, **`I-2026-0006`**, **`I-2026-0007`**.
+> **“Where are we?” / “What should be next?”** → Do **not** treat this document as the live next-P0
+> gate. Read
+> [`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md)
+> and [`backlog/index.md`](backlog/index.md) first. Keep this file for **Waves A–D history** and the
+> integrity-cluster ordering narrative.
 
 **2026-08-25:** Waves A–C are **closed**. Wave D (EXP1 soak) is **closed as an attention freeze**,
 not a remaining executable gate. “What should be next?” is the active backlog in
-[`backlog/index.md`](backlog/index.md), not soak. EXP1 is the live experimental host; operator
-watch is human — open analysis only if a signal appears.
+[`backlog/index.md`](backlog/index.md), not soak.
 
 **2026-09-22 (public posture):** Public EXP1 / “experimental lab” branding is retired in favor of
 **Ezkey product in alpha** + a maintained **community instance** on **ezkey.online** (ezkey.org
 remains the product site; editorial pass live via PR #609). Decision record (promoted):
 [`vision/V-2026-09-22-exp1-to-ezkey-online-alpha.md`](vision/V-2026-09-22-exp1-to-ezkey-online-alpha.md).
-Wave D history above is unchanged; DNS / VM recycle remain open ops follow-up.
 
-This is the canonical **release-order compass** until the September milestone is reached or this
-document is explicitly superseded.
+**2026-09-26 (posture lock):** Live cold-start compass is
+[`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md)
+(laboratory / alpha community / GitHub open / Play closed testing / intention-first; no P0 backlog).
+This document remains the **historical** Waves A–D release-order record.
 
 ## Context — maintainer discussion (2026-06-28)
 
@@ -165,7 +168,9 @@ idea), not as a soak program. Residual watch is **human operator activity**: loo
 time to time; if a signal appears, open analysis. Do **not** treat soak as the next executable
 gate or invent soak backlog.
 
-EXP1 remains the experimental host. Soak is observation, not a deliverable.
+Historical note: EXP1 was the experimental host name for that soak window. Public/live host
+framing is now **community instance / ezkey.online** (see `V-2026-09-22` / `V-2026-09-26`). Soak
+remains observation, not a deliverable.
 
 ## Explicitly deferred (September release lens)
 
@@ -193,8 +198,8 @@ For the **September 2026** target, “operable” means:
 2. **Degraded mode** behavior under Admin API loss is **predictable** and **tested**.
 3. **Nightly detection** runs and surfaces anomalies through the **alert model**.
 4. Dashboard gives an honest **health snapshot** (batch last-run + open alerts).
-5. EXP1 exists as the **live experimental host** so the maintainer can observe (and, if needed,
-   simulate failures) without treating soak as a backlog slice.
+5. A **live community / lab host** exists so the maintainer can observe (and, if needed, simulate
+   failures) without treating soak as a backlog slice (historically EXP1; now ezkey.online).
 
 It does **not** mean: full SOC 2 certification, iOS mobile parity, HA stack, or every P2 backlog
 idea closed.
@@ -203,10 +208,10 @@ idea closed.
 
 | Entry point | Link |
 |-------------|------|
-| **This document** | You are here — release-order compass |
+| **Live cold-start compass** | [`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md) |
+| **This document** | Historical Waves A–D release-order record |
 | Backlog index | [`backlog/index.md`](backlog/index.md) § Current prioritization anchor |
 | Roadmap P2 | [`roadmap.md`](roadmap.md) → Milestone `P2-hardening` |
-| Session start | [`methodology/session-start-guide.md`](../methodology/session-start-guide.md) § Where are we? |
 | Integrity vision | [`V-2026-0004`](vision/V-2026-0004-integrity-validation-strategy.md) |
 | Grill decisions | [`integrity-cluster-D4-D6-grill-me.md`](backlog/grill-sessions/integrity-cluster-D4-D6-grill-me.md) |
 | Runtime alert reference | [`docs/ALERTS.md`](../../docs/ALERTS.md) |
@@ -215,5 +220,6 @@ idea closed.
 
 ## Review cadence
 
-- Revisit when Wave B exit gate is met, or at **2026-08-01** (mid-horizon check), whichever comes first.
-- Supersede this document (do not silently edit priorities) if the September target or release definition changes.
+- **Closed as live compass** on **2026-09-26** — superseded by
+  [`vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](vision/V-2026-09-26-laboratory-alpha-posture-lock.md).
+- Keep Waves A–D sections intact for historical traceability; do not revive this file as a P0 gate.

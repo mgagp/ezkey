@@ -6,30 +6,27 @@ This index provides a lightweight list of active ideas and their current state.
 
 ## Current prioritization anchor (read first)
 
-**“Where are we?” / “What should be next?”** for the September 2026 operable-release target:
+**“Where are we?” / “What should be next?”** — live posture lock:
 
-→ [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
+→ [`../vision/V-2026-09-26-laboratory-alpha-posture-lock.md`](../vision/V-2026-09-26-laboratory-alpha-posture-lock.md)
 
-**Summary (2026-08-25):** Wave B integrity cluster R1 **closed** (GitHub #269). Wave C operator UI
-residuals **closed** (alerts list polish, dashboard signal model, audit-chain checkpoints). Waves
-A–C are complete. Wave D was an **attention freeze**, not a backlog item: it preserved calendar
-time on EXP1 and is **closed** as a release-order gate. EXP1 remains the historical name for the
-live host; **public** posture is alpha + community instance on **ezkey.online** (site step done
-via PR #609) — see promoted
+**Summary (2026-09-26):** Laboratory / opinionated / experimental posture; public alpha community
+on **ezkey.online**; GitHub open; Play Store **closed testing** only (not mobile production);
+intention-first collaboration. Waves A–C and Wave D (attention freeze) are **closed**. There is
+**no remaining P0** on the active backlog. Evaluator self-registration stays **off by default**
+(`ezkey.evaluator.self-registration.enabled`); community may enable it explicitly.
+
+Historical September operable-release compass (Waves A–D narrative only):
+[`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
+— superseded as live priority gate by `V-2026-09-26`.
+
+**Earlier summary (2026-08-25 / 2026-09-22):** Wave B integrity cluster R1 **closed** (GitHub #269).
+Wave C operator UI residuals **closed**. Wave D was an **attention freeze**, not a backlog item.
+Public posture moved EXP1 → alpha + community on **ezkey.online** (site PR #609) — see
 [`V-2026-09-22-exp1-to-ezkey-online-alpha`](../vision/V-2026-09-22-exp1-to-ezkey-online-alpha.md).
-Operator watch is human and continuous — if a signal appears, open analysis. There is **no
-remaining P0** on the active backlog.
-Canon sync 2026-08-24 closed two delivered-but-stale items (`I-2026-06-23` / `TB-2026-06-23` SEC-001,
-`I-2026-07-17` reset 401). Canon sync 2026-08-25 closed three delivered TBs whose index lagged
-(`TB-2026-08-09` signed instance-info; `TB-2026-06-02` Auth Cloudflare schema; `TB-2026-08-23`
-Integration Cloudflare schema). Parents `I-2026-08-09` and `I-2026-06-02` stay `active` for
-UX follow-up and Admin Cloudflare. The 2026-08-02 sync closed `I-2026-07-10` and `TB-2026-07-06` Tier 0,
-and materialized a **parallel** mobile Play official-release track (state-of-play from the current
-limited-experimental Android release): vision
-[`V-2026-08-02-mobile-official-play-release-posture`](../vision/V-2026-08-02-mobile-official-play-release-posture.md)
-and four backlog ideas below — this track does not claim September operability scope; see
-[`operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
-§ Parallel tracks. Wave B closeout:
+Canon sync 2026-08-24/25 closed delivered-but-stale index rows. Parallel mobile Play track
+([`V-2026-08-02-mobile-official-play-release-posture`](../vision/V-2026-08-02-mobile-official-play-release-posture.md))
+remains orthogonal to the closed September operability program. Wave B closeout:
 [`method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
 
 ## Active ideas
