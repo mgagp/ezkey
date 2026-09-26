@@ -144,8 +144,7 @@ class AdminTokenValidationServiceTest {
     Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
 
     assertThat(result).isEmpty();
-    verify(tokenRepository)
-        .deactivateTokensForAdminByPurpose(42, AdminTokenPurpose.EVALUATOR_TEMP);
+    verify(tokenRepository).deactivateTokensForAdminByPurpose(42, AdminTokenPurpose.EVALUATOR_TEMP);
   }
 
   @Test

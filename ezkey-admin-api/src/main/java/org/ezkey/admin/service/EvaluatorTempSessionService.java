@@ -39,9 +39,9 @@ import org.springframework.transaction.annotation.Transactional;
  * Temporary evaluator console sessions ({@link AdminTokenPurpose#EVALUATOR_TEMP}).
  *
  * <p>Same gate as evaluator self-registration. One-shot mint, absolute TTL. Supersede after MFA
- * VERIFIED is admin-api owned (SESSION mint in {@link AdminAuthService} and TEMP validation gate
- * in {@link AdminTokenValidationService}). Auth-api does not write tokens. Expiry predicate uses
- * soft tenant deactivate when no other bound admin remains.
+ * VERIFIED is admin-api owned (SESSION mint in {@link AdminAuthService} and TEMP validation gate in
+ * {@link AdminTokenValidationService}). Auth-api does not write tokens. Expiry predicate uses soft
+ * tenant deactivate when no other bound admin remains.
  */
 @Service
 public class EvaluatorTempSessionService {

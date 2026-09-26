@@ -85,8 +85,7 @@ class AdminAuthServiceEvaluatorTempSupersedeTest {
 
     assertThat(response.token()).isNotBlank();
     verify(tokenRepository, never()).deactivateAllTokensForAdmin(any());
-    verify(tokenRepository)
-        .deactivateTokensForAdminByPurpose(77, AdminTokenPurpose.EVALUATOR_TEMP);
+    verify(tokenRepository).deactivateTokensForAdminByPurpose(77, AdminTokenPurpose.EVALUATOR_TEMP);
 
     ArgumentCaptor<AdminToken> captor = ArgumentCaptor.forClass(AdminToken.class);
     verify(tokenRepository).save(captor.capture());
