@@ -16,7 +16,8 @@
     "alerts": "Alertes",
     "admins": "Administrateurs",
     "apiKeys": "Clés API",
-    "encryptionKeys": "Clés de chiffrement"
+    "encryptionKeys": "Clés de chiffrement",
+    "evaluatorOnboarding": "Terminer l'enrôlement"
   },
   "header": {
     "signedInAs": "Connecté en tant que",

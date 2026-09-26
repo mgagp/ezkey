@@ -92,3 +92,22 @@ export function establishBootstrapAuthSession(input: {
 export function isBootstrapSession(session: AuthSession | null | undefined): boolean {
   return session?.tokenPurpose === 'BOOTSTRAP';
 }
+
+/**
+ * BOOTSTRAP sessions must stay on the narrow onboarding surface — full console routes would
+ * 403 against the Admin API allowlist.
+ */
+export function isBootstrapConsoleRestricted(
+  session: AuthSession | null | undefined,
+): boolean {
+  return isBootstrapSession(session);
+}
+
+/** Paths allowed while a BOOTSTRAP session is active (relative to the SPA). */
+export const BOOTSTRAP_ALLOWED_PATHS = ['/evaluator-onboarding'] as const;
+
+export function isBootstrapAllowedPath(pathname: string): boolean {
+  return BOOTSTRAP_ALLOWED_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+}

@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   establishBootstrapAuthSession,
+  isBootstrapAllowedPath,
+  isBootstrapConsoleRestricted,
   isBootstrapSession,
   markBootstrapSessionExpired,
   storeEvaluatorBootstrapHandoff,
@@ -59,5 +61,27 @@ describe('evaluator-bootstrap-session', () => {
     markBootstrapSessionExpired();
     expect(takeBootstrapSessionExpiredFlag()).toBe(true);
     expect(takeBootstrapSessionExpiredFlag()).toBe(false);
+  });
+
+  it('restricts console paths to onboarding while BOOTSTRAP', () => {
+    expect(
+      isBootstrapConsoleRestricted({
+        username: 'u',
+        adminType: 'TENANT_ADMIN',
+        expiresAt: new Date().toISOString(),
+        tokenPurpose: 'BOOTSTRAP',
+      }),
+    ).toBe(true);
+    expect(
+      isBootstrapConsoleRestricted({
+        username: 'u',
+        adminType: 'TENANT_ADMIN',
+        expiresAt: new Date().toISOString(),
+        tokenPurpose: 'SESSION',
+      }),
+    ).toBe(false);
+    expect(isBootstrapAllowedPath('/evaluator-onboarding')).toBe(true);
+    expect(isBootstrapAllowedPath('/dashboard')).toBe(false);
+    expect(isBootstrapAllowedPath('/tenants')).toBe(false);
   });
 });

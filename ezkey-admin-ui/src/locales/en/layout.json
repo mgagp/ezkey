@@ -16,7 +16,8 @@
     "alerts": "Alerts",
     "admins": "Admins",
     "apiKeys": "API Keys",
-    "encryptionKeys": "Encryption Keys"
+    "encryptionKeys": "Encryption Keys",
+    "evaluatorOnboarding": "Complete enrollment"
   },
   "header": {
     "signedInAs": "Signed in as",

@@ -1,25 +1,22 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { AppShell } from '@/components/layout/app-shell';
-import { Alert } from '@/components/ui/alert';
 import { LoginActivationSection } from '@/components/feature/login-activation-section';
 import { usePublicInstanceInfo } from '@/hooks/use-public-instance-info';
 import { useAuth } from '@/context/use-auth';
 
 /**
- * Minimal evaluator onboarding under a BOOTSTRAP session — activation + QR, honesty line only.
+ * Minimal evaluator onboarding under a BOOTSTRAP session — activation + QR.
+ * Honesty copy lives once in AppShell (no duplicate page Alert).
  */
 export default function EvaluatorOnboardingPage() {
-  const { t } = useTranslation(['login', 'layout']);
+  const { t } = useTranslation(['login']);
   const { session } = useAuth();
   const { data: publicInstanceInfo } = usePublicInstanceInfo();
 
   return (
     <AppShell title={t('login:bootstrap.onboardingTitle')}>
       <div className="max-w-xl space-y-4">
-        <Alert variant="info">
-          {t('layout:bootstrap.incompleteEnrollmentBanner')}
-        </Alert>
         <p className="text-sm text-fg-muted">
           {t('login:bootstrap.onboardingHint', { username: session?.username ?? '' })}
         </p>

@@ -6,6 +6,7 @@ import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { usePublicInstanceInfo } from '@/hooks/use-public-instance-info';
 import { getBuildShortSha } from '@/lib/build-identity';
 import { isDemoMode } from '@/lib/demo-mode';
+import { isBootstrapConsoleRestricted } from '@/lib/evaluator-bootstrap-session';
 import { cn } from '@/lib/utils';
 import { Dialog } from '@/components/ui/dialog';
 import type { AdminResponseDtoAdminType } from '@/generated/admin-api/model';
@@ -34,7 +35,8 @@ type NavLabelKey =
   | 'alerts'
   | 'admins'
   | 'apiKeys'
-  | 'encryptionKeys';
+  | 'encryptionKeys'
+  | 'evaluatorOnboarding';
 
 interface NavItem {
   labelKey: NavLabelKey;
@@ -58,6 +60,15 @@ const navItems: NavItem[] = [
   { labelKey: 'encryptionKeys', path: '/encryption-keys', icon: KeyRound, roles: ['GLOBAL_ADMIN'] },
 ];
 
+/** Narrow console surface while BOOTSTRAP session is active (API allowlist coherence). */
+const bootstrapNavItems: NavItem[] = [
+  {
+    labelKey: 'evaluatorOnboarding',
+    path: '/evaluator-onboarding',
+    icon: Users,
+  },
+];
+
 function getAdminTaglineKey(adminType: string | undefined): string {
   if (adminType === 'GLOBAL_ADMIN') return 'tagline.globalAdmin';
   if (adminType === 'TENANT_ADMIN') return 'tagline.tenantAdmin';
@@ -76,7 +87,9 @@ export function Sidebar() {
   const { data: publicInstanceInfo } = usePublicInstanceInfo();
   const [aboutOpen, setAboutOpen] = useState(false);
 
-  const visibleItems = navItems.filter(
+  const visibleItems = (
+    isBootstrapConsoleRestricted(session) ? bootstrapNavItems : navItems
+  ).filter(
     (item) => !item.roles || item.roles.includes(session?.adminType as AdminResponseDtoAdminType),
   );
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/use-auth';
@@ -27,9 +27,11 @@ interface AppShellProps {
  */
 export function AppShell({ title, breadcrumb, detailNav, children }: AppShellProps) {
   const { t } = useTranslation(['layout']);
+  const { pathname } = useLocation();
   const { session } = useAuth();
-  const showBootstrapHonesty =
-    isBootstrapSession(session) || session?.lifecycleStatus === 'PENDING_ACTIVATION';
+  const showBootstrapHonesty = isBootstrapSession(session);
+  const onOnboardingPath =
+    pathname === '/evaluator-onboarding' || pathname.startsWith('/evaluator-onboarding/');
 
   return (
     <div data-testid="app-shell" className="flex h-screen overflow-hidden bg-bg">
@@ -43,13 +45,18 @@ export function AppShell({ title, breadcrumb, detailNav, children }: AppShellPro
               className="mb-4 border-2 border-fg bg-surface px-3 py-2 text-sm text-fg"
               role="status"
             >
-              {t('layout:bootstrap.incompleteEnrollmentBanner')}{' '}
-              <Link
-                to="/evaluator-onboarding"
-                className="font-bold underline underline-offset-2"
-              >
-                {t('layout:bootstrap.completeEnrollmentLink')}
-              </Link>
+              {t('layout:bootstrap.incompleteEnrollmentBanner')}
+              {!onOnboardingPath && (
+                <>
+                  {' '}
+                  <Link
+                    to="/evaluator-onboarding"
+                    className="font-bold underline underline-offset-2"
+                  >
+                    {t('layout:bootstrap.completeEnrollmentLink')}
+                  </Link>
+                </>
+              )}
             </div>
           )}
           {detailNav}
