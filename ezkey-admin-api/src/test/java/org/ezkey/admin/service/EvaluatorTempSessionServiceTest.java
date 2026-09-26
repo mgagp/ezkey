@@ -94,8 +94,7 @@ class EvaluatorTempSessionServiceTest {
     when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofTokenHash(10, proofHash))
         .thenReturn(Optional.of(enrollment));
     when(adminRepository.findByEnrollmentId(10)).thenReturn(Optional.of(admin));
-    when(tokenRepository.existsByAdminAdminIdAndTokenPurpose(
-            20, AdminTokenPurpose.EVALUATOR_TEMP))
+    when(tokenRepository.existsByAdminAdminIdAndTokenPurpose(20, AdminTokenPurpose.EVALUATOR_TEMP))
         .thenReturn(false);
     when(tokenRepository.save(any(AdminToken.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -122,8 +121,7 @@ class EvaluatorTempSessionServiceTest {
     when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofTokenHash(10, proofHash))
         .thenReturn(Optional.of(enrollment));
     when(adminRepository.findByEnrollmentId(10)).thenReturn(Optional.of(admin));
-    when(tokenRepository.existsByAdminAdminIdAndTokenPurpose(
-            20, AdminTokenPurpose.EVALUATOR_TEMP))
+    when(tokenRepository.existsByAdminAdminIdAndTokenPurpose(20, AdminTokenPurpose.EVALUATOR_TEMP))
         .thenReturn(true);
 
     assertThatThrownBy(() -> service.mint(10, "proof-token"))
@@ -188,7 +186,7 @@ class EvaluatorTempSessionServiceTest {
 
     assertThat(processed).isEqualTo(1);
     verify(tenantService).deactivateTenantAsSystem(5);
-    verify(auditLogService).log(any());
+    verify(auditLogService, org.mockito.Mockito.times(2)).log(any());
   }
 
   private static Enrollment enrollment(int id, EnrollmentStatus status, String proof) {
