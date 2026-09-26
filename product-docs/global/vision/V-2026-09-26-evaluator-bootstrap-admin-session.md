@@ -141,7 +141,7 @@ Orientation only — promote via `I-*` / `TB-*` when funded. No application code
 
 ### Gap #1 consequence (Alex product lock 2026-09-26 — option B; Patrick craft)
 
-Logout (or absolute BOOTSTRAP TTL) **after activate and before device bind** must not be a dead end. Global Admin `POST /admins/{id}/activation-code/regenerate` only covers `PENDING_ACTIVATION` with **no** enrollment — it does **not** cover the post-activate `CREATED` enrollment gap.
+Logout (or absolute BOOTSTRAP TTL) **after activate and before device verification** must not be a dead end. Global Admin `POST /admins/{id}/activation-code/regenerate` only covers `PENDING_ACTIVATION` with **no** enrollment — it does **not** cover the post-activate incomplete-enrollment gap (`CREATED` or `BOUND`).
 
 **Settled product choice: B — bounded re-issue onboarding** (do **not** block logout (A); do **not** accept a dead-end trap (C)), with Patrick craft imposition:
 

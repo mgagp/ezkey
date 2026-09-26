@@ -15,13 +15,18 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.AdminTokenPurpose;
+import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
  * Service for checking access control permissions based on authentication context.
@@ -57,6 +62,7 @@ public class AccessControlService {
   private final AuthAttemptRepository authAttemptRepository;
   private final EnrollmentRepository enrollmentRepository;
   private final IntegrationRepository integrationRepository;
+  private final EzkeyAdminRepository adminRepository;
 
   /**
    * Constructs a new AccessControlService.
@@ -64,14 +70,17 @@ public class AccessControlService {
    * @param authAttemptRepository repository for auth attempt data access
    * @param enrollmentRepository repository for enrollment data access
    * @param integrationRepository repository for integration data access
+   * @param adminRepository repository for administrator data access
    */
   public AccessControlService(
       AuthAttemptRepository authAttemptRepository,
       EnrollmentRepository enrollmentRepository,
-      IntegrationRepository integrationRepository) {
+      IntegrationRepository integrationRepository,
+      EzkeyAdminRepository adminRepository) {
     this.authAttemptRepository = authAttemptRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
+    this.adminRepository = adminRepository;
   }
 
   /**
@@ -123,6 +132,11 @@ public class AccessControlService {
   public boolean canAccessEnrollment(Authentication auth, Integer enrollmentId) {
     if (auth == null || !auth.isAuthenticated()) {
       return false;
+    }
+
+    // BOOTSTRAP footholds: own enrollment only (never Global Admin cross-admin reads).
+    if (isBootstrapSession()) {
+      return canAccessOwnEnrollmentForBootstrap(auth, enrollmentId);
     }
 
     // Global admins can access any enrollment
@@ -341,6 +355,51 @@ public class AccessControlService {
         "Authentication principal is not AdminPrincipal: {}",
         principal != null ? principal.getClass().getSimpleName() : "null");
     return null;
+  }
+
+  /**
+   * Returns true when the current HTTP request authenticates with a BOOTSTRAP token purpose.
+   *
+   * @return true for BOOTSTRAP footholds
+   */
+  private boolean isBootstrapSession() {
+    ServletRequestAttributes attrs =
+        (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+    if (attrs == null) {
+      return false;
+    }
+    return attrs.getRequest().getAttribute(AdminAuthRequestAttributes.TOKEN_PURPOSE)
+        == AdminTokenPurpose.BOOTSTRAP;
+  }
+
+  /**
+   * BOOTSTRAP footholds may only read the authenticated admin's own enrollment row.
+   *
+   * @param auth authentication context
+   * @param enrollmentId requested enrollment id
+   * @return true when the enrollment belongs to the authenticated admin
+   */
+  private boolean canAccessOwnEnrollmentForBootstrap(Authentication auth, Integer enrollmentId) {
+    AdminPrincipal principal = extractAdminPrincipal(auth);
+    if (principal == null || principal.adminId() == null || enrollmentId == null) {
+      return false;
+    }
+    Optional<EzkeyAdmin> adminOpt = adminRepository.findById(principal.adminId());
+    if (adminOpt.isEmpty()) {
+      return false;
+    }
+    EzkeyAdmin admin = adminOpt.get();
+    if (admin.getEnrollment() == null) {
+      return false;
+    }
+    boolean match = enrollmentId.equals(admin.getEnrollment().getEnrollmentId());
+    if (!match) {
+      logger.warn(
+          "BOOTSTRAP enrollment access denied: admin {} requested enrollment {}",
+          principal.adminId(),
+          enrollmentId);
+    }
+    return match;
   }
 
   /**

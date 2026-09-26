@@ -567,6 +567,14 @@ public class AdminAuthService {
    * @return plain token and expiration
    */
   public TokenIssueResult issueBootstrapSession(EzkeyAdmin admin, int ttlHours) {
+    if (admin == null || admin.getAdminType() == EzkeyAdmin.AdminType.GLOBAL_ADMIN) {
+      throw new IllegalArgumentException(
+          "BOOTSTRAP sessions cannot be minted for global administrators");
+    }
+    if (!EvaluatorSelfRegistrationService.isEvaluatorSelfRegisteredAdmin(admin)) {
+      throw new IllegalArgumentException(
+          "BOOTSTRAP sessions are limited to evaluator self-registration administrators");
+    }
     int hours = Math.max(1, ttlHours);
     String plainToken =
         AdminAuditConstants.BOOTSTRAP_TOKEN_PREFIX + UUID.randomUUID().toString().replace("-", "");
@@ -607,6 +615,16 @@ public class AdminAuthService {
       "Invalid or expired onboarding resume secret";
 
   /**
+   * Enrollment statuses still eligible for onboarding-resume (device bind incomplete).
+   *
+   * <p>{@link EnrollmentStatus#CREATED} (no claim yet) and {@link EnrollmentStatus#BOUND} (device
+   * claimed, not yet verified). Terminal / dead statuses are rejected.
+   */
+  private static boolean isIncompleteOnboardingEnrollmentStatus(EnrollmentStatus status) {
+    return status == EnrollmentStatus.CREATED || status == EnrollmentStatus.BOUND;
+  }
+
+  /**
    * Mints an opaque onboarding-resume capability after successful activation.
    *
    * <p>Hashed at rest ({@link AdminTokenPurpose#ONBOARDING_RESUME}). Not a bearer session. Absolute
@@ -618,6 +636,10 @@ public class AdminAuthService {
    */
   @Transactional
   public TokenIssueResult issueOnboardingResumeSecret(EzkeyAdmin admin) {
+    if (!EvaluatorSelfRegistrationService.isEvaluatorSelfRegisteredAdmin(admin)) {
+      throw new IllegalArgumentException(
+          "Onboarding-resume secrets are limited to evaluator self-registration administrators");
+    }
     tokenRepository.deactivateActiveTokensForAdminByPurpose(
         admin.getAdminId(), AdminTokenPurpose.ONBOARDING_RESUME);
 
@@ -657,6 +679,9 @@ public class AdminAuthService {
    *
    * <p>Does not return QR / enrollment proof — caller uses authenticated onboarding endpoints under
    * the reminted BOOTSTRAP session. Opaque failure for all reject paths (no tenant oracle).
+   * Eligible while enrollment is incomplete: {@link EnrollmentStatus#CREATED} or {@link
+   * EnrollmentStatus#BOUND}. Rejects VERIFIED / INVALID / EXPIRED / REVOKED (and any other
+   * non-incomplete status).
    *
    * @param plainResumeSecret plaintext resume secret from activation
    * @return reminted BOOTSTRAP session (absolute {@value #ONBOARDING_RESUME_BOOTSTRAP_TTL_HOURS}h)
@@ -700,13 +725,16 @@ public class AdminAuthService {
     if (admin == null || !Boolean.TRUE.equals(admin.getActive())) {
       throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
     }
+    if (!EvaluatorSelfRegistrationService.isEvaluatorSelfRegisteredAdmin(admin)) {
+      throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
+    }
     if (admin.getLifecycleStatus() != AdminLifecycleStatus.ACTIVE) {
       throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
     }
     Enrollment enrollment = admin.getEnrollment();
     if (enrollment == null
         || !Boolean.TRUE.equals(enrollment.getActive())
-        || enrollment.getStatus() != EnrollmentStatus.CREATED) {
+        || !isIncompleteOnboardingEnrollmentStatus(enrollment.getStatus())) {
       throw new AuthenticationException(ONBOARDING_RESUME_OPAQUE_FAILURE);
     }
     if (admin.getTenant() != null && !Boolean.TRUE.equals(admin.getTenant().getActive())) {

@@ -413,7 +413,7 @@ flag — minting is gated by `enabled` alone (V-2026-09-26).
 | `ezkey.evaluator.self-registration.guided-tour-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
 | `ezkey.evaluator.self-registration.bootstrap-session-ttl-hours` | `int` | `8` | optionnel | Absolute TTL for the Admin UI BOOTSTRAP session minted with signup. Product lock: **exactly 8 hours** (no sliding). Misconfigured values are ignored at mint time. |
 
-When the same flag is ON, successful `POST /api/v1/admin/auth/activate` also mints an opaque **onboarding-resume** secret (`ezkey_onboarding_resume_*`, purpose `ONBOARDING_RESUME`, hashed at rest, absolute **8h** TTL, max **3** redeems). Redeem via `POST /api/v1/admin/auth/onboarding-resume` (login/activate rate-limit bucket) remints BOOTSTRAP at absolute **2h**. Activation codes stay one-shot; no public username QR oracle.
+When the same flag is ON, successful `POST /api/v1/admin/auth/activate` mints an opaque **onboarding-resume** secret **only** for evaluator self-registration admins (`TENANT_ADMIN` + `eval-admin-*` username + `eval-*` tenant) — never for Global Admin / ordinary activate. Secret is hashed at rest (`ONBOARDING_RESUME`, absolute **8h** TTL, max **3** redeems). Redeem via `POST /api/v1/admin/auth/onboarding-resume` remints BOOTSTRAP at absolute **2h**. BOOTSTRAP onboarding/`qrcode` reads are **self-only**. Activation codes stay one-shot; no public username QR oracle.
 
 **Fail-closed:** when `enabled=true`, Admin API startup aborts if `admin-ui-url` or
 `guided-tour-url` is blank (`EvaluatorSelfRegistrationStartupValidator`).

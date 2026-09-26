@@ -34,6 +34,7 @@ import org.ezkey.admin.dto.response.AdminResponseDto;
 import org.ezkey.admin.exception.AdminLimitException;
 import org.ezkey.admin.exception.AdminNotAllowedException;
 import org.ezkey.admin.exception.GlobalAdminLimitException;
+import org.ezkey.admin.security.AdminAuthRequestAttributes;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminProvisioningService.ActivationCodeReissueResult;
@@ -48,6 +49,7 @@ import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.ClientContext;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -732,8 +734,13 @@ public class AdminProvisioningController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
+    boolean bootstrapSession =
+        httpRequest.getAttribute(AdminAuthRequestAttributes.TOKEN_PURPOSE)
+            == AdminTokenPurpose.BOOTSTRAP;
+
     try {
-      OnboardingCredentialsResult result = provisioningService.getAdminOnboarding(id, principal);
+      OnboardingCredentialsResult result =
+          provisioningService.getAdminOnboarding(id, principal, bootstrapSession);
 
       AdminOnboardingResponseDto response =
           new AdminOnboardingResponseDto(
@@ -746,6 +753,9 @@ public class AdminProvisioningController {
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
     } catch (IllegalArgumentException e) {
+      if (bootstrapSession) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      }
       return badRequest(
           httpRequest,
           e.getMessage() != null ? e.getMessage() : "Invalid request.",
@@ -1207,8 +1217,13 @@ public class AdminProvisioningController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
+    boolean bootstrapSession =
+        httpRequest.getAttribute(AdminAuthRequestAttributes.TOKEN_PURPOSE)
+            == AdminTokenPurpose.BOOTSTRAP;
+
     try {
-      OnboardingCredentialsResult result = provisioningService.getAdminOnboarding(id, principal);
+      OnboardingCredentialsResult result =
+          provisioningService.getAdminOnboarding(id, principal, bootstrapSession);
 
       // Validate enrollment has proof token
       if (result.enrollmentProofToken() == null || result.enrollmentProofToken().isEmpty()) {
@@ -1236,6 +1251,9 @@ public class AdminProvisioningController {
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
     } catch (IllegalArgumentException e) {
+      if (bootstrapSession) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      }
       return badRequest(
           httpRequest,
           e.getMessage() != null ? e.getMessage() : "Invalid request.",

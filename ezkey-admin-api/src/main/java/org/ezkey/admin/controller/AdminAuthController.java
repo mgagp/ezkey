@@ -179,7 +179,8 @@ public class AdminAuthController {
 
       String resumeSecret = null;
       OffsetDateTime resumeExpiresAt = null;
-      if (evaluatorSelfRegistrationService.isEnabled()) {
+      if (evaluatorSelfRegistrationService.isEnabled()
+          && EvaluatorSelfRegistrationService.isEvaluatorSelfRegisteredAdmin(result.admin())) {
         AdminAuthService.TokenIssueResult resume =
             authService.issueOnboardingResumeSecret(result.admin());
         resumeSecret = resume.plainToken();

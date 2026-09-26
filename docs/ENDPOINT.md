@@ -444,7 +444,7 @@ See `ezkey-admin-api/CONFIGURATION.md` (evaluator self-registration group) and v
 
 Same gate as signup (`ezkey.evaluator.self-registration.enabled`). When disabled → **404**.
 
-Patrick craft (Alex lock B): after successful **activate**, when the flag is ON, the activation response includes a distinct opaque **onboarding-resume** secret (`ezkey_onboarding_resume_*`). The secret is **hashed at rest** (AdminToken purpose `ONBOARDING_RESUME`), absolute TTL **8h**, max **3** successful redeems. Activation codes stay **one-shot** (never reopened). There is **no** public username QR oracle.
+Patrick craft (Alex lock B): after successful **activate**, when the flag is ON **and** the admin is an evaluator self-registration identity (`TENANT_ADMIN` + `eval-admin-*` + `eval-*` tenant), the activation response includes a distinct opaque **onboarding-resume** secret (`ezkey_onboarding_resume_*`). Global Admin / ordinary activate never receives a resume secret from the flag alone. The secret is **hashed at rest** (AdminToken purpose `ONBOARDING_RESUME`), absolute TTL **8h**, max **3** successful redeems. Activation codes stay **one-shot** (never reopened). There is **no** public username QR oracle. BOOTSTRAP onboarding/`qrcode` reads are **self-only** (no cross-admin Global Admin QR oracle under BOOTSTRAP).
 
 **Rate limit:** shares the Admin login / activate IP bucket.
 
@@ -469,7 +469,7 @@ Patrick craft (Alex lock B): after successful **activate**, when the flag is ON,
 
 QR via existing authenticated `GET /api/v1/admins/{id}/onboarding` (+ `/qrcode`) under the reminted BOOTSTRAP session.
 
-**Failure:** opaque **401** (invalid / expired / exhausted / enrollment already bound) — no tenant oracle. Feature OFF → **404**.
+**Failure:** opaque **401** (invalid / expired / exhausted / enrollment already verified or otherwise not incomplete — eligible statuses are `CREATED` and `BOUND` only) — no tenant oracle. Feature OFF → **404**.
 
 **Bruno:** `bruno/admin-auth/onboarding-resume.bru` (when present) or call the path above after activate with flag ON.
 

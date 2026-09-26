@@ -968,10 +968,32 @@ public class AdminProvisioningService {
   @Transactional(readOnly = true)
   public OnboardingCredentialsResult getAdminOnboarding(
       Integer adminId, AdminPrincipal requesterPrincipal) {
+    return getAdminOnboarding(adminId, requesterPrincipal, false);
+  }
+
+  /**
+   * Retrieves onboarding credentials with an optional BOOTSTRAP self-only lock.
+   *
+   * <p>When {@code bootstrapSession} is true, only the authenticated administrator may read their
+   * own onboarding credentials — Global Admin cross-admin QR oracle is disabled for BOOTSTRAP
+   * footholds.
+   *
+   * @param adminId the administrator ID whose credentials are requested
+   * @param requesterPrincipal the principal of the requesting administrator
+   * @param bootstrapSession true when the caller authenticates with a BOOTSTRAP token
+   * @return OnboardingCredentialsResult with enrollment credentials and recovery codes
+   * @throws ResourceNotFoundException if admin not found
+   * @throws IllegalArgumentException if requester doesn't have permission to access these
+   *     credentials
+   */
+  @Transactional(readOnly = true)
+  public OnboardingCredentialsResult getAdminOnboarding(
+      Integer adminId, AdminPrincipal requesterPrincipal, boolean bootstrapSession) {
     logger.info(
-        "Retrieving onboarding credentials for admin: {} (requester: {})",
+        "Retrieving onboarding credentials for admin: {} (requester: {}, bootstrapSession={})",
         adminId,
-        requesterPrincipal.adminId());
+        requesterPrincipal.adminId(),
+        bootstrapSession);
 
     // Get admin
     EzkeyAdmin admin =
@@ -979,9 +1001,15 @@ public class AdminProvisioningService {
             .findById(adminId)
             .orElseThrow(() -> new ResourceNotFoundException("Admin", adminId));
 
-    // Validate authorization
-    if (requesterPrincipal.isGlobalAdmin()) {
-      // GlobalAdmin can access any admin's credentials
+    if (bootstrapSession) {
+      if (!adminId.equals(requesterPrincipal.adminId())) {
+        throw new IllegalArgumentException(
+            "Bootstrap sessions may only retrieve the authenticated administrator's onboarding"
+                + " credentials");
+      }
+      logger.debug("BOOTSTRAP self-only onboarding retrieve for admin: {}", adminId);
+    } else if (requesterPrincipal.isGlobalAdmin()) {
+      // GlobalAdmin can access any admin's credentials (non-BOOTSTRAP sessions only)
       logger.debug("GlobalAdmin retrieving onboarding credentials for admin: {}", adminId);
     } else if (requesterPrincipal.isTenantAdmin()) {
       // TenantAdmin can only access credentials for admins in their tenant

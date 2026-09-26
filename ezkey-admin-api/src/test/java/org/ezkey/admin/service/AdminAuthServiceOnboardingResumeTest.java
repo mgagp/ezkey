@@ -125,12 +125,103 @@ class AdminAuthServiceOnboardingResumeTest {
   }
 
   @Test
+  @DisplayName(
+      "redeemOnboardingResume remints BOOTSTRAP when enrollment is BOUND (claim, not verified)")
+  void redeemOnboardingResume_allowsBoundEnrollment() {
+    EzkeyAdmin admin = activeAdminWithCreatedEnrollment();
+    admin.getEnrollment().setStatus(EnrollmentStatus.BOUND);
+    String plain =
+        AdminAuditConstants.ONBOARDING_RESUME_TOKEN_PREFIX + "boundfeedboundfeedboundfeedboundfe";
+    String hash = SensitiveDataHasher.sha256Hex(plain);
+    AdminToken resume =
+        new AdminToken(
+            hash,
+            admin,
+            AdminType.TENANT_ADMIN.name(),
+            OffsetDateTime.now().plusHours(8),
+            AdminTokenPurpose.ONBOARDING_RESUME);
+    resume.setTokenUseCount(0);
+    resume.setActive(true);
+    resume.setTenant(admin.getTenant());
+
+    when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(hash))
+        .thenReturn(Optional.of(resume));
+    when(tokenRepository.save(any(AdminToken.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(tokenRepository.deactivateActiveTokensForAdminByPurpose(
+            eq(11), eq(AdminTokenPurpose.BOOTSTRAP)))
+        .thenReturn(0);
+
+    TokenIssueResult bootstrap = service.redeemOnboardingResume(plain);
+
+    assertTrue(bootstrap.plainToken().startsWith(AdminAuditConstants.BOOTSTRAP_TOKEN_PREFIX));
+    assertEquals(AdminTokenPurpose.BOOTSTRAP, bootstrap.token().getTokenPurpose());
+    assertEquals(1, resume.getTokenUseCount());
+  }
+
+  @Test
   @DisplayName("redeemOnboardingResume rejects verified enrollment with opaque failure")
   void redeemOnboardingResume_rejectsVerifiedEnrollment() {
-    EzkeyAdmin admin = activeAdminWithCreatedEnrollment();
-    admin.getEnrollment().setStatus(EnrollmentStatus.VERIFIED);
+    assertOpaqueReject(EnrollmentStatus.VERIFIED);
+  }
+
+  @Test
+  @DisplayName("redeemOnboardingResume rejects EXPIRED enrollment with opaque failure")
+  void redeemOnboardingResume_rejectsExpiredEnrollment() {
+    assertOpaqueReject(EnrollmentStatus.EXPIRED);
+  }
+
+  @Test
+  @DisplayName("issueOnboardingResumeSecret rejects GLOBAL_ADMIN")
+  void issueOnboardingResumeSecret_rejectsGlobalAdmin() {
+    EzkeyAdmin global = new EzkeyAdmin("ops.global", AdminType.GLOBAL_ADMIN);
+    global.setAdminId(1);
+    assertThrows(IllegalArgumentException.class, () -> service.issueOnboardingResumeSecret(global));
+  }
+
+  @Test
+  @DisplayName("redeemOnboardingResume rejects non-evaluator admin with opaque failure")
+  void redeemOnboardingResume_rejectsNonEvaluatorAdmin() {
+    Tenant tenant = new Tenant("acme", "corp");
+    tenant.setTenantId(9);
+    tenant.setActive(true);
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(5);
+    enrollment.setStatus(EnrollmentStatus.CREATED);
+    enrollment.setActive(true);
+    EzkeyAdmin admin = new EzkeyAdmin("tenant.ops", AdminType.TENANT_ADMIN);
+    admin.setAdminId(22);
+    admin.setActive(true);
+    admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
+    admin.setTenant(tenant);
+    admin.setEnrollment(enrollment);
+
     String plain =
-        AdminAuditConstants.ONBOARDING_RESUME_TOKEN_PREFIX + "deadbeefdeadbeefdeadbeefdeadbeef";
+        AdminAuditConstants.ONBOARDING_RESUME_TOKEN_PREFIX + "nonevaluatornonevaluatornonvalu";
+    String hash = SensitiveDataHasher.sha256Hex(plain);
+    AdminToken resume =
+        new AdminToken(
+            hash,
+            admin,
+            AdminType.TENANT_ADMIN.name(),
+            OffsetDateTime.now().plusHours(8),
+            AdminTokenPurpose.ONBOARDING_RESUME);
+    resume.setTokenUseCount(0);
+    when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(hash))
+        .thenReturn(Optional.of(resume));
+
+    AuthenticationException ex =
+        assertThrows(AuthenticationException.class, () -> service.redeemOnboardingResume(plain));
+    assertEquals("Invalid or expired onboarding resume secret", ex.getMessage());
+  }
+
+  private void assertOpaqueReject(EnrollmentStatus status) {
+    EzkeyAdmin admin = activeAdminWithCreatedEnrollment();
+    admin.getEnrollment().setStatus(status);
+    final String plain =
+        AdminAuditConstants.ONBOARDING_RESUME_TOKEN_PREFIX
+            + "deadbeefdeadbeefdeadbeef"
+            + status.name().toLowerCase()
+            + "0123456789abcdef";
     String hash = SensitiveDataHasher.sha256Hex(plain);
     AdminToken resume =
         new AdminToken(

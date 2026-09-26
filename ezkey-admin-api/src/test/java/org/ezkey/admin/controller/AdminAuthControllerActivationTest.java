@@ -13,6 +13,7 @@ package org.ezkey.admin.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,6 +38,7 @@ import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
+import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -129,10 +131,14 @@ class AdminAuthControllerActivationTest {
   @DisplayName("activate mints onboarding-resume secret when evaluator self-reg enabled")
   void activateMintsOnboardingResumeWhenSelfRegEnabled() {
     when(evaluatorSelfRegistrationService.isEnabled()).thenReturn(true);
+    Tenant tenant = new Tenant("eval-x", "desc");
+    tenant.setTenantId(3);
+    tenant.setActive(true);
     EzkeyAdmin admin = new EzkeyAdmin("eval-admin-x", AdminType.TENANT_ADMIN);
     admin.setAdminId(9);
     admin.setActive(true);
     admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
+    admin.setTenant(tenant);
     org.ezkey.enrollment.domain.entity.Enrollment enrollment =
         new org.ezkey.enrollment.domain.entity.Enrollment();
     enrollment.setEnrollmentId(123);
@@ -168,6 +174,41 @@ class AdminAuthControllerActivationTest {
     assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals("ezkey_onboarding_resume_abc", response.getBody().onboardingResumeSecret());
     assertEquals(resumeExpires, response.getBody().onboardingResumeExpiresAt());
+  }
+
+  @Test
+  @DisplayName("activate does not mint resume for GLOBAL_ADMIN even when self-reg flag ON")
+  void activateDoesNotMintResumeForGlobalAdminWhenSelfRegEnabled() {
+    when(evaluatorSelfRegistrationService.isEnabled()).thenReturn(true);
+    EzkeyAdmin admin = new EzkeyAdmin("pending.global", AdminType.GLOBAL_ADMIN);
+    admin.setAdminId(1);
+    admin.setActive(true);
+    admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
+    org.ezkey.enrollment.domain.entity.Enrollment enrollment =
+        new org.ezkey.enrollment.domain.entity.Enrollment();
+    enrollment.setEnrollmentId(55);
+    when(provisioningService.activatePendingAdmin(
+            AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "global123"))
+        .thenReturn(
+            new AdminProvisioningService.ProvisioningResult(
+                admin,
+                enrollment,
+                "ezkey_proof_global",
+                111111,
+                null,
+                AdminOnboardingMode.ACTIVATION_CODE,
+                null,
+                null));
+
+    ResponseEntity<AdminActivationResponseDto> response =
+        controller.activate(
+            new AdminActivationRequestDto(
+                AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "global123"),
+            httpRequest);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertEquals(null, response.getBody().onboardingResumeSecret());
+    verify(authService, never()).issueOnboardingResumeSecret(any());
   }
 
   @Test

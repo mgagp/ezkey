@@ -79,6 +79,34 @@ public class EvaluatorSelfRegistrationService {
   }
 
   /**
+   * Returns whether an administrator was created by the anonymous evaluator self-registration path.
+   *
+   * <p>Identity markers (stable, not the installation feature flag alone): {@code TENANT_ADMIN},
+   * username prefix {@code eval-admin-}, and tenant name prefix {@code eval-}. Used to gate
+   * onboarding-resume mint/redeem so a Global Admin activation never receives a resume secret when
+   * the community flag is on.
+   *
+   * @param admin administrator entity (may be null)
+   * @return true when markers match the evaluator self-reg path
+   */
+  public static boolean isEvaluatorSelfRegisteredAdmin(EzkeyAdmin admin) {
+    if (admin == null || admin.getUsername() == null || admin.getUsername().isBlank()) {
+      return false;
+    }
+    if (admin.getAdminType() != AdminType.TENANT_ADMIN) {
+      return false;
+    }
+    if (!admin.getUsername().startsWith(ADMIN_USERNAME_PREFIX)) {
+      return false;
+    }
+    Tenant tenant = admin.getTenant();
+    if (tenant == null || tenant.getTenantName() == null || tenant.getTenantName().isBlank()) {
+      return false;
+    }
+    return tenant.getTenantName().startsWith(TENANT_PREFIX);
+  }
+
+  /**
    * Returns whether anonymous evaluator signup is enabled for this installation.
    *
    * @return true when the feature flag is on

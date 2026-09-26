@@ -49,6 +49,7 @@ class AccessControlServiceTest {
   @Mock private EnrollmentRepository enrollmentRepository;
 
   @Mock private IntegrationRepository integrationRepository;
+  @Mock private org.ezkey.integration.domain.repository.EzkeyAdminRepository adminRepository;
 
   private AccessControlService accessControlService;
 
@@ -56,7 +57,7 @@ class AccessControlServiceTest {
   void setUp() {
     accessControlService =
         new AccessControlService(
-            authAttemptRepository, enrollmentRepository, integrationRepository);
+            authAttemptRepository, enrollmentRepository, integrationRepository, adminRepository);
   }
 
   @Nested
