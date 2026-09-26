@@ -133,6 +133,7 @@
     "toastActivated": "Administrateur « {{username }} » activé.",
     "errorActivate": "Échec de l'activation",
     "pendingActivationNotice": "Cet administrateur est en attente d'activation. Le premier enrôlement sera créé lorsque le code d'activation sera consommé. Les codes de récupération seront émis plus tard depuis le flux d'administration authentifié.",
+    "temporarySessionBindHint": "Session temporaire : utilisez Identifiants ci-dessous pour enrôler un appareil quand vous êtes prêt. La liaison met fin à cet accès temporaire et exige une nouvelle connexion.",
     "operationalWarning": {
       "tenantInactive": "Le tenant de cet administrateur est actuellement inactif. Les tentatives de connexion de cet admin seront rejetées jusqu'à la réactivation du tenant."
     },

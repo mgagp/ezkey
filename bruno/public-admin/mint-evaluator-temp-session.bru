@@ -1,0 +1,32 @@
+/*
+ * Ezkey - Open Source Cryptographic MFA Platform
+ *
+ * Copyright (c) 2026 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Bruno: Mint temporary evaluator console session (EVALUATOR_TEMP)
+ */
+
+meta {
+  name: Mint temporary evaluator console session
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/auth/evaluator-temp
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "enrollmentId": {{enrollmentId}},
+    "enrollmentProofToken": "{{enrollmentProofToken}}"
+  }
+}
+
+docs {
+  Gated by `ezkey.evaluator.self-registration.enabled`. Use enrollment material from
+  POST /admin/auth/activate. One-shot EVALUATOR_TEMP session; do not log the token.
+}

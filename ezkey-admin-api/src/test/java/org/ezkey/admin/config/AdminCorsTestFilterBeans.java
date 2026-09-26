@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.ezkey.admin.security.AdminCookieCsrfFilter;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
+import org.ezkey.admin.security.EvaluatorTempAccessFilter;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.springframework.context.annotation.Bean;
@@ -53,6 +54,12 @@ public class AdminCorsTestFilterBeans {
   @Primary
   AdminCookieCsrfFilter adminCookieCsrfFilter() {
     return passThrough(AdminCookieCsrfFilter.class);
+  }
+
+  @Bean
+  @Primary
+  EvaluatorTempAccessFilter evaluatorTempAccessFilter() {
+    return passThrough(EvaluatorTempAccessFilter.class);
   }
 
   private static <T extends Filter> T passThrough(Class<T> clazz) {

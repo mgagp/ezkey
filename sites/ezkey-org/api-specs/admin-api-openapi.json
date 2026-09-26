@@ -3539,6 +3539,61 @@
         }
       }
     },
+    "/api/v1/admin/auth/evaluator-temp": {
+      "post": {
+        "tags": [
+          "Admin Authentication"
+        ],
+        "summary": "Mint temporary evaluator console session",
+        "description": "Available only when ezkey.evaluator.self-registration.enabled=true. Issues a one-shot EVALUATOR_TEMP session for navigable tenant-admin exploration without a device bind. Cookie loss cannot re-mint. Bind VERIFIED supersedes TEMP and requires a fresh SESSION login.",
+        "operationId": "mintEvaluatorTempSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluatorTempSessionRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Temporary session minted",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluatorTempSessionResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Flag off, invalid capability, already issued, or not eligible",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluatorTempSessionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluatorTempSessionResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          }
+        }
+      }
+    },
     "/api/v1/admin/auth/activate": {
       "post": {
         "tags": [
@@ -4160,7 +4215,7 @@
           "Public"
         ],
         "summary": "Get public instance info",
-        "description": "Returns read-only instance metadata for the Admin UI (login shell) and operators. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set.",
+        "description": "Returns read-only instance metadata for the Admin UI (login shell) and operators. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set. evaluatorSelfRegistrationEnabled mirrors ezkey.evaluator.self-registration.enabled (temporary console explore gate).",
         "operationId": "getInstanceInfo",
         "responses": {
           "200": {
@@ -8342,6 +8397,83 @@
           "username"
         ]
       },
+      "EvaluatorTempSessionRequestDto": {
+        "type": "object",
+        "description": "Mint a one-shot temporary evaluator console session after activation",
+        "properties": {
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment ID returned by POST /admin/auth/activate",
+            "example": 42
+          },
+          "enrollmentProofToken": {
+            "type": "string",
+            "description": "Enrollment proof token returned by POST /admin/auth/activate (capability to mint)",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "enrollmentId",
+          "enrollmentProofToken"
+        ]
+      },
+      "EvaluatorTempSessionResponseDto": {
+        "type": "object",
+        "description": "Temporary evaluator console session mint response",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether the temporary session was minted",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "description": "Operator-facing message"
+          },
+          "token": {
+            "type": "string",
+            "description": "Opaque bearer token. Omitted when the API issues an HttpOnly session cookie."
+          },
+          "adminType": {
+            "type": "string",
+            "description": "Administrator type",
+            "example": "TENANT_ADMIN"
+          },
+          "username": {
+            "type": "string",
+            "description": "Administrator username"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Absolute temporary session expiry (UTC)"
+          },
+          "adminId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Administrator ID"
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant scope ID"
+          },
+          "tenantName": {
+            "type": "string",
+            "description": "Tenant display name"
+          },
+          "tokenPurpose": {
+            "type": "string",
+            "description": "Token purpose",
+            "example": "EVALUATOR_TEMP"
+          },
+          "csrfToken": {
+            "type": "string",
+            "description": "CSRF token for cookie mode"
+          }
+        }
+      },
       "AdminActivationRequestDto": {
         "type": "object",
         "properties": {
@@ -9004,6 +9136,14 @@
             ],
             "description": "Optional URL for About / learn more (e.g. company instance page)",
             "example": "https://www.example.com/about-ezkey"
+          },
+          "evaluatorSelfRegistrationEnabled": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "When true, evaluator self-registration and temporary console explore are available on this Admin API (community/lab). False or omitted when disabled.",
+            "example": false
           }
         }
       },
@@ -10416,6 +10556,16 @@
           "csrfToken": {
             "type": "string",
             "description": "Non-secret CSRF token to send in X-CSRF-TOKEN for cookie-authenticated unsafe requests"
+          },
+          "tokenPurpose": {
+            "type": "string",
+            "description": "Token purpose: SESSION for passwordless login, EVALUATOR_TEMP for temporary console explore",
+            "enum": [
+              "SESSION",
+              "EVALUATOR_TEMP",
+              "RECOVERY"
+            ],
+            "example": "SESSION"
           }
         }
       }
@@ -10431,42 +10581,42 @@
   },
   "x-tagGroups": [
     {
-      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ]
+      ],
+      "name": "Getting started"
     },
     {
-      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ]
+      ],
+      "name": "Tenant and integration setup"
     },
     {
-      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ]
+      ],
+      "name": "MFA operations"
     },
     {
-      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ]
+      ],
+      "name": "Administration"
     },
     {
-      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ]
+      ],
+      "name": "Platform operations"
     }
   ]
 }

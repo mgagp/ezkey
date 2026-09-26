@@ -213,6 +213,22 @@ class AdminTokenValidationServiceTest {
     verify(tokenRepository).save(adminToken);
   }
 
+  @Test
+  @DisplayName(
+      "updateTokenLastUsed(AdminToken) does not slide expiration for EVALUATOR_TEMP (absolute TTL)")
+  void updateTokenLastUsed_entityPath_doesNotExtendExpiration_forEvaluatorTempToken() {
+    OffsetDateTime fixedExpiresAt = OffsetDateTime.now().plusHours(4);
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.EVALUATOR_TEMP);
+    when(adminToken.getExpiresAt()).thenReturn(fixedExpiresAt);
+
+    Optional<OffsetDateTime> result = service.updateTokenLastUsed(adminToken);
+
+    assertThat(result).contains(fixedExpiresAt);
+    verify(adminToken).setLastUsedAt(any(OffsetDateTime.class));
+    verify(adminToken, never()).setExpiresAt(any(OffsetDateTime.class));
+    verify(tokenRepository).save(adminToken);
+  }
+
   /**
    * Stubs the token repository to return a valid, non-expired SESSION token associated with a mock
    * admin. The tenant check is bypassed by returning null for the tenant (no tenant-inactive path).

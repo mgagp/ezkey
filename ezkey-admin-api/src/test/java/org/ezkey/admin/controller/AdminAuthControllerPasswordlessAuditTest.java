@@ -29,6 +29,7 @@ import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminRecoveryService;
+import org.ezkey.admin.service.EvaluatorTempSessionService;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
@@ -62,6 +63,7 @@ class AdminAuthControllerPasswordlessAuditTest {
   @Mock private AdminBrowserSessionCookieProperties browserSessionCookieProperties;
   @Mock private AdminSessionCookieService sessionCookieService;
   @Mock private AdminCsrfTokenService csrfTokenService;
+  @Mock private EvaluatorTempSessionService evaluatorTempSessionService;
   @Mock private HttpServletRequest httpRequest;
   @Mock private HttpServletResponse httpResponse;
 
@@ -84,7 +86,8 @@ class AdminAuthControllerPasswordlessAuditTest {
             adminRepository,
             browserSessionCookieProperties,
             sessionCookieService,
-            csrfTokenService);
+            csrfTokenService,
+            evaluatorTempSessionService);
     when(browserSessionCookieProperties.isBrowserSessionCookieEnabled()).thenReturn(false);
     when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
     when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");

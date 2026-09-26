@@ -1,0 +1,24 @@
+# Overlay: enable evaluator self-registration + temporary evaluator console explore
+# for local QA. Clean-start stays OFF by default — use this overlay only when testing
+# the community/lab funnel.
+#
+# Usage (from repo root, after or with clean-start stack):
+#
+#   cd ezkey-tests && ./clean-start.sh
+#   # Then recreate admin-api with the overlay, or include it in compose up:
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.evaluator-self-reg.yml up -d admin-api
+#
+# Admin UI must reach the same Admin API. Temporary explore fork appears on the
+# activation success screen when GET /api/v1/public/instance-info reports
+# evaluatorSelfRegistrationEnabled=true.
+#
+# Required URLs are local placeholders (fail-closed startup needs non-blank values).
+
+services:
+  admin-api:
+    environment:
+      EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED: "true"
+      EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL: "http://localhost:3090"
+      EZKEY_EVALUATOR_SELF_REGISTRATION_GUIDED_TOUR_URL: "http://localhost:3090"
+      # Absolute TTL for EVALUATOR_TEMP sessions (hours). Default 8.
+      EZKEY_EVALUATOR_SELF_REGISTRATION_TEMPORARY_SESSION_TTL_HOURS: "8"

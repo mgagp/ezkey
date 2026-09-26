@@ -408,15 +408,23 @@ installations that intentionally expose public signup.
 | `ezkey.evaluator.self-registration.per-ip-max-success` | `int` | `1` | optionnel | Max successful signups per IP within the window. |
 | `ezkey.evaluator.self-registration.admin-ui-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
 | `ezkey.evaluator.self-registration.guided-tour-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
+| `ezkey.evaluator.self-registration.temporary-session-ttl-hours` | `int` | `8` | optionnel | Absolute TTL for temporary evaluator console (`EVALUATOR_TEMP`) sessions when `enabled=true`. |
 
 **Fail-closed:** when `enabled=true`, Admin API startup aborts if `admin-ui-url` or
 `guided-tour-url` is blank (`EvaluatorSelfRegistrationStartupValidator`).
+
+**Temporary evaluator console:** same self-registration flag only — no second temporary-console
+toggle. When ON, after activation the Admin UI offers « Explorer la console — accès temporaire
+(~8 h) » (mint `EVALUATOR_TEMP`) beside classic device enroll. See
+[`product-docs/global/vision/V-2026-09-26-temporary-evaluator-console-access.md`](../product-docs/global/vision/V-2026-09-26-temporary-evaluator-console-access.md).
+Local QA overlay: [`docker/docker-compose.evaluator-self-reg.yml`](../docker/docker-compose.evaluator-self-reg.yml).
 
 **Operator notes:**
 
 - Set URLs via env (`EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL`,
   `EZKEY_EVALUATOR_SELF_REGISTRATION_GUIDED_TOUR_URL`) or overlay — never rely on a code default
   hostname.
+- Optional TTL override: `EZKEY_EVALUATOR_SELF_REGISTRATION_TEMPORARY_SESSION_TTL_HOURS`.
 - Community overlay example: [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../experimental-hybrid/lightsail/.env.ezkey-online.example).
 - EXP1 lab example values: [`experimental-hybrid/lightsail/.env.example`](../experimental-hybrid/lightsail/.env.example) (commented block when enabling).
 - Add marketing / Pages origins to `ezkey.admin.cors.allowed-origins` for cross-origin signup POSTs.

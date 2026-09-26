@@ -29,10 +29,12 @@ import org.ezkey.admin.dto.request.AdminActivationRequestDto;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
 import org.ezkey.admin.dto.request.AdminRecoveryRequestDto;
+import org.ezkey.admin.dto.request.EvaluatorTempSessionRequestDto;
 import org.ezkey.admin.dto.response.AdminActivationResponseDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.dto.response.AdminRecoveryResponseDto;
 import org.ezkey.admin.dto.response.AdminSessionResponseDto;
+import org.ezkey.admin.dto.response.EvaluatorTempSessionResponseDto;
 import org.ezkey.admin.exception.AdminAuthenticationException;
 import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
 import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
@@ -46,6 +48,7 @@ import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.admin.service.EvaluatorTempSessionService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -109,6 +112,8 @@ public class AdminAuthController {
 
   private final AdminCsrfTokenService csrfTokenService;
 
+  private final EvaluatorTempSessionService evaluatorTempSessionService;
+
   public AdminAuthController(
       AdminAuthService authService,
       AdminProvisioningService provisioningService,
@@ -119,7 +124,8 @@ public class AdminAuthController {
       EzkeyAdminRepository adminRepository,
       AdminBrowserSessionCookieProperties browserSessionCookieProperties,
       AdminSessionCookieService sessionCookieService,
-      AdminCsrfTokenService csrfTokenService) {
+      AdminCsrfTokenService csrfTokenService,
+      EvaluatorTempSessionService evaluatorTempSessionService) {
     this.authService = authService;
     this.provisioningService = provisioningService;
     this.recoveryService = recoveryService;
@@ -130,6 +136,7 @@ public class AdminAuthController {
     this.browserSessionCookieProperties = browserSessionCookieProperties;
     this.sessionCookieService = sessionCookieService;
     this.csrfTokenService = csrfTokenService;
+    this.evaluatorTempSessionService = evaluatorTempSessionService;
   }
 
   /**
@@ -238,6 +245,93 @@ public class AdminAuthController {
               .build());
       return ResponseEntity.status(500)
           .body(AdminActivationResponseDto.error("An error occurred during activation"));
+    }
+  }
+
+  /**
+   * Mints a one-shot temporary evaluator console session after activation (Mode C).
+   *
+   * <p>Gated by the same flag as evaluator self-registration. Capability is the enrollment proof
+   * from activation — not a session cookie. Never logs the bearer or proof token.
+   *
+   * @param request enrollment id + proof token from activation
+   * @param httpRequest servlet request for audit / rate limit
+   * @param httpResponse servlet response for optional session cookie
+   * @return temporary session metadata (and bearer unless cookie mode)
+   */
+  @Operation(
+      summary = "Mint temporary evaluator console session",
+      description =
+          "Available only when ezkey.evaluator.self-registration.enabled=true. Issues a one-shot"
+              + " EVALUATOR_TEMP session for navigable tenant-admin exploration without a device"
+              + " bind. Cookie loss cannot re-mint. Bind VERIFIED supersedes TEMP and requires a"
+              + " fresh SESSION login.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Temporary session minted"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Flag off, invalid capability, already issued, or not eligible"),
+        @ApiResponse(responseCode = "400", description = "Validation error")
+      })
+  @PostMapping("/evaluator-temp")
+  public ResponseEntity<EvaluatorTempSessionResponseDto> mintEvaluatorTempSession(
+      @Valid @RequestBody EvaluatorTempSessionRequestDto request,
+      HttpServletRequest httpRequest,
+      HttpServletResponse httpResponse) {
+
+    ClientContext context = ClientContext.from(httpRequest);
+    try {
+      EvaluatorTempSessionService.MintResult mint =
+          evaluatorTempSessionService.mint(request.enrollmentId(), request.enrollmentProofToken());
+
+      EzkeyAdmin admin = mint.admin();
+      Integer tenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
+      String tenantName = admin.getTenant() != null ? admin.getTenant().getTenantName() : null;
+
+      EvaluatorTempSessionResponseDto response =
+          EvaluatorTempSessionResponseDto.success(
+              mint.plainToken(),
+              admin.getAdminType().name(),
+              admin.getUsername(),
+              mint.expiresAt(),
+              admin.getAdminId(),
+              tenantId,
+              tenantName);
+
+      if (browserSessionCookieProperties.isBrowserSessionCookieEnabled()) {
+        sessionCookieService.addSessionCookie(httpResponse, mint.plainToken(), mint.expiresAt());
+        String csrfToken =
+            issueCsrfTokenIfPossible(httpResponse, mint.plainToken(), mint.expiresAt());
+        response = response.withCsrfToken(csrfToken).withoutSecretToken();
+      }
+
+      rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context, EventType.ADMIN_LOGIN, "evaluator_temp_session_minted", tenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(admin.getAdminId())
+              .eventDetails(
+                  "{\"tokenPurpose\":\"EVALUATOR_TEMP\",\"adminId\":" + admin.getAdminId() + "}")
+              .build());
+
+      return ResponseEntity.ok(response);
+    } catch (AuthenticationException e) {
+      rateLimitFilter.recordFailedAttempt(context.clientIp());
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context, EventType.ADMIN_LOGIN, "evaluator_temp_session_mint_failed", null)
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage(e.getMessage())
+              .eventDetails("Temporary session mint rejected")
+              .build());
+      return ResponseEntity.status(HttpStatus.FORBIDDEN)
+          .body(EvaluatorTempSessionResponseDto.error(e.getMessage()));
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
+      logger.error("Evaluator temp session mint error: {}", e.getClass().getSimpleName());
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .body(EvaluatorTempSessionResponseDto.error("An error occurred"));
     }
   }
 
@@ -502,7 +596,8 @@ public class AdminAuthController {
             principal.adminId(),
             principal.tenantId(),
             tenantName,
-            csrfToken));
+            csrfToken,
+            principal.tokenPurpose() != null ? principal.tokenPurpose().name() : null));
   }
 
   /**

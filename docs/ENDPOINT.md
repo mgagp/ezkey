@@ -690,6 +690,33 @@ when activation cannot proceed in the current state.
 
 ---
 
+#### POST /evaluator-temp (temporary evaluator console)
+
+Available only when `ezkey.evaluator.self-registration.enabled=true` (same gate as anonymous
+evaluator signup). After activation, the Admin UI may offer temporary console explore without a
+device bind. Mints a one-shot `EVALUATOR_TEMP` session (absolute TTL, default 8h). Cookie/bearer
+loss cannot re-mint. MFA enrollment **VERIFIED** for the TEMP identity revokes TEMP immediately
+(fresh `SESSION` login required). Expiry applies a soft-tenant predicate — see vision
+`V-2026-09-26-temporary-evaluator-console-access`.
+
+**Request:**
+```http
+POST /api/v1/admin/auth/evaluator-temp
+Content-Type: application/json
+
+{
+  "enrollmentId": 123,
+  "enrollmentProofToken": "ezkey_proof_…"
+}
+```
+
+**Success Response (200 OK):** bearer or HttpOnly cookie (same delivery as login) plus
+`tokenPurpose: "EVALUATOR_TEMP"`. Never logs the token or proof.
+
+**Failure:** **403** when the flag is off, capability is invalid, already minted, or not eligible.
+
+---
+
 #### POST /recover (Emergency Access)
 Authenticate using single-use recovery code when device is lost.
 
