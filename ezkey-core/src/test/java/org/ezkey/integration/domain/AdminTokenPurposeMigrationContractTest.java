@@ -39,7 +39,8 @@ class AdminTokenPurposeMigrationContractTest {
   @Test
   @DisplayName("V23 CHECK allows every AdminTokenPurpose enum constant including EVALUATOR_TEMP")
   void v23CheckAllowsAllEnumPurposes() throws IOException {
-    String sql = readClasspathResource("db/migration/V23__widen_admin_token_purpose_for_evaluator_temp.sql");
+    String sql =
+        readClasspathResource("db/migration/V23__widen_admin_token_purpose_for_evaluator_temp.sql");
 
     Matcher matcher = CHECK_IN_CLAUSE.matcher(sql);
     assertThat(matcher.find())
@@ -58,7 +59,8 @@ class AdminTokenPurposeMigrationContractTest {
 
     assertThat(allowed).containsExactlyInAnyOrderElementsOf(enumNames);
     assertThat(allowed).contains("EVALUATOR_TEMP", "SESSION", "RECOVERY");
-    assertThat(sql).containsIgnoringCase("DROP CONSTRAINT IF EXISTS chk_admin_tokens_token_purpose");
+    assertThat(sql)
+        .containsIgnoringCase("DROP CONSTRAINT IF EXISTS chk_admin_tokens_token_purpose");
   }
 
   private static String readClasspathResource(String path) throws IOException {
