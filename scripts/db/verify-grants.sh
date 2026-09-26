@@ -94,6 +94,22 @@ expect_fail "integration cannot UPDATE ezkey_enrollment" \
 expect_fail "integration cannot SELECT ezkey_admin_tokens" \
   run_psql ezkey_integration "${INTEGRATION_PASS}" -c "SELECT 1 FROM ezkey_admin_tokens LIMIT 0;"
 
+# Auth needs SELECT+UPDATE for EVALUATOR_TEMP supersede after VERIFIED bind; no mint/cleanup.
+expect_ok "auth can SELECT ezkey_admin_tokens" \
+  run_psql ezkey_auth "${AUTH_PASS}" -c "SELECT 1 FROM ezkey_admin_tokens LIMIT 0;"
+
+expect_ok "auth can UPDATE ezkey_admin_tokens" \
+  run_psql ezkey_auth "${AUTH_PASS}" -c \
+  "UPDATE ezkey_admin_tokens SET active = active WHERE false;"
+
+expect_fail "auth cannot INSERT ezkey_admin_tokens" \
+  run_psql ezkey_auth "${AUTH_PASS}" -c \
+  "INSERT INTO ezkey_admin_tokens DEFAULT VALUES;"
+
+expect_fail "auth cannot DELETE ezkey_admin_tokens" \
+  run_psql ezkey_auth "${AUTH_PASS}" -c \
+  "DELETE FROM ezkey_admin_tokens WHERE false;"
+
 expect_ok "admin can SELECT ezkey_shedlock" \
   run_psql ezkey_admin "${ADMIN_PASS}" -c "SELECT 1 FROM ezkey_shedlock LIMIT 0;"
 

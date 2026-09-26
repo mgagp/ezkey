@@ -85,6 +85,11 @@ GRANT SELECT, UPDATE ON TABLE
   ezkey_auth_attempt
 TO ezkey_auth;
 
+-- SELECT + UPDATE only: Auth enrollment-verify supersedes EVALUATOR_TEMP tokens after VERIFIED
+-- bind (EnrollmentVerifyService → deactivateTokensForAdminByPurpose). No INSERT (mint is
+-- admin-api only) and no DELETE (cleanup scheduler is admin-api only).
+GRANT SELECT, UPDATE ON TABLE ezkey_admin_tokens TO ezkey_auth;
+
 -- SELECT + INSERT only: single-INSERT HMAC seal (id + created_at + entry_hmac on INSERT).
 -- DELETE denied (immutability / no purge from Auth API); UPDATE denied (append-only).
 GRANT SELECT, INSERT ON TABLE ezkey_audit_log TO ezkey_auth;
