@@ -486,7 +486,8 @@ public class EnrollmentVerifyService {
   }
 
   /**
-   * Revokes {@link AdminTokenPurpose#EVALUATOR_TEMP} tokens for the admin linked to this enrollment.
+   * Revokes {@link AdminTokenPurpose#EVALUATOR_TEMP} tokens for the admin linked to this
+   * enrollment.
    *
    * <p>Forces a fresh post-bind {@code SESSION} login; the temporary cookie is never promoted.
    *

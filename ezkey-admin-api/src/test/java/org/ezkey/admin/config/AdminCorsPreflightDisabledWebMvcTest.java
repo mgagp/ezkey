@@ -14,7 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 
 import org.ezkey.admin.controller.PublicInstanceInfoController;
-import org.ezkey.admin.config.EvaluatorSelfRegistrationProperties;
 import org.ezkey.instance.service.PublicInstanceInfoService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

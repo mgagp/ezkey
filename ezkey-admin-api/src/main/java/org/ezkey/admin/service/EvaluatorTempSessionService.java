@@ -100,9 +100,7 @@ public class EvaluatorTempSessionService {
     if (!properties.isEnabled()) {
       throw new AuthenticationException("Temporary console access is not available");
     }
-    if (enrollmentId == null
-        || enrollmentProofToken == null
-        || enrollmentProofToken.isBlank()) {
+    if (enrollmentId == null || enrollmentProofToken == null || enrollmentProofToken.isBlank()) {
       throw new AuthenticationException("Invalid enrollment credentials");
     }
 
@@ -117,8 +115,7 @@ public class EvaluatorTempSessionService {
             .orElseThrow(() -> new AuthenticationException("Invalid enrollment credentials"));
 
     if (enrollment.getStatus() == EnrollmentStatus.VERIFIED) {
-      throw new AuthenticationException(
-          "Device already bound — sign in with passwordless MFA");
+      throw new AuthenticationException("Device already bound — sign in with passwordless MFA");
     }
     if (enrollment.getStatus() != EnrollmentStatus.CREATED
         && enrollment.getStatus() != EnrollmentStatus.BOUND) {
@@ -157,11 +154,7 @@ public class EvaluatorTempSessionService {
 
     AdminToken token =
         new AdminToken(
-            hash,
-            admin,
-            admin.getAdminType().name(),
-            expiresAt,
-            AdminTokenPurpose.EVALUATOR_TEMP);
+            hash, admin, admin.getAdminType().name(), expiresAt, AdminTokenPurpose.EVALUATOR_TEMP);
     token.setTenant(admin.getTenant());
     token.setIntegration(admin.getIntegration());
     token.setCreatedAt(OffsetDateTime.now());
@@ -292,8 +285,7 @@ public class EvaluatorTempSessionService {
    */
   boolean hasOtherVerifiedActiveAdmin(Integer tenantId, Integer excludeAdminId) {
     List<EzkeyAdmin> peers =
-        adminRepository.findByTenantAndAdminTypeAndActive(
-            tenantId, AdminType.TENANT_ADMIN, true);
+        adminRepository.findByTenantAndAdminTypeAndActive(tenantId, AdminType.TENANT_ADMIN, true);
     for (EzkeyAdmin peer : peers) {
       if (peer.getAdminId().equals(excludeAdminId)) {
         continue;

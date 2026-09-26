@@ -29,8 +29,8 @@ import org.ezkey.admin.security.AdminCsrfTokenService;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
-import org.ezkey.admin.service.EvaluatorTempSessionService;
 import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.admin.service.EvaluatorTempSessionService;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
@@ -76,7 +76,8 @@ class AdminAuthControllerActivationTest {
             adminRepository,
             browserSessionCookieProperties,
             sessionCookieService,
-            csrfTokenService, evaluatorTempSessionService);
+            csrfTokenService,
+            evaluatorTempSessionService);
     when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
   }
 

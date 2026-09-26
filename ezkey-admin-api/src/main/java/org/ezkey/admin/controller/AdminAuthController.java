@@ -286,10 +286,8 @@ public class AdminAuthController {
           evaluatorTempSessionService.mint(request.enrollmentId(), request.enrollmentProofToken());
 
       EzkeyAdmin admin = mint.admin();
-      Integer tenantId =
-          admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
-      String tenantName =
-          admin.getTenant() != null ? admin.getTenant().getTenantName() : null;
+      Integer tenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
+      String tenantName = admin.getTenant() != null ? admin.getTenant().getTenantName() : null;
 
       EvaluatorTempSessionResponseDto response =
           EvaluatorTempSessionResponseDto.success(
@@ -302,8 +300,7 @@ public class AdminAuthController {
               tenantName);
 
       if (browserSessionCookieProperties.isBrowserSessionCookieEnabled()) {
-        sessionCookieService.addSessionCookie(
-            httpResponse, mint.plainToken(), mint.expiresAt());
+        sessionCookieService.addSessionCookie(httpResponse, mint.plainToken(), mint.expiresAt());
         String csrfToken =
             issueCsrfTokenIfPossible(httpResponse, mint.plainToken(), mint.expiresAt());
         response = response.withCsrfToken(csrfToken).withoutSecretToken();
@@ -312,16 +309,11 @@ public class AdminAuthController {
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
       auditLogService.log(
           AuditHelper.createAdminAudit(
-                  context,
-                  EventType.ADMIN_LOGIN,
-                  "evaluator_temp_session_minted",
-                  tenantId)
+                  context, EventType.ADMIN_LOGIN, "evaluator_temp_session_minted", tenantId)
               .eventStatus(EventStatus.SUCCESS)
               .adminId(admin.getAdminId())
               .eventDetails(
-                  "{\"tokenPurpose\":\"EVALUATOR_TEMP\",\"adminId\":"
-                      + admin.getAdminId()
-                      + "}")
+                  "{\"tokenPurpose\":\"EVALUATOR_TEMP\",\"adminId\":" + admin.getAdminId() + "}")
               .build());
 
       return ResponseEntity.ok(response);

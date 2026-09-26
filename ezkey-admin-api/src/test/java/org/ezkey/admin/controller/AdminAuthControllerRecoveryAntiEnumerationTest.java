@@ -32,9 +32,9 @@ import org.ezkey.admin.security.AdminCsrfTokenService;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
-import org.ezkey.admin.service.EvaluatorTempSessionService;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminRecoveryService;
+import org.ezkey.admin.service.EvaluatorTempSessionService;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
@@ -97,7 +97,8 @@ class AdminAuthControllerRecoveryAntiEnumerationTest {
             adminRepository,
             browserSessionCookieProperties,
             sessionCookieService,
-            csrfTokenService, evaluatorTempSessionService);
+            csrfTokenService,
+            evaluatorTempSessionService);
     when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
     when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
     when(httpRequest.getHeader("User-Agent")).thenReturn("JUnit");

@@ -167,8 +167,8 @@ public class TenantService {
    * Soft-deactivates a tenant from a system job (no human Global Admin principal).
    *
    * <p>Same soft semantics as {@link #deactivateTenant(Integer, AdminPrincipal)}: {@code
-   * active=false}, revoke admin tokens, no destroy/wipe/hard API-key revoke. Used by
-   * EVALUATOR_TEMP expiry when no other VERIFIED tenant admin remains.
+   * active=false}, revoke admin tokens, no destroy/wipe/hard API-key revoke. Used by EVALUATOR_TEMP
+   * expiry when no other VERIFIED tenant admin remains.
    *
    * @param tenantId tenant to deactivate
    * @return {@code true} if state changed, {@code false} if already inactive
