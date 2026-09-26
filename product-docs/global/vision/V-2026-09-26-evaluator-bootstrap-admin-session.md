@@ -7,7 +7,7 @@
 - **Status:** `draft`
 - **Lane:** `D` (post-delivery evolution of evaluator self-registration / community alpha funnel)
 - **Created at:** `2026-09-26`
-- **Updated at:** `2026-09-26` (gap #1 option B — Patrick craft: onboarding-resume secret)
+- **Updated at:** `2026-09-26` (Christophe RED — Patrick craft: resume gate + BOOTSTRAP self-only)
 - **Captured by:** Marc / Alex
 - **Priority:** `P2` (friction reduction on community alpha path; gated; not a platform default)
 - **Marc defaults confirmed:** `2026-09-26` — same self-reg flag only; auto-redirect after emit + QR in account; one-sentence expiry message
@@ -147,11 +147,21 @@ Logout (or absolute BOOTSTRAP TTL) **after activate and before device verificati
 
 - **Do not** reopen the activation code (stays one-shot).
 - **Do not** expose QR / onboarding by username alone publicly.
-- On successful **activate** (same self-reg flag ON): mint distinct opaque resume secret `ezkey_onboarding_resume_*`, hashed at rest (`ONBOARDING_RESUME`), absolute **8h** TTL, max **3** uses.
-- Redeem: `POST /api/v1/admin/auth/onboarding-resume` (body = resume secret); rate-limit with login/activate bucket.
+- On successful **activate**: mint distinct opaque resume secret `ezkey_onboarding_resume_*` **only** when self-reg flag is ON **and** admin is **TENANT_ADMIN** (**never** `GLOBAL_ADMIN`). Prefer evaluator provenance when a clean marker exists (`eval-admin-*` username + `eval-*` tenant / public-signup path); flag + `TENANT_ADMIN` alone is the RED clearance floor — current tip requires the provenance marker.
+- Hashed at rest (`ONBOARDING_RESUME`), absolute **8h** TTL, max **3** uses.
+- Redeem: `POST /api/v1/admin/auth/onboarding-resume` (body = resume secret); rate-limit with login/activate bucket. Eligible enrollment statuses: **CREATED|BOUND**. **No** resume success for `GLOBAL_ADMIN` even if a leaked secret from an older tip exists.
 - Success: remint **BOOTSTRAP** (absolute **2h**, no sliding, same allowlist). QR via existing authenticated `…/onboarding` + `…/qrcode` — no second QR payload surface on the resume response.
+- Under **BOOTSTRAP**: onboarding / QR are **self-only** — no Global Admin cross-admin QR oracle.
 - Failure: opaque 401/404; no tenant oracle.
 - Optional soft logout honesty warn when BOOTSTRAP + incomplete enrollment (not an API block).
+
+### Christophe SECURITY RED (2026-09-26) — Patrick craft lock
+
+Flag-alone mint after any activate (including Global Admin) opened a resume → BOOTSTRAP → cross-admin QR chain. Cleared by:
+
+1. Mint gate: flag ON + `TENANT_ADMIN` + evaluator provenance; never `GLOBAL_ADMIN`.
+2. Redeem gate: reject `GLOBAL_ADMIN` (leaked-secret resistant); keep `CREATED|BOUND`.
+3. BOOTSTRAP reads: onboarding/`qrcode` self-only.
 
 ## Honesty
 

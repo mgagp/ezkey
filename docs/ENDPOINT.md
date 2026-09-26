@@ -444,7 +444,7 @@ See `ezkey-admin-api/CONFIGURATION.md` (evaluator self-registration group) and v
 
 Same gate as signup (`ezkey.evaluator.self-registration.enabled`). When disabled → **404**.
 
-Patrick craft (Alex lock B): after successful **activate**, when the flag is ON **and** the admin is an evaluator self-registration identity (`TENANT_ADMIN` + `eval-admin-*` + `eval-*` tenant), the activation response includes a distinct opaque **onboarding-resume** secret (`ezkey_onboarding_resume_*`). Global Admin / ordinary activate never receives a resume secret from the flag alone. The secret is **hashed at rest** (AdminToken purpose `ONBOARDING_RESUME`), absolute TTL **8h**, max **3** successful redeems. Activation codes stay **one-shot** (never reopened). There is **no** public username QR oracle. BOOTSTRAP onboarding/`qrcode` reads are **self-only** (no cross-admin Global Admin QR oracle under BOOTSTRAP).
+Patrick craft (Alex lock B + Christophe RED): after successful **activate**, mint an opaque **onboarding-resume** secret (`ezkey_onboarding_resume_*`) **only** when the flag is ON **and** the admin is **TENANT_ADMIN** with evaluator provenance (`eval-admin-*` + `eval-*` tenant) — **never** `GLOBAL_ADMIN`, never from the flag alone. Secret is **hashed at rest** (AdminToken purpose `ONBOARDING_RESUME`), absolute TTL **8h**, max **3** successful redeems. Redeem keeps enrollment eligible as **CREATED|BOUND** and rejects `GLOBAL_ADMIN` even if a leaked resume secret from an older tip exists. Activation codes stay **one-shot** (never reopened). There is **no** public username QR oracle. Under **BOOTSTRAP**, onboarding/`qrcode` reads are **self-only** (no cross-admin Global Admin QR oracle).
 
 **Rate limit:** shares the Admin login / activate IP bucket.
 
