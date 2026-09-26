@@ -4,7 +4,18 @@ set -euo pipefail
 
 PASS=0
 FAIL=0
-PAM_SO="/lib64/security/pam_ezkey.so"
+PAM_SO_CANDIDATES=(
+  "${EZKEY_PAM_SO:-}"
+  /usr/lib64/security/pam_ezkey.so
+  /lib64/security/pam_ezkey.so
+)
+PAM_SO=""
+for candidate in "${PAM_SO_CANDIDATES[@]}"; do
+  if [ -n "$candidate" ] && [ -f "$candidate" ]; then
+    PAM_SO="$candidate"
+    break
+  fi
+done
 PAM_CONF="/etc/security/pam_ezkey.conf"
 PAM_SSHD="/etc/pam.d/sshd"
 API_URL="${EZKEY_INTEGRATION_API_URL:-${EZKEY_M2M_API_URL:-http://localhost:7080}}"
@@ -14,10 +25,10 @@ fail() { echo "[FAIL] $1"; FAIL=$((FAIL+1)); }
 
 echo "=== Ezkey PAM Module Tests ==="
 
-if [ -f "$PAM_SO" ]; then
+if [ -n "$PAM_SO" ]; then
     ok "pam_ezkey.so exists at $PAM_SO"
 else
-    fail "pam_ezkey.so not found at $PAM_SO"
+    fail "pam_ezkey.so not found under /usr/lib64/security or /lib64/security"
 fi
 
 if [ -f "$PAM_CONF" ]; then

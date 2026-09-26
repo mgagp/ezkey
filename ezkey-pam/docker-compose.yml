@@ -16,6 +16,14 @@ services:
     image: ezkey-pam-builder:local
     profiles: ["build"]
 
+  pam-builder-al2023:
+    build:
+      context: .
+      dockerfile: Dockerfile.al2023
+      target: builder-al2023
+    image: ezkey-pam-builder-al2023:local
+    profiles: ["al2023", "build"]
+
   ezkey-pam-ssh:
     build:
       context: .
@@ -35,6 +43,32 @@ services:
       EZKEY_SSH_USER: ${EZKEY_SSH_USER:-testuser}
       EZKEY_CONTEXT_TITLE: ${EZKEY_CONTEXT_TITLE:-SSH login}
       EZKEY_CONTEXT_MESSAGE: ${EZKEY_CONTEXT_MESSAGE:-}
+      EZKEY_DEBUG: ${EZKEY_DEBUG:-true}
+    networks:
+      - ezkey-network
+    restart: unless-stopped
+
+  ezkey-pam-ssh-al2023:
+    build:
+      context: .
+      dockerfile: Dockerfile.al2023
+      target: runtime-al2023
+    image: ezkey-pam-ssh-al2023:local
+    container_name: ezkey-pam-ssh-al2023
+    hostname: ezkey-pam-ssh-al2023
+    profiles: ["al2023"]
+    ports:
+      - "${EZKEY_PAM_SSH_PORT_AL2023:-2223}:22"
+    environment:
+      EZKEY_INTEGRATION_API_URL: ${EZKEY_INTEGRATION_API_URL:-http://integration-api:7080}
+      EZKEY_INTEGRATION_KEY: ${EZKEY_INTEGRATION_KEY:-}
+      EZKEY_SECRET_KEY: ${EZKEY_SECRET_KEY:-}
+      EZKEY_WAIT_TIMEOUT: ${EZKEY_WAIT_TIMEOUT:-90}
+      EZKEY_WAIT_POLLING: ${EZKEY_WAIT_POLLING:-2}
+      EZKEY_SSH_USER: ${EZKEY_SSH_USER:-testuser}
+      EZKEY_CONTEXT_TITLE: ${EZKEY_CONTEXT_TITLE:-SSH login}
+      EZKEY_CONTEXT_MESSAGE: ${EZKEY_CONTEXT_MESSAGE:-}
+      EZKEY_DEBUG: ${EZKEY_DEBUG:-true}
     networks:
       - ezkey-network
     restart: unless-stopped
