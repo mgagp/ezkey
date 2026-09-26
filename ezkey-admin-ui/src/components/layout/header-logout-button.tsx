@@ -7,12 +7,15 @@ import { useToast } from '@/context/use-toast';
 import { logout as logoutApi } from '@/generated/admin-api/admin-authentication/admin-authentication';
 import { isBrowserSessionCookieBuild } from '@/lib/auth';
 import { mayCompleteLogoutLocallyAfterApiFailure } from '@/lib/auth-session-lifecycle';
+import { isBootstrapSession } from '@/lib/evaluator-bootstrap-session';
 
 /**
  * Primary header action: icon + label, always visible (not behind a menu) so logout stays a clear habit.
  *
  * Cookie mode (SEC-027): do not claim logout success when server revocation fails — the HttpOnly
  * session cookie cannot be cleared from JavaScript. Mode A may still wipe the local bearer.
+ *
+ * BOOTSTRAP sessions: soft honesty warn before logout (does not block — Cancel aborts).
  */
 export function HeaderLogoutButton() {
   const { t } = useTranslation('common');
@@ -25,6 +28,10 @@ export function HeaderLogoutButton() {
 
   const handleLogout = async () => {
     if (pending) return;
+    if (isBootstrapSession(session)) {
+      const proceed = window.confirm(t('logout.bootstrapSessionWarn'));
+      if (!proceed) return;
+    }
     setPending(true);
     try {
       await logoutApi();

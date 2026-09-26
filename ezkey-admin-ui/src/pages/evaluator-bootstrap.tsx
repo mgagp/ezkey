@@ -34,6 +34,17 @@ export default function EvaluatorBootstrapPage() {
             handoff.activationCode,
           );
         }
+        if (handoff?.enrollmentProofToken && handoff.enrollmentId != null) {
+          sessionStorage.setItem(
+            'ezkey_evaluator_enrollment_prefill',
+            JSON.stringify({
+              username: handoff.username,
+              enrollmentId: handoff.enrollmentId,
+              enrollmentProofToken: handoff.enrollmentProofToken,
+              enrollmentChallenge: handoff.enrollmentChallenge ?? null,
+            }),
+          );
+        }
 
         if (isBrowserSessionCookieBuild()) {
           const restored = await fetchApi<AuthSession>('/api/v1/admin/auth/me', {

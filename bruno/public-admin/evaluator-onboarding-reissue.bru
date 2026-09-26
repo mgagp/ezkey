@@ -1,0 +1,51 @@
+meta {
+  name: evaluator onboarding reissue
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/public/evaluator-onboarding/reissue
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "username": "{{evaluator_username}}"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      test("Response contains phase", function () {
+          expect(jsonData).to.have.property('phase');
+      });
+      test("Response contains bootstrap session fields", function () {
+          expect(jsonData).to.have.property('sessionExpiresAt');
+          expect(jsonData).to.have.property('username');
+      });
+      test("Response does not expose adminId", function () {
+          expect(jsonData).to.not.have.property('adminId');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Bounded public resume for incomplete evaluator onboarding when `ezkey.evaluator.self-registration.enabled=true`.
+  
+  **No authentication required.** Returns 404 when disabled, username unknown, or enrollment already past CREATED (device bind).
+  
+  **Eligible:** PENDING_ACTIVATION (new activation code) or ACTIVE + CREATED enrollment (rotated QR proof).
+  **Response (200):** phase, username, sessionToken (BOOTSTRAP), sessionExpiresAt, plus phase-specific activation or enrollment fields.
+  Rate-limited separately from signup. No permanent password.
+}

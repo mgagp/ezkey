@@ -438,6 +438,49 @@ passwordless login. Community / alpha only — not a clean-start or production d
 
 See `ezkey-admin-api/CONFIGURATION.md` (evaluator self-registration group) and vision `V-2026-09-26-evaluator-bootstrap-admin-session`.
 
+### Resume incomplete evaluator onboarding (unauthenticated, same flag)
+
+**Base path:** `POST http://localhost:9080/api/v1/public/evaluator-onboarding/reissue` (no `Authorization` header).
+
+Same gate as signup (`ezkey.evaluator.self-registration.enabled`). When disabled → **404**. Bounded re-issue so logout / absolute BOOTSTRAP TTL before device bind is not a dead end (product option B). Does **not** block logout. No permanent password.
+
+**Eligible only when enrollment is incomplete:**
+
+| Phase | Condition | Material returned |
+| ----- | --------- | ----------------- |
+| `PENDING_ACTIVATION` | Lifecycle pending, no enrollment yet | New activation code + fresh BOOTSTRAP session |
+| `DEVICE_BIND` | Lifecycle ACTIVE, enrollment status `CREATED` (no device bind yet) | Rotated enrollment proof / challenge + fresh BOOTSTRAP session |
+
+After device bind (`BOUND` / `VERIFIED`) → **404** (use normal passwordless login). Non-evaluator usernames and inactive tenants → **404** (anti-enumeration).
+
+**Rate limits (defaults, separate from signup):** **10** successful re-issues per client IP per hour; **5** per username per hour.
+
+**Request body:**
+
+```json
+{
+  "username": "eval-admin-a1b2c3d4"
+}
+```
+
+**Response (200 OK)** — phase-specific fields omitted when null:
+
+```json
+{
+  "phase": "DEVICE_BIND",
+  "username": "eval-admin-a1b2c3d4",
+  "enrollmentId": 42,
+  "enrollmentProofToken": "ezkey_proof_…",
+  "enrollmentChallenge": 123456,
+  "sessionToken": "ezkey_bootstrap_…",
+  "sessionExpiresAt": "2026-05-23T20:00:00Z",
+  "adminUiUrl": "https://admin-ui.ezkey.online",
+  "guidedTourUrl": "https://ezkey.org/community-guided-tour.html"
+}
+```
+
+**Bruno:** `bruno/public-admin/evaluator-onboarding-reissue.bru`.
+
 ### Admin Authentication (Passwordless-Only)
 
 Base URL: `http://localhost:9080/api/v1/admin/auth`

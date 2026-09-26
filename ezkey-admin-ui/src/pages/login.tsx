@@ -21,6 +21,7 @@ import { isBrowserSessionCookieBuild, type AuthSession } from '@/lib/auth';
 import { persistUsernamePref, readUsernamePref } from '@/lib/last-username-pref';
 import { LoginActivationSection } from '@/components/feature/login-activation-section';
 import { LoginRecoverySection } from '@/components/feature/login-recovery-section';
+import { EvaluatorOnboardingResumeSection } from '@/components/feature/evaluator-onboarding-resume-section';
 import { getRecoverySession } from '@/lib/recovery-session';
 import { takeBootstrapSessionExpiredFlag } from '@/lib/evaluator-bootstrap-session';
 import { cn, formatChallengeCode, formatCountdown } from '@/lib/utils';
@@ -473,6 +474,7 @@ export default function LoginPage() {
                 >
                   {t('login:activation.useActivationLink')}
                 </button>
+                <EvaluatorOnboardingResumeSection />
               </div>
             </form>
           )}

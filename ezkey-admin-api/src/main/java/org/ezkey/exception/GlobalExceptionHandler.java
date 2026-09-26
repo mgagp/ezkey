@@ -129,6 +129,17 @@ public class GlobalExceptionHandler {
         request);
   }
 
+  @ExceptionHandler(org.ezkey.admin.exception.EvaluatorOnboardingUnavailableException.class)
+  public ResponseEntity<ProblemDetail> handleEvaluatorOnboardingUnavailableException(
+      org.ezkey.admin.exception.EvaluatorOnboardingUnavailableException ex, WebRequest request) {
+    return problemResponse(
+        HttpStatus.NOT_FOUND,
+        AdminApiProblemCatalog.TYPE_RESOURCE_NOT_FOUND,
+        AdminApiProblemCatalog.TITLE_NOT_FOUND,
+        ex.getMessage(),
+        request);
+  }
+
   /**
    * Handles ResourceNotFoundException and returns HTTP 404.
    *

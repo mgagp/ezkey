@@ -780,6 +780,105 @@ public class AdminProvisioningService {
   }
 
   /**
+   * Re-issues an activation code for evaluator onboarding resume without a Global Admin principal.
+   *
+   * <p>Caller must already gate on the evaluator self-registration flag and eligibility. Same
+   * eligibility rules as {@link #reissueActivationCode(Integer, AdminPrincipal)}.
+   *
+   * @param admin pending administrator with no enrollment yet
+   * @return new activation code payload and revocation summary
+   * @throws IllegalStateException when the administrator is not eligible for re-issue
+   */
+  @Transactional
+  public ActivationCodeReissueResult reissueActivationCodeForEvaluatorResume(EzkeyAdmin admin) {
+    if (admin == null || admin.getAdminId() == null) {
+      throw new IllegalStateException(
+          "Administrator is required for evaluator activation re-issue");
+    }
+    validateActivationCodeReissueEligibility(admin);
+
+    int deactivated = tokenRepository.deactivateAllTokensForAdmin(admin.getAdminId());
+    ActivationCodeResult newCode = issueActivationCode(admin);
+
+    logger.info(
+        "Evaluator resume: activation code re-issued for pending admin {} (adminId={},"
+            + " deactivatedIssuanceTokens={})",
+        admin.getUsername(),
+        admin.getAdminId(),
+        deactivated);
+
+    return new ActivationCodeReissueResult(
+        admin, newCode.activationCode(), newCode.expiresAt(), deactivated > 0, deactivated);
+  }
+
+  /**
+   * Rotates enrollment proof material for an ACTIVE evaluator whose first enrollment is still
+   * {@link EnrollmentStatus#CREATED} (no device bind yet).
+   *
+   * <p>Revokes all active admin tokens first so a fresh BOOTSTRAP session can be minted by the
+   * caller. Does not change lifecycle or create a new enrollment row.
+   *
+   * @param admin activated administrator with an unbound CREATED enrollment
+   * @return rotated enrollment proof credentials (shown once to the evaluator)
+   * @throws IllegalStateException when enrollment is missing or already past CREATED
+   */
+  @Transactional
+  public OnboardingCredentialsResult rotateIncompleteEnrollmentProofForEvaluatorResume(
+      EzkeyAdmin admin) {
+    if (admin == null || admin.getAdminId() == null) {
+      throw new IllegalStateException(
+          "Administrator is required for evaluator enrollment re-issue");
+    }
+    if (!Boolean.TRUE.equals(admin.getActive())) {
+      throw new IllegalStateException(
+          "Cannot re-issue enrollment proof for an inactive administrator");
+    }
+    if (admin.getLifecycleStatus() != AdminLifecycleStatus.ACTIVE) {
+      throw new IllegalStateException(
+          "Enrollment proof re-issue requires an activated administrator");
+    }
+    if (admin.getTenant() != null && !Boolean.TRUE.equals(admin.getTenant().getActive())) {
+      throw new IllegalStateException(
+          "Cannot re-issue enrollment proof while the administrator's tenant is inactive");
+    }
+    if (admin.getEnrollment() == null) {
+      throw new IllegalStateException("Administrator does not have an enrollment to re-issue");
+    }
+
+    Enrollment enrollment =
+        enrollmentRepository
+            .findById(admin.getEnrollment().getEnrollmentId())
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "Enrollment", admin.getEnrollment().getEnrollmentId()));
+
+    if (enrollment.getStatus() != EnrollmentStatus.CREATED) {
+      throw new IllegalStateException(
+          "Enrollment proof can only be re-issued before device bind (CREATED status)");
+    }
+    if (!Boolean.TRUE.equals(enrollment.getActive())) {
+      throw new IllegalStateException("Cannot re-issue proof for an inactive enrollment");
+    }
+
+    tokenRepository.deactivateAllTokensForAdmin(admin.getAdminId());
+
+    String enrollmentProofToken = signatureService.generateProofToken();
+    Integer enrollmentChallenge = signatureService.generateSecureChallenge(6);
+    enrollment.setEnrollmentProofToken(enrollmentProofToken);
+    enrollment.setEnrollmentChallenge(enrollmentChallenge);
+    enrollmentRepository.save(enrollment);
+
+    logger.info(
+        "Evaluator resume: enrollment proof rotated for admin {} (enrollmentId={})",
+        admin.getUsername(),
+        enrollment.getEnrollmentId());
+
+    return new OnboardingCredentialsResult(
+        enrollment.getEnrollmentId(), enrollmentProofToken, enrollmentChallenge, null);
+  }
+
+  /**
    * Partially updates an administrator profile.
    *
    * <p>Only non-null fields are applied. GlobalAdmin can update any admin. TenantAdmin can update

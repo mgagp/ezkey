@@ -7,7 +7,6 @@
  * Service: EvaluatorSelfRegistrationService
  * Description: Provisions empty preview tenants for anonymous EXP1 evaluators.
  */
-
 package org.ezkey.admin.service;
 
 import java.util.List;
@@ -16,11 +15,18 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import org.ezkey.admin.config.EvaluatorSelfRegistrationProperties;
 import org.ezkey.admin.domain.AdminOnboardingMode;
+import org.ezkey.admin.dto.response.EvaluatorOnboardingReissueResponseDto;
 import org.ezkey.admin.dto.response.EvaluatorSelfRegistrationResponseDto;
+import org.ezkey.admin.exception.EvaluatorOnboardingUnavailableException;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminAuthService.TokenIssueResult;
+import org.ezkey.admin.service.AdminProvisioningService.ActivationCodeReissueResult;
+import org.ezkey.admin.service.AdminProvisioningService.OnboardingCredentialsResult;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
+import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
@@ -36,7 +42,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>When enabled, also mints an opaque Admin UI {@code BOOTSTRAP} session (absolute TTL) so the
  * evaluator can land in the console immediately. Reuses {@link AdminProvisioningService}
  * provisioning semantics under a Global Admin system principal. Does not create integrations, API
- * keys, or enrollments.
+ * keys, or enrollments at signup. Bounded public re-issue covers incomplete enrollment after
+ * session death (same flag only; no permanent password).
  */
 @Service
 public class EvaluatorSelfRegistrationService {
@@ -56,6 +63,9 @@ public class EvaluatorSelfRegistrationService {
 
   /** Product lock: bootstrap session absolute TTL hours (ignore misconfigured property). */
   private static final int BOOTSTRAP_SESSION_TTL_HOURS_LOCK = 8;
+
+  static final String PHASE_PENDING_ACTIVATION = "PENDING_ACTIVATION";
+  static final String PHASE_DEVICE_BIND = "DEVICE_BIND";
 
   private final EvaluatorSelfRegistrationProperties properties;
   private final EvaluatorSelfRegistrationRateLimiter rateLimiter;
@@ -131,16 +141,7 @@ public class EvaluatorSelfRegistrationService {
             systemPrincipal);
 
     EzkeyAdmin pendingAdmin = adminResult.admin();
-    // Enforce product lock: absolute 8h regardless of mis-set property (still document the prop).
-    int ttlHours = BOOTSTRAP_SESSION_TTL_HOURS_LOCK;
-    if (properties.getBootstrapSessionTtlHours() != BOOTSTRAP_SESSION_TTL_HOURS_LOCK) {
-      logger.warn(
-          "Ignoring ezkey.evaluator.self-registration.bootstrap-session-ttl-hours={} — product"
-              + " lock requires {}",
-          properties.getBootstrapSessionTtlHours(),
-          BOOTSTRAP_SESSION_TTL_HOURS_LOCK);
-    }
-    TokenIssueResult bootstrap = authService.issueBootstrapSession(pendingAdmin, ttlHours);
+    TokenIssueResult bootstrap = mintBootstrapSession(pendingAdmin);
 
     logger.info(
         "Anonymous evaluator self-registration completed for tenant slug {} (tenantId={})",
@@ -156,6 +157,120 @@ public class EvaluatorSelfRegistrationService {
         bootstrap.plainToken(),
         bootstrap.token().getExpiresAt(),
         pendingAdmin.getUsername());
+  }
+
+  /**
+   * Re-issues onboarding material and a fresh BOOTSTRAP session for an incomplete evaluator
+   * enrollment after session death (logout or absolute TTL).
+   *
+   * <p>Same self-registration flag only. Eligible when still pending activation (new activation
+   * code) or activated with enrollment still {@code CREATED} (rotated QR proof). Not available
+   * after device bind. Rate-limited separately from signup. No permanent password.
+   *
+   * @param username evaluator Tenant Admin username from signup
+   * @param clientIp client IP for rate limiting
+   * @return phase-specific onboarding material plus bootstrap session fields
+   * @throws EvaluatorOnboardingUnavailableException when the username is missing or ineligible
+   */
+  @Transactional
+  public EvaluatorOnboardingReissueResponseDto reissueOnboarding(String username, String clientIp) {
+    if (username == null || username.isBlank()) {
+      throw new EvaluatorOnboardingUnavailableException();
+    }
+    String trimmed = username.trim();
+    rateLimiter.verifyAndRecordReissue(clientIp, trimmed);
+
+    if (!trimmed.toLowerCase(Locale.ROOT).startsWith(ADMIN_USERNAME_PREFIX)) {
+      throw new EvaluatorOnboardingUnavailableException();
+    }
+
+    EzkeyAdmin admin =
+        adminRepository
+            .findByUsernameWithEnrollment(trimmed)
+            .orElseThrow(EvaluatorOnboardingUnavailableException::new);
+
+    assertEvaluatorResumeEligibleShell(admin);
+
+    if (admin.getLifecycleStatus() == AdminLifecycleStatus.PENDING_ACTIVATION
+        && admin.getEnrollment() == null) {
+      ActivationCodeReissueResult codeResult =
+          provisioningService.reissueActivationCodeForEvaluatorResume(admin);
+      TokenIssueResult bootstrap = mintBootstrapSession(admin);
+      logger.info(
+          "Evaluator onboarding re-issue (PENDING_ACTIVATION) for username {}",
+          admin.getUsername());
+      return new EvaluatorOnboardingReissueResponseDto(
+          PHASE_PENDING_ACTIVATION,
+          admin.getUsername(),
+          codeResult.activationCode(),
+          codeResult.activationCodeExpiresAt(),
+          null,
+          null,
+          null,
+          bootstrap.plainToken(),
+          bootstrap.token().getExpiresAt(),
+          properties.getAdminUiUrl(),
+          properties.getGuidedTourUrl());
+    }
+
+    Enrollment enrollment = admin.getEnrollment();
+    if (admin.getLifecycleStatus() == AdminLifecycleStatus.ACTIVE
+        && enrollment != null
+        && enrollment.getStatus() == EnrollmentStatus.CREATED) {
+      OnboardingCredentialsResult creds =
+          provisioningService.rotateIncompleteEnrollmentProofForEvaluatorResume(admin);
+      TokenIssueResult bootstrap = mintBootstrapSession(admin);
+      logger.info(
+          "Evaluator onboarding re-issue (DEVICE_BIND) for username {} (enrollmentId={})",
+          admin.getUsername(),
+          creds.enrollmentId());
+      return new EvaluatorOnboardingReissueResponseDto(
+          PHASE_DEVICE_BIND,
+          admin.getUsername(),
+          null,
+          null,
+          creds.enrollmentId(),
+          creds.enrollmentProofToken(),
+          creds.enrollmentChallenge(),
+          bootstrap.plainToken(),
+          bootstrap.token().getExpiresAt(),
+          properties.getAdminUiUrl(),
+          properties.getGuidedTourUrl());
+    }
+
+    throw new EvaluatorOnboardingUnavailableException();
+  }
+
+  private TokenIssueResult mintBootstrapSession(EzkeyAdmin admin) {
+    int ttlHours = BOOTSTRAP_SESSION_TTL_HOURS_LOCK;
+    if (properties.getBootstrapSessionTtlHours() != BOOTSTRAP_SESSION_TTL_HOURS_LOCK) {
+      logger.warn(
+          "Ignoring ezkey.evaluator.self-registration.bootstrap-session-ttl-hours={} — product"
+              + " lock requires {}",
+          properties.getBootstrapSessionTtlHours(),
+          BOOTSTRAP_SESSION_TTL_HOURS_LOCK);
+    }
+    return authService.issueBootstrapSession(admin, ttlHours);
+  }
+
+  /**
+   * Shell eligibility for public resume: active eval Tenant Admin under an active {@code eval-*}
+   * tenant. Lifecycle / enrollment phase checks remain in {@link #reissueOnboarding}.
+   */
+  private static void assertEvaluatorResumeEligibleShell(EzkeyAdmin admin) {
+    if (!Boolean.TRUE.equals(admin.getActive())) {
+      throw new EvaluatorOnboardingUnavailableException();
+    }
+    if (admin.getAdminType() != AdminType.TENANT_ADMIN) {
+      throw new EvaluatorOnboardingUnavailableException();
+    }
+    Tenant tenant = admin.getTenant();
+    if (tenant == null
+        || !Boolean.TRUE.equals(tenant.getActive())
+        || tenant.getTenantName() == null
+        || !tenant.getTenantName().toLowerCase(Locale.ROOT).startsWith(TENANT_PREFIX)) {
+      throw new EvaluatorOnboardingUnavailableException();
+    }
   }
 
   private AdminPrincipal resolveSystemGlobalAdminPrincipal() {

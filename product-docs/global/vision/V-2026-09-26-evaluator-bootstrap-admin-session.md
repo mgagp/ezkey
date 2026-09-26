@@ -7,7 +7,7 @@
 - **Status:** `draft`
 - **Lane:** `D` (post-delivery evolution of evaluator self-registration / community alpha funnel)
 - **Created at:** `2026-09-26`
-- **Updated at:** `2026-09-26`
+- **Updated at:** `2026-09-26` (gap #1 option B — bounded re-issue)
 - **Captured by:** Marc / Alex
 - **Priority:** `P2` (friction reduction on community alpha path; gated; not a platform default)
 - **Marc defaults confirmed:** `2026-09-26` — same self-reg flag only; auto-redirect after emit + QR in account; one-sentence expiry message
@@ -138,6 +138,18 @@ Orientation only — promote via `I-*` / `TB-*` when funded. No application code
 | **Admin UI** | Accept bootstrap session; **auto-land** after emit redirect; Julie’s minimal incomplete-enrollment honesty line/banner; **QR/enrollment completable in account**; **one-sentence expiry message** when 8h absolute TTL ends; no heavy chrome. |
 | **ezkey.org** | Alpha-path honesty copy update (community/lab only; friction-reduction narrative without SLA/IdP parity); signup success path hands off via auto-redirect. Publish via Edgar / Cloudflare later. |
 | **QA** | Isabelle: clean-start remains flag-OFF (no bootstrap mint); separate local/community profile with mode ON; cover auto-redirect + QR-in-account, logout-persists-account, 8h absolute expiry + one-sentence message, activation still one-shot. |
+
+### Gap #1 consequence (Alex product lock 2026-09-26 — option B)
+
+Logout (or absolute BOOTSTRAP TTL) **after activate and before device bind** must not be a dead end. Global Admin `POST /admins/{id}/activation-code/regenerate` only covers `PENDING_ACTIVATION` with **no** enrollment — it does **not** cover the post-activate `CREATED` enrollment gap.
+
+**Settled product choice: B — bounded re-issue onboarding** (do **not** block logout (A); do **not** accept a dead-end trap (C)):
+
+- Same self-reg flag only; public `POST /api/v1/public/evaluator-onboarding/reissue`.
+- Only while enrollment is incomplete (pending activation **or** ACTIVE + enrollment `CREATED`).
+- Rate-limited separately from signup; **no** permanent password.
+- Minimal chrome: login-page resume disclosure + optional soft logout honesty warn (not a block).
+- After device bind, resume returns 404 — passwordless login is the path.
 
 ## Honesty
 

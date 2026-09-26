@@ -129,6 +129,17 @@
     "onboardingTitle": "Complete enrollment",
     "onboardingHint": "Signed in temporarily as {{username}}. Activate and bind a device — the enrollment QR stays available here.",
     "afterBindLogin": "After binding, sign in with passwordless EZKey for a normal session.",
-    "sessionExpired": "Your temporary console session has ended. Complete enrollment with your activation code, then sign in again."
+    "sessionExpired": "Your temporary console session has ended. Restart temporary access below with your evaluator username, or complete enrollment and sign in.",
+    "resume": {
+      "summary": "Restart temporary console access",
+      "hint": "Community / alpha only. Use the username from signup if you logged out or the session expired before device bind. Rate-limited — not a password.",
+      "usernameLabel": "Evaluator username",
+      "submit": "Resume onboarding",
+      "submitting": "Resuming…",
+      "failed": "Unable to resume onboarding for this username.",
+      "validation": {
+        "usernameRequired": "Enter your evaluator username"
+      }
+    }
   }
 }

@@ -326,6 +326,14 @@ public final class AdminAuditConstants {
   public static final String EVALUATOR_SELF_REGISTRATION_FAILED =
       "evaluator_self_registration_failed";
 
+  /** Audit action for successful evaluator onboarding re-issue (incomplete enrollment resume). */
+  public static final String EVALUATOR_ONBOARDING_REISSUE_COMPLETED =
+      "evaluator_onboarding_reissue_completed";
+
+  /** Audit action for failed evaluator onboarding re-issue. */
+  public static final String EVALUATOR_ONBOARDING_REISSUE_FAILED =
+      "evaluator_onboarding_reissue_failed";
+
   // ═══════════════════════════════════════════════════════════════════════════════════════════════
   // Admin Provisioning Actions
   // ═══════════════════════════════════════════════════════════════════════════════════════════════

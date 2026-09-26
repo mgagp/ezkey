@@ -129,6 +129,17 @@
     "onboardingTitle": "Terminer l'enrôlement",
     "onboardingHint": "Connecté temporairement en tant que {{username}}. Activez et liez un appareil — le QR d'enrôlement reste accessible ici.",
     "afterBindLogin": "Après la liaison, connectez-vous avec EZKey sans mot de passe pour une session normale.",
-    "sessionExpired": "Votre session console temporaire est terminée. Terminez l'enrôlement avec votre code d'activation, puis reconnectez-vous."
+    "sessionExpired": "Votre session console temporaire est terminée. Redémarrez l'accès temporaire ci-dessous avec votre nom d'utilisateur évaluateur, ou terminez l'enrôlement et reconnectez-vous.",
+    "resume": {
+      "summary": "Redémarrer l'accès console temporaire",
+      "hint": "Communauté / alpha uniquement. Utilisez le nom d'utilisateur de l'inscription si vous vous êtes déconnecté ou si la session a expiré avant la liaison d'appareil. Limité en débit — ce n'est pas un mot de passe.",
+      "usernameLabel": "Nom d'utilisateur évaluateur",
+      "submit": "Reprendre l'enrôlement",
+      "submitting": "Reprise…",
+      "failed": "Impossible de reprendre l'enrôlement pour ce nom d'utilisateur.",
+      "validation": {
+        "usernameRequired": "Saisissez votre nom d'utilisateur évaluateur"
+      }
+    }
   }
 }

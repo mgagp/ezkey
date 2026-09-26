@@ -30,6 +30,8 @@ interface LoginActivationSectionProps {
   hideBackLink?: boolean;
   /** Prefill activation code (e.g. from evaluator signup handoff). */
   initialActivationCode?: string;
+  /** Prefill enrollment QR when resuming after activation (no re-activate). */
+  initialEnrollmentResult?: AdminActivationResponseShape | null;
 }
 
 type QrRenderState = {
@@ -43,6 +45,7 @@ export function LoginActivationSection({
   authApiPublicBaseUrl,
   hideBackLink = false,
   initialActivationCode,
+  initialEnrollmentResult,
 }: LoginActivationSectionProps) {
   const { t } = useTranslation(['login']);
 
@@ -71,7 +74,7 @@ export function LoginActivationSection({
   });
 
   const [activationResult, setActivationResult] =
-    useState<AdminActivationResponseShape | null>(null);
+    useState<AdminActivationResponseShape | null>(initialEnrollmentResult ?? null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);

@@ -22,7 +22,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.OffsetDateTime;
 import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
+import org.ezkey.admin.dto.request.EvaluatorOnboardingReissueRequestDto;
 import org.ezkey.admin.dto.request.EvaluatorSelfRegistrationRequestDto;
+import org.ezkey.admin.dto.response.EvaluatorOnboardingReissueResponseDto;
 import org.ezkey.admin.dto.response.EvaluatorSelfRegistrationResponseDto;
 import org.ezkey.admin.security.AdminCsrfTokenService;
 import org.ezkey.admin.security.AdminSessionCookieService;
@@ -138,5 +140,56 @@ class PublicEvaluatorSignupControllerTest {
     assertEquals(sessionExpires, response.getBody().sessionExpiresAt());
     verify(sessionCookieService)
         .addSessionCookie(httpResponse, "ezkey_bootstrap_abc", sessionExpires);
+  }
+
+  @Test
+  @DisplayName("reissue returns 404 when feature disabled")
+  void reissue_disabled_returns404() {
+    when(evaluatorSelfRegistrationService.isEnabled()).thenReturn(false);
+
+    ResponseEntity<EvaluatorOnboardingReissueResponseDto> response =
+        controller.evaluatorOnboardingReissue(
+            new EvaluatorOnboardingReissueRequestDto("eval-admin-x"), httpRequest, httpResponse);
+
+    assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+    assertNull(response.getBody());
+    verify(evaluatorSelfRegistrationService, never()).reissueOnboarding(any(), any());
+  }
+
+  @Test
+  @DisplayName("reissue returns 200 with DEVICE_BIND material when enabled")
+  void reissue_enabled_returns200() {
+    when(evaluatorSelfRegistrationService.isEnabled()).thenReturn(true);
+    when(browserSessionCookieProperties.isBrowserSessionCookieEnabled()).thenReturn(false);
+    when(httpRequest.getAttribute(org.ezkey.audit.util.ClientContext.CLIENT_IP_REQUEST_ATTRIBUTE))
+        .thenReturn("203.0.113.20");
+    OffsetDateTime sessionExpires = OffsetDateTime.now().plusHours(8);
+    EvaluatorOnboardingReissueResponseDto body =
+        new EvaluatorOnboardingReissueResponseDto(
+            "DEVICE_BIND",
+            "eval-admin-cafebabe",
+            null,
+            null,
+            42,
+            "ezkey_proof_abc",
+            123456,
+            "ezkey_bootstrap_resume",
+            sessionExpires,
+            "https://exp1-admin-ui.ezkey.org",
+            "https://ezkey.org/exp1-guided-tour.html");
+    when(evaluatorSelfRegistrationService.reissueOnboarding(
+            eq("eval-admin-cafebabe"), eq("203.0.113.20")))
+        .thenReturn(body);
+
+    ResponseEntity<EvaluatorOnboardingReissueResponseDto> response =
+        controller.evaluatorOnboardingReissue(
+            new EvaluatorOnboardingReissueRequestDto("eval-admin-cafebabe"),
+            httpRequest,
+            httpResponse);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertEquals("DEVICE_BIND", response.getBody().phase());
+    assertEquals("ezkey_bootstrap_resume", response.getBody().sessionToken());
+    verify(auditLogService).log(any());
   }
 }

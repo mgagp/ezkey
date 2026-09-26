@@ -22,6 +22,10 @@ export interface EvaluatorBootstrapHandoff {
   username: string;
   /** Optional activation code for onboarding prefill — not the session secret. */
   activationCode?: string;
+  /** Optional enrollment QR material when re-issuing after activation. */
+  enrollmentId?: number;
+  enrollmentProofToken?: string;
+  enrollmentChallenge?: number | null;
   adminType?: string;
 }
 
