@@ -87,6 +87,7 @@ export function LoginActivationSection({
   const [submitting, setSubmitting] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
   const [enrollmentIdCopied, setEnrollmentIdCopied] = useState(false);
+  const [resumeSecretCopied, setResumeSecretCopied] = useState(false);
   const [qrState, setQrState] = useState<QrRenderState>({
     key: null,
     status: 'idle',
@@ -229,6 +230,18 @@ export function LoginActivationSection({
     }
   };
 
+  const handleCopyResumeSecret = async () => {
+    const secret = activationResult?.onboardingResumeSecret;
+    if (secret == null || secret === '') return;
+    try {
+      await navigator.clipboard.writeText(secret);
+      setResumeSecretCopied(true);
+      setTimeout(() => setResumeSecretCopied(false), 2000);
+    } catch {
+      // ignore clipboard errors
+    }
+  };
+
   const handleBackToLogin = () => {
     setActivationResult(null);
     setErrorMessage(null);
@@ -247,47 +260,74 @@ export function LoginActivationSection({
           <IntegratedDeliveryNotice summary={t('common:integratedDelivery.summaryBootstrap')}>
             {t('login:activation.previewNotice')}
           </IntegratedDeliveryNotice>
-          <Alert variant="info" title={t('login:activation.recoveryCodesDeferredTitle')}>
+          <p className="text-xs text-fg-muted leading-snug">
             {t('login:activation.recoveryCodesDeferredBody')}
-          </Alert>
-          {activationResult.onboardingResumeSecret != null && (
-            <Alert variant="info" title={t('login:activation.resumeSecretTitle')}>
-              <p className="text-sm mb-2">{t('login:activation.resumeSecretBody')}</p>
-              <code
-                className="block break-all text-xs font-mono"
-                data-testid="onboarding-resume-secret"
-              >
-                {activationResult.onboardingResumeSecret}
-              </code>
-            </Alert>
-          )}
+          </p>
         </section>
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 md:items-start">
-          <div className="space-y-2 min-w-0 md:max-w-[280px] md:justify-self-center">
-            <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
-              {t('login:activation.qrTitle')}
-            </p>
-            {qrLoading && (
-              <p className="text-sm text-fg-muted">{t('login:activation.qrLoading')}</p>
-            )}
-            {qrError && (
-              <Alert variant="warning" title={t('login:activation.qrErrorTitle')}>
-                {t('login:activation.qrErrorBody')}
-              </Alert>
-            )}
-            {qrDataUrl != null && !qrLoading && (
-              <div className="flex flex-col items-stretch gap-2 border-2 border-fg p-3 bg-bg">
-                <img
-                  src={qrDataUrl}
-                  alt={t('login:activation.qrCodeAlt')}
-                  className="mx-auto w-48 h-48 max-w-full object-contain"
-                  width={192}
-                  height={192}
-                />
-                <p className="text-center text-xs text-fg-muted leading-snug">
-                  {t('login:activation.qrHint')}
+          <div className="space-y-3 min-w-0 md:max-w-[280px] md:justify-self-center">
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
+                {t('login:activation.qrTitle')}
+              </p>
+              {qrLoading && (
+                <p className="text-sm text-fg-muted">{t('login:activation.qrLoading')}</p>
+              )}
+              {qrError && (
+                <Alert variant="warning" title={t('login:activation.qrErrorTitle')}>
+                  {t('login:activation.qrErrorBody')}
+                </Alert>
+              )}
+              {qrDataUrl != null && !qrLoading && (
+                <div className="flex flex-col items-stretch gap-2 border-2 border-fg p-3 bg-bg">
+                  <img
+                    src={qrDataUrl}
+                    alt={t('login:activation.qrCodeAlt')}
+                    className="mx-auto w-48 h-48 max-w-full object-contain"
+                    width={192}
+                    height={192}
+                  />
+                  <p className="text-center text-xs text-fg-muted leading-snug">
+                    {t('login:activation.qrHint')}
+                  </p>
+                </div>
+              )}
+            </div>
+            {activationResult.onboardingResumeSecret != null && (
+              <div
+                className="border border-fg/30 bg-bg p-3 space-y-2"
+                data-testid="onboarding-resume-secret-block"
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
+                  {t('login:activation.resumeSecretTitle')}
                 </p>
+                <p className="text-xs text-fg-muted leading-snug">
+                  {t('login:activation.resumeSecretBody')}
+                </p>
+                <code
+                  className="block break-all text-xs font-mono"
+                  data-testid="onboarding-resume-secret"
+                >
+                  {activationResult.onboardingResumeSecret}
+                </code>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void handleCopyResumeSecret()}
+                  className="gap-1.5"
+                  data-testid="copy-onboarding-resume-secret"
+                >
+                  {resumeSecretCopied ? (
+                    <Check className="size-3.5 text-success" />
+                  ) : (
+                    <Copy className="size-3.5" />
+                  )}
+                  {resumeSecretCopied
+                    ? t('login:activation.copied')
+                    : t('login:activation.copyResumeSecret')}
+                </Button>
               </div>
             )}
           </div>
