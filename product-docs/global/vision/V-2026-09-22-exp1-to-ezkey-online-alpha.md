@@ -72,8 +72,8 @@ Order is intentional: **comms and site first**, infrastructure rename second.
 
 1. **Publish repositioning on ezkey.org** — **DONE** (2026-09-22). PR #609 squash-merged to
    `main` (tip `0ec2e91e` / merge commit `e6ff68a`) and published to production
-   [https://ezkey.org/](https://ezkey.org/). Temporary migration downtime banner remains in place
-   until ezkey.online is back.
+   [https://ezkey.org/](https://ezkey.org/). Temporary migration downtime banner was retired when
+   ezkey.online came back (removed after cutover).
 2. **DNS / Cloudflare with Edgar** — Point ezkey.online (and service hostnames from the lock
    table) at the recycled community host; TLS and routing aligned with the new names. **Done**
    (community surface live; see deploy ledger).
@@ -97,7 +97,7 @@ Order is intentional: **comms and site first**, infrastructure rename second.
 
 | Work | Status | Owner hint | Notes |
 |------|--------|------------|-------|
-| ezkey.org EXP1 → alpha / ezkey.online editorial pass | **Done** | Product / site | PR #609 merged + live on https://ezkey.org/ (2026-09-22); migration banner until ezkey.online is back |
+| ezkey.org EXP1 → alpha / ezkey.online editorial pass | **Done** | Product / site | PR #609 merged + live on https://ezkey.org/ (2026-09-22); migration banner removed after ezkey.online cutover |
 | DNS + Cloudflare cutover | Done (ops) | Edgar + ops | Community host live; ledger [`../../../docs/lightsail/community/DEPLOYED.md`](../../../docs/lightsail/community/DEPLOYED.md) |
 | Lightsail VM recycle / hostname cut | Done (ops) | Ops | Residual EXP1 public branding retired for forward-looking surfaces |
 | Canon sync (operational-readiness residual EXP1 wording, OpenAPI exposure matrix “evaluator EXP1”, orientation index) | **Done** (docs) | Docs hygiene | Closed with [`V-2026-09-26-public-alpha-posture-closeout`](V-2026-09-26-public-alpha-posture-closeout.md); orientation index rows included |

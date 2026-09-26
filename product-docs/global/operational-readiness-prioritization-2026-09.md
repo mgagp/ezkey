@@ -36,7 +36,7 @@ remains the product site; editorial pass live via PR #609). Decision record (pro
 
 **2026-09-26 (public alpha posture closeout):** Live cold-start compass is
 [`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md)
-(lab · discrete · alpha ≠ prod · no SLA; public **base** / **integrity** naming; intention-first;
+(lab · discreet · alpha ≠ prod · no SLA; public **base** / **integrity** naming; intention-first;
 no P0 backlog). This document remains the **historical** Waves A–C + freeze D release-order record.
 
 ## Context — maintainer discussion (2026-06-28)

@@ -10,7 +10,7 @@ This index provides a lightweight list of active ideas and their current state.
 
 → [`../vision/V-2026-09-26-public-alpha-posture-closeout.md`](../vision/V-2026-09-26-public-alpha-posture-closeout.md)
 
-**Summary (2026-09-26):** Public alpha posture closeout — laboratory · discrete · alpha ≠ prod ·
+**Summary (2026-09-26):** Public alpha posture closeout — laboratory · discreet · alpha ≠ prod ·
 no SLA; public runtime names **`base`** / **`integrity`** (not « eval profile »); GitHub open;
 Play Store **closed testing** only; intention-first. Waves A–C and Wave D (attention freeze) are
 **closed**. There is **no remaining P0** on the active backlog. Evaluator self-registration stays

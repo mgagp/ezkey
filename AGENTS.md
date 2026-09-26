@@ -46,7 +46,7 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 When the question is **what to implement next** or **current release priority**, read first:
 
 - [`product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md`](product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md)
-  — live public alpha posture closeout (lab · discrete · alpha ≠ prod · no SLA; no P0 backlog)
+  — live public alpha posture closeout (lab · discreet · alpha ≠ prod · no SLA; no P0 backlog)
 - [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) § Current prioritization anchor
 - Historical Waves A–C + freeze D only:
   [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md)

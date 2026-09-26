@@ -23,7 +23,7 @@ and not a backlog rewrite.
 ## Honesty (locked)
 
 - **Laboratory** — opinionated, experimental, serious engineering; not world-conquest.
-- **Discrete** — no marketing campaign; collaboration is intention-first.
+- **Discreet** — no marketing campaign; collaboration is intention-first.
 - **Alpha ≠ production** — public alpha on ezkey.online is not a production claim.
 - **No SLA** — no uptime, support, or enterprise-readiness promise.
 - **No IdP parity** — not Duo / Okta / Keycloak / WebAuthn / passkey equivalence.

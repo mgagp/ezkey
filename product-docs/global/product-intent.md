@@ -154,7 +154,7 @@ At a high level, Ezkey currently includes:
 - self-hosted deployment support.
 
 **Community instance vs self-host:** A maintained **public alpha** community instance runs on
-**ezkey.online** for evaluation (lab · discrete; alpha ≠ production; no SLA; no IdP parity).
+**ezkey.online** for evaluation (lab · discreet; alpha ≠ production; no SLA; no IdP parity).
 Self-hosted and clean-start deployments remain first-class. Anonymous evaluator self-registration
 (`ezkey.evaluator.self-registration.enabled`) is **OFF by default**; the community host may turn
 it **ON explicitly**. Self-host operators do not inherit an open signup path unless they choose it.
