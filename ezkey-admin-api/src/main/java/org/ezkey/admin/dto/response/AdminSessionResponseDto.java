@@ -12,7 +12,19 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 
-/** Non-secret metadata for the currently authenticated administrator browser session. */
+/**
+ * Non-secret metadata for the currently authenticated administrator browser session.
+ *
+ * @param username administrator username
+ * @param adminType administrator type
+ * @param expiresAt session expiration
+ * @param adminId administrator id
+ * @param tenantId tenant scope when applicable
+ * @param tenantName tenant display name when applicable
+ * @param csrfToken CSRF token in cookie mode
+ * @param tokenPurpose session purpose ({@code SESSION} or {@code EVALUATOR_TEMP}); omitted when
+ *     legacy
+ */
 @Schema(description = "Current administrator session metadata")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AdminSessionResponseDto(
@@ -38,4 +50,11 @@ public record AdminSessionResponseDto(
             description =
                 "Non-secret CSRF token to send in X-CSRF-TOKEN for cookie-authenticated unsafe"
                     + " requests")
-        String csrfToken) {}
+        String csrfToken,
+    @Schema(
+            description =
+                "Token purpose: SESSION for passwordless login, EVALUATOR_TEMP for temporary"
+                    + " console explore",
+            allowableValues = {"SESSION", "EVALUATOR_TEMP", "RECOVERY"},
+            example = "SESSION")
+        String tokenPurpose) {}

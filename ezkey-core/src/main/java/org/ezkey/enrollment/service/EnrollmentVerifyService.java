@@ -19,6 +19,8 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
 import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
+import org.ezkey.integration.domain.AdminTokenPurpose;
+import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.security.SensitiveDataHasher;
 import org.ezkey.service.EntityEligibilityService;
@@ -68,6 +70,7 @@ public class EnrollmentVerifyService {
 
   private final EnrollmentRepository enrollmentRepository;
   private final EzkeyAdminRepository ezkeyAdminRepository;
+  private final AdminTokenRepository adminTokenRepository;
   private final EntityEligibilityService eligibilityService;
   private final SignatureService signatureService;
   private final EnrollmentTxHelper enrollmentTxHelper;
@@ -77,6 +80,7 @@ public class EnrollmentVerifyService {
    *
    * @param enrollmentRepository the JPA repository for enrollment operations
    * @param ezkeyAdminRepository the admin repository for admin-linked enrollment checks
+   * @param adminTokenRepository admin token repository (EVALUATOR_TEMP supersede on VERIFIED)
    * @param eligibilityService centralized eligibility checks for admin-linked enrollments
    * @param signatureService the signature service for cryptographic operations
    * @param enrollmentTxHelper the transactional helper for marking expired and emitting audit in a
@@ -85,11 +89,13 @@ public class EnrollmentVerifyService {
   public EnrollmentVerifyService(
       EnrollmentRepository enrollmentRepository,
       EzkeyAdminRepository ezkeyAdminRepository,
+      AdminTokenRepository adminTokenRepository,
       EntityEligibilityService eligibilityService,
       SignatureService signatureService,
       EnrollmentTxHelper enrollmentTxHelper) {
     this.enrollmentRepository = enrollmentRepository;
     this.ezkeyAdminRepository = ezkeyAdminRepository;
+    this.adminTokenRepository = adminTokenRepository;
     this.eligibilityService = eligibilityService;
     this.signatureService = signatureService;
     this.enrollmentTxHelper = enrollmentTxHelper;
@@ -135,7 +141,10 @@ public class EnrollmentVerifyService {
     // Step 7: Mark as verified and activate
     markAsVerified(lockedEnrollment, request);
 
-    // Step 7: Build and return response
+    // Step 7b: Mode C — revoke EVALUATOR_TEMP immediately on VERIFIED bind (never promote)
+    supersedeEvaluatorTempSessions(lockedEnrollment.getEnrollmentId());
+
+    // Step 8: Build and return response
     return buildVerifyResponse(lockedEnrollment);
   }
 
@@ -474,6 +483,30 @@ public class EnrollmentVerifyService {
             + " DevicePublicKeyHash: {}",
         enrollment.getEnrollmentId(),
         devicePublicKeyHash);
+  }
+
+  /**
+   * Revokes {@link AdminTokenPurpose#EVALUATOR_TEMP} tokens for the admin linked to this enrollment.
+   *
+   * <p>Forces a fresh post-bind {@code SESSION} login; the temporary cookie is never promoted.
+   *
+   * @param enrollmentId verified enrollment id
+   */
+  private void supersedeEvaluatorTempSessions(Integer enrollmentId) {
+    ezkeyAdminRepository
+        .findByEnrollmentId(enrollmentId)
+        .ifPresent(
+            admin -> {
+              int revoked =
+                  adminTokenRepository.deactivateTokensForAdminByPurpose(
+                      admin.getAdminId(), AdminTokenPurpose.EVALUATOR_TEMP);
+              if (revoked > 0) {
+                logger.info(
+                    "Revoked {} EVALUATOR_TEMP token(s) after VERIFIED bind for adminId={}",
+                    revoked,
+                    admin.getAdminId());
+              }
+            });
   }
 
   /**

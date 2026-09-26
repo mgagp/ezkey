@@ -431,6 +431,10 @@ function AdminDetailDialog({
   });
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
+  const isTemporarySelfView =
+    session?.tokenPurpose === 'EVALUATOR_TEMP' &&
+    session.adminId != null &&
+    admin?.adminId === session.adminId;
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [editOpen, setEditOpen] = useState(false);
@@ -708,6 +712,12 @@ function AdminDetailDialog({
               : <Badge variant="warning">{t('detail.adminLoginStatePendingFirstLogin')}</Badge>}
           </DetailInfoRow>
         </dl>
+
+        {isTemporarySelfView && (
+          <Alert variant="info" data-testid="temporary-session-identity-bind-hint">
+            {t('detail.temporarySessionBindHint')}
+          </Alert>
+        )}
 
         {isPendingActivationAdmin(adm) && (
           <Alert variant="info">{t('detail.pendingActivationNotice')}</Alert>

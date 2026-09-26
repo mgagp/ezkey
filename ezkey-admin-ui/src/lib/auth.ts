@@ -32,6 +32,11 @@ export interface AuthSession {
   tenantName?: string | null;
   /** Non-secret CSRF token used only by cookie-authenticated browser sessions. */
   csrfToken?: string;
+  /**
+   * Session purpose from the Admin API. {@code EVALUATOR_TEMP} is a one-shot temporary console
+   * foothold (Mode C); omit or {@code SESSION} for normal passwordless login.
+   */
+  tokenPurpose?: string;
 }
 
 const AUTH_KEY = 'ezkey_admin_auth';

@@ -29,6 +29,7 @@ import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
+import org.ezkey.admin.service.EvaluatorTempSessionService;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminRecoveryService;
 import org.ezkey.audit.service.AuditLogService;
@@ -61,6 +62,7 @@ class AdminAuthControllerBrowserSessionCookieTest {
   @Mock private AdminBrowserSessionCookieProperties browserSessionCookieProperties;
   @Mock private AdminSessionCookieService sessionCookieService;
   @Mock private AdminCsrfTokenService csrfTokenService;
+  @Mock private EvaluatorTempSessionService evaluatorTempSessionService;
   @Mock private HttpServletRequest httpRequest;
   @Mock private HttpServletResponse httpResponse;
 
@@ -80,7 +82,7 @@ class AdminAuthControllerBrowserSessionCookieTest {
             adminRepository,
             browserSessionCookieProperties,
             sessionCookieService,
-            csrfTokenService);
+            csrfTokenService, evaluatorTempSessionService);
     when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
     when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
     when(httpRequest.getHeader("User-Agent")).thenReturn("JUnit");

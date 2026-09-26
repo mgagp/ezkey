@@ -164,6 +164,51 @@ public class TenantService {
   }
 
   /**
+   * Soft-deactivates a tenant from a system job (no human Global Admin principal).
+   *
+   * <p>Same soft semantics as {@link #deactivateTenant(Integer, AdminPrincipal)}: {@code
+   * active=false}, revoke admin tokens, no destroy/wipe/hard API-key revoke. Used by
+   * EVALUATOR_TEMP expiry when no other VERIFIED tenant admin remains.
+   *
+   * @param tenantId tenant to deactivate
+   * @return {@code true} if state changed, {@code false} if already inactive
+   * @throws ResourceNotFoundException if tenant not found
+   * @throws TenantNotAllowedException if system tenant
+   */
+  @Transactional
+  public boolean deactivateTenantAsSystem(Integer tenantId) {
+    Tenant tenant =
+        tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantId));
+
+    if (Boolean.TRUE.equals(tenant.getIsSystemTenant())) {
+      throw new TenantNotAllowedException("Cannot deactivate the system tenant");
+    }
+
+    if (!tenant.getActive()) {
+      logger.info("Tenant {} is already inactive (system job no-op)", tenantId);
+      return false;
+    }
+
+    OffsetDateTime now = OffsetDateTime.now();
+    tenant.setActive(false);
+    tenant.setDeactivatedAt(now);
+    tenant.setUpdatedAt(now);
+    tenant.setDeactivatedByAdmin(null);
+    tenant.setUpdatedByAdmin(null);
+    tenantRepository.save(tenant);
+
+    int tokensRevoked = tokenRepository.deactivateAllTokensForTenant(tenantId);
+    logger.info(
+        "✅ Tenant '{}' (ID: {}) soft-deactivated by system job ({} tokens revoked)",
+        tenant.getTenantName(),
+        tenantId,
+        tokensRevoked);
+    return true;
+  }
+
+  /**
    * Updates a tenant with partial-update semantics.
    *
    * <p>Only non-null fields from the request are applied. The tenant must be active. If {@code
