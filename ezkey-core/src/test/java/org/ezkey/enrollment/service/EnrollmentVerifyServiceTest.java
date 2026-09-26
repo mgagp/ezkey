@@ -26,6 +26,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
 import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
+import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.service.EntityEligibilityService;
 import org.ezkey.signature.SignatureService;
@@ -58,6 +59,8 @@ class EnrollmentVerifyServiceTest {
   @Mock private SignatureService signatureService;
 
   @Mock private EzkeyAdminRepository ezkeyAdminRepository;
+
+  @Mock private AdminTokenRepository adminTokenRepository;
 
   @Mock private EntityEligibilityService eligibilityService;
 

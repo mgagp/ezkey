@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +24,8 @@ import java.util.List;
 import java.util.Optional;
 import org.ezkey.admin.config.EvaluatorSelfRegistrationProperties;
 import org.ezkey.admin.exception.AuthenticationException;
+import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -130,7 +133,25 @@ class EvaluatorTempSessionServiceTest {
   }
 
   @Test
-  @DisplayName("expiry with other VERIFIED admin deactivates TEMP identity only")
+  @DisplayName("supersedeOnVerifiedBind revokes EVALUATOR_TEMP (never promotes cookie)")
+  void supersede_revokesEvaluatorTempTokens() {
+    Tenant tenant = tenant(5, true);
+    Enrollment enrollment = enrollment(10, EnrollmentStatus.VERIFIED, "proof");
+    EzkeyAdmin admin = tenantAdmin(20, tenant, enrollment);
+    when(adminRepository.findByEnrollmentId(10)).thenReturn(Optional.of(admin));
+    when(tokenRepository.deactivateTokensForAdminByPurpose(
+            20, AdminTokenPurpose.EVALUATOR_TEMP))
+        .thenReturn(1);
+
+    int revoked = service.supersedeOnVerifiedBind(10);
+
+    assertThat(revoked).isEqualTo(1);
+    verify(tokenRepository)
+        .deactivateTokensForAdminByPurpose(20, AdminTokenPurpose.EVALUATOR_TEMP);
+  }
+
+  @Test
+  @DisplayName("expiry YES path: other VERIFIED admin → ADMIN_DEACTIVATED only, no deactivateTenant")
   void expiry_otherVerifiedAdmin_deactivatesIdentityOnly() {
     Tenant tenant = tenant(5, true);
     Enrollment tempEnrollment = enrollment(1, EnrollmentStatus.CREATED, "a");
@@ -140,12 +161,7 @@ class EvaluatorTempSessionServiceTest {
     peerEnrollment.setActive(true);
     EzkeyAdmin peer = tenantAdmin(200, tenant, peerEnrollment);
 
-    AdminToken expired = new AdminToken();
-    expired.setActive(true);
-    expired.setTokenPurpose(AdminTokenPurpose.EVALUATOR_TEMP);
-    expired.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
-    expired.setAdmin(tempAdmin);
-    expired.setTenant(tenant);
+    AdminToken expired = expiredTempToken(tempAdmin, tenant);
 
     when(tokenRepository.findActiveExpiredByPurposeWithRelations(
             eq(AdminTokenPurpose.EVALUATOR_TEMP), any(OffsetDateTime.class)))
@@ -159,21 +175,46 @@ class EvaluatorTempSessionServiceTest {
     verify(tenantService, never()).deactivateTenantAsSystem(any());
     assertThat(tempAdmin.getActive()).isFalse();
     assertThat(tempAdmin.getLifecycleStatus()).isEqualTo(AdminLifecycleStatus.DEACTIVATED);
+
+    ArgumentCaptor<AuditLog> auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService, times(1)).log(auditCaptor.capture());
+    assertThat(auditCaptor.getValue().getEventType()).isEqualTo(EventType.ADMIN_DEACTIVATED);
   }
 
   @Test
-  @DisplayName("expiry without other VERIFIED admin soft-deactivates tenant")
+  @DisplayName("expiry: PENDING peer is not bound — soft-deactivates tenant (Bound=MFA VERIFIED)")
+  void expiry_pendingPeer_notBound_softDeactivatesTenant() {
+    Tenant tenant = tenant(5, true);
+    Enrollment tempEnrollment = enrollment(1, EnrollmentStatus.CREATED, "a");
+    EzkeyAdmin tempAdmin = tenantAdmin(100, tenant, tempEnrollment);
+
+    Enrollment pendingPeerEnrollment = enrollment(2, EnrollmentStatus.CREATED, "b");
+    pendingPeerEnrollment.setActive(true);
+    EzkeyAdmin pendingPeer = tenantAdmin(200, tenant, pendingPeerEnrollment);
+
+    AdminToken expired = expiredTempToken(tempAdmin, tenant);
+
+    when(tokenRepository.findActiveExpiredByPurposeWithRelations(
+            eq(AdminTokenPurpose.EVALUATOR_TEMP), any(OffsetDateTime.class)))
+        .thenReturn(List.of(expired));
+    when(adminRepository.findByTenantAndAdminTypeAndActive(5, AdminType.TENANT_ADMIN, true))
+        .thenReturn(List.of(tempAdmin, pendingPeer));
+    when(tenantService.deactivateTenantAsSystem(5)).thenReturn(true);
+
+    int processed = service.processExpiredTempSessions();
+
+    assertThat(processed).isEqualTo(1);
+    verify(tenantService).deactivateTenantAsSystem(5);
+  }
+
+  @Test
+  @DisplayName("expiry NO path: soft deactivateTenant + ADMIN_DEACTIVATED + TENANT_DEACTIVATED")
   void expiry_noOtherVerifiedAdmin_softDeactivatesTenant() {
     Tenant tenant = tenant(5, true);
     Enrollment tempEnrollment = enrollment(1, EnrollmentStatus.CREATED, "a");
     EzkeyAdmin tempAdmin = tenantAdmin(100, tenant, tempEnrollment);
 
-    AdminToken expired = new AdminToken();
-    expired.setActive(true);
-    expired.setTokenPurpose(AdminTokenPurpose.EVALUATOR_TEMP);
-    expired.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
-    expired.setAdmin(tempAdmin);
-    expired.setTenant(tenant);
+    AdminToken expired = expiredTempToken(tempAdmin, tenant);
 
     when(tokenRepository.findActiveExpiredByPurposeWithRelations(
             eq(AdminTokenPurpose.EVALUATOR_TEMP), any(OffsetDateTime.class)))
@@ -186,7 +227,22 @@ class EvaluatorTempSessionServiceTest {
 
     assertThat(processed).isEqualTo(1);
     verify(tenantService).deactivateTenantAsSystem(5);
-    verify(auditLogService, org.mockito.Mockito.times(2)).log(any());
+
+    ArgumentCaptor<AuditLog> auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService, times(2)).log(auditCaptor.capture());
+    assertThat(auditCaptor.getAllValues())
+        .extracting(AuditLog::getEventType)
+        .containsExactlyInAnyOrder(EventType.ADMIN_DEACTIVATED, EventType.TENANT_DEACTIVATED);
+  }
+
+  private static AdminToken expiredTempToken(EzkeyAdmin tempAdmin, Tenant tenant) {
+    AdminToken expired = new AdminToken();
+    expired.setActive(true);
+    expired.setTokenPurpose(AdminTokenPurpose.EVALUATOR_TEMP);
+    expired.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
+    expired.setAdmin(tempAdmin);
+    expired.setTenant(tenant);
+    return expired;
   }
 
   private static Enrollment enrollment(int id, EnrollmentStatus status, String proof) {

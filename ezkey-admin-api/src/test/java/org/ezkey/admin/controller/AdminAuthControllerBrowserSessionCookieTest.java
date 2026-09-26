@@ -21,8 +21,10 @@ import java.util.Optional;
 import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
 import org.ezkey.admin.config.AdminRecoveryProperties;
 import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
+import org.ezkey.admin.dto.request.EvaluatorTempSessionRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.dto.response.AdminSessionResponseDto;
+import org.ezkey.admin.dto.response.EvaluatorTempSessionResponseDto;
 import org.ezkey.admin.security.AdminAuthRequestAttributes;
 import org.ezkey.admin.security.AdminCsrfTokenService;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -33,7 +35,9 @@ import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminRecoveryService;
 import org.ezkey.admin.service.EvaluatorTempSessionService;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
+import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -167,6 +171,35 @@ class AdminAuthControllerBrowserSessionCookieTest {
     assertEquals("csrf-token", response.getBody().csrfToken());
     verify(sessionCookieService).addSessionCookie(httpResponse, "secret-token", exp);
     verify(sessionCookieService).addCsrfCookie(httpResponse, "csrf-token", exp);
+  }
+
+  @Test
+  @DisplayName("mint EVALUATOR_TEMP in cookie mode sets HttpOnly session cookie and omits token")
+  void mintEvaluatorTemp_cookieMode_omitsTokenAndSetsCookie() {
+    when(browserSessionCookieProperties.isBrowserSessionCookieEnabled()).thenReturn(true);
+    OffsetDateTime exp = OffsetDateTime.now().plusHours(8);
+    Tenant tenant = new Tenant();
+    tenant.setTenantId(3);
+    tenant.setTenantName("Lab");
+    EzkeyAdmin admin = new EzkeyAdmin();
+    admin.setAdminId(20);
+    admin.setUsername("eval-20");
+    admin.setAdminType(AdminType.TENANT_ADMIN);
+    admin.setTenant(tenant);
+    when(evaluatorTempSessionService.mint(10, "proof"))
+        .thenReturn(new EvaluatorTempSessionService.MintResult("secret-temp", exp, admin));
+    when(csrfTokenService.createToken("secret-temp")).thenReturn("csrf-temp");
+
+    ResponseEntity<EvaluatorTempSessionResponseDto> response =
+        controller.mintEvaluatorTempSession(
+            new EvaluatorTempSessionRequestDto(10, "proof"), httpRequest, httpResponse);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertNull(response.getBody().token());
+    assertEquals("EVALUATOR_TEMP", response.getBody().tokenPurpose());
+    assertEquals("csrf-temp", response.getBody().csrfToken());
+    verify(sessionCookieService).addSessionCookie(httpResponse, "secret-temp", exp);
+    verify(sessionCookieService).addCsrfCookie(httpResponse, "csrf-temp", exp);
   }
 
   @Test

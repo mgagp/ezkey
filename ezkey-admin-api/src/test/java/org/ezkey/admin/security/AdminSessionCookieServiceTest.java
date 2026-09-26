@@ -34,5 +34,6 @@ class AdminSessionCookieServiceTest {
     assertTrue(setCookie.contains("EZKEY_ADMIN_CSRF=csrf-token"));
     assertTrue(setCookie.contains("SameSite=Strict"));
     assertTrue(setCookie.contains("HttpOnly"));
+    assertTrue(setCookie.toLowerCase().contains("secure"));
   }
 }

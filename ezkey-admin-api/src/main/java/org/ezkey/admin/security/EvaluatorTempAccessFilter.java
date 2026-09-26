@@ -27,9 +27,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * Fail-closed deny-list for {@code EVALUATOR_TEMP} authentications.
  *
- * <p>Mode C is navigable TENANT_ADMIN ACL pass-through plus a small deny-list — not Path B
- * allowlist growth into “finish enrollment only.” GLOBAL surfaces remain blocked by role
- * annotations; this filter adds defense-in-depth and self-only onboarding/QR rules.
+ * <p>Mode C is navigable {@code TENANT_ADMIN} ACL pass-through plus a deny-list seed — not Path B
+ * allowlist growth into “finish enrollment only.” Never GLOBAL; QR/onboarding self-only; no
+ * passwordless {@code SESSION} mint while TEMP. Dashboard and lab list/CRUD stay open unless
+ * explicitly denied.
  */
 @Component
 public class EvaluatorTempAccessFilter extends OncePerRequestFilter {
@@ -37,12 +38,20 @@ public class EvaluatorTempAccessFilter extends OncePerRequestFilter {
   private static final Pattern ADMIN_ONBOARDING =
       Pattern.compile("^/api/v1/admins/(\\d+)(/onboarding(/qrcode)?)?$");
 
+  /**
+   * Deny-list seed (Patrick craft steer): GLOBAL/cross-tenant; mint SESSION without bind; integrity
+   * raise/async write; cross-admin QR/onboarding (self-only rule below); dangerous export/bootstrap
+   * admin; destructive durable outside lab soft. Dashboard/lists/lab CRUD stay open unless listed.
+   */
   private static final String[] DENIED_PREFIXES = {
     "/api/v1/tenants",
     "/api/v1/encryption-keys",
     "/api/v1/alerts",
     "/api/v1/integrity",
     "/api/v1/admins/global",
+    "/api/v1/admins/tenant",
+    "/api/v1/admin/auth/login",
+    "/api/v1/admin/auth/passwordless-wait",
     "/api/v1/admin/auth/recover",
     "/api/v1/admin/enrollments/reset",
   };
