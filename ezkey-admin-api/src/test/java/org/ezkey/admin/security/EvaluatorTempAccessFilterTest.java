@@ -107,8 +107,7 @@ class EvaluatorTempAccessFilterTest {
     SecurityContextHolder.getContext()
         .setAuthentication(
             new UsernamePasswordAuthenticationToken(
-                new AdminPrincipal(
-                    42, AdminType.TENANT_ADMIN, 3, null, AdminTokenPurpose.SESSION),
+                new AdminPrincipal(42, AdminType.TENANT_ADMIN, 3, null, AdminTokenPurpose.SESSION),
                 null));
     MockHttpServletResponse response = filterGet("/api/v1/tenants");
     assertEquals(200, response.getStatus());

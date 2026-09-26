@@ -139,19 +139,18 @@ class EvaluatorTempSessionServiceTest {
     Enrollment enrollment = enrollment(10, EnrollmentStatus.VERIFIED, "proof");
     EzkeyAdmin admin = tenantAdmin(20, tenant, enrollment);
     when(adminRepository.findByEnrollmentId(10)).thenReturn(Optional.of(admin));
-    when(tokenRepository.deactivateTokensForAdminByPurpose(
-            20, AdminTokenPurpose.EVALUATOR_TEMP))
+    when(tokenRepository.deactivateTokensForAdminByPurpose(20, AdminTokenPurpose.EVALUATOR_TEMP))
         .thenReturn(1);
 
     int revoked = service.supersedeOnVerifiedBind(10);
 
     assertThat(revoked).isEqualTo(1);
-    verify(tokenRepository)
-        .deactivateTokensForAdminByPurpose(20, AdminTokenPurpose.EVALUATOR_TEMP);
+    verify(tokenRepository).deactivateTokensForAdminByPurpose(20, AdminTokenPurpose.EVALUATOR_TEMP);
   }
 
   @Test
-  @DisplayName("expiry YES path: other VERIFIED admin → ADMIN_DEACTIVATED only, no deactivateTenant")
+  @DisplayName(
+      "expiry YES path: other VERIFIED admin → ADMIN_DEACTIVATED only, no deactivateTenant")
   void expiry_otherVerifiedAdmin_deactivatesIdentityOnly() {
     Tenant tenant = tenant(5, true);
     Enrollment tempEnrollment = enrollment(1, EnrollmentStatus.CREATED, "a");
