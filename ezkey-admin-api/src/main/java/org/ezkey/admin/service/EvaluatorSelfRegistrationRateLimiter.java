@@ -22,8 +22,11 @@ import org.springframework.stereotype.Service;
 /**
  * Applies global daily and per-IP success limits for evaluator self-registration.
  *
- * <p>In-memory counters are acceptable for single-node EXP1 preview instances. Onboarding-resume
- * redeem shares the Admin login/activate rate-limit bucket (not this limiter).
+ * <p>In-memory counters are acceptable for single-node EXP1 / community preview instances.
+ * Onboarding-resume redeem shares the Admin login/activate rate-limit bucket (not this limiter).
+ *
+ * <p>Per-IP capacity honors {@code ezkey.evaluator.self-registration.per-ip-max-success} via a real
+ * counter (not a Boolean one-shot marker).
  */
 @Service
 public class EvaluatorSelfRegistrationRateLimiter {
@@ -33,11 +36,11 @@ public class EvaluatorSelfRegistrationRateLimiter {
   private volatile LocalDate currentUtcDay = LocalDate.now(ZoneOffset.UTC);
   private final AtomicInteger dailySuccessCount = new AtomicInteger(0);
 
-  private final Cache<String, Boolean> ipSuccessMarkers;
+  private final Cache<String, AtomicInteger> ipSuccessCounts;
 
   public EvaluatorSelfRegistrationRateLimiter(EvaluatorSelfRegistrationProperties properties) {
     this.properties = properties;
-    this.ipSuccessMarkers =
+    this.ipSuccessCounts =
         Caffeine.newBuilder()
             .expireAfterWrite(Duration.ofHours(Math.max(1, properties.getPerIpWindowHours())))
             .maximumSize(10_000)
@@ -52,16 +55,36 @@ public class EvaluatorSelfRegistrationRateLimiter {
    */
   public void verifyAndRecordSuccess(String clientIp) {
     resetDailyCounterIfNeeded();
-    if (dailySuccessCount.get() >= properties.getDailyCap()) {
+    int dailyCap = Math.max(0, properties.getDailyCap());
+    if (dailySuccessCount.get() >= dailyCap) {
       throw new EvaluatorSelfRegistrationCapacityException();
     }
+
     String ipKey = normalizeIpKey(clientIp);
-    if (ipKey != null && ipSuccessMarkers.getIfPresent(ipKey) != null) {
-      throw new EvaluatorSelfRegistrationCapacityException();
-    }
-    dailySuccessCount.incrementAndGet();
+    int maxPerIp = Math.max(0, properties.getPerIpMaxSuccess());
     if (ipKey != null) {
-      ipSuccessMarkers.put(ipKey, Boolean.TRUE);
+      if (maxPerIp <= 0) {
+        throw new EvaluatorSelfRegistrationCapacityException();
+      }
+      AtomicInteger ipCount = ipSuccessCounts.get(ipKey, _ -> new AtomicInteger(0));
+      // Increment first so concurrent callers cannot both pass a stale read.
+      int nextIpCount = ipCount.incrementAndGet();
+      if (nextIpCount > maxPerIp) {
+        ipCount.decrementAndGet();
+        throw new EvaluatorSelfRegistrationCapacityException();
+      }
+    }
+
+    int nextDaily = dailySuccessCount.incrementAndGet();
+    if (nextDaily > dailyCap) {
+      dailySuccessCount.decrementAndGet();
+      if (ipKey != null) {
+        AtomicInteger ipCount = ipSuccessCounts.getIfPresent(ipKey);
+        if (ipCount != null) {
+          ipCount.decrementAndGet();
+        }
+      }
+      throw new EvaluatorSelfRegistrationCapacityException();
     }
   }
 
@@ -82,6 +105,21 @@ public class EvaluatorSelfRegistrationRateLimiter {
   int currentDailySuccessCount() {
     resetDailyCounterIfNeeded();
     return dailySuccessCount.get();
+  }
+
+  /**
+   * Returns the current per-IP success count within the window (for tests).
+   *
+   * @param clientIp client IP key
+   * @return recorded successes, or {@code 0} when absent
+   */
+  int currentIpSuccessCount(String clientIp) {
+    String ipKey = normalizeIpKey(clientIp);
+    if (ipKey == null) {
+      return 0;
+    }
+    AtomicInteger count = ipSuccessCounts.getIfPresent(ipKey);
+    return count == null ? 0 : count.get();
   }
 
   private static String normalizeIpKey(String clientIp) {

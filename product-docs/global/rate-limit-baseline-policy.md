@@ -120,7 +120,7 @@ Reference: [`AdminRateLimitFilter.java`](../../ezkey-admin-api/src/main/java/org
 
 | Surface | Prefix / mechanism | Family | Default | Notes |
 |---------|-------------------|--------|---------|-------|
-| `POST /api/v1/public/evaluator-signup` | `ezkey.evaluator.self-registration.*` + `EvaluatorSelfRegistrationRateLimiter` | L (capacity) | daily cap 5; 1 success / IP / 24h | EXP1 preview only; in-memory |
+| `POST /api/v1/public/evaluator-signup` | `ezkey.evaluator.self-registration.*` + `EvaluatorSelfRegistrationRateLimiter` | L (capacity) | daily cap **5**; **1** success / IP / 24h (Java) | In-memory Caffeine; `per-ip-max-success` is a real counter. Overlays: community `20`/`3`/24h (`.env.ezkey-online.example`); docker QA `50`/`10`/24h (`docker-compose.evaluator-self-reg-qa.yml`). Limiter stays on under docker-test when signup is enabled. |
 
 Reference: [`EvaluatorSelfRegistrationProperties.java`](../../ezkey-admin-api/src/main/java/org/ezkey/admin/config/EvaluatorSelfRegistrationProperties.java).
 

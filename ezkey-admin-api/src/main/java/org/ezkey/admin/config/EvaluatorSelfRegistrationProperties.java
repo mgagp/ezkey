@@ -32,6 +32,12 @@ public class EvaluatorSelfRegistrationProperties {
 
   private int perIpWindowHours = 24;
 
+  /**
+   * Max successful signups per client IP within {@link #perIpWindowHours}.
+   *
+   * <p>Java default {@code 1} is the prod-ish floor. Community / QA overlays raise this via env —
+   * the limiter honors the value with a real counter (not a Boolean one-shot marker).
+   */
   private int perIpMaxSuccess = 1;
 
   /** Admin UI origin returned after signup; empty until set for a live surface. */

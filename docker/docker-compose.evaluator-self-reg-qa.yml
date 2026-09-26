@@ -1,0 +1,27 @@
+# Evaluator self-registration QA overlay (Rootbeer / local docker).
+#
+# Enables public evaluator signup with roomier capacity for repeated bind/login
+# drills. Does NOT disable the capacity limiter (Patrick craft / fail-closed).
+# Clean-start remains flag-OFF by default — apply this overlay only when QA needs
+# the funnel.
+#
+# Usage (running stack or after clean-start):
+#   docker compose -f docker/docker-compose.yml \
+#     -f docker/docker-compose.evaluator-self-reg-qa.yml \
+#     up -d --no-deps --force-recreate admin-api
+#
+# Capacity (override via env if needed):
+#   daily-cap=50, per-ip-max-success=10, per-ip-window-hours=24
+#
+# URLs are required when enabled=true (Admin API fails startup if blank).
+# Defaults target a local Admin UI origin; override for your Rootbeer host.
+
+services:
+  admin-api:
+    environment:
+      EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED: "true"
+      EZKEY_EVALUATOR_SELF_REGISTRATION_DAILY_CAP: "${EZKEY_EVALUATOR_SELF_REGISTRATION_DAILY_CAP:-50}"
+      EZKEY_EVALUATOR_SELF_REGISTRATION_PER_IP_MAX_SUCCESS: "${EZKEY_EVALUATOR_SELF_REGISTRATION_PER_IP_MAX_SUCCESS:-10}"
+      EZKEY_EVALUATOR_SELF_REGISTRATION_PER_IP_WINDOW_HOURS: "${EZKEY_EVALUATOR_SELF_REGISTRATION_PER_IP_WINDOW_HOURS:-24}"
+      EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL: "${EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL:-http://localhost:5173}"
+      EZKEY_EVALUATOR_SELF_REGISTRATION_GUIDED_TOUR_URL: "${EZKEY_EVALUATOR_SELF_REGISTRATION_GUIDED_TOUR_URL:-http://localhost:5173}"

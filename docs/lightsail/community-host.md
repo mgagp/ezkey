@@ -145,11 +145,14 @@ EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online,https://ezkey.org
 
 ```bash
 EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED=true
+EZKEY_EVALUATOR_SELF_REGISTRATION_DAILY_CAP=20
+EZKEY_EVALUATOR_SELF_REGISTRATION_PER_IP_MAX_SUCCESS=3
+EZKEY_EVALUATOR_SELF_REGISTRATION_PER_IP_WINDOW_HOURS=24
 EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL=https://admin-ui.ezkey.online
 EZKEY_EVALUATOR_SELF_REGISTRATION_GUIDED_TOUR_URL=https://ezkey.org/community-guided-tour.html
 ```
 
-After changing either, recreate **admin-api** only (no full wipe):
+Capacity is intentional community headroom (Java defaults stay `daily-cap=5` / `per-ip-max-success=1` for installations without overlay). After changing capacity or enablement, recreate **admin-api** only (no full wipe):
 
 ```bash
 ssh ezkey-online 'cd ~/ezkey/experimental-hybrid/lightsail && docker compose up -d --no-deps --force-recreate admin-api'

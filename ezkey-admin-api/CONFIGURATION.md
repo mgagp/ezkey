@@ -35,6 +35,9 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.trusted-proxies.cidrs` | — | *(empty list)* | optionnel |
 | `ezkey.admin.cors.allowed-origins` | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | *(empty list)* | optionnel |
 | `ezkey.evaluator.self-registration.enabled` | `EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED` | `false` | optionnel |
+| `ezkey.evaluator.self-registration.daily-cap` | `EZKEY_EVALUATOR_SELF_REGISTRATION_DAILY_CAP` | `5` | optionnel |
+| `ezkey.evaluator.self-registration.per-ip-max-success` | `EZKEY_EVALUATOR_SELF_REGISTRATION_PER_IP_MAX_SUCCESS` | `1` | optionnel |
+| `ezkey.evaluator.self-registration.per-ip-window-hours` | `EZKEY_EVALUATOR_SELF_REGISTRATION_PER_IP_WINDOW_HOURS` | `24` | optionnel |
 | `ezkey.evaluator.self-registration.bootstrap-session-ttl-hours` | `EZKEY_EVALUATOR_SELF_REGISTRATION_BOOTSTRAP_SESSION_TTL_HOURS` | `8` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-enabled` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | `false` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_NAME` | `EZKEY_ADMIN_SESSION` | optionnel |
@@ -406,9 +409,9 @@ flag — minting is gated by `enabled` alone (V-2026-09-26).
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.evaluator.self-registration.enabled` | `boolean` | `false` | optionnel | When `false`, `POST /api/v1/public/evaluator-signup` returns HTTP 404. |
-| `ezkey.evaluator.self-registration.daily-cap` | `int` | `5` | optionnel | Max successful signups per UTC day (global). |
-| `ezkey.evaluator.self-registration.per-ip-window-hours` | `int` | `24` | optionnel | Per-IP success window. |
-| `ezkey.evaluator.self-registration.per-ip-max-success` | `int` | `1` | optionnel | Max successful signups per IP within the window. |
+| `ezkey.evaluator.self-registration.daily-cap` | `int` | `5` | optionnel | Max successful signups per UTC day (global). Java default stays tight for non-overlay installs. |
+| `ezkey.evaluator.self-registration.per-ip-window-hours` | `int` | `24` | optionnel | Per-IP success window (Caffeine `expireAfterWrite`). |
+| `ezkey.evaluator.self-registration.per-ip-max-success` | `int` | `1` | optionnel | Max successful signups per IP within the window. Honored via a real counter (not a Boolean one-shot). Prod-ish Java default remains `1`. |
 | `ezkey.evaluator.self-registration.admin-ui-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
 | `ezkey.evaluator.self-registration.guided-tour-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
 | `ezkey.evaluator.self-registration.bootstrap-session-ttl-hours` | `int` | `8` | optionnel | Absolute TTL for the Admin UI BOOTSTRAP session minted with signup. Product lock: **exactly 8 hours** (no sliding). Misconfigured values are ignored at mint time. |
@@ -416,14 +419,29 @@ flag — minting is gated by `enabled` alone (V-2026-09-26).
 When the same flag is ON, successful `POST /api/v1/admin/auth/activate` mints an opaque **onboarding-resume** secret **only** when the activated admin is a **TENANT_ADMIN** with evaluator provenance (`eval-admin-*` username + `eval-*` tenant) — **never** for `GLOBAL_ADMIN`, and never from the flag alone. Secret is hashed at rest (`ONBOARDING_RESUME`, absolute **8h** TTL, max **3** redeems). Redeem via `POST /api/v1/admin/auth/onboarding-resume` remints BOOTSTRAP at absolute **2h** for incomplete enrollments (`CREATED`|`BOUND`) and rejects GLOBAL_ADMIN even if a leaked resume secret exists. BOOTSTRAP onboarding/`qrcode` reads are **self-only**. Activation codes stay one-shot; no public username QR oracle.
 
 **Fail-closed:** when `enabled=true`, Admin API startup aborts if `admin-ui-url` or
-`guided-tour-url` is blank (`EvaluatorSelfRegistrationStartupValidator`).
+`guided-tour-url` is blank (`EvaluatorSelfRegistrationStartupValidator`). Capacity limiter stays
+active under docker / docker-test overlays that enable signup — do not disable it for QA.
+
+**Capacity overlays** (same property keys; distinct values):
+
+| Surface | `daily-cap` | `per-ip-max-success` | `per-ip-window-hours` | Where |
+|---|---|---|---|---|
+| Java default (no overlay) | `5` | `1` | `24` | `EvaluatorSelfRegistrationProperties` |
+| Community / Lightsail alpha | `20` | `3` | `24` | [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../experimental-hybrid/lightsail/.env.ezkey-online.example) |
+| Docker / Rootbeer QA | `50` | `10` | `24` | [`docker/docker-compose.evaluator-self-reg-qa.yml`](../docker/docker-compose.evaluator-self-reg-qa.yml) |
 
 **Operator notes:**
 
 - Set URLs via env (`EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL`,
   `EZKEY_EVALUATOR_SELF_REGISTRATION_GUIDED_TOUR_URL`) or overlay — never rely on a code default
   hostname.
+- Capacity env keys: `EZKEY_EVALUATOR_SELF_REGISTRATION_DAILY_CAP`,
+  `EZKEY_EVALUATOR_SELF_REGISTRATION_PER_IP_MAX_SUCCESS`,
+  `EZKEY_EVALUATOR_SELF_REGISTRATION_PER_IP_WINDOW_HOURS`.
 - Community overlay example: [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../experimental-hybrid/lightsail/.env.ezkey-online.example).
+- Rootbeer / local QA: apply
+  [`docker/docker-compose.evaluator-self-reg-qa.yml`](../docker/docker-compose.evaluator-self-reg-qa.yml)
+  and recreate `admin-api` (see file header).
 - EXP1 lab example values: [`experimental-hybrid/lightsail/.env.example`](../experimental-hybrid/lightsail/.env.example) (commented block when enabling).
 - Add marketing / Pages origins to `ezkey.admin.cors.allowed-origins` for cross-origin signup POSTs.
 

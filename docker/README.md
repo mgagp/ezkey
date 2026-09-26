@@ -348,6 +348,10 @@ EZKEY_RUNTIME_PROFILE=base ./docker/start.sh
 `SPRING_PROFILES_ACTIVE` includes `docker-base` last (e.g. `docker,docker-base`), or use a start
 path that sources `docker/runtime-profile.sh`. Orthogonal flags
 (`EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED`, demo-device, Caddy, HA, JMX, JavaMelody) are unchanged.
+For evaluator signup QA capacity (Rootbeer), see
+[`docker-compose.evaluator-self-reg-qa.yml`](docker-compose.evaluator-self-reg-qa.yml)
+(`daily-cap=50`, `per-ip-max-success=10`) — apply as a compose overlay and recreate `admin-api`;
+the capacity limiter stays enabled.
 
 Admin UI Integrity / Alerts surfaces may still be visible under base; monitoring jobs behind them
 are inactive — UI badge/mask is a separate track.

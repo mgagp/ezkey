@@ -46,11 +46,48 @@ class EvaluatorSelfRegistrationRateLimiterTest {
   }
 
   @Test
-  @DisplayName("blocks second success from same IP within window")
-  void blocksSameIp() {
+  @DisplayName("blocks second success from same IP when perIpMaxSuccess=1")
+  void blocksSameIpWhenMaxOne() {
     limiter.verifyAndRecordSuccess("203.0.113.10");
+    assertEquals(1, limiter.currentIpSuccessCount("203.0.113.10"));
     assertThrows(
         EvaluatorSelfRegistrationCapacityException.class,
         () -> limiter.verifyAndRecordSuccess("203.0.113.10"));
+  }
+
+  @Test
+  @DisplayName("honors perIpMaxSuccess=3 (2nd/3rd OK, 4th capacity)")
+  void honorsPerIpMaxSuccessThree() {
+    properties.setDailyCap(20);
+    properties.setPerIpMaxSuccess(3);
+    limiter = new EvaluatorSelfRegistrationRateLimiter(properties);
+
+    limiter.verifyAndRecordSuccess("198.51.100.7");
+    limiter.verifyAndRecordSuccess("198.51.100.7");
+    limiter.verifyAndRecordSuccess("198.51.100.7");
+    assertEquals(3, limiter.currentIpSuccessCount("198.51.100.7"));
+    assertEquals(3, limiter.currentDailySuccessCount());
+
+    assertThrows(
+        EvaluatorSelfRegistrationCapacityException.class,
+        () -> limiter.verifyAndRecordSuccess("198.51.100.7"));
+    assertEquals(3, limiter.currentIpSuccessCount("198.51.100.7"));
+    assertEquals(3, limiter.currentDailySuccessCount());
+  }
+
+  @Test
+  @DisplayName("daily cap still honored when per-IP headroom remains")
+  void dailyCapHonoredWithPerIpHeadroom() {
+    properties.setDailyCap(2);
+    properties.setPerIpMaxSuccess(5);
+    limiter = new EvaluatorSelfRegistrationRateLimiter(properties);
+
+    limiter.verifyAndRecordSuccess("203.0.113.50");
+    limiter.verifyAndRecordSuccess("203.0.113.50");
+    assertEquals(2, limiter.currentDailySuccessCount());
+    assertThrows(
+        EvaluatorSelfRegistrationCapacityException.class,
+        () -> limiter.verifyAndRecordSuccess("203.0.113.50"));
+    assertEquals(2, limiter.currentIpSuccessCount("203.0.113.50"));
   }
 }

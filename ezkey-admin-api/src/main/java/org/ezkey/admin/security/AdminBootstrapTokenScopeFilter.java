@@ -77,8 +77,8 @@ public class AdminBootstrapTokenScopeFilter extends OncePerRequestFilter {
    *
    * <p>Includes the SecurityConfig {@code permitAll} auth family ({@code login}, {@code
    * passwordless-wait}, {@code recover}, {@code onboarding-resume}, {@code activate}, {@code
-   * logout}) so a leftover Mode B HttpOnly BOOTSTRAP cookie does not 403 anonymous credential
-   * flows that send {@code credentials: include} (Patrick craft / sticky-cookie RCA).
+   * logout}) so a leftover Mode B HttpOnly BOOTSTRAP cookie does not 403 anonymous credential flows
+   * that send {@code credentials: include} (Patrick craft / sticky-cookie RCA).
    *
    * @param method HTTP method
    * @param path normalized request path
@@ -105,8 +105,8 @@ public class AdminBootstrapTokenScopeFilter extends OncePerRequestFilter {
   }
 
   /**
-   * Same permitAll auth-bootstrap family as {@link
-   * org.ezkey.admin.config.SecurityConfig} (sticky BOOTSTRAP must not block these).
+   * Same permitAll auth-bootstrap family as {@link org.ezkey.admin.config.SecurityConfig} (sticky
+   * BOOTSTRAP must not block these).
    *
    * @param path normalized request path
    * @return true for public auth bootstrap POST paths
