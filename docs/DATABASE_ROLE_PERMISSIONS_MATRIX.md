@@ -59,9 +59,12 @@ Auth-api and integration-api have **no** ShedLock / `@EnableScheduling`.
 
 All three APIs may **INSERT/UPDATE** `ezkey_alert` and `ezkey_audit_chain_incident` via `AuditChainHeartbeatGuardService.evaluate()` (peripheral heartbeat), not via schedulers.
 
-### Auth → admin tokens (Mode C TEMP supersede)
+### Temporary evaluator console — admin-api owns `ezkey_admin_tokens`
 
-Auth-api `EnrollmentVerifyService` **UPDATE**s `ezkey_admin_tokens` after a VERIFIED bind to deactivate `EVALUATOR_TEMP` rows (`deactivateTokensForAdminByPurpose`). Mint and cleanup remain admin-api only (INSERT/DELETE stay with `ezkey_admin`).
+`EVALUATOR_TEMP` supersede is **admin-api only** (`ezkey_admin`): (1) SESSION mint always
+deactivates active TEMP for that admin; (2) TEMP bearer validation rejects and deactivates when
+the admin’s enrollment is already VERIFIED. Auth-api has **no** DML on `ezkey_admin_tokens`
+(enrollment-verify stays enrollment-only).
 
 ### Dropped tables (no grants)
 
@@ -78,7 +81,7 @@ Legend: **S**=SELECT · **I**=INSERT · **U**=UPDATE · **D**=DELETE · **X**=EX
 | `flyway_schema_history` | full | — | — | — | Migration module only |
 | `ezkey_tenant` | owner | S I U | S | S | Writes: admin provisioning / bootstrap |
 | `ezkey_admin` | owner | S I U | S | S | Auth/integration: join / eligibility reads |
-| `ezkey_admin_tokens` | owner | S I U D | S U | — | Admin: mint/cleanup. Auth: SELECT+UPDATE only to supersede `EVALUATOR_TEMP` after VERIFIED bind (`EnrollmentVerifyService`); no INSERT/DELETE. Integration: none |
+| `ezkey_admin_tokens` | owner | S I U D | — | — | Admin only (mint/cleanup + TEMP supersede at SESSION mint and validation gate). Auth/Integration: none |
 | `ezkey_integration` | owner | S I U D | S | S | |
 | `ezkey_enrollment` | owner | S I U D | S U | S | Auth: bind/verify/`lastUsedAt`; integration: read |
 | `ezkey_auth_attempt` | owner | S I U | S U | S I U | Auth does not create attempts |

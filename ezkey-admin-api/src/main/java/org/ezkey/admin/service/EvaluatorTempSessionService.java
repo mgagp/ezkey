@@ -36,10 +36,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Mode C temporary evaluator console sessions ({@link AdminTokenPurpose#EVALUATOR_TEMP}).
+ * Temporary evaluator console sessions ({@link AdminTokenPurpose#EVALUATOR_TEMP}).
  *
- * <p>Same gate as evaluator self-registration. One-shot mint, absolute TTL, supersede on MFA
- * VERIFIED bind, expiry predicate with soft {@code deactivateTenant} when no other bound admin.
+ * <p>Same gate as evaluator self-registration. One-shot mint, absolute TTL. Supersede after MFA
+ * VERIFIED is admin-api owned (SESSION mint in {@link AdminAuthService} and TEMP validation gate
+ * in {@link AdminTokenValidationService}). Auth-api does not write tokens. Expiry predicate uses
+ * soft tenant deactivate when no other bound admin remains.
  */
 @Service
 public class EvaluatorTempSessionService {
@@ -171,10 +173,10 @@ public class EvaluatorTempSessionService {
   }
 
   /**
-   * Revokes all active {@link AdminTokenPurpose#EVALUATOR_TEMP} tokens for the admin linked to a
-   * newly VERIFIED enrollment (supersede — force fresh SESSION login).
+   * Revokes all active {@link AdminTokenPurpose#EVALUATOR_TEMP} tokens for the admin linked to an
+   * enrollment (admin-owned helper; primary paths are SESSION mint and TEMP validation gate).
    *
-   * @param enrollmentId enrollment that just reached VERIFIED
+   * @param enrollmentId enrollment whose admin TEMP tokens should be revoked
    * @return number of tokens revoked
    */
   @Transactional
@@ -191,9 +193,10 @@ public class EvaluatorTempSessionService {
                       admin.getAdminId(), AdminTokenPurpose.EVALUATOR_TEMP);
               if (revoked > 0) {
                 logger.info(
-                    "Superseded {} EVALUATOR_TEMP token(s) after VERIFIED bind for adminId={}",
+                    "Superseded {} EVALUATOR_TEMP token(s) for adminId={} (enrollmentId={})",
                     revoked,
-                    admin.getAdminId());
+                    admin.getAdminId(),
+                    enrollmentId);
               }
               return revoked;
             })

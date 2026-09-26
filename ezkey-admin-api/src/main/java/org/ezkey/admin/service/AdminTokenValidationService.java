@@ -13,6 +13,7 @@ package org.ezkey.admin.service;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
@@ -74,10 +75,14 @@ public class AdminTokenValidationService {
    * <p>This method eagerly loads admin, tenant, and integration to support AdminPrincipal creation
    * without lazy loading issues.
    *
+   * <p>Not read-only: an active {@link AdminTokenPurpose#EVALUATOR_TEMP} token is deactivated when
+   * the admin’s enrollment is already device-bound {@link EnrollmentStatus#VERIFIED} (admin-owned
+   * supersede after bind; Auth-api does not touch tokens).
+   *
    * @param token the bearer token to validate
    * @return Optional containing the AdminToken with relations if token is valid, empty otherwise
    */
-  @Transactional(readOnly = true)
+  @Transactional
   public Optional<AdminToken> validateTokenWithRelations(String token) {
     try {
       String hash = SensitiveDataHasher.sha256Hex(token);
@@ -123,6 +128,21 @@ public class AdminTokenValidationService {
           Enrollment enrollment = admin.getEnrollment();
           if (enrollment != null && !Boolean.TRUE.equals(enrollment.getActive())) {
             logger.warn("❌ Token rejected: enrollment inactive for admin: {}", admin.getUsername());
+            return Optional.empty();
+          }
+
+          // Temporary evaluator console: once MFA is VERIFIED, TEMP must die on first Admin API
+          // call (even before passwordless SESSION re-login).
+          if (adminToken.getTokenPurpose() == AdminTokenPurpose.EVALUATOR_TEMP
+              && enrollment != null
+              && EnrollmentStatus.VERIFIED.equals(enrollment.getStatus())) {
+            int revoked =
+                tokenRepository.deactivateTokensForAdminByPurpose(
+                    admin.getAdminId(), AdminTokenPurpose.EVALUATOR_TEMP);
+            logger.info(
+                "Rejected EVALUATOR_TEMP after VERIFIED bind for admin: {} (revoked {} token(s))",
+                admin.getUsername(),
+                revoked);
             return Optional.empty();
           }
 

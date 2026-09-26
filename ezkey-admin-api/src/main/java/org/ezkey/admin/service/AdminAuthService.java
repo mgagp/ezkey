@@ -535,10 +535,24 @@ public class AdminAuthService {
   /**
    * Generate a new bearer token and persist only its SHA-256 hash to database.
    *
+   * <p>Always deactivates active {@link AdminTokenPurpose#EVALUATOR_TEMP} tokens for this admin
+   * before minting SESSION — rotation-on-login may be disabled, but temporary evaluator console
+   * access must still end when an opaque SESSION is created.
+   *
    * @param admin the administrator for whom to generate the token
    * @return the persisted token entity and the plain token to return to the client
    */
   private TokenIssueResult generateAndPersistToken(EzkeyAdmin admin) {
+    int tempRevoked =
+        tokenRepository.deactivateTokensForAdminByPurpose(
+            admin.getAdminId(), AdminTokenPurpose.EVALUATOR_TEMP);
+    if (tempRevoked > 0) {
+      logger.info(
+          "Superseded {} EVALUATOR_TEMP token(s) on SESSION mint for admin: {}",
+          tempRevoked,
+          admin.getUsername());
+    }
+
     String plainToken = generateBearerToken();
     String hash = SensitiveDataHasher.sha256Hex(plainToken);
     if (hash == null) {

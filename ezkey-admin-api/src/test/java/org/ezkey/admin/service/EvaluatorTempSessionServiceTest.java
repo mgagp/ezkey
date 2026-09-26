@@ -133,6 +133,22 @@ class EvaluatorTempSessionServiceTest {
   }
 
   @Test
+  @DisplayName("mint refuses when enrollment is already device-bound VERIFIED")
+  void mint_refuses_whenEnrollmentVerified() {
+    when(properties.isEnabled()).thenReturn(true);
+
+    Enrollment enrollment = enrollment(10, EnrollmentStatus.VERIFIED, "proof-token");
+    String proofHash = SensitiveDataHasher.sha256Hex("proof-token");
+    when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofTokenHash(10, proofHash))
+        .thenReturn(Optional.of(enrollment));
+
+    assertThatThrownBy(() -> service.mint(10, "proof-token"))
+        .isInstanceOf(AuthenticationException.class)
+        .hasMessageContaining("already bound");
+    verify(tokenRepository, never()).save(any());
+  }
+
+  @Test
   @DisplayName("supersedeOnVerifiedBind revokes EVALUATOR_TEMP (never promotes cookie)")
   void supersede_revokesEvaluatorTempTokens() {
     Tenant tenant = tenant(5, true);
