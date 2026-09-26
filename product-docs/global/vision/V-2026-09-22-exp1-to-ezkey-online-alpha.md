@@ -109,6 +109,7 @@ satisfied that precondition; steps 2–3 may proceed.
 - [`../openapi-exposure-matrix.md`](../openapi-exposure-matrix.md) — evaluator / EXP1 exposure rows; revisit naming when community runtime is live
 - [`V-2026-0014`](V-2026-0014-api-docs-exposure-portal.md) — public API docs vs raw tooling; still relevant for community host exposure
 - [`I-2026-05-23-exp1-anonymous-evaluator-onboarding`](../backlog/ideas/I-2026-05-23-exp1-anonymous-evaluator-onboarding.md) — evaluator signup track; retarget host naming when executed against ezkey.online
+- [`V-2026-09-26-evaluator-bootstrap-admin-session`](V-2026-09-26-evaluator-bootstrap-admin-session.md) — community/alpha friction reduction: public signup also issues opaque Admin UI bootstrap session (8h absolute); honesty bounds of this note still apply
 - PR #609 — ezkey.org editorial rewrite (shipped)
 - `sites/ezkey-org/` — product site; no further edits in this PR
 
