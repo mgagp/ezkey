@@ -70,8 +70,24 @@ boundary forces a documented supersession.
    so honestly. **Not** recoverable inside the window via re-issue of the same temp session.
    (Rejected soft preference for in-window recoverable temp session.)
 9. **TTL ~8 h absolute** for the temporary foothold (exact property name finalized in craft).
-10. **Without bind before expiry** — revoke temp tokens, **kill the lab account**, cascade secrets
-    (expiry cascade required). Session and account die together.
+10. **Expiry of `EVALUATOR_TEMP` without bind of the TEMP identity** — revoke TEMP tokens, then
+    apply a **predicate** (not a blunt kill+wipe):
+    - **Bound** means admin MFA enrollment **VERIFIED** — not end-user Demo Device enrollment
+      alone, and not admin **PENDING**.
+    - **Predicate:** does there exist **another** tenant-scoped ACTIVE admin (≠ the expiring TEMP
+      identity) with MFA enrollment **VERIFIED/bound**?
+      - **YES** → revoke `EVALUATOR_TEMP` + **deactivate TEMP identity only**; **do not**
+        `deactivateTenant`.
+      - **NO** → soft **`deactivateTenant`** + revoke TEMP + deactivate TEMP identity.
+    - **Soft** = no destroy, no wipe, **no hard revoke of API keys**. Child entities may remain
+      locally Active but are **non-operational** (« non opérationnels ») via the eligibility
+      chain — **not** « passent inactifs ».
+    - **Documented edge:** a 2nd tenant admin created + bound during the TEMP window → tenant
+      **survives** TEMP expiry.
+    - **Mandatory audit:** `TENANT_DEACTIVATED` (system job); `TENANT_ACTIVATED` (GLOBAL manual,
+      actor + reason); `ADMIN_DEACTIVATED` for the TEMP identity. **Zero auto-reactivation.**
+    - Manual GLOBAL reactivation (Marc community) is intentional; key resurrection via lifecycle
+      is OK.
 11. **Bind VERIFIED → supersede** — revoke `EVALUATOR_TEMP` **immediately**; force a **fresh**
     post-bind `SESSION` login. **Do not** promote / reuse the same cookie into `SESSION`.
 12. **Tenant-scoped** — QR / onboarding self-only; **never GLOBAL**.
@@ -86,7 +102,8 @@ boundary forces a documented supersession.
     honesty — publish via Edgar / Cloudflare when funded (not required to land this vision note).
 16. **Julie** — banner + fork wording per storyboard; minimal chrome.
 17. **Isabelle** later — clean-start flag OFF; community profile flag ON; cover fork, one-shot loss,
-    expiry kill, supersede-on-bind, no bridled-only regression.
+    expiry predicate (soft `deactivateTenant` vs TEMP-identity-only), supersede-on-bind, no
+    bridled-only regression.
 
 ## Security obligations (Christophe — capture for execution)
 
@@ -95,7 +112,7 @@ boundary forces a documented supersession.
 | Distinct purposes | `EVALUATOR_TEMP` ≠ `SESSION`; never promote the same cookie. |
 | One-shot temp | No in-window re-mint of the same temp foothold after cookie loss. |
 | Supersede on VERIFIED bind | Revoke TEMP immediately; require fresh SESSION login. |
-| Expiry cascade | Tokens revoke + lab account kill + secret cascade when window ends without bind. |
+| Expiry without TEMP bind | Predicate: other tenant ACTIVE admin with MFA VERIFIED? YES → revoke TEMP + deactivate TEMP identity only (no `deactivateTenant`). NO → soft `deactivateTenant` + revoke TEMP + deactivate TEMP identity. Soft = no destroy/wipe/hard API-key revoke; children may stay locally Active but **non-operational** via eligibility. Audit: `TENANT_DEACTIVATED` (system), `TENANT_ACTIVATED` (GLOBAL manual + reason), `ADMIN_DEACTIVATED` (TEMP). Zero auto-reactivation. |
 | Tenant scope | Self-only QR/onboarding; never GLOBAL. |
 | Transport | Opaque bearer and/or cookie: HttpOnly, Secure, SameSite; server-side invalidate on logout/expiry. |
 | No leak surfaces | No temp token in URL query; no token in application logs / audit payloads. |
@@ -110,7 +127,10 @@ TENANT_ADMIN ACL navigable**, not capability-allowlist growth of Path B.
 - **Path B** — signup → bridled BOOTSTRAP until activate+bind (#631 closed without merge).
 - In-window **recoverable** temporary session after cookie loss.
 - **Promoting** the temp cookie into post-bind `SESSION`.
-- Leaving orphan lab accounts after expiry without bind.
+- Hard wipe / hard revoke of API keys by default on TEMP expiry.
+- Auto-reactivation after soft `deactivateTenant` / TEMP-identity deactivation.
+- Treating Demo Device end-user enrollment alone (or admin PENDING) as **bound** for the expiry
+  predicate.
 - Clean-start / self-host default ON.
 - Permanent password / remember-me / refresh for this path.
 - UI jargon Mode C / BOOTSTRAP / SEAL-as-promise.
@@ -122,10 +142,10 @@ Orientation only — promote via `I-*` / `TB-*` on a **new branch**. No applicat
 | Surface | Consequence |
 | ------- | ----------- |
 | **Flag / config** | Same self-reg flag only; temp-session TTL (~8h absolute); document OFF default. |
-| **Admin API** | After activation-code accept, optional mint of `EVALUATOR_TEMP`; bind VERIFIED supersede; expiry cascade kill. |
+| **Admin API** | After activation-code accept, optional mint of `EVALUATOR_TEMP`; bind VERIFIED supersede; expiry predicate + soft `deactivateTenant` / TEMP-identity-only + mandatory audit events. |
 | **Admin UI** | Enrollment fork + honesty banner + bind-later links; navigable shell under TEMP; force re-login after supersede. |
 | **ezkey.org** | Optional honesty line on alpha journey (community/lab only). Edgar publish later. |
-| **QA** | Flag OFF clean-start; flag ON community; one-shot loss; expiry kill; supersede-on-bind; no Path B regression. |
+| **QA** | Flag OFF clean-start; flag ON community; one-shot loss; expiry predicate (other bound admin → tenant survives; else soft deactivateTenant); supersede-on-bind; no Path B regression. |
 
 ## Non-goals
 
@@ -149,7 +169,7 @@ Orientation only — promote via `I-*` / `TB-*` on a **new branch**. No applicat
 
 Promote (or spawn `I-*` / `TB-*`) when:
 
-1. Craft + security accept deny-list + TENANT_ADMIN navigable scope, one-shot TEMP, supersede-on-bind, expiry cascade.
+1. Craft + security accept deny-list + TENANT_ADMIN navigable scope, one-shot TEMP, supersede-on-bind, expiry predicate + soft deactivateTenant (no hard wipe / no auto-reactivation).
 2. Enrollment-fork + banner wording accepted for Julie.
 3. QA profile plan (flag OFF clean-start + flag ON community) acknowledged.
 4. Execution opens on a **new branch** (not a revival of #631).
