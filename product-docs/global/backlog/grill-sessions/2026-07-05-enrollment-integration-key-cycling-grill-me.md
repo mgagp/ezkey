@@ -239,6 +239,11 @@ Any new respond / pending fields require:
 Pre-analysis and grill complete. **`I-2026-07-05` incubating** — next artifact is **Phase 0
 component design pack + ADR**, not `TB-*` or code.
 
+**Follow-up (2026-09-15):** the broader post-quantum protocol map that this grill assumed is now
+[`V-2026-09-15-post-quantum-crypto-posture`](../../vision/V-2026-09-15-post-quantum-crypto-posture.md).
+That note **reaffirms** D1 (cycling is not PQ) and **rejects** per-authentication device-key
+rotation as the PQ strategy. Do not reopen D1–D10 without a new signal.
+
 **Resume execution when:** post–September 2026 operable-release gate; or operator elevates crypto
 hardening with explicit capacity.
 

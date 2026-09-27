@@ -13,6 +13,8 @@ The mobile app verifies **integration** signatures with **Ed25519** (`Integratio
 
 **Decision record:** [ADR-0006](../product-docs/global/architecture-decisions.md#adr-0006-dual-signing-algorithms-device-ec-p256-integration-ed25519) (why device and integration use different algorithms).
 
+**Post-quantum posture (orientation, not a wire-format change):** both device EC P-256 and integration Ed25519 are pre-quantum (Shor). Symmetric pieces (AES-256-GCM at rest, HMAC-SHA256, 256-bit proof tokens) are already sized for a Grover-adjusted world. The analysis-design map — attack angles, what is already adequate, window management vs hybrid signatures, why per-auth device-key rotation is the wrong TLS analogue — lives in [`product-docs/global/vision/V-2026-09-15-post-quantum-crypto-posture.md`](../product-docs/global/vision/V-2026-09-15-post-quantum-crypto-posture.md). Do not read this guide as a post-quantum resistance claim.
+
 ## Device: EC P-256 (secp256r1)
 
 ### Key generation
