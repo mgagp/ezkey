@@ -405,7 +405,7 @@ installations that intentionally expose public signup.
 | `ezkey.evaluator.self-registration.enabled` | `boolean` | `false` | optionnel | When `false`, `POST /api/v1/public/evaluator-signup` returns HTTP 404. |
 | `ezkey.evaluator.self-registration.daily-cap` | `int` | `5` | optionnel | Max successful signups per UTC day (global). |
 | `ezkey.evaluator.self-registration.per-ip-window-hours` | `int` | `24` | optionnel | Per-IP success window. |
-| `ezkey.evaluator.self-registration.per-ip-max-success` | `int` | `1` | optionnel | Max successful signups per IP within the window. |
+| `ezkey.evaluator.self-registration.per-ip-max-success` | `int` | `3` | optionnel | Max successful signups per IP within the window (lab UX: operator retries without waiting 24h). Instance still capped by `daily-cap`. |
 | `ezkey.evaluator.self-registration.admin-ui-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
 | `ezkey.evaluator.self-registration.guided-tour-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
 | `ezkey.evaluator.self-registration.temporary-session-ttl-hours` | `int` | `8` | optionnel | Absolute TTL for temporary evaluator console (`EVALUATOR_TEMP`) sessions when `enabled=true`. |

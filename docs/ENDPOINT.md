@@ -393,7 +393,7 @@ Available only when `ezkey.evaluator.self-registration.enabled=true` (intended f
 
 Creates an **empty tenant** and a **pending Tenant Admin** with **`ACTIVATION_CODE`** onboarding. Does **not** create integrations, API keys, or enrollments — evaluators follow the [Exp1 guided tour](https://ezkey.org/exp1-guided-tour.html) from step 1.
 
-**Rate limits (defaults):** global **5 successful signups per UTC day**; **1 successful signup per client IP per 24h**. Failures return **429** with a generic capacity message.
+**Rate limits (defaults):** global **5 successful signups per UTC day**; **3 successful signups per client IP per 24h**. Failures return **429** with a generic capacity message.
 
 **Request body (optional JSON):**
 

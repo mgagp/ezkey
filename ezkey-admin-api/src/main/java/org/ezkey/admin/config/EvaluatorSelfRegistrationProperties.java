@@ -32,7 +32,7 @@ public class EvaluatorSelfRegistrationProperties {
 
   private int perIpWindowHours = 24;
 
-  private int perIpMaxSuccess = 1;
+  private int perIpMaxSuccess = 3;
 
   /** Admin UI origin returned after signup; empty until set for a live surface. */
   private String adminUiUrl = "";
