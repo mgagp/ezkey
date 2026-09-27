@@ -151,7 +151,8 @@ class EvaluatorTempSessionServiceTest {
     when(tokenRepository.existsByAdminAdminIdAndTokenPurpose(20, AdminTokenPurpose.EVALUATOR_TEMP))
         .thenReturn(false);
     when(tokenRepository.saveAndFlush(any(AdminToken.class)))
-        .thenThrow(new DataIntegrityViolationException("uq_admin_tokens_one_evaluator_temp_per_admin"));
+        .thenThrow(
+            new DataIntegrityViolationException("uq_admin_tokens_one_evaluator_temp_per_admin"));
 
     assertThatThrownBy(() -> service.mint(10, "proof-token"))
         .isInstanceOf(AuthenticationException.class)
@@ -171,7 +172,7 @@ class EvaluatorTempSessionServiceTest {
     assertThatThrownBy(() -> service.mint(10, "proof-token"))
         .isInstanceOf(AuthenticationException.class)
         .hasMessageContaining("already bound");
-    verify(tokenRepository, never()).save(any());
+    verify(tokenRepository, never()).saveAndFlush(any());
   }
 
   @Test
