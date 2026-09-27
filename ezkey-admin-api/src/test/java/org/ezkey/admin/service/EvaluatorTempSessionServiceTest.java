@@ -46,6 +46,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 /** Unit tests for {@link EvaluatorTempSessionService}. */
 @ExtendWith(MockitoExtension.class)
@@ -80,7 +81,7 @@ class EvaluatorTempSessionServiceTest {
     assertThatThrownBy(() -> service.mint(1, "proof"))
         .isInstanceOf(AuthenticationException.class)
         .hasMessageContaining("not available");
-    verify(tokenRepository, never()).save(any());
+    verify(tokenRepository, never()).saveAndFlush(any());
   }
 
   @Test
@@ -99,7 +100,7 @@ class EvaluatorTempSessionServiceTest {
     when(adminRepository.findByEnrollmentId(10)).thenReturn(Optional.of(admin));
     when(tokenRepository.existsByAdminAdminIdAndTokenPurpose(20, AdminTokenPurpose.EVALUATOR_TEMP))
         .thenReturn(false);
-    when(tokenRepository.save(any(AdminToken.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(tokenRepository.saveAndFlush(any(AdminToken.class))).thenAnswer(inv -> inv.getArgument(0));
 
     EvaluatorTempSessionService.MintResult result = service.mint(10, "proof-token");
 
@@ -108,7 +109,7 @@ class EvaluatorTempSessionServiceTest {
     assertThat(result.expiresAt()).isAfter(OffsetDateTime.now().plusHours(7));
 
     ArgumentCaptor<AdminToken> captor = ArgumentCaptor.forClass(AdminToken.class);
-    verify(tokenRepository).save(captor.capture());
+    verify(tokenRepository).saveAndFlush(captor.capture());
     assertThat(captor.getValue().getTokenPurpose()).isEqualTo(AdminTokenPurpose.EVALUATOR_TEMP);
   }
 
@@ -126,6 +127,31 @@ class EvaluatorTempSessionServiceTest {
     when(adminRepository.findByEnrollmentId(10)).thenReturn(Optional.of(admin));
     when(tokenRepository.existsByAdminAdminIdAndTokenPurpose(20, AdminTokenPurpose.EVALUATOR_TEMP))
         .thenReturn(true);
+
+    assertThatThrownBy(() -> service.mint(10, "proof-token"))
+        .isInstanceOf(AuthenticationException.class)
+        .hasMessageContaining("already issued");
+    verify(tokenRepository, never()).saveAndFlush(any());
+  }
+
+  @Test
+  @DisplayName(
+      "mint maps concurrent unique-index violation to AuthenticationException (already issued)")
+  void mint_mapsDataIntegrityViolation_toAlreadyIssued() {
+    when(properties.isEnabled()).thenReturn(true);
+    when(properties.getTemporarySessionTtlHours()).thenReturn(8);
+
+    Enrollment enrollment = enrollment(10, EnrollmentStatus.CREATED, "proof-token");
+    Tenant tenant = tenant(3, true);
+    EzkeyAdmin admin = tenantAdmin(20, tenant, enrollment);
+    String proofHash = SensitiveDataHasher.sha256Hex("proof-token");
+    when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofTokenHash(10, proofHash))
+        .thenReturn(Optional.of(enrollment));
+    when(adminRepository.findByEnrollmentId(10)).thenReturn(Optional.of(admin));
+    when(tokenRepository.existsByAdminAdminIdAndTokenPurpose(20, AdminTokenPurpose.EVALUATOR_TEMP))
+        .thenReturn(false);
+    when(tokenRepository.saveAndFlush(any(AdminToken.class)))
+        .thenThrow(new DataIntegrityViolationException("uq_admin_tokens_one_evaluator_temp_per_admin"));
 
     assertThatThrownBy(() -> service.mint(10, "proof-token"))
         .isInstanceOf(AuthenticationException.class)

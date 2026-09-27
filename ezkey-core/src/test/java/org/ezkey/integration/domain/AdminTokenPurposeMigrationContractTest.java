@@ -63,6 +63,25 @@ class AdminTokenPurposeMigrationContractTest {
         .containsIgnoringCase("DROP CONSTRAINT IF EXISTS chk_admin_tokens_token_purpose");
   }
 
+  @Test
+  @DisplayName(
+      "V24 partial unique index enforces one EVALUATOR_TEMP per admin_id without active filter")
+  void v24PartialUniqueIndexOneEvaluatorTempPerAdmin() throws IOException {
+    String sql =
+        readClasspathResource(
+            "db/migration/V24__uq_admin_tokens_one_evaluator_temp_per_admin.sql");
+
+    assertThat(sql)
+        .containsIgnoringCase("uq_admin_tokens_one_evaluator_temp_per_admin")
+        .containsIgnoringCase("CREATE UNIQUE INDEX")
+        .contains("ON ezkey_admin_tokens (admin_id)")
+        .containsIgnoringCase("WHERE token_purpose = 'EVALUATOR_TEMP'");
+
+    // One-shot includes deactivated rows — must not restrict to active = true.
+    assertThat(sql.toLowerCase()).doesNotContain("active = true");
+    assertThat(sql.toLowerCase()).doesNotContain("active=true");
+  }
+
   private static String readClasspathResource(String path) throws IOException {
     try (InputStream in =
         AdminTokenPurposeMigrationContractTest.class.getClassLoader().getResourceAsStream(path)) {

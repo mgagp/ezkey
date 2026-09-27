@@ -32,6 +32,7 @@ import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.security.SensitiveDataHasher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +48,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class EvaluatorTempSessionService {
 
   private static final Logger logger = LoggerFactory.getLogger(EvaluatorTempSessionService.class);
+
+  /** Shared message for sequential exists-check and concurrent unique-index races. */
+  static final String ALREADY_ISSUED_MESSAGE =
+      "Temporary console access was already issued and cannot be recovered";
 
   private final EvaluatorSelfRegistrationProperties properties;
   private final EnrollmentRepository enrollmentRepository;
@@ -142,8 +147,7 @@ public class EvaluatorTempSessionService {
 
     if (tokenRepository.existsByAdminAdminIdAndTokenPurpose(
         admin.getAdminId(), AdminTokenPurpose.EVALUATOR_TEMP)) {
-      throw new AuthenticationException(
-          "Temporary console access was already issued and cannot be recovered");
+      throw new AuthenticationException(ALREADY_ISSUED_MESSAGE);
     }
 
     int ttlHours = Math.max(1, properties.getTemporarySessionTtlHours());
@@ -161,7 +165,17 @@ public class EvaluatorTempSessionService {
     token.setIntegration(admin.getIntegration());
     token.setCreatedAt(OffsetDateTime.now());
     token.setActive(true);
-    tokenRepository.save(token);
+    try {
+      // saveAndFlush: surface uq_admin_tokens_one_evaluator_temp_per_admin races before return.
+      // Catch here so ValidationExceptionHandler does not map DIV to HTTP 400 — controller maps
+      // AuthenticationException to 403 with no MintResult / no Set-Cookie for the loser.
+      tokenRepository.saveAndFlush(token);
+    } catch (DataIntegrityViolationException e) {
+      logger.info(
+          "Concurrent EVALUATOR_TEMP mint rejected for adminId={} (unique index)",
+          admin.getAdminId());
+      throw new AuthenticationException(ALREADY_ISSUED_MESSAGE);
+    }
 
     logger.info(
         "EVALUATOR_TEMP session minted for adminId={} tenantId={} expiresAt={}",
