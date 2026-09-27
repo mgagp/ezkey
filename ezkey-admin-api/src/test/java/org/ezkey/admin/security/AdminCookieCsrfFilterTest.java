@@ -46,6 +46,20 @@ class AdminCookieCsrfFilterTest {
   }
 
   @Test
+  void evaluatorTempBootstrapPathSkipsCsrfEvenWhenCookieAuthenticated() throws Exception {
+    MockHttpServletRequest request =
+        new MockHttpServletRequest("POST", "/api/v1/admin/auth/evaluator-temp");
+    request.setAttribute(AdminAuthRequestAttributes.AUTH_SOURCE, AuthSource.COOKIE);
+    request.setAttribute(AdminAuthRequestAttributes.PLAIN_TOKEN, "stale-session-token");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+
+    filter.doFilter(request, response, new MockFilterChain());
+
+    assertEquals(200, response.getStatus());
+    assertNull(response.getErrorMessage());
+  }
+
+  @Test
   void unsafeCookieAuthenticatedRequestWithValidCsrfContinues() throws Exception {
     AdminCsrfTokenService service = new AdminCsrfTokenService();
     filter = new AdminCookieCsrfFilter(properties, service);
