@@ -1,0 +1,29 @@
+#%PAM-1.0
+# EXP1-style host sketch ONLY — not installed by the demo image and not applied
+# to any live Lightsail / EXP1 host by this repository.
+#
+# Intent (fail-closed MFA with named break-glass):
+#   - Interactive users: primary factor (pubkey or unix) AND pam_ezkey required.
+#   - Named break-glass account skips pam_ezkey (console / emergency access).
+#   - Never put pam_ezkey on a path that locks root console without a tested bypass.
+#   - Do NOT enable Duo-style failmode=safe inside pam_ezkey.
+#
+# Contrast with the demo stack in ./sshd (Ezkey-only + pam_permit): that stack is
+# valid only for the disposable Docker SSH VM.
+#
+# Example sketch (adapt user names, order, and account module to the host):
+#
+# auth       [success=1 default=ignore] pam_succeed_if.so user = breakglass quiet
+# auth       required     pam_unix.so
+# auth       required     pam_ezkey.so conf=/etc/security/pam_ezkey.conf
+# auth       required     pam_permit.so
+#
+# Or with SSH publickey as the first factor (sshd_config AuthenticationMethods
+# publickey,keyboard-interactive:pam) and pam_ezkey as the MFA line:
+#
+# auth       required     pam_ezkey.so conf=/etc/security/pam_ezkey.conf
+# account    required     pam_unix.so
+# session    required     pam_unix.so
+#
+# Rollback: restore /etc/pam.d/sshd from a copy taken the same day; sshd -t before
+# restart. Confirm Lightsail serial/browser console the same day as any cutover.
