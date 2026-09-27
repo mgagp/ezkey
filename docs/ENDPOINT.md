@@ -393,7 +393,7 @@ Available only when `ezkey.evaluator.self-registration.enabled=true` (intended f
 
 Creates an **empty tenant** and a **pending Tenant Admin** with **`ACTIVATION_CODE`** onboarding. Does **not** create integrations, API keys, or enrollments — evaluators follow the [Exp1 guided tour](https://ezkey.org/exp1-guided-tour.html) from step 1.
 
-**Rate limits (defaults):** global **5 successful signups per UTC day**; **1 successful signup per client IP per 24h**. Failures return **429** with a generic capacity message.
+**Rate limits (defaults):** global **5 successful signups per UTC day**; **3 successful signups per client IP per 24h**. Failures return **429** with a generic capacity message.
 
 **Request body (optional JSON):**
 
@@ -687,6 +687,34 @@ flow (`POST /api/v1/admins/{id}/recovery-codes/regenerate`). See [LIFECYCLE_GOVE
 
 **Failure:** **403** for invalid, expired, or unusable codes (neutral client-safe message). **400**
 when activation cannot proceed in the current state.
+
+---
+
+#### POST /evaluator-temp (temporary evaluator console)
+
+Available only when `ezkey.evaluator.self-registration.enabled=true` (same gate as anonymous
+evaluator signup). After activation, the Admin UI may offer temporary console explore without a
+device bind. Mints a one-shot `EVALUATOR_TEMP` session (absolute TTL, default 8h). Cookie/bearer
+loss cannot re-mint. After the TEMP identity’s MFA enrollment is **VERIFIED**, admin-api
+invalidates TEMP on the next bearer validation (and again when minting a fresh `SESSION`).
+Auth-api does not update `ezkey_admin_tokens`. Expiry applies a soft-tenant predicate — see vision
+`V-2026-09-26-temporary-evaluator-console-access`.
+
+**Request:**
+```http
+POST /api/v1/admin/auth/evaluator-temp
+Content-Type: application/json
+
+{
+  "enrollmentId": 123,
+  "enrollmentProofToken": "ezkey_proof_…"
+}
+```
+
+**Success Response (200 OK):** bearer or HttpOnly cookie (same delivery as login) plus
+`tokenPurpose: "EVALUATOR_TEMP"`. Never logs the token or proof.
+
+**Failure:** **403** when the flag is off, capability is invalid, already minted, or not eligible.
 
 ---
 

@@ -47,5 +47,9 @@
     "learnMore": "En savoir plus",
     "learnMoreDefaultUrl": "https://github.com/your-org/ezkey"
   },
+  "temporarySession": {
+    "banner": "Accès éval temporaire borné — expire le {{expiresAt}}. À usage unique : si vous perdez cette session, elle n'est pas récupérable. Enrôlez un appareil quand vous êtes prêt.",
+    "bindLink": "Enrôler un appareil"
+  },
   "demoQuickReason": "Raison rapide (démo) :"
 }

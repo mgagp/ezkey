@@ -25,7 +25,8 @@
     "admin-limit-violation": "This operation would violate administrator limits.",
     "tenant-not-allowed": "This tenant operation is not allowed.",
     "tenant-inactive": "Cannot use resources for an inactive tenant.",
-    "access-denied": "You do not have permission to perform this action."
+    "access-denied": "You do not have permission to perform this action.",
+    "temporary-session-restricted": "This action is not available during temporary evaluator console access. Enroll a device and sign in again for full administration."
   },
   "domain": {
     "integration-has-enrollments": "Cannot delete this integration while enrollments exist. Remove or revoke enrollments first.",

@@ -117,6 +117,11 @@
     "copied": "Copié",
     "thenPasswordless": "Après la liaison de l'appareil, revenez ici et utilisez « Connexion avec EZKey » comme d'habitude.",
     "backToLogin": "Retour à la connexion",
+    "forkIntro": "Choisissez comment continuer. Vous pouvez explorer la console pendant quelques heures sans appareil, ou enrôler un appareil maintenant.",
+    "exploreTemporary": "Explorer la console — accès temporaire (~8 h)",
+    "enrollDevice": "Enrôler un appareil",
+    "exploreFailed": "Impossible de démarrer une session console temporaire. Réessayez ou enrôlez un appareil.",
+    "backToFork": "Retour aux choix",
     "validation": {
       "codeRequired": "Saisissez un code d'activation",
       "codeFormat": "Utilisez un code d'activation au format ezkey_activation_..."

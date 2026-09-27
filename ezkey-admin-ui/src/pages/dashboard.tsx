@@ -36,6 +36,7 @@ import {
   buildIntegrationsDrilldownUrl,
 } from '@/lib/dashboard-drilldown-links';
 import { resolveBatchHealthQuietReason } from '@/lib/dashboard-batch-health-quiet';
+import { isEvaluatorTempSession } from '@/lib/auth';
 import { api } from '@/lib/api-client';
 
 /** Minimal row shape for dashboard follow-up widget (lifecycle incidents API). */
@@ -302,7 +303,14 @@ function StatCard({ title, icon: Icon, isLoading, children }: StatCardProps) {
 const quickActions = [
   { labelKey: 'newIntegration', descKey: 'newIntegrationDesc', to: '/integrations', icon: Puzzle },
   { labelKey: 'newEnrollment', descKey: 'newEnrollmentDesc', to: '/enrollments', icon: Users },
-  { labelKey: 'newAdmin', descKey: 'newAdminDesc', to: '/admins', icon: ShieldCheck },
+  {
+    labelKey: 'newAdmin',
+    descKey: 'newAdminDesc',
+    to: '/admins',
+    icon: ShieldCheck,
+    /** Hidden under EVALUATOR_TEMP — create-tenant-admin is deny-listed. */
+    hideForEvaluatorTemp: true,
+  },
   { labelKey: 'newApiKey', descKey: 'newApiKeyDesc', to: '/api-keys', icon: Key },
 ];
 
@@ -325,6 +333,10 @@ export default function DashboardPage() {
   const { t } = useTranslation(['dashboard', 'layout', 'audit-logs', 'alerts']);
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
+  const isTempSession = isEvaluatorTempSession(session);
+  const visibleQuickActions = quickActions.filter(
+    (action) => !(action.hideForEvaluatorTemp && isTempSession),
+  );
 
   const {
     data: overview,
@@ -829,11 +841,12 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {quickActions.map(({ labelKey, descKey, to, icon: Icon }) => (
+                {visibleQuickActions.map(({ labelKey, descKey, to, icon: Icon }) => (
                   <Link
                     key={to}
                     to={to}
                     className="flex items-start gap-3 p-2.5 border-2 border-fg/20 hover:border-fg hover:shadow-brutal bg-bg transition-all duration-100 group"
+                    data-testid={`dashboard-quick-action-${labelKey}`}
                   >
                     <Icon className="size-4 text-fg-muted mt-0.5 shrink-0 group-hover:text-accent transition-colors" />
                     <div>

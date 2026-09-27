@@ -117,6 +117,11 @@
     "copied": "Copied",
     "thenPasswordless": "After binding your device, return here and use “Login with EZKey” as usual.",
     "backToLogin": "Back to login",
+    "forkIntro": "Choose how to continue. You can explore the console for a few hours without a device, or enroll a device now.",
+    "exploreTemporary": "Explore the console — temporary access (~8 h)",
+    "enrollDevice": "Enroll a device",
+    "exploreFailed": "Could not start a temporary console session. Try again or enroll a device.",
+    "backToFork": "Back to choices",
     "validation": {
       "codeRequired": "Enter an activation code",
       "codeFormat": "Use an activation code in the format ezkey_activation_..."

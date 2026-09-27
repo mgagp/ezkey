@@ -47,5 +47,9 @@
     "learnMore": "Learn more",
     "learnMoreDefaultUrl": "https://github.com/your-org/ezkey"
   },
+  "temporarySession": {
+    "banner": "Bounded temporary evaluator access — expires {{expiresAt}}. One-shot: if you lose this session, it cannot be recovered. Enroll a device when ready.",
+    "bindLink": "Enroll a device"
+  },
   "demoQuickReason": "Quick reason (demo):"
 }

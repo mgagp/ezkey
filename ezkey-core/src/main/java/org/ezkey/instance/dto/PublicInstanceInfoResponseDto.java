@@ -19,6 +19,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * <p>Used by the Admin UI login shell, the Auth API public {@code instance-info} endpoint, and for
  * operator visibility. {@code authApiPublicBaseUrl} mirrors the {@code authUrl} field embedded in
  * enrollment QR codes when {@code ezkey.qr.auth-base-url} is configured.
+ *
+ * @param authApiPublicBaseUrl public Auth API base URL when configured
+ * @param instanceName instance / organization display name
+ * @param instanceDescription optional instance description
+ * @param aboutUrl optional About / learn-more URL
+ * @param evaluatorSelfRegistrationEnabled whether anonymous evaluator signup (and temporary console
+ *     explore) is enabled on this Admin API host; {@code null} or {@code false} when unknown or off
  */
 @Schema(
     description =
@@ -42,4 +49,11 @@ public record PublicInstanceInfoResponseDto(
             description = "Optional URL for About / learn more (e.g. company instance page)",
             nullable = true,
             example = "https://www.example.com/about-ezkey")
-        String aboutUrl) {}
+        String aboutUrl,
+    @Schema(
+            description =
+                "When true, evaluator self-registration and temporary console explore are available"
+                    + " on this Admin API (community/lab). False or omitted when disabled.",
+            nullable = true,
+            example = "false")
+        Boolean evaluatorSelfRegistrationEnabled) {}

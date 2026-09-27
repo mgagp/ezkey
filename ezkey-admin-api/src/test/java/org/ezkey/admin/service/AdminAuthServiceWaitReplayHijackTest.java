@@ -29,6 +29,7 @@ import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.authattempt.service.AuthAttemptService;
+import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
@@ -101,6 +102,8 @@ class AdminAuthServiceWaitReplayHijackTest {
 
     // Crucial: Token rotation and token generation were called only ONCE (for session 1)
     verify(tokenRepository, times(1)).deactivateAllTokensForAdmin(adminId);
+    verify(tokenRepository, times(1))
+        .deactivateTokensForAdminByPurpose(adminId, AdminTokenPurpose.EVALUATOR_TEMP);
     verify(tokenRepository, times(1)).save(any());
   }
 
@@ -169,6 +172,8 @@ class AdminAuthServiceWaitReplayHijackTest {
     assertNotNull(response.token());
     verify(authAttemptRepository).markSessionIssued(eq(attemptId), any());
     verify(tokenRepository, times(1)).deactivateAllTokensForAdmin(adminId);
+    verify(tokenRepository, times(1))
+        .deactivateTokensForAdminByPurpose(adminId, AdminTokenPurpose.EVALUATOR_TEMP);
   }
 
   @Test
@@ -197,6 +202,8 @@ class AdminAuthServiceWaitReplayHijackTest {
 
     assertEquals("Authentication failed", ex.getMessage());
     verify(tokenRepository, never()).deactivateAllTokensForAdmin(any());
+    verify(tokenRepository, never())
+        .deactivateTokensForAdminByPurpose(any(), any(AdminTokenPurpose.class));
     verify(tokenRepository, never()).save(any());
   }
 

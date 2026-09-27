@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
@@ -121,6 +122,56 @@ class AdminTokenValidationServiceTest {
   }
 
   @Test
+  @DisplayName("EVALUATOR_TEMP rejected and deactivated when enrollment is already VERIFIED")
+  void validateTokenWithRelations_rejectsAndDeactivatesTemp_whenEnrollmentVerified() {
+    String hash = SensitiveDataHasher.sha256Hex(TOKEN);
+    when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(eq(hash)))
+        .thenReturn(Optional.of(adminToken));
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.EVALUATOR_TEMP);
+    when(adminToken.getExpiresAt()).thenReturn(OffsetDateTime.now().plusHours(1));
+    when(adminToken.getAdmin()).thenReturn(admin);
+    when(adminToken.getTenant()).thenReturn(null);
+    when(admin.getUsername()).thenReturn("temp.admin");
+    when(admin.getAdminType()).thenReturn(null);
+    when(admin.getActive()).thenReturn(true);
+    when(admin.getAdminId()).thenReturn(42);
+    when(admin.getEnrollment()).thenReturn(enrollment);
+    when(enrollment.getActive()).thenReturn(true);
+    when(enrollment.getStatus()).thenReturn(EnrollmentStatus.VERIFIED);
+    when(tokenRepository.deactivateTokensForAdminByPurpose(42, AdminTokenPurpose.EVALUATOR_TEMP))
+        .thenReturn(1);
+
+    Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
+
+    assertThat(result).isEmpty();
+    verify(tokenRepository).deactivateTokensForAdminByPurpose(42, AdminTokenPurpose.EVALUATOR_TEMP);
+  }
+
+  @Test
+  @DisplayName("EVALUATOR_TEMP accepted when enrollment is CREATED (pre-bind)")
+  void validateTokenWithRelations_acceptsTemp_whenEnrollmentCreated() {
+    String hash = SensitiveDataHasher.sha256Hex(TOKEN);
+    when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(eq(hash)))
+        .thenReturn(Optional.of(adminToken));
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.EVALUATOR_TEMP);
+    when(adminToken.getExpiresAt()).thenReturn(OffsetDateTime.now().plusHours(1));
+    when(adminToken.getAdmin()).thenReturn(admin);
+    when(adminToken.getTenant()).thenReturn(null);
+    when(admin.getUsername()).thenReturn("temp.admin");
+    when(admin.getAdminType()).thenReturn(null);
+    when(admin.getActive()).thenReturn(true);
+    when(admin.getEnrollment()).thenReturn(enrollment);
+    when(enrollment.getActive()).thenReturn(true);
+    when(enrollment.getStatus()).thenReturn(EnrollmentStatus.CREATED);
+
+    Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
+
+    assertThat(result).isPresent();
+    verify(tokenRepository, never())
+        .deactivateTokensForAdminByPurpose(any(), eq(AdminTokenPurpose.EVALUATOR_TEMP));
+  }
+
+  @Test
   @DisplayName(
       "updateTokenLastUsed(String) finds by hash then saves; SESSION gets sliding expiration")
   void updateTokenLastUsed_stringPath_findsAndExtendsExpiration_forSessionToken() {
@@ -208,6 +259,22 @@ class AdminTokenValidationServiceTest {
 
     assertThat(result).contains(fixedExpiresAt);
     verify(tokenRepository, never()).findByBearerTokenHashAndActiveTrue(any());
+    verify(adminToken).setLastUsedAt(any(OffsetDateTime.class));
+    verify(adminToken, never()).setExpiresAt(any(OffsetDateTime.class));
+    verify(tokenRepository).save(adminToken);
+  }
+
+  @Test
+  @DisplayName(
+      "updateTokenLastUsed(AdminToken) does not slide expiration for EVALUATOR_TEMP (absolute TTL)")
+  void updateTokenLastUsed_entityPath_doesNotExtendExpiration_forEvaluatorTempToken() {
+    OffsetDateTime fixedExpiresAt = OffsetDateTime.now().plusHours(4);
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.EVALUATOR_TEMP);
+    when(adminToken.getExpiresAt()).thenReturn(fixedExpiresAt);
+
+    Optional<OffsetDateTime> result = service.updateTokenLastUsed(adminToken);
+
+    assertThat(result).contains(fixedExpiresAt);
     verify(adminToken).setLastUsedAt(any(OffsetDateTime.class));
     verify(adminToken, never()).setExpiresAt(any(OffsetDateTime.class));
     verify(tokenRepository).save(adminToken);

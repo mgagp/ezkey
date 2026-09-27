@@ -25,7 +25,8 @@
     "admin-limit-violation": "Cette opération violerait les limites applicables aux administrateurs.",
     "tenant-not-allowed": "Cette opération sur le tenant n'est pas autorisée.",
     "tenant-inactive": "Impossible d'utiliser les ressources d'un tenant inactif.",
-    "access-denied": "Vous n'avez pas l'autorisation d'effectuer cette action."
+    "access-denied": "Vous n'avez pas l'autorisation d'effectuer cette action.",
+    "temporary-session-restricted": "Cette action n'est pas disponible pendant un accès console temporaire. Enrôlez un appareil et reconnectez-vous pour l'administration complète."
   },
   "domain": {
     "integration-has-enrollments": "Impossible de supprimer cette intégration tant qu'il existe des enrôlements. Retirez ou révoquez les enrôlements d'abord.",

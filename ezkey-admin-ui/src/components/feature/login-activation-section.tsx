@@ -3,14 +3,17 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Check, Copy } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { IntegratedDeliveryNotice } from '@/components/feature/integrated-delivery-notice';
+import { useAuth } from '@/context/use-auth';
 import { fetchApi } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
+import { isBrowserSessionCookieBuild, type AuthSession } from '@/lib/auth';
 import { enrollmentPayloadToQrDataUrl } from '@/lib/enrollment-qr-data-url';
 import { buildEnrollmentQrPayloadJson } from '@/lib/enrollment-qr-payload';
 
@@ -23,9 +26,25 @@ interface AdminActivationResponseShape {
   enrollmentChallenge?: number;
 }
 
+interface EvaluatorTempSessionResponseShape {
+  success?: boolean;
+  message?: string;
+  token?: string;
+  adminType?: string;
+  username?: string;
+  expiresAt?: string;
+  adminId?: number;
+  tenantId?: number | null;
+  tenantName?: string | null;
+  tokenPurpose?: string;
+  csrfToken?: string;
+}
+
 interface LoginActivationSectionProps {
   onBackToPasswordless: () => void;
   authApiPublicBaseUrl?: string | null;
+  /** When true (self-reg ON), show explore temporary console vs enroll device fork. */
+  temporaryExploreEnabled?: boolean;
 }
 
 type QrRenderState = {
@@ -34,11 +53,16 @@ type QrRenderState = {
   dataUrl: string | null;
 };
 
+type PostActivateView = 'fork' | 'enroll';
+
 export function LoginActivationSection({
   onBackToPasswordless,
   authApiPublicBaseUrl,
+  temporaryExploreEnabled = false,
 }: LoginActivationSectionProps) {
   const { t } = useTranslation(['login']);
+  const navigate = useNavigate();
+  const { login } = useAuth();
 
   const activationSchema = useMemo(
     () =>
@@ -66,8 +90,10 @@ export function LoginActivationSection({
 
   const [activationResult, setActivationResult] =
     useState<AdminActivationResponseShape | null>(null);
+  const [postActivateView, setPostActivateView] = useState<PostActivateView>('fork');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [exploring, setExploring] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
   const [enrollmentIdCopied, setEnrollmentIdCopied] = useState(false);
   const [qrState, setQrState] = useState<QrRenderState>({
@@ -76,7 +102,18 @@ export function LoginActivationSection({
     dataUrl: null,
   });
 
+  const showFork =
+    activationResult?.enrollmentProofToken != null &&
+    temporaryExploreEnabled &&
+    postActivateView === 'fork';
+  const showEnroll =
+    activationResult?.enrollmentProofToken != null &&
+    (!temporaryExploreEnabled || postActivateView === 'enroll');
+
   const qrInput = useMemo(() => {
+    if (!showEnroll) {
+      return null;
+    }
     const proofToken = activationResult?.enrollmentProofToken;
     if (proofToken == null) {
       return null;
@@ -99,6 +136,7 @@ export function LoginActivationSection({
     activationResult?.enrollmentId,
     activationResult?.enrollmentProofToken,
     authApiPublicBaseUrl,
+    showEnroll,
   ]);
 
   useEffect(() => {
@@ -150,7 +188,8 @@ export function LoginActivationSection({
   const hasValidQrInput = qrInput != null && !qrInput.invalid;
   const isCurrentQrResult = hasValidQrInput && qrState.key === qrInput.key;
   const qrLoading = isCurrentQrResult && qrState.status === 'loading';
-  const qrError = (qrInput != null && qrInput.invalid) || (isCurrentQrResult && qrState.status === 'error');
+  const qrError =
+    (qrInput != null && qrInput.invalid) || (isCurrentQrResult && qrState.status === 'error');
   const qrDataUrl = isCurrentQrResult && qrState.status === 'ready' ? qrState.dataUrl : null;
 
   const onActivate = async (values: ActivationForm) => {
@@ -173,10 +212,72 @@ export function LoginActivationSection({
       }
 
       setActivationResult(data);
+      setPostActivateView(temporaryExploreEnabled ? 'fork' : 'enroll');
     } catch (err) {
       setErrorMessage(getTranslatedApiError(err, t, t('login:activation.activateFailed')));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const onExploreTemporary = async () => {
+    if (
+      activationResult?.enrollmentId == null ||
+      activationResult.enrollmentProofToken == null
+    ) {
+      return;
+    }
+    setExploring(true);
+    setErrorMessage(null);
+    try {
+      const data = await fetchApi<EvaluatorTempSessionResponseShape>(
+        '/api/v1/admin/auth/evaluator-temp',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            enrollmentId: activationResult.enrollmentId,
+            enrollmentProofToken: activationResult.enrollmentProofToken,
+          }),
+          requireAuth: false,
+        },
+      );
+
+      if (!data.success || !data.username || !data.adminType || !data.expiresAt) {
+        setErrorMessage(data.message ?? t('login:activation.exploreFailed'));
+        return;
+      }
+
+      const cookieBuild = isBrowserSessionCookieBuild();
+      if (cookieBuild) {
+        const restored = await fetchApi<AuthSession>('/api/v1/admin/auth/me', {
+          method: 'GET',
+          requireAuth: false,
+        });
+        login(restored);
+      } else {
+        if (typeof data.token !== 'string' || data.token.length === 0) {
+          setErrorMessage(t('login:activation.exploreFailed'));
+          return;
+        }
+        login({
+          token: data.token,
+          username: data.username,
+          adminType: data.adminType,
+          expiresAt:
+            typeof data.expiresAt === 'string' ? data.expiresAt : String(data.expiresAt),
+          ...(data.adminId != null && { adminId: data.adminId }),
+          ...(data.tenantId != null && { tenantId: data.tenantId }),
+          ...(data.tenantName != null &&
+            data.tenantName !== '' && { tenantName: data.tenantName }),
+          ...(data.csrfToken != null && { csrfToken: data.csrfToken }),
+          tokenPurpose: data.tokenPurpose ?? 'EVALUATOR_TEMP',
+        });
+      }
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      setErrorMessage(getTranslatedApiError(err, t, t('login:activation.exploreFailed')));
+    } finally {
+      setExploring(false);
     }
   };
 
@@ -207,16 +308,57 @@ export function LoginActivationSection({
   const handleBackToLogin = () => {
     setActivationResult(null);
     setErrorMessage(null);
+    setPostActivateView('fork');
     onBackToPasswordless();
   };
 
-  if (activationResult?.enrollmentProofToken != null) {
+  if (showFork) {
+    return (
+      <div className="flex flex-col gap-4" data-testid="login-activation-fork">
+        <Alert variant="success" title={t('login:activation.successTitle')}>
+          {t('login:activation.successBody', {
+            username: activationResult?.username ?? '',
+          })}
+        </Alert>
+        <p className="text-sm text-fg-muted">{t('login:activation.forkIntro')}</p>
+        {errorMessage && <Alert variant="error">{errorMessage}</Alert>}
+        <div className="flex flex-col gap-3">
+          <Button
+            type="button"
+            className="w-full"
+            isLoading={exploring}
+            onClick={() => void onExploreTemporary()}
+            data-testid="login-activation-explore-temp"
+          >
+            {t('login:activation.exploreTemporary')}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={() => {
+              setErrorMessage(null);
+              setPostActivateView('enroll');
+            }}
+            data-testid="login-activation-enroll-device"
+          >
+            {t('login:activation.enrollDevice')}
+          </Button>
+        </div>
+        <Button type="button" variant="ghost" size="sm" className="w-full" onClick={handleBackToLogin}>
+          {t('login:activation.backToLogin')}
+        </Button>
+      </div>
+    );
+  }
+
+  if (showEnroll) {
     return (
       <div className="flex flex-col gap-4" data-testid="login-activation-success">
         <section className="space-y-3">
           <Alert variant="success" title={t('login:activation.successTitle')}>
             {t('login:activation.successBody', {
-              username: activationResult.username ?? '',
+              username: activationResult?.username ?? '',
             })}
           </Alert>
           <IntegratedDeliveryNotice summary={t('common:integratedDelivery.summaryBootstrap')}>
@@ -262,7 +404,7 @@ export function LoginActivationSection({
                 {t('login:activation.bindingChallenge')}
               </p>
               <p className="font-mono text-3xl font-black tracking-widest tabular-nums">
-                {String(activationResult.enrollmentChallenge ?? '')}
+                {String(activationResult?.enrollmentChallenge ?? '')}
               </p>
             </div>
 
@@ -274,7 +416,7 @@ export function LoginActivationSection({
                 {t('login:activation.manualEntryHint')}
               </p>
               <div className="mt-3 space-y-4">
-                {activationResult.enrollmentId != null && (
+                {activationResult?.enrollmentId != null && (
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
                       {t('login:activation.enrollmentIdLabel')}
@@ -306,7 +448,7 @@ export function LoginActivationSection({
                     {t('login:activation.enrollmentProofToken')}
                   </p>
                   <div className="border-2 border-fg p-2 font-mono text-[11px] break-all bg-bg leading-relaxed max-h-32 overflow-y-auto">
-                    {String(activationResult.enrollmentProofToken)}
+                    {String(activationResult?.enrollmentProofToken)}
                   </div>
                   <Button
                     type="button"
@@ -334,6 +476,17 @@ export function LoginActivationSection({
           </div>
         </section>
 
+        {temporaryExploreEnabled && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="w-full"
+            onClick={() => setPostActivateView('fork')}
+          >
+            {t('login:activation.backToFork')}
+          </Button>
+        )}
         <Button className="w-full shrink-0" onClick={handleBackToLogin}>
           {t('login:activation.backToLogin')}
         </Button>

@@ -10,6 +10,7 @@
 
 package org.ezkey.admin.security;
 
+import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 
 /**
@@ -27,6 +28,8 @@ import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
  *   <li><b>tenantId:</b> Tenant scope (null for GLOBAL_ADMIN, required for others)
  *   <li><b>integrationId:</b> Integration scope (null for GLOBAL_ADMIN and TENANT_ADMIN, required
  *       for INTEGRATION_ADMIN)
+ *   <li><b>tokenPurpose:</b> Session purpose ({@link AdminTokenPurpose#SESSION}, {@link
+ *       AdminTokenPurpose#EVALUATOR_TEMP}, …)
  * </ul>
  *
  * <p><b>Usage:</b> This principal is used by AccessControlService to make scope-aware authorization
@@ -41,11 +44,29 @@ import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
  * @param tenantId Tenant scope (null for GLOBAL_ADMIN, required for others)
  * @param integrationId Integration scope (null for GLOBAL_ADMIN and TENANT_ADMIN, required for
  *     INTEGRATION_ADMIN)
+ * @param tokenPurpose Purpose of the authenticating token
  * @author Ezkey contributors
  * @since 2025
  */
 public record AdminPrincipal(
-    Integer adminId, AdminType adminType, Integer tenantId, Integer integrationId) {
+    Integer adminId,
+    AdminType adminType,
+    Integer tenantId,
+    Integer integrationId,
+    AdminTokenPurpose tokenPurpose) {
+
+  /**
+   * Compatibility constructor defaulting purpose to {@link AdminTokenPurpose#SESSION}.
+   *
+   * @param adminId administrator id
+   * @param adminType administrator type
+   * @param tenantId tenant scope
+   * @param integrationId integration scope
+   */
+  public AdminPrincipal(
+      Integer adminId, AdminType adminType, Integer tenantId, Integer integrationId) {
+    this(adminId, adminType, tenantId, integrationId, AdminTokenPurpose.SESSION);
+  }
 
   /**
    * Checks if this principal represents a global administrator.
@@ -72,5 +93,14 @@ public record AdminPrincipal(
    */
   public boolean isIntegrationAdmin() {
     return adminType == AdminType.INTEGRATION_ADMIN;
+  }
+
+  /**
+   * Whether this authentication is a Mode C temporary evaluator console session.
+   *
+   * @return true when token purpose is {@link AdminTokenPurpose#EVALUATOR_TEMP}
+   */
+  public boolean isEvaluatorTemp() {
+    return tokenPurpose == AdminTokenPurpose.EVALUATOR_TEMP;
   }
 }

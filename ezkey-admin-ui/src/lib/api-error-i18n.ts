@@ -73,12 +73,28 @@ export function problemTypeToTranslationKey(type: string | undefined): string | 
  * when non-empty (so business-specific messages are not replaced by generic titles), then locale by
  * {@code type}, then {@link getApiErrorMessage}.
  */
+/**
+ * Softens deny-list 403 copy from temporary evaluator console sessions into locale strings.
+ *
+ * @param detail RFC 9457 problem detail text
+ */
+export function isTemporarySessionRestrictionDetail(detail: string): boolean {
+  const lower = detail.toLowerCase();
+  return lower.includes('temporary console session') || lower.includes('temporary evaluator');
+}
+
 export function getTranslatedApiError(error: unknown, t: TFunction, fallback: string): string {
   if (!(error instanceof ApiError)) return fallback;
   const rel = problemTypeToTranslationKey(error.problemDetail?.type);
   const detail =
     typeof error.problemDetail?.detail === 'string' ? error.problemDetail.detail.trim() : '';
   const params = parseProblemParameters(error.problemDetail);
+
+  if (detail && isTemporarySessionRestrictionDetail(detail)) {
+    if (i18n.exists('authorization.temporary-session-restricted', { ns: 'errors' })) {
+      return t('authorization.temporary-session-restricted', { ns: 'errors' });
+    }
+  }
 
   if (
     rel != null &&

@@ -43,7 +43,7 @@ class PublicInstanceInfoControllerTest {
   void getInstanceInfo_delegates() {
     PublicInstanceInfoResponseDto dto =
         new PublicInstanceInfoResponseDto(
-            "https://auth.example.com:8080", "Acme", "Desc", "https://about.example.com");
+            "https://auth.example.com:8080", "Acme", "Desc", "https://about.example.com", null);
     when(publicInstanceInfoService.getPublicInstanceInfo()).thenReturn(dto);
 
     ResponseEntity<PublicInstanceInfoResponseDto> response = controller.getInstanceInfo();

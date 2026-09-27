@@ -23,7 +23,7 @@ import org.springframework.stereotype.Service;
 /**
  * Applies global daily and per-IP success limits for evaluator self-registration.
  *
- * <p>In-memory counters are acceptable for single-node EXP1 preview instances.
+ * <p>In-memory counters are acceptable for single-node EXP1 / community preview instances.
  */
 @Service
 public class EvaluatorSelfRegistrationRateLimiter {
@@ -33,11 +33,16 @@ public class EvaluatorSelfRegistrationRateLimiter {
   private volatile LocalDate currentUtcDay = LocalDate.now(ZoneOffset.UTC);
   private final AtomicInteger dailySuccessCount = new AtomicInteger(0);
 
-  private final Cache<String, Boolean> ipSuccessMarkers;
+  private final Cache<String, AtomicInteger> ipSuccessCounts;
 
+  /**
+   * Creates the rate limiter.
+   *
+   * @param properties self-registration daily and per-IP limits
+   */
   public EvaluatorSelfRegistrationRateLimiter(EvaluatorSelfRegistrationProperties properties) {
     this.properties = properties;
-    this.ipSuccessMarkers =
+    this.ipSuccessCounts =
         Caffeine.newBuilder()
             .expireAfterWrite(Duration.ofHours(Math.max(1, properties.getPerIpWindowHours())))
             .maximumSize(10_000)
@@ -56,13 +61,15 @@ public class EvaluatorSelfRegistrationRateLimiter {
       throw new EvaluatorSelfRegistrationCapacityException();
     }
     String ipKey = normalizeIpKey(clientIp);
-    if (ipKey != null && ipSuccessMarkers.getIfPresent(ipKey) != null) {
-      throw new EvaluatorSelfRegistrationCapacityException();
+    int perIpMax = Math.max(1, properties.getPerIpMaxSuccess());
+    if (ipKey != null) {
+      AtomicInteger ipCount = ipSuccessCounts.get(ipKey, _ -> new AtomicInteger(0));
+      if (ipCount.get() >= perIpMax) {
+        throw new EvaluatorSelfRegistrationCapacityException();
+      }
+      ipCount.incrementAndGet();
     }
     dailySuccessCount.incrementAndGet();
-    if (ipKey != null) {
-      ipSuccessMarkers.put(ipKey, Boolean.TRUE);
-    }
   }
 
   /** Resets the daily counter when the UTC day rolls over (visible for tests). */

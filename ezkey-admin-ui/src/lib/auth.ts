@@ -32,6 +32,22 @@ export interface AuthSession {
   tenantName?: string | null;
   /** Non-secret CSRF token used only by cookie-authenticated browser sessions. */
   csrfToken?: string;
+  /**
+   * Session purpose from the Admin API. {@code EVALUATOR_TEMP} is a one-shot temporary evaluator
+   * console foothold; omit or {@code SESSION} for normal passwordless login.
+   */
+  tokenPurpose?: string;
+}
+
+/**
+ * Whether the session is a one-shot temporary evaluator console ({@code EVALUATOR_TEMP}).
+ *
+ * @param session current auth session, or null/undefined when logged out
+ */
+export function isEvaluatorTempSession(
+  session: Pick<AuthSession, 'tokenPurpose'> | null | undefined,
+): boolean {
+  return session?.tokenPurpose === 'EVALUATOR_TEMP';
 }
 
 const AUTH_KEY = 'ezkey_admin_auth';

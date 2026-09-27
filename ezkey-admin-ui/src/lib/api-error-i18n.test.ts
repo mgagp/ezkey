@@ -5,6 +5,7 @@ import { ApiError, type ProblemDetail } from './api-client';
 import {
   EZKEY_PROBLEM_TYPE_BASE,
   getTranslatedApiError,
+  isTemporarySessionRestrictionDetail,
   parseProblemParameters,
   problemTypeToTranslationKey,
 } from './api-error-i18n';
@@ -107,6 +108,26 @@ describe('getTranslatedApiError', () => {
   it('returns fallback for non-ApiError', () => {
     const t = i18n.t.bind(i18n);
     expect(getTranslatedApiError(new Error('x'), t, 'fb')).toBe('fb');
+  });
+
+  it('softens temporary console deny-list 403 into locale copy', async () => {
+    await i18n.changeLanguage('fr');
+    expect(
+      isTemporarySessionRestrictionDetail(
+        'This action is not available during a temporary console session.',
+      ),
+    ).toBe(true);
+    const err = new ApiError(
+      403,
+      {},
+      'This action is not available during a temporary console session.',
+      {
+        type: `${EZKEY_PROBLEM_TYPE_BASE}/authorization/access-denied`,
+        detail: 'This action is not available during a temporary console session.',
+      },
+    );
+    const t = i18n.t.bind(i18n);
+    expect(getTranslatedApiError(err, t, 'fallback')).toContain('accès console temporaire');
   });
 
   it('interpolates RFC 9457 parameters when translation exists (en)', async () => {

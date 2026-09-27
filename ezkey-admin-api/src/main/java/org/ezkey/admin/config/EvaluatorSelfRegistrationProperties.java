@@ -32,13 +32,19 @@ public class EvaluatorSelfRegistrationProperties {
 
   private int perIpWindowHours = 24;
 
-  private int perIpMaxSuccess = 1;
+  private int perIpMaxSuccess = 3;
 
   /** Admin UI origin returned after signup; empty until set for a live surface. */
   private String adminUiUrl = "";
 
   /** Guided tour URL returned after signup; empty until set for a live surface. */
   private String guidedTourUrl = "";
+
+  /**
+   * Absolute TTL in hours for {@code EVALUATOR_TEMP} temporary console sessions (Mode C). Only
+   * meaningful when {@link #enabled} is {@code true}. Default 8 hours.
+   */
+  private int temporarySessionTtlHours = 8;
 
   public boolean isEnabled() {
     return enabled;
@@ -86,5 +92,13 @@ public class EvaluatorSelfRegistrationProperties {
 
   public void setGuidedTourUrl(String guidedTourUrl) {
     this.guidedTourUrl = guidedTourUrl;
+  }
+
+  public int getTemporarySessionTtlHours() {
+    return temporarySessionTtlHours;
+  }
+
+  public void setTemporarySessionTtlHours(int temporarySessionTtlHours) {
+    this.temporarySessionTtlHours = temporarySessionTtlHours;
   }
 }

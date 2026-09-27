@@ -5,7 +5,7 @@
 - **Document ID:** `database-role-permissions-matrix`
 - **Status:** `active`
 - **Created at:** `2026-07-16`
-- **Last reviewed at:** `2026-09-25`
+- **Last reviewed at:** `2026-09-26`
 - **Related backlog:** [`I-2026-0021`](../product-docs/global/backlog/ideas/I-2026-0021-postgresql-application-role-permissions-matrix.md)
 - **Related TB:** [`TB-2026-07-16`](../product-docs/global/backlog/TB-2026-07-16-postgresql-application-role-split.md)
 - **Companion docs:** [`DATABASE_PARTITIONING_SECURITY_ANALYSIS.md`](DATABASE_PARTITIONING_SECURITY_ANALYSIS.md), [`OPERATIONAL.md`](OPERATIONAL.md)
@@ -59,6 +59,13 @@ Auth-api and integration-api have **no** ShedLock / `@EnableScheduling`.
 
 All three APIs may **INSERT/UPDATE** `ezkey_alert` and `ezkey_audit_chain_incident` via `AuditChainHeartbeatGuardService.evaluate()` (peripheral heartbeat), not via schedulers.
 
+### Temporary evaluator console — admin-api owns `ezkey_admin_tokens`
+
+`EVALUATOR_TEMP` supersede is **admin-api only** (`ezkey_admin`): (1) SESSION mint always
+deactivates active TEMP for that admin; (2) TEMP bearer validation rejects and deactivates when
+the admin’s enrollment is already VERIFIED. Auth-api has **no** DML on `ezkey_admin_tokens`
+(enrollment-verify stays enrollment-only).
+
 ### Dropped tables (no grants)
 
 - `ezkey_integration_i18n` — dropped in V7
@@ -74,7 +81,7 @@ Legend: **S**=SELECT · **I**=INSERT · **U**=UPDATE · **D**=DELETE · **X**=EX
 | `flyway_schema_history` | full | — | — | — | Migration module only |
 | `ezkey_tenant` | owner | S I U | S | S | Writes: admin provisioning / bootstrap |
 | `ezkey_admin` | owner | S I U | S | S | Auth/integration: join / eligibility reads |
-| `ezkey_admin_tokens` | owner | S I U D | — | — | Cleanup DELETE in admin-api |
+| `ezkey_admin_tokens` | owner | S I U D | — | — | Admin only (mint/cleanup + TEMP supersede at SESSION mint and validation gate). Auth/Integration: none |
 | `ezkey_integration` | owner | S I U D | S | S | |
 | `ezkey_enrollment` | owner | S I U D | S U | S | Auth: bind/verify/`lastUsedAt`; integration: read |
 | `ezkey_auth_attempt` | owner | S I U | S U | S I U | Auth does not create attempts |

@@ -1,7 +1,7 @@
 import { lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { RouteErrorBoundary } from '@/components/route-error-boundary';
-import { ProtectedRoute, RootLayout, SuspensePage } from '@/route-shells';
+import { GlobalAdminRoute, ProtectedRoute, RootLayout, SuspensePage } from '@/route-shells';
 
 const LoginPage = lazy(() => import('@/pages/login'));
 const DashboardPage = lazy(() => import('@/pages/dashboard'));
@@ -53,21 +53,21 @@ export const router = createBrowserRouter([
   {
     path: '/tenants',
     element: (
-      <ProtectedRoute>
+      <GlobalAdminRoute>
         <SuspensePage>
           <TenantsPage />
         </SuspensePage>
-      </ProtectedRoute>
+      </GlobalAdminRoute>
     ),
   },
   {
     path: '/tenants/:id',
     element: (
-      <ProtectedRoute>
+      <GlobalAdminRoute>
         <SuspensePage>
           <TenantDetailPage />
         </SuspensePage>
-      </ProtectedRoute>
+      </GlobalAdminRoute>
     ),
   },
   {
@@ -133,31 +133,31 @@ export const router = createBrowserRouter([
   {
     path: '/integrity',
     element: (
-      <ProtectedRoute>
+      <GlobalAdminRoute>
         <SuspensePage>
           <IntegrityPage />
         </SuspensePage>
-      </ProtectedRoute>
+      </GlobalAdminRoute>
     ),
   },
   {
     path: '/alerts',
     element: (
-      <ProtectedRoute>
+      <GlobalAdminRoute>
         <SuspensePage>
           <AlertsPage />
         </SuspensePage>
-      </ProtectedRoute>
+      </GlobalAdminRoute>
     ),
   },
   {
     path: '/alerts/:alertId',
     element: (
-      <ProtectedRoute>
+      <GlobalAdminRoute>
         <SuspensePage>
           <AlertDetailPage />
         </SuspensePage>
-      </ProtectedRoute>
+      </GlobalAdminRoute>
     ),
   },
   {
@@ -193,11 +193,11 @@ export const router = createBrowserRouter([
   {
     path: '/encryption-keys',
     element: (
-      <ProtectedRoute>
+      <GlobalAdminRoute>
         <SuspensePage>
           <EncryptionKeysPage />
         </SuspensePage>
-      </ProtectedRoute>
+      </GlobalAdminRoute>
     ),
   },
 

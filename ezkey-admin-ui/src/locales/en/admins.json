@@ -133,6 +133,7 @@
     "toastActivated": "Admin \"{{username}}\" activated.",
     "errorActivate": "Activation failed",
     "pendingActivationNotice": "This administrator is pending activation. The first enrollment will only be created when the activation code is consumed. Recovery codes are issued later from the authenticated admin-management flow.",
+    "temporarySessionBindHint": "Temporary session: use Credentials below to enroll a device when ready. Binding ends this temporary access and requires a fresh sign-in.",
     "operationalWarning": {
       "tenantInactive": "This admin's tenant is currently inactive. Login attempts by this admin will be rejected until the tenant is reactivated."
     },

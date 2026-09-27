@@ -350,6 +350,9 @@ export default function LoginPage() {
             <LoginActivationSection
               onBackToPasswordless={() => setAuthFlow('passwordless')}
               authApiPublicBaseUrl={publicInstanceInfo?.authApiPublicBaseUrl ?? null}
+              temporaryExploreEnabled={
+                publicInstanceInfo?.evaluatorSelfRegistrationEnabled === true
+              }
             />
           )}
 
