@@ -68,8 +68,7 @@ class AdminTokenPurposeMigrationContractTest {
       "V24 partial unique index enforces one EVALUATOR_TEMP per admin_id without active filter")
   void v24PartialUniqueIndexOneEvaluatorTempPerAdmin() throws IOException {
     String sql =
-        readClasspathResource(
-            "db/migration/V24__uq_admin_tokens_one_evaluator_temp_per_admin.sql");
+        readClasspathResource("db/migration/V24__uq_admin_tokens_one_evaluator_temp_per_admin.sql");
 
     assertThat(sql)
         .containsIgnoringCase("uq_admin_tokens_one_evaluator_temp_per_admin")
