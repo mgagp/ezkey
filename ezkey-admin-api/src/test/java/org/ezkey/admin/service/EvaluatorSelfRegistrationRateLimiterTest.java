@@ -30,7 +30,8 @@ class EvaluatorSelfRegistrationRateLimiterTest {
     properties = new EvaluatorSelfRegistrationProperties();
     properties.setDailyCap(5);
     properties.setPerIpWindowHours(24);
-    // Product default is 3; keep explicit so this suite does not drift if the field default changes.
+    // Product default is 3; keep explicit so this suite does not drift if the field default
+    // changes.
     properties.setPerIpMaxSuccess(3);
     limiter = new EvaluatorSelfRegistrationRateLimiter(properties);
   }
@@ -65,5 +66,16 @@ class EvaluatorSelfRegistrationRateLimiterTest {
     assertThrows(
         EvaluatorSelfRegistrationCapacityException.class,
         () -> limiter.verifyAndRecordSuccess("203.0.113.10"));
+  }
+
+  @Test
+  @DisplayName("honors per-ip-max-success=1 (blocks second success from same IP)")
+  void blocksSecondSuccessWhenBudgetIsOne() {
+    properties.setPerIpMaxSuccess(1);
+    limiter = new EvaluatorSelfRegistrationRateLimiter(properties);
+    limiter.verifyAndRecordSuccess("203.0.113.20");
+    assertThrows(
+        EvaluatorSelfRegistrationCapacityException.class,
+        () -> limiter.verifyAndRecordSuccess("203.0.113.20"));
   }
 }
