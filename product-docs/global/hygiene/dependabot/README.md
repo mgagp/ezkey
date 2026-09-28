@@ -62,6 +62,8 @@ To park a new later-train disruptor: comment + `gh pr edit <n> --add-label defer
 As of 2026-09-26: Dependabot PRs `#582`–`#585` were **closed without merge** (Dependabot
 supersede 2026-09-22) after chantier F landed the versions otherwise. Residual human closeout is
 **issue `#627`**, not those PRs — do not reopen them.
+**2026-09-28 hebdo:** active Dependabot queue empty (only deferred `#337`/`#498`); `#627` Pixel
+smoke still pending — see [`2026-09-28-pass-1.md`](2026-09-28-pass-1.md).
 
 Weekly peel still skips any PR labeled `deferred:rn-upgrade`. To park *future* RN-coupled mobile
 deps until a line bump: comment + `gh pr edit <n> --add-label deferred:rn-upgrade`.
