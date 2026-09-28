@@ -168,7 +168,7 @@ public class AdminTokenValidationService {
    * <p>Looks up the token by bearer hash, then delegates to {@link
    * #updateTokenLastUsed(AdminToken)}. Prefer the entity overload on the authenticated request hot
    * path when {@link #validateTokenWithRelations(String)} already loaded the row (JavaMelody A1 /
-   * JM-001: avoid a second SELECT).
+   * JM-001: avoid a second SELECT; the entity overload does not merge).
    *
    * @param token the bearer token to update
    * @return updated expiration timestamp when the token was found and updated
@@ -193,30 +193,41 @@ public class AdminTokenValidationService {
   /**
    * Updates last used and sliding expiration on an already-loaded {@link AdminToken}.
    *
-   * <p>Does not re-query by bearer hash. For SESSION tokens, expiration is extended to now +
-   * expirationHours. Recovery tokens update {@code lastUsedAt} only (SEC-021: never extend).
+   * <p>Does not re-query by bearer hash (JavaMelody A1 / JM-001). Issues a conditional UPDATE that
+   * succeeds only while {@code active = true}. Does not {@code save} or mutate the entity: with
+   * Open Session in View, merging the loaded row can write {@code active=true} and revive a token
+   * revoked concurrently by logout, login rotation, or deactivation.
    *
-   * @param adminToken the loaded token entity (must be managed or attachable for save)
-   * @return updated expiration timestamp when the update succeeds; empty if {@code adminToken} is
-   *     null or the update fails
+   * <p>For SESSION tokens, expiration is extended to now + expirationHours. Recovery and
+   * EVALUATOR_TEMP tokens keep the loaded expiration (SEC-021 / Mode C absolute TTL).
+   *
+   * @param adminToken the loaded token entity (id and purpose are read; the instance is not saved)
+   * @return updated expiration when an active row was touched; empty if the token is null, has no
+   *     id, is inactive, or the update fails
    */
   @Transactional
   public Optional<OffsetDateTime> updateTokenLastUsed(AdminToken adminToken) {
-    if (adminToken == null) {
+    if (adminToken == null || adminToken.getTokenId() == null) {
       return Optional.empty();
     }
     try {
       OffsetDateTime now = OffsetDateTime.now();
-      adminToken.setLastUsedAt(now);
+      OffsetDateTime expiresAt;
       // Sliding expiration for SESSION tokens only (SEC-021: never extend RECOVERY;
       // Mode C: EVALUATOR_TEMP is absolute TTL).
       if (adminToken.getTokenPurpose() == AdminTokenPurpose.SESSION) {
         int hours = Math.max(1, rotationProperties.getExpirationHours());
-        adminToken.setExpiresAt(now.plusHours(hours));
+        expiresAt = now.plusHours(hours);
+      } else {
+        expiresAt = adminToken.getExpiresAt();
       }
-      tokenRepository.save(adminToken);
+      int updated = tokenRepository.touchLastUsedIfActive(adminToken.getTokenId(), now, expiresAt);
+      if (updated == 0) {
+        logger.debug("Skipped last-used update: token is no longer active");
+        return Optional.empty();
+      }
       logger.debug("✅ Updated last used and expiration for token");
-      return Optional.ofNullable(adminToken.getExpiresAt());
+      return Optional.ofNullable(expiresAt);
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("❌ Error updating token timestamp: {}", e.getMessage());
     }
