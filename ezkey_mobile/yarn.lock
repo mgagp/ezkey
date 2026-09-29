@@ -6126,7 +6126,7 @@ __metadata:
     react: "npm:19.3.0"
     react-i18next: "npm:17.0.14"
     react-native: "npm:0.87.1"
-    react-native-config: "npm:1.6.1"
+    react-native-config: "npm:1.7.2"
     react-native-gesture-handler: "npm:3.0.2"
     react-native-keychain: "npm:10.0.0"
     react-native-nitro-image: "npm:0.15.2"
@@ -9650,9 +9650,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-config@npm:1.6.1":
-  version: 1.6.1
-  resolution: "react-native-config@npm:1.6.1"
+"react-native-config@npm:1.7.2":
+  version: 1.7.2
+  resolution: "react-native-config@npm:1.7.2"
   peerDependencies:
     react: "*"
     react-native: "*"
@@ -9660,7 +9660,7 @@ __metadata:
   peerDependenciesMeta:
     react-native-windows:
       optional: true
-  checksum: 10c0/9e2bbb7fb04bac878471f7b06132d84233c482952fc7dd0b651669a62cd35c35428302c7502a92898402505ec9b8d7997848122356b42de5c072dcce549d5813
+  checksum: 10c0/2c414826632e465e080b426b64e20dd540dd639597cb81ff58d840e715b3cee25998c3a392bd37023f0353e036de343f26c31255cc3f17f7733d7d1821de6d13
   languageName: node
   linkType: hard
 
