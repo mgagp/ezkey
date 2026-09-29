@@ -3138,24 +3138,89 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rnx-kit/third-party-notices@npm:3.0.0":
-  version: 3.0.0
-  resolution: "@rnx-kit/third-party-notices@npm:3.0.0"
+"@rnx-kit/third-party-notices@npm:3.0.3":
+  version: 3.0.3
+  resolution: "@rnx-kit/third-party-notices@npm:3.0.3"
   dependencies:
     "@rnx-kit/console": "npm:^3.0.0"
-    "@rnx-kit/tools-node": "npm:^3.0.0"
+    "@rnx-kit/tools-node": "npm:^3.0.6"
     spdx-expression-parse: "npm:^4.0.0"
-    yargs: "npm:^16.0.0"
+    yargs: "npm:^17.0.0"
   bin:
-    build-tpn: lib/build-tpn.js
-  checksum: 10c0/034e4650a3a543b75fcd26caf60fa38b66cfc6141f70ddad9d98e739544901ed284e7978146b14196c1cb11227145a722983c62d7baed4bced3b13ec949fa955
+    build-tpn: ./lib/build-tpn.js
+  checksum: 10c0/f4af464ffe163586621dfdaeacc3e11364b22359abc432b31030f5897bc757e4bf70a40cfc412b8bad3eb47c797b80378c9bdf9f390f0324be6c4181ae18cd18
   languageName: node
   linkType: hard
 
-"@rnx-kit/tools-node@npm:^3.0.0":
-  version: 3.0.3
-  resolution: "@rnx-kit/tools-node@npm:3.0.3"
-  checksum: 10c0/5fa2123cb156fc6d268c95b2fa094b3ccf5f264ff5dcfd08f024454f45972093144e5745d4bcbe84e8f731faf01b7bfb6d3bca3e7c97ec89da3fc2e3e1121959
+"@rnx-kit/tools-node@npm:^3.0.6":
+  version: 3.0.6
+  resolution: "@rnx-kit/tools-node@npm:3.0.6"
+  dependencies:
+    "@rnx-kit/types-node": "npm:^1.0.0"
+  checksum: 10c0/cef3a274d3d8832a5673b608d8da7583abbf4860fcf3fa8a1c2f2eeb5e75ba7fffbe45e8f10da2ae095ef4b70b4534acf5c397b16a4e0672828182ea92457d28
+  languageName: node
+  linkType: hard
+
+"@rnx-kit/types-bundle-config@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "@rnx-kit/types-bundle-config@npm:1.0.1"
+  dependencies:
+    "@rnx-kit/types-metro-serializer-esbuild": "npm:^1.0.0"
+    "@rnx-kit/types-plugin-cyclic-dependencies": "npm:^1.0.0"
+    "@rnx-kit/types-plugin-duplicates-checker": "npm:^1.0.0"
+    "@rnx-kit/types-plugin-typescript": "npm:^1.0.0"
+  peerDependencies:
+    metro: ">=0.83.0"
+  peerDependenciesMeta:
+    metro:
+      optional: true
+  checksum: 10c0/0d6b8c3bf43d0ce2fbe509fb7a1de057412352c8384c6e459a2a99caa1ba1c03384cea990e2c04dd50329442401ee5eabf6a39c948d4e84a047c3c2b0ba225a1
+  languageName: node
+  linkType: hard
+
+"@rnx-kit/types-kit-config@npm:^1.0.0":
+  version: 1.0.1
+  resolution: "@rnx-kit/types-kit-config@npm:1.0.1"
+  dependencies:
+    "@rnx-kit/types-bundle-config": "npm:^1.0.1"
+  checksum: 10c0/ab59610707db767ec36e3579fdd09f82d40fa9a01a420a7f643637e68c6cb02af4ae693525263a21194a1869e4627be75bc04ca1afd861b6441b9bfdb030fcf6
+  languageName: node
+  linkType: hard
+
+"@rnx-kit/types-metro-serializer-esbuild@npm:^1.0.0":
+  version: 1.0.2
+  resolution: "@rnx-kit/types-metro-serializer-esbuild@npm:1.0.2"
+  checksum: 10c0/90cebe6c5296654a071ff69934cc8b64475604e0fa2fa67b524faa636e36a6784485ac534c76c8a965649214d2e14b7d38f812477805446f14188c31c376141d
+  languageName: node
+  linkType: hard
+
+"@rnx-kit/types-node@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "@rnx-kit/types-node@npm:1.0.0"
+  dependencies:
+    "@rnx-kit/types-kit-config": "npm:^1.0.0"
+  checksum: 10c0/601608822853b7a875adc4945f150a00ee25db9c701922c0e0c09197a6c0ff15c328995fa22b6c39f9081ce4e965898af04e7c3bfb3a68fdb9e7a6e4c780e162
+  languageName: node
+  linkType: hard
+
+"@rnx-kit/types-plugin-cyclic-dependencies@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "@rnx-kit/types-plugin-cyclic-dependencies@npm:1.0.0"
+  checksum: 10c0/75d2ad3a17943e01472cb3385287749168d0535b6ab65a9ffc14117c25737c564ef7c06e8ac69645f40fc5d602ead7c4a9219256b8a47c786dc465d982aa845c
+  languageName: node
+  linkType: hard
+
+"@rnx-kit/types-plugin-duplicates-checker@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "@rnx-kit/types-plugin-duplicates-checker@npm:1.0.0"
+  checksum: 10c0/1d1cb8ef1f7ce28eafc486131f212f836df656bbc6fb6261934e76ca6cd26123b71d9eaec9c0ec86dc3ea803be5fb3487bd1bc0ca940fe5bfbe8a90fb0b1fedf
+  languageName: node
+  linkType: hard
+
+"@rnx-kit/types-plugin-typescript@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "@rnx-kit/types-plugin-typescript@npm:1.0.0"
+  checksum: 10c0/c792f81a3cbb8e15acbe66d0d23afa8b2e2090e725281bef90dd315bff03c01409601bf910d4d79137009e4246e4d60497fb50690477c96128c1184780ea852d
   languageName: node
   linkType: hard
 
@@ -4755,17 +4820,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cliui@npm:^7.0.2":
-  version: 7.0.4
-  resolution: "cliui@npm:7.0.4"
-  dependencies:
-    string-width: "npm:^4.2.0"
-    strip-ansi: "npm:^6.0.0"
-    wrap-ansi: "npm:^7.0.0"
-  checksum: 10c0/6035f5daf7383470cef82b3d3db00bec70afb3423538c50394386ffbbab135e26c3689c41791f911fa71b62d13d3863c712fdd70f0fbdffd938a1e6fd09aac00
-  languageName: node
-  linkType: hard
-
 "cliui@npm:^8.0.1":
   version: 8.0.1
   resolution: "cliui@npm:8.0.1"
@@ -6108,7 +6162,7 @@ __metadata:
     "@react-navigation/native": "npm:7.4.1"
     "@react-navigation/native-stack": "npm:7.19.2"
     "@react-navigation/stack": "npm:7.11.2"
-    "@rnx-kit/third-party-notices": "npm:3.0.0"
+    "@rnx-kit/third-party-notices": "npm:3.0.3"
     "@tanstack/react-query": "npm:5.103.2"
     "@types/jest": "npm:29.5.14"
     "@types/react": "npm:19.3.0"
@@ -11669,13 +11723,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yargs-parser@npm:^20.2.2":
-  version: 20.2.9
-  resolution: "yargs-parser@npm:20.2.9"
-  checksum: 10c0/0685a8e58bbfb57fab6aefe03c6da904a59769bd803a722bb098bd5b0f29d274a1357762c7258fb487512811b8063fb5d2824a3415a0a4540598335b3b086c72
-  languageName: node
-  linkType: hard
-
 "yargs-parser@npm:^21.1.1":
   version: 21.1.1
   resolution: "yargs-parser@npm:21.1.1"
@@ -11702,18 +11749,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yargs@npm:^16.0.0":
-  version: 16.2.0
-  resolution: "yargs@npm:16.2.0"
+"yargs@npm:^17.0.0":
+  version: 17.7.3
+  resolution: "yargs@npm:17.7.3"
   dependencies:
-    cliui: "npm:^7.0.2"
+    cliui: "npm:^8.0.1"
     escalade: "npm:^3.1.1"
     get-caller-file: "npm:^2.0.5"
     require-directory: "npm:^2.1.1"
-    string-width: "npm:^4.2.0"
+    string-width: "npm:^4.2.3"
     y18n: "npm:^5.0.5"
-    yargs-parser: "npm:^20.2.2"
-  checksum: 10c0/b1dbfefa679848442454b60053a6c95d62f2d2e21dd28def92b647587f415969173c6e99a0f3bab4f1b67ee8283bf735ebe3544013f09491186ba9e8a9a2b651
+    yargs-parser: "npm:^21.1.1"
+  checksum: 10c0/7a28572f7e785a57886e34fdbddb9b28756dec552e1453d5f6e7cdd00ad8721a4e8c4321d33683f5e61cacb36ad43258adbb48396b71ec4ed14abee0fc0d0c1f
   languageName: node
   linkType: hard
 
