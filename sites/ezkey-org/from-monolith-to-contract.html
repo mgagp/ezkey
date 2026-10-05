@@ -157,6 +157,21 @@
             font-size: 0.98rem;
         }
 
+        .editorial-update {
+            margin: 16px 0;
+            padding: 14px 18px;
+            background: #fff8eb;
+            border: 1px solid #f0d7a3;
+            border-left: 4px solid #c88a1a;
+            border-radius: 10px;
+        }
+
+        .editorial-update p {
+            margin-bottom: 0;
+            font-size: 0.95rem;
+            color: #3b3325;
+        }
+
         .flow-steps {
             margin: 16px 0 20px;
             padding-left: 0;
@@ -314,6 +329,10 @@
 
             <p>I&rsquo;m not looking for maximum agent autonomy. I&rsquo;m looking for quality human-AI interaction. The dispatch moment is a gating moment: it&rsquo;s when I, the human, declare that the API is solid enough to become the contract for a consumer.</p>
 
+            <div class="editorial-update">
+                <p><strong>Editorial update &mdash; September 2026.</strong> This passage remains faithful to the moment when the article was written. At the time, I deliberately kept <code>update-specs</code> as an explicit human gating gesture. Practice has since evolved, alongside agent autonomy and the level of trust that better-framed workflows can support. A larger part of the chain can now be delegated to agents, including OpenAPI refresh, consumer regeneration, and some executable validation steps. Human judgment does not disappear. It moves: away from manually running each step, and toward defining the frame, the guardrails, the level of autonomy being granted, and the final acceptance of the result.</p>
+            </div>
+
             <p>Before invoking <code>update-specs</code>, I&rsquo;ve completed the implementation, validated with unit tests, passed functional tests, and walked through the Postman collection against the live backend. I&rsquo;ve read the generated specification. I&rsquo;ve verified that the contract actually reflects the original intent.</p>
 
             <p>That reading moment &mdash; &ldquo;does this look like what I had in mind?&rdquo; &mdash; is not automated. It&rsquo;s a human judgment call, and I intend to keep it that way.</p>
@@ -331,6 +350,10 @@
             <p>The <strong>backend session</strong> starts with a feature plan, covers design, implementation, unit tests, functional tests, Postman validation. When everything is stable and the human judgment is positive, I invoke <code>update-specs</code>. The spec is extracted, formatted, dispatched to the relevant sub-folders. The session closes there. The backend contract is &ldquo;frozen&rdquo; &mdash; versioned in the repository, placed where it needs to be.</p>
 
             <p>The <strong>consumer session</strong> starts fresh. For the admin UI: new session, read the previous session&rsquo;s plan, then read the <code>openapi-spec.json</code> already present in <code>ezkey-admin-ui</code>. The agent works entirely within that sub-project. The backend is not in its context. The contract is defined by the spec &mdash; no negotiation, no approximation.</p>
+
+            <div class="editorial-update">
+                <p><strong>Editorial update &mdash; September 2026.</strong> The principle of splitting the work still helps, but it no longer needs to be expressed with quite the same rigidity. At publication time, that hard separation between backend session and consumer session helped me keep a clean context and limit drift. Today, with more autonomous agents and better-defined guardrails, a single work chain can reasonably cover more ground without losing discipline. Bounding still matters. What changes is that it relies less on an absolute cut between contexts and more on an explicit definition of what the agent can safely chain together within a given frame.</p>
+            </div>
 
             <p>Same logic for the mobile app, the Python CLI, <code>ezkey-dart</code>. Each sub-project has its own local <code>openapi-spec.json</code>, ready to use.</p>
 
@@ -358,6 +381,10 @@
                 <p>My pragmatic translation, for a solo developer who values simplicity: context is an architectural choice, not a configuration product. Fresh sessions, well-bounded subjects, versioned contracts &mdash; those are the levers that actually made the difference.</p>
 
                 <p>Slow AI is not a limitation. It&rsquo;s a positioning that preserves the quality of decisions. The agent is powerful &mdash; but it is most powerful when it knows exactly where it is and where to stop. And it&rsquo;s me who decides where that boundary sits.</p>
+
+                <div class="editorial-update">
+                    <p><strong>Editorial update &mdash; September 2026.</strong> The discipline described here remains intact, but its form has changed. I no longer think of it only as the art of holding the agent back behind a fixed boundary. I now see it more as the ability to define a mobile, explicit, and accountable boundary: what can be delegated, what must be verified, and what still belongs to direct human responsibility. The intention of the discipline stays the same, but it is expressed less through manual restraint and more through the quality of the frame within which autonomy is allowed.</p>
+                </div>
 
                 <p>The best context is not the most complete. It&rsquo;s the one that knows when to stop.</p>
             </div>
