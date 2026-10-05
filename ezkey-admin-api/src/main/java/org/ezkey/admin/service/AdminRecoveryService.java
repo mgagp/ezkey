@@ -354,7 +354,8 @@ public class AdminRecoveryService {
    * credentials (proof token and challenge) so the administrator can bind a new replacement device.
    *
    * <p><b>Security:</b> This operation invalidates the old device immediately, preventing a lost or
-   * stolen device from being used for authentication.
+   * stolen device from being used for authentication. Existing ordinary Admin API sessions are also
+   * revoked so a pre-reset bearer token cannot survive emergency recovery.
    *
    * @param enrollmentId the enrollment ID to reset
    * @param admin the administrator who owns the enrollment (from recovery token)
@@ -395,12 +396,36 @@ public class AdminRecoveryService {
     // 5. Save enrollment
     enrollmentRepository.save(enrollment);
 
+    revokeSessionTokensAfterRecoveryReset(admin, enrollmentId);
+
     logger.warn(
         "✅ Enrollment reset successful (enrollmentId: {}, device unbound; new proof token and"
             + " challenge are in the HTTP response body only)",
         enrollmentId);
 
     return enrollment;
+  }
+
+  private void revokeSessionTokensAfterRecoveryReset(EzkeyAdmin admin, Integer enrollmentId) {
+    if (admin == null || admin.getAdminId() == null) {
+      return;
+    }
+
+    int sessionTokens =
+        tokenRepository.deactivateTokensForAdminByPurpose(
+            admin.getAdminId(), AdminTokenPurpose.SESSION);
+    int tempTokens =
+        tokenRepository.deactivateTokensForAdminByPurpose(
+            admin.getAdminId(), AdminTokenPurpose.EVALUATOR_TEMP);
+    int revokedTokens = sessionTokens + tempTokens;
+    if (revokedTokens > 0) {
+      logger.info(
+          "Invalidated {} active Admin API session token(s) for admin {} after recovery reset of"
+              + " enrollment {}",
+          revokedTokens,
+          admin.getAdminId(),
+          enrollmentId);
+    }
   }
 
   /** Result object containing plain and hashed recovery codes. */
