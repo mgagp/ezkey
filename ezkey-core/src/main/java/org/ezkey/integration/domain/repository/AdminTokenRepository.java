@@ -327,6 +327,28 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
   int deactivateAllTokensForAdmin(@Param("adminId") Integer adminId);
 
   /**
+   * Updates last-used and expiration only when the token is still active.
+   *
+   * <p>Used on the authenticated request hot path instead of {@code save}/{@code merge} of a
+   * previously loaded {@link AdminToken}. Hibernate's default UPDATE writes all columns, so merging
+   * a stale entity with {@code active=true} can revive a token that logout, login rotation, or
+   * deactivation already revoked.
+   *
+   * @param tokenId token primary key
+   * @param lastUsedAt last-used timestamp to persist
+   * @param expiresAt expiration to persist (sliding TTL for SESSION; unchanged value otherwise)
+   * @return 1 when an active row was updated; 0 when the token is missing or already inactive
+   */
+  @Modifying
+  @Query(
+      "UPDATE AdminToken t SET t.lastUsedAt = :lastUsedAt, t.expiresAt = :expiresAt WHERE"
+          + " t.tokenId = :tokenId AND t.active = true")
+  int touchLastUsedIfActive(
+      @Param("tokenId") Integer tokenId,
+      @Param("lastUsedAt") OffsetDateTime lastUsedAt,
+      @Param("expiresAt") OffsetDateTime expiresAt);
+
+  /**
    * Deactivates all active tokens for administrators belonging to a specific tenant.
    *
    * <p>This method is used during tenant deactivation to revoke all active tokens for
