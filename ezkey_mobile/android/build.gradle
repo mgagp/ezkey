@@ -24,41 +24,58 @@ buildscript {
 apply plugin: "com.facebook.react.rootproject"
 
 // 16 KB GNU_RELRO: include add_link_options for max-page-size + common-page-size=16384
-// into every Android CMake project (#659). Prefer CMAKE_PROJECT_INCLUDE over
-// CMAKE_*_LINKER_FLAGS_INIT — NDK toolchain can overwrite INIT flags.
+// into every Android CMake project (#659). Use AGP finalizeDsl so autolinked library
+// modules actually receive the argument (plain afterEvaluate was a no-op for them).
 def ezkey16KbCmakeInclude =
         "-DCMAKE_PROJECT_INCLUDE=${rootDir}/cmake/ezkey-16kb-page-size.cmake"
+// Belt-and-suspenders: also set shared linker flags (non-INIT) for toolchains that
+// ignore PROJECT_INCLUDE ordering.
+def ezkey16KbLinkerFlags = "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
+def ezkey16KbCmakeArgs = [
+    ezkey16KbCmakeInclude,
+    "-DCMAKE_SHARED_LINKER_FLAGS=${ezkey16KbLinkerFlags}",
+    "-DCMAKE_MODULE_LINKER_FLAGS=${ezkey16KbLinkerFlags}",
+    "-DCMAKE_EXE_LINKER_FLAGS=${ezkey16KbLinkerFlags}",
+]
 
-def injectEzkey16KbCmakeArgs = { Project subproject ->
-    def androidExt = subproject.extensions.findByName("android")
-    if (androidExt == null) {
-        return
-    }
+def injectEzkey16KbCmakeArgsIntoExt = { ext, projectPath ->
     try {
-        def cmakeArgs = androidExt.defaultConfig.externalNativeBuild.cmake.arguments
-        if (cmakeArgs.none { it.startsWith("-DCMAKE_PROJECT_INCLUDE=") }) {
-            cmakeArgs.add(ezkey16KbCmakeInclude)
+        def cmakeArgs = ext.defaultConfig.externalNativeBuild.cmake.arguments
+        ezkey16KbCmakeArgs.each { arg ->
+            def prefix = arg.substring(0, arg.indexOf("=") + 1)
+            if (cmakeArgs.none { it.toString().startsWith(prefix) }) {
+                cmakeArgs.add(arg)
+            }
         }
-    } catch (Exception ignored) {
-        // No CMake externalNativeBuild on this module.
+        println "[ezkey-16kb] ${projectPath}: injected CMAKE_PROJECT_INCLUDE + linker flags"
+    } catch (Throwable ignored) {
+        // Module has no CMake externalNativeBuild.
     }
 }
 
 // Async Storage 3.x publishes shared-storage AAR via package-local Maven (not on Maven Central).
-// Also inject 16 KB linker flags into every Android module CMake build.
+// Also inject 16 KB linker flags into every Android module CMake build via finalizeDsl.
 subprojects { subproject ->
     subproject.repositories {
         maven {
             url = uri("${rootDir}/../node_modules/@react-native-async-storage/async-storage/android/local_repo")
         }
     }
-    // Some RN/AGP paths evaluate a subproject before this root block runs; calling
-    // afterEvaluate on an already-evaluated project fails hard ("already evaluated").
-    if (subproject.state.executed) {
-        injectEzkey16KbCmakeArgs(subproject)
-    } else {
-        subproject.afterEvaluate {
-            injectEzkey16KbCmakeArgs(subproject)
+
+    subproject.pluginManager.withPlugin("com.android.library") {
+        def androidComponents = subproject.extensions.findByName("androidComponents")
+        if (androidComponents != null) {
+            androidComponents.finalizeDsl { ext ->
+                injectEzkey16KbCmakeArgsIntoExt(ext, subproject.path)
+            }
+        }
+    }
+    subproject.pluginManager.withPlugin("com.android.application") {
+        def androidComponents = subproject.extensions.findByName("androidComponents")
+        if (androidComponents != null) {
+            androidComponents.finalizeDsl { ext ->
+                injectEzkey16KbCmakeArgsIntoExt(ext, subproject.path)
+            }
         }
     }
 }
