@@ -22,18 +22,8 @@ buildscript {
 
 apply plugin: "com.facebook.react.rootproject"
 
-// Async Storage 3.x publishes shared-storage AAR via package-local Maven (not on Maven Central).
-subprojects {
-    repositories {
-        maven {
-            url = uri("${rootDir}/../node_modules/@react-native-async-storage/async-storage/android/local_repo")
-        }
-    }
-}
-
 // 16 KB GNU_RELRO: NDK r28 sets LOAD max-page-size=16k, but LLD still pads PT_GNU_RELRO
 // using common-page-size (4 KB) unless raised — Pixel "RELRO alignment check failed" (#659).
-// Inject into every Android library CMake build (autolinked RN modules + app).
 def ezkey16KbLinkerFlags = "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
 def ezkey16KbCmakeArgs = [
     "-DCMAKE_SHARED_LINKER_FLAGS_INIT=${ezkey16KbLinkerFlags}",
@@ -41,22 +31,39 @@ def ezkey16KbCmakeArgs = [
     "-DCMAKE_EXE_LINKER_FLAGS_INIT=${ezkey16KbLinkerFlags}",
 ]
 
-subprojects { subproject ->
-    subproject.afterEvaluate {
-        def androidExt = subproject.extensions.findByName("android")
-        if (androidExt == null) {
-            return
-        }
-        try {
-            def cmakeArgs = androidExt.defaultConfig.externalNativeBuild.cmake.arguments
-            ezkey16KbCmakeArgs.each { arg ->
-                def prefix = arg.substring(0, arg.indexOf("=") + 1)
-                if (cmakeArgs.none { it.startsWith(prefix) }) {
-                    cmakeArgs.add(arg)
-                }
+def injectEzkey16KbCmakeArgs = { Project subproject ->
+    def androidExt = subproject.extensions.findByName("android")
+    if (androidExt == null) {
+        return
+    }
+    try {
+        def cmakeArgs = androidExt.defaultConfig.externalNativeBuild.cmake.arguments
+        ezkey16KbCmakeArgs.each { arg ->
+            def prefix = arg.substring(0, arg.indexOf("=") + 1)
+            if (cmakeArgs.none { it.startsWith(prefix) }) {
+                cmakeArgs.add(arg)
             }
-        } catch (Exception ignored) {
-            // No CMake externalNativeBuild on this module.
+        }
+    } catch (Exception ignored) {
+        // No CMake externalNativeBuild on this module.
+    }
+}
+
+// Async Storage 3.x publishes shared-storage AAR via package-local Maven (not on Maven Central).
+// Also inject 16 KB linker flags into every Android module CMake build.
+subprojects { subproject ->
+    subproject.repositories {
+        maven {
+            url = uri("${rootDir}/../node_modules/@react-native-async-storage/async-storage/android/local_repo")
+        }
+    }
+    // Some RN/AGP paths evaluate a subproject before this root block runs; calling
+    // afterEvaluate on an already-evaluated project fails hard ("already evaluated").
+    if (subproject.state.executed) {
+        injectEzkey16KbCmakeArgs(subproject)
+    } else {
+        subproject.afterEvaluate {
+            injectEzkey16KbCmakeArgs(subproject)
         }
     }
 }
