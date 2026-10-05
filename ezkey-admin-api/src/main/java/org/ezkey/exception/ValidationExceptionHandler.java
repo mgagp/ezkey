@@ -28,12 +28,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MultipartException;
 
 /**
  * Handles validation and data constraint exceptions in the Ezkey Admin REST API.
@@ -374,6 +376,51 @@ public class ValidationExceptionHandler {
         AdminApiProblemCatalog.TYPE_MALFORMED_REQUEST,
         AdminApiProblemCatalog.TITLE_MALFORMED_REQUEST,
         "Invalid request: missing or malformed fields in request body",
+        request);
+  }
+
+  /**
+   * Handles unsupported request media types and returns HTTP 415.
+   *
+   * <p>Triggered when a JSON-only endpoint receives another declared media type, such as {@code
+   * text/plain}. Treating this as a client error prevents malformed scanner traffic from falling
+   * through to the generic 500 fallback.
+   *
+   * @param ex the media type exception that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 415 status
+   * @since 2026
+   */
+  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+  public ResponseEntity<ProblemDetail> handleHttpMediaTypeNotSupportedException(
+      HttpMediaTypeNotSupportedException ex, WebRequest request) {
+    return problemResponse(
+        HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+        AdminApiProblemCatalog.TYPE_UNSUPPORTED_MEDIA_TYPE,
+        AdminApiProblemCatalog.TITLE_UNSUPPORTED_MEDIA_TYPE,
+        AdminApiProblemCatalog.DETAIL_UNSUPPORTED_MEDIA_TYPE,
+        request);
+  }
+
+  /**
+   * Handles malformed multipart requests and returns HTTP 400.
+   *
+   * <p>Triggered before controller invocation when a client declares {@code multipart/form-data}
+   * without a valid boundary. This is malformed input, not an internal server failure.
+   *
+   * @param ex the multipart exception that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 400 status
+   * @since 2026
+   */
+  @ExceptionHandler(MultipartException.class)
+  public ResponseEntity<ProblemDetail> handleMultipartException(
+      MultipartException ex, WebRequest request) {
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AdminApiProblemCatalog.TYPE_MALFORMED_REQUEST,
+        AdminApiProblemCatalog.TITLE_MALFORMED_REQUEST,
+        "Invalid multipart request",
         request);
   }
 
