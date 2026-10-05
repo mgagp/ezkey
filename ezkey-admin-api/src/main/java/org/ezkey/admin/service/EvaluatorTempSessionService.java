@@ -41,7 +41,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Same gate as evaluator self-registration. One-shot mint, absolute TTL. Supersede after MFA
  * VERIFIED is admin-api owned (SESSION mint in {@link AdminAuthService} and TEMP validation gate in
- * {@link AdminTokenValidationService}). Auth-api does not write tokens. Expiry predicate uses soft
+ * {@link AdminTokenValidationService}). Auth-api does not write tokens, so expiry of a TEMP whose
+ * identity is already VERIFIED is delayed supersede (revoke TEMP only). Unbound expiry uses soft
  * tenant deactivate when no other bound admin remains.
  */
 @Service
@@ -220,9 +221,13 @@ public class EvaluatorTempSessionService {
   /**
    * Processes expired active {@link AdminTokenPurpose#EVALUATOR_TEMP} tokens.
    *
-   * <p>Predicate: another ACTIVE tenant admin (≠ TEMP identity) with MFA enrollment VERIFIED →
-   * revoke TEMP + deactivate TEMP identity only. Otherwise soft deactivateTenant + revoke +
-   * deactivate TEMP identity.
+   * <p>If the TEMP identity itself already has MFA enrollment {@link EnrollmentStatus#VERIFIED},
+   * this is delayed supersede (Auth API bind does not write tokens): revoke TEMP only, keep the
+   * identity and tenant so the operator can mint a fresh {@code SESSION}.
+   *
+   * <p>Otherwise, when the TEMP identity is still unbound: another ACTIVE tenant admin (≠ TEMP
+   * identity) with MFA enrollment VERIFIED → revoke TEMP + deactivate TEMP identity only. Else soft
+   * deactivateTenant + revoke + deactivate TEMP identity.
    *
    * @return number of expired TEMP tokens processed
    */
@@ -262,6 +267,17 @@ public class EvaluatorTempSessionService {
 
     // Ensure no other TEMP tokens remain for this identity
     tokenRepository.deactivateTokensForAdminByPurpose(adminId, AdminTokenPurpose.EVALUATOR_TEMP);
+
+    // Bind of this TEMP identity already happened (Auth API verify). Do not treat that as
+    // an abandoned foothold — lock 11 is supersede, not lock 10 tenant teardown.
+    if (isVerifiedBoundAdmin(tempAdmin)) {
+      logger.info(
+          "EVALUATOR_TEMP expired after TEMP identity bind (delayed supersede): adminId={}"
+              + " tenantId={}",
+          adminId,
+          tenantId);
+      return;
+    }
 
     boolean otherBoundAdmin = tenantId != null && hasOtherVerifiedActiveAdmin(tenantId, adminId);
 
@@ -307,14 +323,28 @@ public class EvaluatorTempSessionService {
       if (peer.getAdminId().equals(excludeAdminId)) {
         continue;
       }
-      Enrollment enrollment = peer.getEnrollment();
-      if (enrollment != null
-          && EnrollmentStatus.VERIFIED.equals(enrollment.getStatus())
-          && Boolean.TRUE.equals(enrollment.getActive())) {
+      if (isVerifiedBoundAdmin(peer)) {
         return true;
       }
     }
     return false;
+  }
+
+  /**
+   * Whether this admin has an active device-bound MFA enrollment ({@link
+   * EnrollmentStatus#VERIFIED}).
+   *
+   * @param admin administrator to inspect
+   * @return true when MFA is bound and the enrollment row is active
+   */
+  boolean isVerifiedBoundAdmin(EzkeyAdmin admin) {
+    if (admin == null) {
+      return false;
+    }
+    Enrollment enrollment = admin.getEnrollment();
+    return enrollment != null
+        && EnrollmentStatus.VERIFIED.equals(enrollment.getStatus())
+        && Boolean.TRUE.equals(enrollment.getActive());
   }
 
   private void deactivateTempIdentity(EzkeyAdmin admin) {

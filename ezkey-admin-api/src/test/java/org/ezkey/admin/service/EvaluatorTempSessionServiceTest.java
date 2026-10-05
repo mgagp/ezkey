@@ -250,6 +250,32 @@ class EvaluatorTempSessionServiceTest {
   }
 
   @Test
+  @DisplayName("expiry: TEMP identity already VERIFIED → revoke only, no identity/tenant teardown")
+  void expiry_tempIdentityVerified_isDelayedSupersede() {
+    Tenant tenant = tenant(5, true);
+    Enrollment verifiedEnrollment = enrollment(1, EnrollmentStatus.VERIFIED, "a");
+    verifiedEnrollment.setActive(true);
+    EzkeyAdmin tempAdmin = tenantAdmin(100, tenant, verifiedEnrollment);
+    AdminToken expired = expiredTempToken(tempAdmin, tenant);
+
+    when(tokenRepository.findActiveExpiredByPurposeWithRelations(
+            eq(AdminTokenPurpose.EVALUATOR_TEMP), any(OffsetDateTime.class)))
+        .thenReturn(List.of(expired));
+
+    int processed = service.processExpiredTempSessions();
+
+    assertThat(processed).isEqualTo(1);
+    verify(tokenRepository).save(expired);
+    verify(tokenRepository)
+        .deactivateTokensForAdminByPurpose(100, AdminTokenPurpose.EVALUATOR_TEMP);
+    verify(tenantService, never()).deactivateTenantAsSystem(any());
+    verify(adminRepository, never()).save(any());
+    verify(auditLogService, never()).log(any());
+    assertThat(tempAdmin.getActive()).isTrue();
+    assertThat(tempAdmin.getLifecycleStatus()).isEqualTo(AdminLifecycleStatus.ACTIVE);
+  }
+
+  @Test
   @DisplayName("expiry NO path: soft deactivateTenant + ADMIN_DEACTIVATED + TENANT_DEACTIVATED")
   void expiry_noOtherVerifiedAdmin_softDeactivatesTenant() {
     Tenant tenant = tenant(5, true);
