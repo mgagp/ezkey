@@ -240,9 +240,9 @@ public class CryptoController {
       summary = "Build canonical EZKey payload",
       description =
           "Builds the canonical EZKey payload for auth-attempt (pending, respond, respond-result)"
-          + " or enrollment (enrollment-bind, enrollment-verify-device,"
-          + " enrollment-verify-result, enrollment-instance-info) flows. Applies NFC"
-          + " normalization to the text fields"
+              + " or enrollment (enrollment-bind, enrollment-verify-device,"
+              + " enrollment-verify-result, enrollment-instance-info) flows. Applies NFC"
+              + " normalization to the text fields"
               + " defined by the protocol so the result can be used as a validation oracle in Dart"
               + " tests and Postman workflows.")
   @ApiResponses(
@@ -262,7 +262,7 @@ public class CryptoController {
           case "enrollment-bind" -> buildEnrollmentBindPayload(request);
           case "enrollment-verify-device" -> buildEnrollmentVerifyDevicePayload(request);
           case "enrollment-verify-result" -> buildEnrollmentVerifyResultPayload(request);
-            case "enrollment-instance-info" -> buildEnrollmentInstanceInfoPayload(request);
+          case "enrollment-instance-info" -> buildEnrollmentInstanceInfoPayload(request);
           default ->
               throw new IllegalArgumentException("Unsupported payload type: " + request.getType());
         };

@@ -20,8 +20,8 @@ public class PayloadHelperRequestDto {
   @Schema(
       description =
           "Payload type: pending, respond, respond-result, enrollment-bind,"
-          + " enrollment-verify-device, enrollment-verify-result, or"
-          + " enrollment-instance-info",
+              + " enrollment-verify-device, enrollment-verify-result, or"
+              + " enrollment-instance-info",
       example = "pending",
       requiredMode = RequiredMode.REQUIRED)
   @NotBlank(message = "Payload type cannot be blank")
@@ -116,25 +116,25 @@ public class PayloadHelperRequestDto {
       example = "TENANT_ADMIN")
   private String adminType;
 
-    @Schema(
+  @Schema(
       description = "Public Auth API base URL for the enrollment-instance-info payload",
       example = "https://auth.example.com:8080")
-    private String authApiPublicBaseUrl;
+  private String authApiPublicBaseUrl;
 
-    @Schema(
+  @Schema(
       description = "Instance display name for the enrollment-instance-info payload",
       example = "Acme Corporation")
-    private String instanceName;
+  private String instanceName;
 
-    @Schema(
+  @Schema(
       description = "Optional instance description for the enrollment-instance-info payload",
       example = "Acme Corp Ezkey MFA")
-    private String instanceDescription;
+  private String instanceDescription;
 
-    @Schema(
+  @Schema(
       description = "Optional about URL for the enrollment-instance-info payload",
       example = "https://www.example.com/about-ezkey")
-    private String aboutUrl;
+  private String aboutUrl;
 
   public PayloadHelperRequestDto() {}
 
