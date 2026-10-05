@@ -4,8 +4,9 @@ buildscript {
         minSdkVersion = 31
         compileSdkVersion = 36
         targetSdkVersion = 36
-        // NDK r28+ defaults to 16 KB ELF / GNU_RELRO padding (Play + Pixel page-size dialog).
-        // See https://developer.android.com/guide/practices/page-sizes and #659.
+        // NDK r28+ defaults LOAD segments to 16 KB. GNU_RELRO still needs common-page-size
+        // raised via android/cmake/ezkey-16kb-page-size.cmake (#659).
+        // See https://developer.android.com/guide/practices/page-sizes
         ndkVersion = "28.1.13356709"
         kotlinVersion = "2.2.0"
     }
@@ -22,14 +23,11 @@ buildscript {
 
 apply plugin: "com.facebook.react.rootproject"
 
-// 16 KB GNU_RELRO: NDK r28 sets LOAD max-page-size=16k, but LLD still pads PT_GNU_RELRO
-// using common-page-size (4 KB) unless raised — Pixel "RELRO alignment check failed" (#659).
-def ezkey16KbLinkerFlags = "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
-def ezkey16KbCmakeArgs = [
-    "-DCMAKE_SHARED_LINKER_FLAGS_INIT=${ezkey16KbLinkerFlags}",
-    "-DCMAKE_MODULE_LINKER_FLAGS_INIT=${ezkey16KbLinkerFlags}",
-    "-DCMAKE_EXE_LINKER_FLAGS_INIT=${ezkey16KbLinkerFlags}",
-]
+// 16 KB GNU_RELRO: include add_link_options for max-page-size + common-page-size=16384
+// into every Android CMake project (#659). Prefer CMAKE_PROJECT_INCLUDE over
+// CMAKE_*_LINKER_FLAGS_INIT — NDK toolchain can overwrite INIT flags.
+def ezkey16KbCmakeInclude =
+        "-DCMAKE_PROJECT_INCLUDE=${rootDir}/cmake/ezkey-16kb-page-size.cmake"
 
 def injectEzkey16KbCmakeArgs = { Project subproject ->
     def androidExt = subproject.extensions.findByName("android")
@@ -38,11 +36,8 @@ def injectEzkey16KbCmakeArgs = { Project subproject ->
     }
     try {
         def cmakeArgs = androidExt.defaultConfig.externalNativeBuild.cmake.arguments
-        ezkey16KbCmakeArgs.each { arg ->
-            def prefix = arg.substring(0, arg.indexOf("=") + 1)
-            if (cmakeArgs.none { it.startsWith(prefix) }) {
-                cmakeArgs.add(arg)
-            }
+        if (cmakeArgs.none { it.startsWith("-DCMAKE_PROJECT_INCLUDE=") }) {
+            cmakeArgs.add(ezkey16KbCmakeInclude)
         }
     } catch (Exception ignored) {
         // No CMake externalNativeBuild on this module.
