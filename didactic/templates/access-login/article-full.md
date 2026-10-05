@@ -1,20 +1,20 @@
 ---
-title: "Ezkey protocol trace — enrollment, verify, MFA (generated)"
+title: "Ezkey protocol trace — enrollment, verify, MFA (access login path)"
 audience: "Experienced API developers revisiting Ezkey’s signed enroll + auth posture"
-scenario: "accept_or_reject_via_run_yaml"
+scenario: "access_login_accept_or_reject_via_run_yaml"
 ---
 
-# Ezkey enrollment and authentication — instrumented trace
+# Ezkey enrollment and authentication — access-login trace
 
-This narrative stitches **HTTP and Crypto API transcripts** from a single capture session. **Recording context:** a disposable lab stack where Admin API, Auth API, and Crypto API were reachable together (typically **9080 / 8080 / 9090** on the workstation that produced this file).
+This article reconstructs one complete **integration access** exchange from a single capture session: an operator issues a pending enrollment, a handset binds and verifies itself, then that same handset approves a sign-in request for the integration. **Recording context:** a disposable lab stack where Admin API, Auth API, and Crypto API were reachable together (typically **9080 / 8080 / 9090** on the workstation that produced this file).
 
-The point is **not** scrolling raw JSON alone. Protocol meaning—**actors**, **which UTF‑8 payloads are signed**, **under which keys**, and **why** integration signatures must be verified before trusting response fields—is stated **alongside** the artifacts. Canonical signing lines appear **verbatim** beside the cryptography helper excerpts; no companion reader kit is assumed.
+The point is **not** to dump raw JSON and call it documentation. The value here is the stitched reading path: **who acts**, **which UTF‑8 canonical line is signed**, **which key verifies it**, and **what trust decision follows** at each step. Canonical signing lines appear **verbatim** beside the cryptography helper excerpts; no companion reader kit is assumed.
 
 **Lab versus production crypto path:** excerpts labeled **Crypto API** reproduce the same **deterministic canonical strings** (pipe-separated UTF‑8 lines) that a shipping mobile client builds and signs locally. Production devices **never** delegate those steps to Ezkey Crypto API—the service exists in the lab **only** to make payloads inspectable beside the REST traffic. Admin API and Auth API traffic match real deployments.
 
 ## What this trace covers (and what it omits)
 
-**On the wire here:** credentials issued with a **Global or scoped-admin Bearer token** via **Admin API**—**pending enrollments** tied to **`integrationId`**, then **authentication attempts** initiated the same way. A **simulated device** consumes **bind**, **verify**, **pending**, and **respond** on **Auth API**. Behaviorally these rows match what an integration would mint for an **end-user handset**: proof tokens, enrollment challenge handling, EC P‑256 device keys, MFA polling and approve/deny—**shown end-to-end below**.
+**On the wire here:** credentials issued with a **Global or scoped-admin Bearer token** via **Admin API**—**pending enrollments** tied to **`integrationId`**, then **authentication attempts** initiated the same way. A **simulated device** consumes **bind**, **verify**, **pending**, and **respond** on **Auth API**. The narrative posture is intentionally simple: this is a user approving access to an integration, not a richer business workflow such as payment approval or batch validation.
 
 **Intentionally off-screen:** fetching the bearer used to call Admin API through **passwordless operator login** (device approval flows). Those steps run **outside** this transcript—they never occupy an enrollment payload line below. Likewise, enrolling the administrator’s personal MFA posture for console access is **a different storyline** than the integration-scoped credential shown here.
 
@@ -24,21 +24,22 @@ The point is **not** scrolling raw JSON alone. Protocol meaning—**actors**, **
 
 ## Scope and posture
 
-Enrollment **activation** binds a pending credential to hardware (via proof-token possession), **verifies** the device signing key against the enrollment challenge, then treats the row as usable. Separately an **authentication attempt** expresses MFA demand: integrating backends create the attempt while the handset **polls pending** and emits a signed **approve / deny**.
+Enrollment **activation** binds a pending credential to hardware (via proof-token possession), **verifies** the device signing key against the enrollment challenge, then treats the row as usable. Separately an **authentication attempt** expresses MFA demand: integrating backends create the attempt while the handset **polls pending** and emits a signed decision. In this template the decision is framed as a straightforward **sign-in or access approval** for the integration.
 
 **Algorithms:** Integration authorities sign fixed canonical lines with **Ed25519**. Device attestations rely on **EC P‑256 ECDSA** over deterministic strings—clients never authenticate by blindly signing opaque JSON blobs.
 
 ### Outline
 
 | # | Actor | Functional step |
-|---|--------|-----------------|
+| --- | --- | --- |
 | 1 | Operator API | Create enrollment; follow with administrative **GET** to pull **proof token** and challenge—the create envelope alone routinely omits the proof token operators need downstream. |
 | 2 | Simulated device | **Bind:** redeem proof token for integration metadata plus integration-signed **`enrollmentBindPayloadSignedByIntegration`**; verify integration Ed25519 before interpreting fields. |
 | 3 | Device + oracle | Build bind canonical UTF‑8 line; verify Ed25519; mint device keypair; derive verify-device canonical line; ECDSA-sign for Auth API `/verify`. |
 | 4 | Auth API | Approve enrollment when policy allows and return integration-signed **verify-result**. |
-| 5 | Operator API | Instantiate **authentication attempt** for verified enrollment row. |
-| 6 | Device + oracle | Fresh **device proof token** pipeline; ECDSA-signed **pending** poll; reconstruct **pending** canonical line; ECDSA-signed **respond** decision; consume integration-signed **respond-result**. |
-| 7 | Operator API (often) | **Wait** call blocks until MFA attempt settles—matching synchronous integrator UX probes. |
+| 5 | Simulated device + oracle | Fetch enrolled **`instance-info`**, rebuild the canonical `INSTANCE_INFO` payload, and verify the integration Ed25519 signature before trusting branding fields. |
+| 6 | Operator API | Create an authentication attempt representing an integration access request for the enrolled user. |
+| 7 | Device + oracle | Fresh **device proof token** pipeline; ECDSA-signed **pending** poll; reconstruct **pending** canonical line; ECDSA-signed **respond** decision; consume integration-signed **respond-result**. |
+| 8 | Operator API (often) | **Wait** call blocks until MFA attempt settles—matching synchronous integrator UX probes. |
 
 Each section pairs a short explanatory lead with the matching request and response payloads.
 
@@ -70,9 +71,9 @@ In **create**, **`integrationId`** scopes issuance to exactly one integration re
 
 ---
 
-## Device posture — bind and verify enrollment
+## Device posture — bind, verify, then fetch signed instance branding
 
-On **bind**, possessing **`enrollmentProofToken`** earns the handset integration-backed metadata bundles plus **`enrollmentBindPayloadSignedByIntegration`**. Clients rebuild the deterministic **canonical bind line**: a single UTF‑8 row with **`|`** between enrollment proof fragments, hashing aids, **`ed25519`**, integration title copy, **`enrollmentName`**, and empty slots where optional tails stay blank—matching the verifier byte-for-byte. Ed25519 must validate against **`integrationPublicKey`** from the same envelope before any field becomes authoritative.
+On **bind**, possessing **`enrollmentProofToken`** earns the handset integration-backed metadata bundles plus **`enrollmentBindPayloadSignedByIntegration`**. Clients rebuild the deterministic **canonical bind line**: a single UTF‑8 row with **`|`** between enrollment proof fragments, hashing aids, **`ed25519`**, integration and tenant copy, the **`isSystemIntegration`** boolean, and the optional **`adminType`** literal when the enrollment is administrator-linked. Ed25519 must validate against **`integrationPublicKey`** from the same envelope before any field becomes authoritative.
 
 ### POST `/api/v1/enrollments/bind`
 
@@ -80,7 +81,7 @@ On **bind**, possessing **`enrollmentProofToken`** earns the handset integration
 
 <<<ARTIFACT mobile.enrollment_bind response>>>
 
-The preceding JSON summarizes human-visible labels and PEM material. Integrity evidence is **`enrollmentBindPayloadSignedByIntegration`**. The paired Crypto excerpts below regenerate the hashed UTF‑8 substrate and certify Ed25519 against **`integrationPublicKey`**—matching how production SDKs wire their local crypto providers.
+The preceding JSON summarizes human-visible labels and PEM material. Integrity evidence is **`enrollmentBindPayloadSignedByIntegration`**. The paired Crypto excerpts below regenerate the canonical UTF‑8 substrate and certify Ed25519 against **`integrationPublicKey`**—matching how production SDKs wire their local crypto providers.
 
 ### Crypto API — bind canonical line and Ed25519 verification
 
@@ -98,8 +99,7 @@ The preceding JSON summarizes human-visible labels and PEM material. Integrity e
 
 ### Device keys and verify-device canonical line (`enrollment-verify-device`)
 
-The handset provisions an **EC P‑256** keypair (here via Crypto API `GET /keypair`; shipping apps use keystore / secure enclave surfaces). `payload-helper` type `enrollment-verify-device` concatenates  
-`enrollmentProofToken|enrollmentId|challengeResponse|devicePublicKey` **as one line** with the separators shown. **`POST /crypto/sign`** produces ECDSA over that UTF‑8 string; the signature populates **`enrollmentProofTokenSigned`** on **POST `/api/v1/enrollments/verify`**—the commitment covers the **entire canonical line**, not an isolated random-looking token fragment.
+The handset provisions an **EC P‑256** keypair (here via Crypto API `GET /keypair`; shipping apps use keystore / secure enclave surfaces). `payload-helper` type `enrollment-verify-device` concatenates `enrollmentProofToken|enrollmentId|challengeResponse|devicePublicKey` as one canonical UTF‑8 line. **`POST /crypto/sign`** produces ECDSA over that exact string; the signature populates **`enrollmentProofTokenSigned`** on **POST `/api/v1/enrollments/verify`**.
 
 <<<ARTIFACT crypto.device_keypair request>>>
 
@@ -137,6 +137,28 @@ Rebuild the canonical **verify-result** line with the same tooling pattern as bi
 
 ---
 
+### POST `/api/v1/enrollments/instance-info`
+
+Once enrollment is active, the official mobile path does **not** trust unsigned public branding. It calls enrolled **`instance-info`** with the same **`enrollmentProofToken`** used during bind/verify, receives deployment branding plus **`instanceInfoPayloadSignedByIntegration`**, and must verify that Ed25519 signature before applying **`authApiPublicBaseUrl`**, **`instanceName`**, **`instanceDescription`**, or **`aboutUrl`**.
+
+<<<ARTIFACT mobile.enrollment_instance_info request>>>
+
+<<<ARTIFACT mobile.enrollment_instance_info response>>>
+
+### Crypto API — enrolled instance-info integration signature
+
+The lab oracle reconstructs the canonical line `proofToken|enrollmentId|INSTANCE_INFO|authApiPublicBaseUrl|instanceName|instanceDescription|aboutUrl`, then verifies the returned Ed25519 signature with the same integration key used for bind and verify-result.
+
+<<<ARTIFACT crypto.enrollment_instance_info_payload request>>>
+
+<<<ARTIFACT crypto.enrollment_instance_info_payload response>>>
+
+<<<ARTIFACT crypto.enrollment_instance_info_verify request>>>
+
+<<<ARTIFACT crypto.enrollment_instance_info_verify response>>>
+
+---
+
 ## Administration — opening an MFA attempt
 
 ### Authentication attempt TTL
@@ -145,7 +167,7 @@ After **POST** creating an MFA attempt the stack enforces **`timeoutSeconds`** w
 
 <<<SUMMARY_TTL>>>
 
-Opening an MFA **authentication attempt** for a verified enrollment yields attempt identifiers plus metadata echoed in transcripts. Subsequent integration-signed JSON sections each map to deterministic **canonical UTF‑8 pipes** regenerated from literals in the payloads. Device ECDSA attestations authenticate short-lived **`deviceProofToken`** values first, later binding **approval bits** spelled lowercase **`true`** or **`false`** between identical pipe scaffolding so verifiers recombine bytes without ambiguity.
+Opening an MFA **authentication attempt** for a verified enrollment yields attempt identifiers plus metadata echoed in transcripts. In this template the example remains intentionally plain: the handset is asked to approve access to the integration, not to authorize a richer business transaction. If **`contextTitle`** or **`contextMessage`** are present, they are still covered by the signed **pending** payload, but they should read as simple sign-in or access copy.
 
 <<<ARTIFACT admin.auth_attempt_create request>>>
 
@@ -159,7 +181,7 @@ MFA choreography reuses the disciplined pattern above: ECDSA-signed **proof toke
 
 ### Read-once `pending` and chaining `respond`
 
-While an MFA attempt sits **`PENDING`**, callers may probe with fresh ephemeral **`deviceProofToken`** payloads until Ezkey validates one complete poll (**`pending`** excerpts below illustrate the succeeding round). Persistence then marks the authentication attempt **`READ`**, pinning the asserted handset proof alongside it, **closing further successful reads** of matching pending context for **that auth attempt.** **`authAttemptProofToken`** is delivered inside **`authAttemptProofTokenSignedByIntegration`** exclusively through that acknowledgement; validating Ed25519 on the reconstructed **`pending`** canonical line is mandatory before handset UX treats operator wording as authoritative. ECDSA **`respond`** signs **`authAttemptProofToken|accepted`**, reusing **verbatim** token bytes introduced only during that acknowledgement. Omitting **`pending`** withholds verifier‑matching literals—Ezkey binds **`respond`** to cryptographic state surfaced **exactly once** when **`pending`** first succeeds—structural reinforcement against replay harvesting after consumption.
+While an MFA attempt sits **`PENDING`**, callers may probe with fresh ephemeral **`deviceProofToken`** payloads until Ezkey validates one complete poll. That successful poll flips the attempt from **`PENDING`** to **`READ`** and returns the one proof token the handset needs for the next step. From that moment, the mobile side must verify the integration Ed25519 signature over the reconstructed **pending** canonical line before trusting the displayed title, message, or challenge posture. Only then can it sign the follow-up **respond** payload with the exact **`authAttemptProofToken`** it just received.
 
 Cryptography snippets below occupy the same structural role handset firmware plays in deployment.
 
@@ -179,7 +201,7 @@ Issue a fresh ephemeral **`deviceProofToken`**, ECDSA-signed with enrollment’s
 
 ### POST `/api/v1/auth-attempts/pending`
 
-Determine whether MFA state exists for handset plus enrollment linkage. **`200`** embeds **`authAttemptProofTokenSignedByIntegration`**; authenticate Ed25519 on the reconstructed **pending** canonical line exactly like bind before treating the MFA payload fields as authoritative.
+Determine whether MFA state exists for handset plus enrollment linkage. **`200`** embeds **`authAttemptProofTokenSignedByIntegration`**; authenticate Ed25519 on the reconstructed **pending** canonical line exactly like bind before treating the MFA payload fields as authoritative. If the integration supplied a simple access title or short message, those strings are signed too; they are secondary to the protocol, but not outside it.
 
 <<<ARTIFACT mobile.auth_pending request>>>
 
@@ -199,7 +221,7 @@ Determine whether MFA state exists for handset plus enrollment linkage. **`200`*
 
 ### Respond canonical line (`authAttemptProofToken|true|false`)
 
-Approval reduces to ECDSA commitment over **`authAttemptProofToken|true|false`**: literal acceptance strings stay lowercase ASCII squeezed between untouched pipe separators so servers bit-match reconstructions anchored on **`respond-device`** transcripts.
+The accept/deny decision reduces to an ECDSA commitment over **`authAttemptProofToken|accepted`**. On the acceptance branch, that means the handset signs **`authAttemptProofToken|true`** and the server recomputes the exact same two-segment line before recording the result.
 
 <<<ARTIFACT crypto.respond_device_sign request>>>
 
@@ -239,4 +261,4 @@ When tooling chains **admin `/wait`**, transcripts include the blocking poll tha
 
 ## Closing
 
-Ezkey concentrates trust in explicit **canonical UTF‑8 scaffolding**: integration Ed25519 for integration-issued payloads, ECDSA handset math for proofs and MFA decisions—each verified before acceptance. Cryptography API excerpts in this artifact prove those strings **mechanically**; production mobiles implement the identical math locally without round-tripping through lab services.
+Ezkey concentrates trust in explicit **canonical UTF‑8 scaffolding**: integration Ed25519 for integration-issued payloads, ECDSA handset math for proofs and MFA decisions, and a read-once pending handshake that forces the device to bind its final decision to the exact attempt it claimed. In an access-login walkthrough like this one, any sign-in copy displayed to the user is inside the same signed envelope as the proof token and challenge posture. The Crypto API excerpts prove the strings **mechanically**; production mobiles implement the identical math locally without round-tripping through lab services.

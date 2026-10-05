@@ -96,6 +96,9 @@ def run_scenario(
       "mobile.enrollment_verify",
       "crypto.enrollment_verify_result_payload",
       "crypto.enrollment_verify_result_verify",
+      "mobile.enrollment_instance_info",
+      "crypto.enrollment_instance_info_payload",
+      "crypto.enrollment_instance_info_verify",
       "admin.auth_attempt_create",
       "crypto.device_proof_token",
       "crypto.device_proof_token_sign",
@@ -165,6 +168,8 @@ def run_scenario(
     "tenantId": bind_tid,
     "tenantName": bind.response_body.get("tenantName"),
     "tenantDescription": bind.response_body.get("tenantDescription"),
+    "isSystemIntegration": bind.response_body.get("isSystemIntegration"),
+    "adminType": bind.response_body.get("adminType"),
   }
   jb, jb_hr = crypto.post_json("/api/v1/crypto/payload-helper", bh)
   ledger.emit(_crypto_http_step("crypto.enrollment_bind_payload", jb_hr))
@@ -242,10 +247,51 @@ def run_scenario(
   if not vr2.get("valid"):
     raise RuntimeError("crypto.enrollment_verify_result_verify failed")
 
+  instance_info_req = {
+    "enrollmentProofToken": enrollment_proof_token,
+  }
+  ii = auth_client.request(
+    "POST",
+    "/api/v1/enrollments/instance-info",
+    json_body=instance_info_req,
+  )
+  ledger.emit(_http_step("mobile.enrollment_instance_info", "mobile_enrollment", ii))
+  _require_ok(ii.status_code, "mobile.enrollment_instance_info", allowed=[200])
+  assert isinstance(ii.response_body, dict)
+  instance_info_sig = ii.response_body["instanceInfoPayloadSignedByIntegration"]
+
+  iip_body = {
+    "type": "enrollment-instance-info",
+    "proofToken": enrollment_proof_token,
+    "enrollmentId": ii.response_body.get("enrollmentId"),
+    "authApiPublicBaseUrl": ii.response_body.get("authApiPublicBaseUrl"),
+    "instanceName": ii.response_body.get("instanceName"),
+    "instanceDescription": ii.response_body.get("instanceDescription"),
+    "aboutUrl": ii.response_body.get("aboutUrl"),
+  }
+  iip, iip_hr = crypto.post_json("/api/v1/crypto/payload-helper", iip_body)
+  ledger.emit(_crypto_http_step("crypto.enrollment_instance_info_payload", iip_hr))
+  _require_ok(iip_hr.status_code, "crypto.enrollment_instance_info_payload")
+
+  iiv_body = {
+    "data": iip["payload"],
+    "signature": instance_info_sig,
+    "publicKey": integration_pub,
+  }
+  iiv, iiv_hr = crypto.post_json("/api/v1/crypto/verify-ed25519", iiv_body)
+  ledger.emit(_crypto_http_step("crypto.enrollment_instance_info_verify", iiv_hr))
+  _require_ok(iiv_hr.status_code, "crypto.enrollment_instance_info_verify")
+  if not iiv.get("valid"):
+    raise RuntimeError("crypto.enrollment_instance_info_verify failed")
+
   aa_body = {
     "enrollmentId": enrollment_id,
     "challengeRequested": cfg.auth_challenge_requested,
   }
+  if cfg.auth_context_title is not None:
+    aa_body["contextTitle"] = cfg.auth_context_title
+  if cfg.auth_context_message is not None:
+    aa_body["contextMessage"] = cfg.auth_context_message
   aa = admin_client.request("POST", "/api/v1/auth-attempts", json_body=aa_body)
   ledger.emit(_http_step("admin.auth_attempt_create", "admin", aa))
   _require_ok(aa.status_code, "admin.auth_attempt_create", allowed=[201])
