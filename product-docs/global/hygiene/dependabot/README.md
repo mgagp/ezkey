@@ -64,6 +64,9 @@ supersede 2026-09-22) after chantier F landed the versions otherwise. Residual h
 **issue `#627`**, not those PRs — do not reopen them.
 **2026-09-28 hebdo:** active Dependabot queue empty (only deferred `#337`/`#498`); `#627` Pixel
 smoke still pending — see [`2026-09-28-pass-1.md`](2026-09-28-pass-1.md).
+**2026-10-05 hebdo:** Lots A–D squash-merged (Maven + Admin/SDK + mobile tooling/runtime); held
+`#647` (Admin Orval T4) and `#653` (Jest 30 / RN Jest 29 gate) comment-only; `#627` Pixel smoke
+still pending (next Play AAB after `#650`/`#651`) — see [`2026-10-05-pass-1.md`](2026-10-05-pass-1.md).
 
 Weekly peel still skips any PR labeled `deferred:rn-upgrade`. To park *future* RN-coupled mobile
 deps until a line bump: comment + `gh pr edit <n> --add-label deferred:rn-upgrade`.
