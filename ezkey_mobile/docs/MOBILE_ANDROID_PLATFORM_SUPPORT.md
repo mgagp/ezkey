@@ -67,9 +67,37 @@ Ezkey’s cryptographic-device posture.
 | Product / docs | This document — Android 12+ / API 31 |
 | Gradle `minSdkVersion` | **31** (aligned with policy) |
 | `targetSdkVersion` / `compileSdkVersion` | **36** (Play publish requirements) |
+| NDK | **28.1.13356709** (r28+; 16 KB ELF / RELRO defaults) |
 
 Debug, sideload, and Play builds from this tree refuse install on API &lt; 31. **Play device-catalog
 filtering for end users applies after a published AAB that declares `minSdk` 31.**
+
+---
+
+## 16 KB page-size gate (Play + Pixel)
+
+Play requires 16 KB page-size support for 64-bit devices when targeting Android 15+ (`targetSdk`
+36 here). Official reference:
+[Support 16 KB page sizes](https://developer.android.com/guide/practices/page-sizes).
+
+**Rules for this repo:**
+
+1. ABIs are **arm64-v8a** and **x86_64** only (no 32-bit).
+2. `ndkVersion` is **r28+** so locally built `.so` files get 16 KB ELF / GNU_RELRO padding.
+3. Force **`androidx.datastore*` → 1.2.1** (`libdatastore_shared_counter.so` RELRO fixed vs 1.2.0).
+4. Do **not** set `packagingOptions.jniLibs.useLegacyPackaging = true` — it does not fix RELRO.
+5. After every release APK/AAB: run `./scripts/check-16kb-alignment.sh <artifact>`.
+   - Fails on `PT_LOAD p_align < 0x4000` or `GNU_RELRO` end not 16 KB aligned.
+   - APK also runs `zipalign -c -P 16 -v 4`.
+   - Wired into `yarn android:bundle:release`, `build-install-release-clean.sh`, and CI.
+6. **Residual (Decision A / #659):** React Native **0.87.1** Maven prebuilts
+   (`libhermestooling`, `libjsi`, `libreactnative`, `libfbjni`, `libc++_shared`, …) may still fail
+   GNU_RELRO. The gate **allowlists only those documented basenames**. Do not expand the list
+   casually; reopen an RN bump if Play rejects the AAB on that residual alone.
+
+Clean rebuild after NDK bumps: delete `android/app/build`, `android/build`, `android/app/.cxx`,
+then `assembleRelease` / `bundleRelease` (see `scripts/build-install-release-clean.sh` and
+`scripts/bundle-release.sh`).
 
 ---
 

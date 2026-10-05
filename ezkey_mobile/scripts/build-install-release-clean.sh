@@ -38,6 +38,9 @@ if [[ ! -f "$APK" ]]; then
   exit 1
 fi
 
+echo "==> Running 16 KB alignment gate on ${APK}"
+"${MOBILE_ROOT}/scripts/check-16kb-alignment.sh" "$APK"
+
 echo "Installing release APK: ${APK}"
 adb install -r "$APK"
 

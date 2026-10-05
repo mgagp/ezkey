@@ -4,7 +4,9 @@ buildscript {
         minSdkVersion = 31
         compileSdkVersion = 36
         targetSdkVersion = 36
-        ndkVersion = "27.1.12297006"
+        // NDK r28+ defaults to 16 KB ELF / GNU_RELRO padding (Play + Pixel page-size dialog).
+        // See https://developer.android.com/guide/practices/page-sizes and #659.
+        ndkVersion = "28.1.13356709"
         kotlinVersion = "2.2.0"
     }
     repositories {

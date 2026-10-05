@@ -131,7 +131,9 @@ A warm `assembleRelease` or a debug install does **not** prove a Play AAB. When 
 | Script | Use |
 |--------|-----|
 | `scripts/build-install-debug-clean.sh` | **Default** — clean debug build + install on device |
-| `scripts/build-install-release-clean.sh` | Clean **release** build + install (offline-capable; no Metro) |
+| `scripts/build-install-release-clean.sh` | Clean **release** build + install (offline-capable; no Metro); runs 16 KB gate on APK |
+| `scripts/bundle-release.sh` | `yarn android:bundle:release` — `bundleRelease` + 16 KB gate on AAB |
+| `scripts/check-16kb-alignment.sh` | ELF PT_LOAD + GNU_RELRO (+ APK zipalign -P 16) gate; see docs § 16 KB |
 | `scripts/resolve-android-jdk.sh` | Source to export `JAVA_HOME` for any Gradle command |
 | `scripts/android-with-jdk17.sh` | `react-native run-android` with correct JDK |
 | `scripts/install-debug-after-uninstall.sh` | Uninstall + `installDebug` (signature mismatch) |

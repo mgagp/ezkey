@@ -164,6 +164,7 @@ android {
     }
     packagingOptions {
         jniLibs {
+            // Do NOT set useLegacyPackaging=true — it does not fix GNU_RELRO 16 KB alignment (#659).
             excludes += ['lib/armeabi/*', 'lib/armeabi-v7a/*', 'lib/x86/*', 'lib/mips/*']
             pickFirsts += ['lib/arm64-v8a/libc++_shared.so', 'lib/x86_64/libc++_shared.so']
         }
@@ -238,6 +239,17 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test:rules:1.6.1")
+}
+
+// Force androidx.datastore* to 1.2.1 so libdatastore_shared_counter.so has 16 KB GNU_RELRO
+// padding (1.2.0 fails; see #659). Do not use useLegacyPackaging as a substitute.
+configurations.configureEach {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == "androidx.datastore") {
+            details.useVersion("1.2.1")
+            details.because("16 KB page-size: datastore 1.2.1 fixes libdatastore_shared_counter.so RELRO (#659)")
+        }
+    }
 }
 
 // Use JUnit 5 for unit tests

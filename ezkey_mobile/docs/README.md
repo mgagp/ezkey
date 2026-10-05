@@ -72,7 +72,7 @@ reference mobile app.
 | [MOBILE_PLAY_PUBLISHING.md](MOBILE_PLAY_PUBLISHING.md) | Operational | When preparing Google Play submission. |
 | [MOBILE_PLAY_STORE_LISTING.md](MOBILE_PLAY_STORE_LISTING.md) | Operational | Play listing copy, What's new, screenshot shot list. |
 | [MOBILE_PLAY_DATA_SAFETY.md](MOBILE_PLAY_DATA_SAFETY.md) | Operational | Play Data Safety answers from current app behavior. |
-| [MOBILE_ANDROID_PLATFORM_SUPPORT.md](MOBILE_ANDROID_PLATFORM_SUPPORT.md) | Product policy — Android OS floor | Supported floor (API 31 / Android 12+), Gradle `minSdk` 31, Play minSdk lifecycle, annual review (next due 2027-07). |
+| [MOBILE_ANDROID_PLATFORM_SUPPORT.md](MOBILE_ANDROID_PLATFORM_SUPPORT.md) | Product policy — Android OS floor | Supported floor (API 31 / Android 12+), Gradle `minSdk` 31, Play minSdk lifecycle, 16 KB page-size gate, annual review (next due 2027-07). |
 | [MOBILE_PLAY_RELEASE_READINESS_AUDIT.md](MOBILE_PLAY_RELEASE_READINESS_AUDIT.md) | Operational decision support | When deciding whether the current workspace is close enough to a Play release candidate. |
 | [MOBILE_RELEASE_DECISION_MEMO.md](MOBILE_RELEASE_DECISION_MEMO.md) | Product and engineering decision support | When deciding whether to release first on the current stack or upgrade before first publication. |
 | [MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md](MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md) | Real-device test harness | When running or extending Maestro + churn orchestration on a physical Android device (`TB-2026-0002`, F1/F2a). |
