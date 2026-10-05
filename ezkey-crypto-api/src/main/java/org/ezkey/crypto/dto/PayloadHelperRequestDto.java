@@ -20,7 +20,8 @@ public class PayloadHelperRequestDto {
   @Schema(
       description =
           "Payload type: pending, respond, respond-result, enrollment-bind,"
-              + " enrollment-verify-device, or enrollment-verify-result",
+          + " enrollment-verify-device, enrollment-verify-result, or"
+          + " enrollment-instance-info",
       example = "pending",
       requiredMode = RequiredMode.REQUIRED)
   @NotBlank(message = "Payload type cannot be blank")
@@ -114,6 +115,26 @@ public class PayloadHelperRequestDto {
       description = "Administrator type for enrollment-bind payload (GLOBAL_ADMIN or TENANT_ADMIN)",
       example = "TENANT_ADMIN")
   private String adminType;
+
+    @Schema(
+      description = "Public Auth API base URL for the enrollment-instance-info payload",
+      example = "https://auth.example.com:8080")
+    private String authApiPublicBaseUrl;
+
+    @Schema(
+      description = "Instance display name for the enrollment-instance-info payload",
+      example = "Acme Corporation")
+    private String instanceName;
+
+    @Schema(
+      description = "Optional instance description for the enrollment-instance-info payload",
+      example = "Acme Corp Ezkey MFA")
+    private String instanceDescription;
+
+    @Schema(
+      description = "Optional about URL for the enrollment-instance-info payload",
+      example = "https://www.example.com/about-ezkey")
+    private String aboutUrl;
 
   public PayloadHelperRequestDto() {}
 
@@ -291,5 +312,37 @@ public class PayloadHelperRequestDto {
 
   public void setAdminType(String adminType) {
     this.adminType = adminType;
+  }
+
+  public String getAuthApiPublicBaseUrl() {
+    return authApiPublicBaseUrl;
+  }
+
+  public void setAuthApiPublicBaseUrl(String authApiPublicBaseUrl) {
+    this.authApiPublicBaseUrl = authApiPublicBaseUrl;
+  }
+
+  public String getInstanceName() {
+    return instanceName;
+  }
+
+  public void setInstanceName(String instanceName) {
+    this.instanceName = instanceName;
+  }
+
+  public String getInstanceDescription() {
+    return instanceDescription;
+  }
+
+  public void setInstanceDescription(String instanceDescription) {
+    this.instanceDescription = instanceDescription;
+  }
+
+  public String getAboutUrl() {
+    return aboutUrl;
+  }
+
+  public void setAboutUrl(String aboutUrl) {
+    this.aboutUrl = aboutUrl;
   }
 }
