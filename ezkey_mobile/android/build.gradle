@@ -30,3 +30,33 @@ subprojects {
         }
     }
 }
+
+// 16 KB GNU_RELRO: NDK r28 sets LOAD max-page-size=16k, but LLD still pads PT_GNU_RELRO
+// using common-page-size (4 KB) unless raised — Pixel "RELRO alignment check failed" (#659).
+// Inject into every Android library CMake build (autolinked RN modules + app).
+def ezkey16KbLinkerFlags = "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
+def ezkey16KbCmakeArgs = [
+    "-DCMAKE_SHARED_LINKER_FLAGS_INIT=${ezkey16KbLinkerFlags}",
+    "-DCMAKE_MODULE_LINKER_FLAGS_INIT=${ezkey16KbLinkerFlags}",
+    "-DCMAKE_EXE_LINKER_FLAGS_INIT=${ezkey16KbLinkerFlags}",
+]
+
+subprojects { subproject ->
+    subproject.afterEvaluate {
+        def androidExt = subproject.extensions.findByName("android")
+        if (androidExt == null) {
+            return
+        }
+        try {
+            def cmakeArgs = androidExt.defaultConfig.externalNativeBuild.cmake.arguments
+            ezkey16KbCmakeArgs.each { arg ->
+                def prefix = arg.substring(0, arg.indexOf("=") + 1)
+                if (cmakeArgs.none { it.startsWith(prefix) }) {
+                    cmakeArgs.add(arg)
+                }
+            }
+        } catch (Exception ignored) {
+            // No CMake externalNativeBuild on this module.
+        }
+    }
+}

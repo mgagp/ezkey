@@ -83,21 +83,27 @@ Play requires 16 KB page-size support for 64-bit devices when targeting Android 
 **Rules for this repo:**
 
 1. ABIs are **arm64-v8a** and **x86_64** only (no 32-bit).
-2. `ndkVersion` is **r28+** so locally built `.so` files get 16 KB ELF / GNU_RELRO padding.
-3. Force **`androidx.datastore*` → 1.2.1** (`libdatastore_shared_counter.so` RELRO fixed vs 1.2.0).
+2. `ndkVersion` is **r28+**, and all CMake native builds get
+   `-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384` (NDK r28 alone pads LOAD to 16 KB
+   but LLD still pads `GNU_RELRO` with 4 KB `common-page-size` unless raised).
+3. Force **`androidx.datastore*` → 1.2.1**; pin **`conscrypt-android` → 2.7.0** (both fix RELRO
+   vs their previous pins).
 4. Do **not** set `packagingOptions.jniLibs.useLegacyPackaging = true` — it does not fix RELRO.
 5. After every release APK/AAB: run `./scripts/check-16kb-alignment.sh <artifact>`.
    - Fails on `PT_LOAD p_align < 0x4000` or `GNU_RELRO` end not 16 KB aligned.
    - APK also runs `zipalign -c -P 16 -v 4`.
    - Wired into `yarn android:bundle:release`, `build-install-release-clean.sh`, and CI.
-6. **Residual (Decision A / #659):** React Native **0.87.1** Maven prebuilts
-   (`libhermestooling`, `libjsi`, `libreactnative`, `libfbjni`, `libc++_shared`, …) may still fail
-   GNU_RELRO. The gate **allowlists only those documented basenames**. Do not expand the list
-   casually; reopen an RN bump if Play rejects the AAB on that residual alone.
+6. **Allowlisted residuals (#659)** — keep tiny; do not expand casually:
+   - **Decision A:** RN **0.87.1** Maven prebuilts (`libhermestooling`, `libjsi`,
+     `libreactnative`, `libfbjni`, `libc++_shared`, …). Reopen RN bump if Play rejects on these.
+   - **Third-party AAR prebuilts** (not rebuilt by our NDK): Fresco `libimagepipeline*` /
+     `libnative-*`, CameraX `libsurface_util_jni`, ML Kit `libbarhopper_v3` (x86_64).
+   - Locally built libs (gesture-handler, VisionCamera, `libappmodules`, …) must **pass**.
 
-Clean rebuild after NDK bumps: delete `android/app/build`, `android/build`, `android/app/.cxx`,
-then `assembleRelease` / `bundleRelease` (see `scripts/build-install-release-clean.sh` and
-`scripts/bundle-release.sh`).
+Clean rebuild after NDK / linker-flag bumps: delete `android/app/build`, `android/build`,
+`android/app/.cxx`, and each autolinked module’s `.cxx` under `node_modules/*/android/.cxx` if
+present, then `assembleRelease` / `bundleRelease` (see `scripts/build-install-release-clean.sh`
+and `scripts/bundle-release.sh`).
 
 ---
 

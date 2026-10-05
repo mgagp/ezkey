@@ -25,14 +25,11 @@ set -uo pipefail
 PAGE_SIZE=$((0x4000))
 SCRIPT_NAME="$(basename "$0")"
 
-# RN 0.87.1 react-android / hermes-android Maven prebuilts (arm64): PT_LOAD often OK,
-# GNU_RELRO end still misaligned. Measured against official AAR; same sizes as Play AAB.
-# Upstream requirement + RELRO formula:
-#   https://developer.android.com/guide/practices/page-sizes
-# Related RN discussion (LOAD / 16 KB; does not claim RELRO fixed on 0.87.1):
-#   https://github.com/facebook/react-native/issues/52594
-# Decision A (#659): document residual; do not bump RN in this change. Reopen RN bump
-# only if Play rejects AAB on this residual alone.
+# --- Allowlist A: RN 0.87.1 Maven prebuilts (Decision A / #659) ---
+# react-android / hermes-android: PT_LOAD often OK, GNU_RELRO end still misaligned.
+# Upstream: https://developer.android.com/guide/practices/page-sizes
+# Related:  https://github.com/facebook/react-native/issues/52594
+# Do not bump RN in this change; reopen only if Play rejects AAB on this residual alone.
 RN_PREBUILT_RELRO_ALLOWLIST=(
   libc++_shared.so
   libfbjni.so
@@ -41,6 +38,21 @@ RN_PREBUILT_RELRO_ALLOWLIST=(
   libhermesvm.so
   libjsi.so
   libreactnative.so
+)
+
+# --- Allowlist B: third-party Maven AAR prebuilts (not rebuilt by our NDK) ---
+# Measured FAIL on current dependency AARs; cannot fix without vendor rebuild / RN bump
+# (Fresco is pulled by react-android). Keep this list tiny and documented.
+# - libimagepipeline.so / libnative-imagetranscoder.so / libnative-filters.so: Fresco
+#   (RN 0.87.1 pins fresco 3.7.0; 3.8.0 still RELRO-FAIL)
+# - libsurface_util_jni.so: AndroidX Camera (VisionCamera); 1.4–1.7-alpha still FAIL
+# - libbarhopper_v3.so: ML Kit barcode-scanning (arm64 OK; x86_64 FAIL on 17.3.0)
+THIRD_PARTY_PREBUILT_RELRO_ALLOWLIST=(
+  libbarhopper_v3.so
+  libimagepipeline.so
+  libnative-filters.so
+  libnative-imagetranscoder.so
+  libsurface_util_jni.so
 )
 
 usage() {
@@ -81,12 +93,30 @@ EXT_LOWER="$(printf '%s' "$EXT" | tr '[:upper:]' '[:lower:]')"
 is_allowlisted() {
   local base="$1"
   local name
-  for name in "${RN_PREBUILT_RELRO_ALLOWLIST[@]}"; do
+  for name in "${RN_PREBUILT_RELRO_ALLOWLIST[@]}" "${THIRD_PARTY_PREBUILT_RELRO_ALLOWLIST[@]}"; do
     if [[ "$base" == "$name" ]]; then
       return 0
     fi
   done
   return 1
+}
+
+allowlist_reason() {
+  local base="$1"
+  local name
+  for name in "${RN_PREBUILT_RELRO_ALLOWLIST[@]}"; do
+    if [[ "$base" == "$name" ]]; then
+      printf '%s' "RN 0.87.1 prebuilt residual; Decision A / #659"
+      return 0
+    fi
+  done
+  for name in "${THIRD_PARTY_PREBUILT_RELRO_ALLOWLIST[@]}"; do
+    if [[ "$base" == "$name" ]]; then
+      printf '%s' "third-party Maven prebuilt residual; #659"
+      return 0
+    fi
+  done
+  printf '%s' "allowlisted"
 }
 
 find_readelf() {
@@ -261,7 +291,7 @@ for so in "${SO_FILES[@]}"; do
   fi
 
   if is_allowlisted "$base"; then
-    echo "ALLOW ${rel}: GNU_RELRO end % 0x4000 = 0x$(printf '%x' "$rem") (RN 0.87.1 prebuilt residual; Decision A / #659)"
+    echo "ALLOW ${rel}: GNU_RELRO end % 0x4000 = 0x$(printf '%x' "$rem") ($(allowlist_reason "$base"))"
     ALLOWLISTED_RELRO=$((ALLOWLISTED_RELRO + 1))
   else
     echo "FAIL  ${rel}: GNU_RELRO end % 0x4000 = 0x$(printf '%x' "$rem") (VirtAddr=${PHDR_VADDR} MemSiz=${PHDR_MEMSIZ})"
@@ -298,10 +328,11 @@ echo "    zipalign:          ${ZIPALIGN_STATUS}"
 
 if [[ "$ALLOWLISTED_RELRO" -gt 0 ]]; then
   echo
-  echo "Note: RN 0.87.1 Maven prebuilts remain on the RELRO allowlist (Decision A / #659)."
+  echo "Note: allowlisted RELRO residuals remain (#659)."
+  echo "      RN 0.87.1 Decision A + third-party Maven AAR prebuilts (Fresco/CameraX/ML Kit)."
   echo "      Upstream: https://developer.android.com/guide/practices/page-sizes"
   echo "      Related:  https://github.com/facebook/react-native/issues/52594"
-  echo "      Reopen RN bump only if Play rejects AAB on this residual alone."
+  echo "      Locally built .so must NOT appear here — raise common-page-size / rebuild."
 fi
 
 if [[ "$HARD_FAIL" -gt 0 ]]; then
