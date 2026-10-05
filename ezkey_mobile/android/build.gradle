@@ -52,9 +52,10 @@ def injectEzkey16KbCmakeArgsIntoExt = { ext, projectPath ->
         return
     }
     def cmakeArgs = ext.defaultConfig.externalNativeBuild.cmake.arguments
+    // Groovy ArrayList has no Kotlin-style .none{}; use !any.
     ezkey16KbCmakeArgs.each { arg ->
         def prefix = arg.substring(0, arg.indexOf("=") + 1)
-        if (cmakeArgs.none { it.toString().startsWith(prefix) }) {
+        if (!cmakeArgs.any { it.toString().startsWith(prefix) }) {
             cmakeArgs.add(arg)
         }
     }
