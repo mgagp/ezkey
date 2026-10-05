@@ -21,61 +21,75 @@ buildscript {
     }
 }
 
-apply plugin: "com.facebook.react.rootproject"
-
-// 16 KB GNU_RELRO: include add_link_options for max-page-size + common-page-size=16384
-// into every Android CMake project (#659). Use AGP finalizeDsl so autolinked library
-// modules actually receive the argument (plain afterEvaluate was a no-op for them).
-def ezkey16KbCmakeInclude =
-        "-DCMAKE_PROJECT_INCLUDE=${rootDir}/cmake/ezkey-16kb-page-size.cmake"
-// Belt-and-suspenders: also set shared linker flags (non-INIT) for toolchains that
-// ignore PROJECT_INCLUDE ordering.
-def ezkey16KbLinkerFlags = "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
+// 16 KB GNU_RELRO (#659): inject CMAKE_PROJECT_INCLUDE + linker flags into every
+// Android module that builds CMake native code.
+//
+// Timing matters under AGP 9:
+// - afterEvaluate is too late (AGP already snapshot cmake.arguments)
+// - finalizeDsl from subprojects/withPlugin is also too late ("DSL finalization
+//   already completed") when registered after a module has begun finalizing
+// - Register finalizeDsl in gradle.beforeProject (before apply rootproject) so
+//   withPlugin fires during each module's evaluation — same lifecycle window
+//   RN's NdkConfiguratorUtils uses.
+def ezkey16KbCmakeFile = new File(rootDir, "cmake/ezkey-16kb-page-size.cmake").absolutePath
+// Comma-joined -Wl flags avoid AGP splitting on spaces inside one cmake argument.
+def ezkey16KbLinkerFlags = "-Wl,-z,max-page-size=16384,-z,common-page-size=16384"
 def ezkey16KbCmakeArgs = [
-    ezkey16KbCmakeInclude,
+    "-DCMAKE_PROJECT_INCLUDE=${ezkey16KbCmakeFile}",
     "-DCMAKE_SHARED_LINKER_FLAGS=${ezkey16KbLinkerFlags}",
     "-DCMAKE_MODULE_LINKER_FLAGS=${ezkey16KbLinkerFlags}",
     "-DCMAKE_EXE_LINKER_FLAGS=${ezkey16KbLinkerFlags}",
 ]
 
 def injectEzkey16KbCmakeArgsIntoExt = { ext, projectPath ->
+    def cmakePath = null
     try {
-        def cmakeArgs = ext.defaultConfig.externalNativeBuild.cmake.arguments
-        ezkey16KbCmakeArgs.each { arg ->
-            def prefix = arg.substring(0, arg.indexOf("=") + 1)
-            if (cmakeArgs.none { it.toString().startsWith(prefix) }) {
-                cmakeArgs.add(arg)
-            }
-        }
-        println "[ezkey-16kb] ${projectPath}: injected CMAKE_PROJECT_INCLUDE + linker flags"
+        cmakePath = ext.externalNativeBuild.cmake.path
     } catch (Throwable ignored) {
-        // Module has no CMake externalNativeBuild.
+        return
+    }
+    if (cmakePath == null) {
+        return
+    }
+    def cmakeArgs = ext.defaultConfig.externalNativeBuild.cmake.arguments
+    ezkey16KbCmakeArgs.each { arg ->
+        def prefix = arg.substring(0, arg.indexOf("=") + 1)
+        if (cmakeArgs.none { it.toString().startsWith(prefix) }) {
+            cmakeArgs.add(arg)
+        }
+    }
+    println "[ezkey-16kb] ${projectPath}: injected CMAKE_PROJECT_INCLUDE + linker flags"
+}
+
+def registerEzkey16KbFinalizeDsl = { Project proj ->
+    def androidComponents = proj.extensions.findByName("androidComponents")
+    if (androidComponents == null) {
+        return
+    }
+    androidComponents.finalizeDsl { ext ->
+        injectEzkey16KbCmakeArgsIntoExt(ext, proj.path)
     }
 }
 
+gradle.beforeProject { Project proj ->
+    if (proj.name == "EzkeyMobile" && proj.parent == null) {
+        return
+    }
+    proj.pluginManager.withPlugin("com.android.library") {
+        registerEzkey16KbFinalizeDsl(proj)
+    }
+    proj.pluginManager.withPlugin("com.android.application") {
+        registerEzkey16KbFinalizeDsl(proj)
+    }
+}
+
+apply plugin: "com.facebook.react.rootproject"
+
 // Async Storage 3.x publishes shared-storage AAR via package-local Maven (not on Maven Central).
-// Also inject 16 KB linker flags into every Android module CMake build via finalizeDsl.
 subprojects { subproject ->
     subproject.repositories {
         maven {
             url = uri("${rootDir}/../node_modules/@react-native-async-storage/async-storage/android/local_repo")
-        }
-    }
-
-    subproject.pluginManager.withPlugin("com.android.library") {
-        def androidComponents = subproject.extensions.findByName("androidComponents")
-        if (androidComponents != null) {
-            androidComponents.finalizeDsl { ext ->
-                injectEzkey16KbCmakeArgsIntoExt(ext, subproject.path)
-            }
-        }
-    }
-    subproject.pluginManager.withPlugin("com.android.application") {
-        def androidComponents = subproject.extensions.findByName("androidComponents")
-        if (androidComponents != null) {
-            androidComponents.finalizeDsl { ext ->
-                injectEzkey16KbCmakeArgsIntoExt(ext, subproject.path)
-            }
         }
     }
 }
