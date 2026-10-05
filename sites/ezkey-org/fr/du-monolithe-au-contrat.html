@@ -157,6 +157,21 @@
             font-size: 0.98rem;
         }
 
+        .editorial-update {
+            margin: 16px 0;
+            padding: 14px 18px;
+            background: #fff8eb;
+            border: 1px solid #f0d7a3;
+            border-left: 4px solid #c88a1a;
+            border-radius: 10px;
+        }
+
+        .editorial-update p {
+            margin-bottom: 0;
+            font-size: 0.95rem;
+            color: #3b3325;
+        }
+
         .flow-steps {
             margin: 16px 0 20px;
             padding-left: 0;
@@ -314,6 +329,10 @@
 
             <p>Je ne cherche pas l&rsquo;autonomie maximale de l&rsquo;agent. Je cherche une interaction humain-AI de qualit&eacute;. Le moment du dispatch est un moment de gating&nbsp;: c&rsquo;est l&rsquo;instant o&ugrave; moi, l&rsquo;humain, je d&eacute;clare que l&rsquo;API est assez solide pour devenir le contrat d&rsquo;un consommateur.</p>
 
+            <div class="editorial-update">
+                <p><strong>Mise &agrave; jour &eacute;ditoriale &mdash; septembre 2026.</strong> Ce passage reste fid&egrave;le au moment o&ugrave; l&rsquo;article a &eacute;t&eacute; &eacute;crit. &Agrave; l&rsquo;&eacute;poque, je gardais volontairement <code>update-specs</code> comme geste de gating humain explicite. La pratique a depuis &eacute;volu&eacute;, en m&ecirc;me temps que l&rsquo;autonomie des agents et la confiance que l&rsquo;on peut accorder &agrave; des workflows mieux encadr&eacute;s. Une part plus large de la cha&icirc;ne peut d&eacute;sormais leur &ecirc;tre d&eacute;l&eacute;gu&eacute;e, y compris le refresh OpenAPI, la r&eacute;g&eacute;n&eacute;ration des consommateurs et certaines validations ex&eacute;cutables. Le jugement humain ne dispara&icirc;t pas pour autant. Il se d&eacute;place&nbsp;: moins dans l&rsquo;ex&eacute;cution manuelle de chaque &eacute;tape, davantage dans la d&eacute;finition du cadre, des garde-fous, du niveau d&rsquo;autonomie accord&eacute; et de l&rsquo;acceptation finale du r&eacute;sultat.</p>
+            </div>
+
             <p>Avant d&rsquo;invoquer <code>update-specs</code>, j&rsquo;ai compl&eacute;t&eacute; l&rsquo;impl&eacute;mentation, valid&eacute; avec les tests unitaires, pass&eacute; les tests fonctionnels, parcouru la collection Postman contre le backend actif. J&rsquo;ai lu la sp&eacute;cification g&eacute;n&eacute;r&eacute;e. J&rsquo;ai v&eacute;rifi&eacute; que le contrat refl&egrave;te bien l&rsquo;intention de d&eacute;part.</p>
 
             <p>Ce moment de lecture &mdash; &laquo;&nbsp;est-ce que &ccedil;a ressemble &agrave; ce que j&rsquo;avais en t&ecirc;te&nbsp;?&nbsp;&raquo; &mdash; n&rsquo;est pas automatis&eacute;. C&rsquo;est un jugement humain, et je tiens &agrave; le garder tel quel.</p>
@@ -331,6 +350,10 @@
             <p>La <strong>session backend</strong> commence avec un plan de fonctionnalit&eacute;, couvre la conception, l&rsquo;impl&eacute;mentation, les tests unitaires, les tests fonctionnels, la validation Postman. Quand tout est stable et le jugement humain positif, j&rsquo;invoque <code>update-specs</code>. La spec est extraite, format&eacute;e, dispers&eacute;e dans les sous-dossiers concern&eacute;s. La session se cl&ocirc;t l&agrave;. Le contrat backend est &laquo;&nbsp;gel&eacute;&nbsp;&raquo; &mdash; versionn&eacute; dans le d&eacute;p&ocirc;t, plac&eacute; o&ugrave; il doit l&rsquo;&ecirc;tre.</p>
 
             <p>La <strong>session consommateur</strong> d&eacute;marre fra&icirc;che. Pour l&rsquo;admin UI&nbsp;: nouvelle session, lecture du plan de la session pr&eacute;c&eacute;dente, puis lecture du <code>openapi-spec.json</code> d&eacute;j&agrave; pr&eacute;sent dans <code>ezkey-admin-ui</code>. L&rsquo;agent travaille enti&egrave;rement dans ce sous-projet. Le backend n&rsquo;est pas dans son contexte. Le contrat est d&eacute;fini par la spec &mdash; sans n&eacute;gociation, sans approximation.</p>
+
+            <div class="editorial-update">
+                <p><strong>Mise &agrave; jour &eacute;ditoriale &mdash; septembre 2026.</strong> Le principe de d&eacute;coupage reste utile, mais il ne s&rsquo;exprime plus tout &agrave; fait avec la m&ecirc;me rigidit&eacute;. Au moment de publication, cette s&eacute;paration forte entre session backend et session consommateur m&rsquo;aidait &agrave; maintenir un contexte net et &agrave; limiter les d&eacute;rives. Aujourd&rsquo;hui, avec des agents plus autonomes et des garde-fous mieux d&eacute;finis, une m&ecirc;me cha&icirc;ne de travail peut raisonnablement couvrir davantage de terrain sans perdre sa discipline. Le bornage reste essentiel. Ce qui change, c&rsquo;est qu&rsquo;il repose moins sur une coupure absolue des contextes et davantage sur une d&eacute;finition explicite de ce que l&rsquo;agent peut encha&icirc;ner proprement dans un cadre donn&eacute;.</p>
+            </div>
 
             <p>M&ecirc;me logique pour l&rsquo;application mobile, le CLI Python, <code>ezkey-dart</code>. Chaque sous-projet a son propre <code>openapi-spec.json</code> local, pr&ecirc;t &agrave; l&rsquo;emploi.</p>
 
@@ -358,6 +381,10 @@
                 <p>Ma traduction pragmatique, pour un solo dev qui valorise la simplicit&eacute;&nbsp;: le contexte est un choix architectural, pas un produit de configuration. Sessions fra&icirc;ches, sujets bien born&eacute;s, contrats versionn&eacute;s &mdash; voil&agrave; les leviers qui ont r&eacute;ellement fait la diff&eacute;rence.</p>
 
                 <p>Le slow AI n&rsquo;est pas une limitation. C&rsquo;est un positionnement qui pr&eacute;serve la qualit&eacute; des d&eacute;cisions. L&rsquo;agent est puissant &mdash; mais il est le plus puissant quand il sait exactement o&ugrave; il est et o&ugrave; s&rsquo;arr&ecirc;ter. Et c&rsquo;est moi qui d&eacute;cide o&ugrave; se trouve cette fronti&egrave;re.</p>
+
+                <div class="editorial-update">
+                    <p><strong>Mise &agrave; jour &eacute;ditoriale &mdash; septembre 2026.</strong> La discipline que je d&eacute;cris ici reste enti&egrave;re, mais sa forme a chang&eacute;. Je ne la con&ccedil;ois plus seulement comme l&rsquo;art de retenir l&rsquo;agent en de&ccedil;&agrave; d&rsquo;une fronti&egrave;re fixe. Je la vois davantage comme la capacit&eacute; &agrave; d&eacute;finir une fronti&egrave;re mobile, explicite et assum&eacute;e&nbsp;: ce qui peut &ecirc;tre d&eacute;l&eacute;gu&eacute;, ce qui doit &ecirc;tre v&eacute;rifi&eacute;, et ce qui rel&egrave;ve encore d&rsquo;une responsabilit&eacute; humaine directe. La discipline reste donc la m&ecirc;me dans son intention, mais elle s&rsquo;exprime aujourd&rsquo;hui moins par la retenue manuelle que par la qualit&eacute; du cadre dans lequel l&rsquo;autonomie est autoris&eacute;e.</p>
+                </div>
 
                 <p>Le meilleur contexte n&rsquo;est pas le plus complet. C&rsquo;est celui qui sait s&rsquo;arr&ecirc;ter.</p>
             </div>
