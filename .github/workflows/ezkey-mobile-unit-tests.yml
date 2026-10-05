@@ -160,10 +160,13 @@ jobs:
             cmake;3.22.1
 
       - name: Assemble release APK
-        working-directory: ezkey_mobile/android
+        working-directory: ezkey_mobile
         run: |
-          chmod +x gradlew
-          ./gradlew :app:assembleRelease --no-daemon --stacktrace
+          chmod +x android/gradlew
+          # Drop stale native caches so NDK r28 + common-page-size=16384 flags apply (#659).
+          rm -rf android/app/build android/build android/app/.cxx
+          find node_modules -type d -path '*/android/.cxx' -prune -exec rm -rf {} + 2>/dev/null || true
+          (cd android && ./gradlew :app:assembleRelease --no-daemon --stacktrace)
 
       - name: Check 16 KB page-size alignment
         working-directory: ezkey_mobile
