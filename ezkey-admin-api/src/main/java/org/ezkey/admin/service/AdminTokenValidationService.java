@@ -131,6 +131,14 @@ public class AdminTokenValidationService {
             return Optional.empty();
           }
 
+          if (adminToken.getTokenPurpose() == AdminTokenPurpose.SESSION
+              && enrollment != null
+              && !EnrollmentStatus.VERIFIED.equals(enrollment.getStatus())) {
+            logger.warn(
+                "❌ Token rejected: enrollment is not verified for admin: {}", admin.getUsername());
+            return Optional.empty();
+          }
+
           // Temporary evaluator console: once MFA is VERIFIED, TEMP must die on first Admin API
           // call (even before passwordless SESSION re-login).
           if (adminToken.getTokenPurpose() == AdminTokenPurpose.EVALUATOR_TEMP

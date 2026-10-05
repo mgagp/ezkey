@@ -89,6 +89,7 @@ class AdminTokenValidationServiceTest {
     stubValidNonExpiredToken();
     when(admin.getEnrollment()).thenReturn(enrollment);
     when(enrollment.getActive()).thenReturn(true);
+    when(enrollment.getStatus()).thenReturn(EnrollmentStatus.VERIFIED);
 
     Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
 
@@ -101,6 +102,19 @@ class AdminTokenValidationServiceTest {
     stubValidNonExpiredToken();
     when(admin.getEnrollment()).thenReturn(enrollment);
     when(enrollment.getActive()).thenReturn(false);
+
+    Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  @DisplayName("Should reject SESSION token when admin enrollment is no longer verified")
+  void validateTokenWithRelations_shouldReturnEmpty_whenSessionEnrollmentIsNotVerified() {
+    stubValidNonExpiredToken();
+    when(admin.getEnrollment()).thenReturn(enrollment);
+    when(enrollment.getActive()).thenReturn(true);
+    when(enrollment.getStatus()).thenReturn(EnrollmentStatus.CREATED);
 
     Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
 
