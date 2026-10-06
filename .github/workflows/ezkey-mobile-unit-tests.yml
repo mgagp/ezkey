@@ -1,4 +1,5 @@
-# ezkey_mobile: JS quality (yarn validate) + Android JVM unit tests (crypto).
+# ezkey_mobile: JS quality (yarn validate) + Android JVM unit tests (crypto)
+# + release 16 KB page-size alignment gate (#659).
 #
 # Triggers on PR/push when ezkey_mobile/ or this workflow changes.
 # Uses Corepack so CI matches package.json "packageManager": "yarn@4.10.3"
@@ -111,3 +112,74 @@ jobs:
           name: ezkey-mobile-unit-test-report
           path: ezkey_mobile/android/app/build/reports/tests/testDebugUnitTest/
           retention-days: 7
+
+  # 16 KB page-size gate (#659): release APK must pass ELF PT_LOAD + GNU_RELRO checks
+  # (RN 0.87.1 Maven prebuilts may be allowlisted residuals only). No useLegacyPackaging.
+  android-16kb-alignment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20.19.4'
+
+      - name: Enable Corepack (Yarn 4)
+        run: corepack enable
+
+      - name: Cache Yarn (Berry)
+        uses: actions/cache@v6
+        with:
+          path: |
+            ezkey_mobile/.yarn/cache
+          key: ${{ runner.os }}-ezkey-mobile-yarn-${{ hashFiles('ezkey_mobile/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-ezkey-mobile-yarn-
+
+      - name: Install ezkey_mobile dependencies
+        working-directory: ezkey_mobile
+        run: yarn install --immutable
+
+      - name: Set up Android SDK (NDK r28 + build-tools for zipalign -P 16)
+        uses: android-actions/setup-android@v4
+        with:
+          packages: >
+            platform-tools
+            platforms;android-36
+            build-tools;36.0.0
+            ndk;28.1.13356709
+            cmake;3.22.1
+
+      - name: Assemble release APK
+        working-directory: ezkey_mobile
+        run: |
+          chmod +x android/gradlew
+          # Drop stale native caches so NDK r28 + common-page-size=16384 flags apply (#659).
+          rm -rf android/app/build android/build android/app/.cxx
+          find node_modules -type d -path '*/android/.cxx' -prune -exec rm -rf {} + 2>/dev/null || true
+          # --no-build-cache: native .so layout must reflect current linker flags (#659).
+          (cd android && ./gradlew :app:assembleRelease --no-daemon --no-build-cache --stacktrace)
+
+      - name: Check 16 KB page-size alignment
+        working-directory: ezkey_mobile
+        run: |
+          chmod +x scripts/check-16kb-alignment.sh
+          ./scripts/check-16kb-alignment.sh android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload release APK (alignment evidence)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ezkey-mobile-release-apk-16kb
+          path: ezkey_mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 7
+          if-no-files-found: ignore

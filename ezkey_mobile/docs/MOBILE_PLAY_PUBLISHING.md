@@ -42,6 +42,10 @@ Delivery is **AAB** (not APK). Play App Signing holds the app-signing key; you k
 - [x] **Release signing** path exists (upload key outside the repo). Repeat for the **final GA AAB** before submit.
 - [x] **Version policy** documented below. Next closed-testing upload: `versionName` `0.1.0-alpha` (`package.json`), `versionCode` **3**. In-app chrome says Public alpha (plus git short SHA on About), not `v1.0.0`.
 - [x] **Target API level** — `targetSdkVersion` / `compileSdkVersion` **36**. `minSdkVersion` **31** (Android 12+).
+- [x] **16 KB page-size** — NDK r28+, datastore 1.2.1 force, `yarn android:bundle:release` runs
+  `scripts/check-16kb-alignment.sh` (see [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md)).
+  Do not use `useLegacyPackaging`. RN 0.87.1 prebuilt RELRO residuals are an explicit Decision A
+  allowlist (#659) until an RN bump.
 - [x] **Open source notices**: run `yarn license:app-data` after dependency changes; commit `app/data/thirdPartyLicenses.json` with the candidate. Regenerated 2026-08-14.
 
 ## Optional polish

@@ -4,7 +4,10 @@ buildscript {
         minSdkVersion = 31
         compileSdkVersion = 36
         targetSdkVersion = 36
-        ndkVersion = "27.1.12297006"
+        // NDK r28+ defaults LOAD segments to 16 KB. GNU_RELRO still needs common-page-size
+        // raised via android/cmake/ezkey-16kb-page-size.cmake (#659).
+        // See https://developer.android.com/guide/practices/page-sizes
+        ndkVersion = "28.1.13356709"
         kotlinVersion = "2.2.0"
     }
     repositories {
@@ -18,11 +21,74 @@ buildscript {
     }
 }
 
+// 16 KB GNU_RELRO (#659): inject CMAKE_PROJECT_INCLUDE + linker flags into every
+// Android module that builds CMake native code.
+//
+// Timing matters under AGP 9:
+// - afterEvaluate is too late (AGP already snapshot cmake.arguments)
+// - finalizeDsl from subprojects/withPlugin is also too late ("DSL finalization
+//   already completed") when registered after a module has begun finalizing
+// - Register finalizeDsl in gradle.beforeProject (before apply rootproject) so
+//   withPlugin fires during each module's evaluation — same lifecycle window
+//   RN's NdkConfiguratorUtils uses.
+def ezkey16KbCmakeFile = new File(rootDir, "cmake/ezkey-16kb-page-size.cmake").absolutePath
+// Comma-joined -Wl flags avoid AGP splitting on spaces inside one cmake argument.
+def ezkey16KbLinkerFlags = "-Wl,-z,max-page-size=16384,-z,common-page-size=16384"
+def ezkey16KbCmakeArgs = [
+    "-DCMAKE_PROJECT_INCLUDE=${ezkey16KbCmakeFile}",
+    "-DCMAKE_SHARED_LINKER_FLAGS=${ezkey16KbLinkerFlags}",
+    "-DCMAKE_MODULE_LINKER_FLAGS=${ezkey16KbLinkerFlags}",
+    "-DCMAKE_EXE_LINKER_FLAGS=${ezkey16KbLinkerFlags}",
+]
+
+def injectEzkey16KbCmakeArgsIntoExt = { ext, projectPath ->
+    def cmakePath = null
+    try {
+        cmakePath = ext.externalNativeBuild.cmake.path
+    } catch (Throwable ignored) {
+        return
+    }
+    if (cmakePath == null) {
+        return
+    }
+    def cmakeArgs = ext.defaultConfig.externalNativeBuild.cmake.arguments
+    // Groovy ArrayList has no Kotlin-style .none{}; use !any.
+    ezkey16KbCmakeArgs.each { arg ->
+        def prefix = arg.substring(0, arg.indexOf("=") + 1)
+        if (!cmakeArgs.any { it.toString().startsWith(prefix) }) {
+            cmakeArgs.add(arg)
+        }
+    }
+    println "[ezkey-16kb] ${projectPath}: injected CMAKE_PROJECT_INCLUDE + linker flags"
+}
+
+def registerEzkey16KbFinalizeDsl = { Project proj ->
+    def androidComponents = proj.extensions.findByName("androidComponents")
+    if (androidComponents == null) {
+        return
+    }
+    androidComponents.finalizeDsl { ext ->
+        injectEzkey16KbCmakeArgsIntoExt(ext, proj.path)
+    }
+}
+
+gradle.beforeProject { Project proj ->
+    if (proj.name == "EzkeyMobile" && proj.parent == null) {
+        return
+    }
+    proj.pluginManager.withPlugin("com.android.library") {
+        registerEzkey16KbFinalizeDsl(proj)
+    }
+    proj.pluginManager.withPlugin("com.android.application") {
+        registerEzkey16KbFinalizeDsl(proj)
+    }
+}
+
 apply plugin: "com.facebook.react.rootproject"
 
 // Async Storage 3.x publishes shared-storage AAR via package-local Maven (not on Maven Central).
-subprojects {
-    repositories {
+subprojects { subproject ->
+    subproject.repositories {
         maven {
             url = uri("${rootDir}/../node_modules/@react-native-async-storage/async-storage/android/local_repo")
         }

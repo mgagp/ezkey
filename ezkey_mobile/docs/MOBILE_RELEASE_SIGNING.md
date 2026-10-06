@@ -54,6 +54,11 @@ variables (Gradle automatically maps them to project properties).
 yarn android:bundle:release
 ```
 
+That script runs `bundleRelease`, then
+[`scripts/check-16kb-alignment.sh`](../scripts/check-16kb-alignment.sh) on the AAB (16 KB
+PT_LOAD + GNU_RELRO gate; see [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md)
+§ *16 KB page-size gate*). Do not use `useLegacyPackaging` to silence failures.
+
 The bundle lands at:
 
 ```

@@ -65,6 +65,29 @@ pending-auth debug panel. App code also hard-gates F2a on native debug build typ
 
 Contract: [`docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`](../docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md).
 
+After a successful `assembleRelease`, the script also runs
+[`check-16kb-alignment.sh`](check-16kb-alignment.sh) on the release APK.
+
+## `bundle-release.sh` + `check-16kb-alignment.sh` (16 KB page-size gate)
+
+`yarn android:bundle:release` → `scripts/bundle-release.sh` → Gradle `bundleRelease` →
+`scripts/check-16kb-alignment.sh` on `app-release.aab`.
+
+The check extracts `arm64-v8a` / `x86_64` `.so` files and fails the build if:
+
+- any `PT_LOAD` `p_align` &lt; `0x4000`, or
+- any `GNU_RELRO` end (`VirtAddr + MemSiz`) is not 16 KB aligned (except documented residuals —
+  RN 0.87.1 Maven prebuilts Decision A / #659, plus Fresco/CameraX/ML Kit AAR prebuilts), or
+- for APK inputs, `zipalign -c -P 16 -v 4` fails.
+
+Standalone: `./scripts/check-16kb-alignment.sh path/to/app-release.apk|aab`.
+
+Requires `llvm-readelf` / `readelf` on PATH, or the NDK copy (`llvm-readelf` on Linux,
+`llvm-readelf.exe` under `prebuilt/windows-x86_64/bin` on Windows Git Bash).
+
+Policy: [`docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md`](../docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md)
+§ *16 KB page-size gate*. Do **not** set `useLegacyPackaging=true` as a workaround.
+
 ## `run-mobile-churn-no-recovery.ps1`
 
 Runs repeated mobile churn iterations without using enrollment recovery/reset:
