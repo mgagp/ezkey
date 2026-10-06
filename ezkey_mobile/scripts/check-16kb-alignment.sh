@@ -33,7 +33,6 @@ SCRIPT_NAME="$(basename "$0")"
 RN_PREBUILT_RELRO_ALLOWLIST=(
   libc++_shared.so
   libfbjni.so
-  libhermes.so
   libhermestooling.so
   libhermesvm.so
   libjsi.so
@@ -60,10 +59,11 @@ usage() {
 Usage: ${SCRIPT_NAME} <apk-or-aab>
 
 Extracts arm64-v8a and x86_64 .so files, fails if any PT_LOAD p_align < 0x4000,
-fails if GNU_RELRO end % 0x4000 != 0 (unless basename is a documented RN 0.87.1
-prebuilt residual), and for APK runs zipalign -c -P 16 -v 4.
+fails if GNU_RELRO end % 0x4000 != 0 (unless basename is a documented residual —
+RN 0.87.1 Maven prebuilts or third-party AAR prebuilts), and for APK runs
+zipalign -c -P 16 -v 4.
 
-Exit 0 when only allowlisted RN prebuilt residuals (if any) fail RELRO.
+Exit 0 when only allowlisted documented residuals (if any) fail RELRO.
 Exit 1 on any other failure.
 EOF
 }
@@ -90,11 +90,19 @@ ARTIFACT_ABS="$(cd "$(dirname "$ARTIFACT")" && pwd)/$(basename "$ARTIFACT")"
 EXT="${ARTIFACT_ABS##*.}"
 EXT_LOWER="$(printf '%s' "$EXT" | tr '[:upper:]' '[:lower:]')"
 
-is_allowlisted() {
+allowlist_bucket() {
+  # Prints "rn", "third_party", or empty (not allowlisted). Exact basename match only.
   local base="$1"
   local name
-  for name in "${RN_PREBUILT_RELRO_ALLOWLIST[@]}" "${THIRD_PARTY_PREBUILT_RELRO_ALLOWLIST[@]}"; do
+  for name in "${RN_PREBUILT_RELRO_ALLOWLIST[@]}"; do
     if [[ "$base" == "$name" ]]; then
+      printf '%s' "rn"
+      return 0
+    fi
+  done
+  for name in "${THIRD_PARTY_PREBUILT_RELRO_ALLOWLIST[@]}"; do
+    if [[ "$base" == "$name" ]]; then
+      printf '%s' "third_party"
       return 0
     fi
   done
@@ -103,43 +111,62 @@ is_allowlisted() {
 
 allowlist_reason() {
   local base="$1"
-  local name
-  for name in "${RN_PREBUILT_RELRO_ALLOWLIST[@]}"; do
-    if [[ "$base" == "$name" ]]; then
-      printf '%s' "RN 0.87.1 prebuilt residual; Decision A / #659"
-      return 0
-    fi
-  done
-  for name in "${THIRD_PARTY_PREBUILT_RELRO_ALLOWLIST[@]}"; do
-    if [[ "$base" == "$name" ]]; then
-      printf '%s' "third-party Maven prebuilt residual; #659"
-      return 0
-    fi
-  done
-  printf '%s' "allowlisted"
+  case "$(allowlist_bucket "$base" || true)" in
+    rn) printf '%s' "RN 0.87.1 prebuilt residual; Decision A / #659" ;;
+    third_party) printf '%s' "third-party Maven prebuilt residual; #659" ;;
+    *) printf '%s' "allowlisted" ;;
+  esac
+}
+
+# Prefer a usable readelf on PATH, then NDK llvm prebuilt (Linux + Windows Git Bash).
+# On Windows the NDK ships llvm-readelf.exe — command -v llvm-readelf alone misses it.
+is_usable_bin() {
+  local p="$1"
+  [[ -n "$p" && -f "$p" ]] || return 1
+  # Git Bash: .exe often lacks Unix +x; still runnable.
+  if [[ "$p" == *.exe || "$p" == *.EXE ]]; then
+    return 0
+  fi
+  [[ -x "$p" ]]
 }
 
 find_readelf() {
-  if command -v llvm-readelf >/dev/null 2>&1; then
-    command -v llvm-readelf
-    return 0
-  fi
-  if command -v readelf >/dev/null 2>&1; then
-    command -v readelf
-    return 0
-  fi
+  local name resolved
+  for name in llvm-readelf llvm-readelf.exe readelf readelf.exe; do
+    resolved="$(command -v "$name" 2>/dev/null || true)"
+    if is_usable_bin "$resolved"; then
+      printf '%s\n' "$resolved"
+      return 0
+    fi
+  done
+
   local sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
   local ndk_root=""
   if [[ -n "$sdk_root" && -d "${sdk_root}/ndk" ]]; then
     ndk_root="$(find "${sdk_root}/ndk" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -1 || true)"
   fi
-  if [[ -n "$ndk_root" ]]; then
-    local candidate
-    candidate="$(find "$ndk_root/toolchains/llvm/prebuilt" -type f -name llvm-readelf 2>/dev/null | head -1 || true)"
-    if [[ -n "$candidate" && -x "$candidate" ]]; then
-      printf '%s\n' "$candidate"
+  if [[ -z "$ndk_root" ]]; then
+    return 1
+  fi
+
+  # Explicit Windows NDK layout (Git Bash) before a generic find.
+  local win_bin="${ndk_root}/toolchains/llvm/prebuilt/windows-x86_64/bin"
+  for name in llvm-readelf.exe llvm-readelf; do
+    if is_usable_bin "${win_bin}/${name}"; then
+      printf '%s\n' "${win_bin}/${name}"
       return 0
     fi
+  done
+
+  local candidate
+  candidate="$(
+    find "$ndk_root/toolchains/llvm/prebuilt" -type f \
+      \( -name llvm-readelf -o -name llvm-readelf.exe \) 2>/dev/null \
+      | sort | head -1 || true
+  )"
+  if is_usable_bin "$candidate"; then
+    printf '%s\n' "$candidate"
+    return 0
   fi
   return 1
 }
@@ -163,7 +190,7 @@ find_zipalign() {
 }
 
 READELF_BIN="$(find_readelf)" || {
-  echo "error: llvm-readelf or readelf required" >&2
+  echo "error: llvm-readelf or readelf required (on Windows Git Bash: llvm-readelf.exe from NDK prebuilt/windows-x86_64/bin)" >&2
   exit 2
 }
 
@@ -194,7 +221,8 @@ fi
 echo "    scanned .so count: ${#SO_FILES[@]}"
 
 HARD_FAIL=0
-ALLOWLISTED_RELRO=0
+ALLOWLISTED_RN=0
+ALLOWLISTED_THIRD_PARTY=0
 PASS_COUNT=0
 
 # Parse one PT_LOAD / GNU_RELRO program-header line from `readelf -lW` / `llvm-readelf -lW`.
@@ -290,9 +318,13 @@ for so in "${SO_FILES[@]}"; do
     continue
   fi
 
-  if is_allowlisted "$base"; then
+  bucket="$(allowlist_bucket "$base" || true)"
+  if [[ "$bucket" == "rn" ]]; then
     echo "ALLOW ${rel}: GNU_RELRO end % 0x4000 = 0x$(printf '%x' "$rem") ($(allowlist_reason "$base"))"
-    ALLOWLISTED_RELRO=$((ALLOWLISTED_RELRO + 1))
+    ALLOWLISTED_RN=$((ALLOWLISTED_RN + 1))
+  elif [[ "$bucket" == "third_party" ]]; then
+    echo "ALLOW ${rel}: GNU_RELRO end % 0x4000 = 0x$(printf '%x' "$rem") ($(allowlist_reason "$base"))"
+    ALLOWLISTED_THIRD_PARTY=$((ALLOWLISTED_THIRD_PARTY + 1))
   else
     echo "FAIL  ${rel}: GNU_RELRO end % 0x4000 = 0x$(printf '%x' "$rem") (VirtAddr=${PHDR_VADDR} MemSiz=${PHDR_MEMSIZ})"
     HARD_FAIL=$((HARD_FAIL + 1))
@@ -319,16 +351,20 @@ else
   exit 2
 fi
 
+ALLOWLISTED_TOTAL=$((ALLOWLISTED_RN + ALLOWLISTED_THIRD_PARTY))
+
 echo
 echo "==> Summary"
-echo "    PASS:              ${PASS_COUNT}"
-echo "    ALLOW (RN residual): ${ALLOWLISTED_RELRO}"
-echo "    FAIL (hard):       ${HARD_FAIL}"
-echo "    zipalign:          ${ZIPALIGN_STATUS}"
+echo "    PASS:                                    ${PASS_COUNT}"
+echo "    ALLOW (RN 0.87.1 prebuilt residual):     ${ALLOWLISTED_RN}"
+echo "    ALLOW (third-party AAR residual):        ${ALLOWLISTED_THIRD_PARTY}"
+echo "    ALLOW total (documented residual):       ${ALLOWLISTED_TOTAL}"
+echo "    FAIL (hard):                             ${HARD_FAIL}"
+echo "    zipalign:                                ${ZIPALIGN_STATUS}"
 
-if [[ "$ALLOWLISTED_RELRO" -gt 0 ]]; then
+if [[ "$ALLOWLISTED_TOTAL" -gt 0 ]]; then
   echo
-  echo "Note: allowlisted RELRO residuals remain (#659)."
+  echo "Note: documented RELRO residuals remain (#659)."
   echo "      RN 0.87.1 Decision A + third-party Maven AAR prebuilts (Fresco/CameraX/ML Kit)."
   echo "      Upstream: https://developer.android.com/guide/practices/page-sizes"
   echo "      Related:  https://github.com/facebook/react-native/issues/52594"

@@ -93,12 +93,17 @@ Play requires 16 KB page-size support for 64-bit devices when targeting Android 
    - Fails on `PT_LOAD p_align < 0x4000` or `GNU_RELRO` end not 16 KB aligned.
    - APK also runs `zipalign -c -P 16 -v 4`.
    - Wired into `yarn android:bundle:release`, `build-install-release-clean.sh`, and CI.
-6. **Allowlisted residuals (#659)** — keep tiny; do not expand casually:
-   - **Decision A:** RN **0.87.1** Maven prebuilts (`libhermestooling`, `libjsi`,
-     `libreactnative`, `libfbjni`, `libc++_shared`, …). Reopen RN bump if Play rejects on these.
-   - **Third-party AAR prebuilts** (not rebuilt by our NDK): Fresco `libimagepipeline*` /
-     `libnative-*`, CameraX `libsurface_util_jni`, ML Kit `libbarhopper_v3` (x86_64).
+6. **Allowlisted residuals (#659)** — keep tiny; exact basename match only; do not expand casually:
+   - **Decision A:** RN **0.87.1** Maven prebuilts (`libhermestooling`, `libhermesvm`, `libjsi`,
+     `libreactnative`, `libfbjni`, `libc++_shared`). No `libhermes` (RN 0.87.1 ships
+     `libhermesvm`). Reopen RN bump if Play rejects on these alone.
+   - **Third-party AAR prebuilts** (not rebuilt by our NDK): Fresco `libimagepipeline` /
+     `libnative-imagetranscoder` / `libnative-filters`, CameraX `libsurface_util_jni`,
+     ML Kit `libbarhopper_v3` (x86_64).
    - Locally built libs (gesture-handler, VisionCamera, `libappmodules`, …) must **pass**.
+   - Gate summary splits `ALLOW (RN …)` vs `ALLOW (third-party AAR …)` (plus `ALLOW total`).
+   - On Windows (Git Bash), the gate resolves `llvm-readelf.exe` from PATH or
+     `ndk/*/toolchains/llvm/prebuilt/windows-x86_64/bin` (no shim required).
 
 Clean rebuild after NDK / linker-flag bumps: delete `android/app/build`, `android/build`,
 `android/app/.cxx`, and each autolinked module’s `.cxx` under `node_modules/*/android/.cxx` if

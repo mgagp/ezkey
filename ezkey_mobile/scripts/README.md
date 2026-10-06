@@ -76,11 +76,14 @@ After a successful `assembleRelease`, the script also runs
 The check extracts `arm64-v8a` / `x86_64` `.so` files and fails the build if:
 
 - any `PT_LOAD` `p_align` &lt; `0x4000`, or
-- any `GNU_RELRO` end (`VirtAddr + MemSiz`) is not 16 KB aligned (except documented RN 0.87.1
-  Maven prebuilt residuals — Decision A / #659), or
+- any `GNU_RELRO` end (`VirtAddr + MemSiz`) is not 16 KB aligned (except documented residuals —
+  RN 0.87.1 Maven prebuilts Decision A / #659, plus Fresco/CameraX/ML Kit AAR prebuilts), or
 - for APK inputs, `zipalign -c -P 16 -v 4` fails.
 
 Standalone: `./scripts/check-16kb-alignment.sh path/to/app-release.apk|aab`.
+
+Requires `llvm-readelf` / `readelf` on PATH, or the NDK copy (`llvm-readelf` on Linux,
+`llvm-readelf.exe` under `prebuilt/windows-x86_64/bin` on Windows Git Bash).
 
 Policy: [`docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md`](../docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md)
 § *16 KB page-size gate*. Do **not** set `useLegacyPackaging=true` as a workaround.
