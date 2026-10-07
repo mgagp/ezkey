@@ -1,5 +1,7 @@
 # Ezkey
 
+[![CI](https://github.com/mgagp/ezkey/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mgagp/ezkey/actions/workflows/ci.yml)
+
 <img src="logo.svg" alt="Ezkey Logo" width="200">
 
 Ezkey is an open-source cryptographic MFA platform built as a distinct alternative to browser-centric authentication models.
@@ -12,7 +14,7 @@ It also includes an Admin UI for human administration, giving operators a direct
 
 ## Status
 
-Ezkey is in **public alpha**. This repository is the product source; there are **no published release packages** yet (no GitHub Releases / installable binaries to consume). Technical identity of a live deploy is the **git SHA** — see [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md).
+Ezkey is in **public alpha**. This repository is the product source; there are **no published release packages** yet (no GitHub Releases / installable binaries to consume). Technical identity of a live deploy is the **git SHA** — see [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md). Pull-request and `main` feedback from GitHub Actions is described in [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § Continuous Integration (required-check candidate: `ci-gate`).
 
 **Try the live stack** via the community path on [ezkey.org](https://ezkey.org/) — [community instance](https://ezkey.org/community-instance.html) and [community guided tour](https://ezkey.org/community-guided-tour.html) (French under `/fr/`).
 
