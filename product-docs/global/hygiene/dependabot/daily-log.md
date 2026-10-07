@@ -32,9 +32,22 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
   - Admin UI: #663 eslint 10.12 (T2) `1f163d3f`; #666 vite group (T3) `b4be8507`; #684 lucide 1.33→1.52 (T3, superseded #667) `18b864a6`; #668 tanstack 5.104.1 (T3) `c349adde`; #685 `@types/node` (T2) `6ad989cd`; #683 globals (T1) `7f2115d4`; #686 zod 4.6.5 (T1) `31d34b95`; #682 tailwind-merge 3.7 (T3) `0e35c657`; #687 react-hook-form 7.89 (T3) `08dc491d`
   - SDK JS: #662 `@types/node` 26.6.4 (T1) `af21ec39`
   - Mobile: #671 safe-area-context 5.10.1 (T1) `38052e53`; #670 Orval 8.36→8.39 (**O0** bit-identical after `yarn generate:api` on Node 22.22.2; Dependabot PR had pin-only diff) `7c2ebef6`
-- Held:
+- Held (morning light):
   - #669 navigation, #688 react-i18next, #689 mobile tanstack, #691 gesture-handler — **infra-blocked** (Android foojay JDK 21 download HTTP 400; `js-validate` green; PAT cannot re-run Actions)
   - #690 mobile ESLint 10 — ecosystem gate (+ foojay red)
   - #653 Jest 30 — standing hold; #672 js-sha256 — other agent; deferred `#498`/`#337`/`#347`
 - Validation: `./scripts/build.sh` OK; Admin UI lint + `tsc -b` + vitest 129/129; Playwright 5/5; mobile `yarn validate` / jest 307/307; Orval exact pin `8.39.0` + AGENTS.md sync
 - Residual: phone smoke for #670/#671 tracked on #627 (gates next Play AAB)
+
+### Afternoon unblock (Marc-approved; after Android toolchain fix)
+
+- Concurrency: clear (owning pass; prior Dependabot batch idle)
+- Toolchain fix: #677 stop Gradle Foojay JDK 21 daemon download (keep JDK 17) — squash-merged `a6bab801` (CI green: `js-validate`, `android-jvm-unit-tests`, `android-16kb-alignment`, Confirm JDK 17 on PATH)
+- Unblocked mobile (rebase → CI green → squash; #672 recreate):
+  - #669 mobile-navigation group (T3) `e22fe7f6`
+  - #688 react-i18next 17.0.14→17.0.15 (T1) `717d0745`
+  - #689 `@tanstack/react-query` 5.103.2→5.104.1 (T1) `e31a88de`
+  - #691 react-native-gesture-handler 3.0.2→3.3.0 (T2) `1434078a`
+  - #672 js-sha256 0.11.1→1.0.0 (crypto major; Marc + Christophe approved) `939ac283` — `localEnrollmentIdentity` + `sha256HexUtf8` characterization PASS in `js-validate` (42 suites)
+- Still held: #690 ESLint 10 (ecosystem gate), #653 Jest 30, deferred `*` PRs
+- Residual: phone smoke for #669/#688/#689/#691/#672 tracked on #627 (same pattern as #670/#671; gates next Play AAB)
