@@ -13,7 +13,7 @@
 - **Issue labels:** `lane:d`, `type:fix`, `type:security`, `component:admin-ui`, `priority:p2`, `status:needs-challenge`
 - **Supersedes (hide-empty UI shape only):** `TB-2026-07-05-admin-ui-audit-chain-checkpoints-polish` — that TB remains **`done`**; do **not** reopen it. Only the shipped « hide empty windows » / `entryCountMin=1` operator shape is superseded by this lock.
 - **Created at:** `2026-10-06`
-- **Updated at:** `2026-10-06`
+- **Updated at:** `2026-10-07`
 - **Captured by:** Marc (analysis + ticket); stakeholders Julie (operability) + Christophe (security), lock `2026-10-06`
 
 ## Objective
@@ -98,6 +98,40 @@ checkpoints » / « Checkpoint timeline »
 - Late-written quiet window shows a distinct badge.
 - Lock lives in this TB in-repo (corpus); issue `#673` is pointer only.
 
+## Operational quality matrix (Global Admin)
+
+Audience: a pragmatic Global Admin for whom Ezkey is never core business — Integrity
+work must stay efficient, simple, and understandable. Criteria language is FR/EN-agnostic
+(observable chrome and behavior, not locale slogans). Use after UI delivery and after
+Julie’s Walk Gate GO (see Walk / observation protocol below).
+
+| Quality | Observable criterion | Observation method | Evidence (screenshot) |
+|---|---|---|---|
+| **Non-confusion grey vs orange** | Quiet collapse and real undeclared gaps do **not** share the same visual language or wording (honesty of chrome). Grey summary copy/style ≠ orange Gap copy/style. Collapsing quiet `REGULAR` must not invent orange client-side Gap rows solely from skipped empties; expand then collapse must not change real vs false gap semantics. | Idle quiet stretch with compress on; compare collapsed vs expanded; place a real undeclared gap in range only if the lab can produce one without breaking integrity. | Collapsed quiet (grey only, no spurious orange) + orange Gap chrome distinct if present |
+| **Expand discoverability** | Operator understands they can reopen each chain link; continuity remains inspectable (not “gone”). Expand control has a clear affordance; expanding restores each individual `REGULAR` row. | Locate the expand control on a grey quiet summary; activate it; confirm every collapsed window reappears as its own row. | Affordance visible on summary + expanded individual `REGULAR` rows |
+| **No false reassurance** | Collapse ≠ “all is fine.” A quiet window with `createdAt` clearly after window end shows a distinct late/catch-up badge and is not silently treated as normal quiet. Late badge stays readable when present — either on the grey summary chrome when the quiet stretch includes a late-written window, **or** on the individual `REGULAR` row after expand (observation notes which placement shipped). | Induce catch-up if possible (scheduler pause then resume, or documented lab path); else mark **N/A** with reason — do **not** fake timestamps by raw DB rewrite that breaks integrity. | Late badge readable (summary and/or expand), when available |
+| **Non-REGULAR signals always present** | `GAP_DECLARATION`, `MANIPULATION_CONCILIATION`, and sealed archive types (as applicable) in range stay visible as first-class rows; never folded into the grey quiet summary and never hidden by any leftover hide-empty control. | Ensure at least one declared gap / conciliation is in the viewed range (declare via the normal operator path if available; do **not** invent crypto-breaking DB edits). | Non-`REGULAR` row visible beside grey quiet |
+| **Recent default + URL-only** | Fresh open of Verify shows ~last 24h, newest-first (not the oldest history page). Compress/filter state lives in the URL only; a shared URL reproduces state; leaving and returning without that URL does not silently hide rows (no localStorage sticky hide). | Cold open / new session without stale URL params; then copy URL with compress on and open a clean session without params. | Top of timeline is recent; URL bar + list (optional but preferred for URL half) |
+| **Bounded idle scan** | Idle ~1h of quiet `REGULAR` windows compresses to one (or few) expandable grey summary rows, not a page of empty zeros (~12 rows flooding the table). | Leave stack idle across several 5-min windows (or an equivalent quiet period); open Integrity → Verify → checkpoint timeline with compress on. | Collapsed quiet view (bounded summaries) |
+| **Walk Gate–derivable asserts** | Every quality in this matrix maps to a concrete Isabelle observation + screenshot (actionable, not slogans). No matrix row may be reported as pass on wording alone. | Walk protocol below: for **each** of the six qualities above, record pass/fail + notes + screenshot path (or explicit N/A + reason). | Observation report covering all rows |
+
+## Walk / observation protocol
+
+For Isabelle (post-UI observation), after Julie’s Walk Gate. This protocol is the
+actionable form of **Walk Gate–derivable asserts** in the matrix above.
+
+1. **Prerequisite:** UI landed on a follow-on PR; Walk Gate Julie **GO** first.
+2. **Timebox:** plan wall-clock for ≥2–3 consecutive 5-min quiet windows (pause + light
+   activity as needed). Crypto integrity forbids casual checkpoint row injection —
+   prefer real cadence / declare-gap flows over raw DB edits.
+3. **Every matrix row → assert:** for each Quality in the Operational quality matrix
+   (including the six chrome/behavior rows and the Walk Gate–derivable asserts row as
+   report completeness), record **pass/fail** + **notes** + **screenshot path**
+   (or **N/A** + reason when a lab path is unavailable — never invent integrity-breaking
+   fixtures).
+4. **Deliverable:** short observation report + screenshots on the UI PR or issue `#673`,
+   structured as a checklist against this matrix (not free-form slogans).
+
 ## Boundaries in scope (when implementation starts)
 
 - Admin UI Integrity Verify checkpoint timeline: replace hide-empty with quiet-window
@@ -125,6 +159,9 @@ Wave C).
 - **Corpus:** this TB; issue `#673` links here.
 - **UI (later):** automated tests for collapse/GAP/false-gap/late badge/URL; Walk Gate
   Julie → Isabelle; Admin UI build.
+- **Isabelle checklist (after Julie Walk Gate):** Operational quality matrix (Global
+  Admin) above — every Quality row → pass/fail + notes + screenshot path (see Walk /
+  observation protocol).
 - **Docs (on UI merge):** matrix row + locales; do not leave hide-empty as recommended
   operator shape.
 
