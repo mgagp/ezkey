@@ -79,6 +79,7 @@ The Licenses screen reads the committed snapshot
 
 ```bash
 cd ezkey_mobile
+yarn install --immutable
 yarn license:app-data
 ```
 
@@ -86,11 +87,14 @@ CI (`ezkey-mobile-unit-tests` → `js-validate` → `yarn license:ci`) runs:
 
 1. `yarn license:check` — direct dependency license allowlist.
 2. Snapshot freshness — regenerates the JSON and fails if the committed file differs, **ignoring
-   `generatedAt`** so timestamp-only drift does not fail.
+   `generatedAt`** so timestamp-only drift does not fail. On failure it prints a concise
+   package-level diff (added / removed / version or license changes).
 
-When the freshness check fails (including on Dependabot PRs): run `yarn license:app-data` from
-`ezkey_mobile/` and commit `app/data/thirdPartyLicenses.json` on the same branch. No bot write
-token is required; the CI failure message spells out the same fix.
+When the freshness check fails (including on Dependabot PRs): run `yarn install --immutable` then
+`yarn license:app-data` from `ezkey_mobile/` and commit `app/data/thirdPartyLicenses.json` on the
+same branch. GitHub Actions tests the **PR merge commit** with `main` — if `main` changed
+`package.json` / `yarn.lock` after your branch point, merge or rebase onto the current base first,
+then regenerate. No bot write token is required; the CI failure message spells out the same fix.
 
 Local equivalent: `yarn license:ci` (or `./scripts/check-third-party-licenses-ci.sh`).
 

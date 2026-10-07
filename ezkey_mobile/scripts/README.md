@@ -117,13 +117,16 @@ Policy: [`docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md`](../docs/MOBILE_ANDROID_PLATF
 (`check-third-party-licenses-freshness.mjs`). CI wires this into
 `.github/workflows/ezkey-mobile-unit-tests.yml` (`js-validate`).
 
-Regenerate the in-app list after dependency changes:
+Regenerate the in-app list after dependency changes (or after merging/rebasing onto a
+base that changed `package.json` / `yarn.lock` — CI tests the **merge commit**):
 
 ```bash
+yarn install --immutable
 yarn license:app-data
 ```
 
-Freshness ignores `generatedAt` only. See
+Freshness ignores `generatedAt` only. On failure it prints a concise package-level
+diff (added / removed / version or license changes). See
 [`docs/MOBILE_PLAY_PUBLISHING.md`](../docs/MOBILE_PLAY_PUBLISHING.md) § *In-app third-party
 licenses snapshot*.
 
