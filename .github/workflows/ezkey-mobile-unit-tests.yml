@@ -1,26 +1,24 @@
 # ezkey_mobile: JS quality (yarn validate) + license allowlist/snapshot freshness
 # + Android JVM unit tests (crypto) + release 16 KB page-size alignment gate (#659).
 #
-# Triggers on PR/push when ezkey_mobile/ or this workflow changes.
+# Invoked from the aggregate CI workflow (path-filtered) or manually via
+# workflow_dispatch. Job logic must stay aligned with the 16 KB gate.
+#
 # Uses Corepack so CI matches package.json "packageManager": "yarn@4.10.3"
 # (setup-node must not use cache: yarn before Corepack — that invokes Yarn 1).
 name: ezkey_mobile unit tests
 
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - 'ezkey_mobile/**'
-      - '.github/workflows/ezkey-mobile-unit-tests.yml'
-  pull_request:
-    branches: [main, master]
-    paths:
-      - 'ezkey_mobile/**'
-      - '.github/workflows/ezkey-mobile-unit-tests.yml'
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ezkey-mobile-unit-tests-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Only cancel superseded PR runs; do not cancel concurrent pushes on main.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
   run:
@@ -28,13 +26,16 @@ defaults:
 
 jobs:
   js-validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '20.19.4'
 
@@ -42,7 +43,7 @@ jobs:
         run: corepack enable
 
       - name: Cache Yarn (Berry)
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             ezkey_mobile/.yarn/cache
@@ -76,15 +77,18 @@ jobs:
           yarn license:ci
 
   android-jvm-unit-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # Project JDK posture: Temurin 17 only. Do not add gradle-daemon-jvm.properties /
       # Foojay toolchain download — Gradle must use this JAVA_HOME (see android/gradle.properties).
       - name: Set up JDK 17
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -102,7 +106,7 @@ jobs:
           ./scripts/assert-no-gradle-daemon-jvm.sh
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '20.19.4'
 
@@ -110,7 +114,7 @@ jobs:
         run: corepack enable
 
       - name: Cache Yarn (Berry)
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             ezkey_mobile/.yarn/cache
@@ -123,7 +127,7 @@ jobs:
         run: yarn install --immutable
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
         with:
           # Default is `tools platform-tools`. Google retired the obsolete `tools`
           # package; sdkmanager then fails with "Failed to find package 'tools'".
@@ -137,7 +141,7 @@ jobs:
 
       - name: Upload unit test report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ezkey-mobile-unit-test-report
           path: ezkey_mobile/android/app/build/reports/tests/testDebugUnitTest/
@@ -146,14 +150,17 @@ jobs:
   # 16 KB page-size gate (#659): release APK must pass ELF PT_LOAD + GNU_RELRO checks
   # (RN 0.87.1 Maven prebuilts may be allowlisted residuals only). No useLegacyPackaging.
   android-16kb-alignment:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # Project JDK posture: Temurin 17 only (same as android-jvm-unit-tests). No Foojay download.
       - name: Set up JDK 17
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -171,7 +178,7 @@ jobs:
           ./scripts/assert-no-gradle-daemon-jvm.sh
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '20.19.4'
 
@@ -179,7 +186,7 @@ jobs:
         run: corepack enable
 
       - name: Cache Yarn (Berry)
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             ezkey_mobile/.yarn/cache
@@ -192,7 +199,7 @@ jobs:
         run: yarn install --immutable
 
       - name: Set up Android SDK (NDK r28 + build-tools for zipalign -P 16)
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
         with:
           packages: >
             platform-tools
@@ -219,7 +226,7 @@ jobs:
 
       - name: Upload release APK (alignment evidence)
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ezkey-mobile-release-apk-16kb
           path: ezkey_mobile/android/app/build/outputs/apk/release/app-release.apk
