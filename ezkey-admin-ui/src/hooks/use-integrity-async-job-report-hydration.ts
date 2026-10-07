@@ -173,8 +173,9 @@ export function useIntegrityAsyncJobReportHydration(
       // Cancelled mid-flight (new job / unmount): clear loading so Verify buttons
       // are not stuck disabled. Do not rely on the async finally — it skips when cancelled.
       setLoading?.(false);
-      // Strict Mode remount: release in-flight claim only when the fetch never
-      // completed successfully, so the remount can hydrate once.
+      // Dev Strict Mode remounts this effect: release an incomplete in-flight claim
+      // so the remount can start its own fetch (two GETs in development Strict Mode).
+      // Production sees a single mount / single GET for a given jobId+status.
       if (
         lastHydratedJobIdRef.current === request.jobId
         && completedJobIdRef.current !== request.jobId

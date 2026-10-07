@@ -21,6 +21,52 @@ function job(
 }
 
 describe('useIntegrityAsyncJobReportHydration', () => {
+  it('does not fetch while RUNNING, then fetches once on SUCCEEDED for the same jobId', async () => {
+    const fetchChainReport = vi.fn(
+      async () => ({ intact: true, undeclaredGaps: [] }) as ChainVerificationReport,
+    );
+    const onChainReport = vi.fn();
+
+    const base = {
+      onChainReport,
+      onEntryReport: vi.fn(),
+      onChainHydratingChange: vi.fn(),
+      toDisplayRange: () => ({ from: '2026-10-01', to: '2026-10-07' }),
+      fetchChainReport,
+      fetchEntryReport: vi.fn(async () => ({ intact: true }) as IntegrityReport),
+    };
+
+    const { rerender } = renderHook(
+      ({ job: current }: { job: IntegrityAsyncJobResponse | null }) =>
+        useIntegrityAsyncJobReportHydration({ ...base, job: current }),
+      {
+        initialProps: {
+          job: job({
+            jobId: 'j-transition',
+            type: 'VERIFY_CHAIN_RANGE',
+            status: 'RUNNING',
+          }),
+        },
+      },
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(fetchChainReport).not.toHaveBeenCalled();
+
+    rerender({
+      job: job({
+        jobId: 'j-transition',
+        type: 'VERIFY_CHAIN_RANGE',
+        status: 'SUCCEEDED',
+      }),
+    });
+
+    await waitFor(() => expect(fetchChainReport).toHaveBeenCalledTimes(1));
+    expect(onChainReport).toHaveBeenCalledTimes(1);
+  });
+
   it('fetches exactly once for two successive distinct objects of the same job', async () => {
     const fetchChainReport = vi.fn(
       async () => ({ intact: true, undeclaredGaps: [] }) as ChainVerificationReport,
