@@ -253,7 +253,7 @@ A fresh git clone plus an empty `~/.m2` is the expected first-build situation on
 - Maven 3.9+
 - Bash — `./scripts/*.sh` from Git Bash on Windows, or the system Bash on macOS/Linux
 - Docker Desktop (or Engine + Compose) for the local stack
-- Node.js: **Admin UI** needs **≥ 22.18** (Orval 8.39 engines; CI uses 22.18). **Mobile** JS CI uses **20.19.4** (see `ezkey_mobile` packageManager / workflow). Bruno CLI follows the tool you install locally. After `npm ci` in `ezkey-admin-ui/`, run `npm run generate:api` — the Orval client under `src/generated/` is gitignored; Orval reads the committed `ezkey-admin-ui/openapi-spec.json` (no live API required).
+- Node.js: root [`.nvmrc`](../.nvmrc) pins **24** (LTS) as the single source of truth for Admin UI, mobile JS CI (`node-version-file: '.nvmrc'`), and agent workstations. Orval and package `engines` must be satisfied by that runtime (`ezkey_mobile` requires `>=24`). Bruno CLI follows the tool you install locally. **nvm-windows** does not read `.nvmrc` automatically — run `nvm install 24` then `nvm use 24`, then `corepack enable` for Yarn 4. After `npm ci` in `ezkey-admin-ui/`, run `npm run generate:api` — the Orval client under `src/generated/` is gitignored; Orval reads the committed `ezkey-admin-ui/openapi-spec.json` (no live API required).
 
 **Do this**
 
@@ -443,7 +443,7 @@ ruleset). Do not require path-filtered job names alone — that leaves docs-only
 | Job | When it runs | What it checks |
 |-----|--------------|----------------|
 | `changes` | Always | Path filter outputs (`admin-ui`, `backend`, `mobile`, `workflows`); all forced on `workflow_dispatch` |
-| `admin-ui` | `ezkey-admin-ui/**`, `specs/**`, or any `.github/workflows/**` change | `cmp` of `specs/admin-api/openapi-spec.json` vs `ezkey-admin-ui/openapi-spec.json`; Node 22.18+; `npm ci`; `generate:api`; `tsc -b`; lint; Vitest; `vite build`; no-demo assert on `dist/` |
+| `admin-ui` | `ezkey-admin-ui/**`, `specs/**`, or any `.github/workflows/**` change | `cmp` of `specs/admin-api/openapi-spec.json` vs `ezkey-admin-ui/openapi-spec.json`; Node from root `.nvmrc` (24 LTS); `npm ci`; `generate:api`; `tsc -b`; lint; Vitest; `vite build`; no-demo assert on `dist/` |
 | `backend` | Java reactor paths / root `pom.xml` / `scripts/build.sh` / `.mvn/**` or workflows | JDK 25; install `checkstyle-config`; `spotless:check`; Checkstyle; full-reactor `install -DskipTests` (so `ezkey-tests` **compiles**); `test -pl '!ezkey-tests'` (H2 unit tests; **does not run** the Docker `ezkey-tests` suite) |
 | `mobile` | `ezkey_mobile/**` or workflows | Calls reusable [`.github/workflows/ezkey-mobile-unit-tests.yml`](../.github/workflows/ezkey-mobile-unit-tests.yml): Yarn validate, Android JVM unit tests, **16 KB APK alignment** |
 | `ci-gate` | Always | Aggregate pass/fail for the jobs above |
@@ -459,7 +459,7 @@ passes, and any tag-triggered Maven Central release (not implemented).
 **Run the same checks locally:**
 
 ```bash
-# Admin UI (from ezkey-admin-ui/; Node >= 22.18)
+# Admin UI (from ezkey-admin-ui/; Node from root .nvmrc — 24 LTS)
 cmp ../specs/admin-api/openapi-spec.json openapi-spec.json
 npm ci && npm run generate:api && npx tsc -b && npm run lint && npm test && npx vite build
 bash scripts/assert-no-demo-in-build.sh dist
