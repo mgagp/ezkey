@@ -1,0 +1,252 @@
+# Aggregate CI for Admin UI, Java backend, and mobile.
+#
+# Path-filtered jobs avoid wasted runners; a final always-running `ci-gate` job
+# is the single check intended to become required on `main` (no "Expected —
+# waiting" on unrelated PRs). Changes under `.github/workflows/**` run every job.
+# workflow_dispatch always runs every suite (never an empty green gate).
+#
+# Playwright Admin UI browser tests need a live Docker stack — not a PR gate.
+name: CI
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      admin-ui: ${{ steps.resolve.outputs.admin-ui }}
+      backend: ${{ steps.resolve.outputs.backend }}
+      mobile: ${{ steps.resolve.outputs.mobile }}
+      workflows: ${{ steps.resolve.outputs.workflows }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            workflows:
+              - '.github/workflows/**'
+            admin-ui:
+              - 'ezkey-admin-ui/**'
+              - 'specs/**'
+            backend:
+              - 'pom.xml'
+              - 'checkstyle-config/**'
+              - 'ezkey-core/**'
+              - 'ezkey-core-security/**'
+              - 'ezkey-migration/**'
+              - 'ezkey-admin-api/**'
+              - 'ezkey-auth-api/**'
+              - 'ezkey-integration-api/**'
+              - 'ezkey-crypto-api/**'
+              - 'ezkey-sdk/java/**'
+              - 'ezkey-demo-app-acme/**'
+              - 'ezkey-demo-device/**'
+              - 'ezkey-tests/**'
+              - 'scripts/build.sh'
+              - '.mvn/**'
+            mobile:
+              - 'ezkey_mobile/**'
+
+      # Manual runs must exercise every suite; path filters alone would skip all
+      # and leave ci-gate green with nothing checked.
+      - name: Resolve path outputs
+        id: resolve
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "admin-ui=true" >> "$GITHUB_OUTPUT"
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "mobile=true" >> "$GITHUB_OUTPUT"
+            echo "workflows=true" >> "$GITHUB_OUTPUT"
+            echo "Forced all suites (workflow_dispatch)"
+          else
+            echo "admin-ui=${{ steps.filter.outputs.admin-ui }}" >> "$GITHUB_OUTPUT"
+            echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
+            echo "mobile=${{ steps.filter.outputs.mobile }}" >> "$GITHUB_OUTPUT"
+            echo "workflows=${{ steps.filter.outputs.workflows }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  admin-ui:
+    name: admin-ui
+    needs: changes
+    if: needs.changes.outputs.admin-ui == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ezkey-admin-ui
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Assert Admin UI OpenAPI copy matches specs/
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          CANON=specs/admin-api/openapi-spec.json
+          COPY=ezkey-admin-ui/openapi-spec.json
+          if ! cmp -s "$CANON" "$COPY"; then
+            echo "::error::OpenAPI copies diverge: $COPY differs from $CANON. Refresh with ./scripts/update-specs.sh --admin-only against a live stack (CI does not regenerate the spec from the running API)."
+            exit 1
+          fi
+          echo "OK: $COPY matches $CANON"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7 — Orval 8.39 requires Node >= 22.18
+        with:
+          node-version: '22.18'
+          cache: npm
+          cache-dependency-path: ezkey-admin-ui/package-lock.json
+
+      - name: Confirm Node >= 22.18
+        run: |
+          node -v
+          node -e "const [maj,min]=process.versions.node.split('.').map(Number); if(maj<22||(maj===22&&min<18)){console.error('Need Node >=22.18 for Orval'); process.exit(1)}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # src/generated/ is gitignored; Orval reads committed openapi-spec.json (offline).
+      - name: Generate Orval API client
+        run: npm run generate:api
+
+      - name: Typecheck
+        run: npx tsc -b
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests (Vitest)
+        run: npm test
+
+      - name: Production build
+        run: npx vite build
+
+      - name: Assert no demo strings in production build
+        run: bash scripts/assert-no-demo-in-build.sh dist
+
+  backend:
+    name: backend
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Confirm JDK 25
+        run: |
+          java -version
+          test "$(java -XshowSettings:properties -version 2>&1 | sed -n 's/.*java.specification.version = //p')" = "25"
+
+      # Mirror scripts/build.sh for CI: checkstyle-config first, spotless:check (not apply),
+      # then Checkstyle, full-reactor install (so ezkey-tests compiles), unit tests excluding
+      # ezkey-tests (needs the Docker stack).
+      - name: Install checkstyle-config
+        run: mvn -B -ntp -pl checkstyle-config install -DskipTests
+
+      - name: Spotless check
+        run: mvn -B -ntp spotless:check
+
+      - name: Checkstyle
+        run: mvn -B -ntp checkstyle:check
+
+      - name: Build full reactor (skip tests)
+        run: mvn -B -ntp clean install -DskipTests
+
+      - name: Unit tests (H2; exclude ezkey-tests)
+        run: mvn -B -ntp test -pl '!ezkey-tests'
+
+      - name: Upload Surefire reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: backend-surefire-reports
+          path: |
+            **/target/surefire-reports/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  mobile:
+    name: mobile
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true' || needs.changes.outputs.workflows == 'true'
+    # Reusable workflow: JS validate + Android JVM tests + 16 KB alignment gate.
+    uses: ./.github/workflows/ezkey-mobile-unit-tests.yml
+
+  # Single required-check candidate. Skipped path jobs count as success for the gate;
+  # failure or cancellation of any needed job fails the gate.
+  ci-gate:
+    name: ci-gate
+    needs: [changes, admin-ui, backend, mobile]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Evaluate aggregate gate
+        run: |
+          set -euo pipefail
+          echo "changes=${{ needs.changes.result }}"
+          echo "admin-ui=${{ needs.admin-ui.result }}"
+          echo "backend=${{ needs.backend.result }}"
+          echo "mobile=${{ needs.mobile.result }}"
+
+          if [[ "${{ needs.changes.result }}" != "success" ]]; then
+            echo "::error::changes job did not succeed (${{ needs.changes.result }})"
+            exit 1
+          fi
+
+          for pair in \
+            "admin-ui:${{ needs.admin-ui.result }}" \
+            "backend:${{ needs.backend.result }}" \
+            "mobile:${{ needs.mobile.result }}"; do
+            name="${pair%%:*}"
+            result="${pair#*:}"
+            case "$result" in
+              success|skipped)
+                echo "OK: $name=$result"
+                ;;
+              *)
+                echo "::error::Gate failed because $name ended with $result"
+                exit 1
+                ;;
+            esac
+          done
+
+          echo "ci-gate passed"
