@@ -88,6 +88,22 @@ Requires `llvm-readelf` / `readelf` on PATH, or the NDK copy (`llvm-readelf` on 
 Policy: [`docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md`](../docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md)
 § *16 KB page-size gate*. Do **not** set `useLegacyPackaging=true` as a workaround.
 
+## `check-third-party-licenses-ci.sh` (license allowlist + snapshot freshness)
+
+`yarn license:ci` → allowlist (`yarn license:check`) then freshness
+(`check-third-party-licenses-freshness.mjs`). CI wires this into
+`.github/workflows/ezkey-mobile-unit-tests.yml` (`js-validate`).
+
+Regenerate the in-app list after dependency changes:
+
+```bash
+yarn license:app-data
+```
+
+Freshness ignores `generatedAt` only. See
+[`docs/MOBILE_PLAY_PUBLISHING.md`](../docs/MOBILE_PLAY_PUBLISHING.md) § *In-app third-party
+licenses snapshot*.
+
 ## `run-mobile-churn-no-recovery.ps1`
 
 Runs repeated mobile churn iterations without using enrollment recovery/reset:
