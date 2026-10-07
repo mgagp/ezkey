@@ -253,7 +253,7 @@ A fresh git clone plus an empty `~/.m2` is the expected first-build situation on
 - Maven 3.9+
 - Bash — `./scripts/*.sh` from Git Bash on Windows, or the system Bash on macOS/Linux
 - Docker Desktop (or Engine + Compose) for the local stack
-- Node.js 20.19.4+ (optional for Java-only; required for Admin UI, Bruno CLI, and mobile JS tests). After `npm ci` in `ezkey-admin-ui/`, run `npm run generate:api` — the Orval client under `src/generated/` is gitignored.
+- Node.js: **Admin UI** needs **≥ 22.18** (Orval 8.39 engines; CI uses 22.18). **Mobile** JS CI uses **20.19.4** (see `ezkey_mobile` packageManager / workflow). Bruno CLI follows the tool you install locally. After `npm ci` in `ezkey-admin-ui/`, run `npm run generate:api` — the Orval client under `src/generated/` is gitignored; Orval reads the committed `ezkey-admin-ui/openapi-spec.json` (no live API required).
 
 **Do this**
 
@@ -398,33 +398,21 @@ For IntelliJ IDEA or other IDEs, you can configure Maven to use the wrapper:
 
 2. **Alternative**: Use the wrapper script as your Maven executable path in IDE settings
 
-#### Release Process (Future)
+#### Release tagging (not implemented in GitHub Actions)
 
-When preparing for Maven Central releases:
+There is **no** tag-triggered release workflow today. Do not expect GitHub Actions to publish
+artifacts when you push a `vX.Y.Z` tag. A future Maven Central release train would need its own
+workflow (version properties, signing, deploy). Until then, use local/`./scripts/build.sh` builds
+and the PR `CI` workflow only.
 
-**Release Workflow:**
-1. **Tag creation**: Create git tag `vX.Y.Z` (e.g., `v1.2.0`) on `main` branch
-2. **CI build**: GitHub Actions detects tag and builds with:
-   - `-Drevision=X.Y.Z`
-   - `-Dchangelist=` (empty, removes `-SNAPSHOT`)
-   - `-DbuildQualifier=` (empty)
-3. **Deployment**: Artifacts deployed to Maven Central with clean, resolved versions
-4. **Post-release**: `main` branch version bumped to next development line (e.g., `1.3.0-SNAPSHOT`)
+**Branch conventions (local version isolation only):**
+- **`main`**: `X.Y.Z-SNAPSHOT` (next development version; empty `buildQualifier`)
+- **Feature branches**: optional branch-specific qualifiers via `scripts/mvn-branch.sh` or
+  `.mvn/maven.config` (e.g. `0.0.1-feature-login-SNAPSHOT`)
+- Feature branches do **not** publish to Maven Central
 
-**Maven Central Requirements (to be implemented):**
-- GPG signing of artifacts
-- Sources and Javadoc JARs
-- Reproducible builds
-- Proper `scm`/`licenses`/`developers` metadata in POMs
-- Flatten plugin for deployed POMs (ensures no `${revision}` expressions in published artifacts)
-
-**Branch Conventions:**
-- **`main`**: Always `X.Y.Z-SNAPSHOT` (next development version)
-- **Feature branches**: Use branch-specific qualifiers locally (e.g., `0.0.1-feature-login-SNAPSHOT`)
-- **Release branches** (optional, for maintenance): `release/X.Y` for patch releases (`X.Y.(Z+1)`)
-- **No branch-specific published versions**: Feature branches do not publish to Maven Central
-
-Living entry points: this section, root `AGENTS.md` § Local Maven version properties, `.mvn/maven.config.example`, and `scripts/mvn-branch.sh`.
+Living entry points: this section, root `AGENTS.md` § Local Maven version properties,
+`.mvn/maven.config.example`, and `scripts/mvn-branch.sh`.
 
 ### Git Workflow
 - **Conventional Commits**: Use conventional commit messages
@@ -433,7 +421,7 @@ Living entry points: this section, root `AGENTS.md` § Local Maven version prope
 - **Branch Strategy**: Feature branches for new development
 
 ### Code Review Process
-- **Automated Checks**: CI/CD pipeline validation
+- **Automated Checks**: GitHub Actions `CI` workflow — wait for **`ci-gate`** (see below)
 - **Manual Review**: Peer review for all changes
 - **Security Review**: Security-focused review for sensitive changes
 - **Documentation**: Ensure documentation is updated
@@ -443,10 +431,47 @@ Living entry points: this section, root `AGENTS.md` § Local Maven version prope
 ## Quality Assurance
 
 ### Continuous Integration
-- **Build Validation**: Automated Maven builds
-- **Test Execution**: Automated test suite execution
-- **Code Coverage**: Coverage reporting and thresholds
-- **Security Scanning**: Automated security vulnerability scanning
+
+PR and `main` pushes run the aggregate workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+A `changes` job (path filter) decides which suites run. Unrelated areas are **skipped**, not left
+pending. The final job **`ci-gate`** (`if: always()`) fails if any needed job failed or was
+cancelled, and **passes when those jobs were skipped**. That is the single check intended to become
+**required** on `main` (repository ruleset). Do not require path-filtered job names alone — that
+leaves docs-only PRs stuck on "Expected — waiting".
+
+| Job | When it runs | What it checks |
+|-----|--------------|----------------|
+| `changes` | Always | Path filter outputs (`admin-ui`, `backend`, `mobile`, `workflows`) |
+| `admin-ui` | `ezkey-admin-ui/**` or any `.github/workflows/**` change | Node 22.18+, `npm ci`, `generate:api` (committed `openapi-spec.json`), `tsc -b`, lint, Vitest, `vite build`, no-demo assert on `dist/` |
+| `backend` | Java reactor paths / root `pom.xml` / `scripts/build.sh` / `.mvn/**` or workflows | JDK 25, install `checkstyle-config`, `spotless:check`, Checkstyle, `install -DskipTests` + `test -pl '!ezkey-tests'` (H2 unit tests; **not** `ezkey-tests` Docker stack) |
+| `mobile` | `ezkey_mobile/**` or workflows | Calls reusable [`.github/workflows/ezkey-mobile-unit-tests.yml`](../.github/workflows/ezkey-mobile-unit-tests.yml): Yarn validate, Android JVM unit tests, **16 KB APK alignment** |
+| `ci-gate` | Always | Aggregate pass/fail for the jobs above |
+
+**Not in PR CI:** Playwright Admin UI browser tests (need a live Docker stack + Demo Device),
+`ezkey-tests` functional suite, doctor-curated / java-doctor / pentest hygiene passes, and any
+tag-triggered Maven Central release (not implemented).
+
+**Run the same checks locally:**
+
+```bash
+# Admin UI (from ezkey-admin-ui/; Node >= 22.18)
+npm ci && npm run generate:api && npx tsc -b && npm run lint && npm test && npx vite build
+bash scripts/assert-no-demo-in-build.sh dist
+
+# Backend (repo root; JDK 25) — CI uses spotless:check; local baseline applies then checks:
+./scripts/build.sh
+# Or CI-shaped: mvn -pl checkstyle-config install -DskipTests
+#               && mvn spotless:check checkstyle:check
+#               && mvn clean install -DskipTests -pl '!ezkey-tests'
+#               && mvn test -pl '!ezkey-tests'
+
+# Mobile (from ezkey_mobile/)
+yarn install --immutable && yarn validate:ci
+# Android JVM + 16 KB gate: see ezkey_mobile/AGENTS.md and the mobile workflow
+```
+
+**Maintainer follow-up (ruleset):** target `main` with required status check **`ci-gate`** only
+(plus existing non-check rules as desired). No other job names need to be required.
 
 ### Code Quality Metrics
 - **Test Coverage**: Minimum 90% line coverage

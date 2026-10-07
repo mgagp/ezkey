@@ -19,6 +19,7 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | Need | Read |
 |------|------|
 | Fresh clone / first host Java build (empty `~/.m2`, Windows or macOS/Linux) | [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § *First clone on a new workstation*; entrypoint `./scripts/build.sh` (`--diagnose-only` if JDK/Maven look wrong). Do not start with bare `mvn checkstyle:check`. |
+| What runs on PRs / required check | [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § Continuous Integration; workflow `.github/workflows/ci.yml`; required-check candidate job name **`ci-gate`**. |
 | Product intent, thesis, audience | [`product-docs/global/product-intent.md`](product-docs/global/product-intent.md) |
 | Priority / what to implement next | [`product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md`](product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md), [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) (historical Waves A–C + freeze D: [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md)) |
 | Protocol crypto (Auth API ↔ mobile / Demo Device) | [`docs/CRYPTO.md`](docs/CRYPTO.md), [`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`](docs/ENROLLMENT_SIGNATURE_PAYLOAD.md), [`docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md); relevant **section** of [`docs/ENDPOINT.md`](docs/ENDPOINT.md) only |
@@ -136,6 +137,18 @@ reactor-built `checkstyle-config` dependency is part of that contract.
 container plus the `build-validation` Docker target (see `docs/DEVELOPMENT.md`).
 
 **Local Maven version properties:** The parent POM defines `revision`, `changelist`, and an empty default `buildQualifier`. To override from the CLI for all reactor builds (for example a per–git-worktree suffix such as `-wt1` so local `install` artifacts do not clash), copy `.mvn/maven.config.example` to `.mvn/maven.config` and edit the last line. That file is gitignored and is not committed; CI and clones without the file use POM defaults only.
+
+---
+
+## GitHub Actions CI (PR / main)
+
+- Aggregate workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml). Path-filtered jobs for
+  Admin UI, Java backend, and mobile; final job **`ci-gate`** always runs and is the single check
+  intended to become **required** on `main`.
+- Agents must wait for **`ci-gate`** green on their PRs before treating CI as done. Details and
+  local equivalents: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § Continuous Integration.
+- Hygiene passes (`doctor-curated`, `java-doctor-curated`, …) remain **not** CI gates.
+- There is **no** tag-triggered release / Maven Central publish workflow yet.
 
 ---
 
