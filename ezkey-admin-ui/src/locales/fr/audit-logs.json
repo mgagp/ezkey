@@ -305,7 +305,9 @@
       "abandonConfirmTitle": "Abandonner le job d'intégrité ?",
       "abandonConfirmBody": "Cela efface le job expiré ou annulé pour pouvoir relancer. Cela n'arrête pas un job en cours sain.",
       "abandonError": "Impossible d'abandonner le job d'intégrité.",
-      "busyToast": "Job d'intégrité déjà en cours : {{resume}}"
+      "busyToast": "Job d'intégrité déjà en cours : {{resume}}",
+      "hydrateChainError": "Impossible de charger le résultat de vérification de la chaîne.",
+      "hydrateEntryError": "Impossible de charger le résultat de vérification HMAC des entrées."
     },
     "chainIntegrity": "Intégrité de la chaîne",
     "entryIntegrity": "Intégrité des entrées",

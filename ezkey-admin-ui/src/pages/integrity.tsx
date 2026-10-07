@@ -60,6 +60,7 @@ import { EntryIntegrityReportBadge } from '@/components/feature/entry-integrity-
 import { EntryIntegrityViolationLine } from '@/components/feature/entry-integrity-violation-line';
 import { IntegrityAsyncJobBanner } from '@/components/feature/integrity-async-job-banner';
 import { IntegrityReconcileDialog } from '@/components/feature/integrity-reconcile-dialog';
+import { useIntegrityAsyncJobReportHydration } from '@/hooks/use-integrity-async-job-report-hydration';
 import { useGetAlert } from '@/generated/admin-api/alerts/alerts';
 import {
   getArchiveEligibility,
@@ -523,6 +524,38 @@ function IntegrityPanel({
       : !checkRange.from || !checkRange.to
         ? t('integrity.selectDateRangeToRun')
         : undefined;
+
+  // After VERIFY_* SUCCEEDED, hydrate full reports (gaps / entry violations) from
+  // the read-only verify endpoints — the async job DTO only carries a summary.
+  useIntegrityAsyncJobReportHydration({
+    job: asyncJob,
+    toDisplayRange: (fromIso, toIso) => ({
+      from: toDateInputValue(fromIso),
+      to: toDateInputValue(toIso),
+    }),
+    onChainReport: (report, range) => {
+      setChainReport(report);
+      setChainReportRange(range);
+    },
+    onEntryReport: (report, range) => {
+      setIntegrityReport(report);
+      setIntegrityReportRange(range);
+    },
+    onChainHydratingChange: setChainLoading,
+    onEntryHydratingChange: setIntegrityLoading,
+    onError: (kind, error) => {
+      toast(
+        getTranslatedApiError(
+          error,
+          t,
+          kind === 'chain'
+            ? t('integrity.asyncJob.hydrateChainError')
+            : t('integrity.asyncJob.hydrateEntryError'),
+        ),
+        'error',
+      );
+    },
+  });
 
   useEffect(() => {
     if (!initialCheckRange?.createdAfter || !initialCheckRange.createdBefore) {
@@ -1142,6 +1175,14 @@ function IntegrityPanel({
           if (
             current.status === 'RUNNING'
             || (isIntegrityAsyncEscapeStatus(current.status) && current.abandonedAt == null)
+          ) {
+            return;
+          }
+          // Already-succeeded chain verify: hydrate via job hook; do not start another job.
+          if (
+            current.status === 'SUCCEEDED'
+            && current.type === 'VERIFY_CHAIN_RANGE'
+            && current.abandonedAt == null
           ) {
             return;
           }
