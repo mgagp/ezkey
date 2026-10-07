@@ -15,4 +15,13 @@ describe('sha256HexUtf8', () => {
       'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
     );
   });
+
+  // These exact values must never change: they are part of the Keystore key-name
+  // contract (MOB-011 / MOB-017). UTF-8 multi-byte input must stay stable across
+  // js-sha256 majors used by deriveInstallationScopeId / sha256HexUtf8.
+  it('pins known SHA-256 of UTF-8 multi-byte string (Keystore-adjacent contract)', () => {
+    expect(sha256HexUtf8('é😀')).toBe(
+      '1184d1f608158eea09d297565575892231550c403aaa913008d867a97cfd5c76',
+    );
+  });
 });
