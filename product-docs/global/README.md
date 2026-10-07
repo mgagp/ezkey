@@ -19,6 +19,7 @@ This folder holds the product-wide living truth for Ezkey. It is the canonical e
 | [`vision/`](vision/README.md) | Product orientation notes and evolving direction. |
 | [`backlog/`](backlog/README.md) | Markdown-native backlog with temporal status lifecycle. |
 | [`legacy-retrofit/`](legacy-retrofit/README.md) | Structured retrofit bridge from historical plans to canonical docs. |
+| [`mobile-orphan-enrollment-after-admin-delete.md`](mobile-orphan-enrollment-after-admin-delete.md) | Draft alpha constat: duplicate local enrollment cards after admin delete + recreate (pull-only). |
 
 ## Reading Order
 
