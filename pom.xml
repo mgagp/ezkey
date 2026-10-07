@@ -66,7 +66,7 @@
 		<spring-boot.version>4.1.1</spring-boot.version>
 		<!-- SEC-019: targeted BOM overrides (July 2026 Security Challenge advisories) -->
 		<postgresql.version>42.7.13</postgresql.version>
-		<logback.version>1.6.4</logback.version>
+		<logback.version>1.6.5</logback.version>
 		<tomcat.version>11.0.26</tomcat.version>
 
 		<jackson-bom.version>3.2.3</jackson-bom.version>
@@ -84,7 +84,7 @@
 		<spotless.version>3.10.3</spotless.version>
 		<!-- Nested Spotless pin; Dependabot typically misses the plugin XML. Pulse in dependabot-curated. -->
 		<google-java-format.version>1.36.1</google-java-format.version>
-		<bucket4j.version>8.20.0</bucket4j.version>
+		<bucket4j.version>8.21.0</bucket4j.version>
 		<caffeine.version>3.3.0</caffeine.version>
 		<tink.version>1.23.0</tink.version>
 		<shedlock.version>7.10.1</shedlock.version>
@@ -314,7 +314,7 @@
     					<dependency>
       						<groupId>com.puppycrawl.tools</groupId>
       						<artifactId>checkstyle</artifactId>
-      						<version>14.1.0</version> <!-- Override default -->
+      						<version>14.3.0</version> <!-- Override default -->
     					</dependency>
 						<dependency>
 							<groupId>org.ezkey</groupId>

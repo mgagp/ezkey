@@ -1,13 +1,22 @@
 # Dependabot configuration for automated dependency update PRs.
 # See also: product-docs/global/normative-posture.md (dependency hygiene as operational discipline).
+# Cadence + cooldown policy: product-docs/global/hygiene/dependabot/README.md
+# Curation skill: .cursor/skills/dependabot-curated/SKILL.md
 
 version: 2
 updates:
   - package-ecosystem: "maven"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "daily"
+    # Supply-chain guard: wait after publish before opening version-update PRs.
+    # Security updates are not delayed. Schema: default-days + semver-*-days (1–90).
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 10
     labels:
       - "dependencies"
     groups:
@@ -27,8 +36,13 @@ updates:
   - package-ecosystem: "npm"
     directory: "/ezkey-admin-ui"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "daily"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 10
     labels:
       - "dependencies"
     groups:
@@ -50,20 +64,30 @@ updates:
   - package-ecosystem: "npm"
     directory: "/ezkey-sdk/javascript"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "daily"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 10
     labels:
       - "dependencies"
 
   # Yarn 4 workspace (packageManager: yarn@4.x). Dependabot npm ecosystem updates
   # package.json + yarn.lock. Keep RN-core / vision-camera / Orval out of tooling batches —
-  # see skill dependabot-curated § Mobile RN pulse. Do not group orval (solo PRs → T4).
+  # see skill dependabot-curated § Mobile RN pulse. Do not group orval (solo PRs → Orval risk grid).
   # mobile-tooling excludes eslint / jest (ungrouped) — RN deps:monitor gates.
   - package-ecosystem: "npm"
     directory: "/ezkey_mobile"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "daily"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 10
     labels:
       - "dependencies"
     groups:
@@ -105,7 +129,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    # github-actions supports default-days only (no semver-*-days in Dependabot schema).
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 10
     labels:
       - "dependencies"
 
@@ -113,6 +140,11 @@ updates:
     directory: "/ezkey-cli-python"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 10
     labels:
       - "dependencies"

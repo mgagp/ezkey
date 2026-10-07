@@ -18,7 +18,7 @@
       "content": "Operational incidents record stalled Admin API checkpoints as seen by peripheral supervision (heartbeat). With default Docker settings, peripherals refuse only <strong>new MFA work</strong> (narrow HTTP routes — see <strong>docs/AUDIT_LOG_INTEGRITY.md</strong>) after about <strong>9 minutes beyond the latest checkpoint <code>window_end</code></strong>; audit rows elsewhere may continue. Use <strong>Declare gap</strong> for undeclared <em>cryptographic</em> time holes — a different lifecycle. After recovery, declare closure here whenever an incident still awaits justification."
     },
     "checkpointTimeline": {
-      "content": "Lists chain checkpoints; sort by <strong>Window start</strong> to see inline gap rows (undeclared holes between checkpoints). Other sorts show checkpoints only. Use this table to inspect checkpoint type, lifecycle state, and anomaly boundaries."
+      "content": "Lists chain checkpoints for the recent window (newest first by default). Quiet empty <strong>Regular</strong> stretches collapse into a grey summary you can expand — they are not hidden. Orange <strong>Gap</strong> rows are real undeclared holes. Sort by <strong>Window start</strong> for inline gaps; inspect type, lifecycle, and late-written badges here."
     }
   },
   "list": {
@@ -504,13 +504,16 @@
     "focus": "Focus",
     "clearFocus": "Clear focus",
     "checkpointTimeline": "Checkpoint timeline",
-    "timelineHint": "Sort by Window start to see inline gap rows between checkpoints; other sorts show checkpoints only. Use the Verification report for the full list of undeclared gaps.",
+    "timelineHint": "Quiet stretches collapse into a grey summary (expand to inspect each link). Orange Gap rows are real undeclared holes — not quiet windows. Sort by Window start for inline gaps; use the Verification report for the full undeclared-gap list.",
     "allTypes": "All types",
     "typeRegular": "Regular",
     "typeArchiveSeal": "Archive seal",
     "typeGapDeclaration": "Gap declaration",
     "typeManipulationConciliation": "Manipulation conciliation",
-    "hideEmptyWindows": "Hide empty windows",
+    "compressQuietWindows": "Collapse quiet windows",
+    "quietSummary": "Quiet · {{from}} → {{to}} · {{count}} windows · {{entries}} entries",
+    "lateWrittenBadge": "Late-written",
+    "lateWrittenHelp": "This window was recorded clearly after its end time (catch-up, clock skew, or a logging pause). Not the same as an undeclared gap.",
     "selection": "Selection",
     "sealRangeLabel": "Seal range",
     "sealRangeFrom": "From",
