@@ -116,7 +116,7 @@ A warm `assembleRelease` or a debug install does **not** prove a Play AAB. When 
 
    Or: `yarn android:install:debug:clean` (same script).
 
-4. **JDK resolution** is centralized in `scripts/resolve-android-jdk.sh` (Android Studio / Studio1 JBR, `C:\Tools\jdk17`, Microsoft JDK 17, macOS `java_home -v 17`). Override only with `EZKEY_ANDROID_JAVA_HOME` if needed.
+4. **JDK resolution** is centralized in `scripts/resolve-android-jdk.sh`. **Project standard is JDK 17** (CI Temurin 17). Prefer `C:\Tools\jdk17` / Microsoft JDK 17 / macOS `java_home -v 17`; Studio JBR 21 is accepted locally only as fallback. Do not reintroduce `gradle-daemon-jvm.properties` / Foojay auto-download. Migrating the project to JDK 21 is a separate decision. Override only with `EZKEY_ANDROID_JAVA_HOME` if needed.
 5. After dependency changes: `corepack yarn install --immutable` then the script above.
 6. **Fast reinstall** when APK already built and device reconnected: `./scripts/build-install-debug-clean.sh --skip-clean`.
 
