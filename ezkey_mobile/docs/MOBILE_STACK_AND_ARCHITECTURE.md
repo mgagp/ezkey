@@ -14,6 +14,7 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 
 | Concern | Technology | Why it is used | Notes |
 | --- | --- | --- | --- |
+| Android JDK | **JDK 17** (Temurin in CI; `scripts/resolve-android-jdk.sh` locally) | Matches the RN/Android community baseline most developers still use | RN/AGP also allow 21; **project migration to JDK 21 is a separate decision**. No Gradle daemon JVM Foojay auto-download (`gradle-daemon-jvm.properties` must stay absent; `org.gradle.java.installations.auto-download=false`). |
 | Runtime UI | React Native 0.86.2 | Shared iOS/Android UI codebase | Current Active 0.86 patch. 0.87 is a later program (Node 22, AGP 9, Strict TS API), not this baseline. |
 | React runtime | React 19.2.7 | Rendering model used by the current workspace manifest | Keep React and React Native versions aligned with `package.json` and the RN-renderer constraint. |
 | Language | TypeScript | Typed mobile domain and service layer | Thin wrapper types sit above generated DTOs. |

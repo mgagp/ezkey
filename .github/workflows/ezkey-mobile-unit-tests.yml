@@ -73,12 +73,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # Project JDK posture: Temurin 17 only. Do not add gradle-daemon-jvm.properties /
+      # Foojay toolchain download — Gradle must use this JAVA_HOME (see android/gradle.properties).
       - name: Set up JDK 17
         uses: actions/setup-java@v6
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'gradle'
+
+      - name: Confirm JDK 17 on PATH
+        run: |
+          java -version
+          test "$(java -XshowSettings:properties -version 2>&1 | sed -n 's/.*java.specification.version = //p')" = "17"
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -130,12 +137,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # Project JDK posture: Temurin 17 only (same as android-jvm-unit-tests). No Foojay download.
       - name: Set up JDK 17
         uses: actions/setup-java@v6
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'gradle'
+
+      - name: Confirm JDK 17 on PATH
+        run: |
+          java -version
+          test "$(java -XshowSettings:properties -version 2>&1 | sed -n 's/.*java.specification.version = //p')" = "17"
 
       - name: Set up Node.js
         uses: actions/setup-node@v7

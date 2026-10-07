@@ -61,11 +61,15 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 
 ## Contract-First Rules
 
-- Orval is pinned at **8.33.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
+- Orval is pinned at **8.39.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
   no global `useQuery` / `useMutation`). Same Option B as Admin UI `TB-2026-05-28` checkpoints 8.10 / 8.11.
-  Treat later **8.34+** minors as a new validation ladder (regenerate + typecheck/test/lint).
+  Bump autonomy follows the **Orval risk grid** (O0–O3) in skill `dependabot-curated` § *Orval risk
+  grid* (pointer: [`../product-docs/global/hygiene/dependabot/README.md`](../product-docs/global/hygiene/dependabot/README.md));
+  evaluate mobile **separately** from Admin UI. Generated client is committed — PR diff is the
+  oracle. Phone smoke after O0/O1 is recommended, non-blocking for merge, tracked (e.g. `#627`) and
+  gates the next Play AAB.
   Do not enable `useDatesTransform` unless Admin UI does — it is opt-in date deserialization.
-  Orval 8.33 types `getHeaders` via `RequestInit['headers']` (RN types already cover this); the
+  Orval 8.33+ types `getHeaders` via `RequestInit['headers']` (RN types already cover this); the
   former `orval-dom-shim.d.ts` (`HeadersInit`) is no longer required.
 - Never hand-edit `openapi-spec.json` in `ezkey_mobile/`.
 - Refresh specs only through the root script `scripts/update-specs.sh` (Git Bash) after a human has started a clean Docker stack.
@@ -116,7 +120,7 @@ A warm `assembleRelease` or a debug install does **not** prove a Play AAB. When 
 
    Or: `yarn android:install:debug:clean` (same script).
 
-4. **JDK resolution** is centralized in `scripts/resolve-android-jdk.sh` (Android Studio / Studio1 JBR, `C:\Tools\jdk17`, Microsoft JDK 17, macOS `java_home -v 17`). Override only with `EZKEY_ANDROID_JAVA_HOME` if needed.
+4. **JDK resolution** is centralized in `scripts/resolve-android-jdk.sh`. **Project standard is JDK 17** (CI Temurin 17). Prefer `C:\Tools\jdk17` / Microsoft JDK 17 / macOS `java_home -v 17`; Studio JBR 21 is accepted locally only as fallback. Do not reintroduce `gradle-daemon-jvm.properties` / Foojay auto-download. Migrating the project to JDK 21 is a separate decision. Override only with `EZKEY_ANDROID_JAVA_HOME` if needed.
 5. After dependency changes: `corepack yarn install --immutable` then the script above.
 6. **Fast reinstall** when APK already built and device reconnected: `./scripts/build-install-debug-clean.sh --skip-clean`.
 
