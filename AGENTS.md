@@ -19,6 +19,7 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | Need | Read |
 |------|------|
 | Fresh clone / first host Java build (empty `~/.m2`, Windows or macOS/Linux) | [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § *First clone on a new workstation*; entrypoint `./scripts/build.sh` (`--diagnose-only` if JDK/Maven look wrong). Do not start with bare `mvn checkstyle:check`. |
+| Node.js / Yarn for Admin UI, mobile, SDK | Root [`.nvmrc`](.nvmrc) is the single source of truth (**24** LTS). Mobile CI uses `node-version-file: '.nvmrc'`. **nvm-windows** does not read `.nvmrc` automatically — run `nvm install 24` then `nvm use 24`, then `corepack enable` for Yarn 4. Details: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) prerequisites. |
 | What runs on PRs / required check | [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § Continuous Integration; workflow `.github/workflows/ci.yml`; required-check candidate job name **`ci-gate`**. |
 | Product intent, thesis, audience | [`product-docs/global/product-intent.md`](product-docs/global/product-intent.md) |
 | Priority / what to implement next | [`product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md`](product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md), [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) (historical Waves A–C + freeze D: [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md)) |

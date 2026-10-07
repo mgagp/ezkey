@@ -52,7 +52,7 @@ ezkey_mobile/
 
 ## Prerequisites
 
-- Node.js **20.19.4+** and Yarn 4 (Berry) — aligned with React Native 0.86 requirements
+- Node.js **24+** (repo root [`.nvmrc`](../.nvmrc); LTS) and Yarn 4 (Berry). On **nvm-windows**, `.nvmrc` is not applied automatically — `nvm install 24` then `nvm use 24`, then `corepack enable`.
 - JDK 17 and Android Studio with Android SDK 36 / build-tools 36.0.0 available
 - Xcode 16.1+ with CocoaPods 1.16.x recommended (macOS)
 - Watchman (macOS), Git Bash or another POSIX shell on Windows
@@ -180,7 +180,7 @@ Pull requests that touch `ezkey_mobile/**` run the workflow [`.github/workflows/
 
 | Job | What it runs |
 |-----|----------------|
-| **js-validate** | `yarn validate:ci` on Ubuntu (Node 20.19.4, Yarn 4 via Corepack) |
+| **js-validate** | `yarn validate:ci` on Ubuntu (Node from root `.nvmrc`, Yarn 4 via Corepack) |
 | **android-jvm-unit-tests** | `./gradlew :app:testDebugUnitTest` (JDK 17, Android SDK) |
 
 Before opening or updating a mobile PR, run the same commands locally when possible. A green check on GitHub means the branch passes on a clean runner, not only on your workstation.
