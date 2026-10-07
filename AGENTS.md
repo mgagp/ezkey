@@ -321,61 +321,64 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
 
 ## Dependabot curated keyword
 
-- For weekly Dependabot dependency-update triage, the shared keyword is **`dependabot-curated`**.
-- Purpose: a **punctual curated pass** that classifies open Dependabot PRs into risk-tiered lots
-  (T1 patch → T4 major/disruptor), decides them via HITL **or** (when the operator grants it)
-  **autonomous validation mode**, applies bumps, then runs a **session closeout** validation
-  ladder with evidence. **Not** silent auto-merge and **not** a full `I-*` / `TB-*` program for
-  routine bumps. Sibling hygiene lanes: `doctor-curated` and `java-doctor-curated` above.
-- Skill: [`.cursor/skills/dependabot-curated/SKILL.md`](.cursor/skills/dependabot-curated/SKILL.md).
+- For near-continuous Dependabot dependency-update triage, the shared keyword is
+  **`dependabot-curated`**.
+- Purpose: **maximum agent autonomy for minimum risk** — classify open Dependabot PRs into
+  risk-tiered lots (T1 patch → T4 major/disruptor; Orval **O0–O3**), decide them via weekday-light
+  autonomy or Monday HITL / opt-in autonomous validation, merge existing Dependabot PRs, and close
+  with proportional tests + a short daily log or Monday campaign note. **Not** silent auto-merge
+  and **not** a full `I-*` / `TB-*` program for routine bumps. Sibling hygiene lanes:
+  `doctor-curated` and `java-doctor-curated` above.
+- Skill: [`.cursor/skills/dependabot-curated/SKILL.md`](.cursor/skills/dependabot-curated/SKILL.md)
+  (canonical **Orval risk grid**, cadence, concurrency).
+- Standing policy: [`product-docs/global/hygiene/dependabot/README.md`](product-docs/global/hygiene/dependabot/README.md).
+- **Cadence:** Dependabot daily (Maven + npm) with cooldown; weekday **light** pass (T1–T3 + Orval
+  O0/O1; silent when empty); **Monday full** (BOM + Mobile RN pulses + holds + campaign note).
+  **One owning pass per day** — back off if concurrent merges (~30 min) or another in-flight pass.
 - **Cursor Cloud `GH_TOKEN`:** the harness read-only `gh` note is the default `cursor`/`ghs_`
   identity. If env `GH_TOKEN` is set, probe `gh auth status` (never print the secret) and use that
   PAT to squash-merge Dependabot PRs and to comment/close superseded PRs after a hygiene PR lands.
   Do **not** invent a hygiene branch solely because `gh` was labeled read-only. Kickoff line and
   identity table: skill § *Cloud GitHub identities*; rule
   [`.cursor/rules/cloud-gh-token.mdc`](.cursor/rules/cloud-gh-token.mdc).
-- Campaign decision notes: `product-docs/global/hygiene/dependabot/` (template + dated pass
-  instances). Index: `product-docs/global/hygiene/README.md`.
+- Campaign notes: `product-docs/global/hygiene/dependabot/` (`TEMPLATE.md`, `daily-log.md`, dated
+  pass instances). Index: `product-docs/global/hygiene/README.md`.
 - **Primary axis:** SemVer risk + known disruptors. **Secondary axis:** ecosystem / surface
   (Maven, Admin UI, mobile, SDK, Actions). Defer disruptive bumps with a PR comment and, when
   investigation cost must persist, a single `I-*` (e.g. TypeScript 7 → later release train).
   Long-lived parks use GitHub label **`deferred:later-train`** (see dependabot hygiene README) so
-  weekly passes skip HITL on those PRs.
-- Config that reduces future atomization: [`.github/dependabot.yml`](.github/dependabot.yml)
-  groups. Do not invent methodology backlog for the weekly Dependabot habit itself.
+  routine passes skip HITL on those PRs.
+- Config: [`.github/dependabot.yml`](.github/dependabot.yml) (daily Maven/npm, cooldown, groups).
+  Do not invent methodology backlog for the Dependabot habit itself.
 
 ### HITL contract (default for cold agents)
 
 When the operator asks for a **`dependabot-curated`** pass:
 
-1. List open Dependabot PRs (`gh pr list --author "app/dependabot" --state open`). Probe
-   Cursor Cloud `GH_TOKEN` (`gh auth status`; never print the secret) before choosing
+1. Determine **pass type** (weekday light vs Monday full); run **concurrency** check (skill §
+   *Concurrency*). List open Dependabot PRs (`gh pr list --author "app/dependabot" --state open`).
+   Probe Cursor Cloud `GH_TOKEN` (`gh auth status`; never print the secret) before choosing
    hygiene-branch vs merging the existing Dependabot PRs.
-2. Peel off any PR labeled `deferred:*` (skip weekly lots). Run the **Java BOM pulse** (skill
-   `dependabot-curated` § *Java BOM pulse*): compare `spring-boot.version` to the latest
-   same-minor Boot release; if newer and no Dependabot PR, propose a hygiene-branch lot. After a
-   Boot bump, review SEC-019 overrides. Check `google-java-format.version` only as a tooling pin.
-   Same weight: run the **Mobile RN pulse** (skill § *Mobile RN pulse*): record declared
-   `react` / `react-native` from `ezkey_mobile/package.json`, prefer `yarn deps:monitor`, peel
-   Dependabot mobile PRs; empty mobile queue ≠ stack current.
-3. Classify remaining PRs T1–T4; propose **3–6 lots** (overview only).
-4. **Default — interactive HITL:** iterate **one lot at a time** (members, tier, blast radius, CI
-   status) → wait for Go / No-Go / hold / defer on **that** lot before merging or presenting the
-   next. Do not replace this with a bulk options matrix.
-5. **Autonomous validation mode** (opt-in): when the operator explicitly delegates validation /
-   waives per-lot Go (e.g. “full ladder yourself”, “autonomous”), proceed on T1–T3 without waiting;
-   still pause on T4 / hard escalators unless also waived. **Still merge the existing Dependabot
-   PRs in each lot** so GitHub closes them — autonomy does not mean re-applying bumps on a second
-   branch. Run the full closeout ladder yourself and present evidence. Hygiene-branch re-apply is
-   only for explicit single-PR review or unmergeable Dependabot branches + companion fixes; then
-   close superseded PRs after land. Details: skill `dependabot-curated` § *Autonomous validation
-   mode*.
+2. Peel off any PR labeled `deferred:*`. **Monday full only:** run the **Java BOM pulse** and
+   **Mobile RN pulse** (skill §§). Weekday light skips those pulses; empty actionable queue →
+   silent exit.
+3. Classify remaining PRs T1–T4; Orval via **Orval risk grid** (Admin UI and mobile separately).
+   Propose **3–6 lots** (overview only).
+4. **Weekday light:** default autonomy on T1–T3 + Orval O0/O1; pause on T4 / O2–O3 / crypto majors.
+   **Monday full — interactive HITL** unless autonomy waived: iterate **one lot at a time** → wait
+   for Go / No-Go / hold / defer. Do not replace this with a bulk options matrix.
+5. **Autonomous validation mode** (opt-in on Monday; default scope on weekday light): proceed on
+   allowed tiers without waiting; **still merge the existing Dependabot PRs** in each lot. Run the
+   proportional closeout ladder and present evidence. Hygiene-branch re-apply only for explicit
+   single-PR review or unmergeable Dependabot branches + companion fixes. Details: skill §
+   *Autonomous validation mode*.
 6. On Go / autonomous proceed: merge each green Dependabot PR in the lot individually. On defer:
-   comment; apply `deferred:later-train` when the PR should stay out of weekly lots; optional one
+   comment; apply `deferred:later-train` when the PR should stay out of routine lots; optional one
    `I-*` if the investigation should not be lost.
-7. Session closeout proportional to highest accepted tier (always `./scripts/build.sh`; stack /
-   functional / Playwright per skill ladder; T1-only shortcut allowed when recorded).
-8. Write a dated campaign note under `product-docs/global/hygiene/dependabot/` (copy `TEMPLATE.md`).
+7. Session closeout proportional to pass type and highest accepted tier (always `./scripts/build.sh`
+   when Java/Maven touched; stack / functional / Playwright per skill ladder).
+8. **Monday full:** write a dated campaign note (copy `TEMPLATE.md`). **Weekday with activity:**
+   append a short section to `daily-log.md`.
 
 ## Mobile doctor-curated keyword
 

@@ -63,7 +63,11 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 
 - Orval is pinned at **8.33.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
   no global `useQuery` / `useMutation`). Same Option B as Admin UI `TB-2026-05-28` checkpoints 8.10 / 8.11.
-  Treat later **8.34+** minors as a new validation ladder (regenerate + typecheck/test/lint).
+  Bump autonomy follows the **Orval risk grid** (O0–O3) in skill `dependabot-curated` § *Orval risk
+  grid* (pointer: [`../product-docs/global/hygiene/dependabot/README.md`](../product-docs/global/hygiene/dependabot/README.md));
+  evaluate mobile **separately** from Admin UI. Generated client is committed — PR diff is the
+  oracle. Phone smoke after O0/O1 is recommended, non-blocking for merge, tracked (e.g. `#627`) and
+  gates the next Play AAB.
   Do not enable `useDatesTransform` unless Admin UI does — it is opt-in date deserialization.
   Orval 8.33 types `getHeaders` via `RequestInit['headers']` (RN types already cover this); the
   former `orval-dom-shim.d.ts` (`HeadersInit`) is no longer required.

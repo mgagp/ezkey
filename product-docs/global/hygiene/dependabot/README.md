@@ -1,48 +1,94 @@
 # Dependabot curated — campaign notes
 
-Lightweight HITL decision track for punctual `dependabot-curated` passes (weekly Dependabot PR
-triage and batched merges).
+Lightweight HITL / autonomy decision track for punctual `dependabot-curated` passes (near-continuous
+Dependabot PR triage and batched merges).
 
 This folder is **peripheral** to product vision / ADR / backlog execution. It records per-campaign
 lot decisions (merge / hold / defer) so cold sessions can see *why* a PR was batched or left alone —
 without inventing `I-*` / `TB-*` for routine bumps.
 
+## Cadence (standing policy)
+
+Goal: **maximum agent autonomy for minimum risk**, with proportional targeted tests, so upgrade
+PRs stop accumulating.
+
+| Layer | Cadence | Notes |
+|-------|---------|-------|
+| Dependabot opens PRs | **Daily** for Maven (`/`) and npm (`/ezkey-admin-ui`, `/ezkey-sdk/javascript`, `/ezkey_mobile`); **weekly** for `github-actions` and `pip` | Cooldown ~**3** days patch/minor, ~**7** days semver-major (see `.github/dependabot.yml`) |
+| Agent curation — weekday light | Every weekday | T1–T3 + Orval **O0/O1** only; **silent when queue empty**; default autonomy on that scope |
+| Agent curation — Monday full | Monday (or first working day) | Full lots + **Java BOM** + **Mobile RN** pulses + holds review; one campaign note from `TEMPLATE.md` |
+| Concurrency | **One owning pass per day** | Before merge/close/hygiene PR: if concurrent merges (~30 min) or another in-flight pass → back off, report only |
+
+Authority: skill
+[`.cursor/skills/dependabot-curated/SKILL.md`](../../../.cursor/skills/dependabot-curated/SKILL.md)
+§§ *Cadence*, *Concurrency*, *Orval risk grid*.
+
+### Reporting (least noise)
+
+| Pass | Artifact |
+|------|----------|
+| Weekday light with activity | Append a short `## YYYY-MM-DD` section to [`daily-log.md`](daily-log.md) (append-only). Empty queue → **no write**. |
+| Monday full | Always write `YYYY-MM-DD-pass-N.md` from [`TEMPLATE.md`](TEMPLATE.md). May summarize that week’s `daily-log.md` entries. |
+
+Justification: a single rolling `daily-log.md` avoids a file per weekday and keeps README residual
+out of the changelog path; Monday still owns the durable decision table.
+
 ## What we cover
 
-Weekly Dependabot ecosystems in [`.github/dependabot.yml`](../../../.github/dependabot.yml), plus
-mandatory pulses that Dependabot alone cannot prove current:
+Ecosystems in [`.github/dependabot.yml`](../../../.github/dependabot.yml), plus Monday pulses that
+Dependabot alone cannot prove current:
 
 | Surface | Dependabot | Mandatory pulse |
 |---------|------------|-----------------|
-| Java / Maven (reactor root) | `maven` at `/` | **Java BOM pulse** (`spring-boot.version`, SEC-019, `google-java-format`) |
-| Admin UI | `npm` at `/ezkey-admin-ui` | — (PRs + groups) |
-| Ezkey Mobile (Yarn 4) | `npm` at `/ezkey_mobile` | **Mobile RN pulse** (`yarn deps:monitor` + coupled RN escalators) |
-| SDK JS | `npm` at `/ezkey-sdk/javascript` | — |
-| GitHub Actions | `github-actions` at `/` | — |
-| Python CLI | `pip` at `/ezkey-cli-python` | — |
+| Java / Maven (reactor root) | `maven` at `/` (daily + cooldown) | **Java BOM pulse** (`spring-boot.version`, SEC-019, `google-java-format`) — Monday full |
+| Admin UI | `npm` at `/ezkey-admin-ui` (daily + cooldown) | Orval via **Orval risk grid** (skill); evaluate **separately** from mobile |
+| Ezkey Mobile (Yarn 4) | `npm` at `/ezkey_mobile` (daily + cooldown) | **Mobile RN pulse** Monday full; Orval via **Orval risk grid** (separate from Admin UI) |
+| SDK JS | `npm` at `/ezkey-sdk/javascript` (daily + cooldown) | — |
+| GitHub Actions | `github-actions` at `/` (weekly) | — |
+| Python CLI | `pip` at `/ezkey-cli-python` (weekly) | — |
 
-Empty Dependabot queue for Maven or mobile ≠ stack current. Authority: skill
+Empty Dependabot queue for Maven or mobile ≠ stack current on Monday. Authority: skill
 `dependabot-curated` §§ *Java BOM pulse*, *Mobile RN pulse*.
+
+## Orval risk grid (pointer)
+
+**Canonical table:** skill `dependabot-curated` § *Orval risk grid* (O0–O3). Do not duplicate the
+full matrix elsewhere — pin lines in Admin UI / mobile `AGENTS.md` point here and to the skill.
+
+Summary: generated-output diff is the **primary oracle**; O0 bit-identical and O1 additive/cosmetic
+are autonomous (with proportional tests); O2 needs characterization tests against the old version
+first; O3 (config/shim/behavior/major) stays HITL. Exact pin, Option B (`query: { version: 5 }`
+only), Node engines pre-flight, and AGENTS pin sync always apply.
+
+Evidence: 2026-10-05 Admin Orval 8.32→8.39 (#658) — empty codegen diff, 112 vitest green → O0.
+
+## Crypto-adjacent and ecosystem gates
+
+- **Crypto-adjacent** (e.g. `js-sha256`, keystore / crypto / proof-token): never autonomous on a
+  **major**; route to security owner (Christophe). *If it ain't broken, don't fix it.*
+- **Unchanged gates:** Jest 30 / ESLint 10 mobile (RN presets), TypeScript 7
+  (`deferred:later-train`), RN-core / vision-camera coupled slice → HITL / defer as today.
 
 ## Contents
 
 | Path | Role |
 |------|------|
-| [`TEMPLATE.md`](TEMPLATE.md) | Copy for each new campaign |
-| `YYYY-MM-DD-pass-N.md` | Dated instance (lots table + validation evidence) |
+| [`TEMPLATE.md`](TEMPLATE.md) | Copy for each Monday (or full) campaign |
+| [`daily-log.md`](daily-log.md) | Append-only weekday light entries (dated sections) |
+| `YYYY-MM-DD-pass-N.md` | Dated Monday / full instance (lots table + validation evidence) |
 | [`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md) | Implemented on `hygiene/java-dependency-pins`: Tink / ShedLock / ipaddress now parent-pinned |
 
 ## Standing deferrals (`deferred:*`)
 
 PRs labeled **`deferred:later-train`** or **`deferred:rn-upgrade`** (any `deferred:*`) are **out of
-weekly lot HITL**. Cold agents list them once under *Already deferred — skip HITL*, then triage
-only unlabeled (or non-deferred) Dependabot PRs. The weekly peel skips **both** labels.
+routine lot HITL**. Cold agents list them once under *Already deferred — skip HITL*, then triage
+only unlabeled (or non-deferred) Dependabot PRs. The peel skips **both** labels.
 
 ### `deferred:later-train`
 
 | PRs | Topic | Re-evaluate when |
 |-----|--------|------------------|
-| `#337`, `#498`, `#347` | TypeScript 7 (SDK + Admin UI group + migration idea) | TS 7.1 / typescript-eslint Node API readiness (~months), not routine weekly passes |
+| `#337`, `#498`, `#347` | TypeScript 7 (SDK + Admin UI group + migration idea) | TS 7.1 / typescript-eslint Node API readiness (~months), not routine weekday/Monday passes |
 
 Note: Dependabot `#450` (Admin UI TS 7 group) was superseded/closed when `#498` opened; keep `#498`
 in the standing set. See empty-queue pass [`2026-09-21-pass-1.md`](2026-09-21-pass-1.md).
@@ -68,14 +114,14 @@ smoke still pending — see [`2026-09-28-pass-1.md`](2026-09-28-pass-1.md).
 `#647` (Admin Orval T4) and `#653` (Jest 30 / RN Jest 29 gate) comment-only; `#627` Pixel smoke
 still pending (next Play AAB after `#650`/`#651`) — see [`2026-10-05-pass-1.md`](2026-10-05-pass-1.md).
 
-Weekly peel still skips any PR labeled `deferred:rn-upgrade`. To park *future* RN-coupled mobile
+Routine peel still skips any PR labeled `deferred:rn-upgrade`. To park *future* RN-coupled mobile
 deps until a line bump: comment + `gh pr edit <n> --add-label deferred:rn-upgrade`.
 
 **Process rule:** when Dependabot closes a deferred lot (supersede / recreate) but human
 validation remains, open a tracking **issue** (like `#627`) so residual work stays visible — open
 PRs alone are not enough after supersede.
 
-## Preferred weekly posture (lots without duplication)
+## Preferred posture (lots without duplication)
 
 **Default apply path:** triage into risk lots, then **merge the existing Dependabot PRs** in that
 lot (individually, after CI / local validation for the lot). That closes GitHub PRs as you go and
@@ -86,9 +132,10 @@ a single reviewable PR with companion fixes, or when Dependabot branches cannot 
 After the hygiene PR lands on `main`, **close superseded Dependabot PRs** with a short
 “already integrated via #NNN” comment — they will not auto-close.
 
-**Autonomous validation:** opt-in phrase for cold agents is documented in the skill
-(`dependabot-curated` § *Autonomous validation mode*). Autonomy means the agent owns the closeout
-ladder and evidence; it does **not** mean inventing a second integration path by default.
+**Autonomous validation:** weekday light defaults to autonomy on T1–T3 + Orval O0/O1. Monday full
+remains HITL-by-default unless the operator opts in (skill § *Autonomous validation mode*).
+Autonomy means the agent owns the closeout ladder and evidence; it does **not** mean inventing a
+second integration path by default.
 
 ## Cursor Cloud — `GH_TOKEN` vs read-only `gh`
 
@@ -106,22 +153,38 @@ hygiene branch and deferred Dependabot closeout.
 
 ### Operator kickoff (paste-ready)
 
+Weekday light:
+
 ```text
-dependabot-curated, autonomous.
+dependabot-curated, weekday light, autonomous.
 GH_TOKEN write authorized: squash-merge Dependabot PRs; comment/close superseded PRs after a hygiene PR lands.
 ```
 
-That last sentence is the explicit write waiver the Cloud harness asks for. Without it, a cold
+Monday full (HITL default):
+
+```text
+dependabot-curated, Monday full.
+GH_TOKEN write authorized: squash-merge Dependabot PRs; comment/close superseded PRs after a hygiene PR lands.
+```
+
+Monday full with autonomy waiver:
+
+```text
+dependabot-curated, Monday full, autonomous.
+GH_TOKEN write authorized: squash-merge Dependabot PRs; comment/close superseded PRs after a hygiene PR lands.
+```
+
+The last sentence is the explicit write waiver the Cloud harness asks for. Without it, a cold
 agent may still pick the hygiene-branch exception even though `GH_TOKEN` is in the environment.
 
-## Java BOM pulse (weekly, not optional)
+## Java BOM pulse (Monday full, not optional)
 
 Dependabot Maven updates **declared** POM versions. It does not inventory Boot-managed transitives
 (Hibernate, Spring Framework, Spring Security, Flyway, …). Those move only with
-`spring-boot.version`. An empty Maven PR queue is not proof that Java is current — the weekly
-limit of 5 open PRs can starve a Boot property bump.
+`spring-boot.version`. An empty Maven PR queue is not proof that Java is current — the
+`open-pull-requests-limit` of 5 can starve a Boot property bump.
 
-On every `dependabot-curated` pass the agent must:
+On every Monday-full `dependabot-curated` pass the agent must:
 
 1. Compare root `spring-boot.version` to the latest **same-minor** Boot release.
 2. If newer and no Dependabot PR exists, propose a hygiene-branch lot (closeout as T3 runtime).
@@ -136,7 +199,7 @@ ipaddress now follow parent properties (see
 Authority: skill `dependabot-curated` § *Java BOM pulse*. Provenance: Boot 4.1.1 pass
 [`2026-08-21-pass-1.md`](2026-08-21-pass-1.md) (hygiene branch; no Dependabot PR).
 
-## Mobile RN pulse (weekly, not optional — parity with Java BOM pulse)
+## Mobile RN pulse (Monday full — parity with Java BOM pulse)
 
 Dependabot npm at `/ezkey_mobile` (Yarn 4) opens grouped PRs for declared bumps. It does not
 replace the mobile stack inventory. Groups:
@@ -148,22 +211,22 @@ replace the mobile stack inventory. Groups:
 | `mobile-vision-camera` | VisionCamera + worklets + nitro family (coupled with RN) |
 | `mobile-navigation` | `@react-navigation/*` |
 
-**`orval` is not grouped** — solo PRs, T4 hard escalator, exact pin (no caret).
+**`orval` is not grouped** — solo PRs, classified by the **Orval risk grid**, exact pin (no caret).
 
 **Standing policy — mobile ESLint / Jest:** leave them ungrouped. `deps:monitor` ecosystem gates (`ESLint 10`, `Jest 30`) mean those majors are not clear T1–T3 tooling-only; batching them inside `mobile-tooling` hides the gate and invites false autonomy.
 
-On every `dependabot-curated` pass the agent must:
+On every Monday-full `dependabot-curated` pass the agent must:
 
 1. Record declared `react` / `react-native` / key coupled libs from `ezkey_mobile/package.json`.
 2. Run `yarn deps:monitor` (or `node scripts/dependency-monitor.mjs`) from `ezkey_mobile/` and
    capture actionable vs ecosystem-gated deferred (ESLint 10, Jest 30, TS7) plus high audit in
    the campaign note. Empty Dependabot mobile queue ≠ stack current.
-3. Peel Dependabot mobile PRs under T1–T4. If no mobile PRs but the monitor shows actionable
-   upgrades, propose lots from the pulse (hygiene-branch only when no PR exists).
+3. Peel Dependabot mobile PRs under T1–T4 / Orval O0–O3. If no mobile PRs but the monitor shows
+   actionable upgrades, propose lots from the pulse (hygiene-branch only when no PR exists).
 4. Escalators: RN-core coupled slice = T3 minimum (major RN line → T4 HITL); vision-camera /
-   worklets / nitro stay coupled with RN (never silent-batch with tooling); Orval = T4 + generate
-   + unit tests. Autonomy may merge tooling-only T1–T3; never auto-merge RN-core / vision-camera /
-   orval without Marc unless an Orval-mobile cheap exception is already standing routine.
+   worklets / nitro stay coupled with RN (never silent-batch with tooling); Orval = risk grid +
+   generate + unit tests. Autonomy may merge tooling-only T1–T3 and Orval O0/O1; never auto-merge
+   RN-core / vision-camera without Marc.
 
 Authority: skill `dependabot-curated` § *Mobile RN pulse*.
 
@@ -178,6 +241,7 @@ Authority: skill `dependabot-curated` § *Mobile RN pulse*.
 
 ## Closeout reminder (pins / install / codegen)
 
-When a pass merges Orval or another **exact-pin** / codegen dependency, the campaign note must cover
-exact pin preservation, `AGENTS.md` pin sync, workspace install, and regenerate — see skill
-`dependabot-curated` § *Pin, install, and codegen hygiene*. This is not part of `doctor-curated`.
+When a pass merges Orval or another **exact-pin** / codegen dependency, the campaign note or
+daily-log section must cover Node engines pre-flight, exact pin preservation, `AGENTS.md` pin
+sync, workspace install, and regenerate — see skill `dependabot-curated` § *Pin, install, and
+codegen hygiene*. This is not part of `doctor-curated`.
