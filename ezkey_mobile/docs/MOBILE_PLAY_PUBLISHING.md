@@ -46,7 +46,9 @@ Delivery is **AAB** (not APK). Play App Signing holds the app-signing key; you k
   `scripts/check-16kb-alignment.sh` (see [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md)).
   Do not use `useLegacyPackaging`. RN 0.87.1 prebuilt RELRO residuals are an explicit Decision A
   allowlist (#659) until an RN bump.
-- [x] **Open source notices**: run `yarn license:app-data` after dependency changes; commit `app/data/thirdPartyLicenses.json` with the candidate. Regenerated 2026-08-14.
+- [x] **Open source notices**: run `yarn license:app-data` after dependency changes; commit
+  `app/data/thirdPartyLicenses.json` with the candidate. See *In-app third-party licenses
+  snapshot* below.
 
 ## Optional polish
 
@@ -68,6 +70,29 @@ Before each Play upload:
 5. Build the signed AAB (`./scripts/build-install-release-clean.sh` or `yarn android:bundle:release` with JDK 17).
 
 **This workspace (2026-09-25):** `versionName` `0.1.0-alpha`, `versionCode` `3`. Play Console internal testing already holds `versionCode` `2`. Do not reuse a `versionCode`.
+
+## In-app third-party licenses snapshot
+
+The Licenses screen reads the committed snapshot
+[`app/data/thirdPartyLicenses.json`](../app/data/thirdPartyLicenses.json), generated from
+`package.json` `dependencies` only:
+
+```bash
+cd ezkey_mobile
+yarn license:app-data
+```
+
+CI (`ezkey-mobile-unit-tests` → `js-validate` → `yarn license:ci`) runs:
+
+1. `yarn license:check` — direct dependency license allowlist.
+2. Snapshot freshness — regenerates the JSON and fails if the committed file differs, **ignoring
+   `generatedAt`** so timestamp-only drift does not fail.
+
+When the freshness check fails (including on Dependabot PRs): run `yarn license:app-data` from
+`ezkey_mobile/` and commit `app/data/thirdPartyLicenses.json` on the same branch. No bot write
+token is required; the CI failure message spells out the same fix.
+
+Local equivalent: `yarn license:ci` (or `./scripts/check-third-party-licenses-ci.sh`).
 
 ## Client updates after the first official listing
 

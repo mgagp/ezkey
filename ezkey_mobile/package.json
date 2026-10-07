@@ -41,6 +41,8 @@
     "validate:ci": "yarn lint && yarn typecheck && yarn test --runInBand",
     "hooks:install": "git config core.hooksPath ezkey_mobile/.husky",
     "license:check": "node scripts/check-third-party-licenses.mjs",
+    "license:freshness": "node scripts/check-third-party-licenses-freshness.mjs",
+    "license:ci": "bash scripts/check-third-party-licenses-ci.sh",
     "license:generate": "npx @rnx-kit/third-party-notices --output third-party-notices.txt && node scripts/generate-third-party-licenses.mjs",
     "license:app-data": "node scripts/generate-third-party-licenses.mjs"
   },
