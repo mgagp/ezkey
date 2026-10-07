@@ -185,9 +185,11 @@ Pull requests that touch `ezkey_mobile/**` run the workflow [`.github/workflows/
 
 Before opening or updating a mobile PR, run the same commands locally when possible. A green check on GitHub means the branch passes on a clean runner, not only on your workstation.
 
-### Android build troubleshooting
+### Android JDK posture (17)
 
-If you see **"Error resolving plugin [id: 'com.facebook.react.settings']"** or **"Unsupported class file major version 69"**, the Android build is likely using JDK 25. React Native 0.86.2 and the current Android toolchain require **JDK 17 or 21**; on this workstation, use **JDK 17**.
+Ezkey Mobile standardizes on **JDK 17** for CI and local Gradle (Temurin 17 in GitHub Actions; `scripts/resolve-android-jdk.sh` locally). React Native / AGP also allow JDK 21, but **moving the project to JDK 21 is a separate tracked decision** — do not add `gradle-daemon-jvm.properties` Foojay download URLs or otherwise force a daemon JVM download at build time (`org.gradle.java.installations.auto-download=false` in `android/gradle.properties`).
+
+If you see **"Error resolving plugin [id: 'com.facebook.react.settings']"** or **"Unsupported class file major version 69"**, the Android build is likely using JDK 25. Use JDK 17.
 
 **Option 1 – Canonical clean install (Git Bash, from `ezkey_mobile/`):**
 
@@ -196,7 +198,7 @@ adb devices -l
 ./scripts/build-install-debug-clean.sh
 ```
 
-Same as `yarn android:install:debug:clean`. JDK 17/21 is resolved automatically (`scripts/resolve-android-jdk.sh`); do not point Gradle at JDK 25.
+Same as `yarn android:install:debug:clean`. JDK 17 is resolved automatically (`scripts/resolve-android-jdk.sh`); do not point Gradle at JDK 25.
 
 **Option 2 – Run on device via Metro (helper):**
 
