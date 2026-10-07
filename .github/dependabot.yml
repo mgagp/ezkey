@@ -45,6 +45,10 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
+    # Keep @types/node on the same major as the runtime in root .nvmrc (Node 24 LTS).
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       admin-ui-eslint:
         patterns:
@@ -73,6 +77,11 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
+    # Keep @types/node on the same major as the runtime in root .nvmrc (Node 24 LTS).
+    # SDK package engines (>=14) stay unchanged — types track the repo toolchain, not the publish floor.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   # Yarn 4 workspace (packageManager: yarn@4.x). Dependabot npm ecosystem updates
   # package.json + yarn.lock. Keep RN-core / vision-camera / Orval out of tooling batches —

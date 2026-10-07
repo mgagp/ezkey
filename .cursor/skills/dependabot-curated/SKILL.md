@@ -183,10 +183,10 @@ help interpret a **non-empty** diff. Agent reading of release notes alone is a *
 - Option B: `query: { version: 5 }` only — **no** global `useQuery` / `useMutation` in
   `orval.config.ts`.
 - Sync pin lines in `ezkey-admin-ui/AGENTS.md` / `ezkey_mobile/AGENTS.md` in the same change set.
-- **Node version pre-flight:** before local generate/lint/tsc, confirm CI and the agent environment
-  satisfy the package `engines` (and Orval’s stated Node floor). Example: Orval 8.39 wanted
-  Node `>=22.18` while a local workstation was on `22.14` — bump or use a matching Node before
-  treating a local failure as an Orval regression.
+- **Node version pre-flight:** before local generate/lint/tsc, use the repo root `.nvmrc` (Node **24**
+  LTS) and confirm `node -v` / CI satisfy package `engines` and Orval’s stated floor. On
+  **nvm-windows**, `.nvmrc` is not applied automatically — `nvm install 24` then `nvm use 24`, then
+  `corepack enable`. Do not treat an engine mismatch as an Orval regression.
 
 **Evidence:** 2026-10-05 Admin Orval 8.32→8.39 (#658, squash `5ebbd164`) — **empty** codegen diff,
 112 vitest green → **O0**.
@@ -374,9 +374,9 @@ when no mobile lot was proposed.
 Run this checklist in the **same closeout** whenever a merged PR changed a declared pin or a
 codegen tool. Merge + CI green is not enough if docs or local `node_modules` stay behind.
 
-0. **Node engines pre-flight:** `node -v` (and CI Node) must satisfy `package.json` `engines` and
-   the codegen tool’s floor before local generate/lint/tsc. Do not mis-attribute engine mismatches
-   to Orval or the app.
+0. **Node engines pre-flight:** align with root `.nvmrc` (Node 24 LTS); `node -v` (and CI Node) must
+   satisfy `package.json` `engines` and the codegen tool’s floor before local generate/lint/tsc. Do
+   not mis-attribute engine mismatches to Orval or the app.
 1. **Exact pin preserved:** for packages the repo pins without a caret (notably Orval), confirm
    `package.json` still uses an exact version (`8.39.0`, not `^8.39.0`) after any manual
    `npm install` follow-up.
