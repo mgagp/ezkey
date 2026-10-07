@@ -434,27 +434,33 @@ Living entry points: this section, root `AGENTS.md` § Local Maven version prope
 
 PR and `main` pushes run the aggregate workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 A `changes` job (path filter) decides which suites run. Unrelated areas are **skipped**, not left
-pending. The final job **`ci-gate`** (`if: always()`) fails if any needed job failed or was
-cancelled, and **passes when those jobs were skipped**. That is the single check intended to become
-**required** on `main` (repository ruleset). Do not require path-filtered job names alone — that
-leaves docs-only PRs stuck on "Expected — waiting".
+pending. Manual `workflow_dispatch` forces **every** suite. The final job **`ci-gate`**
+(`if: always()`) fails if any needed job failed or was cancelled, and **passes when those jobs
+were skipped**. That is the single check intended to become **required** on `main` (repository
+ruleset). Do not require path-filtered job names alone — that leaves docs-only PRs stuck on
+"Expected — waiting".
 
 | Job | When it runs | What it checks |
 |-----|--------------|----------------|
-| `changes` | Always | Path filter outputs (`admin-ui`, `backend`, `mobile`, `workflows`) |
-| `admin-ui` | `ezkey-admin-ui/**` or any `.github/workflows/**` change | Node 22.18+, `npm ci`, `generate:api` (committed `openapi-spec.json`), `tsc -b`, lint, Vitest, `vite build`, no-demo assert on `dist/` |
-| `backend` | Java reactor paths / root `pom.xml` / `scripts/build.sh` / `.mvn/**` or workflows | JDK 25, install `checkstyle-config`, `spotless:check`, Checkstyle, `install -DskipTests` + `test -pl '!ezkey-tests'` (H2 unit tests; **not** `ezkey-tests` Docker stack) |
+| `changes` | Always | Path filter outputs (`admin-ui`, `backend`, `mobile`, `workflows`); all forced on `workflow_dispatch` |
+| `admin-ui` | `ezkey-admin-ui/**`, `specs/**`, or any `.github/workflows/**` change | `cmp` of `specs/admin-api/openapi-spec.json` vs `ezkey-admin-ui/openapi-spec.json`; Node 22.18+; `npm ci`; `generate:api`; `tsc -b`; lint; Vitest; `vite build`; no-demo assert on `dist/` |
+| `backend` | Java reactor paths / root `pom.xml` / `scripts/build.sh` / `.mvn/**` or workflows | JDK 25; install `checkstyle-config`; `spotless:check`; Checkstyle; full-reactor `install -DskipTests` (so `ezkey-tests` **compiles**); `test -pl '!ezkey-tests'` (H2 unit tests; **does not run** the Docker `ezkey-tests` suite) |
 | `mobile` | `ezkey_mobile/**` or workflows | Calls reusable [`.github/workflows/ezkey-mobile-unit-tests.yml`](../.github/workflows/ezkey-mobile-unit-tests.yml): Yarn validate, Android JVM unit tests, **16 KB APK alignment** |
 | `ci-gate` | Always | Aggregate pass/fail for the jobs above |
 
+CI checks that the Admin UI’s committed OpenAPI copy matches `specs/admin-api/`, but it does **not**
+guarantee that copy matches the real running Admin API — refresh the committed spec by hand with
+`./scripts/update-specs.sh` against a live stack.
+
 **Not in PR CI:** Playwright Admin UI browser tests (need a live Docker stack + Demo Device),
-`ezkey-tests` functional suite, doctor-curated / java-doctor / pentest hygiene passes, and any
-tag-triggered Maven Central release (not implemented).
+running the `ezkey-tests` functional suite, doctor-curated / java-doctor / pentest hygiene
+passes, and any tag-triggered Maven Central release (not implemented).
 
 **Run the same checks locally:**
 
 ```bash
 # Admin UI (from ezkey-admin-ui/; Node >= 22.18)
+cmp ../specs/admin-api/openapi-spec.json openapi-spec.json
 npm ci && npm run generate:api && npx tsc -b && npm run lint && npm test && npx vite build
 bash scripts/assert-no-demo-in-build.sh dist
 
@@ -462,7 +468,7 @@ bash scripts/assert-no-demo-in-build.sh dist
 ./scripts/build.sh
 # Or CI-shaped: mvn -pl checkstyle-config install -DskipTests
 #               && mvn spotless:check checkstyle:check
-#               && mvn clean install -DskipTests -pl '!ezkey-tests'
+#               && mvn clean install -DskipTests
 #               && mvn test -pl '!ezkey-tests'
 
 # Mobile (from ezkey_mobile/)

@@ -3,6 +3,7 @@
 # Path-filtered jobs avoid wasted runners; a final always-running `ci-gate` job
 # is the single check intended to become required on `main` (no "Expected —
 # waiting" on unrelated PRs). Changes under `.github/workflows/**` run every job.
+# workflow_dispatch always runs every suite (never an empty green gate).
 #
 # Playwright Admin UI browser tests need a live Docker stack — not a PR gate.
 name: CI
@@ -28,28 +29,29 @@ defaults:
 jobs:
   changes:
     name: changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
-      admin-ui: ${{ steps.filter.outputs.admin-ui }}
-      backend: ${{ steps.filter.outputs.backend }}
-      mobile: ${{ steps.filter.outputs.mobile }}
-      workflows: ${{ steps.filter.outputs.workflows }}
+      admin-ui: ${{ steps.resolve.outputs.admin-ui }}
+      backend: ${{ steps.resolve.outputs.backend }}
+      mobile: ${{ steps.resolve.outputs.mobile }}
+      workflows: ${{ steps.resolve.outputs.workflows }}
     steps:
       - name: Checkout
-        # actions/checkout@v7.0.1
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Detect changed paths
         id: filter
-        # dorny/paths-filter@v4.0.3
-        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
           filters: |
             workflows:
               - '.github/workflows/**'
             admin-ui:
               - 'ezkey-admin-ui/**'
+              - 'specs/**'
             backend:
               - 'pom.xml'
               - 'checkstyle-config/**'
@@ -69,23 +71,54 @@ jobs:
             mobile:
               - 'ezkey_mobile/**'
 
+      # Manual runs must exercise every suite; path filters alone would skip all
+      # and leave ci-gate green with nothing checked.
+      - name: Resolve path outputs
+        id: resolve
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "admin-ui=true" >> "$GITHUB_OUTPUT"
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "mobile=true" >> "$GITHUB_OUTPUT"
+            echo "workflows=true" >> "$GITHUB_OUTPUT"
+            echo "Forced all suites (workflow_dispatch)"
+          else
+            echo "admin-ui=${{ steps.filter.outputs.admin-ui }}" >> "$GITHUB_OUTPUT"
+            echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
+            echo "mobile=${{ steps.filter.outputs.mobile }}" >> "$GITHUB_OUTPUT"
+            echo "workflows=${{ steps.filter.outputs.workflows }}" >> "$GITHUB_OUTPUT"
+          fi
+
   admin-ui:
     name: admin-ui
     needs: changes
     if: needs.changes.outputs.admin-ui == 'true' || needs.changes.outputs.workflows == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:
         working-directory: ezkey-admin-ui
     steps:
       - name: Checkout
-        # actions/checkout@v7.0.1
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Assert Admin UI OpenAPI copy matches specs/
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          CANON=specs/admin-api/openapi-spec.json
+          COPY=ezkey-admin-ui/openapi-spec.json
+          if ! cmp -s "$CANON" "$COPY"; then
+            echo "::error::OpenAPI copies diverge: $COPY differs from $CANON. Refresh with ./scripts/update-specs.sh --admin-only against a live stack (CI does not regenerate the spec from the running API)."
+            exit 1
+          fi
+          echo "OK: $COPY matches $CANON"
 
       - name: Set up Node.js
-        # actions/setup-node@v7 — Orval 8.39 requires Node >= 22.18
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7 — Orval 8.39 requires Node >= 22.18
         with:
           node-version: '22.18'
           cache: npm
@@ -122,16 +155,16 @@ jobs:
     name: backend
     needs: changes
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - name: Checkout
-        # actions/checkout@v7.0.1
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up JDK 25
-        # actions/setup-java@v6
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
         with:
           java-version: '25'
           distribution: 'temurin'
@@ -143,7 +176,8 @@ jobs:
           test "$(java -XshowSettings:properties -version 2>&1 | sed -n 's/.*java.specification.version = //p')" = "25"
 
       # Mirror scripts/build.sh for CI: checkstyle-config first, spotless:check (not apply),
-      # then Checkstyle, then install + unit tests excluding ezkey-tests (Docker stack).
+      # then Checkstyle, full-reactor install (so ezkey-tests compiles), unit tests excluding
+      # ezkey-tests (needs the Docker stack).
       - name: Install checkstyle-config
         run: mvn -B -ntp -pl checkstyle-config install -DskipTests
 
@@ -153,16 +187,15 @@ jobs:
       - name: Checkstyle
         run: mvn -B -ntp checkstyle:check
 
-      - name: Build (skip tests)
-        run: mvn -B -ntp clean install -DskipTests -pl '!ezkey-tests'
+      - name: Build full reactor (skip tests)
+        run: mvn -B -ntp clean install -DskipTests
 
       - name: Unit tests (H2; exclude ezkey-tests)
         run: mvn -B -ntp test -pl '!ezkey-tests'
 
       - name: Upload Surefire reports
         if: always()
-        # actions/upload-artifact@v7
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: backend-surefire-reports
           path: |
@@ -183,7 +216,7 @@ jobs:
     name: ci-gate
     needs: [changes, admin-ui, backend, mobile]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Evaluate aggregate gate
