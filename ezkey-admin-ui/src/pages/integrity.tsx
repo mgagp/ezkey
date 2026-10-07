@@ -21,8 +21,10 @@ import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import {
   dateRangeToApiParams,
+  integrityExclusiveApiParamsToDisplayRange,
   integrityExclusiveDateRangeToApiParams,
 } from '@/lib/date-range-presets';
+import { isSucceededVerifyJobForReportHydration } from '@/lib/integrity-async-job-report-hydration';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
 import { cn, formatDateOnly, formatDateWithTimezone } from '@/lib/utils';
@@ -525,25 +527,32 @@ function IntegrityPanel({
         ? t('integrity.selectDateRangeToRun')
         : undefined;
 
+  const [hydrationReloadNonce, setHydrationReloadNonce] = useState(0);
+  const [hydrationFailedKind, setHydrationFailedKind] = useState<'chain' | 'entry' | null>(
+    null,
+  );
+
   // After VERIFY_* SUCCEEDED, hydrate full reports (gaps / entry violations) from
   // the read-only verify endpoints — the async job DTO only carries a summary.
   useIntegrityAsyncJobReportHydration({
     job: asyncJob,
-    toDisplayRange: (fromIso, toIso) => ({
-      from: toDateInputValue(fromIso),
-      to: toDateInputValue(toIso),
-    }),
+    reloadNonce: hydrationReloadNonce,
+    toDisplayRange: (fromIso, toIso) =>
+      integrityExclusiveApiParamsToDisplayRange(fromIso, toIso, effectiveTimeZoneId),
     onChainReport: (report, range) => {
+      setHydrationFailedKind(null);
       setChainReport(report);
       setChainReportRange(range);
     },
     onEntryReport: (report, range) => {
+      setHydrationFailedKind(null);
       setIntegrityReport(report);
       setIntegrityReportRange(range);
     },
     onChainHydratingChange: setChainLoading,
     onEntryHydratingChange: setIntegrityLoading,
     onError: (kind, error) => {
+      setHydrationFailedKind(kind);
       toast(
         getTranslatedApiError(
           error,
@@ -1178,12 +1187,8 @@ function IntegrityPanel({
           ) {
             return;
           }
-          // Already-succeeded chain verify: hydrate via job hook; do not start another job.
-          if (
-            current.status === 'SUCCEEDED'
-            && current.type === 'VERIFY_CHAIN_RANGE'
-            && current.abandonedAt == null
-          ) {
+          // Already-succeeded chain/entry verify: hydrate via job hook; do not start another job.
+          if (isSucceededVerifyJobForReportHydration(current)) {
             return;
           }
         }
@@ -1223,6 +1228,34 @@ function IntegrityPanel({
       </div>
 
       <IntegrityAsyncJobBanner job={asyncJob} onJobChange={setAsyncJob} active />
+
+      {hydrationFailedKind != null
+        && isSucceededVerifyJobForReportHydration(asyncJob) && (
+        <div
+          className="border-2 border-warning/40 bg-warning/5 px-3 py-2 text-sm flex flex-wrap items-center gap-2"
+          data-testid="integrity-report-hydrate-failed"
+          role="alert"
+        >
+          <span className="min-w-0 flex-1">
+            {hydrationFailedKind === 'chain'
+              ? t('integrity.asyncJob.hydrateChainError')
+              : t('integrity.asyncJob.hydrateEntryError')}
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="ml-auto shrink-0"
+            data-testid="integrity-report-reload"
+            onClick={() => {
+              setHydrationFailedKind(null);
+              setHydrationReloadNonce((n) => n + 1);
+            }}
+          >
+            {t('integrity.asyncJob.reloadReport')}
+          </Button>
+        </div>
+      )}
 
       <div
         role="tablist"

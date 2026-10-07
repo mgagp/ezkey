@@ -3,9 +3,14 @@ import type {
   ChainVerificationReport,
   IntegrityReport,
 } from '@/generated/admin-api/model';
+import {
+  integrityExclusiveApiParamsToDisplayRange,
+  integrityExclusiveDateRangeToApiParams,
+} from '@/lib/date-range-presets';
 import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
 import {
   executeIntegrityAsyncJobReportHydration,
+  isSucceededVerifyJobForReportHydration,
   resolveIntegrityAsyncJobReportHydration,
   type IntegrityReportHydrationRequest,
 } from './integrity-async-job-report-hydration';
@@ -20,6 +25,49 @@ function job(
     ...overrides,
   };
 }
+
+describe('isSucceededVerifyJobForReportHydration', () => {
+  it('is true for succeeded chain and entry verify jobs', () => {
+    expect(
+      isSucceededVerifyJobForReportHydration(
+        job({ jobId: 'a', type: 'VERIFY_CHAIN_RANGE', status: 'SUCCEEDED' }),
+      ),
+    ).toBe(true);
+    expect(
+      isSucceededVerifyJobForReportHydration(
+        job({ jobId: 'b', type: 'VERIFY_ENTRY_HMAC_RANGE', status: 'SUCCEEDED' }),
+      ),
+    ).toBe(true);
+  });
+
+  it('is false for running, failed, abandoned, or validation jobs', () => {
+    expect(
+      isSucceededVerifyJobForReportHydration(
+        job({ jobId: 'a', type: 'VERIFY_CHAIN_RANGE', status: 'RUNNING' }),
+      ),
+    ).toBe(false);
+    expect(
+      isSucceededVerifyJobForReportHydration(
+        job({ jobId: 'a', type: 'VERIFY_CHAIN_RANGE', status: 'FAILED' }),
+      ),
+    ).toBe(false);
+    expect(
+      isSucceededVerifyJobForReportHydration(
+        job({
+          jobId: 'a',
+          type: 'VERIFY_CHAIN_RANGE',
+          status: 'SUCCEEDED',
+          abandonedAt: '2026-10-07T12:00:00Z',
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isSucceededVerifyJobForReportHydration(
+        job({ jobId: 'a', type: 'RUN_VALIDATION', status: 'SUCCEEDED' }),
+      ),
+    ).toBe(false);
+  });
+});
 
 describe('resolveIntegrityAsyncJobReportHydration', () => {
   it('returns null while RUNNING', () => {
@@ -104,7 +152,7 @@ describe('resolveIntegrityAsyncJobReportHydration', () => {
     ).toBeNull();
   });
 
-  it('dedupes by jobId (already hydrated)', () => {
+  it('dedupes by jobId (already hydrated / in-flight)', () => {
     expect(
       resolveIntegrityAsyncJobReportHydration(
         job({
@@ -146,8 +194,39 @@ describe('resolveIntegrityAsyncJobReportHydration', () => {
   });
 });
 
+describe('integrityExclusiveApiParamsToDisplayRange', () => {
+  it('round-trips inclusive calendar bounds through exclusive Instant scope (America/New_York)', () => {
+    const { createdAfter, createdBefore } = integrityExclusiveDateRangeToApiParams(
+      '2026-10-01',
+      '2026-10-07',
+      'America/New_York',
+    );
+    expect(createdAfter).toBe('2026-10-01T04:00:00.000Z');
+    expect(createdBefore).toBe('2026-10-08T04:00:00.000Z');
+
+    expect(
+      integrityExclusiveApiParamsToDisplayRange(
+        createdAfter,
+        createdBefore,
+        'America/New_York',
+      ),
+    ).toEqual({ from: '2026-10-01', to: '2026-10-07' });
+  });
+
+  it('does not show exclusive end as +1 day across a timezone edge', () => {
+    // Exclusive end is start of 8 Oct in NY (= 04:00Z). Naive UTC date-of would be 08.
+    const display = integrityExclusiveApiParamsToDisplayRange(
+      '2026-10-01T04:00:00.000Z',
+      '2026-10-08T04:00:00.000Z',
+      'America/New_York',
+    );
+    expect(display).toEqual({ from: '2026-10-01', to: '2026-10-07' });
+    expect(display.to).not.toBe('2026-10-08');
+  });
+});
+
 describe('executeIntegrityAsyncJobReportHydration + RUNNING→SUCCEEDED once', () => {
-  it('fetches chain once with job scope and delivers undeclared gaps', async () => {
+  it('fetches chain once with job scope and delivers undeclared gaps with correct display range', async () => {
     const fetchCalls: Array<{ from: string; to: string }> = [];
     const gapReport = {
       intact: false,
@@ -165,6 +244,8 @@ describe('executeIntegrityAsyncJobReportHydration + RUNNING→SUCCEEDED once', (
       ],
     } as ChainVerificationReport;
 
+    const scopeFrom = '2026-10-01T04:00:00.000Z';
+    const scopeTo = '2026-10-08T04:00:00.000Z';
     const deps = {
       fetchChainReport: vi.fn(async (from: string, to: string) => {
         fetchCalls.push({ from, to });
@@ -173,10 +254,8 @@ describe('executeIntegrityAsyncJobReportHydration + RUNNING→SUCCEEDED once', (
       fetchEntryReport: vi.fn(async () => {
         throw new Error('entry fetch must not run for chain hydration');
       }),
-      toDisplayRange: (fromIso: string, toIso: string) => ({
-        from: fromIso.slice(0, 10),
-        to: toIso.slice(0, 10),
-      }),
+      toDisplayRange: (fromIso: string, toIso: string) =>
+        integrityExclusiveApiParamsToDisplayRange(fromIso, toIso, 'America/New_York'),
       onChainReport: vi.fn(),
       onEntryReport: vi.fn(),
     };
@@ -186,6 +265,8 @@ describe('executeIntegrityAsyncJobReportHydration + RUNNING→SUCCEEDED once', (
       jobId: 'j-transition',
       type: 'VERIFY_CHAIN_RANGE',
       status: 'RUNNING',
+      scopeFrom,
+      scopeTo,
     });
     expect(resolveIntegrityAsyncJobReportHydration(running, lastHydrated)).toBeNull();
 
@@ -193,19 +274,19 @@ describe('executeIntegrityAsyncJobReportHydration + RUNNING→SUCCEEDED once', (
       jobId: 'j-transition',
       type: 'VERIFY_CHAIN_RANGE',
       status: 'SUCCEEDED',
+      scopeFrom,
+      scopeTo,
     });
     const request = resolveIntegrityAsyncJobReportHydration(succeeded, lastHydrated);
     expect(request).not.toBeNull();
 
     lastHydrated = await executeIntegrityAsyncJobReportHydration(request!, deps);
 
-    expect(fetchCalls).toEqual([
-      { from: '2026-10-01T00:00:00Z', to: '2026-10-08T00:00:00Z' },
-    ]);
+    expect(fetchCalls).toEqual([{ from: scopeFrom, to: scopeTo }]);
     expect(deps.onChainReport).toHaveBeenCalledTimes(1);
     expect(deps.onChainReport).toHaveBeenCalledWith(gapReport, {
       from: '2026-10-01',
-      to: '2026-10-08',
+      to: '2026-10-07',
     });
     expect(
       (deps.onChainReport.mock.calls[0][0] as ChainVerificationReport & {
@@ -214,7 +295,6 @@ describe('executeIntegrityAsyncJobReportHydration + RUNNING→SUCCEEDED once', (
     ).toHaveLength(1);
     expect(deps.onEntryReport).not.toHaveBeenCalled();
 
-    // Same SUCCEEDED job again — no second fetch
     expect(resolveIntegrityAsyncJobReportHydration(succeeded, lastHydrated)).toBeNull();
     expect(fetchCalls).toHaveLength(1);
   });
@@ -232,7 +312,8 @@ describe('executeIntegrityAsyncJobReportHydration + RUNNING→SUCCEEDED once', (
         throw new Error('chain fetch must not run for entry hydration');
       }),
       fetchEntryReport: vi.fn(async () => entryReport),
-      toDisplayRange: () => ({ from: '2026-10-01', to: '2026-10-08' }),
+      toDisplayRange: (fromIso: string, toIso: string) =>
+        integrityExclusiveApiParamsToDisplayRange(fromIso, toIso, 'UTC'),
       onChainReport: vi.fn(),
       onEntryReport: vi.fn(),
     };
@@ -242,19 +323,17 @@ describe('executeIntegrityAsyncJobReportHydration + RUNNING→SUCCEEDED once', (
         jobId: 'j-hmac',
         type: 'VERIFY_ENTRY_HMAC_RANGE',
         status: 'SUCCEEDED',
+        scopeFrom: '2026-10-01T00:00:00.000Z',
+        scopeTo: '2026-10-08T00:00:00.000Z',
       }),
       null,
     );
     await executeIntegrityAsyncJobReportHydration(request!, deps);
 
     expect(deps.fetchEntryReport).toHaveBeenCalledTimes(1);
-    expect(deps.fetchEntryReport).toHaveBeenCalledWith(
-      '2026-10-01T00:00:00Z',
-      '2026-10-08T00:00:00Z',
-    );
     expect(deps.onEntryReport).toHaveBeenCalledWith(entryReport, {
       from: '2026-10-01',
-      to: '2026-10-08',
+      to: '2026-10-07',
     });
     expect(deps.onChainReport).not.toHaveBeenCalled();
   });
@@ -264,7 +343,8 @@ describe('executeIntegrityAsyncJobReportHydration + RUNNING→SUCCEEDED once', (
     const deps = {
       fetchChainReport,
       fetchEntryReport: vi.fn(async () => ({ intact: true }) as IntegrityReport),
-      toDisplayRange: () => ({ from: '2026-10-01', to: '2026-10-08' }),
+      toDisplayRange: (fromIso: string, toIso: string) =>
+        integrityExclusiveApiParamsToDisplayRange(fromIso, toIso, 'UTC'),
       onChainReport: vi.fn(),
       onEntryReport: vi.fn(),
     };
@@ -273,6 +353,8 @@ describe('executeIntegrityAsyncJobReportHydration + RUNNING→SUCCEEDED once', (
       jobId: 'j-onload',
       type: 'VERIFY_CHAIN_RANGE',
       status: 'SUCCEEDED',
+      scopeFrom: '2026-10-01T00:00:00.000Z',
+      scopeTo: '2026-10-08T00:00:00.000Z',
     });
 
     let lastHydrated: string | null = null;

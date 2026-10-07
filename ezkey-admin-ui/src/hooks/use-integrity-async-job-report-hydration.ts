@@ -35,11 +35,22 @@ export interface UseIntegrityAsyncJobReportHydrationOptions {
   onError?: (kind: 'chain' | 'entry', error: unknown) => void;
   /** Convert job Instant scope to UI date-range display values (YYYY-MM-DD). */
   toDisplayRange: (fromIso: string, toIso: string) => { from: string; to: string };
+  /**
+   * Bump to clear the in-session hydrated mark and re-fetch for the current
+   * SUCCEEDED job (operator “Reload report”).
+   */
+  reloadNonce?: number;
+  /** Test seams — default to generated Admin API clients. */
+  fetchChainReport?: (from: string, to: string) => Promise<ChainVerificationReport>;
+  fetchEntryReport?: (from: string, to: string) => Promise<IntegrityReport>;
 }
 
 /**
  * When {@code job} is SUCCEEDED VERIFY_CHAIN_RANGE / VERIFY_ENTRY_HMAC_RANGE,
  * fetch the full report once per jobId and push it into page state.
+ *
+ * Effect deps are {@code jobId} + {@code status} (not the job object) so banner
+ * and auto-run setting distinct object copies do not double-fetch.
  *
  * @param options job + setters / error handlers
  */
@@ -54,35 +65,57 @@ export function useIntegrityAsyncJobReportHydration(
     onEntryHydratingChange,
     onError,
     toDisplayRange,
+    reloadNonce = 0,
+    fetchChainReport,
+    fetchEntryReport,
   } = options;
 
+  const jobId = job?.jobId;
+  const jobStatus = job?.status;
+
   const lastHydratedJobIdRef = useRef<string | null>(null);
-  // Keep latest callbacks without re-firing hydration on every render identity change.
+  const completedJobIdRef = useRef<string | null>(null);
+  // Keep latest callbacks / job snapshot without re-firing on identity churn.
   const callbacksRef = useRef({
+    job,
     onChainReport,
     onEntryReport,
     onChainHydratingChange,
     onEntryHydratingChange,
     onError,
     toDisplayRange,
+    fetchChainReport,
+    fetchEntryReport,
   });
   callbacksRef.current = {
+    job,
     onChainReport,
     onEntryReport,
     onChainHydratingChange,
     onEntryHydratingChange,
     onError,
     toDisplayRange,
+    fetchChainReport,
+    fetchEntryReport,
   };
 
   useEffect(() => {
+    if (reloadNonce > 0) {
+      lastHydratedJobIdRef.current = null;
+      completedJobIdRef.current = null;
+    }
+
     const request = resolveIntegrityAsyncJobReportHydration(
-      job,
+      callbacksRef.current.job,
       lastHydratedJobIdRef.current,
     );
     if (request == null) {
       return;
     }
+
+    // Claim before the async fetch so a concurrent resolve (or Strict Mode) cannot
+    // start a second GET for the same jobId.
+    lastHydratedJobIdRef.current = request.jobId;
 
     let cancelled = false;
     const setLoading =
@@ -91,13 +124,20 @@ export function useIntegrityAsyncJobReportHydration(
         : callbacksRef.current.onEntryHydratingChange;
     setLoading?.(true);
 
+    const fetchChain =
+      callbacksRef.current.fetchChainReport
+      ?? (async (from: string, to: string) =>
+        (await checkChainIntegrity({ from, to })) as unknown as ChainVerificationReport);
+    const fetchEntry =
+      callbacksRef.current.fetchEntryReport
+      ?? (async (from: string, to: string) =>
+        (await checkIntegrity({ from, to })) as unknown as IntegrityReport);
+
     void (async () => {
       try {
-        const hydratedJobId = await executeIntegrityAsyncJobReportHydration(request, {
-          fetchChainReport: async (from, to) =>
-            (await checkChainIntegrity({ from, to })) as unknown as ChainVerificationReport,
-          fetchEntryReport: async (from, to) =>
-            (await checkIntegrity({ from, to })) as unknown as IntegrityReport,
+        await executeIntegrityAsyncJobReportHydration(request, {
+          fetchChainReport: fetchChain,
+          fetchEntryReport: fetchEntry,
           toDisplayRange: callbacksRef.current.toDisplayRange,
           onChainReport: (report, range) => {
             if (!cancelled) {
@@ -111,10 +151,14 @@ export function useIntegrityAsyncJobReportHydration(
           },
         });
         if (!cancelled) {
-          lastHydratedJobIdRef.current = hydratedJobId;
+          completedJobIdRef.current = request.jobId;
         }
       } catch (error) {
         if (!cancelled) {
+          // Release claim so Reload / retry can fetch again.
+          if (lastHydratedJobIdRef.current === request.jobId) {
+            lastHydratedJobIdRef.current = null;
+          }
           callbacksRef.current.onError?.(request.kind, error);
         }
       } finally {
@@ -126,6 +170,17 @@ export function useIntegrityAsyncJobReportHydration(
 
     return () => {
       cancelled = true;
+      // Cancelled mid-flight (new job / unmount): clear loading so Verify buttons
+      // are not stuck disabled. Do not rely on the async finally — it skips when cancelled.
+      setLoading?.(false);
+      // Strict Mode remount: release in-flight claim only when the fetch never
+      // completed successfully, so the remount can hydrate once.
+      if (
+        lastHydratedJobIdRef.current === request.jobId
+        && completedJobIdRef.current !== request.jobId
+      ) {
+        lastHydratedJobIdRef.current = null;
+      }
     };
-  }, [job]);
+  }, [jobId, jobStatus, reloadNonce]);
 }

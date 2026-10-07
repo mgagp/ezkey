@@ -24,45 +24,62 @@ export interface IntegrityReportHydrationRequest {
 }
 
 /**
+ * True when the current job is a finished verify that should hydrate a full report
+ * (and should not trigger Integrity page auto-run of a new chain job).
+ *
+ * @param job current Integrity async job
+ * @returns whether the job is a succeeded chain/entry verify still owning the slot
+ */
+export function isSucceededVerifyJobForReportHydration(
+  job: IntegrityAsyncJobResponse | null | undefined,
+): boolean {
+  if (job == null || job.abandonedAt != null) {
+    return false;
+  }
+  if (job.status !== 'SUCCEEDED') {
+    return false;
+  }
+  return (
+    job.type === 'VERIFY_CHAIN_RANGE' || job.type === 'VERIFY_ENTRY_HMAC_RANGE'
+  );
+}
+
+/**
  * Decide whether the current async job should trigger a one-shot report fetch.
  *
  * @param job current Integrity async job (from banner poll or page load)
- * @param lastHydratedJobId jobId already hydrated in this session (dedupe)
+ * @param lastHydratedJobId jobId already hydrated (or claimed in-flight) in this session
  * @returns request to fetch, or null when no hydration is needed
  */
 export function resolveIntegrityAsyncJobReportHydration(
   job: IntegrityAsyncJobResponse | null | undefined,
   lastHydratedJobId: string | null,
 ): IntegrityReportHydrationRequest | null {
-  if (job == null || job.abandonedAt != null) {
+  if (!isSucceededVerifyJobForReportHydration(job)) {
     return null;
   }
-  if (job.status !== 'SUCCEEDED') {
+  // Narrowed by the predicate above.
+  const succeeded = job as IntegrityAsyncJobResponse;
+  if (succeeded.jobId === lastHydratedJobId) {
     return null;
   }
-  if (job.jobId === lastHydratedJobId) {
+  if (!succeeded.scopeFrom || !succeeded.scopeTo) {
     return null;
   }
-  if (!job.scopeFrom || !job.scopeTo) {
-    return null;
-  }
-  if (job.type === 'VERIFY_CHAIN_RANGE') {
+  if (succeeded.type === 'VERIFY_CHAIN_RANGE') {
     return {
       kind: 'chain',
-      jobId: job.jobId,
-      from: job.scopeFrom,
-      to: job.scopeTo,
+      jobId: succeeded.jobId,
+      from: succeeded.scopeFrom,
+      to: succeeded.scopeTo,
     };
   }
-  if (job.type === 'VERIFY_ENTRY_HMAC_RANGE') {
-    return {
-      kind: 'entry',
-      jobId: job.jobId,
-      from: job.scopeFrom,
-      to: job.scopeTo,
-    };
-  }
-  return null;
+  return {
+    kind: 'entry',
+    jobId: succeeded.jobId,
+    from: succeeded.scopeFrom,
+    to: succeeded.scopeTo,
+  };
 }
 
 export interface IntegrityReportHydrationDeps {

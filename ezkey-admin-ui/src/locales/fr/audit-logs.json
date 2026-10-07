@@ -307,7 +307,8 @@
       "abandonError": "Impossible d'abandonner le job d'intégrité.",
       "busyToast": "Job d'intégrité déjà en cours : {{resume}}",
       "hydrateChainError": "Impossible de charger le résultat de vérification de la chaîne.",
-      "hydrateEntryError": "Impossible de charger le résultat de vérification HMAC des entrées."
+      "hydrateEntryError": "Impossible de charger le résultat de vérification HMAC des entrées.",
+      "reloadReport": "Recharger le rapport"
     },
     "chainIntegrity": "Intégrité de la chaîne",
     "entryIntegrity": "Intégrité des entrées",
