@@ -104,12 +104,12 @@ A warm `assembleRelease` or a debug install does **not** prove a Play AAB. When 
 
 ## Android debug build (agents — read first)
 
-**Do not improvise `JAVA_HOME` or bare `./gradlew` on Windows.** The maintainer PATH often exposes **JDK 25** (`C:\Tools\jdk-25…`), which breaks React Native 0.86 Android (`Unsupported class file major version 69`, `com.facebook.react.settings` plugin errors). Android Studio JBR is also **not** always at `C:\Program Files\Android\Android Studio\jbr` (this workstation uses `Android Studio1\jbr`).
+**Do not improvise `JAVA_HOME` or bare `./gradlew` on Windows.** The maintainer PATH often exposes **JDK 25** (`C:\Tools\jdk-25…`), which breaks React Native 0.87 Android (`Unsupported class file major version 69`, `com.facebook.react.settings` plugin errors). Android Studio JBR is also **not** always at `C:\Program Files\Android\Android Studio\jbr` (this workstation uses `Android Studio1\jbr`).
 
 ### Mandatory agent workflow
 
-1. **Git Bash** from `ezkey_mobile/` (not bare PowerShell for Gradle).
-2. **Device before Gradle**: `adb devices -l` — if empty, stop; do not start a multi-minute build (wireless adb often drops mid-build).
+1. **Git Bash** from `ezkey_mobile/` (not bare PowerShell for Gradle). Yarn scripts that invoke `.sh` go through `scripts/run-with-git-bash.mjs` so Windows does not pick WSL `System32\bash.exe`.
+2. **Device before Gradle** (install path): `adb devices -l` — if empty, stop; do not start a multi-minute build (wireless adb often drops mid-build). For assemble-only: `./scripts/build-install-debug-clean.sh --build-only` (or `yarn android:assemble:debug:clean`).
 3. **Canonical install** (JDK probe + clean + install + launch):
 
    ```bash
@@ -120,25 +120,29 @@ A warm `assembleRelease` or a debug install does **not** prove a Play AAB. When 
 
    Or: `yarn android:install:debug:clean` (same script).
 
-4. **JDK resolution** is centralized in `scripts/resolve-android-jdk.sh`. **Project standard is JDK 17** (CI Temurin 17). Prefer `C:\Tools\jdk17` / Microsoft JDK 17 / macOS `java_home -v 17`; Studio JBR 21 is accepted locally only as fallback. Do not reintroduce `gradle-daemon-jvm.properties` / Foojay auto-download. Migrating the project to JDK 21 is a separate decision. Override only with `EZKEY_ANDROID_JAVA_HOME` if needed.
+4. **JDK resolution** is centralized in `scripts/resolve-android-jdk.sh`. **Project standard is JDK 17** (CI Temurin 17). Prefer `EZKEY_ANDROID_JAVA_HOME`, then `C:\Tools\jdk17` / globbed Microsoft·Temurin JDK 17 / macOS `java_home -v 17`; Studio JBR 21 is accepted locally only as fallback. Never silently prefer 21 when 17 exists. Do not reintroduce `gradle-daemon-jvm.properties` / Foojay auto-download (CI guard: `scripts/assert-no-gradle-daemon-jvm.sh`). Migrating the project to JDK 21 is a separate decision.
 5. After dependency changes: `corepack yarn install --immutable` then the script above.
 6. **Fast reinstall** when APK already built and device reconnected: `./scripts/build-install-debug-clean.sh --skip-clean`.
+7. **Metro on a physical device:** when `ezkey.useMetroInDebug=true` (or `--with-metro-reverse`), the install script re-applies `adb reverse` every run (wireless ADB drops it). Non-default port: `--metro-port` / `EZKEY_METRO_PORT` / `RCT_METRO_PORT`. The script warns if a packager on that port looks tied to another worktree.
 
 ### Do not
 
 - Set `JAVA_HOME` to the repo JDK 25 or guess a single Android Studio path without probing.
 - Run `unset JAVA_HOME` and hope Gradle picks a good JDK (PATH may still be 25).
 - Use `yarn android:install:debug` alone unless `resolve-android-jdk.sh` is sourced in the same shell session.
+- Commit `android/gradle/gradle-daemon-jvm.properties` (delete it; keep `org.gradle.java.installations.auto-download=false`).
 
 ### Related scripts
 
 | Script | Use |
 |--------|-----|
-| `scripts/build-install-debug-clean.sh` | **Default** — clean debug build + install on device |
+| `scripts/build-install-debug-clean.sh` | **Default** — clean debug build + install on device (`--build-only`, `--metro-port`, `--with-metro-reverse`) |
 | `scripts/build-install-release-clean.sh` | Clean **release** build + install (offline-capable; no Metro); runs 16 KB gate on APK |
 | `scripts/bundle-release.sh` | `yarn android:bundle:release` — `bundleRelease` + 16 KB gate on AAB |
 | `scripts/check-16kb-alignment.sh` | ELF PT_LOAD + GNU_RELRO (+ APK zipalign -P 16) gate; see docs § 16 KB |
 | `scripts/resolve-android-jdk.sh` | Source to export `JAVA_HOME` for any Gradle command |
+| `scripts/assert-no-gradle-daemon-jvm.sh` | CI/local guard: fail if daemon JVM pin file returns |
+| `scripts/run-with-git-bash.mjs` | Yarn entry: Git Bash on Windows, `bash` elsewhere |
 | `scripts/android-with-jdk17.sh` | `react-native run-android` with correct JDK |
 | `scripts/install-debug-after-uninstall.sh` | Uninstall + `installDebug` (signature mismatch) |
 | `scripts/run-android-instrumented-crypto-tests.sh` | MOB-006 — `EzkeyCryptoModule` Keystore `androidTest` (emulator OK; not StrongBox CI) |

@@ -55,7 +55,30 @@ If needed, force a specific enrollment id:
 
 ## `build-install-debug-clean.sh` (canonical Android debug install)
 
-Preferred debug install path for devices (JDK probe + clean + install). See `AGENTS.md` § Android debug build.
+Preferred debug install path for devices (JDK probe + path preflight + clean + install).
+See `AGENTS.md` § Android debug build.
+
+From `ezkey_mobile/`:
+
+```bash
+adb devices -l
+./scripts/build-install-debug-clean.sh
+# or: yarn android:install:debug:clean
+```
+
+Options:
+
+| Option | Meaning |
+|--------|---------|
+| `--skip-clean` | Install existing `app-debug.apk` only |
+| `--no-uninstall` | Keep app data; reinstall over same signature |
+| `--build-only` | `assembleDebug` only — **no adb device required** (`yarn android:assemble:debug:clean`) |
+| `--metro-port PORT` | Metro TCP port (default `8081`; also `EZKEY_METRO_PORT` / `RCT_METRO_PORT`) |
+| `--with-metro-reverse` | Re-apply `adb reverse tcp:PORT` every run (auto-on when `ezkey.useMetroInDebug=true`) |
+
+Wireless ADB drops `adb reverse` on reconnect — the script re-applies it before and after
+install when Metro reverse is enabled. It also warns when a packager already listening on
+that port appears to belong to a different worktree (stale Metro).
 
 ## `build-install-release-clean.sh` + `assert-release-production-clean-env.sh`
 
@@ -178,37 +201,17 @@ Notes:
 - Phase 3 fails fast if the campaign enrollment tile is not visible on the phone home screen.
 - Demo Device is used for token bootstrap only; churn execution remains on real phone.
 
-**Agents and maintainers:** use this for a clean debug build on a connected device. It resolves JDK 17/21 (`resolve-android-jdk.sh`), checks `adb` first, uninstalls `org.ezkey.mobile`, runs `gradlew clean installDebug`, and launches the app.
-
-From `ezkey_mobile/`:
-
-```bash
-adb devices -l
-./scripts/build-install-debug-clean.sh
-```
-
-Options:
-
-- `--skip-clean` — install existing `app-debug.apk` only (device reconnected after a long build).
-- `--no-uninstall` — keep data; reinstall over same signature.
-
-Yarn alias: `yarn android:install:debug:clean`.
-
-Before build/install, the script now runs a companion preflight:
-
-- `scripts/preflight-android-path-length.sh` - estimates Windows native object
-  path lengths for known React Native codegen offenders and warns early when
-  MAX_PATH risk is high.
-
 ### Windows path-length caveat (native CMake)
 
 Some React Native native modules can exceed Windows object-path limits during
 `installDebug` (errors such as `Filename longer than 260 characters` or
 `CMAKE_OBJECT_PATH_MAX`).
 
-The script now detects this case and prints a targeted remediation message.
-Preferred fix: run from a shorter workspace root on the same drive (for example
-`C:\\w\\ezkey-worktree2`) and rerun the script.
+`preflight-android-path-length.sh` warns when the Windows path to `ezkey_mobile/`
+is longer than **40** characters (override: `EZKEY_ANDROID_PATH_ROOT_MAX`). Short
+roots such as `C:\w\p\ezkey_mobile` stay quiet. Longer clones under `C:\Users\...`
+are the risky case. The install script also greps the Gradle log for MAX_PATH
+failures and prints remediation.
 
 ## `preflight-android-path-length.sh`
 
@@ -232,7 +235,20 @@ Yarn alias: `yarn android:preflight:path`.
 
 ## `resolve-android-jdk.sh`
 
-Sets `JAVA_HOME` for Android Gradle (never JDK 25 from PATH). **Project standard is JDK 17** (same as CI `actions/setup-java`); prefers `C:\Tools\jdk17` / Microsoft JDK 17 / macOS `java_home -v 17`, then Android Studio JBR (17 or 21). Override with `EZKEY_ANDROID_JAVA_HOME`. Do not reintroduce `android/gradle/gradle-daemon-jvm.properties` or Foojay toolchain auto-download — migrating the project to JDK 21 is a separate decision.
+Sets `JAVA_HOME` for Android Gradle (never JDK 25 from PATH). **Project standard is JDK 17** (same as CI `actions/setup-java`).
+
+Order: `EZKEY_ANDROID_JAVA_HOME` → macOS `java_home -v 17` → versionless / globbed JDK 17 installs (`C:\Tools\jdk17`, `Program Files\Microsoft\jdk-17*`, Temurin, Linux `/usr/lib/jvm/…`) → Android Studio JBR (17 preferred, else 21). Never picks 21 when a 17 install exists. Do not reintroduce `android/gradle/gradle-daemon-jvm.properties` or Foojay toolchain auto-download — migrating the project to JDK 21 is a separate decision.
+
+## `assert-no-gradle-daemon-jvm.sh`
+
+CI/local guard: fails if `android/gradle/gradle-daemon-jvm.properties` reappears (Android Studio `updateDaemonJvm` / Foojay JDK 21 pin) or if `org.gradle.java.installations.auto-download=true`. Prints removal instructions. `--self-test` proves the negative path (fixture with the forbidden file must fail).
+
+## `run-with-git-bash.mjs`
+
+Yarn entrypoint for `.sh` scripts. On Windows, launches
+`C:\Program Files\Git\bin\bash.exe` (override `EZKEY_GIT_BASH`); never the WSL
+shim at `System32\bash.exe` (that yields exit 127 for these scripts). On
+macOS/Linux, uses `bash` from PATH.
 
 ## `dependency-monitor.mjs`
 
