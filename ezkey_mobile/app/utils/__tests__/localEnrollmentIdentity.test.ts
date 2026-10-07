@@ -31,6 +31,15 @@ describe('deriveInstallationScopeId', () => {
     expect(localId).toBe(`${scope}_e1`);
   });
 
+  // These exact values must never change: they are part of the Keystore key-name
+  // contract (MOB-011 / MOB-017). A changed digest would orphan existing enrollments.
+  it('pins known Keystore scope ids (MOB-011 / MOB-017 key-name contract)', () => {
+    expect(deriveInstallationScopeId('https://ezkey.acme.com')).toBe('iae7f469e654d439f');
+    expect(deriveInstallationScopeId('https://auth.ezkey.online')).toBe(
+      'i65e9ad05668632ba',
+    );
+  });
+
   it('rejects empty input', () => {
     expect(() => deriveInstallationScopeId('')).toThrow();
   });
