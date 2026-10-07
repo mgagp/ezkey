@@ -43,6 +43,16 @@ import {
   shouldForceTimelineOpen,
   undeclaredGapCountFromReport,
 } from '@/lib/integrity-progressive-disclosure';
+import {
+  CHECKPOINT_RANGE_FROM_PARAM,
+  CHECKPOINT_RANGE_TO_PARAM,
+  CHECKPOINT_TYPE_PARAM,
+  buildCheckpointTimelineDisplayRows,
+  defaultCheckpointRecentRange,
+  readQuietCompressFromSearchParams,
+  writeQuietCompressToSearchParams,
+  type CheckpointTimelineDisplayRow,
+} from '@/lib/checkpoint-quiet-collapse';
 import { useAuth } from '@/context/use-auth';
 import { useDisplayTimezone } from '@/context/use-display-timezone';
 import { useToast } from '@/context/use-toast';
@@ -190,9 +200,16 @@ function toDateInputValue(iso?: string | null): string {
 
 // ── Checkpoint type badge and timeline table ───────────────────────────────────
 
-type CheckpointRowItem =
-  | { kind: 'checkpoint'; row: AuditChainCheckpointResponseDto }
-  | { kind: 'gap'; gapEnd: string; gapStart: string; durationMin: number };
+function LateWrittenBadge() {
+  const { t } = useTranslation('audit-logs');
+  return (
+    <Tooltip content={t('integrity.lateWrittenHelp')}>
+      <Badge variant="muted" className="text-[10px] px-1.5 py-0" data-testid="checkpoint-late-written">
+        {t('integrity.lateWrittenBadge')}
+      </Badge>
+    </Tooltip>
+  );
+}
 
 function CheckpointTypeBadge({ type }: { type?: string }) {
   const { t } = useTranslation('audit-logs');
@@ -246,8 +263,10 @@ function CheckpointTimelineTable({
   onSort,
   focusGap,
   focusCheckpointId,
+  expandedQuietIds,
+  onToggleQuietSummary,
 }: {
-  rows: CheckpointRowItem[];
+  rows: CheckpointTimelineDisplayRow[];
   isLoading: boolean;
   currentSort: string;
   onSort: (s: string) => void;
@@ -255,6 +274,8 @@ function CheckpointTimelineTable({
   focusGap?: { gapStart: string; gapEnd: string } | null;
   /** When set, highlight the checkpoint row with this id (integrity / gap deep link). */
   focusCheckpointId?: number | null;
+  expandedQuietIds: ReadonlySet<string>;
+  onToggleQuietSummary: (summaryId: string) => void;
 }) {
   const [field = '', dir = ''] = currentSort.split(',');
   const handleSort = (sortKey: string) => {
@@ -310,13 +331,48 @@ function CheckpointTimelineTable({
             rows.map((item, index) => {
               if (item.kind === 'gap') {
                 return (
-                  <tr key={`gap-${item.gapEnd}-${item.gapStart}`} className="bg-warning/10 border-l-4 border-warning">
+                  <tr
+                    key={`gap-${item.gapEnd}-${item.gapStart}`}
+                    className="bg-warning/10 border-l-4 border-warning"
+                    data-testid="checkpoint-undeclared-gap-row"
+                  >
                     <td colSpan={cols} className="px-3 py-2 text-sm">
                       <span className="font-bold text-warning">{t('integrity.checkpointTypeGap')}:</span>{' '}
                       {formatDateWithTimezone(item.gapEnd)} → {formatDateWithTimezone(item.gapStart)}
                       {item.durationMin > 0 && (
                         <span className="text-fg-muted ml-2">(~{item.durationMin} min)</span>
                       )}
+                    </td>
+                  </tr>
+                );
+              }
+              if (item.kind === 'quiet-summary') {
+                const expanded = expandedQuietIds.has(item.summaryId);
+                return (
+                  <tr
+                    key={item.summaryId}
+                    className="border-b border-fg/10 bg-fg/10 border-l-4 border-l-fg/30"
+                    data-testid="checkpoint-quiet-summary-row"
+                  >
+                    <td colSpan={cols} className="px-3 py-2 text-sm">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 text-left w-full hover:bg-fg/5 -mx-1 px-1 py-0.5"
+                        onClick={() => onToggleQuietSummary(item.summaryId)}
+                        aria-expanded={expanded}
+                        data-testid="checkpoint-quiet-summary-toggle"
+                      >
+                        {expanded ? <ChevronUp className="size-3.5 shrink-0" /> : <ChevronDown className="size-3.5 shrink-0" />}
+                        <span className="text-fg-muted font-medium">
+                          {t('integrity.quietSummary', {
+                            from: item.windowStart ? formatDateWithTimezone(item.windowStart) : '—',
+                            to: item.windowEnd ? formatDateWithTimezone(item.windowEnd) : '—',
+                            count: item.windowCount,
+                            entries: item.entryCount,
+                          })}
+                        </span>
+                        {item.lateWritten && <LateWrittenBadge />}
+                      </button>
                     </td>
                   </tr>
                 );
@@ -347,7 +403,10 @@ function CheckpointTimelineTable({
                         <Badge variant="warning" className="text-[10px] px-1.5 py-0">{isAnchor ? t('integrity.anchorBadge') : t('integrity.afterGapBadge')}</Badge>
                       </span>
                     ) : (
-                      r.checkpointId ?? '—'
+                      <span className="inline-flex items-center gap-1.5">
+                        {r.checkpointId ?? '—'}
+                        {item.lateWritten && <LateWrittenBadge />}
+                      </span>
                     )}
                   </td>
                   <td className={cn('px-3 py-2 text-xs', isBorderingGap ? 'text-fg font-semibold' : 'text-fg-muted')}>{r.windowStart ? formatDateWithTimezone(r.windowStart) : '—'}</td>
@@ -503,11 +562,83 @@ function IntegrityPanel({
   const [gapJustification, setGapJustification] = useState('');
 
   // ── Checkpoint timeline (nested expandable) ──
-  const [checkpointRange, setCheckpointRange] = useState({ from: '', to: '' });
-  const [checkpointTypeFilter, setCheckpointTypeFilter] = useState('');
-  const [hideEmptyWindows, setHideEmptyWindows] = useState(false);
+  // Compress/filter state lives in the URL only (cpQuiet / cpFrom / cpTo / cpType) — no localStorage.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [checkpointRange, setCheckpointRange] = useState(() => {
+    const from = searchParams.get(CHECKPOINT_RANGE_FROM_PARAM);
+    const to = searchParams.get(CHECKPOINT_RANGE_TO_PARAM);
+    if (from && to) {
+      return { from, to };
+    }
+    return defaultCheckpointRecentRange();
+  });
+  const [checkpointTypeFilter, setCheckpointTypeFilter] = useState(
+    () => searchParams.get(CHECKPOINT_TYPE_PARAM) ?? '',
+  );
+  const compressQuietWindows = readQuietCompressFromSearchParams(searchParams);
+  const [expandedQuietIds, setExpandedQuietIds] = useState<Set<string>>(() => new Set());
   /** Focused gap from "Undeclared gaps for consultation" – highlights bordering checkpoints in timeline */
   const [focusedGap, setFocusedGap] = useState<{ gapStart: string; gapEnd: string; gapMinutes: number } | null>(null);
+
+  function setCompressQuietWindows(next: boolean) {
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        writeQuietCompressToSearchParams(nextParams, next);
+        return nextParams;
+      },
+      { replace: true },
+    );
+    if (!next) {
+      setExpandedQuietIds(new Set());
+    }
+  }
+
+  function updateCheckpointRange(next: { from: string; to: string }) {
+    setCheckpointRange(next);
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        if (next.from && next.to) {
+          nextParams.set(CHECKPOINT_RANGE_FROM_PARAM, next.from);
+          nextParams.set(CHECKPOINT_RANGE_TO_PARAM, next.to);
+        } else {
+          nextParams.delete(CHECKPOINT_RANGE_FROM_PARAM);
+          nextParams.delete(CHECKPOINT_RANGE_TO_PARAM);
+        }
+        return nextParams;
+      },
+      { replace: true },
+    );
+  }
+
+  function updateCheckpointTypeFilter(next: string) {
+    setCheckpointTypeFilter(next);
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        if (next) {
+          nextParams.set(CHECKPOINT_TYPE_PARAM, next);
+        } else {
+          nextParams.delete(CHECKPOINT_TYPE_PARAM);
+        }
+        return nextParams;
+      },
+      { replace: true },
+    );
+  }
+
+  function toggleQuietSummary(summaryId: string) {
+    setExpandedQuietIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(summaryId)) {
+        next.delete(summaryId);
+      } else {
+        next.add(summaryId);
+      }
+      return next;
+    });
+  }
 
   const [incidentDeclareOpen, setIncidentDeclareOpen] = useState(false);
   const [incidentActive, setIncidentActive] = useState<AuditChainIncidentResponseDto | null>(null);
@@ -567,7 +698,11 @@ function IntegrityPanel({
     },
   });
 
-  /** When a gap is focused, request a narrow window (gapStart − 1h to gapEnd + 1h) so page 0 contains the anchor and first checkpoint after the gap. Otherwise use the date-range filter. */
+  /**
+   * Checkpoint list filters — UI-only. Never pass entryCountMin for quiet filtering:
+   * GAP_DECLARATION / MANIPULATION_CONCILIATION are written with entry_count=0 and must stay visible.
+   * Quiet collapse is client-side on the full page sequence (Patrick craft lock).
+   */
   const checkpointApiParams = useMemo(() => {
     if (focusedGap) {
       const start = new Date(focusedGap.gapStart);
@@ -578,12 +713,10 @@ function IntegrityPanel({
         windowStartAfter: start.toISOString(),
         windowStartBefore: end.toISOString(),
         checkpointType: checkpointTypeFilter || undefined,
-        entryCountMin: hideEmptyWindows ? 1 : undefined,
       } as GetChainCheckpointsParams;
     }
     const sharedFilters = {
       checkpointType: checkpointTypeFilter || undefined,
-      entryCountMin: hideEmptyWindows ? 1 : undefined,
     };
     if (!checkpointRange.from || !checkpointRange.to) {
       return sharedFilters as GetChainCheckpointsParams;
@@ -598,7 +731,7 @@ function IntegrityPanel({
       windowStartBefore: createdBefore,
       ...sharedFilters,
     } as GetChainCheckpointsParams;
-  }, [focusedGap, checkpointRange.from, checkpointRange.to, checkpointTypeFilter, hideEmptyWindows, effectiveTimeZoneId]);
+  }, [focusedGap, checkpointRange.from, checkpointRange.to, checkpointTypeFilter, effectiveTimeZoneId]);
 
   const {
     data: checkpointData,
@@ -611,43 +744,32 @@ function IntegrityPanel({
       checkpointApiParams.windowStartAfter ?? '',
       checkpointApiParams.windowStartBefore ?? '',
       checkpointApiParams.checkpointType ?? '',
-      checkpointApiParams.entryCountMin ?? '',
     ],
     baseParams: checkpointApiParams,
     fetchPage: (params) =>
       getChainCheckpoints(params as GetChainCheckpointsParams) as Promise<PagedModelAuditChainCheckpointResponseDto>,
-    defaultSize: 20,
-    defaultSort: 'windowStart,ASC',
+    /** ~12 windows/hour × several hours on one page; newest-first so Verify does not open on oldest history. */
+    defaultSize: 50,
+    defaultSort: 'windowStart,DESC',
     enabled: timelineExpanded,
     /** When a gap is focused, show loading then correct page 0 instead of keeping previous (wide) data. */
     keepPreviousData: !focusedGap,
   });
 
-  /** Rows to display: checkpoints in API order plus gap rows when sort is chronological. Gap detection is only valid when consecutive rows are in time order (sort by windowStart); otherwise do not insert gap rows to avoid misleading the operator. */
-  const checkpointRowsWithGaps = useMemo(() => {
-    const sortField = checkpointPagination.sort.split(',')[0] ?? '';
-    const isChronologicalSort = sortField === 'windowStart';
-    const out: Array<{ kind: 'checkpoint'; row: AuditChainCheckpointResponseDto } | { kind: 'gap'; gapEnd: string; gapStart: string; durationMin: number }> = [];
-    for (let i = 0; i < checkpointData.length; i++) {
-      out.push({ kind: 'checkpoint', row: checkpointData[i] });
-      if (!isChronologicalSort) continue;
-      const curr = checkpointData[i];
-      const next = checkpointData[i + 1];
-      if (next && curr.windowEnd && next.windowStart) {
-        const end = new Date(curr.windowEnd).getTime();
-        const start = new Date(next.windowStart).getTime();
-        if (end < start) {
-          out.push({
-            kind: 'gap',
-            gapEnd: curr.windowEnd,
-            gapStart: next.windowStart,
-            durationMin: Math.round((start - end) / 60000),
-          });
-        }
-      }
-    }
-    return out;
-  }, [checkpointData, checkpointPagination.sort]);
+  /**
+   * Display rows: orange undeclared-gap detection on the full underlying page sequence,
+   * then optional grey quiet-REGULAR collapse (never invents gaps from skipped empties).
+   */
+  const checkpointTimelineRows = useMemo(
+    () =>
+      buildCheckpointTimelineDisplayRows(
+        checkpointData,
+        checkpointPagination.sort,
+        compressQuietWindows,
+        expandedQuietIds,
+      ),
+    [checkpointData, checkpointPagination.sort, compressQuietWindows, expandedQuietIds],
+  );
 
   /** Format Date to YYYY-MM-DD for checkpoint range filter. */
   function toYYYYMMDD(d: Date): string {
@@ -664,7 +786,7 @@ function IntegrityPanel({
     start.setHours(start.getHours() - 1, start.getMinutes(), start.getSeconds(), 0);
     const end = new Date(g.gapEnd);
     end.setHours(end.getHours() + 1, end.getMinutes(), end.getSeconds(), 0);
-    setCheckpointRange({ from: toYYYYMMDD(start), to: toYYYYMMDD(end) });
+    updateCheckpointRange({ from: toYYYYMMDD(start), to: toYYYYMMDD(end) });
     checkpointPagination.setSort('windowStart,ASC');
     checkpointPagination.goToPage(0);
     setTimelineExpanded(true);
@@ -893,7 +1015,6 @@ function IntegrityPanel({
   };
   const autoOpenRemediate = shouldAutoOpenRemediateCluster(disclosureQuery, disclosureState);
 
-  const [searchParams, setSearchParams] = useSearchParams();
   const modeParam = searchParams.get('mode');
   const derivedMode = resolveIntegrityAtelierMode({
     modeParam,
@@ -1431,9 +1552,17 @@ function IntegrityPanel({
             {timelineExpanded && (
               <div className="border-2 border-fg/10 bg-bg p-3 space-y-3">
                 <div className="flex gap-3 items-center flex-wrap">
-                  <DateRangeFilter value={checkpointRange} onChange={setCheckpointRange} showClear={true} emptyOptionLabel={t('list.dateRangeFull')} />
+                  <DateRangeFilter
+                    value={checkpointRange}
+                    onChange={updateCheckpointRange}
+                    showClear={true}
+                    emptyOptionLabel={t('list.dateRangeFull')}
+                  />
                   <div className="w-40">
-                    <Select value={checkpointTypeFilter} onChange={(e) => setCheckpointTypeFilter(e.target.value)}>
+                    <Select
+                      value={checkpointTypeFilter}
+                      onChange={(e) => updateCheckpointTypeFilter(e.target.value)}
+                    >
                       <option value="">{t('integrity.allTypes')}</option>
                       <option value="REGULAR">{t('integrity.typeRegular')}</option>
                       <option value="ARCHIVE_SEAL">{t('integrity.typeArchiveSeal')}</option>
@@ -1445,10 +1574,11 @@ function IntegrityPanel({
                     <input
                       type="checkbox"
                       className="size-4 accent-accent"
-                      checked={hideEmptyWindows}
-                      onChange={(e) => setHideEmptyWindows(e.target.checked)}
+                      checked={compressQuietWindows}
+                      onChange={(e) => setCompressQuietWindows(e.target.checked)}
+                      data-testid="checkpoint-compress-quiet"
                     />
-                    {t('integrity.hideEmptyWindows')}
+                    {t('integrity.compressQuietWindows')}
                   </label>
                   <Button size="sm" variant="secondary" onClick={() => refetchCheckpoints()} className="gap-1.5">
                     <ListOrdered className="size-3.5" />
@@ -1482,12 +1612,14 @@ function IntegrityPanel({
                   position="top"
                 />
                 <CheckpointTimelineTable
-                  rows={checkpointRowsWithGaps}
+                  rows={checkpointTimelineRows}
                   isLoading={checkpointLoading}
                   currentSort={checkpointPagination.sort}
                   onSort={checkpointPagination.setSort}
                   focusGap={focusedGap}
                   focusCheckpointId={focusCheckpointId}
+                  expandedQuietIds={expandedQuietIds}
+                  onToggleQuietSummary={toggleQuietSummary}
                 />
                 <Pagination
                   page={checkpointPagination.page}

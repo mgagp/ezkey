@@ -18,7 +18,7 @@
       "content": "Les incidents opérationnels enregistrent des checkpoints Admin API jugés bloqués par la supervision périphérique (battement). En configuration Docker par défaut, les périphériques refusent seulement les <strong>nouveaux travaux MFA</strong> (routes HTTP étroites — voir <strong>docs/AUDIT_LOG_INTEGRITY.md</strong>) après environ <strong>9 minutes au-delà du dernier <code>window_end</code> de checkpoint</strong> ; d'autres écritures d'audit peuvent continuer. Utilisez <strong>Déclarer une lacune</strong> pour les trous temporels <em>cryptographiques</em> non déclarés — un autre lifecycle. Après rétablissement, déclarez la clôture ici lorsqu'une justification est encore requise."
     },
     "checkpointTimeline": {
-      "content": "Affiche les checkpoints de chaîne ; triez par <strong>Début de fenêtre</strong> pour voir les lignes de lacune (trous non déclarés entre checkpoints). Les autres tris n'affichent que les checkpoints. Utilisez ce tableau pour inspecter le type de checkpoint, l'état lifecycle et les limites d'anomalie."
+      "content": "Affiche les checkpoints de chaîne pour la fenêtre récente (plus récents d'abord par défaut). Les plages <strong>Régulier</strong> calmes se regroupent en une ligne grise développable — elles ne sont pas masquées. Les lignes orange <strong>Lacune</strong> sont de vrais trous non déclarés. Triez par <strong>Début de fenêtre</strong> pour les lacunes en ligne ; inspectez type, lifecycle et badges d'écriture en retard ici."
     }
   },
   "list": {
@@ -504,13 +504,16 @@
     "focus": "Focus",
     "clearFocus": "Effacer le focus",
     "checkpointTimeline": "Chronologie des checkpoints",
-    "timelineHint": "Triez par Début de fenêtre pour afficher les lignes de lacune entre checkpoints ; les autres tris n'affichent que les checkpoints. Utilisez le rapport de Vérification pour la liste complète des lacunes non déclarées.",
+    "timelineHint": "Les plages calmes se regroupent en une ligne grise (développez pour inspecter chaque lien). Les lignes orange Lacune sont de vrais trous non déclarés — pas des fenêtres calmes. Triez par Début de fenêtre pour les lacunes en ligne ; utilisez le rapport de Vérification pour la liste complète.",
     "allTypes": "Tous les types",
     "typeRegular": "Régulier",
     "typeArchiveSeal": "Scellement archive",
     "typeGapDeclaration": "Déclaration de lacune",
     "typeManipulationConciliation": "Conciliation manipulation",
-    "hideEmptyWindows": "Masquer les fenêtres vides",
+    "compressQuietWindows": "Regrouper les fenêtres calmes",
+    "quietSummary": "Calme · {{from}} → {{to}} · {{count}} fenêtres · {{entries}} entrée",
+    "lateWrittenBadge": "Écrit en retard",
+    "lateWrittenHelp": "Cette fenêtre a été enregistrée nettement après sa fin (rattrapage, décalage d'horloge ou pause d'écriture). Ce n'est pas une lacune non déclarée.",
     "selection": "Sélection",
     "sealRangeLabel": "Période à sceller",
     "sealRangeFrom": "De",
