@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `TB-2026-10-06-integrity-checkpoint-quiet-window-collapse`
-- **Status:** `draft`
+- **Status:** `under-review`
 - **Related idea:** _(none — Lane D re-entry; intention locked with stakeholders; no new `I-*`)_
 - **Lane:** `D` (post-delivery change — replace unsafe hide-empty UI shape)
 - **Posture:** `single-pass`
@@ -15,6 +15,7 @@
 - **Created at:** `2026-10-06`
 - **Updated at:** `2026-10-07`
 - **Captured by:** Marc (analysis + ticket); stakeholders Julie (operability) + Christophe (security), lock `2026-10-06`
+- **UI delivery:** Admin UI quiet-window collapse landed (follow-on PR; Walk Gate Julie → Isabelle still open — Operational quality matrix + Walk protocol unchanged)
 
 ## Objective
 
