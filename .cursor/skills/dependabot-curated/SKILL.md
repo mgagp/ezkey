@@ -25,13 +25,17 @@ Standing policy (cadence table, Orval pointer, reporting):
 
 ## Cadence
 
+**Trial period:** one week starting **2026-10-07**. Review the method at the **Monday 2026-10-12**
+full pass (keep, tune, or roll back).
+
 | Pass | When | Scope | Reporting |
 |------|------|-------|-----------|
 | **Weekday light** | Every weekday (Mon–Fri) | T1–T3 lots + Orval **O0/O1** only (Admin UI and mobile **separately**). Skip Java BOM pulse, Mobile RN pulse, and holds/deferral deep review. **Silent when the actionable queue is empty** (no file write). | Short append-only dated section in [`daily-log.md`](../../product-docs/global/hygiene/dependabot/daily-log.md) **only when something was merged/held/deferred** |
 | **Monday full** | Monday (or first working day of the week) | Full pass: T1–T4, Orval O0–O3, **Java BOM pulse**, **Mobile RN pulse**, holds review, ecosystem-gate check | One consolidated campaign note `YYYY-MM-DD-pass-N.md` from [`TEMPLATE.md`](../../product-docs/global/hygiene/dependabot/TEMPLATE.md); may summarize the prior week's daily-log entries |
 
 Dependabot itself opens PRs on a **daily** schedule for Maven and npm (Admin UI, SDK JS, mobile),
-with a **cooldown** (~3 days patch/minor, ~7 days major). GitHub Actions and pip stay **weekly**.
+with a **cooldown** (~3 days patch/minor, ~7 days major) and `open-pull-requests-limit: 10` per
+ecosystem (stay current; no smoothing). GitHub Actions and pip stay **weekly** (same cooldown).
 Config: [`.github/dependabot.yml`](../../.github/dependabot.yml).
 
 **Default autonomy for weekday light:** proceed on T1–T3 and Orval O0/O1 without per-lot Go when
@@ -193,8 +197,8 @@ Pin/install/codegen closeout checklist: § *Pin, install, and codegen hygiene*.
 Dependabot Maven at `directory: "/"` walks the reactor and updates **declared** POM versions. It
 does **not** inventory the effective graph. Hibernate, Spring Framework, Spring Security, Flyway,
 and most other Boot-managed libraries move only when `spring-boot.version` moves. The open-PR
-limit (`open-pull-requests-limit: 5`) can also starve a Boot property bump behind Rewrite /
-Checkstyle noise. **Do not treat an empty Maven Dependabot list as "Java is current."**
+limit is **10** per ecosystem (stay current; no smoothing). **Do not treat an empty Maven
+Dependabot list as "Java is current."**
 
 **Monday full only.** On every Monday `dependabot-curated` full pass, before proposing lots:
 
@@ -400,8 +404,9 @@ Record completion (or N/A) in the campaign note validation table (Monday) or the
   Dependabot PRs manually.
 - **Never** silent auto-merge to `main` without either per-lot Go **or** an explicit autonomous
   validation waiver for that session.
-- Do not raise `open-pull-requests-limit` casually; prefer Dependabot **groups** in
-  `.github/dependabot.yml` to reduce future atomization.
+- Prefer Dependabot **groups** in `.github/dependabot.yml` to reduce atomization.
+  `open-pull-requests-limit` is **10** per ecosystem (Marc 2026-10-07: stay as current as
+  possible; no smoothing over time). Do not lower it casually.
 
 ## HITL contract (default for cold agents)
 

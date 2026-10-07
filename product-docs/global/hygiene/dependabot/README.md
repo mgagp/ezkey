@@ -12,9 +12,12 @@ without inventing `I-*` / `TB-*` for routine bumps.
 Goal: **maximum agent autonomy for minimum risk**, with proportional targeted tests, so upgrade
 PRs stop accumulating.
 
+**Trial period:** one week starting **2026-10-07**. Review the method at the **Monday 2026-10-12**
+full pass (keep, tune, or roll back).
+
 | Layer | Cadence | Notes |
 |-------|---------|-------|
-| Dependabot opens PRs | **Daily** for Maven (`/`) and npm (`/ezkey-admin-ui`, `/ezkey-sdk/javascript`, `/ezkey_mobile`); **weekly** for `github-actions` and `pip` | Cooldown ~**3** days patch/minor, ~**7** days semver-major (see `.github/dependabot.yml`) |
+| Dependabot opens PRs | **Daily** for Maven (`/`) and npm (`/ezkey-admin-ui`, `/ezkey-sdk/javascript`, `/ezkey_mobile`); **weekly** for `github-actions` and `pip` | Cooldown ~**3** days patch/minor, ~**7** days semver-major; `open-pull-requests-limit: 10` per ecosystem (stay current; no smoothing) — see `.github/dependabot.yml` |
 | Agent curation — weekday light | Every weekday | T1–T3 + Orval **O0/O1** only; **silent when queue empty**; default autonomy on that scope |
 | Agent curation — Monday full | Monday (or first working day) | Full lots + **Java BOM** + **Mobile RN** pulses + holds review; one campaign note from `TEMPLATE.md` |
 | Concurrency | **One owning pass per day** | Before merge/close/hygiene PR: if concurrent merges (~30 min) or another in-flight pass → back off, report only |
@@ -182,7 +185,7 @@ agent may still pick the hygiene-branch exception even though `GH_TOKEN` is in t
 Dependabot Maven updates **declared** POM versions. It does not inventory Boot-managed transitives
 (Hibernate, Spring Framework, Spring Security, Flyway, …). Those move only with
 `spring-boot.version`. An empty Maven PR queue is not proof that Java is current — the
-`open-pull-requests-limit` of 5 can starve a Boot property bump.
+`open-pull-requests-limit` is **10** per ecosystem (stay current; no smoothing).
 
 On every Monday-full `dependabot-curated` pass the agent must:
 
