@@ -17,7 +17,7 @@ full pass (keep, tune, or roll back).
 
 | Layer | Cadence | Notes |
 |-------|---------|-------|
-| Dependabot opens PRs | **Daily** for Maven (`/`) and npm (`/ezkey-admin-ui`, `/ezkey-sdk/javascript`, `/ezkey_mobile`); **weekly** for `github-actions` and `pip` | Cooldown ~**3** days patch/minor, ~**7** days semver-major; `open-pull-requests-limit: 10` per ecosystem (stay current; no smoothing) — see `.github/dependabot.yml` |
+| Dependabot opens PRs | **Daily** for Maven (`/`) and npm (`/ezkey-admin-ui`, `/ezkey-sdk/javascript`, `/ezkey_mobile`); **weekly** for `github-actions` and `pip` | Cooldown ~**3** days patch/minor, ~**7** days semver-major (npm/maven/pip); Actions uses `default-days: 3` only (schema has no semver keys). `open-pull-requests-limit: 10` per ecosystem — see `.github/dependabot.yml` |
 | Agent curation — weekday light | Every weekday | T1–T3 + Orval **O0/O1** only; **silent when queue empty**; default autonomy on that scope |
 | Agent curation — Monday full | Monday (or first working day) | Full lots + **Java BOM** + **Mobile RN** pulses + holds review; one campaign note from `TEMPLATE.md` |
 | Concurrency | **One owning pass per day** | Before merge/close/hygiene PR: if concurrent merges (~30 min) or another in-flight pass → back off, report only |

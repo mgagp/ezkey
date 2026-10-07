@@ -35,8 +35,9 @@ full pass (keep, tune, or roll back).
 
 Dependabot itself opens PRs on a **daily** schedule for Maven and npm (Admin UI, SDK JS, mobile),
 with a **cooldown** (~3 days patch/minor, ~7 days major) and `open-pull-requests-limit: 10` per
-ecosystem (stay current; no smoothing). GitHub Actions and pip stay **weekly** (same cooldown).
-Config: [`.github/dependabot.yml`](../../.github/dependabot.yml).
+ecosystem (stay current; no smoothing). GitHub Actions and pip stay **weekly**; pip uses the same
+3/3/7 cooldown, Actions uses `default-days: 3` only (Dependabot schema has no semver keys for
+`github-actions`). Config: [`.github/dependabot.yml`](../../.github/dependabot.yml).
 
 **Default autonomy for weekday light:** proceed on T1–T3 and Orval O0/O1 without per-lot Go when
 the operator kickoff says `dependabot-curated` (light / weekday / autonomous). Still pause on T4,
