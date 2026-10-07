@@ -216,7 +216,7 @@ Yarn alias: `yarn android:preflight:path`.
 
 ## `resolve-android-jdk.sh`
 
-Sets `JAVA_HOME` to JDK 17/21 (never JDK 25 from PATH). Probes Android Studio JBR (including `Android Studio1`), `C:\Tools\jdk17`, Microsoft JDK 17, and macOS `java_home`. Override with `EZKEY_ANDROID_JAVA_HOME`.
+Sets `JAVA_HOME` for Android Gradle (never JDK 25 from PATH). **Project standard is JDK 17** (same as CI `actions/setup-java`); prefers `C:\Tools\jdk17` / Microsoft JDK 17 / macOS `java_home -v 17`, then Android Studio JBR (17 or 21). Override with `EZKEY_ANDROID_JAVA_HOME`. Do not reintroduce `android/gradle/gradle-daemon-jvm.properties` or Foojay toolchain auto-download — migrating the project to JDK 21 is a separate decision.
 
 ## `dependency-monitor.mjs`
 
