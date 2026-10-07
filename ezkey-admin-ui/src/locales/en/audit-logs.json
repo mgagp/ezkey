@@ -305,7 +305,10 @@
       "abandonConfirmTitle": "Abandon Integrity job?",
       "abandonConfirmBody": "This clears the expired or cancelled job so you can start again. It does not cancel a healthy running job.",
       "abandonError": "Could not abandon the Integrity job.",
-      "busyToast": "Integrity job already running: {{resume}}"
+      "busyToast": "Integrity job already running: {{resume}}",
+      "hydrateChainError": "Could not load the chain verification result.",
+      "hydrateEntryError": "Could not load the entry HMAC verification result.",
+      "reloadReport": "Reload report"
     },
     "chainIntegrity": "Chain Integrity",
     "entryIntegrity": "Entry Integrity",
