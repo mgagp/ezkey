@@ -21,6 +21,10 @@ The Ezkey CLI provides a unified interface for interacting with all Ezkey APIs. 
 
 The CLI is **not** started by `./ezkey-tests/clean-start.sh`. After the Docker stack is up, install it on the host and point at localhost APIs (`http://localhost:9080` Admin, `http://localhost:8080` Auth, `http://localhost:9090` Crypto).
 
+## Requirements
+
+- **Python 3.11 or later** (3.8–3.10 are end of life)
+
 ## Installation
 
 ### From Source (Development)
