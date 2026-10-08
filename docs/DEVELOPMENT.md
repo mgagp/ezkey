@@ -463,11 +463,14 @@ submits the full (transitive) Maven graph to GitHub Insights on push to `main` (
 installs the unpublished `checkstyle-config` reactor module first — the same bootstrap as the
 `backend` job — so resolution succeeds. It is **not** part of `ci-gate`.
 
-GitHub’s Automatic Dependency Submission for Maven must stay **off** once this workflow is on
-`main` (Settings → Code security → Dependency graph → Automatic dependency submission). That
-built-in job uses Java 21, never builds `checkstyle-config`, and fails with “NOT allowed from
-central”. Marc turns the setting off manually after merge; prove the replacement with one
-`workflow_dispatch` run, then check Insights → Dependency graph.
+GitHub’s **Automatic dependency submission** is a single repo-wide toggle (not per ecosystem /
+“for Maven”): Settings → Advanced Security (section **Security and quality**) → Dependency graph
+→ Automatic dependency submission (`Enabled` / `Enabled for labeled runners` / `Disabled`).
+Set to **Disabled** (2026-10-08) because
+[`.github/workflows/maven-dependency-submission.yml`](../.github/workflows/maven-dependency-submission.yml)
+feeds the graph instead. The built-in submitter uses Java 21, never builds `checkstyle-config`,
+and fails with “NOT allowed from central”. First dedicated-workflow run was green; Spring Boot
+is visible under Insights → Dependency graph.
 
 **Run the same checks locally:**
 
