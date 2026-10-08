@@ -25,8 +25,9 @@ they can generate realistic end-user activity without pasting integration keys i
 session, and without treating Admin UI tenant-admin login as a stand-in for the real product use
 case (an end user logging into a third-party app protected by Ezkey).
 
-This note records **proposed product locks**, verified facts, milestones/gates, risks, and open
-questions for Marc. It does **not** authorize application implementation in this PR.
+This note records **proposed product locks** (with Marc settlements of 2026-10-08 called out),
+verified facts, milestones/gates, and risks. It does **not** authorize application implementation
+in this PR.
 
 ## Motivation
 
@@ -58,7 +59,8 @@ artificial. The honest product story is: end user → third-party app → Ezkey 
 
 ## Product locks (proposed by Product Direction, pending Marc merge)
 
-Do not treat these as settled until Marc merges this note (gate **G0**).
+Do not treat the full set as settled until Marc merges this note (gate **G0**). Items marked
+**Settled by Marc (2026-10-08)** below are locked and must not be reopened in execution.
 
 1. **Pure third-party integrator.** The demo talks to Ezkey **only** through the public Integration
    API via an official SDK. Never reads/writes the Ezkey core DB; never uses Admin API or privileged
@@ -66,10 +68,17 @@ Do not treat these as settled until Marc merges this note (gate **G0**).
    DB.
 2. **Secrets server-side only.** Never in browser, repo, logs, or client bundles; encrypted at rest
    / host secret store; per-tenant entries.
-3. **Multi-tenant, single deployment.** Tenant selection: **no** public tenant list/dropdown (would
-   disclose who is testing). Default: tester types a short opaque **tenant code** given by Marc,
-   with an optional personal link that pre-fills it (e.g. `/t/<code>`). Generic error messages that
-   do not confirm tenant or username existence.
+3. **Access code (code d’accès) — Settled by Marc (2026-10-08).** Multi-tenant, single deployment.
+   Tenant selection uses a short opaque **access code** chosen by Marc. The mapping
+   `access code → ikey/skey` (per tenant) exists **only** in the demo app’s own server-side
+   configuration. Nothing is added to the Ezkey core DB; Ezkey never sees the access code.
+   - Login form: a **text field** (not a dropdown) for the access code + a username field.
+   - Personal link `demo.ezkey.online/t/<code>` **pre-fills and hides** the access-code field
+     (primary day-to-day path: tester bookmarks the link).
+   - Generic error that does **not** say which of access code or username is wrong (no public
+     tenant list/dropdown).
+   - **Request routing:** access code → demo config key pair → Integration API (HTTP Basic) →
+     enrollment lookup by `userIdentifier` within that integration.
 4. **Login box UX parity** with Admin UI login states (waiting with server `expiresAt` countdown,
    optional 2-digit challenge, rejected / expired / timeout / network / rate-limited / unknown-user
    messages) **plus** a real server-side cancel via Integration API cancel (which Admin UI login
@@ -84,22 +93,64 @@ Do not treat these as settled until Marc merges this note (gate **G0**).
    deploy surface (**preference:** existing Docker-on-Lightsail-behind-Caddy path over introducing
    Cloudflare Workers, unless Patrick + Christophe + Edgar justify otherwise), reuse of the TS SDK
    repo demo scaffolding where sensible.
-7. **Provisioning v1 = manual by Marc.** Host config / secret file keyed by tenant code; adding a
-   tenant may require a restart; N is small (~12–20). Tester is advised to set the API key
+7. **Provisioning v1 = manual by Marc.** Host config / secret file keyed by **access code**; adding
+   a tenant may require a restart; N is small (~12–20). Tester is advised to set the API key
    `ip_whitelist` to the demo egress IP and can revoke anytime (= offboarding; demo must fail
    gracefully with an honest “this tenant is not (or no longer) connected” message). Secret transfer
    tester → Marc must use a secure, expiring channel chosen by Christophe; **plain email is
    rejected**.
 8. **Hostname:** new subdomain on `ezkey.online` (placeholder `demo.ezkey.online`); requires a
    host-map amendment owned by Edgar.
+9. **Demo brand — Settled by Marc (2026-10-08).** Fictional company **Northwind Portal** (signals a
+   third-party app, not the Ezkey console).
+10. **Closed-testing recruitment — Settled by Marc (2026-10-08): out of scope of this note.**
+    Recruitment and the human test campaign are coordinated separately by Mathieu and Isabelle
+    (commercial QA tool POC with QA Sphere). This demo is not blocked by that track, and that track
+    is not owned by this vision note.
 
-### Tester onboarding (pilot, manual)
+### Screen wireframe (ASCII)
 
-1. Marc onboards a tester person-to-person; ensures they have a tenant (activation code).
-2. Tester creates an integration + API key in Admin UI, and creates enrollments **with a
-   `userIdentifier` under that same integration**.
-3. Tester transfers the key pair to Marc (secure channel — Christophe).
-4. Marc provisions it into the demo app; tells the tester they are autonomous.
+```
++------------------------------------------+
+|  Northwind Portal                        |
+|------------------------------------------|
+|  Access code  [____________]  (hidden    |
+|                if /t/<code>)             |
+|  Username     [____________]             |
+|                                          |
+|              [  Sign in  ]               |
++------------------------------------------+
+
++------------------------------------------+
+|  Northwind Portal                        |
+|------------------------------------------|
+|  Waiting for approval…                   |
+|  Challenge:  4 2                         |
+|  Expires in: 01:47                       |
+|                                          |
+|              [  Cancel  ]                |
++------------------------------------------+
+
++------------------------------------------+
+|  Northwind Portal                        |
+|------------------------------------------|
+|  Bienvenue <user> — accès vérifié        |
+|  Tenant · timestamp · short honesty line |
+|                                          |
+|              [  Logout  ]                |
++------------------------------------------+
+```
+
+### Tester onboarding (pilot, manual) — 6 steps
+
+1. Marc onboards the tester person-to-person; tester obtains a tenant (**activation code** → Admin UI).
+2. Tester creates an **integration + API key** in Admin UI.
+3. Tester creates an enrollment **with a `userIdentifier` under that same integration**, then binds
+   the device.
+4. Tester transfers the key pair to Marc (secure, expiring channel — Christophe; no plain email).
+5. Marc adds one demo config line (`access code → ikey/skey`) and sends the personal link
+   `demo.ezkey.online/t/<code>`.
+6. Tester is autonomous: bookmarks the link, signs in daily with username only (access code hidden).
 
 ## Rejected intentions / non-goals
 
@@ -114,16 +165,18 @@ Do not treat these as settled until Marc merges this note (gate **G0**).
   attempt as expired; candidate `I-*` later).
 - Implementing application code from this vision PR alone.
 - Claiming a public “Java + TS cover 80–90% of backends” percentage (unverified — see risks).
+- Owning closed-testing recruitment or the human test campaign inside this vision note (separate
+  Mathieu / Isabelle track).
 
 ## Risks and blind spots
 
 | Risk | Note |
 | ---- | ---- |
-| **Critical path is recruitment** | Play production needs **12 testers × 14 days**, not the demo. Recruitment should start **in parallel** with current flows and must not wait for this demo. |
+| **Play cohort vs this demo** | Play production still needs **12 testers × 14 days**. Closed-testing recruitment and the human test campaign are a **separate track** (Mathieu + Isabelle; QA Sphere POC) and must not wait on this demo — and this demo must not pretend to own that track. |
 | **Onboarding trap** | Enrollments must carry a `userIdentifier` and live under the **same integration** whose key is provisioned. The tester page must say so plainly. |
 | **Secret handling via Marc** | Weakest link; acceptable only for the pilot cohort. Self-provisioning is the fast-follow. |
 | **Market coverage claim** | “Java + TS cover 80–90%” is an **unverified assumption**: plausible for Ezkey’s target (Spring / Node backends), but .NET, Python, and PHP are significant. Since the Integration API is three REST calls with Basic auth, a short “integrate in 3 calls (curl)” doc page covers other stacks better than new SDKs. **Do not claim the percentage publicly.** |
-| **Enumeration / abuse** | Username / tenant enumeration risk → demo-layer rate limiting per IP and per tenant **on top of** per-key limits. |
+| **Enumeration / abuse** | Access-code / username enumeration risk → demo-layer rate limiting per IP and per access code **on top of** per-key limits; generic errors only. |
 | **Two TS SDK packages** | Confuse developers. Deprecate / archive in-repo `ezkey-sdk/javascript` integration usage (hygiene, Fred) once the TS SDK refresh lands. |
 | **Supportability** | Seb needs a runbook: how to tell tenant-not-provisioned vs key revoked vs Ezkey down. |
 | **Prioritization** | This serves the current strategic objective (mobile production) and goes **ahead of** Mode C implementation ([`V-2026-09-26-temporary-evaluator-console-access`](V-2026-09-26-temporary-evaluator-console-access.md) stays locked; implementation not started). |
@@ -136,7 +189,7 @@ Five gates. Each gate: owner of the GO, verifiable evidence, go / no-go rule.
 | --------- | ---- | ------ | ---- | -------- | ------------------- |
 | **M0** Vision lock | This note; locks settled | Alex (Product Direction) | **G0** | Marc | Marc merges this note → locks treated as settled |
 | **M1** Craft + security design | Stack choice, architecture, TS SDK refresh scope, Java SDK alignment check; security obligations; UX intent; host-map + deploy feasibility → tracer-bullet brief | Mathieu routes; Patrick (craft), Christophe (security), Julie (UX), Edgar (host-map / deploy) | **G1** | Marc | Brief exists per [`tracer-bullet-brief.template.md`](../../templates/tracer-bullet-brief.template.md); plan-hardened per [`methodology/README.md`](../../methodology/README.md) two-stage human review; Marc GO on brief |
-| **M2** Build | Mathieu orchestrates cloud agents per brief (TS SDK refresh **first**, then demo app) | Mathieu (+ agents); Christophe review; Julie UI walk; Isabelle QA | **G2** | Marc (via evidence pack) | CI job `ci-gate` green ([`ci.yml`](../../../.github/workflows/ci.yml)); Christophe security review PASS; Julie UI walk PASS per [`ui-walk-done-gate.md`](../ui-walk-done-gate.md); Isabelle exploratory QA PASS on local stack covering at least: accepted, rejected, expired/timeout, server cancel, unknown tenant code, unknown username, duplicate `userIdentifier`, revoked key, rate limited, network loss, EN/FR |
+| **M2** Build | Mathieu orchestrates cloud agents per brief (TS SDK refresh **first**, then demo app) | Mathieu (+ agents); Christophe review; Julie UI walk; Isabelle QA | **G2** | Marc (via evidence pack) | CI job `ci-gate` green ([`ci.yml`](../../../.github/workflows/ci.yml)); Christophe security review PASS; Julie UI walk PASS per [`ui-walk-done-gate.md`](../ui-walk-done-gate.md); Isabelle exploratory QA PASS on local stack covering at least: accepted, rejected, expired/timeout, server cancel, unknown access code, unknown username, duplicate `userIdentifier`, revoked key, rate limited, network loss, EN/FR |
 | **M3** Deploy | Host-map amendment, secrets on host, full-SHA ledger entry, rollback path; live smoke; support runbook | Edgar (**never Seb** for publish); Isabelle smoke; Seb runbook | **G3** | Marc | Live smoke PASS with Marc’s own tenant as tenant zero; ledger entry in [`DEPLOYED.md`](../../../docs/lightsail/community/DEPLOYED.md); Seb support runbook handed over |
 | **M4** Publish + pilot | Short dedicated Android closed-testing tester page on ezkey.org; message framing; first close tester onboarded | Audrey (page), Alex (framing), Marc (pilot onboarding), Edgar (publish) | **G4** | Marc | Marc approves copy; Edgar publishes; pilot tester logs in autonomously via phone; REX captured; then scale toward 12 |
 
@@ -145,8 +198,8 @@ Five gates. Each gate: owner of the GO, verifiable evidence, go / no-go rule.
 | Owner | Obligation |
 | ----- | ---------- |
 | **Patrick** | Stack choice against lock #6 criteria; architecture; TS SDK refresh + publish/version scope; Java SDK alignment check (Acme unchanged). |
-| **Christophe** | Secret storage at rest; tester→Marc transfer channel (no plain email); enumeration-safe errors; demo-layer rate limits; short session model; fail-graceful revoked / unprovisioned tenant. |
-| **Julie** | Login box + success page UX intent; reuse map from Admin UI login states / EN+FR; cancel affordance. |
+| **Christophe** | Secret storage at rest; tester→Marc transfer channel (no plain email); enumeration-safe errors (access code / username); demo-layer rate limits; short session model; fail-graceful revoked / unprovisioned tenant. |
+| **Julie** | Northwind Portal login box + success page UX intent; access-code text field + `/t/<code>` hide/pre-fill; reuse map from Admin UI login states / EN+FR; cancel affordance. |
 | **Edgar** | Host-map amendment feasibility (`demo.ezkey.online` placeholder); Docker-on-Lightsail-behind-Caddy path vs any Workers exception. |
 
 ## Parallel track (independent)
@@ -165,11 +218,7 @@ demo-owned encrypted store — so keys never transit through Marc. Not in v1 sco
 
 ## Open questions for Marc
 
-| # | Question | Product Direction default |
-| - | -------- | ------------------------- |
-| 1 | Tenant code vs personal link (`/t/<code>`)? | **Both**; code primary, link optional pre-fill |
-| 2 | Demo brand: neutral fictional company (like Acme) or “Ezkey Demo”? | **Fictional** third-party company (signals integrator, not Ezkey console) |
-| 3 | Start recruitment in parallel **now**, without waiting for the demo? | **Yes** |
+None remaining (all settled 2026-10-08).
 
 ## Consequences (when executed later)
 
@@ -178,7 +227,7 @@ code in this PR.
 
 | Surface | Consequence |
 | ------- | ----------- |
-| **New demo app** | Multi-tenant third-party login + minimal success page on community instance; Integration API only via official TS SDK. |
+| **New demo app** | Multi-tenant Northwind Portal login + minimal success page on community instance; Integration API only via official TS SDK; access-code config owned by the demo. |
 | **TS SDK repo** | Refresh + publish/version as part of M2; living demo dogfood. |
 | **Acme / Java SDK** | Unchanged pedagogy path. |
 | **Host map / Caddy** | New subdomain; Edgar amendment + ledger entry. |
@@ -205,13 +254,13 @@ code in this PR.
 
 Promote (spawn tracer-bullet brief / execution) when:
 
-1. Marc merges this note (**G0**) — proposed locks become settled.
-2. Open questions above answered or defaults accepted.
-3. M1 brief lands and Marc issues **G1** GO.
-4. Execution opens on a **new branch** (not this vision PR).
+1. Marc merges this note (**G0**) — remaining proposed locks become settled (access code, brand, and
+   recruitment scope already settled 2026-10-08).
+2. M1 brief lands and Marc issues **G1** GO.
+3. Execution opens on a **new branch** (not this vision PR).
 
 ## Next step
 
 Keep this note as the **decision draft**. Marc merges to lock (**G0**), then Mathieu routes M1 craft
-+ security design toward a plan-hardened tracer-bullet brief. Recruitment for closed testing may
-start in parallel on Marc’s GO without waiting for G1. Alex does not implement.
++ security design toward a plan-hardened tracer-bullet brief. Closed-testing recruitment remains on
+the separate Mathieu / Isabelle track. Alex does not implement.
