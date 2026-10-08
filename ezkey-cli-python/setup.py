@@ -33,12 +33,13 @@ setup(
         "Programming Language :: Python :: 3.14",
     ],
     python_requires=">=3.12",
+    # Version floors are tested minimums (install these pins and run tests/unit).
     install_requires=[
         "click>=8.5.0",
         "requests>=2.34.2",
         "colorama>=0.4.6",
         "pyperclip>=1.11.0",
-        "textual>=0.30.0",
+        "textual>=0.38.0",
     ],
     entry_points={
         "console_scripts": [

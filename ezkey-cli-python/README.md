@@ -24,6 +24,7 @@ The CLI is **not** started by `./ezkey-tests/clean-start.sh`. After the Docker s
 ## Requirements
 
 - **Python >= 3.12** — see the [major-upgrades Python policy](../product-docs/global/hygiene/major-upgrades/README.md#python)
+- Runtime dependency floors in `setup.py` / `requirements.txt` are **tested minimums** (not merely the latest known-good).
 
 ## Installation
 
