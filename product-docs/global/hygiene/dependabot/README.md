@@ -50,6 +50,13 @@ Dependabot alone cannot prove current:
 | GitHub Actions | `github-actions` at `/` (weekly) | — |
 | Python CLI | `pip` at `/ezkey-cli-python` (weekly) | — |
 
+**Maven dependency graph:** Dependabot PR updates are separate from GitHub’s Insights dependency
+graph. Ezkey submits the full transitive Maven graph via
+[`.github/workflows/maven-dependency-submission.yml`](../../../../.github/workflows/maven-dependency-submission.yml)
+(JDK 25 + `checkstyle-config` install; `main` / `workflow_dispatch` only — not `ci-gate`). Keep
+Automatic Dependency Submission for Maven **off** in Settings → Code security; details in
+[`docs/DEVELOPMENT.md`](../../../../docs/DEVELOPMENT.md) § Continuous Integration.
+
 Empty Dependabot queue for Maven or mobile ≠ stack current on Monday. Authority: skill
 `dependabot-curated` §§ *Java BOM pulse*, *Mobile RN pulse*.
 
