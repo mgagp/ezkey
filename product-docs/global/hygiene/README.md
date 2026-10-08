@@ -1,7 +1,8 @@
 # Hygiene campaign notes
 
 Peripheral HITL decision tracks for punctual **doctor-curated** passes (Admin UI React, Java,
-mobile static analysis), weekly **Dependabot** triage, **security-pentest** campaigns,
+mobile static analysis), weekly **Dependabot** triage, the **major-upgrades** platform register
+(line / semver-major decisions Dependabot does not open), **security-pentest** campaigns,
 **javamelody-curated** live-stack performance extracts, mandate-driven **assessment-curated**
 white-box investigation follow-ups, **document-hygiene-curated** passes for legacy document
 canonicality / archive-vs-delete decisions, and **corpus-ablation** passes that prune ephemeral
@@ -34,6 +35,7 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 | [`java-doctor/`](java-doctor/) | `java-doctor-curated` | Java SpotBugs / Semgrep / PMD curated passes |
 | [`mobile-doctor/`](mobile-doctor/) | `mobile-doctor-curated` | Ezkey Mobile static-analysis curated passes |
 | [`dependabot/`](dependabot/) | `dependabot-curated` | Near-continuous Dependabot triage (weekday light + Monday full), Orval O0–O3 grid, Java BOM / Mobile RN pulses |
+| [`major-upgrades/`](major-upgrades/) | (quarterly in `dependabot-curated`) | Platform / runtime / base-image major-upgrade register (`registry.yaml`); light path vs dedicated issue |
 | [`security-pentest/`](security-pentest/) | `security-pentest-curated` | Live API / DAST-style security campaigns |
 | [`javamelody/`](javamelody/) | `javamelody-curated` | Live JavaMelody extract after a known workload (typically operational churn) |
 | [`document-hygiene/`](document-hygiene/) | `document-hygiene-curated` | Legacy document canonicality, discoverability, and archive-vs-delete decisions |

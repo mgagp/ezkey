@@ -72,6 +72,16 @@ Evidence: 2026-10-05 Admin Orval 8.32→8.39 (#658) — empty codegen diff, 112 
 - **Unchanged gates:** Jest 30 / ESLint 10 mobile (RN presets), TypeScript 7
   (`deferred:later-train`), RN-core / vision-camera coupled slice → HITL / defer as today.
 
+## Majeures / Major upgrades
+
+Platform / runtime / base-image **line** changes are tracked in
+[`../major-upgrades/`](../major-upgrades/) (`registry.yaml`). They are reviewed on the full Monday
+pass in January / April / July / October (not weekday light). Light path vs dedicated issue,
+`security: true` opinion-only issue on light path, and test-plan floors: lane README + root
+`AGENTS.md` § *Major upgrades*. Crypto/auth **library** majors on npm/Maven stay in this
+Dependabot lane (T4); Gradle-ecosystem libs Dependabot ignores (#712) live in the register.
+Monthly endoflife.date check: upcoming, not present yet.
+
 ## Contents
 
 | Path | Role |
