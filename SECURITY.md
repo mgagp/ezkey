@@ -21,7 +21,7 @@ Report privately using GitHub’s **Report a vulnerability** form (private vulne
 
 https://github.com/mgagp/ezkey/security/advisories/new
 
-If the form is unavailable, open a GitHub issue asking for a private contact channel, without technical details.
+You may also email **security@ezkey.org** if the GitHub form is unavailable.
 
 Please include:
 

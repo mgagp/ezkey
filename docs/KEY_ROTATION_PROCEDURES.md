@@ -659,7 +659,8 @@ See `docs/ENCRYPTION_KEY_ROTATION_IMPLEMENTATION.md` for complete configuration 
 
 ### E. Security contact
 
-Report suspected vulnerabilities via GitHub [private vulnerability reporting](https://github.com/mgagp/ezkey/security/advisories/new). Policy: [`SECURITY.md`](../SECURITY.md).
+**Email**: security@ezkey.org  
+Prefer GitHub [private vulnerability reporting](https://github.com/mgagp/ezkey/security/advisories/new) when available. Policy: [`SECURITY.md`](../SECURITY.md).
 
 ---
 
