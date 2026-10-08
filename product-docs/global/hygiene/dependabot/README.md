@@ -53,8 +53,10 @@ Dependabot alone cannot prove current:
 **Maven dependency graph:** Dependabot PR updates are separate from GitHub’s Insights dependency
 graph. Ezkey submits the full transitive Maven graph via
 [`.github/workflows/maven-dependency-submission.yml`](../../../../.github/workflows/maven-dependency-submission.yml)
-(JDK 25 + `checkstyle-config` install; `main` / `workflow_dispatch` only — not `ci-gate`). Keep
-Automatic Dependency Submission for Maven **off** in Settings → Code security; details in
+(JDK 25 + `checkstyle-config` install; `main` / `workflow_dispatch` only — not `ci-gate`).
+**Automatic dependency submission** is one repo-wide toggle (Settings → Advanced Security →
+Dependency graph → Automatic dependency submission); set to **Disabled** (2026-10-08) so the
+dedicated workflow feeds the graph. Details:
 [`docs/DEVELOPMENT.md`](../../../../docs/DEVELOPMENT.md) § Continuous Integration.
 
 Empty Dependabot queue for Maven or mobile ≠ stack current on Monday. Authority: skill
