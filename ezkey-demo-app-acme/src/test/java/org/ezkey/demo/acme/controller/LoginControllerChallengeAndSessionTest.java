@@ -16,6 +16,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -26,9 +27,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -260,6 +263,57 @@ class LoginControllerChallengeAndSessionTest {
         .andExpect(jsonPath("$.status").value("expired"))
         .andExpect(jsonPath("$.redirectUrl").value("/login?error=sessionexpired"))
         .andExpect(jsonPath("$.message").value(DemoAuthMessages.SESSION_OR_SLOT_LOST));
+  }
+
+  @Test
+  void slowApprovalAroundFortySecondsReachesDashboard() throws Exception {
+    CountingSession session = pendingSession();
+    // Attempt TTL far enough that soft timeouts must keep polling (not abort at ~30s).
+    session.setAttribute("pendingExpiresAt", OffsetDateTime.now().plusSeconds(120).toString());
+
+    AtomicInteger waitCalls = new AtomicInteger();
+    when(ezkeyClient.waitForAuthAttempt(
+            eq(7),
+            eq(LoginController.AUTH_STATUS_WAIT_SECONDS),
+            eq(LoginController.AUTH_STATUS_POLL_SECONDS)))
+        .thenAnswer(
+            _invocation -> {
+              int call = waitCalls.incrementAndGet();
+              if (call == 1) {
+                // ~20s wall: SDK read-timeout race (previously aborted challenge-wait).
+                throw new EzkeyException(
+                    "Network error connecting to Ezkey: request timed out",
+                    new HttpTimeoutException("request timed out"));
+              }
+              if (call == 2) {
+                // ~40s wall: still pending after another server wait window.
+                return new AuthAttemptWaitResponse("PENDING", false, true);
+              }
+              return new AuthAttemptWaitResponse("ACCEPTED", true, false);
+            });
+
+    mockMvc
+        .perform(get("/api/auth-status").session(session))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("pending"));
+    mockMvc
+        .perform(get("/api/auth-status").session(session))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("pending"));
+    mockMvc
+        .perform(get("/api/auth-status").session(session))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("accepted"))
+        .andExpect(jsonPath("$.redirectUrl").value("/dashboard"));
+
+    assertThat(waitCalls.get()).isEqualTo(3);
+    assertThat(session.getAttribute("user")).isInstanceOf(AuthenticatedUser.class);
+    assertThat(session.getAttribute("authAttemptFinalStatus")).isNotEqualTo("ERROR");
+    verify(ezkeyClient, atLeastOnce())
+        .waitForAuthAttempt(
+            eq(7),
+            eq(LoginController.AUTH_STATUS_WAIT_SECONDS),
+            eq(LoginController.AUTH_STATUS_POLL_SECONDS));
   }
 
   @Test

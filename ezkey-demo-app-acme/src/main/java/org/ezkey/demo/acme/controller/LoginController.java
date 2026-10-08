@@ -12,6 +12,10 @@ package org.ezkey.demo.acme.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import java.net.http.HttpTimeoutException;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
+import java.util.Locale;
 import org.ezkey.demo.acme.DemoAuthMessages;
 import org.ezkey.demo.acme.config.EzkeyClientProvider;
 import org.ezkey.demo.acme.dto.AuthenticatedUser;
@@ -58,6 +62,15 @@ public class LoginController {
    * not call {@link HttpServletRequest#changeSessionId()} again.
    */
   static final String AUTH_ACCEPTED_SESSION_ROTATED = "authAcceptedSessionRotated";
+
+  /**
+   * Server-side wait for {@code /wait} — must stay clearly below the SDK default HTTP read timeout
+   * (30s) so the client does not abort a few ms before the Integration API responds.
+   */
+  static final int AUTH_STATUS_WAIT_SECONDS = 20;
+
+  /** Server-side polling interval passed to {@code /wait}. */
+  static final int AUTH_STATUS_POLL_SECONDS = 2;
 
   private final EzkeyClientProvider ezkeyClientProvider;
   private final DemoApiKeyConfigService demoApiKeyConfigService;
@@ -381,7 +394,9 @@ public class LoginController {
     String usernameForLog = LogSanitizer.sanitizeForLog(username);
 
     try {
-      var waitResponse = client.waitForAuthAttempt(authAttemptId, 30, 2);
+      var waitResponse =
+          client.waitForAuthAttempt(
+              authAttemptId, AUTH_STATUS_WAIT_SECONDS, AUTH_STATUS_POLL_SECONDS);
 
       String status = waitResponse.status();
       boolean completed = waitResponse.completed();
@@ -393,7 +408,7 @@ public class LoginController {
           authAttemptId,
           usernameForLog);
 
-      String normalizedStatus = status != null ? status.trim().toUpperCase() : null;
+      String normalizedStatus = status != null ? status.trim().toUpperCase(Locale.ROOT) : null;
 
       if (normalizedStatus == null || normalizedStatus.isEmpty()) {
         logger.warn(
@@ -413,8 +428,7 @@ public class LoginController {
               new AuthStatusResponse(
                   "error", "/login?error=authfailed", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
         } else {
-          return ResponseEntity.ok(
-              new AuthStatusResponse("pending", null, "Waiting for device approval..."));
+          return pendingOrExpired(session);
         }
       }
 
@@ -494,10 +508,16 @@ public class LoginController {
             new AuthStatusResponse(
                 "error", "/login?error=authfailed", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
       } else {
-        return ResponseEntity.ok(
-            new AuthStatusResponse("pending", null, "Waiting for device approval..."));
+        // PENDING / READ / server wait timeoutReached — keep polling until attempt TTL.
+        return pendingOrExpired(session);
       }
     } catch (EzkeyException e) {
+      if (isTransientWaitFailure(e)) {
+        logger.info(
+            "Auth status wait soft-timeout for authAttemptId={} — keep polling until attempt TTL",
+            authAttemptId);
+        return pendingOrExpired(session);
+      }
       logger.error(
           "Error checking auth status for authAttemptId={} exceptionClass={} httpStatus={}",
           authAttemptId,
@@ -509,6 +529,63 @@ public class LoginController {
           new AuthStatusResponse(
               "error", "/login?error=authfailed", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
     }
+  }
+
+  /**
+   * Returns pending while the attempt TTL remains; otherwise expired.
+   *
+   * @param session current session (may hold {@code pendingExpiresAt})
+   * @return pending or expired status response
+   */
+  private static ResponseEntity<AuthStatusResponse> pendingOrExpired(HttpSession session) {
+    if (isAttemptExpired(session)) {
+      session.setAttribute("authAttemptFinalStatus", "EXPIRED");
+      return ResponseEntity.ok(
+          new AuthStatusResponse("expired", "/login?error=expired", "Expired"));
+    }
+    return ResponseEntity.ok(
+        new AuthStatusResponse("pending", null, "Waiting for device approval..."));
+  }
+
+  /**
+   * Whether {@code pendingExpiresAt} is in the past (auth-attempt TTL elapsed).
+   *
+   * @param session current session
+   * @return true when the stored expiry is parseable and before now
+   */
+  private static boolean isAttemptExpired(HttpSession session) {
+    Object expiresAt = session.getAttribute("pendingExpiresAt");
+    if (!(expiresAt instanceof String expiresAtText) || expiresAtText.isBlank()) {
+      return false;
+    }
+    try {
+      return OffsetDateTime.parse(expiresAtText).isBefore(OffsetDateTime.now());
+    } catch (DateTimeParseException ignored) {
+      return false;
+    }
+  }
+
+  /**
+   * Read/network timeouts must not abort challenge-wait polling before the attempt TTL.
+   *
+   * @param exception SDK exception from wait
+   * @return true when the failure is a transient wait timeout
+   */
+  static boolean isTransientWaitFailure(EzkeyException exception) {
+    if (exception == null) {
+      return false;
+    }
+    for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+      if (cause instanceof HttpTimeoutException) {
+        return true;
+      }
+    }
+    String message = exception.getMessage();
+    if (message == null) {
+      return false;
+    }
+    String lower = message.toLowerCase(Locale.ROOT);
+    return lower.contains("timed out") || lower.contains("timeout");
   }
 
   /**

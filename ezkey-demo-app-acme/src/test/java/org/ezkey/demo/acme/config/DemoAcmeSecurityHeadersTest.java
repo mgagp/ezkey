@@ -10,6 +10,7 @@
 
 package org.ezkey.demo.acme.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -20,6 +21,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.ApplicationContext;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -36,6 +39,12 @@ import org.springframework.test.web.servlet.MockMvc;
 class DemoAcmeSecurityHeadersTest {
 
   @Autowired private MockMvc mockMvc;
+  @Autowired private ApplicationContext applicationContext;
+
+  @Test
+  void shouldNotRegisterDefaultUserDetailsService() {
+    assertThat(applicationContext.getBeanNamesForType(UserDetailsService.class)).isEmpty();
+  }
 
   @Test
   void loginShouldSendNoReferrerAndNoStore() throws Exception {
