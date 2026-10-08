@@ -1,0 +1,405 @@
+# Major-upgrade platform register (v1)
+#
+# Traceable list of platforms / runtimes / base images whose support line (or
+# semver major) must be decided deliberately. Not a library inventory.
+#
+# Field summary:
+#   id            stable key
+#   component     human label
+#   owner         register steward (usually fred)
+#   eol_slug      endoflife.date product id, or null for manual follow
+#   current       line or version in use
+#   sources       list of {file, expect}; expect defaults to current; drift when
+#                 grep -F expect file fails
+#   eol           support end date last recorded (or estimate noted in notes)
+#   target        desired line per lane README target rule
+#   decision      keep | plan | follow:<id> | accept-risk
+#   security      true when security-owner written opinion is mandatory
+#   warn_months   optional; default 6 (react-native uses 3)
+#   accept_until  required when decision is accept-risk AND security is true;
+#                 at most 6 months after last_review
+#   issue         dedicated GitHub issue number when planned, else null
+#   last_review   YYYY-MM-DD of last human/register review
+#   notes         free text; link Christophe opinion here when present
+#
+# Baseline: main @ f7c84f37 · EOL values from endoflife.date 2026-10-07
+# (proposal annex B). Re-verified against repo paths before commit.
+
+- id: haproxy
+  component: HAProxy (local HA stack; absent from Lightsail)
+  owner: fred
+  eol_slug: haproxy
+  current: "2.9"
+  sources:
+    - { file: docker/docker-compose.ha.yml, expect: "haproxy:2.9-alpine" }
+  eol: 2025-03-21
+  target: "3.4" # LTS since 2026-06-03 (3.4.6); EOL 2031-04-01
+  decision: plan
+  security: true
+  issue: null
+  last_review: 2026-10-07
+  notes: "EOL overdue since 2025-03-21; dedicated issue for 3.4 LTS upgrade"
+
+- id: alpine-bootstrap-init
+  component: Alpine (bootstrap-init image)
+  owner: fred
+  eol_slug: alpine
+  current: "3.19"
+  sources:
+    - { file: docker/bootstrap-init/Dockerfile, expect: "alpine:3.19" }
+  eol: 2025-11-01
+  target: "3.24" # EOL 2028-06-01
+  decision: plan
+  security: true
+  issue: null
+  last_review: 2026-10-07
+  notes: >
+    security: true — image reads enrollment proof token from
+    bootstrap-credentials.json and writes demo-device private key into the
+    demo-device volume (docker/bootstrap-init/bootstrap-init.sh). Local/demo
+    stacks only; absent from Lightsail. Semver-minor line bump → light path +
+    short security-opinion issue when Dependabot opens it.
+
+- id: python-cli-min
+  component: Python (CLI declared minimum)
+  owner: fred
+  eol_slug: python
+  current: ">=3.8"
+  sources:
+    - { file: ezkey-cli-python/setup.py, expect: 'python_requires=">=3.8"' }
+  eol: 2024-10-07 # CPython 3.8 EOL; 3.9 ended 2025-10; 3.10 ends 2026-10-01
+  target: ">=3.11" # EOL 2027-10-31 — product decision for Marc (à confirmer)
+  decision: plan
+  security: false
+  issue: null
+  last_review: 2026-10-07
+  notes: "Product decision: raise minimum to >=3.11 or >=3.12? No CI Python matrix today"
+
+- id: kotlin-android
+  component: Kotlin (Android)
+  owner: fred
+  eol_slug: kotlin
+  current: "2.2.0"
+  sources:
+    - { file: ezkey_mobile/android/build.gradle, expect: 'kotlinVersion = "2.2.0"' }
+  eol: 2025-12-16 # Kotlin supports only its latest line
+  target: follow:react-native
+  decision: follow:react-native
+  security: false
+  issue: null
+  last_review: 2026-10-07
+  notes: "Value matches RN 0.87.1 template; no EOL proximity flag while follow: holds"
+
+- id: eslint-mobile
+  component: ESLint (mobile tooling)
+  owner: fred
+  eol_slug: eslint
+  current: "9.39.4"
+  sources:
+    - { file: ezkey_mobile/package.json, expect: '"eslint": "9.39.4"' }
+  eol: 2026-08-06
+  target: "10" # when RN presets follow
+  decision: accept-risk
+  security: false
+  issue: null
+  last_review: 2026-10-07
+  notes: "RN preset constraint; no runtime exposure; accept_until not required (security: false)"
+
+- id: react-native
+  component: React Native
+  owner: fred
+  eol_slug: react-native
+  current: "0.87"
+  sources:
+    - { file: ezkey_mobile/package.json, expect: '"react-native": "0.87' }
+  eol: 2027-02-01 # estimate — API returns false until 0.90 ships (à confirmer)
+  target: "0.88 / 0.89"
+  decision: plan
+  security: true
+  warn_months: 3
+  issue: null
+  last_review: 2026-10-07
+  notes: "Plan T1 2027; dedicated issue; Pixel smoke pattern #627; avis Christophe: <link>"
+
+- id: node
+  component: Node.js (repository reference)
+  owner: fred
+  eol_slug: nodejs
+  current: "24"
+  sources:
+    - { file: .nvmrc, expect: "24" }
+    # Intentional expect for the aligned image; today the Dockerfile still has node:22-alpine
+    - { file: ezkey-admin-ui/docker/Dockerfile, expect: "node:24-alpine" }
+  eol: 2028-04-30 # Node 22 EOL 2027-04-30
+  target: "26" # LTS from 2026-10-28 → eligible from 2027-01-28
+  decision: keep
+  security: false
+  issue: null
+  last_review: 2026-10-07
+  notes: "Drift: Admin UI Dockerfile still FROM node:22-alpine — align in PR 2"
+
+- id: java-jdk
+  component: Java / JDK (backend)
+  owner: fred
+  eol_slug: openjdk
+  current: "25"
+  sources:
+    - { file: pom.xml, expect: "<java.version>25</java.version>" }
+    - { file: docker/Dockerfile, expect: "eclipse-temurin:25-jre-alpine" }
+    - { file: docker/Dockerfile, expect: "maven:3.9-eclipse-temurin-25" }
+    - { file: .github/workflows/ci.yml, expect: "java-version: '25'" }
+  eol: 2031-09-30
+  target: "25" # never 27 (not LTS)
+  decision: keep
+  security: true
+  issue: null
+  last_review: 2026-10-07
+  notes: ""
+
+- id: jdk-javamelody
+  component: JDK (JavaMelody sidecar)
+  owner: fred
+  eol_slug: openjdk
+  current: "21"
+  sources:
+    - { file: docker/javamelody/Dockerfile, expect: "eclipse-temurin:21-jre-alpine" }
+  eol: 2029-12-31
+  target: "25" # optional
+  decision: keep
+  security: false
+  issue: null
+  last_review: 2026-10-07
+  notes: ""
+
+- id: jdk-android-ci
+  component: JDK (Android CI build)
+  owner: fred
+  eol_slug: openjdk
+  current: "17"
+  sources:
+    - { file: .github/workflows/ezkey-mobile-unit-tests.yml, expect: "java-version: '17'" }
+  eol: 2027-10-31
+  target: follow:react-native
+  decision: follow:react-native
+  security: false
+  issue: null
+  last_review: 2026-10-07
+  notes: ""
+
+- id: spring-boot
+  component: Spring Boot (Framework 7.0.x / Hibernate 7.4.x / Security 7.1.x via Boot)
+  owner: fred
+  eol_slug: spring-boot
+  current: "4.1.1"
+  sources:
+    - { file: pom.xml, expect: "<spring-boot.version>4.1.1</spring-boot.version>" }
+  eol: 2027-07-31
+  target: "4.2" # when 4.2 has been out ≥ 3 months
+  decision: keep
+  security: true
+  issue: null
+  last_review: 2026-10-07
+  notes: "Patches via Java BOM pulse; line change → light path + short security-opinion issue"
+
+- id: postgresql
+  component: PostgreSQL
+  owner: fred
+  eol_slug: postgresql
+  current: "18"
+  sources:
+    - { file: docker/docker-compose.yml, expect: "postgres:18-alpine" }
+    - { file: docker/docker-compose.ha.yml, expect: "postgres:18-alpine" }
+    - { file: experimental-hybrid/lightsail/docker-compose.yml, expect: "postgres:18-alpine" }
+  eol: 2030-11-14
+  target: "18"
+  decision: keep
+  security: true
+  issue: null
+  last_review: 2026-10-07
+  notes: "Any major = dedicated issue + dump/restore migration rehearsal"
+
+- id: caddy
+  component: Caddy (exposed on Lightsail)
+  owner: fred
+  eol_slug: caddy
+  current: "2"
+  sources:
+    - { file: ezkey-admin-ui/docker/Dockerfile, expect: "caddy:2-alpine" }
+    - { file: docker/docker-compose.with-proxy.yml, expect: "caddy:2-alpine" }
+    - { file: experimental-hybrid/lightsail/docker-compose.yml, expect: "caddy:2-alpine" }
+  eol: null # no cycle EOL while on 2.x (2.11.7 at review)
+  target: "2"
+  decision: keep
+  security: true
+  issue: null
+  last_review: 2026-10-07
+  notes: ""
+
+- id: rocky-linux-pam
+  component: Rocky Linux (PAM; root in sshd image)
+  owner: fred
+  eol_slug: rocky-linux
+  current: "10"
+  sources:
+    - { file: ezkey-pam/Dockerfile, expect: "rockylinux/rockylinux:10" }
+  eol: 2035-05-31
+  target: "10"
+  decision: keep
+  security: true
+  issue: null
+  last_review: 2026-10-07
+  notes: "ARG ROCKY_IMAGE; Dependabot does not rewrite ARG defaults"
+
+- id: maven-build-image
+  component: Maven (build image)
+  owner: fred
+  eol_slug: null
+  current: "3.9"
+  sources:
+    - { file: docker/Dockerfile, expect: "maven:3.9-" }
+  eol: null
+  target: "3.9"
+  decision: keep
+  security: false
+  issue: null
+  last_review: 2026-10-07
+  notes: "Manual / Dependabot Docker minor; not on endoflife.date as a first-class product"
+
+- id: react
+  component: React
+  owner: fred
+  eol_slug: react
+  current: "19.3.0"
+  sources:
+    - { file: ezkey-admin-ui/package.json, expect: '"react": "19.3.0"' }
+    - { file: ezkey_mobile/package.json, expect: '"react": "19.3.0"' }
+  eol: null # line 19 supported at review
+  target: "19"
+  decision: keep
+  security: false
+  issue: null
+  last_review: 2026-10-07
+  notes: ""
+
+- id: gradle
+  component: Gradle
+  owner: fred
+  eol_slug: gradle
+  current: "9.4.1"
+  sources:
+    - { file: ezkey_mobile/android/gradle/wrapper/gradle-wrapper.properties, expect: "gradle-9.4.1-" }
+  eol: null # line 9 supported at review
+  target: follow:react-native
+  decision: follow:react-native
+  security: false
+  issue: null
+  last_review: 2026-10-07
+  notes: ""
+
+- id: android-gradle-plugin
+  component: Android Gradle Plugin
+  owner: fred
+  eol_slug: null
+  current: "9.2.1"
+  sources:
+    - { file: ezkey_mobile/android/build.gradle, expect: "com.android.tools.build:gradle:9.2.1" }
+  eol: null
+  target: follow:react-native
+  decision: follow:react-native
+  security: false
+  issue: null
+  last_review: 2026-10-07
+  notes: "Not on endoflife.date; semver-major fallback"
+
+- id: typescript
+  component: TypeScript
+  owner: fred
+  eol_slug: null
+  current: "6.0.3"
+  sources:
+    - { file: ezkey-admin-ui/package.json, expect: '"typescript": "~6.0.3"' }
+    - { file: ezkey_mobile/package.json, expect: '"typescript": "6.0.3"' }
+    - { file: ezkey-sdk/javascript/package.json, expect: '"typescript": "^6.0.3"' }
+  eol: null
+  target: "7"
+  decision: keep
+  security: false
+  issue: null
+  last_review: 2026-10-07
+  notes: "Already deferred:later-train (#337, #498, #347)"
+
+- id: vite
+  component: Vite
+  owner: fred
+  eol_slug: null
+  current: "8"
+  sources:
+    - { file: ezkey-admin-ui/package.json, expect: '"vite": "^8.3.2"' }
+  eol: null
+  target: "8"
+  decision: keep
+  security: false
+  issue: null
+  last_review: 2026-10-07
+  notes: "Not on endoflife.date; semver-major fallback"
+
+- id: github-actions-runner
+  component: GitHub Actions runners
+  owner: fred
+  eol_slug: ubuntu
+  current: "ubuntu-24.04"
+  sources:
+    - { file: .github/workflows/ci.yml, expect: "ubuntu-24.04" }
+    - { file: .github/workflows/ezkey-mobile-unit-tests.yml, expect: "ubuntu-24.04" }
+  eol: 2029-05-31
+  target: "ubuntu-24.04"
+  decision: keep
+  security: false
+  issue: null
+  last_review: 2026-10-07
+  notes: ""
+
+- id: express-methodology-site
+  component: Express (methodology micro-site)
+  owner: fred
+  eol_slug: express
+  current: "4"
+  sources:
+    - { file: product-docs/site/package.json, expect: '"express": "^4.21.2"' }
+  eol: null
+  target: "5"
+  decision: keep
+  security: false
+  issue: null
+  last_review: 2026-10-07
+  notes: ""
+
+- id: conscrypt-android
+  component: Conscrypt (Android)
+  owner: fred
+  eol_slug: null
+  current: "2.7.0"
+  sources:
+    - { file: ezkey_mobile/android/app/build.gradle, expect: "org.conscrypt:conscrypt-android:2.7.0" }
+  eol: null
+  target: "2.7.x"
+  decision: keep
+  security: true
+  issue: null
+  last_review: 2026-10-07
+  notes: "2.7.0 required for 16 KB gate (#659); Gradle majors ignored per #712"
+
+- id: androidx-biometric
+  component: AndroidX Biometric
+  owner: fred
+  eol_slug: null
+  current: "1.1.0"
+  sources:
+    - { file: ezkey_mobile/android/app/build.gradle, expect: "androidx.biometric:biometric:1.1.0" }
+  eol: null
+  target: "latest stable (à confirmer)"
+  decision: keep
+  security: true
+  issue: null
+  last_review: 2026-10-07
+  notes: "Manual follow; review at first quarterly register walk"

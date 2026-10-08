@@ -365,6 +365,21 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
 - Config: [`.github/dependabot.yml`](.github/dependabot.yml) (daily Maven/npm, cooldown, groups).
   Do not invent methodology backlog for the Dependabot habit itself.
 
+### Major upgrades (registry first)
+
+- **Major upgrade** = an endoflife.date line change OR a semver major (JDK, Node, PostgreSQL,
+  HAProxy, Caddy, base images, Spring Boot line, React Native line, Gradle/AGP/Kotlin, TS, Vite).
+  Registry: `product-docs/global/hygiene/major-upgrades/registry.yaml` (platforms, not libraries —
+  crypto/auth library majors stay under `dependabot-curated` T4 + security owner).
+- **Light path** — line change that is a semver minor opened by Dependabot: update the registry
+  entry (`current`, `sources`, `eol`, `last_review`) in the same PR and put the test plan
+  (family floor from the lane README) in the PR body.
+- **Dedicated issue** — semver major, data migration (PostgreSQL), React Native line, or any
+  `security: true` entry: open an issue with the test plan before the PR (labels per
+  `github-issue-labels`). Security owner's written opinion goes in that issue; link it in `notes`.
+- Never autonomous (T4); Marc decides. Do not remove the Dependabot major-ignore rules.
+- `accept-risk` on a `security: true` entry requires `accept_until` (max 6 months).
+
 ### HITL contract (default for cold agents)
 
 When the operator asks for a **`dependabot-curated`** pass:
