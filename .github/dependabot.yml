@@ -167,7 +167,9 @@ updates:
 
   # Methodology micro-site (adm-zip, express, marked, …). Was missing; a
   # Dependabot security update for this folder failed without a version-updates
-  # entry. No package-lock.json — Dependabot updates package.json alone.
+  # entry. package-lock.json is gitignored, so alerts cover direct dependencies
+  # only (transitives invisible); committing the lockfile would close that gap
+  # (do not commit it in this PR).
   - package-ecosystem: "npm"
     directory: "/product-docs/site"
     schedule:
@@ -195,6 +197,8 @@ updates:
   # Known gap: native Android CVE alerts are not produced — the dependency graph
   # does not capture these Gradle deps (automatic Gradle submission declined for
   # the same includeBuild / node_modules coupling).
+  # AGP / Kotlin / gradle-wrapper follow React Native upgrades, never Dependabot;
+  # react-android, hermes, and autolinked modules are not visible to Dependabot.
   - package-ecosystem: "gradle"
     directory: "/ezkey_mobile/android"
     schedule:
@@ -207,6 +211,12 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
+    ignore:
+      - dependency-name: "com.android.tools.build:gradle"
+      - dependency-name: "org.jetbrains.kotlin:*"
+      - dependency-name: "gradle-wrapper"
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       android-gradle-minor-patch:
         applies-to: version-updates
@@ -216,17 +226,19 @@ updates:
           - "minor"
           - "patch"
 
-  # Dockerfile base images (alpine, node, eclipse-temurin, rocky, busybox, …).
-  # Version bumps only — not CVE alerts. Every directory that contains a
-  # Dockerfile (including ezkey-auth-api/Dockerfile.debug).
+  # Dockerfile base images with parseable registry tags (alpine, node,
+  # eclipse-temurin, playwright, …). Version bumps only — not CVE alerts.
+  # Omitted: /ezkey-pam (FROM ${ROCKY_IMAGE} — ARG not parsed) and
+  # /ezkey-auth-api (local ezkey-auth-api-native + busybox:latest floating tag).
+  # Majors are a manual choice (Java/Node LTS, Postgres data, HAProxy LTS):
+  # single-number tags (25-jre-alpine, 22-alpine, 18-alpine) only receive majors
+  # (temurin→27 non-LTS, node→26 vs .nvmrc 24, postgres 19 breaks data, haproxy→3.x).
   - package-ecosystem: "docker"
     directories:
       - "/docker"
       - "/docker/bootstrap-init"
       - "/docker/javamelody"
       - "/ezkey-admin-ui/docker"
-      - "/ezkey-auth-api"
-      - "/ezkey-pam"
     schedule:
       interval: "weekly"
     cooldown:
@@ -237,6 +249,9 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       docker-images-minor-patch:
         applies-to: version-updates
@@ -246,21 +261,17 @@ updates:
           - "minor"
           - "patch"
 
-  # Compose service images (postgres, caddy, haproxy, …). Version bumps only.
-  # Dependabot reads compose files in each listed directory (docker-compose.yml,
-  # docker-compose.*.yml, compose.yml). Overlay / multi-file stacks under
-  # /docker (e.g. docker-compose.ha.yml, docker-compose.with-proxy.yml) should
-  # be scanned as separate manifests in that directory — verify on the first
-  # Dependabot run; overrides that only extend services without image: pins may
-  # produce no bumps. Does not replace container CVE scanning.
+  # Compose service images with registry tags (postgres, caddy, haproxy, …).
+  # Version bumps only — not CVE alerts. Dependabot's pattern already covers
+  # docker-compose.*.yml in each listed directory (e.g. docker-compose.ha.yml,
+  # docker-compose.with-proxy.yml under /docker).
+  # Omitted (build: only, local tags, or env override with no image:):
+  # /ezkey-admin-ui, /ezkey-pam, /experimental-hybrid/local, /scripts/lab.
+  # Majors are a manual choice (Java/Node LTS, Postgres data, HAProxy LTS).
   - package-ecosystem: "docker-compose"
     directories:
       - "/docker"
-      - "/ezkey-admin-ui"
-      - "/ezkey-pam"
       - "/experimental-hybrid/lightsail"
-      - "/experimental-hybrid/local"
-      - "/scripts/lab"
     schedule:
       interval: "weekly"
     cooldown:
@@ -271,6 +282,9 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       compose-images-minor-patch:
         applies-to: version-updates
