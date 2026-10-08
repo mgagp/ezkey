@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.util.WebUtils;
 
 /**
  * Controller handling login POST requests and coordinating EZKey authentication flow.
@@ -51,6 +52,12 @@ public class LoginController {
   private static final String SDK_NOT_CONFIGURED_MSG =
       "Ezkey SDK is not configured. Set credentials via an access link, config file, or use the"
           + " 'Apply API Key' dialog in the About This Demo section.";
+
+  /**
+   * Session flag: ACCEPTED path already rotated the session id once. Concurrent or late polls must
+   * not call {@link HttpServletRequest#changeSessionId()} again.
+   */
+  static final String AUTH_ACCEPTED_SESSION_ROTATED = "authAcceptedSessionRotated";
 
   private final EzkeyClientProvider ezkeyClientProvider;
   private final DemoApiKeyConfigService demoApiKeyConfigService;
@@ -199,7 +206,7 @@ public class LoginController {
           model.addAttribute("error", DemoAuthMessages.RATE_LIMIT_LOGIN);
           break;
         case "sessionexpired":
-          model.addAttribute("error", "Session expired. Please try again.");
+          model.addAttribute("error", DemoAuthMessages.SESSION_OR_SLOT_LOST);
           break;
         default:
           model.addAttribute("error", DemoAuthMessages.GENERIC_SIGN_IN_FAILED);
@@ -317,11 +324,10 @@ public class LoginController {
   @GetMapping("/api/auth-status")
   public ResponseEntity<AuthStatusResponse> checkAuthStatus(
       HttpServletRequest request, HttpSession session) {
-    // Check if user is already authenticated (prevents "expired" glitch after
-    // successful auth)
-    AuthenticatedUser existingUser = (AuthenticatedUser) session.getAttribute("user");
-    if (existingUser != null) {
-      // User is already authenticated, return success immediately
+    // Already authenticated, or ACCEPTED already applied (session rotated once).
+    if (session.getAttribute("user") instanceof AuthenticatedUser
+        || Boolean.TRUE.equals(session.getAttribute(AUTH_ACCEPTED_SESSION_ROTATED))
+        || "ACCEPTED".equals(session.getAttribute("authAttemptFinalStatus"))) {
       return ResponseEntity.ok(
           new AuthStatusResponse("accepted", "/dashboard", "Authentication successful"));
     }
@@ -361,7 +367,9 @@ public class LoginController {
     Integer enrollmentId = (Integer) session.getAttribute("pendingEnrollmentId");
 
     if (authAttemptId == null || username == null) {
-      return ResponseEntity.ok(new AuthStatusResponse("expired", null, "Session expired"));
+      return ResponseEntity.ok(
+          new AuthStatusResponse(
+              "expired", "/login?error=sessionexpired", DemoAuthMessages.SESSION_OR_SLOT_LOST));
     }
 
     EzkeyClient client = ezkeyClientProvider.getClient(session);
@@ -411,22 +419,31 @@ public class LoginController {
       }
 
       if ("ACCEPTED".equals(normalizedStatus)) {
-        // Authentication successful - create session FIRST, then clear pending
-        // attributes
-        AuthenticatedUser authenticatedUser =
-            new AuthenticatedUser(
-                username, displayName != null ? displayName : username, enrollmentId);
+        // Rotate session id exactly once under the session mutex so concurrent long-polls
+        // that all see ACCEPTED cannot issue multiple changeSessionId() calls (fixation
+        // protection kept; late polls stay on a live session).
+        synchronized (WebUtils.getSessionMutex(session)) {
+          if (session.getAttribute("user") instanceof AuthenticatedUser
+              || Boolean.TRUE.equals(session.getAttribute(AUTH_ACCEPTED_SESSION_ROTATED))) {
+            return ResponseEntity.ok(
+                new AuthStatusResponse("accepted", "/dashboard", "Authentication successful"));
+          }
 
-        session.setAttribute("user", authenticatedUser);
-        request.changeSessionId();
+          AuthenticatedUser authenticatedUser =
+              new AuthenticatedUser(
+                  username, displayName != null ? displayName : username, enrollmentId);
 
-        // Clear pending auth data AFTER creating user session
-        // This prevents "expired" glitch if another poll arrives before redirect
-        session.removeAttribute("pendingAuthAttemptId");
-        session.removeAttribute("pendingChallengeCode");
-        session.removeAttribute("pendingUsername");
-        session.removeAttribute("pendingDisplayName");
-        session.removeAttribute("pendingEnrollmentId");
+          session.setAttribute("user", authenticatedUser);
+          request.changeSessionId();
+          session.setAttribute(AUTH_ACCEPTED_SESSION_ROTATED, Boolean.TRUE);
+          session.setAttribute("authAttemptFinalStatus", "ACCEPTED");
+
+          session.removeAttribute("pendingAuthAttemptId");
+          session.removeAttribute("pendingChallengeCode");
+          session.removeAttribute("pendingUsername");
+          session.removeAttribute("pendingDisplayName");
+          session.removeAttribute("pendingEnrollmentId");
+        }
 
         logger.info("Challenge authentication successful for username: {}", usernameForLog);
         return ResponseEntity.ok(

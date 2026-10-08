@@ -26,8 +26,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.ezkey.demo.acme.DemoAuthMessages;
 import org.ezkey.demo.acme.config.EzkeyClientProvider;
+import org.ezkey.demo.acme.dto.AuthenticatedUser;
 import org.ezkey.demo.acme.security.DemoRateLimitService;
 import org.ezkey.demo.acme.service.AccessCodeService;
 import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
@@ -150,11 +162,7 @@ class LoginControllerChallengeAndSessionTest {
 
   @Test
   void shouldChangeSessionIdOnAccepted() throws Exception {
-    MockHttpSession session = new MockHttpSession();
-    session.setAttribute("pendingAuthAttemptId", 7);
-    session.setAttribute("pendingUsername", "alice");
-    session.setAttribute("pendingDisplayName", "Alice");
-    session.setAttribute("pendingEnrollmentId", 3);
+    CountingSession session = pendingSession();
 
     when(ezkeyClient.waitForAuthAttempt(eq(7), anyInt(), anyInt()))
         .thenReturn(new AuthAttemptWaitResponse("ACCEPTED", true, false));
@@ -166,11 +174,142 @@ class LoginControllerChallengeAndSessionTest {
         .andExpect(jsonPath("$.status").value("accepted"));
 
     assertThat(session.getId()).isNotEqualTo(beforeId);
-    assertThat(session.getAttribute("user")).isNotNull();
+    assertThat(session.rotationCount.get()).isEqualTo(1);
+    assertThat(session.getAttribute("user")).isInstanceOf(AuthenticatedUser.class);
+    assertThat(session.isInvalid()).isFalse();
+  }
+
+  @Test
+  void concurrentAcceptedPollsRotateSessionExactlyOnce() throws Exception {
+    CountingSession session = pendingSession();
+    session.setAttribute(DemoApiKeyConfigService.SESSION_ACCESS_CODE_SLOT_ID, "northwind");
+
+    CountDownLatch enteredWait = new CountDownLatch(3);
+    when(ezkeyClient.waitForAuthAttempt(eq(7), anyInt(), anyInt()))
+        .thenAnswer(
+            _invocation -> {
+              enteredWait.countDown();
+              assertThat(enteredWait.await(5, TimeUnit.SECONDS))
+                  .as("at least 3 polls should be in waitForAuthAttempt together")
+                  .isTrue();
+              // Slow approval (~10s) so overlapping long-polls all observe ACCEPTED.
+              Thread.sleep(10_000);
+              return new AuthAttemptWaitResponse("ACCEPTED", true, false);
+            });
+
+    ExecutorService pool = Executors.newFixedThreadPool(3);
+    List<Future<?>> futures = new ArrayList<>();
+    try {
+      for (int i = 0; i < 3; i++) {
+        futures.add(
+            pool.submit(
+                () -> {
+                  try {
+                    mockMvc
+                        .perform(get("/api/auth-status").session(session))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.status").value("accepted"))
+                        .andExpect(jsonPath("$.redirectUrl").value("/dashboard"));
+                  } catch (Exception e) {
+                    throw new RuntimeException(e);
+                  }
+                }));
+      }
+      for (Future<?> future : futures) {
+        future.get(25, TimeUnit.SECONDS);
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+
+    assertThat(session.rotationCount.get()).isEqualTo(1);
+    assertThat(session.isInvalid()).isFalse();
+    assertThat(session.getAttribute("user")).isInstanceOf(AuthenticatedUser.class);
+    assertThat(session.getAttribute(DemoApiKeyConfigService.SESSION_ACCESS_CODE_SLOT_ID))
+        .isEqualTo("northwind");
+    assertThat(session.getAttribute(LoginController.AUTH_ACCEPTED_SESSION_ROTATED))
+        .isEqualTo(Boolean.TRUE);
+
+    // Late poll after success must not rotate again or drop the user.
+    String idAfter = session.getId();
+    mockMvc
+        .perform(get("/api/auth-status").session(session))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("accepted"));
+    assertThat(session.rotationCount.get()).isEqualTo(1);
+    assertThat(session.getId()).isEqualTo(idAfter);
+    assertThat(session.getAttribute("user")).isInstanceOf(AuthenticatedUser.class);
+  }
+
+  @Test
+  void shouldShowReopenAccessLinkWhenSessionOrSlotLost() throws Exception {
+    LoginController controller =
+        new LoginController(
+            ezkeyClientProvider, demoApiKeyConfigService, demoRateLimitService, accessCodeService);
+    org.springframework.ui.ExtendedModelMap model = new org.springframework.ui.ExtendedModelMap();
+    MockHttpSession loginSession = new MockHttpSession();
+
+    String view = controller.loginPage("sessionexpired", null, loginSession, model);
+
+    assertThat(view).isEqualTo("login");
+    assertThat(model.get("hasError")).isEqualTo(true);
+    assertThat(model.get("error")).isEqualTo(DemoAuthMessages.SESSION_OR_SLOT_LOST);
+
+    MockHttpSession empty = new MockHttpSession();
+    mockMvc
+        .perform(get("/api/auth-status").session(empty))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("expired"))
+        .andExpect(jsonPath("$.redirectUrl").value("/login?error=sessionexpired"))
+        .andExpect(jsonPath("$.message").value(DemoAuthMessages.SESSION_OR_SLOT_LOST));
+  }
+
+  @Test
+  void challengeWaitPollsSeriallyWithSetTimeout() throws Exception {
+    Path source = resolveChallengeWaitHtml();
+    String content = Files.readString(source, StandardCharsets.UTF_8);
+    assertThat(content).contains("scheduleNextPoll");
+    assertThat(content).contains("setTimeout(checkAuthStatus");
+    assertThat(content).doesNotContain("setInterval(checkAuthStatus");
+    assertThat(content).doesNotContain("pollingInterval = setInterval");
   }
 
   private static AuthAttemptCreateResponse sampleCreateResponse(int id, Integer challenge) {
     return new AuthAttemptCreateResponse(id, challenge, 120, "2026-10-08T12:00:00Z", null, null);
+  }
+
+  private static CountingSession pendingSession() {
+    CountingSession session = new CountingSession();
+    session.setAttribute("pendingAuthAttemptId", 7);
+    session.setAttribute("pendingUsername", "alice");
+    session.setAttribute("pendingDisplayName", "Alice");
+    session.setAttribute("pendingEnrollmentId", 3);
+    return session;
+  }
+
+  private static Path resolveChallengeWaitHtml() {
+    Path fromModule =
+        Path.of("src/main/resources/templates/challenge-wait.html").toAbsolutePath().normalize();
+    if (Files.exists(fromModule)) {
+      return fromModule;
+    }
+    Path fromRepo =
+        Path.of("ezkey-demo-app-acme/src/main/resources/templates/challenge-wait.html")
+            .toAbsolutePath()
+            .normalize();
+    assertThat(fromRepo).exists();
+    return fromRepo;
+  }
+
+  /** Counts {@link MockHttpSession#changeSessionId()} invocations for race tests. */
+  private static final class CountingSession extends MockHttpSession {
+    private final AtomicInteger rotationCount = new AtomicInteger();
+
+    @Override
+    public String changeSessionId() {
+      rotationCount.incrementAndGet();
+      return super.changeSessionId();
+    }
   }
 
   @Test

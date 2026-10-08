@@ -30,5 +30,13 @@ public final class DemoAuthMessages {
   public static final String RATE_LIMIT_APPLY_API_KEY =
       "Too many API key apply attempts from your network. Please wait and try again.";
 
+  /**
+   * Session or access-code slot lost (expired cookie, concurrent rotation race, unknown session).
+   * Never includes the access code. EN/FR on one line for the thin demo surface.
+   */
+  public static final String SESSION_OR_SLOT_LOST =
+      "Your session ended. Reopen your personal access link to continue. / Votre session a pris"
+          + " fin. Rouvrez votre lien d'accès personnel pour continuer.";
+
   private DemoAuthMessages() {}
 }
