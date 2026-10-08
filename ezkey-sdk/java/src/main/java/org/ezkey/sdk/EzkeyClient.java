@@ -301,12 +301,11 @@ public final class EzkeyClient {
             JsonHelper.getString(fields, "contextTitle"),
             JsonHelper.getString(fields, "contextMessage"));
 
+    // Never log challenge codes (or other secrets). authAttemptId alone is enough for ops.
     LOG.log(
         System.Logger.Level.INFO,
-        "Auth attempt created: authAttemptId={0}, challenge={1}, contextTitle={2}",
-        response.authAttemptId(),
-        response.authAttemptChallenge() != null ? response.authAttemptChallenge() : "none",
-        response.contextTitle() != null ? response.contextTitle() : "none");
+        "Auth attempt created: authAttemptId={0}",
+        response.authAttemptId());
 
     return response;
   }

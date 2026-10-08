@@ -293,7 +293,10 @@ public class ApiKeyService {
     if (apiKey.getIpWhitelist() != null
         && apiKey.getIpWhitelist().length > 0
         && !isIpWhitelisted(clientIp, apiKey.getIpWhitelist())) {
-      logger.warn("IP address {} not whitelisted for API key: {}", clientIp, integrationKey);
+      logger.warn(
+          "IP address {} not whitelisted for API key: {}",
+          clientIp,
+          maskIntegrationKeyForLog(integrationKey));
       return Optional.empty();
     }
 
@@ -562,6 +565,27 @@ public class ApiKeyService {
     byte[] bytes = new byte[length / 2];
     secureRandom.nextBytes(bytes);
     return Hex.encodeHexString(bytes);
+  }
+
+  /**
+   * Masks an integration key for WARN/ERROR logs (short non-secret prefix only).
+   *
+   * @param integrationKey raw integration key (may be null)
+   * @return masked value suitable for logs
+   */
+  static String maskIntegrationKeyForLog(String integrationKey) {
+    if (integrationKey == null || integrationKey.isBlank()) {
+      return "(none)";
+    }
+    if (integrationKey.startsWith(INTEGRATION_KEY_PREFIX)
+        && integrationKey.length() > INTEGRATION_KEY_PREFIX.length() + 4) {
+      return INTEGRATION_KEY_PREFIX
+          + integrationKey.substring(
+              INTEGRATION_KEY_PREFIX.length(), INTEGRATION_KEY_PREFIX.length() + 4)
+          + "…";
+    }
+    int keep = Math.min(8, integrationKey.length());
+    return integrationKey.substring(0, keep) + "…";
   }
 
   /**

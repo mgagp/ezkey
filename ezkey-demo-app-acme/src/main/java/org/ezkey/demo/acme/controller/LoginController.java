@@ -18,6 +18,7 @@ import org.ezkey.demo.acme.dto.AuthenticatedUser;
 import org.ezkey.demo.acme.security.DemoRateLimitService;
 import org.ezkey.demo.acme.service.AccessCodeService;
 import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
+import org.ezkey.demo.acme.web.LogSanitizer;
 import org.ezkey.demo.acme.web.SessionHelpers;
 import org.ezkey.sdk.EzkeyClient;
 import org.ezkey.sdk.EzkeyException;
@@ -105,7 +106,7 @@ public class LoginController {
       return "redirect:/login?error=ratelimited";
     }
 
-    String usernameForLog = sanitizeForLog(username);
+    String usernameForLog = LogSanitizer.sanitizeForLog(username);
     logger.info("Login attempt for username: {}", usernameForLog);
 
     // Clear any previous final status flag and pending attributes when starting a
@@ -369,7 +370,7 @@ public class LoginController {
           new AuthStatusResponse("error", "/login?error=authfailed", SDK_NOT_CONFIGURED_MSG));
     }
 
-    String usernameForLog = sanitizeForLog(username);
+    String usernameForLog = LogSanitizer.sanitizeForLog(username);
 
     try {
       var waitResponse = client.waitForAuthAttempt(authAttemptId, 30, 2);
@@ -489,19 +490,6 @@ public class LoginController {
           new AuthStatusResponse(
               "error", "/login?error=authfailed", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
     }
-  }
-
-  /**
-   * Neutralizes CR/LF in values written to logs (log-injection hardening).
-   *
-   * @param value raw value (may be null)
-   * @return sanitized value, or null
-   */
-  static String sanitizeForLog(String value) {
-    if (value == null) {
-      return null;
-    }
-    return value.replace('\r', '_').replace('\n', '_');
   }
 
   /**

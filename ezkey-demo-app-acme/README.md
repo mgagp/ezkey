@@ -116,6 +116,18 @@ Optional multi-tenant slots for evaluator links. Operator steps (no personal dat
 
 Never commit real access codes or personal tester data. See `config/application.properties.example` for the slot shape.
 
+## Rate limiting (QA notes)
+
+Acme enforces its own per-IP Bucket4j limits from `application.properties` (`ezkey.rate-limit.*`).
+Defaults: **login and `/t/{code}` share one bucket of 10 attempts per 5 minutes per client IP**;
+apply-api-key is a separate bucket (5 / 10 min). These limits are **on by default** on a normal
+clean-start / Docker stack — they do **not** require `./ezkey-tests/clean-start.sh --prod-safe`
+(`--prod-safe` only changes Spring API profiles for Admin/Auth/Integration, not Acme’s demo
+limiter).
+
+Testers (or Walk agents) behind the same NAT / egress IP share the login+/t bucket. Exhausting it
+returns HTTP 429 / the rate-limit login message until the window elapses; wait or use another IP.
+
 ## Demo Session Model
 
 - API key credentials entered in the UI are scoped to the current browser session only.

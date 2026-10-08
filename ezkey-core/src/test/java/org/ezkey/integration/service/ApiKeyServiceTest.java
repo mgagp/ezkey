@@ -875,5 +875,15 @@ class ApiKeyServiceTest {
       // Assert
       assertTrue(result.isPresent());
     }
+
+    @Test
+    @DisplayName("Should mask integration key for whitelist rejection logs")
+    void maskIntegrationKeyForLog_ShouldKeepShortPrefixOnly() {
+      assertEquals(
+          "ezkey_ikey_a1b2…",
+          ApiKeyService.maskIntegrationKeyForLog("ezkey_ikey_a1b2c3d4e5f6g7h8i9j0"));
+      assertEquals("(none)", ApiKeyService.maskIntegrationKeyForLog(null));
+      assertEquals("(none)", ApiKeyService.maskIntegrationKeyForLog("  "));
+    }
   }
 }
