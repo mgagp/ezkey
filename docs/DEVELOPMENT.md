@@ -253,7 +253,7 @@ A fresh git clone plus an empty `~/.m2` is the expected first-build situation on
 - Maven 3.9+
 - Bash — `./scripts/*.sh` from Git Bash on Windows, or the system Bash on macOS/Linux
 - Docker Desktop (or Engine + Compose) for the local stack
-- Node.js: root [`.nvmrc`](../.nvmrc) pins **24** (LTS) as the single source of truth for Admin UI, mobile JS CI (`node-version-file: '.nvmrc'`), and agent workstations. Orval and package `engines` must be satisfied by that runtime (`ezkey_mobile` requires `>=24`). Bruno CLI follows the tool you install locally. **nvm-windows** does not read `.nvmrc` automatically — run `nvm install 24` then `nvm use 24`, then `corepack enable` for Yarn 4. After `npm ci` in `ezkey-admin-ui/`, run `npm run generate:api` — the Orval client under `src/generated/` is gitignored; Orval reads the committed `ezkey-admin-ui/openapi-spec.json` (no live API required).
+- Node.js: root [`.nvmrc`](../.nvmrc) pins **24** (LTS) as the single source of truth for Admin UI, mobile JS CI (`node-version-file: '.nvmrc'`), and agent workstations. Orval and package `engines` must be satisfied by that runtime (`ezkey-admin-ui` and `ezkey_mobile` require `>=24`; Orval needs `>=22.18`). Bruno CLI follows the tool you install locally. **nvm-windows** does not read `.nvmrc` automatically — run `nvm install 24` then `nvm use 24`, then `corepack enable` for Yarn 4. After `npm ci` in `ezkey-admin-ui/`, run `npm run generate:api` — the Orval client under `src/generated/` is gitignored; Orval reads the committed `ezkey-admin-ui/openapi-spec.json` (no live API required).
 
 **Do this**
 

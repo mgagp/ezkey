@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Stage 1: Build the React/Vite SPA
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 

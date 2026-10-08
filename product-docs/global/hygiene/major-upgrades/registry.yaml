@@ -132,7 +132,6 @@
   current: "24"
   sources:
     - { file: .nvmrc, expect: "24" }
-    # Intentional expect for the aligned image; today the Dockerfile still has node:22-alpine
     - { file: ezkey-admin-ui/docker/Dockerfile, expect: "node:24-alpine" }
     # Hard-coded major gate in Admin UI CI job (must move with .nvmrc)
     - { file: .github/workflows/ci.yml, expect: "maj!==24" }
@@ -141,8 +140,8 @@
   decision: keep
   security: false
   issue: null
-  last_review: 2026-10-07
-  notes: "Drift: Admin UI Dockerfile still FROM node:22-alpine — align in PR 2"
+  last_review: 2026-10-08
+  notes: "Admin UI image aligned to node:24-alpine (PR 2); engines >=24 matches .nvmrc / Orval >=22.18"
 
 - id: java-jdk
   component: Java / JDK (backend)
