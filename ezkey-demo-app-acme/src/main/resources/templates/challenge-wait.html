@@ -232,7 +232,7 @@
                     }, 1000);
                 } else if (result.status === 'rejected') {
                     stopPolling();
-                    showError('Authentication rejected by user. ' + (result.message || ''));
+                    showError('Authentication rejected by user.');
                     setTimeout(() => {
                         window.location.href = result.redirectUrl || '/login?error=rejected';
                     }, 3000);

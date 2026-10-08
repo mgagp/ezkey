@@ -16,6 +16,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
@@ -471,7 +472,8 @@ public final class EzkeyClient {
         return body;
       }
 
-      // Build descriptive error message
+      // Build descriptive error message. Do not append the full URI (wait URLs contain
+      // ?timeout=…) — callers must classify read timeouts by exception type/cause, not message.
       String message =
           switch (status) {
             case 401 -> "Authentication failed (401). Check API key credentials and IP whitelist.";
@@ -480,12 +482,24 @@ public final class EzkeyClient {
             case 404 -> "Resource not found (404). Check the auth attempt ID or base URL.";
             case 400 -> "Bad request (400). " + extractErrorMessage(body);
             case 429 -> "Rate limit exceeded (429). Retry after a delay.";
-            default -> "Unexpected HTTP status " + status + " from " + request.uri();
+            default ->
+                "Unexpected HTTP status "
+                    + status
+                    + " from "
+                    + request.uri().getScheme()
+                    + "://"
+                    + request.uri().getAuthority()
+                    + request.uri().getPath();
           };
 
       throw new EzkeyException(message, status, body);
 
+    } catch (HttpTimeoutException e) {
+      throw new EzkeyException("Read timeout waiting for Ezkey at " + config.baseUrl(), e);
     } catch (IOException e) {
+      if (EzkeyException.isReadTimeoutThrowable(e)) {
+        throw new EzkeyException("Read timeout waiting for Ezkey at " + config.baseUrl(), e);
+      }
       throw new EzkeyException(
           "Network error connecting to Ezkey at " + config.baseUrl() + ": " + e.getMessage(), e);
     } catch (InterruptedException e) {

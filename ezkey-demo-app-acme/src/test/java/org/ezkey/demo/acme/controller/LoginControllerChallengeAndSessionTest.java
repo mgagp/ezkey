@@ -266,6 +266,58 @@ class LoginControllerChallengeAndSessionTest {
   }
 
   @Test
+  void httpServerErrorWithTimeoutInMessageIsNotTreatedAsPending() throws Exception {
+    CountingSession session = pendingSession();
+    session.setAttribute("pendingExpiresAt", OffsetDateTime.now().plusSeconds(120).toString());
+
+    // Mimics SDK HTTP 500 whose message/body/URL mention "timeout" (wait?timeout=20).
+    when(ezkeyClient.waitForAuthAttempt(eq(7), anyInt(), anyInt()))
+        .thenThrow(
+            new EzkeyException(
+                "Unexpected HTTP status 500 from"
+                    + " http://integration-api:7080/api/v1/auth-attempts/7/wait?timeout=20&polling=2",
+                500,
+                "{\"detail\":\"upstream timeout while proxying\"}"));
+
+    mockMvc
+        .perform(get("/api/auth-status").session(session))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("error"))
+        .andExpect(jsonPath("$.redirectUrl").value("/login?error=authfailed"))
+        .andExpect(jsonPath("$.message").value(DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
+
+    assertThat(session.getAttribute("authAttemptFinalStatus")).isEqualTo("ERROR");
+    assertThat(
+            LoginController.isTransientWaitFailure(
+                new EzkeyException(
+                    "Unexpected HTTP status 500 from …/wait?timeout=20", 500, "timeout")))
+        .isFalse();
+  }
+
+  @Test
+  void realReadTimeoutKeepsPendingUntilAttemptTtl() throws Exception {
+    CountingSession session = pendingSession();
+    session.setAttribute("pendingExpiresAt", OffsetDateTime.now().plusSeconds(120).toString());
+
+    when(ezkeyClient.waitForAuthAttempt(eq(7), anyInt(), anyInt()))
+        .thenThrow(
+            new EzkeyException(
+                "Read timeout waiting for Ezkey at http://integration-api:7080",
+                new HttpTimeoutException("request timed out")));
+
+    mockMvc
+        .perform(get("/api/auth-status").session(session))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("pending"));
+
+    assertThat(session.getAttribute("authAttemptFinalStatus")).isNull();
+    assertThat(
+            LoginController.isTransientWaitFailure(
+                new EzkeyException("x", new HttpTimeoutException("t"))))
+        .isTrue();
+  }
+
+  @Test
   void slowApprovalAroundFortySecondsReachesDashboard() throws Exception {
     CountingSession session = pendingSession();
     // Attempt TTL far enough that soft timeouts must keep polling (not abort at ~30s).
@@ -364,6 +416,8 @@ class LoginControllerChallengeAndSessionTest {
     assertThat(content).contains("scheduleNextPoll");
     assertThat(content).contains("setTimeout(checkAuthStatus");
     assertThat(content).contains("if (!response.ok)");
+    assertThat(content).contains("showError('Authentication rejected by user.');");
+    assertThat(content).doesNotContain("Authentication rejected by user. ' + (result.message");
     assertThat(content).doesNotContain("setInterval(checkAuthStatus");
     assertThat(content).doesNotContain("pollingInterval = setInterval");
   }

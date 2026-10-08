@@ -10,6 +10,9 @@
 
 package org.ezkey.sdk;
 
+import java.net.SocketTimeoutException;
+import java.net.http.HttpTimeoutException;
+
 /**
  * Checked exception thrown by Ezkey SDK operations.
  *
@@ -104,5 +107,33 @@ public class EzkeyException extends Exception {
    */
   public boolean isUnauthorized() {
     return statusCode == 401;
+  }
+
+  /**
+   * Whether this failure is an HTTP/socket read timeout (by type or cause chain only).
+   *
+   * <p>Do not use message text — HTTP error messages may include a {@code timeout=} query parameter
+   * from the wait URL without being a client read timeout.
+   *
+   * @return {@code true} when {@link HttpTimeoutException} or {@link SocketTimeoutException}
+   *     appears in this exception or its cause chain
+   */
+  public boolean isReadTimeout() {
+    return isReadTimeoutThrowable(this);
+  }
+
+  /**
+   * Whether the throwable (or any cause) is a client read timeout.
+   *
+   * @param throwable root throwable (may be null)
+   * @return {@code true} for {@link HttpTimeoutException} / {@link SocketTimeoutException}
+   */
+  public static boolean isReadTimeoutThrowable(Throwable throwable) {
+    for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+      if (cause instanceof HttpTimeoutException || cause instanceof SocketTimeoutException) {
+        return true;
+      }
+    }
+    return false;
   }
 }

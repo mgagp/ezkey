@@ -12,7 +12,6 @@ package org.ezkey.demo.acme.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import java.net.http.HttpTimeoutException;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Locale;
@@ -566,26 +565,16 @@ public class LoginController {
   }
 
   /**
-   * Read/network timeouts must not abort challenge-wait polling before the attempt TTL.
+   * Read timeouts must not abort challenge-wait polling before the attempt TTL.
+   *
+   * <p>Classification is by exception type/cause only ({@link EzkeyException#isReadTimeout()}),
+   * never by message text — HTTP 5xx bodies and wait URLs may contain the word {@code timeout}.
    *
    * @param exception SDK exception from wait
-   * @return true when the failure is a transient wait timeout
+   * @return true when the failure is a transient client read timeout
    */
   static boolean isTransientWaitFailure(EzkeyException exception) {
-    if (exception == null) {
-      return false;
-    }
-    for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
-      if (cause instanceof HttpTimeoutException) {
-        return true;
-      }
-    }
-    String message = exception.getMessage();
-    if (message == null) {
-      return false;
-    }
-    String lower = message.toLowerCase(Locale.ROOT);
-    return lower.contains("timed out") || lower.contains("timeout");
+    return exception != null && exception.isReadTimeout();
   }
 
   /**
