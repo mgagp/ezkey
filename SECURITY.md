@@ -21,7 +21,7 @@ Report privately using GitHub’s **Report a vulnerability** form (private vulne
 
 https://github.com/mgagp/ezkey/security/advisories/new
 
-You may also email **security@ezkey.org** if the GitHub form is unavailable.
+If the form is unavailable, open a GitHub issue asking for a private contact channel, without technical details.
 
 Please include:
 
@@ -32,11 +32,9 @@ Please include:
 
 ## What to expect
 
-This is a small community lab project maintained primarily by [@mgagp](https://github.com/mgagp), with AI-assisted review. Response is **best-effort**.
+This is a small community lab project maintained primarily by [@mgagp](https://github.com/mgagp), with AI-assisted review.
 
-- We aim to acknowledge private reports when we can.
-- A **critical** vulnerability with an **available fix** is triaged within **48 hours**.
-- We do not commit to broader SLAs, fixed remediation windows, or guaranteed public timelines beyond that triage commitment.
+Response is best effort, with no SLA. We usually acknowledge reports within a few days.
 
 After remediation where applicable, we may publish a GitHub Security Advisory and credit the reporter unless anonymity is requested.
 
@@ -57,10 +55,10 @@ Reports that are generally out of scope include:
 The following are **actually in use** today (they are hygiene and review practices, not a production guarantee):
 
 - Required pull-request CI aggregate check **`ci-gate`** (GitHub Actions)
-- **CodeQL** code scanning
-- **Dependabot** dependency updates and alerts
+- **CodeQL** code scanning (default setup, non-blocking)
+- **Dependabot** alerts and security updates; version updates for Maven, npm, pip and GitHub Actions
 - **Secret scanning** with **push protection**
-- Curated, human-reviewed security and hygiene passes (for example Java static analysis, live local API security campaigns, and Dependabot triage) — see repository agent notes and `product-docs/global/hygiene/`
+- Periodic AI-assisted security and hygiene passes, reviewed by the maintainer (static analysis, local API pentest campaigns, Dependabot triage); see `product-docs/global/hygiene/`
 
 Ezkey does **not** claim mandatory peer review of every change, anomaly-detection product features, or real-time operational alerting as part of this policy.
 
