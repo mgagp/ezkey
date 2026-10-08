@@ -23,7 +23,7 @@ The CLI is **not** started by `./ezkey-tests/clean-start.sh`. After the Docker s
 
 ## Requirements
 
-- **Python 3.11 or later** (3.8–3.10 are end of life)
+- **Python >= 3.12** — see the [major-upgrades Python policy](../product-docs/global/hygiene/major-upgrades/README.md#python)
 
 ## Installation
 
