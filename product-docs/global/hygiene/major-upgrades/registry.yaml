@@ -134,6 +134,8 @@
     - { file: .nvmrc, expect: "24" }
     # Intentional expect for the aligned image; today the Dockerfile still has node:22-alpine
     - { file: ezkey-admin-ui/docker/Dockerfile, expect: "node:24-alpine" }
+    # Hard-coded major gate in Admin UI CI job (must move with .nvmrc)
+    - { file: .github/workflows/ci.yml, expect: "maj!==24" }
   eol: 2028-04-30 # Node 22 EOL 2027-04-30
   target: "26" # LTS from 2026-10-28 → eligible from 2027-01-28
   decision: keep
@@ -351,12 +353,12 @@
   component: GitHub Actions runners
   owner: fred
   eol_slug: ubuntu
-  current: "ubuntu-24.04"
+  current: "24.04" # endoflife.date Ubuntu cycle; runner label stays in expect
   sources:
     - { file: .github/workflows/ci.yml, expect: "ubuntu-24.04" }
     - { file: .github/workflows/ezkey-mobile-unit-tests.yml, expect: "ubuntu-24.04" }
   eol: 2029-05-31
-  target: "ubuntu-24.04"
+  target: "24.04"
   decision: keep
   security: false
   issue: null

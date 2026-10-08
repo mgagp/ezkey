@@ -131,8 +131,9 @@ free part. Commands below are paths that exist in this repository.
 HAProxy additionally: `./docker/manage-ha.sh status`, then **Test C: Failover** in
 [`docker/README-HA.md`](../../../../docker/README-HA.md) (stop one instance; traffic fails over).
 
-**PAM / Rocky:** when the Rocky/PAM image line moves, also run
-`./ezkey-pam/scripts/up.sh` (script exists) and record the result in the PR/issue. **Lightsail
+**PAM / Rocky:** when the Rocky/PAM image line moves, run
+`./ezkey-pam/scripts/provision.sh` then `./ezkey-pam/scripts/up.sh` (`up.sh` requires
+provisioning first; both scripts exist) and record the result in the PR/issue. **Lightsail
 compose** (`experimental-hybrid/lightsail/docker-compose.yml`) is in the registry `sources` for
 drift only; a full Lightsail deploy rehearsal is **out of scope** for the local floor unless the
 operator asks for it.
@@ -154,16 +155,21 @@ operator asks for it.
 Rehearse on a **copy**, not production data. There is **no** `pg_upgrade` script in the repo;
 rehearsal is dump / restore.
 
-1. `docker exec ezkey-postgres pg_dump -U postgres ezkey_db > backup.sql` (see
-   [`docker/README.md`](../../../../docker/README.md) backup section).
+1. **Before any fresh-volume step:** dump the database **and** protect secrets.
+   - `docker exec ezkey-postgres pg_dump -U postgres ezkey_db > backup.sql` (see
+     [`docker/README.md`](../../../../docker/README.md) backup section).
+   - Keep the existing `ezkey_encryption-secrets` volume **or** back up the master key
+     (`docker/README.md` § encryption backup ~540–548).
+   - **Warning:** never run `docker compose down -v` (or equivalent volume wipe) before secrets
+     are backed up — it deletes `ezkey_encryption-secrets`, and restored ciphertext becomes
+     unreadable.
 2. Start **postgres alone** on the **new** image tag with a **fresh** data volume; restore with
-   `psql` (for example `docker exec -i … psql -U postgres ezkey_db < backup.sql`).
-3. Keep the existing `ezkey_encryption-secrets` volume **or** restore the master key first
-   (`docker/README.md` § encryption backup ~540–548); otherwise restored ciphertext is unreadable.
-4. `./docker/start.sh` — Flyway should then be a **no-op** on an already-migrated dump (do not
+   `psql` (for example `docker exec -i … psql -U postgres ezkey_db < backup.sql`). Restore the
+   master key into `ezkey_encryption-secrets` first if that volume was not retained.
+3. `./docker/start.sh` — Flyway should then be a **no-op** on an already-migrated dump (do not
    expect a full replay).
-5. `./scripts/db/verify-grants.sh --docker`.
-6. `mvn test -pl ezkey-tests`.
+4. `./scripts/db/verify-grants.sh --docker`.
+5. `mvn test -pl ezkey-tests`.
 
 The **`db-grants`** service uses the same Postgres image tag
 (`docker/docker-compose.yml` ~64) and **must move together** with `postgres` on every line bump.
