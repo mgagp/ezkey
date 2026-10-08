@@ -5,12 +5,14 @@
 if [ ! -f /app/config/application.properties ]; then
   echo "Creating /app/config/application.properties from template..."
   cp /app/config-template.properties /app/config/application.properties
-  chmod 600 /app/config/application.properties
 else
   echo "Config file exists, skipping template copy (volume persistence)"
 fi
-# Unconditional: tighten permissions on every start (fixes existing 0644 volumes; no root needed).
-chmod 600 /app/config/application.properties 2>/dev/null || true
+# Tighten permissions on every start (fixes existing 0644 volumes; no root needed).
+# spring user is uid 100 / gid 101 in this image.
+if ! chmod 600 /app/config/application.properties; then
+  echo "WARN: could not chmod 600 /app/config/application.properties (file may be owned by root; fix ownership or mode on the host volume)" >&2
+fi
 echo "SPRING_CONFIG_ADDITIONAL_LOCATION=$SPRING_CONFIG_ADDITIONAL_LOCATION"
 echo "Working directory: $(pwd)"
 echo "Config file exists: $([ -f /app/config/application.properties ] && echo yes || echo no)"

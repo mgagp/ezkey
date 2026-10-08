@@ -20,10 +20,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * <p>Binds externalized configuration from application.properties with validation and type safety.
  * Configuration changes require container restart to take effect.
  *
- * <p>Optional multi-tenant access-code slots bind from {@code ezkey.access-codes.<slotId>.*}. Slot
- * codes are validated and hashed at startup by {@link
- * org.ezkey.demo.acme.service.AccessCodeService}; plaintext codes are never kept in memory after
- * that.
+ * <p>Optional multi-tenant access-code slots bind from {@code ezkey.access-codes.<slotId>.*}.
+ * {@link org.ezkey.demo.acme.service.AccessCodeService} validates codes at startup and uses only
+ * SHA-256 digests for lookup and comparison. The plaintext code remains in this bean (and the
+ * Spring {@code Environment}) after binding — do not log slot codes.
  *
  * @author Ezkey contributors
  * @since 2025
@@ -76,8 +76,8 @@ public class AcmeProperties {
   }
 
   /**
-   * Raw access-code slot binding from configuration (plaintext code present only until startup
-   * hashing).
+   * Raw access-code slot binding from configuration (plaintext code stays on the bean; digests are
+   * used for lookup).
    */
   public static class AccessCodeSlotProperties {
 

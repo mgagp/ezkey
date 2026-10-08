@@ -17,6 +17,7 @@ import org.ezkey.demo.acme.DemoAuthMessages;
 import org.ezkey.demo.acme.security.DemoRateLimitService;
 import org.ezkey.demo.acme.service.AccessCodeService;
 import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
+import org.ezkey.demo.acme.web.SessionHelpers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -92,11 +93,7 @@ public class AccessCodeController {
     String label = accessCodeService.getLabel(resolvedSlotId);
     LOG.info("Access-code slot activated: label={}", label != null ? label : resolvedSlotId);
 
-    HttpSession existing = request.getSession(false);
-    if (existing != null) {
-      existing.invalidate();
-    }
-    HttpSession session = request.getSession(true);
+    HttpSession session = SessionHelpers.invalidateAndCreate(request);
     demoApiKeyConfigService.activateAccessCodeSlot(session, resolvedSlotId);
 
     RedirectView redirect = new RedirectView("/login", true);

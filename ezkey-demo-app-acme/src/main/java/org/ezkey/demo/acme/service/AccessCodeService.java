@@ -27,11 +27,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Loads optional multi-tenant access-code slots, fail-fast validates them, and keeps only SHA-256
- * digests of codes in memory.
+ * Loads optional multi-tenant access-code slots, fail-fast validates them, and uses SHA-256 digests
+ * for lookup and comparison.
  *
  * <p>Lookup hashes the presented code and compares it to every slot digest with {@link
  * MessageDigest#isEqual} (no early exit, never {@code equals} or a map keyed by plaintext).
+ * Plaintext codes remain in {@link AcmeProperties} / the Spring Environment after binding.
  *
  * @author Ezkey contributors
  * @since 2026
@@ -170,15 +171,6 @@ public class AccessCodeService {
   public String getLabel(String slotId) {
     LoadedSlot slot = slotsById.get(slotId);
     return slot != null ? slot.label() : null;
-  }
-
-  /**
-   * Returns whether any access-code slots are loaded.
-   *
-   * @return true when at least one slot is configured
-   */
-  public boolean hasSlots() {
-    return !slots.isEmpty();
   }
 
   private static byte[] sha256(String value) {

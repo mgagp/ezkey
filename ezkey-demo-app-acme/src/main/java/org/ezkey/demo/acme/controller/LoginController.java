@@ -18,6 +18,7 @@ import org.ezkey.demo.acme.dto.AuthenticatedUser;
 import org.ezkey.demo.acme.security.DemoRateLimitService;
 import org.ezkey.demo.acme.service.AccessCodeService;
 import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
+import org.ezkey.demo.acme.web.SessionHelpers;
 import org.ezkey.sdk.EzkeyClient;
 import org.ezkey.sdk.EzkeyException;
 import org.slf4j.Logger;
@@ -104,8 +105,11 @@ public class LoginController {
       return "redirect:/login?error=ratelimited";
     }
 
-    logger.info("Login attempt for username: {}", username);
+    String usernameForLog = sanitizeForLog(username);
+    logger.info("Login attempt for username: {}", usernameForLog);
 
+    // Clear any previous final status flag and pending attributes when starting a
+    // new login attempt
     session.removeAttribute("authAttemptFinalStatus");
     session.removeAttribute("pendingAuthAttemptId");
     session.removeAttribute("pendingChallengeCode");
@@ -129,7 +133,7 @@ public class LoginController {
       logger.info(
           "Auth attempt created: authAttemptId={}, userIdentifier={}",
           createResponse.authAttemptId(),
-          username);
+          usernameForLog);
 
       session.setAttribute("pendingAuthAttemptId", createResponse.authAttemptId());
       session.setAttribute("pendingChallengeCode", createResponse.authAttemptChallenge());
@@ -144,7 +148,11 @@ public class LoginController {
       return "redirect:/challenge-wait";
 
     } catch (EzkeyException e) {
-      logger.error("EZKey authentication error for username: {}", username, e);
+      logger.error(
+          "EZKey authentication error for username={} exceptionClass={} httpStatus={}",
+          usernameForLog,
+          e.getClass().getSimpleName(),
+          e.getStatusCode());
       redirectAttributes.addFlashAttribute("error", DemoAuthMessages.GENERIC_SIGN_IN_FAILED);
       return "redirect:/login?error=authfailed";
     }
@@ -206,8 +214,9 @@ public class LoginController {
   /**
    * Applies API key credentials at runtime for temporary evaluator console access.
    *
-   * <p>Invalidates the previous session (clears slot or prior paste), opens a new session, and
-   * stores the pasted keys. The client must reload to pick up the new CSRF token.
+   * <p>Validates keys first, then invalidates the previous session (clears slot or prior paste),
+   * opens a new session, and stores the pasted keys. The client must reload to pick up the new CSRF
+   * token.
    *
    * @param body the API key credentials (integrationKey, secretKey)
    * @param request the HTTP request
@@ -232,12 +241,15 @@ public class LoginController {
       return ResponseEntity.badRequest()
           .body(new ApplyApiKeyResponse(false, "Integration key and secret key are required."));
     }
-
-    HttpSession existing = request.getSession(false);
-    if (existing != null) {
-      existing.invalidate();
+    if (body.integrationKey().isBlank() || body.secretKey().isBlank()) {
+      return ResponseEntity.badRequest()
+          .body(
+              new ApplyApiKeyResponse(
+                  false, "Both integration key and secret key must be non-blank."));
     }
-    HttpSession session = request.getSession(true);
+
+    // Validate before invalidate so a failed paste does not drop the active slot / CSRF session.
+    HttpSession session = SessionHelpers.invalidateAndCreate(request);
 
     boolean applied =
         demoApiKeyConfigService.applyApiKey(session, body.integrationKey(), body.secretKey());
@@ -294,6 +306,9 @@ public class LoginController {
   /**
    * Checks the status of a pending authentication attempt (for polling).
    *
+   * <p>This endpoint is called by the challenge-wait page to check if the authentication attempt
+   * has been approved.
+   *
    * @param request the HTTP request (for session id change on ACCEPTED)
    * @param session the HTTP session
    * @return JSON response with status and redirect URL if approved
@@ -301,17 +316,27 @@ public class LoginController {
   @GetMapping("/api/auth-status")
   public ResponseEntity<AuthStatusResponse> checkAuthStatus(
       HttpServletRequest request, HttpSession session) {
+    // Check if user is already authenticated (prevents "expired" glitch after
+    // successful auth)
     AuthenticatedUser existingUser = (AuthenticatedUser) session.getAttribute("user");
     if (existingUser != null) {
+      // User is already authenticated, return success immediately
       return ResponseEntity.ok(
           new AuthStatusResponse("accepted", "/dashboard", "Authentication successful"));
     }
 
+    // Check if a final status was already returned (prevents race condition)
+    // This handles the case where a poll arrives after we've already returned a
+    // final status
+    // and cleaned up session attributes, preventing "session expired" from being
+    // returned
     String finalStatus = (String) session.getAttribute("authAttemptFinalStatus");
     if (finalStatus != null) {
       logger.info(
           "Final status already returned: {}, returning same status to prevent race condition",
           finalStatus);
+      // A final status was already returned, return the same status to prevent race
+      // condition
       if ("REJECTED".equals(finalStatus)) {
         return ResponseEntity.ok(
             new AuthStatusResponse("rejected", "/login?error=rejected", "Rejected"));
@@ -344,6 +369,8 @@ public class LoginController {
           new AuthStatusResponse("error", "/login?error=authfailed", SDK_NOT_CONFIGURED_MSG));
     }
 
+    String usernameForLog = sanitizeForLog(username);
+
     try {
       var waitResponse = client.waitForAuthAttempt(authAttemptId, 30, 2);
 
@@ -355,7 +382,7 @@ public class LoginController {
           status,
           completed,
           authAttemptId,
-          username);
+          usernameForLog);
 
       String normalizedStatus = status != null ? status.trim().toUpperCase() : null;
 
@@ -363,7 +390,7 @@ public class LoginController {
         logger.warn(
             "Received null or empty status for authAttemptId={}, username={}, completed={}",
             authAttemptId,
-            username,
+            usernameForLog,
             completed);
         if (completed) {
           session.removeAttribute("pendingAuthAttemptId");
@@ -383,6 +410,8 @@ public class LoginController {
       }
 
       if ("ACCEPTED".equals(normalizedStatus)) {
+        // Authentication successful - create session FIRST, then clear pending
+        // attributes
         AuthenticatedUser authenticatedUser =
             new AuthenticatedUser(
                 username, displayName != null ? displayName : username, enrollmentId);
@@ -390,35 +419,49 @@ public class LoginController {
         session.setAttribute("user", authenticatedUser);
         request.changeSessionId();
 
+        // Clear pending auth data AFTER creating user session
+        // This prevents "expired" glitch if another poll arrives before redirect
         session.removeAttribute("pendingAuthAttemptId");
         session.removeAttribute("pendingChallengeCode");
         session.removeAttribute("pendingUsername");
         session.removeAttribute("pendingDisplayName");
         session.removeAttribute("pendingEnrollmentId");
 
-        logger.info("Challenge authentication successful for username: {}", username);
+        logger.info("Challenge authentication successful for username: {}", usernameForLog);
         return ResponseEntity.ok(
             new AuthStatusResponse("accepted", "/dashboard", "Authentication successful"));
       } else if ("REJECTED".equals(normalizedStatus)) {
+        // Authentication rejected by user
+        // Mark as final status to prevent race condition with subsequent polls
+        // Don't clear session attributes immediately - let them be cleared on next
+        // request
+        // This prevents a race condition where a poll arrives after cleanup and returns
+        // "expired"
         session.setAttribute("authAttemptFinalStatus", "REJECTED");
 
-        logger.info("Challenge authentication rejected for username: {}", username);
+        logger.info("Challenge authentication rejected for username: {}", usernameForLog);
         return ResponseEntity.ok(
             new AuthStatusResponse("rejected", "/login?error=rejected", "Rejected"));
       } else if ("EXPIRED".equals(normalizedStatus)) {
+        // Authentication expired
+        // Mark as final status to prevent race condition with subsequent polls
         session.setAttribute("authAttemptFinalStatus", "EXPIRED");
 
-        logger.info("Challenge authentication expired for username: {}", username);
+        logger.info("Challenge authentication expired for username: {}", usernameForLog);
         return ResponseEntity.ok(
             new AuthStatusResponse("expired", "/login?error=expired", "Expired"));
       } else if ("INVALID".equals(normalizedStatus)) {
+        // Authentication invalid (wrong signature, challenge, etc.)
+        // Mark as final status to prevent race condition with subsequent polls
         session.setAttribute("authAttemptFinalStatus", "INVALID");
 
-        logger.info("Challenge authentication invalid for username: {}", username);
+        logger.info("Challenge authentication invalid for username: {}", usernameForLog);
         return ResponseEntity.ok(
             new AuthStatusResponse(
                 "error", "/login?error=authfailed", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
       } else if (completed) {
+        // Completed but unknown status
+        // Mark as final status to prevent race condition
         session.setAttribute("authAttemptFinalStatus", "UNKNOWN");
 
         logger.warn(
@@ -426,7 +469,7 @@ public class LoginController {
                 + " username: {}",
             status,
             normalizedStatus,
-            username);
+            usernameForLog);
         return ResponseEntity.ok(
             new AuthStatusResponse(
                 "error", "/login?error=authfailed", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
@@ -435,12 +478,30 @@ public class LoginController {
             new AuthStatusResponse("pending", null, "Waiting for device approval..."));
       }
     } catch (EzkeyException e) {
-      logger.error("Error checking auth status for authAttemptId={}", authAttemptId);
+      logger.error(
+          "Error checking auth status for authAttemptId={} exceptionClass={} httpStatus={}",
+          authAttemptId,
+          e.getClass().getSimpleName(),
+          e.getStatusCode());
+      // Mark as error to prevent race condition
       session.setAttribute("authAttemptFinalStatus", "ERROR");
       return ResponseEntity.ok(
           new AuthStatusResponse(
               "error", "/login?error=authfailed", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
     }
+  }
+
+  /**
+   * Neutralizes CR/LF in values written to logs (log-injection hardening).
+   *
+   * @param value raw value (may be null)
+   * @return sanitized value, or null
+   */
+  static String sanitizeForLog(String value) {
+    if (value == null) {
+      return null;
+    }
+    return value.replace('\r', '_').replace('\n', '_');
   }
 
   /**

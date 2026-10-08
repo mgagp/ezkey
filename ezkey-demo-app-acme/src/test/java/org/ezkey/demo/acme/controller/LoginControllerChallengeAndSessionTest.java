@@ -131,6 +131,24 @@ class LoginControllerChallengeAndSessionTest {
   }
 
   @Test
+  void shouldRejectBlankApiKeysWithoutInvalidatingSession() throws Exception {
+    MockHttpSession prior = new MockHttpSession();
+    prior.setAttribute(DemoApiKeyConfigService.SESSION_ACCESS_CODE_SLOT_ID, "northwind");
+
+    mockMvc
+        .perform(
+            post("/api/apply-api-key")
+                .session(prior)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"integrationKey\":\"\",\"secretKey\":\"\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false));
+
+    assertThat(prior.isInvalid()).isFalse();
+    verify(demoApiKeyConfigService, never()).applyApiKey(any(), anyString(), anyString());
+  }
+
+  @Test
   void shouldChangeSessionIdOnAccepted() throws Exception {
     MockHttpSession session = new MockHttpSession();
     session.setAttribute("pendingAuthAttemptId", 7);

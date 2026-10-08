@@ -29,13 +29,14 @@ class DemoAppAcmeEntrypointScriptTest {
   @TempDir Path tempDir;
 
   @Test
-  void entrypointSourceUsesChmod600OnCreateAndUnconditionally() throws IOException {
+  void entrypointSourceUsesChmod600OnceWithWarnOnFailure() throws IOException {
     Path script = resolveEntrypoint();
     String content = Files.readString(script, StandardCharsets.UTF_8);
     assertThat(content).contains("chmod 600 /app/config/application.properties");
-    assertThat(content)
-        .contains("chmod 600 /app/config/application.properties 2>/dev/null || true");
+    assertThat(content).contains("WARN: could not chmod 600");
+    assertThat(content.split("chmod 600", -1)).hasSize(3);
     assertThat(content).doesNotContain("chmod 644");
+    assertThat(content).doesNotContain("2>/dev/null || true");
 
     Path dockerfile = resolveDockerfile();
     String dockerContent = Files.readString(dockerfile, StandardCharsets.UTF_8);
@@ -80,7 +81,7 @@ class DemoAppAcmeEntrypointScriptTest {
             .replace("/app/app.jar", appRoot.resolve("app.jar").toString());
     Files.writeString(localScript, adapted, StandardCharsets.UTF_8);
 
-    ProcessBuilder builder = new ProcessBuilder("sh", localScript.toString());
+    ProcessBuilder builder = new ProcessBuilder("/bin/sh", localScript.toAbsolutePath().toString());
     builder.directory(appRoot.toFile());
     builder.environment().put("PATH", appRoot + ":" + System.getenv("PATH"));
     builder.redirectErrorStream(true);

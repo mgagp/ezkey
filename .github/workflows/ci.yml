@@ -67,6 +67,7 @@ jobs:
               - 'ezkey-demo-app-acme/**'
               - 'ezkey-demo-device/**'
               - 'ezkey-tests/**'
+              - 'docker/demo-app-acme-entrypoint.sh'
               - 'scripts/build.sh'
               - '.mvn/**'
             mobile:

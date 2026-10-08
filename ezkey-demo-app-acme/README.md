@@ -87,6 +87,35 @@ curl -X POST http://localhost:8082/actuator/refresh
 
 **Authentication Format**: `Authorization: Basic base64(integrationKey:secretKey)`
 
+## Temporary Access Codes (Play closed testing)
+
+Optional multi-tenant slots for evaluator links. Operator steps (no personal data in the repo):
+
+1. **Generate a code** (32 lowercase hex chars):
+
+   ```bash
+   openssl rand -hex 16
+   ```
+
+2. **Edit** `/app/config/application.properties` (Docker volume) or the local external config file:
+
+   ```properties
+   ezkey.access-codes.northwind.code=<openssl-rand-hex-16>
+   ezkey.access-codes.northwind.integration-key=ezkey_ikey_…
+   ezkey.access-codes.northwind.secret-key=ezkey_skey_…
+   ezkey.access-codes.northwind.label=Northwind Portal
+   ```
+
+3. **Restart** the demo container so slots load (fail-fast if a code is malformed or duplicated).
+
+4. **Tester URL:** `https://<host>/t/{code}` (local: `http://localhost:8082/t/{code}`). Unknown codes show the generic sign-in error.
+
+5. **Revoke:** remove or rotate the slot (delete the `ezkey.access-codes.<slot>.*` block, or change `.code`) and restart.
+
+6. **File permissions:** the image runs as `spring` (uid `100` / gid `101`). Config should be mode `0600`. The entrypoint applies `chmod 600` on every start; if that fails (e.g. root-owned volume file), it prints a WARN — fix ownership on the host volume.
+
+Never commit real access codes or personal tester data. See `config/application.properties.example` for the slot shape.
+
 ## Demo Session Model
 
 - API key credentials entered in the UI are scoped to the current browser session only.
@@ -94,6 +123,8 @@ curl -X POST http://localhost:8082/actuator/refresh
   API key available for the next login attempt in that same browser session.
 - A different browser or browser profile does not inherit another session's demo API key.
 - Session expiry or losing the browser session can require re-entering the API key.
+- Access-code activation and pasted API keys each invalidate the previous session before storing the
+  new credential source.
 
 ## Users Mapping File
 

@@ -257,8 +257,7 @@ Orientation only — M1 one-page brief, then execution on a **new branch**. No a
 | Surface | Consequence |
 | ------- | ----------- |
 | **Acme** | Access-code table, `/t/{code}`, generic errors, switch-code safety, challenge always on. |
-| **Host / Caddy** | Same host `demo-acme.ezkey.online`; community `Caddyfile.ezkey-online` gains Referrer-Policy
-  `no-referrer` plus Cloudflare `trusted_proxies` / client-IP header hardening (M1). |
+| **Host / Caddy** | Same host `demo-acme.ezkey.online`; community `Caddyfile.ezkey-online` gains Referrer-Policy `no-referrer` plus Cloudflare `trusted_proxies` / client-IP header hardening (M1). |
 | **Tenancy** | Northwind Portal (Marc) + second tenant; Reine in both; three oracles. |
 | **Play** | Opt-ins open now; mission sheet EN/FR; feedback channel; App access at M1. |
 | **TS SDK / new demo app** | Not on this path. |
