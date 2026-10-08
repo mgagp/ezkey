@@ -910,7 +910,7 @@ curl -X DELETE http://localhost:9080/api/v1/api-keys/42 \
 
 ### Getting Help
 - GitHub Issues: Report bugs or feature requests
-- Security Issues: security@ezkey.org (for vulnerabilities)
+- Security Issues: security@ezkey.org (for vulnerabilities; see also [`SECURITY.md`](../SECURITY.md))
 
 ---
 
