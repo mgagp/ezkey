@@ -5,7 +5,7 @@
 ## Overview
 
 - **Current scope note**: The current mobile product and security posture are **Android-first**. iOS remains a later planned milestone and is **not** a short-term parity or release target. Review Android as the current implementation of record; do not treat missing iOS parity as a present defect unless documentation overclaims it.
-- **Stack**: React Native 0.86.2, React 19.2.7, and TypeScript with dedicated Android (Kotlin) and iOS (Swift/Obj-C++) native modules
+- **Stack**: React Native 0.87.1, React 19.3.0, and TypeScript with dedicated Android (Kotlin) and iOS (Swift/Obj-C++) native modules
 - **Primary Flows**: Enrollment via QR, secure key generation, pending authentication approvals/denials, challenge handling
 - **APIs Consumed**: `auth-api` endpoints documented in [`docs/ENDPOINT.md`](../docs/ENDPOINT.md)
 - **Security Alignment**: Tracks the current guarantees and constraints documented in [`docs/CRYPTO.md`](../docs/CRYPTO.md) and [`docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md)
@@ -124,27 +124,27 @@ The Android **debug** build is configured in two ways so it can run **without Me
 1. **`debuggableVariants = []`** in `android/app/build.gradle` — Gradle **embeds** `index.android.bundle` in the APK when you run `assembleDebug` / `installDebug`.
 2. **`ezkey.useMetroInDebug=false`** in `android/gradle.properties` (default) — `MainApplication` sets `getUseDeveloperSupport()` from `BuildConfig.USE_DEVELOPER_SUPPORT`, so the app **does not** look for the packager or enable the RN dev menu on a **debug** install.
 
-To work with **Metro + fast refresh** on a debug build, set `ezkey.useMetroInDebug=true`, rebuild, and use `yarn start` (for a physical device, `adb reverse tcp:8081 tcp:8081`).
+To work with **Metro + fast refresh** on a debug build, set `ezkey.useMetroInDebug=true`, rebuild, and use `yarn start`. For a physical device (especially **wireless ADB**), re-apply reverse every session — `yarn android:install:debug:clean` does this automatically when Metro debug is enabled (or pass `--with-metro-reverse`). Non-default Metro port: `yarn start --port 8082` and `--metro-port 8082` / `EZKEY_METRO_PORT=8082`.
 
-1. On the phone, enable **Developer options → USB debugging** and connect via USB (accept the computer’s RSA prompt when prompted).
+1. On the phone, enable **Developer options → USB debugging** (or wireless debugging) and connect (accept the computer’s RSA prompt when prompted).
 2. Confirm the device is visible:
 
     ```bash
-    adb devices
+    adb devices -l
     ```
 
-3. From `ezkey_mobile/`, install the debug APK on the connected device:
+3. From `ezkey_mobile/`, preferred clean install (JDK 17 probe + path preflight + install):
 
     ```bash
-    yarn android:install:debug
+    yarn android:install:debug:clean
     ```
 
-    On Windows, if Gradle fails with a JDK version error, set `JAVA_HOME` to Android Studio’s bundled JBR (JDK 17), then run the command again — see [Android build troubleshooting](#android-build-troubleshooting).
+    On Windows, yarn routes `.sh` scripts through Git Bash (`scripts/run-with-git-bash.mjs`) so WSL `bash` is not used. JDK troubleshooting: [Android JDK posture](#android-jdk-posture-17).
 
-### Alternative: build the APK, then push to the phone
+### Alternative: build the APK without a device, then push
 
 ```bash
-yarn android:assemble:debug
+yarn android:assemble:debug:clean   # or: ./scripts/build-install-debug-clean.sh --build-only
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
@@ -180,8 +180,9 @@ Pull requests that touch `ezkey_mobile/**` run the workflow [`.github/workflows/
 
 | Job | What it runs |
 |-----|----------------|
-| **js-validate** | `yarn validate:ci` on Ubuntu (Node from root `.nvmrc`, Yarn 4 via Corepack) |
-| **android-jvm-unit-tests** | `./gradlew :app:testDebugUnitTest` (JDK 17, Android SDK) |
+| **js-validate** | Daemon-JVM guard (+ negative self-test), `yarn validate:ci`, `yarn license:ci` (Node from root `.nvmrc`, Yarn 4 via Corepack) |
+| **android-jvm-unit-tests** | Daemon-JVM guard, `./gradlew :app:testDebugUnitTest` (JDK 17, Android SDK; Node from `.nvmrc`) |
+| **android-16kb-alignment** | Daemon-JVM guard, release APK + `check-16kb-alignment.sh` |
 
 Before opening or updating a mobile PR, run the same commands locally when possible. A green check on GitHub means the branch passes on a clean runner, not only on your workstation.
 

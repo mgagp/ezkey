@@ -6,11 +6,17 @@
  * the committed snapshot to the regenerated one while ignoring generatedAt so
  * timestamp-only drift does not fail CI.
  *
+ * On failure, prints a concise package-level diff (added / removed / changed
+ * name·version·license) so CI merge-base drift is self-explanatory.
+ *
  * Usage: node scripts/check-third-party-licenses-freshness.mjs
  *
  * When this fails (including on Dependabot PRs): from ezkey_mobile/ run
+ *   yarn install --immutable
  *   yarn license:app-data
  * and commit app/data/thirdPartyLicenses.json on the same branch.
+ * If CI runs a merge commit, regenerate after merging/rebasing onto the PR base
+ * (main) so package.json / yarn.lock match what GitHub Actions installs.
  */
 import {spawnSync} from 'child_process';
 import fs from 'fs';
@@ -33,6 +39,74 @@ function stripGeneratedAt(doc) {
 
 function stableStringify(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+function packageKey(pkg) {
+  return pkg?.name ?? '';
+}
+
+function packageFingerprint(pkg) {
+  return `${pkg?.name ?? ''}@${pkg?.version ?? ''}|${pkg?.license ?? ''}`;
+}
+
+/**
+ * Build a concise human-readable package list diff (ignores generatedAt).
+ *
+ * @param {{packages?: Array<{name?: string, version?: string, license?: string}>}} committed
+ * @param {{packages?: Array<{name?: string, version?: string, license?: string}>}} regenerated
+ * @returns {string[]}
+ */
+function describePackageDiff(committed, regenerated) {
+  const committedList = Array.isArray(committed?.packages) ? committed.packages : [];
+  const regeneratedList = Array.isArray(regenerated?.packages) ? regenerated.packages : [];
+  const committedByName = new Map(committedList.map(pkg => [packageKey(pkg), pkg]));
+  const regeneratedByName = new Map(regeneratedList.map(pkg => [packageKey(pkg), pkg]));
+
+  const lines = [];
+  const allNames = [
+    ...new Set([...committedByName.keys(), ...regeneratedByName.keys()]),
+  ].sort((a, b) => a.localeCompare(b));
+
+  for (const name of allNames) {
+    const before = committedByName.get(name);
+    const after = regeneratedByName.get(name);
+    if (!before && after) {
+      lines.push(
+        `  + ${after.name}@${after.version} (${after.license})  [added in regenerate]`,
+      );
+      continue;
+    }
+    if (before && !after) {
+      lines.push(
+        `  - ${before.name}@${before.version} (${before.license})  [removed in regenerate]`,
+      );
+      continue;
+    }
+    if (packageFingerprint(before) !== packageFingerprint(after)) {
+      const fieldChanges = [];
+      if (before.version !== after.version) {
+        fieldChanges.push(`version: ${before.version} → ${after.version}`);
+      }
+      if (before.license !== after.license) {
+        fieldChanges.push(`license: ${before.license} → ${after.license}`);
+      }
+      lines.push(`  ~ ${name}: ${fieldChanges.join('; ')}`);
+    }
+  }
+
+  if (lines.length === 0) {
+    const committedNote = committed?.note ?? '';
+    const regeneratedNote = regenerated?.note ?? '';
+    if (committedNote !== regeneratedNote) {
+      lines.push('  ~ note field differs (non-package metadata)');
+    } else {
+      lines.push(
+        '  (no per-package name/version/license delta; check JSON key order or extra fields)',
+      );
+    }
+  }
+
+  return lines;
 }
 
 function main() {
@@ -99,10 +173,20 @@ function main() {
   console.error('Committed third-party license snapshot is stale.');
   console.error(`File: ${path.relative(root, committedPath)}`);
   console.error('');
+  console.error('Package diff (committed → regenerate from current node_modules):');
+  for (const line of describePackageDiff(committed, regenerated)) {
+    console.error(line);
+  }
+  console.error('');
   console.error('CI compares the committed JSON to a fresh yarn license:app-data run and');
   console.error('ignores only the generatedAt field. Package list / versions / licenses must match.');
   console.error('');
+  console.error('Common cause on PRs: GitHub Actions tests the merge commit with main.');
+  console.error('If main changed package.json / yarn.lock after your branch point, regenerate');
+  console.error('after merging or rebasing onto the current PR base.');
+  console.error('');
   console.error('Fix (from ezkey_mobile/, Linux or Windows Git Bash):');
+  console.error('  yarn install --immutable');
   console.error('  yarn license:app-data');
   console.error('  git add app/data/thirdPartyLicenses.json && git commit');
   console.error('');

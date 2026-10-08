@@ -55,6 +55,20 @@ jobs:
         working-directory: ezkey_mobile
         run: yarn install --immutable
 
+      # Fail if Android Studio regenerated gradle-daemon-jvm.properties (Foojay JDK 21 pin).
+      - name: Guard — no Gradle daemon JVM pin
+        working-directory: ezkey_mobile
+        run: |
+          chmod +x scripts/assert-no-gradle-daemon-jvm.sh
+          ./scripts/assert-no-gradle-daemon-jvm.sh
+          ./scripts/assert-no-gradle-daemon-jvm.sh --self-test
+
+      - name: Metro stale-worktree path self-test
+        working-directory: ezkey_mobile
+        run: |
+          chmod +x scripts/metro-adb-selftest.sh scripts/lib/metro-adb.sh
+          ./scripts/metro-adb-selftest.sh
+
       - name: yarn validate
         working-directory: ezkey_mobile
         run: yarn validate:ci
@@ -90,6 +104,12 @@ jobs:
         run: |
           java -version
           test "$(java -XshowSettings:properties -version 2>&1 | sed -n 's/.*java.specification.version = //p')" = "17"
+
+      - name: Guard — no Gradle daemon JVM pin
+        working-directory: ezkey_mobile
+        run: |
+          chmod +x scripts/assert-no-gradle-daemon-jvm.sh
+          ./scripts/assert-no-gradle-daemon-jvm.sh
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -156,6 +176,12 @@ jobs:
         run: |
           java -version
           test "$(java -XshowSettings:properties -version 2>&1 | sed -n 's/.*java.specification.version = //p')" = "17"
+
+      - name: Guard — no Gradle daemon JVM pin
+        working-directory: ezkey_mobile
+        run: |
+          chmod +x scripts/assert-no-gradle-daemon-jvm.sh
+          ./scripts/assert-no-gradle-daemon-jvm.sh
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7

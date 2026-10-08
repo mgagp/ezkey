@@ -19,17 +19,18 @@ corepack enable
 ./scripts/build-install-debug-clean.sh
 ```
 
-Equivalent: `yarn android:install:debug:clean`.
+Equivalent: `yarn android:install:debug:clean`. No device: `--build-only` / `yarn android:assemble:debug:clean`. Prefer `--build-only` then `--skip-clean` (optional `--with-metro-reverse`) to avoid a second full clean Gradle.
 
 ## Why agents fail without this
 
-- Maintainer **PATH** often points at **JDK 25** — invalid for RN 0.86 Android Gradle.
+- Maintainer **PATH** often points at **JDK 25** — invalid for RN 0.87 Android Gradle.
 - **Android Studio JBR** path varies (`Android Studio` vs `Android Studio1`).
 - Long Gradle runs without a prior **`adb devices`** check waste time when wireless adb disconnects.
+- Yarn `bash scripts/…` on Windows may hit WSL `System32\bash.exe` — use `run-with-git-bash.mjs` (already wired in package.json).
 
 ## JDK rule
 
-Use `scripts/resolve-android-jdk.sh` (sources JDK 17/21). Never use repo `C:\Tools\jdk-25*` for mobile Android. Optional override: `EZKEY_ANDROID_JAVA_HOME`.
+Use `scripts/resolve-android-jdk.sh` (JDK 17 preferred; Studio JBR 21 fallback only). Never use repo `C:\Tools\jdk-25*` for mobile Android. Override: `EZKEY_ANDROID_JAVA_HOME`. Do not commit `gradle-daemon-jvm.properties`.
 
 ## Shell rule
 
@@ -37,4 +38,4 @@ Use **Git Bash** (`C:\Program Files\Git\bin\bash.exe -lc '…'`) for Gradle on W
 
 ## Fast path
 
-If `android/app/build/outputs/apk/debug/app-debug.apk` exists and only adb dropped: reconnect device, then `./scripts/build-install-debug-clean.sh --skip-clean`.
+If `android/app/build/outputs/apk/debug/app-debug.apk` exists and only adb dropped: reconnect device, then `./scripts/build-install-debug-clean.sh --skip-clean` (re-applies Metro `adb reverse` when enabled).
