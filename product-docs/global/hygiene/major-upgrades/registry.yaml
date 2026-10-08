@@ -21,6 +21,8 @@
 #   warn_months   optional; default 6 (react-native uses 3)
 #   accept_until  required when decision is accept-risk AND security is true;
 #                 at most 6 months after last_review
+#   floor_policy  optional; declared-minimum policy id (CLI Python: window-42m)
+#   ci_matrix     optional; list of runtime versions exercised in CI
 #   issue         dedicated GitHub issue number when planned, else null
 #   last_review   YYYY-MM-DD of last human/register review
 #   notes         free text; link Christophe opinion here when present
@@ -67,16 +69,21 @@
   component: Python (CLI declared minimum)
   owner: fred
   eol_slug: python
-  current: ">=3.8"
+  current: "3.12"
   sources:
-    - { file: ezkey-cli-python/setup.py, expect: 'python_requires=">=3.8"' }
-  eol: 2024-10-07 # CPython 3.8 EOL; 3.9 ended 2025-10; 3.10 ends 2026-10-01
-  target: ">=3.11" # EOL 2027-10-31 — product decision for Marc (à confirmer)
-  decision: plan
+    - { file: ezkey-cli-python/setup.py, expect: 'python_requires=">=3.12"' }
+    - { file: .github/workflows/ci.yml, expect: '"3.12"' }
+  eol: 2028-10-31 # CPython 3.12 support end (endoflife.date)
+  target: "3.13" # planned floor raise 2027-04-02, subject to distro guard
+  decision: keep
   security: false
+  floor_policy: window-42m
+  ci_matrix: ["3.12", "3.14"]
   issue: null
-  last_review: 2026-10-07
-  notes: "Product decision: raise minimum to >=3.11 or >=3.12? No CI Python matrix today"
+  last_review: 2026-10-08
+  notes: >
+    Planned floor raise to 3.13 on 2027-04-02 (subject to distro guard: Ubuntu 26.04
+    3.14, Debian 13 3.13, RHEL 10 3.12 + 3.14 AppStream).
 
 - id: kotlin-android
   component: Kotlin (Android)
