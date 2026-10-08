@@ -105,9 +105,9 @@ public final class EzkeyClient {
 
     LOG.log(
         System.Logger.Level.INFO,
-        "EzkeyClient initialized: baseUrl={0}, integrationKey={1}...",
+        "EzkeyClient initialized: baseUrl={0}, integrationKey={1}",
         config.baseUrl(),
-        config.integrationKey().substring(0, Math.min(20, config.integrationKey().length())));
+        maskIntegrationKeyForLog(config.integrationKey()));
   }
 
   /**
@@ -505,6 +505,26 @@ public final class EzkeyClient {
     String encoded =
         Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
     return "Basic " + encoded;
+  }
+
+  /**
+   * Masks an integration key for logs (same shape as ApiKeyService: {@code ezkey_ikey_xxxx…}).
+   *
+   * @param integrationKey raw integration key (may be null)
+   * @return masked value suitable for logs
+   */
+  static String maskIntegrationKeyForLog(String integrationKey) {
+    if (integrationKey == null || integrationKey.isBlank()) {
+      return "(none)";
+    }
+    String prefix = "ezkey_ikey_";
+    if (integrationKey.startsWith(prefix) && integrationKey.length() > prefix.length() + 4) {
+      return prefix
+          + integrationKey.substring(prefix.length(), prefix.length() + 4)
+          + "…";
+    }
+    int keep = Math.min(8, integrationKey.length());
+    return integrationKey.substring(0, keep) + "…";
   }
 
   /**

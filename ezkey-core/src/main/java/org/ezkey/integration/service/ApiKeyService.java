@@ -255,13 +255,13 @@ public class ApiKeyService {
   public Optional<Integration> validateApiKey(
       String integrationKey, String secretKey, String clientIp) {
 
-    logger.debug("Validating API key: {}...", integrationKey.substring(0, 15));
+    logger.debug("Validating API key: {}", maskIntegrationKeyForLog(integrationKey));
 
     // Look up API key
     Optional<ApiKey> apiKeyOpt = apiKeyRepository.findByIntegrationKeyAndActiveTrue(integrationKey);
 
     if (apiKeyOpt.isEmpty()) {
-      logger.warn("API key not found or inactive: {}", integrationKey);
+      logger.warn("API key not found or inactive: {}", maskIntegrationKeyForLog(integrationKey));
       return Optional.empty();
     }
 
@@ -269,7 +269,10 @@ public class ApiKeyService {
 
     // Check expiration
     if (apiKey.getExpiresAt() != null && apiKey.getExpiresAt().isBefore(OffsetDateTime.now())) {
-      logger.warn("API key expired: {} (expired at: {})", integrationKey, apiKey.getExpiresAt());
+      logger.warn(
+          "API key expired: {} (expired at: {})",
+          maskIntegrationKeyForLog(integrationKey),
+          apiKey.getExpiresAt());
       return Optional.empty();
     }
 
@@ -280,12 +283,13 @@ public class ApiKeyService {
     } catch (IllegalStateException encryptionViolation) {
       logger.error(
           "API key rejected: at-rest encryption policy violation for {} — {}",
-          integrationKey,
+          maskIntegrationKeyForLog(integrationKey),
           encryptionViolation.getMessage());
       return Optional.empty();
     }
     if (!passwordEncoder.matches(secretKey, storedHash)) {
-      logger.warn("Invalid secret key for integration key: {}", integrationKey);
+      logger.warn(
+          "Invalid secret key for integration key: {}", maskIntegrationKeyForLog(integrationKey));
       return Optional.empty();
     }
 
@@ -317,7 +321,7 @@ public class ApiKeyService {
 
     logger.info(
         "API key validated successfully: {} for integration: {}",
-        integrationKey,
+        maskIntegrationKeyForLog(integrationKey),
         apiKey.getIntegration().getId());
 
     return Optional.of(apiKey.getIntegration());
@@ -568,12 +572,13 @@ public class ApiKeyService {
   }
 
   /**
-   * Masks an integration key for WARN/ERROR logs (short non-secret prefix only).
+   * Masks an integration key for logs (short non-secret prefix only, e.g. {@code
+   * ezkey_ikey_a1b2…}).
    *
    * @param integrationKey raw integration key (may be null)
    * @return masked value suitable for logs
    */
-  static String maskIntegrationKeyForLog(String integrationKey) {
+  public static String maskIntegrationKeyForLog(String integrationKey) {
     if (integrationKey == null || integrationKey.isBlank()) {
       return "(none)";
     }

@@ -114,8 +114,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             String clientIp = ClientIpResolver.resolve(request, trustedProxyProperties.getCidrs());
 
             logger.debug(
-                "API key authentication attempt - Integration Key: {}..., Client IP: {}",
-                username.substring(0, Math.min(15, username.length())),
+                "API key authentication attempt - Integration Key: {}, Client IP: {}",
+                ApiKeyService.maskIntegrationKeyForLog(username),
                 clientIp);
 
             Optional<Integration> integrationOpt =
@@ -131,8 +131,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                   clientIp);
             } else {
               logger.warn(
-                  "❌ API key authentication failed - Integration Key: {}..., IP: {}",
-                  username.substring(0, Math.min(15, username.length())),
+                  "❌ API key authentication failed - Integration Key: {}, IP: {}",
+                  ApiKeyService.maskIntegrationKeyForLog(username),
                   clientIp);
             }
           }

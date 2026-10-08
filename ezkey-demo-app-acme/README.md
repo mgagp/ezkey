@@ -126,7 +126,9 @@ clean-start / Docker stack — they do **not** require `./ezkey-tests/clean-star
 limiter).
 
 Testers (or Walk agents) behind the same NAT / egress IP share the login+/t bucket. Exhausting it
-returns HTTP 429 / the rate-limit login message until the window elapses; wait or use another IP.
+does **not** return HTTP 429 from these browser entry points: `GET /t/{code}` responds **200** with
+the generic rate-limit message on the login page, and `POST /login` responds **302** to
+`/login?error=ratelimited` (same message in flash). Wait for the window or use another IP.
 
 ## Demo Session Model
 

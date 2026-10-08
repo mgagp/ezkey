@@ -10,6 +10,7 @@
 
 package org.ezkey.sdk;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -28,6 +29,17 @@ class EzkeyClientAuthAttemptLogTest {
     assertTrue(content.contains("Auth attempt created: authAttemptId={0}"));
     assertFalse(content.contains("challenge={1}"));
     assertFalse(content.contains("challenge={"));
+  }
+
+  @Test
+  void initializedLogUsesShortIntegrationKeyMask() throws IOException {
+    Path source = resolveEzkeyClientSource();
+    String content = Files.readString(source, StandardCharsets.UTF_8);
+    assertTrue(content.contains("maskIntegrationKeyForLog(config.integrationKey())"));
+    assertFalse(content.contains("substring(0, Math.min(20"));
+    assertEquals(
+        "ezkey_ikey_a1b2…",
+        EzkeyClient.maskIntegrationKeyForLog("ezkey_ikey_a1b2c3d4e5f6g7h8i9j0"));
   }
 
   private static Path resolveEzkeyClientSource() {
