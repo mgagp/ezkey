@@ -14,6 +14,7 @@
 package org.ezkey.demo.acme.controller;
 
 import jakarta.servlet.http.HttpSession;
+import org.ezkey.demo.acme.DemoAuthMessages;
 import org.ezkey.demo.acme.config.EzkeyClientProvider;
 import org.ezkey.demo.acme.dto.AuthenticatedUser;
 import org.ezkey.sdk.AuthAttemptContext;
@@ -125,7 +126,7 @@ public class BusinessApprovalController {
 
     try {
       var createResponse =
-          client.createAuthAttemptByUserIdentifier(approverIdentifier, false, context);
+          client.createAuthAttemptByUserIdentifier(approverIdentifier, true, context);
 
       session.setAttribute(SESSION_BIZ_ATTEMPT_ID, createResponse.authAttemptId());
       session.setAttribute(SESSION_BIZ_SCENARIO, scenario);
@@ -154,12 +155,10 @@ public class BusinessApprovalController {
           approverIdentifier,
           user.username(),
           e);
-      String msg =
-          e.getMessage() != null && !e.getMessage().isBlank()
-              ? e.getMessage()
-              : "Failed to create approval request.";
       return ResponseEntity.status(400)
-          .body(new BusinessApprovalStartResponse(null, null, null, null, msg));
+          .body(
+              new BusinessApprovalStartResponse(
+                  null, null, null, null, DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
     }
   }
 
@@ -236,8 +235,9 @@ public class BusinessApprovalController {
       };
 
     } catch (EzkeyException e) {
-      logger.error("Error checking business-approval status for id={}: {}", id, e.getMessage());
-      return ResponseEntity.ok(new BusinessApprovalStatusResponse("error", e.getMessage()));
+      logger.error("Error checking business-approval status for id={}", id);
+      return ResponseEntity.ok(
+          new BusinessApprovalStatusResponse("error", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
     }
   }
 

@@ -10,6 +10,7 @@
 
 package org.ezkey.demo.acme.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.ezkey.demo.acme.dto.AuthenticatedUser;
 import org.springframework.stereotype.Controller;
@@ -27,7 +28,7 @@ import org.springframework.web.bind.annotation.GetMapping;
  * <ul>
  *   <li>{@code /} - Redirects to login page
  *   <li>{@code /dashboard} - Post-login dashboard (requires valid session)
- *   <li>{@code /logout} - Clears session and redirects to login
+ *   <li>{@code /logout} - Invalidates the session and redirects to login
  * </ul>
  *
  * <p><b>Design Philosophy:</b> Implements Neo Brutalism UI principles with bold typography, high
@@ -40,14 +41,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class HomeController {
 
   private static final String USER_ATTRIBUTE = "user";
-  private static final String AUTH_ATTEMPT_FINAL_STATUS_ATTRIBUTE = "authAttemptFinalStatus";
-  private static final String PENDING_AUTH_ATTEMPT_ID_ATTRIBUTE = "pendingAuthAttemptId";
-  private static final String PENDING_CHALLENGE_CODE_ATTRIBUTE = "pendingChallengeCode";
-  private static final String PENDING_USERNAME_ATTRIBUTE = "pendingUsername";
-  private static final String PENDING_DISPLAY_NAME_ATTRIBUTE = "pendingDisplayName";
-  private static final String PENDING_ENROLLMENT_ID_ATTRIBUTE = "pendingEnrollmentId";
-  private static final String PENDING_TIMEOUT_SECONDS_ATTRIBUTE = "pendingTimeoutSeconds";
-  private static final String PENDING_EXPIRES_AT_ATTRIBUTE = "pendingExpiresAt";
 
   /**
    * Redirects root URL to login page.
@@ -83,27 +76,18 @@ public class HomeController {
   }
 
   /**
-   * Handles logout by clearing authenticated-user state while preserving demo API key configuration
-   * for the current browser session.
+   * Handles logout by invalidating the entire HTTP session (auth state, pasted keys, and
+   * access-code slot).
    *
-   * @param session the HTTP session
+   * @param request the HTTP request
    * @return redirect to login page
    */
   @GetMapping("/logout")
-  public String logout(HttpSession session) {
-    clearAuthenticationState(session);
+  public String logout(HttpServletRequest request) {
+    HttpSession session = request.getSession(false);
+    if (session != null) {
+      session.invalidate();
+    }
     return "redirect:/login?logout=true";
-  }
-
-  private void clearAuthenticationState(HttpSession session) {
-    session.removeAttribute(USER_ATTRIBUTE);
-    session.removeAttribute(AUTH_ATTEMPT_FINAL_STATUS_ATTRIBUTE);
-    session.removeAttribute(PENDING_AUTH_ATTEMPT_ID_ATTRIBUTE);
-    session.removeAttribute(PENDING_CHALLENGE_CODE_ATTRIBUTE);
-    session.removeAttribute(PENDING_USERNAME_ATTRIBUTE);
-    session.removeAttribute(PENDING_DISPLAY_NAME_ATTRIBUTE);
-    session.removeAttribute(PENDING_ENROLLMENT_ID_ATTRIBUTE);
-    session.removeAttribute(PENDING_TIMEOUT_SECONDS_ATTRIBUTE);
-    session.removeAttribute(PENDING_EXPIRES_AT_ATTRIBUTE);
   }
 }

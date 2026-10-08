@@ -35,6 +35,21 @@ ezkey.admin-api-url=http://integration-api:7080
 ezkey.integration-key=
 ezkey.secret-key=
 
+# Optional multi-tenant access-code slots for temporary access links (/t/{code}).
+# Issue codes with: openssl rand -hex 16 (32 lowercase hex chars).
+# Keep this file mode 0600 owned by spring (uid 100 / gid 101). Edit via docker exec as spring
+# with umask 077 — never as root in the volume _data directory. Never put codes in the VM .env.
+#
+# ezkey.access-codes.northwind.code=<openssl-rand-hex-16>
+# ezkey.access-codes.northwind.integration-key=
+# ezkey.access-codes.northwind.secret-key=
+# ezkey.access-codes.northwind.label=Northwind Portal
+#
+# ezkey.access-codes.partner.code=<openssl-rand-hex-16>
+# ezkey.access-codes.partner.integration-key=
+# ezkey.access-codes.partner.secret-key=
+# ezkey.access-codes.partner.label=Partner Demo Tenant
+
 # =============================================================================
 # Internet-exposed demo hardening
 # =============================================================================

@@ -90,7 +90,7 @@ Do these **after** VM create → ports → Docker bootstrap (below). No secrets 
    scp experimental-hybrid/lightsail/Caddyfile.ezkey-online \
      "${LIGHTSAIL_SSH_HOST}:ezkey/experimental-hybrid/lightsail/Caddyfile"
    ```
-   **Export sync note:** `--sync-operator-files` / `--clean-start` on [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) always copies the EXP1-named `Caddyfile`. After any such sync to the community VM, **re-scp** `Caddyfile.ezkey-online` → remote `Caddyfile` (or `scp` the variant then `ssh … 'cp …/Caddyfile.ezkey-online …/Caddyfile'`). Prefer this explicit copy for now over rewriting the export script.
+   **Export sync note:** `--sync-operator-files` / `--clean-start` on [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) always copies the EXP1-named `Caddyfile`. After any such sync to the community VM, **re-scp** `Caddyfile.ezkey-online` → remote `Caddyfile` (the variant file is not kept on the VM, so a one-line remote `cp` of `Caddyfile.ezkey-online` fails). Verify sha256 against the repo, then recreate caddy.
 3. **Origin CA** — Cloudflare Origin Server cert covering all API + demo hostnames above; place `origin.pem` / `origin-key.pem` in `~/ezkey/experimental-hybrid/lightsail/caddy-certs/` on the VM (`chmod 700` dir, `chmod 600` key). Never commit.
 4. **DNS** — Cloudflare **A** records (orange / proxied) for those API/demo names → instance public IP (from `./scripts/lightsail/status.sh`). Admin UI name points at Pages, not the Lightsail IP.
 5. **`.env`** — on the VM: copy [`.env.example`](../../experimental-hybrid/lightsail/.env.example) → `.env`, then overlay community URLs/CORS from [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example). **Mode B (Pages cookie)** requires all of:
@@ -220,7 +220,7 @@ If `ezkey-online` already exists as an instance: `--name community-ezkey` (and u
 ./scripts/lightsail/open-ports.sh --apply --ssh-cidr 203.0.113.10/32
 ```
 
-**TODO (follow-up):** restrict **443** to [Cloudflare IPv4 CIDRs](https://www.cloudflare.com/ips-v4) like EXP1. Lab v1 may leave 443 world-open; do not treat that as the long-term posture. See [`experimental-hybrid/DEPLOYMENT_PLAYBOOK.md`](../../experimental-hybrid/DEPLOYMENT_PLAYBOOK.md) Phase 0a.
+**443 posture (since 2026-09-23):** HTTPS is restricted to the **15 Cloudflare IPv4 ranges** published at [ips-v4](https://www.cloudflare.com/ips-v4). There is no IPv6 Lightsail firewall rule. Confirm with `aws lightsail get-instance-port-states` before a community upgrade go/no-go. **Do not run `open-ports.sh` on `ezkey-online`:** its default `HTTPS_CIDR` is `0.0.0.0/0` and `--mode put` replaces every rule, which would reopen 443 to the world.
 
 ### 3. SSH Host alias (separate from EXP1)
 

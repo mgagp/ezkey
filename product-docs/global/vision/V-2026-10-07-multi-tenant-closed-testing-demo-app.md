@@ -69,9 +69,10 @@ implementation in this PR.
   (Android 12+, opt-in, camera scan from a second screen in release builds, never opt out, open app
   within 120 s after Sign in, 3–4 actions).
 - **S2-5 — Amend:** three named oracles below; Reine enrolled in both tenants.
-- **S2-6 — Amend:** challenge always on; key `ip_whitelist` = internal Docker network; named secure
-  channel for QR + enrollment code. **Remove** tester IP allowlist and encrypted-at-rest requirement.
-  Keep backend per-IP rate limit; Cloudflare rate-limit rule optional.
+- **S2-6 — Amend:** challenge always on; named secure channel for QR + enrollment code. **Remove**
+  tester IP allowlist and encrypted-at-rest requirement. Keep backend per-IP rate limit; Cloudflare
+  rate-limit rule optional. `ip_whitelist` remains available as defense in depth **after** Caddy
+  client-IP hardening (M1), not as a standalone control.
 - **S3-7 — Amend:** Play publishing wording = personal accounts after 2023-11-13; continuously 14
   days; organization accounts exempt (and **ruled out** here — no legal entity).
 - **S3-8 — Amend:** unknown user / 404 / duplicate folded into the generic error.
@@ -138,10 +139,14 @@ developer account and satisfy the 12×14 continuous opt-in rule.
      integrations — no cross-tenant leak; (3) demo `/t/A` → `/t/B` same session replaces credentials
      and disconnects.
 8. **Factor posture:** sole factor on this demo path (integrator choice elsewhere may differ).
-9. **Security controls (pilot):** always `challengeRequested=true`; API key `ip_whitelist` restricted
-   to the **internal Docker network**; named secure channel for **QR + enrollment code** (activation
-   secret — not plain email); backend global per-IP rate limit; Cloudflare rate-limit rule optional;
-   `Referrer-Policy: no-referrer`. **No** tester IP allowlist.
+9. **Security controls (pilot):** always `challengeRequested=true`; named secure channel for **QR +
+   enrollment code** (activation secret — not plain email); backend global per-IP rate limit;
+   Cloudflare rate-limit rule optional; `Referrer-Policy: no-referrer` via **Caddy** on
+   `demo-acme.ezkey.online` (app also sends it for local/direct access). Access-code file on the
+   `demo-app-acme-config` volume: mode **0600**, owner **spring** (uid **100** / gid **101**). API
+   key `ip_whitelist` (e.g. `172.16.0.0/12`) is **defense in depth only after** community Caddy
+   client-IP hardening is live and 443 stays Cloudflare-only — do not present it as the primary
+   control before that. **No** tester IP allowlist.
 10. **Play cohort ops:** open closed-test opt-ins **now**; never opt out (resets the 14-day window);
     feedback channel in the pilot; App access demo credentials for Google reviewers — **M1 decision**.
 11. **Closed-testing commercial recruitment** (Mathieu / Isabelle / QA Sphere) remains a separate
@@ -252,7 +257,8 @@ Orientation only — M1 one-page brief, then execution on a **new branch**. No a
 | Surface | Consequence |
 | ------- | ----------- |
 | **Acme** | Access-code table, `/t/{code}`, generic errors, switch-code safety, challenge always on. |
-| **Host / Caddy** | **Unchanged** (`demo-acme.ezkey.online`). |
+| **Host / Caddy** | Same host `demo-acme.ezkey.online`; community `Caddyfile.ezkey-online` gains Referrer-Policy
+  `no-referrer` plus Cloudflare `trusted_proxies` / client-IP header hardening (M1). |
 | **Tenancy** | Northwind Portal (Marc) + second tenant; Reine in both; three oracles. |
 | **Play** | Opt-ins open now; mission sheet EN/FR; feedback channel; App access at M1. |
 | **TS SDK / new demo app** | Not on this path. |

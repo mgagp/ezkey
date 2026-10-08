@@ -12,16 +12,17 @@ package org.ezkey.demo.acme.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import org.ezkey.demo.acme.DemoAuthMessages;
 import org.ezkey.demo.acme.config.EzkeyClientProvider;
 import org.ezkey.demo.acme.dto.AuthenticatedUser;
 import org.ezkey.demo.acme.security.DemoRateLimitService;
+import org.ezkey.demo.acme.service.AccessCodeService;
 import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
 import org.ezkey.sdk.EzkeyClient;
 import org.ezkey.sdk.EzkeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,8 +34,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 /**
  * Controller handling login POST requests and coordinating EZKey authentication flow.
  *
- * <p>This controller processes login form submissions, creates auth attempts via Admin API, waits
- * for device approval, and creates HTTP sessions upon successful authentication.
+ * <p>This controller processes login form submissions, creates auth attempts via Integration API,
+ * waits for device approval, and creates HTTP sessions upon successful authentication. Challenge
+ * mode is always requested server-side.
  *
  * @author Ezkey contributors
  * @since 2025
@@ -45,53 +47,48 @@ public class LoginController {
   private static final Logger logger = LoggerFactory.getLogger(LoginController.class);
 
   private static final String SDK_NOT_CONFIGURED_MSG =
-      "Ezkey SDK is not configured. Set credentials via config file or use the 'Apply API Key' "
-          + "dialog in the About This Demo section.";
-
-  private static final String RATE_LIMIT_LOGIN_MSG =
-      "Too many login attempts from your network. Please wait a moment and try again.";
-
-  private static final String RATE_LIMIT_APPLY_API_KEY_MSG =
-      "Too many API key apply attempts from your network. Please wait and try again.";
+      "Ezkey SDK is not configured. Set credentials via an access link, config file, or use the"
+          + " 'Apply API Key' dialog in the About This Demo section.";
 
   private final EzkeyClientProvider ezkeyClientProvider;
   private final DemoApiKeyConfigService demoApiKeyConfigService;
   private final DemoRateLimitService demoRateLimitService;
+  private final AccessCodeService accessCodeService;
 
+  /**
+   * Creates the login controller.
+   *
+   * @param ezkeyClientProvider SDK client factory
+   * @param demoApiKeyConfigService credential resolution
+   * @param demoRateLimitService rate limiting
+   * @param accessCodeService access-code slot labels
+   */
   public LoginController(
       EzkeyClientProvider ezkeyClientProvider,
       DemoApiKeyConfigService demoApiKeyConfigService,
-      DemoRateLimitService demoRateLimitService) {
+      DemoRateLimitService demoRateLimitService,
+      AccessCodeService accessCodeService) {
     this.ezkeyClientProvider = ezkeyClientProvider;
     this.demoApiKeyConfigService = demoApiKeyConfigService;
     this.demoRateLimitService = demoRateLimitService;
+    this.accessCodeService = accessCodeService;
   }
 
   /**
    * Handles POST /login form submission.
    *
-   * <p>Processes login request:
-   *
-   * <ol>
-   *   <li>Creates auth attempt via Admin API using username as userIdentifier
-   *   <li>Waits for device approval
-   *   <li>Creates HTTP session on success
-   *   <li>Redirects to dashboard
-   * </ol>
-   *
-   * <p>When the user has no verified enrollment for this integration, or multiple enrollments, the
-   * API returns an error and the user is redirected to login with an error message.
+   * <p>Always requests a challenge server-side ({@code challengeRequested=true}), ignoring any
+   * client-supplied flag.
    *
    * @param username the username (used as userIdentifier for API lookup)
-   * @param challengeRequested whether challenge code is requested
+   * @param request the HTTP request
    * @param session the HTTP session
    * @param redirectAttributes for flash messages
-   * @return redirect to dashboard on success, back to login on error
+   * @return redirect to challenge-wait on success, back to login on error
    */
   @PostMapping("/login")
   public String login(
       @RequestParam("username") String username,
-      @RequestParam(value = "challengeRequested", required = false) Boolean challengeRequested,
       HttpServletRequest request,
       HttpSession session,
       RedirectAttributes redirectAttributes) {
@@ -103,14 +100,12 @@ public class LoginController {
           "Login rate limit exceeded for clientIp={} retryAfterSeconds={}",
           rateLimitDecision.clientId(),
           rateLimitDecision.retryAfterSeconds());
-      redirectAttributes.addFlashAttribute("error", RATE_LIMIT_LOGIN_MSG);
+      redirectAttributes.addFlashAttribute("error", DemoAuthMessages.RATE_LIMIT_LOGIN);
       return "redirect:/login?error=ratelimited";
     }
 
     logger.info("Login attempt for username: {}", username);
 
-    // Clear any previous final status flag and pending attributes when starting a
-    // new login attempt
     session.removeAttribute("authAttemptFinalStatus");
     session.removeAttribute("pendingAuthAttemptId");
     session.removeAttribute("pendingChallengeCode");
@@ -128,18 +123,14 @@ public class LoginController {
     }
 
     try {
-      boolean challengeMode = Boolean.TRUE.equals(challengeRequested);
-      var createResponse = client.createAuthAttemptByUserIdentifier(username.trim(), challengeMode);
+      // Challenge always on (server-enforced; client checkbox removed).
+      var createResponse = client.createAuthAttemptByUserIdentifier(username.trim(), true);
 
       logger.info(
-          "Auth attempt created: authAttemptId={}, userIdentifier={}, challenge={}",
+          "Auth attempt created: authAttemptId={}, userIdentifier={}",
           createResponse.authAttemptId(),
-          username,
-          createResponse.authAttemptChallenge() != null
-              ? "%02d".formatted(createResponse.authAttemptChallenge())
-              : "none");
+          username);
 
-      // Store auth attempt info in session and redirect to wait page
       session.setAttribute("pendingAuthAttemptId", createResponse.authAttemptId());
       session.setAttribute("pendingChallengeCode", createResponse.authAttemptChallenge());
       session.setAttribute("pendingUsername", username);
@@ -148,33 +139,23 @@ public class LoginController {
       session.setAttribute("pendingTimeoutSeconds", createResponse.timeoutSeconds());
       session.setAttribute("pendingExpiresAt", createResponse.expiresAt());
 
-      if (challengeMode && createResponse.authAttemptChallenge() != null) {
-        logger.info(
-            "Challenge mode: redirecting to wait page with code: {}",
-            createResponse.authAttemptChallenge());
-      } else {
-        logger.info("Non-challenge mode: redirecting to wait page");
-      }
+      logger.info("Redirecting to wait page for authAttemptId={}", createResponse.authAttemptId());
 
       return "redirect:/challenge-wait";
 
     } catch (EzkeyException e) {
       logger.error("EZKey authentication error for username: {}", username, e);
-      // Use API error message when available (e.g. user not found, multiple enrollments)
-      String errorMsg =
-          e.getMessage() != null && !e.getMessage().isBlank()
-              ? e.getMessage()
-              : "Authentication error. Check that the user is enrolled with this integration.";
-      redirectAttributes.addFlashAttribute("error", errorMsg);
+      redirectAttributes.addFlashAttribute("error", DemoAuthMessages.GENERIC_SIGN_IN_FAILED);
       return "redirect:/login?error=authfailed";
     }
   }
 
   /**
-   * Handles GET /login (redirected from POST on error).
+   * Handles GET /login.
    *
    * @param error optional error parameter
    * @param logout optional logout parameter
+   * @param session the HTTP session (for active slot label)
    * @param model the Spring MVC model
    * @return login page template
    */
@@ -182,15 +163,22 @@ public class LoginController {
   public String loginPage(
       @RequestParam(value = "error", required = false) String error,
       @RequestParam(value = "logout", required = false) String logout,
-      CsrfToken csrfToken,
+      HttpSession session,
       Model model) {
 
     model.addAttribute("pageTitle", "Login - ACME Inc");
-    model.addAttribute("csrfToken", csrfToken);
+
+    String slotId = demoApiKeyConfigService.getActiveSlotId(session);
+    if (slotId != null) {
+      String label = accessCodeService.getLabel(slotId);
+      if (label != null && !label.isBlank()) {
+        model.addAttribute("slotLabel", label);
+        model.addAttribute("loginHeading", "Sign in to " + label);
+      }
+    }
 
     if (error != null) {
       model.addAttribute("hasError", true);
-      // Set specific error messages based on error type
       switch (error) {
         case "rejected":
           model.addAttribute("error", "Authentication rejected by user. Please try again.");
@@ -198,46 +186,36 @@ public class LoginController {
         case "expired":
           model.addAttribute("error", "Authentication request expired. Please try again.");
           break;
-        case "invalid":
-          model.addAttribute("error", "Authentication invalid. Please try again.");
-          break;
-        case "authfailed":
-          model.addAttribute("error", "Authentication failed. Please try again.");
+        case "ratelimited":
+          model.addAttribute("error", DemoAuthMessages.RATE_LIMIT_LOGIN);
           break;
         case "sessionexpired":
           model.addAttribute("error", "Session expired. Please try again.");
           break;
-        case "notfound":
-          model.addAttribute("error", "User not found. Please check your username.");
-          break;
-        case "ratelimited":
-          model.addAttribute("error", RATE_LIMIT_LOGIN_MSG);
-          break;
         default:
-          model.addAttribute("error", "Authentication failed. Please try again.");
+          model.addAttribute("error", DemoAuthMessages.GENERIC_SIGN_IN_FAILED);
       }
     }
     if (logout != null) {
-      model.addAttribute(
-          "logoutMessage",
-          "You have been logged out. The demo API key remains available in this browser session.");
+      model.addAttribute("logoutMessage", "You have been logged out.");
     }
 
     return "login";
   }
 
   /**
-   * Applies API key credentials at runtime for demo testing.
+   * Applies API key credentials at runtime for temporary evaluator console access.
    *
-   * <p>Updates the in-memory credentials used when building {@link EzkeyClient}. Takes effect
-   * immediately for subsequent login attempts. Demo only — credentials are not persisted.
+   * <p>Invalidates the previous session (clears slot or prior paste), opens a new session, and
+   * stores the pasted keys. The client must reload to pick up the new CSRF token.
    *
-   * @param request the API key credentials (integrationKey, secretKey)
+   * @param body the API key credentials (integrationKey, secretKey)
+   * @param request the HTTP request
    * @return JSON response indicating success or failure
    */
   @PostMapping("/api/apply-api-key")
   public ResponseEntity<ApplyApiKeyResponse> applyApiKey(
-      @RequestBody ApplyApiKeyRequest body, HttpServletRequest request, HttpSession session) {
+      @RequestBody ApplyApiKeyRequest body, HttpServletRequest request) {
     DemoRateLimitService.RateLimitDecision rateLimitDecision =
         demoRateLimitService.checkApplyApiKey(request);
     if (!rateLimitDecision.allowed()) {
@@ -247,20 +225,27 @@ public class LoginController {
           rateLimitDecision.retryAfterSeconds());
       return ResponseEntity.status(429)
           .header("Retry-After", String.valueOf(rateLimitDecision.retryAfterSeconds()))
-          .body(new ApplyApiKeyResponse(false, RATE_LIMIT_APPLY_API_KEY_MSG));
+          .body(new ApplyApiKeyResponse(false, DemoAuthMessages.RATE_LIMIT_APPLY_API_KEY));
     }
 
     if (body == null || body.integrationKey() == null || body.secretKey() == null) {
       return ResponseEntity.badRequest()
           .body(new ApplyApiKeyResponse(false, "Integration key and secret key are required."));
     }
+
+    HttpSession existing = request.getSession(false);
+    if (existing != null) {
+      existing.invalidate();
+    }
+    HttpSession session = request.getSession(true);
+
     boolean applied =
         demoApiKeyConfigService.applyApiKey(session, body.integrationKey(), body.secretKey());
     if (applied) {
       return ResponseEntity.ok(
           new ApplyApiKeyResponse(
               true,
-              "API key applied. You can now test multiple login attempts in this browser"
+              "API key applied. Reload the page, then you can test login attempts in this browser"
                   + " session."));
     }
     return ResponseEntity.badRequest()
@@ -271,8 +256,6 @@ public class LoginController {
 
   /**
    * Displays the challenge wait page with the challenge code.
-   *
-   * <p>This page shows the challenge code to the user and polls for authentication completion.
    *
    * @param session the HTTP session
    * @param model the Spring MVC model
@@ -291,7 +274,6 @@ public class LoginController {
       return "redirect:/login?error=sessionexpired";
     }
 
-    // Format challenge code as zero-padded 2-digit string if present
     String challengeCodeFormatted = null;
     if (challengeCode != null) {
       challengeCodeFormatted = "%02d".formatted(challengeCode);
@@ -312,35 +294,24 @@ public class LoginController {
   /**
    * Checks the status of a pending authentication attempt (for polling).
    *
-   * <p>This endpoint is called by the challenge-wait page to check if the authentication attempt
-   * has been approved.
-   *
+   * @param request the HTTP request (for session id change on ACCEPTED)
    * @param session the HTTP session
    * @return JSON response with status and redirect URL if approved
    */
   @GetMapping("/api/auth-status")
-  public ResponseEntity<AuthStatusResponse> checkAuthStatus(HttpSession session) {
-    // Check if user is already authenticated (prevents "expired" glitch after
-    // successful auth)
+  public ResponseEntity<AuthStatusResponse> checkAuthStatus(
+      HttpServletRequest request, HttpSession session) {
     AuthenticatedUser existingUser = (AuthenticatedUser) session.getAttribute("user");
     if (existingUser != null) {
-      // User is already authenticated, return success immediately
       return ResponseEntity.ok(
           new AuthStatusResponse("accepted", "/dashboard", "Authentication successful"));
     }
 
-    // Check if a final status was already returned (prevents race condition)
-    // This handles the case where a poll arrives after we've already returned a
-    // final status
-    // and cleaned up session attributes, preventing "session expired" from being
-    // returned
     String finalStatus = (String) session.getAttribute("authAttemptFinalStatus");
     if (finalStatus != null) {
       logger.info(
           "Final status already returned: {}, returning same status to prevent race condition",
           finalStatus);
-      // A final status was already returned, return the same status to prevent race
-      // condition
       if ("REJECTED".equals(finalStatus)) {
         return ResponseEntity.ok(
             new AuthStatusResponse("rejected", "/login?error=rejected", "Rejected"));
@@ -349,11 +320,12 @@ public class LoginController {
             new AuthStatusResponse("expired", "/login?error=expired", "Expired"));
       } else if ("INVALID".equals(finalStatus)) {
         return ResponseEntity.ok(
-            new AuthStatusResponse("error", "/login?error=invalid", "Invalid"));
+            new AuthStatusResponse(
+                "error", "/login?error=authfailed", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
       } else if ("UNKNOWN".equals(finalStatus) || "ERROR".equals(finalStatus)) {
         return ResponseEntity.ok(
             new AuthStatusResponse(
-                "error", "/login?error=authfailed", "Authentication error occurred"));
+                "error", "/login?error=authfailed", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
       }
     }
 
@@ -373,13 +345,11 @@ public class LoginController {
     }
 
     try {
-      // Check auth attempt status
       var waitResponse = client.waitForAuthAttempt(authAttemptId, 30, 2);
 
       String status = waitResponse.status();
       boolean completed = waitResponse.completed();
 
-      // Log received status for debugging
       logger.info(
           "Received auth attempt status: status='{}', completed={}, authAttemptId={}, username={}",
           status,
@@ -387,10 +357,8 @@ public class LoginController {
           authAttemptId,
           username);
 
-      // Normalize status (trim and uppercase) to handle any whitespace or case issues
       String normalizedStatus = status != null ? status.trim().toUpperCase() : null;
 
-      // Handle null or empty status
       if (normalizedStatus == null || normalizedStatus.isEmpty()) {
         logger.warn(
             "Received null or empty status for authAttemptId={}, username={}, completed={}",
@@ -398,7 +366,6 @@ public class LoginController {
             username,
             completed);
         if (completed) {
-          // If completed but status is null/empty, treat as error
           session.removeAttribute("pendingAuthAttemptId");
           session.removeAttribute("pendingChallengeCode");
           session.removeAttribute("pendingUsername");
@@ -408,27 +375,21 @@ public class LoginController {
           session.removeAttribute("pendingExpiresAt");
           return ResponseEntity.ok(
               new AuthStatusResponse(
-                  "error",
-                  "/login?error=authfailed",
-                  "Authentication completed with invalid status"));
+                  "error", "/login?error=authfailed", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
         } else {
-          // Still pending
           return ResponseEntity.ok(
               new AuthStatusResponse("pending", null, "Waiting for device approval..."));
         }
       }
 
       if ("ACCEPTED".equals(normalizedStatus)) {
-        // Authentication successful - create session FIRST, then clear pending
-        // attributes
         AuthenticatedUser authenticatedUser =
             new AuthenticatedUser(
                 username, displayName != null ? displayName : username, enrollmentId);
 
         session.setAttribute("user", authenticatedUser);
+        request.changeSessionId();
 
-        // Clear pending auth data AFTER creating user session
-        // This prevents "expired" glitch if another poll arrives before redirect
         session.removeAttribute("pendingAuthAttemptId");
         session.removeAttribute("pendingChallengeCode");
         session.removeAttribute("pendingUsername");
@@ -439,36 +400,25 @@ public class LoginController {
         return ResponseEntity.ok(
             new AuthStatusResponse("accepted", "/dashboard", "Authentication successful"));
       } else if ("REJECTED".equals(normalizedStatus)) {
-        // Authentication rejected by user
-        // Mark as final status to prevent race condition with subsequent polls
-        // Don't clear session attributes immediately - let them be cleared on next
-        // request
-        // This prevents a race condition where a poll arrives after cleanup and returns
-        // "expired"
         session.setAttribute("authAttemptFinalStatus", "REJECTED");
 
         logger.info("Challenge authentication rejected for username: {}", username);
         return ResponseEntity.ok(
             new AuthStatusResponse("rejected", "/login?error=rejected", "Rejected"));
       } else if ("EXPIRED".equals(normalizedStatus)) {
-        // Authentication expired
-        // Mark as final status to prevent race condition with subsequent polls
         session.setAttribute("authAttemptFinalStatus", "EXPIRED");
 
         logger.info("Challenge authentication expired for username: {}", username);
         return ResponseEntity.ok(
             new AuthStatusResponse("expired", "/login?error=expired", "Expired"));
       } else if ("INVALID".equals(normalizedStatus)) {
-        // Authentication invalid (wrong signature, challenge, etc.)
-        // Mark as final status to prevent race condition with subsequent polls
         session.setAttribute("authAttemptFinalStatus", "INVALID");
 
         logger.info("Challenge authentication invalid for username: {}", username);
         return ResponseEntity.ok(
-            new AuthStatusResponse("error", "/login?error=invalid", "Invalid"));
+            new AuthStatusResponse(
+                "error", "/login?error=authfailed", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
       } else if (completed) {
-        // Completed but unknown status
-        // Mark as final status to prevent race condition
         session.setAttribute("authAttemptFinalStatus", "UNKNOWN");
 
         logger.warn(
@@ -479,20 +429,17 @@ public class LoginController {
             username);
         return ResponseEntity.ok(
             new AuthStatusResponse(
-                "error",
-                "/login?error=authfailed",
-                "Authentication completed with unknown status: " + status));
+                "error", "/login?error=authfailed", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
       } else {
-        // Still pending (PENDING, READ, etc.) - keep session attributes
         return ResponseEntity.ok(
             new AuthStatusResponse("pending", null, "Waiting for device approval..."));
       }
     } catch (EzkeyException e) {
-      logger.error("Error checking auth status: {}", e.getMessage());
-      // Mark as error to prevent race condition
+      logger.error("Error checking auth status for authAttemptId={}", authAttemptId);
       session.setAttribute("authAttemptFinalStatus", "ERROR");
       return ResponseEntity.ok(
-          new AuthStatusResponse("error", "/login?error=authfailed", e.getMessage()));
+          new AuthStatusResponse(
+              "error", "/login?error=authfailed", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
     }
   }
 

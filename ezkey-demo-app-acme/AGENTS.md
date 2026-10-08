@@ -22,10 +22,11 @@ Demo application for Ezkey passwordless login. Demonstrates backend-side authent
 
 - **Mode**: Backend-side (server calls Integration API via Ezkey SDK; base URL `ezkey.admin-api-url`)
 - **Port**: 8082
-- **Auth**: HTTP session (server-side). Logout clears auth/pending and **keeps** the demo API key
-  in that same browser session.
-- **API Key**: Per-session credentials via `DemoApiKeyConfigService` + `EzkeyClientProvider` (config
-  default or "Apply API Key"). Do not store a process-wide key.
+- **Auth**: HTTP session (server-side). Logout **invalidates** the session (clears auth, pasted keys,
+  and access-code slot).
+- **API Key**: Resolution order — access-code slot → pasted session keys → legacy single config —
+  via `DemoApiKeyConfigService` + `AccessCodeService` + `EzkeyClientProvider`. Temporary access
+  links use `GET /t/{code}`. Do not store a process-wide key.
 - **Internet host:** `experimental-hybrid/` (`exp1-demo-acme`). Do not fold EXP1 facts into
   `docs/` or `docker/README.md`.
 - **User Mapping**: External JSON file (`data/acme-users.json`) with hot-reload
