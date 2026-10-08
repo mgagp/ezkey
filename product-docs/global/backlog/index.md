@@ -10,11 +10,14 @@ This index provides a lightweight list of active ideas and their current state.
 
 → [`../vision/V-2026-09-26-public-alpha-posture-closeout.md`](../vision/V-2026-09-26-public-alpha-posture-closeout.md)
 
-**Summary (2026-09-26):** Public alpha posture closeout — laboratory · discreet · alpha ≠ prod ·
-no SLA; public runtime names **`base`** / **`integrity`** (not « eval profile »); GitHub open;
-Play Store **closed testing** only; intention-first. Waves A–C and Wave D (attention freeze) are
-**closed**. There is **no remaining P0** on the active backlog. Evaluator self-registration stays
-**OFF by default**; community may enable it **explicitly**.
+**Summary (2026-09-26, amended 2026-10-08):** Public alpha posture closeout — laboratory · discreet ·
+alpha ≠ prod · no SLA; public runtime names **`base`** / **`integrity`** (not « eval profile »);
+GitHub open; Play Store — **mobile app** may proceed closed testing → **production**; **platform
+backends stay alpha/lab**; intention-first. Waves A–C and Wave D (attention freeze) are **closed**.
+There is **no remaining P0** on the active backlog. Evaluator self-registration stays **OFF by
+default**; community may enable it **explicitly**. Amendment detail:
+[`../vision/V-2026-09-26-public-alpha-posture-closeout.md`](../vision/V-2026-09-26-public-alpha-posture-closeout.md)
+§ Amendment 2026-10-08.
 
 Historical September operable-release compass (Waves A–C + freeze D narrative only):
 [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
