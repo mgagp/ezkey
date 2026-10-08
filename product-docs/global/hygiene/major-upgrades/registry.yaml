@@ -73,8 +73,8 @@
   sources:
     - { file: ezkey-cli-python/setup.py, expect: 'python_requires=">=3.12"' }
     - { file: .github/workflows/ci.yml, expect: '"3.12"' }
-  eol: 2028-10-02 # CPython 3.12 support end
-  target: null
+  eol: 2028-10-31 # CPython 3.12 support end (endoflife.date)
+  target: "3.13" # planned floor raise 2027-04-02, subject to distro guard
   decision: keep
   security: false
   floor_policy: window-42m
@@ -82,8 +82,8 @@
   issue: null
   last_review: 2026-10-08
   notes: >
-    Next floor raise 3.13 on 2027-04-02 (guard: Ubuntu 26.04 3.14, Debian 13 3.13,
-    RHEL 10 3.12 + 3.14 AppStream).
+    Planned floor raise to 3.13 on 2027-04-02 (subject to distro guard: Ubuntu 26.04
+    3.14, Debian 13 3.13, RHEL 10 3.12 + 3.14 AppStream).
 
 - id: kotlin-android
   component: Kotlin (Android)
