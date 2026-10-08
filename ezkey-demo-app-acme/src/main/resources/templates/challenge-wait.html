@@ -217,6 +217,9 @@
                         'Content-Type': 'application/json'
                     }
                 });
+                if (!response.ok) {
+                    throw new Error('Auth status HTTP ' + response.status);
+                }
                 
                 const result = await response.json();
                 consecutiveErrors = 0;

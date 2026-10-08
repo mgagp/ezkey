@@ -433,8 +433,10 @@ public class LoginController {
               new AuthenticatedUser(
                   username, displayName != null ? displayName : username, enrollmentId);
 
-          session.setAttribute("user", authenticatedUser);
+          // Rotate first: if changeSessionId throws, do not mark accepted/rotated so a
+          // later poll can still perform fixation protection.
           request.changeSessionId();
+          session.setAttribute("user", authenticatedUser);
           session.setAttribute(AUTH_ACCEPTED_SESSION_ROTATED, Boolean.TRUE);
           session.setAttribute("authAttemptFinalStatus", "ACCEPTED");
 

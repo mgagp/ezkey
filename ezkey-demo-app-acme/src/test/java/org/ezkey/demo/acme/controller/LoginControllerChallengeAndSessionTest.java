@@ -192,8 +192,6 @@ class LoginControllerChallengeAndSessionTest {
               assertThat(enteredWait.await(5, TimeUnit.SECONDS))
                   .as("at least 3 polls should be in waitForAuthAttempt together")
                   .isTrue();
-              // Slow approval (~10s) so overlapping long-polls all observe ACCEPTED.
-              Thread.sleep(10_000);
               return new AuthAttemptWaitResponse("ACCEPTED", true, false);
             });
 
@@ -216,7 +214,7 @@ class LoginControllerChallengeAndSessionTest {
                 }));
       }
       for (Future<?> future : futures) {
-        future.get(25, TimeUnit.SECONDS);
+        future.get(15, TimeUnit.SECONDS);
       }
     } finally {
       pool.shutdownNow();
@@ -265,11 +263,53 @@ class LoginControllerChallengeAndSessionTest {
   }
 
   @Test
+  void shouldRetryRotationIfChangeSessionIdFailsBeforeMarkingAccepted() throws Exception {
+    AtomicInteger attempts = new AtomicInteger();
+    CountingSession session =
+        new CountingSession() {
+          @Override
+          public String changeSessionId() {
+            if (attempts.incrementAndGet() == 1) {
+              throw new IllegalStateException("simulated rotation failure");
+            }
+            return super.changeSessionId();
+          }
+        };
+    session.setAttribute("pendingAuthAttemptId", 7);
+    session.setAttribute("pendingUsername", "alice");
+    session.setAttribute("pendingDisplayName", "Alice");
+    session.setAttribute("pendingEnrollmentId", 3);
+
+    when(ezkeyClient.waitForAuthAttempt(eq(7), anyInt(), anyInt()))
+        .thenReturn(new AuthAttemptWaitResponse("ACCEPTED", true, false));
+
+    try {
+      mockMvc.perform(get("/api/auth-status").session(session));
+    } catch (Exception ignored) {
+      // first poll: rotation throws before user/rotated flags are set
+    }
+
+    assertThat(session.getAttribute("user")).isNull();
+    assertThat(session.getAttribute(LoginController.AUTH_ACCEPTED_SESSION_ROTATED)).isNull();
+
+    mockMvc
+        .perform(get("/api/auth-status").session(session))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("accepted"));
+
+    assertThat(attempts.get()).isEqualTo(2);
+    assertThat(session.getAttribute("user")).isInstanceOf(AuthenticatedUser.class);
+    assertThat(session.getAttribute(LoginController.AUTH_ACCEPTED_SESSION_ROTATED))
+        .isEqualTo(Boolean.TRUE);
+  }
+
+  @Test
   void challengeWaitPollsSeriallyWithSetTimeout() throws Exception {
     Path source = resolveChallengeWaitHtml();
     String content = Files.readString(source, StandardCharsets.UTF_8);
     assertThat(content).contains("scheduleNextPoll");
     assertThat(content).contains("setTimeout(checkAuthStatus");
+    assertThat(content).contains("if (!response.ok)");
     assertThat(content).doesNotContain("setInterval(checkAuthStatus");
     assertThat(content).doesNotContain("pollingInterval = setInterval");
   }
@@ -302,7 +342,7 @@ class LoginControllerChallengeAndSessionTest {
   }
 
   /** Counts {@link MockHttpSession#changeSessionId()} invocations for race tests. */
-  private static final class CountingSession extends MockHttpSession {
+  private static class CountingSession extends MockHttpSession {
     private final AtomicInteger rotationCount = new AtomicInteger();
 
     @Override
