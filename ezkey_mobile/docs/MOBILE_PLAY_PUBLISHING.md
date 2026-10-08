@@ -18,7 +18,7 @@ Prefer a **Google Play organization** account (DUNS, verified address, public or
 Use the same app, stacked tracks:
 
 1. **Internal testing** — up to 100 email testers, minutes to propagate, no Play review. Validate the signed AAB and critical flows first.
-2. **Closed testing** — email lists or Google Groups; light Play review. New developer accounts must have **12 testers active for 14 days** before production.
+2. **Closed testing** — email lists or Google Groups; light Play review. New developer accounts must have **12 testers opted in for 14 days** before production.
 3. **Production** — public listing.
 
 Recommended path: **Internal → Closed → Production**. Open testing (public early access) is optional.
