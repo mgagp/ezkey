@@ -657,11 +657,10 @@ See `docs/ENCRYPTION_KEY_ROTATION_IMPLEMENTATION.md` for complete configuration 
 - [`product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md) — mapping vocabulary only; not a certification claim
 - `docs/OPERATIONAL.md` - General operational procedures
 
-### E. Contact Information
+### E. Security contact
 
-**Security Team**: security@ezkey.dev  
-**On-Call**: See internal on-call rotation schedule  
-**Emergency**: Follow incident response procedures
+**Email**: security@ezkey.org  
+Prefer GitHub [private vulnerability reporting](https://github.com/mgagp/ezkey/security/advisories/new) when available. Policy: [`SECURITY.md`](../SECURITY.md).
 
 ---
 
