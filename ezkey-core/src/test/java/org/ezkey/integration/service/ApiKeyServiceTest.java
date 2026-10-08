@@ -890,8 +890,7 @@ class ApiKeyServiceTest {
     @DisplayName("Success and failure validate paths must not log a full integration key")
     void validateApiKey_LogMessagesUseMaskedIntegrationKey() throws Exception {
       java.nio.file.Path source =
-          java.nio.file.Path.of(
-                  "src/main/java/org/ezkey/integration/service/ApiKeyService.java")
+          java.nio.file.Path.of("src/main/java/org/ezkey/integration/service/ApiKeyService.java")
               .toAbsolutePath()
               .normalize();
       if (!java.nio.file.Files.exists(source)) {
@@ -909,9 +908,10 @@ class ApiKeyServiceTest {
               "maskIntegrationKeyForLog(integrationKey),\n"
                   + "        apiKey.getIntegration().getId()"));
       assertFalse(
-          content.contains("logger.info(\n"
-              + "        \"API key validated successfully: {} for integration: {}\",\n"
-              + "        integrationKey,"));
+          content.contains(
+              "logger.info(\n"
+                  + "        \"API key validated successfully: {} for integration: {}\",\n"
+                  + "        integrationKey,"));
     }
   }
 }

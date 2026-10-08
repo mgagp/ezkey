@@ -519,9 +519,7 @@ public final class EzkeyClient {
     }
     String prefix = "ezkey_ikey_";
     if (integrationKey.startsWith(prefix) && integrationKey.length() > prefix.length() + 4) {
-      return prefix
-          + integrationKey.substring(prefix.length(), prefix.length() + 4)
-          + "…";
+      return prefix + integrationKey.substring(prefix.length(), prefix.length() + 4) + "…";
     }
     int keep = Math.min(8, integrationKey.length());
     return integrationKey.substring(0, keep) + "…";
