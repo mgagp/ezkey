@@ -157,3 +157,135 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
+
+  # -------------------------------------------------------------------------
+  # Wave 0.3 — close Dependabot coverage gaps (security hygiene, config only).
+  # Weekly + minor/patch groups keep PR volume low for a solo maintainer.
+  # docker / docker-compose / gradle: version bumps only — they do not emit
+  # Dependabot CVE alerts. Container image CVE scanning is planned separately.
+  # -------------------------------------------------------------------------
+
+  # Methodology micro-site (adm-zip, express, marked, …). Was missing; a
+  # Dependabot security update for this folder failed without a version-updates
+  # entry. package-lock.json is gitignored, so alerts cover direct dependencies
+  # only (transitives invisible); committing the lockfile would close that gap
+  # (do not commit it in this PR).
+  - package-ecosystem: "npm"
+    directory: "/product-docs/site"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      product-docs-site-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Android native deps (conscrypt-android, androidx.biometric, play app-update).
+  # settings.gradle uses includeBuild("../node_modules/@react-native/gradle-plugin"),
+  # so Dependabot Gradle resolution may be partial. Version updates only.
+  # Known gap: native Android CVE alerts are not produced — the dependency graph
+  # does not capture these Gradle deps (automatic Gradle submission declined for
+  # the same includeBuild / node_modules coupling).
+  # AGP / Kotlin / gradle-wrapper follow React Native upgrades, never Dependabot;
+  # react-android, hermes, and autolinked modules are not visible to Dependabot.
+  - package-ecosystem: "gradle"
+    directory: "/ezkey_mobile/android"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    ignore:
+      - dependency-name: "com.android.tools.build:gradle"
+      - dependency-name: "org.jetbrains.kotlin:*"
+      - dependency-name: "gradle-wrapper"
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      android-gradle-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Dockerfile base images with parseable registry tags (alpine, node,
+  # eclipse-temurin, playwright, …). Version bumps only — not CVE alerts.
+  # Omitted: /ezkey-pam (FROM ${ROCKY_IMAGE} — ARG not parsed) and
+  # /ezkey-auth-api (local ezkey-auth-api-native + busybox:latest floating tag).
+  # Majors are a manual choice (Java/Node LTS, Postgres data, HAProxy LTS):
+  # single-number tags (25-jre-alpine, 22-alpine, 18-alpine) only receive majors
+  # (temurin→27 non-LTS, node→26 vs .nvmrc 24, postgres 19 breaks data, haproxy→3.x).
+  - package-ecosystem: "docker"
+    directories:
+      - "/docker"
+      - "/docker/bootstrap-init"
+      - "/docker/javamelody"
+      - "/ezkey-admin-ui/docker"
+    schedule:
+      interval: "weekly"
+    # docker supports default-days only (no semver-*-days in Dependabot).
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      docker-images-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Compose service images with registry tags (postgres, caddy, haproxy, …).
+  # Version bumps only — not CVE alerts. Dependabot's pattern already covers
+  # docker-compose.*.yml in each listed directory (e.g. docker-compose.ha.yml,
+  # docker-compose.with-proxy.yml under /docker).
+  # Omitted (build: only, local tags, or env override with no image:):
+  # /ezkey-admin-ui, /ezkey-pam, /experimental-hybrid/local, /scripts/lab.
+  # Majors are a manual choice (Java/Node LTS, Postgres data, HAProxy LTS).
+  - package-ecosystem: "docker-compose"
+    directories:
+      - "/docker"
+      - "/experimental-hybrid/lightsail"
+    schedule:
+      interval: "weekly"
+    # docker-compose supports default-days only (no semver-*-days in Dependabot).
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      compose-images-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
