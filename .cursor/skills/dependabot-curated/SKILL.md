@@ -427,6 +427,26 @@ Record completion (or N/A) in the campaign note validation table (Monday) or the
    operator by default when Docker and scripts are available).
 5. Do not invent `I-*` / `TB-*` for routine merged patches.
 
+## Majeures / Major upgrades
+
+Platform, runtime, and base-image **line** changes (endoflife.date support line or semver major)
+are **not** routine Dependabot lots. They live in
+[`product-docs/global/hygiene/major-upgrades/`](../../product-docs/global/hygiene/major-upgrades/)
+(`registry.yaml` + lane README). On the **Monday full** pass in January / April / July / October,
+include a short register walk (Fred prepares; Christophe opinion on `security: true`; Patrick on
+build/mobile plans; Marc decides).
+
+- **Light path:** semver-minor line bump (Dependabot PR or a normal PR when Dependabot cannot
+  open it) → update the registry in the same PR + family test-plan floor in the PR body.
+- **Light path + `security: true`:** short **opinion-only** issue linked to the existing PR;
+  test plan stays in the PR body.
+- **Dedicated issue with test plan before the PR:** semver major, PostgreSQL data migration, or
+  React Native line only. Security opinion in that issue when `security: true`.
+- Crypto/auth **library** majors on npm/Maven stay T4 here. Exception in the register: libs whose
+  majors Dependabot ignores (Gradle ecosystem, #712) — e.g. Conscrypt, AndroidX Biometric.
+- Monthly endoflife.date check workflow: **upcoming**, not present yet.
+- Full agent contract: root `AGENTS.md` § Dependabot curated → *Major upgrades*.
+
 ## Deferred labels
 
 | Label | Meaning |
