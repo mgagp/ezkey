@@ -23,8 +23,9 @@ This is **not** an internal messaging system, inbox, ticket desk, or email fan-o
 baseline without the feature remains acceptable: email from Marc + ezkey.org (no published SLA),
 plus the optional env-driven instance description.
 
-This note records orientation and **proposed** product locks for critical review. It does **not**
-authorize application implementation in this PR.
+This note records orientation and **product locks settled by Marc (2026-10-08)**. G0 (Mathieu’s
+critical-review process) still decides **GO v1 now** vs **`parked`**. It does **not** authorize
+application implementation in this PR.
 
 ## Motivation
 
@@ -79,17 +80,19 @@ substitute alone.
 | **System tenant** | `tenant_id=1` / `is_system_tenant` (V5); **cannot** host Tenant Admins ([`AdminProvisioningService`](../../../ezkey-admin-api/src/main/java/org/ezkey/admin/service/AdminProvisioningService.java)) — with no application tenants, only Global Admins would see an announcement |
 | **No prior V-\*/I-\*/issue** | No announcements vision/issue found; related: **P-094** remote signed release announcements (mobile) deferred-unfunded 2026-08-17 ([corpus ablation](../hygiene/corpus-ablation/2026-08-cursor-plans-pass.md)); feedback-channel V-\* rejects a second mail pipeline |
 
-## Product Direction critique and proposed locks
+## Product locks (settled by Marc 2026-10-08)
 
-Label on every lock below: **proposed, pending critical review and Marc merge**.
+Settled by Marc (2026-10-08) via Alex. Do not reopen v1 scope in execution unless a new product lock
+supersedes this section. G0 still decides **timing** (GO now vs parked) — not the locks below.
 
-| # | Proposed lock | Rationale |
-| - | ------------- | --------- |
+| # | Settled lock | Rationale |
+| - | ------------ | --------- |
 | 1 | **Name:** “Announcements” / FR **« Annonces »** — not “Messages” | “Messages” implies inbox/messaging — explicit non-goal |
 | 2 | **v1 data model:** small announcements table (not a single hard-coded slot) | Scheduling implies rows |
-| 2a | Fields: plain text (~500 chars, line breaks, URLs auto-linked); severity `info` \| `warning` \| `critical`; `visible_from` required (default now); `visible_until` optional (**strongly encouraged** so stale notices auto-expire — main failure mode of a single-slot MVP); `@Version`; created/updated by+at; soft delete (`deleted_at` / `deleted_by`) | Plain text = React escaping, no XSS surface |
+| 2a | Fields: plain text (~500 chars, line breaks, URLs auto-linked); severity `info` \| `warning` (**avertissement**) \| `critical` (**critique**); `visible_from` required (default now); `visible_until` optional (**strongly encouraged** so stale notices auto-expire — main failure mode of a single-slot MVP); `@Version`; created/updated by+at; soft delete (`deleted_at` / `deleted_by`) | Plain text = React escaping, no XSS surface |
 | 2b | **Audience v1:** all Tenant Admins **and** Global Admins; **no targeting** | Keeps leak surface and craft small |
 | 3 | **Display v1:** at most **one** announcement — most recent active (Grafana model). If none active → render **nothing** (no empty closed widget). Dashboard widget at top; « Oui, j’ai vu » / “Got it” collapses; dismissal in **localStorage** keyed by announcement id + version (edit re-opens); re-expand shows same text. **No** server-side per-user read tracking | Protects already-dense dashboard; matches existing localStorage restraint |
+| 3a | **Critical severity:** dashboard widget only in v1 — **no** thin banner on every page | Default accepted; every-page critical banner is a **v2 candidate** (see deferred) |
 | 4 | **Global Admin nav:** new « Annonces » item (`roles: GLOBAL_ADMIN`) — paginated list + create/edit/soft delete + dashboard-widget preview. **Tenant Admin:** widget only; **no** nav item in v1 | Mirrors Global-only Alerts / Integrity pattern in sidebar |
 | 5 | **API:** Global Admin CRUD (paginated list; create; update with `version` → 409; soft delete) + one read for any authenticated admin returning only the **current active** announcement. Rate-limited per admin-operations convention. Audit: `ANNOUNCEMENT_CREATED` / `ANNOUNCEMENT_UPDATED` / `ANNOUNCEMENT_DELETED` with before/after summary. Plain text only — **no HTML** | Aligns with pagination, optimistic lock, audit touchpoints above |
 | 6 | **Not on unauthenticated login page in v1** | Would publish operator notices publicly; reconsider for community alpha only via existing public instance-info pattern if signalled |
@@ -127,6 +130,7 @@ collapsed empty shell on an already dense Tenant Admin dashboard.
 | Markdown/HTML editor + preview | **Deferred v2** — no lib in stack; adds sanitizer + XSS review for ~500-char notice | Global Admins repeatedly need formatting beyond line breaks/links → evaluate common renderer + sanitizer (Christophe review) |
 | Tenant-side history page (« Annonces » dated list) | **Deferred v2** | Tenants ask “what changed recently” or a release-notes need appears |
 | Per-tenant / multi-tenant targeting | **Deferred v2** | Operator must address a subset; must guarantee **no cross-tenant leakage** (GitLab public-API caution) |
+| Critical severity as thin banner on **every** page (not just dashboard) | **Deferred v2 candidate** — settled **not** in v1 (Marc 2026-10-08) | Operators need critical notices unavoidable outside the dashboard |
 | Mandatory acknowledgement / read receipts | **Rejected for now** — rare in market; compliance-flavoured; server tracking per user | Real compliance requirement |
 | Email / push fan-out from Ezkey | **Rejected** | Feedback-channel note: no second mail pipeline |
 | Full messaging / inbox | **Rejected** | Explicit non-goal |
@@ -150,7 +154,7 @@ must **not** compete with that milestone for craft capacity.
 
 ### G0 — Critical review (before any craft)
 
-Mathieu’s critical-review process. **G0 owner: Marc.**
+Mathieu’s critical-review process (product locks above are already settled; G0 decides timing).
 
 | Reviewer | Focus |
 | -------- | ----- |
@@ -159,7 +163,8 @@ Mathieu’s critical-review process. **G0 owner: Marc.**
 | **Julie** | Dashboard density / UX (one widget, dismiss, no empty chrome) |
 | **Isabelle** | Testability of the G2 checklist below |
 
-**G0 outcomes:** **GO v1 now**, or **`parked`** with re-entry triggers.
+**G0 outcomes:** **GO v1 now**, or **`parked`** with re-entry triggers + backlog row. This note
+merges to `main` after that verdict (no dormant branch). GitHub issue only once v1 is **funded**.
 
 ### Proposed re-entry triggers (if parked)
 
@@ -183,10 +188,7 @@ funded work per `AGENTS.md` labels). **Do not** invent that backlog row from thi
 
 ## Open questions for Marc
 
-1. Agree **« Annonces »** as the FR product term (EN “Announcements”)?
-2. Agree severity levels **`info` / `warning` / `critical`**?
-3. Should **critical** also show as a thin banner on **every** page (not just dashboard)?
-   **Default proposed: no in v1.**
+None remaining (settled 2026-10-08).
 
 ## Risks and blind spots
 
@@ -225,14 +227,21 @@ funded work per `AGENTS.md` labels). **Do not** invent that backlog row from thi
 
 ## Promotion criteria
 
-1. Marc answers the open questions (or explicitly parks with triggers).
-2. G0 critical review records **GO** or **parked**.
-3. On GO: M1 craft brief → G1 Marc before any implementation branch.
-4. On parked: status flip + backlog `## Parked` row (separate hygiene/docs commit) — no `I-*` /
-   GitHub issue unless later funded as bounded work.
-5. This vision PR does **not** authorize application code.
+1. ~~Marc settles open questions (term, severity, every-page critical banner)~~ — **done**
+   (2026-10-08).
+2. G0 critical review (Mathieu’s process: Patrick / Christophe / Julie / Isabelle) records **GO**
+   or **`parked`**.
+3. Note merges to `main` after the G0 verdict (no dormant branch).
+4. On GO: M1 craft brief → G1 Marc before any implementation branch; GitHub issue only once v1 is
+   **funded**.
+5. On parked: status flip + backlog `## Parked` row with re-entry trigger — no `I-*` / GitHub
+   issue unless later funded as bounded work.
+6. This vision PR does **not** authorize application code.
 
 ## Next step
 
-Marc: G0 critical review (or park with triggers). Alex does not implement. No craft brief until
-**GO**. Keep mobile Play closed-testing capacity uncontested.
+Mathieu’s critical-review process (Patrick size, Christophe security spot check, Julie dashboard
+density, Isabelle testability) decides **G0: GO v1 now** vs **`parked`** (with re-entry triggers +
+row in [`../backlog/index.md`](../backlog/index.md) `## Parked`). Merge this note to `main` after
+that verdict — no dormant branch. GitHub issue only once v1 is funded. Alex does not implement. No
+craft brief until **GO**. Keep mobile Play closed-testing capacity uncontested.
