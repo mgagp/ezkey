@@ -456,6 +456,19 @@ guarantee that copy matches the real running Admin API — refresh the committed
 running the `ezkey-tests` functional suite, doctor-curated / java-doctor / pentest hygiene
 passes, and any tag-triggered Maven Central release (not implemented).
 
+**Maven dependency graph (not a PR check):** workflow
+[`.github/workflows/maven-dependency-submission.yml`](../.github/workflows/maven-dependency-submission.yml)
+submits the full (transitive) Maven graph to GitHub Insights on push to `main` (POM /
+`checkstyle-config` / `.mvn` paths) and via `workflow_dispatch`. It uses **JDK 25** and
+installs the unpublished `checkstyle-config` reactor module first — the same bootstrap as the
+`backend` job — so resolution succeeds. It is **not** part of `ci-gate`.
+
+GitHub’s Automatic Dependency Submission for Maven must stay **off** once this workflow is on
+`main` (Settings → Code security → Dependency graph → Automatic dependency submission). That
+built-in job uses Java 21, never builds `checkstyle-config`, and fails with “NOT allowed from
+central”. Marc turns the setting off manually after merge; prove the replacement with one
+`workflow_dispatch` run, then check Insights → Dependency graph.
+
 **Run the same checks locally:**
 
 ```bash
