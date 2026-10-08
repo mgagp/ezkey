@@ -370,13 +370,19 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
 - **Major upgrade** = an endoflife.date line change OR a semver major (JDK, Node, PostgreSQL,
   HAProxy, Caddy, base images, Spring Boot line, React Native line, Gradle/AGP/Kotlin, TS, Vite).
   Registry: `product-docs/global/hygiene/major-upgrades/registry.yaml` (platforms, not libraries —
-  crypto/auth library majors stay under `dependabot-curated` T4 + security owner).
-- **Light path** — line change that is a semver minor opened by Dependabot: update the registry
-  entry (`current`, `sources`, `eol`, `last_review`) in the same PR and put the test plan
-  (family floor from the lane README) in the PR body.
-- **Dedicated issue** — semver major, data migration (PostgreSQL), React Native line, or any
-  `security: true` entry: open an issue with the test plan before the PR (labels per
-  `github-issue-labels`). Security owner's written opinion goes in that issue; link it in `notes`.
+  crypto/auth library majors on npm/Maven stay under `dependabot-curated` T4 + security owner;
+  exception: libs whose majors Dependabot ignores under the Gradle ecosystem, #712 — e.g.
+  Conscrypt, AndroidX Biometric — stay in the register).
+- **Light path** — line change that is a semver minor (often opened by Dependabot): update the
+  registry entry (`current`, `sources`, `eol`, `last_review`) in the same PR and put the test plan
+  (family floor from the lane README) in the PR body. If Dependabot did **not** open it (e.g.
+  Kotlin pin, Rocky `ARG`), open a normal PR that updates the registry the same way.
+- **Light path + `security: true`** — short **opinion-only** issue linked to the **existing** PR
+  (collect Christophe's written opinion); test plan stays in the PR body. Do **not** require an
+  issue-with-test-plan before the PR when Dependabot (or a light-path PR) already exists.
+- **Dedicated issue with test plan before the PR** — reserved for semver majors, PostgreSQL data
+  migrations, and the React Native line (labels per `github-issue-labels`). Security owner's
+  written opinion goes in that issue when `security: true`; link it in `notes`.
 - Never autonomous (T4); Marc decides. Do not remove the Dependabot major-ignore rules.
 - `accept-risk` on a `security: true` entry requires `accept_until` (max 6 months).
 

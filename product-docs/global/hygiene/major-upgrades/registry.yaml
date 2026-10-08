@@ -8,11 +8,14 @@
 #   component     human label
 #   owner         register steward (usually fred)
 #   eol_slug      endoflife.date product id, or null for manual follow
-#   current       line or version in use
-#   sources       list of {file, expect}; expect defaults to current; drift when
-#                 grep -F expect file fails
+#   current       SUPPORT LINE only (endoflife.date cycle, or semver major /
+#                 major.minor line when not on EOL). Homogeneous: never a
+#                 patch pin (use "4.1" not "4.1.1", "19" not "19.3.0").
+#   sources       list of {file, expect}; expect is a LINE-LEVEL substring
+#                 (grep -F). Do not pin patch digits — routine patches must
+#                 not false-fail drift. expect defaults to current if omitted.
 #   eol           support end date last recorded (or estimate noted in notes)
-#   target        desired line per lane README target rule
+#   target        desired line per lane README target rule, OR follow:<id>
 #   decision      keep | plan | follow:<id> | accept-risk
 #   security      true when security-owner written opinion is mandatory
 #   warn_months   optional; default 6 (react-native uses 3)
@@ -23,7 +26,7 @@
 #   notes         free text; link Christophe opinion here when present
 #
 # Baseline: main @ f7c84f37 · EOL values from endoflife.date 2026-10-07
-# (proposal annex B). Re-verified against repo paths before commit.
+# (proposal annex B). Line-level expect pass: craft review Patrick 2026-10-08.
 
 - id: haproxy
   component: HAProxy (local HA stack; absent from Lightsail)
@@ -58,7 +61,7 @@
     bootstrap-credentials.json and writes demo-device private key into the
     demo-device volume (docker/bootstrap-init/bootstrap-init.sh). Local/demo
     stacks only; absent from Lightsail. Semver-minor line bump → light path +
-    short security-opinion issue when Dependabot opens it.
+    short opinion-only security issue linked to the existing PR.
 
 - id: python-cli-min
   component: Python (CLI declared minimum)
@@ -79,9 +82,9 @@
   component: Kotlin (Android)
   owner: fred
   eol_slug: kotlin
-  current: "2.2.0"
+  current: "2.2"
   sources:
-    - { file: ezkey_mobile/android/build.gradle, expect: 'kotlinVersion = "2.2.0"' }
+    - { file: ezkey_mobile/android/build.gradle, expect: 'kotlinVersion = "2.2.' }
   eol: 2025-12-16 # Kotlin supports only its latest line
   target: follow:react-native
   decision: follow:react-native
@@ -94,9 +97,9 @@
   component: ESLint (mobile tooling)
   owner: fred
   eol_slug: eslint
-  current: "9.39.4"
+  current: "9"
   sources:
-    - { file: ezkey_mobile/package.json, expect: '"eslint": "9.39.4"' }
+    - { file: ezkey_mobile/package.json, expect: '"eslint": "9.' }
   eol: 2026-08-06
   target: "10" # when RN presets follow
   decision: accept-risk
@@ -119,7 +122,8 @@
   warn_months: 3
   issue: null
   last_review: 2026-10-07
-  notes: "Plan T1 2027; dedicated issue; Pixel smoke pattern #627; avis Christophe: <link>"
+  # Christophe opinion link goes in notes when the dedicated issue exists.
+  notes: "Plan T1 2027; dedicated issue; Pixel smoke pattern #627"
 
 - id: node
   component: Node.js (repository reference)
@@ -190,16 +194,16 @@
   component: Spring Boot (Framework 7.0.x / Hibernate 7.4.x / Security 7.1.x via Boot)
   owner: fred
   eol_slug: spring-boot
-  current: "4.1.1"
+  current: "4.1"
   sources:
-    - { file: pom.xml, expect: "<spring-boot.version>4.1.1</spring-boot.version>" }
+    - { file: pom.xml, expect: "<spring-boot.version>4.1." }
   eol: 2027-07-31
   target: "4.2" # when 4.2 has been out ≥ 3 months
   decision: keep
   security: true
   issue: null
   last_review: 2026-10-07
-  notes: "Patches via Java BOM pulse; line change → light path + short security-opinion issue"
+  notes: "Patches via Java BOM pulse; line change → light path + short opinion-only security issue"
 
 - id: postgresql
   component: PostgreSQL
@@ -216,7 +220,7 @@
   security: true
   issue: null
   last_review: 2026-10-07
-  notes: "Any major = dedicated issue + dump/restore migration rehearsal"
+  notes: "Any major = dedicated issue + dump/restore; db-grants image tag must move with postgres"
 
 - id: caddy
   component: Caddy (exposed on Lightsail)
@@ -248,7 +252,7 @@
   security: true
   issue: null
   last_review: 2026-10-07
-  notes: "ARG ROCKY_IMAGE; Dependabot does not rewrite ARG defaults"
+  notes: "ARG ROCKY_IMAGE; Dependabot does not rewrite ARG defaults — light path via normal PR"
 
 - id: maven-build-image
   component: Maven (build image)
@@ -269,10 +273,10 @@
   component: React
   owner: fred
   eol_slug: react
-  current: "19.3.0"
+  current: "19"
   sources:
-    - { file: ezkey-admin-ui/package.json, expect: '"react": "19.3.0"' }
-    - { file: ezkey_mobile/package.json, expect: '"react": "19.3.0"' }
+    - { file: ezkey-admin-ui/package.json, expect: '"react": "19.' }
+    - { file: ezkey_mobile/package.json, expect: '"react": "19.' }
   eol: null # line 19 supported at review
   target: "19"
   decision: keep
@@ -285,9 +289,9 @@
   component: Gradle
   owner: fred
   eol_slug: gradle
-  current: "9.4.1"
+  current: "9"
   sources:
-    - { file: ezkey_mobile/android/gradle/wrapper/gradle-wrapper.properties, expect: "gradle-9.4.1-" }
+    - { file: ezkey_mobile/android/gradle/wrapper/gradle-wrapper.properties, expect: "gradle-9." }
   eol: null # line 9 supported at review
   target: follow:react-native
   decision: follow:react-native
@@ -300,9 +304,9 @@
   component: Android Gradle Plugin
   owner: fred
   eol_slug: null
-  current: "9.2.1"
+  current: "9"
   sources:
-    - { file: ezkey_mobile/android/build.gradle, expect: "com.android.tools.build:gradle:9.2.1" }
+    - { file: ezkey_mobile/android/build.gradle, expect: "com.android.tools.build:gradle:9." }
   eol: null
   target: follow:react-native
   decision: follow:react-native
@@ -315,11 +319,11 @@
   component: TypeScript
   owner: fred
   eol_slug: null
-  current: "6.0.3"
+  current: "6"
   sources:
-    - { file: ezkey-admin-ui/package.json, expect: '"typescript": "~6.0.3"' }
-    - { file: ezkey_mobile/package.json, expect: '"typescript": "6.0.3"' }
-    - { file: ezkey-sdk/javascript/package.json, expect: '"typescript": "^6.0.3"' }
+    - { file: ezkey-admin-ui/package.json, expect: '"typescript": "~6.' }
+    - { file: ezkey_mobile/package.json, expect: '"typescript": "6.' }
+    - { file: ezkey-sdk/javascript/package.json, expect: '"typescript": "^6.' }
   eol: null
   target: "7"
   decision: keep
@@ -334,7 +338,7 @@
   eol_slug: null
   current: "8"
   sources:
-    - { file: ezkey-admin-ui/package.json, expect: '"vite": "^8.3.2"' }
+    - { file: ezkey-admin-ui/package.json, expect: '"vite": "^8.' }
   eol: null
   target: "8"
   decision: keep
@@ -365,7 +369,7 @@
   eol_slug: express
   current: "4"
   sources:
-    - { file: product-docs/site/package.json, expect: '"express": "^4.21.2"' }
+    - { file: product-docs/site/package.json, expect: '"express": "^4.' }
   eol: null
   target: "5"
   decision: keep
@@ -378,28 +382,28 @@
   component: Conscrypt (Android)
   owner: fred
   eol_slug: null
-  current: "2.7.0"
+  current: "2.7"
   sources:
-    - { file: ezkey_mobile/android/app/build.gradle, expect: "org.conscrypt:conscrypt-android:2.7.0" }
+    - { file: ezkey_mobile/android/app/build.gradle, expect: "org.conscrypt:conscrypt-android:2.7." }
   eol: null
-  target: "2.7.x"
+  target: "2.7"
   decision: keep
   security: true
   issue: null
   last_review: 2026-10-07
-  notes: "2.7.0 required for 16 KB gate (#659); Gradle majors ignored per #712"
+  notes: "In register because Gradle majors ignored per #712; 2.7.x required for 16 KB gate (#659)"
 
 - id: androidx-biometric
   component: AndroidX Biometric
   owner: fred
   eol_slug: null
-  current: "1.1.0"
+  current: "1.1"
   sources:
-    - { file: ezkey_mobile/android/app/build.gradle, expect: "androidx.biometric:biometric:1.1.0" }
+    - { file: ezkey_mobile/android/app/build.gradle, expect: "androidx.biometric:biometric:1.1." }
   eol: null
   target: "latest stable (à confirmer)"
   decision: keep
   security: true
   issue: null
   last_review: 2026-10-07
-  notes: "Manual follow; review at first quarterly register walk"
+  notes: "In register because Gradle majors ignored per #712; review at first quarterly walk"

@@ -27,10 +27,14 @@ Patch and minor bumps that Dependabot already opens stay under the normal
 The registry tracks **platforms, runtimes, and images** (JDK, Node, PostgreSQL, HAProxy, Caddy,
 base images, Spring Boot line, React Native line, Gradle / AGP / Kotlin, TypeScript, Vite, …).
 
-It does **not** track application libraries. Crypto and auth library majors on npm or Maven
-(for example `js-sha256`, Boot-managed Spring Security, `nimbus-jose-jwt`) stay under the
+It does **not** track ordinary application libraries. Crypto and auth library majors on npm or
+Maven (for example `js-sha256`, Boot-managed Spring Security, `nimbus-jose-jwt`) stay under the
 `dependabot-curated` T4 rule: human review plus security-owner opinion. Do not add those to
 `registry.yaml`.
+
+**Exception:** libraries whose **majors Dependabot ignores** because they sit in the Gradle
+ecosystem ignore set (#712) — today **Conscrypt** and **AndroidX Biometric** — stay in this
+register so the line is not forgotten.
 
 Also out of scope here: Playwright test images, leftover `busybox:latest` debug images (see
 `document-hygiene-curated`), and product decisions such as Android `minSdk`.
@@ -39,12 +43,17 @@ Also out of scope here: Playwright test images, leftover `busybox:latest` debug 
 
 | Path | When | What to do |
 |------|------|------------|
-| **Light path** | Line change that is still a **semver minor**, opened by Dependabot (example: Maven 3.9 → 3.10) | Update the registry entry (`current`, `sources`, `eol`, `last_review`) **in the same PR**. Put the test plan (family floor below + free part) in the **PR body**. |
-| **Dedicated issue** | Semver **major**, **data migration** (PostgreSQL), **React Native** line, or any `security: true` entry | Open a GitHub issue with the test plan **before** the upgrade PR (labels per `github-issue-labels`). The security owner's **written opinion** goes in that issue; link it from the registry `notes` field. |
+| **Light path** | Line change that is still a **semver minor** (example: Maven 3.9 → 3.10, Spring Boot 4.1 → 4.2) | Update the registry entry (`current`, `sources`, `eol`, `last_review`) **in the same PR**. Put the test plan (family floor below + free part) in the **PR body**. |
+| **Dedicated issue (heavy)** | Semver **major**, **data migration** (PostgreSQL), or **React Native** line | Open a GitHub issue with the test plan **before** the upgrade PR (labels per `github-issue-labels`). When `security: true`, Christophe's written opinion goes in that issue; link it from `notes`. |
 
-If a change would otherwise be light-path but touches a `security: true` line (example: Alpine
-bootstrap-init, Spring Boot 4.1 → 4.2), open a **short** issue whose only job is to collect the
-security reviewer's written opinion and point at the PR. The test plan stays in the PR body.
+**Light path + `security: true`** (example: Alpine bootstrap-init, Spring Boot 4.1 → 4.2): open a
+**short opinion-only** issue linked to the **existing** PR (Dependabot or human). Collect
+Christophe's written opinion there. The test plan stays in the PR body — do **not** invent a
+pre-PR issue-with-test-plan when the PR already exists.
+
+**Line change Dependabot did not open** (example: Kotlin pin, Rocky `ARG ROCKY_IMAGE`): if it is
+a semver major or otherwise heavy-path, use the dedicated-issue path; otherwise use the light
+path via a normal PR that updates the registry (same as Dependabot light path).
 
 **Never** ship a major upgrade autonomously. Marc decides keep / plan / accept-risk.
 
@@ -57,6 +66,9 @@ The **target** for a line is the **latest LTS** that has been in LTS status for 
 Declared minimum versions (for example Python `python_requires >= …`) are a **product** decision
 and sit outside this automatic target rule — they still appear in the registry so they are not
 forgotten.
+
+`target` may also be `follow:<id>` (for example `follow:react-native`) when the component must
+move with another register entry rather than under the LTS-age rule alone.
 
 ## Signal rules (for the upcoming monthly check)
 
@@ -79,7 +91,7 @@ For `accept-risk` on a `security: true` entry, `accept_until` is **mandatory** a
 | Who | Role |
 |-----|------|
 | **Fred** | Prepares the **quarterly review** inside the full Monday `dependabot-curated` pass (January, April, July, October); keeps the registry honest; opens dedicated issues. |
-| **Christophe** | Written opinion **mandatory** on every `security: true` line (recorded in the dedicated issue). Sets `accept_until` when accepting risk. |
+| **Christophe** | Written opinion **mandatory** on every `security: true` line (recorded in the dedicated or opinion-only issue). Sets `accept_until` when accepting risk. |
 | **Patrick** | Validates build / CI / mobile test plans. |
 | **Marc** | Decides: keep, plan, or accept-risk. |
 
@@ -89,9 +101,21 @@ Machine-readable source of truth:
 
 [`registry.yaml`](registry.yaml)
 
-Fields (see header comment in the file): `id`, `component`, `owner`, `eol_slug`, `current`,
-`sources` (list of `{file, expect}`), `eol`, `target`, `decision`, `security`, optional
-`warn_months` / `accept_until`, plus `issue`, `last_review`, `notes`.
+### Field reference
+
+| Field | Rule |
+|-------|------|
+| `id`, `component`, `owner` | Required. |
+| `eol_slug` | endoflife.date product id, or `null` for manual follow. |
+| `current` | The **support line** (endoflife.date cycle, or semver major/minor line when not on EOL) — homogeneous across entries (e.g. `24`, `4.1`, `19`, `9`), **not** a patch pin. |
+| `sources` | List of `{file, expect}`. `expect` is a **line-level** substring (`grep -F`); do **not** pin patch digits so routine Dependabot patches do not false-fail drift. |
+| `eol` | Support end date last recorded (or estimate noted in `notes`). |
+| `target` | Desired line per the target rule above, **or** `follow:<id>` when the entry tracks another register id. |
+| `decision` | `keep` · `plan` · `follow:<id>` · `accept-risk`. |
+| `security` | Boolean; required. |
+| `warn_months` | Optional; default **6** (React Native uses **3**). |
+| `accept_until` | Required when `accept-risk` **and** `security: true`; at most 6 months after `last_review`. |
+| `issue`, `last_review`, `notes` | `notes` links Christophe's opinion when present. |
 
 ## Test-plan floors (by family)
 
@@ -107,6 +131,12 @@ free part. Commands below are paths that exist in this repository.
 HAProxy additionally: `./docker/manage-ha.sh status`, then **Test C: Failover** in
 [`docker/README-HA.md`](../../../../docker/README-HA.md) (stop one instance; traffic fails over).
 
+**PAM / Rocky:** when the Rocky/PAM image line moves, also run
+`./ezkey-pam/scripts/up.sh` (script exists) and record the result in the PR/issue. **Lightsail
+compose** (`experimental-hybrid/lightsail/docker-compose.yml`) is in the registry `sources` for
+drift only; a full Lightsail deploy rehearsal is **out of scope** for the local floor unless the
+operator asks for it.
+
 ### JVM runtime
 
 1. `./scripts/build.sh` (Spotless, Checkstyle, install, then `mvn test -pl '!ezkey-tests'`).
@@ -115,21 +145,28 @@ HAProxy additionally: `./docker/manage-ha.sh status`, then **Test C: Failover** 
 
 ### Node runtime (Admin UI)
 
-1. In `ezkey-admin-ui/`: `npm ci && npm run generate:api && npm run build && npm test`.
-2. `./ezkey-admin-ui/scripts/run-ui-tests.sh` (Playwright).
-3. Build the image from `ezkey-admin-ui/docker/Dockerfile`.
+1. `./ezkey-tests/clean-start.sh` (API stack the UI talks to).
+2. `./ezkey-admin-ui/scripts/run-ui-tests-docker.sh` — builds the Admin UI image and runs
+   Playwright against it on port **3090**.
 
 ### Database
 
-Rehearse on a **copy**, not production data.
+Rehearse on a **copy**, not production data. There is **no** `pg_upgrade` script in the repo;
+rehearsal is dump / restore.
 
 1. `docker exec ezkey-postgres pg_dump -U postgres ezkey_db > backup.sql` (see
    [`docker/README.md`](../../../../docker/README.md) backup section).
-2. Restore into the new major on a fresh volume.
-3. `./docker/start.sh` (the `migration` container replays Flyway).
-4. `mvn test -pl ezkey-tests`.
+2. Start **postgres alone** on the **new** image tag with a **fresh** data volume; restore with
+   `psql` (for example `docker exec -i … psql -U postgres ezkey_db < backup.sql`).
+3. Keep the existing `ezkey_encryption-secrets` volume **or** restore the master key first
+   (`docker/README.md` § encryption backup ~540–548); otherwise restored ciphertext is unreadable.
+4. `./docker/start.sh` — Flyway should then be a **no-op** on an already-migrated dump (do not
+   expect a full replay).
+5. `./scripts/db/verify-grants.sh --docker`.
+6. `mvn test -pl ezkey-tests`.
 
-There is **no** `pg_upgrade` script in the repo; rehearsal is dump / restore.
+The **`db-grants`** service uses the same Postgres image tag
+(`docker/docker-compose.yml` ~64) and **must move together** with `postgres` on every line bump.
 
 ### React Native line
 
@@ -150,6 +187,12 @@ A **non-blocking** monthly GitHub Actions workflow (compare `registry.yaml` to e
 verify each `expect` still appears in its source files, update **one** standing issue) is
 **planned** and is **not present yet**. It will not join `ci-gate`, will not open PRs, and will
 not commit into the tree. See follow-up PR 3 in the major-upgrades rollout.
+
+When implemented, the drift check must verify **all** occurrences of an `expect` in a source
+file (examples today: HAProxy ×3 in `docker-compose.ha.yml`, Postgres ×2 per compose including
+`db-grants`, Temurin `25` ×8 across `docker/Dockerfile` stages). The standing issue stays
+idempotent via a hidden body marker `<!-- major-upgrades-review -->` plus an author filter
+(`app/github-actions`), so each run edits one issue rather than opening duplicates.
 
 ## Related
 
