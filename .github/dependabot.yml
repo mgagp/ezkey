@@ -157,3 +157,125 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
+
+  # -------------------------------------------------------------------------
+  # Wave 0.3 — close Dependabot coverage gaps (security hygiene, config only).
+  # Weekly + minor/patch groups keep PR volume low for a solo maintainer.
+  # docker / docker-compose / gradle: version bumps only — they do not emit
+  # Dependabot CVE alerts. Container image CVE scanning is planned separately.
+  # -------------------------------------------------------------------------
+
+  # Methodology micro-site (adm-zip, express, marked, …). Was missing; a
+  # Dependabot security update for this folder failed without a version-updates
+  # entry. No package-lock.json — Dependabot updates package.json alone.
+  - package-ecosystem: "npm"
+    directory: "/product-docs/site"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      product-docs-site-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Android native deps (conscrypt-android, androidx.biometric, play app-update).
+  # settings.gradle uses includeBuild("../node_modules/@react-native/gradle-plugin"),
+  # so Dependabot Gradle resolution may be partial. Version updates only.
+  # Known gap: native Android CVE alerts are not produced — the dependency graph
+  # does not capture these Gradle deps (automatic Gradle submission declined for
+  # the same includeBuild / node_modules coupling).
+  - package-ecosystem: "gradle"
+    directory: "/ezkey_mobile/android"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      android-gradle-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Dockerfile base images (alpine, node, eclipse-temurin, rocky, busybox, …).
+  # Version bumps only — not CVE alerts. Every directory that contains a
+  # Dockerfile (including ezkey-auth-api/Dockerfile.debug).
+  - package-ecosystem: "docker"
+    directories:
+      - "/docker"
+      - "/docker/bootstrap-init"
+      - "/docker/javamelody"
+      - "/ezkey-admin-ui/docker"
+      - "/ezkey-auth-api"
+      - "/ezkey-pam"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      docker-images-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Compose service images (postgres, caddy, haproxy, …). Version bumps only.
+  # Dependabot reads compose files in each listed directory (docker-compose.yml,
+  # docker-compose.*.yml, compose.yml). Overlay / multi-file stacks under
+  # /docker (e.g. docker-compose.ha.yml, docker-compose.with-proxy.yml) should
+  # be scanned as separate manifests in that directory — verify on the first
+  # Dependabot run; overrides that only extend services without image: pins may
+  # produce no bumps. Does not replace container CVE scanning.
+  - package-ecosystem: "docker-compose"
+    directories:
+      - "/docker"
+      - "/ezkey-admin-ui"
+      - "/ezkey-pam"
+      - "/experimental-hybrid/lightsail"
+      - "/experimental-hybrid/local"
+      - "/scripts/lab"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      compose-images-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
