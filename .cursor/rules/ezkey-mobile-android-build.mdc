@@ -19,7 +19,7 @@ corepack enable
 ./scripts/build-install-debug-clean.sh
 ```
 
-Equivalent: `yarn android:install:debug:clean`. No device: `--build-only` / `yarn android:assemble:debug:clean`.
+Equivalent: `yarn android:install:debug:clean`. No device: `--build-only` / `yarn android:assemble:debug:clean`. Prefer `--build-only` then `--skip-clean` (optional `--with-metro-reverse`) to avoid a second full clean Gradle.
 
 ## Why agents fail without this
 

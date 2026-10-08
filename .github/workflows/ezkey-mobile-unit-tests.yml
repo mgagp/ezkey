@@ -63,6 +63,12 @@ jobs:
           ./scripts/assert-no-gradle-daemon-jvm.sh
           ./scripts/assert-no-gradle-daemon-jvm.sh --self-test
 
+      - name: Metro stale-worktree path self-test
+        working-directory: ezkey_mobile
+        run: |
+          chmod +x scripts/metro-adb-selftest.sh scripts/lib/metro-adb.sh
+          ./scripts/metro-adb-selftest.sh
+
       - name: yarn validate
         working-directory: ezkey_mobile
         run: yarn validate:ci

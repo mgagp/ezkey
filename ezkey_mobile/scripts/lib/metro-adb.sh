@@ -34,11 +34,49 @@ ezkey_adb_reverse_metro() {
   adb reverse "tcp:${port}" "tcp:${port}"
 }
 
-# Best-effort: find cwd of a process listening on localhost:PORT.
+# Extract an ezkey_mobile project root hint from a process command line.
+# Supports Windows paths (backslashes) and POSIX paths. Prints one path or empty.
+# Uses bash [[ =~ ]] (not sed) so backslashes in Windows paths are not excluded.
+# Exported for self-test (do not require a live listener).
+ezkey_metro_project_hint_from_cmdline() {
+  local cmdline="${1:-}"
+  [[ -n "$cmdline" ]] || return 0
+
+  local hint=""
+  # Windows drive path containing ezkey_mobile (allow \ and / after the drive).
+  # Terminators: quotes and whitespace only — backslash must remain allowed.
+  if [[ "$cmdline" =~ ([A-Za-z]:[\\/][^\"\'[:space:]]*[Ee]zkey_[Mm]obile) ]]; then
+    hint="${BASH_REMATCH[1]}"
+  elif [[ "$cmdline" =~ (/[^\"\'[:space:]]*/ezkey_mobile) ]]; then
+    # POSIX / Git Bash: /c/w/p/ezkey_mobile or /home/.../ezkey_mobile
+    hint="${BASH_REMATCH[1]}"
+  fi
+
+  if [[ -n "$hint" ]]; then
+    # Trim trailing path segments after ezkey_mobile when the match over-captured
+    # (e.g. .../ezkey_mobile/node_modules/...). Keep the ezkey_mobile root.
+    if [[ "$hint" == *"/ezkey_mobile/"* ]]; then
+      hint="${hint%%/ezkey_mobile/*}/ezkey_mobile"
+    elif [[ "$hint" == *"\\ezkey_mobile\\"* ]]; then
+      hint="${hint%%\\ezkey_mobile\\*}\\ezkey_mobile"
+    fi
+    printf '%s\n' "$hint"
+  fi
+}
+
+# True when a string looks like a Node/Metro executable path, not a project root.
+ezkey_looks_like_node_exe() {
+  local p="${1:-}"
+  local lower
+  lower="$(printf '%s\n' "$p" | tr '[:upper:]' '[:lower:]')"
+  [[ "$lower" == *"/node" || "$lower" == *"\\node.exe" || "$lower" == *"/node.exe" || "$lower" == *"nodejs/node"* || "$lower" == *"nodejs\\node"* ]]
+}
+
+# Best-effort: find project root of a process listening on localhost:PORT.
 # Prints absolute path or empty if unknown.
 ezkey_listener_cwd_for_port() {
   local port="${1:?port required}"
-  local pid="" cwd=""
+  local pid="" cwd="" cmdline=""
 
   if command -v lsof >/dev/null 2>&1; then
     pid="$(lsof -nP -iTCP:"${port}" -sTCP:LISTEN -t 2>/dev/null | head -1 || true)"
@@ -67,30 +105,25 @@ ezkey_listener_cwd_for_port() {
     cwd="$(pwdx "$pid" 2>/dev/null | awk '{print $2}' || true)"
   fi
 
-  if [[ -z "$cwd" ]] && command -v powershell.exe >/dev/null 2>&1; then
-    cwd="$(
-      powershell.exe -NoProfile -Command \
-        "try { (Get-Process -Id ${pid}).Path } catch { '' }" 2>/dev/null \
-        | tr -d '\r' | head -1 || true
-    )"
-    # Process Path is the exe; try CommandLine for project root hints.
-    local cmdline
+  if command -v powershell.exe >/dev/null 2>&1; then
+    # Prefer CommandLine (project path); do NOT treat Process.Path (node.exe) as cwd.
     cmdline="$(
       powershell.exe -NoProfile -Command \
         "try { (Get-CimInstance Win32_Process -Filter 'ProcessId=${pid}').CommandLine } catch { '' }" \
         2>/dev/null | tr -d '\r' || true
     )"
     if [[ -n "$cmdline" ]]; then
-      # Prefer an absolute path segment that contains ezkey_mobile.
       local hint
-      hint="$(printf '%s\n' "$cmdline" | sed -n 's/.*\([A-Za-z]:[\\/][^\"'"'"' ]*[Ee]zkey[^\"'"'"' ]*[Mm]obile[^\"'"'"' ]*\).*/\1/p' | head -1 || true)"
-      if [[ -z "$hint" ]]; then
-        hint="$(printf '%s\n' "$cmdline" | sed -n 's/.*\([A-Za-z]:[\\/][^\"'"'"']*ezkey_mobile\).*/\1/p' | head -1 || true)"
-      fi
+      hint="$(ezkey_metro_project_hint_from_cmdline "$cmdline" || true)"
       if [[ -n "$hint" ]]; then
         cwd="$hint"
       fi
     fi
+  fi
+
+  # Drop node.exe / similar — that is not a project root.
+  if [[ -n "$cwd" ]] && ezkey_looks_like_node_exe "$cwd"; then
+    cwd=""
   fi
 
   if [[ -n "$cwd" ]]; then
@@ -98,12 +131,46 @@ ezkey_listener_cwd_for_port() {
   fi
 }
 
-# Normalize path for loose comparison (lowercase, forward slashes, strip trailing slash).
+# Normalize path for loose comparison across Git Bash vs Windows forms.
+# Uses cygpath -m when available; lowercase; forward slashes; no trailing slash.
 ezkey_norm_path() {
   local p="$1"
+  [[ -n "$p" ]] || {
+    printf '\n'
+    return 0
+  }
+
+  if command -v cygpath >/dev/null 2>&1; then
+    # cygpath -m → C:/w/r/ezkey_mobile even when given /c/w/r/ezkey_mobile
+    local converted
+    converted="$(cygpath -m "$p" 2>/dev/null || true)"
+    if [[ -n "$converted" ]]; then
+      p="$converted"
+    fi
+  else
+    # Lightweight Git Bash → Windows-ish: /c/foo → C:/foo (no cygpath, e.g. Linux CI)
+    if [[ "$p" =~ ^/([a-zA-Z])/(.*)$ ]]; then
+      local drive
+      drive="$(printf '%s' "${BASH_REMATCH[1]}" | tr '[:lower:]' '[:upper:]')"
+      p="${drive}:/${BASH_REMATCH[2]}"
+    fi
+  fi
+
   p="${p//\\//}"
   p="${p%/}"
+  # Collapse duplicate slashes
+  while [[ "$p" == *//* ]]; do
+    p="${p//\/\//\/}"
+  done
   printf '%s\n' "$p" | tr '[:upper:]' '[:lower:]'
+}
+
+# True when listener path and mobile root refer to the same worktree (or one contains the other).
+ezkey_metro_paths_same_worktree() {
+  local norm_root="$1"
+  local norm_cwd="$2"
+  [[ -n "$norm_root" && -n "$norm_cwd" ]] || return 1
+  [[ "$norm_cwd" == "$norm_root" || "$norm_cwd" == "$norm_root"/* || "$norm_root" == "$norm_cwd" || "$norm_root" == "$norm_cwd"/* ]]
 }
 
 # Warn when a Metro (or other listener) on PORT appears bound to a different project root.
@@ -131,7 +198,7 @@ ezkey_warn_stale_metro() {
   local listener_cwd
   listener_cwd="$(ezkey_listener_cwd_for_port "$port" || true)"
   if [[ -z "$listener_cwd" ]]; then
-    echo "[metro] Warning: something answers on port ${port}, but its project root could not be determined."
+    echo "[metro] Note: something answers on port ${port}, but its project root could not be determined."
     echo "[metro]   If JS bundles look wrong, stop other Metro instances and start from this worktree:"
     echo "[metro]   yarn start --port ${port}"
     return 0
@@ -141,7 +208,7 @@ ezkey_warn_stale_metro() {
   norm_root="$(ezkey_norm_path "$mobile_root")"
   norm_cwd="$(ezkey_norm_path "$listener_cwd")"
 
-  if [[ "$norm_cwd" == "$norm_root"* ]] || [[ "$norm_root" == "$norm_cwd"* ]]; then
+  if ezkey_metro_paths_same_worktree "$norm_root" "$norm_cwd"; then
     echo "[metro] Packager on port ${port} looks tied to this worktree (${listener_cwd})."
     return 0
   fi
@@ -149,7 +216,7 @@ ezkey_warn_stale_metro() {
   cat <<EOF
 [metro] Warning: port ${port} is already serving a different project root.
   Current worktree: ${mobile_root}
-  Listener cwd/hint: ${listener_cwd}
+  Listener project root: ${listener_cwd}
   Stale Metro from another worktree often loads the wrong JS bundle.
   Fix: stop the other Metro, then from this worktree run:
     yarn start --port ${port}

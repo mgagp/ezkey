@@ -120,10 +120,17 @@ A warm `assembleRelease` or a debug install does **not** prove a Play AAB. When 
 
    Or: `yarn android:install:debug:clean` (same script).
 
-4. **JDK resolution** is centralized in `scripts/resolve-android-jdk.sh`. **Project standard is JDK 17** (CI Temurin 17). Prefer `EZKEY_ANDROID_JAVA_HOME`, then `C:\Tools\jdk17` / globbed Microsoft·Temurin JDK 17 / macOS `java_home -v 17`; Studio JBR 21 is accepted locally only as fallback. Never silently prefer 21 when 17 exists. Do not reintroduce `gradle-daemon-jvm.properties` / Foojay auto-download (CI guard: `scripts/assert-no-gradle-daemon-jvm.sh`). Migrating the project to JDK 21 is a separate decision.
+   **Preferred when iterating on device:** avoid a second full clean by assembling once, then installing:
+
+   ```bash
+   ./scripts/build-install-debug-clean.sh --build-only
+   ./scripts/build-install-debug-clean.sh --skip-clean --with-metro-reverse
+   ```
+
+4. **JDK resolution** is centralized in `scripts/resolve-android-jdk.sh`. **Project standard is JDK 17** (CI Temurin 17). Prefer `EZKEY_ANDROID_JAVA_HOME`, then `C:\Tools\jdk17` / globbed Microsoft·Temurin JDK 17 / macOS `java_home -v 17`; Studio JBR 21 is accepted locally only as fallback (stderr warning when used). Never silently prefer 21 when 17 exists. Do not reintroduce `gradle-daemon-jvm.properties` / Foojay auto-download (CI guard: `scripts/assert-no-gradle-daemon-jvm.sh`). Migrating the project to JDK 21 is a separate decision.
 5. After dependency changes: `corepack yarn install --immutable` then the script above.
 6. **Fast reinstall** when APK already built and device reconnected: `./scripts/build-install-debug-clean.sh --skip-clean`.
-7. **Metro on a physical device:** when `ezkey.useMetroInDebug=true` (or `--with-metro-reverse`), the install script re-applies `adb reverse` every run (wireless ADB drops it). Non-default port: `--metro-port` / `EZKEY_METRO_PORT` / `RCT_METRO_PORT`. The script warns if a packager on that port looks tied to another worktree.
+7. **Metro on a physical device:** when `ezkey.useMetroInDebug=true` (or `--with-metro-reverse`), the install script re-applies `adb reverse` every run (wireless ADB drops it). Non-default port: `--metro-port` / `EZKEY_METRO_PORT` / `RCT_METRO_PORT`. The script warns if a packager on that port looks tied to another worktree (Windows paths normalized; self-test: `./scripts/metro-adb-selftest.sh`).
 
 ### Do not
 

@@ -124,7 +124,15 @@ _resolve_android_jdk() {
     return 0
   fi
   if [[ -n "$jdk21_hits" ]]; then
-    printf '%s\n' "$jdk21_hits" | head -1
+    local fallback
+    fallback="$(printf '%s\n' "$jdk21_hits" | head -1)"
+    # Selection order unchanged — warn so silent JDK 21 use is visible.
+    echo "ezkey_mobile: WARNING: no JDK 17 found; falling back to JDK 21 at:" >&2
+    echo "  ${fallback}" >&2
+    echo "  Project standard is JDK 17 (CI Temurin 17). Install JDK 17 or set:" >&2
+    echo "  export EZKEY_ANDROID_JAVA_HOME=/path/to/jdk-17" >&2
+    echo "  Migrating the project to JDK 21 is a separate decision." >&2
+    printf '%s\n' "$fallback"
     return 0
   fi
 

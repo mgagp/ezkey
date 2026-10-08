@@ -76,9 +76,19 @@ Options:
 | `--metro-port PORT` | Metro TCP port (default `8081`; also `EZKEY_METRO_PORT` / `RCT_METRO_PORT`) |
 | `--with-metro-reverse` | Re-apply `adb reverse tcp:PORT` every run (auto-on when `ezkey.useMetroInDebug=true`) |
 
+**Recommended device flow (avoid a second full clean Gradle):** build once, then install:
+
+```bash
+./scripts/build-install-debug-clean.sh --build-only
+adb devices -l
+./scripts/build-install-debug-clean.sh --skip-clean --with-metro-reverse
+# or: yarn android:assemble:debug:clean && yarn android:install:debug:clean --skip-clean --with-metro-reverse
+```
+
 Wireless ADB drops `adb reverse` on reconnect — the script re-applies it before and after
 install when Metro reverse is enabled. It also warns when a packager already listening on
-that port appears to belong to a different worktree (stale Metro).
+that port appears to belong to a different worktree (stale Metro). Path extraction/normalization
+self-test: `./scripts/metro-adb-selftest.sh` (also in CI `js-validate`).
 
 ## `build-install-release-clean.sh` + `assert-release-production-clean-env.sh`
 
@@ -240,7 +250,7 @@ Yarn alias: `yarn android:preflight:path`.
 
 Sets `JAVA_HOME` for Android Gradle (never JDK 25 from PATH). **Project standard is JDK 17** (same as CI `actions/setup-java`).
 
-Order: `EZKEY_ANDROID_JAVA_HOME` → macOS `java_home -v 17` → versionless / globbed JDK 17 installs (`C:\Tools\jdk17`, `Program Files\Microsoft\jdk-17*`, Temurin, Linux `/usr/lib/jvm/…`) → Android Studio JBR (17 preferred, else 21). Never picks 21 when a 17 install exists. Do not reintroduce `android/gradle/gradle-daemon-jvm.properties` or Foojay toolchain auto-download — migrating the project to JDK 21 is a separate decision.
+Order: `EZKEY_ANDROID_JAVA_HOME` → macOS `java_home -v 17` → versionless / globbed JDK 17 installs (`C:\Tools\jdk17`, `Program Files\Microsoft\jdk-17*`, Temurin, Linux `/usr/lib/jvm/…`) → Android Studio JBR (17 preferred, else 21). Never picks 21 when a 17 install exists. If it must fall back to JDK 21, it prints a clear stderr warning (how to set `EZKEY_ANDROID_JAVA_HOME`); it does not fail. Do not reintroduce `android/gradle/gradle-daemon-jvm.properties` or Foojay toolchain auto-download — migrating the project to JDK 21 is a separate decision.
 
 ## `assert-no-gradle-daemon-jvm.sh`
 
@@ -252,6 +262,14 @@ Yarn entrypoint for `.sh` scripts. On Windows, launches
 `C:\Program Files\Git\bin\bash.exe` (override `EZKEY_GIT_BASH`); never the WSL
 shim at `System32\bash.exe` (that yields exit 127 for these scripts). On
 macOS/Linux, uses `bash` from PATH.
+
+On Windows it prints one stderr line so you can verify the launcher:
+
+```text
+[git-bash] using C:\Program Files\Git\bin\bash.exe
+```
+
+On macOS/Linux the line is printed only when `EZKEY_DEBUG_BASH=1` (or `true`).
 
 ## `dependency-monitor.mjs`
 

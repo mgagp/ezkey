@@ -8,7 +8,9 @@
  *   node scripts/run-with-git-bash.mjs scripts/build-install-debug-clean.sh --build-only
  *
  * Override: EZKEY_GIT_BASH=/path/to/bash.exe
- * macOS/Linux: uses `bash` from PATH.
+ * Debug: EZKEY_DEBUG_BASH=1 always prints the resolved bash path; on Windows the
+ * path is printed by default so PowerShell/cmd users can verify Git Bash was used.
+ * macOS/Linux: uses `bash` from PATH (prints only when EZKEY_DEBUG_BASH=1).
  */
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
@@ -106,6 +108,12 @@ const scriptPath = path.isAbsolute(scriptArg)
   : path.resolve(process.cwd(), scriptArg);
 const scriptArgs = process.argv.slice(3);
 const bash = resolveBash();
+
+const debugBash =
+  process.env.EZKEY_DEBUG_BASH === '1' || process.env.EZKEY_DEBUG_BASH === 'true';
+if (debugBash || isWindows()) {
+  console.error(`[git-bash] using ${bash}`);
+}
 
 const result = spawnSync(bash, [scriptPath, ...scriptArgs], {
   cwd: process.cwd() || mobileRoot,
