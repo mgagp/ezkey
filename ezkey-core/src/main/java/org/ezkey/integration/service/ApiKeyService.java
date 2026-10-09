@@ -285,7 +285,7 @@ public class ApiKeyService {
       logger.error(
           "API key rejected: at-rest encryption policy violation for {} — {}",
           maskIntegrationKeyForLog(integrationKey),
-          encryptionViolation.getMessage());
+          LogSanitizer.sanitizeForLog(encryptionViolation.getMessage()));
       return Optional.empty();
     }
     if (!passwordEncoder.matches(secretKey, storedHash)) {
@@ -587,15 +587,19 @@ public class ApiKeyService {
     if (integrationKey == null || integrationKey.isBlank()) {
       return "(none)";
     }
+    final String masked;
     if (integrationKey.startsWith(INTEGRATION_KEY_PREFIX)
         && integrationKey.length() > INTEGRATION_KEY_PREFIX.length() + 4) {
       String kept =
           integrationKey.substring(
               INTEGRATION_KEY_PREFIX.length(), INTEGRATION_KEY_PREFIX.length() + 4);
-      return INTEGRATION_KEY_PREFIX + sanitizeLogPrefixFragment(kept) + "…";
+      masked = INTEGRATION_KEY_PREFIX + sanitizeLogPrefixFragment(kept) + "…";
+    } else {
+      int keep = Math.min(8, integrationKey.length());
+      masked = sanitizeLogPrefixFragment(integrationKey.substring(0, keep)) + "…";
     }
-    int keep = Math.min(8, integrationKey.length());
-    return sanitizeLogPrefixFragment(integrationKey.substring(0, keep)) + "…";
+    // CodeQL log-injection recognizes CR/LF neutralization via LogSanitizer.
+    return LogSanitizer.sanitizeForLog(masked);
   }
 
   /**

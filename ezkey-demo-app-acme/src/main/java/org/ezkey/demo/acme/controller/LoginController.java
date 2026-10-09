@@ -116,9 +116,11 @@ public class LoginController {
       HttpSession session,
       RedirectAttributes redirectAttributes) {
 
-    boolean entryLink = LinkEntryMarker.isLink(entry);
-    boolean slotActive = demoApiKeyConfigService.getActiveSlotId(session) != null;
+    // Layout-only flag: never used to decide whether security steps run.
+    final boolean layoutLinkMarker = LinkEntryMarker.isLink(entry);
+    final boolean slotActive = demoApiKeyConfigService.getActiveSlotId(session) != null;
 
+    // --- Security path (identical with or without entry=link) ---
     DemoRateLimitService.RateLimitDecision rateLimitDecision =
         demoRateLimitService.checkLogin(request);
     if (!rateLimitDecision.allowed()) {
@@ -127,7 +129,7 @@ public class LoginController {
           rateLimitDecision.clientId(),
           rateLimitDecision.retryAfterSeconds());
       redirectAttributes.addFlashAttribute("error", DemoAuthMessages.RATE_LIMIT_LOGIN);
-      return redirectLogin("error=ratelimited", slotActive || entryLink);
+      return loginRedirectWithOptionalMarker("error=ratelimited", slotActive, layoutLinkMarker);
     }
 
     String usernameForLog = LogSanitizer.sanitizeForLog(username);
@@ -145,19 +147,9 @@ public class LoginController {
     session.removeAttribute("pendingExpiresAt");
 
     EzkeyClient client = ezkeyClientProvider.getClient(session);
+    // Gate is credentials availability only — never the layout marker.
     if (client == null) {
-      // Reject before createAuthAttempt whenever credentials/slot are unavailable.
-      // entry=link only chooses layout-B copy/redirect; it never gates whether auth runs.
-      boolean linkLostLayout = entryLink && !slotActive;
-      if (linkLostLayout) {
-        logger.warn("Login attempt rejected — access-link slot no longer in session");
-        redirectAttributes.addFlashAttribute("error", DemoAuthMessages.SESSION_OR_SLOT_LOST);
-      } else {
-        logger.error("Login attempt rejected — Ezkey SDK not configured");
-        redirectAttributes.addFlashAttribute("error", SDK_NOT_CONFIGURED_MSG);
-      }
-      String rejectQuery = linkLostLayout ? "error=sessionexpired" : "error=authfailed";
-      return redirectLogin(rejectQuery, linkLostLayout);
+      return rejectWhenClientMissing(redirectAttributes, slotActive, layoutLinkMarker);
     }
 
     try {
@@ -188,8 +180,46 @@ public class LoginController {
           e.getClass().getSimpleName(),
           e.getStatusCode());
       redirectAttributes.addFlashAttribute("error", DemoAuthMessages.GENERIC_SIGN_IN_FAILED);
-      return redirectLogin("error=authfailed", slotActive || entryLink);
+      return loginRedirectWithOptionalMarker("error=authfailed", slotActive, layoutLinkMarker);
     }
+  }
+
+  /**
+   * Rejects login when the SDK client cannot be resolved.
+   *
+   * <p>Always rejects (no auth attempt). {@code layoutLinkMarker} only selects link-lost copy and
+   * the {@code entry=link} redirect suffix — never whether rejection happens.
+   *
+   * @param redirectAttributes flash attributes
+   * @param slotActive whether an access-code slot is in the session
+   * @param layoutLinkMarker whether the request carried {@code entry=link}
+   * @return redirect view name
+   */
+  private static String rejectWhenClientMissing(
+      RedirectAttributes redirectAttributes, boolean slotActive, boolean layoutLinkMarker) {
+    boolean linkLostCopy = !slotActive && layoutLinkMarker;
+    if (linkLostCopy) {
+      logger.warn("Login attempt rejected — access-link slot no longer in session");
+      redirectAttributes.addFlashAttribute("error", DemoAuthMessages.SESSION_OR_SLOT_LOST);
+    } else {
+      logger.error("Login attempt rejected — Ezkey SDK not configured");
+      redirectAttributes.addFlashAttribute("error", SDK_NOT_CONFIGURED_MSG);
+    }
+    String query = linkLostCopy ? "error=sessionexpired" : "error=authfailed";
+    return loginRedirectWithOptionalMarker(query, slotActive, layoutLinkMarker);
+  }
+
+  /**
+   * Login redirect with optional {@code entry=link} suffix for layout only.
+   *
+   * @param query query without leading {@code ?}
+   * @param slotActive active access-code slot
+   * @param layoutLinkMarker request carried the marker
+   * @return Spring redirect string
+   */
+  private static String loginRedirectWithOptionalMarker(
+      String query, boolean slotActive, boolean layoutLinkMarker) {
+    return redirectLogin(query, slotActive || layoutLinkMarker);
   }
 
   /**

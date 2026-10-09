@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -46,6 +47,7 @@ import org.ezkey.demo.acme.dto.AuthenticatedUser;
 import org.ezkey.demo.acme.security.DemoRateLimitService;
 import org.ezkey.demo.acme.service.AccessCodeService;
 import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
+import org.ezkey.demo.acme.web.LinkEntryMarker;
 import org.ezkey.sdk.AuthAttemptCreateResponse;
 import org.ezkey.sdk.AuthAttemptWaitResponse;
 import org.ezkey.sdk.EzkeyClient;
@@ -97,6 +99,49 @@ class LoginControllerChallengeAndSessionTest {
 
     verify(ezkeyClient).createAuthAttemptByUserIdentifier("alice", true);
     verify(ezkeyClient, never()).createAuthAttemptByUserIdentifier(anyString(), eq(false));
+  }
+
+  @Test
+  void entryLinkMarkerDoesNotChangeSecurityCalls_onlyRedirectSuffix() throws Exception {
+    // Security path (rate-limit, getClient, createAuthAttempt) must be identical with/without
+    // entry=link; the marker only appends the layout suffix on error redirects.
+    when(ezkeyClient.createAuthAttemptByUserIdentifier(eq("alice"), eq(true)))
+        .thenReturn(sampleCreateResponse(42, 12));
+
+    mockMvc
+        .perform(post("/login").param("username", "alice"))
+        .andExpect(status().is3xxRedirection())
+        .andExpect(redirectedUrl("/challenge-wait"));
+    mockMvc
+        .perform(
+            post("/login")
+                .param("username", "alice")
+                .param(LinkEntryMarker.PARAM, LinkEntryMarker.VALUE))
+        .andExpect(status().is3xxRedirection())
+        .andExpect(redirectedUrl("/challenge-wait"));
+
+    verify(demoRateLimitService, times(2)).checkLogin(any());
+    verify(ezkeyClientProvider, times(2)).getClient(any());
+    verify(ezkeyClient, times(2)).createAuthAttemptByUserIdentifier("alice", true);
+
+    // Null-client reject: createAuthAttempt never runs either with or without the marker.
+    when(ezkeyClientProvider.getClient(any())).thenReturn(null);
+    mockMvc
+        .perform(post("/login").param("username", "bob"))
+        .andExpect(status().is3xxRedirection())
+        .andExpect(redirectedUrl("/login?error=authfailed"));
+    mockMvc
+        .perform(
+            post("/login")
+                .param("username", "bob")
+                .param(LinkEntryMarker.PARAM, LinkEntryMarker.VALUE))
+        .andExpect(status().is3xxRedirection())
+        .andExpect(redirectedUrl("/login?error=sessionexpired&entry=link"));
+
+    verify(demoRateLimitService, times(4)).checkLogin(any());
+    verify(ezkeyClientProvider, times(4)).getClient(any());
+    // Still exactly the two successful createAuthAttempt calls from the first half.
+    verify(ezkeyClient, times(2)).createAuthAttemptByUserIdentifier(anyString(), eq(true));
   }
 
   @Test
