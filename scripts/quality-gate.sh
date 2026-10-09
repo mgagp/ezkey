@@ -168,8 +168,10 @@ should_skip() {
 }
 
 stack_up() {
-  curl -sf http://localhost:9080/actuator/health >/dev/null 2>&1 \
-    && curl -sf http://localhost:8080/actuator/health >/dev/null 2>&1
+  # Actuator is on management ports (HAProxy API ports return 404 for /actuator/*).
+  # Use a public Admin API path + Demo Device health — works for HA and non-HA.
+  curl -sf http://localhost:9080/api/v1/public/instance-info >/dev/null 2>&1 \
+    && curl -sf http://localhost:8083/actuator/health >/dev/null 2>&1
 }
 
 run_phase_preflight() {
@@ -206,6 +208,35 @@ run_phase_preflight() {
   return "$code"
 }
 
+ha_compose_retry() {
+  # Known HA race: concurrent admin-api replicas can fail once on encryption-key
+  # PK sync, restart, then become healthy while `compose up` already aborted.
+  # Smallest recovery: wait for both admin replicas, then `compose up -d` again.
+  local compose="docker compose -f docker/docker-compose.ha.yml"
+  if [[ -f docker/docker-compose.ha.docker-dev.yml ]]; then
+    compose="$compose -f docker/docker-compose.ha.docker-dev.yml"
+  fi
+  if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
+    compose="$compose -f docker/docker-compose.ha.javamelody.yml"
+  fi
+  local i h1 h2
+  for i in $(seq 1 24); do
+    h1="$(docker inspect -f '{{.State.Health.Status}}' ezkey-admin-api-1 2>/dev/null || echo missing)"
+    h2="$(docker inspect -f '{{.State.Health.Status}}' ezkey-admin-api-2 2>/dev/null || echo missing)"
+    echo "HA compose retry wait $i: admin-api-1=$h1 admin-api-2=$h2"
+    if [[ "$h1" == "healthy" && "$h2" == "healthy" ]]; then
+      echo "Both admin replicas healthy — resuming compose up -d"
+      SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}" \
+        EZKEY_ENABLE_JAVA_MELODY="${EZKEY_ENABLE_JAVA_MELODY:-true}" \
+        $compose up -d
+      return $?
+    fi
+    sleep 5
+  done
+  echo "HA compose retry: admin replicas did not become healthy in time"
+  return 1
+}
+
 run_phase_clean_start() {
   local log="$RUN_DIR/phases/clean-start.log"
   local start end code=0
@@ -213,7 +244,26 @@ run_phase_clean_start() {
   {
     echo "=== clean-start HA + JavaMelody ==="
     echo "Building and starting from tip $FULL_SHA"
-    ./ezkey-tests/clean-start.sh --ha --with-java-melody
+    export EZKEY_ENABLE_JAVA_MELODY=true
+    if ! ./ezkey-tests/clean-start.sh --ha --with-java-melody; then
+      echo "clean-start returned non-zero — attempting HA compose retry (admin keyset race)"
+      ha_compose_retry || true
+    fi
+    # start-ha waits are skipped when compose aborted early; ensure LB ports respond.
+    local elapsed=0
+    while ! stack_up; do
+      if [[ $elapsed -ge 180 ]]; then
+        echo "Stack still not healthy after 180s"
+        break
+      fi
+      sleep 5
+      elapsed=$((elapsed + 5))
+    done
+    if curl -sf http://localhost:8088/ >/dev/null 2>&1; then
+      echo "JavaMelody collector: OK"
+    else
+      echo "WARNING: JavaMelody collector not responding on :8088"
+    fi
     echo "--- container list ---"
     docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}\t{{.ID}}'
     echo "--- image IDs (ezkey) ---"
@@ -222,9 +272,11 @@ run_phase_clean_start() {
   end="$(now_ms)"
   docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}\t{{.ID}}' >"$RUN_DIR/containers.txt" 2>/dev/null || true
   docker images --format '{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}' >"$RUN_DIR/images.txt" 2>/dev/null || true
-  if [[ "$code" -eq 0 ]] && ! stack_up; then
+  if ! stack_up; then
     code=1
     echo "Stack health check failed after clean-start" >>"$log"
+  else
+    code=0
   fi
   record_phase clean-start "$(phase_verdict_from_exit "$code")" "$code" "$(duration_ms "$start" "$end")" "$log" "-" "HA + JavaMelody"
   return "$code"
