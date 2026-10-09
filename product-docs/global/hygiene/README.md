@@ -40,6 +40,7 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 | [`javamelody/`](javamelody/) | `javamelody-curated` | Live JavaMelody extract after a known workload (typically operational churn) |
 | [`document-hygiene/`](document-hygiene/) | `document-hygiene-curated` | Legacy document canonicality, discoverability, and archive-vs-delete decisions |
 | [`corpus-ablation/`](corpus-ablation/) | `corpus-ablation` | Cursor plans / prompt scaffolds → canon + discoverability; skill `.cursor/skills/corpus-ablation` |
+| [`critical-review/`](critical-review/) | `critical-review` | Launched adversarial / critical review (fresh cloud agent, forced ≠ author model family, read-only HITL); tools Stage 2 |
 
 ## Hygiene vs program
 

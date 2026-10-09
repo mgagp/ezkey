@@ -1,60 +1,61 @@
 ---
 name: critical-review
 description: >-
-  Thin entry point for Ezkey's existing two-stage plan hardening pattern (fresh-session /
-  adversarial review). Launches a read-only Stage 2 review of one artifact — vision note, G1
-  tracer-bullet brief, execution plan, or PR — using the canonical prompt; then one-finding HITL.
-  Use when the operator or a gate says critical-review, critical review, revue critique,
-  adversarial review, plan hardening, cold-agent plan review, or Stage 2 fresh-session review.
+  Launches a fresh-session adversarial (critical) review of one Ezkey artifact — a corpus doc or a
+  PR — by a cloud agent on a forced different model family from the author, read-only, returning a
+  ranked report tied to product intent, values, operability and pragmatism; then one-finding HITL.
+  Use when the operator or a gate says critical-review / critical review / revue critique /
+  adversarial review / plan hardening (Stage 2).
 disable-model-invocation: true
 ---
 
-# Critical review (adversarial / plan hardening)
+# Critical review
 
 ## Purpose
 
-**Keyword aliases for one existing method** — not a second methodology. Stage 2 of the
-[two-stage plan hardening pattern](../../product-docs/methodology/README.md#the-two-stage-plan-hardening-pattern-fresh-session-review)
-(`adversarial review`, `critical review`, `revue critique`, `plan hardening`,
-`cold-agent plan review`).
-
-Fresh session on a **forced different model family** from the author's (mandatory — do not use the
-same family). Read-only. Same product compass. Not a CI gate.
+Launched adversarial review for Stage 2 of the two-stage plan hardening pattern (methodology
+README). Fresh cloud agent, **forced different model family** from the author (mandatory), high
+effort, read-only, same product compass. Not a CI gate; not a second methodology. Same weight
+class as `assessment-curated` (skill + hygiene canon + prompt).
 
 ## Boundary contract
 
-- **Enter when:** G1 brief / P0–P1 vision before merge / security, migration, or cross-component
-  contract / autonomous cold-execution plan; or the operator uses any alias above.
-- **Exit when:** findings decided (`amend` / `defer` / `skip`) and the operator has aligned on
-  amendments before the plan or brief file is edited.
-- **Call next:** the author's branch or a follow-up PR applies amendments — never the reviewer.
-- **Not needed when:** routine hygiene; a `*-curated` lane already owns the signal; local obvious
-  fix.
+- **Enter when:** G1 brief / P0–P1 vision before merge / security, migration, cross-component
+  contract / autonomous cold-execution plan; or operator says `critical-review` (or aliases).
+- **Exit when:** findings decided (`amend` / `defer` / `skip`) and the dated note exists.
+- **Not needed when:** routine hygiene; a `*-curated` lane owns the signal; local obvious fix.
 
-## Authority (single source of truth)
+## Parameters
 
-- Pattern: [`product-docs/methodology/README.md`](../../product-docs/methodology/README.md) §
-  *The two-stage plan hardening pattern*
-- **Canonical prompt (edit angles here, not in this skill):**
-  [`product-docs/templates/cold-agent-plan-review.prompt.md`](../../product-docs/templates/cold-agent-plan-review.prompt.md)
-- Compass pointers inside that prompt: `operator-alignment-guide.md`, `design-principles.md` §17
-- Root pointer: `AGENTS.md` domain table row *Plan review / cold-agent hardening*
+| Param | Required | Notes |
+| --- | --- | --- |
+| `target` | yes | Doc path or `PR #N` |
+| `extras` | no | Related vision / issue / brief paths or numbers |
+| `model` + `effort` | yes | **≠ author model family** (mandatory); high effort |
+| `angle` | no | e.g. product premise, security, operability, autonomous execution |
+
+**Launchers:** Mathieu default (visions, G1 briefs); Patrick (PR craft); Christophe (security);
+Marc on request.
 
 ## Procedure
 
-1. Resolve the target (doc path @ SHA, or PR via `git fetch origin pull/<N>/head`; record head SHA).
-2. Fill and send **only**
-   [`cold-agent-plan-review.prompt.md`](../../product-docs/templates/cold-agent-plan-review.prompt.md)
-   in a **fresh** cloud-agent session. **Model family must differ from the author's** (mandatory;
-   deduce from the PR agent link or ask). Read-only: no branch, push, PR, issue, or GitHub comment
-   from the reviewer.
-3. Relay the report: short lot overview, then **one finding at a time** → `amend` / `defer` /
-   `skip` (never bare “No-Go”; `amend` = GO for that finding).
-4. After HITL alignment, amendments land on the author's artifact — not by the reviewer agent.
+1. Resolve the target: doc → path @ SHA; PR → `git fetch origin pull/<N>/head`, record head SHA.
+2. Fill [`product-docs/templates/critical-review.prompt.md`](../../product-docs/templates/critical-review.prompt.md)
+   (parameters + baseline list).
+3. Launch **ONE** cloud agent (fresh session, chosen model/effort ≠ author family), read-only —
+   no branch, push, PR, issue, or GitHub comment (disable auto-PR if offered).
+4. Relay the report: lot overview, then **one finding at a time** → `amend` / `defer` / `skip`
+   (never bare “No-Go”; `amend` = GO for that finding).
+5. Write `product-docs/global/hygiene/critical-review/YYYY-MM-DD-<slug>.md` from TEMPLATE.
+6. Amendments go to the author's branch (or a follow-up PR) — never by the reviewer.
+
+## Authority
+
+- Canon: [`product-docs/global/hygiene/critical-review/README.md`](../../product-docs/global/hygiene/critical-review/README.md)
+- Prompt: [`product-docs/templates/critical-review.prompt.md`](../../product-docs/templates/critical-review.prompt.md)
+- Execution-hardening angle (by reference): [`product-docs/templates/cold-agent-plan-review.prompt.md`](../../product-docs/templates/cold-agent-plan-review.prompt.md)
+- Pattern: [`product-docs/methodology/README.md`](../../product-docs/methodology/README.md) § two-stage
 
 ## If the operator asks how to invoke
 
-Say: open a fresh session; paste
-[`cold-agent-plan-review.prompt.md`](../../product-docs/templates/cold-agent-plan-review.prompt.md)
-with the target path or PR; use any alias (`critical-review`, `adversarial review`, …). Keep the
-answer short.
+Quote README § How to invoke (operator cheat sheet).

@@ -14,8 +14,8 @@ in the 2026-08 methodology ablation — see
 - `assessment-curated` — mandate-driven white-box hygiene assessment (HITL + handoff).
 - `document-hygiene-curated` — legacy document canonicality and archive-vs-delete decisions.
 - `security-pentest-curated` — live local Docker-stack DAST / OpenAPI campaign (HITL).
-- `critical-review` — thin entry point for the existing two-stage plan hardening / adversarial
-  review pattern (canonical prompt `product-docs/templates/cold-agent-plan-review.prompt.md`).
+- `critical-review` — launched adversarial / critical review (fresh cloud agent, forced different
+  model family, read-only); canon `product-docs/global/hygiene/critical-review/`.
 
 These are tooling for recurring operational passes, not method ceremony, so they stayed out of
 scope for the ablation.

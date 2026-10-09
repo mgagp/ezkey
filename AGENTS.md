@@ -32,7 +32,7 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | Mandate-driven hygiene assessment (HITL + handoff) | Keyword **`assessment-curated`** → [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md) |
 | Legacy document hygiene (canonicality / discoverability / archive-vs-delete) | Keyword **`document-hygiene-curated`** → [`product-docs/global/hygiene/document-hygiene/README.md`](product-docs/global/hygiene/document-hygiene/README.md) |
 | New idea / method | [`product-docs/methodology/README.md`](product-docs/methodology/README.md) — the whole method fits in that one document since the 2026-08 ablation |
-| Plan review / cold-agent hardening (aliases: `critical-review`, adversarial review, revue critique, plan hardening) | Canonical prompt [`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md); pattern in [`product-docs/methodology/README.md`](product-docs/methodology/README.md) § two-stage; thin skill [`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md) |
+| Plan review / cold-agent hardening (aliases: `critical-review`, adversarial review, revue critique, plan hardening Stage 2) | Canon [`product-docs/global/hygiene/critical-review/README.md`](product-docs/global/hygiene/critical-review/README.md); prompt [`product-docs/templates/critical-review.prompt.md`](product-docs/templates/critical-review.prompt.md); skill [`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md); execution-hardening angle [`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md); pattern [`product-docs/methodology/README.md`](product-docs/methodology/README.md) § two-stage |
 | API contract change | Controller + **section** of `docs/ENDPOINT.md` + OpenAPI refresh workflow (see OpenAPI rules) |
 | Strategic positioning / public copy | [`docs/PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) only when that layer is in scope |
 | Public alpha label / deploy “what is live” | [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md); community ledger [`docs/lightsail/community/DEPLOYED.md`](docs/lightsail/community/DEPLOYED.md) |
@@ -66,12 +66,14 @@ research and comparing alternatives, then position the idea as a `V-*`, `I-*`, o
 
 **Critical-review gate:** P0/P1 visions and G1 briefs get a **`critical-review`** before the gate
 (fresh cloud agent, **forced different model family** from the author, read-only) — the main lever
-for AI-factory review quality and continuous improvement of autonomy. See domain pointer table and
-[`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md).
+for AI-factory review quality and continuous improvement of autonomy. Canon:
+[`product-docs/global/hygiene/critical-review/README.md`](product-docs/global/hygiene/critical-review/README.md);
+skill [`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md).
 
-For other high-risk slices (security boundaries, session management, DB migrations, or autonomous
-cold-agent handoffs), also harden via the **two-stage plan hardening pattern**
-([`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md)).
+For autonomous cold-execution plans and other high-risk slices, Stage 2 also uses the
+execution-hardening angle
+([`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md))
+via the same keyword.
 
 The always-applied rule
 [`.cursor/rules/product-docs-workflow-bootstrap.mdc`](.cursor/rules/product-docs-workflow-bootstrap.mdc)
