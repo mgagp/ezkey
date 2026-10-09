@@ -11,9 +11,13 @@
 package org.ezkey.admin.service;
 
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -32,17 +36,15 @@ import tools.jackson.databind.node.ObjectNode;
 /**
  * Service for exporting bootstrap credentials to a file.
  *
- * <p>Writes bootstrap material to a JSON file with owner-only permissions ({@code 0600}) so
+ * <p>Writes bootstrap material to a JSON file created with owner-only permissions ({@code 0600}) so
  * operators and Docker automation can retrieve secrets that must not appear in container logs.
  * Recovery codes are stored in this file (never in logs). Enrollment proof token and challenge are
- * included only in {@link BootstrapCredentialsOutputMode#FULL}.
+ * included only in {@link BootstrapCredentialsOutputMode#FULL} and are removed after a successful
+ * bind (recovery codes remain until the operator deletes the file).
  *
  * <p><b>Idempotent:</b> If the file already exists and contains the same enrollmentId, it will not
  * be overwritten to avoid unnecessary churn (except when new plaintext recovery codes must be
  * persisted).
- *
- * <p><b>Security:</b> Prefer enabling this only in Docker/demo profiles. The file mode is always
- * tightened to {@code rw-------} after write when the filesystem supports POSIX permissions.
  *
  * @since 2025
  */
@@ -154,14 +156,22 @@ public class BootstrapCredentialsFileExporter {
         }
       }
 
-      objectMapper.writerWithDefaultPrettyPrinter().writeValue(filePath.toFile(), jsonNode);
-      applyOwnerReadWriteOnly(filePath);
+      writeAtomicallyOwnerOnly(filePath, jsonNode);
 
       logger.info(
           "✅ Bootstrap credentials exported to file: {} (enrollmentId: {}, mode: {}, 0600)",
           exportProperties.getPath(),
           enrollment.getEnrollmentId(),
           mode);
+    } catch (UnsupportedOperationException e) {
+      logger.error(
+          "POSIX permissions unsupported at {}; refusing to write bootstrap-credentials.json"
+              + " without atomic owner-only mode",
+          exportProperties.getPath());
+      if (hasRecoveryCodes) {
+        logger.error(
+            "Plaintext recovery codes could not be persisted to disk and are not written to logs.");
+      }
     } catch (IOException e) {
       logger.error(
           "Failed to export bootstrap credentials to file: {} - {}",
@@ -178,20 +188,67 @@ public class BootstrapCredentialsFileExporter {
   }
 
   /**
-   * Restricts the credentials file to owner read/write when the filesystem supports POSIX modes.
+   * After a successful bind, removes enrollment proof token and challenge from the credentials file
+   * while keeping recovery codes (and username / enrollmentId).
    *
-   * @param filePath path of the written credentials file
+   * @param enrollmentId enrollment that was bound
    */
-  private void applyOwnerReadWriteOnly(Path filePath) {
+  public void removeBindSecretsKeepRecoveryCodes(Integer enrollmentId) {
+    if (enrollmentId == null) {
+      return;
+    }
+    Path filePath = Path.of(exportProperties.getPath());
+    if (!Files.exists(filePath)) {
+      return;
+    }
     try {
-      Files.setPosixFilePermissions(filePath, OWNER_READ_WRITE_ONLY);
+      ObjectNode json = (ObjectNode) objectMapper.readTree(filePath.toFile());
+      if (!json.has("enrollmentId") || json.get("enrollmentId").asInt() != enrollmentId) {
+        return;
+      }
+      json.remove("enrollmentProofToken");
+      json.remove("enrollmentChallengeCode");
+      json.remove("authUrl");
+      writeAtomicallyOwnerOnly(filePath, json);
+      logger.info(
+          "Removed bind secrets from bootstrap credentials file (enrollmentId: {}); recovery codes"
+              + " retained — delete the file after copying codes to a safe store",
+          enrollmentId);
     } catch (UnsupportedOperationException e) {
-      logger.warn(
-          "POSIX permissions not supported for {}; ensure the host restricts access to"
-              + " bootstrap-credentials.json",
-          filePath);
+      logger.error(
+          "POSIX permissions unsupported; could not redact bind secrets from {}", filePath);
     } catch (IOException e) {
-      logger.warn("Failed to set 0600 on {}: {}", filePath, e.getMessage());
+      logger.error("Failed to redact bind secrets from {}: {}", filePath, e.getMessage());
+    }
+  }
+
+  /**
+   * Writes JSON via a temp file created with {@code rw-------}, then atomic replace.
+   *
+   * @param filePath destination path
+   * @param jsonNode content to persist
+   * @throws IOException on I/O failure
+   * @throws UnsupportedOperationException when POSIX file permissions are unavailable
+   */
+  private void writeAtomicallyOwnerOnly(Path filePath, ObjectNode jsonNode) throws IOException {
+    Path parent = filePath.getParent() != null ? filePath.getParent() : Path.of(".");
+    FileAttribute<Set<PosixFilePermission>> attr =
+        PosixFilePermissions.asFileAttribute(OWNER_READ_WRITE_ONLY);
+    Path tmp = parent.resolve("bootstrap-credentials." + java.util.UUID.randomUUID() + ".tmp");
+    Files.createFile(tmp, attr);
+    try {
+      objectMapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), jsonNode);
+      try {
+        Files.move(
+            tmp, filePath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+      } catch (AtomicMoveNotSupportedException e) {
+        Files.move(tmp, filePath, StandardCopyOption.REPLACE_EXISTING);
+      }
+      tmp = null;
+    } finally {
+      if (tmp != null) {
+        Files.deleteIfExists(tmp);
+      }
     }
   }
 

@@ -23,7 +23,7 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.admin.initial.last-name` | `EZKEY_ADMIN_INITIAL_LAST_NAME` | `Docker` | requis |
 | `ezkey.admin.mfa.mode` | — | `dev` | requis [docker] |
 | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE` | `FULL` | optionnel |
-| `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS` | `24` | optionnel |
+| `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS` | `24` | requis (≥1) |
 | `ezkey.admin.token.rotation-on-login` | — | `true` | optionnel |
 | `ezkey.admin.token.expiration-hours` | — | `2` | optionnel |
 | `ezkey.admin.token.cleanup.enabled` | — | `true` | optionnel |
@@ -85,7 +85,7 @@ Integration Zero and Enrollment Zero at first startup ("Eat Your Own Dog Food").
 | `ezkey.admin.mfa.bootstrap.enabled` | `boolean` | `true` | optionnel | Create Integration Zero and Enrollment Zero at startup if absent. |
 | `ezkey.admin.mfa.bootstrap.auto-enrollment` | `boolean` | `true` | optionnel | Automatically create Enrollment Zero for the Global Admin. Convenient in dev; consider `false` in production. |
 | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `BootstrapCredentialsOutputMode` | `FULL` | optionnel | `FULL` = proof token, challenge, ASCII QR in logs (by design) + JSON export including recovery codes. `RECOVERY_PRIMARY` = no enrollment secrets in logs; recovery codes only in `bootstrap-credentials.json` (`0600`). |
-| `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | `int` | `24` | optionnel | Pending bind/verify TTL for the **bootstrap** global-admin enrollment only. `0` disables. Ordinary enrollments use `ezkey.enrollment.pending-expiration-days`. |
+| `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | `int` | `24` | requis (≥1) | Pending bind/verify TTL for the **bootstrap** global-admin enrollment only. Minimum **1** (Bean Validation). Ordinary enrollments use `ezkey.enrollment.pending-expiration-days`. |
 
 **Enum values for `credentials-output-mode`:**
 

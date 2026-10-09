@@ -173,8 +173,12 @@ services:
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
       # Always a valid Duration. Empty host value would fail Spring bind.
       EZKEY_ENCRYPTION_KEYSET_BOOTSTRAP_WAIT: ${EZKEY_ENCRYPTION_KEYSET_BOOTSTRAP_WAIT:-PT90S}
+      # Path for post-bind redaction of bootstrap-credentials.json (shared volume below)
+      EZKEY_ADMIN_BOOTSTRAP_EXPORT_PATH: /var/lib/ezkey/bootstrap/bootstrap-credentials.json
     volumes:
       - encryption-secrets:/etc/ezkey
+      # Shared with admin-api so bind can redact proof token / challenge from bootstrap-credentials.json
+      - bootstrap-artifacts:/var/lib/ezkey/bootstrap
     ports:
       - "8080:8080"
       - "8085:8085"

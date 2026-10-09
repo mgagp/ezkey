@@ -102,4 +102,33 @@ class BootstrapCredentialsFileExporterTest {
     assertThat(json.get("recoveryCodes").get(0).asString()).isEqualTo("ZZZZ-YYYY-XXXX-WWWW");
     assertThat(exporter.recoveryCodesLogPointer()).contains("0600");
   }
+
+  @Test
+  void removeBindSecretsKeepsRecoveryCodes() throws Exception {
+    Path file = tempDir.resolve("bootstrap-credentials.json");
+    BootstrapExportProperties exportProperties = new BootstrapExportProperties();
+    exportProperties.setEnabled(true);
+    exportProperties.setPath(file.toString());
+
+    AdminMfaProperties mfaProperties = new AdminMfaProperties();
+    mfaProperties.getBootstrap().setCredentialsOutputMode(BootstrapCredentialsOutputMode.FULL);
+
+    BootstrapCredentialsFileExporter exporter =
+        new BootstrapCredentialsFileExporter(
+            exportProperties, new QrCodeProperties(), mfaProperties);
+
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(7);
+    enrollment.setEnrollmentChallenge(112233);
+    exporter.exportIfEnabled(
+        enrollment, "proof.tokenValue", "admin.docker", List.of("AAAA-BBBB-CCCC-DDDD"));
+
+    exporter.removeBindSecretsKeepRecoveryCodes(7);
+
+    ObjectNode json = (ObjectNode) new ObjectMapper().readTree(file.toFile());
+    assertThat(json.has("enrollmentProofToken")).isFalse();
+    assertThat(json.has("enrollmentChallengeCode")).isFalse();
+    assertThat(json.get("recoveryCodes").get(0).asString()).isEqualTo("AAAA-BBBB-CCCC-DDDD");
+    assertThat(json.get("enrollmentId").asInt()).isEqualTo(7);
+  }
 }

@@ -74,10 +74,7 @@ public class AdminAuthAttemptTxHelper {
 
     AuthAttemptCreateResponse response = authAttemptService.create(request);
 
-    logger.debug(
-        "✅ Auth attempt created and committed (ID: {}, challenge: {})",
-        response.getAuthAttemptId(),
-        response.getAuthAttemptChallenge());
+    logger.debug("✅ Auth attempt created and committed (ID: {})", response.getAuthAttemptId());
 
     // Transaction commits here when method returns
     return response;

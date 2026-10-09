@@ -553,13 +553,23 @@ Server logs must **not** duplicate high-value secrets that are already returned 
 - **`full`** (default for development and Docker clean-start): enrollment proof token, challenge, and ASCII QR appear in startup logs (by design). Recovery codes are written to `bootstrap-credentials.json` (`0600`) — never to logs. File export also includes enrollment bind material for `bootstrap-init`.
 - **`recovery_primary`**: enrollment secrets and ASCII QR are omitted from logs. Recovery codes are written to `bootstrap-credentials.json` (`0600`) only. Use the Admin UI account-recovery flow (recover → reset enrollment → bind). For Docker unattended bind, keep `credentials-output-mode=full`; with `recovery_primary`, set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on `bootstrap-init` (or omit that service) because the file has no proof token.
 
-**Bootstrap enrollment TTL:** `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` (default **24**, env `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS`). Bind is refused after expiry. To re-issue: read a recovery code from `bootstrap-credentials.json` → Admin UI account recovery → reset enrollment → bind with the new material returned in the HTTP response.
+**Bootstrap enrollment TTL:** `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` (default **24**, minimum **1**, env `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS`). Bind is refused after expiry. To re-issue: read a recovery code from `bootstrap-credentials.json` → Admin UI account recovery → reset enrollment (refreshes `expiresAt`) → bind with the new material returned in the HTTP response.
 
 **Retrieve recovery codes (Docker):**
 
 ```bash
 docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/bootstrap-credentials.json
 ```
+
+After a successful bind, the file keeps **recovery codes** but the proof token and challenge are
+removed. **Delete the credentials file** once codes are copied to a password manager or other safe
+store (the file is owner-only `0600`; both `admin-api` and `bootstrap-init` run as UID `100`
+`spring` so init can still read it before redaction).
+
+**Re-issue after invitation expiry:** recover with a recovery code → reset enrollment (refreshes
+`expiresAt` to now + `enrollment-expiration-hours`) → bind with the new material from the HTTP
+response. Scheduler-marked `EXPIRED` enrollments are accepted by reset (status returns to
+`CREATED`).
 
 **Operational recommendation:** After the global administrator completes first device binding and can sign in, **regenerate recovery codes** from the Admin UI so unused codes from the bootstrap credentials file are invalidated.
 

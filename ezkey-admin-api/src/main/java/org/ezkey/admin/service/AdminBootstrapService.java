@@ -427,9 +427,7 @@ public class AdminBootstrapService {
     globalAdminEnrollment.setIntegrationPrivateKey(keyPair.base64PrivateKey());
     globalAdminEnrollment.setCreatedAt(OffsetDateTime.now());
     int enrollmentExpirationHours = mfaProperties.getBootstrap().getEnrollmentExpirationHours();
-    if (enrollmentExpirationHours > 0) {
-      globalAdminEnrollment.setExpiresAt(OffsetDateTime.now().plusHours(enrollmentExpirationHours));
-    }
+    globalAdminEnrollment.setExpiresAt(OffsetDateTime.now().plusHours(enrollmentExpirationHours));
 
     // Store token in local variable before save (to ensure we log the exact token
     // that was set)

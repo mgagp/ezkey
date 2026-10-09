@@ -174,8 +174,10 @@ services:
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
       EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
       EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
+      EZKEY_ADMIN_BOOTSTRAP_EXPORT_PATH: /var/lib/ezkey/bootstrap/bootstrap-credentials.json
     volumes:
       - encryption-secrets:/etc/ezkey
+      - bootstrap-artifacts:/var/lib/ezkey/bootstrap
     networks:
       - ezkey-exp-net
     restart: on-failure:3

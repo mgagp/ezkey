@@ -18,8 +18,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
+import java.util.Collections;
 import java.util.Optional;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
+import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -28,6 +30,7 @@ import org.ezkey.exception.auth.EnrollmentInvitationExpiredException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
+import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.service.EntityEligibilityService;
@@ -48,6 +51,7 @@ class EnrollmentBindServiceEligibilityTest {
   @Mock private EzkeyAdminRepository ezkeyAdminRepository;
   @Mock private EnrollmentTxHelper enrollmentTxHelper;
   @Mock private SignatureService signatureService;
+  @Mock private BootstrapCredentialsPostBindCleaner bootstrapCredentialsPostBindCleaner;
 
   private final EntityEligibilityService eligibilityService = new EntityEligibilityService();
 
@@ -62,7 +66,8 @@ class EnrollmentBindServiceEligibilityTest {
             ezkeyAdminRepository,
             eligibilityService,
             enrollmentTxHelper,
-            signatureService);
+            signatureService,
+            bootstrapCredentialsPostBindCleaner);
   }
 
   @Test
@@ -128,6 +133,58 @@ class EnrollmentBindServiceEligibilityTest {
     verify(enrollmentTxHelper)
         .markExpiredAndEmitAudit(303, 7, expiresAt, "enrollment_expired_bind_rejected");
     verify(enrollmentRepository, never()).findAndLockUnreadById(303);
+  }
+
+  @Test
+  @DisplayName(
+      "bind succeeds after recover→reset refreshed expiresAt (EXPIRED → CREATED + new TTL)")
+  void bindSucceedsAfterInvitationTtlRefresh() {
+    EnrollmentBindRequest request = new EnrollmentBindRequest();
+    request.setEnrollmentId(404);
+    request.setEnrollmentProofToken("reissued-proof");
+
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(404);
+    enrollment.setEnrollmentName("Global Admin");
+    enrollment.setStatus(EnrollmentStatus.CREATED);
+    enrollment.setIntegrationId(1);
+    enrollment.setCreatedAt(OffsetDateTime.now().minusHours(30));
+    enrollment.setExpiresAt(OffsetDateTime.now().plusHours(24));
+    enrollment.setEnrollmentProofToken("reissued-proof");
+    enrollment.setIntegrationPublicKey("dGVzdC1wdWItYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE");
+
+    Integration integration = new Integration();
+    integration.setId(1);
+    integration.setName("System");
+    integration.setDescription("System");
+    integration.setIsSystemIntegration(true);
+
+    when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofTokenHash(
+            404, org.ezkey.security.SensitiveDataHasher.sha256Hex("reissued-proof")))
+        .thenReturn(Optional.of(enrollment));
+    when(ezkeyAdminRepository.findByEnrollmentId(404)).thenReturn(Optional.empty());
+    when(integrationRepository.findById(1)).thenReturn(Optional.of(integration));
+    when(enrollmentRepository.findAndLockUnreadById(404)).thenReturn(Optional.of(enrollment));
+    when(enrollmentRepository.save(enrollment)).thenReturn(enrollment);
+    when(signatureService.normalizeIntegrationPublicKeyToBase64(
+            enrollment.getIntegrationPublicKey()))
+        .thenReturn(enrollment.getIntegrationPublicKey());
+    when(ezkeyAdminRepository.findTenantInfoByAdminEnrollmentId(404))
+        .thenReturn(Collections.emptyList());
+    when(integrationRepository.findTenantInfoByIntegrationId(1))
+        .thenReturn(Collections.emptyList());
+
+    EnrollmentBindResponse response = enrollmentBindService.bind(request);
+
+    assertEquals(404, response.getEnrollmentId());
+    assertEquals(EnrollmentStatus.BOUND, enrollment.getStatus());
+    verify(enrollmentTxHelper, never())
+        .markExpiredAndEmitAudit(
+            org.mockito.ArgumentMatchers.anyInt(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.anyString());
+    verify(bootstrapCredentialsPostBindCleaner).afterEnrollmentBound(404);
   }
 
   @Test
