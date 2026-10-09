@@ -562,7 +562,11 @@ run_phase_churn() {
     wait "$pid2" || c2=$?
     CHURN_PIDS=""
     echo "churn-a=$c1 churn-b=$c2"
-    [[ "$c1" -ne 0 || "$c2" -ne 0 ]] && code=1
+    # Use if/fi — a failing [[ ]] as the last command would make the group exit 1
+    # and the trailing `|| code=$?` would false-RED a successful churn.
+    if [[ "$c1" -ne 0 || "$c2" -ne 0 ]]; then
+      code=1
+    fi
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
   record_phase churn "$([[ $code -eq 0 ]] && echo GREEN || echo RED)" "$code" \

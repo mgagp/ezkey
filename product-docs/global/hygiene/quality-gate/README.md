@@ -59,7 +59,7 @@ JavaMelody collector: `127.0.0.1:8088:8080` (product publish change).
 
 ## Run notes
 
-Dated notes: `YYYY-MM-DD-run-N.md`. Current: [run-4](2026-10-09-run-4.md).
+Dated notes: `YYYY-MM-DD-run-N.md`. Current: [run-5](2026-10-09-run-5.md).
 Earlier run-1…3 history lives on the PR comment for #746 (folded out of the tree).
 
 ## Related
