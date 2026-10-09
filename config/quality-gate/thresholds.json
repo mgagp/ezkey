@@ -1,14 +1,14 @@
 {
-  "version": 1,
-  "baselineNote": "Baseline remains unlocked after run-2 (558eac96, 2026-10-09). Run-2 was a complete one-command E2E (unit tests before stack; clean-start GREEN, no #747 retry), but admin-api-2 exit 137 during functional still degraded HA — do not treat as a healthy complete HA lock. Bands below are provisional (observed + margin from run-2 JM). Relock when a no-OOM HA run completes. JavaMelody Error404 synthetic buckets excluded from httpErrorPct via httpErrorPctExclusions.",
-  "baselineLocked": false,
+  "version": 2,
+  "note": "Provisional round-number bands for the quality gate. Recalibrate from a clean HA run (no OOM, all replicas up, #747 retry not required). There is no locked baseline comparison — bands are absolute thresholds only.",
   "javamelody": {
+    "maxAgeSeconds": 600,
     "topHttpMeanMs": { "amber": 200, "red": 1000 },
     "topHttpMaxMs": { "amber": 5000, "red": 30000 },
-    "httpErrorPct": { "amber": 5.0, "red": 15.0 },
+    "httpErrorPct": { "amber": 5.0, "red": 15.0, "minHits": 20 },
     "httpErrorPctExclusions": {
       "pattern": "^Error\\d+",
-      "justification": "JavaMelody synthetic Error404/Error5xx buckets always report 100% error rate; exclude from httpErrorPct scoring so they do not drive AMBER/RED."
+      "justification": "JavaMelody synthetic Error404/Error5xx buckets always report 100% error rate; exclude from httpErrorPct scoring."
     },
     "topSqlMeanMs": { "amber": 20, "red": 100 },
     "topSqlMaxMs": { "amber": 100, "red": 1000 },
@@ -17,10 +17,31 @@
   },
   "containers": {
     "restartsPerService": { "amber": 2, "red": 4 },
-    "oomKills": { "amber": 1, "red": 2 },
+    "oomKills": { "amber": 1, "red": 1 },
     "unhealthyServices": { "amber": 1, "red": 3 },
     "distinctErrorSignatures": { "amber": 40, "red": 150 },
     "distinctWarnSignatures": { "amber": 200, "red": 800 },
-    "totalErrorLines": { "amber": 200, "red": 1000 }
+    "totalErrorLines": { "amber": 200, "red": 1000 },
+    "transientIo": {
+      "Broken pipe": { "amber": 50, "red": 200 },
+      "Connection reset by peer": { "amber": 50, "red": 200 },
+      "I/O error on GET request": { "amber": 50, "red": 200 },
+      "Connection is not available, request timed out": { "amber": 20, "red": 80 }
+    }
+  },
+  "gateMemory": {
+    "jvmMemLimitsMiB": {
+      "admin-api-1": 900,
+      "admin-api-2": 900,
+      "auth-api-1": 900,
+      "auth-api-2": 900,
+      "integration-api-1": 900,
+      "integration-api-2": 900,
+      "crypto-api": 640,
+      "demo-device": 640,
+      "demo-app-acme": 640
+    },
+    "hostMarginMiB": 3072,
+    "postgresReserveMiB": 1024
   }
 }

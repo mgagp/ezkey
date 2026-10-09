@@ -1,20 +1,13 @@
 #!/usr/bin/env bash
 #
-# quality-gate — on-demand full-suite quality gate for Ezkey.
-# Thin orchestrator. Phase order (intentional; differs from a naive
-# "stack first" list so unit tests keep memory headroom on ~16Gi VMs):
+# quality-gate — on-demand full-suite gate (cloud agent / Git Bash).
 #
-#   preflight → unit-tests (./scripts/build.sh, no stack) → build-images
-#   → clean-start HA+JavaMelody → functional → elective → Playwright
+# Phase order (unit tests before stack — memory headroom on ~16Gi VMs):
+#   preflight → unit-tests → clean-start HA+JM (+gate memory overlay)
+#   → post-clean-health → functional → elective → Playwright
 #   → churn-init → 2× churn → health → REPORT.md + summary.json
 #
-# Usage (Git Bash on Windows, Linux, or macOS), from repo root:
-#   ./scripts/quality-gate.sh
-#   ./scripts/quality-gate.sh --churn-minutes 5
-#   ./scripts/quality-gate.sh --skip unit-tests --no-clean-start
-#
-# Keyword: quality-gate
-# Outputs: logs/quality-gate/<UTC>-<shortsha>/ (gitignored)
+# Exit: 0 = GO, 3 = GO with reservations, other non-zero = NO-GO
 #
 set -uo pipefail
 
@@ -28,73 +21,41 @@ export LANG="${LANG:-C.UTF-8}"
 KEYWORD="quality-gate"
 CHURN_MINUTES=5
 NO_CLEAN_START=0
-# Space-delimited skip list (bash 3.2 / Git Bash portable — no associative arrays).
 SKIP_PHASES=""
-
-# Available RAM below this → preflight AMBER (HA 6-JVM + JavaMelody headroom).
-HA_JM_MIN_AVAILABLE_MIB="${HA_JM_MIN_AVAILABLE_MIB:-8192}"
-
-# Set when HA compose retry fires (product bug #747). Clean-start stays AMBER.
 COMPOSE_RETRY_FIRED=0
+HA_INVALID=0
+OVERALL_RED=0
+OVERALL_AMBER=0
+STACK_DOWN=0
+CHURN_PIDS=""
 
-# Unit tests run before the stack so Maven and the 6-JVM HA footprint do not
-# compete for RAM (run-1 OOM on admin-api-1). Documented intentional order.
-PHASES="preflight unit-tests build-images clean-start functional-tests elective-tests playwright churn-init churn health"
+GATE_OVERLAY="$REPO_ROOT/docker/docker-compose.ha.quality-gate.yml"
+PHASES="preflight unit-tests clean-start post-clean-health functional-tests elective-tests playwright churn-init churn health"
+
+HA_REPLICAS="ezkey-admin-api-1 ezkey-admin-api-2 ezkey-auth-api-1 ezkey-auth-api-2 ezkey-integration-api-1 ezkey-integration-api-2 ezkey-crypto-api-ha"
 
 usage() {
   cat <<'EOF'
 Usage: ./scripts/quality-gate.sh [options]
 
   --churn-minutes N   Minutes per concurrent churn shell (default: 5)
-  --skip PHASE        Skip a phase (repeatable). Phases:
-                      preflight, unit-tests, build-images, clean-start,
-                      functional-tests, elective-tests, playwright,
-                      churn-init, churn, health
-  --no-clean-start    Skip build-images + clean-start (reuse running stack)
+  --skip PHASE        Skip a phase (repeatable)
+  --no-clean-start    Skip clean-start (reuse running stack)
   -h, --help          Show this help
 
-Phase order (unit tests before stack — memory headroom on ~16Gi VMs):
-  preflight → unit-tests → build-images → clean-start HA+JavaMelody
-  → functional → elective → Playwright → churn-init → 2× churn → health
-
-HA + JavaMelody preflight warns AMBER when available RAM is below
-HA_JM_MIN_AVAILABLE_MIB (default 8192 MiB).
-
-Keyword: quality-gate
 Docs: product-docs/global/hygiene/quality-gate/README.md
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --churn-minutes)
-      CHURN_MINUTES="${2:-}"
-      shift 2
-      ;;
-    --skip)
-      SKIP_PHASES="${SKIP_PHASES} ${2:-}"
-      shift 2
-      ;;
-    --no-clean-start)
-      NO_CLEAN_START=1
-      SKIP_PHASES="${SKIP_PHASES} build-images clean-start"
-      shift
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Unknown argument: $1" >&2
-      usage >&2
-      exit 2
-      ;;
+    --churn-minutes) CHURN_MINUTES="${2:-}"; shift 2 ;;
+    --skip) SKIP_PHASES="${SKIP_PHASES} ${2:-}"; shift 2 ;;
+    --no-clean-start) NO_CLEAN_START=1; SKIP_PHASES="${SKIP_PHASES} clean-start post-clean-health"; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
-
-if [[ "$NO_CLEAN_START" -eq 1 ]]; then
-  SKIP_PHASES="${SKIP_PHASES} build-images clean-start"
-fi
 
 SHORT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 FULL_SHA="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
@@ -103,456 +64,357 @@ RUN_DIR="$REPO_ROOT/logs/quality-gate/${UTC_STAMP}-${SHORT_SHA}"
 mkdir -p "$RUN_DIR/phases" "$RUN_DIR/churn" "$RUN_DIR/health"
 PHASE_TSV="$RUN_DIR/phases.tsv"
 : >"$PHASE_TSV"
+REPLICAS_TSV="$RUN_DIR/replicas.tsv"
+: >"$REPLICAS_TSV"
 
 echo "[$KEYWORD] run dir: $RUN_DIR"
 echo "[$KEYWORD] tip: $FULL_SHA"
-echo "[$KEYWORD] churn minutes: $CHURN_MINUTES"
-echo "[$KEYWORD] HA+JM min available RAM: ${HA_JM_MIN_AVAILABLE_MIB} MiB"
 
-now_ms() {
-  date +%s%3N 2>/dev/null || python3 -c 'import time; print(int(time.time()*1000))'
+cleanup_churn() {
+  if [[ -n "$CHURN_PIDS" ]]; then
+    for p in $CHURN_PIDS; do
+      kill "$p" 2>/dev/null || true
+    done
+  fi
 }
+trap cleanup_churn INT TERM EXIT
 
-duration_ms() {
-  local start="$1" end="$2"
-  echo $((end - start))
-}
-
+now_ms() { date +%s%3N 2>/dev/null || node -e 'console.log(Date.now())'; }
+duration_ms() { echo $(($2 - $1)); }
 ms_to_human() {
-  local ms="$1"
-  local sec=$((ms / 1000))
-  local min=$((sec / 60))
-  sec=$((sec % 60))
-  if [[ $min -gt 0 ]]; then
-    printf '%dm%02ds' "$min" "$sec"
-  else
-    printf '%ds' "$sec"
-  fi
-}
-
-parse_surefire_counts() {
-  # Prints: run failed errors skipped
-  local log="$1"
-  local run=0 failed=0 errors=0 skipped=0
-  local line
-  while IFS= read -r line; do
-    if [[ "$line" =~ Tests\ run:\ *([0-9]+),\ *Failures:\ *([0-9]+),\ *Errors:\ *([0-9]+),\ *Skipped:\ *([0-9]+) ]]; then
-      run="${BASH_REMATCH[1]}"
-      failed="${BASH_REMATCH[2]}"
-      errors="${BASH_REMATCH[3]}"
-      skipped="${BASH_REMATCH[4]}"
-    fi
-  done < <(grep -E 'Tests run:' "$log" 2>/dev/null || true)
-  local sum_run=0 sum_f=0 sum_e=0 sum_s=0 found=0
-  while IFS= read -r line; do
-    if [[ "$line" =~ Tests\ run:\ *([0-9]+),\ *Failures:\ *([0-9]+),\ *Errors:\ *([0-9]+),\ *Skipped:\ *([0-9]+) ]]; then
-      sum_run=$((sum_run + BASH_REMATCH[1]))
-      sum_f=$((sum_f + BASH_REMATCH[2]))
-      sum_e=$((sum_e + BASH_REMATCH[3]))
-      sum_s=$((sum_s + BASH_REMATCH[4]))
-      found=1
-    fi
-  done < <(grep -E 'Tests run:.*, Failures:.*, Errors:.*, Skipped:' "$log" 2>/dev/null || true)
-  if [[ $found -eq 1 && $sum_run -ge $run ]]; then
-    echo "$sum_run $sum_f $sum_e $sum_s"
-  else
-    echo "$run $failed $errors $skipped"
-  fi
-}
-
-phase_verdict_from_exit() {
-  local code="$1"
-  if [[ "$code" -eq 0 ]]; then
-    echo GREEN
-  else
-    echo RED
-  fi
-}
-
-record_phase() {
-  local name="$1" verdict="$2" exit_code="$3" duration="$4" log_path="$5" counts="$6" note="$7"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$name" "$verdict" "$exit_code" "$duration" "$log_path" "$counts" "$note" >>"$PHASE_TSV"
-  echo "[$KEYWORD] phase=$name verdict=$verdict exit=$exit_code duration=$(ms_to_human "$duration") counts=$counts"
+  local ms="$1" sec=$((ms / 1000)) min=$((sec / 60)); sec=$((sec % 60))
+  if [[ $min -gt 0 ]]; then printf '%dm%02ds' "$min" "$sec"; else printf '%ds' "$sec"; fi
 }
 
 should_skip() {
   local name="$1" p
-  for p in $SKIP_PHASES; do
-    if [[ "$p" == "$name" ]]; then
-      return 0
-    fi
-  done
+  for p in $SKIP_PHASES; do [[ "$p" == "$name" ]] && return 0; done
   return 1
 }
 
+record_phase() {
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5" "$6" "$7" >>"$PHASE_TSV"
+  echo "[$KEYWORD] phase=$1 verdict=$2 exit=$3 duration=$(ms_to_human "$4") counts=$6"
+}
+
+parse_surefire_counts() {
+  local log="$1" run=0 failed=0 errors=0 skipped=0 line sum_run=0 sum_f=0 sum_e=0 sum_s=0 found=0
+  while IFS= read -r line; do
+    if [[ "$line" =~ Tests\ run:\ *([0-9]+),\ *Failures:\ *([0-9]+),\ *Errors:\ *([0-9]+),\ *Skipped:\ *([0-9]+) ]]; then
+      sum_run=$((sum_run + BASH_REMATCH[1])); sum_f=$((sum_f + BASH_REMATCH[2]))
+      sum_e=$((sum_e + BASH_REMATCH[3])); sum_s=$((sum_s + BASH_REMATCH[4])); found=1
+      run="${BASH_REMATCH[1]}"; failed="${BASH_REMATCH[2]}"; errors="${BASH_REMATCH[3]}"; skipped="${BASH_REMATCH[4]}"
+    fi
+  done < <(grep -E 'Tests run:' "$log" 2>/dev/null || true)
+  if [[ $found -eq 1 && $sum_run -ge $run ]]; then echo "$sum_run $sum_f $sum_e $sum_s"; else echo "$run $failed $errors $skipped"; fi
+}
+
 stack_up() {
-  # Actuator is on management ports (HAProxy API ports return 404 for /actuator/*).
-  # Use a public Admin API path + Demo Device health — works for HA and non-HA.
-  curl -sf http://localhost:9080/api/v1/public/instance-info >/dev/null 2>&1 \
-    && curl -sf http://localhost:8083/actuator/health >/dev/null 2>&1
+  curl -sf http://127.0.0.1:9080/api/v1/public/instance-info >/dev/null 2>&1 \
+    && curl -sf http://127.0.0.1:8083/actuator/health >/dev/null 2>&1
 }
 
 ha_compose_cmd() {
   local compose="docker compose -f docker/docker-compose.ha.yml"
-  if [[ -f docker/docker-compose.ha.docker-dev.yml ]]; then
-    compose="$compose -f docker/docker-compose.ha.docker-dev.yml"
-  fi
-  if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
-    compose="$compose -f docker/docker-compose.ha.javamelody.yml"
-  fi
+  [[ -f docker/docker-compose.ha.docker-dev.yml ]] && compose="$compose -f docker/docker-compose.ha.docker-dev.yml"
+  [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]] \
+    && compose="$compose -f docker/docker-compose.ha.javamelody.yml"
+  [[ -n "${EZKEY_COMPOSE_EXTRA_FILES:-}" ]] && for f in $EZKEY_COMPOSE_EXTRA_FILES; do compose="$compose -f $f"; done
   echo "$compose"
 }
 
-stop_stacks_for_headroom() {
-  # Tear down any leftover HA / baseline stack so unit tests have RAM.
-  echo "Stopping any running Ezkey stacks for unit-test headroom..."
-  local ha="docker compose -f docker/docker-compose.ha.yml"
-  if [[ -f docker/docker-compose.ha.docker-dev.yml ]]; then
-    ha="$ha -f docker/docker-compose.ha.docker-dev.yml"
-  fi
-  if [[ -f docker/docker-compose.ha.javamelody.yml ]]; then
-    ha="$ha -f docker/docker-compose.ha.javamelody.yml"
-  fi
+stop_stacks() {
+  echo "Stopping Ezkey stacks for unit-test headroom…"
+  local ha; ha="$(EZKEY_ENABLE_JAVA_MELODY=true EZKEY_COMPOSE_EXTRA_FILES="$GATE_OVERLAY" ha_compose_cmd)"
   $ha down -v --remove-orphans 2>/dev/null || true
-  local base="docker compose -f docker/docker-compose.yml"
-  if [[ -f docker/docker-compose.docker-dev.yml ]]; then
-    base="$base -f docker/docker-compose.docker-dev.yml"
-  fi
-  if [[ -f docker/docker-compose.with-proxy.yml ]]; then
-    base="$base -f docker/docker-compose.with-proxy.yml"
-  fi
-  if [[ -f docker/docker-compose.javamelody.yml ]]; then
-    base="$base -f docker/docker-compose.javamelody.yml"
-  fi
-  $base down -v --remove-orphans 2>/dev/null || true
+  docker compose -f docker/docker-compose.yml down -v --remove-orphans 2>/dev/null || true
   docker rm -f ezkey-javamelody-collector ezkey-javamelody-collector-ha >/dev/null 2>&1 || true
-  echo "Stacks stopped (best effort)."
 }
 
-available_ram_mib() {
-  if command -v free >/dev/null 2>&1; then
-    free -m | awk '/^Mem:/{print $7}'
-    return
+# Inspect every API JVM replica. Dead/restarted → AMBER + HA_INVALID.
+check_replicas() {
+  local phase="$1" bad=0 name status health restarts
+  for name in $HA_REPLICAS; do
+    status="$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || echo missing)"
+    health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$name" 2>/dev/null || echo missing)"
+    restarts="$(docker inspect -f '{{.RestartCount}}' "$name" 2>/dev/null || echo 0)"
+    printf '%s\t%s\t%s\t%s\t%s\n' "$phase" "$name" "$status" "$health" "$restarts" >>"$REPLICAS_TSV"
+    if [[ "$status" != "running" || ( "$health" != "healthy" && "$health" != "none" ) ]]; then
+      bad=1
+      echo "[$KEYWORD] replica issue phase=$phase $name status=$status health=$health restarts=$restarts"
+    fi
+  done
+  if [[ "$bad" -eq 1 ]]; then
+    HA_INVALID=1
+    OVERALL_AMBER=1
+    return 1
   fi
-  echo "0"
+  return 0
+}
+
+docker_mem_total_mib() {
+  node -e '
+const {execFileSync}=require("child_process");
+try {
+  const j=JSON.parse(execFileSync("docker",["info","--format","{{json .MemTotal}}"],{encoding:"utf8"}).trim());
+  const n=Number(j); console.log(Number.isFinite(n)?Math.floor(n/1048576):0);
+} catch { console.log(0); }'
+}
+
+gate_memory_budget_mib() {
+  node -e '
+const fs=require("fs");
+const t=JSON.parse(fs.readFileSync("config/quality-gate/thresholds.json","utf8"));
+const g=t.gateMemory||{};
+const lim=g.jvmMemLimitsMiB||{};
+let sum=0; for (const v of Object.values(lim)) sum+=Number(v)||0;
+sum += Number(g.postgresReserveMiB||1024);
+sum += Number(g.hostMarginMiB||3072);
+console.log(sum);'
 }
 
 run_phase_preflight() {
-  local log="$RUN_DIR/phases/preflight.log"
-  local start end code=0 verdict=GREEN note="resources + tip SHA; stack stopped for unit-test headroom"
+  local log="$RUN_DIR/phases/preflight.log" start end code=0 verdict=GREEN
+  local note="tip + docker MemTotal vs gate memory budget; stack stopped"
   start="$(now_ms)"
   {
     echo "=== preflight ==="
-    echo "date_utc: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-    echo "date_toronto: $(TZ=America/Toronto date +"%Y-%m-%d %H:%M:%S %Z")"
     echo "git_sha: $FULL_SHA"
-    echo "git_short: $SHORT_SHA"
-    echo "git_describe: $(git describe --always --dirty 2>/dev/null || true)"
-    echo "cpus: $(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo unknown)"
-    echo "HA_JM_MIN_AVAILABLE_MIB=${HA_JM_MIN_AVAILABLE_MIB}"
-    echo "memory (before stop):"
-    free -h 2>/dev/null || true
-    stop_stacks_for_headroom
-    echo "memory (after stop):"
-    free -h 2>/dev/null || true
-    local avail
-    avail="$(available_ram_mib)"
-    echo "available_ram_mib: ${avail}"
-    if [[ "$avail" =~ ^[0-9]+$ ]] && [[ "$avail" -lt "$HA_JM_MIN_AVAILABLE_MIB" ]]; then
-      echo "AMBER: available RAM ${avail} MiB < HA_JM_MIN_AVAILABLE_MIB=${HA_JM_MIN_AVAILABLE_MIB} MiB"
-      echo "HA (6 JVM replicas) + JavaMelody needs roughly ${HA_JM_MIN_AVAILABLE_MIB} MiB free before clean-start."
-      echo "Unit tests still run first (no stack) to maximize headroom; proceed with reservation."
-      note="AMBER: available RAM ${avail}MiB < ${HA_JM_MIN_AVAILABLE_MIB}MiB (HA+JavaMelody threshold)"
+    echo "date_utc: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    stop_stacks
+    local mem_total budget
+    mem_total="$(docker_mem_total_mib)"
+    budget="$(gate_memory_budget_mib)"
+    echo "docker_mem_total_mib: $mem_total"
+    echo "gate_memory_budget_mib: $budget (sum JVM limits + postgres + margin)"
+    if [[ "$mem_total" -gt 0 && "$mem_total" -lt "$budget" ]]; then
+      echo "AMBER: docker MemTotal ${mem_total} MiB < gate budget ${budget} MiB"
       verdict=AMBER
+      note="AMBER: MemTotal ${mem_total}MiB < budget ${budget}MiB"
     else
-      echo "RAM check OK: available ${avail} MiB >= ${HA_JM_MIN_AVAILABLE_MIB} MiB"
+      echo "RAM budget OK"
     fi
-    echo "disk:"
-    df -h / 2>/dev/null || df -h . 2>/dev/null || true
-    echo "docker: $(docker --version 2>/dev/null || echo missing)"
-    echo "compose: $(docker compose version 2>/dev/null || echo missing)"
-    echo "java: $(java -version 2>&1 | head -1)"
-    echo "maven: $(mvn -version 2>&1 | head -1)"
-    echo "node: $(node -v 2>/dev/null || echo missing)"
-    echo "JAVA_HOME=${JAVA_HOME:-}"
-    echo "phase_order_note: unit-tests before stack (intentional memory headroom; not the naive stack-first order)"
-    if ! command -v docker >/dev/null 2>&1; then
-      echo "FATAL: docker missing"
-      code=1
-      verdict=RED
-    fi
+    command -v docker >/dev/null || { echo FATAL: docker missing; code=1; verdict=RED; }
+    command -v node >/dev/null || { echo FATAL: node missing; code=1; verdict=RED; }
+    echo "phase_order: unit-tests before stack (intentional RAM headroom)"
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
-  if [[ "$code" -ne 0 ]]; then
-    verdict=RED
-  fi
+  [[ "$code" -ne 0 ]] && verdict=RED
   cp "$log" "$RUN_DIR/preflight.txt"
   record_phase preflight "$verdict" "$code" "$(duration_ms "$start" "$end")" "$log" "-" "$note"
   return "$code"
 }
 
 run_phase_unit_tests() {
-  local log="$RUN_DIR/phases/unit-tests.log"
-  local start end code=0 counts
+  local log="$RUN_DIR/phases/unit-tests.log" start end code=0
   start="$(now_ms)"
   {
-    echo "=== unit tests: ./scripts/build.sh (no stack — memory headroom) ==="
-    if stack_up; then
-      echo "WARNING: stack still responds; stopping again before unit tests"
-      stop_stacks_for_headroom
-    fi
-    echo "memory before build.sh:"
-    free -h 2>/dev/null || true
+    echo "=== unit tests (no stack) ==="
+    export MAVEN_OPTS="${MAVEN_OPTS:--Xmx1024m}"
     ./scripts/build.sh
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
-  counts="$(parse_surefire_counts "$log")"
-  record_phase unit-tests "$(phase_verdict_from_exit "$code")" "$code" "$(duration_ms "$start" "$end")" "$log" "$counts" "build.sh before stack (RAM headroom)"
-  return "$code"
-}
-
-run_phase_build_images() {
-  local log="$RUN_DIR/phases/build-images.log"
-  local start end code=0
-  start="$(now_ms)"
-  {
-    echo "=== build-images from tip $FULL_SHA ==="
-    export DOCKER_BUILDKIT=1
-    export COMPOSE_DOCKER_CLI_BUILD=1
-    export EZKEY_ENABLE_JAVA_MELODY=true
-    local compose
-    compose="$(ha_compose_cmd)"
-    echo "Using: $compose build"
-    $compose build
-  } >"$log" 2>&1 || code=$?
-  end="$(now_ms)"
-  record_phase build-images "$(phase_verdict_from_exit "$code")" "$code" "$(duration_ms "$start" "$end")" "$log" "-" "HA compose images from tip"
+  record_phase unit-tests "$([[ $code -eq 0 ]] && echo GREEN || echo RED)" "$code" \
+    "$(duration_ms "$start" "$end")" "$log" "$(parse_surefire_counts "$log")" "build.sh before stack"
   return "$code"
 }
 
 ha_compose_retry() {
-  # Temporary workaround for product bug #747 (HA admin keyset PK race).
-  # When this fires, clean-start MUST be scored AMBER — never GREEN.
-  # Remove this retry (and allowlist entries citing #747) when #747 is fixed.
+  # Only for #747 encryption_key_pkey race. Bound compose up with timeout.
   COMPOSE_RETRY_FIRED=1
-  local compose
+  local compose i h1 h2
   compose="$(ha_compose_cmd)"
-  local i h1 h2
   for i in $(seq 1 24); do
     h1="$(docker inspect -f '{{.State.Health.Status}}' ezkey-admin-api-1 2>/dev/null || echo missing)"
     h2="$(docker inspect -f '{{.State.Health.Status}}' ezkey-admin-api-2 2>/dev/null || echo missing)"
-    echo "HA compose retry wait $i: admin-api-1=$h1 admin-api-2=$h2 (#747 workaround)"
+    echo "HA compose retry $i (#747): admin-1=$h1 admin-2=$h2"
     if [[ "$h1" == "healthy" && "$h2" == "healthy" ]]; then
-      echo "Both admin replicas healthy — resuming compose up -d (AMBER: #747)"
-      SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}" \
-        EZKEY_ENABLE_JAVA_MELODY="${EZKEY_ENABLE_JAVA_MELODY:-true}" \
-        $compose up -d
-      return $?
+      echo "Resuming compose up -d (timeout 180s) — AMBER #747"
+      timeout 180 env SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}" \
+        EZKEY_ENABLE_JAVA_MELODY=true $compose up -d || return 1
+      return 0
     fi
     sleep 5
   done
-  echo "HA compose retry: admin replicas did not become healthy in time (#747)"
   return 1
 }
 
 run_phase_clean_start() {
-  local log="$RUN_DIR/phases/clean-start.log"
-  local start end code=0 verdict=GREEN note="HA + JavaMelody"
+  local log="$RUN_DIR/phases/clean-start.log" start end code=0 verdict=GREEN
+  local note="HA + JavaMelody + gate memory overlay"
   COMPOSE_RETRY_FIRED=0
   start="$(now_ms)"
   {
-    echo "=== clean-start HA + JavaMelody ==="
-    echo "Starting from tip $FULL_SHA (images built in prior phase; clean-start may rebuild from cache)"
+    echo "=== clean-start HA + JavaMelody + quality-gate memory overlay ==="
     export EZKEY_ENABLE_JAVA_MELODY=true
-    if ! ./ezkey-tests/clean-start.sh --ha --with-java-melody; then
-      echo "clean-start returned non-zero — attempting HA compose retry (temporary workaround for #747)"
-      ha_compose_retry || true
+    export EZKEY_COMPOSE_EXTRA_FILES="$GATE_OVERLAY"
+    set +e
+    ./ezkey-tests/clean-start.sh --ha --with-java-melody
+    local cs=$?
+    if [[ "$cs" -ne 0 ]]; then
+      local keyset=0
+      # Log file is mid-write under this redirection; also inspect admin replica logs.
+      docker logs ezkey-admin-api-1 2>&1 | tail -400 | grep -q 'ezkey_encryption_key_pkey' && keyset=1
+      docker logs ezkey-admin-api-2 2>&1 | tail -400 | grep -q 'ezkey_encryption_key_pkey' && keyset=1
+      if [[ "$keyset" -eq 1 ]]; then
+        echo "Detected #747 keyset race — temporary compose retry"
+        ha_compose_retry || true
+      else
+        echo "clean-start failed without ezkey_encryption_key_pkey — RED (no retry)"
+        code=1
+      fi
     fi
+    set +e
     local elapsed=0
     while ! stack_up; do
-      if [[ $elapsed -ge 180 ]]; then
-        echo "Stack still not healthy after 180s"
-        break
-      fi
-      sleep 5
-      elapsed=$((elapsed + 5))
+      [[ $elapsed -ge 180 ]] && break
+      sleep 5; elapsed=$((elapsed + 5))
     done
-    if curl -sf http://localhost:8088/ >/dev/null 2>&1; then
-      echo "JavaMelody collector: OK"
-    else
-      echo "WARNING: JavaMelody collector not responding on :8088"
-    fi
     echo "compose_retry_fired=${COMPOSE_RETRY_FIRED}"
-    if [[ "$COMPOSE_RETRY_FIRED" -eq 1 ]]; then
-      echo "AMBER: HA compose retry fired — product bug #747 (https://github.com/mgagp/ezkey/issues/747)"
-      echo "Temporary workaround only; remove retry + allowlist when #747 is fixed."
-    fi
-    echo "--- container list ---"
-    docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}\t{{.ID}}'
-    echo "--- admin replica health ---"
-    docker inspect -f '{{.Name}} {{.State.Status}} {{.State.Health.Status}}' \
-      ezkey-admin-api-1 ezkey-admin-api-2 2>/dev/null || true
-    echo "--- image IDs (ezkey) ---"
-    docker images --format '{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}' | grep -E 'ezkey|REPOSITORY' || docker images
+    docker ps --format 'table {{.Names}}\t{{.Status}}'
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
-  docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}\t{{.ID}}' >"$RUN_DIR/containers.txt" 2>/dev/null || true
-  docker images --format '{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}' >"$RUN_DIR/images.txt" 2>/dev/null || true
 
-  local h1 h2
-  h1="$(docker inspect -f '{{.State.Health.Status}}' ezkey-admin-api-1 2>/dev/null || echo missing)"
-  h2="$(docker inspect -f '{{.State.Health.Status}}' ezkey-admin-api-2 2>/dev/null || echo missing)"
-
-  if ! stack_up || [[ "$h1" != "healthy" || "$h2" != "healthy" ]]; then
+  if ! stack_up || ! check_replicas clean-start; then
     code=1
     verdict=RED
-    note="stack/replica unhealthy after clean-start (admin-1=$h1 admin-2=$h2)"
-    echo "Stack health check failed after clean-start (admin-1=$h1 admin-2=$h2)" >>"$log"
+    note="stack/replicas unhealthy after clean-start"
+  elif [[ "$COMPOSE_RETRY_FIRED" -eq 1 ]]; then
+    code=0
+    verdict=AMBER
+    note="AMBER: compose retry fired — product bug #747"
+    check_replicas clean-start || true
   else
     code=0
-    if [[ "$COMPOSE_RETRY_FIRED" -eq 1 ]]; then
-      # Never GREEN when the #747 workaround fires — mask neither the product bug nor the retry.
-      verdict=AMBER
-      note="AMBER: compose retry fired — product bug #747 (temporary workaround)"
-    else
-      verdict=GREEN
-      note="HA + JavaMelody (both admin replicas healthy; no #747 retry)"
-    fi
+    verdict=GREEN
+    note="HA + JM + memory overlay (no #747 retry)"
   fi
+  # Re-check keyset evidence into log for allowlist context
+  export COMPOSE_RETRY_FIRED
   record_phase clean-start "$verdict" "$code" "$(duration_ms "$start" "$end")" "$log" "-" "$note"
   return "$code"
 }
 
-run_phase_functional_tests() {
-  local log="$RUN_DIR/phases/functional-tests.log"
-  local start end code=0 counts
+run_phase_post_clean_health() {
+  local log="$RUN_DIR/phases/post-clean-health.log" start end code=0
   start="$(now_ms)"
   {
-    echo "=== functional: mvn test -pl ezkey-tests -P all-tests ==="
-    mvn test -pl ezkey-tests -P all-tests
+    echo "=== post-clean-start health snapshot ==="
+    COMPOSE_RETRY_FIRED="$COMPOSE_RETRY_FIRED" \
+      ./scripts/stack-health-check.sh --output-dir "$RUN_DIR/health-post-clean"
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
-  counts="$(parse_surefire_counts "$log")"
-  record_phase functional-tests "$(phase_verdict_from_exit "$code")" "$code" "$(duration_ms "$start" "$end")" "$log" "$counts" "profile all-tests"
+  local hv="-"
+  [[ -f "$RUN_DIR/health-post-clean/health.json" ]] \
+    && hv="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$RUN_DIR/health-post-clean/health.json','utf8')).verdict)")"
+  local verdict=GREEN
+  [[ "$hv" == "AMBER" ]] && verdict=AMBER
+  [[ "$hv" == "RED" || "$code" -ne 0 ]] && { verdict=RED; code=1; }
+  record_phase post-clean-health "$verdict" "$code" "$(duration_ms "$start" "$end")" "$log" "$hv" "snapshot after clean-start"
   return "$code"
 }
 
-run_phase_elective_tests() {
-  local log="$RUN_DIR/phases/elective-tests.log"
-  local start end code=0 counts
+run_maven_phase() {
+  local name="$1" cmd="$2" note="$3"
+  local log="$RUN_DIR/phases/${name}.log" start end code=0
   start="$(now_ms)"
   {
-    echo "=== elective: ezkey-tests/scripts/run-elective-tests.sh ==="
-    ./ezkey-tests/scripts/run-elective-tests.sh
+    echo "=== $name ==="
+    export MAVEN_OPTS="${MAVEN_OPTS:--Xmx1024m}"
+    eval "$cmd"
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
-  counts="$(parse_surefire_counts "$log")"
-  record_phase elective-tests "$(phase_verdict_from_exit "$code")" "$code" "$(duration_ms "$start" "$end")" "$log" "$counts" "elective profile"
+  record_phase "$name" "$([[ $code -eq 0 ]] && echo GREEN || echo RED)" "$code" \
+    "$(duration_ms "$start" "$end")" "$log" "$(parse_surefire_counts "$log")" "$note"
   return "$code"
 }
 
 run_phase_playwright() {
-  local log="$RUN_DIR/phases/playwright.log"
-  local start end code=0
-  local results="$RUN_DIR/playwright-results"
+  local log="$RUN_DIR/phases/playwright.log" start end code=0 results="$RUN_DIR/playwright-results"
   mkdir -p "$results"
   start="$(now_ms)"
   {
-    echo "=== Playwright: ezkey-admin-ui/scripts/run-ui-tests.sh ==="
-    echo "Against running HA stack Demo Device :8083; local Vite preview on :4173"
+    echo "=== Playwright ==="
     if command -v lsof >/dev/null 2>&1; then
-      local pids
-      pids="$(lsof -t -i:4173 2>/dev/null || true)"
-      if [[ -n "$pids" ]]; then
-        echo "Freeing port 4173: $pids"
-        # shellcheck disable=SC2086
-        kill $pids 2>/dev/null || true
-        sleep 1
-      fi
+      local pids; pids="$(lsof -t -i:4173 2>/dev/null || true)"
+      [[ -n "$pids" ]] && kill $pids 2>/dev/null || true
     fi
-    EZKEY_BROWSER_TEST_RESULTS_DIR="$results" \
-      ./ezkey-admin-ui/scripts/run-ui-tests.sh
+    EZKEY_BROWSER_TEST_RESULTS_DIR="$results" ./ezkey-admin-ui/scripts/run-ui-tests.sh
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
   local counts="-"
-  if grep -Eq '[0-9]+ passed' "$log" 2>/dev/null; then
-    counts="$(grep -E '[0-9]+ (passed|failed|skipped|flaky)' "$log" | tail -5 | tr '\n' ' ' | sed 's/[[:space:]]\+/ /g')"
-  fi
-  record_phase playwright "$(phase_verdict_from_exit "$code")" "$code" "$(duration_ms "$start" "$end")" "$log" "$counts" "Admin UI e2e"
+  grep -Eq '[0-9]+ passed' "$log" 2>/dev/null \
+    && counts="$(grep -E '[0-9]+ (passed|failed|skipped|flaky)' "$log" | tail -3 | tr '\n' ' ')"
+  record_phase playwright "$([[ $code -eq 0 ]] && echo GREEN || echo RED)" "$code" \
+    "$(duration_ms "$start" "$end")" "$log" "$counts" "Admin UI e2e"
   return "$code"
 }
 
 run_phase_churn_init() {
-  local log="$RUN_DIR/phases/churn-init.log"
-  local start end code=0
+  local log="$RUN_DIR/phases/churn-init.log" start end code=0
   start="$(now_ms)"
-  {
-    echo "=== churn init ==="
-    ./ezkey-tests/scripts/run-operational-churn.sh --init
-  } >"$log" 2>&1 || code=$?
+  { ./ezkey-tests/scripts/run-operational-churn.sh --init; } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
-  record_phase churn-init "$(phase_verdict_from_exit "$code")" "$code" "$(duration_ms "$start" "$end")" "$log" "-" "peer Global Admin"
+  record_phase churn-init "$([[ $code -eq 0 ]] && echo GREEN || echo RED)" "$code" \
+    "$(duration_ms "$start" "$end")" "$log" "-" "peer Global Admin"
   return "$code"
 }
 
 run_phase_churn() {
-  local log="$RUN_DIR/phases/churn.log"
-  local start end code=0
-  local log1="$RUN_DIR/churn/churn-a.log"
-  local log2="$RUN_DIR/churn/churn-b.log"
+  local log="$RUN_DIR/phases/churn.log" start end code=0
+  local log1="$RUN_DIR/churn/churn-a.log" log2="$RUN_DIR/churn/churn-b.log"
   start="$(now_ms)"
   {
-    echo "=== operational churn: 2× ${CHURN_MINUTES} min (seeds 41 and 42) ==="
-    ./ezkey-tests/scripts/run-operational-churn.sh \
-      --minutes "$CHURN_MINUTES" --seed 41 --log-file "$log1" &
+    ./ezkey-tests/scripts/run-operational-churn.sh --minutes "$CHURN_MINUTES" --seed 41 --log-file "$log1" &
     local pid1=$!
-    ./ezkey-tests/scripts/run-operational-churn.sh \
-      --minutes "$CHURN_MINUTES" --seed 42 --log-file "$log2" &
+    ./ezkey-tests/scripts/run-operational-churn.sh --minutes "$CHURN_MINUTES" --seed 42 --log-file "$log2" &
     local pid2=$!
+    CHURN_PIDS="$pid1 $pid2"
     local c1=0 c2=0
     wait "$pid1" || c1=$?
     wait "$pid2" || c2=$?
-    echo "churn-a exit=$c1 log=$log1"
-    echo "churn-b exit=$c2 log=$log2"
-    if [[ "$c1" -ne 0 || "$c2" -ne 0 ]]; then
-      code=1
-    fi
+    CHURN_PIDS=""
+    echo "churn-a=$c1 churn-b=$c2"
+    [[ "$c1" -ne 0 || "$c2" -ne 0 ]] && code=1
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
-  record_phase churn "$(phase_verdict_from_exit "$code")" "$code" "$(duration_ms "$start" "$end")" "$log" "-" "2 concurrent shells ${CHURN_MINUTES}m"
+  record_phase churn "$([[ $code -eq 0 ]] && echo GREEN || echo RED)" "$code" \
+    "$(duration_ms "$start" "$end")" "$log" "-" "2 shells ${CHURN_MINUTES}m"
   return "$code"
 }
 
 run_phase_health() {
-  local log="$RUN_DIR/phases/health.log"
-  local start end code=0
+  local log="$RUN_DIR/phases/health.log" start end code=0
   start="$(now_ms)"
   {
-    echo "=== stack-health-check ==="
-    ./scripts/stack-health-check.sh --output-dir "$RUN_DIR/health"
+    COMPOSE_RETRY_FIRED="$COMPOSE_RETRY_FIRED" \
+      ./scripts/stack-health-check.sh --output-dir "$RUN_DIR/health"
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
-  local counts="-"
-  if [[ -f "$RUN_DIR/health/health.json" ]]; then
-    counts="$(python3 -c "import json;print(json.load(open('$RUN_DIR/health/health.json'))['verdict'])" 2>/dev/null || echo -)"
-  fi
-  local verdict
-  verdict="$(phase_verdict_from_exit "$code")"
-  if [[ "$code" -eq 0 && "$counts" == "AMBER" ]]; then
-    verdict=AMBER
-  elif [[ "$counts" == "RED" ]]; then
-    verdict=RED
-    code=1
-  fi
-  record_phase health "$verdict" "$code" "$(duration_ms "$start" "$end")" "$log" "$counts" "JavaMelody + container logs"
+  local hv="-"
+  [[ -f "$RUN_DIR/health/health.json" ]] \
+    && hv="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$RUN_DIR/health/health.json','utf8')).verdict)")"
+  local verdict=GREEN
+  [[ "$hv" == "AMBER" ]] && verdict=AMBER
+  [[ "$hv" == "RED" || "$code" -ne 0 ]] && { verdict=RED; code=1; }
+  record_phase health "$verdict" "$code" "$(duration_ms "$start" "$end")" "$log" "$hv" "JavaMelody + logs"
   return "$code"
 }
 
+write_report() {
+  node "$SCRIPT_DIR/quality-gate-report.mjs" \
+    --run-dir "$RUN_DIR" \
+    --tip "$FULL_SHA" \
+    --short "$SHORT_SHA" \
+    --total-ms "$TOTAL_MS" \
+    --churn-min "$CHURN_MINUTES" \
+    --red "$OVERALL_RED" \
+    --amber "$OVERALL_AMBER" \
+    --ha-invalid "$HA_INVALID" \
+    --compose-retry "$COMPOSE_RETRY_FIRED"
+}
+
 GATE_START="$(now_ms)"
-STACK_DOWN=0
-OVERALL_RED=0
-OVERALL_AMBER=0
 
 for phase in $PHASES; do
   if should_skip "$phase"; then
@@ -560,24 +422,21 @@ for phase in $PHASES; do
     continue
   fi
 
-  # Phases that must not require a live stack.
-  if [[ "$phase" != "preflight" && "$phase" != "unit-tests" && "$phase" != "build-images" && "$phase" != "clean-start" ]]; then
+  if [[ "$phase" != "preflight" && "$phase" != "unit-tests" && "$phase" != "clean-start" ]]; then
     if ! stack_up; then
-      echo "[$KEYWORD] stack is down — stopping before phase=$phase" | tee -a "$RUN_DIR/phases/${phase}.log"
-      record_phase "$phase" "RED" "1" "0" "$RUN_DIR/phases/${phase}.log" "-" "stack down; aborted"
-      STACK_DOWN=1
-      OVERALL_RED=1
-      break
+      echo "[$KEYWORD] stack down — abort before $phase" | tee -a "$RUN_DIR/phases/${phase}.log"
+      record_phase "$phase" "RED" "1" "0" "$RUN_DIR/phases/${phase}.log" "-" "stack down"
+      STACK_DOWN=1; OVERALL_RED=1; break
     fi
   fi
 
   case "$phase" in
     preflight) run_phase_preflight || true ;;
     unit-tests) run_phase_unit_tests || true ;;
-    build-images) run_phase_build_images || true ;;
     clean-start) run_phase_clean_start || true ;;
-    functional-tests) run_phase_functional_tests || true ;;
-    elective-tests) run_phase_elective_tests || true ;;
+    post-clean-health) run_phase_post_clean_health || true ;;
+    functional-tests) run_maven_phase functional-tests "mvn test -pl ezkey-tests -P all-tests" "all-tests" || true ;;
+    elective-tests) run_maven_phase elective-tests "./ezkey-tests/scripts/run-elective-tests.sh" "elective" || true ;;
     playwright) run_phase_playwright || true ;;
     churn-init) run_phase_churn_init || true ;;
     churn) run_phase_churn || true ;;
@@ -587,228 +446,46 @@ for phase in $PHASES; do
   last_verdict="$(tail -1 "$PHASE_TSV" | cut -f2)"
   if [[ "$last_verdict" == "RED" ]]; then
     OVERALL_RED=1
-    if [[ "$phase" == "clean-start" ]] && ! stack_up; then
-      STACK_DOWN=1
-      echo "[$KEYWORD] clean-start failed and stack is down — stopping"
+    if [[ "$phase" == "preflight" || "$phase" == "unit-tests" || "$phase" == "clean-start" ]]; then
+      echo "[$KEYWORD] fail-fast: $phase RED — stopping"
       break
     fi
   elif [[ "$last_verdict" == "AMBER" ]]; then
     OVERALL_AMBER=1
   fi
+
+  # Replica liveness after stack-bearing phases
+  if [[ "$phase" != "preflight" && "$phase" != "unit-tests" ]]; then
+    if ! check_replicas "$phase"; then
+      # Downgrade last phase to AMBER if it was GREEN (HA invalid)
+      if [[ "$last_verdict" == "GREEN" ]]; then
+        OVERALL_AMBER=1
+        # rewrite last line note
+        tmp="$(mktemp)"
+        head -n -1 "$PHASE_TSV" >"$tmp"
+        last="$(tail -1 "$PHASE_TSV")"
+        name="$(echo "$last" | cut -f1)"
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+          "$name" "AMBER" "$(echo "$last" | cut -f3)" "$(echo "$last" | cut -f4)" \
+          "$(echo "$last" | cut -f5)" "$(echo "$last" | cut -f6)" \
+          "HA invalid: replica dead/unhealthy after phase" >>"$tmp"
+        mv "$tmp" "$PHASE_TSV"
+        echo "[$KEYWORD] phase=$name downgraded GREEN→AMBER (HA invalid)"
+      fi
+    fi
+  fi
 done
 
 GATE_END="$(now_ms)"
 TOTAL_MS="$(duration_ms "$GATE_START" "$GATE_END")"
+trap - INT TERM EXIT
+cleanup_churn
 
-# --- Write summary.json + REPORT.md ---
-python3 - "$RUN_DIR" "$FULL_SHA" "$SHORT_SHA" "$TOTAL_MS" "$CHURN_MINUTES" "$OVERALL_RED" "$OVERALL_AMBER" "$STACK_DOWN" <<'PY'
-import json, os, re, sys
-from datetime import datetime, timezone
-from pathlib import Path
-from zoneinfo import ZoneInfo
-
-run_dir, full_sha, short_sha, total_ms, churn_min, overall_red, overall_amber, stack_down = sys.argv[1:9]
-run = Path(run_dir)
-tsv = (run / "phases.tsv").read_text(encoding="utf-8").splitlines()
-phases = []
-for line in tsv:
-    parts = line.split("\t")
-    while len(parts) < 7:
-        parts.append("")
-    name, verdict, exit_code, duration, log_path, counts, note = parts[:7]
-    phases.append({
-        "name": name,
-        "verdict": verdict,
-        "exitCode": int(exit_code) if str(exit_code).lstrip("-").isdigit() else exit_code,
-        "durationMs": int(duration) if str(duration).isdigit() else 0,
-        "logPath": log_path,
-        "counts": counts,
-        "note": note,
-    })
-
-def human(ms):
-    try:
-        ms = int(ms)
-    except Exception:
-        return str(ms)
-    sec = ms // 1000
-    m, s = divmod(sec, 60)
-    return f"{m}m{s:02d}s" if m else f"{s}s"
-
-failures = []
-for phase in phases:
-    if phase["verdict"] != "RED":
-        continue
-    log = Path(phase["logPath"]) if phase["logPath"] not in ("-", "") else None
-    if not log or not log.exists():
-        continue
-    text = log.read_text(encoding="utf-8", errors="replace")
-    for m in re.finditer(r"^\[ERROR\]\s+(\S+)(?:\s+--\s+Time).*", text, re.M):
-        failures.append({"phase": phase["name"], "test": m.group(1), "error": "see log", "classification": "unclassified"})
-    for m in re.finditer(r"<<< FAILURE! -- in (\S+)", text):
-        failures.append({"phase": phase["name"], "test": m.group(1), "error": "FAILURE", "classification": "unclassified"})
-    for m in re.finditer(r"<<< ERROR! -- in (\S+)", text):
-        failures.append({"phase": phase["name"], "test": m.group(1), "error": "ERROR", "classification": "unclassified"})
-
-seen = set()
-uniq = []
-for f in failures:
-    key = (f["phase"], f["test"])
-    if key in seen:
-        continue
-    seen.add(key)
-    uniq.append(f)
-failures = uniq
-
-health = {}
-hj = run / "health" / "health.json"
-if hj.exists():
-    health = json.loads(hj.read_text(encoding="utf-8"))
-
-if int(overall_red):
-    overall = "NO-GO"
-elif int(overall_amber) or (health.get("verdict") == "AMBER"):
-    overall = "GO with reservations"
-else:
-    overall = "GO"
-
-toronto = datetime.now(ZoneInfo("America/Toronto")).strftime("%Y-%m-%d %H:%M %Z")
-utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-preflight = ""
-pf = run / "preflight.txt"
-if pf.exists():
-    preflight = pf.read_text(encoding="utf-8", errors="replace")
-
-cpus = re.search(r"cpus:\s*(.+)", preflight)
-mem = "see preflight"
-if "Mem:" in preflight:
-    for line in preflight.splitlines():
-        if line.strip().startswith("Mem:"):
-            mem = line.strip()
-            break
-
-summary = {
-    "keyword": "quality-gate",
-    "tipSha": full_sha,
-    "tipShortSha": short_sha,
-    "generatedAtUtc": utc,
-    "generatedAtToronto": toronto,
-    "stackMode": "HA + JavaMelody",
-    "churnMinutes": int(churn_min),
-    "totalDurationMs": int(total_ms),
-    "totalDurationHuman": human(total_ms),
-    "overallVerdict": overall,
-    "stackDown": bool(int(stack_down)),
-    "machine": {
-        "cpus": cpus.group(1).strip() if cpus else "unknown",
-        "memoryLine": mem,
-        "haJmMinAvailableMib": 8192,
-    },
-    "phases": phases,
-    "failures": failures,
-    "healthVerdict": health.get("verdict"),
-    "runDir": str(run),
-}
-
-(run / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
-
-lines = []
-lines.append("# Quality gate report")
-lines.append("")
-lines.append(f"- **Tip SHA:** `{full_sha}`")
-lines.append(f"- **Date (America/Toronto):** {toronto}")
-lines.append(f"- **Stack mode:** HA + JavaMelody (default runtime integrity, default proxy)")
-lines.append(f"- **Total duration:** {human(total_ms)}")
-lines.append(f"- **Machine:** cpus={summary['machine']['cpus']}; {mem}")
-lines.append(f"- **Churn:** 2 concurrent shells × {churn_min} min")
-lines.append(f"- **Overall verdict:** **{overall}**")
-lines.append("")
-lines.append("## Phase order note")
-lines.append("")
-lines.append("Unit tests (`./scripts/build.sh`) run **before** the HA stack so Maven and the")
-lines.append("6-JVM HA footprint do not compete for RAM. This intentionally differs from a")
-lines.append("naive stack-first sequence; see `product-docs/global/hygiene/quality-gate/README.md`.")
-lines.append("")
-lines.append("## Phase table")
-lines.append("")
-lines.append("| Phase | Verdict | Duration | Counts | Log |")
-lines.append("| --- | --- | --- | --- | --- |")
-for p in phases:
-    rel = p["logPath"]
-    if rel.startswith(str(run)):
-        rel = os.path.relpath(rel, run)
-    lines.append(
-        f"| {p['name']} | {p['verdict']} | {human(p['durationMs'])} | {p['counts']} | `{rel}` |"
-    )
-lines.append("")
-lines.append("## Failures")
-lines.append("")
-if not failures:
-    lines.append("_No parsed test failures (phases may still be RED for infra reasons)._")
-else:
-    lines.append("| Phase | Test | Error | Classification |")
-    lines.append("| --- | --- | --- | --- |")
-    for f in failures:
-        lines.append(f"| {f['phase']} | `{f['test']}` | {f['error']} | {f['classification']} |")
-lines.append("")
-lines.append("_Classification values: product bug / flaky / environment (cloud VM) / test bug — filled by the operator/agent after log review._")
-lines.append("")
-lines.append("## Health highlights")
-lines.append("")
-if health:
-    lines.append(f"- Health verdict: **{health.get('verdict')}**")
-    jm = health.get("javamelody", {}).get("perApp", {})
-    for app, block in jm.items():
-        lines.append(f"- **{app}** top HTTP:")
-        for row in (block.get("topHttp") or [])[:5]:
-            lines.append(
-                f"  - {row.get('name')} mean={row.get('mean')}ms max={row.get('maximum')}ms err%={row.get('errorRatePct')}"
-            )
-        lines.append(f"  top SQL:")
-        for row in (block.get("topSql") or [])[:5]:
-            name = str(row.get("name") or "").replace("\n", " ")[:100]
-            lines.append(f"  - {name} mean={row.get('mean')}ms max={row.get('maximum')}ms")
-    cons = health.get("containers", {})
-    lines.append(
-        f"- Containers: maxRestarts={cons.get('maxRestarts')} oom={cons.get('oomKills')} unhealthy={cons.get('unhealthy')} errorLines={cons.get('totalErrorLines')}"
-    )
-    for sig in (cons.get("topErrorSignatures") or [])[:8]:
-        lines.append(f"  - [{sig.get('service')}] ×{sig.get('count')}: {sig.get('signature')}")
-    lines.append("")
-    lines.append("See also `health/HEALTH.md` and `health/container-logs.md`.")
-else:
-    lines.append("_Health phase did not produce health.json._")
-lines.append("")
-lines.append("## Overall verdict rationale")
-lines.append("")
-if overall == "GO":
-    lines.append("All phases GREEN; stack health within thresholds. Main is healthy to move to the next batch.")
-elif overall == "GO with reservations":
-    lines.append("No RED phases (or only AMBER health/threshold signals). Review reservations before the next batch.")
-    lines.append("If clean-start is AMBER because the HA compose retry fired, that is product bug #747 — do not treat as GREEN.")
-else:
-    lines.append("One or more RED phases. Do not treat main as ready for the next batch until failures are classified and addressed (outside this gate PR for product bugs).")
-lines.append("")
-lines.append("## Thresholds")
-lines.append("")
-lines.append("Thresholds live in `config/quality-gate/thresholds.json`. Lock the baseline from a healthy complete HA run (no OOM, all replicas up). JavaMelody synthetic Error404 buckets are excluded from httpErrorPct scoring (see thresholds `httpErrorPctExclusions`).")
-lines.append("")
-lines.append("## Related product bugs")
-lines.append("")
-lines.append("- [#747](https://github.com/mgagp/ezkey/issues/747) — HA concurrent admin-api keyset race; compose retry is a temporary workaround (clean-start AMBER when it fires).")
-lines.append("")
-
-(run / "REPORT.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-print(f"summary: {run / 'summary.json'}")
-print(f"report: {run / 'REPORT.md'}")
-print(f"overall: {overall}")
-PY
-
+write_report
 echo "[$KEYWORD] artifacts under $RUN_DIR"
-cat "$RUN_DIR/summary.json" | python3 -c 'import json,sys; print("OVERALL:", json.load(sys.stdin)["overallVerdict"])'
+OVERALL="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$RUN_DIR/summary.json','utf8')).overallVerdict)")"
+echo "OVERALL: $OVERALL"
 
-if [[ "$OVERALL_RED" -ne 0 ]]; then
-  exit 1
-fi
+if [[ "$OVERALL_RED" -ne 0 ]]; then exit 1; fi
+if [[ "$OVERALL_AMBER" -ne 0 || "$HA_INVALID" -ne 0 ]]; then exit 3; fi
 exit 0

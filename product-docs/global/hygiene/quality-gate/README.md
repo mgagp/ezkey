@@ -2,108 +2,73 @@
 
 Keyword: **`quality-gate`**
 
-Repeatable cloud-agent gate run between sizable batches of merged PRs. One visible verdict
-covering the whole test suite plus stack health, backed by a report under
-`logs/quality-gate/<UTC>-<shortsha>/` (gitignored).
+Cloud-agent (or Git Bash) gate between merge batches. One command → GO / GO with
+reservations / NO-GO. Artifacts under `logs/quality-gate/<UTC>-<shortsha>/` (gitignored).
 
-**Not** a CI gate. **Not** a workstation habit — run in a cloud agent only.
+**Not** a CI gate. A phase that can show GREEN wrongly is worse than no gate.
 
-## When to run
-
-- After a sizable batch of merges lands on `main`, before starting the next batch.
-- When you need a single GO / GO with reservations / NO-GO on tip health.
-
-## Sequence
-
-**One command from scratch** (no manual clean-start, no `--no-clean-start`):
-
-```bash
-./scripts/quality-gate.sh
-```
-
-Phase order (orchestrator):
-
-1. Preflight (tip SHA, CPU/RAM/disk, Docker/Compose; **stops any running stack** for unit-test headroom; AMBER if available RAM < `HA_JM_MIN_AVAILABLE_MIB`, default **8192 MiB**)
-2. Unit tests: `./scripts/build.sh` — **with no stack running**
-3. Build images from tip (HA compose files + JavaMelody overlay)
-4. Clean start HA + JavaMelody: `ezkey-tests/clean-start.sh --ha --with-java-melody`
-5. Functional: `mvn test -pl ezkey-tests -P all-tests`
-6. Elective: `ezkey-tests/scripts/run-elective-tests.sh` (after functional; not concurrent)
-7. Playwright: `ezkey-admin-ui/scripts/run-ui-tests.sh` against the running stack
-8. Churn init: `ezkey-tests/scripts/run-operational-churn.sh --init`
-9. Churn: two concurrent shells × N minutes (default 5), distinct seeds and log files
-10. Health: `./scripts/stack-health-check.sh` (JavaMelody + container logs)
-
-### Why unit tests run before the stack
-
-On ~16Gi cloud VMs, running `./scripts/build.sh` while the 6-JVM HA stack is up can OOM-kill an
-admin-api replica (exit 137). The gate therefore runs unit tests **first** (stack stopped), then
-builds images and clean-starts HA. This **intentionally differs** from a naive “stack first, then
-Maven” list — memory headroom is the reason.
-
-Functional/elective still run host Maven against the live HA stack (required). On 15Gi that can
-still OOM a replica (see run-2); prefer ≥32Gi or a constrained Maven heap for unattended gates.
-
-Orchestrator: [`scripts/quality-gate.sh`](../../../../scripts/quality-gate.sh)
+## Command
 
 ```bash
 ./scripts/quality-gate.sh
 ./scripts/quality-gate.sh --churn-minutes 5
-./scripts/quality-gate.sh --no-clean-start --skip unit-tests   # rerun slices only
 ```
 
-## HA keyset race (#747)
+Exit codes: **0** GO · **3** GO with reservations · other non-zero NO-GO.
 
-Concurrent admin-api startup can race on `ezkey_encryption_key_pkey` during keyset sync — tracked
-as **[#747](https://github.com/mgagp/ezkey/issues/747)** (`priority:p1`).
+## Sequence
 
-- The gate keeps a **temporary** Compose retry workaround so clean-start can finish.
-- **Every time that retry fires, the clean-start phase is AMBER** (never GREEN), with an explicit
-  `#747` note in the phase record and report.
-- Allowlist entries for the keyset signatures **cite #747** and must be **removed when #747 is
-  fixed**.
+1. **Preflight** — stop stacks; compare `docker info` MemTotal to gate memory budget (JVM
+   `mem_limit` sum + postgres reserve + margin). Node-only (no `free` / Python).
+2. **Unit tests** — `./scripts/build.sh` with stack down (`MAVEN_OPTS=-Xmx1024m`).
+3. **Clean-start** — `ezkey-tests/clean-start.sh --ha --with-java-melody` plus gate-only
+   memory overlay [`docker/docker-compose.ha.quality-gate.yml`](../../../../docker/docker-compose.ha.quality-gate.yml)
+   (`EZKEY_COMPOSE_EXTRA_FILES`). Images come from `start-ha.sh` (no duplicate build phase).
+4. **Post-clean health** — snapshot right after clean-start.
+5. **Functional** → **elective** → **Playwright** → **churn init** → **2× churn**.
+6. **Health** — JavaMelody dump into the run dir + container log scan / redaction / scoring.
 
-## How to read the verdict
+Fail-fast on RED for preflight, unit-tests, or clean-start. After every stack-bearing phase,
+`docker inspect` every API JVM replica; dead/restarted → phase AMBER + run marked HA invalid.
+Ctrl-C kills background churn shells (`trap`).
 
-| Overall | Meaning |
+## #747 (keyset race) and #748 (false GREEN test)
+
+| Issue | Gate behaviour |
 | --- | --- |
-| **GO** | All phases GREEN; health within thresholds. Safe to start the next batch. |
-| **GO with reservations** | No RED phases, but AMBER health/threshold signals (includes #747 compose retry, low-RAM preflight). Review before proceeding. |
-| **NO-GO** | One or more RED phases (or stack down). Classify failures before the next batch. |
-
-Per-phase verdicts: GREEN / AMBER / RED / SKIP. Orchestrator exits non-zero on any RED.
-
-Do **not** fix product bugs inside the gate PR. Classify each failure as product bug / flaky /
-environment (cloud VM) / test bug with evidence.
+| [#747](https://github.com/mgagp/ezkey/issues/747) | Retry **only** if `ezkey_encryption_key_pkey` appears; else clean-start RED. Retry → AMBER. Allowlist entry active only when `COMPOSE_RETRY_FIRED=1`, clean-start context, admin replicas. After retry, verify **all** API replicas. |
+| [#748](https://github.com/mgagp/ezkey/issues/748) | Auth API security test false pass (sticky RestAssured → crypto). Fixed in product tests; not an allowlist. |
 
 ## Thresholds and allowlist
 
 | Path | Role |
 | --- | --- |
-| [`config/quality-gate/thresholds.json`](../../../../config/quality-gate/thresholds.json) | GREEN / AMBER / RED bands for JavaMelody and container signals |
-| [`config/quality-gate/log-allowlist.txt`](../../../../config/quality-gate/log-allowlist.txt) | Known log noise (`pattern \| justification`) |
+| [`config/quality-gate/thresholds.json`](../../../../config/quality-gate/thresholds.json) | Provisional absolute bands (no baseline comparison). Recalibrate from a clean HA run. `httpErrorPct.minHits` ≈ 20; `oomKills` red at 1. |
+| [`config/quality-gate/log-allowlist.txt`](../../../../config/quality-gate/log-allowlist.txt) | `service \| anchored regex \| issue \| expires=YYYY-MM-DD \| justification`. Missing issue or expired → RED. Invalid regex → blocking error. |
 
-Lock the baseline from a **healthy complete HA run** (no OOM, all replicas up): set thresholds from
-observed values plus margin, then `baselineLocked: true` and refresh `baselineNote` with the tip SHA.
+Missing/stale JavaMelody data scores AMBER/RED (“no data”), never GREEN. Raw-log secret patterns
+(email, JWT, password/token/challenge/accessCode JSON or `key=`, etc.) are a dedicated RED check
+before redaction; reports use sanitized signatures only.
 
-JavaMelody synthetic **Error404** (and other `ErrorNNN`) buckets are excluded from `httpErrorPct`
-scoring via `javamelody.httpErrorPctExclusions` in the thresholds file — they always report 100%
-error rate and must not drive AMBER/RED.
+JavaMelody collector publish: `127.0.0.1:8088:8080` (not `0.0.0.0`).
 
-Health reuses [`javamelody-curated`](../javamelody/) for collector extraction and
-[`config/javamelody/`](../../../../config/javamelody/) noise / expected-hot lists.
+## Run note (copy per run)
 
-## Contents
+```markdown
+# Quality gate — YYYY-MM-DD run-N
+- Tip SHA / overall / duration
+- Phase table (from REPORT.md)
+- Findings + classification (product / flaky / environment / test)
+- Replica liveness + raw-log secret check
+- Links to REPORT.md / summary.json / HEALTH.md (local)
+```
 
-| Path | Role |
-| --- | --- |
-| [`TEMPLATE.md`](TEMPLATE.md) | Copy for each dated run note |
-| `YYYY-MM-DD-run-N.md` | Dated instance (summary table + findings) |
+Dated notes: `YYYY-MM-DD-run-N.md`. History: [run-1](2026-10-09-run-1.md) (folded),
+[run-2](2026-10-09-run-2.md).
 
 ## Related
 
+- Root [`AGENTS.md`](../../../../AGENTS.md) § Quality gate
+- Scripts: [`quality-gate.sh`](../../../../scripts/quality-gate.sh),
+  [`stack-health-check.sh`](../../../../scripts/stack-health-check.sh)
 - Hygiene index: [`../README.md`](../README.md)
-- Keyword contract: root [`AGENTS.md`](../../../../AGENTS.md) § Quality gate
-- Product bug: [#747](https://github.com/mgagp/ezkey/issues/747) HA admin keyset race
-- Scripts: [`scripts/quality-gate.sh`](../../../../scripts/quality-gate.sh),
-  [`scripts/stack-health-check.sh`](../../../../scripts/stack-health-check.sh)
