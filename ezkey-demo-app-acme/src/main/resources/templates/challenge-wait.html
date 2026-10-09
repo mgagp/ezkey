@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta th:if="${entryLink}" name="entry-link" content="link">
     <title th:text="${pageTitle}">Enter Challenge Code - ACME Inc</title>
     <link rel="stylesheet" th:href="@{/css/neo-brutalism.css}">
     <link rel="stylesheet" th:href="@{/css/acme-theme.css}">
@@ -198,6 +199,19 @@
             stopCountdown();
         }
         
+        const entryLink =
+            document.querySelector('meta[name="entry-link"]')?.getAttribute('content') === 'link';
+
+        function withEntryLink(url) {
+            if (!entryLink || !url || url.indexOf('/login') !== 0) {
+                return url;
+            }
+            if (url.indexOf('entry=link') !== -1) {
+                return url;
+            }
+            return url.indexOf('?') !== -1 ? url + '&entry=link' : url + '?entry=link';
+        }
+
         async function checkAuthStatus() {
             if (pollingStopped) {
                 return;
@@ -234,19 +248,22 @@
                     stopPolling();
                     showError('Authentication rejected by user.');
                     setTimeout(() => {
-                        window.location.href = result.redirectUrl || '/login?error=rejected';
+                        window.location.href = withEntryLink(
+                            result.redirectUrl || '/login?error=rejected');
                     }, 3000);
                 } else if (result.status === 'expired') {
                     stopPolling();
                     showError(result.message || 'Authentication request expired');
                     setTimeout(() => {
-                        window.location.href = result.redirectUrl || '/login?error=expired';
+                        window.location.href = withEntryLink(
+                            result.redirectUrl || '/login?error=expired');
                     }, 3000);
                 } else if (result.status === 'error') {
                     stopPolling();
                     showError(result.message || 'Authentication error occurred');
                     setTimeout(() => {
-                        window.location.href = result.redirectUrl || '/login?error=authfailed';
+                        window.location.href = withEntryLink(
+                            result.redirectUrl || '/login?error=authfailed');
                     }, 3000);
                 } else {
                     // status === 'pending' — wait for this response to finish before the next poll

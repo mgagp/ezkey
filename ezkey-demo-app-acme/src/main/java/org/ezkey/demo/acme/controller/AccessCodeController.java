@@ -81,12 +81,14 @@ public class AccessCodeController {
           "Access-link rate limit exceeded for clientIp={} retryAfterSeconds={}",
           rateLimitDecision.clientId(),
           rateLimitDecision.retryAfterSeconds());
-      return renderLoginError(model, DemoAuthMessages.RATE_LIMIT_LOGIN);
+      return renderLinkLostLogin(
+          model, DemoAuthMessages.RATE_LIMIT_LOGIN, DemoAuthMessages.LINK_HINT_WAIT_AND_REOPEN);
     }
 
     Optional<String> slotId = accessCodeService.findSlotIdByCode(code);
     if (slotId.isEmpty()) {
-      return renderLoginError(model, DemoAuthMessages.GENERIC_SIGN_IN_FAILED);
+      return renderLinkLostLogin(
+          model, DemoAuthMessages.GENERIC_SIGN_IN_FAILED, DemoAuthMessages.LINK_HINT_CHECK_OR_ASK);
     }
 
     String resolvedSlotId = slotId.get();
@@ -102,10 +104,22 @@ public class AccessCodeController {
     return redirect;
   }
 
-  private static String renderLoginError(Model model, String errorMessage) {
+  /**
+   * Renders login in link-lost layout (state B): no self-service chrome, no form.
+   *
+   * @param model Spring MVC model
+   * @param errorMessage primary error text
+   * @param recoveryHint bilingual recovery / hint line
+   * @return login template name
+   */
+  private static String renderLinkLostLogin(Model model, String errorMessage, String recoveryHint) {
     model.addAttribute("pageTitle", "Login - ACME Inc");
     model.addAttribute("hasError", true);
     model.addAttribute("error", errorMessage);
+    model.addAttribute("showSelfServiceChrome", false);
+    model.addAttribute("showLoginForm", false);
+    model.addAttribute("entryLink", true);
+    model.addAttribute("recoveryHint", recoveryHint);
     return "login";
   }
 }

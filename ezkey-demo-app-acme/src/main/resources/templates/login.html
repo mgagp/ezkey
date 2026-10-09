@@ -31,7 +31,7 @@
                 <div class="login-card">
                     <h2 class="login-title"
                         th:text="${loginHeading != null ? loginHeading : 'SIGN IN'}">SIGN IN</h2>
-                    <p class="login-subtitle">Passwordless authentication with EZKey</p>
+                    <p class="login-subtitle" th:if="${showLoginForm != false}">Passwordless authentication with EZKey</p>
                     
                     <!-- Error Message -->
                     <div th:if="${hasError}" class="error-message">
@@ -43,10 +43,16 @@
                     <div th:if="${logoutMessage}" class="logout-message">
                         <p class="logout-text" th:text="${logoutMessage}">You have been logged out.</p>
                     </div>
+
+                    <!-- Link-lost recovery / access-link hint (state B) -->
+                    <div th:if="${recoveryHint}" class="info-note-inline" data-testid="link-recovery-hint">
+                        <p th:text="${recoveryHint}">To sign in again, reopen the access link you were given.</p>
+                    </div>
                     
-                    <!-- Login Form -->
-                    <form method="post" action="/login" class="login-form">
+                    <!-- Login Form (states A and C; hidden for link-lost B) -->
+                    <form th:if="${showLoginForm != false}" method="post" action="/login" class="login-form">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <input th:if="${entryLink}" type="hidden" name="entry" value="link">
                         <div class="form-group">
                             <label for="username">USERNAME</label>
                             <input type="text" id="username" name="username" 
@@ -66,13 +72,13 @@
                     </form>
                     
                     <!-- Info Note -->
-                    <div class="info-note-inline">
+                    <div th:if="${showLoginForm != false}" class="info-note-inline">
                         <p><strong>Note:</strong> After clicking "Login with EZKey", approve the request on your registered device.</p>
                     </div>
                 </div>
                 
-                <!-- Info Card -->
-                <div class="info-card">
+                <!-- Info Card (self-service demo chrome only — state C) -->
+                <div th:if="${showSelfServiceChrome != false}" class="info-card">
                     <div class="info-card-header">
                         <h3>ABOUT THIS DEMO</h3>
                         <div class="info-card-buttons">
@@ -119,8 +125,8 @@
         </div>
     </main>
 
-    <!-- API Key Dialog Modal -->
-    <div id="api-key-modal" class="modal-overlay hidden">
+    <!-- API Key Dialog Modal (self-service demo chrome only — state C) -->
+    <div th:if="${showSelfServiceChrome != false}" id="api-key-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>CONFIGURE API KEY</h3>
@@ -156,8 +162,8 @@
         </div>
     </footer>
 
-    <!-- API Key Dialog Script -->
-    <script>
+    <!-- API Key Dialog Script (self-service demo chrome only — state C) -->
+    <script th:if="${showSelfServiceChrome != false}">
         function openApiKeyDialog() {
             document.getElementById('api-key-modal').classList.remove('hidden');
             document.getElementById('api-key-integration').value = '';

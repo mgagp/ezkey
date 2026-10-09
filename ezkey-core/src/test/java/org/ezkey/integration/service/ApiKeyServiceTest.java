@@ -919,6 +919,9 @@ class ApiKeyServiceTest {
                   + "        \"API key validated successfully: {} for integration: {}\",\n"
                   + "        integrationKey,"));
       assertTrue(content.contains("LogSanitizer.sanitizeForLog(clientIp)"));
+      assertTrue(
+          content.contains(
+              "Invalid client IP address: {}\", LogSanitizer.sanitizeForLog(clientIp)"));
     }
   }
 }

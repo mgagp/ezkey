@@ -109,11 +109,13 @@ class LoginControllerChallengeAndSessionTest {
             ezkeyClientProvider, demoApiKeyConfigService, demoRateLimitService, accessCodeService);
     org.springframework.ui.ExtendedModelMap model = new org.springframework.ui.ExtendedModelMap();
 
-    String view = controller.loginPage(null, null, session, model);
+    String view = controller.loginPage(null, null, null, session, model);
 
     assertThat(view).isEqualTo("login");
     assertThat(model.get("loginHeading")).isEqualTo("Sign in to Northwind Portal");
     assertThat(model.get("slotLabel")).isEqualTo("Northwind Portal");
+    assertThat(model.get("showSelfServiceChrome")).isEqualTo(false);
+    assertThat(model.get("showLoginForm")).isEqualTo(true);
   }
 
   @Test
@@ -250,7 +252,7 @@ class LoginControllerChallengeAndSessionTest {
     org.springframework.ui.ExtendedModelMap model = new org.springframework.ui.ExtendedModelMap();
     MockHttpSession loginSession = new MockHttpSession();
 
-    String view = controller.loginPage("sessionexpired", null, loginSession, model);
+    String view = controller.loginPage("sessionexpired", null, null, loginSession, model);
 
     assertThat(view).isEqualTo("login");
     assertThat(model.get("hasError")).isEqualTo(true);

@@ -649,7 +649,7 @@ public class ApiKeyService {
 
     IPAddressString clientIpAddress = new IPAddressString(clientIp);
     if (!clientIpAddress.isValid()) {
-      logger.warn("Invalid client IP address: {}", clientIp);
+      logger.warn("Invalid client IP address: {}", LogSanitizer.sanitizeForLog(clientIp));
       return false;
     }
 

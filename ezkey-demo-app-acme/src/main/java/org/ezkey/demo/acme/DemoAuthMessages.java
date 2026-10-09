@@ -38,5 +38,23 @@ public final class DemoAuthMessages {
       "Your session ended. Reopen your personal access link to continue. / Votre session a pris"
           + " fin. Rouvrez votre lien d'accès personnel pour continuer.";
 
+  /**
+   * Recovery line for link-lost login layout (state B) when the primary message is not already
+   * {@link #SESSION_OR_SLOT_LOST}.
+   */
+  public static final String LINK_RECOVERY_REOPEN =
+      "To sign in again, reopen the access link you were given. / Pour vous reconnecter, rouvrez"
+          + " le lien d'accès qu'on vous a transmis.";
+
+  /** Hint after an unknown access code on {@code /t/{code}} (state B). */
+  public static final String LINK_HINT_CHECK_OR_ASK =
+      "Check the access link you were given, or ask for a new one. / Vérifiez le lien d'accès"
+          + " qu'on vous a transmis, ou demandez-en un nouveau.";
+
+  /** Hint after access-link rate limiting on {@code /t/{code}} (state B). */
+  public static final String LINK_HINT_WAIT_AND_REOPEN =
+      "Wait a few minutes, then reopen your access link. / Attendez quelques minutes, puis"
+          + " rouvrez votre lien d'accès.";
+
   private DemoAuthMessages() {}
 }

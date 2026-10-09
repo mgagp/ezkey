@@ -63,7 +63,10 @@ class AccessCodeControllerTest {
         .andExpect(status().isOk())
         .andExpect(view().name("login"))
         .andExpect(model().attribute("hasError", true))
-        .andExpect(model().attribute("error", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
+        .andExpect(model().attribute("error", DemoAuthMessages.GENERIC_SIGN_IN_FAILED))
+        .andExpect(model().attribute("showSelfServiceChrome", false))
+        .andExpect(model().attribute("showLoginForm", false))
+        .andExpect(model().attribute("recoveryHint", DemoAuthMessages.LINK_HINT_CHECK_OR_ASK));
   }
 
   @Test
@@ -97,7 +100,10 @@ class AccessCodeControllerTest {
         .perform(get("/t/{code}", VALID_CODE))
         .andExpect(status().isOk())
         .andExpect(view().name("login"))
-        .andExpect(model().attribute("error", DemoAuthMessages.RATE_LIMIT_LOGIN));
+        .andExpect(model().attribute("error", DemoAuthMessages.RATE_LIMIT_LOGIN))
+        .andExpect(model().attribute("showSelfServiceChrome", false))
+        .andExpect(model().attribute("showLoginForm", false))
+        .andExpect(model().attribute("recoveryHint", DemoAuthMessages.LINK_HINT_WAIT_AND_REOPEN));
 
     verify(demoRateLimitService).checkLogin(any());
   }

@@ -13,6 +13,8 @@ package org.ezkey.demo.acme.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.ezkey.demo.acme.dto.AuthenticatedUser;
+import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
+import org.ezkey.demo.acme.web.LinkEntryMarker;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,6 +43,17 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class HomeController {
 
   private static final String USER_ATTRIBUTE = "user";
+
+  private final DemoApiKeyConfigService demoApiKeyConfigService;
+
+  /**
+   * Creates the home controller.
+   *
+   * @param demoApiKeyConfigService used to detect slot mode before logout clears the session
+   */
+  public HomeController(DemoApiKeyConfigService demoApiKeyConfigService) {
+    this.demoApiKeyConfigService = demoApiKeyConfigService;
+  }
 
   /**
    * Redirects root URL to login page.
@@ -79,15 +92,21 @@ public class HomeController {
    * Handles logout by invalidating the entire HTTP session (auth state, pasted keys, and
    * access-code slot).
    *
+   * <p>When the session had an access-code slot, the redirect carries {@code entry=link} so the
+   * login page stays on the tenant-link layout (no self-service chrome).
+   *
    * @param request the HTTP request
    * @return redirect to login page
    */
   @GetMapping("/logout")
   public String logout(HttpServletRequest request) {
     HttpSession session = request.getSession(false);
+    boolean slotMode = false;
     if (session != null) {
+      slotMode = demoApiKeyConfigService.getActiveSlotId(session) != null;
       session.invalidate();
     }
-    return "redirect:/login?logout=true";
+    String path = "/login?logout=true";
+    return "redirect:" + (slotMode ? LinkEntryMarker.withMarker(path) : path);
   }
 }
