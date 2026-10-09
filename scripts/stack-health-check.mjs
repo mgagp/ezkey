@@ -71,9 +71,11 @@ function scoreJavaMelody(jm, thr, checks) {
     const lastValue = appMeta.lastValue || {};
     const errorHits = appMeta.errorHits || 0;
 
+    // Ignore JavaMelody synthetic Error* buckets for error% (always 100%).
+    const httpForErr = http.filter((row) => !/^Error\d+/i.test(row.name || ''));
     const topHttpMean = maxOf(http, 'mean');
     const topHttpMax = maxOf(http, 'maximum');
-    const topHttpErr = maxOf(http, 'errorRatePct');
+    const topHttpErr = maxOf(httpForErr, 'errorRatePct');
     const topSqlMean = maxOf(sql, 'mean');
     const topSqlMax = maxOf(sql, 'maximum');
 
@@ -158,11 +160,14 @@ function scoreContainers(logScan, thr, allowlist, checks) {
   let totalErrors = 0;
 
   for (const svc of services) {
+    if (svc.oneshot) {
+      continue;
+    }
     maxRestarts = Math.max(maxRestarts, svc.restarts || 0);
-    if (svc.oomKilled) {
+    if (svc.oomKilled || svc.exitCode === 137) {
       oom += 1;
     }
-    if (svc.health === 'unhealthy') {
+    if (svc.health === 'unhealthy' || svc.status === 'exited') {
       unhealthy += 1;
     }
     totalErrors += svc.errorCount || 0;
@@ -252,10 +257,12 @@ function bandVerdict(value, band) {
   if (!Number.isFinite(n)) {
     return 'GREEN';
   }
+  // Inclusive upper bands. A zero amber would make every zero value AMBER, so
+  // treat amber=0 as "disabled" (only red applies).
   if (band.red != null && n >= band.red) {
     return 'RED';
   }
-  if (band.amber != null && n >= band.amber) {
+  if (band.amber != null && band.amber > 0 && n >= band.amber) {
     return 'AMBER';
   }
   return 'GREEN';

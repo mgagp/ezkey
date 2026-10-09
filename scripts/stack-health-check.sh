@@ -129,6 +129,10 @@ def signature(line: str) -> str:
 ERROR_HINT = re.compile(r"\b(ERROR|Exception|OutOfMemoryError|FATAL)\b", re.I)
 WARN_HINT = re.compile(r"\bWARN(ING)?\b", re.I)
 
+def is_oneshot(name: str) -> bool:
+    n = name.lower()
+    return any(s in n for s in ("migration", "db-grants", "bootstrap-init"))
+
 services = []
 for name in names:
     inspect = {}
@@ -145,7 +149,11 @@ for name in names:
     health = (state.get("Health") or {}).get("Status")
     restarts = int(inspect.get("RestartCount") or 0)
     oom = bool(state.get("OOMKilled"))
+    # Docker often leaves OOMKilled=false after SIGKILL(137) from the host OOM killer.
+    exit_code = state.get("ExitCode")
     status = state.get("Status")
+    if exit_code == 137:
+        oom = True
 
     try:
         logs = subprocess.check_output(
@@ -169,6 +177,7 @@ for name in names:
             warn_total += 1
             warn_c[signature(line)] += 1
 
+    oneshot = is_oneshot(name)
     services.append(
         {
             "name": name,
@@ -176,6 +185,8 @@ for name in names:
             "health": health,
             "restarts": restarts,
             "oomKilled": oom,
+            "exitCode": exit_code,
+            "oneshot": oneshot,
             "errorCount": err_total,
             "warnCount": warn_total,
             "errorSignatures": [
@@ -187,16 +198,21 @@ for name in names:
         }
     )
 
+from datetime import datetime, timezone
 payload = {
-    "generatedAt": __import__("datetime").datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "generatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "serviceCount": len(services),
     "services": services,
     "totals": {
         "errorLines": sum(s["errorCount"] for s in services),
         "warnLines": sum(s["warnCount"] for s in services),
         "oomKills": sum(1 for s in services if s["oomKilled"]),
-        "unhealthy": sum(1 for s in services if s.get("health") == "unhealthy"),
-        "maxRestarts": max((s["restarts"] for s in services), default=0),
+        "unhealthy": sum(
+            1
+            for s in services
+            if (not s.get("oneshot")) and s.get("health") == "unhealthy"
+        ),
+        "maxRestarts": max((s["restarts"] for s in services if not s.get("oneshot")), default=0),
     },
 }
 with open(out_json, "w", encoding="utf-8") as f:
