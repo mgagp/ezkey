@@ -1,37 +1,91 @@
 # Prompt Template — Cold-Agent Plan Hardening & Review
 
-Use this prompt in a **new session** (ideally with a fresh context and potentially a distinct reasoning model) to critically review, stress-test, and harden an existing plan or tracer bullet before handing it off to an autonomous execution agent.
+Use this prompt in a **new session** (ideally with a fresh context and potentially a distinct
+reasoning model) to critically review, stress-test, and harden an existing artifact before the
+next gate or before handing it off to an autonomous execution agent.
+
+**Aliases for the same pattern** (do not invent a parallel method): `critical-review`,
+`critical review`, `revue critique`, `adversarial review`, `plan hardening`,
+`cold-agent plan review`, Stage 2 fresh-session review. Canon:
+[`../methodology/README.md`](../methodology/README.md) § *The two-stage plan hardening pattern*.
+Skill entry point (thin launcher only): [`.cursor/skills/critical-review/SKILL.md`](../../.cursor/skills/critical-review/SKILL.md).
+
+**Targets:** vision note (`V-*`), **G1 tracer-bullet brief** (before craft/security gate),
+execution plan, tracer bullet, or a PR that carries one of those. Apply before G1 for briefs —
+not only after vision merge.
 
 ---
 
 ```markdown
-I am submitting this plan for your critical review: @path/to/plan-or-tracer-bullet.md
+I am submitting this artifact for your critical / adversarial review (plan hardening Stage 2):
+@path/to/vision-brief-plan-or-pr.md
 
-I expect you to evaluate it rigorously against our product intent and harden it so that an autonomous cold agent (with zero conversational memory) can execute it flawlessly end to end.
+I expect you to evaluate it rigorously against our product intent and harden it so that the next
+gate (or an autonomous cold agent with zero conversational memory) can proceed without hidden
+assumptions.
 
-Please structure your review along the following dimensions:
+## Compass (read briefly first)
+
+- `AGENTS.md` (§ Cold-start, § Project values)
+- `product-docs/global/product-intent.md`
+- `product-docs/global/design-principles.md` (especially **§17** fail-open vs fail-closed)
+- `product-docs/global/operator-alignment-guide.md` (Global Admin vs Tenant Admin; operability)
+- `product-docs/methodology/README.md` (values compass, three rules, two-stage pattern)
+- Then only what the target needs (security posture, lifecycle, module `AGENTS.md`, host/deploy docs).
+
+## Review dimensions
 
 1. **Alignment with Product Intent & Normative Posture:**
-   - Compare the plan against our canonical product intent, design principles (e.g., fail-closed at boundaries, 80/20 simplicity), and security/lifecycle posture.
-   - Verify that the diagnosis, the observed behavior, and the proposed fix genuinely solve the root cause rather than patching a symptom or leaving default paths unprotected.
+   - Compare against product intent, design principles (80/20, one canonical place, stay in stack,
+     §17 fail-open/fail-closed), and security/lifecycle posture.
+   - Verify the diagnosis and proposed direction solve the root cause rather than patching a
+     symptom or leaving default paths unprotected.
+   - Challenge the premise: is the problem real and correctly sized? Simplest alternative not
+     considered? What happens if we do nothing?
 
-2. **Cold-Agent Autonomy & Missing Specifics:**
-   - Identify edge cases, hidden assumptions, or ambiguities that would cause an autonomous agent to stall, guess, or take invalid shortcuts.
-   - Specify exact implementation details: exact database migrations (Flyway versions/naming), transactional boundaries, repository queries (e.g. atomic CAS), DTO field types, Checkstyle/lint constraints, and strict tooling commands (e.g. never hand-editing generated OpenAPI specs).
+2. **Brief / vision gates — mandatory specialist angles (retro #726):**
+   When the target is a **vision** or **G1 brief**, explicitly invite (and report on) these angles;
+   name gaps even if the artifact is silent:
+   - **Operability / real tester journey** (Julie): end-user or cohort path on a real device or
+     clean-start stack — not only happy-path admin chrome.
+   - **Pre-existing conditions & concurrency** (Patrick): what already exists in the stack that
+     this slice touches; races, CAS, shared state, dual writers.
+   - **Security** (Christophe): secrets, enumeration, rate limits, session, claim honesty.
+   - **Host / deploy** (Edgar): host-map, Caddy/proxy, certificates, community vs lab deploy.
+   - **Verify brief sections** when present (add them if missing on a G1 brief):
+     - **Vision lock trace** — which vision locks this brief inherits, and what remains open.
+     - **Pre-existing conditions touched** — code, config, host, or ops surfaces this slice will
+       change or rely on.
 
-3. **Proportionate Proof Ladder & Collateral Invariance:**
-   - **RED Baseline:** An automated characterization test that reproduces the defect/gap before any code is changed.
-   - **Positive & Negative Tests:** Both nominal success paths and explicit fail-closed rejection on invalid inputs or unauthorized actors.
-   - **Collateral Invariance & State Survival (Crucial):** Explicitly verify that rejections, collisions, or attack attempts leave legitimate existing state completely unharmed:
-     - *Security/Auth:* Legitimate sessions, tokens, or credentials remain active and operational post-attack (e.g. exercising an authenticated administrative mutation post-rejection).
-     - *Concurrency/CAS:* Competing operations failing a lock or CAS condition do not abort, deadlock, or corrupt the winning operation.
-     - *Lifecycle/Entities:* Rejected lifecycle transitions (e.g. 409 Conflict, 400 Bad Request) do not leave records in an inconsistent, partially mutated, or corrupted state.
-   - **Live Functional Verification:** A realistic end-to-end test on the running stack (clean-start Docker, Demo Device, Admin UI, or Bruno collections) with observable evidence (logs, DB state, audit records).
+3. **Cold-Agent Autonomy & Missing Specifics:**
+   - Identify edge cases, hidden assumptions, or ambiguities that would cause an autonomous agent
+     to stall, guess, or take invalid shortcuts.
+   - Specify exact implementation details: Flyway versions/naming, transactional boundaries,
+     repository queries (e.g. atomic CAS), DTO field types, Checkstyle/lint constraints, and
+     strict tooling commands (e.g. never hand-editing generated OpenAPI specs).
 
-4. **Review Protocol (HITL):**
-   - Do NOT edit the plan immediately.
-   - First, provide your critical evaluation, identified gaps, and proposed amendments in a concise summary.
-   - Wait for my feedback so we can align on the exact strategy before amending the plan file.
+4. **Proportionate Proof Ladder & Collateral Invariance:**
+   - **RED Baseline:** An automated characterization test that reproduces the defect/gap before
+     any code is changed.
+   - **Positive & Negative Tests:** Both nominal success paths and explicit fail-closed rejection
+     on invalid inputs or unauthorized actors.
+   - **Collateral Invariance & State Survival (Crucial):** Explicitly verify that rejections,
+     collisions, or attack attempts leave legitimate existing state completely unharmed:
+     - *Security/Auth:* Legitimate sessions, tokens, or credentials remain active and operational
+       post-attack (e.g. exercising an authenticated administrative mutation post-rejection).
+     - *Concurrency/CAS:* Competing operations failing a lock or CAS condition do not abort,
+       deadlock, or corrupt the winning operation.
+     - *Lifecycle/Entities:* Rejected lifecycle transitions (e.g. 409 Conflict, 400 Bad Request)
+       do not leave records in an inconsistent, partially mutated, or corrupted state.
+   - **Live Functional Verification:** A realistic end-to-end test on the running stack
+     (clean-start Docker, Demo Device, Admin UI, or Bruno collections) with observable evidence.
+
+5. **Review Protocol (HITL):**
+   - Do NOT edit the artifact immediately.
+   - First, provide your critical evaluation, identified gaps, and proposed amendments in a
+     concise summary (prefer few strong findings; max ~10; no style nits).
+   - Wait for feedback so we can align (`amend` / `defer` / `skip` per finding) before amending
+     the file.
 ```
 
 ---
@@ -39,7 +93,13 @@ Please structure your review along the following dimensions:
 ## When to Use This Pattern
 
 Trigger this two-stage review when:
-- **Security & Cryptography:** Authentication, token issuance, session lifecycles, key rotation, or permission checks.
-- **Concurrency & State Integrity:** Database migrations on partitioned tables, atomic CAS operations, distributed locks (ShedLock), or queue consumers.
-- **Cross-Component Workflows:** Slices spanning DB schema $\to$ Core service $\to$ REST APIs $\to$ OpenAPI specs $\to$ Admin UI $\to$ Mobile/Demo Device.
+- **G1 briefs** after vision lock (and optionally visions before merge when risk is high).
+- **Security & Cryptography:** Authentication, token issuance, session lifecycles, key rotation,
+  or permission checks.
+- **Concurrency & State Integrity:** Database migrations on partitioned tables, atomic CAS,
+  distributed locks (ShedLock), or queue consumers.
+- **Cross-Component Workflows:** Slices spanning DB schema → Core → REST APIs → OpenAPI → Admin UI
+  → Mobile/Demo Device / host.
 - **Full Delegation:** When the goal is an uninterrupted, autonomous execution run by a cold agent.
+
+**Not for:** routine hygiene, Dependabot, or when a `*-curated` lane already owns the signal.

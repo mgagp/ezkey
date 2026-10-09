@@ -32,7 +32,7 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | Mandate-driven hygiene assessment (HITL + handoff) | Keyword **`assessment-curated`** → [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md) |
 | Legacy document hygiene (canonicality / discoverability / archive-vs-delete) | Keyword **`document-hygiene-curated`** → [`product-docs/global/hygiene/document-hygiene/README.md`](product-docs/global/hygiene/document-hygiene/README.md) |
 | New idea / method | [`product-docs/methodology/README.md`](product-docs/methodology/README.md) — the whole method fits in that one document since the 2026-08 ablation |
-| Plan review / cold-agent hardening | [`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md) — 2-stage review pattern in [`product-docs/methodology/README.md`](product-docs/methodology/README.md) |
+| Plan review / cold-agent hardening (aliases: `critical-review`, adversarial review, revue critique, plan hardening) | Canonical prompt [`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md); pattern in [`product-docs/methodology/README.md`](product-docs/methodology/README.md) § two-stage; thin skill [`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md) |
 | API contract change | Controller + **section** of `docs/ENDPOINT.md` + OpenAPI refresh workflow (see OpenAPI rules) |
 | Strategic positioning / public copy | [`docs/PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) only when that layer is in scope |
 | Public alpha label / deploy “what is live” | [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md); community ledger [`docs/lightsail/community/DEPLOYED.md`](docs/lightsail/community/DEPLOYED.md) |
@@ -63,9 +63,10 @@ ephemeral scaffold vs. retained plan, closed uncertainty stays closed) — into 
 There is no separate lane taxonomy or skill sequence to load first: prefer **Plan mode** for
 research and comparing alternatives, then position the idea as a `V-*`, `I-*`, or `TB-*` in
 `product-docs/global/` only when the methodology README's artifact-choice table calls for it.
-For high-risk slices (security boundaries, session management, DB migrations, or autonomous cold-agent
-handoffs), harden the plan via the **two-stage plan hardening pattern**
-([`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md)).
+For high-risk slices (security boundaries, session management, DB migrations, G1 briefs, or
+autonomous cold-agent handoffs), harden via the **two-stage plan hardening pattern**
+([`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md);
+skill keyword `critical-review` / adversarial review — see domain pointer table).
 
 The always-applied rule
 [`.cursor/rules/product-docs-workflow-bootstrap.mdc`](.cursor/rules/product-docs-workflow-bootstrap.mdc)

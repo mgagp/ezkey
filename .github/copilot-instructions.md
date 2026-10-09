@@ -20,6 +20,7 @@ linked skill/README). Do **not** invent `I-*` / `TB-*` per routine finding.
 | `security-pentest-curated` | Live API / DAST-style campaigns — `AGENTS.md` § Security pentest curated; skill `.cursor/skills/security-pentest-curated/SKILL.md`; `product-docs/global/hygiene/security-pentest/` |
 | **`assessment-curated`** | Mandate-driven white-box assessment → HITL → handoff — `AGENTS.md` § Assessment curated; canon `product-docs/global/hygiene/assessment-curated/README.md`; skill `.cursor/skills/assessment-curated/SKILL.md` |
 | **`document-hygiene-curated`** | Legacy document canonicality / discoverability / archive-vs-delete — `AGENTS.md` keyword table; canon `product-docs/global/hygiene/document-hygiene/README.md`; skill `.cursor/skills/document-hygiene-curated/SKILL.md` |
+| **`critical-review`** (aliases: adversarial review, revue critique, plan hardening, cold-agent plan review) | Stage 2 of the existing two-stage plan hardening pattern — **not** a parallel method. Canonical prompt `product-docs/templates/cold-agent-plan-review.prompt.md`; thin skill `.cursor/skills/critical-review/SKILL.md`; `AGENTS.md` domain pointer *Plan review / cold-agent hardening* |
 
 Hygiene index: `product-docs/global/hygiene/README.md`. Hygiene vs program:
 `product-docs/methodology/README.md` § *Three rules worth keeping*.
