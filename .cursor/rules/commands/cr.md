@@ -5,7 +5,12 @@
 > This file is retained for historical reference only. It still tells readers to ritual-read
 > `PRD.md` / `ENDPOINT.md`, which contradicts the cold-start tier model in root `AGENTS.md`.
 >
-> For plan / tracer-bullet hardening before cold-agent handoff, use:
+> For adversarial / critical review (visions, G1 briefs, Stage 2), use keyword **`critical-review`**:
+> canon [`product-docs/global/hygiene/critical-review/README.md`](../../../product-docs/global/hygiene/critical-review/README.md),
+> skill [`.cursor/skills/critical-review/SKILL.md`](../../skills/critical-review/SKILL.md),
+> prompt [`product-docs/templates/critical-review.prompt.md`](../../../product-docs/templates/critical-review.prompt.md).
+>
+> For the autonomous-execution hardening angle only:
 > [`product-docs/templates/cold-agent-plan-review.prompt.md`](../../../product-docs/templates/cold-agent-plan-review.prompt.md)
 >
 > For product framing, start from `product-docs/global/product-intent.md` (root `PRD.md` is a stub).

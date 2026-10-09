@@ -26,9 +26,16 @@ accumulated conversational drift.
 In these situations, apply a two-stage hardening pattern:
 
 1. **Stage 1 (Scaffold):** Draft the initial direction and plan in a standard Plan mode session.
-2. **Stage 2 (Fresh-session review & hardening):** Open a **fresh session** (clearing context,
-   optionally using a distinct reasoning model) and submit the draft using the canonical hardening
-   prompt ([`../templates/cold-agent-plan-review.prompt.md`](../templates/cold-agent-plan-review.prompt.md)).
+2. **Stage 2 (Fresh-session review & hardening):** Stage 2 is tooled by the keyword
+   **`critical-review`** (aliases: adversarial review, revue critique, plan hardening) — see
+   [`../global/hygiene/critical-review/README.md`](../global/hygiene/critical-review/README.md) and
+   [`.cursor/skills/critical-review/SKILL.md`](../../.cursor/skills/critical-review/SKILL.md).
+   Open a **fresh** read-only cloud-agent session on a **forced different model family** from the
+   author's (mandatory) and submit the draft using
+   [`../templates/critical-review.prompt.md`](../templates/critical-review.prompt.md). The
+   autonomous-execution hardening angle remains
+   [`../templates/cold-agent-plan-review.prompt.md`](../templates/cold-agent-plan-review.prompt.md)
+   (included by reference). Required before gate for **P0/P1 visions** and **G1 briefs**.
    - **Evaluate product intent:** Verify the plan solves the root problem rather than patching
      symptoms or leaving default paths unprotected.
    - **Expose edge cases & eliminate non-dits:** Specify exact database migrations, atomic CAS
@@ -156,7 +163,8 @@ of duplicating its content.
 ## Templates
 
 Maintained under [`../templates/`](../templates/): `vision-note`, `backlog-idea`,
-`tracer-bullet-brief`, `architecture-decision`, plus the `cold-agent-plan-review` prompt template. Copy, fill in, delete sections that do not apply.
+`tracer-bullet-brief`, `architecture-decision`, plus the `critical-review` and
+`cold-agent-plan-review` prompt templates. Copy, fill in, delete sections that do not apply.
 
 ## Versioning
 

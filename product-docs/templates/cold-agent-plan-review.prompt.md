@@ -2,6 +2,10 @@
 
 Use this prompt in a **new session** (ideally with a fresh context and potentially a distinct reasoning model) to critically review, stress-test, and harden an existing plan or tracer bullet before handing it off to an autonomous execution agent.
 
+Stage 2 is tooled by the `critical-review` keyword (adversarial review); see
+[`product-docs/global/hygiene/critical-review/README.md`](../global/hygiene/critical-review/README.md).
+This file remains the **autonomous-execution hardening** angle included by reference from that prompt.
+
 ---
 
 ```markdown

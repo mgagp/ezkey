@@ -32,7 +32,7 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | Mandate-driven hygiene assessment (HITL + handoff) | Keyword **`assessment-curated`** → [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md) |
 | Legacy document hygiene (canonicality / discoverability / archive-vs-delete) | Keyword **`document-hygiene-curated`** → [`product-docs/global/hygiene/document-hygiene/README.md`](product-docs/global/hygiene/document-hygiene/README.md) |
 | New idea / method | [`product-docs/methodology/README.md`](product-docs/methodology/README.md) — the whole method fits in that one document since the 2026-08 ablation |
-| Plan review / cold-agent hardening | [`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md) — 2-stage review pattern in [`product-docs/methodology/README.md`](product-docs/methodology/README.md) |
+| Plan review / cold-agent hardening (aliases: `critical-review`, adversarial review, revue critique, plan hardening Stage 2) | Canon [`product-docs/global/hygiene/critical-review/README.md`](product-docs/global/hygiene/critical-review/README.md); prompt [`product-docs/templates/critical-review.prompt.md`](product-docs/templates/critical-review.prompt.md); skill [`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md); execution-hardening angle [`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md); pattern [`product-docs/methodology/README.md`](product-docs/methodology/README.md) § two-stage |
 | Adopter posture / 3-second test | [`product-docs/global/operator-alignment-guide.md`](product-docs/global/operator-alignment-guide.md) — Ezkey is never the adopter's core business; every human surface must stay simple, fluid, operationally clear |
 | Fail-open vs fail-closed | [`product-docs/global/design-principles.md`](product-docs/global/design-principles.md) §17 — name whether failure continues (observable) or stops at critical boundaries |
 | API contract change | Controller + **section** of `docs/ENDPOINT.md` + OpenAPI refresh workflow (see OpenAPI rules) |
@@ -65,9 +65,17 @@ ephemeral scaffold vs. retained plan, closed uncertainty stays closed) — into 
 There is no separate lane taxonomy or skill sequence to load first: prefer **Plan mode** for
 research and comparing alternatives, then position the idea as a `V-*`, `I-*`, or `TB-*` in
 `product-docs/global/` only when the methodology README's artifact-choice table calls for it.
-For high-risk slices (security boundaries, session management, DB migrations, or autonomous cold-agent
-handoffs), harden the plan via the **two-stage plan hardening pattern**
-([`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md)).
+
+**Critical-review gate:** P0/P1 visions and G1 briefs get a **`critical-review`** before the gate
+(fresh cloud agent, **forced different model family** from the author, read-only) — the main lever
+for AI-factory review quality and continuous improvement of autonomy. Canon:
+[`product-docs/global/hygiene/critical-review/README.md`](product-docs/global/hygiene/critical-review/README.md);
+skill [`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md).
+
+For autonomous cold-execution plans and other high-risk slices, Stage 2 also uses the
+execution-hardening angle
+([`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md))
+via the same keyword.
 
 The always-applied rule
 [`.cursor/rules/product-docs-workflow-bootstrap.mdc`](.cursor/rules/product-docs-workflow-bootstrap.mdc)

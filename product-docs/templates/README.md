@@ -8,7 +8,11 @@ ablation note for what used to be here.
 - [backlog-idea.template.md](backlog-idea.template.md) — `I-*` one concrete idea.
 - [tracer-bullet-brief.template.md](tracer-bullet-brief.template.md) — `TB-*` bounded execution slice.
 - [architecture-decision.template.md](architecture-decision.template.md) — `ADR-*` design decision, global or component-scoped.
-- [cold-agent-plan-review.prompt.md](cold-agent-plan-review.prompt.md) — Prompt template for fresh-session plan review and hardening before cold-agent execution.
+- [critical-review.prompt.md](critical-review.prompt.md) — Adversarial / critical-review cloud-agent
+  prompt (Stage 2); skill `.cursor/skills/critical-review/SKILL.md`; canon
+  `../global/hygiene/critical-review/`.
+- [cold-agent-plan-review.prompt.md](cold-agent-plan-review.prompt.md) — Autonomous-execution
+  hardening angle (included by reference from critical-review).
 - [ui-walk-gate.template.md](ui-walk-gate.template.md) — Admin UI walk/done gate checklist for Isabelle (and intention owners).
 
 ## Using a template
