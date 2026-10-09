@@ -61,7 +61,7 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 
 ## Contract-First Rules
 
-- Orval is pinned at **8.39.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
+- Orval is pinned at **8.40.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
   no global `useQuery` / `useMutation`). Same Option B as Admin UI `TB-2026-05-28` checkpoints 8.10 / 8.11.
   Bump autonomy follows the **Orval risk grid** (O0–O3) in skill `dependabot-curated` § *Orval risk
   grid* (pointer: [`../product-docs/global/hygiene/dependabot/README.md`](../product-docs/global/hygiene/dependabot/README.md));
