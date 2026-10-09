@@ -28,11 +28,13 @@ OVERALL_RED=0
 OVERALL_AMBER=0
 STACK_DOWN=0
 CHURN_PIDS=""
+MEM_SAMPLER_PID=""
 
 GATE_OVERLAY="$REPO_ROOT/docker/docker-compose.ha.quality-gate.yml"
 PHASES="preflight unit-tests clean-start post-clean-health functional-tests elective-tests playwright churn-init churn health"
 
 HA_REPLICAS="ezkey-admin-api-1 ezkey-admin-api-2 ezkey-auth-api-1 ezkey-auth-api-2 ezkey-integration-api-1 ezkey-integration-api-2 ezkey-crypto-api-ha"
+MEM_SAMPLE_CONTAINERS="$HA_REPLICAS ezkey-demo-device-ha ezkey-demo-app-acme-ha"
 
 usage() {
   cat <<'EOF'
@@ -61,16 +63,66 @@ SHORT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 FULL_SHA="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 UTC_STAMP="$(date -u +"%Y%m%dT%H%M%SZ")"
 RUN_DIR="$REPO_ROOT/logs/quality-gate/${UTC_STAMP}-${SHORT_SHA}"
-mkdir -p "$RUN_DIR/phases" "$RUN_DIR/churn" "$RUN_DIR/health"
+mkdir -p "$RUN_DIR/phases" "$RUN_DIR/churn" "$RUN_DIR/health" "$RUN_DIR/nmt"
 PHASE_TSV="$RUN_DIR/phases.tsv"
 : >"$PHASE_TSV"
 REPLICAS_TSV="$RUN_DIR/replicas.tsv"
 : >"$REPLICAS_TSV"
+MEM_SAMPLES_TSV="$RUN_DIR/mem-samples.tsv"
+printf 'utc\tphase\tcontainer\tmem_usage\tmem_limit\tmem_perc\n' >"$MEM_SAMPLES_TSV"
 
 echo "[$KEYWORD] run dir: $RUN_DIR"
 echo "[$KEYWORD] tip: $FULL_SHA"
 
+stop_mem_sampler() {
+  if [[ -n "$MEM_SAMPLER_PID" ]]; then
+    kill "$MEM_SAMPLER_PID" 2>/dev/null || true
+    wait "$MEM_SAMPLER_PID" 2>/dev/null || true
+    MEM_SAMPLER_PID=""
+  fi
+}
+
+# Sample docker stats every 10s into mem-samples.tsv while a stack phase runs.
+start_mem_sampler() {
+  local phase="$1"
+  stop_mem_sampler
+  (
+    phase="$phase"
+    samples="$MEM_SAMPLES_TSV"
+    containers="$MEM_SAMPLE_CONTAINERS"
+    while true; do
+      utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+      # docker stats --no-stream: MemUsage is "used / limit"
+      docker stats --no-stream --format '{{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' $containers 2>/dev/null \
+        | while IFS=$'\t' read -r name usage perc; do
+            [[ -z "$name" ]] && continue
+            used="$(echo "$usage" | awk -F'/' '{gsub(/^ +| +$/,"",$1); print $1}')"
+            limit="$(echo "$usage" | awk -F'/' '{gsub(/^ +| +$/,"",$2); print $2}')"
+            printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$utc" "$phase" "$name" "$used" "$limit" "$perc" >>"$samples"
+          done
+      sleep 10
+    done
+  ) &
+  MEM_SAMPLER_PID=$!
+}
+
+capture_nmt() {
+  local phase="$1"
+  local out="$RUN_DIR/nmt/admin-api-1-${phase}.txt"
+  if ! docker inspect ezkey-admin-api-1 >/dev/null 2>&1; then
+    echo "admin-api-1 not present — skip NMT ($phase)" >"$out"
+    return
+  fi
+  if docker exec ezkey-admin-api-1 sh -c 'command -v jcmd >/dev/null 2>&1'; then
+    docker exec ezkey-admin-api-1 jcmd 1 VM.native_memory summary >"$out" 2>&1 || \
+      echo "jcmd failed (exit $?)" >"$out"
+  else
+    echo "jcmd unavailable in admin-api image (report and continue)" >"$out"
+  fi
+}
+
 cleanup_churn() {
+  stop_mem_sampler
   if [[ -n "$CHURN_PIDS" ]]; then
     for p in $CHURN_PIDS; do
       kill "$p" 2>/dev/null || true
@@ -433,6 +485,11 @@ for phase in $PHASES; do
     fi
   fi
 
+  # Memory sampler for stack-bearing phases (not preflight/unit-tests).
+  if [[ "$phase" != "preflight" && "$phase" != "unit-tests" ]]; then
+    start_mem_sampler "$phase"
+  fi
+
   case "$phase" in
     preflight) run_phase_preflight || true ;;
     unit-tests) run_phase_unit_tests || true ;;
@@ -445,6 +502,11 @@ for phase in $PHASES; do
     churn) run_phase_churn || true ;;
     health) run_phase_health || true ;;
   esac
+
+  if [[ "$phase" != "preflight" && "$phase" != "unit-tests" ]]; then
+    capture_nmt "$phase"
+    stop_mem_sampler
+  fi
 
   last_verdict="$(tail -1 "$PHASE_TSV" | cut -f2)"
   if [[ "$last_verdict" == "RED" ]]; then

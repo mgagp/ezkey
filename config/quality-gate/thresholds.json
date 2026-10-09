@@ -42,6 +42,8 @@
       "demo-app-acme": 768
     },
     "hostMarginMiB": 2048,
-    "postgresReserveMiB": 1024
+    "postgresReserveMiB": 1024,
+    "maxRamPercentage": 60,
+    "nativeMemoryTracking": "summary"
   }
 }

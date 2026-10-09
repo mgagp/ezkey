@@ -114,6 +114,9 @@ else {
 }
 lines.push('', '## Links', '');
 lines.push(`- Health: \`health/HEALTH.md\` (verdict ${health.verdict || 'n/a'})`);
+lines.push(`- Secret findings: \`health/secrets-findings.md\``);
+lines.push(`- Memory samples: \`mem-samples.tsv\` (docker stats / 10s)`);
+lines.push(`- NMT snapshots: \`nmt/\` (jcmd when available)`);
 lines.push(`- Summary JSON: \`summary.json\``);
 lines.push(`- Replica liveness: \`replicas.tsv\``);
 lines.push(`- Product bugs: [#747](https://github.com/mgagp/ezkey/issues/747), [#748](https://github.com/mgagp/ezkey/issues/748)`);
