@@ -133,7 +133,7 @@ function sanitize(s) {
     '"$1":"***REDACTED***"',
   );
   out = out.replace(
-    /\b(password|passwd|pwd|token|bearer|api[_-]?key|secret|authorization|challenge|code|accessCode|username|user)\s*[=:]\s*\S+/gi,
+    /\b(password|passwd|pwd|token|bearer|api[_-]?key|secret|authorization|challenge|code|accessCode|username|user)\b\s*[=:]\s*\S+/gi,
     '$1=***REDACTED***',
   );
   out = out.replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer ***REDACTED***');
