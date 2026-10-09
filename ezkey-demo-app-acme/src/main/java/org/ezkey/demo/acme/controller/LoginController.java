@@ -118,15 +118,17 @@ public class LoginController {
 
     // Layout-only flag: never used to decide whether security steps run.
     final boolean layoutLinkMarker = LinkEntryMarker.isLink(entry);
-    final boolean slotActive = demoApiKeyConfigService.getActiveSlotId(session) != null;
+    final String activeSlotId = demoApiKeyConfigService.getActiveSlotId(session);
+    final boolean slotActive = activeSlotId != null;
 
     // --- Security path (identical with or without entry=link) ---
+    // Slot in session (#726) → slot+IP bucket; self-service → IP-only. Same ceiling.
     DemoRateLimitService.RateLimitDecision rateLimitDecision =
-        demoRateLimitService.checkLogin(request);
+        demoRateLimitService.checkLogin(request, activeSlotId);
     if (!rateLimitDecision.allowed()) {
       logger.warn(
           "Login rate limit exceeded for clientIp={} retryAfterSeconds={}",
-          rateLimitDecision.clientId(),
+          LogSanitizer.sanitizeForLog(rateLimitDecision.clientId()),
           rateLimitDecision.retryAfterSeconds());
       redirectAttributes.addFlashAttribute("error", DemoAuthMessages.RATE_LIMIT_LOGIN);
       return loginRedirectWithOptionalMarker("error=ratelimited", slotActive, layoutLinkMarker);
@@ -318,7 +320,7 @@ public class LoginController {
     if (!rateLimitDecision.allowed()) {
       logger.warn(
           "Apply API key rate limit exceeded for clientIp={} retryAfterSeconds={}",
-          rateLimitDecision.clientId(),
+          LogSanitizer.sanitizeForLog(rateLimitDecision.clientId()),
           rateLimitDecision.retryAfterSeconds());
       return ResponseEntity.status(429)
           .header("Retry-After", String.valueOf(rateLimitDecision.retryAfterSeconds()))

@@ -118,17 +118,32 @@ Never commit real access codes or personal tester data. See `config/application.
 
 ## Rate limiting (QA notes)
 
-Acme enforces its own per-IP Bucket4j limits from `application.properties` (`ezkey.rate-limit.*`).
-Defaults: **login and `/t/{code}` share one bucket of 10 attempts per 5 minutes per client IP**;
-apply-api-key is a separate bucket (5 / 10 min). These limits are **on by default** on a normal
-clean-start / Docker stack — they do **not** require `./ezkey-tests/clean-start.sh --prod-safe`
-(`--prod-safe` only changes Spring API profiles for Admin/Auth/Integration, not Acme’s demo
-limiter).
+Acme enforces its own Bucket4j limits from `application.properties` (`ezkey.rate-limit.*`).
+See also [`CONFIGURATION.md`](CONFIGURATION.md).
 
-Testers (or Walk agents) behind the same NAT / egress IP share the login+/t bucket. Exhausting it
-does **not** return HTTP 429 from these browser entry points: `GET /t/{code}` responds **200** with
-the generic rate-limit message on the login page, and `POST /login` responds **302** to
-`/login?error=ratelimited` (same message in flash). Wait for the window or use another IP.
+| Surface | Buckets | Default ceiling |
+|---------|---------|-----------------|
+| `GET /t/{code}` (any code) | IP-only `login.*` first; valid codes also consume slot+IP | **20 / 5 min per IP across all codes** |
+| `POST /login` with slot in session | slot+IP `login.*` **plus** wider per-IP `login-ip-bound.*` | **20 / 5 min per slot+IP** and **60 / 5 min per IP** |
+| `POST /login` self-service (no slot) | IP-only `login.*` | **20 / 5 min per IP** |
+| `GET /api/auth-status` | none | n/a |
+
+`/t` is intentionally **not** isolated per slot: every activation (valid or invalid) burns the shared
+IP-only budget so exhausting it with guesses cannot be bypassed by a fresh slot+IP key (anti-oracle).
+Slot isolation applies to **login retries** after a slot is in session, with the wider
+`login-ip-bound` capping aggregate slot-mode logins from one NAT IP.
+
+Guessing codes never gets a more generous allowance. Rate-limit UI copy is identical for valid and
+invalid `/t` responses. Apply-api-key is a separate bucket (5 / 10 min). Limits are **on by default**
+on a normal clean-start / Docker stack.
+
+Community / EXP1 overlay: `demo-app-acme-config` (`/app/config/application.properties`) or env
+`EZKEY_RATE_LIMIT_LOGIN_REQUESTS` / `EZKEY_RATE_LIMIT_LOGIN_IP_BOUND_REQUESTS`, then recreate
+`demo-app-acme`.
+
+Exhausting a bucket does **not** return HTTP 429 from browser login/`/t` entry points: `GET /t/{code}`
+responds **200** with the generic rate-limit message, and `POST /login` responds **302** to
+`/login?error=ratelimited`. Wait for the window or use another IP / slot.
 
 ## Demo Session Model
 

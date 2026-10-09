@@ -53,9 +53,17 @@ ezkey.secret-key=
 # =============================================================================
 # Internet-exposed demo hardening
 # =============================================================================
+# login.* (20 / 5 min): /t/{code} always uses IP-only first (all codes share 20/IP); valid codes
+# also consume slot+IP. Self-service POST /login uses IP-only. Slot-mode POST /login uses
+# slot+IP plus login-ip-bound.* (60 / 5 min) as a wider per-IP aggregate cap.
+# Community / EXP1: volume demo-app-acme-config (/app/config/) or
+# EZKEY_RATE_LIMIT_LOGIN_REQUESTS / EZKEY_RATE_LIMIT_LOGIN_IP_BOUND_REQUESTS.
+# Challenge-wait /api/auth-status polling does not consume.
 ezkey.rate-limit.enabled=true
-ezkey.rate-limit.login.requests=10
+ezkey.rate-limit.login.requests=20
 ezkey.rate-limit.login.window-minutes=5
+ezkey.rate-limit.login-ip-bound.requests=60
+ezkey.rate-limit.login-ip-bound.window-minutes=5
 ezkey.rate-limit.apply-api-key.requests=5
 ezkey.rate-limit.apply-api-key.window-minutes=10
 

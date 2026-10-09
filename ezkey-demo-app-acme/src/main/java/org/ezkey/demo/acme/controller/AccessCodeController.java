@@ -17,6 +17,7 @@ import org.ezkey.demo.acme.DemoAuthMessages;
 import org.ezkey.demo.acme.security.DemoRateLimitService;
 import org.ezkey.demo.acme.service.AccessCodeService;
 import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
+import org.ezkey.demo.acme.web.LogSanitizer;
 import org.ezkey.demo.acme.web.SessionHelpers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +52,7 @@ public class AccessCodeController {
    *
    * @param accessCodeService slot lookup
    * @param demoApiKeyConfigService session slot activation
-   * @param demoRateLimitService login rate-limit bucket (shared with POST /login)
+   * @param demoRateLimitService access-link rate-limit buckets (shared ceiling with POST /login)
    */
   public AccessCodeController(
       AccessCodeService accessCodeService,
@@ -65,6 +66,10 @@ public class AccessCodeController {
   /**
    * Activates an access-code slot or shows the generic login error.
    *
+   * <p>Resolves the code first, then applies {@link DemoRateLimitService#checkAccessLink}: IP-only
+   * for unknown codes; IP-only plus slot+IP once valid. Rate-limit and unknown-code responses stay
+   * generic (no oracle). Access codes are never logged.
+   *
    * @param code access code from the path (never logged)
    * @param request current request
    * @param model Spring MVC model
@@ -74,18 +79,19 @@ public class AccessCodeController {
   public Object activateAccessCode(
       @PathVariable("code") String code, HttpServletRequest request, Model model) {
 
+    Optional<String> slotId = accessCodeService.findSlotIdByCode(code);
+
     DemoRateLimitService.RateLimitDecision rateLimitDecision =
-        demoRateLimitService.checkLogin(request);
+        demoRateLimitService.checkAccessLink(request, slotId.orElse(null));
     if (!rateLimitDecision.allowed()) {
       LOG.warn(
           "Access-link rate limit exceeded for clientIp={} retryAfterSeconds={}",
-          rateLimitDecision.clientId(),
+          LogSanitizer.sanitizeForLog(rateLimitDecision.clientId()),
           rateLimitDecision.retryAfterSeconds());
       return renderLinkLostLogin(
           model, DemoAuthMessages.RATE_LIMIT_LOGIN, DemoAuthMessages.LINK_HINT_WAIT_AND_REOPEN);
     }
 
-    Optional<String> slotId = accessCodeService.findSlotIdByCode(code);
     if (slotId.isEmpty()) {
       return renderLinkLostLogin(
           model, DemoAuthMessages.GENERIC_SIGN_IN_FAILED, DemoAuthMessages.LINK_HINT_CHECK_OR_ASK);

@@ -12,6 +12,7 @@ package org.ezkey.demo.acme.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -66,7 +67,7 @@ class AccessCodeLoggingTest {
     AccessCodeService accessCodeService = mock(AccessCodeService.class);
     DemoApiKeyConfigService demoApiKeyConfigService = mock(DemoApiKeyConfigService.class);
     DemoRateLimitService demoRateLimitService = mock(DemoRateLimitService.class);
-    when(demoRateLimitService.checkLogin(any()))
+    when(demoRateLimitService.checkAccessLink(any(), nullable(String.class)))
         .thenReturn(new DemoRateLimitService.RateLimitDecision(true, 0, "127.0.0.1"));
     when(accessCodeService.findSlotIdByCode(CODE)).thenReturn(Optional.of("northwind"));
     when(accessCodeService.getLabel("northwind")).thenReturn("Northwind Portal");
@@ -94,7 +95,7 @@ class AccessCodeLoggingTest {
     DemoRateLimitService demoRateLimitService = mock(DemoRateLimitService.class);
     AccessCodeService accessCodeService = mock(AccessCodeService.class);
     EzkeyClient client = mock(EzkeyClient.class);
-    when(demoRateLimitService.checkLogin(any()))
+    when(demoRateLimitService.checkLogin(any(), nullable(String.class)))
         .thenReturn(new DemoRateLimitService.RateLimitDecision(true, 0, "127.0.0.1"));
     when(ezkeyClientProvider.getClient(any())).thenReturn(client);
     when(client.createAuthAttemptByUserIdentifier("alice", true))

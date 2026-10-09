@@ -16,6 +16,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -75,7 +76,7 @@ class LoginControllerChallengeAndSessionTest {
     demoRateLimitService = mock(DemoRateLimitService.class);
     accessCodeService = mock(AccessCodeService.class);
     ezkeyClient = mock(EzkeyClient.class);
-    when(demoRateLimitService.checkLogin(any()))
+    when(demoRateLimitService.checkLogin(any(), nullable(String.class)))
         .thenReturn(new DemoRateLimitService.RateLimitDecision(true, 0, "127.0.0.1"));
     when(demoRateLimitService.checkApplyApiKey(any()))
         .thenReturn(new DemoRateLimitService.RateLimitDecision(true, 0, "127.0.0.1"));
@@ -102,6 +103,20 @@ class LoginControllerChallengeAndSessionTest {
   }
 
   @Test
+  void loginPassesActiveSessionSlotToRateLimiter() throws Exception {
+    when(demoApiKeyConfigService.getActiveSlotId(any())).thenReturn("northwind");
+    when(ezkeyClient.createAuthAttemptByUserIdentifier(eq("alice"), eq(true)))
+        .thenReturn(sampleCreateResponse(42, 12));
+
+    mockMvc
+        .perform(post("/login").param("username", "alice"))
+        .andExpect(status().is3xxRedirection())
+        .andExpect(redirectedUrl("/challenge-wait"));
+
+    verify(demoRateLimitService).checkLogin(any(), eq("northwind"));
+  }
+
+  @Test
   void entryLinkMarkerDoesNotChangeSecurityCalls_onlyRedirectSuffix() throws Exception {
     // Security path (rate-limit, getClient, createAuthAttempt) must be identical with/without
     // entry=link; the marker only appends the layout suffix on error redirects.
@@ -120,7 +135,7 @@ class LoginControllerChallengeAndSessionTest {
         .andExpect(status().is3xxRedirection())
         .andExpect(redirectedUrl("/challenge-wait"));
 
-    verify(demoRateLimitService, times(2)).checkLogin(any());
+    verify(demoRateLimitService, times(2)).checkLogin(any(), nullable(String.class));
     verify(ezkeyClientProvider, times(2)).getClient(any());
     verify(ezkeyClient, times(2)).createAuthAttemptByUserIdentifier("alice", true);
 
@@ -138,7 +153,7 @@ class LoginControllerChallengeAndSessionTest {
         .andExpect(status().is3xxRedirection())
         .andExpect(redirectedUrl("/login?error=sessionexpired&entry=link"));
 
-    verify(demoRateLimitService, times(4)).checkLogin(any());
+    verify(demoRateLimitService, times(4)).checkLogin(any(), nullable(String.class));
     verify(ezkeyClientProvider, times(4)).getClient(any());
     // Still exactly the two successful createAuthAttempt calls from the first half.
     verify(ezkeyClient, times(2)).createAuthAttemptByUserIdentifier(anyString(), eq(true));
@@ -227,6 +242,24 @@ class LoginControllerChallengeAndSessionTest {
     assertThat(session.rotationCount.get()).isEqualTo(1);
     assertThat(session.getAttribute("user")).isInstanceOf(AuthenticatedUser.class);
     assertThat(session.isInvalid()).isFalse();
+  }
+
+  @Test
+  void challengeWaitPollingDoesNotConsumeLoginRateLimitBucket() throws Exception {
+    CountingSession session = pendingSession();
+    when(ezkeyClient.waitForAuthAttempt(eq(7), anyInt(), anyInt()))
+        .thenReturn(new AuthAttemptWaitResponse("PENDING", false, false));
+
+    for (int i = 0; i < 5; i++) {
+      mockMvc
+          .perform(get("/api/auth-status").session(session))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.status").value("pending"));
+    }
+
+    verify(demoRateLimitService, never()).checkLogin(any(), nullable(String.class));
+    verify(demoRateLimitService, never()).checkLogin(any());
+    verify(demoRateLimitService, never()).checkAccessLink(any(), nullable(String.class));
   }
 
   @Test
