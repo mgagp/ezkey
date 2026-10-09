@@ -245,13 +245,13 @@ dependencies {
     }
 
     // Unit tests for crypto (IntegrationKeyVerifier) — JVM only, no device
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.14.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // Instrumentation tests for Android Keystore paths (emulator OK; StrongBox is manual)
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test:runner:1.6.2")
-    androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test:rules:1.7.0")
 }
 
 // Force androidx.datastore* to 1.2.1 so libdatastore_shared_counter.so has 16 KB GNU_RELRO
