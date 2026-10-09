@@ -14,6 +14,7 @@
   - Paginated list pattern: [`admin-ui-paginated-screens-matrix.md`](admin-ui-paginated-screens-matrix.md)
   - Walk Gate: [`backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-b.md`](backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-b.md)
   - Cut-3 lab seeds (reuse for non-healthy / reconcile): [`docs/lab/INTEGRITY_CUT3_EXPLORATORY_QA.md`](../../docs/lab/INTEGRITY_CUT3_EXPLORATORY_QA.md)
+  - Cut 3 (last verdict / micro-dashboard / verify cap): [`admin-ui-integrity-cut3.md`](admin-ui-integrity-cut3.md)
   - Walk / Done canon: [`ui-walk-done-gate.md`](ui-walk-done-gate.md)
 
 ---

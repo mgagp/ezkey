@@ -45,3 +45,5 @@ Standing rules:
 - Filled Walk Gates (Integrity cut 2):
   - [`backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-a.md`](backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-a.md) — phase A density
   - [`backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-b.md`](backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-b.md) — phase B+B′ modes + incidents pager (`TBD` SHA until impl PR)
+- Walk Gate stub (Integrity cut 3):
+  - [`backlog/walk-gates/WALK-2026-10-09-integrity-cut3.md`](backlog/walk-gates/WALK-2026-10-09-integrity-cut3.md) — last verdict / micro-dashboard / verify cap (`TBD` SHA until impl PR)
