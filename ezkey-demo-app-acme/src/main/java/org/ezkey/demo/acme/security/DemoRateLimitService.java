@@ -26,6 +26,17 @@ import org.springframework.stereotype.Service;
 /**
  * In-memory Bucket4j rate limiting for the ACME demo application's browser entry points.
  *
+ * <p>Login and access-link ({@code /t/{code}}) share the {@code ezkey.rate-limit.login.*} ceiling
+ * (default 20 requests / 5 minutes). Buckets are keyed by client IP alone for self-service login
+ * and unknown/invalid access codes, and by {@code slotId + IP} once a code has resolved to a valid
+ * slot (or when login runs with that slot in session). Challenge-wait polling does not call this
+ * service and therefore does not consume tokens.
+ *
+ * <p>Anti-enumeration: {@link #checkAccessLink} always consumes the IP-only bucket first so that
+ * guessing codes cannot obtain a more generous (slot-isolated) allowance, and exhausting the IP
+ * bucket with invalid codes also blocks subsequent valid-code activations from that IP (no
+ * bucket-state oracle). Rate-limit UI messages remain identical for valid and invalid codes.
+ *
  * @author Ezkey contributors
  * @since 2025
  */
@@ -58,17 +69,63 @@ public class DemoRateLimitService {
         properties.isEnabled());
   }
 
+  /**
+   * Checks the IP-only login bucket (self-service / no active slot).
+   *
+   * @param request current HTTP request
+   * @return rate-limit decision
+   */
   public RateLimitDecision checkLogin(HttpServletRequest request) {
-    return checkRequest("login", request, loginBuckets, properties.getLogin());
+    return checkLogin(request, null);
+  }
+
+  /**
+   * Checks the login rate-limit bucket for the given client and optional access-code slot.
+   *
+   * <p>When {@code slotId} is non-blank, the bucket key is {@code slot + IP} so testers behind the
+   * same NAT with different slots do not share a budget. When {@code slotId} is null or blank, the
+   * IP-only bucket is used (self-service login).
+   *
+   * @param request current HTTP request
+   * @param slotId active access-code slot id, or null for IP-only
+   * @return rate-limit decision
+   */
+  public RateLimitDecision checkLogin(HttpServletRequest request, String slotId) {
+    return checkRequest("login", request, slotId, loginBuckets, properties.getLogin());
+  }
+
+  /**
+   * Rate-limits {@code GET /t/{code}} with anti-enumeration semantics.
+   *
+   * <p>Always consumes the IP-only login bucket first (same ceiling as {@code
+   * ezkey.rate-limit.login.requests}). If that bucket denies, the caller must show the generic
+   * rate-limit page whether or not the code was valid. When {@code slotId} is present (valid code),
+   * also consumes the slot+IP bucket so activation shares the tester's login budget.
+   *
+   * @param request current HTTP request
+   * @param slotId resolved slot id for a valid code, or null when the code is unknown/invalid
+   * @return rate-limit decision (denied if either applicable bucket is exhausted)
+   */
+  public RateLimitDecision checkAccessLink(HttpServletRequest request, String slotId) {
+    RateLimitDecision ipDecision = checkLogin(request, null);
+    if (!ipDecision.allowed()) {
+      return ipDecision;
+    }
+    if (slotId == null || slotId.isBlank()) {
+      return ipDecision;
+    }
+    return checkLogin(request, slotId);
   }
 
   public RateLimitDecision checkApplyApiKey(HttpServletRequest request) {
-    return checkRequest("apply-api-key", request, applyApiKeyBuckets, properties.getApplyApiKey());
+    return checkRequest(
+        "apply-api-key", request, null, applyApiKeyBuckets, properties.getApplyApiKey());
   }
 
   private RateLimitDecision checkRequest(
       String operation,
       HttpServletRequest request,
+      String slotId,
       Cache<String, Bucket> bucketCache,
       AcmeRateLimitProperties.EndpointConfig config) {
     String clientId = ClientIpResolver.resolve(request, trustedProxyProperties.getCidrs());
@@ -77,7 +134,8 @@ public class DemoRateLimitService {
       return new RateLimitDecision(true, 0, clientId);
     }
 
-    Bucket bucket = bucketCache.get(operation + ":" + clientId, _ -> createBucket(config));
+    String bucketKey = bucketKey(operation, clientId, slotId);
+    Bucket bucket = bucketCache.get(bucketKey, _ -> createBucket(config));
     ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
     if (probe.isConsumed()) {
       return new RateLimitDecision(true, 0, clientId);
@@ -86,6 +144,24 @@ public class DemoRateLimitService {
     long retryAfterSeconds =
         Math.max(1, Duration.ofNanos(probe.getNanosToWaitForRefill()).toSeconds());
     return new RateLimitDecision(false, retryAfterSeconds, clientId);
+  }
+
+  /**
+   * Builds the Caffeine cache key for a rate-limit bucket.
+   *
+   * <p>Package-visible for tests. Keys never include access codes — only operation, optional slot
+   * id, and client IP.
+   *
+   * @param operation operation name ({@code login} or {@code apply-api-key})
+   * @param clientId resolved client IP
+   * @param slotId optional slot id
+   * @return cache key
+   */
+  static String bucketKey(String operation, String clientId, String slotId) {
+    if (slotId != null && !slotId.isBlank()) {
+      return operation + ":slot:" + slotId + ":ip:" + clientId;
+    }
+    return operation + ":ip:" + clientId;
   }
 
   private Bucket createBucket(AcmeRateLimitProperties.EndpointConfig config) {

@@ -22,7 +22,7 @@ public final class DemoAuthMessages {
   public static final String GENERIC_SIGN_IN_FAILED =
       "Sign-in failed. Check your access link and username.";
 
-  /** Shown when the shared login / access-link rate-limit bucket is exhausted. */
+  /** Shown when the login / access-link rate-limit ceiling is exhausted (slot+IP or IP-only). */
   public static final String RATE_LIMIT_LOGIN =
       "Too many login attempts from your network. Please wait a moment and try again.";
 

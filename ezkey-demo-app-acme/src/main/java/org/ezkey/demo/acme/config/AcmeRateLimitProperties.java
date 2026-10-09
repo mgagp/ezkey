@@ -22,7 +22,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class AcmeRateLimitProperties {
 
   private boolean enabled = true;
-  private EndpointConfig login = new EndpointConfig(10, 5);
+
+  /** Login and {@code /t/{code}} ceiling (slot+IP or IP-only). Default 20 / 5 minutes. */
+  private EndpointConfig login = new EndpointConfig(20, 5);
+
   private EndpointConfig applyApiKey = new EndpointConfig(5, 10);
 
   public boolean isEnabled() {

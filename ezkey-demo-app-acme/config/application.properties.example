@@ -53,8 +53,12 @@ ezkey.secret-key=
 # =============================================================================
 # Internet-exposed demo hardening
 # =============================================================================
+# Login + /t/{code}: default 20 / 5 min. Valid access-code slot → slot+IP bucket; unknown codes
+# and self-service login stay on IP-only (same ceiling — anti-enumeration). Community / EXP1
+# overlay: edit this file on volume demo-app-acme-config (/app/config/) or set
+# EZKEY_RATE_LIMIT_LOGIN_REQUESTS. Challenge-wait /api/auth-status polling does not consume.
 ezkey.rate-limit.enabled=true
-ezkey.rate-limit.login.requests=10
+ezkey.rate-limit.login.requests=20
 ezkey.rate-limit.login.window-minutes=5
 ezkey.rate-limit.apply-api-key.requests=5
 ezkey.rate-limit.apply-api-key.window-minutes=10

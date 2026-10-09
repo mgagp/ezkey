@@ -12,6 +12,9 @@ package org.ezkey.demo.acme.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,7 +50,7 @@ class AccessCodeControllerTest {
     accessCodeService = mock(AccessCodeService.class);
     demoApiKeyConfigService = mock(DemoApiKeyConfigService.class);
     demoRateLimitService = mock(DemoRateLimitService.class);
-    when(demoRateLimitService.checkLogin(any()))
+    when(demoRateLimitService.checkAccessLink(any(), nullable(String.class)))
         .thenReturn(new DemoRateLimitService.RateLimitDecision(true, 0, "127.0.0.1"));
     AccessCodeController controller =
         new AccessCodeController(accessCodeService, demoApiKeyConfigService, demoRateLimitService);
@@ -92,8 +95,9 @@ class AccessCodeControllerTest {
   }
 
   @Test
-  void shouldUseLoginRateLimitBucket() throws Exception {
-    when(demoRateLimitService.checkLogin(any()))
+  void shouldUseAccessLinkRateLimitBucket() throws Exception {
+    when(accessCodeService.findSlotIdByCode(VALID_CODE)).thenReturn(Optional.of("northwind"));
+    when(demoRateLimitService.checkAccessLink(any(), eq("northwind")))
         .thenReturn(new DemoRateLimitService.RateLimitDecision(false, 30, "203.0.113.10"));
 
     mockMvc
@@ -105,6 +109,22 @@ class AccessCodeControllerTest {
         .andExpect(model().attribute("showLoginForm", false))
         .andExpect(model().attribute("recoveryHint", DemoAuthMessages.LINK_HINT_WAIT_AND_REOPEN));
 
-    verify(demoRateLimitService).checkLogin(any());
+    verify(demoRateLimitService).checkAccessLink(any(), eq("northwind"));
+  }
+
+  @Test
+  void shouldRateLimitUnknownCodeViaIpOnlyPath() throws Exception {
+    when(accessCodeService.findSlotIdByCode(VALID_CODE)).thenReturn(Optional.empty());
+    when(demoRateLimitService.checkAccessLink(any(), isNull()))
+        .thenReturn(new DemoRateLimitService.RateLimitDecision(false, 30, "203.0.113.10"));
+
+    mockMvc
+        .perform(get("/t/{code}", VALID_CODE))
+        .andExpect(status().isOk())
+        .andExpect(view().name("login"))
+        .andExpect(model().attribute("error", DemoAuthMessages.RATE_LIMIT_LOGIN))
+        .andExpect(model().attribute("recoveryHint", DemoAuthMessages.LINK_HINT_WAIT_AND_REOPEN));
+
+    verify(demoRateLimitService).checkAccessLink(any(), isNull());
   }
 }

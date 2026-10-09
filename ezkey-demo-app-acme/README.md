@@ -118,17 +118,31 @@ Never commit real access codes or personal tester data. See `config/application.
 
 ## Rate limiting (QA notes)
 
-Acme enforces its own per-IP Bucket4j limits from `application.properties` (`ezkey.rate-limit.*`).
-Defaults: **login and `/t/{code}` share one bucket of 10 attempts per 5 minutes per client IP**;
-apply-api-key is a separate bucket (5 / 10 min). These limits are **on by default** on a normal
-clean-start / Docker stack — they do **not** require `./ezkey-tests/clean-start.sh --prod-safe`
-(`--prod-safe` only changes Spring API profiles for Admin/Auth/Integration, not Acme’s demo
-limiter).
+Acme enforces its own Bucket4j limits from `application.properties` (`ezkey.rate-limit.*`).
+Defaults: **login and `/t/{code}` use a ceiling of 20 attempts per 5 minutes**
+(`ezkey.rate-limit.login.requests` / `EZKEY_RATE_LIMIT_LOGIN_REQUESTS`).
 
-Testers (or Walk agents) behind the same NAT / egress IP share the login+/t bucket. Exhausting it
-does **not** return HTTP 429 from these browser entry points: `GET /t/{code}` responds **200** with
-the generic rate-limit message on the login page, and `POST /login` responds **302** to
-`/login?error=ratelimited` (same message in flash). Wait for the window or use another IP.
+Bucket keys:
+
+- **Valid access-code slot** (after `/t/{code}` resolves, or login with slot id in session):
+  `slotId + client IP` — testers behind the same NAT with different slots do not share a budget.
+- **Unknown/invalid `/t/{code}`** and **self-service login** (no slot): **IP-only**, same ceiling
+  (20). Guessing codes never gets a more generous or slot-isolated allowance. Access-link checks
+  always consume the IP-only bucket first so exhausting it with invalid codes also blocks later
+  valid activations from that IP (no bucket-state oracle). Rate-limit UI copy is identical.
+- **Challenge-wait polling** (`GET /api/auth-status`) does **not** consume the login bucket.
+
+Apply-api-key is a separate bucket (5 / 10 min). Limits are **on by default** on a normal
+clean-start / Docker stack — they do **not** require `./ezkey-tests/clean-start.sh --prod-safe`.
+
+Community / EXP1 overlay: set `ezkey.rate-limit.login.requests` on volume `demo-app-acme-config`
+(`/app/config/application.properties`) or via `EZKEY_RATE_LIMIT_LOGIN_REQUESTS`, then recreate
+`demo-app-acme`.
+
+Exhausting the bucket does **not** return HTTP 429 from these browser entry points: `GET /t/{code}`
+responds **200** with the generic rate-limit message on the login page, and `POST /login` responds
+**302** to `/login?error=ratelimited` (same message in flash). Wait for the window or use another
+IP / slot.
 
 ## Demo Session Model
 
