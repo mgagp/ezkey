@@ -12,6 +12,7 @@ package org.ezkey.tests.util;
 
 import static io.restassured.RestAssured.given;
 
+import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.config.ObjectMapperConfig;
 import io.restassured.config.RestAssuredConfig;
@@ -60,17 +61,30 @@ public class CryptoApiClient {
    * @param dockerStackConfig Docker stack configuration
    */
   public CryptoApiClient(DockerStackConfig dockerStackConfig) {
-    this.cryptoSpec =
-        new RequestSpecBuilder()
-            .setBaseUri(dockerStackConfig.getCryptoApiUrl())
-            .setBasePath("/api/v1/crypto")
-            .setContentType(ContentType.JSON)
-            .setConfig(
-                RestAssuredConfig.config()
-                    .objectMapperConfig(
-                        ObjectMapperConfig.objectMapperConfig()
-                            .defaultObjectMapperType(ObjectMapperType.JACKSON_3)))
-            .build();
+    String cryptoUrl = dockerStackConfig.getCryptoApiUrl();
+    // RequestSpecBuilder copies RestAssured static baseURI; after
+    // RestAssuredTestConfig.reset() that field is null and the builder ctor throws.
+    // Pin temporarily while building the isolated spec, then restore caller state.
+    String previousUri = RestAssured.baseURI;
+    String previousPath = RestAssured.basePath;
+    try {
+      RestAssured.baseURI = cryptoUrl;
+      RestAssured.basePath = "";
+      this.cryptoSpec =
+          new RequestSpecBuilder()
+              .setBaseUri(cryptoUrl)
+              .setBasePath("/api/v1/crypto")
+              .setContentType(ContentType.JSON)
+              .setConfig(
+                  RestAssuredConfig.config()
+                      .objectMapperConfig(
+                          ObjectMapperConfig.objectMapperConfig()
+                              .defaultObjectMapperType(ObjectMapperType.JACKSON_3)))
+              .build();
+    } finally {
+      RestAssured.baseURI = previousUri;
+      RestAssured.basePath = previousPath;
+    }
   }
 
   /**
@@ -97,14 +111,7 @@ public class CryptoApiClient {
     log.debug("Generating EC P-256 key pair");
 
     Response response =
-        given()
-            .spec(cryptoSpec)
-            .when()
-            .get("/keypair")
-            .then()
-            .statusCode(200)
-            .extract()
-            .response();
+        given().spec(cryptoSpec).when().get("/keypair").then().statusCode(200).extract().response();
 
     String privateKey = response.jsonPath().getString("privateKey");
     String publicKey = response.jsonPath().getString("publicKey");
