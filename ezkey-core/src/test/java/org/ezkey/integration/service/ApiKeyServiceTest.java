@@ -884,11 +884,13 @@ class ApiKeyServiceTest {
           ApiKeyService.maskIntegrationKeyForLog("ezkey_ikey_a1b2c3d4e5f6g7h8i9j0"));
       assertEquals("(none)", ApiKeyService.maskIntegrationKeyForLog(null));
       assertEquals("(none)", ApiKeyService.maskIntegrationKeyForLog("  "));
-      // CR/LF in the kept fragment must not reach logs (CodeQL log-injection).
+      // CR/LF and other [^A-Za-z0-9_] in the kept fragment become '_' (CodeQL log-injection).
       assertEquals(
           "ezkey_ikey_a1__…",
           ApiKeyService.maskIntegrationKeyForLog("ezkey_ikey_a1\r\nbadrestofkey00001111"));
       assertEquals("evil__in…", ApiKeyService.maskIntegrationKeyForLog("evil\r\ninj" + "xxxxxxxx"));
+      assertEquals(
+          "ab_cd_ef…", ApiKeyService.maskIntegrationKeyForLog("ab-cd.ef" + "restofkey"));
     }
 
     @Test

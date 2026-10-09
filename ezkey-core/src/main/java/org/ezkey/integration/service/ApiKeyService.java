@@ -575,8 +575,9 @@ public class ApiKeyService {
    * Masks an integration key for logs (short non-secret prefix only, e.g. {@code
    * ezkey_ikey_a1b2…}).
    *
-   * <p>The kept suffix is sanitized to alphanumerics only so CR/LF (or other control characters)
-   * cannot break log lines (CodeQL log-injection).
+   * <p>Caller-supplied kept characters (up to 8, or 4 after the {@code ezkey_ikey_} literal) are
+   * sanitized: every character matching {@code [^A-Za-z0-9_]} becomes {@code _} so CR/LF cannot
+   * break log lines (CodeQL log-injection).
    *
    * @param integrationKey raw integration key (may be null)
    * @return masked value suitable for logs
@@ -597,7 +598,7 @@ public class ApiKeyService {
   }
 
   /**
-   * Replaces every non-alphanumeric character with {@code _} for safe log fragments.
+   * Replaces every character matching {@code [^A-Za-z0-9_]} with {@code _} for safe log fragments.
    *
    * @param fragment raw kept characters from a key
    * @return sanitized fragment
@@ -606,7 +607,12 @@ public class ApiKeyService {
     StringBuilder sanitized = new StringBuilder(fragment.length());
     for (int i = 0; i < fragment.length(); i++) {
       char c = fragment.charAt(i);
-      sanitized.append(Character.isLetterOrDigit(c) ? c : '_');
+      boolean keep =
+          (c >= 'A' && c <= 'Z')
+              || (c >= 'a' && c <= 'z')
+              || (c >= '0' && c <= '9')
+              || c == '_';
+      sanitized.append(keep ? c : '_');
     }
     return sanitized.toString();
   }

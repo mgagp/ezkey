@@ -16,6 +16,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -494,6 +495,11 @@ public final class EzkeyClient {
 
       throw new EzkeyException(message, status, body);
 
+    } catch (HttpConnectTimeoutException e) {
+      // Must precede HttpTimeoutException: connect timeouts extend HttpTimeoutException but are
+      // not soft wait timeouts for integrators (unreachable host / slow TCP).
+      throw new EzkeyException(
+          "Connect timeout connecting to Ezkey at " + config.baseUrl() + ": " + e.getMessage(), e);
     } catch (HttpTimeoutException e) {
       throw new EzkeyException("Read timeout waiting for Ezkey at " + config.baseUrl(), e);
     } catch (IOException e) {
@@ -524,7 +530,9 @@ public final class EzkeyClient {
   /**
    * Masks an integration key for logs (same shape as ApiKeyService: {@code ezkey_ikey_xxxx…}).
    *
-   * <p>The kept suffix is sanitized to alphanumerics only so CR/LF cannot break log lines.
+   * <p>Caller-supplied kept characters (up to 8, or 4 after the {@code ezkey_ikey_} literal) are
+   * sanitized: every character matching {@code [^A-Za-z0-9_]} becomes {@code _} so CR/LF cannot
+   * break log lines.
    *
    * @param integrationKey raw integration key (may be null)
    * @return masked value suitable for logs
@@ -543,7 +551,7 @@ public final class EzkeyClient {
   }
 
   /**
-   * Replaces every non-alphanumeric character with {@code _} for safe log fragments.
+   * Replaces every character matching {@code [^A-Za-z0-9_]} with {@code _} for safe log fragments.
    *
    * @param fragment raw kept characters from a key
    * @return sanitized fragment
@@ -552,7 +560,12 @@ public final class EzkeyClient {
     StringBuilder sanitized = new StringBuilder(fragment.length());
     for (int i = 0; i < fragment.length(); i++) {
       char c = fragment.charAt(i);
-      sanitized.append(Character.isLetterOrDigit(c) ? c : '_');
+      boolean keep =
+          (c >= 'A' && c <= 'Z')
+              || (c >= 'a' && c <= 'z')
+              || (c >= '0' && c <= '9')
+              || c == '_';
+      sanitized.append(keep ? c : '_');
     }
     return sanitized.toString();
   }
