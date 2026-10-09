@@ -102,6 +102,35 @@ class EnrollmentBindServiceEligibilityTest {
   }
 
   @Test
+  @DisplayName("bind refuses enrollment after expiresAt (bootstrap invitation TTL)")
+  void bindRefusesAfterEnrollmentExpiry() {
+    EnrollmentBindRequest request = new EnrollmentBindRequest();
+    request.setEnrollmentId(303);
+    request.setEnrollmentProofToken("bootstrap-expired-proof");
+
+    OffsetDateTime expiresAt = OffsetDateTime.now().minusMinutes(5);
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(303);
+    enrollment.setStatus(EnrollmentStatus.CREATED);
+    enrollment.setIntegrationId(7);
+    enrollment.setCreatedAt(OffsetDateTime.now().minusHours(25));
+    enrollment.setExpiresAt(expiresAt);
+
+    when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofTokenHash(
+            303, org.ezkey.security.SensitiveDataHasher.sha256Hex("bootstrap-expired-proof")))
+        .thenReturn(Optional.of(enrollment));
+
+    EnrollmentInvitationExpiredException exception =
+        assertThrows(
+            EnrollmentInvitationExpiredException.class, () -> enrollmentBindService.bind(request));
+
+    assertEquals("Enrollment invitation has expired", exception.getMessage());
+    verify(enrollmentTxHelper)
+        .markExpiredAndEmitAudit(303, 7, expiresAt, "enrollment_expired_bind_rejected");
+    verify(enrollmentRepository, never()).findAndLockUnreadById(303);
+  }
+
+  @Test
   @DisplayName("bind returns invitation expired when expired cleanup cannot be persisted")
   void bindExpiredEnrollment_WhenCleanupFails_StillReturnsInvitationExpired() {
     EnrollmentBindRequest request = new EnrollmentBindRequest();
