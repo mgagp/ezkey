@@ -41,6 +41,9 @@ admin-api replica (exit 137). The gate therefore runs unit tests **first** (stac
 builds images and clean-starts HA. This **intentionally differs** from a naive “stack first, then
 Maven” list — memory headroom is the reason.
 
+Functional/elective still run host Maven against the live HA stack (required). On 15Gi that can
+still OOM a replica (see run-2); prefer ≥32Gi or a constrained Maven heap for unattended gates.
+
 Orchestrator: [`scripts/quality-gate.sh`](../../../../scripts/quality-gate.sh)
 
 ```bash

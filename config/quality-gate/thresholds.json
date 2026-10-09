@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "baselineNote": "Baseline unlocked pending quality-gate run-2 (healthy complete HA run: no OOM, all replicas up). Run-1 baseline on 06246cb6 is historical only — do not trust for scoring until run-2 relocks.",
+  "baselineNote": "Baseline remains unlocked after run-2 (558eac96, 2026-10-09). Run-2 was a complete one-command E2E (unit tests before stack; clean-start GREEN, no #747 retry), but admin-api-2 exit 137 during functional still degraded HA — do not treat as a healthy complete HA lock. Bands below are provisional (observed + margin from run-2 JM). Relock when a no-OOM HA run completes. JavaMelody Error404 synthetic buckets excluded from httpErrorPct via httpErrorPctExclusions.",
   "baselineLocked": false,
   "javamelody": {
     "topHttpMeanMs": { "amber": 200, "red": 1000 },
