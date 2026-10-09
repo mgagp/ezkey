@@ -62,7 +62,7 @@ export const PRODUCT_LOG_SOURCES = [
     match: /Updated global admin:|Global admin (already exists|initialized)/i,
     logger: 'o.e.a.service.InitialGlobalAdminService',
     path: 'ezkey-admin-api/src/main/java/org/ezkey/admin/service/InitialGlobalAdminService.java',
-    lines: 'see logger.info with email',
+    lines: '148',
     kindHint: 'email',
   },
   {
