@@ -31,17 +31,17 @@
   },
   "gateMemory": {
     "jvmMemLimitsMiB": {
-      "admin-api-1": 900,
-      "admin-api-2": 900,
-      "auth-api-1": 900,
-      "auth-api-2": 900,
-      "integration-api-1": 900,
-      "integration-api-2": 900,
-      "crypto-api": 640,
-      "demo-device": 640,
-      "demo-app-acme": 640
+      "admin-api-1": 1100,
+      "admin-api-2": 1100,
+      "auth-api-1": 1100,
+      "auth-api-2": 1100,
+      "integration-api-1": 1100,
+      "integration-api-2": 1100,
+      "crypto-api": 768,
+      "demo-device": 768,
+      "demo-app-acme": 768
     },
-    "hostMarginMiB": 3072,
+    "hostMarginMiB": 2048,
     "postgresReserveMiB": 1024
   }
 }
