@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "baselineNote": "Placeholder thresholds for the first quality-gate run. After run-1, replace with observed values plus a reasonable margin and set baselineLocked=true.",
+  "baselineLocked": false,
+  "javamelody": {
+    "topHttpMeanMs": { "amber": 2000, "red": 10000 },
+    "topHttpMaxMs": { "amber": 15000, "red": 60000 },
+    "httpErrorPct": { "amber": 2.0, "red": 10.0 },
+    "topSqlMeanMs": { "amber": 100, "red": 500 },
+    "topSqlMaxMs": { "amber": 2000, "red": 10000 },
+    "systemErrorHits": { "amber": 50, "red": 200 },
+    "waitingConnections": { "amber": 1, "red": 5 }
+  },
+  "containers": {
+    "restartsPerService": { "amber": 1, "red": 3 },
+    "oomKills": { "amber": 0, "red": 1 },
+    "unhealthyServices": { "amber": 0, "red": 1 },
+    "distinctErrorSignatures": { "amber": 40, "red": 150 },
+    "distinctWarnSignatures": { "amber": 200, "red": 800 },
+    "totalErrorLines": { "amber": 200, "red": 1000 }
+  }
+}
