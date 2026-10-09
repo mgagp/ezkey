@@ -58,13 +58,26 @@ try {
   var waited = client.waitForAuthAttempt(created.authAttemptId(), 30, 2);
   client.cancelAuthAttempt(created.authAttemptId());
 } catch (EzkeyException e) {
-  if (e.isClientError()) {
+  if (e.isReadTimeout()) {
+    // Client read/wait deadline elapsed while waiting on Integration API.
+    // Not a connect failure — see below.
+  } else if (e.isClientError()) {
     // 4xx
   } else if (e.isServerError()) {
     // 5xx
   }
 }
 ```
+
+### `EzkeyException.isReadTimeout()`
+
+`isReadTimeout()` is **true** only when the failure (or a cause) is an HTTP/socket **read**
+timeout (`HttpTimeoutException` other than connect, or `SocketTimeoutException`). Classification
+is by exception type/cause only — never by message text (wait URLs may contain `timeout=`).
+
+**Connect timeouts are excluded.** `HttpConnectTimeoutException` extends `HttpTimeoutException`,
+but an unreachable host or slow TCP connect is a normal network error for integrators, not a soft
+wait timeout. Those surface as a normal `EzkeyException` with `isReadTimeout() == false`.
 
 `createAuthAttemptByUserIdentifier` and optional `AuthAttemptContext` are also on `EzkeyClient`.
 

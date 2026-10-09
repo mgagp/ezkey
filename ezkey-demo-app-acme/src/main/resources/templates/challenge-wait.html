@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta th:if="${entryLink}" name="entry-link" content="link">
     <title th:text="${pageTitle}">Enter Challenge Code - ACME Inc</title>
     <link rel="stylesheet" th:href="@{/css/neo-brutalism.css}">
     <link rel="stylesheet" th:href="@{/css/acme-theme.css}">
@@ -100,13 +101,31 @@
 
     <!-- Challenge Wait Script -->
     <script>
-        let pollingInterval;
+        let pollTimer = null;
         let countdownInterval;
         let pollCount = 0;
-        const MAX_POLLS = 300; // 10 minutes max (2 seconds * 300)
+        let pollingStopped = false;
+        const POLL_INTERVAL_MS = 2000;
+        const ERROR_BACKOFF_START_MS = 4000;
+        const ERROR_BACKOFF_MAX_MS = 15000;
+        const MAX_POLLS = 300; // ~10 minutes with serial 2s polls
+        let consecutiveErrors = 0;
         
         function startPolling() {
-            pollingInterval = setInterval(checkAuthStatus, 2000); // Poll every 2 seconds
+            pollingStopped = false;
+            consecutiveErrors = 0;
+            // Serial polls: next request only after the previous fetch completes.
+            scheduleNextPoll(0);
+        }
+
+        function scheduleNextPoll(delayMs) {
+            if (pollingStopped) {
+                return;
+            }
+            if (pollTimer != null) {
+                clearTimeout(pollTimer);
+            }
+            pollTimer = setTimeout(checkAuthStatus, delayMs);
         }
         
         function startCountdown() {
@@ -172,14 +191,31 @@
         }
         
         function stopPolling() {
-            if (pollingInterval) {
-                clearInterval(pollingInterval);
-                pollingInterval = null;
+            pollingStopped = true;
+            if (pollTimer != null) {
+                clearTimeout(pollTimer);
+                pollTimer = null;
             }
             stopCountdown();
         }
         
+        const entryLink =
+            document.querySelector('meta[name="entry-link"]')?.getAttribute('content') === 'link';
+
+        function withEntryLink(url) {
+            if (!entryLink || !url || url.indexOf('/login') !== 0) {
+                return url;
+            }
+            if (url.indexOf('entry=link') !== -1) {
+                return url;
+            }
+            return url.indexOf('?') !== -1 ? url + '&entry=link' : url + '?entry=link';
+        }
+
         async function checkAuthStatus() {
+            if (pollingStopped) {
+                return;
+            }
             pollCount++;
             
             if (pollCount > MAX_POLLS) {
@@ -195,8 +231,12 @@
                         'Content-Type': 'application/json'
                     }
                 });
+                if (!response.ok) {
+                    throw new Error('Auth status HTTP ' + response.status);
+                }
                 
                 const result = await response.json();
+                consecutiveErrors = 0;
                 
                 if (result.status === 'accepted') {
                     stopPolling();
@@ -206,27 +246,36 @@
                     }, 1000);
                 } else if (result.status === 'rejected') {
                     stopPolling();
-                    showError('Authentication rejected by user. ' + (result.message || ''));
+                    showError('Authentication rejected by user. / Authentification refusée sur l\'appareil.');
                     setTimeout(() => {
-                        window.location.href = result.redirectUrl || '/login?error=rejected';
+                        window.location.href = withEntryLink(
+                            result.redirectUrl || '/login?error=rejected');
                     }, 3000);
                 } else if (result.status === 'expired') {
                     stopPolling();
-                    showError(result.message || 'Authentication request expired');
+                    showError(result.message || 'Authentication request expired / La demande d\'authentification a expiré');
                     setTimeout(() => {
-                        window.location.href = result.redirectUrl || '/login?error=expired';
+                        window.location.href = withEntryLink(
+                            result.redirectUrl || '/login?error=expired');
                     }, 3000);
                 } else if (result.status === 'error') {
                     stopPolling();
                     showError(result.message || 'Authentication error occurred');
                     setTimeout(() => {
-                        window.location.href = result.redirectUrl || '/login?error=authfailed';
+                        window.location.href = withEntryLink(
+                            result.redirectUrl || '/login?error=authfailed');
                     }, 3000);
+                } else {
+                    // status === 'pending' — wait for this response to finish before the next poll
+                    scheduleNextPoll(POLL_INTERVAL_MS);
                 }
-                // else: status === 'pending', continue polling
             } catch (error) {
                 console.error('Error checking auth status:', error);
-                // Continue polling on network errors
+                consecutiveErrors++;
+                const backoff = Math.min(
+                    ERROR_BACKOFF_START_MS * consecutiveErrors,
+                    ERROR_BACKOFF_MAX_MS);
+                scheduleNextPoll(backoff);
             }
         }
         

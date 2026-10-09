@@ -29,23 +29,30 @@
         <div class="container">
             <section class="login-section">
                 <div class="login-card">
-                    <h2 class="login-title">SIGN IN</h2>
-                    <p class="login-subtitle">Passwordless authentication with EZKey</p>
+                    <h2 class="login-title"
+                        th:text="${loginHeading != null ? loginHeading : 'SIGN IN'}">SIGN IN</h2>
+                    <p class="login-subtitle" th:if="${showLoginForm != false}">Passwordless authentication with EZKey</p>
                     
                     <!-- Error Message -->
                     <div th:if="${hasError}" class="error-message">
                         <p class="error-icon">!</p>
-                        <p class="error-text" th:text="${error ?: 'Authentication failed'}">Authentication failed</p>
+                        <p class="error-text" th:text="${error ?: 'Sign-in failed. Check your access link and username.'}">Sign-in failed. Check your access link and username.</p>
                     </div>
                     
                     <!-- Logout Message -->
                     <div th:if="${logoutMessage}" class="logout-message">
-                        <p class="logout-text" th:text="${logoutMessage}">You have been logged out successfully.</p>
+                        <p class="logout-text" th:text="${logoutMessage}">You have been logged out.</p>
+                    </div>
+
+                    <!-- Link-lost recovery / access-link hint (state B) -->
+                    <div th:if="${recoveryHint}" class="info-note-inline" data-testid="link-recovery-hint">
+                        <p th:text="${recoveryHint}">To sign in again, reopen the access link you were given.</p>
                     </div>
                     
-                    <!-- Login Form -->
-                    <form method="post" action="/login" class="login-form">
+                    <!-- Login Form (states A and C; hidden for link-lost B) -->
+                    <form th:if="${showLoginForm != false}" method="post" action="/login" class="login-form">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <input th:if="${entryLink}" type="hidden" name="entry" value="link">
                         <div class="form-group">
                             <label for="username">USERNAME</label>
                             <input type="text" id="username" name="username" 
@@ -54,27 +61,44 @@
                                    autocomplete="username">
                         </div>
                         
-                        <div class="form-group checkbox-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="challengeRequested" name="challengeRequested" value="true">
-                                <span class="checkbox-text">Require challenge code (2 digits)</span>
-                            </label>
-                            <small class="form-hint">Enable for additional verification on your device</small>
-                        </div>
+                        <p class="form-hint" style="margin-bottom: 1.5rem;">
+                            Every sign-in shows a 2-digit challenge on this page. Enter the same
+                            digits on your Ezkey device when you approve.
+                        </p>
                         
                         <button type="submit" class="neo-brutal-button primary login-button">
                             LOGIN WITH EZKEY
                         </button>
                     </form>
                     
-                    <!-- Info Note -->
-                    <div class="info-note-inline">
+                    <!-- Info Note (self-service C only — duplicates step 3 on tenant-link A) -->
+                    <div th:if="${showSelfServiceChrome}" class="info-note-inline">
                         <p><strong>Note:</strong> After clicking "Login with EZKey", approve the request on your registered device.</p>
                     </div>
                 </div>
                 
-                <!-- Info Card -->
-                <div class="info-card">
+                <!-- Reduced info card for tenant-link (state A) -->
+                <div th:if="${showTenantLinkInfoCard}" class="info-card" data-testid="tenant-link-info-card">
+                    <div class="info-card-header">
+                        <h3>ABOUT THIS DEMO</h3>
+                    </div>
+                    <ol class="steps-list">
+                        <li>Enter your username</li>
+                        <li>Click "Login with EZKey"</li>
+                        <li>Approve on your EZKey device and enter the same 2 digits</li>
+                        <li>You're in!</li>
+                    </ol>
+                    <p class="info-note">
+                        <strong>No password needed.</strong> EZKey uses cryptographic
+                        authentication via your registered device.
+                    </p>
+                    <p class="info-note" style="margin-top: 1rem;">
+                        Logging out ends this session. To sign in again, reopen your access link.
+                    </p>
+                </div>
+
+                <!-- Full info card (self-service demo chrome — state C) -->
+                <div th:if="${showSelfServiceChrome}" class="info-card">
                     <div class="info-card-header">
                         <h3>ABOUT THIS DEMO</h3>
                         <div class="info-card-buttons">
@@ -91,10 +115,10 @@
                                 then reuse them for multiple login attempts.
                             </p>
                             <ul class="demo-facts-list">
-                                <li>The API key is temporary and stays only in this browser session.</li>
-                                <li>Logging out signs out the demo user but keeps the demo API key for another login cycle.</li>
-                                <li>You can test different usernames and both challenge and non-challenge login flows.</li>
-                                <li>If the browser session expires, you may need to enter the API key again.</li>
+                                <li>Prefer a temporary access link when you have one; paste keys only for guided evaluator console access.</li>
+                                <li>Logging out ends the browser session (access link and any pasted keys are cleared).</li>
+                                <li>Every sign-in asks for a 2-digit challenge on your device.</li>
+                                <li>After pasting keys, reload the page so the security token stays valid.</li>
                             </ul>
                         </div>
                     </details>
@@ -111,8 +135,9 @@
                     </p>
                     <div class="info-note" style="margin-top: 1rem;">
                         <p style="margin: 0; font-size: 0.85rem;">
-                            <strong>Configuration:</strong> Use "Configure API Key" to set integration key and secret.
-                            The key remains available across logout in the same browser session. Enter the username you enrolled via the TUI or demo device.
+                            <strong>Configuration:</strong> Use an access link when provided, or "Configure API Key"
+                            for temporary evaluator console access. Logout clears the session. Enter the username
+                            you enrolled via the Admin UI or demo device.
                         </p>
                     </div>
                 </div>
@@ -120,8 +145,8 @@
         </div>
     </main>
 
-    <!-- API Key Dialog Modal -->
-    <div id="api-key-modal" class="modal-overlay hidden">
+    <!-- API Key Dialog Modal (self-service demo chrome only — state C) -->
+    <div th:if="${showSelfServiceChrome}" id="api-key-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>CONFIGURE API KEY</h3>
@@ -157,8 +182,8 @@
         </div>
     </footer>
 
-    <!-- API Key Dialog Script -->
-    <script>
+    <!-- API Key Dialog Script (self-service demo chrome only — state C) -->
+    <script th:if="${showSelfServiceChrome}">
         function openApiKeyDialog() {
             document.getElementById('api-key-modal').classList.remove('hidden');
             document.getElementById('api-key-integration').value = '';
@@ -200,7 +225,8 @@
                 if (result.success) {
                     status.className = 'reload-status success';
                     status.textContent = '✅ ' + result.message;
-                    setTimeout(closeApiKeyDialog, 1500);
+                    // Reload so the new CSRF token matches the session after invalidate().
+                    setTimeout(() => { window.location.reload(); }, 800);
                 } else {
                     status.className = 'reload-status error';
                     status.textContent = response.status === 403

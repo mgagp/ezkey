@@ -239,7 +239,7 @@
                 <li>Create an <strong>API key</strong> for that integration; keep the <strong>id and secret</strong> exactly as shown at creation time somewhere outside the browser, per your team OS and habits.</li>
                 <li>Create an <strong>enrollment</strong> and bind it to the <strong>mobile</strong> or <strong>Demo Device</strong> (QR scan + six-digit challenge confirmation).</li>
                 <li>In a <strong>different browser</strong> (private window or separate profile), open <a href="https://demo-acme.ezkey.online/login">the Acme demo</a> at <strong>demo-acme.ezkey.online/login</strong>, supply the <strong>API key</strong> through <strong>Configure API Key</strong>, then start a <strong>sign-in</strong> with the user identifier tied to the enrollment.</li>
-                <li>On the phone or Demo Device: <strong>review and approve</strong> the request within the demo countdown window.</li>
+                <li>On the phone or Demo Device: enter the <strong>2-digit challenge</strong> shown by the demo, then <strong>review and approve</strong> within the countdown window.</li>
             </ol>
             <p>If everything lines up, the demo app should show a lightweight <strong>session</strong> screen — pseudo-application UI with a <strong>sign-out</strong> affordance — signaling that the full path succeeded.</p>
 
@@ -306,7 +306,7 @@
 
             <h2>Step 6 — Sign-in with the enrollment user, mobile approval</h2>
             <p>At login, use the same identifier (the User ID value, not the Name).</p>
-            <p>On the mobile app or Demo Device: open the pending request, then <strong>approve</strong> within the window shown by the demo.</p>
+            <p>The demo shows a <strong>2-digit challenge</strong> on the waiting screen. On the mobile app or Demo Device: open the pending request, <strong>enter that same 2-digit challenge</strong>, then <strong>approve</strong> within the window shown by the demo.</p>
             <figure class="guide-figure">
                 <img src="/exp1-guided-tour/exp1-tour-06-demo-acme-login-pending.webp" alt="Acme demo: waiting screen during mobile approval" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Demo waiting on approval in the Ezkey mobile app.</figcaption>

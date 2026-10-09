@@ -203,24 +203,9 @@ WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-demo-app-acme/target/*.jar app.jar
 # Copy config template
 COPY --chown=spring:spring ezkey-demo-app-acme/config/application.properties.example /app/config-template.properties
-# Create entrypoint script (runs as spring: no chown/chmod needed)
-RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
-    echo '# Create application.properties from template if it does not exist' >> /app/entrypoint.sh && \
-    echo '# Note: If volume persists, existing file will NOT be overwritten' >> /app/entrypoint.sh && \
-    echo '# To reset: Delete /app/config/application.properties before starting container' >> /app/entrypoint.sh && \
-    echo 'if [ ! -f /app/config/application.properties ]; then' >> /app/entrypoint.sh && \
-    echo '  echo "Creating /app/config/application.properties from template..."' >> /app/entrypoint.sh && \
-    echo '  cp /app/config-template.properties /app/config/application.properties' >> /app/entrypoint.sh && \
-    echo '  chmod 644 /app/config/application.properties' >> /app/entrypoint.sh && \
-    echo 'else' >> /app/entrypoint.sh && \
-    echo '  echo "Config file exists, skipping template copy (volume persistence)"' >> /app/entrypoint.sh && \
-    echo 'fi' >> /app/entrypoint.sh && \
-    echo 'echo "SPRING_CONFIG_ADDITIONAL_LOCATION=$SPRING_CONFIG_ADDITIONAL_LOCATION"' >> /app/entrypoint.sh && \
-    echo 'echo "Working directory: $(pwd)"' >> /app/entrypoint.sh && \
-    echo 'echo "Config file exists: $([ -f /app/config/application.properties ] && echo yes || echo no)"' >> /app/entrypoint.sh && \
-    echo 'exec java -jar /app/app.jar' >> /app/entrypoint.sh && \
-    chown spring:spring /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh
+# Entrypoint: create config from template when missing; always chmod 600 (spring uid 100 / gid 101).
+COPY --chown=spring:spring docker/demo-app-acme-entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 USER spring:spring
 EXPOSE 8082
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
