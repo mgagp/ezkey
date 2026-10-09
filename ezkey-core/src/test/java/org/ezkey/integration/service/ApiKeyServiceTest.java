@@ -918,6 +918,7 @@ class ApiKeyServiceTest {
               "logger.info(\n"
                   + "        \"API key validated successfully: {} for integration: {}\",\n"
                   + "        integrationKey,"));
+      assertTrue(content.contains("LogSanitizer.sanitizeForLog(clientIp)"));
     }
   }
 }

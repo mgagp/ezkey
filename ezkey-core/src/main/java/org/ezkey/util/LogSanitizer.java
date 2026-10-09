@@ -8,10 +8,10 @@
  * Description: Neutralizes CR/LF in values written to application logs.
  */
 
-package org.ezkey.demo.acme.web;
+package org.ezkey.util;
 
 /**
- * Shared log-injection hardening helpers for the ACME demo.
+ * Shared log-injection hardening helpers.
  *
  * @author Ezkey contributors
  * @since 2026

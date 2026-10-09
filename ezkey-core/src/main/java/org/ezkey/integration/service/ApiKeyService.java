@@ -28,6 +28,7 @@ import org.ezkey.integration.exception.ApiKeyIpWhitelistValidationException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.ApiKeyUpdateValidationException;
 import org.ezkey.service.EntityEligibilityService;
+import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -299,7 +300,7 @@ public class ApiKeyService {
         && !isIpWhitelisted(clientIp, apiKey.getIpWhitelist())) {
       logger.warn(
           "IP address {} not whitelisted for API key: {}",
-          clientIp,
+          LogSanitizer.sanitizeForLog(clientIp),
           maskIntegrationKeyForLog(integrationKey));
       return Optional.empty();
     }
