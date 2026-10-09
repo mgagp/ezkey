@@ -26,6 +26,7 @@ Please structure your review along the following dimensions:
      - *Security/Auth:* Legitimate sessions, tokens, or credentials remain active and operational post-attack (e.g. exercising an authenticated administrative mutation post-rejection).
      - *Concurrency/CAS:* Competing operations failing a lock or CAS condition do not abort, deadlock, or corrupt the winning operation.
      - *Lifecycle/Entities:* Rejected lifecycle transitions (e.g. 409 Conflict, 400 Bad Request) do not leave records in an inconsistent, partially mutated, or corrupted state.
+   - **Pre-existing path conditions:** Inventory pre-existing timeouts, waits, rate limits, and error paths on the touched path (`path:line`), and verify the change does not break them.
    - **Live Functional Verification:** A realistic end-to-end test on the running stack (clean-start Docker, Demo Device, Admin UI, or Bruno collections) with observable evidence (logs, DB state, audit records).
 
 4. **Review Protocol (HITL):**

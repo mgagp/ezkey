@@ -33,6 +33,8 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | Legacy document hygiene (canonicality / discoverability / archive-vs-delete) | Keyword **`document-hygiene-curated`** → [`product-docs/global/hygiene/document-hygiene/README.md`](product-docs/global/hygiene/document-hygiene/README.md) |
 | New idea / method | [`product-docs/methodology/README.md`](product-docs/methodology/README.md) — the whole method fits in that one document since the 2026-08 ablation |
 | Plan review / cold-agent hardening | [`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md) — 2-stage review pattern in [`product-docs/methodology/README.md`](product-docs/methodology/README.md) |
+| Adopter posture / 3-second test | [`product-docs/global/operator-alignment-guide.md`](product-docs/global/operator-alignment-guide.md) — Ezkey is never the adopter's core business; every human surface must stay simple, fluid, operationally clear |
+| Fail-open vs fail-closed | [`product-docs/global/design-principles.md`](product-docs/global/design-principles.md) §17 — name whether failure continues (observable) or stops at critical boundaries |
 | API contract change | Controller + **section** of `docs/ENDPOINT.md` + OpenAPI refresh workflow (see OpenAPI rules) |
 | Strategic positioning / public copy | [`docs/PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) only when that layer is in scope |
 | Public alpha label / deploy “what is live” | [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md); community ledger [`docs/lightsail/community/DEPLOYED.md`](docs/lightsail/community/DEPLOYED.md) |
@@ -231,6 +233,9 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 ## Project values (analysis and design)
 
 - **Simplicity and pragmatism**: 80–20 rule — target ~80% of the value with ~20% of the complexity. Prefer the simplest solution that meets the need.
+- **Adopter posture.** Ezkey is never the adopter's core business: every human surface (Admin UI, demos, tester pages, mobile copy) must let a person decide in ~3 seconds — simple, fluid, operationally clear. See `product-docs/global/operator-alignment-guide.md`.
+- **New mode → re-challenge what exists.** A new entry mode or use case triggers a keep/adapt/hide pass on existing UI content and an inventory of pre-existing conditions on the touched path (timeouts, errors, rate limits, logging) — including when the request comes from the maintainer.
+- **Vision locks travel.** Every brief carries a lock-trace table (vision lock → brief section or explicit deferral); an unmapped lock blocks G1.
 - **Admin UI**: Sober, pragmatic interface that makes the operator's and their team's life easier. Avoid clutter and unnecessary decoration.
 - **Admin roles**: **Global Admin** = IT-style; manages core/instance-level concerns (e.g. encryption keys). **Tenant Admin** = business-oriented; manages end users, integrations, API keys. Design and copy must reflect this split.
 - **Comparables and best practices**: For any analysis or design, consider comparable projects and admin UIs; adopt widely recognised best practices from those comparables.

@@ -1,14 +1,16 @@
-# Admin UI — Walk / Done gate (canon)
+# Human UI surface — Walk / Done gate (canon)
 
 ## Purpose
 
 One contract for “UI slice is complete”: **free entry** (Marc may open with Julie, Patrick, or K), **unique exit** (a filled Walk Gate + Isabelle verdict).
 
-This is not a process ceremony. It exists because missing or moving completion criteria produced split PR walks and shallow QA (#570 lesson).
+Applies to **any human UI surface** touched by the slice: Admin UI, demo apps, tester pages, and mobile copy — not Admin UI alone.
+
+This is not a process ceremony. It exists because missing or moving completion criteria produced split PR walks and shallow QA (#570 lesson). Retrospectives such as PR #726 showed the same gap when demos and tester pages were left outside the gate.
 
 ## Rule
 
-Nobody (human or bot) declares an Admin UI chantier **complete** without:
+Nobody (human or bot) declares a human-UI chantier **complete** without:
 
 1. A single **walkable SHA / PR** (not a chain of “almost” trailers).
 2. A filled [`ui-walk-gate.template.md`](../templates/ui-walk-gate.template.md) block.
