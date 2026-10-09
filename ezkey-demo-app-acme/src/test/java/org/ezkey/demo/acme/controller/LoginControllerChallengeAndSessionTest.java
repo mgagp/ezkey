@@ -365,6 +365,26 @@ class LoginControllerChallengeAndSessionTest {
   }
 
   @Test
+  void pendingPastAttemptTtlEndsAsExpiredWithBilingualMessage() throws Exception {
+    // Acme-side expiry fallback (8655dfa2): status can stay PENDING while wall-clock TTL elapsed.
+    CountingSession session = pendingSession();
+    session.setAttribute("pendingExpiresAt", OffsetDateTime.now().minusSeconds(1).toString());
+
+    when(ezkeyClient.waitForAuthAttempt(eq(7), anyInt(), anyInt()))
+        .thenReturn(new AuthAttemptWaitResponse("PENDING", false, true));
+
+    mockMvc
+        .perform(get("/api/auth-status").session(session))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("expired"))
+        .andExpect(jsonPath("$.redirectUrl").value("/login?error=expired"))
+        .andExpect(jsonPath("$.message").value(DemoAuthMessages.AUTH_EXPIRED_WAIT));
+
+    assertThat(session.getAttribute("authAttemptFinalStatus")).isEqualTo("EXPIRED");
+    verify(ezkeyClient).waitForAuthAttempt(eq(7), anyInt(), anyInt());
+  }
+
+  @Test
   void slowApprovalAroundFortySecondsReachesDashboard() throws Exception {
     CountingSession session = pendingSession();
     // Attempt TTL far enough that soft timeouts must keep polling (not abort at ~30s).
@@ -463,8 +483,13 @@ class LoginControllerChallengeAndSessionTest {
     assertThat(content).contains("scheduleNextPoll");
     assertThat(content).contains("setTimeout(checkAuthStatus");
     assertThat(content).contains("if (!response.ok)");
-    assertThat(content).contains("showError('Authentication rejected by user.');");
+    assertThat(content)
+        .contains(
+            "showError('Authentication rejected by user. / Authentification refusée sur"
+                + " l\\'appareil.');");
     assertThat(content).doesNotContain("Authentication rejected by user. ' + (result.message");
+    assertThat(content)
+        .contains("Authentication request expired / La demande d\\'authentification a expiré");
     assertThat(content).doesNotContain("setInterval(checkAuthStatus");
     assertThat(content).doesNotContain("pollingInterval = setInterval");
   }

@@ -30,6 +30,29 @@ public final class DemoAuthMessages {
   public static final String RATE_LIMIT_APPLY_API_KEY =
       "Too many API key apply attempts from your network. Please wait and try again.";
 
+  /** Device rejected the auth attempt (login page). EN/FR on one line for the thin demo surface. */
+  public static final String AUTH_REJECTED =
+      "Authentication rejected by user. Please try again. / Authentification refusée sur"
+          + " l'appareil. Veuillez réessayer.";
+
+  /** Auth attempt TTL elapsed (login page). EN/FR on one line for the thin demo surface. */
+  public static final String AUTH_EXPIRED =
+      "Authentication request expired. Please try again. / La demande d'authentification a"
+          + " expiré. Veuillez réessayer.";
+
+  /**
+   * Device rejected the auth attempt (challenge-wait banner). Shorter than {@link #AUTH_REJECTED}.
+   */
+  public static final String AUTH_REJECTED_WAIT =
+      "Authentication rejected by user. / Authentification refusée sur l'appareil.";
+
+  /**
+   * Auth attempt TTL elapsed (challenge-wait banner / auth-status message). Shorter than {@link
+   * #AUTH_EXPIRED}.
+   */
+  public static final String AUTH_EXPIRED_WAIT =
+      "Authentication request expired / La demande d'authentification a expiré";
+
   /**
    * Session or access-code slot lost (expired cookie, concurrent rotation race, unknown session).
    * Never includes the access code. EN/FR on one line for the thin demo surface.

@@ -246,14 +246,14 @@
                     }, 1000);
                 } else if (result.status === 'rejected') {
                     stopPolling();
-                    showError('Authentication rejected by user.');
+                    showError('Authentication rejected by user. / Authentification refusée sur l\'appareil.');
                     setTimeout(() => {
                         window.location.href = withEntryLink(
                             result.redirectUrl || '/login?error=rejected');
                     }, 3000);
                 } else if (result.status === 'expired') {
                     stopPolling();
-                    showError(result.message || 'Authentication request expired');
+                    showError(result.message || 'Authentication request expired / La demande d\'authentification a expiré');
                     setTimeout(() => {
                         window.location.href = withEntryLink(
                             result.redirectUrl || '/login?error=expired');

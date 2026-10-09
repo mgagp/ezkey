@@ -271,10 +271,10 @@ public class LoginController {
       model.addAttribute("hasError", true);
       switch (error) {
         case "rejected":
-          model.addAttribute("error", "Authentication rejected by user. Please try again.");
+          model.addAttribute("error", DemoAuthMessages.AUTH_REJECTED);
           break;
         case "expired":
-          model.addAttribute("error", "Authentication request expired. Please try again.");
+          model.addAttribute("error", DemoAuthMessages.AUTH_EXPIRED);
           break;
         case "ratelimited":
           model.addAttribute("error", DemoAuthMessages.RATE_LIMIT_LOGIN);
@@ -432,10 +432,14 @@ public class LoginController {
       // condition
       if ("REJECTED".equals(finalStatus)) {
         return ResponseEntity.ok(
-            new AuthStatusResponse("rejected", loginPath("error=rejected", false), "Rejected"));
+            new AuthStatusResponse(
+                "rejected",
+                loginPath("error=rejected", false),
+                DemoAuthMessages.AUTH_REJECTED_WAIT));
       } else if ("EXPIRED".equals(finalStatus)) {
         return ResponseEntity.ok(
-            new AuthStatusResponse("expired", loginPath("error=expired", false), "Expired"));
+            new AuthStatusResponse(
+                "expired", loginPath("error=expired", false), DemoAuthMessages.AUTH_EXPIRED_WAIT));
       } else if ("INVALID".equals(finalStatus)) {
         return ResponseEntity.ok(
             new AuthStatusResponse(
@@ -563,7 +567,10 @@ public class LoginController {
 
         logger.info("Challenge authentication rejected for username: {}", usernameForLog);
         return ResponseEntity.ok(
-            new AuthStatusResponse("rejected", loginPath("error=rejected", false), "Rejected"));
+            new AuthStatusResponse(
+                "rejected",
+                loginPath("error=rejected", false),
+                DemoAuthMessages.AUTH_REJECTED_WAIT));
       } else if ("EXPIRED".equals(normalizedStatus)) {
         // Authentication expired
         // Mark as final status to prevent race condition with subsequent polls
@@ -571,7 +578,8 @@ public class LoginController {
 
         logger.info("Challenge authentication expired for username: {}", usernameForLog);
         return ResponseEntity.ok(
-            new AuthStatusResponse("expired", loginPath("error=expired", false), "Expired"));
+            new AuthStatusResponse(
+                "expired", loginPath("error=expired", false), DemoAuthMessages.AUTH_EXPIRED_WAIT));
       } else if ("INVALID".equals(normalizedStatus)) {
         // Authentication invalid (wrong signature, challenge, etc.)
         // Mark as final status to prevent race condition with subsequent polls
@@ -638,7 +646,8 @@ public class LoginController {
     if (isAttemptExpired(session)) {
       session.setAttribute("authAttemptFinalStatus", "EXPIRED");
       return ResponseEntity.ok(
-          new AuthStatusResponse("expired", "/login?error=expired", "Expired"));
+          new AuthStatusResponse(
+              "expired", "/login?error=expired", DemoAuthMessages.AUTH_EXPIRED_WAIT));
     }
     return ResponseEntity.ok(
         new AuthStatusResponse("pending", null, "Waiting for device approval..."));

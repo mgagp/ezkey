@@ -132,14 +132,14 @@ class LoginTenantLinkLayoutTest {
 
     String expired = renderLogin(session, "expired", null, null);
     assertThat(expired).contains("name=\"username\"");
-    assertThat(expired).contains("Authentication request expired");
+    assertThat(expired).contains(htmlEscaped(DemoAuthMessages.AUTH_EXPIRED));
     assertThat(expired).contains("tenant-link-info-card");
     assertThat(expired).doesNotContain("id=\"api-key-modal\"");
     assertThat(expired).doesNotContain("class=\"info-accordion\"");
 
     String rejected = renderLogin(session, "rejected", null, null);
     assertThat(rejected).contains("name=\"username\"");
-    assertThat(rejected).contains("Authentication rejected by user");
+    assertThat(rejected).contains(htmlEscaped(DemoAuthMessages.AUTH_REJECTED));
     assertThat(rejected).doesNotContain("id=\"api-key-modal\"");
   }
 
