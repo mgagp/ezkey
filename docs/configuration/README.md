@@ -13,6 +13,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey-auth-api` | [ezkey-auth-api/CONFIGURATION.md](../../ezkey-auth-api/CONFIGURATION.md) | Defines `ezkey.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
 | `ezkey-integration-api` | [ezkey-integration-api/CONFIGURATION.md](../../ezkey-integration-api/CONFIGURATION.md) | Defines `ezkey.api-key.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
 | `ezkey-crypto-api` | [ezkey-crypto-api/CONFIGURATION.md](../../ezkey-crypto-api/CONFIGURATION.md) | No database; inherits `ezkey.encryption.*` from core |
+| `ezkey-demo-app-acme` | [ezkey-demo-app-acme/CONFIGURATION.md](../../ezkey-demo-app-acme/CONFIGURATION.md) | Demo browser app — `ezkey.rate-limit.*` (login / login-ip-bound / apply-api-key), access-code slots |
 
 ---
 

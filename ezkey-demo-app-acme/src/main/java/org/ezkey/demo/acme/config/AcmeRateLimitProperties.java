@@ -23,8 +23,16 @@ public class AcmeRateLimitProperties {
 
   private boolean enabled = true;
 
-  /** Login and {@code /t/{code}} ceiling (slot+IP or IP-only). Default 20 / 5 minutes. */
+  /**
+   * Per-slot+IP (or IP-only for self-service / invalid {@code /t}) ceiling. Default 20 / 5 minutes.
+   */
   private EndpointConfig login = new EndpointConfig(20, 5);
+
+  /**
+   * Wider per-IP bound consumed on every {@code POST /login} in slot mode, in addition to the
+   * slot+IP bucket. Caps aggregate attempts across many slots from one IP. Default 60 / 5 minutes.
+   */
+  private EndpointConfig loginIpBound = new EndpointConfig(60, 5);
 
   private EndpointConfig applyApiKey = new EndpointConfig(5, 10);
 
@@ -42,6 +50,14 @@ public class AcmeRateLimitProperties {
 
   public void setLogin(EndpointConfig login) {
     this.login = login;
+  }
+
+  public EndpointConfig getLoginIpBound() {
+    return loginIpBound;
+  }
+
+  public void setLoginIpBound(EndpointConfig loginIpBound) {
+    this.loginIpBound = loginIpBound;
   }
 
   public EndpointConfig getApplyApiKey() {

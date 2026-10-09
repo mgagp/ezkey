@@ -17,6 +17,7 @@ import org.ezkey.demo.acme.DemoAuthMessages;
 import org.ezkey.demo.acme.security.DemoRateLimitService;
 import org.ezkey.demo.acme.service.AccessCodeService;
 import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
+import org.ezkey.demo.acme.web.LogSanitizer;
 import org.ezkey.demo.acme.web.SessionHelpers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +86,7 @@ public class AccessCodeController {
     if (!rateLimitDecision.allowed()) {
       LOG.warn(
           "Access-link rate limit exceeded for clientIp={} retryAfterSeconds={}",
-          rateLimitDecision.clientId(),
+          LogSanitizer.sanitizeForLog(rateLimitDecision.clientId()),
           rateLimitDecision.retryAfterSeconds());
       return renderLinkLostLogin(
           model, DemoAuthMessages.RATE_LIMIT_LOGIN, DemoAuthMessages.LINK_HINT_WAIT_AND_REOPEN);

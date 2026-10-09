@@ -103,6 +103,20 @@ class LoginControllerChallengeAndSessionTest {
   }
 
   @Test
+  void loginPassesActiveSessionSlotToRateLimiter() throws Exception {
+    when(demoApiKeyConfigService.getActiveSlotId(any())).thenReturn("northwind");
+    when(ezkeyClient.createAuthAttemptByUserIdentifier(eq("alice"), eq(true)))
+        .thenReturn(sampleCreateResponse(42, 12));
+
+    mockMvc
+        .perform(post("/login").param("username", "alice"))
+        .andExpect(status().is3xxRedirection())
+        .andExpect(redirectedUrl("/challenge-wait"));
+
+    verify(demoRateLimitService).checkLogin(any(), eq("northwind"));
+  }
+
+  @Test
   void entryLinkMarkerDoesNotChangeSecurityCalls_onlyRedirectSuffix() throws Exception {
     // Security path (rate-limit, getClient, createAuthAttempt) must be identical with/without
     // entry=link; the marker only appends the layout suffix on error redirects.

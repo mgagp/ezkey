@@ -127,4 +127,37 @@ class AccessCodeControllerTest {
 
     verify(demoRateLimitService).checkAccessLink(any(), isNull());
   }
+
+  @Test
+  void rateLimitedValidAndInvalidAccessLinksHaveIdenticalResponses() throws Exception {
+    String invalidCode = "ffffffffffffffffffffffffffffffff";
+    DemoRateLimitService.RateLimitDecision denied =
+        new DemoRateLimitService.RateLimitDecision(false, 30, "203.0.113.10");
+
+    when(accessCodeService.findSlotIdByCode(VALID_CODE)).thenReturn(Optional.of("northwind"));
+    when(accessCodeService.findSlotIdByCode(invalidCode)).thenReturn(Optional.empty());
+    when(demoRateLimitService.checkAccessLink(any(), eq("northwind"))).thenReturn(denied);
+    when(demoRateLimitService.checkAccessLink(any(), isNull())).thenReturn(denied);
+
+    MvcResult validResult = mockMvc.perform(get("/t/{code}", VALID_CODE)).andReturn();
+    MvcResult invalidResult = mockMvc.perform(get("/t/{code}", invalidCode)).andReturn();
+
+    assertThat(validResult.getResponse().getStatus())
+        .isEqualTo(invalidResult.getResponse().getStatus());
+    assertThat(validResult.getModelAndView()).isNotNull();
+    assertThat(invalidResult.getModelAndView()).isNotNull();
+    assertThat(validResult.getModelAndView().getViewName())
+        .isEqualTo(invalidResult.getModelAndView().getViewName());
+    assertThat(validResult.getModelAndView().getModel())
+        .containsAllEntriesOf(invalidResult.getModelAndView().getModel());
+    assertThat(invalidResult.getModelAndView().getModel())
+        .containsAllEntriesOf(validResult.getModelAndView().getModel());
+    assertThat(validResult.getResponse().getHeaderNames())
+        .containsExactlyInAnyOrderElementsOf(invalidResult.getResponse().getHeaderNames());
+    for (String header : validResult.getResponse().getHeaderNames()) {
+      assertThat(validResult.getResponse().getHeaders(header))
+          .as("header %s", header)
+          .isEqualTo(invalidResult.getResponse().getHeaders(header));
+    }
+  }
 }

@@ -128,7 +128,7 @@ public class LoginController {
     if (!rateLimitDecision.allowed()) {
       logger.warn(
           "Login rate limit exceeded for clientIp={} retryAfterSeconds={}",
-          rateLimitDecision.clientId(),
+          LogSanitizer.sanitizeForLog(rateLimitDecision.clientId()),
           rateLimitDecision.retryAfterSeconds());
       redirectAttributes.addFlashAttribute("error", DemoAuthMessages.RATE_LIMIT_LOGIN);
       return loginRedirectWithOptionalMarker("error=ratelimited", slotActive, layoutLinkMarker);
@@ -320,7 +320,7 @@ public class LoginController {
     if (!rateLimitDecision.allowed()) {
       logger.warn(
           "Apply API key rate limit exceeded for clientIp={} retryAfterSeconds={}",
-          rateLimitDecision.clientId(),
+          LogSanitizer.sanitizeForLog(rateLimitDecision.clientId()),
           rateLimitDecision.retryAfterSeconds());
       return ResponseEntity.status(429)
           .header("Retry-After", String.valueOf(rateLimitDecision.retryAfterSeconds()))
