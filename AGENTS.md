@@ -503,6 +503,26 @@ yarn doctor:curated
   Integration API silence under operational churn is **coverage**, not health. Do **not** invent
   `I-*` / `TB-*` per finding.
 
+## Quality gate keyword
+
+- For an on-demand full-suite + stack-health verdict between merge batches, the shared keyword is
+  **`quality-gate`**.
+- Purpose: cloud-agent-only orchestrated run — clean-start HA + JavaMelody → `./scripts/build.sh`
+  → `all-tests` → elective → Playwright → operational churn →
+  `./scripts/stack-health-check.sh` → `REPORT.md` / `summary.json` with GO / GO with reservations /
+  NO-GO. **Not** a CI gate.
+- Default command from repo root (Git Bash on Windows):
+
+```bash
+./scripts/quality-gate.sh
+./scripts/quality-gate.sh --churn-minutes 5
+```
+
+- Outputs under `logs/quality-gate/<UTC>-<shortsha>/` (gitignored).
+- Config: `config/quality-gate/` (thresholds + log allowlist).
+- Campaign notes: `product-docs/global/hygiene/quality-gate/`
+- Authority: `product-docs/global/hygiene/quality-gate/README.md`
+
 ## Assessment curated keyword
 
 - For **mandate-driven white-box hygiene** (focused investigation → assessment register →
@@ -510,7 +530,7 @@ yarn doctor:curated
 - Purpose: punctual deep look when OSS doctor/pentest shortlists are the wrong entry signal (e.g.
   mobile crypto/protocol, Java transactional boundaries). **Not** a methodology program lane and
   **not** a substitute for `doctor-curated` / `dependabot-curated` / `security-pentest-curated` /
-  `javamelody-curated`.
+  `javamelody-curated` / `quality-gate`.
 - Method canon: [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md)
 - Cursor skill: [`.cursor/skills/assessment-curated/SKILL.md`](.cursor/skills/assessment-curated/SKILL.md)
 - Copilot mirror: `.github/copilot-instructions.md` § Assessment curated

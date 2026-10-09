@@ -1,0 +1,9 @@
+# Container-log noise allowlist for scripts/stack-health-check.sh
+# Format: substring_or_regex | one-line justification
+# Matching ERROR/WARN/exception signatures are counted as allowlisted (still reported, not RED drivers).
+
+HikariPool-1 - Failed to validate connection | Transient pool validation during HAProxy/instance churn
+Connection is not available, request timed out | Brief pool wait under concurrent churn; investigate only if sustained
+Broken pipe | Client disconnect during long poll / passwordless-wait
+Connection reset by peer | Transient LB blip under HAProxy round-robin
+I/O error on GET request | Client aborted long-poll; expected under churn cancellation paths
