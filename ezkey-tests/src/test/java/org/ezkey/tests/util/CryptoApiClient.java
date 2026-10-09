@@ -12,8 +12,13 @@ package org.ezkey.tests.util;
 
 import static io.restassured.RestAssured.given;
 
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.config.ObjectMapperConfig;
+import io.restassured.config.RestAssuredConfig;
 import io.restassured.http.ContentType;
+import io.restassured.mapper.ObjectMapperType;
 import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
 import java.util.HashMap;
 import java.util.Map;
 import org.ezkey.tests.config.DockerStackConfig;
@@ -27,12 +32,9 @@ import org.slf4j.LoggerFactory;
  * cryptographic operations needed in tests. All operations use the Crypto API REST endpoints, not
  * the ezkey-core crypto module.
  *
- * <p><b>RestAssured base URL:</b> Each method calls {@link
- * RestAssuredTestConfig#configureForCryptoApi}, so RestAssured is left pointing at the Crypto API.
- * If the test then performs Auth API or Admin API requests (e.g. POST /enrollments/verify, POST
- * /auth-attempts), it must call {@link RestAssuredTestConfig#configureForAuthApi} or {@link
- * RestAssuredTestConfig#configureForAdminApi} before those requests; otherwise they will be sent to
- * the Crypto API and fail (e.g. 500 / "No static resource").
+ * <p><b>Isolation:</b> Uses a dedicated {@link RequestSpecification} so Crypto API calls do
+ * <em>not</em> mutate RestAssured static {@code baseURI}/{@code basePath}. Callers that hit Auth
+ * API or Admin API keep their own RestAssured configuration.
  *
  * <p>Supported operations:
  *
@@ -50,7 +52,7 @@ public class CryptoApiClient {
 
   private static final Logger log = LoggerFactory.getLogger(CryptoApiClient.class);
 
-  private final DockerStackConfig dockerStackConfig;
+  private final RequestSpecification cryptoSpec;
 
   /**
    * Creates a new CryptoApiClient.
@@ -58,7 +60,17 @@ public class CryptoApiClient {
    * @param dockerStackConfig Docker stack configuration
    */
   public CryptoApiClient(DockerStackConfig dockerStackConfig) {
-    this.dockerStackConfig = dockerStackConfig;
+    this.cryptoSpec =
+        new RequestSpecBuilder()
+            .setBaseUri(dockerStackConfig.getCryptoApiUrl())
+            .setBasePath("/api/v1/crypto")
+            .setContentType(ContentType.JSON)
+            .setConfig(
+                RestAssuredConfig.config()
+                    .objectMapperConfig(
+                        ObjectMapperConfig.objectMapperConfig()
+                            .defaultObjectMapperType(ObjectMapperType.JACKSON_3)))
+            .build();
   }
 
   /**
@@ -84,11 +96,9 @@ public class CryptoApiClient {
   public EcP256KeyPair generateKeyPair() {
     log.debug("Generating EC P-256 key pair");
 
-    RestAssuredTestConfig.configureForCryptoApi(dockerStackConfig);
-
     Response response =
         given()
-            .contentType(ContentType.JSON)
+            .spec(cryptoSpec)
             .when()
             .get("/keypair")
             .then()
@@ -115,11 +125,9 @@ public class CryptoApiClient {
   public String generateProofToken() {
     log.debug("Generating proof token");
 
-    RestAssuredTestConfig.configureForCryptoApi(dockerStackConfig);
-
     Response response =
         given()
-            .contentType(ContentType.JSON)
+            .spec(cryptoSpec)
             .when()
             .get("/prooftoken")
             .then()
@@ -137,7 +145,8 @@ public class CryptoApiClient {
   /**
    * Signs data using a private key via the Crypto API.
    *
-   * <p>Calls POST /api/v1/crypto/sign with data and private key.
+   * <p>Calls POST /api/v1/crypto/sign with data and private key. Does not alter RestAssured static
+   * base URI/path.
    *
    * @param data Data to sign
    * @param privateKey Base64-encoded private key
@@ -147,15 +156,13 @@ public class CryptoApiClient {
   public String signData(String data, String privateKey) {
     log.debug("Signing data with private key");
 
-    RestAssuredTestConfig.configureForCryptoApi(dockerStackConfig);
-
     Map<String, String> requestBody = new HashMap<>();
     requestBody.put("data", data);
     requestBody.put("privateKey", privateKey);
 
     Response response =
         given()
-            .contentType(ContentType.JSON)
+            .spec(cryptoSpec)
             .body(requestBody)
             .when()
             .post("/sign")
@@ -183,14 +190,12 @@ public class CryptoApiClient {
   public Long encryptAndGetKeyId(String plaintext) {
     log.debug("Encrypting plaintext to get key ID");
 
-    RestAssuredTestConfig.configureForCryptoApi(dockerStackConfig);
-
     Map<String, String> requestBody = new HashMap<>();
     requestBody.put("plaintext", plaintext);
 
     Response response =
         given()
-            .contentType(ContentType.JSON)
+            .spec(cryptoSpec)
             .body(requestBody)
             .when()
             .post("/encrypt")
@@ -234,14 +239,12 @@ public class CryptoApiClient {
     }
     log.debug("Encrypting plaintext (length {})", plaintext.length());
 
-    RestAssuredTestConfig.configureForCryptoApi(dockerStackConfig);
-
     Map<String, String> requestBody = new HashMap<>();
     requestBody.put("plaintext", plaintext);
 
     Response response =
         given()
-            .contentType(ContentType.JSON)
+            .spec(cryptoSpec)
             .body(requestBody)
             .when()
             .post("/encrypt")
@@ -281,8 +284,6 @@ public class CryptoApiClient {
   public boolean validateSignature(String data, String signature, String publicKey) {
     log.debug("Validating signature");
 
-    RestAssuredTestConfig.configureForCryptoApi(dockerStackConfig);
-
     Map<String, String> requestBody = new HashMap<>();
     requestBody.put("data", data);
     requestBody.put("signature", signature);
@@ -290,7 +291,7 @@ public class CryptoApiClient {
 
     Response response =
         given()
-            .contentType(ContentType.JSON)
+            .spec(cryptoSpec)
             .body(requestBody)
             .when()
             .post("/validate")
