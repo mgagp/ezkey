@@ -39,7 +39,7 @@ Canon: [`../../../templates/ui-walk-gate.template.md`](../../../templates/ui-wal
 | 7 | FR and EN glance strings are UI i18n only | Must NOT show server English `resultSummary` in the glance | capture |
 | 8 | Non-green result arriving mid-work does not auto-switch tab; **Ouvrir Remédier** is available | Must NOT yank the operator off Observer/Vérifier mid-work | capture |
 | 9 | Open during nightly shows "Vérification nocturne en cours…" (or EN equivalent) | Must NOT show 409 error toast on open | capture / network |
-| 10 | With a fresh (<24 h) last verdict, open starts no job | Must NOT `POST …/jobs` or `GET /chain-integrity` on open | network tab |
+| 10 | With a fresh (<24 h) last verdict, open starts no job (proposed OQ2 — pending Marc's review) | Must NOT `POST …/jobs` or `GET /chain-integrity` on open | network tab |
 
 ## Locales
 
