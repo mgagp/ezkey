@@ -2,7 +2,7 @@
 # Multi-stage Dockerfile for EZ Key Services
 # ============================================
 # Stage 1: Build all modules with Maven
-FROM maven:3.9-eclipse-temurin-25 AS build
+FROM maven:3.9-eclipse-temurin-26 AS build
 WORKDIR /build
 
 # Copy all POMs first (for dependency caching)
