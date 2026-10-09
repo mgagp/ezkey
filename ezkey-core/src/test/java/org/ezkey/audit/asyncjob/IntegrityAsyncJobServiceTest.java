@@ -377,6 +377,7 @@ class IntegrityAsyncJobServiceTest {
               chainVerificationService,
               retroactiveIntegrityValidationService,
               nightlyIntegrityProperties,
+              verifyReportProperties,
               auditLogService,
               discarding);
 
@@ -447,6 +448,7 @@ class IntegrityAsyncJobServiceTest {
               chainVerificationService,
               retroactiveIntegrityValidationService,
               nightlyIntegrityProperties,
+              verifyReportProperties,
               auditLogService,
               sync);
 
