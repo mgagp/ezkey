@@ -193,12 +193,12 @@ function scanContainers() {
     const state = inspect.State || {};
     const health = (state.Health || {}).Status;
     const restarts = Number(inspect.RestartCount || 0);
-    let oom = Boolean(state.OOMKilled);
+    // Trust Docker OOMKilled only. Exit 137 is SIGKILL and is also used by elective
+    // ShedLockDistributedTest (`docker kill`); conflating it with OOM caused false RED.
+    // Cgroup OOM sets OOMKilled=true; heap OOM with ExitOnOutOfMemoryError exits nonzero.
+    const oom = Boolean(state.OOMKilled);
     const exitCode = state.ExitCode;
     const status = state.Status;
-    if (exitCode === 137) {
-      oom = true;
-    }
 
     let logs = '';
     try {
@@ -424,7 +424,7 @@ function scoreContainers(logScan, thr, allowlist, checks) {
   for (const svc of services) {
     if (svc.oneshot) continue;
     maxRestarts = Math.max(maxRestarts, svc.restarts || 0);
-    if (svc.oomKilled || svc.exitCode === 137) oom += 1;
+    if (svc.oomKilled) oom += 1;
     if (svc.health === 'unhealthy' || svc.status === 'exited') unhealthy += 1;
     totalErrors += svc.errorCount || 0;
     for (const sig of svc.errorSignatures || []) {
