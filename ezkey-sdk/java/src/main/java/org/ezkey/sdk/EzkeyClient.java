@@ -524,6 +524,8 @@ public final class EzkeyClient {
   /**
    * Masks an integration key for logs (same shape as ApiKeyService: {@code ezkey_ikey_xxxx…}).
    *
+   * <p>The kept suffix is sanitized to alphanumerics only so CR/LF cannot break log lines.
+   *
    * @param integrationKey raw integration key (may be null)
    * @return masked value suitable for logs
    */
@@ -533,10 +535,26 @@ public final class EzkeyClient {
     }
     String prefix = "ezkey_ikey_";
     if (integrationKey.startsWith(prefix) && integrationKey.length() > prefix.length() + 4) {
-      return prefix + integrationKey.substring(prefix.length(), prefix.length() + 4) + "…";
+      String kept = integrationKey.substring(prefix.length(), prefix.length() + 4);
+      return prefix + sanitizeLogPrefixFragment(kept) + "…";
     }
     int keep = Math.min(8, integrationKey.length());
-    return integrationKey.substring(0, keep) + "…";
+    return sanitizeLogPrefixFragment(integrationKey.substring(0, keep)) + "…";
+  }
+
+  /**
+   * Replaces every non-alphanumeric character with {@code _} for safe log fragments.
+   *
+   * @param fragment raw kept characters from a key
+   * @return sanitized fragment
+   */
+  private static String sanitizeLogPrefixFragment(String fragment) {
+    StringBuilder sanitized = new StringBuilder(fragment.length());
+    for (int i = 0; i < fragment.length(); i++) {
+      char c = fragment.charAt(i);
+      sanitized.append(Character.isLetterOrDigit(c) ? c : '_');
+    }
+    return sanitized.toString();
   }
 
   /**

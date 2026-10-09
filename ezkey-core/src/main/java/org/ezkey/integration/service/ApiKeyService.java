@@ -575,6 +575,9 @@ public class ApiKeyService {
    * Masks an integration key for logs (short non-secret prefix only, e.g. {@code
    * ezkey_ikey_a1b2…}).
    *
+   * <p>The kept suffix is sanitized to alphanumerics only so CR/LF (or other control characters)
+   * cannot break log lines (CodeQL log-injection).
+   *
    * @param integrationKey raw integration key (may be null)
    * @return masked value suitable for logs
    */
@@ -584,13 +587,28 @@ public class ApiKeyService {
     }
     if (integrationKey.startsWith(INTEGRATION_KEY_PREFIX)
         && integrationKey.length() > INTEGRATION_KEY_PREFIX.length() + 4) {
-      return INTEGRATION_KEY_PREFIX
-          + integrationKey.substring(
-              INTEGRATION_KEY_PREFIX.length(), INTEGRATION_KEY_PREFIX.length() + 4)
-          + "…";
+      String kept =
+          integrationKey.substring(
+              INTEGRATION_KEY_PREFIX.length(), INTEGRATION_KEY_PREFIX.length() + 4);
+      return INTEGRATION_KEY_PREFIX + sanitizeLogPrefixFragment(kept) + "…";
     }
     int keep = Math.min(8, integrationKey.length());
-    return integrationKey.substring(0, keep) + "…";
+    return sanitizeLogPrefixFragment(integrationKey.substring(0, keep)) + "…";
+  }
+
+  /**
+   * Replaces every non-alphanumeric character with {@code _} for safe log fragments.
+   *
+   * @param fragment raw kept characters from a key
+   * @return sanitized fragment
+   */
+  private static String sanitizeLogPrefixFragment(String fragment) {
+    StringBuilder sanitized = new StringBuilder(fragment.length());
+    for (int i = 0; i < fragment.length(); i++) {
+      char c = fragment.charAt(i);
+      sanitized.append(Character.isLetterOrDigit(c) ? c : '_');
+    }
+    return sanitized.toString();
   }
 
   /**

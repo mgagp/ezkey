@@ -40,6 +40,10 @@ class EzkeyClientAuthAttemptLogTest {
     assertEquals(
         "ezkey_ikey_a1b2…",
         EzkeyClient.maskIntegrationKeyForLog("ezkey_ikey_a1b2c3d4e5f6g7h8i9j0"));
+    assertEquals(
+        "ezkey_ikey_a1__…",
+        EzkeyClient.maskIntegrationKeyForLog("ezkey_ikey_a1\r\nbadrestofkey00001111"));
+    assertEquals("evil__in…", EzkeyClient.maskIntegrationKeyForLog("evil\r\ninj" + "xxxxxxxx"));
   }
 
   private static Path resolveEzkeyClientSource() {
