@@ -90,4 +90,4 @@ Ensure Admin UI callers exist end-to-end for ops already in OpenAPI but unevenly
 - **Intention + this map** = IA lock. Cut 1 is on `main` (PR `#563`).
 - **Isabelle** = exploratory walk (cut 1 is walkable).
 - **Alex** = priority framing already settled (not P0; do it properly).
-- **Remaining:** cut 2 phase B+B′ (modes + incidents pager — [`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md)); cut 2 phase C later; cut 3 intention-locked ([`admin-ui-integrity-cut3.md`](admin-ui-integrity-cut3.md) — last verdict, micro-dashboard, verify cap; #692 #696). Phase A density is delivered ([`admin-ui-integrity-cut2-phase-a.md`](admin-ui-integrity-cut2-phase-a.md)).
+- **Remaining:** cut 2 phase B+B′ (modes + incidents pager — [`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md)); cut 2 phase C later; cut 3 **draft — pending Marc's review** ([`admin-ui-integrity-cut3.md`](admin-ui-integrity-cut3.md) — last verdict, micro-dashboard, verify cap; #692 #696). Phase A density is delivered ([`admin-ui-integrity-cut2-phase-a.md`](admin-ui-integrity-cut2-phase-a.md)).

@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Document ID:** `admin-ui-integrity-cut3`
-- **Status:** `intention-locked` (product decisions Marc 2026-10-09; implementation not started — this note is the delivery compass)
+- **Status:** `draft — pending Marc's review` (product decisions Marc 2026-10-09 recorded; OQ1–OQ3 and open questions still pending approval; implementation not started)
 - **Owner (intention):** Julie (UX) / Marc (product) / Patrick (backend craft)
 - **QA:** Isabelle via Walk Gate (after implementation PRs fill the walkable SHA)
 - **Measurement:** Isabelle — baseline and after-PR-1 measurements **pending** (do not invent numbers)
@@ -110,7 +110,7 @@ Citations are file:line on current `main`. Paths for async-job / chain-verify se
 
 | Situation | Behaviour |
 |-----------|-----------|
-| Latest chain verdict (any source: async job or nightly) finished **less than 24 h ago** | Show that verdict + scope. **No** automatic `POST …/jobs`. **No** automatic `GET /chain-integrity`. Explicit **Revérifier** only. |
+| Latest chain verdict (any source: async job or nightly) finished **less than 24 h ago** (proposed OQ2 — pending Marc's review) | Show that verdict + scope. **No** automatic `POST …/jobs`. **No** automatic `GET /chain-integrity`. Explicit **Revérifier** only. |
 | No such fresh verdict | Auto-run may fire (window per OQ3 proposed resolution). |
 | Nightly (or other heavy path) already holds the gate | Widget shows nightly-running copy; **no** 409 error toast on open. |
 
@@ -236,7 +236,7 @@ Served by existing `GET /jobs/current` and `/jobs/{id}`. UI hydrates tiles from 
 - [ ] Aging relative time (dashboard 1 s clock pattern)
 - [ ] #696: verdict scope shown; picker aligns when hydrating from a job; mismatch copy when filter differs
 - [ ] Nightly-running state; no 409 toast on open
-- [ ] Tab: keep default-at-open non-green→Remédier; ban mid-work auto-switch; **Ouvrir Remédier**
+- [ ] Tab: keep default-at-open non-green→Remédier; ban mid-work auto-switch; **Ouvrir Remédier** (proposed OQ1 — pending Marc's review)
 - [ ] Update `docs/AUDIT_LOG_INTEGRITY.md:333-335`
 - [ ] EN + FR i18n; no server `resultSummary` in the glance
 
@@ -244,7 +244,7 @@ Served by existing `GET /jobs/current` and `/jobs/{id}`. UI hydrates tiles from 
 
 ## Acceptance criteria
 
-1. With a fresh (<24 h) last verdict, opening `/integrity` starts **no** `POST …/jobs` and **no** `GET /chain-integrity` (network tab).
+1. With a fresh (<24 h) last verdict, opening `/integrity` starts **no** `POST …/jobs` and **no** `GET /chain-integrity` (network tab) (proposed OQ2 — pending Marc's review).
 2. Micro-dashboard glance works in ~3 s without reading a sentence (green / gap / violation / stale / running / did-not-complete).
 3. SUCCEEDED with gaps never reads "réussi" / green as the verdict.
 4. Relative "checked" time ages while the page stays open.
@@ -270,7 +270,7 @@ Fill and walk [`WALK-2026-10-09-integrity-cut3.md`](backlog/walk-gates/WALK-2026
 7. FR and EN with no server English string in the glance.
 8. No tab switch mid-work.
 9. Open during nightly shows the nightly state; no 409 toast.
-10. With a fresh (<24 h) verdict, opening the page starts no job (network: no `POST /jobs`, no `GET /chain-integrity`).
+10. With a fresh (<24 h) verdict, opening the page starts no job (network: no `POST /jobs`, no `GET /chain-integrity`) (proposed OQ2 — pending Marc's review).
 
 ---
 
