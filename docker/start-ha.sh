@@ -85,7 +85,8 @@ fi
 
 # Optional space-delimited extra compose files (e.g. quality-gate memory overlay).
 if [[ -n "${EZKEY_COMPOSE_EXTRA_FILES:-}" ]]; then
-    for _extra in ${EZKEY_COMPOSE_EXTRA_FILES}; do
+    read -r -a _ezkey_extra_files <<< "${EZKEY_COMPOSE_EXTRA_FILES}"
+    for _extra in "${_ezkey_extra_files[@]}"; do
         if [ -f "${_extra}" ]; then
             COMPOSE_ARGS="${COMPOSE_ARGS} -f ${_extra}"
             echo "🔧 Extra compose overlay: $(basename "${_extra}")"

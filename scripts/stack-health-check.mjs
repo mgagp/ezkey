@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * stack-health-check — scan container logs, redact, score vs thresholds.
- * Invoked by scripts/stack-health-check.sh (Git Bash / Linux / macOS).
+ * Cloud agent tooling; Git Bash best-effort, untested on macOS.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -13,6 +13,8 @@ import {
   detectSecrets,
   extractLogger,
   resolveProductSource,
+  sanitize,
+  signature,
 } from './lib/quality-gate-secrets.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -39,6 +41,8 @@ const ALLOWLIST_PATH =
   args.allowlist || join(REPO_ROOT, 'config', 'quality-gate', 'log-allowlist.txt');
 const COMPOSE_RETRY_FIRED =
   process.env.COMPOSE_RETRY_FIRED === '1' || process.env.COMPOSE_RETRY_FIRED === 'true';
+const GATE_PHASE =
+  args.phase || process.env.QUALITY_GATE_PHASE || process.env.GATE_PHASE || '*';
 
 function main() {
   mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -54,17 +58,14 @@ function main() {
   );
   writeFileSync(join(OUTPUT_DIR, 'container-logs.md'), renderLogMd(logScan), 'utf8');
 
-  // Secret / PII scoring — emails AMBER (low-PII); unmasked credentials RED.
-  // Already-masked values (***REDACTED***, etc.) are ignored by detectSecrets.
-  const secretHits = logScan.secretHits || [];
+  // Secret / PII — apply #750 bootstrap allowlist (phase+logger); recovery codes stay RED.
+  const rawHits = logScan.secretHits || [];
+  const secretHits = rawHits.filter(
+    (h) => !isSecretAllowlisted(h, GATE_PHASE, allowlist),
+  );
   const redSecrets = secretHits.filter((h) => h.severity === 'RED');
   const amberSecrets = secretHits.filter((h) => h.severity === 'AMBER');
   const distinctFindings = distinctSecretFindings(secretHits);
-  writeFileSync(
-    join(OUTPUT_DIR, 'secrets-findings.md'),
-    renderSecretsFindings(distinctFindings),
-    'utf8',
-  );
   pushCheck(
     checks,
     'containers.secretsInRawLogs',
@@ -77,10 +78,10 @@ function main() {
   pushCheck(
     checks,
     'containers.emailLowPii',
-    amberSecrets.length,
+    amberSecrets.filter((h) => (h.kinds || []).includes('email')).length,
     { amber: 1, red: 999999 },
-    amberSecrets.length
-      ? `Low-PII email in logs: ${amberSecrets.length} (AMBER pending Christophe; e.g. docker-dev bootstrap admin)`
+    amberSecrets.some((h) => (h.kinds || []).includes('email'))
+      ? `Low-PII email in logs (AMBER pending Christophe)`
       : 'No email PII in raw container logs',
   );
 
@@ -121,46 +122,6 @@ function main() {
   if (health.verdict === 'RED') {
     process.exitCode = 1;
   }
-}
-
-/* ---------- redaction / signatures ---------- */
-
-function sanitize(s) {
-  let out = String(s ?? '');
-  out = out.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '<EMAIL>');
-  out = out.replace(
-    /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\b/g,
-    '<IPV4>',
-  );
-  // Require :: or a hex letter so HH:MM:SS timestamps are not treated as IPv6.
-  out = out.replace(/\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}\b/g, (m) =>
-    m.includes('::') || /[a-fA-F]/.test(m) ? '<IPV6>' : m,
-  );
-  out = out.replace(/\beyJ[\w-]+\.[\w-]+\.[\w-]+\b/g, '<JWT>');
-  out = out.replace(
-    /"(password|token|secret|challenge|code|key|accessCode|username|user)"\s*:\s*"[^"]*"/gi,
-    '"$1":"***REDACTED***"',
-  );
-  out = out.replace(
-    /\b(password|passwd|pwd|token|bearer|api[_-]?key|secret|authorization|challenge|code|accessCode|username|user)\b\s*[=:]\s*\S+/gi,
-    '$1=***REDACTED***',
-  );
-  out = out.replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer ***REDACTED***');
-  out = out.replace(/\b[A-Za-z0-9_-]{20,}\b/g, '<TOKEN>');
-  return out;
-}
-
-function signature(line) {
-  let s = sanitize(line.trim());
-  s = s.replace(/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, '<TS>');
-  s = s.replace(/\b\d{2}:\d{2}:\d{2}(?:\.\d+)?\b/g, '<TIME>');
-  s = s.replace(
-    /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,
-    '<UUID>',
-  );
-  s = s.replace(/\b\d{5,}\b/g, '<N>');
-  s = s.replace(/\s+/g, ' ');
-  return s.slice(0, 240);
 }
 
 /* ---------- container scan ---------- */
@@ -253,13 +214,12 @@ function scanContainers() {
       oneshot,
       errorCount: errTotal,
       warnCount: warnTotal,
+      // Keep all signatures for transientIo scoring; report still shows top N.
       errorSignatures: [...errC.entries()]
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 30)
         .map(([sig, count]) => ({ signature: sig, count })),
       warnSignatures: [...warnC.entries()]
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 20)
         .map(([sig, count]) => ({ signature: sig, count })),
     });
   }
@@ -428,7 +388,7 @@ function scoreContainers(logScan, thr, allowlist, checks) {
     if (svc.health === 'unhealthy' || svc.status === 'exited') unhealthy += 1;
     totalErrors += svc.errorCount || 0;
     for (const sig of svc.errorSignatures || []) {
-      const allowed = isAllowlisted(sig.signature, svc.name, allowlist);
+      const allowed = isAllowlisted(sig.signature, svc.name, allowlist, GATE_PHASE);
       errorSigs.push({ service: svc.name, ...sig, allowlisted: allowed });
       for (const [label, band] of Object.entries(thr.transientIo || {})) {
         let matched = sig.signature.includes(label);
@@ -450,7 +410,7 @@ function scoreContainers(logScan, thr, allowlist, checks) {
       }
     }
     for (const sig of svc.warnSignatures || []) {
-      const allowed = isAllowlisted(sig.signature, svc.name, allowlist);
+      const allowed = isAllowlisted(sig.signature, svc.name, allowlist, GATE_PHASE);
       warnSigs.push({ service: svc.name, ...sig, allowlisted: allowed });
     }
   }
@@ -565,16 +525,18 @@ function loadAllowlist(path) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
     const parts = trimmed.split('|').map((p) => p.trim());
-    if (parts.length < 5) {
+    // service | phase | regex | issue | expires= | justification
+    if (parts.length < 6) {
       entries.push({
         raw: trimmed,
         hygieneBad: true,
-        reason: 'need service|regex|issue|expires=|justification',
+        reason: 'need service|phase|regex|issue|expires=|justification',
       });
       continue;
     }
-    const [service, pattern, issue, expiresField, ...justParts] = parts;
+    const [service, phaseField, pattern, issue, expiresField, ...justParts] = parts;
     const justification = justParts.join('|');
+    const phases = phaseField.split(',').map((p) => p.trim()).filter(Boolean);
     const expM = /^expires=(\d{4}-\d{2}-\d{2})$/.exec(expiresField);
     const expires = expM ? expM[1] : null;
     const hasIssue = /^#\d+$/.test(issue);
@@ -588,14 +550,17 @@ function loadAllowlist(path) {
       );
     }
     const hygieneBad = !hasIssue || expired;
+    const secretChannel = /by design:\s*initial enrollment/i.test(justification);
     entries.push({
       raw: trimmed,
       service,
+      phases,
       pattern,
       issue,
       expires,
       justification,
       re,
+      secretChannel,
       hygieneBad,
       reason: hygieneBad
         ? !hasIssue
@@ -607,20 +572,54 @@ function loadAllowlist(path) {
   return entries;
 }
 
-function isAllowlisted(signature, serviceName, allowlist) {
+function phaseMatches(entryPhases, phase) {
+  if (!entryPhases || !entryPhases.length) return false;
+  if (entryPhases.includes('*')) return true;
+  if (!phase || phase === '*') return entryPhases.includes('*');
+  return entryPhases.includes(phase);
+}
+
+function serviceMatches(entryService, serviceName) {
+  if (entryService === '*') return true;
+  const svcPat = entryService.endsWith('*')
+    ? entryService.slice(0, -1)
+    : entryService;
+  return serviceName.includes(svcPat);
+}
+
+/** Error/warn signature allowlist. #747 gated on phase=clean-start + COMPOSE_RETRY_FIRED. */
+function isAllowlisted(sig, serviceName, allowlist, phase = GATE_PHASE) {
   for (const entry of allowlist) {
-    if (entry.hygieneBad || !entry.re) continue;
-    if (entry.service !== '*') {
-      const svcPat = entry.service.endsWith('*')
-        ? entry.service.slice(0, -1)
-        : entry.service;
-      if (!serviceName.includes(svcPat)) continue;
-    }
+    if (entry.hygieneBad || !entry.re || entry.secretChannel) continue;
+    if (!serviceMatches(entry.service, serviceName)) continue;
+    if (!phaseMatches(entry.phases, phase)) continue;
     if (entry.issue === '#747') {
       if (!COMPOSE_RETRY_FIRED) continue;
+      if (phase !== 'clean-start') continue;
       if (!serviceName.includes('ezkey-admin-api')) continue;
     }
-    if (entry.re.test(signature)) return true;
+    if (entry.re.test(sig)) return true;
+  }
+  return false;
+}
+
+/**
+ * #750 bootstrap enrollment channel — suppress RED for proof token / challenge / QR
+ * on AdminBootstrapService during clean-start / post-clean-health only.
+ * Recovery codes are never allowlisted.
+ */
+function isSecretAllowlisted(hit, phase, allowlist) {
+  if ((hit.kinds || []).includes('recovery-code')) return false;
+  const logger = hit.logger || '';
+  if (!/AdminBootstrapService/i.test(logger)) return false;
+  const text = `${logger} ${hit.preview || ''}`;
+  for (const entry of allowlist) {
+    if (entry.hygieneBad || !entry.re || !entry.secretChannel) continue;
+    if (!serviceMatches(entry.service, hit.service || '')) continue;
+    if (!phaseMatches(entry.phases, phase)) continue;
+    if (entry.re.test(text) || entry.re.test(signature(hit.preview || ''))) {
+      return true;
+    }
   }
   return false;
 }
@@ -682,7 +681,6 @@ function renderMarkdown(health) {
       );
     }
   }
-  lines.push('', 'See `secrets-findings.md` for the full distinct list.', '');
   return `${lines.join('\n')}\n`;
 }
 
@@ -701,33 +699,6 @@ function distinctSecretFindings(hits) {
     if (a.severity !== b.severity) return a.severity === 'RED' ? -1 : 1;
     return b.count - a.count;
   });
-}
-
-function renderSecretsFindings(findings) {
-  const lines = [
-    '# Secret / PII findings (distinct)',
-    '',
-    'Preview is sanitized for the report. `valuePresent=true` means the raw container',
-    'line contained an unmasked credential-like value (not `***REDACTED***` / boolean / `ID=n`).',
-    'Email is AMBER (low-PII, pending Christophe). Do not confuse report sanitization with product redaction.',
-    '',
-  ];
-  if (!findings.length) {
-    lines.push('_No hits after masked-value filter._', '');
-    return `${lines.join('\n')}\n`;
-  }
-  for (const f of findings) {
-    lines.push(`## ${f.severity} ×${f.count} — ${f.service} / ${f.kinds.join(',')}`);
-    lines.push(`- **Logger:** ${f.logger || '—'}`);
-    lines.push(
-      `- **Product:** ${f.productPath || 'unknown'}:${f.productLines || '?'}`,
-    );
-    lines.push(`- **Real value present in raw log:** ${f.valuePresent}`);
-    if (f.note) lines.push(`- **Note:** ${f.note}`);
-    lines.push(`- **Sanitized preview:** ${f.preview}`);
-    lines.push('');
-  }
-  return `${lines.join('\n')}\n`;
 }
 
 function loadJson(path) {
@@ -758,6 +729,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (key === '--allowlist') {
       out.allowlist = val;
+      i += 1;
+    } else if (key === '--phase') {
+      out.phase = val;
       i += 1;
     }
   }

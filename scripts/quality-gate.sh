@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 #
-# quality-gate — on-demand full-suite gate (cloud agent / Git Bash).
+# quality-gate — on-demand full-suite gate.
+# Cloud agent tooling; Git Bash best-effort, untested on macOS.
 #
 # Phase order (unit tests before stack — memory headroom on ~16Gi VMs):
 #   preflight → unit-tests → clean-start HA+JM (+gate memory overlay)
-#   → post-clean-health → functional → elective → Playwright
-#   → churn-init → 2× churn → health → REPORT.md + summary.json
+#   → post-clean-health → functional → elective → docker-start restore
+#   → Playwright → churn-init → 2× churn → health → REPORT.md + summary.json
 #
 # Exit: 0 = GO, 3 = GO with reservations, other non-zero = NO-GO
+# API replica check covers the 7 HA API JVMs (admin/auth/integration ×2 + crypto).
+# demo-device / demo-app-acme are excluded: not LB replicas; mem-sampled only.
 #
 set -uo pipefail
 
@@ -65,13 +68,18 @@ SHORT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 FULL_SHA="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 UTC_STAMP="$(date -u +"%Y%m%dT%H%M%SZ")"
 RUN_DIR="$REPO_ROOT/logs/quality-gate/${UTC_STAMP}-${SHORT_SHA}"
-mkdir -p "$RUN_DIR/phases" "$RUN_DIR/churn" "$RUN_DIR/health" "$RUN_DIR/nmt"
+mkdir -p "$RUN_DIR/phases" "$RUN_DIR/churn" "$RUN_DIR/health"
 PHASE_TSV="$RUN_DIR/phases.tsv"
 : >"$PHASE_TSV"
 REPLICAS_TSV="$RUN_DIR/replicas.tsv"
 : >"$REPLICAS_TSV"
+RESTARTS_TSV="$RUN_DIR/restarts.tsv"
+printf 'phase\tcontainer\trestarts\tdelta\n' >"$RESTARTS_TSV"
 MEM_SAMPLES_TSV="$RUN_DIR/mem-samples.tsv"
 printf 'utc\tphase\tcontainer\tmem_usage\tmem_limit\tmem_perc\n' >"$MEM_SAMPLES_TSV"
+GATE_STARTED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+declare -A PREV_RESTARTS=()
+SHEDLOCK_KILLED=""
 
 echo "[$KEYWORD] run dir: $RUN_DIR"
 echo "[$KEYWORD] tip: $FULL_SHA"
@@ -106,21 +114,6 @@ start_mem_sampler() {
     done
   ) &
   MEM_SAMPLER_PID=$!
-}
-
-capture_nmt() {
-  local phase="$1"
-  local out="$RUN_DIR/nmt/admin-api-1-${phase}.txt"
-  if ! docker inspect ezkey-admin-api-1 >/dev/null 2>&1; then
-    echo "admin-api-1 not present — skip NMT ($phase)" >"$out"
-    return
-  fi
-  if docker exec ezkey-admin-api-1 sh -c 'command -v jcmd >/dev/null 2>&1'; then
-    docker exec ezkey-admin-api-1 jcmd 1 VM.native_memory summary >"$out" 2>&1 || \
-      echo "jcmd failed (exit $?)" >"$out"
-  else
-    echo "jcmd unavailable in admin-api image (report and continue)" >"$out"
-  fi
 }
 
 cleanup_churn() {
@@ -188,18 +181,37 @@ stop_stacks() {
   docker rm -f ezkey-javamelody-collector ezkey-javamelody-collector-ha >/dev/null 2>&1 || true
 }
 
-# Inspect every API JVM replica. Dead/restarted → AMBER + HA_INVALID (unless caller
-# handles an expected elective ShedLock kill via restore_after_elective).
+# Inspect API JVM replicas. tolerating="$name" may be down (ShedLock kill).
+# RestartCount delta (except restored ShedLock replica) → HA_INVALID.
 check_replicas() {
-  local phase="$1" bad=0 name status health restarts
+  local phase="$1"
+  local tolerating="${2:-}"
+  local bad=0 name status health restarts prev delta
   for name in $HA_REPLICAS; do
     status="$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || echo missing)"
     health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$name" 2>/dev/null || echo missing)"
     restarts="$(docker inspect -f '{{.RestartCount}}' "$name" 2>/dev/null || echo 0)"
+    if [[ -z "${PREV_RESTARTS[$name]+x}" ]]; then
+      prev="$restarts"
+      delta=0
+    else
+      prev="${PREV_RESTARTS[$name]}"
+      delta=$((restarts - prev))
+      [[ "$delta" -lt 0 ]] && delta=0
+    fi
     printf '%s\t%s\t%s\t%s\t%s\n' "$phase" "$name" "$status" "$health" "$restarts" >>"$REPLICAS_TSV"
+    printf '%s\t%s\t%s\t%s\n' "$phase" "$name" "$restarts" "$delta" >>"$RESTARTS_TSV"
+    PREV_RESTARTS[$name]="$restarts"
+    if [[ -n "$tolerating" && "$name" == "$tolerating" ]]; then
+      continue
+    fi
     if [[ "$status" != "running" || ( "$health" != "healthy" && "$health" != "none" ) ]]; then
       bad=1
       echo "[$KEYWORD] replica issue phase=$phase $name status=$status health=$health restarts=$restarts"
+    fi
+    if [[ "$delta" -gt 0 && "$name" != "${SHEDLOCK_KILLED:-}" ]]; then
+      bad=1
+      echo "[$KEYWORD] restart delta phase=$phase $name delta=$delta → HA invalid"
     fi
   done
   if [[ "$bad" -eq 1 ]]; then
@@ -210,7 +222,6 @@ check_replicas() {
   return 0
 }
 
-# Bounded wait until every API replica is running+healthy.
 wait_replicas_healthy() {
   local timeout_s="${1:-180}" elapsed=0 name status health
   while [[ "$elapsed" -lt "$timeout_s" ]]; do
@@ -230,34 +241,38 @@ wait_replicas_healthy() {
   return 1
 }
 
-# ShedLockDistributedTest docker-kills an admin-api replica and does not restore it.
-# After elective: compose up -d, wait healthy, record expected kill. HA_INVALID only if
-# restore fails (or a replica dies in any other phase).
+# Patrick C1: do NOT compose up -d (loses docker-test profile / logs). docker start only.
 restore_after_elective() {
   local elective_log="$RUN_DIR/phases/elective-tests.log"
-  local killed="" compose
+  local killed=""
   SHEDLOCK_KILL_EXPECTED=0
   SHEDLOCK_RESTORE_OK=0
+  SHEDLOCK_KILLED=""
   if [[ -f "$elective_log" ]]; then
     killed="$(grep -E 'Crashing container: ezkey-admin-api-[12]' "$elective_log" 2>/dev/null \
       | tail -1 | sed -E 's/.*Crashing container: (ezkey-admin-api-[12]).*/\1/' || true)"
   fi
   if [[ -n "$killed" ]]; then
     SHEDLOCK_KILL_EXPECTED=1
-    echo "[$KEYWORD] expected: ShedLockDistributedTest killed $killed — restoring HA stack"
+    SHEDLOCK_KILLED="$killed"
+    echo "[$KEYWORD] expected: ShedLockDistributedTest killed $killed — docker start restore"
     printf '%s\n' \
-      "test-hygiene: ShedLockDistributedTest docker-kills ${killed} and does not restore it; gate restores after elective" \
+      "test-hygiene: ShedLockDistributedTest docker-kills ${killed} and does not restore it; gate docker-starts after elective" \
       >>"$RUN_DIR/findings-extra.txt"
-  else
-    echo "[$KEYWORD] no ShedLock kill in elective log — ensuring HA stack is up"
   fi
 
-  export EZKEY_ENABLE_JAVA_MELODY=true
-  export EZKEY_COMPOSE_EXTRA_FILES="$GATE_OVERLAY"
-  compose="$(ha_compose_cmd)"
-  if ! timeout 180 env EZKEY_ENABLE_JAVA_MELODY=true EZKEY_COMPOSE_EXTRA_FILES="$GATE_OVERLAY" \
-      $compose up -d; then
-    echo "[$KEYWORD] restore compose up -d failed or timed out"
+  if ! check_replicas "elective-pre-restore" "$killed"; then
+    echo "[$KEYWORD] unexpected replica down (beyond tolerated ShedLock kill) → HA invalid"
+    return 1
+  fi
+
+  if [[ -z "$killed" ]]; then
+    echo "[$KEYWORD] no ShedLock kill — replicas OK"
+    return 0
+  fi
+
+  if ! docker start "$killed" >/dev/null 2>&1; then
+    echo "[$KEYWORD] docker start $killed failed"
     HA_INVALID=1
     OVERALL_AMBER=1
     return 1
@@ -269,25 +284,55 @@ restore_after_elective() {
     check_replicas "elective-restore" || true
     return 1
   fi
+  # Baseline restarts after intentional kill/start so delta does not trip later phases.
+  PREV_RESTARTS[$killed]="$(docker inspect -f '{{.RestartCount}}' "$killed" 2>/dev/null || echo 0)"
   SHEDLOCK_RESTORE_OK=1
   check_replicas "elective-restore" || true
-  if [[ "$SHEDLOCK_KILL_EXPECTED" -eq 1 ]]; then
-    echo "[$KEYWORD] restore OK after expected ShedLock kill ($killed) — not HA invalid"
-  fi
+  echo "[$KEYWORD] restore OK after expected ShedLock kill ($killed)"
   return 0
 }
 
-# Rewrite the last phases.tsv row note (keep verdict/counts).
-annotate_last_phase_note() {
-  local note="$1" tmp last name
+# Rewrite last phases.tsv row: optional new verdict + note.
+rewrite_last_phase() {
+  local new_verdict="${1:-}" note="${2:-}"
+  local tmp last name ver code dur log counts
   tmp="$(mktemp)"
   head -n -1 "$PHASE_TSV" >"$tmp"
   last="$(tail -1 "$PHASE_TSV")"
   name="$(echo "$last" | cut -f1)"
+  ver="$(echo "$last" | cut -f2)"
+  code="$(echo "$last" | cut -f3)"
+  dur="$(echo "$last" | cut -f4)"
+  log="$(echo "$last" | cut -f5)"
+  counts="$(echo "$last" | cut -f6)"
+  [[ -n "$new_verdict" ]] && ver="$new_verdict"
+  [[ -z "$note" ]] && note="$(echo "$last" | cut -f7)"
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$name" "$(echo "$last" | cut -f2)" "$(echo "$last" | cut -f3)" "$(echo "$last" | cut -f4)" \
-    "$(echo "$last" | cut -f5)" "$(echo "$last" | cut -f6)" "$note" >>"$tmp"
+    "$name" "$ver" "$code" "$dur" "$log" "$counts" "$note" >>"$tmp"
   mv "$tmp" "$PHASE_TSV"
+}
+
+# OOM evidence: docker events since gate start, or ExitOnOutOfMemoryError log line.
+check_oom_evidence() {
+  local ev oom_line=0
+  ev="$(docker events --since "$GATE_STARTED_AT" --until "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+    --filter event=oom --filter type=container 2>/dev/null | head -20 || true)"
+  if [[ -n "$ev" ]]; then
+    echo "[$KEYWORD] docker OOM events detected:"
+    echo "$ev"
+    OVERALL_RED=1
+    printf '%s\n' "OOM: docker events reported container OOM since gate start" >>"$RUN_DIR/findings-extra.txt"
+    return 0
+  fi
+  for name in $HA_REPLICAS; do
+    if docker logs "$name" 2>&1 | tail -200 | grep -q 'Terminating due to java.lang.OutOfMemoryError'; then
+      echo "[$KEYWORD] OOM log line in $name"
+      OVERALL_RED=1
+      printf '%s\n' "OOM: Terminating due to java.lang.OutOfMemoryError in $name" >>"$RUN_DIR/findings-extra.txt"
+      oom_line=1
+    fi
+  done
+  return 0
 }
 
 docker_mem_total_mib() {
@@ -422,12 +467,15 @@ run_phase_clean_start() {
     verdict=AMBER
     note="AMBER: compose retry fired — product bug #747"
     check_replicas clean-start || true
+  elif [[ "$code" -ne 0 ]]; then
+    # Patrick C2: clean-start failed without #747 — do not reset to GREEN if LB is up.
+    verdict=RED
+    note="clean-start failed without ezkey_encryption_key_pkey"
   else
     code=0
     verdict=GREEN
     note="HA + JM + memory overlay (no #747 retry)"
   fi
-  # Re-check keyset evidence into log for allowlist context
   export COMPOSE_RETRY_FIRED
   record_phase clean-start "$verdict" "$code" "$(duration_ms "$start" "$end")" "$log" "-" "$note"
   return "$code"
@@ -438,13 +486,14 @@ run_phase_post_clean_health() {
   start="$(now_ms)"
   {
     echo "=== post-clean-start health snapshot ==="
-    COMPOSE_RETRY_FIRED="$COMPOSE_RETRY_FIRED" \
+    COMPOSE_RETRY_FIRED="$COMPOSE_RETRY_FIRED" QUALITY_GATE_PHASE=post-clean-health \
       ./scripts/stack-health-check.sh --output-dir "$RUN_DIR/health-post-clean"
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
   local hv="-"
   [[ -f "$RUN_DIR/health-post-clean/health.json" ]] \
-    && hv="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$RUN_DIR/health-post-clean/health.json','utf8')).verdict)")"
+    && hv="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).verdict)' \
+      "$RUN_DIR/health-post-clean/health.json")"
   local verdict=GREEN
   [[ "$hv" == "AMBER" ]] && verdict=AMBER
   [[ "$hv" == "RED" || "$code" -ne 0 ]] && { verdict=RED; code=1; }
@@ -525,13 +574,15 @@ run_phase_health() {
   local log="$RUN_DIR/phases/health.log" start end code=0
   start="$(now_ms)"
   {
-    COMPOSE_RETRY_FIRED="$COMPOSE_RETRY_FIRED" \
+    check_oom_evidence || true
+    COMPOSE_RETRY_FIRED="$COMPOSE_RETRY_FIRED" QUALITY_GATE_PHASE=health \
       ./scripts/stack-health-check.sh --output-dir "$RUN_DIR/health"
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
   local hv="-"
   [[ -f "$RUN_DIR/health/health.json" ]] \
-    && hv="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$RUN_DIR/health/health.json','utf8')).verdict)")"
+    && hv="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).verdict)' \
+      "$RUN_DIR/health/health.json")"
   local verdict=GREEN
   [[ "$hv" == "AMBER" ]] && verdict=AMBER
   [[ "$hv" == "RED" || "$code" -ne 0 ]] && { verdict=RED; code=1; }
@@ -588,7 +639,6 @@ for phase in $PHASES; do
   esac
 
   if [[ "$phase" != "preflight" && "$phase" != "unit-tests" ]]; then
-    capture_nmt "$phase"
     stop_mem_sampler
   fi
 
@@ -603,25 +653,15 @@ for phase in $PHASES; do
     OVERALL_AMBER=1
   fi
 
-  # Replica liveness after stack-bearing phases.
-  # Elective: ShedLockDistributedTest may docker-kill an admin-api replica — restore
-  # first; HA invalid only if restore fails (or a replica dies in any other phase).
   if [[ "$phase" == "elective-tests" ]]; then
     if restore_after_elective; then
       if [[ "$SHEDLOCK_KILL_EXPECTED" -eq 1 ]]; then
-        annotate_last_phase_note \
-          "expected: ShedLockDistributedTest kill; restored; all replicas healthy"
+        rewrite_last_phase "" \
+          "expected: ShedLockDistributedTest kill; docker-start restored; all replicas healthy"
       fi
     else
       if [[ "$last_verdict" == "GREEN" ]]; then
-        tmp="$(mktemp)"
-        head -n -1 "$PHASE_TSV" >"$tmp"
-        last="$(tail -1 "$PHASE_TSV")"
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-          "$(echo "$last" | cut -f1)" "AMBER" "$(echo "$last" | cut -f3)" "$(echo "$last" | cut -f4)" \
-          "$(echo "$last" | cut -f5)" "$(echo "$last" | cut -f6)" \
-          "HA invalid: restore after ShedLock/elective failed" >>"$tmp"
-        mv "$tmp" "$PHASE_TSV"
+        rewrite_last_phase "AMBER" "HA invalid: restore after ShedLock/elective failed"
         echo "[$KEYWORD] phase=elective-tests downgraded GREEN→AMBER (restore failed)"
       fi
     fi
@@ -629,16 +669,8 @@ for phase in $PHASES; do
     if ! check_replicas "$phase"; then
       if [[ "$last_verdict" == "GREEN" ]]; then
         OVERALL_AMBER=1
-        tmp="$(mktemp)"
-        head -n -1 "$PHASE_TSV" >"$tmp"
-        last="$(tail -1 "$PHASE_TSV")"
-        name="$(echo "$last" | cut -f1)"
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-          "$name" "AMBER" "$(echo "$last" | cut -f3)" "$(echo "$last" | cut -f4)" \
-          "$(echo "$last" | cut -f5)" "$(echo "$last" | cut -f6)" \
-          "HA invalid: replica dead/unhealthy after phase" >>"$tmp"
-        mv "$tmp" "$PHASE_TSV"
-        echo "[$KEYWORD] phase=$name downgraded GREEN→AMBER (HA invalid)"
+        rewrite_last_phase "AMBER" "HA invalid: replica dead/unhealthy or restart delta"
+        echo "[$KEYWORD] phase=$phase downgraded GREEN→AMBER (HA invalid)"
       fi
     fi
   fi
@@ -651,7 +683,8 @@ cleanup_churn
 
 write_report
 echo "[$KEYWORD] artifacts under $RUN_DIR"
-OVERALL="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$RUN_DIR/summary.json','utf8')).overallVerdict)")"
+OVERALL="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).overallVerdict)' \
+  "$RUN_DIR/summary.json")"
 echo "OVERALL: $OVERALL"
 
 if [[ "$OVERALL_RED" -ne 0 ]]; then exit 1; fi

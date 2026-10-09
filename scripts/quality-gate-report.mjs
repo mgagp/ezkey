@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Write summary.json + slim REPORT.md for quality-gate.
- * Avoids Python/zoneinfo; portable on Git Bash / Linux / macOS.
+ * Slim REPORT.md + summary.json for quality-gate.
+ * Cloud agent tooling; Git Bash best-effort, untested on macOS.
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -55,14 +55,14 @@ if (haInvalid) {
   findings.push({
     phase: 'replicas',
     verdict: 'AMBER',
-    note: 'HA invalid — replica dead/unhealthy after a phase (or elective restore failed)',
+    note: 'HA invalid — replica dead/unhealthy, restart delta, or elective restore failed',
     classification: 'environment',
   });
 } else if (shedlockRestored) {
   findings.push({
     phase: 'elective-tests',
     verdict: 'GREEN',
-    note: 'expected: ShedLockDistributedTest kill; gate restored replicas',
+    note: 'expected: ShedLockDistributedTest kill; gate docker-start restored',
     classification: 'expected (ShedLock)',
   });
 }
@@ -71,10 +71,10 @@ if (existsSync(extraPath)) {
   for (const line of readFileSync(extraPath, 'utf8').split(/\r?\n/)) {
     if (!line.trim()) continue;
     findings.push({
-      phase: 'elective-tests',
+      phase: 'extra',
       verdict: 'NOTE',
       note: line.trim(),
-      classification: 'test-hygiene',
+      classification: line.includes('OOM') ? 'environment' : 'test-hygiene',
     });
   }
 }
@@ -90,11 +90,14 @@ const summary = {
   totalDurationHuman: human(totalMs),
   overallVerdict: overall,
   haInvalid,
+  shedlockRestored,
   composeRetryFired: composeRetry,
   phases,
   findings,
   healthVerdict: health.verdict || null,
-  secretCheck: health.secretHits ? (health.secretHits.length ? 'RED' : 'GREEN') : null,
+  secretCheck: (health.secretFindings || []).some((f) => f.severity === 'RED')
+    ? 'RED'
+    : 'GREEN',
   runDir,
 };
 
@@ -103,15 +106,12 @@ writeFileSync(join(runDir, 'summary.json'), `${JSON.stringify(summary, null, 2)}
 const lines = [
   '# Quality gate report',
   '',
-  `- **Tip SHA:** \`${tip}\``,
-  `- **Generated (UTC):** ${summary.generatedAtUtc}`,
-  `- **Stack:** HA + JavaMelody + gate memory overlay`,
-  `- **Duration:** ${human(totalMs)}`,
-  `- **Churn:** 2 × ${churnMin} min`,
+  `- **Overall:** **${overall}**`,
   `- **HA invalid:** ${haInvalid}`,
+  `- **Tip SHA:** \`${tip}\``,
+  `- **Duration:** ${human(totalMs)}`,
   `- **ShedLock restore:** ${shedlockRestored}`,
   `- **#747 compose retry:** ${composeRetry}`,
-  `- **Overall:** **${overall}**`,
   '',
   '## Phase table',
   '',
@@ -123,9 +123,8 @@ for (const p of phases) {
     `| ${p.name} | ${p.verdict} | ${human(p.durationMs)} | ${p.counts} | ${p.note.replace(/\|/g, '/')} |`,
   );
 }
-lines.push('', '## Findings', '');
-if (!findings.length) lines.push('_None._');
-else {
+if (findings.length) {
+  lines.push('', '## Findings', '');
   lines.push('| Phase | Verdict | Classification | Note |', '| --- | --- | --- | --- |');
   for (const f of findings) {
     lines.push(
@@ -135,12 +134,9 @@ else {
 }
 lines.push('', '## Links', '');
 lines.push(`- Health: \`health/HEALTH.md\` (verdict ${health.verdict || 'n/a'})`);
-lines.push(`- Secret findings: \`health/secrets-findings.md\``);
-lines.push(`- Memory samples: \`mem-samples.tsv\` (docker stats / 10s)`);
-lines.push(`- NMT snapshots: \`nmt/\` (jcmd when available)`);
-lines.push(`- Summary JSON: \`summary.json\``);
-lines.push(`- Replica liveness: \`replicas.tsv\``);
-lines.push(`- Product bugs: [#747](https://github.com/mgagp/ezkey/issues/747), [#748](https://github.com/mgagp/ezkey/issues/748)`);
+lines.push(`- Memory samples: \`mem-samples.tsv\``);
+lines.push(`- Restarts: \`restarts.tsv\``);
+lines.push(`- Summary: \`summary.json\``);
 lines.push('');
 writeFileSync(join(runDir, 'REPORT.md'), `${lines.join('\n')}\n`, 'utf8');
 console.log(`summary: ${join(runDir, 'summary.json')}`);
@@ -153,7 +149,7 @@ function classify(p) {
   if (n.includes('expected: ShedLock') || n.includes('ShedLockDistributedTest')) {
     return 'expected (ShedLock)';
   }
-  if (n.includes('HA invalid') || n.includes('OOMKilled') || n.includes('MemTotal')) {
+  if (n.includes('HA invalid') || n.includes('OOM') || n.includes('MemTotal')) {
     return 'environment';
   }
   if (p.verdict === 'RED') return 'unclassified';
@@ -178,23 +174,22 @@ function loadJson(p) {
 
 function parseArgs(argv) {
   const out = {};
+  const map = {
+    '--run-dir': 'runDir',
+    '--tip': 'tip',
+    '--short': 'short',
+    '--total-ms': 'totalMs',
+    '--churn-min': 'churnMin',
+    '--red': 'red',
+    '--amber': 'amber',
+    '--ha-invalid': 'haInvalid',
+    '--compose-retry': 'composeRetry',
+    '--shedlock-restored': 'shedlockRestored',
+  };
   for (let i = 0; i < argv.length; i += 1) {
     const k = argv[i];
-    const v = argv[i + 1];
-    const map = {
-      '--run-dir': 'runDir',
-      '--tip': 'tip',
-      '--short': 'short',
-      '--total-ms': 'totalMs',
-      '--churn-min': 'churnMin',
-      '--red': 'red',
-      '--amber': 'amber',
-      '--ha-invalid': 'haInvalid',
-      '--compose-retry': 'composeRetry',
-      '--shedlock-restored': 'shedlockRestored',
-    };
     if (map[k]) {
-      out[map[k]] = v;
+      out[map[k]] = argv[i + 1];
       i += 1;
     }
   }
