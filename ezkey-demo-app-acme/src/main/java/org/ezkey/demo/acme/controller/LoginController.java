@@ -146,15 +146,18 @@ public class LoginController {
 
     EzkeyClient client = ezkeyClientProvider.getClient(session);
     if (client == null) {
-      if (entryLink && !slotActive) {
-        // Stale tab: slot gone, marker still on the form → link-lost layout, not SDK chrome.
+      // Reject before createAuthAttempt whenever credentials/slot are unavailable.
+      // entry=link only chooses layout-B copy/redirect; it never gates whether auth runs.
+      boolean linkLostLayout = entryLink && !slotActive;
+      if (linkLostLayout) {
         logger.warn("Login attempt rejected — access-link slot no longer in session");
         redirectAttributes.addFlashAttribute("error", DemoAuthMessages.SESSION_OR_SLOT_LOST);
-        return redirectLogin("error=sessionexpired", true);
+      } else {
+        logger.error("Login attempt rejected — Ezkey SDK not configured");
+        redirectAttributes.addFlashAttribute("error", SDK_NOT_CONFIGURED_MSG);
       }
-      logger.error("Login attempt rejected — Ezkey SDK not configured");
-      redirectAttributes.addFlashAttribute("error", SDK_NOT_CONFIGURED_MSG);
-      return "redirect:/login?error=authfailed";
+      String rejectQuery = linkLostLayout ? "error=sessionexpired" : "error=authfailed";
+      return redirectLogin(rejectQuery, linkLostLayout);
     }
 
     try {
