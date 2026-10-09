@@ -34,7 +34,21 @@ const ALLOWLIST_PATH =
 const COMPOSE_RETRY_FIRED =
   process.env.COMPOSE_RETRY_FIRED === '1' || process.env.COMPOSE_RETRY_FIRED === 'true';
 
-main();
+// RED check: credential-like leakage only. IPv4/IPv6 are still redacted in
+// signature()/sanitize() (Christophe); bare addresses in HAProxy/Spring access
+// logs must not permanently NO-GO the gate.
+const SECRET_RAW_PATTERNS = [
+  { name: 'email', re: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/ },
+  { name: 'jwt', re: /\beyJ[\w-]+\.[\w-]+\.[\w-]+\b/ },
+  {
+    name: 'json-secret',
+    re: /"(password|token|secret|challenge|code|key|accessCode)"\s*:\s*"[^"]+"/i,
+  },
+  {
+    name: 'kv-secret',
+    re: /\b(password|token|secret|challenge|accessCode)\b\s*[=:]\s*\S+/i,
+  },
+];
 
 function main() {
   mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -109,7 +123,10 @@ function sanitize(s) {
     /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\b/g,
     '<IPV4>',
   );
-  out = out.replace(/\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}\b/g, '<IPV6>');
+  // Require :: or a hex letter so HH:MM:SS timestamps are not treated as IPv6.
+  out = out.replace(/\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}\b/g, (m) =>
+    m.includes('::') || /[a-fA-F]/.test(m) ? '<IPV6>' : m,
+  );
   out = out.replace(/\beyJ[\w-]+\.[\w-]+\.[\w-]+\b/g, '<JWT>');
   out = out.replace(
     /"(password|token|secret|challenge|code|key|accessCode|username|user)"\s*:\s*"[^"]*"/gi,
@@ -136,23 +153,6 @@ function signature(line) {
   s = s.replace(/\s+/g, ' ');
   return s.slice(0, 240);
 }
-
-const SECRET_RAW_PATTERNS = [
-  { name: 'email', re: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/ },
-  {
-    name: 'ipv4',
-    re: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\b/,
-  },
-  { name: 'jwt', re: /\beyJ[\w-]+\.[\w-]+\.[\w-]+\b/ },
-  {
-    name: 'json-secret',
-    re: /"(password|token|secret|challenge|code|key|accessCode)"\s*:\s*"[^"]+"/i,
-  },
-  {
-    name: 'kv-secret',
-    re: /\b(password|token|secret|challenge|accessCode)\s*[=:]\s*\S+/i,
-  },
-];
 
 function detectSecrets(rawLine) {
   const hits = [];
@@ -704,3 +704,5 @@ function parseArgs(argv) {
 function fmt(v) {
   return v == null ? '—' : String(v);
 }
+
+main();

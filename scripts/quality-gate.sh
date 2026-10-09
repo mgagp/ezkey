@@ -82,7 +82,10 @@ trap cleanup_churn INT TERM EXIT
 now_ms() { date +%s%3N 2>/dev/null || node -e 'console.log(Date.now())'; }
 duration_ms() { echo $(($2 - $1)); }
 ms_to_human() {
-  local ms="$1" sec=$((ms / 1000)) min=$((sec / 60)); sec=$((sec % 60))
+  local ms="${1:-0}"
+  local sec=$((ms / 1000))
+  local min=$((sec / 60))
+  sec=$((sec % 60))
   if [[ $min -gt 0 ]]; then printf '%dm%02ds' "$min" "$sec"; else printf '%ds' "$sec"; fi
 }
 
