@@ -197,7 +197,8 @@ public class AuditIntegrityElectiveTest extends AbstractSecurityTest {
   // -----------------------------------------------------------------------
 
   @Test
-  @DisplayName("Chain checkpoints in the verify-report window must be linked and digests must match")
+  @DisplayName(
+      "Chain checkpoints in the verify-report window must be linked and digests must match")
   void allChainCheckpoints_mustBeIntact() {
     logger.info("=== Elective: Chain Checkpoint Integrity Check ===");
 

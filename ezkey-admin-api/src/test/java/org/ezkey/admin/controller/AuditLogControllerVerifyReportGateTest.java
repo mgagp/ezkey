@@ -147,7 +147,8 @@ class AuditLogControllerVerifyReportGateTest {
             0,
             true,
             "OK",
-            IntegrityViolationCappedList.of(List.of(), IntegrityViolationCappedList.ALERT_ENTRY_CAP));
+            IntegrityViolationCappedList.of(
+                List.of(), IntegrityViolationCappedList.ALERT_ENTRY_CAP));
     when(auditIntegrityService.verifyRange(eq(FROM), eq(TO))).thenReturn(report);
 
     ResponseEntity<AuditIntegrityService.IntegrityReport> response =
@@ -165,8 +166,7 @@ class AuditLogControllerVerifyReportGateTest {
     try {
       IntegrityAsyncJobBusyException ex =
           assertThrows(
-              IntegrityAsyncJobBusyException.class,
-              () -> controller.checkChainIntegrity(FROM, TO));
+              IntegrityAsyncJobBusyException.class, () -> controller.checkChainIntegrity(FROM, TO));
       assertEquals(IntegrityAsyncJobBusyException.HEAVY_CRYPTO_BUSY_MESSAGE, ex.getMessage());
       verify(auditChainVerificationService, never()).verifyChain(eq(FROM), eq(TO));
     } finally {

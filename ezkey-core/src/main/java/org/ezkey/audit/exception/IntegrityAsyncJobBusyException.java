@@ -26,8 +26,8 @@ import org.ezkey.audit.asyncjob.IntegrityAsyncJobType;
 public class IntegrityAsyncJobBusyException extends RuntimeException {
 
   /**
-   * Shared operator-facing detail when {@link
-   * org.ezkey.audit.integrity.IntegrityHeavyCryptoGate} is held.
+   * Shared operator-facing detail when {@link org.ezkey.audit.integrity.IntegrityHeavyCryptoGate}
+   * is held.
    */
   public static final String HEAVY_CRYPTO_BUSY_MESSAGE =
       "Integrity crypto path busy (scheduled or in-process heavy work)";
