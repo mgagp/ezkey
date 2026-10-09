@@ -4,8 +4,10 @@
 # Bounds each API JVM so ~8 replicas cannot claim uncapped heap (default HotSpot
 # MaxRAMPercentage ≈ 25% of host) on a 15–16 Gi cloud VM.
 
+# MaxRAMPercentage≈60 so heap OOM vs cgroup kill can be distinguished.
+# NativeMemoryTracking=summary enables jcmd VM.native_memory when jcmd is in the image.
 x-java-tool: &java-tool
-  JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=65 -XX:+ExitOnOutOfMemoryError"
+  JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=60 -XX:+ExitOnOutOfMemoryError -XX:NativeMemoryTracking=summary"
 
 services:
   admin-api-1:

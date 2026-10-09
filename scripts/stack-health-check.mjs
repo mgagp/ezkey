@@ -9,6 +9,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  detectSecrets,
+  extractLogger,
+  resolveProductSource,
+} from './lib/quality-gate-secrets.mjs';
+
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, '..');
 const KEYWORD = 'stack-health-check';
@@ -34,22 +40,6 @@ const ALLOWLIST_PATH =
 const COMPOSE_RETRY_FIRED =
   process.env.COMPOSE_RETRY_FIRED === '1' || process.env.COMPOSE_RETRY_FIRED === 'true';
 
-// RED check: credential-like leakage only. IPv4/IPv6 are still redacted in
-// signature()/sanitize() (Christophe); bare addresses in HAProxy/Spring access
-// logs must not permanently NO-GO the gate.
-const SECRET_RAW_PATTERNS = [
-  { name: 'email', re: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/ },
-  { name: 'jwt', re: /\beyJ[\w-]+\.[\w-]+\.[\w-]+\b/ },
-  {
-    name: 'json-secret',
-    re: /"(password|token|secret|challenge|code|key|accessCode)"\s*:\s*"[^"]+"/i,
-  },
-  {
-    name: 'kv-secret',
-    re: /\b(password|token|secret|challenge|accessCode)\b\s*[=:]\s*\S+/i,
-  },
-];
-
 function main() {
   mkdirSync(OUTPUT_DIR, { recursive: true });
   const thresholds = loadJson(THRESHOLDS_PATH) || {};
@@ -64,16 +54,34 @@ function main() {
   );
   writeFileSync(join(OUTPUT_DIR, 'container-logs.md'), renderLogMd(logScan), 'utf8');
 
-  // RED: secrets in raw logs (before redaction for scoring)
+  // Secret / PII scoring — emails AMBER (low-PII); unmasked credentials RED.
+  // Already-masked values (***REDACTED***, etc.) are ignored by detectSecrets.
   const secretHits = logScan.secretHits || [];
+  const redSecrets = secretHits.filter((h) => h.severity === 'RED');
+  const amberSecrets = secretHits.filter((h) => h.severity === 'AMBER');
+  const distinctFindings = distinctSecretFindings(secretHits);
+  writeFileSync(
+    join(OUTPUT_DIR, 'secrets-findings.md'),
+    renderSecretsFindings(distinctFindings),
+    'utf8',
+  );
   pushCheck(
     checks,
     'containers.secretsInRawLogs',
-    secretHits.length,
+    redSecrets.length,
     { amber: 1, red: 1 },
-    secretHits.length
-      ? `Secret patterns in raw logs: ${secretHits.length} (e.g. ${secretHits[0]?.service}: ${sanitize(secretHits[0]?.preview || '')})`
-      : 'No secret patterns in raw container logs',
+    redSecrets.length
+      ? `Unmasked credential patterns in raw logs: ${redSecrets.length} (${distinctFindings.filter((f) => f.severity === 'RED').length} distinct)`
+      : 'No unmasked credential patterns in raw container logs',
+  );
+  pushCheck(
+    checks,
+    'containers.emailLowPii',
+    amberSecrets.length,
+    { amber: 1, red: 999999 },
+    amberSecrets.length
+      ? `Low-PII email in logs: ${amberSecrets.length} (AMBER pending Christophe; e.g. docker-dev bootstrap admin)`
+      : 'No email PII in raw container logs',
   );
 
   const jmPath = join(JM_DIR, 'javamelody.curated.json');
@@ -98,7 +106,8 @@ function main() {
     composeRetryFired: COMPOSE_RETRY_FIRED,
     javamelody: jmScore,
     containers,
-    secretHits: secretHits.slice(0, 20),
+    secretHits: secretHits.slice(0, 40),
+    secretFindings: distinctFindings,
     checks,
   };
   health.verdict = aggregateVerdict(checks);
@@ -152,16 +161,6 @@ function signature(line) {
   s = s.replace(/\b\d{5,}\b/g, '<N>');
   s = s.replace(/\s+/g, ' ');
   return s.slice(0, 240);
-}
-
-function detectSecrets(rawLine) {
-  const hits = [];
-  for (const p of SECRET_RAW_PATTERNS) {
-    if (p.re.test(rawLine)) {
-      hits.push(p.name);
-    }
-  }
-  return hits;
 }
 
 /* ---------- container scan ---------- */
@@ -218,11 +217,18 @@ function scanContainers() {
     for (const line of logs.split(/\r?\n/)) {
       if (!line) continue;
       const secrets = detectSecrets(line);
-      if (secrets.length) {
+      if (secrets.kinds.length) {
+        const src = resolveProductSource(line);
         secretHits.push({
           service: name,
-          kinds: secrets,
-          preview: sanitize(line).slice(0, 160),
+          kinds: secrets.kinds,
+          severity: secrets.severity,
+          valuePresent: secrets.valuePresent,
+          logger: extractLogger(line),
+          productPath: src?.path || null,
+          productLines: src?.lines || null,
+          note: src?.note || null,
+          preview: sanitize(line).slice(0, 200),
         });
       }
       if (ERROR_HINT.test(line)) {
@@ -658,12 +664,69 @@ function renderMarkdown(health) {
   if (!tops.length) lines.push('_None._');
   else for (const sig of tops) lines.push(`- [${sig.service}] ×${sig.count}: ${sig.signature}`);
   lines.push('', `Allowlisted ERROR signatures: ${health.containers?.allowlistedErrorCount ?? 0}`, '');
-  lines.push('## Secret scan (raw logs)', '');
-  if (!(health.secretHits || []).length) lines.push('_No secret patterns detected._');
-  else
-    for (const h of health.secretHits.slice(0, 10))
-      lines.push(`- [${h.service}] ${h.kinds.join(',')}: ${h.preview}`);
-  lines.push('');
+  lines.push('## Secret / PII findings (distinct)', '');
+  const findings = health.secretFindings || [];
+  if (!findings.length) lines.push('_None._');
+  else {
+    lines.push(
+      '| Severity | Service | Kind | Logger | Value present | Product | Preview |',
+      '| --- | --- | --- | --- | --- | --- | --- |',
+    );
+    for (const f of findings) {
+      const prod =
+        f.productPath && f.productPath !== 'unknown'
+          ? `${f.productPath}:${f.productLines}`
+          : f.logger || '—';
+      lines.push(
+        `| ${f.severity} | ${f.service} | ${f.kinds.join(',')} | ${f.logger || '—'} | ${f.valuePresent} | ${prod} | ${f.preview.replace(/\|/g, '/')} |`,
+      );
+    }
+  }
+  lines.push('', 'See `secrets-findings.md` for the full distinct list.', '');
+  return `${lines.join('\n')}\n`;
+}
+
+function distinctSecretFindings(hits) {
+  const map = new Map();
+  for (const h of hits) {
+    // Collapse timestamps / ids so one log statement → one finding row.
+    const sig = signature(h.preview || '');
+    const key = [h.severity, h.kinds.join(','), h.logger, h.productPath, h.productLines, sig].join(
+      '|',
+    );
+    if (!map.has(key)) map.set(key, { ...h, count: 1 });
+    else map.get(key).count += 1;
+  }
+  return [...map.values()].sort((a, b) => {
+    if (a.severity !== b.severity) return a.severity === 'RED' ? -1 : 1;
+    return b.count - a.count;
+  });
+}
+
+function renderSecretsFindings(findings) {
+  const lines = [
+    '# Secret / PII findings (distinct)',
+    '',
+    'Preview is sanitized for the report. `valuePresent=true` means the raw container',
+    'line contained an unmasked credential-like value (not `***REDACTED***` / boolean / `ID=n`).',
+    'Email is AMBER (low-PII, pending Christophe). Do not confuse report sanitization with product redaction.',
+    '',
+  ];
+  if (!findings.length) {
+    lines.push('_No hits after masked-value filter._', '');
+    return `${lines.join('\n')}\n`;
+  }
+  for (const f of findings) {
+    lines.push(`## ${f.severity} ×${f.count} — ${f.service} / ${f.kinds.join(',')}`);
+    lines.push(`- **Logger:** ${f.logger || '—'}`);
+    lines.push(
+      `- **Product:** ${f.productPath || 'unknown'}:${f.productLines || '?'}`,
+    );
+    lines.push(`- **Real value present in raw log:** ${f.valuePresent}`);
+    if (f.note) lines.push(`- **Note:** ${f.note}`);
+    lines.push(`- **Sanitized preview:** ${f.preview}`);
+    lines.push('');
+  }
   return `${lines.join('\n')}\n`;
 }
 
