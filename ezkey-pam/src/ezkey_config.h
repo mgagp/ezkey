@@ -7,7 +7,7 @@
 
 /* Module identification */
 #define EZKEY_MODULE_NAME "pam_ezkey"
-#define EZKEY_VERSION "2.0.0"
+#define EZKEY_VERSION "2.1.0"
 
 /* Default Integration API endpoint */
 #define EZKEY_DEFAULT_API_URL "http://localhost:7080"
@@ -21,6 +21,7 @@
 #define EZKEY_ENV_WAIT_POLLING "EZKEY_WAIT_POLLING"
 #define EZKEY_ENV_API_TIMEOUT "EZKEY_API_TIMEOUT"
 #define EZKEY_ENV_CONFIG_FILE "EZKEY_CONFIG_FILE"
+#define EZKEY_ENV_DEBUG "EZKEY_DEBUG"
 
 /* Timeout defaults (seconds) */
 #define EZKEY_DEFAULT_WAIT_TIMEOUT 90

@@ -1,5 +1,5 @@
 # Makefile for pam_ezkey
-# Build inside the module Docker image (Rocky Linux). Host builds also work
+# Build inside the module Docker image (Rocky or AL2023). Host builds also work
 # when gcc, pam, libcurl, and cJSON development packages are installed.
 
 CC = gcc
