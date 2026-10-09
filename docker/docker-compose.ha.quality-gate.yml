@@ -1,0 +1,55 @@
+# Gate-only HA memory overlay. Applied when quality-gate.sh sets
+# EZKEY_COMPOSE_EXTRA_FILES to this file. Does not change product compose defaults.
+#
+# Bounds each API JVM so ~8 replicas cannot claim uncapped heap (default HotSpot
+# MaxRAMPercentage ≈ 25% of host) on a 15–16 Gi cloud VM.
+
+x-java-tool: &java-tool
+  JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError"
+
+services:
+  admin-api-1:
+    mem_limit: 900m
+    mem_reservation: 256m
+    environment:
+      <<: *java-tool
+  admin-api-2:
+    mem_limit: 900m
+    mem_reservation: 256m
+    environment:
+      <<: *java-tool
+  auth-api-1:
+    mem_limit: 900m
+    mem_reservation: 256m
+    environment:
+      <<: *java-tool
+  auth-api-2:
+    mem_limit: 900m
+    mem_reservation: 256m
+    environment:
+      <<: *java-tool
+  integration-api-1:
+    mem_limit: 900m
+    mem_reservation: 256m
+    environment:
+      <<: *java-tool
+  integration-api-2:
+    mem_limit: 900m
+    mem_reservation: 256m
+    environment:
+      <<: *java-tool
+  crypto-api:
+    mem_limit: 640m
+    mem_reservation: 192m
+    environment:
+      <<: *java-tool
+  demo-device:
+    mem_limit: 640m
+    mem_reservation: 192m
+    environment:
+      <<: *java-tool
+  demo-app-acme:
+    mem_limit: 640m
+    mem_reservation: 192m
+    environment:
+      <<: *java-tool

@@ -505,29 +505,9 @@ yarn doctor:curated
 
 ## Quality gate keyword
 
-- For an on-demand full-suite + stack-health verdict between merge batches, the shared keyword is
-  **`quality-gate`**.
-- Purpose: cloud-agent-only orchestrated run — **one command from scratch**: preflight (stop
-  stack + RAM check) → `./scripts/build.sh` (unit tests, **no stack**) → build images → clean-start
-  HA + JavaMelody → `all-tests` → elective → Playwright → operational churn →
-  `./scripts/stack-health-check.sh` → `REPORT.md` / `summary.json` with GO / GO with reservations /
-  NO-GO. Unit tests run before the stack intentionally (memory headroom on ~16Gi VMs). **Not** a
-  CI gate.
-- HA compose retry for admin keyset race is a temporary workaround for
-  [#747](https://github.com/mgagp/ezkey/issues/747); when it fires, clean-start is **AMBER** (never
-  GREEN). Allowlist entries cite `#747` and must be removed when fixed.
-- Preflight AMBER when available RAM < `HA_JM_MIN_AVAILABLE_MIB` (default **8192 MiB**).
-- Default command from repo root (Git Bash on Windows):
-
-```bash
-./scripts/quality-gate.sh
-./scripts/quality-gate.sh --churn-minutes 5
-```
-
-- Outputs under `logs/quality-gate/<UTC>-<shortsha>/` (gitignored).
-- Config: `config/quality-gate/` (thresholds + log allowlist).
-- Campaign notes: `product-docs/global/hygiene/quality-gate/`
-- Authority: `product-docs/global/hygiene/quality-gate/README.md`
+- On-demand full-suite + stack-health gate: **`quality-gate`**. Canon:
+  [`product-docs/global/hygiene/quality-gate/README.md`](product-docs/global/hygiene/quality-gate/README.md)
+  (`./scripts/quality-gate.sh`; exit 0 GO / 3 reservations / non-zero NO-GO; #747/#748).
 
 ## Assessment curated keyword
 
