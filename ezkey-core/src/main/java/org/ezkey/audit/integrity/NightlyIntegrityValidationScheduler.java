@@ -29,6 +29,10 @@ import org.springframework.stereotype.Component;
  * ezkey.audit.integrity.nightly.enabled} idles this scheduler <strong>and</strong> fail-closes
  * operator {@code POST …/integrity-validation/run} (same flag, not the product profile name).
  *
+ * <p>When {@link IntegrityHeavyCryptoGate} is busy, this run fail-closes with a single WARN and
+ * {@link ScheduledJobLastRunService#recordFailure} (no sleep on the scheduling thread).
+ * Non-blocking retry + skip audit are tracked in GitHub #745.
+ *
  * @since 2026
  */
 @Component
@@ -40,6 +44,9 @@ public class NightlyIntegrityValidationScheduler {
 
   private static final Logger logger =
       LoggerFactory.getLogger(NightlyIntegrityValidationScheduler.class);
+
+  /** Registry / log summary when the gate is busy at cron time. */
+  static final String GATE_BUSY_SKIP_SUMMARY = "skipped: heavy crypto gate busy";
 
   private final NightlyIntegrityProperties nightlyProperties;
   private final AuditChainProperties chainProperties;
@@ -96,7 +103,9 @@ public class NightlyIntegrityValidationScheduler {
       return;
     }
     if (!heavyCryptoGate.tryEnter()) {
-      logger.info("Skipping nightly integrity validation: Integrity heavy crypto gate is busy");
+      logger.warn("Skipping nightly integrity validation: {}", GATE_BUSY_SKIP_SUMMARY);
+      jobLastRunService.recordFailure(
+          ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope, GATE_BUSY_SKIP_SUMMARY);
       return;
     }
     try {

@@ -2538,7 +2538,7 @@
           "Audit Logs"
         ],
         "summary": "Run retroactive integrity validation",
-        "description": "Detective-layer validation over a date range: same semantics as the nightly batch. May raise or touch AUDIT_INTEGRITY_RUPTURE when violations remain alert-eligible. Global Admin only. Use GET integrity-check / chain-integrity for read-only forensic verify.",
+        "description": "Detective-layer validation over a date range: same semantics as the nightly batch. Runs under the Integrity heavy-crypto gate (HTTP 409 when busy). Window capped by ezkey.audit.integrity.retroactive.operator-max-window-hours (default shares verify-report max — 193 hours / 8 calendar days, DST transition included). May raise or touch AUDIT_INTEGRITY_RUPTURE when violations remain alert-eligible. Global Admin only.",
         "operationId": "runRetroactiveIntegrityValidation",
         "requestBody": {
           "content": {
@@ -2572,7 +2572,7 @@
             }
           },
           "409": {
-            "description": "Nightly integrity validation is inactive on this instance (ezkey.audit.integrity.nightly.enabled=false)",
+            "description": "Heavy-crypto gate busy (Retry-After) or nightly integrity validation inactive (ezkey.audit.integrity.nightly.enabled=false)",
             "content": {
               "*/*": {
                 "schema": {
@@ -5884,7 +5884,7 @@
           "Audit Logs"
         ],
         "summary": "Verify audit log integrity",
-        "description": "Recomputes HMAC-SHA256 signatures for audit log entries in the specified date range and reports any tampered or unsigned entries. Global Admin only.",
+        "description": "Recomputes HMAC-SHA256 signatures for audit log entries in the specified date range and reports any tampered or unsigned entries. Runs under the Integrity heavy-crypto gate (HTTP 409 when busy) with a hard window cap (ezkey.audit.integrity.verify-report.max-window-hours, default 193 — 8 calendar days, DST transition included). Global Admin only.",
         "operationId": "checkIntegrity",
         "parameters": [
           {
@@ -5920,7 +5920,17 @@
             }
           },
           "400": {
-            "description": "Date range required -- provide from and to as ISO-8601",
+            "description": "Date range required, inverted, or exceeds verify-report.max-window-hours",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityReport"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Integrity heavy crypto path busy (same contract as async job busy; Retry-After present)",
             "content": {
               "*/*": {
                 "schema": {
@@ -5958,7 +5968,7 @@
           "Audit Logs"
         ],
         "summary": "Verify audit chain checkpoint integrity",
-        "description": "Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage. Detects entry insertion, deletion, reordering, checkpoint tampering, and undeclared temporal gaps (missing checkpoints between consecutive windows or uncovered leading/trailing periods in the requested range). Global Admin only.\n\n**Range handling:** The requested from/to may extend before the first checkpoint or after the last in the database. Such periods are not reported as undeclared gaps (they are before/after \"EZKey time\"). Only real gaps within the system's checkpoint extent are reported. The response fields effectiveFrom and effectiveTo indicate the range actually used for boundary gap reporting (clamped to coverageStart/coverageEnd when the request extended beyond the first/last checkpoint).",
+        "description": "Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage. Detects entry insertion, deletion, reordering, checkpoint tampering, and undeclared temporal gaps (missing checkpoints between consecutive windows or uncovered leading/trailing periods in the requested range). Runs under the Integrity heavy-crypto gate (HTTP 409 when busy) with a hard window cap (ezkey.audit.integrity.verify-report.max-window-hours, default 193 — 8 calendar days, DST transition included). Global Admin only.\n\n**Range handling:** The requested from/to may extend before the first checkpoint or after the last in the database. Such periods are not reported as undeclared gaps (they are before/after \"EZKey time\"). Only real gaps within the system's checkpoint extent are reported. The response fields effectiveFrom and effectiveTo indicate the range actually used for boundary gap reporting (clamped to coverageStart/coverageEnd when the request extended beyond the first/last checkpoint).",
         "operationId": "checkChainIntegrity",
         "parameters": [
           {
@@ -5994,7 +6004,17 @@
             }
           },
           "400": {
-            "description": "Date range required -- provide from and to as ISO-8601",
+            "description": "Date range required, inverted, or exceeds verify-report.max-window-hours",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChainVerificationReport"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Integrity heavy crypto path busy (same contract as async job busy; Retry-After present)",
             "content": {
               "*/*": {
                 "schema": {
@@ -10581,42 +10601,42 @@
   },
   "x-tagGroups": [
     {
+      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ],
-      "name": "Getting started"
+      ]
     },
     {
+      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ],
-      "name": "Tenant and integration setup"
+      ]
     },
     {
+      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ],
-      "name": "MFA operations"
+      ]
     },
     {
+      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ],
-      "name": "Administration"
+      ]
     },
     {
+      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ],
-      "name": "Platform operations"
+      ]
     }
   ]
 }

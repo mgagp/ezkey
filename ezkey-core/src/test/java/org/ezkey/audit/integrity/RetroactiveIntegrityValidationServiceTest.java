@@ -314,23 +314,24 @@ class RetroactiveIntegrityValidationServiceTest {
   }
 
   @Test
-  void validateOperatorWindow_allowsWideWindowWhenCapUnset() {
-    when(retroactiveProperties.getOperatorMaxWindowHours()).thenReturn(null);
+  void validateOperatorWindow_allowsWindowWithinConfiguredCap() {
+    when(retroactiveProperties.getOperatorMaxWindowHours()).thenReturn(193);
 
-    service.validateOperatorWindow(WINDOW_START, WINDOW_START.plusDays(7));
+    service.validateOperatorWindow(WINDOW_START, WINDOW_START.plusHours(193));
   }
 
   @Test
   void validateOperatorWindow_rejectsWindowExceedingConfiguredCap() {
     when(retroactiveProperties.getOperatorMaxWindowHours()).thenReturn(24);
 
-    IllegalArgumentException ex =
+    org.ezkey.audit.exception.IntegrityWindowOverCapException ex =
         assertThrows(
-            IllegalArgumentException.class,
+            org.ezkey.audit.exception.IntegrityWindowOverCapException.class,
             () ->
                 service.validateOperatorWindow(
                     WINDOW_START, WINDOW_START.plusHours(25).plusMinutes(1)));
 
+    assertEquals(24, ex.getMaxWindowHours());
     assertTrue(ex.getMessage().contains("24"));
   }
 

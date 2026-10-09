@@ -5,13 +5,15 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: NightlyIntegrityValidationSchedulerTest
- * Description: Ensures scheduled window end is aligned to the checkpoint grid (ADR-0008).
+ * Description: Grid-aligned window end + heavy-crypto gate busy fail-closed skip.
  */
 
 package org.ezkey.audit.integrity;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -20,6 +22,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import org.ezkey.audit.asyncjob.IntegrityAsyncJobService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -76,7 +79,6 @@ class NightlyIntegrityValidationSchedulerTest {
                 windowEnd -> {
                   OffsetDateTime expected =
                       AuditChainScheduler.roundDownToWindow(OffsetDateTime.now(ZoneOffset.UTC), 5);
-                  // Allow one window of clock skew between arrange and assert
                   long deltaSeconds = Math.abs(ChronoUnit.SECONDS.between(windowEnd, expected));
                   return deltaSeconds < 300
                       && windowEnd.getSecond() == 0
@@ -84,5 +86,25 @@ class NightlyIntegrityValidationSchedulerTest {
                       && windowEnd.getMinute() % 5 == 0;
                 }));
     verify(heavyCryptoGate).exit();
+  }
+
+  @Test
+  @DisplayName("gate busy: single WARN path records fail-closed skip without holding the gate")
+  void runNightlyValidation_gateBusy_recordsFailure() {
+    when(chainProperties.getWindowMinutes()).thenReturn(5);
+    when(nightlyProperties.getWindowHours()).thenReturn(24);
+    when(integrityAsyncJobService.isOperatorSlotRunning()).thenReturn(false);
+    when(heavyCryptoGate.tryEnter()).thenReturn(false);
+
+    scheduler.runNightlyValidation();
+
+    verify(heavyCryptoGate).tryEnter();
+    verify(validationService, never()).validateWindow(any());
+    verify(jobLastRunService)
+        .recordFailure(
+            eq(ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION),
+            any(),
+            eq(NightlyIntegrityValidationScheduler.GATE_BUSY_SKIP_SUMMARY));
+    verify(heavyCryptoGate, never()).exit();
   }
 }

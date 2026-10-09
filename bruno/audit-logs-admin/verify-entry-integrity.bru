@@ -11,10 +11,10 @@ get {
 }
 
 params:query {
-  @description('Start of verification window (inclusive, ISO-8601). Optional -- omit to verify all entries.')
-  ~from: 2026-01-01T00:00:00Z
-  @description('End of verification window (exclusive, ISO-8601). Optional -- omit to verify up to now.')
-  ~to: 2026-12-31T23:59:59Z
+  @description('Start of verification window (inclusive, ISO-8601). Required. Window must be ≤ verify-report.max-window-hours (default 193h).')
+  from: 2026-10-01T00:00:00Z
+  @description('End of verification window (exclusive, ISO-8601). Required.')
+  to: 2026-10-08T00:00:00Z
 }
 
 script:post-response {
@@ -48,10 +48,10 @@ docs {
   
   **Access:** Global Admin only (system-level security operation).
   
-  **Parameters (all optional):**
-  - `from`: Start of verification window (inclusive, ISO-8601 format, e.g. `2026-01-01T00:00:00Z`)
-  - `to`: End of verification window (exclusive, ISO-8601 format)
-  - If both are omitted, verifies ALL entries
+  **Parameters (required):**
+  - `from`: Start of verification window (inclusive, ISO-8601)
+  - `to`: End of verification window (exclusive, ISO-8601)
+  - Omitting either returns 400; windows longer than `verify-report.max-window-hours` (default 193) return 400
   
   **Response (200 OK):**
   ```json
@@ -75,6 +75,8 @@ docs {
   
   **Status Codes:**
   - 200: Integrity check completed
+  - 400: Date range required, inverted, or exceeds verify-report max window
+  - 409: Integrity heavy crypto path busy (same integrity-async-job-busy contract)
   - 401: Unauthorized - admin token required
   - 403: Forbidden - Global Admin role required
 }

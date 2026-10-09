@@ -11,7 +11,80 @@ import type {
   ChainVerificationReport,
   IntegrityReport,
 } from '@/generated/admin-api/model';
+import { ApiError } from '@/lib/api-client';
 import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
+
+/** RFC 9457 type for Integrity async slot / heavy-crypto gate busy (HTTP 409). */
+export const INTEGRITY_ASYNC_JOB_BUSY_TYPE =
+  'https://ezkey.io/problems/domain/integrity-async-job-busy';
+
+/** RFC 9457 type for Integrity window over the shared hour cap (HTTP 400). */
+export const INTEGRITY_WINDOW_OVER_CAP_TYPE =
+  'https://ezkey.io/problems/domain/integrity-window-over-cap';
+
+/**
+ * Shared with {@code IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS}:
+ * 8 calendar days, DST transition included (8×24 + 1).
+ */
+export const INTEGRITY_REPORT_MAX_WINDOW_HOURS = 193;
+
+/** Sentinel when hydration skips the report GET because the job scope is over the cap. */
+export class IntegrityReportHydrationOverCapError extends Error {
+  constructor() {
+    super('Integrity report scope exceeds verify-report max window');
+    this.name = 'IntegrityReportHydrationOverCapError';
+  }
+}
+
+/**
+ * True when Instant bounds exceed the synchronous report / VERIFY window cap.
+ *
+ * @param fromIso inclusive Instant (ISO-8601)
+ * @param toIso exclusive Instant (ISO-8601)
+ * @param maxHours cap in hours (default shared limit)
+ * @returns whether the window is over the cap
+ */
+export function isIntegrityReportScopeOverCap(
+  fromIso: string,
+  toIso: string,
+  maxHours: number = INTEGRITY_REPORT_MAX_WINDOW_HOURS,
+): boolean {
+  const fromMs = new Date(fromIso).getTime();
+  const toMs = new Date(toIso).getTime();
+  if (Number.isNaN(fromMs) || Number.isNaN(toMs) || toMs <= fromMs) {
+    return false;
+  }
+  return (toMs - fromMs) / 3_600_000 > maxHours;
+}
+
+/**
+ * True when a report GET failed because the heavy-crypto gate / async slot is busy.
+ * Hydration must not retry-storm; the operator reloads once the gate is free.
+ *
+ * @param error unknown error from the report GET
+ * @returns whether this is the shared Integrity busy contract
+ */
+export function isIntegrityReportHydrationBusyError(error: unknown): boolean {
+  if (!(error instanceof ApiError) || error.status !== 409) {
+    return false;
+  }
+  const type = error.problemDetail?.type;
+  return type === INTEGRITY_ASYNC_JOB_BUSY_TYPE;
+}
+
+/**
+ * True when the API refused a window that exceeds the shared Integrity hour cap (HTTP 400).
+ * Matches {@link INTEGRITY_WINDOW_OVER_CAP_TYPE} only (not free-text detail).
+ *
+ * @param error unknown error from start or report GET
+ * @returns whether this is an over-cap refusal
+ */
+export function isIntegrityWindowOverCapError(error: unknown): boolean {
+  if (!(error instanceof ApiError) || error.status !== 400) {
+    return false;
+  }
+  return error.problemDetail?.type === INTEGRITY_WINDOW_OVER_CAP_TYPE;
+}
 
 export type IntegrityReportHydrationKind = 'chain' | 'entry';
 

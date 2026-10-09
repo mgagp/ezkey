@@ -34,6 +34,7 @@ import org.ezkey.audit.dto.IntegrityAsyncJobStartRequest;
 import org.ezkey.audit.exception.IntegrityAsyncJobAbandonNotAllowedException;
 import org.ezkey.audit.exception.IntegrityAsyncJobBusyException;
 import org.ezkey.audit.exception.IntegrityValidationDisabledException;
+import org.ezkey.audit.exception.IntegrityWindowOverCapException;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
@@ -67,6 +68,9 @@ class IntegrityAsyncJobServiceTest {
   @Mock private NightlyIntegrityProperties nightlyIntegrityProperties;
   @Mock private AuditLogService auditLogService;
 
+  private final org.ezkey.audit.integrity.IntegrityVerifyReportProperties verifyReportProperties =
+      new org.ezkey.audit.integrity.IntegrityVerifyReportProperties();
+
   private ThreadPoolTaskExecutor executor;
   private IntegrityAsyncJobService service;
 
@@ -87,6 +91,7 @@ class IntegrityAsyncJobServiceTest {
             chainVerificationService,
             retroactiveIntegrityValidationService,
             nightlyIntegrityProperties,
+            verifyReportProperties,
             auditLogService,
             executor);
   }
@@ -109,6 +114,28 @@ class IntegrityAsyncJobServiceTest {
         assertThrows(
             IntegrityAsyncJobBusyException.class, () -> service.start(request, 1, "admin.docker"));
     assertEquals(running.getJobId(), ex.getCurrentJob().getJobId());
+    verify(jobRepository, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void start_verifyChainOverCap_throwsIntegrityWindowOverCapException() {
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.empty());
+    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(heavyCryptoGate.isBusy()).thenReturn(false);
+
+    IntegrityAsyncJobStartRequest request =
+        new IntegrityAsyncJobStartRequest(
+            IntegrityAsyncJobType.VERIFY_CHAIN_RANGE,
+            OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+            OffsetDateTime.parse("2026-01-01T00:00:00Z").plusHours(194),
+            null);
+
+    IntegrityWindowOverCapException ex =
+        assertThrows(
+            IntegrityWindowOverCapException.class, () -> service.start(request, 1, "admin.docker"));
+    assertEquals(193, ex.getMaxWindowHours());
     verify(jobRepository, never()).saveAndFlush(any());
   }
 
@@ -351,6 +378,7 @@ class IntegrityAsyncJobServiceTest {
               chainVerificationService,
               retroactiveIntegrityValidationService,
               nightlyIntegrityProperties,
+              verifyReportProperties,
               auditLogService,
               discarding);
 
@@ -421,6 +449,7 @@ class IntegrityAsyncJobServiceTest {
               chainVerificationService,
               retroactiveIntegrityValidationService,
               nightlyIntegrityProperties,
+              verifyReportProperties,
               auditLogService,
               sync);
 

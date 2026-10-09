@@ -11,11 +11,13 @@
 package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -24,12 +26,15 @@ import java.time.ZoneOffset;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.audit.dto.RetroactiveIntegrityValidationRunRequest;
 import org.ezkey.audit.dto.RetroactiveIntegrityValidationRunResponse;
+import org.ezkey.audit.exception.IntegrityAsyncJobBusyException;
 import org.ezkey.audit.exception.IntegrityValidationDisabledException;
 import org.ezkey.audit.integrity.AuditChainCheckpointService;
 import org.ezkey.audit.integrity.AuditChainIncidentService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.AuditLifecycleService;
+import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
+import org.ezkey.audit.integrity.IntegrityVerifyReportProperties;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationOptions;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationTriggerSource;
@@ -75,6 +80,10 @@ class AuditLogControllerRetroactiveValidationTest {
   @Mock private IntegrationRepository integrationRepository;
   @Mock private TenantRepository tenantRepository;
 
+  private final IntegrityHeavyCryptoGate heavyCryptoGate = new IntegrityHeavyCryptoGate();
+  private final IntegrityVerifyReportProperties verifyReportProperties =
+      new IntegrityVerifyReportProperties();
+
   private AuditLogController controller;
 
   private static final OffsetDateTime FROM =
@@ -97,6 +106,8 @@ class AuditLogControllerRetroactiveValidationTest {
             retroactiveIntegrityValidationService,
             auditChainIncidentService,
             integrityBootstrapService,
+            heavyCryptoGate,
+            verifyReportProperties,
             adminRepository,
             enrollmentRepository,
             integrationRepository,
@@ -167,5 +178,25 @@ class AuditLogControllerRetroactiveValidationTest {
         () ->
             controller.runRetroactiveIntegrityValidation(
                 new RetroactiveIntegrityValidationRunRequest(FROM, TO, true)));
+  }
+
+  @Test
+  @DisplayName("runRetroactiveIntegrityValidation throws busy when heavy crypto gate is held")
+  void runRetroactiveIntegrityValidation_gateBusy_throwsBusyException() {
+    assertTrue(heavyCryptoGate.tryEnter());
+    try {
+      IntegrityAsyncJobBusyException ex =
+          assertThrows(
+              IntegrityAsyncJobBusyException.class,
+              () ->
+                  controller.runRetroactiveIntegrityValidation(
+                      new RetroactiveIntegrityValidationRunRequest(FROM, TO, true)));
+      assertEquals(IntegrityAsyncJobBusyException.HEAVY_CRYPTO_BUSY_MESSAGE, ex.getMessage());
+      verify(retroactiveIntegrityValidationService, never())
+          .runValidation(eq(FROM), eq(TO), any(RetroactiveIntegrityValidationOptions.class));
+    } finally {
+      heavyCryptoGate.exit();
+    }
+    assertFalse(heavyCryptoGate.isBusy());
   }
 }

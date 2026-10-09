@@ -308,6 +308,10 @@
       "busyToast": "Integrity job already running: {{resume}}",
       "hydrateChainError": "Could not load the chain verification result.",
       "hydrateEntryError": "Could not load the entry HMAC verification result.",
+      "hydrateBusyHint": "Integrity verification is busy. Wait a moment, then use \"Reload report\". The detailed report will appear once it loads.",
+      "hydrateOverCapHint": "This verification covers more than 8 days. Its summary is shown above, but the detailed report (gaps, violations) is only available for 8 days or less. To see details, verify a range of 8 days or less.",
+      "verifyWindowOverCap": "Verification is limited to 8 days so its detailed report can be shown. Choose a range of 8 days or less.",
+      "validationWindowOverCap": "Validation is limited to 8 days. Choose a range of 8 days or less.",
       "reloadReport": "Reload report"
     },
     "chainIntegrity": "Chain Integrity",

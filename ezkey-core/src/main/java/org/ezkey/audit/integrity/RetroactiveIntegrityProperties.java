@@ -10,32 +10,41 @@
 
 package org.ezkey.audit.integrity;
 
+import jakarta.validation.constraints.Min;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * Configuration for operator-initiated retroactive integrity validation.
  *
  * <p><b>Configuration prefix:</b> {@code ezkey.audit.integrity.retroactive}
  *
+ * <p>Default operator window cap shares {@link
+ * IntegrityHeavyCryptoWindowLimits#DEFAULT_MAX_WINDOW_HOURS} with report GETs / VERIFY starts
+ * (primitive {@code int} — empty/null env binding cannot remove the cap). Provisional — #730 will
+ * align under a single {@code max-window-days} property.
+ *
  * @since 2026
  */
 @Configuration
 @ConfigurationProperties(prefix = "ezkey.audit.integrity.retroactive")
+@Validated
 public class RetroactiveIntegrityProperties {
 
   /**
-   * Optional maximum operator-selected window length in hours. When {@code null}, operator POST
-   * accepts the same {@code [from, to)} bounds as GET verify endpoints (no duration cap). When set,
-   * requests exceeding this length are rejected with HTTP 400.
+   * Maximum operator-selected window length in hours for retroactive detect POST / async {@code
+   * RUN_VALIDATION}. Defaults to the shared heavy-crypto window limit. Primitive so an empty env
+   * var cannot silently disable the cap.
    */
-  private Integer operatorMaxWindowHours;
+  @Min(1)
+  private int operatorMaxWindowHours = IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS;
 
-  public Integer getOperatorMaxWindowHours() {
+  public int getOperatorMaxWindowHours() {
     return operatorMaxWindowHours;
   }
 
-  public void setOperatorMaxWindowHours(Integer operatorMaxWindowHours) {
+  public void setOperatorMaxWindowHours(int operatorMaxWindowHours) {
     this.operatorMaxWindowHours = operatorMaxWindowHours;
   }
 }

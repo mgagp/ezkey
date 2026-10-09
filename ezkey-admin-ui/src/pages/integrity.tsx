@@ -24,7 +24,12 @@ import {
   integrityExclusiveApiParamsToDisplayRange,
   integrityExclusiveDateRangeToApiParams,
 } from '@/lib/date-range-presets';
-import { isSucceededVerifyJobForReportHydration } from '@/lib/integrity-async-job-report-hydration';
+import {
+  IntegrityReportHydrationOverCapError,
+  isIntegrityReportHydrationBusyError,
+  isIntegrityWindowOverCapError,
+  isSucceededVerifyJobForReportHydration,
+} from '@/lib/integrity-async-job-report-hydration';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
 import { cn, formatDateOnly, formatDateWithTimezone } from '@/lib/utils';
@@ -531,9 +536,12 @@ function IntegrityPanel({
   const [hydrationFailedKind, setHydrationFailedKind] = useState<'chain' | 'entry' | null>(
     null,
   );
+  const [hydrationFailedBusy, setHydrationFailedBusy] = useState(false);
+  const [hydrationFailedOverCap, setHydrationFailedOverCap] = useState(false);
 
   // After VERIFY_* SUCCEEDED, hydrate full reports (gaps / entry violations) from
   // the read-only verify endpoints — the async job DTO only carries a summary.
+  // Report GETs share heavyCryptoGate; 409 busy is shown once (no retry storm).
   useIntegrityAsyncJobReportHydration({
     job: asyncJob,
     reloadNonce: hydrationReloadNonce,
@@ -541,18 +549,32 @@ function IntegrityPanel({
       integrityExclusiveApiParamsToDisplayRange(fromIso, toIso, effectiveTimeZoneId),
     onChainReport: (report, range) => {
       setHydrationFailedKind(null);
+      setHydrationFailedBusy(false);
+      setHydrationFailedOverCap(false);
       setChainReport(report);
       setChainReportRange(range);
     },
     onEntryReport: (report, range) => {
       setHydrationFailedKind(null);
+      setHydrationFailedBusy(false);
+      setHydrationFailedOverCap(false);
       setIntegrityReport(report);
       setIntegrityReportRange(range);
     },
     onChainHydratingChange: setChainLoading,
     onEntryHydratingChange: setIntegrityLoading,
     onError: (kind, error) => {
+      const busy = isIntegrityReportHydrationBusyError(error);
+      const overCap =
+        error instanceof IntegrityReportHydrationOverCapError
+        || isIntegrityWindowOverCapError(error);
       setHydrationFailedKind(kind);
+      setHydrationFailedBusy(busy);
+      setHydrationFailedOverCap(overCap);
+      // Busy / over-cap: inline warning only (no red error toast / retry storm).
+      if (busy || overCap) {
+        return;
+      }
       toast(
         getTranslatedApiError(
           error,
@@ -880,6 +902,8 @@ function IntegrityPanel({
       if (resume) {
         toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
         setAsyncJob(await getCurrentIntegrityAsyncJob());
+      } else if (isIntegrityWindowOverCapError(e)) {
+        toast(t('integrity.asyncJob.verifyWindowOverCap'), 'error');
       } else {
         toast(getTranslatedApiError(e, t, t('integrity.errorChainCheck')), 'error');
       }
@@ -912,6 +936,8 @@ function IntegrityPanel({
       if (resume) {
         toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
         setAsyncJob(await getCurrentIntegrityAsyncJob());
+      } else if (isIntegrityWindowOverCapError(e)) {
+        toast(t('integrity.asyncJob.verifyWindowOverCap'), 'error');
       } else {
         toast(getTranslatedApiError(e, t, t('integrity.errorIntegrityCheck')), 'error');
       }
@@ -943,6 +969,8 @@ function IntegrityPanel({
       if (resume) {
         toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
         setAsyncJob(await getCurrentIntegrityAsyncJob());
+      } else if (isIntegrityWindowOverCapError(e)) {
+        toast(t('integrity.asyncJob.validationWindowOverCap'), 'error');
       } else {
         toast(getTranslatedApiError(e, t, t('integrity.validationRun.error')), 'error');
       }
@@ -1237,23 +1265,31 @@ function IntegrityPanel({
           role="alert"
         >
           <span className="min-w-0 flex-1">
-            {hydrationFailedKind === 'chain'
-              ? t('integrity.asyncJob.hydrateChainError')
-              : t('integrity.asyncJob.hydrateEntryError')}
+            {hydrationFailedOverCap
+              ? t('integrity.asyncJob.hydrateOverCapHint')
+              : hydrationFailedBusy
+                ? t('integrity.asyncJob.hydrateBusyHint')
+                : hydrationFailedKind === 'chain'
+                  ? t('integrity.asyncJob.hydrateChainError')
+                  : t('integrity.asyncJob.hydrateEntryError')}
           </span>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="ml-auto shrink-0"
-            data-testid="integrity-report-reload"
-            onClick={() => {
-              setHydrationFailedKind(null);
-              setHydrationReloadNonce((n) => n + 1);
-            }}
-          >
-            {t('integrity.asyncJob.reloadReport')}
-          </Button>
+          {!hydrationFailedOverCap && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="ml-auto shrink-0"
+              data-testid="integrity-report-reload"
+              onClick={() => {
+                setHydrationFailedKind(null);
+                setHydrationFailedBusy(false);
+                setHydrationFailedOverCap(false);
+                setHydrationReloadNonce((n) => n + 1);
+              }}
+            >
+              {t('integrity.asyncJob.reloadReport')}
+            </Button>
+          )}
         </div>
       )}
 
