@@ -24,6 +24,7 @@ import org.ezkey.integration.exception.SystemIntegrationLifecycleException;
 import org.ezkey.security.exception.EncryptionLifecycleDisabledException;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -279,11 +280,19 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
   }
 
   /**
+   * Suggested wait before retrying when the Integrity heavy-crypto path / async slot is busy.
+   *
+   * <p>Matches non-blocking {@code tryEnter} refusals — clients should not spin; Admin UI shows an
+   * inline busy hint and Reload.
+   */
+  static final String INTEGRITY_BUSY_RETRY_AFTER_SECONDS = "60";
+
+  /**
    * Handles IntegrityAsyncJobBusyException and returns HTTP 409 with current job resume summary.
    *
    * @param ex the busy exception
    * @param request the HTTP servlet request
-   * @return ProblemDetail with {@code currentJob} extension
+   * @return ProblemDetail with {@code currentJob} extension and {@code Retry-After}
    */
   @ExceptionHandler(IntegrityAsyncJobBusyException.class)
   public ResponseEntity<ProblemDetail> handleIntegrityAsyncJobBusyException(
@@ -301,7 +310,9 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
       problem.setProperty("currentJob", current);
       problem.setProperty("resumeOneLiner", current.resumeOneLiner());
     }
-    return response;
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .header(HttpHeaders.RETRY_AFTER, INTEGRITY_BUSY_RETRY_AFTER_SECONDS)
+        .body(problem);
   }
 
   /**

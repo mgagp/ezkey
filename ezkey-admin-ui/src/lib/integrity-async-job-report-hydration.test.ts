@@ -12,7 +12,10 @@ import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
 import {
   executeIntegrityAsyncJobReportHydration,
   INTEGRITY_ASYNC_JOB_BUSY_TYPE,
+  INTEGRITY_REPORT_MAX_WINDOW_HOURS,
   isIntegrityReportHydrationBusyError,
+  isIntegrityReportScopeOverCap,
+  isIntegrityWindowOverCapError,
   isSucceededVerifyJobForReportHydration,
   resolveIntegrityAsyncJobReportHydration,
   type IntegrityReportHydrationRequest,
@@ -67,6 +70,58 @@ describe('isSucceededVerifyJobForReportHydration', () => {
     expect(
       isSucceededVerifyJobForReportHydration(
         job({ jobId: 'a', type: 'RUN_VALIDATION', status: 'SUCCEEDED' }),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('isIntegrityReportScopeOverCap', () => {
+  it('accepts the America/Toronto fall-back default lookback Instant span (193h)', () => {
+    expect(
+      isIntegrityReportScopeOverCap(
+        '2026-10-27T04:00:00.000Z',
+        '2026-11-04T05:00:00.000Z',
+      ),
+    ).toBe(false);
+    expect(INTEGRITY_REPORT_MAX_WINDOW_HOURS).toBe(193);
+  });
+
+  it('rejects windows longer than 193 hours', () => {
+    expect(
+      isIntegrityReportScopeOverCap(
+        '2026-10-27T04:00:00.000Z',
+        '2026-11-04T06:00:00.000Z',
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('isIntegrityWindowOverCapError', () => {
+  it('is true for HTTP 400 with exceeds-maximum detail', () => {
+    expect(
+      isIntegrityWindowOverCapError(
+        new ApiError(
+          400,
+          {
+            type: 'https://ezkey.io/problems/invalid-argument',
+            status: 400,
+            detail:
+              'Verification window exceeds maximum of 193 hours (8 calendar days, DST transition included). Narrow the range.',
+          },
+          'exceeds maximum',
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it('is false for other 400s', () => {
+    expect(
+      isIntegrityWindowOverCapError(
+        new ApiError(
+          400,
+          { type: 'https://ezkey.io/problems/invalid-argument', status: 400, detail: 'bad' },
+          'bad',
+        ),
       ),
     ).toBe(false);
   });

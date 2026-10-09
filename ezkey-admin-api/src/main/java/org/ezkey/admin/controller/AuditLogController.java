@@ -515,8 +515,8 @@ public class AuditLogController {
           "Recomputes HMAC-SHA256 signatures for audit log entries in the specified date "
               + "range and reports any tampered or unsigned entries. Runs under the Integrity "
               + "heavy-crypto gate (HTTP 409 when busy) with a hard window cap "
-              + "(ezkey.audit.integrity.verify-report.max-window-hours, default 192). "
-              + "Global Admin only.")
+              + "(ezkey.audit.integrity.verify-report.max-window-hours, default 193 — "
+              + "8 calendar days, DST transition included). Global Admin only.")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Integrity check completed"),
@@ -526,7 +526,9 @@ public class AuditLogController {
                 "Date range required, inverted, or exceeds verify-report.max-window-hours"),
         @ApiResponse(
             responseCode = "409",
-            description = "Integrity heavy crypto path busy (same contract as async job busy)"),
+            description =
+                "Integrity heavy crypto path busy (same contract as async job busy;"
+                    + " Retry-After present)"),
         @ApiResponse(responseCode = "401", description = "Not authenticated"),
         @ApiResponse(responseCode = "403", description = "Not a Global Admin")
       })
@@ -610,8 +612,8 @@ public class AuditLogController {
               + "tampering, and undeclared temporal gaps (missing checkpoints between consecutive "
               + "windows or uncovered leading/trailing periods in the requested range). "
               + "Runs under the Integrity heavy-crypto gate (HTTP 409 when busy) with a hard "
-              + "window cap (ezkey.audit.integrity.verify-report.max-window-hours, default 192). "
-              + "Global Admin only.\n\n"
+              + "window cap (ezkey.audit.integrity.verify-report.max-window-hours, default 193 — "
+              + "8 calendar days, DST transition included). Global Admin only.\n\n"
               + "**Range handling:** The requested from/to may extend before the first checkpoint "
               + "or after the last in the database. Such periods are not reported as undeclared "
               + "gaps (they are before/after \"EZKey time\"). Only real gaps within the system's "
@@ -628,7 +630,9 @@ public class AuditLogController {
                 "Date range required, inverted, or exceeds verify-report.max-window-hours"),
         @ApiResponse(
             responseCode = "409",
-            description = "Integrity heavy crypto path busy (same contract as async job busy)"),
+            description =
+                "Integrity heavy crypto path busy (same contract as async job busy;"
+                    + " Retry-After present)"),
         @ApiResponse(responseCode = "401", description = "Not authenticated"),
         @ApiResponse(responseCode = "403", description = "Not a Global Admin")
       })
@@ -686,9 +690,11 @@ public class AuditLogController {
       summary = "Run retroactive integrity validation",
       description =
           "Detective-layer validation over a date range: same semantics as the nightly batch."
-              + " May raise or touch AUDIT_INTEGRITY_RUPTURE when violations remain"
-              + " alert-eligible. Global Admin only. Use GET integrity-check / chain-integrity"
-              + " for read-only forensic verify.")
+              + " Runs under the Integrity heavy-crypto gate (HTTP 409 when busy)."
+              + " Window capped by ezkey.audit.integrity.retroactive.operator-max-window-hours"
+              + " (default shares verify-report max — 193 hours / 8 calendar days, DST"
+              + " transition included). May raise or touch AUDIT_INTEGRITY_RUPTURE when"
+              + " violations remain alert-eligible. Global Admin only.")
   @ApiResponses(
       value = {
         @ApiResponse(
@@ -701,7 +707,7 @@ public class AuditLogController {
         @ApiResponse(
             responseCode = "409",
             description =
-                "Nightly integrity validation is inactive on this instance"
+                "Heavy-crypto gate busy (Retry-After) or nightly integrity validation inactive"
                     + " (ezkey.audit.integrity.nightly.enabled=false)",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(responseCode = "401", description = "Not authenticated"),
@@ -713,10 +719,13 @@ public class AuditLogController {
     retroactiveIntegrityValidationService.validateOperatorWindow(request.from(), request.to());
     boolean raiseAlert = request.raiseAlert() == null || request.raiseAlert();
     var result =
-        retroactiveIntegrityValidationService.runValidation(
-            request.from(),
-            request.to(),
-            RetroactiveIntegrityValidationOptions.operator(raiseAlert, extractRequesterAdminId()));
+        withHeavyCryptoGate(
+            () ->
+                retroactiveIntegrityValidationService.runValidation(
+                    request.from(),
+                    request.to(),
+                    RetroactiveIntegrityValidationOptions.operator(
+                        raiseAlert, extractRequesterAdminId())));
     return ResponseEntity.ok(RetroactiveIntegrityValidationRunResponse.from(result));
   }
 

@@ -190,33 +190,33 @@ class AuditLogControllerVerifyReportGateTest {
   }
 
   @Test
-  @DisplayName("checkChainIntegrity rejects windows above the 192h default cap with 400 message")
+  @DisplayName("checkChainIntegrity rejects windows above the 193h default cap with 400 message")
   void checkChainIntegrity_rangeOverCap_throwsIllegalArgumentException() {
-    OffsetDateTime overCapTo = FROM.plusHours(193);
+    OffsetDateTime overCapTo = FROM.plusHours(194);
     IllegalArgumentException ex =
         assertThrows(
             IllegalArgumentException.class, () -> controller.checkChainIntegrity(FROM, overCapTo));
-    assertTrue(ex.getMessage().contains("192"));
+    assertTrue(ex.getMessage().contains("193"));
     verify(auditChainVerificationService, never()).verifyChain(eq(FROM), eq(overCapTo));
     assertFalse(heavyCryptoGate.isBusy());
   }
 
   @Test
-  @DisplayName("checkIntegrity rejects windows above the 192h default cap")
+  @DisplayName("checkIntegrity rejects windows above the 193h default cap")
   void checkIntegrity_rangeOverCap_throwsIllegalArgumentException() {
     OffsetDateTime overCapTo = FROM.plusDays(9);
     IllegalArgumentException ex =
         assertThrows(
             IllegalArgumentException.class, () -> controller.checkIntegrity(FROM, overCapTo));
-    assertTrue(ex.getMessage().contains("192"));
+    assertTrue(ex.getMessage().contains("193"));
     verify(auditIntegrityService, never()).verifyRange(eq(FROM), eq(overCapTo));
   }
 
   @Test
-  @DisplayName("default UI 7-day lookback Instant span (168–192h) is accepted")
+  @DisplayName("default UI 7-day lookback Instant span including DST (+1h) is accepted")
   void checkChainIntegrity_defaultSevenDayLookbackSpan_accepted() {
-    // Inclusive calendar from/to with exclusive-end → up to 8×24h = 192h.
-    OffsetDateTime toExclusive = FROM.plusHours(192);
+    // 8 calendar days, DST transition included → up to 193h.
+    OffsetDateTime toExclusive = FROM.plusHours(193);
     AuditChainVerificationService.ChainVerificationReport report =
         new AuditChainVerificationService.ChainVerificationReport(
             0,

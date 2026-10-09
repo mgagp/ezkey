@@ -270,6 +270,35 @@ describe('useIntegrityAsyncJobReportHydration', () => {
     expect(onChainReport).toHaveBeenCalledTimes(1);
   });
 
+  it('skips report GET when SUCCEEDED job scope is over the cap (no reload storm)', async () => {
+    const fetchChainReport = vi.fn(async () => ({ intact: true }) as ChainVerificationReport);
+    const onError = vi.fn();
+
+    renderHook(() =>
+      useIntegrityAsyncJobReportHydration({
+        job: job({
+          jobId: 'j-overcap',
+          type: 'VERIFY_CHAIN_RANGE',
+          status: 'SUCCEEDED',
+          scopeFrom: '2026-01-01T00:00:00.000Z',
+          scopeTo: '2026-01-10T00:00:00.000Z',
+        }),
+        onChainReport: vi.fn(),
+        onEntryReport: vi.fn(),
+        onError,
+        toDisplayRange: () => ({ from: '2026-01-01', to: '2026-01-09' }),
+        fetchChainReport,
+        fetchEntryReport: vi.fn(async () => ({ intact: true }) as IntegrityReport),
+      }),
+    );
+
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
+    expect(fetchChainReport).not.toHaveBeenCalled();
+    expect(onError.mock.calls[0][1]).toMatchObject({
+      name: 'IntegrityReportHydrationOverCapError',
+    });
+  });
+
   it('resets integrityLoading when cancelled by a new chain job mid-hydration', async () => {
     let resolveEntry!: (value: IntegrityReport) => void;
     const entryPromise = new Promise<IntegrityReport>((resolve) => {

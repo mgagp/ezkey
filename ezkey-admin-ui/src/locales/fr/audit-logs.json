@@ -308,7 +308,9 @@
       "busyToast": "Job d'intégrité déjà en cours : {{resume}}",
       "hydrateChainError": "Impossible de charger le résultat de vérification de la chaîne.",
       "hydrateEntryError": "Impossible de charger le résultat de vérification HMAC des entrées.",
-      "hydrateBusyHint": "La vérification d'intégrité est occupée. Attendez la fin du batch nocturne ou du job en cours, puis utilisez Recharger le rapport. Les lacunes détectées apparaîtront une fois le rapport chargé.",
+      "hydrateBusyHint": "La vérification d'intégrité est occupée. Attendez la fin du job nocturne ou du job en cours, puis utilisez « Recharger le rapport ». Le rapport détaillé apparaîtra une fois chargé.",
+      "hydrateOverCapHint": "Cette vérification couvre plus de 8 jours. Son résumé est affiché ci-dessus, mais le rapport détaillé (lacunes, violations) n'est disponible que pour 8 jours ou moins. Pour voir le détail, vérifiez une période de 8 jours ou moins.",
+      "verifyWindowOverCap": "La vérification est limitée à 8 jours pour que son rapport détaillé puisse s'afficher. Choisissez une période de 8 jours ou moins.",
       "reloadReport": "Recharger le rapport"
     },
     "chainIntegrity": "Intégrité de la chaîne",

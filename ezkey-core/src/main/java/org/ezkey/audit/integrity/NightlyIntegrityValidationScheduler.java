@@ -10,6 +10,7 @@
 
 package org.ezkey.audit.integrity;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -29,6 +30,10 @@ import org.springframework.stereotype.Component;
  * ezkey.audit.integrity.nightly.enabled} idles this scheduler <strong>and</strong> fail-closes
  * operator {@code POST …/integrity-validation/run} (same flag, not the product profile name).
  *
+ * <p>When {@link IntegrityHeavyCryptoGate} is busy, retries every {@link #GATE_BUSY_RETRY_INTERVAL}
+ * for up to {@link #GATE_BUSY_RETRY_BUDGET} before recording a fail-closed registry failure (skip
+ * must be observable).
+ *
  * @since 2026
  */
 @Component
@@ -41,6 +46,27 @@ public class NightlyIntegrityValidationScheduler {
   private static final Logger logger =
       LoggerFactory.getLogger(NightlyIntegrityValidationScheduler.class);
 
+  /** Delay between gate-busy retries. */
+  static final Duration GATE_BUSY_RETRY_INTERVAL = Duration.ofMinutes(5);
+
+  /** Maximum time spent waiting for the heavy-crypto gate before give-up. */
+  static final Duration GATE_BUSY_RETRY_BUDGET = Duration.ofHours(1);
+
+  /** Registry / log summary when the gate stays busy past the retry budget. */
+  static final String GATE_BUSY_SKIP_SUMMARY = "skipped: heavy crypto gate busy";
+
+  /** Interruptible wait between gate-busy retries (test seam). */
+  @FunctionalInterface
+  interface InterruptibleSleeper {
+    /**
+     * Blocks for the given duration.
+     *
+     * @param duration sleep length
+     * @throws InterruptedException when interrupted
+     */
+    void sleep(Duration duration) throws InterruptedException;
+  }
+
   private final NightlyIntegrityProperties nightlyProperties;
   private final AuditChainProperties chainProperties;
   private final RetroactiveIntegrityValidationService validationService;
@@ -48,8 +74,12 @@ public class NightlyIntegrityValidationScheduler {
   private final IntegrityHeavyCryptoGate heavyCryptoGate;
   private final ObjectProvider<IntegrityAsyncJobService> integrityAsyncJobService;
 
+  private Duration gateBusyRetryInterval = GATE_BUSY_RETRY_INTERVAL;
+  private Duration gateBusyRetryBudget = GATE_BUSY_RETRY_BUDGET;
+  private InterruptibleSleeper sleeper = duration -> Thread.sleep(duration.toMillis());
+
   /**
-   * Constructs the scheduler.
+   * Constructs the scheduler with production retry defaults.
    *
    * @param nightlyProperties nightly batch configuration
    * @param chainProperties rolling checkpoint window size (grid alignment)
@@ -74,6 +104,20 @@ public class NightlyIntegrityValidationScheduler {
   }
 
   /**
+   * Package-visible test seam for gate-busy retry timing (avoids a second Spring constructor).
+   *
+   * @param interval delay between retries
+   * @param budget max wait before give-up
+   * @param sleeper interruptible wait between retries
+   */
+  void configureGateBusyRetryForTests(
+      Duration interval, Duration budget, InterruptibleSleeper waitBetweenRetries) {
+    this.gateBusyRetryInterval = interval;
+    this.gateBusyRetryBudget = budget;
+    this.sleeper = waitBetweenRetries;
+  }
+
+  /**
    * Scheduled nightly retroactive integrity validation.
    *
    * <p>Batch infrastructure failures update the job registry only (C9); integrity ruptures raise
@@ -95,8 +139,7 @@ public class NightlyIntegrityValidationScheduler {
       logger.info("Skipping nightly integrity validation: operator Integrity async job is RUNNING");
       return;
     }
-    if (!heavyCryptoGate.tryEnter()) {
-      logger.info("Skipping nightly integrity validation: Integrity heavy crypto gate is busy");
+    if (!acquireHeavyCryptoGate(scope)) {
       return;
     }
     try {
@@ -113,5 +156,46 @@ public class NightlyIntegrityValidationScheduler {
     } finally {
       heavyCryptoGate.exit();
     }
+  }
+
+  /**
+   * Tries to enter the heavy-crypto gate, retrying while the budget remains.
+   *
+   * @param scope registry scope used if give-up records a failure
+   * @return {@code true} when the gate was acquired (caller must {@code exit})
+   */
+  private boolean acquireHeavyCryptoGate(String scope) {
+    long intervalMillis = Math.max(1L, gateBusyRetryInterval.toMillis());
+    int maxAttempts = Math.max(1, (int) (gateBusyRetryBudget.toMillis() / intervalMillis));
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (heavyCryptoGate.tryEnter()) {
+        return true;
+      }
+      if (attempt >= maxAttempts) {
+        break;
+      }
+      logger.warn(
+          "Integrity heavy crypto gate busy; retrying nightly validation in {} minutes"
+              + " (attempt {}/{})",
+          gateBusyRetryInterval.toMinutes(),
+          attempt,
+          maxAttempts);
+      try {
+        sleeper.sleep(gateBusyRetryInterval);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Nightly integrity validation interrupted while waiting for heavy crypto gate");
+        jobLastRunService.recordFailure(
+            ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope, GATE_BUSY_SKIP_SUMMARY);
+        return false;
+      }
+    }
+    logger.warn(
+        "Skipping nightly integrity validation after {} retries: {}",
+        maxAttempts,
+        GATE_BUSY_SKIP_SUMMARY);
+    jobLastRunService.recordFailure(
+        ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope, GATE_BUSY_SKIP_SUMMARY);
+    return false;
   }
 }

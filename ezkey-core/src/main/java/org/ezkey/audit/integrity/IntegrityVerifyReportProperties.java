@@ -5,37 +5,40 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Configuration: IntegrityVerifyReportProperties
- * Description: Bounds for synchronous Integrity report GETs (chain-integrity / integrity-check).
+ * Description: Bounds for synchronous Integrity report GETs and VERIFY async starts.
  */
 
 package org.ezkey.audit.integrity;
 
+import jakarta.validation.constraints.Min;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.validation.annotation.Validated;
 
 /**
- * Configuration for synchronous Integrity report GETs.
+ * Configuration for Integrity report GET / VERIFY window bounds.
  *
  * <p><b>Configuration prefix:</b> {@code ezkey.audit.integrity.verify-report}
  *
- * <p>These GETs recompute chain/entry integrity in the request thread. The default window cap
- * matches the Admin UI default 7-day lookback Instant span (inclusive calendar {@code from}/{@code
- * to} with exclusive-end conversion yields up to 8×24h). Unbounded ranges must use async VERIFY
- * jobs; job-backed report hydration is tracked separately (#730).
+ * <p>Default matches {@link IntegrityHeavyCryptoWindowLimits#DEFAULT_MAX_WINDOW_HOURS} (8 calendar
+ * days, DST transition included). Provisional hour key — #730 will align with {@code
+ * max-window-days}.
  *
  * @since 2026
  */
 @Configuration
 @ConfigurationProperties(prefix = "ezkey.audit.integrity.verify-report")
+@Validated
 public class IntegrityVerifyReportProperties {
 
   /**
-   * Maximum {@code [from, to)} length in hours for {@code GET …/integrity-check} and {@code GET
-   * …/chain-integrity}. Default {@code 192} (8 days).
+   * Maximum {@code [from, to)} length in hours for report GETs and async VERIFY starts. Default
+   * {@link IntegrityHeavyCryptoWindowLimits#DEFAULT_MAX_WINDOW_HOURS}.
    */
-  private int maxWindowHours = 192;
+  @Min(1)
+  private int maxWindowHours = IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS;
 
   public int getMaxWindowHours() {
     return maxWindowHours;
@@ -46,7 +49,7 @@ public class IntegrityVerifyReportProperties {
   }
 
   /**
-   * Validates report GET bounds: required range, ordered ends, and hard window cap.
+   * Validates bounds: required range, ordered ends, and hard window cap.
    *
    * @param from inclusive window start
    * @param to exclusive window end
@@ -67,8 +70,7 @@ public class IntegrityVerifyReportProperties {
       throw new IllegalArgumentException(
           "Verification window exceeds maximum of "
               + maxWindowHours
-              + " hours (synchronous report GET cap). Narrow the range or use an Integrity async"
-              + " VERIFY job.");
+              + " hours (8 calendar days, DST transition included). Narrow the range.");
     }
   }
 }

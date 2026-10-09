@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
  *
  * <ol>
  *   <li><b>Per-entry HMAC integrity (bounded window)</b> -- calls {@code GET
- *       /api/v1/audit-logs/integrity-check} over the last 192 hours (synchronous report GET cap);
+ *       /api/v1/audit-logs/integrity-check} over the last 193 hours (synchronous report GET cap);
  *       every signed entry in that window is recomputed and compared against its stored HMAC. Any
  *       mismatch means the entry was tampered with after signing.
  *   <li><b>Chain checkpoint linkage</b> -- calls {@code GET /api/v1/audit-logs/chain-integrity}
@@ -130,7 +130,7 @@ public class AuditIntegrityElectiveTest extends AbstractSecurityTest {
         dbSignedCount,
         dbUnsignedCount);
 
-    // Synchronous report GETs are capped (default 192h); use that bounded window.
+    // Synchronous report GETs are capped (default 193h); use that bounded window.
     Response response =
         given()
             .header("Authorization", "Bearer " + adminToken)
@@ -341,13 +341,13 @@ public class AuditIntegrityElectiveTest extends AbstractSecurityTest {
   // -----------------------------------------------------------------------
 
   /**
-   * Bounded Instant window for synchronous report GETs (default max 192 hours).
+   * Bounded Instant window for synchronous report GETs (default max 193 hours).
    *
    * @return {@code [from, to)} as ISO-8601 UTC strings
    */
   private static String[] reportWindowBounds() {
     OffsetDateTime to = OffsetDateTime.now(ZoneOffset.UTC);
-    OffsetDateTime from = to.minusHours(192);
+    OffsetDateTime from = to.minusHours(193);
     DateTimeFormatter fmt = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
     return new String[] {from.format(fmt), to.format(fmt)};
   }
