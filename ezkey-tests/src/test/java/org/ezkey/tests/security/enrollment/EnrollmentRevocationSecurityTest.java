@@ -605,7 +605,11 @@ public class EnrollmentRevocationSecurityTest extends AbstractSecurityTest {
               .then()
               .extract()
               .response();
-      assertThat(bindAfterRevoke.getStatusCode()).isNotEqualTo(200);
+      // Revoked CREATED enrollments are rejected as not-CREATED (409 already-bound ProblemDetail).
+      assertThat(bindAfterRevoke.getStatusCode()).isEqualTo(409);
+      assertThat(bindAfterRevoke.jsonPath().getString("type"))
+          .endsWith("/enrollment-already-bound");
+      assertThat(bindAfterRevoke.jsonPath().getInt("status")).isEqualTo(409);
 
       String verifyPayload =
           org.ezkey.tests.util.EnrollmentVerifyDevicePayload.build(
@@ -615,6 +619,9 @@ public class EnrollmentRevocationSecurityTest extends AbstractSecurityTest {
               bound.deviceKeyPair().publicKey());
       String signature =
           cryptoApiClient.signData(verifyPayload, bound.deviceKeyPair().privateKey());
+      // CryptoApiClient uses an isolated RequestSpecification; still pin Auth API explicitly
+      // so this security assertion cannot silently target crypto-api again (#748).
+      configureForAuthApi(dockerStackConfig);
       Map<String, Object> verifyRequest = new HashMap<>();
       verifyRequest.put("enrollmentId", bound.enrollmentId());
       verifyRequest.put("challengeResponse", bound.challengeCode());
@@ -629,7 +636,11 @@ public class EnrollmentRevocationSecurityTest extends AbstractSecurityTest {
               .then()
               .extract()
               .response();
-      assertThat(verifyAfterRevoke.getStatusCode()).isNotEqualTo(200);
+      // Auth API: REVOKED (not BOUND) → EnrollmentVerifyStateConflictException → 409.
+      assertThat(verifyAfterRevoke.getStatusCode()).isEqualTo(409);
+      assertThat(verifyAfterRevoke.jsonPath().getString("type"))
+          .endsWith("/enrollment-state-conflict");
+      assertThat(verifyAfterRevoke.jsonPath().getInt("status")).isEqualTo(409);
     } catch (IllegalStateException e) {
       Assumptions.assumeTrue(false, "Admin token not available: " + e.getMessage());
     }
