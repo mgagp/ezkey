@@ -12,6 +12,7 @@ package org.ezkey.crypto;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 
@@ -26,7 +27,8 @@ import org.springframework.context.annotation.FilterType;
  *
  * @since 2025
  */
-@SpringBootApplication
+// No in-memory user / generated security password — crypto API permits all (lab tool, no auth).
+@SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
 @ComponentScan(
     basePackages = { //
       "org.ezkey.crypto", //
