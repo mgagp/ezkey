@@ -889,8 +889,7 @@ class ApiKeyServiceTest {
           "ezkey_ikey_a1__…",
           ApiKeyService.maskIntegrationKeyForLog("ezkey_ikey_a1\r\nbadrestofkey00001111"));
       assertEquals("evil__in…", ApiKeyService.maskIntegrationKeyForLog("evil\r\ninj" + "xxxxxxxx"));
-      assertEquals(
-          "ab_cd_ef…", ApiKeyService.maskIntegrationKeyForLog("ab-cd.ef" + "restofkey"));
+      assertEquals("ab_cd_ef…", ApiKeyService.maskIntegrationKeyForLog("ab-cd.ef" + "restofkey"));
     }
 
     @Test

@@ -41,13 +41,10 @@ class EzkeyExceptionReadTimeoutTest {
 
   @Test
   void connectTimeoutIsNotReadTimeout() {
-    HttpConnectTimeoutException connect =
-        new HttpConnectTimeoutException("connection timed out");
+    HttpConnectTimeoutException connect = new HttpConnectTimeoutException("connection timed out");
     assertFalse(new EzkeyException("any", connect).isReadTimeout());
     assertFalse(EzkeyException.isReadTimeoutThrowable(connect));
-    assertFalse(
-        EzkeyException.isReadTimeoutThrowable(
-            new IOExceptionWrapper("wrap", connect)));
+    assertFalse(EzkeyException.isReadTimeoutThrowable(new IOExceptionWrapper("wrap", connect)));
   }
 
   @Test

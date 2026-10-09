@@ -608,10 +608,7 @@ public class ApiKeyService {
     for (int i = 0; i < fragment.length(); i++) {
       char c = fragment.charAt(i);
       boolean keep =
-          (c >= 'A' && c <= 'Z')
-              || (c >= 'a' && c <= 'z')
-              || (c >= '0' && c <= '9')
-              || c == '_';
+          (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
       sanitized.append(keep ? c : '_');
     }
     return sanitized.toString();

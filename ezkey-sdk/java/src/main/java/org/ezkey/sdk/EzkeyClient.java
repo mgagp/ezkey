@@ -14,9 +14,9 @@ package org.ezkey.sdk;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -561,10 +561,7 @@ public final class EzkeyClient {
     for (int i = 0; i < fragment.length(); i++) {
       char c = fragment.charAt(i);
       boolean keep =
-          (c >= 'A' && c <= 'Z')
-              || (c >= 'a' && c <= 'z')
-              || (c >= '0' && c <= '9')
-              || c == '_';
+          (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
       sanitized.append(keep ? c : '_');
     }
     return sanitized.toString();
