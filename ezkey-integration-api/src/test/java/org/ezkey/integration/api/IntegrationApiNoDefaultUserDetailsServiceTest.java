@@ -71,8 +71,9 @@ class IntegrationApiNoDefaultUserDetailsServiceTest {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-      http.csrf(csrf -> csrf.disable())
-          .authorizeHttpRequests(authz -> authz.anyRequest().permitAll())
+      // CSRF left at Spring defaults — this chain only exists so Security auto-config runs;
+      // it is not production security configuration.
+      http.authorizeHttpRequests(authz -> authz.anyRequest().permitAll())
           .httpBasic(httpBasic -> httpBasic.disable())
           .formLogin(formLogin -> formLogin.disable());
       return http.build();
