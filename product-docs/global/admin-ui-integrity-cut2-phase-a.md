@@ -14,6 +14,7 @@
   - Walk Gate: [`backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-a.md`](backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-a.md)
   - Next phase: [`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md) + [`backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-b.md`](backlog/walk-gates/WALK-2026-09-21-integrity-cut2-phase-b.md)
   - Cut-3 lab seeds (reuse for non-healthy): [`docs/lab/INTEGRITY_CUT3_EXPLORATORY_QA.md`](../../docs/lab/INTEGRITY_CUT3_EXPLORATORY_QA.md)
+  - Cut 3 (last verdict / micro-dashboard / verify cap): [`admin-ui-integrity-cut3.md`](admin-ui-integrity-cut3.md)
   - Walk / Done canon: [`ui-walk-done-gate.md`](ui-walk-done-gate.md)
 
 ---
@@ -34,6 +35,8 @@
 | Operational incidents | Collapsed | Auto-expand when actionable (`RECOVERED_PENDING_DECLARATION` / `IN_PROGRESS`) or deep-link |
 | Undeclared gaps list | Empty compact or collapsed | Expand when gaps present |
 | Checkpoint timeline | Collapsed | Force-open only for `focusCheckpointId`, gap locate, or `source=integrity-alert` — **not** for `action=reconcile` alone |
+
+> **Superseded by cut 3 D1** (keep the Verification row above for historical cut-2 lock): page open shows the last known verdict; automatic chain-verify runs only when there is no verdict less than 24 h old — see [`admin-ui-integrity-cut3.md`](admin-ui-integrity-cut3.md).
 
 Deep-links that open Remediate: `action=reconcile`, `source=integrity-alert`, gap focus / locate, plus server non-green signals (gaps, actionable incident, sealed awaiting confirm, chain non-green).
 
