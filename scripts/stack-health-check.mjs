@@ -71,8 +71,11 @@ function scoreJavaMelody(jm, thr, checks) {
     const lastValue = appMeta.lastValue || {};
     const errorHits = appMeta.errorHits || 0;
 
-    // Ignore JavaMelody synthetic Error* buckets for error% (always 100%).
-    const httpForErr = http.filter((row) => !/^Error\d+/i.test(row.name || ''));
+    // Exclude JavaMelody synthetic Error* buckets from httpErrorPct (see
+    // thresholds.javamelody.httpErrorPctExclusions — Error404 always 100%).
+    const excl = thr.httpErrorPctExclusions || {};
+    const exclPattern = excl.pattern ? new RegExp(excl.pattern, 'i') : /^Error\d+/i;
+    const httpForErr = http.filter((row) => !exclPattern.test(row.name || ''));
     const topHttpMean = maxOf(http, 'mean');
     const topHttpMax = maxOf(http, 'maximum');
     const topHttpErr = maxOf(httpForErr, 'errorRatePct');
