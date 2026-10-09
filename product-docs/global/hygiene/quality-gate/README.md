@@ -25,12 +25,16 @@ Exit codes: **0** GO · **3** GO with reservations · other non-zero NO-GO.
    memory overlay [`docker/docker-compose.ha.quality-gate.yml`](../../../../docker/docker-compose.ha.quality-gate.yml)
    (`EZKEY_COMPOSE_EXTRA_FILES`). Images come from `start-ha.sh` (no duplicate build phase).
 4. **Post-clean health** — snapshot right after clean-start.
-5. **Functional** → **elective** → **Playwright** → **churn init** → **2× churn**.
+5. **Functional** → **elective** → restore → **Playwright** → **churn init** → **2× churn**.
 6. **Health** — JavaMelody dump into the run dir + container log scan / redaction / scoring.
 
-Fail-fast on RED for preflight, unit-tests, or clean-start. After every stack-bearing phase,
-`docker inspect` every API JVM replica; dead/restarted → phase AMBER + run marked HA invalid.
-Ctrl-C kills background churn shells (`trap`).
+Fail-fast on RED for preflight, unit-tests, or clean-start. After elective,
+`ShedLockDistributedTest` may `docker kill` an admin-api replica (it does not restore) — the gate
+runs `compose up -d`, waits until every API replica is healthy (bounded), and records
+`expected: ShedLockDistributedTest`. **HA invalid** only if restore fails or a replica dies in
+any other phase. After other stack-bearing phases, dead/restarted replicas → AMBER + HA invalid.
+`containers.oom` trusts Docker `OOMKilled` only (exit 137 alone is SIGKILL, not OOM).
+Gate memory overlay stays as a runaway-heap guard on ~15Gi hosts. Ctrl-C kills churn shells (`trap`).
 
 ## #747 (keyset race) and #748 (false GREEN test)
 

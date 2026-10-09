@@ -17,6 +17,7 @@ const red = args.red === '1';
 const amber = args.amber === '1';
 const haInvalid = args.haInvalid === '1';
 const composeRetry = args.composeRetry === '1';
+const shedlockRestored = args.shedlockRestored === '1';
 
 const phases = [];
 for (const line of readFileSync(join(runDir, 'phases.tsv'), 'utf8').split(/\r?\n/)) {
@@ -54,9 +55,28 @@ if (haInvalid) {
   findings.push({
     phase: 'replicas',
     verdict: 'AMBER',
-    note: 'HA invalid — replica dead/unhealthy after a phase',
+    note: 'HA invalid — replica dead/unhealthy after a phase (or elective restore failed)',
     classification: 'environment',
   });
+} else if (shedlockRestored) {
+  findings.push({
+    phase: 'elective-tests',
+    verdict: 'GREEN',
+    note: 'expected: ShedLockDistributedTest kill; gate restored replicas',
+    classification: 'expected (ShedLock)',
+  });
+}
+const extraPath = join(runDir, 'findings-extra.txt');
+if (existsSync(extraPath)) {
+  for (const line of readFileSync(extraPath, 'utf8').split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    findings.push({
+      phase: 'elective-tests',
+      verdict: 'NOTE',
+      note: line.trim(),
+      classification: 'test-hygiene',
+    });
+  }
 }
 
 const summary = {
@@ -89,6 +109,7 @@ const lines = [
   `- **Duration:** ${human(totalMs)}`,
   `- **Churn:** 2 × ${churnMin} min`,
   `- **HA invalid:** ${haInvalid}`,
+  `- **ShedLock restore:** ${shedlockRestored}`,
   `- **#747 compose retry:** ${composeRetry}`,
   `- **Overall:** **${overall}**`,
   '',
@@ -129,7 +150,12 @@ console.log(`overall: ${overall}`);
 function classify(p) {
   const n = p.note || '';
   if (n.includes('#747')) return 'product bug (#747)';
-  if (n.includes('HA invalid') || n.includes('OOM') || n.includes('MemTotal')) return 'environment';
+  if (n.includes('expected: ShedLock') || n.includes('ShedLockDistributedTest')) {
+    return 'expected (ShedLock)';
+  }
+  if (n.includes('HA invalid') || n.includes('OOMKilled') || n.includes('MemTotal')) {
+    return 'environment';
+  }
   if (p.verdict === 'RED') return 'unclassified';
   return 'reservation';
 }
@@ -165,6 +191,7 @@ function parseArgs(argv) {
       '--amber': 'amber',
       '--ha-invalid': 'haInvalid',
       '--compose-retry': 'composeRetry',
+      '--shedlock-restored': 'shedlockRestored',
     };
     if (map[k]) {
       out[map[k]] = v;

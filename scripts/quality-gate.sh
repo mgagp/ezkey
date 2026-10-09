@@ -29,6 +29,8 @@ OVERALL_AMBER=0
 STACK_DOWN=0
 CHURN_PIDS=""
 MEM_SAMPLER_PID=""
+SHEDLOCK_KILL_EXPECTED=0
+SHEDLOCK_RESTORE_OK=0
 
 GATE_OVERLAY="$REPO_ROOT/docker/docker-compose.ha.quality-gate.yml"
 PHASES="preflight unit-tests clean-start post-clean-health functional-tests elective-tests playwright churn-init churn health"
@@ -186,7 +188,8 @@ stop_stacks() {
   docker rm -f ezkey-javamelody-collector ezkey-javamelody-collector-ha >/dev/null 2>&1 || true
 }
 
-# Inspect every API JVM replica. Dead/restarted → AMBER + HA_INVALID.
+# Inspect every API JVM replica. Dead/restarted → AMBER + HA_INVALID (unless caller
+# handles an expected elective ShedLock kill via restore_after_elective).
 check_replicas() {
   local phase="$1" bad=0 name status health restarts
   for name in $HA_REPLICAS; do
@@ -205,6 +208,86 @@ check_replicas() {
     return 1
   fi
   return 0
+}
+
+# Bounded wait until every API replica is running+healthy.
+wait_replicas_healthy() {
+  local timeout_s="${1:-180}" elapsed=0 name status health
+  while [[ "$elapsed" -lt "$timeout_s" ]]; do
+    local bad=0
+    for name in $HA_REPLICAS; do
+      status="$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || echo missing)"
+      health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$name" 2>/dev/null || echo missing)"
+      if [[ "$status" != "running" || ( "$health" != "healthy" && "$health" != "none" ) ]]; then
+        bad=1
+        break
+      fi
+    done
+    [[ "$bad" -eq 0 ]] && return 0
+    sleep 5
+    elapsed=$((elapsed + 5))
+  done
+  return 1
+}
+
+# ShedLockDistributedTest docker-kills an admin-api replica and does not restore it.
+# After elective: compose up -d, wait healthy, record expected kill. HA_INVALID only if
+# restore fails (or a replica dies in any other phase).
+restore_after_elective() {
+  local elective_log="$RUN_DIR/phases/elective-tests.log"
+  local killed="" compose
+  SHEDLOCK_KILL_EXPECTED=0
+  SHEDLOCK_RESTORE_OK=0
+  if [[ -f "$elective_log" ]]; then
+    killed="$(grep -E 'Crashing container: ezkey-admin-api-[12]' "$elective_log" 2>/dev/null \
+      | tail -1 | sed -E 's/.*Crashing container: (ezkey-admin-api-[12]).*/\1/' || true)"
+  fi
+  if [[ -n "$killed" ]]; then
+    SHEDLOCK_KILL_EXPECTED=1
+    echo "[$KEYWORD] expected: ShedLockDistributedTest killed $killed — restoring HA stack"
+    printf '%s\n' \
+      "test-hygiene: ShedLockDistributedTest docker-kills ${killed} and does not restore it; gate restores after elective" \
+      >>"$RUN_DIR/findings-extra.txt"
+  else
+    echo "[$KEYWORD] no ShedLock kill in elective log — ensuring HA stack is up"
+  fi
+
+  export EZKEY_ENABLE_JAVA_MELODY=true
+  export EZKEY_COMPOSE_EXTRA_FILES="$GATE_OVERLAY"
+  compose="$(ha_compose_cmd)"
+  if ! timeout 180 env EZKEY_ENABLE_JAVA_MELODY=true EZKEY_COMPOSE_EXTRA_FILES="$GATE_OVERLAY" \
+      $compose up -d; then
+    echo "[$KEYWORD] restore compose up -d failed or timed out"
+    HA_INVALID=1
+    OVERALL_AMBER=1
+    return 1
+  fi
+  if ! wait_replicas_healthy 180; then
+    echo "[$KEYWORD] restore: replicas not healthy within 180s → HA invalid"
+    HA_INVALID=1
+    OVERALL_AMBER=1
+    check_replicas "elective-restore" || true
+    return 1
+  fi
+  SHEDLOCK_RESTORE_OK=1
+  check_replicas "elective-restore" || true
+  if [[ "$SHEDLOCK_KILL_EXPECTED" -eq 1 ]]; then
+    echo "[$KEYWORD] restore OK after expected ShedLock kill ($killed) — not HA invalid"
+  fi
+  return 0
+}
+
+# Rewrite the last phases.tsv row note (keep verdict/counts).
+annotate_last_phase_note() {
+  local note="$1" tmp last name
+  tmp="$(mktemp)"
+  head -n -1 "$PHASE_TSV" >"$tmp"
+  last="$(tail -1 "$PHASE_TSV")"
+  name="$(echo "$last" | cut -f1)"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$name" "$(echo "$last" | cut -f2)" "$(echo "$last" | cut -f3)" "$(echo "$last" | cut -f4)" \
+    "$(echo "$last" | cut -f5)" "$(echo "$last" | cut -f6)" "$note" >>"$tmp"
+  mv "$tmp" "$PHASE_TSV"
 }
 
 docker_mem_total_mib() {
@@ -466,7 +549,8 @@ write_report() {
     --red "$OVERALL_RED" \
     --amber "$OVERALL_AMBER" \
     --ha-invalid "$HA_INVALID" \
-    --compose-retry "$COMPOSE_RETRY_FIRED"
+    --compose-retry "$COMPOSE_RETRY_FIRED" \
+    --shedlock-restored "$SHEDLOCK_RESTORE_OK"
 }
 
 GATE_START="$(now_ms)"
@@ -519,13 +603,32 @@ for phase in $PHASES; do
     OVERALL_AMBER=1
   fi
 
-  # Replica liveness after stack-bearing phases
-  if [[ "$phase" != "preflight" && "$phase" != "unit-tests" ]]; then
+  # Replica liveness after stack-bearing phases.
+  # Elective: ShedLockDistributedTest may docker-kill an admin-api replica — restore
+  # first; HA invalid only if restore fails (or a replica dies in any other phase).
+  if [[ "$phase" == "elective-tests" ]]; then
+    if restore_after_elective; then
+      if [[ "$SHEDLOCK_KILL_EXPECTED" -eq 1 ]]; then
+        annotate_last_phase_note \
+          "expected: ShedLockDistributedTest kill; restored; all replicas healthy"
+      fi
+    else
+      if [[ "$last_verdict" == "GREEN" ]]; then
+        tmp="$(mktemp)"
+        head -n -1 "$PHASE_TSV" >"$tmp"
+        last="$(tail -1 "$PHASE_TSV")"
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+          "$(echo "$last" | cut -f1)" "AMBER" "$(echo "$last" | cut -f3)" "$(echo "$last" | cut -f4)" \
+          "$(echo "$last" | cut -f5)" "$(echo "$last" | cut -f6)" \
+          "HA invalid: restore after ShedLock/elective failed" >>"$tmp"
+        mv "$tmp" "$PHASE_TSV"
+        echo "[$KEYWORD] phase=elective-tests downgraded GREEN→AMBER (restore failed)"
+      fi
+    fi
+  elif [[ "$phase" != "preflight" && "$phase" != "unit-tests" ]]; then
     if ! check_replicas "$phase"; then
-      # Downgrade last phase to AMBER if it was GREEN (HA invalid)
       if [[ "$last_verdict" == "GREEN" ]]; then
         OVERALL_AMBER=1
-        # rewrite last line note
         tmp="$(mktemp)"
         head -n -1 "$PHASE_TSV" >"$tmp"
         last="$(tail -1 "$PHASE_TSV")"
