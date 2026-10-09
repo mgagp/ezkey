@@ -18,8 +18,8 @@ disable-model-invocation: true
 (`adversarial review`, `critical review`, `revue critique`, `plan hardening`,
 `cold-agent plan review`).
 
-Fresh session, preferably a different model family than the author, same product compass. Not a
-CI gate. Not a parallel process.
+Fresh session on a **forced different model family** from the author's (mandatory — do not use the
+same family). Read-only. Same product compass. Not a CI gate.
 
 ## Boundary contract
 
@@ -45,8 +45,9 @@ CI gate. Not a parallel process.
 1. Resolve the target (doc path @ SHA, or PR via `git fetch origin pull/<N>/head`; record head SHA).
 2. Fill and send **only**
    [`cold-agent-plan-review.prompt.md`](../../product-docs/templates/cold-agent-plan-review.prompt.md)
-   in a **fresh** session (chosen model/effort ≠ author family when known). Read-only: no branch,
-   push, PR, issue, or GitHub comment from the reviewer.
+   in a **fresh** cloud-agent session. **Model family must differ from the author's** (mandatory;
+   deduce from the PR agent link or ask). Read-only: no branch, push, PR, issue, or GitHub comment
+   from the reviewer.
 3. Relay the report: short lot overview, then **one finding at a time** → `amend` / `defer` /
    `skip` (never bare “No-Go”; `amend` = GO for that finding).
 4. After HITL alignment, amendments land on the author's artifact — not by the reviewer agent.

@@ -63,10 +63,15 @@ ephemeral scaffold vs. retained plan, closed uncertainty stays closed) — into 
 There is no separate lane taxonomy or skill sequence to load first: prefer **Plan mode** for
 research and comparing alternatives, then position the idea as a `V-*`, `I-*`, or `TB-*` in
 `product-docs/global/` only when the methodology README's artifact-choice table calls for it.
-For high-risk slices (security boundaries, session management, DB migrations, G1 briefs, or
-autonomous cold-agent handoffs), harden via the **two-stage plan hardening pattern**
-([`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md);
-skill keyword `critical-review` / adversarial review — see domain pointer table).
+
+**Critical-review gate:** P0/P1 visions and G1 briefs get a **`critical-review`** before the gate
+(fresh cloud agent, **forced different model family** from the author, read-only) — the main lever
+for AI-factory review quality and continuous improvement of autonomy. See domain pointer table and
+[`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md).
+
+For other high-risk slices (security boundaries, session management, DB migrations, or autonomous
+cold-agent handoffs), also harden via the **two-stage plan hardening pattern**
+([`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md)).
 
 The always-applied rule
 [`.cursor/rules/product-docs-workflow-bootstrap.mdc`](.cursor/rules/product-docs-workflow-bootstrap.mdc)

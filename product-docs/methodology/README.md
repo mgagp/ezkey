@@ -26,13 +26,14 @@ accumulated conversational drift.
 In these situations, apply a two-stage hardening pattern:
 
 1. **Stage 1 (Scaffold):** Draft the initial direction and plan in a standard Plan mode session.
-2. **Stage 2 (Fresh-session review & hardening):** Open a **fresh session** (clearing context,
-   optionally using a distinct reasoning model) and submit the draft using the canonical hardening
+2. **Stage 2 (Fresh-session review & hardening):** Open a **fresh session** (clearing context) on
+   a **forced different model family** from the author's (mandatory — not optional) and submit the
+   draft using the canonical hardening
    prompt ([`../templates/cold-agent-plan-review.prompt.md`](../templates/cold-agent-plan-review.prompt.md)).
    Invoked by keyword **`critical-review`** (aliases: adversarial review, revue critique, plan
-   hardening, cold-agent plan review) via the thin skill
-   [`.cursor/skills/critical-review/SKILL.md`](../../.cursor/skills/critical-review/SKILL.md) —
-   same pattern, not a second method. Also applies to **G1 briefs** before craft/security gate.
+   hardening, cold-agent plan review) via
+   [`.cursor/skills/critical-review/SKILL.md`](../../.cursor/skills/critical-review/SKILL.md).
+   Required before gate for **P0/P1 visions** and **G1 briefs** (read-only cloud agent).
    - **Evaluate product intent:** Verify the plan solves the root problem rather than patching
      symptoms or leaving default paths unprotected.
    - **Expose edge cases & eliminate non-dits:** Specify exact database migrations, atomic CAS
