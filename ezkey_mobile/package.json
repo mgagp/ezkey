@@ -57,7 +57,7 @@
     "i18next": "26.4.2",
     "js-sha256": "1.0.0",
     "react": "19.3.0",
-    "react-i18next": "17.0.15",
+    "react-i18next": "17.0.16",
     "react-native": "0.87.1",
     "react-native-config": "1.7.2",
     "react-native-gesture-handler": "3.3.0",
