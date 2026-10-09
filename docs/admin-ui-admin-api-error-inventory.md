@@ -19,6 +19,7 @@ These are allowlisted in `shouldPreferI18nOverDetail` because messages are fixed
 | `domain/encryption-rotation-disabled` | Fixed message when `ezkey.encryption.rotation.enabled` is false |
 | `domain/encryption-reencryption-disabled` | Fixed message when `ezkey.encryption.reencryption.enabled` is false |
 | `domain/integrity-validation-disabled` | Fixed message when `ezkey.audit.integrity.nightly.enabled` is false |
+| `domain/integrity-async-job-busy` | Fixed message when Integrity async slot or heavy-crypto gate is busy (async start + report GETs) |
 | `enrollment/system-integration-create-not-allowed` | Single fixed message |
 | `enrollment/active-verified-enrollment-exists` | Single fixed message |
 | `enrollment/cannot-delete-with-history` | Single fixed message |

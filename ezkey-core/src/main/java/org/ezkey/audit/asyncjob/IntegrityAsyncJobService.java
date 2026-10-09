@@ -174,7 +174,7 @@ public class IntegrityAsyncJobService {
               + resumeLine(escapeSticky.get()));
     }
     if (heavyCryptoGate.isBusy()) {
-      throw busyWithoutJob("Integrity crypto path busy (scheduled or in-process heavy work)");
+      throw IntegrityAsyncJobBusyException.forHeavyCryptoBusy();
     }
 
     if (request.type() == IntegrityAsyncJobType.RUN_VALIDATION) {
@@ -470,19 +470,6 @@ public class IntegrityAsyncJobService {
             + result.chainViolationCount()
             + (result.alertRaised() ? ", alertId=" + result.alertId() : "");
     stateService.markSucceeded(job.getJobId(), summary, result.intact(), result.alertId());
-  }
-
-  private IntegrityAsyncJobBusyException busyWithoutJob(String message) {
-    IntegrityAsyncJob synthetic = new IntegrityAsyncJob();
-    synthetic.setJobId(UUID.fromString("00000000-0000-0000-0000-000000000000"));
-    synthetic.setJobType(IntegrityAsyncJobType.RUN_VALIDATION);
-    synthetic.setStatus(IntegrityAsyncJobStatus.RUNNING);
-    synthetic.setStartedByAdminId(0);
-    synthetic.setStartedByUsername("system");
-    synthetic.setStartedAt(OffsetDateTime.now(ZoneOffset.UTC));
-    synthetic.setHeartbeatAt(synthetic.getStartedAt());
-    synthetic.setResultSummary(message);
-    return new IntegrityAsyncJobBusyException(synthetic, message);
   }
 
   private void emitStartedAudit(Integer adminId, IntegrityAsyncJob job) {

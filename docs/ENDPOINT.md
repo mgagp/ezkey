@@ -558,6 +558,8 @@ Empty body (servlet filter). `Retry-After` is seconds until the per-IP or per-in
 
 **Integrity async jobs (preferred for long Ops):** Global Admin single global slot — `POST /api/v1/audit-logs/integrity/jobs` body `{ type, from, to, raiseAlert? }` → **202** `{ jobId }`; occupied → **409** with `currentJob` / `resumeOneLiner`. Types: `VERIFY_CHAIN_RANGE`, `VERIFY_ENTRY_HMAC_RANGE`, `RUN_VALIDATION`. `GET …/integrity/jobs/current` (200 or 204), `GET …/integrity/jobs/{jobId}`, `POST …/integrity/jobs/current/abandon` (only when status ∈ {EXPIRED, CANCELLED, INTERRUPTED}). TTL default 60m (`ezkey.audit.integrity.async-job.ttl`). Sync `GET …/{id}/integrity-check` (single entry) stays outside the slot. Does **not** use `ezkey_scheduled_job_last_run` for in-flight state. Lifecycle audits `INTEGRITY_ASYNC_JOB_STARTED` / `COMPLETED` / `ABANDONED` carry `eventAction=integrity-async-job`.
 
+**GET `/api/v1/audit-logs/integrity-check` and `GET …/chain-integrity` (range reports):** Global Admin read-only recompute. Under `IntegrityHeavyCryptoGate` (busy → **409** `integrity-async-job-busy`); hard window cap `ezkey.audit.integrity.verify-report.max-window-hours` (default **192** → **400**). See [AUDIT_LOG_INTEGRITY.md](AUDIT_LOG_INTEGRITY.md).
+
 **GET /api/v1/audit-logs/lifecycle/archive-eligibility** — Read lifecycle archive observability state. Returns whether external archival is enabled, whether confirmation is required, and the sealed checkpoint tranche currently awaiting confirmation.
 
 **POST /api/v1/audit-logs/lifecycle/confirm-archived** — Record successful external archival for a sealed tranche by marking it `EXPORTED`. This confirms the result of an external archival workflow; it does not perform the export itself.

@@ -36,6 +36,8 @@ integrationId|enrollmentId|tenantId|eventDetails|errorMessage|createdAt|instance
 
 `GET /api/v1/audit-logs/integrity-check` (Global Admin only) recomputes the HMAC for each entry in a date range and compares it to the stored value. Any mismatch is reported as a potential integrity violation. **Query parameters `from` and `to` (ISO-8601, inclusive start / exclusive end) are required;** omitting either returns 400 Bad Request. The response includes `entryViolations` (`items`, `totalCount`, `returnedCount`, `truncated`) with structured rows (`auditLogId`, `eventType`, `createdAt`, `reason`) — uncapped for the requested window.
 
+**Gate + window cap (#692 minimal):** both range report GETs (`integrity-check` and `chain-integrity`) run under the process-local `IntegrityHeavyCryptoGate` shared with nightly validation and Integrity async VERIFY jobs. When the gate is busy → **HTTP 409** RFC 9457 type `https://ezkey.io/problems/domain/integrity-async-job-busy` (same contract as async start). Windows longer than `ezkey.audit.integrity.verify-report.max-window-hours` (default **192** hours / 8 days — matches the Admin UI default 7-day lookback Instant span) → **HTTP 400** with a clear message (no silent truncation). Single-entry `GET …/{id}/integrity-check` stays outside the gate and cap. Job-backed report read (persist gaps on the async job DTO) is out of scope here — see GitHub **#730**.
+
 `GET /api/v1/audit-logs/chain-integrity` returns `chainViolations` with the same list metadata shape plus checkpoint fields (`checkpointId`, `windowStart`, `windowEnd`, `violationType`, `detail`). Legacy string `violations` remains for backward compatibility.
 
 ### Instance Tracking

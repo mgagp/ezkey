@@ -287,7 +287,19 @@ entry HMAC range verify, run validation). DB-backed (`ezkey_integrity_async_job`
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `Integer` | *(null — no cap)* | optionnel | When set, hard-reject operator POST when `[from, to)` exceeds this many hours. When unset, operator POST accepts the same bounds as GET verify (no duration limit). Nightly scheduled window remains `nightly.window-hours`. |
+| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `Integer` | *(null — no cap)* | optionnel | When set, hard-reject operator POST when `[from, to)` exceeds this many hours. When unset, operator POST accepts unbounded `[from, to)` for the detect path (distinct from synchronous report GET cap below). Nightly scheduled window remains `nightly.window-hours`. |
+
+---
+
+### Synchronous Integrity report GETs (`ezkey.audit.integrity.verify-report.*`)
+
+**Description:** Bounds for read-only `GET …/integrity-check` and `GET …/chain-integrity`. These recompute in the request thread under `IntegrityHeavyCryptoGate` (HTTP 409 when busy — same `integrity-async-job-busy` contract as async start). Non-blocking `tryEnter` so gated waits cannot exceed reverse-proxy / Tomcat timeouts.
+
+**Defined in:** `IntegrityVerifyReportProperties`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.audit.integrity.verify-report.max-window-hours` | `int` | `192` | optionnel | Hard-reject (HTTP 400, no silent truncate) when `[from, to)` exceeds this many hours. **192** = 8×24h matches the Admin UI default 7-day lookback Instant span (inclusive calendar `from`/`to` with exclusive-end conversion). Wider forensic ranges use Integrity async VERIFY jobs; job-backed report hydration without a second recompute is tracked in #730. |
 
 ---
 

@@ -16,6 +16,9 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.restassured.response.Response;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.DatabaseHelper;
@@ -39,14 +42,14 @@ import org.slf4j.LoggerFactory;
  * <p><b>What is verified:</b>
  *
  * <ol>
- *   <li><b>Per-entry HMAC integrity (full dataset)</b> -- calls {@code GET
- *       /api/v1/audit-logs/integrity-check} with a date range covering all data; every signed entry
- *       in the database is recomputed and compared against its stored HMAC. Any mismatch means the
- *       entry was tampered with after signing.
+ *   <li><b>Per-entry HMAC integrity (bounded window)</b> -- calls {@code GET
+ *       /api/v1/audit-logs/integrity-check} over the last 192 hours (synchronous report GET cap);
+ *       every signed entry in that window is recomputed and compared against its stored HMAC. Any
+ *       mismatch means the entry was tampered with after signing.
  *   <li><b>Chain checkpoint linkage</b> -- calls {@code GET /api/v1/audit-logs/chain-integrity}
- *       with a date range covering all checkpoints; every 5-minute checkpoint window is recomputed
- *       and its chain link to the previous checkpoint is validated. Detects entry insertion,
- *       deletion, or reordering between checkpoints.
+ *       over the same bounded window; every 5-minute checkpoint window is recomputed and its chain
+ *       link to the previous checkpoint is validated. Detects entry insertion, deletion, or
+ *       reordering between checkpoints.
  *   <li><b>Single-entry targeted check</b> -- picks the most-recently signed entry from the DB and
  *       verifies it via {@code GET /api/v1/audit-logs/{id}/integrity-check}. Demonstrates the
  *       forensic spot-check capability.
@@ -92,26 +95,42 @@ public class AuditIntegrityElectiveTest extends AbstractSecurityTest {
   // -----------------------------------------------------------------------
 
   @Test
-  @DisplayName("All signed audit log entries must have a valid HMAC (full dataset)")
+  @DisplayName("Signed audit log entries in the verify-report window must have a valid HMAC")
   void allSignedEntries_mustHaveValidHmac() {
     logger.info("=== Elective: Per-Entry HMAC Integrity Check ===");
 
     // DB cross-check: how many signed entries exist?
+    String[] window = reportWindowBounds();
+    String from = window[0];
+    String to = window[1];
+
     long dbSignedCount =
-        queryLong("SELECT COUNT(*) FROM ezkey_audit_log WHERE entry_hmac IS NOT NULL");
+        queryLong(
+            "SELECT COUNT(*) FROM ezkey_audit_log WHERE entry_hmac IS NOT NULL"
+                + " AND created_at >= '"
+                + from
+                + "' AND created_at < '"
+                + to
+                + "'");
     long dbUnsignedCount =
-        queryLong("SELECT COUNT(*) FROM ezkey_audit_log WHERE entry_hmac IS NULL");
+        queryLong(
+            "SELECT COUNT(*) FROM ezkey_audit_log WHERE entry_hmac IS NULL"
+                + " AND created_at >= '"
+                + from
+                + "' AND created_at < '"
+                + to
+                + "'");
     long dbTotal = dbSignedCount + dbUnsignedCount;
 
     logger.info(
-        "Database snapshot: total={}, signed={}, unsigned={}",
+        "Database snapshot ({} to {}): total={}, signed={}, unsigned={}",
+        from,
+        to,
         dbTotal,
         dbSignedCount,
         dbUnsignedCount);
 
-    // Call the range integrity-check endpoint with a wide date range (covers full dataset)
-    String from = "2000-01-01T00:00:00Z";
-    String to = "2030-12-31T23:59:59Z";
+    // Synchronous report GETs are capped (default 192h); use that bounded window.
     Response response =
         given()
             .header("Authorization", "Bearer " + adminToken)
@@ -149,8 +168,10 @@ public class AuditIntegrityElectiveTest extends AbstractSecurityTest {
     Assumptions.assumeTrue(
         total > 0, "No audit log entries found yet -- run some tests or operations first");
 
-    // DB vs API consistency
-    assertThat(total).as("API totalEntries must match DB row count").isEqualTo(dbTotal);
+    // DB vs API consistency (same bounded window)
+    assertThat(total)
+        .as("API totalEntries must match DB row count in the verify-report window")
+        .isEqualTo(dbTotal);
 
     // Core assertion: no HMAC mismatches
     assertThat(invalid)
@@ -176,18 +197,25 @@ public class AuditIntegrityElectiveTest extends AbstractSecurityTest {
   // -----------------------------------------------------------------------
 
   @Test
-  @DisplayName("All chain checkpoints must be linked and their entry digests must match")
+  @DisplayName("Chain checkpoints in the verify-report window must be linked and digests must match")
   void allChainCheckpoints_mustBeIntact() {
     logger.info("=== Elective: Chain Checkpoint Integrity Check ===");
 
-    // DB cross-check: how many checkpoints exist?
-    long dbCheckpointCount = queryLong("SELECT COUNT(*) FROM ezkey_audit_chain_checkpoint");
+    String[] window = reportWindowBounds();
+    String from = window[0];
+    String to = window[1];
 
-    logger.info("Database snapshot: checkpoints={}", dbCheckpointCount);
+    // DB cross-check: checkpoints overlapping the capped report window
+    long dbCheckpointCount =
+        queryLong(
+            "SELECT COUNT(*) FROM ezkey_audit_chain_checkpoint WHERE window_start >= '"
+                + from
+                + "' AND window_start < '"
+                + to
+                + "'");
 
-    // Call the chain-integrity endpoint with a wide date range (covers full chain)
-    String from = "2000-01-01T00:00:00Z";
-    String to = "2030-12-31T23:59:59Z";
+    logger.info("Database snapshot ({} to {}): checkpoints={}", from, to, dbCheckpointCount);
+
     Response response =
         given()
             .header("Authorization", "Bearer " + adminToken)
@@ -224,9 +252,9 @@ public class AuditIntegrityElectiveTest extends AbstractSecurityTest {
         total > 0,
         "No chain checkpoints yet -- the scheduler runs every 5 minutes; wait a bit and retry");
 
-    // DB vs API consistency
+    // DB vs API consistency (same bounded window)
     assertThat((long) total)
-        .as("API totalCheckpoints must match DB row count")
+        .as("API totalCheckpoints must match DB row count in the verify-report window")
         .isEqualTo(dbCheckpointCount);
 
     // Core assertion: no checkpoint violations
@@ -310,6 +338,18 @@ public class AuditIntegrityElectiveTest extends AbstractSecurityTest {
   // -----------------------------------------------------------------------
   // Helper
   // -----------------------------------------------------------------------
+
+  /**
+   * Bounded Instant window for synchronous report GETs (default max 192 hours).
+   *
+   * @return {@code [from, to)} as ISO-8601 UTC strings
+   */
+  private static String[] reportWindowBounds() {
+    OffsetDateTime to = OffsetDateTime.now(ZoneOffset.UTC);
+    OffsetDateTime from = to.minusHours(192);
+    DateTimeFormatter fmt = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+    return new String[] {from.format(fmt), to.format(fmt)};
+  }
 
   private long queryLong(String sql) {
     String result = databaseHelper.executeQuerySingleValue(sql);

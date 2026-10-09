@@ -25,9 +25,10 @@ import org.springframework.context.annotation.Configuration;
 public class RetroactiveIntegrityProperties {
 
   /**
-   * Optional maximum operator-selected window length in hours. When {@code null}, operator POST
-   * accepts the same {@code [from, to)} bounds as GET verify endpoints (no duration cap). When set,
-   * requests exceeding this length are rejected with HTTP 400.
+   * Optional maximum operator-selected window length in hours for retroactive detect POST / async
+   * {@code RUN_VALIDATION}. When {@code null}, those paths accept unbounded {@code [from, to)}.
+   * When set, requests exceeding this length are rejected with HTTP 400. Distinct from the
+   * synchronous report GET cap ({@code ezkey.audit.integrity.verify-report.max-window-hours}).
    */
   private Integer operatorMaxWindowHours;
 

@@ -7,9 +7,12 @@ import {
   integrityExclusiveApiParamsToDisplayRange,
   integrityExclusiveDateRangeToApiParams,
 } from '@/lib/date-range-presets';
+import { ApiError } from '@/lib/api-client';
 import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
 import {
   executeIntegrityAsyncJobReportHydration,
+  INTEGRITY_ASYNC_JOB_BUSY_TYPE,
+  isIntegrityReportHydrationBusyError,
   isSucceededVerifyJobForReportHydration,
   resolveIntegrityAsyncJobReportHydration,
   type IntegrityReportHydrationRequest,
@@ -66,6 +69,40 @@ describe('isSucceededVerifyJobForReportHydration', () => {
         job({ jobId: 'a', type: 'RUN_VALIDATION', status: 'SUCCEEDED' }),
       ),
     ).toBe(false);
+  });
+});
+
+describe('isIntegrityReportHydrationBusyError', () => {
+  it('is true for HTTP 409 integrity-async-job-busy', () => {
+    const error = new ApiError(
+      409,
+      {
+        type: INTEGRITY_ASYNC_JOB_BUSY_TYPE,
+        title: 'Integrity async slot busy',
+        status: 409,
+        detail: 'Integrity crypto path busy (scheduled or in-process heavy work)',
+      },
+      'Integrity crypto path busy (scheduled or in-process heavy work)',
+    );
+    expect(isIntegrityReportHydrationBusyError(error)).toBe(true);
+  });
+
+  it('is false for other 409s, 400s, or non-ApiError', () => {
+    expect(
+      isIntegrityReportHydrationBusyError(
+        new ApiError(
+          409,
+          { type: 'https://ezkey.io/problems/domain/other', status: 409 },
+          'other',
+        ),
+      ),
+    ).toBe(false);
+    expect(
+      isIntegrityReportHydrationBusyError(
+        new ApiError(400, { type: 'https://ezkey.io/problems/admin/invalid-argument' }, 'cap'),
+      ),
+    ).toBe(false);
+    expect(isIntegrityReportHydrationBusyError(new Error('boom'))).toBe(false);
   });
 });
 

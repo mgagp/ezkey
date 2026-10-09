@@ -79,6 +79,15 @@ In-app emitters (alerts, dashboard, etc.) point at **`/integrity`** directly. No
 
 ---
 
+## Report GETs: heavy-crypto gate + window cap (#692 minimal)
+
+After an async `VERIFY_*` job **SUCCEEDED**, the Integrity page hydrates undeclared gaps / entry violations from read-only `GET …/chain-integrity` and `GET …/integrity-check` (job DTO carries only `resultSummary`). Those GETs now:
+
+- take the process-local **`heavyCryptoGate`** (shared with nightly + async VERIFY) — busy → HTTP **409** `integrity-async-job-busy` (no retry storm; operator **Reload report**);
+- enforce **`ezkey.audit.integrity.verify-report.max-window-hours`** (default **192** / 8 days — Admin UI default 7-day lookback Instant span) — over-cap → clear **400**, never silent truncation.
+
+**Out of scope here:** persist gaps on the async job and hydrate from `GET …/integrity/jobs/{jobId}` without a second recompute — that is the job-backed read in GitHub **#730** (Integrity cut 3 spec). Do not redesign the Integrity screen in this slice.
+
 ## Phase 2 (after walkable split)
 
 Ensure Admin UI callers exist end-to-end for ops already in OpenAPI but unevenly owned (notably reconcile integrity rupture, confirm archived) — still on **Integrity**, still same proof model.

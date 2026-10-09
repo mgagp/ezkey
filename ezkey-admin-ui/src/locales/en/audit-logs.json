@@ -308,6 +308,7 @@
       "busyToast": "Integrity job already running: {{resume}}",
       "hydrateChainError": "Could not load the chain verification result.",
       "hydrateEntryError": "Could not load the entry HMAC verification result.",
+      "hydrateBusyHint": "Integrity verification is busy. Wait for the nightly batch or running job to finish, then use Reload report. Detected gaps will appear once the report loads.",
       "reloadReport": "Reload report"
     },
     "chainIntegrity": "Chain Integrity",

@@ -11,7 +11,27 @@ import type {
   ChainVerificationReport,
   IntegrityReport,
 } from '@/generated/admin-api/model';
+import { ApiError } from '@/lib/api-client';
 import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
+
+/** RFC 9457 type for Integrity async slot / heavy-crypto gate busy (HTTP 409). */
+export const INTEGRITY_ASYNC_JOB_BUSY_TYPE =
+  'https://ezkey.io/problems/domain/integrity-async-job-busy';
+
+/**
+ * True when a report GET failed because the heavy-crypto gate / async slot is busy.
+ * Hydration must not retry-storm; the operator reloads once the gate is free.
+ *
+ * @param error unknown error from the report GET
+ * @returns whether this is the shared Integrity busy contract
+ */
+export function isIntegrityReportHydrationBusyError(error: unknown): boolean {
+  if (!(error instanceof ApiError) || error.status !== 409) {
+    return false;
+  }
+  const type = error.problemDetail?.type;
+  return type === INTEGRITY_ASYNC_JOB_BUSY_TYPE;
+}
 
 export type IntegrityReportHydrationKind = 'chain' | 'entry';
 

@@ -6,6 +6,8 @@ import type {
   ChainVerificationReport,
   IntegrityReport,
 } from '@/generated/admin-api/model';
+import { ApiError } from '@/lib/api-client';
+import { INTEGRITY_ASYNC_JOB_BUSY_TYPE } from '@/lib/integrity-async-job-report-hydration';
 import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
 import { useIntegrityAsyncJobReportHydration } from './use-integrity-async-job-report-hydration';
 
@@ -170,6 +172,94 @@ describe('useIntegrityAsyncJobReportHydration', () => {
     });
     const chainLoadingCalls = onChainHydratingChange.mock.calls.map((c) => c[0]);
     expect(chainLoadingCalls[chainLoadingCalls.length - 1]).toBe(false);
+  });
+
+  it('surfaces busy 409 once without retry storm and allows reload', async () => {
+    const busy = new ApiError(
+      409,
+      {
+        type: INTEGRITY_ASYNC_JOB_BUSY_TYPE,
+        title: 'Integrity async slot busy',
+        status: 409,
+        detail: 'Integrity crypto path busy (scheduled or in-process heavy work)',
+      },
+      'Integrity crypto path busy (scheduled or in-process heavy work)',
+    );
+    const fetchChainReport = vi.fn(async () => {
+      throw busy;
+    });
+    const onError = vi.fn();
+    const onChainHydratingChange = vi.fn();
+
+    const base = {
+      onChainReport: vi.fn(),
+      onEntryReport: vi.fn(),
+      onChainHydratingChange,
+      onError,
+      toDisplayRange: () => ({ from: '2026-10-01', to: '2026-10-07' }),
+      fetchChainReport,
+      fetchEntryReport: vi.fn(async () => ({ intact: true }) as IntegrityReport),
+    };
+
+    const { rerender } = renderHook(
+      ({
+        job: current,
+        reloadNonce,
+      }: {
+        job: IntegrityAsyncJobResponse | null;
+        reloadNonce: number;
+      }) =>
+        useIntegrityAsyncJobReportHydration({
+          ...base,
+          job: current,
+          reloadNonce,
+        }),
+      {
+        initialProps: {
+          job: job({
+            jobId: 'j-busy',
+            type: 'VERIFY_CHAIN_RANGE',
+            status: 'SUCCEEDED',
+          }),
+          reloadNonce: 0,
+        },
+      },
+    );
+
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
+    expect(fetchChainReport).toHaveBeenCalledTimes(1);
+    expect(onChainHydratingChange).toHaveBeenCalledWith(false);
+
+    // Banner poll with a new object of the same SUCCEEDED job must not retry.
+    rerender({
+      job: job({
+        jobId: 'j-busy',
+        type: 'VERIFY_CHAIN_RANGE',
+        status: 'SUCCEEDED',
+        resultSummary: 'poll tick',
+      }),
+      reloadNonce: 0,
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(fetchChainReport).toHaveBeenCalledTimes(1);
+
+    // Operator Reload report bumps nonce — one more attempt, still no storm.
+    fetchChainReport.mockResolvedValueOnce({
+      intact: true,
+      undeclaredGaps: [{ gapStart: 'a', gapEnd: 'b' }],
+    } as ChainVerificationReport);
+    rerender({
+      job: job({
+        jobId: 'j-busy',
+        type: 'VERIFY_CHAIN_RANGE',
+        status: 'SUCCEEDED',
+      }),
+      reloadNonce: 1,
+    });
+    await waitFor(() => expect(fetchChainReport).toHaveBeenCalledTimes(2));
+    expect(base.onChainReport).toHaveBeenCalledTimes(1);
   });
 
   it('resets integrityLoading when cancelled by a new chain job mid-hydration', async () => {
