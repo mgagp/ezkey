@@ -7,11 +7,14 @@ name: ezkey-experimental-lightsail
 x-container-tz: &container-tz
   TZ: ${TZ:-UTC}
 
-# Bound container log growth (json-file). Aligns with docs/OPERATIONAL.md log size guidance.
+# Bound container log growth (json-file) for next install on a small Lightsail VM
+# (~4 GB RAM / ~40 GB disk). Ceiling ≈ 8 services × 20m × 3 files ≈ 480 MiB.
+# Applies only when containers are (re)created — does not resize live log config.
+# See docs/OPERATIONAL.md § Log rotation and hygiene.
 x-logging: &default-logging
   driver: json-file
   options:
-    max-size: "100m"
+    max-size: "20m"
     max-file: "3"
 
 services:

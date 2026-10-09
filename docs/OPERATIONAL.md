@@ -563,9 +563,33 @@ docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/bootstrap-cr
 
 **Operational recommendation:** After the global administrator completes first device binding and can sign in, **regenerate recovery codes** from the Admin UI so unused codes from the bootstrap credentials file are invalidated.
 
-### Lightsail compose log rotation
+### Log rotation and hygiene
 
-The experimental Lightsail Compose file (`experimental-hybrid/lightsail/docker-compose.yml`) sets Docker `json-file` logging with `max-size: 100m` and `max-file: 3` on every service so container logs cannot grow without bound on the VM.
+**Audience:** next Lightsail / small-VM installs (≈4 GB RAM / ≈40 GB disk). This does **not** reconfigure a running live instance; Docker applies `logging:` only when a container is created.
+
+**Compose defaults** (`experimental-hybrid/lightsail/docker-compose.yml`, `x-logging` on every service):
+
+| Option | Value | Why |
+| ------ | ----- | --- |
+| `driver` | `json-file` | Docker default; supports rotation options |
+| `max-size` | `20m` | Per-file cap suited to a small disk |
+| `max-file` | `3` | Keep a short rotated history |
+
+Ceiling ≈ **8 services × 20 MiB × 3 files ≈ 480 MiB** of container json logs — intentional headroom beside Postgres data and images on a ~40 GB disk.
+
+**Host script:** [`scripts/ops/docker-log-hygiene.sh`](../scripts/ops/docker-log-hygiene.sh) (POSIX Bash, idempotent, local Docker only — no SSH/remote).
+
+| When | Command | Purpose |
+| ---- | ------- | ------- |
+| After first `compose up` on a new VM | `./scripts/ops/docker-log-hygiene.sh` | Confirm every container has `max-size` / `max-file` |
+| Periodically (e.g. monthly) | `./scripts/ops/docker-log-hygiene.sh` | Report sizes; exit `1` if rotation missing |
+| Optional content scan | `./scripts/ops/docker-log-hygiene.sh --scan` | Counts of credential-like patterns only (never values) |
+| Plan cleanup | `./scripts/ops/docker-log-hygiene.sh --purge` | Dry-run: stopped-container logs + rotated files older than 7d |
+| Apply cleanup | `./scripts/ops/docker-log-hygiene.sh --purge --apply` (or `--yes`) | Truncate/remove after confirm |
+
+**Exit codes:** `0` ok, `1` findings, `2` error.
+
+**What the script never does:** change Compose or recreate containers; talk to remote hosts; print secret values from `--scan`; truncate logs of **running** containers; delete Postgres or named volumes.
 
 ### Log Configuration
 
