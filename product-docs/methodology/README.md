@@ -163,7 +163,8 @@ of duplicating its content.
 ## Templates
 
 Maintained under [`../templates/`](../templates/): `vision-note`, `backlog-idea`,
-`tracer-bullet-brief`, `architecture-decision`, plus the `cold-agent-plan-review` prompt template. Copy, fill in, delete sections that do not apply.
+`tracer-bullet-brief`, `architecture-decision`, plus the `critical-review` and
+`cold-agent-plan-review` prompt templates. Copy, fill in, delete sections that do not apply.
 
 ## Versioning
 
