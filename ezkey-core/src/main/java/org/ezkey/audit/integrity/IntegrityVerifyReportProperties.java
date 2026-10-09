@@ -13,6 +13,7 @@ package org.ezkey.audit.integrity;
 import jakarta.validation.constraints.Min;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import org.ezkey.audit.exception.IntegrityWindowOverCapException;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.validation.annotation.Validated;
@@ -53,7 +54,8 @@ public class IntegrityVerifyReportProperties {
    *
    * @param from inclusive window start
    * @param to exclusive window end
-   * @throws IllegalArgumentException when bounds are missing, inverted, or exceed the cap
+   * @throws IllegalArgumentException when bounds are missing or inverted
+   * @throws IntegrityWindowOverCapException when the window exceeds {@link #maxWindowHours}
    */
   public void validateWindow(OffsetDateTime from, OffsetDateTime to) {
     if (from == null || to == null) {
@@ -67,10 +69,7 @@ public class IntegrityVerifyReportProperties {
     }
     Duration duration = Duration.between(from, to);
     if (duration.compareTo(Duration.ofHours(maxWindowHours)) > 0) {
-      throw new IllegalArgumentException(
-          "Verification window exceeds maximum of "
-              + maxWindowHours
-              + " hours (8 calendar days, DST transition included). Narrow the range.");
+      throw new IntegrityWindowOverCapException(maxWindowHours);
     }
   }
 }

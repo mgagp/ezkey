@@ -15,6 +15,7 @@ import org.ezkey.audit.dto.IntegrityAsyncJobResponse;
 import org.ezkey.audit.exception.IntegrityAsyncJobAbandonNotAllowedException;
 import org.ezkey.audit.exception.IntegrityAsyncJobBusyException;
 import org.ezkey.audit.exception.IntegrityValidationDisabledException;
+import org.ezkey.audit.exception.IntegrityWindowOverCapException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.IntegrationCodeAlreadyExistsException;
@@ -286,6 +287,24 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
    * inline busy hint and Reload.
    */
   static final String INTEGRITY_BUSY_RETRY_AFTER_SECONDS = "60";
+
+  /**
+   * Handles IntegrityWindowOverCapException and returns HTTP 400 with a stable problem type.
+   *
+   * @param ex the over-cap exception
+   * @param request the HTTP servlet request
+   * @return ProblemDetail type {@link IntegrityWindowOverCapException#TYPE_URI}
+   */
+  @ExceptionHandler(IntegrityWindowOverCapException.class)
+  public ResponseEntity<ProblemDetail> handleIntegrityWindowOverCapException(
+      IntegrityWindowOverCapException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.BAD_REQUEST,
+        IntegrityWindowOverCapException.TYPE_URI,
+        "Integrity window exceeds maximum",
+        request);
+  }
 
   /**
    * Handles IntegrityAsyncJobBusyException and returns HTTP 409 with current job resume summary.

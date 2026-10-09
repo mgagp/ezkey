@@ -31,6 +31,7 @@ import org.ezkey.audit.dto.ChainIntegrityViolation;
 import org.ezkey.audit.dto.EntryIntegrityViolation;
 import org.ezkey.audit.dto.IntegrityViolationCappedList;
 import org.ezkey.audit.exception.IntegrityValidationDisabledException;
+import org.ezkey.audit.exception.IntegrityWindowOverCapException;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.slf4j.Logger;
@@ -206,7 +207,8 @@ public class RetroactiveIntegrityValidationService {
    *
    * @param from inclusive window start
    * @param to exclusive window end
-   * @throws IllegalArgumentException when bounds are invalid or exceed the configured cap
+   * @throws IllegalArgumentException when bounds are missing or inverted
+   * @throws IntegrityWindowOverCapException when the window exceeds the configured hour cap
    */
   public void validateOperatorWindow(OffsetDateTime from, OffsetDateTime to) {
     if (from == null || to == null) {
@@ -217,13 +219,10 @@ public class RetroactiveIntegrityValidationService {
       throw new IllegalArgumentException(
           "Invalid date range: to must be after from (exclusive end, inclusive start).");
     }
-    Integer configuredMaxHours = retroactiveProperties.getOperatorMaxWindowHours();
-    if (configuredMaxHours != null) {
-      Duration duration = Duration.between(from, to);
-      if (duration.compareTo(Duration.ofHours(configuredMaxHours)) > 0) {
-        throw new IllegalArgumentException(
-            "Validation window exceeds maximum of " + configuredMaxHours + " hours.");
-      }
+    int configuredMaxHours = retroactiveProperties.getOperatorMaxWindowHours();
+    Duration duration = Duration.between(from, to);
+    if (duration.compareTo(Duration.ofHours(configuredMaxHours)) > 0) {
+      throw new IntegrityWindowOverCapException(configuredMaxHours);
     }
   }
 

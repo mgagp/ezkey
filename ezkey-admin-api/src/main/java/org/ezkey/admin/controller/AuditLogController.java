@@ -523,7 +523,8 @@ public class AuditLogController {
         @ApiResponse(
             responseCode = "400",
             description =
-                "Date range required, inverted, or exceeds verify-report.max-window-hours"),
+                "Date range required/inverted, or exceeds max-window-hours"
+                    + " (type integrity-window-over-cap)"),
         @ApiResponse(
             responseCode = "409",
             description =
@@ -627,7 +628,8 @@ public class AuditLogController {
         @ApiResponse(
             responseCode = "400",
             description =
-                "Date range required, inverted, or exceeds verify-report.max-window-hours"),
+                "Date range required/inverted, or exceeds max-window-hours"
+                    + " (type integrity-window-over-cap)"),
         @ApiResponse(
             responseCode = "409",
             description =
@@ -702,7 +704,9 @@ public class AuditLogController {
             description = "Validation completed (including skipped when HMAC inactive)"),
         @ApiResponse(
             responseCode = "400",
-            description = "Invalid bounds or window exceeds configured maximum",
+            description =
+                "Invalid bounds, or window exceeds operator-max-window-hours"
+                    + " (type integrity-window-over-cap)",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",

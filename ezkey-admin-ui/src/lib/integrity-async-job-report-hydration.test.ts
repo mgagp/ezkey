@@ -13,6 +13,7 @@ import {
   executeIntegrityAsyncJobReportHydration,
   INTEGRITY_ASYNC_JOB_BUSY_TYPE,
   INTEGRITY_REPORT_MAX_WINDOW_HOURS,
+  INTEGRITY_WINDOW_OVER_CAP_TYPE,
   isIntegrityReportHydrationBusyError,
   isIntegrityReportScopeOverCap,
   isIntegrityWindowOverCapError,
@@ -97,13 +98,13 @@ describe('isIntegrityReportScopeOverCap', () => {
 });
 
 describe('isIntegrityWindowOverCapError', () => {
-  it('is true for HTTP 400 with exceeds-maximum detail', () => {
+  it('is true for HTTP 400 with integrity-window-over-cap type', () => {
     expect(
       isIntegrityWindowOverCapError(
         new ApiError(
           400,
           {
-            type: 'https://ezkey.io/problems/invalid-argument',
+            type: INTEGRITY_WINDOW_OVER_CAP_TYPE,
             status: 400,
             detail:
               'Verification window exceeds maximum of 193 hours (8 calendar days, DST transition included). Narrow the range.',
@@ -114,13 +115,18 @@ describe('isIntegrityWindowOverCapError', () => {
     ).toBe(true);
   });
 
-  it('is false for other 400s', () => {
+  it('is false for other 400s even when detail mentions exceeds maximum', () => {
     expect(
       isIntegrityWindowOverCapError(
         new ApiError(
           400,
-          { type: 'https://ezkey.io/problems/invalid-argument', status: 400, detail: 'bad' },
-          'bad',
+          {
+            type: 'https://ezkey.io/problems/invalid-argument',
+            status: 400,
+            detail:
+              'Verification window exceeds maximum of 193 hours. Narrow the range.',
+          },
+          'exceeds maximum',
         ),
       ),
     ).toBe(false);

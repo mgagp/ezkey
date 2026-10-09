@@ -969,6 +969,8 @@ function IntegrityPanel({
       if (resume) {
         toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
         setAsyncJob(await getCurrentIntegrityAsyncJob());
+      } else if (isIntegrityWindowOverCapError(e)) {
+        toast(t('integrity.asyncJob.validationWindowOverCap'), 'error');
       } else {
         toast(getTranslatedApiError(e, t, t('integrity.validationRun.error')), 'error');
       }

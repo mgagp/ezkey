@@ -11,12 +11,13 @@
 package org.ezkey.audit.integrity;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import org.ezkey.audit.exception.IntegrityWindowOverCapException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -48,24 +49,20 @@ class IntegrityVerifyReportPropertiesTest {
   }
 
   @Test
-  @DisplayName("exactly 193 hours is accepted; 194 hours is rejected")
+  @DisplayName("exactly 193 hours is accepted; 194 hours throws IntegrityWindowOverCapException")
   void validateWindow_enforcesDefaultCap() {
     assertDoesNotThrow(() -> properties.validateWindow(FROM, FROM.plusHours(193)));
-    IllegalArgumentException ex =
+    IntegrityWindowOverCapException ex =
         assertThrows(
-            IllegalArgumentException.class,
+            IntegrityWindowOverCapException.class,
             () -> properties.validateWindow(FROM, FROM.plusHours(194)));
+    assertEquals(193, ex.getMaxWindowHours());
     assertTrue(ex.getMessage().contains("193"));
-    assertTrue(ex.getMessage().contains("8 calendar days"));
-    assertFalse(ex.getMessage().contains("VERIFY job"));
   }
 
   @Test
   @DisplayName("America/Toronto fall-back Instant span (193h) is accepted")
   void validateWindow_acceptsTorontoFallBackDefaultLookbackSpan() {
-    // Admin UI default 7-day lookback over America/Toronto fall-back (2026-11-01):
-    // 2026-10-25T04:00Z → 2026-11-02T05:00Z is 193h. Patrick B1 fixture uses the same span
-    // as 2026-10-27T04:00Z → 2026-11-04T05:00Z.
     OffsetDateTime from = OffsetDateTime.parse("2026-10-27T04:00:00Z");
     OffsetDateTime to = OffsetDateTime.parse("2026-11-04T05:00:00Z");
     assertDoesNotThrow(() -> properties.validateWindow(from, to));

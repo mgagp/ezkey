@@ -24,6 +24,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import org.ezkey.audit.dto.IntegrityViolationCappedList;
 import org.ezkey.audit.exception.IntegrityAsyncJobBusyException;
+import org.ezkey.audit.exception.IntegrityWindowOverCapException;
 import org.ezkey.audit.integrity.AuditChainCheckpointService;
 import org.ezkey.audit.integrity.AuditChainIncidentService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
@@ -190,25 +191,27 @@ class AuditLogControllerVerifyReportGateTest {
   }
 
   @Test
-  @DisplayName("checkChainIntegrity rejects windows above the 193h default cap with 400 message")
-  void checkChainIntegrity_rangeOverCap_throwsIllegalArgumentException() {
+  @DisplayName("checkChainIntegrity rejects windows above the 193h default cap")
+  void checkChainIntegrity_rangeOverCap_throwsIntegrityWindowOverCapException() {
     OffsetDateTime overCapTo = FROM.plusHours(194);
-    IllegalArgumentException ex =
+    IntegrityWindowOverCapException ex =
         assertThrows(
-            IllegalArgumentException.class, () -> controller.checkChainIntegrity(FROM, overCapTo));
-    assertTrue(ex.getMessage().contains("193"));
+            IntegrityWindowOverCapException.class,
+            () -> controller.checkChainIntegrity(FROM, overCapTo));
+    assertEquals(193, ex.getMaxWindowHours());
     verify(auditChainVerificationService, never()).verifyChain(eq(FROM), eq(overCapTo));
     assertFalse(heavyCryptoGate.isBusy());
   }
 
   @Test
   @DisplayName("checkIntegrity rejects windows above the 193h default cap")
-  void checkIntegrity_rangeOverCap_throwsIllegalArgumentException() {
+  void checkIntegrity_rangeOverCap_throwsIntegrityWindowOverCapException() {
     OffsetDateTime overCapTo = FROM.plusDays(9);
-    IllegalArgumentException ex =
+    IntegrityWindowOverCapException ex =
         assertThrows(
-            IllegalArgumentException.class, () -> controller.checkIntegrity(FROM, overCapTo));
-    assertTrue(ex.getMessage().contains("193"));
+            IntegrityWindowOverCapException.class,
+            () -> controller.checkIntegrity(FROM, overCapTo));
+    assertEquals(193, ex.getMaxWindowHours());
     verify(auditIntegrityService, never()).verifyRange(eq(FROM), eq(overCapTo));
   }
 

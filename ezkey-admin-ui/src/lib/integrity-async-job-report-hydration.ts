@@ -18,6 +18,10 @@ import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
 export const INTEGRITY_ASYNC_JOB_BUSY_TYPE =
   'https://ezkey.io/problems/domain/integrity-async-job-busy';
 
+/** RFC 9457 type for Integrity window over the shared hour cap (HTTP 400). */
+export const INTEGRITY_WINDOW_OVER_CAP_TYPE =
+  'https://ezkey.io/problems/domain/integrity-window-over-cap';
+
 /**
  * Shared with {@code IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS}:
  * 8 calendar days, DST transition included (8×24 + 1).
@@ -70,7 +74,7 @@ export function isIntegrityReportHydrationBusyError(error: unknown): boolean {
 
 /**
  * True when the API refused a window that exceeds the shared Integrity hour cap (HTTP 400).
- * Used for Verify start and as a hydration fallback for jobs that predate VERIFY-side capping.
+ * Matches {@link INTEGRITY_WINDOW_OVER_CAP_TYPE} only (not free-text detail).
  *
  * @param error unknown error from start or report GET
  * @returns whether this is an over-cap refusal
@@ -79,14 +83,7 @@ export function isIntegrityWindowOverCapError(error: unknown): boolean {
   if (!(error instanceof ApiError) || error.status !== 400) {
     return false;
   }
-  const detail =
-    typeof error.problemDetail?.detail === 'string'
-      ? error.problemDetail.detail
-      : error.message;
-  return (
-    detail.includes('exceeds maximum')
-    && detail.includes('hours')
-  );
+  return error.problemDetail?.type === INTEGRITY_WINDOW_OVER_CAP_TYPE;
 }
 
 export type IntegrityReportHydrationKind = 'chain' | 'entry';

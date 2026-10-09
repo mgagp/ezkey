@@ -287,7 +287,7 @@ entry HMAC range verify, run validation). DB-backed (`ezkey_integrity_async_job`
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `Integer` | `193` | optionnel | Hard-reject operator POST / async `RUN_VALIDATION` when `[from, to)` exceeds this many hours. Default shares `IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS` with report GETs / VERIFY starts (**8 calendar days, DST transition included**). **Provisional** — #730 will align with a single `max-window-days`. Set to `null` only when a deployment intentionally wants an unbounded detect path. Nightly scheduled window remains `nightly.window-hours`. |
+| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `int` | `193` | optionnel | Hard-reject operator POST / async `RUN_VALIDATION` when `[from, to)` exceeds this many hours. Default shares `IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS` with report GETs / VERIFY starts (**8 calendar days, DST transition included**). Primitive `int` — there is **no opt-out**; an empty property value cannot remove the cap (raise the number only if a deployment needs a longer bound). **Provisional** — #730 will align with a single `max-window-days`. Nightly scheduled window remains `nightly.window-hours`. |
 
 ---
 
