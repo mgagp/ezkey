@@ -27,8 +27,9 @@ import org.springframework.stereotype.Component;
  * ezkey.admin.bootstrap.export.path=/var/lib/ezkey/bootstrap/bootstrap-credentials.json
  * </pre>
  *
- * <p><b>Security Note:</b> This feature exports enrollment credentials (excluding recovery codes)
- * to a file. It should only be enabled in Docker/demo profiles, never in production.
+ * <p><b>Security Note:</b> This feature exports enrollment credentials and plaintext recovery codes
+ * to a file written with owner-only mode ({@code 0600}). Prefer Docker/demo profiles; lock down the
+ * host path in any other environment.
  *
  * @since 2025
  */
@@ -40,8 +41,9 @@ public class BootstrapExportProperties {
    * Enable or disable bootstrap credentials file export.
    *
    * <p>When enabled, bootstrap credentials (enrollmentId, enrollmentProofToken,
-   * enrollmentChallengeCode, username) are written to a JSON file after global admin enrollment is
-   * created. Recovery codes are NOT exported (logs only).
+   * enrollmentChallengeCode, username, recoveryCodes) are written to a JSON file after global admin
+   * enrollment is created. Plaintext recovery codes are also persisted when present even if this
+   * flag is false, because they are no longer emitted to logs.
    *
    * <p><b>Default:</b> false (disabled by default for security)
    *

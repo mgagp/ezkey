@@ -236,8 +236,8 @@ public class AdminAuthService {
       }
 
       logger.info(
-          "📋 Passwordless with challenge: returning auth attempt info (challenge: {})",
-          challengeCode);
+          "📋 Passwordless with challenge: returning auth attempt info (ID: {})",
+          attemptResponse.getAuthAttemptId());
 
       String message =
           "Challenge verification required. Enter code "

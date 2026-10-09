@@ -8,8 +8,8 @@ if [ "${EZKEY_BOOTSTRAP_INIT_ENABLED:-true}" = "false" ]; then
   echo "=========================================="
   echo "  Ezkey Bootstrap Init — SKIPPED"
   echo "=========================================="
-  echo "EZKEY_BOOTSTRAP_INIT_ENABLED=false (e.g. recovery_primary bootstrap: no bootstrap-credentials.json)."
-  echo "Perform global admin enrollment via Admin UI recovery flow, or set EZKEY_BOOTSTRAP_INIT_ENABLED=true with full bootstrap mode."
+  echo "EZKEY_BOOTSTRAP_INIT_ENABLED=false (e.g. recovery_primary bootstrap: credentials file has recovery codes only)."
+  echo "Perform global admin enrollment via Admin UI recovery flow (codes in bootstrap-credentials.json 0600), or set EZKEY_BOOTSTRAP_INIT_ENABLED=true with full bootstrap mode."
   exit 0
 fi
 

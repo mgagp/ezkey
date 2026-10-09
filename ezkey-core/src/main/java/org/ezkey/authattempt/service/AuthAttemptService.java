@@ -423,8 +423,7 @@ public class AuthAttemptService {
             || Boolean.TRUE.equals(authRequest.getChallengeRequested());
     if (shouldGenerateChallenge) {
       authAttempt.setAuthAttemptChallenge(generateChallenge());
-      logger.debug(
-          "Generated challenge code for auth attempt: {}", authAttempt.getAuthAttemptChallenge());
+      logger.debug("Generated challenge code for enrollment {}", authRequest.getEnrollmentId());
     } else {
       authAttempt.setAuthAttemptChallenge(null);
       logger.debug("No challenge code generated for auth attempt");

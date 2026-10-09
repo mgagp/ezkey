@@ -138,6 +138,15 @@ public class AdminMfaProperties {
         BootstrapCredentialsOutputMode.FULL;
 
     /**
+     * Pending bind/verify invitation TTL for the bootstrap global-admin enrollment only (hours).
+     *
+     * <p>Default {@code 24}. Use {@code 0} to disable expiry on the bootstrap enrollment (not
+     * recommended). Ordinary enrollments still use {@code
+     * ezkey.enrollment.pending-expiration-days}.
+     */
+    private int enrollmentExpirationHours = 24;
+
+    /**
      * Gets the bootstrap enabled status.
      *
      * @return true if bootstrap is enabled
@@ -189,6 +198,24 @@ public class AdminMfaProperties {
      */
     public void setCredentialsOutputMode(BootstrapCredentialsOutputMode credentialsOutputMode) {
       this.credentialsOutputMode = credentialsOutputMode;
+    }
+
+    /**
+     * Gets the bootstrap enrollment invitation TTL in hours.
+     *
+     * @return hours until the bootstrap enrollment expires while still pending bind/verify
+     */
+    public int getEnrollmentExpirationHours() {
+      return enrollmentExpirationHours;
+    }
+
+    /**
+     * Sets the bootstrap enrollment invitation TTL in hours.
+     *
+     * @param enrollmentExpirationHours hours until expiry; {@code 0} disables
+     */
+    public void setEnrollmentExpirationHours(int enrollmentExpirationHours) {
+      this.enrollmentExpirationHours = enrollmentExpirationHours;
     }
   }
 }

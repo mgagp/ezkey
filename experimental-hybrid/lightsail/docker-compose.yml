@@ -7,10 +7,18 @@ name: ezkey-experimental-lightsail
 x-container-tz: &container-tz
   TZ: ${TZ:-UTC}
 
+# Bound container log growth (json-file). Aligns with docs/OPERATIONAL.md log size guidance.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "100m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:18-alpine
     container_name: ezkey-exp-postgres
+    logging: *default-logging
     environment:
       <<: *container-tz
       POSTGRES_DB: ${POSTGRES_DB:-ezkey_db}
@@ -39,6 +47,7 @@ services:
   migration:
     image: ezkey-migration:latest
     container_name: ezkey-exp-migration
+    logging: *default-logging
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,6 +64,7 @@ services:
   db-grants:
     image: postgres:18-alpine
     container_name: ezkey-exp-db-grants
+    logging: *default-logging
     depends_on:
       migration:
         condition: service_completed_successfully
@@ -84,6 +94,7 @@ services:
   admin-api:
     image: ezkey-admin-api:latest
     container_name: ezkey-exp-admin-api
+    logging: *default-logging
     # Loads every key from .env into the container (Compose does not do this by default).
     # Ensures EZKEY_* (e.g. CORS) reach Spring even if an older compose file omitted them under environment:.
     env_file:
@@ -138,6 +149,7 @@ services:
   auth-api:
     image: ezkey-auth-api:latest
     container_name: ezkey-exp-auth-api
+    logging: *default-logging
     depends_on:
       postgres:
         condition: service_healthy
@@ -174,6 +186,7 @@ services:
   integration-api:
     image: ezkey-integration-api:latest
     container_name: ezkey-exp-integration-api
+    logging: *default-logging
     depends_on:
       postgres:
         condition: service_healthy
@@ -207,6 +220,7 @@ services:
   demo-app-acme:
     image: ezkey-demo-app-acme:latest
     container_name: ezkey-exp-demo-app-acme
+    logging: *default-logging
     depends_on:
       admin-api:
         condition: service_healthy
@@ -238,6 +252,7 @@ services:
   caddy:
     image: caddy:2-alpine
     container_name: ezkey-exp-caddy
+    logging: *default-logging
     ports:
       - "80:80"
       - "443:443"

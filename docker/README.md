@@ -185,7 +185,7 @@ ports after the stack is up.
 - **Depends on**: Admin API, Auth API, Crypto API, Demo Device (all healthy)
 - **Runs**: After all services are healthy
 - **Output**: Creates bootstrap artifacts and demo-device enrollment file
-- **Skip**: Set `EZKEY_BOOTSTRAP_INIT_ENABLED=false` when Admin API uses `recovery_primary` bootstrap (no `bootstrap-credentials.json`).
+- **Skip**: Set `EZKEY_BOOTSTRAP_INIT_ENABLED=false` when Admin API uses `recovery_primary` bootstrap (credentials file has no proof token for unattended bind).
 - **Note**: This service makes Docker stack fully self-contained (no Maven/JDK required)
 
 ## Bootstrap and Initialization
@@ -198,9 +198,9 @@ The Docker stack automatically initializes the global admin enrollment and seeds
 
 ### Credentials output mode (full vs recovery-primary)
 
-- **Default (`full`)** — Admin API logs enrollment material (proof token, challenge, ASCII QR, recovery codes) and writes `bootstrap-credentials.json` when export is enabled. **`bootstrap-init` requires this file** for unattended bind+verify (clean-start / demo).
-- **Production-style (`recovery_primary`)** — Set `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE=recovery_primary` on **admin-api**. Logs contain **recovery codes and operator instructions only**; enrollment secrets are not printed; **JSON export is skipped**, so `bootstrap-credentials.json` is **not** created.
-- When using `recovery_primary`, set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on the **bootstrap-init** service (or omit `bootstrap-init` from the compose stack) so the init container does not wait for a missing file. Operators enroll the global admin via **Admin UI → account recovery** (recover → reset enrollment → bind).
+- **Default (`full`)** — Admin API logs enrollment bind material (proof token, challenge, ASCII QR) by design and writes `bootstrap-credentials.json` (`0600`) with bind material **and recovery codes**. **`bootstrap-init` requires this file** for unattended bind+verify (clean-start / demo).
+- **Production-style (`recovery_primary`)** — Set `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE=recovery_primary` on **admin-api**. Logs omit enrollment secrets; recovery codes are written only to `bootstrap-credentials.json` (`0600`) without proof token/challenge. Set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on **bootstrap-init** (or omit it) so init does not wait for bind material. Operators enroll via **Admin UI → account recovery** (recover → reset enrollment → bind).
+- **Bootstrap enrollment TTL** — `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS` (default **24**). Bind before expiry; re-issue with a recovery code from the credentials file → recover → reset enrollment.
 
 **No manual steps required** (with default `full`)! After `docker/start.sh` completes:
 - Demo-device is pre-seeded and ready
@@ -211,14 +211,14 @@ The Docker stack automatically initializes the global admin enrollment and seeds
 Bootstrap artifacts are stored in the `bootstrap-artifacts` Docker volume:
 
 ```bash
-# View bootstrap credentials
+# View bootstrap credentials (includes recovery codes; file mode 0600 inside the volume)
 docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/bootstrap-credentials.json
 
 # View device credentials
 docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/device-credentials.json
 ```
 
-**Note**: Recovery codes are NOT exported to files (logs only for security).
+**Note**: Recovery codes are **only** in `bootstrap-credentials.json` (`0600`), never in container logs.
 
 ## Management Commands
 

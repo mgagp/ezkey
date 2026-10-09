@@ -23,6 +23,7 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.admin.initial.last-name` | `EZKEY_ADMIN_INITIAL_LAST_NAME` | `Docker` | requis |
 | `ezkey.admin.mfa.mode` | — | `dev` | requis [docker] |
 | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE` | `FULL` | optionnel |
+| `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS` | `24` | optionnel |
 | `ezkey.admin.token.rotation-on-login` | — | `true` | optionnel |
 | `ezkey.admin.token.expiration-hours` | — | `2` | optionnel |
 | `ezkey.admin.token.cleanup.enabled` | — | `true` | optionnel |
@@ -83,14 +84,15 @@ Integration Zero and Enrollment Zero at first startup ("Eat Your Own Dog Food").
 | `ezkey.admin.mfa.mode` | `String` | `dev` | requis [docker] | `dev` = MFA optional; `prod` = MFA required for all admins. Always `prod` in docker profile. |
 | `ezkey.admin.mfa.bootstrap.enabled` | `boolean` | `true` | optionnel | Create Integration Zero and Enrollment Zero at startup if absent. |
 | `ezkey.admin.mfa.bootstrap.auto-enrollment` | `boolean` | `true` | optionnel | Automatically create Enrollment Zero for the Global Admin. Convenient in dev; consider `false` in production. |
-| `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `BootstrapCredentialsOutputMode` | `FULL` | optionnel | `FULL` = enrollment token, challenge, ASCII QR, recovery codes, CLI hints, JSON export. `RECOVERY_PRIMARY` = recovery codes + instructions only; no enrollment secrets in logs, no JSON export. |
+| `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `BootstrapCredentialsOutputMode` | `FULL` | optionnel | `FULL` = proof token, challenge, ASCII QR in logs (by design) + JSON export including recovery codes. `RECOVERY_PRIMARY` = no enrollment secrets in logs; recovery codes only in `bootstrap-credentials.json` (`0600`). |
+| `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | `int` | `24` | optionnel | Pending bind/verify TTL for the **bootstrap** global-admin enrollment only. `0` disables. Ordinary enrollments use `ezkey.enrollment.pending-expiration-days`. |
 
 **Enum values for `credentials-output-mode`:**
 
 | Value | Description |
 |---|---|
-| `FULL` | Maximum output for dev/demo and Docker clean-start automation. |
-| `RECOVERY_PRIMARY` | Production-oriented: only recovery codes and operator instructions. |
+| `FULL` | Dev/demo and Docker clean-start: bind material in logs; recovery codes in the credentials file (`0600`). |
+| `RECOVERY_PRIMARY` | Production-oriented: no enrollment secrets in logs; recovery codes in the credentials file only. |
 
 ---
 
@@ -217,15 +219,16 @@ M2M create/wait limits live on [ezkey-integration-api](../ezkey-integration-api/
 ### 9. Bootstrap Credentials Export (`ezkey.admin.bootstrap.export.*`)
 
 **Description:** exports enrollment credentials (enrollmentId, proof token, challenge, username)
-to a JSON file for Docker automation (clean-start). Recovery codes are **never exported**
-(logs only). Disable in production.
+and plaintext **recovery codes** to a JSON file written with owner-only mode (`0600`). This is the
+supported channel for bootstrap recovery codes (they are never written to logs). Prefer Docker/demo
+profiles; lock down the host path elsewhere.
 
 **Defined in:** `BootstrapExportProperties`
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.admin.bootstrap.export.enabled` | `boolean` | `false` | optionnel | Enable/disable file export. Enabled by default in `docker` and `docker-test` profiles. |
-| `ezkey.admin.bootstrap.export.path` | `String` | `/var/lib/ezkey/bootstrap/bootstrap-credentials.json` | optionnel | Absolute path for the JSON export file. Directory must exist and be writable. |
+| `ezkey.admin.bootstrap.export.enabled` | `boolean` | `false` | optionnel | Enable/disable full file export. Enabled by default in `docker` and `docker-test` profiles. Plaintext recovery codes are still persisted when present even if this flag is false. |
+| `ezkey.admin.bootstrap.export.path` | `String` | `/var/lib/ezkey/bootstrap/bootstrap-credentials.json` | optionnel | Absolute path for the JSON export file. Parent directory is created if missing; file mode is set to `0600` when POSIX permissions are available. |
 
 ---
 
@@ -350,6 +353,7 @@ The following ezkey-core prefixes are also active in Admin API. See
 | `ezkey.admin.mfa.mode` | `dev` | `prod` | `prod` | *(inherits)* |
 | `ezkey.admin.mfa.bootstrap.auto-enrollment` | `true` | `true` | `true` | *(inherits)* |
 | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `FULL` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:full}` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:full}` | *(inherits)* |
+| `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | `24` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS:24}` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS:24}` | *(inherits)* |
 | `ezkey.admin.rate-limit.enabled` | `true` | `true` | `false` | *(inherits)* |
 | `ezkey.admin-operations.rate-limit.enabled` | `true` | `true` | `false` | *(inherits)* |
 | `ezkey.admin.bootstrap.export.enabled` | `false` | `true` | `true` | *(inherits)* |
@@ -374,6 +378,7 @@ The following ezkey-core prefixes are also active in Admin API. See
 | `ezkey.admin.initial.first-name` | `EZKEY_ADMIN_INITIAL_FIRST_NAME` | `Admin` |
 | `ezkey.admin.initial.last-name` | `EZKEY_ADMIN_INITIAL_LAST_NAME` | `Docker` |
 | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE` | `full` |
+| `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS` | `24` |
 | `ezkey.organization.name` | `EZKEY_ORGANIZATION_NAME` | `Ezkey System` |
 | `ezkey.organization.description` | `EZKEY_ORGANIZATION_DESCRIPTION` | `Ezkey MFA instance for your organization` |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(empty)* |

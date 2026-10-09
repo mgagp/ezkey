@@ -28,8 +28,9 @@ Bootstrap responsibilities include:
 
 Logging and secret handling rules:
 
-- **Never log** enrollment proof tokens, challenge codes, plaintext recovery codes, recovery tokens, bearer tokens, or raw cryptographic signatures.
-- Log only non-secret identifiers (for example `enrollmentId`, `username`).
+- **Never log** plaintext recovery codes, admin login challenge codes, temporary recovery tokens, bearer tokens, bootstrap admin email addresses, or raw cryptographic signatures.
+- Log only non-secret identifiers (for example `enrollmentId`, `authAttemptId`, `username`).
+- **Bootstrap exception (bind material only):** in `credentials-output-mode=full`, one-time startup logs may include the enrollment proof token, challenge, and ASCII QR. Recovery codes go only to `bootstrap-credentials.json` (`0600`).
 
 ## Layered Architecture
 

@@ -47,18 +47,20 @@ import tools.jackson.databind.node.ObjectNode;
  * Bash), set {@link DockerCliLocator#ENV_DOCKER_CLI} to the full path of {@code docker.exe} (see
  * {@link DockerCliLocator}).
  *
- * <p><b>Log Format Parsed:</b>
+ * <p><b>Preferred channel:</b> {@code bootstrap-credentials.json} on the {@code
+ * bootstrap-artifacts} Docker volume (mode {@code 0600}). Recovery codes are never in logs; they
+ * are read from that file. Enrollment ID / proof token / challenge may still be parsed from Admin
+ * API startup logs when the volume file is unavailable.
+ *
+ * <p><b>Log Format Parsed (enrollment bind material only):</b>
  *
  * <pre>
  * 📱 GLOBAL ADMIN PASSWORDLESS ENROLLMENT - SAVE THESE CREDENTIALS NOW!
  * 🔐 ENROLLMENT CREDENTIALS:
  *    Enrollment ID: 123
- *    Enrollment Proof Token: EZK-ABC123-DEF456
+ *    Enrollment Proof Token: …
  *    Enrollment Challenge Code: 123456
- * 🔑 RECOVERY CODES (SAVE SECURELY - SINGLE USE ONLY):
- *    1. CODE1
- *    2. CODE2
- *    ...
+ * 🔑 RECOVERY CODES: &lt;see …/bootstrap-credentials.json (0600)&gt;
  * </pre>
  *
  * @since 2025
@@ -81,6 +83,9 @@ public class BootstrapCredentialsExtractor {
   private static final String CREDENTIALS_FILE_PATH =
       System.getProperty("ezkey.test.state.dir", ".ezkey-test") + "/bootstrap-credentials.json";
   private static final String SHEDLOCK_LOCK_NAME = "ADMIN_STARTUP_BOOTSTRAP";
+
+  private static final String BOOTSTRAP_VOLUME = "ezkey_bootstrap-artifacts";
+  private static final String BOOTSTRAP_VOLUME_FILE = "/data/bootstrap-credentials.json";
 
   // Patterns for parsing logs
   private static final Pattern ENROLLMENT_ID_PATTERN = Pattern.compile("Enrollment ID:\\s*(\\d+)");
@@ -121,16 +126,31 @@ public class BootstrapCredentialsExtractor {
    * @throws IllegalStateException if credentials cannot be extracted
    */
   public BootstrapCredentials extractCredentials() {
-    log.info("Extracting bootstrap credentials from Docker container logs...");
+    log.info("Extracting bootstrap credentials (volume file preferred, logs as fallback)...");
 
     try {
-      // Read logs from Docker container
+      BootstrapCredentials fromVolume = tryLoadFromDockerVolume();
+      if (fromVolume != null
+          && fromVolume.enrollmentProofToken() != null
+          && !fromVolume.enrollmentProofToken().isBlank()) {
+        saveCredentialsToFile(fromVolume);
+        log.info("✅ Bootstrap credentials loaded from Docker volume {}", BOOTSTRAP_VOLUME);
+        return fromVolume;
+      }
+
       String logs = readDockerLogs();
+      BootstrapCredentials fromLogs = parseCredentials(logs);
+      List<String> recoveryCodes = fromLogs.recoveryCodes();
+      if (recoveryCodes.isEmpty() && fromVolume != null) {
+        recoveryCodes = fromVolume.recoveryCodes();
+      }
+      BootstrapCredentials credentials =
+          new BootstrapCredentials(
+              fromLogs.enrollmentId(),
+              fromLogs.enrollmentProofToken(),
+              fromLogs.enrollmentChallengeCode(),
+              recoveryCodes);
 
-      // Parse credentials from logs
-      BootstrapCredentials credentials = parseCredentials(logs);
-
-      // Save to file for future use
       saveCredentialsToFile(credentials);
 
       log.info("✅ Bootstrap credentials extracted successfully");
@@ -145,6 +165,51 @@ public class BootstrapCredentialsExtractor {
     } catch (Exception e) {
       throw new IllegalStateException(
           "Failed to extract bootstrap credentials from Docker logs: " + e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Loads {@code bootstrap-credentials.json} from the standard Docker volume when present.
+   *
+   * @return credentials or {@code null} if the volume file is missing or unreadable
+   */
+  private BootstrapCredentials tryLoadFromDockerVolume() {
+    try {
+      ProcessBuilder processBuilder =
+          DockerCliLocator.processBuilder(
+              "run",
+              "--rm",
+              "-v",
+              BOOTSTRAP_VOLUME + ":/data:ro",
+              "alpine",
+              "cat",
+              BOOTSTRAP_VOLUME_FILE);
+      processBuilder.redirectErrorStream(true);
+      Process process = processBuilder.start();
+      StringBuilder output = new StringBuilder();
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          output.append(line).append('\n');
+        }
+      }
+      int exit = process.waitFor();
+      if (exit != 0) {
+        log.debug(
+            "Docker volume credentials unavailable (exit {}): {}", exit, output.toString().trim());
+        return null;
+      }
+      Path temp = Files.createTempFile("ezkey-bootstrap-volume-", ".json");
+      try {
+        Files.writeString(temp, output.toString());
+        return loadCredentialsFromFile(temp);
+      } finally {
+        Files.deleteIfExists(temp);
+      }
+    } catch (Exception e) {
+      log.debug("Could not load bootstrap credentials from Docker volume: {}", e.getMessage());
+      return null;
     }
   }
 
@@ -643,21 +708,26 @@ public class BootstrapCredentialsExtractor {
     }
     Integer enrollmentChallengeCode = Integer.parseInt(challengeMatcher.group(1));
 
-    // Extract recovery codes
+    // Recovery codes are no longer logged (see bootstrap-credentials.json 0600).
+    // Keep a best-effort parse for older stacks that still print numbered codes.
     List<String> recoveryCodes = new ArrayList<>();
     int recoveryStart = credentialsSection.indexOf("RECOVERY CODES");
     if (recoveryStart != -1) {
       String recoverySection =
           credentialsSection.substring(
               recoveryStart, Math.min(recoveryStart + 1000, credentialsSection.length()));
-      Matcher recoveryMatcher = RECOVERY_CODE_PATTERN.matcher(recoverySection);
-      while (recoveryMatcher.find()) {
-        recoveryCodes.add(recoveryMatcher.group(1));
+      if (!recoverySection.contains("<see ") && !recoverySection.contains("(0600)")) {
+        Matcher recoveryMatcher = RECOVERY_CODE_PATTERN.matcher(recoverySection);
+        while (recoveryMatcher.find()) {
+          recoveryCodes.add(recoveryMatcher.group(1));
+        }
       }
     }
 
     if (recoveryCodes.isEmpty()) {
-      log.warn("No recovery codes found in logs (may be normal if already bound)");
+      log.info(
+          "No recovery codes in logs (expected); use bootstrap-credentials.json on the"
+              + " bootstrap-artifacts volume");
     }
 
     return new BootstrapCredentials(
@@ -707,9 +777,16 @@ public class BootstrapCredentialsExtractor {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode jsonNode = (ObjectNode) mapper.readTree(credentialsPath.toFile());
 
-    Integer enrollmentId = jsonNode.get("enrollmentId").asInt();
-    String enrollmentProofToken = jsonNode.get("enrollmentProofToken").asString();
-    Integer enrollmentChallengeCode = jsonNode.get("enrollmentChallengeCode").asInt();
+    Integer enrollmentId =
+        jsonNode.has("enrollmentId") ? jsonNode.get("enrollmentId").asInt() : null;
+    String enrollmentProofToken =
+        jsonNode.has("enrollmentProofToken")
+            ? jsonNode.get("enrollmentProofToken").asString()
+            : null;
+    Integer enrollmentChallengeCode =
+        jsonNode.has("enrollmentChallengeCode")
+            ? jsonNode.get("enrollmentChallengeCode").asInt()
+            : null;
 
     List<String> recoveryCodes = new ArrayList<>();
     if (jsonNode.has("recoveryCodes")) {

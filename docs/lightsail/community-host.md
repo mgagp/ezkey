@@ -322,6 +322,8 @@ Short operator checklist verified against repo scripts/compose (not live VM obse
    [`docker-compose.yml`](../../experimental-hybrid/lightsail/docker-compose.yml)) applies
    [`scripts/db/apply-grants.sql`](../../scripts/db/apply-grants.sql) after migration. APIs depend on
    it (`condition: service_completed_successfully`). Do not skip or remove it on a fresh bring-up.
+   The same compose file sets Docker `json-file` log rotation (`max-size: 100m`, `max-file: 3`) on
+   every service.
 3. **Never `--clean-start` on a kept community DB** — `--clean-start` is destructive
    (`docker compose down -v`, then remote `clean-start.sh`). For upgrades that keep Postgres data,
    use rolling export (`--sync-operator-files` + `--remote-up`, or

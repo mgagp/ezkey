@@ -179,7 +179,7 @@ On first startup, Ezkey automatically initializes the admin authentication syste
    - Passwordless authentication (no passwords)
    - System Integration created for global admin authentication
    - Global Admin Enrollment created with RSA-2048 keys
-   - Recovery codes generated (10 single-use codes)
+   - Recovery codes generated into `bootstrap-credentials.json` (`0600`; never logged; count from `ezkey.admin.recovery.codes-count`)
    - Admin linked to system tenant
 
 ### Organization Configuration
@@ -542,16 +542,30 @@ ssl_stapling_verify on;
 
 ### Logging and secrets (Admin API)
 
-Server logs must **not** duplicate high-value secrets that are already returned in API responses (for example enrollment proof tokens and challenge codes after enrollment reset). Use identifiers such as `enrollmentId` and usernames for correlation. Plaintext recovery codes appear only in deliberate bootstrap output when configured.
+Server logs must **not** duplicate high-value secrets that are already returned in API responses (for example enrollment proof tokens and challenge codes after enrollment reset). Use identifiers such as `enrollmentId`, `authAttemptId`, and usernames for correlation. Admin login challenge codes, bootstrap admin email addresses, and plaintext recovery codes must not appear in logs.
+
+**Deliberate bootstrap exception (bind material only):** in `credentials-output-mode=full`, the Admin API startup logs still print the enrollment proof token, challenge code, and ASCII QR so operators can complete the first global-admin enrollment wizard. Recovery codes are never printed; they are written only to `bootstrap-credentials.json` with owner-only mode (`0600`).
 
 ### Global admin bootstrap and recovery codes
 
 `ezkey.admin.mfa.bootstrap.credentials-output-mode` controls what the Admin API prints at first global-admin enrollment:
 
-- **`full`** (default for development and Docker clean-start): enrollment secrets and ASCII QR may appear in startup logs; `bootstrap-credentials.json` may be written when file export is enabled (for `bootstrap-init` automation).
-- **`recovery_primary`**: recovery codes and operator instructions only; enrollment secrets are omitted from logs and JSON export is skipped. Use the Admin UI account-recovery flow (recover → reset enrollment → bind). For Docker, set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on the `bootstrap-init` service when no `bootstrap-credentials.json` is produced, or omit that service.
+- **`full`** (default for development and Docker clean-start): enrollment proof token, challenge, and ASCII QR appear in startup logs (by design). Recovery codes are written to `bootstrap-credentials.json` (`0600`) — never to logs. File export also includes enrollment bind material for `bootstrap-init`.
+- **`recovery_primary`**: enrollment secrets and ASCII QR are omitted from logs. Recovery codes are written to `bootstrap-credentials.json` (`0600`) only. Use the Admin UI account-recovery flow (recover → reset enrollment → bind). For Docker unattended bind, keep `credentials-output-mode=full`; with `recovery_primary`, set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on `bootstrap-init` (or omit that service) because the file has no proof token.
 
-**Operational recommendation:** After the global administrator completes first device binding and can sign in, **regenerate recovery codes** from the Admin UI so unused codes from bootstrap logs are invalidated.
+**Bootstrap enrollment TTL:** `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` (default **24**, env `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS`). Bind is refused after expiry. To re-issue: read a recovery code from `bootstrap-credentials.json` → Admin UI account recovery → reset enrollment → bind with the new material returned in the HTTP response.
+
+**Retrieve recovery codes (Docker):**
+
+```bash
+docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/bootstrap-credentials.json
+```
+
+**Operational recommendation:** After the global administrator completes first device binding and can sign in, **regenerate recovery codes** from the Admin UI so unused codes from the bootstrap credentials file are invalidated.
+
+### Lightsail compose log rotation
+
+The experimental Lightsail Compose file (`experimental-hybrid/lightsail/docker-compose.yml`) sets Docker `json-file` logging with `max-size: 100m` and `max-file: 3` on every service so container logs cannot grow without bound on the VM.
 
 ### Log Configuration
 
