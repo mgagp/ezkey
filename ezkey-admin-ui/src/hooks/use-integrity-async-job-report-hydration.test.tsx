@@ -191,7 +191,7 @@ describe('useIntegrityAsyncJobReportHydration', () => {
     } as ChainVerificationReport;
     let shouldFail = true;
     const fetchChainReport = vi.fn(
-      async (_from: string, _to: string): Promise<ChainVerificationReport> => {
+      async (): Promise<ChainVerificationReport> => {
         if (shouldFail) {
           throw busy;
         }
