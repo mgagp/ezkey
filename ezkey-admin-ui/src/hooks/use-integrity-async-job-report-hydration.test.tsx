@@ -185,14 +185,25 @@ describe('useIntegrityAsyncJobReportHydration', () => {
       },
       'Integrity crypto path busy (scheduled or in-process heavy work)',
     );
-    const fetchChainReport = vi.fn(async () => {
-      throw busy;
-    });
+    const successReport = {
+      intact: true,
+      undeclaredGaps: [{ gapStart: 'a', gapEnd: 'b' }],
+    } as ChainVerificationReport;
+    let shouldFail = true;
+    const fetchChainReport = vi.fn(
+      async (_from: string, _to: string): Promise<ChainVerificationReport> => {
+        if (shouldFail) {
+          throw busy;
+        }
+        return successReport;
+      },
+    );
     const onError = vi.fn();
+    const onChainReport = vi.fn();
     const onChainHydratingChange = vi.fn();
 
     const base = {
-      onChainReport: vi.fn(),
+      onChainReport,
       onEntryReport: vi.fn(),
       onChainHydratingChange,
       onError,
@@ -246,10 +257,7 @@ describe('useIntegrityAsyncJobReportHydration', () => {
     expect(fetchChainReport).toHaveBeenCalledTimes(1);
 
     // Operator Reload report bumps nonce — one more attempt, still no storm.
-    fetchChainReport.mockResolvedValueOnce({
-      intact: true,
-      undeclaredGaps: [{ gapStart: 'a', gapEnd: 'b' }],
-    } as ChainVerificationReport);
+    shouldFail = false;
     rerender({
       job: job({
         jobId: 'j-busy',
@@ -259,7 +267,7 @@ describe('useIntegrityAsyncJobReportHydration', () => {
       reloadNonce: 1,
     });
     await waitFor(() => expect(fetchChainReport).toHaveBeenCalledTimes(2));
-    expect(base.onChainReport).toHaveBeenCalledTimes(1);
+    expect(onChainReport).toHaveBeenCalledTimes(1);
   });
 
   it('resets integrityLoading when cancelled by a new chain job mid-hydration', async () => {
