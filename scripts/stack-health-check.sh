@@ -3,9 +3,10 @@
 # stack-health-check — thin wrapper: dump JavaMelody into OUTPUT_DIR, then
 # score via stack-health-check.mjs (log scan + redaction + thresholds).
 #
-# Usage (Git Bash / Linux / macOS), from repo root:
+# Cloud agent tooling; Git Bash best-effort, untested on macOS.
+# Usage (from repo root):
 #   ./scripts/stack-health-check.sh
-#   ./scripts/stack-health-check.sh --output-dir logs/quality-gate/.../health
+#   QUALITY_GATE_PHASE=clean-start ./scripts/stack-health-check.sh --output-dir …
 #
 set -euo pipefail
 
@@ -70,11 +71,16 @@ else
 fi
 
 export COMPOSE_RETRY_FIRED
+PHASE_ARGS=()
+if [[ -n "${QUALITY_GATE_PHASE:-}" ]]; then
+  PHASE_ARGS=(--phase "$QUALITY_GATE_PHASE")
+fi
 node "$SCRIPT_DIR/stack-health-check.mjs" \
   --output-dir "$OUTPUT_DIR" \
   --jm-dir "$JM_DIR" \
   --jm-ok "$JM_OK" \
   --thresholds "$REPO_ROOT/config/quality-gate/thresholds.json" \
-  --allowlist "$REPO_ROOT/config/quality-gate/log-allowlist.txt"
+  --allowlist "$REPO_ROOT/config/quality-gate/log-allowlist.txt" \
+  "${PHASE_ARGS[@]}"
 
 echo "[$KEYWORD] done → $OUTPUT_DIR"
