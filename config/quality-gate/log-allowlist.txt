@@ -1,0 +1,17 @@
+# Quality-gate container-log allowlist
+# Format: service | phase | anchored regex | issue | expires=YYYY-MM-DD | justification
+# - service: container name substring or *
+# - phase: * | clean-start | post-clean-health | health | … (comma-separated list OK)
+# - regex: tested against post-signature() text (must be anchored); invalid regex → blocking
+# - issue: required GitHub issue (#NNN). Missing or expired → actionable RED (hygiene)
+# - #747: active only when phase=clean-start AND COMPOSE_RETRY_FIRED=1 (admin replicas)
+# - #750: bootstrap enrollment channel (proof token / challenge / QR) — by design on
+#   clean-start/post-clean-health AdminBootstrapService only; recovery codes stay RED
+# Transient I/O is volume-thresholded in thresholds.json — not blanket-suppressed here.
+
+ezkey-admin-api | clean-start | ^.*ezkey_encryption_key_pkey | #747 | expires=2026-12-31 | SECURITY: temporary HA admin keyset PK race; compose-retry workaround only; remove when #747 fixed
+ezkey-admin-api | clean-start,post-clean-health | ^.*AdminBootstrapService.*Enrollment Proof Token= | #750 | expires=2026-12-31 | by design: initial enrollment channel
+ezkey-admin-api | clean-start,post-clean-health | ^.*AdminBootstrapService.*Enrollment Challenge Code= | #750 | expires=2026-12-31 | by design: initial enrollment channel
+ezkey-admin-api | clean-start,post-clean-health | ^.*AdminBootstrapService.*Challenge Code= | #750 | expires=2026-12-31 | by design: initial enrollment channel
+ezkey-admin-api | clean-start,post-clean-health | ^.*AdminBootstrapService.*--enrollment-proof-token | #750 | expires=2026-12-31 | by design: initial enrollment channel
+ezkey-admin-api | clean-start,post-clean-health | ^.*AdminBootstrapService.*QR CODE | #750 | expires=2026-12-31 | by design: initial enrollment channel

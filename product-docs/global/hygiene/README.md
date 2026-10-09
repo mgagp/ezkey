@@ -3,10 +3,10 @@
 Peripheral HITL decision tracks for punctual **doctor-curated** passes (Admin UI React, Java,
 mobile static analysis), weekly **Dependabot** triage, the **major-upgrades** platform register
 (line / semver-major decisions Dependabot does not open), **security-pentest** campaigns,
-**javamelody-curated** live-stack performance extracts, mandate-driven **assessment-curated**
-white-box investigation follow-ups, **document-hygiene-curated** passes for legacy document
-canonicality / archive-vs-delete decisions, and **corpus-ablation** passes that prune ephemeral
-plans/prompts into existing canon.
+**javamelody-curated** live-stack performance extracts, on-demand **quality-gate** full-suite
+runs (cloud agent), mandate-driven **assessment-curated** white-box investigation follow-ups,
+**document-hygiene-curated** passes for legacy document canonicality / archive-vs-delete
+decisions, and **corpus-ablation** passes that prune ephemeral plans/prompts into existing canon.
 
 These folders are **not** product vision, ADR, or backlog execution. They record per-campaign triage
 (fix / suppress / skip / defer, or Dependabot merge / hold / defer) so cold sessions can see *why* a
@@ -38,6 +38,7 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 | [`major-upgrades/`](major-upgrades/) | (quarterly in `dependabot-curated`) | Platform / runtime / base-image major-upgrade register (`registry.yaml`); light path vs dedicated issue |
 | [`security-pentest/`](security-pentest/) | `security-pentest-curated` | Live API / DAST-style security campaigns |
 | [`javamelody/`](javamelody/) | `javamelody-curated` | Live JavaMelody extract after a known workload (typically operational churn) |
+| [`quality-gate/`](quality-gate/) | `quality-gate` | On-demand full-suite + stack-health gate (cloud agent; between merge batches) |
 | [`document-hygiene/`](document-hygiene/) | `document-hygiene-curated` | Legacy document canonicality, discoverability, and archive-vs-delete decisions |
 | [`corpus-ablation/`](corpus-ablation/) | `corpus-ablation` | Cursor plans / prompt scaffolds → canon + discoverability; skill `.cursor/skills/corpus-ablation` |
 | [`critical-review/`](critical-review/) | `critical-review` | Launched adversarial / critical review (fresh cloud agent, forced ≠ author model family, read-only HITL); tools Stage 2 |

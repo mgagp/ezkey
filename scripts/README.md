@@ -98,6 +98,22 @@ scrape noise, and proposes a small HITL lot. Not a CI gate. See root [`AGENTS.md
 Config: [`config/javamelody/`](../config/javamelody/). Outputs: `logs/javamelody/` (gitignored).
 Campaign notes: [`product-docs/global/hygiene/javamelody/`](../product-docs/global/hygiene/javamelody/).
 
+## Quality gate (full-suite + stack health)
+
+Keyword: **`quality-gate`**. On-demand cloud-agent orchestrator for tip health between merge
+batches. Runs clean-start HA + JavaMelody, unit/functional/elective/Playwright, operational churn,
+then [`stack-health-check.sh`](stack-health-check.sh). Not a CI gate. See root
+[`AGENTS.md`](../AGENTS.md) § Quality gate.
+
+```bash
+./scripts/quality-gate.sh
+./scripts/quality-gate.sh --churn-minutes 5
+./scripts/stack-health-check.sh
+```
+
+Config: [`config/quality-gate/`](../config/quality-gate/). Outputs: `logs/quality-gate/` (gitignored).
+Campaign notes: [`product-docs/global/hygiene/quality-gate/`](../product-docs/global/hygiene/quality-gate/).
+
 ## Cloudflare (ezkey.org static site)
 
 - [`cloudflare/deploy-ezkey-org-preview.sh`](cloudflare/deploy-ezkey-org-preview.sh) — deploy [`sites/ezkey-org/`](../sites/ezkey-org/) to Cloudflare Pages as a **preview** (requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`). See [`docs/cloudflare/ezkey-org-site.md`](../docs/cloudflare/ezkey-org-site.md).

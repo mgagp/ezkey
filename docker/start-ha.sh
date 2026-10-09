@@ -83,6 +83,19 @@ if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" 
     fi
 fi
 
+# Optional space-delimited extra compose files (e.g. quality-gate memory overlay).
+if [[ -n "${EZKEY_COMPOSE_EXTRA_FILES:-}" ]]; then
+    read -r -a _ezkey_extra_files <<< "${EZKEY_COMPOSE_EXTRA_FILES}"
+    for _extra in "${_ezkey_extra_files[@]}"; do
+        if [ -f "${_extra}" ]; then
+            COMPOSE_ARGS="${COMPOSE_ARGS} -f ${_extra}"
+            echo "🔧 Extra compose overlay: $(basename "${_extra}")"
+        else
+            echo "⚠️  Warning: EZKEY_COMPOSE_EXTRA_FILES entry not found: ${_extra}"
+        fi
+    done
+fi
+
 # Enable BuildKit for Maven cache mount support
 export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1

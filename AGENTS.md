@@ -503,6 +503,12 @@ yarn doctor:curated
   Integration API silence under operational churn is **coverage**, not health. Do **not** invent
   `I-*` / `TB-*` per finding.
 
+## Quality gate keyword
+
+- On-demand full-suite + stack-health gate: **`quality-gate`**. Canon:
+  [`product-docs/global/hygiene/quality-gate/README.md`](product-docs/global/hygiene/quality-gate/README.md)
+  (`./scripts/quality-gate.sh`; exit 0 GO / 3 reservations / non-zero NO-GO; #747/#748).
+
 ## Assessment curated keyword
 
 - For **mandate-driven white-box hygiene** (focused investigation → assessment register →
@@ -510,7 +516,7 @@ yarn doctor:curated
 - Purpose: punctual deep look when OSS doctor/pentest shortlists are the wrong entry signal (e.g.
   mobile crypto/protocol, Java transactional boundaries). **Not** a methodology program lane and
   **not** a substitute for `doctor-curated` / `dependabot-curated` / `security-pentest-curated` /
-  `javamelody-curated`.
+  `javamelody-curated` / `quality-gate`.
 - Method canon: [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md)
 - Cursor skill: [`.cursor/skills/assessment-curated/SKILL.md`](.cursor/skills/assessment-curated/SKILL.md)
 - Copilot mirror: `.github/copilot-instructions.md` § Assessment curated

@@ -1,0 +1,49 @@
+{
+  "version": 2,
+  "note": "Provisional round-number bands for the quality gate. Recalibrate from a clean HA run (no OOM, all replicas up, #747 retry not required). There is no locked baseline comparison — bands are absolute thresholds only.",
+  "javamelody": {
+    "maxAgeSeconds": 600,
+    "topHttpMeanMs": { "amber": 200, "red": 1000 },
+    "topHttpMaxMs": { "amber": 5000, "red": 30000 },
+    "httpErrorPct": { "amber": 5.0, "red": 15.0, "minHits": 20 },
+    "httpErrorPctExclusions": {
+      "pattern": "^Error\\d+",
+      "justification": "JavaMelody synthetic Error404/Error5xx buckets always report 100% error rate; exclude from httpErrorPct scoring."
+    },
+    "topSqlMeanMs": { "amber": 20, "red": 100 },
+    "topSqlMaxMs": { "amber": 100, "red": 1000 },
+    "systemErrorHits": { "amber": 100, "red": 400 },
+    "waitingConnections": { "amber": 1, "red": 5 }
+  },
+  "containers": {
+    "restartsPerService": { "amber": 2, "red": 4 },
+    "oomKills": { "amber": 1, "red": 1 },
+    "unhealthyServices": { "amber": 1, "red": 3 },
+    "distinctErrorSignatures": { "amber": 40, "red": 150 },
+    "distinctWarnSignatures": { "amber": 200, "red": 800 },
+    "totalErrorLines": { "amber": 200, "red": 1000 },
+    "transientIo": {
+      "Broken pipe": { "amber": 50, "red": 200 },
+      "Connection reset by peer": { "amber": 50, "red": 200 },
+      "I/O error on GET request": { "amber": 50, "red": 200 },
+      "Connection is not available, request timed out": { "amber": 20, "red": 80 }
+    }
+  },
+  "gateMemory": {
+    "jvmMemLimitsMiB": {
+      "admin-api-1": 1100,
+      "admin-api-2": 1100,
+      "auth-api-1": 1100,
+      "auth-api-2": 1100,
+      "integration-api-1": 1100,
+      "integration-api-2": 1100,
+      "crypto-api": 768,
+      "demo-device": 768,
+      "demo-app-acme": 768
+    },
+    "hostMarginMiB": 2048,
+    "postgresReserveMiB": 1024,
+    "maxRamPercentage": 60,
+    "nativeMemoryTracking": "summary"
+  }
+}
