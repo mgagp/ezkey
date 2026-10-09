@@ -21,7 +21,8 @@
             <div class="nav-links">
                 <span class="nav-link active">Dashboard</span>
                 <a href="https://ezkey.org" target="_blank" class="nav-link">About EZKey</a>
-                <a href="/logout" class="nav-link logout-link">
+                <a th:href="${entryLink} ? @{/logout(entry=link)} : @{/logout}"
+                   class="nav-link logout-link">
                     Logout: <span th:text="${user?.username}">-</span>
                 </a>
             </div>

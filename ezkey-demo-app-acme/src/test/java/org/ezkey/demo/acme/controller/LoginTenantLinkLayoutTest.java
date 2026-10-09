@@ -97,7 +97,7 @@ class LoginTenantLinkLayoutTest {
   }
 
   @Test
-  void stateA_nominal_rendersFormWithoutSelfServiceChrome() throws Exception {
+  void stateA_nominal_rendersFormWithReducedInfoCard() throws Exception {
     MockHttpSession session = new MockHttpSession();
     when(demoApiKeyConfigService.getActiveSlotId(session)).thenReturn("northwind");
     when(accessCodeService.getLabel("northwind")).thenReturn("Northwind Portal");
@@ -107,13 +107,25 @@ class LoginTenantLinkLayoutTest {
     assertThat(html).contains("Sign in to Northwind Portal");
     assertThat(html).contains("name=\"username\"");
     assertThat(html).contains("name=\"entry\" value=\"link\"");
-    assertThat(html).doesNotContain("api-key-modal");
-    assertThat(html).doesNotContain("ABOUT THIS DEMO");
+    assertThat(html).contains("ABOUT THIS DEMO");
+    assertThat(html).contains("data-testid=\"tenant-link-info-card\"");
+    assertThat(html).contains("Enter your username");
+    assertThat(html).contains("Approve on your EZKey device and enter the same 2 digits");
+    assertThat(html)
+        .contains("Logging out ends this session. To sign in again, reopen your access link.");
+    assertThat(html).doesNotContain("id=\"api-key-modal\"");
     assertThat(html).doesNotContain("CONFIGURE API KEY");
+    assertThat(html).doesNotContain("class=\"info-accordion\"");
+    assertThat(html).doesNotContain("How the demo session works");
+    assertThat(html).doesNotContain("Configuration:");
+    assertThat(html).doesNotContain("Configure the API key for this browser session");
+    assertThat(html).doesNotContain("After clicking \"Login with EZKey\", approve");
+    // Four steps only (no "Configure the API key").
+    assertThat(html.split("<li>", -1).length - 1).isEqualTo(4);
   }
 
   @Test
-  void stateA_expiredAndRejected_keepFormWithoutChrome() throws Exception {
+  void stateA_expiredAndRejected_keepFormWithReducedCard() throws Exception {
     MockHttpSession session = new MockHttpSession();
     when(demoApiKeyConfigService.getActiveSlotId(session)).thenReturn("northwind");
     when(accessCodeService.getLabel("northwind")).thenReturn("Northwind Portal");
@@ -121,17 +133,18 @@ class LoginTenantLinkLayoutTest {
     String expired = renderLogin(session, "expired", null, null);
     assertThat(expired).contains("name=\"username\"");
     assertThat(expired).contains("Authentication request expired");
-    assertThat(expired).doesNotContain("api-key-modal");
-    assertThat(expired).doesNotContain("ABOUT THIS DEMO");
+    assertThat(expired).contains("tenant-link-info-card");
+    assertThat(expired).doesNotContain("id=\"api-key-modal\"");
+    assertThat(expired).doesNotContain("class=\"info-accordion\"");
 
     String rejected = renderLogin(session, "rejected", null, null);
     assertThat(rejected).contains("name=\"username\"");
     assertThat(rejected).contains("Authentication rejected by user");
-    assertThat(rejected).doesNotContain("api-key-modal");
+    assertThat(rejected).doesNotContain("id=\"api-key-modal\"");
   }
 
   @Test
-  void stateB_sessionexpiredWithMarker_singleMessageNoFormNoChrome() throws Exception {
+  void stateB_sessionexpiredWithMarker_singleMessageNoFormNoInfoCard() throws Exception {
     MockHttpSession session = new MockHttpSession();
     when(demoApiKeyConfigService.getActiveSlotId(session)).thenReturn(null);
 
@@ -139,8 +152,10 @@ class LoginTenantLinkLayoutTest {
 
     assertThat(html).contains(htmlEscaped(DemoAuthMessages.SESSION_OR_SLOT_LOST));
     assertThat(html).doesNotContain("name=\"username\"");
-    assertThat(html).doesNotContain("api-key-modal");
+    assertThat(html).doesNotContain("id=\"api-key-modal\"");
     assertThat(html).doesNotContain("ABOUT THIS DEMO");
+    assertThat(html).doesNotContain("class=\"info-card\"");
+    assertThat(html).doesNotContain("data-testid=\"tenant-link-info-card\"");
     assertThat(html).doesNotContain(htmlEscaped(DemoAuthMessages.LINK_RECOVERY_REOPEN));
     assertThat(html).doesNotContain("data-testid=\"link-recovery-hint\"");
   }
@@ -155,11 +170,13 @@ class LoginTenantLinkLayoutTest {
     assertThat(html).contains("You have been logged out.");
     assertThat(html).contains(htmlEscaped(DemoAuthMessages.LINK_RECOVERY_REOPEN));
     assertThat(html).doesNotContain("name=\"username\"");
-    assertThat(html).doesNotContain("api-key-modal");
+    assertThat(html).doesNotContain("id=\"api-key-modal\"");
+    assertThat(html).doesNotContain("class=\"info-card\"");
+    assertThat(html).doesNotContain("ABOUT THIS DEMO");
   }
 
   @Test
-  void stateB_unknownAccessCode_genericPlusHintNoChrome() throws Exception {
+  void stateB_unknownAccessCode_genericPlusHintNoInfoCard() throws Exception {
     when(accessCodeService.findSlotIdByCode("boguscode000000000000000000000000"))
         .thenReturn(Optional.empty());
 
@@ -173,8 +190,9 @@ class LoginTenantLinkLayoutTest {
     assertThat(html).contains(DemoAuthMessages.GENERIC_SIGN_IN_FAILED);
     assertThat(html).contains(htmlEscaped(DemoAuthMessages.LINK_HINT_CHECK_OR_ASK));
     assertThat(html).doesNotContain("name=\"username\"");
-    assertThat(html).doesNotContain("api-key-modal");
+    assertThat(html).doesNotContain("id=\"api-key-modal\"");
     assertThat(html).doesNotContain("ABOUT THIS DEMO");
+    assertThat(html).doesNotContain("class=\"info-card\"");
   }
 
   @Test
@@ -208,10 +226,26 @@ class LoginTenantLinkLayoutTest {
     String html = renderLogin(session, null, null, null);
 
     assertThat(html).contains("CONFIGURE API KEY");
-    assertThat(html).contains("api-key-modal");
+    assertThat(html).contains("id=\"api-key-modal\"");
+    assertThat(html).contains("class=\"info-accordion\"");
     assertThat(html).contains("ABOUT THIS DEMO");
     assertThat(html).contains("name=\"username\"");
     assertThat(html).doesNotContain("name=\"entry\" value=\"link\"");
+  }
+
+  @Test
+  void authStatusSessionLost_serverRedirectIsBare_jsAddsMarkerWhenSlotPage() throws Exception {
+    // Server must not guess entry=link after session loss; challenge-wait JS appends it.
+    MockHttpSession session = new MockHttpSession();
+    when(demoApiKeyConfigService.getActiveSlotId(session)).thenReturn(null);
+
+    loginMvc
+        .perform(get("/api/auth-status").session(session))
+        .andExpect(status().isOk())
+        .andExpect(
+            org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath(
+                    "$.redirectUrl")
+                .value("/login?error=sessionexpired"));
   }
 
   @Test
@@ -224,22 +258,9 @@ class LoginTenantLinkLayoutTest {
 
     assertThat(html).contains("Sign in to Northwind Portal");
     assertThat(html).contains("name=\"username\"");
-    assertThat(html).doesNotContain("api-key-modal");
-    assertThat(html).doesNotContain(DemoAuthMessages.LINK_RECOVERY_REOPEN);
-  }
-
-  @Test
-  void authStatusSessionLostInSlotMode_redirectCarriesEntryLink() throws Exception {
-    MockHttpSession session = new MockHttpSession();
-    when(demoApiKeyConfigService.getActiveSlotId(session)).thenReturn("northwind");
-
-    loginMvc
-        .perform(get("/api/auth-status").session(session))
-        .andExpect(status().isOk())
-        .andExpect(
-            org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath(
-                    "$.redirectUrl")
-                .value("/login?error=sessionexpired&entry=link"));
+    assertThat(html).contains("tenant-link-info-card");
+    assertThat(html).doesNotContain("id=\"api-key-modal\"");
+    assertThat(html).doesNotContain(htmlEscaped(DemoAuthMessages.LINK_RECOVERY_REOPEN));
   }
 
   private String renderLogin(MockHttpSession session, String error, String logout, String entry)

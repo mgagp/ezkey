@@ -217,9 +217,11 @@ public class LoginController {
     boolean entryLink = LinkEntryMarker.isLink(entry);
     // A = slot; B = marker without slot; C = neither.
     boolean showSelfServiceChrome = !slotActive && !entryLink;
+    boolean showTenantLinkInfoCard = slotActive;
     boolean showLoginForm = slotActive || !entryLink;
 
     model.addAttribute("showSelfServiceChrome", showSelfServiceChrome);
+    model.addAttribute("showTenantLinkInfoCard", showTenantLinkInfoCard);
     model.addAttribute("showLoginForm", showLoginForm);
     model.addAttribute("entryLink", slotActive || entryLink);
 
@@ -336,8 +338,10 @@ public class LoginController {
     boolean slotMode = demoApiKeyConfigService.getActiveSlotId(session) != null;
 
     if (authAttemptId == null || username == null) {
+      // Do not guess entry=link after session loss — challenge-wait JS appends the marker
+      // when the page was rendered in slot mode; a bare hit here falls to self-service C.
       logger.warn("Challenge wait page accessed without pending auth attempt");
-      return redirectLogin("error=sessionexpired", slotMode);
+      return "redirect:/login?error=sessionexpired";
     }
 
     String challengeCodeFormatted = null;
@@ -395,21 +399,21 @@ public class LoginController {
       // condition
       if ("REJECTED".equals(finalStatus)) {
         return ResponseEntity.ok(
-            new AuthStatusResponse("rejected", loginPath("error=rejected", slotMode), "Rejected"));
+            new AuthStatusResponse("rejected", loginPath("error=rejected", false), "Rejected"));
       } else if ("EXPIRED".equals(finalStatus)) {
         return ResponseEntity.ok(
-            new AuthStatusResponse("expired", loginPath("error=expired", slotMode), "Expired"));
+            new AuthStatusResponse("expired", loginPath("error=expired", false), "Expired"));
       } else if ("INVALID".equals(finalStatus)) {
         return ResponseEntity.ok(
             new AuthStatusResponse(
                 "error",
-                loginPath("error=authfailed", slotMode),
+                loginPath("error=authfailed", false),
                 DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
       } else if ("UNKNOWN".equals(finalStatus) || "ERROR".equals(finalStatus)) {
         return ResponseEntity.ok(
             new AuthStatusResponse(
                 "error",
-                loginPath("error=authfailed", slotMode),
+                loginPath("error=authfailed", false),
                 DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
       }
     }
@@ -423,7 +427,7 @@ public class LoginController {
       return ResponseEntity.ok(
           new AuthStatusResponse(
               "expired",
-              loginPath("error=sessionexpired", slotMode),
+              loginPath("error=sessionexpired", false),
               DemoAuthMessages.SESSION_OR_SLOT_LOST));
     }
 
@@ -433,7 +437,7 @@ public class LoginController {
         return ResponseEntity.ok(
             new AuthStatusResponse(
                 "expired",
-                loginPath("error=sessionexpired", true),
+                loginPath("error=sessionexpired", false),
                 DemoAuthMessages.SESSION_OR_SLOT_LOST));
       }
       return ResponseEntity.ok(
@@ -476,10 +480,10 @@ public class LoginController {
           return ResponseEntity.ok(
               new AuthStatusResponse(
                   "error",
-                  loginPath("error=authfailed", slotMode),
+                  loginPath("error=authfailed", false),
                   DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
         } else {
-          return pendingOrExpired(session, slotMode);
+          return pendingOrExpired(session);
         }
       }
 
@@ -526,7 +530,7 @@ public class LoginController {
 
         logger.info("Challenge authentication rejected for username: {}", usernameForLog);
         return ResponseEntity.ok(
-            new AuthStatusResponse("rejected", loginPath("error=rejected", slotMode), "Rejected"));
+            new AuthStatusResponse("rejected", loginPath("error=rejected", false), "Rejected"));
       } else if ("EXPIRED".equals(normalizedStatus)) {
         // Authentication expired
         // Mark as final status to prevent race condition with subsequent polls
@@ -534,7 +538,7 @@ public class LoginController {
 
         logger.info("Challenge authentication expired for username: {}", usernameForLog);
         return ResponseEntity.ok(
-            new AuthStatusResponse("expired", loginPath("error=expired", slotMode), "Expired"));
+            new AuthStatusResponse("expired", loginPath("error=expired", false), "Expired"));
       } else if ("INVALID".equals(normalizedStatus)) {
         // Authentication invalid (wrong signature, challenge, etc.)
         // Mark as final status to prevent race condition with subsequent polls
@@ -544,7 +548,7 @@ public class LoginController {
         return ResponseEntity.ok(
             new AuthStatusResponse(
                 "error",
-                loginPath("error=authfailed", slotMode),
+                loginPath("error=authfailed", false),
                 DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
       } else if (completed) {
         // Completed but unknown status
@@ -560,18 +564,18 @@ public class LoginController {
         return ResponseEntity.ok(
             new AuthStatusResponse(
                 "error",
-                loginPath("error=authfailed", slotMode),
+                loginPath("error=authfailed", false),
                 DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
       } else {
         // PENDING / READ / server wait timeoutReached — keep polling until attempt TTL.
-        return pendingOrExpired(session, slotMode);
+        return pendingOrExpired(session);
       }
     } catch (EzkeyException e) {
       if (isTransientWaitFailure(e)) {
         logger.info(
             "Auth status wait soft-timeout for authAttemptId={} — keep polling until attempt TTL",
             authAttemptId);
-        return pendingOrExpired(session, slotMode);
+        return pendingOrExpired(session);
       }
       logger.error(
           "Error checking auth status for authAttemptId={} exceptionClass={} httpStatus={}",
@@ -583,7 +587,7 @@ public class LoginController {
       return ResponseEntity.ok(
           new AuthStatusResponse(
               "error",
-              loginPath("error=authfailed", slotMode),
+              loginPath("error=authfailed", false),
               DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
     }
   }
@@ -591,16 +595,17 @@ public class LoginController {
   /**
    * Returns pending while the attempt TTL remains; otherwise expired.
    *
+   * <p>Redirect URLs are marker-free; challenge-wait JS appends {@code entry=link} when the page
+   * was rendered in slot mode.
+   *
    * @param session current session (may hold {@code pendingExpiresAt})
-   * @param slotMode whether the session still has an access-code slot
    * @return pending or expired status response
    */
-  private static ResponseEntity<AuthStatusResponse> pendingOrExpired(
-      HttpSession session, boolean slotMode) {
+  private static ResponseEntity<AuthStatusResponse> pendingOrExpired(HttpSession session) {
     if (isAttemptExpired(session)) {
       session.setAttribute("authAttemptFinalStatus", "EXPIRED");
       return ResponseEntity.ok(
-          new AuthStatusResponse("expired", loginPath("error=expired", slotMode), "Expired"));
+          new AuthStatusResponse("expired", "/login?error=expired", "Expired"));
     }
     return ResponseEntity.ok(
         new AuthStatusResponse("pending", null, "Waiting for device approval..."));

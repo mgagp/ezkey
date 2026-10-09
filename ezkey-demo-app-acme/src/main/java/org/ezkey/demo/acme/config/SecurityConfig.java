@@ -10,6 +10,7 @@
 
 package org.ezkey.demo.acme.config;
 
+import org.ezkey.demo.acme.security.LoginCsrfAccessDeniedHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -58,6 +59,8 @@ public class SecurityConfig {
                 csrf.csrfTokenRequestHandler(csrfHandler)
                     .csrfTokenRepository(csrfRepository)
                     .ignoringRequestMatchers("/actuator/**"))
+        .exceptionHandling(
+            exceptions -> exceptions.accessDeniedHandler(new LoginCsrfAccessDeniedHandler()))
         .headers(
             headers ->
                 headers.referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER)))

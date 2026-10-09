@@ -117,6 +117,7 @@ public class AccessCodeController {
     model.addAttribute("hasError", true);
     model.addAttribute("error", errorMessage);
     model.addAttribute("showSelfServiceChrome", false);
+    model.addAttribute("showTenantLinkInfoCard", false);
     model.addAttribute("showLoginForm", false);
     model.addAttribute("entryLink", true);
     model.addAttribute("recoveryHint", recoveryHint);

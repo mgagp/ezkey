@@ -18,6 +18,7 @@ import org.ezkey.demo.acme.web.LinkEntryMarker;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * Main controller for ACME demo application handling dashboard and logout.
@@ -83,8 +84,10 @@ public class HomeController {
       return "redirect:/login";
     }
 
+    boolean slotMode = demoApiKeyConfigService.getActiveSlotId(session) != null;
     model.addAttribute("pageTitle", "Dashboard - ACME Inc");
     model.addAttribute("user", user);
+    model.addAttribute("entryLink", slotMode);
     return "dashboard";
   }
 
@@ -99,14 +102,17 @@ public class HomeController {
    * @return redirect to login page
    */
   @GetMapping("/logout")
-  public String logout(HttpServletRequest request) {
+  public String logout(
+      @RequestParam(value = LinkEntryMarker.PARAM, required = false) String entry,
+      HttpServletRequest request) {
     HttpSession session = request.getSession(false);
     boolean slotMode = false;
     if (session != null) {
       slotMode = demoApiKeyConfigService.getActiveSlotId(session) != null;
       session.invalidate();
     }
+    boolean withMarker = slotMode || LinkEntryMarker.isLink(entry);
     String path = "/login?logout=true";
-    return "redirect:" + (slotMode ? LinkEntryMarker.withMarker(path) : path);
+    return "redirect:" + (withMarker ? LinkEntryMarker.withMarker(path) : path);
   }
 }

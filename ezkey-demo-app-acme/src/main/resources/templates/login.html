@@ -71,14 +71,34 @@
                         </button>
                     </form>
                     
-                    <!-- Info Note -->
-                    <div th:if="${showLoginForm != false}" class="info-note-inline">
+                    <!-- Info Note (self-service C only — duplicates step 3 on tenant-link A) -->
+                    <div th:if="${showSelfServiceChrome}" class="info-note-inline">
                         <p><strong>Note:</strong> After clicking "Login with EZKey", approve the request on your registered device.</p>
                     </div>
                 </div>
                 
-                <!-- Info Card (self-service demo chrome only — state C) -->
-                <div th:if="${showSelfServiceChrome != false}" class="info-card">
+                <!-- Reduced info card for tenant-link (state A) -->
+                <div th:if="${showTenantLinkInfoCard}" class="info-card" data-testid="tenant-link-info-card">
+                    <div class="info-card-header">
+                        <h3>ABOUT THIS DEMO</h3>
+                    </div>
+                    <ol class="steps-list">
+                        <li>Enter your username</li>
+                        <li>Click "Login with EZKey"</li>
+                        <li>Approve on your EZKey device and enter the same 2 digits</li>
+                        <li>You're in!</li>
+                    </ol>
+                    <p class="info-note">
+                        <strong>No password needed.</strong> EZKey uses cryptographic
+                        authentication via your registered device.
+                    </p>
+                    <p class="info-note" style="margin-top: 1rem;">
+                        Logging out ends this session. To sign in again, reopen your access link.
+                    </p>
+                </div>
+
+                <!-- Full info card (self-service demo chrome — state C) -->
+                <div th:if="${showSelfServiceChrome}" class="info-card">
                     <div class="info-card-header">
                         <h3>ABOUT THIS DEMO</h3>
                         <div class="info-card-buttons">
@@ -126,7 +146,7 @@
     </main>
 
     <!-- API Key Dialog Modal (self-service demo chrome only — state C) -->
-    <div th:if="${showSelfServiceChrome != false}" id="api-key-modal" class="modal-overlay hidden">
+    <div th:if="${showSelfServiceChrome}" id="api-key-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>CONFIGURE API KEY</h3>
@@ -163,7 +183,7 @@
     </footer>
 
     <!-- API Key Dialog Script (self-service demo chrome only — state C) -->
-    <script th:if="${showSelfServiceChrome != false}">
+    <script th:if="${showSelfServiceChrome}">
         function openApiKeyDialog() {
             document.getElementById('api-key-modal').classList.remove('hidden');
             document.getElementById('api-key-integration').value = '';

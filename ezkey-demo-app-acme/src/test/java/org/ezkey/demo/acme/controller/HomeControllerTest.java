@@ -46,7 +46,7 @@ class HomeControllerTest {
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.setSession(session);
 
-    String viewName = controller.logout(request);
+    String viewName = controller.logout(null, request);
 
     assertThat(viewName).isEqualTo("redirect:/login?logout=true&entry=link");
     assertThat(session.isInvalid()).isTrue();
@@ -61,6 +61,17 @@ class HomeControllerTest {
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.setSession(session);
 
-    assertThat(controller.logout(request)).isEqualTo("redirect:/login?logout=true");
+    assertThat(controller.logout(null, request)).isEqualTo("redirect:/login?logout=true");
+  }
+
+  @Test
+  void logoutWithEntryLinkQuery_preservesMarkerEvenWithoutSlot() {
+    MockHttpSession session = new MockHttpSession();
+    when(demoApiKeyConfigService.getActiveSlotId(any())).thenReturn(null);
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setSession(session);
+
+    assertThat(controller.logout("link", request))
+        .isEqualTo("redirect:/login?logout=true&entry=link");
   }
 }
