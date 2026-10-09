@@ -411,8 +411,9 @@ public class IntegrityAsyncJobService {
     } catch (IntegrityValidationDisabledException ex) {
       stateService.markFailed(jobId, ex.getMessage());
     } catch (RuntimeException ex) { // CHECKSTYLE IGNORE IllegalCatch
+      // Full exception stays in the log only — audit / job summaries must not seal SQL or values.
       logger.error("Integrity async job {} failed: {}", jobId, ex.getMessage(), ex);
-      stateService.markFailed(jobId, truncate(ex.getMessage(), 512));
+      stateService.markFailed(jobId, "Job failed: " + ex.getClass().getSimpleName());
     } finally {
       heavyCryptoGate.exit();
     }
@@ -497,7 +498,7 @@ public class IntegrityAsyncJobService {
         AuditLog.builder()
             .apiName(ApiName.ADMIN_API)
             .eventType(EventType.INTEGRITY_ASYNC_JOB_STARTED)
-            .eventAction("integrity-async-job")
+            .eventAction(IntegrityAsyncJobAuditConstants.EVENT_ACTION)
             .eventStatus(EventStatus.SUCCESS)
             .adminId(adminId)
             .eventDetails(details)
@@ -522,7 +523,7 @@ public class IntegrityAsyncJobService {
         AuditLog.builder()
             .apiName(ApiName.ADMIN_API)
             .eventType(EventType.INTEGRITY_ASYNC_JOB_ABANDONED)
-            .eventAction("integrity-async-job")
+            .eventAction(IntegrityAsyncJobAuditConstants.EVENT_ACTION)
             .eventStatus(EventStatus.SUCCESS)
             .adminId(adminId)
             .eventDetails(details)

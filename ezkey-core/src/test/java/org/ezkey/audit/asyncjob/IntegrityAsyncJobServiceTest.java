@@ -46,6 +46,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -384,14 +385,94 @@ class IntegrityAsyncJobServiceTest {
       List<AuditLog> audits = auditCaptor.getAllValues();
       assertEquals(EventType.INTEGRITY_ASYNC_JOB_STARTED, audits.get(0).getEventType());
       assertEquals(EventType.INTEGRITY_ASYNC_JOB_COMPLETED, audits.get(1).getEventType());
-      assertEquals("integrity-async-job", audits.get(0).getEventAction());
-      assertEquals("integrity-async-job", audits.get(1).getEventAction());
+      assertEquals(IntegrityAsyncJobAuditConstants.EVENT_ACTION, audits.get(0).getEventAction());
+      assertEquals(IntegrityAsyncJobAuditConstants.EVENT_ACTION, audits.get(1).getEventAction());
       assertEquals(EventStatus.SUCCESS, audits.get(0).getEventStatus());
       assertEquals(EventStatus.SUCCESS, audits.get(1).getEventStatus());
       assertEquals(3, audits.get(0).getAdminId());
       assertEquals(3, audits.get(1).getAdminId());
     } finally {
       discarding.shutdown();
+    }
+  }
+
+  @Test
+  void runJob_onRuntimeFailure_emitsGenericFailureAuditAndMarksFailed() {
+    // Run workers inline so start() → runJob() is deterministic for this failure path.
+    ThreadPoolTaskExecutor sync =
+        new ThreadPoolTaskExecutor() {
+          @Override
+          public void execute(Runnable task) {
+            task.run();
+          }
+        };
+    sync.initialize();
+    try {
+      IntegrityAsyncJobProperties properties = new IntegrityAsyncJobProperties();
+      properties.setTtl(Duration.ofMinutes(60));
+      IntegrityAsyncJobStateService realStateService =
+          new IntegrityAsyncJobStateService(jobRepository, properties, auditLogService);
+      IntegrityAsyncJobService failureScopedService =
+          new IntegrityAsyncJobService(
+              jobRepository,
+              realStateService,
+              heavyCryptoGate,
+              auditIntegrityService,
+              chainVerificationService,
+              retroactiveIntegrityValidationService,
+              nightlyIntegrityProperties,
+              auditLogService,
+              sync);
+
+      when(jobRepository.findBySlotKeyAndStatus(
+              IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+          .thenReturn(Optional.empty());
+      when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+      when(heavyCryptoGate.isBusy()).thenReturn(false);
+      when(heavyCryptoGate.tryEnter()).thenReturn(true);
+      AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
+      when(jobRepository.saveAndFlush(any()))
+          .thenAnswer(
+              inv -> {
+                IntegrityAsyncJob job = inv.getArgument(0);
+                saved.set(job);
+                return job;
+              });
+      when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+      when(jobRepository.findById(any())).thenAnswer(inv -> Optional.ofNullable(saved.get()));
+
+      String leakySql =
+          "PreparedStatementCallback; SQL [SELECT * FROM secrets WHERE token='abc123']";
+      when(chainVerificationService.verifyChain(any(), any(), any()))
+          .thenThrow(new DataAccessResourceFailureException(leakySql));
+
+      IntegrityAsyncJobStartRequest request =
+          new IntegrityAsyncJobStartRequest(
+              IntegrityAsyncJobType.VERIFY_CHAIN_RANGE,
+              OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+              OffsetDateTime.parse("2026-01-02T00:00:00Z"),
+              null);
+
+      failureScopedService.start(request, 3, "ga.one");
+
+      assertEquals(IntegrityAsyncJobStatus.FAILED, saved.get().getStatus());
+      assertEquals("Job failed: DataAccessResourceFailureException", saved.get().getErrorSummary());
+      assertFalse(saved.get().getErrorSummary().contains("SELECT"));
+      assertFalse(saved.get().getErrorSummary().contains("abc123"));
+
+      ArgumentCaptor<AuditLog> auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
+      verify(auditLogService, times(2)).log(auditCaptor.capture());
+      AuditLog completed = auditCaptor.getAllValues().get(1);
+      assertEquals(EventType.INTEGRITY_ASYNC_JOB_COMPLETED, completed.getEventType());
+      assertEquals(EventStatus.FAILURE, completed.getEventStatus());
+      assertEquals(IntegrityAsyncJobAuditConstants.EVENT_ACTION, completed.getEventAction());
+      String details = completed.getEventDetails();
+      assertTrue(details.contains("Job failed: DataAccessResourceFailureException"));
+      assertFalse(details.contains(leakySql));
+      assertFalse(details.contains("SELECT"));
+      assertFalse(details.contains("abc123"));
+    } finally {
+      sync.shutdown();
     }
   }
 
@@ -409,7 +490,7 @@ class IntegrityAsyncJobServiceTest {
     verify(auditLogService).log(auditCaptor.capture());
     AuditLog audit = auditCaptor.getValue();
     assertEquals(EventType.INTEGRITY_ASYNC_JOB_ABANDONED, audit.getEventType());
-    assertEquals("integrity-async-job", audit.getEventAction());
+    assertEquals(IntegrityAsyncJobAuditConstants.EVENT_ACTION, audit.getEventAction());
     assertEquals(EventStatus.SUCCESS, audit.getEventStatus());
     assertEquals(7, audit.getAdminId());
   }

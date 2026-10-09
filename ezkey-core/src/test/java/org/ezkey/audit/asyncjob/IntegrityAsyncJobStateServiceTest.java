@@ -13,6 +13,7 @@ package org.ezkey.audit.asyncjob;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -82,9 +83,21 @@ class IntegrityAsyncJobStateServiceTest {
     verify(auditLogService).log(auditCaptor.capture());
     AuditLog audit = auditCaptor.getValue();
     assertEquals(EventType.INTEGRITY_ASYNC_JOB_COMPLETED, audit.getEventType());
-    assertEquals("integrity-async-job", audit.getEventAction());
+    assertEquals(IntegrityAsyncJobAuditConstants.EVENT_ACTION, audit.getEventAction());
     assertEquals(EventStatus.SUCCESS, audit.getEventStatus());
     assertEquals(1, audit.getAdminId());
+  }
+
+  @Test
+  void markSucceeded_whenAuditLogThrows_jobStillSucceeded() {
+    IntegrityAsyncJob job = runningJob();
+    when(jobRepository.findById(job.getJobId())).thenReturn(Optional.of(job));
+    when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    doThrow(new RuntimeException("audit write failed")).when(auditLogService).log(any());
+
+    stateService.markSucceeded(job.getJobId(), "Chain range verified", true, null);
+
+    assertEquals(IntegrityAsyncJobStatus.SUCCEEDED, job.getStatus());
   }
 
   private static IntegrityAsyncJob runningJob() {

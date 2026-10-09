@@ -179,7 +179,7 @@ public class IntegrityAsyncJobStateService {
         AuditLog.builder()
             .apiName(ApiName.ADMIN_API)
             .eventType(EventType.INTEGRITY_ASYNC_JOB_COMPLETED)
-            .eventAction("integrity-async-job")
+            .eventAction(IntegrityAsyncJobAuditConstants.EVENT_ACTION)
             .eventStatus(status)
             .adminId(job.getStartedByAdminId())
             .eventDetails(details)
