@@ -485,22 +485,24 @@ public class IntegrityAsyncJobService {
   }
 
   private void emitStartedAudit(Integer adminId, IntegrityAsyncJob job) {
+    String details =
+        AuditDetailsBuilder.builder()
+            .custom("jobId", job.getJobId().toString())
+            .custom("jobType", job.getJobType().name())
+            .custom("jobStatus", job.getStatus().name())
+            .custom("summary", "Integrity async job started")
+            .toJson();
+    // Builder validation (required fields) must fail loudly — do not wrap build().
+    AuditLog log =
+        AuditLog.builder()
+            .apiName(ApiName.ADMIN_API)
+            .eventType(EventType.INTEGRITY_ASYNC_JOB_STARTED)
+            .eventAction("integrity-async-job")
+            .eventStatus(EventStatus.SUCCESS)
+            .adminId(adminId)
+            .eventDetails(details)
+            .build();
     try {
-      String details =
-          AuditDetailsBuilder.builder()
-              .custom("jobId", job.getJobId().toString())
-              .custom("jobType", job.getJobType().name())
-              .custom("jobStatus", job.getStatus().name())
-              .custom("summary", "Integrity async job started")
-              .toJson();
-      AuditLog log =
-          AuditLog.builder()
-              .apiName(ApiName.ADMIN_API)
-              .eventType(EventType.INTEGRITY_ASYNC_JOB_STARTED)
-              .eventStatus(EventStatus.SUCCESS)
-              .adminId(adminId)
-              .eventDetails(details)
-              .build();
       auditLogService.log(log);
     } catch (RuntimeException ex) { // CHECKSTYLE IGNORE IllegalCatch
       logger.warn("Failed to emit Integrity async job start audit: {}", ex.getMessage());
@@ -508,22 +510,24 @@ public class IntegrityAsyncJobService {
   }
 
   private void emitAbandonedAudit(Integer adminId, IntegrityAsyncJob job) {
+    String details =
+        AuditDetailsBuilder.builder()
+            .custom("jobId", job.getJobId().toString())
+            .custom("jobType", job.getJobType().name())
+            .custom("jobStatus", job.getStatus().name())
+            .custom("summary", "Integrity async job slot abandoned")
+            .toJson();
+    // Builder validation (required fields) must fail loudly — do not wrap build().
+    AuditLog log =
+        AuditLog.builder()
+            .apiName(ApiName.ADMIN_API)
+            .eventType(EventType.INTEGRITY_ASYNC_JOB_ABANDONED)
+            .eventAction("integrity-async-job")
+            .eventStatus(EventStatus.SUCCESS)
+            .adminId(adminId)
+            .eventDetails(details)
+            .build();
     try {
-      String details =
-          AuditDetailsBuilder.builder()
-              .custom("jobId", job.getJobId().toString())
-              .custom("jobType", job.getJobType().name())
-              .custom("jobStatus", job.getStatus().name())
-              .custom("summary", "Integrity async job slot abandoned")
-              .toJson();
-      AuditLog log =
-          AuditLog.builder()
-              .apiName(ApiName.ADMIN_API)
-              .eventType(EventType.INTEGRITY_ASYNC_JOB_ABANDONED)
-              .eventStatus(EventStatus.SUCCESS)
-              .adminId(adminId)
-              .eventDetails(details)
-              .build();
       auditLogService.log(log);
     } catch (RuntimeException ex) { // CHECKSTYLE IGNORE IllegalCatch
       logger.warn("Failed to emit Integrity async job abandon audit: {}", ex.getMessage());
