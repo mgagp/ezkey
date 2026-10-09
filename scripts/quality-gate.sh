@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 #
 # quality-gate — on-demand full-suite quality gate for Ezkey.
-# Thin orchestrator: clean-start HA+JavaMelody → unit → functional → elective →
-# Playwright → operational churn → stack health → REPORT.md + summary.json.
+# Thin orchestrator. Phase order (intentional; differs from a naive
+# "stack first" list so unit tests keep memory headroom on ~16Gi VMs):
+#
+#   preflight → unit-tests (./scripts/build.sh, no stack) → build-images
+#   → clean-start HA+JavaMelody → functional → elective → Playwright
+#   → churn-init → 2× churn → health → REPORT.md + summary.json
 #
 # Usage (Git Bash on Windows, Linux, or macOS), from repo root:
 #   ./scripts/quality-gate.sh
@@ -27,7 +31,15 @@ NO_CLEAN_START=0
 # Space-delimited skip list (bash 3.2 / Git Bash portable — no associative arrays).
 SKIP_PHASES=""
 
-PHASES="preflight clean-start unit-tests functional-tests elective-tests playwright churn-init churn health"
+# Available RAM below this → preflight AMBER (HA 6-JVM + JavaMelody headroom).
+HA_JM_MIN_AVAILABLE_MIB="${HA_JM_MIN_AVAILABLE_MIB:-8192}"
+
+# Set when HA compose retry fires (product bug #747). Clean-start stays AMBER.
+COMPOSE_RETRY_FIRED=0
+
+# Unit tests run before the stack so Maven and the 6-JVM HA footprint do not
+# compete for RAM (run-1 OOM on admin-api-1). Documented intentional order.
+PHASES="preflight unit-tests build-images clean-start functional-tests elective-tests playwright churn-init churn health"
 
 usage() {
   cat <<'EOF'
@@ -35,10 +47,18 @@ Usage: ./scripts/quality-gate.sh [options]
 
   --churn-minutes N   Minutes per concurrent churn shell (default: 5)
   --skip PHASE        Skip a phase (repeatable). Phases:
-                      preflight, clean-start, unit-tests, functional-tests,
-                      elective-tests, playwright, churn-init, churn, health
-  --no-clean-start    Alias for --skip clean-start (reuse running stack)
+                      preflight, unit-tests, build-images, clean-start,
+                      functional-tests, elective-tests, playwright,
+                      churn-init, churn, health
+  --no-clean-start    Skip build-images + clean-start (reuse running stack)
   -h, --help          Show this help
+
+Phase order (unit tests before stack — memory headroom on ~16Gi VMs):
+  preflight → unit-tests → build-images → clean-start HA+JavaMelody
+  → functional → elective → Playwright → churn-init → 2× churn → health
+
+HA + JavaMelody preflight warns AMBER when available RAM is below
+HA_JM_MIN_AVAILABLE_MIB (default 8192 MiB).
 
 Keyword: quality-gate
 Docs: product-docs/global/hygiene/quality-gate/README.md
@@ -57,7 +77,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-clean-start)
       NO_CLEAN_START=1
-      SKIP_PHASES="${SKIP_PHASES} clean-start"
+      SKIP_PHASES="${SKIP_PHASES} build-images clean-start"
       shift
       ;;
     -h|--help)
@@ -73,7 +93,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$NO_CLEAN_START" -eq 1 ]]; then
-  SKIP_PHASES="${SKIP_PHASES} clean-start"
+  SKIP_PHASES="${SKIP_PHASES} build-images clean-start"
 fi
 
 SHORT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
@@ -87,6 +107,7 @@ PHASE_TSV="$RUN_DIR/phases.tsv"
 echo "[$KEYWORD] run dir: $RUN_DIR"
 echo "[$KEYWORD] tip: $FULL_SHA"
 echo "[$KEYWORD] churn minutes: $CHURN_MINUTES"
+echo "[$KEYWORD] HA+JM min available RAM: ${HA_JM_MIN_AVAILABLE_MIB} MiB"
 
 now_ms() {
   date +%s%3N 2>/dev/null || python3 -c 'import time; print(int(time.time()*1000))'
@@ -114,7 +135,6 @@ parse_surefire_counts() {
   local log="$1"
   local run=0 failed=0 errors=0 skipped=0
   local line
-  # Prefer final "Tests run:" totals (last match wins across modules).
   while IFS= read -r line; do
     if [[ "$line" =~ Tests\ run:\ *([0-9]+),\ *Failures:\ *([0-9]+),\ *Errors:\ *([0-9]+),\ *Skipped:\ *([0-9]+) ]]; then
       run="${BASH_REMATCH[1]}"
@@ -123,7 +143,6 @@ parse_surefire_counts() {
       skipped="${BASH_REMATCH[4]}"
     fi
   done < <(grep -E 'Tests run:' "$log" 2>/dev/null || true)
-  # Sum Results: lines when present (multi-module).
   local sum_run=0 sum_f=0 sum_e=0 sum_s=0 found=0
   while IFS= read -r line; do
     if [[ "$line" =~ Tests\ run:\ *([0-9]+),\ *Failures:\ *([0-9]+),\ *Errors:\ *([0-9]+),\ *Skipped:\ *([0-9]+) ]]; then
@@ -174,9 +193,54 @@ stack_up() {
     && curl -sf http://localhost:8083/actuator/health >/dev/null 2>&1
 }
 
+ha_compose_cmd() {
+  local compose="docker compose -f docker/docker-compose.ha.yml"
+  if [[ -f docker/docker-compose.ha.docker-dev.yml ]]; then
+    compose="$compose -f docker/docker-compose.ha.docker-dev.yml"
+  fi
+  if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
+    compose="$compose -f docker/docker-compose.ha.javamelody.yml"
+  fi
+  echo "$compose"
+}
+
+stop_stacks_for_headroom() {
+  # Tear down any leftover HA / baseline stack so unit tests have RAM.
+  echo "Stopping any running Ezkey stacks for unit-test headroom..."
+  local ha="docker compose -f docker/docker-compose.ha.yml"
+  if [[ -f docker/docker-compose.ha.docker-dev.yml ]]; then
+    ha="$ha -f docker/docker-compose.ha.docker-dev.yml"
+  fi
+  if [[ -f docker/docker-compose.ha.javamelody.yml ]]; then
+    ha="$ha -f docker/docker-compose.ha.javamelody.yml"
+  fi
+  $ha down -v --remove-orphans 2>/dev/null || true
+  local base="docker compose -f docker/docker-compose.yml"
+  if [[ -f docker/docker-compose.docker-dev.yml ]]; then
+    base="$base -f docker/docker-compose.docker-dev.yml"
+  fi
+  if [[ -f docker/docker-compose.with-proxy.yml ]]; then
+    base="$base -f docker/docker-compose.with-proxy.yml"
+  fi
+  if [[ -f docker/docker-compose.javamelody.yml ]]; then
+    base="$base -f docker/docker-compose.javamelody.yml"
+  fi
+  $base down -v --remove-orphans 2>/dev/null || true
+  docker rm -f ezkey-javamelody-collector ezkey-javamelody-collector-ha >/dev/null 2>&1 || true
+  echo "Stacks stopped (best effort)."
+}
+
+available_ram_mib() {
+  if command -v free >/dev/null 2>&1; then
+    free -m | awk '/^Mem:/{print $7}'
+    return
+  fi
+  echo "0"
+}
+
 run_phase_preflight() {
   local log="$RUN_DIR/phases/preflight.log"
-  local start end code=0
+  local start end code=0 verdict=GREEN note="resources + tip SHA; stack stopped for unit-test headroom"
   start="$(now_ms)"
   {
     echo "=== preflight ==="
@@ -186,8 +250,24 @@ run_phase_preflight() {
     echo "git_short: $SHORT_SHA"
     echo "git_describe: $(git describe --always --dirty 2>/dev/null || true)"
     echo "cpus: $(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo unknown)"
-    echo "memory:"
+    echo "HA_JM_MIN_AVAILABLE_MIB=${HA_JM_MIN_AVAILABLE_MIB}"
+    echo "memory (before stop):"
     free -h 2>/dev/null || true
+    stop_stacks_for_headroom
+    echo "memory (after stop):"
+    free -h 2>/dev/null || true
+    local avail
+    avail="$(available_ram_mib)"
+    echo "available_ram_mib: ${avail}"
+    if [[ "$avail" =~ ^[0-9]+$ ]] && [[ "$avail" -lt "$HA_JM_MIN_AVAILABLE_MIB" ]]; then
+      echo "AMBER: available RAM ${avail} MiB < HA_JM_MIN_AVAILABLE_MIB=${HA_JM_MIN_AVAILABLE_MIB} MiB"
+      echo "HA (6 JVM replicas) + JavaMelody needs roughly ${HA_JM_MIN_AVAILABLE_MIB} MiB free before clean-start."
+      echo "Unit tests still run first (no stack) to maximize headroom; proceed with reservation."
+      note="AMBER: available RAM ${avail}MiB < ${HA_JM_MIN_AVAILABLE_MIB}MiB (HA+JavaMelody threshold)"
+      verdict=AMBER
+    else
+      echo "RAM check OK: available ${avail} MiB >= ${HA_JM_MIN_AVAILABLE_MIB} MiB"
+    fi
     echo "disk:"
     df -h / 2>/dev/null || df -h . 2>/dev/null || true
     echo "docker: $(docker --version 2>/dev/null || echo missing)"
@@ -196,36 +276,75 @@ run_phase_preflight() {
     echo "maven: $(mvn -version 2>&1 | head -1)"
     echo "node: $(node -v 2>/dev/null || echo missing)"
     echo "JAVA_HOME=${JAVA_HOME:-}"
+    echo "phase_order_note: unit-tests before stack (intentional memory headroom; not the naive stack-first order)"
     if ! command -v docker >/dev/null 2>&1; then
       echo "FATAL: docker missing"
       code=1
+      verdict=RED
     fi
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
-  # Snapshot tip metadata for the report header.
+  if [[ "$code" -ne 0 ]]; then
+    verdict=RED
+  fi
   cp "$log" "$RUN_DIR/preflight.txt"
-  record_phase preflight "$(phase_verdict_from_exit "$code")" "$code" "$(duration_ms "$start" "$end")" "$log" "-" "resources + tip SHA"
+  record_phase preflight "$verdict" "$code" "$(duration_ms "$start" "$end")" "$log" "-" "$note"
+  return "$code"
+}
+
+run_phase_unit_tests() {
+  local log="$RUN_DIR/phases/unit-tests.log"
+  local start end code=0 counts
+  start="$(now_ms)"
+  {
+    echo "=== unit tests: ./scripts/build.sh (no stack — memory headroom) ==="
+    if stack_up; then
+      echo "WARNING: stack still responds; stopping again before unit tests"
+      stop_stacks_for_headroom
+    fi
+    echo "memory before build.sh:"
+    free -h 2>/dev/null || true
+    ./scripts/build.sh
+  } >"$log" 2>&1 || code=$?
+  end="$(now_ms)"
+  counts="$(parse_surefire_counts "$log")"
+  record_phase unit-tests "$(phase_verdict_from_exit "$code")" "$code" "$(duration_ms "$start" "$end")" "$log" "$counts" "build.sh before stack (RAM headroom)"
+  return "$code"
+}
+
+run_phase_build_images() {
+  local log="$RUN_DIR/phases/build-images.log"
+  local start end code=0
+  start="$(now_ms)"
+  {
+    echo "=== build-images from tip $FULL_SHA ==="
+    export DOCKER_BUILDKIT=1
+    export COMPOSE_DOCKER_CLI_BUILD=1
+    export EZKEY_ENABLE_JAVA_MELODY=true
+    local compose
+    compose="$(ha_compose_cmd)"
+    echo "Using: $compose build"
+    $compose build
+  } >"$log" 2>&1 || code=$?
+  end="$(now_ms)"
+  record_phase build-images "$(phase_verdict_from_exit "$code")" "$code" "$(duration_ms "$start" "$end")" "$log" "-" "HA compose images from tip"
   return "$code"
 }
 
 ha_compose_retry() {
-  # Known HA race: concurrent admin-api replicas can fail once on encryption-key
-  # PK sync, restart, then become healthy while `compose up` already aborted.
-  # Smallest recovery: wait for both admin replicas, then `compose up -d` again.
-  local compose="docker compose -f docker/docker-compose.ha.yml"
-  if [[ -f docker/docker-compose.ha.docker-dev.yml ]]; then
-    compose="$compose -f docker/docker-compose.ha.docker-dev.yml"
-  fi
-  if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
-    compose="$compose -f docker/docker-compose.ha.javamelody.yml"
-  fi
+  # Temporary workaround for product bug #747 (HA admin keyset PK race).
+  # When this fires, clean-start MUST be scored AMBER — never GREEN.
+  # Remove this retry (and allowlist entries citing #747) when #747 is fixed.
+  COMPOSE_RETRY_FIRED=1
+  local compose
+  compose="$(ha_compose_cmd)"
   local i h1 h2
   for i in $(seq 1 24); do
     h1="$(docker inspect -f '{{.State.Health.Status}}' ezkey-admin-api-1 2>/dev/null || echo missing)"
     h2="$(docker inspect -f '{{.State.Health.Status}}' ezkey-admin-api-2 2>/dev/null || echo missing)"
-    echo "HA compose retry wait $i: admin-api-1=$h1 admin-api-2=$h2"
+    echo "HA compose retry wait $i: admin-api-1=$h1 admin-api-2=$h2 (#747 workaround)"
     if [[ "$h1" == "healthy" && "$h2" == "healthy" ]]; then
-      echo "Both admin replicas healthy — resuming compose up -d"
+      echo "Both admin replicas healthy — resuming compose up -d (AMBER: #747)"
       SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}" \
         EZKEY_ENABLE_JAVA_MELODY="${EZKEY_ENABLE_JAVA_MELODY:-true}" \
         $compose up -d
@@ -233,23 +352,23 @@ ha_compose_retry() {
     fi
     sleep 5
   done
-  echo "HA compose retry: admin replicas did not become healthy in time"
+  echo "HA compose retry: admin replicas did not become healthy in time (#747)"
   return 1
 }
 
 run_phase_clean_start() {
   local log="$RUN_DIR/phases/clean-start.log"
-  local start end code=0
+  local start end code=0 verdict=GREEN note="HA + JavaMelody"
+  COMPOSE_RETRY_FIRED=0
   start="$(now_ms)"
   {
     echo "=== clean-start HA + JavaMelody ==="
-    echo "Building and starting from tip $FULL_SHA"
+    echo "Starting from tip $FULL_SHA (images built in prior phase; clean-start may rebuild from cache)"
     export EZKEY_ENABLE_JAVA_MELODY=true
     if ! ./ezkey-tests/clean-start.sh --ha --with-java-melody; then
-      echo "clean-start returned non-zero — attempting HA compose retry (admin keyset race)"
+      echo "clean-start returned non-zero — attempting HA compose retry (temporary workaround for #747)"
       ha_compose_retry || true
     fi
-    # start-ha waits are skipped when compose aborted early; ensure LB ports respond.
     local elapsed=0
     while ! stack_up; do
       if [[ $elapsed -ge 180 ]]; then
@@ -264,35 +383,44 @@ run_phase_clean_start() {
     else
       echo "WARNING: JavaMelody collector not responding on :8088"
     fi
+    echo "compose_retry_fired=${COMPOSE_RETRY_FIRED}"
+    if [[ "$COMPOSE_RETRY_FIRED" -eq 1 ]]; then
+      echo "AMBER: HA compose retry fired — product bug #747 (https://github.com/mgagp/ezkey/issues/747)"
+      echo "Temporary workaround only; remove retry + allowlist when #747 is fixed."
+    fi
     echo "--- container list ---"
     docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}\t{{.ID}}'
+    echo "--- admin replica health ---"
+    docker inspect -f '{{.Name}} {{.State.Status}} {{.State.Health.Status}}' \
+      ezkey-admin-api-1 ezkey-admin-api-2 2>/dev/null || true
     echo "--- image IDs (ezkey) ---"
     docker images --format '{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}' | grep -E 'ezkey|REPOSITORY' || docker images
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
   docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}\t{{.ID}}' >"$RUN_DIR/containers.txt" 2>/dev/null || true
   docker images --format '{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}' >"$RUN_DIR/images.txt" 2>/dev/null || true
-  if ! stack_up; then
+
+  local h1 h2
+  h1="$(docker inspect -f '{{.State.Health.Status}}' ezkey-admin-api-1 2>/dev/null || echo missing)"
+  h2="$(docker inspect -f '{{.State.Health.Status}}' ezkey-admin-api-2 2>/dev/null || echo missing)"
+
+  if ! stack_up || [[ "$h1" != "healthy" || "$h2" != "healthy" ]]; then
     code=1
-    echo "Stack health check failed after clean-start" >>"$log"
+    verdict=RED
+    note="stack/replica unhealthy after clean-start (admin-1=$h1 admin-2=$h2)"
+    echo "Stack health check failed after clean-start (admin-1=$h1 admin-2=$h2)" >>"$log"
   else
     code=0
+    if [[ "$COMPOSE_RETRY_FIRED" -eq 1 ]]; then
+      # Never GREEN when the #747 workaround fires — mask neither the product bug nor the retry.
+      verdict=AMBER
+      note="AMBER: compose retry fired — product bug #747 (temporary workaround)"
+    else
+      verdict=GREEN
+      note="HA + JavaMelody (both admin replicas healthy; no #747 retry)"
+    fi
   fi
-  record_phase clean-start "$(phase_verdict_from_exit "$code")" "$code" "$(duration_ms "$start" "$end")" "$log" "-" "HA + JavaMelody"
-  return "$code"
-}
-
-run_phase_unit_tests() {
-  local log="$RUN_DIR/phases/unit-tests.log"
-  local start end code=0 counts
-  start="$(now_ms)"
-  {
-    echo "=== unit tests: ./scripts/build.sh ==="
-    ./scripts/build.sh
-  } >"$log" 2>&1 || code=$?
-  end="$(now_ms)"
-  counts="$(parse_surefire_counts "$log")"
-  record_phase unit-tests "$(phase_verdict_from_exit "$code")" "$code" "$(duration_ms "$start" "$end")" "$log" "$counts" "build.sh baseline"
+  record_phase clean-start "$verdict" "$code" "$(duration_ms "$start" "$end")" "$log" "-" "$note"
   return "$code"
 }
 
@@ -333,8 +461,6 @@ run_phase_playwright() {
   {
     echo "=== Playwright: ezkey-admin-ui/scripts/run-ui-tests.sh ==="
     echo "Against running HA stack Demo Device :8083; local Vite preview on :4173"
-    # Prefer host runner: Playwright starts its own webServer on 4173.
-    # Free a stale Vite on 4173 if present (do not kill unrelated stack).
     if command -v lsof >/dev/null 2>&1; then
       local pids
       pids="$(lsof -t -i:4173 2>/dev/null || true)"
@@ -411,7 +537,6 @@ run_phase_health() {
   if [[ -f "$RUN_DIR/health/health.json" ]]; then
     counts="$(python3 -c "import json;print(json.load(open('$RUN_DIR/health/health.json'))['verdict'])" 2>/dev/null || echo -)"
   fi
-  # Health AMBER is not a RED phase for the orchestrator exit, but recorded.
   local verdict
   verdict="$(phase_verdict_from_exit "$code")"
   if [[ "$code" -eq 0 && "$counts" == "AMBER" ]]; then
@@ -435,7 +560,8 @@ for phase in $PHASES; do
     continue
   fi
 
-  if [[ "$phase" != "preflight" && "$phase" != "clean-start" && "$phase" != "unit-tests" ]]; then
+  # Phases that must not require a live stack.
+  if [[ "$phase" != "preflight" && "$phase" != "unit-tests" && "$phase" != "build-images" && "$phase" != "clean-start" ]]; then
     if ! stack_up; then
       echo "[$KEYWORD] stack is down — stopping before phase=$phase" | tee -a "$RUN_DIR/phases/${phase}.log"
       record_phase "$phase" "RED" "1" "0" "$RUN_DIR/phases/${phase}.log" "-" "stack down; aborted"
@@ -447,8 +573,9 @@ for phase in $PHASES; do
 
   case "$phase" in
     preflight) run_phase_preflight || true ;;
-    clean-start) run_phase_clean_start || true ;;
     unit-tests) run_phase_unit_tests || true ;;
+    build-images) run_phase_build_images || true ;;
+    clean-start) run_phase_clean_start || true ;;
     functional-tests) run_phase_functional_tests || true ;;
     elective-tests) run_phase_elective_tests || true ;;
     playwright) run_phase_playwright || true ;;
@@ -457,7 +584,6 @@ for phase in $PHASES; do
     health) run_phase_health || true ;;
   esac
 
-  # Inspect last recorded verdict
   last_verdict="$(tail -1 "$PHASE_TSV" | cut -f2)"
   if [[ "$last_verdict" == "RED" ]]; then
     OVERALL_RED=1
@@ -509,7 +635,6 @@ def human(ms):
     m, s = divmod(sec, 60)
     return f"{m}m{s:02d}s" if m else f"{s}s"
 
-# Extract failing tests from functional/elective/unit logs
 failures = []
 for phase in phases:
     if phase["verdict"] != "RED":
@@ -525,7 +650,6 @@ for phase in phases:
     for m in re.finditer(r"<<< ERROR! -- in (\S+)", text):
         failures.append({"phase": phase["name"], "test": m.group(1), "error": "ERROR", "classification": "unclassified"})
 
-# Dedup failures
 seen = set()
 uniq = []
 for f in failures:
@@ -579,6 +703,7 @@ summary = {
     "machine": {
         "cpus": cpus.group(1).strip() if cpus else "unknown",
         "memoryLine": mem,
+        "haJmMinAvailableMib": 8192,
     },
     "phases": phases,
     "failures": failures,
@@ -588,7 +713,6 @@ summary = {
 
 (run / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
 
-# REPORT.md
 lines = []
 lines.append("# Quality gate report")
 lines.append("")
@@ -599,6 +723,12 @@ lines.append(f"- **Total duration:** {human(total_ms)}")
 lines.append(f"- **Machine:** cpus={summary['machine']['cpus']}; {mem}")
 lines.append(f"- **Churn:** 2 concurrent shells × {churn_min} min")
 lines.append(f"- **Overall verdict:** **{overall}**")
+lines.append("")
+lines.append("## Phase order note")
+lines.append("")
+lines.append("Unit tests (`./scripts/build.sh`) run **before** the HA stack so Maven and the")
+lines.append("6-JVM HA footprint do not compete for RAM. This intentionally differs from a")
+lines.append("naive stack-first sequence; see `product-docs/global/hygiene/quality-gate/README.md`.")
 lines.append("")
 lines.append("## Phase table")
 lines.append("")
@@ -656,12 +786,17 @@ if overall == "GO":
     lines.append("All phases GREEN; stack health within thresholds. Main is healthy to move to the next batch.")
 elif overall == "GO with reservations":
     lines.append("No RED phases (or only AMBER health/threshold signals). Review reservations before the next batch.")
+    lines.append("If clean-start is AMBER because the HA compose retry fired, that is product bug #747 — do not treat as GREEN.")
 else:
     lines.append("One or more RED phases. Do not treat main as ready for the next batch until failures are classified and addressed (outside this gate PR for product bugs).")
 lines.append("")
 lines.append("## Thresholds")
 lines.append("")
-lines.append("Initial thresholds live in `config/quality-gate/thresholds.json`. This first run is the baseline; update thresholds from observed values plus margin after reviewing HEALTH.md.")
+lines.append("Thresholds live in `config/quality-gate/thresholds.json`. Lock the baseline from a healthy complete HA run (no OOM, all replicas up). JavaMelody synthetic Error404 buckets are excluded from httpErrorPct scoring (see thresholds `httpErrorPctExclusions`).")
+lines.append("")
+lines.append("## Related product bugs")
+lines.append("")
+lines.append("- [#747](https://github.com/mgagp/ezkey/issues/747) — HA concurrent admin-api keyset race; compose retry is a temporary workaround (clean-start AMBER when it fires).")
 lines.append("")
 
 (run / "REPORT.md").write_text("\n".join(lines) + "\n", encoding="utf-8")

@@ -1,11 +1,15 @@
 {
   "version": 1,
-  "baselineNote": "Baseline from quality-gate run-1 on tip 06246cb6 (2026-10-09), HA + JavaMelody, 2×5min churn on a 4-CPU / 15Gi cloud VM. Bands = observed + margin. JavaMelody Error404 synthetic buckets are excluded from httpErrorPct scoring.",
-  "baselineLocked": true,
+  "baselineNote": "Baseline unlocked pending quality-gate run-2 (healthy complete HA run: no OOM, all replicas up). Run-1 baseline on 06246cb6 is historical only — do not trust for scoring until run-2 relocks.",
+  "baselineLocked": false,
   "javamelody": {
     "topHttpMeanMs": { "amber": 200, "red": 1000 },
     "topHttpMaxMs": { "amber": 5000, "red": 30000 },
     "httpErrorPct": { "amber": 5.0, "red": 15.0 },
+    "httpErrorPctExclusions": {
+      "pattern": "^Error\\d+",
+      "justification": "JavaMelody synthetic Error404/Error5xx buckets always report 100% error rate; exclude from httpErrorPct scoring so they do not drive AMBER/RED."
+    },
     "topSqlMeanMs": { "amber": 20, "red": 100 },
     "topSqlMaxMs": { "amber": 100, "red": 1000 },
     "systemErrorHits": { "amber": 100, "red": 400 },

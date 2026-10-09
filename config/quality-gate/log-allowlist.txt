@@ -7,7 +7,8 @@ Connection is not available, request timed out | Brief pool wait under concurren
 Broken pipe | Client disconnect during long poll / passwordless-wait
 Connection reset by peer | Transient LB blip under HAProxy round-robin
 I/O error on GET request | Client aborted long-poll; expected under churn cancellation paths
-ezkey_encryption_key_pkey | Known HA race: concurrent admin-api keyset sync; replica restarts and recovers
-Failed to synchronize keyset on startup | Companion of encryption_key_pkey race on HA dual-admin start
+ezkey_encryption_key_pkey | Temporary workaround for #747 HA admin keyset race; remove when #747 is fixed
+Failed to synchronize keyset on startup | Companion of #747; remove when #747 is fixed
 No access-code slots configured | Demo App ACME default without access-code slots in clean-start
 could not resolve address 'admin-api-1' | HAProxy config check while a replica is down/restarting
+CryptoGlobalExceptionHandler : Exception in crypto API endpoint: /api/v1/crypto/enrollments/verify | Test bug: RestAssured sticky CryptoApiClient basePath /api/v1/crypto doubles Admin enrollments/verify → NoResourceFoundException (not an expected crypto negative path)

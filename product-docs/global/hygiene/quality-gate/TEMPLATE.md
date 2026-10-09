@@ -4,7 +4,7 @@
 
 - **Date:** YYYY-MM-DD (America/Toronto)
 - **Keyword:** `quality-gate`
-- **Command:** `./scripts/quality-gate.sh` _(flags if any)_
+- **Command:** `./scripts/quality-gate.sh` _(flags if any — prefer none for a trusted run)_
 - **Tip SHA:** `…`
 - **Stack / mode:** HA + JavaMelody
 - **Report:** `logs/quality-gate/<UTC>-<shortsha>/REPORT.md` (local, gitignored)
@@ -16,15 +16,17 @@
 ## Machine
 
 - CPUs / RAM / disk:
+- Available RAM vs `HA_JM_MIN_AVAILABLE_MIB` (8192):
 - Docker / Compose:
 
 ## Phase summary
 
 | Phase | Verdict | Duration | Counts | Notes |
 | --- | --- | --- | --- | --- |
-| preflight | | | | |
-| clean-start | | | | |
-| unit-tests | | | | |
+| preflight | | | | stack stopped; RAM check |
+| unit-tests | | | | before stack (RAM headroom) |
+| build-images | | | | tip images |
+| clean-start | | | | AMBER if #747 compose retry fired |
 | functional-tests | | | | |
 | elective-tests | | | | |
 | playwright | | | | |
@@ -34,21 +36,21 @@
 
 ## Failures (classified)
 
-| Phase | Test | Classification | Evidence |
+| Phase | Test / finding | Classification | Evidence |
 | --- | --- | --- | --- |
 | | | product bug / flaky / environment / test bug | |
 
 ## Health highlights
 
 - Top HTTP / SQL per app
-- Error % / system errors
+- Error % / system errors (Error404 excluded from httpErrorPct)
 - Log error signatures
 - Restarts / OOM / unhealthy
 - Threshold verdict (and whether this run set the baseline)
 
 ## Reservations / follow-ups
 
--
+- #747 compose retry (remove when fixed)
 
 ## Out of scope
 
