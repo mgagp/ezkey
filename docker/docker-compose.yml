@@ -122,8 +122,10 @@ services:
       EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
       # Optional "About / learn more" link (maps to ezkey.organization.about-url).
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
-      # full (default) = logs + bootstrap-credentials.json for clean-start. recovery_primary = recovery-only logs, no JSON export.
+      # full (default) = bind material in logs + bootstrap-credentials.json (0600, includes recovery codes).
+      # recovery_primary = no enrollment secrets in logs; recovery codes only in the credentials file.
       EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE: ${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:-full}
+      EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS: ${EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS:-24}
     volumes:
       - encryption-secrets:/etc/ezkey
       - bootstrap-artifacts:/var/lib/ezkey/bootstrap
@@ -171,8 +173,12 @@ services:
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
       # Always a valid Duration. Empty host value would fail Spring bind.
       EZKEY_ENCRYPTION_KEYSET_BOOTSTRAP_WAIT: ${EZKEY_ENCRYPTION_KEYSET_BOOTSTRAP_WAIT:-PT90S}
+      # Path for post-bind redaction of bootstrap-credentials.json (shared volume below)
+      EZKEY_ADMIN_BOOTSTRAP_EXPORT_PATH: /var/lib/ezkey/bootstrap/bootstrap-credentials.json
     volumes:
       - encryption-secrets:/etc/ezkey
+      # Shared with admin-api so bind can redact proof token / challenge from bootstrap-credentials.json
+      - bootstrap-artifacts:/var/lib/ezkey/bootstrap
     ports:
       - "8080:8080"
       - "8085:8085"
@@ -336,7 +342,7 @@ services:
       ADMIN_API_URL: http://admin-api:9080
       AUTH_API_URL: http://auth-api:8080
       CRYPTO_API_URL: http://crypto-api:9090
-      # Set false when using recovery_primary bootstrap (no bootstrap-credentials.json).
+      # Set false when using recovery_primary (file has recovery codes but no proof token for unattended bind).
       EZKEY_BOOTSTRAP_INIT_ENABLED: ${EZKEY_BOOTSTRAP_INIT_ENABLED:-true}
     volumes:
       - bootstrap-artifacts:/bootstrap

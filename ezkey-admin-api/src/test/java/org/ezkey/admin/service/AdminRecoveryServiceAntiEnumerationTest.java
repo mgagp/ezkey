@@ -17,6 +17,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 import org.ezkey.admin.audit.RecoveryAuditDetails;
+import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.AdminRecoveryProperties;
 import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -45,6 +46,7 @@ class AdminRecoveryServiceAntiEnumerationTest {
   @Mock private SignatureService signatureService;
   @Mock private BCryptPasswordEncoder passwordEncoder;
   @Mock private AdminRecoveryProperties recoveryProperties;
+  @Mock private AdminMfaProperties mfaProperties;
 
   @InjectMocks private AdminRecoveryService recoveryService;
 

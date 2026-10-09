@@ -119,6 +119,16 @@ export AWS_PROFILE=ezkey-lightsail
 
 App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with `LIGHTSAIL_SSH_HOST=ezkey-online`. Do not put community-only secrets or ezkey.online-only DNS checklists into the public compose tree.
 
+## Ops — Docker log hygiene (host-local)
+
+[`ops/docker-log-hygiene.sh`](ops/docker-log-hygiene.sh) — check json-file rotation / sizes (default), optional `--scan` (pattern **counts** only), `--purge` dry-run / `--purge --apply`. No remote/SSH. Canon: [`docs/OPERATIONAL.md`](../docs/OPERATIONAL.md) § Log rotation and hygiene.
+
+```bash
+./scripts/ops/docker-log-hygiene.sh
+./scripts/ops/docker-log-hygiene.sh --scan
+./scripts/ops/docker-log-hygiene.sh --purge
+```
+
 ## Initial Problem
 
 Demo projects were using two different approaches for OpenAPI specifications:

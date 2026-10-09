@@ -15,6 +15,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.AdminRecoveryProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.exception.AuthenticationException;
@@ -78,21 +79,35 @@ public class AdminRecoveryService {
   private final SignatureService signatureService;
   private final BCryptPasswordEncoder passwordEncoder;
   private final AdminRecoveryProperties recoveryProperties;
+  private final AdminMfaProperties mfaProperties;
   private final SecureRandom secureRandom;
 
+  /**
+   * Creates the recovery service.
+   *
+   * @param adminRepository admin persistence
+   * @param tokenRepository recovery/session token persistence
+   * @param enrollmentRepository enrollment persistence
+   * @param signatureService proof token / challenge generation
+   * @param passwordEncoder BCrypt matcher for recovery codes
+   * @param recoveryProperties recovery code count and token duration
+   * @param mfaProperties bootstrap invitation TTL used when refreshing expiresAt on reset
+   */
   public AdminRecoveryService(
       EzkeyAdminRepository adminRepository,
       AdminTokenRepository tokenRepository,
       EnrollmentRepository enrollmentRepository,
       SignatureService signatureService,
       BCryptPasswordEncoder passwordEncoder,
-      AdminRecoveryProperties recoveryProperties) {
+      AdminRecoveryProperties recoveryProperties,
+      AdminMfaProperties mfaProperties) {
     this.adminRepository = adminRepository;
     this.tokenRepository = tokenRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.signatureService = signatureService;
     this.passwordEncoder = passwordEncoder;
     this.recoveryProperties = recoveryProperties;
+    this.mfaProperties = mfaProperties;
     this.secureRandom = new SecureRandom();
   }
 
@@ -382,9 +397,9 @@ public class AdminRecoveryService {
           "You don't have permission to reset this enrollment");
     }
 
-    // 3. Reset enrollment (unbind device)
-    enrollment.setDevicePublicKey(null); // Unbind old device
-    enrollment.setStatus(EnrollmentStatus.CREATED); // Back to initial state
+    // 3. Reset enrollment (unbind device). EXPIRED (scheduler) and VERIFIED both become CREATED.
+    enrollment.setDevicePublicKey(null);
+    enrollment.setStatus(EnrollmentStatus.CREATED);
 
     // 4. Generate new credentials
     String newProofToken = signatureService.generateProofToken();
@@ -393,7 +408,15 @@ public class AdminRecoveryService {
     enrollment.setEnrollmentProofToken(newProofToken);
     enrollment.setEnrollmentChallenge(newChallenge);
 
-    // 5. Save enrollment
+    // 5. Refresh invitation TTL when the enrollment had an expiresAt (bootstrap / pending window).
+    // Without this, recover → reset after the 24h scheduler marks EXPIRED leaves a past expiresAt
+    // and bind stays refused.
+    if (enrollment.getExpiresAt() != null) {
+      int ttlHours = mfaProperties.getBootstrap().getEnrollmentExpirationHours();
+      enrollment.setExpiresAt(OffsetDateTime.now().plusHours(ttlHours));
+    }
+
+    // 6. Save enrollment
     enrollmentRepository.save(enrollment);
 
     revokeSessionTokensAfterRecoveryReset(admin, enrollmentId);

@@ -158,45 +158,51 @@ mvn spring-boot:run
 
 **Bootstrap Process (Automatic):**
 
-The system automatically initializes the initial global admin on first startup:
+The system automatically initializes the initial global admin on first startup.
+
+In `credentials-output-mode=full` (Docker clean-start default), startup logs include bind material
+only (username, enrollment ID, proof token, challenge, ASCII QR). **Recovery codes are never
+printed in logs.** Logs name the bootstrap **username** only (not the configured email).
 
 ```
 ================================================================================
-📱 GLOBAL ADMIN PASSWORDLESS ENROLLMENT - SAVE CREDENTIALS NOW!
+GLOBAL ADMIN PASSWORDLESS ENROLLMENT - SAVE CREDENTIALS NOW!
 ================================================================================
 
-✅ Global Admin Created: john.doe (john.doe@example.com)
-✅ System Integration created: Ezkey System Admin
-✅ Global Admin Enrollment created: Global Admin MFA (ID: 1)
+Global Admin: john.doe
+System Integration created: Ezkey System Admin
+Global Admin Enrollment created: Global Admin MFA (ID: 1)
 
-🔐 ENROLLMENT CREDENTIALS:
+ENROLLMENT CREDENTIALS:
    Enrollment ID: 1
    Enrollment Proof Token: abc123xyz...def789 (64 chars)
    Challenge Code: 654321
 
-🔑 RECOVERY CODES (106-BIT ENTROPY - SAVE SECURELY):
-   1. 1234-5678-9012-3456-7890-1234-5678-9012
-   2. 4567-8901-2345-6789-0123-4567-8901-2345
-   3. 7890-1234-5678-9012-3456-7890-1234-5678
-   4. 0123-4567-8901-2345-6789-0123-4567-8901
-   5. 3456-7890-1234-5678-9012-3456-7890-1234
-   6. 6789-0123-4567-8901-2345-6789-0123-4567
-   7. 9012-3456-7890-1234-5678-9012-3456-7890
-   8. 2345-6789-0123-4567-8901-2345-6789-0123
-   9. 5678-9012-3456-7890-1234-5678-9012-3456
-  10. 8901-2345-6789-0123-4567-8901-2345-6789
+RECOVERY CODES: <see /var/lib/ezkey/bootstrap/bootstrap-credentials.json (0600)>
 
-⚠️ CRITICAL: Save these credentials NOW.
-⚠️ Recovery codes cannot be retrieved later.
-⚠️ These codes are SINGLE-USE ONLY.
+CRITICAL: Save bind material from logs (or the credentials file).
+Recovery codes are ONLY in bootstrap-credentials.json (0600).
+Bootstrap enrollment invitation expires after enrollment-expiration-hours (default 24).
 ================================================================================
 ```
 
+**Retrieve recovery codes (Docker):**
+
+```bash
+docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/bootstrap-credentials.json
+```
+
+**Bootstrap enrollment TTL:** `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` (default **24**,
+env `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS`). Bind before expiry. To re-issue after
+expiry: recovery code from the credentials file → Admin UI account recovery → reset enrollment →
+bind with the new material from the HTTP response.
+
 **⚠️ CRITICAL ACTIONS:**
 
-1. **Copy enrollment credentials** - You need these to bind your device
-2. **Save recovery codes** - Print or store in password manager
-3. **Test recovery codes** - Verify at least one works before production
+1. **Copy enrollment credentials** from logs or `bootstrap-credentials.json` — needed to bind
+2. **Save recovery codes** from `bootstrap-credentials.json` (`0600`) into a password manager
+3. **Test recovery codes** — verify at least one works before production
+4. **Bind before the 24h invitation TTL** (or re-issue via recover → reset enrollment)
 
 ### Step 3: Bind Your Device
 
@@ -709,8 +715,8 @@ WHERE a.username = 'admin';
 ```
 
 If `is_bound = false`:
-1. Get enrollment credentials from bootstrap logs
-2. Bind device using Demo Device or Mobile app
+1. Get enrollment credentials from Admin API bootstrap logs (proof token / challenge / QR in `full` mode) or from `bootstrap-credentials.json` on the `bootstrap-artifacts` volume
+2. Bind device using Demo Device or Mobile app before the bootstrap enrollment TTL expires (default 24h)
 3. Retry login
 
 ### Problem: "Authentication timeout - no device response"
@@ -742,7 +748,7 @@ If `is_bound = false`:
 
 **Solution:**
 1. Verify code format: 8 groups of 4 digits
-2. Try another recovery code (you have 10 total)
+2. Try another recovery code (count is `ezkey.admin.recovery.codes-count`, default 5)
 3. Check `codesRemaining` in response
 4. If all codes exhausted: Contact system administrator
 
@@ -832,8 +838,8 @@ Authorization: Bearer ezkey_abc123...
 ## Production Deployment Checklist
 
 - [ ] ✅ Migrations V1-V9 executed successfully
-- [ ] ✅ Admin zero bootstrap logs captured (enrollment + recovery codes)
-- [ ] ✅ Recovery codes printed and stored in secure location
+- [ ] ✅ Admin zero bootstrap bind material captured (logs and/or `bootstrap-credentials.json`)
+- [ ] ✅ Recovery codes copied from `bootstrap-credentials.json` (`0600`) into a secure location
 - [ ] ✅ At least one recovery code tested and validated
 - [ ] ✅ Device bound successfully (device_public_key set)
 - [ ] ✅ Passwordless login tested (both modes)

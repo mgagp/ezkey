@@ -58,7 +58,9 @@ The `AdminBootstrapService.ensureAdminToken()` method follows a three-tier strat
 **What happens**:
 1. Checks if `.ezkey-test/bootstrap-credentials.json` exists
 2. If exists: Loads from file
-3. If not exists: Extracts from Docker logs and saves to file
+3. If not exists: Prefers `bootstrap-credentials.json` on the `bootstrap-artifacts` Docker volume
+   (includes recovery codes at `0600`); falls back to Admin API logs for bind material only, then
+   saves a local cache file
 
 **File Created**: `.ezkey-test/bootstrap-credentials.json` (if not exists)
 
@@ -66,13 +68,14 @@ The `AdminBootstrapService.ensureAdminToken()` method follows a three-tier strat
 ```json
 {
   "enrollmentId": 1,
-  "enrollmentProofToken": "nNbHsGDI5xCFuKX_OcCxkgC1__ndyHYztAUcLAQtpgI.1763832282158.xZC44CaCF7lE38x4t_nKWg",
+  "enrollmentProofToken": "nNbHsGDI5xCFuKX_OcCxkgC1__ndyHYztAUcLAQtpgI.xZC44CaCF7lE38x4t_nKWg",
   "enrollmentChallengeCode": 284878,
-  "recoveryCodes": []
+  "recoveryCodes": ["1234-5678-9012-3456-7890-1234-5678-9012"]
 }
 ```
 
-**Note**: This file is created once and reused for all subsequent operations.
+**Note**: This file is created once and reused for all subsequent operations. Recovery codes are
+never present in Admin API logs; they come from the volume credentials file.
 
 **API Calls**: None (file I/O only)
 

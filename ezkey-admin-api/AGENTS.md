@@ -120,7 +120,8 @@ Browser delivery is Mode A Bearer vs Mode B HttpOnly cookie —
 - **Consume vs reactivate:** first-time onboarding is unauthenticated
   `POST /api/v1/admin/auth/activate`. Operator reactivation of a deactivated admin is
   `POST /api/v1/admins/{id}/activate`. Do not collapse those paths.
-- Bootstrap log/export policy: `ezkey.admin.mfa.bootstrap.credentials-output-mode` — `full` (default; enrollment secrets + optional `bootstrap-credentials.json`) vs `recovery_primary` (recovery codes + instructions only; skips JSON export for Docker).
+- Bootstrap log/export policy: `ezkey.admin.mfa.bootstrap.credentials-output-mode` — `full` (default; proof token + challenge + ASCII QR in logs by design; recovery codes only in `bootstrap-credentials.json` at `0600`) vs `recovery_primary` (no enrollment secrets in logs; recovery codes only in the credentials file).
+- Bootstrap enrollment TTL: `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` (default **24**, minimum **1**). Bind after expiry is refused; re-issue via recovery code → recover → reset enrollment (reset refreshes `expiresAt`). After bind, proof token/challenge are removed from `bootstrap-credentials.json`; delete the file once recovery codes are stored safely.
 - **Bootstrap transaction:** `@Transactional` must be on `bootstrapAdminMfa()` (entry point), not only on `doBootstrapAdminMfa()`. Passing `this::doBootstrapAdminMfa` to `LockingTaskExecutor` bypasses the proxy; the inner method’s `@Transactional` would not apply. See `docs/plan/JPA_TRANSACTION_DESIGN_NOTES.md`.
 - **Bootstrap startup order:** `ApplicationReadyEvent` listeners must keep keyset empty-table sync (`ApplicationReadyStartupOrder.KEYSET_SYNC`) before MFA bootstrap. Enrollment insert writes `*_encryption_key_id` FKs; a missing `ezkey_encryption_key` row fails clean-start.
 - **ShedLock / HA:** Admin API enables ShedLock (`ShedLockConfiguration`). Scheduled jobs use
@@ -175,8 +176,8 @@ for Cloudflare Pages → Admin API; pair `allow-credentials` with Mode B HttpOnl
 
 ## Logging and secrets
 
-- **Never** log enrollment proof tokens, enrollment challenge codes, plaintext recovery codes, temporary recovery tokens, bearer tokens, or raw cryptographic signatures used as proof material. If operators need correlation, log **non-secret** identifiers only (e.g. `enrollmentId`, username). Enrollment reset and onboarding secrets belong in **HTTP responses** only.
-- The **only** deliberate exception is optional one-time **bootstrap** output (`AdminBootstrapService`), controlled by `ezkey.admin.mfa.bootstrap.credentials-output-mode` (`full` vs `recovery_primary`). Do not copy that pattern into request/response handlers or enrollment services.
+- **Never** log plaintext recovery codes, admin login challenge codes, temporary recovery tokens, bearer tokens, bootstrap admin email addresses, or raw cryptographic signatures used as proof material. If operators need correlation, log **non-secret** identifiers only (e.g. `enrollmentId`, `authAttemptId`, username). Enrollment reset and onboarding secrets belong in **HTTP responses** only.
+- The **only** deliberate exception is optional one-time **bootstrap** bind-material output (`AdminBootstrapService` in `full` mode): enrollment proof token, challenge, and ASCII QR may appear in startup logs. Recovery codes must go to `bootstrap-credentials.json` (`0600`) only. Do not copy that pattern into request/response handlers or enrollment services.
 
 ## Running and testing
 

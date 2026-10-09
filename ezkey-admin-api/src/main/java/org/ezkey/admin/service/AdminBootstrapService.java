@@ -371,7 +371,8 @@ public class AdminBootstrapService {
       bootstrapCredentialsFileExporter.exportIfEnabled(
           existingEnrollment,
           existingEnrollment.getEnrollmentProofToken(),
-          initialGlobalAdminProperties.getUsername());
+          initialGlobalAdminProperties.getUsername(),
+          java.util.List.of());
       return;
     }
 
@@ -425,6 +426,8 @@ public class AdminBootstrapService {
     globalAdminEnrollment.setIntegrationPublicKey(keyPair.base64UrlPublicKey());
     globalAdminEnrollment.setIntegrationPrivateKey(keyPair.base64PrivateKey());
     globalAdminEnrollment.setCreatedAt(OffsetDateTime.now());
+    int enrollmentExpirationHours = mfaProperties.getBootstrap().getEnrollmentExpirationHours();
+    globalAdminEnrollment.setExpiresAt(OffsetDateTime.now().plusHours(enrollmentExpirationHours));
 
     // Store token in local variable before save (to ensure we log the exact token
     // that was set)
@@ -454,52 +457,53 @@ public class AdminBootstrapService {
     logger.info(
         "✅ {} recovery codes generated for global admin", recoveryCodes.getPlainCodes().size());
 
-    // Log credentials with highly visible formatting
-    // Use the token from local variable to ensure we log the exact token that was
-    // set
-    logGlobalAdminEnrollmentCredentials(
-        persistedEnrollment, recoveryCodes.getPlainCodes(), tokenToLog);
+    // Log credentials with highly visible formatting (token/challenge/QR by design;
+    // recovery codes only as a pointer to the 0600 credentials file)
+    logGlobalAdminEnrollmentCredentials(persistedEnrollment, tokenToLog);
 
-    // Export bootstrap credentials to file (Docker-only, if enabled)
+    // Export bootstrap credentials + recovery codes to file (0600)
     bootstrapCredentialsFileExporter.exportIfEnabled(
-        persistedEnrollment, tokenToLog, initialGlobalAdminProperties.getUsername());
+        persistedEnrollment,
+        tokenToLog,
+        initialGlobalAdminProperties.getUsername(),
+        recoveryCodes.getPlainCodes());
   }
 
   /**
    * Log global admin enrollment credentials with highly visible formatting.
    *
-   * <p>This method logs enrollment credentials and recovery codes using WARN level with
-   * 80-character separator lines to ensure visibility in logs. Credentials are logged ONCE at
-   * startup and should be saved securely by the administrator.
+   * <p>Proof token, challenge, and ASCII QR are logged by design for the initial enrollment wizard.
+   * Recovery codes are never logged; operators read them from {@code bootstrap-credentials.json}
+   * ({@code 0600}).
    *
    * @param enrollment the enrollment with credentials to log
-   * @param recoveryCodes the plain recovery codes to log
    * @param enrollmentProofToken the enrollment proof token to log (from local variable, before
    *     save)
    */
   private void logGlobalAdminEnrollmentCredentials(
-      Enrollment enrollment, java.util.List<String> recoveryCodes, String enrollmentProofToken) {
+      Enrollment enrollment, String enrollmentProofToken) {
     if (mfaProperties.getBootstrap().getCredentialsOutputMode()
         == BootstrapCredentialsOutputMode.RECOVERY_PRIMARY) {
-      logRecoveryPrimaryGlobalAdminCredentials(enrollment, recoveryCodes);
+      logRecoveryPrimaryGlobalAdminCredentials(enrollment);
       return;
     }
 
     String separator = "=".repeat(80);
     String username = initialGlobalAdminProperties.getUsername();
-    String email = initialGlobalAdminProperties.getEmail();
-    String firstName = initialGlobalAdminProperties.getFirstName();
-    String lastName = initialGlobalAdminProperties.getLastName();
-    String fullName = firstName + " " + lastName;
+    String recoveryPointer = bootstrapCredentialsFileExporter.recoveryCodesLogPointer();
 
     logger.warn(""); // Blank line for visibility
     logger.warn(separator);
     logger.warn("📱 GLOBAL ADMIN PASSWORDLESS ENROLLMENT - SAVE THESE CREDENTIALS NOW!");
     logger.warn(separator);
     logger.warn("");
-    logger.warn("✅ Global Admin Created: {} ({}) - {}", username, email, fullName);
+    logger.warn("✅ Global Admin Created: {}", username);
     logger.warn("✅ System Integration created: {} Admin", organizationProperties.getName().strip());
     logger.warn("✅ Global Admin Enrollment created: {}", enrollment.getEnrollmentName());
+    if (enrollment.getExpiresAt() != null) {
+      logger.warn(
+          "   Enrollment expires at: {} (bind before this time)", enrollment.getExpiresAt());
+    }
     logger.warn("");
     logger.warn("🔐 ENROLLMENT CREDENTIALS:");
     logger.warn("   Enrollment ID: {}", enrollment.getEnrollmentId());
@@ -517,10 +521,8 @@ public class AdminBootstrapService {
       logger.warn("   {}", line);
     }
     logger.warn("");
-    logger.warn("🔑 RECOVERY CODES (SAVE SECURELY - SINGLE USE ONLY):");
-    for (int i = 0; i < recoveryCodes.size(); i++) {
-      logger.warn("   {}. {}", (i + 1), recoveryCodes.get(i));
-    }
+    logger.warn("🔑 RECOVERY CODES: {}", recoveryPointer);
+    logger.warn("   (single-use — copy from the credentials file into a password manager)");
     logger.warn("");
     logger.warn("🔗 BIND ENROLLMENT (Required before first login):");
     logger.warn("");
@@ -547,59 +549,51 @@ public class AdminBootstrapService {
     logger.warn("⚠️  SECURITY NOTICE:");
     logger.warn("   - NO PASSWORD - Ezkey is passwordless!");
     logger.warn("   - Recovery codes are single-use emergency access only");
-    logger.warn("   - Save all credentials in a secure password manager");
-    logger.warn("   - These credentials cannot be retrieved again without database access");
-    logger.warn("   - Bind enrollment before attempting first login");
+    logger.warn("   - Save recovery codes from the credentials file in a password manager");
+    logger.warn("   - Bind enrollment before the invitation expires (see expires at above)");
+    logger.warn("   - If the invitation expired: use a recovery code from the credentials file →");
+    logger.warn("     Admin UI account recovery → reset enrollment → bind with the new material");
     logger.warn("");
     logger.warn(separator);
     logger.warn("");
   }
 
   /**
-   * Recovery-first bootstrap: log only username context and recovery codes; enrollment proof token,
-   * challenge, and ASCII QR are omitted. Operators use Admin UI recovery (recover → reset
-   * enrollment) to obtain bind material.
+   * Recovery-first bootstrap: log username context and a pointer to recovery codes on disk;
+   * enrollment proof token, challenge, and ASCII QR are omitted. Operators use Admin UI recovery
+   * (recover → reset enrollment) to obtain bind material.
    *
    * @param enrollment enrollment record (enrollment id may be logged as a non-secret correlation
    *     id)
-   * @param recoveryCodes plaintext recovery codes (shown once)
    */
-  private void logRecoveryPrimaryGlobalAdminCredentials(
-      Enrollment enrollment, java.util.List<String> recoveryCodes) {
+  private void logRecoveryPrimaryGlobalAdminCredentials(Enrollment enrollment) {
     String separator = "=".repeat(80);
     String username = initialGlobalAdminProperties.getUsername();
-    String email = initialGlobalAdminProperties.getEmail();
-    String firstName = initialGlobalAdminProperties.getFirstName();
-    String lastName = initialGlobalAdminProperties.getLastName();
-    String fullName = firstName + " " + lastName;
+    String recoveryPointer = bootstrapCredentialsFileExporter.recoveryCodesLogPointer();
 
     logger.warn("");
     logger.warn(separator);
-    logger.warn("GLOBAL ADMIN BOOTSTRAP (recovery-primary) — SAVE RECOVERY CODES NOW");
+    logger.warn("GLOBAL ADMIN BOOTSTRAP (recovery-primary) — SAVE RECOVERY CODES FROM FILE");
     logger.warn(separator);
     logger.warn("");
-    logger.warn("Global Admin: {} ({}) — {}", username, email, fullName);
+    logger.warn("Global Admin: {}", username);
     logger.warn("Enrollment ID (reference only): {}", enrollment.getEnrollmentId());
     logger.warn("");
-    logger.warn("RECOVERY CODES (single-use — store in a password manager):");
-    for (int i = 0; i < recoveryCodes.size(); i++) {
-      logger.warn("   {}. {}", (i + 1), recoveryCodes.get(i));
-    }
+    logger.warn("RECOVERY CODES: {}", recoveryPointer);
+    logger.warn("  (single-use — copy from the credentials file into a password manager)");
     logger.warn("");
     logger.warn("Initial enrollment (no proof token in logs):");
-    logger.warn("  1) Open Admin UI → Login → Use account recovery.");
-    logger.warn("  2) POST /api/v1/admin/auth/recover with username + one recovery code.");
-    logger.warn("  3) POST /api/v1/admin/enrollments/reset with the recovery token — new bind");
+    logger.warn("  1) Read a recovery code from the credentials file.");
+    logger.warn("  2) Open Admin UI → Login → Use account recovery.");
+    logger.warn("  3) POST /api/v1/admin/auth/recover with username + one recovery code.");
+    logger.warn("  4) POST /api/v1/admin/enrollments/reset with the recovery token — new bind");
     logger.warn("     credentials are returned in the HTTP response body only (not in logs).");
-    logger.warn("  4) Bind the mobile app using those credentials, then use passwordless login.");
+    logger.warn("  5) Bind the mobile app using those credentials, then use passwordless login.");
     logger.warn("");
-    logger.warn(
-        "Bootstrap JSON file export is disabled in recovery-primary mode "
-            + "(no bootstrap-credentials.json).");
     logger.warn(
         "For Docker automation that needs unattended bind+verify, use"
             + " credentials-output-mode=full");
-    logger.warn("or implement a separate recovery-based automation path.");
+    logger.warn("so enrollment secrets are also written to bootstrap-credentials.json.");
     logger.warn("");
     logger.warn(separator);
     logger.warn("");

@@ -179,7 +179,7 @@ On first startup, Ezkey automatically initializes the admin authentication syste
    - Passwordless authentication (no passwords)
    - System Integration created for global admin authentication
    - Global Admin Enrollment created with RSA-2048 keys
-   - Recovery codes generated (10 single-use codes)
+   - Recovery codes generated into `bootstrap-credentials.json` (`0600`; never logged; count from `ezkey.admin.recovery.codes-count`)
    - Admin linked to system tenant
 
 ### Organization Configuration
@@ -542,16 +542,64 @@ ssl_stapling_verify on;
 
 ### Logging and secrets (Admin API)
 
-Server logs must **not** duplicate high-value secrets that are already returned in API responses (for example enrollment proof tokens and challenge codes after enrollment reset). Use identifiers such as `enrollmentId` and usernames for correlation. Plaintext recovery codes appear only in deliberate bootstrap output when configured.
+Server logs must **not** duplicate high-value secrets that are already returned in API responses (for example enrollment proof tokens and challenge codes after enrollment reset). Use identifiers such as `enrollmentId`, `authAttemptId`, and usernames for correlation. Admin login challenge codes, bootstrap admin email addresses, and plaintext recovery codes must not appear in logs.
+
+**Deliberate bootstrap exception (bind material only):** in `credentials-output-mode=full`, the Admin API startup logs still print the enrollment proof token, challenge code, and ASCII QR so operators can complete the first global-admin enrollment wizard. Recovery codes are never printed; they are written only to `bootstrap-credentials.json` with owner-only mode (`0600`).
 
 ### Global admin bootstrap and recovery codes
 
 `ezkey.admin.mfa.bootstrap.credentials-output-mode` controls what the Admin API prints at first global-admin enrollment:
 
-- **`full`** (default for development and Docker clean-start): enrollment secrets and ASCII QR may appear in startup logs; `bootstrap-credentials.json` may be written when file export is enabled (for `bootstrap-init` automation).
-- **`recovery_primary`**: recovery codes and operator instructions only; enrollment secrets are omitted from logs and JSON export is skipped. Use the Admin UI account-recovery flow (recover → reset enrollment → bind). For Docker, set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on the `bootstrap-init` service when no `bootstrap-credentials.json` is produced, or omit that service.
+- **`full`** (default for development and Docker clean-start): enrollment proof token, challenge, and ASCII QR appear in startup logs (by design). Recovery codes are written to `bootstrap-credentials.json` (`0600`) — never to logs. File export also includes enrollment bind material for `bootstrap-init`.
+- **`recovery_primary`**: enrollment secrets and ASCII QR are omitted from logs. Recovery codes are written to `bootstrap-credentials.json` (`0600`) only. Use the Admin UI account-recovery flow (recover → reset enrollment → bind). For Docker unattended bind, keep `credentials-output-mode=full`; with `recovery_primary`, set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on `bootstrap-init` (or omit that service) because the file has no proof token.
 
-**Operational recommendation:** After the global administrator completes first device binding and can sign in, **regenerate recovery codes** from the Admin UI so unused codes from bootstrap logs are invalidated.
+**Bootstrap enrollment TTL:** `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` (default **24**, minimum **1**, env `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS`). Bind is refused after expiry. To re-issue: read a recovery code from `bootstrap-credentials.json` → Admin UI account recovery → reset enrollment (refreshes `expiresAt`) → bind with the new material returned in the HTTP response.
+
+**Retrieve recovery codes (Docker):**
+
+```bash
+docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/bootstrap-credentials.json
+```
+
+After a successful bind, the file keeps **recovery codes** but the proof token and challenge are
+removed. **Delete the credentials file** once codes are copied to a password manager or other safe
+store (the file is owner-only `0600`; both `admin-api` and `bootstrap-init` run as UID `100`
+`spring` so init can still read it before redaction).
+
+**Re-issue after invitation expiry:** recover with a recovery code → reset enrollment (refreshes
+`expiresAt` to now + `enrollment-expiration-hours`) → bind with the new material from the HTTP
+response. Scheduler-marked `EXPIRED` enrollments are accepted by reset (status returns to
+`CREATED`).
+
+**Operational recommendation:** After the global administrator completes first device binding and can sign in, **regenerate recovery codes** from the Admin UI so unused codes from the bootstrap credentials file are invalidated.
+
+### Log rotation and hygiene
+
+**Audience:** next Lightsail / small-VM installs (≈4 GB RAM / ≈40 GB disk). This does **not** reconfigure a running live instance; Docker applies `logging:` only when a container is created.
+
+**Compose defaults** (`experimental-hybrid/lightsail/docker-compose.yml`, `x-logging` on every service):
+
+| Option | Value | Why |
+| ------ | ----- | --- |
+| `driver` | `json-file` | Docker default; supports rotation options |
+| `max-size` | `20m` | Per-file cap suited to a small disk |
+| `max-file` | `3` | Keep a short rotated history |
+
+Ceiling ≈ **8 services × 20 MiB × 3 files ≈ 480 MiB** of container json logs — intentional headroom beside Postgres data and images on a ~40 GB disk.
+
+**Host script:** [`scripts/ops/docker-log-hygiene.sh`](../scripts/ops/docker-log-hygiene.sh) (POSIX Bash, idempotent, local Docker only — no SSH/remote).
+
+| When | Command | Purpose |
+| ---- | ------- | ------- |
+| After first `compose up` on a new VM | `./scripts/ops/docker-log-hygiene.sh` | Confirm every container has `max-size` / `max-file` |
+| Periodically (e.g. monthly) | `./scripts/ops/docker-log-hygiene.sh` | Report sizes; exit `1` if rotation missing |
+| Optional content scan | `./scripts/ops/docker-log-hygiene.sh --scan` | Counts of credential-like patterns only (never values) |
+| Plan cleanup | `./scripts/ops/docker-log-hygiene.sh --purge` | Dry-run: stopped-container logs + rotated files older than 7d |
+| Apply cleanup | `./scripts/ops/docker-log-hygiene.sh --purge --apply` (or `--yes`) | Truncate/remove after confirm |
+
+**Exit codes:** `0` ok, `1` findings, `2` error.
+
+**What the script never does:** change Compose or recreate containers; talk to remote hosts; print secret values from `--scan`; truncate logs of **running** containers; delete Postgres or named volumes.
 
 ### Log Configuration
 
