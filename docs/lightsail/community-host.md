@@ -309,6 +309,29 @@ After recreate, update Cloudflare **A** records if the public IP changed (no sta
 - [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md) -- Public alpha claim + git-SHA identity
 - [`community/DEPLOYED.md`](community/DEPLOYED.md) -- live state ledger for ezkey.online (update after successful publish)
 
+## Deploy pitfalls (community host)
+
+Short operator checklist verified against repo scripts/compose (not live VM observation):
+
+1. **Caddyfile sync** — `--sync-operator-files` / `--clean-start` on
+   [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh)
+   always copies the EXP1-named `Caddyfile`. After any such sync to the community VM, **re-scp**
+   `Caddyfile.ezkey-online` → remote `Caddyfile` (see Ordered path step 2). A one-line remote
+   `cp Caddyfile.ezkey-online Caddyfile` fails because the variant file is not kept on the VM.
+2. **Grants container** — Compose service `db-grants` (`container_name: ezkey-exp-db-grants` in
+   [`docker-compose.yml`](../../experimental-hybrid/lightsail/docker-compose.yml)) applies
+   [`scripts/db/apply-grants.sql`](../../scripts/db/apply-grants.sql) after migration. APIs depend on
+   it (`condition: service_completed_successfully`). Do not skip or remove it on a fresh bring-up.
+3. **Never `--clean-start` on a kept community DB** — `--clean-start` is destructive
+   (`docker compose down -v`, then remote `clean-start.sh`). For upgrades that keep Postgres data,
+   use rolling export (`--sync-operator-files` + `--remote-up`, or
+   `full-exp-environment-upgrade.sh rolling`). First bring-up / disposable reset only.
+
+**Note (stale refs checked on `main`):** this runbook no longer contains a `TODO:223` marker or an
+`EZKEY_POSTGRES_CONTAINER` reference. Lab scripts under `scripts/lab/` default that env var to
+`ezkey-postgres`; the Lightsail compose Postgres container is `ezkey-exp-postgres` — do not assume
+the lab default on this host.
+
 ## Naming lock (Audrey/Marc)
 
 Community instance branding and bootstrap admin (exact spelling **Ezkey**, never EasyKey):

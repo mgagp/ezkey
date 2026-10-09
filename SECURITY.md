@@ -50,6 +50,12 @@ Reports that are generally out of scope include:
 - Unverified automated-scanner output with no reproduction steps
 - Issues already fixed on `main` or already published in advisories
 
+## Design compass (fail-open vs fail-closed)
+
+When a control or side effect can fail at a trust or availability boundary, name whether the primary
+path **continues** (fail-open; failure must stay observable) or **stops** (fail-closed). Canon:
+[`product-docs/global/design-principles.md`](product-docs/global/design-principles.md) §17.
+
 ## Security practices in this repository
 
 The following are **actually in use** today (they are hygiene and review practices, not a production guarantee):
