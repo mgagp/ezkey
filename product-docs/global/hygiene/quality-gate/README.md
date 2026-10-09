@@ -64,7 +64,8 @@ JavaMelody collector publish: `127.0.0.1:8088:8080` (not `0.0.0.0`).
 ```
 
 Dated notes: `YYYY-MM-DD-run-N.md`. History: [run-1](2026-10-09-run-1.md) (folded),
-[run-2](2026-10-09-run-2.md), [run-3](2026-10-09-run-3.md) (NO-GO; HA invalid + secrets RED).
+[run-2](2026-10-09-run-2.md), [run-3](2026-10-09-run-3.md),
+[run-4](2026-10-09-run-4.md) (NO-GO; secrets RED + ShedLock elective kill, not OOM).
 
 ## Related
 
