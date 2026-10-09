@@ -29,7 +29,8 @@ assumptions.
 - `AGENTS.md` (§ Cold-start, § Project values)
 - `product-docs/global/product-intent.md`
 - `product-docs/global/design-principles.md` (especially **§17** fail-open vs fail-closed)
-- `product-docs/global/operator-alignment-guide.md` (Global Admin vs Tenant Admin; operability)
+- `product-docs/global/operator-alignment-guide.md` (adopter posture: Ezkey is never the
+  adopter's core business, 3-second decision test)
 - `product-docs/methodology/README.md` (values compass, three rules, two-stage pattern)
 - Then only what the target needs (security posture, lifecycle, module `AGENTS.md`, host/deploy docs).
 
@@ -45,17 +46,25 @@ assumptions.
 
 2. **Brief / vision gates — mandatory specialist angles (retro #726):**
    When the target is a **vision** or **G1 brief**, explicitly invite (and report on) these angles;
-   name gaps even if the artifact is silent:
+   name gaps even if the artifact is silent. Definitions must match the brief template (owned by
+   the parallel #726 discoverability docs PR — do not redefine them differently here):
+   - **Vision lock trace:** a **table** mapping each vision lock → brief section, or an explicit
+     deferral + reason. An **unmapped lock blocks G1**.
+   - **Pre-existing conditions touched** (runtime paths only; docs-only briefs exempt): a
+     `path:line` inventory of waits/long-polls and cadences; client/SDK timeouts; proxy timeouts
+     (Cloudflare, Caddy); TTLs; concurrency; rate limits; dependency loggers and effective log
+     level; error-detection contract (classify by **exception type**, not message; fail-open/
+     fail-closed per `design-principles.md` §17); existing user-facing copy on the path.
    - **Operability / real tester journey** (Julie): end-user or cohort path on a real device or
-     clean-start stack — not only happy-path admin chrome.
-   - **Pre-existing conditions & concurrency** (Patrick): what already exists in the stack that
-     this slice touches; races, CAS, shared state, dual writers.
+     clean-start stack — not only happy-path admin chrome; also a **keep / adapt / hide** pass on
+     existing UI content for a new mode, and **visual composition**.
+   - **Craft / pre-existing conditions & concurrency** (Patrick): challenge the inventory above
+     (races, CAS, shared state, dual writers, timeout stacking).
    - **Security** (Christophe): secrets, enumeration, rate limits, session, claim honesty.
-   - **Host / deploy** (Edgar): host-map, Caddy/proxy, certificates, community vs lab deploy.
-   - **Verify brief sections** when present (add them if missing on a G1 brief):
-     - **Vision lock trace** — which vision locks this brief inherits, and what remains open.
-     - **Pre-existing conditions touched** — code, config, host, or ops surfaces this slice will
-       change or rely on.
+   - **Host / deploy** (Edgar): ≤5 lines marked `[live]` or `[repo]`: IP chain and trusted
+     headers, ports, proxy timeouts, runtime output of all containers for "never logged"
+     properties, deploy pitfalls. A header-trust point marked `[repo]` **blocks GO** until proven
+     live.
 
 3. **Cold-Agent Autonomy & Missing Specifics:**
    - Identify edge cases, hidden assumptions, or ambiguities that would cause an autonomous agent

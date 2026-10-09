@@ -28,18 +28,6 @@ Define the smallest end-to-end slice that proves the intended direction.
 
 - explicit exclusions for this slice
 
-## Vision lock trace
-
-Which vision (`V-*`) locks this brief inherits, what is settled vs still open for M1/G1, and
-which specialist angles remain to invite (operability, craft/pre-existing conditions, security,
-host). Delete this section only when the brief has no parent vision.
-
-## Pre-existing conditions touched
-
-Code, config, host, CI, or ops surfaces this slice will change or rely on (concurrency, shared
-state, dual writers, deploy path). Name them so Stage 2 / adversarial review can challenge
-assumptions. Delete only when truly greenfield.
-
 ## First executable slice
 
 - the smallest meaningful end-to-end cut
