@@ -112,8 +112,8 @@ public class RestAssuredTestConfig {
   /**
    * Configures RestAssured with Crypto API base URL.
    *
-   * <p>Prefer {@link CryptoApiClient}, which uses an isolated {@code RequestSpecification} and
-   * does not mutate RestAssured statics. Keep this helper only for ad-hoc RestAssured calls that
+   * <p>Prefer {@link CryptoApiClient}, which uses an isolated {@code RequestSpecification} and does
+   * not mutate RestAssured statics. Keep this helper only for ad-hoc RestAssured calls that
    * intentionally target the Crypto API.
    *
    * @param dockerStackConfig Docker stack configuration
@@ -127,11 +127,13 @@ public class RestAssuredTestConfig {
   /**
    * Resets RestAssured configuration to defaults.
    *
-   * <p>Clears base URI and base path settings.
+   * <p>RestAssured {@code given()} / {@code RequestSpecBuilder} require a non-null static {@code
+   * baseURI}. Use a inert loopback placeholder so tearDown does not break the next test's client
+   * construction; callers must still call {@code configureFor*} before real API traffic.
    */
   public static void reset() {
-    RestAssured.baseURI = null;
-    RestAssured.basePath = null;
+    RestAssured.baseURI = "http://127.0.0.1";
+    RestAssured.basePath = "";
     configureDefaults();
   }
 }
