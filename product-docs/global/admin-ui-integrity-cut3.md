@@ -18,7 +18,7 @@
   - Quiet-window timeline (preserve): [`backlog/TB-2026-10-06-integrity-checkpoint-quiet-window-collapse.md`](backlog/TB-2026-10-06-integrity-checkpoint-quiet-window-collapse.md) (#674 / #676)
   - Dashboard precedent: [`backlog/ideas/I-2026-0007-admin-dashboard-integrity-widgets.md`](backlog/ideas/I-2026-0007-admin-dashboard-integrity-widgets.md) (I-2026-0007 — “3-second ok or not ok with honest scope”)
   - Parking residue: P-085 (lookback/cap) in [`hygiene/corpus-ablation/2026-08-cursor-plans-pass.md`](hygiene/corpus-ablation/2026-08-cursor-plans-pass.md)
-  - GitHub: #692 (sync GET gate/cap), #696 (verdict scope vs picker), #676 (timeline quiet/gap + ~24 h default), #624 (async slot / soft last-result strip)
+  - GitHub: #692 (sync GET gate/cap), #696 (verdict scope vs picker), #676 (timeline quiet/gap + ~24 h default), #624 (async slot / soft last-result strip), #736 (async job audit emit broken)
 
 ---
 
@@ -77,9 +77,9 @@ Citations are file:line on current `main`. Paths for async-job / chain-verify se
 - Single global slot: partial unique index `WHERE status='RUNNING'` (`V22__integrity_async_job.sql:63-65`), executor core=max=1 queue=1 (`IntegrityAsyncJobExecutorConfiguration.java:40-42`); 2nd POST → 409 (`IntegrityAsyncJobService.java:161-168`). `IntegrityHeavyCryptoGate` (process-local AtomicBoolean) shared with nightly → 409 (`:176-178`). Heartbeat TTL 60 min (`IntegrityAsyncJobProperties.java:44`). No cooldown/cache.
 - `getCurrent()` (`:250-270`) loads **whole history** via `findAllByOrderByStartedAtDesc()` (`:258`; `IntegrityAsyncJobRepository.java:58`); repository already exposes unused `findFirstByOrderByStartedAtDesc()` (`:51`). No purge of `ezkey_integrity_async_job`.
 - `verifyChain(from,to)` (`AuditChainVerificationService.java:118-342`, readOnly tx): loads all checkpoints in range (`:140`); per REGULAR checkpoint `computeEntriesDigest` (`:361-384`) does `findAll(spec, sort)` of **full `AuditLog` entities** (incl. JSONB `event_details`) per 5-min window = one SQL per checkpoint, HMAC over concatenated `entry_hmac`; special checkpoints skip (`:177-197`); chaining HMAC (`:238-255`), link/continuity (`:214-235`); `findEarliest/Latest` (`:275-276`). ≈ N+3 queries, ≈ 2N HMACs, all audit rows of the range, one transaction, no `clear()`. Entry-HMAC verify paginates by 500 (`AuditIntegrityService` `:56`); chain verify does not.
-- Each job writes `INTEGRITY_ASYNC_JOB_STARTED` (`IntegrityAsyncJobService.java:223, 487-508`) and `_COMPLETED` (`IntegrityAsyncJobStateService.java:181-186`) → 2 audit entries per auto-run open. Sync GET writes none (`AuditLogController.java:613-631`).
+- Each job is **intended** to write `INTEGRITY_ASYNC_JOB_STARTED` (`IntegrityAsyncJobService.java:223, 487-508`) and `_COMPLETED` (`IntegrityAsyncJobStateService.java:181-186`) → **2 audit entries per auto-run open**. Sync GET writes none (`AuditLogController.java:613-631`). **Currently broken:** Isabelle’s 2026-10-09 baseline observed **0** `INTEGRITY_ASYNC_JOB_*` entries per open (`eventAction is required`, swallowed at WARN) — tracked in **#736**. Treat “2 entries per open” as the intended contract until #736 lands.
 - Checkpoints: `AuditChainScheduler` cron `1 */5 * * * ?` (`:122`), window 5 min (`AuditChainProperties.java:39`), one per window even if empty (`EMPTY_WINDOW`, `AuditChainVerificationService.java:371-372`) → **288/day regardless of activity**.
-- Nightly: `NightlyIntegrityProperties` cron `0 0 2 * * ?` (02:00 UTC = 22:00 ET), `windowHours=24`, enabled by default (`:31-37`); publishes last run + scope to dashboard (`last_run_scope`).
+- Nightly: `NightlyIntegrityProperties` cron `0 0 2 * * ?` (02:00 UTC = 22:00 ET), `windowHours=24`, enabled by default (`:31-37`); publishes last run + scope to dashboard (`last_run_scope`). The nightly does **not** write a row to `ezkey_integrity_async_job` (Isabelle 2026-10-09) — see OQ4.
 
 ### Prior specs / issues
 
@@ -90,13 +90,15 @@ Citations are file:line on current `main`. Paths for async-job / chain-verify se
 - PR #624 (async slot): only "Soft last-result when · who (Julie)"; nothing on scope or arrival signal.
 - Issue #692 (open): sync GETs bypass gate, slot and cap; acceptance "No unbounded synchronous full-chain recompute reachable from page open/reload."
 - Issue #696 (open): after reload the picker shows "last 7 days" while the hydrated report shows the job's range — "An operator can believe they're re-checking what they see when they're checking something else."
+- Issue #736 (open): Integrity async job start/complete audit emit fails (`eventAction is required`, WARN) → **0** `INTEGRITY_ASYNC_JOB_*` rows per open instead of the intended 2. See Facts (Backend) and Risks.
 - TB quiet-window (#674/#676): timeline grey (quiet) vs orange (real gap), ~24 h default, URL-only state — **preserve; the widget does not replace the timeline nor touch `cpQuiet`**.
 - I-2026-0007 (dashboard, done): "3-second ok or not ok with honest scope" → `last_run_scope`, config summary. Direct precedent.
 
-### Growth & cost (qualitative — measurements pending)
+### Growth & cost (qualitative — early local numbers only)
 
 - Auto window today ≈ 2,016–2,304 checkpoints (fixed 7-day UI default; e.g. ~2,126 ≈ 7 d + ~9 h). Larger ranges only via manual picker (~74 d / ~2 y), currently accepted uncapped.
-- What grows with adoption is **E₇ = audit entries in 7 days**, all reloaded as full entities, **twice** per auto-run open (job + hydration GET). Cost ≈ a·N_checkpoints + b·E₇; memory ∝ E₇ × entity size. **No real durations measured yet — do not invent numbers.**
+- What grows with adoption is **E₇ = audit entries in 7 days**, all reloaded as full entities, **twice** per auto-run open (job + hydration GET). Cost ≈ a·N_checkpoints + b·E₇; memory ∝ E₇ × entity size.
+- First local timings exist under Measurement plan (2026-10-09) — **not** a steady-state baseline (short-lived DB). Re-measure on a long-lived stack before calibrating the 92-day default. Do not invent further numbers.
 
 ### Reusable widgets (`ezkey-admin-ui/src/pages/dashboard.tsx`)
 
@@ -274,9 +276,9 @@ Fill and walk [`WALK-2026-10-09-integrity-cut3.md`](backlog/walk-gates/WALK-2026
 
 ---
 
-## Measurement plan (Isabelle — **measurements pending; no numbers invented**)
+## Measurement plan (Isabelle)
 
-Purpose: calibrate the 92-day default and prove before/after; **does not block** the decisions.
+Purpose: calibrate the 92-day default and prove before/after; **does not block** the decisions. Do not invent numbers beyond recorded observations.
 
 **Before (baseline on the live stack "Rootbeer") and after PR 1:**
 
@@ -284,8 +286,26 @@ Purpose: calibrate the 92-day default and prove before/after; **does not block**
 - `SELECT count(*) FROM ezkey_audit_log WHERE created_at >= now() - interval '7 days';` (E₇)
 - Admin API log line `Chain verification completed: total=…`; network time of `GET /chain-integrity` in DevTools; heap before/after a job (after PR 1).
 - Observe which path happens on open (new job vs hydration only); count `INTEGRITY_ASYNC_JOB_*` entries per open; capture RUNNING→SUCCEEDED from Observer; a non-green case; an open during the nightly.
+- **Re-measure on a long-lived stack** before treating any timing as steady-state (see caveat below).
+- **Observability gap (optional PR 1):** nightly duration is not measurable today because nothing logs its start — candidate: a clear start (and complete) log line for the nightly path so Rootbeer / after-PR-1 comparisons can include it.
 
-Record measured values in the campaign / Walk Gate proofs when available — **leave blanks until measured**.
+### Baseline observation (2026-10-09, local stack)
+
+**Representativeness caveat:** the DB was clean-started about **21.5 h** earlier, so there is very little history. These numbers are **not** a steady-state baseline. Keep the plan’s “re-measure on a long-lived stack” item; do not use these figures alone to lock the 92-day default.
+
+| Observation | Value / note |
+|-------------|--------------|
+| First page open (empty job table) | `VERIFY_CHAIN_RANGE` **0.47 s**, **259** checkpoints, **8-day** scope |
+| Nightly vs async job table | Nightly does **not** write to `ezkey_integrity_async_job`; its verdict is not visible there → **OQ4** |
+| Hydration `GET /chain-integrity` | ~**300 ms** median (**261–339 ms**); full server-side recompute each time — **7** full verifications in **6** minutes of normal navigation |
+| `POST /jobs` | **114 ms** |
+| `GET /jobs/current` | **4** calls per page load |
+| Later opens (back from dashboard, reload, mode change) | Hydration only — a SUCCEEDED job is **never** re-run however old it is |
+| Stale summary vs Verify | Banner kept `checkpoints=259` while Verify showed **260** (stale `resultSummary`) — supports **D1** (show last verdict) and **D4** stale handling |
+| Result visibility (Observer) | Only banner text changes (“Running — …” → “Last result — succeeded · …”); same style, no colour, no icon, no toast, no Observer-panel change; INTACT badge only in Verify |
+| RUNNING UI duration | Stays ~**3 s** for a **0.47 s** job (banner polls every 3 s) |
+| Audit entries per open | **0** `INTEGRITY_ASYNC_JOB_*` (intended **2**) — `eventAction is required`, swallowed at WARN → **#736** |
+| Nightly duration | Not measurable (no start log) — observability gap above |
 
 ---
 
@@ -298,6 +318,7 @@ Record measured values in the campaign / Walk Gate proofs when available — **l
 3. **OQ3 — Auto-run window when D1 fires.** 24 h vs legacy 7 days?
    - **Proposed resolution — pending Marc's review:** Last **24 h**, aligned with the nightly and the #676 timeline default (not the legacy 7 days).
 4. **OQ4 — Where the UI reads the nightly verdict** (dashboard `last_run_scope` endpoint vs integrity job history) — does nightly need counters too? *(open — no proposed resolution in this draft)*
+   - **Fact (Isabelle 2026-10-09):** the nightly does **not** write to the async job table, so its verdict is not visible via `GET …/integrity/jobs/current`. For D1’s “last known verdict from the nightly,” the UI must read the dashboard’s nightly last-run data, **or** the nightly must record a job row (and/or counters). Leave open for **Marc and Patrick**.
 5. **OQ5 — Highlight on return to tab visibility:** in PR 2 or deferred? *(open)*
 6. **OQ6 — `docs/AUDIT_LOG_INTEGRITY.md:333-335` update** — confirmed PR 2 deliverable. *(closed as delivery placement; content still to write in PR 2)*
 
@@ -309,7 +330,9 @@ Record measured values in the campaign / Walk Gate proofs when available — **l
 - Digest equivalence of the projection (mitigated by characterization test).
 - Additive OpenAPI drift; external integrators of `GET /chain-integrity` may now get 409/400.
 - Stale verdict must never read green; multi-admin results show other author.
-- Measurements still pending — 92-day default may need recalibration after Isabelle’s pass (does not block D1–D5).
+- Early local timings are **not** steady-state (short-lived DB) — 92-day default may need recalibration after a long-lived re-measure (does not block D1–D5).
+- **#736:** intended 2 `INTEGRITY_ASYNC_JOB_*` audit entries per open currently fail silently (`eventAction is required`) — operator/forensic cost of auto-run opens is under-counted until fixed; measurement plan’s “count audit entries per open” will stay at 0 until #736 lands.
+- Nightly duration / start not logged — weakens before/after cost comparison for the scheduled path (optional PR 1 observability).
 
 ---
 
@@ -319,6 +342,7 @@ Record measured values in the campaign / Walk Gate proofs when available — **l
 |-----|------|
 | #692 | Sync GET bypasses gate/slot/cap — close via D3 gate+cap + DTO hydration |
 | #696 | Verdict scope vs Vérifier picker mismatch — PR 2 |
+| #736 | Async job STARTED/COMPLETED audit emit broken (`eventAction`) — 0 entries vs intended 2 |
 | #676 / #674 | Timeline quiet vs gap; ~24 h default — preserve; align stale/auto window |
 | #624 | Async slot + soft last-result strip (Julie) — micro-dashboard still "one strip" |
 | P-085 | Lookback/cap parking — D2 ships the verify cap |
