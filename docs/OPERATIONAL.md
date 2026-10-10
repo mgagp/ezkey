@@ -571,6 +571,11 @@ from the `bootstrap-artifacts` volume. Do not leave plaintext recovery codes on 
 needed. The file is owner-only `0600`; `admin-api` and `bootstrap-init` both run as pinned UID
 `100` / GID `101` (`spring`) so init can read it before redaction.
 
+**Deleting during redaction:** Admin API’s bind-secret redactor checks that the credentials file
+exists before querying the database (startup + ~60s ShedLock). After you delete the file, scheduled
+passes become a no-op (no DB hit). Safe to delete any time after codes are copied — including while
+a redaction tick is due.
+
 **Re-issue after invitation expiry:** recover with a recovery code → reset enrollment (refreshes
 `expiresAt` to now + `enrollment-expiration-hours` for the **bootstrap** initial global admin only)
 → bind with the new material from the HTTP response. Scheduler-marked `EXPIRED` enrollments are

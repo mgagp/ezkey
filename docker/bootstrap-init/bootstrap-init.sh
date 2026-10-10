@@ -76,12 +76,19 @@ echo "✅ Credentials loaded:"
 echo "   Enrollment ID: $ENROLLMENT_ID"
 echo "   Username: $USERNAME"
 
-# After bind, Admin API redacts enrollmentProofToken / challenge from the file. A re-run
-# (or compose restart without clean volumes) must not fail the stack / #746 gate.
+# After bind, Admin API redacts enrollmentProofToken / challenge from the file. Treat as
+# "already complete" only when the demo-device enrollment file is present; otherwise fail
+# clearly (enrollment may be bound to another device).
 if [ "$ENROLLMENT_PROOF_TOKEN" = "null" ] || [ -z "$ENROLLMENT_PROOF_TOKEN" ]; then
-  echo "INFO: enrollmentProofToken absent (bind secrets already redacted or recovery_primary)."
-  echo "INFO: Treating bootstrap enrollment as already past bind — skip (exit 0)."
-  exit 0
+  if [ -f "$DEMO_DEVICE_ENROLLMENTS_DIR/${ENROLLMENT_ID}.json" ]; then
+    echo "INFO: enrollmentProofToken absent and demo-device file present — already bound (exit 0)."
+    exit 0
+  fi
+  echo "❌ Error: enrollmentProofToken absent but demo-device enrollment file missing"
+  echo "   enrollmentId=${ENROLLMENT_ID} path=${DEMO_DEVICE_ENROLLMENTS_DIR}/${ENROLLMENT_ID}.json"
+  echo "   Enrollment is likely BOUND to another device (or recovery_primary without demos)."
+  echo "   Re-seed with clean-start: docker compose down -v && ./clean-start.sh"
+  exit 1
 fi
 
 # Step 3: Generate device keypair via Crypto API
@@ -116,15 +123,15 @@ BIND_BODY=$(echo "$BIND_RESPONSE" | sed '$d')
 
 if [ "$HTTP_CODE" != "200" ]; then
   if [ "$HTTP_CODE" = "409" ]; then
-    echo "INFO: Enrollment already BOUND/VERIFIED (HTTP 409) — bootstrap init skip (exit 0)."
     if [ -f "$DEMO_DEVICE_ENROLLMENTS_DIR/${ENROLLMENT_ID}.json" ]; then
-      echo "   Demo-device enrollment file already present."
-    else
-      echo "WARN: Demo-device enrollment file missing for enrollmentId=${ENROLLMENT_ID}."
-      echo "WARN: Enrollment may be bound to another device; demos will not work until"
-      echo "WARN: you re-seed via clean-start (docker compose down -v && ./clean-start.sh)."
+      echo "INFO: Enrollment already BOUND/VERIFIED (HTTP 409) and demo-device file present (exit 0)."
+      exit 0
     fi
-    exit 0
+    echo "❌ Error: Enrollment already BOUND/VERIFIED (HTTP 409) but demo-device file missing"
+    echo "   enrollmentId=${ENROLLMENT_ID} path=${DEMO_DEVICE_ENROLLMENTS_DIR}/${ENROLLMENT_ID}.json"
+    echo "   Enrollment is likely bound to another device; cannot seed demo-device automatically."
+    echo "   Re-seed with clean-start: docker compose down -v && ./clean-start.sh"
+    exit 1
   else
     echo "❌ Error: Bind failed with HTTP $HTTP_CODE"
     echo "   Response: $BIND_BODY"

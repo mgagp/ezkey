@@ -13,6 +13,8 @@ package org.ezkey.admin.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,6 +29,7 @@ import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.BootstrapCredentialsOutputMode;
 import org.ezkey.admin.config.InitialGlobalAdminProperties;
 import org.ezkey.config.OrganizationProperties;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -119,7 +122,8 @@ class AdminBootstrapServiceLoggingTest {
               return true;
             });
 
-    when(bootstrapCredentialsFileExporter.recoveryCodesLogPointer())
+    lenient()
+        .when(bootstrapCredentialsFileExporter.recoveryCodesLogPointer())
         .thenReturn("<see /var/lib/ezkey/bootstrap/bootstrap-credentials.json (0600)>");
 
     bootstrapLogger = (Logger) LoggerFactory.getLogger(AdminBootstrapService.class);
@@ -200,5 +204,63 @@ class AdminBootstrapServiceLoggingTest {
 
     verify(bootstrapCredentialsFileExporter)
         .exportIfEnabled(any(Enrollment.class), anyString(), anyString(), any());
+  }
+
+  @Test
+  @DisplayName("M2: existing CREATED enrollment re-exports bind material")
+  void existingCreatedEnrollmentReExportsBindMaterial() {
+    stubSystemTenantAndIntegration();
+
+    Enrollment existing = new Enrollment();
+    existing.setEnrollmentId(42);
+    existing.setStatus(EnrollmentStatus.CREATED);
+    existing.setEnrollmentProofToken("existing-proof");
+    existing.setEnrollmentChallenge(111222);
+
+    EzkeyAdmin admin = new EzkeyAdmin(USERNAME, AdminType.GLOBAL_ADMIN);
+    admin.setEnrollment(existing);
+    admin.setChallengeRequired(false);
+    when(adminRepository.findByUsername(USERNAME)).thenReturn(Optional.of(admin));
+    when(enrollmentRepository.findById(42)).thenReturn(Optional.of(existing));
+
+    service.bootstrapAdminMfa();
+
+    verify(bootstrapCredentialsFileExporter)
+        .exportIfEnabled(existing, "existing-proof", USERNAME, List.of());
+  }
+
+  @Test
+  @DisplayName("M2: existing BOUND enrollment does not re-export bind secrets")
+  void existingBoundEnrollmentSkipsReExport() {
+    stubSystemTenantAndIntegration();
+
+    Enrollment existing = new Enrollment();
+    existing.setEnrollmentId(42);
+    existing.setStatus(EnrollmentStatus.BOUND);
+    existing.setEnrollmentProofToken("must-not-reexport");
+
+    EzkeyAdmin admin = new EzkeyAdmin(USERNAME, AdminType.GLOBAL_ADMIN);
+    admin.setEnrollment(existing);
+    admin.setChallengeRequired(false);
+    when(adminRepository.findByUsername(USERNAME)).thenReturn(Optional.of(admin));
+    when(enrollmentRepository.findById(42)).thenReturn(Optional.of(existing));
+
+    service.bootstrapAdminMfa();
+
+    verify(bootstrapCredentialsFileExporter, never())
+        .exportIfEnabled(any(Enrollment.class), anyString(), anyString(), any());
+  }
+
+  private void stubSystemTenantAndIntegration() {
+    Tenant systemTenant = new Tenant();
+    systemTenant.setTenantName("Ezkey System");
+    systemTenant.setTenantDescription("test");
+    when(tenantRepository.findByIsSystemTenantTrue()).thenReturn(Optional.of(systemTenant));
+
+    Integration systemIntegration = new Integration();
+    systemIntegration.setId(1);
+    systemIntegration.setName("Ezkey System Admin");
+    when(integrationRepository.findByIsSystemIntegrationTrue())
+        .thenReturn(Optional.of(systemIntegration));
   }
 }

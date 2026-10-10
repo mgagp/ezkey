@@ -68,6 +68,24 @@ public class BootstrapCredentialsFileExporter {
   private final AtomicReference<String> lastRedactFailureKind = new AtomicReference<>();
 
   /**
+   * Atomic owner-only writer (default implementation). Package-visible seam so unit tests can force
+   * non-POSIX / Jackson failures without depending on OS root permissions.
+   */
+  @FunctionalInterface
+  interface CredentialsAtomicWriter {
+    /**
+     * Writes JSON to {@code filePath} with owner-only mode.
+     *
+     * @param filePath destination
+     * @param jsonNode content
+     * @throws IOException on I/O failure
+     */
+    void write(Path filePath, ObjectNode jsonNode) throws IOException;
+  }
+
+  private CredentialsAtomicWriter atomicWriter = this::writeAtomicallyOwnerOnly;
+
+  /**
    * Creates the exporter.
    *
    * @param exportProperties export path and enablement
@@ -82,6 +100,16 @@ public class BootstrapCredentialsFileExporter {
     this.qrCodeProperties = qrCodeProperties;
     this.adminMfaProperties = adminMfaProperties;
     this.objectMapper = new ObjectMapper();
+  }
+
+  /**
+   * Test-only seam to replace the atomic writer (force UnsupportedOperationException / Jackson /
+   * I/O failures under root CI).
+   *
+   * @param writer replacement writer
+   */
+  void replaceAtomicWriterForTests(CredentialsAtomicWriter writer) {
+    this.atomicWriter = Objects.requireNonNull(writer);
   }
 
   /**
@@ -163,7 +191,7 @@ public class BootstrapCredentialsFileExporter {
         }
       }
 
-      writeAtomicallyOwnerOnly(filePath, jsonNode);
+      atomicWriter.write(filePath, jsonNode);
 
       logger.info(
           "✅ Bootstrap credentials exported to file: {} (enrollmentId: {}, mode: {}, 0600)",

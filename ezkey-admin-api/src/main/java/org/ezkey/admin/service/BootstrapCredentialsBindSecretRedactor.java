@@ -10,6 +10,8 @@
 
 package org.ezkey.admin.service;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -96,6 +98,12 @@ public class BootstrapCredentialsBindSecretRedactor {
   void redactIfBootstrapEnrollmentPastBind() {
     String path = exportProperties.getPath();
     if (path == null || path.isBlank()) {
+      return;
+    }
+
+    // Skip DB lookup when the operator already deleted the credentials file (ShedLock every ~60s).
+    Path filePath = Path.of(path);
+    if (!Files.exists(filePath)) {
       return;
     }
 

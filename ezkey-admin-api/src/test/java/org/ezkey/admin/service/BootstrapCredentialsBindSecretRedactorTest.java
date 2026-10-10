@@ -12,6 +12,7 @@ package org.ezkey.admin.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -138,17 +139,28 @@ class BootstrapCredentialsBindSecretRedactorTest {
   }
 
   @Test
-  @DisplayName("missing admin is a no-op")
-  void missingAdminNoOp() {
+  @DisplayName("missing credentials file skips DB lookup (no ShedLock DB churn)")
+  void missingFileSkipsDbLookup() {
+    assertThat(Files.exists(credentialsFile)).isFalse();
+    redactor.redactIfBootstrapEnrollmentPastBind();
+    verify(adminRepository, never()).findByUsernameWithEnrollment(USERNAME);
+  }
+
+  @Test
+  @DisplayName("missing admin is a no-op when file exists")
+  void missingAdminNoOp() throws Exception {
+    Files.writeString(
+        credentialsFile, "{\"enrollmentId\":7}", java.nio.charset.StandardCharsets.UTF_8);
     when(adminRepository.findByUsernameWithEnrollment(USERNAME)).thenReturn(Optional.empty());
     redactor.redactIfBootstrapEnrollmentPastBind();
     verify(adminRepository).findByUsernameWithEnrollment(USERNAME);
-    assertThat(Files.exists(credentialsFile)).isFalse();
   }
 
   @Test
   @DisplayName("repository RuntimeException never escapes the redactor (bind path isolation)")
-  void repositoryFailureDoesNotThrow() {
+  void repositoryFailureDoesNotThrow() throws Exception {
+    Files.writeString(
+        credentialsFile, "{\"enrollmentId\":7}", java.nio.charset.StandardCharsets.UTF_8);
     when(adminRepository.findByUsernameWithEnrollment(USERNAME))
         .thenThrow(new IllegalStateException("db-marker-must-not-escape"));
 

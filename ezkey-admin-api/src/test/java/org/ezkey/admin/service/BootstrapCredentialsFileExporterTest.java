@@ -143,15 +143,14 @@ class BootstrapCredentialsFileExporterTest {
   }
 
   @Test
-  void exportWithRecoveryCodesFailsClosedWhenParentNotWritable() throws Exception {
-    Path blockedDir = tempDir.resolve("blocked");
-    Files.createDirectories(blockedDir);
-    assertThat(blockedDir.toFile().setWritable(false)).isTrue();
-    Path file = blockedDir.resolve("bootstrap-credentials.json");
+  void exportWithRecoveryCodesFailsClosedWhenTargetPathIsDirectory() throws Exception {
+    // Reliable under root CI (setWritable(false) is ignored for root).
+    Path asDirectory = tempDir.resolve("bootstrap-credentials.json");
+    Files.createDirectories(asDirectory);
 
     BootstrapExportProperties exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
-    exportProperties.setPath(file.toString());
+    exportProperties.setPath(asDirectory.toString());
     AdminMfaProperties mfaProperties = new AdminMfaProperties();
     mfaProperties
         .getBootstrap()
@@ -178,8 +177,68 @@ class BootstrapCredentialsFileExporterTest {
     assertThatCode(
             () -> exporter.exportIfEnabled(enrollment, "proof.token", "admin.docker", List.of()))
         .doesNotThrowAnyException();
+  }
 
-    blockedDir.toFile().setWritable(true);
+  @Test
+  void exportWithRecoveryCodesFailsClosedOnNonPosix() {
+    Path file = tempDir.resolve("bootstrap-credentials.json");
+    BootstrapExportProperties exportProperties = new BootstrapExportProperties();
+    exportProperties.setEnabled(true);
+    exportProperties.setPath(file.toString());
+    AdminMfaProperties mfaProperties = new AdminMfaProperties();
+    mfaProperties
+        .getBootstrap()
+        .setCredentialsOutputMode(BootstrapCredentialsOutputMode.RECOVERY_PRIMARY);
+    BootstrapCredentialsFileExporter exporter =
+        new BootstrapCredentialsFileExporter(
+            exportProperties, new QrCodeProperties(), mfaProperties);
+    exporter.replaceAtomicWriterForTests(
+        (path, json) -> {
+          throw new UnsupportedOperationException("posix unavailable (test seam)");
+        });
+
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(7);
+    enrollment.setEnrollmentChallenge(112233);
+    String secretCode = "POSIX-FAIL-CODE-1111-2222";
+
+    assertThatThrownBy(
+            () ->
+                exporter.exportIfEnabled(
+                    enrollment, "proof.token", "admin.docker", List.of(secretCode)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("UnsupportedOperationException")
+        .hasMessageNotContaining(secretCode);
+  }
+
+  @Test
+  void exportWithRecoveryCodesFailsClosedOnJacksonRuntime() {
+    Path file = tempDir.resolve("bootstrap-credentials.json");
+    BootstrapExportProperties exportProperties = new BootstrapExportProperties();
+    exportProperties.setEnabled(true);
+    exportProperties.setPath(file.toString());
+    AdminMfaProperties mfaProperties = new AdminMfaProperties();
+    mfaProperties.getBootstrap().setCredentialsOutputMode(BootstrapCredentialsOutputMode.FULL);
+    BootstrapCredentialsFileExporter exporter =
+        new BootstrapCredentialsFileExporter(
+            exportProperties, new QrCodeProperties(), mfaProperties);
+    exporter.replaceAtomicWriterForTests(
+        (path, json) -> {
+          throw new IllegalArgumentException("jackson-like unchecked (test seam)");
+        });
+
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(7);
+    enrollment.setEnrollmentChallenge(112233);
+    String secretCode = "JACKSON-FAIL-CODE-3333-4444";
+
+    assertThatThrownBy(
+            () ->
+                exporter.exportIfEnabled(
+                    enrollment, "proof.token", "admin.docker", List.of(secretCode)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("IllegalArgumentException")
+        .hasMessageNotContaining(secretCode);
   }
 
   @Test
