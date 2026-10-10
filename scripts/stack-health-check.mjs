@@ -4,7 +4,7 @@
  * Cloud agent tooling; Git Bash best-effort, untested on macOS.
  */
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,9 +12,14 @@ import { fileURLToPath } from 'node:url';
 import {
   detectSecrets,
   extractLogger,
+  isEmittedInPhaseWindows,
+  isSecretChannelAllowlisted,
+  parsePhaseWindows,
   resolveProductSource,
   sanitize,
+  serviceNameMatches,
   signature,
+  splitDockerLogLine,
 } from './lib/quality-gate-secrets.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -43,14 +48,23 @@ const COMPOSE_RETRY_FIRED =
   process.env.COMPOSE_RETRY_FIRED === '1' || process.env.COMPOSE_RETRY_FIRED === 'true';
 const GATE_PHASE =
   args.phase || process.env.QUALITY_GATE_PHASE || process.env.GATE_PHASE || '*';
+const PHASE_WINDOWS_PATH =
+  args.phaseWindows ||
+  process.env.QUALITY_GATE_PHASE_WINDOWS ||
+  '';
+const DOCKER_LOGS_SINCE =
+  args.since || process.env.QUALITY_GATE_LOG_SINCE || process.env.DOCKER_LOGS_SINCE || '';
+const DOCKER_LOGS_UNTIL =
+  args.until || process.env.QUALITY_GATE_LOG_UNTIL || process.env.DOCKER_LOGS_UNTIL || '';
 
 function main() {
   mkdirSync(OUTPUT_DIR, { recursive: true });
   const thresholds = loadJson(THRESHOLDS_PATH) || {};
   const allowlist = loadAllowlist(ALLOWLIST_PATH);
+  const phaseWindows = loadPhaseWindowsFile(PHASE_WINDOWS_PATH);
   const checks = [];
 
-  const logScan = scanContainers();
+  const logScan = scanContainers(allowlist, phaseWindows);
   writeFileSync(
     join(OUTPUT_DIR, 'container-logs.json'),
     `${JSON.stringify(logScan, null, 2)}\n`,
@@ -58,10 +72,10 @@ function main() {
   );
   writeFileSync(join(OUTPUT_DIR, 'container-logs.md'), renderLogMd(logScan), 'utf8');
 
-  // Secret / PII — apply #750 bootstrap allowlist (phase+logger); recovery codes stay RED.
+  // Secret / PII — #750 by emission-time window (not scan phase); recovery codes stay RED.
   const rawHits = logScan.secretHits || [];
   const secretHits = rawHits.filter(
-    (h) => !isSecretAllowlisted(h, GATE_PHASE, allowlist),
+    (h) => !isSecretChannelAllowlisted(h, allowlist, phaseWindows),
   );
   const redSecrets = secretHits.filter((h) => h.severity === 'RED');
   const amberSecrets = secretHits.filter((h) => h.severity === 'AMBER');
@@ -105,6 +119,11 @@ function main() {
     thresholdsPath: THRESHOLDS_PATH,
     note: thresholds.note || '',
     composeRetryFired: COMPOSE_RETRY_FIRED,
+    scanPhase: GATE_PHASE,
+    phaseWindowsPath: PHASE_WINDOWS_PATH || null,
+    phaseWindowCount: phaseWindows ? phaseWindows.size : 0,
+    logSince: DOCKER_LOGS_SINCE || null,
+    logUntil: DOCKER_LOGS_UNTIL || null,
     javamelody: jmScore,
     containers,
     secretHits: secretHits.slice(0, 40),
@@ -126,7 +145,7 @@ function main() {
 
 /* ---------- container scan ---------- */
 
-function scanContainers() {
+function scanContainers(allowlist, phaseWindows) {
   let names = [];
   try {
     const out = execFileSync(
@@ -163,10 +182,18 @@ function scanContainers() {
 
     let logs = '';
     try {
-      logs = execFileSync('docker', ['logs', '--tail', '4000', name], {
+      // docker logs: container stdout→client stdout, stderr→client stderr — merge both.
+      const dockerArgs = ['logs', '--timestamps', '--tail', '4000'];
+      if (DOCKER_LOGS_SINCE) dockerArgs.push('--since', DOCKER_LOGS_SINCE);
+      if (DOCKER_LOGS_UNTIL) dockerArgs.push('--until', DOCKER_LOGS_UNTIL);
+      dockerArgs.push(name);
+      const r = spawnSync('docker', dockerArgs, {
         encoding: 'utf8',
         maxBuffer: 20 * 1024 * 1024,
+        stdio: ['ignore', 'pipe', 'pipe'],
       });
+      logs = `${r.stdout || ''}${r.stderr || ''}`;
+      if (r.error) logs = `<log-fetch-failed: ${r.error.message || r.error}>`;
     } catch (exc) {
       logs = `<log-fetch-failed: ${exc.message || exc}>`;
     }
@@ -175,31 +202,43 @@ function scanContainers() {
     const warnC = new Map();
     let errTotal = 0;
     let warnTotal = 0;
-    for (const line of logs.split(/\r?\n/)) {
-      if (!line) continue;
-      const secrets = detectSecrets(line);
+    for (const rawLine of logs.split(/\r?\n/)) {
+      if (!rawLine) continue;
+      const { body, emittedAt } = splitDockerLogLine(rawLine);
+      const secrets = detectSecrets(body);
       if (secrets.kinds.length) {
-        const src = resolveProductSource(line);
+        const src = resolveProductSource(body);
         secretHits.push({
           service: name,
           kinds: secrets.kinds,
           severity: secrets.severity,
           valuePresent: secrets.valuePresent,
-          logger: extractLogger(line),
+          logger: extractLogger(body),
           productPath: src?.path || null,
           productLines: src?.lines || null,
           note: src?.note || null,
-          preview: sanitize(line).slice(0, 200),
+          preview: sanitize(body).slice(0, 200),
+          emittedAt: emittedAt ? emittedAt.toISOString() : null,
         });
       }
-      if (ERROR_HINT.test(line)) {
+      if (ERROR_HINT.test(body)) {
         errTotal += 1;
-        const sig = signature(line);
-        errC.set(sig, (errC.get(sig) || 0) + 1);
-      } else if (WARN_HINT.test(line)) {
+        const sig = signature(body);
+        const prev = errC.get(sig) || { count: 0, allowlistedCount: 0 };
+        prev.count += 1;
+        if (isLineAllowlisted(sig, name, allowlist, emittedAt, phaseWindows)) {
+          prev.allowlistedCount += 1;
+        }
+        errC.set(sig, prev);
+      } else if (WARN_HINT.test(body)) {
         warnTotal += 1;
-        const sig = signature(line);
-        warnC.set(sig, (warnC.get(sig) || 0) + 1);
+        const sig = signature(body);
+        const prev = warnC.get(sig) || { count: 0, allowlistedCount: 0 };
+        prev.count += 1;
+        if (isLineAllowlisted(sig, name, allowlist, emittedAt, phaseWindows)) {
+          prev.allowlistedCount += 1;
+        }
+        warnC.set(sig, prev);
       }
     }
 
@@ -216,11 +255,19 @@ function scanContainers() {
       warnCount: warnTotal,
       // Keep all signatures for transientIo scoring; report still shows top N.
       errorSignatures: [...errC.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .map(([sig, count]) => ({ signature: sig, count })),
+        .sort((a, b) => b[1].count - a[1].count)
+        .map(([sig, v]) => ({
+          signature: sig,
+          count: v.count,
+          allowlistedCount: v.allowlistedCount,
+        })),
       warnSignatures: [...warnC.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .map(([sig, count]) => ({ signature: sig, count })),
+        .sort((a, b) => b[1].count - a[1].count)
+        .map(([sig, v]) => ({
+          signature: sig,
+          count: v.count,
+          allowlistedCount: v.allowlistedCount,
+        })),
     });
   }
 
@@ -371,7 +418,7 @@ function scoreJavaMelody(jm, thr, checks) {
   return { perApp, note: 'crypto-api is not in the JavaMelody collector application list' };
 }
 
-function scoreContainers(logScan, thr, allowlist, checks) {
+function scoreContainers(logScan, thr, allowlistEntries, checks) {
   const services = logScan.services || [];
   let oom = 0;
   let unhealthy = 0;
@@ -388,7 +435,9 @@ function scoreContainers(logScan, thr, allowlist, checks) {
     if (svc.health === 'unhealthy' || svc.status === 'exited') unhealthy += 1;
     totalErrors += svc.errorCount || 0;
     for (const sig of svc.errorSignatures || []) {
-      const allowed = isAllowlisted(sig.signature, svc.name, allowlist, GATE_PHASE);
+      const allowed =
+        (sig.allowlistedCount || 0) > 0 &&
+        (sig.allowlistedCount || 0) >= (sig.count || 0);
       errorSigs.push({ service: svc.name, ...sig, allowlisted: allowed });
       for (const [label, band] of Object.entries(thr.transientIo || {})) {
         let matched = sig.signature.includes(label);
@@ -410,7 +459,9 @@ function scoreContainers(logScan, thr, allowlist, checks) {
       }
     }
     for (const sig of svc.warnSignatures || []) {
-      const allowed = isAllowlisted(sig.signature, svc.name, allowlist, GATE_PHASE);
+      const allowed =
+        (sig.allowlistedCount || 0) > 0 &&
+        (sig.allowlistedCount || 0) >= (sig.count || 0);
       warnSigs.push({ service: svc.name, ...sig, allowlisted: allowed });
     }
   }
@@ -426,7 +477,7 @@ function scoreContainers(logScan, thr, allowlist, checks) {
   }
 
   // Allowlist hygiene: expired / no-issue entries are blocking
-  const badEntries = allowlist.filter((e) => e.hygieneBad);
+  const badEntries = (allowlistEntries || []).filter((e) => e.hygieneBad);
   pushCheck(
     checks,
     'allowlist.hygiene',
@@ -572,30 +623,17 @@ function loadAllowlist(path) {
   return entries;
 }
 
-function phaseMatches(entryPhases, phase) {
-  if (!entryPhases || !entryPhases.length) return false;
-  if (entryPhases.includes('*')) return true;
-  if (!phase || phase === '*') return entryPhases.includes('*');
-  return entryPhases.includes(phase);
-}
-
-function serviceMatches(entryService, serviceName) {
-  if (entryService === '*') return true;
-  const svcPat = entryService.endsWith('*')
-    ? entryService.slice(0, -1)
-    : entryService;
-  return serviceName.includes(svcPat);
-}
-
-/** Error/warn signature allowlist. #747 gated on phase=clean-start + COMPOSE_RETRY_FIRED. */
-function isAllowlisted(sig, serviceName, allowlist, phase = GATE_PHASE) {
+/**
+ * Error/warn allowlist by emission-time phase window.
+ * #747 also requires COMPOSE_RETRY_FIRED and admin-api service.
+ */
+function isLineAllowlisted(sig, serviceName, allowlist, emittedAt, phaseWindows) {
   for (const entry of allowlist) {
     if (entry.hygieneBad || !entry.re || entry.secretChannel) continue;
-    if (!serviceMatches(entry.service, serviceName)) continue;
-    if (!phaseMatches(entry.phases, phase)) continue;
+    if (!serviceNameMatches(entry.service, serviceName)) continue;
+    if (!isEmittedInPhaseWindows(emittedAt, entry.phases, phaseWindows)) continue;
     if (entry.issue === '#747') {
       if (!COMPOSE_RETRY_FIRED) continue;
-      if (phase !== 'clean-start') continue;
       if (!serviceName.includes('ezkey-admin-api')) continue;
     }
     if (entry.re.test(sig)) return true;
@@ -603,25 +641,13 @@ function isAllowlisted(sig, serviceName, allowlist, phase = GATE_PHASE) {
   return false;
 }
 
-/**
- * #750 bootstrap enrollment channel — suppress RED for proof token / challenge / QR
- * on AdminBootstrapService during clean-start / post-clean-health only.
- * Recovery codes are never allowlisted.
- */
-function isSecretAllowlisted(hit, phase, allowlist) {
-  if ((hit.kinds || []).includes('recovery-code')) return false;
-  const logger = hit.logger || '';
-  if (!/AdminBootstrapService/i.test(logger)) return false;
-  const text = `${logger} ${hit.preview || ''}`;
-  for (const entry of allowlist) {
-    if (entry.hygieneBad || !entry.re || !entry.secretChannel) continue;
-    if (!serviceMatches(entry.service, hit.service || '')) continue;
-    if (!phaseMatches(entry.phases, phase)) continue;
-    if (entry.re.test(text) || entry.re.test(signature(hit.preview || ''))) {
-      return true;
-    }
+function loadPhaseWindowsFile(path) {
+  if (!path || !existsSync(path)) return new Map();
+  try {
+    return parsePhaseWindows(readFileSync(path, 'utf8'));
+  } catch {
+    return new Map();
   }
-  return false;
 }
 
 /* ---------- report ---------- */
@@ -732,6 +758,15 @@ function parseArgs(argv) {
       i += 1;
     } else if (key === '--phase') {
       out.phase = val;
+      i += 1;
+    } else if (key === '--phase-windows') {
+      out.phaseWindows = val;
+      i += 1;
+    } else if (key === '--since') {
+      out.since = val;
+      i += 1;
+    } else if (key === '--until') {
+      out.until = val;
       i += 1;
     }
   }

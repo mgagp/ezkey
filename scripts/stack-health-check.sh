@@ -71,9 +71,18 @@ else
 fi
 
 export COMPOSE_RETRY_FIRED
-PHASE_ARGS=()
+EXTRA_ARGS=()
 if [[ -n "${QUALITY_GATE_PHASE:-}" ]]; then
-  PHASE_ARGS=(--phase "$QUALITY_GATE_PHASE")
+  EXTRA_ARGS+=(--phase "$QUALITY_GATE_PHASE")
+fi
+if [[ -n "${QUALITY_GATE_PHASE_WINDOWS:-}" ]]; then
+  EXTRA_ARGS+=(--phase-windows "$QUALITY_GATE_PHASE_WINDOWS")
+fi
+if [[ -n "${QUALITY_GATE_LOG_SINCE:-}" ]]; then
+  EXTRA_ARGS+=(--since "$QUALITY_GATE_LOG_SINCE")
+fi
+if [[ -n "${QUALITY_GATE_LOG_UNTIL:-}" ]]; then
+  EXTRA_ARGS+=(--until "$QUALITY_GATE_LOG_UNTIL")
 fi
 node "$SCRIPT_DIR/stack-health-check.mjs" \
   --output-dir "$OUTPUT_DIR" \
@@ -81,6 +90,6 @@ node "$SCRIPT_DIR/stack-health-check.mjs" \
   --jm-ok "$JM_OK" \
   --thresholds "$REPO_ROOT/config/quality-gate/thresholds.json" \
   --allowlist "$REPO_ROOT/config/quality-gate/log-allowlist.txt" \
-  "${PHASE_ARGS[@]}"
+  "${EXTRA_ARGS[@]}"
 
 echo "[$KEYWORD] done → $OUTPUT_DIR"

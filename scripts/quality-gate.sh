@@ -71,6 +71,8 @@ RUN_DIR="$REPO_ROOT/logs/quality-gate/${UTC_STAMP}-${SHORT_SHA}"
 mkdir -p "$RUN_DIR/phases" "$RUN_DIR/churn" "$RUN_DIR/health"
 PHASE_TSV="$RUN_DIR/phases.tsv"
 : >"$PHASE_TSV"
+PHASE_WINDOWS_TSV="$RUN_DIR/phase-windows.tsv"
+printf 'phase\tstart_iso\tend_iso\n' >"$PHASE_WINDOWS_TSV"
 REPLICAS_TSV="$RUN_DIR/replicas.tsv"
 : >"$REPLICAS_TSV"
 RESTARTS_TSV="$RUN_DIR/restarts.tsv"
@@ -83,6 +85,13 @@ SHEDLOCK_KILLED=""
 
 echo "[$KEYWORD] run dir: $RUN_DIR"
 echo "[$KEYWORD] tip: $FULL_SHA"
+
+iso_now() { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
+
+# Emission-time allowlist windows (phase name → [start,end] ISO).
+record_phase_window() {
+  printf '%s\t%s\t%s\n' "$1" "$2" "$3" >>"$PHASE_WINDOWS_TSV"
+}
 
 stop_mem_sampler() {
   if [[ -n "$MEM_SAMPLER_PID" ]]; then
@@ -145,6 +154,12 @@ should_skip() {
 record_phase() {
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5" "$6" "$7" >>"$PHASE_TSV"
   echo "[$KEYWORD] phase=$1 verdict=$2 exit=$3 duration=$(ms_to_human "$4") counts=$6"
+}
+
+# Health scans: pass phase windows so #750 matches emission time, not scan phase.
+health_env() {
+  export QUALITY_GATE_PHASE_WINDOWS="$PHASE_WINDOWS_TSV"
+  export COMPOSE_RETRY_FIRED
 }
 
 parse_surefire_counts() {
@@ -486,7 +501,8 @@ run_phase_post_clean_health() {
   start="$(now_ms)"
   {
     echo "=== post-clean-start health snapshot ==="
-    COMPOSE_RETRY_FIRED="$COMPOSE_RETRY_FIRED" QUALITY_GATE_PHASE=post-clean-health \
+    health_env
+    QUALITY_GATE_PHASE=post-clean-health \
       ./scripts/stack-health-check.sh --output-dir "$RUN_DIR/health-post-clean"
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
@@ -579,7 +595,8 @@ run_phase_health() {
   start="$(now_ms)"
   {
     check_oom_evidence || true
-    COMPOSE_RETRY_FIRED="$COMPOSE_RETRY_FIRED" QUALITY_GATE_PHASE=health \
+    health_env
+    QUALITY_GATE_PHASE=health \
       ./scripts/stack-health-check.sh --output-dir "$RUN_DIR/health"
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
@@ -629,6 +646,7 @@ for phase in $PHASES; do
     start_mem_sampler "$phase"
   fi
 
+  phase_start_iso="$(iso_now)"
   case "$phase" in
     preflight) run_phase_preflight || true ;;
     unit-tests) run_phase_unit_tests || true ;;
@@ -641,6 +659,7 @@ for phase in $PHASES; do
     churn) run_phase_churn || true ;;
     health) run_phase_health || true ;;
   esac
+  record_phase_window "$phase" "$phase_start_iso" "$(iso_now)"
 
   if [[ "$phase" != "preflight" && "$phase" != "unit-tests" ]]; then
     stop_mem_sampler

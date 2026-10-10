@@ -6,9 +6,15 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   detectSecrets,
+  extractLogger,
+  isEmittedInPhaseWindows,
   isMaskedOrNonSecretValue,
+  isSecretChannelAllowlisted,
+  parseLogTimestamp,
+  parsePhaseWindows,
   sanitize,
   signature,
+  splitDockerLogLine,
   ID_LABEL_VALUE_RE,
 } from './quality-gate-secrets.mjs';
 
@@ -146,6 +152,93 @@ describe('allowlist signature match', () => {
       'ERROR: duplicate key value violates unique constraint "ezkey_encryption_key_pkey"';
     const sig = signature(line);
     assert.ok(new RegExp('^.*ezkey_encryption_key_pkey').test(sig), `sig=${sig}`);
+  });
+});
+
+describe('emission-time allowlist windows (#750)', () => {
+  const windows = parsePhaseWindows(
+    [
+      'phase\tstart_iso\tend_iso',
+      'clean-start\t2026-10-09T20:37:37Z\t2026-10-09T20:39:05Z',
+      'post-clean-health\t2026-10-09T20:39:05Z\t2026-10-09T20:39:07Z',
+      'health\t2026-10-09T20:48:47Z\t2026-10-09T20:48:49Z',
+    ].join('\n'),
+  );
+
+  const allowlist = [
+    {
+      service: 'ezkey-admin-api',
+      phases: ['clean-start', 'post-clean-health'],
+      re: /^.*AdminBootstrapService.*Enrollment Proof Token=/,
+      secretChannel: true,
+      hygieneBad: false,
+    },
+  ];
+
+  const dockerLineInWindow =
+    '2026-10-09T20:38:19.219626050Z 2026-10-09T20:38:19.219Z  WARN 1 --- [ezkey-admin-api] [           main] o.e.admin.service.AdminBootstrapService  :    Enrollment Proof Token: f7zMmUzbJSV1WPjXD_jLuoDNucM559Qr7MWIo_MC0yo.0KvCfXqW9ydHGisXjxMz2w';
+  const dockerLineOutside =
+    '2026-10-09T20:45:00.000000000Z 2026-10-09T20:45:00.000Z  WARN 1 --- [ezkey-admin-api] [           main] o.e.admin.service.AdminBootstrapService  :    Enrollment Proof Token: f7zMmUzbJSV1WPjXD_jLuoDNucM559Qr7MWIo_MC0yo.0KvCfXqW9ydHGisXjxMz2w';
+
+  it('parses docker --timestamps prefix', () => {
+    const { body, emittedAt } = splitDockerLogLine(dockerLineInWindow);
+    assert.match(body, /Enrollment Proof Token/);
+    assert.equal(emittedAt.toISOString(), '2026-10-09T20:38:19.219Z');
+    assert.equal(parseLogTimestamp(dockerLineInWindow).toISOString(), '2026-10-09T20:38:19.219Z');
+  });
+
+  it('isEmittedInPhaseWindows true inside clean-start', () => {
+    const ts = parseLogTimestamp(dockerLineInWindow);
+    assert.equal(isEmittedInPhaseWindows(ts, ['clean-start'], windows), true);
+    assert.equal(isEmittedInPhaseWindows(ts, ['health'], windows), false);
+  });
+
+  it('allowlists bootstrap proof token emitted in clean-start window (even if scan is health)', () => {
+    const { body, emittedAt } = splitDockerLogLine(dockerLineInWindow);
+    const hit = {
+      kinds: ['kv-secret'],
+      logger: extractLogger(body),
+      service: 'ezkey-admin-api-1',
+      preview: sanitize(body),
+      emittedAt,
+    };
+    assert.ok(/AdminBootstrapService/i.test(hit.logger));
+    assert.equal(detectSecrets(body).severity, 'RED');
+    assert.equal(
+      isSecretChannelAllowlisted(hit, allowlist, windows),
+      true,
+      'in-window emission must stay allowlisted regardless of scan phase',
+    );
+  });
+
+  it('keeps same bootstrap proof token RED when emitted outside allowlisted windows', () => {
+    const { body, emittedAt } = splitDockerLogLine(dockerLineOutside);
+    const hit = {
+      kinds: ['kv-secret'],
+      logger: extractLogger(body),
+      service: 'ezkey-admin-api-1',
+      preview: sanitize(body),
+      emittedAt,
+    };
+    assert.equal(
+      isSecretChannelAllowlisted(hit, allowlist, windows),
+      false,
+      'out-of-window emission (e.g. later restart) must stay RED',
+    );
+  });
+
+  it('never allowlists recovery codes even inside clean-start window', () => {
+    const line =
+      '2026-10-09T20:38:19.273000000Z 2026-10-09T20:38:19.273Z  WARN 1 --- [ezkey-admin-api] [           main] o.e.admin.service.AdminBootstrapService  :    1. 3711-0244-2145-1666-3366-1916-2965-8688';
+    const { body, emittedAt } = splitDockerLogLine(line);
+    const hit = {
+      kinds: ['recovery-code'],
+      logger: extractLogger(body),
+      service: 'ezkey-admin-api-1',
+      preview: sanitize(body),
+      emittedAt,
+    };
+    assert.equal(isSecretChannelAllowlisted(hit, allowlist, windows), false);
   });
 });
 

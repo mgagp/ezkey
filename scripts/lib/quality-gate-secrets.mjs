@@ -296,3 +296,143 @@ export function signature(line) {
   s = s.replace(/\s+/g, ' ');
   return s.slice(0, 240);
 }
+
+/** docker logs --timestamps prefix: 2026-10-09T20:38:19.219626050Z<space> */
+const DOCKER_TS_PREFIX_RE =
+  /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s+(.*)$/s;
+
+/** Spring Boot ISO timestamp at line start (after optional docker prefix). */
+const SPRING_TS_RE =
+  /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\b/;
+
+/**
+ * Strip `docker logs --timestamps` prefix; return body + parsed emission time.
+ *
+ * @param {string} rawLine
+ * @returns {{ body: string, emittedAt: Date|null }}
+ */
+export function splitDockerLogLine(rawLine) {
+  const line = String(rawLine ?? '');
+  const m = DOCKER_TS_PREFIX_RE.exec(line);
+  if (m) {
+    const emittedAt = parseIsoDate(m[1]);
+    return { body: m[2], emittedAt };
+  }
+  const spring = SPRING_TS_RE.exec(line.trim());
+  if (spring) {
+    return { body: line, emittedAt: parseIsoDate(spring[1]) };
+  }
+  return { body: line, emittedAt: null };
+}
+
+/**
+ * Emission timestamp for allowlist windows: docker prefix, else Spring ISO in body.
+ *
+ * @param {string} rawLine
+ * @returns {Date|null}
+ */
+export function parseLogTimestamp(rawLine) {
+  return splitDockerLogLine(rawLine).emittedAt;
+}
+
+/**
+ * @param {string} iso
+ * @returns {Date|null}
+ */
+export function parseIsoDate(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Load phase-windows.tsv: phase\\tstart_iso\\tend_iso
+ *
+ * @param {string} text
+ * @returns {Map<string, { start: Date, end: Date }>}
+ */
+export function parsePhaseWindows(text) {
+  /** @type {Map<string, { start: Date, end: Date }>} */
+  const map = new Map();
+  for (const line of String(text ?? '').split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const [phase, startIso, endIso] = trimmed.split('\t').map((s) => s.trim());
+    if (!phase || !startIso || !endIso) continue;
+    const start = parseIsoDate(startIso);
+    const end = parseIsoDate(endIso);
+    if (!start || !end) continue;
+    map.set(phase, { start, end });
+  }
+  return map;
+}
+
+/**
+ * True when emittedAt falls inside the union of named phase windows.
+ * Phase `*` always matches. Without a windows map, scoped phases fail closed.
+ *
+ * @param {Date|null|undefined} emittedAt
+ * @param {string[]} phaseNames
+ * @param {Map<string, { start: Date, end: Date }>|null|undefined} windows
+ * @returns {boolean}
+ */
+export function isEmittedInPhaseWindows(emittedAt, phaseNames, windows) {
+  const phases = phaseNames || [];
+  if (!phases.length) return false;
+  if (phases.includes('*')) return true;
+  if (!windows || windows.size === 0) {
+    // No windows file: cannot prove emission phase — fail closed for scoped entries.
+    return false;
+  }
+  if (!emittedAt || Number.isNaN(emittedAt.getTime())) return false;
+  const t = emittedAt.getTime();
+  for (const name of phases) {
+    const w = windows.get(name);
+    if (!w) continue;
+    if (t >= w.start.getTime() && t <= w.end.getTime()) return true;
+  }
+  return false;
+}
+
+/**
+ * @param {string} entryService
+ * @param {string} serviceName
+ * @returns {boolean}
+ */
+export function serviceNameMatches(entryService, serviceName) {
+  if (entryService === '*') return true;
+  const svcPat = entryService.endsWith('*')
+    ? entryService.slice(0, -1)
+    : entryService;
+  return String(serviceName || '').includes(svcPat);
+}
+
+/**
+ * #750 bootstrap enrollment channel — allowlist by emission-time phase window
+ * (not by the phase that happens to be scanning). Recovery codes never match.
+ *
+ * @param {{ kinds?: string[], logger?: string|null, service?: string, preview?: string, emittedAt?: Date|null }} hit
+ * @param {Array<{ hygieneBad?: boolean, re?: RegExp|null, secretChannel?: boolean, service: string, phases: string[] }>} allowlist
+ * @param {Map<string, { start: Date, end: Date }>|null|undefined} windows
+ * @returns {boolean}
+ */
+export function isSecretChannelAllowlisted(hit, allowlist, windows) {
+  if ((hit.kinds || []).includes('recovery-code')) return false;
+  const logger = hit.logger || '';
+  if (!/AdminBootstrapService/i.test(logger)) return false;
+  const emittedAt =
+    hit.emittedAt instanceof Date
+      ? hit.emittedAt
+      : parseIsoDate(hit.emittedAt == null ? '' : String(hit.emittedAt));
+  const text = `${logger} ${hit.preview || ''}`;
+  const sig = signature(hit.preview || '');
+  for (const entry of allowlist || []) {
+    if (entry.hygieneBad || !entry.re || !entry.secretChannel) continue;
+    if (!serviceNameMatches(entry.service, hit.service || '')) continue;
+    if (!isEmittedInPhaseWindows(emittedAt, entry.phases, windows)) {
+      continue;
+    }
+    if (entry.re.test(text) || entry.re.test(sig)) return true;
+  }
+  return false;
+}
