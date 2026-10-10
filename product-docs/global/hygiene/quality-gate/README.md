@@ -45,7 +45,7 @@ replicas). Gate memory overlay stays as a runaway-heap guard on ~15Gi hosts.
 | --- | --- |
 | [#747](https://github.com/mgagp/ezkey/issues/747) | Retry only if `ezkey_encryption_key_pkey`; else clean-start RED. Allowlist: phase=`clean-start` + `COMPOSE_RETRY_FIRED=1`. |
 | [#748](https://github.com/mgagp/ezkey/issues/748) | Auth security false pass (sticky RestAssured → crypto). Fixed in product tests. |
-| [#750](https://github.com/mgagp/ezkey/issues/750) | Bootstrap proof token / challenge / QR on AdminBootstrapService **emitted during** clean-start/post-clean-health windows are **by design** (allowlisted by emission time, not scan phase). Same values after a later restart stay RED. Recovery codes and AdminAuthService challenges stay RED until #751. |
+| [#750](https://github.com/mgagp/ezkey/issues/750) | Bootstrap proof token / challenge / QR on AdminBootstrapService **emitted during clean-start only** are **by design** (allowlisted by emission time, not scan phase — still valid when scanned in post-clean-health/health). Same values emitted in post-clean-health or after a later restart stay RED. Recovery codes and AdminAuthService challenges stay RED until #751. |
 
 ## Thresholds and allowlist
 
