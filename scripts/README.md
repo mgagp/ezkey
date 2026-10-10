@@ -121,13 +121,15 @@ App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/ligh
 
 ## Ops — Docker log hygiene (host-local)
 
-[`ops/docker-log-hygiene.sh`](ops/docker-log-hygiene.sh) — check json-file rotation / sizes (default), optional `--scan` (pattern **counts** only; stdout+stderr; `--since`), `--project`, `--purge` dry-run / `--purge --apply --yes`. No remote/SSH. Canon: [`docs/OPERATIONAL.md`](../docs/OPERATIONAL.md) § Log rotation and hygiene.
+[`ops/docker-log-hygiene.sh`](ops/docker-log-hygiene.sh) — check json-file rotation / sizes (default), optional `--scan` (pattern **counts** only; stdout+stderr; `--since`; streamed), `--project`, `--purge` dry-run / `--purge --apply --yes` (project container IDs only; rotated-file search often needs **sudo**). No remote/SSH. Canon: [`docs/OPERATIONAL.md`](../docs/OPERATIONAL.md) § Log rotation and hygiene.
 
 ```bash
-./scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail
-./scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan
-./scripts/ops/docker-log-hygiene.sh --purge
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --purge
 ```
+
+Pre-upgrade scan: sync `scripts/ops/` with `--sync-operator-files` **without** `--remote-up` (or `scp` the script), run `--scan`, then `--remote-up`.
 
 ## Initial Problem
 

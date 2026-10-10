@@ -134,7 +134,6 @@ if [ "$HTTP_CODE" != "200" ]; then
     exit 1
   else
     echo "❌ Error: Bind failed with HTTP $HTTP_CODE"
-    echo "   Response: $BIND_BODY"
     exit 1
   fi
 else

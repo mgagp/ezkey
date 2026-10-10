@@ -550,8 +550,10 @@ Server logs must **not** duplicate high-value secrets that are already returned 
 
 `ezkey.admin.mfa.bootstrap.credentials-output-mode` controls what the Admin API prints at first global-admin enrollment:
 
-- **`full`** (default for development and Docker clean-start): enrollment proof token, challenge, and ASCII QR appear in startup logs (by design). Recovery codes are written to `bootstrap-credentials.json` (`0600`) — never to logs. File export also includes enrollment bind material for `bootstrap-init`.
-- **`recovery_primary`**: enrollment secrets and ASCII QR are omitted from logs. Recovery codes are written to `bootstrap-credentials.json` (`0600`) only. Use the Admin UI account-recovery flow (recover → reset enrollment → bind). For Docker unattended bind, keep `credentials-output-mode=full`; with `recovery_primary`, set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on `bootstrap-init` (or omit that service) because the file has no proof token.
+- **`full`** (default for development and Docker clean-start): enrollment proof token, challenge, and ASCII QR appear in startup logs (by design). Recovery codes are written to `bootstrap-credentials.json` (`0600` when POSIX) — never to logs. File export also includes enrollment bind material for `bootstrap-init`.
+- **`recovery_primary`**: enrollment secrets and ASCII QR are omitted from logs. Recovery codes are written to `bootstrap-credentials.json` (`0600` when POSIX) only. Use the Admin UI account-recovery flow (recover → reset enrollment → bind). For Docker unattended bind, keep `credentials-output-mode=full`; with `recovery_primary`, set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on `bootstrap-init` (or omit that service) because the file has no proof token.
+
+**Windows / non-POSIX (`windows` profile):** `ezkey.admin.bootstrap.export.allow-non-posix-permissions=true` writes under `${user.home}/.ezkey/bootstrap/` without POSIX `0600`. The file inherits the user-profile ACL. That is acceptable on a single-user dev workstation; there is no extra ACL code. Docker/prod omit the property (fail-closed).
 
 **Bootstrap enrollment TTL:** `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` (default **24**, minimum **1**, env `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS`). Bind is refused after expiry. To re-issue: read a recovery code from `bootstrap-credentials.json` → Admin UI account recovery → reset enrollment (refreshes `expiresAt`) → bind with the new material returned in the HTTP response.
 
@@ -559,9 +561,9 @@ Server logs must **not** duplicate high-value secrets that are already returned 
 Copy into a local `0600` file, then open it in an editor or password-manager import.
 
 ```bash
-# Compose project prefixes the volume (Lightsail: ezkey-experimental-lightsail_bootstrap-artifacts).
-VOL=$(docker volume ls -q | grep -E '_?bootstrap-artifacts$' | head -n1)
-test -n "$VOL" || { echo "bootstrap-artifacts volume not found"; exit 1; }
+# Pin the community volume name (do not guess with head -n1).
+VOL=ezkey-experimental-lightsail_bootstrap-artifacts
+docker volume inspect "$VOL" >/dev/null
 
 TMP=$(mktemp)
 docker create --name ezkey-bs-copy -v "$VOL":/data alpine >/dev/null
@@ -574,7 +576,7 @@ echo "Copied to $TMP (mode 0600) — import codes, then shred/rm the temp file."
 **Delete from the volume** (after codes are stored safely):
 
 ```bash
-VOL=$(docker volume ls -q | grep -E '_?bootstrap-artifacts$' | head -n1)
+VOL=ezkey-experimental-lightsail_bootstrap-artifacts
 docker run --rm -v "$VOL":/data alpine rm -f /data/bootstrap-credentials.json
 ```
 
@@ -613,19 +615,45 @@ accepted by reset (status returns to `CREATED`).
 
 Ceiling ≈ **8 services × 20 MiB × 3 files ≈ 480 MiB** of container json logs — intentional headroom beside Postgres data and images on a ~80 GB disk.
 
-**Host script:** [`scripts/ops/docker-log-hygiene.sh`](../scripts/ops/docker-log-hygiene.sh) (Bash, idempotent, local Docker only — no SSH/remote). Prefer `--project ezkey-experimental-lightsail` on the community VM.
+**Host script:** [`scripts/ops/docker-log-hygiene.sh`](../scripts/ops/docker-log-hygiene.sh) (Bash, idempotent, local Docker only — no SSH/remote). Invoke as `bash scripts/ops/docker-log-hygiene.sh …`. Prefer `--project ezkey-experimental-lightsail` on the community VM. Rotated-file purge needs read access under `/var/lib/docker/containers` (often **sudo**).
 
 | When | Command | Purpose |
 | ---- | ------- | ------- |
-| After first `compose up` on a new VM | `./scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail` | Confirm every container has `max-size` / `max-file` |
+| After first `compose up` on a new VM | `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail` | Confirm every container has `max-size` / `max-file` |
 | Periodically (e.g. monthly) | same without `--scan` | Report sizes; exit `1` if rotation missing |
 | Optional content scan | `… --scan` (stdout+stderr; `--since` window) | Counts of credential-like patterns only (never values) |
-| Plan cleanup | `… --purge` | Dry-run: stopped-container logs + rotated files older than 7d |
+| Plan cleanup | `… --purge` | Dry-run: stopped-container logs + rotated files older than 7d (project containers only) |
 | Apply cleanup | `… --purge --apply --yes` | Truncate/remove (confirm unless `--yes`) |
 
 **Exit codes:** `0` ok, `1` findings, `2` error.
 
-**What the script never does:** change Compose or recreate containers; talk to remote hosts; print secret values from `--scan`; truncate logs of **running** containers; delete Postgres or named volumes.
+**What the script never does:** change Compose or recreate containers; talk to remote hosts; print secret values from `--scan`; truncate logs of **running** containers; delete Postgres or named volumes; purge rotated logs outside the selected project's container IDs.
+
+**Pre-upgrade `--scan` order:** `scripts/ops/` arrives with `--sync-operator-files` (or a manual `scp`). Sync **without** `--remote-up` first (or `scp` the script), run `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan`, then `--remote-up` (or a combined sync+up pass after the scan).
+
+### Post-upgrade checks (m6) — community VM `ezkey-experimental-lightsail`
+
+Run on the VM after a rolling upgrade (no `cat` of secrets):
+
+1. `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`
+2. Confirm `json-file` rotation via `docker inspect` / hygiene check
+3. Caddyfile is the community variant (`Caddyfile.ezkey-online` content)
+4. Bootstrap credentials (volume `ezkey-experimental-lightsail_bootstrap-artifacts`) — mode + key absence only:
+
+   ```bash
+   VOL=ezkey-experimental-lightsail_bootstrap-artifacts
+   CID=$(docker create -v "$VOL":/data alpine)
+   docker cp "$CID":/data/bootstrap-credentials.json /tmp/bs-check.json
+   docker rm "$CID" >/dev/null
+   stat -c '%a %u:%g' /tmp/bs-check.json
+   grep -c enrollmentProofToken /tmp/bs-check.json || true
+   grep -c enrollmentChallengeCode /tmp/bs-check.json || true
+   grep -c authUrl /tmp/bs-check.json || true
+   shred -u /tmp/bs-check.json 2>/dev/null || rm -f /tmp/bs-check.json
+   ```
+
+   Expect mode `600` (POSIX) and `0` counts for token/challenge/authUrl after bind redaction. If still `644` with old Sept-23 secrets, delete with Marc's go (recipe above).
+5. Optional `--scan` (counts only) — only after the script is on the host (see pre-upgrade order).
 
 ### Log Configuration
 

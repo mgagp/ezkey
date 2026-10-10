@@ -213,7 +213,8 @@ class BootstrapCredentialsFileExporterTest {
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("UnsupportedOperationException")
         .hasMessageContaining("refusing to complete bootstrap")
-        .hasMessageNotContaining(secretCode);
+        .hasMessageNotContaining(secretCode)
+        .satisfies(ex -> assertThat(ex.getCause()).isNull());
     assertThat(file).doesNotExist();
   }
 
@@ -245,6 +246,49 @@ class BootstrapCredentialsFileExporterTest {
       assertThat(joined).contains("allow-non-posix-permissions=true");
       assertThat(joined).contains(file.toString());
       assertThat(joined).contains("windows/NTFS fallback");
+    } finally {
+      exporterLogger.detachAppender(appender);
+      exporterLogger.setLevel(previous);
+    }
+  }
+
+  @Test
+  void allowNonPosixTrueInfoDoesNotClaim0600() {
+    Path file = tempDir.resolve("bootstrap-credentials.json");
+    BootstrapExportProperties exportProperties = new BootstrapExportProperties();
+    exportProperties.setEnabled(true);
+    exportProperties.setPath(file.toString());
+    exportProperties.setAllowNonPosixPermissions(true);
+    AdminMfaProperties mfaProperties = new AdminMfaProperties();
+    mfaProperties
+        .getBootstrap()
+        .setCredentialsOutputMode(BootstrapCredentialsOutputMode.RECOVERY_PRIMARY);
+    BootstrapCredentialsFileExporter exporter =
+        new BootstrapCredentialsFileExporter(
+            exportProperties, new QrCodeProperties(), mfaProperties);
+    exporter.setPosixCreateSupportedForTests(false);
+
+    Logger exporterLogger =
+        (Logger) LoggerFactory.getLogger(BootstrapCredentialsFileExporter.class);
+    Level previous = exporterLogger.getLevel();
+    exporterLogger.setLevel(Level.INFO);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    exporterLogger.addAppender(appender);
+
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(7);
+    enrollment.setEnrollmentChallenge(112233);
+    try {
+      exporter.exportIfEnabled(
+          enrollment, "proof.token", "admin.docker", List.of("INFO-MODE-CODE-7777"));
+      String joined =
+          appender.list.stream()
+              .filter(e -> e.getLevel() == Level.INFO)
+              .map(ILoggingEvent::getFormattedMessage)
+              .reduce("", (a, b) -> a + "\n" + b);
+      assertThat(joined).contains("non-POSIX fallback");
+      assertThat(joined).doesNotContain(", 0600)");
     } finally {
       exporterLogger.detachAppender(appender);
       exporterLogger.setLevel(previous);
@@ -331,7 +375,8 @@ class BootstrapCredentialsFileExporterTest {
                     enrollment, "proof.token", "admin.docker", List.of(secretCode)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("IllegalArgumentException")
-        .hasMessageNotContaining(secretCode);
+        .hasMessageNotContaining(secretCode)
+        .satisfies(ex -> assertThat(ex.getCause()).isNull());
   }
 
   @Test

@@ -11,8 +11,10 @@
 package org.ezkey.admin.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -204,6 +206,61 @@ class AdminBootstrapServiceLoggingTest {
 
     verify(bootstrapCredentialsFileExporter)
         .exportIfEnabled(any(Enrollment.class), anyString(), anyString(), any());
+  }
+
+  @Test
+  @DisplayName("N4: export failure aborts bootstrap without chaining cause or saving admin")
+  void exportFailureAbortsBootstrapWithoutChainingCauseOrSavingAdmin() {
+    stubSystemTenantAndIntegration();
+
+    EzkeyAdmin admin = new EzkeyAdmin(USERNAME, AdminType.GLOBAL_ADMIN);
+    admin.setEmail(EMAIL);
+    admin.setFirstName("Admin");
+    admin.setLastName("Docker");
+    admin.setEnrollment(null);
+    when(adminRepository.findByUsername(USERNAME)).thenReturn(Optional.of(admin));
+
+    when(signatureService.generateEd25519KeyPair()).thenReturn(new Ed25519KeyPair("priv", "pub"));
+    when(signatureService.generateProofToken()).thenReturn(PROOF_TOKEN);
+    when(signatureService.generateSecureChallenge(6)).thenReturn(CHALLENGE);
+
+    when(enrollmentRepository.save(any(Enrollment.class)))
+        .thenAnswer(
+            invocation -> {
+              Enrollment e = invocation.getArgument(0);
+              e.setEnrollmentId(99);
+              return e;
+            });
+
+    AdminRecoveryService.RecoveryCodesResult codes =
+        new AdminRecoveryService.RecoveryCodesResult(List.of(RECOVERY_CODE), List.of("$2a$hashed"));
+    when(recoveryService.generateRecoveryCodes()).thenReturn(codes);
+
+    String exportPath = "/tmp/ezkey-bootstrap-credentials.json";
+    String secretInCause = "cause-echo-" + RECOVERY_CODE;
+    doThrow(
+            new IllegalStateException(
+                "Bootstrap recovery codes could not be persisted to "
+                    + exportPath
+                    + " (UnsupportedOperationException); refusing to complete bootstrap."
+                    + " Codes are not written to logs — fix the export path (POSIX 0600 writable)"
+                    + " and restart Admin API.",
+                new UnsupportedOperationException(secretInCause)))
+        .when(bootstrapCredentialsFileExporter)
+        .exportIfEnabled(any(Enrollment.class), anyString(), anyString(), any());
+
+    assertThatThrownBy(() -> service.bootstrapAdminMfa())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("refusing to complete bootstrap")
+        .hasMessageContaining(exportPath)
+        .hasMessageContaining("UnsupportedOperationException")
+        .hasMessageNotContaining(RECOVERY_CODE)
+        .hasMessageNotContaining(secretInCause)
+        .hasMessageNotContaining(EMAIL)
+        .satisfies(ex -> assertThat(ex.getCause()).isNull());
+
+    // Export runs before adminRepository.save; exception aborts @Transactional bootstrap.
+    verify(adminRepository, never()).save(any(EzkeyAdmin.class));
   }
 
   @Test

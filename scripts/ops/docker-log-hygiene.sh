@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Host-local Docker json-file log check / scan / purge. No SSH, no remote actions.
-# Exit: 0 ok, 1 findings, 2 error.
+# Invoke: bash scripts/ops/docker-log-hygiene.sh […]  Exit: 0 ok, 1 findings, 2 error.
 # shellcheck shell=bash
 set -euo pipefail
 
@@ -16,7 +16,7 @@ FINDINGS=0
 
 usage() {
   cat <<'EOF'
-Usage: docker-log-hygiene.sh [options]
+Usage: bash scripts/ops/docker-log-hygiene.sh [options]
   (default)              Check: driver, rotation, log sizes
   --scan                 Count credential-like patterns (never values); stdout+stderr
   --since DUR            Scan window for docker logs (default: 720h / SCAN_SINCE)
@@ -26,6 +26,7 @@ Usage: docker-log-hygiene.sh [options]
   --yes                  Skip confirmation for --purge --apply
   --older-than N         Rotated-file age in days (default: 7)
   -h, --help             Help
+Rotated-file purge needs read access under /var/lib/docker/containers (often sudo).
 Exit: 0 ok, 1 findings, 2 error.
 EOF
 }
@@ -138,27 +139,22 @@ check_containers() {
   echo "Containers missing rotation: $missing"
 }
 
-# Counts only — never prints matching lines or captured values.
-# Includes stderr (Postgres / Caddy). Uses --since so long-lived admin-api startup is covered.
+# Counts only — stream docker logs into grep (bounded memory; never load the window into a var).
+scan_count() { local id="$1"; shift; docker logs --since "$SCAN_SINCE" "$id" 2>&1 | grep "$@" || true; }
 scan_patterns() {
-  local id name blob c1 c2 c3 c4 c5
-  echo
-  echo "=== Credential-like pattern scan (counts only; since=${SCAN_SINCE}) ==="
+  local id name c1 c2 c3 c4 c5
+  echo; echo "=== Credential-like pattern scan (counts only; since=${SCAN_SINCE}) ==="
   while IFS= read -r id; do
     [ -n "$id" ] || continue
     name="$(docker inspect -f '{{.Name}}' "$id" | sed 's#^/##')"
-    # Keep stderr: many services log there. Count patterns only.
-    blob="$(docker logs --since "$SCAN_SINCE" "$id" 2>&1 || true)"
-    c1="$(printf '%s' "$blob" | grep -cE '[0-9]{4}(-[0-9]{4}){7}' || true)"
-    c2="$(printf '%s' "$blob" | grep -ciE 'enrollment[[:space:]]*proof[[:space:]]*token' || true)"
-    c3="$(printf '%s' "$blob" | grep -ciE 'recovery[[:space:]]*codes?[[:space:]]*:' || true)"
-    c4="$(printf '%s' "$blob" | grep -cE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' || true)"
-    c5="$(printf '%s' "$blob" | grep -ciE 'Using generated security password' || true)"
+    c1="$(scan_count "$id" -cE '[0-9]{4}(-[0-9]{4}){7}')"
+    c2="$(scan_count "$id" -ciE 'enrollment[[:space:]]*proof[[:space:]]*token')"
+    c3="$(scan_count "$id" -ciE 'recovery[[:space:]]*codes?[[:space:]]*:')"
+    c4="$(scan_count "$id" -cE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}')"
+    c5="$(scan_count "$id" -ciE 'Using generated security password')"
     printf '%-36s recovery=%s proof=%s recovery_lbl=%s email=%s gen_sec_pwd=%s\n' \
       "$name" "$c1" "$c2" "$c3" "$c4" "$c5"
-    if [ "${c1:-0}" -gt 0 ] || [ "${c4:-0}" -gt 0 ] || [ "${c5:-0}" -gt 0 ]; then
-      FINDINGS=1
-    fi
+    { [ "${c1:-0}" -gt 0 ] || [ "${c4:-0}" -gt 0 ] || [ "${c5:-0}" -gt 0 ]; } && FINDINGS=1
   done < <(container_ids)
   echo "(Counts only; values never printed. Label/gen_sec_pwd hits may be expected in full bootstrap.)"
 }
@@ -176,8 +172,9 @@ run_action() {
   fi
 }
 
+# Rotated files: only under selected project container IDs (never host-wide). Needs sudo often.
 purge_plan_or_apply() {
-  local id name status log_path f action="DRY-RUN" mig_warn=0
+  local id name status log_path log_dir f action="DRY-RUN" mig_warn=0
   local -a ops=() paths=() notes=()
   echo "=== Docker log hygiene (purge)${PROJECT:+ project=$PROJECT} ==="
   [ "$APPLY" -eq 1 ] && action="APPLY"
@@ -186,31 +183,34 @@ purge_plan_or_apply() {
   while IFS= read -r id; do
     [ -n "$id" ] || continue
     name="$(docker inspect -f '{{.Name}}' "$id" | sed 's#^/##')"
-    status="$(docker inspect -f '{{.State.Status}}' "$id")"
-    [ "$status" = "running" ] && continue
-    log_path="$(docker inspect -f '{{.LogPath}}' "$id" 2>/dev/null || true)"
-    [ -n "$log_path" ] || continue
-    [ -e "$log_path" ] || continue
     if is_migration_name "$name"; then
       echo "WARN: excluding migration/Flyway container from purge: $name (keep Flyway trace)"
       mig_warn=1
       continue
     fi
-    ops+=("truncate"); paths+=("$log_path"); notes+=("stopped $name")
+    status="$(docker inspect -f '{{.State.Status}}' "$id")"
+    log_path="$(docker inspect -f '{{.LogPath}}' "$id" 2>/dev/null || true)"
+    if [ "$status" != "running" ] && [ -n "$log_path" ] && [ -e "$log_path" ]; then
+      ops+=("truncate"); paths+=("$log_path"); notes+=("stopped $name")
+    fi
+    [ -n "$log_path" ] || continue
+    log_dir="$(dirname "$log_path")"
+    if [ -d "$log_dir" ] && [ -r "$log_dir" ]; then
+      while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        ops+=("rm"); paths+=("$f"); notes+=("rotated $name")
+      done < <(find "$log_dir" -type f -name '*-json.log.*' -mtime "+${OLDER_THAN_DAYS}" 2>/dev/null || true)
+    fi
   done < <(container_ids)
 
-  if [ -d "$DOCKER_ROOT/containers" ] && [ -r "$DOCKER_ROOT/containers" ]; then
-    while IFS= read -r f; do
-      [ -n "$f" ] || continue
-      ops+=("rm"); paths+=("$f"); notes+=("rotated")
-    done < <(find "$DOCKER_ROOT/containers" -type f -name '*-json.log.*' -mtime "+${OLDER_THAN_DAYS}" 2>/dev/null || true)
-  else
-    echo "NOTE: $DOCKER_ROOT/containers not readable — rotated-file scan skipped."
-    echo "NOTE: Re-run with sudo (or fix group perms) to include rotated json logs in purge."
+  if [ ! -r "$DOCKER_ROOT/containers" ]; then
+    echo "NOTE: $DOCKER_ROOT/containers not readable — rotated-file search may be incomplete."
+    echo "NOTE: Re-run with sudo (or fix group perms) so rotated json logs under project containers are included."
   fi
 
   if [ "${#ops[@]}" -eq 0 ]; then
-    echo "No purge candidates.${mig_warn:+ (migration containers were excluded)}"
+    [ "$mig_warn" -eq 1 ] && echo "No purge candidates (migration containers were excluded)." \
+      || echo "No purge candidates."
     return 0
   fi
 
@@ -222,7 +222,7 @@ purge_plan_or_apply() {
   echo "Candidates: ${#ops[@]}"
 
   if [ "$APPLY" -eq 0 ]; then
-    echo "Dry-run only. Re-run with: $0 --purge --apply --yes"
+    echo "Dry-run only. Re-run with: bash $0 --purge --apply --yes${PROJECT:+ --project $PROJECT}"
     return 0
   fi
 

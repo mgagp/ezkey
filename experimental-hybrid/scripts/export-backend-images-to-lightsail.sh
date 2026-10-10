@@ -71,7 +71,9 @@ Usage (from repository root):
 Options:
   --apis-only            Export only admin-api, auth-api, integration-api (no migration image).
   --include-demo-acme    Also export ezkey-demo-app-acme (after API tars; build image first).
-  --sync-operator-files  After load, scp docker-compose.yml, Caddyfile, clean-start.sh (no volume wipe).
+  --sync-operator-files  After load, scp docker-compose.yml, Caddyfile, clean-start.sh + host mounts
+                         including scripts/ops/ (no volume wipe; safe without --remote-up for a
+                         pre-upgrade --scan of docker-log-hygiene.sh).
   --remote-up            After load/sync, on the VM: docker compose up -d (rolling apply; DB preserved).
   --clean-start          After load, sync and run clean-start.sh (DESTRUCTIVE). Not with --sync-operator-files
                          or --remote-up.
@@ -254,6 +256,8 @@ if [[ -n "$DO_CLEAN_START" ]]; then
 elif [[ -n "$REMOTE_UP" ]]; then
   echo "Rolling steps finished: operator files are synced (if --sync-operator-files) and the stack was restarted. Postgres and named app volumes are unchanged; the migration service applies Flyway from the new image on up."
 else
-  echo "Tip: for a one-pass, no-wipe upgrade (Caddy, Compose, images, migration), use --sync-operator-files and --remote-up, or: experimental-hybrid/scripts/full-exp-environment-upgrade.sh rolling"
+  echo "Tip: pre-upgrade log scan — --sync-operator-files (no --remote-up), then on the VM:"
+  echo "     bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan"
+  echo "     then re-run with --remote-up (or full-exp-environment-upgrade.sh rolling)."
   echo "     See also experimental-hybrid/BACKEND_ROLLING_UPDATE.md"
 fi

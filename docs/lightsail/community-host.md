@@ -334,11 +334,16 @@ Short operator checklist verified against repo scripts/compose (not live VM obse
    **Rolling upgrade that adds or changes `logging:`:** `docker compose up -d` recreates **all**
    services that inherit the new logging config (typically all 8, **Postgres included**). Named
    volumes are kept, but there is a short outage while containers restart. Old json-file logs
-   disappear with the old container IDs — run `./scripts/ops/docker-log-hygiene.sh --scan` (and
-   copy any findings you care about) **before** the upgrade. After `up`, re-scp
-   `Caddyfile.ezkey-online` → remote `Caddyfile` (pitfall #1), then confirm rotation with
-   `docker inspect -f '{{.HostConfig.LogConfig}}' <container>` (or
-   `./scripts/ops/docker-log-hygiene.sh`).
+   disappear with the old container IDs — **scan before `up`**. `scripts/ops/` lands with
+   `--sync-operator-files` (same pass as `--remote-up` would recreate containers), so:
+
+   1. Export with `--sync-operator-files` **without** `--remote-up` (or `scp` `docker-log-hygiene.sh`)
+   2. On the VM: `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan`
+   3. Then `--remote-up` (or a later sync+up pass)
+
+   After `up`, re-scp `Caddyfile.ezkey-online` → remote `Caddyfile` (pitfall #1), then confirm
+   rotation with `docker inspect` or `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`.
+   Rotated-file purge needs sudo under `/var/lib/docker/containers`.
 
 ### Log rotation and hygiene (next install)
 
@@ -348,12 +353,36 @@ For a **new** Lightsail bring-up (not a remote action from a laptop against the 
 2. On the VM after `compose up`, run check mode:
 
    ```bash
-   ./scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail
+   bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail
    ```
 
 3. Periodically (e.g. monthly) re-run check; optional `--scan` prints **counts only** of
-   credential-like patterns (never values). Plan cleanup with `--purge` (dry-run); apply with
-   `--purge --apply --yes` when non-interactive.
+   credential-like patterns (never values). Plan cleanup with `--purge` (dry-run; project
+   containers only); apply with `--purge --apply --yes` when non-interactive.
+
+### Post-upgrade checks (m6)
+
+Same checklist as [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Post-upgrade checks (m6):
+
+1. `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`
+2. Confirm `json-file` rotation
+3. Caddyfile is the community variant
+4. Bootstrap credentials on volume `ezkey-experimental-lightsail_bootstrap-artifacts` — **no `cat`**:
+
+   ```bash
+   VOL=ezkey-experimental-lightsail_bootstrap-artifacts
+   CID=$(docker create -v "$VOL":/data alpine)
+   docker cp "$CID":/data/bootstrap-credentials.json /tmp/bs-check.json
+   docker rm "$CID" >/dev/null
+   stat -c '%a %u:%g' /tmp/bs-check.json
+   grep -c enrollmentProofToken /tmp/bs-check.json || true
+   grep -c enrollmentChallengeCode /tmp/bs-check.json || true
+   grep -c authUrl /tmp/bs-check.json || true
+   shred -u /tmp/bs-check.json 2>/dev/null || rm -f /tmp/bs-check.json
+   ```
+
+   Expect `600` and zero counts for token/challenge/authUrl after bind redaction.
+5. Optional `--scan` only after the script is on the host (pre-upgrade order above).
 
 Canon and “what it never does”: [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Log rotation and hygiene.
 

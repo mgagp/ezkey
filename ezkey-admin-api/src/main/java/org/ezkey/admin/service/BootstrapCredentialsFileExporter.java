@@ -71,6 +71,9 @@ public class BootstrapCredentialsFileExporter {
   /** Last redact-failure kind logged; avoids ERROR spam every ShedLock tick on a stuck file. */
   private final AtomicReference<String> lastRedactFailureKind = new AtomicReference<>();
 
+  /** Whether the most recent atomic write used POSIX owner-only mode (for INFO accuracy). */
+  private boolean lastWriteUsedPosixOwnerOnly = true;
+
   /**
    * Atomic owner-only writer (default implementation). Package-visible seam so unit tests can force
    * non-POSIX / Jackson failures without depending on OS root permissions.
@@ -240,10 +243,11 @@ public class BootstrapCredentialsFileExporter {
       atomicWriter.write(filePath, jsonNode);
 
       logger.info(
-          "✅ Bootstrap credentials exported to file: {} (enrollmentId: {}, mode: {}, 0600)",
+          "✅ Bootstrap credentials exported to file: {} (enrollmentId: {}, mode: {}, {})",
           exportProperties.getPath(),
           enrollment.getEnrollmentId(),
-          mode);
+          mode,
+          lastWriteUsedPosixOwnerOnly ? "0600" : "non-POSIX fallback");
     } catch (UnsupportedOperationException e) {
       logger.error(
           "POSIX permissions unsupported at {}; refusing to write bootstrap-credentials.json"
@@ -271,14 +275,14 @@ public class BootstrapCredentialsFileExporter {
     if (!hasRecoveryCodes) {
       return;
     }
+    // No cause chain — Spring would log nested stacks (may echo path/credential material).
     throw new IllegalStateException(
         "Bootstrap recovery codes could not be persisted to "
             + exportProperties.getPath()
             + " ("
             + cause.getClass().getSimpleName()
             + "); refusing to complete bootstrap. Codes are not written to logs — fix the export"
-            + " path (POSIX 0600 writable) and restart Admin API.",
-        cause);
+            + " path (POSIX 0600 writable) and restart Admin API.");
   }
 
   /**
@@ -403,12 +407,14 @@ public class BootstrapCredentialsFileExporter {
       FileAttribute<Set<PosixFilePermission>> attr =
           PosixFilePermissions.asFileAttribute(OWNER_READ_WRITE_ONLY);
       Files.createFile(tmp, attr);
+      lastWriteUsedPosixOwnerOnly = true;
       return;
     }
     try {
       FileAttribute<Set<PosixFilePermission>> attr =
           PosixFilePermissions.asFileAttribute(OWNER_READ_WRITE_ONLY);
       Files.createFile(tmp, attr);
+      lastWriteUsedPosixOwnerOnly = true;
     } catch (UnsupportedOperationException e) {
       rejectOrFallbackNonPosix(tmp, destinationPath, e);
     }
@@ -425,6 +431,7 @@ public class BootstrapCredentialsFileExporter {
         destinationPath,
         cause.getClass().getSimpleName());
     Files.createFile(tmp);
+    lastWriteUsedPosixOwnerOnly = false;
   }
 
   /**

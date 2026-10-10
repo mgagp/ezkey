@@ -217,11 +217,18 @@ public class AdminBootstrapService {
       }
 
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-      // Never log e.getMessage()/stack — nested causes may echo file or credential material.
+      // Never log e.getMessage()/stack. Do not chain the cause: Spring would print the nested
+      // stack (may echo file or credential material). Operator hint stays in the message only.
       logger.error(
           "Failed to bootstrap admin MFA (step=admin-mfa-bootstrap, type={})",
           e.getClass().getSimpleName());
-      throw new RuntimeException("Admin MFA bootstrap failed", e);
+      if (e instanceof IllegalStateException
+          && e.getMessage() != null
+          && e.getMessage().contains("refusing to complete bootstrap")) {
+        throw new IllegalStateException(e.getMessage());
+      }
+      throw new IllegalStateException(
+          "Admin MFA bootstrap failed (" + e.getClass().getSimpleName() + ")");
     }
   }
 
