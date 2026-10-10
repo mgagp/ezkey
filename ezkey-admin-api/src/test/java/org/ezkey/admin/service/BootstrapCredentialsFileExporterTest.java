@@ -180,14 +180,16 @@ class BootstrapCredentialsFileExporterTest {
   }
 
   @Test
-  void allowNonPosixDefaultsFalseAndFailsClosed() {
+  void allowNonPosixDefaultsFalseAndAbsentPropertyFailsClosedOnNonPosixFilesystem() {
+    // Guardrail: without allow-non-posix-permissions (Java default false), bootstrap export
+    // fails closed on a non-POSIX filesystem — same as Docker/prod overlays that omit the key.
     assertThat(new BootstrapExportProperties().isAllowNonPosixPermissions()).isFalse();
 
     Path file = tempDir.resolve("bootstrap-credentials.json");
     BootstrapExportProperties exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
     exportProperties.setPath(file.toString());
-    exportProperties.setAllowNonPosixPermissions(false);
+    // Do not call setAllowNonPosixPermissions — property absent / default false.
     AdminMfaProperties mfaProperties = new AdminMfaProperties();
     mfaProperties
         .getBootstrap()
@@ -202,14 +204,51 @@ class BootstrapCredentialsFileExporterTest {
     enrollment.setEnrollmentChallenge(112233);
     String secretCode = "POSIX-FAIL-CODE-1111-2222";
 
+    assertThat(exporter.logNonPosixAllowedStartupWarnIfActive()).isFalse();
+
     assertThatThrownBy(
             () ->
                 exporter.exportIfEnabled(
                     enrollment, "proof.token", "admin.docker", List.of(secretCode)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("UnsupportedOperationException")
+        .hasMessageContaining("refusing to complete bootstrap")
         .hasMessageNotContaining(secretCode);
     assertThat(file).doesNotExist();
+  }
+
+  @Test
+  void allowNonPosixTrueEmitsStartupWarnInAdditionToWriteWarn() {
+    Path file = tempDir.resolve("bootstrap-credentials.json");
+    BootstrapExportProperties exportProperties = new BootstrapExportProperties();
+    exportProperties.setEnabled(true);
+    exportProperties.setPath(file.toString());
+    exportProperties.setAllowNonPosixPermissions(true);
+    BootstrapCredentialsFileExporter exporter =
+        new BootstrapCredentialsFileExporter(
+            exportProperties, new QrCodeProperties(), new AdminMfaProperties());
+
+    Logger exporterLogger =
+        (Logger) LoggerFactory.getLogger(BootstrapCredentialsFileExporter.class);
+    Level previous = exporterLogger.getLevel();
+    exporterLogger.setLevel(Level.WARN);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    exporterLogger.addAppender(appender);
+    try {
+      assertThat(exporter.logNonPosixAllowedStartupWarnIfActive()).isTrue();
+      String joined =
+          appender.list.stream()
+              .filter(e -> e.getLevel() == Level.WARN)
+              .map(ILoggingEvent::getFormattedMessage)
+              .reduce("", (a, b) -> a + "\n" + b);
+      assertThat(joined).contains("allow-non-posix-permissions=true");
+      assertThat(joined).contains(file.toString());
+      assertThat(joined).contains("windows/NTFS fallback");
+    } finally {
+      exporterLogger.detachAppender(appender);
+      exporterLogger.setLevel(previous);
+    }
   }
 
   @Test

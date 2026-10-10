@@ -28,8 +28,12 @@ import org.ezkey.admin.config.BootstrapCredentialsOutputMode;
 import org.ezkey.admin.config.BootstrapExportProperties;
 import org.ezkey.config.QrCodeProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.security.ApplicationReadyStartupOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ArrayNode;
@@ -106,6 +110,32 @@ public class BootstrapCredentialsFileExporter {
     this.qrCodeProperties = qrCodeProperties;
     this.adminMfaProperties = adminMfaProperties;
     this.objectMapper = new ObjectMapper();
+  }
+
+  /**
+   * Startup notice when the windows-only non-POSIX fallback is active (in addition to the WARN at
+   * write time). Docker/prod leave the property unset/false — no log.
+   */
+  @EventListener(ApplicationReadyEvent.class)
+  @Order(ApplicationReadyStartupOrder.ADMIN_MFA_BOOTSTRAP)
+  public void warnIfNonPosixPermissionsAllowedAtStartup() {
+    logNonPosixAllowedStartupWarnIfActive();
+  }
+
+  /**
+   * Package-visible for unit tests.
+   *
+   * @return {@code true} when the startup WARN was emitted
+   */
+  boolean logNonPosixAllowedStartupWarnIfActive() {
+    if (!exportProperties.isAllowNonPosixPermissions()) {
+      return false;
+    }
+    logger.warn(
+        "ezkey.admin.bootstrap.export.allow-non-posix-permissions=true (path={}); credentials file"
+            + " may be written without owner-only 0600 (windows/NTFS fallback)",
+        exportProperties.getPath());
+    return true;
   }
 
   /**

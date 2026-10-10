@@ -29,7 +29,9 @@ import org.springframework.stereotype.Component;
  * </pre>
  *
  * <p><b>Security Note:</b> Prefer owner-only mode ({@code 0600}). Non-POSIX fallback is opt-in via
- * {@code allow-non-posix-permissions} (windows profile only) and logs a single WARN.
+ * {@code allow-non-posix-permissions} ({@code windows} profile only). When active, Admin API logs
+ * one WARN at startup and one WARN at write time. Default and Docker/prod overlays omit the
+ * property (Java default {@code false}, fail-closed).
  *
  * @since 2025
  */
