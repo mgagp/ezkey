@@ -18,8 +18,16 @@ export const ID_LABEL_VALUE_RE = /^ID=\d+$/i;
 /**
  * Long opaque tokens: mix of letters and digits, no dots, not CamelCase identifiers.
  * Excludes Java class/package names (DataIntegrityViolationException, org.springframework…).
+ * Canonical UUIDs are masked before this rule runs (see applyRedactions).
  */
 export const OPAQUE_TOKEN_RE = /\b(?=[A-Za-z0-9_-]*[A-Za-z])(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{20,}\b/g;
+
+/** Canonical UUID (8-4-4-4-12 hex). Masked before opaque-token so they are not RED. */
+export const CANONICAL_UUID_SOURCE =
+  String.raw`\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b`;
+
+/** Known allowlist requires= tokens (typos must not make an entry unconditional). */
+export const KNOWN_ALLOWLIST_REQUIRES = new Set(['COMPOSE_RETRY_FIRED']);
 
 /** Credential key stem (proofToken, api_key, challenge code, passphrase, …). */
 export const SECRET_KEY_STEM =
@@ -131,10 +139,11 @@ export function applyRedactions(rawLine) {
     return 'Bearer ***REDACTED***';
   });
 
-  // 1b) Basic <base64> (Authorization: Basic …)
-  out = out.replace(/Basic\s+([A-Za-z0-9+/=]+)/gi, (full, b64) => {
+  // 1b) Authorization: Basic <base64> only (header form; case-sensitive — avoids
+  // "Using basic configuration" / "HTTP Basic authentication is not configured").
+  out = out.replace(/Authorization:\s*Basic\s+([A-Za-z0-9+/=]+)/g, (full, b64) => {
     note('basic', 'RED', b64);
-    return 'Basic ***REDACTED***';
+    return full.replace(b64, '***REDACTED***');
   });
 
   // 2) Email → AMBER low-PII
@@ -283,9 +292,13 @@ export function applyRedactions(rawLine) {
     return '***REDACTED***';
   });
 
+  // 9b) Canonical UUIDs → <UUID> before opaque-token (authAttemptId etc. are not secrets)
+  out = out.replace(new RegExp(CANONICAL_UUID_SOURCE, 'gi'), '<UUID>');
+
   // 10) Opaque long tokens (letters+digits, not CamelCase / dotted packages)
   out = out.replace(OPAQUE_TOKEN_RE, (m) => {
     if (MASKED_VALUE_RE.test(m)) return m;
+    if (m === '<UUID>') return m;
     note('opaque-token', 'RED', m);
     return '<TOKEN>';
   });
@@ -371,10 +384,8 @@ export function signature(line) {
     /\[\s*(?:main|scheduling-\d+|Thread-\d+|task-\d+|[^\]]*exec-\d+)\s*\]/gi,
     '[THREAD]',
   );
-  s = s.replace(
-    /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,
-    '<UUID>',
-  );
+  // UUIDs already become <UUID> in sanitize; keep a pass for already-sanitized inputs.
+  s = s.replace(new RegExp(CANONICAL_UUID_SOURCE, 'gi'), '<UUID>');
   s = s.replace(/\b\d{5,}\b/g, '<N>');
   s = s.replace(/\s+/g, ' ');
   return s.slice(0, 240);
@@ -412,6 +423,27 @@ export function assertKnownAllowlistPhase(phase) {
     throw new Error(
       `Allowlist unknown phase "${phase}" (blocking). Known: ${[...KNOWN_ALLOWLIST_PHASES].join(', ')}`,
     );
+  }
+}
+
+/**
+ * Reject unknown requires= tokens (a typo must not make the entry unconditional).
+ *
+ * @param {string|null|undefined} requiresField comma-separated requires= value
+ * @returns {void}
+ * @throws {Error}
+ */
+export function assertKnownAllowlistRequires(requiresField) {
+  if (requiresField == null || requiresField === '') return;
+  for (const req of String(requiresField)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)) {
+    if (!KNOWN_ALLOWLIST_REQUIRES.has(req)) {
+      throw new Error(
+        `Allowlist unknown requires="${req}" (blocking). Known: ${[...KNOWN_ALLOWLIST_REQUIRES].join(', ')}`,
+      );
+    }
   }
 }
 

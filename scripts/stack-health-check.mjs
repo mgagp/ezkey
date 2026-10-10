@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import {
   assertAllowlistRegexAnchored,
   assertKnownAllowlistPhase,
+  assertKnownAllowlistRequires,
   detectSecrets,
   extractLogger,
   isEmittedInPhaseWindows,
@@ -608,6 +609,11 @@ function loadAllowlist(path) {
       } catch (e) {
         throw new Error(`${e.message}. Fix ${path}`);
       }
+    }
+    try {
+      assertKnownAllowlistRequires(requires);
+    } catch (e) {
+      throw new Error(`${e.message}. Fix ${path}`);
     }
     const expM = /^expires=(\d{4}-\d{2}-\d{2})$/.exec(expiresField);
     const expires = expM ? expM[1] : null;

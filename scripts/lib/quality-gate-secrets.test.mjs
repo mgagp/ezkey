@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import {
   assertAllowlistRegexAnchored,
   assertKnownAllowlistPhase,
+  assertKnownAllowlistRequires,
   detectSecrets,
   extractLogger,
   isEmittedInPhaseWindows,
@@ -51,7 +52,7 @@ describe('Christophe replay inputs', () => {
     [`/t/${HEX32}`, 'path-token', 'RED', HEX32],
     ['Authorization: Bearer xyz', 'bearer', 'RED', 'xyz'],
     [`token=${TOKEN32}`, 'kv-secret', 'RED', TOKEN32],
-    ['authorization: Basic dXNlcjpwYXNz', 'basic', 'RED', 'dXNlcjpwYXNz'],
+    ['Authorization: Basic dXNlcjpwYXNz', 'basic', 'RED', 'dXNlcjpwYXNz'],
     ['password="a b"', 'kv-secret', 'RED', 'a b'],
     ['admin@ezkey.local', 'email', 'AMBER', 'admin@ezkey.local'],
     ['connected from 192.168.1.42', 'ip', 'AMBER', '192.168.1.42'],
@@ -104,6 +105,28 @@ describe('Christophe replay inputs', () => {
   });
 });
 
+describe('Basic header form (case-sensitive)', () => {
+  it('redacts Authorization: Basic <b64>', () => {
+    const line = 'Authorization: Basic dXNlcjpwYXNz';
+    assert.equal(detectSecrets(line).severity, 'RED');
+    assert.ok(detectSecrets(line).kinds.includes('basic'));
+    assert.equal(sanitize(line).includes('dXNlcjpwYXNz'), false);
+  });
+
+  it('does not flag prose "basic" / "HTTP Basic authentication"', () => {
+    assert.equal(detectSecrets('Using basic configuration').kinds.length, 0);
+    assert.equal(
+      detectSecrets('HTTP Basic authentication is not configured').kinds.length,
+      0,
+    );
+  });
+
+  it('does not treat lowercase authorization: Basic as header Basic', () => {
+    const r = detectSecrets('authorization: Basic dXNlcjpwYXNz');
+    assert.equal(r.kinds.includes('basic'), false);
+  });
+});
+
 describe('detectSecrets product cases', () => {
   it('ignores challenge=***REDACTED*** (already masked)', () => {
     const r = detectSecrets('Passwordless with challenge=***REDACTED*** for user');
@@ -149,7 +172,7 @@ describe('detectSecrets product cases', () => {
   });
 });
 
-describe('TOKEN / Java class names', () => {
+describe('TOKEN / Java class names / UUID', () => {
   it('does NOT tokenize DataIntegrityViolationException', () => {
     const line =
       'org.springframework.dao.DataIntegrityViolationException: could not execute';
@@ -163,12 +186,21 @@ describe('TOKEN / Java class names', () => {
     const out = sanitize(line);
     assert.match(out, /<TOKEN>|REDACTED/);
   });
+
+  it('does not score canonical UUID as opaque-token', () => {
+    const uuid = '550e8400-e29b-41d4-a716-446655440000';
+    const line = `authAttemptId=${uuid} processed`;
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('opaque-token'), false, `kinds=${r.kinds}`);
+    assert.match(sanitize(line), /<UUID>/);
+    assert.equal(sanitize(line).includes(uuid), false);
+  });
 });
 
 describe('allowlist regex anchoring', () => {
   it('accepts full ^…$ without ^.* pseudo-anchor', () => {
     assert.doesNotThrow(() =>
-      assertAllowlistRegexAnchored('^ERROR:.*ezkey_encryption_key_pkey.*$'),
+      assertAllowlistRegexAnchored('^<TS> ERROR .*ezkey_encryption_key_pkey.*$'),
     );
   });
   it('rejects missing $', () => {
@@ -187,15 +219,34 @@ describe('allowlist regex anchoring', () => {
     assert.throws(() => assertKnownAllowlistPhase('bootstrap'), /unknown phase/);
     assert.throws(() => assertKnownAllowlistPhase('post-clean'), /unknown phase/);
   });
+
+  it('rejects unknown requires= values', () => {
+    assert.doesNotThrow(() => assertKnownAllowlistRequires('COMPOSE_RETRY_FIRED'));
+    assert.doesNotThrow(() => assertKnownAllowlistRequires(null));
+    assert.throws(
+      () => assertKnownAllowlistRequires('COMPOSE_RETY_FIRED'),
+      /unknown requires/,
+    );
+    assert.throws(
+      () => assertKnownAllowlistRequires('COMPOSE_RETRY_FIRED,TYPO'),
+      /unknown requires/,
+    );
+  });
 });
 
 describe('allowlist signature match', () => {
-  it('ezkey_encryption_key_pkey survives sanitize (no digit → not <TOKEN>)', () => {
-    const line =
-      'ERROR: duplicate key value violates unique constraint "ezkey_encryption_key_pkey"';
-    const sig = signature(line);
+  it('#747 regex matches signature of a full Spring ERROR line', () => {
+    const springLine =
+      '2026-10-09T20:38:05.123Z ERROR 1 --- [ezkey-admin-api] [           main] o.h.engine.jdbc.spi.SqlExceptionHelper   : ERROR: duplicate key value violates unique constraint "ezkey_encryption_key_pkey"';
+    const sig = signature(springLine);
     assert.match(sig, /ezkey_encryption_key_pkey/);
-    assert.ok(new RegExp('^ERROR:.*ezkey_encryption_key_pkey.*$').test(sig));
+    assert.match(sig, /^<TS> ERROR /);
+    const re = /^<TS> ERROR .*ezkey_encryption_key_pkey.*$/;
+    assert.ok(re.test(sig), `sig=${sig}`);
+    // Bare ERROR: line is NOT what the pipeline sees — document the footgun.
+    const bare =
+      'ERROR: duplicate key value violates unique constraint "ezkey_encryption_key_pkey"';
+    assert.equal(re.test(signature(bare)), false);
   });
 
   it('bootstrap proof-token subject matches logger-anchored allowlist regex', () => {
@@ -230,36 +281,39 @@ describe('emission-time allowlist windows (#750)', () => {
     ].join('\n'),
   );
 
+  /** Maintainer ruling: emission window = clean-start only. */
   const allowlist = [
     {
       service: 'ezkey-admin-api',
-      phases: ['clean-start', 'post-clean-health'],
+      phases: ['clean-start'],
       re: /^o\.e\.admin\.service\.AdminBootstrapService .*Enrollment Proof Token=.*$/,
       kind: 'secret-channel',
       hygieneBad: false,
     },
   ];
 
-  const dockerLineInWindow =
+  const dockerLineCleanStart =
     '2026-10-09T20:38:19.219626050Z 2026-10-09T20:38:19.219Z  WARN 1 --- [ezkey-admin-api] [           main] o.e.admin.service.AdminBootstrapService  :    Enrollment Proof Token: f7zMmUzbJSV1WPjXD_jLuoDNucM559Qr7MWIo_MC0yo.0KvCfXqW9ydHGisXjxMz2w';
+  const dockerLinePostClean =
+    '2026-10-09T20:39:06.000000000Z 2026-10-09T20:39:06.000Z  WARN 1 --- [ezkey-admin-api] [           main] o.e.admin.service.AdminBootstrapService  :    Enrollment Proof Token: f7zMmUzbJSV1WPjXD_jLuoDNucM559Qr7MWIo_MC0yo.0KvCfXqW9ydHGisXjxMz2w';
   const dockerLineOutside =
     '2026-10-09T20:45:00.000000000Z 2026-10-09T20:45:00.000Z  WARN 1 --- [ezkey-admin-api] [           main] o.e.admin.service.AdminBootstrapService  :    Enrollment Proof Token: f7zMmUzbJSV1WPjXD_jLuoDNucM559Qr7MWIo_MC0yo.0KvCfXqW9ydHGisXjxMz2w';
 
   it('parses docker --timestamps prefix', () => {
-    const { body, emittedAt } = splitDockerLogLine(dockerLineInWindow);
+    const { body, emittedAt } = splitDockerLogLine(dockerLineCleanStart);
     assert.match(body, /Enrollment Proof Token/);
     assert.equal(emittedAt.toISOString(), '2026-10-09T20:38:19.219Z');
-    assert.equal(parseLogTimestamp(dockerLineInWindow).toISOString(), '2026-10-09T20:38:19.219Z');
+    assert.equal(parseLogTimestamp(dockerLineCleanStart).toISOString(), '2026-10-09T20:38:19.219Z');
   });
 
   it('isEmittedInPhaseWindows true inside clean-start', () => {
-    const ts = parseLogTimestamp(dockerLineInWindow);
+    const ts = parseLogTimestamp(dockerLineCleanStart);
     assert.equal(isEmittedInPhaseWindows(ts, ['clean-start'], windows), true);
     assert.equal(isEmittedInPhaseWindows(ts, ['health'], windows), false);
   });
 
-  it('allowlists bootstrap proof token emitted in clean-start window (even if scan is health)', () => {
-    const { body, emittedAt } = splitDockerLogLine(dockerLineInWindow);
+  it('allowlists bootstrap proof token emitted in clean-start when scanned in post-clean-health', () => {
+    const { body, emittedAt } = splitDockerLogLine(dockerLineCleanStart);
     const hit = {
       kinds: ['kv-secret'],
       logger: extractLogger(body),
@@ -272,7 +326,27 @@ describe('emission-time allowlist windows (#750)', () => {
     assert.equal(
       isSecretChannelAllowlisted(hit, allowlist, windows),
       true,
-      'in-window emission must stay allowlisted regardless of scan phase',
+      'clean-start emission must stay allowlisted when scanned in post-clean-health/health',
+    );
+  });
+
+  it('keeps same bootstrap proof token RED when emitted in post-clean-health', () => {
+    const { body, emittedAt } = splitDockerLogLine(dockerLinePostClean);
+    assert.equal(
+      isEmittedInPhaseWindows(emittedAt, ['post-clean-health'], windows),
+      true,
+    );
+    const hit = {
+      kinds: ['kv-secret'],
+      logger: extractLogger(body),
+      service: 'ezkey-admin-api-1',
+      preview: sanitize(body),
+      emittedAt,
+    };
+    assert.equal(
+      isSecretChannelAllowlisted(hit, allowlist, windows),
+      false,
+      'post-clean-health emission is outside #750 clean-start-only window → RED',
     );
   });
 
