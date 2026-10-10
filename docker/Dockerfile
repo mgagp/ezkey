@@ -85,7 +85,7 @@ RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
 # Stage 2: Runtime image for migration service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS migration
-RUN addgroup -S spring && adduser -S spring -G spring
+RUN addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring
 USER spring:spring
 WORKDIR /app
 COPY --from=build /build/ezkey-migration/target/*.jar app.jar
@@ -97,7 +97,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 FROM eclipse-temurin:25-jre-alpine AS admin-api
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
-    addgroup -S spring && adduser -S spring -G spring && \
+    addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
     mkdir -p /app /etc/ezkey/secrets /etc/ezkey/keysets /var/lib/ezkey/bootstrap && \
     chmod 700 /etc/ezkey/secrets && \
     chmod 755 /etc/ezkey/keysets /var/lib/ezkey/bootstrap && \
@@ -117,7 +117,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 FROM eclipse-temurin:25-jre-alpine AS auth-api
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
-    addgroup -S spring && adduser -S spring -G spring && \
+    addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
     mkdir -p /app /etc/ezkey/secrets /etc/ezkey/keysets && \
     chmod 700 /etc/ezkey/secrets && \
     chmod 755 /etc/ezkey/keysets && \
@@ -138,7 +138,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 FROM eclipse-temurin:25-jre-alpine AS integration-api
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
-    addgroup -S spring && adduser -S spring -G spring && \
+    addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
     mkdir -p /app /etc/ezkey/secrets /etc/ezkey/keysets && \
     chmod 700 /etc/ezkey/secrets && \
     chmod 755 /etc/ezkey/keysets && \
@@ -159,7 +159,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 FROM eclipse-temurin:25-jre-alpine AS crypto-api
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
-    addgroup -S spring && adduser -S spring -G spring && \
+    addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
     mkdir -p /app /etc/ezkey/secrets /etc/ezkey/keysets && \
     chmod 700 /etc/ezkey/secrets && \
     chmod 755 /etc/ezkey/keysets && \
@@ -179,7 +179,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 FROM eclipse-temurin:25-jre-alpine AS demo-device
 # Create non-root user and pre-create data directory with correct ownership at build time
 RUN apk add --no-cache curl && \
-    addgroup -S spring && adduser -S spring -G spring && \
+    addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
     mkdir -p /app /app/data/enrollments && \
     chown -R spring:spring /app
 WORKDIR /app
@@ -196,7 +196,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 FROM eclipse-temurin:25-jre-alpine AS demo-app-acme
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
-    addgroup -S spring && adduser -S spring -G spring && \
+    addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
     mkdir -p /app /app/config /app/data && \
     chown -R spring:spring /app
 WORKDIR /app

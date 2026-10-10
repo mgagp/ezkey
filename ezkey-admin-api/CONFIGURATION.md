@@ -228,7 +228,9 @@ profiles; lock down the host path elsewhere.
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.admin.bootstrap.export.enabled` | `boolean` | `false` | optionnel | Enable/disable full file export. Enabled by default in `docker` and `docker-test` profiles. Plaintext recovery codes are still persisted when present even if this flag is false. |
-| `ezkey.admin.bootstrap.export.path` | `String` | `/var/lib/ezkey/bootstrap/bootstrap-credentials.json` | optionnel | Absolute path for the JSON export file. Parent directory is created if missing; file mode is set to `0600` when POSIX permissions are available. |
+| `ezkey.admin.bootstrap.export.path` | `String` | `/var/lib/ezkey/bootstrap/bootstrap-credentials.json` | optionnel | Absolute path for the JSON export file. Parent directory is created if missing; file mode is set to `0600` when POSIX permissions are available. Admin API only — do not mount this path on Auth API. |
+| `ezkey.admin.bootstrap.bind-secret-redact.delay-ms` | `long` | `60000` | optionnel | Fixed delay (ms) between Admin API ShedLock passes that strip proof token/challenge once the bootstrap enrollment is BOUND/VERIFIED. |
+| `ezkey.admin.bootstrap.bind-secret-redact.initial-delay-ms` | `long` | `15000` | optionnel | Initial delay (ms) before the first scheduled redact pass. |
 
 ---
 

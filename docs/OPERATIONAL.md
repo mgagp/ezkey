@@ -561,15 +561,20 @@ Server logs must **not** duplicate high-value secrets that are already returned 
 docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/bootstrap-credentials.json
 ```
 
-After a successful bind, the file keeps **recovery codes** but the proof token and challenge are
-removed. **Delete the credentials file** once codes are copied to a password manager or other safe
-store (the file is owner-only `0600`; both `admin-api` and `bootstrap-init` run as UID `100`
-`spring` so init can still read it before redaction).
+After a successful bind, Admin API (startup + short ShedLock schedule) and `bootstrap-init` remove
+the proof token and challenge from the file while keeping recovery codes. Auth API does **not**
+mount the credentials volume.
+
+**Operator action — delete the file once recovery codes are stored safely.** Copy the codes from
+`bootstrap-credentials.json` into a password manager (or other safe store), then delete the file
+from the `bootstrap-artifacts` volume. Do not leave plaintext recovery codes on disk longer than
+needed. The file is owner-only `0600`; `admin-api` and `bootstrap-init` both run as pinned UID
+`100` / GID `101` (`spring`) so init can read it before redaction.
 
 **Re-issue after invitation expiry:** recover with a recovery code → reset enrollment (refreshes
-`expiresAt` to now + `enrollment-expiration-hours`) → bind with the new material from the HTTP
-response. Scheduler-marked `EXPIRED` enrollments are accepted by reset (status returns to
-`CREATED`).
+`expiresAt` to now + `enrollment-expiration-hours` for **any** admin enrollment that already had an
+`expiresAt`) → bind with the new material from the HTTP response. Scheduler-marked `EXPIRED`
+enrollments are accepted by reset (status returns to `CREATED`).
 
 **Operational recommendation:** After the global administrator completes first device binding and can sign in, **regenerate recovery codes** from the Admin UI so unused codes from the bootstrap credentials file are invalidated.
 

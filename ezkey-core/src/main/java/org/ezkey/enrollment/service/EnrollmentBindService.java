@@ -77,7 +77,6 @@ public class EnrollmentBindService {
   private final EntityEligibilityService eligibilityService;
   private final EnrollmentTxHelper enrollmentTxHelper;
   private final SignatureService signatureService;
-  private final BootstrapCredentialsPostBindCleaner bootstrapCredentialsPostBindCleaner;
 
   /**
    * Constructs the bind service with required dependencies.
@@ -90,8 +89,6 @@ public class EnrollmentBindService {
    *     separate transaction
    * @param signatureService the signature service for normalizing integration public key to
    *     SubjectPublicKeyInfo (so bind response matches what demo device and mobile expect)
-   * @param bootstrapCredentialsPostBindCleaner redacts bind secrets from bootstrap-credentials.json
-   *     after a successful bind when the export path is configured
    */
   public EnrollmentBindService(
       EnrollmentRepository enrollmentRepository,
@@ -99,15 +96,13 @@ public class EnrollmentBindService {
       EzkeyAdminRepository ezkeyAdminRepository,
       EntityEligibilityService eligibilityService,
       EnrollmentTxHelper enrollmentTxHelper,
-      SignatureService signatureService,
-      BootstrapCredentialsPostBindCleaner bootstrapCredentialsPostBindCleaner) {
+      SignatureService signatureService) {
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
     this.ezkeyAdminRepository = ezkeyAdminRepository;
     this.eligibilityService = eligibilityService;
     this.enrollmentTxHelper = enrollmentTxHelper;
     this.signatureService = signatureService;
-    this.bootstrapCredentialsPostBindCleaner = bootstrapCredentialsPostBindCleaner;
   }
 
   /**
@@ -142,10 +137,8 @@ public class EnrollmentBindService {
     // Step 4: Mark as BOUND (read-once guarantee)
     markAsBound(lockedEnrollment);
 
-    // Step 5: Drop proof token / challenge from bootstrap-credentials.json (keep recovery codes)
-    bootstrapCredentialsPostBindCleaner.afterEnrollmentBound(lockedEnrollment.getEnrollmentId());
-
-    // Step 6: Build and return response (uses locked row for integration signing material)
+    // Step 5: Build and return response (uses locked row for integration signing material).
+    // Bootstrap credentials file redaction stays in Admin API (volume must not mount on Auth API).
     return buildBindResponse(
         lockedEnrollment, integration, integrationName, integrationDescription);
   }

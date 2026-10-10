@@ -192,19 +192,30 @@ public class BootstrapCredentialsFileExporter {
    * while keeping recovery codes (and username / enrollmentId).
    *
    * @param enrollmentId enrollment that was bound
+   * @return {@code true} when the file was rewritten; {@code false} when skipped (missing, wrong
+   *     enrollment, already clean, or I/O / POSIX failure)
    */
-  public void removeBindSecretsKeepRecoveryCodes(Integer enrollmentId) {
+  public boolean removeBindSecretsKeepRecoveryCodes(Integer enrollmentId) {
     if (enrollmentId == null) {
-      return;
+      return false;
     }
     Path filePath = Path.of(exportProperties.getPath());
     if (!Files.exists(filePath)) {
-      return;
+      return false;
     }
     try {
       ObjectNode json = (ObjectNode) objectMapper.readTree(filePath.toFile());
       if (!json.has("enrollmentId") || json.get("enrollmentId").asInt() != enrollmentId) {
-        return;
+        return false;
+      }
+      boolean hadSecrets =
+          json.has("enrollmentProofToken")
+              || json.has("enrollmentChallengeCode")
+              || json.has("authUrl");
+      if (!hadSecrets) {
+        logger.debug(
+            "Bootstrap credentials already free of bind secrets (enrollmentId: {})", enrollmentId);
+        return false;
       }
       json.remove("enrollmentProofToken");
       json.remove("enrollmentChallengeCode");
@@ -214,11 +225,14 @@ public class BootstrapCredentialsFileExporter {
           "Removed bind secrets from bootstrap credentials file (enrollmentId: {}); recovery codes"
               + " retained — delete the file after copying codes to a safe store",
           enrollmentId);
+      return true;
     } catch (UnsupportedOperationException e) {
       logger.error(
           "POSIX permissions unsupported; could not redact bind secrets from {}", filePath);
+      return false;
     } catch (IOException e) {
       logger.error("Failed to redact bind secrets from {}: {}", filePath, e.getMessage());
+      return false;
     }
   }
 

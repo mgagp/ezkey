@@ -123,12 +123,14 @@ class BootstrapCredentialsFileExporterTest {
     exporter.exportIfEnabled(
         enrollment, "proof.tokenValue", "admin.docker", List.of("AAAA-BBBB-CCCC-DDDD"));
 
-    exporter.removeBindSecretsKeepRecoveryCodes(7);
+    assertThat(exporter.removeBindSecretsKeepRecoveryCodes(7)).isTrue();
 
     ObjectNode json = (ObjectNode) new ObjectMapper().readTree(file.toFile());
     assertThat(json.has("enrollmentProofToken")).isFalse();
     assertThat(json.has("enrollmentChallengeCode")).isFalse();
     assertThat(json.get("recoveryCodes").get(0).asString()).isEqualTo("AAAA-BBBB-CCCC-DDDD");
     assertThat(json.get("enrollmentId").asInt()).isEqualTo(7);
+
+    assertThat(exporter.removeBindSecretsKeepRecoveryCodes(7)).isFalse();
   }
 }

@@ -192,12 +192,12 @@ else
 fi
 
 # After bind: drop proof token / challenge from credentials file; keep recovery codes.
-# Auth API also redacts when the volume is mounted; this is idempotent defense-in-depth.
-# Both admin-api and bootstrap-init run as spring (UID 100) so 0600 remains readable.
+# Admin API also redacts (startup + ShedLock schedule) once enrollment is BOUND/VERIFIED.
+# Both admin-api and bootstrap-init run as spring (UID 100 / GID 101) so 0600 remains readable.
 if [ -f "$BOOTSTRAP_CREDS_FILE" ]; then
   tmp_redact="${BOOTSTRAP_CREDS_FILE}.redact.tmp"
-  if jq 'del(.enrollmentProofToken, .enrollmentChallengeCode, .authUrl)' \
-    "$BOOTSTRAP_CREDS_FILE" > "$tmp_redact" 2>/dev/null; then
+  if (umask 077; jq 'del(.enrollmentProofToken, .enrollmentChallengeCode, .authUrl)' \
+    "$BOOTSTRAP_CREDS_FILE" > "$tmp_redact" 2>/dev/null); then
     mv "$tmp_redact" "$BOOTSTRAP_CREDS_FILE"
     chmod 600 "$BOOTSTRAP_CREDS_FILE" 2>/dev/null || true
     echo "✅ Removed bind secrets from bootstrap-credentials.json (recovery codes retained)"

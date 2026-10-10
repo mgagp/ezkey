@@ -51,7 +51,6 @@ class EnrollmentBindServiceEligibilityTest {
   @Mock private EzkeyAdminRepository ezkeyAdminRepository;
   @Mock private EnrollmentTxHelper enrollmentTxHelper;
   @Mock private SignatureService signatureService;
-  @Mock private BootstrapCredentialsPostBindCleaner bootstrapCredentialsPostBindCleaner;
 
   private final EntityEligibilityService eligibilityService = new EntityEligibilityService();
 
@@ -66,8 +65,7 @@ class EnrollmentBindServiceEligibilityTest {
             ezkeyAdminRepository,
             eligibilityService,
             enrollmentTxHelper,
-            signatureService,
-            bootstrapCredentialsPostBindCleaner);
+            signatureService);
   }
 
   @Test
@@ -184,7 +182,6 @@ class EnrollmentBindServiceEligibilityTest {
             org.mockito.ArgumentMatchers.any(),
             org.mockito.ArgumentMatchers.any(),
             org.mockito.ArgumentMatchers.anyString());
-    verify(bootstrapCredentialsPostBindCleaner).afterEnrollmentBound(404);
   }
 
   @Test
