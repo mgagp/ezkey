@@ -555,21 +555,37 @@ Server logs must **not** duplicate high-value secrets that are already returned 
 
 **Bootstrap enrollment TTL:** `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` (default **24**, minimum **1**, env `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS`). Bind is refused after expiry. To re-issue: read a recovery code from `bootstrap-credentials.json` → Admin UI account recovery → reset enrollment (refreshes `expiresAt`) → bind with the new material returned in the HTTP response.
 
-**Retrieve recovery codes (Docker):**
+**Retrieve recovery codes (Docker / Lightsail):** do **not** `cat` the file into the terminal.
+Copy into a local `0600` file, then open it in an editor or password-manager import.
 
 ```bash
-docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/bootstrap-credentials.json
+# Compose project prefixes the volume (Lightsail: ezkey-experimental-lightsail_bootstrap-artifacts).
+VOL=$(docker volume ls -q | grep -E '_?bootstrap-artifacts$' | head -n1)
+test -n "$VOL" || { echo "bootstrap-artifacts volume not found"; exit 1; }
+
+TMP=$(mktemp)
+docker create --name ezkey-bs-copy -v "$VOL":/data alpine >/dev/null
+docker cp ezkey-bs-copy:/data/bootstrap-credentials.json "$TMP"
+docker rm ezkey-bs-copy >/dev/null
+chmod 600 "$TMP"
+echo "Copied to $TMP (mode 0600) — import codes, then shred/rm the temp file."
+```
+
+**Delete from the volume** (after codes are stored safely):
+
+```bash
+VOL=$(docker volume ls -q | grep -E '_?bootstrap-artifacts$' | head -n1)
+docker run --rm -v "$VOL":/data alpine rm -f /data/bootstrap-credentials.json
 ```
 
 After a successful bind, Admin API (startup + short ShedLock schedule) removes the proof token and
 challenge from the file while keeping recovery codes. Auth API does **not** mount the credentials
 volume. `bootstrap-init` does not rewrite the file (single redaction owner).
 
-**Operator action — delete the file once recovery codes are stored safely.** Copy the codes from
-`bootstrap-credentials.json` into a password manager (or other safe store), then delete the file
-from the `bootstrap-artifacts` volume. Do not leave plaintext recovery codes on disk longer than
-needed. The file is owner-only `0600`; `admin-api` and `bootstrap-init` both run as pinned UID
-`100` / GID `101` (`spring`) so init can read it before redaction.
+**Operator action — delete the file once recovery codes are stored safely.** Do not leave plaintext
+recovery codes on disk longer than needed. The file should be owner-only `0600`; `admin-api` and
+`bootstrap-init` both run as pinned UID `100` / GID `101` (`spring`) so init can read it before
+redaction.
 
 **Deleting during redaction:** Admin API’s bind-secret redactor checks that the credentials file
 exists before querying the database (startup + ~60s ShedLock). After you delete the file, scheduled
@@ -585,7 +601,7 @@ accepted by reset (status returns to `CREATED`).
 
 ### Log rotation and hygiene
 
-**Audience:** next Lightsail / small-VM installs (≈4 GB RAM / ≈40 GB disk). This does **not** reconfigure a running live instance; Docker applies `logging:` only when a container is created.
+**Audience:** next Lightsail / small-VM installs (≈4 GB RAM / ≈80 GB disk). This does **not** reconfigure a running live instance; Docker applies `logging:` only when a container is created.
 
 **Compose defaults** (`experimental-hybrid/lightsail/docker-compose.yml`, `x-logging` on every service):
 
@@ -595,17 +611,17 @@ accepted by reset (status returns to `CREATED`).
 | `max-size` | `20m` | Per-file cap suited to a small disk |
 | `max-file` | `3` | Keep a short rotated history |
 
-Ceiling ≈ **8 services × 20 MiB × 3 files ≈ 480 MiB** of container json logs — intentional headroom beside Postgres data and images on a ~40 GB disk.
+Ceiling ≈ **8 services × 20 MiB × 3 files ≈ 480 MiB** of container json logs — intentional headroom beside Postgres data and images on a ~80 GB disk.
 
-**Host script:** [`scripts/ops/docker-log-hygiene.sh`](../scripts/ops/docker-log-hygiene.sh) (POSIX Bash, idempotent, local Docker only — no SSH/remote).
+**Host script:** [`scripts/ops/docker-log-hygiene.sh`](../scripts/ops/docker-log-hygiene.sh) (Bash, idempotent, local Docker only — no SSH/remote). Prefer `--project ezkey-experimental-lightsail` on the community VM.
 
 | When | Command | Purpose |
 | ---- | ------- | ------- |
-| After first `compose up` on a new VM | `./scripts/ops/docker-log-hygiene.sh` | Confirm every container has `max-size` / `max-file` |
-| Periodically (e.g. monthly) | `./scripts/ops/docker-log-hygiene.sh` | Report sizes; exit `1` if rotation missing |
-| Optional content scan | `./scripts/ops/docker-log-hygiene.sh --scan` | Counts of credential-like patterns only (never values) |
-| Plan cleanup | `./scripts/ops/docker-log-hygiene.sh --purge` | Dry-run: stopped-container logs + rotated files older than 7d |
-| Apply cleanup | `./scripts/ops/docker-log-hygiene.sh --purge --apply` (or `--yes`) | Truncate/remove after confirm |
+| After first `compose up` on a new VM | `./scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail` | Confirm every container has `max-size` / `max-file` |
+| Periodically (e.g. monthly) | same without `--scan` | Report sizes; exit `1` if rotation missing |
+| Optional content scan | `… --scan` (stdout+stderr; `--since` window) | Counts of credential-like patterns only (never values) |
+| Plan cleanup | `… --purge` | Dry-run: stopped-container logs + rotated files older than 7d |
+| Apply cleanup | `… --purge --apply --yes` | Truncate/remove (confirm unless `--yes`) |
 
 **Exit codes:** `0` ok, `1` findings, `2` error.
 

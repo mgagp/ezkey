@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Host-local Docker json-file log check / purge. No SSH, no remote actions.
+# Host-local Docker json-file log check / scan / purge. No SSH, no remote actions.
 # Exit: 0 ok, 1 findings, 2 error.
 # shellcheck shell=bash
 set -euo pipefail
@@ -9,19 +9,23 @@ SCAN=0
 APPLY=0
 YES=0
 OLDER_THAN_DAYS=7
+SCAN_SINCE="${SCAN_SINCE:-720h}"
+PROJECT="${COMPOSE_PROJECT_NAME:-}"
 DOCKER_ROOT="${DOCKER_ROOT:-/var/lib/docker}"
 FINDINGS=0
 
 usage() {
   cat <<'EOF'
 Usage: docker-log-hygiene.sh [options]
-  (default)         Check: driver, rotation, log sizes; flag missing rotation
-  --scan            Count credential-like patterns (counts only, never values)
-  --purge           Purge plan (dry-run): stopped-container logs + rotated files
-  --apply           With --purge, perform purge (prompts unless --yes)
-  --yes             Skip confirmation for --purge --apply
-  --older-than N    Rotated-file age in days (default: 7)
-  -h, --help        Help
+  (default)              Check: driver, rotation, log sizes
+  --scan                 Count credential-like patterns (never values); stdout+stderr
+  --since DUR            Scan window for docker logs (default: 720h / SCAN_SINCE)
+  --project NAME         Limit to compose project (label com.docker.compose.project)
+  --purge                Purge plan (dry-run): stopped logs + old rotated files
+  --apply                With --purge, perform purge (prompts unless --yes)
+  --yes                  Skip confirmation for --purge --apply
+  --older-than N         Rotated-file age in days (default: 7)
+  -h, --help             Help
 Exit: 0 ok, 1 findings, 2 error.
 EOF
 }
@@ -49,6 +53,21 @@ file_bytes() {
   echo "${n:-0}"
 }
 
+container_ids() {
+  if [ -n "$PROJECT" ]; then
+    docker ps -aq --filter "label=com.docker.compose.project=${PROJECT}"
+  else
+    docker ps -aq
+  fi
+}
+
+is_migration_name() {
+  case "$1" in
+    *migration*|*flyway*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 require_docker() {
   command -v docker >/dev/null 2>&1 || die "docker not found on PATH"
   docker info >/dev/null 2>&1 || die "docker not usable (daemon down or permission denied)"
@@ -60,6 +79,16 @@ while [ $# -gt 0 ]; do
     --purge) MODE="purge" ;;
     --apply) APPLY=1 ;;
     --yes) YES=1 ;;
+    --project)
+      shift
+      [ $# -gt 0 ] || die "--project requires a name"
+      PROJECT="$1"
+      ;;
+    --since)
+      shift
+      [ $# -gt 0 ] || die "--since requires a duration (e.g. 720h)"
+      SCAN_SINCE="$1"
+      ;;
     --older-than)
       shift
       [ $# -gt 0 ] || die "--older-than requires a number"
@@ -75,7 +104,6 @@ case "$OLDER_THAN_DAYS" in
   ''|*[!0-9]*) die "--older-than must be a non-negative integer" ;;
 esac
 
-# Purge never mutates without an explicit --purge --apply pair (+ confirmation or --yes).
 if [ "$APPLY" -eq 1 ] && [ "$MODE" != "purge" ]; then
   die "--apply requires --purge (refusing to run destructive actions)"
 fi
@@ -84,8 +112,8 @@ require_docker
 
 check_containers() {
   local id name driver max_size max_file log_path size total=0 missing=0
-  echo "=== Docker log hygiene (check) ==="
-  printf '%-28s %-12s %-10s %-10s %10s\n' "CONTAINER" "DRIVER" "MAX-SIZE" "MAX-FILE" "LOG-SIZE"
+  echo "=== Docker log hygiene (check)${PROJECT:+ project=$PROJECT} ==="
+  printf '%-36s %-12s %-10s %-10s %10s\n' "CONTAINER" "DRIVER" "MAX-SIZE" "MAX-FILE" "LOG-SIZE"
   while IFS= read -r id; do
     [ -n "$id" ] || continue
     name="$(docker inspect -f '{{.Name}}' "$id" | sed 's#^/##')"
@@ -98,56 +126,60 @@ check_containers() {
     size=0
     [ -n "$log_path" ] && size="$(file_bytes "$log_path")"
     total=$((total + size))
-    printf '%-28s %-12s %-10s %-10s %10s\n' \
+    printf '%-36s %-12s %-10s %-10s %10s\n' \
       "$name" "$driver" "$max_size" "$max_file" "$(human_bytes "$size")"
     if [ "$driver" = "json-file" ] && { [ "$max_size" = "-" ] || [ "$max_file" = "-" ]; }; then
       echo "  FINDING: $name json-file without max-size/max-file"
       missing=$((missing + 1))
       FINDINGS=1
     fi
-  done < <(docker ps -aq)
+  done < <(container_ids)
   echo "Total readable log bytes (active files): $(human_bytes "$total")"
   echo "Containers missing rotation: $missing"
 }
 
 # Counts only — never prints matching lines or captured values.
+# Includes stderr (Postgres / Caddy). Uses --since so long-lived admin-api startup is covered.
 scan_patterns() {
-  local id name c1 c2 c3 c4
+  local id name blob c1 c2 c3 c4 c5
   echo
-  echo "=== Credential-like pattern scan (counts only) ==="
+  echo "=== Credential-like pattern scan (counts only; since=${SCAN_SINCE}) ==="
   while IFS= read -r id; do
     [ -n "$id" ] || continue
     name="$(docker inspect -f '{{.Name}}' "$id" | sed 's#^/##')"
-    c1="$(docker logs --tail 5000 "$id" 2>/dev/null | grep -cE '[0-9]{4}(-[0-9]{4}){7}' || true)"
-    c2="$(docker logs --tail 5000 "$id" 2>/dev/null | grep -ciE 'enrollment[[:space:]]*proof[[:space:]]*token' || true)"
-    c3="$(docker logs --tail 5000 "$id" 2>/dev/null | grep -ciE 'recovery[[:space:]]*codes?[[:space:]]*:' || true)"
-    c4="$(docker logs --tail 5000 "$id" 2>/dev/null | grep -cE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' || true)"
-    printf '%-28s recovery_code_shape=%s proof_token_label=%s recovery_label=%s email_shape=%s\n' \
-      "$name" "$c1" "$c2" "$c3" "$c4"
-    if [ "${c1:-0}" -gt 0 ] || [ "${c4:-0}" -gt 0 ]; then
+    # Keep stderr: many services log there. Count patterns only.
+    blob="$(docker logs --since "$SCAN_SINCE" "$id" 2>&1 || true)"
+    c1="$(printf '%s' "$blob" | grep -cE '[0-9]{4}(-[0-9]{4}){7}' || true)"
+    c2="$(printf '%s' "$blob" | grep -ciE 'enrollment[[:space:]]*proof[[:space:]]*token' || true)"
+    c3="$(printf '%s' "$blob" | grep -ciE 'recovery[[:space:]]*codes?[[:space:]]*:' || true)"
+    c4="$(printf '%s' "$blob" | grep -cE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' || true)"
+    c5="$(printf '%s' "$blob" | grep -ciE 'Using generated security password' || true)"
+    printf '%-36s recovery=%s proof=%s recovery_lbl=%s email=%s gen_sec_pwd=%s\n' \
+      "$name" "$c1" "$c2" "$c3" "$c4" "$c5"
+    if [ "${c1:-0}" -gt 0 ] || [ "${c4:-0}" -gt 0 ] || [ "${c5:-0}" -gt 0 ]; then
       FINDINGS=1
     fi
-  done < <(docker ps -aq)
-  echo "(Counts only; values never printed. Label hits may be expected in full bootstrap.)"
+  done < <(container_ids)
+  echo "(Counts only; values never printed. Label/gen_sec_pwd hits may be expected in full bootstrap.)"
 }
 
 run_action() {
   local op="$1" path="$2"
   if [ "$op" = "truncate" ]; then
     truncate -s 0 "$path" 2>/dev/null || sudo -n truncate -s 0 "$path" 2>/dev/null \
-      || die "cannot truncate $path (need write access / sudo)"
+      || die "cannot truncate $path (need write access or passwordless sudo)"
     echo "truncated $path"
   else
     rm -f "$path" 2>/dev/null || sudo -n rm -f "$path" 2>/dev/null \
-      || die "cannot remove $path (need write access / sudo)"
+      || die "cannot remove $path (need write access or passwordless sudo — rotated logs often need sudo)"
     echo "removed $path"
   fi
 }
 
 purge_plan_or_apply() {
-  local id name status log_path f action="DRY-RUN"
+  local id name status log_path f action="DRY-RUN" mig_warn=0
   local -a ops=() paths=() notes=()
-  echo "=== Docker log hygiene (purge) ==="
+  echo "=== Docker log hygiene (purge)${PROJECT:+ project=$PROJECT} ==="
   [ "$APPLY" -eq 1 ] && action="APPLY"
   echo "Mode: $action (rotated files older than ${OLDER_THAN_DAYS}d; stopped-container logs)"
 
@@ -159,20 +191,26 @@ purge_plan_or_apply() {
     log_path="$(docker inspect -f '{{.LogPath}}' "$id" 2>/dev/null || true)"
     [ -n "$log_path" ] || continue
     [ -e "$log_path" ] || continue
+    if is_migration_name "$name"; then
+      echo "WARN: excluding migration/Flyway container from purge: $name (keep Flyway trace)"
+      mig_warn=1
+      continue
+    fi
     ops+=("truncate"); paths+=("$log_path"); notes+=("stopped $name")
-  done < <(docker ps -aq)
+  done < <(container_ids)
 
-  if [ -d "$DOCKER_ROOT/containers" ]; then
+  if [ -d "$DOCKER_ROOT/containers" ] && [ -r "$DOCKER_ROOT/containers" ]; then
     while IFS= read -r f; do
       [ -n "$f" ] || continue
       ops+=("rm"); paths+=("$f"); notes+=("rotated")
     done < <(find "$DOCKER_ROOT/containers" -type f -name '*-json.log.*' -mtime "+${OLDER_THAN_DAYS}" 2>/dev/null || true)
   else
-    echo "NOTE: $DOCKER_ROOT/containers not readable; rotated-file scan skipped (try sudo)."
+    echo "NOTE: $DOCKER_ROOT/containers not readable — rotated-file scan skipped."
+    echo "NOTE: Re-run with sudo (or fix group perms) to include rotated json logs in purge."
   fi
 
   if [ "${#ops[@]}" -eq 0 ]; then
-    echo "No purge candidates."
+    echo "No purge candidates.${mig_warn:+ (migration containers were excluded)}"
     return 0
   fi
 
@@ -184,7 +222,7 @@ purge_plan_or_apply() {
   echo "Candidates: ${#ops[@]}"
 
   if [ "$APPLY" -eq 0 ]; then
-    echo "Dry-run only. Re-run with: $0 --purge --apply [--yes]"
+    echo "Dry-run only. Re-run with: $0 --purge --apply --yes"
     return 0
   fi
 

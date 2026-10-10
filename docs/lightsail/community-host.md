@@ -322,14 +322,23 @@ Short operator checklist verified against repo scripts/compose (not live VM obse
    [`docker-compose.yml`](../../experimental-hybrid/lightsail/docker-compose.yml)) applies
    [`scripts/db/apply-grants.sql`](../../scripts/db/apply-grants.sql) after migration. APIs depend on
    it (`condition: service_completed_successfully`). Do not skip or remove it on a fresh bring-up.
-   The same compose file sets Docker `json-file` log rotation on every service via `x-logging`
-   (`max-size: 20m`, `max-file: 3` — sized for a ~4 GB / ~40 GB-disk VM; ceiling ≈ 480 MiB).
-   Rotation applies on **next** container create only; it does not resize logging on an already-running
-   live host.
 3. **Never `--clean-start` on a kept community DB** — `--clean-start` is destructive
    (`docker compose down -v`, then remote `clean-start.sh`). For upgrades that keep Postgres data,
    use rolling export (`--sync-operator-files` + `--remote-up`, or
    `full-exp-environment-upgrade.sh rolling`). First bring-up / disposable reset only.
+4. **Docker `json-file` log rotation** — Compose sets `x-logging` on every service
+   (`max-size: 20m`, `max-file: 3` — sized for a ~4 GB RAM / ~80 GB-disk VM; ceiling ≈ 480 MiB).
+   Rotation applies only when a container is **created**; it does not resize logging on an
+   already-running host.
+
+   **Rolling upgrade that adds or changes `logging:`:** `docker compose up -d` recreates **all**
+   services that inherit the new logging config (typically all 8, **Postgres included**). Named
+   volumes are kept, but there is a short outage while containers restart. Old json-file logs
+   disappear with the old container IDs — run `./scripts/ops/docker-log-hygiene.sh --scan` (and
+   copy any findings you care about) **before** the upgrade. After `up`, re-scp
+   `Caddyfile.ezkey-online` → remote `Caddyfile` (pitfall #1), then confirm rotation with
+   `docker inspect -f '{{.HostConfig.LogConfig}}' <container>` (or
+   `./scripts/ops/docker-log-hygiene.sh`).
 
 ### Log rotation and hygiene (next install)
 
@@ -339,12 +348,12 @@ For a **new** Lightsail bring-up (not a remote action from a laptop against the 
 2. On the VM after `compose up`, run check mode:
 
    ```bash
-   ./scripts/ops/docker-log-hygiene.sh
+   ./scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail
    ```
 
 3. Periodically (e.g. monthly) re-run check; optional `--scan` prints **counts only** of
    credential-like patterns (never values). Plan cleanup with `--purge` (dry-run); apply with
-   `--purge --apply` (confirm) or `--purge --apply --yes`.
+   `--purge --apply --yes` when non-interactive.
 
 Canon and “what it never does”: [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Log rotation and hygiene.
 

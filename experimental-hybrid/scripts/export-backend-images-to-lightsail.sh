@@ -135,17 +135,18 @@ run() {
 
 # Sync the host-side files that the Lightsail docker-compose.yml bind-mounts through ../../ paths.
 # These are NOT the three operator files (docker-compose.yml, Caddyfile, clean-start.sh); they are
-# the PostgreSQL role-init script, the DML grants applied by the db-grants service, and the master
-# key generator used by clean-start. Without them, a fresh postgres init has no application roles
-# and Flyway fails with "password authentication failed for user ezkey_migrate". See the
-# postgresql-application-role-split work (TB-2026-07-16).
+# the PostgreSQL role-init script, the DML grants applied by the db-grants service, the master
+# key generator used by clean-start, and host ops scripts (log hygiene). Without the DB pieces, a
+# fresh postgres init has no application roles and Flyway fails with "password authentication
+# failed for user ezkey_migrate". See the postgresql-application-role-split work (TB-2026-07-16).
 sync_host_mounts() {
   echo ""
-  echo "→ sync host-mounted files (postgres init, db grants, keygen) → ${SSH_HOST}:${REMOTE_REPO_ROOT}"
-  run ssh "${SSH_HOST}" "mkdir -p ${REMOTE_REPO_ROOT}/docker/postgres/init ${REMOTE_REPO_ROOT}/scripts/db"
+  echo "→ sync host-mounted files (postgres init, db grants, keygen, scripts/ops) → ${SSH_HOST}:${REMOTE_REPO_ROOT}"
+  run ssh "${SSH_HOST}" "mkdir -p ${REMOTE_REPO_ROOT}/docker/postgres/init ${REMOTE_REPO_ROOT}/scripts/db ${REMOTE_REPO_ROOT}/scripts/ops"
   run scp "${REPO_ROOT}/docker/postgres/init/"*.sh "${SSH_HOST}:${REMOTE_REPO_ROOT}/docker/postgres/init/"
   run scp "${REPO_ROOT}/docker/generate-encryption-keys.sh" "${SSH_HOST}:${REMOTE_REPO_ROOT}/docker/"
   run scp "${REPO_ROOT}/scripts/db/"* "${SSH_HOST}:${REMOTE_REPO_ROOT}/scripts/db/"
+  run scp "${REPO_ROOT}/scripts/ops/"* "${SSH_HOST}:${REMOTE_REPO_ROOT}/scripts/ops/"
 }
 
 echo "=========================================="

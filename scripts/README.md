@@ -121,11 +121,11 @@ App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/ligh
 
 ## Ops — Docker log hygiene (host-local)
 
-[`ops/docker-log-hygiene.sh`](ops/docker-log-hygiene.sh) — check json-file rotation / sizes (default), optional `--scan` (pattern **counts** only), `--purge` dry-run / `--purge --apply`. No remote/SSH. Canon: [`docs/OPERATIONAL.md`](../docs/OPERATIONAL.md) § Log rotation and hygiene.
+[`ops/docker-log-hygiene.sh`](ops/docker-log-hygiene.sh) — check json-file rotation / sizes (default), optional `--scan` (pattern **counts** only; stdout+stderr; `--since`), `--project`, `--purge` dry-run / `--purge --apply --yes`. No remote/SSH. Canon: [`docs/OPERATIONAL.md`](../docs/OPERATIONAL.md) § Log rotation and hygiene.
 
 ```bash
-./scripts/ops/docker-log-hygiene.sh
-./scripts/ops/docker-log-hygiene.sh --scan
+./scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail
+./scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan
 ./scripts/ops/docker-log-hygiene.sh --purge
 ```
 
