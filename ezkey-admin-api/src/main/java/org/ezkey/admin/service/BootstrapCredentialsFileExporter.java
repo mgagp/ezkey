@@ -86,6 +86,12 @@ public class BootstrapCredentialsFileExporter {
   private CredentialsAtomicWriter atomicWriter = this::writeAtomicallyOwnerOnly;
 
   /**
+   * When non-null, forces the POSIX create path to succeed ({@code true}) or throw {@link
+   * UnsupportedOperationException} ({@code false}) for unit tests.
+   */
+  private Boolean posixCreateSupportedForTests;
+
+  /**
    * Creates the exporter.
    *
    * @param exportProperties export path and enablement
@@ -110,6 +116,16 @@ public class BootstrapCredentialsFileExporter {
    */
   void replaceAtomicWriterForTests(CredentialsAtomicWriter writer) {
     this.atomicWriter = Objects.requireNonNull(writer);
+  }
+
+  /**
+   * Test-only: force POSIX {@link Files#createFile} to throw {@link UnsupportedOperationException}
+   * ({@code false}) or succeed ({@code true}). {@code null} uses the real filesystem.
+   *
+   * @param posixCreateSupported override
+   */
+  void setPosixCreateSupportedForTests(Boolean posixCreateSupported) {
+    this.posixCreateSupportedForTests = posixCreateSupported;
   }
 
   /**
@@ -309,17 +325,20 @@ public class BootstrapCredentialsFileExporter {
   /**
    * Writes JSON via a temp file created with {@code rw-------}, then atomic replace.
    *
+   * <p>When POSIX permissions are unavailable and {@code
+   * ezkey.admin.bootstrap.export.allow-non-posix-permissions=true}, writes without owner-only mode
+   * and logs one WARN (path + exception type only).
+   *
    * @param filePath destination path
    * @param jsonNode content to persist
    * @throws IOException on I/O failure
-   * @throws UnsupportedOperationException when POSIX file permissions are unavailable
+   * @throws UnsupportedOperationException when POSIX is unavailable and non-POSIX writes are not
+   *     allowed
    */
   private void writeAtomicallyOwnerOnly(Path filePath, ObjectNode jsonNode) throws IOException {
     Path parent = filePath.getParent() != null ? filePath.getParent() : Path.of(".");
-    FileAttribute<Set<PosixFilePermission>> attr =
-        PosixFilePermissions.asFileAttribute(OWNER_READ_WRITE_ONLY);
     Path tmp = parent.resolve("bootstrap-credentials." + java.util.UUID.randomUUID() + ".tmp");
-    Files.createFile(tmp, attr);
+    createTempFilePreferringOwnerOnly(tmp, filePath);
     try {
       objectMapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), jsonNode);
       try {
@@ -334,6 +353,48 @@ public class BootstrapCredentialsFileExporter {
         Files.deleteIfExists(tmp);
       }
     }
+  }
+
+  /**
+   * Creates {@code tmp} with owner-only mode when POSIX is available; optional non-POSIX fallback.
+   *
+   * @param tmp temporary file path
+   * @param destinationPath final credentials path (for WARN context only)
+   * @throws IOException on I/O failure
+   * @throws UnsupportedOperationException when POSIX unavailable and fallback disabled
+   */
+  private void createTempFilePreferringOwnerOnly(Path tmp, Path destinationPath)
+      throws IOException {
+    if (Boolean.FALSE.equals(posixCreateSupportedForTests)) {
+      rejectOrFallbackNonPosix(tmp, destinationPath, new UnsupportedOperationException("posix"));
+      return;
+    }
+    if (Boolean.TRUE.equals(posixCreateSupportedForTests)) {
+      FileAttribute<Set<PosixFilePermission>> attr =
+          PosixFilePermissions.asFileAttribute(OWNER_READ_WRITE_ONLY);
+      Files.createFile(tmp, attr);
+      return;
+    }
+    try {
+      FileAttribute<Set<PosixFilePermission>> attr =
+          PosixFilePermissions.asFileAttribute(OWNER_READ_WRITE_ONLY);
+      Files.createFile(tmp, attr);
+    } catch (UnsupportedOperationException e) {
+      rejectOrFallbackNonPosix(tmp, destinationPath, e);
+    }
+  }
+
+  private void rejectOrFallbackNonPosix(
+      Path tmp, Path destinationPath, UnsupportedOperationException cause) throws IOException {
+    if (!exportProperties.isAllowNonPosixPermissions()) {
+      throw cause;
+    }
+    logger.warn(
+        "POSIX permissions unavailable at {}; writing bootstrap credentials without owner-only"
+            + " mode ({})",
+        destinationPath,
+        cause.getClass().getSimpleName());
+    Files.createFile(tmp);
   }
 
   /**

@@ -228,7 +228,8 @@ profiles; lock down the host path elsewhere.
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.admin.bootstrap.export.enabled` | `boolean` | `false` | optionnel | Enable/disable full file export. Enabled by default in `docker` and `docker-test` profiles. Plaintext recovery codes are still persisted when present even if this flag is false. |
-| `ezkey.admin.bootstrap.export.path` | `String` | `/var/lib/ezkey/bootstrap/bootstrap-credentials.json` | optionnel | Absolute path for the JSON export file. Parent directory is created if missing. Write uses atomic create with owner-only mode (`0600`) and **refuses** the export when POSIX file permissions are unavailable (no soft fallback). Admin API only — do not mount this path on Auth API. |
+| `ezkey.admin.bootstrap.export.path` | `String` | `${user.home}/.ezkey/bootstrap/bootstrap-credentials.json` | optionnel | Absolute path for the JSON export file. Parent directory is created if missing. **Non-Docker / native `mvn spring-boot:run`:** user-home default (never `/var/lib/ezkey`). **Docker profiles:** `/var/lib/ezkey/bootstrap/bootstrap-credentials.json` (volume). Admin API only — do not mount this path on Auth API. |
+| `ezkey.admin.bootstrap.export.allow-non-posix-permissions` | `boolean` | `false` | optionnel | When `false` (default, Docker, prod): refuse the write if POSIX owner-only (`0600`) is unavailable (fail-closed when recovery codes must be persisted). When `true` (**`windows` profile only**): write anyway and log one WARN (path + exception type only; never secrets). Other failures stay fail-closed. |
 | `ezkey.admin.bootstrap.bind-secret-redact.delay-ms` | `long` | `60000` | optionnel | Fixed delay (ms) between Admin API ShedLock passes that strip proof token/challenge once the bootstrap enrollment is BOUND/VERIFIED. |
 | `ezkey.admin.bootstrap.bind-secret-redact.initial-delay-ms` | `long` | `15000` | optionnel | Initial delay (ms) before the first scheduled redact pass. |
 
@@ -359,6 +360,8 @@ The following ezkey-core prefixes are also active in Admin API. See
 | `ezkey.admin.rate-limit.enabled` | `true` | `true` | `false` | *(inherits)* |
 | `ezkey.admin-operations.rate-limit.enabled` | `true` | `true` | `false` | *(inherits)* |
 | `ezkey.admin.bootstrap.export.enabled` | `false` | `true` | `true` | *(inherits)* |
+| `ezkey.admin.bootstrap.export.path` | `${user.home}/.ezkey/bootstrap/…` | `/var/lib/ezkey/bootstrap/…` | `/var/lib/ezkey/bootstrap/…` | *(inherits)* |
+| `ezkey.admin.bootstrap.export.allow-non-posix-permissions`³ | `false` | `false` | `false` | *(inherits)* |
 | `ezkey.admin.token.expiration-hours` | `2` | `2` | `2` | *(inherits)* |
 | `ezkey.audit.chain.window-minutes` | `5` | `5` | `5` | *(inherits)* |
 | `ezkey.audit.chain.enabled` | `true` | `true` | `true` | `false` |
@@ -368,6 +371,9 @@ The following ezkey-core prefixes are also active in Admin API. See
 ² Spring profile `docker-base` is the mechanism for product runtime **base**
 (`EZKEY_RUNTIME_PROFILE=base` / clean-start `--runtime=base`). Default runtime is **integrity**
 (this profile not loaded). See [`docker/README.md`](../docker/README.md) § Runtime profiles.
+
+³ Profile `windows` sets `allow-non-posix-permissions=true` and the same `${user.home}/.ezkey/bootstrap/…`
+path (NTFS has no POSIX `0600`). Docker/prod stay `false`.
 
 ---
 

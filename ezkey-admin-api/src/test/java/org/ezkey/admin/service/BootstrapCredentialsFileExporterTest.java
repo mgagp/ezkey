@@ -180,11 +180,14 @@ class BootstrapCredentialsFileExporterTest {
   }
 
   @Test
-  void exportWithRecoveryCodesFailsClosedOnNonPosix() {
+  void allowNonPosixDefaultsFalseAndFailsClosed() {
+    assertThat(new BootstrapExportProperties().isAllowNonPosixPermissions()).isFalse();
+
     Path file = tempDir.resolve("bootstrap-credentials.json");
     BootstrapExportProperties exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
     exportProperties.setPath(file.toString());
+    exportProperties.setAllowNonPosixPermissions(false);
     AdminMfaProperties mfaProperties = new AdminMfaProperties();
     mfaProperties
         .getBootstrap()
@@ -192,10 +195,7 @@ class BootstrapCredentialsFileExporterTest {
     BootstrapCredentialsFileExporter exporter =
         new BootstrapCredentialsFileExporter(
             exportProperties, new QrCodeProperties(), mfaProperties);
-    exporter.replaceAtomicWriterForTests(
-        (path, json) -> {
-          throw new UnsupportedOperationException("posix unavailable (test seam)");
-        });
+    exporter.setPosixCreateSupportedForTests(false);
 
     Enrollment enrollment = new Enrollment();
     enrollment.setEnrollmentId(7);
@@ -209,6 +209,60 @@ class BootstrapCredentialsFileExporterTest {
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("UnsupportedOperationException")
         .hasMessageNotContaining(secretCode);
+    assertThat(file).doesNotExist();
+  }
+
+  @Test
+  void allowNonPosixTrueWritesWithWarnLikeWindowsProfile() {
+    Path file = tempDir.resolve("bootstrap-credentials.json");
+    BootstrapExportProperties exportProperties = new BootstrapExportProperties();
+    exportProperties.setEnabled(true);
+    exportProperties.setPath(file.toString());
+    exportProperties.setAllowNonPosixPermissions(true);
+    AdminMfaProperties mfaProperties = new AdminMfaProperties();
+    mfaProperties
+        .getBootstrap()
+        .setCredentialsOutputMode(BootstrapCredentialsOutputMode.RECOVERY_PRIMARY);
+    BootstrapCredentialsFileExporter exporter =
+        new BootstrapCredentialsFileExporter(
+            exportProperties, new QrCodeProperties(), mfaProperties);
+    exporter.setPosixCreateSupportedForTests(false);
+
+    Logger exporterLogger =
+        (Logger) LoggerFactory.getLogger(BootstrapCredentialsFileExporter.class);
+    Level previous = exporterLogger.getLevel();
+    exporterLogger.setLevel(Level.WARN);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    exporterLogger.addAppender(appender);
+
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(7);
+    enrollment.setEnrollmentChallenge(112233);
+    String secretCode = "WINDOWS-FALLBACK-CODE-5555-6666";
+
+    try {
+      assertThatCode(
+              () ->
+                  exporter.exportIfEnabled(
+                      enrollment, "proof.token", "admin.docker", List.of(secretCode)))
+          .doesNotThrowAnyException();
+      assertThat(file).exists();
+      String joined =
+          appender.list.stream()
+              .filter(e -> e.getLevel() == Level.WARN)
+              .map(ILoggingEvent::getFormattedMessage)
+              .reduce("", (a, b) -> a + "\n" + b);
+      assertThat(joined).contains("POSIX permissions unavailable");
+      assertThat(joined).contains("UnsupportedOperationException");
+      assertThat(joined).doesNotContain(secretCode);
+      for (ILoggingEvent event : appender.list) {
+        assertThat(event.getThrowableProxy()).isNull();
+      }
+    } finally {
+      exporterLogger.detachAppender(appender);
+      exporterLogger.setLevel(previous);
+    }
   }
 
   @Test
