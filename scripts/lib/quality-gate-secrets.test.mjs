@@ -5,6 +5,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  assertAllowlistRegexAnchored,
+  assertKnownAllowlistPhase,
   detectSecrets,
   extractLogger,
   isEmittedInPhaseWindows,
@@ -38,35 +40,68 @@ describe('isMaskedOrNonSecretValue', () => {
   });
 });
 
-describe('Christophe replay inputs (12)', () => {
+describe('Christophe replay inputs', () => {
+  const HEX32 = '0123456789abcdef0123456789abcdef';
+  const TOKEN32 = 'abcdefghijklmnopqrstuvwxyz012345';
+  /** @type {Array<[string, string, 'RED'|'AMBER', string]>} line, kind, severity, rawMustVanish */
   const cases = [
-    ['Authorization: Bearer xyzTOKEN1234567890abcd', 'bearer'],
-    ['X-Api-Key: sk_live_abcdefghijklmnopqrstuv', 'header-secret'],
-    ['pwd=supersecretvalue99', 'kv-secret'],
-    ['api_key=abc123def456ghi789jkl', 'header-secret'],
-    ['code=ABC123XYZ', 'kv-secret'],
-    ['token=abcdefghijklmnopqrstuvwxyz12', 'kv-secret'],
-    ['proofToken=abc123secrettokenvalue', 'kv-secret'],
-    ['--enrollment-proof-token "Z6tww70xHBi8OZ-cfOOrvMu_VEzZBgQhZA7K0ikSO28"', 'cli-secret'],
-    ['admin@ezkey.local', 'email'],
-    ['connected from 192.168.1.42', 'ip'],
-    ['eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.sig', 'jwt'],
-    ['{"password":"hunter2secret"}', 'json-secret'],
+    ['challenge: 42', 'kv-secret', 'RED', '42'],
+    ['accessCode=XyZ987', 'kv-secret', 'RED', 'XyZ987'],
+    ['2001:db8::1', 'ip', 'AMBER', '2001:db8::1'],
+    [`/t/${HEX32}`, 'path-token', 'RED', HEX32],
+    ['Authorization: Bearer xyz', 'bearer', 'RED', 'xyz'],
+    [`token=${TOKEN32}`, 'kv-secret', 'RED', TOKEN32],
+    ['authorization: Basic dXNlcjpwYXNz', 'basic', 'RED', 'dXNlcjpwYXNz'],
+    ['password="a b"', 'kv-secret', 'RED', 'a b'],
+    ['admin@ezkey.local', 'email', 'AMBER', 'admin@ezkey.local'],
+    ['connected from 192.168.1.42', 'ip', 'AMBER', '192.168.1.42'],
+    [
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.sig',
+      'jwt',
+      'RED',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+    ],
+    ['{"password":"hunter2secret"}', 'json-secret', 'RED', 'hunter2secret'],
   ];
-  for (const [line, kind] of cases) {
-    it(`detects ${kind}: ${line.slice(0, 40)}…`, () => {
+  for (const [line, kind, severity, raw] of cases) {
+    it(`detects ${kind} (${severity}) and clears raw: ${line.slice(0, 48)}`, () => {
       const r = detectSecrets(line);
       assert.ok(r.kinds.length, `expected kinds for: ${line}`);
       assert.ok(r.kinds.includes(kind), `expected ${kind} in ${r.kinds} for: ${line}`);
+      assert.equal(r.severity, severity);
       const redacted = sanitize(line);
-      assert.notEqual(redacted, line);
-      if (kind === 'email' || kind === 'ip') {
-        assert.equal(r.severity, 'AMBER');
-      } else {
-        assert.equal(r.severity, 'RED');
-      }
+      assert.equal(
+        redacted.includes(raw),
+        false,
+        `sanitize must clear ${JSON.stringify(raw)}; got ${JSON.stringify(redacted)}`,
+      );
     });
   }
+
+  it('redacts passphrase / privateKey / otp / pin / JSESSIONID', () => {
+    const samples = [
+      ['passphrase=s3cret-phrase', 's3cret-phrase'],
+      ['privateKey=MEECAQAwEwYHKoZIzj0CAQY', 'MEECAQAwEwYHKoZIzj0CAQY'],
+      ['otp=123456', '123456'],
+      ['pin=9876', '9876'],
+      ['Cookie: JSESSIONID=ABC123session', 'ABC123session'],
+    ];
+    for (const [line, raw] of samples) {
+      const r = detectSecrets(line);
+      assert.equal(r.severity, 'RED', line);
+      assert.equal(sanitize(line).includes(raw), false, line);
+    }
+  });
+
+  it('username / user are AMBER (not RED)', () => {
+    const r1 = detectSecrets('username=alice');
+    assert.equal(r1.severity, 'AMBER');
+    assert.ok(r1.kinds.includes('kv-username'));
+    assert.equal(sanitize('username=alice').includes('alice'), false);
+    const r2 = detectSecrets('{"user":"bob"}');
+    assert.equal(r2.severity, 'AMBER');
+    assert.ok(r2.kinds.includes('json-username'));
+  });
 });
 
 describe('detectSecrets product cases', () => {
@@ -130,28 +165,58 @@ describe('TOKEN / Java class names', () => {
   });
 });
 
+describe('allowlist regex anchoring', () => {
+  it('accepts full ^…$ without ^.* pseudo-anchor', () => {
+    assert.doesNotThrow(() =>
+      assertAllowlistRegexAnchored('^ERROR:.*ezkey_encryption_key_pkey.*$'),
+    );
+  });
+  it('rejects missing $', () => {
+    assert.throws(() => assertAllowlistRegexAnchored('^ERROR:.*pkey'), /fully anchored/);
+  });
+  it('rejects ^.* pseudo-anchors', () => {
+    assert.throws(
+      () => assertAllowlistRegexAnchored('^.*ezkey_encryption_key_pkey.*$'),
+      /pseudo-anchor/,
+    );
+  });
+
+  it('rejects unknown phase names', () => {
+    assert.doesNotThrow(() => assertKnownAllowlistPhase('clean-start'));
+    assert.doesNotThrow(() => assertKnownAllowlistPhase('*'));
+    assert.throws(() => assertKnownAllowlistPhase('bootstrap'), /unknown phase/);
+    assert.throws(() => assertKnownAllowlistPhase('post-clean'), /unknown phase/);
+  });
+});
+
 describe('allowlist signature match', () => {
   it('ezkey_encryption_key_pkey survives sanitize (no digit → not <TOKEN>)', () => {
     const line =
       'ERROR: duplicate key value violates unique constraint "ezkey_encryption_key_pkey"';
     const sig = signature(line);
     assert.match(sig, /ezkey_encryption_key_pkey/);
-    assert.ok(new RegExp('ezkey_encryption_key_pkey').test(sig));
+    assert.ok(new RegExp('^ERROR:.*ezkey_encryption_key_pkey.*$').test(sig));
   });
 
-  it('bootstrap proof-token signature matches allowlist-style anchored regex', () => {
+  it('bootstrap proof-token subject matches logger-anchored allowlist regex', () => {
     const line =
       '2026-10-09T19:58:56.790Z  WARN 1 --- [ezkey-admin-api] [           main] o.e.admin.service.AdminBootstrapService  :    Enrollment Proof Token: f7zMmUzbJSV1WPjXD_jLuoDNucM559Qr7MWIo_MC0yo.0KvCfXqW9ydHGisXjxMz2w';
-    const sig = signature(line);
-    const re = /^.*AdminBootstrapService.*Enrollment Proof Token=/;
-    assert.ok(re.test(sig), `sig=${sig}`);
+    const logger = extractLogger(line);
+    const subject = `${logger} ${signature(line)}`;
+    const re =
+      /^o\.e\.admin\.service\.AdminBootstrapService .*Enrollment Proof Token=.*$/;
+    assert.ok(re.test(subject), `subject=${subject}`);
   });
 
-  it('ezkey_encryption_key_pkey allowlist pattern is anchored', () => {
-    const line =
-      'ERROR: duplicate key value violates unique constraint "ezkey_encryption_key_pkey"';
-    const sig = signature(line);
-    assert.ok(new RegExp('^.*ezkey_encryption_key_pkey').test(sig), `sig=${sig}`);
+  it('signature collapses thread names for dedup', () => {
+    const a =
+      '2026-10-09T20:39:30.927Z  INFO 1 --- [ezkey-admin-api] [nio-9080-exec-9] o.ezkey.admin.service.AdminAuthService   : Passwordless with challenge=ABCD1234';
+    const b =
+      '2026-10-09T20:39:31.001Z  INFO 1 --- [ezkey-admin-api] [nio-9080-exec-2] o.ezkey.admin.service.AdminAuthService   : Passwordless with challenge=ABCD1234';
+    const truncated =
+      '2026-10-09T20:39:20.055Z  INFO 1 --- [ezkey-admin-api] [io-9080-exec-10] o.ezkey.admin.service.AdminAuthService   : Passwordless with challenge=ABCD1234';
+    assert.equal(signature(a), signature(b));
+    assert.equal(signature(a), signature(truncated));
   });
 });
 
@@ -169,8 +234,8 @@ describe('emission-time allowlist windows (#750)', () => {
     {
       service: 'ezkey-admin-api',
       phases: ['clean-start', 'post-clean-health'],
-      re: /^.*AdminBootstrapService.*Enrollment Proof Token=/,
-      secretChannel: true,
+      re: /^o\.e\.admin\.service\.AdminBootstrapService .*Enrollment Proof Token=.*$/,
+      kind: 'secret-channel',
       hygieneBad: false,
     },
   ];
@@ -241,4 +306,3 @@ describe('emission-time allowlist windows (#750)', () => {
     assert.equal(isSecretChannelAllowlisted(hit, allowlist, windows), false);
   });
 });
-

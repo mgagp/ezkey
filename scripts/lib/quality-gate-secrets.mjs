@@ -21,9 +21,27 @@ export const ID_LABEL_VALUE_RE = /^ID=\d+$/i;
  */
 export const OPAQUE_TOKEN_RE = /\b(?=[A-Za-z0-9_-]*[A-Za-z])(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{20,}\b/g;
 
-/** Compound secret key stem (proofToken, api_key, challenge code, …). */
+/** Credential key stem (proofToken, api_key, challenge code, passphrase, …). */
 export const SECRET_KEY_STEM =
-  String.raw`\w*(?:token|secret|password|passwd|pwd|challenge\W*code|api[-_]?key|access[_-]?code|authorization|bearer)`;
+  String.raw`\w*(?:token|secret|password|passwd|pwd|passphrase|private[_-]?key|challenge\W*code|api[-_]?key|access[_-]?code|authorization|bearer|otp|pin)`;
+
+/** Low-PII identity keys — AMBER, not credential RED. */
+export const USERNAME_KEY_RE = /^(?:username|user)$/i;
+
+/** Gate phase names valid in allowlist phase fields (plus `*`). */
+export const KNOWN_ALLOWLIST_PHASES = new Set([
+  '*',
+  'preflight',
+  'unit-tests',
+  'clean-start',
+  'post-clean-health',
+  'functional-tests',
+  'elective-tests',
+  'playwright',
+  'churn-init',
+  'churn',
+  'health',
+]);
 
 /**
  * @param {string} value
@@ -92,7 +110,7 @@ export const PRODUCT_LOG_SOURCES = [
 ];
 
 /**
- * Apply the single redaction pattern set. Bearer runs first.
+ * Apply the single redaction pattern set. Bearer / Basic run before kv.
  *
  * @param {string} rawLine
  * @returns {{ text: string, changes: Array<{ kind: string, severity: 'RED'|'AMBER', sample: string }> }}
@@ -113,13 +131,19 @@ export function applyRedactions(rawLine) {
     return 'Bearer ***REDACTED***';
   });
 
+  // 1b) Basic <base64> (Authorization: Basic …)
+  out = out.replace(/Basic\s+([A-Za-z0-9+/=]+)/gi, (full, b64) => {
+    note('basic', 'RED', b64);
+    return 'Basic ***REDACTED***';
+  });
+
   // 2) Email → AMBER low-PII
   out = out.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, (m) => {
     note('email', 'AMBER', m);
     return '<EMAIL>';
   });
 
-  // 3) IPv4 / IPv6 → AMBER (redacted for signatures; low-PII, not credential RED)
+  // 3) IPv4 / IPv6 → AMBER
   out = out.replace(
     /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\b/g,
     (m) => {
@@ -139,19 +163,39 @@ export function applyRedactions(rawLine) {
     return '<JWT>';
   });
 
-  // 5) JSON "key":"value" (compound keys)
+  // 4b) Path token /t/<32 hex>
+  out = out.replace(/\/t\/([a-fA-F0-9]{32})\b/g, (full, tok) => {
+    note('path-token', 'RED', tok);
+    return '/t/***REDACTED***';
+  });
+
+  // 4c) JSESSIONID cookie
+  out = out.replace(/\bJSESSIONID\s*=\s*([^\s;]+)/gi, (full, val) => {
+    if (isMaskedOrNonSecretValue(val)) return full;
+    note('cookie', 'RED', val);
+    return 'JSESSIONID=***REDACTED***';
+  });
+
+  // 5) JSON "key":"value" (compound keys + username AMBER)
   out = out.replace(
-    new RegExp(`"(${SECRET_KEY_STEM}|challenge|code|key|username|user)"\\s*:\\s*"([^"]*)"`, 'gi'),
+    new RegExp(
+      `"(${SECRET_KEY_STEM}|challenge|code|key|username|user)"\\s*:\\s*"([^"]*)"`,
+      'gi',
+    ),
     (full, key, val) => {
       if (isMaskedOrNonSecretValue(val)) return full;
-      note('json-secret', 'RED', val);
+      if (USERNAME_KEY_RE.test(key)) {
+        note('json-username', 'AMBER', val);
+      } else {
+        note('json-secret', 'RED', val);
+      }
       return `"${key}":"***REDACTED***"`;
     },
   );
 
-  // 6) CLI --…-token "value" / --…-token=value
+  // 6) CLI --…-token / --…-password "value with spaces" / =value
   out = out.replace(
-    /(--[\w-]*(?:token|secret|password|api[-_]?key)[\w-]*)(?:\s+"([^"]+)"|\s+'([^']+)'|=(\S+)|(?:\s+)(\S+))/gi,
+    /(--[\w-]*(?:token|secret|password|passphrase|api[-_]?key|private[_-]?key|otp|pin)[\w-]*)(?:\s+"([^"]+)"|\s+'([^']+)'|=(\S+)|(?:\s+)(\S+))/gi,
     (full, flag, dq, sq, eq, bare) => {
       const val = dq || sq || eq || bare || '';
       if (isMaskedOrNonSecretValue(val)) return full;
@@ -173,8 +217,39 @@ export function applyRedactions(rawLine) {
     },
   );
 
-  // 8) kv / labeled: compound keys, challenge code, Enrollment Proof Token, etc.
-  // Skip when value already masked (e.g. after Bearer rule) so Authorization: Bearer *** stays.
+  // 8a) kv with double/single-quoted values (spaces allowed): password="a b"
+  out = out.replace(
+    new RegExp(
+      `\\b(${SECRET_KEY_STEM}|challenge|code|username|user)\\b\\s*[=:]\\s*"([^"]*)"`,
+      'gi',
+    ),
+    (full, key, val) => {
+      if (isMaskedOrNonSecretValue(val)) return full;
+      if (USERNAME_KEY_RE.test(key)) {
+        note('kv-username', 'AMBER', val);
+      } else {
+        note('kv-secret', 'RED', val);
+      }
+      return `${key}="***REDACTED***"`;
+    },
+  );
+  out = out.replace(
+    new RegExp(
+      `\\b(${SECRET_KEY_STEM}|challenge|code|username|user)\\b\\s*[=:]\\s*'([^']*)'`,
+      'gi',
+    ),
+    (full, key, val) => {
+      if (isMaskedOrNonSecretValue(val)) return full;
+      if (USERNAME_KEY_RE.test(key)) {
+        note('kv-username', 'AMBER', val);
+      } else {
+        note('kv-secret', 'RED', val);
+      }
+      return `${key}='***REDACTED***'`;
+    },
+  );
+
+  // 8b) kv / labeled unquoted
   out = out.replace(
     new RegExp(
       `\\b(${SECRET_KEY_STEM}|challenge|code|username|user)\\b\\s*[=:]\\s*(\\S+)`,
@@ -182,8 +257,11 @@ export function applyRedactions(rawLine) {
     ),
     (full, key, val) => {
       if (isMaskedOrNonSecretValue(val)) return full;
-      // Do not re-eat "Authorization: Bearer …" — Bearer rule already handled it.
-      if (/^bearer$/i.test(val)) return full;
+      if (/^bearer$/i.test(val) || /^basic$/i.test(val)) return full;
+      if (USERNAME_KEY_RE.test(key)) {
+        note('kv-username', 'AMBER', val);
+        return `${key}=***REDACTED***`;
+      }
       note('kv-secret', 'RED', val);
       return `${key}=***REDACTED***`;
     },
@@ -208,7 +286,6 @@ export function applyRedactions(rawLine) {
   // 10) Opaque long tokens (letters+digits, not CamelCase / dotted packages)
   out = out.replace(OPAQUE_TOKEN_RE, (m) => {
     if (MASKED_VALUE_RE.test(m)) return m;
-    // Skip pure CamelCase-looking tokens without digit? OPAQUE already requires a digit.
     note('opaque-token', 'RED', m);
     return '<TOKEN>';
   });
@@ -279,7 +356,7 @@ export function extractLogger(rawLine) {
 }
 
 /**
- * Signature for allowlist matching (timestamps / uuids collapsed after sanitize).
+ * Signature for allowlist matching / dedup (timestamps, threads, uuids collapsed).
  *
  * @param {string} line
  * @returns {string}
@@ -288,6 +365,12 @@ export function signature(line) {
   let s = sanitize(line.trim());
   s = s.replace(/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, '<TS>');
   s = s.replace(/\b\d{2}:\d{2}:\d{2}(?:\.\d+)?\b/g, '<TIME>');
+  // Collapse Spring thread names so one statement → one finding (not one per exec-N).
+  // Include left-truncated forms (e.g. [io-9080-exec-10] from [nio-9080-exec-10]).
+  s = s.replace(
+    /\[\s*(?:main|scheduling-\d+|Thread-\d+|task-\d+|[^\]]*exec-\d+)\s*\]/gi,
+    '[THREAD]',
+  );
   s = s.replace(
     /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,
     '<UUID>',
@@ -295,6 +378,41 @@ export function signature(line) {
   s = s.replace(/\b\d{5,}\b/g, '<N>');
   s = s.replace(/\s+/g, ' ');
   return s.slice(0, 240);
+}
+
+/**
+ * Validate allowlist regex: must be full ^…$ and must not use ^.* pseudo-anchors.
+ *
+ * @param {string} pattern
+ * @returns {void}
+ * @throws {Error}
+ */
+export function assertAllowlistRegexAnchored(pattern) {
+  if (!pattern.startsWith('^') || !pattern.endsWith('$')) {
+    throw new Error(
+      `Allowlist regex must be fully anchored with ^…$ (got: ${pattern})`,
+    );
+  }
+  if (/^\^\.\*/.test(pattern)) {
+    throw new Error(
+      `Allowlist regex rejects ^.* pseudo-anchors; anchor to a real prefix (got: ${pattern})`,
+    );
+  }
+}
+
+/**
+ * Reject unknown allowlist phase names (silent inert entries are a footgun).
+ *
+ * @param {string} phase
+ * @returns {void}
+ * @throws {Error}
+ */
+export function assertKnownAllowlistPhase(phase) {
+  if (!KNOWN_ALLOWLIST_PHASES.has(phase)) {
+    throw new Error(
+      `Allowlist unknown phase "${phase}" (blocking). Known: ${[...KNOWN_ALLOWLIST_PHASES].join(', ')}`,
+    );
+  }
 }
 
 /** docker logs --timestamps prefix: 2026-10-09T20:38:19.219626050Z<space> */
@@ -381,7 +499,6 @@ export function isEmittedInPhaseWindows(emittedAt, phaseNames, windows) {
   if (!phases.length) return false;
   if (phases.includes('*')) return true;
   if (!windows || windows.size === 0) {
-    // No windows file: cannot prove emission phase — fail closed for scoped entries.
     return false;
   }
   if (!emittedAt || Number.isNaN(emittedAt.getTime())) return false;
@@ -408,11 +525,11 @@ export function serviceNameMatches(entryService, serviceName) {
 }
 
 /**
- * #750 bootstrap enrollment channel — allowlist by emission-time phase window
- * (not by the phase that happens to be scanning). Recovery codes never match.
+ * #750 bootstrap enrollment channel — allowlist by emission-time phase window.
+ * Entries must declare kind=secret-channel. Recovery codes never match.
  *
  * @param {{ kinds?: string[], logger?: string|null, service?: string, preview?: string, emittedAt?: Date|null }} hit
- * @param {Array<{ hygieneBad?: boolean, re?: RegExp|null, secretChannel?: boolean, service: string, phases: string[] }>} allowlist
+ * @param {Array<{ hygieneBad?: boolean, re?: RegExp|null, kind?: string|null, service: string, phases: string[] }>} allowlist
  * @param {Map<string, { start: Date, end: Date }>|null|undefined} windows
  * @returns {boolean}
  */
@@ -424,15 +541,15 @@ export function isSecretChannelAllowlisted(hit, allowlist, windows) {
     hit.emittedAt instanceof Date
       ? hit.emittedAt
       : parseIsoDate(hit.emittedAt == null ? '' : String(hit.emittedAt));
-  const text = `${logger} ${hit.preview || ''}`;
-  const sig = signature(hit.preview || '');
+  // Subject starts with logger so allowlist regex can ^anchor without ^.*
+  const subject = `${logger} ${signature(hit.preview || '')}`;
   for (const entry of allowlist || []) {
-    if (entry.hygieneBad || !entry.re || !entry.secretChannel) continue;
+    if (entry.hygieneBad || !entry.re || entry.kind !== 'secret-channel') continue;
     if (!serviceNameMatches(entry.service, hit.service || '')) continue;
     if (!isEmittedInPhaseWindows(emittedAt, entry.phases, windows)) {
       continue;
     }
-    if (entry.re.test(text) || entry.re.test(sig)) return true;
+    if (entry.re.test(subject)) return true;
   }
   return false;
 }

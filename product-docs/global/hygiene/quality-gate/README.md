@@ -52,7 +52,7 @@ replicas). Gate memory overlay stays as a runaway-heap guard on ~15Gi hosts.
 | Path | Role |
 | --- | --- |
 | [`config/quality-gate/thresholds.json`](../../../../config/quality-gate/thresholds.json) | Provisional bands. `oomKills` red at 1. |
-| [`config/quality-gate/log-allowlist.txt`](../../../../config/quality-gate/log-allowlist.txt) | `service \| phase \| anchored regex \| issue \| expires= \| justification`. **phase** = emission-time window from `phase-windows.tsv` (docker `--timestamps`). |
+| [`config/quality-gate/log-allowlist.txt`](../../../../config/quality-gate/log-allowlist.txt) | `service \| phase \| ^…$ regex \| issue \| expires= \| [requires=] \| [kind=] \| justification`. **phase** = known emission-time window (or `*`); `^.*` pseudo-anchors and unknown phases are rejected. `requires=COMPOSE_RETRY_FIRED` / `kind=secret-channel` are explicit (not inferred from issue text). |
 | `phase-windows.tsv` (per run) | `phase \\t start_iso \\t end_iso` recorded by the gate for each phase. |
 
 Shared redaction + `detectSecrets` live in [`scripts/lib/quality-gate-secrets.mjs`](../../../../scripts/lib/quality-gate-secrets.mjs).

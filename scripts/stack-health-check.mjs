@@ -10,6 +10,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  assertAllowlistRegexAnchored,
+  assertKnownAllowlistPhase,
   detectSecrets,
   extractLogger,
   isEmittedInPhaseWindows,
@@ -576,7 +578,7 @@ function loadAllowlist(path) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
     const parts = trimmed.split('|').map((p) => p.trim());
-    // service | phase | regex | issue | expires= | justification
+    // service | phase | regex | issue | expires= | [requires=] | [kind=] | justification
     if (parts.length < 6) {
       entries.push({
         raw: trimmed,
@@ -585,13 +587,33 @@ function loadAllowlist(path) {
       });
       continue;
     }
-    const [service, phaseField, pattern, issue, expiresField, ...justParts] = parts;
-    const justification = justParts.join('|');
+    const [service, phaseField, pattern, issue, expiresField, ...rest] = parts;
+    let requires = null;
+    let kind = null;
+    const justificationParts = [];
+    for (const p of rest) {
+      if (/^requires=/i.test(p)) {
+        requires = p.slice('requires='.length).trim();
+      } else if (/^kind=/i.test(p)) {
+        kind = p.slice('kind='.length).trim();
+      } else {
+        justificationParts.push(p);
+      }
+    }
+    const justification = justificationParts.join('|');
     const phases = phaseField.split(',').map((p) => p.trim()).filter(Boolean);
+    for (const ph of phases) {
+      try {
+        assertKnownAllowlistPhase(ph);
+      } catch (e) {
+        throw new Error(`${e.message}. Fix ${path}`);
+      }
+    }
     const expM = /^expires=(\d{4}-\d{2}-\d{2})$/.exec(expiresField);
     const expires = expM ? expM[1] : null;
     const hasIssue = /^#\d+$/.test(issue);
     const expired = !expires || expires < today;
+    assertAllowlistRegexAnchored(pattern);
     let re = null;
     try {
       re = new RegExp(pattern);
@@ -601,7 +623,6 @@ function loadAllowlist(path) {
       );
     }
     const hygieneBad = !hasIssue || expired;
-    const secretChannel = /by design:\s*initial enrollment/i.test(justification);
     entries.push({
       raw: trimmed,
       service,
@@ -610,8 +631,9 @@ function loadAllowlist(path) {
       issue,
       expires,
       justification,
+      requires,
+      kind,
       re,
-      secretChannel,
       hygieneBad,
       reason: hygieneBad
         ? !hasIssue
@@ -625,16 +647,16 @@ function loadAllowlist(path) {
 
 /**
  * Error/warn allowlist by emission-time phase window.
- * #747 also requires COMPOSE_RETRY_FIRED and admin-api service.
+ * Optional requires=COMPOSE_RETRY_FIRED (explicit; not inferred from issue #).
  */
 function isLineAllowlisted(sig, serviceName, allowlist, emittedAt, phaseWindows) {
   for (const entry of allowlist) {
-    if (entry.hygieneBad || !entry.re || entry.secretChannel) continue;
+    if (entry.hygieneBad || !entry.re || entry.kind === 'secret-channel') continue;
     if (!serviceNameMatches(entry.service, serviceName)) continue;
     if (!isEmittedInPhaseWindows(emittedAt, entry.phases, phaseWindows)) continue;
-    if (entry.issue === '#747') {
-      if (!COMPOSE_RETRY_FIRED) continue;
-      if (!serviceName.includes('ezkey-admin-api')) continue;
+    if (entry.requires) {
+      const reqs = entry.requires.split(',').map((s) => s.trim()).filter(Boolean);
+      if (reqs.includes('COMPOSE_RETRY_FIRED') && !COMPOSE_RETRY_FIRED) continue;
     }
     if (entry.re.test(sig)) return true;
   }
