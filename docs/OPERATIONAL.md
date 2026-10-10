@@ -634,7 +634,7 @@ Ceiling ≈ **8 services × 20 MiB × 3 files ≈ 480 MiB** of container json lo
 
 **What the script never does:** change Compose or recreate containers; talk to remote hosts; print secret values from `--scan`; truncate logs of **running** containers; delete Postgres or named volumes; purge rotated logs outside the selected project's container IDs.
 
-**Pre-upgrade `--scan` order:** `scripts/ops/` arrives with `--sync-operator-files` (or a manual `scp`). Sync **without** `--remote-up` first (or `scp` the script), run `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan`, then `--remote-up` (or a combined sync+up pass after the scan).
+**Pre-upgrade `--scan` order (community):** sync `--sync-operator-files` **without** `--remote-up` (or `scp` the hygiene script) → **immediately** re-scp `Caddyfile.ezkey-online` → remote `Caddyfile` (sync overwrites with EXP1) → `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan` → `--remote-up`.
 
 ### Post-upgrade checks (m6) — community VM `ezkey-experimental-lightsail`
 
@@ -643,23 +643,23 @@ Run on the VM after a rolling upgrade (no `cat` of secrets):
 1. `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`
 2. Confirm `json-file` rotation via `docker inspect` / hygiene check
 3. Caddyfile is the community variant (`Caddyfile.ezkey-online` content)
-4. Bootstrap credentials — mode + key absence only (parametrize `VOL`; never hard-code other stacks):
+4. Bootstrap credentials — mode + key absence only (parametrize `VOL`; **never** `docker cp` to `/tmp`):
 
    ```bash
    # Discover: docker volume ls --filter name=bootstrap-artifacts
    VOL=${VOL:-ezkey-experimental-lightsail_bootstrap-artifacts}
    docker volume inspect "$VOL" >/dev/null || { echo "volume not found: $VOL"; exit 1; }
-   CID=$(docker create -v "$VOL":/data alpine) || exit 1
-   docker cp "$CID":/data/bootstrap-credentials.json /tmp/bs-check.json
-   docker rm "$CID" >/dev/null
-   stat -c '%a %u:%g' /tmp/bs-check.json
-   grep -c enrollmentProofToken /tmp/bs-check.json || true
-   grep -c enrollmentChallengeCode /tmp/bs-check.json || true
-   grep -c authUrl /tmp/bs-check.json || true
-   shred -u /tmp/bs-check.json 2>/dev/null || rm -f /tmp/bs-check.json
+   # Read-only inside the volume — never prints file content; preserves volume mode/owner.
+   docker run --rm -v "$VOL":/v:ro alpine sh -c '
+     stat -c "%a %u:%g" /v/bootstrap-credentials.json
+     for k in enrollmentProofToken enrollmentChallengeCode authUrl; do
+       printf "%s=" "$k"
+       grep -c "\"$k\"" /v/bootstrap-credentials.json || true
+     done
+   '
    ```
 
-   Expect mode `600` (POSIX) and `0` counts for token/challenge/authUrl after bind redaction. If still `644` with old Sept-23 secrets, delete with Marc's go (recipe above) and confirm the file is absent.
+   Expect mode `600` (POSIX) and `0` counts for token/challenge/authUrl after bind redaction. If still `644` with old Sept-23 secrets, delete **only with Marc's go** (recipe above) and confirm the file is absent.
 5. Optional `--scan` (counts only) — only after the script is on the host (see pre-upgrade order).
 
 ### Log Configuration

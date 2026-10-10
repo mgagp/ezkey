@@ -316,8 +316,9 @@ Short operator checklist verified against repo scripts/compose (not live VM obse
 1. **Caddyfile sync** — `--sync-operator-files` / `--clean-start` on
    [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh)
    always copies the EXP1-named `Caddyfile`. After any such sync to the community VM, **re-scp**
-   `Caddyfile.ezkey-online` → remote `Caddyfile` (see Ordered path step 2). A one-line remote
-   `cp Caddyfile.ezkey-online Caddyfile` fails because the variant file is not kept on the VM.
+   `Caddyfile.ezkey-online` → remote `Caddyfile` **immediately** (before `--scan` / `--remote-up`;
+   see Ordered path step 2). A one-line remote `cp Caddyfile.ezkey-online Caddyfile` fails because
+   the variant file is not kept on the VM.
 2. **Grants container** — Compose service `db-grants` (`container_name: ezkey-exp-db-grants` in
    [`docker-compose.yml`](../../experimental-hybrid/lightsail/docker-compose.yml)) applies
    [`scripts/db/apply-grants.sql`](../../scripts/db/apply-grants.sql) after migration. APIs depend on
@@ -338,11 +339,13 @@ Short operator checklist verified against repo scripts/compose (not live VM obse
    `--sync-operator-files` (same pass as `--remote-up` would recreate containers), so:
 
    1. Export with `--sync-operator-files` **without** `--remote-up` (or `scp` `docker-log-hygiene.sh`)
-   2. On the VM: `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan`
-   3. Then `--remote-up` (or a later sync+up pass)
+   2. **Immediately** re-scp `Caddyfile.ezkey-online` → remote `Caddyfile` (pitfall #1 — sync-only
+      already overwrote with EXP1; do not wait until after `up`)
+   3. On the VM: `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan`
+   4. Then `--remote-up` (or a later sync+up pass)
 
-   After `up`, re-scp `Caddyfile.ezkey-online` → remote `Caddyfile` (pitfall #1), then confirm
-   rotation with `docker inspect` or `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`.
+   After `up`, confirm rotation with `docker inspect` or
+   `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`.
    Rotated-file purge needs sudo under `/var/lib/docker/containers`.
 
 ### Log rotation and hygiene (next install)
@@ -367,23 +370,26 @@ Same checklist as [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Post-upgrade che
 1. `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`
 2. Confirm `json-file` rotation
 3. Caddyfile is the community variant
-4. Bootstrap credentials — **no `cat`**. Parametrize `VOL` (Lightsail default below; `docker/` / HA differ):
+4. Bootstrap credentials — **no `cat`**, **no `docker cp` to `/tmp`**. Parametrize `VOL`:
 
    ```bash
    # Discover: docker volume ls --filter name=bootstrap-artifacts
    VOL=${VOL:-ezkey-experimental-lightsail_bootstrap-artifacts}
    docker volume inspect "$VOL" >/dev/null || { echo "volume not found: $VOL"; exit 1; }
-   CID=$(docker create -v "$VOL":/data alpine) || exit 1
-   docker cp "$CID":/data/bootstrap-credentials.json /tmp/bs-check.json
-   docker rm "$CID" >/dev/null
-   stat -c '%a %u:%g' /tmp/bs-check.json
-   grep -c enrollmentProofToken /tmp/bs-check.json || true
-   grep -c enrollmentChallengeCode /tmp/bs-check.json || true
-   grep -c authUrl /tmp/bs-check.json || true
-   shred -u /tmp/bs-check.json 2>/dev/null || rm -f /tmp/bs-check.json
+   # Read-only inside the volume — never prints file content; preserves volume mode/owner.
+   docker run --rm -v "$VOL":/v:ro alpine sh -c '
+     stat -c "%a %u:%g" /v/bootstrap-credentials.json
+     for k in enrollmentProofToken enrollmentChallengeCode authUrl; do
+       printf "%s=" "$k"
+       grep -c "\"$k\"" /v/bootstrap-credentials.json || true
+     done
+   '
    ```
 
-   Expect `600` and zero counts for token/challenge/authUrl after bind redaction. After delete, confirm absent with `docker run --rm -v "$VOL":/data alpine test ! -e /data/bootstrap-credentials.json`.
+   Expect `600` and zero counts for token/challenge/authUrl after bind redaction. If still
+   `644` with old secrets, delete **only with Marc's go** (see [`OPERATIONAL.md`](../OPERATIONAL.md)
+   delete recipe) and confirm absent:
+   `docker run --rm -v "$VOL":/data alpine test ! -e /data/bootstrap-credentials.json`.
 5. Optional `--scan` only after the script is on the host (pre-upgrade order above).
 
 Canon and “what it never does”: [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Log rotation and hygiene.
