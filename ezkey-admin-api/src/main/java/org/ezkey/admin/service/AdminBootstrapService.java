@@ -358,21 +358,25 @@ public class AdminBootstrapService {
         logger.info("✅ Passwordless defaults configured for global admin");
       }
 
-      // Export existing enrollment credentials if file doesn't exist yet
-      // (Docker-only)
-      // This ensures bootstrap-init can work even if enrollment was created in a
-      // previous run
-      // Reload enrollment from repository to ensure session is active and all
-      // properties are loaded
+      // Re-export bind material only while enrollment is still CREATED (pending bind).
+      // After BOUND/VERIFIED the decrypted proof token must not be rewritten if the file
+      // was deleted (operator deleted it after copying recovery codes).
       Enrollment existingEnrollment =
           enrollmentRepository
               .findById(enrollmentId)
               .orElseThrow(() -> new RuntimeException("Enrollment not found: " + enrollmentId));
-      bootstrapCredentialsFileExporter.exportIfEnabled(
-          existingEnrollment,
-          existingEnrollment.getEnrollmentProofToken(),
-          initialGlobalAdminProperties.getUsername(),
-          java.util.List.of());
+      if (existingEnrollment.getStatus() == EnrollmentStatus.CREATED) {
+        bootstrapCredentialsFileExporter.exportIfEnabled(
+            existingEnrollment,
+            existingEnrollment.getEnrollmentProofToken(),
+            initialGlobalAdminProperties.getUsername(),
+            java.util.List.of());
+      } else {
+        logger.info(
+            "Skipping bootstrap credentials re-export (enrollmentId={}, status={})",
+            enrollmentId,
+            existingEnrollment.getStatus());
+      }
       return;
     }
 
@@ -444,9 +448,16 @@ public class AdminBootstrapService {
     // Challenge is optional - default to false for convenience
     globalAdmin.setChallengeRequired(false);
 
-    // Generate recovery codes for emergency access
+    // Generate recovery codes, persist plaintext to disk (fail-closed), then hash into DB.
+    // Export throws IllegalStateException when codes cannot be written — aborts bootstrap
+    // (@Transactional rollback). Codes are never written to logs.
     AdminRecoveryService.RecoveryCodesResult recoveryCodes =
         recoveryService.generateRecoveryCodes();
+    bootstrapCredentialsFileExporter.exportIfEnabled(
+        persistedEnrollment,
+        tokenToLog,
+        initialGlobalAdminProperties.getUsername(),
+        recoveryCodes.getPlainCodes());
     globalAdmin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
 
     adminRepository.save(globalAdmin);
@@ -457,16 +468,9 @@ public class AdminBootstrapService {
     logger.info(
         "✅ {} recovery codes generated for global admin", recoveryCodes.getPlainCodes().size());
 
-    // Log credentials with highly visible formatting (token/challenge/QR by design;
+    // Log credentials with highly visible formatting (token/challenge/QR by design in FULL;
     // recovery codes only as a pointer to the 0600 credentials file)
     logGlobalAdminEnrollmentCredentials(persistedEnrollment, tokenToLog);
-
-    // Export bootstrap credentials + recovery codes to file (0600)
-    bootstrapCredentialsFileExporter.exportIfEnabled(
-        persistedEnrollment,
-        tokenToLog,
-        initialGlobalAdminProperties.getUsername(),
-        recoveryCodes.getPlainCodes());
   }
 
   /**

@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.AdminRecoveryProperties;
+import org.ezkey.admin.config.InitialGlobalAdminProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -80,6 +81,7 @@ public class AdminRecoveryService {
   private final BCryptPasswordEncoder passwordEncoder;
   private final AdminRecoveryProperties recoveryProperties;
   private final AdminMfaProperties mfaProperties;
+  private final InitialGlobalAdminProperties initialGlobalAdminProperties;
   private final SecureRandom secureRandom;
 
   /**
@@ -92,6 +94,7 @@ public class AdminRecoveryService {
    * @param passwordEncoder BCrypt matcher for recovery codes
    * @param recoveryProperties recovery code count and token duration
    * @param mfaProperties bootstrap invitation TTL used when refreshing expiresAt on reset
+   * @param initialGlobalAdminProperties identifies the bootstrap global-admin username
    */
   public AdminRecoveryService(
       EzkeyAdminRepository adminRepository,
@@ -100,7 +103,8 @@ public class AdminRecoveryService {
       SignatureService signatureService,
       BCryptPasswordEncoder passwordEncoder,
       AdminRecoveryProperties recoveryProperties,
-      AdminMfaProperties mfaProperties) {
+      AdminMfaProperties mfaProperties,
+      InitialGlobalAdminProperties initialGlobalAdminProperties) {
     this.adminRepository = adminRepository;
     this.tokenRepository = tokenRepository;
     this.enrollmentRepository = enrollmentRepository;
@@ -108,6 +112,7 @@ public class AdminRecoveryService {
     this.passwordEncoder = passwordEncoder;
     this.recoveryProperties = recoveryProperties;
     this.mfaProperties = mfaProperties;
+    this.initialGlobalAdminProperties = initialGlobalAdminProperties;
     this.secureRandom = new SecureRandom();
   }
 
@@ -408,10 +413,14 @@ public class AdminRecoveryService {
     enrollment.setEnrollmentProofToken(newProofToken);
     enrollment.setEnrollmentChallenge(newChallenge);
 
-    // 5. Refresh invitation TTL when the enrollment had an expiresAt (bootstrap / pending window).
-    // Without this, recover → reset after the 24h scheduler marks EXPIRED leaves a past expiresAt
-    // and bind stays refused.
-    if (enrollment.getExpiresAt() != null) {
+    // 5. Refresh bootstrap invitation TTL only for the configured initial global admin.
+    // Ordinary enrollments use ezkey.enrollment.pending-expiration-days; do not apply the
+    // bootstrap hours property to them. Without this refresh, recover → reset after the
+    // scheduler marks EXPIRED leaves a past expiresAt and bind stays refused.
+    String bootstrapUsername = initialGlobalAdminProperties.getUsername();
+    if (bootstrapUsername != null
+        && bootstrapUsername.equals(admin.getUsername())
+        && enrollment.getExpiresAt() != null) {
       int ttlHours = mfaProperties.getBootstrap().getEnrollmentExpirationHours();
       enrollment.setExpiresAt(OffsetDateTime.now().plusHours(ttlHours));
     }

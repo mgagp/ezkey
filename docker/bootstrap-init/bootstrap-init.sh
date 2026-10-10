@@ -13,9 +13,9 @@ if [ "${EZKEY_BOOTSTRAP_INIT_ENABLED:-true}" = "false" ]; then
   exit 0
 fi
 
-BOOTSTRAP_CREDS_FILE="/bootstrap/bootstrap-credentials.json"
-DEVICE_CREDS_FILE="/bootstrap/device-credentials.json"
-DEMO_DEVICE_ENROLLMENTS_DIR="/app/data/enrollments"
+BOOTSTRAP_CREDS_FILE="${BOOTSTRAP_CREDS_FILE:-/bootstrap/bootstrap-credentials.json}"
+DEVICE_CREDS_FILE="${DEVICE_CREDS_FILE:-/bootstrap/device-credentials.json}"
+DEMO_DEVICE_ENROLLMENTS_DIR="${DEMO_DEVICE_ENROLLMENTS_DIR:-/app/data/enrollments}"
 # Note: demo-app-acme uses userIdentifier (username) for auth attempt creation; no acme-users.json
 
 ADMIN_API_URL="${ADMIN_API_URL:-http://admin-api:9080}"
@@ -76,6 +76,14 @@ echo "✅ Credentials loaded:"
 echo "   Enrollment ID: $ENROLLMENT_ID"
 echo "   Username: $USERNAME"
 
+# After bind, Admin API redacts enrollmentProofToken / challenge from the file. A re-run
+# (or compose restart without clean volumes) must not fail the stack / #746 gate.
+if [ "$ENROLLMENT_PROOF_TOKEN" = "null" ] || [ -z "$ENROLLMENT_PROOF_TOKEN" ]; then
+  echo "INFO: enrollmentProofToken absent (bind secrets already redacted or recovery_primary)."
+  echo "INFO: Treating bootstrap enrollment as already past bind — skip (exit 0)."
+  exit 0
+fi
+
 # Step 3: Generate device keypair via Crypto API
 echo ""
 echo "Step 3: Generating device keypair..."
@@ -108,18 +116,13 @@ BIND_BODY=$(echo "$BIND_RESPONSE" | sed '$d')
 
 if [ "$HTTP_CODE" != "200" ]; then
   if [ "$HTTP_CODE" = "409" ]; then
-    echo "⚠️  Enrollment already bound (409) - Checking if demo-device enrollment exists..."
-    # Check if demo-device enrollment file already exists (idempotent)
+    echo "INFO: Enrollment already BOUND/VERIFIED (HTTP 409) — bootstrap init skip (exit 0)."
     if [ -f "$DEMO_DEVICE_ENROLLMENTS_DIR/${ENROLLMENT_ID}.json" ]; then
-      echo "   ✅ Demo-device enrollment file already exists - Bootstrap already complete"
-      echo "   Bootstrap init complete (enrollment already configured)"
-      exit 0
+      echo "   Demo-device enrollment file already present."
     else
-      echo "   ❌ Error: Enrollment is already bound to a different device"
-      echo "   Demo-device enrollment file is missing and cannot be created automatically"
-      echo "   Please reset Docker stack (docker-compose down -v) for a fresh start"
-      exit 1
+      echo "   NOTE: Demo-device enrollment file missing; re-seed via clean-start if demos need it."
     fi
+    exit 0
   else
     echo "❌ Error: Bind failed with HTTP $HTTP_CODE"
     echo "   Response: $BIND_BODY"
@@ -191,20 +194,8 @@ else
   echo "Step 5: Skipping verify (enrollment already bound/verified)"
 fi
 
-# After bind: drop proof token / challenge from credentials file; keep recovery codes.
-# Admin API also redacts (startup + ShedLock schedule) once enrollment is BOUND/VERIFIED.
-# Both admin-api and bootstrap-init run as spring (UID 100 / GID 101) so 0600 remains readable.
-if [ -f "$BOOTSTRAP_CREDS_FILE" ]; then
-  tmp_redact="${BOOTSTRAP_CREDS_FILE}.redact.tmp"
-  if (umask 077; jq 'del(.enrollmentProofToken, .enrollmentChallengeCode, .authUrl)' \
-    "$BOOTSTRAP_CREDS_FILE" > "$tmp_redact" 2>/dev/null); then
-    mv "$tmp_redact" "$BOOTSTRAP_CREDS_FILE"
-    chmod 600 "$BOOTSTRAP_CREDS_FILE" 2>/dev/null || true
-    echo "✅ Removed bind secrets from bootstrap-credentials.json (recovery codes retained)"
-  else
-    rm -f "$tmp_redact" 2>/dev/null || true
-  fi
-fi
+# Bind-secret redaction is owned solely by Admin API (BootstrapCredentialsBindSecretRedactor:
+# ApplicationReady + ShedLock). Do not duplicate jq del here — single implementation (M1).
 
 # Step 6: Save device credentials
 echo ""

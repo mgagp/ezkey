@@ -20,7 +20,9 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.BootstrapCredentialsOutputMode;
 import org.ezkey.admin.config.BootstrapExportProperties;
@@ -61,6 +63,9 @@ public class BootstrapCredentialsFileExporter {
   private final QrCodeProperties qrCodeProperties;
   private final AdminMfaProperties adminMfaProperties;
   private final ObjectMapper objectMapper;
+
+  /** Last redact-failure kind logged; avoids ERROR spam every ShedLock tick on a stuck file. */
+  private final AtomicReference<String> lastRedactFailureKind = new AtomicReference<>();
 
   /**
    * Creates the exporter.
@@ -125,9 +130,11 @@ public class BootstrapCredentialsFileExporter {
             return;
           }
         } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
+          // Jackson 3 / ClassCastException are unchecked; never log message (may contain file
+          // body).
           logger.warn(
-              "Failed to read existing bootstrap credentials file, will overwrite: {}",
-              e.getMessage());
+              "Failed to read existing bootstrap credentials file, will overwrite ({})",
+              e.getClass().getSimpleName());
         }
       }
 
@@ -168,23 +175,36 @@ public class BootstrapCredentialsFileExporter {
           "POSIX permissions unsupported at {}; refusing to write bootstrap-credentials.json"
               + " without atomic owner-only mode",
           exportProperties.getPath());
-      if (hasRecoveryCodes) {
-        logger.error(
-            "Plaintext recovery codes could not be persisted to disk and are not written to logs.");
-      }
-    } catch (IOException e) {
+      failClosedIfRecoveryCodesRequired(hasRecoveryCodes, e);
+    } catch (IOException | RuntimeException e) { // CHECKSTYLE IGNORE IllegalCatch
+      // Jackson 3 unchecked + I/O: never log message/stack (path + type only).
       logger.error(
-          "Failed to export bootstrap credentials to file: {} - {}",
+          "Failed to export bootstrap credentials to file: {} ({})",
           exportProperties.getPath(),
-          e.getMessage(),
-          e);
-      if (hasRecoveryCodes) {
-        logger.error(
-            "Plaintext recovery codes could not be persisted to disk and are not written to logs."
-                + " Enable a writable ezkey.admin.bootstrap.export.path and restart bootstrap, or"
-                + " regenerate codes after first successful admin login.");
-      }
+          e.getClass().getSimpleName());
+      failClosedIfRecoveryCodesRequired(hasRecoveryCodes, e);
     }
+  }
+
+  /**
+   * When plaintext recovery codes must reach disk ({@code recovery_primary} or any mode with new
+   * codes), export failure must abort bootstrap — codes are never written to logs.
+   *
+   * @param hasRecoveryCodes whether this export carried plaintext recovery codes
+   * @param cause underlying failure (type used in operator message; message/stack omitted)
+   */
+  private void failClosedIfRecoveryCodesRequired(boolean hasRecoveryCodes, Exception cause) {
+    if (!hasRecoveryCodes) {
+      return;
+    }
+    throw new IllegalStateException(
+        "Bootstrap recovery codes could not be persisted to "
+            + exportProperties.getPath()
+            + " ("
+            + cause.getClass().getSimpleName()
+            + "); refusing to complete bootstrap. Codes are not written to logs — fix the export"
+            + " path (POSIX 0600 writable) and restart Admin API.",
+        cause);
   }
 
   /**
@@ -206,6 +226,7 @@ public class BootstrapCredentialsFileExporter {
     try {
       ObjectNode json = (ObjectNode) objectMapper.readTree(filePath.toFile());
       if (!json.has("enrollmentId") || json.get("enrollmentId").asInt() != enrollmentId) {
+        clearRedactFailureKind();
         return false;
       }
       boolean hadSecrets =
@@ -215,25 +236,46 @@ public class BootstrapCredentialsFileExporter {
       if (!hadSecrets) {
         logger.debug(
             "Bootstrap credentials already free of bind secrets (enrollmentId: {})", enrollmentId);
+        clearRedactFailureKind();
         return false;
       }
       json.remove("enrollmentProofToken");
       json.remove("enrollmentChallengeCode");
       json.remove("authUrl");
       writeAtomicallyOwnerOnly(filePath, json);
+      clearRedactFailureKind();
       logger.info(
           "Removed bind secrets from bootstrap credentials file (enrollmentId: {}); recovery codes"
               + " retained — delete the file after copying codes to a safe store",
           enrollmentId);
       return true;
-    } catch (UnsupportedOperationException e) {
-      logger.error(
-          "POSIX permissions unsupported; could not redact bind secrets from {}", filePath);
-      return false;
-    } catch (IOException e) {
-      logger.error("Failed to redact bind secrets from {}: {}", filePath, e.getMessage());
+    } catch (IOException | RuntimeException e) { // CHECKSTYLE IGNORE IllegalCatch
+      // Jackson 3 throws unchecked parse errors; ObjectNode cast can throw ClassCastException.
+      // Never log e.getMessage() / stack — corrupt files may contain recovery codes or tokens.
+      logRedactFailureOnce(filePath, e.getClass().getSimpleName());
       return false;
     }
+  }
+
+  /**
+   * Logs a redact failure at most once per distinct exception class until a successful/skip path
+   * clears the state (ShedLock tick must not spam ERROR every 60s).
+   *
+   * @param filePath credentials file path (path only; never contents)
+   * @param exceptionSimpleName {@link Class#getSimpleName()} of the failure
+   */
+  private void logRedactFailureOnce(Path filePath, String exceptionSimpleName) {
+    String kind = Objects.requireNonNullElse(exceptionSimpleName, "Unknown");
+    String previous = lastRedactFailureKind.get();
+    if (kind.equals(previous)) {
+      return;
+    }
+    lastRedactFailureKind.set(kind);
+    logger.error("Failed to redact bind secrets from {} ({})", filePath, kind);
+  }
+
+  private void clearRedactFailureKind() {
+    lastRedactFailureKind.set(null);
   }
 
   /**

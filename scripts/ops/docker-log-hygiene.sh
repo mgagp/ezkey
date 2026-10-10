@@ -75,6 +75,11 @@ case "$OLDER_THAN_DAYS" in
   ''|*[!0-9]*) die "--older-than must be a non-negative integer" ;;
 esac
 
+# Purge never mutates without an explicit --purge --apply pair (+ confirmation or --yes).
+if [ "$APPLY" -eq 1 ] && [ "$MODE" != "purge" ]; then
+  die "--apply requires --purge (refusing to run destructive actions)"
+fi
+
 require_docker
 
 check_containers() {

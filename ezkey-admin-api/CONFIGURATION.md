@@ -85,7 +85,7 @@ Integration Zero and Enrollment Zero at first startup ("Eat Your Own Dog Food").
 | `ezkey.admin.mfa.bootstrap.enabled` | `boolean` | `true` | optionnel | Create Integration Zero and Enrollment Zero at startup if absent. |
 | `ezkey.admin.mfa.bootstrap.auto-enrollment` | `boolean` | `true` | optionnel | Automatically create Enrollment Zero for the Global Admin. Convenient in dev; consider `false` in production. |
 | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `BootstrapCredentialsOutputMode` | `FULL` | optionnel | `FULL` = proof token, challenge, ASCII QR in logs (by design) + JSON export including recovery codes. `RECOVERY_PRIMARY` = no enrollment secrets in logs; recovery codes only in `bootstrap-credentials.json` (`0600`). |
-| `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | `int` | `24` | requis (≥1) | Pending bind/verify TTL for the **bootstrap** global-admin enrollment only. Minimum **1** (Bean Validation). Ordinary enrollments use `ezkey.enrollment.pending-expiration-days`. |
+| `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | `int` | `24` | requis (≥1) | Pending bind/verify TTL for the **bootstrap** global-admin enrollment only (create and recover→reset for that admin). Minimum **1** (Bean Validation). Ordinary enrollments use `ezkey.enrollment.pending-expiration-days`; reset does **not** apply this bootstrap TTL to them. |
 
 **Enum values for `credentials-output-mode`:**
 
@@ -228,7 +228,7 @@ profiles; lock down the host path elsewhere.
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.admin.bootstrap.export.enabled` | `boolean` | `false` | optionnel | Enable/disable full file export. Enabled by default in `docker` and `docker-test` profiles. Plaintext recovery codes are still persisted when present even if this flag is false. |
-| `ezkey.admin.bootstrap.export.path` | `String` | `/var/lib/ezkey/bootstrap/bootstrap-credentials.json` | optionnel | Absolute path for the JSON export file. Parent directory is created if missing; file mode is set to `0600` when POSIX permissions are available. Admin API only — do not mount this path on Auth API. |
+| `ezkey.admin.bootstrap.export.path` | `String` | `/var/lib/ezkey/bootstrap/bootstrap-credentials.json` | optionnel | Absolute path for the JSON export file. Parent directory is created if missing. Write uses atomic create with owner-only mode (`0600`) and **refuses** the export when POSIX file permissions are unavailable (no soft fallback). Admin API only — do not mount this path on Auth API. |
 | `ezkey.admin.bootstrap.bind-secret-redact.delay-ms` | `long` | `60000` | optionnel | Fixed delay (ms) between Admin API ShedLock passes that strip proof token/challenge once the bootstrap enrollment is BOUND/VERIFIED. |
 | `ezkey.admin.bootstrap.bind-secret-redact.initial-delay-ms` | `long` | `15000` | optionnel | Initial delay (ms) before the first scheduled redact pass. |
 

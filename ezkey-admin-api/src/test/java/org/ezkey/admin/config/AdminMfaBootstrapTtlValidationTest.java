@@ -79,4 +79,24 @@ class AdminMfaBootstrapTtlValidationTest {
     props.getBootstrap().setEnrollmentExpirationHours(24);
     assertThat(validator.validate(props)).isEmpty();
   }
+
+  @Test
+  @DisplayName("enrollmentExpirationHours=1 is the minimum valid boundary")
+  void oneHourIsValidMinimum() {
+    AdminMfaProperties props = new AdminMfaProperties();
+    props.getBootstrap().setEnrollmentExpirationHours(1);
+    assertThat(validator.validate(props)).isEmpty();
+  }
+
+  @Test
+  @DisplayName("enrollmentExpirationHours negative fails Bean Validation @Min(1)")
+  void negativeHoursFailsBeanValidation() {
+    AdminMfaProperties props = new AdminMfaProperties();
+    props.getBootstrap().setEnrollmentExpirationHours(-1);
+
+    Set<ConstraintViolation<AdminMfaProperties>> violations = validator.validate(props);
+
+    assertThat(violations)
+        .anyMatch(v -> v.getPropertyPath().toString().contains("enrollmentExpirationHours"));
+  }
 }

@@ -18,6 +18,7 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.AdminRecoveryProperties;
+import org.ezkey.admin.config.InitialGlobalAdminProperties;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -40,6 +41,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 @DisplayName("AdminRecoveryService enrollment reset")
 class AdminRecoveryServiceResetTest {
 
+  private static final String BOOTSTRAP_USERNAME = "admin.docker";
+
   @Mock private EzkeyAdminRepository adminRepository;
   @Mock private AdminTokenRepository tokenRepository;
   @Mock private EnrollmentRepository enrollmentRepository;
@@ -48,12 +51,15 @@ class AdminRecoveryServiceResetTest {
   @Mock private AdminRecoveryProperties recoveryProperties;
 
   private AdminMfaProperties mfaProperties;
+  private InitialGlobalAdminProperties initialGlobalAdminProperties;
   private AdminRecoveryService recoveryService;
 
   @BeforeEach
   void setUp() {
     mfaProperties = new AdminMfaProperties();
     mfaProperties.getBootstrap().setEnrollmentExpirationHours(24);
+    initialGlobalAdminProperties = new InitialGlobalAdminProperties();
+    initialGlobalAdminProperties.setUsername(BOOTSTRAP_USERNAME);
     recoveryService =
         new AdminRecoveryService(
             adminRepository,
@@ -62,14 +68,15 @@ class AdminRecoveryServiceResetTest {
             signatureService,
             passwordEncoder,
             recoveryProperties,
-            mfaProperties);
+            mfaProperties,
+            initialGlobalAdminProperties);
   }
 
   @Test
   @DisplayName("resetEnrollment revokes active session-like tokens for recovered admin")
   void resetEnrollmentRevokesSessionTokens() {
     Enrollment enrollment = enrollment(EnrollmentStatus.VERIFIED, null);
-    EzkeyAdmin admin = admin(enrollment);
+    EzkeyAdmin admin = admin(BOOTSTRAP_USERNAME, enrollment);
 
     when(enrollmentRepository.findById(10)).thenReturn(Optional.of(enrollment));
     when(signatureService.generateProofToken()).thenReturn("new-proof-token");
@@ -92,11 +99,12 @@ class AdminRecoveryServiceResetTest {
 
   @Test
   @DisplayName(
-      "EXPIRED → reset: status CREATED + expiresAt refreshed (recover ignores enrollment status)")
-  void resetEnrollmentFromExpiredRefreshesInvitationTtl() {
+      "EXPIRED → reset: bootstrap admin gets expiresAt refreshed (recover ignores enrollment"
+          + " status)")
+  void resetEnrollmentFromExpiredRefreshesInvitationTtlForBootstrapAdmin() {
     OffsetDateTime past = OffsetDateTime.now().minusHours(1);
     Enrollment enrollment = enrollment(EnrollmentStatus.EXPIRED, past);
-    EzkeyAdmin admin = admin(enrollment);
+    EzkeyAdmin admin = admin(BOOTSTRAP_USERNAME, enrollment);
 
     when(enrollmentRepository.findById(10)).thenReturn(Optional.of(enrollment));
     when(signatureService.generateProofToken()).thenReturn("reissued-proof");
@@ -118,8 +126,30 @@ class AdminRecoveryServiceResetTest {
     assertThat(reset.getEnrollmentProofToken()).isEqualTo("reissued-proof");
   }
 
-  private static EzkeyAdmin admin(Enrollment enrollment) {
-    EzkeyAdmin admin = new EzkeyAdmin("recovering.admin", AdminType.GLOBAL_ADMIN);
+  @Test
+  @DisplayName("non-bootstrap admin reset does not apply bootstrap enrollment-expiration-hours")
+  void resetEnrollmentDoesNotRefreshTtlForNonBootstrapAdmin() {
+    OffsetDateTime past = OffsetDateTime.now().minusHours(1);
+    Enrollment enrollment = enrollment(EnrollmentStatus.EXPIRED, past);
+    EzkeyAdmin admin = admin("tenant.admin", enrollment);
+
+    when(enrollmentRepository.findById(10)).thenReturn(Optional.of(enrollment));
+    when(signatureService.generateProofToken()).thenReturn("reissued-proof");
+    when(signatureService.generateSecureChallenge(6)).thenReturn(111222);
+    when(enrollmentRepository.save(enrollment)).thenReturn(enrollment);
+    when(tokenRepository.deactivateTokensForAdminByPurpose(7, AdminTokenPurpose.SESSION))
+        .thenReturn(0);
+    when(tokenRepository.deactivateTokensForAdminByPurpose(7, AdminTokenPurpose.EVALUATOR_TEMP))
+        .thenReturn(0);
+
+    Enrollment reset = recoveryService.resetEnrollment(10, admin);
+
+    assertThat(reset.getStatus()).isEqualTo(EnrollmentStatus.CREATED);
+    assertThat(reset.getExpiresAt()).isEqualTo(past);
+  }
+
+  private static EzkeyAdmin admin(String username, Enrollment enrollment) {
+    EzkeyAdmin admin = new EzkeyAdmin(username, AdminType.GLOBAL_ADMIN);
     admin.setAdminId(7);
     admin.setEnrollment(enrollment);
     return admin;

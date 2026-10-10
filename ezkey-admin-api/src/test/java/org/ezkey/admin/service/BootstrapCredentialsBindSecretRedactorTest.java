@@ -11,6 +11,7 @@
 package org.ezkey.admin.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -143,6 +144,36 @@ class BootstrapCredentialsBindSecretRedactorTest {
     redactor.redactIfBootstrapEnrollmentPastBind();
     verify(adminRepository).findByUsernameWithEnrollment(USERNAME);
     assertThat(Files.exists(credentialsFile)).isFalse();
+  }
+
+  @Test
+  @DisplayName("repository RuntimeException never escapes the redactor (bind path isolation)")
+  void repositoryFailureDoesNotThrow() {
+    when(adminRepository.findByUsernameWithEnrollment(USERNAME))
+        .thenThrow(new IllegalStateException("db-marker-must-not-escape"));
+
+    assertThatCode(() -> redactor.redactIfBootstrapEnrollmentPastBind()).doesNotThrowAnyException();
+    assertThatCode(() -> redactor.redactIfBootstrapEnrollmentPastBind()).doesNotThrowAnyException();
+  }
+
+  @Test
+  @DisplayName("corrupt credentials file: redactor stays quiet on exporter-handled failure")
+  void corruptFileRedactorDoesNotSurfaceContents() throws Exception {
+    String secretMarker = "REDACTOR-LEAK-CODE-1111-2222";
+    Files.writeString(
+        credentialsFile,
+        "{ \"enrollmentId\": 7, \"recoveryCodes\": [\"" + secretMarker + "\"] ",
+        java.nio.charset.StandardCharsets.UTF_8);
+
+    Enrollment enrollment = enrollment(EnrollmentStatus.BOUND);
+    when(adminRepository.findByUsernameWithEnrollment(USERNAME))
+        .thenReturn(Optional.of(admin(enrollment)));
+
+    redactor.redactIfBootstrapEnrollmentPastBind();
+    redactor.redactIfBootstrapEnrollmentPastBind();
+
+    // File unchanged (corrupt); no exception escapes; exporter owns ERROR once.
+    assertThat(Files.readString(credentialsFile)).contains(secretMarker);
   }
 
   private void seedCredentialsFile(Enrollment enrollment) {

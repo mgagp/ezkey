@@ -10,6 +10,8 @@
 
 package org.ezkey.admin.service;
 
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.ezkey.admin.config.BootstrapExportProperties;
 import org.ezkey.admin.config.InitialGlobalAdminProperties;
@@ -45,6 +47,9 @@ public class BootstrapCredentialsBindSecretRedactor {
   private final InitialGlobalAdminProperties initialGlobalAdminProperties;
   private final EzkeyAdminRepository adminRepository;
   private final BootstrapCredentialsFileExporter credentialsFileExporter;
+
+  /** Last unexpected failure kind; one WARN per distinct state until cleared. */
+  private final AtomicReference<String> lastUnexpectedFailureKind = new AtomicReference<>();
 
   /**
    * Creates the redactor.
@@ -99,28 +104,44 @@ public class BootstrapCredentialsBindSecretRedactor {
       return;
     }
 
-    EzkeyAdmin admin = adminRepository.findByUsernameWithEnrollment(username).orElse(null);
-    if (admin == null || admin.getEnrollment() == null) {
+    try {
+      EzkeyAdmin admin = adminRepository.findByUsernameWithEnrollment(username).orElse(null);
+      if (admin == null || admin.getEnrollment() == null) {
+        return;
+      }
+
+      Enrollment enrollment = admin.getEnrollment();
+      EnrollmentStatus status = enrollment.getStatus();
+      if (status != EnrollmentStatus.BOUND && status != EnrollmentStatus.VERIFIED) {
+        logger.debug(
+            "Bootstrap credentials redact skipped (enrollmentId={}, status={})",
+            enrollment.getEnrollmentId(),
+            status);
+        return;
+      }
+
+      boolean changed =
+          credentialsFileExporter.removeBindSecretsKeepRecoveryCodes(enrollment.getEnrollmentId());
+      lastUnexpectedFailureKind.set(null);
+      if (changed) {
+        logger.info(
+            "Bootstrap credentials bind secrets redacted (enrollmentId={}, status={})",
+            enrollment.getEnrollmentId(),
+            status);
+      }
+    } catch (RuntimeException e) { // CHECKSTYLE IGNORE IllegalCatch
+      // Exporter already swallows parse/I/O failures; this covers unexpected repository/runtime
+      // errors. Never log message or stack (may echo sensitive file/DB material).
+      logUnexpectedFailureOnce(e.getClass().getSimpleName());
+    }
+  }
+
+  private void logUnexpectedFailureOnce(String exceptionSimpleName) {
+    String kind = Objects.requireNonNullElse(exceptionSimpleName, "Unknown");
+    if (kind.equals(lastUnexpectedFailureKind.get())) {
       return;
     }
-
-    Enrollment enrollment = admin.getEnrollment();
-    EnrollmentStatus status = enrollment.getStatus();
-    if (status != EnrollmentStatus.BOUND && status != EnrollmentStatus.VERIFIED) {
-      logger.debug(
-          "Bootstrap credentials redact skipped (enrollmentId={}, status={})",
-          enrollment.getEnrollmentId(),
-          status);
-      return;
-    }
-
-    boolean changed =
-        credentialsFileExporter.removeBindSecretsKeepRecoveryCodes(enrollment.getEnrollmentId());
-    if (changed) {
-      logger.info(
-          "Bootstrap credentials bind secrets redacted (enrollmentId={}, status={})",
-          enrollment.getEnrollmentId(),
-          status);
-    }
+    lastUnexpectedFailureKind.set(kind);
+    logger.warn("Bootstrap credentials bind-secret redact skipped ({})", kind);
   }
 }
