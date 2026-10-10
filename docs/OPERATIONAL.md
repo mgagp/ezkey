@@ -553,7 +553,7 @@ Server logs must **not** duplicate high-value secrets that are already returned 
 - **`full`** (default for development and Docker clean-start): enrollment proof token, challenge, and ASCII QR appear in startup logs (by design). Recovery codes are written to `bootstrap-credentials.json` (`0600` when POSIX) — never to logs. File export also includes enrollment bind material for `bootstrap-init`.
 - **`recovery_primary`**: enrollment secrets and ASCII QR are omitted from logs. Recovery codes are written to `bootstrap-credentials.json` (`0600` when POSIX) only. Use the Admin UI account-recovery flow (recover → reset enrollment → bind). For Docker unattended bind, keep `credentials-output-mode=full`; with `recovery_primary`, set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on `bootstrap-init` (or omit that service) because the file has no proof token.
 
-**Windows / non-POSIX (`windows` profile):** `ezkey.admin.bootstrap.export.allow-non-posix-permissions=true` writes under `${user.home}/.ezkey/bootstrap/` without POSIX `0600`. The file inherits the user-profile ACL. That is acceptable on a single-user dev workstation; there is no extra ACL code. Docker/prod omit the property (fail-closed).
+**Windows / non-POSIX (`windows` profile):** `ezkey.admin.bootstrap.export.allow-non-posix-permissions=true` writes under `${user.home}/.ezkey/bootstrap/` without POSIX `0600`. The file inherits the user-profile ACL. That is acceptable on a single-user dev workstation; there is no extra ACL code. Avoid a shared or synced profile (e.g. OneDrive) for that path. Optional lock-down: `icacls <file> /inheritance:r /grant:r "%USERNAME%:F"`. Docker/prod omit the property (fail-closed).
 
 **Bootstrap enrollment TTL:** `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` (default **24**, minimum **1**, env `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS`). Bind is refused after expiry. To re-issue: read a recovery code from `bootstrap-credentials.json` → Admin UI account recovery → reset enrollment (refreshes `expiresAt`) → bind with the new material returned in the HTTP response.
 
@@ -561,14 +561,15 @@ Server logs must **not** duplicate high-value secrets that are already returned 
 Copy into a local `0600` file, then open it in an editor or password-manager import.
 
 ```bash
-# Pin the community volume name (do not guess with head -n1).
-VOL=ezkey-experimental-lightsail_bootstrap-artifacts
-docker volume inspect "$VOL" >/dev/null
+# Default = community Lightsail. Override for docker/ (ezkey_…) or HA (ezkey-ha_…).
+# Discover: docker volume ls --filter name=bootstrap-artifacts
+VOL=${VOL:-ezkey-experimental-lightsail_bootstrap-artifacts}
+docker volume inspect "$VOL" >/dev/null || { echo "volume not found: $VOL"; exit 1; }
 
 TMP=$(mktemp)
-docker create --name ezkey-bs-copy -v "$VOL":/data alpine >/dev/null
-docker cp ezkey-bs-copy:/data/bootstrap-credentials.json "$TMP"
-docker rm ezkey-bs-copy >/dev/null
+CID=$(docker create -v "$VOL":/data alpine) || exit 1
+docker cp "$CID":/data/bootstrap-credentials.json "$TMP"
+docker rm "$CID" >/dev/null
 chmod 600 "$TMP"
 echo "Copied to $TMP (mode 0600) — import codes, then shred/rm the temp file."
 ```
@@ -576,8 +577,12 @@ echo "Copied to $TMP (mode 0600) — import codes, then shred/rm the temp file."
 **Delete from the volume** (after codes are stored safely):
 
 ```bash
-VOL=ezkey-experimental-lightsail_bootstrap-artifacts
+VOL=${VOL:-ezkey-experimental-lightsail_bootstrap-artifacts}
+docker volume inspect "$VOL" >/dev/null || { echo "volume not found: $VOL"; exit 1; }
 docker run --rm -v "$VOL":/data alpine rm -f /data/bootstrap-credentials.json
+# Confirm absent (docker run -v must not have auto-created an empty volume — inspect above prevents that).
+docker run --rm -v "$VOL":/data alpine test ! -e /data/bootstrap-credentials.json \
+  || { echo "ERROR: bootstrap-credentials.json still present on $VOL"; exit 1; }
 ```
 
 After a successful bind, Admin API (startup + short ShedLock schedule) removes the proof token and
@@ -638,11 +643,13 @@ Run on the VM after a rolling upgrade (no `cat` of secrets):
 1. `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`
 2. Confirm `json-file` rotation via `docker inspect` / hygiene check
 3. Caddyfile is the community variant (`Caddyfile.ezkey-online` content)
-4. Bootstrap credentials (volume `ezkey-experimental-lightsail_bootstrap-artifacts`) — mode + key absence only:
+4. Bootstrap credentials — mode + key absence only (parametrize `VOL`; never hard-code other stacks):
 
    ```bash
-   VOL=ezkey-experimental-lightsail_bootstrap-artifacts
-   CID=$(docker create -v "$VOL":/data alpine)
+   # Discover: docker volume ls --filter name=bootstrap-artifacts
+   VOL=${VOL:-ezkey-experimental-lightsail_bootstrap-artifacts}
+   docker volume inspect "$VOL" >/dev/null || { echo "volume not found: $VOL"; exit 1; }
+   CID=$(docker create -v "$VOL":/data alpine) || exit 1
    docker cp "$CID":/data/bootstrap-credentials.json /tmp/bs-check.json
    docker rm "$CID" >/dev/null
    stat -c '%a %u:%g' /tmp/bs-check.json
@@ -652,7 +659,7 @@ Run on the VM after a rolling upgrade (no `cat` of secrets):
    shred -u /tmp/bs-check.json 2>/dev/null || rm -f /tmp/bs-check.json
    ```
 
-   Expect mode `600` (POSIX) and `0` counts for token/challenge/authUrl after bind redaction. If still `644` with old Sept-23 secrets, delete with Marc's go (recipe above).
+   Expect mode `600` (POSIX) and `0` counts for token/challenge/authUrl after bind redaction. If still `644` with old Sept-23 secrets, delete with Marc's go (recipe above) and confirm the file is absent.
 5. Optional `--scan` (counts only) — only after the script is on the host (see pre-upgrade order).
 
 ### Log Configuration

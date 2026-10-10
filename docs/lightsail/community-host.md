@@ -367,11 +367,13 @@ Same checklist as [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Post-upgrade che
 1. `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`
 2. Confirm `json-file` rotation
 3. Caddyfile is the community variant
-4. Bootstrap credentials on volume `ezkey-experimental-lightsail_bootstrap-artifacts` — **no `cat`**:
+4. Bootstrap credentials — **no `cat`**. Parametrize `VOL` (Lightsail default below; `docker/` / HA differ):
 
    ```bash
-   VOL=ezkey-experimental-lightsail_bootstrap-artifacts
-   CID=$(docker create -v "$VOL":/data alpine)
+   # Discover: docker volume ls --filter name=bootstrap-artifacts
+   VOL=${VOL:-ezkey-experimental-lightsail_bootstrap-artifacts}
+   docker volume inspect "$VOL" >/dev/null || { echo "volume not found: $VOL"; exit 1; }
+   CID=$(docker create -v "$VOL":/data alpine) || exit 1
    docker cp "$CID":/data/bootstrap-credentials.json /tmp/bs-check.json
    docker rm "$CID" >/dev/null
    stat -c '%a %u:%g' /tmp/bs-check.json
@@ -381,7 +383,7 @@ Same checklist as [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Post-upgrade che
    shred -u /tmp/bs-check.json 2>/dev/null || rm -f /tmp/bs-check.json
    ```
 
-   Expect `600` and zero counts for token/challenge/authUrl after bind redaction.
+   Expect `600` and zero counts for token/challenge/authUrl after bind redaction. After delete, confirm absent with `docker run --rm -v "$VOL":/data alpine test ! -e /data/bootstrap-credentials.json`.
 5. Optional `--scan` only after the script is on the host (pre-upgrade order above).
 
 Canon and “what it never does”: [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Log rotation and hygiene.

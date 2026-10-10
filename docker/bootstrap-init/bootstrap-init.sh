@@ -188,11 +188,9 @@ if [ "$BIND_PROOF_TOKEN" != "SKIPPED_ALREADY_BOUND" ]; then
     "$AUTH_API_URL/api/v1/enrollments/verify")
   
   VERIFY_HTTP_CODE=$(echo "$VERIFY_RESPONSE" | tail -n1)
-  VERIFY_BODY=$(echo "$VERIFY_RESPONSE" | sed '$d')
-  
+
   if [ "$VERIFY_HTTP_CODE" != "200" ]; then
     echo "❌ Error: Verify failed with HTTP $VERIFY_HTTP_CODE"
-    echo "   Response: $VERIFY_BODY"
     exit 1
   fi
   
