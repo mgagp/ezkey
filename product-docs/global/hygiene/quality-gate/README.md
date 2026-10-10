@@ -2,7 +2,8 @@
 
 Keyword: **`quality-gate`**
 
-Cloud-agent gate between merge batches. One command → GO / GO with reservations / NO-GO.
+Cloud-agent gate between merge batches. One command → GO / GO with reservations /
+`INCONCLUSIVE: HA invalid` / NO-GO.
 Artifacts under `logs/quality-gate/<UTC>-<shortsha>/` (gitignored).
 
 **Not** a CI gate. A phase that can show GREEN wrongly is worse than no gate.
@@ -13,9 +14,11 @@ Cloud agent tooling; Git Bash best-effort, untested on macOS.
 ```bash
 ./scripts/quality-gate.sh
 ./scripts/quality-gate.sh --churn-minutes 5
+./scripts/quality-gate-ha.test.sh   # fake-docker HA helpers
+node scripts/lib/quality-gate-secrets.test.mjs
 ```
 
-Exit codes: **0** GO · **3** GO with reservations · other non-zero NO-GO.
+Exit codes: **0** GO · **3** reservations / HA inconclusive · other non-zero NO-GO.
 
 ## Sequence
 
@@ -23,48 +26,37 @@ Exit codes: **0** GO · **3** GO with reservations · other non-zero NO-GO.
 2. **Unit tests** — `./scripts/build.sh` with stack down (`MAVEN_OPTS=-Xmx1024m`).
 3. **Clean-start** — HA + JavaMelody + gate memory overlay
    ([`docker/docker-compose.ha.quality-gate.yml`](../../../../docker/docker-compose.ha.quality-gate.yml)).
-4. **Post-clean health** — snapshot (`QUALITY_GATE_PHASE=post-clean-health`).
-5. **Functional** → **elective** → **docker start** restore (ShedLock) → **Playwright** →
-   **churn** → **health**.
+4. **Post-clean health** → **functional** → **elective** → **docker-start restore** →
+   **Playwright** → **churn** → **health** → **OOM check** (whole-run window).
 
 Fail-fast on RED for preflight, unit-tests, or clean-start.
 
 After elective, `ShedLockDistributedTest` may `docker kill` an admin-api replica. The gate
-runs `check_replicas` (tolerating only that kill), then `docker start` + wait healthy — **not**
-`compose up -d` (preserves `docker,docker-dev,docker-test` profiles and logs). **HA invalid** if
-restore fails, a replica dies elsewhere, or `RestartCount` rises (except the restored ShedLock
-replica). Docker `oom` events / `ExitOnOutOfMemoryError` log lines → RED.
-
-API replica check: 7 HA API JVMs. demo-device / demo-app-acme are mem-sampled only (not LB
-replicas). Gate memory overlay stays as a runaway-heap guard on ~15Gi hosts.
-`containers.oom` trusts Docker `OOMKilled` plus event/log evidence.
+tolerates that kill only during restore (`tolerating=`), then `docker start` + wait healthy —
+**not** `compose up -d`. A later restart of the restored replica is **HA invalid** (C1-bis).
+Docker `oom` events / `ExitOnOutOfMemoryError` log lines → RED; failed `docker events` →
+UNKNOWN/AMBER (never silent "no OOM").
 
 ## #747 / #748 / #750
 
 | Issue | Gate behaviour |
 | --- | --- |
-| [#747](https://github.com/mgagp/ezkey/issues/747) | Retry only if `ezkey_encryption_key_pkey`; else clean-start RED. Allowlist: phase=`clean-start` + `COMPOSE_RETRY_FIRED=1`. |
+| [#747](https://github.com/mgagp/ezkey/issues/747) | Retry only if `ezkey_encryption_key_pkey`; else clean-start RED. Allowlist: `requires=COMPOSE_RETRY_FIRED` + Spring `<TS> ERROR` signature. |
 | [#748](https://github.com/mgagp/ezkey/issues/748) | Auth security false pass (sticky RestAssured → crypto). Fixed in product tests. |
-| [#750](https://github.com/mgagp/ezkey/issues/750) | Bootstrap proof token / challenge / QR on AdminBootstrapService **emitted during clean-start only** are **by design** (allowlisted by emission time, not scan phase — still valid when scanned in post-clean-health/health). Same values emitted in post-clean-health or after a later restart stay RED. Recovery codes and AdminAuthService challenges stay RED until #751. |
+| [#750](https://github.com/mgagp/ezkey/issues/750) | Bootstrap proof/challenge/QR **emitted during clean-start only** (`kind=secret-channel`). Still valid when scanned later; emission outside clean-start stays RED. Recovery + AdminAuthService stay RED until #751. |
 
-## Thresholds and allowlist
+## Config
 
 | Path | Role |
 | --- | --- |
-| [`config/quality-gate/thresholds.json`](../../../../config/quality-gate/thresholds.json) | Provisional bands. `oomKills` red at 1. |
-| [`config/quality-gate/log-allowlist.txt`](../../../../config/quality-gate/log-allowlist.txt) | `service \| phase \| ^…$ regex \| issue \| expires= \| [requires=] \| [kind=] \| justification`. **phase** = known emission-time window (or `*`); `^.*` pseudo-anchors and unknown phases are rejected. `requires=COMPOSE_RETRY_FIRED` / `kind=secret-channel` are explicit (not inferred from issue text). |
-| `phase-windows.tsv` (per run) | `phase \\t start_iso \\t end_iso` recorded by the gate for each phase. |
+| [`config/quality-gate/thresholds.json`](../../../../config/quality-gate/thresholds.json) | Provisional bands. |
+| [`config/quality-gate/log-allowlist.txt`](../../../../config/quality-gate/log-allowlist.txt) | Emission-time allowlist; unknown phases/`requires=`/`^.*` rejected. |
 
-Shared redaction + `detectSecrets` live in [`scripts/lib/quality-gate-secrets.mjs`](../../../../scripts/lib/quality-gate-secrets.mjs).
-JavaMelody collector: `127.0.0.1:8088:8080` (product publish change).
-
-## Run notes
-
-Dated notes: `YYYY-MM-DD-run-N.md`. Current: [run-5](2026-10-09-run-5.md).
-Earlier run-1…3 history lives on the PR comment for #746 (folded out of the tree).
+Shared redaction: [`scripts/lib/quality-gate-secrets.mjs`](../../../../scripts/lib/quality-gate-secrets.mjs).
+HA helpers: [`scripts/lib/quality-gate-ha.sh`](../../../../scripts/lib/quality-gate-ha.sh).
+Run notes for #746 live on the PR comment (not in-tree).
 
 ## Related
 
-- Root [`AGENTS.md`](../../../../AGENTS.md) § Quality gate
 - Scripts: [`quality-gate.sh`](../../../../scripts/quality-gate.sh),
   [`stack-health-check.sh`](../../../../scripts/stack-health-check.sh)

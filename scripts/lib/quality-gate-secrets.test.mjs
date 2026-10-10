@@ -113,17 +113,24 @@ describe('Basic header form (case-sensitive)', () => {
     assert.equal(sanitize(line).includes('dXNlcjpwYXNz'), false);
   });
 
-  it('does not flag prose "basic" / "HTTP Basic authentication"', () => {
+  it('does not flag prose basic / Basic authentication (Patrick + Christophe)', () => {
     assert.equal(detectSecrets('Using basic configuration').kinds.length, 0);
     assert.equal(
       detectSecrets('HTTP Basic authentication is not configured').kinds.length,
       0,
     );
+    assert.equal(detectSecrets('Basic authentication enabled').kinds.length, 0);
   });
 
   it('does not treat lowercase authorization: Basic as header Basic', () => {
     const r = detectSecrets('authorization: Basic dXNlcjpwYXNz');
     assert.equal(r.kinds.includes('basic'), false);
+  });
+
+  it('does not treat HTTP status code=200 as a secret', () => {
+    assert.equal(detectSecrets('response code=200').kinds.length, 0);
+    assert.equal(detectSecrets('status code: 404').kinds.length, 0);
+    assert.equal(detectSecrets('code=200').kinds.length, 0);
   });
 });
 

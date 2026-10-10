@@ -8,7 +8,7 @@
 #   → post-clean-health → functional → elective → docker-start restore
 #   → Playwright → churn-init → 2× churn → health → REPORT.md + summary.json
 #
-# Exit: 0 = GO, 3 = GO with reservations, other non-zero = NO-GO
+# Exit: 0 = GO, 3 = GO with reservations / INCONCLUSIVE: HA invalid, other = NO-GO
 # API replica check covers the 7 HA API JVMs (admin/auth/integration ×2 + crypto).
 # demo-device / demo-app-acme are excluded: not LB replicas; mem-sampled only.
 #
@@ -17,6 +17,9 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
+
+# shellcheck source=lib/quality-gate-ha.sh
+source "$SCRIPT_DIR/lib/quality-gate-ha.sh"
 
 export LC_ALL="${LC_ALL:-C.UTF-8}"
 export LANG="${LANG:-C.UTF-8}"
@@ -196,117 +199,6 @@ stop_stacks() {
   docker rm -f ezkey-javamelody-collector ezkey-javamelody-collector-ha >/dev/null 2>&1 || true
 }
 
-# Inspect API JVM replicas. tolerating="$name" may be down (ShedLock kill).
-# RestartCount delta (except restored ShedLock replica) → HA_INVALID.
-check_replicas() {
-  local phase="$1"
-  local tolerating="${2:-}"
-  local bad=0 name status health restarts prev delta
-  for name in $HA_REPLICAS; do
-    status="$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || echo missing)"
-    health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$name" 2>/dev/null || echo missing)"
-    restarts="$(docker inspect -f '{{.RestartCount}}' "$name" 2>/dev/null || echo 0)"
-    if [[ -z "${PREV_RESTARTS[$name]+x}" ]]; then
-      prev="$restarts"
-      delta=0
-    else
-      prev="${PREV_RESTARTS[$name]}"
-      delta=$((restarts - prev))
-      [[ "$delta" -lt 0 ]] && delta=0
-    fi
-    printf '%s\t%s\t%s\t%s\t%s\n' "$phase" "$name" "$status" "$health" "$restarts" >>"$REPLICAS_TSV"
-    printf '%s\t%s\t%s\t%s\n' "$phase" "$name" "$restarts" "$delta" >>"$RESTARTS_TSV"
-    PREV_RESTARTS[$name]="$restarts"
-    if [[ -n "$tolerating" && "$name" == "$tolerating" ]]; then
-      continue
-    fi
-    if [[ "$status" != "running" || ( "$health" != "healthy" && "$health" != "none" ) ]]; then
-      bad=1
-      echo "[$KEYWORD] replica issue phase=$phase $name status=$status health=$health restarts=$restarts"
-    fi
-    if [[ "$delta" -gt 0 && "$name" != "${SHEDLOCK_KILLED:-}" ]]; then
-      bad=1
-      echo "[$KEYWORD] restart delta phase=$phase $name delta=$delta → HA invalid"
-    fi
-  done
-  if [[ "$bad" -eq 1 ]]; then
-    HA_INVALID=1
-    OVERALL_AMBER=1
-    return 1
-  fi
-  return 0
-}
-
-wait_replicas_healthy() {
-  local timeout_s="${1:-180}" elapsed=0 name status health
-  while [[ "$elapsed" -lt "$timeout_s" ]]; do
-    local bad=0
-    for name in $HA_REPLICAS; do
-      status="$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || echo missing)"
-      health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$name" 2>/dev/null || echo missing)"
-      if [[ "$status" != "running" || ( "$health" != "healthy" && "$health" != "none" ) ]]; then
-        bad=1
-        break
-      fi
-    done
-    [[ "$bad" -eq 0 ]] && return 0
-    sleep 5
-    elapsed=$((elapsed + 5))
-  done
-  return 1
-}
-
-# Patrick C1: do NOT compose up -d (loses docker-test profile / logs). docker start only.
-restore_after_elective() {
-  local elective_log="$RUN_DIR/phases/elective-tests.log"
-  local killed=""
-  SHEDLOCK_KILL_EXPECTED=0
-  SHEDLOCK_RESTORE_OK=0
-  SHEDLOCK_KILLED=""
-  if [[ -f "$elective_log" ]]; then
-    killed="$(grep -E 'Crashing container: ezkey-admin-api-[12]' "$elective_log" 2>/dev/null \
-      | tail -1 | sed -E 's/.*Crashing container: (ezkey-admin-api-[12]).*/\1/' || true)"
-  fi
-  if [[ -n "$killed" ]]; then
-    SHEDLOCK_KILL_EXPECTED=1
-    SHEDLOCK_KILLED="$killed"
-    echo "[$KEYWORD] expected: ShedLockDistributedTest killed $killed — docker start restore"
-    printf '%s\n' \
-      "test-hygiene: ShedLockDistributedTest docker-kills ${killed} and does not restore it; gate docker-starts after elective" \
-      >>"$RUN_DIR/findings-extra.txt"
-  fi
-
-  if ! check_replicas "elective-pre-restore" "$killed"; then
-    echo "[$KEYWORD] unexpected replica down (beyond tolerated ShedLock kill) → HA invalid"
-    return 1
-  fi
-
-  if [[ -z "$killed" ]]; then
-    echo "[$KEYWORD] no ShedLock kill — replicas OK"
-    return 0
-  fi
-
-  if ! docker start "$killed" >/dev/null 2>&1; then
-    echo "[$KEYWORD] docker start $killed failed"
-    HA_INVALID=1
-    OVERALL_AMBER=1
-    return 1
-  fi
-  if ! wait_replicas_healthy 180; then
-    echo "[$KEYWORD] restore: replicas not healthy within 180s → HA invalid"
-    HA_INVALID=1
-    OVERALL_AMBER=1
-    check_replicas "elective-restore" || true
-    return 1
-  fi
-  # Baseline restarts after intentional kill/start so delta does not trip later phases.
-  PREV_RESTARTS[$killed]="$(docker inspect -f '{{.RestartCount}}' "$killed" 2>/dev/null || echo 0)"
-  SHEDLOCK_RESTORE_OK=1
-  check_replicas "elective-restore" || true
-  echo "[$KEYWORD] restore OK after expected ShedLock kill ($killed)"
-  return 0
-}
-
 # Rewrite last phases.tsv row: optional new verdict + note.
 rewrite_last_phase() {
   local new_verdict="${1:-}" note="${2:-}"
@@ -327,11 +219,19 @@ rewrite_last_phase() {
   mv "$tmp" "$PHASE_TSV"
 }
 
-# OOM evidence: docker events since gate start, or ExitOnOutOfMemoryError log line.
+# OOM evidence across the whole gate window (called after the phase loop — M1).
+# Failing docker events → UNKNOWN/AMBER, never silent "no OOM" (M2).
 check_oom_evidence() {
-  local ev oom_line=0
+  local ev ev_ec=0 name
   ev="$(docker events --since "$GATE_STARTED_AT" --until "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-    --filter event=oom --filter type=container 2>/dev/null | head -20 || true)"
+    --filter event=oom --filter type=container 2>/dev/null | head -20)"
+  ev_ec=${PIPESTATUS[0]:-0}
+  if [[ "$ev_ec" -ne 0 ]]; then
+    echo "[$KEYWORD] docker events failed (ec=$ev_ec) — OOM check UNKNOWN/AMBER"
+    OVERALL_AMBER=1
+    printf '%s\n' "OOM check UNKNOWN: docker events failed (ec=$ev_ec)" >>"$RUN_DIR/findings-extra.txt"
+    return 0
+  fi
   if [[ -n "$ev" ]]; then
     echo "[$KEYWORD] docker OOM events detected:"
     echo "$ev"
@@ -340,11 +240,11 @@ check_oom_evidence() {
     return 0
   fi
   for name in $HA_REPLICAS; do
-    if docker logs "$name" 2>&1 | tail -200 | grep -q 'Terminating due to java.lang.OutOfMemoryError'; then
+    if docker logs --since "$GATE_STARTED_AT" "$name" 2>&1 \
+      | grep -q 'Terminating due to java.lang.OutOfMemoryError'; then
       echo "[$KEYWORD] OOM log line in $name"
       OVERALL_RED=1
       printf '%s\n' "OOM: Terminating due to java.lang.OutOfMemoryError in $name" >>"$RUN_DIR/findings-extra.txt"
-      oom_line=1
     fi
   done
   return 0
@@ -473,24 +373,28 @@ run_phase_clean_start() {
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
 
-  if ! stack_up || ! check_replicas clean-start; then
-    code=1
-    verdict=RED
-    note="stack/replicas unhealthy after clean-start"
-  elif [[ "$COMPOSE_RETRY_FIRED" -eq 1 ]]; then
-    code=0
-    verdict=AMBER
-    note="AMBER: compose retry fired — product bug #747"
-    check_replicas clean-start || true
-  elif [[ "$code" -ne 0 ]]; then
-    # Patrick C2: clean-start failed without #747 — do not reset to GREEN if LB is up.
-    verdict=RED
-    note="clean-start failed without ezkey_encryption_key_pkey"
-  else
-    code=0
-    verdict=GREEN
-    note="HA + JM + memory overlay (no #747 retry)"
-  fi
+  local stack_ok=0 replicas_ok=0
+  stack_up && stack_ok=1
+  check_replicas clean-start && replicas_ok=1 || true
+  verdict="$(classify_clean_start_verdict "$code" "$COMPOSE_RETRY_FIRED" "$stack_ok" "$replicas_ok")"
+  case "$verdict" in
+    AMBER)
+      code=0
+      note="AMBER: compose retry fired — product bug #747"
+      ;;
+    RED)
+      code=1
+      if [[ "$stack_ok" != "1" || "$replicas_ok" != "1" ]]; then
+        note="stack/replicas unhealthy after clean-start"
+      else
+        note="clean-start failed without ezkey_encryption_key_pkey"
+      fi
+      ;;
+    *)
+      code=0
+      note="HA + JM + memory overlay (no #747 retry)"
+      ;;
+  esac
   export COMPOSE_RETRY_FIRED
   record_phase clean-start "$verdict" "$code" "$(duration_ms "$start" "$end")" "$log" "-" "$note"
   return "$code"
@@ -594,7 +498,6 @@ run_phase_health() {
   local log="$RUN_DIR/phases/health.log" start end code=0
   start="$(now_ms)"
   {
-    check_oom_evidence || true
     health_env
     QUALITY_GATE_PHASE=health \
       ./scripts/stack-health-check.sh --output-dir "$RUN_DIR/health"
@@ -699,6 +602,9 @@ for phase in $PHASES; do
   fi
 done
 
+# M1: OOM evidence covers every phase, not only health.
+check_oom_evidence || true
+
 GATE_END="$(now_ms)"
 TOTAL_MS="$(duration_ms "$GATE_START" "$GATE_END")"
 trap - INT TERM EXIT
@@ -711,5 +617,5 @@ OVERALL="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.ar
 echo "OVERALL: $OVERALL"
 
 if [[ "$OVERALL_RED" -ne 0 ]]; then exit 1; fi
-if [[ "$OVERALL_AMBER" -ne 0 || "$HA_INVALID" -ne 0 ]]; then exit 3; fi
+if [[ "$HA_INVALID" -ne 0 || "$OVERALL_AMBER" -ne 0 ]]; then exit 3; fi
 exit 0

@@ -24,6 +24,7 @@ import {
   signature,
   splitDockerLogLine,
 } from './lib/quality-gate-secrets.mjs';
+import { loadJson, parseArgs as parseFlagArgs } from './lib/quality-gate-util.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, '..');
@@ -39,7 +40,17 @@ const HA_API_REPLICAS = [
   'ezkey-crypto-api-ha',
 ];
 
-const args = parseArgs(process.argv.slice(2));
+const args = parseFlagArgs(process.argv.slice(2), {
+  '--output-dir': 'outputDir',
+  '--jm-dir': 'jmDir',
+  '--jm-ok': 'jmOk',
+  '--thresholds': 'thresholds',
+  '--allowlist': 'allowlist',
+  '--phase': 'phase',
+  '--phase-windows': 'phaseWindows',
+  '--since': 'since',
+  '--until': 'until',
+});
 const OUTPUT_DIR = args.outputDir || join(REPO_ROOT, 'logs', 'quality-gate', 'health');
 const JM_DIR = args.jmDir || join(OUTPUT_DIR, 'javamelody');
 const JM_OK = args.jmOk === '1' || args.jmOk === 'true';
@@ -753,52 +764,6 @@ function distinctSecretFindings(hits) {
     if (a.severity !== b.severity) return a.severity === 'RED' ? -1 : 1;
     return b.count - a.count;
   });
-}
-
-function loadJson(path) {
-  if (!existsSync(path)) return null;
-  try {
-    return JSON.parse(readFileSync(path, 'utf8'));
-  } catch {
-    return null;
-  }
-}
-
-function parseArgs(argv) {
-  const out = {};
-  for (let i = 0; i < argv.length; i += 1) {
-    const key = argv[i];
-    const val = argv[i + 1];
-    if (key === '--output-dir') {
-      out.outputDir = val;
-      i += 1;
-    } else if (key === '--jm-dir') {
-      out.jmDir = val;
-      i += 1;
-    } else if (key === '--jm-ok') {
-      out.jmOk = val;
-      i += 1;
-    } else if (key === '--thresholds') {
-      out.thresholds = val;
-      i += 1;
-    } else if (key === '--allowlist') {
-      out.allowlist = val;
-      i += 1;
-    } else if (key === '--phase') {
-      out.phase = val;
-      i += 1;
-    } else if (key === '--phase-windows') {
-      out.phaseWindows = val;
-      i += 1;
-    } else if (key === '--since') {
-      out.since = val;
-      i += 1;
-    } else if (key === '--until') {
-      out.until = val;
-      i += 1;
-    }
-  }
-  return out;
 }
 
 function fmt(v) {

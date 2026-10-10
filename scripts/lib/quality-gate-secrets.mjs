@@ -59,6 +59,7 @@ export function isMaskedOrNonSecretValue(value) {
   if (value == null) return true;
   let v = String(value).trim();
   v = v.replace(/^["']+|["']+$/g, '');
+  // Mask check BEFORE stripping trailing punctuation — "***REDACTED***)," must stay masked.
   if (MASKED_VALUE_RE.test(v)) return true;
   v = v.replace(/[),;.]+$/g, '');
   if (!v) return true;
@@ -68,8 +69,19 @@ export function isMaskedOrNonSecretValue(value) {
   return false;
 }
 
+/** HTTP status after bare `code=` / `code:` — not a secret (e.g. code=200). */
+export function isHttpStatusCodeKeyValue(key, value) {
+  if (!/^code$/i.test(String(key || ''))) return false;
+  const v = String(value || '')
+    .trim()
+    .replace(/[),;.]+$/g, '');
+  return /^[1-5]\d{2}$/.test(v);
+}
+
 /**
- * Known log message → product logger (path only; no hard-coded line numbers).
+ * Known log message → product logger.
+ * Paths are best-effort hints only — do not invent line numbers or fabricate paths
+ * that are not in the product tree.
  */
 export const PRODUCT_LOG_SOURCES = [
   {
@@ -118,6 +130,34 @@ export const PRODUCT_LOG_SOURCES = [
 ];
 
 /**
+ * Shared kv redaction for "key=val", key: val, and quoted values.
+ *
+ * @param {string} text
+ * @param {(kind: string, severity: 'RED'|'AMBER', sample: string) => void} note
+ * @returns {string}
+ */
+function redactKvForms(text, note) {
+  const keys = `${SECRET_KEY_STEM}|challenge|code|username|user`;
+  const apply = (out, re, wrap) =>
+    out.replace(re, (full, key, val) => {
+      if (isMaskedOrNonSecretValue(val)) return full;
+      if (isHttpStatusCodeKeyValue(key, val)) return full;
+      if (/^bearer$/i.test(val) || /^basic$/i.test(val)) return full;
+      if (USERNAME_KEY_RE.test(key)) {
+        note('kv-username', 'AMBER', val);
+      } else {
+        note('kv-secret', 'RED', val);
+      }
+      return wrap(key);
+    });
+  let out = text;
+  out = apply(out, new RegExp(`\\b(${keys})\\b\\s*[=:]\\s*"([^"]*)"`, 'gi'), (k) => `${k}="***REDACTED***"`);
+  out = apply(out, new RegExp(`\\b(${keys})\\b\\s*[=:]\\s*'([^']*)'`, 'gi'), (k) => `${k}='***REDACTED***'`);
+  out = apply(out, new RegExp(`\\b(${keys})\\b\\s*[=:]\\s*(\\S+)`, 'gi'), (k) => `${k}=***REDACTED***`);
+  return out;
+}
+
+/**
  * Apply the single redaction pattern set. Bearer / Basic run before kv.
  *
  * @param {string} rawLine
@@ -161,6 +201,7 @@ export function applyRedactions(rawLine) {
     },
   );
   out = out.replace(/\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}\b/g, (m) => {
+    // HH:MM:SS timestamps are not IPv6 — require :: or a hex letter.
     if (!(m.includes('::') || /[a-fA-F]/.test(m))) return m;
     note('ip', 'AMBER', m);
     return '<IPV6>';
@@ -193,6 +234,7 @@ export function applyRedactions(rawLine) {
     ),
     (full, key, val) => {
       if (isMaskedOrNonSecretValue(val)) return full;
+      if (isHttpStatusCodeKeyValue(key, val)) return full;
       if (USERNAME_KEY_RE.test(key)) {
         note('json-username', 'AMBER', val);
       } else {
@@ -226,55 +268,8 @@ export function applyRedactions(rawLine) {
     },
   );
 
-  // 8a) kv with double/single-quoted values (spaces allowed): password="a b"
-  out = out.replace(
-    new RegExp(
-      `\\b(${SECRET_KEY_STEM}|challenge|code|username|user)\\b\\s*[=:]\\s*"([^"]*)"`,
-      'gi',
-    ),
-    (full, key, val) => {
-      if (isMaskedOrNonSecretValue(val)) return full;
-      if (USERNAME_KEY_RE.test(key)) {
-        note('kv-username', 'AMBER', val);
-      } else {
-        note('kv-secret', 'RED', val);
-      }
-      return `${key}="***REDACTED***"`;
-    },
-  );
-  out = out.replace(
-    new RegExp(
-      `\\b(${SECRET_KEY_STEM}|challenge|code|username|user)\\b\\s*[=:]\\s*'([^']*)'`,
-      'gi',
-    ),
-    (full, key, val) => {
-      if (isMaskedOrNonSecretValue(val)) return full;
-      if (USERNAME_KEY_RE.test(key)) {
-        note('kv-username', 'AMBER', val);
-      } else {
-        note('kv-secret', 'RED', val);
-      }
-      return `${key}='***REDACTED***'`;
-    },
-  );
-
-  // 8b) kv / labeled unquoted
-  out = out.replace(
-    new RegExp(
-      `\\b(${SECRET_KEY_STEM}|challenge|code|username|user)\\b\\s*[=:]\\s*(\\S+)`,
-      'gi',
-    ),
-    (full, key, val) => {
-      if (isMaskedOrNonSecretValue(val)) return full;
-      if (/^bearer$/i.test(val) || /^basic$/i.test(val)) return full;
-      if (USERNAME_KEY_RE.test(key)) {
-        note('kv-username', 'AMBER', val);
-        return `${key}=***REDACTED***`;
-      }
-      note('kv-secret', 'RED', val);
-      return `${key}=***REDACTED***`;
-    },
-  );
+  // 8) kv / labeled forms (quoted + bare) — shared helper
+  out = redactKvForms(out, note);
 
   // Phrase forms: "Enrollment Proof Token: …", "Enrollment Challenge Code: N"
   out = out.replace(
