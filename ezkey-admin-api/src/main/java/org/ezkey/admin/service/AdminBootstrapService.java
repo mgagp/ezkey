@@ -217,7 +217,10 @@ public class AdminBootstrapService {
       }
 
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-      logger.error("❌ Failed to bootstrap admin MFA: {}", e.getMessage(), e);
+      // Never log e.getMessage()/stack — nested causes may echo file or credential material.
+      logger.error(
+          "Failed to bootstrap admin MFA (step=admin-mfa-bootstrap, type={})",
+          e.getClass().getSimpleName());
       throw new RuntimeException("Admin MFA bootstrap failed", e);
     }
   }

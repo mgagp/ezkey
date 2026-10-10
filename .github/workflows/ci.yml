@@ -68,6 +68,7 @@ jobs:
               - 'ezkey-demo-device/**'
               - 'ezkey-tests/**'
               - 'docker/demo-app-acme-entrypoint.sh'
+              - 'docker/bootstrap-init/**'
               - 'scripts/build.sh'
               - '.mvn/**'
             mobile:
@@ -198,6 +199,9 @@ jobs:
 
       - name: Unit tests (H2; exclude ezkey-tests)
         run: mvn -B -ntp test -pl '!ezkey-tests'
+
+      - name: Bootstrap-init idempotency (null-token / disabled → exit 0)
+        run: bash docker/bootstrap-init/bootstrap-init-idempotent-test.sh
 
       - name: Upload Surefire reports
         if: always()

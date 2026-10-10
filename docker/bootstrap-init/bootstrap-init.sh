@@ -120,7 +120,9 @@ if [ "$HTTP_CODE" != "200" ]; then
     if [ -f "$DEMO_DEVICE_ENROLLMENTS_DIR/${ENROLLMENT_ID}.json" ]; then
       echo "   Demo-device enrollment file already present."
     else
-      echo "   NOTE: Demo-device enrollment file missing; re-seed via clean-start if demos need it."
+      echo "WARN: Demo-device enrollment file missing for enrollmentId=${ENROLLMENT_ID}."
+      echo "WARN: Enrollment may be bound to another device; demos will not work until"
+      echo "WARN: you re-seed via clean-start (docker compose down -v && ./clean-start.sh)."
     fi
     exit 0
   else
