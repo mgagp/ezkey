@@ -365,32 +365,9 @@ For a **new** Lightsail bring-up (not a remote action from a laptop against the 
 
 ### Post-upgrade checks (m6)
 
-Same checklist as [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Post-upgrade checks (m6):
-
-1. `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`
-2. Confirm `json-file` rotation
-3. Caddyfile is the community variant
-4. Bootstrap credentials — **no `cat`**, **no `docker cp` to `/tmp`**. Parametrize `VOL`:
-
-   ```bash
-   # Discover: docker volume ls --filter name=bootstrap-artifacts
-   VOL=${VOL:-ezkey-experimental-lightsail_bootstrap-artifacts}
-   docker volume inspect "$VOL" >/dev/null || { echo "volume not found: $VOL"; exit 1; }
-   # Read-only inside the volume — never prints file content; preserves volume mode/owner.
-   docker run --rm -v "$VOL":/v:ro alpine sh -c '
-     stat -c "%a %u:%g" /v/bootstrap-credentials.json
-     for k in enrollmentProofToken enrollmentChallengeCode authUrl; do
-       printf "%s=" "$k"
-       grep -c "\"$k\"" /v/bootstrap-credentials.json || true
-     done
-   '
-   ```
-
-   Expect `600` and zero counts for token/challenge/authUrl after bind redaction. If still
-   `644` with old secrets, delete **only with Marc's go** (see [`OPERATIONAL.md`](../OPERATIONAL.md)
-   delete recipe) and confirm absent:
-   `docker run --rm -v "$VOL":/data alpine test ! -e /data/bootstrap-credentials.json`.
-5. Optional `--scan` only after the script is on the host (pre-upgrade order above).
+Follow the canon checklist in [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Post-upgrade checks
+(m6) — including the read-only in-volume credentials check (never `cat` / never `docker cp` to
+`/tmp`). Deletion of `bootstrap-credentials.json` happens **only with Marc's go**.
 
 Canon and “what it never does”: [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Log rotation and hygiene.
 

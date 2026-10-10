@@ -628,7 +628,7 @@ Ceiling ≈ **8 services × 20 MiB × 3 files ≈ 480 MiB** of container json lo
 | Periodically (e.g. monthly) | same without `--scan` | Report sizes; exit `1` if rotation missing |
 | Optional content scan | `… --scan` (stdout+stderr; `--since` window) | Counts of credential-like patterns only (never values) |
 | Plan cleanup | `… --purge` | Dry-run: stopped-container logs + rotated files older than 7d (project containers only) |
-| Apply cleanup | `… --purge --apply --yes` | Truncate/remove (confirm unless `--yes`) |
+| Apply cleanup | `… --project NAME --purge --apply --yes` | Truncate/remove (**`--project` or `COMPOSE_PROJECT_NAME` required** — no host-wide apply) |
 
 **Exit codes:** `0` ok, `1` findings, `2` error.
 

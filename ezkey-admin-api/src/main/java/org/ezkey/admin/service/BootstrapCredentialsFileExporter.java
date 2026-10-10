@@ -437,9 +437,10 @@ public class BootstrapCredentialsFileExporter {
   /**
    * Returns a short operator-facing pointer to the credentials file (for log lines).
    *
-   * @return pointer string including path and mode hint
+   * @return pointer string including path and mode hint reflecting the last write
    */
   public String recoveryCodesLogPointer() {
-    return "<see " + exportProperties.getPath() + " (0600)>";
+    String mode = lastWriteUsedPosixOwnerOnly ? "0600" : "non-POSIX fallback";
+    return "<see " + exportProperties.getPath() + " (" + mode + ")>";
   }
 }

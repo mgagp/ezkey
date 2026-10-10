@@ -127,9 +127,11 @@ App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/ligh
 bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail
 bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan
 bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --purge
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --purge --apply --yes
 ```
 
-Pre-upgrade scan: sync `scripts/ops/` with `--sync-operator-files` **without** `--remote-up` (or `scp` the script), run `--scan`, then `--remote-up`.
+`--purge --apply` requires `--project` (or `COMPOSE_PROJECT_NAME`); host-wide apply is refused.
+Pre-upgrade scan: sync `scripts/ops/` with `--sync-operator-files` **without** `--remote-up` (or `scp` the script), restore community Caddyfile, run `--scan`, then `--remote-up`.
 
 ## Initial Problem
 

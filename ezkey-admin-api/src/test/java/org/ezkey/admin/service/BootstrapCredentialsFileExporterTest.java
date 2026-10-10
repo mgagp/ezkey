@@ -289,6 +289,8 @@ class BootstrapCredentialsFileExporterTest {
               .reduce("", (a, b) -> a + "\n" + b);
       assertThat(joined).contains("non-POSIX fallback");
       assertThat(joined).doesNotContain(", 0600)");
+      assertThat(exporter.recoveryCodesLogPointer()).contains("non-POSIX fallback");
+      assertThat(exporter.recoveryCodesLogPointer()).doesNotContain("(0600)");
     } finally {
       exporterLogger.detachAppender(appender);
       exporterLogger.setLevel(previous);

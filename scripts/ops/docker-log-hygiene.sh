@@ -22,12 +22,11 @@ Usage: bash scripts/ops/docker-log-hygiene.sh [options]
   --since DUR            Scan window for docker logs (default: 720h / SCAN_SINCE)
   --project NAME         Limit to compose project (label com.docker.compose.project)
   --purge                Purge plan (dry-run): stopped logs + old rotated files
-  --apply                With --purge, perform purge (prompts unless --yes)
+  --apply                With --purge; requires --project or COMPOSE_PROJECT_NAME (no host-wide)
   --yes                  Skip confirmation for --purge --apply
   --older-than N         Rotated-file age in days (default: 7)
   -h, --help             Help
-Rotated-file purge needs read access under /var/lib/docker/containers (often sudo).
-Exit: 0 ok, 1 findings, 2 error.
+Rotated purge often needs sudo under /var/lib/docker/containers. Exit: 0 ok, 1 findings, 2 error.
 EOF
 }
 
@@ -105,9 +104,9 @@ case "$OLDER_THAN_DAYS" in
   ''|*[!0-9]*) die "--older-than must be a non-negative integer" ;;
 esac
 
-if [ "$APPLY" -eq 1 ] && [ "$MODE" != "purge" ]; then
-  die "--apply requires --purge (refusing to run destructive actions)"
-fi
+[ "$APPLY" -eq 1 ] && [ "$MODE" != "purge" ] && die "--apply requires --purge"
+[ "$APPLY" -eq 1 ] && [ -z "$PROJECT" ] \
+  && die "--purge --apply requires --project NAME or COMPOSE_PROJECT_NAME (refusing host-wide apply)"
 
 require_docker
 
@@ -203,10 +202,8 @@ purge_plan_or_apply() {
     fi
   done < <(container_ids)
 
-  if [ ! -r "$DOCKER_ROOT/containers" ]; then
-    echo "NOTE: $DOCKER_ROOT/containers not readable — rotated-file search may be incomplete."
-    echo "NOTE: Re-run with sudo (or fix group perms) so rotated json logs under project containers are included."
-  fi
+  [ -r "$DOCKER_ROOT/containers" ] \
+    || echo "NOTE: $DOCKER_ROOT/containers not readable — re-run with sudo for rotated logs."
 
   if [ "${#ops[@]}" -eq 0 ]; then
     [ "$mig_warn" -eq 1 ] && echo "No purge candidates (migration containers were excluded)." \
