@@ -5,9 +5,12 @@
  * Cloud agent tooling; Git Bash best-effort, untested on macOS.
  */
 
-/** Values already masked by product or prior redaction — never score as a hit. */
+/**
+ * Values already masked by product or prior redaction — never score as a hit.
+ * Allows optional trailing punctuation/DTO glue after the mask token.
+ */
 export const MASKED_VALUE_RE =
-  /^(?:\*{2,}REDACTED\*{2,}|\*{3,}|\[REDACTED\]|\[PROTECTED\]|<redacted>|xxx+|…+)$/i;
+  /^(?:\*{2,}REDACTED\*{2,}|\*{3,}|\[REDACTED\]|\[PROTECTED\]|<redacted>|xxx+|…+)[)\]},;."']*$/i;
 
 /**
  * Non-secret placeholders after key= / key: (e.g. challenge: true boolean flag).
@@ -48,10 +51,16 @@ export const SHA256_HEX64_RE = /^[0-9a-f]{64}$/i;
 
 /**
  * Test-generated admin username shape only (≤32 chars).
- * e.g. `admin-a1b2c3d4e5f67890`, `tenant-admin-1791682905`.
+ * e.g. `admin-a1b2c3d4e5f67890`, `tenant-admin-1791682905`, `churn-ta-<hex>`.
  */
 export const TEST_ADMIN_USERNAME_RE =
   /^[a-z][a-z0-9-]*-(?:[0-9a-f]{8,20}|\d{10,13})$/;
+
+/**
+ * Test-generated display-name suffix only (≤32 chars): churn resourceSuffix hex
+ * or epoch millis uniqueSuffix. Matched only after display-name label prefixes.
+ */
+export const TEST_DISPLAY_NAME_SUFFIX_RE = /^(?:[0-9a-f]{8,32}|\d{10,13})$/;
 
 /**
  * Opaque lookalike that is a jar stem, word-boundary `git:` hex SHA, arch triple,
@@ -94,34 +103,66 @@ export function isKeysetBackupFilename(match, after) {
 }
 
 /**
- * Admin-username log glue: `for admin: `, `by admin: `, `tenant admin: `, `successful for: `.
+ * Admin / provisioning username label glue. Exact prefixes (case-insensitive):
+ * `for admin: `, `by admin: `, `tenant admin: `, `successful for: `,
+ * `Tenant admin created: `, `Tenant created: `, `Creating tenant: `,
+ * `Admin: `, and space form `Admin ` (e.g. "Admin <name> attempted…").
  *
  * @param {string} before
  * @returns {boolean}
  */
 export function isAdminUsernameOpaqueContext(before) {
-  return /(?:for admin|by admin|tenant admin|successful for):\s*$/i.test(String(before || ''));
+  const b = String(before || '');
+  if (
+    /(?:for admin|by admin|tenant admin|successful for|Tenant admin created|Tenant created|Creating tenant|Admin):\s*$/i.test(
+      b,
+    )
+  ) {
+    return true;
+  }
+  // "Admin <name> attempted to create API key…" (no colon)
+  return /\bAdmin\s+$/.test(b);
+}
+
+/**
+ * Display-name suffix glue for test-generated tenant/integration names.
+ * Exact prefixes: `Churn Tenant `, `Churn Int A `, `Churn Int B `,
+ * `Tenant A `, `Tenant B `, `Tenant C `, `Integration A1 `, `Integration A2 `,
+ * `Integration B `, `Integration C `.
+ *
+ * @param {string} before
+ * @returns {boolean}
+ */
+export function isTestDisplayNameOpaqueContext(before) {
+  return /(?:Churn Tenant|Churn Int [AB]|Tenant [A-C]|Integration (?:A\d|[BC]))\s+$/i.test(
+    String(before || ''),
+  );
 }
 
 /**
  * Public-key field names (not credentials). Matches {@code publicKey},
- * {@code base64PublicKey}, {@code base64UrlPublicKey} (Ed25519KeyPair), etc.
+ * {@code base64PublicKey}, {@code devicePublicKey}, {@code DevicePublicKeyHash},
+ * truncated {@code DevicePublicKey…} / {@code DevicePublicKey...}, etc.
  *
  * @param {string} key
  * @returns {boolean}
  */
 export function isPublicKeyFieldName(key) {
-  return /public[_-]?key$/i.test(String(key || ''));
+  const k = String(key || '').replace(/(?:…|\.\.\.)$/u, '');
+  return /public[_-]?key(?:hash)?$/i.test(k);
 }
 
 /**
- * Opaque-token context immediately after a public-key field assignment.
+ * Opaque-token context immediately after a public-key field assignment
+ * (including {@code DevicePublicKeyHash:} digests and truncated key names).
  *
  * @param {string} before chars before the opaque candidate
  * @returns {boolean}
  */
 export function isPublicKeyOpaqueContext(before) {
-  return /\b[\w-]*public[_-]?key\s*[=:]\s*"?$/i.test(String(before || ''));
+  return /\b[\w-]*public[_-]?key(?:hash)?(?:…|\.\.\.)?\s*[=:]\s*"?$/iu.test(
+    String(before || ''),
+  );
 }
 
 /**
@@ -156,6 +197,34 @@ export function isTestAdminUsernameShape(value) {
   const v = String(value || '');
   if (v.length > 32) return false;
   return TEST_ADMIN_USERNAME_RE.test(v);
+}
+
+/**
+ * Test display-name suffix shape (≤32 chars): hex resourceSuffix or epoch millis.
+ *
+ * @param {string} value
+ * @returns {boolean}
+ */
+export function isTestDisplayNameSuffixShape(value) {
+  const v = String(value || '');
+  if (v.length > 32) return false;
+  return TEST_DISPLAY_NAME_SUFFIX_RE.test(v);
+}
+
+/**
+ * Config counters after {@code *ApiKey} keys (e.g. {@code applyApiKey=5} rate-limit
+ * init) — not credential material. Real API key strings stay RED.
+ *
+ * @param {string} key
+ * @param {string} value
+ * @returns {boolean}
+ */
+export function isNonSecretApiKeyConfigValue(key, value) {
+  if (!/api[-_]?key$/i.test(String(key || ''))) return false;
+  const v = String(value || '')
+    .trim()
+    .replace(/[)\]},;."']+$/g, '');
+  return /^\d{1,6}$/.test(v);
 }
 /** Known allowlist requires= tokens (typos must not make an entry unconditional). */
 export const KNOWN_ALLOWLIST_REQUIRES = new Set(['COMPOSE_RETRY_FIRED']);
@@ -192,7 +261,7 @@ export function isMaskedOrNonSecretValue(value) {
   v = v.replace(/^["']+|["']+$/g, '');
   // Mask check BEFORE stripping trailing punctuation — "***REDACTED***)," must stay masked.
   if (MASKED_VALUE_RE.test(v)) return true;
-  v = v.replace(/[),;.]+$/g, '');
+  v = v.replace(/[)\]},;."']+$/g, '');
   if (!v) return true;
   if (MASKED_VALUE_RE.test(v)) return true;
   // DTO toString may append an outer ']' after product [PROTECTED] / [REDACTED]
@@ -293,7 +362,9 @@ function redactKvForms(text, note) {
   const keys = `${SECRET_KEY_STEM}|\\w*public[_-]?key|challenge|code|username|user`;
   const apply = (out, re, wrap) =>
     out.replace(re, (full, key, val) => {
+      // Masked / placeholders never RED — whatever the key name (incl. *ApiKey).
       if (isMaskedOrNonSecretValue(val)) return full;
+      if (isNonSecretApiKeyConfigValue(key, val)) return full;
       if (isHttpStatusCodeKeyValue(key, val)) return full;
       if (isChallengeProseValue(key, val)) return full;
       if (/^bearer$/i.test(val) || /^basic$/i.test(val)) return full;
@@ -402,6 +473,7 @@ export function applyRedactions(rawLine) {
     ),
     (full, key, val) => {
       if (isMaskedOrNonSecretValue(val)) return full;
+      if (isNonSecretApiKeyConfigValue(key, val)) return full;
       if (isHttpStatusCodeKeyValue(key, val)) return full;
       if (USERNAME_KEY_RE.test(key)) {
         note('json-username', 'AMBER', val);
@@ -468,14 +540,18 @@ export function applyRedactions(rawLine) {
 
   // 10) Opaque long tokens (letters+digits, not CamelCase / dotted packages).
   // Skip jar/git/arch/64-hex Sha256Hex=/keyset-backup; test admin usernames → AMBER;
-  // publicKey= / base64PublicKey= / base64UrlPublicKey= → AMBER (not private keys).
+  // test display-name suffixes → AMBER; publicKey= / DevicePublicKeyHash= → AMBER.
   out = out.replace(OPAQUE_TOKEN_RE, (m, offset, whole) => {
-    if (MASKED_VALUE_RE.test(m)) return m;
+    if (isMaskedOrNonSecretValue(m)) return m;
     if (m === '<UUID>') return m;
-    const before = String(whole).slice(Math.max(0, offset - 48), offset);
+    const before = String(whole).slice(Math.max(0, offset - 64), offset);
     const after = String(whole).slice(offset + m.length, offset + m.length + 24);
     if (isJarGitArchOpaqueContext(m, before, after)) return m;
     if (isAdminUsernameOpaqueContext(before) && isTestAdminUsernameShape(m)) {
+      note('opaque-username', 'AMBER', m);
+      return '<USER>';
+    }
+    if (isTestDisplayNameOpaqueContext(before) && isTestDisplayNameSuffixShape(m)) {
       note('opaque-username', 'AMBER', m);
       return '<USER>';
     }

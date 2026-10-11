@@ -29,6 +29,19 @@ describe('isMaskedOrNonSecretValue', () => {
     assert.equal(isMaskedOrNonSecretValue('<redacted>'), true);
     assert.equal(isMaskedOrNonSecretValue('****'), true);
   });
+  it('treats masked values with trailing punctuation/DTO glue as masked', () => {
+    for (const v of [
+      '***REDACTED***)',
+      '***REDACTED***,',
+      '***REDACTED***;',
+      '***REDACTED***].',
+      '[PROTECTED]]',
+      '[PROTECTED],',
+      '****,',
+    ]) {
+      assert.equal(isMaskedOrNonSecretValue(v), true, v);
+    }
+  });
   it('treats booleans and anchored ID= labels as non-secret', () => {
     assert.equal(isMaskedOrNonSecretValue('true'), true);
     assert.equal(isMaskedOrNonSecretValue('false'), true);
@@ -44,6 +57,131 @@ describe('isMaskedOrNonSecretValue', () => {
   it('treats real values as present', () => {
     assert.equal(isMaskedOrNonSecretValue('ABCD1234'), false);
     assert.equal(isMaskedOrNonSecretValue('46'), false);
+  });
+});
+
+describe('masked *ApiKey values never RED (run-7 applyApiKey class)', () => {
+  it('ignores applyApiKey=***REDACTED*** / [PROTECTED] / **** (negative)', () => {
+    for (const line of [
+      'applyApiKey=***REDACTED*** per 10 minute(s), enabled=true',
+      'ACME demo rate limiting initialized: login=20 per 5 minute(s), loginIpBound=60 per 5 minute(s), applyApiKey=***REDACTED*** per 10 minute(s), enabled=true',
+      'applyApiKey=[PROTECTED] per 10 minute(s)',
+      'applyApiKey=**** per 10 minute(s)',
+      'applyApiKey=***REDACTED***), enabled=true',
+    ]) {
+      const r = detectSecrets(line);
+      assert.equal(r.kinds.length, 0, `kinds=${r.kinds} line=${line}`);
+      assert.equal(r.severity, null, line);
+    }
+  });
+
+  it('ignores applyApiKey=<small int> rate-limit counters (negative, run-7 raw)', () => {
+    const line =
+      'ACME demo rate limiting initialized: login=20 per 5 minute(s), loginIpBound=60 per 5 minute(s), applyApiKey=5 per 10 minute(s), enabled=true';
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('kv-secret'), false, `kinds=${r.kinds}`);
+    assert.notEqual(r.severity, 'RED', `kinds=${r.kinds}`);
+  });
+
+  it('keeps applyApiKey=<real key material> RED (positive)', () => {
+    const tok = 'ezkey_akey_AbCdEfGhIjKlMnOp123456';
+    const line = `applyApiKey=${tok} per 10 minute(s)`;
+    const r = detectSecrets(line);
+    assert.equal(r.severity, 'RED', `kinds=${r.kinds}`);
+    assert.ok(r.kinds.includes('kv-secret'), `kinds=${r.kinds}`);
+    assert.equal(sanitize(line).includes(tok), false);
+  });
+});
+
+describe('DevicePublicKeyHash / truncated public-key naming (run-7 class)', () => {
+  const HEX64 =
+    'd033d24b1e3199e35b8f2d55ca761e85d0084afa4df8126cc145fa9b5ea84db3';
+
+  it('scores DevicePublicKeyHash: <64 hex> AMBER (negative)', () => {
+    const line =
+      `Enrollment successfully verified - ID: 1, Status: VERIFIED, Active: true, DevicePublicKeyHash: ${HEX64}`;
+    const r = detectSecrets(line);
+    assert.notEqual(r.severity, 'RED', `kinds=${r.kinds}`);
+    assert.ok(
+      r.kinds.includes('kv-public-key') || r.kinds.includes('opaque-public-key'),
+      `kinds=${r.kinds}`,
+    );
+    assert.equal(r.severity, 'AMBER');
+  });
+
+  it('scores devicePublicKey= / DevicePublicKey… truncated key name AMBER (negative)', () => {
+    const pub = 'MCowBQYDK2VwAyEA0123456789AbCdEfGhIjKlMnOpQrStUvWxYz';
+    for (const line of [
+      `devicePublicKey=${pub}`,
+      `DevicePublicKey…=${pub}`,
+      `DevicePublicKey...=${pub}`,
+    ]) {
+      const r = detectSecrets(line);
+      assert.equal(r.severity, 'AMBER', `kinds=${r.kinds} line=${line}`);
+      assert.equal(r.kinds.includes('opaque-token'), false, line);
+    }
+  });
+
+  it('keeps DevicePublicKeyHash=<PKCS#8 private material> RED (positive)', () => {
+    const pkcs8 = 'MIGHAgEA0123456789AbCdEfGhIjKlMnOpQrStUv';
+    const line = `DevicePublicKeyHash=${pkcs8}`;
+    const r = detectSecrets(line);
+    assert.equal(r.severity, 'RED', `kinds=${r.kinds}`);
+    assert.ok(
+      r.kinds.includes('kv-secret') || r.kinds.includes('opaque-token'),
+      `kinds=${r.kinds}`,
+    );
+  });
+});
+
+describe('provisioning display-name prefixes → AMBER (run-7 class)', () => {
+  const ADMIN = 'churn-ta-0050545f61fa6156e';
+  const SUFFIX = 'ba30006edc9c6dd7311d84c173835aa3';
+
+  it('scores Tenant admin created / Admin: / Admin␠ username shapes AMBER (negative)', () => {
+    const lines = [
+      `✅ Tenant admin created: ${ADMIN} (ID: 4) for tenant: 4`,
+      `API key created successfully - ID: 65, Integration: 143, Admin: ${ADMIN}`,
+      `Admin ${ADMIN} attempted to create API key for integration 20 without access`,
+      `Integration created successfully - ID: 3, Tenant: Tenant A 1791761049861 (ID: 23), Admin: ${ADMIN}`,
+    ];
+    for (const line of lines) {
+      const r = detectSecrets(line);
+      assert.equal(r.kinds.includes('opaque-username'), true, `kinds=${r.kinds} line=${line}`);
+      assert.equal(r.kinds.includes('opaque-token'), false, line);
+      assert.equal(r.severity, 'AMBER', line);
+    }
+  });
+
+  it('scores Churn Tenant / Churn Int suffix hex AMBER (negative)', () => {
+    const lines = [
+      `Creating tenant: Churn Tenant ${SUFFIX} (creator: 108)`,
+      `✅ Tenant created: Churn Tenant ${SUFFIX} (ID: 112)`,
+      `Integration name=Churn Int A ${SUFFIX} ready`,
+      `Integration name=Churn Int B ${SUFFIX} ready`,
+    ];
+    for (const line of lines) {
+      const r = detectSecrets(line);
+      assert.equal(r.kinds.includes('opaque-username'), true, `kinds=${r.kinds} line=${line}`);
+      assert.equal(r.kinds.includes('opaque-token'), false, line);
+      assert.equal(r.severity, 'AMBER', line);
+    }
+  });
+
+  it('keeps random high-entropy token after those labels RED (positive)', () => {
+    const tok = 'a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0'; // 40 mixed
+    const lines = [
+      `✅ Tenant admin created: ${tok} (ID: 4) for tenant: 4`,
+      `Admin: ${tok}`,
+      `Admin ${tok} attempted to create API key`,
+      `Creating tenant: Churn Tenant ${tok} (creator: 1)`,
+    ];
+    for (const line of lines) {
+      const r = detectSecrets(line);
+      assert.equal(r.kinds.includes('opaque-token'), true, `kinds=${r.kinds} line=${line}`);
+      assert.equal(r.severity, 'RED', line);
+      assert.equal(r.kinds.includes('opaque-username'), false, line);
+    }
   });
 });
 
