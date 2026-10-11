@@ -104,6 +104,27 @@ export function isAdminUsernameOpaqueContext(before) {
 }
 
 /**
+ * Public-key field names (not credentials). Matches {@code publicKey},
+ * {@code base64PublicKey}, {@code base64UrlPublicKey} (Ed25519KeyPair), etc.
+ *
+ * @param {string} key
+ * @returns {boolean}
+ */
+export function isPublicKeyFieldName(key) {
+  return /public[_-]?key$/i.test(String(key || ''));
+}
+
+/**
+ * Opaque-token context immediately after a public-key field assignment.
+ *
+ * @param {string} before chars before the opaque candidate
+ * @returns {boolean}
+ */
+export function isPublicKeyOpaqueContext(before) {
+  return /\b[\w-]*public[_-]?key\s*[=:]\s*"?$/i.test(String(before || ''));
+}
+
+/**
  * Only test-generated name shapes may be AMBER in admin-username glue (≤32 chars).
  *
  * @param {string} value
@@ -245,7 +266,8 @@ export const PRODUCT_LOG_SOURCES = [
  * @returns {string}
  */
 function redactKvForms(text, note) {
-  const keys = `${SECRET_KEY_STEM}|challenge|code|username|user`;
+  // public*Key fields are AMBER (Ed25519KeyPair.toString FP); private*Key stays RED via STEM.
+  const keys = `${SECRET_KEY_STEM}|\\w*public[_-]?key|challenge|code|username|user`;
   const apply = (out, re, wrap) =>
     out.replace(re, (full, key, val) => {
       if (isMaskedOrNonSecretValue(val)) return full;
@@ -254,6 +276,8 @@ function redactKvForms(text, note) {
       if (/^bearer$/i.test(val) || /^basic$/i.test(val)) return full;
       if (USERNAME_KEY_RE.test(key)) {
         note('kv-username', 'AMBER', val);
+      } else if (isPublicKeyFieldName(key)) {
+        note('kv-public-key', 'AMBER', val);
       } else {
         note('kv-secret', 'RED', val);
       }
@@ -343,10 +367,10 @@ export function applyRedactions(rawLine) {
     return 'JSESSIONID=***REDACTED***';
   });
 
-  // 5) JSON "key":"value" (compound keys + username AMBER)
+  // 5) JSON "key":"value" (compound keys + username / publicKey AMBER)
   out = out.replace(
     new RegExp(
-      `"(${SECRET_KEY_STEM}|challenge|code|key|username|user)"\\s*:\\s*"([^"]*)"`,
+      `"(${SECRET_KEY_STEM}|\\w*public[_-]?key|challenge|code|key|username|user)"\\s*:\\s*"([^"]*)"`,
       'gi',
     ),
     (full, key, val) => {
@@ -354,6 +378,8 @@ export function applyRedactions(rawLine) {
       if (isHttpStatusCodeKeyValue(key, val)) return full;
       if (USERNAME_KEY_RE.test(key)) {
         note('json-username', 'AMBER', val);
+      } else if (isPublicKeyFieldName(key)) {
+        note('json-public-key', 'AMBER', val);
       } else {
         note('json-secret', 'RED', val);
       }
@@ -414,16 +440,21 @@ export function applyRedactions(rawLine) {
   out = out.replace(new RegExp(CANONICAL_UUID_SOURCE, 'gi'), '<UUID>');
 
   // 10) Opaque long tokens (letters+digits, not CamelCase / dotted packages).
-  // Skip jar/git/arch/64-hex Sha256Hex=/keyset-backup; test admin usernames → AMBER.
+  // Skip jar/git/arch/64-hex Sha256Hex=/keyset-backup; test admin usernames → AMBER;
+  // publicKey= / base64PublicKey= / base64UrlPublicKey= → AMBER (not private keys).
   out = out.replace(OPAQUE_TOKEN_RE, (m, offset, whole) => {
     if (MASKED_VALUE_RE.test(m)) return m;
     if (m === '<UUID>') return m;
-    const before = String(whole).slice(Math.max(0, offset - 40), offset);
+    const before = String(whole).slice(Math.max(0, offset - 48), offset);
     const after = String(whole).slice(offset + m.length, offset + m.length + 24);
     if (isJarGitArchOpaqueContext(m, before, after)) return m;
     if (isAdminUsernameOpaqueContext(before) && isTestAdminUsernameShape(m)) {
       note('opaque-username', 'AMBER', m);
       return '<USER>';
+    }
+    if (isPublicKeyOpaqueContext(before)) {
+      note('opaque-public-key', 'AMBER', m);
+      return '<PUBKEY>';
     }
     note('opaque-token', 'RED', m);
     return '<TOKEN>';

@@ -195,6 +195,32 @@ describe('detectSecrets product cases', () => {
     assert.equal(sanitize(line).includes(tok), false);
   });
 
+  it('scores publicKey= / base64PublicKey= / base64UrlPublicKey= AMBER (Ed25519 FP)', () => {
+    // Base64URL-ish public material (≥20 mixed) — opaque without field context would be RED.
+    const pub = 'MCowBQYDK2VwAyEA0123456789AbCdEfGhIjKlMnOpQrStUvWxYz';
+    for (const key of ['publicKey', 'base64PublicKey', 'base64UrlPublicKey']) {
+      const line = `Ed25519KeyPair[${key}=${pub}]`;
+      const r = detectSecrets(line);
+      assert.notEqual(r.severity, 'RED', `${key}: ${r.kinds}`);
+      assert.ok(
+        r.kinds.includes('kv-public-key') || r.kinds.includes('opaque-public-key'),
+        `kinds=${r.kinds} key=${key}`,
+      );
+      assert.equal(r.severity, 'AMBER', key);
+    }
+  });
+
+  it('keeps privateKey= / base64PrivateKey=<same value> RED (positive control)', () => {
+    const pub = 'MCowBQYDK2VwAyEA0123456789AbCdEfGhIjKlMnOpQrStUvWxYz';
+    for (const key of ['privateKey', 'base64PrivateKey']) {
+      const line = `${key}=${pub}`;
+      const r = detectSecrets(line);
+      assert.equal(r.severity, 'RED', `${key}: ${r.kinds}`);
+      assert.ok(r.kinds.includes('kv-secret'), `kinds=${r.kinds} key=${key}`);
+      assert.equal(sanitize(line).includes(pub), false, key);
+    }
+  });
+
   it('hits challenge=ABCD1234 (unmasked)', () => {
     const r = detectSecrets('Passwordless with challenge=ABCD1234 for user');
     assert.equal(r.severity, 'RED');
