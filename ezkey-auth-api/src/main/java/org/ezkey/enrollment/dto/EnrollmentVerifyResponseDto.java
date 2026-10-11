@@ -61,4 +61,23 @@ public record EnrollmentVerifyResponseDto(
             example =
                 "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             requiredMode = RequiredMode.REQUIRED)
-        String enrollmentVerifyPayloadSignedByIntegration) {}
+        String enrollmentVerifyPayloadSignedByIntegration) {
+
+  /**
+   * Returns a string representation with integration signatures masked.
+   *
+   * @return string representation safe for logs
+   */
+  @Override
+  public String toString() {
+    return "EnrollmentVerifyResponseDto{"
+        + "active="
+        + active
+        + ", enrollmentVerifyMessage='"
+        + enrollmentVerifyMessage
+        + '\''
+        + ", enrollmentVerifyPayloadSignedByIntegration="
+        + (enrollmentVerifyPayloadSignedByIntegration != null ? "[PROTECTED]" : "null")
+        + '}';
+  }
+}

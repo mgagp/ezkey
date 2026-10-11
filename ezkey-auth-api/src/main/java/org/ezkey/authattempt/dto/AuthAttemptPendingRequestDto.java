@@ -106,4 +106,24 @@ public record AuthAttemptPendingRequestDto(
             description = "Cryptographically signed device proof token",
             example = "eyJhbGciOiJSUzI1NiJ9...",
             requiredMode = RequiredMode.REQUIRED)
-        String deviceProofTokenSigned) {}
+        String deviceProofTokenSigned) {
+
+  /**
+   * Returns a string representation with proof tokens and signatures masked.
+   *
+   * @return string representation safe for logs
+   */
+  @Override
+  public String toString() {
+    return "AuthAttemptPendingRequestDto{"
+        + "enrollmentId="
+        + enrollmentId
+        + ", enrollmentProofToken="
+        + (enrollmentProofToken != null ? "[PROTECTED]" : "null")
+        + ", deviceProofToken="
+        + (deviceProofToken != null ? "[PROTECTED]" : "null")
+        + ", deviceProofTokenSigned="
+        + (deviceProofTokenSigned != null ? "[PROTECTED]" : "null")
+        + '}';
+  }
+}

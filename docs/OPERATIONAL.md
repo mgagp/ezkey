@@ -669,9 +669,10 @@ Run on the VM after a rolling upgrade (no `cat` of secrets):
 logging:
   level:
     org.ezkey: INFO
+    org.springframework.web: WARN
     org.springframework.security: WARN
     org.hibernate.SQL: WARN
-    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.hibernate.orm.jdbc.bind: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
@@ -680,6 +681,16 @@ logging:
     max-size: 100MB
     max-history: 30
 ```
+
+Never set `org.springframework.web=DEBUG` in shared profiles: MVC body dumps can expose proof tokens and signatures (#752). Hibernate 6 bind parameters use `org.hibernate.orm.jdbc.bind` (the legacy `BasicBinder` logger has no effect). Keep it at WARN — TRACE would log SQL bind values.
+
+For safe request-line diagnostics without body dumps, use:
+
+```properties
+logging.level.org.springframework.web.servlet.DispatcherServlet=DEBUG
+```
+
+That logs HTTP method, URI, and status only.
 
 ### Monitoring Setup
 

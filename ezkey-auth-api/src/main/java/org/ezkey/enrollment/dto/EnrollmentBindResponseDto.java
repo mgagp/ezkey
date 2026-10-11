@@ -130,4 +130,52 @@ public record EnrollmentBindResponseDto(
             example =
                 "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             requiredMode = RequiredMode.REQUIRED)
-        String enrollmentBindPayloadSignedByIntegration) {}
+        String enrollmentBindPayloadSignedByIntegration) {
+
+  /**
+   * Returns a string representation with proof tokens and signatures masked.
+   *
+   * <p>Public keys are left visible; they are not secrets.
+   *
+   * @return string representation safe for logs
+   */
+  @Override
+  public String toString() {
+    return "EnrollmentBindResponseDto{"
+        + "enrollmentId="
+        + enrollmentId
+        + ", integrationPublicKey='"
+        + integrationPublicKey
+        + '\''
+        + ", integrationKeyAlgorithm='"
+        + integrationKeyAlgorithm
+        + '\''
+        + ", enrollmentProofToken="
+        + (enrollmentProofToken != null ? "[PROTECTED]" : "null")
+        + ", integrationName='"
+        + integrationName
+        + '\''
+        + ", integrationDescription='"
+        + integrationDescription
+        + '\''
+        + ", enrollmentName='"
+        + enrollmentName
+        + '\''
+        + ", tenantId="
+        + tenantId
+        + ", tenantName='"
+        + tenantName
+        + '\''
+        + ", tenantDescription='"
+        + tenantDescription
+        + '\''
+        + ", isSystemIntegration="
+        + isSystemIntegration
+        + ", adminType='"
+        + adminType
+        + '\''
+        + ", enrollmentBindPayloadSignedByIntegration="
+        + (enrollmentBindPayloadSignedByIntegration != null ? "[PROTECTED]" : "null")
+        + '}';
+  }
+}
