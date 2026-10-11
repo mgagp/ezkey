@@ -7,7 +7,7 @@
 
 /** Values already masked by product or prior redaction — never score as a hit. */
 export const MASKED_VALUE_RE =
-  /^(?:\*{2,}REDACTED\*{2,}|\*{3,}|\[REDACTED\]|<redacted>|xxx+|…+)$/i;
+  /^(?:\*{2,}REDACTED\*{2,}|\*{3,}|\[REDACTED\]|\[PROTECTED\]|<redacted>|xxx+|…+)$/i;
 
 /** Non-secret placeholders after key= / key: (e.g. challenge: true boolean flag). */
 export const NON_SECRET_VALUE_RE = /^(?:true|false|null|undefined|none|n\/a|-)$/i;
@@ -148,6 +148,9 @@ export function isMaskedOrNonSecretValue(value) {
   v = v.replace(/[),;.]+$/g, '');
   if (!v) return true;
   if (MASKED_VALUE_RE.test(v)) return true;
+  // DTO toString may append an outer ']' after product [PROTECTED] / [REDACTED]
+  // (e.g. enrollmentProofToken=[PROTECTED]]). Bare \S+ kv capture includes it.
+  if (/^\[(?:PROTECTED|REDACTED)\]\]*$/i.test(v)) return true;
   if (NON_SECRET_VALUE_RE.test(v)) return true;
   if (ID_LABEL_VALUE_RE.test(v)) return true;
   return false;

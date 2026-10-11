@@ -25,6 +25,7 @@ describe('isMaskedOrNonSecretValue', () => {
   it('treats redaction placeholders as masked', () => {
     assert.equal(isMaskedOrNonSecretValue('***REDACTED***'), true);
     assert.equal(isMaskedOrNonSecretValue('[REDACTED]'), true);
+    assert.equal(isMaskedOrNonSecretValue('[PROTECTED]'), true);
     assert.equal(isMaskedOrNonSecretValue('<redacted>'), true);
     assert.equal(isMaskedOrNonSecretValue('****'), true);
   });
@@ -146,6 +147,29 @@ describe('detectSecrets product cases', () => {
   it('ignores challenge=***REDACTED*** (already masked)', () => {
     const r = detectSecrets('Passwordless with challenge=***REDACTED*** for user');
     assert.equal(r.kinds.length, 0);
+  });
+
+  it('ignores enrollmentProofToken=[PROTECTED] (#754 product mask)', () => {
+    for (const line of [
+      'enrollmentProofToken=[PROTECTED]',
+      'AuthAttemptPendingResponseDto[enrollmentId=1, enrollmentProofToken=[PROTECTED]]',
+    ]) {
+      const r = detectSecrets(line);
+      assert.equal(r.kinds.length, 0, `unexpected kinds: ${r.kinds} line=${line}`);
+      assert.equal(r.severity, null, line);
+    }
+  });
+
+  it('keeps enrollmentProofToken=<real token> RED (positive control)', () => {
+    const tok = 'f7zMmUzbJSV1WPjXD_jLuoDNucM559Qr7MWIo_MC0yo';
+    const line = `enrollmentProofToken=${tok}`;
+    const r = detectSecrets(line);
+    assert.equal(r.severity, 'RED');
+    assert.ok(
+      r.kinds.includes('kv-secret') || r.kinds.includes('opaque-token'),
+      `kinds=${r.kinds}`,
+    );
+    assert.equal(sanitize(line).includes(tok), false);
   });
 
   it('hits challenge=ABCD1234 (unmasked)', () => {
