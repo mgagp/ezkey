@@ -79,4 +79,29 @@ public record EnrollmentVerifyRequestDto(
             example = "STANDARD",
             allowableValues = {"NONE", "STANDARD", "STRONG"},
             requiredMode = RequiredMode.NOT_REQUIRED)
-        DevicePrivateKeyStorageTier devicePrivateKeyStorageTier) {}
+        DevicePrivateKeyStorageTier devicePrivateKeyStorageTier) {
+
+  /**
+   * Returns a string representation with challenge and signed proof token masked.
+   *
+   * <p>Public keys and storage-tier enums are left visible; they are not secrets.
+   *
+   * @return string representation safe for logs
+   */
+  @Override
+  public String toString() {
+    return "EnrollmentVerifyRequestDto{"
+        + "enrollmentId="
+        + enrollmentId
+        + ", challengeResponse="
+        + (challengeResponse != null ? "[PROTECTED]" : "null")
+        + ", devicePublicKey='"
+        + devicePublicKey
+        + '\''
+        + ", enrollmentProofTokenSigned="
+        + (enrollmentProofTokenSigned != null ? "[PROTECTED]" : "null")
+        + ", devicePrivateKeyStorageTier="
+        + devicePrivateKeyStorageTier
+        + '}';
+  }
+}

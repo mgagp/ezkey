@@ -417,8 +417,8 @@ public class EzkeyAppController {
               .deviceProofToken(deviceProofToken)
               .deviceProofTokenSigned(deviceProofTokenSigned);
 
-      logger.info(
-          "Checking for pending auth attempts for enrollment {}: {}", enrollmentId, pendingRequest);
+      // Log only identifiers — never proof tokens, signatures, or full DTO toString (#753)
+      logger.info("Checking for pending auth attempts for enrollment {}", enrollmentId);
 
       String authApiBase =
           EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(rec, configuredAuthApiBase);
@@ -427,7 +427,10 @@ public class EzkeyAppController {
           authApiService.pending(pendingRequest, authApiBase).block();
       if (pendingResponse != null) {
         // There's a pending authentication attempt
-        logger.info("Found pending auth attempt: {}", pendingResponse);
+        logger.info(
+            "Found pending auth attempt {} for enrollment {}",
+            pendingResponse.getAuthAttemptId(),
+            enrollmentId);
 
         // Build canonical payload (proofToken|challengeRequired|contextTitle|contextMessage, NFC)
         String pendingPayload =
@@ -522,14 +525,20 @@ public class EzkeyAppController {
               .authAttemptAccepted(approved)
               .authAttemptProofTokenSignedByDevice(responseSignature);
 
-      // Add challenge response if provided
+      // Add challenge response if provided — never log the challenge value (#753)
       if (challengeResponse != null && !challengeResponse.trim().isEmpty()) {
         try {
           Integer challengeResponseInt = Integer.parseInt(challengeResponse.trim());
           respondRequest.authAttemptChallengeResponse(challengeResponseInt);
-          logger.info("Including challenge response: {}", challengeResponseInt);
+          logger.info(
+              "Challenge response included for auth attempt {} enrollment {}",
+              authAttemptId,
+              enrollmentId);
         } catch (NumberFormatException e) {
-          logger.warn("Invalid challenge response format: {}", challengeResponse);
+          logger.warn(
+              "Invalid challenge response format for auth attempt {} enrollment {}",
+              authAttemptId,
+              enrollmentId);
           model.addAttribute("success", false);
           model.addAttribute("denied", false);
           model.addAttribute("failed", true);
@@ -539,10 +548,7 @@ public class EzkeyAppController {
         }
       }
       logger.info(
-          "Responding to auth attempt {} for enrollment {}: {}",
-          authAttemptId,
-          enrollmentId,
-          respondRequest);
+          "Responding to auth attempt {} for enrollment {}", authAttemptId, enrollmentId);
 
       String authApiBase =
           EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(rec, configuredAuthApiBase);
@@ -550,7 +556,10 @@ public class EzkeyAppController {
       AuthAttemptRespondResponseDto respondResponse =
           authApiService.respond(respondRequest, authApiBase).block();
       if (respondResponse != null) {
-        logger.info("Auth response submitted successfully: {}", respondResponse);
+        logger.info(
+            "Auth response submitted successfully for auth attempt {} enrollment {}",
+            respondResponse.getAuthAttemptId(),
+            enrollmentId);
 
         String resultPayload =
             AuthAttemptPayloadUtil.buildRespondResultPayload(

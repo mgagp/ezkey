@@ -84,11 +84,14 @@ For Linux/macOS host installs, use [`scripts/generate-master-key.sh`](../scripts
 - **Bootstrap Export:** Disabled
 - **Rate Limiting:** Development defaults (permissive)
 - **MFA Mode:** `dev` (optional)
-- **Logging:** DEBUG level (development-friendly)
+- **Logging:** `org.ezkey` DEBUG; `org.springframework.web` INFO; Hibernate `BasicBinder` WARN (not TRACE) so MVC/SQL bind dumps cannot leak DTO secrets
 
 ---
 
 ### Auth API (`ezkey-auth-api`)
+
+#### Base / docker-dev profiles
+- **Logging:** `org.ezkey` DEBUG for application diagnostics; **`org.springframework.web` INFO** (never DEBUG — MVC `RequestResponseBodyMethodProcessor` would dump request/response DTOs including proof tokens); Hibernate `BasicBinder` WARN (TRACE removed). Secret-bearing auth-api records override `toString()` with `[PROTECTED]` masking as a second line of defense.
 
 #### Docker Profile (`application-docker.properties`)
 - **Port:** 8080
@@ -96,7 +99,7 @@ For Linux/macOS host installs, use [`scripts/generate-master-key.sh`](../scripts
 - **Encryption Keys:** `/etc/ezkey/secrets/master.key`
 - **Keyset Storage:** DATABASE (synchronized with Admin API)
 - **Rate Limiting:** Production defaults
-- **Logging:** INFO level
+- **Logging:** INFO / WARN (production-friendly)
 
 #### Windows Profile (`application-windows.properties`)
 - **Port:** 8080
@@ -104,7 +107,7 @@ For Linux/macOS host installs, use [`scripts/generate-master-key.sh`](../scripts
 - **Encryption Keys:** `C:\ProgramData\ezkey\secrets\master.key`
 - **Keyset Storage:** FILE (local)
 - **Rate Limiting:** Development defaults
-- **Logging:** DEBUG level
+- **Logging:** `org.ezkey` DEBUG; `org.springframework.web` INFO; `BasicBinder` WARN
 
 ---
 
