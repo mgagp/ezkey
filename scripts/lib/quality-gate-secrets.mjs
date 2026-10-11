@@ -27,21 +27,25 @@ export const CANONICAL_UUID_SOURCE =
   String.raw`\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b`;
 
 /**
- * Uname-style CPU/OS triples (Postgres "on x86_64-pc-linux-musl", …) — not secrets.
+ * Real uname CPU/OS triples only (Postgres "on x86_64-pc-linux-musl", …).
+ * Loose `x86_64-<opaque>` must stay RED.
  *
  * @param {string} s
  * @returns {boolean}
  */
 export function isArchTripleToken(s) {
-  return /^(?:x86_64|amd64|aarch64|arm64|i[3-6]86)(?:-[A-Za-z0-9_]+)+$/.test(String(s || ''));
+  return /^(?:x86_64|aarch64|armv7l|i686)-(?:pc|unknown|apple|alpine)-linux-(?:gnu|musl)$/.test(
+    String(s || ''),
+  );
 }
 
 /**
- * Opaque lookalike that is a jar artifact stem / git SHA context — not a secret.
+ * Opaque lookalike that is a jar stem, word-boundary `git:` hex SHA, arch triple,
+ * digest field (`*Sha256*Hex=`), or filename with a known extension — not a secret.
  *
  * @param {string} match opaque candidate
- * @param {string} before up to ~16 chars before match
- * @param {string} after up to ~16 chars after match
+ * @param {string} before chars before match
+ * @param {string} after chars after match
  * @returns {boolean}
  */
 export function isJarGitArchOpaqueContext(match, before, after) {
@@ -49,12 +53,39 @@ export function isJarGitArchOpaqueContext(match, before, after) {
   const a = String(after || '');
   // /tmp/foo.jar · ~[spring-data-commons-4.1.1.jar!/:4.1.1]
   if (/^\.jar\b/.test(a) || /^\.\d+(?:\.\d+)+\.jar\b/.test(a)) return true;
-  // git: <hexsha>
-  if (/git:\s*$/i.test(b) && /^[0-9a-f]+$/i.test(match)) return true;
+  // word-boundary git: <hexsha> only (not "legit: <hex>")
+  if (/\bgit:\s*$/i.test(b) && /^[0-9a-f]+$/i.test(match)) return true;
   if (isArchTripleToken(match)) return true;
+  // PENDING_*_DIAG digests: value after *Sha256*Hex=, and the field name itself
+  if (/\w*Sha256\w*Hex=\s*$/i.test(b)) return true;
+  if (/Sha256\w*Hex$/i.test(match) && /^=/.test(a)) return true;
+  // keyset-backup-<ts>.json.encrypted and similar
+  if (isKnownFilenameExtensionAfter(a)) return true;
   return false;
 }
 
+/**
+ * True when `after` begins with a known non-secret filename extension.
+ *
+ * @param {string} after
+ * @returns {boolean}
+ */
+export function isKnownFilenameExtensionAfter(after) {
+  return /^\.(?:json(?:\.encrypted)?|ya?ml|xml|properties|conf|txt|log|bak|key|pem|crt|encrypted)\b/i.test(
+    String(after || ''),
+  );
+}
+
+/**
+ * Opaque value in admin-username log glue — score AMBER like username, not RED opaque.
+ * Matches: `for admin: `, `by admin: `, `tenant admin: `, `successful for: `.
+ *
+ * @param {string} before
+ * @returns {boolean}
+ */
+export function isAdminUsernameOpaqueContext(before) {
+  return /(?:for admin|by admin|tenant admin|successful for):\s*$/i.test(String(before || ''));
+}
 /** Known allowlist requires= tokens (typos must not make an entry unconditional). */
 export const KNOWN_ALLOWLIST_REQUIRES = new Set(['COMPOSE_RETRY_FIRED']);
 
@@ -220,8 +251,9 @@ export function applyRedactions(rawLine) {
     changes.push({ kind, severity, sample: String(sample).slice(0, 24) });
   };
 
-  // 1) Bearer first (before kv authorization=… eats the keyword)
-  out = out.replace(/Bearer\s+([A-Za-z0-9._~+/=-]+)/gi, (full, tok) => {
+  // 1) Bearer first (before kv authorization=… eats the keyword).
+  // Case-sensitive "Bearer" + 8+ token chars — not prose "got bearer token".
+  out = out.replace(/\bBearer\s+([A-Za-z0-9._~+/=-]{8,})/g, (full, tok) => {
     note('bearer', 'RED', tok);
     return 'Bearer ***REDACTED***';
   });
@@ -338,13 +370,17 @@ export function applyRedactions(rawLine) {
   out = out.replace(new RegExp(CANONICAL_UUID_SOURCE, 'gi'), '<UUID>');
 
   // 10) Opaque long tokens (letters+digits, not CamelCase / dotted packages).
-  // Skip jar stems, git: hex SHAs, and uname arch triples (scanner false positives).
+  // Skip jar/git/arch/Sha256Hex=/filename; admin-username glue → AMBER.
   out = out.replace(OPAQUE_TOKEN_RE, (m, offset, whole) => {
     if (MASKED_VALUE_RE.test(m)) return m;
     if (m === '<UUID>') return m;
-    const before = String(whole).slice(Math.max(0, offset - 16), offset);
-    const after = String(whole).slice(offset + m.length, offset + m.length + 16);
+    const before = String(whole).slice(Math.max(0, offset - 40), offset);
+    const after = String(whole).slice(offset + m.length, offset + m.length + 24);
     if (isJarGitArchOpaqueContext(m, before, after)) return m;
+    if (isAdminUsernameOpaqueContext(before)) {
+      note('opaque-username', 'AMBER', m);
+      return '<USER>';
+    }
     note('opaque-token', 'RED', m);
     return '<TOKEN>';
   });

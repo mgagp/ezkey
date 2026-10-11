@@ -50,7 +50,7 @@ describe('Christophe replay inputs', () => {
     ['accessCode=XyZ987', 'kv-secret', 'RED', 'XyZ987'],
     ['2001:db8::1', 'ip', 'AMBER', '2001:db8::1'],
     [`/t/${HEX32}`, 'path-token', 'RED', HEX32],
-    ['Authorization: Bearer xyz', 'bearer', 'RED', 'xyz'],
+    ['Authorization: Bearer xyzTOKEN9', 'bearer', 'RED', 'xyzTOKEN9'],
     [`token=${TOKEN32}`, 'kv-secret', 'RED', TOKEN32],
     ['Authorization: Basic dXNlcjpwYXNz', 'basic', 'RED', 'dXNlcjpwYXNz'],
     ['password="a b"', 'kv-secret', 'RED', 'a b'],
@@ -250,6 +250,109 @@ describe('TOKEN / Java class names / UUID', () => {
     assert.equal(r.kinds.includes('opaque-token'), true, `kinds=${r.kinds}`);
     assert.match(sanitize(line), /proof=<TOKEN>/);
     assert.match(sanitize(line), /leave-me-alone\.jar/);
+  });
+
+  it('scores legit: <hex32> as opaque-token (git: word-boundary only)', () => {
+    const hex = 'a1b2c3d4e5f6789012345678abcdef01';
+    const line = `legit: ${hex}`;
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('opaque-token'), true, `kinds=${r.kinds}`);
+    assert.equal(r.severity, 'RED');
+  });
+
+  it('scores x86_64-<opaque> as opaque-token (arch triple tightened)', () => {
+    const line = 'arch=x86_64-Zk3p9QmR7vN2wXyL4bHt leaked';
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('opaque-token'), true, `kinds=${r.kinds}`);
+    assert.equal(r.severity, 'RED');
+  });
+});
+
+describe('admin username opaque → AMBER; filename ignore', () => {
+  const ADMIN = 'admin-17916829053231'; // ≥20 mixed alnum (opaque-shaped)
+
+  it('scores for/by/tenant admin: and successful for: as opaque-username AMBER', () => {
+    const lines = [
+      `Passwordless auth (challenge flow) successful for admin: ${ADMIN} after 0s`,
+      `Creating integration by admin: ${ADMIN} (type: TENANT_ADMIN)`,
+      `Creating tenant admin: ${ADMIN} for tenant 24`,
+      `Authentication successful for: ${ADMIN}`,
+    ];
+    for (const line of lines) {
+      const r = detectSecrets(line);
+      assert.equal(r.kinds.includes('opaque-username'), true, `kinds=${r.kinds} line=${line}`);
+      assert.equal(r.kinds.includes('opaque-token'), false, `no RED opaque: ${line}`);
+      assert.equal(r.severity, 'AMBER', line);
+      assert.match(sanitize(line), /<USER>/);
+    }
+  });
+
+  it('ignores opaque filename stems with known extensions', () => {
+    const line = 'Set file permissions to 600: /etc/ezkey/keysets/keyset-backup-1791682905323.json.encrypted';
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('opaque-token'), false, `kinds=${r.kinds}`);
+    assert.match(sanitize(line), /keyset-backup-1791682905323\.json\.encrypted/);
+  });
+
+  it('keeps proof=<token> for admin: alice RED (secret before username glue)', () => {
+    const tok = 'AbCdEfGhIjKlMnOpQr123456';
+    const line = `proof=${tok} for admin: alice`;
+    const r = detectSecrets(line);
+    assert.equal(r.severity, 'RED');
+    assert.ok(
+      r.kinds.includes('opaque-token') || r.kinds.includes('kv-secret'),
+      `kinds=${r.kinds}`,
+    );
+    assert.equal(sanitize(line).includes(tok), false);
+  });
+
+  it('keeps /t/<hex32> and token=<32> RED', () => {
+    const hex = '0123456789abcdef0123456789abcdef';
+    const tok = 'abcdefghijklmnopqrstuvwxyz012345';
+    const pathR = detectSecrets(`/t/${hex}`);
+    assert.equal(pathR.kinds.includes('path-token'), true);
+    assert.equal(pathR.severity, 'RED');
+    const tokR = detectSecrets(`token=${tok}`);
+    assert.equal(tokR.kinds.includes('kv-secret'), true);
+    assert.equal(tokR.severity, 'RED');
+  });
+});
+
+describe('PENDING_*_DIAG Sha256Hex and Bearer prose', () => {
+  const HEX64 =
+    '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
+  it('does not score payloadSha256Utf8Hex=<64 hex> as opaque', () => {
+    const line = `PENDING_PAYLOAD_DIAG enrollmentId=1 authAttemptId=2 payloadSha256Utf8Hex=${HEX64}`;
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('opaque-token'), false, `kinds=${r.kinds}`);
+    assert.match(sanitize(line), new RegExp(HEX64));
+  });
+
+  it('keeps proofToken=<same 64 hex> RED', () => {
+    const line = `proofToken=${HEX64}`;
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('kv-secret'), true, `kinds=${r.kinds}`);
+    assert.equal(r.severity, 'RED');
+    assert.equal(sanitize(line).includes(HEX64), false);
+  });
+
+  it('does not score prose "got Bearer token" / lowercase bearer as bearer RED', () => {
+    for (const line of [
+      'Invalid token type - expected recovery token, got Bearer token',
+      'Invalid token type - expected recovery token, got bearer token',
+    ]) {
+      const r = detectSecrets(line);
+      assert.equal(r.kinds.includes('bearer'), false, `kinds=${r.kinds} line=${line}`);
+    }
+  });
+
+  it('still scores Authorization: Bearer <8+ chars> RED', () => {
+    const tok = 'abcdefgh';
+    const line = `Authorization: Bearer ${tok}`;
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('bearer'), true, `kinds=${r.kinds}`);
+    assert.equal(r.severity, 'RED');
   });
 });
 
