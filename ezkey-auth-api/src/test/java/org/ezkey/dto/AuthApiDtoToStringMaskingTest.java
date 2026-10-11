@@ -39,8 +39,8 @@ import org.springframework.core.type.filter.RegexPatternTypeFilter;
 /**
  * Fails when a secret-bearing auth-api type exposes its value via {@code toString()}.
  *
- * <p>Scans every {@code org.ezkey.*} record and class loaded from the auth-api module (identified by
- * code-source origin equality with {@link AuthApplication}). Secret field names match tokens,
+ * <p>Scans every {@code org.ezkey.*} record and class loaded from the auth-api module (identified
+ * by code-source origin equality with {@link AuthApplication}). Secret field names match tokens,
  * signatures, challenges, codes, keys, and related markers; an explicit exclusion list covers
  * public keys, boolean flags, and known non-secret names.
  *
@@ -100,7 +100,10 @@ class AuthApiDtoToStringMaskingTest {
 
     for (BeanDefinition def : scanner.findCandidateComponents(SCAN_BASE_PACKAGE)) {
       Class<?> clazz = Class.forName(def.getBeanClassName());
-      if (!isAuthApiModuleClass(clazz) || clazz.isInterface() || clazz.isEnum() || clazz.isAnnotation()) {
+      if (!isAuthApiModuleClass(clazz)
+          || clazz.isInterface()
+          || clazz.isEnum()
+          || clazz.isAnnotation()) {
         continue;
       }
       List<SecretMember> secrets = secretMembers(clazz);
@@ -302,7 +305,11 @@ class AuthApiDtoToStringMaskingTest {
       return null;
     }
     throw new IllegalStateException(
-        "Unsupported primitive type " + type.getName() + " for " + name + " — extend the masking test");
+        "Unsupported primitive type "
+            + type.getName()
+            + " for "
+            + name
+            + " — extend the masking test");
   }
 
   /**

@@ -27,7 +27,6 @@ import org.ezkey.demodevice.generated.dto.EnrollmentVerifyResponseDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,6 +35,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Simulated Ezkey mobile app controller.
@@ -71,6 +72,8 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 public class EzkeyAppController {
 
   private static final Logger logger = LoggerFactory.getLogger(EzkeyAppController.class);
+
+  private static final ObjectMapper PROBLEM_DETAIL_MAPPER = new ObjectMapper();
 
   private final AuthApiService authApiService;
 
@@ -240,13 +243,18 @@ public class EzkeyAppController {
    * @return problem type URI string, or {@code null} when absent / unparseable
    */
   private static String problemTypeFromBindError(WebClientResponseException error) {
+    String body = error.getResponseBodyAsString();
+    if (body == null || body.isBlank()) {
+      return null;
+    }
     try {
-      ProblemDetail detail = error.getResponseBodyAs(ProblemDetail.class);
-      if (detail != null && detail.getType() != null) {
-        return detail.getType().toString();
+      JsonNode typeNode = PROBLEM_DETAIL_MAPPER.readTree(body).get("type");
+      if (typeNode != null && typeNode.isValueNode() && !typeNode.isNull()) {
+        String type = typeNode.asString();
+        return type != null && !type.isBlank() ? type : null;
       }
     } catch (Exception ignored) { // CHECKSTYLE IGNORE IllegalCatch
-      // Body may not be a ProblemDetail — status alone is enough for the log line
+      // Body may not be JSON ProblemDetail — status alone is enough for the log line
     }
     return null;
   }
