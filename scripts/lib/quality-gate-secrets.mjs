@@ -9,8 +9,12 @@
 export const MASKED_VALUE_RE =
   /^(?:\*{2,}REDACTED\*{2,}|\*{3,}|\[REDACTED\]|\[PROTECTED\]|<redacted>|xxx+|…+)$/i;
 
-/** Non-secret placeholders after key= / key: (e.g. challenge: true boolean flag). */
-export const NON_SECRET_VALUE_RE = /^(?:true|false|null|undefined|none|n\/a|-)$/i;
+/**
+ * Non-secret placeholders after key= / key: (e.g. challenge: true boolean flag).
+ * Trailing JSON/DTO glue (`}`, `)`, `]`, `,`) is allowed — bare `\S+` kv capture
+ * may include it (`proofToken=null}`).
+ */
+export const NON_SECRET_VALUE_RE = /^(?:true|false|null|undefined|none|n\/a|-)[})\],]*$/i;
 
 /** Label-value form only — "proof token: ID=1", not ID=5abc. */
 export const ID_LABEL_VALUE_RE = /^ID=\d+$/i;

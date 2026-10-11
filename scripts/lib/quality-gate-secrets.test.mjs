@@ -36,6 +36,11 @@ describe('isMaskedOrNonSecretValue', () => {
     assert.equal(ID_LABEL_VALUE_RE.test('ID=5abc'), false);
     assert.equal(isMaskedOrNonSecretValue('ID=5abc'), false);
   });
+  it('treats null/true with trailing JSON/DTO glue as non-secret', () => {
+    for (const v of ['null}', 'null)', 'null]', 'null,', 'true}', 'false]']) {
+      assert.equal(isMaskedOrNonSecretValue(v), true, v);
+    }
+  });
   it('treats real values as present', () => {
     assert.equal(isMaskedOrNonSecretValue('ABCD1234'), false);
     assert.equal(isMaskedOrNonSecretValue('46'), false);
@@ -163,6 +168,24 @@ describe('detectSecrets product cases', () => {
   it('keeps enrollmentProofToken=<real token> RED (positive control)', () => {
     const tok = 'f7zMmUzbJSV1WPjXD_jLuoDNucM559Qr7MWIo_MC0yo';
     const line = `enrollmentProofToken=${tok}`;
+    const r = detectSecrets(line);
+    assert.equal(r.severity, 'RED');
+    assert.ok(
+      r.kinds.includes('kv-secret') || r.kinds.includes('opaque-token'),
+      `kinds=${r.kinds}`,
+    );
+    assert.equal(sanitize(line).includes(tok), false);
+  });
+
+  it('ignores proofToken=null} (JSON/DTO trailing glue)', () => {
+    const r = detectSecrets('AuthAttemptPendingResponseDto[proofToken=null}');
+    assert.equal(r.kinds.length, 0, `unexpected kinds: ${r.kinds}`);
+    assert.equal(r.severity, null);
+  });
+
+  it('keeps token=<real value>} RED (positive control trailing })', () => {
+    const tok = 'AbCdEfGhIjKlMnOpQr123456';
+    const line = `token=${tok}}`;
     const r = detectSecrets(line);
     assert.equal(r.severity, 'RED');
     assert.ok(
