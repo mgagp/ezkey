@@ -36,6 +36,7 @@ STACK_DOWN=0
 CHURN_PIDS=""
 MEM_SAMPLER_PID=""
 SHEDLOCK_KILL_EXPECTED=0
+SHEDLOCK_KILL_MISSING=0
 SHEDLOCK_RESTORE_OK=0
 
 GATE_OVERLAY="$REPO_ROOT/docker/docker-compose.ha.quality-gate.yml"
@@ -85,6 +86,7 @@ printf 'utc\tphase\tcontainer\tmem_usage\tmem_limit\tmem_perc\n' >"$MEM_SAMPLES_
 GATE_STARTED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 declare -A PREV_RESTARTS=()
 SHEDLOCK_KILLED=""
+SHEDLOCK_KILL_MISSING=0
 
 echo "[$KEYWORD] run dir: $RUN_DIR"
 echo "[$KEYWORD] tip: $FULL_SHA"
@@ -586,7 +588,11 @@ for phase in $PHASES; do
           "expected: ShedLockDistributedTest kill; docker-start restored; all replicas healthy"
       fi
     else
-      if [[ "$last_verdict" == "GREEN" ]]; then
+      if [[ "${SHEDLOCK_KILL_MISSING:-0}" -eq 1 ]]; then
+        rewrite_last_phase "AMBER" \
+          "expected ShedLock kill missing (failover skipped / unresolved container)"
+        echo "[$KEYWORD] phase=elective-tests downgraded →AMBER (ShedLock kill missing)"
+      elif [[ "$last_verdict" == "GREEN" ]]; then
         rewrite_last_phase "AMBER" "HA invalid: restore after ShedLock/elective failed"
         echo "[$KEYWORD] phase=elective-tests downgraded GREEN→AMBER (restore failed)"
       fi

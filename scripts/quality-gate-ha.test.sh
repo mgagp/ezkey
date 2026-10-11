@@ -55,6 +55,7 @@ declare -A PREV_RESTARTS=()
 HA_INVALID=0
 OVERALL_AMBER=0
 SHEDLOCK_KILL_EXPECTED=0
+SHEDLOCK_KILL_MISSING=0
 SHEDLOCK_RESTORE_OK=0
 SHEDLOCK_KILLED=""
 RUN_DIR="$TMP/run"
@@ -80,6 +81,7 @@ all_healthy() {
   set_replica ezkey-admin-api-2 running healthy 0
   PREV_RESTARTS=([ezkey-admin-api-1]=0 [ezkey-admin-api-2]=0)
   HA_INVALID=0; OVERALL_AMBER=0
+  SHEDLOCK_KILL_MISSING=0; SHEDLOCK_KILL_EXPECTED=0; SHEDLOCK_RESTORE_OK=0; SHEDLOCK_KILLED=""
 }
 pass=0; fail=0
 assert_eq() {
@@ -134,6 +136,17 @@ v="$(classify_clean_start_verdict 1 1 1 1)"
 assert_eq "$v" "AMBER" "C2 contrast: #747 retry → AMBER"
 v="$(classify_clean_start_verdict 0 0 1 1)"
 assert_eq "$v" "GREEN" "C2 contrast: clean exit → GREEN"
+
+# 6) Missing ShedLock kill (failover skipped) → AMBER, never "replicas OK" success
+all_healthy
+: >"$RUN_DIR/phases/elective-tests.log"
+echo 'Mode: HA (High Availability)' >>"$RUN_DIR/phases/elective-tests.log"
+echo "Cannot determine container to kill from instance ID '74d78fe655b3'. Skipping failover test." \
+  >>"$RUN_DIR/phases/elective-tests.log"
+restore_after_elective || true
+assert_eq "$SHEDLOCK_KILL_MISSING" "1" "missing kill → SHEDLOCK_KILL_MISSING"
+assert_eq "$OVERALL_AMBER" "1" "missing kill → OVERALL_AMBER"
+assert_eq "$SHEDLOCK_RESTORE_OK" "0" "missing kill → no restore OK"
 
 echo "passes=$pass fails=$fail"
 [[ "$fail" -eq 0 ]]

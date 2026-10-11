@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import org.ezkey.tests.config.DockerStackConfig;
 import org.ezkey.tests.tags.TestTags;
+import org.ezkey.tests.util.DockerCliLocator;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -388,36 +389,34 @@ public class ShedLockDistributedTest {
     String instanceHoldingLock = initialLock.lockedBy();
     log.info("Lock '{}' is held by instance: {}", lockName, instanceHoldingLock);
 
-    // Determine which container to kill based on instance ID
-    String containerToKill = null;
-    if (instanceHoldingLock.contains("admin-api-1") || instanceHoldingLock.contains("1")) {
-      containerToKill = "ezkey-admin-api-1";
-    } else if (instanceHoldingLock.contains("admin-api-2") || instanceHoldingLock.contains("2")) {
-      containerToKill = "ezkey-admin-api-2";
-    } else {
-      log.warn(
-          "Cannot determine container to kill from instance ID '{}'. Skipping failover test.",
-          instanceHoldingLock);
-      return;
+    // Resolve hostname / short Docker container ID → compose service (ezkey-admin-api-1|2).
+    String containerToKill = shedLockHelper.resolveAdminApiContainer(instanceHoldingLock);
+    if (containerToKill == null) {
+      throw new AssertionError(
+          "Cannot resolve Admin API container from ShedLock locked_by='"
+              + instanceHoldingLock
+              + "' (expected docker id prefix or name containing admin-api-1/2). "
+              + "Failover must kill a replica — do not skip.");
     }
 
     log.info("Crashing container: {}", containerToKill);
 
-    // Crash the instance
+    // Crash the instance (quality-gate restores via docker start after elective).
     try {
-      ProcessBuilder killProcess = new ProcessBuilder("docker", "kill", containerToKill);
+      ProcessBuilder killProcess = DockerCliLocator.processBuilder("kill", containerToKill);
       Process killProc = killProcess.start();
       int exitCode = killProc.waitFor();
 
       if (exitCode != 0) {
-        log.warn("Failed to kill container '{}'. Skipping failover test.", containerToKill);
-        return;
+        throw new AssertionError(
+            "docker kill " + containerToKill + " failed with exit code " + exitCode);
       }
 
       log.info("✅ Container '{}' killed successfully", containerToKill);
+    } catch (AssertionError e) {
+      throw e;
     } catch (Exception e) {
-      log.error("Failed to kill container '{}': {}", containerToKill, e.getMessage(), e);
-      return;
+      throw new AssertionError("Failed to kill container '" + containerToKill + "'", e);
     }
 
     // Wait for lock expiration (KEY_PROMOTION has lockAtMostFor=PT1M)
