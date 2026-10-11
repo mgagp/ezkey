@@ -55,6 +55,11 @@ class ShedLockTestHelperMappingTest {
         .isEqualTo(ShedLockTestHelper.ADMIN_API_2);
     assertThat(ShedLockTestHelper.selectReplicaByIdPrefix("cccccccccccc", id1, id2)).isNull();
     assertThat(ShedLockTestHelper.selectReplicaByIdPrefix("short", id1, id2)).isNull();
+    // Full 64-char container ID and mixed-case locked_by (Docker may uppercase hex)
+    assertThat(ShedLockTestHelper.selectReplicaByIdPrefix(id1, id1, id2))
+        .isEqualTo(ShedLockTestHelper.ADMIN_API_1);
+    assertThat(ShedLockTestHelper.selectReplicaByIdPrefix("AaAaAaAaAaAa", id1, id2))
+        .isEqualTo(ShedLockTestHelper.ADMIN_API_1);
   }
 
   @Test

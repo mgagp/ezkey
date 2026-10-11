@@ -2,10 +2,62 @@
 # Cloud agent tooling; Git Bash best-effort, untested on macOS.
 #
 # Expected globals: KEYWORD HA_REPLICAS PREV_RESTARTS HA_INVALID OVERALL_AMBER
-#   RUN_DIR REPLICAS_TSV RESTARTS_TSV SHEDLOCK_* QUALITY_GATE_RESTORE_TIMEOUT_S
+#   OVERALL_RED RUN_DIR REPLICAS_TSV RESTARTS_TSV SHEDLOCK_* GATE_STARTED_AT
+#   QUALITY_GATE_RESTORE_TIMEOUT_S
 
 QUALITY_GATE_RESTORE_TIMEOUT_S="${QUALITY_GATE_RESTORE_TIMEOUT_S:-180}"
 QUALITY_GATE_RESTORE_POLL_S="${QUALITY_GATE_RESTORE_POLL_S:-5}"
+
+# Patrick: kill-missing may downgrade GREEN→AMBER only — never rewrite elective RED.
+# Prints the phase verdict to apply (AMBER or the unchanged last verdict).
+elective_kill_missing_phase_verdict() {
+  local last_verdict="$1"
+  if [[ "$last_verdict" == "GREEN" ]]; then
+    echo "AMBER"
+  else
+    echo "$last_verdict"
+  fi
+}
+
+# OOM evidence across the whole gate window (M1).
+# Captured events → RED even when docker events exits 141 (SIGPIPE from head).
+# Failing docker events with no output → UNKNOWN/AMBER, never silent "no OOM" (M2).
+# PIPESTATUS must be read inside the subshell: after ev="$(…)", PIPESTATUS[0] is head.
+check_oom_evidence() {
+  local blob ev ev_ec=0 name
+  set +o pipefail
+  blob="$(
+    docker events --since "${GATE_STARTED_AT:-}" --until "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+      --filter event=oom --filter type=container 2>/dev/null | head -20
+    printf 'rc=%s\n' "${PIPESTATUS[0]}"
+  )"
+  set -o pipefail
+  ev_ec="$(printf '%s\n' "$blob" | sed -n 's/^rc=//p' | tail -1)"
+  ev_ec="${ev_ec:-0}"
+  ev="$(printf '%s\n' "$blob" | sed '/^rc=/d')"
+  if [[ -n "$ev" ]]; then
+    echo "[$KEYWORD] docker OOM events detected:"
+    echo "$ev"
+    OVERALL_RED=1
+    printf '%s\n' "OOM: docker events reported container OOM since gate start" >>"$RUN_DIR/findings-extra.txt"
+    return 0
+  fi
+  if [[ "$ev_ec" -ne 0 ]]; then
+    echo "[$KEYWORD] docker events failed (ec=$ev_ec) — OOM check UNKNOWN/AMBER"
+    OVERALL_AMBER=1
+    printf '%s\n' "OOM check UNKNOWN: docker events failed (ec=$ev_ec)" >>"$RUN_DIR/findings-extra.txt"
+    return 0
+  fi
+  for name in $HA_REPLICAS; do
+    if docker logs --since "${GATE_STARTED_AT:-}" "$name" 2>&1 \
+      | grep -q 'Terminating due to java.lang.OutOfMemoryError'; then
+      echo "[$KEYWORD] OOM log line in $name"
+      OVERALL_RED=1
+      printf '%s\n' "OOM: Terminating due to java.lang.OutOfMemoryError in $name" >>"$RUN_DIR/findings-extra.txt"
+    fi
+  done
+  return 0
+}
 
 # Inspect API JVM replicas. tolerating="$name" may be down (ShedLock kill window only).
 # RestartCount delta outside that window → HA_INVALID (C1-bis).

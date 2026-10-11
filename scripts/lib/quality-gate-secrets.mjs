@@ -125,6 +125,28 @@ export function isPublicKeyOpaqueContext(before) {
 }
 
 /**
+ * Private-key material mislabeled under a {@code …PublicKey} field (force RED).
+ * PKCS#8 / EC private DER Base64 prefixes and PEM private headers.
+ *
+ * @param {string} value
+ * @returns {boolean}
+ */
+export function looksLikePrivateKeyMaterial(value) {
+  const v = String(value || '')
+    .trim()
+    .replace(/^["']+|["']+$/g, '');
+  if (/^-----BEGIN (?:EC )?PRIVATE/i.test(v)) return true;
+  if (/^MIGHAgEA/i.test(v)) return true;
+  if (/^MC4CAQAw/i.test(v)) return true;
+  // PKCS#8-style Base64 often embeds AgEA near the start (e.g. MIIE…AgEA).
+  if (/^MII[A-Za-z0-9+/]{0,48}AgEA/i.test(v)) return true;
+  return false;
+}
+
+/** Bare kv value: stop at whitespace or JSON/DTO/query delimiters (fail-closed). */
+export const KV_BARE_VALUE = String.raw`[^\s,;&)\]}]+`;
+
+/**
  * Only test-generated name shapes may be AMBER in admin-username glue (≤32 chars).
  *
  * @param {string} value
@@ -174,8 +196,9 @@ export function isMaskedOrNonSecretValue(value) {
   if (!v) return true;
   if (MASKED_VALUE_RE.test(v)) return true;
   // DTO toString may append an outer ']' after product [PROTECTED] / [REDACTED]
-  // (e.g. enrollmentProofToken=[PROTECTED]]). Bare \S+ kv capture includes it.
-  if (/^\[(?:PROTECTED|REDACTED)\]\]*$/i.test(v)) return true;
+  // (e.g. enrollmentProofToken=[PROTECTED]]). Bare kv may also stop at ']' so the
+  // captured value is "[PROTECTED" without the closing bracket — still masked.
+  if (/^\[(?:PROTECTED|REDACTED)\]?\]*$/i.test(v)) return true;
   if (NON_SECRET_VALUE_RE.test(v)) return true;
   if (ID_LABEL_VALUE_RE.test(v)) return true;
   return false;
@@ -276,7 +299,7 @@ function redactKvForms(text, note) {
       if (/^bearer$/i.test(val) || /^basic$/i.test(val)) return full;
       if (USERNAME_KEY_RE.test(key)) {
         note('kv-username', 'AMBER', val);
-      } else if (isPublicKeyFieldName(key)) {
+      } else if (isPublicKeyFieldName(key) && !looksLikePrivateKeyMaterial(val)) {
         note('kv-public-key', 'AMBER', val);
       } else {
         note('kv-secret', 'RED', val);
@@ -286,7 +309,11 @@ function redactKvForms(text, note) {
   let out = text;
   out = apply(out, new RegExp(`\\b(${keys})\\b\\s*[=:]\\s*"([^"]*)"`, 'gi'), (k) => `${k}="***REDACTED***"`);
   out = apply(out, new RegExp(`\\b(${keys})\\b\\s*[=:]\\s*'([^']*)'`, 'gi'), (k) => `${k}='***REDACTED***'`);
-  out = apply(out, new RegExp(`\\b(${keys})\\b\\s*[=:]\\s*(\\S+)`, 'gi'), (k) => `${k}=***REDACTED***`);
+  out = apply(
+    out,
+    new RegExp(`\\b(${keys})\\b\\s*[=:]\\s*(${KV_BARE_VALUE})`, 'gi'),
+    (k) => `${k}=***REDACTED***`,
+  );
   return out;
 }
 
@@ -313,8 +340,8 @@ export function applyRedactions(rawLine) {
     return 'Bearer ***REDACTED***';
   });
 
-  // 1a) Header form case-insensitive: "authorization: bearer <token>"
-  out = out.replace(/\bauthorization:\s*bearer\s+(\S{8,})/gi, (full, tok) => {
+  // 1a) authorization[=:] bearer (case-insensitive; optional quotes; spaces around :)
+  out = out.replace(/\bauthorization\s*[:=]\s*"?bearer\s+(\S{8,})/gi, (full, tok) => {
     if (isMaskedOrNonSecretValue(tok)) return full;
     note('bearer', 'RED', tok);
     return full.replace(tok, '***REDACTED***');
@@ -378,7 +405,7 @@ export function applyRedactions(rawLine) {
       if (isHttpStatusCodeKeyValue(key, val)) return full;
       if (USERNAME_KEY_RE.test(key)) {
         note('json-username', 'AMBER', val);
-      } else if (isPublicKeyFieldName(key)) {
+      } else if (isPublicKeyFieldName(key) && !looksLikePrivateKeyMaterial(val)) {
         note('json-public-key', 'AMBER', val);
       } else {
         note('json-secret', 'RED', val);
@@ -453,6 +480,10 @@ export function applyRedactions(rawLine) {
       return '<USER>';
     }
     if (isPublicKeyOpaqueContext(before)) {
+      if (looksLikePrivateKeyMaterial(m)) {
+        note('opaque-token', 'RED', m);
+        return '<TOKEN>';
+      }
       note('opaque-public-key', 'AMBER', m);
       return '<PUBKEY>';
     }

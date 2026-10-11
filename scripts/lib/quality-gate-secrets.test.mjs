@@ -221,6 +221,36 @@ describe('detectSecrets product cases', () => {
     }
   });
 
+  it('kv delimiter: private/password after publicKey/username stay RED', () => {
+    const priv = 'BBBSecretPrivateKeyValue99';
+    const pass = 'hunter2secretValue';
+    const cases = [
+      `publicKey=AAApublicKeyMaterial01,privateKey=${priv}`,
+      `publicKey=x&privateKey=${priv}`,
+      `username=alice,password=${pass}`,
+    ];
+    for (const line of cases) {
+      const r = detectSecrets(line);
+      assert.equal(r.severity, 'RED', `kinds=${r.kinds} line=${line}`);
+      assert.ok(r.kinds.includes('kv-secret'), `kinds=${r.kinds} line=${line}`);
+      const raw = line.includes('password=') ? pass : priv;
+      assert.equal(sanitize(line).includes(raw), false, line);
+    }
+  });
+
+  it('forces RED when …PublicKey value looks like private material', () => {
+    const pkcs8 = 'MIGHAgEA0123456789AbCdEfGhIjKlMnOpQrStUv';
+    for (const line of [
+      `publicKey=${pkcs8}`,
+      `devicePublicKey="${pkcs8}"`,
+    ]) {
+      const r = detectSecrets(line);
+      assert.equal(r.severity, 'RED', `kinds=${r.kinds} line=${line}`);
+      assert.ok(r.kinds.includes('kv-secret'), `kinds=${r.kinds} line=${line}`);
+      assert.equal(sanitize(line).includes(pkcs8), false, line);
+    }
+  });
+
   it('hits challenge=ABCD1234 (unmasked)', () => {
     const r = detectSecrets('Passwordless with challenge=ABCD1234 for user');
     assert.equal(r.severity, 'RED');
@@ -459,6 +489,19 @@ describe('PENDING_*_DIAG Sha256Hex and Bearer prose', () => {
     assert.equal(r.kinds.includes('bearer'), true, `kinds=${r.kinds}`);
     assert.equal(r.severity, 'RED');
     assert.equal(sanitize(line).includes('abc12345'), false);
+  });
+
+  it('scores authorization=bearer / braces / space-before-colon RED', () => {
+    for (const line of [
+      'authorization=bearer abc12345',
+      '{authorization=bearer abc12345}',
+      'Authorization : bearer abc12345',
+    ]) {
+      const r = detectSecrets(line);
+      assert.equal(r.kinds.includes('bearer'), true, `kinds=${r.kinds} line=${line}`);
+      assert.equal(r.severity, 'RED', line);
+      assert.equal(sanitize(line).includes('abc12345'), false, line);
+    }
   });
 
   it('still scores Authorization: Bearer <8+ chars> RED', () => {

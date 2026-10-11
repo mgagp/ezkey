@@ -41,6 +41,20 @@ case "$cmd" in
     r="$(cat "$STATE/$name.restarts" 2>/dev/null || echo 0)"
     echo $((r + 1)) >"$STATE/$name.restarts"
     ;;
+  events)
+    # M2: simulate docker events failure (never silent "no OOM")
+    if [[ "${FAKE_DOCKER_EVENTS_FAIL:-0}" == "1" ]]; then
+      echo "fake-docker: events failed" >&2
+      exit 1
+    fi
+    if [[ -n "${FAKE_DOCKER_EVENTS_LINES:-}" ]]; then
+      printf '%s\n' "$FAKE_DOCKER_EVENTS_LINES"
+    fi
+    exit 0
+    ;;
+  logs)
+    exit 0
+    ;;
   *) echo "fake-docker: unsupported $cmd" >&2; exit 1 ;;
 esac
 EOF
@@ -54,12 +68,15 @@ HA_REPLICAS="ezkey-admin-api-1 ezkey-admin-api-2"
 declare -A PREV_RESTARTS=()
 HA_INVALID=0
 OVERALL_AMBER=0
+OVERALL_RED=0
 SHEDLOCK_KILL_EXPECTED=0
 SHEDLOCK_KILL_MISSING=0
 SHEDLOCK_RESTORE_OK=0
 SHEDLOCK_KILLED=""
+GATE_STARTED_AT="2026-10-11T00:00:00Z"
 RUN_DIR="$TMP/run"
 mkdir -p "$RUN_DIR/phases"
+: >"$RUN_DIR/findings-extra.txt"
 REPLICAS_TSV="$RUN_DIR/replicas.tsv"
 RESTARTS_TSV="$RUN_DIR/restarts.tsv"
 : >"$REPLICAS_TSV"
@@ -80,7 +97,7 @@ all_healthy() {
   set_replica ezkey-admin-api-1 running healthy 0
   set_replica ezkey-admin-api-2 running healthy 0
   PREV_RESTARTS=([ezkey-admin-api-1]=0 [ezkey-admin-api-2]=0)
-  HA_INVALID=0; OVERALL_AMBER=0
+  HA_INVALID=0; OVERALL_AMBER=0; OVERALL_RED=0
   SHEDLOCK_KILL_MISSING=0; SHEDLOCK_KILL_EXPECTED=0; SHEDLOCK_RESTORE_OK=0; SHEDLOCK_KILLED=""
 }
 pass=0; fail=0
@@ -159,6 +176,28 @@ node "$ROOT/scripts/quality-gate-report.mjs" \
 ov="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).overallVerdict)' \
   "$RUN_DIR/summary.json")"
 assert_eq "$ov" "INCONCLUSIVE: HA invalid" "missing kill → report INCONCLUSIVE (not GO)"
+
+# 7) Elective RED stays RED on kill-missing (never rewrite RED→AMBER)
+v="$(elective_kill_missing_phase_verdict RED)"
+assert_eq "$v" "RED" "elective RED stays RED on kill-missing"
+v="$(elective_kill_missing_phase_verdict GREEN)"
+assert_eq "$v" "AMBER" "elective GREEN→AMBER on kill-missing"
+v="$(elective_kill_missing_phase_verdict AMBER)"
+assert_eq "$v" "AMBER" "elective AMBER stays AMBER on kill-missing"
+
+# 8) M2: docker events failure → UNKNOWN/AMBER, never silent "no OOM"
+all_healthy
+: >"$RUN_DIR/findings-extra.txt"
+OVERALL_RED=0
+OVERALL_AMBER=0
+export FAKE_DOCKER_EVENTS_FAIL=1
+check_oom_evidence || true
+unset FAKE_DOCKER_EVENTS_FAIL
+assert_eq "$OVERALL_AMBER" "1" "docker events fail → OVERALL_AMBER"
+assert_eq "$OVERALL_RED" "0" "docker events fail → not RED (no silent empty success)"
+grep -q 'OOM check UNKNOWN' "$RUN_DIR/findings-extra.txt" \
+  && echo "ok - docker events fail → findings UNKNOWN" && pass=$((pass+1)) \
+  || { echo "not ok - docker events fail → findings UNKNOWN"; fail=$((fail+1)); }
 
 echo "passes=$pass fails=$fail"
 [[ "$fail" -eq 0 ]]
