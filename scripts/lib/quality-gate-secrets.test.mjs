@@ -305,9 +305,9 @@ describe('admin username opaque → AMBER; keyset-backup only', () => {
     assert.match(sanitize(line), /keyset-backup-20261011T014310Z\.json\.encrypted/);
   });
 
-  it('keeps <token>.json.encrypted / .pem / .key RED (adversarial)', () => {
+  it('keeps <token>.json.encrypted / .pem / .key / .txt / .log RED (adversarial)', () => {
     const tok = 'AbCdEfGhIjKlMnOpQr123456';
-    for (const ext of ['.json.encrypted', '.pem', '.key']) {
+    for (const ext of ['.json.encrypted', '.pem', '.key', '.txt', '.log']) {
       const line = `path=/tmp/${tok}${ext}`;
       const r = detectSecrets(line);
       assert.equal(r.kinds.includes('opaque-token'), true, `kinds=${r.kinds} ext=${ext}`);
@@ -402,6 +402,13 @@ describe('PENDING_*_DIAG Sha256Hex and Bearer prose', () => {
     assert.equal(r.kinds.includes('challenge-response'), true, `kinds=${r.kinds}`);
     assert.equal(r.severity, 'RED');
     assert.equal(sanitize(line).includes('482913'), false);
+  });
+
+  it('does not score HH:MM:SS timestamps as IPv6', () => {
+    const line = '2026-10-11T21:30:45.123Z INFO started at 21:30:45';
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('ip'), false, `kinds=${r.kinds}`);
+    assert.match(sanitize(line), /21:30:45/);
   });
 });
 

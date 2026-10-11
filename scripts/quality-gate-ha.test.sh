@@ -137,7 +137,7 @@ assert_eq "$v" "AMBER" "C2 contrast: #747 retry → AMBER"
 v="$(classify_clean_start_verdict 0 0 1 1)"
 assert_eq "$v" "GREEN" "C2 contrast: clean exit → GREEN"
 
-# 6) Missing ShedLock kill (failover skipped) → AMBER, never "replicas OK" success
+# 6) Missing ShedLock kill (failover skipped / unresolved / no kill in 30s) → INCONCLUSIVE
 all_healthy
 : >"$RUN_DIR/phases/elective-tests.log"
 echo 'Mode: HA (High Availability)' >>"$RUN_DIR/phases/elective-tests.log"
@@ -147,6 +147,18 @@ restore_after_elective || true
 assert_eq "$SHEDLOCK_KILL_MISSING" "1" "missing kill → SHEDLOCK_KILL_MISSING"
 assert_eq "$OVERALL_AMBER" "1" "missing kill → OVERALL_AMBER"
 assert_eq "$SHEDLOCK_RESTORE_OK" "0" "missing kill → no restore OK"
+assert_eq "$HA_INVALID" "1" "missing kill → HA_INVALID (never GO)"
+# Report must classify haInvalid as INCONCLUSIVE, not GO / GO-with-reservations
+mkdir -p "$RUN_DIR/health"
+printf '%s\n' '{"verdict":"GREEN"}' >"$RUN_DIR/health/health.json"
+: >"$RUN_DIR/phases.tsv"
+node "$ROOT/scripts/quality-gate-report.mjs" \
+  --run-dir "$RUN_DIR" --tip deadbeef --short deadbeef --total-ms 1 \
+  --churn-min 0 --red 0 --amber 1 --ha-invalid 1 --compose-retry 0 --shedlock-restored 0 \
+  >/dev/null
+ov="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).overallVerdict)' \
+  "$RUN_DIR/summary.json")"
+assert_eq "$ov" "INCONCLUSIVE: HA invalid" "missing kill → report INCONCLUSIVE (not GO)"
 
 echo "passes=$pass fails=$fail"
 [[ "$fail" -eq 0 ]]

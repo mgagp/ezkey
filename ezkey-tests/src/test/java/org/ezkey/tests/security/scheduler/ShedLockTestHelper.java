@@ -618,13 +618,12 @@ public class ShedLockTestHelper {
    *
    * <ol>
    *   <li>Name already contains {@code admin-api-1} / {@code admin-api-2}
-   *   <li>{@code docker inspect} ID prefix match for each replica
-   *   <li>{@code docker ps --filter id=} → map container name to replica
-   *   <li>{@code docker inspect} {@code .Name} on the id/hostname
+   *   <li>{@code docker inspect} ID prefix match for each replica (≥8 chars; ambiguous → fail)
    * </ol>
    *
    * @param lockedBy ShedLock locked_by / hostname (may be a short container id)
    * @return {@link #ADMIN_API_1} or {@link #ADMIN_API_2}, or {@code null} if unresolved
+   * @throws AssertionError if both replicas share the same ID prefix
    */
   public String resolveAdminApiContainer(String lockedBy) {
     if (lockedBy == null || lockedBy.isBlank()) {
@@ -635,29 +634,46 @@ public class ShedLockTestHelper {
     if (fromName != null) {
       return fromName;
     }
+    return selectReplicaByIdPrefix(id, dockerInspectId(ADMIN_API_1), dockerInspectId(ADMIN_API_2));
+  }
 
-    for (String replica : List.of(ADMIN_API_1, ADMIN_API_2)) {
-      String fullId = dockerInspectId(replica);
-      if (fullId == null || fullId.isEmpty()) {
-        continue;
-      }
-      if (fullId.regionMatches(true, 0, id, 0, id.length()) && id.length() >= 8) {
-        return replica;
-      }
-      String prefix = fullId.length() >= 12 ? fullId.substring(0, 12) : fullId;
-      if (prefix.equalsIgnoreCase(id)) {
-        return replica;
-      }
+  /**
+   * Selects the Admin API replica whose full Docker ID starts with {@code lockedBy}.
+   *
+   * <p>Requires {@code lockedBy} length ≥ 8. If both replica IDs match the prefix, fails rather
+   * than silently preferring api-1.
+   *
+   * @param lockedBy ShedLock locked_by / short container id
+   * @param fullId1 full Docker ID for {@link #ADMIN_API_1}, or {@code null}
+   * @param fullId2 full Docker ID for {@link #ADMIN_API_2}, or {@code null}
+   * @return {@link #ADMIN_API_1}, {@link #ADMIN_API_2}, or {@code null} if none match
+   * @throws AssertionError if both IDs share the prefix
+   */
+  static String selectReplicaByIdPrefix(String lockedBy, String fullId1, String fullId2) {
+    if (lockedBy == null || lockedBy.length() < 8) {
+      return null;
     }
-
-    String psName = dockerPsNameById(id);
-    String mapped = mapComposeNameToAdminReplica(psName);
-    if (mapped != null) {
-      return mapped;
+    List<String> matches = new ArrayList<>(2);
+    if (fullId1 != null
+        && !fullId1.isEmpty()
+        && fullId1.regionMatches(true, 0, lockedBy, 0, lockedBy.length())) {
+      matches.add(ADMIN_API_1);
     }
-
-    String inspectedName = dockerInspectName(id);
-    return mapComposeNameToAdminReplica(inspectedName);
+    if (fullId2 != null
+        && !fullId2.isEmpty()
+        && fullId2.regionMatches(true, 0, lockedBy, 0, lockedBy.length())) {
+      matches.add(ADMIN_API_2);
+    }
+    if (matches.size() > 1) {
+      throw new AssertionError(
+          "Ambiguous ShedLock locked_by='"
+              + lockedBy
+              + "' matches both "
+              + ADMIN_API_1
+              + " and "
+              + ADMIN_API_2);
+    }
+    return matches.isEmpty() ? null : matches.get(0);
   }
 
   /**
@@ -688,14 +704,6 @@ public class ShedLockTestHelper {
     return dockerOutput("inspect", "-f", "{{.Id}}", containerName);
   }
 
-  private String dockerInspectName(String containerIdOrName) {
-    return dockerOutput("inspect", "-f", "{{.Name}}", containerIdOrName);
-  }
-
-  private String dockerPsNameById(String idPrefix) {
-    return dockerOutput("ps", "--filter", "id=" + idPrefix, "--format", "{{.Names}}");
-  }
-
   private String dockerOutput(String... args) {
     try {
       ProcessBuilder processBuilder = DockerCliLocator.processBuilder(args);
@@ -720,11 +728,6 @@ public class ShedLockTestHelper {
         return null;
       }
       String result = output.toString().trim();
-      // docker ps may return multiple lines; take the first
-      int nl = result.indexOf('\n');
-      if (nl >= 0) {
-        result = result.substring(0, nl).trim();
-      }
       return result.isEmpty() ? null : result;
     } catch (Exception e) {
       log.debug("docker {} failed: {}", String.join(" ", args), e.getMessage());

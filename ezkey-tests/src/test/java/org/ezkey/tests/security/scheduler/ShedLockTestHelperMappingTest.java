@@ -5,18 +5,20 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: ShedLockTestHelperMappingTest
- * Description: Unit tests for compose-name → Admin API replica mapping (no Docker).
+ * Description: Unit tests for compose-name and Docker ID-prefix → Admin API replica mapping.
  */
 
 package org.ezkey.tests.security.scheduler;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * Pure mapping tests for {@link ShedLockTestHelper#mapComposeNameToAdminReplica(String)}.
+ * Pure mapping tests for {@link ShedLockTestHelper#mapComposeNameToAdminReplica(String)} and {@link
+ * ShedLockTestHelper#selectReplicaByIdPrefix(String, String, String)}.
  *
  * @since 2026
  */
@@ -40,5 +42,29 @@ class ShedLockTestHelperMappingTest {
     assertThat(ShedLockTestHelper.mapComposeNameToAdminReplica("ezkey-auth-api-1")).isNull();
     assertThat(ShedLockTestHelper.mapComposeNameToAdminReplica("")).isNull();
     assertThat(ShedLockTestHelper.mapComposeNameToAdminReplica(null)).isNull();
+  }
+
+  @Test
+  @DisplayName("selects replica by unambiguous Docker ID prefix")
+  void selectsByIdPrefix() {
+    String id1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    String id2 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    assertThat(ShedLockTestHelper.selectReplicaByIdPrefix("aaaaaaaaaaaa", id1, id2))
+        .isEqualTo(ShedLockTestHelper.ADMIN_API_1);
+    assertThat(ShedLockTestHelper.selectReplicaByIdPrefix("bbbbbbbbbbbb", id1, id2))
+        .isEqualTo(ShedLockTestHelper.ADMIN_API_2);
+    assertThat(ShedLockTestHelper.selectReplicaByIdPrefix("cccccccccccc", id1, id2)).isNull();
+    assertThat(ShedLockTestHelper.selectReplicaByIdPrefix("short", id1, id2)).isNull();
+  }
+
+  @Test
+  @DisplayName("fails when both replica IDs share the locked_by prefix")
+  void failsOnAmbiguousIdPrefix() {
+    String shared = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+    String other = "abcdef012345ffffeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+    assertThatThrownBy(
+            () -> ShedLockTestHelper.selectReplicaByIdPrefix("abcdef012345", shared, other))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("Ambiguous ShedLock locked_by");
   }
 }

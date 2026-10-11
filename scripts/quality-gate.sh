@@ -222,23 +222,26 @@ rewrite_last_phase() {
 }
 
 # OOM evidence across the whole gate window (called after the phase loop — M1).
-# Failing docker events → UNKNOWN/AMBER, never silent "no OOM" (M2).
+# Captured events → RED even when docker events exits 141 (SIGPIPE from head under pipefail).
+# Failing docker events with no output → UNKNOWN/AMBER, never silent "no OOM" (M2).
 check_oom_evidence() {
   local ev ev_ec=0 name
+  set +o pipefail
   ev="$(docker events --since "$GATE_STARTED_AT" --until "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
     --filter event=oom --filter type=container 2>/dev/null | head -20)"
   ev_ec=${PIPESTATUS[0]:-0}
-  if [[ "$ev_ec" -ne 0 ]]; then
-    echo "[$KEYWORD] docker events failed (ec=$ev_ec) — OOM check UNKNOWN/AMBER"
-    OVERALL_AMBER=1
-    printf '%s\n' "OOM check UNKNOWN: docker events failed (ec=$ev_ec)" >>"$RUN_DIR/findings-extra.txt"
-    return 0
-  fi
+  set -o pipefail
   if [[ -n "$ev" ]]; then
     echo "[$KEYWORD] docker OOM events detected:"
     echo "$ev"
     OVERALL_RED=1
     printf '%s\n' "OOM: docker events reported container OOM since gate start" >>"$RUN_DIR/findings-extra.txt"
+    return 0
+  fi
+  if [[ "$ev_ec" -ne 0 ]]; then
+    echo "[$KEYWORD] docker events failed (ec=$ev_ec) — OOM check UNKNOWN/AMBER"
+    OVERALL_AMBER=1
+    printf '%s\n' "OOM check UNKNOWN: docker events failed (ec=$ev_ec)" >>"$RUN_DIR/findings-extra.txt"
     return 0
   fi
   for name in $HA_REPLICAS; do
@@ -589,9 +592,14 @@ for phase in $PHASES; do
       fi
     else
       if [[ "${SHEDLOCK_KILL_MISSING:-0}" -eq 1 ]]; then
-        rewrite_last_phase "AMBER" \
-          "expected ShedLock kill missing (failover skipped / unresolved container)"
-        echo "[$KEYWORD] phase=elective-tests downgraded →AMBER (ShedLock kill missing)"
+        # Never rewrite an elective RED down to AMBER — only GREEN → AMBER.
+        if [[ "$last_verdict" == "GREEN" ]]; then
+          rewrite_last_phase "AMBER" \
+            "expected ShedLock kill missing (failover skipped / unresolved container)"
+          echo "[$KEYWORD] phase=elective-tests downgraded GREEN→AMBER (ShedLock kill missing)"
+        else
+          echo "[$KEYWORD] ShedLock kill missing; phase stays $last_verdict (no rewrite)"
+        fi
       elif [[ "$last_verdict" == "GREEN" ]]; then
         rewrite_last_phase "AMBER" "HA invalid: restore after ShedLock/elective failed"
         echo "[$KEYWORD] phase=elective-tests downgraded GREEN→AMBER (restore failed)"

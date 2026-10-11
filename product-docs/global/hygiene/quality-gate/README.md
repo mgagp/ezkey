@@ -45,7 +45,7 @@ UNKNOWN/AMBER (never silent "no OOM").
 | [#748](https://github.com/mgagp/ezkey/issues/748) | Auth security false pass (sticky RestAssured → crypto). Fixed in product tests. |
 | [#750](https://github.com/mgagp/ezkey/issues/750) | Bootstrap proof/challenge/QR **emitted during clean-start only** (`kind=secret-channel`). Still valid when scanned later; emission outside clean-start stays RED. |
 | [#751](https://github.com/mgagp/ezkey/issues/751) | Recovery codes / login challenges no longer logged. |
-| [#752](https://github.com/mgagp/ezkey/issues/752) / [#753](https://github.com/mgagp/ezkey/issues/753) | Real product log leaks (auth-api DTO/DEBUG MVC; demo-device INFO). Stay RED in the gate — no allowlist. See [run-6 secret triage](2026-10-11-run-6-secret-triage.md). Run 7 after those fix PRs merge. |
+| [#752](https://github.com/mgagp/ezkey/issues/752) / [#753](https://github.com/mgagp/ezkey/issues/753) | Real product log leaks (auth-api DTO/DEBUG MVC; demo-device INFO). Stay RED in the gate — no allowlist. Run-6 secret triage lives on PR #746 comments (not in-tree). Run 7 after those fix PRs merge. |
 
 ## Config
 

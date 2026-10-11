@@ -60,7 +60,8 @@ if (haInvalid) {
   findings.push({
     phase: 'replicas',
     verdict: 'AMBER',
-    note: 'HA invalid — replica dead/unhealthy, restart delta, or elective restore failed',
+    note:
+      'HA invalid — replica dead/unhealthy, restart delta, elective restore failed, or ShedLock kill missing',
     classification: 'INCONCLUSIVE: HA invalid',
   });
 } else if (shedlockRestored) {

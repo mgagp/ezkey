@@ -72,7 +72,7 @@ wait_replicas_healthy() {
 
 # Patrick C1: do NOT compose up -d (loses docker-test profile / logs). docker start only.
 # Quality-gate HA elective always expects ShedLockDistributedTest to kill one admin-api replica.
-# Missing kill → AMBER (never "replicas OK" GREEN): the kill/restore path is what we prove.
+# Missing kill → HA_INVALID + AMBER → overall INCONCLUSIVE (exit 3), never GO.
 restore_after_elective() {
   local elective_log="$RUN_DIR/phases/elective-tests.log"
   local killed=""
@@ -100,8 +100,9 @@ restore_after_elective() {
 
   if [[ -z "$killed" ]]; then
     SHEDLOCK_KILL_MISSING=1
+    HA_INVALID=1
     OVERALL_AMBER=1
-    echo "[$KEYWORD] expected ShedLock kill missing — failover did not crash a replica → AMBER"
+    echo "[$KEYWORD] expected ShedLock kill missing — failover did not crash a replica → HA invalid / INCONCLUSIVE"
     printf '%s\n' \
       "ShedLock: expected kill missing (failover skipped or unresolved container id) — kill/restore path not proven" \
       >>"$RUN_DIR/findings-extra.txt"

@@ -445,18 +445,16 @@ public class ShedLockDistributedTest {
     String recoveredInstance = recoveredLock.lockedBy();
     log.info("Lock '{}' recovered by instance: {}", lockName, recoveredInstance);
 
-    // Verify it's a different instance (or at least that lock was re-acquired)
+    // Failover requires a different replica; same locked_by means we killed the wrong one
+    // or hostname is not unique across HA Admin API containers.
     if (recoveredInstance.equals(instanceHoldingLock)) {
-      log.warn(
-          "Lock was re-acquired by the same instance '{}'. "
-              + "This may indicate the instance restarted quickly or instance ID is not unique.",
-          recoveredInstance);
-    } else {
-      log.info(
-          "✅ Lock recovered by different instance: {} -> {}",
-          instanceHoldingLock,
-          recoveredInstance);
+      throw new AssertionError(
+          "Lock was re-acquired by the same instance '"
+              + recoveredInstance
+              + "'. Expected a different Admin API replica after docker kill of the lock holder.");
     }
+    log.info(
+        "✅ Lock recovered by different instance: {} -> {}", instanceHoldingLock, recoveredInstance);
 
     log.info("✅ Verified: Failover mechanism works - lock recovered after instance crash");
   }
