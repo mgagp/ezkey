@@ -132,6 +132,14 @@ describe('Basic header form (case-sensitive)', () => {
     assert.equal(detectSecrets('status code: 404').kinds.length, 0);
     assert.equal(detectSecrets('code=200').kinds.length, 0);
   });
+
+  it('does not treat #751 challenge: returning prose as a secret', () => {
+    const line =
+      '📋 Passwordless with challenge: returning auth attempt info (ID: 42)';
+    assert.equal(detectSecrets(line).kinds.length, 0);
+    // Still catches real challenge codes.
+    assert.equal(detectSecrets('challenge: 42').severity, 'RED');
+  });
 });
 
 describe('detectSecrets product cases', () => {

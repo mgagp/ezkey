@@ -79,6 +79,23 @@ export function isHttpStatusCodeKeyValue(key, value) {
 }
 
 /**
+ * Bare `challenge:` prose after #751 (e.g. "with challenge: returning auth attempt info").
+ * Still scores numeric / opaque challenge codes (challenge: 42, challenge=ABCD1234).
+ *
+ * @param {string} key
+ * @param {string} value
+ * @returns {boolean}
+ */
+export function isChallengeProseValue(key, value) {
+  if (!/^challenge$/i.test(String(key || ''))) return false;
+  const v = String(value || '')
+    .trim()
+    .replace(/[),;.]+$/g, '');
+  // Pure alphabetic tokens are English glue, not challenge codes.
+  return /^[A-Za-z]+$/.test(v);
+}
+
+/**
  * Known log message → product logger.
  * Paths are best-effort hints only — do not invent line numbers or fabricate paths
  * that are not in the product tree.
@@ -142,6 +159,7 @@ function redactKvForms(text, note) {
     out.replace(re, (full, key, val) => {
       if (isMaskedOrNonSecretValue(val)) return full;
       if (isHttpStatusCodeKeyValue(key, val)) return full;
+      if (isChallengeProseValue(key, val)) return full;
       if (/^bearer$/i.test(val) || /^basic$/i.test(val)) return full;
       if (USERNAME_KEY_RE.test(key)) {
         note('kv-username', 'AMBER', val);
