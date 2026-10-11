@@ -39,9 +39,19 @@ export function isArchTripleToken(s) {
   );
 }
 
+/** Exactly 64 hex chars — digest value after *Sha256*Hex=. */
+export const SHA256_HEX64_RE = /^[0-9a-f]{64}$/i;
+
+/**
+ * Test-generated admin username shape only (≤32 chars).
+ * e.g. `admin-a1b2c3d4e5f67890`, `tenant-admin-1791682905`.
+ */
+export const TEST_ADMIN_USERNAME_RE =
+  /^[a-z][a-z0-9-]*-(?:[0-9a-f]{8,20}|\d{10,13})$/;
+
 /**
  * Opaque lookalike that is a jar stem, word-boundary `git:` hex SHA, arch triple,
- * digest field (`*Sha256*Hex=`), or filename with a known extension — not a secret.
+ * 64-hex digest after `*Sha256*Hex=`, or `keyset-backup-*.json.encrypted` — not a secret.
  *
  * @param {string} match opaque candidate
  * @param {string} before chars before match
@@ -56,35 +66,49 @@ export function isJarGitArchOpaqueContext(match, before, after) {
   // word-boundary git: <hexsha> only (not "legit: <hex>")
   if (/\bgit:\s*$/i.test(b) && /^[0-9a-f]+$/i.test(match)) return true;
   if (isArchTripleToken(match)) return true;
-  // PENDING_*_DIAG digests: value after *Sha256*Hex=, and the field name itself
-  if (/\w*Sha256\w*Hex=\s*$/i.test(b)) return true;
+  // PENDING_*_DIAG digests: only exact 64-hex values after *Sha256*Hex=
+  if (/\w*Sha256\w*Hex=\s*$/i.test(b) && SHA256_HEX64_RE.test(match)) return true;
+  // Field name itself (value handled above / scored if non-hex)
   if (/Sha256\w*Hex$/i.test(match) && /^=/.test(a)) return true;
-  // keyset-backup-<ts>.json.encrypted and similar
-  if (isKnownFilenameExtensionAfter(a)) return true;
+  // Only keyset-backup-<ts>.json.encrypted — not arbitrary .<ext>
+  if (isKeysetBackupFilename(match, a)) return true;
   return false;
 }
 
 /**
- * True when `after` begins with a known non-secret filename extension.
+ * True for `keyset-backup-<timestamp>.json.encrypted` stems only.
  *
- * @param {string} after
+ * @param {string} match opaque stem
+ * @param {string} after chars after match
  * @returns {boolean}
  */
-export function isKnownFilenameExtensionAfter(after) {
-  return /^\.(?:json(?:\.encrypted)?|ya?ml|xml|properties|conf|txt|log|bak|key|pem|crt|encrypted)\b/i.test(
-    String(after || ''),
+export function isKeysetBackupFilename(match, after) {
+  return (
+    /^keyset-backup-[0-9TZ:-]+$/i.test(String(match || '')) &&
+    /^\.json\.encrypted\b/i.test(String(after || ''))
   );
 }
 
 /**
- * Opaque value in admin-username log glue — score AMBER like username, not RED opaque.
- * Matches: `for admin: `, `by admin: `, `tenant admin: `, `successful for: `.
+ * Admin-username log glue: `for admin: `, `by admin: `, `tenant admin: `, `successful for: `.
  *
  * @param {string} before
  * @returns {boolean}
  */
 export function isAdminUsernameOpaqueContext(before) {
   return /(?:for admin|by admin|tenant admin|successful for):\s*$/i.test(String(before || ''));
+}
+
+/**
+ * Only test-generated name shapes may be AMBER in admin-username glue (≤32 chars).
+ *
+ * @param {string} value
+ * @returns {boolean}
+ */
+export function isTestAdminUsernameShape(value) {
+  const v = String(value || '');
+  if (v.length > 32) return false;
+  return TEST_ADMIN_USERNAME_RE.test(v);
 }
 /** Known allowlist requires= tokens (typos must not make an entry unconditional). */
 export const KNOWN_ALLOWLIST_REQUIRES = new Set(['COMPOSE_RETRY_FIRED']);
@@ -258,6 +282,13 @@ export function applyRedactions(rawLine) {
     return 'Bearer ***REDACTED***';
   });
 
+  // 1a) Header form case-insensitive: "authorization: bearer <token>"
+  out = out.replace(/\bauthorization:\s*bearer\s+(\S{8,})/gi, (full, tok) => {
+    if (isMaskedOrNonSecretValue(tok)) return full;
+    note('bearer', 'RED', tok);
+    return full.replace(tok, '***REDACTED***');
+  });
+
   // 1b) Authorization: Basic <base64> only (header form; case-sensitive — avoids
   // "Using basic configuration" / "HTTP Basic authentication is not configured").
   out = out.replace(/Authorization:\s*Basic\s+([A-Za-z0-9+/=]+)/g, (full, b64) => {
@@ -360,6 +391,12 @@ export function applyRedactions(rawLine) {
     },
   );
 
+  // 8b) Demo-device / #753: "Including challenge response: 482913"
+  out = out.replace(/\bchallenge\s+response:\s*(\d+)/gi, (full, digits) => {
+    note('challenge-response', 'RED', digits);
+    return 'challenge response=***REDACTED***';
+  });
+
   // 9) Bootstrap recovery codes (digit groups) — stay RED
   out = out.replace(/\b(\d{4}(?:-\d{4}){7})\b/g, (m) => {
     note('recovery-code', 'RED', m);
@@ -370,14 +407,14 @@ export function applyRedactions(rawLine) {
   out = out.replace(new RegExp(CANONICAL_UUID_SOURCE, 'gi'), '<UUID>');
 
   // 10) Opaque long tokens (letters+digits, not CamelCase / dotted packages).
-  // Skip jar/git/arch/Sha256Hex=/filename; admin-username glue → AMBER.
+  // Skip jar/git/arch/64-hex Sha256Hex=/keyset-backup; test admin usernames → AMBER.
   out = out.replace(OPAQUE_TOKEN_RE, (m, offset, whole) => {
     if (MASKED_VALUE_RE.test(m)) return m;
     if (m === '<UUID>') return m;
     const before = String(whole).slice(Math.max(0, offset - 40), offset);
     const after = String(whole).slice(offset + m.length, offset + m.length + 24);
     if (isJarGitArchOpaqueContext(m, before, after)) return m;
-    if (isAdminUsernameOpaqueContext(before)) {
+    if (isAdminUsernameOpaqueContext(before) && isTestAdminUsernameShape(m)) {
       note('opaque-username', 'AMBER', m);
       return '<USER>';
     }

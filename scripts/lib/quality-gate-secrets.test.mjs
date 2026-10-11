@@ -268,8 +268,9 @@ describe('TOKEN / Java class names / UUID', () => {
   });
 });
 
-describe('admin username opaque → AMBER; filename ignore', () => {
-  const ADMIN = 'admin-17916829053231'; // ≥20 mixed alnum (opaque-shaped)
+describe('admin username opaque → AMBER; keyset-backup only', () => {
+  // Test shape: ^[a-z][a-z0-9-]*-(?:[0-9a-f]{8,20}|\d{10,13})$, ≤32, ≥20 for opaque
+  const ADMIN = 'admin-a1b2c3d4e5f67890';
 
   it('scores for/by/tenant admin: and successful for: as opaque-username AMBER', () => {
     const lines = [
@@ -287,11 +288,31 @@ describe('admin username opaque → AMBER; filename ignore', () => {
     }
   });
 
-  it('ignores opaque filename stems with known extensions', () => {
-    const line = 'Set file permissions to 600: /etc/ezkey/keysets/keyset-backup-1791682905323.json.encrypted';
+  it('keeps for admin: <random 40-char token> RED (adversarial)', () => {
+    const tok = 'a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0'; // 40 mixed
+    const line = `Passwordless auth successful for admin: ${tok} after 0s`;
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('opaque-token'), true, `kinds=${r.kinds}`);
+    assert.equal(r.severity, 'RED');
+    assert.equal(r.kinds.includes('opaque-username'), false);
+  });
+
+  it('ignores only keyset-backup-<ts>.json.encrypted', () => {
+    const line =
+      'Set file permissions to 600: /etc/ezkey/keysets/keyset-backup-20261011T014310Z.json.encrypted';
     const r = detectSecrets(line);
     assert.equal(r.kinds.includes('opaque-token'), false, `kinds=${r.kinds}`);
-    assert.match(sanitize(line), /keyset-backup-1791682905323\.json\.encrypted/);
+    assert.match(sanitize(line), /keyset-backup-20261011T014310Z\.json\.encrypted/);
+  });
+
+  it('keeps <token>.json.encrypted / .pem / .key RED (adversarial)', () => {
+    const tok = 'AbCdEfGhIjKlMnOpQr123456';
+    for (const ext of ['.json.encrypted', '.pem', '.key']) {
+      const line = `path=/tmp/${tok}${ext}`;
+      const r = detectSecrets(line);
+      assert.equal(r.kinds.includes('opaque-token'), true, `kinds=${r.kinds} ext=${ext}`);
+      assert.equal(r.severity, 'RED', ext);
+    }
   });
 
   it('keeps proof=<token> for admin: alice RED (secret before username glue)', () => {
@@ -329,6 +350,18 @@ describe('PENDING_*_DIAG Sha256Hex and Bearer prose', () => {
     assert.match(sanitize(line), new RegExp(HEX64));
   });
 
+  it('keeps proofTokenSha256Hex=<40-char non-hex token> RED (adversarial)', () => {
+    const tok = 'a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9'; // 40 mixed, not 64 hex
+    const line = `proofTokenSha256Hex=${tok}`;
+    const r = detectSecrets(line);
+    assert.equal(r.severity, 'RED', `kinds=${r.kinds}`);
+    assert.ok(
+      r.kinds.includes('opaque-token') || r.kinds.includes('kv-secret'),
+      `kinds=${r.kinds}`,
+    );
+    assert.equal(sanitize(line).includes(tok), false);
+  });
+
   it('keeps proofToken=<same 64 hex> RED', () => {
     const line = `proofToken=${HEX64}`;
     const r = detectSecrets(line);
@@ -347,12 +380,28 @@ describe('PENDING_*_DIAG Sha256Hex and Bearer prose', () => {
     }
   });
 
+  it('scores authorization: bearer abc12345 RED (adversarial)', () => {
+    const line = 'authorization: bearer abc12345';
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('bearer'), true, `kinds=${r.kinds}`);
+    assert.equal(r.severity, 'RED');
+    assert.equal(sanitize(line).includes('abc12345'), false);
+  });
+
   it('still scores Authorization: Bearer <8+ chars> RED', () => {
     const tok = 'abcdefgh';
     const line = `Authorization: Bearer ${tok}`;
     const r = detectSecrets(line);
     assert.equal(r.kinds.includes('bearer'), true, `kinds=${r.kinds}`);
     assert.equal(r.severity, 'RED');
+  });
+
+  it('scores challenge response: digits RED (#753)', () => {
+    const line = 'Including challenge response: 482913';
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('challenge-response'), true, `kinds=${r.kinds}`);
+    assert.equal(r.severity, 'RED');
+    assert.equal(sanitize(line).includes('482913'), false);
   });
 });
 
