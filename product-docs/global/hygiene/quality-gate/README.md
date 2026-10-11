@@ -45,13 +45,13 @@ UNKNOWN/AMBER (never silent "no OOM").
 | [#748](https://github.com/mgagp/ezkey/issues/748) | Auth security false pass (sticky RestAssured → crypto). Fixed in product tests. |
 | [#750](https://github.com/mgagp/ezkey/issues/750) | Bootstrap proof/challenge/QR **emitted during clean-start only** (`kind=secret-channel`). Still valid when scanned later; emission outside clean-start stays RED. |
 | [#751](https://github.com/mgagp/ezkey/issues/751) | Recovery codes / login challenges no longer logged. |
-| [#752](https://github.com/mgagp/ezkey/issues/752) / [#753](https://github.com/mgagp/ezkey/issues/753) | Real product log leaks (auth-api DTO/DEBUG MVC; demo-device INFO). Stay RED in the gate — no allowlist. Run-6 secret triage lives on PR #746 comments (not in-tree). Run 7 after those fix PRs merge. |
+| [#752](https://github.com/mgagp/ezkey/issues/752) / [#753](https://github.com/mgagp/ezkey/issues/753) | Fixed on main (`93445ba2` / #754). Run 7 (`65db9d72`) shows **zero** #752/#753 signatures. Residual secrets RED is scanner/product FP (tenant names as opaque-token; demo `applyApiKey=` key name). Run notes on PR #746 comments. |
 
 ## Config
 
 | Path | Role |
 | --- | --- |
-| [`config/quality-gate/thresholds.json`](../../../../config/quality-gate/thresholds.json) | Provisional bands (run 6 NO-GO — not locked). |
+| [`config/quality-gate/thresholds.json`](../../../../config/quality-gate/thresholds.json) | Provisional bands (run 7 NO-GO — `baselineLocked` not set). |
 | [`config/quality-gate/log-allowlist.txt`](../../../../config/quality-gate/log-allowlist.txt) | Emission-time allowlist; unknown phases/`requires=`/`^.*` rejected. |
 
 Shared redaction: [`scripts/lib/quality-gate-secrets.mjs`](../../../../scripts/lib/quality-gate-secrets.mjs).
