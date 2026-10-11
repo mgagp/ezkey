@@ -11,7 +11,8 @@
 package org.ezkey.demo.device.util;
 
 /**
- * Log-injection hardening helpers for the demo device (mirrors {@code org.ezkey.util.LogSanitizer}).
+ * Log-injection hardening helpers for the demo device (mirrors {@code
+ * org.ezkey.util.LogSanitizer}).
  *
  * @author Ezkey contributors
  * @since 2026
