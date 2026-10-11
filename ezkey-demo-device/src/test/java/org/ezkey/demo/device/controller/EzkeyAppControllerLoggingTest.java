@@ -20,6 +20,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import org.ezkey.demo.device.service.AuthApiService;
 import org.ezkey.demo.device.service.DeviceCryptoService;
@@ -35,9 +36,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.ui.ConcurrentModel;
 import org.springframework.ui.Model;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 /**
@@ -138,6 +141,34 @@ class EzkeyAppControllerLoggingTest {
     assertThat(joined).contains(String.valueOf(AUTH_ATTEMPT_ID));
     assertThat(joined).doesNotContain(CHALLENGE);
     assertNoSecrets(joined);
+  }
+
+  @Test
+  @DisplayName("bind error logs status and problem type only — never response body")
+  void bindEnrollmentDoesNotLogErrorBody() {
+    String leakBody =
+        "{\"type\":\"https://ezkey.org/problems/bind-failed\",\"title\":\"x\","
+            + "\"detail\":\"body-SECRET-VALUE-do-not-log\"}";
+    WebClientResponseException error =
+        WebClientResponseException.create(
+            400,
+            "Bad Request",
+            HttpHeaders.EMPTY,
+            leakBody.getBytes(StandardCharsets.UTF_8),
+            StandardCharsets.UTF_8);
+    when(authApiService.bind(eq(ENROLLMENT_ID), anyString(), anyString()))
+        .thenReturn(Mono.error(error));
+
+    Model model = new ConcurrentModel();
+    controller.bindEnrollment(ENROLLMENT_ID, ENROLLMENT_PROOF, null, model);
+
+    String joined = joinedMessages();
+    assertThat(joined).contains(String.valueOf(ENROLLMENT_ID));
+    assertThat(joined).contains("status=400");
+    assertThat(joined).contains("https://ezkey.org/problems/bind-failed");
+    assertThat(joined).doesNotContain("body-SECRET-VALUE-do-not-log");
+    assertThat(joined).doesNotContain(ENROLLMENT_PROOF);
+    assertThat(joined).doesNotContain(leakBody);
   }
 
   @Test

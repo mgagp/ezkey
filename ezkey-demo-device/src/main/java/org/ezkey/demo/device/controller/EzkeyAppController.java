@@ -27,6 +27,7 @@ import org.ezkey.demodevice.generated.dto.EnrollmentVerifyResponseDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -206,11 +207,12 @@ public class EzkeyAppController {
         model.addAttribute("error", "Bind failed: No response from server");
       }
     } catch (WebClientResponseException e) {
+      // Log status (+ ProblemDetail type when parseable) only — never the raw error body (#754 S4)
       logger.warn(
-          "Bind API error for enrollment {}: status={}, body={}",
+          "Bind API error for enrollment {}: status={}, problemType={}",
           enrollmentId,
-          e.getStatusCode(),
-          e.getResponseBodyAsString());
+          e.getStatusCode().value(),
+          problemTypeFromBindError(e));
       String userMessage =
           toBindErrorMessage(e.getStatusCode().value(), e.getResponseBodyAsString());
       model.addAttribute("error", userMessage);
@@ -227,6 +229,24 @@ public class EzkeyAppController {
     }
     if (b != null && !b.isBlank()) {
       return b;
+    }
+    return null;
+  }
+
+  /**
+   * Best-effort ProblemDetail {@code type} from a bind error response; never returns the body.
+   *
+   * @param error WebClient error from the Auth API bind call
+   * @return problem type URI string, or {@code null} when absent / unparseable
+   */
+  private static String problemTypeFromBindError(WebClientResponseException error) {
+    try {
+      ProblemDetail detail = error.getResponseBodyAs(ProblemDetail.class);
+      if (detail != null && detail.getType() != null) {
+        return detail.getType().toString();
+      }
+    } catch (Exception ignored) { // CHECKSTYLE IGNORE IllegalCatch
+      // Body may not be a ProblemDetail — status alone is enough for the log line
     }
     return null;
   }
