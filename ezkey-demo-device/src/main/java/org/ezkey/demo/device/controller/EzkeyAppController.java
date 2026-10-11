@@ -547,8 +547,7 @@ public class EzkeyAppController {
           return "phone/ezkey/auth_result";
         }
       }
-      logger.info(
-          "Responding to auth attempt {} for enrollment {}", authAttemptId, enrollmentId);
+      logger.info("Responding to auth attempt {} for enrollment {}", authAttemptId, enrollmentId);
 
       String authApiBase =
           EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(rec, configuredAuthApiBase);

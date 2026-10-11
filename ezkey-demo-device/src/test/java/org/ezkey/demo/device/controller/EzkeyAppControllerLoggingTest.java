@@ -70,8 +70,7 @@ class EzkeyAppControllerLoggingTest {
 
   @BeforeEach
   void setUp() {
-    controller =
-        new EzkeyAppController(authApiService, cryptoService, storeService, AUTH_API);
+    controller = new EzkeyAppController(authApiService, cryptoService, storeService, AUTH_API);
     controllerLogger = (Logger) LoggerFactory.getLogger(EzkeyAppController.class);
     previousLevel = controllerLogger.getLevel();
     controllerLogger.setLevel(Level.INFO);
@@ -132,13 +131,7 @@ class EzkeyAppControllerLoggingTest {
 
     Model model = new ConcurrentModel();
     controller.respondToAuth(
-        ENROLLMENT_ID,
-        AUTH_ATTEMPT_ID,
-        true,
-        CHALLENGE,
-        PROOF_TOKEN,
-        model,
-        new MockHttpSession());
+        ENROLLMENT_ID, AUTH_ATTEMPT_ID, true, CHALLENGE, PROOF_TOKEN, model, new MockHttpSession());
 
     String joined = joinedMessages();
     assertThat(joined).contains(String.valueOf(ENROLLMENT_ID));

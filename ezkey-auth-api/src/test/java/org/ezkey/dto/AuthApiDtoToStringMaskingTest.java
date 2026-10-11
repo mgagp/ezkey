@@ -69,7 +69,8 @@ class AuthApiDtoToStringMaskingTest {
     for (String pkg : DTO_PACKAGES) {
       for (BeanDefinition def : scanner.findCandidateComponents(pkg)) {
         Class<?> clazz = Class.forName(def.getBeanClassName());
-        if (!clazz.isRecord()) {
+        if (!clazz.isRecord() || !isAuthApiModuleClass(clazz)) {
+          // Shared core DTOs (same package names) are out of #752 auth-api scope
           continue;
         }
         List<RecordComponent> secretComponents = secretComponents(clazz);
@@ -85,6 +86,23 @@ class AuthApiDtoToStringMaskingTest {
     assertThat(secretBearingTypes)
         .as("expected secret-bearing auth-api DTOs from inventory")
         .hasSizeGreaterThanOrEqualTo(MIN_SECRET_BEARING_DTOS);
+  }
+
+  /**
+   * Keeps only classes compiled into this module (excludes {@code ezkey-core} DTOs that share
+   * package names on the test classpath).
+   *
+   * @param clazz candidate type
+   * @return true when the class was loaded from the auth-api module
+   */
+  private static boolean isAuthApiModuleClass(Class<?> clazz) {
+    if (clazz.getProtectionDomain() == null
+        || clazz.getProtectionDomain().getCodeSource() == null
+        || clazz.getProtectionDomain().getCodeSource().getLocation() == null) {
+      return false;
+    }
+    String location = clazz.getProtectionDomain().getCodeSource().getLocation().toString();
+    return location.contains("ezkey-auth-api");
   }
 
   private static List<RecordComponent> secretComponents(Class<?> recordClass) {
