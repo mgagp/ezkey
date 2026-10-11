@@ -1,7 +1,7 @@
 # Bootstrap Init Container
 # Performs automatic enrollment bind+verify and seeds demo-device for Docker demos
 
-FROM alpine:3.19
+FROM alpine:3.24
 
 # Install curl and jq, create non-root user matching demo-device spring user (UID 100/GID 101)
 # Pre-create shared volume directories with correct ownership at build time
