@@ -210,6 +210,47 @@ describe('TOKEN / Java class names / UUID', () => {
     assert.match(sanitize(line), /<UUID>/);
     assert.equal(sanitize(line).includes(uuid), false);
   });
+
+  it('does not score jar path stems as opaque-token', () => {
+    const lines = [
+      'Running from: /tmp/jetty-9f3a2b1c0d8e7f6a5b4c.jar',
+      'location=/tmp/root/winstone/jenkins-abc123def4567890abcd.jar/WEB-INF/classes/log4j2.xml',
+      'at org.springframework.data.repository.core.support.RepositoryMethodInvoker.doInvoke(RepositoryMethodInvoker.java:169) ~[spring-data-commons-4.1.1.jar!/:4.1.1]',
+    ];
+    for (const line of lines) {
+      const r = detectSecrets(line);
+      assert.equal(
+        r.kinds.includes('opaque-token'),
+        false,
+        `opaque on jar line kinds=${r.kinds} line=${line.slice(0, 80)}`,
+      );
+      assert.equal(sanitize(line).includes('<TOKEN>'), false, line.slice(0, 80));
+    }
+  });
+
+  it('does not score git: hex SHA as opaque-token', () => {
+    const line =
+      'jetty-12.1.8; built: 2026-04-01T01:09:18.991Z; git: a1b2c3d4e5f6789012345678abcdef01; jvm 25.0.1';
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('opaque-token'), false, `kinds=${r.kinds}`);
+    assert.match(sanitize(line), /git: a1b2c3d4e5f6789012345678abcdef01/);
+  });
+
+  it('does not score uname arch triples as opaque-token', () => {
+    const line =
+      'LOG:  starting PostgreSQL 18.6 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0)';
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('opaque-token'), false, `kinds=${r.kinds}`);
+    assert.match(sanitize(line), /x86_64-pc-linux-musl/);
+  });
+
+  it('still scores real opaque secrets after jar/git/arch negatives', () => {
+    const line = 'proof=AbCdEfGhIjKlMnOpQr123456 beside /tmp/leave-me-alone.jar';
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('opaque-token'), true, `kinds=${r.kinds}`);
+    assert.match(sanitize(line), /proof=<TOKEN>/);
+    assert.match(sanitize(line), /leave-me-alone\.jar/);
+  });
 });
 
 describe('allowlist regex anchoring', () => {

@@ -26,6 +26,35 @@ export const OPAQUE_TOKEN_RE = /\b(?=[A-Za-z0-9_-]*[A-Za-z])(?=[A-Za-z0-9_-]*\d)
 export const CANONICAL_UUID_SOURCE =
   String.raw`\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b`;
 
+/**
+ * Uname-style CPU/OS triples (Postgres "on x86_64-pc-linux-musl", …) — not secrets.
+ *
+ * @param {string} s
+ * @returns {boolean}
+ */
+export function isArchTripleToken(s) {
+  return /^(?:x86_64|amd64|aarch64|arm64|i[3-6]86)(?:-[A-Za-z0-9_]+)+$/.test(String(s || ''));
+}
+
+/**
+ * Opaque lookalike that is a jar artifact stem / git SHA context — not a secret.
+ *
+ * @param {string} match opaque candidate
+ * @param {string} before up to ~16 chars before match
+ * @param {string} after up to ~16 chars after match
+ * @returns {boolean}
+ */
+export function isJarGitArchOpaqueContext(match, before, after) {
+  const b = String(before || '');
+  const a = String(after || '');
+  // /tmp/foo.jar · ~[spring-data-commons-4.1.1.jar!/:4.1.1]
+  if (/^\.jar\b/.test(a) || /^\.\d+(?:\.\d+)+\.jar\b/.test(a)) return true;
+  // git: <hexsha>
+  if (/git:\s*$/i.test(b) && /^[0-9a-f]+$/i.test(match)) return true;
+  if (isArchTripleToken(match)) return true;
+  return false;
+}
+
 /** Known allowlist requires= tokens (typos must not make an entry unconditional). */
 export const KNOWN_ALLOWLIST_REQUIRES = new Set(['COMPOSE_RETRY_FIRED']);
 
@@ -308,10 +337,14 @@ export function applyRedactions(rawLine) {
   // 9b) Canonical UUIDs → <UUID> before opaque-token (authAttemptId etc. are not secrets)
   out = out.replace(new RegExp(CANONICAL_UUID_SOURCE, 'gi'), '<UUID>');
 
-  // 10) Opaque long tokens (letters+digits, not CamelCase / dotted packages)
-  out = out.replace(OPAQUE_TOKEN_RE, (m) => {
+  // 10) Opaque long tokens (letters+digits, not CamelCase / dotted packages).
+  // Skip jar stems, git: hex SHAs, and uname arch triples (scanner false positives).
+  out = out.replace(OPAQUE_TOKEN_RE, (m, offset, whole) => {
     if (MASKED_VALUE_RE.test(m)) return m;
     if (m === '<UUID>') return m;
+    const before = String(whole).slice(Math.max(0, offset - 16), offset);
+    const after = String(whole).slice(offset + m.length, offset + m.length + 16);
+    if (isJarGitArchOpaqueContext(m, before, after)) return m;
     note('opaque-token', 'RED', m);
     return '<TOKEN>';
   });

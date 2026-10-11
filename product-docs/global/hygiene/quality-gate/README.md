@@ -44,7 +44,7 @@ UNKNOWN/AMBER (never silent "no OOM").
 | [#747](https://github.com/mgagp/ezkey/issues/747) | Retry only if `ezkey_encryption_key_pkey`; else clean-start RED. Allowlist: `requires=COMPOSE_RETRY_FIRED` + Spring `<TS> ERROR` signature. |
 | [#748](https://github.com/mgagp/ezkey/issues/748) | Auth security false pass (sticky RestAssured → crypto). Fixed in product tests. |
 | [#750](https://github.com/mgagp/ezkey/issues/750) | Bootstrap proof/challenge/QR **emitted during clean-start only** (`kind=secret-channel`). Still valid when scanned later; emission outside clean-start stays RED. |
-| [#751](https://github.com/mgagp/ezkey/issues/751) | Recovery codes / login challenges no longer logged. Run 6 (tip `fd701c41`): no recovery-code / Basic / UUID / `code=200` false positives; secret check still RED on `admin-<epoch>` opaque-token + Auth DEBUG payload dumps. ShedLock failover skipped (short `locked_by` hostname). Thresholds **not** locked. |
+| [#751](https://github.com/mgagp/ezkey/issues/751) | Recovery codes / login challenges no longer logged. Run 6 (tip `fd701c41`): no recovery-code / Basic / UUID / `code=200` false positives; secret check still RED on product signals — see [run-6 secret triage](2026-10-11-run-6-secret-triage.md). ShedLock failover skipped (short `locked_by`); gate now AMBER on missing kill; resolver maps container id → compose service. Thresholds **not** locked. |
 
 ## Config
 
