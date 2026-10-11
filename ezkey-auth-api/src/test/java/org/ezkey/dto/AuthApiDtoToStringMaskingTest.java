@@ -11,6 +11,7 @@
 package org.ezkey.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.lang.reflect.Constructor;
@@ -19,15 +20,11 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.RecordComponent;
 import java.net.URL;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import org.ezkey.auth.AuthApplication;
 import org.junit.jupiter.api.DisplayName;
@@ -41,8 +38,8 @@ import org.springframework.core.type.filter.RegexPatternTypeFilter;
  *
  * <p>Scans every {@code org.ezkey.*} record and class loaded from the auth-api module (identified
  * by code-source origin equality with {@link AuthApplication}). Secret field names match tokens,
- * signatures, challenges, codes, keys, and related markers; an explicit exclusion list covers
- * public keys, boolean flags, and known non-secret names.
+ * signatures, challenges, codes, keys, and related markers; exclusions are exact names or exact
+ * suffixes applied only after a marker match.
  *
  * @since 2026
  */
@@ -76,18 +73,22 @@ class AuthApiDtoToStringMaskingTest {
           "key");
 
   /**
-   * Explicit non-secret name fragments. Keep this list intentional — if a new false positive
-   * appears, add a named exclusion here (do not weaken the secret markers).
+   * Exact lower-case field names that are never secrets (applied only after a marker match).
+   *
+   * <p>Keep this list intentional — if a new false positive appears, add a named exclusion here (do
+   * not weaken the secret markers).
    */
-  private static final Set<String> EXCLUDED_NAME_MARKERS =
-      Set.of(
-          "publickey",
-          "challengerequired",
-          "storagetier",
-          "signedat",
-          "challengelength",
-          "keyalgorithm",
-          "keystrategy");
+  private static final Set<String> EXCLUDED_EXACT_NAMES =
+      Set.of("signedat", "challengelength", "keystrategy");
+
+  /**
+   * Exact lower-case suffixes that mark non-secret fields (applied only after a marker match).
+   *
+   * <p>Substring containment is intentionally forbidden: {@code publicKeyProofToken} must stay
+   * secret even though it contains {@code publicKey}.
+   */
+  private static final Set<String> EXCLUDED_SUFFIXES =
+      Set.of("publickey", "challengerequired", "storagetier", "keyalgorithm");
 
   @Test
   @DisplayName("Secret-bearing auth-api types mask toString() and override Object/Record")
@@ -118,6 +119,45 @@ class AuthApiDtoToStringMaskingTest {
     assertThat(secretBearingTypes)
         .as("expected secret-bearing auth-api types from inventory")
         .hasSizeGreaterThanOrEqualTo(MIN_SECRET_BEARING_TYPES);
+  }
+
+  @Test
+  @DisplayName("publicKeyProofToken is secret — publicKey substring must not exclude it")
+  void publicKeyProofTokenIsNotExcluded() {
+    assertThat(isSecretFieldName("publicKeyProofToken")).isTrue();
+  }
+
+  @Test
+  @DisplayName("signedAttestation is secret — signedAt exact exclusion must not match as substring")
+  void signedAttestationIsNotExcluded() {
+    assertThat(isSecretFieldName("signedAttestation")).isTrue();
+  }
+
+  @Test
+  @DisplayName("Known non-secret names/suffixes are excluded after marker match")
+  void knownNonSecretsAreExcluded() {
+    assertThat(isSecretFieldName("integrationPublicKey")).isFalse();
+    assertThat(isSecretFieldName("authAttemptChallengeRequired")).isFalse();
+    assertThat(isSecretFieldName("devicePrivateKeyStorageTier")).isFalse();
+    assertThat(isSecretFieldName("integrationKeyAlgorithm")).isFalse();
+    assertThat(isSecretFieldName("signedAt")).isFalse();
+    assertThat(isSecretFieldName("challengeLength")).isFalse();
+    assertThat(isSecretFieldName("keyStrategy")).isFalse();
+  }
+
+  @Test
+  @DisplayName("Unsupported secret field types fail loudly (no null fallback)")
+  void unsupportedSecretTypesFailLoudly() {
+    assertThatThrownBy(() -> sampleForType(List.class, "tokenList", true))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Unsupported")
+        .hasMessageContaining("tokenList");
+    assertThatThrownBy(() -> sampleForType(char[].class, "pinChars", true))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Unsupported");
+    assertThatThrownBy(() -> sampleForType(UUID.class, "nonce", true))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Unsupported");
   }
 
   /**
@@ -162,19 +202,33 @@ class AuthApiDtoToStringMaskingTest {
     return secrets;
   }
 
-  private static boolean isSecretFieldName(String name) {
+  /**
+   * Markers first (substring), then exact-name / exact-suffix exclusions.
+   *
+   * @param name field or record-component name
+   * @return true when the member must be masked in {@code toString()}
+   */
+  static boolean isSecretFieldName(String name) {
     String lower = name.toLowerCase(Locale.ROOT);
-    for (String excluded : EXCLUDED_NAME_MARKERS) {
-      if (lower.contains(excluded)) {
+    boolean markerMatched = false;
+    for (String marker : SECRET_NAME_MARKERS) {
+      if (lower.contains(marker)) {
+        markerMatched = true;
+        break;
+      }
+    }
+    if (!markerMatched) {
+      return false;
+    }
+    if (EXCLUDED_EXACT_NAMES.contains(lower)) {
+      return false;
+    }
+    for (String suffix : EXCLUDED_SUFFIXES) {
+      if (lower.endsWith(suffix)) {
         return false;
       }
     }
-    for (String marker : SECRET_NAME_MARKERS) {
-      if (lower.contains(marker)) {
-        return true;
-      }
-    }
-    return false;
+    return true;
   }
 
   private static void assertDeclaresToString(Class<?> clazz) {
@@ -221,7 +275,7 @@ class AuthApiDtoToStringMaskingTest {
       Object value = sampleForType(component.getType(), component.getName(), secret);
       args[i] = value;
       if (secret) {
-        markers.add(String.valueOf(value));
+        addSecretMarkers(markers, value);
       }
     }
     Constructor<?> canonical = clazz.getDeclaredConstructor(paramTypes);
@@ -247,53 +301,33 @@ class AuthApiDtoToStringMaskingTest {
       field.setAccessible(true);
       Object markerValue = sampleForType(secret.type(), secret.name(), true);
       field.set(instance, markerValue);
-      markers.add(String.valueOf(markerValue));
+      addSecretMarkers(markers, markerValue);
     }
     return instance;
   }
 
-  private static Object sampleForType(Class<?> type, String name, boolean secret) {
+  private static void addSecretMarkers(List<String> markers, Object value) {
+    markers.add(String.valueOf(value));
+  }
+
+  /**
+   * Sample values for types used by auth-api DTOs. Unsupported types fail loudly (no null).
+   *
+   * @param type member type
+   * @param name member name (for distinctive markers)
+   * @param secret whether this member is secret-bearing
+   * @return sample value
+   */
+  static Object sampleForType(Class<?> type, String name, boolean secret) {
     if (type == String.class) {
-      return secret ? "SECRET_MARKER_" + name + "_XYZ" : "safe-" + name;
+      return secret ? "SECRET_MARKER_" + name + "_XYZ9q" : "safe-" + name;
     }
     if (type == Integer.class || type == int.class) {
-      return secret ? 900_000_000 + Math.floorMod(name.hashCode(), 99_999) : 1;
-    }
-    if (type == Long.class || type == long.class) {
-      return secret ? 900_000_000L + Math.floorMod(name.hashCode(), 99_999) : 1L;
-    }
-    if (type == Short.class || type == short.class) {
-      return secret ? (short) 12345 : (short) 1;
-    }
-    if (type == Byte.class || type == byte.class) {
-      return secret ? (byte) 99 : (byte) 1;
-    }
-    if (type == Double.class || type == double.class) {
-      return secret ? 12345.6789d : 1.0d;
-    }
-    if (type == Float.class || type == float.class) {
-      return secret ? 12345.6f : 1.0f;
-    }
-    if (type == Character.class || type == char.class) {
-      return secret ? 'Z' : 'a';
+      // Distinctive odd magnitude unlikely to collide with ids / enums
+      return secret ? 771_334_209 + Math.floorMod(name.hashCode(), 97) : 1;
     }
     if (type == Boolean.class || type == boolean.class) {
       return secret ? Boolean.TRUE : Boolean.FALSE;
-    }
-    if (type == byte[].class) {
-      return secret ? "SECRET_BYTES_XYZ".getBytes() : new byte[] {1};
-    }
-    if (type == OffsetDateTime.class) {
-      return OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
-    }
-    if (type == LocalDateTime.class) {
-      return LocalDateTime.of(2026, 1, 1, 0, 0);
-    }
-    if (type == LocalDate.class) {
-      return LocalDate.of(2026, 1, 1);
-    }
-    if (type == Instant.class) {
-      return Instant.parse("2026-01-01T00:00:00Z");
     }
     if (type.isEnum()) {
       Object[] constants = type.getEnumConstants();
@@ -301,15 +335,12 @@ class AuthApiDtoToStringMaskingTest {
         return constants[0];
       }
     }
-    if (!type.isPrimitive()) {
-      return null;
-    }
     throw new IllegalStateException(
-        "Unsupported primitive type "
+        "Unsupported type "
             + type.getName()
             + " for "
             + name
-            + " — extend the masking test");
+            + " — extend sampleForType only for types auth-api DTOs actually use");
   }
 
   /**

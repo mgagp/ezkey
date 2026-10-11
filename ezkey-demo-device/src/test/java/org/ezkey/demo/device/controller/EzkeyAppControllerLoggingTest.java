@@ -172,6 +172,47 @@ class EzkeyAppControllerLoggingTest {
   }
 
   @Test
+  @DisplayName("bind error ProblemDetail type with CR/LF is sanitized before logging")
+  void bindEnrollmentSanitizesProblemTypeCrLf() {
+    // JSON escapes \\r\\n → Jackson yields real CR/LF in the type string
+    String leakBody =
+        "{\"type\":\"https://evil.example/problems/x\\r\\nFAKE_LOG_LINE\",\"title\":\"x\","
+            + "\"detail\":\"ignored\"}";
+    WebClientResponseException error =
+        WebClientResponseException.create(
+            400,
+            "Bad Request",
+            HttpHeaders.EMPTY,
+            leakBody.getBytes(StandardCharsets.UTF_8),
+            StandardCharsets.UTF_8);
+    when(authApiService.bind(eq(ENROLLMENT_ID), anyString(), anyString()))
+        .thenReturn(Mono.error(error));
+
+    Model model = new ConcurrentModel();
+    controller.bindEnrollment(ENROLLMENT_ID, ENROLLMENT_PROOF, null, model);
+
+    String joined = joinedMessages();
+    assertThat(joined).doesNotContain("\r");
+    assertThat(joined).doesNotContain("\nFAKE_LOG_LINE");
+    assertThat(joined).contains("https://evil.example/problems/x__FAKE_LOG_LINE");
+  }
+
+  @Test
+  @DisplayName("sanitizeProblemTypeForLog neutralizes CR/LF and truncates")
+  void sanitizeProblemTypeForLogBoundsAndNeutralizes() {
+    String injected = "https://x/\r\ninject";
+    assertThat(EzkeyAppController.sanitizeProblemTypeForLog(injected))
+        .isEqualTo("https://x/__inject")
+        .doesNotContain("\r")
+        .doesNotContain("\n");
+
+    String longType = "https://ezkey.org/problems/" + "a".repeat(200);
+    String truncated = EzkeyAppController.sanitizeProblemTypeForLog(longType);
+    assertThat(truncated).hasSize(120);
+    assertThat(truncated).startsWith("https://ezkey.org/problems/");
+  }
+
+  @Test
   @DisplayName("invalid challenge format warn does not echo the entered value")
   void invalidChallengeFormatDoesNotLogEnteredValue() {
     when(storeService.load(ENROLLMENT_ID)).thenReturn(Optional.of(sampleRecord()));

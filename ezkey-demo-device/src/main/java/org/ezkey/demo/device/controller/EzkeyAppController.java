@@ -16,6 +16,7 @@ import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
 import org.ezkey.demo.device.service.EnrollmentVerifyPayloadUtil;
 import org.ezkey.demo.device.service.InvalidAuthApiUrlException;
 import org.ezkey.demo.device.service.PendingAuthClaimSession;
+import org.ezkey.demo.device.util.LogSanitizer;
 import org.ezkey.demo.device.view.EnrollmentTenantGrouper;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingResponseDto;
@@ -74,6 +75,9 @@ public class EzkeyAppController {
   private static final Logger logger = LoggerFactory.getLogger(EzkeyAppController.class);
 
   private static final ObjectMapper PROBLEM_DETAIL_MAPPER = new ObjectMapper();
+
+  /** Max chars of ProblemDetail {@code type} written to logs (log-injection bound). */
+  private static final int PROBLEM_TYPE_LOG_MAX_LENGTH = 120;
 
   private final AuthApiService authApiService;
 
@@ -239,8 +243,10 @@ public class EzkeyAppController {
   /**
    * Best-effort ProblemDetail {@code type} from a bind error response; never returns the body.
    *
+   * <p>The value is CR/LF-sanitized and truncated before logging to prevent log injection.
+   *
    * @param error WebClient error from the Auth API bind call
-   * @return problem type URI string, or {@code null} when absent / unparseable
+   * @return sanitized problem type URI string, or {@code null} when absent / unparseable
    */
   private static String problemTypeFromBindError(WebClientResponseException error) {
     String body = error.getResponseBodyAsString();
@@ -251,12 +257,32 @@ public class EzkeyAppController {
       JsonNode typeNode = PROBLEM_DETAIL_MAPPER.readTree(body).get("type");
       if (typeNode != null && typeNode.isValueNode() && !typeNode.isNull()) {
         String type = typeNode.asString();
-        return type != null && !type.isBlank() ? type : null;
+        if (type == null || type.isBlank()) {
+          return null;
+        }
+        return sanitizeProblemTypeForLog(type);
       }
     } catch (Exception ignored) { // CHECKSTYLE IGNORE IllegalCatch
       // Body may not be JSON ProblemDetail — status alone is enough for the log line
     }
     return null;
+  }
+
+  /**
+   * Neutralizes CR/LF and bounds length for a ProblemDetail {@code type} log fragment.
+   *
+   * @param type raw type URI from the server
+   * @return sanitized, truncated value safe for a single log line
+   */
+  static String sanitizeProblemTypeForLog(String type) {
+    String cleaned = LogSanitizer.sanitizeForLog(type);
+    if (cleaned == null) {
+      return null;
+    }
+    if (cleaned.length() > PROBLEM_TYPE_LOG_MAX_LENGTH) {
+      return cleaned.substring(0, PROBLEM_TYPE_LOG_MAX_LENGTH);
+    }
+    return cleaned;
   }
 
   /** Maps bind API error status and optional body to a clear, actionable message for the user. */
