@@ -133,8 +133,9 @@ mvn test -pl ezkey-tests -Dtest=BootstrapCredentialsExtractionTest
 
 This will:
 - Read Admin API container logs
-- Extract enrollment credentials (ID, proof token, challenge code, recovery codes)
-- Save to `.ezkey-test/bootstrap-credentials.json` for future use
+- Prefer `bootstrap-credentials.json` on the `bootstrap-artifacts` volume (includes recovery codes at `0600`)
+- Fall back to Admin API logs for enrollment ID / proof token / challenge (recovery codes are not in logs)
+- Cache a copy under `.ezkey-test/bootstrap-credentials.json` for future use
 
 **Note**: With Docker bootstrap-init, demo-device is already seeded after clean-start. Log extraction
 is only needed for suites that explicitly consume `.ezkey-test/` caches.

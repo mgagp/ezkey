@@ -98,6 +98,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `EZKEY_ORGANIZATION_ABOUT_URL` | `ezkey.organization.about-url` | admin-api and auth-api docker profile |
 | `EZKEY_RUNTIME_PROFILE` | *(ops key; `base` appends Spring profile `docker-base`)* | clean-start / `docker/start.sh` / Lightsail `.env` — [docker/README.md](../../docker/README.md) § Runtime profiles |
 | `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE` | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | admin-api docker profile |
+| `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS` | `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | admin-api docker profile |
 | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | `ezkey.admin.cors.allowed-origins` | admin-api (split UI/API only; unset for clean-start) |
 | `EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS` | `ezkey.admin.cors.allow-credentials` | admin-api (with HttpOnly cookie + credentialed `fetch`) |
 | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | `ezkey.admin.auth.browser-session-cookie-enabled` | admin-api (split HTTPS UI/API optional) |

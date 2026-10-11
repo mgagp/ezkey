@@ -137,7 +137,8 @@ public class EnrollmentBindService {
     // Step 4: Mark as BOUND (read-once guarantee)
     markAsBound(lockedEnrollment);
 
-    // Step 5: Build and return response (uses locked row for integration signing material)
+    // Step 5: Build and return response (uses locked row for integration signing material).
+    // Bootstrap credentials file redaction stays in Admin API (volume must not mount on Auth API).
     return buildBindResponse(
         lockedEnrollment, integration, integrationName, integrationDescription);
   }

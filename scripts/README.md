@@ -119,6 +119,20 @@ export AWS_PROFILE=ezkey-lightsail
 
 App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with `LIGHTSAIL_SSH_HOST=ezkey-online`. Do not put community-only secrets or ezkey.online-only DNS checklists into the public compose tree.
 
+## Ops — Docker log hygiene (host-local)
+
+[`ops/docker-log-hygiene.sh`](ops/docker-log-hygiene.sh) — check json-file rotation / sizes (default), optional `--scan` (pattern **counts** only; stdout+stderr; `--since`; streamed), `--project`, `--purge` dry-run / `--purge --apply --yes` (project container IDs only; rotated-file search often needs **sudo**). No remote/SSH. Canon: [`docs/OPERATIONAL.md`](../docs/OPERATIONAL.md) § Log rotation and hygiene.
+
+```bash
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --purge
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --purge --apply --yes
+```
+
+`--purge --apply` requires `--project` (or `COMPOSE_PROJECT_NAME`); host-wide apply is refused.
+Pre-upgrade scan: sync `scripts/ops/` with `--sync-operator-files` **without** `--remote-up` (or `scp` the script), restore community Caddyfile, run `--scan`, then `--remote-up`.
+
 ## Initial Problem
 
 Demo projects were using two different approaches for OpenAPI specifications:

@@ -40,12 +40,20 @@ class ApplicationReadyStartupOrderTest {
     int keysetSync = orderOf(KeyRotationService.class, "initializeKeysetSync");
     int initialAdmin = orderOf(InitialGlobalAdminService.class, "initializeGlobalAdmin");
     int mfaBootstrap = orderOf(AdminBootstrapService.class, "bootstrapAdminMfa");
+    int nonPosixStartupWarn =
+        orderOf(
+            BootstrapCredentialsFileExporter.class, "warnIfNonPosixPermissionsAllowedAtStartup");
+    int credentialsRedact =
+        orderOf(BootstrapCredentialsBindSecretRedactor.class, "redactOnStartup");
 
     assertEquals(ApplicationReadyStartupOrder.KEYSET_SYNC, keysetSync);
     assertEquals(ApplicationReadyStartupOrder.INITIAL_GLOBAL_ADMIN, initialAdmin);
     assertEquals(ApplicationReadyStartupOrder.ADMIN_MFA_BOOTSTRAP, mfaBootstrap);
+    assertEquals(ApplicationReadyStartupOrder.ADMIN_MFA_BOOTSTRAP, nonPosixStartupWarn);
+    assertEquals(ApplicationReadyStartupOrder.BOOTSTRAP_CREDENTIALS_REDACT, credentialsRedact);
     assertTrue(keysetSync < initialAdmin);
     assertTrue(initialAdmin < mfaBootstrap);
+    assertTrue(mfaBootstrap < credentialsRedact);
   }
 
   private static int orderOf(Class<?> type, String methodName) throws NoSuchMethodException {

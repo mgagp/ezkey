@@ -316,8 +316,9 @@ Short operator checklist verified against repo scripts/compose (not live VM obse
 1. **Caddyfile sync** — `--sync-operator-files` / `--clean-start` on
    [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh)
    always copies the EXP1-named `Caddyfile`. After any such sync to the community VM, **re-scp**
-   `Caddyfile.ezkey-online` → remote `Caddyfile` (see Ordered path step 2). A one-line remote
-   `cp Caddyfile.ezkey-online Caddyfile` fails because the variant file is not kept on the VM.
+   `Caddyfile.ezkey-online` → remote `Caddyfile` **immediately** (before `--scan` / `--remote-up`;
+   see Ordered path step 2). A one-line remote `cp Caddyfile.ezkey-online Caddyfile` fails because
+   the variant file is not kept on the VM.
 2. **Grants container** — Compose service `db-grants` (`container_name: ezkey-exp-db-grants` in
    [`docker-compose.yml`](../../experimental-hybrid/lightsail/docker-compose.yml)) applies
    [`scripts/db/apply-grants.sql`](../../scripts/db/apply-grants.sql) after migration. APIs depend on
@@ -326,6 +327,49 @@ Short operator checklist verified against repo scripts/compose (not live VM obse
    (`docker compose down -v`, then remote `clean-start.sh`). For upgrades that keep Postgres data,
    use rolling export (`--sync-operator-files` + `--remote-up`, or
    `full-exp-environment-upgrade.sh rolling`). First bring-up / disposable reset only.
+4. **Docker `json-file` log rotation** — Compose sets `x-logging` on every service
+   (`max-size: 20m`, `max-file: 3` — sized for a ~4 GB RAM / ~80 GB-disk VM; ceiling ≈ 480 MiB).
+   Rotation applies only when a container is **created**; it does not resize logging on an
+   already-running host.
+
+   **Rolling upgrade that adds or changes `logging:`:** `docker compose up -d` recreates **all**
+   services that inherit the new logging config (typically all 8, **Postgres included**). Named
+   volumes are kept, but there is a short outage while containers restart. Old json-file logs
+   disappear with the old container IDs — **scan before `up`**. `scripts/ops/` lands with
+   `--sync-operator-files` (same pass as `--remote-up` would recreate containers), so:
+
+   1. Export with `--sync-operator-files` **without** `--remote-up` (or `scp` `docker-log-hygiene.sh`)
+   2. **Immediately** re-scp `Caddyfile.ezkey-online` → remote `Caddyfile` (pitfall #1 — sync-only
+      already overwrote with EXP1; do not wait until after `up`)
+   3. On the VM: `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan`
+   4. Then `--remote-up` (or a later sync+up pass)
+
+   After `up`, confirm rotation with `docker inspect` or
+   `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`.
+   Rotated-file purge needs sudo under `/var/lib/docker/containers`.
+
+### Log rotation and hygiene (next install)
+
+For a **new** Lightsail bring-up (not a remote action from a laptop against the live instance):
+
+1. Deploy with the compose file above so every service inherits `x-logging`.
+2. On the VM after `compose up`, run check mode:
+
+   ```bash
+   bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail
+   ```
+
+3. Periodically (e.g. monthly) re-run check; optional `--scan` prints **counts only** of
+   credential-like patterns (never values). Plan cleanup with `--purge` (dry-run; project
+   containers only); apply with `--purge --apply --yes` when non-interactive.
+
+### Post-upgrade checks (m6)
+
+Follow the canon checklist in [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Post-upgrade checks
+(m6) — including the read-only in-volume credentials check (never `cat` / never `docker cp` to
+`/tmp`). Deletion of `bootstrap-credentials.json` happens **only with Marc's go**.
+
+Canon and “what it never does”: [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Log rotation and hygiene.
 
 **Note (stale refs checked on `main`):** this runbook no longer contains a `TODO:223` marker or an
 `EZKEY_POSTGRES_CONTAINER` reference. Lab scripts under `scripts/lab/` default that env var to

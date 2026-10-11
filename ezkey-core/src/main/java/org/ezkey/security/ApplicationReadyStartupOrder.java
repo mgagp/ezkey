@@ -32,5 +32,12 @@ public final class ApplicationReadyStartupOrder {
   /** Admin MFA bootstrap — system integration and global-admin enrollment. */
   public static final int ADMIN_MFA_BOOTSTRAP = 2;
 
+  /**
+   * Strip bind secrets from {@code bootstrap-credentials.json} when the bootstrap enrollment is
+   * already BOUND/VERIFIED (e.g. admin-api restart after bind). Runs after MFA bootstrap so a fresh
+   * CREATED export is not redacted on the same startup.
+   */
+  public static final int BOOTSTRAP_CREDENTIALS_REDACT = 3;
+
   private ApplicationReadyStartupOrder() {}
 }

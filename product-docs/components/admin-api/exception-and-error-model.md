@@ -110,7 +110,7 @@ Exceptions to RFC 9457:
 
 ## Rules for Authors
 
-- Do not log any of: enrollment proof tokens, challenge codes, plaintext recovery codes, recovery tokens, bearer tokens, signatures used as proof material.
+- Do not log any of: plaintext recovery codes, admin login challenge codes, temporary recovery tokens, bearer tokens, bootstrap admin email addresses, or signatures used as proof material. The only deliberate exception is optional one-time bootstrap bind-material output in `credentials-output-mode=full` (proof token / challenge / ASCII QR in startup logs); recovery codes go only to `bootstrap-credentials.json` (`0600`).
 - Every new endpoint defines, up front, which problem types it can emit and an entry in this document.
 - Do not reuse an existing problem type for a semantically different scenario.
 - Add a locale entry in the Admin UI (`src/locales/en/errors.json` and `src/locales/fr/errors.json`) in the same change set when the UI must render the new type.

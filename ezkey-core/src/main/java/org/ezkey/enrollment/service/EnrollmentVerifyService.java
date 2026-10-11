@@ -332,11 +332,8 @@ public class EnrollmentVerifyService {
 
     if (!request.getChallengeResponse().equals(enrollment.getEnrollmentChallenge())) {
       logger.warn(
-          "Validation failed: Invalid challenge response for enrollment ID: {} - Expected: {},"
-              + " Received: {}",
-          request.getEnrollmentId(),
-          enrollment.getEnrollmentChallenge(),
-          request.getChallengeResponse());
+          "Validation failed: Invalid challenge response for enrollment ID: {}",
+          request.getEnrollmentId());
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
       throw new EnrollmentVerifyFailedException("Invalid challenge response");
     }
