@@ -29,12 +29,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param runtimeProfile product runtime profile {@code base} or {@code integrity}
  * @param chainCheckpointsEnabled whether rolling audit chain checkpoints are enabled
  * @param nightlyValidationEnabled whether nightly retroactive integrity validation is enabled
+ * @param maxWindowDays effective async / operator window cap in calendar days (Integrity cut 3 D2)
+ * @param maxSyncWindowDays effective sync report-GET window cap in calendar days (PR 0 M1)
+ * @param nightlyWindowHours configured nightly validation window length in hours
  * @since 2026
  */
 @Schema(
     description =
         "Thin Integrity atelier bootstrap: product runtime profile plus monitoring enable flags"
-            + " (non-secret). Global Admin only.")
+            + " and effective window caps (non-secret). Global Admin only.")
 public record IntegrityBootstrapResponseDto(
     @Schema(
             description =
@@ -52,4 +55,25 @@ public record IntegrityBootstrapResponseDto(
             description =
                 "Whether nightly retroactive integrity validation is enabled (config flag for"
                     + " monitoring honesty).")
-        boolean nightlyValidationEnabled) {}
+        boolean nightlyValidationEnabled,
+    @Schema(
+            description =
+                "Configured max async Integrity window length in calendar days"
+                    + " (ezkey.audit.integrity.max-window-days). Instant span = days×24h+1h."
+                    + " Used by async VERIFY / RUN_VALIDATION. Closes the hard-coded 193 h UI"
+                    + " cap for PR 2.",
+            example = "92")
+        int maxWindowDays,
+    @Schema(
+            description =
+                "Configured max sync report-GET window length in calendar days"
+                    + " (ezkey.audit.integrity.max-sync-window-days). Instant span ="
+                    + " days×24h+1h. Used by integrity-check / chain-integrity GETs.",
+            example = "8")
+        int maxSyncWindowDays,
+    @Schema(
+            description =
+                "Configured nightly retroactive validation window length in hours"
+                    + " (ezkey.audit.integrity.nightly.window-hours).",
+            example = "24")
+        int nightlyWindowHours) {}

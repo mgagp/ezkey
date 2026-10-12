@@ -15,7 +15,9 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 import org.ezkey.audit.asyncjob.IntegrityAsyncJob;
 import org.ezkey.audit.asyncjob.IntegrityAsyncJobStatus;
+import org.ezkey.audit.asyncjob.IntegrityAsyncJobTrigger;
 import org.ezkey.audit.asyncjob.IntegrityAsyncJobType;
+import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
 
 /**
  * Thrown when Integrity heavy work cannot start because the async slot or process-local heavy
@@ -33,6 +35,7 @@ public class IntegrityAsyncJobBusyException extends RuntimeException {
       "Integrity crypto path busy (scheduled or in-process heavy work)";
 
   private final IntegrityAsyncJob currentJob;
+  private final IntegrityHeavyCryptoGate.Holder busyHolder;
 
   /**
    * Creates the exception with the occupying job.
@@ -41,8 +44,21 @@ public class IntegrityAsyncJobBusyException extends RuntimeException {
    * @param message operator-facing one-liner
    */
   public IntegrityAsyncJobBusyException(IntegrityAsyncJob currentJob, String message) {
+    this(currentJob, message, null);
+  }
+
+  /**
+   * Creates the exception with the occupying job and optional busyHolder.
+   *
+   * @param currentJob the job currently occupying the slot (or the busy reason surrogate)
+   * @param message operator-facing one-liner
+   * @param busyHolder who holds the heavy-crypto path (nullable)
+   */
+  public IntegrityAsyncJobBusyException(
+      IntegrityAsyncJob currentJob, String message, IntegrityHeavyCryptoGate.Holder busyHolder) {
     super(message);
     this.currentJob = currentJob;
+    this.busyHolder = busyHolder;
   }
 
   /**
@@ -51,7 +67,18 @@ public class IntegrityAsyncJobBusyException extends RuntimeException {
    * @return exception with a synthetic currentJob surrogate for the existing 409 contract
    */
   public static IntegrityAsyncJobBusyException forHeavyCryptoBusy() {
-    return forHeavyCryptoBusy(HEAVY_CRYPTO_BUSY_MESSAGE);
+    return forHeavyCryptoBusy(HEAVY_CRYPTO_BUSY_MESSAGE, null);
+  }
+
+  /**
+   * Busy refusal when the process-local heavy crypto gate is held.
+   *
+   * @param holder process-local gate holder (may be null)
+   * @return exception with synthetic currentJob and busyHolder
+   */
+  public static IntegrityAsyncJobBusyException forHeavyCryptoBusy(
+      IntegrityHeavyCryptoGate.Holder holder) {
+    return forHeavyCryptoBusy(HEAVY_CRYPTO_BUSY_MESSAGE, holder);
   }
 
   /**
@@ -61,17 +88,33 @@ public class IntegrityAsyncJobBusyException extends RuntimeException {
    * @return exception with a synthetic currentJob surrogate for the existing 409 contract
    */
   public static IntegrityAsyncJobBusyException forHeavyCryptoBusy(String message) {
+    return forHeavyCryptoBusy(message, null);
+  }
+
+  /**
+   * Busy refusal when the process-local heavy crypto gate is held.
+   *
+   * @param message operator-facing one-liner
+   * @param holder process-local gate holder (may be null)
+   * @return exception with synthetic currentJob and busyHolder
+   */
+  public static IntegrityAsyncJobBusyException forHeavyCryptoBusy(
+      String message, IntegrityHeavyCryptoGate.Holder holder) {
     IntegrityAsyncJob synthetic = new IntegrityAsyncJob();
     synthetic.setJobId(UUID.fromString("00000000-0000-0000-0000-000000000000"));
     synthetic.setJobType(IntegrityAsyncJobType.RUN_VALIDATION);
     synthetic.setStatus(IntegrityAsyncJobStatus.RUNNING);
-    synthetic.setStartedByAdminId(0);
+    synthetic.setTrigger(
+        holder == IntegrityHeavyCryptoGate.Holder.NIGHTLY
+            ? IntegrityAsyncJobTrigger.NIGHTLY
+            : IntegrityAsyncJobTrigger.MANUAL);
+    synthetic.setStartedByAdminId(holder == IntegrityHeavyCryptoGate.Holder.NIGHTLY ? null : 0);
     synthetic.setStartedByUsername("system");
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
     synthetic.setStartedAt(now);
     synthetic.setHeartbeatAt(now);
     synthetic.setResultSummary(message);
-    return new IntegrityAsyncJobBusyException(synthetic, message);
+    return new IntegrityAsyncJobBusyException(synthetic, message, holder);
   }
 
   /**
@@ -81,5 +124,14 @@ public class IntegrityAsyncJobBusyException extends RuntimeException {
    */
   public IntegrityAsyncJob getCurrentJob() {
     return currentJob;
+  }
+
+  /**
+   * Who holds the heavy-crypto path when known.
+   *
+   * @return holder or null
+   */
+  public IntegrityHeavyCryptoGate.Holder getBusyHolder() {
+    return busyHolder;
   }
 }

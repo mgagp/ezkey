@@ -77,7 +77,7 @@ class IntegrityAsyncJobStateServiceTest {
     when(jobRepository.findById(job.getJobId())).thenReturn(Optional.of(job));
     when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    stateService.markSucceeded(job.getJobId(), "Chain range verified", true, null);
+    stateService.markSucceeded(job.getJobId(), "Chain range verified", true, null, null);
 
     ArgumentCaptor<AuditLog> auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
     verify(auditLogService).log(auditCaptor.capture());
@@ -95,7 +95,7 @@ class IntegrityAsyncJobStateServiceTest {
     when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     doThrow(new RuntimeException("audit write failed")).when(auditLogService).log(any());
 
-    stateService.markSucceeded(job.getJobId(), "Chain range verified", true, null);
+    stateService.markSucceeded(job.getJobId(), "Chain range verified", true, null, null);
 
     assertEquals(IntegrityAsyncJobStatus.SUCCEEDED, job.getStatus());
   }

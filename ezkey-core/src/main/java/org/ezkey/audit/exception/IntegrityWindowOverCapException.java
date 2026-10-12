@@ -39,7 +39,10 @@ public class IntegrityWindowOverCapException extends RuntimeException {
    */
   public static final String ASYNC_ALTERNATIVE = "POST /api/v1/audit-logs/integrity/jobs";
 
-  /** ProblemDetail {@code capKind} when the sync report-GET cap was exceeded. */
+  /**
+   * ProblemDetail {@code capKind} when the sync cap was exceeded (synchronous paths: report GETs
+   * and operator {@code POST …/integrity-validation/run}).
+   */
   public static final String CAP_KIND_SYNC = "SYNC";
 
   /** ProblemDetail {@code capKind} when the async / operator cap was exceeded. */
@@ -61,7 +64,8 @@ public class IntegrityWindowOverCapException extends RuntimeException {
   }
 
   /**
-   * Creates a sync report-GET over-cap exception with a fixed async alternative pointer.
+   * Creates a synchronous-path over-cap exception with a fixed async alternative pointer (report
+   * GETs and operator {@code POST …/integrity-validation/run}).
    *
    * @param maxSyncWindowDays configured sync maximum window length in calendar days
    * @return exception carrying {@link #CAP_KIND_SYNC} and {@link #ASYNC_ALTERNATIVE}

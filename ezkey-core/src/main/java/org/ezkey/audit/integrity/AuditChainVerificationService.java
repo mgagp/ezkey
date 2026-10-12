@@ -15,12 +15,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.audit.domain.repository.AuditLogEntryHmacView;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
 import org.ezkey.audit.dto.ChainIntegrityViolation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -357,16 +356,21 @@ public class AuditChainVerificationService {
             detail));
   }
 
-  /** Recomputes the entries_digest for a given time window from current audit log data. */
+  /**
+   * Recomputes the entries_digest for a given time window from current audit log data.
+   *
+   * <p>Uses an {@code entryHmac}-only projection (same half-open window filter and {@code
+   * auditLogId} ascending order as the writer). Never logs digests or HMAC material.
+   */
   private String computeEntriesDigest(OffsetDateTime windowStart, OffsetDateTime windowEnd) {
-    Specification<org.ezkey.audit.domain.entity.AuditLog> spec =
-        (root, _, cb) ->
-            cb.and(
-                cb.greaterThanOrEqualTo(root.get("createdAt"), windowStart),
-                cb.lessThan(root.get("createdAt"), windowEnd));
+    List<AuditLogEntryHmacView> entries =
+        auditLogRepository.findEntryHmacsInWindow(windowStart, windowEnd);
 
-    List<org.ezkey.audit.domain.entity.AuditLog> entries =
-        auditLogRepository.findAll(spec, Sort.by("auditLogId").ascending());
+    logger.debug(
+        "Recomputing entries_digest for window [{}, {}) — {} entry row(s) (hmac projection)",
+        windowStart,
+        windowEnd,
+        entries.size());
 
     if (entries.isEmpty()) {
       return auditHmacService.computeHmac(EMPTY_WINDOW_MARKER);

@@ -14,6 +14,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.ezkey.audit.asyncjob.IntegrityAsyncJobService;
+import org.ezkey.audit.asyncjob.IntegrityNightlyTerminalService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -32,6 +33,11 @@ import org.springframework.stereotype.Component;
  * <p>When {@link IntegrityHeavyCryptoGate} is busy, this run fail-closes with a single WARN and
  * {@link ScheduledJobLastRunService#recordFailure} (no sleep on the scheduling thread).
  * Non-blocking retry + skip audit are tracked in GitHub #745.
+ *
+ * <p>After a successful {@code validateWindow}, inserts a terminal SUCCEEDED nightly row into
+ * {@code ezkey_integrity_async_job} (OQ4 A′, Integrity cut 3) when the Admin async-job bean is
+ * present. Skipped HMAC-inactive runs leave no row. Insert failure is WARN-only (registry stays
+ * SUCCESS).
  *
  * @since 2026
  */
@@ -54,6 +60,7 @@ public class NightlyIntegrityValidationScheduler {
   private final ScheduledJobLastRunService jobLastRunService;
   private final IntegrityHeavyCryptoGate heavyCryptoGate;
   private final ObjectProvider<IntegrityAsyncJobService> integrityAsyncJobService;
+  private final ObjectProvider<IntegrityNightlyTerminalService> nightlyTerminalService;
 
   /**
    * Constructs the scheduler.
@@ -64,6 +71,7 @@ public class NightlyIntegrityValidationScheduler {
    * @param jobLastRunService registry updates
    * @param heavyCryptoGate process-local exclusion vs operator async jobs
    * @param integrityAsyncJobService operator slot probe (Admin-only bean; empty on peripherals)
+   * @param nightlyTerminalService nightly terminal row writer (Admin-only; empty on peripherals)
    */
   public NightlyIntegrityValidationScheduler(
       NightlyIntegrityProperties nightlyProperties,
@@ -71,13 +79,15 @@ public class NightlyIntegrityValidationScheduler {
       RetroactiveIntegrityValidationService validationService,
       ScheduledJobLastRunService jobLastRunService,
       IntegrityHeavyCryptoGate heavyCryptoGate,
-      ObjectProvider<IntegrityAsyncJobService> integrityAsyncJobService) {
+      ObjectProvider<IntegrityAsyncJobService> integrityAsyncJobService,
+      ObjectProvider<IntegrityNightlyTerminalService> nightlyTerminalService) {
     this.nightlyProperties = nightlyProperties;
     this.chainProperties = chainProperties;
     this.validationService = validationService;
     this.jobLastRunService = jobLastRunService;
     this.heavyCryptoGate = heavyCryptoGate;
     this.integrityAsyncJobService = integrityAsyncJobService;
+    this.nightlyTerminalService = nightlyTerminalService;
   }
 
   /**
@@ -98,11 +108,12 @@ public class NightlyIntegrityValidationScheduler {
     String scope = "Validated " + nightlyProperties.getWindowHours() + " h ending " + windowEnd;
 
     IntegrityAsyncJobService asyncJobs = integrityAsyncJobService.getIfAvailable();
+    IntegrityNightlyTerminalService terminalRows = nightlyTerminalService.getIfAvailable();
     if (asyncJobs != null && asyncJobs.isOperatorSlotRunning()) {
       logger.info("Skipping nightly integrity validation: operator Integrity async job is RUNNING");
       return;
     }
-    if (!heavyCryptoGate.tryEnter()) {
+    if (!heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.NIGHTLY)) {
       logger.warn("Skipping nightly integrity validation: {}", GATE_BUSY_SKIP_SUMMARY);
       jobLastRunService.recordFailure(
           ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope, GATE_BUSY_SKIP_SUMMARY);
@@ -114,13 +125,25 @@ public class NightlyIntegrityValidationScheduler {
       if (result.scope() != null) {
         scope = result.scope();
       }
+      // Terminal row after validateWindow (own REQUIRES_NEW bean); never markSucceeded
+      // (double-audit). tryInsert swallows all insert failures so they cannot flip the registry
+      // to FAILED after a successful validation.
+      if (terminalRows != null) {
+        terminalRows.tryInsertNightlyTerminalSucceeded(result);
+      }
       jobLastRunService.recordSuccess(ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope);
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Nightly integrity validation batch failed: {}", e.getMessage(), e);
+      String simpleName = e.getClass().getSimpleName();
+      if (terminalRows != null) {
+        OffsetDateTime windowStart = windowEnd.minusHours(nightlyProperties.getWindowHours());
+        terminalRows.tryInsertNightlyTerminalFailed(windowStart, windowEnd, simpleName);
+      }
+      // #741: persist simple name only in the dashboard last-run registry.
       jobLastRunService.recordFailure(
-          ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope, e.getMessage());
+          ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope, simpleName);
     } finally {
-      heavyCryptoGate.exit();
+      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.NIGHTLY);
     }
   }
 }

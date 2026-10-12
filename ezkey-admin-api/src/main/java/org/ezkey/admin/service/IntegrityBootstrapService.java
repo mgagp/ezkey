@@ -11,6 +11,7 @@ package org.ezkey.admin.service;
 
 import org.ezkey.admin.dto.response.IntegrityBootstrapResponseDto;
 import org.ezkey.audit.integrity.AuditChainProperties;
+import org.ezkey.audit.integrity.IntegrityWindowCapProperties;
 import org.ezkey.audit.integrity.NightlyIntegrityProperties;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +29,7 @@ public class IntegrityBootstrapService {
   private final EzkeyRuntimeProfileResolver runtimeProfileResolver;
   private final AuditChainProperties auditChainProperties;
   private final NightlyIntegrityProperties nightlyIntegrityProperties;
+  private final IntegrityWindowCapProperties windowCapProperties;
 
   /**
    * Constructs the bootstrap service.
@@ -35,25 +37,31 @@ public class IntegrityBootstrapService {
    * @param runtimeProfileResolver product runtime profile resolver
    * @param auditChainProperties rolling checkpoint configuration
    * @param nightlyIntegrityProperties nightly validation configuration
+   * @param windowCapProperties shared days-based Integrity window cap
    */
   public IntegrityBootstrapService(
       EzkeyRuntimeProfileResolver runtimeProfileResolver,
       AuditChainProperties auditChainProperties,
-      NightlyIntegrityProperties nightlyIntegrityProperties) {
+      NightlyIntegrityProperties nightlyIntegrityProperties,
+      IntegrityWindowCapProperties windowCapProperties) {
     this.runtimeProfileResolver = runtimeProfileResolver;
     this.auditChainProperties = auditChainProperties;
     this.nightlyIntegrityProperties = nightlyIntegrityProperties;
+    this.windowCapProperties = windowCapProperties;
   }
 
   /**
    * Returns the Integrity bootstrap snapshot for the current Admin API process.
    *
-   * @return runtime profile plus chain/nightly enable flags
+   * @return runtime profile plus chain/nightly enable flags and effective window caps
    */
   public IntegrityBootstrapResponseDto build() {
     return new IntegrityBootstrapResponseDto(
         runtimeProfileResolver.resolve(),
         auditChainProperties.isEnabled(),
-        nightlyIntegrityProperties.isEnabled());
+        nightlyIntegrityProperties.isEnabled(),
+        windowCapProperties.getMaxWindowDays(),
+        windowCapProperties.getMaxSyncWindowDays(),
+        nightlyIntegrityProperties.getWindowHours());
   }
 }

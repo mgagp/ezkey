@@ -15,7 +15,7 @@ script:post-response {
       expect(res.getStatus()).to.equal(200);
   });
 
-  test("Response has integrity bootstrap dual-source fields", function () {
+  test("Response has integrity bootstrap dual-source fields and window caps", function () {
       var jsonData = res.getBody();
       expect(jsonData).to.have.property('runtimeProfile');
       expect(['base', 'integrity']).to.include(jsonData.runtimeProfile);
@@ -23,6 +23,12 @@ script:post-response {
       expect(jsonData).to.have.property('nightlyValidationEnabled');
       expect(jsonData.chainCheckpointsEnabled).to.be.a('boolean');
       expect(jsonData.nightlyValidationEnabled).to.be.a('boolean');
+      expect(jsonData).to.have.property('maxWindowDays');
+      expect(jsonData).to.have.property('maxSyncWindowDays');
+      expect(jsonData).to.have.property('nightlyWindowHours');
+      expect(jsonData.maxWindowDays).to.be.a('number');
+      expect(jsonData.maxSyncWindowDays).to.be.a('number');
+      expect(jsonData.nightlyWindowHours).to.be.a('number');
   });
 }
 
@@ -42,9 +48,14 @@ docs {
   {
     "runtimeProfile": "integrity",
     "chainCheckpointsEnabled": true,
-    "nightlyValidationEnabled": true
+    "nightlyValidationEnabled": true,
+    "maxWindowDays": 92,
+    "maxSyncWindowDays": 8,
+    "nightlyWindowHours": 24
   }
   ```
+
+  Caps: `maxWindowDays` = async VERIFY / RUN_VALIDATION; `maxSyncWindowDays` = sync report GETs (PR 0 M1).
 
   **Status Codes:** 200 OK · 401 Unauthorized · 403 Forbidden
 }

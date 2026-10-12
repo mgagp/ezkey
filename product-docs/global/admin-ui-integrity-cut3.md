@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Document ID:** `admin-ui-integrity-cut3`
-- **Status:** `intention-locked` (product decisions Marc 2026-10-09; **OQ1 / OQ2 / OQ3 APPROVED** by Marc 2026-10-12 — quote: *« J'approuve OQ1, OQ2 et OQ3 telles que proposées : merge #730 et lance l'implémentation (PR backend puis PR UI) »*; **OQ4 remains OPEN** for the senior engineering reviewer; implementation not started)
+- **Status:** `intention-locked` (product decisions Marc 2026-10-09; **OQ1 / OQ2 / OQ3 APPROVED** by Marc 2026-10-12; **OQ4 = A′ decided** by Patrick 2026-10-12 — nightly terminal row `trigger=NIGHTLY` / `job_type=RUN_VALIDATION`, never RUNNING; `GET …/jobs/last-verdict`; `busyHolder` via ShedLock; PR 1 backend in flight)
 - **Owner (intention):** Julie (UX) / Marc (product) / Patrick (backend craft)
 - **QA:** Isabelle via Walk Gate (after implementation PRs fill the walkable SHA)
 - **Measurement:** Isabelle — baseline and after-PR-1 measurements **pending** (do not invent numbers)
@@ -35,7 +35,7 @@
 
 - **D1. Page open.** The page shows the last known verdict (latest job or nightly) with its scope. It runs an automatic verification ONLY if there is no verdict less than 24 h old covering the last 24 h. Otherwise, verification is an explicit "Revérifier" action. This supersedes `admin-ui-integrity-cut2-phase-a.md:32` ("auto chain-verify on mount OK").
 - **D2. Window cap.** Two server-side days properties (amended Christophe M1 / B1): `max-window-days` (default 92, async VERIFY / RUN_VALIDATION) and `max-sync-window-days` (default 8, all sync paths: report GETs + operator POST `/integrity-validation/run` / P-085). **Supersedes** the provisional #743 hour keys and the shared 193 h constant — see [D2 — Window cap](#d2--window-cap) below.
-- **D3. Structured counters on the job DTO** (additive OpenAPI fields): `chainStatus`, total, valid, invalid, archived, gaps. The UI hydrates from the DTO, not from the recompute GET. This is #692 option A reduced to counters (gate + provisional 193 h cap already landed in #743). `GET /chain-integrity` stays, behind the gate and the (raised) cap — job-backed report read closes the remaining #743 follow-up.
+- **D3. Structured counters on the job DTO** (additive OpenAPI fields): `chainStatus` (`OK` | `UNDECLARED_GAP_DETECTED` | `CHAIN_INTEGRITY_VIOLATION_DETECTED` | `NOT_VERIFIED`), `totalCheckpoints`, `validCheckpoints`, `invalidCheckpoints`, `archivedCheckpoints`, `undeclaredGaps`, `entryHmacViolations` (P1). The UI hydrates from the DTO, not from the recompute GET. This is #692 option A reduced to counters (gate + dual days caps in PR 0). `GET /chain-integrity` stays, behind the gate and the sync cap — job-backed report read closes the remaining #743 follow-up.
 - **D4. Micro-dashboard** (Julie's design) replaces the text banner, above the three tabs Observer / Vérifier / Remédier, which stay unchanged:
   - job state is separate from the chain verdict, and "réussi" is never used as a verdict;
   - it shows verdict, checkpoints, invalid, gaps, a check time that ages on the dashboard's 1 s clock, and "Revérifier";
@@ -46,8 +46,8 @@
   - while the nightly runs, show "Vérification nocturne en cours…" instead of the 409 toast.
   Reuse the dashboard's `BatchHealthCard` / `BatchJobRow` patterns where sensible.
 - **D5. Split.**
-  - PR 1, backend: `entryHmac`-only projection with a digest characterization test, persisted counters, `max-window-days` alignment (replacing provisional hour keys / 193 h), synthetic `currentJob` while heavy-crypto busy, `findFirstByOrderByStartedAtDesc`.
-  - PR 2, UI with Julie: the 24 h auto-run rule, hydration from the DTO (job-backed report read), banner tone on `chainStatus`, the micro-dashboard, #696 (show and align the verdict's scope), UI cap from config (not hard-coded 193 h), optional early warning in the range picker.
+  - PR 1, backend: `entryHmac`-only projection with a digest characterization test, persisted counters + `NOT_VERIFIED`, OQ4 A′ nightly terminal rows, `GET …/jobs/last-verdict`, `busyHolder` via ShedLock (synthetic `/current` only for NIGHTLY), bootstrap exposes `maxWindowDays` / `maxSyncWindowDays` / `nightlyWindowHours`, named operator-slot finders (no unfiltered latest).
+  - PR 2, UI with Julie: the 24 h auto-run rule, hydration from the DTO (job-backed report read), banner tone on `chainStatus`, the micro-dashboard, #696 (show and align the verdict's scope), UI caps from bootstrap (not hard-coded 193 h), optional early warning in the range picker.
   - Deferred: job-history purge (90 days), visibility-based polling, Orval follow-ups; nightly non-blocking retry stays **#745** (not cut 3).
 - **Values:** product intent, operability, simplicity, at-a-glance clarity for a Global Admin whose core business is not Ezkey. Proportionate, no over-engineering. No soft delete. Simple, regular patterns.
 
@@ -115,7 +115,7 @@ Citations are file:line on current `main`. Paths for async-job / chain-verify se
 |-----------|-----------|
 | Latest chain verdict (any source: async job or nightly) finished **less than 24 h ago** (**OQ2 APPROVED**) | Show that verdict + scope. **No** automatic `POST …/jobs`. **No** automatic `GET /chain-integrity`. Explicit **Revérifier** only. |
 | No such fresh verdict | Auto-run may fire (window per **OQ3 APPROVED**). |
-| Nightly (or other heavy path) already holds the gate | Widget shows nightly-running copy; **no** 409 error toast on open. Prefer a synthetic `currentJob` (zero UUID, `"system"`) from `GET …/jobs/current` while heavy-crypto busy (#743 follow-up → PR 1) so the UI does not rely on toast heuristics alone. |
+| Nightly (or other heavy path) already holds the gate | Widget shows nightly-running copy; **no** 409 error toast on open. Synthetic `currentJob` (zero UUID, `"system"`, `busyHolder=NIGHTLY`) from `GET …/jobs/current` only when ShedLock holds nightly and the operator slot is idle (PR 1). REPORT_GET stays visible via 409 only. |
 
 **OQ2 APPROVED (Marc, 2026-10-12):** Age of a verdict is time since it **finished**. There is **no** scope-coverage arithmetic (no requirement that the verdict’s `[from,to)` include `[now−24h, now)`). With the nightly enabled, the rule then practically never fires.
 
@@ -229,15 +229,16 @@ Served by existing `GET /jobs/current` and `/jobs/{id}`. UI hydrates tiles from 
 
 ### PR 1 — backend
 
-- [ ] `entryHmac`-only projection + characterization test
-- [ ] Persisted counters + additive `IntegrityAsyncJobResponse` fields (job-backed report read)
-- [ ] OpenAPI refresh + dispatched Admin UI copy (scripted, not hand-edited)
-- [ ] Hand-written client fields (Orval deferred)
-- [ ] Replace #743 provisional hour keys + `DEFAULT_MAX_WINDOW_HOURS=193` with `max-window-days` (default 92) on async VERIFY, report GETs, and shared `RUN_VALIDATION` bound; keep `heavyCryptoGate` (already on GETs)
-- [ ] Synthetic `currentJob` (zero UUID, `"system"`) while heavy-crypto busy
-- [ ] `getCurrent` → `findFirstByOrderByStartedAtDesc`
-- [ ] `verify-grants`; unit/API tests listed in D5
-- [ ] Grants unchanged for existing table; `CONFIGURATION.md` + integrity docs updated for the property rename
+- [x] `entryHmac`-only projection + characterization test
+- [x] Persisted counters + additive `IntegrityAsyncJobResponse` fields (job-backed report read) + `NOT_VERIFIED` / `entryHmacViolations` (P1)
+- [ ] OpenAPI refresh + dispatched Admin UI copy (scripted, not hand-edited) — after clean-start
+- [x] Hand-written client fields (Orval deferred)
+- [x] Window caps land in PR 0 (dual: `max-window-days` + `max-sync-window-days`); PR 1 bootstrap exposes both + `nightlyWindowHours`
+- [x] Synthetic `currentJob` on `/jobs/current` only when `busyHolder=NIGHTLY` (ShedLock)
+- [x] Named operator-slot finders (`findLatestOperatorJob` / `findLatestActiveOperatorJob` / `findLatestVerdict`); OQ4 A′ nightly terminal rows
+- [x] `GET …/jobs/last-verdict` (200|204); #741 nightly `recordFailure` simpleName
+- [ ] `verify-grants`; full reactor tests / clean-start smoke
+- [x] Docs: `AUDIT_LOG_INTEGRITY.md`, `ENDPOINT.md`, cut-3 OQ4 A′, Bruno
 
 ### PR 2 — UI
 
@@ -327,8 +328,7 @@ Purpose: calibrate the 92-day default and prove before/after; **does not block**
    - **APPROVED (Marc, 2026-10-12):** Simplest reading of Marc’s words — there is **no** automatic verification on page open when the latest chain verdict, from any source (async job or nightly), finished less than 24 h ago. Age = time since finished. **No** scope-coverage arithmetic. With the nightly enabled, the rule then practically never fires.
 3. **OQ3 — Auto-run window when D1 fires.** 24 h vs legacy 7 days?
    - **APPROVED (Marc, 2026-10-12):** Last **24 h**, aligned with the nightly and the #676 timeline default (not the legacy 7 days).
-4. **OQ4 — Where the UI reads the nightly verdict** (dashboard `last_run_scope` endpoint vs integrity job history) — does nightly need counters too? *(**OPEN** — PR 1 design question for the senior engineering reviewer; does **not** block this intention lock or merge of #730)*
-   - **Fact (Isabelle 2026-10-09):** the nightly does **not** write to the async job table, so its verdict is not visible via `GET …/integrity/jobs/current`. For D1’s “last known verdict from the nightly,” the UI must read the dashboard’s nightly last-run data, **or** the nightly must record a job row (and/or counters). Settle with Patrick during PR 1 design review.
+4. **OQ4 — Where the UI reads the nightly verdict** — **DECIDED A′ (Patrick, 2026-10-12).** Nightly inserts a terminal SUCCEEDED/FAILED row (`job_type=RUN_VALIDATION`, `trigger=NIGHTLY`, never RUNNING; CHECK-enforced). UI reads via `GET …/jobs/last-verdict` (includes NIGHTLY). Operator slot readers exclude NIGHTLY. Counters + `entryHmacViolations` on the row. No `INTEGRITY_ASYNC_JOB_*` audit (nightly already emits `NIGHTLY_INTEGRITY_VALIDATION_COMPLETED`).
 5. **OQ5 — Highlight on return to tab visibility:** in PR 2 or deferred? *(open)*
 6. **OQ6 — `docs/AUDIT_LOG_INTEGRITY.md:336` update** — confirmed PR 2 deliverable. *(closed as delivery placement; content still to write in PR 2)*
 
@@ -343,7 +343,7 @@ Purpose: calibrate the 92-day default and prove before/after; **does not block**
 - Early local timings are **not** steady-state (short-lived DB) — 92-day default may need recalibration after a long-lived re-measure (does not block D1–D5).
 - Property rename (`max-window-hours` → `max-window-days`) must not leave dual caps or silent hour/day unit mistakes in UI hard-codes.
 - Nightly duration / start not logged — weakens before/after cost comparison for the scheduled path (optional PR 1 observability).
-- OQ4 still open: without a nightly→UI read path, D1’s “or nightly” clause cannot be fully implemented.
+- OQ4 A′ settled: nightly terminal rows + `/last-verdict` close D1’s “or nightly” read path for PR 2.
 
 ---
 

@@ -125,6 +125,30 @@ public class RetroactiveIntegrityValidationService {
   @Transactional
   public RetroactiveIntegrityValidationResult runValidation(
       OffsetDateTime from, OffsetDateTime to, RetroactiveIntegrityValidationOptions options) {
+    return runValidation(from, to, options, null);
+  }
+
+  /**
+   * Validates audit integrity over {@code [from, to)} with an optional async-job heartbeat.
+   *
+   * <p>The heartbeat is forwarded to the entry HMAC scan (per page) and to {@link
+   * AuditChainVerificationService#verifyChain} (every 10 checkpoints) so long RUN_VALIDATION jobs
+   * stay under the TTL.
+   *
+   * @param from inclusive window start
+   * @param to exclusive window end
+   * @param options per-run alert and trigger metadata
+   * @param onChunkHeartbeat optional async job heartbeat callback
+   * @return structured result for API, registry, and audit logging
+   * @throws IntegrityValidationDisabledException if {@code ezkey.audit.integrity.nightly.enabled}
+   *     is false
+   */
+  @Transactional
+  public RetroactiveIntegrityValidationResult runValidation(
+      OffsetDateTime from,
+      OffsetDateTime to,
+      RetroactiveIntegrityValidationOptions options,
+      Runnable onChunkHeartbeat) {
     if (!nightlyProperties.isEnabled()) {
       throw new IntegrityValidationDisabledException();
     }
@@ -136,12 +160,13 @@ public class RetroactiveIntegrityValidationService {
     }
 
     EntryIntegrityViolationClassifier.ViolationCollection entryViolationCollection =
-        entryIntegrityViolationClassifier.collectRangeViolations(auditLogRepository, from, to);
+        entryIntegrityViolationClassifier.collectRangeViolations(
+            auditLogRepository, from, to, onChunkHeartbeat);
     List<EntryIntegrityViolation> entryViolations = entryViolationCollection.reportingViolations();
     List<EntryIntegrityViolation> alertEligibleEntryViolations =
         entryViolationCollection.alertEligibleViolations();
     AuditChainVerificationService.ChainVerificationReport chainReport =
-        chainVerificationService.verifyChain(from, to);
+        chainVerificationService.verifyChain(from, to, onChunkHeartbeat);
 
     boolean entryHmacIntact = entryViolations.isEmpty();
     boolean chainIntact = chainReport.intact();
@@ -199,7 +224,12 @@ public class RetroactiveIntegrityValidationService {
         entryViolations.size(),
         alertEligibleEntryViolations.size(),
         chainReport.violations().size(),
-        options.triggerSource());
+        options.triggerSource(),
+        chainReport.totalCheckpoints(),
+        chainReport.validCheckpoints(),
+        chainReport.invalidCheckpoints(),
+        chainReport.archivedCheckpoints(),
+        chainReport.undeclaredGaps().size());
   }
 
   /**
@@ -375,6 +405,11 @@ public class RetroactiveIntegrityValidationService {
    * @param entryAlertEligibleCount count of alert-eligible entry violations
    * @param chainViolationCount count of chain-level violation messages
    * @param triggerSource scheduled or operator origin
+   * @param totalCheckpoints chain report total (0 when skipped)
+   * @param validCheckpoints chain report valid count
+   * @param invalidCheckpoints chain report invalid count
+   * @param archivedCheckpoints chain report archived count
+   * @param undeclaredGaps undeclared gap count
    */
   public record RetroactiveIntegrityValidationResult(
       OffsetDateTime windowStart,
@@ -389,12 +424,59 @@ public class RetroactiveIntegrityValidationService {
       int entryHmacViolationCount,
       int entryAlertEligibleCount,
       int chainViolationCount,
-      RetroactiveIntegrityValidationTriggerSource triggerSource) {
+      RetroactiveIntegrityValidationTriggerSource triggerSource,
+      int totalCheckpoints,
+      int validCheckpoints,
+      int invalidCheckpoints,
+      int archivedCheckpoints,
+      int undeclaredGaps) {
 
-    static RetroactiveIntegrityValidationResult skipped(
+    /**
+     * Builds the operator / nightly job {@code resultSummary} line (shared wording).
+     *
+     * @param prefix e.g. {@code Validation} or {@code Nightly validation}
+     * @return safe summary without secrets
+     */
+    public String outcomeSummary(String prefix) {
+      return prefix
+          + ": intact="
+          + intact
+          + ", entryViolations="
+          + entryHmacViolationCount
+          + ", chainViolations="
+          + chainViolationCount
+          + (alertRaised ? ", alertId=" + alertId : "");
+    }
+
+    /**
+     * Builds a skipped-result row (HMAC inactive / early exit).
+     *
+     * @param scope operator-visible scope line
+     * @param reason skip reason
+     * @param triggerSource nightly or operator
+     * @return skipped result
+     */
+    public static RetroactiveIntegrityValidationResult skipped(
         String scope, String reason, RetroactiveIntegrityValidationTriggerSource triggerSource) {
       return new RetroactiveIntegrityValidationResult(
-          null, null, scope, true, reason, true, false, null, reason, 0, 0, 0, triggerSource);
+          null,
+          null,
+          scope,
+          true,
+          reason,
+          true,
+          false,
+          null,
+          reason,
+          0,
+          0,
+          0,
+          triggerSource,
+          0,
+          0,
+          0,
+          0,
+          0);
     }
   }
 }

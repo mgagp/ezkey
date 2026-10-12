@@ -83,15 +83,22 @@ public class IntegrityAsyncJobStateService {
   }
 
   /**
-   * Marks a RUNNING job SUCCEEDED.
+   * Marks a RUNNING job SUCCEEDED, optionally persisting chain verdict counters.
    *
    * @param jobId job id
    * @param summary safe summary
    * @param intact intact flag
    * @param alertId optional alert id
+   * @param chainVerdict optional structured counters (VERIFY_CHAIN / RUN_VALIDATION); null for
+   *     VERIFY_ENTRY_HMAC_RANGE
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void markSucceeded(UUID jobId, String summary, Boolean intact, Long alertId) {
+  public void markSucceeded(
+      UUID jobId,
+      String summary,
+      Boolean intact,
+      Long alertId,
+      IntegrityChainVerdictFields chainVerdict) {
     jobRepository
         .findById(jobId)
         .ifPresent(
@@ -106,6 +113,9 @@ public class IntegrityAsyncJobStateService {
               job.setResultSummary(truncate(summary, 1024));
               job.setResultIntact(intact);
               job.setResultAlertId(alertId);
+              if (chainVerdict != null) {
+                chainVerdict.applyTo(job);
+              }
               jobRepository.save(job);
               emitCompleted(job, EventStatus.SUCCESS, summary);
             });

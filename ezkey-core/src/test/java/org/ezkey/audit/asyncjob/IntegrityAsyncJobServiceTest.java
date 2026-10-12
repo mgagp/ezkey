@@ -12,6 +12,7 @@ package org.ezkey.audit.asyncjob;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,6 +41,7 @@ import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
 import org.ezkey.audit.integrity.NightlyIntegrityProperties;
+import org.ezkey.audit.integrity.NightlyIntegrityShedLockProbe;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,11 +65,13 @@ class IntegrityAsyncJobServiceTest {
 
   @Mock private IntegrityAsyncJobRepository jobRepository;
   @Mock private IntegrityAsyncJobStateService stateService;
+  @Mock private IntegrityNightlyTerminalService nightlyTerminalService;
   @Mock private IntegrityHeavyCryptoGate heavyCryptoGate;
   @Mock private AuditIntegrityService auditIntegrityService;
   @Mock private AuditChainVerificationService chainVerificationService;
   @Mock private RetroactiveIntegrityValidationService retroactiveIntegrityValidationService;
   @Mock private NightlyIntegrityProperties nightlyIntegrityProperties;
+  @Mock private NightlyIntegrityShedLockProbe nightlyShedLockProbe;
   @Mock private AuditLogService auditLogService;
 
   private final org.ezkey.audit.integrity.IntegrityWindowCapProperties windowCapProperties =
@@ -88,12 +92,14 @@ class IntegrityAsyncJobServiceTest {
         new IntegrityAsyncJobService(
             jobRepository,
             stateService,
+            nightlyTerminalService,
             heavyCryptoGate,
             auditIntegrityService,
             chainVerificationService,
             retroactiveIntegrityValidationService,
             nightlyIntegrityProperties,
             windowCapProperties,
+            nightlyShedLockProbe,
             auditLogService,
             executor);
   }
@@ -124,7 +130,7 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty());
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
     when(jobRepository.saveAndFlush(any()))
@@ -153,7 +159,7 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty());
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
 
     OffsetDateTime from = OffsetDateTime.parse("2026-01-01T00:00:00Z");
@@ -176,7 +182,7 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty());
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     when(nightlyIntegrityProperties.isEnabled()).thenReturn(false);
 
@@ -198,7 +204,7 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty());
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     when(nightlyIntegrityProperties.isEnabled()).thenReturn(true);
     doAnswer(
@@ -236,7 +242,7 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty());
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     when(nightlyIntegrityProperties.isEnabled()).thenReturn(true);
     doAnswer(
@@ -270,7 +276,7 @@ class IntegrityAsyncJobServiceTest {
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty())
         .thenReturn(Optional.of(runningJob()));
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     when(jobRepository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("uq"));
 
@@ -288,7 +294,7 @@ class IntegrityAsyncJobServiceTest {
   @Test
   void abandon_running_refused() {
     IntegrityAsyncJob running = runningJob();
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of(running));
+    when(jobRepository.findLatestOperatorJob()).thenReturn(Optional.of(running));
 
     assertThrows(IntegrityAsyncJobAbandonNotAllowedException.class, () -> service.abandon(1));
   }
@@ -298,7 +304,7 @@ class IntegrityAsyncJobServiceTest {
     IntegrityAsyncJob expired = runningJob();
     expired.setStatus(IntegrityAsyncJobStatus.EXPIRED);
     expired.setFinishedAt(OffsetDateTime.now(ZoneOffset.UTC));
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of(expired));
+    when(jobRepository.findLatestOperatorJob()).thenReturn(Optional.of(expired));
     when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     var response = service.abandon(7);
@@ -334,7 +340,7 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty());
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of(expired));
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.of(expired));
 
     IntegrityAsyncJobStartRequest request =
         new IntegrityAsyncJobStartRequest(
@@ -359,7 +365,7 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty());
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of(interrupted));
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
     when(jobRepository.saveAndFlush(any()))
@@ -383,32 +389,28 @@ class IntegrityAsyncJobServiceTest {
   }
 
   @Test
-  void getCurrent_healsLegacyInterruptedWithoutAbandonedAt() {
-    IntegrityAsyncJob interrupted = runningJob();
-    interrupted.setStatus(IntegrityAsyncJobStatus.INTERRUPTED);
-    interrupted.setFinishedAt(OffsetDateTime.now(ZoneOffset.UTC));
+  void getCurrent_skipsAbandonedInterrupted_returnsEmpty() {
+    // V25 + boot hook: INTERRUPTED always has abandonedAt; active finder excludes it.
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty());
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of(interrupted));
-    when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
 
     assertTrue(service.getCurrent().isEmpty());
-    ArgumentCaptor<IntegrityAsyncJob> captor = ArgumentCaptor.forClass(IntegrityAsyncJob.class);
-    verify(jobRepository).save(captor.capture());
-    assertTrue(captor.getValue().getAbandonedAt() != null);
+    verify(jobRepository, never()).save(any());
   }
 
   @Test
-  void abandon_interrupted_healsWithoutEscapeCeremony() {
+  void abandon_alreadyAbandonedInterrupted_idempotent() {
     IntegrityAsyncJob interrupted = runningJob();
     interrupted.setStatus(IntegrityAsyncJobStatus.INTERRUPTED);
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of(interrupted));
-    when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    interrupted.setAbandonedAt(OffsetDateTime.now(ZoneOffset.UTC));
+    when(jobRepository.findLatestOperatorJob()).thenReturn(Optional.of(interrupted));
 
     var response = service.abandon(1);
     assertEquals(IntegrityAsyncJobStatus.INTERRUPTED, response.status());
     assertTrue(response.abandonedAt() != null);
+    verify(jobRepository, never()).save(any());
   }
 
   @Test
@@ -424,8 +426,68 @@ class IntegrityAsyncJobServiceTest {
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.of(runningJob()));
 
-    assertTrue(service.getCurrent().isPresent());
+    var current = service.getCurrent();
+    assertTrue(current.isPresent());
+    assertEquals(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB, current.get().busyHolder());
     verify(stateService).expireStaleRunningIfNeeded();
+  }
+
+  @Test
+  void getCurrent_nightlyShedLock_returnsSyntheticWithBusyHolder() {
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.empty());
+    when(nightlyShedLockProbe.isNightlyLockActive()).thenReturn(true);
+
+    var current = service.getCurrent();
+    assertTrue(current.isPresent());
+    assertEquals(IntegrityAsyncJobStatus.RUNNING, current.get().status());
+    assertEquals(IntegrityAsyncJobTrigger.NIGHTLY, current.get().trigger());
+    assertEquals(IntegrityHeavyCryptoGate.Holder.NIGHTLY, current.get().busyHolder());
+    assertNull(current.get().startedByAdminId());
+    verify(jobRepository, never()).findLatestActiveOperatorJob();
+  }
+
+  @Test
+  void getCurrent_operatorJobHolderWithTerminalRow_returnsRealRowNotSynthetic() {
+    // Job-end race: markSucceeded committed, gate still held as OPERATOR_JOB.
+    IntegrityAsyncJob succeeded = runningJob();
+    succeeded.setStatus(IntegrityAsyncJobStatus.SUCCEEDED);
+    succeeded.setFinishedAt(OffsetDateTime.now(ZoneOffset.UTC));
+    succeeded.setChainStatus(IntegrityChainStatus.OK);
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.empty());
+    when(nightlyShedLockProbe.isNightlyLockActive()).thenReturn(false);
+    when(heavyCryptoGate.holder()).thenReturn(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB);
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.of(succeeded));
+
+    var current = service.getCurrent();
+    assertTrue(current.isPresent());
+    assertEquals(succeeded.getJobId(), current.get().jobId());
+    assertEquals(IntegrityAsyncJobStatus.SUCCEEDED, current.get().status());
+    assertEquals(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB, current.get().busyHolder());
+  }
+
+  @Test
+  void getLastVerdict_returnsVerdictBearingRow() {
+    IntegrityAsyncJob verdict = runningJob();
+    verdict.setStatus(IntegrityAsyncJobStatus.SUCCEEDED);
+    verdict.setFinishedAt(OffsetDateTime.now(ZoneOffset.UTC));
+    verdict.setChainStatus(IntegrityChainStatus.OK);
+    verdict.setTotalCheckpoints(10);
+    when(jobRepository.findLatestVerdict()).thenReturn(Optional.of(verdict));
+
+    var last = service.getLastVerdict();
+    assertTrue(last.isPresent());
+    assertEquals(verdict.getJobId(), last.get().jobId());
+    assertEquals(IntegrityChainStatus.OK, last.get().chainStatus());
+  }
+
+  @Test
+  void getLastVerdict_emptyWhenNone() {
+    when(jobRepository.findLatestVerdict()).thenReturn(Optional.empty());
+    assertTrue(service.getLastVerdict().isEmpty());
   }
 
   @Test
@@ -433,7 +495,7 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty());
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
     when(jobRepository.saveAndFlush(any()))
@@ -477,19 +539,21 @@ class IntegrityAsyncJobServiceTest {
           new IntegrityAsyncJobService(
               jobRepository,
               realStateService,
+              nightlyTerminalService,
               heavyCryptoGate,
               auditIntegrityService,
               chainVerificationService,
               retroactiveIntegrityValidationService,
               nightlyIntegrityProperties,
               windowCapProperties,
+              nightlyShedLockProbe,
               auditLogService,
               discarding);
 
       when(jobRepository.findBySlotKeyAndStatus(
               IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
           .thenReturn(Optional.empty());
-      when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+      when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
       when(heavyCryptoGate.isBusy()).thenReturn(false);
       AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
       when(jobRepository.saveAndFlush(any()))
@@ -510,7 +574,8 @@ class IntegrityAsyncJobServiceTest {
               null);
 
       auditScopedService.start(request, 3, "ga.one");
-      realStateService.markSucceeded(saved.get().getJobId(), "Chain range verified", true, null);
+      realStateService.markSucceeded(
+          saved.get().getJobId(), "Chain range verified", true, null, null);
 
       ArgumentCaptor<AuditLog> auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
       verify(auditLogService, times(2)).log(auditCaptor.capture());
@@ -548,21 +613,23 @@ class IntegrityAsyncJobServiceTest {
           new IntegrityAsyncJobService(
               jobRepository,
               realStateService,
+              nightlyTerminalService,
               heavyCryptoGate,
               auditIntegrityService,
               chainVerificationService,
               retroactiveIntegrityValidationService,
               nightlyIntegrityProperties,
               windowCapProperties,
+              nightlyShedLockProbe,
               auditLogService,
               sync);
 
       when(jobRepository.findBySlotKeyAndStatus(
               IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
           .thenReturn(Optional.empty());
-      when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+      when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
       when(heavyCryptoGate.isBusy()).thenReturn(false);
-      when(heavyCryptoGate.tryEnter()).thenReturn(true);
+      when(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB)).thenReturn(true);
       AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
       when(jobRepository.saveAndFlush(any()))
           .thenAnswer(
@@ -610,11 +677,139 @@ class IntegrityAsyncJobServiceTest {
   }
 
   @Test
+  void tryInsertNightlyTerminalSucceeded_delegatesToNightlyTerminalService() {
+    RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
+        RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult.skipped(
+            "scope",
+            "HMAC signing is not active",
+            org.ezkey.audit.integrity.RetroactiveIntegrityValidationTriggerSource.SCHEDULED);
+    service.tryInsertNightlyTerminalSucceeded(result);
+    verify(nightlyTerminalService).tryInsertNightlyTerminalSucceeded(result);
+  }
+
+  @Test
+  void tryInsertNightlyTerminalFailed_delegatesToNightlyTerminalService() {
+    OffsetDateTime from = OffsetDateTime.parse("2026-06-27T02:00:00Z");
+    OffsetDateTime to = OffsetDateTime.parse("2026-06-28T02:00:00Z");
+    service.tryInsertNightlyTerminalFailed(from, to, "Boom");
+    verify(nightlyTerminalService).tryInsertNightlyTerminalFailed(from, to, "Boom");
+  }
+
+  @Test
+  void runJob_heartbeatFailure_marksJobFailed_failClosed() {
+    ThreadPoolTaskExecutor sync =
+        new ThreadPoolTaskExecutor() {
+          @Override
+          public void execute(Runnable task) {
+            task.run();
+          }
+        };
+    sync.initialize();
+    try {
+      IntegrityAsyncJobService failureScopedService =
+          new IntegrityAsyncJobService(
+              jobRepository,
+              stateService,
+              nightlyTerminalService,
+              heavyCryptoGate,
+              auditIntegrityService,
+              chainVerificationService,
+              retroactiveIntegrityValidationService,
+              nightlyIntegrityProperties,
+              windowCapProperties,
+              nightlyShedLockProbe,
+              auditLogService,
+              sync);
+
+      when(jobRepository.findBySlotKeyAndStatus(
+              IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+          .thenReturn(Optional.empty());
+      when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
+      when(heavyCryptoGate.isBusy()).thenReturn(false);
+      when(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB)).thenReturn(true);
+      AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
+      when(jobRepository.saveAndFlush(any()))
+          .thenAnswer(
+              inv -> {
+                IntegrityAsyncJob job = inv.getArgument(0);
+                saved.set(job);
+                return job;
+              });
+      when(jobRepository.findById(any())).thenAnswer(inv -> Optional.ofNullable(saved.get()));
+      org.mockito.Mockito.doThrow(new DataAccessResourceFailureException("heartbeat write failed"))
+          .when(stateService)
+          .heartbeat(any());
+
+      IntegrityAsyncJobStartRequest request =
+          new IntegrityAsyncJobStartRequest(
+              IntegrityAsyncJobType.VERIFY_CHAIN_RANGE,
+              OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+              OffsetDateTime.parse("2026-01-02T00:00:00Z"),
+              null);
+
+      failureScopedService.start(request, 3, "ga.one");
+
+      verify(stateService)
+          .markFailed(saved.get().getJobId(), "Job failed: DataAccessResourceFailureException");
+    } finally {
+      sync.shutdown();
+    }
+  }
+
+  @Test
+  void start_rejectsNightlyTrigger() {
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.empty());
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
+    when(heavyCryptoGate.isBusy()).thenReturn(false);
+
+    IntegrityAsyncJobStartRequest request =
+        new IntegrityAsyncJobStartRequest(
+            IntegrityAsyncJobType.VERIFY_CHAIN_RANGE,
+            OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+            OffsetDateTime.parse("2026-01-02T00:00:00Z"),
+            null,
+            IntegrityAsyncJobTrigger.NIGHTLY);
+
+    assertThrows(IllegalArgumentException.class, () -> service.start(request, 1, "admin.docker"));
+    verify(jobRepository, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void start_persistsAutoTrigger() {
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.empty());
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
+    when(heavyCryptoGate.isBusy()).thenReturn(false);
+    AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
+    when(jobRepository.saveAndFlush(any()))
+        .thenAnswer(
+            inv -> {
+              IntegrityAsyncJob job = inv.getArgument(0);
+              saved.set(job);
+              return job;
+            });
+
+    IntegrityAsyncJobStartRequest request =
+        new IntegrityAsyncJobStartRequest(
+            IntegrityAsyncJobType.VERIFY_CHAIN_RANGE,
+            OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+            OffsetDateTime.parse("2026-01-02T00:00:00Z"),
+            null,
+            IntegrityAsyncJobTrigger.AUTO);
+
+    service.start(request, 3, "ga.one");
+    assertEquals(IntegrityAsyncJobTrigger.AUTO, saved.get().getTrigger());
+  }
+
+  @Test
   void abandon_expired_emitsAbandonedAuditWithEventAction() {
     IntegrityAsyncJob expired = runningJob();
     expired.setStatus(IntegrityAsyncJobStatus.EXPIRED);
     expired.setFinishedAt(OffsetDateTime.now(ZoneOffset.UTC));
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of(expired));
+    when(jobRepository.findLatestOperatorJob()).thenReturn(Optional.of(expired));
     when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     service.abandon(7);

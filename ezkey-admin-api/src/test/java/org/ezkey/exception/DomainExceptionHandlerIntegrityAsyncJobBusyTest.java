@@ -13,7 +13,9 @@ package org.ezkey.exception;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import org.ezkey.audit.dto.IntegrityAsyncJobResponse;
 import org.ezkey.audit.exception.IntegrityAsyncJobBusyException;
+import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -37,7 +39,9 @@ class DomainExceptionHandlerIntegrityAsyncJobBusyTest {
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.setRequestURI("/api/v1/audit-logs/chain-integrity");
 
-    IntegrityAsyncJobBusyException ex = IntegrityAsyncJobBusyException.forHeavyCryptoBusy();
+    IntegrityAsyncJobBusyException ex =
+        IntegrityAsyncJobBusyException.forHeavyCryptoBusy(
+            IntegrityHeavyCryptoGate.Holder.REPORT_GET);
 
     ResponseEntity<ProblemDetail> response =
         handler.handleIntegrityAsyncJobBusyException(ex, request);
@@ -51,5 +55,10 @@ class DomainExceptionHandlerIntegrityAsyncJobBusyTest {
     assertEquals(409, body.getStatus());
     assertEquals(
         "https://ezkey.io/problems/domain/integrity-async-job-busy", body.getType().toString());
+    assertEquals("REPORT_GET", body.getProperties().get("busyHolder"));
+    IntegrityAsyncJobResponse current =
+        (IntegrityAsyncJobResponse) body.getProperties().get("currentJob");
+    assertNotNull(current);
+    assertEquals(IntegrityHeavyCryptoGate.Holder.REPORT_GET, current.busyHolder());
   }
 }

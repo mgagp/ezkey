@@ -660,8 +660,9 @@ public class AuditLogController {
   /**
    * Runs synchronous Integrity report work under the process-local heavy crypto gate.
    *
-   * <p>Uses non-blocking {@link IntegrityHeavyCryptoGate#tryEnter()} so a gated wait cannot exceed
-   * reverse-proxy / Tomcat request timeouts. Release is guaranteed in {@code finally} on exception.
+   * <p>Uses non-blocking {@link IntegrityHeavyCryptoGate#tryEnter} with {@code REPORT_GET} so a
+   * gated wait cannot exceed reverse-proxy / Tomcat request timeouts. Release is guaranteed in
+   * {@code finally} on exception.
    *
    * @param <T> report type
    * @param action verify work
@@ -669,13 +670,15 @@ public class AuditLogController {
    * @throws IntegrityAsyncJobBusyException when the gate is already held (HTTP 409)
    */
   private <T> T withHeavyCryptoGate(Supplier<T> action) {
-    if (!heavyCryptoGate.tryEnter()) {
-      throw IntegrityAsyncJobBusyException.forHeavyCryptoBusy();
+    if (!heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.REPORT_GET)) {
+      // Report the holder that already owns the gate (NIGHTLY / OPERATOR_JOB / REPORT_GET),
+      // not the REPORT_GET we failed to acquire — same contract as async job start.
+      throw IntegrityAsyncJobBusyException.forHeavyCryptoBusy(heavyCryptoGate.holder());
     }
     try {
       return action.get();
     } finally {
-      heavyCryptoGate.exit();
+      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.REPORT_GET);
     }
   }
 

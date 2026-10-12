@@ -134,7 +134,12 @@ class AuditLogControllerRetroactiveValidationTest {
             2,
             1,
             1,
-            RetroactiveIntegrityValidationTriggerSource.OPERATOR);
+            RetroactiveIntegrityValidationTriggerSource.OPERATOR,
+            10,
+            8,
+            1,
+            1,
+            1);
     when(retroactiveIntegrityValidationService.runValidation(
             eq(FROM), eq(TO), any(RetroactiveIntegrityValidationOptions.class)))
         .thenReturn(serviceResult);
@@ -174,7 +179,7 @@ class AuditLogControllerRetroactiveValidationTest {
             FROM,
             toExclusive,
             "scope",
-            true,
+            false,
             null,
             true,
             false,
@@ -183,7 +188,12 @@ class AuditLogControllerRetroactiveValidationTest {
             0,
             0,
             0,
-            RetroactiveIntegrityValidationTriggerSource.OPERATOR);
+            RetroactiveIntegrityValidationTriggerSource.OPERATOR,
+            0,
+            0,
+            0,
+            0,
+            0);
     when(retroactiveIntegrityValidationService.runValidation(
             eq(FROM), eq(toExclusive), any(RetroactiveIntegrityValidationOptions.class)))
         .thenReturn(serviceResult);
@@ -232,7 +242,7 @@ class AuditLogControllerRetroactiveValidationTest {
   @Test
   @DisplayName("runRetroactiveIntegrityValidation throws busy when heavy crypto gate is held")
   void runRetroactiveIntegrityValidation_gateBusy_throwsBusyException() {
-    assertTrue(heavyCryptoGate.tryEnter());
+    assertTrue(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB));
     try {
       IntegrityAsyncJobBusyException ex =
           assertThrows(
@@ -244,7 +254,7 @@ class AuditLogControllerRetroactiveValidationTest {
       verify(retroactiveIntegrityValidationService, never())
           .runValidation(eq(FROM), eq(TO), any(RetroactiveIntegrityValidationOptions.class));
     } finally {
-      heavyCryptoGate.exit();
+      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB);
     }
     assertFalse(heavyCryptoGate.isBusy());
   }
