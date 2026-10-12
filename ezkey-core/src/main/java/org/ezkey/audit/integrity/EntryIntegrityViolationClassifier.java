@@ -172,6 +172,23 @@ public class EntryIntegrityViolationClassifier {
    */
   public ViolationCollection collectRangeViolations(
       AuditLogRepository auditLogRepository, OffsetDateTime from, OffsetDateTime to) {
+    return collectRangeViolations(auditLogRepository, from, to, null);
+  }
+
+  /**
+   * Scans a date range and splits HMAC violations into reporting vs alert-eligible lists.
+   *
+   * @param auditLogRepository audit log access
+   * @param from inclusive window start
+   * @param to exclusive window end
+   * @param onChunkHeartbeat optional callback after each page batch (async job TTL heartbeat)
+   * @return reporting violations (all HMAC KO) and alert-eligible subset
+   */
+  public ViolationCollection collectRangeViolations(
+      AuditLogRepository auditLogRepository,
+      OffsetDateTime from,
+      OffsetDateTime to,
+      Runnable onChunkHeartbeat) {
     List<EntryIntegrityViolation> reporting = new ArrayList<>();
     List<EntryIntegrityViolation> alertEligible = new ArrayList<>();
     int page = 0;
@@ -192,6 +209,9 @@ public class EntryIntegrityViolationClassifier {
             alertEligible.add(classification.get().violation());
           }
         }
+      }
+      if (onChunkHeartbeat != null) {
+        onChunkHeartbeat.run();
       }
       hasMore = batch.hasNext();
       page++;
