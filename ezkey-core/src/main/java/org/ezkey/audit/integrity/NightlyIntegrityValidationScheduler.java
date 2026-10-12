@@ -33,6 +33,11 @@ import org.springframework.stereotype.Component;
  * {@link ScheduledJobLastRunService#recordFailure} (no sleep on the scheduling thread).
  * Non-blocking retry + skip audit are tracked in GitHub #745.
  *
+ * <p>After a successful {@code validateWindow}, inserts a terminal SUCCEEDED nightly row into
+ * {@code ezkey_integrity_async_job} (OQ4 A′, Integrity cut 3) when the Admin async-job bean is
+ * present. Skipped HMAC-inactive runs leave no row. Insert failure is WARN-only (registry stays
+ * SUCCESS).
+ *
  * @since 2026
  */
 @Component
@@ -114,11 +119,21 @@ public class NightlyIntegrityValidationScheduler {
       if (result.scope() != null) {
         scope = result.scope();
       }
+      // Terminal row after validateWindow (own REQUIRES_NEW); never markSucceeded (double-audit).
+      if (asyncJobs != null) {
+        asyncJobs.tryInsertNightlyTerminalSucceeded(result);
+      }
       jobLastRunService.recordSuccess(ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope);
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Nightly integrity validation batch failed: {}", e.getMessage(), e);
+      String simpleName = e.getClass().getSimpleName();
+      if (asyncJobs != null) {
+        OffsetDateTime windowStart = windowEnd.minusHours(nightlyProperties.getWindowHours());
+        asyncJobs.tryInsertNightlyTerminalFailed(windowStart, windowEnd, simpleName);
+      }
+      // #741: persist simple name only in the dashboard last-run registry.
       jobLastRunService.recordFailure(
-          ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope, e.getMessage());
+          ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope, simpleName);
     } finally {
       heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.NIGHTLY);
     }
