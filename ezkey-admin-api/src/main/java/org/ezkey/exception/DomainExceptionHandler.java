@@ -341,9 +341,13 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
             request);
     ProblemDetail problem = response.getBody();
     if (problem != null && ex.getCurrentJob() != null) {
-      IntegrityAsyncJobResponse current = IntegrityAsyncJobResponse.from(ex.getCurrentJob());
+      IntegrityAsyncJobResponse current =
+          IntegrityAsyncJobResponse.from(ex.getCurrentJob(), ex.getBusyHolder());
       problem.setProperty("currentJob", current);
       problem.setProperty("resumeOneLiner", current.resumeOneLiner());
+      if (ex.getBusyHolder() != null) {
+        problem.setProperty("busyHolder", ex.getBusyHolder().name());
+      }
     }
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .header(HttpHeaders.RETRY_AFTER, INTEGRITY_BUSY_RETRY_AFTER_SECONDS)

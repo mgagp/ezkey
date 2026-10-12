@@ -29,6 +29,7 @@ import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
 import org.ezkey.audit.integrity.IntegrityWindowCapProperties;
 import org.ezkey.audit.integrity.NightlyIntegrityProperties;
+import org.ezkey.audit.integrity.NightlyIntegrityShedLockProbe;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationOptions;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult;
@@ -81,6 +82,7 @@ public class IntegrityAsyncJobService {
   private final RetroactiveIntegrityValidationService retroactiveIntegrityValidationService;
   private final NightlyIntegrityProperties nightlyIntegrityProperties;
   private final IntegrityWindowCapProperties windowCapProperties;
+  private final NightlyIntegrityShedLockProbe nightlyShedLockProbe;
   private final AuditLogService auditLogService;
   private final ThreadPoolTaskExecutor integrityAsyncJobExecutor;
 
@@ -95,6 +97,7 @@ public class IntegrityAsyncJobService {
    * @param retroactiveIntegrityValidationService detective validation
    * @param nightlyIntegrityProperties nightly enable flag (fail-closed for RUN_VALIDATION)
    * @param windowCapProperties async days-based window cap for VERIFY_* starts
+   * @param nightlyShedLockProbe cross-replica nightly ShedLock probe
    * @param auditLogService audit emission
    * @param integrityAsyncJobExecutor single-thread worker pool
    */
@@ -107,6 +110,7 @@ public class IntegrityAsyncJobService {
       RetroactiveIntegrityValidationService retroactiveIntegrityValidationService,
       NightlyIntegrityProperties nightlyIntegrityProperties,
       IntegrityWindowCapProperties windowCapProperties,
+      NightlyIntegrityShedLockProbe nightlyShedLockProbe,
       AuditLogService auditLogService,
       @Qualifier("integrityAsyncJobExecutor") ThreadPoolTaskExecutor integrityAsyncJobExecutor) {
     this.jobRepository = jobRepository;
@@ -117,6 +121,7 @@ public class IntegrityAsyncJobService {
     this.retroactiveIntegrityValidationService = retroactiveIntegrityValidationService;
     this.nightlyIntegrityProperties = nightlyIntegrityProperties;
     this.windowCapProperties = windowCapProperties;
+    this.nightlyShedLockProbe = nightlyShedLockProbe;
     this.auditLogService = auditLogService;
     this.integrityAsyncJobExecutor = integrityAsyncJobExecutor;
   }
@@ -184,7 +189,7 @@ public class IntegrityAsyncJobService {
               + resumeLine(escapeSticky.get()));
     }
     if (heavyCryptoGate.isBusy()) {
-      throw IntegrityAsyncJobBusyException.forHeavyCryptoBusy();
+      throw IntegrityAsyncJobBusyException.forHeavyCryptoBusy(heavyCryptoGate.holder());
     }
 
     if (request.type() == IntegrityAsyncJobType.RUN_VALIDATION) {
@@ -254,8 +259,9 @@ public class IntegrityAsyncJobService {
   }
 
   /**
-   * Returns the job most relevant for the Integrity banner: RUNNING (after TTL), else latest
-   * non-abandoned <em>operator</em> terminal, else empty. Nightly rows are excluded.
+   * Returns the job most relevant for the Integrity banner: RUNNING (after TTL), else synthetic
+   * RUNNING when ShedLock holds nightly, else latest non-abandoned <em>operator</em> terminal, else
+   * empty. Persisted nightly rows are excluded from the operator slot.
    *
    * @return current job when present
    */
@@ -266,9 +272,44 @@ public class IntegrityAsyncJobService {
         jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING);
     if (running.isPresent()) {
-      return Optional.of(IntegrityAsyncJobResponse.from(running.get()));
+      // OPERATOR_JOB: always the real row (avoids end-of-job synthetic flicker).
+      return Optional.of(
+          IntegrityAsyncJobResponse.from(
+              running.get(), IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB));
     }
-    return jobRepository.findLatestActiveOperatorJob().map(IntegrityAsyncJobResponse::from);
+    if (nightlyShedLockProbe.isNightlyLockActive()) {
+      return Optional.of(syntheticNightlyBusyResponse());
+    }
+    IntegrityHeavyCryptoGate.Holder localHolder = heavyCryptoGate.holder();
+    // REPORT_GET: no synthetic; surface via 409 on sync GETs. Still attach busyHolder when present.
+    return jobRepository
+        .findLatestActiveOperatorJob()
+        .map(job -> IntegrityAsyncJobResponse.from(job, localHolder));
+  }
+
+  /**
+   * Latest verdict-bearing job (operator or nightly) for the Integrity micro-dashboard.
+   *
+   * @return verdict row when present
+   */
+  @Transactional(readOnly = true)
+  public Optional<IntegrityAsyncJobResponse> getLastVerdict() {
+    return jobRepository.findLatestVerdict().map(IntegrityAsyncJobResponse::from);
+  }
+
+  private static IntegrityAsyncJobResponse syntheticNightlyBusyResponse() {
+    IntegrityAsyncJob synthetic = new IntegrityAsyncJob();
+    synthetic.setJobId(UUID.fromString("00000000-0000-0000-0000-000000000000"));
+    synthetic.setJobType(IntegrityAsyncJobType.RUN_VALIDATION);
+    synthetic.setStatus(IntegrityAsyncJobStatus.RUNNING);
+    synthetic.setTrigger(IntegrityAsyncJobTrigger.NIGHTLY);
+    synthetic.setStartedByAdminId(null);
+    synthetic.setStartedByUsername("system");
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    synthetic.setStartedAt(now);
+    synthetic.setHeartbeatAt(now);
+    synthetic.setResultSummary("Nightly integrity validation in progress");
+    return IntegrityAsyncJobResponse.from(synthetic, IntegrityHeavyCryptoGate.Holder.NIGHTLY);
   }
 
   /**

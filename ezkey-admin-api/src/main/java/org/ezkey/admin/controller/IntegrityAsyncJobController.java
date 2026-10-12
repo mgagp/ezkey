@@ -115,6 +115,10 @@ public class IntegrityAsyncJobController {
   /**
    * Returns the current Integrity async job for the banner (RUNNING or latest non-abandoned).
    *
+   * <p>Additive {@code busyHolder}: when ShedLock holds nightly and no operator RUNNING job exists,
+   * returns a synthetic RUNNING job with {@code busyHolder=NIGHTLY}. Operator RUNNING always
+   * returns the real row.
+   *
    * @return 200 with job, or 204 when idle / never
    */
   @PreAuthorize("hasRole('GLOBAL_ADMIN')")
@@ -123,7 +127,9 @@ public class IntegrityAsyncJobController {
       summary = "Get current Integrity async job",
       description =
           "Any Global Admin may read the current slot status and last result. Applies TTL expiry"
-              + " for stale RUNNING heartbeats. Returns 204 when idle.")
+              + " for stale RUNNING heartbeats. When the nightly ShedLock is active and the"
+              + " operator slot is idle, returns a synthetic RUNNING job with busyHolder=NIGHTLY."
+              + " Returns 204 when idle.")
   @ApiResponses(
       value = {
         @ApiResponse(
@@ -137,6 +143,40 @@ public class IntegrityAsyncJobController {
   public ResponseEntity<IntegrityAsyncJobResponse> getCurrent() {
     return integrityAsyncJobService
         .getCurrent()
+        .map(ResponseEntity::ok)
+        .orElseGet(() -> ResponseEntity.noContent().build());
+  }
+
+  /**
+   * Returns the latest verdict-bearing Integrity job (operator or nightly).
+   *
+   * <p>Verdict-bearing = SUCCEEDED ∧ type ∈ {VERIFY_CHAIN_RANGE, RUN_VALIDATION} ∧ chainStatus
+   * present and not NOT_VERIFIED. Global Admin only. Age is computed client-side from {@code
+   * finishedAt}.
+   *
+   * @return 200 with verdict, or 204 when none
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @GetMapping("/last-verdict")
+  @Operation(
+      summary = "Get last Integrity chain verdict",
+      description =
+          "Latest SUCCEEDED VERIFY_CHAIN_RANGE or RUN_VALIDATION job with a verified chainStatus"
+              + " (not NOT_VERIFIED), including nightly terminal rows. Returns 204 when none."
+              + " Global Admin only.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Latest verdict-bearing job",
+            content = @Content(schema = @Schema(implementation = IntegrityAsyncJobResponse.class))),
+        @ApiResponse(responseCode = "204", description = "No verdict yet"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated"),
+        @ApiResponse(responseCode = "403", description = "Not a Global Admin")
+      })
+  public ResponseEntity<IntegrityAsyncJobResponse> getLastVerdict() {
+    return integrityAsyncJobService
+        .getLastVerdict()
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.noContent().build());
   }
