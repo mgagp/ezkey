@@ -10,6 +10,7 @@
 
 package org.ezkey.audit.integrity;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -42,11 +43,15 @@ public class IntegrityWindowCapProperties {
   /** Default maximum window length in calendar days (DST-tolerant Instant span). */
   public static final int DEFAULT_MAX_WINDOW_DAYS = 92;
 
+  /** Upper bind limit: one leap year of calendar days (no multi-year operator window). */
+  public static final int MAX_MAX_WINDOW_DAYS = 366;
+
   /**
    * Maximum {@code [from, to)} length in calendar days. Effective Instant cap is {@link
    * #maxWindow()}. Primitive {@code int} so an empty env value cannot remove the bound.
    */
   @Min(1)
+  @Max(MAX_MAX_WINDOW_DAYS)
   private int maxWindowDays = DEFAULT_MAX_WINDOW_DAYS;
 
   /**
@@ -68,8 +73,9 @@ public class IntegrityWindowCapProperties {
   }
 
   /**
-   * Effective Instant-length cap: {@code days × 24 h + 1 h} so a calendar-day span across a
-   * fall-back DST transition stays within the configured days bound.
+   * Effective Instant-length cap: {@code days × 24 h + 1 h} so the Admin UI lookback Instant span
+   * (inclusive calendar {@code from}/{@code to} with exclusive-end conversion) never exceeds the
+   * configured days bound across a fall-back DST transition (#743).
    *
    * @return maximum allowed {@code Duration.between(from, to)}
    */

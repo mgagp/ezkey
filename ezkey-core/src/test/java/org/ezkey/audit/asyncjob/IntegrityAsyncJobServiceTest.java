@@ -118,6 +118,35 @@ class IntegrityAsyncJobServiceTest {
   }
 
   @Test
+  void start_verifyChainAtExactCap_accepted() {
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.empty());
+    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(heavyCryptoGate.isBusy()).thenReturn(false);
+    AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
+    when(jobRepository.saveAndFlush(any()))
+        .thenAnswer(
+            inv -> {
+              IntegrityAsyncJob job = inv.getArgument(0);
+              saved.set(job);
+              return job;
+            });
+
+    OffsetDateTime from = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+    IntegrityAsyncJobStartRequest request =
+        new IntegrityAsyncJobStartRequest(
+            IntegrityAsyncJobType.VERIFY_CHAIN_RANGE,
+            from,
+            from.plus(windowCapProperties.maxWindow()),
+            null);
+
+    var accepted = service.start(request, 1, "admin.docker");
+    assertEquals(saved.get().getJobId(), accepted.jobId());
+    assertEquals(IntegrityAsyncJobStatus.RUNNING, saved.get().getStatus());
+  }
+
+  @Test
   void start_verifyChainOverCap_throwsIntegrityWindowOverCapException() {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))

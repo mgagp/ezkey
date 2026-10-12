@@ -23,8 +23,9 @@ export const INTEGRITY_WINDOW_OVER_CAP_TYPE =
   'https://ezkey.io/problems/domain/integrity-window-over-cap';
 
 /**
- * Shared with {@code IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS}:
- * 8 calendar days, DST transition included (8×24 + 1).
+ * Client soft cap for the Admin UI default 7-day lookback Instant span: 8 calendar
+ * days, DST transition included (8×24 + 1). Server hard cap is
+ * {@code ezkey.audit.integrity.max-window-days} (default 92).
  */
 export const INTEGRITY_REPORT_MAX_WINDOW_HOURS = 193;
 

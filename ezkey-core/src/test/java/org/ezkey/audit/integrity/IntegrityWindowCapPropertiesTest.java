@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -61,7 +62,7 @@ class IntegrityWindowCapPropertiesTest {
   void binding_defaultNinetyTwo() {
     contextRunner.run(
         context -> {
-          assertEquals(null, context.getStartupFailure());
+          assertNull(context.getStartupFailure());
           IntegrityWindowCapProperties bound = context.getBean(IntegrityWindowCapProperties.class);
           assertEquals(92, bound.getMaxWindowDays());
         });
@@ -77,6 +78,46 @@ class IntegrityWindowCapPropertiesTest {
               Throwable failure = context.getStartupFailure();
               assertNotNull(failure, "zero must fail startup");
               assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
+            });
+  }
+
+  @Test
+  @DisplayName("max-window-days= (empty) fails startup — cannot remove the cap")
+  void binding_emptyRejected() {
+    contextRunner
+        .withPropertyValues("ezkey.audit.integrity.max-window-days=")
+        .run(
+            context -> {
+              Throwable failure = context.getStartupFailure();
+              assertNotNull(failure, "empty binding must fail startup");
+              assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
+            });
+  }
+
+  @Test
+  @DisplayName("max-window-days=367 is rejected at bind time (@Max 366)")
+  void binding_aboveMaxRejected() {
+    contextRunner
+        .withPropertyValues("ezkey.audit.integrity.max-window-days=367")
+        .run(
+            context -> {
+              Throwable failure = context.getStartupFailure();
+              assertNotNull(failure, "367 must fail startup");
+              assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
+            });
+  }
+
+  @Test
+  @DisplayName("max-window-days=366 is accepted at bind time")
+  void binding_maxAccepted() {
+    contextRunner
+        .withPropertyValues("ezkey.audit.integrity.max-window-days=366")
+        .run(
+            context -> {
+              assertNull(context.getStartupFailure());
+              IntegrityWindowCapProperties bound =
+                  context.getBean(IntegrityWindowCapProperties.class);
+              assertEquals(366, bound.getMaxWindowDays());
             });
   }
 
@@ -140,48 +181,71 @@ class IntegrityWindowCapPropertiesTest {
   }
 
   @Test
-  @DisplayName("legacy operator-max-window-hours as relaxed env var fails startup")
-  void legacyRetroactiveKeyAsRelaxedEnv_failsStartup() {
-    StandardEnvironment env = new StandardEnvironment();
-    env.getPropertySources()
-        .addFirst(
-            new SystemEnvironmentPropertySource(
-                "testEnv",
-                Map.of("EZKEY_AUDIT_INTEGRITY_RETROACTIVE_OPERATORMAXWINDOWHOURS", "24")));
-
-    IllegalStateException ex =
-        assertThrows(
-            IllegalStateException.class, () -> new IntegrityWindowCapLegacyPropertyGuard(env));
-    assertTrue(
-        ex.getMessage()
-            .contains(
-                IntegrityWindowCapLegacyPropertyGuard
-                    .LEGACY_RETROACTIVE_OPERATOR_MAX_WINDOW_HOURS));
-    assertTrue(
-        ex.getMessage()
-            .contains(IntegrityWindowCapLegacyPropertyGuard.REPLACEMENT_MAX_WINDOW_DAYS));
-    assertTrue(!ex.getMessage().contains("24"));
+  @DisplayName("legacy operator-max-window-hours as compact env var fails startup")
+  void legacyRetroactiveKeyAsCompactEnv_failsStartup() {
+    assertLegacyEnvFails(
+        "EZKEY_AUDIT_INTEGRITY_RETROACTIVE_OPERATORMAXWINDOWHOURS",
+        "24",
+        IntegrityWindowCapLegacyPropertyGuard.LEGACY_RETROACTIVE_OPERATOR_MAX_WINDOW_HOURS);
   }
 
   @Test
-  @DisplayName("legacy verify-report key as EZKEY_…VERIFYREPORT_MAXWINDOWHOURS fails startup")
-  void legacyVerifyReportKeyAsRelaxedEnv_failsStartup() {
+  @DisplayName("legacy verify-report key as compact EZKEY_…VERIFYREPORT_MAXWINDOWHOURS fails")
+  void legacyVerifyReportKeyAsCompactEnv_failsStartup() {
+    assertLegacyEnvFails(
+        "EZKEY_AUDIT_INTEGRITY_VERIFYREPORT_MAXWINDOWHOURS",
+        "96",
+        IntegrityWindowCapLegacyPropertyGuard.LEGACY_VERIFY_REPORT_MAX_WINDOW_HOURS);
+  }
+
+  @Test
+  @DisplayName("legacy verify-report key as underscore env var fails startup")
+  void legacyVerifyReportKeyAsUnderscoreEnv_failsStartup() {
+    assertLegacyEnvFails(
+        "EZKEY_AUDIT_INTEGRITY_VERIFY_REPORT_MAX_WINDOW_HOURS",
+        "72",
+        IntegrityWindowCapLegacyPropertyGuard.LEGACY_VERIFY_REPORT_MAX_WINDOW_HOURS);
+  }
+
+  @Test
+  @DisplayName("legacy operator-max-window-hours as underscore env var fails startup")
+  void legacyRetroactiveKeyAsUnderscoreEnv_failsStartup() {
+    assertLegacyEnvFails(
+        "EZKEY_AUDIT_INTEGRITY_RETROACTIVE_OPERATOR_MAX_WINDOW_HOURS",
+        "36",
+        IntegrityWindowCapLegacyPropertyGuard.LEGACY_RETROACTIVE_OPERATOR_MAX_WINDOW_HOURS);
+  }
+
+  @Test
+  @DisplayName("unrelated similar key (nightly.window-hours) does not trip the legacy guard")
+  void unrelatedSimilarKey_doesNotFailStartup() {
     StandardEnvironment env = new StandardEnvironment();
     env.getPropertySources()
         .addFirst(
             new SystemEnvironmentPropertySource(
-                "testEnv", Map.of("EZKEY_AUDIT_INTEGRITY_VERIFYREPORT_MAXWINDOWHOURS", "96")));
+                "testEnv", Map.of("EZKEY_AUDIT_INTEGRITY_NIGHTLY_WINDOW_HOURS", "24")));
+
+    assertDoesNotThrow(() -> new IntegrityWindowCapLegacyPropertyGuard(env));
+
+    contextRunner
+        .withPropertyValues("ezkey.audit.integrity.nightly.window-hours=24")
+        .run(context -> assertNull(context.getStartupFailure()));
+  }
+
+  private static void assertLegacyEnvFails(
+      String envKey, String value, String expectedCanonicalKey) {
+    StandardEnvironment env = new StandardEnvironment();
+    env.getPropertySources()
+        .addFirst(new SystemEnvironmentPropertySource("testEnv", Map.of(envKey, value)));
 
     IllegalStateException ex =
         assertThrows(
             IllegalStateException.class, () -> new IntegrityWindowCapLegacyPropertyGuard(env));
-    assertTrue(
-        ex.getMessage()
-            .contains(IntegrityWindowCapLegacyPropertyGuard.LEGACY_VERIFY_REPORT_MAX_WINDOW_HOURS));
+    assertTrue(ex.getMessage().contains(expectedCanonicalKey));
     assertTrue(
         ex.getMessage()
             .contains(IntegrityWindowCapLegacyPropertyGuard.REPLACEMENT_MAX_WINDOW_DAYS));
-    assertTrue(!ex.getMessage().contains("96"));
+    assertTrue(!ex.getMessage().contains(value));
   }
 
   private static String rootMessage(Throwable failure) {

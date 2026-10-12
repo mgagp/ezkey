@@ -191,6 +191,61 @@ class AuditLogControllerVerifyReportGateTest {
   }
 
   @Test
+  @DisplayName("checkChainIntegrity accepts exactly 92×24h+1h")
+  void checkChainIntegrity_exactCapBoundary_accepted() {
+    OffsetDateTime toExclusive = FROM.plus(windowCapProperties.maxWindow());
+    AuditChainVerificationService.ChainVerificationReport report =
+        new AuditChainVerificationService.ChainVerificationReport(
+            0,
+            0,
+            0,
+            0,
+            0,
+            List.of(),
+            List.of(),
+            List.of(),
+            null,
+            null,
+            FROM,
+            toExclusive,
+            true,
+            true,
+            "OK");
+    when(auditChainVerificationService.verifyChain(eq(FROM), eq(toExclusive))).thenReturn(report);
+
+    ResponseEntity<AuditChainVerificationService.ChainVerificationReport> response =
+        controller.checkChainIntegrity(FROM, toExclusive);
+
+    assertEquals(200, response.getStatusCode().value());
+    verify(auditChainVerificationService).verifyChain(eq(FROM), eq(toExclusive));
+    assertFalse(heavyCryptoGate.isBusy());
+  }
+
+  @Test
+  @DisplayName("checkIntegrity accepts exactly 92×24h+1h")
+  void checkIntegrity_exactCapBoundary_accepted() {
+    OffsetDateTime toExclusive = FROM.plus(windowCapProperties.maxWindow());
+    AuditIntegrityService.IntegrityReport report =
+        new AuditIntegrityService.IntegrityReport(
+            1,
+            1,
+            0,
+            0,
+            true,
+            "OK",
+            IntegrityViolationCappedList.of(
+                List.of(), IntegrityViolationCappedList.ALERT_ENTRY_CAP));
+    when(auditIntegrityService.verifyRange(eq(FROM), eq(toExclusive))).thenReturn(report);
+
+    ResponseEntity<AuditIntegrityService.IntegrityReport> response =
+        controller.checkIntegrity(FROM, toExclusive);
+
+    assertEquals(200, response.getStatusCode().value());
+    verify(auditIntegrityService).verifyRange(eq(FROM), eq(toExclusive));
+    assertFalse(heavyCryptoGate.isBusy());
+  }
+
+  @Test
   @DisplayName("checkChainIntegrity rejects windows above the 92-day default cap")
   void checkChainIntegrity_rangeOverCap_throwsIntegrityWindowOverCapException() {
     OffsetDateTime overCapTo = FROM.plus(windowCapProperties.maxWindow()).plusSeconds(1);

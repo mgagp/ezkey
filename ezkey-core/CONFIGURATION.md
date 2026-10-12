@@ -295,7 +295,7 @@ cannot exceed reverse-proxy / Tomcat timeouts. Nightly scheduled window remains
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.audit.integrity.max-window-days` | `int` | `92` | optionnel | Hard-reject (HTTP 400, type `integrity-window-over-cap`, extension `maxWindowDays`; no silent truncate) when `[from, to)` exceeds **`days × 24 h + 1 h`** (calendar days with DST fall-back tolerance). Primitive `int` + `@Min(1)` — there is **no opt-out**; empty/`0` fails startup. |
+| `ezkey.audit.integrity.max-window-days` | `int` | `92` | optionnel | Hard-reject (HTTP 400, type `integrity-window-over-cap`, extension `maxWindowDays`; no silent truncate) when `[from, to)` exceeds **`days × 24 h + 1 h`** (calendar days with DST fall-back tolerance). Primitive `int` + `@Min(1)` + `@Max(366)` — there is **no opt-out**; empty/`0`/`367+` fails startup. |
 
 **Upgrade note (old → new):**
 
@@ -304,10 +304,17 @@ cannot exceed reverse-proxy / Tomcat timeouts. Nightly scheduled window remains
 | `ezkey.audit.integrity.verify-report.max-window-hours` | `ezkey.audit.integrity.max-window-days` |
 | `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `ezkey.audit.integrity.max-window-days` |
 
-Relaxed env forms of the removed keys (e.g. `EZKEY_AUDIT_INTEGRITY_VERIFYREPORT_MAXWINDOWHOURS`,
+**[live] host pre-check (2026-10-12, ezkey.online):** the community host sets **neither** old key
+(no property, no relaxed env form, nothing in `.env` / compose / mounts / `app.jar`). The Oct 5 tip
+currently deployed **predates #743 entirely**, so the next install goes straight to
+`max-window-days` with **nothing to migrate**.
+
+Relaxed env forms of the removed keys (compact and underscore — e.g.
+`EZKEY_AUDIT_INTEGRITY_VERIFYREPORT_MAXWINDOWHOURS`,
+`EZKEY_AUDIT_INTEGRITY_VERIFY_REPORT_MAX_WINDOW_HOURS`,
 `EZKEY_AUDIT_INTEGRITY_RETROACTIVE_OPERATORMAXWINDOWHOURS`) also fail startup. Startup messages name
 the replacement key and never echo values. Effective Instant length for default `92` is **2209 h**
-(`92×24+1`).
+(`92×24+1`). Bind range is `@Min(1)` … `@Max(366)`.
 
 ---
 
