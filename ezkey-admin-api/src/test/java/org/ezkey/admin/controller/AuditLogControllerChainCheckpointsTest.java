@@ -245,7 +245,8 @@ class AuditLogControllerChainCheckpointsTest {
   @DisplayName("getIntegrityBootstrap returns 200 and delegates to bootstrap service")
   void getIntegrityBootstrap_returnsPayload() {
     org.ezkey.admin.dto.response.IntegrityBootstrapResponseDto dto =
-        new org.ezkey.admin.dto.response.IntegrityBootstrapResponseDto("base", false, false);
+        new org.ezkey.admin.dto.response.IntegrityBootstrapResponseDto(
+            "base", false, false, 92, 24);
     when(integrityBootstrapService.build()).thenReturn(dto);
 
     ResponseEntity<org.ezkey.admin.dto.response.IntegrityBootstrapResponseDto> response =

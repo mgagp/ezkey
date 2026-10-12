@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import org.ezkey.admin.dto.response.IntegrityBootstrapResponseDto;
 import org.ezkey.audit.integrity.AuditChainProperties;
+import org.ezkey.audit.integrity.IntegrityWindowCapProperties;
 import org.ezkey.audit.integrity.NightlyIntegrityProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,6 +36,7 @@ class IntegrityBootstrapServiceTest {
 
   private AuditChainProperties auditChainProperties;
   private NightlyIntegrityProperties nightlyIntegrityProperties;
+  private IntegrityWindowCapProperties windowCapProperties;
   private IntegrityBootstrapService service;
 
   @BeforeEach
@@ -43,9 +45,14 @@ class IntegrityBootstrapServiceTest {
     auditChainProperties.setEnabled(true);
     nightlyIntegrityProperties = new NightlyIntegrityProperties();
     nightlyIntegrityProperties.setEnabled(true);
+    nightlyIntegrityProperties.setWindowHours(24);
+    windowCapProperties = new IntegrityWindowCapProperties();
     service =
         new IntegrityBootstrapService(
-            runtimeProfileResolver, auditChainProperties, nightlyIntegrityProperties);
+            runtimeProfileResolver,
+            auditChainProperties,
+            nightlyIntegrityProperties,
+            windowCapProperties);
   }
 
   @Test
@@ -59,6 +66,8 @@ class IntegrityBootstrapServiceTest {
     assertThat(dto.runtimeProfile()).isEqualTo(EzkeyRuntimeProfileResolver.PROFILE_INTEGRITY);
     assertThat(dto.chainCheckpointsEnabled()).isTrue();
     assertThat(dto.nightlyValidationEnabled()).isTrue();
+    assertThat(dto.maxWindowDays()).isEqualTo(92);
+    assertThat(dto.nightlyWindowHours()).isEqualTo(24);
   }
 
   @Test
@@ -73,6 +82,8 @@ class IntegrityBootstrapServiceTest {
     assertThat(dto.runtimeProfile()).isEqualTo(EzkeyRuntimeProfileResolver.PROFILE_BASE);
     assertThat(dto.chainCheckpointsEnabled()).isFalse();
     assertThat(dto.nightlyValidationEnabled()).isFalse();
+    assertThat(dto.maxWindowDays()).isEqualTo(92);
+    assertThat(dto.nightlyWindowHours()).isEqualTo(24);
   }
 
   @Test
