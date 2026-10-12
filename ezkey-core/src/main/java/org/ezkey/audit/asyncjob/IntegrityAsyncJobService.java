@@ -413,7 +413,12 @@ public class IntegrityAsyncJobService {
             + report.invalidCheckpoints()
             + ", gaps="
             + report.undeclaredGaps().size();
-    stateService.markSucceeded(job.getJobId(), summary, report.intact(), null);
+    stateService.markSucceeded(
+        job.getJobId(),
+        summary,
+        report.intact(),
+        null,
+        IntegrityChainVerdictFields.fromChainReport(report));
   }
 
   private void completeValidation(IntegrityAsyncJob job, Runnable heartbeat) {
@@ -426,7 +431,11 @@ public class IntegrityAsyncJobService {
             heartbeat);
     if (result.skipped()) {
       stateService.markSucceeded(
-          job.getJobId(), "Validation skipped: " + result.skipReason(), true, null);
+          job.getJobId(),
+          "Validation skipped: " + result.skipReason(),
+          true,
+          null,
+          IntegrityChainVerdictFields.notVerified());
       return;
     }
     String summary =
@@ -437,7 +446,16 @@ public class IntegrityAsyncJobService {
             + ", chainViolations="
             + result.chainViolationCount()
             + (result.alertRaised() ? ", alertId=" + result.alertId() : "");
-    stateService.markSucceeded(job.getJobId(), summary, result.intact(), result.alertId());
+    IntegrityChainVerdictFields verdict =
+        new IntegrityChainVerdictFields(
+            IntegrityChainVerdictFields.mapStatus(result.chainStatus()),
+            result.totalCheckpoints(),
+            result.validCheckpoints(),
+            result.invalidCheckpoints(),
+            result.archivedCheckpoints(),
+            result.undeclaredGaps(),
+            result.entryHmacViolationCount());
+    stateService.markSucceeded(job.getJobId(), summary, result.intact(), result.alertId(), verdict);
   }
 
   private void emitStartedAudit(Integer adminId, IntegrityAsyncJob job) {
