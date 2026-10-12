@@ -671,7 +671,8 @@ public class AuditLogController {
    */
   private <T> T withHeavyCryptoGate(Supplier<T> action) {
     if (!heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.REPORT_GET)) {
-      throw IntegrityAsyncJobBusyException.forHeavyCryptoBusy();
+      throw IntegrityAsyncJobBusyException.forHeavyCryptoBusy(
+          IntegrityHeavyCryptoGate.Holder.REPORT_GET);
     }
     try {
       return action.get();

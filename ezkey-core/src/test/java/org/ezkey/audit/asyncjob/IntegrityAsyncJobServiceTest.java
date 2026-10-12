@@ -41,6 +41,7 @@ import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
 import org.ezkey.audit.integrity.NightlyIntegrityProperties;
+import org.ezkey.audit.integrity.NightlyIntegrityShedLockProbe;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,6 +70,7 @@ class IntegrityAsyncJobServiceTest {
   @Mock private AuditChainVerificationService chainVerificationService;
   @Mock private RetroactiveIntegrityValidationService retroactiveIntegrityValidationService;
   @Mock private NightlyIntegrityProperties nightlyIntegrityProperties;
+  @Mock private NightlyIntegrityShedLockProbe nightlyShedLockProbe;
   @Mock private AuditLogService auditLogService;
 
   private final org.ezkey.audit.integrity.IntegrityWindowCapProperties windowCapProperties =
@@ -95,6 +97,7 @@ class IntegrityAsyncJobServiceTest {
             retroactiveIntegrityValidationService,
             nightlyIntegrityProperties,
             windowCapProperties,
+            nightlyShedLockProbe,
             auditLogService,
             executor);
   }
@@ -421,8 +424,68 @@ class IntegrityAsyncJobServiceTest {
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.of(runningJob()));
 
-    assertTrue(service.getCurrent().isPresent());
+    var current = service.getCurrent();
+    assertTrue(current.isPresent());
+    assertEquals(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB, current.get().busyHolder());
     verify(stateService).expireStaleRunningIfNeeded();
+  }
+
+  @Test
+  void getCurrent_nightlyShedLock_returnsSyntheticWithBusyHolder() {
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.empty());
+    when(nightlyShedLockProbe.isNightlyLockActive()).thenReturn(true);
+
+    var current = service.getCurrent();
+    assertTrue(current.isPresent());
+    assertEquals(IntegrityAsyncJobStatus.RUNNING, current.get().status());
+    assertEquals(IntegrityAsyncJobTrigger.NIGHTLY, current.get().trigger());
+    assertEquals(IntegrityHeavyCryptoGate.Holder.NIGHTLY, current.get().busyHolder());
+    assertNull(current.get().startedByAdminId());
+    verify(jobRepository, never()).findLatestActiveOperatorJob();
+  }
+
+  @Test
+  void getCurrent_operatorJobHolderWithTerminalRow_returnsRealRowNotSynthetic() {
+    // Job-end race: markSucceeded committed, gate still held as OPERATOR_JOB.
+    IntegrityAsyncJob succeeded = runningJob();
+    succeeded.setStatus(IntegrityAsyncJobStatus.SUCCEEDED);
+    succeeded.setFinishedAt(OffsetDateTime.now(ZoneOffset.UTC));
+    succeeded.setChainStatus(IntegrityChainStatus.OK);
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.empty());
+    when(nightlyShedLockProbe.isNightlyLockActive()).thenReturn(false);
+    when(heavyCryptoGate.holder()).thenReturn(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB);
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.of(succeeded));
+
+    var current = service.getCurrent();
+    assertTrue(current.isPresent());
+    assertEquals(succeeded.getJobId(), current.get().jobId());
+    assertEquals(IntegrityAsyncJobStatus.SUCCEEDED, current.get().status());
+    assertEquals(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB, current.get().busyHolder());
+  }
+
+  @Test
+  void getLastVerdict_returnsVerdictBearingRow() {
+    IntegrityAsyncJob verdict = runningJob();
+    verdict.setStatus(IntegrityAsyncJobStatus.SUCCEEDED);
+    verdict.setFinishedAt(OffsetDateTime.now(ZoneOffset.UTC));
+    verdict.setChainStatus(IntegrityChainStatus.OK);
+    verdict.setTotalCheckpoints(10);
+    when(jobRepository.findLatestVerdict()).thenReturn(Optional.of(verdict));
+
+    var last = service.getLastVerdict();
+    assertTrue(last.isPresent());
+    assertEquals(verdict.getJobId(), last.get().jobId());
+    assertEquals(IntegrityChainStatus.OK, last.get().chainStatus());
+  }
+
+  @Test
+  void getLastVerdict_emptyWhenNone() {
+    when(jobRepository.findLatestVerdict()).thenReturn(Optional.empty());
+    assertTrue(service.getLastVerdict().isEmpty());
   }
 
   @Test
@@ -480,6 +543,7 @@ class IntegrityAsyncJobServiceTest {
               retroactiveIntegrityValidationService,
               nightlyIntegrityProperties,
               windowCapProperties,
+              nightlyShedLockProbe,
               auditLogService,
               discarding);
 
@@ -551,6 +615,7 @@ class IntegrityAsyncJobServiceTest {
               retroactiveIntegrityValidationService,
               nightlyIntegrityProperties,
               windowCapProperties,
+              nightlyShedLockProbe,
               auditLogService,
               sync);
 
