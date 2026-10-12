@@ -7,7 +7,7 @@
 - **Owner (intention):** Julie (UX) / Marc (product) / Patrick (backend craft)
 - **QA:** Isabelle via Walk Gate (after implementation PRs fill the walkable SHA)
 - **Measurement:** Isabelle — baseline and after-PR-1 measurements **pending** (do not invent numbers)
-- **Purpose:** Product intention lock for **Integrity cut 3** on the single `/integrity` atelier: show the last known chain verdict on open, replace the text async-job banner with Julie’s micro-dashboard, hydrate counters from the job DTO (not a sync recompute GET), and align verification windows under a single server-side `max-window-days` (default 92). **Not** cut-2 density/modes redesign, **not** checkpoint-timeline rewrite, **not** job-history purge.
+- **Purpose:** Product intention lock for **Integrity cut 3** on the single `/integrity` atelier: show the last known chain verdict on open, replace the text async-job banner with Julie’s micro-dashboard, hydrate counters from the job DTO (not a sync recompute GET), and align verification windows under server-side days caps (`max-window-days` default 92 async; `max-sync-window-days` default 8 sync — D2 amended). **Not** cut-2 density/modes redesign, **not** checkpoint-timeline rewrite, **not** job-history purge.
 - **Related:**
   - Parent IA: [`admin-ui-audit-integrity-hard-split-intention.md`](admin-ui-audit-integrity-hard-split-intention.md)
   - Job surface map: [`admin-ui-audit-integrity-job-surface-map.md`](admin-ui-audit-integrity-job-surface-map.md)
@@ -34,7 +34,7 @@
 ## Decisions (Marc, 2026-10-09) — verbatim
 
 - **D1. Page open.** The page shows the last known verdict (latest job or nightly) with its scope. It runs an automatic verification ONLY if there is no verdict less than 24 h old covering the last 24 h. Otherwise, verification is an explicit "Revérifier" action. This supersedes `admin-ui-integrity-cut2-phase-a.md:32` ("auto chain-verify on mount OK").
-- **D2. Window cap.** A single server-side property `max-window-days`, default 92, modeled on the former `operator-max-window-hours` pattern, applies to async VERIFY jobs and to `GET /chain-integrity` (P-085). **Supersedes** the provisional #743 hour keys and the shared 193 h constant — see [D2 — Window cap](#d2--window-cap) below.
+- **D2. Window cap.** Two server-side days properties (amended Christophe M1): `max-window-days` (default 92, async VERIFY / RUN_VALIDATION) and `max-sync-window-days` (default 8, sync report GETs / P-085). **Supersedes** the provisional #743 hour keys and the shared 193 h constant — see [D2 — Window cap](#d2--window-cap) below.
 - **D3. Structured counters on the job DTO** (additive OpenAPI fields): `chainStatus`, total, valid, invalid, archived, gaps. The UI hydrates from the DTO, not from the recompute GET. This is #692 option A reduced to counters (gate + provisional 193 h cap already landed in #743). `GET /chain-integrity` stays, behind the gate and the (raised) cap — job-backed report read closes the remaining #743 follow-up.
 - **D4. Micro-dashboard** (Julie's design) replaces the text banner, above the three tabs Observer / Vérifier / Remédier, which stay unchanged:
   - job state is separate from the chain verdict, and "réussi" is never used as a verdict;
@@ -123,15 +123,17 @@ Citations are file:line on current `main`. Paths for async-job / chain-verify se
 
 ### D2 — Window cap
 
-- **Cut-3 property:** `ezkey.audit.integrity.max-window-days`, default **92** (owning class `IntegrityWindowCapProperties`; effective Instant span = `days × 24 h + 1 h`). Same prefix as `AuditHmacProperties` — binds only `max-window-days` (no collision; each `@ConfigurationProperties` type binds independently).
+- **Amendment (Christophe M1 / maintainer option A, 2026-10-12):** keep **two** caps, not one. Cloudflare Free on ezkey.org / ezkey.online has a non-raisable **100 s** origin timeout (HTTP 524); a synchronous report GET over a long window can outlive the client while the busy gate stays held (409s; skipped nightly). Longer windows go through the **async job**.
+- **Cut-3 properties** (owning class `IntegrityWindowCapProperties`; Instant span = `days × 24 h + 1 h`; same prefix as `AuditHmacProperties`):
+  - `ezkey.audit.integrity.max-window-days`, default **92** — async VERIFY starts, async `RUN_VALIDATION`, operator `POST …/integrity-validation/run`.
+  - `ezkey.audit.integrity.max-sync-window-days`, default **8** — synchronous report GETs (`integrity-check`, `chain-integrity`). Preserves the #743 Instant-span floor (`8×24+1 = 193` h).
+- Startup requires `max-window-days >= max-sync-window-days` (fail-fast otherwise). Both are primitive `int`, `@Min(1)` `@Max(366)`, no opt-out.
 - **What it supersedes (landed by #743, provisional; removed in cut-3 PR 0):**
   - `IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS = 193` (8 calendar days, DST transition included);
-  - `ezkey.audit.integrity.verify-report.max-window-hours` (default 193);
-  - `ezkey.audit.integrity.retroactive.operator-max-window-hours` (default 193, same constant; also bound `RUN_VALIDATION` / operator `POST …/integrity-validation/run`).
-- **Alignment rule (PR 0):** collapse the two provisional hour keys and the 193 h constant under the single `max-window-days` property. VERIFY starts, report GETs, and `RUN_VALIDATION` share one configurable bound. Default **92 days** replaces the temporary **8-day / 193 h** floor; over-cap remains HTTP **400** `integrity-window-over-cap` with extension `maxWindowDays` (no silent truncation; no property opt-out). Startup **fails fast** if either old hour key is still set (any relaxed form). Update `CONFIGURATION.md`, `docs/AUDIT_LOG_INTEGRITY.md`, OpenAPI annotations, and Bruno in the same PR 0 change set.
-- Applies to async VERIFY job starts and to sync `GET /chain-integrity` (and keeps `RUN_VALIDATION` under the same shared bound unless a later review explicitly splits it).
-- UI date picker bounded to the same max (PR 2); **remove** hard-coded `INTEGRITY_REPORT_MAX_WINDOW_HOURS = 193` — bind the UI to config / OpenAPI-exposed max. Optional early warning in the range picker when the selection approaches the cap (#743 follow-up → PR 2).
-- After the `entryHmac` projection (PR 1), the raised cap bounds wall-clock/TTL risk more than memory.
+  - `ezkey.audit.integrity.verify-report.max-window-hours` (default 193) → sync path uses `max-sync-window-days`;
+  - `ezkey.audit.integrity.retroactive.operator-max-window-hours` (default 193) → async path uses `max-window-days`.
+- Over-cap remains HTTP **400** `integrity-window-over-cap` with extension `maxWindowDays` (the cap that was exceeded). Startup **fails fast** if either old hour key is still set (any relaxed form).
+- Admin UI soft check for sync report hydration mirrors `max-sync-window-days` via `INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS = 8` (hours = days×24+1). PR 2 may bind the picker to config / OpenAPI-exposed max.
 
 ### D3 — Structured counters on the job DTO
 

@@ -13,11 +13,12 @@ package org.ezkey.audit.exception;
 import java.io.Serial;
 
 /**
- * Thrown when a requested Integrity {@code [from, to)} window exceeds the configured maximum days
- * (report GETs, async VERIFY / RUN_VALIDATION starts, operator retroactive POST).
+ * Thrown when a requested Integrity {@code [from, to)} window exceeds the applicable configured
+ * maximum days — sync report GETs use {@code max-sync-window-days}; async VERIFY / RUN_VALIDATION
+ * starts and operator retroactive POST use {@code max-window-days}.
  *
  * <p>Map to HTTP 400 with RFC 9457 type {@link #TYPE_URI} and extension {@code maxWindowDays} in
- * the Admin API.
+ * the Admin API (value is the cap that was exceeded).
  *
  * @since 2026
  */

@@ -12,6 +12,7 @@ import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
 import {
   executeIntegrityAsyncJobReportHydration,
   INTEGRITY_ASYNC_JOB_BUSY_TYPE,
+  INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS,
   INTEGRITY_REPORT_MAX_WINDOW_HOURS,
   INTEGRITY_WINDOW_OVER_CAP_TYPE,
   isIntegrityReportHydrationBusyError,
@@ -84,6 +85,7 @@ describe('isIntegrityReportScopeOverCap', () => {
         '2026-11-04T05:00:00.000Z',
       ),
     ).toBe(false);
+    expect(INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS).toBe(8);
     expect(INTEGRITY_REPORT_MAX_WINDOW_HOURS).toBe(193);
   });
 

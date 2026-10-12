@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: IntegrityWindowCapPropertiesTest
- * Description: Days-based window cap binding and validation (Integrity cut 3 PR 0).
+ * Description: Async/sync days-based window caps and legacy-key fail-fast (Integrity cut 3 PR 0).
  */
 
 package org.ezkey.audit.integrity;
@@ -51,26 +51,29 @@ class IntegrityWindowCapPropertiesTest {
               WindowCapConfig.class, IntegrityWindowCapLegacyPropertyGuard.class);
 
   @Test
-  @DisplayName("default max-window-days is 92; effective Instant cap is 2209h")
-  void defaultIsNinetyTwoDaysWithDstSlack() {
+  @DisplayName("defaults: async 92 / 2209h; sync 8 / 193h")
+  void defaultsAsyncAndSyncCaps() {
     assertEquals(92, properties.getMaxWindowDays());
     assertEquals(Duration.ofHours(2209), properties.maxWindow());
+    assertEquals(8, properties.getMaxSyncWindowDays());
+    assertEquals(Duration.ofHours(193), properties.maxSyncWindow());
   }
 
   @Test
-  @DisplayName("binding default 92 when unset")
-  void binding_defaultNinetyTwo() {
+  @DisplayName("binding defaults when unset")
+  void binding_defaults() {
     contextRunner.run(
         context -> {
           assertNull(context.getStartupFailure());
           IntegrityWindowCapProperties bound = context.getBean(IntegrityWindowCapProperties.class);
           assertEquals(92, bound.getMaxWindowDays());
+          assertEquals(8, bound.getMaxSyncWindowDays());
         });
   }
 
   @Test
   @DisplayName("max-window-days=0 is rejected at bind time")
-  void binding_zeroRejected() {
+  void binding_asyncZeroRejected() {
     contextRunner
         .withPropertyValues("ezkey.audit.integrity.max-window-days=0")
         .run(
@@ -82,8 +85,21 @@ class IntegrityWindowCapPropertiesTest {
   }
 
   @Test
-  @DisplayName("max-window-days= (empty) fails startup — cannot remove the cap")
-  void binding_emptyRejected() {
+  @DisplayName("max-sync-window-days=0 is rejected at bind time")
+  void binding_syncZeroRejected() {
+    contextRunner
+        .withPropertyValues("ezkey.audit.integrity.max-sync-window-days=0")
+        .run(
+            context -> {
+              Throwable failure = context.getStartupFailure();
+              assertNotNull(failure, "zero must fail startup");
+              assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
+            });
+  }
+
+  @Test
+  @DisplayName("max-window-days= (empty) fails startup — cannot remove the async cap")
+  void binding_asyncEmptyRejected() {
     contextRunner
         .withPropertyValues("ezkey.audit.integrity.max-window-days=")
         .run(
@@ -95,8 +111,21 @@ class IntegrityWindowCapPropertiesTest {
   }
 
   @Test
+  @DisplayName("max-sync-window-days= (empty) fails startup — cannot remove the sync cap")
+  void binding_syncEmptyRejected() {
+    contextRunner
+        .withPropertyValues("ezkey.audit.integrity.max-sync-window-days=")
+        .run(
+            context -> {
+              Throwable failure = context.getStartupFailure();
+              assertNotNull(failure, "empty binding must fail startup");
+              assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
+            });
+  }
+
+  @Test
   @DisplayName("max-window-days=367 is rejected at bind time (@Max 366)")
-  void binding_aboveMaxRejected() {
+  void binding_asyncAboveMaxRejected() {
     contextRunner
         .withPropertyValues("ezkey.audit.integrity.max-window-days=367")
         .run(
@@ -108,8 +137,8 @@ class IntegrityWindowCapPropertiesTest {
   }
 
   @Test
-  @DisplayName("max-window-days=366 is accepted at bind time")
-  void binding_maxAccepted() {
+  @DisplayName("max-window-days=366 with sync=8 is accepted")
+  void binding_asyncMaxAccepted() {
     contextRunner
         .withPropertyValues("ezkey.audit.integrity.max-window-days=366")
         .run(
@@ -118,12 +147,46 @@ class IntegrityWindowCapPropertiesTest {
               IntegrityWindowCapProperties bound =
                   context.getBean(IntegrityWindowCapProperties.class);
               assertEquals(366, bound.getMaxWindowDays());
+              assertEquals(8, bound.getMaxSyncWindowDays());
             });
   }
 
   @Test
-  @DisplayName("exactly 92×24h+1h is accepted; +1s throws with maxWindowDays=92")
-  void validateWindow_enforcesDefaultCapBoundary() {
+  @DisplayName("async < sync fails startup (cross-validation)")
+  void binding_asyncBelowSyncRejected() {
+    contextRunner
+        .withPropertyValues(
+            "ezkey.audit.integrity.max-window-days=7",
+            "ezkey.audit.integrity.max-sync-window-days=8")
+        .run(
+            context -> {
+              Throwable failure = context.getStartupFailure();
+              assertNotNull(failure, "async < sync must fail startup");
+              assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
+              assertTrue(rootMessage(failure).contains("max-window-days"));
+            });
+  }
+
+  @Test
+  @DisplayName("async == sync is accepted")
+  void binding_asyncEqualsSyncAccepted() {
+    contextRunner
+        .withPropertyValues(
+            "ezkey.audit.integrity.max-window-days=8",
+            "ezkey.audit.integrity.max-sync-window-days=8")
+        .run(
+            context -> {
+              assertNull(context.getStartupFailure());
+              IntegrityWindowCapProperties bound =
+                  context.getBean(IntegrityWindowCapProperties.class);
+              assertEquals(8, bound.getMaxWindowDays());
+              assertEquals(8, bound.getMaxSyncWindowDays());
+            });
+  }
+
+  @Test
+  @DisplayName("exactly 92×24h+1h async is accepted; +1s throws with maxWindowDays=92")
+  void validateWindow_enforcesAsyncCapBoundary() {
     Duration max = properties.maxWindow();
     assertDoesNotThrow(() -> properties.validateWindow(FROM, FROM.plus(max)));
     IntegrityWindowOverCapException ex =
@@ -133,13 +196,35 @@ class IntegrityWindowCapPropertiesTest {
     assertEquals(92, ex.getMaxWindowDays());
     assertTrue(ex.getMessage().contains("92"));
     assertTrue(ex.getMessage().contains("calendar days"));
-    assertTrue(!ex.getMessage().contains("8 calendar days"));
   }
 
   @Test
-  @DisplayName("92 calendar days across America/Toronto fall-back (2209h) is accepted")
+  @DisplayName("exactly 8×24h+1h sync is accepted; +1s throws with maxWindowDays=8")
+  void validateSyncWindow_enforcesSyncCapBoundary() {
+    Duration max = properties.maxSyncWindow();
+    assertEquals(Duration.ofHours(193), max);
+    assertDoesNotThrow(() -> properties.validateSyncWindow(FROM, FROM.plus(max)));
+    IntegrityWindowOverCapException ex =
+        assertThrows(
+            IntegrityWindowOverCapException.class,
+            () -> properties.validateSyncWindow(FROM, FROM.plus(max).plusSeconds(1)));
+    assertEquals(8, ex.getMaxWindowDays());
+    assertTrue(ex.getMessage().contains("8"));
+  }
+
+  @Test
+  @DisplayName("sync path rejects a 92-day Instant span that async would accept")
+  void validateSyncWindow_rejectsAsyncSizedWindow() {
+    IntegrityWindowOverCapException ex =
+        assertThrows(
+            IntegrityWindowOverCapException.class,
+            () -> properties.validateSyncWindow(FROM, FROM.plus(properties.maxWindow())));
+    assertEquals(8, ex.getMaxWindowDays());
+  }
+
+  @Test
+  @DisplayName("92 calendar days across America/Toronto fall-back (2209h) is accepted for async")
   void validateWindow_acceptsNinetyTwoDaysAcrossFallBack() {
-    // Aug 4 00:00 EDT → Nov 4 00:00 EST spans fall-back (1 Nov 2026) → 92×24+1 = 2209h.
     OffsetDateTime from = OffsetDateTime.parse("2026-08-04T04:00:00Z");
     OffsetDateTime to = OffsetDateTime.parse("2026-11-04T05:00:00Z");
     assertEquals(2209, Duration.between(from, to).toHours());
@@ -147,10 +232,12 @@ class IntegrityWindowCapPropertiesTest {
   }
 
   @Test
-  @DisplayName("null from or to is rejected")
+  @DisplayName("null from or to is rejected on both validators")
   void validateWindow_requiresBothEnds() {
     assertThrows(IllegalArgumentException.class, () -> properties.validateWindow(null, FROM));
     assertThrows(IllegalArgumentException.class, () -> properties.validateWindow(FROM, null));
+    assertThrows(IllegalArgumentException.class, () -> properties.validateSyncWindow(null, FROM));
+    assertThrows(IllegalArgumentException.class, () -> properties.validateSyncWindow(FROM, null));
   }
 
   @Test
@@ -158,6 +245,9 @@ class IntegrityWindowCapPropertiesTest {
   void validateWindow_rejectsInverted() {
     assertThrows(
         IllegalArgumentException.class, () -> properties.validateWindow(FROM, FROM.minusHours(1)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> properties.validateSyncWindow(FROM, FROM.minusHours(1)));
   }
 
   @Test

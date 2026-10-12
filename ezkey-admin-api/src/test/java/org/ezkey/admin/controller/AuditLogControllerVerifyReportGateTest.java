@@ -191,9 +191,9 @@ class AuditLogControllerVerifyReportGateTest {
   }
 
   @Test
-  @DisplayName("checkChainIntegrity accepts exactly 92×24h+1h")
-  void checkChainIntegrity_exactCapBoundary_accepted() {
-    OffsetDateTime toExclusive = FROM.plus(windowCapProperties.maxWindow());
+  @DisplayName("checkChainIntegrity accepts exactly 8×24h+1h (sync cap)")
+  void checkChainIntegrity_exactSyncCapBoundary_accepted() {
+    OffsetDateTime toExclusive = FROM.plus(windowCapProperties.maxSyncWindow());
     AuditChainVerificationService.ChainVerificationReport report =
         new AuditChainVerificationService.ChainVerificationReport(
             0,
@@ -222,9 +222,9 @@ class AuditLogControllerVerifyReportGateTest {
   }
 
   @Test
-  @DisplayName("checkIntegrity accepts exactly 92×24h+1h")
-  void checkIntegrity_exactCapBoundary_accepted() {
-    OffsetDateTime toExclusive = FROM.plus(windowCapProperties.maxWindow());
+  @DisplayName("checkIntegrity accepts exactly 8×24h+1h (sync cap)")
+  void checkIntegrity_exactSyncCapBoundary_accepted() {
+    OffsetDateTime toExclusive = FROM.plus(windowCapProperties.maxSyncWindow());
     AuditIntegrityService.IntegrityReport report =
         new AuditIntegrityService.IntegrityReport(
             1,
@@ -246,27 +246,27 @@ class AuditLogControllerVerifyReportGateTest {
   }
 
   @Test
-  @DisplayName("checkChainIntegrity rejects windows above the 92-day default cap")
+  @DisplayName("checkChainIntegrity rejects windows above the 8-day sync cap")
   void checkChainIntegrity_rangeOverCap_throwsIntegrityWindowOverCapException() {
-    OffsetDateTime overCapTo = FROM.plus(windowCapProperties.maxWindow()).plusSeconds(1);
+    OffsetDateTime overCapTo = FROM.plus(windowCapProperties.maxSyncWindow()).plusSeconds(1);
     IntegrityWindowOverCapException ex =
         assertThrows(
             IntegrityWindowOverCapException.class,
             () -> controller.checkChainIntegrity(FROM, overCapTo));
-    assertEquals(92, ex.getMaxWindowDays());
+    assertEquals(8, ex.getMaxWindowDays());
     verify(auditChainVerificationService, never()).verifyChain(eq(FROM), eq(overCapTo));
     assertFalse(heavyCryptoGate.isBusy());
   }
 
   @Test
-  @DisplayName("checkIntegrity rejects windows above the 92-day default cap")
+  @DisplayName("checkIntegrity rejects windows above the 8-day sync cap")
   void checkIntegrity_rangeOverCap_throwsIntegrityWindowOverCapException() {
-    OffsetDateTime overCapTo = FROM.plus(windowCapProperties.maxWindow()).plusSeconds(1);
+    OffsetDateTime overCapTo = FROM.plus(windowCapProperties.maxSyncWindow()).plusSeconds(1);
     IntegrityWindowOverCapException ex =
         assertThrows(
             IntegrityWindowOverCapException.class,
             () -> controller.checkIntegrity(FROM, overCapTo));
-    assertEquals(92, ex.getMaxWindowDays());
+    assertEquals(8, ex.getMaxWindowDays());
     verify(auditIntegrityService, never()).verifyRange(eq(FROM), eq(overCapTo));
   }
 

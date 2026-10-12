@@ -279,42 +279,52 @@ entry HMAC range verify, run validation). DB-backed (`ezkey_integrity_async_job`
 
 ---
 
-### Integrity heavy-crypto window cap (`ezkey.audit.integrity.max-window-days`)
+### Integrity heavy-crypto window caps (`ezkey.audit.integrity.max-*-window-days`)
 
-**Description:** Single days-based Instant-span cap shared by read-only `GET …/integrity-check` and
-`GET …/chain-integrity`, async VERIFY job starts, async `RUN_VALIDATION`, and operator
-`POST …/integrity-validation/run` (#730 D2 / Integrity cut 3 PR 0). Report GETs and operator
-retroactive POST recompute under `IntegrityHeavyCryptoGate` (HTTP 409 + `Retry-After` when busy —
-same `integrity-async-job-busy` contract as async start). Non-blocking `tryEnter` so gated waits
-cannot exceed reverse-proxy / Tomcat timeouts. Nightly scheduled window remains
-`nightly.window-hours` (not this cap).
+**Description:** Two days-based Instant-span caps for Integrity heavy-crypto paths (#730 D2 /
+Integrity cut 3 PR 0, **amended** Christophe M1 / maintainer option A — keep two caps).
 
-**Defined in:** `IntegrityWindowCapProperties` (prefix `ezkey.audit.integrity`, field
-`max-window-days` only — coexists with `AuditHmacProperties` on the same prefix; each
-`@ConfigurationProperties` type binds independently).
+| Cap | Property | Default | Applies to |
+|---|---|---|---|
+| **Async** | `max-window-days` | **92** | async VERIFY starts, async `RUN_VALIDATION`, operator `POST …/integrity-validation/run` |
+| **Sync** | `max-sync-window-days` | **8** | synchronous report GETs (`integrity-check`, `chain-integrity`) |
+
+**Why two caps:** Cloudflare Free on ezkey.org / ezkey.online has a non-raisable **100 s** origin
+timeout (HTTP 524). A synchronous GET over a long window can outlive the client while the busy gate
+stays held (409s for others; skipped nightly). Longer windows must use the **async job**. The sync
+default **8** preserves the #743 Instant-span floor (`8×24+1 = 193` h).
+
+Report GETs and operator retroactive POST recompute under `IntegrityHeavyCryptoGate` (HTTP 409 +
+`Retry-After` when busy — same `integrity-async-job-busy` contract as async start). Non-blocking
+`tryEnter` so gated waits cannot exceed reverse-proxy / Tomcat timeouts. Nightly scheduled window
+remains `nightly.window-hours` (not these caps).
+
+**Defined in:** `IntegrityWindowCapProperties` (prefix `ezkey.audit.integrity` — coexists with
+`AuditHmacProperties` on the same prefix; each `@ConfigurationProperties` type binds independently).
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.audit.integrity.max-window-days` | `int` | `92` | optionnel | Hard-reject (HTTP 400, type `integrity-window-over-cap`, extension `maxWindowDays`; no silent truncate) when `[from, to)` exceeds **`days × 24 h + 1 h`** (calendar days with DST fall-back tolerance). Primitive `int` + `@Min(1)` + `@Max(366)` — there is **no opt-out**; empty/`0`/`367+` fails startup. |
+| `ezkey.audit.integrity.max-window-days` | `int` | `92` | optionnel | Async hard-reject (HTTP 400, type `integrity-window-over-cap`, extension `maxWindowDays`) when `[from, to)` exceeds **`days × 24 h + 1 h`**. Primitive `int` + `@Min(1)` + `@Max(366)`. Must be **>=** `max-sync-window-days` (fail-fast at startup otherwise). |
+| `ezkey.audit.integrity.max-sync-window-days` | `int` | `8` | optionnel | Sync report-GET hard-reject (same problem type / extension). Same Instant-span rule. Empty/`0`/`367+` fails startup. |
 
 **Upgrade note (old → new):**
 
 | Removed (fail-fast if set) | Replacement |
 |---|---|
-| `ezkey.audit.integrity.verify-report.max-window-hours` | `ezkey.audit.integrity.max-window-days` |
+| `ezkey.audit.integrity.verify-report.max-window-hours` | `max-sync-window-days` (sync GETs) / `max-window-days` (async VERIFY) |
 | `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `ezkey.audit.integrity.max-window-days` |
 
 **[live] host pre-check (2026-10-12, ezkey.online):** the community host sets **neither** old key
 (no property, no relaxed env form, nothing in `.env` / compose / mounts / `app.jar`). The Oct 5 tip
-currently deployed **predates #743 entirely**, so the next install goes straight to
-`max-window-days` with **nothing to migrate**.
+currently deployed **predates #743 entirely**, so the next install goes straight to the new days
+keys with **nothing to migrate**.
 
 Relaxed env forms of the removed keys (compact and underscore — e.g.
 `EZKEY_AUDIT_INTEGRITY_VERIFYREPORT_MAXWINDOWHOURS`,
 `EZKEY_AUDIT_INTEGRITY_VERIFY_REPORT_MAX_WINDOW_HOURS`,
 `EZKEY_AUDIT_INTEGRITY_RETROACTIVE_OPERATORMAXWINDOWHOURS`) also fail startup. Startup messages name
-the replacement key and never echo values. Effective Instant length for default `92` is **2209 h**
-(`92×24+1`). Bind range is `@Min(1)` … `@Max(366)`.
+the replacement key and never echo values. Effective Instant length: async default **2209 h**
+(`92×24+1`); sync default **193 h** (`8×24+1`).
 
 ---
 
