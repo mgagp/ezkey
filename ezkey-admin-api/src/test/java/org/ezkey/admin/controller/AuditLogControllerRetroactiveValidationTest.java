@@ -179,7 +179,7 @@ class AuditLogControllerRetroactiveValidationTest {
             FROM,
             toExclusive,
             "scope",
-            true,
+            false,
             null,
             true,
             false,
@@ -188,7 +188,12 @@ class AuditLogControllerRetroactiveValidationTest {
             0,
             0,
             0,
-            RetroactiveIntegrityValidationTriggerSource.OPERATOR);
+            RetroactiveIntegrityValidationTriggerSource.OPERATOR,
+            0,
+            0,
+            0,
+            0,
+            0);
     when(retroactiveIntegrityValidationService.runValidation(
             eq(FROM), eq(toExclusive), any(RetroactiveIntegrityValidationOptions.class)))
         .thenReturn(serviceResult);
