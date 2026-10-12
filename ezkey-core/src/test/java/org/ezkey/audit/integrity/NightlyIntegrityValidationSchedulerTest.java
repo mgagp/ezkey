@@ -65,7 +65,7 @@ class NightlyIntegrityValidationSchedulerTest {
     when(chainProperties.getWindowMinutes()).thenReturn(5);
     when(nightlyProperties.getWindowHours()).thenReturn(24);
     when(integrityAsyncJobService.isOperatorSlotRunning()).thenReturn(false);
-    when(heavyCryptoGate.tryEnter()).thenReturn(true);
+    when(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.NIGHTLY)).thenReturn(true);
     when(validationService.validateWindow(any()))
         .thenReturn(
             RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult.skipped(
@@ -85,7 +85,7 @@ class NightlyIntegrityValidationSchedulerTest {
                       && windowEnd.getNano() == 0
                       && windowEnd.getMinute() % 5 == 0;
                 }));
-    verify(heavyCryptoGate).exit();
+    verify(heavyCryptoGate).exit(IntegrityHeavyCryptoGate.Holder.NIGHTLY);
   }
 
   @Test
@@ -94,17 +94,17 @@ class NightlyIntegrityValidationSchedulerTest {
     when(chainProperties.getWindowMinutes()).thenReturn(5);
     when(nightlyProperties.getWindowHours()).thenReturn(24);
     when(integrityAsyncJobService.isOperatorSlotRunning()).thenReturn(false);
-    when(heavyCryptoGate.tryEnter()).thenReturn(false);
+    when(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.NIGHTLY)).thenReturn(false);
 
     scheduler.runNightlyValidation();
 
-    verify(heavyCryptoGate).tryEnter();
+    verify(heavyCryptoGate).tryEnter(IntegrityHeavyCryptoGate.Holder.NIGHTLY);
     verify(validationService, never()).validateWindow(any());
     verify(jobLastRunService)
         .recordFailure(
             eq(ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION),
             any(),
             eq(NightlyIntegrityValidationScheduler.GATE_BUSY_SKIP_SUMMARY));
-    verify(heavyCryptoGate, never()).exit();
+    verify(heavyCryptoGate, never()).exit(IntegrityHeavyCryptoGate.Holder.NIGHTLY);
   }
 }

@@ -562,7 +562,7 @@ class IntegrityAsyncJobServiceTest {
           .thenReturn(Optional.empty());
       when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
       when(heavyCryptoGate.isBusy()).thenReturn(false);
-      when(heavyCryptoGate.tryEnter()).thenReturn(true);
+      when(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB)).thenReturn(true);
       AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
       when(jobRepository.saveAndFlush(any()))
           .thenAnswer(

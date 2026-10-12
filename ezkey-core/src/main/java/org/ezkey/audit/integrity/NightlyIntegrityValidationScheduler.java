@@ -102,7 +102,7 @@ public class NightlyIntegrityValidationScheduler {
       logger.info("Skipping nightly integrity validation: operator Integrity async job is RUNNING");
       return;
     }
-    if (!heavyCryptoGate.tryEnter()) {
+    if (!heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.NIGHTLY)) {
       logger.warn("Skipping nightly integrity validation: {}", GATE_BUSY_SKIP_SUMMARY);
       jobLastRunService.recordFailure(
           ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope, GATE_BUSY_SKIP_SUMMARY);
@@ -120,7 +120,7 @@ public class NightlyIntegrityValidationScheduler {
       jobLastRunService.recordFailure(
           ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope, e.getMessage());
     } finally {
-      heavyCryptoGate.exit();
+      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.NIGHTLY);
     }
   }
 }

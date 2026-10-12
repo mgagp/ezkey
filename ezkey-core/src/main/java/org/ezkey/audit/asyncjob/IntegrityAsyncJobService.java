@@ -392,7 +392,7 @@ public class IntegrityAsyncJobService {
   }
 
   private void runJob(UUID jobId) {
-    if (!heavyCryptoGate.tryEnter()) {
+    if (!heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB)) {
       stateService.markFailed(jobId, "Integrity crypto path busy (scheduled nightly or peer work)");
       return;
     }
@@ -420,7 +420,7 @@ public class IntegrityAsyncJobService {
       logger.error("Integrity async job {} failed: {}", jobId, ex.getMessage(), ex);
       stateService.markFailed(jobId, "Job failed: " + ex.getClass().getSimpleName());
     } finally {
-      heavyCryptoGate.exit();
+      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB);
     }
   }
 
