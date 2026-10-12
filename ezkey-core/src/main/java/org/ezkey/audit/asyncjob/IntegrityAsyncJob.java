@@ -23,9 +23,11 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 
 /**
- * DB-backed Integrity async job row (global slot while {@link IntegrityAsyncJobStatus#RUNNING}).
+ * DB-backed Integrity async / verdict job row.
  *
- * <p>Distinct from {@code ezkey_scheduled_job_last_run}, which is last-run dashboard signal only.
+ * <p>Operator rows ({@code trigger <> NIGHTLY}) participate in the global RUNNING slot. Nightly
+ * terminal rows ({@link IntegrityAsyncJobTrigger#NIGHTLY}) are SUCCEEDED/FAILED only and never take
+ * the slot. Distinct from {@code ezkey_scheduled_job_last_run} (dashboard last-run signal).
  *
  * @since 2026
  */
@@ -50,7 +52,16 @@ public class IntegrityAsyncJob {
   @Column(name = "status", nullable = false, length = 32)
   private IntegrityAsyncJobStatus status;
 
-  @Column(name = "started_by_admin_id", nullable = false)
+  /**
+   * Job initiation source. Column name is quoted in SQL ({@code "trigger"}) because TRIGGER is
+   * reserved in PostgreSQL.
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "trigger", nullable = false, length = 16)
+  private IntegrityAsyncJobTrigger trigger = IntegrityAsyncJobTrigger.MANUAL;
+
+  /** Nullable for nightly rows (CHECK: null iff trigger = NIGHTLY). */
+  @Column(name = "started_by_admin_id")
   private Integer startedByAdminId;
 
   @Column(name = "started_by_username", nullable = false, length = 255)
@@ -85,6 +96,28 @@ public class IntegrityAsyncJob {
 
   @Column(name = "result_alert_id")
   private Long resultAlertId;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "chain_status", length = 64)
+  private IntegrityChainStatus chainStatus;
+
+  @Column(name = "total_checkpoints")
+  private Integer totalCheckpoints;
+
+  @Column(name = "valid_checkpoints")
+  private Integer validCheckpoints;
+
+  @Column(name = "invalid_checkpoints")
+  private Integer invalidCheckpoints;
+
+  @Column(name = "archived_checkpoints")
+  private Integer archivedCheckpoints;
+
+  @Column(name = "undeclared_gaps")
+  private Integer undeclaredGaps;
+
+  @Column(name = "entry_hmac_violations")
+  private Integer entryHmacViolations;
 
   @Column(name = "abandoned_at")
   private OffsetDateTime abandonedAt;
@@ -144,6 +177,14 @@ public class IntegrityAsyncJob {
 
   public void setStatus(IntegrityAsyncJobStatus status) {
     this.status = status;
+  }
+
+  public IntegrityAsyncJobTrigger getTrigger() {
+    return trigger;
+  }
+
+  public void setTrigger(IntegrityAsyncJobTrigger trigger) {
+    this.trigger = trigger;
   }
 
   public Integer getStartedByAdminId() {
@@ -240,6 +281,62 @@ public class IntegrityAsyncJob {
 
   public void setResultAlertId(Long resultAlertId) {
     this.resultAlertId = resultAlertId;
+  }
+
+  public IntegrityChainStatus getChainStatus() {
+    return chainStatus;
+  }
+
+  public void setChainStatus(IntegrityChainStatus chainStatus) {
+    this.chainStatus = chainStatus;
+  }
+
+  public Integer getTotalCheckpoints() {
+    return totalCheckpoints;
+  }
+
+  public void setTotalCheckpoints(Integer totalCheckpoints) {
+    this.totalCheckpoints = totalCheckpoints;
+  }
+
+  public Integer getValidCheckpoints() {
+    return validCheckpoints;
+  }
+
+  public void setValidCheckpoints(Integer validCheckpoints) {
+    this.validCheckpoints = validCheckpoints;
+  }
+
+  public Integer getInvalidCheckpoints() {
+    return invalidCheckpoints;
+  }
+
+  public void setInvalidCheckpoints(Integer invalidCheckpoints) {
+    this.invalidCheckpoints = invalidCheckpoints;
+  }
+
+  public Integer getArchivedCheckpoints() {
+    return archivedCheckpoints;
+  }
+
+  public void setArchivedCheckpoints(Integer archivedCheckpoints) {
+    this.archivedCheckpoints = archivedCheckpoints;
+  }
+
+  public Integer getUndeclaredGaps() {
+    return undeclaredGaps;
+  }
+
+  public void setUndeclaredGaps(Integer undeclaredGaps) {
+    this.undeclaredGaps = undeclaredGaps;
+  }
+
+  public Integer getEntryHmacViolations() {
+    return entryHmacViolations;
+  }
+
+  public void setEntryHmacViolations(Integer entryHmacViolations) {
+    this.entryHmacViolations = entryHmacViolations;
   }
 
   public OffsetDateTime getAbandonedAt() {

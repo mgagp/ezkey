@@ -12,7 +12,6 @@ package org.ezkey.audit.asyncjob;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.ezkey.audit.domain.ApiName;
@@ -127,6 +126,10 @@ public class IntegrityAsyncJobService {
    * Escape remains for TTL {@link IntegrityAsyncJobStatus#EXPIRED} and explicit {@link
    * IntegrityAsyncJobStatus#CANCELLED} only. History row is kept (not erased).
    *
+   * <p><b>Invariant:</b> INTERRUPTED is always written together with {@code abandonedAt} (and
+   * {@code finishedAt}) here — never Escape-sticky, never blocking Start. V25 one-shot UPDATE
+   * healed historical orphans; do not reintroduce a heal loop on read paths.
+   *
    * @param event application ready
    */
   @EventListener(ApplicationReadyEvent.class)
@@ -201,6 +204,7 @@ public class IntegrityAsyncJobService {
     job.setSlotKey(IntegrityAsyncJob.GLOBAL_SLOT_KEY);
     job.setJobType(request.type());
     job.setStatus(IntegrityAsyncJobStatus.RUNNING);
+    job.setTrigger(IntegrityAsyncJobTrigger.MANUAL);
     job.setStartedByAdminId(adminId);
     job.setStartedByUsername(username != null ? username : "unknown");
     job.setStartedAt(now);
@@ -244,10 +248,7 @@ public class IntegrityAsyncJobService {
 
   /**
    * Returns the job most relevant for the Integrity banner: RUNNING (after TTL), else latest
-   * non-abandoned terminal, else empty.
-   *
-   * <p>Legacy INTERRUPTED rows without {@code abandonedAt} (pre–crash-posture) are auto-abandoned
-   * here so they never Escape-sticky or block Start.
+   * non-abandoned <em>operator</em> terminal, else empty. Nightly rows are excluded.
    *
    * @return current job when present
    */
@@ -260,18 +261,7 @@ public class IntegrityAsyncJobService {
     if (running.isPresent()) {
       return Optional.of(IntegrityAsyncJobResponse.from(running.get()));
     }
-    List<IntegrityAsyncJob> recent = jobRepository.findAllByOrderByStartedAtDesc();
-    for (IntegrityAsyncJob job : recent) {
-      if (job.getAbandonedAt() != null) {
-        continue;
-      }
-      if (job.getStatus() == IntegrityAsyncJobStatus.INTERRUPTED) {
-        healInterruptedOrphan(job);
-        continue;
-      }
-      return Optional.of(IntegrityAsyncJobResponse.from(job));
-    }
-    return Optional.empty();
+    return jobRepository.findLatestActiveOperatorJob().map(IntegrityAsyncJobResponse::from);
   }
 
   /**
@@ -296,17 +286,14 @@ public class IntegrityAsyncJobService {
   @Transactional
   public IntegrityAsyncJobResponse abandon(Integer adminId) {
     stateService.expireStaleRunningIfNeeded();
-    List<IntegrityAsyncJob> recent = jobRepository.findAllByOrderByStartedAtDesc();
-    if (recent.isEmpty()) {
-      throw new IntegrityAsyncJobAbandonNotAllowedException(
-          null, "No Integrity async job to abandon");
-    }
-    IntegrityAsyncJob job = recent.get(0);
+    IntegrityAsyncJob job =
+        jobRepository
+            .findLatestOperatorJob()
+            .orElseThrow(
+                () ->
+                    new IntegrityAsyncJobAbandonNotAllowedException(
+                        null, "No Integrity async job to abandon"));
     if (job.getAbandonedAt() != null) {
-      return IntegrityAsyncJobResponse.from(job);
-    }
-    if (job.getStatus() == IntegrityAsyncJobStatus.INTERRUPTED) {
-      healInterruptedOrphan(job);
       return IntegrityAsyncJobResponse.from(job);
     }
     IntegrityAsyncJobStatus status = job.getStatus();
@@ -356,39 +343,16 @@ public class IntegrityAsyncJobService {
   }
 
   private Optional<IntegrityAsyncJob> findLatestEscapeSticky() {
-    List<IntegrityAsyncJob> recent = jobRepository.findAllByOrderByStartedAtDesc();
-    for (IntegrityAsyncJob job : recent) {
-      if (job.getAbandonedAt() != null) {
-        continue;
-      }
-      if (job.getStatus() == IntegrityAsyncJobStatus.INTERRUPTED) {
-        healInterruptedOrphan(job);
-        continue;
-      }
-      if (isEscapeStickyStatus(job.getStatus())) {
-        return Optional.of(job);
-      }
-      // Latest non-abandoned is SUCCEEDED/FAILED/etc. — slot free for Start.
+    Optional<IntegrityAsyncJob> latest = jobRepository.findLatestActiveOperatorJob();
+    if (latest.isEmpty()) {
       return Optional.empty();
     }
+    IntegrityAsyncJob job = latest.get();
+    if (isEscapeStickyStatus(job.getStatus())) {
+      return Optional.of(job);
+    }
+    // Latest non-abandoned is SUCCEEDED/FAILED/etc. — slot free for Start.
     return Optional.empty();
-  }
-
-  private void healInterruptedOrphan(IntegrityAsyncJob job) {
-    if (job.getAbandonedAt() != null) {
-      return;
-    }
-    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-    job.setAbandonedAt(now);
-    if (job.getFinishedAt() == null) {
-      job.setFinishedAt(now);
-    }
-    if (job.getResultSummary() == null) {
-      job.setResultSummary("Interrupted by process restart — slot freed; Start again");
-    }
-    jobRepository.save(job);
-    logger.info(
-        "Auto-abandoned legacy INTERRUPTED Integrity async job {} (crash posture)", job.getJobId());
   }
 
   private void runJob(UUID jobId) {
