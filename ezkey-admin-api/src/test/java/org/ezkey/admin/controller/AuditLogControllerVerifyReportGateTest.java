@@ -163,7 +163,7 @@ class AuditLogControllerVerifyReportGateTest {
   @Test
   @DisplayName("checkChainIntegrity throws IntegrityAsyncJobBusyException when gate is held")
   void checkChainIntegrity_gateBusy_throwsBusyException() {
-    assertTrue(heavyCryptoGate.tryEnter());
+    assertTrue(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB));
     try {
       IntegrityAsyncJobBusyException ex =
           assertThrows(
@@ -171,14 +171,14 @@ class AuditLogControllerVerifyReportGateTest {
       assertEquals(IntegrityAsyncJobBusyException.HEAVY_CRYPTO_BUSY_MESSAGE, ex.getMessage());
       verify(auditChainVerificationService, never()).verifyChain(eq(FROM), eq(TO));
     } finally {
-      heavyCryptoGate.exit();
+      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB);
     }
   }
 
   @Test
   @DisplayName("checkIntegrity throws IntegrityAsyncJobBusyException when gate is held")
   void checkIntegrity_gateBusy_throwsBusyException() {
-    assertTrue(heavyCryptoGate.tryEnter());
+    assertTrue(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB));
     try {
       IntegrityAsyncJobBusyException ex =
           assertThrows(
@@ -186,7 +186,7 @@ class AuditLogControllerVerifyReportGateTest {
       assertEquals(IntegrityAsyncJobBusyException.HEAVY_CRYPTO_BUSY_MESSAGE, ex.getMessage());
       verify(auditIntegrityService, never()).verifyRange(eq(FROM), eq(TO));
     } finally {
-      heavyCryptoGate.exit();
+      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB);
     }
   }
 
