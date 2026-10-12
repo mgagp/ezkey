@@ -185,6 +185,41 @@ assert_eq "$v" "AMBER" "elective GREEN→AMBER on kill-missing"
 v="$(elective_kill_missing_phase_verdict AMBER)"
 assert_eq "$v" "AMBER" "elective AMBER stays AMBER on kill-missing"
 
+# 7b) Log grep alone is never kill proof (both replicas still running, no die)
+all_healthy
+echo 'Crashing container: ezkey-admin-api-2' >"$RUN_DIR/phases/elective-tests.log"
+restore_after_elective || true
+assert_eq "$SHEDLOCK_KILL_MISSING" "1" "log-only → SHEDLOCK_KILL_MISSING"
+assert_eq "$HA_INVALID" "1" "log-only → HA_INVALID (Status/die required)"
+assert_eq "$SHEDLOCK_RESTORE_OK" "0" "log-only → no restore OK"
+grep -q 'Status/die proof missing' "$RUN_DIR/findings-extra.txt" \
+  && echo "ok - log-only → findings mention Status/die" && pass=$((pass+1)) \
+  || { echo "not ok - log-only → findings mention Status/die"; fail=$((fail+1)); }
+
+# 7c) docker die event proves kill when Status is already running again
+all_healthy
+: >"$RUN_DIR/phases/elective-tests.log"
+export FAKE_DOCKER_EVENTS_LINES="ezkey-admin-api-2"
+restore_after_elective
+rc=$?
+unset FAKE_DOCKER_EVENTS_LINES
+assert_eq "$rc" "0" "die-event proof → restore OK"
+assert_eq "$SHEDLOCK_KILLED" "ezkey-admin-api-2" "die-event → killed name"
+assert_eq "$SHEDLOCK_RESTORE_OK" "1" "die-event → restore OK flag"
+assert_eq "$HA_INVALID" "0" "die-event → not HA invalid"
+
+# 7d) skipped phase → report INCONCLUSIVE (never GO)
+mkdir -p "$RUN_DIR/health"
+printf '%s\n' '{"verdict":"GREEN"}' >"$RUN_DIR/health/health.json"
+printf '%s\n' $'health\tSKIP\t0\t0\t-\t-\tskipped by flag' >"$RUN_DIR/phases.tsv"
+node "$ROOT/scripts/quality-gate-report.mjs" \
+  --run-dir "$RUN_DIR" --tip deadbeef --short deadbeef --total-ms 1 \
+  --churn-min 0 --red 0 --amber 0 --ha-invalid 0 --skipped 1 --compose-retry 0 --shedlock-restored 0 \
+  >/dev/null
+ov="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).overallVerdict)' \
+  "$RUN_DIR/summary.json")"
+assert_eq "$ov" "INCONCLUSIVE: skipped phase(s)" "skip → report INCONCLUSIVE (not GO)"
+
 # 8) M2: docker events failure → UNKNOWN/AMBER, never silent "no OOM"
 all_healthy
 : >"$RUN_DIR/findings-extra.txt"

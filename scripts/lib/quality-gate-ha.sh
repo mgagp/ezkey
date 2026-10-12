@@ -124,24 +124,59 @@ wait_replicas_healthy() {
 
 # Patrick C1: do NOT compose up -d (loses docker-test profile / logs). docker start only.
 # Quality-gate HA elective always expects ShedLockDistributedTest to kill one admin-api replica.
-# Missing kill → HA_INVALID + AMBER → overall INCONCLUSIVE (exit 3), never GO.
+# Kill proof is State.Status=exited or a docker die event — log grep alone is never enough.
+# Missing kill → HA_INVALID + AMBER → overall INCONCLUSIVE (exit 4), never GO.
+#
+# Prints the proven killed replica name on stdout when found; empty otherwise.
+# Prefers inspect Status=exited; falls back to docker events die since GATE_STARTED_AT.
+prove_shedlock_kill() {
+  local name status events_out line
+  for name in ezkey-admin-api-1 ezkey-admin-api-2; do
+    status="$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || echo missing)"
+    if [[ "$status" == "exited" ]]; then
+      echo "$name"
+      return 0
+    fi
+  done
+  # die event since gate start (elective window). Status=exited is preferred;
+  # die covers the case where the container was already restarted by something else.
+  events_out="$(
+    docker events --since "${GATE_STARTED_AT:-}" --until "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+      --filter 'type=container' --filter 'event=die' \
+      --format '{{.Actor.Attributes.name}}' 2>/dev/null || true
+  )"
+  while IFS= read -r line; do
+    case "$line" in
+      ezkey-admin-api-1|ezkey-admin-api-2)
+        echo "$line"
+        return 0
+        ;;
+    esac
+  done <<<"$events_out"
+  return 1
+}
+
 restore_after_elective() {
   local elective_log="$RUN_DIR/phases/elective-tests.log"
-  local killed=""
+  local killed="" log_hint=""
   SHEDLOCK_KILL_EXPECTED=0
   SHEDLOCK_KILL_MISSING=0
   SHEDLOCK_RESTORE_OK=0
   SHEDLOCK_KILLED=""
   if [[ -f "$elective_log" ]]; then
-    killed="$(grep -E 'Crashing container: ezkey-admin-api-[12]' "$elective_log" 2>/dev/null \
+    log_hint="$(grep -E 'Crashing container: ezkey-admin-api-[12]' "$elective_log" 2>/dev/null \
       | tail -1 | sed -E 's/.*Crashing container: (ezkey-admin-api-[12]).*/\1/' || true)"
   fi
+  killed="$(prove_shedlock_kill || true)"
   if [[ -n "$killed" ]]; then
     SHEDLOCK_KILL_EXPECTED=1
     SHEDLOCK_KILLED="$killed"
-    echo "[$KEYWORD] expected: ShedLockDistributedTest killed $killed — docker start restore"
+    echo "[$KEYWORD] expected: ShedLockDistributedTest killed $killed (Status/die proof) — docker start restore"
+    if [[ -n "$log_hint" && "$log_hint" != "$killed" ]]; then
+      echo "[$KEYWORD] note: elective log hinted $log_hint; Status/die proved $killed"
+    fi
     printf '%s\n' \
-      "test-hygiene: ShedLockDistributedTest docker-kills ${killed} and does not restore it; gate docker-starts after elective" \
+      "test-hygiene: ShedLockDistributedTest docker-kills ${killed} and does not restore it; gate docker-starts after elective (Status/die proof)" \
       >>"$RUN_DIR/findings-extra.txt"
   fi
 
@@ -154,10 +189,16 @@ restore_after_elective() {
     SHEDLOCK_KILL_MISSING=1
     HA_INVALID=1
     OVERALL_AMBER=1
-    echo "[$KEYWORD] expected ShedLock kill missing — failover did not crash a replica → HA invalid / INCONCLUSIVE"
-    printf '%s\n' \
-      "ShedLock: expected kill missing (failover skipped or unresolved container id) — kill/restore path not proven" \
-      >>"$RUN_DIR/findings-extra.txt"
+    echo "[$KEYWORD] expected ShedLock kill missing — no Status=exited / die event → HA invalid / INCONCLUSIVE"
+    if [[ -n "$log_hint" ]]; then
+      printf '%s\n' \
+        "ShedLock: elective log mentioned ${log_hint} but Status/die proof missing — kill/restore path not proven" \
+        >>"$RUN_DIR/findings-extra.txt"
+    else
+      printf '%s\n' \
+        "ShedLock: expected kill missing (failover skipped or unresolved container id) — kill/restore path not proven" \
+        >>"$RUN_DIR/findings-extra.txt"
+    fi
     return 1
   fi
 

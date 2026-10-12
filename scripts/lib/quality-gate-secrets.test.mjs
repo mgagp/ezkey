@@ -75,12 +75,24 @@ describe('masked *ApiKey values never RED (run-7 applyApiKey class)', () => {
     }
   });
 
-  it('ignores applyApiKey=<small int> rate-limit counters (negative, run-7 raw)', () => {
+  it('ignores applyApiKey=<1–3 digit> rate-limit counters (negative, run-7 raw)', () => {
     const line =
       'ACME demo rate limiting initialized: login=20 per 5 minute(s), loginIpBound=60 per 5 minute(s), applyApiKey=5 per 10 minute(s), enabled=true';
     const r = detectSecrets(line);
     assert.equal(r.kinds.includes('kv-secret'), false, `kinds=${r.kinds}`);
     assert.notEqual(r.severity, 'RED', `kinds=${r.kinds}`);
+    assert.equal(detectSecrets('applyApiKey=999').severity, null);
+  });
+
+  it('keeps *ApiKey=<4+ digits> RED (Christophe positive)', () => {
+    for (const line of [
+      'integrationApiKey=482913',
+      '"apiKey":"482913"',
+      'applyApiKey=4829',
+    ]) {
+      const r = detectSecrets(line);
+      assert.equal(r.severity, 'RED', `kinds=${r.kinds} line=${line}`);
+    }
   });
 
   it('keeps applyApiKey=<real key material> RED (positive)', () => {
@@ -132,11 +144,19 @@ describe('DevicePublicKeyHash / truncated public-key naming (run-7 class)', () =
       `kinds=${r.kinds}`,
     );
   });
+
+  it('keeps DevicePublicKeyHash=<non-hex base64> RED (Christophe Hash hex rule)', () => {
+    const b64 = 'MCowBQYDK2VwAyEA0123456789AbCdEfGhIjKlMn';
+    const line = `devicePublicKeyHash=${b64}`;
+    const r = detectSecrets(line);
+    assert.equal(r.severity, 'RED', `kinds=${r.kinds}`);
+  });
 });
 
 describe('provisioning display-name prefixes → AMBER (run-7 class)', () => {
   const ADMIN = 'churn-ta-0050545f61fa6156e';
-  const SUFFIX = 'ba30006edc9c6dd7311d84c173835aa3';
+  // Exactly 16 hex — OperationalChurnTest %016x
+  const SUFFIX = 'ba30006edc9c6dd7';
 
   it('scores Tenant admin created / Admin: / Admin␠ username shapes AMBER (negative)', () => {
     const lines = [
@@ -153,18 +173,33 @@ describe('provisioning display-name prefixes → AMBER (run-7 class)', () => {
     }
   });
 
-  it('scores Churn Tenant / Churn Int suffix hex AMBER (negative)', () => {
+  it('scores Churn Tenant / Tenant A / Integration A1 16-hex suffix AMBER (negative)', () => {
     const lines = [
       `Creating tenant: Churn Tenant ${SUFFIX} (creator: 108)`,
       `✅ Tenant created: Churn Tenant ${SUFFIX} (ID: 112)`,
       `Integration name=Churn Int A ${SUFFIX} ready`,
       `Integration name=Churn Int B ${SUFFIX} ready`,
+      `Tenant A ${SUFFIX} created`,
+      `Integration A1 ${SUFFIX} ready`,
     ];
     for (const line of lines) {
       const r = detectSecrets(line);
       assert.equal(r.kinds.includes('opaque-username'), true, `kinds=${r.kinds} line=${line}`);
       assert.equal(r.kinds.includes('opaque-token'), false, line);
       assert.equal(r.severity, 'AMBER', line);
+    }
+  });
+
+  it('keeps 32-hex after Churn Tenant / Tenant A RED (Christophe bound)', () => {
+    const longHex = 'ba30006edc9c6dd7311d84c173835aa3';
+    for (const line of [
+      `Creating tenant: Churn Tenant ${longHex} (creator: 108)`,
+      `Tenant A ${longHex} created`,
+      `Integration A1 ${longHex} ready`,
+    ]) {
+      const r = detectSecrets(line);
+      assert.equal(r.severity, 'RED', `kinds=${r.kinds} line=${line}`);
+      assert.ok(r.kinds.includes('opaque-token'), `kinds=${r.kinds}`);
     }
   });
 
@@ -249,7 +284,7 @@ describe('Christophe replay inputs', () => {
   });
 });
 
-describe('Basic header form (case-sensitive)', () => {
+describe('Basic header form (authorization case-insensitive)', () => {
   it('redacts Authorization: Basic <b64>', () => {
     const line = 'Authorization: Basic dXNlcjpwYXNz';
     assert.equal(detectSecrets(line).severity, 'RED');
@@ -266,9 +301,10 @@ describe('Basic header form (case-sensitive)', () => {
     assert.equal(detectSecrets('Basic authentication enabled').kinds.length, 0);
   });
 
-  it('does not treat lowercase authorization: Basic as header Basic', () => {
+  it('redacts lowercase authorization: Basic (HTTP/2 header case)', () => {
     const r = detectSecrets('authorization: Basic dXNlcjpwYXNz');
-    assert.equal(r.kinds.includes('basic'), false);
+    assert.equal(r.severity, 'RED', `kinds=${r.kinds}`);
+    assert.ok(r.kinds.includes('basic'), `kinds=${r.kinds}`);
   });
 
   it('does not treat HTTP status code=200 as a secret', () => {
@@ -419,8 +455,9 @@ describe('detectSecrets product cases', () => {
     const bare = [
       'MHcCAQEEIOkl32rWcUtuRaQkbHRgJWS7HXRdQUSg', // EC SEC1
       'MIIEowIBAAKCAQEAzdbCz4HAtKuvB1WDQOs3ofb9S1IB5SuE06', // RSA PKCS#1
-      'MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQ', // RSA PKCS#8
+      'MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQ', // RSA PKCS#8 IBAD
       'MIIEpAIBAAKCAQEAzdbCz4HAtKuvB1WDQOs3ofb9', // RSA PKCS#1 variant (MII…IBA)
+      'MIIEswIBADANBgkqhkiG9w0BAQEFAASCBKgwggSk', // other MII…IBAD shape
     ];
     for (const priv of bare) {
       const line = `publicKey=${priv}`;
@@ -428,16 +465,22 @@ describe('detectSecrets product cases', () => {
       assert.equal(r.severity, 'RED', `kinds=${r.kinds} sample=${priv.slice(0, 24)}`);
       assert.ok(r.kinds.includes('kv-secret'), `kinds=${r.kinds} sample=${priv.slice(0, 24)}`);
     }
-    // PEM headers contain spaces — quoted kv form (bare KV stops at whitespace).
+    // PEM headers contain spaces — anywhere-in-line rule (bare KV stops at whitespace).
     for (const pem of [
       '-----BEGIN PRIVATE KEY-----',
       '-----BEGIN EC PRIVATE KEY-----',
       '-----BEGIN RSA PRIVATE KEY-----',
+      '-----BEGIN OPENSSH PRIVATE KEY-----',
+      '-----BEGIN ENCRYPTED PRIVATE KEY-----',
     ]) {
-      const line = `publicKey="${pem}"`;
-      const r = detectSecrets(line);
-      assert.equal(r.severity, 'RED', `kinds=${r.kinds} pem=${pem}`);
-      assert.ok(r.kinds.includes('kv-secret'), `kinds=${r.kinds} pem=${pem}`);
+      for (const line of [`publicKey="${pem}"`, `publicKey=${pem} MIIEvQ…`, `noise ${pem} noise`]) {
+        const r = detectSecrets(line);
+        assert.equal(r.severity, 'RED', `kinds=${r.kinds} line=${line}`);
+        assert.ok(
+          r.kinds.includes('kv-secret') || r.kinds.includes('pem-private-key'),
+          `kinds=${r.kinds} line=${line}`,
+        );
+      }
     }
   });
 
@@ -911,5 +954,17 @@ describe('emission-time allowlist windows (#750)', () => {
       emittedAt,
     };
     assert.equal(isSecretChannelAllowlisted(hit, allowlist, windows), false);
+  });
+});
+
+describe('ReDoS guard on key-stem \\w{0,40}', () => {
+  it('scans a 100_000-char non-matching line under 200 ms', () => {
+    // Adversarial: long word-char run that never hits a secret stem / delimiter.
+    const line = `${'a'.repeat(100_000)} no-secret-here`;
+    const t0 = performance.now();
+    const r = detectSecrets(line);
+    const ms = performance.now() - t0;
+    assert.equal(r.severity, null, `kinds=${r.kinds}`);
+    assert.ok(ms < 200, `expected <200ms, got ${ms.toFixed(1)}ms`);
   });
 });

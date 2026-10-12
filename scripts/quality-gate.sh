@@ -8,7 +8,12 @@
 #   → post-clean-health → functional → elective → docker-start restore
 #   → Playwright → churn-init → 2× churn → health → REPORT.md + summary.json
 #
-# Exit: 0 = GO, 3 = GO with reservations / INCONCLUSIVE: HA invalid, other = NO-GO
+# Exit codes:
+#   0 = GO
+#   1 = NO-GO (any RED)
+#   3 = GO with reservations (AMBER only; HA valid; no skipped phases)
+#   4 = INCONCLUSIVE (HA invalid and/or any skipped phase)
+#   2 = usage / bad args
 # API replica check covers the 7 HA API JVMs (admin/auth/integration ×2 + crypto).
 # demo-device / demo-app-acme are excluded: not LB replicas; mem-sampled only.
 #
@@ -24,10 +29,16 @@ source "$SCRIPT_DIR/lib/quality-gate-ha.sh"
 export LC_ALL="${LC_ALL:-C.UTF-8}"
 export LANG="${LANG:-C.UTF-8}"
 
+# Inherited docker-log windows must not silently shrink a full-gate scan.
+# Prefer unset over recording — operators who need a window pass --since/--until
+# on stack-health-check directly.
+unset QUALITY_GATE_LOG_SINCE QUALITY_GATE_LOG_UNTIL DOCKER_LOGS_SINCE DOCKER_LOGS_UNTIL
+
 KEYWORD="quality-gate"
 CHURN_MINUTES=5
 NO_CLEAN_START=0
 SKIP_PHASES=""
+ANY_SKIPPED=0
 COMPOSE_RETRY_FIRED=0
 HA_INVALID=0
 OVERALL_RED=0
@@ -495,6 +506,7 @@ write_report() {
     --red "$OVERALL_RED" \
     --amber "$OVERALL_AMBER" \
     --ha-invalid "$HA_INVALID" \
+    --skipped "$ANY_SKIPPED" \
     --compose-retry "$COMPOSE_RETRY_FIRED" \
     --shedlock-restored "$SHEDLOCK_RESTORE_OK"
 }
@@ -503,6 +515,7 @@ GATE_START="$(now_ms)"
 
 for phase in $PHASES; do
   if should_skip "$phase"; then
+    ANY_SKIPPED=1
     record_phase "$phase" "SKIP" "0" "0" "-" "-" "skipped by flag"
     continue
   fi
@@ -597,6 +610,9 @@ OVERALL="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.ar
   "$RUN_DIR/summary.json")"
 echo "OVERALL: $OVERALL"
 
+# Exit-code table (see header + hygiene README):
+#   0 GO · 1 NO-GO · 3 GO with reservations · 4 INCONCLUSIVE
 if [[ "$OVERALL_RED" -ne 0 ]]; then exit 1; fi
-if [[ "$HA_INVALID" -ne 0 || "$OVERALL_AMBER" -ne 0 ]]; then exit 3; fi
+if [[ "$HA_INVALID" -ne 0 || "$ANY_SKIPPED" -ne 0 ]]; then exit 4; fi
+if [[ "$OVERALL_AMBER" -ne 0 ]]; then exit 3; fi
 exit 0

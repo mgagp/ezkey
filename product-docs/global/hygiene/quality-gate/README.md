@@ -18,7 +18,20 @@ Cloud agent tooling; Git Bash best-effort, untested on macOS.
 node scripts/lib/quality-gate-secrets.test.mjs
 ```
 
-Exit codes: **0** GO · **3** reservations / HA inconclusive · other non-zero NO-GO.
+### Exit-code table
+
+| Code | Meaning |
+| --- | --- |
+| **0** | GO — all phases ran; no RED; no AMBER; HA valid |
+| **1** | NO-GO — any RED check/phase |
+| **2** | Bad args / usage |
+| **3** | GO with reservations — AMBER only (HA valid; no skipped phases) |
+| **4** | INCONCLUSIVE — HA invalid and/or any `--skip` phase (never GO) |
+
+A skipped phase (`--skip` / `--no-clean-start`) makes the overall verdict at least
+`INCONCLUSIVE: skipped phase(s)` and exit **4**, even when remaining phases are GREEN.
+Inherited `QUALITY_GATE_LOG_SINCE` / `UNTIL` and `DOCKER_LOGS_SINCE` / `UNTIL` are **unset**
+at gate start so a full run cannot silently inherit a narrowed docker-log window.
 
 ## Sequence
 

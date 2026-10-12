@@ -17,6 +17,7 @@ const args = parseArgs(process.argv.slice(2), {
   '--red': 'red',
   '--amber': 'amber',
   '--ha-invalid': 'haInvalid',
+  '--skipped': 'skipped',
   '--compose-retry': 'composeRetry',
   '--shedlock-restored': 'shedlockRestored',
 });
@@ -27,6 +28,7 @@ const totalMs = Number(args.totalMs || 0);
 const red = args.red === '1';
 const amber = args.amber === '1';
 const haInvalid = args.haInvalid === '1';
+const skipped = args.skipped === '1';
 const composeRetry = args.composeRetry === '1';
 const shedlockRestored = args.shedlockRestored === '1';
 
@@ -45,9 +47,11 @@ for (const line of readFileSync(join(runDir, 'phases.tsv'), 'utf8').split(/\r?\n
 }
 
 const health = loadJson(join(runDir, 'health', 'health.json')) || {};
+const anyPhaseSkipped = skipped || phases.some((p) => p.verdict === 'SKIP');
 let overall = 'GO';
 if (red) overall = 'NO-GO';
 else if (haInvalid) overall = 'INCONCLUSIVE: HA invalid';
+else if (anyPhaseSkipped) overall = 'INCONCLUSIVE: skipped phase(s)';
 else if (amber || health.verdict === 'AMBER') overall = 'GO with reservations';
 
 const findings = [];
@@ -64,7 +68,16 @@ if (haInvalid) {
       'HA invalid — replica dead/unhealthy, restart delta, elective restore failed, or ShedLock kill missing',
     classification: 'INCONCLUSIVE: HA invalid',
   });
-} else if (shedlockRestored) {
+}
+if (anyPhaseSkipped) {
+  findings.push({
+    phase: 'gate',
+    verdict: 'AMBER',
+    note: 'One or more phases skipped — overall verdict cannot be GO',
+    classification: 'INCONCLUSIVE: skipped phase(s)',
+  });
+}
+if (!haInvalid && shedlockRestored) {
   findings.push({
     phase: 'elective-tests',
     verdict: 'GREEN',
@@ -94,6 +107,7 @@ const summary = {
   totalDurationHuman: human(totalMs),
   overallVerdict: overall,
   haInvalid,
+  skippedPhases: anyPhaseSkipped,
   shedlockRestored,
   composeRetryFired: composeRetry,
   phases,

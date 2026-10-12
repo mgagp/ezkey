@@ -27,7 +27,10 @@ export const ID_LABEL_VALUE_RE = /^ID=\d+$/i;
  * Excludes Java class/package names (DataIntegrityViolationException, org.springframework…).
  * Canonical UUIDs are masked before this rule runs (see applyRedactions).
  */
-export const OPAQUE_TOKEN_RE = /\b(?=[A-Za-z0-9_-]*[A-Za-z])(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{20,}\b/g;
+// Lookaheads length-bounded (≤255) so a 100k-char non-token line stays linear.
+// Min 20 keeps *PublicKey / *Hex field names from matching as opaque tokens.
+export const OPAQUE_TOKEN_RE =
+  /\b(?=[A-Za-z0-9_-]{0,255}[A-Za-z])(?=[A-Za-z0-9_-]{0,255}\d)[A-Za-z0-9_-]{20,256}\b/g;
 
 /** Canonical UUID (8-4-4-4-12 hex). Masked before opaque-token so they are not RED. */
 export const CANONICAL_UUID_SOURCE =
@@ -57,10 +60,11 @@ export const TEST_ADMIN_USERNAME_RE =
   /^[a-z][a-z0-9-]*-(?:[0-9a-f]{8,20}|\d{10,13})$/;
 
 /**
- * Test-generated display-name suffix only (≤32 chars): churn resourceSuffix hex
- * or epoch millis uniqueSuffix. Matched only after display-name label prefixes.
+ * Test-generated display-name suffix only (≤32 chars): churn resourceSuffix as
+ * exactly 16 hex ({@code %016x}) or epoch millis uniqueSuffix. Matched only
+ * after display-name label prefixes.
  */
-export const TEST_DISPLAY_NAME_SUFFIX_RE = /^(?:[0-9a-f]{8,32}|\d{10,13})$/;
+export const TEST_DISPLAY_NAME_SUFFIX_RE = /^(?:[0-9a-f]{16}|\d{10,13})$/;
 
 /**
  * Opaque lookalike that is a jar stem, word-boundary `git:` hex SHA, arch triple,
@@ -80,9 +84,13 @@ export function isJarGitArchOpaqueContext(match, before, after) {
   if (/\bgit:\s*$/i.test(b) && /^[0-9a-f]+$/i.test(match)) return true;
   if (isArchTripleToken(match)) return true;
   // PENDING_*_DIAG digests: only exact 64-hex values after *Sha256*Hex=
-  if (/\w*Sha256\w*Hex=\s*$/i.test(b) && SHA256_HEX64_RE.test(match)) return true;
-  // Field name itself (value handled above / scored if non-hex)
-  if (/Sha256\w*Hex$/i.test(match) && /^=/.test(a)) return true;
+  // Bound \w{0,40} — unbounded \w* is quadratic on long non-matching lines.
+  if (/\b\w{0,40}Sha256\w{0,40}Hex=\s*$/i.test(b) && SHA256_HEX64_RE.test(match)) {
+    return true;
+  }
+  // Field name itself (value handled above / scored if non-hex).
+  // No leading \b before Sha256 — it sits mid-identifier (payloadSha256Utf8Hex).
+  if (/Sha256\w{0,40}Hex$/i.test(match) && /^=/.test(a)) return true;
   // Only keyset-backup-<ts>.json.encrypted — not arbitrary .<ext>
   if (isKeysetBackupFilename(match, a)) return true;
   return false;
@@ -153,17 +161,47 @@ export function isPublicKeyFieldName(key) {
 }
 
 /**
+ * True when the field name ends with {@code Hash} (after truncation ellipsis strip).
+ *
+ * @param {string} key
+ * @returns {boolean}
+ */
+export function isPublicKeyHashFieldName(key) {
+  const k = String(key || '').replace(/(?:…|\.\.\.)$/u, '');
+  return /hash$/i.test(k) && isPublicKeyFieldName(k);
+}
+
+/**
+ * Digest after a {@code *Hash} public-key field: 16–64 hex chars only.
+ *
+ * @param {string} value
+ * @returns {boolean}
+ */
+export function isPublicKeyHashHexValue(value) {
+  const v = String(value || '')
+    .trim()
+    .replace(/^["']+|["']+$/g, '')
+    .replace(/[)\]},;."']+$/g, '');
+  return /^[0-9a-f]{16,64}$/i.test(v);
+}
+
+/**
  * Opaque-token context immediately after a public-key field assignment
  * (including {@code DevicePublicKeyHash:} digests and truncated key names).
+ * Stem bounded to 40 word chars (ReDoS guard).
  *
  * @param {string} before chars before the opaque candidate
  * @returns {boolean}
  */
 export function isPublicKeyOpaqueContext(before) {
-  return /\b[\w-]*public[_-]?key(?:hash)?(?:…|\.\.\.)?\s*[=:]\s*"?$/iu.test(
+  return /\b[\w-]{0,40}public[_-]?key(?:hash)?(?:…|\.\.\.)?\s*[=:]\s*"?$/iu.test(
     String(before || ''),
   );
 }
+
+/** PEM private-key header anywhere in a line (spaces in the marker). */
+export const PEM_PRIVATE_KEY_RE =
+  /-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----/gi;
 
 /**
  * Private-key material mislabeled under a {@code …PublicKey} field (force RED).
@@ -177,15 +215,19 @@ export function looksLikePrivateKeyMaterial(value) {
   const v = String(value || '')
     .trim()
     .replace(/^["']+|["']+$/g, '');
-  // Any PEM private key header (EC / RSA / ENCRYPTED / bare PRIVATE KEY).
-  if (/^-----BEGIN [A-Z ]*PRIVATE KEY-----/i.test(v)) return true;
+  // PEM private key header anywhere in the value (spaces; bare kv must not stop it).
+  if (PEM_PRIVATE_KEY_RE.test(v)) {
+    PEM_PRIVATE_KEY_RE.lastIndex = 0;
+    return true;
+  }
+  PEM_PRIVATE_KEY_RE.lastIndex = 0;
   // EC SEC1 DER Base64 (e.g. MHcCAQEE…).
   if (/^MHcCAQEE/i.test(v)) return true;
   // Short PKCS#8 EC forms.
   if (/^MIGHAgEA/i.test(v)) return true;
   if (/^MC4CAQAw/i.test(v)) return true;
-  // RSA PKCS#1 (MIIEowIBAAKCAQEA…) / PKCS#8 (MIIEvQIBADANBgkqhki…) — MII…IBA…
-  if (/^MII[A-Za-z0-9+/]{0,8}IBA/i.test(v)) return true;
+  // RSA PKCS#1 (MIIEowIBAAK…) / PKCS#8 (MIIEvQIBADAN…, IBAD) — MII…IBA…
+  if (/^MII[A-Za-z0-9+/]{0,12}IBA/i.test(v)) return true;
   // PKCS#8-style Base64 often embeds AgEA near the start (e.g. MIIE…AgEA).
   if (/^MII[A-Za-z0-9+/]{0,48}AgEA/i.test(v)) return true;
   return false;
@@ -223,7 +265,8 @@ export function isTestDisplayNameSuffixShape(value) {
 
 /**
  * Config counters after {@code *ApiKey} keys (e.g. {@code applyApiKey=5} rate-limit
- * init) — not credential material. Real API key strings stay RED.
+ * init) — not credential material. Only 1–3 digit counters; longer digit runs
+ * ({@code 482913}, {@code 4829}) stay RED.
  *
  * @param {string} key
  * @param {string} value
@@ -234,14 +277,17 @@ export function isNonSecretApiKeyConfigValue(key, value) {
   const v = String(value || '')
     .trim()
     .replace(/[)\]},;."']+$/g, '');
-  return /^\d{1,6}$/.test(v);
+  return /^\d{1,3}$/.test(v);
 }
 /** Known allowlist requires= tokens (typos must not make an entry unconditional). */
 export const KNOWN_ALLOWLIST_REQUIRES = new Set(['COMPOSE_RETRY_FIRED']);
 
-/** Credential key stem (proofToken, api_key, challenge code, passphrase, …). */
+/**
+ * Credential key stem (proofToken, api_key, challenge code, passphrase, …).
+ * Prefix bounded to 40 word chars + leading word boundary (ReDoS guard).
+ */
 export const SECRET_KEY_STEM =
-  String.raw`\w*(?:token|secret|password|passwd|pwd|passphrase|private[_-]?key|challenge\W*code|api[-_]?key|access[_-]?code|authorization|bearer|otp|pin)`;
+  String.raw`\w{0,40}(?:token|secret|password|passwd|pwd|passphrase|private[_-]?key|challenge\W*code|api[-_]?key|access[_-]?code|authorization|bearer|otp|pin)`;
 
 /** Low-PII identity keys — AMBER, not credential RED. */
 export const USERNAME_KEY_RE = /^(?:username|user)$/i;
@@ -369,7 +415,8 @@ export const PRODUCT_LOG_SOURCES = [
  */
 function redactKvForms(text, note) {
   // public*Key fields are AMBER (Ed25519KeyPair.toString FP); private*Key stays RED via STEM.
-  const keys = `${SECRET_KEY_STEM}|\\w*public[_-]?key|challenge|code|username|user`;
+  // \w{0,40} bound + \b — unbounded \w* is quadratic on long adversarial lines.
+  const keys = `${SECRET_KEY_STEM}|\\w{0,40}public[_-]?key|challenge|code|username|user`;
   const apply = (out, re, wrap) =>
     out.replace(re, (full, key, val) => {
       // Masked / placeholders never RED — whatever the key name (incl. *ApiKey).
@@ -381,7 +428,11 @@ function redactKvForms(text, note) {
       if (USERNAME_KEY_RE.test(key)) {
         note('kv-username', 'AMBER', val);
       } else if (isPublicKeyFieldName(key) && !looksLikePrivateKeyMaterial(val)) {
-        note('kv-public-key', 'AMBER', val);
+        if (isPublicKeyHashFieldName(key) && !isPublicKeyHashHexValue(val)) {
+          note('kv-secret', 'RED', val);
+        } else {
+          note('kv-public-key', 'AMBER', val);
+        }
       } else {
         note('kv-secret', 'RED', val);
       }
@@ -414,6 +465,13 @@ export function applyRedactions(rawLine) {
     changes.push({ kind, severity, sample: String(sample).slice(0, 24) });
   };
 
+  // 0) PEM private-key header anywhere (spaces; bare kv stops at whitespace).
+  out = out.replace(PEM_PRIVATE_KEY_RE, (m) => {
+    note('pem-private-key', 'RED', m);
+    return '***REDACTED-PEM***';
+  });
+  PEM_PRIVATE_KEY_RE.lastIndex = 0;
+
   // 1) Bearer first (before kv authorization=… eats the keyword).
   // Case-sensitive "Bearer" + 8+ token chars — not prose "got bearer token".
   out = out.replace(/\bBearer\s+([A-Za-z0-9._~+/=-]{8,})/g, (full, tok) => {
@@ -428,18 +486,21 @@ export function applyRedactions(rawLine) {
     return full.replace(tok, '***REDACTED***');
   });
 
-  // 1b) Authorization: Basic <base64> only (header form; case-sensitive — avoids
-  // "Using basic configuration" / "HTTP Basic authentication is not configured").
-  out = out.replace(/Authorization:\s*Basic\s+([A-Za-z0-9+/=]+)/g, (full, b64) => {
+  // 1b) authorization: Basic <base64> — header name case-insensitive (HTTP/2 lowercases
+  // headers); required "Basic" scheme prefix kept so prose "basic configuration" stays clean.
+  out = out.replace(/\bauthorization:\s*Basic\s+([A-Za-z0-9+/=]+)/gi, (full, b64) => {
     note('basic', 'RED', b64);
     return full.replace(b64, '***REDACTED***');
   });
 
-  // 2) Email → AMBER low-PII
-  out = out.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, (m) => {
-    note('email', 'AMBER', m);
-    return '<EMAIL>';
-  });
+  // 2) Email → AMBER low-PII (length-bounded local/domain — unbounded +@[…] is ReDoS)
+  out = out.replace(
+    /[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}/g,
+    (m) => {
+      note('email', 'AMBER', m);
+      return '<EMAIL>';
+    },
+  );
 
   // 3) IPv4 / IPv6 → AMBER
   out = out.replace(
@@ -478,7 +539,7 @@ export function applyRedactions(rawLine) {
   // 5) JSON "key":"value" (compound keys + username / publicKey AMBER)
   out = out.replace(
     new RegExp(
-      `"(${SECRET_KEY_STEM}|\\w*public[_-]?key|challenge|code|key|username|user)"\\s*:\\s*"([^"]*)"`,
+      `"(${SECRET_KEY_STEM}|\\w{0,40}public[_-]?key|challenge|code|key|username|user)"\\s*:\\s*"([^"]*)"`,
       'gi',
     ),
     (full, key, val) => {
@@ -488,7 +549,11 @@ export function applyRedactions(rawLine) {
       if (USERNAME_KEY_RE.test(key)) {
         note('json-username', 'AMBER', val);
       } else if (isPublicKeyFieldName(key) && !looksLikePrivateKeyMaterial(val)) {
-        note('json-public-key', 'AMBER', val);
+        if (isPublicKeyHashFieldName(key) && !isPublicKeyHashHexValue(val)) {
+          note('json-secret', 'RED', val);
+        } else {
+          note('json-public-key', 'AMBER', val);
+        }
       } else {
         note('json-secret', 'RED', val);
       }
@@ -498,7 +563,7 @@ export function applyRedactions(rawLine) {
 
   // 6) CLI --…-token / --…-password "value with spaces" / =value
   out = out.replace(
-    /(--[\w-]*(?:token|secret|password|passphrase|api[-_]?key|private[_-]?key|otp|pin)[\w-]*)(?:\s+"([^"]+)"|\s+'([^']+)'|=(\S+)|(?:\s+)(\S+))/gi,
+    /(--[\w-]{0,40}(?:token|secret|password|passphrase|api[-_]?key|private[_-]?key|otp|pin)[\w-]{0,40})(?:\s+"([^"]+)"|\s+'([^']+)'|=(\S+)|(?:\s+)(\S+))/gi,
     (full, flag, dq, sq, eq, bare) => {
       const val = dq || sq || eq || bare || '';
       if (isMaskedOrNonSecretValue(val)) return full;
@@ -548,6 +613,16 @@ export function applyRedactions(rawLine) {
   // 9b) Canonical UUIDs → <UUID> before opaque-token (authAttemptId etc. are not secrets)
   out = out.replace(new RegExp(CANONICAL_UUID_SOURCE, 'gi'), '<UUID>');
 
+  // 9c) Churn %016x / epoch-millis display-name suffixes (16 hex is below opaque min 20).
+  out = out.replace(
+    /((?:Churn Tenant|Churn Int [AB]|Tenant [A-C]|Integration (?:A\d|[BC]))\s+)((?:[0-9a-f]{16}|\d{10,13}))\b/gi,
+    (full, prefix, suffix) => {
+      if (!isTestDisplayNameSuffixShape(suffix)) return full;
+      note('opaque-username', 'AMBER', suffix);
+      return `${prefix}<USER>`;
+    },
+  );
+
   // 10) Opaque long tokens (letters+digits, not CamelCase / dotted packages).
   // Skip jar/git/arch/64-hex Sha256Hex=/keyset-backup; test admin usernames → AMBER;
   // test display-name suffixes → AMBER; publicKey= / DevicePublicKeyHash= → AMBER.
@@ -569,6 +644,13 @@ export function applyRedactions(rawLine) {
       if (looksLikePrivateKeyMaterial(m)) {
         note('opaque-token', 'RED', m);
         return '<TOKEN>';
+      }
+      // *Hash fields require 16–64 hex; base64 / non-hex stays RED.
+      if (/\b[\w-]{0,40}public[_-]?keyhash(?:…|\.\.\.)?\s*[=:]\s*"?$/iu.test(before)) {
+        if (!isPublicKeyHashHexValue(m)) {
+          note('opaque-token', 'RED', m);
+          return '<TOKEN>';
+        }
       }
       note('opaque-public-key', 'AMBER', m);
       return '<PUBKEY>';
