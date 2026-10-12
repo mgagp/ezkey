@@ -40,6 +40,7 @@ import org.ezkey.audit.dto.EntryIntegrityViolation;
 import org.ezkey.audit.exception.IntegrityValidationDisabledException;
 import org.ezkey.audit.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -315,13 +316,15 @@ class RetroactiveIntegrityValidationServiceTest {
   }
 
   @Test
-  void validateOperatorWindow_allowsWindowWithinConfiguredCap() {
+  @DisplayName("validateOperatorWindow uses async max-window-days (async RUN_VALIDATION path)")
+  void validateOperatorWindow_allowsWindowWithinAsyncCap() {
     service.validateOperatorWindow(
         WINDOW_START, WINDOW_START.plus(windowCapProperties.maxWindow()));
   }
 
   @Test
-  void validateOperatorWindow_rejectsWindowExceedingConfiguredCap() {
+  @DisplayName("validateOperatorWindow rejects beyond async cap with capKind=ASYNC")
+  void validateOperatorWindow_rejectsWindowExceedingAsyncCap() {
     windowCapProperties.setMaxWindowDays(1);
 
     org.ezkey.audit.exception.IntegrityWindowOverCapException ex =
@@ -333,6 +336,9 @@ class RetroactiveIntegrityValidationServiceTest {
                     WINDOW_START.plus(windowCapProperties.maxWindow()).plusSeconds(1)));
 
     assertEquals(1, ex.getMaxWindowDays());
+    assertEquals(
+        org.ezkey.audit.exception.IntegrityWindowOverCapException.CAP_KIND_ASYNC, ex.getCapKind());
+    assertEquals(null, ex.getAsyncAlternative());
     assertTrue(ex.getMessage().contains("1"));
   }
 

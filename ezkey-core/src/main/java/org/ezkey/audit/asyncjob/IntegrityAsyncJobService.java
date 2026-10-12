@@ -93,8 +93,7 @@ public class IntegrityAsyncJobService {
    * @param chainVerificationService chain verify
    * @param retroactiveIntegrityValidationService detective validation
    * @param nightlyIntegrityProperties nightly enable flag (fail-closed for RUN_VALIDATION)
-   * @param windowCapProperties shared days-based window cap for VERIFY_* starts (same as report
-   *     GETs)
+   * @param windowCapProperties async days-based window cap for VERIFY_* starts
    * @param auditLogService audit emission
    * @param integrityAsyncJobExecutor single-thread worker pool
    */
@@ -187,10 +186,11 @@ public class IntegrityAsyncJobService {
       if (!nightlyIntegrityProperties.isEnabled()) {
         throw new IntegrityValidationDisabledException();
       }
-      // Same shared days-based cap as report GETs / VERIFY (#730 D2).
+      // Async RUN_VALIDATION keeps max-window-days (default 92); sync operator POST uses
+      // max-sync-window-days (Christophe B1).
       retroactiveIntegrityValidationService.validateOperatorWindow(request.from(), request.to());
     } else {
-      // VERIFY_CHAIN_RANGE / VERIFY_ENTRY_HMAC_RANGE — same hard cap as report GETs (#730 D2).
+      // VERIFY_CHAIN_RANGE / VERIFY_ENTRY_HMAC_RANGE — async days cap (#730 D2 / cut 3 PR 0).
       windowCapProperties.validateWindow(request.from(), request.to());
     }
 

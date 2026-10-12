@@ -2538,7 +2538,7 @@
           "Audit Logs"
         ],
         "summary": "Run retroactive integrity validation",
-        "description": "Detective-layer validation over a date range: same semantics as the nightly batch. Runs under the Integrity heavy-crypto gate (HTTP 409 when busy). Window capped by ezkey.audit.integrity.max-window-days (default 92 — calendar days, DST-tolerant Instant span = days×24h+1h). May raise or touch AUDIT_INTEGRITY_RUPTURE when violations remain alert-eligible. Global Admin only.",
+        "description": "Detective-layer validation over a date range: same semantics as the nightly batch. Runs under the Integrity heavy-crypto gate (HTTP 409 when busy). Synchronous path: window capped by ezkey.audit.integrity.max-sync-window-days (default 8 — Instant span = days×24h+1h; over-cap → integrity-window-over-cap with capKind=SYNC + fixed asyncAlternative). Longer windows: async RUN_VALIDATION under max-window-days (default 92). May raise or touch AUDIT_INTEGRITY_RUPTURE when violations remain alert-eligible. Global Admin only.",
         "operationId": "runRetroactiveIntegrityValidation",
         "requestBody": {
           "content": {
@@ -2562,7 +2562,7 @@
             }
           },
           "400": {
-            "description": "Invalid bounds, or window exceeds max-window-days (type integrity-window-over-cap)",
+            "description": "Invalid bounds, or window exceeds max-sync-window-days (type integrity-window-over-cap)",
             "content": {
               "*/*": {
                 "schema": {

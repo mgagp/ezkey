@@ -29,15 +29,16 @@ import org.springframework.validation.annotation.Validated;
  * max-sync-window-days} (synchronous report GETs). Spring Boot binds each
  * {@code @ConfigurationProperties} type independently, so the shared prefix does not collide.
  *
- * <p><b>Two caps (Christophe M1 / maintainer option A):</b>
+ * <p><b>Two caps (Christophe M1 / maintainer option A + B1):</b>
  *
  * <ul>
- *   <li>{@code max-window-days} (default 92) — async VERIFY starts, async {@code RUN_VALIDATION},
- *       and operator {@code POST …/integrity-validation/run}.
- *   <li>{@code max-sync-window-days} (default 8) — synchronous report GETs ({@code
- *       integrity-check}, {@code chain-integrity}). Preserves the #743 Instant-span floor so a sync
- *       GET cannot outlive Cloudflare Free’s non-raisable 100 s origin timeout (524) while holding
- *       the busy gate.
+ *   <li>{@code max-window-days} (default 92) — async VERIFY starts and async {@code
+ *       RUN_VALIDATION}.
+ *   <li>{@code max-sync-window-days} (default 8) — all synchronous paths: report GETs ({@code
+ *       integrity-check}, {@code chain-integrity}) and operator {@code POST
+ *       …/integrity-validation/run}. Preserves the #743 Instant-span floor so a sync call cannot
+ *       outlive Cloudflare Free’s non-raisable 100 s origin timeout (524) while holding the busy
+ *       gate.
  * </ul>
  *
  * <p><b>Effective duration:</b> {@code days × 24 h + 1 h} — calendar days with DST fall-back

@@ -286,13 +286,14 @@ Integrity cut 3 PR 0, **amended** Christophe M1 / maintainer option A — keep t
 
 | Cap | Property | Default | Applies to |
 |---|---|---|---|
-| **Async** | `max-window-days` | **92** | async VERIFY starts, async `RUN_VALIDATION`, operator `POST …/integrity-validation/run` |
-| **Sync** | `max-sync-window-days` | **8** | synchronous report GETs (`integrity-check`, `chain-integrity`) |
+| **Async** | `max-window-days` | **92** | async VERIFY starts, async `RUN_VALIDATION` |
+| **Sync** | `max-sync-window-days` | **8** | all synchronous paths: report GETs (`integrity-check`, `chain-integrity`) and operator `POST …/integrity-validation/run` |
 
 **Why two caps:** Cloudflare Free on ezkey.org / ezkey.online has a non-raisable **100 s** origin
-timeout (HTTP 524). A synchronous GET over a long window can outlive the client while the busy gate
+timeout (HTTP 524). A synchronous call over a long window can outlive the client while the busy gate
 stays held (409s for others; skipped nightly). Longer windows must use the **async job**. The sync
-default **8** preserves the #743 Instant-span floor (`8×24+1 = 193` h).
+default **8** preserves the #743 Instant-span floor (`8×24+1 = 193` h). Option A + B1: sync cap
+covers every synchronous path.
 
 Report GETs and operator retroactive POST recompute under `IntegrityHeavyCryptoGate` (HTTP 409 +
 `Retry-After` when busy — same `integrity-async-job-busy` contract as async start). Non-blocking
@@ -305,14 +306,14 @@ remains `nightly.window-hours` (not these caps).
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.audit.integrity.max-window-days` | `int` | `92` | optionnel | Async hard-reject (HTTP 400, type `integrity-window-over-cap`, extensions `maxWindowDays` + `capKind=ASYNC`) when `[from, to)` exceeds **`days × 24 h + 1 h`**. Primitive `int` + `@Min(1)` + `@Max(366)`. Must be **>=** `max-sync-window-days` (fail-fast at startup otherwise). |
-| `ezkey.audit.integrity.max-sync-window-days` | `int` | `8` | optionnel | Sync report-GET hard-reject (same problem type; `capKind=SYNC`). Same Instant-span rule. Over-cap ProblemDetail also includes fixed extension `asyncAlternative` = `POST /api/v1/audit-logs/integrity/jobs` (not from request input). Empty/`0`/`367+` fails startup. |
+| `ezkey.audit.integrity.max-sync-window-days` | `int` | `8` | optionnel | Sync hard-reject for report GETs and operator `POST …/integrity-validation/run` (same problem type; `capKind=SYNC`). Same Instant-span rule. Over-cap ProblemDetail also includes fixed extension `asyncAlternative` = `POST /api/v1/audit-logs/integrity/jobs` (not from request input). Empty/`0`/`367+` fails startup. |
 
 **Upgrade note (old → new):**
 
 | Removed (fail-fast if set) | Replacement |
 |---|---|
 | `ezkey.audit.integrity.verify-report.max-window-hours` | `max-sync-window-days` (sync GETs) / `max-window-days` (async VERIFY) |
-| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `ezkey.audit.integrity.max-window-days` |
+| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `max-sync-window-days` (sync operator POST) / `max-window-days` (async `RUN_VALIDATION`) |
 
 **[live] host pre-check (2026-10-12, ezkey.online):** the community host sets **neither** old key
 (no property, no relaxed env form, nothing in `.env` / compose / mounts / `app.jar`). The Oct 5 tip

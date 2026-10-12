@@ -169,7 +169,8 @@ public class AuditLogController {
    * @param auditChainIncidentService heartbeat operational incident listing and declaration
    * @param integrityBootstrapService thin Integrity atelier bootstrap (runtime profile + flags)
    * @param heavyCryptoGate process-local single-flight gate shared with nightly / async VERIFY
-   * @param windowCapProperties shared days-based window cap for synchronous report GETs
+   * @param windowCapProperties days-based caps (sync report GETs + sync operator POST; async VERIFY
+   *     / RUN_VALIDATION use the async cap elsewhere)
    * @param adminRepository repository for actor/target admin label enrichment
    * @param enrollmentRepository repository for enrollment label enrichment
    * @param integrationRepository repository for integration label enrichment
@@ -695,8 +696,10 @@ public class AuditLogController {
       description =
           "Detective-layer validation over a date range: same semantics as the nightly batch."
               + " Runs under the Integrity heavy-crypto gate (HTTP 409 when busy)."
-              + " Window capped by ezkey.audit.integrity.max-window-days"
-              + " (default 92 — calendar days, DST-tolerant Instant span = days×24h+1h)."
+              + " Synchronous path: window capped by ezkey.audit.integrity.max-sync-window-days"
+              + " (default 8 — Instant span = days×24h+1h; over-cap → integrity-window-over-cap"
+              + " with capKind=SYNC + fixed asyncAlternative)."
+              + " Longer windows: async RUN_VALIDATION under max-window-days (default 92)."
               + " May raise or touch AUDIT_INTEGRITY_RUPTURE when"
               + " violations remain alert-eligible. Global Admin only.")
   @ApiResponses(
@@ -707,7 +710,7 @@ public class AuditLogController {
         @ApiResponse(
             responseCode = "400",
             description =
-                "Invalid bounds, or window exceeds max-window-days"
+                "Invalid bounds, or window exceeds max-sync-window-days"
                     + " (type integrity-window-over-cap)",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(
@@ -722,7 +725,7 @@ public class AuditLogController {
   public ResponseEntity<RetroactiveIntegrityValidationRunResponse>
       runRetroactiveIntegrityValidation(
           @Valid @RequestBody RetroactiveIntegrityValidationRunRequest request) {
-    retroactiveIntegrityValidationService.validateOperatorWindow(request.from(), request.to());
+    windowCapProperties.validateSyncWindow(request.from(), request.to());
     boolean raiseAlert = request.raiseAlert() == null || request.raiseAlert();
     var result =
         withHeavyCryptoGate(

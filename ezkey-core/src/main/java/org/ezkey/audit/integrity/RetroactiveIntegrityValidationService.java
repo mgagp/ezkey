@@ -203,12 +203,15 @@ public class RetroactiveIntegrityValidationService {
   }
 
   /**
-   * Validates operator-selected bounds before {@link #runValidation}.
+   * Validates bounds against the <em>async</em> days cap ({@code max-window-days}) before async
+   * {@code RUN_VALIDATION} job start. Synchronous operator {@code POST …/integrity-validation/run}
+   * uses {@link IntegrityWindowCapProperties#validateSyncWindow} in the Admin API controller
+   * instead (Christophe B1).
    *
    * @param from inclusive window start
    * @param to exclusive window end
    * @throws IllegalArgumentException when bounds are missing or inverted
-   * @throws IntegrityWindowOverCapException when the window exceeds the configured days cap
+   * @throws IntegrityWindowOverCapException when the window exceeds the async days cap
    */
   public void validateOperatorWindow(OffsetDateTime from, OffsetDateTime to) {
     windowCapProperties.validateWindow(from, to);

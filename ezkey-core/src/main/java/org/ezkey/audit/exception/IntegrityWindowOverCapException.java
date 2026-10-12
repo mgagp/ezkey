@@ -14,8 +14,9 @@ import java.io.Serial;
 
 /**
  * Thrown when a requested Integrity {@code [from, to)} window exceeds the applicable configured
- * maximum days — sync report GETs use {@code max-sync-window-days}; async VERIFY / RUN_VALIDATION
- * starts and operator retroactive POST use {@code max-window-days}.
+ * maximum days — synchronous paths (report GETs and operator {@code POST
+ * …/integrity-validation/run}) use {@code max-sync-window-days}; async VERIFY / {@code
+ * RUN_VALIDATION} starts use {@code max-window-days}.
  *
  * <p>Map to HTTP 400 with RFC 9457 type {@link #TYPE_URI} and extensions {@code maxWindowDays} and
  * {@code capKind} ({@link #CAP_KIND_SYNC} or {@link #CAP_KIND_ASYNC}) in the Admin API. Sync
