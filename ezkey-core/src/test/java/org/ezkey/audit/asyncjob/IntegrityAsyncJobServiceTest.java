@@ -128,7 +128,7 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty());
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
     when(jobRepository.saveAndFlush(any()))

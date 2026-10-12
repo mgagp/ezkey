@@ -246,7 +246,7 @@ class AuditLogControllerChainCheckpointsTest {
   void getIntegrityBootstrap_returnsPayload() {
     org.ezkey.admin.dto.response.IntegrityBootstrapResponseDto dto =
         new org.ezkey.admin.dto.response.IntegrityBootstrapResponseDto(
-            "base", false, false, 92, 24);
+            "base", false, false, 92, 8, 24);
     when(integrityBootstrapService.build()).thenReturn(dto);
 
     ResponseEntity<org.ezkey.admin.dto.response.IntegrityBootstrapResponseDto> response =

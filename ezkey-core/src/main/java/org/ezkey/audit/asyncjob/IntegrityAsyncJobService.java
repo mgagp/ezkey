@@ -96,7 +96,8 @@ public class IntegrityAsyncJobService {
    * @param chainVerificationService chain verify
    * @param retroactiveIntegrityValidationService detective validation
    * @param nightlyIntegrityProperties nightly enable flag (fail-closed for RUN_VALIDATION)
-   * @param windowCapProperties async days-based window cap for VERIFY_* starts
+   * @param windowCapProperties async days-based window cap for VERIFY_* / RUN_VALIDATION starts
+   *     ({@code max-window-days}; sync report GETs and POST use {@code max-sync-window-days})
    * @param nightlyShedLockProbe cross-replica nightly ShedLock probe
    * @param auditLogService audit emission
    * @param integrityAsyncJobExecutor single-thread worker pool
