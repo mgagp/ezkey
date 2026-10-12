@@ -1,6 +1,9 @@
 {
   "version": 2,
-  "note": "Provisional round-number bands for the quality gate. Recalibrate from a clean HA run (no OOM, all replicas up, #747 retry not required). There is no locked baseline comparison — bands are absolute thresholds only.",
+  "baselineLocked": true,
+  "baselineLockedAt": "2026-10-11T23:59:46Z",
+  "baselineLockedTip": "796799079925c9e660b40e7dc9b98118492ffa1a",
+  "note": "Baseline locked from quality-gate run 8 (tip 79679907): secrets GREEN, no RED checks, HA valid, ShedLock kill+restore proven. Absolute bands remain; warnSignatures AMBER (~248) is an accepted reservation.",
   "javamelody": {
     "maxAgeSeconds": 600,
     "topHttpMeanMs": { "amber": 200, "red": 1000 },

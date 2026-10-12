@@ -51,7 +51,7 @@ UNKNOWN/AMBER (never silent "no OOM").
 
 | Path | Role |
 | --- | --- |
-| [`config/quality-gate/thresholds.json`](../../../../config/quality-gate/thresholds.json) | Provisional bands (run 7 NO-GO — `baselineLocked` not set). |
+| [`config/quality-gate/thresholds.json`](../../../../config/quality-gate/thresholds.json) | Baseline locked (`baselineLocked: true`) from run 8 tip `79679907`. |
 | [`config/quality-gate/log-allowlist.txt`](../../../../config/quality-gate/log-allowlist.txt) | Emission-time allowlist; unknown phases/`requires=`/`^.*` rejected. |
 
 Shared redaction: [`scripts/lib/quality-gate-secrets.mjs`](../../../../scripts/lib/quality-gate-secrets.mjs).
