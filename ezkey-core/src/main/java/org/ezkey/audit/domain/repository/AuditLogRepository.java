@@ -11,6 +11,7 @@
 package org.ezkey.audit.domain.repository;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -58,4 +59,26 @@ public interface AuditLogRepository
   @Modifying
   @Query("DELETE FROM AuditLog a WHERE a.createdAt < :cutoffDate")
   int deleteOlderThan(@Param("cutoffDate") OffsetDateTime cutoffDate);
+
+  /**
+   * Loads {@code entry_hmac} values for a half-open checkpoint window (Integrity cut 3 D5).
+   *
+   * <p>Same filter and sort as the former full-entity {@code findAll(Specification)} path in {@code
+   * AuditChainVerificationService#computeEntriesDigest}: {@code createdAt >= windowStart} and
+   * {@code createdAt < windowEnd}, ordered by {@code auditLogId} ascending.
+   *
+   * @param windowStart inclusive window start
+   * @param windowEnd exclusive window end
+   * @return projected rows (id + entry HMAC only)
+   */
+  @Query(
+      """
+      SELECT a.auditLogId AS auditLogId, a.entryHmac AS entryHmac
+      FROM AuditLog a
+      WHERE a.createdAt >= :windowStart AND a.createdAt < :windowEnd
+      ORDER BY a.auditLogId ASC
+      """)
+  List<AuditLogEntryHmacView> findEntryHmacsInWindow(
+      @Param("windowStart") OffsetDateTime windowStart,
+      @Param("windowEnd") OffsetDateTime windowEnd);
 }

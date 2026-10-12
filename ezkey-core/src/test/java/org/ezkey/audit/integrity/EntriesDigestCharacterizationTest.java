@@ -9,13 +9,11 @@ package org.ezkey.audit.integrity;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -30,8 +28,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 
 /**
  * RED-first characterization of {@code computeEntriesDigest} (Integrity cut 3 D5 / F7).
@@ -210,14 +206,13 @@ class EntriesDigestCharacterizationTest {
     return cp;
   }
 
-  @SuppressWarnings("unchecked")
   private void stubWindow(AuditChainCheckpoint cp, List<AuditLog> inWindow) {
-    when(checkpointRepository.findByWindowRange(any(), any())).thenReturn(List.of(cp));
+    when(checkpointRepository.findByWindowRange(eq(WIN_START), eq(WIN_END)))
+        .thenReturn(List.of(cp));
     when(checkpointRepository.findEarliest()).thenReturn(Optional.of(cp));
     when(checkpointRepository.findLatest()).thenReturn(Optional.of(cp));
-    when(auditLogRepository.findAll(
-            any(Specification.class), eq(Sort.by("auditLogId").ascending())))
-        .thenReturn(new ArrayList<>(inWindow));
+    when(auditLogRepository.findEntryHmacsInWindow(eq(WIN_START), eq(WIN_END)))
+        .thenReturn(TestEntryHmacView.fromAll(inWindow));
   }
 
   private AuditLog signedEntry(Long id, OffsetDateTime createdAt, String entryHmac) {
