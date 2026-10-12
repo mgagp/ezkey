@@ -47,7 +47,6 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -55,11 +54,14 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 /**
  * Real-Postgres coverage for Integrity cut 3 PR 1 review gates T1–T3.
  *
+ * <p>No class-level {@code @Transactional}: {@code @BeforeEach} applies DDL (DROP/CREATE), and
+ * service methods use {@code REQUIRES_NEW}. Holding an outer test TX across that DDL deadlocks
+ * Postgres (ACCESS EXCLUSIVE vs nested connection).
+ *
  * @since 2026
  */
 @SpringBootTest(classes = IntegrityAsyncJobPostgresTest.TestConfiguration.class)
 @Testcontainers(disabledWithoutDocker = true)
-@Transactional
 class IntegrityAsyncJobPostgresTest {
 
   @Container @ServiceConnection
