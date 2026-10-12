@@ -574,7 +574,8 @@ class IntegrityAsyncJobServiceTest {
               null);
 
       auditScopedService.start(request, 3, "ga.one");
-      realStateService.markSucceeded(saved.get().getJobId(), "Chain range verified", true, null, null);
+      realStateService.markSucceeded(
+          saved.get().getJobId(), "Chain range verified", true, null, null);
 
       ArgumentCaptor<AuditLog> auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
       verify(auditLogService, times(2)).log(auditCaptor.capture());

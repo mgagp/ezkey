@@ -88,9 +88,12 @@ class IntegrityAsyncJobControllerLastVerdictWebMvcTest {
     when(integrityAsyncJobService.getLastVerdict()).thenReturn(Optional.of(body));
 
     mockMvc
-        .perform(get("/api/v1/audit-logs/integrity/jobs/last-verdict").with(user("ga").roles("GLOBAL_ADMIN")))
+        .perform(
+            get("/api/v1/audit-logs/integrity/jobs/last-verdict")
+                .with(user("ga").roles("GLOBAL_ADMIN")))
         .andExpect(status().isOk())
-        .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
+        .andExpect(
+            header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
         .andExpect(jsonPath("$.chainStatus").value("OK"))
         .andExpect(jsonPath("$.entryHmacViolations").value(2))
         .andExpect(jsonPath("$.trigger").value("NIGHTLY"));
@@ -102,9 +105,12 @@ class IntegrityAsyncJobControllerLastVerdictWebMvcTest {
     when(integrityAsyncJobService.getLastVerdict()).thenReturn(Optional.empty());
 
     mockMvc
-        .perform(get("/api/v1/audit-logs/integrity/jobs/last-verdict").with(user("ga").roles("GLOBAL_ADMIN")))
+        .perform(
+            get("/api/v1/audit-logs/integrity/jobs/last-verdict")
+                .with(user("ga").roles("GLOBAL_ADMIN")))
         .andExpect(status().isNoContent())
-        .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")));
+        .andExpect(
+            header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")));
   }
 
   @Test
@@ -113,8 +119,10 @@ class IntegrityAsyncJobControllerLastVerdictWebMvcTest {
     when(integrityAsyncJobService.getCurrent()).thenReturn(Optional.empty());
 
     mockMvc
-        .perform(get("/api/v1/audit-logs/integrity/jobs/current").with(user("ga").roles("GLOBAL_ADMIN")))
+        .perform(
+            get("/api/v1/audit-logs/integrity/jobs/current").with(user("ga").roles("GLOBAL_ADMIN")))
         .andExpect(status().isNoContent())
-        .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")));
+        .andExpect(
+            header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")));
   }
 }

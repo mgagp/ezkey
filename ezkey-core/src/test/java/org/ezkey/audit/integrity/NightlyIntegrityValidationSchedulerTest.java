@@ -185,5 +185,4 @@ class NightlyIntegrityValidationSchedulerTest {
         .recordSuccess(eq(ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION), any());
     verify(heavyCryptoGate).exit(IntegrityHeavyCryptoGate.Holder.NIGHTLY);
   }
-
 }
