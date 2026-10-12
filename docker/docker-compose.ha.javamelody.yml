@@ -67,7 +67,8 @@ services:
       - ./javamelody/applications-ha.properties:/opt/javamelody/applications.properties:ro
       - javamelody-data-ha:/tmp/javamelody
     ports:
-      - "8088:8080"
+      # Bind loopback only — collector is a local troubleshooting surface, not a LAN service.
+      - "127.0.0.1:8088:8080"
     networks:
       - ezkey-network-ha
     restart: unless-stopped

@@ -70,6 +70,12 @@ jobs:
               - 'docker/demo-app-acme-entrypoint.sh'
               - 'docker/bootstrap-init/**'
               - 'scripts/build.sh'
+              - 'scripts/quality-gate.sh'
+              - 'scripts/quality-gate-*.sh'
+              - 'scripts/quality-gate-*.mjs'
+              - 'scripts/lib/quality-gate-*.mjs'
+              - 'scripts/lib/quality-gate-*.sh'
+              - 'config/quality-gate/**'
               - '.mvn/**'
             mobile:
               - 'ezkey_mobile/**'
@@ -202,6 +208,13 @@ jobs:
 
       - name: Bootstrap-init idempotency (null-token / disabled → exit 0)
         run: bash docker/bootstrap-init/bootstrap-init-idempotent-test.sh
+
+      # N6: quality-gate HA + secret-scan unit tests (no Docker stack).
+      - name: Quality-gate HA helper tests
+        run: bash scripts/quality-gate-ha.test.sh
+
+      - name: Quality-gate secrets unit tests
+        run: node --test scripts/lib/quality-gate-secrets.test.mjs
 
       - name: Upload Surefire reports
         if: always()

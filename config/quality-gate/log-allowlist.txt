@@ -1,0 +1,19 @@
+# Quality-gate container-log allowlist
+# Format:
+#   service | phase | ^anchored$ regex | issue | expires=YYYY-MM-DD
+#     [| requires=COMPOSE_RETRY_FIRED] [| kind=secret-channel] | justification
+# - service: container name substring or *
+# - phase: emission-time window name(s) from phase-windows.tsv (known gate phases or *)
+# - regex: must be full ^…$ ; ^.* pseudo-anchors are rejected (blocking)
+# - requires=: optional runtime gate; unknown values are rejected (blocking)
+# - kind=: optional; kind=secret-channel for #750 bootstrap enrollment allowlist
+# - issue + expires= required; missing/expired → actionable RED (hygiene)
+# Transient I/O is volume-thresholded in thresholds.json — not blanket-suppressed here.
+# #750 by design: emission window = clean-start only (still valid when scanned later).
+
+ezkey-admin-api | clean-start | ^<TS> ERROR .*ezkey_encryption_key_pkey.*$ | #747 | expires=2026-12-31 | requires=COMPOSE_RETRY_FIRED | SECURITY: temporary HA admin keyset PK race; compose-retry workaround only; remove when #747 fixed
+ezkey-admin-api | clean-start | ^o\.e\.admin\.service\.AdminBootstrapService .*Enrollment Proof Token=.*$ | #750 | expires=2026-12-31 | kind=secret-channel | by design: initial enrollment channel
+ezkey-admin-api | clean-start | ^o\.e\.admin\.service\.AdminBootstrapService .*Enrollment Challenge Code=.*$ | #750 | expires=2026-12-31 | kind=secret-channel | by design: initial enrollment channel
+ezkey-admin-api | clean-start | ^o\.e\.admin\.service\.AdminBootstrapService .*Challenge Code=.*$ | #750 | expires=2026-12-31 | kind=secret-channel | by design: initial enrollment channel
+ezkey-admin-api | clean-start | ^o\.e\.admin\.service\.AdminBootstrapService .*--enrollment-proof-token.*$ | #750 | expires=2026-12-31 | kind=secret-channel | by design: initial enrollment channel
+ezkey-admin-api | clean-start | ^o\.e\.admin\.service\.AdminBootstrapService .*QR CODE.*$ | #750 | expires=2026-12-31 | kind=secret-channel | by design: initial enrollment channel
