@@ -62,8 +62,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @Transactional
 class IntegrityAsyncJobPostgresIT {
 
-  @Container
-  @ServiceConnection
+  @Container @ServiceConnection
   static PostgreSQLContainer postgres =
       new PostgreSQLContainer("postgres:18-alpine").withDatabaseName("ezkey_it");
 
@@ -195,10 +194,7 @@ class IntegrityAsyncJobPostgresIT {
             () ->
                 jobService.start(
                     new org.ezkey.audit.dto.IntegrityAsyncJobStartRequest(
-                        IntegrityAsyncJobType.VERIFY_CHAIN_RANGE,
-                        older,
-                        older.plusHours(1),
-                        null),
+                        IntegrityAsyncJobType.VERIFY_CHAIN_RANGE, older, older.plusHours(1), null),
                     1,
                     "admin.docker"))
         .isInstanceOf(IntegrityAsyncJobBusyException.class)

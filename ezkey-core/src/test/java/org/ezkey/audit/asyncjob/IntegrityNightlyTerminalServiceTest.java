@@ -48,7 +48,9 @@ class IntegrityNightlyTerminalServiceTest {
   void insertNightlyTerminalSucceeded_skipped_noPersist() {
     RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult skipped =
         RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult.skipped(
-            "scope", "HMAC signing is not active", RetroactiveIntegrityValidationTriggerSource.SCHEDULED);
+            "scope",
+            "HMAC signing is not active",
+            RetroactiveIntegrityValidationTriggerSource.SCHEDULED);
 
     service.insertNightlyTerminalSucceeded(skipped);
 
