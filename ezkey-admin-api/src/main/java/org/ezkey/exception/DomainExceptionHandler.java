@@ -293,9 +293,10 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
    *
    * <p>Always sets {@code maxWindowDays} and {@code capKind} ({@link
    * IntegrityWindowOverCapException#CAP_KIND_SYNC} or {@link
-   * IntegrityWindowOverCapException#CAP_KIND_ASYNC}). For sync report-GET over-cap only, also sets
-   * {@code asyncAlternative} to the fixed {@link IntegrityWindowOverCapException#ASYNC_ALTERNATIVE}
-   * (never derived from the request).
+   * IntegrityWindowOverCapException#CAP_KIND_ASYNC}). For synchronous-path over-cap only (report
+   * GETs and operator {@code POST …/integrity-validation/run}), also sets {@code asyncAlternative}
+   * to the fixed {@link IntegrityWindowOverCapException#ASYNC_ALTERNATIVE} (never derived from the
+   * request).
    *
    * @param ex the over-cap exception
    * @param request the HTTP servlet request
