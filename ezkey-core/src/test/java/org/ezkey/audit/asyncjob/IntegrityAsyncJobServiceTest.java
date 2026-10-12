@@ -65,6 +65,7 @@ class IntegrityAsyncJobServiceTest {
 
   @Mock private IntegrityAsyncJobRepository jobRepository;
   @Mock private IntegrityAsyncJobStateService stateService;
+  @Mock private IntegrityNightlyTerminalService nightlyTerminalService;
   @Mock private IntegrityHeavyCryptoGate heavyCryptoGate;
   @Mock private AuditIntegrityService auditIntegrityService;
   @Mock private AuditChainVerificationService chainVerificationService;
@@ -91,6 +92,7 @@ class IntegrityAsyncJobServiceTest {
         new IntegrityAsyncJobService(
             jobRepository,
             stateService,
+            nightlyTerminalService,
             heavyCryptoGate,
             auditIntegrityService,
             chainVerificationService,
@@ -537,6 +539,7 @@ class IntegrityAsyncJobServiceTest {
           new IntegrityAsyncJobService(
               jobRepository,
               realStateService,
+              nightlyTerminalService,
               heavyCryptoGate,
               auditIntegrityService,
               chainVerificationService,
@@ -571,7 +574,7 @@ class IntegrityAsyncJobServiceTest {
               null);
 
       auditScopedService.start(request, 3, "ga.one");
-      realStateService.markSucceeded(saved.get().getJobId(), "Chain range verified", true, null);
+      realStateService.markSucceeded(saved.get().getJobId(), "Chain range verified", true, null, null);
 
       ArgumentCaptor<AuditLog> auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
       verify(auditLogService, times(2)).log(auditCaptor.capture());
@@ -609,6 +612,7 @@ class IntegrityAsyncJobServiceTest {
           new IntegrityAsyncJobService(
               jobRepository,
               realStateService,
+              nightlyTerminalService,
               heavyCryptoGate,
               auditIntegrityService,
               chainVerificationService,
@@ -672,120 +676,83 @@ class IntegrityAsyncJobServiceTest {
   }
 
   @Test
-  void insertNightlyTerminalSucceeded_skipped_noPersist() {
-    RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult skipped =
-        new RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult(
-            null,
-            null,
-            "scope",
-            true,
-            "HMAC signing is not active",
-            true,
-            false,
-            null,
-            "HMAC signing is not active",
-            0,
-            0,
-            0,
-            org.ezkey.audit.integrity.RetroactiveIntegrityValidationTriggerSource.SCHEDULED,
-            0,
-            0,
-            0,
-            0,
-            0);
-
-    service.insertNightlyTerminalSucceeded(skipped);
-
-    verify(jobRepository, never()).save(any());
-  }
-
-  @Test
-  void insertNightlyTerminalSucceeded_persistsNightlyTerminalWithCounters() {
-    OffsetDateTime from = OffsetDateTime.parse("2026-06-27T02:00:00Z");
-    OffsetDateTime to = OffsetDateTime.parse("2026-06-28T02:00:00Z");
+  void tryInsertNightlyTerminalSucceeded_delegatesToNightlyTerminalService() {
     RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
-        new RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult(
-            from,
-            to,
+        RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult.skipped(
             "scope",
-            false,
-            null,
-            true,
-            false,
-            null,
-            "OK",
-            0,
-            0,
-            0,
-            org.ezkey.audit.integrity.RetroactiveIntegrityValidationTriggerSource.SCHEDULED,
-            288,
-            288,
-            0,
-            0,
-            0);
-    when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-    service.insertNightlyTerminalSucceeded(result);
-
-    ArgumentCaptor<IntegrityAsyncJob> captor = ArgumentCaptor.forClass(IntegrityAsyncJob.class);
-    verify(jobRepository).save(captor.capture());
-    IntegrityAsyncJob saved = captor.getValue();
-    assertEquals(IntegrityAsyncJobTrigger.NIGHTLY, saved.getTrigger());
-    assertEquals(IntegrityAsyncJobType.RUN_VALIDATION, saved.getJobType());
-    assertEquals(IntegrityAsyncJobStatus.SUCCEEDED, saved.getStatus());
-    assertNull(saved.getStartedByAdminId());
-    assertEquals("system", saved.getStartedByUsername());
-    assertEquals(IntegrityChainStatus.OK, saved.getChainStatus());
-    assertEquals(288, saved.getTotalCheckpoints());
-    assertEquals(0, saved.getEntryHmacViolations());
-    assertTrue(saved.getFinishedAt() != null);
-  }
-
-  @Test
-  void insertNightlyTerminalFailed_persistsSimpleNameOnly() {
-    when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    OffsetDateTime from = OffsetDateTime.parse("2026-06-27T02:00:00Z");
-    OffsetDateTime to = OffsetDateTime.parse("2026-06-28T02:00:00Z");
-
-    service.insertNightlyTerminalFailed(from, to, "DataAccessResourceFailureException");
-
-    ArgumentCaptor<IntegrityAsyncJob> captor = ArgumentCaptor.forClass(IntegrityAsyncJob.class);
-    verify(jobRepository).save(captor.capture());
-    IntegrityAsyncJob saved = captor.getValue();
-    assertEquals(IntegrityAsyncJobStatus.FAILED, saved.getStatus());
-    assertEquals(IntegrityAsyncJobTrigger.NIGHTLY, saved.getTrigger());
-    assertEquals("DataAccessResourceFailureException", saved.getErrorSummary());
-    assertFalse(saved.getErrorSummary().contains("SELECT"));
-  }
-
-  @Test
-  void tryInsertNightlyTerminalSucceeded_dataAccess_swallows() {
-    OffsetDateTime from = OffsetDateTime.parse("2026-06-27T02:00:00Z");
-    OffsetDateTime to = OffsetDateTime.parse("2026-06-28T02:00:00Z");
-    RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
-        new RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult(
-            from,
-            to,
-            "scope",
-            false,
-            null,
-            true,
-            false,
-            null,
-            "OK",
-            0,
-            0,
-            0,
-            org.ezkey.audit.integrity.RetroactiveIntegrityValidationTriggerSource.SCHEDULED,
-            10,
-            10,
-            0,
-            0,
-            0);
-    when(jobRepository.save(any())).thenThrow(new DataAccessResourceFailureException("disk"));
-
+            "HMAC signing is not active",
+            org.ezkey.audit.integrity.RetroactiveIntegrityValidationTriggerSource.SCHEDULED);
     service.tryInsertNightlyTerminalSucceeded(result);
-    // no throw
+    verify(nightlyTerminalService).tryInsertNightlyTerminalSucceeded(result);
+  }
+
+  @Test
+  void tryInsertNightlyTerminalFailed_delegatesToNightlyTerminalService() {
+    OffsetDateTime from = OffsetDateTime.parse("2026-06-27T02:00:00Z");
+    OffsetDateTime to = OffsetDateTime.parse("2026-06-28T02:00:00Z");
+    service.tryInsertNightlyTerminalFailed(from, to, "Boom");
+    verify(nightlyTerminalService).tryInsertNightlyTerminalFailed(from, to, "Boom");
+  }
+
+  @Test
+  void runJob_heartbeatFailure_marksJobFailed_failClosed() {
+    ThreadPoolTaskExecutor sync =
+        new ThreadPoolTaskExecutor() {
+          @Override
+          public void execute(Runnable task) {
+            task.run();
+          }
+        };
+    sync.initialize();
+    try {
+      IntegrityAsyncJobService failureScopedService =
+          new IntegrityAsyncJobService(
+              jobRepository,
+              stateService,
+              nightlyTerminalService,
+              heavyCryptoGate,
+              auditIntegrityService,
+              chainVerificationService,
+              retroactiveIntegrityValidationService,
+              nightlyIntegrityProperties,
+              windowCapProperties,
+              nightlyShedLockProbe,
+              auditLogService,
+              sync);
+
+      when(jobRepository.findBySlotKeyAndStatus(
+              IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+          .thenReturn(Optional.empty());
+      when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
+      when(heavyCryptoGate.isBusy()).thenReturn(false);
+      when(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB)).thenReturn(true);
+      AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
+      when(jobRepository.saveAndFlush(any()))
+          .thenAnswer(
+              inv -> {
+                IntegrityAsyncJob job = inv.getArgument(0);
+                saved.set(job);
+                return job;
+              });
+      when(jobRepository.findById(any())).thenAnswer(inv -> Optional.ofNullable(saved.get()));
+      org.mockito.Mockito.doThrow(new DataAccessResourceFailureException("heartbeat write failed"))
+          .when(stateService)
+          .heartbeat(any());
+
+      IntegrityAsyncJobStartRequest request =
+          new IntegrityAsyncJobStartRequest(
+              IntegrityAsyncJobType.VERIFY_CHAIN_RANGE,
+              OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+              OffsetDateTime.parse("2026-01-02T00:00:00Z"),
+              null);
+
+      failureScopedService.start(request, 3, "ga.one");
+
+      verify(stateService)
+          .markFailed(saved.get().getJobId(), "Job failed: DataAccessResourceFailureException");
+    } finally {
+      sync.shutdown();
+    }
   }
 
   @Test

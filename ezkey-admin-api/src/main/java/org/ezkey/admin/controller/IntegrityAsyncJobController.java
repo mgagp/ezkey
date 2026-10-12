@@ -25,6 +25,7 @@ import org.ezkey.audit.dto.IntegrityAsyncJobResponse;
 import org.ezkey.audit.dto.IntegrityAsyncJobStartRequest;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -143,8 +144,8 @@ public class IntegrityAsyncJobController {
   public ResponseEntity<IntegrityAsyncJobResponse> getCurrent() {
     return integrityAsyncJobService
         .getCurrent()
-        .map(ResponseEntity::ok)
-        .orElseGet(() -> ResponseEntity.noContent().build());
+        .map(body -> ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body))
+        .orElseGet(() -> ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build());
   }
 
   /**
@@ -177,8 +178,8 @@ public class IntegrityAsyncJobController {
   public ResponseEntity<IntegrityAsyncJobResponse> getLastVerdict() {
     return integrityAsyncJobService
         .getLastVerdict()
-        .map(ResponseEntity::ok)
-        .orElseGet(() -> ResponseEntity.noContent().build());
+        .map(body -> ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body))
+        .orElseGet(() -> ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build());
   }
 
   /**

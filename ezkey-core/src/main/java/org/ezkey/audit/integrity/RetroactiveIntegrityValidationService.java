@@ -431,6 +431,23 @@ public class RetroactiveIntegrityValidationService {
       int archivedCheckpoints,
       int undeclaredGaps) {
 
+    /**
+     * Builds the operator / nightly job {@code resultSummary} line (shared wording).
+     *
+     * @param prefix e.g. {@code Validation} or {@code Nightly validation}
+     * @return safe summary without secrets
+     */
+    public String outcomeSummary(String prefix) {
+      return prefix
+          + ": intact="
+          + intact
+          + ", entryViolations="
+          + entryHmacViolationCount
+          + ", chainViolations="
+          + chainViolationCount
+          + (alertRaised ? ", alertId=" + alertId : "");
+    }
+
     static RetroactiveIntegrityValidationResult skipped(
         String scope, String reason, RetroactiveIntegrityValidationTriggerSource triggerSource) {
       return new RetroactiveIntegrityValidationResult(

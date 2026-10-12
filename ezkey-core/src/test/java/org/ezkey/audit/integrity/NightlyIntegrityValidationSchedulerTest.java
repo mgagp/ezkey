@@ -21,6 +21,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import org.ezkey.audit.asyncjob.IntegrityAsyncJobService;
+import org.ezkey.audit.asyncjob.IntegrityNightlyTerminalService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,13 +45,16 @@ class NightlyIntegrityValidationSchedulerTest {
   @Mock private ScheduledJobLastRunService jobLastRunService;
   @Mock private IntegrityHeavyCryptoGate heavyCryptoGate;
   @Mock private IntegrityAsyncJobService integrityAsyncJobService;
+  @Mock private IntegrityNightlyTerminalService nightlyTerminalService;
   @Mock private ObjectProvider<IntegrityAsyncJobService> integrityAsyncJobServiceProvider;
+  @Mock private ObjectProvider<IntegrityNightlyTerminalService> nightlyTerminalServiceProvider;
 
   private NightlyIntegrityValidationScheduler scheduler;
 
   @BeforeEach
   void setUp() {
     when(integrityAsyncJobServiceProvider.getIfAvailable()).thenReturn(integrityAsyncJobService);
+    when(nightlyTerminalServiceProvider.getIfAvailable()).thenReturn(nightlyTerminalService);
     scheduler =
         new NightlyIntegrityValidationScheduler(
             nightlyProperties,
@@ -58,7 +62,8 @@ class NightlyIntegrityValidationSchedulerTest {
             validationService,
             jobLastRunService,
             heavyCryptoGate,
-            integrityAsyncJobServiceProvider);
+            integrityAsyncJobServiceProvider,
+            nightlyTerminalServiceProvider);
   }
 
   @Test
@@ -86,7 +91,7 @@ class NightlyIntegrityValidationSchedulerTest {
                       && windowEnd.getNano() == 0
                       && windowEnd.getMinute() % 5 == 0;
                 }));
-    verify(integrityAsyncJobService).tryInsertNightlyTerminalSucceeded(any());
+    verify(nightlyTerminalService).tryInsertNightlyTerminalSucceeded(any());
     verify(jobLastRunService)
         .recordSuccess(eq(ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION), any());
     verify(heavyCryptoGate).exit(IntegrityHeavyCryptoGate.Holder.NIGHTLY);
@@ -104,7 +109,7 @@ class NightlyIntegrityValidationSchedulerTest {
 
     verify(heavyCryptoGate).tryEnter(IntegrityHeavyCryptoGate.Holder.NIGHTLY);
     verify(validationService, never()).validateWindow(any());
-    verify(integrityAsyncJobService, never()).tryInsertNightlyTerminalSucceeded(any());
+    verify(nightlyTerminalService, never()).tryInsertNightlyTerminalSucceeded(any());
     verify(jobLastRunService)
         .recordFailure(
             eq(ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION),
@@ -124,7 +129,7 @@ class NightlyIntegrityValidationSchedulerTest {
 
     verify(heavyCryptoGate, never()).tryEnter(any());
     verify(validationService, never()).validateWindow(any());
-    verify(integrityAsyncJobService, never()).tryInsertNightlyTerminalSucceeded(any());
+    verify(nightlyTerminalService, never()).tryInsertNightlyTerminalSucceeded(any());
     verify(jobLastRunService, never()).recordSuccess(any(), any());
   }
 
@@ -140,7 +145,7 @@ class NightlyIntegrityValidationSchedulerTest {
 
     scheduler.runNightlyValidation();
 
-    verify(integrityAsyncJobService)
+    verify(nightlyTerminalService)
         .tryInsertNightlyTerminalFailed(any(), any(), eq("DataAccessResourceFailureException"));
     verify(jobLastRunService)
         .recordFailure(
@@ -153,9 +158,10 @@ class NightlyIntegrityValidationSchedulerTest {
   }
 
   @Test
-  @DisplayName("no async-job bean: still records SUCCESS without terminal insert")
+  @DisplayName("no async-job beans: still records SUCCESS without terminal insert")
   void runNightlyValidation_noAsyncJobBean_stillSucceeds() {
     when(integrityAsyncJobServiceProvider.getIfAvailable()).thenReturn(null);
+    when(nightlyTerminalServiceProvider.getIfAvailable()).thenReturn(null);
     scheduler =
         new NightlyIntegrityValidationScheduler(
             nightlyProperties,
@@ -163,7 +169,8 @@ class NightlyIntegrityValidationSchedulerTest {
             validationService,
             jobLastRunService,
             heavyCryptoGate,
-            integrityAsyncJobServiceProvider);
+            integrityAsyncJobServiceProvider,
+            nightlyTerminalServiceProvider);
     when(chainProperties.getWindowMinutes()).thenReturn(5);
     when(nightlyProperties.getWindowHours()).thenReturn(24);
     when(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.NIGHTLY)).thenReturn(true);
@@ -178,4 +185,5 @@ class NightlyIntegrityValidationSchedulerTest {
         .recordSuccess(eq(ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION), any());
     verify(heavyCryptoGate).exit(IntegrityHeavyCryptoGate.Holder.NIGHTLY);
   }
+
 }

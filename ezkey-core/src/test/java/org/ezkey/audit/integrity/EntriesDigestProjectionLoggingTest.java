@@ -21,10 +21,6 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
-import org.ezkey.audit.domain.ApiName;
-import org.ezkey.audit.domain.EventStatus;
-import org.ezkey.audit.domain.EventType;
-import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,14 +33,11 @@ import org.slf4j.LoggerFactory;
 /**
  * DEBUG log-capture around the entryHmac projection path (Integrity cut 3 F10).
  *
- * <p>Asserts the projection DEBUG line never emits hex digests / HMAC material.
- *
  * @since 2026
  */
 @ExtendWith(MockitoExtension.class)
 class EntriesDigestProjectionLoggingTest {
 
-  /** Hex strings of typical digest length (SHA-256 hex = 64 chars) must never appear. */
   private static final Pattern HEX_DIGEST = Pattern.compile("(?i)\\b[0-9a-f]{32,}\\b");
 
   private static final OffsetDateTime WIN_START =
@@ -82,22 +75,7 @@ class EntriesDigestProjectionLoggingTest {
 
   @Test
   void computeEntriesDigest_debugLog_containsCountButNoHexDigest() {
-    AuditLog entry =
-        new AuditLog.Builder()
-            .eventType(EventType.ADMIN_LOGIN)
-            .eventAction("login")
-            .eventStatus(EventStatus.SUCCESS)
-            .apiName(ApiName.ADMIN_API)
-            .ipAddress("10.0.0.1")
-            .tenantId(1)
-            .instanceId("test-instance")
-            .build();
-    entry.setAuditLogId(1L);
-    entry.setCreatedAt(WIN_START.plusMinutes(1));
-    // Deliberately hex-looking payload — must never appear in DEBUG lines from the projection.
     String secretLookingHmac = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
-    entry.setEntryHmac(secretLookingHmac);
-
     String entriesDigest = hmacService.computeHmac(secretLookingHmac);
     String chainHmac = hmacService.computeHmac(entriesDigest + "|GENESIS");
     AuditChainCheckpoint cp = new AuditChainCheckpoint();
@@ -113,7 +91,7 @@ class EntriesDigestProjectionLoggingTest {
     when(checkpointRepository.findEarliest()).thenReturn(Optional.of(cp));
     when(checkpointRepository.findLatest()).thenReturn(Optional.of(cp));
     when(auditLogRepository.findEntryHmacsInWindow(any(), any()))
-        .thenReturn(TestEntryHmacView.fromAll(List.of(entry)));
+        .thenReturn(List.of(new TestEntryHmacView(1L, secretLookingHmac)));
 
     verificationService.verifyChain(WIN_START, WIN_END);
 

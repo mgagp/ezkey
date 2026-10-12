@@ -53,8 +53,8 @@ public class IntegrityAsyncJob {
   private IntegrityAsyncJobStatus status;
 
   /**
-   * Job initiation source. Column name is quoted in SQL ({@code "trigger"}) because TRIGGER is
-   * reserved in PostgreSQL.
+   * Job initiation source. Flyway DDL quotes the column as {@code "trigger"} (PostgreSQL reserved
+   * word {@code TRIGGER}); JPA maps the unquoted physical name {@code trigger}.
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "trigger", nullable = false, length = 16)
