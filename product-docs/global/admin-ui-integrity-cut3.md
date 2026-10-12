@@ -132,7 +132,7 @@ Citations are file:line on current `main`. Paths for async-job / chain-verify se
   - `IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS = 193` (8 calendar days, DST transition included);
   - `ezkey.audit.integrity.verify-report.max-window-hours` (default 193) → sync path uses `max-sync-window-days`;
   - `ezkey.audit.integrity.retroactive.operator-max-window-hours` (default 193) → async path uses `max-window-days`.
-- Over-cap remains HTTP **400** `integrity-window-over-cap` with extension `maxWindowDays` (the cap that was exceeded). Startup **fails fast** if either old hour key is still set (any relaxed form).
+- Over-cap remains HTTP **400** `integrity-window-over-cap` with extensions `maxWindowDays` (the cap that was exceeded) and `capKind` (`SYNC` | `ASYNC`). Sync over-cap also includes fixed `asyncAlternative` = `POST /api/v1/audit-logs/integrity/jobs`. Startup **fails fast** if either old hour key is still set (any relaxed form).
 - Admin UI soft check for sync report hydration mirrors `max-sync-window-days` via `INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS = 8` (hours = days×24+1). PR 2 may bind the picker to config / OpenAPI-exposed max.
 
 ### D3 — Structured counters on the job DTO

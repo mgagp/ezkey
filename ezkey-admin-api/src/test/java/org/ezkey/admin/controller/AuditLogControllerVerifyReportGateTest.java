@@ -254,6 +254,7 @@ class AuditLogControllerVerifyReportGateTest {
             IntegrityWindowOverCapException.class,
             () -> controller.checkChainIntegrity(FROM, overCapTo));
     assertEquals(8, ex.getMaxWindowDays());
+    assertEquals(IntegrityWindowOverCapException.CAP_KIND_SYNC, ex.getCapKind());
     assertEquals(IntegrityWindowOverCapException.ASYNC_ALTERNATIVE, ex.getAsyncAlternative());
     verify(auditChainVerificationService, never()).verifyChain(eq(FROM), eq(overCapTo));
     assertFalse(heavyCryptoGate.isBusy());
@@ -268,6 +269,7 @@ class AuditLogControllerVerifyReportGateTest {
             IntegrityWindowOverCapException.class,
             () -> controller.checkIntegrity(FROM, overCapTo));
     assertEquals(8, ex.getMaxWindowDays());
+    assertEquals(IntegrityWindowOverCapException.CAP_KIND_SYNC, ex.getCapKind());
     assertEquals(IntegrityWindowOverCapException.ASYNC_ALTERNATIVE, ex.getAsyncAlternative());
     verify(auditIntegrityService, never()).verifyRange(eq(FROM), eq(overCapTo));
   }
@@ -275,7 +277,7 @@ class AuditLogControllerVerifyReportGateTest {
   @Test
   @DisplayName("default UI 7-day lookback Instant span including DST (+1h) is accepted")
   void checkChainIntegrity_defaultSevenDayLookbackSpan_accepted() {
-    // Still well under the 92-day cap (legacy 8-day / 193h Instant span).
+    // Exactly the sync Instant cap (8×24h+1h = 193h); async default remains 92 days.
     OffsetDateTime toExclusive = FROM.plusHours(193);
     AuditChainVerificationService.ChainVerificationReport report =
         new AuditChainVerificationService.ChainVerificationReport(

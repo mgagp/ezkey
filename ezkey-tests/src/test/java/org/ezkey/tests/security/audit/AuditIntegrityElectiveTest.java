@@ -341,7 +341,8 @@ public class AuditIntegrityElectiveTest extends AbstractSecurityTest {
   // -----------------------------------------------------------------------
 
   /**
-   * Bounded Instant window for synchronous report GETs (well under default max-window-days=92).
+   * Bounded Instant window for synchronous report GETs (exactly default max-sync-window-days=8 →
+   * 193 h Instant span).
    *
    * @return {@code [from, to)} as ISO-8601 UTC strings
    */

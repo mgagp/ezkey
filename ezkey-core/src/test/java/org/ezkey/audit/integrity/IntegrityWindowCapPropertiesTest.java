@@ -210,19 +210,21 @@ class IntegrityWindowCapPropertiesTest {
             IntegrityWindowOverCapException.class,
             () -> properties.validateSyncWindow(FROM, FROM.plus(max).plusSeconds(1)));
     assertEquals(8, ex.getMaxWindowDays());
+    assertEquals(IntegrityWindowOverCapException.CAP_KIND_SYNC, ex.getCapKind());
     assertEquals(IntegrityWindowOverCapException.ASYNC_ALTERNATIVE, ex.getAsyncAlternative());
     assertTrue(ex.getMessage().contains("8"));
   }
 
   @Test
-  @DisplayName("async over-cap does not carry asyncAlternative")
-  void validateWindow_asyncOverCapHasNoAsyncAlternative() {
+  @DisplayName("async over-cap carries capKind=ASYNC and no asyncAlternative")
+  void validateWindow_asyncOverCapHasCapKindAsyncAndNoAsyncAlternative() {
     IntegrityWindowOverCapException ex =
         assertThrows(
             IntegrityWindowOverCapException.class,
             () ->
                 properties.validateWindow(FROM, FROM.plus(properties.maxWindow()).plusSeconds(1)));
     assertEquals(92, ex.getMaxWindowDays());
+    assertEquals(IntegrityWindowOverCapException.CAP_KIND_ASYNC, ex.getCapKind());
     assertEquals(null, ex.getAsyncAlternative());
   }
 

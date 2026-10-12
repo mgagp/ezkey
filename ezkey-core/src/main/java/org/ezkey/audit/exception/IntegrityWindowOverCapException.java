@@ -17,10 +17,10 @@ import java.io.Serial;
  * maximum days — sync report GETs use {@code max-sync-window-days}; async VERIFY / RUN_VALIDATION
  * starts and operator retroactive POST use {@code max-window-days}.
  *
- * <p>Map to HTTP 400 with RFC 9457 type {@link #TYPE_URI} and extension {@code maxWindowDays} in
- * the Admin API (value is the cap that was exceeded). Sync over-cap responses also include
- * extension {@code asyncAlternative} with the fixed async job start path ({@link
- * #ASYNC_ALTERNATIVE}) — never derived from request input.
+ * <p>Map to HTTP 400 with RFC 9457 type {@link #TYPE_URI} and extensions {@code maxWindowDays} and
+ * {@code capKind} ({@link #CAP_KIND_SYNC} or {@link #CAP_KIND_ASYNC}) in the Admin API. Sync
+ * over-cap responses also include extension {@code asyncAlternative} with the fixed async job start
+ * path ({@link #ASYNC_ALTERNATIVE}) — never derived from request input.
  *
  * @since 2026
  */
@@ -38,7 +38,15 @@ public class IntegrityWindowOverCapException extends RuntimeException {
    */
   public static final String ASYNC_ALTERNATIVE = "POST /api/v1/audit-logs/integrity/jobs";
 
+  /** ProblemDetail {@code capKind} when the sync report-GET cap was exceeded. */
+  public static final String CAP_KIND_SYNC = "SYNC";
+
+  /** ProblemDetail {@code capKind} when the async / operator cap was exceeded. */
+  public static final String CAP_KIND_ASYNC = "ASYNC";
+
   private final int maxWindowDays;
+
+  private final String capKind;
 
   private final String asyncAlternative;
 
@@ -48,25 +56,27 @@ public class IntegrityWindowOverCapException extends RuntimeException {
    * @param maxWindowDays configured maximum window length in calendar days
    */
   public IntegrityWindowOverCapException(int maxWindowDays) {
-    this(maxWindowDays, null);
+    this(maxWindowDays, CAP_KIND_ASYNC, null);
   }
 
   /**
    * Creates a sync report-GET over-cap exception with a fixed async alternative pointer.
    *
    * @param maxSyncWindowDays configured sync maximum window length in calendar days
-   * @return exception carrying {@link #ASYNC_ALTERNATIVE}
+   * @return exception carrying {@link #CAP_KIND_SYNC} and {@link #ASYNC_ALTERNATIVE}
    */
   public static IntegrityWindowOverCapException forSyncCap(int maxSyncWindowDays) {
-    return new IntegrityWindowOverCapException(maxSyncWindowDays, ASYNC_ALTERNATIVE);
+    return new IntegrityWindowOverCapException(maxSyncWindowDays, CAP_KIND_SYNC, ASYNC_ALTERNATIVE);
   }
 
-  private IntegrityWindowOverCapException(int maxWindowDays, String asyncAlternative) {
+  private IntegrityWindowOverCapException(
+      int maxWindowDays, String capKind, String asyncAlternative) {
     super(
         "Verification window exceeds maximum of "
             + maxWindowDays
             + " calendar days (DST-tolerant Instant span). Narrow the range.");
     this.maxWindowDays = maxWindowDays;
+    this.capKind = capKind;
     this.asyncAlternative = asyncAlternative;
   }
 
@@ -77,6 +87,15 @@ public class IntegrityWindowOverCapException extends RuntimeException {
    */
   public int getMaxWindowDays() {
     return maxWindowDays;
+  }
+
+  /**
+   * Returns which cap was exceeded ({@link #CAP_KIND_SYNC} or {@link #CAP_KIND_ASYNC}).
+   *
+   * @return cap kind constant
+   */
+  public String getCapKind() {
+    return capKind;
   }
 
   /**

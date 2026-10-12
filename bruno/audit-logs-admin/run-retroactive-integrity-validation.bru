@@ -58,5 +58,5 @@ docs {
   **Body:** `from` (inclusive ISO-8601), `to` (exclusive), optional `raiseAlert` (default true).
   Window must be ≤ `ezkey.audit.integrity.max-window-days` (default 92; Instant span = days×24h+1h).
   
-  **Status Codes:** 200 (including skipped when HMAC inactive) · 400 invalid bounds or exceeds max-window-days (`integrity-window-over-cap` + `maxWindowDays`) · 409 nightly validation inactive · 401 · 403
+  **Status Codes:** 200 (including skipped when HMAC inactive) · 400 invalid bounds or exceeds max-window-days (`integrity-window-over-cap` + `maxWindowDays` + `capKind=ASYNC`) · 409 nightly validation inactive · 401 · 403
 }

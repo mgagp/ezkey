@@ -14,7 +14,6 @@ import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.AbstractEnvironment;
-import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.PropertySource;
 
@@ -23,11 +22,13 @@ import org.springframework.core.env.PropertySource;
  * including environment variables). Silently ignoring a lower operator cap would weaken a resource
  * bound (design-principles §17 fail-closed).
  *
- * <p>Detection uses Spring Boot {@link Binder} for the canonical key (covers properties and
- * underscore env forms via {@code SystemEnvironmentPropertySource}). Compact env forms such as
- * {@code EZKEY_…VERIFYREPORT_MAXWINDOWHOURS} are <em>not</em> bound by Binder alone when present
- * only on a secondary {@code SystemEnvironmentPropertySource} — see the exact-name scan below
- * (proven by {@code IntegrityWindowCapPropertiesTest} compact vs underscore cases).
+ * <p>Detection uses Spring Boot {@link Binder} for the canonical key. On Boot 4.1.1 the primary
+ * {@code systemEnvironment} source is already covered for compact env forms via Binder's
+ * compact-form mapping ({@code SpringConfigurationPropertySource} applies that mapping only for the
+ * source named {@code systemEnvironment}). The exact-name scan below is <em>defense in depth for
+ * secondary sources</em> (e.g. a test {@code SystemEnvironmentPropertySource} named {@code
+ * testEnv}) — which is what {@code IntegrityWindowCapPropertiesTest} compact vs underscore cases
+ * prove.
  *
  * <p>Failure messages name the replacement key {@code ezkey.audit.integrity.max-window-days} and
  * never echo configured values.
@@ -92,10 +93,10 @@ public class IntegrityWindowCapLegacyPropertyGuard {
   }
 
   /**
-   * Detects an exact property-source key for compact {@code EZKEY_…} forms that Binder misses on a
-   * secondary {@code SystemEnvironmentPropertySource} (underscore forms are Binder-covered).
+   * Detects an exact property-source key for compact {@code EZKEY_…} forms on secondary sources
+   * (defense in depth; primary {@code systemEnvironment} is Binder-covered on Boot 4.1.1).
    *
-   * @param exactName exact key to look for in enumerable property sources
+   * @param exactName exact key to look for in property sources
    * @return {@code true} when any source exposes that name
    */
   private boolean environmentContainsExactName(String exactName) {
@@ -105,13 +106,6 @@ public class IntegrityWindowCapLegacyPropertyGuard {
     for (PropertySource<?> source : abstractEnv.getPropertySources()) {
       if (source.containsProperty(exactName)) {
         return true;
-      }
-      if (source instanceof EnumerablePropertySource<?> enumerable) {
-        for (String name : enumerable.getPropertyNames()) {
-          if (exactName.equals(name)) {
-            return true;
-          }
-        }
       }
     }
     return false;
