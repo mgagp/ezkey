@@ -321,6 +321,7 @@ another reason.
 | `AuthAttemptTxHelper` | `@Transactional(REQUIRES_NEW)` | Isolated auth-attempt INVALID / REJECTED |
 | `AdminAuthAttemptTxHelper` | `@Transactional(REQUIRES_NEW)` | Commit pending attempt before wait (documented exception) |
 | `AuditLogService` | `TransactionTemplate` | Fail-open audit insert + HMAC seal |
+| `IntegrityNightlyTerminalService` | `TransactionTemplate` on `tryInsert*` (+ declarative `@Transactional(REQUIRES_NEW)` on public `insert*` for external callers) | Nightly terminal row insert; WARN catch outside TX so commit-time failures do not escape |
 | `ReencryptionBatchCreationService` | `@Transactional(REQUIRES_NEW)` | Commit batch rows before processing |
 | `ReencryptionBatchProcessingService` | `@Transactional(REQUIRES_NEW)` | One batch per TX |
 | `ReencryptionRowPersistenceService` | `@Transactional(REQUIRES_NEW)` | Per-row flush isolation |

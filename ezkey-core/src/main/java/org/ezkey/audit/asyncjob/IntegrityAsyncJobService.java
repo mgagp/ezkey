@@ -91,7 +91,8 @@ public class IntegrityAsyncJobService {
    *
    * @param jobRepository job persistence
    * @param stateService heartbeat / terminal mutations
-   * @param nightlyTerminalService nightly terminal row writer (separate bean for REQUIRES_NEW)
+   * @param nightlyTerminalService nightly terminal row writer ({@code tryInsert*} uses
+   *     programmatic {@code REQUIRES_NEW})
    * @param heavyCryptoGate process-local exclusion vs nightly
    * @param auditIntegrityService entry HMAC verify
    * @param chainVerificationService chain verify

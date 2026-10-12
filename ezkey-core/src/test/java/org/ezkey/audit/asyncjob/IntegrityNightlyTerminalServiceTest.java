@@ -12,23 +12,37 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationTriggerSource;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.UnexpectedRollbackException;
 
 /**
- * Unit tests for {@link IntegrityNightlyTerminalService} (REQUIRES_NEW insert bean + broad catch).
+ * Unit tests for {@link IntegrityNightlyTerminalService} (programmatic REQUIRES_NEW tryInsert +
+ * WARN catch outside the TX).
  *
  * @since 2026
  */
@@ -36,12 +50,33 @@ import org.springframework.dao.DataAccessResourceFailureException;
 class IntegrityNightlyTerminalServiceTest {
 
   @Mock private IntegrityAsyncJobRepository jobRepository;
+  @Mock private PlatformTransactionManager transactionManager;
+  @Mock private TransactionStatus transactionStatus;
 
   private IntegrityNightlyTerminalService service;
+  private ListAppender<ILoggingEvent> logAppender;
+  private Logger serviceLogger;
+  private Level previousLevel;
 
   @BeforeEach
   void setUp() {
-    service = new IntegrityNightlyTerminalService(jobRepository);
+    // tryInsert* uses TransactionTemplate; direct insert* tests do not.
+    lenient()
+        .when(transactionManager.getTransaction(any(TransactionDefinition.class)))
+        .thenReturn(transactionStatus);
+    service = new IntegrityNightlyTerminalService(jobRepository, transactionManager);
+    serviceLogger = (Logger) LoggerFactory.getLogger(IntegrityNightlyTerminalService.class);
+    previousLevel = serviceLogger.getLevel();
+    serviceLogger.setLevel(Level.WARN);
+    logAppender = new ListAppender<>();
+    logAppender.start();
+    serviceLogger.addAppender(logAppender);
+  }
+
+  @AfterEach
+  void tearDown() {
+    serviceLogger.detachAppender(logAppender);
+    serviceLogger.setLevel(previousLevel);
   }
 
   @Test
@@ -122,25 +157,7 @@ class IntegrityNightlyTerminalServiceTest {
     OffsetDateTime from = OffsetDateTime.parse("2026-06-27T02:00:00Z");
     OffsetDateTime to = OffsetDateTime.parse("2026-06-28T02:00:00Z");
     RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
-        new RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult(
-            from,
-            to,
-            "scope",
-            false,
-            null,
-            true,
-            false,
-            null,
-            "OK",
-            0,
-            0,
-            0,
-            RetroactiveIntegrityValidationTriggerSource.SCHEDULED,
-            10,
-            10,
-            0,
-            0,
-            0);
+        sampleSucceededResult(from, to);
     when(jobRepository.save(any())).thenThrow(new DataAccessResourceFailureException("disk"));
 
     service.tryInsertNightlyTerminalSucceeded(result);
@@ -151,27 +168,73 @@ class IntegrityNightlyTerminalServiceTest {
     OffsetDateTime from = OffsetDateTime.parse("2026-06-27T02:00:00Z");
     OffsetDateTime to = OffsetDateTime.parse("2026-06-28T02:00:00Z");
     RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
-        new RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult(
-            from,
-            to,
-            "scope",
-            false,
-            null,
-            true,
-            false,
-            null,
-            "OK",
-            0,
-            0,
-            0,
-            RetroactiveIntegrityValidationTriggerSource.SCHEDULED,
-            10,
-            10,
-            0,
-            0,
-            0);
+        sampleSucceededResult(from, to);
     when(jobRepository.save(any())).thenThrow(new IllegalStateException("proxy / mapping boom"));
 
     service.tryInsertNightlyTerminalSucceeded(result);
+  }
+
+  @Test
+  void tryInsertNightlyTerminalSucceeded_commitFailure_swallowsAndWarnsSimpleName() {
+    OffsetDateTime from = OffsetDateTime.parse("2026-06-27T02:00:00Z");
+    OffsetDateTime to = OffsetDateTime.parse("2026-06-28T02:00:00Z");
+    RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
+        sampleSucceededResult(from, to);
+    when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    doThrow(new UnexpectedRollbackException("commit boom"))
+        .when(transactionManager)
+        .commit(transactionStatus);
+
+    service.tryInsertNightlyTerminalSucceeded(result);
+
+    List<ILoggingEvent> warns =
+        logAppender.list.stream().filter(e -> e.getLevel() == Level.WARN).toList();
+    assertEquals(1, warns.size());
+    assertTrue(
+        warns.get(0).getFormattedMessage().contains("UnexpectedRollbackException"),
+        "WARN must log exception simple name, got: " + warns.get(0).getFormattedMessage());
+    assertFalse(
+        warns.get(0).getFormattedMessage().contains("commit boom"),
+        "WARN must not leak exception message");
+  }
+
+  @Test
+  void tryInsertNightlyTerminalFailed_commitFailure_swallowsAndWarnsSimpleName() {
+    OffsetDateTime from = OffsetDateTime.parse("2026-06-27T02:00:00Z");
+    OffsetDateTime to = OffsetDateTime.parse("2026-06-28T02:00:00Z");
+    when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    doThrow(new UnexpectedRollbackException("commit boom"))
+        .when(transactionManager)
+        .commit(transactionStatus);
+
+    service.tryInsertNightlyTerminalFailed(from, to, "DataAccessResourceFailureException");
+
+    List<ILoggingEvent> warns =
+        logAppender.list.stream().filter(e -> e.getLevel() == Level.WARN).toList();
+    assertEquals(1, warns.size());
+    assertTrue(warns.get(0).getFormattedMessage().contains("UnexpectedRollbackException"));
+  }
+
+  private static RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult
+      sampleSucceededResult(OffsetDateTime from, OffsetDateTime to) {
+    return new RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult(
+        from,
+        to,
+        "scope",
+        false,
+        null,
+        true,
+        false,
+        null,
+        "OK",
+        0,
+        0,
+        0,
+        RetroactiveIntegrityValidationTriggerSource.SCHEDULED,
+        10,
+        10,
+        0,
+        0,
+        0);
   }
 }
