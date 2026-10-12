@@ -375,16 +375,16 @@
   component: Express (methodology micro-site)
   owner: fred
   eol_slug: express
-  current: "4"
+  current: "5"
   sources:
-    - { file: product-docs/site/package.json, expect: '"express": "^4.' }
+    - { file: product-docs/site/package.json, expect: '"express": "^5.' }
   eol: null
   target: "5"
   decision: keep
   security: false
   issue: null
-  last_review: 2026-10-07
-  notes: ""
+  last_review: 2026-10-12
+  notes: "Upgraded 4→5 with marked 18 + adm-zip 0.6 (supersedes Dependabot #713/#714/#715)"
 
 - id: conscrypt-android
   component: Conscrypt (Android)

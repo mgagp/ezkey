@@ -28,8 +28,10 @@ In these situations, apply a two-stage hardening pattern:
 1. **Stage 1 (Scaffold):** Draft the initial direction and plan in a standard Plan mode session.
 2. **Stage 2 (Fresh-session review & hardening):** Stage 2 is tooled by the keyword
    **`critical-review`** (aliases: adversarial review, revue critique, plan hardening) — see
-   [`../global/hygiene/critical-review/README.md`](../global/hygiene/critical-review/README.md) and
-   [`.cursor/skills/critical-review/SKILL.md`](../../.cursor/skills/critical-review/SKILL.md).
+   [critical-review hygiene canon](https://github.com/mgagp/ezkey/blob/main/product-docs/global/hygiene/critical-review/README.md)
+   and
+   [critical-review skill](https://github.com/mgagp/ezkey/blob/main/.cursor/skills/critical-review/SKILL.md)
+   (source-project paths; not part of the published methodology pack).
    Open a **fresh** read-only cloud-agent session on a **forced different model family** from the
    author's (mandatory) and submit the draft using
    [`../templates/critical-review.prompt.md`](../templates/critical-review.prompt.md). The

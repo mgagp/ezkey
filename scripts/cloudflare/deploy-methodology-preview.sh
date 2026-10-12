@@ -53,9 +53,7 @@ fi
 
 echo "Building static site at $SITE_DIR ..."
 cd "$SITE_DIR"
-if [[ ! -d "node_modules" ]]; then
-  npm install --no-audit --no-fund
-fi
+npm ci --no-audit --no-fund
 npm run build
 
 if [[ ! -d "$DIST_DIR" ]]; then
