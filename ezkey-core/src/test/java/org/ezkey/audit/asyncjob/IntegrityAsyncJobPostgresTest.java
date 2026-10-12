@@ -70,7 +70,12 @@ class IntegrityAsyncJobPostgresTest {
   static void datasourceProps(DynamicPropertyRegistry registry) {
     registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
     registry.add("spring.flyway.enabled", () -> "false");
-    registry.add("spring.sql.init.mode", () -> "never");
+    // Schema must exist before IntegrityAsyncJobService.markInterruptedOnStartup
+    // (ApplicationReadyEvent). @BeforeEach alone is too late for context load.
+    registry.add("spring.sql.init.mode", () -> "always");
+    registry.add(
+        "spring.sql.init.schema-locations",
+        () -> "classpath:integrity-async-job-pg-schema.sql");
     registry.add("ezkey.audit.integrity.async-job.enabled", () -> "true");
     registry.add("ezkey.audit.integrity.async-job.ttl", () -> "PT60M");
   }
