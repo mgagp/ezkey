@@ -204,7 +204,7 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty());
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     when(nightlyIntegrityProperties.isEnabled()).thenReturn(true);
     doAnswer(
@@ -242,7 +242,7 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
         .thenReturn(Optional.empty());
-    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     when(nightlyIntegrityProperties.isEnabled()).thenReturn(true);
     doAnswer(
