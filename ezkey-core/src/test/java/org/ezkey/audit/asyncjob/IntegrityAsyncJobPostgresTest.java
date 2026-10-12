@@ -79,8 +79,7 @@ class IntegrityAsyncJobPostgresTest {
     // (ApplicationReadyEvent). @BeforeEach alone is too late for context load.
     registry.add("spring.sql.init.mode", () -> "always");
     registry.add(
-        "spring.sql.init.schema-locations",
-        () -> "classpath:integrity-async-job-pg-schema.sql");
+        "spring.sql.init.schema-locations", () -> "classpath:integrity-async-job-pg-schema.sql");
     registry.add("ezkey.audit.integrity.async-job.enabled", () -> "true");
     registry.add("ezkey.audit.integrity.async-job.ttl", () -> "PT60M");
   }
