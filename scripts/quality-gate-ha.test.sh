@@ -47,8 +47,34 @@ case "$cmd" in
       echo "fake-docker: events failed" >&2
       exit 1
     fi
+    since=""; until=""; format=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --since) since="$2"; shift 2 ;;
+        --until) until="$2"; shift 2 ;;
+        --format) format="$2"; shift 2 ;;
+        --filter) shift 2 ;;
+        *) shift ;;
+      esac
+    done
     if [[ -n "${FAKE_DOCKER_EVENTS_LINES:-}" ]]; then
-      printf '%s\n' "$FAKE_DOCKER_EVENTS_LINES"
+      # Lines are either "name" (always emit) or "ISOZ name" (filter by --since/--until).
+      while IFS= read -r eline; do
+        [[ -z "$eline" ]] && continue
+        if [[ "$eline" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z)[[:space:]]+(.+)$ ]]; then
+          ets="${BASH_REMATCH[1]}"
+          ename="${BASH_REMATCH[2]}"
+          if [[ -n "$since" && "$ets" < "$since" ]]; then continue; fi
+          if [[ -n "$until" && "$ets" > "$until" ]]; then continue; fi
+          if [[ "$format" == *Attributes.name* || -z "$format" ]]; then
+            echo "$ename"
+          else
+            echo "$eline"
+          fi
+        else
+          echo "$eline"
+        fi
+      done <<< "$FAKE_DOCKER_EVENTS_LINES"
     fi
     exit 0
     ;;
@@ -73,7 +99,10 @@ SHEDLOCK_KILL_EXPECTED=0
 SHEDLOCK_KILL_MISSING=0
 SHEDLOCK_RESTORE_OK=0
 SHEDLOCK_KILLED=""
+SHEDLOCK_PROOF_PATH=""
+SHEDLOCK_PROOF_AT=""
 GATE_STARTED_AT="2026-10-11T00:00:00Z"
+ELECTIVE_STARTED_AT="2026-10-11T01:00:00Z"
 RUN_DIR="$TMP/run"
 mkdir -p "$RUN_DIR/phases"
 : >"$RUN_DIR/findings-extra.txt"
@@ -99,6 +128,7 @@ all_healthy() {
   PREV_RESTARTS=([ezkey-admin-api-1]=0 [ezkey-admin-api-2]=0)
   HA_INVALID=0; OVERALL_AMBER=0; OVERALL_RED=0
   SHEDLOCK_KILL_MISSING=0; SHEDLOCK_KILL_EXPECTED=0; SHEDLOCK_RESTORE_OK=0; SHEDLOCK_KILLED=""
+  SHEDLOCK_PROOF_PATH=""; SHEDLOCK_PROOF_AT=""
 }
 pass=0; fail=0
 assert_eq() {
@@ -115,6 +145,7 @@ restore_after_elective
 assert_eq "$?" "0" "restore OK"
 assert_eq "$SHEDLOCK_RESTORE_OK" "1" "restore OK flag"
 assert_eq "$HA_INVALID" "0" "restore OK not HA invalid"
+assert_eq "$SHEDLOCK_PROOF_PATH" "State.Status=exited" "restore OK → proof path Status"
 
 # 2) timeout expired → HA invalid (+ elective AMBER)
 all_healthy
@@ -199,7 +230,8 @@ grep -q 'Status/die proof missing' "$RUN_DIR/findings-extra.txt" \
 # 7c) docker die event proves kill when Status is already running again
 all_healthy
 : >"$RUN_DIR/phases/elective-tests.log"
-export FAKE_DOCKER_EVENTS_LINES="ezkey-admin-api-2"
+ELECTIVE_STARTED_AT="2026-10-11T01:00:00Z"
+export FAKE_DOCKER_EVENTS_LINES="2026-10-11T01:05:00Z ezkey-admin-api-2"
 restore_after_elective
 rc=$?
 unset FAKE_DOCKER_EVENTS_LINES
@@ -207,6 +239,22 @@ assert_eq "$rc" "0" "die-event proof → restore OK"
 assert_eq "$SHEDLOCK_KILLED" "ezkey-admin-api-2" "die-event → killed name"
 assert_eq "$SHEDLOCK_RESTORE_OK" "1" "die-event → restore OK flag"
 assert_eq "$HA_INVALID" "0" "die-event → not HA invalid"
+assert_eq "$SHEDLOCK_PROOF_PATH" "docker-die" "die-event → proof path docker-die"
+
+# 7c-bis) pre-elective die (e.g. preflight stop_stacks) must NOT prove kill
+all_healthy
+: >"$RUN_DIR/phases/elective-tests.log"
+: >"$RUN_DIR/findings-extra.txt"
+GATE_STARTED_AT="2026-10-11T00:00:00Z"
+ELECTIVE_STARTED_AT="2026-10-11T01:00:00Z"
+# die during preflight window only — nothing killed in elective
+export FAKE_DOCKER_EVENTS_LINES="2026-10-11T00:00:30Z ezkey-admin-api-2"
+restore_after_elective || true
+unset FAKE_DOCKER_EVENTS_LINES
+assert_eq "$SHEDLOCK_KILL_MISSING" "1" "pre-elective die → SHEDLOCK_KILL_MISSING"
+assert_eq "$SHEDLOCK_RESTORE_OK" "0" "pre-elective die → not restored"
+assert_eq "$HA_INVALID" "1" "pre-elective die → HA_INVALID / INCONCLUSIVE"
+assert_eq "$SHEDLOCK_PROOF_PATH" "" "pre-elective die → no proof path"
 
 # 7d) skipped phase → report INCONCLUSIVE (never GO)
 mkdir -p "$RUN_DIR/health"
@@ -251,6 +299,26 @@ assert_eq "$OVERALL_AMBER" "0" "OOM burst → not AMBER-only"
 grep -q 'docker events reported container OOM' "$RUN_DIR/findings-extra.txt" \
   && echo "ok - OOM burst → findings RED" && pass=$((pass+1)) \
   || { echo "not ok - OOM burst → findings RED"; fail=$((fail+1)); }
+
+# 10) quality-gate.sh exit 4 when any phase skipped (fake: skip all phases)
+SKIP_OUT="$TMP/skip-all-run"
+# Run from repo root; all phases skipped → INCONCLUSIVE exit 4 (no stack needed).
+set +e
+(
+  cd "$ROOT"
+  # Isolate artifacts under TMP via QUALITY_GATE override is unavailable — use --skip all.
+  ./scripts/quality-gate.sh \
+    --skip preflight --skip unit-tests --skip clean-start --skip post-clean-health \
+    --skip functional-tests --skip elective-tests --skip playwright \
+    --skip churn-init --skip churn --skip health \
+    >"$SKIP_OUT.log" 2>&1
+)
+skip_ec=$?
+set -e
+assert_eq "$skip_ec" "4" "all-phases --skip → exit 4"
+grep -q 'INCONCLUSIVE: skipped phase(s)' "$SKIP_OUT.log" \
+  && echo "ok - all-skip → OVERALL INCONCLUSIVE" && pass=$((pass+1)) \
+  || { echo "not ok - all-skip → OVERALL INCONCLUSIVE"; fail=$((fail+1)); grep -E 'OVERALL|overall' "$SKIP_OUT.log" || true; }
 
 echo "passes=$pass fails=$fail"
 [[ "$fail" -eq 0 ]]

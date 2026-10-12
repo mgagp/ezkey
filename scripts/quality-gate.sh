@@ -95,9 +95,12 @@ printf 'phase\tcontainer\trestarts\tdelta\n' >"$RESTARTS_TSV"
 MEM_SAMPLES_TSV="$RUN_DIR/mem-samples.tsv"
 printf 'utc\tphase\tcontainer\tmem_usage\tmem_limit\tmem_perc\n' >"$MEM_SAMPLES_TSV"
 GATE_STARTED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+ELECTIVE_STARTED_AT=""
 declare -A PREV_RESTARTS=()
 SHEDLOCK_KILLED=""
 SHEDLOCK_KILL_MISSING=0
+SHEDLOCK_PROOF_PATH=""
+SHEDLOCK_PROOF_AT=""
 
 echo "[$KEYWORD] run dir: $RUN_DIR"
 echo "[$KEYWORD] tip: $FULL_SHA"
@@ -540,7 +543,13 @@ for phase in $PHASES; do
     clean-start) run_phase_clean_start || true ;;
     post-clean-health) run_phase_post_clean_health || true ;;
     functional-tests) run_maven_phase functional-tests "mvn test -pl ezkey-tests -P all-tests" "all-tests" || true ;;
-    elective-tests) run_maven_phase elective-tests "./ezkey-tests/scripts/run-elective-tests.sh" "elective" || true ;;
+    elective-tests)
+      # Bound ShedLock die-event proof to the elective window (not GATE_STARTED_AT /
+      # preflight stop_stacks dies for admin-api-1/2).
+      ELECTIVE_STARTED_AT="$phase_start_iso"
+      export ELECTIVE_STARTED_AT
+      run_maven_phase elective-tests "./ezkey-tests/scripts/run-elective-tests.sh" "elective" || true
+      ;;
     playwright) run_phase_playwright || true ;;
     churn-init) run_phase_churn_init || true ;;
     churn) run_phase_churn || true ;;

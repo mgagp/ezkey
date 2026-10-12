@@ -33,6 +33,10 @@ A skipped phase (`--skip` / `--no-clean-start`) makes the overall verdict at lea
 Inherited `QUALITY_GATE_LOG_SINCE` / `UNTIL` and `DOCKER_LOGS_SINCE` / `UNTIL` are **unset**
 at gate start so a full run cannot silently inherit a narrowed docker-log window.
 
+ShedLock kill proof uses `State.Status=exited` first, else a docker `die` event **since
+`ELECTIVE_STARTED_AT`** (set when the elective phase begins). Searching from
+`GATE_STARTED_AT` is wrong: preflight `stop_stacks` emits `die` for admin-api replicas.
+
 ## Sequence
 
 1. **Preflight** — stop stacks; `docker info` MemTotal vs gate memory budget.

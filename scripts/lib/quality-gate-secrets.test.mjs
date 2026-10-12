@@ -967,4 +967,18 @@ describe('ReDoS guard on key-stem \\w{0,40}', () => {
     assert.equal(r.severity, null, `kinds=${r.kinds}`);
     assert.ok(ms < 200, `expected <200ms, got ${ms.toFixed(1)}ms`);
   });
+
+  it('scans token=aaaa… and a1-… prefix lines under 200 ms', () => {
+    const cases = [
+      `token=${'a'.repeat(100_000)}`,
+      `a1-${'x'.repeat(100_000)}`,
+      `${'a1-'.repeat(20_000)}password=hunter2secret`,
+    ];
+    for (const line of cases) {
+      const t0 = performance.now();
+      detectSecrets(line);
+      const ms = performance.now() - t0;
+      assert.ok(ms < 200, `expected <200ms for ${line.slice(0, 24)}…, got ${ms.toFixed(1)}ms`);
+    }
+  });
 });

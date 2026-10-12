@@ -507,7 +507,8 @@ yarn doctor:curated
 
 - On-demand full-suite + stack-health gate: **`quality-gate`**. Canon:
   [`product-docs/global/hygiene/quality-gate/README.md`](product-docs/global/hygiene/quality-gate/README.md)
-  (`./scripts/quality-gate.sh`; exit 0 GO / 3 reservations / non-zero NO-GO; #747/#748).
+  (`./scripts/quality-gate.sh`; exit **0** GO · **1** NO-GO · **2** bad args ·
+  **3** GO with reservations · **4** INCONCLUSIVE (HA invalid / skipped phase); #747/#748).
 
 ## Assessment curated keyword
 
