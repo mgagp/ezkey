@@ -123,12 +123,12 @@ Citations are file:line on current `main`. Paths for async-job / chain-verify se
 
 ### D2 — Window cap
 
-- **Cut-3 property:** `ezkey.integrity.verify.max-window-days`, default **92**.
-- **What it supersedes (landed by #743, provisional):**
+- **Cut-3 property:** `ezkey.audit.integrity.max-window-days`, default **92** (owning class `IntegrityWindowCapProperties`; effective Instant span = `days × 24 h + 1 h`). Same prefix as `AuditHmacProperties` — binds only `max-window-days` (no collision; each `@ConfigurationProperties` type binds independently).
+- **What it supersedes (landed by #743, provisional; removed in cut-3 PR 0):**
   - `IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS = 193` (8 calendar days, DST transition included);
   - `ezkey.audit.integrity.verify-report.max-window-hours` (default 193);
-  - `ezkey.audit.integrity.retroactive.operator-max-window-hours` (default 193, same constant; also binds `RUN_VALIDATION` / operator `POST …/integrity-validation/run`).
-- **Alignment rule (PR 1):** collapse the two provisional hour keys and the 193 h constant under the single `max-window-days` property. Convert days → hours at the validation boundary (or replace hour-based validators) so VERIFY starts, report GETs, and `RUN_VALIDATION` share one configurable bound. Default **92 days** replaces the temporary **8-day / 193 h** floor; over-cap remains HTTP **400** `integrity-window-over-cap` (no silent truncation; no property opt-out). Update `CONFIGURATION.md`, `docs/AUDIT_LOG_INTEGRITY.md`, OpenAPI annotations, and Bruno in the same PR 1 change set.
+  - `ezkey.audit.integrity.retroactive.operator-max-window-hours` (default 193, same constant; also bound `RUN_VALIDATION` / operator `POST …/integrity-validation/run`).
+- **Alignment rule (PR 0):** collapse the two provisional hour keys and the 193 h constant under the single `max-window-days` property. VERIFY starts, report GETs, and `RUN_VALIDATION` share one configurable bound. Default **92 days** replaces the temporary **8-day / 193 h** floor; over-cap remains HTTP **400** `integrity-window-over-cap` with extension `maxWindowDays` (no silent truncation; no property opt-out). Startup **fails fast** if either old hour key is still set (any relaxed form). Update `CONFIGURATION.md`, `docs/AUDIT_LOG_INTEGRITY.md`, OpenAPI annotations, and Bruno in the same PR 0 change set.
 - Applies to async VERIFY job starts and to sync `GET /chain-integrity` (and keeps `RUN_VALIDATION` under the same shared bound unless a later review explicitly splits it).
 - UI date picker bounded to the same max (PR 2); **remove** hard-coded `INTEGRITY_REPORT_MAX_WINDOW_HOURS = 193` — bind the UI to config / OpenAPI-exposed max. Optional early warning in the range picker when the selection approaches the cap (#743 follow-up → PR 2).
 - After the `entryHmac` projection (PR 1), the raised cap bounds wall-clock/TTL risk more than memory.

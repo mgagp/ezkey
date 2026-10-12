@@ -59,7 +59,7 @@ import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.AuditLifecycleService;
 import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
-import org.ezkey.audit.integrity.IntegrityVerifyReportProperties;
+import org.ezkey.audit.integrity.IntegrityWindowCapProperties;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationOptions;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.mapper.AuditChainCheckpointMapper;
@@ -147,7 +147,7 @@ public class AuditLogController {
   private final AuditChainIncidentService auditChainIncidentService;
   private final IntegrityBootstrapService integrityBootstrapService;
   private final IntegrityHeavyCryptoGate heavyCryptoGate;
-  private final IntegrityVerifyReportProperties verifyReportProperties;
+  private final IntegrityWindowCapProperties windowCapProperties;
   private final EzkeyAdminRepository adminRepository;
   private final EnrollmentRepository enrollmentRepository;
   private final IntegrationRepository integrationRepository;
@@ -169,7 +169,7 @@ public class AuditLogController {
    * @param auditChainIncidentService heartbeat operational incident listing and declaration
    * @param integrityBootstrapService thin Integrity atelier bootstrap (runtime profile + flags)
    * @param heavyCryptoGate process-local single-flight gate shared with nightly / async VERIFY
-   * @param verifyReportProperties window cap for synchronous report GETs
+   * @param windowCapProperties shared days-based window cap for synchronous report GETs
    * @param adminRepository repository for actor/target admin label enrichment
    * @param enrollmentRepository repository for enrollment label enrichment
    * @param integrationRepository repository for integration label enrichment
@@ -187,7 +187,7 @@ public class AuditLogController {
       AuditChainIncidentService auditChainIncidentService,
       IntegrityBootstrapService integrityBootstrapService,
       IntegrityHeavyCryptoGate heavyCryptoGate,
-      IntegrityVerifyReportProperties verifyReportProperties,
+      IntegrityWindowCapProperties windowCapProperties,
       EzkeyAdminRepository adminRepository,
       EnrollmentRepository enrollmentRepository,
       IntegrationRepository integrationRepository,
@@ -203,7 +203,7 @@ public class AuditLogController {
     this.auditChainIncidentService = auditChainIncidentService;
     this.integrityBootstrapService = integrityBootstrapService;
     this.heavyCryptoGate = heavyCryptoGate;
-    this.verifyReportProperties = verifyReportProperties;
+    this.windowCapProperties = windowCapProperties;
     this.adminRepository = adminRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
@@ -515,15 +515,15 @@ public class AuditLogController {
           "Recomputes HMAC-SHA256 signatures for audit log entries in the specified date "
               + "range and reports any tampered or unsigned entries. Runs under the Integrity "
               + "heavy-crypto gate (HTTP 409 when busy) with a hard window cap "
-              + "(ezkey.audit.integrity.verify-report.max-window-hours, default 193 — "
-              + "8 calendar days, DST transition included). Global Admin only.")
+              + "(ezkey.audit.integrity.max-window-days, default 92 — "
+              + "calendar days, DST-tolerant Instant span = days×24h+1h). Global Admin only.")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Integrity check completed"),
         @ApiResponse(
             responseCode = "400",
             description =
-                "Date range required/inverted, or exceeds max-window-hours"
+                "Date range required/inverted, or exceeds max-window-days"
                     + " (type integrity-window-over-cap)"),
         @ApiResponse(
             responseCode = "409",
@@ -543,7 +543,7 @@ public class AuditLogController {
           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
           OffsetDateTime to) {
 
-    verifyReportProperties.validateWindow(from, to);
+    windowCapProperties.validateWindow(from, to);
     AuditIntegrityService.IntegrityReport report =
         withHeavyCryptoGate(() -> auditIntegrityService.verifyRange(from, to));
     return ResponseEntity.ok(report);
@@ -613,8 +613,8 @@ public class AuditLogController {
               + "tampering, and undeclared temporal gaps (missing checkpoints between consecutive "
               + "windows or uncovered leading/trailing periods in the requested range). "
               + "Runs under the Integrity heavy-crypto gate (HTTP 409 when busy) with a hard "
-              + "window cap (ezkey.audit.integrity.verify-report.max-window-hours, default 193 — "
-              + "8 calendar days, DST transition included). Global Admin only.\n\n"
+              + "window cap (ezkey.audit.integrity.max-window-days, default 92 — "
+              + "calendar days, DST-tolerant Instant span = days×24h+1h). Global Admin only.\n\n"
               + "**Range handling:** The requested from/to may extend before the first checkpoint "
               + "or after the last in the database. Such periods are not reported as undeclared "
               + "gaps (they are before/after \"EZKey time\"). Only real gaps within the system's "
@@ -628,7 +628,7 @@ public class AuditLogController {
         @ApiResponse(
             responseCode = "400",
             description =
-                "Date range required/inverted, or exceeds max-window-hours"
+                "Date range required/inverted, or exceeds max-window-days"
                     + " (type integrity-window-over-cap)"),
         @ApiResponse(
             responseCode = "409",
@@ -648,7 +648,7 @@ public class AuditLogController {
           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
           OffsetDateTime to) {
 
-    verifyReportProperties.validateWindow(from, to);
+    windowCapProperties.validateWindow(from, to);
     AuditChainVerificationService.ChainVerificationReport report =
         withHeavyCryptoGate(() -> auditChainVerificationService.verifyChain(from, to));
     return ResponseEntity.ok(report);
@@ -693,9 +693,9 @@ public class AuditLogController {
       description =
           "Detective-layer validation over a date range: same semantics as the nightly batch."
               + " Runs under the Integrity heavy-crypto gate (HTTP 409 when busy)."
-              + " Window capped by ezkey.audit.integrity.retroactive.operator-max-window-hours"
-              + " (default shares verify-report max — 193 hours / 8 calendar days, DST"
-              + " transition included). May raise or touch AUDIT_INTEGRITY_RUPTURE when"
+              + " Window capped by ezkey.audit.integrity.max-window-days"
+              + " (default 92 — calendar days, DST-tolerant Instant span = days×24h+1h)."
+              + " May raise or touch AUDIT_INTEGRITY_RUPTURE when"
               + " violations remain alert-eligible. Global Admin only.")
   @ApiResponses(
       value = {
@@ -705,7 +705,7 @@ public class AuditLogController {
         @ApiResponse(
             responseCode = "400",
             description =
-                "Invalid bounds, or window exceeds operator-max-window-hours"
+                "Invalid bounds, or window exceeds max-window-days"
                     + " (type integrity-window-over-cap)",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(

@@ -31,13 +31,13 @@ import org.springframework.mock.web.MockHttpServletRequest;
 class DomainExceptionHandlerIntegrityWindowOverCapTest {
 
   @Test
-  @DisplayName("over-cap maps to HTTP 400 with integrity-window-over-cap type")
-  void overCapMapsTo400WithStableType() {
+  @DisplayName("over-cap maps to HTTP 400 with integrity-window-over-cap type and maxWindowDays")
+  void overCapMapsTo400WithStableTypeAndMaxWindowDaysExtension() {
     DomainExceptionHandler handler = new DomainExceptionHandler();
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.setRequestURI("/api/v1/audit-logs/chain-integrity");
 
-    IntegrityWindowOverCapException ex = new IntegrityWindowOverCapException(193);
+    IntegrityWindowOverCapException ex = new IntegrityWindowOverCapException(92);
 
     ResponseEntity<ProblemDetail> response =
         handler.handleIntegrityWindowOverCapException(ex, request);
@@ -47,5 +47,6 @@ class DomainExceptionHandlerIntegrityWindowOverCapTest {
     assertNotNull(body);
     assertEquals(400, body.getStatus());
     assertEquals(IntegrityWindowOverCapException.TYPE_URI, body.getType().toString());
+    assertEquals(92, body.getProperties().get("maxWindowDays"));
   }
 }

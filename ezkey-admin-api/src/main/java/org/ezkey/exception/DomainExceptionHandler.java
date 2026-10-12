@@ -298,12 +298,18 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
   @ExceptionHandler(IntegrityWindowOverCapException.class)
   public ResponseEntity<ProblemDetail> handleIntegrityWindowOverCapException(
       IntegrityWindowOverCapException ex, HttpServletRequest request) {
-    return buildProblemDetail(
-        ex,
-        HttpStatus.BAD_REQUEST,
-        IntegrityWindowOverCapException.TYPE_URI,
-        "Integrity window exceeds maximum",
-        request);
+    ResponseEntity<ProblemDetail> response =
+        buildProblemDetail(
+            ex,
+            HttpStatus.BAD_REQUEST,
+            IntegrityWindowOverCapException.TYPE_URI,
+            "Integrity window exceeds maximum",
+            request);
+    ProblemDetail body = response.getBody();
+    if (body != null) {
+      body.setProperty("maxWindowDays", ex.getMaxWindowDays());
+    }
+    return response;
   }
 
   /**

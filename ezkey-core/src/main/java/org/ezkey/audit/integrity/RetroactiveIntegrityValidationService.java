@@ -55,7 +55,7 @@ public class RetroactiveIntegrityValidationService {
       LoggerFactory.getLogger(RetroactiveIntegrityValidationService.class);
 
   private final NightlyIntegrityProperties nightlyProperties;
-  private final RetroactiveIntegrityProperties retroactiveProperties;
+  private final IntegrityWindowCapProperties windowCapProperties;
   private final AuditChainVerificationService chainVerificationService;
   private final AuditHmacService auditHmacService;
   private final AuditLogRepository auditLogRepository;
@@ -68,7 +68,7 @@ public class RetroactiveIntegrityValidationService {
    * Constructs the service.
    *
    * @param nightlyProperties nightly batch window configuration
-   * @param retroactiveProperties operator-trigger limits
+   * @param windowCapProperties shared days-based window cap for operator runs
    * @param chainVerificationService checkpoint chain verification
    * @param auditHmacService per-entry HMAC verification
    * @param auditLogRepository audit log access
@@ -79,7 +79,7 @@ public class RetroactiveIntegrityValidationService {
    */
   public RetroactiveIntegrityValidationService(
       NightlyIntegrityProperties nightlyProperties,
-      RetroactiveIntegrityProperties retroactiveProperties,
+      IntegrityWindowCapProperties windowCapProperties,
       AuditChainVerificationService chainVerificationService,
       AuditHmacService auditHmacService,
       AuditLogRepository auditLogRepository,
@@ -88,7 +88,7 @@ public class RetroactiveIntegrityValidationService {
       AuditLogService auditLogService,
       EntryIntegrityViolationClassifier entryIntegrityViolationClassifier) {
     this.nightlyProperties = nightlyProperties;
-    this.retroactiveProperties = retroactiveProperties;
+    this.windowCapProperties = windowCapProperties;
     this.chainVerificationService = chainVerificationService;
     this.auditHmacService = auditHmacService;
     this.auditLogRepository = auditLogRepository;
@@ -208,22 +208,10 @@ public class RetroactiveIntegrityValidationService {
    * @param from inclusive window start
    * @param to exclusive window end
    * @throws IllegalArgumentException when bounds are missing or inverted
-   * @throws IntegrityWindowOverCapException when the window exceeds the configured hour cap
+   * @throws IntegrityWindowOverCapException when the window exceeds the configured days cap
    */
   public void validateOperatorWindow(OffsetDateTime from, OffsetDateTime to) {
-    if (from == null || to == null) {
-      throw new IllegalArgumentException(
-          "Date range is required. Provide from (inclusive) and to (exclusive) as ISO-8601.");
-    }
-    if (!to.isAfter(from)) {
-      throw new IllegalArgumentException(
-          "Invalid date range: to must be after from (exclusive end, inclusive start).");
-    }
-    int configuredMaxHours = retroactiveProperties.getOperatorMaxWindowHours();
-    Duration duration = Duration.between(from, to);
-    if (duration.compareTo(Duration.ofHours(configuredMaxHours)) > 0) {
-      throw new IntegrityWindowOverCapException(configuredMaxHours);
-    }
+    windowCapProperties.validateWindow(from, to);
   }
 
   private Long raiseIntegrityRuptureAlert(

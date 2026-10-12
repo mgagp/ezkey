@@ -59,7 +59,8 @@ class RetroactiveIntegrityValidationServiceTest {
   private static final OffsetDateTime WINDOW_START = WINDOW_END.minusHours(24);
 
   @Mock private NightlyIntegrityProperties nightlyProperties;
-  @Mock private RetroactiveIntegrityProperties retroactiveProperties;
+  private final IntegrityWindowCapProperties windowCapProperties =
+      new IntegrityWindowCapProperties();
   @Mock private AuditChainVerificationService chainVerificationService;
   @Mock private AuditHmacService auditHmacService;
   @Mock private AuditLogRepository auditLogRepository;
@@ -75,7 +76,7 @@ class RetroactiveIntegrityValidationServiceTest {
     service =
         new RetroactiveIntegrityValidationService(
             nightlyProperties,
-            retroactiveProperties,
+            windowCapProperties,
             chainVerificationService,
             auditHmacService,
             auditLogRepository,
@@ -315,24 +316,24 @@ class RetroactiveIntegrityValidationServiceTest {
 
   @Test
   void validateOperatorWindow_allowsWindowWithinConfiguredCap() {
-    when(retroactiveProperties.getOperatorMaxWindowHours()).thenReturn(193);
-
-    service.validateOperatorWindow(WINDOW_START, WINDOW_START.plusHours(193));
+    service.validateOperatorWindow(
+        WINDOW_START, WINDOW_START.plus(windowCapProperties.maxWindow()));
   }
 
   @Test
   void validateOperatorWindow_rejectsWindowExceedingConfiguredCap() {
-    when(retroactiveProperties.getOperatorMaxWindowHours()).thenReturn(24);
+    windowCapProperties.setMaxWindowDays(1);
 
     org.ezkey.audit.exception.IntegrityWindowOverCapException ex =
         assertThrows(
             org.ezkey.audit.exception.IntegrityWindowOverCapException.class,
             () ->
                 service.validateOperatorWindow(
-                    WINDOW_START, WINDOW_START.plusHours(25).plusMinutes(1)));
+                    WINDOW_START,
+                    WINDOW_START.plus(windowCapProperties.maxWindow()).plusSeconds(1)));
 
-    assertEquals(24, ex.getMaxWindowHours());
-    assertTrue(ex.getMessage().contains("24"));
+    assertEquals(1, ex.getMaxWindowDays());
+    assertTrue(ex.getMessage().contains("1"));
   }
 
   private static AuditChainVerificationService.ChainVerificationReport intactReport() {

@@ -68,8 +68,8 @@ class IntegrityAsyncJobServiceTest {
   @Mock private NightlyIntegrityProperties nightlyIntegrityProperties;
   @Mock private AuditLogService auditLogService;
 
-  private final org.ezkey.audit.integrity.IntegrityVerifyReportProperties verifyReportProperties =
-      new org.ezkey.audit.integrity.IntegrityVerifyReportProperties();
+  private final org.ezkey.audit.integrity.IntegrityWindowCapProperties windowCapProperties =
+      new org.ezkey.audit.integrity.IntegrityWindowCapProperties();
 
   private ThreadPoolTaskExecutor executor;
   private IntegrityAsyncJobService service;
@@ -91,7 +91,7 @@ class IntegrityAsyncJobServiceTest {
             chainVerificationService,
             retroactiveIntegrityValidationService,
             nightlyIntegrityProperties,
-            verifyReportProperties,
+            windowCapProperties,
             auditLogService,
             executor);
   }
@@ -125,17 +125,18 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
 
+    OffsetDateTime from = OffsetDateTime.parse("2026-01-01T00:00:00Z");
     IntegrityAsyncJobStartRequest request =
         new IntegrityAsyncJobStartRequest(
             IntegrityAsyncJobType.VERIFY_CHAIN_RANGE,
-            OffsetDateTime.parse("2026-01-01T00:00:00Z"),
-            OffsetDateTime.parse("2026-01-01T00:00:00Z").plusHours(194),
+            from,
+            from.plus(windowCapProperties.maxWindow()).plusSeconds(1),
             null);
 
     IntegrityWindowOverCapException ex =
         assertThrows(
             IntegrityWindowOverCapException.class, () -> service.start(request, 1, "admin.docker"));
-    assertEquals(193, ex.getMaxWindowHours());
+    assertEquals(92, ex.getMaxWindowDays());
     verify(jobRepository, never()).saveAndFlush(any());
   }
 
@@ -378,7 +379,7 @@ class IntegrityAsyncJobServiceTest {
               chainVerificationService,
               retroactiveIntegrityValidationService,
               nightlyIntegrityProperties,
-              verifyReportProperties,
+              windowCapProperties,
               auditLogService,
               discarding);
 
@@ -449,7 +450,7 @@ class IntegrityAsyncJobServiceTest {
               chainVerificationService,
               retroactiveIntegrityValidationService,
               nightlyIntegrityProperties,
-              verifyReportProperties,
+              windowCapProperties,
               auditLogService,
               sync);
 

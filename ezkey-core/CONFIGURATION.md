@@ -279,27 +279,35 @@ entry HMAC range verify, run validation). DB-backed (`ezkey_integrity_async_job`
 
 ---
 
-### Operator retroactive validation (`ezkey.audit.integrity.retroactive.*`)
+### Integrity heavy-crypto window cap (`ezkey.audit.integrity.max-window-days`)
 
-**Description:** Caps and configuration for Global Admin `POST …/integrity-validation/run` (B2.7). Uses the same orchestration as the nightly batch; operator runs do **not** update the nightly job registry.
+**Description:** Single days-based Instant-span cap shared by read-only `GET …/integrity-check` and
+`GET …/chain-integrity`, async VERIFY job starts, async `RUN_VALIDATION`, and operator
+`POST …/integrity-validation/run` (#730 D2 / Integrity cut 3 PR 0). Report GETs and operator
+retroactive POST recompute under `IntegrityHeavyCryptoGate` (HTTP 409 + `Retry-After` when busy —
+same `integrity-async-job-busy` contract as async start). Non-blocking `tryEnter` so gated waits
+cannot exceed reverse-proxy / Tomcat timeouts. Nightly scheduled window remains
+`nightly.window-hours` (not this cap).
 
-**Defined in:** `RetroactiveIntegrityProperties`
-
-| Property | Type | Default | Obligation | Description |
-|---|---|---|---|---|
-| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `int` | `193` | optionnel | Hard-reject operator POST / async `RUN_VALIDATION` when `[from, to)` exceeds this many hours. Default shares `IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS` with report GETs / VERIFY starts (**8 calendar days, DST transition included**). Primitive `int` — there is **no opt-out**; an empty property value cannot remove the cap (raise the number only if a deployment needs a longer bound). **Provisional** — Integrity cut 3 (#730, intention-locked) aligns under a single `max-window-days` (default 92). Nightly scheduled window remains `nightly.window-hours`. |
-
----
-
-### Synchronous Integrity report GETs (`ezkey.audit.integrity.verify-report.*`)
-
-**Description:** Bounds for read-only `GET …/integrity-check` and `GET …/chain-integrity`, and for async VERIFY job starts (same cap — #730 D2). Report GETs and operator retroactive POST recompute under `IntegrityHeavyCryptoGate` (HTTP 409 + `Retry-After` when busy — same `integrity-async-job-busy` contract as async start). Non-blocking `tryEnter` so gated waits cannot exceed reverse-proxy / Tomcat timeouts.
-
-**Defined in:** `IntegrityVerifyReportProperties`
+**Defined in:** `IntegrityWindowCapProperties` (prefix `ezkey.audit.integrity`, field
+`max-window-days` only — coexists with `AuditHmacProperties` on the same prefix; each
+`@ConfigurationProperties` type binds independently).
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.audit.integrity.verify-report.max-window-hours` | `int` | `193` | optionnel | Hard-reject (HTTP 400, no silent truncate) when `[from, to)` exceeds this many hours. **193** = **8 calendar days, DST transition included** (`8×24 + 1`) so the Admin UI default 7-day lookback Instant span never exceeds the cap across a fall-back. **Provisional** hour key — Integrity cut 3 (#730, intention-locked) aligns under `max-window-days` (default 92) so two hour keys do not remain long-term. `@Min(1)`. |
+| `ezkey.audit.integrity.max-window-days` | `int` | `92` | optionnel | Hard-reject (HTTP 400, type `integrity-window-over-cap`, extension `maxWindowDays`; no silent truncate) when `[from, to)` exceeds **`days × 24 h + 1 h`** (calendar days with DST fall-back tolerance). Primitive `int` + `@Min(1)` — there is **no opt-out**; empty/`0` fails startup. |
+
+**Upgrade note (old → new):**
+
+| Removed (fail-fast if set) | Replacement |
+|---|---|
+| `ezkey.audit.integrity.verify-report.max-window-hours` | `ezkey.audit.integrity.max-window-days` |
+| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `ezkey.audit.integrity.max-window-days` |
+
+Relaxed env forms of the removed keys (e.g. `EZKEY_AUDIT_INTEGRITY_VERIFYREPORT_MAXWINDOWHOURS`,
+`EZKEY_AUDIT_INTEGRITY_RETROACTIVE_OPERATORMAXWINDOWHOURS`) also fail startup. Startup messages name
+the replacement key and never echo values. Effective Instant length for default `92` is **2209 h**
+(`92×24+1`).
 
 ---
 
