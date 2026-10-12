@@ -75,8 +75,10 @@ public class NightlyIntegrityShedLockProbe {
               NIGHTLY_LOCK_NAME);
       return Boolean.TRUE.equals(active);
     } catch (RuntimeException ex) { // CHECKSTYLE IGNORE IllegalCatch
+      // DB/read failure → treat as idle (fail-open). Banner must not stick on NIGHTLY when the
+      // probe cannot confirm an active lock; operator Start remains gated by the local heavy gate.
       logger.warn(
-          "ShedLock nightly probe failed (fail-open to idle): {}", ex.getClass().getSimpleName());
+          "ShedLock nightly probe failed (answers idle): {}", ex.getClass().getSimpleName());
       return false;
     }
   }

@@ -83,26 +83,14 @@ public class IntegrityAsyncJobStateService {
   }
 
   /**
-   * Marks a RUNNING job SUCCEEDED.
-   *
-   * @param jobId job id
-   * @param summary safe summary
-   * @param intact intact flag
-   * @param alertId optional alert id
-   */
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void markSucceeded(UUID jobId, String summary, Boolean intact, Long alertId) {
-    markSucceeded(jobId, summary, intact, alertId, null);
-  }
-
-  /**
    * Marks a RUNNING job SUCCEEDED, optionally persisting chain verdict counters.
    *
    * @param jobId job id
    * @param summary safe summary
    * @param intact intact flag
    * @param alertId optional alert id
-   * @param chainVerdict optional structured counters (VERIFY_CHAIN / RUN_VALIDATION)
+   * @param chainVerdict optional structured counters (VERIFY_CHAIN / RUN_VALIDATION); null for
+   *     VERIFY_ENTRY_HMAC_RANGE
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void markSucceeded(

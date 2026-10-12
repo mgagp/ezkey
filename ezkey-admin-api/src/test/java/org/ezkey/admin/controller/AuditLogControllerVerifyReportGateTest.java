@@ -161,14 +161,15 @@ class AuditLogControllerVerifyReportGateTest {
   }
 
   @Test
-  @DisplayName("checkChainIntegrity throws IntegrityAsyncJobBusyException when gate is held")
-  void checkChainIntegrity_gateBusy_throwsBusyException() {
+  @DisplayName("checkChainIntegrity throws busy with actual holder (OPERATOR_JOB), not REPORT_GET")
+  void checkChainIntegrity_gateBusy_reportsActualHolder() {
     assertTrue(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB));
     try {
       IntegrityAsyncJobBusyException ex =
           assertThrows(
               IntegrityAsyncJobBusyException.class, () -> controller.checkChainIntegrity(FROM, TO));
       assertEquals(IntegrityAsyncJobBusyException.HEAVY_CRYPTO_BUSY_MESSAGE, ex.getMessage());
+      assertEquals(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB, ex.getBusyHolder());
       verify(auditChainVerificationService, never()).verifyChain(eq(FROM), eq(TO));
     } finally {
       heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB);
@@ -176,17 +177,18 @@ class AuditLogControllerVerifyReportGateTest {
   }
 
   @Test
-  @DisplayName("checkIntegrity throws IntegrityAsyncJobBusyException when gate is held")
-  void checkIntegrity_gateBusy_throwsBusyException() {
-    assertTrue(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB));
+  @DisplayName("checkIntegrity throws busy with actual holder (NIGHTLY), not REPORT_GET")
+  void checkIntegrity_gateBusy_reportsActualHolderNightly() {
+    assertTrue(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.NIGHTLY));
     try {
       IntegrityAsyncJobBusyException ex =
           assertThrows(
               IntegrityAsyncJobBusyException.class, () -> controller.checkIntegrity(FROM, TO));
       assertEquals(IntegrityAsyncJobBusyException.HEAVY_CRYPTO_BUSY_MESSAGE, ex.getMessage());
+      assertEquals(IntegrityHeavyCryptoGate.Holder.NIGHTLY, ex.getBusyHolder());
       verify(auditIntegrityService, never()).verifyRange(eq(FROM), eq(TO));
     } finally {
-      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB);
+      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.NIGHTLY);
     }
   }
 

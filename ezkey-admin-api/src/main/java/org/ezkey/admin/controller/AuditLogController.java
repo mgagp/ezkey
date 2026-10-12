@@ -671,8 +671,9 @@ public class AuditLogController {
    */
   private <T> T withHeavyCryptoGate(Supplier<T> action) {
     if (!heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.REPORT_GET)) {
-      throw IntegrityAsyncJobBusyException.forHeavyCryptoBusy(
-          IntegrityHeavyCryptoGate.Holder.REPORT_GET);
+      // Report the holder that already owns the gate (NIGHTLY / OPERATOR_JOB / REPORT_GET),
+      // not the REPORT_GET we failed to acquire — same contract as async job start.
+      throw IntegrityAsyncJobBusyException.forHeavyCryptoBusy(heavyCryptoGate.holder());
     }
     try {
       return action.get();

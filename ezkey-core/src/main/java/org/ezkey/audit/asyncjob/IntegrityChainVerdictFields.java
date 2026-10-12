@@ -11,6 +11,7 @@
 package org.ezkey.audit.asyncjob;
 
 import org.ezkey.audit.integrity.AuditChainVerificationService.ChainVerificationReport;
+import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult;
 
 /**
  * Structured chain verdict fields persisted on Integrity job rows (Integrity cut 3 D3 / P1).
@@ -67,6 +68,24 @@ public record IntegrityChainVerdictFields(
         report.archivedCheckpoints(),
         report.undeclaredGaps().size(),
         entryHmacViolations);
+  }
+
+  /**
+   * Maps a retroactive validation result (operator RUN_VALIDATION / nightly terminal).
+   *
+   * @param result completed validation result (not skipped)
+   * @return verdict fields including {@code entryHmacViolations}
+   */
+  public static IntegrityChainVerdictFields fromValidation(
+      RetroactiveIntegrityValidationResult result) {
+    return new IntegrityChainVerdictFields(
+        mapStatus(result.chainStatus()),
+        result.totalCheckpoints(),
+        result.validCheckpoints(),
+        result.invalidCheckpoints(),
+        result.archivedCheckpoints(),
+        result.undeclaredGaps(),
+        result.entryHmacViolationCount());
   }
 
   /**

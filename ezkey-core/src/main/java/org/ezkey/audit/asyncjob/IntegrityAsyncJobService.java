@@ -43,7 +43,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
-import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
@@ -76,6 +75,7 @@ public class IntegrityAsyncJobService {
 
   private final IntegrityAsyncJobRepository jobRepository;
   private final IntegrityAsyncJobStateService stateService;
+  private final IntegrityNightlyTerminalService nightlyTerminalService;
   private final IntegrityHeavyCryptoGate heavyCryptoGate;
   private final AuditIntegrityService auditIntegrityService;
   private final AuditChainVerificationService chainVerificationService;
@@ -91,6 +91,7 @@ public class IntegrityAsyncJobService {
    *
    * @param jobRepository job persistence
    * @param stateService heartbeat / terminal mutations
+   * @param nightlyTerminalService nightly terminal row writer (separate bean for REQUIRES_NEW)
    * @param heavyCryptoGate process-local exclusion vs nightly
    * @param auditIntegrityService entry HMAC verify
    * @param chainVerificationService chain verify
@@ -105,6 +106,7 @@ public class IntegrityAsyncJobService {
   public IntegrityAsyncJobService(
       IntegrityAsyncJobRepository jobRepository,
       IntegrityAsyncJobStateService stateService,
+      IntegrityNightlyTerminalService nightlyTerminalService,
       IntegrityHeavyCryptoGate heavyCryptoGate,
       AuditIntegrityService auditIntegrityService,
       AuditChainVerificationService chainVerificationService,
@@ -116,6 +118,7 @@ public class IntegrityAsyncJobService {
       @Qualifier("integrityAsyncJobExecutor") ThreadPoolTaskExecutor integrityAsyncJobExecutor) {
     this.jobRepository = jobRepository;
     this.stateService = stateService;
+    this.nightlyTerminalService = nightlyTerminalService;
     this.heavyCryptoGate = heavyCryptoGate;
     this.auditIntegrityService = auditIntegrityService;
     this.chainVerificationService = chainVerificationService;
@@ -382,83 +385,16 @@ public class IntegrityAsyncJobService {
   }
 
   /**
-   * Inserts a terminal SUCCEEDED nightly verdict row (OQ4 A′). Never RUNNING; never via {@link
-   * IntegrityAsyncJobStateService#markSucceeded} (that would double-audit). No row when {@code
-   * result.skipped()} (HMAC inactive).
-   *
-   * @param result nightly validation result
-   */
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void insertNightlyTerminalSucceeded(RetroactiveIntegrityValidationResult result) {
-    if (result == null || result.skipped()) {
-      return;
-    }
-    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-    IntegrityAsyncJob job = newNightlyShell(result.windowStart(), result.windowEnd(), now);
-    job.setStatus(IntegrityAsyncJobStatus.SUCCEEDED);
-    job.setResultIntact(result.intact());
-    job.setResultAlertId(result.alertId());
-    String summary =
-        "Nightly validation: intact="
-            + result.intact()
-            + ", entryViolations="
-            + result.entryHmacViolationCount()
-            + ", chainViolations="
-            + result.chainViolationCount()
-            + (result.alertRaised() ? ", alertId=" + result.alertId() : "");
-    job.setResultSummary(truncate(summary, 1024));
-    IntegrityChainVerdictFields verdict =
-        new IntegrityChainVerdictFields(
-            IntegrityChainVerdictFields.mapStatus(result.chainStatus()),
-            result.totalCheckpoints(),
-            result.validCheckpoints(),
-            result.invalidCheckpoints(),
-            result.archivedCheckpoints(),
-            result.undeclaredGaps(),
-            result.entryHmacViolationCount());
-    verdict.applyTo(job);
-    jobRepository.save(job);
-  }
-
-  /**
-   * Inserts a terminal FAILED nightly row when {@code validateWindow} throws. Persists only the
-   * exception simple name (#741) — never {@code getMessage()}.
-   *
-   * @param scopeFrom inclusive window start
-   * @param scopeTo exclusive window end
-   * @param errorSimpleName {@code e.getClass().getSimpleName()}
-   */
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void insertNightlyTerminalFailed(
-      OffsetDateTime scopeFrom, OffsetDateTime scopeTo, String errorSimpleName) {
-    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-    IntegrityAsyncJob job = newNightlyShell(scopeFrom, scopeTo, now);
-    job.setStatus(IntegrityAsyncJobStatus.FAILED);
-    job.setResultIntact(false);
-    String safe = errorSimpleName != null ? errorSimpleName : "Exception";
-    job.setErrorSummary(truncate(safe, 512));
-    job.setResultSummary(truncate("Failed: " + safe, 1024));
-    jobRepository.save(job);
-  }
-
-  /**
-   * Attempts {@link #insertNightlyTerminalSucceeded}; on {@link DataAccessException} logs WARN with
-   * simple name and swallows (validation already committed + audited; registry stays SUCCESS).
+   * Delegates to {@link IntegrityNightlyTerminalService#tryInsertNightlyTerminalSucceeded}.
    *
    * @param result nightly validation result
    */
   public void tryInsertNightlyTerminalSucceeded(RetroactiveIntegrityValidationResult result) {
-    try {
-      insertNightlyTerminalSucceeded(result);
-    } catch (DataAccessException ex) {
-      logger.warn(
-          "Nightly terminal SUCCEEDED row insert failed: {}", ex.getClass().getSimpleName());
-    }
+    nightlyTerminalService.tryInsertNightlyTerminalSucceeded(result);
   }
 
   /**
-   * Attempts {@link #insertNightlyTerminalFailed}; on {@link DataAccessException} logs WARN with
-   * simple name and swallows.
+   * Delegates to {@link IntegrityNightlyTerminalService#tryInsertNightlyTerminalFailed}.
    *
    * @param scopeFrom inclusive window start
    * @param scopeTo exclusive window end
@@ -466,29 +402,7 @@ public class IntegrityAsyncJobService {
    */
   public void tryInsertNightlyTerminalFailed(
       OffsetDateTime scopeFrom, OffsetDateTime scopeTo, String errorSimpleName) {
-    try {
-      insertNightlyTerminalFailed(scopeFrom, scopeTo, errorSimpleName);
-    } catch (DataAccessException ex) {
-      logger.warn("Nightly terminal FAILED row insert failed: {}", ex.getClass().getSimpleName());
-    }
-  }
-
-  private static IntegrityAsyncJob newNightlyShell(
-      OffsetDateTime scopeFrom, OffsetDateTime scopeTo, OffsetDateTime now) {
-    IntegrityAsyncJob job = new IntegrityAsyncJob();
-    job.setJobId(UUID.randomUUID());
-    job.setSlotKey(IntegrityAsyncJob.GLOBAL_SLOT_KEY);
-    job.setJobType(IntegrityAsyncJobType.RUN_VALIDATION);
-    job.setTrigger(IntegrityAsyncJobTrigger.NIGHTLY);
-    job.setStartedByAdminId(null);
-    job.setStartedByUsername("system");
-    job.setStartedAt(now);
-    job.setHeartbeatAt(now);
-    job.setFinishedAt(now);
-    job.setScopeFrom(scopeFrom);
-    job.setScopeTo(scopeTo);
-    job.setRaiseAlert(true);
-    return job;
+    nightlyTerminalService.tryInsertNightlyTerminalFailed(scopeFrom, scopeTo, errorSimpleName);
   }
 
   /**
@@ -527,6 +441,7 @@ public class IntegrityAsyncJobService {
       if (job.getStatus() != IntegrityAsyncJobStatus.RUNNING) {
         return;
       }
+      // Heartbeat failure is fail-closed: exception escapes to markFailed below (job → FAILED).
       Runnable heartbeat = () -> stateService.heartbeat(jobId);
       heartbeat.run();
 
@@ -540,6 +455,7 @@ public class IntegrityAsyncJobService {
       stateService.markFailed(jobId, ex.getMessage());
     } catch (RuntimeException ex) { // CHECKSTYLE IGNORE IllegalCatch
       // Full exception stays in the log only — audit / job summaries must not seal SQL or values.
+      // Includes heartbeat persistence failures (fail-closed → FAILED).
       logger.error("Integrity async job {} failed: {}", jobId, ex.getMessage(), ex);
       stateService.markFailed(jobId, "Job failed: " + ex.getClass().getSimpleName());
     } finally {
@@ -557,7 +473,7 @@ public class IntegrityAsyncJobService {
             + report.totalEntries()
             + ", invalid="
             + report.invalidEntries();
-    stateService.markSucceeded(job.getJobId(), summary, report.intact(), null);
+    stateService.markSucceeded(job.getJobId(), summary, report.intact(), null, null);
   }
 
   private void completeChainVerify(IntegrityAsyncJob job, Runnable heartbeat) {
@@ -597,24 +513,12 @@ public class IntegrityAsyncJobService {
           IntegrityChainVerdictFields.notVerified());
       return;
     }
-    String summary =
-        "Validation: intact="
-            + result.intact()
-            + ", entryViolations="
-            + result.entryHmacViolationCount()
-            + ", chainViolations="
-            + result.chainViolationCount()
-            + (result.alertRaised() ? ", alertId=" + result.alertId() : "");
-    IntegrityChainVerdictFields verdict =
-        new IntegrityChainVerdictFields(
-            IntegrityChainVerdictFields.mapStatus(result.chainStatus()),
-            result.totalCheckpoints(),
-            result.validCheckpoints(),
-            result.invalidCheckpoints(),
-            result.archivedCheckpoints(),
-            result.undeclaredGaps(),
-            result.entryHmacViolationCount());
-    stateService.markSucceeded(job.getJobId(), summary, result.intact(), result.alertId(), verdict);
+    stateService.markSucceeded(
+        job.getJobId(),
+        result.outcomeSummary("Validation"),
+        result.intact(),
+        result.alertId(),
+        IntegrityChainVerdictFields.fromValidation(result));
   }
 
   private void emitStartedAudit(Integer adminId, IntegrityAsyncJob job) {
@@ -675,12 +579,5 @@ public class IntegrityAsyncJobService {
         + job.getStartedByUsername()
         + " at "
         + job.getStartedAt();
-  }
-
-  private static String truncate(String value, int max) {
-    if (value == null) {
-      return null;
-    }
-    return value.length() <= max ? value : value.substring(0, max);
   }
 }
