@@ -957,7 +957,7 @@ describe('emission-time allowlist windows (#750)', () => {
   });
 });
 
-describe('ReDoS guard on key-stem \\w{0,40}', () => {
+describe('ReDoS guard on key-stem \\w{0,80} / opaque {20,}', () => {
   it('scans a 100_000-char non-matching line under 200 ms', () => {
     // Adversarial: long word-char run that never hits a secret stem / delimiter.
     const line = `${'a'.repeat(100_000)} no-secret-here`;
@@ -979,6 +979,47 @@ describe('ReDoS guard on key-stem \\w{0,40}', () => {
       detectSecrets(line);
       const ms = performance.now() - t0;
       assert.ok(ms < 200, `expected <200ms for ${line.slice(0, 24)}…, got ${ms.toFixed(1)}ms`);
+    }
+  });
+
+  it('scores a continuous 320-char hex opaque token RED (Patrick A)', () => {
+    const tok = 'a1'.repeat(160); // 320 hex-ish mixed chars
+    assert.equal(tok.length, 320);
+    const r = detectSecrets(`noise ${tok} trailing`);
+    assert.equal(r.severity, 'RED', `kinds=${r.kinds}`);
+    assert.ok(r.kinds.includes('opaque-token'), `kinds=${r.kinds}`);
+  });
+
+  it('scores long-prefix password / Token keys RED (Patrick B)', () => {
+    const longPw =
+      'thisIsAVeryLongConfigurationPropertyNameForThePassword=s3cretValue99';
+    const r1 = detectSecrets(longPw);
+    assert.equal(r1.severity, 'RED', `kinds=${r1.kinds}`);
+    assert.ok(r1.kinds.includes('kv-secret'), `kinds=${r1.kinds}`);
+
+    const longTokKey = `"${'a'.repeat(45)}Token":"abc12345secret"`;
+    const r2 = detectSecrets(longTokKey);
+    assert.equal(r2.severity, 'RED', `kinds=${r2.kinds}`);
+    assert.ok(r2.kinds.includes('json-secret'), `kinds=${r2.kinds}`);
+  });
+});
+
+describe('aws_secret_access_key and PEM DSA/PGP', () => {
+  it('scores aws_secret_access_key= RED', () => {
+    const line = 'aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY';
+    const r = detectSecrets(line);
+    assert.equal(r.severity, 'RED', `kinds=${r.kinds}`);
+    assert.ok(r.kinds.includes('kv-secret'), `kinds=${r.kinds}`);
+  });
+
+  it('scores DSA / PGP private PEM headers RED', () => {
+    for (const pem of [
+      '-----BEGIN DSA PRIVATE KEY-----',
+      '-----BEGIN PGP PRIVATE KEY BLOCK-----',
+    ]) {
+      const r = detectSecrets(`leak ${pem} body`);
+      assert.equal(r.severity, 'RED', `kinds=${r.kinds} pem=${pem}`);
+      assert.ok(r.kinds.includes('pem-private-key'), `kinds=${r.kinds}`);
     }
   });
 });

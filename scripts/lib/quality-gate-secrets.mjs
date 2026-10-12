@@ -29,8 +29,9 @@ export const ID_LABEL_VALUE_RE = /^ID=\d+$/i;
  */
 // Lookaheads length-bounded (≤255) so a 100k-char non-token line stays linear.
 // Min 20 keeps *PublicKey / *Hex field names from matching as opaque tokens.
+// No max length — `{20,}` stays linear with bounded look aheads (Patrick: 320+ hex RED).
 export const OPAQUE_TOKEN_RE =
-  /\b(?=[A-Za-z0-9_-]{0,255}[A-Za-z])(?=[A-Za-z0-9_-]{0,255}\d)[A-Za-z0-9_-]{20,256}\b/g;
+  /\b(?=[A-Za-z0-9_-]{0,255}[A-Za-z])(?=[A-Za-z0-9_-]{0,255}\d)[A-Za-z0-9_-]{20,}\b/g;
 
 /** Canonical UUID (8-4-4-4-12 hex). Masked before opaque-token so they are not RED. */
 export const CANONICAL_UUID_SOURCE =
@@ -194,14 +195,14 @@ export function isPublicKeyHashHexValue(value) {
  * @returns {boolean}
  */
 export function isPublicKeyOpaqueContext(before) {
-  return /\b[\w-]{0,40}public[_-]?key(?:hash)?(?:…|\.\.\.)?\s*[=:]\s*"?$/iu.test(
+  return /\b[\w-]{0,80}public[_-]?key(?:hash)?(?:…|\.\.\.)?\s*[=:]\s*"?$/iu.test(
     String(before || ''),
   );
 }
 
-/** PEM private-key header anywhere in a line (spaces in the marker). */
+/** PEM private-key header anywhere in a line (RSA/EC/DSA/OPENSSH/ENCRYPTED/PGP). */
 export const PEM_PRIVATE_KEY_RE =
-  /-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----/gi;
+  /-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----|-----BEGIN PGP PRIVATE KEY BLOCK-----/gi;
 
 /**
  * Private-key material mislabeled under a {@code …PublicKey} field (force RED).
@@ -284,10 +285,11 @@ export const KNOWN_ALLOWLIST_REQUIRES = new Set(['COMPOSE_RETRY_FIRED']);
 
 /**
  * Credential key stem (proofToken, api_key, challenge code, passphrase, …).
- * Prefix bounded to 40 word chars + leading word boundary (ReDoS guard).
+ * Prefix bounded to 80 word chars (ReDoS guard; 40 missed long config keys /
+ * {@code aaaaa…Token}). Outer regex still uses {@code \\b} around the group.
  */
 export const SECRET_KEY_STEM =
-  String.raw`\w{0,40}(?:token|secret|password|passwd|pwd|passphrase|private[_-]?key|challenge\W*code|api[-_]?key|access[_-]?code|authorization|bearer|otp|pin)`;
+  String.raw`\w{0,80}(?:token|secret|password|passwd|pwd|passphrase|private[_-]?key|challenge\W*code|api[-_]?key|aws[_-]?secret[_-]?access[_-]?key|secret[_-]?access[_-]?key|access[_-]?code|authorization|bearer|otp|pin)`;
 
 /** Low-PII identity keys — AMBER, not credential RED. */
 export const USERNAME_KEY_RE = /^(?:username|user)$/i;
@@ -415,8 +417,8 @@ export const PRODUCT_LOG_SOURCES = [
  */
 function redactKvForms(text, note) {
   // public*Key fields are AMBER (Ed25519KeyPair.toString FP); private*Key stays RED via STEM.
-  // \w{0,40} bound + \b — unbounded \w* is quadratic on long adversarial lines.
-  const keys = `${SECRET_KEY_STEM}|\\w{0,40}public[_-]?key|challenge|code|username|user`;
+  // \w{0,80} bound + \b — unbounded \w* is quadratic on long adversarial lines.
+  const keys = `${SECRET_KEY_STEM}|\\w{0,80}public[_-]?key|challenge|code|username|user`;
   const apply = (out, re, wrap) =>
     out.replace(re, (full, key, val) => {
       // Masked / placeholders never RED — whatever the key name (incl. *ApiKey).
@@ -539,7 +541,7 @@ export function applyRedactions(rawLine) {
   // 5) JSON "key":"value" (compound keys + username / publicKey AMBER)
   out = out.replace(
     new RegExp(
-      `"(${SECRET_KEY_STEM}|\\w{0,40}public[_-]?key|challenge|code|key|username|user)"\\s*:\\s*"([^"]*)"`,
+      `"(${SECRET_KEY_STEM}|\\w{0,80}public[_-]?key|challenge|code|key|username|user)"\\s*:\\s*"([^"]*)"`,
       'gi',
     ),
     (full, key, val) => {
@@ -563,7 +565,7 @@ export function applyRedactions(rawLine) {
 
   // 6) CLI --…-token / --…-password "value with spaces" / =value
   out = out.replace(
-    /(--[\w-]{0,40}(?:token|secret|password|passphrase|api[-_]?key|private[_-]?key|otp|pin)[\w-]{0,40})(?:\s+"([^"]+)"|\s+'([^']+)'|=(\S+)|(?:\s+)(\S+))/gi,
+    /(--[\w-]{0,80}(?:token|secret|password|passphrase|api[-_]?key|private[_-]?key|otp|pin)[\w-]{0,40})(?:\s+"([^"]+)"|\s+'([^']+)'|=(\S+)|(?:\s+)(\S+))/gi,
     (full, flag, dq, sq, eq, bare) => {
       const val = dq || sq || eq || bare || '';
       if (isMaskedOrNonSecretValue(val)) return full;

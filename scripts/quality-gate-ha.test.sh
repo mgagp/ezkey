@@ -58,21 +58,25 @@ case "$cmd" in
       esac
     done
     if [[ -n "${FAKE_DOCKER_EVENTS_LINES:-}" ]]; then
-      # Lines are either "name" (always emit) or "ISOZ name" (filter by --since/--until).
+      # Lines: "name", "name|exitCode", "ISOZ name", or "ISOZ name|exitCode".
       while IFS= read -r eline; do
         [[ -z "$eline" ]] && continue
+        ets=""; rest="$eline"
         if [[ "$eline" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z)[[:space:]]+(.+)$ ]]; then
           ets="${BASH_REMATCH[1]}"
-          ename="${BASH_REMATCH[2]}"
+          rest="${BASH_REMATCH[2]}"
           if [[ -n "$since" && "$ets" < "$since" ]]; then continue; fi
           if [[ -n "$until" && "$ets" > "$until" ]]; then continue; fi
-          if [[ "$format" == *Attributes.name* || -z "$format" ]]; then
-            echo "$ename"
+        fi
+        if [[ "$format" == *exitCode* ]]; then
+          # Ensure name|exitCode for prove_shedlock_kill parser.
+          if [[ "$rest" == *'|'* ]]; then
+            echo "$rest"
           else
-            echo "$eline"
+            echo "${rest}|"
           fi
         else
-          echo "$eline"
+          echo "${rest%%|*}"
         fi
       done <<< "$FAKE_DOCKER_EVENTS_LINES"
     fi
@@ -227,34 +231,58 @@ grep -q 'Status/die proof missing' "$RUN_DIR/findings-extra.txt" \
   && echo "ok - log-only → findings mention Status/die" && pass=$((pass+1)) \
   || { echo "not ok - log-only → findings mention Status/die"; fail=$((fail+1)); }
 
-# 7c) docker die event proves kill when Status is already running again
-all_healthy
-: >"$RUN_DIR/phases/elective-tests.log"
-ELECTIVE_STARTED_AT="2026-10-11T01:00:00Z"
-export FAKE_DOCKER_EVENTS_LINES="2026-10-11T01:05:00Z ezkey-admin-api-2"
-restore_after_elective
-rc=$?
-unset FAKE_DOCKER_EVENTS_LINES
-assert_eq "$rc" "0" "die-event proof → restore OK"
-assert_eq "$SHEDLOCK_KILLED" "ezkey-admin-api-2" "die-event → killed name"
-assert_eq "$SHEDLOCK_RESTORE_OK" "1" "die-event → restore OK flag"
-assert_eq "$HA_INVALID" "0" "die-event → not HA invalid"
-assert_eq "$SHEDLOCK_PROOF_PATH" "docker-die" "die-event → proof path docker-die"
-
-# 7c-bis) pre-elective die (e.g. preflight stop_stacks) must NOT prove kill
+# 7c) INVERTED (Patrick): elective-window die without matching Crashing container /
+# exit 137 must NOT prove kill (preflight-style false proof).
 all_healthy
 : >"$RUN_DIR/phases/elective-tests.log"
 : >"$RUN_DIR/findings-extra.txt"
+ELECTIVE_STARTED_AT="2026-10-11T01:00:00Z"
+export FAKE_DOCKER_EVENTS_LINES="2026-10-11T01:05:00Z ezkey-admin-api-2|137"
+restore_after_elective || true
+unset FAKE_DOCKER_EVENTS_LINES
+assert_eq "$SHEDLOCK_KILL_MISSING" "1" "7c inverted: die without Crashing log → missing"
+assert_eq "$SHEDLOCK_RESTORE_OK" "0" "7c inverted: not restored"
+assert_eq "$HA_INVALID" "1" "7c inverted: HA_INVALID / INCONCLUSIVE"
+assert_eq "$SHEDLOCK_PROOF_PATH" "" "7c inverted: no proof path"
+
+# 7c-bis) pre-elective die (e.g. preflight stop_stacks) must NOT prove kill
+all_healthy
+echo 'Crashing container: ezkey-admin-api-2' >"$RUN_DIR/phases/elective-tests.log"
+: >"$RUN_DIR/findings-extra.txt"
 GATE_STARTED_AT="2026-10-11T00:00:00Z"
 ELECTIVE_STARTED_AT="2026-10-11T01:00:00Z"
-# die during preflight window only — nothing killed in elective
-export FAKE_DOCKER_EVENTS_LINES="2026-10-11T00:00:30Z ezkey-admin-api-2"
+export FAKE_DOCKER_EVENTS_LINES="2026-10-11T00:00:30Z ezkey-admin-api-2|137"
 restore_after_elective || true
 unset FAKE_DOCKER_EVENTS_LINES
 assert_eq "$SHEDLOCK_KILL_MISSING" "1" "pre-elective die → SHEDLOCK_KILL_MISSING"
 assert_eq "$SHEDLOCK_RESTORE_OK" "0" "pre-elective die → not restored"
 assert_eq "$HA_INVALID" "1" "pre-elective die → HA_INVALID / INCONCLUSIVE"
 assert_eq "$SHEDLOCK_PROOF_PATH" "" "pre-elective die → no proof path"
+
+# 7c-ter) die fallback OK: elective window + matching Crashing container + exit 137
+all_healthy
+echo 'Crashing container: ezkey-admin-api-2' >"$RUN_DIR/phases/elective-tests.log"
+ELECTIVE_STARTED_AT="2026-10-11T01:00:00Z"
+export FAKE_DOCKER_EVENTS_LINES="2026-10-11T01:05:00Z ezkey-admin-api-2|137"
+restore_after_elective
+rc=$?
+unset FAKE_DOCKER_EVENTS_LINES
+assert_eq "$rc" "0" "die+log+137 → restore OK"
+assert_eq "$SHEDLOCK_KILLED" "ezkey-admin-api-2" "die+log+137 → killed name"
+assert_eq "$SHEDLOCK_RESTORE_OK" "1" "die+log+137 → restore OK flag"
+assert_eq "$HA_INVALID" "0" "die+log+137 → not HA invalid"
+assert_eq "$SHEDLOCK_PROOF_PATH" "docker-die" "die+log+137 → proof path docker-die"
+
+# 7c-quater) die with wrong exit code (not 137) must not prove
+all_healthy
+echo 'Crashing container: ezkey-admin-api-2' >"$RUN_DIR/phases/elective-tests.log"
+: >"$RUN_DIR/findings-extra.txt"
+ELECTIVE_STARTED_AT="2026-10-11T01:00:00Z"
+export FAKE_DOCKER_EVENTS_LINES="2026-10-11T01:05:00Z ezkey-admin-api-2|0"
+restore_after_elective || true
+unset FAKE_DOCKER_EVENTS_LINES
+assert_eq "$SHEDLOCK_KILL_MISSING" "1" "die exit≠137 → missing"
+assert_eq "$HA_INVALID" "1" "die exit≠137 → HA_INVALID"
 
 # 7d) skipped phase → report INCONCLUSIVE (never GO)
 mkdir -p "$RUN_DIR/health"

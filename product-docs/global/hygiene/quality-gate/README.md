@@ -2,8 +2,8 @@
 
 Keyword: **`quality-gate`**
 
-Cloud-agent gate between merge batches. One command → GO / GO with reservations /
-`INCONCLUSIVE: HA invalid` / NO-GO.
+Cloud-agent gate between merge batches. Exit **0** GO · **1** NO-GO · **2** usage ·
+**3** GO with reservations · **4** INCONCLUSIVE (HA invalid or skipped phases).
 Artifacts under `logs/quality-gate/<UTC>-<shortsha>/` (gitignored).
 
 **Not** a CI gate. A phase that can show GREEN wrongly is worse than no gate.
@@ -34,8 +34,9 @@ Inherited `QUALITY_GATE_LOG_SINCE` / `UNTIL` and `DOCKER_LOGS_SINCE` / `UNTIL` a
 at gate start so a full run cannot silently inherit a narrowed docker-log window.
 
 ShedLock kill proof uses `State.Status=exited` first, else a docker `die` event **since
-`ELECTIVE_STARTED_AT`** (set when the elective phase begins). Searching from
-`GATE_STARTED_AT` is wrong: preflight `stop_stacks` emits `die` for admin-api replicas.
+`ELECTIVE_STARTED_AT`** that matches the elective `Crashing container:` name **and** exit
+code **137**. Searching from `GATE_STARTED_AT` is wrong: preflight `stop_stacks` emits
+`die` for admin-api replicas.
 
 ## Sequence
 

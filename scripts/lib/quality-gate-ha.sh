@@ -130,35 +130,44 @@ wait_replicas_healthy() {
 # Prints proven kill as name|proofPath|iso on stdout when found; empty otherwise.
 # Prefers inspect Status=exited; falls back to docker events die since ELECTIVE_STARTED_AT
 # (not GATE_STARTED_AT — preflight stop_stacks emits die for admin-api replicas).
+# Die fallback requires: elective window + name matching Crashing container log + exit 137.
 # proofPath is State.Status=exited or docker-die. Caller parses (command substitution
 # would drop globals).
+#
+# $1 = expected replica from elective "Crashing container:" log (may be empty).
 prove_shedlock_kill() {
-  local name status events_out line since until_iso
+  local expected="${1:-}"
+  local name status events_out line since until_iso ename ecode
   for name in ezkey-admin-api-1 ezkey-admin-api-2; do
     status="$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || echo missing)"
     if [[ "$status" == "exited" ]]; then
+      if [[ -n "$expected" && "$name" != "$expected" ]]; then
+        continue
+      fi
       echo "${name}|State.Status=exited|$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
       return 0
     fi
   done
-  # die only inside the elective window — preflight stop_stacks dies must not count.
+  # die only inside the elective window; must match Crashing container + SIGKILL (137).
   since="${ELECTIVE_STARTED_AT:-}"
-  if [[ -z "$since" ]]; then
+  if [[ -z "$since" || -z "$expected" ]]; then
     return 1
   fi
   until_iso="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   events_out="$(
     docker events --since "$since" --until "$until_iso" \
       --filter 'type=container' --filter 'event=die' \
-      --format '{{.Actor.Attributes.name}}' 2>/dev/null || true
+      --format '{{.Actor.Attributes.name}}|{{.Actor.Attributes.exitCode}}' 2>/dev/null || true
   )"
   while IFS= read -r line; do
-    case "$line" in
-      ezkey-admin-api-1|ezkey-admin-api-2)
-        echo "${line}|docker-die|${until_iso}"
-        return 0
-        ;;
-    esac
+    [[ -z "$line" ]] && continue
+    ename="${line%%|*}"
+    ecode="${line#*|}"
+    [[ "$ecode" == "$line" ]] && ecode=""
+    if [[ "$ename" == "$expected" && "$ecode" == "137" ]]; then
+      echo "${ename}|docker-die|${until_iso}"
+      return 0
+    fi
   done <<<"$events_out"
   return 1
 }
@@ -176,7 +185,7 @@ restore_after_elective() {
     log_hint="$(grep -E 'Crashing container: ezkey-admin-api-[12]' "$elective_log" 2>/dev/null \
       | tail -1 | sed -E 's/.*Crashing container: (ezkey-admin-api-[12]).*/\1/' || true)"
   fi
-  proof_line="$(prove_shedlock_kill || true)"
+  proof_line="$(prove_shedlock_kill "$log_hint" || true)"
   if [[ -n "$proof_line" ]]; then
     IFS='|' read -r killed SHEDLOCK_PROOF_PATH SHEDLOCK_PROOF_AT <<<"$proof_line"
   fi
@@ -188,7 +197,7 @@ restore_after_elective() {
       echo "[$KEYWORD] note: elective log hinted $log_hint; proof ${SHEDLOCK_PROOF_PATH} → $killed"
     fi
     printf '%s\n' \
-      "test-hygiene: ShedLockDistributedTest docker-kills ${killed} and does not restore it; gate docker-starts after elective (proof=${SHEDLOCK_PROOF_PATH} at ${SHEDLOCK_PROOF_AT}; electiveSince=${ELECTIVE_STARTED_AT:-})" \
+      "test-hygiene: ShedLockDistributedTest docker-kills ${killed} and does not restore it; gate docker-starts after elective (proof=${SHEDLOCK_PROOF_PATH} at ${SHEDLOCK_PROOF_AT}; electiveSince=${ELECTIVE_STARTED_AT:-}; logHint=${log_hint:-})" \
       >>"$RUN_DIR/findings-extra.txt"
   fi
 
