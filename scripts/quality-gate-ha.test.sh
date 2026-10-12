@@ -199,5 +199,23 @@ grep -q 'OOM check UNKNOWN' "$RUN_DIR/findings-extra.txt" \
   && echo "ok - docker events fail → findings UNKNOWN" && pass=$((pass+1)) \
   || { echo "not ok - docker events fail → findings UNKNOWN"; fail=$((fail+1)); }
 
+# 9) OOM burst: more than 20 events → RED (head -20 still non-empty → OVERALL_RED)
+all_healthy
+: >"$RUN_DIR/findings-extra.txt"
+OVERALL_RED=0
+OVERALL_AMBER=0
+burst_lines=""
+for i in $(seq 1 25); do
+  burst_lines+="2026-10-11T00:00:00.000000000Z container oom (fake-burst-$i)"$'\n'
+done
+export FAKE_DOCKER_EVENTS_LINES="$burst_lines"
+check_oom_evidence || true
+unset FAKE_DOCKER_EVENTS_LINES
+assert_eq "$OVERALL_RED" "1" "OOM burst (>20 events) → OVERALL_RED"
+assert_eq "$OVERALL_AMBER" "0" "OOM burst → not AMBER-only"
+grep -q 'docker events reported container OOM' "$RUN_DIR/findings-extra.txt" \
+  && echo "ok - OOM burst → findings RED" && pass=$((pass+1)) \
+  || { echo "not ok - OOM burst → findings RED"; fail=$((fail+1)); }
+
 echo "passes=$pass fails=$fail"
 [[ "$fail" -eq 0 ]]

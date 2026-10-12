@@ -3,7 +3,7 @@
   "baselineLocked": true,
   "baselineLockedAt": "2026-10-11T23:59:46Z",
   "baselineLockedTip": "796799079925c9e660b40e7dc9b98118492ffa1a",
-  "note": "Baseline locked from quality-gate run 8 (tip 79679907): secrets GREEN, no RED checks, HA valid, ShedLock kill+restore proven. Absolute bands remain; warnSignatures AMBER (~248) is an accepted reservation.",
+  "note": "Baseline locked from quality-gate run 8 (tip 79679907): secrets GREEN, no RED checks, HA valid, ShedLock kill+restore proven. Absolute bands remain; warnSignatures AMBER (~248) is an accepted reservation. baselineLocked is declarative only — nothing reads it yet (no drift comparison).",
   "javamelody": {
     "maxAgeSeconds": 600,
     "topHttpMeanMs": { "amber": 200, "red": 1000 },
@@ -46,7 +46,6 @@
     },
     "hostMarginMiB": 2048,
     "postgresReserveMiB": 1024,
-    "maxRamPercentage": 60,
-    "nativeMemoryTracking": "summary"
+    "maxRamPercentage": 60
   }
 }

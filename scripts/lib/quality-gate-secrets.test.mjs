@@ -286,6 +286,31 @@ describe('Basic header form (case-sensitive)', () => {
   });
 });
 
+describe('KV_BARE_VALUE fail-closed (delimiter-prefixed values)', () => {
+  it('scores password=)secret99 / password=,hunter2 / token=}abc / secret=&abc RED (positive)', () => {
+    const cases = [
+      ['password=)secret99', 'secret99'],
+      ['password=,hunter2', 'hunter2'],
+      ['token=}abc123def', 'abc123def'],
+      ['secret=&abc', 'abc'],
+    ];
+    for (const [line, raw] of cases) {
+      const r = detectSecrets(line);
+      assert.equal(r.severity, 'RED', `kinds=${r.kinds} line=${line}`);
+      assert.ok(r.kinds.includes('kv-secret'), `kinds=${r.kinds} line=${line}`);
+      assert.equal(sanitize(line).includes(raw), false, line);
+    }
+  });
+
+  it('password=, user=bob stays non-RED (negative — comma is separator, not value)', () => {
+    const line = 'password=, user=bob';
+    const r = detectSecrets(line);
+    assert.notEqual(r.severity, 'RED', `kinds=${r.kinds}`);
+    // username=bob may be AMBER; password must not eat ", user=bob" as a secret.
+    assert.equal(r.kinds.includes('kv-secret'), false, `kinds=${r.kinds}`);
+  });
+});
+
 describe('detectSecrets product cases', () => {
   it('ignores challenge=***REDACTED*** (already masked)', () => {
     const r = detectSecrets('Passwordless with challenge=***REDACTED*** for user');
@@ -386,6 +411,45 @@ describe('detectSecrets product cases', () => {
       assert.equal(r.severity, 'RED', `kinds=${r.kinds} line=${line}`);
       assert.ok(r.kinds.includes('kv-secret'), `kinds=${r.kinds} line=${line}`);
       assert.equal(sanitize(line).includes(pkcs8), false, line);
+    }
+  });
+
+  it('forces RED for EC SEC1 / RSA PKCS#1 / PKCS#8 / PEM under …PublicKey (real shapes)', () => {
+    // Prefixes from real generated keys (cryptography); truncated for log-sized samples.
+    const bare = [
+      'MHcCAQEEIOkl32rWcUtuRaQkbHRgJWS7HXRdQUSg', // EC SEC1
+      'MIIEowIBAAKCAQEAzdbCz4HAtKuvB1WDQOs3ofb9S1IB5SuE06', // RSA PKCS#1
+      'MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQ', // RSA PKCS#8
+      'MIIEpAIBAAKCAQEAzdbCz4HAtKuvB1WDQOs3ofb9', // RSA PKCS#1 variant (MII…IBA)
+    ];
+    for (const priv of bare) {
+      const line = `publicKey=${priv}`;
+      const r = detectSecrets(line);
+      assert.equal(r.severity, 'RED', `kinds=${r.kinds} sample=${priv.slice(0, 24)}`);
+      assert.ok(r.kinds.includes('kv-secret'), `kinds=${r.kinds} sample=${priv.slice(0, 24)}`);
+    }
+    // PEM headers contain spaces — quoted kv form (bare KV stops at whitespace).
+    for (const pem of [
+      '-----BEGIN PRIVATE KEY-----',
+      '-----BEGIN EC PRIVATE KEY-----',
+      '-----BEGIN RSA PRIVATE KEY-----',
+    ]) {
+      const line = `publicKey="${pem}"`;
+      const r = detectSecrets(line);
+      assert.equal(r.severity, 'RED', `kinds=${r.kinds} pem=${pem}`);
+      assert.ok(r.kinds.includes('kv-secret'), `kinds=${r.kinds} pem=${pem}`);
+    }
+  });
+
+  it('keeps real public-key SPKI (MFkw… / MIIBIjAN…) AMBER under publicKey= (negative)', () => {
+    for (const pub of [
+      'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE0123456789AbCdEfGhIjKl',
+      'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0123456789AbCd',
+    ]) {
+      const line = `publicKey=${pub}`;
+      const r = detectSecrets(line);
+      assert.equal(r.severity, 'AMBER', `kinds=${r.kinds} pub=${pub.slice(0, 20)}`);
+      assert.equal(r.kinds.includes('kv-secret'), false, pub.slice(0, 20));
     }
   });
 

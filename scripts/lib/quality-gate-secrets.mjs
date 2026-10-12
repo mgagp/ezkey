@@ -167,7 +167,8 @@ export function isPublicKeyOpaqueContext(before) {
 
 /**
  * Private-key material mislabeled under a {@code …PublicKey} field (force RED).
- * PKCS#8 / EC private DER Base64 prefixes and PEM private headers.
+ * EC SEC1 / RSA PKCS#1 / PKCS#8 DER Base64 prefixes and PEM private headers.
+ * Prefixes verified against real generated keys (cryptography / OpenSSL shapes).
  *
  * @param {string} value
  * @returns {boolean}
@@ -176,17 +177,26 @@ export function looksLikePrivateKeyMaterial(value) {
   const v = String(value || '')
     .trim()
     .replace(/^["']+|["']+$/g, '');
-  if (/^-----BEGIN (?:EC )?PRIVATE/i.test(v)) return true;
+  // Any PEM private key header (EC / RSA / ENCRYPTED / bare PRIVATE KEY).
+  if (/^-----BEGIN [A-Z ]*PRIVATE KEY-----/i.test(v)) return true;
+  // EC SEC1 DER Base64 (e.g. MHcCAQEE…).
+  if (/^MHcCAQEE/i.test(v)) return true;
+  // Short PKCS#8 EC forms.
   if (/^MIGHAgEA/i.test(v)) return true;
   if (/^MC4CAQAw/i.test(v)) return true;
+  // RSA PKCS#1 (MIIEowIBAAKCAQEA…) / PKCS#8 (MIIEvQIBADANBgkqhki…) — MII…IBA…
+  if (/^MII[A-Za-z0-9+/]{0,8}IBA/i.test(v)) return true;
   // PKCS#8-style Base64 often embeds AgEA near the start (e.g. MIIE…AgEA).
   if (/^MII[A-Za-z0-9+/]{0,48}AgEA/i.test(v)) return true;
   return false;
 }
 
-/** Bare kv value: stop at whitespace or JSON/DTO/query delimiters (fail-closed). */
-export const KV_BARE_VALUE = String.raw`[^\s,;&)\]}]+`;
-
+/**
+ * Bare kv value: fail-closed. Prefer non-delimiter runs; if the value starts with
+ * a delimiter ({@code , ; & ) ] }}), still capture delimiter + following non-space
+ * so {@code password=)secret99} / {@code token=}abc} cannot slip past.
+ */
+export const KV_BARE_VALUE = String.raw`(?:[^\s,;&)\]}]+|[,;&)\]}]\S+)`;
 /**
  * Only test-generated name shapes may be AMBER in admin-username glue (≤32 chars).
  *
