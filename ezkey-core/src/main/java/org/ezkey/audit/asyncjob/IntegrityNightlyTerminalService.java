@@ -100,8 +100,8 @@ public class IntegrityNightlyTerminalService {
    * exception simple name (#741) — never {@code getMessage()}.
    *
    * <p>Declarative {@code REQUIRES_NEW} for external callers through the Spring proxy. Prefer
-   * {@link #tryInsertNightlyTerminalFailed} from the nightly path so insert failures stay
-   * WARN-only (including commit-time exceptions).
+   * {@link #tryInsertNightlyTerminalFailed} from the nightly path so insert failures stay WARN-only
+   * (including commit-time exceptions).
    *
    * @param scopeFrom inclusive window start
    * @param scopeTo exclusive window end
