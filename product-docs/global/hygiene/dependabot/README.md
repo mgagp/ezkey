@@ -135,6 +135,9 @@ smoke still pending — see [`2026-09-28-pass-1.md`](2026-09-28-pass-1.md).
 **2026-10-05 hebdo:** Lots A–D squash-merged (Maven + Admin/SDK + mobile tooling/runtime); held
 `#647` (Admin Orval T4) and `#653` (Jest 30 / RN Jest 29 gate) comment-only; `#627` Pixel smoke
 still pending (next Play AAB after `#650`/`#651`) — see [`2026-10-05-pass-1.md`](2026-10-05-pass-1.md).
+**2026-10-12 Monday full (trial-week review):** merged `#732`/`#733`/`#734` + hygiene `#759`
+(supersedes `#735` license-snapshot companion); held `#717`/`#718` (post-`#702`) and T4/gates;
+`#627` Pixel smoke still pending — see [`2026-10-12-pass-1.md`](2026-10-12-pass-1.md).
 
 Routine peel still skips any PR labeled `deferred:rn-upgrade`. To park *future* RN-coupled mobile
 deps until a line bump: comment + `gh pr edit <n> --add-label deferred:rn-upgrade`.
