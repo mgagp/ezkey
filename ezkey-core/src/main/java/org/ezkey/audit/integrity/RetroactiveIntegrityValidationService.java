@@ -125,6 +125,30 @@ public class RetroactiveIntegrityValidationService {
   @Transactional
   public RetroactiveIntegrityValidationResult runValidation(
       OffsetDateTime from, OffsetDateTime to, RetroactiveIntegrityValidationOptions options) {
+    return runValidation(from, to, options, null);
+  }
+
+  /**
+   * Validates audit integrity over {@code [from, to)} with an optional async-job heartbeat.
+   *
+   * <p>The heartbeat is forwarded to the entry HMAC scan (per page) and to {@link
+   * AuditChainVerificationService#verifyChain} (every 10 checkpoints) so long RUN_VALIDATION jobs
+   * stay under the TTL.
+   *
+   * @param from inclusive window start
+   * @param to exclusive window end
+   * @param options per-run alert and trigger metadata
+   * @param onChunkHeartbeat optional async job heartbeat callback
+   * @return structured result for API, registry, and audit logging
+   * @throws IntegrityValidationDisabledException if {@code ezkey.audit.integrity.nightly.enabled}
+   *     is false
+   */
+  @Transactional
+  public RetroactiveIntegrityValidationResult runValidation(
+      OffsetDateTime from,
+      OffsetDateTime to,
+      RetroactiveIntegrityValidationOptions options,
+      Runnable onChunkHeartbeat) {
     if (!nightlyProperties.isEnabled()) {
       throw new IntegrityValidationDisabledException();
     }
@@ -136,12 +160,13 @@ public class RetroactiveIntegrityValidationService {
     }
 
     EntryIntegrityViolationClassifier.ViolationCollection entryViolationCollection =
-        entryIntegrityViolationClassifier.collectRangeViolations(auditLogRepository, from, to);
+        entryIntegrityViolationClassifier.collectRangeViolations(
+            auditLogRepository, from, to, onChunkHeartbeat);
     List<EntryIntegrityViolation> entryViolations = entryViolationCollection.reportingViolations();
     List<EntryIntegrityViolation> alertEligibleEntryViolations =
         entryViolationCollection.alertEligibleViolations();
     AuditChainVerificationService.ChainVerificationReport chainReport =
-        chainVerificationService.verifyChain(from, to);
+        chainVerificationService.verifyChain(from, to, onChunkHeartbeat);
 
     boolean entryHmacIntact = entryViolations.isEmpty();
     boolean chainIntact = chainReport.intact();

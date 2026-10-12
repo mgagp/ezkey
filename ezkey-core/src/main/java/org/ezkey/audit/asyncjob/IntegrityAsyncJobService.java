@@ -453,14 +453,13 @@ public class IntegrityAsyncJobService {
   }
 
   private void completeValidation(IntegrityAsyncJob job, Runnable heartbeat) {
-    heartbeat.run();
     boolean raiseAlert = job.getRaiseAlert() == null || job.getRaiseAlert();
     RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
         retroactiveIntegrityValidationService.runValidation(
             job.getScopeFrom(),
             job.getScopeTo(),
-            RetroactiveIntegrityValidationOptions.operator(raiseAlert, job.getStartedByAdminId()));
-    heartbeat.run();
+            RetroactiveIntegrityValidationOptions.operator(raiseAlert, job.getStartedByAdminId()),
+            heartbeat);
     if (result.skipped()) {
       stateService.markSucceeded(
           job.getJobId(), "Validation skipped: " + result.skipReason(), true, null);
