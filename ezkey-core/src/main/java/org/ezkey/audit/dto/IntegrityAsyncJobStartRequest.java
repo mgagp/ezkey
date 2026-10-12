@@ -13,6 +13,7 @@ package org.ezkey.audit.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import java.time.OffsetDateTime;
+import org.ezkey.audit.asyncjob.IntegrityAsyncJobTrigger;
 import org.ezkey.audit.asyncjob.IntegrityAsyncJobType;
 
 /**
@@ -22,6 +23,8 @@ import org.ezkey.audit.asyncjob.IntegrityAsyncJobType;
  * @param from inclusive window start (required for range jobs)
  * @param to exclusive window end (required for range jobs)
  * @param raiseAlert optional; for {@code RUN_VALIDATION} only (default true)
+ * @param trigger optional client-declared initiation metadata ({@code MANUAL} or {@code AUTO};
+ *     default {@code MANUAL}). {@code NIGHTLY} is rejected on POST.
  * @since 2026
  */
 @Schema(description = "Start an Integrity async job on the single global slot.")
@@ -42,4 +45,23 @@ public record IntegrityAsyncJobStartRequest(
             description =
                 "When type is RUN_VALIDATION, whether to raise/touch alert on eligible violations."
                     + " Default true. Ignored for verify job types.")
-        Boolean raiseAlert) {}
+        Boolean raiseAlert,
+    @Schema(
+            description =
+                "Client-declared initiation metadata: MANUAL (default) or AUTO. NIGHTLY is"
+                    + " server-only and rejected on POST.")
+        IntegrityAsyncJobTrigger trigger) {
+
+  /**
+   * Convenience constructor without trigger (defaults to MANUAL at persist time).
+   *
+   * @param type job kind
+   * @param from inclusive window start
+   * @param to exclusive window end
+   * @param raiseAlert optional raise-alert flag
+   */
+  public IntegrityAsyncJobStartRequest(
+      IntegrityAsyncJobType type, OffsetDateTime from, OffsetDateTime to, Boolean raiseAlert) {
+    this(type, from, to, raiseAlert, null);
+  }
+}

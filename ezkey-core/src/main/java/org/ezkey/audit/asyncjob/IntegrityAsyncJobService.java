@@ -31,6 +31,7 @@ import org.ezkey.audit.integrity.IntegrityWindowCapProperties;
 import org.ezkey.audit.integrity.NightlyIntegrityProperties;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationOptions;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
+import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.security.ApplicationReadyStartupOrder;
@@ -41,6 +42,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
@@ -204,7 +206,12 @@ public class IntegrityAsyncJobService {
     job.setSlotKey(IntegrityAsyncJob.GLOBAL_SLOT_KEY);
     job.setJobType(request.type());
     job.setStatus(IntegrityAsyncJobStatus.RUNNING);
-    job.setTrigger(IntegrityAsyncJobTrigger.MANUAL);
+    IntegrityAsyncJobTrigger trigger =
+        request.trigger() == null ? IntegrityAsyncJobTrigger.MANUAL : request.trigger();
+    if (trigger == IntegrityAsyncJobTrigger.NIGHTLY) {
+      throw new IllegalArgumentException("trigger NIGHTLY is not allowed on POST");
+    }
+    job.setTrigger(trigger);
     job.setStartedByAdminId(adminId);
     job.setStartedByUsername(username != null ? username : "unknown");
     job.setStartedAt(now);
@@ -330,6 +337,116 @@ public class IntegrityAsyncJobService {
     stateService.expireStaleRunningIfNeeded();
     return jobRepository.existsBySlotKeyAndStatus(
         IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING);
+  }
+
+  /**
+   * Inserts a terminal SUCCEEDED nightly verdict row (OQ4 A′). Never RUNNING; never via {@link
+   * IntegrityAsyncJobStateService#markSucceeded} (that would double-audit). No row when {@code
+   * result.skipped()} (HMAC inactive).
+   *
+   * @param result nightly validation result
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void insertNightlyTerminalSucceeded(RetroactiveIntegrityValidationResult result) {
+    if (result == null || result.skipped()) {
+      return;
+    }
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    IntegrityAsyncJob job = newNightlyShell(result.windowStart(), result.windowEnd(), now);
+    job.setStatus(IntegrityAsyncJobStatus.SUCCEEDED);
+    job.setResultIntact(result.intact());
+    job.setResultAlertId(result.alertId());
+    String summary =
+        "Nightly validation: intact="
+            + result.intact()
+            + ", entryViolations="
+            + result.entryHmacViolationCount()
+            + ", chainViolations="
+            + result.chainViolationCount()
+            + (result.alertRaised() ? ", alertId=" + result.alertId() : "");
+    job.setResultSummary(truncate(summary, 1024));
+    IntegrityChainVerdictFields verdict =
+        new IntegrityChainVerdictFields(
+            IntegrityChainVerdictFields.mapStatus(result.chainStatus()),
+            result.totalCheckpoints(),
+            result.validCheckpoints(),
+            result.invalidCheckpoints(),
+            result.archivedCheckpoints(),
+            result.undeclaredGaps(),
+            result.entryHmacViolationCount());
+    verdict.applyTo(job);
+    jobRepository.save(job);
+  }
+
+  /**
+   * Inserts a terminal FAILED nightly row when {@code validateWindow} throws. Persists only the
+   * exception simple name (#741) — never {@code getMessage()}.
+   *
+   * @param scopeFrom inclusive window start
+   * @param scopeTo exclusive window end
+   * @param errorSimpleName {@code e.getClass().getSimpleName()}
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void insertNightlyTerminalFailed(
+      OffsetDateTime scopeFrom, OffsetDateTime scopeTo, String errorSimpleName) {
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    IntegrityAsyncJob job = newNightlyShell(scopeFrom, scopeTo, now);
+    job.setStatus(IntegrityAsyncJobStatus.FAILED);
+    job.setResultIntact(false);
+    String safe = errorSimpleName != null ? errorSimpleName : "Exception";
+    job.setErrorSummary(truncate(safe, 512));
+    job.setResultSummary(truncate("Failed: " + safe, 1024));
+    jobRepository.save(job);
+  }
+
+  /**
+   * Attempts {@link #insertNightlyTerminalSucceeded}; on {@link DataAccessException} logs WARN with
+   * simple name and swallows (validation already committed + audited; registry stays SUCCESS).
+   *
+   * @param result nightly validation result
+   */
+  public void tryInsertNightlyTerminalSucceeded(RetroactiveIntegrityValidationResult result) {
+    try {
+      insertNightlyTerminalSucceeded(result);
+    } catch (DataAccessException ex) {
+      logger.warn(
+          "Nightly terminal SUCCEEDED row insert failed: {}", ex.getClass().getSimpleName());
+    }
+  }
+
+  /**
+   * Attempts {@link #insertNightlyTerminalFailed}; on {@link DataAccessException} logs WARN with
+   * simple name and swallows.
+   *
+   * @param scopeFrom inclusive window start
+   * @param scopeTo exclusive window end
+   * @param errorSimpleName exception simple name
+   */
+  public void tryInsertNightlyTerminalFailed(
+      OffsetDateTime scopeFrom, OffsetDateTime scopeTo, String errorSimpleName) {
+    try {
+      insertNightlyTerminalFailed(scopeFrom, scopeTo, errorSimpleName);
+    } catch (DataAccessException ex) {
+      logger.warn("Nightly terminal FAILED row insert failed: {}", ex.getClass().getSimpleName());
+    }
+  }
+
+  private static IntegrityAsyncJob newNightlyShell(
+      OffsetDateTime scopeFrom, OffsetDateTime scopeTo, OffsetDateTime now) {
+    IntegrityAsyncJob job = new IntegrityAsyncJob();
+    job.setJobId(UUID.randomUUID());
+    job.setSlotKey(IntegrityAsyncJob.GLOBAL_SLOT_KEY);
+    job.setJobType(IntegrityAsyncJobType.RUN_VALIDATION);
+    job.setTrigger(IntegrityAsyncJobTrigger.NIGHTLY);
+    job.setStartedByAdminId(null);
+    job.setStartedByUsername("system");
+    job.setStartedAt(now);
+    job.setHeartbeatAt(now);
+    job.setFinishedAt(now);
+    job.setScopeFrom(scopeFrom);
+    job.setScopeTo(scopeTo);
+    job.setRaiseAlert(true);
+    return job;
   }
 
   /**
