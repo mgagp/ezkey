@@ -224,7 +224,12 @@ public class RetroactiveIntegrityValidationService {
         entryViolations.size(),
         alertEligibleEntryViolations.size(),
         chainReport.violations().size(),
-        options.triggerSource());
+        options.triggerSource(),
+        chainReport.totalCheckpoints(),
+        chainReport.validCheckpoints(),
+        chainReport.invalidCheckpoints(),
+        chainReport.archivedCheckpoints(),
+        chainReport.undeclaredGaps().size());
   }
 
   /**
@@ -400,6 +405,11 @@ public class RetroactiveIntegrityValidationService {
    * @param entryAlertEligibleCount count of alert-eligible entry violations
    * @param chainViolationCount count of chain-level violation messages
    * @param triggerSource scheduled or operator origin
+   * @param totalCheckpoints chain report total (0 when skipped)
+   * @param validCheckpoints chain report valid count
+   * @param invalidCheckpoints chain report invalid count
+   * @param archivedCheckpoints chain report archived count
+   * @param undeclaredGaps undeclared gap count
    */
   public record RetroactiveIntegrityValidationResult(
       OffsetDateTime windowStart,
@@ -414,12 +424,34 @@ public class RetroactiveIntegrityValidationService {
       int entryHmacViolationCount,
       int entryAlertEligibleCount,
       int chainViolationCount,
-      RetroactiveIntegrityValidationTriggerSource triggerSource) {
+      RetroactiveIntegrityValidationTriggerSource triggerSource,
+      int totalCheckpoints,
+      int validCheckpoints,
+      int invalidCheckpoints,
+      int archivedCheckpoints,
+      int undeclaredGaps) {
 
     static RetroactiveIntegrityValidationResult skipped(
         String scope, String reason, RetroactiveIntegrityValidationTriggerSource triggerSource) {
       return new RetroactiveIntegrityValidationResult(
-          null, null, scope, true, reason, true, false, null, reason, 0, 0, 0, triggerSource);
+          null,
+          null,
+          scope,
+          true,
+          reason,
+          true,
+          false,
+          null,
+          reason,
+          0,
+          0,
+          0,
+          triggerSource,
+          0,
+          0,
+          0,
+          0,
+          0);
     }
   }
 }

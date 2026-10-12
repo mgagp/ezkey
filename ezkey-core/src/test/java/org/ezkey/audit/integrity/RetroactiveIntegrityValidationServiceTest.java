@@ -116,7 +116,7 @@ class RetroactiveIntegrityValidationServiceTest {
 
     assertTrue(result.skipped());
     assertFalse(result.alertRaised());
-    verify(chainVerificationService, never()).verifyChain(any(), any());
+    verify(chainVerificationService, never()).verifyChain(any(), any(), any());
     verify(alertService, never()).raiseOrTouch(any(), any(), anyString(), any());
   }
 
@@ -132,11 +132,11 @@ class RetroactiveIntegrityValidationServiceTest {
             EntryIntegrityConciliationStatus.NONE,
             null);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_START, WINDOW_END))
+            eq(auditLogRepository), eq(WINDOW_START), eq(WINDOW_END), any()))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(
                 List.of(violation), List.of(violation)));
-    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+    when(chainVerificationService.verifyChain(any(), any(), any())).thenReturn(intactReport());
     Alert saved = new Alert();
     saved.setAlertId(7L);
     when(alertService.raiseOrTouch(
@@ -169,11 +169,11 @@ class RetroactiveIntegrityValidationServiceTest {
             EntryIntegrityConciliationStatus.NONE,
             null);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_START, WINDOW_END))
+            eq(auditLogRepository), eq(WINDOW_START), eq(WINDOW_END), any()))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(
                 List.of(violation), List.of(violation)));
-    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+    when(chainVerificationService.verifyChain(any(), any(), any())).thenReturn(intactReport());
 
     RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
         service.runValidation(
@@ -190,10 +190,10 @@ class RetroactiveIntegrityValidationServiceTest {
     stubNightlyWindowHours();
     when(auditHmacService.isActive()).thenReturn(true);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_START, WINDOW_END))
+            eq(auditLogRepository), eq(WINDOW_START), eq(WINDOW_END), any()))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of()));
-    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+    when(chainVerificationService.verifyChain(any(), any(), any())).thenReturn(intactReport());
 
     RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
         service.validateWindow(WINDOW_END);
@@ -217,11 +217,11 @@ class RetroactiveIntegrityValidationServiceTest {
             EntryIntegrityConciliationStatus.NONE,
             null);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_START, WINDOW_END))
+            eq(auditLogRepository), eq(WINDOW_START), eq(WINDOW_END), any()))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(
                 List.of(violation), List.of(violation)));
-    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+    when(chainVerificationService.verifyChain(any(), any(), any())).thenReturn(intactReport());
     Alert saved = new Alert();
     saved.setAlertId(7L);
     when(alertService.raiseOrTouch(
@@ -249,13 +249,13 @@ class RetroactiveIntegrityValidationServiceTest {
     stubNightlyWindowHours();
     when(auditHmacService.isActive()).thenReturn(true);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_START, WINDOW_END))
+            eq(auditLogRepository), eq(WINDOW_START), eq(WINDOW_END), any()))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of()));
     AuditChainVerificationService.UndeclaredGap gap =
         new AuditChainVerificationService.UndeclaredGap(
             WINDOW_END.minusHours(2), WINDOW_END.minusHours(1), 60);
-    when(chainVerificationService.verifyChain(any(), any()))
+    when(chainVerificationService.verifyChain(any(), any(), any()))
         .thenReturn(gapsOnlyReport(List.of(gap)));
     when(alertRepository.findByDedupeKeyAndStatus(
             AuditChainHeartbeatGuardService.HEARTBEAT_STALE_ALERT_DEDUPE_KEY, AlertStatus.OPEN))
@@ -274,10 +274,10 @@ class RetroactiveIntegrityValidationServiceTest {
     stubNightlyWindowHours();
     when(auditHmacService.isActive()).thenReturn(true);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_START, WINDOW_END))
+            eq(auditLogRepository), eq(WINDOW_START), eq(WINDOW_END), any()))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of()));
-    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+    when(chainVerificationService.verifyChain(any(), any(), any())).thenReturn(intactReport());
 
     service.validateWindow(WINDOW_END);
 
@@ -301,11 +301,11 @@ class RetroactiveIntegrityValidationServiceTest {
             EntryIntegrityConciliationStatus.NONE,
             null);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_START, WINDOW_END))
+            eq(auditLogRepository), eq(WINDOW_START), eq(WINDOW_END), any()))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(
                 List.of(explained), List.of()));
-    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+    when(chainVerificationService.verifyChain(any(), any(), any())).thenReturn(intactReport());
 
     RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
         service.validateWindow(WINDOW_END);

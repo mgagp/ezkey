@@ -134,7 +134,12 @@ class AuditLogControllerRetroactiveValidationTest {
             2,
             1,
             1,
-            RetroactiveIntegrityValidationTriggerSource.OPERATOR);
+            RetroactiveIntegrityValidationTriggerSource.OPERATOR,
+            10,
+            8,
+            1,
+            1,
+            1);
     when(retroactiveIntegrityValidationService.runValidation(
             eq(FROM), eq(TO), any(RetroactiveIntegrityValidationOptions.class)))
         .thenReturn(serviceResult);
