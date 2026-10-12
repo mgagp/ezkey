@@ -256,7 +256,7 @@ updates:
       # (#762 regression). Dependabot maps `maven:3.9-eclipse-temurin-N` to comparable
       # version `3.9.N` (WORDS_WITH_BUILD → numeric `3.9-N` → `3.9.N`), so exact
       # `3.9.26|27|28` block JDK 26–28 while still allowing Maven 3.10+ on temurin-25
-      # and leaving `3.9-eclipse-temurin-25` unblocked. See #718 split / #762 fix.
+      # and leaving `3.9-eclipse-temurin-25` unblocked (provenance: #718 split / #762 fix).
       - dependency-name: "maven"
         versions:
           - "3.9.26"
