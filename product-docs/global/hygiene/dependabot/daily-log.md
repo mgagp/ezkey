@@ -82,5 +82,6 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
   - `docker/Dockerfile`: **keep** `maven:3.9-eclipse-temurin-25` (refuse temurin-26; JDK 25 LTS)
   - `ezkey-admin-ui/docker/ui-browser-tests.Dockerfile`: Playwright **v1.60.0-noble→v1.63.0-noble** (matches lockfile `@playwright/test` 1.63.0; not Dependabot's v1.64.0)
   - `.github/dependabot.yml`: ignore `maven` versions `*-eclipse-temurin-26|27|28*` and `*-temurin-26|27|28*` (comment: revisit at JDK 29 LTS)
-- Replacement PR open for review (Marc paused dependency merges for functional tests) — **do not merge yet**; #718 stays open until squash-merge
+- Replacement PR **#762** open for review (Marc paused dependency merges for functional tests) — **do not merge yet**; #718 stays open until squash-merge
+- Local validation on #762: `./scripts/build.sh` OK; bootstrap-init Alpine 3.24.2 (curl/jq, UID 100/GID 101); clean-start OK (bind+verify+demo-device seed); Playwright **5/5** in `v1.63.0-noble`
 - Residual: Dependabot may reopen Playwright 1.64 image bump when npm moves; #717 untouched
