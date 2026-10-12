@@ -448,7 +448,15 @@ public class RetroactiveIntegrityValidationService {
           + (alertRaised ? ", alertId=" + alertId : "");
     }
 
-    static RetroactiveIntegrityValidationResult skipped(
+    /**
+     * Builds a skipped-result row (HMAC inactive / early exit).
+     *
+     * @param scope operator-visible scope line
+     * @param reason skip reason
+     * @param triggerSource nightly or operator
+     * @return skipped result
+     */
+    public static RetroactiveIntegrityValidationResult skipped(
         String scope, String reason, RetroactiveIntegrityValidationTriggerSource triggerSource) {
       return new RetroactiveIntegrityValidationResult(
           null,
