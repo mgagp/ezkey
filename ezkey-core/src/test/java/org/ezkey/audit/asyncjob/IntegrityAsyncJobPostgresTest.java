@@ -4,7 +4,7 @@
  * Copyright (c) 2026 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * Test: IntegrityAsyncJobPostgresIT
+ * Test: IntegrityAsyncJobPostgresTest
  * Description: Patrick T1–T3 — real Postgres repository, V25 CHECKs/UPDATE, ShedLock probe.
  */
 
@@ -57,10 +57,10 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  *
  * @since 2026
  */
-@SpringBootTest(classes = IntegrityAsyncJobPostgresIT.TestConfiguration.class)
+@SpringBootTest(classes = IntegrityAsyncJobPostgresTest.TestConfiguration.class)
 @Testcontainers(disabledWithoutDocker = true)
 @Transactional
-class IntegrityAsyncJobPostgresIT {
+class IntegrityAsyncJobPostgresTest {
 
   @Container @ServiceConnection
   static PostgreSQLContainer postgres =
