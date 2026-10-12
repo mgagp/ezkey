@@ -18,7 +18,9 @@ import java.io.Serial;
  * starts and operator retroactive POST use {@code max-window-days}.
  *
  * <p>Map to HTTP 400 with RFC 9457 type {@link #TYPE_URI} and extension {@code maxWindowDays} in
- * the Admin API (value is the cap that was exceeded).
+ * the Admin API (value is the cap that was exceeded). Sync over-cap responses also include
+ * extension {@code asyncAlternative} with the fixed async job start path ({@link
+ * #ASYNC_ALTERNATIVE}) — never derived from request input.
  *
  * @since 2026
  */
@@ -30,19 +32,42 @@ public class IntegrityWindowOverCapException extends RuntimeException {
   public static final String TYPE_URI =
       "https://ezkey.io/problems/domain/integrity-window-over-cap";
 
+  /**
+   * Fixed operator pointer to the async Integrity job start (sync over-cap only). Not built from
+   * request input.
+   */
+  public static final String ASYNC_ALTERNATIVE = "POST /api/v1/audit-logs/integrity/jobs";
+
   private final int maxWindowDays;
 
+  private final String asyncAlternative;
+
   /**
-   * Creates the exception with a stable operator-facing detail.
+   * Creates an async-path over-cap exception (no {@code asyncAlternative} extension).
    *
    * @param maxWindowDays configured maximum window length in calendar days
    */
   public IntegrityWindowOverCapException(int maxWindowDays) {
+    this(maxWindowDays, null);
+  }
+
+  /**
+   * Creates a sync report-GET over-cap exception with a fixed async alternative pointer.
+   *
+   * @param maxSyncWindowDays configured sync maximum window length in calendar days
+   * @return exception carrying {@link #ASYNC_ALTERNATIVE}
+   */
+  public static IntegrityWindowOverCapException forSyncCap(int maxSyncWindowDays) {
+    return new IntegrityWindowOverCapException(maxSyncWindowDays, ASYNC_ALTERNATIVE);
+  }
+
+  private IntegrityWindowOverCapException(int maxWindowDays, String asyncAlternative) {
     super(
         "Verification window exceeds maximum of "
             + maxWindowDays
             + " calendar days (DST-tolerant Instant span). Narrow the range.");
     this.maxWindowDays = maxWindowDays;
+    this.asyncAlternative = asyncAlternative;
   }
 
   /**
@@ -52,5 +77,14 @@ public class IntegrityWindowOverCapException extends RuntimeException {
    */
   public int getMaxWindowDays() {
     return maxWindowDays;
+  }
+
+  /**
+   * Returns the fixed async alternative path for sync over-cap, or {@code null} on the async path.
+   *
+   * @return {@link #ASYNC_ALTERNATIVE} or {@code null}
+   */
+  public String getAsyncAlternative() {
+    return asyncAlternative;
   }
 }

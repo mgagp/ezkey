@@ -157,7 +157,7 @@ public class IntegrityWindowCapProperties {
    * @throws IntegrityWindowOverCapException when the window exceeds {@link #maxWindow()}
    */
   public void validateWindow(OffsetDateTime from, OffsetDateTime to) {
-    validateAgainstCap(from, to, maxWindow(), maxWindowDays);
+    validateAgainstCap(from, to, maxWindow(), maxWindowDays, false);
   }
 
   /**
@@ -168,9 +168,10 @@ public class IntegrityWindowCapProperties {
    * @param to exclusive window end
    * @throws IllegalArgumentException when bounds are missing or inverted
    * @throws IntegrityWindowOverCapException when the window exceeds {@link #maxSyncWindow()}
+   *     (includes fixed {@code asyncAlternative} for the Admin API ProblemDetail)
    */
   public void validateSyncWindow(OffsetDateTime from, OffsetDateTime to) {
-    validateAgainstCap(from, to, maxSyncWindow(), maxSyncWindowDays);
+    validateAgainstCap(from, to, maxSyncWindow(), maxSyncWindowDays, true);
   }
 
   private static Duration toInstantCap(int days) {
@@ -178,7 +179,7 @@ public class IntegrityWindowCapProperties {
   }
 
   private static void validateAgainstCap(
-      OffsetDateTime from, OffsetDateTime to, Duration max, int maxDays) {
+      OffsetDateTime from, OffsetDateTime to, Duration max, int maxDays, boolean syncCap) {
     if (from == null || to == null) {
       throw new IllegalArgumentException(
           "Date range is required for verification. Provide from (inclusive) and to (exclusive) as"
@@ -190,7 +191,9 @@ public class IntegrityWindowCapProperties {
     }
     Duration duration = Duration.between(from, to);
     if (duration.compareTo(max) > 0) {
-      throw new IntegrityWindowOverCapException(maxDays);
+      throw syncCap
+          ? IntegrityWindowOverCapException.forSyncCap(maxDays)
+          : new IntegrityWindowOverCapException(maxDays);
     }
   }
 }

@@ -199,7 +199,8 @@ class IntegrityWindowCapPropertiesTest {
   }
 
   @Test
-  @DisplayName("exactly 8×24h+1h sync is accepted; +1s throws with maxWindowDays=8")
+  @DisplayName(
+      "exactly 8×24h+1h sync is accepted; +1s throws with maxWindowDays=8 + asyncAlternative")
   void validateSyncWindow_enforcesSyncCapBoundary() {
     Duration max = properties.maxSyncWindow();
     assertEquals(Duration.ofHours(193), max);
@@ -209,7 +210,20 @@ class IntegrityWindowCapPropertiesTest {
             IntegrityWindowOverCapException.class,
             () -> properties.validateSyncWindow(FROM, FROM.plus(max).plusSeconds(1)));
     assertEquals(8, ex.getMaxWindowDays());
+    assertEquals(IntegrityWindowOverCapException.ASYNC_ALTERNATIVE, ex.getAsyncAlternative());
     assertTrue(ex.getMessage().contains("8"));
+  }
+
+  @Test
+  @DisplayName("async over-cap does not carry asyncAlternative")
+  void validateWindow_asyncOverCapHasNoAsyncAlternative() {
+    IntegrityWindowOverCapException ex =
+        assertThrows(
+            IntegrityWindowOverCapException.class,
+            () ->
+                properties.validateWindow(FROM, FROM.plus(properties.maxWindow()).plusSeconds(1)));
+    assertEquals(92, ex.getMaxWindowDays());
+    assertEquals(null, ex.getAsyncAlternative());
   }
 
   @Test

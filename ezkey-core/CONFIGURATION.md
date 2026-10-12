@@ -305,7 +305,7 @@ remains `nightly.window-hours` (not these caps).
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.audit.integrity.max-window-days` | `int` | `92` | optionnel | Async hard-reject (HTTP 400, type `integrity-window-over-cap`, extension `maxWindowDays`) when `[from, to)` exceeds **`days × 24 h + 1 h`**. Primitive `int` + `@Min(1)` + `@Max(366)`. Must be **>=** `max-sync-window-days` (fail-fast at startup otherwise). |
-| `ezkey.audit.integrity.max-sync-window-days` | `int` | `8` | optionnel | Sync report-GET hard-reject (same problem type / extension). Same Instant-span rule. Empty/`0`/`367+` fails startup. |
+| `ezkey.audit.integrity.max-sync-window-days` | `int` | `8` | optionnel | Sync report-GET hard-reject (same problem type). Same Instant-span rule. Over-cap ProblemDetail also includes fixed extension `asyncAlternative` = `POST /api/v1/audit-logs/integrity/jobs` (not from request input). Empty/`0`/`367+` fails startup. |
 
 **Upgrade note (old → new):**
 

@@ -254,6 +254,7 @@ class AuditLogControllerVerifyReportGateTest {
             IntegrityWindowOverCapException.class,
             () -> controller.checkChainIntegrity(FROM, overCapTo));
     assertEquals(8, ex.getMaxWindowDays());
+    assertEquals(IntegrityWindowOverCapException.ASYNC_ALTERNATIVE, ex.getAsyncAlternative());
     verify(auditChainVerificationService, never()).verifyChain(eq(FROM), eq(overCapTo));
     assertFalse(heavyCryptoGate.isBusy());
   }
@@ -267,6 +268,7 @@ class AuditLogControllerVerifyReportGateTest {
             IntegrityWindowOverCapException.class,
             () -> controller.checkIntegrity(FROM, overCapTo));
     assertEquals(8, ex.getMaxWindowDays());
+    assertEquals(IntegrityWindowOverCapException.ASYNC_ALTERNATIVE, ex.getAsyncAlternative());
     verify(auditIntegrityService, never()).verifyRange(eq(FROM), eq(overCapTo));
   }
 

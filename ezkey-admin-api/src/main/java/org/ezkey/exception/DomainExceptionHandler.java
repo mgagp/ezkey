@@ -291,6 +291,10 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
   /**
    * Handles IntegrityWindowOverCapException and returns HTTP 400 with a stable problem type.
    *
+   * <p>Always sets {@code maxWindowDays}. For sync report-GET over-cap only, also sets {@code
+   * asyncAlternative} to the fixed {@link IntegrityWindowOverCapException#ASYNC_ALTERNATIVE} (never
+   * derived from the request).
+   *
    * @param ex the over-cap exception
    * @param request the HTTP servlet request
    * @return ProblemDetail type {@link IntegrityWindowOverCapException#TYPE_URI}
@@ -308,6 +312,9 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
     ProblemDetail body = response.getBody();
     if (body != null) {
       body.setProperty("maxWindowDays", ex.getMaxWindowDays());
+      if (ex.getAsyncAlternative() != null) {
+        body.setProperty("asyncAlternative", ex.getAsyncAlternative());
+      }
     }
     return response;
   }
