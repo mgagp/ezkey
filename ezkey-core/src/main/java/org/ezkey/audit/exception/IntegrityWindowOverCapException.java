@@ -40,8 +40,8 @@ public class IntegrityWindowOverCapException extends RuntimeException {
   public static final String ASYNC_ALTERNATIVE = "POST /api/v1/audit-logs/integrity/jobs";
 
   /**
-   * ProblemDetail {@code capKind} when the sync cap was exceeded (synchronous paths: report GETs and
-   * operator {@code POST …/integrity-validation/run}).
+   * ProblemDetail {@code capKind} when the sync cap was exceeded (synchronous paths: report GETs
+   * and operator {@code POST …/integrity-validation/run}).
    */
   public static final String CAP_KIND_SYNC = "SYNC";
 
