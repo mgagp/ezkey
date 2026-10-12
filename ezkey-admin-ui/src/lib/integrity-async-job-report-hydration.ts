@@ -23,10 +23,15 @@ export const INTEGRITY_WINDOW_OVER_CAP_TYPE =
   'https://ezkey.io/problems/domain/integrity-window-over-cap';
 
 /**
- * Shared with {@code IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS}:
- * 8 calendar days, DST transition included (8×24 + 1).
+ * Mirrors server {@code ezkey.audit.integrity.max-sync-window-days} (default 8):
+ * Instant span = days×24h+1h for DST fall-back. Soft client check before sync
+ * report GETs; async VERIFY uses the separate {@code max-window-days} (default 92).
  */
-export const INTEGRITY_REPORT_MAX_WINDOW_HOURS = 193;
+export const INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS = 8;
+
+/** Effective hours for {@link INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS} (8×24 + 1). */
+export const INTEGRITY_REPORT_MAX_WINDOW_HOURS =
+  INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS * 24 + 1;
 
 /** Sentinel when hydration skips the report GET because the job scope is over the cap. */
 export class IntegrityReportHydrationOverCapError extends Error {

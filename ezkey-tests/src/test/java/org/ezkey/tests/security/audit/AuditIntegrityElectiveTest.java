@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
  *
  * <ol>
  *   <li><b>Per-entry HMAC integrity (bounded window)</b> -- calls {@code GET
- *       /api/v1/audit-logs/integrity-check} over the last 193 hours (synchronous report GET cap);
+ *       /api/v1/audit-logs/integrity-check} over a bounded recent window (under max-window-days);
  *       every signed entry in that window is recomputed and compared against its stored HMAC. Any
  *       mismatch means the entry was tampered with after signing.
  *   <li><b>Chain checkpoint linkage</b> -- calls {@code GET /api/v1/audit-logs/chain-integrity}
@@ -130,7 +130,7 @@ public class AuditIntegrityElectiveTest extends AbstractSecurityTest {
         dbSignedCount,
         dbUnsignedCount);
 
-    // Synchronous report GETs are capped (default 193h); use that bounded window.
+    // Synchronous report GETs are capped (default 92 days); use a bounded recent window.
     Response response =
         given()
             .header("Authorization", "Bearer " + adminToken)
@@ -341,7 +341,8 @@ public class AuditIntegrityElectiveTest extends AbstractSecurityTest {
   // -----------------------------------------------------------------------
 
   /**
-   * Bounded Instant window for synchronous report GETs (default max 193 hours).
+   * Bounded Instant window for synchronous report GETs (exactly default max-sync-window-days=8 →
+   * 193 h Instant span).
    *
    * @return {@code [from, to)} as ISO-8601 UTC strings
    */

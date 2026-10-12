@@ -28,7 +28,7 @@ import org.ezkey.audit.exception.IntegrityValidationDisabledException;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
-import org.ezkey.audit.integrity.IntegrityVerifyReportProperties;
+import org.ezkey.audit.integrity.IntegrityWindowCapProperties;
 import org.ezkey.audit.integrity.NightlyIntegrityProperties;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationOptions;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
@@ -79,7 +79,7 @@ public class IntegrityAsyncJobService {
   private final AuditChainVerificationService chainVerificationService;
   private final RetroactiveIntegrityValidationService retroactiveIntegrityValidationService;
   private final NightlyIntegrityProperties nightlyIntegrityProperties;
-  private final IntegrityVerifyReportProperties verifyReportProperties;
+  private final IntegrityWindowCapProperties windowCapProperties;
   private final AuditLogService auditLogService;
   private final ThreadPoolTaskExecutor integrityAsyncJobExecutor;
 
@@ -93,7 +93,7 @@ public class IntegrityAsyncJobService {
    * @param chainVerificationService chain verify
    * @param retroactiveIntegrityValidationService detective validation
    * @param nightlyIntegrityProperties nightly enable flag (fail-closed for RUN_VALIDATION)
-   * @param verifyReportProperties shared window cap for VERIFY_* starts (same as report GETs)
+   * @param windowCapProperties async days-based window cap for VERIFY_* starts
    * @param auditLogService audit emission
    * @param integrityAsyncJobExecutor single-thread worker pool
    */
@@ -105,7 +105,7 @@ public class IntegrityAsyncJobService {
       AuditChainVerificationService chainVerificationService,
       RetroactiveIntegrityValidationService retroactiveIntegrityValidationService,
       NightlyIntegrityProperties nightlyIntegrityProperties,
-      IntegrityVerifyReportProperties verifyReportProperties,
+      IntegrityWindowCapProperties windowCapProperties,
       AuditLogService auditLogService,
       @Qualifier("integrityAsyncJobExecutor") ThreadPoolTaskExecutor integrityAsyncJobExecutor) {
     this.jobRepository = jobRepository;
@@ -115,7 +115,7 @@ public class IntegrityAsyncJobService {
     this.chainVerificationService = chainVerificationService;
     this.retroactiveIntegrityValidationService = retroactiveIntegrityValidationService;
     this.nightlyIntegrityProperties = nightlyIntegrityProperties;
-    this.verifyReportProperties = verifyReportProperties;
+    this.windowCapProperties = windowCapProperties;
     this.auditLogService = auditLogService;
     this.integrityAsyncJobExecutor = integrityAsyncJobExecutor;
   }
@@ -186,10 +186,12 @@ public class IntegrityAsyncJobService {
       if (!nightlyIntegrityProperties.isEnabled()) {
         throw new IntegrityValidationDisabledException();
       }
+      // Async RUN_VALIDATION keeps max-window-days (default 92); sync operator POST uses
+      // max-sync-window-days (Christophe B1).
       retroactiveIntegrityValidationService.validateOperatorWindow(request.from(), request.to());
     } else {
-      // VERIFY_CHAIN_RANGE / VERIFY_ENTRY_HMAC_RANGE — same hard cap as report GETs (#730 D2).
-      verifyReportProperties.validateWindow(request.from(), request.to());
+      // VERIFY_CHAIN_RANGE / VERIFY_ENTRY_HMAC_RANGE — async days cap (#730 D2 / cut 3 PR 0).
+      windowCapProperties.validateWindow(request.from(), request.to());
     }
 
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);

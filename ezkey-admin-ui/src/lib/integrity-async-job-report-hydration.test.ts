@@ -12,6 +12,7 @@ import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
 import {
   executeIntegrityAsyncJobReportHydration,
   INTEGRITY_ASYNC_JOB_BUSY_TYPE,
+  INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS,
   INTEGRITY_REPORT_MAX_WINDOW_HOURS,
   INTEGRITY_WINDOW_OVER_CAP_TYPE,
   isIntegrityReportHydrationBusyError,
@@ -84,10 +85,11 @@ describe('isIntegrityReportScopeOverCap', () => {
         '2026-11-04T05:00:00.000Z',
       ),
     ).toBe(false);
+    expect(INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS).toBe(8);
     expect(INTEGRITY_REPORT_MAX_WINDOW_HOURS).toBe(193);
   });
 
-  it('rejects windows longer than 193 hours', () => {
+  it('rejects windows longer than the sync Instant cap (8×24h+1h)', () => {
     expect(
       isIntegrityReportScopeOverCap(
         '2026-10-27T04:00:00.000Z',
@@ -107,7 +109,10 @@ describe('isIntegrityWindowOverCapError', () => {
             type: INTEGRITY_WINDOW_OVER_CAP_TYPE,
             status: 400,
             detail:
-              'Verification window exceeds maximum of 193 hours (8 calendar days, DST transition included). Narrow the range.',
+              'Verification window exceeds maximum of 8 calendar days (DST-tolerant Instant span). Narrow the range.',
+            maxWindowDays: 8,
+            capKind: 'SYNC',
+            asyncAlternative: 'POST /api/v1/audit-logs/integrity/jobs',
           },
           'exceeds maximum',
         ),
@@ -124,7 +129,7 @@ describe('isIntegrityWindowOverCapError', () => {
             type: 'https://ezkey.io/problems/invalid-argument',
             status: 400,
             detail:
-              'Verification window exceeds maximum of 193 hours. Narrow the range.',
+              'Verification window exceeds maximum of 8 calendar days. Narrow the range.',
           },
           'exceeds maximum',
         ),

@@ -40,6 +40,7 @@ import org.ezkey.audit.dto.EntryIntegrityViolation;
 import org.ezkey.audit.exception.IntegrityValidationDisabledException;
 import org.ezkey.audit.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -59,7 +60,8 @@ class RetroactiveIntegrityValidationServiceTest {
   private static final OffsetDateTime WINDOW_START = WINDOW_END.minusHours(24);
 
   @Mock private NightlyIntegrityProperties nightlyProperties;
-  @Mock private RetroactiveIntegrityProperties retroactiveProperties;
+  private final IntegrityWindowCapProperties windowCapProperties =
+      new IntegrityWindowCapProperties();
   @Mock private AuditChainVerificationService chainVerificationService;
   @Mock private AuditHmacService auditHmacService;
   @Mock private AuditLogRepository auditLogRepository;
@@ -75,7 +77,7 @@ class RetroactiveIntegrityValidationServiceTest {
     service =
         new RetroactiveIntegrityValidationService(
             nightlyProperties,
-            retroactiveProperties,
+            windowCapProperties,
             chainVerificationService,
             auditHmacService,
             auditLogRepository,
@@ -314,25 +316,30 @@ class RetroactiveIntegrityValidationServiceTest {
   }
 
   @Test
-  void validateOperatorWindow_allowsWindowWithinConfiguredCap() {
-    when(retroactiveProperties.getOperatorMaxWindowHours()).thenReturn(193);
-
-    service.validateOperatorWindow(WINDOW_START, WINDOW_START.plusHours(193));
+  @DisplayName("validateOperatorWindow uses async max-window-days (async RUN_VALIDATION path)")
+  void validateOperatorWindow_allowsWindowWithinAsyncCap() {
+    service.validateOperatorWindow(
+        WINDOW_START, WINDOW_START.plus(windowCapProperties.maxWindow()));
   }
 
   @Test
-  void validateOperatorWindow_rejectsWindowExceedingConfiguredCap() {
-    when(retroactiveProperties.getOperatorMaxWindowHours()).thenReturn(24);
+  @DisplayName("validateOperatorWindow rejects beyond async cap with capKind=ASYNC")
+  void validateOperatorWindow_rejectsWindowExceedingAsyncCap() {
+    windowCapProperties.setMaxWindowDays(1);
 
     org.ezkey.audit.exception.IntegrityWindowOverCapException ex =
         assertThrows(
             org.ezkey.audit.exception.IntegrityWindowOverCapException.class,
             () ->
                 service.validateOperatorWindow(
-                    WINDOW_START, WINDOW_START.plusHours(25).plusMinutes(1)));
+                    WINDOW_START,
+                    WINDOW_START.plus(windowCapProperties.maxWindow()).plusSeconds(1)));
 
-    assertEquals(24, ex.getMaxWindowHours());
-    assertTrue(ex.getMessage().contains("24"));
+    assertEquals(1, ex.getMaxWindowDays());
+    assertEquals(
+        org.ezkey.audit.exception.IntegrityWindowOverCapException.CAP_KIND_ASYNC, ex.getCapKind());
+    assertEquals(null, ex.getAsyncAlternative());
+    assertTrue(ex.getMessage().contains("1"));
   }
 
   private static AuditChainVerificationService.ChainVerificationReport intactReport() {

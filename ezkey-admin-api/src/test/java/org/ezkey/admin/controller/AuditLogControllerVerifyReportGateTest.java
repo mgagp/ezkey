@@ -31,7 +31,7 @@ import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.AuditLifecycleService;
 import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
-import org.ezkey.audit.integrity.IntegrityVerifyReportProperties;
+import org.ezkey.audit.integrity.IntegrityWindowCapProperties;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.mapper.AuditChainCheckpointMapper;
 import org.ezkey.audit.mapper.AuditLogMapper;
@@ -73,7 +73,7 @@ class AuditLogControllerVerifyReportGateTest {
   @Mock private TenantRepository tenantRepository;
 
   private IntegrityHeavyCryptoGate heavyCryptoGate;
-  private IntegrityVerifyReportProperties verifyReportProperties;
+  private IntegrityWindowCapProperties windowCapProperties;
   private AuditLogController controller;
 
   private static final OffsetDateTime FROM =
@@ -84,7 +84,7 @@ class AuditLogControllerVerifyReportGateTest {
   @BeforeEach
   void setUp() {
     heavyCryptoGate = new IntegrityHeavyCryptoGate();
-    verifyReportProperties = new IntegrityVerifyReportProperties();
+    windowCapProperties = new IntegrityWindowCapProperties();
     controller =
         new AuditLogController(
             auditLogService,
@@ -98,7 +98,7 @@ class AuditLogControllerVerifyReportGateTest {
             auditChainIncidentService,
             integrityBootstrapService,
             heavyCryptoGate,
-            verifyReportProperties,
+            windowCapProperties,
             adminRepository,
             enrollmentRepository,
             integrationRepository,
@@ -191,34 +191,93 @@ class AuditLogControllerVerifyReportGateTest {
   }
 
   @Test
-  @DisplayName("checkChainIntegrity rejects windows above the 193h default cap")
+  @DisplayName("checkChainIntegrity accepts exactly 8×24h+1h (sync cap)")
+  void checkChainIntegrity_exactSyncCapBoundary_accepted() {
+    OffsetDateTime toExclusive = FROM.plus(windowCapProperties.maxSyncWindow());
+    AuditChainVerificationService.ChainVerificationReport report =
+        new AuditChainVerificationService.ChainVerificationReport(
+            0,
+            0,
+            0,
+            0,
+            0,
+            List.of(),
+            List.of(),
+            List.of(),
+            null,
+            null,
+            FROM,
+            toExclusive,
+            true,
+            true,
+            "OK");
+    when(auditChainVerificationService.verifyChain(eq(FROM), eq(toExclusive))).thenReturn(report);
+
+    ResponseEntity<AuditChainVerificationService.ChainVerificationReport> response =
+        controller.checkChainIntegrity(FROM, toExclusive);
+
+    assertEquals(200, response.getStatusCode().value());
+    verify(auditChainVerificationService).verifyChain(eq(FROM), eq(toExclusive));
+    assertFalse(heavyCryptoGate.isBusy());
+  }
+
+  @Test
+  @DisplayName("checkIntegrity accepts exactly 8×24h+1h (sync cap)")
+  void checkIntegrity_exactSyncCapBoundary_accepted() {
+    OffsetDateTime toExclusive = FROM.plus(windowCapProperties.maxSyncWindow());
+    AuditIntegrityService.IntegrityReport report =
+        new AuditIntegrityService.IntegrityReport(
+            1,
+            1,
+            0,
+            0,
+            true,
+            "OK",
+            IntegrityViolationCappedList.of(
+                List.of(), IntegrityViolationCappedList.ALERT_ENTRY_CAP));
+    when(auditIntegrityService.verifyRange(eq(FROM), eq(toExclusive))).thenReturn(report);
+
+    ResponseEntity<AuditIntegrityService.IntegrityReport> response =
+        controller.checkIntegrity(FROM, toExclusive);
+
+    assertEquals(200, response.getStatusCode().value());
+    verify(auditIntegrityService).verifyRange(eq(FROM), eq(toExclusive));
+    assertFalse(heavyCryptoGate.isBusy());
+  }
+
+  @Test
+  @DisplayName("checkChainIntegrity rejects windows above the 8-day sync cap")
   void checkChainIntegrity_rangeOverCap_throwsIntegrityWindowOverCapException() {
-    OffsetDateTime overCapTo = FROM.plusHours(194);
+    OffsetDateTime overCapTo = FROM.plus(windowCapProperties.maxSyncWindow()).plusSeconds(1);
     IntegrityWindowOverCapException ex =
         assertThrows(
             IntegrityWindowOverCapException.class,
             () -> controller.checkChainIntegrity(FROM, overCapTo));
-    assertEquals(193, ex.getMaxWindowHours());
+    assertEquals(8, ex.getMaxWindowDays());
+    assertEquals(IntegrityWindowOverCapException.CAP_KIND_SYNC, ex.getCapKind());
+    assertEquals(IntegrityWindowOverCapException.ASYNC_ALTERNATIVE, ex.getAsyncAlternative());
     verify(auditChainVerificationService, never()).verifyChain(eq(FROM), eq(overCapTo));
     assertFalse(heavyCryptoGate.isBusy());
   }
 
   @Test
-  @DisplayName("checkIntegrity rejects windows above the 193h default cap")
+  @DisplayName("checkIntegrity rejects windows above the 8-day sync cap")
   void checkIntegrity_rangeOverCap_throwsIntegrityWindowOverCapException() {
-    OffsetDateTime overCapTo = FROM.plusDays(9);
+    OffsetDateTime overCapTo = FROM.plus(windowCapProperties.maxSyncWindow()).plusSeconds(1);
     IntegrityWindowOverCapException ex =
         assertThrows(
             IntegrityWindowOverCapException.class,
             () -> controller.checkIntegrity(FROM, overCapTo));
-    assertEquals(193, ex.getMaxWindowHours());
+    assertEquals(8, ex.getMaxWindowDays());
+    assertEquals(IntegrityWindowOverCapException.CAP_KIND_SYNC, ex.getCapKind());
+    assertEquals(IntegrityWindowOverCapException.ASYNC_ALTERNATIVE, ex.getAsyncAlternative());
     verify(auditIntegrityService, never()).verifyRange(eq(FROM), eq(overCapTo));
   }
 
   @Test
   @DisplayName("default UI 7-day lookback Instant span including DST (+1h) is accepted")
   void checkChainIntegrity_defaultSevenDayLookbackSpan_accepted() {
-    // 8 calendar days, DST transition included → up to 193h.
+    // Exactly the sync Instant cap (8×24h+1h = 193h); async default remains 92 days.
     OffsetDateTime toExclusive = FROM.plusHours(193);
     AuditChainVerificationService.ChainVerificationReport report =
         new AuditChainVerificationService.ChainVerificationReport(

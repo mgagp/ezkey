@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -42,6 +43,7 @@ import org.ezkey.audit.integrity.NightlyIntegrityProperties;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -68,8 +70,8 @@ class IntegrityAsyncJobServiceTest {
   @Mock private NightlyIntegrityProperties nightlyIntegrityProperties;
   @Mock private AuditLogService auditLogService;
 
-  private final org.ezkey.audit.integrity.IntegrityVerifyReportProperties verifyReportProperties =
-      new org.ezkey.audit.integrity.IntegrityVerifyReportProperties();
+  private final org.ezkey.audit.integrity.IntegrityWindowCapProperties windowCapProperties =
+      new org.ezkey.audit.integrity.IntegrityWindowCapProperties();
 
   private ThreadPoolTaskExecutor executor;
   private IntegrityAsyncJobService service;
@@ -91,7 +93,7 @@ class IntegrityAsyncJobServiceTest {
             chainVerificationService,
             retroactiveIntegrityValidationService,
             nightlyIntegrityProperties,
-            verifyReportProperties,
+            windowCapProperties,
             auditLogService,
             executor);
   }
@@ -118,6 +120,35 @@ class IntegrityAsyncJobServiceTest {
   }
 
   @Test
+  void start_verifyChainAtExactCap_accepted() {
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.empty());
+    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(heavyCryptoGate.isBusy()).thenReturn(false);
+    AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
+    when(jobRepository.saveAndFlush(any()))
+        .thenAnswer(
+            inv -> {
+              IntegrityAsyncJob job = inv.getArgument(0);
+              saved.set(job);
+              return job;
+            });
+
+    OffsetDateTime from = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+    IntegrityAsyncJobStartRequest request =
+        new IntegrityAsyncJobStartRequest(
+            IntegrityAsyncJobType.VERIFY_CHAIN_RANGE,
+            from,
+            from.plus(windowCapProperties.maxWindow()),
+            null);
+
+    var accepted = service.start(request, 1, "admin.docker");
+    assertEquals(saved.get().getJobId(), accepted.jobId());
+    assertEquals(IntegrityAsyncJobStatus.RUNNING, saved.get().getStatus());
+  }
+
+  @Test
   void start_verifyChainOverCap_throwsIntegrityWindowOverCapException() {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
@@ -125,17 +156,18 @@ class IntegrityAsyncJobServiceTest {
     when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
 
+    OffsetDateTime from = OffsetDateTime.parse("2026-01-01T00:00:00Z");
     IntegrityAsyncJobStartRequest request =
         new IntegrityAsyncJobStartRequest(
             IntegrityAsyncJobType.VERIFY_CHAIN_RANGE,
-            OffsetDateTime.parse("2026-01-01T00:00:00Z"),
-            OffsetDateTime.parse("2026-01-01T00:00:00Z").plusHours(194),
+            from,
+            from.plus(windowCapProperties.maxWindow()).plusSeconds(1),
             null);
 
     IntegrityWindowOverCapException ex =
         assertThrows(
             IntegrityWindowOverCapException.class, () -> service.start(request, 1, "admin.docker"));
-    assertEquals(193, ex.getMaxWindowHours());
+    assertEquals(92, ex.getMaxWindowDays());
     verify(jobRepository, never()).saveAndFlush(any());
   }
 
@@ -158,6 +190,78 @@ class IntegrityAsyncJobServiceTest {
     assertThrows(
         IntegrityValidationDisabledException.class,
         () -> service.start(request, 1, "admin.docker"));
+  }
+
+  @Test
+  @DisplayName("async RUN_VALIDATION keeps max-window-days: exact 92×24h+1h accepted")
+  void start_runValidationAtExactAsyncCap_accepted() {
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.empty());
+    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(heavyCryptoGate.isBusy()).thenReturn(false);
+    when(nightlyIntegrityProperties.isEnabled()).thenReturn(true);
+    doAnswer(
+            inv -> {
+              windowCapProperties.validateWindow(inv.getArgument(0), inv.getArgument(1));
+              return null;
+            })
+        .when(retroactiveIntegrityValidationService)
+        .validateOperatorWindow(any(), any());
+    AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
+    when(jobRepository.saveAndFlush(any()))
+        .thenAnswer(
+            inv -> {
+              IntegrityAsyncJob job = inv.getArgument(0);
+              saved.set(job);
+              return job;
+            });
+
+    OffsetDateTime from = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+    IntegrityAsyncJobStartRequest request =
+        new IntegrityAsyncJobStartRequest(
+            IntegrityAsyncJobType.RUN_VALIDATION,
+            from,
+            from.plus(windowCapProperties.maxWindow()),
+            true);
+
+    var accepted = service.start(request, 1, "admin.docker");
+    assertEquals(saved.get().getJobId(), accepted.jobId());
+    assertEquals(IntegrityAsyncJobType.RUN_VALIDATION, saved.get().getJobType());
+  }
+
+  @Test
+  @DisplayName("async RUN_VALIDATION refuses beyond 92 d with capKind=ASYNC (no asyncAlternative)")
+  void start_runValidationOverAsyncCap_throwsIntegrityWindowOverCapException() {
+    when(jobRepository.findBySlotKeyAndStatus(
+            IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
+        .thenReturn(Optional.empty());
+    when(jobRepository.findAllByOrderByStartedAtDesc()).thenReturn(List.of());
+    when(heavyCryptoGate.isBusy()).thenReturn(false);
+    when(nightlyIntegrityProperties.isEnabled()).thenReturn(true);
+    doAnswer(
+            inv -> {
+              windowCapProperties.validateWindow(inv.getArgument(0), inv.getArgument(1));
+              return null;
+            })
+        .when(retroactiveIntegrityValidationService)
+        .validateOperatorWindow(any(), any());
+
+    OffsetDateTime from = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+    IntegrityAsyncJobStartRequest request =
+        new IntegrityAsyncJobStartRequest(
+            IntegrityAsyncJobType.RUN_VALIDATION,
+            from,
+            from.plus(windowCapProperties.maxWindow()).plusSeconds(1),
+            true);
+
+    IntegrityWindowOverCapException ex =
+        assertThrows(
+            IntegrityWindowOverCapException.class, () -> service.start(request, 1, "admin.docker"));
+    assertEquals(92, ex.getMaxWindowDays());
+    assertEquals(IntegrityWindowOverCapException.CAP_KIND_ASYNC, ex.getCapKind());
+    assertEquals(null, ex.getAsyncAlternative());
+    verify(jobRepository, never()).saveAndFlush(any());
   }
 
   @Test
@@ -378,7 +482,7 @@ class IntegrityAsyncJobServiceTest {
               chainVerificationService,
               retroactiveIntegrityValidationService,
               nightlyIntegrityProperties,
-              verifyReportProperties,
+              windowCapProperties,
               auditLogService,
               discarding);
 
@@ -449,7 +553,7 @@ class IntegrityAsyncJobServiceTest {
               chainVerificationService,
               retroactiveIntegrityValidationService,
               nightlyIntegrityProperties,
-              verifyReportProperties,
+              windowCapProperties,
               auditLogService,
               sync);
 

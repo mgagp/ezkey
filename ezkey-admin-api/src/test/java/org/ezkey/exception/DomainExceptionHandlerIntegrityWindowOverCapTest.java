@@ -11,7 +11,9 @@
 package org.ezkey.exception;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.ezkey.audit.exception.IntegrityWindowOverCapException;
 import org.junit.jupiter.api.DisplayName;
@@ -31,13 +33,13 @@ import org.springframework.mock.web.MockHttpServletRequest;
 class DomainExceptionHandlerIntegrityWindowOverCapTest {
 
   @Test
-  @DisplayName("over-cap maps to HTTP 400 with integrity-window-over-cap type")
-  void overCapMapsTo400WithStableType() {
+  @DisplayName("async over-cap maps to 400 with maxWindowDays, capKind=ASYNC, no asyncAlternative")
+  void asyncOverCapMapsTo400WithMaxWindowDaysAndCapKindAsync() {
     DomainExceptionHandler handler = new DomainExceptionHandler();
     MockHttpServletRequest request = new MockHttpServletRequest();
-    request.setRequestURI("/api/v1/audit-logs/chain-integrity");
+    request.setRequestURI("/api/v1/audit-logs/integrity/jobs");
 
-    IntegrityWindowOverCapException ex = new IntegrityWindowOverCapException(193);
+    IntegrityWindowOverCapException ex = new IntegrityWindowOverCapException(92);
 
     ResponseEntity<ProblemDetail> response =
         handler.handleIntegrityWindowOverCapException(ex, request);
@@ -47,5 +49,36 @@ class DomainExceptionHandlerIntegrityWindowOverCapTest {
     assertNotNull(body);
     assertEquals(400, body.getStatus());
     assertEquals(IntegrityWindowOverCapException.TYPE_URI, body.getType().toString());
+    assertEquals(92, body.getProperties().get("maxWindowDays"));
+    assertEquals(
+        IntegrityWindowOverCapException.CAP_KIND_ASYNC, body.getProperties().get("capKind"));
+    assertFalse(body.getProperties().containsKey("asyncAlternative"));
+    assertNull(ex.getAsyncAlternative());
+  }
+
+  @Test
+  @DisplayName(
+      "sync over-cap maps to 400 with maxWindowDays, capKind=SYNC, and fixed asyncAlternative")
+  void syncOverCapMapsTo400WithCapKindSyncAndFixedAsyncAlternative() {
+    DomainExceptionHandler handler = new DomainExceptionHandler();
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setRequestURI("/api/v1/audit-logs/chain-integrity");
+
+    IntegrityWindowOverCapException ex = IntegrityWindowOverCapException.forSyncCap(8);
+
+    ResponseEntity<ProblemDetail> response =
+        handler.handleIntegrityWindowOverCapException(ex, request);
+
+    assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    ProblemDetail body = response.getBody();
+    assertNotNull(body);
+    assertEquals(8, body.getProperties().get("maxWindowDays"));
+    assertEquals(
+        IntegrityWindowOverCapException.CAP_KIND_SYNC, body.getProperties().get("capKind"));
+    assertEquals(
+        IntegrityWindowOverCapException.ASYNC_ALTERNATIVE,
+        body.getProperties().get("asyncAlternative"));
+    assertEquals(
+        "POST /api/v1/audit-logs/integrity/jobs", body.getProperties().get("asyncAlternative"));
   }
 }

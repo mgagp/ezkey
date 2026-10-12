@@ -2538,7 +2538,7 @@
           "Audit Logs"
         ],
         "summary": "Run retroactive integrity validation",
-        "description": "Detective-layer validation over a date range: same semantics as the nightly batch. Runs under the Integrity heavy-crypto gate (HTTP 409 when busy). Window capped by ezkey.audit.integrity.retroactive.operator-max-window-hours (default shares verify-report max — 193 hours / 8 calendar days, DST transition included). May raise or touch AUDIT_INTEGRITY_RUPTURE when violations remain alert-eligible. Global Admin only.",
+        "description": "Detective-layer validation over a date range: same semantics as the nightly batch. Runs under the Integrity heavy-crypto gate (HTTP 409 when busy). Synchronous path: window capped by ezkey.audit.integrity.max-sync-window-days (default 8 — Instant span = days×24h+1h; over-cap → integrity-window-over-cap with capKind=SYNC + fixed asyncAlternative). Longer windows: async RUN_VALIDATION under max-window-days (default 92). May raise or touch AUDIT_INTEGRITY_RUPTURE when violations remain alert-eligible. Global Admin only.",
         "operationId": "runRetroactiveIntegrityValidation",
         "requestBody": {
           "content": {
@@ -2562,7 +2562,7 @@
             }
           },
           "400": {
-            "description": "Invalid bounds or window exceeds configured maximum",
+            "description": "Invalid bounds, or window exceeds max-sync-window-days (type integrity-window-over-cap)",
             "content": {
               "*/*": {
                 "schema": {
@@ -5884,7 +5884,7 @@
           "Audit Logs"
         ],
         "summary": "Verify audit log integrity",
-        "description": "Recomputes HMAC-SHA256 signatures for audit log entries in the specified date range and reports any tampered or unsigned entries. Runs under the Integrity heavy-crypto gate (HTTP 409 when busy) with a hard window cap (ezkey.audit.integrity.verify-report.max-window-hours, default 193 — 8 calendar days, DST transition included). Global Admin only.",
+        "description": "Recomputes HMAC-SHA256 signatures for audit log entries in the specified date range and reports any tampered or unsigned entries. Runs under the Integrity heavy-crypto gate (HTTP 409 when busy) with the sync window cap (ezkey.audit.integrity.max-sync-window-days, default 8 — calendar days, DST-tolerant Instant span = days×24h+1h; longer windows use async VERIFY under max-window-days). Global Admin only.",
         "operationId": "checkIntegrity",
         "parameters": [
           {
@@ -5920,7 +5920,7 @@
             }
           },
           "400": {
-            "description": "Date range required, inverted, or exceeds verify-report.max-window-hours",
+            "description": "Date range required/inverted, or exceeds max-sync-window-days (type integrity-window-over-cap)",
             "content": {
               "*/*": {
                 "schema": {
@@ -5968,7 +5968,7 @@
           "Audit Logs"
         ],
         "summary": "Verify audit chain checkpoint integrity",
-        "description": "Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage. Detects entry insertion, deletion, reordering, checkpoint tampering, and undeclared temporal gaps (missing checkpoints between consecutive windows or uncovered leading/trailing periods in the requested range). Runs under the Integrity heavy-crypto gate (HTTP 409 when busy) with a hard window cap (ezkey.audit.integrity.verify-report.max-window-hours, default 193 — 8 calendar days, DST transition included). Global Admin only.\n\n**Range handling:** The requested from/to may extend before the first checkpoint or after the last in the database. Such periods are not reported as undeclared gaps (they are before/after \"EZKey time\"). Only real gaps within the system's checkpoint extent are reported. The response fields effectiveFrom and effectiveTo indicate the range actually used for boundary gap reporting (clamped to coverageStart/coverageEnd when the request extended beyond the first/last checkpoint).",
+        "description": "Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage. Detects entry insertion, deletion, reordering, checkpoint tampering, and undeclared temporal gaps (missing checkpoints between consecutive windows or uncovered leading/trailing periods in the requested range). Runs under the Integrity heavy-crypto gate (HTTP 409 when busy) with the sync window cap (ezkey.audit.integrity.max-sync-window-days, default 8 — calendar days, DST-tolerant Instant span = days×24h+1h; longer windows use async VERIFY under max-window-days). Global Admin only.\n\n**Range handling:** The requested from/to may extend before the first checkpoint or after the last in the database. Such periods are not reported as undeclared gaps (they are before/after \"EZKey time\"). Only real gaps within the system's checkpoint extent are reported. The response fields effectiveFrom and effectiveTo indicate the range actually used for boundary gap reporting (clamped to coverageStart/coverageEnd when the request extended beyond the first/last checkpoint).",
         "operationId": "checkChainIntegrity",
         "parameters": [
           {
@@ -6004,7 +6004,7 @@
             }
           },
           "400": {
-            "description": "Date range required, inverted, or exceeds verify-report.max-window-hours",
+            "description": "Date range required/inverted, or exceeds max-sync-window-days (type integrity-window-over-cap)",
             "content": {
               "*/*": {
                 "schema": {

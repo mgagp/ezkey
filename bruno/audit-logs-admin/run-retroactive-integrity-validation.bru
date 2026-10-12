@@ -56,6 +56,9 @@ docs {
   Runs retroactive integrity validation (detect path) over a date range. Same orchestration as the nightly batch — may raise or touch AUDIT_INTEGRITY_RUPTURE. Distinct from GET integrity-check / chain-integrity (read-only verify). Global Admin only.
   
   **Body:** `from` (inclusive ISO-8601), `to` (exclusive), optional `raiseAlert` (default true).
+  Synchronous path: window must be ≤ `ezkey.audit.integrity.max-sync-window-days` (default 8; Instant span = days×24h+1h).
+  Over-cap → 400 `integrity-window-over-cap` + `maxWindowDays` + `capKind=SYNC` + fixed `asyncAlternative`.
+  Longer windows: async `RUN_VALIDATION` via `POST …/integrity/jobs` under `max-window-days` (default 92).
   
-  **Status Codes:** 200 (including skipped when HMAC inactive) · 400 invalid bounds or window too large · 409 nightly validation inactive · 401 · 403
+  **Status Codes:** 200 (including skipped when HMAC inactive) · 400 invalid bounds or exceeds max-sync-window-days (`integrity-window-over-cap` + `maxWindowDays` + `capKind=SYNC` + `asyncAlternative`) · 409 nightly validation inactive · 401 · 403
 }
