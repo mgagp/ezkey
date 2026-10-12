@@ -85,3 +85,9 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
 - Replacement PR **#762** open for review (Marc paused dependency merges for functional tests) — **do not merge yet**; #718 stays open until squash-merge
 - Local validation on #762: `./scripts/build.sh` OK; bootstrap-init Alpine 3.24.2 (curl/jq, UID 100/GID 101); clean-start OK (bind+verify+demo-device seed); Playwright **5/5** in `v1.63.0-noble`
 - Residual: Dependabot may reopen Playwright 1.64 image bump when npm moves; #717 untouched
+
+### #762 Dependabot config regression (same day)
+
+- Cause: #762 merged invalid docker `ignore.versions` globs (`*-eclipse-temurin-26*`, …). GitHub check `.github/dependabot.yml` fails on every PR/main with: `The property '#/updates/8/ignore/1/versions' includes invalid version requirements for a docker ignore condition`. Docker ignores require Bundler syntax, not shell globs.
+- Fix (option a, #764): Bundler ranges `">= 3.9.26, < 3.9.29"` / `3.10.*` / `4.0.*` for dependency `maven` (covers JDK 26–28 on current + next Maven lines; exact `3.9.26|27|28` left a gap on `3.10-eclipse-temurin-26`). Mapping: tag `WORDS_WITH_BUILD` → `3.9.N` (dependabot-core `tag.rb` / `version.rb`). Manual extend per new Maven minor; revisit at JDK 29 LTS; fallback `@dependabot ignore this version`. Rejected: (b) blanket ignore; (c) curated-refusal only as sole mechanism.
+- Dedicated PR **#764** (do **not** merge until Marc go; do not touch #730).

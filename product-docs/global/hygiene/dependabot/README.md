@@ -220,10 +220,17 @@ On every Monday-full `dependabot-curated` pass the agent must:
 Do **not** add Docker image tags to this pulse unless the operator asks. Tink / ShedLock /
 ipaddress now follow parent properties (see
 [`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md)).
-When Docker image PRs are in scope: **keep** `maven:*-eclipse-temurin-25` (project JDK =
-25 LTS); Dependabot ignores non-LTS Temurin 26–28 on the `/docker` ecosystem (Marc
-2026-10-12; revisit at JDK 29 LTS). Align Playwright `mcr.microsoft.com/playwright:vX.Y.Z-noble`
-with the Admin UI lockfile `@playwright/test` version — do not jump the image ahead of npm.
+When Docker image PRs are in scope: **keep** `maven:3.9-eclipse-temurin-25` (project JDK =
+25 LTS; Marc 2026-10-12). Dependabot docker `ignore.versions` for `maven` uses Bundler
+ranges `">= 3.9.26, < 3.9.29"` / `3.10.*` / `4.0.*` (JDK 26–28 on those Maven lines). Tag
+`3.9-eclipse-temurin-N` maps to comparable `3.9.N` via dependabot-core
+[tag.rb](https://github.com/dependabot/dependabot-core/blob/main/docker/lib/dependabot/docker/tag.rb)
+`WORDS_WITH_BUILD` (see skill § Java BOM pulse). Extend one range per new Maven minor;
+revisit at JDK 29 LTS. Fallback: close stray non-LTS Temurin PRs with
+`@dependabot ignore this version`. Shell globs in docker `versions` fail the
+`.github/dependabot.yml` check (#762). Align Playwright
+`mcr.microsoft.com/playwright:vX.Y.Z-noble` with the Admin UI lockfile `@playwright/test`
+version — do not jump the image ahead of npm.
 
 Authority: skill `dependabot-curated` § *Java BOM pulse*. Provenance: Boot 4.1.1 pass
 [`2026-08-21-pass-1.md`](2026-08-21-pass-1.md) (hygiene branch; no Dependabot PR).

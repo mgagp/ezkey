@@ -250,17 +250,30 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-      # Project JDK = 25 LTS; non-LTS Temurin build images are refused (Marc 2026-10-12).
-      # Revisit at JDK 29 LTS. Tag suffixes like 3.9-eclipse-temurin-26 are not SemVer
-      # majors, so wildcard version ignores are required (see #718 split).
+      # Project JDK = 25 LTS; refuse non-LTS Temurin on the maven build image
+      # (Marc 2026-10-12; revisit at JDK 29 LTS). Docker ignore `versions` must use
+      # Bundler syntax — globs like `*-eclipse-temurin-26*` fail config validation
+      # (#762 regression).
+      #
+      # Mechanism (dependabot-core): Tag NAME_WITH_VERSION / VERSION_REGEX captures
+      # `3.9` + WORDS_WITH_BUILD `-eclipse-temurin-N`, so numeric_version is `3.9-N`
+      # and Docker::Version becomes `3.9.N` (hyphen → dot). Same format
+      # `<version>-eclipse-temurin-<build_num>` for N=25 and N=26, which is why
+      # Dependabot proposed 3.9-eclipse-temurin-25 → 26 (#718). Source:
+      # https://github.com/dependabot/dependabot-core/blob/main/docker/lib/dependabot/docker/tag.rb
+      # https://github.com/dependabot/dependabot-core/blob/main/docker/lib/dependabot/docker/version.rb
+      #
+      # Ranges cover JDK 26–28 on current and next Maven floating lines (3.9 / 3.10 /
+      # 4.0). A real Maven patch on Temurin 25 (`3.9.11-eclipse-temurin-25` →
+      # `3.9.11.25`) has different precision and is not blocked. Manual: extend one
+      # range per new Maven minor (e.g. 4.1); at JDK 29 LTS, revisit. Fallback: if a
+      # non-LTS Temurin PR still opens, curated pass closes with
+      # `@dependabot ignore this version`.
       - dependency-name: "maven"
         versions:
-          - "*-eclipse-temurin-26*"
-          - "*-eclipse-temurin-27*"
-          - "*-eclipse-temurin-28*"
-          - "*-temurin-26*"
-          - "*-temurin-27*"
-          - "*-temurin-28*"
+          - ">= 3.9.26, < 3.9.29"
+          - ">= 3.10.26, < 3.10.29"
+          - ">= 4.0.26, < 4.0.29"
     groups:
       docker-images-minor-patch:
         applies-to: version-updates
