@@ -15,6 +15,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Optional;
@@ -293,11 +296,15 @@ class IntegrityAsyncJobPostgresTest {
         """,
         orphanId);
 
-    ResourceDatabasePopulator v25 = new ResourceDatabasePopulator();
-    v25.setSeparator(";");
-    v25.addScript(
-        new ClassPathResource("db/migration/V25__integrity_async_job_verdict_trigger.sql"));
-    v25.execute(dataSource);
+    // Execute via raw JDBC so Postgres parses the script (Spring ScriptUtils mishandles
+    // SQL-standard adjacent string literals in V25 COMMENT ON statements).
+    String v25Sql =
+        new ClassPathResource("db/migration/V25__integrity_async_job_verdict_trigger.sql")
+            .getContentAsString(StandardCharsets.UTF_8);
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(v25Sql);
+    }
 
     OffsetDateTime abandonedAt =
         jdbc.queryForObject(
