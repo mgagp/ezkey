@@ -72,3 +72,16 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
 - Infra note (non-blocking): pre-rebase `#704` had stale `submit-maven` FAILURE (Automatic Dependency Submission; missing `org.ezkey:checkstyle-config` — run `37783553186`); `ci-gate` green; cleared after `@dependabot rebase`
 - Validation: `./scripts/build.sh` OK; clean-start OK (Admin `9081` UP, audit HMAC READY); `mvn test -pl ezkey-tests -P smoke-tests` 12/12; Admin vitest 148/148; Playwright 5/5; mobile `yarn validate` + jest 307/307; Orval exact pin `8.40.0` + AGENTS.md sync (Admin UI + mobile)
 - Residual: phone smoke for #706/#707/#708/#709 tracked on #627 (gates next Play AAB)
+
+## 2026-10-12
+
+- Pass: targeted #718 split (Marc-approved; not a full dependabot-curated lot); concurrency: clear for this slice (Monday campaign #760 already merged; no concurrent Dependabot merges on docker)
+- GitHub write: `GH_TOKEN as mgagp`
+- Hygiene PR (replaces #718):
+  - `docker/bootstrap-init`: Alpine **3.19→3.24** (accepted)
+  - `docker/Dockerfile`: **keep** `maven:3.9-eclipse-temurin-25` (refuse temurin-26; JDK 25 LTS)
+  - `ezkey-admin-ui/docker/ui-browser-tests.Dockerfile`: Playwright **v1.60.0-noble→v1.63.0-noble** (matches lockfile `@playwright/test` 1.63.0; not Dependabot's v1.64.0)
+  - `.github/dependabot.yml`: ignore `maven` versions `*-eclipse-temurin-26|27|28*` and `*-temurin-26|27|28*` (comment: revisit at JDK 29 LTS)
+- Replacement PR **#762** open for review (Marc paused dependency merges for functional tests) — **do not merge yet**; #718 stays open until squash-merge
+- Local validation on #762: `./scripts/build.sh` OK; bootstrap-init Alpine 3.24.2 (curl/jq, UID 100/GID 101); clean-start OK (bind+verify+demo-device seed); Playwright **5/5** in `v1.63.0-noble`
+- Residual: Dependabot may reopen Playwright 1.64 image bump when npm moves; #717 untouched

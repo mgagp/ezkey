@@ -220,6 +220,10 @@ On every Monday-full `dependabot-curated` pass the agent must:
 Do **not** add Docker image tags to this pulse unless the operator asks. Tink / ShedLock /
 ipaddress now follow parent properties (see
 [`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md)).
+When Docker image PRs are in scope: **keep** `maven:*-eclipse-temurin-25` (project JDK =
+25 LTS); Dependabot ignores non-LTS Temurin 26–28 on the `/docker` ecosystem (Marc
+2026-10-12; revisit at JDK 29 LTS). Align Playwright `mcr.microsoft.com/playwright:vX.Y.Z-noble`
+with the Admin UI lockfile `@playwright/test` version — do not jump the image ahead of npm.
 
 Authority: skill `dependabot-curated` § *Java BOM pulse*. Provenance: Boot 4.1.1 pass
 [`2026-08-21-pass-1.md`](2026-08-21-pass-1.md) (hygiene branch; no Dependabot PR).
