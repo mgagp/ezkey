@@ -61,6 +61,7 @@ public class IntegrityBootstrapService {
         auditChainProperties.isEnabled(),
         nightlyIntegrityProperties.isEnabled(),
         windowCapProperties.getMaxWindowDays(),
+        windowCapProperties.getMaxSyncWindowDays(),
         nightlyIntegrityProperties.getWindowHours());
   }
 }

@@ -67,6 +67,7 @@ class IntegrityBootstrapServiceTest {
     assertThat(dto.chainCheckpointsEnabled()).isTrue();
     assertThat(dto.nightlyValidationEnabled()).isTrue();
     assertThat(dto.maxWindowDays()).isEqualTo(92);
+    assertThat(dto.maxSyncWindowDays()).isEqualTo(8);
     assertThat(dto.nightlyWindowHours()).isEqualTo(24);
   }
 
@@ -83,6 +84,7 @@ class IntegrityBootstrapServiceTest {
     assertThat(dto.chainCheckpointsEnabled()).isFalse();
     assertThat(dto.nightlyValidationEnabled()).isFalse();
     assertThat(dto.maxWindowDays()).isEqualTo(92);
+    assertThat(dto.maxSyncWindowDays()).isEqualTo(8);
     assertThat(dto.nightlyWindowHours()).isEqualTo(24);
   }
 
