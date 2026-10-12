@@ -287,7 +287,7 @@ entry HMAC range verify, run validation). DB-backed (`ezkey_integrity_async_job`
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `int` | `193` | optionnel | Hard-reject operator POST / async `RUN_VALIDATION` when `[from, to)` exceeds this many hours. Default shares `IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS` with report GETs / VERIFY starts (**8 calendar days, DST transition included**). Primitive `int` — there is **no opt-out**; an empty property value cannot remove the cap (raise the number only if a deployment needs a longer bound). **Provisional** — #730 will align with a single `max-window-days`. Nightly scheduled window remains `nightly.window-hours`. |
+| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `int` | `193` | optionnel | Hard-reject operator POST / async `RUN_VALIDATION` when `[from, to)` exceeds this many hours. Default shares `IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS` with report GETs / VERIFY starts (**8 calendar days, DST transition included**). Primitive `int` — there is **no opt-out**; an empty property value cannot remove the cap (raise the number only if a deployment needs a longer bound). **Provisional** — Integrity cut 3 (#730, intention-locked) aligns under a single `max-window-days` (default 92). Nightly scheduled window remains `nightly.window-hours`. |
 
 ---
 
@@ -299,7 +299,7 @@ entry HMAC range verify, run validation). DB-backed (`ezkey_integrity_async_job`
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.audit.integrity.verify-report.max-window-hours` | `int` | `193` | optionnel | Hard-reject (HTTP 400, no silent truncate) when `[from, to)` exceeds this many hours. **193** = **8 calendar days, DST transition included** (`8×24 + 1`) so the Admin UI default 7-day lookback Instant span never exceeds the cap across a fall-back. **Provisional** hour key — #730 will align with `max-window-days` / shared operator-max so two properties do not remain long-term. `@Min(1)`. |
+| `ezkey.audit.integrity.verify-report.max-window-hours` | `int` | `193` | optionnel | Hard-reject (HTTP 400, no silent truncate) when `[from, to)` exceeds this many hours. **193** = **8 calendar days, DST transition included** (`8×24 + 1`) so the Admin UI default 7-day lookback Instant span never exceeds the cap across a fall-back. **Provisional** hour key — Integrity cut 3 (#730, intention-locked) aligns under `max-window-days` (default 92) so two hour keys do not remain long-term. `@Min(1)`. |
 
 ---
 
