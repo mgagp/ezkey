@@ -5784,13 +5784,65 @@
         }
       }
     },
+    "/api/v1/audit-logs/integrity/jobs/last-verdict": {
+      "get": {
+        "tags": [
+          "Integrity Async Jobs"
+        ],
+        "summary": "Get last Integrity chain verdict",
+        "description": "Latest SUCCEEDED VERIFY_CHAIN_RANGE or RUN_VALIDATION job with a verified chainStatus (not NOT_VERIFIED), including nightly terminal rows. Returns 204 when none. Global Admin only.",
+        "operationId": "getLastVerdict",
+        "responses": {
+          "200": {
+            "description": "Latest verdict-bearing job",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No verdict yet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityAsyncJobResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/audit-logs/integrity/jobs/current": {
       "get": {
         "tags": [
           "Integrity Async Jobs"
         ],
         "summary": "Get current Integrity async job",
-        "description": "Any Global Admin may read the current slot status and last result. Applies TTL expiry for stale RUNNING heartbeats. Returns 204 when idle.",
+        "description": "Any Global Admin may read the current slot status and last result. Applies TTL expiry for stale RUNNING heartbeats. When the nightly ShedLock is active and the operator slot is idle, returns a synthetic RUNNING job with busyHolder=NIGHTLY. Returns 204 when idle.",
         "operationId": "getCurrent",
         "responses": {
           "200": {
@@ -7853,6 +7905,15 @@
           "raiseAlert": {
             "type": "boolean",
             "description": "When type is RUN_VALIDATION, whether to raise/touch alert on eligible violations. Default true. Ignored for verify job types."
+          },
+          "trigger": {
+            "type": "string",
+            "description": "Client-declared initiation metadata: MANUAL (default) or AUTO. NIGHTLY is server-only and rejected on POST.",
+            "enum": [
+              "MANUAL",
+              "AUTO",
+              "NIGHTLY"
+            ]
           }
         },
         "required": [
@@ -7902,6 +7963,14 @@
               "INTERRUPTED"
             ]
           },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "MANUAL",
+              "AUTO",
+              "NIGHTLY"
+            ]
+          },
           "startedByUsername": {
             "type": "string"
           },
@@ -7942,12 +8011,53 @@
             "type": "integer",
             "format": "int64"
           },
+          "chainStatus": {
+            "type": "string",
+            "enum": [
+              "OK",
+              "UNDECLARED_GAP_DETECTED",
+              "CHAIN_INTEGRITY_VIOLATION_DETECTED",
+              "NOT_VERIFIED"
+            ]
+          },
+          "totalCheckpoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "validCheckpoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "invalidCheckpoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "archivedCheckpoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "undeclaredGaps": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "entryHmacViolations": {
+            "type": "integer",
+            "format": "int32"
+          },
           "abandonedAt": {
             "type": "string",
             "format": "date-time"
           },
           "resumeOneLiner": {
             "type": "string"
+          },
+          "busyHolder": {
+            "type": "string",
+            "enum": [
+              "NIGHTLY",
+              "REPORT_GET",
+              "OPERATOR_JOB"
+            ]
           }
         }
       },
@@ -10214,7 +10324,7 @@
       },
       "IntegrityBootstrapResponseDto": {
         "type": "object",
-        "description": "Thin Integrity atelier bootstrap: product runtime profile plus monitoring enable flags (non-secret). Global Admin only.",
+        "description": "Thin Integrity atelier bootstrap: product runtime profile plus monitoring enable flags and effective window caps (non-secret). Global Admin only.",
         "properties": {
           "runtimeProfile": {
             "type": "string",
@@ -10232,6 +10342,24 @@
           "nightlyValidationEnabled": {
             "type": "boolean",
             "description": "Whether nightly retroactive integrity validation is enabled (config flag for monitoring honesty)."
+          },
+          "maxWindowDays": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Configured max async Integrity window length in calendar days (ezkey.audit.integrity.max-window-days). Instant span = days×24h+1h. Used by async VERIFY / RUN_VALIDATION. Closes the hard-coded 193 h UI cap for PR 2.",
+            "example": 92
+          },
+          "maxSyncWindowDays": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Configured max sync report-GET window length in calendar days (ezkey.audit.integrity.max-sync-window-days). Instant span = days×24h+1h. Used by integrity-check / chain-integrity GETs.",
+            "example": 8
+          },
+          "nightlyWindowHours": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Configured nightly retroactive validation window length in hours (ezkey.audit.integrity.nightly.window-hours).",
+            "example": 24
           }
         }
       },
