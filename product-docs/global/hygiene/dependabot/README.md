@@ -221,10 +221,14 @@ Do **not** add Docker image tags to this pulse unless the operator asks. Tink / 
 ipaddress now follow parent properties (see
 [`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md)).
 When Docker image PRs are in scope: **keep** `maven:3.9-eclipse-temurin-25` (project JDK =
-25 LTS). Dependabot docker `ignore.versions` for `maven` lists Bundler-syntax `3.9.26`,
-`3.9.27`, `3.9.28` (maps from tag `3.9-eclipse-temurin-N` → comparable `3.9.N`; Marc
-2026-10-12; revisit at JDK 29 LTS). Shell globs in docker `versions` are invalid and fail
-the `.github/dependabot.yml` check (#762). Align Playwright
+25 LTS; Marc 2026-10-12). Dependabot docker `ignore.versions` for `maven` uses Bundler
+ranges `">= 3.9.26, < 3.9.29"` / `3.10.*` / `4.0.*` (JDK 26–28 on those Maven lines). Tag
+`3.9-eclipse-temurin-N` maps to comparable `3.9.N` via dependabot-core
+[tag.rb](https://github.com/dependabot/dependabot-core/blob/main/docker/lib/dependabot/docker/tag.rb)
+`WORDS_WITH_BUILD` (see skill § Java BOM pulse). Extend one range per new Maven minor;
+revisit at JDK 29 LTS. Fallback: close stray non-LTS Temurin PRs with
+`@dependabot ignore this version`. Shell globs in docker `versions` fail the
+`.github/dependabot.yml` check (#762). Align Playwright
 `mcr.microsoft.com/playwright:vX.Y.Z-noble` with the Admin UI lockfile `@playwright/test`
 version — do not jump the image ahead of npm.
 

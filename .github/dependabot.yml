@@ -253,15 +253,27 @@ updates:
       # Project JDK = 25 LTS; refuse non-LTS Temurin on the maven build image
       # (Marc 2026-10-12; revisit at JDK 29 LTS). Docker ignore `versions` must use
       # Bundler syntax — globs like `*-eclipse-temurin-26*` fail config validation
-      # (#762 regression). Dependabot maps `maven:3.9-eclipse-temurin-N` to comparable
-      # version `3.9.N` (WORDS_WITH_BUILD → numeric `3.9-N` → `3.9.N`), so exact
-      # `3.9.26|27|28` block JDK 26–28 while still allowing Maven 3.10+ on temurin-25
-      # and leaving `3.9-eclipse-temurin-25` unblocked (provenance: #718 split / #762 fix).
+      # (#762 regression).
+      #
+      # Mechanism (dependabot-core): Tag NAME_WITH_VERSION / VERSION_REGEX captures
+      # `3.9` + WORDS_WITH_BUILD `-eclipse-temurin-N`, so numeric_version is `3.9-N`
+      # and Docker::Version becomes `3.9.N` (hyphen → dot). Same format
+      # `<version>-eclipse-temurin-<build_num>` for N=25 and N=26, which is why
+      # Dependabot proposed 3.9-eclipse-temurin-25 → 26 (#718). Source:
+      # https://github.com/dependabot/dependabot-core/blob/main/docker/lib/dependabot/docker/tag.rb
+      # https://github.com/dependabot/dependabot-core/blob/main/docker/lib/dependabot/docker/version.rb
+      #
+      # Ranges cover JDK 26–28 on current and next Maven floating lines (3.9 / 3.10 /
+      # 4.0). A real Maven patch on Temurin 25 (`3.9.11-eclipse-temurin-25` →
+      # `3.9.11.25`) has different precision and is not blocked. Manual: extend one
+      # range per new Maven minor (e.g. 4.1); at JDK 29 LTS, revisit. Fallback: if a
+      # non-LTS Temurin PR still opens, curated pass closes with
+      # `@dependabot ignore this version`.
       - dependency-name: "maven"
         versions:
-          - "3.9.26"
-          - "3.9.27"
-          - "3.9.28"
+          - ">= 3.9.26, < 3.9.29"
+          - ">= 3.10.26, < 3.10.29"
+          - ">= 4.0.26, < 4.0.29"
     groups:
       docker-images-minor-patch:
         applies-to: version-updates
