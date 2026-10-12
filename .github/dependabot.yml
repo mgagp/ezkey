@@ -250,6 +250,17 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # Project JDK = 25 LTS; non-LTS Temurin build images are refused (Marc 2026-10-12).
+      # Revisit at JDK 29 LTS. Tag suffixes like 3.9-eclipse-temurin-26 are not SemVer
+      # majors, so wildcard version ignores are required (see #718 split).
+      - dependency-name: "maven"
+        versions:
+          - "*-eclipse-temurin-26*"
+          - "*-eclipse-temurin-27*"
+          - "*-eclipse-temurin-28*"
+          - "*-temurin-26*"
+          - "*-temurin-27*"
+          - "*-temurin-28*"
     groups:
       docker-images-minor-patch:
         applies-to: version-updates
