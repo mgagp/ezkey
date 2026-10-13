@@ -1,8 +1,9 @@
 /**
- * After an Integrity async VERIFY_* job SUCCEEDS, the job DTO only carries a
- * resultSummary — not the full report the Remediate UI needs (undeclared gaps,
- * entry violations). Hydrate from the existing read-only verify endpoints using
- * the job's scope, once per jobId.
+ * After an Integrity async VERIFY_* job SUCCEEDS, hydrate the detailed report
+ * (undeclared gap list, entry violations) from read-only verify endpoints when
+ * needed. Integrity cut 3: the micro-dashboard glance uses DTO counters — skip
+ * the sync GET on open when {@link hasJobBackedChainCounters} is true unless the
+ * operator forces a reload or started a verify in this session.
  *
  * @since 2026
  */
@@ -13,6 +14,7 @@ import type {
 } from '@/generated/admin-api/model';
 import { ApiError } from '@/lib/api-client';
 import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
+import { hasJobBackedChainCounters } from '@/lib/integrity-micro-dashboard';
 
 /** RFC 9457 type for Integrity async slot / heavy-crypto gate busy (HTTP 409). */
 export const INTEGRITY_ASYNC_JOB_BUSY_TYPE =
@@ -122,16 +124,27 @@ export function isSucceededVerifyJobForReportHydration(
   );
 }
 
+/** Options for {@link resolveIntegrityAsyncJobReportHydration}. */
+export type ResolveIntegrityAsyncJobReportHydrationOptions = {
+  /**
+   * When true, fetch the detailed report even if the DTO already has counters
+   * (Reload report, or a verify started in this browser session).
+   */
+  forceReportGet?: boolean;
+};
+
 /**
  * Decide whether the current async job should trigger a one-shot report fetch.
  *
  * @param job current Integrity async job (from banner poll or page load)
  * @param lastHydratedJobId jobId already hydrated (or claimed in-flight) in this session
+ * @param options force report GET when reloading or after an in-session start
  * @returns request to fetch, or null when no hydration is needed
  */
 export function resolveIntegrityAsyncJobReportHydration(
   job: IntegrityAsyncJobResponse | null | undefined,
   lastHydratedJobId: string | null,
+  options: ResolveIntegrityAsyncJobReportHydrationOptions = {},
 ): IntegrityReportHydrationRequest | null {
   if (!isSucceededVerifyJobForReportHydration(job)) {
     return null;
@@ -142,6 +155,13 @@ export function resolveIntegrityAsyncJobReportHydration(
     return null;
   }
   if (!succeeded.scopeFrom || !succeeded.scopeTo) {
+    return null;
+  }
+  // Cut 3 job-backed glance: skip sync GET on open when counters are on the DTO.
+  if (
+    !options.forceReportGet
+    && hasJobBackedChainCounters(succeeded)
+  ) {
     return null;
   }
   if (succeeded.type === 'VERIFY_CHAIN_RANGE') {

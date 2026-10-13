@@ -45,6 +45,12 @@ export interface UseIntegrityAsyncJobReportHydrationOptions {
    * SUCCEEDED job (operator “Reload report”).
    */
   reloadNonce?: number;
+  /**
+   * When true, allow GET /chain-integrity even if the job DTO already has
+   * counters (verify started in this session, or Reload). Default false so a
+   * fresh last-verdict open stays job-backed (cut 3 D1 / D3).
+   */
+  forceReportGet?: boolean;
   /** Test seams — default to generated Admin API clients. */
   fetchChainReport?: (from: string, to: string) => Promise<ChainVerificationReport>;
   fetchEntryReport?: (from: string, to: string) => Promise<IntegrityReport>;
@@ -71,6 +77,7 @@ export function useIntegrityAsyncJobReportHydration(
     onError,
     toDisplayRange,
     reloadNonce = 0,
+    forceReportGet = false,
     fetchChainReport,
     fetchEntryReport,
   } = options;
@@ -89,6 +96,7 @@ export function useIntegrityAsyncJobReportHydration(
     onEntryHydratingChange,
     onError,
     toDisplayRange,
+    forceReportGet,
     fetchChainReport,
     fetchEntryReport,
   });
@@ -100,6 +108,7 @@ export function useIntegrityAsyncJobReportHydration(
     onEntryHydratingChange,
     onError,
     toDisplayRange,
+    forceReportGet,
     fetchChainReport,
     fetchEntryReport,
   };
@@ -113,6 +122,10 @@ export function useIntegrityAsyncJobReportHydration(
     const request = resolveIntegrityAsyncJobReportHydration(
       callbacksRef.current.job,
       lastHydratedJobIdRef.current,
+      {
+        forceReportGet:
+          reloadNonce > 0 || callbacksRef.current.forceReportGet === true,
+      },
     );
     if (request == null) {
       return;
@@ -206,5 +219,5 @@ export function useIntegrityAsyncJobReportHydration(
         lastHydratedJobIdRef.current = null;
       }
     };
-  }, [jobId, jobStatus, reloadNonce]);
+  }, [jobId, jobStatus, reloadNonce, forceReportGet]);
 }
