@@ -22,6 +22,7 @@ import {
   isIntegrityChainStatusNonGreen,
   isIntegrityVerdictScopeMismatch,
   resolveIntegrityMicroDashboardTone,
+  startIntegrityRunningPoll,
   type IntegrityMicroDashboardTone,
 } from '@/lib/integrity-micro-dashboard';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
@@ -137,12 +138,13 @@ export function IntegrityMicroDashboard({
     if (!active || job?.status !== 'RUNNING') {
       return;
     }
-    const id = window.setInterval(() => {
+    // Immediate poll + interval: setInterval alone waits POLL_MS before the first
+    // tick, so a ~50 ms SUCCEEDED job stayed on "Check running…" until then.
+    return startIntegrityRunningPoll(() => {
       void getCurrentIntegrityAsyncJob()
         .then((next) => onJobChange(next))
         .catch(() => undefined);
     }, POLL_MS_RUNNING);
-    return () => window.clearInterval(id);
   }, [active, job?.status, onJobChange]);
 
   // 1 s clock so relative "checked" ages while the page stays open.

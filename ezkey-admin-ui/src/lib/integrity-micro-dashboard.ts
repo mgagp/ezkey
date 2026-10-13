@@ -220,3 +220,29 @@ export function resolveIntegrityMicroDashboardTone(
 export function integrityWindowDaysToHours(days: number): number {
   return days * 24 + 1;
 }
+
+/**
+ * Poll cadence while an Integrity async job is RUNNING.
+ * {@link setInterval} alone delays the first tick by {@code intervalMs}, so a
+ * sub-second SUCCEEDED job looks frozen on "Check running…" until that tick.
+ * Call {@code poll} immediately, then on the interval.
+ *
+ * @param poll function that refreshes {@code GET …/jobs/current}
+ * @param intervalMs steady poll period (default 3 s)
+ * @param timers injectable timers for tests
+ * @returns disposer that clears the interval
+ */
+export function startIntegrityRunningPoll(
+  poll: () => void,
+  intervalMs: number = 3000,
+  timers: {
+    setInterval: typeof setInterval;
+    clearInterval: typeof clearInterval;
+  } = globalThis,
+): () => void {
+  poll();
+  const id = timers.setInterval(poll, intervalMs);
+  return () => {
+    timers.clearInterval(id);
+  };
+}

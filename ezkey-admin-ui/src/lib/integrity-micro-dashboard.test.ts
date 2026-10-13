@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
 import {
   defaultAutoVerifyInstantRange,
@@ -11,6 +11,7 @@ import {
   isIntegrityChainStatusNonGreen,
   isIntegrityVerdictScopeMismatch,
   resolveIntegrityMicroDashboardTone,
+  startIntegrityRunningPoll,
 } from './integrity-micro-dashboard';
 
 function job(
@@ -172,5 +173,39 @@ describe('scope + helpers', () => {
     expect(hasJobBackedChainGlance(job({ chainStatus: null }))).toBe(false);
     expect(isIntegrityChainStatusNonGreen('UNDECLARED_GAP_DETECTED')).toBe(true);
     expect(isIntegrityChainStatusNonGreen('OK')).toBe(false);
+  });
+});
+
+describe('startIntegrityRunningPoll', () => {
+  it('polls immediately, then on the interval (avoids frozen Check running…)', () => {
+    const poll = vi.fn();
+    const handles: Array<ReturnType<typeof setInterval>> = [];
+    const timers = {
+      setInterval: ((fn: TimerHandler, ms?: number) => {
+        const id = globalThis.setInterval(fn, ms);
+        handles.push(id);
+        return id;
+      }) as typeof setInterval,
+      clearInterval: (id: ReturnType<typeof setInterval>) => {
+        globalThis.clearInterval(id);
+      },
+    };
+
+    vi.useFakeTimers();
+    const stop = startIntegrityRunningPoll(poll, 3000, timers);
+    expect(poll).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(2999);
+    expect(poll).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1);
+    expect(poll).toHaveBeenCalledTimes(2);
+
+    stop();
+    vi.advanceTimersByTime(3000);
+    expect(poll).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+    for (const id of handles) {
+      globalThis.clearInterval(id);
+    }
   });
 });

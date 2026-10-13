@@ -68,6 +68,10 @@ test('@smoke @device-backed Integrity cut 3 micro-dashboard is the glance strip'
   const dashboard = page.getByTestId('integrity-micro-dashboard');
   await expect(dashboard).toBeVisible({ timeout: 60_000 });
   await expect(page.getByTestId('integrity-async-job-banner')).toHaveCount(0);
+  // Do not screenshot mid-flight RUNNING — wait for a terminal glance tone.
+  await expect
+    .poll(async () => dashboard.getAttribute('data-tone'), { timeout: 60_000 })
+    .not.toMatch(/^(running|nightly-running)$/);
   await expect(page.getByTestId('integrity-micro-dashboard-verdict')).toBeVisible();
   await expect(page.getByTestId('integrity-micro-dashboard-scope')).toBeVisible();
   await expect(page.getByTestId('integrity-micro-dashboard-reverify')).toBeVisible();
