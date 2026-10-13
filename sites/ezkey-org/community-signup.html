@@ -237,68 +237,68 @@
         </footer>
     </div>
 
-    <script>
-        (function () {
-            var API_URL = 'https://admin-api.ezkey.online/api/v1/public/evaluator-signup';
-            var params = new URLSearchParams(window.location.search);
-            if (params.get('api')) {
-                API_URL = params.get('api').replace(/\/$/, '') + '/api/v1/public/evaluator-signup';
+    <script type="module">
+        import {
+            resolveEvaluatorSignupApiUrl,
+            resolveNavigationUrl
+        } from './js/community-signup-urls.mjs';
+
+        const DEFAULT_ADMIN_UI = 'https://admin-ui.ezkey.online';
+        const DEFAULT_TOUR = '/community-guided-tour.html';
+        const params = new URLSearchParams(window.location.search);
+        const API_URL = resolveEvaluatorSignupApiUrl(params.get('api'));
+
+        const form = document.getElementById('signup-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const errorBox = document.getElementById('error-box');
+        const successBox = document.getElementById('success-box');
+        const adminUiLink = document.getElementById('admin-ui-link');
+        const tourLink = document.getElementById('tour-link');
+
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            errorBox.style.display = 'none';
+            successBox.style.display = 'none';
+            submitBtn.disabled = true;
+
+            const labelInput = document.getElementById('tenant-label');
+            const body = {};
+            const trimmed = labelInput.value.trim();
+            if (trimmed) {
+                body.tenantLabel = trimmed;
             }
 
-            var form = document.getElementById('signup-form');
-            var submitBtn = document.getElementById('submit-btn');
-            var errorBox = document.getElementById('error-box');
-            var successBox = document.getElementById('success-box');
-
-            form.addEventListener('submit', function (event) {
-                event.preventDefault();
-                errorBox.style.display = 'none';
-                successBox.style.display = 'none';
-                submitBtn.disabled = true;
-
-                var labelInput = document.getElementById('tenant-label');
-                var body = {};
-                var trimmed = labelInput.value.trim();
-                if (trimmed) {
-                    body.tenantLabel = trimmed;
-                }
-
-                fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify(body)
-                }).then(function (response) {
-                    if (response.status === 201) {
-                        return response.json().then(function (data) {
-                            document.getElementById('tenant-slug').textContent = data.tenantLabel || '';
-                            document.getElementById('activation-code').textContent = data.activationCode || '';
-                            document.getElementById('activation-expires').textContent = data.activationCodeExpiresAt || '';
-                            if (data.adminUiUrl) {
-                                document.getElementById('admin-ui-link').href = data.adminUiUrl;
-                            }
-                            if (data.guidedTourUrl) {
-                                document.getElementById('tour-link').href = data.guidedTourUrl;
-                            }
-                            successBox.style.display = 'block';
-                            form.style.display = 'none';
-                        });
-                    }
-                    return response.json().catch(function () { return {}; }).then(function (problem) {
-                        var detail = problem.detail || problem.title || 'Community access is unavailable right now.';
-                        if (response.status === 404) {
-                            detail = 'Instant community signup is not enabled on this instance.';
-                        }
-                        errorBox.textContent = detail;
-                        errorBox.style.display = 'block';
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(body)
+            }).then(function (response) {
+                if (response.status === 201) {
+                    return response.json().then(function (data) {
+                        document.getElementById('tenant-slug').textContent = data.tenantLabel || '';
+                        document.getElementById('activation-code').textContent = data.activationCode || '';
+                        document.getElementById('activation-expires').textContent = data.activationCodeExpiresAt || '';
+                        adminUiLink.href = resolveNavigationUrl(data.adminUiUrl, DEFAULT_ADMIN_UI);
+                        tourLink.href = resolveNavigationUrl(data.guidedTourUrl, DEFAULT_TOUR);
+                        successBox.style.display = 'block';
+                        form.style.display = 'none';
                     });
-                }).catch(function () {
-                    errorBox.textContent = 'Network error. Try again later or email info@ezkey.org.';
+                }
+                return response.json().catch(function () { return {}; }).then(function (problem) {
+                    var detail = problem.detail || problem.title || 'Community access is unavailable right now.';
+                    if (response.status === 404) {
+                        detail = 'Instant community signup is not enabled on this instance.';
+                    }
+                    errorBox.textContent = detail;
                     errorBox.style.display = 'block';
-                }).finally(function () {
-                    submitBtn.disabled = false;
                 });
+            }).catch(function () {
+                errorBox.textContent = 'Network error. Try again later or email info@ezkey.org.';
+                errorBox.style.display = 'block';
+            }).finally(function () {
+                submitBtn.disabled = false;
             });
-        })();
+        });
     </script>
 </body>
 </html>

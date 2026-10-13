@@ -291,10 +291,14 @@
         
         function showSuccess(message) {
             const statusArea = document.getElementById('status-area');
-            statusArea.innerHTML = `
-                <div class="success-icon">✓</div>
-                <p class="status-text success-text">${message}</p>
-            `;
+            statusArea.replaceChildren();
+            const icon = document.createElement('div');
+            icon.className = 'success-icon';
+            icon.textContent = '\u2713';
+            const text = document.createElement('p');
+            text.className = 'status-text success-text';
+            text.textContent = message == null ? '' : String(message);
+            statusArea.append(icon, text);
         }
         
         // Start polling and countdown when page loads
