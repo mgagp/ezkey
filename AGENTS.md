@@ -38,6 +38,16 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | API contract change | Controller + **section** of `docs/ENDPOINT.md` + OpenAPI refresh workflow (see OpenAPI rules) |
 | Strategic positioning / public copy | [`docs/PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) only when that layer is in scope |
 | Public alpha label / deploy “what is live” | [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md); community ledger [`docs/lightsail/community/DEPLOYED.md`](docs/lightsail/community/DEPLOYED.md) |
+| Working conventions (merge-ready, test hosts, ngrok, decision trace) | This file § *Working conventions*; team role one-liners: [`product-docs/global/team-roles.md`](product-docs/global/team-roles.md) |
+
+## Working conventions
+
+- **Repo is the memory.** Any decision that changes behavior, a contract, a constraint, or how we work lands in the owning doc in the same PR (one line + reason + issue #). Chat-only or mandate-only counts as unrecorded. A missing trace is a review nit, not a merge blocker.
+- **Merge-ready:** all checks green (including CodeQL), zero open code-scanning alerts, zero unresolved review threads, complete PR description, related docs updated. Merge only on the owner's explicit go — never on CI green alone.
+- **Code via PRs.** Local test hosts build and test only; they do not author product code changes.
+- **Local test hosts:** **Rootbeer** (Windows) runs a single Docker clean-start stack with fixed ports by design (see [`docs/LOCAL_STACK_PORTS.md`](docs/LOCAL_STACK_PORTS.md)). **Marc's Mac** checkout is `~/w/ezkey-main`. Isolation for parallel work comes from cloud agents or the Mac, not a second Rootbeer stack.
+- **ngrok:** one session at a time. Switch by stopping on one host and starting on the other with the static domain.
+- **Roles:** named reviewers and operators are defined in [`product-docs/global/team-roles.md`](product-docs/global/team-roles.md).
 
 ## Terminology guardrail (phase vs milestone)
 

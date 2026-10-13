@@ -9,6 +9,8 @@ Closes #
 ## What was tested
 
 - [ ] CI green on this PR (`ci-gate` and the jobs that ran)
+- [ ] CodeQL / code-scanning: zero open alerts on this branch
+- [ ] Zero unresolved review threads
 - [ ] Local checks matching the changed area (see `docs/DEVELOPMENT.md` § Continuous Integration)
 - [ ] Manual / Walk evidence when this touches Admin UI or other operator-facing flows (link or describe)
 
@@ -18,6 +20,7 @@ Closes #
 
 ## Checklist
 
+- [ ] Decisions recorded in the owning doc (or N/A)
 - [ ] Docs updated when behavior or operator workflow changed
 - [ ] No secrets, tokens, or credentials in the diff
 - [ ] No Walk-only / local-only patches committed by mistake

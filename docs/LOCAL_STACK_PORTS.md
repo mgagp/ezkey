@@ -1,6 +1,6 @@
 # Local stack — ports (direct vs Caddy)
 
-This page frames the **two host-level ways** the same APIs are reachable after a typical `ezkey-tests/clean-start.sh` run: **direct published ports** (Spring Boot inside Docker) and **Caddy reverse proxy** ports on the host. Both are intentional; they do not replace each other.
+This page frames the **two host-level ways** the same APIs are reachable after a typical `ezkey-tests/clean-start.sh` run: **direct published ports** (Spring Boot inside Docker) and **Caddy reverse proxy** ports on the host. Both are intentional; they do not replace each other. On **Rootbeer** (Windows local test host), the single clean-start stack keeps these fixed ports by design — see root [`AGENTS.md`](../AGENTS.md) § *Working conventions*.
 
 For **what to test** on each URL (headers, Bruno, `curl`), see **[admin-ui-security-validation.md](admin-ui-security-validation.md)**.
 
