@@ -73,6 +73,7 @@ product-docs/
     architecture-decisions.md   Global architecture decision log.
     design-principles.md        Cross-product design principles.
     lifecycle-model.md          Entity relationships and lifecycle rules.
+    test-strategy.md            Global test strategy, taxonomy, QA Sphere.
     spec-test-traceability.md   Global traceability matrix.
     vision/                     Product orientation notes.
       README.md                 Vision scope and usage.
@@ -139,14 +140,15 @@ A first-time reader should follow this path:
 5. [`global/design-principles.md`](global/design-principles.md)
 6. [`global/lifecycle-model.md`](global/lifecycle-model.md)
 7. [`components/README.md`](components/README.md) and the relevant component pack.
-8. [`global/spec-test-traceability.md`](global/spec-test-traceability.md)
+8. [`global/test-strategy.md`](global/test-strategy.md)
+9. [`global/spec-test-traceability.md`](global/spec-test-traceability.md)
 
 ## Living vs Finality Documents
 
 The system distinguishes two kinds of documents:
 
 - **Finality documents** — express the **current truth and long-term direction** of the product. Examples: product intent, roadmap, architecture overview, design principles. They evolve, but they always represent the latest intended state.
-- **Living documents** — express the **current reality on a given branch**, especially milestone placement, feature state, and traceability. Examples: features-and-phases, spec-test-traceability, component design decisions.
+- **Living documents** — express the **current reality on a given branch**, especially milestone placement, feature state, and traceability. Examples: features-and-phases, test-strategy, spec-test-traceability, component design decisions.
 
 Both kinds are markdown, versioned in git, and kept under the same folder structure. The distinction is editorial, not structural.
 

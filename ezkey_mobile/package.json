@@ -74,8 +74,8 @@
     "zustand": "5.0.15"
   },
   "devDependencies": {
-    "@babel/core": "8.0.6",
-    "@babel/runtime": "8.0.5",
+    "@babel/core": "8.0.7",
+    "@babel/runtime": "8.0.7",
     "@react-native-community/cli": "20.2.0",
     "@react-native-community/cli-platform-android": "20.2.0",
     "@react-native-community/cli-platform-ios": "20.2.0",
@@ -93,7 +93,7 @@
     "husky": "9.1.7",
     "jest": "29.7.0",
     "lint-staged": "17.6.0",
-    "orval": "8.40.0",
+    "orval": "8.41.0",
     "prettier": "3.9.9",
     "react-native-svg-transformer": "1.5.3",
     "react-test-renderer": "19.3.0",
