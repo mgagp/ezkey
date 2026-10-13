@@ -356,8 +356,9 @@ Repo-as-memory for Patrick CHANGES + Christophe minors (PR 2 micro-dashboard):
 - **Recent `NOT_VERIFIED` counts as fresh** (#788) — D1 freshness is finished&lt;24 h **and** `chainStatus != null` (includes `NOT_VERIFIED`); bare `VERIFY_ENTRY` success without `chainStatus` does **not** suppress auto-run.
 - **Error on open → fail-open auto-run** (#788) — `/current` or `/last-verdict` read failure is treated as null; when no fresh glance remains, AUTO-verify may start (read-only recompute).
 - **Retry after a failed auto-run** (#788) — remount/navigation may start another AUTO; bounded by operator navigation, not a silent in-page loop.
-- **RUNNING poll errors** (#788) — do not swallow `/current` failures; exponential backoff, halt after N errors with on-screen message; pause while `document.hidden` (Christophe m1).
+- **RUNNING poll errors** (#788) — do not swallow `/current` failures; exponential backoff, halt after N errors with on-screen message; pause while `document.hidden` (Christophe m1). Returning to the tab (`visibilitychange` → visible) **restarts** the poll after a halt by resetting the error budget.
 - **Revérifier while POST in flight** (#788) — `chainLoading` disables Re-verify (Christophe m2).
+- **Abandon → idle 204 must clear escape-sticky** (#788 / Patrick B2) — apply the abandon response (`abandonedAt`) first; idle 204 must not retain EXPIRED/CANCELLED when `/last-verdict` is empty (regression vs `main`).
 
 ---
 

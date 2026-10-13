@@ -365,6 +365,50 @@ export function integrityReverifyDisabled(args: {
 }
 
 /**
+ * Glance to keep while idle {@code GET …/jobs/current} (204) awaits
+ * {@code /last-verdict}. Must not retain escape-sticky rows — abandon → 204
+ * would otherwise leave Abandon + blocked Revérifier forever (Patrick B2).
+ *
+ * @param prev currently displayed job
+ * @returns retained glance, or null when the strip must clear
+ */
+export function retainIntegrityGlanceOnIdle204(
+  prev: IntegrityAsyncJobResponse | null,
+): IntegrityAsyncJobResponse | null {
+  if (prev == null || prev.abandonedAt != null) {
+    return null;
+  }
+  if (isIntegrityAsyncEscapeStatus(prev.status)) {
+    return null;
+  }
+  return prev;
+}
+
+/**
+ * Apply {@code /last-verdict} after an idle 204. Prefer the verdict; otherwise
+ * clear RUNNING / escape; keep a finished non-escape glance.
+ *
+ * @param prev glance retained while the verdict loads
+ * @param lastVerdict `GET …/jobs/last-verdict` body, or null on 204 / error
+ * @returns next job for the micro-dashboard
+ */
+export function applyIntegrityLastVerdictAfterIdle204(
+  prev: IntegrityAsyncJobResponse | null,
+  lastVerdict: IntegrityAsyncJobResponse | null,
+): IntegrityAsyncJobResponse | null {
+  if (lastVerdict != null) {
+    return lastVerdict;
+  }
+  if (prev == null || prev.abandonedAt != null) {
+    return null;
+  }
+  if (prev.status === 'RUNNING' || isIntegrityAsyncEscapeStatus(prev.status)) {
+    return null;
+  }
+  return prev;
+}
+
+/**
  * Delay before the next RUNNING poll tick (exponential backoff on errors).
  *
  * @param consecutiveErrors failures since last success
@@ -550,6 +594,8 @@ export function startIntegrityRunningPollSession(
       return;
     }
     if (!env.isDocumentHidden()) {
+      // Returning to the tab after a halt resets the error budget (#788).
+      consecutiveErrors = 0;
       void tick();
     } else {
       clearTimer();

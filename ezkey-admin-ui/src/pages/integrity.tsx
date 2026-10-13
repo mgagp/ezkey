@@ -33,12 +33,14 @@ import {
   isSucceededVerifyJobForReportHydration,
 } from '@/lib/integrity-async-job-report-hydration';
 import {
+  applyIntegrityLastVerdictAfterIdle204,
   decideIntegrityOpenAction,
   defaultAutoVerifyInstantRange,
   INTEGRITY_DEFAULT_MAX_WINDOW_DAYS,
   integrityReverifyDisabled,
   integrityWindowDaysToHours,
   isIntegrityChainStatusNonGreen,
+  retainIntegrityGlanceOnIdle204,
 } from '@/lib/integrity-micro-dashboard';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
@@ -537,29 +539,16 @@ function IntegrityPanel({
       setAsyncJob(next);
       return;
     }
-    // #788: 204 must not clear a displayed verdict. Nightly RUNNING → 204
-    // keeps the synthetic briefly, then reloads `/last-verdict` (Patrick m2).
-    setAsyncJob((prev) => {
-      if (prev != null && prev.abandonedAt == null) {
-        return prev;
-      }
-      return null;
-    });
+    // #788: 204 keeps a finished glance, but never escape-sticky (Patrick B2 —
+    // abandon → 204 must not leave Abandon + blocked Revérifier). Nightly
+    // RUNNING → 204 reloads `/last-verdict`.
+    setAsyncJob((prev) => retainIntegrityGlanceOnIdle204(prev));
     void (async () => {
       try {
         const verdict = await getLastIntegrityVerdict();
-        setAsyncJob((prev) => {
-          if (verdict != null) {
-            return verdict;
-          }
-          // Nightly ended with nothing stored: clear RUNNING synthetic only.
-          if (prev?.status === 'RUNNING') {
-            return null;
-          }
-          return prev;
-        });
+        setAsyncJob((prev) => applyIntegrityLastVerdictAfterIdle204(prev, verdict));
       } catch {
-        // Keep previous glance; RUNNING poll error path may surface separately.
+        setAsyncJob((prev) => applyIntegrityLastVerdictAfterIdle204(prev, null));
       }
     })();
   }, []);

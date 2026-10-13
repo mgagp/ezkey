@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
 import {
+  applyIntegrityLastVerdictAfterIdle204,
   decideIntegrityOpenAction,
   defaultAutoVerifyInstantRange,
   hasJobBackedChainGlance,
@@ -17,6 +18,7 @@ import {
   isIntegrityVerdictScopeMismatch,
   pickNewerIntegrityJob,
   resolveIntegrityMicroDashboardTone,
+  retainIntegrityGlanceOnIdle204,
   startIntegrityRunningPoll,
   startIntegrityRunningPollSession,
 } from './integrity-micro-dashboard';
@@ -362,6 +364,57 @@ describe('startIntegrityRunningPoll', () => {
   });
 });
 
+describe('retainIntegrityGlanceOnIdle204 / last-verdict (Patrick B2 + m2)', () => {
+  it('clears escape-sticky EXPIRED on 204 so abandon does not stick', () => {
+    const expired = job({
+      status: 'EXPIRED',
+      finishedAt: '2026-10-13T11:00:00.000Z',
+      chainStatus: null,
+    });
+    expect(retainIntegrityGlanceOnIdle204(expired)).toBeNull();
+    expect(applyIntegrityLastVerdictAfterIdle204(expired, null)).toBeNull();
+  });
+
+  it('clears a row that already carries abandonedAt', () => {
+    const abandoned = job({
+      status: 'EXPIRED',
+      abandonedAt: '2026-10-13T12:00:00.000Z',
+      chainStatus: null,
+    });
+    expect(retainIntegrityGlanceOnIdle204(abandoned)).toBeNull();
+  });
+
+  it('keeps a finished SUCCEEDED glance when last-verdict is empty', () => {
+    const succeeded = job({
+      finishedAt: '2026-10-13T11:00:00.000Z',
+      chainStatus: 'OK',
+    });
+    expect(retainIntegrityGlanceOnIdle204(succeeded)).toBe(succeeded);
+    expect(applyIntegrityLastVerdictAfterIdle204(succeeded, null)).toBe(succeeded);
+  });
+
+  it('reloads /last-verdict after 204 (nightly end)', () => {
+    const nightlyRunning = job({
+      status: 'RUNNING',
+      busyHolder: 'NIGHTLY',
+      trigger: 'NIGHTLY',
+      finishedAt: undefined,
+      chainStatus: null,
+    });
+    const lastVerdict = job({
+      jobId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      finishedAt: '2026-10-13T11:55:00.000Z',
+      trigger: 'NIGHTLY',
+      type: 'RUN_VALIDATION',
+    });
+    expect(retainIntegrityGlanceOnIdle204(nightlyRunning)).toBe(nightlyRunning);
+    expect(applyIntegrityLastVerdictAfterIdle204(nightlyRunning, lastVerdict)).toBe(
+      lastVerdict,
+    );
+    expect(applyIntegrityLastVerdictAfterIdle204(nightlyRunning, null)).toBeNull();
+  });
+});
+
 describe('integrityReverifyDisabled (Christophe m2)', () => {
   it('disables while chainLoading even when the slot is idle', () => {
     expect(
@@ -520,47 +573,43 @@ describe('startIntegrityRunningPollSession', () => {
     vi.useRealTimers();
   });
 
-  it('ignores out-of-order responses when a newer generation wins', async () => {
+  it('resets the error budget when the tab becomes visible after a halt', async () => {
     vi.useFakeTimers();
-    const resolvers: Array<(value: IntegrityAsyncJobResponse | null) => void> = [];
-    const fetchCurrent = vi.fn(
-      () =>
-        new Promise<IntegrityAsyncJobResponse | null>((resolve) => {
-          resolvers.push(resolve);
-        }),
-    );
-    const onJob = vi.fn();
+    let hidden = false;
+    let visibilityListener: (() => void) | undefined;
+    const fetchCurrent = vi.fn(async () => {
+      throw new Error('network');
+    });
+    const onPollError = vi.fn();
 
     startIntegrityRunningPollSession({
       fetchCurrent,
-      onJob,
+      onPollError,
+      onJob: vi.fn(),
       intervalMs: 3000,
+      maxErrors: 2,
       env: {
-        isDocumentHidden: () => false,
-        addVisibilityListener: () => () => undefined,
+        isDocumentHidden: () => hidden,
+        addVisibilityListener: (listener) => {
+          visibilityListener = listener;
+          return () => {
+            visibilityListener = undefined;
+          };
+        },
       },
     });
 
-    expect(fetchCurrent).toHaveBeenCalledTimes(1);
-    // Force a second in-flight generation via visibility resume while first pending.
-    // First request still open; complete second first then first.
-    // Simulate by resolving first after we stop — covered above.
-    // Here: complete first as RUNNING, schedule next, start second, resolve second SUCCEEDED
-    // then resolve a stale late RUNNING from a cancelled gen — generation guard.
-    resolvers[0]?.(job({ status: 'RUNNING', finishedAt: undefined, chainStatus: null }));
     await Promise.resolve();
-    expect(onJob).toHaveBeenCalledTimes(1);
-
-    await vi.advanceTimersByTimeAsync(3000);
-    expect(fetchCurrent).toHaveBeenCalledTimes(2);
-
-    const succeeded = job({
-      status: 'SUCCEEDED',
-      finishedAt: '2026-10-13T12:00:01.000Z',
-    });
-    resolvers[1]?.(succeeded);
+    await vi.advanceTimersByTimeAsync(6000);
     await Promise.resolve();
-    expect(onJob).toHaveBeenLastCalledWith(succeeded);
+    expect(onPollError).toHaveBeenLastCalledWith('halted', 2);
+    const callsAtHalt = fetchCurrent.mock.calls.length;
+
+    hidden = false;
+    visibilityListener?.();
+    await Promise.resolve();
+    expect(fetchCurrent.mock.calls.length).toBe(callsAtHalt + 1);
+    expect(onPollError).toHaveBeenLastCalledWith('transient', 1);
     vi.useRealTimers();
   });
 });

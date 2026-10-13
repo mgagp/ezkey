@@ -242,7 +242,10 @@ export function IntegrityMicroDashboard({
   async function confirmAbandon() {
     setAbandoning(true);
     try {
-      await abandonIntegrityAsyncJob();
+      // B2: POST abandon body carries abandonedAt — apply it before the idle
+      // 204 from GET /current so the strip clears even when last-verdict is empty.
+      const abandoned = await abandonIntegrityAsyncJob();
+      onJobChange(abandoned);
       const next = await getCurrentIntegrityAsyncJob();
       onJobChange(next);
       setAbandonOpen(false);
