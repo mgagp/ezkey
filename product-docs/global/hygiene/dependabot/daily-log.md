@@ -91,3 +91,23 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
 - Cause: #762 merged invalid docker `ignore.versions` globs (`*-eclipse-temurin-26*`, …). GitHub check `.github/dependabot.yml` fails on every PR/main with: `The property '#/updates/8/ignore/1/versions' includes invalid version requirements for a docker ignore condition`. Docker ignores require Bundler syntax, not shell globs.
 - Fix (option a, #764): Bundler ranges `">= 3.9.26, < 3.9.29"` / `3.10.*` / `4.0.*` for dependency `maven` (covers JDK 26–28 on current + next Maven lines; exact `3.9.26|27|28` left a gap on `3.10-eclipse-temurin-26`). Mapping: tag `WORDS_WITH_BUILD` → `3.9.N` (dependabot-core `tag.rb` / `version.rb`). Manual extend per new Maven minor; revisit at JDK 29 LTS; fallback `@dependabot ignore this version`. Rejected: (b) blanket ignore; (c) curated-refusal only as sole mechanism.
 - Dedicated PR **#764** (do **not** merge until Marc go; do not touch #730).
+
+## 2026-10-13
+
+- Pass: weekday light (autonomous; afternoon, Marc-approved after the morning pass backed off); concurrency: clear at ~14:30 ET (latest `main` merge #796 docs ~32 min earlier, not Dependabot/hygiene; no other in-flight `dependabot-curated` / Orval agent)
+- GitHub write: GitHub MCP connector as `mgagp` (box `gh` not logged in; no `GH_TOKEN`)
+- Merge bar (#787): `ci-gate` green + `mergeable_state` clean (or local `git merge-tree` clean vs moving `main`), squash pinned to head SHA; CodeQL check `neutral` with 0 annotations on every PR ("5 configurations not found" — default setup does not analyze Dependabot refs), so no PR-introduced alerts; 0 review comments / threads
+- Merged (squash):
+  - Maven: #774 spotless-maven-plugin 3.10.3→3.10.4 (T1) `d210cccc`; #772 postgresql 42.7.13→42.7.14 (T1) `5c78c773`; #765 tomcat 11.0.26→11.0.27 (T1) `406b6659`; #766 rest-assured 6.0.1→6.1.0 (T2) `7791dbb7`
+  - Actions: #770 actions/setup-node 7.0.0→7.1.0 (T2) `3bff17b5`
+  - Mobile: #775 mobile-tooling (`@babel/core` 8.0.6→8.0.7, `@babel/runtime` 8.0.5→8.0.7) (T1) `7912f2bc`
+  - Admin UI: #768 vite 8.3.3→8.3.4 (T1) `48e46948`; #776 lucide-react 1.52→1.54 (T3) `30853af6`
+  - Playwright lot (merged together; image matches lockfile): #771 `@playwright/test` 1.63.0→1.64.0 (T2) `c3259ad5` + #769 `mcr.microsoft.com/playwright` v1.63.0-noble→v1.64.0-noble (T2) `ec717ab1`
+  - Admin Orval: #773 8.40.0→8.41.0 (**O0** — `src/generated/` bit-identical, 227 files, base vs bump with `main`'s spec on Node 24.21.0; lint + `tsc -b` + vitest 157/157 green on bump) `dc5ffce0`
+  - Mobile Orval: #777 8.40.0→8.41.0 (**O0** — 8.40.0 reproduces committed `app/services/api/generated` byte-for-byte; 8.41.0 output identical, 20 files; Dependabot PR pin+lock only) `28a9ed59`
+- Held:
+  - #778 react-native-screens 4.28→4.29 (T3) — CI red: `mobile / js-validate` fails only on stale `app/data/thirdPartyLicenses.json` (jest 307/307 green). Fix: `yarn license:app-data` on the Dependabot branch (or hygiene branch), then CI → merge next pass
+- Skipped (leave-alone): #717 (HITL until #702), #779 mobile ESLint 10 and #653 Jest 30 (ecosystem gates), #767 textual (pip); deferred:later-train `#498`/`#337`/`#347`
+- Pin sync: Orval exact pin `8.41.0` kept in both `package.json`; AGENTS.md pin lines (Admin UI + mobile) and Playwright Dockerfile comment synced in this docs PR
+- Validation: per-PR Dependabot CI green (backend / admin-ui / mobile jobs as applicable); local Orval codegen diff + Admin lint/tsc/vitest on Node 24. **Deferred** to next session on Rootbeer/Mac (box has no JDK/Docker): `./scripts/build.sh`, clean-start + functional smoke (T2/T3 Maven: tomcat, postgresql, rest-assured), Playwright 5/5 in `v1.64.0-noble` (Vite + lucide + Playwright lot)
+- Residual: phone smoke for #775/#777 tracked on #627 (gates next Play AAB). Nothing deployed (no ezkey.online, no methodology.ezkey.org)
