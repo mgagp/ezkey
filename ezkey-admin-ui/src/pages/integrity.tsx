@@ -33,9 +33,11 @@ import {
   isSucceededVerifyJobForReportHydration,
 } from '@/lib/integrity-async-job-report-hydration';
 import {
+  decideIntegrityOpenAction,
   defaultAutoVerifyInstantRange,
+  INTEGRITY_DEFAULT_MAX_WINDOW_DAYS,
+  integrityReverifyDisabled,
   integrityWindowDaysToHours,
-  isFreshIntegrityVerdict,
   isIntegrityChainStatusNonGreen,
 } from '@/lib/integrity-micro-dashboard';
 import { api } from '@/lib/api-client';
@@ -531,16 +533,35 @@ function IntegrityPanel({
     useState<RetroactiveIntegrityValidationRunResponse | null>(null);
   const [asyncJob, setAsyncJob] = useState<IntegrityAsyncJobResponse | null>(null);
   const handleAsyncJobChange = useCallback((next: IntegrityAsyncJobResponse | null) => {
+    if (next != null) {
+      setAsyncJob(next);
+      return;
+    }
+    // #788: 204 must not clear a displayed verdict. Nightly RUNNING → 204
+    // keeps the synthetic briefly, then reloads `/last-verdict` (Patrick m2).
     setAsyncJob((prev) => {
-      if (next != null) {
-        return next;
-      }
-      // Idle poll must not wipe a finished glance (last verdict / D1 display).
-      if (prev != null && prev.status !== 'RUNNING' && prev.abandonedAt == null) {
+      if (prev != null && prev.abandonedAt == null) {
         return prev;
       }
-      return next;
+      return null;
     });
+    void (async () => {
+      try {
+        const verdict = await getLastIntegrityVerdict();
+        setAsyncJob((prev) => {
+          if (verdict != null) {
+            return verdict;
+          }
+          // Nightly ended with nothing stored: clear RUNNING synthetic only.
+          if (prev?.status === 'RUNNING') {
+            return null;
+          }
+          return prev;
+        });
+      } catch {
+        // Keep previous glance; RUNNING poll error path may surface separately.
+      }
+    })();
   }, []);
   const asyncSlotRunning = asyncJob?.status === 'RUNNING';
   const asyncEscapeSticky =
@@ -548,7 +569,7 @@ function IntegrityPanel({
     && asyncJob.abandonedAt == null
     && isIntegrityAsyncEscapeStatus(asyncJob.status);
   const asyncStartsBlocked = asyncSlotRunning || asyncEscapeSticky;
-  const maxWindowDays = monitoringTruth.maxWindowDays ?? 92;
+  const maxWindowDays = monitoringTruth.maxWindowDays ?? INTEGRITY_DEFAULT_MAX_WINDOW_DAYS;
   const maxSyncWindowDays =
     monitoringTruth.maxSyncWindowDays ?? INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS;
   const maxSyncWindowHours = integrityWindowDaysToHours(maxSyncWindowDays);
@@ -568,9 +589,11 @@ function IntegrityPanel({
     ? t('integrity.asyncJob.startsDisabledTooltip')
     : asyncEscapeSticky
       ? t('integrity.asyncJob.startsDisabledEscapeTooltip')
-      : !checkRange.from || !checkRange.to
-        ? t('integrity.selectDateRangeToRun')
-        : undefined;
+      : chainLoading
+        ? t('integrity.checking')
+        : !checkRange.from || !checkRange.to
+          ? t('integrity.selectDateRangeToRun')
+          : undefined;
 
   const [hydrationReloadNonce, setHydrationReloadNonce] = useState(0);
   const [hydrationFailedKind, setHydrationFailedKind] = useState<'chain' | 'entry' | null>(
@@ -1319,10 +1342,9 @@ function IntegrityPanel({
     resetGapForm();
   }
 
-  // D1 page open (cut 3): show fresh (<24 h) last verdict with no POST / no
-  // GET /chain-integrity; otherwise auto-run VERIFY over the last 24 h (OQ2/OQ3).
-  // Do not clobber sticky Escape (EXPIRED|CANCELLED). Nightly synthetic RUNNING
-  // shows nightly-running copy — no 409 toast on open.
+  // D1 page open (cut 3 / #788): stop only for RUNNING, escape-sticky, or a
+  // fresh chain verdict. Otherwise read `/last-verdict`, show the newer of the
+  // two, and auto-run when neither is fresh. Read errors → null (fail-open).
   useEffect(() => {
     if (chainReport || chainLoading) return;
 
@@ -1332,25 +1354,19 @@ function IntegrityPanel({
       try {
         current = await getCurrentIntegrityAsyncJob();
       } catch {
+        // Error contract (#788): fail-open toward auto-run when no glance remains.
         current = null;
       }
       if (cancelled) {
         return;
       }
 
-      if (current != null) {
-        handleAsyncJobChange(current);
-        if (
-          current.status === 'RUNNING'
-          || (isIntegrityAsyncEscapeStatus(current.status) && current.abandonedAt == null)
-        ) {
-          setOpenTimeChainNonGreen(isIntegrityChainStatusNonGreen(current.chainStatus));
-          return;
-        }
-        if (isFreshIntegrityVerdict(current) || isSucceededVerifyJobForReportHydration(current)) {
-          setOpenTimeChainNonGreen(isIntegrityChainStatusNonGreen(current.chainStatus));
-          return;
-        }
+      // Early hold: RUNNING / escape — no `/last-verdict` fetch required.
+      const early = decideIntegrityOpenAction(current, null);
+      if (early.action === 'hold' && (early.reason === 'running' || early.reason === 'escape')) {
+        handleAsyncJobChange(early.displayJob);
+        setOpenTimeChainNonGreen(isIntegrityChainStatusNonGreen(early.displayJob.chainStatus));
+        return;
       }
 
       let lastVerdict: IntegrityAsyncJobResponse | null;
@@ -1363,17 +1379,17 @@ function IntegrityPanel({
         return;
       }
 
-      if (lastVerdict != null && isFreshIntegrityVerdict(lastVerdict)) {
-        handleAsyncJobChange(lastVerdict);
-        setOpenTimeChainNonGreen(isIntegrityChainStatusNonGreen(lastVerdict.chainStatus));
+      const decision = decideIntegrityOpenAction(current, lastVerdict);
+      if (decision.displayJob != null) {
+        handleAsyncJobChange(decision.displayJob);
+      }
+      if (decision.action === 'hold') {
+        setOpenTimeChainNonGreen(isIntegrityChainStatusNonGreen(decision.displayJob.chainStatus));
         return;
       }
 
-      if (lastVerdict != null) {
-        handleAsyncJobChange(lastVerdict);
-      }
       setOpenTimeChainNonGreen(false);
-
+      // Remount after a failed AUTO may retry — bounded by navigation (#788).
       await runChainCheck({
         instantRange: defaultAutoVerifyInstantRange(),
         trigger: 'AUTO',
@@ -1415,7 +1431,12 @@ function IntegrityPanel({
         pickerRange={checkRange}
         verdictDisplayRange={verdictDisplayRange}
         onReverify={() => void runChainCheck({ trigger: 'MANUAL' })}
-        reverifyDisabled={asyncStartsBlocked || !checkRange.from || !checkRange.to}
+        reverifyDisabled={integrityReverifyDisabled({
+          asyncStartsBlocked,
+          chainLoading,
+          rangeFrom: checkRange.from,
+          rangeTo: checkRange.to,
+        })}
         reverifyDisabledReason={asyncStartsDisabledReason}
         showOpenRemediate={showOpenRemediate}
         onOpenRemediate={() => selectAtelierMode('remediate')}

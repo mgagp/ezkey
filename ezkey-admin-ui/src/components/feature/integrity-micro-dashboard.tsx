@@ -18,17 +18,16 @@ import {
 } from '@/lib/integrity-async-jobs';
 import {
   hasJobBackedChainGlance,
+  INTEGRITY_RUNNING_POLL_INTERVAL_MS,
   integrityMicroDashboardSource,
   isIntegrityChainStatusNonGreen,
   isIntegrityVerdictScopeMismatch,
   resolveIntegrityMicroDashboardTone,
-  startIntegrityRunningPoll,
+  startIntegrityRunningPollSession,
   type IntegrityMicroDashboardTone,
 } from '@/lib/integrity-micro-dashboard';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { useToast } from '@/context/use-toast';
-
-const POLL_MS_RUNNING = 3000;
 
 export interface IntegrityMicroDashboardProps {
   job: IntegrityAsyncJobResponse | null;
@@ -110,6 +109,7 @@ export function IntegrityMicroDashboard({
   const [abandoning, setAbandoning] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [arrivalPulse, setArrivalPulse] = useState(false);
+  const [pollError, setPollError] = useState<'transient' | 'halted' | null>(null);
   const prevStatusRef = useRef<string | null>(null);
   const mountedAtRef = useRef(Date.now());
 
@@ -136,15 +136,25 @@ export function IntegrityMicroDashboard({
 
   useEffect(() => {
     if (!active || job?.status !== 'RUNNING') {
+      setPollError(null);
       return;
     }
-    // Immediate poll + interval: setInterval alone waits POLL_MS before the first
-    // tick, so a ~50 ms SUCCEEDED job stayed on "Check running…" until then.
-    return startIntegrityRunningPoll(() => {
-      void getCurrentIntegrityAsyncJob()
-        .then((next) => onJobChange(next))
-        .catch(() => undefined);
-    }, POLL_MS_RUNNING);
+    // Immediate tick + interval (UX latency). Errors are NOT swallowed: backoff,
+    // halt after N failures, pause while the tab is hidden (Christophe m1 / #788).
+    setPollError(null);
+    return startIntegrityRunningPollSession({
+      intervalMs: INTEGRITY_RUNNING_POLL_INTERVAL_MS,
+      fetchCurrent: () => getCurrentIntegrityAsyncJob(),
+      onJob: (next) => {
+        onJobChange(next);
+      },
+      onPollError: (kind) => {
+        setPollError(kind);
+      },
+      onPollRecovered: () => {
+        setPollError(null);
+      },
+    });
   }, [active, job?.status, onJobChange]);
 
   // 1 s clock so relative "checked" ages while the page stays open.
@@ -269,6 +279,17 @@ export function IntegrityMicroDashboard({
         data-testid="integrity-micro-dashboard"
         data-tone={tone}
       >
+        {pollError != null && (
+          <p
+            className="text-xs text-warning"
+            data-testid="integrity-micro-dashboard-poll-error"
+            role="status"
+          >
+            {pollError === 'halted'
+              ? t('integrity.microDashboard.pollErrorHalted')
+              : t('integrity.microDashboard.pollErrorTransient')}
+          </p>
+        )}
         <div className="flex flex-wrap items-stretch gap-2 text-sm">
           <div
             className={cn(

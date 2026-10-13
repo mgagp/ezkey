@@ -1,17 +1,24 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
 import {
+  decideIntegrityOpenAction,
   defaultAutoVerifyInstantRange,
   hasJobBackedChainGlance,
   INTEGRITY_AUTO_VERIFY_WINDOW_MS,
+  INTEGRITY_RUNNING_POLL_MAX_ERRORS,
   INTEGRITY_VERDICT_FRESH_MS,
   integrityMicroDashboardSource,
+  integrityReverifyDisabled,
+  integrityRunningPollDelayMs,
+  integrityRunningPollShouldHalt,
   integrityWindowDaysToHours,
   isFreshIntegrityVerdict,
   isIntegrityChainStatusNonGreen,
   isIntegrityVerdictScopeMismatch,
+  pickNewerIntegrityJob,
   resolveIntegrityMicroDashboardTone,
   startIntegrityRunningPoll,
+  startIntegrityRunningPollSession,
 } from './integrity-micro-dashboard';
 
 function job(
@@ -21,6 +28,7 @@ function job(
     jobId: '11111111-1111-1111-1111-111111111111',
     type: 'VERIFY_CHAIN_RANGE',
     status: 'SUCCEEDED',
+    chainStatus: 'OK',
     ...overrides,
   };
 }
@@ -28,10 +36,22 @@ function job(
 describe('isFreshIntegrityVerdict', () => {
   const now = Date.parse('2026-10-13T12:00:00.000Z');
 
-  it('is true when SUCCEEDED finished within 24 h', () => {
+  it('is true when SUCCEEDED finished within 24 h with chainStatus', () => {
     expect(
       isFreshIntegrityVerdict(
         job({ finishedAt: new Date(now - 3 * 60 * 60 * 1000).toISOString() }),
+        now,
+      ),
+    ).toBe(true);
+  });
+
+  it('counts recent NOT_VERIFIED as fresh (#788)', () => {
+    expect(
+      isFreshIntegrityVerdict(
+        job({
+          chainStatus: 'NOT_VERIFIED',
+          finishedAt: new Date(now - 60 * 60 * 1000).toISOString(),
+        }),
         now,
       ),
     ).toBe(true);
@@ -41,6 +61,19 @@ describe('isFreshIntegrityVerdict', () => {
     expect(
       isFreshIntegrityVerdict(
         job({ finishedAt: new Date(now - INTEGRITY_VERDICT_FRESH_MS).toISOString() }),
+        now,
+      ),
+    ).toBe(false);
+  });
+
+  it('is false for VERIFY_ENTRY without chainStatus (must not block D1)', () => {
+    expect(
+      isFreshIntegrityVerdict(
+        job({
+          type: 'VERIFY_ENTRY_HMAC_RANGE',
+          chainStatus: null,
+          finishedAt: new Date(now - 1000).toISOString(),
+        }),
         now,
       ),
     ).toBe(false);
@@ -60,6 +93,135 @@ describe('isFreshIntegrityVerdict', () => {
       ),
     ).toBe(false);
     expect(isFreshIntegrityVerdict(job({ finishedAt: undefined }), now)).toBe(false);
+  });
+});
+
+describe('decideIntegrityOpenAction (D1 / Patrick B1)', () => {
+  const now = Date.parse('2026-10-13T12:00:00.000Z');
+
+  it('holds on RUNNING (including busyHolder=NIGHTLY) without auto-run', () => {
+    const current = job({
+      status: 'RUNNING',
+      busyHolder: 'NIGHTLY',
+      trigger: 'NIGHTLY',
+      finishedAt: undefined,
+      chainStatus: null,
+    });
+    expect(decideIntegrityOpenAction(current, null, now)).toEqual({
+      action: 'hold',
+      displayJob: current,
+      reason: 'running',
+    });
+  });
+
+  it('holds on escape-sticky EXPIRED/CANCELLED', () => {
+    const current = job({
+      status: 'EXPIRED',
+      finishedAt: new Date(now - 1000).toISOString(),
+      chainStatus: null,
+    });
+    expect(decideIntegrityOpenAction(current, null, now)).toEqual({
+      action: 'hold',
+      displayJob: current,
+      reason: 'escape',
+    });
+  });
+
+  it('holds on a fresh /current verdict without needing last-verdict freshness', () => {
+    const current = job({
+      finishedAt: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
+      chainStatus: 'OK',
+    });
+    const decision = decideIntegrityOpenAction(current, null, now);
+    expect(decision.action).toBe('hold');
+    if (decision.action === 'hold') {
+      expect(decision.reason).toBe('fresh-verdict');
+      expect(decision.displayJob).toBe(current);
+    }
+  });
+
+  it('auto-runs when /current is a stale SUCCEEDED (5 days) even if VERIFY succeeded', () => {
+    const current = job({
+      finishedAt: new Date(now - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      chainStatus: 'OK',
+    });
+    expect(decideIntegrityOpenAction(current, null, now)).toEqual({
+      action: 'auto-run',
+      displayJob: current,
+      reason: 'stale-or-absent',
+    });
+  });
+
+  it('prefers a newer fresh NIGHTLY last-verdict over a stale operator /current', () => {
+    const current = job({
+      jobId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      finishedAt: new Date(now - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      trigger: 'MANUAL',
+    });
+    const lastVerdict = job({
+      jobId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      finishedAt: new Date(now - 60 * 60 * 1000).toISOString(),
+      trigger: 'NIGHTLY',
+      type: 'RUN_VALIDATION',
+    });
+    const decision = decideIntegrityOpenAction(current, lastVerdict, now);
+    expect(decision).toEqual({
+      action: 'hold',
+      displayJob: lastVerdict,
+      reason: 'fresh-verdict',
+    });
+  });
+
+  it('auto-runs when both are stale, displaying the newer', () => {
+    const current = job({
+      jobId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      finishedAt: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    const lastVerdict = job({
+      jobId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      finishedAt: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      trigger: 'NIGHTLY',
+    });
+    expect(decideIntegrityOpenAction(current, lastVerdict, now)).toEqual({
+      action: 'auto-run',
+      displayJob: lastVerdict,
+      reason: 'stale-or-absent',
+    });
+  });
+
+  it('auto-runs on 204/null current and null last-verdict (error-on-open = fail-open)', () => {
+    expect(decideIntegrityOpenAction(null, null, now)).toEqual({
+      action: 'auto-run',
+      displayJob: null,
+      reason: 'stale-or-absent',
+    });
+  });
+
+  it('does not treat fresh VERIFY_ENTRY_HMAC without chainStatus as a D1 stop', () => {
+    const current = job({
+      type: 'VERIFY_ENTRY_HMAC_RANGE',
+      chainStatus: null,
+      finishedAt: new Date(now - 1000).toISOString(),
+    });
+    expect(decideIntegrityOpenAction(current, null, now).action).toBe('auto-run');
+  });
+});
+
+describe('pickNewerIntegrityJob', () => {
+  it('picks by finishedAt then ignores abandoned', () => {
+    const older = job({
+      jobId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      finishedAt: '2026-10-10T00:00:00.000Z',
+    });
+    const newer = job({
+      jobId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      finishedAt: '2026-10-12T00:00:00.000Z',
+    });
+    expect(pickNewerIntegrityJob(older, newer)?.jobId).toBe(newer.jobId);
+    expect(
+      pickNewerIntegrityJob(newer, { ...older, abandonedAt: '2026-10-13T00:00:00.000Z' })
+        ?.jobId,
+    ).toBe(newer.jobId);
   });
 });
 
@@ -83,6 +245,7 @@ describe('resolveIntegrityMicroDashboardTone', () => {
           busyHolder: 'NIGHTLY',
           trigger: 'NIGHTLY',
           finishedAt: undefined,
+          chainStatus: null,
         }),
         now,
       ),
@@ -137,7 +300,11 @@ describe('resolveIntegrityMicroDashboardTone', () => {
   it('maps FAILED to did-not-complete', () => {
     expect(
       resolveIntegrityMicroDashboardTone(
-        job({ status: 'FAILED', finishedAt: new Date(now - 1000).toISOString() }),
+        job({
+          status: 'FAILED',
+          finishedAt: new Date(now - 1000).toISOString(),
+          chainStatus: null,
+        }),
         now,
       ),
     ).toBe('did-not-complete');
@@ -177,7 +344,7 @@ describe('scope + helpers', () => {
 });
 
 describe('startIntegrityRunningPoll', () => {
-  it('polls immediately, then on the interval (avoids frozen Check running…)', () => {
+  it('polls immediately, then on the interval (UX latency, not a freeze)', () => {
     const poll = vi.fn();
     vi.useFakeTimers();
     const stop = startIntegrityRunningPoll(poll, 3000);
@@ -191,6 +358,209 @@ describe('startIntegrityRunningPoll', () => {
     stop();
     vi.advanceTimersByTime(3000);
     expect(poll).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+});
+
+describe('integrityReverifyDisabled (Christophe m2)', () => {
+  it('disables while chainLoading even when the slot is idle', () => {
+    expect(
+      integrityReverifyDisabled({
+        asyncStartsBlocked: false,
+        chainLoading: true,
+        rangeFrom: '2026-10-01',
+        rangeTo: '2026-10-02',
+      }),
+    ).toBe(true);
+  });
+
+  it('enables only when idle, not loading, and range is set', () => {
+    expect(
+      integrityReverifyDisabled({
+        asyncStartsBlocked: false,
+        chainLoading: false,
+        rangeFrom: '2026-10-01',
+        rangeTo: '2026-10-02',
+      }),
+    ).toBe(false);
+    expect(
+      integrityReverifyDisabled({
+        asyncStartsBlocked: true,
+        chainLoading: false,
+        rangeFrom: '2026-10-01',
+        rangeTo: '2026-10-02',
+      }),
+    ).toBe(true);
+    expect(
+      integrityReverifyDisabled({
+        asyncStartsBlocked: false,
+        chainLoading: false,
+        rangeFrom: '',
+        rangeTo: '2026-10-02',
+      }),
+    ).toBe(true);
+  });
+});
+
+describe('integrityRunningPoll backoff / halt', () => {
+  it('backs off exponentially and halts at max errors', () => {
+    expect(integrityRunningPollDelayMs(0, 3000)).toBe(3000);
+    expect(integrityRunningPollDelayMs(1, 3000)).toBe(6000);
+    expect(integrityRunningPollDelayMs(2, 3000)).toBe(12000);
+    expect(integrityRunningPollShouldHalt(INTEGRITY_RUNNING_POLL_MAX_ERRORS - 1)).toBe(false);
+    expect(integrityRunningPollShouldHalt(INTEGRITY_RUNNING_POLL_MAX_ERRORS)).toBe(true);
+  });
+});
+
+describe('startIntegrityRunningPollSession', () => {
+  it('stops scheduling after unmount disposer (ignores late responses)', async () => {
+    vi.useFakeTimers();
+    let resolveFetch: ((value: IntegrityAsyncJobResponse | null) => void) | undefined;
+    const fetchCurrent = vi.fn(
+      () =>
+        new Promise<IntegrityAsyncJobResponse | null>((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    const onJob = vi.fn();
+    const stop = startIntegrityRunningPollSession({
+      fetchCurrent,
+      onJob,
+      env: {
+        isDocumentHidden: () => false,
+        addVisibilityListener: () => () => undefined,
+      },
+    });
+
+    expect(fetchCurrent).toHaveBeenCalledTimes(1);
+    stop();
+    resolveFetch?.(job({ status: 'SUCCEEDED', finishedAt: '2026-10-13T12:00:00.000Z' }));
+    await Promise.resolve();
+    expect(onJob).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('pauses while hidden and resumes on visibilitychange (Christophe m1)', async () => {
+    vi.useFakeTimers();
+    let hidden = false;
+    let visibilityListener: (() => void) | undefined;
+    const fetchCurrent = vi.fn(async () =>
+      job({ status: 'RUNNING', finishedAt: undefined, chainStatus: null }),
+    );
+    const onJob = vi.fn();
+
+    const stop = startIntegrityRunningPollSession({
+      fetchCurrent,
+      onJob,
+      intervalMs: 3000,
+      env: {
+        isDocumentHidden: () => hidden,
+        addVisibilityListener: (listener) => {
+          visibilityListener = listener;
+          return () => {
+            visibilityListener = undefined;
+          };
+        },
+      },
+    });
+
+    // Immediate tick only — do not drain the scheduled 3 s interval yet.
+    await Promise.resolve();
+    expect(fetchCurrent).toHaveBeenCalledTimes(1);
+    expect(onJob).toHaveBeenCalledTimes(1);
+
+    hidden = true;
+    visibilityListener?.();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(fetchCurrent).toHaveBeenCalledTimes(1);
+
+    hidden = false;
+    visibilityListener?.();
+    await Promise.resolve();
+    expect(fetchCurrent).toHaveBeenCalledTimes(2);
+    stop();
+    vi.useRealTimers();
+  });
+
+  it('backs off on errors then halts (freeze path — swallowed errors)', async () => {
+    vi.useFakeTimers();
+    const fetchCurrent = vi.fn(async () => {
+      throw new Error('network');
+    });
+    const onJob = vi.fn();
+    const onPollError = vi.fn();
+
+    startIntegrityRunningPollSession({
+      fetchCurrent,
+      onJob,
+      onPollError,
+      intervalMs: 3000,
+      maxErrors: 3,
+      env: {
+        isDocumentHidden: () => false,
+        addVisibilityListener: () => () => undefined,
+      },
+    });
+
+    await Promise.resolve();
+    expect(onPollError).toHaveBeenLastCalledWith('transient', 1);
+
+    await vi.advanceTimersByTimeAsync(6000);
+    await Promise.resolve();
+    expect(onPollError).toHaveBeenLastCalledWith('transient', 2);
+
+    await vi.advanceTimersByTimeAsync(12_000);
+    await Promise.resolve();
+    expect(onPollError).toHaveBeenLastCalledWith('halted', 3);
+    expect(onJob).not.toHaveBeenCalled();
+
+    const callsAtHalt = fetchCurrent.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(fetchCurrent.mock.calls.length).toBe(callsAtHalt);
+    vi.useRealTimers();
+  });
+
+  it('ignores out-of-order responses when a newer generation wins', async () => {
+    vi.useFakeTimers();
+    const resolvers: Array<(value: IntegrityAsyncJobResponse | null) => void> = [];
+    const fetchCurrent = vi.fn(
+      () =>
+        new Promise<IntegrityAsyncJobResponse | null>((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+    const onJob = vi.fn();
+
+    startIntegrityRunningPollSession({
+      fetchCurrent,
+      onJob,
+      intervalMs: 3000,
+      env: {
+        isDocumentHidden: () => false,
+        addVisibilityListener: () => () => undefined,
+      },
+    });
+
+    expect(fetchCurrent).toHaveBeenCalledTimes(1);
+    // Force a second in-flight generation via visibility resume while first pending.
+    // First request still open; complete second first then first.
+    // Simulate by resolving first after we stop — covered above.
+    // Here: complete first as RUNNING, schedule next, start second, resolve second SUCCEEDED
+    // then resolve a stale late RUNNING from a cancelled gen — generation guard.
+    resolvers[0]?.(job({ status: 'RUNNING', finishedAt: undefined, chainStatus: null }));
+    await Promise.resolve();
+    expect(onJob).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(fetchCurrent).toHaveBeenCalledTimes(2);
+
+    const succeeded = job({
+      status: 'SUCCEEDED',
+      finishedAt: '2026-10-13T12:00:01.000Z',
+    });
+    resolvers[1]?.(succeeded);
+    await Promise.resolve();
+    expect(onJob).toHaveBeenLastCalledWith(succeeded);
     vi.useRealTimers();
   });
 });

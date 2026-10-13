@@ -349,7 +349,9 @@
       "whatIsVerified": "Qu'est-ce qui est vérifié ?",
       "whatIsVerifiedHelp": "Vérifie l'enchaînement des checkpoints, les empreintes d'entrées et la continuité temporelle sur la période. L'algorithme cryptographique n'est pas affiché à l'écran.",
       "ariaResultAvailable": "Résultat de vérification disponible : {{verdict}}",
-      "rangeOverCapWarning": "Cette période dépasse la limite asynchrone de {{maxWindowDays}} jours et ne peut pas être démarrée."
+      "rangeOverCapWarning": "Cette période dépasse la limite asynchrone de {{maxWindowDays}} jours et ne peut pas être démarrée.",
+      "pollErrorTransient": "Échec du rafraîchissement du statut — nouvel essai avec backoff…",
+      "pollErrorHalted": "Échecs répétés du rafraîchissement. La vérification peut encore tourner ; rechargez la page ou abandonnez le job s’il est bloqué."
     },
     "chainIntegrity": "Intégrité de la chaîne",
     "entryIntegrity": "Intégrité des entrées",
