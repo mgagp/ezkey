@@ -55,6 +55,31 @@ test('@smoke @device-backed representative authenticated workflow loads admins a
   await demoPage.close();
 });
 
+test('@smoke @device-backed Integrity cut 3 micro-dashboard is the glance strip', async ({
+  page,
+  context,
+}) => {
+  const demoPage = await loginViaDemoDevice(page, context, 'approve');
+
+  await page.getByTestId('sidebar-link-integrity').click();
+  await expect(page).toHaveURL(/\/integrity$/);
+
+  // After D1 settles (fresh verdict or AUTO job), the micro-dashboard owns the strip.
+  const dashboard = page.getByTestId('integrity-micro-dashboard');
+  await expect(dashboard).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId('integrity-async-job-banner')).toHaveCount(0);
+  await expect(page.getByTestId('integrity-micro-dashboard-verdict')).toBeVisible();
+  await expect(page.getByTestId('integrity-micro-dashboard-scope')).toBeVisible();
+  await expect(page.getByTestId('integrity-micro-dashboard-reverify')).toBeVisible();
+
+  await page.screenshot({
+    path: '/opt/cursor/artifacts/integrity-micro-dashboard-smoke.png',
+    fullPage: true,
+  });
+
+  await demoPage.close();
+});
+
 test('@elective @device-backed denying on Demo Device surfaces the retry path', async ({
   page,
   context,
