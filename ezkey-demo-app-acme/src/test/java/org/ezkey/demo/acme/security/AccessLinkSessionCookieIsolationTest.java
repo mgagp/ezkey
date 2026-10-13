@@ -37,15 +37,14 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * Reproduces the localhost cookie collision that wiped Acme CSRF after visiting the demo device.
+ * Guards Acme session/CSRF isolation by cookie <em>name</em> after an access-link activation.
  *
- * <p>Browsers scope cookies by host, not port. When Acme and demo-device both used {@code
- * JSESSIONID}, opening {@code /t/{code}} then any demo-device page left Acme with a foreign session
- * id and {@code POST /login} failed CSRF → {@code sessionexpired}. Distinct cookie names keep
- * Acme's session (and CSRF) intact when a sibling {@code JSESSIONID} is present.
+ * <p>This is not a browser-level reproduction of host-scoped cookie collision across two ports. It
+ * proves that Acme emits {@code EZKEY_ACME_SESSION} (not {@code JSESSIONID}) and that a sibling
+ * {@code JSESSIONID} cookie on the same request does not invalidate Acme CSRF on {@code POST
+ * /login}. The real multi-port browser jar behaviour is why distinct names are required (#799).
  *
- * <p>Uses a real HTTP port (not MockMvc) so {@code Set-Cookie} names are observable the same way a
- * browser jar would see them.
+ * <p>Uses a real HTTP port (not MockMvc) so {@code Set-Cookie} names are observable over HTTP.
  *
  * @since 2026
  */

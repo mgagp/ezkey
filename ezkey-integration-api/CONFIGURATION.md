@@ -16,6 +16,7 @@ jobs** and has **no database of its own** — it reads from the shared schema ma
 
 | Property | Docker env var | Default | Obligation |
 |---|---|---|---|
+| `server.servlet.session.cookie.name` | — | `EZKEY_INTEGRATION_API_SESSION` | recommandé |
 | `ezkey.api-key.rate-limit.enabled` | — | `true` | optionnel |
 | `ezkey.api-key.rate-limit.create-auth-attempt.requests` | — | `100` | optionnel |
 | `ezkey.api-key.rate-limit.create-auth-attempt.window-minutes` | — | `1` | optionnel |
@@ -27,6 +28,12 @@ jobs** and has **no database of its own** — it reads from the shared schema ma
 ---
 
 ## Properties by Functional Group
+
+### 0. Servlet session cookie
+
+| Property | Default | Obligation | Description |
+|---|---|---|---|
+| `server.servlet.session.cookie.name` | `EZKEY_INTEGRATION_API_SESSION` | recommandé | Distinct from other localhost servlet apps so browsers do not share `JSESSIONID` across ports (#799). Lives in `config/application.properties` (API external config); demos set the same key in the JAR instead. |
 
 ### 1. API Key Usage Rate Limiting (`ezkey.api-key.rate-limit.*`)
 

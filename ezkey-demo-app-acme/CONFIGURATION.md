@@ -7,7 +7,10 @@ external `/app/config/` (volume `demo-app-acme-config`), and environment variabl
 
 | Property | Default | Obligation | Description |
 |----------|---------|------------|-------------|
-| `server.servlet.session.cookie.name` | `EZKEY_ACME_SESSION` | recommandé | Distinct from demo-device / APIs on localhost so browsers do not share one `JSESSIONID` across ports (#799). |
+| `server.servlet.session.cookie.name` | `EZKEY_ACME_SESSION` | recommandé | Distinct from demo-device / APIs on localhost so browsers do not share one `JSESSIONID` across ports (#799). Set in the JAR `application.properties` (demos); API modules set the same key under external `config/` instead. |
+
+Redeploying Acme drops any in-memory sessions that still used the previous cookie name. Do not
+override this to `JSESSIONID` in the optional `/app/config/` volume.
 
 ## Rate limiting (`ezkey.rate-limit.*`)
 
