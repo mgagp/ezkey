@@ -4,7 +4,10 @@ import jakarta.servlet.http.HttpSession;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import org.ezkey.demo.device.config.DemoDeviceProperties;
 import org.ezkey.demo.device.service.AuthApiService;
+import org.ezkey.demo.device.service.AuthApiUrlValidator;
 import org.ezkey.demo.device.service.AuthAttemptPayloadUtil;
 import org.ezkey.demo.device.service.ClaimedPendingAuth;
 import org.ezkey.demo.device.service.DeviceCryptoService;
@@ -88,15 +91,32 @@ public class EzkeyAppController {
   /** Auth API base URL configured for this demo-device (for QR payload vs runtime comparison). */
   private final String configuredAuthApiBase;
 
+  /** Effective Auth API host allowlist for QR {@code authUrl} and bind overrides. */
+  private final Set<String> allowedAuthApiHosts;
+
+  /**
+   * Creates the controller.
+   *
+   * @param authApiService Auth API WebClient facade
+   * @param cryptoService device key and signature helper
+   * @param storeService local enrollment JSON store
+   * @param configuredAuthApiBase {@code ezkey.auth.api.url}
+   * @param demoDeviceProperties demo-device allowlist and lab settings
+   */
   public EzkeyAppController(
       AuthApiService authApiService,
       DeviceCryptoService cryptoService,
       EnrollmentStoreService storeService,
-      @Value("${ezkey.auth.api.url:http://localhost:8080}") String configuredAuthApiBase) {
+      @Value("${ezkey.auth.api.url:http://localhost:8080}") String configuredAuthApiBase,
+      DemoDeviceProperties demoDeviceProperties) {
     this.authApiService = authApiService;
     this.cryptoService = cryptoService;
     this.storeService = storeService;
     this.configuredAuthApiBase = configuredAuthApiBase;
+    this.allowedAuthApiHosts =
+        AuthApiUrlValidator.effectiveAllowlist(
+            configuredAuthApiBase,
+            demoDeviceProperties != null ? demoDeviceProperties.getAllowedAuthApiHosts() : null);
   }
 
   @GetMapping
@@ -126,20 +146,21 @@ public class EzkeyAppController {
     BindResolution bindResolution;
     try {
       bindResolution =
-          EnrollmentAuthApiUrlResolver.resolveForBind(authApiBaseUrl, configuredAuthApiBase);
+          EnrollmentAuthApiUrlResolver.resolveForBind(
+              authApiBaseUrl, configuredAuthApiBase, allowedAuthApiHosts);
     } catch (InvalidAuthApiUrlException e) {
       model.addAttribute("pageTitle", "New Enrollment");
       model.addAttribute("configuredAuthApiBase", configuredAuthApiBase);
       model.addAttribute("enrollmentId", enrollmentId);
       model.addAttribute("enrollmentProofToken", enrollmentProofToken);
-      model.addAttribute("authApiBaseUrl", authApiBaseUrl);
+      // Do not redisplay a rejected override URL (constant error only; no echo of attacker input)
       model.addAttribute("error", e.getMessage());
       return "phone/ezkey/new_enrollment";
     }
     logger.info(
         "Bind enrollment {} using Auth API {} (QR override submitted: {})",
         enrollmentId,
-        bindResolution.apiBaseUrl(),
+        LogSanitizer.sanitizeForLog(bindResolution.apiBaseUrl()),
         authApiBaseUrl != null && !authApiBaseUrl.isBlank());
     try {
       EnrollmentBindResponseDto bindResponse =
