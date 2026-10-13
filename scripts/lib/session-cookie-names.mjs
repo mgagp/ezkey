@@ -127,12 +127,12 @@ function resolveCanonicalProperties(moduleDir) {
  */
 function readProperty(filePath, key) {
   const text = readFileSync(filePath, 'utf8');
-  const escaped = key.replace(/\./g, '\\.');
-  const re = new RegExp(`^${escaped}=(.*)$`, 'm');
-  const match = text.match(re);
-  if (!match) {
-    return null;
+  const prefix = `${key}=`;
+  for (const line of text.split(/\r?\n/)) {
+    if (line.startsWith(prefix)) {
+      const value = line.slice(prefix.length).trim();
+      return value.length > 0 ? value : null;
+    }
   }
-  const value = match[1].trim();
-  return value.length > 0 ? value : null;
+  return null;
 }
