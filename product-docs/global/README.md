@@ -16,6 +16,7 @@ This folder holds the product-wide living truth for Ezkey. It is the canonical e
 | [`normative-posture.md`](normative-posture.md) | Operational discipline as a quality, not a certification project. |
 | [`lifecycle-model.md`](lifecycle-model.md) | Entity relationships and global lifecycle rules. |
 | [`team-roles.md`](team-roles.md) | Named team role one-liners (human or agent); owner decides merges. |
+| [`test-strategy.md`](test-strategy.md) | Global test strategy, taxonomy codes, QA Sphere nomenclature. |
 | [`spec-test-traceability.md`](spec-test-traceability.md) | Global spec-test traceability matrix. |
 | [`vision/`](vision/README.md) | Product orientation notes and evolving direction. |
 | [`backlog/`](backlog/README.md) | Markdown-native backlog with temporal status lifecycle. |
@@ -29,9 +30,10 @@ This folder holds the product-wide living truth for Ezkey. It is the canonical e
 4. `architecture-overview.md`
 5. `design-principles.md`
 6. `lifecycle-model.md`
-7. `spec-test-traceability.md`
-8. Relevant [component pack](../components/README.md).
-9. `vision/README.md` and `backlog/README.md` when planning future work.
+7. `test-strategy.md`
+8. `spec-test-traceability.md`
+9. Relevant [component pack](../components/README.md).
+10. `vision/README.md` and `backlog/README.md` when planning future work.
 
 ## Boundary With Component Packs
 
