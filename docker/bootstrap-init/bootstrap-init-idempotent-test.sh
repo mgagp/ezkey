@@ -55,4 +55,32 @@ set -e
 echo "$out2" | grep -q 'SKIPPED' || fail "expected SKIPPED; out=$out2"
 echo "OK: EZKEY_BOOTSTRAP_INIT_ENABLED=false exits 0"
 
+# Case 3: secret artifact modes (policy mirrored from bootstrap-init Steps 6–7;
+# full bind path needs live APIs — assert script contract + filesystem modes)
+grep -q 'umask 077' "$INIT" || fail "bootstrap-init.sh must set umask 077 before secret writes"
+grep -Eq 'chmod 600 "\$DEVICE_CREDS_FILE"' "$INIT" \
+  || fail "bootstrap-init.sh must chmod 600 device-credentials.json"
+grep -Eq 'chmod 700 "\$DEMO_DEVICE_ENROLLMENTS_DIR"' "$INIT" \
+  || fail "bootstrap-init.sh must chmod 700 enrollments directory"
+grep -Eq 'chmod 600 "\$ENROLLMENT_FILE"' "$INIT" \
+  || fail "bootstrap-init.sh must chmod 600 demo-device enrollment file"
+
+MODE_DIR="$TMP/mode-probe"
+DEVICE_PROBE="$TMP/device-credentials.json"
+ENROLL_DIR="$MODE_DIR/enrollments"
+ENROLL_PROBE="$ENROLL_DIR/1.json"
+umask 077
+mkdir -p "$ENROLL_DIR"
+chmod 700 "$ENROLL_DIR"
+echo '{"privateKey":"probe"}' >"$DEVICE_PROBE"
+chmod 600 "$DEVICE_PROBE"
+echo '{"enrollmentId":1}' >"$ENROLL_PROBE"
+chmod 600 "$ENROLL_PROBE"
+
+mode_of() { stat -c '%a' "$1" 2>/dev/null || stat -f '%OLp' "$1"; }
+[ "$(mode_of "$DEVICE_PROBE")" = "600" ] || fail "device-credentials mode expected 600"
+[ "$(mode_of "$ENROLL_DIR")" = "700" ] || fail "enrollments dir mode expected 700"
+[ "$(mode_of "$ENROLL_PROBE")" = "600" ] || fail "enrollment file mode expected 600"
+echo "OK: bootstrap secret artifact modes (0600/0700)"
+
 echo "All bootstrap-init idempotent checks passed."
