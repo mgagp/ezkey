@@ -29,6 +29,7 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | Lifecycle / eligibility / multi-entity operator design | Skim [`product-docs/global/lifecycle-model.md`](product-docs/global/lifecycle-model.md), then [`docs/LIFECYCLE_GOVERNANCE.md`](docs/LIFECYCLE_GOVERNANCE.md) when designing |
 | Admin UI conventions | [`ezkey-admin-ui/AGENTS.md`](ezkey-admin-ui/AGENTS.md) |
 | Mobile-primary work | [`ezkey_mobile/AGENTS.md`](ezkey_mobile/AGENTS.md), [`ezkey_mobile/docs/README.md`](ezkey_mobile/docs/README.md) |
+| Experimental PAM (host sshd lab) | `ezkey-pam` is **experimental** (personal lab; loaded in host root sshd/login, not containerised) — see [`ezkey-pam/README.md`](ezkey-pam/README.md) (line 3). Hardening backlog: [`I-2026-10-13-pam-tmp-log-hardening`](product-docs/global/backlog/ideas/I-2026-10-13-pam-tmp-log-hardening.md). |
 | Mandate-driven hygiene assessment (HITL + handoff) | Keyword **`assessment-curated`** → [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md) |
 | Legacy document hygiene (canonicality / discoverability / archive-vs-delete) | Keyword **`document-hygiene-curated`** → [`product-docs/global/hygiene/document-hygiene/README.md`](product-docs/global/hygiene/document-hygiene/README.md) |
 | New idea / method | [`product-docs/methodology/README.md`](product-docs/methodology/README.md) — the whole method fits in that one document since the 2026-08 ablation |

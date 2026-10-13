@@ -17,6 +17,10 @@ ADMIN_PASS="${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}"
 AUTH_PASS="${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}"
 INTEGRATION_PASS="${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}"
 
+VERIFY_OUT="$(mktemp "${TMPDIR:-/tmp}/ezkey-verify-grants.out.XXXXXX")"
+VERIFY_ERR="$(mktemp "${TMPDIR:-/tmp}/ezkey-verify-grants.err.XXXXXX")"
+trap 'rm -f "${VERIFY_OUT}" "${VERIFY_ERR}"' EXIT
+
 DOCKER_MODE=0
 if [[ "${1:-}" == "--docker" ]]; then
   DOCKER_MODE=1
@@ -39,9 +43,9 @@ run_psql() {
 expect_fail() {
   local label="$1"
   shift
-  if "$@" >/tmp/ezkey-verify-grants.out 2>/tmp/ezkey-verify-grants.err; then
+  if "$@" >"${VERIFY_OUT}" 2>"${VERIFY_ERR}"; then
     echo "FAIL: expected denial for: ${label}" >&2
-    cat /tmp/ezkey-verify-grants.err >&2 || true
+    cat "${VERIFY_ERR}" >&2 || true
     exit 1
   fi
   echo "OK (denied): ${label}"
@@ -50,9 +54,9 @@ expect_fail() {
 expect_ok() {
   local label="$1"
   shift
-  if ! "$@" >/tmp/ezkey-verify-grants.out 2>/tmp/ezkey-verify-grants.err; then
+  if ! "$@" >"${VERIFY_OUT}" 2>"${VERIFY_ERR}"; then
     echo "FAIL: expected success for: ${label}" >&2
-    cat /tmp/ezkey-verify-grants.err >&2 || true
+    cat "${VERIFY_ERR}" >&2 || true
     exit 1
   fi
   echo "OK: ${label}"
