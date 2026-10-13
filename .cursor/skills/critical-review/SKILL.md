@@ -35,7 +35,7 @@ class as `assessment-curated` (skill + hygiene canon + prompt).
 | `angle` | no | e.g. product premise, security, operability, autonomous execution |
 
 **Launchers:** Mathieu default (visions, G1 briefs); Patrick (PR craft); Christophe (security);
-Marc on request.
+Marc on request. Role one-liners: [`product-docs/global/team-roles.md`](../../product-docs/global/team-roles.md).
 
 ## Procedure
 

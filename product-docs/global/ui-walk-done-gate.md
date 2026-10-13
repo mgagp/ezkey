@@ -41,6 +41,7 @@ Standing rules:
 
 ## Related
 
+- Role one-liners: [`team-roles.md`](team-roles.md)
 - Template: [`../templates/ui-walk-gate.template.md`](../templates/ui-walk-gate.template.md)
 - Example unified delivery: GitHub PR #570
 - Integrity IA pack: [`admin-ui-audit-integrity-hard-split-intention.md`](admin-ui-audit-integrity-hard-split-intention.md)

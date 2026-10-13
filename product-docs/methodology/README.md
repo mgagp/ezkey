@@ -84,6 +84,13 @@ A `V-*` is not itself the final decision — when the direction is settled, cano
 in the durable doc it belongs to (roadmap, design principles, an `ADR-*`) and move the vision note
 to `promoted`. A `TB-*` follows the same pattern for execution learnings.
 
+**Decisions made in discussion.** Chat, team, and bot-mandate decisions follow the same lightest-
+artifact rule: fold them into the owning durable doc (intention, behavior doc, `CONFIGURATION`,
+`AGENTS.md`, or a canon README) in the same PR whenever they change behavior, a contract, a
+constraint, or how we work — one line plus reason and issue reference. Do not invent a decision
+log or copy mandates into the repo; the PR is the vehicle. See root `AGENTS.md` § *Working
+conventions*.
+
 When an artifact is archived because its substance moved into a successor rather than being
 dropped, record it both ways: `Superseded by: <id>` on the old one, `Supersedes: <id>` on the new
 one.
