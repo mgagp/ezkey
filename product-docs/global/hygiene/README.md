@@ -6,7 +6,8 @@ mobile static analysis), weekly **Dependabot** triage, the **major-upgrades** pl
 **javamelody-curated** live-stack performance extracts, on-demand **quality-gate** full-suite
 runs (cloud agent), mandate-driven **assessment-curated** white-box investigation follow-ups,
 **document-hygiene-curated** passes for legacy document canonicality / archive-vs-delete
-decisions, and **corpus-ablation** passes that prune ephemeral plans/prompts into existing canon.
+decisions, **code-scanning** (CodeQL SAST) triage passes, and **corpus-ablation** passes that
+prune ephemeral plans/prompts into existing canon.
 
 These folders are **not** product vision, ADR, or backlog execution. They record per-campaign triage
 (fix / suppress / skip / defer, or Dependabot merge / hold / defer) so cold sessions can see *why* a
@@ -37,6 +38,7 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 | [`dependabot/`](dependabot/) | `dependabot-curated` | Near-continuous Dependabot triage (weekday light + Monday full), Orval O0–O3 grid, Java BOM / Mobile RN pulses |
 | [`major-upgrades/`](major-upgrades/) | (quarterly in `dependabot-curated`) | Platform / runtime / base-image major-upgrade register (`registry.yaml`); light path vs dedicated issue |
 | [`security-pentest/`](security-pentest/) | `security-pentest-curated` | Live API / DAST-style security campaigns |
+| [`code-scanning/`](code-scanning/) | (CodeQL SAST triage) | GitHub CodeQL / code-scanning alert triage and advanced-setup config decisions; policy in `docs/SECURITY_POSTURE.md` |
 | [`javamelody/`](javamelody/) | `javamelody-curated` | Live JavaMelody extract after a known workload (typically operational churn) |
 | [`quality-gate/`](quality-gate/) | `quality-gate` | On-demand full-suite + stack-health gate (cloud agent; between merge batches) |
 | [`document-hygiene/`](document-hygiene/) | `document-hygiene-curated` | Legacy document canonicality, discoverability, and archive-vs-delete decisions |

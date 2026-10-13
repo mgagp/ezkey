@@ -66,6 +66,8 @@ Four artifact types, each with its own lifecycle:
 
 **Identifiers:** `<Prefix>-YYYY-MM-DD-<slug>.md`. The date avoids collisions across parallel work;
 the slug keeps the subject discoverable. No counter or index file to consult before creating one.
+Counter-style IDs already in the tree (`V-2026-0001…`, `I-2026-0001…`, `TB-2026-0001…`) are
+**legacy** — keep and link them; do not mint new counter IDs.
 
 **Priority (when it matters):** `P0` critical blocker · `P1` most pressing / foundational · `P2`
 standard · `P3` comfort, safe to defer.

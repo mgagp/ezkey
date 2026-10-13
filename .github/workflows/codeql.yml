@@ -1,0 +1,63 @@
+# Advanced CodeQL setup for mgagp/ezkey.
+#
+# Before this workflow can succeed on main/PRs, Marc must switch the repository
+# CodeQL configuration from Default to Advanced (Settings → Code security →
+# CodeQL → disable default setup). Otherwise advanced and default conflict or
+# duplicate. See docs/SECURITY_POSTURE.md § Code scanning policy.
+#
+# Decision: code-scanning triage 2026-10-13, approved by Marc 2026-10-13 19:40.
+name: CodeQL
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Weekly catch-up (UTC Sunday 05:17) — same spirit as GitHub's default template.
+    - cron: "17 5 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ matrix.language == 'c-cpp' && 360 || 120 }}
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: java-kotlin
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+          - language: python
+            build-mode: none
+          - language: c-cpp
+            build-mode: none
+          - language: actions
+            build-mode: none
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config-file: ./.github/codeql/codeql-config.yml
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"

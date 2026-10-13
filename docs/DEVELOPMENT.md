@@ -495,6 +495,15 @@ yarn install --immutable && yarn validate:ci
 **Maintainer follow-up (ruleset):** target `main` with required status check **`ci-gate`** only
 (plus existing non-check rules as desired). No other job names need to be required.
 
+**CodeQL (advanced setup):** workflow [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml)
+with config [`.github/codeql/codeql-config.yml`](../.github/codeql/codeql-config.yml)
+(`paths-ignore: ezkey-tests/**`) and a local model pack under
+[`.github/codeql/extensions/`](../.github/codeql/extensions/) that treats
+`LogSanitizer.sanitizeForLog` as a `log-injection` barrier. The repository CodeQL setting must be
+**Advanced** (default setup disabled) or the workflow conflicts with GitHub's default setup.
+Policy and SLAs: [`SECURITY_POSTURE.md`](SECURITY_POSTURE.md) § Code scanning policy. Triage notes:
+[`../product-docs/global/hygiene/code-scanning/`](../product-docs/global/hygiene/code-scanning/).
+
 ### Code Quality Metrics
 - **Test Coverage**: Minimum 90% line coverage
 - **Code Complexity**: Cyclomatic complexity limits

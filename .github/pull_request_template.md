@@ -9,7 +9,7 @@ Closes #
 ## What was tested
 
 - [ ] CI green on this PR (`ci-gate` and the jobs that ran)
-- [ ] CodeQL / code-scanning: zero open alerts on this branch
+- [ ] CodeQL / code-scanning: zero *new* unresolved alerts introduced by this PR (existing stock follows `docs/SECURITY_POSTURE.md` § Code scanning policy)
 - [ ] Zero unresolved review threads
 - [ ] Local checks matching the changed area (see `docs/DEVELOPMENT.md` § Continuous Integration)
 - [ ] Manual / Walk evidence when this touches Admin UI or other operator-facing flows (link or describe)

@@ -4,7 +4,7 @@
 
 This document catalogs the mobile app's primary workflows: enrollment wizard, retrieving pending authentication attempts, and responding to them. Detailed narrative lives in [`../../../ezkey_mobile/docs/MOBILE_FUNCTIONAL_FLOWS.md`](../../../ezkey_mobile/docs/MOBILE_FUNCTIONAL_FLOWS.md); this document frames the flows inside the product-wide system.
 
-Phase 1 seeds three representative flows. Additional flows can be added using the [functional workflow template](../../templates/functional-workflow.template.md).
+Phase 1 seeds three representative flows. Additional flows are added as entries in this file (see [`../../templates/README.md`](../../templates/README.md)).
 
 ## Workflow Index
 

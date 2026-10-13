@@ -1,0 +1,11 @@
+# CodeQL advanced-setup configuration for mgagp/ezkey.
+# Requires Settings → Code security → CodeQL → Advanced (default setup must be off).
+# Decision: code-scanning triage 2026-10-13, approved by Marc 2026-10-13 19:40.
+#
+# paths-ignore: test harness alerts (sensitive-log 23–47, relative-path 48–61) are
+# closed by exclusion rather than mass dismissal. See docs/SECURITY_POSTURE.md
+# § Code scanning policy and product-docs/global/hygiene/code-scanning/.
+name: Ezkey CodeQL config
+
+paths-ignore:
+  - ezkey-tests/**
