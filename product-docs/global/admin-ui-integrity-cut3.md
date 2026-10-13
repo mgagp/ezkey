@@ -242,16 +242,17 @@ Served by existing `GET /jobs/current` and `/jobs/{id}`. UI hydrates tiles from 
 
 ### PR 2 — UI
 
-- [ ] Micro-dashboard replaces text banner (D4 vocabulary + Walk Gate checks)
-- [ ] D1 24 h auto-run rule (**OQ2 / OQ3 APPROVED**)
-- [ ] Hydration from DTO counters; no `GET /chain-integrity` on open when fresh verdict
-- [ ] Aging relative time (dashboard 1 s clock pattern)
-- [ ] #696: verdict scope shown; picker aligns when hydrating from a job; mismatch copy when filter differs
-- [ ] Nightly-running / synthetic-busy state; no 409 toast on open
-- [ ] Tab: keep default-at-open non-green→Remédier; ban mid-work auto-switch; **Ouvrir Remédier** (**OQ1 APPROVED**)
-- [ ] UI cap from config (drop `INTEGRITY_REPORT_MAX_WINDOW_HOURS = 193`); optional early warning in the range picker
-- [ ] Update `docs/AUDIT_LOG_INTEGRITY.md:336`
-- [ ] EN + FR i18n; no server `resultSummary` in the glance
+- [x] Micro-dashboard replaces text banner (D4 vocabulary + Walk Gate checks) — draft PR #786
+- [x] D1 24 h auto-run rule (**OQ2 / OQ3 APPROVED**)
+- [x] Hydration from DTO counters; no `GET /chain-integrity` on open when fresh verdict
+- [x] Aging relative time (dashboard 1 s clock pattern)
+- [x] #696: verdict scope shown; picker aligns when hydrating from a job; mismatch copy when filter differs
+- [x] Nightly-running / synthetic-busy state; no 409 toast on open
+- [x] Tab: keep default-at-open non-green→Remédier; ban mid-work auto-switch; **Ouvrir Remédier** (**OQ1 APPROVED**)
+- [x] UI cap from config (drop hard-coded 193 h as sole source; bootstrap `maxWindowDays` / `maxSyncWindowDays`); optional early warning in the range picker
+- [x] Update `docs/AUDIT_LOG_INTEGRITY.md` operator workflow (was `:336`)
+- [x] EN + FR i18n; no server `resultSummary` in the glance
+- [ ] Walk Gate PASS on walkable SHA (`WALK-2026-10-09-integrity-cut3`)
 
 ---
 
@@ -347,11 +348,31 @@ Purpose: calibrate the 92-day default and prove before/after; **does not block**
 
 ---
 
+## Locked UI follow-ups (#788 — craft review on #786)
+
+Repo-as-memory for Patrick CHANGES + Christophe minors (PR 2 micro-dashboard):
+
+- **204 does not clear the displayed verdict** (#788) — idle `GET …/jobs/current` must keep the glance; nightly RUNNING→204 reloads `/last-verdict` instead of wiping to null (D4 “after: trigger=NIGHTLY”).
+- **Recent `NOT_VERIFIED` counts as fresh** (#788) — D1 freshness is finished&lt;24 h **and** `chainStatus != null` (includes `NOT_VERIFIED`); bare `VERIFY_ENTRY` success without `chainStatus` does **not** suppress auto-run.
+- **Error on open → fail-open auto-run** (#788) — `/current` or `/last-verdict` read failure is treated as null; when no fresh glance remains, AUTO-verify may start (read-only recompute).
+- **Retry after a failed auto-run** (#788) — remount/navigation may start another AUTO; bounded by operator navigation, not a silent in-page loop.
+- **RUNNING poll errors** (#788) — do not swallow `/current` failures; exponential backoff, halt after N errors with on-screen message; pause while `document.hidden` (Christophe m1). Returning to the tab (`visibilitychange` → visible) **restarts** the poll after a halt by resetting the error budget.
+- **Revérifier while POST in flight** (#788) — `chainLoading` disables Re-verify (Christophe m2).
+- **Abandon → idle 204 must clear escape-sticky** (#788 / Patrick B2) — apply the abandon response (`abandonedAt`) first; idle 204 must not retain EXPIRED/CANCELLED when `/last-verdict` is empty (regression vs `main`).
+- **Over-cap Vérifier: disable + no toast** (#743 / Julie C1 Walk) — when the picker exceeds `maxWindowDays`, show the inline warning, disable Vérifier / entry / validation, and never toast the same message.
+- **Checked cell labels** (Julie m1) — RUNNING → Démarré/Started; terminal non-success → Terminé/Finished; SUCCEEDED → Vérifié/Checked.
+- **Abandon copy** (Julie m3) — button is Abandonner/Abandon (no “relancer”).
+- **System actor i18n** (Julie m4) — `startedByUsername=system` renders as système/system via `systemActor`.
+- **Poll halt stops spinner** (Julie m6) — halted `/current` poll no longer leaves Loader2 spinning.
+
+---
+
 ## Related
 
 | Ref | Role |
 |-----|------|
 | #692 / #743 | Sync GET gate + provisional 193 h cap **shipped**; cut 3 raises to `max-window-days` + DTO / job-backed hydration |
+| #788 | D1 open / poll error contract (Patrick + Christophe on #786) |
 | #696 | Verdict scope vs Vérifier picker mismatch — PR 2 |
 | #736 / #741 | Async job STARTED/COMPLETED audits **fixed** (`IntegrityAsyncJobAuditConstants`) |
 | #745 | Nightly non-blocking retry + skip audit — **out of cut 3** |

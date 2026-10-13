@@ -299,6 +299,68 @@ describe('useIntegrityAsyncJobReportHydration', () => {
     });
   });
 
+  it('skips auto fetch when job-backed chainStatus is present (cut 3 glance)', async () => {
+    const fetchChainReport = vi.fn(
+      async () => ({ intact: true, undeclaredGaps: [] }) as ChainVerificationReport,
+    );
+    const onChainReport = vi.fn();
+
+    const base = {
+      onChainReport,
+      onEntryReport: vi.fn(),
+      toDisplayRange: () => ({ from: '2026-10-01', to: '2026-10-07' }),
+      fetchChainReport,
+      fetchEntryReport: vi.fn(async () => ({ intact: true }) as IntegrityReport),
+      skipAutoHydrateWhenJobBacked: true,
+    };
+
+    const { rerender } = renderHook(
+      ({
+        job: current,
+        reloadNonce,
+      }: {
+        job: IntegrityAsyncJobResponse | null;
+        reloadNonce: number;
+      }) =>
+        useIntegrityAsyncJobReportHydration({
+          ...base,
+          job: current,
+          reloadNonce,
+        }),
+      {
+        initialProps: {
+          job: job({
+            jobId: 'j-backed',
+            type: 'VERIFY_CHAIN_RANGE',
+            status: 'SUCCEEDED',
+            chainStatus: 'OK',
+            totalCheckpoints: 10,
+          }),
+          reloadNonce: 0,
+        },
+      },
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(fetchChainReport).not.toHaveBeenCalled();
+
+    rerender({
+      job: job({
+        jobId: 'j-backed',
+        type: 'VERIFY_CHAIN_RANGE',
+        status: 'SUCCEEDED',
+        chainStatus: 'OK',
+        totalCheckpoints: 10,
+      }),
+      reloadNonce: 1,
+    });
+
+    await waitFor(() => expect(fetchChainReport).toHaveBeenCalledTimes(1));
+    expect(onChainReport).toHaveBeenCalledTimes(1);
+  });
+
   it('resets integrityLoading when cancelled by a new chain job mid-hydration', async () => {
     let resolveEntry!: (value: IntegrityReport) => void;
     const entryPromise = new Promise<IntegrityReport>((resolve) => {
