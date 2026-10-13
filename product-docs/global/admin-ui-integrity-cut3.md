@@ -359,6 +359,11 @@ Repo-as-memory for Patrick CHANGES + Christophe minors (PR 2 micro-dashboard):
 - **RUNNING poll errors** (#788) — do not swallow `/current` failures; exponential backoff, halt after N errors with on-screen message; pause while `document.hidden` (Christophe m1). Returning to the tab (`visibilitychange` → visible) **restarts** the poll after a halt by resetting the error budget.
 - **Revérifier while POST in flight** (#788) — `chainLoading` disables Re-verify (Christophe m2).
 - **Abandon → idle 204 must clear escape-sticky** (#788 / Patrick B2) — apply the abandon response (`abandonedAt`) first; idle 204 must not retain EXPIRED/CANCELLED when `/last-verdict` is empty (regression vs `main`).
+- **Over-cap Vérifier: disable + no toast** (#743 / Julie C1 Walk) — when the picker exceeds `maxWindowDays`, show the inline warning, disable Vérifier / entry / validation, and never toast the same message.
+- **Checked cell labels** (Julie m1) — RUNNING → Démarré/Started; terminal non-success → Terminé/Finished; SUCCEEDED → Vérifié/Checked.
+- **Abandon copy** (Julie m3) — button is Abandonner/Abandon (no “relancer”).
+- **System actor i18n** (Julie m4) — `startedByUsername=system` renders as système/system via `systemActor`.
+- **Poll halt stops spinner** (Julie m6) — halted `/current` poll no longer leaves Loader2 spinning.
 
 ---
 

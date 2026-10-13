@@ -297,13 +297,13 @@
         "expired": "Job expiré — plus de heartbeat · {{jobTypeLabel}} · {{who}} · relançable",
         "interrupted": "Job interrompu — {{jobTypeLabel}} · {{summary}}"
       },
-      "startsDisabledTooltip": "Un job d'intégrité est déjà en cours. Attendez la fin, ou utilisez Abandonner et relancer seulement si le job a expiré ou a été annulé.",
+      "startsDisabledTooltip": "Un job d'intégrité est déjà en cours. Attendez la fin, ou utilisez Abandonner seulement si le job a expiré ou a été annulé.",
       "startsDisabledEscapeTooltip": "Abandonnez le job d'intégrité expiré ou annulé avant d'en démarrer un autre.",
-      "abandon": "Abandonner et relancer",
+      "abandon": "Abandonner",
       "cancel": "Annuler",
       "abandoning": "Abandon…",
       "abandonConfirmTitle": "Abandonner le job d'intégrité ?",
-      "abandonConfirmBody": "Cela efface le job expiré ou annulé pour pouvoir relancer. Cela n'arrête pas un job en cours sain.",
+      "abandonConfirmBody": "Cela efface le job expiré ou annulé pour pouvoir démarrer une autre vérification. Cela n'arrête pas un job en cours sain.",
       "abandonError": "Impossible d'abandonner le job d'intégrité.",
       "busyToast": "Job d'intégrité déjà en cours : {{resume}}",
       "hydrateChainError": "Impossible de charger le résultat de vérification de la chaîne.",
@@ -333,6 +333,8 @@
         "undeclaredGaps": "Gaps non déclarés"
       },
       "checked": "Vérifié",
+      "started": "Démarré",
+      "finished": "Terminé",
       "reverify": "Revérifier",
       "openRemediate": "Ouvrir Remédier",
       "scope": {
@@ -345,6 +347,7 @@
         "unknown": "source inconnue"
       },
       "byAdmin": "par {{who}}",
+      "systemActor": "système",
       "scopeMismatch": "Le verdict porte sur une autre période que le filtre affiché.",
       "whatIsVerified": "Qu'est-ce qui est vérifié ?",
       "whatIsVerifiedHelp": "Vérifie l'enchaînement des checkpoints, les empreintes d'entrées et la continuité temporelle sur la période. L'algorithme cryptographique n'est pas affiché à l'écran.",

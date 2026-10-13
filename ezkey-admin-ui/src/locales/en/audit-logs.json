@@ -297,13 +297,13 @@
         "expired": "Job expired — no heartbeat · {{jobTypeLabel}} · {{who}} · can restart",
         "interrupted": "Job interrupted — {{jobTypeLabel}} · {{summary}}"
       },
-      "startsDisabledTooltip": "An Integrity job is already running. Wait for it to finish, or use Abandon and restart only if the job expired or was cancelled.",
+      "startsDisabledTooltip": "An Integrity job is already running. Wait for it to finish, or use Abandon only if the job expired or was cancelled.",
       "startsDisabledEscapeTooltip": "Abandon the expired or cancelled Integrity job before starting another.",
-      "abandon": "Abandon and restart",
+      "abandon": "Abandon",
       "cancel": "Cancel",
       "abandoning": "Abandoning…",
       "abandonConfirmTitle": "Abandon Integrity job?",
-      "abandonConfirmBody": "This clears the expired or cancelled job so you can start again. It does not cancel a healthy running job.",
+      "abandonConfirmBody": "This clears the expired or cancelled job so you can start another verification. It does not cancel a healthy running job.",
       "abandonError": "Could not abandon the Integrity job.",
       "busyToast": "Integrity job already running: {{resume}}",
       "hydrateChainError": "Could not load the chain verification result.",
@@ -333,6 +333,8 @@
         "undeclaredGaps": "Undeclared gaps"
       },
       "checked": "Checked",
+      "started": "Started",
+      "finished": "Finished",
       "reverify": "Re-verify",
       "openRemediate": "Open Remediate",
       "scope": {
@@ -345,6 +347,7 @@
         "unknown": "unknown source"
       },
       "byAdmin": "by {{who}}",
+      "systemActor": "system",
       "scopeMismatch": "The verdict covers a different period than the filter shown.",
       "whatIsVerified": "What is verified?",
       "whatIsVerifiedHelp": "Verifies checkpoint chaining, entry fingerprints, and time continuity for the period. It does not show the full cryptographic algorithm on screen.",

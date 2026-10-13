@@ -19,7 +19,10 @@ import {
 import {
   hasJobBackedChainGlance,
   INTEGRITY_RUNNING_POLL_INTERVAL_MS,
+  integrityMicroDashboardActorLabel,
+  integrityMicroDashboardCheckedKind,
   integrityMicroDashboardSource,
+  integrityMicroDashboardSpinnerActive,
   isIntegrityChainStatusNonGreen,
   isIntegrityVerdictScopeMismatch,
   resolveIntegrityMicroDashboardTone,
@@ -67,7 +70,14 @@ function tileToneClasses(tone: IntegrityMicroDashboardTone): string {
   }
 }
 
-function VerdictIcon({ tone }: { tone: IntegrityMicroDashboardTone }) {
+function VerdictIcon({
+  tone,
+  pollHalted,
+}: {
+  tone: IntegrityMicroDashboardTone;
+  /** Julie m6: stop the spinner when `/current` poll has halted. */
+  pollHalted?: boolean;
+}) {
   const className = 'size-4 shrink-0';
   switch (tone) {
     case 'intact':
@@ -78,6 +88,9 @@ function VerdictIcon({ tone }: { tone: IntegrityMicroDashboardTone }) {
       return <ShieldAlert className={cn(className, 'text-error')} aria-hidden />;
     case 'running':
     case 'nightly-running':
+      if (!integrityMicroDashboardSpinnerActive(tone, pollHalted === true)) {
+        return <ShieldQuestion className={cn(className, 'text-warning')} aria-hidden />;
+      }
       return <Loader2 className={cn(className, 'animate-spin')} aria-hidden />;
     case 'did-not-complete':
       return <ShieldQuestion className={cn(className, 'text-warning')} aria-hidden />;
@@ -186,12 +199,26 @@ export function IntegrityMicroDashboard({
   }
 
   const tone = resolveIntegrityMicroDashboardTone(job, nowMs);
-  const who = job.startedByUsername ?? '—';
-  const checkedAt = job.finishedAt ?? job.startedAt;
+  const pollHalted = pollError === 'halted';
+  const who = integrityMicroDashboardActorLabel(
+    job.startedByUsername,
+    t('integrity.microDashboard.systemActor'),
+  );
+  const checkedKind = integrityMicroDashboardCheckedKind(job.status);
+  const checkedAt =
+    checkedKind === 'started'
+      ? job.startedAt
+      : (job.finishedAt ?? job.startedAt);
   const relativeChecked =
     checkedAt != null ? formatRelativeTime(checkedAt) : '—';
   const absoluteChecked =
     checkedAt != null ? formatDateWithTimezone(checkedAt) : '—';
+  const checkedLabel =
+    checkedKind === 'started'
+      ? t('integrity.microDashboard.started')
+      : checkedKind === 'finished'
+        ? t('integrity.microDashboard.finished')
+        : t('integrity.microDashboard.checked');
   const source = integrityMicroDashboardSource(job.trigger);
   const scopeMismatch = isIntegrityVerdictScopeMismatch(pickerRange, verdictDisplayRange);
   const escapeSticky = isIntegrityAsyncEscapeStatus(job.status);
@@ -303,7 +330,7 @@ export function IntegrityMicroDashboard({
             aria-live="polite"
             aria-atomic="true"
           >
-            <VerdictIcon tone={tone} />
+            <VerdictIcon tone={tone} pollHalted={pollHalted} />
             <span className="min-w-0 font-medium leading-snug">{verdictLabel}</span>
             {liveAnnouncement != null && arrivalPulse && (
               <span className="sr-only">{liveAnnouncement}</span>
@@ -338,8 +365,9 @@ export function IntegrityMicroDashboard({
           <div
             className="flex min-w-[12rem] flex-1 flex-col justify-center gap-1 border-2 border-fg/15 px-2 py-1.5"
             data-testid="integrity-micro-dashboard-checked"
+            data-checked-kind={checkedKind}
           >
-            <span className="text-xs text-fg-muted">{t('integrity.microDashboard.checked')}</span>
+            <span className="text-xs text-fg-muted">{checkedLabel}</span>
             <span className="text-xs leading-snug">
               <span className="text-fg">{absoluteChecked}</span>
               <span className="text-fg-muted"> · {relativeChecked}</span>

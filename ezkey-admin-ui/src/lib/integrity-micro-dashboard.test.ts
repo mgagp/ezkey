@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
 import {
+  applyIntegrityAsyncJobChange,
   applyIntegrityLastVerdictAfterIdle204,
   decideIntegrityOpenAction,
   defaultAutoVerifyInstantRange,
@@ -8,10 +9,14 @@ import {
   INTEGRITY_AUTO_VERIFY_WINDOW_MS,
   INTEGRITY_RUNNING_POLL_MAX_ERRORS,
   INTEGRITY_VERDICT_FRESH_MS,
+  integrityMicroDashboardActorLabel,
+  integrityMicroDashboardCheckedKind,
   integrityMicroDashboardSource,
+  integrityMicroDashboardSpinnerActive,
   integrityReverifyDisabled,
   integrityRunningPollDelayMs,
   integrityRunningPollShouldHalt,
+  integrityVerifyActionDisabled,
   integrityWindowDaysToHours,
   isFreshIntegrityVerdict,
   isIntegrityChainStatusNonGreen,
@@ -412,6 +417,86 @@ describe('retainIntegrityGlanceOnIdle204 / last-verdict (Patrick B2 + m2)', () =
       lastVerdict,
     );
     expect(applyIntegrityLastVerdictAfterIdle204(nightlyRunning, null)).toBeNull();
+  });
+});
+
+describe('integrityVerifyActionDisabled (Julie C1 / #743)', () => {
+  it('disables Vérifier when the range is over the async cap', () => {
+    expect(
+      integrityVerifyActionDisabled({
+        loading: false,
+        asyncStartsBlocked: false,
+        rangeFrom: '2026-01-01',
+        rangeTo: '2026-10-01',
+        rangeOverCap: true,
+      }),
+    ).toBe(true);
+  });
+
+  it('enables Vérifier only when idle, in-range, and not over cap', () => {
+    expect(
+      integrityVerifyActionDisabled({
+        loading: false,
+        asyncStartsBlocked: false,
+        rangeFrom: '2026-10-01',
+        rangeTo: '2026-10-02',
+        rangeOverCap: false,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('integrityMicroDashboardCheckedKind / actor (Julie m1 / m4)', () => {
+  it('labels RUNNING as started and terminal non-success as finished', () => {
+    expect(integrityMicroDashboardCheckedKind('RUNNING')).toBe('started');
+    expect(integrityMicroDashboardCheckedKind('SUCCEEDED')).toBe('checked');
+    expect(integrityMicroDashboardCheckedKind('FAILED')).toBe('finished');
+    expect(integrityMicroDashboardCheckedKind('EXPIRED')).toBe('finished');
+  });
+
+  it('translates the system actor via the provided label', () => {
+    expect(integrityMicroDashboardActorLabel('system', 'système')).toBe('système');
+    expect(integrityMicroDashboardActorLabel('admin.docker', 'système')).toBe('admin.docker');
+  });
+
+  it('stops the spinner after a RUNNING poll halt (Julie m6)', () => {
+    expect(integrityMicroDashboardSpinnerActive('running', false)).toBe(true);
+    expect(integrityMicroDashboardSpinnerActive('running', true)).toBe(false);
+    expect(integrityMicroDashboardSpinnerActive('nightly-running', true)).toBe(false);
+    expect(integrityMicroDashboardSpinnerActive('intact', false)).toBe(false);
+  });
+});
+
+describe('applyIntegrityAsyncJobChange', () => {
+  it('reloads last-verdict on idle 204 for a RUNNING nightly glance', async () => {
+    const lastVerdict = job({
+      jobId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      finishedAt: '2026-10-13T11:55:00.000Z',
+      trigger: 'NIGHTLY',
+    });
+    let current: IntegrityAsyncJobResponse | null = job({
+      status: 'RUNNING',
+      busyHolder: 'NIGHTLY',
+      finishedAt: undefined,
+      chainStatus: null,
+    });
+    const setJob = vi.fn(
+      (
+        value:
+          | IntegrityAsyncJobResponse
+          | null
+          | ((prev: IntegrityAsyncJobResponse | null) => IntegrityAsyncJobResponse | null),
+      ) => {
+        current = typeof value === 'function' ? value(current) : value;
+      },
+    );
+    applyIntegrityAsyncJobChange(null, {
+      setJob,
+      loadLastVerdict: async () => lastVerdict,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(current).toEqual(lastVerdict);
   });
 });
 

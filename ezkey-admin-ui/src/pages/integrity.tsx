@@ -33,14 +33,14 @@ import {
   isSucceededVerifyJobForReportHydration,
 } from '@/lib/integrity-async-job-report-hydration';
 import {
-  applyIntegrityLastVerdictAfterIdle204,
+  applyIntegrityAsyncJobChange,
   decideIntegrityOpenAction,
   defaultAutoVerifyInstantRange,
   INTEGRITY_DEFAULT_MAX_WINDOW_DAYS,
   integrityReverifyDisabled,
+  integrityVerifyActionDisabled,
   integrityWindowDaysToHours,
   isIntegrityChainStatusNonGreen,
-  retainIntegrityGlanceOnIdle204,
 } from '@/lib/integrity-micro-dashboard';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
@@ -535,22 +535,12 @@ function IntegrityPanel({
     useState<RetroactiveIntegrityValidationRunResponse | null>(null);
   const [asyncJob, setAsyncJob] = useState<IntegrityAsyncJobResponse | null>(null);
   const handleAsyncJobChange = useCallback((next: IntegrityAsyncJobResponse | null) => {
-    if (next != null) {
-      setAsyncJob(next);
-      return;
-    }
-    // #788: 204 keeps a finished glance, but never escape-sticky (Patrick B2 —
-    // abandon → 204 must not leave Abandon + blocked Revérifier). Nightly
-    // RUNNING → 204 reloads `/last-verdict`.
-    setAsyncJob((prev) => retainIntegrityGlanceOnIdle204(prev));
-    void (async () => {
-      try {
-        const verdict = await getLastIntegrityVerdict();
-        setAsyncJob((prev) => applyIntegrityLastVerdictAfterIdle204(prev, verdict));
-      } catch {
-        setAsyncJob((prev) => applyIntegrityLastVerdictAfterIdle204(prev, null));
-      }
-    })();
+    // #788: 204 keeps a finished glance, but never escape-sticky (Patrick B2).
+    // Nightly RUNNING → 204 reloads `/last-verdict`.
+    applyIntegrityAsyncJobChange(next, {
+      setJob: setAsyncJob,
+      loadLastVerdict: getLastIntegrityVerdict,
+    });
   }, []);
   const asyncSlotRunning = asyncJob?.status === 'RUNNING';
   const asyncEscapeSticky =
@@ -574,16 +564,6 @@ function IntegrityPanel({
   const [openTimeChainNonGreen, setOpenTimeChainNonGreen] = useState<boolean | undefined>(
     undefined,
   );
-  const asyncStartsDisabledReason = asyncSlotRunning
-    ? t('integrity.asyncJob.startsDisabledTooltip')
-    : asyncEscapeSticky
-      ? t('integrity.asyncJob.startsDisabledEscapeTooltip')
-      : chainLoading
-        ? t('integrity.checking')
-        : !checkRange.from || !checkRange.to
-          ? t('integrity.selectDateRangeToRun')
-          : undefined;
-
   const [hydrationReloadNonce, setHydrationReloadNonce] = useState(0);
   const [hydrationFailedKind, setHydrationFailedKind] = useState<'chain' | 'entry' | null>(
     null,
@@ -942,6 +922,28 @@ function IntegrityPanel({
     return { from: createdAfter, to: createdBefore };
   }
 
+  const verifyRangeOverCap = (() => {
+    if (!checkRange.from || !checkRange.to) {
+      return false;
+    }
+    const api = integrityRangeToApiParams(checkRange);
+    if (!api.from || !api.to) {
+      return false;
+    }
+    return isIntegrityReportScopeOverCap(api.from, api.to, maxAsyncWindowHours);
+  })();
+  const asyncStartsDisabledReason = asyncSlotRunning
+    ? t('integrity.asyncJob.startsDisabledTooltip')
+    : asyncEscapeSticky
+      ? t('integrity.asyncJob.startsDisabledEscapeTooltip')
+      : chainLoading
+        ? t('integrity.checking')
+        : verifyRangeOverCap
+          ? t('integrity.microDashboard.rangeOverCapWarning', { maxWindowDays })
+          : !checkRange.from || !checkRange.to
+            ? t('integrity.selectDateRangeToRun')
+            : undefined;
+
   /**
    * Start VERIFY_CHAIN_RANGE. Pass Instant ISO bounds via {@code instantRange}
    * (D1 auto-run), or YYYY-MM-DD display bounds via {@code rangeOverride}.
@@ -976,11 +978,8 @@ function IntegrityPanel({
       return;
     }
 
+    // #743 / Julie C1: over-cap is inline warning + disabled button — no toast.
     if (isIntegrityReportScopeOverCap(createdAfter, createdBefore, maxAsyncWindowHours)) {
-      toast(
-        t('integrity.asyncJob.verifyAsyncWindowOverCap', { maxWindowDays }),
-        'error',
-      );
       return;
     }
 
@@ -1020,10 +1019,8 @@ function IntegrityPanel({
         }
         handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
       } else if (isIntegrityWindowOverCapError(e)) {
-        toast(
-          t('integrity.asyncJob.verifyAsyncWindowOverCap', { maxWindowDays }),
-          'error',
-        );
+        // Defense in depth — button should already be disabled for known over-cap.
+        return;
       } else {
         toast(getTranslatedApiError(e, t, t('integrity.errorChainCheck')), 'error');
       }
@@ -1036,14 +1033,18 @@ function IntegrityPanel({
     if (!checkRange.from || !checkRange.to) {
       return;
     }
+    const { from: createdAfter, to: createdBefore } = integrityRangeToApiParams(checkRange);
+    if (!createdAfter || !createdBefore) {
+      return;
+    }
+    // #743 / Julie C1: over-cap is inline warning + disabled button — no toast.
+    if (isIntegrityReportScopeOverCap(createdAfter, createdBefore, maxAsyncWindowHours)) {
+      return;
+    }
     setIntegrityLoading(true);
     setIntegrityReport(null);
     setIntegrityReportRange(null);
     try {
-      const { from: createdAfter, to: createdBefore } = integrityRangeToApiParams(checkRange);
-      if (!createdAfter || !createdBefore) {
-        return;
-      }
       await startIntegrityAsyncJob({
         type: 'VERIFY_ENTRY_HMAC_RANGE',
         from: createdAfter,
@@ -1057,10 +1058,8 @@ function IntegrityPanel({
         toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
         handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
       } else if (isIntegrityWindowOverCapError(e)) {
-        toast(
-          t('integrity.asyncJob.verifyAsyncWindowOverCap', { maxWindowDays }),
-          'error',
-        );
+        // Defense in depth — button should already be disabled for known over-cap.
+        return;
       } else {
         toast(getTranslatedApiError(e, t, t('integrity.errorIntegrityCheck')), 'error');
       }
@@ -1073,20 +1072,17 @@ function IntegrityPanel({
     if (!checkRange.from || !checkRange.to) {
       return;
     }
+    const { from: createdAfter, to: createdBefore } = integrityRangeToApiParams(checkRange);
+    if (!createdAfter || !createdBefore) {
+      return;
+    }
+    // #743 / Julie C1: over-cap is inline warning + disabled button — no toast.
+    if (isIntegrityReportScopeOverCap(createdAfter, createdBefore, maxAsyncWindowHours)) {
+      return;
+    }
     setValidationRunLoading(true);
     setValidationRunResult(null);
     try {
-      const { from: createdAfter, to: createdBefore } = integrityRangeToApiParams(checkRange);
-      if (!createdAfter || !createdBefore) {
-        return;
-      }
-      if (isIntegrityReportScopeOverCap(createdAfter, createdBefore, maxAsyncWindowHours)) {
-        toast(
-          t('integrity.asyncJob.validationWindowOverCap', { maxWindowDays }),
-          'error',
-        );
-        return;
-      }
       await startIntegrityAsyncJob({
         type: 'RUN_VALIDATION',
         from: createdAfter,
@@ -1100,10 +1096,7 @@ function IntegrityPanel({
         toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
         handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
       } else if (isIntegrityWindowOverCapError(e)) {
-        toast(
-          t('integrity.asyncJob.validationWindowOverCap', { maxWindowDays }),
-          'error',
-        );
+        return;
       } else {
         toast(getTranslatedApiError(e, t, t('integrity.validationRun.error')), 'error');
       }
@@ -1605,7 +1598,13 @@ function IntegrityPanel({
                 size="sm"
                 variant="secondary"
                 onClick={() => void runChainCheck()}
-                disabled={chainLoading || asyncStartsBlocked || !checkRange.from || !checkRange.to}
+                disabled={integrityVerifyActionDisabled({
+                  loading: chainLoading,
+                  asyncStartsBlocked,
+                  rangeFrom: checkRange.from,
+                  rangeTo: checkRange.to,
+                  rangeOverCap: verifyRangeOverCap,
+                })}
                 className="gap-1.5"
                 title={asyncStartsDisabledReason}
                 data-testid="integrity-verify-chain"
@@ -1619,7 +1618,13 @@ function IntegrityPanel({
                 size="sm"
                 variant="secondary"
                 onClick={() => void runIntegrityCheck()}
-                disabled={integrityLoading || asyncStartsBlocked || !checkRange.from || !checkRange.to}
+                disabled={integrityVerifyActionDisabled({
+                  loading: integrityLoading,
+                  asyncStartsBlocked,
+                  rangeFrom: checkRange.from,
+                  rangeTo: checkRange.to,
+                  rangeOverCap: verifyRangeOverCap,
+                })}
                 className="gap-1.5"
                 title={asyncStartsDisabledReason}
                 data-testid="integrity-verify-entry-range"
@@ -1642,12 +1647,13 @@ function IntegrityPanel({
                   <Button
                     size="sm"
                     onClick={() => void runRetroactiveValidation()}
-                    disabled={
-                      validationRunLoading
-                      || asyncStartsBlocked
-                      || !checkRange.from
-                      || !checkRange.to
-                    }
+                    disabled={integrityVerifyActionDisabled({
+                      loading: validationRunLoading,
+                      asyncStartsBlocked,
+                      rangeFrom: checkRange.from,
+                      rangeTo: checkRange.to,
+                      rangeOverCap: verifyRangeOverCap,
+                    })}
                     className="gap-1.5"
                     title={asyncStartsDisabledReason}
                     data-testid="integrity-run-validation"

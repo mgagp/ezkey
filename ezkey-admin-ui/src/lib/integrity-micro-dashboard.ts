@@ -365,6 +365,84 @@ export function integrityReverifyDisabled(args: {
 }
 
 /**
+ * Whether Vérifier la chaîne / entry / validation actions stay disabled.
+ * Includes range-over-cap so the control cannot fire a duplicate over-cap
+ * toast when the inline warning is already shown (Julie C1 / #743).
+ *
+ * @param args loading + slot + picker + over-cap
+ * @returns true when the verify action button is disabled
+ */
+export function integrityVerifyActionDisabled(args: {
+  loading: boolean;
+  asyncStartsBlocked: boolean;
+  rangeFrom?: string;
+  rangeTo?: string;
+  rangeOverCap: boolean;
+}): boolean {
+  return (
+    args.loading
+    || args.asyncStartsBlocked
+    || !args.rangeFrom
+    || !args.rangeTo
+    || args.rangeOverCap
+  );
+}
+
+/**
+ * Label kind for the micro-dashboard time cell (Julie m1).
+ * RUNNING → started; SUCCEEDED → checked; terminal non-success → finished.
+ *
+ * @param status async job status
+ * @returns which i18n label to use for the time cell
+ */
+export function integrityMicroDashboardCheckedKind(
+  status: IntegrityAsyncJobResponse['status'] | undefined,
+): 'started' | 'finished' | 'checked' {
+  if (status === 'RUNNING') {
+    return 'started';
+  }
+  if (status === 'SUCCEEDED') {
+    return 'checked';
+  }
+  return 'finished';
+}
+
+/**
+ * Whether the verdict tile should show a spinning Loader2 (Julie m6).
+ * After a `/current` poll halt, keep RUNNING copy but stop the spinner.
+ *
+ * @param tone glance tone
+ * @param pollHalted true when the RUNNING poll exhausted its error budget
+ * @returns whether animate-spin applies
+ */
+export function integrityMicroDashboardSpinnerActive(
+  tone: IntegrityMicroDashboardTone,
+  pollHalted: boolean,
+): boolean {
+  return (tone === 'running' || tone === 'nightly-running') && !pollHalted;
+}
+
+/**
+ * Display name for {@code startedByUsername} (Julie m4 — translate {@code system}).
+ *
+ * @param username raw username from the job DTO
+ * @param systemLabel localized word for the system actor
+ * @returns display string
+ */
+export function integrityMicroDashboardActorLabel(
+  username: string | null | undefined,
+  systemLabel: string,
+): string {
+  if (username == null || username === '') {
+    return '—';
+  }
+  if (username === 'system') {
+    return systemLabel;
+  }
+  return username;
+}
+
+/**
  * Glance to keep while idle {@code GET …/jobs/current} (204) awaits
  * {@code /last-verdict}. Must not retain escape-sticky rows — abandon → 204
  * would otherwise leave Abandon + blocked Revérifier forever (Patrick B2).
@@ -406,6 +484,43 @@ export function applyIntegrityLastVerdictAfterIdle204(
     return null;
   }
   return prev;
+}
+
+/**
+ * Apply a `/jobs/current` (or abandon) update, including idle-204 retain +
+ * `/last-verdict` reload. Used by the Integrity page and component tests
+ * (Patrick nit — do not copy the handler).
+ *
+ * @param next next job, or null on idle 204
+ * @param sink state setter + last-verdict loader
+ */
+export function applyIntegrityAsyncJobChange(
+  next: IntegrityAsyncJobResponse | null,
+  sink: {
+    setJob: (
+      value:
+        | IntegrityAsyncJobResponse
+        | null
+        | ((
+            prev: IntegrityAsyncJobResponse | null,
+          ) => IntegrityAsyncJobResponse | null),
+    ) => void;
+    loadLastVerdict: () => Promise<IntegrityAsyncJobResponse | null>;
+  },
+): void {
+  if (next != null) {
+    sink.setJob(next);
+    return;
+  }
+  sink.setJob((prev) => retainIntegrityGlanceOnIdle204(prev));
+  void (async () => {
+    try {
+      const verdict = await sink.loadLastVerdict();
+      sink.setJob((prev) => applyIntegrityLastVerdictAfterIdle204(prev, verdict));
+    } catch {
+      sink.setJob((prev) => applyIntegrityLastVerdictAfterIdle204(prev, null));
+    }
+  })();
 }
 
 /**

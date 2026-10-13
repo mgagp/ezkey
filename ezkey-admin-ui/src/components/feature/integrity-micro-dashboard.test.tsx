@@ -11,10 +11,7 @@ import {
 import { useCallback, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
-import {
-  applyIntegrityLastVerdictAfterIdle204,
-  retainIntegrityGlanceOnIdle204,
-} from '@/lib/integrity-micro-dashboard';
+import { applyIntegrityAsyncJobChange } from '@/lib/integrity-micro-dashboard';
 import { IntegrityMicroDashboard } from './integrity-micro-dashboard';
 
 vi.mock('react-i18next', () => ({
@@ -57,7 +54,7 @@ function job(
   };
 }
 
-/** Mirrors pages/integrity.tsx handleAsyncJobChange idle-204 retain rules. */
+/** Uses the same idle-204 handler as pages/integrity.tsx (Patrick nit). */
 function PageLikeHarness({
   initial,
   reverifyDisabled = false,
@@ -67,19 +64,10 @@ function PageLikeHarness({
 }) {
   const [current, setCurrent] = useState<IntegrityAsyncJobResponse | null>(initial);
   const onJobChange = useCallback((next: IntegrityAsyncJobResponse | null) => {
-    if (next != null) {
-      setCurrent(next);
-      return;
-    }
-    setCurrent((prev) => retainIntegrityGlanceOnIdle204(prev));
-    void (async () => {
-      try {
-        const verdict = await getLastIntegrityVerdict();
-        setCurrent((prev) => applyIntegrityLastVerdictAfterIdle204(prev, verdict));
-      } catch {
-        setCurrent((prev) => applyIntegrityLastVerdictAfterIdle204(prev, null));
-      }
-    })();
+    applyIntegrityAsyncJobChange(next, {
+      setJob: setCurrent,
+      loadLastVerdict: () => getLastIntegrityVerdict(),
+    });
   }, []);
 
   return (
@@ -159,6 +147,9 @@ describe('IntegrityMicroDashboard poll + abandon', () => {
     expect(screen.getByTestId('integrity-micro-dashboard').getAttribute('data-tone')).toBe(
       'did-not-complete',
     );
+    expect(screen.getByTestId('integrity-micro-dashboard-checked').getAttribute('data-checked-kind')).toBe(
+      'finished',
+    );
 
     fireEvent.click(screen.getByTestId('integrity-async-job-abandon'));
     fireEvent.click(screen.getByTestId('integrity-async-job-abandon-confirm'));
@@ -176,6 +167,7 @@ describe('IntegrityMicroDashboard poll + abandon', () => {
       trigger: 'NIGHTLY',
       finishedAt: undefined,
       chainStatus: null,
+      startedByUsername: 'system',
     });
     const lastVerdict = job({
       jobId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
@@ -184,11 +176,14 @@ describe('IntegrityMicroDashboard poll + abandon', () => {
       type: 'RUN_VALIDATION',
       chainStatus: 'OK',
     });
-    // Active refresh returns 204 (nightly ended); last-verdict has the row.
     getCurrentIntegrityAsyncJob.mockResolvedValue(null);
     getLastIntegrityVerdict.mockResolvedValue(lastVerdict);
 
     render(<PageLikeHarness initial={nightlyRunning} />);
+
+    expect(screen.getByTestId('integrity-micro-dashboard-checked').getAttribute('data-checked-kind')).toBe(
+      'started',
+    );
 
     await waitFor(() => {
       expect(getLastIntegrityVerdict).toHaveBeenCalled();
@@ -197,4 +192,5 @@ describe('IntegrityMicroDashboard poll + abandon', () => {
       );
     });
   });
+
 });
