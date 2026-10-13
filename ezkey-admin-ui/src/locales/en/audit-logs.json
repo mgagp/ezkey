@@ -309,10 +309,47 @@
       "hydrateChainError": "Could not load the chain verification result.",
       "hydrateEntryError": "Could not load the entry HMAC verification result.",
       "hydrateBusyHint": "Integrity verification is busy. Wait a moment, then use \"Reload report\". The detailed report will appear once it loads.",
-      "hydrateOverCapHint": "This verification covers more than 8 days. Its summary is shown above, but the detailed report (gaps, violations) is only available for 8 days or less. To see details, verify a range of 8 days or less.",
-      "verifyWindowOverCap": "Verification is limited to 8 days so its detailed report can be shown. Choose a range of 8 days or less.",
-      "validationWindowOverCap": "Validation is limited to 8 days. Choose a range of 8 days or less.",
+      "hydrateOverCapHint": "This verification covers more than {{maxSyncDays}} days. Its summary is shown above, but the detailed report (gaps, violations) is only available for {{maxSyncDays}} days or less. To see details, verify a range of {{maxSyncDays}} days or less.",
+      "verifyWindowOverCap": "Verification is limited to {{maxSyncDays}} days so its detailed report can be shown. Choose a range of {{maxSyncDays}} days or less.",
+      "verifyAsyncWindowOverCap": "Async verification is limited to {{maxWindowDays}} days. Choose a shorter range, or split the window.",
+      "validationWindowOverCap": "Validation is limited to {{maxWindowDays}} days. Choose a range of {{maxWindowDays}} days or less.",
+      "validationSyncWindowOverCap": "Synchronous validation is limited to {{maxSyncDays}} days. Choose a shorter range, or use an async job.",
       "reloadReport": "Reload report"
+    },
+    "microDashboard": {
+      "verdict": {
+        "intact": "Chain intact",
+        "gaps": "Undeclared gaps ({{count}})",
+        "violation": "Integrity violation ({{count}})",
+        "stale": "Last verdict {{when}} (stale)",
+        "running": "Check running…",
+        "nightlyRunning": "Nightly check running…",
+        "didNotComplete": "Check did not complete",
+        "idle": "No verdict yet"
+      },
+      "stat": {
+        "checkpoints": "Checkpoints",
+        "invalid": "Invalid",
+        "undeclaredGaps": "Undeclared gaps"
+      },
+      "checked": "Checked",
+      "reverify": "Re-verify",
+      "openRemediate": "Open Remediate",
+      "scope": {
+        "period": "Period: {{from}} → {{to}}"
+      },
+      "source": {
+        "auto": "auto on open",
+        "manual": "manual",
+        "nightly": "nightly",
+        "unknown": "unknown source"
+      },
+      "byAdmin": "by {{who}}",
+      "scopeMismatch": "The verdict covers a different period than the filter shown.",
+      "whatIsVerified": "What is verified?",
+      "whatIsVerifiedHelp": "Verifies checkpoint chaining, entry fingerprints, and time continuity for the period. It does not show the full cryptographic algorithm on screen.",
+      "ariaResultAvailable": "Verification result available: {{verdict}}",
+      "rangeOverCapWarning": "This range exceeds the {{maxWindowDays}}-day async limit and cannot be started."
     },
     "chainIntegrity": "Chain Integrity",
     "entryIntegrity": "Entry Integrity",

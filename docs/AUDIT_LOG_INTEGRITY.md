@@ -338,9 +338,15 @@ Both verification endpoints **require** `from` and `to` query parameters (ISO-86
 
 The Integrity page (`/integrity`, Global Admin only) drives gap declaration from detection, not from manual input:
 
-1. Open **Integrity**. Chain integrity **auto-runs** over the selected date
-   range, or a 7-day UI default when none is set. Use **Chain integrity** to re-run
-   after changing the range.
+1. Open **Integrity**. The page shows the **last known chain verdict** on a
+   compact micro-dashboard (job-backed counters — not a fresh heavy recompute).
+   When that verdict finished **less than 24 hours ago**, opening the page starts
+   **no** automatic job and **no** `GET /chain-integrity`. When there is no such
+   fresh verdict, chain integrity **auto-runs** over the **last 24 hours**
+   (aligned with the nightly window). Use **Re-verify** / **Verify chain** to
+   re-run after changing the range (explicit click never silently reuses a stale
+   result). The Vérifier date picker aligns to the verdict’s scope; if the filter
+   differs, the micro-dashboard says so.
 2. Review the **Undeclared gaps for consultation** list. For each row:
    - **Locate in timeline** focuses the checkpoint timeline on the gap window for context (toggle off with **Clear focus**).
    - **Declare** opens a dialog prefilled with the detected period and duration; the operator only enters a justification.

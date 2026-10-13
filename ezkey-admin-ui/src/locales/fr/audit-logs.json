@@ -309,10 +309,47 @@
       "hydrateChainError": "Impossible de charger le résultat de vérification de la chaîne.",
       "hydrateEntryError": "Impossible de charger le résultat de vérification HMAC des entrées.",
       "hydrateBusyHint": "La vérification d'intégrité est occupée. Patientez un instant, puis utilisez « Recharger le rapport ». Le rapport détaillé apparaîtra une fois chargé.",
-      "hydrateOverCapHint": "Cette vérification couvre plus de 8 jours. Son résumé est affiché ci-dessus, mais le rapport détaillé (lacunes, violations) n'est disponible que pour 8 jours ou moins. Pour voir le détail, vérifiez une période de 8 jours ou moins.",
-      "verifyWindowOverCap": "La vérification est limitée à 8 jours pour que son rapport détaillé puisse s'afficher. Choisissez une période de 8 jours ou moins.",
-      "validationWindowOverCap": "La validation est limitée à 8 jours. Choisissez une période de 8 jours ou moins.",
+      "hydrateOverCapHint": "Cette vérification couvre plus de {{maxSyncDays}} jours. Son résumé est affiché ci-dessus, mais le rapport détaillé (lacunes, violations) n'est disponible que pour {{maxSyncDays}} jours ou moins. Pour voir le détail, vérifiez une période de {{maxSyncDays}} jours ou moins.",
+      "verifyWindowOverCap": "La vérification est limitée à {{maxSyncDays}} jours pour que son rapport détaillé puisse s'afficher. Choisissez une période de {{maxSyncDays}} jours ou moins.",
+      "verifyAsyncWindowOverCap": "La vérification asynchrone est limitée à {{maxWindowDays}} jours. Choisissez une période plus courte, ou découpez la fenêtre.",
+      "validationWindowOverCap": "La validation est limitée à {{maxWindowDays}} jours. Choisissez une période de {{maxWindowDays}} jours ou moins.",
+      "validationSyncWindowOverCap": "La validation synchrone est limitée à {{maxSyncDays}} jours. Choisissez une période plus courte, ou utilisez un job asynchrone.",
       "reloadReport": "Recharger le rapport"
+    },
+    "microDashboard": {
+      "verdict": {
+        "intact": "Chaîne intacte",
+        "gaps": "Gaps non déclarés ({{count}})",
+        "violation": "Violation d'intégrité ({{count}})",
+        "stale": "Dernier verdict : {{when}} (périmé)",
+        "running": "Vérification en cours…",
+        "nightlyRunning": "Vérification nocturne en cours…",
+        "didNotComplete": "Vérification non aboutie",
+        "idle": "Aucun verdict pour l'instant"
+      },
+      "stat": {
+        "checkpoints": "Checkpoints",
+        "invalid": "Invalides",
+        "undeclaredGaps": "Gaps non déclarés"
+      },
+      "checked": "Vérifié",
+      "reverify": "Revérifier",
+      "openRemediate": "Ouvrir Remédier",
+      "scope": {
+        "period": "Période : {{from}} → {{to}}"
+      },
+      "source": {
+        "auto": "auto à l'ouverture",
+        "manual": "manuel",
+        "nightly": "nocturne",
+        "unknown": "source inconnue"
+      },
+      "byAdmin": "par {{who}}",
+      "scopeMismatch": "Le verdict porte sur une autre période que le filtre affiché.",
+      "whatIsVerified": "Qu'est-ce qui est vérifié ?",
+      "whatIsVerifiedHelp": "Vérifie l'enchaînement des checkpoints, les empreintes d'entrées et la continuité temporelle sur la période. L'algorithme cryptographique n'est pas affiché à l'écran.",
+      "ariaResultAvailable": "Résultat de vérification disponible : {{verdict}}",
+      "rangeOverCapWarning": "Cette période dépasse la limite asynchrone de {{maxWindowDays}} jours et ne peut pas être démarrée."
     },
     "chainIntegrity": "Intégrité de la chaîne",
     "entryIntegrity": "Intégrité des entrées",
