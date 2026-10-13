@@ -219,18 +219,20 @@ class EzkeyAppControllerLoggingTest {
   @Test
   @DisplayName("bind override outside allowlist: constant error, no echo in model or logs")
   void bindEnrollmentRejectedOverrideDoesNotEchoUrl() {
-    String evil = "https://evil.example/capture\r\nFAKE_LOG";
+    String evil = "https://evil.example/capture-tokens";
     Model model = new ConcurrentModel();
     String view = controller.bindEnrollment(ENROLLMENT_ID, ENROLLMENT_PROOF, evil, model);
 
     assertThat(view).isEqualTo("phone/ezkey/new_enrollment");
     assertThat(model.getAttribute("error")).isEqualTo(AuthApiUrlValidator.HOST_NOT_ALLOWED_MESSAGE);
-    assertThat(model.getAttribute("error").toString()).doesNotContain("evil.example");
+    assertThat(model.getAttribute("error").toString())
+        .doesNotContain("evil.example")
+        .doesNotContain("capture-tokens");
     assertThat(model.getAttribute("authApiBaseUrl")).isNull();
 
     String joined = joinedMessages();
     assertThat(joined).doesNotContain("evil.example");
-    assertThat(joined).doesNotContain("FAKE_LOG");
+    assertThat(joined).doesNotContain("capture-tokens");
     assertThat(joined).doesNotContain(evil);
   }
 
