@@ -17,6 +17,8 @@ For **what to test** on each URL (headers, Bruno, `curl`), see **[admin-ui-secur
 | JavaMelody collector (opt-in `--with-java-melody`) | `8088` | **No Caddy hop** — collector UI only |
 
 
+**Servlet session cookies on localhost:** each Spring servlet app sets a distinct `server.servlet.session.cookie.name` (Acme `EZKEY_ACME_SESSION`, demo-device `EZKEY_DEVICE_SESSION`, plus `EZKEY_*_API_SESSION` on the APIs) so browsers do not overwrite sessions across ports — shared default `JSESSIONID` caused Acme “session expired” after using the demo device (#799).
+
 **Default for day-to-day manual testing (Bruno, curl, OpenAPI links):** use **direct** URLs (`8080`, `9080`, `7080`, …). Same semantics as the services; minimal moving parts.
 
 **When to use Caddy ports (`19xxx` / `18xxx` / `17xxx`):** when you need to exercise the **reverse-proxy path**: baseline **response headers** on API JSON, `X-Forwarded-*`, `EZKEY_TRUSTED_PROXIES_CIDRS` / client IP behavior, or other **prod-like** behavior from the host.

@@ -3,6 +3,12 @@
 Demo-only browser app (port 8082). Properties bind from JAR `application.properties`, optional
 external `/app/config/` (volume `demo-app-acme-config`), and environment variables.
 
+## Session cookie
+
+| Property | Default | Obligation | Description |
+|----------|---------|------------|-------------|
+| `server.servlet.session.cookie.name` | `EZKEY_ACME_SESSION` | recommandé | Distinct from demo-device / APIs on localhost so browsers do not share one `JSESSIONID` across ports (#799). |
+
 ## Rate limiting (`ezkey.rate-limit.*`)
 
 | Property | Default | Obligation | Description |

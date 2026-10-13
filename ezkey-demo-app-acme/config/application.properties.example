@@ -8,6 +8,9 @@
 #   - Local: ./config/application.properties (next to JAR)
 # =============================================================================
 
+# Session cookie name is set in the JAR (EZKEY_ACME_SESSION). Do not set
+# server.servlet.session.cookie.name=JSESSIONID — that reintroduces #799 with demo-device.
+
 # EZKey Integration API URL (Ezkey SDK base URL — same REST paths as Admin API docs name)
 # Docker: internal hostname integration-api:7080 (see docker-compose demo-app-acme service)
 # Local IDE with Integration API exposed on host:
