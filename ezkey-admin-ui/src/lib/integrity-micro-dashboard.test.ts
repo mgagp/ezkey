@@ -179,20 +179,8 @@ describe('scope + helpers', () => {
 describe('startIntegrityRunningPoll', () => {
   it('polls immediately, then on the interval (avoids frozen Check running…)', () => {
     const poll = vi.fn();
-    const handles: Array<ReturnType<typeof setInterval>> = [];
-    const timers = {
-      setInterval: ((fn: TimerHandler, ms?: number) => {
-        const id = globalThis.setInterval(fn, ms);
-        handles.push(id);
-        return id;
-      }) as typeof setInterval,
-      clearInterval: (id: ReturnType<typeof setInterval>) => {
-        globalThis.clearInterval(id);
-      },
-    };
-
     vi.useFakeTimers();
-    const stop = startIntegrityRunningPoll(poll, 3000, timers);
+    const stop = startIntegrityRunningPoll(poll, 3000);
     expect(poll).toHaveBeenCalledTimes(1);
 
     vi.advanceTimersByTime(2999);
@@ -204,8 +192,5 @@ describe('startIntegrityRunningPoll', () => {
     vi.advanceTimersByTime(3000);
     expect(poll).toHaveBeenCalledTimes(2);
     vi.useRealTimers();
-    for (const id of handles) {
-      globalThis.clearInterval(id);
-    }
   });
 });

@@ -232,13 +232,20 @@ export function integrityWindowDaysToHours(days: number): number {
  * @param timers injectable timers for tests
  * @returns disposer that clears the interval
  */
+export type IntegrityRunningPollTimers = {
+  setInterval: (handler: () => void, timeout: number) => unknown;
+  clearInterval: (id: unknown) => void;
+};
+
 export function startIntegrityRunningPoll(
   poll: () => void,
   intervalMs: number = 3000,
-  timers: {
-    setInterval: typeof setInterval;
-    clearInterval: typeof clearInterval;
-  } = globalThis,
+  timers: IntegrityRunningPollTimers = {
+    setInterval: (handler, timeout) => globalThis.setInterval(handler, timeout),
+    clearInterval: (id) => {
+      globalThis.clearInterval(id as ReturnType<typeof globalThis.setInterval>);
+    },
+  },
 ): () => void {
   poll();
   const id = timers.setInterval(poll, intervalMs);
