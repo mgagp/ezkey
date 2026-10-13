@@ -242,16 +242,17 @@ Served by existing `GET /jobs/current` and `/jobs/{id}`. UI hydrates tiles from 
 
 ### PR 2 — UI
 
-- [ ] Micro-dashboard replaces text banner (D4 vocabulary + Walk Gate checks)
-- [ ] D1 24 h auto-run rule (**OQ2 / OQ3 APPROVED**)
-- [ ] Hydration from DTO counters; no `GET /chain-integrity` on open when fresh verdict
-- [ ] Aging relative time (dashboard 1 s clock pattern)
-- [ ] #696: verdict scope shown; picker aligns when hydrating from a job; mismatch copy when filter differs
-- [ ] Nightly-running / synthetic-busy state; no 409 toast on open
-- [ ] Tab: keep default-at-open non-green→Remédier; ban mid-work auto-switch; **Ouvrir Remédier** (**OQ1 APPROVED**)
-- [ ] UI cap from config (drop `INTEGRITY_REPORT_MAX_WINDOW_HOURS = 193`); optional early warning in the range picker
-- [ ] Update `docs/AUDIT_LOG_INTEGRITY.md:336`
-- [ ] EN + FR i18n; no server `resultSummary` in the glance
+- [x] Micro-dashboard replaces text banner (D4 vocabulary + Walk Gate checks) — draft PR #786
+- [x] D1 24 h auto-run rule (**OQ2 / OQ3 APPROVED**)
+- [x] Hydration from DTO counters; no `GET /chain-integrity` on open when fresh verdict
+- [x] Aging relative time (dashboard 1 s clock pattern)
+- [x] #696: verdict scope shown; picker aligns when hydrating from a job; mismatch copy when filter differs
+- [x] Nightly-running / synthetic-busy state; no 409 toast on open
+- [x] Tab: keep default-at-open non-green→Remédier; ban mid-work auto-switch; **Ouvrir Remédier** (**OQ1 APPROVED**)
+- [x] UI cap from config (drop hard-coded 193 h as sole source; bootstrap `maxWindowDays` / `maxSyncWindowDays`); optional early warning in the range picker
+- [x] Update `docs/AUDIT_LOG_INTEGRITY.md` operator workflow (was `:336`)
+- [x] EN + FR i18n; no server `resultSummary` in the glance
+- [ ] Walk Gate PASS on walkable SHA (`WALK-2026-10-09-integrity-cut3`)
 
 ---
 
