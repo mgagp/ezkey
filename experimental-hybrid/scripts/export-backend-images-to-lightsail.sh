@@ -67,8 +67,11 @@ Options:
   --sync-operator-files  After load, scp docker-compose.yml, target-aware Caddyfile, clean-start.sh
                          + host mounts including scripts/ops/ (no volume wipe).
   --remote-up            After load/sync, on the VM: docker compose up -d (rolling apply; DB preserved).
-  --clean-start          After load, sync and run clean-start.sh (DESTRUCTIVE). Not with --sync-operator-files
-                         or --remote-up.
+                         With --sync-operator-files: sha256-verify Caddyfile + force-recreate caddy
+                         (bind mount; plain up -d does not reload Caddy).
+  --clean-start          After load, sync and run clean-start.sh (DESTRUCTIVE). Community requires
+                         EZKEY_CONFIRM_WIPE=ezkey-online (first commissioning only). Not with
+                         --sync-operator-files or --remote-up.
   --remove-remote-tars   After successful load, remove tar files on the remote home directory.
   --dry-run              Print commands only (skips local docker image checks).
   -h, --help             Show this help.
@@ -111,6 +114,11 @@ if [[ -n "$DO_CLEAN_START" ]] && { [[ -n "$SYNC_OPERATOR_FILES" ]] || [[ -n "$RE
   echo "  For a no-wipe upgrade (Caddy, Compose, images, migration), use --sync-operator-files and/or --remote-up only." >&2
   echo "  For a disposable full reset, use --clean-start alone." >&2
   exit 1
+fi
+
+# Community --clean-start wipes Postgres; require explicit confirmation (first commissioning only).
+if [[ -n "$DO_CLEAN_START" ]]; then
+  lightsail_require_community_wipe_confirm
 fi
 
 IMAGES=()
@@ -238,15 +246,24 @@ if [[ -n "$REMOVE_REMOTE_TARS" ]]; then
   run ssh "${SSH_HOST}" "rm -f${remote_paths}"
 fi
 
+CADDY_SRC_FOR_VERIFY=""
 if [[ -n "$SYNC_OPERATOR_FILES" && -z "$DO_CLEAN_START" ]]; then
   sync_operator_files "sync operator files (no clean-start)"
+  CADDY_SRC_FOR_VERIFY="$(lightsail_caddyfile_source_for_sync "${LIGHTSAIL_LOCAL_DIR}")"
 fi
 
 if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
   echo ""
   echo "→ remote rolling stack (docker compose up -d) on ${SSH_HOST}"
-  # Recreate containers so :latest and updated Compose/Caddy take effect; Postgres keeps postgres-data.
+  # Recreate containers so :latest and updated Compose take effect; Postgres keeps postgres-data.
+  # Caddyfile is a bind mount — up -d alone does not reload caddy when only the file changed.
   run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && docker compose up -d --remove-orphans"
+  if [[ -n "$CADDY_SRC_FOR_VERIFY" ]]; then
+    local_sha="$(sha256sum "${CADDY_SRC_FOR_VERIFY}" | awk '{print $1}')"
+    echo ""
+    echo "→ verify remote Caddyfile sha256=${local_sha} and force-recreate caddy (bind-mount)"
+    run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; remote_sha=\$(sha256sum Caddyfile | awk '{print \$1}'); if [[ \"\${remote_sha}\" != '${local_sha}' ]]; then echo \"error: remote Caddyfile sha256=\${remote_sha} != local ${local_sha}\" >&2; exit 1; fi; docker compose up -d --no-deps --force-recreate caddy"
+  fi
 fi
 
 if [[ -n "$DO_CLEAN_START" ]]; then

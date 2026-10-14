@@ -86,12 +86,12 @@ Community Caddy site blocks: [`experimental-hybrid/lightsail/Caddyfile.ezkey-onl
 Do these **after** VM create → ports → Docker bootstrap (below). No secrets in git; Origin CA / DNS / Pages stay human OK.
 
 1. **Hostnames** — use the table above (Caddy + DNS + Origin CA SANs must match).
-2. **Community Caddyfile on the VM** — Compose bind-mounts `./Caddyfile`. Keep the repo’s EXP1 [`Caddyfile`](../../experimental-hybrid/lightsail/Caddyfile) unchanged. With `--target community`, [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) `--sync-operator-files` installs `Caddyfile.ezkey-online` as remote `Caddyfile` (never the EXP1 file — #812). Manual install if needed:
+2. **Community Caddyfile on the VM** — Compose bind-mounts `./Caddyfile`. Keep the repo’s EXP1 [`Caddyfile`](../../experimental-hybrid/lightsail/Caddyfile) unchanged. With `--target community`, [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) `--sync-operator-files` installs `Caddyfile.ezkey-online` as remote `Caddyfile` (never the EXP1 file — #812). Because the file is bind-mounted, plain `docker compose up -d` does **not** recreate caddy — use `--sync-operator-files --remote-up` (sha256 verify + `force-recreate caddy`) or recreate caddy manually after a sync-only pass:
    ```bash
-   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --sync-operator-files
-   # or:
-   scp experimental-hybrid/lightsail/Caddyfile.ezkey-online \
-     ezkey-online:ezkey/experimental-hybrid/lightsail/Caddyfile
+   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh \
+     --target community --sync-operator-files --remote-up
+   # or sync-only, then:
+   # ssh ezkey-online 'cd ~/ezkey/experimental-hybrid/lightsail && docker compose up -d --no-deps --force-recreate caddy'
    ```
 3. **Origin CA** — Cloudflare Origin Server cert covering all API + demo hostnames above; place `origin.pem` / `origin-key.pem` in `~/ezkey/experimental-hybrid/lightsail/caddy-certs/` on the VM (`chmod 700` dir, `chmod 600` key). Never commit.
 4. **DNS** — Cloudflare **A** records (orange / proxied) for those API/demo names → instance public IP (from `./scripts/lightsail/status.sh`). Admin UI name points at Pages, not the Lightsail IP.
@@ -105,12 +105,13 @@ Do these **after** VM create → ports → Docker bootstrap (below). No secrets 
    ```bash
    ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --include-demo-acme
    ```
-7. **Remote clean-start** (destructive first bring-up) — after layout + `.env` + certs + images:
+7. **Remote clean-start** — **first commissioning only** (destructive: `docker compose down -v` wipes Postgres). Not for upgrades. Requires `EZKEY_CONFIRM_WIPE=ezkey-online`:
    ```bash
-   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --include-demo-acme --clean-start
-   # --target community sync already installs Caddyfile.ezkey-online as remote Caddyfile (#812)
+   EZKEY_CONFIRM_WIPE=ezkey-online \
+     ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh \
+     --target community --include-demo-acme --clean-start
    ```
-   Or run `./clean-start.sh` on the VM from `~/ezkey/experimental-hybrid/lightsail/` after files are in place (see playbook).
+   Or run `./clean-start.sh` on the VM from `~/ezkey/experimental-hybrid/lightsail/` after files are in place (see playbook). For kept DBs use `--sync-operator-files --remote-up` / `full-exp-environment-upgrade.sh --target community rolling`.
 8. **Pages Admin UI** — separate Cloudflare Pages project (or branch) for `admin-ui.ezkey.online` with `VITE_API_BASE_URL=https://admin-api.ezkey.online` and Mode B UI flag above. Not automated by `scripts/lightsail/`.
 
 ---
@@ -311,14 +312,17 @@ Short operator checklist verified against repo scripts/compose (not live VM obse
    `LIGHTSAIL_SSH_HOST` (no silent `ezkey` default — #812). With `--target community`,
    `--sync-operator-files` / `--clean-start` install `Caddyfile.ezkey-online` as remote
    `Caddyfile` (never the EXP1 file). With `--target exp1`, they install the EXP1 `Caddyfile`.
+   A known Host alias that belongs to the *other* target is refused (no silent host override).
+   After `--sync-operator-files --remote-up`, the script verifies remote Caddyfile sha256 and
+   `force-recreate`s caddy (bind mount; plain `up -d` does not reload Caddy).
 2. **Grants container** — Compose service `db-grants` (`container_name: ezkey-exp-db-grants` in
    [`docker-compose.yml`](../../experimental-hybrid/lightsail/docker-compose.yml)) applies
    [`scripts/db/apply-grants.sql`](../../scripts/db/apply-grants.sql) after migration. APIs depend on
    it (`condition: service_completed_successfully`). Do not skip or remove it on a fresh bring-up.
-3. **Never `--clean-start` on a kept community DB** — `--clean-start` is destructive
-   (`docker compose down -v`, then remote `clean-start.sh`). For upgrades that keep Postgres data,
-   use rolling export (`--sync-operator-files` + `--remote-up`, or
-   `full-exp-environment-upgrade.sh rolling`). First bring-up / disposable reset only.
+3. **Never `--clean-start` on a kept community DB** — `--clean-start` / `full` are destructive
+   (`docker compose down -v`). Community requires `EZKEY_CONFIRM_WIPE=ezkey-online` and is for
+   **first commissioning only**. For upgrades: `--target community rolling` (or
+   `--sync-operator-files` + `--remote-up`).
 4. **Docker `json-file` log rotation** — Compose sets `x-logging` on every service
    (`max-size: 20m`, `max-file: 3` — sized for a ~4 GB RAM / ~80 GB-disk VM; ceiling ≈ 480 MiB).
    Rotation applies only when a container is **created**; it does not resize logging on an

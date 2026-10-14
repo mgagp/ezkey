@@ -205,12 +205,15 @@ if [[ -n "${CREATE_KEY_PAIR}" ]]; then
   echo "  create-key-pair=yes (private key → ~/.ssh/lightsail-${KEY_PAIR_NAME}.pem, never echoed)"
 fi
 
-# Existence check when aws is available (required on --apply; best-effort on dry-run).
-if command -v aws >/dev/null 2>&1; then
+# Existence check only on --apply (dry-run must not touch the network).
+if [[ -n "${APPLY}" ]]; then
+  lightsail_require_aws_cli
   if lightsail_instance_exists "${INSTANCE_NAME}"; then
     lightsail_die "instance '${INSTANCE_NAME}' already exists. Pick another --name (e.g. community-ezkey) or delete first."
   fi
   echo "  existence check: name '${INSTANCE_NAME}' is free (or get-instance not authorized / not found)"
+else
+  echo "  [dry-run] skipping get-instance existence check (no network)"
 fi
 
 ensure_key_pair() {
@@ -218,8 +221,9 @@ ensure_key_pair() {
     return 0
   fi
 
-# Key pair checks need aws; skip on dry-run when aws is absent.
-  if command -v aws >/dev/null 2>&1; then
+# Key pair existence probe only on --apply (dry-run must not touch the network).
+  if [[ -n "${APPLY}" ]]; then
+    lightsail_require_aws_cli
     if lightsail_aws get-key-pair --key-pair-name "${KEY_PAIR_NAME}" >/dev/null 2>&1; then
       echo "Key pair '${KEY_PAIR_NAME}' already exists in Lightsail; reusing."
       if [[ -n "${IMPORT_PUBLIC_KEY}" || -n "${CREATE_KEY_PAIR}" ]]; then
@@ -227,8 +231,8 @@ ensure_key_pair() {
       fi
       return 0
     fi
-  elif [[ -z "${APPLY}" ]]; then
-    echo "[dry-run] skipping get-key-pair (aws CLI not on PATH)"
+  else
+    echo "[dry-run] skipping get-key-pair (no network)"
   fi
 
   if [[ -n "${IMPORT_PUBLIC_KEY}" ]]; then

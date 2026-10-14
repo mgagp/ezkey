@@ -136,7 +136,12 @@ lightsail_resolve_ssh_target() {
     local mapped
     mapped="$(lightsail_ssh_host_for_target "${declared_target}")"
     if [[ -n "${host_from_env}" && "${host_from_env}" != "${mapped}" ]]; then
-      # Explicit host wins when both are set, but target stays for Caddyfile selection.
+      local host_inferred
+      host_inferred="$(lightsail_infer_target_from_host "${host_from_env}")"
+      if [[ -n "${host_inferred}" && "${host_inferred}" != "${declared_target}" ]]; then
+        lightsail_die "LIGHTSAIL_SSH_HOST=${host_from_env} belongs to target '${host_inferred}', but --target is '${declared_target}'. Refusing mismatch that would push the wrong Caddyfile (#812)."
+      fi
+      # Custom (unknown) host may override mapped alias; target still selects Caddyfile.
       LIGHTSAIL_SSH_HOST="${host_from_env}"
       echo "note: LIGHTSAIL_SSH_HOST=${host_from_env} overrides mapped host ${mapped} for --target ${declared_target}" >&2
     else
@@ -154,6 +159,17 @@ lightsail_resolve_ssh_target() {
   fi
 
   lightsail_die "no Lightsail SSH target declared. Pass --target community|exp1 or set LIGHTSAIL_SSH_HOST (see docs/lightsail/community-host.md; #812)."
+}
+
+# Refuse community Postgres wipe unless the operator explicitly confirms.
+# Required value: EZKEY_CONFIRM_WIPE=ezkey-online (the community SSH Host alias).
+lightsail_require_community_wipe_confirm() {
+  if [[ "${LIGHTSAIL_TARGET:-}" != "community" ]]; then
+    return 0
+  fi
+  if [[ "${EZKEY_CONFIRM_WIPE:-}" != "${LIGHTSAIL_SSH_HOST_COMMUNITY}" ]]; then
+    lightsail_die "refusing community wipe (--clean-start / full). Set EZKEY_CONFIRM_WIPE=${LIGHTSAIL_SSH_HOST_COMMUNITY} for first commissioning only (wipes Postgres). Prefer --target community rolling for upgrades (#812)."
+  fi
 }
 
 # Local Caddyfile path to scp as remote Caddyfile for the resolved target.

@@ -13,10 +13,13 @@
 #   ./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target exp1 full
 #   ./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --help
 #
-# With no arguments after --target, or with the "full" subcommand, runs the destructive "everything"
-# preset (build + export + clean-start + remove remote tars + deploy UI production + build).
+# Subcommand is required: full | rolling (or pass explicit --build/--export/… flags).
+# No subcommand prints help — it does NOT default to destructive full (#812 review).
 #
-# Subcommand "rolling" (EXPerimental / Lightsail, no database wipe):
+# Subcommand "full" (destructive): build + export + clean-start + remove remote tars + deploy UI
+# production + build. For --target community, requires EZKEY_CONFIRM_WIPE=ezkey-online.
+#
+# Subcommand "rolling" (no database wipe):
 #   --build --export --include-demo-acme is available via --include-demo-acme
 #   default: build migration + all APIs, export all images including migration, --remove-remote-tars,
 #   --sync-operator-files, --remote-up on the resolved SSH host (Caddy + Compose from repo, then
@@ -25,6 +28,7 @@
 # Environment:
 #   LIGHTSAIL_SSH_HOST   explicit OpenSSH Host alias (alternative to --target)
 #   LIGHTSAIL_TARGET     community|exp1 (optional if inferred from host or --target)
+#   EZKEY_CONFIRM_WIPE   must be ezkey-online for community full / --clean-start
 #   EXPORT_DIR           passed through to export script (default: docker/export)
 #   Root .env            CLOUDFLARE_* and VITE_API_BASE_URL for UI deploy (see scripts/cloudflare/*.sh)
 #   PREVIEW_BRANCH       for preview UI deploy (default: timestamped); set e.g. exp1-admin-ui-preview
@@ -64,11 +68,12 @@ SSH target (required when exporting — no silent default; #812):
   or set LIGHTSAIL_SSH_HOST explicitly
 
   full             Destructive preset: --build --export --clean-start --remove-remote-tars
-                   --deploy-ui --ui-production --ui-build (same as no subcommand after --target).
-  (no subcommand)  Same as: $0 --target … full
+                   --deploy-ui --ui-production --ui-build. Community requires
+                   EZKEY_CONFIRM_WIPE=${LIGHTSAIL_SSH_HOST_COMMUNITY}.
   rolling          No-wipe Lightsail stack upgrade: --build --export --remove-remote-tars
                    --sync-operator-files --remote-up (Caddy, Compose, migration + backends + demo
-                   if --include-demo-acme, then remote docker compose up -d). Does NOT run clean-start.
+                   if --include-demo-acme, then remote docker compose up -d + caddy force-recreate).
+  (no subcommand)  Prints this help and exits (does not imply full).
 
   After "full" or "rolling", option flags can override or add, e.g.:
     $0 --target exp1 full --ui-preview
@@ -81,7 +86,8 @@ SSH target (required when exporting — no silent default; #812):
   --sync-operator-files  Pass to export: scp lightsail docker-compose.yml, target-aware Caddyfile, clean-start.sh
   --remote-up        Pass to export: ssh to VM and run docker compose up -d (rolling apply, DB kept)
   --include-demo-acme  Pass to export and add demo-app-acme to the local docker compose build
-  --clean-start      Pass to export (DESTRUCTIVE: remote clean-start.sh). Incompatible with rolling preset.
+  --clean-start      Pass to export (DESTRUCTIVE: remote clean-start.sh). Community requires
+                     EZKEY_CONFIRM_WIPE=${LIGHTSAIL_SSH_HOST_COMMUNITY}. Incompatible with rolling.
   --remove-remote-tars  Pass to export
   --dry-run          Pass --dry-run to export; skip local docker build and UI deploy
   --deploy-ui        Deploy Admin UI to Cloudflare (requires CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID)
@@ -95,12 +101,12 @@ Preset "full" enables:
   --build --export --clean-start --remove-remote-tars --deploy-ui --ui-production --ui-build
 
 Examples:
-  $0 --target exp1
   $0 --target exp1 full
   $0 --target exp1 rolling
   $0 --target community rolling --dry-run
   $0 --target exp1 rolling --include-demo-acme
   $0 --target community --build --export --sync-operator-files --remote-up --remove-remote-tars
+  EZKEY_CONFIRM_WIPE=${LIGHTSAIL_SSH_HOST_COMMUNITY} $0 --target community full
   $0 --target exp1 --export --clean-start
   $0 --deploy-ui --ui-build
 EOF
@@ -131,18 +137,13 @@ set -- "${ARGS[@]+"${ARGS[@]}"}"
 if [[ $# -gt 0 && "$1" == "rolling" ]]; then
   PRESET_ROLLING=1
   shift
-elif [[ $# -eq 0 ]]; then
-  # No subcommand: treat as full only when export/build will run — but presets need a target.
-  # Keep historical "no args = full" only when a target or host is already declared; otherwise help.
-  if [[ -n "${DECLARED_TARGET}" || -n "${LIGHTSAIL_SSH_HOST:-}" ]]; then
-    PRESET_FULL=1
-  else
-    usage >&2
-    lightsail_die "no Lightsail SSH target declared. Pass --target community|exp1 or set LIGHTSAIL_SSH_HOST (#812)."
-  fi
-elif [[ "${1:-}" == "full" ]]; then
+elif [[ $# -gt 0 && "$1" == "full" ]]; then
   PRESET_FULL=1
   shift
+elif [[ $# -eq 0 ]]; then
+  # No subcommand: print help. Never imply destructive full (#812 review).
+  usage
+  exit 0
 fi
 
 if [[ -n "$PRESET_FULL" ]]; then
@@ -199,6 +200,14 @@ if [[ -n "$DO_EXPORT" ]]; then
   lightsail_resolve_ssh_target "${DECLARED_TARGET}"
   export LIGHTSAIL_SSH_HOST
   export LIGHTSAIL_TARGET
+fi
+
+# Community wipe guard: full preset or --clean-start requires EZKEY_CONFIRM_WIPE=ezkey-online.
+if [[ -n "$DO_CLEAN_START" ]]; then
+  if [[ -z "$DO_EXPORT" ]]; then
+    lightsail_resolve_ssh_target "${DECLARED_TARGET}"
+  fi
+  lightsail_require_community_wipe_confirm
 fi
 
 cd "${REPO_ROOT}"
