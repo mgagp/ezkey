@@ -93,6 +93,8 @@ admin-api.ezkey.online {
 				delete token
 				delete proof
 				delete challenge
+				delete waiterSecret
+				delete code
 			}
 			resp_headers delete
 		}

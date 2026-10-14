@@ -294,23 +294,33 @@ public class AuthAttemptRespondService {
   /**
    * Updates the authentication attempt status based on the user's decision.
    *
-   * <p>This method sets the final status of the authentication attempt based on whether the user
-   * approved or denied the authentication request.
+   * <p>Uses a conditional {@code UPDATE … WHERE status = READ} so a concurrent cancel that already
+   * committed {@code EXPIRED} cannot be overwritten by approve/deny (#833 m1 re-review).
    *
    * @param authAttempt the authentication attempt to update
+   * @param enrollment the enrollment (last-used timestamp on accept)
    * @param request the authentication response request
+   * @throws AuthAttemptStateConflictException if the attempt is no longer READ (cancel won)
    */
   private void updateAttemptStatus(
       AuthAttempt authAttempt, Enrollment enrollment, AuthAttemptRespondRequest request) {
-    // Update authorization attempt based on user decision
-    if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())) {
-      authAttempt.setAuthAttemptStatus(AuthAttemptStatus.ACCEPTED);
+    AuthAttemptStatus newStatus =
+        Boolean.TRUE.equals(request.getAuthAttemptAccepted())
+            ? AuthAttemptStatus.ACCEPTED
+            : AuthAttemptStatus.REJECTED;
+    int updated =
+        authAttemptRepository.updateStatusIfCurrent(
+            authAttempt.getAuthAttemptId(), AuthAttemptStatus.READ, newStatus);
+    if (updated != 1) {
+      throw new AuthAttemptStateConflictException(
+          "Cannot respond to authentication attempt: status is no longer READ"
+              + " (cancelled or already finalized)");
+    }
+    authAttempt.setAuthAttemptStatus(newStatus);
+    if (newStatus == AuthAttemptStatus.ACCEPTED) {
       enrollment.setLastUsedAt(OffsetDateTime.now());
       enrollmentRepository.save(enrollment);
-    } else {
-      authAttempt.setAuthAttemptStatus(AuthAttemptStatus.REJECTED);
     }
-    authAttemptRepository.save(authAttempt);
   }
 
   /**

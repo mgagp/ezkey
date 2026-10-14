@@ -166,16 +166,17 @@ public interface AuthAttemptRepository
       @Param("now") java.time.OffsetDateTime now);
 
   /**
-   * Updates the status of an authorization attempt if it's currently pending.
+   * Atomically updates status only when the attempt is still in {@code currentStatus}.
    *
-   * <p>This method atomically updates the status from PENDING to the new status, preventing race
-   * conditions in concurrent scenarios.
+   * <p>Used by respond to transition {@code READ → ACCEPTED/REJECTED} without a read-modify-write
+   * gap against cancel (#833 m1).
    *
    * @param authAttemptId the authorization attempt ID to update
+   * @param currentStatus required current status (typically READ)
    * @param newStatus the new status to set
-   * @return the number of rows affected (1 if updated, 0 if not pending)
+   * @return the number of rows affected (1 if updated, 0 if status mismatched or missing)
    */
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
       "UPDATE AuthAttempt a SET a.authAttemptStatus = :newStatus WHERE a.authAttemptId ="
           + " :authAttemptId AND a.authAttemptStatus = :currentStatus")

@@ -228,6 +228,37 @@ class AdminRateLimitFilterTest {
   }
 
   @Test
+  @DisplayName("Chunked wait body without Content-Length is accepted and capped (#833 n3)")
+  void passwordlessWait_chunkedBodyWithoutContentLength_ok() throws Exception {
+    byte[] body =
+        "{\"authAttemptId\":11,\"waiterSecret\":\"chunked\"}".getBytes(StandardCharsets.UTF_8);
+    // Spring MockHttpServletRequest derives getContentLength() from setContent(); override to
+    // simulate Transfer-Encoding: chunked with no Content-Length (filter reads the stream only).
+    MockHttpServletRequest request =
+        new MockHttpServletRequest("POST", PASSWORDLESS_WAIT_PATH) {
+          @Override
+          public int getContentLength() {
+            return -1;
+          }
+
+          @Override
+          public long getContentLengthLong() {
+            return -1L;
+          }
+        };
+    request.setRemoteAddr("203.0.113.221");
+    request.setContentType("application/json");
+    request.setContent(body);
+    request.addHeader("Transfer-Encoding", "chunked");
+    request.removeHeader("Content-Length");
+    assertThat(request.getContentLength()).isEqualTo(-1);
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    filter.doFilter(request, response, filterChain);
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
+    verify(filterChain).doFilter(any(HttpServletRequest.class), any(HttpServletResponse.class));
+  }
+
+  @Test
   @DisplayName("Rotating IPs on wait trip the unkeyed wait backstop (#833 C2)")
   void rotatingIpsOnWait_tripWaitBackstop() throws Exception {
     properties.getPasswordlessWait().setRequests(100);

@@ -294,12 +294,7 @@ public class AdminRateLimitFilter implements Filter {
     Integer authAttemptId = extractAuthAttemptId(body);
     HttpServletRequest requestToForward = new CachedBodyHttpServletRequest(req, body);
 
-    RateLimitResult ipResult = checkPasswordlessWaitIpRateLimit(clientId);
-    if (!ipResult.allowed) {
-      rejectWait(res, clientIdForLog, "passwordless-wait-ip", ipResult);
-      return;
-    }
-
+    // Order: ip+id → backstop → per-IP (create per-IP bucket only after backstop; #833 n4).
     String attemptBucketKey = passwordlessWaitBucketKey(authAttemptId, clientId);
     RateLimitResult attemptResult = checkPasswordlessWaitAttemptRateLimit(attemptBucketKey);
     if (!attemptResult.allowed) {
@@ -316,6 +311,12 @@ public class AdminRateLimitFilter implements Filter {
       meterRegistry.counter(BACKSTOP_METRIC, "endpoint", "passwordless-wait").increment();
       res.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
       res.setHeader("Retry-After", String.valueOf(backstop.retryAfterSeconds));
+      return;
+    }
+
+    RateLimitResult ipResult = checkPasswordlessWaitIpRateLimit(clientId);
+    if (!ipResult.allowed) {
+      rejectWait(res, clientIdForLog, "passwordless-wait-ip", ipResult);
       return;
     }
 

@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -84,6 +85,9 @@ class AuthAttemptRespondServiceTest {
     when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
     when(signatureService.signIntegrationPayload(any(), eq(INTEGRATION_PRIVATE_KEY)))
         .thenReturn("signed-result-b64");
+    when(authAttemptRepository.updateStatusIfCurrent(
+            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.ACCEPTED)))
+        .thenReturn(1);
 
     AuthAttemptRespondRequest request = new AuthAttemptRespondRequest();
     request.setAuthAttemptId(42);
@@ -103,6 +107,9 @@ class AuthAttemptRespondServiceTest {
         AuthAttemptSignaturePayload.buildRespondResultPayload(
             "proof-token-xyz", 42, AuthenticationResult.APPROVED, "Auth attempt completed");
     assertThat(payloadCaptor.getValue()).isEqualTo(expectedPayload);
+    verify(authAttemptRepository)
+        .updateStatusIfCurrent(42, AuthAttemptStatus.READ, AuthAttemptStatus.ACCEPTED);
+    verify(authAttemptRepository, never()).save(any());
   }
 
   @Test
@@ -141,6 +148,43 @@ class AuthAttemptRespondServiceTest {
     assertThat(response.getMessage()).isEqualTo("The response could not be processed.");
     assertThat(response.getAuthAttemptProofTokenResultSignedByIntegration())
         .isEqualTo("signed-failed-result-b64");
+  }
+
+  @Test
+  @DisplayName("Cancel wins race: updateStatusIfCurrent 0 rows → state conflict (#833 m1)")
+  void respond_cancelWonRace_raisesStateConflict() {
+    AuthAttempt attempt = new AuthAttempt();
+    attempt.setAuthAttemptId(42);
+    attempt.setEnrollmentId(7);
+    attempt.setAuthAttemptStatus(AuthAttemptStatus.READ);
+    attempt.setAuthAttemptProofToken("proof-token-xyz");
+    attempt.setExpiresAt(OffsetDateTime.now().plusHours(1));
+    attempt.setCreatedAt(OffsetDateTime.parse("2025-01-01T12:00:00Z"));
+
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(7);
+    enrollment.setDevicePublicKey(DEVICE_PUBLIC_KEY);
+    enrollment.setIntegrationPrivateKey(INTEGRATION_PRIVATE_KEY);
+
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
+    when(authAttemptRepository.updateStatusIfCurrent(
+            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.ACCEPTED)))
+        .thenReturn(0);
+
+    AuthAttemptRespondRequest request = new AuthAttemptRespondRequest();
+    request.setAuthAttemptId(42);
+    request.setAuthAttemptAccepted(true);
+    request.setAuthAttemptProofTokenSignedByDevice("device-sig");
+
+    assertThatThrownBy(() -> respondService.respond(request))
+        .isInstanceOf(AuthAttemptStateConflictException.class)
+        .hasMessageContaining("no longer READ");
+    verify(authAttemptRepository, never()).save(any());
+    verify(enrollmentRepository, never()).save(any());
   }
 
   @Test
