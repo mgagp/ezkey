@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.authattempt.mapper.AuthAttemptIntegrationApiMapper;
@@ -51,6 +52,7 @@ class IntegrationApiStatelessSessionWebMvcTest {
   @MockitoBean private EnrollmentRepository enrollmentRepository;
   @MockitoBean private IntegrationRepository integrationRepository;
   @MockitoBean private AuditEntityFkResolver auditEntityFkResolver;
+  @MockitoBean private AuditChainHeartbeatGuardService auditChainHeartbeatGuardService;
 
   @Test
   @DisplayName("Anonymous GET auth-attempts returns 401 without Set-Cookie or servlet session")
