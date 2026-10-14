@@ -41,6 +41,11 @@ vi.mock('@/lib/integrity-async-jobs', async () => {
   };
 });
 
+/** Relative to now so D1 24h freshness stays valid regardless of calendar day. */
+function recentIso(minutesAgo = 60): string {
+  return new Date(Date.now() - minutesAgo * 60 * 1000).toISOString();
+}
+
 function job(
   overrides: Partial<IntegrityAsyncJobResponse> = {},
 ): IntegrityAsyncJobResponse {
@@ -49,7 +54,7 @@ function job(
     type: 'VERIFY_CHAIN_RANGE',
     status: 'SUCCEEDED',
     chainStatus: 'OK',
-    finishedAt: '2026-10-13T11:00:00.000Z',
+    finishedAt: recentIso(60),
     ...overrides,
   };
 }
@@ -103,7 +108,7 @@ describe('IntegrityMicroDashboard poll + abandon', () => {
     });
     const succeeded = job({
       status: 'SUCCEEDED',
-      finishedAt: '2026-10-13T12:00:00.000Z',
+      finishedAt: recentIso(5),
       chainStatus: 'OK',
     });
     getCurrentIntegrityAsyncJob.mockResolvedValue(succeeded);
@@ -131,12 +136,12 @@ describe('IntegrityMicroDashboard poll + abandon', () => {
   it('applies abandon response so EXPIRED + idle 204 clears without last-verdict (B2)', async () => {
     const expired = job({
       status: 'EXPIRED',
-      finishedAt: '2026-10-13T11:00:00.000Z',
+      finishedAt: recentIso(60),
       chainStatus: null,
     });
     const abandoned = {
       ...expired,
-      abandonedAt: '2026-10-13T12:05:00.000Z',
+      abandonedAt: recentIso(5),
     };
     abandonIntegrityAsyncJob.mockResolvedValue(abandoned);
     getCurrentIntegrityAsyncJob.mockResolvedValue(null);
@@ -171,7 +176,7 @@ describe('IntegrityMicroDashboard poll + abandon', () => {
     });
     const lastVerdict = job({
       jobId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-      finishedAt: '2026-10-13T11:55:00.000Z',
+      finishedAt: recentIso(30),
       trigger: 'NIGHTLY',
       type: 'RUN_VALIDATION',
       chainStatus: 'OK',

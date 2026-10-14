@@ -115,6 +115,10 @@ File: `data/acme-users.json`
 - **Challenge Code**: 2 digits for auth attempts (not 6 - that's enrollment)
 - **Business Approval:** when Integration API returns `authAttemptChallenge`, show the dashboard
   `biz-challenge-*` strip. Do not hide a required challenge.
+- **DOM XSS (business status):** `showRowStatus` / challenge strip use `textContent` via
+  [`static/js/biz-status.mjs`](src/main/resources/static/js/biz-status.mjs) — never interpolate
+  `approverIdentifier` (or other caller-controlled strings) into `innerHTML` (Lot B / CodeQL #1,
+  2026-10-13). Runtime proof: `node --test ezkey-demo-app-acme/src/test/js/biz-status.test.mjs`.
 - **Session Security**: Dashboard route validates session server-side
 - **Hot Reload**: File changes detected every N seconds (configurable, default 5s)
 
