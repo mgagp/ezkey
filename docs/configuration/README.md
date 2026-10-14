@@ -14,7 +14,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey-integration-api` | [ezkey-integration-api/CONFIGURATION.md](../../ezkey-integration-api/CONFIGURATION.md) | Defines `ezkey.api-key.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
 | `ezkey-crypto-api` | [ezkey-crypto-api/CONFIGURATION.md](../../ezkey-crypto-api/CONFIGURATION.md) | No database; inherits `ezkey.encryption.*` from core |
 | `ezkey-demo-app-acme` | [ezkey-demo-app-acme/CONFIGURATION.md](../../ezkey-demo-app-acme/CONFIGURATION.md) | Demo browser app — `ezkey.rate-limit.*` (login / login-ip-bound / apply-api-key), access-code slots; servlet cookie `EZKEY_ACME_SESSION` |
-| `ezkey-demo-device` | [ezkey-demo-device/CONFIGURATION.md](../../ezkey-demo-device/CONFIGURATION.md) | Demo device — `ezkey.auth.api.url`; servlet cookie `EZKEY_DEVICE_SESSION` |
+| `ezkey-demo-device` | [ezkey-demo-device/CONFIGURATION.md](../../ezkey-demo-device/CONFIGURATION.md) | Lab phone simulator — `ezkey.auth.api.url`, `ezkey.demo-device.allowed-auth-api-hosts`; servlet cookie `EZKEY_DEVICE_SESSION` |
 
 ---
 
@@ -42,6 +42,8 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.organization` | `ezkey-core` (`OrganizationProperties`) | admin-api, auth-api | [core §org](../../ezkey-core/CONFIGURATION.md#organization-ezkeyorganization) |
 | `ezkey.core` | `ezkey-core` (`EzkeyCoreProperties`) | admin-api, auth-api | [core §core](../../ezkey-core/CONFIGURATION.md#core-crypto--auth-attempt-ezkeycore) |
 | `ezkey.enrollment` | `ezkey-core` (`EnrollmentProperties`) | admin-api | [core §enrollment](../../ezkey-core/CONFIGURATION.md#enrollment-ezkeyenrollment) |
+| `ezkey.auth.api.url` | `ezkey-demo-device` | demo-device | [demo-device](../../ezkey-demo-device/CONFIGURATION.md) |
+| `ezkey.demo-device` | `ezkey-demo-device` (`DemoDeviceProperties`) | demo-device | [demo-device](../../ezkey-demo-device/CONFIGURATION.md) |
 | `ezkey.audit.integrity` | `ezkey-core` (`AuditHmacProperties`, `IntegrityWindowCapProperties`) | admin-api, auth-api, integration-api | [core §audit-integrity](../../ezkey-core/CONFIGURATION.md#audit-log-integrity-ezkeyauditintegrity); [core §window-caps](../../ezkey-core/CONFIGURATION.md#integrity-heavy-crypto-window-caps-ezkeyauditintegritymax--window-days) |
 | `ezkey.audit.chain` | `ezkey-core` (`AuditChainProperties`) | admin-api | [core §audit-chain](../../ezkey-core/CONFIGURATION.md#audit-log-chain-ezkeyauditchain) |
 | `ezkey.audit.chain.heartbeat` | `ezkey-core` (`AuditChainHeartbeatProperties`) | admin-api, auth-api, integration-api | [core §heartbeat](../../ezkey-core/CONFIGURATION.md#peripheral-heartbeat-ezkeyauditchainheartbeat) |

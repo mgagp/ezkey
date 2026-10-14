@@ -1,12 +1,24 @@
+/*
+ * Ezkey - Open Source Cryptographic MFA Platform
+ *
+ * Copyright (c) 2026 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Service: EnrollmentAuthApiUrlResolver
+ * Description: Resolves Auth API base URL for bind/verify with host allowlist (CodeQL #9/#10).
+ */
+
 package org.ezkey.demo.device.service;
 
+import java.util.Set;
 import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
 
 /**
  * Resolves the effective Auth API base URL for demo-device enrollment flows.
  *
  * <p>QR {@code authUrl} wins when present and valid; manual entry uses the configured default only;
- * subsequent operations read the persisted {@link Record#enrollmentUrl()} when set.
+ * subsequent operations read the persisted {@link Record#enrollmentUrl()} when set. Submitted QR /
+ * override hosts must be on the allowlist so enrollment tokens are not sent off-allowlist.
  *
  * @since 2025
  */
@@ -28,18 +40,22 @@ public final class EnrollmentAuthApiUrlResolver {
    *
    * @param submittedAuthApiBaseUrl optional hidden form field from QR import
    * @param configuredDefault {@code ezkey.auth.api.url}
+   * @param allowedHosts effective host allowlist (see {@link
+   *     AuthApiUrlValidator#effectiveAllowlist})
    * @return bind API base and optional persisted enrollment URL
    * @throws InvalidAuthApiUrlException when a non-blank submitted URL fails validation (G10)
    */
   public static BindResolution resolveForBind(
-      String submittedAuthApiBaseUrl, String configuredDefault) {
+      String submittedAuthApiBaseUrl, String configuredDefault, Set<String> allowedHosts) {
     if (submittedAuthApiBaseUrl == null || submittedAuthApiBaseUrl.isBlank()) {
       return new BindResolution(configuredDefault, null);
     }
-    String validated = AuthApiUrlValidator.validate(submittedAuthApiBaseUrl);
+    if (AuthApiUrlValidator.isHostNotAllowed(submittedAuthApiBaseUrl, allowedHosts)) {
+      throw new InvalidAuthApiUrlException(AuthApiUrlValidator.HOST_NOT_ALLOWED_MESSAGE);
+    }
+    String validated = AuthApiUrlValidator.validate(submittedAuthApiBaseUrl, allowedHosts);
     if (validated == null) {
-      throw new InvalidAuthApiUrlException(
-          "Invalid Auth API URL in enrollment QR. Use a valid HTTPS URL or HTTP on localhost.");
+      throw new InvalidAuthApiUrlException(AuthApiUrlValidator.INVALID_URL_MESSAGE);
     }
     return new BindResolution(validated, validated);
   }
