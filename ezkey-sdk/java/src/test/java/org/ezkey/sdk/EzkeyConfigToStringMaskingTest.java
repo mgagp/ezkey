@@ -10,7 +10,8 @@
 
 package org.ezkey.sdk;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import org.junit.jupiter.api.DisplayName;
@@ -38,9 +39,9 @@ class EzkeyConfigToStringMaskingTest {
 
     String rendered = config.toString();
 
-    assertThat(rendered).doesNotContain(SECRET);
-    assertThat(rendered).contains("secretKey=[PROTECTED]");
-    assertThat(rendered).contains("ezkey_ikey_demo");
-    assertThat(rendered).contains("http://localhost:7080");
+    assertFalse(rendered.contains(SECRET));
+    assertTrue(rendered.contains("secretKey=[PROTECTED]"));
+    assertTrue(rendered.contains("ezkey_ikey_demo"));
+    assertTrue(rendered.contains("http://localhost:7080"));
   }
 }
