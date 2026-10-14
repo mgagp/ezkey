@@ -10,6 +10,7 @@
 
 package org.ezkey.demo.acme.config;
 
+import org.ezkey.demo.acme.security.LoginCsrfAccessDeniedHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,6 +19,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 
 /**
  * Explicit Spring Security configuration for the ACME demo application.
@@ -25,8 +27,8 @@ import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
  * <p>The demo app uses controller-managed HTTP sessions rather than Spring Security's
  * authentication model. This filter chain therefore permits requests while keeping CSRF protection
  * enabled for browser-originated state-changing requests such as login and runtime API-key apply.
- * The configuration removes Spring Boot's generated default-login posture and makes the CSRF token
- * exposure explicit and observable in the rendered page.
+ * Default security headers apply ({@code Cache-Control: no-store}, frame denial, etc.). Referrer
+ * policy is forced to {@code no-referrer} so temporary access links are not leaked via Referer.
  *
  * @author Ezkey contributors
  * @since 2025
@@ -57,6 +59,11 @@ public class SecurityConfig {
                 csrf.csrfTokenRequestHandler(csrfHandler)
                     .csrfTokenRepository(csrfRepository)
                     .ignoringRequestMatchers("/actuator/**"))
+        .exceptionHandling(
+            exceptions -> exceptions.accessDeniedHandler(new LoginCsrfAccessDeniedHandler()))
+        .headers(
+            headers ->
+                headers.referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER)))
         .httpBasic(AbstractHttpConfigurer::disable)
         .formLogin(AbstractHttpConfigurer::disable)
         .logout(AbstractHttpConfigurer::disable);

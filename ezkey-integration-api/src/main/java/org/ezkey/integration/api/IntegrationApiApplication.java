@@ -13,6 +13,7 @@ package org.ezkey.integration.api;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
 
 /**
  * Main Spring Boot application for Ezkey Integration API.
@@ -34,7 +35,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author Ezkey contributors
  * @since 2025
  */
+// No in-memory user / generated security password — auth is ApiKeyAuthenticationFilter only.
 @SpringBootApplication(
+    exclude = UserDetailsServiceAutoConfiguration.class,
     scanBasePackages = {
       "org.ezkey.integration.api",
       "org.ezkey.authattempt",

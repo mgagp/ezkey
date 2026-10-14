@@ -14,6 +14,7 @@ package org.ezkey.auth;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
 
 /**
  * Main Spring Boot application for Ezkey Auth API.
@@ -24,7 +25,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  *
  * @since 2025
  */
+// No in-memory user / generated security password — device auth is cryptographic, not Spring user.
 @SpringBootApplication(
+    exclude = UserDetailsServiceAutoConfiguration.class,
     scanBasePackages = { //
       "org.ezkey.auth", //
       "org.ezkey.authattempt", //

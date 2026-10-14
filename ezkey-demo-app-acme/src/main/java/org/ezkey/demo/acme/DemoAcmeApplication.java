@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
 
 /**
  * Main Spring Boot application for ACME demo.
@@ -46,7 +47,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
  * @author Ezkey contributors
  * @since 2025
  */
-@SpringBootApplication
+// No in-memory user / generated security password — session auth is controller-managed.
+@SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
 @EnableConfigurationProperties({
   AcmeProperties.class,
   AcmeRateLimitProperties.class,

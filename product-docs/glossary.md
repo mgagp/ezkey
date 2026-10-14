@@ -23,7 +23,7 @@ This document is the canonical source for the vocabulary used across the product
 
 - Use **kebab-case** for filenames: `product-intent.md`, `spec-test-traceability.md`.
 - Use **uppercase words** only for well-established historical docs (e.g. `ARCHITECTURE.md` in the legacy `docs/` hub).
-- Templates use the suffix **`.template.md`**: `feature-brief.template.md`.
+- Templates use the suffix **`.template.md`**: e.g. `backlog-idea.template.md` (see [`templates/README.md`](templates/README.md)).
 - Component packs sit under `components/<kebab-component-name>/`.
 
 ## Cross-Reference Conventions

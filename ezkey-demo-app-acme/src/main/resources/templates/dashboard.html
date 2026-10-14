@@ -21,7 +21,8 @@
             <div class="nav-links">
                 <span class="nav-link active">Dashboard</span>
                 <a href="https://ezkey.org" target="_blank" class="nav-link">About EZKey</a>
-                <a href="/logout" class="nav-link logout-link">
+                <a th:href="${entryLink} ? @{/logout(entry=link)} : @{/logout}"
+                   class="nav-link logout-link">
                     Logout: <span th:text="${user?.username}">-</span>
                 </a>
             </div>
@@ -795,39 +796,44 @@
         .hidden { display: none !important; }
     </style>
 
-    <!-- Business Approval Widget Script -->
-    <script>
+    <!-- Business Approval Widget Script (module: DOM-safe status helpers) -->
+    <script type="module">
+        import {
+            hideChallengeStripOn,
+            showChallengeStripOn,
+            showRowStatusOn
+        } from '/js/biz-status.mjs';
+
         // Per-scenario state: { attemptId, approver }
         const bizState = {};
         const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
         const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
 
         function hideChallengeStrip(scenario) {
-            const el = document.getElementById('biz-challenge-' + scenario);
-            if (!el) return;
-            el.classList.add('hidden');
-            el.innerHTML = '';
-        }
-
-        /**
-         * Formats a server-provided challenge for display (minimum two digits, typical Ezkey demo).
-         */
-        function formatChallengeForDisplay(value) {
-            if (value === null || value === undefined) return '';
-            const n = Number(value);
-            if (!Number.isFinite(n) || n < 0) return String(value);
-            const s = String(Math.trunc(n));
-            return s.length < 2 ? s.padStart(2, '0') : s;
+            hideChallengeStripOn(document.getElementById('biz-challenge-' + scenario));
         }
 
         function showChallengeStrip(scenario, challengeValue) {
-            const el = document.getElementById('biz-challenge-' + scenario);
-            if (!el) return;
-            const code = formatChallengeForDisplay(challengeValue);
-            el.innerHTML =
-                'A numeric challenge is required on the approver&rsquo;s device. '
-                + 'Enter code <span class="biz-challenge-code">' + code + '</span>, then approve.';
-            el.classList.remove('hidden');
+            showChallengeStripOn(
+                document.getElementById('biz-challenge-' + scenario),
+                challengeValue,
+                document
+            );
+        }
+
+        function showRowStatus(scenario, cssClass, icon, text) {
+            showRowStatusOn(
+                document.getElementById('biz-status-' + scenario),
+                cssClass,
+                icon,
+                text,
+                document
+            );
+        }
+
+        function hideRowStatus(scenario) {
+            const el = document.getElementById('biz-status-' + scenario);
+            if (el) el.classList.add('hidden');
         }
 
         /**
@@ -940,18 +946,9 @@
             }
         }
 
-        function showRowStatus(scenario, cssClass, icon, text) {
-            const el = document.getElementById('biz-status-' + scenario);
-            if (!el) return;
-            el.className = 'biz-row-status ' + cssClass;
-            el.innerHTML = '<span class="biz-st-icon">' + icon + '</span><span>' + text + '</span>';
-            el.classList.remove('hidden');
-        }
-
-        function hideRowStatus(scenario) {
-            const el = document.getElementById('biz-status-' + scenario);
-            if (el) el.classList.add('hidden');
-        }
+        // onclick= handlers need window globals (module scope is isolated).
+        window.requestApproval = requestApproval;
+        window.checkApprovalStatus = checkApprovalStatus;
     </script>
 
     <script>

@@ -115,7 +115,24 @@ Machine-readable source of truth:
 | `security` | Boolean; required. |
 | `warn_months` | Optional; default **6** (React Native uses **3**). |
 | `accept_until` | Required when `accept-risk` **and** `security: true`; at most 6 months after `last_review`. |
+| `floor_policy` | Optional. Declared-minimum policy id (CLI Python: `window-42m`). |
+| `ci_matrix` | Optional. List of runtime versions exercised in CI for this entry. |
 | `issue`, `last_review`, `notes` | `notes` links Christophe's opinion when present. |
+
+## Python
+
+The Ezkey CLI supports CPython lines released less than **42 months** ago, and always at least
+the **two latest** released lines. Raise the floor only when a version ≥ the new floor is
+installable as an official package on the latest Ubuntu LTS, Debian stable, and current RHEL.
+Compute candidates from [endoflife.date/python](https://endoflife.date/python) release dates.
+Floor today: **>=3.12** (next raise to 3.13 on 2027-04-02, then 3.14 on 2028-04-07). CI matrix =
+`[floor, latest line released ≥ 3 months]` → **3.12** and **3.14**. Rationale: mainstream defaults
+are already ≥3.12 (latest Ubuntu LTS **26.04** ships 3.14; Ubuntu 24.04, RHEL 10, Debian 13,
+Fedora, Homebrew, Docker `python:3`); `click` 8.5 / `requests` 2.34 already need ≥3.10 so the old
+`>=3.8` was false; a 3-year SPEC 0 window would force 3.13 and exclude the default `python3` of
+**RHEL 10 (3.12)** and of **Ubuntu 24.04**, still very widespread. The monthly check (future PR)
+will flag: computed floor > `current`, CI latest lagging, and `python_requires` / CI floor drift
+vs the registry.
 
 ## Test-plan floors (by family)
 

@@ -50,6 +50,15 @@ Dependabot alone cannot prove current:
 | GitHub Actions | `github-actions` at `/` (weekly) | — |
 | Python CLI | `pip` at `/ezkey-cli-python` (weekly) | — |
 
+**Maven dependency graph:** Dependabot PR updates are separate from GitHub’s Insights dependency
+graph. Ezkey submits the full transitive Maven graph via
+[`.github/workflows/maven-dependency-submission.yml`](../../../../.github/workflows/maven-dependency-submission.yml)
+(JDK 25 + `checkstyle-config` install; `main` / `workflow_dispatch` only — not `ci-gate`).
+**Automatic dependency submission** is one repo-wide toggle (Settings → Advanced Security →
+Dependency graph → Automatic dependency submission); set to **Disabled** (2026-10-08) so the
+dedicated workflow feeds the graph. Details:
+[`docs/DEVELOPMENT.md`](../../../../docs/DEVELOPMENT.md) § Continuous Integration.
+
 Empty Dependabot queue for Maven or mobile ≠ stack current on Monday. Authority: skill
 `dependabot-curated` §§ *Java BOM pulse*, *Mobile RN pulse*.
 
@@ -126,6 +135,9 @@ smoke still pending — see [`2026-09-28-pass-1.md`](2026-09-28-pass-1.md).
 **2026-10-05 hebdo:** Lots A–D squash-merged (Maven + Admin/SDK + mobile tooling/runtime); held
 `#647` (Admin Orval T4) and `#653` (Jest 30 / RN Jest 29 gate) comment-only; `#627` Pixel smoke
 still pending (next Play AAB after `#650`/`#651`) — see [`2026-10-05-pass-1.md`](2026-10-05-pass-1.md).
+**2026-10-12 Monday full (trial-week review):** merged `#732`/`#733`/`#734` + hygiene `#759`
+(supersedes `#735` license-snapshot companion); held `#717`/`#718` (post-`#702`) and T4/gates;
+`#627` Pixel smoke still pending — see [`2026-10-12-pass-1.md`](2026-10-12-pass-1.md).
 
 Routine peel still skips any PR labeled `deferred:rn-upgrade`. To park *future* RN-coupled mobile
 deps until a line bump: comment + `gh pr edit <n> --add-label deferred:rn-upgrade`.
@@ -208,6 +220,17 @@ On every Monday-full `dependabot-curated` pass the agent must:
 Do **not** add Docker image tags to this pulse unless the operator asks. Tink / ShedLock /
 ipaddress now follow parent properties (see
 [`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md)).
+When Docker image PRs are in scope: **keep** `maven:3.9-eclipse-temurin-25` (project JDK =
+25 LTS; Marc 2026-10-12). Dependabot docker `ignore.versions` for `maven` uses Bundler
+ranges `">= 3.9.26, < 3.9.29"` / `3.10.*` / `4.0.*` (JDK 26–28 on those Maven lines). Tag
+`3.9-eclipse-temurin-N` maps to comparable `3.9.N` via dependabot-core
+[tag.rb](https://github.com/dependabot/dependabot-core/blob/main/docker/lib/dependabot/docker/tag.rb)
+`WORDS_WITH_BUILD` (see skill § Java BOM pulse). Extend one range per new Maven minor;
+revisit at JDK 29 LTS. Fallback: close stray non-LTS Temurin PRs with
+`@dependabot ignore this version`. Shell globs in docker `versions` fail the
+`.github/dependabot.yml` check (#762). Align Playwright
+`mcr.microsoft.com/playwright:vX.Y.Z-noble` with the Admin UI lockfile `@playwright/test`
+version — do not jump the image ahead of npm.
 
 Authority: skill `dependabot-curated` § *Java BOM pulse*. Provenance: Boot 4.1.1 pass
 [`2026-08-21-pass-1.md`](2026-08-21-pass-1.md) (hygiene branch; no Dependabot PR).

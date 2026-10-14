@@ -2,6 +2,10 @@
 
 Use this prompt in a **new session** (ideally with a fresh context and potentially a distinct reasoning model) to critically review, stress-test, and harden an existing plan or tracer bullet before handing it off to an autonomous execution agent.
 
+Stage 2 is tooled by the `critical-review` keyword (adversarial review); see
+[critical-review hygiene](https://github.com/mgagp/ezkey/blob/main/product-docs/global/hygiene/critical-review/README.md).
+This file remains the **autonomous-execution hardening** angle included by reference from that prompt.
+
 ---
 
 ```markdown
@@ -26,6 +30,7 @@ Please structure your review along the following dimensions:
      - *Security/Auth:* Legitimate sessions, tokens, or credentials remain active and operational post-attack (e.g. exercising an authenticated administrative mutation post-rejection).
      - *Concurrency/CAS:* Competing operations failing a lock or CAS condition do not abort, deadlock, or corrupt the winning operation.
      - *Lifecycle/Entities:* Rejected lifecycle transitions (e.g. 409 Conflict, 400 Bad Request) do not leave records in an inconsistent, partially mutated, or corrupted state.
+   - **Pre-existing path conditions:** Inventory pre-existing timeouts, waits, rate limits, and error paths on the touched path (`path:line`), and verify the change does not break them.
    - **Live Functional Verification:** A realistic end-to-end test on the running stack (clean-start Docker, Demo Device, Admin UI, or Bruno collections) with observable evidence (logs, DB state, audit records).
 
 4. **Review Protocol (HITL):**

@@ -10,6 +10,10 @@
 
 package org.ezkey.sdk;
 
+import java.net.SocketTimeoutException;
+import java.net.http.HttpConnectTimeoutException;
+import java.net.http.HttpTimeoutException;
+
 /**
  * Checked exception thrown by Ezkey SDK operations.
  *
@@ -104,5 +108,42 @@ public class EzkeyException extends Exception {
    */
   public boolean isUnauthorized() {
     return statusCode == 401;
+  }
+
+  /**
+   * Whether this failure is an HTTP/socket <em>read</em> timeout (by type or cause chain only).
+   *
+   * <p>Do not use message text — HTTP error messages may include a {@code timeout=} query parameter
+   * from the wait URL without being a client read timeout.
+   *
+   * <p>{@link HttpConnectTimeoutException} is excluded: an unreachable host or slow TCP connect is
+   * a normal network error, not a soft wait timeout.
+   *
+   * @return {@code true} when {@link HttpTimeoutException} (other than connect timeout) or {@link
+   *     SocketTimeoutException} appears in this exception or its cause chain
+   */
+  public boolean isReadTimeout() {
+    return isReadTimeoutThrowable(this);
+  }
+
+  /**
+   * Whether the throwable (or any cause) is a client read timeout.
+   *
+   * <p>Package-private: used by {@link EzkeyClient} in this package. Connect timeouts ({@link
+   * HttpConnectTimeoutException}) are never treated as read timeouts.
+   *
+   * @param throwable root throwable (may be null)
+   * @return {@code true} for read {@link HttpTimeoutException} / {@link SocketTimeoutException}
+   */
+  static boolean isReadTimeoutThrowable(Throwable throwable) {
+    for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+      if (cause instanceof HttpConnectTimeoutException) {
+        continue;
+      }
+      if (cause instanceof HttpTimeoutException || cause instanceof SocketTimeoutException) {
+        return true;
+      }
+    }
+    return false;
   }
 }

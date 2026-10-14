@@ -10,7 +10,9 @@
 
 package org.ezkey.audit.integrity;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -21,25 +23,63 @@ import org.springframework.stereotype.Component;
  * slot. Checkpoint creation keeps its own short ShedLock and is intentionally not held behind this
  * gate (blocking checkpoints for a long verify would starve the audit-chain heartbeat).
  *
+ * <p>Ownership is published atomically with acquisition via a single {@link AtomicReference} of
+ * {@link Holder} (Integrity cut 3 F1). Cross-replica "nightly running" for the Admin UI is read
+ * from {@code ezkey_shedlock}, not from this process-local gate.
+ *
  * @since 2026
  */
 @Component
 public class IntegrityHeavyCryptoGate {
 
-  private final AtomicBoolean busy = new AtomicBoolean(false);
+  private static final Logger logger = LoggerFactory.getLogger(IntegrityHeavyCryptoGate.class);
 
   /**
-   * Attempts to enter the heavy crypto critical section.
+   * Who holds the process-local heavy-crypto gate.
    *
-   * @return true if this caller owns the gate
+   * @since 2026
    */
-  public boolean tryEnter() {
-    return busy.compareAndSet(false, true);
+  public enum Holder {
+    /** Nightly scheduled validation batch. */
+    NIGHTLY,
+    /** Synchronous report GET (chain / entry / retroactive). */
+    REPORT_GET,
+    /** Operator Integrity async job (VERIFY_* or RUN_VALIDATION). */
+    OPERATOR_JOB
   }
 
-  /** Releases the heavy crypto critical section. */
-  public void exit() {
-    busy.set(false);
+  private final AtomicReference<Holder> holder = new AtomicReference<>();
+
+  /**
+   * Attempts to enter the heavy crypto critical section as {@code h}.
+   *
+   * @param h intended holder (must not be null)
+   * @return true if this caller owns the gate
+   */
+  public boolean tryEnter(Holder h) {
+    if (h == null) {
+      throw new IllegalArgumentException("holder must not be null");
+    }
+    return holder.compareAndSet(null, h);
+  }
+
+  /**
+   * Releases the heavy crypto critical section when still held by {@code h}.
+   *
+   * <p>A mismatched or empty holder logs WARN and does not clear another owner's claim.
+   *
+   * @param h holder that acquired the gate
+   */
+  public void exit(Holder h) {
+    if (h == null) {
+      throw new IllegalArgumentException("holder must not be null");
+    }
+    if (!holder.compareAndSet(h, null)) {
+      logger.warn(
+          "Integrity heavy-crypto gate exit mismatch: expected holder={}, actual={}",
+          h,
+          holder.get());
+    }
   }
 
   /**
@@ -48,6 +88,15 @@ public class IntegrityHeavyCryptoGate {
    * @return true when busy
    */
   public boolean isBusy() {
-    return busy.get();
+    return holder.get() != null;
+  }
+
+  /**
+   * Current process-local holder, or null when idle.
+   *
+   * @return holder or null
+   */
+  public Holder holder() {
+    return holder.get();
   }
 }

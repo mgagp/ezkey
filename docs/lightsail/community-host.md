@@ -90,7 +90,7 @@ Do these **after** VM create → ports → Docker bootstrap (below). No secrets 
    scp experimental-hybrid/lightsail/Caddyfile.ezkey-online \
      "${LIGHTSAIL_SSH_HOST}:ezkey/experimental-hybrid/lightsail/Caddyfile"
    ```
-   **Export sync note:** `--sync-operator-files` / `--clean-start` on [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) always copies the EXP1-named `Caddyfile`. After any such sync to the community VM, **re-scp** `Caddyfile.ezkey-online` → remote `Caddyfile` (or `scp` the variant then `ssh … 'cp …/Caddyfile.ezkey-online …/Caddyfile'`). Prefer this explicit copy for now over rewriting the export script.
+   **Export sync note:** `--sync-operator-files` / `--clean-start` on [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) always copies the EXP1-named `Caddyfile`. After any such sync to the community VM, **re-scp** `Caddyfile.ezkey-online` → remote `Caddyfile` (the variant file is not kept on the VM, so a one-line remote `cp` of `Caddyfile.ezkey-online` fails). Verify sha256 against the repo, then recreate caddy.
 3. **Origin CA** — Cloudflare Origin Server cert covering all API + demo hostnames above; place `origin.pem` / `origin-key.pem` in `~/ezkey/experimental-hybrid/lightsail/caddy-certs/` on the VM (`chmod 700` dir, `chmod 600` key). Never commit.
 4. **DNS** — Cloudflare **A** records (orange / proxied) for those API/demo names → instance public IP (from `./scripts/lightsail/status.sh`). Admin UI name points at Pages, not the Lightsail IP.
 5. **`.env`** — on the VM: copy [`.env.example`](../../experimental-hybrid/lightsail/.env.example) → `.env`, then overlay community URLs/CORS from [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example). **Mode B (Pages cookie)** requires all of:
@@ -220,7 +220,7 @@ If `ezkey-online` already exists as an instance: `--name community-ezkey` (and u
 ./scripts/lightsail/open-ports.sh --apply --ssh-cidr 203.0.113.10/32
 ```
 
-**TODO (follow-up):** restrict **443** to [Cloudflare IPv4 CIDRs](https://www.cloudflare.com/ips-v4) like EXP1. Lab v1 may leave 443 world-open; do not treat that as the long-term posture. See [`experimental-hybrid/DEPLOYMENT_PLAYBOOK.md`](../../experimental-hybrid/DEPLOYMENT_PLAYBOOK.md) Phase 0a.
+**443 posture (since 2026-09-23):** HTTPS is restricted to the **15 Cloudflare IPv4 ranges** published at [ips-v4](https://www.cloudflare.com/ips-v4). There is no IPv6 Lightsail firewall rule. Confirm with `aws lightsail get-instance-port-states` before a community upgrade go/no-go. **Do not run `open-ports.sh` on `ezkey-online`:** its default `HTTPS_CIDR` is `0.0.0.0/0` and `--mode put` replaces every rule, which would reopen 443 to the world.
 
 ### 3. SSH Host alias (separate from EXP1)
 
@@ -308,6 +308,73 @@ After recreate, update Cloudflare **A** records if the public IP changed (no sta
 - [`docs/cloudflare/README.md`](../cloudflare/README.md) -- Cloudflare script style sibling
 - [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md) -- Public alpha claim + git-SHA identity
 - [`community/DEPLOYED.md`](community/DEPLOYED.md) -- live state ledger for ezkey.online (update after successful publish)
+
+## Deploy pitfalls (community host)
+
+Short operator checklist verified against repo scripts/compose (not live VM observation):
+
+1. **Caddyfile sync** — `--sync-operator-files` / `--clean-start` on
+   [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh)
+   always copies the EXP1-named `Caddyfile`. After any such sync to the community VM, **re-scp**
+   `Caddyfile.ezkey-online` → remote `Caddyfile` **immediately** (before `--scan` / `--remote-up`;
+   see Ordered path step 2). A one-line remote `cp Caddyfile.ezkey-online Caddyfile` fails because
+   the variant file is not kept on the VM.
+2. **Grants container** — Compose service `db-grants` (`container_name: ezkey-exp-db-grants` in
+   [`docker-compose.yml`](../../experimental-hybrid/lightsail/docker-compose.yml)) applies
+   [`scripts/db/apply-grants.sql`](../../scripts/db/apply-grants.sql) after migration. APIs depend on
+   it (`condition: service_completed_successfully`). Do not skip or remove it on a fresh bring-up.
+3. **Never `--clean-start` on a kept community DB** — `--clean-start` is destructive
+   (`docker compose down -v`, then remote `clean-start.sh`). For upgrades that keep Postgres data,
+   use rolling export (`--sync-operator-files` + `--remote-up`, or
+   `full-exp-environment-upgrade.sh rolling`). First bring-up / disposable reset only.
+4. **Docker `json-file` log rotation** — Compose sets `x-logging` on every service
+   (`max-size: 20m`, `max-file: 3` — sized for a ~4 GB RAM / ~80 GB-disk VM; ceiling ≈ 480 MiB).
+   Rotation applies only when a container is **created**; it does not resize logging on an
+   already-running host.
+
+   **Rolling upgrade that adds or changes `logging:`:** `docker compose up -d` recreates **all**
+   services that inherit the new logging config (typically all 8, **Postgres included**). Named
+   volumes are kept, but there is a short outage while containers restart. Old json-file logs
+   disappear with the old container IDs — **scan before `up`**. `scripts/ops/` lands with
+   `--sync-operator-files` (same pass as `--remote-up` would recreate containers), so:
+
+   1. Export with `--sync-operator-files` **without** `--remote-up` (or `scp` `docker-log-hygiene.sh`)
+   2. **Immediately** re-scp `Caddyfile.ezkey-online` → remote `Caddyfile` (pitfall #1 — sync-only
+      already overwrote with EXP1; do not wait until after `up`)
+   3. On the VM: `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan`
+   4. Then `--remote-up` (or a later sync+up pass)
+
+   After `up`, confirm rotation with `docker inspect` or
+   `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`.
+   Rotated-file purge needs sudo under `/var/lib/docker/containers`.
+
+### Log rotation and hygiene (next install)
+
+For a **new** Lightsail bring-up (not a remote action from a laptop against the live instance):
+
+1. Deploy with the compose file above so every service inherits `x-logging`.
+2. On the VM after `compose up`, run check mode:
+
+   ```bash
+   bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail
+   ```
+
+3. Periodically (e.g. monthly) re-run check; optional `--scan` prints **counts only** of
+   credential-like patterns (never values). Plan cleanup with `--purge` (dry-run; project
+   containers only); apply with `--purge --apply --yes` when non-interactive.
+
+### Post-upgrade checks (m6)
+
+Follow the canon checklist in [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Post-upgrade checks
+(m6) — including the read-only in-volume credentials check (never `cat` / never `docker cp` to
+`/tmp`). Deletion of `bootstrap-credentials.json` happens **only with Marc's go**.
+
+Canon and “what it never does”: [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Log rotation and hygiene.
+
+**Note (stale refs checked on `main`):** this runbook no longer contains a `TODO:223` marker or an
+`EZKEY_POSTGRES_CONTAINER` reference. Lab scripts under `scripts/lab/` default that env var to
+`ezkey-postgres`; the Lightsail compose Postgres container is `ezkey-exp-postgres` — do not assume
+the lab default on this host.
 
 ## Naming lock (Audrey/Marc)
 

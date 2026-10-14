@@ -34,6 +34,8 @@
     "encryption-rotation-disabled": "La rotation de clé est inactive sur cette instance.",
     "encryption-reencryption-disabled": "Le re-chiffrement est inactif sur cette instance.",
     "integrity-validation-disabled": "La validation d'intégrité nocturne est inactive sur cette instance.",
+    "integrity-async-job-busy": "Une vérification d'intégrité est déjà en cours. Attendez la fin, puis réessayez.",
+    "integrity-window-over-cap": "Cette période dépasse la limite de 8 jours des contrôles d'intégrité. Choisissez une période de 8 jours ou moins.",
     "integration-code-already-exists": "Une intégration avec ce code existe déjà pour ce tenant.",
     "integration-lifecycle-state": "Cette action n'est pas valide pour l'état du cycle de vie actuel de l'intégration.",
     "system-integration-lifecycle": "L'intégration système est réservée à l'authentification multifacteur des administrateurs et ne peut pas être modifiée ainsi.",

@@ -253,7 +253,7 @@ A fresh git clone plus an empty `~/.m2` is the expected first-build situation on
 - Maven 3.9+
 - Bash — `./scripts/*.sh` from Git Bash on Windows, or the system Bash on macOS/Linux
 - Docker Desktop (or Engine + Compose) for the local stack
-- Node.js: root [`.nvmrc`](../.nvmrc) pins **24** (LTS) as the single source of truth for Admin UI, mobile JS CI (`node-version-file: '.nvmrc'`), and agent workstations. Orval and package `engines` must be satisfied by that runtime (`ezkey_mobile` requires `>=24`). Bruno CLI follows the tool you install locally. **nvm-windows** does not read `.nvmrc` automatically — run `nvm install 24` then `nvm use 24`, then `corepack enable` for Yarn 4. After `npm ci` in `ezkey-admin-ui/`, run `npm run generate:api` — the Orval client under `src/generated/` is gitignored; Orval reads the committed `ezkey-admin-ui/openapi-spec.json` (no live API required).
+- Node.js: root [`.nvmrc`](../.nvmrc) pins **24** (LTS) as the single source of truth for Admin UI, mobile JS CI (`node-version-file: '.nvmrc'`), and agent workstations. Orval and package `engines` must be satisfied by that runtime (`ezkey-admin-ui` and `ezkey_mobile` require `>=24`; Orval needs `>=22.18`). Bruno CLI follows the tool you install locally. **nvm-windows** does not read `.nvmrc` automatically — run `nvm install 24` then `nvm use 24`, then `corepack enable` for Yarn 4. After **every checkout** (and after `npm ci`) in `ezkey-admin-ui/`, run `npm run generate:api` — the Orval client under `src/generated/` is **gitignored**. Skipping it leaves a stale or missing client; the Integrity page (and other Orval-backed screens) can crash at runtime. Orval reads the committed `ezkey-admin-ui/openapi-spec.json` (no live API required).
 
 **Do this**
 
@@ -456,6 +456,26 @@ guarantee that copy matches the real running Admin API — refresh the committed
 running the `ezkey-tests` functional suite, doctor-curated / java-doctor / pentest hygiene
 passes, and any tag-triggered Maven Central release (not implemented).
 
+**Maven dependency graph (not a PR check):** workflow
+[`.github/workflows/maven-dependency-submission.yml`](../.github/workflows/maven-dependency-submission.yml)
+submits the full (transitive) Maven graph to GitHub Insights. It triggers only on push to `main`
+that touches `pom.xml` / `**/pom.xml` / `.mvn/**` / `checkstyle-config/**` / the workflow file
+itself, or via `workflow_dispatch`. It uses **JDK 25** and installs the unpublished
+`checkstyle-config` reactor module first — the same bootstrap as the `backend` job — so
+resolution succeeds. It is **not** part of `ci-gate`.
+
+Keep the repository **Dependency graph** setting **enabled**. When it is off, this workflow
+fails with `HttpError: The Dependency graph is disabled for this repository` (runs 38298454193
+and 38447903477, Oct 2026). GitHub’s **Automatic dependency submission** is a separate
+repo-wide toggle (not per ecosystem / “for Maven”): Settings → Advanced Security (section
+**Security and quality**) → Dependency graph → Automatic dependency submission (`Enabled` /
+`Enabled for labeled runners` / `Disabled`). Keep Automatic dependency submission
+**Disabled** (2026-10-08) because
+[`.github/workflows/maven-dependency-submission.yml`](../.github/workflows/maven-dependency-submission.yml)
+feeds the graph instead (cf. #722). The built-in submitter uses Java 21, never builds
+`checkstyle-config`, and fails with “NOT allowed from central”. First dedicated-workflow run
+was green; Spring Boot is visible under Insights → Dependency graph.
+
 **Run the same checks locally:**
 
 ```bash
@@ -478,6 +498,20 @@ yarn install --immutable && yarn validate:ci
 
 **Maintainer follow-up (ruleset):** target `main` with required status check **`ci-gate`** only
 (plus existing non-check rules as desired). No other job names need to be required.
+
+**CodeQL (advanced setup):** workflow [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml)
+with config [`.github/codeql/codeql-config.yml`](../.github/codeql/codeql-config.yml)
+(`paths-ignore: ezkey-tests/**`). Local model pack
+[`.github/codeql/extensions/ezkey-java-models/`](../.github/codeql/extensions/ezkey-java-models/)
+(`ezkey/java-models`) declares `LogSanitizer.sanitizeForLog` as a `log-injection` barrier; advanced
+setup does **not** auto-detect that directory — the java-kotlin analyze step loads it via
+`CODEQL_ACTION_EXTRA_OPTIONS` (`--additional-packs` + `--extension-packs=ezkey/java-models`). Proven on
+PR #805 (Actions run [`38488035924`](https://github.com/mgagp/ezkey/actions/runs/38488035924)
+java-kotlin analyze: `run-queries` includes `--extension-packs=ezkey/java-models`). The repository
+CodeQL setting must be **Advanced** (default setup disabled) or the workflow conflicts with GitHub's
+default setup.
+Policy and SLAs: [`SECURITY_POSTURE.md`](SECURITY_POSTURE.md) § Code scanning policy. Triage notes:
+[`../product-docs/global/hygiene/code-scanning/`](../product-docs/global/hygiene/code-scanning/).
 
 ### Code Quality Metrics
 - **Test Coverage**: Minimum 90% line coverage

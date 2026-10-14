@@ -10,11 +10,14 @@ This index provides a lightweight list of active ideas and their current state.
 
 → [`../vision/V-2026-09-26-public-alpha-posture-closeout.md`](../vision/V-2026-09-26-public-alpha-posture-closeout.md)
 
-**Summary (2026-09-26):** Public alpha posture closeout — laboratory · discreet · alpha ≠ prod ·
-no SLA; public runtime names **`base`** / **`integrity`** (not « eval profile »); GitHub open;
-Play Store **closed testing** only; intention-first. Waves A–C and Wave D (attention freeze) are
-**closed**. There is **no remaining P0** on the active backlog. Evaluator self-registration stays
-**OFF by default**; community may enable it **explicitly**.
+**Summary (2026-09-26, amended 2026-10-08):** Public alpha posture closeout — laboratory · discreet ·
+alpha ≠ prod · no SLA; public runtime names **`base`** / **`integrity`** (not « eval profile »);
+GitHub open; Play Store — **mobile app** may proceed closed testing → **production**; **platform
+backends stay alpha/lab**; intention-first. Waves A–C and Wave D (attention freeze) are **closed**.
+There is **no remaining P0** on the active backlog. Evaluator self-registration stays **OFF by
+default**; community may enable it **explicitly**. Amendment detail:
+[`../vision/V-2026-09-26-public-alpha-posture-closeout.md`](../vision/V-2026-09-26-public-alpha-posture-closeout.md)
+§ Amendment 2026-10-08.
 
 Historical September operable-release compass (Waves A–C + freeze D narrative only):
 [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
@@ -83,6 +86,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-08-09-mobile-signed-instance-info-integrity` | Mobile: signed Public Instance Info integrity | `active` | `P2` | `mobile`, `auth-api`, `core`, `docs`, `security` | `2026-08-25` |
 | `I-2026-08-23-auth-unsigned-public-instance-info-retirement` | Auth unsigned public instance-info retirement | `captured` | `P3` | `auth-api`, `docs`, `mobile`, `testing`, `security` | `2026-08-23` |
 | `I-2026-09-15-mobile-admin-enrollment-account-label` | Mobile admin enrollment account label (bind/pending) | `done` | `P1` | `auth-api`, `admin-api`, `mobile`, `docs` | `2026-09-15` |
+| `I-2026-10-13-pam-tmp-log-hardening` | PAM debug logs under `/tmp` (TOCTOU / symlink; CodeQL 123/124) | `captured` | `P3` | `pam`, `security`, `docs` | `2026-10-13` |
 
 ## Tracer bullets (draft / ready / in progress)
 
@@ -106,7 +110,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
-| `admin-ui-audit-integrity-hard-split-intention` | Audit trail vs Integrity hard split (cut 1) | `2026-09-18` | Compass (no `I-*`/`TB-*`). Docs PR `#562`; implementation PR `#563`. `/integrity` first-class GA page. Cut 2 phase A (density) **delivered** PR `#588`: [`admin-ui-integrity-cut2-phase-a.md`](../admin-ui-integrity-cut2-phase-a.md) + `WALK-2026-09-21-integrity-cut2-phase-a`. Cut 2 phase B+B′ **intention-locked**: [`admin-ui-integrity-cut2-phase-b.md`](../admin-ui-integrity-cut2-phase-b.md) + `WALK-2026-09-21-integrity-cut2-phase-b`. Cut 3 (API↔UI gaps) remains. |
+| `admin-ui-audit-integrity-hard-split-intention` | Audit trail vs Integrity hard split (cut 1) | `2026-09-18` | Compass (no `I-*`/`TB-*`). Docs PR `#562`; implementation PR `#563`. `/integrity` first-class GA page. Cut 2 phase A (density) **delivered** PR `#588`: [`admin-ui-integrity-cut2-phase-a.md`](../admin-ui-integrity-cut2-phase-a.md) + `WALK-2026-09-21-integrity-cut2-phase-a`. Cut 2 phase B+B′ **intention-locked**: [`admin-ui-integrity-cut2-phase-b.md`](../admin-ui-integrity-cut2-phase-b.md) + `WALK-2026-09-21-integrity-cut2-phase-b`. Cut 3 (last verdict, micro-dashboard, verify cap) **intention-locked** (OQ1–OQ3 APPROVED Marc 2026-10-12; OQ4 open for PR 1 design): [`admin-ui-integrity-cut3.md`](../admin-ui-integrity-cut3.md) + `WALK-2026-10-09-integrity-cut3` (#692/#743 #696 #741; D1 supersedes phase-A auto-verify-on-mount; `max-window-days` supersedes provisional 193 h). |
 | `TB-2026-08-09-mobile-signed-instance-info` | Signed enrolled instance-info | `2026-08-10` | PR `#445`. Auth `POST /enrollments/instance-info` + mobile Ed25519 verify. Parent `I-2026-08-09` stays `active` for honesty UI + branding-change confirmation. Canon status synced 2026-08-25 after index lag. |
 | `TB-2026-08-23-integration-api-cloudflare-schema` | Integration API Cloudflare schema (EXP1) | `2026-08-23` | PR `#479`. EXP1 Integration schema upload; Set action **Block** (maintainer-only). Parent `I-2026-06-02` stays `active` for Admin Cloudflare. Canon status synced 2026-08-25. |
 | `TB-2026-06-02-auth-api-cloudflare-schema-first-slice` | Auth API Cloudflare schema-first slice | `2026-08-23` | PR `#478`. Host-neutral Auth spec + EXP1 schema; Set action **Block** (maintainer-only). Parent `I-2026-06-02` stays `active`. Canon status synced 2026-08-25. |
@@ -149,6 +153,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 
 | ID | Title | Reason | Next review |
 |----|-------|--------|-------------|
-| `I-2026-0009` | Global controllers registry | **Dropped** 2026-05-24 — living registry downscoped; see [`methodology/decisions/2026-05-24-controllers-registry-downscope.md`](../methodology/decisions/2026-05-24-controllers-registry-downscope.md) | n/a |
+| `I-2026-0009` | Global controllers registry | **Dropped** 2026-05-24 — living registry downscoped; drop rationale in [`ideas/I-2026-0009-global-controllers-registry.md`](ideas/I-2026-0009-global-controllers-registry.md); archived stub [`api-controllers-registry.md`](../api-controllers-registry.md) | n/a |
 | `I-2026-0031` | SDK dogfood: first-party consumption and honest narrative | **Parked** 2026-06-30 — pre-analysis complete (layers A/B, no Admin UI → Integration SDK); deferred for September operable-release focus. Insight: [`grill-sessions/2026-06-30-sdk-dogfood-grill-me.md`](grill-sessions/2026-06-30-sdk-dogfood-grill-me.md). `I-2026-0004` unchanged. | post–Sept 2026 milestone or distribution trigger |
 | `I-2026-07-05-distilled-admin-platform-starter` | Distilled admin platform starter (`ezkey-app-starter`) | **Parked** 2026-07-05 — grill complete (D1–D10); external greenfield starter, not lite platform. Insight: [`grill-sessions/2026-07-05-distilled-admin-platform-starter-grill-me.md`](grill-sessions/2026-07-05-distilled-admin-platform-starter-grill-me.md). | post–Sept 2026 milestone or distribution trigger |
+| `V-2026-10-08-global-admin-announcements` | Global Admin announcements (Annonces), dashboard widget v1 | **Parked** 2026-10-08. Locks settled; CR2 amendments recorded; yields to Play closed testing (P1). Stopgap while parked: `EZKEY_ORGANIZATION_DESCRIPTION` (header instance description, redeploy). Mobile Play testers are out of reach by design (they are not tenant admins on the dashboard path). Vision: [`../vision/V-2026-10-08-global-admin-announcements.md`](../vision/V-2026-10-08-global-admin-announcements.md). | Re-entry: (a) more than 5 active Tenant Admins Marc cannot reach by email (anonymous evaluators included) · (b) a planned community reset or upgrade affecting them · (c) an adopter request |

@@ -19,12 +19,26 @@ export type IntegrityAsyncJobStatus =
   | 'EXPIRED'
   | 'INTERRUPTED';
 
+/** How the job was initiated (Integrity cut 3 OQ4 A′). */
+export type IntegrityAsyncJobTrigger = 'MANUAL' | 'AUTO' | 'NIGHTLY';
+
+/** Structured chain verdict status (D3 / P1). */
+export type IntegrityChainStatus =
+  | 'OK'
+  | 'UNDECLARED_GAP_DETECTED'
+  | 'CHAIN_INTEGRITY_VIOLATION_DETECTED'
+  | 'NOT_VERIFIED';
+
+/** Who holds the heavy-crypto path (process-local or ShedLock-derived). */
+export type IntegrityBusyHolder = 'NIGHTLY' | 'REPORT_GET' | 'OPERATOR_JOB';
+
 export interface IntegrityAsyncJobResponse {
   jobId: string;
   type: IntegrityAsyncJobType;
   status: IntegrityAsyncJobStatus;
+  trigger?: IntegrityAsyncJobTrigger;
   startedByUsername?: string;
-  startedByAdminId?: number;
+  startedByAdminId?: number | null;
   startedAt?: string;
   heartbeatAt?: string;
   finishedAt?: string;
@@ -34,8 +48,16 @@ export interface IntegrityAsyncJobResponse {
   errorSummary?: string;
   intact?: boolean;
   alertId?: number;
+  chainStatus?: IntegrityChainStatus | null;
+  totalCheckpoints?: number | null;
+  validCheckpoints?: number | null;
+  invalidCheckpoints?: number | null;
+  archivedCheckpoints?: number | null;
+  undeclaredGaps?: number | null;
+  entryHmacViolations?: number | null;
   abandonedAt?: string;
   resumeOneLiner?: string;
+  busyHolder?: IntegrityBusyHolder | null;
 }
 
 export interface IntegrityAsyncJobAcceptedResponse {
@@ -47,6 +69,8 @@ export interface IntegrityAsyncJobStartRequest {
   from: string;
   to: string;
   raiseAlert?: boolean;
+  /** Client-declared metadata: MANUAL (default) or AUTO. NIGHTLY is rejected on POST. */
+  trigger?: 'MANUAL' | 'AUTO';
 }
 
 const BASE = '/api/v1/audit-logs/integrity/jobs';
@@ -63,6 +87,12 @@ export async function startIntegrityAsyncJob(
 /** Returns null on 204 (idle). */
 export async function getCurrentIntegrityAsyncJob(): Promise<IntegrityAsyncJobResponse | null> {
   const result = await fetchApi<IntegrityAsyncJobResponse | undefined>(`${BASE}/current`);
+  return result ?? null;
+}
+
+/** Returns null on 204 (no verdict yet). */
+export async function getLastIntegrityVerdict(): Promise<IntegrityAsyncJobResponse | null> {
+  const result = await fetchApi<IntegrityAsyncJobResponse | undefined>(`${BASE}/last-verdict`);
   return result ?? null;
 }
 

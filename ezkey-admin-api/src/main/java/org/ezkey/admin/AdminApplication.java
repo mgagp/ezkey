@@ -11,6 +11,7 @@ package org.ezkey.admin;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
@@ -44,7 +45,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * @author Ezkey contributors
  * @since 2025
  */
+// No in-memory user / generated security password — auth is AdminTokenAuthenticationFilter only.
 @SpringBootApplication(
+    exclude = UserDetailsServiceAutoConfiguration.class,
     scanBasePackages = {
       "org.ezkey.admin",
       "org.ezkey.authattempt",

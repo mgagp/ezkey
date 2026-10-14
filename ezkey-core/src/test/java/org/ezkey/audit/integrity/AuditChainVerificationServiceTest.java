@@ -30,8 +30,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 
 /**
  * Unit tests for {@link AuditChainVerificationService}.
@@ -133,10 +131,9 @@ class AuditChainVerificationServiceTest {
     when(checkpointRepository.findByWindowRange(any(), any())).thenReturn(List.of(cp1, cp2));
 
     // First window returns e1, second window returns e2
-    when(auditLogRepository.findAll(
-            any(Specification.class), eq(Sort.by("auditLogId").ascending())))
-        .thenReturn(List.of(e1))
-        .thenReturn(List.of(e2));
+    when(auditLogRepository.findEntryHmacsInWindow(any(), any()))
+        .thenReturn(TestEntryHmacView.fromAll(List.of(e1)))
+        .thenReturn(TestEntryHmacView.fromAll(List.of(e2)));
 
     ChainVerificationReport report = verificationService.verifyChain(null, null);
 
@@ -188,10 +185,9 @@ class AuditChainVerificationServiceTest {
     cp2.setPrevChainHmac("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
 
     when(checkpointRepository.findByWindowRange(any(), any())).thenReturn(List.of(cp1, cp2));
-    when(auditLogRepository.findAll(
-            any(Specification.class), eq(Sort.by("auditLogId").ascending())))
-        .thenReturn(List.of(e1))
-        .thenReturn(List.of(e2));
+    when(auditLogRepository.findEntryHmacsInWindow(any(), any()))
+        .thenReturn(TestEntryHmacView.fromAll(List.of(e1)))
+        .thenReturn(TestEntryHmacView.fromAll(List.of(e2)));
 
     ChainVerificationReport report = verificationService.verifyChain(null, null);
 
@@ -221,10 +217,9 @@ class AuditChainVerificationServiceTest {
             List.of(e2), cp1.getChainHmac(), gapWindowStart, gapWindowEnd);
 
     when(checkpointRepository.findByWindowRange(any(), any())).thenReturn(List.of(cp1, cp2));
-    when(auditLogRepository.findAll(
-            any(Specification.class), eq(Sort.by("auditLogId").ascending())))
-        .thenReturn(List.of(e1))
-        .thenReturn(List.of(e2));
+    when(auditLogRepository.findEntryHmacsInWindow(any(), any()))
+        .thenReturn(TestEntryHmacView.fromAll(List.of(e1)))
+        .thenReturn(TestEntryHmacView.fromAll(List.of(e2)));
 
     OffsetDateTime from = WIN_START;
     OffsetDateTime to = gapWindowEnd;
@@ -262,10 +257,9 @@ class AuditChainVerificationServiceTest {
             List.of(e2), gapCp.getChainHmac(), gapEnd, gapEnd.plusMinutes(5));
 
     when(checkpointRepository.findByWindowRange(any(), any())).thenReturn(List.of(cp1, gapCp, cp2));
-    when(auditLogRepository.findAll(
-            any(Specification.class), eq(Sort.by("auditLogId").ascending())))
-        .thenReturn(List.of(e1))
-        .thenReturn(List.of(e2));
+    when(auditLogRepository.findEntryHmacsInWindow(any(), any()))
+        .thenReturn(TestEntryHmacView.fromAll(List.of(e1)))
+        .thenReturn(TestEntryHmacView.fromAll(List.of(e2)));
 
     ChainVerificationReport report = verificationService.verifyChain(null, null);
 
@@ -294,10 +288,9 @@ class AuditChainVerificationServiceTest {
 
     when(checkpointRepository.findByWindowRange(any(), any()))
         .thenReturn(List.of(cp1, conciliationCp, cp2));
-    when(auditLogRepository.findAll(
-            any(Specification.class), eq(Sort.by("auditLogId").ascending())))
-        .thenReturn(List.of(e1))
-        .thenReturn(List.of(e2));
+    when(auditLogRepository.findEntryHmacsInWindow(any(), any()))
+        .thenReturn(TestEntryHmacView.fromAll(List.of(e1)))
+        .thenReturn(TestEntryHmacView.fromAll(List.of(e2)));
 
     ChainVerificationReport report = verificationService.verifyChain(null, null);
 
@@ -456,11 +449,9 @@ class AuditChainVerificationServiceTest {
   // Helpers
   // -----------------------------------------------------------------------
 
-  @SuppressWarnings("unchecked")
   private void stubAuditLogs(List<AuditLog> entries) {
-    when(auditLogRepository.findAll(
-            any(Specification.class), eq(Sort.by("auditLogId").ascending())))
-        .thenReturn(entries);
+    when(auditLogRepository.findEntryHmacsInWindow(any(), any()))
+        .thenReturn(TestEntryHmacView.fromAll(entries));
   }
 
   /**

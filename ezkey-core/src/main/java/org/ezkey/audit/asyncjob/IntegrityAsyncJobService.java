@@ -12,7 +12,6 @@ package org.ezkey.audit.asyncjob;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.ezkey.audit.domain.ApiName;
@@ -28,9 +27,12 @@ import org.ezkey.audit.exception.IntegrityValidationDisabledException;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
+import org.ezkey.audit.integrity.IntegrityWindowCapProperties;
 import org.ezkey.audit.integrity.NightlyIntegrityProperties;
+import org.ezkey.audit.integrity.NightlyIntegrityShedLockProbe;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationOptions;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
+import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.security.ApplicationReadyStartupOrder;
@@ -73,11 +75,14 @@ public class IntegrityAsyncJobService {
 
   private final IntegrityAsyncJobRepository jobRepository;
   private final IntegrityAsyncJobStateService stateService;
+  private final IntegrityNightlyTerminalService nightlyTerminalService;
   private final IntegrityHeavyCryptoGate heavyCryptoGate;
   private final AuditIntegrityService auditIntegrityService;
   private final AuditChainVerificationService chainVerificationService;
   private final RetroactiveIntegrityValidationService retroactiveIntegrityValidationService;
   private final NightlyIntegrityProperties nightlyIntegrityProperties;
+  private final IntegrityWindowCapProperties windowCapProperties;
+  private final NightlyIntegrityShedLockProbe nightlyShedLockProbe;
   private final AuditLogService auditLogService;
   private final ThreadPoolTaskExecutor integrityAsyncJobExecutor;
 
@@ -86,31 +91,42 @@ public class IntegrityAsyncJobService {
    *
    * @param jobRepository job persistence
    * @param stateService heartbeat / terminal mutations
+   * @param nightlyTerminalService nightly terminal row writer ({@code tryInsert*} uses programmatic
+   *     {@code REQUIRES_NEW})
    * @param heavyCryptoGate process-local exclusion vs nightly
    * @param auditIntegrityService entry HMAC verify
    * @param chainVerificationService chain verify
    * @param retroactiveIntegrityValidationService detective validation
    * @param nightlyIntegrityProperties nightly enable flag (fail-closed for RUN_VALIDATION)
+   * @param windowCapProperties async days-based window cap for VERIFY_* / RUN_VALIDATION starts
+   *     ({@code max-window-days}; sync report GETs and POST use {@code max-sync-window-days})
+   * @param nightlyShedLockProbe cross-replica nightly ShedLock probe
    * @param auditLogService audit emission
    * @param integrityAsyncJobExecutor single-thread worker pool
    */
   public IntegrityAsyncJobService(
       IntegrityAsyncJobRepository jobRepository,
       IntegrityAsyncJobStateService stateService,
+      IntegrityNightlyTerminalService nightlyTerminalService,
       IntegrityHeavyCryptoGate heavyCryptoGate,
       AuditIntegrityService auditIntegrityService,
       AuditChainVerificationService chainVerificationService,
       RetroactiveIntegrityValidationService retroactiveIntegrityValidationService,
       NightlyIntegrityProperties nightlyIntegrityProperties,
+      IntegrityWindowCapProperties windowCapProperties,
+      NightlyIntegrityShedLockProbe nightlyShedLockProbe,
       AuditLogService auditLogService,
       @Qualifier("integrityAsyncJobExecutor") ThreadPoolTaskExecutor integrityAsyncJobExecutor) {
     this.jobRepository = jobRepository;
     this.stateService = stateService;
+    this.nightlyTerminalService = nightlyTerminalService;
     this.heavyCryptoGate = heavyCryptoGate;
     this.auditIntegrityService = auditIntegrityService;
     this.chainVerificationService = chainVerificationService;
     this.retroactiveIntegrityValidationService = retroactiveIntegrityValidationService;
     this.nightlyIntegrityProperties = nightlyIntegrityProperties;
+    this.windowCapProperties = windowCapProperties;
+    this.nightlyShedLockProbe = nightlyShedLockProbe;
     this.auditLogService = auditLogService;
     this.integrityAsyncJobExecutor = integrityAsyncJobExecutor;
   }
@@ -121,6 +137,10 @@ public class IntegrityAsyncJobService {
    * <p>Crash/restart orphans are not Escape-sticky: the operator Starts again without Abandon.
    * Escape remains for TTL {@link IntegrityAsyncJobStatus#EXPIRED} and explicit {@link
    * IntegrityAsyncJobStatus#CANCELLED} only. History row is kept (not erased).
+   *
+   * <p><b>Invariant:</b> INTERRUPTED is always written together with {@code abandonedAt} (and
+   * {@code finishedAt}) here — never Escape-sticky, never blocking Start. V25 one-shot UPDATE
+   * healed historical orphans; do not reintroduce a heal loop on read paths.
    *
    * @param event application ready
    */
@@ -174,19 +194,19 @@ public class IntegrityAsyncJobService {
               + resumeLine(escapeSticky.get()));
     }
     if (heavyCryptoGate.isBusy()) {
-      throw busyWithoutJob("Integrity crypto path busy (scheduled or in-process heavy work)");
+      throw IntegrityAsyncJobBusyException.forHeavyCryptoBusy(heavyCryptoGate.holder());
     }
 
     if (request.type() == IntegrityAsyncJobType.RUN_VALIDATION) {
       if (!nightlyIntegrityProperties.isEnabled()) {
         throw new IntegrityValidationDisabledException();
       }
+      // Async RUN_VALIDATION keeps max-window-days (default 92); sync operator POST uses
+      // max-sync-window-days (Christophe B1).
       retroactiveIntegrityValidationService.validateOperatorWindow(request.from(), request.to());
-    } else if (request.from() == null || request.to() == null) {
-      throw new IllegalArgumentException(
-          "Date range is required. Provide from (inclusive) and to (exclusive) as ISO-8601.");
-    } else if (!request.to().isAfter(request.from())) {
-      throw new IllegalArgumentException("Window end (to) must be after window start (from).");
+    } else {
+      // VERIFY_CHAIN_RANGE / VERIFY_ENTRY_HMAC_RANGE — async days cap (#730 D2 / cut 3 PR 0).
+      windowCapProperties.validateWindow(request.from(), request.to());
     }
 
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
@@ -196,6 +216,12 @@ public class IntegrityAsyncJobService {
     job.setSlotKey(IntegrityAsyncJob.GLOBAL_SLOT_KEY);
     job.setJobType(request.type());
     job.setStatus(IntegrityAsyncJobStatus.RUNNING);
+    IntegrityAsyncJobTrigger trigger =
+        request.trigger() == null ? IntegrityAsyncJobTrigger.MANUAL : request.trigger();
+    if (trigger == IntegrityAsyncJobTrigger.NIGHTLY) {
+      throw new IllegalArgumentException("trigger NIGHTLY is not allowed on POST");
+    }
+    job.setTrigger(trigger);
     job.setStartedByAdminId(adminId);
     job.setStartedByUsername(username != null ? username : "unknown");
     job.setStartedAt(now);
@@ -238,11 +264,9 @@ public class IntegrityAsyncJobService {
   }
 
   /**
-   * Returns the job most relevant for the Integrity banner: RUNNING (after TTL), else latest
-   * non-abandoned terminal, else empty.
-   *
-   * <p>Legacy INTERRUPTED rows without {@code abandonedAt} (pre–crash-posture) are auto-abandoned
-   * here so they never Escape-sticky or block Start.
+   * Returns the job most relevant for the Integrity banner: RUNNING (after TTL), else synthetic
+   * RUNNING when ShedLock holds nightly, else latest non-abandoned <em>operator</em> terminal, else
+   * empty. Persisted nightly rows are excluded from the operator slot.
    *
    * @return current job when present
    */
@@ -253,20 +277,44 @@ public class IntegrityAsyncJobService {
         jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING);
     if (running.isPresent()) {
-      return Optional.of(IntegrityAsyncJobResponse.from(running.get()));
+      // OPERATOR_JOB: always the real row (avoids end-of-job synthetic flicker).
+      return Optional.of(
+          IntegrityAsyncJobResponse.from(
+              running.get(), IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB));
     }
-    List<IntegrityAsyncJob> recent = jobRepository.findAllByOrderByStartedAtDesc();
-    for (IntegrityAsyncJob job : recent) {
-      if (job.getAbandonedAt() != null) {
-        continue;
-      }
-      if (job.getStatus() == IntegrityAsyncJobStatus.INTERRUPTED) {
-        healInterruptedOrphan(job);
-        continue;
-      }
-      return Optional.of(IntegrityAsyncJobResponse.from(job));
+    if (nightlyShedLockProbe.isNightlyLockActive()) {
+      return Optional.of(syntheticNightlyBusyResponse());
     }
-    return Optional.empty();
+    IntegrityHeavyCryptoGate.Holder localHolder = heavyCryptoGate.holder();
+    // REPORT_GET: no synthetic; surface via 409 on sync GETs. Still attach busyHolder when present.
+    return jobRepository
+        .findLatestActiveOperatorJob()
+        .map(job -> IntegrityAsyncJobResponse.from(job, localHolder));
+  }
+
+  /**
+   * Latest verdict-bearing job (operator or nightly) for the Integrity micro-dashboard.
+   *
+   * @return verdict row when present
+   */
+  @Transactional(readOnly = true)
+  public Optional<IntegrityAsyncJobResponse> getLastVerdict() {
+    return jobRepository.findLatestVerdict().map(IntegrityAsyncJobResponse::from);
+  }
+
+  private static IntegrityAsyncJobResponse syntheticNightlyBusyResponse() {
+    IntegrityAsyncJob synthetic = new IntegrityAsyncJob();
+    synthetic.setJobId(UUID.fromString("00000000-0000-0000-0000-000000000000"));
+    synthetic.setJobType(IntegrityAsyncJobType.RUN_VALIDATION);
+    synthetic.setStatus(IntegrityAsyncJobStatus.RUNNING);
+    synthetic.setTrigger(IntegrityAsyncJobTrigger.NIGHTLY);
+    synthetic.setStartedByAdminId(null);
+    synthetic.setStartedByUsername("system");
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    synthetic.setStartedAt(now);
+    synthetic.setHeartbeatAt(now);
+    synthetic.setResultSummary("Nightly integrity validation in progress");
+    return IntegrityAsyncJobResponse.from(synthetic, IntegrityHeavyCryptoGate.Holder.NIGHTLY);
   }
 
   /**
@@ -291,17 +339,14 @@ public class IntegrityAsyncJobService {
   @Transactional
   public IntegrityAsyncJobResponse abandon(Integer adminId) {
     stateService.expireStaleRunningIfNeeded();
-    List<IntegrityAsyncJob> recent = jobRepository.findAllByOrderByStartedAtDesc();
-    if (recent.isEmpty()) {
-      throw new IntegrityAsyncJobAbandonNotAllowedException(
-          null, "No Integrity async job to abandon");
-    }
-    IntegrityAsyncJob job = recent.get(0);
+    IntegrityAsyncJob job =
+        jobRepository
+            .findLatestOperatorJob()
+            .orElseThrow(
+                () ->
+                    new IntegrityAsyncJobAbandonNotAllowedException(
+                        null, "No Integrity async job to abandon"));
     if (job.getAbandonedAt() != null) {
-      return IntegrityAsyncJobResponse.from(job);
-    }
-    if (job.getStatus() == IntegrityAsyncJobStatus.INTERRUPTED) {
-      healInterruptedOrphan(job);
       return IntegrityAsyncJobResponse.from(job);
     }
     IntegrityAsyncJobStatus status = job.getStatus();
@@ -341,6 +386,27 @@ public class IntegrityAsyncJobService {
   }
 
   /**
+   * Delegates to {@link IntegrityNightlyTerminalService#tryInsertNightlyTerminalSucceeded}.
+   *
+   * @param result nightly validation result
+   */
+  public void tryInsertNightlyTerminalSucceeded(RetroactiveIntegrityValidationResult result) {
+    nightlyTerminalService.tryInsertNightlyTerminalSucceeded(result);
+  }
+
+  /**
+   * Delegates to {@link IntegrityNightlyTerminalService#tryInsertNightlyTerminalFailed}.
+   *
+   * @param scopeFrom inclusive window start
+   * @param scopeTo exclusive window end
+   * @param errorSimpleName exception simple name
+   */
+  public void tryInsertNightlyTerminalFailed(
+      OffsetDateTime scopeFrom, OffsetDateTime scopeTo, String errorSimpleName) {
+    nightlyTerminalService.tryInsertNightlyTerminalFailed(scopeFrom, scopeTo, errorSimpleName);
+  }
+
+  /**
    * Escape-sticky statuses that require Abandon before Start (TTL / explicit cancel only).
    *
    * @param status job status
@@ -351,43 +417,20 @@ public class IntegrityAsyncJobService {
   }
 
   private Optional<IntegrityAsyncJob> findLatestEscapeSticky() {
-    List<IntegrityAsyncJob> recent = jobRepository.findAllByOrderByStartedAtDesc();
-    for (IntegrityAsyncJob job : recent) {
-      if (job.getAbandonedAt() != null) {
-        continue;
-      }
-      if (job.getStatus() == IntegrityAsyncJobStatus.INTERRUPTED) {
-        healInterruptedOrphan(job);
-        continue;
-      }
-      if (isEscapeStickyStatus(job.getStatus())) {
-        return Optional.of(job);
-      }
-      // Latest non-abandoned is SUCCEEDED/FAILED/etc. — slot free for Start.
+    Optional<IntegrityAsyncJob> latest = jobRepository.findLatestActiveOperatorJob();
+    if (latest.isEmpty()) {
       return Optional.empty();
     }
+    IntegrityAsyncJob job = latest.get();
+    if (isEscapeStickyStatus(job.getStatus())) {
+      return Optional.of(job);
+    }
+    // Latest non-abandoned is SUCCEEDED/FAILED/etc. — slot free for Start.
     return Optional.empty();
   }
 
-  private void healInterruptedOrphan(IntegrityAsyncJob job) {
-    if (job.getAbandonedAt() != null) {
-      return;
-    }
-    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-    job.setAbandonedAt(now);
-    if (job.getFinishedAt() == null) {
-      job.setFinishedAt(now);
-    }
-    if (job.getResultSummary() == null) {
-      job.setResultSummary("Interrupted by process restart — slot freed; Start again");
-    }
-    jobRepository.save(job);
-    logger.info(
-        "Auto-abandoned legacy INTERRUPTED Integrity async job {} (crash posture)", job.getJobId());
-  }
-
   private void runJob(UUID jobId) {
-    if (!heavyCryptoGate.tryEnter()) {
+    if (!heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB)) {
       stateService.markFailed(jobId, "Integrity crypto path busy (scheduled nightly or peer work)");
       return;
     }
@@ -399,6 +442,7 @@ public class IntegrityAsyncJobService {
       if (job.getStatus() != IntegrityAsyncJobStatus.RUNNING) {
         return;
       }
+      // Heartbeat failure is fail-closed: exception escapes to markFailed below (job → FAILED).
       Runnable heartbeat = () -> stateService.heartbeat(jobId);
       heartbeat.run();
 
@@ -411,10 +455,12 @@ public class IntegrityAsyncJobService {
     } catch (IntegrityValidationDisabledException ex) {
       stateService.markFailed(jobId, ex.getMessage());
     } catch (RuntimeException ex) { // CHECKSTYLE IGNORE IllegalCatch
+      // Full exception stays in the log only — audit / job summaries must not seal SQL or values.
+      // Includes heartbeat persistence failures (fail-closed → FAILED).
       logger.error("Integrity async job {} failed: {}", jobId, ex.getMessage(), ex);
-      stateService.markFailed(jobId, truncate(ex.getMessage(), 512));
+      stateService.markFailed(jobId, "Job failed: " + ex.getClass().getSimpleName());
     } finally {
-      heavyCryptoGate.exit();
+      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB);
     }
   }
 
@@ -428,7 +474,7 @@ public class IntegrityAsyncJobService {
             + report.totalEntries()
             + ", invalid="
             + report.invalidEntries();
-    stateService.markSucceeded(job.getJobId(), summary, report.intact(), null);
+    stateService.markSucceeded(job.getJobId(), summary, report.intact(), null, null);
   }
 
   private void completeChainVerify(IntegrityAsyncJob job, Runnable heartbeat) {
@@ -443,64 +489,58 @@ public class IntegrityAsyncJobService {
             + report.invalidCheckpoints()
             + ", gaps="
             + report.undeclaredGaps().size();
-    stateService.markSucceeded(job.getJobId(), summary, report.intact(), null);
+    stateService.markSucceeded(
+        job.getJobId(),
+        summary,
+        report.intact(),
+        null,
+        IntegrityChainVerdictFields.fromChainReport(report));
   }
 
   private void completeValidation(IntegrityAsyncJob job, Runnable heartbeat) {
-    heartbeat.run();
     boolean raiseAlert = job.getRaiseAlert() == null || job.getRaiseAlert();
     RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
         retroactiveIntegrityValidationService.runValidation(
             job.getScopeFrom(),
             job.getScopeTo(),
-            RetroactiveIntegrityValidationOptions.operator(raiseAlert, job.getStartedByAdminId()));
-    heartbeat.run();
+            RetroactiveIntegrityValidationOptions.operator(raiseAlert, job.getStartedByAdminId()),
+            heartbeat);
     if (result.skipped()) {
       stateService.markSucceeded(
-          job.getJobId(), "Validation skipped: " + result.skipReason(), true, null);
+          job.getJobId(),
+          "Validation skipped: " + result.skipReason(),
+          true,
+          null,
+          IntegrityChainVerdictFields.notVerified());
       return;
     }
-    String summary =
-        "Validation: intact="
-            + result.intact()
-            + ", entryViolations="
-            + result.entryHmacViolationCount()
-            + ", chainViolations="
-            + result.chainViolationCount()
-            + (result.alertRaised() ? ", alertId=" + result.alertId() : "");
-    stateService.markSucceeded(job.getJobId(), summary, result.intact(), result.alertId());
-  }
-
-  private IntegrityAsyncJobBusyException busyWithoutJob(String message) {
-    IntegrityAsyncJob synthetic = new IntegrityAsyncJob();
-    synthetic.setJobId(UUID.fromString("00000000-0000-0000-0000-000000000000"));
-    synthetic.setJobType(IntegrityAsyncJobType.RUN_VALIDATION);
-    synthetic.setStatus(IntegrityAsyncJobStatus.RUNNING);
-    synthetic.setStartedByAdminId(0);
-    synthetic.setStartedByUsername("system");
-    synthetic.setStartedAt(OffsetDateTime.now(ZoneOffset.UTC));
-    synthetic.setHeartbeatAt(synthetic.getStartedAt());
-    synthetic.setResultSummary(message);
-    return new IntegrityAsyncJobBusyException(synthetic, message);
+    stateService.markSucceeded(
+        job.getJobId(),
+        result.outcomeSummary("Validation"),
+        result.intact(),
+        result.alertId(),
+        IntegrityChainVerdictFields.fromValidation(result));
   }
 
   private void emitStartedAudit(Integer adminId, IntegrityAsyncJob job) {
+    String details =
+        AuditDetailsBuilder.builder()
+            .custom("jobId", job.getJobId().toString())
+            .custom("jobType", job.getJobType().name())
+            .custom("jobStatus", job.getStatus().name())
+            .custom("summary", "Integrity async job started")
+            .toJson();
+    // Builder validation (required fields) must fail loudly — do not wrap build().
+    AuditLog log =
+        AuditLog.builder()
+            .apiName(ApiName.ADMIN_API)
+            .eventType(EventType.INTEGRITY_ASYNC_JOB_STARTED)
+            .eventAction(IntegrityAsyncJobAuditConstants.EVENT_ACTION)
+            .eventStatus(EventStatus.SUCCESS)
+            .adminId(adminId)
+            .eventDetails(details)
+            .build();
     try {
-      String details =
-          AuditDetailsBuilder.builder()
-              .custom("jobId", job.getJobId().toString())
-              .custom("jobType", job.getJobType().name())
-              .custom("jobStatus", job.getStatus().name())
-              .custom("summary", "Integrity async job started")
-              .toJson();
-      AuditLog log =
-          AuditLog.builder()
-              .apiName(ApiName.ADMIN_API)
-              .eventType(EventType.INTEGRITY_ASYNC_JOB_STARTED)
-              .eventStatus(EventStatus.SUCCESS)
-              .adminId(adminId)
-              .eventDetails(details)
-              .build();
       auditLogService.log(log);
     } catch (RuntimeException ex) { // CHECKSTYLE IGNORE IllegalCatch
       logger.warn("Failed to emit Integrity async job start audit: {}", ex.getMessage());
@@ -508,22 +548,24 @@ public class IntegrityAsyncJobService {
   }
 
   private void emitAbandonedAudit(Integer adminId, IntegrityAsyncJob job) {
+    String details =
+        AuditDetailsBuilder.builder()
+            .custom("jobId", job.getJobId().toString())
+            .custom("jobType", job.getJobType().name())
+            .custom("jobStatus", job.getStatus().name())
+            .custom("summary", "Integrity async job slot abandoned")
+            .toJson();
+    // Builder validation (required fields) must fail loudly — do not wrap build().
+    AuditLog log =
+        AuditLog.builder()
+            .apiName(ApiName.ADMIN_API)
+            .eventType(EventType.INTEGRITY_ASYNC_JOB_ABANDONED)
+            .eventAction(IntegrityAsyncJobAuditConstants.EVENT_ACTION)
+            .eventStatus(EventStatus.SUCCESS)
+            .adminId(adminId)
+            .eventDetails(details)
+            .build();
     try {
-      String details =
-          AuditDetailsBuilder.builder()
-              .custom("jobId", job.getJobId().toString())
-              .custom("jobType", job.getJobType().name())
-              .custom("jobStatus", job.getStatus().name())
-              .custom("summary", "Integrity async job slot abandoned")
-              .toJson();
-      AuditLog log =
-          AuditLog.builder()
-              .apiName(ApiName.ADMIN_API)
-              .eventType(EventType.INTEGRITY_ASYNC_JOB_ABANDONED)
-              .eventStatus(EventStatus.SUCCESS)
-              .adminId(adminId)
-              .eventDetails(details)
-              .build();
       auditLogService.log(log);
     } catch (RuntimeException ex) { // CHECKSTYLE IGNORE IllegalCatch
       logger.warn("Failed to emit Integrity async job abandon audit: {}", ex.getMessage());
@@ -538,12 +580,5 @@ public class IntegrityAsyncJobService {
         + job.getStartedByUsername()
         + " at "
         + job.getStartedAt();
-  }
-
-  private static String truncate(String value, int max) {
-    if (value == null) {
-      return null;
-    }
-    return value.length() <= max ? value : value.substring(0, max);
   }
 }

@@ -1,0 +1,76 @@
+# Advanced CodeQL setup for mgagp/ezkey.
+#
+# Before this workflow can succeed on main/PRs, Marc must switch the repository
+# CodeQL configuration from Default to Advanced (Settings → Code security →
+# CodeQL → disable default setup). Otherwise advanced and default conflict or
+# duplicate. See docs/SECURITY_POSTURE.md § Code scanning policy.
+#
+# Decision: code-scanning triage 2026-10-13, approved by Marc 2026-10-13 19:40.
+name: CodeQL
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Weekly catch-up (UTC Sunday 05:17) — same spirit as GitHub's default template.
+    - cron: "17 5 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ matrix.language == 'c-cpp' && 360 || 120 }}
+    permissions:
+      security-events: write
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: java-kotlin
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+          - language: python
+            build-mode: none
+          - language: c-cpp
+            build-mode: none
+          - language: actions
+            build-mode: none
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config-file: ./.github/codeql/codeql-config.yml
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          category: "/language:${{ matrix.language }}"
+        env:
+          # Advanced setup does NOT auto-detect `.github/codeql/extensions/`.
+          # `packs:` in codeql-config.yml only accepts registry `scope/name` refs,
+          # not filesystem paths. Load the local model pack the same way
+          # codeql-action loads its generated pr-diff-range pack:
+          #   --additional-packs = search path (parent of the pack directory)
+          #   --extension-packs  = pack name from qlpack.yml (`ezkey/java-models`)
+          # EXTRA_OPTIONS are appended after the action's own run-queries flags,
+          # so pr-diff-range (when present) and this pack both appear on the CLI.
+          # Java-kotlin only — the pack targets codeql/java-all.
+          CODEQL_ACTION_EXTRA_OPTIONS: >-
+            ${{ matrix.language == 'java-kotlin' &&
+            format('{{"database":{{"run-queries":["--additional-packs={0}/.github/codeql/extensions","--extension-packs=ezkey/java-models"]}}}}', github.workspace)
+            || '' }}

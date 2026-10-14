@@ -30,6 +30,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0011](#adr-0011-tink-native-database-keyset-envelope) | Tink-native database keyset envelope | accepted | 2026-08-02 |
 | [ADR-0012](#adr-0012-admin-owned-keyset-materialization) | Admin-owned keyset materialization | accepted | 2026-08-28 |
 | [ADR-0013](#adr-0013-admin-role-admin-umbrella-keep-vs-split) | Admin `ROLE_ADMIN` umbrella — keep vs split | proposed | 2026-09-16 |
+| [ADR-0014](#adr-0014-qa-sphere-for-test-execution-tracking) | QA Sphere for test execution tracking | accepted | 2026-10-13 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -865,3 +866,76 @@ the living operational canon (including the 2026-08-20 Path A sentence).
 - None superseded yet. Hygiene Path A is provenance, not an ADR.
 - Orthogonal: encryption key Global-only (SEC-017) remains; keyset writer ownership is
   [ADR-0012](#adr-0012-admin-owned-keyset-materialization).
+
+## ADR-0014 — QA Sphere for test execution tracking
+
+### Metadata
+
+- **ID:** ADR-0014.
+- **Date:** 2026-10-13.
+- **Status:** accepted.
+- **Scope:** global (test strategy, execution tracking, security-case sourcing).
+- **Owners:** Marc.
+
+### Context
+
+Ezkey needs a durable place to track **manual**, **exploratory**, and **campaign** test execution
+(Play closed testing, public-alpha rehearsals, operator charters) without turning the git corpus
+into a run log or inventing a second compliance program. Automated unit, integration, and E2E
+proof already lives in the repository and in
+[`spec-test-traceability.md`](spec-test-traceability.md). Agents and humans also need a shared
+taxonomy so case titles remain joinable across tools.
+
+### Decision
+
+Adopt **QA Sphere** (workspace `https://isd.eu1.qasphere.com`, project code `EZK`) as the
+execution-tracking surface for manual, exploratory, and campaign runs. The **repository remains
+the source of truth** for specifications, acceptance criteria, and automated evidence. Living
+canon for taxonomy, nomenclature, pyramid split, and cold-agent MCP usage is
+[`test-strategy.md`](test-strategy.md).
+
+Standards posture for that canon:
+
+- **ISO/IEC/IEEE 29119** — vocabulary and test levels (inspiration, not certification).
+- **OWASP ASVS** (web/API) and **OWASP MASVS** (mobile) — sources of security cases, cited by
+  code via norm tags.
+- Complements [`normative-posture.md`](normative-posture.md); creates **no** parallel SOC 2 /
+  attestation program.
+
+### Alternatives Considered
+
+- **Git-only issue/checklists for every manual run.** Rejected — noisy in the product-docs and
+  PR board; poor campaign/session model for multi-tester passes.
+- **Spreadsheet or ad-hoc Notion board.** Rejected — weak MCP/agent integration and weak
+  durable join to repo case codes.
+- **Full test-management suite with compliance workflow.** Rejected — accidental complexity and
+  conflicts with the normative-posture “no parallel compliance program” lock.
+
+### Consequences
+
+- **Positive.** Clear split: repo = truth, QA Sphere = pointers + execution; shared `CODE` /
+  case-title nomenclature; cold agents can use hosted MCP with env-var API keys.
+- **Negative.** Humans must keep case bodies thin (links, not pasted specs) or the two systems
+  drift.
+- **Neutral.** MCP cannot delete and cannot edit custom fields; automated MCP results are
+  flagged as such — web UI remains required for some admin actions.
+
+### Impact
+
+- **Affected components.** All taxonomy codes in [`test-strategy.md`](test-strategy.md)
+  (Admin UI, APIs, mobile, demos, CLI, experimental PAM, core black-box, ops, docs).
+- **Affected features.** None changed in product behavior; traceability matrices gain an
+  optional pointer to QA Sphere campaigns when useful.
+- **Affected boundaries.** Documentation and QA process only — no API contract change.
+
+### Validation
+
+- Taxonomy codes match existing module paths (verified at authorship).
+- Cold-agent section stays free of secrets and tester personal data.
+- Future campaign notes link milestones/runs in QA Sphere rather than duplicating run logs in
+  git.
+
+### Related Decisions
+
+- Complements normative posture (SOC 2 vocabulary only): [`normative-posture.md`](normative-posture.md).
+- Traceability home for automated proof remains [`spec-test-traceability.md`](spec-test-traceability.md).

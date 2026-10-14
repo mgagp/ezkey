@@ -8,14 +8,14 @@ if [ "${EZKEY_BOOTSTRAP_INIT_ENABLED:-true}" = "false" ]; then
   echo "=========================================="
   echo "  Ezkey Bootstrap Init — SKIPPED"
   echo "=========================================="
-  echo "EZKEY_BOOTSTRAP_INIT_ENABLED=false (e.g. recovery_primary bootstrap: no bootstrap-credentials.json)."
-  echo "Perform global admin enrollment via Admin UI recovery flow, or set EZKEY_BOOTSTRAP_INIT_ENABLED=true with full bootstrap mode."
+  echo "EZKEY_BOOTSTRAP_INIT_ENABLED=false (e.g. recovery_primary bootstrap: credentials file has recovery codes only)."
+  echo "Perform global admin enrollment via Admin UI recovery flow (codes in bootstrap-credentials.json 0600), or set EZKEY_BOOTSTRAP_INIT_ENABLED=true with full bootstrap mode."
   exit 0
 fi
 
-BOOTSTRAP_CREDS_FILE="/bootstrap/bootstrap-credentials.json"
-DEVICE_CREDS_FILE="/bootstrap/device-credentials.json"
-DEMO_DEVICE_ENROLLMENTS_DIR="/app/data/enrollments"
+BOOTSTRAP_CREDS_FILE="${BOOTSTRAP_CREDS_FILE:-/bootstrap/bootstrap-credentials.json}"
+DEVICE_CREDS_FILE="${DEVICE_CREDS_FILE:-/bootstrap/device-credentials.json}"
+DEMO_DEVICE_ENROLLMENTS_DIR="${DEMO_DEVICE_ENROLLMENTS_DIR:-/app/data/enrollments}"
 # Note: demo-app-acme uses userIdentifier (username) for auth attempt creation; no acme-users.json
 
 ADMIN_API_URL="${ADMIN_API_URL:-http://admin-api:9080}"
@@ -76,6 +76,21 @@ echo "✅ Credentials loaded:"
 echo "   Enrollment ID: $ENROLLMENT_ID"
 echo "   Username: $USERNAME"
 
+# After bind, Admin API redacts enrollmentProofToken / challenge from the file. Treat as
+# "already complete" only when the demo-device enrollment file is present; otherwise fail
+# clearly (enrollment may be bound to another device).
+if [ "$ENROLLMENT_PROOF_TOKEN" = "null" ] || [ -z "$ENROLLMENT_PROOF_TOKEN" ]; then
+  if [ -f "$DEMO_DEVICE_ENROLLMENTS_DIR/${ENROLLMENT_ID}.json" ]; then
+    echo "INFO: enrollmentProofToken absent and demo-device file present — already bound (exit 0)."
+    exit 0
+  fi
+  echo "❌ Error: enrollmentProofToken absent but demo-device enrollment file missing"
+  echo "   enrollmentId=${ENROLLMENT_ID} path=${DEMO_DEVICE_ENROLLMENTS_DIR}/${ENROLLMENT_ID}.json"
+  echo "   Enrollment is likely BOUND to another device (or recovery_primary without demos)."
+  echo "   Re-seed with clean-start: docker compose down -v && ./clean-start.sh"
+  exit 1
+fi
+
 # Step 3: Generate device keypair via Crypto API
 echo ""
 echo "Step 3: Generating device keypair..."
@@ -108,21 +123,17 @@ BIND_BODY=$(echo "$BIND_RESPONSE" | sed '$d')
 
 if [ "$HTTP_CODE" != "200" ]; then
   if [ "$HTTP_CODE" = "409" ]; then
-    echo "⚠️  Enrollment already bound (409) - Checking if demo-device enrollment exists..."
-    # Check if demo-device enrollment file already exists (idempotent)
     if [ -f "$DEMO_DEVICE_ENROLLMENTS_DIR/${ENROLLMENT_ID}.json" ]; then
-      echo "   ✅ Demo-device enrollment file already exists - Bootstrap already complete"
-      echo "   Bootstrap init complete (enrollment already configured)"
+      echo "INFO: Enrollment already BOUND/VERIFIED (HTTP 409) and demo-device file present (exit 0)."
       exit 0
-    else
-      echo "   ❌ Error: Enrollment is already bound to a different device"
-      echo "   Demo-device enrollment file is missing and cannot be created automatically"
-      echo "   Please reset Docker stack (docker-compose down -v) for a fresh start"
-      exit 1
     fi
+    echo "❌ Error: Enrollment already BOUND/VERIFIED (HTTP 409) but demo-device file missing"
+    echo "   enrollmentId=${ENROLLMENT_ID} path=${DEMO_DEVICE_ENROLLMENTS_DIR}/${ENROLLMENT_ID}.json"
+    echo "   Enrollment is likely bound to another device; cannot seed demo-device automatically."
+    echo "   Re-seed with clean-start: docker compose down -v && ./clean-start.sh"
+    exit 1
   else
     echo "❌ Error: Bind failed with HTTP $HTTP_CODE"
-    echo "   Response: $BIND_BODY"
     exit 1
   fi
 else
@@ -177,11 +188,9 @@ if [ "$BIND_PROOF_TOKEN" != "SKIPPED_ALREADY_BOUND" ]; then
     "$AUTH_API_URL/api/v1/enrollments/verify")
   
   VERIFY_HTTP_CODE=$(echo "$VERIFY_RESPONSE" | tail -n1)
-  VERIFY_BODY=$(echo "$VERIFY_RESPONSE" | sed '$d')
-  
+
   if [ "$VERIFY_HTTP_CODE" != "200" ]; then
     echo "❌ Error: Verify failed with HTTP $VERIFY_HTTP_CODE"
-    echo "   Response: $VERIFY_BODY"
     exit 1
   fi
   
@@ -190,6 +199,13 @@ else
   echo ""
   echo "Step 5: Skipping verify (enrollment already bound/verified)"
 fi
+
+# Bind-secret redaction is owned solely by Admin API (BootstrapCredentialsBindSecretRedactor:
+# ApplicationReady + ShedLock). Do not duplicate jq del here — single implementation (M1).
+
+# Restrict modes before writing private keys / enrollment material (code-scanning Lot C 2026-10-13).
+# bootstrap-init and demo-device both run as spring:spring (UID 100), so 0600/0700 remain readable.
+umask 077
 
 # Step 6: Save device credentials
 echo ""
@@ -201,21 +217,20 @@ DEVICE_CREDS_JSON=$(jq -n \
   '{enrollmentId: ($enrollmentId | tonumber), privateKey: $privateKey, publicKey: $publicKey, keySize: 256}')
 
 echo "$DEVICE_CREDS_JSON" > "$DEVICE_CREDS_FILE"
-echo "✅ Device credentials saved to $DEVICE_CREDS_FILE"
+chmod 600 "$DEVICE_CREDS_FILE"
+echo "✅ Device credentials saved to $DEVICE_CREDS_FILE (mode 0600)"
 
 # Step 7: Seed demo-device enrollment file
 echo ""
 echo "Step 7: Seeding demo-device enrollment file..."
 # Ensure directory exists with correct permissions (matching demo-device entrypoint)
-# demo-device runs as spring:spring, so we need to ensure the directory is writable
+# demo-device and bootstrap-init both run as spring:spring — owner-only dir is enough
 mkdir -p "$DEMO_DEVICE_ENROLLMENTS_DIR"
 if [ ! -d "$DEMO_DEVICE_ENROLLMENTS_DIR" ]; then
   echo "❌ Error: Failed to create demo-device enrollments directory"
   exit 1
 fi
-# Ensure directory is writable (demo-device entrypoint does chown spring:spring, but we run as root)
-# Set permissions to 755 (rwxr-xr-x) so spring user can read/write
-chmod 755 "$DEMO_DEVICE_ENROLLMENTS_DIR" 2>/dev/null || true
+chmod 700 "$DEMO_DEVICE_ENROLLMENTS_DIR" 2>/dev/null || true
 
 # Create enrollment file matching EnrollmentStoreService.Record format
 ENROLLMENT_FILE="$DEMO_DEVICE_ENROLLMENTS_DIR/${ENROLLMENT_ID}.json"
@@ -242,7 +257,8 @@ ENROLLMENT_JSON=$(jq -n \
   '{enrollmentId: ($enrollmentId | tonumber), integrationId: null, enrollmentName: $enrollmentName, enrollmentUrl: null, integrationPublicKey: $integrationPublicKey, enrollmentProofToken: $enrollmentProofToken, devicePublicKey: $devicePublicKey, devicePrivateKey: $devicePrivateKey, authAttemptChallengeRequired: false, deviceLabel: "Device", createdAt: (now | todateiso8601), integrationName: (if $integrationName == "" then null else $integrationName end), integrationDescription: (if $integrationDescription == "" then null else $integrationDescription end), integrationLogo: (if $integrationLogo == "" then null else $integrationLogo end), devicePrivateKeyStorageTier: "NONE"}')
 
 echo "$ENROLLMENT_JSON" > "$ENROLLMENT_FILE"
-echo "✅ Demo-device enrollment file created: $ENROLLMENT_FILE"
+chmod 600 "$ENROLLMENT_FILE"
+echo "✅ Demo-device enrollment file created: $ENROLLMENT_FILE (mode 0600)"
 
 # Step 8: Demo-app-acme uses userIdentifier (username) - no users mapping file
 # Ensure enrollment has user_identifier set when created (TUI/demo flow)

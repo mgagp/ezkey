@@ -13,6 +13,8 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey-auth-api` | [ezkey-auth-api/CONFIGURATION.md](../../ezkey-auth-api/CONFIGURATION.md) | Defines `ezkey.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
 | `ezkey-integration-api` | [ezkey-integration-api/CONFIGURATION.md](../../ezkey-integration-api/CONFIGURATION.md) | Defines `ezkey.api-key.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
 | `ezkey-crypto-api` | [ezkey-crypto-api/CONFIGURATION.md](../../ezkey-crypto-api/CONFIGURATION.md) | No database; inherits `ezkey.encryption.*` from core |
+| `ezkey-demo-app-acme` | [ezkey-demo-app-acme/CONFIGURATION.md](../../ezkey-demo-app-acme/CONFIGURATION.md) | Demo browser app — `ezkey.rate-limit.*` (login / login-ip-bound / apply-api-key), access-code slots; servlet cookie `EZKEY_ACME_SESSION` |
+| `ezkey-demo-device` | [ezkey-demo-device/CONFIGURATION.md](../../ezkey-demo-device/CONFIGURATION.md) | Lab phone simulator — `ezkey.auth.api.url`, `ezkey.demo-device.allowed-auth-api-hosts`; servlet cookie `EZKEY_DEVICE_SESSION` |
 
 ---
 
@@ -40,7 +42,9 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.organization` | `ezkey-core` (`OrganizationProperties`) | admin-api, auth-api | [core §org](../../ezkey-core/CONFIGURATION.md#organization-ezkeyorganization) |
 | `ezkey.core` | `ezkey-core` (`EzkeyCoreProperties`) | admin-api, auth-api | [core §core](../../ezkey-core/CONFIGURATION.md#core-crypto--auth-attempt-ezkeycore) |
 | `ezkey.enrollment` | `ezkey-core` (`EnrollmentProperties`) | admin-api | [core §enrollment](../../ezkey-core/CONFIGURATION.md#enrollment-ezkeyenrollment) |
-| `ezkey.audit.integrity` | `ezkey-core` (`AuditHmacProperties`) | admin-api, auth-api, integration-api | [core §audit-integrity](../../ezkey-core/CONFIGURATION.md#audit-log-integrity-ezkeyauditintegrity) |
+| `ezkey.auth.api.url` | `ezkey-demo-device` | demo-device | [demo-device](../../ezkey-demo-device/CONFIGURATION.md) |
+| `ezkey.demo-device` | `ezkey-demo-device` (`DemoDeviceProperties`) | demo-device | [demo-device](../../ezkey-demo-device/CONFIGURATION.md) |
+| `ezkey.audit.integrity` | `ezkey-core` (`AuditHmacProperties`, `IntegrityWindowCapProperties`) | admin-api, auth-api, integration-api | [core §audit-integrity](../../ezkey-core/CONFIGURATION.md#audit-log-integrity-ezkeyauditintegrity); [core §window-caps](../../ezkey-core/CONFIGURATION.md#integrity-heavy-crypto-window-caps-ezkeyauditintegritymax--window-days) |
 | `ezkey.audit.chain` | `ezkey-core` (`AuditChainProperties`) | admin-api | [core §audit-chain](../../ezkey-core/CONFIGURATION.md#audit-log-chain-ezkeyauditchain) |
 | `ezkey.audit.chain.heartbeat` | `ezkey-core` (`AuditChainHeartbeatProperties`) | admin-api, auth-api, integration-api | [core §heartbeat](../../ezkey-core/CONFIGURATION.md#peripheral-heartbeat-ezkeyauditchainheartbeat) |
 | `ezkey.audit.archive` | `ezkey-core` (`AuditArchiveProperties`) | admin-api | [core §audit-archive](../../ezkey-core/CONFIGURATION.md#audit-log-archive-ezkeyauditarchive) |
@@ -97,6 +101,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `EZKEY_ORGANIZATION_ABOUT_URL` | `ezkey.organization.about-url` | admin-api and auth-api docker profile |
 | `EZKEY_RUNTIME_PROFILE` | *(ops key; `base` appends Spring profile `docker-base`)* | clean-start / `docker/start.sh` / Lightsail `.env` — [docker/README.md](../../docker/README.md) § Runtime profiles |
 | `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE` | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | admin-api docker profile |
+| `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS` | `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | admin-api docker profile |
 | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | `ezkey.admin.cors.allowed-origins` | admin-api (split UI/API only; unset for clean-start) |
 | `EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS` | `ezkey.admin.cors.allow-credentials` | admin-api (with HttpOnly cookie + credentialed `fetch`) |
 | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | `ezkey.admin.auth.browser-session-cookie-enabled` | admin-api (split HTTPS UI/API optional) |

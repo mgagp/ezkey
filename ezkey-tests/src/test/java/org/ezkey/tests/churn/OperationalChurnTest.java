@@ -88,7 +88,8 @@ public class OperationalChurnTest extends AbstractSecurityTest {
       Random rng = new Random(effectiveSeed);
       ChurnIntensity intensity = resolveIntensityProfile();
 
-      String resourceSuffix = Long.toHexString(rng.nextLong()) + Long.toHexString(rng.nextLong());
+      // Exactly 16 hex chars — quality-gate display-name AMBER allowlist is {16} only.
+      String resourceSuffix = String.format("%016x", rng.nextLong());
       String tenantAdminUsername = "churn-ta-" + String.format("%017x", rng.nextLong());
       String churnGlobalToken = churnGlobalState.bearerToken();
 

@@ -73,6 +73,7 @@ product-docs/
     architecture-decisions.md   Global architecture decision log.
     design-principles.md        Cross-product design principles.
     lifecycle-model.md          Entity relationships and lifecycle rules.
+    test-strategy.md            Global test strategy, taxonomy, QA Sphere.
     spec-test-traceability.md   Global traceability matrix.
     vision/                     Product orientation notes.
       README.md                 Vision scope and usage.
@@ -92,25 +93,15 @@ product-docs/
     admin-ui/                   Admin UI pack.
     admin-api/                  Admin API pack.
     mobile/                     Mobile app pack.
-  templates/                    Reusable markdown templates.
+  templates/                    Reusable markdown templates (post–2026-08 ablation).
     README.md                   Template index and usage.
-    product-intent.template.md
-    roadmap.template.md
-    feature-brief.template.md
     vision-note.template.md
     backlog-idea.template.md
     tracer-bullet-brief.template.md
-    component-design-brief.template.md
-    decision-table.template.md
-    test-plan-slice.template.md
-    legacy-plan-retrofit.template.md
     architecture-decision.template.md
-    functional-workflow.template.md
-    mapping-matrix.template.md
-    error-and-exception.template.md
-    persistence-and-lifecycle.template.md
-    screens-and-wireflow.template.md
-    spec-test-traceability.template.md
+    critical-review.prompt.md
+    cold-agent-plan-review.prompt.md
+    ui-walk-gate.template.md
 ```
 
 Each component pack has the same skeleton:
@@ -139,14 +130,15 @@ A first-time reader should follow this path:
 5. [`global/design-principles.md`](global/design-principles.md)
 6. [`global/lifecycle-model.md`](global/lifecycle-model.md)
 7. [`components/README.md`](components/README.md) and the relevant component pack.
-8. [`global/spec-test-traceability.md`](global/spec-test-traceability.md)
+8. [`global/test-strategy.md`](global/test-strategy.md)
+9. [`global/spec-test-traceability.md`](global/spec-test-traceability.md)
 
 ## Living vs Finality Documents
 
 The system distinguishes two kinds of documents:
 
 - **Finality documents** — express the **current truth and long-term direction** of the product. Examples: product intent, roadmap, architecture overview, design principles. They evolve, but they always represent the latest intended state.
-- **Living documents** — express the **current reality on a given branch**, especially milestone placement, feature state, and traceability. Examples: features-and-phases, spec-test-traceability, component design decisions.
+- **Living documents** — express the **current reality on a given branch**, especially milestone placement, feature state, and traceability. Examples: features-and-phases, test-strategy, spec-test-traceability, component design decisions.
 
 Both kinds are markdown, versioned in git, and kept under the same folder structure. The distinction is editorial, not structural.
 
@@ -165,10 +157,10 @@ See [`GOVERNANCE.md`](GOVERNANCE.md) for the full rule set, typical change workf
 
 ## How to Contribute
 
-- To add a new feature: create an entry in [`global/features-and-phases.md`](global/features-and-phases.md), then a feature brief from [`templates/feature-brief.template.md`](templates/feature-brief.template.md), and link it back from the relevant component pack.
+- To add a new feature: create an entry in [`global/features-and-phases.md`](global/features-and-phases.md), document durable truth in the relevant component pack, and use [`templates/backlog-idea.template.md`](templates/backlog-idea.template.md) / [`templates/tracer-bullet-brief.template.md`](templates/tracer-bullet-brief.template.md) when an `I-*` or `TB-*` is warranted (see [`methodology/README.md`](methodology/README.md)).
 - To add a new architecture decision: copy [`templates/architecture-decision.template.md`](templates/architecture-decision.template.md) into [`global/architecture-decisions.md`](global/architecture-decisions.md) or the component's `design-decisions.md`.
-- To describe a new workflow: copy [`templates/functional-workflow.template.md`](templates/functional-workflow.template.md) into the relevant `functional-flows.md`.
-- To describe a new mapping (DTO ↔ API ↔ internal model): copy [`templates/mapping-matrix.template.md`](templates/mapping-matrix.template.md) into `api-and-boundary-mappings.md`.
+- To describe a new workflow: add an entry in the relevant component `functional-flows.md` (no separate workflow template after the 2026-08 ablation — see [`templates/README.md`](templates/README.md)).
+- To describe a new mapping (DTO ↔ API ↔ internal model): add an entry in the component `api-and-boundary-mappings.md` (same ablation; keep the pack file as the living home).
 
 ## Relationship with Existing Documentation
 

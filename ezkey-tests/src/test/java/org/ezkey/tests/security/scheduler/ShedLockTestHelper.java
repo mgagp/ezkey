@@ -10,6 +10,8 @@
 
 package org.ezkey.tests.security.scheduler;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -18,7 +20,9 @@ import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import org.ezkey.tests.util.DockerCliLocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +54,13 @@ public class ShedLockTestHelper {
   // Container names - auto-detect based on environment
   private static final String DOCKER_CONTAINER_STANDARD = "ezkey-postgres";
   private static final String DOCKER_CONTAINER_HA = "ezkey-postgres-ha";
+
+  /** HA Admin API replica 1 (compose service / container name). */
+  public static final String ADMIN_API_1 = "ezkey-admin-api-1";
+
+  /** HA Admin API replica 2 (compose service / container name). */
+  public static final String ADMIN_API_2 = "ezkey-admin-api-2";
+
   private static final String DATABASE = "ezkey_db";
   private static final String USER = "postgres";
 
@@ -595,6 +606,132 @@ public class ShedLockTestHelper {
     } catch (Exception e2) {
       log.warn("Failed to parse timestamp: {}", timestampStr, e2);
       return OffsetDateTime.now(); // Fallback
+    }
+  }
+
+  /**
+   * Maps a ShedLock {@code locked_by} value (hostname or short Docker container ID) to the HA Admin
+   * API compose container name.
+   *
+   * <p>In Docker, ShedLock's default hostname is often the first 12 hex chars of the container ID
+   * (e.g. {@code 74d78fe655b3}), which does not contain {@code admin-api-1/2}. Resolution order:
+   *
+   * <ol>
+   *   <li>Name already contains {@code admin-api-1} / {@code admin-api-2}
+   *   <li>{@code docker inspect} ID prefix match for each replica (≥8 chars; ambiguous → fail)
+   * </ol>
+   *
+   * @param lockedBy ShedLock locked_by / hostname (may be a short container id)
+   * @return {@link #ADMIN_API_1} or {@link #ADMIN_API_2}, or {@code null} if unresolved
+   * @throws AssertionError if both replicas share the same ID prefix
+   */
+  public String resolveAdminApiContainer(String lockedBy) {
+    if (lockedBy == null || lockedBy.isBlank()) {
+      return null;
+    }
+    String id = lockedBy.trim();
+    String fromName = mapComposeNameToAdminReplica(id);
+    if (fromName != null) {
+      return fromName;
+    }
+    return selectReplicaByIdPrefix(id, dockerInspectId(ADMIN_API_1), dockerInspectId(ADMIN_API_2));
+  }
+
+  /**
+   * Selects the Admin API replica whose full Docker ID starts with {@code lockedBy}.
+   *
+   * <p>Requires {@code lockedBy} length ≥ 8. If both replica IDs match the prefix, fails rather
+   * than silently preferring api-1.
+   *
+   * @param lockedBy ShedLock locked_by / short container id
+   * @param fullId1 full Docker ID for {@link #ADMIN_API_1}, or {@code null}
+   * @param fullId2 full Docker ID for {@link #ADMIN_API_2}, or {@code null}
+   * @return {@link #ADMIN_API_1}, {@link #ADMIN_API_2}, or {@code null} if none match
+   * @throws AssertionError if both IDs share the prefix
+   */
+  static String selectReplicaByIdPrefix(String lockedBy, String fullId1, String fullId2) {
+    if (lockedBy == null || lockedBy.length() < 8) {
+      return null;
+    }
+    List<String> matches = new ArrayList<>(2);
+    if (fullId1 != null
+        && !fullId1.isEmpty()
+        && fullId1.regionMatches(true, 0, lockedBy, 0, lockedBy.length())) {
+      matches.add(ADMIN_API_1);
+    }
+    if (fullId2 != null
+        && !fullId2.isEmpty()
+        && fullId2.regionMatches(true, 0, lockedBy, 0, lockedBy.length())) {
+      matches.add(ADMIN_API_2);
+    }
+    if (matches.size() > 1) {
+      throw new AssertionError(
+          "Ambiguous ShedLock locked_by='"
+              + lockedBy
+              + "' matches both "
+              + ADMIN_API_1
+              + " and "
+              + ADMIN_API_2);
+    }
+    return matches.isEmpty() ? null : matches.get(0);
+  }
+
+  /**
+   * Maps a Docker container name (with or without leading slash) to an Admin API replica constant.
+   *
+   * @param dockerName container name from docker ps / inspect
+   * @return replica constant or {@code null}
+   */
+  static String mapComposeNameToAdminReplica(String dockerName) {
+    if (dockerName == null || dockerName.isBlank()) {
+      return null;
+    }
+    String n = dockerName.trim();
+    if (n.startsWith("/")) {
+      n = n.substring(1);
+    }
+    String lower = n.toLowerCase(Locale.ROOT);
+    if (lower.contains("admin-api-1") || lower.equals(ADMIN_API_1)) {
+      return ADMIN_API_1;
+    }
+    if (lower.contains("admin-api-2") || lower.equals(ADMIN_API_2)) {
+      return ADMIN_API_2;
+    }
+    return null;
+  }
+
+  private String dockerInspectId(String containerName) {
+    return dockerOutput("inspect", "-f", "{{.Id}}", containerName);
+  }
+
+  private String dockerOutput(String... args) {
+    try {
+      ProcessBuilder processBuilder = DockerCliLocator.processBuilder(args);
+      processBuilder.redirectErrorStream(true);
+      Process process = processBuilder.start();
+      StringBuilder output = new StringBuilder();
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          String trimmed = line.trim();
+          if (!trimmed.isEmpty()) {
+            if (output.length() > 0) {
+              output.append('\n');
+            }
+            output.append(trimmed);
+          }
+        }
+      }
+      int exitCode = process.waitFor();
+      if (exitCode != 0) {
+        return null;
+      }
+      String result = output.toString().trim();
+      return result.isEmpty() ? null : result;
+    } catch (Exception e) {
+      log.debug("docker {} failed: {}", String.join(" ", args), e.getMessage());
+      return null;
     }
   }
 

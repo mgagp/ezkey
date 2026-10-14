@@ -14,8 +14,10 @@ package org.ezkey.sdk;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
@@ -105,9 +107,9 @@ public final class EzkeyClient {
 
     LOG.log(
         System.Logger.Level.INFO,
-        "EzkeyClient initialized: baseUrl={0}, integrationKey={1}...",
+        "EzkeyClient initialized: baseUrl={0}, integrationKey={1}",
         config.baseUrl(),
-        config.integrationKey().substring(0, Math.min(20, config.integrationKey().length())));
+        maskIntegrationKeyForLog(config.integrationKey()));
   }
 
   /**
@@ -301,12 +303,11 @@ public final class EzkeyClient {
             JsonHelper.getString(fields, "contextTitle"),
             JsonHelper.getString(fields, "contextMessage"));
 
+    // Never log challenge codes (or other secrets). authAttemptId alone is enough for ops.
     LOG.log(
         System.Logger.Level.INFO,
-        "Auth attempt created: authAttemptId={0}, challenge={1}, contextTitle={2}",
-        response.authAttemptId(),
-        response.authAttemptChallenge() != null ? response.authAttemptChallenge() : "none",
-        response.contextTitle() != null ? response.contextTitle() : "none");
+        "Auth attempt created: authAttemptId={0}",
+        response.authAttemptId());
 
     return response;
   }
@@ -472,7 +473,8 @@ public final class EzkeyClient {
         return body;
       }
 
-      // Build descriptive error message
+      // Build descriptive error message. Do not append the full URI (wait URLs contain
+      // ?timeout=…) — callers must classify read timeouts by exception type/cause, not message.
       String message =
           switch (status) {
             case 401 -> "Authentication failed (401). Check API key credentials and IP whitelist.";
@@ -481,12 +483,29 @@ public final class EzkeyClient {
             case 404 -> "Resource not found (404). Check the auth attempt ID or base URL.";
             case 400 -> "Bad request (400). " + extractErrorMessage(body);
             case 429 -> "Rate limit exceeded (429). Retry after a delay.";
-            default -> "Unexpected HTTP status " + status + " from " + request.uri();
+            default ->
+                "Unexpected HTTP status "
+                    + status
+                    + " from "
+                    + request.uri().getScheme()
+                    + "://"
+                    + request.uri().getAuthority()
+                    + request.uri().getPath();
           };
 
       throw new EzkeyException(message, status, body);
 
+    } catch (HttpConnectTimeoutException e) {
+      // Must precede HttpTimeoutException: connect timeouts extend HttpTimeoutException but are
+      // not soft wait timeouts for integrators (unreachable host / slow TCP).
+      throw new EzkeyException(
+          "Connect timeout connecting to Ezkey at " + config.baseUrl() + ": " + e.getMessage(), e);
+    } catch (HttpTimeoutException e) {
+      throw new EzkeyException("Read timeout waiting for Ezkey at " + config.baseUrl(), e);
     } catch (IOException e) {
+      if (EzkeyException.isReadTimeoutThrowable(e)) {
+        throw new EzkeyException("Read timeout waiting for Ezkey at " + config.baseUrl(), e);
+      }
       throw new EzkeyException(
           "Network error connecting to Ezkey at " + config.baseUrl() + ": " + e.getMessage(), e);
     } catch (InterruptedException e) {
@@ -506,6 +525,46 @@ public final class EzkeyClient {
     String encoded =
         Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
     return "Basic " + encoded;
+  }
+
+  /**
+   * Masks an integration key for logs (same shape as ApiKeyService: {@code ezkey_ikey_xxxx…}).
+   *
+   * <p>Caller-supplied kept characters (up to 8, or 4 after the {@code ezkey_ikey_} literal) are
+   * sanitized: every character matching {@code [^A-Za-z0-9_]} becomes {@code _} so CR/LF cannot
+   * break log lines.
+   *
+   * @param integrationKey raw integration key (may be null)
+   * @return masked value suitable for logs
+   */
+  static String maskIntegrationKeyForLog(String integrationKey) {
+    if (integrationKey == null || integrationKey.isBlank()) {
+      return "(none)";
+    }
+    String prefix = "ezkey_ikey_";
+    if (integrationKey.startsWith(prefix) && integrationKey.length() > prefix.length() + 4) {
+      String kept = integrationKey.substring(prefix.length(), prefix.length() + 4);
+      return prefix + sanitizeLogPrefixFragment(kept) + "…";
+    }
+    int keep = Math.min(8, integrationKey.length());
+    return sanitizeLogPrefixFragment(integrationKey.substring(0, keep)) + "…";
+  }
+
+  /**
+   * Replaces every character matching {@code [^A-Za-z0-9_]} with {@code _} for safe log fragments.
+   *
+   * @param fragment raw kept characters from a key
+   * @return sanitized fragment
+   */
+  private static String sanitizeLogPrefixFragment(String fragment) {
+    StringBuilder sanitized = new StringBuilder(fragment.length());
+    for (int i = 0; i < fragment.length(); i++) {
+      char c = fragment.charAt(i);
+      boolean keep =
+          (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
+      sanitized.append(keep ? c : '_');
+    }
+    return sanitized.toString();
   }
 
   /**

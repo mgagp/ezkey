@@ -10,8 +10,11 @@
 
 package org.ezkey.admin.config;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * Configuration properties for admin MFA bootstrap and behavior.
@@ -45,6 +48,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @ConfigurationProperties(prefix = "ezkey.admin.mfa")
+@Validated
 public class AdminMfaProperties {
 
   /**
@@ -59,7 +63,7 @@ public class AdminMfaProperties {
   private String mode = "dev";
 
   /** Bootstrap configuration for automatic MFA infrastructure creation. */
-  private BootstrapConfig bootstrap = new BootstrapConfig();
+  @Valid private BootstrapConfig bootstrap = new BootstrapConfig();
 
   /**
    * Gets the MFA enforcement mode.
@@ -138,6 +142,15 @@ public class AdminMfaProperties {
         BootstrapCredentialsOutputMode.FULL;
 
     /**
+     * Pending bind/verify invitation TTL for the bootstrap global-admin enrollment only (hours).
+     *
+     * <p>Default {@code 24}. Minimum {@code 1} — unbounded / disabled TTL is not allowed. Ordinary
+     * enrollments still use {@code ezkey.enrollment.pending-expiration-days}.
+     */
+    @Min(1)
+    private int enrollmentExpirationHours = 24;
+
+    /**
      * Gets the bootstrap enabled status.
      *
      * @return true if bootstrap is enabled
@@ -189,6 +202,24 @@ public class AdminMfaProperties {
      */
     public void setCredentialsOutputMode(BootstrapCredentialsOutputMode credentialsOutputMode) {
       this.credentialsOutputMode = credentialsOutputMode;
+    }
+
+    /**
+     * Gets the bootstrap enrollment invitation TTL in hours.
+     *
+     * @return hours until the bootstrap enrollment expires while still pending bind/verify
+     */
+    public int getEnrollmentExpirationHours() {
+      return enrollmentExpirationHours;
+    }
+
+    /**
+     * Sets the bootstrap enrollment invitation TTL in hours.
+     *
+     * @param enrollmentExpirationHours hours until expiry (minimum 1)
+     */
+    public void setEnrollmentExpirationHours(int enrollmentExpirationHours) {
+      this.enrollmentExpirationHours = enrollmentExpirationHours;
     }
   }
 }

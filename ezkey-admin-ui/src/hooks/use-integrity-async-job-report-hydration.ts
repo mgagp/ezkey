@@ -15,9 +15,16 @@ import type {
 } from '@/generated/admin-api/model';
 import {
   executeIntegrityAsyncJobReportHydration,
+  INTEGRITY_REPORT_MAX_WINDOW_HOURS,
+  IntegrityReportHydrationOverCapError,
+  isIntegrityReportScopeOverCap,
+  isIntegrityWindowOverCapError,
   resolveIntegrityAsyncJobReportHydration,
 } from '@/lib/integrity-async-job-report-hydration';
 import type { IntegrityAsyncJobResponse } from '@/lib/integrity-async-jobs';
+import { hasJobBackedChainGlance } from '@/lib/integrity-micro-dashboard';
+
+export { IntegrityReportHydrationOverCapError };
 
 export interface UseIntegrityAsyncJobReportHydrationOptions {
   job: IntegrityAsyncJobResponse | null;
@@ -40,6 +47,16 @@ export interface UseIntegrityAsyncJobReportHydrationOptions {
    * SUCCEEDED job (operator “Reload report”).
    */
   reloadNonce?: number;
+  /**
+   * Cut 3: when the job DTO already carries {@code chainStatus}, skip the
+   * automatic report GET on open (job-backed glance). Reload still fetches.
+   */
+  skipAutoHydrateWhenJobBacked?: boolean;
+  /**
+   * Soft client cap hours for sync report GETs (bootstrap
+   * {@code maxSyncWindowDays} × 24 + 1). Defaults to the built-in 8-day floor.
+   */
+  maxSyncWindowHours?: number;
   /** Test seams — default to generated Admin API clients. */
   fetchChainReport?: (from: string, to: string) => Promise<ChainVerificationReport>;
   fetchEntryReport?: (from: string, to: string) => Promise<IntegrityReport>;
@@ -66,6 +83,8 @@ export function useIntegrityAsyncJobReportHydration(
     onError,
     toDisplayRange,
     reloadNonce = 0,
+    skipAutoHydrateWhenJobBacked = false,
+    maxSyncWindowHours = INTEGRITY_REPORT_MAX_WINDOW_HOURS,
     fetchChainReport,
     fetchEntryReport,
   } = options;
@@ -84,6 +103,7 @@ export function useIntegrityAsyncJobReportHydration(
     onEntryHydratingChange,
     onError,
     toDisplayRange,
+    maxSyncWindowHours,
     fetchChainReport,
     fetchEntryReport,
   });
@@ -95,6 +115,7 @@ export function useIntegrityAsyncJobReportHydration(
     onEntryHydratingChange,
     onError,
     toDisplayRange,
+    maxSyncWindowHours,
     fetchChainReport,
     fetchEntryReport,
   };
@@ -103,6 +124,15 @@ export function useIntegrityAsyncJobReportHydration(
     if (reloadNonce > 0) {
       lastHydratedJobIdRef.current = null;
       completedJobIdRef.current = null;
+    }
+
+    // Cut 3 job-backed glance: no automatic GET /chain-integrity on open.
+    if (
+      skipAutoHydrateWhenJobBacked
+      && reloadNonce === 0
+      && hasJobBackedChainGlance(callbacksRef.current.job)
+    ) {
+      return;
     }
 
     const request = resolveIntegrityAsyncJobReportHydration(
@@ -122,6 +152,24 @@ export function useIntegrityAsyncJobReportHydration(
       request.kind === 'chain'
         ? callbacksRef.current.onChainHydratingChange
         : callbacksRef.current.onEntryHydratingChange;
+
+    // Fallback for SUCCEEDED VERIFY jobs that predate VERIFY-side capping (#743 B2):
+    // do not call the report GET (would 400 forever) and do not offer Reload.
+    if (
+      isIntegrityReportScopeOverCap(
+        request.from,
+        request.to,
+        callbacksRef.current.maxSyncWindowHours,
+      )
+    ) {
+      completedJobIdRef.current = request.jobId;
+      callbacksRef.current.onError?.(
+        request.kind,
+        new IntegrityReportHydrationOverCapError(),
+      );
+      return;
+    }
+
     setLoading?.(true);
 
     const fetchChain =
@@ -155,9 +203,15 @@ export function useIntegrityAsyncJobReportHydration(
         }
       } catch (error) {
         if (!cancelled) {
-          // Release claim so Reload / retry can fetch again.
-          if (lastHydratedJobIdRef.current === request.jobId) {
+          // Over-cap 400: keep claim (no Reload storm). Busy / other: release for Reload.
+          const overCap =
+            error instanceof IntegrityReportHydrationOverCapError
+            || isIntegrityWindowOverCapError(error);
+          if (!overCap && lastHydratedJobIdRef.current === request.jobId) {
             lastHydratedJobIdRef.current = null;
+          }
+          if (overCap) {
+            completedJobIdRef.current = request.jobId;
           }
           callbacksRef.current.onError?.(request.kind, error);
         }
@@ -183,5 +237,5 @@ export function useIntegrityAsyncJobReportHydration(
         lastHydratedJobIdRef.current = null;
       }
     };
-  }, [jobId, jobStatus, reloadNonce]);
+  }, [jobId, jobStatus, reloadNonce, skipAutoHydrateWhenJobBacked]);
 }

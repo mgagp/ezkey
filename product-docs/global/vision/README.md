@@ -51,5 +51,5 @@ Do **not** wait for every adjacent `I-*` to ship before moving a `V-*` to `promo
 2. Review and refine (`grill-me` when the orientation needs stress-testing).
 3. Promote actionable parts into backlog ideas (`I-*`).
 4. Canonize durable decisions into the destinations above; then set `V-*` to `promoted` or `archived` (with supersession lines when reformulated).
-5. Update `product-orientation-notes.md` post-merge on `main` (see
-   [`../../methodology/multi-branch-workflow.md`](../../methodology/multi-branch-workflow.md)).
+5. Update `product-orientation-notes.md` post-merge on `main` only (never on feature
+   branches).

@@ -40,6 +40,7 @@ import org.ezkey.audit.dto.EntryIntegrityViolation;
 import org.ezkey.audit.exception.IntegrityValidationDisabledException;
 import org.ezkey.audit.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -59,7 +60,8 @@ class RetroactiveIntegrityValidationServiceTest {
   private static final OffsetDateTime WINDOW_START = WINDOW_END.minusHours(24);
 
   @Mock private NightlyIntegrityProperties nightlyProperties;
-  @Mock private RetroactiveIntegrityProperties retroactiveProperties;
+  private final IntegrityWindowCapProperties windowCapProperties =
+      new IntegrityWindowCapProperties();
   @Mock private AuditChainVerificationService chainVerificationService;
   @Mock private AuditHmacService auditHmacService;
   @Mock private AuditLogRepository auditLogRepository;
@@ -75,7 +77,7 @@ class RetroactiveIntegrityValidationServiceTest {
     service =
         new RetroactiveIntegrityValidationService(
             nightlyProperties,
-            retroactiveProperties,
+            windowCapProperties,
             chainVerificationService,
             auditHmacService,
             auditLogRepository,
@@ -114,7 +116,7 @@ class RetroactiveIntegrityValidationServiceTest {
 
     assertTrue(result.skipped());
     assertFalse(result.alertRaised());
-    verify(chainVerificationService, never()).verifyChain(any(), any());
+    verify(chainVerificationService, never()).verifyChain(any(), any(), any());
     verify(alertService, never()).raiseOrTouch(any(), any(), anyString(), any());
   }
 
@@ -130,11 +132,11 @@ class RetroactiveIntegrityValidationServiceTest {
             EntryIntegrityConciliationStatus.NONE,
             null);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_START, WINDOW_END))
+            eq(auditLogRepository), eq(WINDOW_START), eq(WINDOW_END), any()))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(
                 List.of(violation), List.of(violation)));
-    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+    when(chainVerificationService.verifyChain(any(), any(), any())).thenReturn(intactReport());
     Alert saved = new Alert();
     saved.setAlertId(7L);
     when(alertService.raiseOrTouch(
@@ -167,11 +169,11 @@ class RetroactiveIntegrityValidationServiceTest {
             EntryIntegrityConciliationStatus.NONE,
             null);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_START, WINDOW_END))
+            eq(auditLogRepository), eq(WINDOW_START), eq(WINDOW_END), any()))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(
                 List.of(violation), List.of(violation)));
-    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+    when(chainVerificationService.verifyChain(any(), any(), any())).thenReturn(intactReport());
 
     RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
         service.runValidation(
@@ -188,10 +190,10 @@ class RetroactiveIntegrityValidationServiceTest {
     stubNightlyWindowHours();
     when(auditHmacService.isActive()).thenReturn(true);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_START, WINDOW_END))
+            eq(auditLogRepository), eq(WINDOW_START), eq(WINDOW_END), any()))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of()));
-    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+    when(chainVerificationService.verifyChain(any(), any(), any())).thenReturn(intactReport());
 
     RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
         service.validateWindow(WINDOW_END);
@@ -215,11 +217,11 @@ class RetroactiveIntegrityValidationServiceTest {
             EntryIntegrityConciliationStatus.NONE,
             null);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_START, WINDOW_END))
+            eq(auditLogRepository), eq(WINDOW_START), eq(WINDOW_END), any()))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(
                 List.of(violation), List.of(violation)));
-    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+    when(chainVerificationService.verifyChain(any(), any(), any())).thenReturn(intactReport());
     Alert saved = new Alert();
     saved.setAlertId(7L);
     when(alertService.raiseOrTouch(
@@ -247,13 +249,13 @@ class RetroactiveIntegrityValidationServiceTest {
     stubNightlyWindowHours();
     when(auditHmacService.isActive()).thenReturn(true);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_START, WINDOW_END))
+            eq(auditLogRepository), eq(WINDOW_START), eq(WINDOW_END), any()))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of()));
     AuditChainVerificationService.UndeclaredGap gap =
         new AuditChainVerificationService.UndeclaredGap(
             WINDOW_END.minusHours(2), WINDOW_END.minusHours(1), 60);
-    when(chainVerificationService.verifyChain(any(), any()))
+    when(chainVerificationService.verifyChain(any(), any(), any()))
         .thenReturn(gapsOnlyReport(List.of(gap)));
     when(alertRepository.findByDedupeKeyAndStatus(
             AuditChainHeartbeatGuardService.HEARTBEAT_STALE_ALERT_DEDUPE_KEY, AlertStatus.OPEN))
@@ -272,10 +274,10 @@ class RetroactiveIntegrityValidationServiceTest {
     stubNightlyWindowHours();
     when(auditHmacService.isActive()).thenReturn(true);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_START, WINDOW_END))
+            eq(auditLogRepository), eq(WINDOW_START), eq(WINDOW_END), any()))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of()));
-    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+    when(chainVerificationService.verifyChain(any(), any(), any())).thenReturn(intactReport());
 
     service.validateWindow(WINDOW_END);
 
@@ -299,11 +301,11 @@ class RetroactiveIntegrityValidationServiceTest {
             EntryIntegrityConciliationStatus.NONE,
             null);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_START, WINDOW_END))
+            eq(auditLogRepository), eq(WINDOW_START), eq(WINDOW_END), any()))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(
                 List.of(explained), List.of()));
-    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+    when(chainVerificationService.verifyChain(any(), any(), any())).thenReturn(intactReport());
 
     RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
         service.validateWindow(WINDOW_END);
@@ -314,24 +316,30 @@ class RetroactiveIntegrityValidationServiceTest {
   }
 
   @Test
-  void validateOperatorWindow_allowsWideWindowWhenCapUnset() {
-    when(retroactiveProperties.getOperatorMaxWindowHours()).thenReturn(null);
-
-    service.validateOperatorWindow(WINDOW_START, WINDOW_START.plusDays(7));
+  @DisplayName("validateOperatorWindow uses async max-window-days (async RUN_VALIDATION path)")
+  void validateOperatorWindow_allowsWindowWithinAsyncCap() {
+    service.validateOperatorWindow(
+        WINDOW_START, WINDOW_START.plus(windowCapProperties.maxWindow()));
   }
 
   @Test
-  void validateOperatorWindow_rejectsWindowExceedingConfiguredCap() {
-    when(retroactiveProperties.getOperatorMaxWindowHours()).thenReturn(24);
+  @DisplayName("validateOperatorWindow rejects beyond async cap with capKind=ASYNC")
+  void validateOperatorWindow_rejectsWindowExceedingAsyncCap() {
+    windowCapProperties.setMaxWindowDays(1);
 
-    IllegalArgumentException ex =
+    org.ezkey.audit.exception.IntegrityWindowOverCapException ex =
         assertThrows(
-            IllegalArgumentException.class,
+            org.ezkey.audit.exception.IntegrityWindowOverCapException.class,
             () ->
                 service.validateOperatorWindow(
-                    WINDOW_START, WINDOW_START.plusHours(25).plusMinutes(1)));
+                    WINDOW_START,
+                    WINDOW_START.plus(windowCapProperties.maxWindow()).plusSeconds(1)));
 
-    assertTrue(ex.getMessage().contains("24"));
+    assertEquals(1, ex.getMaxWindowDays());
+    assertEquals(
+        org.ezkey.audit.exception.IntegrityWindowOverCapException.CAP_KIND_ASYNC, ex.getCapKind());
+    assertEquals(null, ex.getAsyncAlternative());
+    assertTrue(ex.getMessage().contains("1"));
   }
 
   private static AuditChainVerificationService.ChainVerificationReport intactReport() {

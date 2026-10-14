@@ -693,7 +693,7 @@ given()
 
 The test framework uses several cache files in `.ezkey-test/`:
 
-- `bootstrap-credentials.json`: Bootstrap credentials from Docker logs (one-time)
+- `bootstrap-credentials.json`: Bootstrap credentials from the Docker volume file (preferred) or logs fallback (one-time; recovery codes only from the volume file)
 - `device-credentials.json`: GlobalAdmin device keys (reused across runs)
 - `admin-token.json`: GlobalAdmin bearer token (validated before reuse)
 - `tenant-admin-{tenantId}-device-credentials.json`: TenantAdmin device keys per tenant

@@ -14,8 +14,10 @@
 package org.ezkey.demo.acme.controller;
 
 import jakarta.servlet.http.HttpSession;
+import org.ezkey.demo.acme.DemoAuthMessages;
 import org.ezkey.demo.acme.config.EzkeyClientProvider;
 import org.ezkey.demo.acme.dto.AuthenticatedUser;
+import org.ezkey.demo.acme.web.LogSanitizer;
 import org.ezkey.sdk.AuthAttemptContext;
 import org.ezkey.sdk.EzkeyClient;
 import org.ezkey.sdk.EzkeyException;
@@ -125,7 +127,7 @@ public class BusinessApprovalController {
 
     try {
       var createResponse =
-          client.createAuthAttemptByUserIdentifier(approverIdentifier, false, context);
+          client.createAuthAttemptByUserIdentifier(approverIdentifier, true, context);
 
       session.setAttribute(SESSION_BIZ_ATTEMPT_ID, createResponse.authAttemptId());
       session.setAttribute(SESSION_BIZ_SCENARIO, scenario);
@@ -135,8 +137,8 @@ public class BusinessApprovalController {
               + " contextTitle={}",
           createResponse.authAttemptId(),
           scenario,
-          user.username(),
-          approverIdentifier,
+          LogSanitizer.sanitizeForLog(user.username()),
+          LogSanitizer.sanitizeForLog(approverIdentifier),
           createResponse.contextTitle());
 
       return ResponseEntity.ok(
@@ -149,17 +151,17 @@ public class BusinessApprovalController {
 
     } catch (EzkeyException e) {
       logger.error(
-          "Failed to create business-approval attempt: scenario={}, approver={}, requestedBy={}",
+          "Failed to create business-approval attempt: scenario={} approver={} requestedBy={}"
+              + " exceptionClass={} httpStatus={}",
           scenario,
-          approverIdentifier,
-          user.username(),
-          e);
-      String msg =
-          e.getMessage() != null && !e.getMessage().isBlank()
-              ? e.getMessage()
-              : "Failed to create approval request.";
+          LogSanitizer.sanitizeForLog(approverIdentifier),
+          LogSanitizer.sanitizeForLog(user.username()),
+          e.getClass().getSimpleName(),
+          e.getStatusCode());
       return ResponseEntity.status(400)
-          .body(new BusinessApprovalStartResponse(null, null, null, null, msg));
+          .body(
+              new BusinessApprovalStartResponse(
+                  null, null, null, null, DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
     }
   }
 
@@ -220,7 +222,10 @@ public class BusinessApprovalController {
 
       return switch (normalized) {
         case "ACCEPTED" -> {
-          logger.info("Business approval ACCEPTED: id={}, user={}", id, user.username());
+          logger.info(
+              "Business approval ACCEPTED: id={}, user={}",
+              id,
+              LogSanitizer.sanitizeForLog(user.username()));
           yield ResponseEntity.ok(new BusinessApprovalStatusResponse("accepted", null));
         }
         case "REJECTED" ->
@@ -236,8 +241,13 @@ public class BusinessApprovalController {
       };
 
     } catch (EzkeyException e) {
-      logger.error("Error checking business-approval status for id={}: {}", id, e.getMessage());
-      return ResponseEntity.ok(new BusinessApprovalStatusResponse("error", e.getMessage()));
+      logger.error(
+          "Error checking business-approval status for id={} exceptionClass={} httpStatus={}",
+          id,
+          e.getClass().getSimpleName(),
+          e.getStatusCode());
+      return ResponseEntity.ok(
+          new BusinessApprovalStatusResponse("error", DemoAuthMessages.GENERIC_SIGN_IN_FAILED));
     }
   }
 

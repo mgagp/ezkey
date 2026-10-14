@@ -25,17 +25,31 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | Priority / what to implement next | [`product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md`](product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md), [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) (historical Waves A–C + freeze D: [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md)) |
 | Protocol crypto (Auth API ↔ mobile / Demo Device) | [`docs/CRYPTO.md`](docs/CRYPTO.md), [`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`](docs/ENROLLMENT_SIGNATURE_PAYLOAD.md), [`docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md); relevant **section** of [`docs/ENDPOINT.md`](docs/ENDPOINT.md) only |
 | At-rest encryption / Tink keyset storage | [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md), [`ezkey-core/CONFIGURATION.md`](ezkey-core/CONFIGURATION.md) § Encryption at Rest, [`product-docs/global/architecture-decisions.md`](product-docs/global/architecture-decisions.md) ADR-0008 + ADR-0011 |
+| Logging / log-injection hardening | Caller-controlled value → `org.ezkey.util.LogSanitizer.sanitizeForLog`; secrets never logged at any level; prove on runtime output (log-capture test). Mandate and SLAs: [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) § Code scanning policy. Production wrap backlog: [#801](https://github.com/mgagp/ezkey/issues/801). |
 | Normative posture | [`product-docs/global/normative-posture.md`](product-docs/global/normative-posture.md) — operational discipline; mapping vocabulary lives only there. Honest claims: [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) |
 | Lifecycle / eligibility / multi-entity operator design | Skim [`product-docs/global/lifecycle-model.md`](product-docs/global/lifecycle-model.md), then [`docs/LIFECYCLE_GOVERNANCE.md`](docs/LIFECYCLE_GOVERNANCE.md) when designing |
 | Admin UI conventions | [`ezkey-admin-ui/AGENTS.md`](ezkey-admin-ui/AGENTS.md) |
 | Mobile-primary work | [`ezkey_mobile/AGENTS.md`](ezkey_mobile/AGENTS.md), [`ezkey_mobile/docs/README.md`](ezkey_mobile/docs/README.md) |
+| Experimental PAM (host sshd lab) | `ezkey-pam` is **experimental** (personal lab; loaded in host root sshd/login, not containerised) — see [`ezkey-pam/README.md`](ezkey-pam/README.md) (line 3). Hardening backlog: [`I-2026-10-13-pam-tmp-log-hardening`](product-docs/global/backlog/ideas/I-2026-10-13-pam-tmp-log-hardening.md). |
 | Mandate-driven hygiene assessment (HITL + handoff) | Keyword **`assessment-curated`** → [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md) |
 | Legacy document hygiene (canonicality / discoverability / archive-vs-delete) | Keyword **`document-hygiene-curated`** → [`product-docs/global/hygiene/document-hygiene/README.md`](product-docs/global/hygiene/document-hygiene/README.md) |
 | New idea / method | [`product-docs/methodology/README.md`](product-docs/methodology/README.md) — the whole method fits in that one document since the 2026-08 ablation |
-| Plan review / cold-agent hardening | [`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md) — 2-stage review pattern in [`product-docs/methodology/README.md`](product-docs/methodology/README.md) |
+| Plan review / cold-agent hardening (aliases: `critical-review`, adversarial review, revue critique, plan hardening Stage 2) | Canon [`product-docs/global/hygiene/critical-review/README.md`](product-docs/global/hygiene/critical-review/README.md); prompt [`product-docs/templates/critical-review.prompt.md`](product-docs/templates/critical-review.prompt.md); skill [`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md); execution-hardening angle [`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md); pattern [`product-docs/methodology/README.md`](product-docs/methodology/README.md) § two-stage |
+| Adopter posture / 3-second test | [`product-docs/global/operator-alignment-guide.md`](product-docs/global/operator-alignment-guide.md) — Ezkey is never the adopter's core business; every human surface must stay simple, fluid, operationally clear |
+| Fail-open vs fail-closed | [`product-docs/global/design-principles.md`](product-docs/global/design-principles.md) §17 — name whether failure continues (observable) or stops at critical boundaries |
 | API contract change | Controller + **section** of `docs/ENDPOINT.md` + OpenAPI refresh workflow (see OpenAPI rules) |
 | Strategic positioning / public copy | [`docs/PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) only when that layer is in scope |
 | Public alpha label / deploy “what is live” | [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md); community ledger [`docs/lightsail/community/DEPLOYED.md`](docs/lightsail/community/DEPLOYED.md) |
+| Working conventions (merge-ready, test hosts, ngrok, decision trace) | This file § *Working conventions*; team role one-liners: [`product-docs/global/team-roles.md`](product-docs/global/team-roles.md) |
+
+## Working conventions
+
+- **Repo is the memory.** Any decision that changes behavior, a contract, a constraint, or how we work lands in the owning doc in the same PR (one line + reason + issue #). Chat-only or mandate-only counts as unrecorded. A missing trace is a review nit, not a merge blocker.
+- **Merge-ready:** all checks green (including CodeQL), zero *new* unresolved code-scanning alerts introduced by the PR; the existing stock follows [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) § Code scanning policy; zero unresolved review threads, complete PR description, related docs updated. Merge only on the owner's explicit go — never on CI green alone.
+- **Code via PRs.** Local test hosts build and test only; they do not author product code changes.
+- **Local test hosts:** **Rootbeer** (Windows) runs a single Docker clean-start stack with fixed ports by design (see [`docs/LOCAL_STACK_PORTS.md`](docs/LOCAL_STACK_PORTS.md)). **Marc's Mac** checkout is `~/w/ezkey-main`. Isolation for parallel work comes from cloud agents or the Mac, not a second Rootbeer stack.
+- **ngrok:** one session at a time. Switch by stopping on one host and starting on the other with the static domain.
+- **Roles:** named reviewers and operators are defined in [`product-docs/global/team-roles.md`](product-docs/global/team-roles.md).
 
 ## Terminology guardrail (phase vs milestone)
 
@@ -63,9 +77,17 @@ ephemeral scaffold vs. retained plan, closed uncertainty stays closed) — into 
 There is no separate lane taxonomy or skill sequence to load first: prefer **Plan mode** for
 research and comparing alternatives, then position the idea as a `V-*`, `I-*`, or `TB-*` in
 `product-docs/global/` only when the methodology README's artifact-choice table calls for it.
-For high-risk slices (security boundaries, session management, DB migrations, or autonomous cold-agent
-handoffs), harden the plan via the **two-stage plan hardening pattern**
-([`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md)).
+
+**Critical-review gate:** P0/P1 visions and G1 briefs get a **`critical-review`** before the gate
+(fresh cloud agent, **forced different model family** from the author, read-only) — the main lever
+for AI-factory review quality and continuous improvement of autonomy. Canon:
+[`product-docs/global/hygiene/critical-review/README.md`](product-docs/global/hygiene/critical-review/README.md);
+skill [`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md).
+
+For autonomous cold-execution plans and other high-risk slices, Stage 2 also uses the
+execution-hardening angle
+([`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md))
+via the same keyword.
 
 The always-applied rule
 [`.cursor/rules/product-docs-workflow-bootstrap.mdc`](.cursor/rules/product-docs-workflow-bootstrap.mdc)
@@ -231,6 +253,9 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 ## Project values (analysis and design)
 
 - **Simplicity and pragmatism**: 80–20 rule — target ~80% of the value with ~20% of the complexity. Prefer the simplest solution that meets the need.
+- **Adopter posture.** Ezkey is never the adopter's core business: every human surface (Admin UI, demos, tester pages, mobile copy) must let a person decide in ~3 seconds — simple, fluid, operationally clear. See `product-docs/global/operator-alignment-guide.md`.
+- **New mode → re-challenge what exists.** A new entry mode or use case triggers a keep/adapt/hide pass on existing UI content and an inventory of pre-existing conditions on the touched path (timeouts, errors, rate limits, logging) — including when the request comes from the maintainer.
+- **Vision locks travel.** Every brief carries a lock-trace table (vision lock → brief section or explicit deferral); an unmapped lock blocks G1.
 - **Admin UI**: Sober, pragmatic interface that makes the operator's and their team's life easier. Avoid clutter and unnecessary decoration.
 - **Admin roles**: **Global Admin** = IT-style; manages core/instance-level concerns (e.g. encryption keys). **Tenant Admin** = business-oriented; manages end users, integrations, API keys. Design and copy must reflect this split.
 - **Comparables and best practices**: For any analysis or design, consider comparable projects and admin UIs; adopt widely recognised best practices from those comparables.
@@ -490,6 +515,13 @@ yarn doctor:curated
   Integration API silence under operational churn is **coverage**, not health. Do **not** invent
   `I-*` / `TB-*` per finding.
 
+## Quality gate keyword
+
+- On-demand full-suite + stack-health gate: **`quality-gate`**. Canon:
+  [`product-docs/global/hygiene/quality-gate/README.md`](product-docs/global/hygiene/quality-gate/README.md)
+  (`./scripts/quality-gate.sh`; exit **0** GO · **1** NO-GO · **2** bad args ·
+  **3** GO with reservations · **4** INCONCLUSIVE (HA invalid / skipped phase); #747/#748).
+
 ## Assessment curated keyword
 
 - For **mandate-driven white-box hygiene** (focused investigation → assessment register →
@@ -497,7 +529,7 @@ yarn doctor:curated
 - Purpose: punctual deep look when OSS doctor/pentest shortlists are the wrong entry signal (e.g.
   mobile crypto/protocol, Java transactional boundaries). **Not** a methodology program lane and
   **not** a substitute for `doctor-curated` / `dependabot-curated` / `security-pentest-curated` /
-  `javamelody-curated`.
+  `javamelody-curated` / `quality-gate`.
 - Method canon: [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md)
 - Cursor skill: [`.cursor/skills/assessment-curated/SKILL.md`](.cursor/skills/assessment-curated/SKILL.md)
 - Copilot mirror: `.github/copilot-instructions.md` § Assessment curated

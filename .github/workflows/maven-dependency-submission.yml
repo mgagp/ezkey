@@ -1,0 +1,67 @@
+# Explicit Maven dependency-graph submission for GitHub Insights.
+#
+# Replaces GitHub's Automatic Dependency Submission for Maven, which runs
+# `mvn validate` with Java 21 and cannot resolve the unpublished reactor
+# module org.ezkey:checkstyle-config. Not a PR check — do not add to ci-gate.
+#
+# Maintainer: after merge, turn OFF Automatic Dependency Submission for Maven
+# in Settings > Code security (see docs/DEVELOPMENT.md § Continuous Integration).
+name: Maven dependency submission
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pom.xml'
+      - '**/pom.xml'
+      - 'checkstyle-config/**'
+      - '.mvn/**'
+      - '.github/workflows/maven-dependency-submission.yml'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: maven-dependency-submission-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  submit-maven:
+    name: submit-maven
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Confirm JDK 25
+        run: |
+          java -version
+          test "$(java -XshowSettings:properties -version 2>&1 | sed -n 's/.*java.specification.version = //p')" = "25"
+
+      # Same bootstrap as the backend CI job / scripts/build.sh: the Checkstyle
+      # plugin depends on this unpublished reactor module (not on Maven Central).
+      - name: Install checkstyle-config
+        run: mvn -B -ntp -pl checkstyle-config install -DskipTests
+
+      - name: Submit Maven dependency snapshot
+        uses: advanced-security/maven-dependency-submission-action@a64327a7329c9939cf675e458452febe1894a70c # v6.0.1
+        with:
+          directory: ${{ github.workspace }}
+          maven-args: -B -ntp
+          ignore-maven-wrapper: 'true'

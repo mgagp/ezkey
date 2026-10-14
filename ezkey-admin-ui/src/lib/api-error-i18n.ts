@@ -17,6 +17,8 @@ const PREFER_I18N_OVER_DETAIL_RELS = new Set<string>([
   'domain.encryption-rotation-disabled',
   'domain.encryption-reencryption-disabled',
   'domain.integrity-validation-disabled',
+  'domain.integrity-async-job-busy',
+  'domain.integrity-window-over-cap',
   'enrollment.system-integration-create-not-allowed',
   'enrollment.active-verified-enrollment-exists',
   'enrollment.cannot-delete-with-history',

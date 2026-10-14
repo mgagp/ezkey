@@ -75,6 +75,9 @@ Counts reflect the current document state and are updated when feature status ch
 
 ## Related Documents
 
+- [`test-strategy.md`](test-strategy.md) — global test strategy, taxonomy codes, and QA Sphere
+  execution tracking (manual / exploratory / campaigns). This matrix stays the home for
+  feature ↔ spec ↔ **automated** test evidence.
 - [`features-and-phases.md`](features-and-phases.md)
 - [`roadmap.md`](roadmap.md)
 - Component traceability matrices: [admin-ui](../components/admin-ui/spec-test-traceability.md), [admin-api](../components/admin-api/spec-test-traceability.md), [mobile](../components/mobile/spec-test-traceability.md).

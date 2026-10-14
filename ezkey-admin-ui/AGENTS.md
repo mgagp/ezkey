@@ -18,8 +18,8 @@ recreate `ezkey-tenant-ui` or `docker-compose.tenant-ui.yml`.
 - React Router v7 — `createBrowserRouter`, lazy-loaded pages, `ProtectedRoute` guard
 - Tailwind CSS v4 — no `tailwind.config.ts`; all theme tokens in `src/index.css` under `@theme {}`
 - TanStack Query v5 — data fetching, caching, pagination
-- Orval **8.39.0** (exact pin) — OpenAPI → TanStack Query client (`npm run generate:api` → `src/generated/admin-api/`). **`orval.config.ts` must not set global `useQuery` or `useMutation`** — Orval 8.10+ applies explicit globals to all HTTP verbs and breaks hook shapes; keep `query: { version: 5 }` only (verb-aware defaults: GET → query, mutations → `useMutation`). Bump autonomy follows the **Orval risk grid** (O0–O3) in skill `dependabot-curated` § *Orval risk grid* (pointer: [`product-docs/global/hygiene/dependabot/README.md`](../product-docs/global/hygiene/dependabot/README.md)); evaluate Admin UI **separately** from mobile. `src/generated/` is gitignored — codegen diff = generate on base vs bump locally. Migration history: [`product-docs/global/backlog/TB-2026-05-28-admin-ui-orval-upgrade.md`](../product-docs/global/backlog/TB-2026-05-28-admin-ui-orval-upgrade.md).
-- **OpenAPI spec:** `ezkey-admin-ui/openapi-spec.json` is **committed** (copied by `scripts/update-specs.sh`). `src/generated/` is gitignored — run `npm run generate:api` after a spec refresh. Prefer generated hooks / fetch functions over hand-written `api.get` / `api.post`. `@/lib/api-client` is the Orval mutator backbone plus `fetchBlobUrl` and session helpers (`fetchApi`, `ApiError`). No axios.
+- Orval **8.41.0** (exact pin) — OpenAPI → TanStack Query client (`npm run generate:api` → `src/generated/admin-api/`). **`orval.config.ts` must not set global `useQuery` or `useMutation`** — Orval 8.10+ applies explicit globals to all HTTP verbs and breaks hook shapes; keep `query: { version: 5 }` only (verb-aware defaults: GET → query, mutations → `useMutation`). Bump autonomy follows the **Orval risk grid** (O0–O3) in skill `dependabot-curated` § *Orval risk grid* (pointer: [`product-docs/global/hygiene/dependabot/README.md`](../product-docs/global/hygiene/dependabot/README.md)); evaluate Admin UI **separately** from mobile. `src/generated/` is gitignored — codegen diff = generate on base vs bump locally. Migration history: [`product-docs/global/backlog/TB-2026-05-28-admin-ui-orval-upgrade.md`](../product-docs/global/backlog/TB-2026-05-28-admin-ui-orval-upgrade.md).
+- **OpenAPI spec:** `ezkey-admin-ui/openapi-spec.json` is **committed** (copied by `scripts/update-specs.sh`). `src/generated/` is gitignored — run `npm run generate:api` after **every checkout** (and after a spec refresh). A missing/stale Orval client crashes screens such as Integrity at runtime. Prefer generated hooks / fetch functions over hand-written `api.get` / `api.post`. `@/lib/api-client` is the Orval mutator backbone plus `fetchBlobUrl` and session helpers (`fetchApi`, `ApiError`). No axios.
 - **Install scripts (npm v12 prep):** `package.json` `allowScripts` approves `esbuild@0.28.1` (Vite + Orval transitive dep; native binary postinstall). After dependency changes, run `npm approve-scripts --allow-scripts-pending` if npm warns about uncovered scripts.
 - React Hook Form + Zod — forms and validation
 
@@ -325,8 +325,9 @@ When a screen filters by time via Admin API `createdAfter` / `createdBefore` (or
 
 Declare a gap only from a detected row in **Undeclared gaps for consultation**
 (justification only; no free-form dates or `anchorCheckpointId`). Opening the
-Integrity page (Global Admin `/integrity`) auto-runs chain integrity over the
-selected range or a 7-day UI default.
+Integrity page (Global Admin `/integrity`) shows the last known chain verdict on
+the micro-dashboard; auto-run fires only when there is no fresh (<24 h) verdict,
+over the last 24 hours (cut 3 D1).
 Canon: [`docs/AUDIT_LOG_INTEGRITY.md`](../docs/AUDIT_LOG_INTEGRITY.md) § Operator workflow.
 
 ## Docker Deployment

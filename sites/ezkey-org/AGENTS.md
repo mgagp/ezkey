@@ -193,7 +193,7 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 | `/integration-api-reference.html` | `/fr/integration-api-reference.html` | Integration API public reference |
 | `/community-guided-tour.html` | `/fr/community-guided-tour.html` | Community guided tour (bilingual)
 | `/community-instance.html` | `/fr/community-instance.html` | Alpha community instance overview (ezkey.online)
-| `/community-signup.html` | `/fr/community-signup.html` | Instant community signup (bilingual) |
+| `/community-signup.html` | `/fr/community-signup.html` | Instant community signup (bilingual); `?api=` / `adminUiUrl` / `guidedTourUrl` honor only allowlisted hosts via [`js/community-signup-urls.mjs`](js/community-signup-urls.mjs) (Lot B code-scanning 2026-10-13; reject `javascript:` and foreign hosts) |
 | `/changelog.html` | `/fr/changelog.html` | Technical changelog (placeholder) |
 
 **Rules:**

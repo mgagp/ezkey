@@ -1,0 +1,10 @@
+# Local CodeQL model pack — auto-detected under .github/codeql/extensions/.
+# Declares org.ezkey.util.LogSanitizer#sanitizeForLog as a log-injection barrier.
+# Ref: #801, docs/SECURITY_POSTURE.md § Code scanning policy.
+name: ezkey/java-models
+version: 0.0.1
+library: true
+extensionTargets:
+  codeql/java-all: "*"
+dataExtensions:
+  - models/**/*.yml

@@ -106,6 +106,7 @@ when relocating it would be disproportionate.
 | Global ADRs | [`global/architecture-decisions.md`](global/architecture-decisions.md) |
 | Design principles | [`global/design-principles.md`](global/design-principles.md) |
 | Entity relationships and lifecycle rules | [`global/lifecycle-model.md`](global/lifecycle-model.md) |
+| Global test strategy (taxonomy, QA Sphere, pyramid split) | [`global/test-strategy.md`](global/test-strategy.md) |
 | Global traceability | [`global/spec-test-traceability.md`](global/spec-test-traceability.md) |
 | Component architecture | `components/<pack>/stack-and-architecture.md` |
 | Component workflows | `components/<pack>/functional-flows.md` |
@@ -131,7 +132,7 @@ when relocating it would be disproportionate.
 1. Pick the right milestone in [`global/roadmap.md`](global/roadmap.md) (or add one through an ADR).
 2. Add an entry in [`global/features-and-phases.md`](global/features-and-phases.md) using the short format and link to the affected component pack(s).
 3. If the feature creates or changes durable component-local truth, update the relevant component pack in the same change set:
-    - Add a workflow entry in `functional-flows.md` via the [functional workflow template](templates/functional-workflow.template.md) when a workflow changes.
+    - Add a workflow entry in the component `functional-flows.md` when a workflow changes (templates index: [`templates/README.md`](templates/README.md)).
     - Add a mapping entry in `api-and-boundary-mappings.md` when a boundary is crossed.
     - Add an error entry in `exception-and-error-model.md` when new failure modes appear.
     - Add an entry in the component `spec-test-traceability.md` when feature evidence changes.

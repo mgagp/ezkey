@@ -24,7 +24,24 @@ import {
   integrityExclusiveApiParamsToDisplayRange,
   integrityExclusiveDateRangeToApiParams,
 } from '@/lib/date-range-presets';
-import { isSucceededVerifyJobForReportHydration } from '@/lib/integrity-async-job-report-hydration';
+import {
+  INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS,
+  IntegrityReportHydrationOverCapError,
+  isIntegrityReportHydrationBusyError,
+  isIntegrityReportScopeOverCap,
+  isIntegrityWindowOverCapError,
+  isSucceededVerifyJobForReportHydration,
+} from '@/lib/integrity-async-job-report-hydration';
+import {
+  applyIntegrityAsyncJobChange,
+  decideIntegrityOpenAction,
+  defaultAutoVerifyInstantRange,
+  INTEGRITY_DEFAULT_MAX_WINDOW_DAYS,
+  integrityReverifyDisabled,
+  integrityVerifyActionDisabled,
+  integrityWindowDaysToHours,
+  isIntegrityChainStatusNonGreen,
+} from '@/lib/integrity-micro-dashboard';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
 import { cn, formatDateOnly, formatDateWithTimezone } from '@/lib/utils';
@@ -60,7 +77,7 @@ import { useDisplayTimezone } from '@/context/use-display-timezone';
 import { useToast } from '@/context/use-toast';
 import { EntryIntegrityReportBadge } from '@/components/feature/entry-integrity-report-badge';
 import { EntryIntegrityViolationLine } from '@/components/feature/entry-integrity-violation-line';
-import { IntegrityAsyncJobBanner } from '@/components/feature/integrity-async-job-banner';
+import { IntegrityMicroDashboard } from '@/components/feature/integrity-micro-dashboard';
 import { IntegrityReconcileDialog } from '@/components/feature/integrity-reconcile-dialog';
 import { useIntegrityAsyncJobReportHydration } from '@/hooks/use-integrity-async-job-report-hydration';
 import { useGetAlert } from '@/generated/admin-api/alerts/alerts';
@@ -93,6 +110,7 @@ import type {
 } from '@/generated/admin-api/model';
 import {
   getCurrentIntegrityAsyncJob,
+  getLastIntegrityVerdict,
   integrityAsyncBusyResumeLine,
   isIntegrityAsyncEscapeStatus,
   startIntegrityAsyncJob,
@@ -105,6 +123,10 @@ type IntegrityMonitoringTruth = {
   runtimeProfile?: IntegrityRuntimeProfile;
   chainCheckpointsEnabled?: boolean;
   nightlyValidationEnabled?: boolean;
+  /** Async VERIFY / RUN_VALIDATION cap (calendar days). */
+  maxWindowDays?: number;
+  /** Sync report-GET / operator validation cap (calendar days). */
+  maxSyncWindowDays?: number;
 };
 
 function resolveIntegrityMonitoringTruth(
@@ -117,6 +139,8 @@ function resolveIntegrityMonitoringTruth(
     runtimeProfile: profile,
     chainCheckpointsEnabled: bootstrap?.chainCheckpointsEnabled,
     nightlyValidationEnabled: bootstrap?.nightlyValidationEnabled,
+    maxWindowDays: bootstrap?.maxWindowDays,
+    maxSyncWindowDays: bootstrap?.maxSyncWindowDays,
   };
 }
 
@@ -510,49 +534,80 @@ function IntegrityPanel({
   const [validationRunResult, setValidationRunResult] =
     useState<RetroactiveIntegrityValidationRunResponse | null>(null);
   const [asyncJob, setAsyncJob] = useState<IntegrityAsyncJobResponse | null>(null);
+  const handleAsyncJobChange = useCallback((next: IntegrityAsyncJobResponse | null) => {
+    // #788: 204 keeps a finished glance, but never escape-sticky (Patrick B2).
+    // Nightly RUNNING → 204 reloads `/last-verdict`.
+    applyIntegrityAsyncJobChange(next, {
+      setJob: setAsyncJob,
+      loadLastVerdict: getLastIntegrityVerdict,
+    });
+  }, []);
   const asyncSlotRunning = asyncJob?.status === 'RUNNING';
   const asyncEscapeSticky =
     asyncJob != null
     && asyncJob.abandonedAt == null
     && isIntegrityAsyncEscapeStatus(asyncJob.status);
   const asyncStartsBlocked = asyncSlotRunning || asyncEscapeSticky;
+  const maxWindowDays = monitoringTruth.maxWindowDays ?? INTEGRITY_DEFAULT_MAX_WINDOW_DAYS;
+  const maxSyncWindowDays =
+    monitoringTruth.maxSyncWindowDays ?? INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS;
+  const maxSyncWindowHours = integrityWindowDaysToHours(maxSyncWindowDays);
+  const maxAsyncWindowHours = integrityWindowDaysToHours(maxWindowDays);
 
   // ── Date range for integrity checks (shared DateRangeFilter) ──
   const [checkRange, setCheckRange] = useState({ from: '', to: '' });
-  const asyncStartsDisabledReason = asyncSlotRunning
-    ? t('integrity.asyncJob.startsDisabledTooltip')
-    : asyncEscapeSticky
-      ? t('integrity.asyncJob.startsDisabledEscapeTooltip')
-      : !checkRange.from || !checkRange.to
-        ? t('integrity.selectDateRangeToRun')
-        : undefined;
-
+  const [verdictDisplayRange, setVerdictDisplayRange] = useState<{
+    from: string;
+    to: string;
+  } | null>(null);
+  /** OQ1: freeze open-time non-green → Remédier; ban mid-work auto-switch. */
+  const [openTimeChainNonGreen, setOpenTimeChainNonGreen] = useState<boolean | undefined>(
+    undefined,
+  );
   const [hydrationReloadNonce, setHydrationReloadNonce] = useState(0);
   const [hydrationFailedKind, setHydrationFailedKind] = useState<'chain' | 'entry' | null>(
     null,
   );
+  const [hydrationFailedBusy, setHydrationFailedBusy] = useState(false);
+  const [hydrationFailedOverCap, setHydrationFailedOverCap] = useState(false);
 
-  // After VERIFY_* SUCCEEDED, hydrate full reports (gaps / entry violations) from
-  // the read-only verify endpoints — the async job DTO only carries a summary.
+  // After VERIFY_* SUCCEEDED without D3 counters, hydrate detailed reports from
+  // read-only verify endpoints. Cut 3: skip auto GET when job-backed glance exists.
   useIntegrityAsyncJobReportHydration({
     job: asyncJob,
     reloadNonce: hydrationReloadNonce,
+    skipAutoHydrateWhenJobBacked: true,
+    maxSyncWindowHours,
     toDisplayRange: (fromIso, toIso) =>
       integrityExclusiveApiParamsToDisplayRange(fromIso, toIso, effectiveTimeZoneId),
     onChainReport: (report, range) => {
       setHydrationFailedKind(null);
+      setHydrationFailedBusy(false);
+      setHydrationFailedOverCap(false);
       setChainReport(report);
       setChainReportRange(range);
     },
     onEntryReport: (report, range) => {
       setHydrationFailedKind(null);
+      setHydrationFailedBusy(false);
+      setHydrationFailedOverCap(false);
       setIntegrityReport(report);
       setIntegrityReportRange(range);
     },
     onChainHydratingChange: setChainLoading,
     onEntryHydratingChange: setIntegrityLoading,
     onError: (kind, error) => {
+      const busy = isIntegrityReportHydrationBusyError(error);
+      const overCap =
+        error instanceof IntegrityReportHydrationOverCapError
+        || isIntegrityWindowOverCapError(error);
       setHydrationFailedKind(kind);
+      setHydrationFailedBusy(busy);
+      setHydrationFailedOverCap(overCap);
+      // Busy / over-cap: inline warning only (no red error toast / retry storm).
+      if (busy || overCap) {
+        return;
+      }
       toast(
         getTranslatedApiError(
           error,
@@ -565,6 +620,30 @@ function IntegrityPanel({
       );
     },
   });
+
+  // Align Vérifier picker to the glance job scope (#696).
+  useEffect(() => {
+    if (
+      asyncJob?.scopeFrom == null
+      || asyncJob.scopeTo == null
+      || asyncJob.status === 'RUNNING'
+    ) {
+      return;
+    }
+    if (
+      asyncJob.status !== 'SUCCEEDED'
+      && !isIntegrityAsyncEscapeStatus(asyncJob.status)
+    ) {
+      return;
+    }
+    const display = integrityExclusiveApiParamsToDisplayRange(
+      asyncJob.scopeFrom,
+      asyncJob.scopeTo,
+      effectiveTimeZoneId,
+    );
+    setVerdictDisplayRange(display);
+    setCheckRange(display);
+  }, [asyncJob?.jobId, asyncJob?.status, asyncJob?.scopeFrom, asyncJob?.scopeTo, effectiveTimeZoneId]);
 
   useEffect(() => {
     if (!initialCheckRange?.createdAfter || !initialCheckRange.createdBefore) {
@@ -834,17 +913,6 @@ function IntegrityPanel({
     setTimelineExpanded(true);
   }
 
-  /**
-   * Compute the default 7-day lookback window used by the auto-run on expand.
-   * UI-side default; a backend lookback/cap is not shipped yet.
-   */
-  function defaultGapScanRange(): { from: string; to: string } {
-    const now = new Date();
-    const past = new Date(now);
-    past.setDate(past.getDate() - 7);
-    return { from: toYYYYMMDD(past), to: toYYYYMMDD(now) };
-  }
-
   function integrityRangeToApiParams(range: { from: string; to: string }) {
     const { createdAfter, createdBefore } = integrityExclusiveDateRangeToApiParams(
       range.from,
@@ -854,32 +922,105 @@ function IntegrityPanel({
     return { from: createdAfter, to: createdBefore };
   }
 
-  async function runChainCheck(_rangeOverride?: { from: string; to: string }) {
-    const range = _rangeOverride ?? checkRange;
-    if (!range.from || !range.to) {
-      return;
+  const verifyRangeOverCap = (() => {
+    if (!checkRange.from || !checkRange.to) {
+      return false;
     }
-    setChainLoading(true);
-    setChainReport(null);
-    setChainReportRange(null);
-    setFocusedGap(null);
-    try {
-      const { from: createdAfter, to: createdBefore } = integrityRangeToApiParams(range);
-      if (!createdAfter || !createdBefore) {
+    const api = integrityRangeToApiParams(checkRange);
+    if (!api.from || !api.to) {
+      return false;
+    }
+    return isIntegrityReportScopeOverCap(api.from, api.to, maxAsyncWindowHours);
+  })();
+  const asyncStartsDisabledReason = asyncSlotRunning
+    ? t('integrity.asyncJob.startsDisabledTooltip')
+    : asyncEscapeSticky
+      ? t('integrity.asyncJob.startsDisabledEscapeTooltip')
+      : chainLoading
+        ? t('integrity.checking')
+        : verifyRangeOverCap
+          ? t('integrity.microDashboard.rangeOverCapWarning', { maxWindowDays })
+          : !checkRange.from || !checkRange.to
+            ? t('integrity.selectDateRangeToRun')
+            : undefined;
+
+  /**
+   * Start VERIFY_CHAIN_RANGE. Pass Instant ISO bounds via {@code instantRange}
+   * (D1 auto-run), or YYYY-MM-DD display bounds via {@code rangeOverride}.
+   */
+  async function runChainCheck(options?: {
+    rangeOverride?: { from: string; to: string };
+    instantRange?: { from: string; to: string };
+    trigger?: 'MANUAL' | 'AUTO';
+    /** Open-path busy must not toast 409 (nightly / synthetic). */
+    quietBusy?: boolean;
+  }) {
+    const trigger = options?.trigger ?? 'MANUAL';
+    let createdAfter: string | undefined;
+    let createdBefore: string | undefined;
+    let displayRange: { from: string; to: string } | undefined;
+
+    if (options?.instantRange) {
+      createdAfter = options.instantRange.from;
+      createdBefore = options.instantRange.to;
+    } else {
+      const range = options?.rangeOverride ?? checkRange;
+      if (!range.from || !range.to) {
         return;
       }
+      displayRange = range;
+      const api = integrityRangeToApiParams(range);
+      createdAfter = api.from;
+      createdBefore = api.to;
+    }
+
+    if (!createdAfter || !createdBefore) {
+      return;
+    }
+
+    // #743 / Julie C1: over-cap is inline warning + disabled button — no toast.
+    if (isIntegrityReportScopeOverCap(createdAfter, createdBefore, maxAsyncWindowHours)) {
+      return;
+    }
+
+    if (options?.instantRange) {
+      displayRange = integrityExclusiveApiParamsToDisplayRange(
+        createdAfter,
+        createdBefore,
+        effectiveTimeZoneId,
+      );
+    }
+
+    setChainLoading(true);
+    if (trigger === 'MANUAL') {
+      setChainReport(null);
+      setChainReportRange(null);
+      setFocusedGap(null);
+    }
+    try {
       await startIntegrityAsyncJob({
         type: 'VERIFY_CHAIN_RANGE',
         from: createdAfter,
         to: createdBefore,
+        trigger,
       });
-      setChainReportRange({ from: range.from, to: range.to });
-      setAsyncJob(await getCurrentIntegrityAsyncJob());
+      if (displayRange != null) {
+        setChainReportRange(displayRange);
+        setCheckRange(displayRange);
+        setVerdictDisplayRange(displayRange);
+      }
+      handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
     } catch (e) {
       const resume = integrityAsyncBusyResumeLine(e);
       if (resume) {
-        toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
-        setAsyncJob(await getCurrentIntegrityAsyncJob());
+        // Nightly / gate busy on open: micro-dashboard shows running; no error toast.
+        if (!options?.quietBusy) {
+          toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
+        }
+        handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+      } else if (isIntegrityWindowOverCapError(e)) {
+        // Defense in depth — button should already be disabled for known over-cap.
+        return;
       } else {
         toast(getTranslatedApiError(e, t, t('integrity.errorChainCheck')), 'error');
       }
@@ -892,26 +1033,33 @@ function IntegrityPanel({
     if (!checkRange.from || !checkRange.to) {
       return;
     }
+    const { from: createdAfter, to: createdBefore } = integrityRangeToApiParams(checkRange);
+    if (!createdAfter || !createdBefore) {
+      return;
+    }
+    // #743 / Julie C1: over-cap is inline warning + disabled button — no toast.
+    if (isIntegrityReportScopeOverCap(createdAfter, createdBefore, maxAsyncWindowHours)) {
+      return;
+    }
     setIntegrityLoading(true);
     setIntegrityReport(null);
     setIntegrityReportRange(null);
     try {
-      const { from: createdAfter, to: createdBefore } = integrityRangeToApiParams(checkRange);
-      if (!createdAfter || !createdBefore) {
-        return;
-      }
       await startIntegrityAsyncJob({
         type: 'VERIFY_ENTRY_HMAC_RANGE',
         from: createdAfter,
         to: createdBefore,
       });
       setIntegrityReportRange({ from: checkRange.from, to: checkRange.to });
-      setAsyncJob(await getCurrentIntegrityAsyncJob());
+      handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
     } catch (e) {
       const resume = integrityAsyncBusyResumeLine(e);
       if (resume) {
         toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
-        setAsyncJob(await getCurrentIntegrityAsyncJob());
+        handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+      } else if (isIntegrityWindowOverCapError(e)) {
+        // Defense in depth — button should already be disabled for known over-cap.
+        return;
       } else {
         toast(getTranslatedApiError(e, t, t('integrity.errorIntegrityCheck')), 'error');
       }
@@ -924,25 +1072,31 @@ function IntegrityPanel({
     if (!checkRange.from || !checkRange.to) {
       return;
     }
+    const { from: createdAfter, to: createdBefore } = integrityRangeToApiParams(checkRange);
+    if (!createdAfter || !createdBefore) {
+      return;
+    }
+    // #743 / Julie C1: over-cap is inline warning + disabled button — no toast.
+    if (isIntegrityReportScopeOverCap(createdAfter, createdBefore, maxAsyncWindowHours)) {
+      return;
+    }
     setValidationRunLoading(true);
     setValidationRunResult(null);
     try {
-      const { from: createdAfter, to: createdBefore } = integrityRangeToApiParams(checkRange);
-      if (!createdAfter || !createdBefore) {
-        return;
-      }
       await startIntegrityAsyncJob({
         type: 'RUN_VALIDATION',
         from: createdAfter,
         to: createdBefore,
         raiseAlert: true,
       });
-      setAsyncJob(await getCurrentIntegrityAsyncJob());
+      handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
     } catch (e) {
       const resume = integrityAsyncBusyResumeLine(e);
       if (resume) {
         toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
-        setAsyncJob(await getCurrentIntegrityAsyncJob());
+        handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+      } else if (isIntegrityWindowOverCapError(e)) {
+        return;
       } else {
         toast(getTranslatedApiError(e, t, t('integrity.validationRun.error')), 'error');
       }
@@ -1035,13 +1189,18 @@ function IntegrityPanel({
     && archiveEligibility.checkpointIdFrom != null
     && archiveEligibility.checkpointIdTo != null;
 
-  const undeclaredGapCount = undeclaredGapCountFromReport(
-    chainReport as { undeclaredGaps?: unknown[] } | null,
+  const undeclaredGapCountFromDto =
+    asyncJob?.status === 'SUCCEEDED' && typeof asyncJob.undeclaredGaps === 'number'
+      ? asyncJob.undeclaredGaps
+      : 0;
+  const undeclaredGapCount = Math.max(
+    undeclaredGapCountFromReport(chainReport as { undeclaredGaps?: unknown[] } | null),
+    undeclaredGapCountFromDto,
   );
   const hasActionableIncident = incidents.some((row) =>
     isActionableIncidentStatus(row.status),
   );
-  const chainNonGreen = isChainReportNonGreen(
+  const reportChainNonGreen = isChainReportNonGreen(
     chainReport as {
       intact?: boolean;
       status?: string;
@@ -1049,11 +1208,17 @@ function IntegrityPanel({
       invalidCheckpoints?: number;
     } | null,
   );
+  const dtoChainNonGreen = isIntegrityChainStatusNonGreen(asyncJob?.chainStatus);
+  // OQ1: open-time non-green drives default Remédier; mid-work arrivals do not flip tabs.
+  const chainNonGreenForMode =
+    openTimeChainNonGreen === true
+    || (openTimeChainNonGreen === undefined && (reportChainNonGreen || dtoChainNonGreen));
+  const chainNonGreen = reportChainNonGreen || dtoChainNonGreen;
   const disclosureState = {
     undeclaredGapCount,
     hasActionableIncident,
     awaitingConfirmTranche,
-    chainNonGreen,
+    chainNonGreen: chainNonGreenForMode,
   };
   const autoOpenRemediate = shouldAutoOpenRemediateCluster(disclosureQuery, disclosureState);
 
@@ -1066,6 +1231,9 @@ function IntegrityPanel({
   });
   const [modeOverride, setModeOverride] = useState<IntegrityAtelierMode | null>(null);
   const activeMode = modeOverride ?? derivedMode;
+  // Mid-work non-green: offer Ouvrir Remédier instead of auto-switching (OQ1).
+  const showOpenRemediate =
+    chainNonGreen && activeMode !== 'remediate' && openTimeChainNonGreen !== true;
 
   function selectAtelierMode(next: IntegrityAtelierMode) {
     setModeOverride(next);
@@ -1156,48 +1324,59 @@ function IntegrityPanel({
     resetGapForm();
   }
 
-  // Auto-run chain check on page load: populates the gaps list
-  // without requiring the operator to click *Run integrity check* first.
-  // UX shortcut only — backend discoverability is owned by AuditChainScheduler.
-  // Do not clobber sticky Escape (EXPIRED|CANCELLED): wait for GET
-  // current first so « Abandon and restart » stays reachable (Isabelle ronde 1).
-  // Crash INTERRUPTED is auto-abandoned and is not Escape-sticky (Marc posture).
+  // D1 page open (cut 3 / #788): stop only for RUNNING, escape-sticky, or a
+  // fresh chain verdict. Otherwise read `/last-verdict`, show the newer of the
+  // two, and auto-run when neither is fresh. Read errors → null (fail-open).
   useEffect(() => {
     if (chainReport || chainLoading) return;
 
-    const effectiveRange =
-      checkRange.from && checkRange.to ? checkRange : defaultGapScanRange();
-
-    if (!checkRange.from || !checkRange.to) {
-      setCheckRange(effectiveRange);
-    }
-
     let cancelled = false;
     void (async () => {
+      let current: IntegrityAsyncJobResponse | null;
       try {
-        const current = await getCurrentIntegrityAsyncJob();
-        if (cancelled) {
-          return;
-        }
-        if (current != null) {
-          setAsyncJob(current);
-          if (
-            current.status === 'RUNNING'
-            || (isIntegrityAsyncEscapeStatus(current.status) && current.abandonedAt == null)
-          ) {
-            return;
-          }
-          // Already-succeeded chain/entry verify: hydrate via job hook; do not start another job.
-          if (isSucceededVerifyJobForReportHydration(current)) {
-            return;
-          }
-        }
+        current = await getCurrentIntegrityAsyncJob();
       } catch {
-        // Fall through to auto-start when status cannot be read (idle / network).
+        // Error contract (#788): fail-open toward auto-run when no glance remains.
+        current = null;
       }
-      if (!cancelled) {
-        await runChainCheck(effectiveRange);
+      if (cancelled) {
+        return;
       }
+
+      // Early hold: RUNNING / escape — no `/last-verdict` fetch required.
+      const early = decideIntegrityOpenAction(current, null);
+      if (early.action === 'hold' && (early.reason === 'running' || early.reason === 'escape')) {
+        handleAsyncJobChange(early.displayJob);
+        setOpenTimeChainNonGreen(isIntegrityChainStatusNonGreen(early.displayJob.chainStatus));
+        return;
+      }
+
+      let lastVerdict: IntegrityAsyncJobResponse | null;
+      try {
+        lastVerdict = await getLastIntegrityVerdict();
+      } catch {
+        lastVerdict = null;
+      }
+      if (cancelled) {
+        return;
+      }
+
+      const decision = decideIntegrityOpenAction(current, lastVerdict);
+      if (decision.displayJob != null) {
+        handleAsyncJobChange(decision.displayJob);
+      }
+      if (decision.action === 'hold') {
+        setOpenTimeChainNonGreen(isIntegrityChainStatusNonGreen(decision.displayJob.chainStatus));
+        return;
+      }
+
+      setOpenTimeChainNonGreen(false);
+      // Remount after a failed AUTO may retry — bounded by navigation (#788).
+      await runChainCheck({
+        instantRange: defaultAutoVerifyInstantRange(),
+        trigger: 'AUTO',
+        quietBusy: true,
+      });
     })();
 
     return () => {
@@ -1227,7 +1406,23 @@ function IntegrityPanel({
         />
       </div>
 
-      <IntegrityAsyncJobBanner job={asyncJob} onJobChange={setAsyncJob} active />
+      <IntegrityMicroDashboard
+        job={asyncJob}
+        onJobChange={handleAsyncJobChange}
+        active
+        pickerRange={checkRange}
+        verdictDisplayRange={verdictDisplayRange}
+        onReverify={() => void runChainCheck({ trigger: 'MANUAL' })}
+        reverifyDisabled={integrityReverifyDisabled({
+          asyncStartsBlocked,
+          chainLoading,
+          rangeFrom: checkRange.from,
+          rangeTo: checkRange.to,
+        })}
+        reverifyDisabledReason={asyncStartsDisabledReason}
+        showOpenRemediate={showOpenRemediate}
+        onOpenRemediate={() => selectAtelierMode('remediate')}
+      />
 
       {hydrationFailedKind != null
         && isSucceededVerifyJobForReportHydration(asyncJob) && (
@@ -1237,23 +1432,31 @@ function IntegrityPanel({
           role="alert"
         >
           <span className="min-w-0 flex-1">
-            {hydrationFailedKind === 'chain'
-              ? t('integrity.asyncJob.hydrateChainError')
-              : t('integrity.asyncJob.hydrateEntryError')}
+            {hydrationFailedOverCap
+              ? t('integrity.asyncJob.hydrateOverCapHint', { maxSyncDays: maxSyncWindowDays })
+              : hydrationFailedBusy
+                ? t('integrity.asyncJob.hydrateBusyHint')
+                : hydrationFailedKind === 'chain'
+                  ? t('integrity.asyncJob.hydrateChainError')
+                  : t('integrity.asyncJob.hydrateEntryError')}
           </span>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="ml-auto shrink-0"
-            data-testid="integrity-report-reload"
-            onClick={() => {
-              setHydrationFailedKind(null);
-              setHydrationReloadNonce((n) => n + 1);
-            }}
-          >
-            {t('integrity.asyncJob.reloadReport')}
-          </Button>
+          {!hydrationFailedOverCap && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="ml-auto shrink-0"
+              data-testid="integrity-report-reload"
+              onClick={() => {
+                setHydrationFailedKind(null);
+                setHydrationFailedBusy(false);
+                setHydrationFailedOverCap(false);
+                setHydrationReloadNonce((n) => n + 1);
+              }}
+            >
+              {t('integrity.asyncJob.reloadReport')}
+            </Button>
+          )}
         </div>
       )}
 
@@ -1367,13 +1570,41 @@ function IntegrityPanel({
               onChange={setCheckRange}
               emptyOptionLabel={t('integrity.dateRangeSelect')}
             />
+            {(() => {
+              if (!checkRange.from || !checkRange.to) {
+                return null;
+              }
+              const api = integrityRangeToApiParams(checkRange);
+              if (
+                !api.from
+                || !api.to
+                || !isIntegrityReportScopeOverCap(api.from, api.to, maxAsyncWindowHours)
+              ) {
+                return null;
+              }
+              return (
+                <p
+                  className="text-xs text-warning"
+                  data-testid="integrity-range-over-cap-warning"
+                  role="status"
+                >
+                  {t('integrity.microDashboard.rangeOverCapWarning', { maxWindowDays })}
+                </p>
+              );
+            })()}
 
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={() => void runChainCheck()}
-                disabled={chainLoading || asyncStartsBlocked || !checkRange.from || !checkRange.to}
+                disabled={integrityVerifyActionDisabled({
+                  loading: chainLoading,
+                  asyncStartsBlocked,
+                  rangeFrom: checkRange.from,
+                  rangeTo: checkRange.to,
+                  rangeOverCap: verifyRangeOverCap,
+                })}
                 className="gap-1.5"
                 title={asyncStartsDisabledReason}
                 data-testid="integrity-verify-chain"
@@ -1387,7 +1618,13 @@ function IntegrityPanel({
                 size="sm"
                 variant="secondary"
                 onClick={() => void runIntegrityCheck()}
-                disabled={integrityLoading || asyncStartsBlocked || !checkRange.from || !checkRange.to}
+                disabled={integrityVerifyActionDisabled({
+                  loading: integrityLoading,
+                  asyncStartsBlocked,
+                  rangeFrom: checkRange.from,
+                  rangeTo: checkRange.to,
+                  rangeOverCap: verifyRangeOverCap,
+                })}
                 className="gap-1.5"
                 title={asyncStartsDisabledReason}
                 data-testid="integrity-verify-entry-range"
@@ -1410,12 +1647,13 @@ function IntegrityPanel({
                   <Button
                     size="sm"
                     onClick={() => void runRetroactiveValidation()}
-                    disabled={
-                      validationRunLoading
-                      || asyncStartsBlocked
-                      || !checkRange.from
-                      || !checkRange.to
-                    }
+                    disabled={integrityVerifyActionDisabled({
+                      loading: validationRunLoading,
+                      asyncStartsBlocked,
+                      rangeFrom: checkRange.from,
+                      rangeTo: checkRange.to,
+                      rangeOverCap: verifyRangeOverCap,
+                    })}
                     className="gap-1.5"
                     title={asyncStartsDisabledReason}
                     data-testid="integrity-run-validation"

@@ -222,6 +222,22 @@ Dependabot list as "Java is current."**
 
 Out of this pulse (operator-owned, separate hygiene): Docker image tags (e.g. `postgres:18-alpine`).
 Do not add a `docker` ecosystem or invent a Compose-image lot unless the operator asks.
+**Maven Temurin build images:** project JDK = **25 LTS** (Marc 2026-10-12; revisit at
+JDK 29 LTS). On `/docker`, Dependabot ignore for `maven` uses Bundler ranges
+`">= 3.9.26, < 3.9.29"`, `">= 3.10.26, < 3.10.29"`, `">= 4.0.26, < 4.0.29"` (comma AND
+form; each array entry is OR’d). Mechanism: dependabot-core `Tag` captures
+`WORDS_WITH_BUILD` so `3.9-eclipse-temurin-N` → numeric `3.9-N` → `Docker::Version`
+`3.9.N` — see
+[tag.rb](https://github.com/dependabot/dependabot-core/blob/main/docker/lib/dependabot/docker/tag.rb)
+/
+[version.rb](https://github.com/dependabot/dependabot-core/blob/main/docker/lib/dependabot/docker/version.rb).
+That encoding made #718 propose temurin-26 as a patch. A Maven patch on Temurin 25
+(`3.9.11-eclipse-temurin-25` → `3.9.11.25`) is not blocked. **Manual:** extend one range
+per new Maven minor; at JDK 29 LTS, revisit. **Fallback:** if a non-LTS Temurin PR still
+opens, curated pass closes it with `@dependabot ignore this version`. Do **not** use
+shell-style globs in docker `ignore.versions` — they fail `.github/dependabot.yml`
+validation (#762). Playwright browser-test image tags must match `@playwright/test` in the
+Admin UI lockfile.
 
 Tink / ShedLock / ipaddress now live in parent properties (`tink.version`, `shedlock.version`,
 `ipaddress.version`). Do not re-propose that lift; see

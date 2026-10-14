@@ -6,7 +6,7 @@
 - **Status:** `promoted`
 - **Lane:** `D`
 - **Created at:** `2026-09-26`
-- **Updated at:** `2026-09-26`
+- **Updated at:** `2026-10-08`
 - **Captured by:** Marc / Alex (editorial lock: Audrey)
 - **Priority:** `P1` (cold-start compass; replaces live “next P0” use of the September operable-release note)
 - **Supersedes (as live next-P0 gate):** [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
@@ -41,8 +41,12 @@ Public product vocabulary for runtime presets is **`base`** and **`integrity`**
    remains **ezkey.org**. Deploy ledger:
    [`../../../docs/lightsail/community/DEPLOYED.md`](../../../docs/lightsail/community/DEPLOYED.md).
 2. **GitHub open** — Source and issues are public under the honesty bounds above.
-3. **Play Store: closed testing only** — Android accepted for **closed testing** (public-alpha
-   labeled builds). Not mobile production / open production.
+3. **Play Store: mobile production targeted; platform stays alpha** — The **mobile app** may
+   proceed through closed testing toward **Play production**. Rationale (2026-10-08): the API
+   surface is stabilizing; in particular the cryptographic relationship between the mobile app and
+   the Authentication API is judged stable enough for the mobile app to reach Play production. The
+   **rest of the platform** (backends / community instance) remains **alpha / laboratory** — not a
+   production claim. Closed testing remains the required Play track before production.
 4. **Intention-first collaboration** — New work starts from maintainer intention; do not invent
    P0 gates from historical September compass text.
 5. **No remaining P0 on the active backlog** — Waves A–C closed; Wave D closed as attention freeze
@@ -50,6 +54,14 @@ Public product vocabulary for runtime presets is **`base`** and **`integrity`**
 6. **Evaluator self-registration off by default** —
    `ezkey.evaluator.self-registration.enabled` defaults **off**. Community may enable it
    **explicitly**; self-host / clean-start must not inherit an open signup path by default.
+
+### Amendment 2026-10-08 (Marc)
+
+Clarifies lock 3: **production targets the mobile app only**, not the backend platform. Does not
+weaken honesty bounds (laboratory · discreet · alpha ≠ prod for the platform · no SLA). Follow-up
+(not designed here): product management must stay consistent with this split (tagging / version
+tags / branch management for the mobile app versus the platform) — see
+[`V-2026-10-07-multi-tenant-closed-testing-demo-app`](V-2026-10-07-multi-tenant-closed-testing-demo-app.md).
 
 ## Session restart phrase (cold start)
 
@@ -83,4 +95,5 @@ Public product vocabulary for runtime presets is **`base`** and **`integrity`**
 
 - [`../backlog/index.md`](../backlog/index.md) — active ideas; no P0 remaining
 - [`../../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md) — public alpha label
-- [`V-2026-08-02-mobile-official-play-release-posture`](V-2026-08-02-mobile-official-play-release-posture.md) — mobile Play track (closed testing ≠ open production)
+- [`V-2026-08-02-mobile-official-play-release-posture`](V-2026-08-02-mobile-official-play-release-posture.md) — mobile Play track (closed testing → mobile production; platform stays alpha)
+- [`V-2026-10-07-multi-tenant-closed-testing-demo-app`](V-2026-10-07-multi-tenant-closed-testing-demo-app.md) — closed-testing friction / Acme access-code path for mobile production cohort

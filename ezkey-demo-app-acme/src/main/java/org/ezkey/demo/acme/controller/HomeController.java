@@ -10,11 +10,15 @@
 
 package org.ezkey.demo.acme.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.ezkey.demo.acme.dto.AuthenticatedUser;
+import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
+import org.ezkey.demo.acme.web.LinkEntryMarker;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * Main controller for ACME demo application handling dashboard and logout.
@@ -27,7 +31,7 @@ import org.springframework.web.bind.annotation.GetMapping;
  * <ul>
  *   <li>{@code /} - Redirects to login page
  *   <li>{@code /dashboard} - Post-login dashboard (requires valid session)
- *   <li>{@code /logout} - Clears session and redirects to login
+ *   <li>{@code /logout} - Invalidates the session and redirects to login
  * </ul>
  *
  * <p><b>Design Philosophy:</b> Implements Neo Brutalism UI principles with bold typography, high
@@ -40,14 +44,17 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class HomeController {
 
   private static final String USER_ATTRIBUTE = "user";
-  private static final String AUTH_ATTEMPT_FINAL_STATUS_ATTRIBUTE = "authAttemptFinalStatus";
-  private static final String PENDING_AUTH_ATTEMPT_ID_ATTRIBUTE = "pendingAuthAttemptId";
-  private static final String PENDING_CHALLENGE_CODE_ATTRIBUTE = "pendingChallengeCode";
-  private static final String PENDING_USERNAME_ATTRIBUTE = "pendingUsername";
-  private static final String PENDING_DISPLAY_NAME_ATTRIBUTE = "pendingDisplayName";
-  private static final String PENDING_ENROLLMENT_ID_ATTRIBUTE = "pendingEnrollmentId";
-  private static final String PENDING_TIMEOUT_SECONDS_ATTRIBUTE = "pendingTimeoutSeconds";
-  private static final String PENDING_EXPIRES_AT_ATTRIBUTE = "pendingExpiresAt";
+
+  private final DemoApiKeyConfigService demoApiKeyConfigService;
+
+  /**
+   * Creates the home controller.
+   *
+   * @param demoApiKeyConfigService used to detect slot mode before logout clears the session
+   */
+  public HomeController(DemoApiKeyConfigService demoApiKeyConfigService) {
+    this.demoApiKeyConfigService = demoApiKeyConfigService;
+  }
 
   /**
    * Redirects root URL to login page.
@@ -77,33 +84,35 @@ public class HomeController {
       return "redirect:/login";
     }
 
+    boolean slotMode = demoApiKeyConfigService.getActiveSlotId(session) != null;
     model.addAttribute("pageTitle", "Dashboard - ACME Inc");
     model.addAttribute("user", user);
+    model.addAttribute("entryLink", slotMode);
     return "dashboard";
   }
 
   /**
-   * Handles logout by clearing authenticated-user state while preserving demo API key configuration
-   * for the current browser session.
+   * Handles logout by invalidating the entire HTTP session (auth state, pasted keys, and
+   * access-code slot).
    *
-   * @param session the HTTP session
+   * <p>When the session had an access-code slot, the redirect carries {@code entry=link} so the
+   * login page stays on the tenant-link layout (no self-service chrome).
+   *
+   * @param request the HTTP request
    * @return redirect to login page
    */
   @GetMapping("/logout")
-  public String logout(HttpSession session) {
-    clearAuthenticationState(session);
-    return "redirect:/login?logout=true";
-  }
-
-  private void clearAuthenticationState(HttpSession session) {
-    session.removeAttribute(USER_ATTRIBUTE);
-    session.removeAttribute(AUTH_ATTEMPT_FINAL_STATUS_ATTRIBUTE);
-    session.removeAttribute(PENDING_AUTH_ATTEMPT_ID_ATTRIBUTE);
-    session.removeAttribute(PENDING_CHALLENGE_CODE_ATTRIBUTE);
-    session.removeAttribute(PENDING_USERNAME_ATTRIBUTE);
-    session.removeAttribute(PENDING_DISPLAY_NAME_ATTRIBUTE);
-    session.removeAttribute(PENDING_ENROLLMENT_ID_ATTRIBUTE);
-    session.removeAttribute(PENDING_TIMEOUT_SECONDS_ATTRIBUTE);
-    session.removeAttribute(PENDING_EXPIRES_AT_ATTRIBUTE);
+  public String logout(
+      @RequestParam(value = LinkEntryMarker.PARAM, required = false) String entry,
+      HttpServletRequest request) {
+    HttpSession session = request.getSession(false);
+    boolean slotMode = false;
+    if (session != null) {
+      slotMode = demoApiKeyConfigService.getActiveSlotId(session) != null;
+      session.invalidate();
+    }
+    boolean withMarker = slotMode || LinkEntryMarker.isLink(entry);
+    String path = "/login?logout=true";
+    return "redirect:" + (withMarker ? LinkEntryMarker.withMarker(path) : path);
   }
 }

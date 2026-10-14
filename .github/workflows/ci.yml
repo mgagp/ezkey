@@ -1,4 +1,4 @@
-# Aggregate CI for Admin UI, Java backend, and mobile.
+# Aggregate CI for Admin UI, Java backend, mobile, and the Python CLI.
 #
 # Path-filtered jobs avoid wasted runners; a final always-running `ci-gate` job
 # is the single check intended to become required on `main` (no "Expected —
@@ -35,6 +35,7 @@ jobs:
       admin-ui: ${{ steps.resolve.outputs.admin-ui }}
       backend: ${{ steps.resolve.outputs.backend }}
       mobile: ${{ steps.resolve.outputs.mobile }}
+      cli-python: ${{ steps.resolve.outputs.cli-python }}
       workflows: ${{ steps.resolve.outputs.workflows }}
     steps:
       - name: Checkout
@@ -66,10 +67,23 @@ jobs:
               - 'ezkey-demo-app-acme/**'
               - 'ezkey-demo-device/**'
               - 'ezkey-tests/**'
+              - 'sites/ezkey-org/js/**'
+              - 'sites/ezkey-org/community-signup.html'
+              - 'sites/ezkey-org/fr/community-signup.html'
+              - 'docker/demo-app-acme-entrypoint.sh'
+              - 'docker/bootstrap-init/**'
               - 'scripts/build.sh'
+              - 'scripts/quality-gate.sh'
+              - 'scripts/quality-gate-*.sh'
+              - 'scripts/quality-gate-*.mjs'
+              - 'scripts/lib/quality-gate-*.mjs'
+              - 'scripts/lib/quality-gate-*.sh'
+              - 'config/quality-gate/**'
               - '.mvn/**'
             mobile:
               - 'ezkey_mobile/**'
+            cli-python:
+              - 'ezkey-cli-python/**'
 
       # Manual runs must exercise every suite; path filters alone would skip all
       # and leave ci-gate green with nothing checked.
@@ -81,12 +95,14 @@ jobs:
             echo "admin-ui=true" >> "$GITHUB_OUTPUT"
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "mobile=true" >> "$GITHUB_OUTPUT"
+            echo "cli-python=true" >> "$GITHUB_OUTPUT"
             echo "workflows=true" >> "$GITHUB_OUTPUT"
             echo "Forced all suites (workflow_dispatch)"
           else
             echo "admin-ui=${{ steps.filter.outputs.admin-ui }}" >> "$GITHUB_OUTPUT"
             echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
             echo "mobile=${{ steps.filter.outputs.mobile }}" >> "$GITHUB_OUTPUT"
+            echo "cli-python=${{ steps.filter.outputs.cli-python }}" >> "$GITHUB_OUTPUT"
             echo "workflows=${{ steps.filter.outputs.workflows }}" >> "$GITHUB_OUTPUT"
           fi
 
@@ -118,7 +134,7 @@ jobs:
           echo "OK: $COPY matches $CANON"
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7 — Node from root .nvmrc (24 LTS)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7 — Node from root .nvmrc (24 LTS)
         with:
           node-version-file: '.nvmrc'
           cache: npm
@@ -164,7 +180,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up JDK 25
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           java-version: '25'
           distribution: 'temurin'
@@ -193,6 +209,25 @@ jobs:
       - name: Unit tests (H2; exclude ezkey-tests)
         run: mvn -B -ntp test -pl '!ezkey-tests'
 
+      - name: Bootstrap-init idempotency (null-token / disabled → exit 0)
+        run: bash docker/bootstrap-init/bootstrap-init-idempotent-test.sh
+
+      # N6: quality-gate HA + secret-scan unit tests (no Docker stack).
+      - name: Quality-gate HA helper tests
+        run: bash scripts/quality-gate-ha.test.sh
+
+      - name: Quality-gate secrets unit tests
+        run: node --test scripts/lib/quality-gate-secrets.test.mjs
+
+      # Lot B (code-scanning 2026-10-13): signup URL allowlist + ACME DOM XSS text rendering.
+      - name: Community-signup URL allowlist + ACME biz-status XSS tests
+        run: |
+          node --test sites/ezkey-org/js/community-signup-urls.test.mjs
+          node --test ezkey-demo-app-acme/src/test/js/biz-status.test.mjs
+
+      - name: Servlet session cookie name guard (#799)
+        run: node --test scripts/lib/session-cookie-names.test.mjs
+
       - name: Upload Surefire reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -210,11 +245,53 @@ jobs:
     # Reusable workflow: JS validate + Android JVM tests + 16 KB alignment gate.
     uses: ./.github/workflows/ezkey-mobile-unit-tests.yml
 
+  cli-python:
+    name: cli-python
+    needs: changes
+    if: needs.changes.outputs.cli-python == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # Floor + latest line released ≥ 3 months (see major-upgrades Python policy).
+        python-version: ["3.12", "3.14"]
+    defaults:
+      run:
+        working-directory: ezkey-cli-python
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            ezkey-cli-python/setup.py
+            ezkey-cli-python/requirements.txt
+            ezkey-cli-python/requirements-test.txt
+
+      - name: Install package and test deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+          pip install -r requirements-test.txt
+
+      - name: Unit tests
+        run: pytest tests/unit
+
+      - name: Smoke entry point
+        run: ezkey --help
+
   # Single required-check candidate. Skipped path jobs count as success for the gate;
   # failure or cancellation of any needed job fails the gate.
   ci-gate:
     name: ci-gate
-    needs: [changes, admin-ui, backend, mobile]
+    needs: [changes, admin-ui, backend, mobile, cli-python]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -226,6 +303,7 @@ jobs:
           echo "admin-ui=${{ needs.admin-ui.result }}"
           echo "backend=${{ needs.backend.result }}"
           echo "mobile=${{ needs.mobile.result }}"
+          echo "cli-python=${{ needs.cli-python.result }}"
 
           if [[ "${{ needs.changes.result }}" != "success" ]]; then
             echo "::error::changes job did not succeed (${{ needs.changes.result }})"
@@ -235,7 +313,8 @@ jobs:
           for pair in \
             "admin-ui:${{ needs.admin-ui.result }}" \
             "backend:${{ needs.backend.result }}" \
-            "mobile:${{ needs.mobile.result }}"; do
+            "mobile:${{ needs.mobile.result }}" \
+            "cli-python:${{ needs.cli-python.result }}"; do
             name="${pair%%:*}"
             result="${pair#*:}"
             case "$result" in

@@ -140,6 +140,13 @@ See [`design-principles.md`](design-principles.md) for the full set of principle
 - **Explicit trust boundaries** — make clear which component is trusted for what, and why.
 - **Developer-first design** — stay understandable from the integrator's perspective.
 - **Open source transparency** — keep protocol, code, and operational behavior inspectable.
+- **Heavy actions are asynchronous and exclusive** — see below; no long/heavy work on a blocking HTTP request.
+
+### Heavy actions are asynchronous and exclusive
+
+No Ezkey API may expose a long or resource-heavy action (chain verification, seal-archive, re-encryption batches, bulk scans, and similar data-volume-bound work) as a blocking HTTP request. Public deployments on `ezkey.org` and `ezkey.online` sit behind Cloudflare Free, which cuts the origin at **100 s** (HTTP **524**, not raisable) while the server may keep working. Heavy actions return **202**, run as a polled job with a **server-side cap**, and hold a **DB-level single slot** for mutual exclusion across all global admins and replicas (a concurrent request gets **409** with the holder). Synchronous endpoints remain only for bounded, small operations (single record, paginated list). The current **8-day** cap on synchronous Integrity verification is an **interim** guarantee only until sync report paths are retired.
+
+**Decision trace (2026-10-13):** Recorded the non-blocking heavy-actions principle in product intent because Cloudflare Free proxies time out at 100 s (HTTP 524) on public hosts; umbrella [#789](https://github.com/mgagp/ezkey/issues/789).
 
 ## Current Product Surface
 

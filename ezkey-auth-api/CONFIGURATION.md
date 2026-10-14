@@ -16,6 +16,7 @@ serves them to enrolled mobile devices, and processes responses. It runs **no sc
 
 | Property | Docker env var | Default | Obligation |
 |---|---|---|---|
+| `server.servlet.session.cookie.name` | — | `EZKEY_AUTH_API_SESSION` | recommandé |
 | `ezkey.rate-limit.enabled` | — | `false` | requis [docker] |
 | `ezkey.rate-limit.pending.requests` | — | `10` | optionnel |
 | `ezkey.rate-limit.pending.window-minutes` | — | `1` | optionnel |
@@ -34,6 +35,12 @@ serves them to enrolled mobile devices, and processes responses. It runs **no sc
 ---
 
 ## Properties by Functional Group
+
+### 0. Servlet session cookie
+
+| Property | Default | Obligation | Description |
+|---|---|---|---|
+| `server.servlet.session.cookie.name` | `EZKEY_AUTH_API_SESSION` | recommandé | Distinct from other localhost servlet apps so browsers do not share `JSESSIONID` across ports (#799). Lives in `config/application.properties` (API external config); demos set the same key in the JAR instead. |
 
 ### 1. Auth API Rate Limiting (`ezkey.rate-limit.*`)
 

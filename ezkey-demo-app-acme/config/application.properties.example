@@ -8,6 +8,9 @@
 #   - Local: ./config/application.properties (next to JAR)
 # =============================================================================
 
+# Session cookie name is set in the JAR (EZKEY_ACME_SESSION). Do not set
+# server.servlet.session.cookie.name=JSESSIONID — that reintroduces #799 with demo-device.
+
 # EZKey Integration API URL (Ezkey SDK base URL — same REST paths as Admin API docs name)
 # Docker: internal hostname integration-api:7080 (see docker-compose demo-app-acme service)
 # Local IDE with Integration API exposed on host:
@@ -35,12 +38,35 @@ ezkey.admin-api-url=http://integration-api:7080
 ezkey.integration-key=
 ezkey.secret-key=
 
+# Optional multi-tenant access-code slots for temporary access links (/t/{code}).
+# Issue codes with: openssl rand -hex 16 (32 lowercase hex chars).
+# Keep this file mode 0600 owned by spring (uid 100 / gid 101). Edit via docker exec as spring
+# with umask 077 — never as root in the volume _data directory. Never put codes in the VM .env.
+#
+# ezkey.access-codes.northwind.code=<openssl-rand-hex-16>
+# ezkey.access-codes.northwind.integration-key=
+# ezkey.access-codes.northwind.secret-key=
+# ezkey.access-codes.northwind.label=Northwind Portal
+#
+# ezkey.access-codes.partner.code=<openssl-rand-hex-16>
+# ezkey.access-codes.partner.integration-key=
+# ezkey.access-codes.partner.secret-key=
+# ezkey.access-codes.partner.label=Partner Demo Tenant
+
 # =============================================================================
 # Internet-exposed demo hardening
 # =============================================================================
+# login.* (20 / 5 min): /t/{code} always uses IP-only first (all codes share 20/IP); valid codes
+# also consume slot+IP. Self-service POST /login uses IP-only. Slot-mode POST /login uses
+# slot+IP plus login-ip-bound.* (60 / 5 min) as a wider per-IP aggregate cap.
+# Community / EXP1: volume demo-app-acme-config (/app/config/) or
+# EZKEY_RATE_LIMIT_LOGIN_REQUESTS / EZKEY_RATE_LIMIT_LOGIN_IP_BOUND_REQUESTS.
+# Challenge-wait /api/auth-status polling does not consume.
 ezkey.rate-limit.enabled=true
-ezkey.rate-limit.login.requests=10
+ezkey.rate-limit.login.requests=20
 ezkey.rate-limit.login.window-minutes=5
+ezkey.rate-limit.login-ip-bound.requests=60
+ezkey.rate-limit.login-ip-bound.window-minutes=5
 ezkey.rate-limit.apply-api-key.requests=5
 ezkey.rate-limit.apply-api-key.window-minutes=10
 

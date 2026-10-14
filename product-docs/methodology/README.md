@@ -26,9 +26,18 @@ accumulated conversational drift.
 In these situations, apply a two-stage hardening pattern:
 
 1. **Stage 1 (Scaffold):** Draft the initial direction and plan in a standard Plan mode session.
-2. **Stage 2 (Fresh-session review & hardening):** Open a **fresh session** (clearing context,
-   optionally using a distinct reasoning model) and submit the draft using the canonical hardening
-   prompt ([`../templates/cold-agent-plan-review.prompt.md`](../templates/cold-agent-plan-review.prompt.md)).
+2. **Stage 2 (Fresh-session review & hardening):** Stage 2 is tooled by the keyword
+   **`critical-review`** (aliases: adversarial review, revue critique, plan hardening) — see
+   [critical-review hygiene canon](https://github.com/mgagp/ezkey/blob/main/product-docs/global/hygiene/critical-review/README.md)
+   and
+   [critical-review skill](https://github.com/mgagp/ezkey/blob/main/.cursor/skills/critical-review/SKILL.md)
+   (source-project paths; not part of the published methodology pack).
+   Open a **fresh** read-only cloud-agent session on a **forced different model family** from the
+   author's (mandatory) and submit the draft using
+   [`../templates/critical-review.prompt.md`](../templates/critical-review.prompt.md). The
+   autonomous-execution hardening angle remains
+   [`../templates/cold-agent-plan-review.prompt.md`](../templates/cold-agent-plan-review.prompt.md)
+   (included by reference). Required before gate for **P0/P1 visions** and **G1 briefs**.
    - **Evaluate product intent:** Verify the plan solves the root problem rather than patching
      symptoms or leaving default paths unprotected.
    - **Expose edge cases & eliminate non-dits:** Specify exact database migrations, atomic CAS
@@ -57,6 +66,8 @@ Four artifact types, each with its own lifecycle:
 
 **Identifiers:** `<Prefix>-YYYY-MM-DD-<slug>.md`. The date avoids collisions across parallel work;
 the slug keeps the subject discoverable. No counter or index file to consult before creating one.
+Counter-style IDs already in the tree (`V-2026-0001…`, `I-2026-0001…`, `TB-2026-0001…`) are
+**legacy** — keep and link them; do not mint new counter IDs.
 
 **Priority (when it matters):** `P0` critical blocker · `P1` most pressing / foundational · `P2`
 standard · `P3` comfort, safe to defer.
@@ -74,6 +85,13 @@ standard · `P3` comfort, safe to defer.
 A `V-*` is not itself the final decision — when the direction is settled, canonize the substance
 in the durable doc it belongs to (roadmap, design principles, an `ADR-*`) and move the vision note
 to `promoted`. A `TB-*` follows the same pattern for execution learnings.
+
+**Decisions made in discussion.** Chat, team, and bot-mandate decisions follow the same lightest-
+artifact rule: fold them into the owning durable doc (intention, behavior doc, `CONFIGURATION`,
+`AGENTS.md`, or a canon README) in the same PR whenever they change behavior, a contract, a
+constraint, or how we work — one line plus reason and issue reference. Do not invent a decision
+log or copy mandates into the repo; the PR is the vehicle. See root `AGENTS.md` § *Working
+conventions*.
 
 When an artifact is archived because its substance moved into a successor rather than being
 dropped, record it both ways: `Superseded by: <id>` on the old one, `Supersedes: <id>` on the new
@@ -156,7 +174,8 @@ of duplicating its content.
 ## Templates
 
 Maintained under [`../templates/`](../templates/): `vision-note`, `backlog-idea`,
-`tracer-bullet-brief`, `architecture-decision`, plus the `cold-agent-plan-review` prompt template. Copy, fill in, delete sections that do not apply.
+`tracer-bullet-brief`, `architecture-decision`, plus the `critical-review` and
+`cold-agent-plan-review` prompt templates. Copy, fill in, delete sections that do not apply.
 
 ## Versioning
 

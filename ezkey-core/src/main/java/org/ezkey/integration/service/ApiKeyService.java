@@ -28,6 +28,7 @@ import org.ezkey.integration.exception.ApiKeyIpWhitelistValidationException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.ApiKeyUpdateValidationException;
 import org.ezkey.service.EntityEligibilityService;
+import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -255,13 +256,13 @@ public class ApiKeyService {
   public Optional<Integration> validateApiKey(
       String integrationKey, String secretKey, String clientIp) {
 
-    logger.debug("Validating API key: {}...", integrationKey.substring(0, 15));
+    logger.debug("Validating API key: {}", maskIntegrationKeyForLog(integrationKey));
 
     // Look up API key
     Optional<ApiKey> apiKeyOpt = apiKeyRepository.findByIntegrationKeyAndActiveTrue(integrationKey);
 
     if (apiKeyOpt.isEmpty()) {
-      logger.warn("API key not found or inactive: {}", integrationKey);
+      logger.warn("API key not found or inactive: {}", maskIntegrationKeyForLog(integrationKey));
       return Optional.empty();
     }
 
@@ -269,7 +270,10 @@ public class ApiKeyService {
 
     // Check expiration
     if (apiKey.getExpiresAt() != null && apiKey.getExpiresAt().isBefore(OffsetDateTime.now())) {
-      logger.warn("API key expired: {} (expired at: {})", integrationKey, apiKey.getExpiresAt());
+      logger.warn(
+          "API key expired: {} (expired at: {})",
+          maskIntegrationKeyForLog(integrationKey),
+          apiKey.getExpiresAt());
       return Optional.empty();
     }
 
@@ -280,12 +284,13 @@ public class ApiKeyService {
     } catch (IllegalStateException encryptionViolation) {
       logger.error(
           "API key rejected: at-rest encryption policy violation for {} — {}",
-          integrationKey,
-          encryptionViolation.getMessage());
+          maskIntegrationKeyForLog(integrationKey),
+          LogSanitizer.sanitizeForLog(encryptionViolation.getMessage()));
       return Optional.empty();
     }
     if (!passwordEncoder.matches(secretKey, storedHash)) {
-      logger.warn("Invalid secret key for integration key: {}", integrationKey);
+      logger.warn(
+          "Invalid secret key for integration key: {}", maskIntegrationKeyForLog(integrationKey));
       return Optional.empty();
     }
 
@@ -293,7 +298,10 @@ public class ApiKeyService {
     if (apiKey.getIpWhitelist() != null
         && apiKey.getIpWhitelist().length > 0
         && !isIpWhitelisted(clientIp, apiKey.getIpWhitelist())) {
-      logger.warn("IP address {} not whitelisted for API key: {}", clientIp, integrationKey);
+      logger.warn(
+          "IP address {} not whitelisted for API key: {}",
+          LogSanitizer.sanitizeForLog(clientIp),
+          maskIntegrationKeyForLog(integrationKey));
       return Optional.empty();
     }
 
@@ -314,7 +322,7 @@ public class ApiKeyService {
 
     logger.info(
         "API key validated successfully: {} for integration: {}",
-        integrationKey,
+        maskIntegrationKeyForLog(integrationKey),
         apiKey.getIntegration().getId());
 
     return Optional.of(apiKey.getIntegration());
@@ -565,6 +573,53 @@ public class ApiKeyService {
   }
 
   /**
+   * Masks an integration key for logs (short non-secret prefix only, e.g. {@code
+   * ezkey_ikey_a1b2…}).
+   *
+   * <p>Caller-supplied kept characters (up to 8, or 4 after the {@code ezkey_ikey_} literal) are
+   * sanitized: every character matching {@code [^A-Za-z0-9_]} becomes {@code _} so CR/LF cannot
+   * break log lines (CodeQL log-injection).
+   *
+   * @param integrationKey raw integration key (may be null)
+   * @return masked value suitable for logs
+   */
+  public static String maskIntegrationKeyForLog(String integrationKey) {
+    if (integrationKey == null || integrationKey.isBlank()) {
+      return "(none)";
+    }
+    final String masked;
+    if (integrationKey.startsWith(INTEGRATION_KEY_PREFIX)
+        && integrationKey.length() > INTEGRATION_KEY_PREFIX.length() + 4) {
+      String kept =
+          integrationKey.substring(
+              INTEGRATION_KEY_PREFIX.length(), INTEGRATION_KEY_PREFIX.length() + 4);
+      masked = INTEGRATION_KEY_PREFIX + sanitizeLogPrefixFragment(kept) + "…";
+    } else {
+      int keep = Math.min(8, integrationKey.length());
+      masked = sanitizeLogPrefixFragment(integrationKey.substring(0, keep)) + "…";
+    }
+    // CodeQL log-injection recognizes CR/LF neutralization via LogSanitizer.
+    return LogSanitizer.sanitizeForLog(masked);
+  }
+
+  /**
+   * Replaces every character matching {@code [^A-Za-z0-9_]} with {@code _} for safe log fragments.
+   *
+   * @param fragment raw kept characters from a key
+   * @return sanitized fragment
+   */
+  private static String sanitizeLogPrefixFragment(String fragment) {
+    StringBuilder sanitized = new StringBuilder(fragment.length());
+    for (int i = 0; i < fragment.length(); i++) {
+      char c = fragment.charAt(i);
+      boolean keep =
+          (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
+      sanitized.append(keep ? c : '_');
+    }
+    return sanitized.toString();
+  }
+
+  /**
    * Validates IP whitelist format.
    *
    * <p>Checks that all entries are valid IP addresses or CIDR ranges.
@@ -598,7 +653,7 @@ public class ApiKeyService {
 
     IPAddressString clientIpAddress = new IPAddressString(clientIp);
     if (!clientIpAddress.isValid()) {
-      logger.warn("Invalid client IP address: {}", clientIp);
+      logger.warn("Invalid client IP address: {}", LogSanitizer.sanitizeForLog(clientIp));
       return false;
     }
 

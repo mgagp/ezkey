@@ -21,6 +21,8 @@ import org.ezkey.audit.integrity.AuditChainIncidentService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.AuditLifecycleService;
+import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
+import org.ezkey.audit.integrity.IntegrityWindowCapProperties;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.mapper.AuditChainCheckpointMapper;
 import org.ezkey.audit.mapper.AuditLogMapper;
@@ -60,6 +62,10 @@ class AuditLogControllerContextTest {
   @Mock private IntegrationRepository integrationRepository;
   @Mock private TenantRepository tenantRepository;
 
+  private final IntegrityHeavyCryptoGate heavyCryptoGate = new IntegrityHeavyCryptoGate();
+  private final IntegrityWindowCapProperties windowCapProperties =
+      new IntegrityWindowCapProperties();
+
   private AuditLogController controller;
 
   @BeforeEach
@@ -76,6 +82,8 @@ class AuditLogControllerContextTest {
             retroactiveIntegrityValidationService,
             auditChainIncidentService,
             integrityBootstrapService,
+            heavyCryptoGate,
+            windowCapProperties,
             adminRepository,
             enrollmentRepository,
             integrationRepository,

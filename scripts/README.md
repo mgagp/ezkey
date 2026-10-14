@@ -98,6 +98,22 @@ scrape noise, and proposes a small HITL lot. Not a CI gate. See root [`AGENTS.md
 Config: [`config/javamelody/`](../config/javamelody/). Outputs: `logs/javamelody/` (gitignored).
 Campaign notes: [`product-docs/global/hygiene/javamelody/`](../product-docs/global/hygiene/javamelody/).
 
+## Quality gate (full-suite + stack health)
+
+Keyword: **`quality-gate`**. On-demand cloud-agent orchestrator for tip health between merge
+batches. Runs clean-start HA + JavaMelody, unit/functional/elective/Playwright, operational churn,
+then [`stack-health-check.sh`](stack-health-check.sh). Not a CI gate. See root
+[`AGENTS.md`](../AGENTS.md) § Quality gate.
+
+```bash
+./scripts/quality-gate.sh
+./scripts/quality-gate.sh --churn-minutes 5
+./scripts/stack-health-check.sh
+```
+
+Config: [`config/quality-gate/`](../config/quality-gate/). Outputs: `logs/quality-gate/` (gitignored).
+Campaign notes: [`product-docs/global/hygiene/quality-gate/`](../product-docs/global/hygiene/quality-gate/).
+
 ## Cloudflare (ezkey.org static site)
 
 - [`cloudflare/deploy-ezkey-org-preview.sh`](cloudflare/deploy-ezkey-org-preview.sh) — deploy [`sites/ezkey-org/`](../sites/ezkey-org/) to Cloudflare Pages as a **preview** (requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`). See [`docs/cloudflare/ezkey-org-site.md`](../docs/cloudflare/ezkey-org-site.md).
@@ -118,6 +134,20 @@ export AWS_PROFILE=ezkey-lightsail
 ```
 
 App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with `LIGHTSAIL_SSH_HOST=ezkey-online`. Do not put community-only secrets or ezkey.online-only DNS checklists into the public compose tree.
+
+## Ops — Docker log hygiene (host-local)
+
+[`ops/docker-log-hygiene.sh`](ops/docker-log-hygiene.sh) — check json-file rotation / sizes (default), optional `--scan` (pattern **counts** only; stdout+stderr; `--since`; streamed), `--project`, `--purge` dry-run / `--purge --apply --yes` (project container IDs only; rotated-file search often needs **sudo**). No remote/SSH. Canon: [`docs/OPERATIONAL.md`](../docs/OPERATIONAL.md) § Log rotation and hygiene.
+
+```bash
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --purge
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --purge --apply --yes
+```
+
+`--purge --apply` requires `--project` (or `COMPOSE_PROJECT_NAME`); host-wide apply is refused.
+Pre-upgrade scan: sync `scripts/ops/` with `--sync-operator-files` **without** `--remote-up` (or `scp` the script), restore community Caddyfile, run `--scan`, then `--remote-up`.
 
 ## Initial Problem
 

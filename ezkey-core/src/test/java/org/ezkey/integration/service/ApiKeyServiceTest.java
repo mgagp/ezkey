@@ -875,5 +875,53 @@ class ApiKeyServiceTest {
       // Assert
       assertTrue(result.isPresent());
     }
+
+    @Test
+    @DisplayName("Should mask integration key for whitelist rejection logs")
+    void maskIntegrationKeyForLog_ShouldKeepShortPrefixOnly() {
+      assertEquals(
+          "ezkey_ikey_a1b2…",
+          ApiKeyService.maskIntegrationKeyForLog("ezkey_ikey_a1b2c3d4e5f6g7h8i9j0"));
+      assertEquals("(none)", ApiKeyService.maskIntegrationKeyForLog(null));
+      assertEquals("(none)", ApiKeyService.maskIntegrationKeyForLog("  "));
+      // CR/LF and other [^A-Za-z0-9_] in the kept fragment become '_' (CodeQL log-injection).
+      assertEquals(
+          "ezkey_ikey_a1__…",
+          ApiKeyService.maskIntegrationKeyForLog("ezkey_ikey_a1\r\nbadrestofkey00001111"));
+      assertEquals("evil__in…", ApiKeyService.maskIntegrationKeyForLog("evil\r\ninj" + "xxxxxxxx"));
+      assertEquals("ab_cd_ef…", ApiKeyService.maskIntegrationKeyForLog("ab-cd.ef" + "restofkey"));
+    }
+
+    @Test
+    @DisplayName("Success and failure validate paths must not log a full integration key")
+    void validateApiKey_LogMessagesUseMaskedIntegrationKey() throws Exception {
+      java.nio.file.Path source =
+          java.nio.file.Path.of("src/main/java/org/ezkey/integration/service/ApiKeyService.java")
+              .toAbsolutePath()
+              .normalize();
+      if (!java.nio.file.Files.exists(source)) {
+        source =
+            java.nio.file.Path.of(
+                    "ezkey-core/src/main/java/org/ezkey/integration/service/ApiKeyService.java")
+                .toAbsolutePath()
+                .normalize();
+      }
+      String content = java.nio.file.Files.readString(source);
+      assertTrue(content.contains("API key validated successfully: {} for integration: {}"));
+      // Every log that once printed the raw key must go through the mask helper.
+      assertTrue(
+          content.contains(
+              "maskIntegrationKeyForLog(integrationKey),\n"
+                  + "        apiKey.getIntegration().getId()"));
+      assertFalse(
+          content.contains(
+              "logger.info(\n"
+                  + "        \"API key validated successfully: {} for integration: {}\",\n"
+                  + "        integrationKey,"));
+      assertTrue(content.contains("LogSanitizer.sanitizeForLog(clientIp)"));
+      assertTrue(
+          content.contains(
+              "Invalid client IP address: {}\", LogSanitizer.sanitizeForLog(clientIp)"));
+    }
   }
 }

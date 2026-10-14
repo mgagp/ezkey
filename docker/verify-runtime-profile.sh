@@ -137,7 +137,9 @@ echo "  Container SPRING_PROFILES_ACTIVE: ${profiles}"
 admin_logs="$(docker logs ezkey-admin-api 2>&1 || true)"
 auth_logs="$(docker logs ezkey-auth-api 2>&1 || true)"
 
-pending_code="$(curl -s -o /tmp/ezkey-runtime-pending.txt -w '%{http_code}' \
+PENDING_BODY="$(mktemp "${TMPDIR:-/tmp}/ezkey-runtime-pending.XXXXXX")"
+trap 'rm -f "${PENDING_BODY}"' EXIT
+pending_code="$(curl -s -o "${PENDING_BODY}" -w '%{http_code}' \
   -X POST http://localhost:8080/api/v1/auth-attempts/pending \
   -H 'Content-Type: application/json' -d '{}' || echo '000')"
 

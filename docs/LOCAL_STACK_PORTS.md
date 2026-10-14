@@ -1,6 +1,6 @@
 # Local stack — ports (direct vs Caddy)
 
-This page frames the **two host-level ways** the same APIs are reachable after a typical `ezkey-tests/clean-start.sh` run: **direct published ports** (Spring Boot inside Docker) and **Caddy reverse proxy** ports on the host. Both are intentional; they do not replace each other.
+This page frames the **two host-level ways** the same APIs are reachable after a typical `ezkey-tests/clean-start.sh` run: **direct published ports** (Spring Boot inside Docker) and **Caddy reverse proxy** ports on the host. Both are intentional; they do not replace each other. On **Rootbeer** (Windows local test host), the single clean-start stack keeps these fixed ports by design — see root [`AGENTS.md`](../AGENTS.md) § *Working conventions*.
 
 For **what to test** on each URL (headers, Bruno, `curl`), see **[admin-ui-security-validation.md](admin-ui-security-validation.md)**.
 
@@ -16,6 +16,8 @@ For **what to test** on each URL (headers, Bruno, `curl`), see **[admin-ui-secur
 | Integration API (management) | `7081`                             | **Not exposed through this Caddy file** — use `7081`      |
 | JavaMelody collector (opt-in `--with-java-melody`) | `8088` | **No Caddy hop** — collector UI only |
 
+
+**Servlet session cookies on localhost:** each Spring servlet app sets a distinct `server.servlet.session.cookie.name` (Acme `EZKEY_ACME_SESSION`, demo-device `EZKEY_DEVICE_SESSION`, plus `EZKEY_*_API_SESSION` on the APIs) so browsers do not overwrite sessions across ports — shared default `JSESSIONID` caused Acme “session expired” after using the demo device (#799). APIs keep the property in `config/application.properties` (external config shipped with the image); demos keep it in the JAR `src/main/resources/application.properties`. Redeploying Acme or the demo device drops any in-memory sessions that still used the old cookie name. Cross-cutting guard: `node --test scripts/lib/session-cookie-names.test.mjs`.
 
 **Default for day-to-day manual testing (Bruno, curl, OpenAPI links):** use **direct** URLs (`8080`, `9080`, `7080`, …). Same semantics as the services; minimal moving parts.
 

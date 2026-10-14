@@ -8,7 +8,7 @@
 - **Grill:** [`backlog/grill-sessions/2026-09-17-admin-ui-audit-integrity-hard-split-grill-me.md`](backlog/grill-sessions/2026-09-17-admin-ui-audit-integrity-hard-split-grill-me.md)
 - **Purpose:** One-page map from operator jobs to Admin UI surfaces after the hard split.
   Proof constraint: **one** cryptographic journal (`audit_log` + chain); surfaces are views / ateliers, not second audit citizens.
-- **Related:** [`admin-ui-integrity-base-monitoring-honesty.md`](admin-ui-integrity-base-monitoring-honesty.md) — Integrity honesty when monitoring is off (base / jobs disabled); cut-2 phase A [`admin-ui-integrity-cut2-phase-a.md`](admin-ui-integrity-cut2-phase-a.md); cut-2 phase B+B′ [`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md) (in-page modes — still one Integrity surface)
+- **Related:** [`admin-ui-integrity-base-monitoring-honesty.md`](admin-ui-integrity-base-monitoring-honesty.md) — Integrity honesty when monitoring is off (base / jobs disabled); cut-2 phase A [`admin-ui-integrity-cut2-phase-a.md`](admin-ui-integrity-cut2-phase-a.md); cut-2 phase B+B′ [`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md) (in-page modes — still one Integrity surface); cut 3 [`admin-ui-integrity-cut3.md`](admin-ui-integrity-cut3.md) (last verdict / micro-dashboard / verify cap)
 
 ---
 
@@ -79,6 +79,15 @@ In-app emitters (alerts, dashboard, etc.) point at **`/integrity`** directly. No
 
 ---
 
+## Report GETs: heavy-crypto gate + window cap (#692 minimal)
+
+After an async `VERIFY_*` job **SUCCEEDED**, the Integrity page hydrates undeclared gaps / entry violations from read-only `GET …/chain-integrity` and `GET …/integrity-check` (job DTO carries only `resultSummary`). Those GETs now:
+
+- take the process-local **`heavyCryptoGate`** (shared with nightly + async VERIFY + operator retroactive POST) — busy → HTTP **409** `integrity-async-job-busy` + **`Retry-After: 60`** (no retry storm; operator **Reload report**);
+- enforce **two** caps ([`admin-ui-integrity-cut3.md`](admin-ui-integrity-cut3.md) D2 amended / cut-3 PR 0 + B1): **all sync paths** (report GETs + operator `POST …/integrity-validation/run`) → **`max-sync-window-days`** (default **8**); async VERIFY / `RUN_VALIDATION` → **`max-window-days`** (default **92**). Instant span = `days×24h+1h`. Supersedes the provisional #743 hour keys + `IntegrityHeavyCryptoWindowLimits.DEFAULT_MAX_WINDOW_HOURS = 193`. Over-cap → HTTP **400** `integrity-window-over-cap` + `maxWindowDays` + `capKind` (`SYNC`|`ASYNC`); sync also gets fixed `asyncAlternative` = `POST /api/v1/audit-logs/integrity/jobs`. Never silent truncation. No property opt-out (primitive `int`, `@Min(1)` `@Max(366)`; async >= sync at startup). Startup fails fast if either old hour key is still set. Admin UI soft sync check mirrors `INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS = 8`. Hydration over-cap copy is a fallback for pre-cap jobs only. Nightly gate-busy → single WARN + `recordFailure` (no sleep/retry; non-blocking retry tracked in #745).
+
+**Out of scope here:** persist gaps on the async job and hydrate from `GET …/integrity/jobs/{jobId}` without a second recompute — that is the job-backed read in Integrity cut 3 ([`admin-ui-integrity-cut3.md`](admin-ui-integrity-cut3.md), docs PR **#730**). Do not redesign the Integrity screen in this slice.
+
 ## Phase 2 (after walkable split)
 
 Ensure Admin UI callers exist end-to-end for ops already in OpenAPI but unevenly owned (notably reconcile integrity rupture, confirm archived) — still on **Integrity**, still same proof model.
@@ -90,4 +99,4 @@ Ensure Admin UI callers exist end-to-end for ops already in OpenAPI but unevenly
 - **Intention + this map** = IA lock. Cut 1 is on `main` (PR `#563`).
 - **Isabelle** = exploratory walk (cut 1 is walkable).
 - **Alex** = priority framing already settled (not P0; do it properly).
-- **Remaining:** cut 2 phase B+B′ (modes + incidents pager — [`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md)); cut 2 phase C later; cut 3 (OpenAPI callers still missing on the page). Phase A density is delivered ([`admin-ui-integrity-cut2-phase-a.md`](admin-ui-integrity-cut2-phase-a.md)).
+- **Remaining:** cut 2 phase B+B′ (modes + incidents pager — [`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md)); cut 2 phase C later; cut 3 **intention-locked** ([`admin-ui-integrity-cut3.md`](admin-ui-integrity-cut3.md) — last verdict, micro-dashboard, `max-window-days`; #692/#743 #696 #741; OQ4 open for PR 1). Phase A density is delivered ([`admin-ui-integrity-cut2-phase-a.md`](admin-ui-integrity-cut2-phase-a.md)).

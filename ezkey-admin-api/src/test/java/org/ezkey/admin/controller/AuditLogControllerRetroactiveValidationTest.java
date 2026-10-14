@@ -11,11 +11,12 @@
 package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -24,12 +25,16 @@ import java.time.ZoneOffset;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.audit.dto.RetroactiveIntegrityValidationRunRequest;
 import org.ezkey.audit.dto.RetroactiveIntegrityValidationRunResponse;
+import org.ezkey.audit.exception.IntegrityAsyncJobBusyException;
 import org.ezkey.audit.exception.IntegrityValidationDisabledException;
+import org.ezkey.audit.exception.IntegrityWindowOverCapException;
 import org.ezkey.audit.integrity.AuditChainCheckpointService;
 import org.ezkey.audit.integrity.AuditChainIncidentService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.AuditLifecycleService;
+import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
+import org.ezkey.audit.integrity.IntegrityWindowCapProperties;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationOptions;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationTriggerSource;
@@ -75,6 +80,10 @@ class AuditLogControllerRetroactiveValidationTest {
   @Mock private IntegrationRepository integrationRepository;
   @Mock private TenantRepository tenantRepository;
 
+  private final IntegrityHeavyCryptoGate heavyCryptoGate = new IntegrityHeavyCryptoGate();
+  private final IntegrityWindowCapProperties windowCapProperties =
+      new IntegrityWindowCapProperties();
+
   private AuditLogController controller;
 
   private static final OffsetDateTime FROM =
@@ -97,6 +106,8 @@ class AuditLogControllerRetroactiveValidationTest {
             retroactiveIntegrityValidationService,
             auditChainIncidentService,
             integrityBootstrapService,
+            heavyCryptoGate,
+            windowCapProperties,
             adminRepository,
             enrollmentRepository,
             integrationRepository,
@@ -123,7 +134,12 @@ class AuditLogControllerRetroactiveValidationTest {
             2,
             1,
             1,
-            RetroactiveIntegrityValidationTriggerSource.OPERATOR);
+            RetroactiveIntegrityValidationTriggerSource.OPERATOR,
+            10,
+            8,
+            1,
+            1,
+            1);
     when(retroactiveIntegrityValidationService.runValidation(
             eq(FROM), eq(TO), any(RetroactiveIntegrityValidationOptions.class)))
         .thenReturn(serviceResult);
@@ -138,7 +154,7 @@ class AuditLogControllerRetroactiveValidationTest {
     assertEquals(99L, body.alertId());
     assertTrue(body.alertRaised());
     assertEquals(RetroactiveIntegrityValidationTriggerSource.OPERATOR, body.triggerSource());
-    verify(retroactiveIntegrityValidationService).validateOperatorWindow(FROM, TO);
+    verify(retroactiveIntegrityValidationService, never()).validateOperatorWindow(FROM, TO);
   }
 
   @Test
@@ -155,17 +171,91 @@ class AuditLogControllerRetroactiveValidationTest {
   }
 
   @Test
-  void runRetroactiveIntegrityValidation_propagatesInvalidWindow() {
-    doThrow(
-            new IllegalArgumentException(
-                "Invalid date range: to must be after from (exclusive end, inclusive start)."))
-        .when(retroactiveIntegrityValidationService)
-        .validateOperatorWindow(FROM, TO);
+  @DisplayName("exact 8×24h+1h sync Instant span is accepted before the gate")
+  void runRetroactiveIntegrityValidation_exactSyncCap_accepted() {
+    OffsetDateTime toExclusive = FROM.plus(windowCapProperties.maxSyncWindow());
+    RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult serviceResult =
+        new RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult(
+            FROM,
+            toExclusive,
+            "scope",
+            false,
+            null,
+            true,
+            false,
+            null,
+            "OK",
+            0,
+            0,
+            0,
+            RetroactiveIntegrityValidationTriggerSource.OPERATOR,
+            0,
+            0,
+            0,
+            0,
+            0);
+    when(retroactiveIntegrityValidationService.runValidation(
+            eq(FROM), eq(toExclusive), any(RetroactiveIntegrityValidationOptions.class)))
+        .thenReturn(serviceResult);
 
+    ResponseEntity<RetroactiveIntegrityValidationRunResponse> response =
+        controller.runRetroactiveIntegrityValidation(
+            new RetroactiveIntegrityValidationRunRequest(FROM, toExclusive, true));
+
+    assertEquals(200, response.getStatusCode().value());
+    verify(retroactiveIntegrityValidationService)
+        .runValidation(eq(FROM), eq(toExclusive), any(RetroactiveIntegrityValidationOptions.class));
+  }
+
+  @Test
+  @DisplayName("sync cap +1s refuses with capKind=SYNC and fixed asyncAlternative before the gate")
+  void runRetroactiveIntegrityValidation_syncCapPlusOneSecond_refused() {
+    OffsetDateTime overCapTo = FROM.plus(windowCapProperties.maxSyncWindow()).plusSeconds(1);
+
+    IntegrityWindowOverCapException ex =
+        assertThrows(
+            IntegrityWindowOverCapException.class,
+            () ->
+                controller.runRetroactiveIntegrityValidation(
+                    new RetroactiveIntegrityValidationRunRequest(FROM, overCapTo, true)));
+
+    assertEquals(8, ex.getMaxWindowDays());
+    assertEquals(IntegrityWindowOverCapException.CAP_KIND_SYNC, ex.getCapKind());
+    assertEquals(IntegrityWindowOverCapException.ASYNC_ALTERNATIVE, ex.getAsyncAlternative());
+    verify(retroactiveIntegrityValidationService, never())
+        .runValidation(eq(FROM), eq(overCapTo), any(RetroactiveIntegrityValidationOptions.class));
+    verify(retroactiveIntegrityValidationService, never())
+        .validateOperatorWindow(eq(FROM), eq(overCapTo));
+  }
+
+  @Test
+  void runRetroactiveIntegrityValidation_rejectsInvertedWindow() {
     assertThrows(
         IllegalArgumentException.class,
         () ->
             controller.runRetroactiveIntegrityValidation(
-                new RetroactiveIntegrityValidationRunRequest(FROM, TO, true)));
+                new RetroactiveIntegrityValidationRunRequest(TO, FROM, true)));
+    verify(retroactiveIntegrityValidationService, never())
+        .runValidation(any(), any(), any(RetroactiveIntegrityValidationOptions.class));
+  }
+
+  @Test
+  @DisplayName("runRetroactiveIntegrityValidation throws busy when heavy crypto gate is held")
+  void runRetroactiveIntegrityValidation_gateBusy_throwsBusyException() {
+    assertTrue(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB));
+    try {
+      IntegrityAsyncJobBusyException ex =
+          assertThrows(
+              IntegrityAsyncJobBusyException.class,
+              () ->
+                  controller.runRetroactiveIntegrityValidation(
+                      new RetroactiveIntegrityValidationRunRequest(FROM, TO, true)));
+      assertEquals(IntegrityAsyncJobBusyException.HEAVY_CRYPTO_BUSY_MESSAGE, ex.getMessage());
+      verify(retroactiveIntegrityValidationService, never())
+          .runValidation(eq(FROM), eq(TO), any(RetroactiveIntegrityValidationOptions.class));
+    } finally {
+      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB);
+    }
+    assertFalse(heavyCryptoGate.isBusy());
   }
 }
