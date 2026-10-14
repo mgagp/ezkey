@@ -26,8 +26,8 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -1096,10 +1096,11 @@ class ReencryptionServiceTest {
   @Test
   @DisplayName("processReencryptionBatches: markBatchFailed persists simpleName only (#785)")
   void processReencryptionBatches_batchException_markBatchFailedUsesSimpleName() {
-    ReencryptionBatchProcessingService spyBatchProcessing = spy(batchProcessingService);
+    ReencryptionBatchProcessingService mockBatchProcessing =
+        mock(ReencryptionBatchProcessingService.class);
     parallelRunner =
         new ReencryptionBatchParallelRunner(
-            reencryptionBatchExecutor, spyBatchProcessing, properties);
+            reencryptionBatchExecutor, mockBatchProcessing, properties);
     service =
         new ReencryptionService(
             encryptionOperations,
@@ -1108,7 +1109,7 @@ class ReencryptionServiceTest {
             properties,
             auditLogService,
             batchCreationService,
-            spyBatchProcessing,
+            mockBatchProcessing,
             parallelRunner,
             jobLastRunService);
 
@@ -1119,13 +1120,13 @@ class ReencryptionServiceTest {
     doThrow(
             new IllegalStateException(
                 "UPDATE ezkey_encryption_key SET material='leak-must-not-persist'"))
-        .when(spyBatchProcessing)
+        .when(mockBatchProcessing)
         .processBatchInternal(batch);
 
     service.processReencryptionBatches();
 
-    verify(spyBatchProcessing).markBatchFailed(eq(batch), eq("IllegalStateException"));
-    verify(spyBatchProcessing, never())
+    verify(mockBatchProcessing).markBatchFailed(eq(batch), eq("IllegalStateException"));
+    verify(mockBatchProcessing, never())
         .markBatchFailed(any(), argThat(msg -> msg != null && msg.contains("UPDATE")));
   }
 }
