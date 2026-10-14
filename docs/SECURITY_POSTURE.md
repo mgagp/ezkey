@@ -123,16 +123,82 @@ See [`../product-docs/global/normative-posture.md`](../product-docs/global/norma
 
 ## Code scanning policy
 
-- CodeQL runs on every PR and on `main` (advanced setup: [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml), config [`.github/codeql/codeql-config.yml`](../.github/codeql/codeql-config.yml) with `queries: security-extended`); open alerts are triaged against these SLAs: **critical 7 days, high 30 days, medium 90 days** (fix or justified dismiss).
+CodeQL runs on every PR and on `main` (advanced setup:
+[`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml), config
+[`.github/codeql/codeql-config.yml`](../.github/codeql/codeql-config.yml) with
+`queries: security-extended`). Open alerts follow the cadence and SLAs below.
+
+### Triage cadence
+
+- **Weekly** triage: **Fred proposes, Christophe decides and executes**.
+- Fred (hygiene bot) runs the weekly pass and proposes dispositions; Christophe
+  (security bot) decides and executes dismissals with the read-write code-scanning
+  token. Each dismissal carries a GitHub reason (false positive, used in tests,
+  won't fix), a one-line technical justification, and a triage reference (campaign
+  note under
+  [`../product-docs/global/hygiene/code-scanning/`](../product-docs/global/hygiene/code-scanning/)).
+- **High-impact** = critical or high alert on **deployed, exposed** code (see
+  immediate-trigger table). Dismissing a high-impact alert requires **Marc's
+  explicit go**. For all other alerts, Fred proposes and Christophe decides and
+  executes alone (one-line reason; no Marc gate).
+
+**Immediate triggers** (do not wait for the weekly pass):
+
+| Trigger | Action |
+|---|---|
+| New **critical/high** on **deployed, exposed** code (`admin-api`, `auth-api`, `integration-api`, `admin-ui`, `crypto-api`, `demo-app-acme`, Caddy) | Triage within **24 h**; alert Marc; fix or mitigate within **14 days** |
+| Dependency CVE in **CISA KEV** on deployed code | **3 days** |
+| Abnormal jump in alert count (e.g. suite change as in [#805](https://github.com/mgagp/ezkey/pull/805)/[#809](https://github.com/mgagp/ezkey/pull/809)) or upcoming **ezkey.online** upgrade | Triage **before deploy** |
+
+### Remediation SLAs
+
+| Class | SLA |
+|---|---|
+| Critical/high on **non-deployed** code (CLI, PAM) | **30 days**, or mark experimental only if paired with a dated hardening issue (CLI [#802](https://github.com/mgagp/ezkey/issues/802); PAM [#818](https://github.com/mgagp/ezkey/issues/818), target 2026-11-13) |
+| Medium | **60 days** ([OpenSSF `vulnerabilities_fixed_60_days`](https://www.bestpractices.dev/en/criteria/0#vulnerabilities_fixed_60_days)) |
+| Low | **180 days** |
+| False positive / won't-fix | Motivated dismissal at the **next triage** |
+
+**Rules (Christophe):**
+
+1. The clock starts at **first detection on `main`**.
+2. For the **existing stock**, the clock starts at the **2026-10-14 baseline**
+   (`115dde38`) — e.g. the 22 log-injection alerts of
+   [#801](https://github.com/mgagp/ezkey/issues/801) are due ~**2026-12-13**.
+3. An alert that becomes `fixed` **without a real fix** (suite/config change)
+   **keeps its original clock**; weekly triage compares `fixed` alerts against
+   the diff.
+
+The **24 h** and **14 d** windows are Ezkey's adaptation of CISA guidance for
+this lab posture — **not** a claimed industry norm.
+
+**Sources:** [OpenSSF Best Practices](https://www.bestpractices.dev/en/criteria/0)
+([silver](https://www.bestpractices.dev/en/criteria/1));
+[CISA BOD 26-04](https://www.cisa.gov/news-events/directives/bod-26-04-prioritizing-security-updates-based-risk)
+(supersedes BOD 19-02 and 22-01; timelines 3D/3DF/14D/60D/fix-on-upgrade — see
+[SSVC / CISA response](https://certcc.github.io/SSVC/howto/cisa_response/));
+FedRAMP POA&M conventional windows (30/90/180) via
+[FedRAMP Rev5 legacy docs](https://www.fedramp.gov/rev5/) (POA&M template listed
+there; direct XLSX URL 404 as of 2026-10-14);
+[PCI DSS](https://www.pcisecuritystandards.org/standards/pci-dss/) 4.0.1 req 6.3.3;
+[NIST SSDF SP 800-218](https://csrc.nist.gov/pubs/sp/800/218/final) RV.1 / RV.2.
+
+- **2026-10-14:** weekly triage cadence and remediation SLAs adopted as above
+  ([#815](https://github.com/mgagp/ezkey/issues/815)). Reason: replace the interim
+  critical-7 / high-30 / medium-90 shorthand with exposure-aware SLAs aligned to
+  CISA BOD 26-04 / SSVC risk factors while keeping lab-proportionate windows.
+- **2026-10-14 13:16 ET (Marc):** high-impact dismissals require Marc's explicit go;
+  high-impact = critical/high on deployed exposed code. All other alerts: Fred
+  proposes, Christophe decides and executes alone with a one-line reason
+  ([#815](https://github.com/mgagp/ezkey/issues/815)).
 - **2026-10-14:** pin advanced CodeQL to `security-extended` (not the default suite) so log-injection / sensitive-log and related queries keep running after the #805 default→advanced switch — those alerts had been marked fixed without code fixes when the advanced workflow briefly used the default suite ([#809](https://github.com/mgagp/ezkey/pull/809)).
-- An alert is dismissed only with a GitHub reason (false positive, used in tests, won't fix), a one-line technical justification, and Marc's explicit go.
 - Every security review of a PR includes the code-scanning alerts raised on that PR; a PR does not merge with a new unresolved high/critical alert.
 - Test-only code (`ezkey-tests/**`) is excluded via the CodeQL config, not by mass dismissal. A local model pack under `.github/codeql/extensions/ezkey-java-models/` declares `org.ezkey.util.LogSanitizer#sanitizeForLog` as a `log-injection` barrier and `AuthApiUrlValidator#validate(String,Set)` ReturnValue as a `request-forgery` barrier (not `validate(String)`); advanced setup loads it explicitly via `CODEQL_ACTION_EXTRA_OPTIONS` on the java-kotlin analyze step (`--additional-packs` + `--extension-packs=ezkey/java-models`) — not via default-setup auto-detection. Proven on PR #805 (Actions run [`38488035924`](https://github.com/mgagp/ezkey/actions/runs/38488035924) java-kotlin analyze: `run-queries` CLI includes `--extension-packs=ezkey/java-models`). Five language analyses uploaded on `main` at merge commit `f26cbe55` (#805); query suite restored to `security-extended` in [#809](https://github.com/mgagp/ezkey/pull/809).
 - **2026-10-14:** code-scanning alert #9 (`java/ssrf` at demo-device `AuthApiService`) is a false positive after Lot A allowlist — input reaches `WebClient.baseUrl` only via `AuthApiUrlValidator.validate(String,Set)`; modeled as a `request-forgery` barrier so CodeQL recognizes the sanitizer (defense in depth: `EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment` also revalidates persisted URLs) ([#810](https://github.com/mgagp/ezkey/pull/810)). With [#809](https://github.com/mgagp/ezkey/pull/809) `security-extended` on `main`, confirm alert closure; dismiss only after Marc's go if still open.
 - **2026-10-14:** code-scanning alert #16 (`java/sensitive-log` at `AdminOperationsRateLimitService.recordResetEnrollment`) — never log the raw recovery token; log `RecoveryAuditDetails.recoveryTokenFingerprint` (and wrap caller-supplied log values with `LogSanitizer`) ([#810](https://github.com/mgagp/ezkey/pull/810)). Confirm closure under `security-extended` after #809.
 - Any caller-controlled value written to logs goes through `org.ezkey.util.LogSanitizer.sanitizeForLog`; secrets are never logged, at any level. Production call sites that still need wrapping are tracked in [#801](https://github.com/mgagp/ezkey/issues/801).
 - In `credentials-output-mode=full` (default), first-start logs print the single-use bootstrap enrollment proof token, challenge and QR — by design (#750, maintainer 2026-10-09); token valid 24 h and only while CREATED; `recovery_primary` omits them (`docs/OPERATIONAL.md:547`).
-- Triage campaign notes: [`../product-docs/global/hygiene/code-scanning/`](../product-docs/global/hygiene/code-scanning/). Decision: approved by Marc 2026-10-13 19:40.
+- Triage campaign notes: [`../product-docs/global/hygiene/code-scanning/`](../product-docs/global/hygiene/code-scanning/). Prior triage plan approved by Marc 2026-10-13 19:40; cadence/SLA decision [#815](https://github.com/mgagp/ezkey/issues/815).
 - CI/CD and repository-settings parity inventory (evaluator-facing): [`engineering/ci-cd-best-practices-plan.md`](engineering/ci-cd-best-practices-plan.md).
 
 ## Review note
