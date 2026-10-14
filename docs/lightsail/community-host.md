@@ -160,7 +160,9 @@ Canon overlay: [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail
 
 ## Admin login rate limit (Cancel + retry)
 
-**Symptom (2026-10-14):** passwordless login → Cancel on device / Admin UI → immediate retry → HTTP 429 on `admin-api.ezkey.online` (#831). **Cause:** login and `passwordless-wait` shared a 5/min IP bucket. **Fix:** separate wait bucket (per `authAttemptId`), login 15/min greedy refill, waiter-secret `passwordless-cancel`, mobile leave-as-deny. Redeploy admin-api (+ Admin UI / mobile when those clients are updated).
+**Symptom (2026-10-14):** passwordless login → Cancel on device / Admin UI → immediate retry → HTTP 429 on `admin-api.ezkey.online` (#831). **Cause:** login and `passwordless-wait` shared a 5/min IP bucket. **Fix:** separate wait bucket (keyed `ip+authAttemptId` + per-IP + wait backstop; login cache isolated), login 15/min greedy refill, waiter-secret `passwordless-cancel`, mobile leave-as-deny. Redeploy admin-api (+ Admin UI / mobile when those clients are updated).
+
+**Caddy admin-api access log (#833 C1):** site-level `log` with `format filter` (delete all request/response headers; strip `token` / `proof` / `challenge` query keys) plus `log_skip` for paths outside `/api/v1/admin/auth/*`. Do **not** write `log @matcher` — Caddy treats that token as a logger name and logs every route. Container stdout is still under Compose `x-logging` (`max-size: 20m`, `max-file: 3`) — see § Docker `json-file` log rotation below. Runtime proof: `scripts/prove-caddy-admin-auth-log.sh`.
 
 ## demo-acme HTTPS redirects
 

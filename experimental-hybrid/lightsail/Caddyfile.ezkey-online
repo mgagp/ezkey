@@ -79,12 +79,26 @@ admin-api.ezkey.online {
 		protocols tls1.3 tls1.3
 	}
 	import ezkey_online_public_docs_block
-	# Access log for admin auth only (#831). Method/path/status/IP — no request bodies / secrets.
-	@adminAuth path /api/v1/admin/auth/*
-	log @adminAuth {
+	# Site-level access log (#831 / #833 C1). `log` does not take a path matcher — a matcher
+	# token is treated as a logger *name* and would log every route. Skip non-auth with
+	# log_skip; redact headers, cookies, and sensitive query keys via format filter.
+	# Docker json-file rotation for this container: compose x-logging max-size 20m / max-file 3
+	# (see docs/lightsail/community-host.md § Docker json-file log rotation).
+	log {
 		output stdout
-		format filter `{request>remote_ip} {request>method} {request>uri} {status}`
+		format filter {
+			wrap json
+			request>headers delete
+			request>uri query {
+				delete token
+				delete proof
+				delete challenge
+			}
+			resp_headers delete
+		}
 	}
+	@skipAdminAuthLog not path /api/v1/admin/auth/*
+	log_skip @skipAdminAuthLog
 	reverse_proxy admin-api:9080 {
 		header_up CF-Connecting-IP {client_ip}
 		header_up X-Forwarded-For {client_ip}
