@@ -152,7 +152,7 @@ alerts + dependency-review land). Record the choice in the Monday campaign note 
 | Feature | Evidence | Status |
 |---------|----------|--------|
 | **Private vulnerability reporting** | `GET …/private-vulnerability-reporting` → `enabled: true` | **Verified on** |
-| **Dependency graph** | Was **disabled** (Maven submission failed on runs [38298454193](https://github.com/mgagp/ezkey/actions/runs/38298454193) and [38447903477](https://github.com/mgagp/ezkey/actions/runs/38447903477)). Marc **re-enabled** 2026-10-13. Cause + operator posture documented in draft PR [#798](https://github.com/mgagp/ezkey/pull/798) head **`5079f27f`** (awaiting Marc merge). | **G4 done** (Settings); only #798 docs remain to merge |
+| **Dependency graph** | Was **disabled** (Maven submission failed on runs [38298454193](https://github.com/mgagp/ezkey/actions/runs/38298454193) and [38447903477](https://github.com/mgagp/ezkey/actions/runs/38447903477)). Marc **re-enabled** 2026-10-13. Operator posture documented in [#798](https://github.com/mgagp/ezkey/pull/798) (merged `638b4214`). | **G4 done** |
 | **Automatic dependency submission** | Docs say Disabled 2026-10-08; Actions still lists dynamic workflow type | **to confirm by Marc in Settings** (listing ≠ enabled) |
 | **Dependabot version updates** | `dependabot.yml` + open Dependabot PRs + dynamic “Dependabot Updates” workflow | **Verified on** |
 | **Dependabot alerts / security updates** | `SECURITY.md` announces them; `GET …/dependabot/alerts` returned *“Dependabot alerts are disabled”* (2026-10-14) | **Conflict — Marc’s call in Settings (new P0)** |
@@ -230,7 +230,7 @@ Value: evaluator / supply-chain / operator impact (High / Med / Low).
 | G1 | CodeQL Advanced only (no default conflict) | #805 merged; 5 analyses on `main` at `f26cbe55` | None — **done** | — | — | **Done** |
 | G2 | Dependabot **alerts** + security updates | Version updates strong; API said disabled vs `SECURITY.md` | Enable alerts if off; align `SECURITY.md` | S | High | **P0** |
 | G3 | Secret scanning + push protection | Claimed; not API-verified | Confirm on; enable if off | S | High | **P0** |
-| G4 | Dependency graph on; automatic submission off | Graph re-enabled 2026-10-13; #798 draft `5079f27f` | Merge #798 docs; confirm automatic submission still Disabled | S | High | **Done** (Settings); docs = merge #798 |
+| G4 | Dependency graph on; automatic submission off | Graph re-enabled 2026-10-13; #798 merged (`638b4214`) | Confirm automatic submission still Disabled in Settings | S | High | **Done** (graph + docs); confirm automatic submission |
 | G7 | Dependency review Action on PRs | Absent | After G2: add action limited to PRs that touch manifests; fail on high/critical | M | High | **P1** |
 | G8 | `SECURITY.md` Advanced CodeQL wording | Updated in #808 | Reconfirm after Marc verifies Settings toggles | S | Med | P1 |
 | G5 | Ruleset: require **PR** before merge (no approval) | Status checks only; admin bypass always | Require a pull request **without** required approvals (solo: author cannot approve own PR). Approvals stay soft / #787 | S–M | Med | **P2** |
@@ -264,16 +264,15 @@ Owner suggestions in parentheses. **Marc** required wherever Settings is named.
 1. **Confirm / enable Dependabot alerts and security updates** (Marc; Fred align `SECURITY.md`) —
    **new P0** (API “disabled” vs SECURITY announcement).
 2. **Confirm / enable secret scanning and push protection** (Marc; Christophe spot-check).
-3. **Merge [#798](https://github.com/mgagp/ezkey/pull/798)** head `5079f27f` (Marc) — Dependency
-   graph must stay enabled; automatic submission stays Disabled. Settings re-enable already done
-   2026-10-13 (**G4**).
+3. ~~Merge [#798](https://github.com/mgagp/ezkey/pull/798)~~ — **done** (`638b4214`); graph
+   must stay enabled; automatic submission stays Disabled (**G4**).
 4. **Refresh `SECURITY.md` “practices in use”** after the Settings toggles above are verified (Fred) —
    Advanced CodeQL wording already updated in #808.
 5. ~~Switch CodeQL to Advanced~~ — **done** (#805; analyses on `main` at `f26cbe55`).
 6. ~~Fix stale “ci-gate intended to become required”~~ — **done** in #808 (`DEVELOPMENT.md`).
 
-Exit criteria: Marc signs the Settings checklist for G2/G3 (+ automatic submission); #798 merged;
-docs match verified toggles.
+Exit criteria: Marc signs the Settings checklist for G2/G3 (+ automatic submission); docs match
+verified toggles.
 
 ### Phase 2 — Structural parity (supply-chain PR gate + light ruleset)
 
@@ -357,7 +356,7 @@ Anything not checked stays marked **unverified** in future inventory refreshes �
 | [`product-docs/global/hygiene/dependabot/`](../../product-docs/global/hygiene/dependabot/) | Dependabot curation (#678 model) |
 | PR [#697](https://github.com/mgagp/ezkey/pull/697) | Original `ci-gate` introduction |
 | PR [#787](https://github.com/mgagp/ezkey/pull/787) | Merge-ready bar (CodeQL / threads) |
-| PR [#798](https://github.com/mgagp/ezkey/pull/798) (`5079f27f`) | Dependency graph must stay enabled |
+| PR [#798](https://github.com/mgagp/ezkey/pull/798) (`638b4214`) | Dependency graph must stay enabled |
 | PR [#805](https://github.com/mgagp/ezkey/pull/805) (`f26cbe55`) | CodeQL Advanced + policy |
 | PR [#808](https://github.com/mgagp/ezkey/pull/808) | This inventory |
 
@@ -368,5 +367,5 @@ Anything not checked stays marked **unverified** in future inventory refreshes �
 ---
 
 *Inventory date: 2026-10-14 (review-applied). Docs-first; CodeQL checkout `persist-credentials`
-aligned in the same PR when touched. IntegrityMicroDashboard Vitest freshness fixtures fixed so
-workflows-path CI can stay green.*
+aligned in the same PR when touched. IntegrityMicroDashboard Vitest freshness fixtures land via
+`main` (`recentIso` / #804 lineage) — required when workflows-path CI runs Admin UI.*
