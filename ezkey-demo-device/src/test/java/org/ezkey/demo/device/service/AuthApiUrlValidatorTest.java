@@ -141,8 +141,7 @@ class AuthApiUrlValidatorTest {
   void validate_httpDockerServiceHostname_rejectsEvenWhenAllowlisted() {
     // Docker compose uses http://auth-api:8080 as ezkey.auth.api.url (config default path).
     // Override validation still requires HTTPS outside loopback — see CONFIGURATION.md.
-    Set<String> allow =
-        AuthApiUrlValidator.effectiveAllowlist("http://auth-api:8080", List.of());
+    Set<String> allow = AuthApiUrlValidator.effectiveAllowlist("http://auth-api:8080", List.of());
     assertThat(allow).contains("auth-api");
     assertThat(AuthApiUrlValidator.validate("http://auth-api:8080", allow)).isNull();
     assertThat(AuthApiUrlValidator.isHostNotAllowed("http://auth-api:8080", allow)).isFalse();
