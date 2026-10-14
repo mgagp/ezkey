@@ -36,7 +36,6 @@ import org.ezkey.audit.util.ClientIpResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.util.ContentCachingRequestWrapper;
 
 /**
  * HTTP filter for applying rate limiting to admin authentication endpoints.
@@ -94,7 +93,6 @@ public class AdminRateLimitFilter implements Filter {
   private static final Pattern AUTH_ATTEMPT_ID_PATTERN =
       Pattern.compile("\"authAttemptId\"\\s*:\\s*(\\d+)");
 
-  private static final int BODY_CACHE_LIMIT_BYTES = 8_192;
   private static final int FAILURE_COUNT_CACHE_MAX_SIZE = 10_000;
   private static final Duration FAILURE_COUNT_CACHE_TTL = Duration.ofHours(1);
   private static final int BLOCKED_UNTIL_CACHE_MAX_SIZE = 10_000;
@@ -182,8 +180,7 @@ public class AdminRateLimitFilter implements Filter {
       long blockedUntil = blockedUntilMap.get(clientId);
       long retryAfter = (blockedUntil - System.currentTimeMillis()) / 1000;
 
-      logger.warn(
-          "Blocked IP attempting login: {} - Retry after {} seconds", clientId, retryAfter);
+      logger.warn("Blocked IP attempting login: {} - Retry after {} seconds", clientId, retryAfter);
 
       meterRegistry.counter("rate_limit.ip_blocked.total").increment();
 
@@ -196,12 +193,11 @@ public class AdminRateLimitFilter implements Filter {
     HttpServletRequest requestToForward = req;
     String waitBucketKey = null;
     if (waitPath) {
-      ContentCachingRequestWrapper caching =
-          new ContentCachingRequestWrapper(req, BODY_CACHE_LIMIT_BYTES);
-      caching.getInputStream().readAllBytes();
-      Integer authAttemptId = extractAuthAttemptId(caching.getContentAsByteArray());
+      // Wait/cancel JSON bodies are small; cache full body so @RequestBody still works.
+      byte[] body = req.getInputStream().readAllBytes();
+      Integer authAttemptId = extractAuthAttemptId(body);
       waitBucketKey = passwordlessWaitBucketKey(authAttemptId, clientId);
-      requestToForward = caching;
+      requestToForward = new CachedBodyHttpServletRequest(req, body);
     }
 
     RateLimitResult result =
