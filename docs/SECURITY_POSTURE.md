@@ -159,6 +159,14 @@ CodeQL runs on every PR and on `main` (advanced setup:
 | Low | **180 days** |
 | False positive / won't-fix | Motivated dismissal at the **next triage** |
 
+### PAM / experimental components
+
+Non-deployed lab surfaces (personal-host PAM, Python CLI) stay out of the operable-release path.
+Experimental marking alone is not enough for critical/high alerts: pair with a **dated hardening
+issue** (table above). Decision records for those components land in this subsection only.
+
+- **2026-10-14:** PAM debug file logs leave `/tmp` — `open(O_WRONLY|O_CREAT|O_APPEND|O_NOFOLLOW|O_CLOEXEC, 0600)` under root-owned `/var/log/ezkey-pam/` (mode `0700`), gated by conf/PAM `debug` (sample default `false`; Docker lab entrypoint may set `true`). Closes CodeQL **123** / **124** honestly when the C change lands ([#818](https://github.com/mgagp/ezkey/issues/818); idea `I-2026-10-13-pam-tmp-log-hardening`). Reason: `fopen("/tmp/…","a")` in a root-loaded PAM `.so` is a classic symlink / TOCTOU race on multi-user hosts.
+
 **Rules (Christophe):**
 
 1. The clock starts at **first detection on `main`**.

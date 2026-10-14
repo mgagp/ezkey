@@ -30,7 +30,16 @@
 /* Configuration file path loaded at PAM runtime */
 #define EZKEY_DEFAULT_CONFIG_FILE "/etc/security/pam_ezkey.conf"
 
-/* Debug compile-time flag */
+/*
+ * Debug file logs (only when conf/PAM arg debug=true). Outside /tmp to avoid
+ * symlink / TOCTOU races on a multi-user host (#818 / CodeQL 123, 124).
+ * Directory is root-owned mode 0700; files opened O_NOFOLLOW|O_CLOEXEC mode 0600.
+ */
+#define EZKEY_LOG_DIR "/var/log/ezkey-pam"
+#define EZKEY_LOG_OUT EZKEY_LOG_DIR "/debug.out"
+#define EZKEY_LOG_ERR EZKEY_LOG_DIR "/debug.err"
+
+/* Debug compile-time flag (also forces debug=1 at init; conf can still override) */
 #ifdef DEBUG
 #define EZKEY_DEBUG 1
 #else

@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `I-2026-10-13-pam-tmp-log-hardening`
-- **Status:** `captured`
+- **Status:** `done`
 - **Priority:** `P3`
 - **Created at:** `2026-10-13`
 - **Updated at:** `2026-10-14`
@@ -11,7 +11,7 @@
 - **Component tags:** `pam`, `security`, `docs`
 - **Captured by:** Marc (code-scanning triage 2026-10-13)
 - **GitHub issue:** `#818` (target date **2026-11-13**; dated hardening companion for code-scanning SLA, parallel to CLI #802)
-- **Decision trace:** approved by Marc 2026-10-13 19:40 (code-scanning triage plan); Lot C keeps CodeQL alerts **123** and **124** open until this hardens or Marc decides otherwise. Issue opened 2026-10-14 per Christophe review of #817.
+- **Decision trace:** approved by Marc 2026-10-13 19:40 (code-scanning triage plan); implemented Lot C — `/var/log/ezkey-pam/` + `O_NOFOLLOW` / `0600`, `debug` gated (sample default `false`). CodeQL **123** / **124** should close on the hardening PR. Decision line: `docs/SECURITY_POSTURE.md` § PAM / experimental components.
 
 ## Intent
 

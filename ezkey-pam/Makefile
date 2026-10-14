@@ -13,7 +13,7 @@ INSTALL_DIR = /lib64/security
 SOURCES = $(SRC_DIR)/pam_ezkey.c
 OBJECTS = $(BUILD_DIR)/pam_ezkey.o
 
-.PHONY: all debug install uninstall clean check-pam lint help
+.PHONY: all debug install uninstall clean check-pam check-source lint help test
 
 all: $(BUILD_DIR)/$(MODULE_NAME)
 
@@ -35,6 +35,7 @@ install: $(BUILD_DIR)/$(MODULE_NAME)
 	install -m 755 $(BUILD_DIR)/$(MODULE_NAME) $(INSTALL_DIR)/$(MODULE_NAME)
 	install -d /etc/security
 	install -m 600 config/pam_ezkey.conf /etc/security/pam_ezkey.conf
+	install -d -m 700 /var/log/ezkey-pam
 	@echo "Module installed. Edit /etc/security/pam_ezkey.conf before use."
 
 uninstall:
@@ -53,6 +54,18 @@ check-pam:
 lint:
 	cppcheck --enable=all --std=c99 $(SRC_DIR)/
 
+# Source guard + compile (#818). Host needs gcc, pam, libcurl, cjson devel packages.
+check-source:
+	@if grep -nE '/tmp/pam_ezkey' $(SRC_DIR)/pam_ezkey.c $(SRC_DIR)/ezkey_config.h; then \
+		echo "error: /tmp/pam_ezkey path still present (#818)" >&2; exit 1; \
+	fi
+	@grep -q 'O_NOFOLLOW' $(SRC_DIR)/pam_ezkey.c
+	@grep -q '/var/log/ezkey-pam' $(SRC_DIR)/ezkey_config.h
+	@echo "check-source: no /tmp PAM log paths; O_NOFOLLOW + /var/log/ezkey-pam present"
+
+test: check-source all
+	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) (runtime test_pam.sh needs the SSH demo container)"
+
 help:
 	@echo "Available targets:"
 	@echo "  all       - Build the PAM module"
@@ -61,4 +74,6 @@ help:
 	@echo "  uninstall - Remove module from system"
 	@echo "  clean     - Remove build files"
 	@echo "  check-pam - Check if module is configured in PAM"
+	@echo "  check-source - Guard against /tmp debug logs (#818)"
+	@echo "  test      - check-source + compile"
 	@echo "  lint      - Run static code analysis"

@@ -76,7 +76,7 @@ Approve.
 | `challenge_requested` | `false` | Extra numeric challenge (off for SSH demo) |
 | `context_title` | `SSH login` | Title shown on the device |
 | `context_message` | *(generated)* | Message shown on the device |
-| `debug` | `true` | Extra syslog |
+| `debug` | `false` | Extra syslog + `/var/log/ezkey-pam/debug.{out,err}` (Docker lab entrypoint sets `true`) |
 
 Environment overrides (Docker): `EZKEY_INTEGRATION_API_URL` (legacy:
 `EZKEY_M2M_API_URL`), `EZKEY_INTEGRATION_KEY`, `EZKEY_SECRET_KEY`,
@@ -96,9 +96,13 @@ The SSH VM joins the main stack network (`ezkey_ezkey-network` by default) so it
 
 ## Logging
 
+Syslog (`LOG_AUTHPRIV` / `/var/log/secure`) is always used. When `debug=true` (Docker lab
+default via entrypoint), the module also appends to root-owned files under
+`/var/log/ezkey-pam/` opened with `O_NOFOLLOW|O_CLOEXEC` mode `0600` — not `/tmp` (#818).
+
 ```bash
-docker exec ezkey-pam-ssh cat /tmp/pam_ezkey.out
-docker exec ezkey-pam-ssh cat /tmp/pam_ezkey.err
+docker exec ezkey-pam-ssh cat /var/log/ezkey-pam/debug.out
+docker exec ezkey-pam-ssh cat /var/log/ezkey-pam/debug.err
 docker exec ezkey-pam-ssh tail -n 50 /var/log/secure
 ```
 

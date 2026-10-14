@@ -83,7 +83,7 @@ That path and style match Linux-PAM convention (`pam_access`, `pam_limits`, `pam
 | `wait_timeout` / `wait_polling` / `api_timeout` | HTTP waits | Yes |
 | `challenge_requested` | Extra numeric challenge | Yes (keep `false` for SSH) |
 | `context_title` / `context_message` | Device copy | Yes |
-| `debug` | Extra syslog + `/tmp` files | Demo-only; default should become `false` |
+| `debug` | Extra syslog + `/var/log/ezkey-pam/` files (`O_NOFOLLOW`, 0600) | Docker lab entrypoint sets `true`; sample conf default `false` (#818) |
 
 PAM args: `debug`, `conf=/path`. Env overrides exist for Docker because **sshd does not pass
 container ENV into PAM**; the entrypoint writes the conf file. That lesson stays.
@@ -100,8 +100,8 @@ hygiene, PAM return codes, host stack, distro), not “more keys.”
   on a public hostname.
 - **Every failure is `PAM_AUTH_ERR`.** Transport failure, HTTP 401, reject, and timeout look
   the same to the stack.
-- **Debug logs can include the wait JSON**, including `authAttemptProofToken`. `/tmp/pam_ezkey.out`
-  is a lab convenience, not a production log path.
+- **Debug logs can include the wait JSON**, including `authAttemptProofToken`. File transcripts
+  live under `/var/log/ezkey-pam/` only when `debug=true` (#818); still lab-only, never `/tmp`.
 - **Missing `curl_global_init` / secret wipe.** libcurl happens to work; it is not tidy PAM C.
 - **Silent conf open failure** then empty keys → auth error. Should be an explicit syslog.
 - **`install.sh` builds on the host.** Prefer image-matched extract for real hosts.
@@ -150,8 +150,9 @@ Only these change the module from “demo VM” to “Linux host”:
    `ca_info=` in conf if a private CA appears. No custom crypto.
 4. **API key IP allowlist.** Demo keys have none. EXP1 should allow the Lightsail host (or the
    Docker bridge if PAM runs in a container). That is Integration API policy, not C code.
-5. **`debug` default false.** Syslog via `pam_syslog` / `LOG_AUTHPRIV` only. No `/tmp` transcripts.
-   Never log secret keys, Basic headers, or wait bodies.
+5. **`debug` default false** (sample conf; Docker lab may enable). Syslog via `pam_syslog` /
+   `LOG_AUTHPRIV`; optional file transcripts under `/var/log/ezkey-pam/` with `O_NOFOLLOW` /
+   mode `0600` (#818). Never log secret keys, Basic headers, or wait bodies.
 6. **PAM return codes** (see §2.4). The stack can then distinguish “Ezkey down” from “denied.”
 7. **Host PAM snippet + sshd_config** documented next to `sshd` / `sshd_config` in this folder,
    separate from the demo-only Ezkey-only stack.
@@ -220,7 +221,7 @@ Resource hygiene (progressive, each is a small patch):
 - Always free cJSON, curl slists, and growable buffers (mostly done; audit early-returns).
 - `explicit_bzero` on `userpwd` / `secret_key` copies after the HTTP calls.
 - Stop logging HTTP bodies. Log `authAttemptId`, HTTP status, and wait `status` only.
-- Drop `/tmp/pam_ezkey.out` outside debug-demo builds.
+- Keep file debug under `/var/log/ezkey-pam/` only; never reintroduce `/tmp` fixed names (#818).
 - `pam_sm_setcred` returning `PAM_SUCCESS` is correct for an auth-only module.
 - `pam_sm_acct_mgmt` / session hooks are **not** required for SSH MFA v1 (`PAM_IGNORE` if a
   stack ever calls them). Do not implement a second policy engine there.
