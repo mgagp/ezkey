@@ -130,20 +130,23 @@ CodeQL runs on every PR and on `main` (advanced setup:
 
 ### Triage cadence
 
-- **Weekly** triage by Fred (hygiene bot).
-- **Dismissals** are decided and executed by Christophe (security bot) with the
-  read-write code-scanning token; each dismissal carries a one-line reason and a
-  triage reference (campaign note under
+- **Weekly** triage: **Fred proposes, Christophe decides and executes**.
+- Fred (hygiene bot) runs the weekly pass and proposes dispositions; Christophe
+  (security bot) decides and executes dismissals with the read-write code-scanning
+  token. Each dismissal carries a GitHub reason (false positive, used in tests,
+  won't fix), a one-line technical justification, and a triage reference (campaign
+  note under
   [`../product-docs/global/hygiene/code-scanning/`](../product-docs/global/hygiene/code-scanning/)).
-- An alert is dismissed only with a GitHub reason (false positive, used in tests,
-  won't fix) plus that one-line justification. Marc's explicit go remains required
-  for contested or high-impact dismissals.
+- **High-impact** = critical or high alert on **deployed, exposed** code (see
+  immediate-trigger table). Dismissing a high-impact alert requires **Marc's
+  explicit go**. For all other alerts, Fred proposes and Christophe decides and
+  executes alone (one-line reason; no Marc gate).
 
 **Immediate triggers** (do not wait for the weekly pass):
 
 | Trigger | Action |
 |---|---|
-| New **critical/high** on **deployed, exposed** code (`admin-api`, `auth-api`, `integration-api`, `demo-app-acme`, Caddy) | Triage within **24 h**; alert Marc; fix or mitigate within **14 days** |
+| New **critical/high** on **deployed, exposed** code (`admin-api`, `auth-api`, `integration-api`, `admin-ui`, `crypto-api`, `demo-app-acme`, Caddy) | Triage within **24 h**; alert Marc; fix or mitigate within **14 days** |
 | Dependency CVE in **CISA KEV** on deployed code | **3 days** |
 | Abnormal jump in alert count (e.g. suite change as in [#805](https://github.com/mgagp/ezkey/pull/805)/[#809](https://github.com/mgagp/ezkey/pull/809)) or upcoming **ezkey.online** upgrade | Triage **before deploy** |
 
@@ -151,8 +154,8 @@ CodeQL runs on every PR and on `main` (advanced setup:
 
 | Class | SLA |
 |---|---|
-| Critical/high on **non-deployed** code (CLI, PAM) | **30 days**, or mark experimental only if paired with a dated hardening issue (PAM; CLI [#802](https://github.com/mgagp/ezkey/issues/802) already) |
-| Medium | **60 days** |
+| Critical/high on **non-deployed** code (CLI, PAM) | **30 days**, or mark experimental only if paired with a dated hardening issue (CLI [#802](https://github.com/mgagp/ezkey/issues/802); PAM [#818](https://github.com/mgagp/ezkey/issues/818), target 2026-11-13) |
+| Medium | **60 days** ([OpenSSF `vulnerabilities_fixed_60_days`](https://www.bestpractices.dev/en/criteria/0#vulnerabilities_fixed_60_days)) |
 | Low | **180 days** |
 | False positive / won't-fix | Motivated dismissal at the **next triage** |
 
@@ -184,6 +187,10 @@ there; direct XLSX URL 404 as of 2026-10-14);
   ([#815](https://github.com/mgagp/ezkey/issues/815)). Reason: replace the interim
   critical-7 / high-30 / medium-90 shorthand with exposure-aware SLAs aligned to
   CISA BOD 26-04 / SSVC risk factors while keeping lab-proportionate windows.
+- **2026-10-14 13:16 ET (Marc):** high-impact dismissals require Marc's explicit go;
+  high-impact = critical/high on deployed exposed code. All other alerts: Fred
+  proposes, Christophe decides and executes alone with a one-line reason
+  ([#815](https://github.com/mgagp/ezkey/issues/815)).
 - **2026-10-14:** pin advanced CodeQL to `security-extended` (not the default suite) so log-injection / sensitive-log and related queries keep running after the #805 default→advanced switch — those alerts had been marked fixed without code fixes when the advanced workflow briefly used the default suite ([#809](https://github.com/mgagp/ezkey/pull/809)).
 - Every security review of a PR includes the code-scanning alerts raised on that PR; a PR does not merge with a new unresolved high/critical alert.
 - Test-only code (`ezkey-tests/**`) is excluded via the CodeQL config, not by mass dismissal. A local model pack under `.github/codeql/extensions/ezkey-java-models/` declares `org.ezkey.util.LogSanitizer#sanitizeForLog` as a `log-injection` barrier and `AuthApiUrlValidator#validate(String,Set)` ReturnValue as a `request-forgery` barrier (not `validate(String)`); advanced setup loads it explicitly via `CODEQL_ACTION_EXTRA_OPTIONS` on the java-kotlin analyze step (`--additional-packs` + `--extension-packs=ezkey/java-models`) — not via default-setup auto-detection. Proven on PR #805 (Actions run [`38488035924`](https://github.com/mgagp/ezkey/actions/runs/38488035924) java-kotlin analyze: `run-queries` CLI includes `--extension-packs=ezkey/java-models`). Five language analyses uploaded on `main` at merge commit `f26cbe55` (#805); query suite restored to `security-extended` in [#809](https://github.com/mgagp/ezkey/pull/809).

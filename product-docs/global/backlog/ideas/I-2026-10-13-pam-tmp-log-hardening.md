@@ -6,12 +6,12 @@
 - **Status:** `captured`
 - **Priority:** `P3`
 - **Created at:** `2026-10-13`
-- **Updated at:** `2026-10-13`
-- **Last reviewed at:** `2026-10-13`
+- **Updated at:** `2026-10-14`
+- **Last reviewed at:** `2026-10-14`
 - **Component tags:** `pam`, `security`, `docs`
 - **Captured by:** Marc (code-scanning triage 2026-10-13)
-- **GitHub issue:** _(none yet)_
-- **Decision trace:** approved by Marc 2026-10-13 19:40 (code-scanning triage plan); Lot C keeps CodeQL alerts **123** and **124** open until this hardens or Marc decides otherwise.
+- **GitHub issue:** `#818` (target date **2026-11-13**; dated hardening companion for code-scanning SLA, parallel to CLI #802)
+- **Decision trace:** approved by Marc 2026-10-13 19:40 (code-scanning triage plan); Lot C keeps CodeQL alerts **123** and **124** open until this hardens or Marc decides otherwise. Issue opened 2026-10-14 per Christophe review of #817.
 
 ## Intent
 
