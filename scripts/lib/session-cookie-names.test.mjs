@@ -11,8 +11,10 @@ import { fileURLToPath } from 'node:url';
 import {
   assertDistinctServletSessionCookieNames,
   collectServletSessionCookieNames,
+  joinContinuedLines,
   parsePropertyLine,
   readPropertyLastWins,
+  unescapePropertyValue,
 } from './session-cookie-names.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -92,6 +94,27 @@ describe('property line parsing (#807)', () => {
       'EZKEY_A_SESSION',
     );
   });
+
+  it('unescapes \\: and \\= in values (#807 m5)', () => {
+    assert.equal(unescapePropertyValue('prefix\\:suffix'), 'prefix:suffix');
+    assert.equal(unescapePropertyValue('a\\=b'), 'a=b');
+    assert.deepEqual(parsePropertyLine('other.key=prefix\\:suffix'), {
+      key: 'other.key',
+      value: 'prefix:suffix',
+    });
+  });
+
+  it('joins backslash line continuations (#807 m5)', () => {
+    assert.deepEqual(joinContinuedLines(['server.servlet.session.cookie.name=EZKEY_\\', 'A_SESSION']), [
+      'server.servlet.session.cookie.name=EZKEY_A_SESSION',
+    ]);
+    const file = join(FIXTURES, 'parse-escapes', 'application.properties');
+    assert.equal(
+      readPropertyLastWins(file, 'server.servlet.session.cookie.name'),
+      'EZKEY_A_SESSION',
+    );
+    assert.equal(readPropertyLastWins(file, 'other.key'), 'prefix:suffix');
+  });
 });
 
 describe('RED fixtures (#807)', () => {
@@ -113,6 +136,15 @@ describe('RED fixtures (#807)', () => {
     assert.equal(result.ok, false);
     assert.match(result.errors.join('\n'), /duplicate/);
   });
+
+  it('fails when a profile reintroduces JSESSIONID (#807 m4)', () => {
+    const result = assertDistinctServletSessionCookieNames(
+      join(FIXTURES, 'red-profile-jsessionid'),
+    );
+    assert.equal(result.ok, false);
+    assert.match(result.errors.join('\n'), /JSESSIONID/);
+    assert.match(result.errors.join('\n'), /profile=docker/);
+  });
 });
 
 describe('GREEN fixtures (#807)', () => {
@@ -123,12 +155,12 @@ describe('GREEN fixtures (#807)', () => {
     assert.deepEqual(names, ['EZKEY_A_SESSION', 'EZKEY_B_SESSION']);
   });
 
-  it('profile overlay last-wins over base JSESSIONID', () => {
+  it('checks each profile separately without stacking (#807 m4)', () => {
     const result = assertDistinctServletSessionCookieNames(join(FIXTURES, 'green-profile-last'));
     assert.equal(result.ok, true, result.ok ? '' : result.errors.join('\n'));
     const byModule = Object.fromEntries(result.rows.map((r) => [r.module, r]));
     assert.equal(byModule['mod-a'].cookieName, 'EZKEY_A_SESSION');
-    assert.match(byModule['mod-a'].propertiesPath, /application-docker\.properties$/);
+    assert.match(byModule['mod-a'].propertiesPath, /application\.properties$/);
   });
 
   it('same-file later assignment wins over earlier JSESSIONID', () => {
@@ -138,5 +170,12 @@ describe('GREEN fixtures (#807)', () => {
     assert.equal(result.ok, true, result.ok ? '' : result.errors.join('\n'));
     const byModule = Object.fromEntries(result.rows.map((r) => [r.module, r]));
     assert.equal(byModule['mod-a'].cookieName, 'EZKEY_A_SESSION');
+  });
+
+  it('accepts __Host- cookie name prefix (#807 m5)', () => {
+    const result = assertDistinctServletSessionCookieNames(join(FIXTURES, 'green-host-prefix'));
+    assert.equal(result.ok, true, result.ok ? '' : result.errors.join('\n'));
+    const names = result.rows.map((r) => r.cookieName).sort();
+    assert.deepEqual(names, ['__Host-EZKEY_A_SESSION', '__Host-EZKEY_B_SESSION']);
   });
 });

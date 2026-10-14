@@ -21,14 +21,12 @@
 #include <ctype.h>
 #include <cjson/cJSON.h>
 #include <unistd.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/stat.h>
 #include <syslog.h>
 #include <security/pam_modules.h>
 #include <security/pam_ext.h>
 #include <security/pam_appl.h>
 #include "ezkey_config.h"
+#include "ezkey_filelog.h"
 
 #define EZKEY_URL_MAX 512
 #define EZKEY_KEY_MAX 256
@@ -260,74 +258,54 @@ static void parse_module_args(int argc, const char **argv, EzkeyConfig *cfg) {
     }
 }
 
-/*
- * Ensure /var/log/ezkey-pam exists as a real directory mode 0700.
- * Refuse symlinks and group/other-writable dirs (symlink / TOCTOU hardening, #818).
- */
-static int ezkey_ensure_log_dir(void) {
-    struct stat st;
-
-    if (lstat(EZKEY_LOG_DIR, &st) == 0) {
-        if (!S_ISDIR(st.st_mode)) {
-            return -1;
-        }
-        if ((st.st_mode & 077) != 0) {
-            return -1;
-        }
-        return 0;
-    }
-    if (errno != ENOENT) {
-        return -1;
-    }
-    if (mkdir(EZKEY_LOG_DIR, 0700) != 0) {
-        return -1;
-    }
-    return 0;
-}
-
 /**
- * Append one debug line with O_NOFOLLOW|O_CLOEXEC and mode 0600.
- * No-op when path cannot be opened safely (fail-open for logging).
+ * Neutralize CR/LF and other control characters before syslog / file logs (#818 m3).
+ * Writes into dest (NUL-terminated); always succeeds for non-NULL dest.
  */
-static void ezkey_filelog_append(const char *path, const char *message) {
-    int fd;
-    FILE *fp;
+static void ezkey_sanitize_for_log(char *dest, size_t dest_size, const char *src) {
+    size_t i;
+    size_t j = 0;
 
-    if (message == NULL || path == NULL) {
+    if (dest == NULL || dest_size == 0) {
         return;
     }
-    if (ezkey_ensure_log_dir() != 0) {
+    if (src == NULL) {
+        dest[0] = '\0';
         return;
     }
-    fd = open(path, O_WRONLY | O_CREAT | O_APPEND | O_NOFOLLOW | O_CLOEXEC, 0600);
-    if (fd < 0) {
-        return;
+    for (i = 0; src[i] != '\0' && j + 1 < dest_size; i++) {
+        unsigned char c = (unsigned char)src[i];
+        if (c < 0x20 || c == 0x7f) {
+            dest[j++] = '_';
+        } else {
+            dest[j++] = (char)c;
+        }
     }
-    fp = fdopen(fd, "a");
-    if (fp == NULL) {
-        close(fd);
-        return;
-    }
-    fprintf(fp, "%s\n", message);
-    fclose(fp);
+    dest[j] = '\0';
 }
 
 static void log_pam_info(pam_handle_t *pamh, const EzkeyConfig *cfg,
                          const char *message) {
-    syslog(LOG_INFO, "%s: %s", EZKEY_MODULE_NAME, message);
+    char safe[2048];
+
+    ezkey_sanitize_for_log(safe, sizeof(safe), message);
+    syslog(LOG_INFO, "%s: %s", EZKEY_MODULE_NAME, safe);
     if (cfg != NULL && cfg->debug) {
-        ezkey_filelog_append(EZKEY_LOG_OUT, message);
-        pam_syslog(pamh, LOG_INFO, "%s", message);
+        ezkey_filelog_append(EZKEY_LOG_OUT_NAME, safe);
+        pam_syslog(pamh, LOG_INFO, "%s", safe);
     }
 }
 
 static void log_pam_error(pam_handle_t *pamh, const EzkeyConfig *cfg,
                           const char *message) {
-    syslog(LOG_ERR, "%s: ERROR: %s", EZKEY_MODULE_NAME, message);
+    char safe[2048];
+
+    ezkey_sanitize_for_log(safe, sizeof(safe), message);
+    syslog(LOG_ERR, "%s: ERROR: %s", EZKEY_MODULE_NAME, safe);
     if (cfg != NULL && cfg->debug) {
-        ezkey_filelog_append(EZKEY_LOG_ERR, message);
+        ezkey_filelog_append(EZKEY_LOG_ERR_NAME, safe);
     }
-    pam_syslog(pamh, LOG_ERR, "ERROR: %s", message);
+    pam_syslog(pamh, LOG_ERR, "ERROR: %s", safe);
 }
 
 static void ezkey_buf_init(EzkeyBuf *buf) {

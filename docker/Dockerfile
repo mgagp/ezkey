@@ -85,9 +85,9 @@ RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
 # Stage 2: Runtime image for migration service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS migration
+RUN addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring
 ARG OCI_IMAGE_REVISION=unknown
 LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
-RUN addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring
 USER spring:spring
 WORKDIR /app
 COPY --from=build /build/ezkey-migration/target/*.jar app.jar
@@ -97,8 +97,6 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 3: Runtime image for admin-api service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS admin-api
-ARG OCI_IMAGE_REVISION=unknown
-LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -106,6 +104,8 @@ RUN apk add --no-cache curl && \
     chmod 700 /etc/ezkey/secrets && \
     chmod 755 /etc/ezkey/keysets /var/lib/ezkey/bootstrap && \
     chown -R spring:spring /app /etc/ezkey /var/lib/ezkey
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-admin-api/target/*.jar app.jar
 COPY --chown=spring:spring --from=build /build/ezkey-admin-api/config ./config
@@ -119,8 +119,6 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 4: Runtime image for auth-api service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS auth-api
-ARG OCI_IMAGE_REVISION=unknown
-LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -128,6 +126,8 @@ RUN apk add --no-cache curl && \
     chmod 700 /etc/ezkey/secrets && \
     chmod 755 /etc/ezkey/keysets && \
     chown -R spring:spring /app /etc/ezkey
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-auth-api/target/*.jar app.jar
 COPY --chown=spring:spring --from=build /build/ezkey-auth-api/config ./config
@@ -142,8 +142,6 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 5: Runtime image for integration-api service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS integration-api
-ARG OCI_IMAGE_REVISION=unknown
-LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -151,6 +149,8 @@ RUN apk add --no-cache curl && \
     chmod 700 /etc/ezkey/secrets && \
     chmod 755 /etc/ezkey/keysets && \
     chown -R spring:spring /app /etc/ezkey
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-integration-api/target/*.jar app.jar
 COPY --chown=spring:spring --from=build /build/ezkey-integration-api/config ./config
@@ -165,8 +165,6 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 6: Runtime image for crypto-api service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS crypto-api
-ARG OCI_IMAGE_REVISION=unknown
-LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -174,6 +172,8 @@ RUN apk add --no-cache curl && \
     chmod 700 /etc/ezkey/secrets && \
     chmod 755 /etc/ezkey/keysets && \
     chown -R spring:spring /app /etc/ezkey
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-crypto-api/target/*.jar app.jar
 COPY --chown=spring:spring --from=build /build/ezkey-crypto-api/config ./config
@@ -187,13 +187,13 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 6: Runtime image for demo-device service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS demo-device
-ARG OCI_IMAGE_REVISION=unknown
-LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 # Create non-root user and pre-create data directory with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
     mkdir -p /app /app/data/enrollments && \
     chown -R spring:spring /app
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-demo-device/target/*.jar app.jar
 USER spring:spring
@@ -206,13 +206,13 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 7: Runtime image for demo-app-acme service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS demo-app-acme
-ARG OCI_IMAGE_REVISION=unknown
-LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
     mkdir -p /app /app/config /app/data && \
     chown -R spring:spring /app
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-demo-app-acme/target/*.jar app.jar
 # Copy config template

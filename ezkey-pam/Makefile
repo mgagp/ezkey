@@ -8,20 +8,23 @@ LDFLAGS = -shared -lpam -lcurl -lcjson
 MODULE_NAME = pam_ezkey.so
 SRC_DIR = src
 BUILD_DIR = build
+TEST_DIR = test
 INSTALL_DIR = /lib64/security
 
-SOURCES = $(SRC_DIR)/pam_ezkey.c
-OBJECTS = $(BUILD_DIR)/pam_ezkey.o
+OBJECTS = $(BUILD_DIR)/pam_ezkey.o $(BUILD_DIR)/ezkey_filelog.o
 
-.PHONY: all debug install uninstall clean check-pam check-source lint help test
+.PHONY: all debug install uninstall clean check-pam check-source lint help test test-filelog
 
 all: $(BUILD_DIR)/$(MODULE_NAME)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/pam_ezkey.o: $(SRC_DIR)/pam_ezkey.c $(SRC_DIR)/ezkey_config.h | $(BUILD_DIR)
+$(BUILD_DIR)/pam_ezkey.o: $(SRC_DIR)/pam_ezkey.c $(SRC_DIR)/ezkey_config.h $(SRC_DIR)/ezkey_filelog.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/pam_ezkey.c -o $(BUILD_DIR)/pam_ezkey.o
+
+$(BUILD_DIR)/ezkey_filelog.o: $(SRC_DIR)/ezkey_filelog.c $(SRC_DIR)/ezkey_filelog.h $(SRC_DIR)/ezkey_config.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_filelog.c -o $(BUILD_DIR)/ezkey_filelog.o
 
 $(BUILD_DIR)/$(MODULE_NAME): $(OBJECTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $(BUILD_DIR)/$(MODULE_NAME)
@@ -54,26 +57,34 @@ check-pam:
 lint:
 	cppcheck --enable=all --std=c99 $(SRC_DIR)/
 
-# Source guard + compile (#818). Host needs gcc, pam, libcurl, cjson devel packages.
+# Source guard (#818). Host needs gcc, pam, libcurl, cjson devel packages.
 check-source:
-	@if grep -nE '/tmp/pam_ezkey' $(SRC_DIR)/pam_ezkey.c $(SRC_DIR)/ezkey_config.h; then \
+	@if grep -nE '/tmp/pam_ezkey' $(SRC_DIR)/*.c $(SRC_DIR)/*.h; then \
 		echo "error: /tmp/pam_ezkey path still present (#818)" >&2; exit 1; \
 	fi
-	@grep -q 'O_NOFOLLOW' $(SRC_DIR)/pam_ezkey.c
-	@grep -q '/var/log/ezkey-pam' $(SRC_DIR)/ezkey_config.h
-	@echo "check-source: no /tmp PAM log paths; O_NOFOLLOW + /var/log/ezkey-pam present"
+	@grep -q 'O_NOFOLLOW' $(SRC_DIR)/ezkey_filelog.c
+	@grep -q 'openat' $(SRC_DIR)/ezkey_filelog.c
+	@grep -q 'O_NONBLOCK' $(SRC_DIR)/ezkey_filelog.c
+	@grep -q 'ezkey_sanitize_for_log' $(SRC_DIR)/pam_ezkey.c
+	@grep -q '/var/log/ezkey-pam' $(SRC_DIR)/ezkey_filelog.h
+	@echo "check-source: openat/O_NOFOLLOW/O_NONBLOCK + sanitize + /var/log/ezkey-pam"
 
-test: check-source all
-	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) (runtime test_pam.sh needs the SSH demo container)"
+# Harness: 0644→0600, hardlink refused, FIFO non-blocking (#818 m2).
+test-filelog: $(SRC_DIR)/ezkey_filelog.c $(TEST_DIR)/test_filelog_harness.c | $(BUILD_DIR)
+	@$(TEST_DIR)/run-filelog-harness.sh "$(CC)" "$(CFLAGS)" "$(SRC_DIR)" "$(BUILD_DIR)"
+
+test: check-source all test-filelog
+	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog harness OK"
 
 help:
 	@echo "Available targets:"
-	@echo "  all       - Build the PAM module"
-	@echo "  debug     - Build with debug symbols"
-	@echo "  install   - Install module and config (requires root)"
-	@echo "  uninstall - Remove module from system"
-	@echo "  clean     - Remove build files"
-	@echo "  check-pam - Check if module is configured in PAM"
+	@echo "  all          - Build the PAM module"
+	@echo "  debug        - Build with debug symbols"
+	@echo "  install      - Install module and config (requires root)"
+	@echo "  uninstall    - Remove module from system"
+	@echo "  clean        - Remove build files"
+	@echo "  check-pam    - Check if module is configured in PAM"
 	@echo "  check-source - Guard against /tmp debug logs (#818)"
-	@echo "  test      - check-source + compile"
-	@echo "  lint      - Run static code analysis"
+	@echo "  test-filelog - Mode/hardlink/FIFO harness (#818 m2)"
+	@echo "  test         - check-source + compile + filelog harness"
+	@echo "  lint         - Run static code analysis"

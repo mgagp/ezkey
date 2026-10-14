@@ -243,6 +243,12 @@ if [[ -n "$DO_BUILD" ]]; then
   fi
   export OCI_IMAGE_REVISION
   echo "→ OCI_IMAGE_REVISION=${OCI_IMAGE_REVISION} (org.opencontainers.image.revision)"
+  # SHA is always HEAD; warn when the worktree differs so operators know the label
+  # does not describe dirty/uncommitted contents (#814 Christophe nit).
+  if [[ "${OCI_IMAGE_REVISION}" != "unknown" ]] &&
+    [[ -n "$(git -C "${REPO_ROOT}" status --porcelain 2>/dev/null || true)" ]]; then
+    echo "warning: working tree is dirty; OCI_IMAGE_REVISION is HEAD (${OCI_IMAGE_REVISION}), not the dirty worktree contents" >&2
+  fi
   if [[ -n "$DRY_RUN" ]]; then
     printf '[dry-run]'
     printf ' %q' env "OCI_IMAGE_REVISION=${OCI_IMAGE_REVISION}" \
