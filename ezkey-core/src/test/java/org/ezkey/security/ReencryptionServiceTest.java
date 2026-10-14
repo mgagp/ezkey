@@ -1112,7 +1112,8 @@ class ReencryptionServiceTest {
             parallelRunner,
             jobLastRunService);
 
-    when(batchRepository.findBatchesEligibleForResume()).thenReturn(List.of());
+    // Mutable list required: processReencryptionBatches addAlls PENDING into the resume list.
+    when(batchRepository.findBatchesEligibleForResume()).thenReturn(new java.util.ArrayList<>());
     when(batchRepository.findByStatus(BatchStatus.PENDING)).thenReturn(List.of(batch));
     when(keyRepository.findEnabledKeys()).thenReturn(List.of());
     doThrow(
