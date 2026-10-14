@@ -11,6 +11,16 @@ x-buildkit: &buildkit
 x-container-tz: &container-tz
   TZ: ${TZ:-UTC}
 
+# OCI image revision (#814): full git SHA from OCI_IMAGE_REVISION (rolling upgrade exports it).
+# Not the full #740 surface (no git.properties / actuator/info).
+x-ezkey-image-build: &ezkey-image-build
+  context: ..
+  dockerfile: docker/Dockerfile
+  args:
+    OCI_IMAGE_REVISION: ${OCI_IMAGE_REVISION:-unknown}
+  labels:
+    org.opencontainers.image.revision: ${OCI_IMAGE_REVISION:-unknown}
+
 services:
   postgres:
     image: postgres:18-alpine
@@ -42,8 +52,7 @@ services:
 
   migration:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      <<: *ezkey-image-build
       target: migration
     container_name: ezkey-migration
     depends_on:
@@ -91,8 +100,7 @@ services:
 
   admin-api:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      <<: *ezkey-image-build
       target: admin-api
     container_name: ezkey-admin-api
     depends_on:
@@ -144,8 +152,7 @@ services:
 
   auth-api:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      <<: *ezkey-image-build
       target: auth-api
     container_name: ezkey-auth-api
     depends_on:
@@ -191,8 +198,7 @@ services:
 
   integration-api:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      <<: *ezkey-image-build
       target: integration-api
     container_name: ezkey-integration-api
     depends_on:
@@ -230,8 +236,7 @@ services:
 
   demo-device:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      <<: *ezkey-image-build
       target: demo-device
     container_name: ezkey-demo-device
     depends_on:
@@ -257,8 +262,7 @@ services:
 
   crypto-api:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      <<: *ezkey-image-build
       target: crypto-api
     container_name: ezkey-crypto-api
     depends_on:
@@ -287,8 +291,7 @@ services:
 
   demo-app-acme:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      <<: *ezkey-image-build
       target: demo-app-acme
     container_name: ezkey-demo-app-acme
     depends_on:

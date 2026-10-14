@@ -4,6 +4,8 @@ Use this when you **already run** the experimental Lightsail stack ([`README.md`
 
 **Full stack in one go (Caddy, Compose, migration, all backends, optional demo):** from the repo root run **`./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target exp1 rolling`** (or `--target community`; add **`--include-demo-acme`** for the demo). That builds the images, loads them on the VM, syncs `docker-compose.yml` / **target-aware** `Caddyfile` / `clean-start.sh`, and runs **`docker compose up -d`** remotely — **Postgres data and other named volumes are kept**; the **`migration`** service runs Flyway from the new image. Alternatively call [`export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) with **`--target …`**, **`--sync-operator-files`**, **`--remote-up`**, and the image flags you need. No silent SSH host default (#812).
 
+**OCI revision on rolling builds (#814):** the upgrade script exports `OCI_IMAGE_REVISION` (default: full `git rev-parse HEAD`) so compose/`docker/Dockerfile` stamp `org.opencontainers.image.revision` on migration and backend images. On the VM after load: `docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' ezkey-auth-api:latest`. This is image-label traceability only — not the broader #740 surface (`git.properties` / `/actuator/info`).
+
 ### ACME M2M cutover (Admin API hatch removed)
 
 After this branch is on the tree you deploy, apply Compose **and** recreate ACME together:

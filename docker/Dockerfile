@@ -85,6 +85,8 @@ RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
 # Stage 2: Runtime image for migration service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS migration
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 RUN addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring
 USER spring:spring
 WORKDIR /app
@@ -95,6 +97,8 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 3: Runtime image for admin-api service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS admin-api
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -115,6 +119,8 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 4: Runtime image for auth-api service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS auth-api
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -136,6 +142,8 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 5: Runtime image for integration-api service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS integration-api
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -157,6 +165,8 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 6: Runtime image for crypto-api service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS crypto-api
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -177,6 +187,8 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 6: Runtime image for demo-device service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS demo-device
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 # Create non-root user and pre-create data directory with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -194,6 +206,8 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 7: Runtime image for demo-app-acme service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS demo-app-acme
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
