@@ -111,3 +111,15 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
 - Pin sync: Orval exact pin `8.41.0` kept in both `package.json`; AGENTS.md pin lines (Admin UI + mobile) and Playwright Dockerfile comment synced in this docs PR
 - Validation: per-PR Dependabot CI green (backend / admin-ui / mobile jobs as applicable); local Orval codegen diff + Admin lint/tsc/vitest on Node 24. **Deferred** to next session on Rootbeer/Mac (box has no JDK/Docker): `./scripts/build.sh`, clean-start + functional smoke (T2/T3 Maven: tomcat, postgresql, rest-assured), Playwright 5/5 in `v1.64.0-noble` (Vite + lucide + Playwright lot)
 - Residual: phone smoke for #775/#777 tracked on #627 (gates next Play AAB). Nothing deployed (no ezkey.online, no methodology.ezkey.org)
+
+## 2026-10-14
+
+- Pass: weekday light (autonomous); concurrency: clear at merge time (no Dependabot/hygiene merges in prior ~30 min; latest main was #798 docs; no other in-flight `dependabot-curated` agent)
+- GitHub write: `GH_TOKEN as mgagp`
+- Merged (squash):
+  - Mobile T3: #778 react-native-screens 4.28.0→4.29.0 `216a3a16` — companion on Dependabot branch: `yarn license:app-data` refreshed `ezkey_mobile/app/data/thirdPartyLicenses.json` (version + generatedAt only); rebased onto main; force-pushed head `459bd131`
+- Skipped (leave-alone): #717 Android Gradle group (HITL until #702); #779 mobile ESLint 10 and #653 Jest 30 (ecosystem gates); #767 textual pip (requirement floor jump; Monday); deferred:later-train `#498`/`#337`/`#347`
+- Validation: local Node 24 / Yarn 4 — `yarn validate` green (lint 0 errors / 4 pre-existing warnings + typecheck + jest **42 suites / 307 tests**); PR CI green (`js-validate`, `android-jvm-unit-tests`, `android-16kb-alignment`, `ci-gate`); mergeStateStatus CLEAN
+- Residual: phone smoke for #778 tracked on #627 (gates next Play AAB). Nothing deployed.
+- Monday note (structural): stale `thirdPartyLicenses.json` will fail `js-validate` on every mobile Dependabot PR that bumps a production dependency. Idea: add a Dependabot / CI companion that runs `yarn license:app-data` and commits the snapshot on the PR branch (or a workflow_dispatch bot), so light passes do not need a manual rebase each time.
+

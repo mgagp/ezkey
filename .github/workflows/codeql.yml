@@ -1,14 +1,11 @@
 # Advanced CodeQL setup for mgagp/ezkey.
 #
-# Repository CodeQL setting must remain Advanced (default setup off). Policy:
-# docs/SECURITY_POSTURE.md § Code scanning policy. Inventory:
-# docs/engineering/ci-cd-best-practices-plan.md.
+# Repository CodeQL is Advanced (default setup disabled 2026-10-14 with #805).
+# Query suite: security-extended via .github/codeql/codeql-config.yml (restores
+# coverage the former default setup had). See docs/SECURITY_POSTURE.md
+# § Code scanning policy.
 #
-# Languages: java-kotlin, javascript-typescript, python, c-cpp, actions.
-# Swift is intentionally excluded from the matrix.
-#
-# Decision: code-scanning triage 2026-10-13, approved by Marc 2026-10-13 19:40;
-# landed in #805 (main f26cbe55).
+# Decision: code-scanning triage 2026-10-13, approved by Marc 2026-10-13 19:40.
 name: CodeQL
 
 on:

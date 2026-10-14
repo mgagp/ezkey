@@ -4,9 +4,10 @@
 OpenSSF practice for a multi-ecosystem public OSS security product (Java/Spring + Maven,
 TypeScript/React Admin UI, React Native/Android, Python CLI, Docker).
 
-**Scope:** documentation and prioritization only, except where a follow-up PR explicitly lands a
-named workflow tweak (e.g. `persist-credentials` on CodeQL checkout). This file does **not**
-change repository Settings.
+**Scope:** documentation and prioritization only. This PR no longer modifies workflows —
+`persist-credentials` and the CodeQL header/`security-extended` suite live on `main` via
+[#809](https://github.com/mgagp/ezkey/pull/809) (and related). This file does **not** change
+repository Settings.
 
 **Decision (2026-10-14, PR [#808](https://github.com/mgagp/ezkey/pull/808)):** Keep a living
 inventory and phased improvement plan in this document (linked from
@@ -37,8 +38,8 @@ five language analyses uploaded on `main` at that commit.
 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) | Yes | Aggregate CI: path filter → `admin-ui` / `backend` / `mobile` / `cli-python` → **`ci-gate`**. Top-level `permissions: contents: read`. Concurrency cancel-in-progress on PRs. Job timeouts. Third-party actions SHA-pinned; version comments are usually `# vX.Y.Z`, but some are major-only (`# v7` on `setup-node` / `upload-artifact` at `ci.yml` ~L134 and ~L224). `persist-credentials: false` on checkouts in this workflow. No `pull_request_target`. |
 | [`.github/workflows/ezkey-mobile-unit-tests.yml`](../../.github/workflows/ezkey-mobile-unit-tests.yml) | Yes | Reusable: Yarn `validate:ci`, license snapshot, Android JVM unit tests, **16 KB APK alignment**. **JDK 17** for Android (LTS toolchain policy below). |
 | [`.github/workflows/maven-dependency-submission.yml`](../../.github/workflows/maven-dependency-submission.yml) | Yes | See §1.1.1. Not part of `ci-gate`. |
-| [`.github/workflows/codeql.yml`](../../.github/workflows/codeql.yml) | Yes (since #805) | Advanced CodeQL matrix: `java-kotlin`, `javascript-typescript`, `python`, `c-cpp`, `actions` (`codeql.yml` ~L37–45). **Swift intentionally excluded.** Weekly cron; SHA-pinned `codeql-action`; local LogSanitizer model pack. |
-| [`.github/codeql/codeql-config.yml`](../../.github/codeql/codeql-config.yml) | Yes | `paths-ignore: ezkey-tests/**`. |
+| [`.github/workflows/codeql.yml`](../../.github/workflows/codeql.yml) | Yes (since #805) | Advanced CodeQL matrix: `java-kotlin`, `javascript-typescript`, `python`, `c-cpp`, `actions` (`codeql.yml` ~L37–45). **Swift intentionally excluded.** Weekly cron; SHA-pinned `codeql-action`; `persist-credentials: false` on checkout; local model pack. Header documents Advanced + `security-extended` ([#809](https://github.com/mgagp/ezkey/pull/809)). |
+| [`.github/codeql/codeql-config.yml`](../../.github/codeql/codeql-config.yml) | Yes | `queries: security-extended` ([#809](https://github.com/mgagp/ezkey/pull/809)); `paths-ignore: ezkey-tests/**`. |
 | [`.github/dependabot.yml`](../../.github/dependabot.yml) | Yes | See §1.1.2. |
 | `.github/CODEOWNERS` | **No** | File absent. |
 | [`.github/pull_request_template.md`](../../.github/pull_request_template.md) | Yes | Checklist includes `ci-gate`, CodeQL alerts, threads, secrets. |
@@ -111,10 +112,9 @@ Security updates are not delayed by cooldown (Dependabot product behavior).
 
 **Already in place (good):** least-privilege default `contents: read` on CI; no
 `pull_request_target`; SHA-pinned actions; concurrency groups; timeouts; `persist-credentials: false`
-on checkouts in `ci.yml`, mobile, and Maven submission. CodeQL checkout historically omitted that
-flag (fixed in #808 (`codeql.yml`)). Aligns with OpenSSF Scorecard **Token-Permissions**,
-**Pinned-Dependencies**, and **Dangerous-Workflow**
-([checks.md](https://github.com/ossf/scorecard/blob/main/docs/checks.md)).
+on checkouts in `ci.yml`, mobile, Maven submission, and CodeQL (`codeql.yml` on `main` via #809
+lineage). Aligns with OpenSSF Scorecard **Token-Permissions**, **Pinned-Dependencies**, and
+**Dangerous-Workflow** ([checks.md](https://github.com/ossf/scorecard/blob/main/docs/checks.md)).
 
 **Quality gates in `ci-gate` today:** Spotless + Checkstyle + Maven unit tests (excl. Docker
 `ezkey-tests`); Admin UI tsc/lint/Vitest/build; mobile Yarn validate + Android JVM tests + 16 KB
@@ -159,7 +159,10 @@ alerts + dependency-review land). Record the choice in the Monday campaign note 
 | **Secret scanning** | Claimed in `SECURITY.md`; alerts API 403 | **to confirm by Marc in Settings** |
 | **Secret scanning push protection** | Claimed in `SECURITY.md`; not API-visible here | **to confirm by Marc in Settings** |
 | **Code scanning — Advanced** | #805 merged; five analyses uploaded on `main` at `f26cbe55` | **G1 done** |
-| **CodeQL open-alert baseline on `main`** | Open alert count on `main` | to be recorded after #809 restores security-extended and main is re-analyzed; the count under the default suite (2026-10-14) undercounts |
+| **CodeQL query suite** | `security-extended` restored in [#809](https://github.com/mgagp/ezkey/pull/809) (`287757ed`) | **Done** — default suite had undercounted (log-injection / sensitive-log) |
+| **CodeQL open-alert baseline on `main`** | Re-analyze under `security-extended` after #809/#810; record count in a later inventory refresh | **Pending re-count** (default-suite 2026-10-14 figure undercounts) |
+| **Alert #16 (`java/sensitive-log`)** | Fixed in [#810](https://github.com/mgagp/ezkey/pull/810) (`115dde38`) — recovery token fingerprint + LogSanitizer in `AdminOperationsRateLimitService` | **Fixed** |
+| **Alert #9 (`java/ssrf`)** | Barrier model + stored-URL revalidation in [#810](https://github.com/mgagp/ezkey/pull/810) (`AuthApiUrlValidator` / demo-device) | **Addressed** (confirm closure under `security-extended`) |
 | **Code scanning as required check / ruleset `code_scanning` rule** | Not on ruleset `7558701` | Absent (optional Phase 2) |
 | **Security advisory / SECURITY.md** | Present; public alpha honesty | Good |
 
@@ -250,7 +253,7 @@ Value: evaluator / supply-chain / operator impact (High / Med / Low).
 | G21 | Deploy environments + OIDC (no long-lived cloud secrets) | Manual Lightsail/Pages; `copilot` env empty | When automation lands: environments + OIDC | L | High *when automating deploy* | P3 / later |
 | G16 | Pin Docker base digests | Floating tags (`eclipse-temurin:25-jre-alpine`, etc.) | Digest pins + Dependabot digest updates | M | Med | **Phase 3** |
 | G25 | `pull_request_target` / over-privileged tokens | Already avoided | Keep regression watch in Scorecard / review | — | — | Maintain |
-| G26 | Query suites / PR gating polish | Default queries; weekly cron | Consider `security-extended` later; watch noise | M | Low–Med | P3 |
+| G26 | Query suites / PR gating polish | `security-extended` restored (#809) | Optional further suite tuning / required-check gating; watch noise | M | Low–Med | P3 (suite restore **done**) |
 | — | `allow_auto_merge` for Dependabot T1 | `false` today | Enable T1-only **or** record explicit “do not enable” | S | Med | P2 decision |
 
 ---
@@ -358,6 +361,8 @@ Anything not checked stays marked **unverified** in future inventory refreshes �
 | PR [#787](https://github.com/mgagp/ezkey/pull/787) | Merge-ready bar (CodeQL / threads) |
 | PR [#798](https://github.com/mgagp/ezkey/pull/798) (`638b4214`) | Dependency graph must stay enabled |
 | PR [#805](https://github.com/mgagp/ezkey/pull/805) (`f26cbe55`) | CodeQL Advanced + policy |
+| PR [#809](https://github.com/mgagp/ezkey/pull/809) (`287757ed`) | Restore CodeQL `security-extended` |
+| PR [#810](https://github.com/mgagp/ezkey/pull/810) (`115dde38`) | Alert #16 sensitive-log fix; alert #9 SSRF barrier |
 | PR [#808](https://github.com/mgagp/ezkey/pull/808) | This inventory |
 
 **Refresh rule:** when Settings or workflows change, update §1 and the gap row in the **same PR**
@@ -366,5 +371,5 @@ Anything not checked stays marked **unverified** in future inventory refreshes �
 
 ---
 
-*Inventory date: 2026-10-14 (review-applied). Docs-first inventory; this PR also touches
-`.github/workflows/codeql.yml` (`persist-credentials: false` + header refresh).*
+*Inventory date: 2026-10-14 (review-applied; refreshed after merge of #809/#810). Docs-only on
+this branch after conflict resolution — `codeql.yml` matches `main`.*

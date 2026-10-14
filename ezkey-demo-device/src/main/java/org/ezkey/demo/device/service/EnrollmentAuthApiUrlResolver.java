@@ -63,13 +63,28 @@ public final class EnrollmentAuthApiUrlResolver {
   /**
    * Resolves Auth API base for verify, pending, and respond using stored enrollment URL or config.
    *
+   * <p>Persisted {@code enrollmentUrl} is revalidated against the same host allowlist used at bind
+   * (defense in depth: a tampered or legacy store file must not send tokens off-allowlist).
+   *
    * @param record persisted enrollment, may be null during bind-only paths
    * @param configuredDefault {@code ezkey.auth.api.url}
+   * @param allowedHosts effective host allowlist (see {@link
+   *     AuthApiUrlValidator#effectiveAllowlist})
    * @return effective base URL for Auth API calls
+   * @throws InvalidAuthApiUrlException when a stored enrollment URL fails revalidation
    */
-  public static String resolveForStoredEnrollment(Record record, String configuredDefault) {
+  public static String resolveForStoredEnrollment(
+      Record record, String configuredDefault, Set<String> allowedHosts) {
     if (record != null && record.enrollmentUrl() != null && !record.enrollmentUrl().isBlank()) {
-      return record.enrollmentUrl();
+      String stored = record.enrollmentUrl();
+      if (AuthApiUrlValidator.isHostNotAllowed(stored, allowedHosts)) {
+        throw new InvalidAuthApiUrlException(AuthApiUrlValidator.HOST_NOT_ALLOWED_MESSAGE);
+      }
+      String validated = AuthApiUrlValidator.validate(stored, allowedHosts);
+      if (validated == null) {
+        throw new InvalidAuthApiUrlException(AuthApiUrlValidator.INVALID_URL_MESSAGE);
+      }
+      return validated;
     }
     return configuredDefault;
   }
