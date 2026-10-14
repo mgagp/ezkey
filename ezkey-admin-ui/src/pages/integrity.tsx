@@ -37,6 +37,7 @@ import {
   decideIntegrityOpenAction,
   defaultAutoVerifyInstantRange,
   INTEGRITY_DEFAULT_MAX_WINDOW_DAYS,
+  installIntegrityJobAfterStart,
   integrityFinishedJobScopeToDisplayRange,
   integrityReverifyDisabled,
   integrityVerifyActionDisabled,
@@ -244,7 +245,7 @@ function CheckpointTypeBadge({ type }: { type?: string }) {
   if (type === 'GAP_DECLARATION') {
     return (
       <Tooltip content={t('integrity.helpCheckpointGapDeclaration')}>
-        <Badge variant="warning">{t('integrity.checkpointTypeGap')}</Badge>
+        <Badge variant="warning">{t('integrity.checkpointTypeGapDeclaration')}</Badge>
       </Tooltip>
     );
   }
@@ -1003,7 +1004,7 @@ function IntegrityPanel({
       setFocusedGap(null);
     }
     try {
-      await startIntegrityAsyncJob({
+      const accepted = await startIntegrityAsyncJob({
         type: 'VERIFY_CHAIN_RANGE',
         from: createdAfter,
         to: createdBefore,
@@ -1014,7 +1015,18 @@ function IntegrityPanel({
         setCheckRange(displayRange);
         setVerdictDisplayRange(displayRange);
       }
-      handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+      // #788 F1: provisional RUNNING keeps the strip up if the first /current fails.
+      await installIntegrityJobAfterStart(
+        accepted,
+        {
+          type: 'VERIFY_CHAIN_RANGE',
+          from: createdAfter,
+          to: createdBefore,
+          trigger,
+        },
+        getCurrentIntegrityAsyncJob,
+        handleAsyncJobChange,
+      );
     } catch (e) {
       const resume = integrityAsyncBusyResumeLine(e);
       if (resume) {
@@ -1022,7 +1034,11 @@ function IntegrityPanel({
         if (!options?.quietBusy) {
           toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
         }
-        handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        try {
+          handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        } catch {
+          // Keep prior glance; RUNNING poll (if any) will surface inline errors.
+        }
       } else if (isIntegrityWindowOverCapError(e)) {
         // Defense in depth — button should already be disabled for known over-cap.
         return;
@@ -1050,18 +1066,32 @@ function IntegrityPanel({
     setIntegrityReport(null);
     setIntegrityReportRange(null);
     try {
-      await startIntegrityAsyncJob({
+      const accepted = await startIntegrityAsyncJob({
         type: 'VERIFY_ENTRY_HMAC_RANGE',
         from: createdAfter,
         to: createdBefore,
       });
       setIntegrityReportRange({ from: checkRange.from, to: checkRange.to });
-      handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+      await installIntegrityJobAfterStart(
+        accepted,
+        {
+          type: 'VERIFY_ENTRY_HMAC_RANGE',
+          from: createdAfter,
+          to: createdBefore,
+          trigger: 'MANUAL',
+        },
+        getCurrentIntegrityAsyncJob,
+        handleAsyncJobChange,
+      );
     } catch (e) {
       const resume = integrityAsyncBusyResumeLine(e);
       if (resume) {
         toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
-        handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        try {
+          handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        } catch {
+          // Keep prior glance.
+        }
       } else if (isIntegrityWindowOverCapError(e)) {
         // Defense in depth — button should already be disabled for known over-cap.
         return;
@@ -1088,18 +1118,32 @@ function IntegrityPanel({
     setValidationRunLoading(true);
     setValidationRunResult(null);
     try {
-      await startIntegrityAsyncJob({
+      const accepted = await startIntegrityAsyncJob({
         type: 'RUN_VALIDATION',
         from: createdAfter,
         to: createdBefore,
         raiseAlert: true,
       });
-      handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+      await installIntegrityJobAfterStart(
+        accepted,
+        {
+          type: 'RUN_VALIDATION',
+          from: createdAfter,
+          to: createdBefore,
+          trigger: 'MANUAL',
+        },
+        getCurrentIntegrityAsyncJob,
+        handleAsyncJobChange,
+      );
     } catch (e) {
       const resume = integrityAsyncBusyResumeLine(e);
       if (resume) {
         toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
-        handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        try {
+          handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        } catch {
+          // Keep prior glance.
+        }
       } else if (isIntegrityWindowOverCapError(e)) {
         return;
       } else {

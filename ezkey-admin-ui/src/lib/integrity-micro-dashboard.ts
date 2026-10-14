@@ -10,8 +10,10 @@
 import { integrityExclusiveApiParamsToDisplayRange } from '@/lib/date-range-presets';
 import {
   isIntegrityAsyncEscapeStatus,
+  type IntegrityAsyncJobAcceptedResponse,
   type IntegrityAsyncJobResponse,
   type IntegrityAsyncJobTrigger,
+  type IntegrityAsyncJobType,
   type IntegrityChainStatus,
 } from '@/lib/integrity-async-jobs';
 
@@ -45,6 +47,8 @@ export type IntegrityMicroDashboardTone =
   | 'running'
   | 'nightly-running'
   | 'did-not-complete'
+  /** SUCCEEDED with chainStatus NOT_VERIFIED (empty range / skipped) — neutral, not amber. */
+  | 'nothing-to-verify'
   | 'idle';
 
 export type IntegrityMicroDashboardSource =
@@ -238,6 +242,75 @@ export function integrityMicroDashboardSource(
 }
 
 /**
+ * Optimistic RUNNING glance after POST …/jobs accepts a start (#788 F1).
+ * Keeps the micro-dashboard mounted when the first `/current` poll fails so
+ * backoff + inline poll errors can run (same as open-with-RUNNING).
+ *
+ * @param accepted 202 body with jobId
+ * @param request type, Instant scope, and trigger used for the POST
+ * @param nowIso optional startedAt (defaults to now)
+ * @returns provisional RUNNING job for the strip
+ */
+export function buildProvisionalRunningIntegrityJob(
+  accepted: IntegrityAsyncJobAcceptedResponse,
+  request: {
+    type: IntegrityAsyncJobType;
+    from: string;
+    to: string;
+    trigger?: 'MANUAL' | 'AUTO';
+  },
+  nowIso: string = new Date().toISOString(),
+): IntegrityAsyncJobResponse {
+  return {
+    jobId: accepted.jobId,
+    type: request.type,
+    status: 'RUNNING',
+    trigger: request.trigger ?? 'MANUAL',
+    startedAt: nowIso,
+    scopeFrom: request.from,
+    scopeTo: request.to,
+    busyHolder: 'OPERATOR_JOB',
+  };
+}
+
+/**
+ * After POST accepts a job: install a provisional RUNNING glance, then try
+ * `/current`. On read failure or idle 204, keep the provisional so the strip
+ * stays up and the RUNNING poll session can backoff (#788 F1 Julie Walk).
+ *
+ * @param accepted POST …/jobs body
+ * @param request start request fields
+ * @param fetchCurrent GET …/jobs/current
+ * @param setJob glance setter
+ * @returns whether `/current` replaced the provisional
+ */
+export async function installIntegrityJobAfterStart(
+  accepted: IntegrityAsyncJobAcceptedResponse,
+  request: {
+    type: IntegrityAsyncJobType;
+    from: string;
+    to: string;
+    trigger?: 'MANUAL' | 'AUTO';
+  },
+  fetchCurrent: () => Promise<IntegrityAsyncJobResponse | null>,
+  setJob: (job: IntegrityAsyncJobResponse | null) => void,
+): Promise<'current' | 'provisional'> {
+  const provisional = buildProvisionalRunningIntegrityJob(accepted, request);
+  setJob(provisional);
+  try {
+    const current = await fetchCurrent();
+    if (current != null) {
+      setJob(current);
+      return 'current';
+    }
+    return 'provisional';
+  } catch {
+    // Keep provisional RUNNING; poll session surfaces inline errors (#788 F1).
+    return 'provisional';
+  }
+}
+
+/**
  * Converts a finished job's exclusive Instant scope to inclusive Vérifier
  * picker dates in the effective timezone (#696). Returns null while RUNNING
  * or when scope / status cannot drive the picker.
@@ -347,7 +420,8 @@ export function resolveIntegrityMicroDashboardTone(
     return fresh ? 'gaps' : 'stale';
   }
   if (status === 'NOT_VERIFIED') {
-    return fresh ? 'did-not-complete' : 'stale';
+    // Julie Walk m2: empty/skipped verify is not "non aboutie" amber — neutral glance.
+    return fresh ? 'nothing-to-verify' : 'stale';
   }
   if (status === 'OK') {
     return fresh ? 'intact' : 'stale';

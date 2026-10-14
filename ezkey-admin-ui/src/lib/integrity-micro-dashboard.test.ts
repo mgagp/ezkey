@@ -18,9 +18,11 @@ import {
   integrityRunningPollShouldHalt,
   integrityVerifyActionDisabled,
   integrityWindowDaysToHours,
+  buildProvisionalRunningIntegrityJob,
+  installIntegrityJobAfterStart,
+  integrityFinishedJobScopeToDisplayRange,
   isFreshIntegrityVerdict,
   isIntegrityChainStatusNonGreen,
-  integrityFinishedJobScopeToDisplayRange,
   isIntegrityVerdictScopeMismatch,
   pickNewerIntegrityJob,
   resolveIntegrityMicroDashboardTone,
@@ -316,6 +318,20 @@ describe('resolveIntegrityMicroDashboardTone', () => {
         now,
       ),
     ).toBe('did-not-complete');
+  });
+
+  it('maps fresh NOT_VERIFIED to nothing-to-verify (not amber non-aboutie) — Julie m2', () => {
+    expect(
+      resolveIntegrityMicroDashboardTone(
+        job({
+          status: 'SUCCEEDED',
+          chainStatus: 'NOT_VERIFIED',
+          finishedAt: new Date(now - 1000).toISOString(),
+          totalCheckpoints: 0,
+        }),
+        now,
+      ),
+    ).toBe('nothing-to-verify');
   });
 });
 
@@ -675,6 +691,82 @@ describe('startIntegrityRunningPollSession', () => {
     const callsAtHalt = fetchCurrent.mock.calls.length;
     await vi.advanceTimersByTimeAsync(60_000);
     expect(fetchCurrent.mock.calls.length).toBe(callsAtHalt);
+    vi.useRealTimers();
+  });
+
+  it('open fails, POST ok, first poll fails, recovers (#788 F1 Julie Walk)', async () => {
+    // After fail-open AUTO POST, first GET /current throws — provisional RUNNING
+    // stays so the strip does not disappear; poll session backoffs then recovers.
+    vi.useFakeTimers();
+    const accepted = { jobId: '22222222-2222-2222-2222-222222222222' };
+    const request = {
+      type: 'VERIFY_CHAIN_RANGE' as const,
+      from: '2026-10-13T00:00:00.000Z',
+      to: '2026-10-14T00:00:00.000Z',
+      trigger: 'AUTO' as const,
+    };
+    const glanceBox: { current: IntegrityAsyncJobResponse | null } = { current: null };
+    const setJob = (next: IntegrityAsyncJobResponse | null) => {
+      glanceBox.current = next;
+    };
+
+    const outcome = await installIntegrityJobAfterStart(
+      accepted,
+      request,
+      async () => {
+        throw new Error('GET /current failed');
+      },
+      setJob,
+    );
+    expect(outcome).toBe('provisional');
+    expect(glanceBox.current?.status).toBe('RUNNING');
+    expect(glanceBox.current?.jobId).toBe(accepted.jobId);
+    expect(buildProvisionalRunningIntegrityJob(accepted, request).status).toBe('RUNNING');
+
+    let attempts = 0;
+    const recovered = job({
+      jobId: accepted.jobId,
+      status: 'SUCCEEDED',
+      chainStatus: 'OK',
+      finishedAt: '2026-10-14T00:01:00.000Z',
+      scopeFrom: request.from,
+      scopeTo: request.to,
+    });
+    const onJob = vi.fn((next: IntegrityAsyncJobResponse | null) => {
+      glanceBox.current = next;
+    });
+    const onPollError = vi.fn();
+    const onPollRecovered = vi.fn();
+
+    startIntegrityRunningPollSession({
+      fetchCurrent: async () => {
+        attempts += 1;
+        if (attempts === 1) {
+          throw new Error('first poll after POST');
+        }
+        return recovered;
+      },
+      onJob,
+      onPollError,
+      onPollRecovered,
+      intervalMs: 3000,
+      maxErrors: 5,
+      env: {
+        isDocumentHidden: () => false,
+        addVisibilityListener: () => () => undefined,
+      },
+    });
+
+    await Promise.resolve();
+    expect(onPollError).toHaveBeenLastCalledWith('transient', 1);
+    expect(glanceBox.current?.status).toBe('RUNNING');
+
+    await vi.advanceTimersByTimeAsync(6000);
+    await Promise.resolve();
+    expect(onPollRecovered).toHaveBeenCalled();
+    expect(onJob).toHaveBeenCalledWith(recovered);
+    expect(glanceBox.current?.status).toBe('SUCCEEDED');
+    expect(glanceBox.current?.chainStatus).toBe('OK');
     vi.useRealTimers();
   });
 

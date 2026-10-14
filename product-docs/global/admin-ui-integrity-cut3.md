@@ -367,7 +367,10 @@ Repo-as-memory for Patrick CHANGES + Christophe minors (PR 2 micro-dashboard):
 
 ### Lot B closeout (Admin UI Integrity — #788 / #693 / #695 / #696)
 
-- **#788 closed by Lot B** — open/poll error contract already shipped with cut-3 PR 2 (#786); Lot B formally closes the issue (no further UI change). Reason: craft bullets above are the owning contract; Vitest covers fail-open open, poll backoff/halt, Re-verify while `chainLoading`.
+- **#788 closed by Lot B** — open/poll error contract already shipped with cut-3 PR 2 (#786); Lot B formally closes the issue. Reason: craft bullets above are the owning contract; Vitest covers fail-open open, poll backoff/halt, Re-verify while `chainLoading`.
+- **#788 F1 (Julie Walk NO-GO)** — after fail-open AUTO POST, install a provisional RUNNING glance before `/current`; if the first poll fails, keep the strip + inline poll error with backoff (same as open-with-RUNNING). Never toast raw server text that clears the dashboard. Vitest: open fails, POST ok, first poll fails, recovers.
+- **Julie Walk m1** — GAP_DECLARATION badge copy is « Lacune déclarée » / « Declared gap » (`checkpointTypeGapDeclaration`); undeclared orange row keeps « Lacune : » / « Gap : » so the two do not clash.
+- **Julie Walk m2** — SUCCEEDED + `chainStatus=NOT_VERIFIED` (nothing to verify) uses tone `nothing-to-verify` (neutral), not amber « non aboutie ».
 - **#693 deep-link TZ** — `initialCheckRange` uses `integrityExclusiveApiParamsToDisplayRange` + `effectiveTimeZoneId` (not browser-local Instant→date). Reason: exclusive `createdBefore` otherwise shows +1 day. Deep-link wins over job→picker sync when both apply.
 - **#695 type-filter phantom gap** — when `cpType` is set, timeline skips inventing orange undeclared-gap rows between filtered neighbors. Reason: REGULARs that fill the span are hidden by the API filter; real gaps still show unfiltered. No backend change.
 - **#696 picker after reload** — finished job scope → picker via `integrityFinishedJobScopeToDisplayRange` (same exclusive→inclusive helper). Reason: Verify must re-check the range on screen, not a silent “Last 7 days” default.

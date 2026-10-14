@@ -65,6 +65,8 @@ function tileToneClasses(tone: IntegrityMicroDashboardTone): string {
       return 'border-fg/30 bg-fg/[0.04] text-fg';
     case 'did-not-complete':
       return 'border-warning/40 bg-warning/5 text-fg';
+    case 'nothing-to-verify':
+      return 'border-fg/20 bg-fg/[0.02] text-fg-muted';
     default:
       return 'border-fg/15 bg-transparent text-fg-muted';
   }
@@ -94,6 +96,8 @@ function VerdictIcon({
       return <Loader2 className={cn(className, 'animate-spin')} aria-hidden />;
     case 'did-not-complete':
       return <ShieldQuestion className={cn(className, 'text-warning')} aria-hidden />;
+    case 'nothing-to-verify':
+      return <CheckCircle2 className={cn(className, 'text-fg-muted')} aria-hidden />;
     default:
       return <ShieldQuestion className={cn(className, 'text-fg-muted')} aria-hidden />;
   }
@@ -245,6 +249,8 @@ export function IntegrityMicroDashboard({
         return t('integrity.microDashboard.verdict.nightlyRunning');
       case 'did-not-complete':
         return t('integrity.microDashboard.verdict.didNotComplete');
+      case 'nothing-to-verify':
+        return t('integrity.microDashboard.verdict.nothingToVerify');
       default:
         return t('integrity.microDashboard.verdict.idle');
     }
@@ -255,6 +261,7 @@ export function IntegrityMicroDashboard({
     || tone === 'gaps'
     || tone === 'violation'
     || tone === 'did-not-complete'
+    || tone === 'nothing-to-verify'
       ? t('integrity.microDashboard.ariaResultAvailable', { verdict: verdictLabel })
       : undefined;
 
