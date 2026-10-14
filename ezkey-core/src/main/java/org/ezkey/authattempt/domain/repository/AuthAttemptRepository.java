@@ -185,6 +185,24 @@ public interface AuthAttemptRepository
       @Param("newStatus") AuthAttemptStatus newStatus);
 
   /**
+   * Atomically marks an auth attempt {@code EXPIRED} only when it is still {@code PENDING} or
+   * {@code READ}. Wins the cancel/approve race without a read-modify-write gap (#833 m1).
+   *
+   * @param authAttemptId attempt primary key
+   * @param statuses typically PENDING and READ
+   * @param expired target status (EXPIRED)
+   * @return 1 if cancelled, 0 if already final or missing
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "UPDATE AuthAttempt a SET a.authAttemptStatus = :expired WHERE a.authAttemptId = :id AND"
+          + " a.authAttemptStatus IN :statuses")
+  int expireIfPendingOrRead(
+      @Param("id") Integer authAttemptId,
+      @Param("statuses") List<AuthAttemptStatus> statuses,
+      @Param("expired") AuthAttemptStatus expired);
+
+  /**
    * Finds all authorization attempts for a given enrollment ID.
    *
    * <p>This method returns all authorization attempts associated with the specified enrollment,

@@ -662,8 +662,9 @@ public class AdminAuthService {
    * Cancels a pending passwordless login attempt using the waiter secret issued at login.
    *
    * <p>Marks the attempt {@code EXPIRED} so any in-flight {@code passwordless-wait} unblocks and an
-   * immediate retry is not blocked by a dangling PENDING attempt (#831). Idempotent when the
-   * attempt is already in a final state.
+   * immediate retry is not blocked by a dangling PENDING attempt (#831). Uses a conditional {@code
+   * UPDATE … WHERE status IN (PENDING, READ)} so a concurrent approve/deny wins cleanly (#833 m1).
+   * Idempotent when the attempt is already in a final state.
    *
    * @param authAttemptId the authentication attempt ID from the login response
    * @param waiterSecret the one-time waiter secret capability received at login
@@ -676,6 +677,7 @@ public class AdminAuthService {
       logger.info(
           "Passwordless auth attempt {} cancelled via waiter-secret cancel (#831)", authAttemptId);
     } catch (AuthAttemptStateConflictException ex) {
+      // Approve/deny won the race, or the attempt was already final — both are success for cancel.
       logger.info(
           "Passwordless auth attempt {} already final; cancel treated as success", authAttemptId);
     }

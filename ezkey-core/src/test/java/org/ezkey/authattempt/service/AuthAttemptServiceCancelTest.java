@@ -13,10 +13,13 @@ package org.ezkey.authattempt.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
@@ -66,51 +69,56 @@ class AuthAttemptServiceCancelTest {
   }
 
   @Test
-  @DisplayName("Should cancel PENDING authentication attempt")
+  @DisplayName("Should cancel PENDING authentication attempt via conditional UPDATE")
   void shouldCancelPendingAuthAttempt() {
-    // Arrange
     Integer authAttemptId = 123;
-    AuthAttempt authAttempt = createAuthAttempt(authAttemptId, AuthAttemptStatus.PENDING);
+    AuthAttempt authAttempt = createAuthAttempt(authAttemptId, AuthAttemptStatus.EXPIRED);
+    when(authAttemptRepository.expireIfPendingOrRead(
+            eq(authAttemptId),
+            eq(List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ)),
+            eq(AuthAttemptStatus.EXPIRED)))
+        .thenReturn(1);
     when(authAttemptRepository.findById(authAttemptId)).thenReturn(Optional.of(authAttempt));
-    when(authAttemptRepository.save(any(AuthAttempt.class)))
-        .thenAnswer(invocation -> invocation.getArgument(0));
 
-    // Act
     AuthAttempt result = authAttemptService.cancel(authAttemptId);
 
-    // Assert
     assertThat(result.getAuthAttemptStatus()).isEqualTo(AuthAttemptStatus.EXPIRED);
-    verify(authAttemptRepository).findById(authAttemptId);
-    verify(authAttemptRepository).save(authAttempt);
+    verify(authAttemptRepository)
+        .expireIfPendingOrRead(
+            authAttemptId,
+            List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ),
+            AuthAttemptStatus.EXPIRED);
+    verify(authAttemptRepository, never()).save(any());
   }
 
   @Test
-  @DisplayName("Should cancel READ authentication attempt")
+  @DisplayName("Should cancel READ authentication attempt via conditional UPDATE")
   void shouldCancelReadAuthAttempt() {
-    // Arrange
     Integer authAttemptId = 123;
-    AuthAttempt authAttempt = createAuthAttempt(authAttemptId, AuthAttemptStatus.READ);
+    AuthAttempt authAttempt = createAuthAttempt(authAttemptId, AuthAttemptStatus.EXPIRED);
+    when(authAttemptRepository.expireIfPendingOrRead(
+            eq(authAttemptId),
+            eq(List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ)),
+            eq(AuthAttemptStatus.EXPIRED)))
+        .thenReturn(1);
     when(authAttemptRepository.findById(authAttemptId)).thenReturn(Optional.of(authAttempt));
-    when(authAttemptRepository.save(any(AuthAttempt.class)))
-        .thenAnswer(invocation -> invocation.getArgument(0));
 
-    // Act
     AuthAttempt result = authAttemptService.cancel(authAttemptId);
 
-    // Assert
     assertThat(result.getAuthAttemptStatus()).isEqualTo(AuthAttemptStatus.EXPIRED);
-    verify(authAttemptRepository).findById(authAttemptId);
-    verify(authAttemptRepository).save(authAttempt);
   }
 
   @Test
-  @DisplayName("Should throw exception when auth attempt not found")
+  @DisplayName("Should throw when auth attempt not found (conditional UPDATE matched 0 rows)")
   void shouldThrowExceptionWhenNotFound() {
-    // Arrange
     Integer authAttemptId = 999;
+    when(authAttemptRepository.expireIfPendingOrRead(
+            eq(authAttemptId),
+            eq(List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ)),
+            eq(AuthAttemptStatus.EXPIRED)))
+        .thenReturn(0);
     when(authAttemptRepository.findById(authAttemptId)).thenReturn(Optional.empty());
 
-    // Act & Assert
     assertThatThrownBy(() -> authAttemptService.cancel(authAttemptId))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessageContaining("Authentication attempt")
@@ -118,14 +126,17 @@ class AuthAttemptServiceCancelTest {
   }
 
   @Test
-  @DisplayName("Should throw exception when attempting to cancel ACCEPTED attempt")
-  void shouldThrowExceptionWhenCancellingAcceptedAttempt() {
-    // Arrange
+  @DisplayName("Approve race: conditional UPDATE 0 rows + ACCEPTED → state conflict (#833 m1)")
+  void shouldThrowWhenApproveWonRace() {
     Integer authAttemptId = 123;
     AuthAttempt authAttempt = createAuthAttempt(authAttemptId, AuthAttemptStatus.ACCEPTED);
+    when(authAttemptRepository.expireIfPendingOrRead(
+            eq(authAttemptId),
+            eq(List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ)),
+            eq(AuthAttemptStatus.EXPIRED)))
+        .thenReturn(0);
     when(authAttemptRepository.findById(authAttemptId)).thenReturn(Optional.of(authAttempt));
 
-    // Act & Assert
     assertThatThrownBy(() -> authAttemptService.cancel(authAttemptId))
         .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessageContaining("Cannot cancel")
@@ -135,45 +146,51 @@ class AuthAttemptServiceCancelTest {
   @Test
   @DisplayName("Should throw exception when attempting to cancel REJECTED attempt")
   void shouldThrowExceptionWhenCancellingRejectedAttempt() {
-    // Arrange
     Integer authAttemptId = 123;
     AuthAttempt authAttempt = createAuthAttempt(authAttemptId, AuthAttemptStatus.REJECTED);
+    when(authAttemptRepository.expireIfPendingOrRead(
+            eq(authAttemptId),
+            eq(List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ)),
+            eq(AuthAttemptStatus.EXPIRED)))
+        .thenReturn(0);
     when(authAttemptRepository.findById(authAttemptId)).thenReturn(Optional.of(authAttempt));
 
-    // Act & Assert
     assertThatThrownBy(() -> authAttemptService.cancel(authAttemptId))
         .isInstanceOf(AuthAttemptStateConflictException.class)
-        .hasMessageContaining("Cannot cancel")
         .hasMessageContaining("REJECTED");
   }
 
   @Test
   @DisplayName("Should throw exception when attempting to cancel INVALID attempt")
   void shouldThrowExceptionWhenCancellingInvalidAttempt() {
-    // Arrange
     Integer authAttemptId = 123;
     AuthAttempt authAttempt = createAuthAttempt(authAttemptId, AuthAttemptStatus.INVALID);
+    when(authAttemptRepository.expireIfPendingOrRead(
+            eq(authAttemptId),
+            eq(List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ)),
+            eq(AuthAttemptStatus.EXPIRED)))
+        .thenReturn(0);
     when(authAttemptRepository.findById(authAttemptId)).thenReturn(Optional.of(authAttempt));
 
-    // Act & Assert
     assertThatThrownBy(() -> authAttemptService.cancel(authAttemptId))
         .isInstanceOf(AuthAttemptStateConflictException.class)
-        .hasMessageContaining("Cannot cancel")
         .hasMessageContaining("INVALID");
   }
 
   @Test
   @DisplayName("Should throw exception when attempting to cancel EXPIRED attempt")
   void shouldThrowExceptionWhenCancellingExpiredAttempt() {
-    // Arrange
     Integer authAttemptId = 123;
     AuthAttempt authAttempt = createAuthAttempt(authAttemptId, AuthAttemptStatus.EXPIRED);
+    when(authAttemptRepository.expireIfPendingOrRead(
+            eq(authAttemptId),
+            eq(List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ)),
+            eq(AuthAttemptStatus.EXPIRED)))
+        .thenReturn(0);
     when(authAttemptRepository.findById(authAttemptId)).thenReturn(Optional.of(authAttempt));
 
-    // Act & Assert
     assertThatThrownBy(() -> authAttemptService.cancel(authAttemptId))
         .isInstanceOf(AuthAttemptStateConflictException.class)
-        .hasMessageContaining("Cannot cancel")
         .hasMessageContaining("EXPIRED");
   }
 
