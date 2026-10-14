@@ -17,8 +17,20 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, join, relative } from 'node:path';
 
 const COOKIE_PROP = 'server.servlet.session.cookie.name';
-const DEFAULT_COOKIE = 'JSESSIONID';
+/** Spring default and the __Host- form of the same name (#807 Christophe nit). */
+const DEFAULT_COOKIE_NAMES = new Set(['JSESSIONID', '__HOST-JSESSIONID']);
 const WEBMVC_ARTIFACT = 'spring-boot-starter-webmvc';
+
+/**
+ * @param {string} cookieName
+ * @returns {boolean}
+ */
+export function isDefaultServletSessionCookieName(cookieName) {
+  if (cookieName == null || cookieName.length === 0) {
+    return false;
+  }
+  return DEFAULT_COOKIE_NAMES.has(cookieName.toUpperCase());
+}
 
 /**
  * @param {string} repoRoot absolute repo root
@@ -110,11 +122,11 @@ export function assertDistinctServletSessionCookieNames(repoRoot) {
     const seen = new Map();
     const label = activation === '' ? 'default' : `profile=${activation}`;
     for (const [moduleRel, decl] of moduleMap) {
-      if (decl.cookieName.toUpperCase() === DEFAULT_COOKIE) {
+      if (isDefaultServletSessionCookieName(decl.cookieName)) {
         errors.push(
           `${decl.propertiesPath} (${label}, module ${moduleRel}): ` +
-            `${COOKIE_PROP}=${decl.cookieName} is the Spring default; ` +
-            `set a distinct EZKEY_* name (#799)`,
+            `${COOKIE_PROP}=${decl.cookieName} is the Spring default ` +
+            `(JSESSIONID / __Host-JSESSIONID); set a distinct EZKEY_* name (#799)`,
         );
       }
       const prior = seen.get(decl.cookieName);
@@ -226,6 +238,7 @@ export function readPropertyLastWins(filePath, key) {
 
 /**
  * Join Java Properties line continuations (odd number of trailing backslashes).
+ * Leading whitespace on continuation lines is discarded (Java Properties spec).
  *
  * @param {string[]} lines
  * @returns {string[]}
@@ -233,15 +246,19 @@ export function readPropertyLastWins(filePath, key) {
 export function joinContinuedLines(lines) {
   const out = [];
   let buf = '';
-  for (const line of lines) {
+  let continuing = false;
+  for (const raw of lines) {
+    const line = continuing ? raw.replace(/^[ \t\f]+/, '') : raw;
     const trailing = countTrailingBackslashes(line);
     if (trailing % 2 === 1) {
       buf += line.slice(0, -1);
+      continuing = true;
       continue;
     }
     buf += line;
     out.push(buf);
     buf = '';
+    continuing = false;
   }
   if (buf.length > 0) {
     out.push(buf);

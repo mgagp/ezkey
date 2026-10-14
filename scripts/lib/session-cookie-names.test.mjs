@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import {
   assertDistinctServletSessionCookieNames,
   collectServletSessionCookieNames,
+  isDefaultServletSessionCookieName,
   joinContinuedLines,
   parsePropertyLine,
   readPropertyLastWins,
@@ -30,7 +31,7 @@ describe('servlet session cookie names (#799)', () => {
     const names = result.rows.map((r) => r.cookieName);
     assert.equal(new Set(names).size, names.length);
     for (const name of names) {
-      assert.notEqual(name.toUpperCase(), 'JSESSIONID');
+      assert.equal(isDefaultServletSessionCookieName(name), false);
       assert.match(name, /^EZKEY_[A-Z0-9_]+SESSION$/);
     }
   });
@@ -115,6 +116,27 @@ describe('property line parsing (#807)', () => {
     );
     assert.equal(readPropertyLastWins(file, 'other.key'), 'prefix:suffix');
   });
+
+  it('strips leading whitespace on continuation lines like Java (#807 nit)', () => {
+    assert.deepEqual(
+      joinContinuedLines(['server.servlet.session.cookie.name=EZKEY_\\', '   A_SESSION']),
+      ['server.servlet.session.cookie.name=EZKEY_A_SESSION'],
+    );
+    const file = join(FIXTURES, 'parse-continuation-ws', 'application.properties');
+    assert.equal(
+      readPropertyLastWins(file, 'server.servlet.session.cookie.name'),
+      'EZKEY_A_SESSION',
+    );
+  });
+
+  it('treats JSESSIONID and __Host-JSESSIONID as defaults (#807 nit)', () => {
+    assert.equal(isDefaultServletSessionCookieName('JSESSIONID'), true);
+    assert.equal(isDefaultServletSessionCookieName('jsessionid'), true);
+    assert.equal(isDefaultServletSessionCookieName('__Host-JSESSIONID'), true);
+    assert.equal(isDefaultServletSessionCookieName('__host-jsessionid'), true);
+    assert.equal(isDefaultServletSessionCookieName('__Host-EZKEY_A_SESSION'), false);
+    assert.equal(isDefaultServletSessionCookieName('EZKEY_A_SESSION'), false);
+  });
 });
 
 describe('RED fixtures (#807)', () => {
@@ -129,6 +151,14 @@ describe('RED fixtures (#807)', () => {
     const result = assertDistinctServletSessionCookieNames(join(FIXTURES, 'red-jsessionid'));
     assert.equal(result.ok, false);
     assert.match(result.errors.join('\n'), /JSESSIONID/);
+  });
+
+  it('fails when cookie name is __Host-JSESSIONID', () => {
+    const result = assertDistinctServletSessionCookieNames(
+      join(FIXTURES, 'red-host-jsessionid'),
+    );
+    assert.equal(result.ok, false);
+    assert.match(result.errors.join('\n'), /__Host-JSESSIONID/i);
   });
 
   it('fails when two modules share a cookie name', () => {
