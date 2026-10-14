@@ -501,9 +501,11 @@ with config [`.github/codeql/codeql-config.yml`](../.github/codeql/codeql-config
 [`.github/codeql/extensions/ezkey-java-models/`](../.github/codeql/extensions/ezkey-java-models/)
 (`ezkey/java-models`) declares `LogSanitizer.sanitizeForLog` as a `log-injection` barrier; advanced
 setup does **not** auto-detect that directory — the java-kotlin analyze step loads it via
-`CODEQL_ACTION_EXTRA_OPTIONS` (`--additional-packs` + `--extension-packs=ezkey/java-models`). Confirm
-that pack name appears in the analyze `run-queries` log. The repository CodeQL setting must be
-**Advanced** (default setup disabled) or the workflow conflicts with GitHub's default setup.
+`CODEQL_ACTION_EXTRA_OPTIONS` (`--additional-packs` + `--extension-packs=ezkey/java-models`). Proven on
+PR #805 (Actions run [`38488035924`](https://github.com/mgagp/ezkey/actions/runs/38488035924)
+java-kotlin analyze: `run-queries` includes `--extension-packs=ezkey/java-models`). The repository
+CodeQL setting must be **Advanced** (default setup disabled) or the workflow conflicts with GitHub's
+default setup.
 Policy and SLAs: [`SECURITY_POSTURE.md`](SECURITY_POSTURE.md) § Code scanning policy. Triage notes:
 [`../product-docs/global/hygiene/code-scanning/`](../product-docs/global/hygiene/code-scanning/).
 
