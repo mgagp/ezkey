@@ -79,8 +79,7 @@ class EnrollmentAuthApiUrlResolverTest {
         new Record(
             1, null, "Name", LOCAL, "pk", "token", "pub", "priv", null, "Device", null, null, null,
             null, null, null, null, "NONE");
-    assertThat(
-            EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG, ALLOW))
+    assertThat(EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG, ALLOW))
         .isEqualTo(LOCAL);
   }
 
@@ -90,8 +89,7 @@ class EnrollmentAuthApiUrlResolverTest {
         new Record(
             1, null, "Name", null, "pk", "token", "pub", "priv", null, "Device", null, null, null,
             null, null, null, null, "NONE");
-    assertThat(
-            EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG, ALLOW))
+    assertThat(EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG, ALLOW))
         .isEqualTo(CONFIG);
   }
 
@@ -103,8 +101,7 @@ class EnrollmentAuthApiUrlResolverTest {
             1, null, "Name", evil, "pk", "token", "pub", "priv", null, "Device", null, null, null,
             null, null, null, null, "NONE");
     assertThatThrownBy(
-            () ->
-                EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG, ALLOW))
+            () -> EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG, ALLOW))
         .isInstanceOf(InvalidAuthApiUrlException.class)
         .hasMessage(AuthApiUrlValidator.HOST_NOT_ALLOWED_MESSAGE)
         .hasMessageNotContaining("evil.example")
@@ -135,8 +132,7 @@ class EnrollmentAuthApiUrlResolverTest {
             null,
             "NONE");
     assertThatThrownBy(
-            () ->
-                EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG, ALLOW))
+            () -> EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG, ALLOW))
         .isInstanceOf(InvalidAuthApiUrlException.class)
         .hasMessage(AuthApiUrlValidator.INVALID_URL_MESSAGE)
         .hasMessageNotContaining("attacker")

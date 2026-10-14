@@ -62,8 +62,7 @@ class AdminOperationsRateLimitServiceLoggingTest {
   @Test
   @DisplayName("recordResetEnrollment logs fingerprint only — never the raw recovery token")
   void recordResetEnrollmentDoesNotLogRawToken() {
-    String expectedFingerprint =
-        RecoveryAuditDetails.recoveryTokenFingerprint(RAW_RECOVERY_TOKEN);
+    String expectedFingerprint = RecoveryAuditDetails.recoveryTokenFingerprint(RAW_RECOVERY_TOKEN);
 
     service.recordResetEnrollment(RAW_RECOVERY_TOKEN);
 

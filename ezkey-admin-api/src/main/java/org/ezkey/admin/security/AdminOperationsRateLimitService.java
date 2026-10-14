@@ -187,8 +187,7 @@ public class AdminOperationsRateLimitService {
   public void recordCreateApiKey(String adminId) {
     // With Bucket4j, tokens are consumed during canCreateApiKey() check
     // This method is kept for API compatibility
-    logger.debug(
-        "Recorded API key creation for admin: {}", LogSanitizer.sanitizeForLog(adminId));
+    logger.debug("Recorded API key creation for admin: {}", LogSanitizer.sanitizeForLog(adminId));
   }
 
   /**
@@ -228,8 +227,7 @@ public class AdminOperationsRateLimitService {
    * @param adminId the admin identifier
    */
   public void recordRevokeApiKey(String adminId) {
-    logger.debug(
-        "Recorded API key revocation for admin: {}", LogSanitizer.sanitizeForLog(adminId));
+    logger.debug("Recorded API key revocation for admin: {}", LogSanitizer.sanitizeForLog(adminId));
   }
 
   /**
@@ -287,8 +285,7 @@ public class AdminOperationsRateLimitService {
     // With Bucket4j, tokens are consumed during canResetEnrollment() check
     // This method is kept for API compatibility — never log the raw recovery token.
     String fingerprint =
-        LogSanitizer.sanitizeForLog(
-            RecoveryAuditDetails.recoveryTokenFingerprint(tokenOrAdminId));
+        LogSanitizer.sanitizeForLog(RecoveryAuditDetails.recoveryTokenFingerprint(tokenOrAdminId));
     logger.debug("Recorded enrollment reset for recovery token fingerprint: {}", fingerprint);
   }
 
