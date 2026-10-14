@@ -72,6 +72,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     loadPendingAttempt,
     handleRespond,
     hasSubmittedServerDecision,
+    isRespondInFlight,
   } = usePendingAuth(enrollmentId, initialAttempt, {
     canGoBack: () => navigation.canGoBack(),
     goBack: () => navigation.goBack(),
@@ -79,9 +80,15 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
   });
 
   // Leave with a loaded pending attempt → Auth API deny so passwordless-wait unblocks (#831).
+  // Skip when approve/deny is already in flight (sync ref) so leave cannot send a second deny (#833 m2).
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', e => {
-      if (!attempt || isProcessing || hasSubmittedServerDecision()) {
+      if (
+        !attempt ||
+        isProcessing ||
+        hasSubmittedServerDecision() ||
+        isRespondInFlight()
+      ) {
         return;
       }
       e.preventDefault();
@@ -97,7 +104,14 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
       });
     });
     return unsubscribe;
-  }, [navigation, attempt, isProcessing, handleRespond, hasSubmittedServerDecision]);
+  }, [
+    navigation,
+    attempt,
+    isProcessing,
+    handleRespond,
+    hasSubmittedServerDecision,
+    isRespondInFlight,
+  ]);
 
   const emptyIdentity = enrollment
     ? buildEnrollmentIdentityDisplay(

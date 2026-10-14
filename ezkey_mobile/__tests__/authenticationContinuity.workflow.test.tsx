@@ -258,6 +258,89 @@ describe('authentication continuity (pending linked to respond)', () => {
     expect(pendingNavigation.goBack).toHaveBeenCalledTimes(1);
   });
 
+  it('does not send leave-deny while approve respond is in flight (#833 m2)', async () => {
+    let resolveRespond!: (value: unknown) => void;
+    mockAuthAttemptsApi.respond.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveRespond = resolve;
+        }),
+    );
+
+    const beforeRemoveHandlers: Array<(e: {preventDefault: () => void; data: {action: unknown}}) => void> =
+      [];
+    const pendingNavigation = {
+      navigate: jest.fn(),
+      goBack: jest.fn(),
+      canGoBack: jest.fn().mockReturnValue(true),
+      addListener: jest.fn((event: string, handler: (e: never) => void) => {
+        if (event === 'beforeRemove') {
+          beforeRemoveHandlers.push(handler as never);
+        }
+        return jest.fn();
+      }),
+      dispatch: jest.fn(),
+    };
+    const pendingRoute = {
+      key: 'PendingAuth-key',
+      name: 'PendingAuth' as const,
+      params: {enrollmentId, initialAttempt: pendingAttempt},
+    };
+
+    let pendingTree: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      pendingTree = renderer.create(
+        <PendingAuthScreen
+          navigation={pendingNavigation as never}
+          route={pendingRoute as never}
+        />,
+      );
+    });
+
+    const approve = pendingTree!.root.find(
+      node => node.props.testID === 'ezkey.e2e.pendingAuth.approve',
+    );
+    // Start approve but leave respond hanging (in-flight).
+    await renderer.act(async () => {
+      void approve.props.onPress();
+    });
+    // Allow microtasks up to the hung respond() call.
+    await renderer.act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(1);
+    expect(beforeRemoveHandlers.length).toBeGreaterThan(0);
+
+    const preventDefault = jest.fn();
+    await renderer.act(async () => {
+      beforeRemoveHandlers[0]!({
+        preventDefault,
+        data: {action: {type: 'GO_BACK'}},
+      });
+      await Promise.resolve();
+    });
+
+    // Leave must not start a second respond(false) while approve is in flight.
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(1);
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledWith(
+      expect.objectContaining({authAttemptAccepted: true, authAttemptId: '42'}),
+      'https://auth.example.com',
+    );
+
+    await renderer.act(async () => {
+      resolveRespond({
+        authAttemptId: 42,
+        authAttemptResult: 'APPROVED',
+        authAttemptMessage: 'Approved',
+        authAttemptProofTokenResultSignedByIntegration: 'respond-result-sig',
+      });
+      await Promise.resolve();
+    });
+  });
+
   it('does not record a trusted outcome when the respond-result signature is invalid', async () => {
     mockCryptoService.verify.mockResolvedValue(false);
     const pendingNavigation = {

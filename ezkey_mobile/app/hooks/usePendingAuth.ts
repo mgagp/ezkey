@@ -357,21 +357,32 @@ export function usePendingAuth(
   // -------------------------------------------------------------------------
 
   const serverDecisionSentRef = useRef(false);
+  /** Sync guard: set before any await so leave-as-deny cannot race an in-flight approve (#833 m2). */
+  const respondInFlightRef = useRef(false);
 
   const hasSubmittedServerDecision = useCallback(
     () => serverDecisionSentRef.current,
     [],
   );
 
+  const isRespondInFlight = useCallback(() => respondInFlightRef.current, []);
+
   const handleRespond = useCallback(
     async (accepted: boolean) => {
-      if (!enrollment || !attempt || isProcessing || serverDecisionSentRef.current) {
+      if (
+        !enrollment ||
+        !attempt ||
+        isProcessing ||
+        serverDecisionSentRef.current ||
+        respondInFlightRef.current
+      ) {
         tracePendingAuthRespond('handleRespond_skipped_preconditions', {
           accepted,
           hasEnrollment: Boolean(enrollment),
           hasAttempt: Boolean(attempt),
           isProcessing,
           alreadySubmitted: serverDecisionSentRef.current,
+          respondInFlight: respondInFlightRef.current,
         });
         return;
       }
@@ -388,6 +399,8 @@ export function usePendingAuth(
         setFormError(t('pendingAuth.enterChallenge'));
         return;
       }
+      // Synchronous before any await — leave/beforeRemove must see this immediately.
+      respondInFlightRef.current = true;
       setIsProcessing(true);
       setGlobalError(undefined);
       setFormError(undefined);
@@ -490,6 +503,7 @@ export function usePendingAuth(
         });
         setGlobalError(msg);
       } finally {
+        respondInFlightRef.current = false;
         setIsProcessing(false);
         tracePendingAuthRespond('handleRespond_finally');
       }
@@ -553,5 +567,6 @@ export function usePendingAuth(
     loadPendingAttempt,
     handleRespond,
     hasSubmittedServerDecision,
+    isRespondInFlight,
   };
 }
