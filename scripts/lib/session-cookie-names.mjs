@@ -1,11 +1,15 @@
 /**
- * Cross-cutting guard for distinct localhost servlet session cookie names (#799 / #800).
+ * Cross-cutting guard for distinct localhost servlet session cookie names (#799 / #800 / #807).
  *
  * Discovers Spring Boot modules that depend on spring-boot-starter-webmvc and asserts each
  * sets a non-default, unique server.servlet.session.cookie.name in its canonical properties.
  *
- * Canonical file: {module}/config/application.properties when present (API modules ship
- * external config/), else {module}/src/main/resources/application.properties (demos in JAR).
+ * Canonical directory: {module}/config/ when application.properties is present (API modules),
+ * else {module}/src/main/resources/ (demos in JAR). Within that directory the guard reads
+ * application.properties then application-*.properties (sorted), last assignment wins — same
+ * direction as Spring Boot for a single file and for profile overlays (#807).
+ *
+ * Separators: `key=value`, `key = value`, and `key: value` (optional spaces) are accepted.
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -22,17 +26,17 @@ export function collectServletSessionCookieNames(repoRoot) {
   const modules = discoverWebmvcModules(repoRoot);
   const rows = [];
   for (const moduleDir of modules) {
-    const propertiesPath = resolveCanonicalProperties(moduleDir);
-    if (!propertiesPath) {
+    const propertiesDir = resolveCanonicalPropertiesDir(moduleDir);
+    if (!propertiesDir) {
       throw new Error(
         `${relative(repoRoot, moduleDir)}: webmvc module has no config/application.properties ` +
           `or src/main/resources/application.properties`,
       );
     }
-    const cookieName = readProperty(propertiesPath, COOKIE_PROP);
+    const { cookieName, propertiesPath } = readCookieNameFromPropertiesDir(propertiesDir);
     if (!cookieName) {
       throw new Error(
-        `${relative(repoRoot, propertiesPath)}: missing ${COOKIE_PROP} (#799)`,
+        `${relative(repoRoot, propertiesDir)}: missing ${COOKIE_PROP} (#799)`,
       );
     }
     rows.push({
@@ -106,33 +110,92 @@ function discoverWebmvcModules(repoRoot) {
 
 /**
  * @param {string} moduleDir
- * @returns {string | null} absolute path
+ * @returns {string | null} absolute directory that holds application*.properties
  */
-function resolveCanonicalProperties(moduleDir) {
+function resolveCanonicalPropertiesDir(moduleDir) {
   const configProps = join(moduleDir, 'config', 'application.properties');
   if (existsSync(configProps)) {
-    return configProps;
+    return join(moduleDir, 'config');
   }
   const jarProps = join(moduleDir, 'src', 'main', 'resources', 'application.properties');
   if (existsSync(jarProps)) {
-    return jarProps;
+    return join(moduleDir, 'src', 'main', 'resources');
   }
   return null;
 }
 
 /**
- * @param {string} filePath
- * @param {string} key
- * @returns {string | null}
+ * Read cookie name from a properties directory. Last assignment across
+ * application.properties then sorted application-*.properties wins (#807).
+ *
+ * @param {string} propertiesDir
+ * @returns {{ cookieName: string | null, propertiesPath: string }}
  */
-function readProperty(filePath, key) {
-  const text = readFileSync(filePath, 'utf8');
-  const prefix = `${key}=`;
-  for (const line of text.split(/\r?\n/)) {
-    if (line.startsWith(prefix)) {
-      const value = line.slice(prefix.length).trim();
-      return value.length > 0 ? value : null;
+export function readCookieNameFromPropertiesDir(propertiesDir) {
+  const files = listPropertiesFiles(propertiesDir);
+  let cookieName = null;
+  let propertiesPath = join(propertiesDir, 'application.properties');
+  for (const filePath of files) {
+    const value = readPropertyLastWins(filePath, COOKIE_PROP);
+    if (value != null) {
+      cookieName = value;
+      propertiesPath = filePath;
     }
   }
-  return null;
+  return { cookieName, propertiesPath };
+}
+
+/**
+ * @param {string} propertiesDir
+ * @returns {string[]} absolute paths in Spring-ish overlay order
+ */
+function listPropertiesFiles(propertiesDir) {
+  const base = join(propertiesDir, 'application.properties');
+  const ordered = [];
+  if (existsSync(base)) {
+    ordered.push(base);
+  }
+  const profiles = readdirSync(propertiesDir)
+    .filter((name) => /^application-.+\.properties$/i.test(name))
+    .sort();
+  for (const name of profiles) {
+    ordered.push(join(propertiesDir, name));
+  }
+  return ordered;
+}
+
+/**
+ * @param {string} filePath
+ * @param {string} key
+ * @returns {string | null} last non-empty value for key, or null
+ */
+export function readPropertyLastWins(filePath, key) {
+  const text = readFileSync(filePath, 'utf8');
+  let last = null;
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (line.length === 0 || line.startsWith('#') || line.startsWith('!')) {
+      continue;
+    }
+    const parsed = parsePropertyLine(line);
+    if (parsed && parsed.key === key) {
+      const value = parsed.value.trim();
+      last = value.length > 0 ? value : null;
+    }
+  }
+  return last;
+}
+
+/**
+ * Accept `key=value`, `key = value`, and `key: value` (#807 separator hardening).
+ *
+ * @param {string} line trimmed non-comment line
+ * @returns {{ key: string, value: string } | null}
+ */
+export function parsePropertyLine(line) {
+  const match = /^([^=:\s][^=:]*?)\s*[=:]\s*(.*)$/.exec(line);
+  if (!match) {
+    return null;
+  }
+  return { key: match[1].trim(), value: match[2] };
 }
