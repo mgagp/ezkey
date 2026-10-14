@@ -497,9 +497,12 @@ yarn install --immutable && yarn validate:ci
 
 **CodeQL (advanced setup):** workflow [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml)
 with config [`.github/codeql/codeql-config.yml`](../.github/codeql/codeql-config.yml)
-(`paths-ignore: ezkey-tests/**`) and a local model pack under
-[`.github/codeql/extensions/`](../.github/codeql/extensions/) that treats
-`LogSanitizer.sanitizeForLog` as a `log-injection` barrier. The repository CodeQL setting must be
+(`paths-ignore: ezkey-tests/**`). Local model pack
+[`.github/codeql/extensions/ezkey-java-models/`](../.github/codeql/extensions/ezkey-java-models/)
+(`ezkey/java-models`) declares `LogSanitizer.sanitizeForLog` as a `log-injection` barrier; advanced
+setup does **not** auto-detect that directory — the java-kotlin analyze step loads it via
+`CODEQL_ACTION_EXTRA_OPTIONS` (`--additional-packs` + `--extension-packs=ezkey/java-models`). Confirm
+that pack name appears in the analyze `run-queries` log. The repository CodeQL setting must be
 **Advanced** (default setup disabled) or the workflow conflicts with GitHub's default setup.
 Policy and SLAs: [`SECURITY_POSTURE.md`](SECURITY_POSTURE.md) § Code scanning policy. Triage notes:
 [`../product-docs/global/hygiene/code-scanning/`](../product-docs/global/hygiene/code-scanning/).

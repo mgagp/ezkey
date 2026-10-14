@@ -5,7 +5,7 @@ Lightweight hygiene lane for **GitHub CodeQL / code-scanning** triage and config
 This folder is peripheral to product vision / ADR / backlog execution. It records per-pass SAST
 triage (fix / dismiss / defer / config) so cold sessions can see *why* an alert was acted on —
 without inventing `I-*` / `TB-*` / GitHub issues per routine item. Aligns with
-[`../../methodology/README.md`](../../methodology/README.md) § *Three rules worth keeping*
+[`../../../methodology/README.md`](../../../methodology/README.md) § *Three rules worth keeping*
 (hygiene vs program).
 
 ## Scope
