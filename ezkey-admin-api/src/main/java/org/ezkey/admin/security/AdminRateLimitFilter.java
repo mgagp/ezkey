@@ -24,6 +24,7 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
@@ -48,25 +49,30 @@ import org.springframework.http.HttpStatus;
  * <p><b>Targeted Endpoints:</b>
  *
  * <ul>
- *   <li>POST /api/v1/admin/auth/login — per client IP (login bucket)
- *   <li>POST /api/v1/admin/auth/passwordless-wait — separate bucket, keyed per authAttemptId
- *   <li>POST /api/v1/admin/auth/passwordless-cancel — same wait bucket as passwordless-wait
+ *   <li>POST /api/v1/admin/auth/login — per client IP (login bucket cache)
+ *   <li>POST /api/v1/admin/auth/passwordless-wait — wait cache: per-IP + ip+authAttemptId +
+ *       backstop
+ *   <li>POST /api/v1/admin/auth/passwordless-cancel — same wait budgets as passwordless-wait
  * </ul>
  *
- * <p><b>Rate Limiting Strategy (#831):</b>
+ * <p><b>Rate Limiting Strategy (#831 / #833 C2):</b>
  *
  * <ul>
- *   <li>Login and passwordless-wait use <em>separate</em> buckets so Cancel + retry is not charged
- *       twice against the login budget
+ *   <li>Login and passwordless-wait use <em>separate Caffeine caches</em> so rotating fake attempt
+ *       ids cannot evict {@code login:} / login-backstop buckets
+ *   <li>Wait/cancel keyed by {@code ip+authAttemptId} (not bare sequential ids) plus a per-IP
+ *       aggregate and an unkeyed wait backstop
+ *   <li>Wait/cancel JSON bodies capped at {@value #MAX_WAIT_BODY_BYTES} bytes
  *   <li>Login: greedy refill ({@code refillGreedy}) for smoother recovery after bursts
  *   <li>Retry-After: remaining nanos to refill from {@code tryConsumeAndReturnRemaining}
- *   <li>IP block after configurable consecutive failures; unkeyed per-instance login backstop
+ *   <li>IP block after configurable consecutive failures (login surface only)
  * </ul>
  *
  * <p><b>Response Behavior:</b>
  *
  * <ul>
  *   <li>HTTP 429 Too Many Requests when limit exceeded
+ *   <li>HTTP 413 Payload Too Large when wait/cancel body exceeds the cap
  *   <li>Retry-After header with seconds to wait
  *   <li>Pass-through for non-targeted endpoints
  * </ul>
@@ -94,6 +100,11 @@ public class AdminRateLimitFilter implements Filter {
   private static final Pattern AUTH_ATTEMPT_ID_PATTERN =
       Pattern.compile("\"authAttemptId\"\\s*:\\s*(\\d+)");
 
+  /** Cap for wait/cancel JSON bodies (authAttemptId + waiterSecret). */
+  static final int MAX_WAIT_BODY_BYTES = 4_096;
+
+  private static final int BUCKET_CACHE_MAX_SIZE = 1_000;
+  private static final Duration BUCKET_CACHE_TTL = Duration.ofHours(1);
   private static final int FAILURE_COUNT_CACHE_MAX_SIZE = 10_000;
   private static final Duration FAILURE_COUNT_CACHE_TTL = Duration.ofHours(1);
   private static final int BLOCKED_UNTIL_CACHE_MAX_SIZE = 10_000;
@@ -102,7 +113,13 @@ public class AdminRateLimitFilter implements Filter {
   private final AdminRateLimitProperties properties;
   private final TrustedProxyProperties trustedProxyProperties;
   private final MeterRegistry meterRegistry;
-  private final Cache<String, Bucket> bucketCache;
+
+  /** Login + login-backstop buckets only — isolated from wait-cache churn (#833 C2). */
+  private final Cache<String, Bucket> loginBucketCache;
+
+  /** Wait/cancel per-IP, ip+id, and wait-backstop buckets. */
+  private final Cache<String, Bucket> waitBucketCache;
+
   private final Cache<String, AtomicInteger> failureCountCache;
   private final Cache<String, Long> blockedUntilCache;
   private final Map<String, AtomicInteger> failureCountMap;
@@ -123,9 +140,16 @@ public class AdminRateLimitFilter implements Filter {
     this.trustedProxyProperties = trustedProxyProperties;
     this.meterRegistry = meterRegistry;
 
-    // Cache buckets for 1 hour with maximum 1000 entries
-    this.bucketCache =
-        Caffeine.newBuilder().maximumSize(1000).expireAfterAccess(Duration.ofHours(1)).build();
+    this.loginBucketCache =
+        Caffeine.newBuilder()
+            .maximumSize(BUCKET_CACHE_MAX_SIZE)
+            .expireAfterAccess(BUCKET_CACHE_TTL)
+            .build();
+    this.waitBucketCache =
+        Caffeine.newBuilder()
+            .maximumSize(BUCKET_CACHE_MAX_SIZE)
+            .expireAfterAccess(BUCKET_CACHE_TTL)
+            .build();
 
     // Track failure counts and blocked IPs with bounded eviction (SEC-003)
     this.failureCountCache =
@@ -143,11 +167,13 @@ public class AdminRateLimitFilter implements Filter {
 
     logger.info(
         "AdminRateLimitFilter initialized with login limit: {} requests per {} minutes"
-            + " (passwordless-wait: {} per {} min, separate bucket)",
+            + " (passwordless-wait: {} per {} min ip+id, {} per {} min per-IP, separate caches)",
         properties.getLogin().getRequests(),
         properties.getLogin().getWindowMinutes(),
         properties.getPasswordlessWait().getRequests(),
-        properties.getPasswordlessWait().getWindowMinutes());
+        properties.getPasswordlessWait().getWindowMinutes(),
+        properties.getPasswordlessWait().getIpRequests(),
+        properties.getPasswordlessWait().getIpWindowMinutes());
   }
 
   @Override
@@ -225,7 +251,7 @@ public class AdminRateLimitFilter implements Filter {
       return;
     }
 
-    RateLimitResult backstop = checkBackstop();
+    RateLimitResult backstop = checkLoginBackstop();
     if (!backstop.allowed) {
       logger.warn(
           "Rate-limit backstop exceeded for admin login (per-instance, unkeyed) - Retry after {}"
@@ -241,8 +267,7 @@ public class AdminRateLimitFilter implements Filter {
   }
 
   /**
-   * Applies the passwordless-wait/cancel bucket (keyed by authAttemptId when present), then
-   * forwards a replayable body.
+   * Applies per-IP, ip+id, and wait-backstop budgets, then forwards a replayable body.
    *
    * @param req HTTP request
    * @param res HTTP response
@@ -256,34 +281,68 @@ public class AdminRateLimitFilter implements Filter {
     String clientId = ClientIpResolver.resolve(req, trustedProxyProperties.getCidrs());
     String clientIdForLog = LogSanitizer.sanitizeForLog(clientId);
 
-    // Wait/cancel JSON bodies are small; cache full body so @RequestBody still works.
-    byte[] body = req.getInputStream().readAllBytes();
+    byte[] body = readBodyCapped(req.getInputStream(), MAX_WAIT_BODY_BYTES);
+    if (body == null) {
+      logger.warn(
+          "passwordless-wait/cancel body exceeds {} bytes from IP {}",
+          MAX_WAIT_BODY_BYTES,
+          clientIdForLog);
+      res.setStatus(HttpStatus.PAYLOAD_TOO_LARGE.value());
+      return;
+    }
+
     Integer authAttemptId = extractAuthAttemptId(body);
-    String waitBucketKey = passwordlessWaitBucketKey(authAttemptId, clientId);
     HttpServletRequest requestToForward = new CachedBodyHttpServletRequest(req, body);
 
-    RateLimitResult result = checkPasswordlessWaitRateLimit(waitBucketKey);
-    if (!result.allowed) {
+    RateLimitResult ipResult = checkPasswordlessWaitIpRateLimit(clientId);
+    if (!ipResult.allowed) {
+      rejectWait(res, clientIdForLog, "passwordless-wait-ip", ipResult);
+      return;
+    }
+
+    String attemptBucketKey = passwordlessWaitBucketKey(authAttemptId, clientId);
+    RateLimitResult attemptResult = checkPasswordlessWaitAttemptRateLimit(attemptBucketKey);
+    if (!attemptResult.allowed) {
+      rejectWait(res, clientIdForLog, "passwordless-wait", attemptResult);
+      return;
+    }
+
+    RateLimitResult backstop = checkPasswordlessWaitBackstop();
+    if (!backstop.allowed) {
       logger.warn(
-          "Rate limit exceeded for IP: {} path=passwordless-wait - Retry after {} seconds",
-          clientIdForLog,
-          result.retryAfterSeconds);
-
-      meterRegistry
-          .counter("rate_limit.login_blocked.total", "endpoint", "passwordless-wait")
-          .increment();
-
+          "Rate-limit backstop exceeded for passwordless-wait (per-instance, unkeyed) - Retry"
+              + " after {} seconds",
+          backstop.retryAfterSeconds);
+      meterRegistry.counter(BACKSTOP_METRIC, "endpoint", "passwordless-wait").increment();
       res.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-      res.setHeader("Retry-After", String.valueOf(result.retryAfterSeconds));
-      res.setHeader(
-          "X-Rate-Limit-Limit", String.valueOf(properties.getPasswordlessWait().getRequests()));
-      res.setHeader(
-          "X-Rate-Limit-Window",
-          String.valueOf(properties.getPasswordlessWait().getWindowMinutes()));
+      res.setHeader("Retry-After", String.valueOf(backstop.retryAfterSeconds));
       return;
     }
 
     chain.doFilter(requestToForward, res);
+  }
+
+  private void rejectWait(
+      HttpServletResponse res, String clientIdForLog, String endpoint, RateLimitResult result)
+      throws IOException {
+    logger.warn(
+        "Rate limit exceeded for IP: {} path={} - Retry after {} seconds",
+        clientIdForLog,
+        endpoint,
+        result.retryAfterSeconds);
+
+    meterRegistry.counter("rate_limit.login_blocked.total", "endpoint", endpoint).increment();
+
+    res.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+    res.setHeader("Retry-After", String.valueOf(result.retryAfterSeconds));
+    AdminRateLimitProperties.PasswordlessWaitConfig config = properties.getPasswordlessWait();
+    if ("passwordless-wait-ip".equals(endpoint)) {
+      res.setHeader("X-Rate-Limit-Limit", String.valueOf(config.getIpRequests()));
+      res.setHeader("X-Rate-Limit-Window", String.valueOf(config.getIpWindowMinutes()));
+    } else {
+      res.setHeader("X-Rate-Limit-Limit", String.valueOf(config.getRequests()));
+      res.setHeader("X-Rate-Limit-Window", String.valueOf(config.getWindowMinutes()));
+    }
   }
 
   private static boolean isLoginPath(String requestUri, String requestMethod) {
@@ -310,34 +369,51 @@ public class AdminRateLimitFilter implements Filter {
     String bucketKey = "login:" + clientId;
     AdminRateLimitProperties.LoginConfig config = properties.getLogin();
     Bucket bucket =
-        bucketCache.get(
+        loginBucketCache.get(
             bucketKey, _ -> createGreedyBucket(config.getRequests(), config.getWindowMinutes()));
     return probe(bucket);
   }
 
-  /**
-   * Checks the passwordless-wait rate limit for the given bucket key.
-   *
-   * @param bucketKey cache key ({@code passwordless-wait:attempt:{id}} or IP fallback)
-   * @return rate limit check result
-   */
-  private RateLimitResult checkPasswordlessWaitRateLimit(String bucketKey) {
+  private RateLimitResult checkPasswordlessWaitIpRateLimit(String clientId) {
+    AdminRateLimitProperties.PasswordlessWaitConfig config = properties.getPasswordlessWait();
+    String bucketKey = "passwordless-wait:ip:" + clientId;
+    Bucket bucket =
+        waitBucketCache.get(
+            bucketKey,
+            _ -> createGreedyBucket(config.getIpRequests(), config.getIpWindowMinutes()));
+    return probe(bucket);
+  }
+
+  private RateLimitResult checkPasswordlessWaitAttemptRateLimit(String bucketKey) {
     AdminRateLimitProperties.PasswordlessWaitConfig config = properties.getPasswordlessWait();
     Bucket bucket =
-        bucketCache.get(
+        waitBucketCache.get(
             bucketKey, _ -> createGreedyBucket(config.getRequests(), config.getWindowMinutes()));
     return probe(bucket);
   }
 
-  private RateLimitResult checkBackstop() {
+  private RateLimitResult checkLoginBackstop() {
     AdminRateLimitProperties.BackstopConfig backstop = properties.getBackstop();
     if (backstop == null || !backstop.isEnabled() || backstop.getLogin() == null) {
       return new RateLimitResult(true, 0);
     }
     AdminRateLimitProperties.LoginConfig config = backstop.getLogin();
     Bucket bucket =
-        bucketCache.get(
+        loginBucketCache.get(
             "backstop:login",
+            _ -> createGreedyBucket(config.getRequests(), config.getWindowMinutes()));
+    return probe(bucket);
+  }
+
+  private RateLimitResult checkPasswordlessWaitBackstop() {
+    AdminRateLimitProperties.BackstopConfig backstop = properties.getBackstop();
+    if (backstop == null || !backstop.isEnabled() || backstop.getPasswordlessWait() == null) {
+      return new RateLimitResult(true, 0);
+    }
+    AdminRateLimitProperties.PasswordlessWaitConfig config = backstop.getPasswordlessWait();
+    Bucket bucket =
+        waitBucketCache.get(
+            "backstop:passwordless-wait",
             _ -> createGreedyBucket(config.getRequests(), config.getWindowMinutes()));
     return probe(bucket);
   }
@@ -369,8 +445,8 @@ public class AdminRateLimitFilter implements Filter {
   }
 
   /**
-   * Builds the passwordless-wait bucket key. Prefer authAttemptId when present so reconnects share
-   * a per-attempt budget; fall back to client IP when the body omits the id.
+   * Builds the passwordless-wait attempt bucket key. Always includes client IP so a caller cannot
+   * debit another client's per-attempt budget with a guessed sequential id (#833 C2).
    *
    * @param authAttemptId parsed attempt id, or null
    * @param clientId resolved client IP
@@ -378,9 +454,25 @@ public class AdminRateLimitFilter implements Filter {
    */
   static String passwordlessWaitBucketKey(Integer authAttemptId, String clientId) {
     if (authAttemptId != null) {
-      return "passwordless-wait:attempt:" + authAttemptId;
+      return "passwordless-wait:ip:" + clientId + ":attempt:" + authAttemptId;
     }
-    return "passwordless-wait:ip:" + clientId;
+    return "passwordless-wait:ip:" + clientId + ":noid";
+  }
+
+  /**
+   * Reads at most {@code maxBytes} from the stream. Returns {@code null} when the body is larger.
+   *
+   * @param in request input stream
+   * @param maxBytes inclusive maximum
+   * @return body bytes, or null when oversized
+   * @throws IOException if reading fails
+   */
+  static byte[] readBodyCapped(InputStream in, int maxBytes) throws IOException {
+    byte[] buffer = in.readNBytes(maxBytes + 1);
+    if (buffer.length > maxBytes) {
+      return null;
+    }
+    return buffer;
   }
 
   /**
@@ -492,6 +584,24 @@ public class AdminRateLimitFilter implements Filter {
   void runFailureTrackingMaintenanceForTest() {
     failureCountCache.cleanUp();
     blockedUntilCache.cleanUp();
+  }
+
+  /**
+   * Estimated wait-bucket cache size for eviction tests.
+   *
+   * @return approximate entry count
+   */
+  long waitBucketCacheEstimatedSize() {
+    return waitBucketCache.estimatedSize();
+  }
+
+  /**
+   * Estimated login-bucket cache size for isolation tests.
+   *
+   * @return approximate entry count
+   */
+  long loginBucketCacheEstimatedSize() {
+    return loginBucketCache.estimatedSize();
   }
 
   /** Result of a rate limit check operation. */

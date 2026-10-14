@@ -54,11 +54,14 @@ public class AdminRateLimitProperties {
 
   /**
    * Rate limiting for passwordless-wait / passwordless-cancel (separate from login; keyed per
-   * authAttemptId when present).
+   * client IP + authAttemptId, with an additional per-IP aggregate).
    */
   private PasswordlessWaitConfig passwordlessWait = new PasswordlessWaitConfig();
 
-  /** Process-wide (no key) budget on admin login. Per-instance, not distributed (ADR-0010). */
+  /**
+   * Process-wide (no key) budgets on admin login and passwordless-wait/cancel. Per-instance, not
+   * distributed (ADR-0010).
+   */
   private BackstopConfig backstop = new BackstopConfig();
 
   /** Configuration for login endpoint rate limiting behavior. */
@@ -136,13 +139,22 @@ public class AdminRateLimitProperties {
    */
   public static class PasswordlessWaitConfig {
     /**
-     * Maximum wait/cancel requests per authAttemptId (or per IP when attempt id is absent) within
-     * the window. Default: 10 per 1 minute.
+     * Maximum wait/cancel requests per {@code clientIp + authAttemptId} (or per IP when attempt id
+     * is absent) within the window. Default: 10 per 1 minute.
      */
     private int requests = 10;
 
-    /** Time window in minutes for the wait/cancel rate limit. Default: 1 minute. */
+    /** Time window in minutes for the per-attempt (ip+id) rate limit. Default: 1 minute. */
     private int windowMinutes = 1;
+
+    /**
+     * Maximum wait/cancel requests per client IP across all attempt ids (stops rotating-id DoS).
+     * Default: 20 per 1 minute.
+     */
+    private int ipRequests = 20;
+
+    /** Window for the per-IP aggregate wait/cancel budget. Default: 1 minute. */
+    private int ipWindowMinutes = 1;
 
     public int getRequests() {
       return requests;
@@ -158,6 +170,22 @@ public class AdminRateLimitProperties {
 
     public void setWindowMinutes(int windowMinutes) {
       this.windowMinutes = windowMinutes;
+    }
+
+    public int getIpRequests() {
+      return ipRequests;
+    }
+
+    public void setIpRequests(int ipRequests) {
+      this.ipRequests = ipRequests;
+    }
+
+    public int getIpWindowMinutes() {
+      return ipWindowMinutes;
+    }
+
+    public void setIpWindowMinutes(int ipWindowMinutes) {
+      this.ipWindowMinutes = ipWindowMinutes;
     }
   }
 
@@ -195,18 +223,28 @@ public class AdminRateLimitProperties {
     this.backstop = backstop;
   }
 
-  /** Unkeyed per-process cap for IP-keyed admin login surfaces. */
+  /** Unkeyed per-process caps for IP-keyed admin auth surfaces. */
   public static class BackstopConfig {
 
-    /** When false, only the keyed login buckets apply. Default true. */
+    /** When false, only the keyed login/wait buckets apply. Default true. */
     private boolean enabled = true;
 
     /** Process-wide login budget. Default: 50 / 1 minute. */
     private LoginConfig login = defaultBackstopLogin();
 
+    /** Process-wide wait/cancel budget. Default: 100 / 1 minute. */
+    private PasswordlessWaitConfig passwordlessWait = defaultBackstopWait();
+
     private static LoginConfig defaultBackstopLogin() {
       LoginConfig config = new LoginConfig();
       config.setRequests(50);
+      config.setWindowMinutes(1);
+      return config;
+    }
+
+    private static PasswordlessWaitConfig defaultBackstopWait() {
+      PasswordlessWaitConfig config = new PasswordlessWaitConfig();
+      config.setRequests(100);
       config.setWindowMinutes(1);
       return config;
     }
@@ -225,6 +263,14 @@ public class AdminRateLimitProperties {
 
     public void setLogin(LoginConfig login) {
       this.login = login;
+    }
+
+    public PasswordlessWaitConfig getPasswordlessWait() {
+      return passwordlessWait;
+    }
+
+    public void setPasswordlessWait(PasswordlessWaitConfig passwordlessWait) {
+      this.passwordlessWait = passwordlessWait;
     }
   }
 }

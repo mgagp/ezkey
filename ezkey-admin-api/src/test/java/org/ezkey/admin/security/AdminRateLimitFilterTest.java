@@ -39,8 +39,8 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 /**
- * Unit tests for {@link AdminRateLimitFilter}: separate login / passwordless-wait buckets, greedy
- * refill Retry-After, and trusted-proxy client IP resolution (#831).
+ * Unit tests for {@link AdminRateLimitFilter}: separate login / passwordless-wait caches, ip+id
+ * keys, per-IP + wait backstop, body cap, and trusted-proxy client IP resolution (#831 / #833 C2).
  *
  * @since 2025
  */
@@ -74,7 +74,10 @@ class AdminRateLimitFilterTest {
         new AdminRateLimitProperties.PasswordlessWaitConfig();
     wait.setRequests(1);
     wait.setWindowMinutes(5);
+    wait.setIpRequests(100);
+    wait.setIpWindowMinutes(5);
     properties.setPasswordlessWait(wait);
+    properties.getBackstop().setEnabled(false);
 
     trustedProxyProperties = new TrustedProxyProperties();
     meterRegistry = new SimpleMeterRegistry();
@@ -117,8 +120,8 @@ class AdminRateLimitFilterTest {
   }
 
   @Test
-  @DisplayName("POST passwordless-wait is rate limited per authAttemptId")
-  void passwordlessWait_rateLimitedPerAuthAttemptId() throws Exception {
+  @DisplayName("POST passwordless-wait is rate limited per ip+authAttemptId")
+  void passwordlessWait_rateLimitedPerIpAndAuthAttemptId() throws Exception {
     MockHttpServletResponse response1 =
         filterWait("203.0.113.60", "{\"authAttemptId\":42,\"waiterSecret\":\"s\"}");
     assertThat(response1.getStatus()).isEqualTo(HttpStatus.OK.value());
@@ -127,6 +130,18 @@ class AdminRateLimitFilterTest {
         filterWait("203.0.113.60", "{\"authAttemptId\":42,\"waiterSecret\":\"s\"}");
     assertThat(response2.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
     assertThat(response2.getHeader("Retry-After")).isNotNull();
+  }
+
+  @Test
+  @DisplayName("Same authAttemptId from a different IP does not share the attempt bucket (#833 C2)")
+  void passwordlessWait_sameAttemptIdDifferentIp_separateBuckets() throws Exception {
+    assertThat(
+            filterWait("203.0.113.61", "{\"authAttemptId\":42,\"waiterSecret\":\"s\"}").getStatus())
+        .isEqualTo(HttpStatus.OK.value());
+    assertThat(
+            filterWait("198.51.100.61", "{\"authAttemptId\":42,\"waiterSecret\":\"s\"}")
+                .getStatus())
+        .isEqualTo(HttpStatus.OK.value());
   }
 
   @Test
@@ -146,7 +161,7 @@ class AdminRateLimitFilterTest {
   }
 
   @Test
-  @DisplayName("Different authAttemptId values do not share the passwordless-wait bucket")
+  @DisplayName("Different authAttemptId values do not share the passwordless-wait attempt bucket")
   void passwordlessWait_differentAttemptIds_separateBuckets() throws Exception {
     assertThat(
             filterWait("203.0.113.80", "{\"authAttemptId\":1,\"waiterSecret\":\"a\"}").getStatus())
@@ -154,6 +169,89 @@ class AdminRateLimitFilterTest {
     assertThat(
             filterWait("203.0.113.80", "{\"authAttemptId\":2,\"waiterSecret\":\"b\"}").getStatus())
         .isEqualTo(HttpStatus.OK.value());
+  }
+
+  @Test
+  @DisplayName("Rotating fake authAttemptIds trip the per-IP wait aggregate (#833 C2 DoS)")
+  void passwordlessWait_rotatingAttemptIds_tripPerIpBucket() throws Exception {
+    properties.getPasswordlessWait().setRequests(100);
+    properties.getPasswordlessWait().setIpRequests(2);
+    properties.getPasswordlessWait().setIpWindowMinutes(1);
+    filter = new AdminRateLimitFilter(properties, trustedProxyProperties, meterRegistry);
+
+    assertThat(
+            filterWait("203.0.113.200", "{\"authAttemptId\":1,\"waiterSecret\":\"a\"}").getStatus())
+        .isEqualTo(HttpStatus.OK.value());
+    assertThat(
+            filterWait("203.0.113.200", "{\"authAttemptId\":2,\"waiterSecret\":\"b\"}").getStatus())
+        .isEqualTo(HttpStatus.OK.value());
+    MockHttpServletResponse denied =
+        filterWait("203.0.113.200", "{\"authAttemptId\":3,\"waiterSecret\":\"c\"}");
+    assertThat(denied.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+    assertThat(denied.getHeader("X-Rate-Limit-Limit")).isEqualTo("2");
+  }
+
+  @Test
+  @DisplayName("Wait-cache churn does not evict login buckets from the login cache (#833 C2)")
+  void waitCacheChurn_doesNotEvictLoginBuckets() throws Exception {
+    properties.getLogin().setRequests(1);
+    properties.getPasswordlessWait().setRequests(1000);
+    properties.getPasswordlessWait().setIpRequests(1000);
+    filter = new AdminRateLimitFilter(properties, trustedProxyProperties, meterRegistry);
+
+    MockHttpServletRequest loginWarm = new MockHttpServletRequest("POST", LOGIN_PATH);
+    loginWarm.setRemoteAddr("203.0.113.210");
+    filter.doFilter(loginWarm, new MockHttpServletResponse(), filterChain);
+    assertThat(filter.loginBucketCacheEstimatedSize()).isGreaterThanOrEqualTo(1);
+
+    for (int i = 0; i < 1_100; i++) {
+      String ip = "198.51." + (i / 256) + "." + (i % 256);
+      filterWait(ip, "{\"authAttemptId\":" + i + ",\"waiterSecret\":\"x\"}");
+    }
+    filter.waitBucketCacheEstimatedSize(); // touch for clarity in failure dumps
+
+    MockHttpServletRequest loginAgain = new MockHttpServletRequest("POST", LOGIN_PATH);
+    loginAgain.setRemoteAddr("203.0.113.210");
+    MockHttpServletResponse denied = new MockHttpServletResponse();
+    filter.doFilter(loginAgain, denied, filterChain);
+    // Same IP login budget still intact → second login is 429 (not reset by wait-cache eviction).
+    assertThat(denied.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+  }
+
+  @Test
+  @DisplayName("Wait/cancel body larger than 4 KiB is rejected with 413")
+  void passwordlessWait_oversizedBody_payloadTooLarge() throws Exception {
+    String huge = "x".repeat(AdminRateLimitFilter.MAX_WAIT_BODY_BYTES + 1);
+    MockHttpServletResponse response =
+        filterWait("203.0.113.220", "{\"authAttemptId\":1,\"waiterSecret\":\"" + huge + "\"}");
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE.value());
+  }
+
+  @Test
+  @DisplayName("Rotating IPs on wait trip the unkeyed wait backstop (#833 C2)")
+  void rotatingIpsOnWait_tripWaitBackstop() throws Exception {
+    properties.getPasswordlessWait().setRequests(100);
+    properties.getPasswordlessWait().setIpRequests(100);
+    properties.getBackstop().setEnabled(true);
+    properties.getBackstop().getPasswordlessWait().setRequests(2);
+    properties.getBackstop().getPasswordlessWait().setWindowMinutes(1);
+    meterRegistry = new SimpleMeterRegistry();
+    filter = new AdminRateLimitFilter(properties, trustedProxyProperties, meterRegistry);
+
+    assertThat(
+            filterWait("198.51.100.1", "{\"authAttemptId\":1,\"waiterSecret\":\"a\"}").getStatus())
+        .isEqualTo(HttpStatus.OK.value());
+    assertThat(
+            filterWait("198.51.100.2", "{\"authAttemptId\":2,\"waiterSecret\":\"b\"}").getStatus())
+        .isEqualTo(HttpStatus.OK.value());
+    MockHttpServletResponse denied =
+        filterWait("198.51.100.3", "{\"authAttemptId\":3,\"waiterSecret\":\"c\"}");
+    assertThat(denied.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+    assertThat(
+            meterRegistry
+                .counter("ezkey.rate_limit.backstop.rejected", "endpoint", "passwordless-wait")
+                .count())
+        .isEqualTo(1);
   }
 
   @Test
@@ -178,7 +276,7 @@ class AdminRateLimitFilterTest {
   }
 
   @Test
-  @DisplayName("passwordless-cancel shares the passwordless-wait bucket for the same attempt id")
+  @DisplayName("passwordless-cancel shares the passwordless-wait ip+id bucket")
   void passwordlessCancel_sharesWaitBucket() throws Exception {
     assertThat(
             filterWait("203.0.113.90", "{\"authAttemptId\":7,\"waiterSecret\":\"x\"}").getStatus())
@@ -195,16 +293,16 @@ class AdminRateLimitFilterTest {
   }
 
   @Test
-  @DisplayName("extractAuthAttemptId parses JSON body without requiring full deserialization")
+  @DisplayName("extractAuthAttemptId parses JSON body; bucket key includes client IP")
   void extractAuthAttemptId_parsesBody() {
     assertThat(
             AdminRateLimitFilter.extractAuthAttemptId(
                 "{\"authAttemptId\":123,\"waiterSecret\":\"s\"}".getBytes(StandardCharsets.UTF_8)))
         .isEqualTo(123);
     assertThat(AdminRateLimitFilter.passwordlessWaitBucketKey(123, "1.2.3.4"))
-        .isEqualTo("passwordless-wait:attempt:123");
+        .isEqualTo("passwordless-wait:ip:1.2.3.4:attempt:123");
     assertThat(AdminRateLimitFilter.passwordlessWaitBucketKey(null, "1.2.3.4"))
-        .isEqualTo("passwordless-wait:ip:1.2.3.4");
+        .isEqualTo("passwordless-wait:ip:1.2.3.4:noid");
   }
 
   @Test

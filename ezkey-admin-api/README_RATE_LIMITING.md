@@ -37,11 +37,15 @@ ezkey.admin.rate-limit.login.block-after-failures=10
 ezkey.admin.rate-limit.login.block-duration-minutes=30
 ezkey.admin.rate-limit.passwordless-wait.requests=10
 ezkey.admin.rate-limit.passwordless-wait.window-minutes=1
+ezkey.admin.rate-limit.passwordless-wait.ip-requests=20
+ezkey.admin.rate-limit.passwordless-wait.ip-window-minutes=1
+ezkey.admin.rate-limit.backstop.passwordless-wait.requests=100
+ezkey.admin.rate-limit.backstop.passwordless-wait.window-minutes=1
 ```
 
 **Protected Endpoints**:
 - `POST /api/v1/admin/auth/login` (per client IP)
-- `POST /api/v1/admin/auth/passwordless-wait` / `passwordless-cancel` (per authAttemptId)
+- `POST /api/v1/admin/auth/passwordless-wait` / `passwordless-cancel` (per `ip+authAttemptId` + per-IP + wait backstop; login cache isolated)
 - `POST /api/v1/admin/auth/recover` (not in this filter — see dead `recovery.*` keys note in policy)
 
 **Features**:

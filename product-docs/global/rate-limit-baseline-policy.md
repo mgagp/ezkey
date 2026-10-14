@@ -111,9 +111,10 @@ Reference: [`AdminOperationsRateLimitService.java`](../../ezkey-admin-api/src/ma
 
 | Endpoint | Family | Key | Default (Java) | Docker profile (typical) | Notes |
 |----------|--------|-----|----------------|--------------------------|-------|
-| `POST /api/v1/admin/auth/login` | L | client IP | 15 / 1 min | 15 / 1 min | `refillGreedy`; + block after 10 failures / 30 min (#831) |
-| `POST /api/v1/admin/auth/passwordless-wait` (+ cancel) | L | authAttemptId (IP fallback) | 10 / 1 min | 10 / 1 min | **Separate** bucket from login (#831 Cancel+retry) |
-| Backstop login | L | **none** (per-instance) | 50 / 1 min | 50 / 1 min | IP-rotation residual on login only; N replicas ⇒ N× headroom |
+| `POST /api/v1/admin/auth/login` | L | client IP | 15 / 1 min | 15 / 1 min | `refillGreedy`; + block after 10 failures / 30 min (#831); **own Caffeine cache** (#833 C2) |
+| `POST /api/v1/admin/auth/passwordless-wait` (+ cancel) | L | `ip+authAttemptId` + per-IP aggregate | 10 / 1 min (ip+id); 20 / 1 min (IP) | same | Separate wait cache; body ≤ 4 KiB (#831 / #833 C2) |
+| Backstop login | L | **none** (per-instance) | 50 / 1 min | 50 / 1 min | IP-rotation residual on login; lives in login cache |
+| Backstop wait/cancel | L | **none** (per-instance) | 100 / 1 min | 100 / 1 min | Process-wide wait/cancel residual (#833 C2) |
 
 Reference: [`AdminRateLimitFilter.java`](../../ezkey-admin-api/src/main/java/org/ezkey/admin/security/AdminRateLimitFilter.java).
 
