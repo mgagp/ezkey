@@ -34,8 +34,8 @@ import org.springframework.validation.annotation.Validated;
  * <ul>
  *   <li>{@code max-window-days} (default 92) — async VERIFY starts, async {@code RUN_VALIDATION},
  *       and seal-archive pre-verification (#781).
- *   <li>{@code max-sync-window-days} (default 8) — all synchronous report paths: report GETs ({@code
- *       integrity-check}, {@code chain-integrity}) and operator {@code POST
+ *   <li>{@code max-sync-window-days} (default 8) — all synchronous report paths: report GETs
+ *       ({@code integrity-check}, {@code chain-integrity}) and operator {@code POST
  *       …/integrity-validation/run}. Preserves the #743 Instant-span floor so a sync call cannot
  *       outlive Cloudflare Free’s non-raisable 100 s origin timeout (524) while holding the busy
  *       gate.
