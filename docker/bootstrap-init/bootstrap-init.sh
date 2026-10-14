@@ -203,6 +203,10 @@ fi
 # Bind-secret redaction is owned solely by Admin API (BootstrapCredentialsBindSecretRedactor:
 # ApplicationReady + ShedLock). Do not duplicate jq del here — single implementation (M1).
 
+# Restrict modes before writing private keys / enrollment material (code-scanning Lot C 2026-10-13).
+# bootstrap-init and demo-device both run as spring:spring (UID 100), so 0600/0700 remain readable.
+umask 077
+
 # Step 6: Save device credentials
 echo ""
 echo "Step 6: Saving device credentials..."
@@ -213,21 +217,20 @@ DEVICE_CREDS_JSON=$(jq -n \
   '{enrollmentId: ($enrollmentId | tonumber), privateKey: $privateKey, publicKey: $publicKey, keySize: 256}')
 
 echo "$DEVICE_CREDS_JSON" > "$DEVICE_CREDS_FILE"
-echo "✅ Device credentials saved to $DEVICE_CREDS_FILE"
+chmod 600 "$DEVICE_CREDS_FILE"
+echo "✅ Device credentials saved to $DEVICE_CREDS_FILE (mode 0600)"
 
 # Step 7: Seed demo-device enrollment file
 echo ""
 echo "Step 7: Seeding demo-device enrollment file..."
 # Ensure directory exists with correct permissions (matching demo-device entrypoint)
-# demo-device runs as spring:spring, so we need to ensure the directory is writable
+# demo-device and bootstrap-init both run as spring:spring — owner-only dir is enough
 mkdir -p "$DEMO_DEVICE_ENROLLMENTS_DIR"
 if [ ! -d "$DEMO_DEVICE_ENROLLMENTS_DIR" ]; then
   echo "❌ Error: Failed to create demo-device enrollments directory"
   exit 1
 fi
-# Ensure directory is writable (demo-device entrypoint does chown spring:spring, but we run as root)
-# Set permissions to 755 (rwxr-xr-x) so spring user can read/write
-chmod 755 "$DEMO_DEVICE_ENROLLMENTS_DIR" 2>/dev/null || true
+chmod 700 "$DEMO_DEVICE_ENROLLMENTS_DIR" 2>/dev/null || true
 
 # Create enrollment file matching EnrollmentStoreService.Record format
 ENROLLMENT_FILE="$DEMO_DEVICE_ENROLLMENTS_DIR/${ENROLLMENT_ID}.json"
@@ -254,7 +257,8 @@ ENROLLMENT_JSON=$(jq -n \
   '{enrollmentId: ($enrollmentId | tonumber), integrationId: null, enrollmentName: $enrollmentName, enrollmentUrl: null, integrationPublicKey: $integrationPublicKey, enrollmentProofToken: $enrollmentProofToken, devicePublicKey: $devicePublicKey, devicePrivateKey: $devicePrivateKey, authAttemptChallengeRequired: false, deviceLabel: "Device", createdAt: (now | todateiso8601), integrationName: (if $integrationName == "" then null else $integrationName end), integrationDescription: (if $integrationDescription == "" then null else $integrationDescription end), integrationLogo: (if $integrationLogo == "" then null else $integrationLogo end), devicePrivateKeyStorageTier: "NONE"}')
 
 echo "$ENROLLMENT_JSON" > "$ENROLLMENT_FILE"
-echo "✅ Demo-device enrollment file created: $ENROLLMENT_FILE"
+chmod 600 "$ENROLLMENT_FILE"
+echo "✅ Demo-device enrollment file created: $ENROLLMENT_FILE (mode 0600)"
 
 # Step 8: Demo-app-acme uses userIdentifier (username) - no users mapping file
 # Ensure enrollment has user_identifier set when created (TUI/demo flow)

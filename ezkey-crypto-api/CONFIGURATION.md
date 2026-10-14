@@ -12,6 +12,7 @@ and no scheduled jobs. It reads encryption keys from files via the Docker volume
 
 | Property | Default | Obligation | Description |
 |---|---|---|---|
+| `server.servlet.session.cookie.name` | `EZKEY_CRYPTO_API_SESSION` | recommandé | Distinct from other localhost servlet apps (#799). In `config/application.properties`. |
 | `ezkey.encryption.enabled` | `true` | optionnel | Enable Tink encryption. |
 | `ezkey.encryption.master-key-file` | `/etc/ezkey/secrets/master.key` | requis [docker] | Path to the master key file. |
 | `ezkey.encryption.keyset-file` | `/etc/ezkey/keysets/keyset.json.encrypted` | requis [docker] | Path to the keyset file. |
@@ -23,6 +24,12 @@ and no scheduled jobs. It reads encryption keys from files via the Docker volume
 ---
 
 ## Properties by Functional Group
+
+### Servlet session cookie
+
+| Property | Default | Obligation | Description |
+|---|---|---|---|
+| `server.servlet.session.cookie.name` | `EZKEY_CRYPTO_API_SESSION` | recommandé | Distinct from other localhost servlet apps so browsers do not share `JSESSIONID` across ports (#799). Lives in `config/application.properties` (API external config); demos set the same key in the JAR instead. |
 
 ### Encryption at Rest (`ezkey.encryption.*`)
 

@@ -216,6 +216,9 @@ jobs:
       - name: Quality-gate secrets unit tests
         run: node --test scripts/lib/quality-gate-secrets.test.mjs
 
+      - name: Servlet session cookie name guard (#799)
+        run: node --test scripts/lib/session-cookie-names.test.mjs
+
       - name: Upload Surefire reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

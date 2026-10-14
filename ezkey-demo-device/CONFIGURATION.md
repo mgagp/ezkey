@@ -3,6 +3,14 @@
 Lab-only phone simulator (port 8083). Properties bind from JAR `application.properties` /
 `application-docker.properties` and environment variables (Spring relaxed binding).
 
+## Session cookie
+
+| Property | Default | Obligation | Description |
+|----------|---------|------------|-------------|
+| `server.servlet.session.cookie.name` | `EZKEY_DEVICE_SESSION` | recommandé | Distinct from Acme / APIs on localhost so browsers do not share one `JSESSIONID` across ports (#799). Lives in the JAR (not `config/`); API modules use external `config/` instead. |
+
+Redeploying the demo device drops any in-memory sessions that still used the previous cookie name.
+
 ## Auth API target (`ezkey.auth.api.url`)
 
 | Property | Default (local) | Default (Docker) | Obligation | Description |

@@ -258,13 +258,15 @@ describe('Christophe replay inputs', () => {
     });
   }
 
-  it('redacts passphrase / privateKey / otp / pin / JSESSIONID', () => {
+  it('redacts passphrase / privateKey / otp / pin / session cookies', () => {
     const samples = [
       ['passphrase=s3cret-phrase', 's3cret-phrase'],
       ['privateKey=MEECAQAwEwYHKoZIzj0CAQY', 'MEECAQAwEwYHKoZIzj0CAQY'],
       ['otp=123456', '123456'],
       ['pin=9876', '9876'],
       ['Cookie: JSESSIONID=ABC123session', 'ABC123session'],
+      ['Cookie: EZKEY_ACME_SESSION=acmeSessionValue99', 'acmeSessionValue99'],
+      ['Cookie: EZKEY_DEVICE_SESSION=deviceSessionValue99', 'deviceSessionValue99'],
     ];
     for (const [line, raw] of samples) {
       const r = detectSecrets(line);

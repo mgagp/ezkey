@@ -186,6 +186,7 @@ ports after the stack is up.
 - **Runs**: After all services are healthy
 - **Output**: Creates bootstrap artifacts and demo-device enrollment file
 - **Skip**: Set `EZKEY_BOOTSTRAP_INIT_ENABLED=false` when Admin API uses `recovery_primary` bootstrap (credentials file has no proof token for unattended bind).
+- **Artifact modes**: `umask 077`; `device-credentials.json` and demo-device enrollment JSON are `0600`; enrollments directory is `0700` (same `spring` UID as demo-device — code-scanning Lot C 2026-10-13).
 - **Note**: This service makes Docker stack fully self-contained (no Maven/JDK required)
 
 ## Bootstrap and Initialization
@@ -214,11 +215,13 @@ Bootstrap artifacts are stored in the `bootstrap-artifacts` Docker volume:
 # View bootstrap credentials (includes recovery codes; file mode 0600 inside the volume)
 docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/bootstrap-credentials.json
 
-# View device credentials
+# View device credentials (mode 0600; private key material)
 docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/device-credentials.json
 ```
 
 **Note**: Recovery codes are **only** in `bootstrap-credentials.json` (`0600`), never in container logs.
+`device-credentials.json` and demo-device enrollment files under the shared data volume are also
+`0600`, with the enrollments directory `0700` (owner `spring`; readable by demo-device).
 
 ## Management Commands
 
