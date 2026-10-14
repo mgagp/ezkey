@@ -112,7 +112,7 @@ Security updates are not delayed by cooldown (Dependabot product behavior).
 **Already in place (good):** least-privilege default `contents: read` on CI; no
 `pull_request_target`; SHA-pinned actions; concurrency groups; timeouts; `persist-credentials: false`
 on checkouts in `ci.yml`, mobile, and Maven submission. CodeQL checkout historically omitted that
-flag (fixed in #808 follow-up). Aligns with OpenSSF Scorecard **Token-Permissions**,
+flag (fixed in #808 (`codeql.yml`)). Aligns with OpenSSF Scorecard **Token-Permissions**,
 **Pinned-Dependencies**, and **Dangerous-Workflow**
 ([checks.md](https://github.com/ossf/scorecard/blob/main/docs/checks.md)).
 
@@ -159,7 +159,7 @@ alerts + dependency-review land). Record the choice in the Monday campaign note 
 | **Secret scanning** | Claimed in `SECURITY.md`; alerts API 403 | **to confirm by Marc in Settings** |
 | **Secret scanning push protection** | Claimed in `SECURITY.md`; not API-visible here | **to confirm by Marc in Settings** |
 | **Code scanning — Advanced** | #805 merged; five analyses uploaded on `main` at `f26cbe55` | **G1 done** |
-| **CodeQL open-alert baseline on `main`** | Placeholder for Christophe’s count | **_(Christophe to provide)_** |
+| **CodeQL open-alert baseline on `main`** | Open alert count on `main` | to be recorded after #809 restores security-extended and main is re-analyzed; the count under the default suite (2026-10-14) undercounts |
 | **Code scanning as required check / ruleset `code_scanning` rule** | Not on ruleset `7558701` | Absent (optional Phase 2) |
 | **Security advisory / SECURITY.md** | Present; public alpha honesty | Good |
 
@@ -366,6 +366,5 @@ Anything not checked stays marked **unverified** in future inventory refreshes �
 
 ---
 
-*Inventory date: 2026-10-14 (review-applied). Docs-first; CodeQL checkout `persist-credentials`
-aligned in the same PR when touched. IntegrityMicroDashboard Vitest freshness fixtures land via
-`main` (`recentIso` / #804 lineage) — required when workflows-path CI runs Admin UI.*
+*Inventory date: 2026-10-14 (review-applied). Docs-first inventory; this PR also touches
+`.github/workflows/codeql.yml` (`persist-credentials: false` + header refresh).*
