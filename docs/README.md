@@ -29,6 +29,7 @@ Installing a **host JDK** to build Java modules from a fresh clone is a differen
 - [LIFECYCLE_GOVERNANCE.md](LIFECYCLE_GOVERNANCE.md): entity hierarchy, eligibility chain, and reversible/irreversible action rules across all Ezkey domain entities.
 - [ALERTS.md](ALERTS.md): operator-facing `ezkey_alert` subsystem (raise/touch/resolve, types, Admin API).
 - [DEVELOPMENT.md](DEVELOPMENT.md): first clone on a new workstation, host JDK 25 / Maven baseline, tests, and development workflow.
+- [engineering/ci-cd-best-practices-plan.md](engineering/ci-cd-best-practices-plan.md): GitHub CI/CD and repo-settings inventory vs accepted practice, gap table, and phased plan (evaluator-facing; docs-only posture).
 - [OPERATIONAL.md](OPERATIONAL.md): deployment, operations, and production posture.
 - [VERSIONING_AND_DEPLOY_TRACEABILITY.md](VERSIONING_AND_DEPLOY_TRACEABILITY.md): public alpha claim, git-SHA identity, and live deploy ledger (no product semver until published artefacts).
 - [configuration/README.md](configuration/README.md): index for configuration properties and per-module configuration docs.
