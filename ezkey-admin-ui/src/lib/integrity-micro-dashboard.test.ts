@@ -20,6 +20,7 @@ import {
   integrityWindowDaysToHours,
   isFreshIntegrityVerdict,
   isIntegrityChainStatusNonGreen,
+  integrityFinishedJobScopeToDisplayRange,
   isIntegrityVerdictScopeMismatch,
   pickNewerIntegrityJob,
   resolveIntegrityMicroDashboardTone,
@@ -332,6 +333,25 @@ describe('scope + helpers', () => {
         { from: '2026-10-01', to: '2026-10-07' },
       ),
     ).toBe(false);
+  });
+
+  it('aligns picker to SUCCEEDED job exclusive scope in the effective timezone (#696)', () => {
+    const display = integrityFinishedJobScopeToDisplayRange(
+      job({
+        status: 'SUCCEEDED',
+        scopeFrom: '2026-03-10T04:00:00.000Z',
+        scopeTo: '2026-03-11T04:00:00.000Z',
+        chainStatus: 'OK',
+      }),
+      'America/New_York',
+    );
+    expect(display).toEqual({ from: '2026-03-10', to: '2026-03-10' });
+    expect(
+      integrityFinishedJobScopeToDisplayRange(
+        job({ status: 'RUNNING', scopeFrom: '2026-03-10T04:00:00.000Z', scopeTo: '2026-03-11T04:00:00.000Z' }),
+        'America/New_York',
+      ),
+    ).toBeNull();
   });
 
   it('maps trigger sources and window hours', () => {

@@ -56,4 +56,18 @@ describe('integrityExclusiveApiParamsToDisplayRange', () => {
       ),
     ).toEqual({ from: '2026-07-03', to: '2026-07-03' });
   });
+
+  it('deep-link exclusive createdBefore near midnight UTC is not +1 day in America/New_York (#693)', () => {
+    // Inclusive 2026-03-10 in NY → exclusive upper Instant is 2026-03-11T04:00:00.000Z
+    // (EDT). Browser-local Instant→date on that bound would show 2026-03-11 in UTC.
+    const createdAfter = '2026-03-10T04:00:00.000Z';
+    const createdBefore = '2026-03-11T04:00:00.000Z';
+    expect(
+      integrityExclusiveApiParamsToDisplayRange(
+        createdAfter,
+        createdBefore,
+        'America/New_York',
+      ),
+    ).toEqual({ from: '2026-03-10', to: '2026-03-10' });
+  });
 });

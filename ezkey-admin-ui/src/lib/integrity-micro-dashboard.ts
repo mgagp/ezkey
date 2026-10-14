@@ -7,6 +7,7 @@
  * @since 2026
  */
 
+import { integrityExclusiveApiParamsToDisplayRange } from '@/lib/date-range-presets';
 import {
   isIntegrityAsyncEscapeStatus,
   type IntegrityAsyncJobResponse,
@@ -234,6 +235,32 @@ export function integrityMicroDashboardSource(
     default:
       return 'unknown';
   }
+}
+
+/**
+ * Converts a finished job's exclusive Instant scope to inclusive Vérifier
+ * picker dates in the effective timezone (#696). Returns null while RUNNING
+ * or when scope / status cannot drive the picker.
+ *
+ * @param job current glance job (or null)
+ * @param timeZoneId effective display timezone id (optional until resolver ready)
+ * @returns inclusive YYYY-MM-DD range, or null when the picker must not sync
+ */
+export function integrityFinishedJobScopeToDisplayRange(
+  job: IntegrityAsyncJobResponse | null | undefined,
+  timeZoneId: string | undefined,
+): { from: string; to: string } | null {
+  if (job?.scopeFrom == null || job.scopeTo == null || job.status === 'RUNNING') {
+    return null;
+  }
+  if (job.status !== 'SUCCEEDED' && !isIntegrityAsyncEscapeStatus(job.status)) {
+    return null;
+  }
+  return integrityExclusiveApiParamsToDisplayRange(
+    job.scopeFrom,
+    job.scopeTo,
+    timeZoneId,
+  );
 }
 
 /**

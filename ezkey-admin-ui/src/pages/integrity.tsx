@@ -37,6 +37,7 @@ import {
   decideIntegrityOpenAction,
   defaultAutoVerifyInstantRange,
   INTEGRITY_DEFAULT_MAX_WINDOW_DAYS,
+  integrityFinishedJobScopeToDisplayRange,
   integrityReverifyDisabled,
   integrityVerifyActionDisabled,
   integrityWindowDaysToHours,
@@ -209,20 +210,6 @@ function ReportBadge({
     );
   }
   return null;
-}
-
-function toDateInputValue(iso?: string | null): string {
-  if (!iso) {
-    return '';
-  }
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) {
-    return '';
-  }
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
 
 // ── Checkpoint type badge and timeline table ───────────────────────────────────
@@ -621,39 +608,48 @@ function IntegrityPanel({
     },
   });
 
-  // Align Vérifier picker to the glance job scope (#696).
+  // Align Vérifier picker to the glance job scope (#696). Deep-link ranges (#693)
+  // win for the picker so a later job hydration cannot overwrite them.
   useEffect(() => {
-    if (
-      asyncJob?.scopeFrom == null
-      || asyncJob.scopeTo == null
-      || asyncJob.status === 'RUNNING'
-    ) {
+    const display = integrityFinishedJobScopeToDisplayRange(asyncJob, effectiveTimeZoneId);
+    if (display == null) {
       return;
     }
-    if (
-      asyncJob.status !== 'SUCCEEDED'
-      && !isIntegrityAsyncEscapeStatus(asyncJob.status)
-    ) {
-      return;
-    }
-    const display = integrityExclusiveApiParamsToDisplayRange(
-      asyncJob.scopeFrom,
-      asyncJob.scopeTo,
-      effectiveTimeZoneId,
-    );
     setVerdictDisplayRange(display);
+    if (initialCheckRange?.createdAfter && initialCheckRange.createdBefore) {
+      return;
+    }
     setCheckRange(display);
-  }, [asyncJob?.jobId, asyncJob?.status, asyncJob?.scopeFrom, asyncJob?.scopeTo, effectiveTimeZoneId]);
+  }, [
+    asyncJob,
+    asyncJob?.jobId,
+    asyncJob?.status,
+    asyncJob?.scopeFrom,
+    asyncJob?.scopeTo,
+    effectiveTimeZoneId,
+    initialCheckRange?.createdAfter,
+    initialCheckRange?.createdBefore,
+  ]);
 
+  // Deep-link / reconcile Instant bounds → inclusive display dates in the
+  // effective timezone (#693). Never use browser-local Instant→date conversion
+  // for exclusive createdBefore (that shows +1 day).
   useEffect(() => {
     if (!initialCheckRange?.createdAfter || !initialCheckRange.createdBefore) {
       return;
     }
-    setCheckRange({
-      from: toDateInputValue(initialCheckRange.createdAfter),
-      to: toDateInputValue(initialCheckRange.createdBefore),
-    });
-  }, [initialCheckRange?.createdAfter, initialCheckRange?.createdBefore]);
+    setCheckRange(
+      integrityExclusiveApiParamsToDisplayRange(
+        initialCheckRange.createdAfter,
+        initialCheckRange.createdBefore,
+        effectiveTimeZoneId,
+      ),
+    );
+  }, [
+    initialCheckRange?.createdAfter,
+    initialCheckRange?.createdBefore,
+    effectiveTimeZoneId,
+  ]);
 
   // ── Dialogs ──
   const [sealOpen, setSealOpen] = useState(false);
@@ -878,8 +874,10 @@ function IntegrityPanel({
   });
 
   /**
-   * Display rows: orange undeclared-gap detection on the full underlying page sequence,
-   * then optional grey quiet-REGULAR collapse (never invents gaps from skipped empties).
+   * Display rows: orange undeclared-gap detection on the full unfiltered page
+   * sequence, then optional grey quiet-REGULAR collapse. When a type filter is
+   * active, skip inventing gaps between filtered neighbors (#695) — REGULARs
+   * that fill the span are hidden by the API filter, not real undeclared holes.
    */
   const checkpointTimelineRows = useMemo(
     () =>
@@ -888,8 +886,15 @@ function IntegrityPanel({
         checkpointPagination.sort,
         compressQuietWindows,
         expandedQuietIds,
+        !checkpointTypeFilter,
       ),
-    [checkpointData, checkpointPagination.sort, compressQuietWindows, expandedQuietIds],
+    [
+      checkpointData,
+      checkpointPagination.sort,
+      compressQuietWindows,
+      expandedQuietIds,
+      checkpointTypeFilter,
+    ],
   );
 
   /** Format Date to YYYY-MM-DD for checkpoint range filter. */

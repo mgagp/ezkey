@@ -122,6 +122,43 @@ describe('buildCheckpointRowsWithGaps', () => {
     );
     expect(rows.map((r) => r.kind)).toEqual(['checkpoint', 'gap', 'checkpoint']);
   });
+
+  it('does not invent a phantom gap between type-filtered GAP_DECLARATION rows (#695)', () => {
+    // Type filter hid the REGULAR checkpoints that fill 09:25→09:05; consecutive
+    // GAP_DECLARATION neighbors must not become an orange undeclared-gap row.
+    const filteredGapDeclarations = [
+      cp({
+        checkpointId: 521,
+        windowStart: '2026-10-07T13:05:00Z',
+        windowEnd: '2026-10-07T13:05:00Z',
+        checkpointType: 'GAP_DECLARATION',
+        entryCount: 0,
+      }),
+      cp({
+        checkpointId: 372,
+        windowStart: '2026-10-06T21:25:00Z',
+        windowEnd: '2026-10-06T21:25:00Z',
+        checkpointType: 'GAP_DECLARATION',
+        entryCount: 0,
+      }),
+    ];
+    const phantomIfUnaware = buildCheckpointRowsWithGaps(
+      filteredGapDeclarations,
+      'windowStart,DESC',
+      true,
+    );
+    expect(phantomIfUnaware.some((r) => r.kind === 'gap')).toBe(true);
+
+    const display = buildCheckpointTimelineDisplayRows(
+      filteredGapDeclarations,
+      'windowStart,DESC',
+      true,
+      new Set(),
+      false,
+    );
+    expect(display.every((r) => r.kind === 'checkpoint')).toBe(true);
+    expect(display).toHaveLength(2);
+  });
 });
 
 describe('collapseQuietRegularWindows', () => {
