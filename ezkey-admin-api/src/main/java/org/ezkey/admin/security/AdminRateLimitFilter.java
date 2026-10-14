@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 import org.ezkey.admin.config.AdminRateLimitProperties;
 import org.ezkey.admin.config.TrustedProxyProperties;
 import org.ezkey.audit.util.ClientIpResolver;
+import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -165,22 +166,39 @@ public class AdminRateLimitFilter implements Filter {
     String requestUri = req.getRequestURI();
     String requestMethod = req.getMethod();
 
-    boolean loginPath = isLoginPath(requestUri, requestMethod);
-    boolean waitPath = isPasswordlessWaitPath(requestUri, requestMethod);
-
-    if (!loginPath && !waitPath) {
-      chain.doFilter(request, response);
+    if (isLoginPath(requestUri, requestMethod)) {
+      enforceLoginRateLimit(req, res, chain);
+      return;
+    }
+    if (isPasswordlessWaitPath(requestUri, requestMethod)) {
+      enforcePasswordlessWaitRateLimit(req, res, chain);
       return;
     }
 
-    String clientId = ClientIpResolver.resolve(req, trustedProxyProperties.getCidrs());
+    chain.doFilter(request, response);
+  }
 
-    // Check if IP is blocked (login surface only — wait/cancel are not failure-counted)
-    if (loginPath && isBlocked(clientId)) {
+  /**
+   * Applies login IP block + login bucket + optional backstop, then forwards the request.
+   *
+   * @param req HTTP request
+   * @param res HTTP response
+   * @param chain remaining filter chain
+   * @throws IOException if the chain fails
+   * @throws ServletException if the chain fails
+   */
+  private void enforceLoginRateLimit(
+      HttpServletRequest req, HttpServletResponse res, FilterChain chain)
+      throws IOException, ServletException {
+    String clientId = ClientIpResolver.resolve(req, trustedProxyProperties.getCidrs());
+    String clientIdForLog = LogSanitizer.sanitizeForLog(clientId);
+
+    if (isBlocked(clientId)) {
       long blockedUntil = blockedUntilMap.get(clientId);
       long retryAfter = (blockedUntil - System.currentTimeMillis()) / 1000;
 
-      logger.warn("Blocked IP attempting login: {} - Retry after {} seconds", clientId, retryAfter);
+      logger.warn(
+          "Blocked IP attempting login: {} - Retry after {} seconds", clientIdForLog, retryAfter);
 
       meterRegistry.counter("rate_limit.ip_blocked.total").increment();
 
@@ -190,64 +208,82 @@ public class AdminRateLimitFilter implements Filter {
       return;
     }
 
-    HttpServletRequest requestToForward = req;
-    String waitBucketKey = null;
-    if (waitPath) {
-      // Wait/cancel JSON bodies are small; cache full body so @RequestBody still works.
-      byte[] body = req.getInputStream().readAllBytes();
-      Integer authAttemptId = extractAuthAttemptId(body);
-      waitBucketKey = passwordlessWaitBucketKey(authAttemptId, clientId);
-      requestToForward = new CachedBodyHttpServletRequest(req, body);
-    }
-
-    RateLimitResult result =
-        loginPath ? checkLoginRateLimit(clientId) : checkPasswordlessWaitRateLimit(waitBucketKey);
-
+    RateLimitResult result = checkLoginRateLimit(clientId);
     if (!result.allowed) {
       logger.warn(
-          "Rate limit exceeded for IP: {} path={} - Retry after {} seconds",
-          clientId,
-          loginPath ? "login" : "passwordless-wait",
+          "Rate limit exceeded for IP: {} path=login - Retry after {} seconds",
+          clientIdForLog,
+          result.retryAfterSeconds);
+
+      meterRegistry.counter("rate_limit.login_blocked.total", "endpoint", "login").increment();
+
+      res.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+      res.setHeader("Retry-After", String.valueOf(result.retryAfterSeconds));
+      res.setHeader("X-Rate-Limit-Limit", String.valueOf(properties.getLogin().getRequests()));
+      res.setHeader(
+          "X-Rate-Limit-Window", String.valueOf(properties.getLogin().getWindowMinutes()));
+      return;
+    }
+
+    RateLimitResult backstop = checkBackstop();
+    if (!backstop.allowed) {
+      logger.warn(
+          "Rate-limit backstop exceeded for admin login (per-instance, unkeyed) - Retry after {}"
+              + " seconds",
+          backstop.retryAfterSeconds);
+      meterRegistry.counter(BACKSTOP_METRIC, "endpoint", "login").increment();
+      res.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+      res.setHeader("Retry-After", String.valueOf(backstop.retryAfterSeconds));
+      return;
+    }
+
+    chain.doFilter(req, res);
+  }
+
+  /**
+   * Applies the passwordless-wait/cancel bucket (keyed by authAttemptId when present), then
+   * forwards a replayable body.
+   *
+   * @param req HTTP request
+   * @param res HTTP response
+   * @param chain remaining filter chain
+   * @throws IOException if the body cannot be read or the chain fails
+   * @throws ServletException if the chain fails
+   */
+  private void enforcePasswordlessWaitRateLimit(
+      HttpServletRequest req, HttpServletResponse res, FilterChain chain)
+      throws IOException, ServletException {
+    String clientId = ClientIpResolver.resolve(req, trustedProxyProperties.getCidrs());
+    String clientIdForLog = LogSanitizer.sanitizeForLog(clientId);
+
+    // Wait/cancel JSON bodies are small; cache full body so @RequestBody still works.
+    byte[] body = req.getInputStream().readAllBytes();
+    Integer authAttemptId = extractAuthAttemptId(body);
+    String waitBucketKey = passwordlessWaitBucketKey(authAttemptId, clientId);
+    HttpServletRequest requestToForward = new CachedBodyHttpServletRequest(req, body);
+
+    RateLimitResult result = checkPasswordlessWaitRateLimit(waitBucketKey);
+    if (!result.allowed) {
+      logger.warn(
+          "Rate limit exceeded for IP: {} path=passwordless-wait - Retry after {} seconds",
+          clientIdForLog,
           result.retryAfterSeconds);
 
       meterRegistry
-          .counter(
-              "rate_limit.login_blocked.total",
-              "endpoint",
-              loginPath ? "login" : "passwordless-wait")
+          .counter("rate_limit.login_blocked.total", "endpoint", "passwordless-wait")
           .increment();
 
       res.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
       res.setHeader("Retry-After", String.valueOf(result.retryAfterSeconds));
-      if (loginPath) {
-        res.setHeader("X-Rate-Limit-Limit", String.valueOf(properties.getLogin().getRequests()));
-        res.setHeader(
-            "X-Rate-Limit-Window", String.valueOf(properties.getLogin().getWindowMinutes()));
-      } else {
-        res.setHeader(
-            "X-Rate-Limit-Limit", String.valueOf(properties.getPasswordlessWait().getRequests()));
-        res.setHeader(
-            "X-Rate-Limit-Window",
-            String.valueOf(properties.getPasswordlessWait().getWindowMinutes()));
-      }
+      res.setHeader(
+          "X-Rate-Limit-Limit", String.valueOf(properties.getPasswordlessWait().getRequests()));
+      res.setHeader(
+          "X-Rate-Limit-Window",
+          String.valueOf(properties.getPasswordlessWait().getWindowMinutes()));
       return;
     }
 
-    if (loginPath) {
-      RateLimitResult backstop = checkBackstop();
-      if (!backstop.allowed) {
-        logger.warn(
-            "Rate-limit backstop exceeded for admin login (per-instance, unkeyed) - Retry after {}"
-                + " seconds",
-            backstop.retryAfterSeconds);
-        meterRegistry.counter(BACKSTOP_METRIC, "endpoint", "login").increment();
-        res.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-        res.setHeader("Retry-After", String.valueOf(backstop.retryAfterSeconds));
-        return;
-      }
-    }
-
-    chain.doFilter(requestToForward, response);
+    chain.doFilter(requestToForward, res);
   }
 
   private static boolean isLoginPath(String requestUri, String requestMethod) {
@@ -386,7 +422,7 @@ public class AdminRateLimitFilter implements Filter {
       // Clean up expired block
       blockedUntilMap.remove(clientId);
       failureCountMap.remove(clientId);
-      logger.info("Block expired for IP: {}", clientId);
+      logger.info("Block expired for IP: {}", LogSanitizer.sanitizeForLog(clientId));
       return false;
     }
 
@@ -411,7 +447,8 @@ public class AdminRateLimitFilter implements Filter {
         failureCountMap.computeIfAbsent(clientId, _ -> new AtomicInteger(0));
     int failures = failureCount.incrementAndGet();
 
-    logger.debug("Failed login attempt {} for IP: {}", failures, clientId);
+    String clientIdForLog = LogSanitizer.sanitizeForLog(clientId);
+    logger.debug("Failed login attempt {} for IP: {}", failures, clientIdForLog);
 
     // Block if threshold exceeded
     if (failures >= blockAfterFailures) {
@@ -424,7 +461,7 @@ public class AdminRateLimitFilter implements Filter {
       logger.warn(
           "IP BLOCKED due to {} failed attempts: {} - Blocked for {} minutes",
           failures,
-          clientId,
+          clientIdForLog,
           properties.getLogin().getBlockDurationMinutes());
     }
   }
@@ -437,7 +474,8 @@ public class AdminRateLimitFilter implements Filter {
   public void recordSuccessfulAttempt(String clientId) {
     failureCountMap.remove(clientId);
     blockedUntilMap.remove(clientId);
-    logger.debug("Successful login for IP: {} - Failure count reset", clientId);
+    logger.debug(
+        "Successful login for IP: {} - Failure count reset", LogSanitizer.sanitizeForLog(clientId));
   }
 
   /**

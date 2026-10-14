@@ -15,6 +15,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,12 +26,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
 import org.ezkey.admin.config.AdminRateLimitProperties;
 import org.ezkey.admin.config.TrustedProxyProperties;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -52,6 +58,9 @@ class AdminRateLimitFilterTest {
   private TrustedProxyProperties trustedProxyProperties;
   private SimpleMeterRegistry meterRegistry;
   private AdminRateLimitFilter filter;
+  private ListAppender<ILoggingEvent> logAppender;
+  private Logger filterLogger;
+  private Level previousLogLevel;
 
   @BeforeEach
   void setUp() {
@@ -70,6 +79,21 @@ class AdminRateLimitFilterTest {
     trustedProxyProperties = new TrustedProxyProperties();
     meterRegistry = new SimpleMeterRegistry();
     filter = new AdminRateLimitFilter(properties, trustedProxyProperties, meterRegistry);
+
+    filterLogger = (Logger) LoggerFactory.getLogger(AdminRateLimitFilter.class);
+    previousLogLevel = filterLogger.getLevel();
+    filterLogger.setLevel(Level.WARN);
+    logAppender = new ListAppender<>();
+    logAppender.start();
+    filterLogger.addAppender(logAppender);
+  }
+
+  @AfterEach
+  void tearDownLogs() {
+    if (filterLogger != null && logAppender != null) {
+      filterLogger.detachAppender(logAppender);
+      filterLogger.setLevel(previousLogLevel);
+    }
   }
 
   @Test
@@ -230,6 +254,31 @@ class AdminRateLimitFilterTest {
                 .counter("ezkey.rate_limit.backstop.rejected", "endpoint", "login")
                 .count())
         .isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("Rate-limit WARN logs sanitize CR/LF in client IP (LogSanitizer)")
+  void rateLimitWarnDoesNotEchoCrLfFromClientIp() throws Exception {
+    MockHttpServletRequest first = new MockHttpServletRequest("POST", LOGIN_PATH);
+    first.setRemoteAddr("203.0.113.9\r\ninjected");
+    filter.doFilter(first, new MockHttpServletResponse(), filterChain);
+
+    MockHttpServletRequest second = new MockHttpServletRequest("POST", LOGIN_PATH);
+    second.setRemoteAddr("203.0.113.9\r\ninjected");
+    MockHttpServletResponse denied = new MockHttpServletResponse();
+    filter.doFilter(second, denied, filterChain);
+
+    assertThat(denied.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+
+    String joined =
+        logAppender.list.stream()
+            .map(ILoggingEvent::getFormattedMessage)
+            .reduce("", (a, b) -> a + "\n" + b);
+
+    assertThat(joined).contains("Rate limit exceeded");
+    assertThat(joined).doesNotContain("\rinjected");
+    assertThat(joined).doesNotContain("\ninjected");
+    assertThat(joined).contains("203.0.113.9__injected");
   }
 
   private MockHttpServletResponse filterWait(String remoteAddr, String jsonBody) throws Exception {
