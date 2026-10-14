@@ -6,6 +6,8 @@ Short runbook for creating a **NEW** Amazon Lightsail VM for the **ezkey.online*
 
 **Automation style:** AWS CLI only (no Terraform, no CloudFormation), thin Bash under [`scripts/lightsail/`](../../scripts/lightsail/), Git Bash friendly, dry-run by default for create / delete / ports.
 
+**SSH target (#812):** deploy/bootstrap scripts never silent-default to Host `ezkey` (dead EXP1). Pass `--target community` (→ `ezkey-online`) or `--target exp1` (→ `ezkey`), or set `LIGHTSAIL_SSH_HOST` explicitly; community `--sync-operator-files` never overwrites with the EXP1 Caddyfile.
+
 **Public cutover context (do not invent product language):** publish repositioned **ezkey.org** first; then community host on **ezkey.online**. Creating a parallel Lightsail instance for testing is OK.
 
 ---
@@ -36,7 +38,7 @@ This PR does **not** create that private repo.
 | Bundle | `medium_3_0` | `--bundle` |
 | AZ | `ca-central-1a` | `--az` |
 | Key pair name | **`ezkey-online-kp`** | `--key-pair-name` / `LIGHTSAIL_KEY_PAIR_NAME` |
-| SSH Host alias | `ezkey-online` | `LIGHTSAIL_SSH_HOST` / `--host` |
+| SSH Host alias | **no silent default** — `--target community` → `ezkey-online` (#812) | `--target community\|exp1` / `LIGHTSAIL_SSH_HOST` / `--host` |
 
 **Lightsail name uniqueness:** resource names are unique **across types**. The key-pair name **must differ** from the instance name (e.g. instance `ezkey-online` + key pair `ezkey-online-kp`). Using the same string for both fails `CreateInstances` with `InvalidInputException` (“names are already in use”). `create-instance.sh` refuses that combination.
 
@@ -84,13 +86,13 @@ Community Caddy site blocks: [`experimental-hybrid/lightsail/Caddyfile.ezkey-onl
 Do these **after** VM create → ports → Docker bootstrap (below). No secrets in git; Origin CA / DNS / Pages stay human OK.
 
 1. **Hostnames** — use the table above (Caddy + DNS + Origin CA SANs must match).
-2. **Community Caddyfile on the VM** — Compose bind-mounts `./Caddyfile`. Keep the repo’s EXP1 [`Caddyfile`](../../experimental-hybrid/lightsail/Caddyfile) unchanged. Install the community variant as the active file on the **community** host only:
+2. **Community Caddyfile on the VM** — Compose bind-mounts `./Caddyfile`. Keep the repo’s EXP1 [`Caddyfile`](../../experimental-hybrid/lightsail/Caddyfile) unchanged. With `--target community`, [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) `--sync-operator-files` installs `Caddyfile.ezkey-online` as remote `Caddyfile` (never the EXP1 file — #812). Manual install if needed:
    ```bash
-   export LIGHTSAIL_SSH_HOST=ezkey-online
+   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --sync-operator-files
+   # or:
    scp experimental-hybrid/lightsail/Caddyfile.ezkey-online \
-     "${LIGHTSAIL_SSH_HOST}:ezkey/experimental-hybrid/lightsail/Caddyfile"
+     ezkey-online:ezkey/experimental-hybrid/lightsail/Caddyfile
    ```
-   **Export sync note:** `--sync-operator-files` / `--clean-start` on [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) always copies the EXP1-named `Caddyfile`. After any such sync to the community VM, **re-scp** `Caddyfile.ezkey-online` → remote `Caddyfile` (the variant file is not kept on the VM, so a one-line remote `cp` of `Caddyfile.ezkey-online` fails). Verify sha256 against the repo, then recreate caddy.
 3. **Origin CA** — Cloudflare Origin Server cert covering all API + demo hostnames above; place `origin.pem` / `origin-key.pem` in `~/ezkey/experimental-hybrid/lightsail/caddy-certs/` on the VM (`chmod 700` dir, `chmod 600` key). Never commit.
 4. **DNS** — Cloudflare **A** records (orange / proxied) for those API/demo names → instance public IP (from `./scripts/lightsail/status.sh`). Admin UI name points at Pages, not the Lightsail IP.
 5. **`.env`** — on the VM: copy [`.env.example`](../../experimental-hybrid/lightsail/.env.example) → `.env`, then overlay community URLs/CORS from [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example). **Mode B (Pages cookie)** requires all of:
@@ -101,16 +103,12 @@ Do these **after** VM create → ports → Docker bootstrap (below). No secrets 
    Recreate Admin API after changing these. Do not leave credentials/cookie flags at `false` for the community cookie path.
 6. **Images** — export with optional demo:
    ```bash
-   export LIGHTSAIL_SSH_HOST=ezkey-online
-   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --include-demo-acme
-   # then re-apply community Caddyfile (step 2) if sync overwrote it
+   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --include-demo-acme
    ```
 7. **Remote clean-start** (destructive first bring-up) — after layout + `.env` + certs + images:
    ```bash
-   export LIGHTSAIL_SSH_HOST=ezkey-online
-   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --include-demo-acme --clean-start
-   # re-scp Caddyfile.ezkey-online → remote Caddyfile, then:
-   ssh ezkey-online 'cd ~/ezkey/experimental-hybrid/lightsail && docker compose up -d --no-deps --force-recreate caddy'
+   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --include-demo-acme --clean-start
+   # --target community sync already installs Caddyfile.ezkey-online as remote Caddyfile (#812)
    ```
    Or run `./clean-start.sh` on the VM from `~/ezkey/experimental-hybrid/lightsail/` after files are in place (see playbook).
 8. **Pages Admin UI** — separate Cloudflare Pages project (or branch) for `admin-ui.ezkey.online` with `VITE_API_BASE_URL=https://admin-api.ezkey.online` and Mode B UI flag above. Not automated by `scripts/lightsail/`.
@@ -174,12 +172,10 @@ Canon overlay: [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail
 
 ```bash
 # From workstation: sync compose + community Caddyfile, recreate demo + caddy
-export LIGHTSAIL_SSH_HOST=ezkey-online
-scp experimental-hybrid/lightsail/docker-compose.yml \
-  "${LIGHTSAIL_SSH_HOST}:ezkey/experimental-hybrid/lightsail/"
-scp experimental-hybrid/lightsail/Caddyfile.ezkey-online \
-  "${LIGHTSAIL_SSH_HOST}:ezkey/experimental-hybrid/lightsail/Caddyfile"
-ssh "${LIGHTSAIL_SSH_HOST}" 'cd ~/ezkey/experimental-hybrid/lightsail && \
+./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh \
+  --target community --sync-operator-files --apis-only
+# (or manual scp of compose + Caddyfile.ezkey-online → remote Caddyfile)
+ssh ezkey-online 'cd ~/ezkey/experimental-hybrid/lightsail && \
   docker compose up -d --no-deps --force-recreate demo-app-acme caddy'
 ```
 
@@ -202,9 +198,9 @@ curl -sI https://demo-acme.ezkey.online/ | tr -d '\r' | grep -i '^location:'
 ```bash
 export AWS_PROFILE=ezkey-lightsail
 
-./scripts/lightsail/create-instance.sh
+./scripts/lightsail/create-instance.sh --target community
 # Prefer import of an existing workstation public key:
-./scripts/lightsail/create-instance.sh \
+./scripts/lightsail/create-instance.sh --target community \
   --import-public-key ~/.ssh/id_ed25519.pub \
   --key-pair-name ezkey-online-kp \
   --apply
@@ -239,22 +235,20 @@ Scripts accept `LIGHTSAIL_SSH_HOST` and must not overwrite the EXP1 alias.
 ### 4. Bootstrap Docker
 
 ```bash
-export LIGHTSAIL_SSH_HOST=ezkey-online
-./scripts/lightsail/bootstrap-host.sh
-# optional: ./scripts/lightsail/bootstrap-host.sh --print-next-steps
+./scripts/lightsail/bootstrap-host.sh --target community
+# optional: ./scripts/lightsail/bootstrap-host.sh --target community --print-next-steps
 ```
 
 Then open a **new** SSH session so the `docker` group applies.
 
 ### 5. Reuse the EXP1 image export path
 
-App compose stays under `experimental-hybrid/lightsail/`. Push images with the **existing** export script and the **new** SSH host, then follow **Ordered path** steps 2–8 (community Caddyfile, Origin CA, DNS, `.env`, optional `--include-demo-acme`, clean-start, Pages).
+App compose stays under `experimental-hybrid/lightsail/`. Push images with the **existing** export script and a **declared** target (`--target community` → Host `ezkey-online`; no silent default — #812), then follow **Ordered path** steps 2–8 (Origin CA, DNS, `.env`, optional `--include-demo-acme`, clean-start, Pages).
 
 ```bash
-export LIGHTSAIL_SSH_HOST=ezkey-online
-./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --dry-run
+./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --dry-run
 # then real run; optional --include-demo-acme / --sync-operator-files / --clean-start
-# After any sync that copies Caddyfile, re-install Caddyfile.ezkey-online as remote Caddyfile
+# --sync-operator-files with --target community installs Caddyfile.ezkey-online as remote Caddyfile
 ```
 
 Full Phase 0–3 detail: [`experimental-hybrid/DEPLOYMENT_PLAYBOOK.md`](../../experimental-hybrid/DEPLOYMENT_PLAYBOOK.md).
@@ -313,12 +307,10 @@ After recreate, update Cloudflare **A** records if the public IP changed (no sta
 
 Short operator checklist verified against repo scripts/compose (not live VM observation):
 
-1. **Caddyfile sync** — `--sync-operator-files` / `--clean-start` on
-   [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh)
-   always copies the EXP1-named `Caddyfile`. After any such sync to the community VM, **re-scp**
-   `Caddyfile.ezkey-online` → remote `Caddyfile` **immediately** (before `--scan` / `--remote-up`;
-   see Ordered path step 2). A one-line remote `cp Caddyfile.ezkey-online Caddyfile` fails because
-   the variant file is not kept on the VM.
+1. **Caddyfile sync / SSH target** — deploy scripts require `--target community|exp1` or
+   `LIGHTSAIL_SSH_HOST` (no silent `ezkey` default — #812). With `--target community`,
+   `--sync-operator-files` / `--clean-start` install `Caddyfile.ezkey-online` as remote
+   `Caddyfile` (never the EXP1 file). With `--target exp1`, they install the EXP1 `Caddyfile`.
 2. **Grants container** — Compose service `db-grants` (`container_name: ezkey-exp-db-grants` in
    [`docker-compose.yml`](../../experimental-hybrid/lightsail/docker-compose.yml)) applies
    [`scripts/db/apply-grants.sql`](../../scripts/db/apply-grants.sql) after migration. APIs depend on
@@ -338,11 +330,9 @@ Short operator checklist verified against repo scripts/compose (not live VM obse
    disappear with the old container IDs — **scan before `up`**. `scripts/ops/` lands with
    `--sync-operator-files` (same pass as `--remote-up` would recreate containers), so:
 
-   1. Export with `--sync-operator-files` **without** `--remote-up` (or `scp` `docker-log-hygiene.sh`)
-   2. **Immediately** re-scp `Caddyfile.ezkey-online` → remote `Caddyfile` (pitfall #1 — sync-only
-      already overwrote with EXP1; do not wait until after `up`)
-   3. On the VM: `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan`
-   4. Then `--remote-up` (or a later sync+up pass)
+   1. Export with `--target community --sync-operator-files` **without** `--remote-up` (or `scp` the script)
+   2. On the VM: `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan`
+   3. Then `--target community --remote-up` (or a later sync+up pass)
 
    After `up`, confirm rotation with `docker inspect` or
    `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`.

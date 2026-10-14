@@ -6,12 +6,13 @@
 # VM lifecycle only — app stack stays in experimental-hybrid/lightsail/ (see docs/lightsail/community-host.md).
 #
 # AWS CLI only (no Terraform / CloudFormation). Default is dry-run; pass --apply to create.
+# SSH handoff uses --target community (no silent LIGHTSAIL_SSH_HOST default; #812).
 #
 # Usage (from repository root, Git Bash):
 #   export AWS_PROFILE=ezkey-lightsail
-#   ./scripts/lightsail/create-instance.sh
-#   ./scripts/lightsail/create-instance.sh --apply --key-pair-name ezkey-online-kp
-#   ./scripts/lightsail/create-instance.sh --import-public-key ~/.ssh/id_ed25519.pub --apply
+#   ./scripts/lightsail/create-instance.sh --target community
+#   ./scripts/lightsail/create-instance.sh --target community --apply --key-pair-name ezkey-online-kp
+#   ./scripts/lightsail/create-instance.sh --target community --import-public-key ~/.ssh/id_ed25519.pub --apply
 #
 # Lightsail resource names are unique across types: key-pair name must differ from instance name
 # (default key pair: ezkey-online-kp). Prefer ImportKeyPair of an existing workstation public key.
@@ -35,18 +36,23 @@ BUNDLE="${LIGHTSAIL_BUNDLE}"
 KEY_PAIR_NAME="${LIGHTSAIL_KEY_PAIR_NAME}"
 # Empty means: do not pass --key-pair-name (Lightsail default key behavior).
 USE_KEY_PAIR="1"
+DECLARED_TARGET=""
 
 usage() {
-  cat <<'EOF'
+  cat <<EOF
 Create a NEW Lightsail instance for ezkey.online community-host evaluation (parallel to EXP1).
 
 Usage (from repository root, Git Bash):
-  ./scripts/lightsail/create-instance.sh [options]
+  ./scripts/lightsail/create-instance.sh --target community [options]
 
 Safety:
   Default is dry-run (prints planned aws CLI). Pass --apply to create.
   Refuses to create if the instance name already exists.
   Never targets exp1-ezkey; never allocates a static IP; never changes DNS/certs.
+
+SSH handoff target (required for bootstrap/export examples — no silent default; #812):
+  --target community   Maps to OpenSSH Host ${LIGHTSAIL_SSH_HOST_COMMUNITY}
+  (exp1 is refused here — use community for this parallel VM path)
 
 Options:
   --name NAME                 Instance name (default: ezkey-online / LIGHTSAIL_INSTANCE_NAME)
@@ -74,7 +80,7 @@ Environment:
   LIGHTSAIL_KEY_PAIR_NAME     default ezkey-online-kp (must differ from instance name)
   LIGHTSAIL_AZ / LIGHTSAIL_BLUEPRINT / LIGHTSAIL_BUNDLE
 
-Next steps after create: ./scripts/lightsail/open-ports.sh then bootstrap-host.sh
+Next steps after create: open-ports.sh then bootstrap-host.sh --target community
   See docs/lightsail/community-host.md
 EOF
   echo
@@ -83,6 +89,11 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --target)
+      [[ $# -ge 2 ]] || lightsail_die "--target requires community|exp1"
+      DECLARED_TARGET="$2"
+      shift 2
+      ;;
     --name)
       [[ $# -ge 2 ]] || lightsail_die "--name requires a value"
       INSTANCE_NAME="$2"
@@ -142,6 +153,18 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Community VM path only — resolve (or require) SSH handoff target before create (#812).
+if [[ -z "${DECLARED_TARGET}" && -z "${LIGHTSAIL_SSH_HOST:-}" ]]; then
+  lightsail_die "no Lightsail SSH target declared. Pass --target community (or set LIGHTSAIL_SSH_HOST). See #812."
+fi
+if [[ -n "${DECLARED_TARGET}" && "${DECLARED_TARGET}" != "community" ]]; then
+  lightsail_die "create-instance.sh is the community parallel-VM path; use --target community (not '${DECLARED_TARGET}')."
+fi
+if [[ -z "${DECLARED_TARGET}" ]]; then
+  DECLARED_TARGET="community"
+fi
+lightsail_resolve_ssh_target "${DECLARED_TARGET}"
 
 if [[ "${INSTANCE_NAME}" == "${LIGHTSAIL_EXP1_INSTANCE_NAME}" ]]; then
   lightsail_die "refusing to create/replace live EXP1 instance '${LIGHTSAIL_EXP1_INSTANCE_NAME}'. Choose another --name."
@@ -306,7 +329,8 @@ echo "  publicIp=${public_ip}"
 echo "  az=${az_out:-${AZ}}"
 echo
 echo "Next:"
-echo "  1. Add an OpenSSH Host alias (e.g. ${LIGHTSAIL_SSH_HOST}) separate from EXP1 Host ezkey"
+echo "  1. Add an OpenSSH Host alias (${LIGHTSAIL_SSH_HOST}) separate from EXP1 Host ezkey"
 echo "  2. ./scripts/lightsail/open-ports.sh --apply --name ${INSTANCE_NAME}"
-echo "  3. LIGHTSAIL_SSH_HOST=${LIGHTSAIL_SSH_HOST} ./scripts/lightsail/bootstrap-host.sh"
-echo "  See docs/lightsail/community-host.md"
+echo "  3. ./scripts/lightsail/bootstrap-host.sh --target community"
+echo "  4. ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --dry-run"
+echo "  See docs/lightsail/community-host.md (#812: no silent SSH host default)"

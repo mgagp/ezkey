@@ -4,7 +4,7 @@ This document records the **target path** for a disposable Ezkey stack on **Amaz
 
 **Traffic model:** browser → **Cloudflare** (public TLS) → **Lightsail** (Caddy terminates TLS to the origin using a **Cloudflare Origin Certificate**) → **Spring APIs** in Docker. Postgres is not exposed publicly.
 
-**SSH (experimental hybrid):** scripts use **`LIGHTSAIL_SSH_HOST`**, default **`ezkey`**. See [`README.md`](README.md#default-lightsail-ssh-host-ezkey).
+**SSH (experimental hybrid):** scripts require **`--target community|exp1`** or **`LIGHTSAIL_SSH_HOST`** — no silent default (#812). See [`README.md`](README.md#declared-lightsail-ssh-target-no-silent-default).
 
 ---
 
@@ -65,8 +65,8 @@ After a rebuild, set each API **A** record in Cloudflare to the **new** Lightsai
 | [`lightsail/caddy-certs/`](lightsail/caddy-certs/) | On the VM only: **Origin CA** PEMs from Cloudflare (**not** in git; `.gitignore` keeps the folder) |
 | [`lightsail/clean-start.sh`](lightsail/clean-start.sh) | Optional **destructive** reset: `down -v`, keygen, `up -d` |
 | [`lightsail/.env.example`](lightsail/.env.example) | Template for `lightsail/.env` |
-| [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) | `docker save` → `scp` → `docker load`; optional **`--include-demo-acme`**. **`--sync-operator-files`**: scp `docker-compose.yml`, `Caddyfile`, `clean-start.sh` without volume wipe. **`--remote-up`**: `docker compose up -d` on the VM (rolling stack refresh). Incompatible with `--clean-start` (use one path or the other). With `--clean-start`, syncs then runs `clean-start.sh` (destructive) |
-| [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) | Optional: local build + export + clean-start + Pages deploy |
+| [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) | Requires **`--target community\|exp1`** (or `LIGHTSAIL_SSH_HOST`). `docker save` → `scp` → `docker load`; optional **`--include-demo-acme`**. **`--sync-operator-files`**: scp `docker-compose.yml`, **target-aware** Caddyfile, `clean-start.sh` without volume wipe (community never gets EXP1 Caddy — #812). **`--remote-up`**: `docker compose up -d` on the VM. Incompatible with `--clean-start`. |
+| [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) | Same **`--target`** requirement; optional: local build + export + clean-start + Pages deploy |
 
 ---
 
@@ -105,7 +105,7 @@ Single directory **`~/ezkey`** matching the repo: `docker/generate-encryption-ke
 
 Run **`docker compose`** and **`./clean-start.sh`** only from **`~/ezkey/experimental-hybrid/lightsail/`**.
 
-### Copy from your PC (repo root; default SSH `Host` name is `ezkey` — see README)
+### Copy from your PC (repo root; declare SSH Host — EXP1 examples use `ezkey`; see README § declared target)
 
 ```bash
 ssh ezkey "mkdir -p ezkey/docker ezkey/experimental-hybrid/lightsail/caddy-certs"
@@ -142,9 +142,9 @@ Then **Phase 2** (images) and **Phase 3** (start).
 1. On the workstation: `docker compose -f docker/docker-compose.yml build migration admin-api auth-api integration-api` (or targets you need). For the **ACME demo** image: `docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest .`
 2. `docker save` → tars; `scp` to VM; on VM: `docker load`.
 
-**Scripted:** [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) — add **`--include-demo-acme`** to push `ezkey-demo-app-acme` tars in the same pass (after a local `demo-app-acme` build). For a **no-wipe** refresh of Caddy, Compose, and all loaded images: **`--sync-operator-files --remote-up`** (optionally with **`--include-demo-acme`**). Use **`--clean-start`** only for a **destructive** VM reset (do not mix with `--sync-operator-files` or `--remote-up`). **`caddy-certs/` and `.env` are not copied** by the script (secrets / operator files).
+**Scripted:** [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) — pass **`--target community|exp1`** (required; #812). Add **`--include-demo-acme`** to push `ezkey-demo-app-acme` tars in the same pass (after a local `demo-app-acme` build). For a **no-wipe** refresh of Caddy, Compose, and all loaded images: **`--sync-operator-files --remote-up`**. Use **`--clean-start`** only for a **destructive** VM reset. **`caddy-certs/` and `.env` are not copied** by the script (secrets / operator files).
 
-**Presets — [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh):** subcommand **`rolling`** = build (migration + APIs) + export + remove remote tars + **`--sync-operator-files` + `--remote-up`** (single delegated command, DB preserved, Flyway from new image). Add **`--include-demo-acme`** for the ACME demo. Subcommand **`full`** or no args = destructive build + export + `clean-start` + UI deploy. See script **`--help`**.
+**Presets — [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh):** e.g. **`--target exp1 rolling`** = build (migration + APIs) + export + remove remote tars + **`--sync-operator-files` + `--remote-up`**. Add **`--include-demo-acme`** for the ACME demo. **`--target exp1 full`** = destructive build + export + `clean-start` + UI deploy. See script **`--help`**.
 
 **Per-service or manual rolling:** [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
 
@@ -198,7 +198,7 @@ Without **`/etc/ezkey/secrets/master.key`**, Tink may stay disabled. Prefer **`c
 The next rolling upgrade must retarget Demo ACME at Integration API. Do **not** re-enable an Admin API API-key hatch on the VM.
 
 ```text
-./experimental-hybrid/scripts/full-exp-environment-upgrade.sh rolling --include-demo-acme
+./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target exp1 rolling --include-demo-acme
 ```
 
 That syncs Compose (`EZKEY_ADMIN_API_URL=http://integration-api:7080`), recreates Admin API (no API-key authentication) and ACME, and keeps Postgres. After sync, delete `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED` from the live `.env` if present. Details: [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
@@ -233,4 +233,4 @@ For a **NEW** all-in-one Lightsail instance aimed at **ezkey.online** evaluation
 
 **Community Caddy / hostnames:** use [`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online) on the community VM (copy to remote `Caddyfile`); leave this playbook’s EXP1 [`lightsail/Caddyfile`](lightsail/Caddyfile) for `exp1-ezkey`. Ordered path (Origin CA, DNS, `.env`, export, clean-start, Pages): [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).
 
-**Handoff:** create VM → `open-ports.sh` → `bootstrap-host.sh` (this playbook’s Phase 0b/0c) → reuse [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) with a **dedicated** SSH Host alias (`LIGHTSAIL_SSH_HOST=ezkey-online`, not `ezkey`) → install community Caddyfile + Origin CA / DNS later with human OK. No production DNS or cert changes in the Lightsail create scripts.
+**Handoff:** `create-instance.sh --target community` → `open-ports.sh` → `bootstrap-host.sh --target community` → [`export-backend-images-to-lightsail.sh --target community`](scripts/export-backend-images-to-lightsail.sh) (sync installs community Caddyfile; #812) → Origin CA / DNS later with human OK. No production DNS or cert changes in the Lightsail create scripts.
