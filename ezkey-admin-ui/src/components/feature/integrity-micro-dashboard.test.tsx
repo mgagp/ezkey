@@ -41,6 +41,9 @@ vi.mock('@/lib/integrity-async-jobs', async () => {
   };
 });
 
+/** Fixed "now" so SUCCEEDED fixtures stay within the 24 h fresh window. */
+const FROZEN_NOW = new Date('2026-10-13T13:00:00.000Z');
+
 function job(
   overrides: Partial<IntegrityAsyncJobResponse> = {},
 ): IntegrityAsyncJobResponse {
@@ -49,7 +52,8 @@ function job(
     type: 'VERIFY_CHAIN_RANGE',
     status: 'SUCCEEDED',
     chainStatus: 'OK',
-    finishedAt: '2026-10-13T11:00:00.000Z',
+    // One hour before FROZEN_NOW — fresh under INTEGRITY_VERDICT_FRESH_MS.
+    finishedAt: '2026-10-13T12:00:00.000Z',
     ...overrides,
   };
 }
@@ -96,6 +100,7 @@ describe('IntegrityMicroDashboard poll + abandon', () => {
 
   it('stops polling /current after a terminal SUCCEEDED status', async () => {
     vi.useFakeTimers();
+    vi.setSystemTime(FROZEN_NOW);
     const running = job({
       status: 'RUNNING',
       finishedAt: undefined,
@@ -161,6 +166,8 @@ describe('IntegrityMicroDashboard poll + abandon', () => {
   });
 
   it('reloads /last-verdict after idle 204 while RUNNING nightly', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(FROZEN_NOW);
     const nightlyRunning = job({
       status: 'RUNNING',
       busyHolder: 'NIGHTLY',
