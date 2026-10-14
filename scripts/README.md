@@ -126,14 +126,14 @@ AWS CLI helpers under [`lightsail/`](lightsail/) to create and bootstrap a **NEW
 
 ```bash
 export AWS_PROFILE=ezkey-lightsail
-./scripts/lightsail/create-instance.sh
+./scripts/lightsail/create-instance.sh --target community
 ./scripts/lightsail/open-ports.sh
-./scripts/lightsail/bootstrap-host.sh --dry-run
+./scripts/lightsail/bootstrap-host.sh --target community --dry-run
 ./scripts/lightsail/status.sh --help
 ./scripts/lightsail/delete-instance.sh --help
 ```
 
-App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with `LIGHTSAIL_SSH_HOST=ezkey-online`. Do not put community-only secrets or ezkey.online-only DNS checklists into the public compose tree.
+App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with **`--target community`** (or `exp1`) — no silent SSH host default (#812). Community `--sync-operator-files` installs `Caddyfile.ezkey-online` as remote `Caddyfile`. Do not put community-only secrets or ezkey.online-only DNS checklists into the public compose tree.
 
 ## Ops — Docker log hygiene (host-local)
 
@@ -147,7 +147,7 @@ bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --
 ```
 
 `--purge --apply` requires `--project` (or `COMPOSE_PROJECT_NAME`); host-wide apply is refused.
-Pre-upgrade scan: sync `scripts/ops/` with `--sync-operator-files` **without** `--remote-up` (or `scp` the script), restore community Caddyfile, run `--scan`, then `--remote-up`.
+Pre-upgrade scan: sync `scripts/ops/` with `--target community --sync-operator-files` **without** `--remote-up` (or `scp` the script), run `--scan`, then `--target community --remote-up`.
 
 ## Initial Problem
 

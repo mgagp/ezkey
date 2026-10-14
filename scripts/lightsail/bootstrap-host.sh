@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #
 # Bootstrap Docker + Compose v2 on a fresh Amazon Linux 2023 Lightsail host (Phase 0b/0c).
-# SSH as ec2-user via LIGHTSAIL_SSH_HOST (default: ezkey-online — NOT the EXP1 alias ezkey).
+# SSH as ec2-user via a declared target or LIGHTSAIL_SSH_HOST — no silent default (#812).
 #
 # Idempotent where practical. Does NOT run clean-start, push images, or change DNS/certs.
 # Optional --print-next-steps only prints handoff commands for the existing export script.
 #
 # Usage (from repository root, Git Bash):
-#   export LIGHTSAIL_SSH_HOST=ezkey-online
-#   ./scripts/lightsail/bootstrap-host.sh
-#   ./scripts/lightsail/bootstrap-host.sh --dry-run
+#   ./scripts/lightsail/bootstrap-host.sh --target community
+#   ./scripts/lightsail/bootstrap-host.sh --target community --dry-run
+#   LIGHTSAIL_SSH_HOST=ezkey-online ./scripts/lightsail/bootstrap-host.sh --dry-run
 #
 set -euo pipefail
 
@@ -19,20 +19,22 @@ source "${SCRIPT_DIR}/common.sh"
 
 DRY_RUN=""
 PRINT_NEXT=""
-SSH_HOST="${LIGHTSAIL_SSH_HOST}"
+DECLARED_TARGET=""
+HOST_FLAG=""
 SSH_USER="${LIGHTSAIL_SSH_USER}"
 SSH_IDENTITY="${LIGHTSAIL_SSH_IDENTITY_FILE:-}"
 
 usage() {
-  cat <<'EOF'
+  cat <<EOF
 Bootstrap Docker + Compose v2 on a Lightsail AL2023 host (playbook Phase 0b/0c).
 
 Usage (from repository root, Git Bash):
-  ./scripts/lightsail/bootstrap-host.sh [options]
+  ./scripts/lightsail/bootstrap-host.sh --target community [options]
+  LIGHTSAIL_SSH_HOST=ezkey-online ./scripts/lightsail/bootstrap-host.sh [options]
 
-This script SSHes to LIGHTSAIL_SSH_HOST (default ezkey-online) as ec2-user and:
+This script SSHes as ec2-user and:
   - dnf install/update docker; enable --now docker
-  - install Compose v2 CLI plugin if `docker compose version` is missing
+  - install Compose v2 CLI plugin if \`docker compose version\` is missing
   - usermod -aG docker ec2-user
 
 It does NOT:
@@ -40,8 +42,12 @@ It does NOT:
   - export/push backend images
   - create Cloudflare DNS or Origin CA material
 
+SSH target (required — no silent default; #812):
+  --target community   SSH Host ${LIGHTSAIL_SSH_HOST_COMMUNITY}
+  --target exp1        SSH Host ${LIGHTSAIL_SSH_HOST_EXP1} (discouraged for this community bootstrap path)
+  --host ALIAS         Explicit OpenSSH Host / hostname (or set LIGHTSAIL_SSH_HOST)
+
 Options:
-  --host ALIAS            SSH Host alias or hostname (default: LIGHTSAIL_SSH_HOST / ezkey-online)
   --user USER             SSH user (default: ec2-user)
   --identity-file PATH    Optional IdentityFile for ssh -i (or set LIGHTSAIL_SSH_IDENTITY_FILE)
   --dry-run               Print remote commands only (no ssh)
@@ -57,7 +63,7 @@ SSH config tip (workstation ~/.ssh/config) — keep EXP1 on Host ezkey untouched
     IdentitiesOnly yes
 
 Then:
-  LIGHTSAIL_SSH_HOST=ezkey-online ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --dry-run
+  ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --dry-run
 EOF
   echo
   lightsail_print_defaults
@@ -65,9 +71,14 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --target)
+      [[ $# -ge 2 ]] || lightsail_die "--target requires community|exp1"
+      DECLARED_TARGET="$2"
+      shift 2
+      ;;
     --host)
       [[ $# -ge 2 ]] || lightsail_die "--host requires a value"
-      SSH_HOST="$2"
+      HOST_FLAG="$2"
       shift 2
       ;;
     --user)
@@ -100,8 +111,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "${SSH_HOST}" == "ezkey" ]]; then
-  echo "warning: LIGHTSAIL_SSH_HOST=ezkey is the EXP1 alias. Prefer a dedicated Host (e.g. ezkey-online)." >&2
+if [[ -n "${HOST_FLAG}" ]]; then
+  LIGHTSAIL_SSH_HOST="${HOST_FLAG}"
+fi
+lightsail_resolve_ssh_target "${DECLARED_TARGET}"
+SSH_HOST="${LIGHTSAIL_SSH_HOST}"
+
+if [[ "${LIGHTSAIL_TARGET:-}" == "exp1" ]]; then
+  echo "warning: bootstrapping EXP1 alias (${LIGHTSAIL_SSH_HOST_EXP1}). Prefer --target community for ezkey.online." >&2
 fi
 
 REMOTE_SCRIPT=$(
@@ -151,7 +168,7 @@ if [[ "${SSH_HOST}" != *"@"* ]]; then
 fi
 ssh_cmd+=("${ssh_target}" "bash -s")
 
-echo "Bootstrap target: ${ssh_target}"
+echo "Bootstrap target: ${ssh_target} (LIGHTSAIL_TARGET=${LIGHTSAIL_TARGET:-custom})"
 if [[ -n "${DRY_RUN}" ]]; then
   echo "[dry-run] would run:"
   printf ' %q' "${ssh_cmd[@]}"
@@ -164,14 +181,20 @@ else
 fi
 
 print_next_steps() {
+  local export_target_flag=""
+  if [[ -n "${LIGHTSAIL_TARGET:-}" ]]; then
+    export_target_flag="--target ${LIGHTSAIL_TARGET}"
+  else
+    export_target_flag="LIGHTSAIL_SSH_HOST=${SSH_HOST}"
+  fi
   cat <<EOF
 
 Next steps (manual / existing scripts — not run by bootstrap-host.sh):
   1. New SSH session so docker group applies:  ssh ${SSH_HOST}
-  2. Copy lightsail layout / images (EXP1 export path, new host alias):
-       export LIGHTSAIL_SSH_HOST=${SSH_HOST}
-       ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --dry-run
+  2. Copy lightsail layout / images (declared target — no silent SSH default; #812):
+       ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh ${export_target_flag} --dry-run
        # then without --dry-run, optionally --sync-operator-files / --clean-start
+       # community --sync-operator-files installs Caddyfile.ezkey-online as remote Caddyfile
   3. Origin CA + Cloudflare DNS for ezkey.online: human OK only (not automated here).
   See docs/lightsail/community-host.md
 EOF

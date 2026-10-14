@@ -1,51 +1,37 @@
 #!/usr/bin/env bash
 #
 # Export Ezkey backend images (docker save), copy to Lightsail (scp), docker load on the VM.
-# LIGHTSAIL_SSH_HOST defaults to ezkey (experimental hybrid). Override if your SSH Host name differs.
 #
-# Prerequisites: built images; ssh/scp to LIGHTSAIL_SSH_HOST.
+# SSH host: no silent default (#812). Pass --target community|exp1 or set LIGHTSAIL_SSH_HOST.
+#   --target community  →  ezkey-online  (sync uses Caddyfile.ezkey-online → remote Caddyfile)
+#   --target exp1       →  ezkey         (sync uses EXP1 Caddyfile)
+#
+# Prerequisites: built images (skipped in --dry-run); ssh/scp to the resolved host.
 #
 # With --clean-start, syncs lightsail operator files to the VM then runs clean-start.sh (destructive).
-# With --sync-operator-files, copies docker-compose.yml, Caddyfile, and clean-start.sh to the VM only
-# (no clean-start) so Caddy and Compose stay aligned with the repo; preserves existing volumes/DB.
+# With --sync-operator-files, copies docker-compose.yml, the target-aware Caddyfile, and clean-start.sh
+# to the VM only (no clean-start) so Caddy and Compose stay aligned with the repo; preserves volumes/DB.
 # With --remote-up, after load (and after --sync-operator-files if set), runs docker compose up -d on
 # the VM so migration + backends + Caddy pick up the loaded images (no volume wipe).
 # Do not combine --clean-start with --sync-operator-files or --remote-up (incompatible; see script check).
 # Override remote path with LIGHTSAIL_REMOTE_DIR if needed.
 #
 # Usage (from repository root):
-#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh
-#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --apis-only
-#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --include-demo-acme
-#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --sync-operator-files --remote-up
-#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --clean-start
-#
-# Options:
-#   --apis-only            Export only admin-api, auth-api, integration-api (no migration image).
-#   --include-demo-acme    Also export ezkey-demo-app-acme (after the API images; requires a local
-#                          build, see below).
-#   --sync-operator-files  After load, scp lightsail docker-compose.yml, Caddyfile, clean-start.sh
-#                          to LIGHTSAIL_REMOTE_DIR (no DB wipe; use with --remote-up for a full rolling refresh).
-#   --remote-up            After load (and optional sync), ssh to the VM and run
-#                          docker compose up -d in LIGHTSAIL_REMOTE_DIR (picks up new images; Postgres
-#                          data and named volumes are retained; migration re-runs from the new image).
-#   --clean-start          After load, sync lightsail files and run clean-start.sh
-#                          (DESTRUCTIVE: wipes volumes). Incompatible with --sync-operator-files and
-#                          --remote-up.
-#   --remove-remote-tars   After successful load, rm the tar files from the remote home directory.
-#   --dry-run              Print commands only.
-#
-# Build prerequisite for --include-demo-acme (from repository root):
-#   docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest .
+#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --dry-run
+#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target exp1 --apis-only
+#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --sync-operator-files --remote-up
+#   LIGHTSAIL_SSH_HOST=ezkey-online ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --dry-run
 #
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# shellcheck source=../../scripts/lightsail/common.sh
+source "${REPO_ROOT}/scripts/lightsail/common.sh"
+
 COMPOSE_FILE="${REPO_ROOT}/docker/docker-compose.yml"
 EXPORT_DIR="${EXPORT_DIR:-${REPO_ROOT}/docker/export}"
 
-SSH_HOST="${LIGHTSAIL_SSH_HOST:-ezkey}"
 LIGHTSAIL_REMOTE_DIR="${LIGHTSAIL_REMOTE_DIR:-~/ezkey/experimental-hybrid/lightsail}"
 LIGHTSAIL_LOCAL_DIR="${REPO_ROOT}/experimental-hybrid/lightsail"
 # Remote repository root that hosts the files the Lightsail compose bind-mounts with ../../ paths
@@ -60,25 +46,34 @@ REMOVE_REMOTE_TARS=""
 DRY_RUN=""
 SYNC_OPERATOR_FILES=""
 REMOTE_UP=""
+DECLARED_TARGET=""
 
 usage() {
-  cat <<'EOF'
+  cat <<EOF
 Export Ezkey backend images → Lightsail: docker save, scp, remote docker load.
 
 Usage (from repository root):
-  ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh [options]
+  ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community|exp1 [options]
+  LIGHTSAIL_SSH_HOST=ezkey-online ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh [options]
+
+SSH target (required — no silent default; #812):
+  --target community   SSH Host ${LIGHTSAIL_SSH_HOST_COMMUNITY}; sync uses Caddyfile.ezkey-online
+  --target exp1        SSH Host ${LIGHTSAIL_SSH_HOST_EXP1}; sync uses EXP1 Caddyfile
+  or set LIGHTSAIL_SSH_HOST explicitly (known aliases infer target for Caddyfile sync)
 
 Options:
   --apis-only            Export only admin-api, auth-api, integration-api (no migration image).
   --include-demo-acme    Also export ezkey-demo-app-acme (after API tars; build image first).
-  --sync-operator-files  After load, scp docker-compose.yml, Caddyfile, clean-start.sh + host mounts
-                         including scripts/ops/ (no volume wipe; safe without --remote-up for a
-                         pre-upgrade --scan of docker-log-hygiene.sh).
+  --sync-operator-files  After load, scp docker-compose.yml, target-aware Caddyfile, clean-start.sh
+                         + host mounts including scripts/ops/ (no volume wipe).
   --remote-up            After load/sync, on the VM: docker compose up -d (rolling apply; DB preserved).
-  --clean-start          After load, sync and run clean-start.sh (DESTRUCTIVE). Not with --sync-operator-files
-                         or --remote-up.
+                         With --sync-operator-files: sha256-verify Caddyfile + force-recreate caddy
+                         (bind mount; plain up -d does not reload Caddy).
+  --clean-start          After load, sync and run clean-start.sh (DESTRUCTIVE). Community requires
+                         EZKEY_CONFIRM_WIPE=ezkey-online (first commissioning only). Not with
+                         --sync-operator-files or --remote-up.
   --remove-remote-tars   After successful load, remove tar files on the remote home directory.
-  --dry-run              Print commands only.
+  --dry-run              Print commands only (skips local docker image checks).
   -h, --help             Show this help.
 
 Build demo image when using --include-demo-acme (from repository root):
@@ -88,6 +83,12 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --target)
+      [[ $# -ge 2 ]] || lightsail_die "--target requires community|exp1"
+      DECLARED_TARGET="$2"
+      shift 2
+      continue
+      ;;
     --apis-only) INCLUDE_MIGRATION="" ;;
     --include-demo-acme) INCLUDE_DEMO_ACME="1" ;;
     --sync-operator-files) SYNC_OPERATOR_FILES="1" ;;
@@ -105,11 +106,19 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+lightsail_resolve_ssh_target "${DECLARED_TARGET}"
+SSH_HOST="${LIGHTSAIL_SSH_HOST}"
+
 if [[ -n "$DO_CLEAN_START" ]] && { [[ -n "$SYNC_OPERATOR_FILES" ]] || [[ -n "$REMOTE_UP" ]]; }; then
   echo "error: --clean-start cannot be combined with --sync-operator-files or --remote-up." >&2
   echo "  For a no-wipe upgrade (Caddy, Compose, images, migration), use --sync-operator-files and/or --remote-up only." >&2
   echo "  For a disposable full reset, use --clean-start alone." >&2
   exit 1
+fi
+
+# Community --clean-start wipes Postgres; require explicit confirmation (first commissioning only).
+if [[ -n "$DO_CLEAN_START" ]]; then
+  lightsail_require_community_wipe_confirm
 fi
 
 IMAGES=()
@@ -151,9 +160,36 @@ sync_host_mounts() {
   run scp "${REPO_ROOT}/scripts/ops/"* "${SSH_HOST}:${REMOTE_REPO_ROOT}/scripts/ops/"
 }
 
+# Sync docker-compose.yml, target-aware Caddyfile → remote Caddyfile, and clean-start.sh.
+# Community never receives the EXP1 Caddyfile (#812).
+sync_operator_files() {
+  local label="$1"
+  local caddy_src
+  caddy_src="$(lightsail_caddyfile_source_for_sync "${LIGHTSAIL_LOCAL_DIR}")"
+  echo ""
+  echo "→ ${label} → ${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}"
+  echo "  target=${LIGHTSAIL_TARGET:-custom} Caddyfile source=$(basename "${caddy_src}")"
+  run ssh "${SSH_HOST}" "mkdir -p ${LIGHTSAIL_REMOTE_DIR}"
+  for f in docker-compose.yml clean-start.sh; do
+    src="${LIGHTSAIL_LOCAL_DIR}/${f}"
+    if [[ ! -f "$src" ]]; then
+      echo "error: missing ${src}" >&2
+      exit 1
+    fi
+    run scp "$src" "${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}/${f}"
+  done
+  if [[ ! -f "${caddy_src}" ]]; then
+    echo "error: missing ${caddy_src}" >&2
+    exit 1
+  fi
+  run scp "${caddy_src}" "${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}/Caddyfile"
+  sync_host_mounts
+}
+
 echo "=========================================="
 echo "  Export backend images → Lightsail"
 echo "  SSH: ${SSH_HOST}"
+echo "  target: ${LIGHTSAIL_TARGET:-custom (explicit host)}"
 if [[ -n "$INCLUDE_DEMO_ACME" ]]; then
   echo "  (including demo-app-acme)"
 fi
@@ -172,16 +208,18 @@ for i in "${!IMAGES[@]}"; do
   tar_name="${TARS[$i]}"
   out="${EXPORT_DIR}/${tar_name}"
   echo "→ docker save ${img} → ${out}"
-  if ! docker image inspect "$img" >/dev/null 2>&1; then
-    echo "error: image not found locally: ${img}" >&2
-    if [[ "$img" == "ezkey-demo-app-acme:latest" ]]; then
-      echo "  Build first, e.g. from repo root:" >&2
-      echo "    docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest ." >&2
-    else
-      echo "  Build first, e.g. from repo root:" >&2
-      echo "    docker compose -f docker/docker-compose.yml build migration admin-api auth-api integration-api" >&2
+  if [[ -z "$DRY_RUN" ]]; then
+    if ! docker image inspect "$img" >/dev/null 2>&1; then
+      echo "error: image not found locally: ${img}" >&2
+      if [[ "$img" == "ezkey-demo-app-acme:latest" ]]; then
+        echo "  Build first, e.g. from repo root:" >&2
+        echo "    docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest ." >&2
+      else
+        echo "  Build first, e.g. from repo root:" >&2
+        echo "    docker compose -f docker/docker-compose.yml build migration admin-api auth-api integration-api" >&2
+      fi
+      exit 1
     fi
-    exit 1
   fi
   run docker save -o "$out" "$img"
 done
@@ -208,42 +246,29 @@ if [[ -n "$REMOVE_REMOTE_TARS" ]]; then
   run ssh "${SSH_HOST}" "rm -f${remote_paths}"
 fi
 
+CADDY_SRC_FOR_VERIFY=""
 if [[ -n "$SYNC_OPERATOR_FILES" && -z "$DO_CLEAN_START" ]]; then
-  echo ""
-  echo "→ sync operator files (no clean-start) → ${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}"
-  run ssh "${SSH_HOST}" "mkdir -p ${LIGHTSAIL_REMOTE_DIR}"
-  for f in docker-compose.yml Caddyfile clean-start.sh; do
-    src="${LIGHTSAIL_LOCAL_DIR}/${f}"
-    if [[ ! -f "$src" ]]; then
-      echo "error: missing ${src}" >&2
-      exit 1
-    fi
-    run scp "$src" "${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}/${f}"
-  done
-  sync_host_mounts
+  sync_operator_files "sync operator files (no clean-start)"
+  CADDY_SRC_FOR_VERIFY="$(lightsail_caddyfile_source_for_sync "${LIGHTSAIL_LOCAL_DIR}")"
 fi
 
 if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
   echo ""
   echo "→ remote rolling stack (docker compose up -d) on ${SSH_HOST}"
-  # Recreate containers so :latest and updated Compose/Caddy take effect; Postgres keeps postgres-data.
+  # Recreate containers so :latest and updated Compose take effect; Postgres keeps postgres-data.
+  # Caddyfile is a bind mount — up -d alone does not reload caddy when only the file changed.
   run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && docker compose up -d --remove-orphans"
+  if [[ -n "$CADDY_SRC_FOR_VERIFY" ]]; then
+    local_sha="$(sha256sum "${CADDY_SRC_FOR_VERIFY}" | awk '{print $1}')"
+    echo ""
+    echo "→ verify remote Caddyfile sha256=${local_sha} and force-recreate caddy (bind-mount)"
+    run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; remote_sha=\$(sha256sum Caddyfile | awk '{print \$1}'); if [[ \"\${remote_sha}\" != '${local_sha}' ]]; then echo \"error: remote Caddyfile sha256=\${remote_sha} != local ${local_sha}\" >&2; exit 1; fi; docker compose up -d --no-deps --force-recreate caddy"
+  fi
 fi
 
 if [[ -n "$DO_CLEAN_START" ]]; then
-  echo ""
-  echo "→ sync lightsail operator files → ${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}"
   # Let the remote login shell expand ~ (do not wrap the path in single quotes on the remote).
-  run ssh "${SSH_HOST}" "mkdir -p ${LIGHTSAIL_REMOTE_DIR}"
-  for f in docker-compose.yml Caddyfile clean-start.sh; do
-    src="${LIGHTSAIL_LOCAL_DIR}/${f}"
-    if [[ ! -f "$src" ]]; then
-      echo "error: missing ${src}" >&2
-      exit 1
-    fi
-    run scp "$src" "${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}/${f}"
-  done
-  sync_host_mounts
+  sync_operator_files "sync lightsail operator files (before clean-start)"
   echo ""
   echo "→ remote clean-start (destructive: docker compose down -v, keygen, up)"
   run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && bash clean-start.sh"
@@ -258,6 +283,6 @@ elif [[ -n "$REMOTE_UP" ]]; then
 else
   echo "Tip: pre-upgrade log scan — --sync-operator-files (no --remote-up), then on the VM:"
   echo "     bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan"
-  echo "     then re-run with --remote-up (or full-exp-environment-upgrade.sh rolling)."
+  echo "     then re-run with --remote-up (or full-exp-environment-upgrade.sh rolling --target …)."
   echo "     See also experimental-hybrid/BACKEND_ROLLING_UPDATE.md"
 fi

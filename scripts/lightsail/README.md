@@ -3,7 +3,7 @@
 Self-contained AWS CLI helpers for **creating and bootstrapping** a NEW Lightsail VM parallel to EXP1. Dry-run by default for create / ports / delete.
 
 **Owns:** instance create, firewall ports, Docker bootstrap, status, delete.  
-**Does not own:** Compose/Caddy/app images — reuse [`experimental-hybrid/lightsail/`](../../experimental-hybrid/lightsail/) and [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with `LIGHTSAIL_SSH_HOST`.
+**Does not own:** Compose/Caddy/app images — reuse [`experimental-hybrid/lightsail/`](../../experimental-hybrid/lightsail/) and [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with **`--target community|exp1`** (or `LIGHTSAIL_SSH_HOST`). No silent SSH host default (#812).
 
 **Runbook:** [`docs/lightsail/community-host.md`](../../docs/lightsail/community-host.md).
 
@@ -11,9 +11,10 @@ Self-contained AWS CLI helpers for **creating and bootstrapping** a NEW Lightsai
 
 ```bash
 export AWS_PROFILE=ezkey-lightsail
-./scripts/lightsail/create-instance.sh
+./scripts/lightsail/create-instance.sh --target community
 ./scripts/lightsail/open-ports.sh
-./scripts/lightsail/bootstrap-host.sh --dry-run
+./scripts/lightsail/bootstrap-host.sh --target community --dry-run
 ./scripts/lightsail/status.sh --help
 ./scripts/lightsail/delete-instance.sh --help
+# Dry-run target checks: ./scripts/lightsail/target-aware.test.sh
 ```

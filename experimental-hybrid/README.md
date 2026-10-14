@@ -7,22 +7,27 @@ This folder contains **operator-focused** artifacts to run Ezkey on **Amazon Lig
 - **Runbook:** [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) — phases, **`~/ezkey` VM tree**, **`scp` from a dev clone** (default), optional clone-on-VM, Cloudflare split (manual vs repo)
 - **Single-backend image update (Lightsail):** [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md) — `docker save` / `scp` / `docker load` / `compose up --force-recreate`
 - **Scripted export + optional clean-start or rolling (no DB wipe) + optional UI deploy:** [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) (`--sync-operator-files`, `--remote-up`), [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) subcommand **`rolling`** — see [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *Phase 2b*
-- **One-command stack upgrade (EXP1 / Lightsail, keeps Postgres data):** from repo root, **`./experimental-hybrid/scripts/full-exp-environment-upgrade.sh rolling`** — builds **migration + all backend APIs**, saves/loads images (including Flyway), copies **Caddyfile** + **`docker-compose.yml`** + `clean-start.sh` to the VM, then runs **`docker compose up -d`** remotely. Use **`rolling --include-demo-acme`** to add the ACME demo image to the build/export. This does **not** run `clean-start` and does **not** remove volumes.
+- **One-command stack upgrade (Lightsail, keeps Postgres data):** from repo root, **`./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target exp1 rolling`** (or `--target community`) — builds **migration + all backend APIs**, saves/loads images (including Flyway), copies **target-aware Caddyfile** + **`docker-compose.yml`** + `clean-start.sh` to the VM, then runs **`docker compose up -d`** remotely. Use **`rolling --include-demo-acme`** to add the ACME demo image to the build/export. This does **not** run `clean-start` and does **not** remove volumes.
 
 The same Lightsail stack can also expose `demo-app-acme` behind a dedicated hostname such as `https://exp1-demo-acme.ezkey.org`. This keeps the public evaluation surface separate from the Admin UI and API hostnames while reusing the same Caddy + Docker operational model.
 
 Image build targets and behaviour match the main repo [`docker/Dockerfile`](../docker/Dockerfile) and [`docker/docker-compose.yml`](../docker/docker-compose.yml).
 
-## Default Lightsail SSH host: ezkey
+## Declared Lightsail SSH target (no silent default)
 
-For the **experimental hybrid** path, **`LIGHTSAIL_SSH_HOST`** in [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) and [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) **defaults to `ezkey`** (the `Host` in `~/.ssh/config` for this VM). Doc examples use the same name to keep steps short. *If your alias differs, set `LIGHTSAIL_SSH_HOST` when running those scripts.*
+Deploy scripts **never** silent-default to Host `ezkey` (dead EXP1 trap — [#812](https://github.com/mgagp/ezkey/issues/812)). Pass **`--target community|exp1`** or set **`LIGHTSAIL_SSH_HOST`** explicitly:
 
-**Community / ezkey.online (parallel VM):** create and bootstrap a **new** Lightsail instance with [`scripts/lightsail/`](../scripts/lightsail/) (default SSH alias **`ezkey-online`**, separate from EXP1). Those scripts own **VM lifecycle** only; this tree remains the OSS app/compose path. See [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) (§ *Ownership boundary*) and [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) § *Community host / ezkey.online*.
+| `--target` | OpenSSH Host | `--sync-operator-files` Caddyfile |
+|------------|--------------|-----------------------------------|
+| `community` | `ezkey-online` | `Caddyfile.ezkey-online` → remote `Caddyfile` |
+| `exp1` | `ezkey` | EXP1 `Caddyfile` → remote `Caddyfile` |
+
+**Community / ezkey.online (parallel VM):** create and bootstrap with [`scripts/lightsail/`](../scripts/lightsail/) (`--target community`). Those scripts own **VM lifecycle** only; this tree remains the OSS app/compose path. See [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) (§ *Ownership boundary*) and [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) § *Community host / ezkey.online*.
 
 ## Prerequisites
 
 - Docker and Docker Compose on the **build machine** and on the **VM**. On a **new** Amazon Linux 2023 Lightsail instance, install Docker and add **`ec2-user`** to the **`docker`** group — see [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) **Phase 0**. On the VM, use a **non-root** login that can run Docker; [`lightsail/clean-start.sh`](lightsail/clean-start.sh) does not call `sudo` and checks `docker info` before running.
-- **SSH** to the VM: default alias **`ezkey`** (see [above](#default-lightsail-ssh-host-ezkey)).
+- **SSH** to the VM: declare **`--target community|exp1`** (or `LIGHTSAIL_SSH_HOST`) — see [above](#declared-lightsail-ssh-target-no-silent-default).
 - DNS **A** records for your API hostnames pointing at the Lightsail **public** IP, **DNS only** (grey cloud) if Let’s Encrypt should reach Caddy directly
 - Ports **80** and **443** open on the instance firewall for HTTP-01 / HTTPS
 
@@ -71,7 +76,7 @@ docker load -i ~/ezkey-auth-api.tar
 docker load -i ~/ezkey-integration-api.tar
 ```
 
-To automate **save → scp → load**, use [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh). Add **`--sync-operator-files`** to push **Caddy** + **Compose** files (no DB wipe), and **`--remote-up`** to run **`docker compose up -d`** on the VM after load (rolling apply: new **migration** image runs Flyway against the existing database). Do **not** combine those with **`--clean-start`** (destructive). Optional **`--include-demo-acme`**. For **`docker compose build`** + full rolling pipeline or **`full`** (destructive) + **Cloudflare** UI deploy, see [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) and [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *Phase 2b*.
+To automate **save → scp → load**, use [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) with **`--target community|exp1`**. Add **`--sync-operator-files`** to push **Compose** + **target-aware Caddy** files (no DB wipe), and **`--remote-up`** to run **`docker compose up -d`** on the VM after load (rolling apply: new **migration** image runs Flyway against the existing database). Do **not** combine those with **`--clean-start`** (destructive). Optional **`--include-demo-acme`**. For **`docker compose build`** + full rolling pipeline or **`full`** (destructive) + **Cloudflare** UI deploy, see [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) and [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *Phase 2b*.
 
 ## Progressive introduction of the ACME demo (Lightsail, no database wipe)
 
@@ -79,7 +84,7 @@ Use this when the stack and Postgres data **already run** and you only add or up
 
 1. **Cloudflare DNS** — Add **`exp1-demo-acme.ezkey.org`** (or your zone) as an **A** record to the Lightsail public IP (or a **CNAME** to another `exp1-*` name that already points there). Enable **proxied (orange)** like the other experimental hosts. See [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *Phase 0d* / *1b*.
 2. **Origin certificate** — Include the demo FQDN in the **Cloudflare Origin Server** cert SAN list, redeploy **`origin.pem`** / **`origin-key.pem`** to **`lightsail/caddy-certs/`** on the VM, then recreate Caddy: `docker compose up -d --no-deps --force-recreate caddy` from [`lightsail/`](lightsail/) (see [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md)). Without this, TLS from Cloudflare to the origin will fail for the new hostname.
-3. **Build and transfer** — `docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest .`, then run **`./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --include-demo-acme`** (optionally with **`--apis-only`** if you skip migration tars), or `docker save` / `scp` / `docker load` manually per [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
+3. **Build and transfer** — `docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest .`, then run **`./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target exp1 --include-demo-acme`** (optionally with **`--apis-only`** if you skip migration tars), or `docker save` / `scp` / `docker load` manually per [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
 4. **Sync files** — If the VM is older than the repo, **`scp`** current [`lightsail/docker-compose.yml`](lightsail/docker-compose.yml) and [`lightsail/Caddyfile`](lightsail/Caddyfile) to `~/ezkey/experimental-hybrid/lightsail/` (see [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *VM initialization*). Do not run a destructive `clean-start`.
 5. **Recreate services** — On the VM: `docker compose up -d --no-deps --force-recreate demo-app-acme` after `docker load`; add `--force-recreate caddy` if Caddyfile or TLS PEMs changed. See [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
 6. **App configuration** — Ensure `/app/data/acme-users.json` exists (volume **`demo-app-acme-data`**), set **API key** credentials for the **Integration API** (`EZKEY_INTEGRATION_KEY` / `EZKEY_SECRET_KEY` in `.env` or `demo-app-acme-config`), and IP whitelist the integration for the container network. Compose sets `EZKEY_ADMIN_API_URL` to `http://integration-api:7080` (the env name is historical; do not point it at Admin API). **`EZKEY_TRUSTED_PROXIES_CIDRS`** is set in [`lightsail/docker-compose.yml`](lightsail/docker-compose.yml) for the demo; align with [`lightsail/.env`](lightsail/.env.example) if you override. End-to-end login still needs a **device approval** path (e.g. mobile app) against your public Auth API.
