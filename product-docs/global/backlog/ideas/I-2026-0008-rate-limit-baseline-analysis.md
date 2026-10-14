@@ -40,6 +40,6 @@ controllers registry.
 ## Links
 
 - Policy: [`../../rate-limit-baseline-policy.md`](../../rate-limit-baseline-policy.md)
-- Registry downscope: [`../../../methodology/decisions/2026-05-24-controllers-registry-downscope.md`](../../../methodology/decisions/2026-05-24-controllers-registry-downscope.md)
+- Registry downscope: [`I-2026-0009-global-controllers-registry.md`](I-2026-0009-global-controllers-registry.md) § Drop rationale
 - Grill: `../grill-sessions/blitz-2026-05-08-2-D1-rate-limit-registry-grill-me.md`
 - Paginated tiers: [`../../admin-ui-paginated-screens-matrix.md`](../../admin-ui-paginated-screens-matrix.md)

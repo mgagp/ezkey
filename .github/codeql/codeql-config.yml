@@ -1,0 +1,18 @@
+# CodeQL advanced-setup configuration for mgagp/ezkey.
+# Requires Settings → Code security → CodeQL → Advanced (default setup must be off).
+# Decision: code-scanning triage 2026-10-13, approved by Marc 2026-10-13 19:40.
+#
+# paths-ignore: test harness alerts (sensitive-log 23–47, relative-path 48–61) are
+# closed by exclusion rather than mass dismissal. See docs/SECURITY_POSTURE.md
+# § Code scanning policy and product-docs/global/hygiene/code-scanning/.
+#
+# Local model pack (LogSanitizer log-injection barrier):
+#   `.github/codeql/extensions/ezkey-java-models/` (qlpack name `ezkey/java-models`).
+# Advanced setup does not auto-detect that directory. The `packs:` key here only
+# accepts registry `scope/name` refs, not filesystem paths — so the pack is loaded
+# from `.github/workflows/codeql.yml` via CODEQL_ACTION_EXTRA_OPTIONS on the
+# java-kotlin analyze step (`--additional-packs` + `--extension-packs=ezkey/java-models`).
+name: Ezkey CodeQL config
+
+paths-ignore:
+  - ezkey-tests/**

@@ -4,7 +4,7 @@
 
 This document describes how the Admin API maps between its external HTTP contract (DTOs, OpenAPI, RFC 9457 errors) and its internal domain (core services, entities, mappers). Exhaustive endpoint-by-endpoint semantics remain in [`../../../docs/ENDPOINT.md`](../../../docs/ENDPOINT.md); this document captures the **boundary discipline**.
 
-Phase 1 seeds two representative mappings and declares the contract artifact policy. Additional mappings will be added using the [mapping matrix template](../../templates/mapping-matrix.template.md).
+Phase 1 seeds two representative mappings and declares the contract artifact policy. Additional mappings are added as entries in this file (see [`../../templates/README.md`](../../templates/README.md)).
 
 ## Contract Artifacts Policy
 

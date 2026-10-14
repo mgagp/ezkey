@@ -16,7 +16,7 @@ ADR is the **rationale**.
 **Backlog:** [`I-2026-0008`](backlog/ideas/I-2026-0008-rate-limit-baseline-analysis.md) — **closed** (policy + CONFIGURATION alignment; no code unification R1).
 
 **Discovery method:** OpenAPI + `RateLimit*` implementations + module `CONFIGURATION.md` + targeted
-controller reads (see downscope decision [`../methodology/decisions/2026-05-24-controllers-registry-downscope.md`](../methodology/decisions/2026-05-24-controllers-registry-downscope.md)).
+controller reads (see downscope decision [`backlog/ideas/I-2026-0009-global-controllers-registry.md`](backlog/ideas/I-2026-0009-global-controllers-registry.md) § Drop rationale).
 
 **Not a substitute for:** per-module `CONFIGURATION.md` property tables, [`docs/ENDPOINT.md`](../../docs/ENDPOINT.md), or [`ezkey-admin-api/README_RATE_LIMITING.md`](../../ezkey-admin-api/README_RATE_LIMITING.md) (operational tuning guide).
 
