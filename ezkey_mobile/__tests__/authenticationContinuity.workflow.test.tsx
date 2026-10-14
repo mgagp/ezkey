@@ -215,6 +215,9 @@ describe('authentication continuity (pending linked to respond)', () => {
       navigate: jest.fn(),
       goBack: jest.fn(),
       canGoBack: jest.fn().mockReturnValue(true),
+      // PendingAuthScreen registers beforeRemove → Auth API deny on leave (#831).
+      addListener: jest.fn(() => jest.fn()),
+      dispatch: jest.fn(),
     };
     const pendingRoute = {
       key: 'PendingAuth-key',
@@ -261,6 +264,8 @@ describe('authentication continuity (pending linked to respond)', () => {
       navigate: jest.fn(),
       goBack: jest.fn(),
       canGoBack: jest.fn().mockReturnValue(true),
+      addListener: jest.fn(() => jest.fn()),
+      dispatch: jest.fn(),
     };
     const pendingRoute = {
       key: 'PendingAuth-key',
