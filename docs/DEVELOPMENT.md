@@ -458,19 +458,23 @@ passes, and any tag-triggered Maven Central release (not implemented).
 
 **Maven dependency graph (not a PR check):** workflow
 [`.github/workflows/maven-dependency-submission.yml`](../.github/workflows/maven-dependency-submission.yml)
-submits the full (transitive) Maven graph to GitHub Insights on push to `main` (POM /
-`checkstyle-config` / `.mvn` paths) and via `workflow_dispatch`. It uses **JDK 25** and
-installs the unpublished `checkstyle-config` reactor module first — the same bootstrap as the
-`backend` job — so resolution succeeds. It is **not** part of `ci-gate`.
+submits the full (transitive) Maven graph to GitHub Insights. It triggers only on push to `main`
+that touches `pom.xml` / `**/pom.xml` / `.mvn/**` / `checkstyle-config/**` / the workflow file
+itself, or via `workflow_dispatch`. It uses **JDK 25** and installs the unpublished
+`checkstyle-config` reactor module first — the same bootstrap as the `backend` job — so
+resolution succeeds. It is **not** part of `ci-gate`.
 
-GitHub’s **Automatic dependency submission** is a single repo-wide toggle (not per ecosystem /
-“for Maven”): Settings → Advanced Security (section **Security and quality**) → Dependency graph
-→ Automatic dependency submission (`Enabled` / `Enabled for labeled runners` / `Disabled`).
-Set to **Disabled** (2026-10-08) because
+Keep the repository **Dependency graph** setting **enabled**. When it is off, this workflow
+fails with `HttpError: The Dependency graph is disabled for this repository` (runs 38298454193
+and 38447903477, Oct 2026). GitHub’s **Automatic dependency submission** is a separate
+repo-wide toggle (not per ecosystem / “for Maven”): Settings → Advanced Security (section
+**Security and quality**) → Dependency graph → Automatic dependency submission (`Enabled` /
+`Enabled for labeled runners` / `Disabled`). Keep Automatic dependency submission
+**Disabled** (2026-10-08) because
 [`.github/workflows/maven-dependency-submission.yml`](../.github/workflows/maven-dependency-submission.yml)
-feeds the graph instead. The built-in submitter uses Java 21, never builds `checkstyle-config`,
-and fails with “NOT allowed from central”. First dedicated-workflow run was green; Spring Boot
-is visible under Insights → Dependency graph.
+feeds the graph instead (cf. #722). The built-in submitter uses Java 21, never builds
+`checkstyle-config`, and fails with “NOT allowed from central”. First dedicated-workflow run
+was green; Spring Boot is visible under Insights → Dependency graph.
 
 **Run the same checks locally:**
 
