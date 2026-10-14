@@ -382,6 +382,98 @@ class BootstrapCredentialsFileExporterTest {
   }
 
   @Test
+  void reExportOverUnreadableFileKeepsThePreviousRecoveryCodes() throws Exception {
+    Path file = tempDir.resolve("bootstrap-credentials.json");
+    String secretCode = "TRUNCATED-FILE-CODE-5555-6666";
+    // Truncated JSON, e.g. a partial write or a hand-edit on the credentials volume.
+    Files.writeString(
+        file,
+        "{ \"enrollmentId\": 7, \"username\": \"admin.docker\", \"recoveryCodes\": [\""
+            + secretCode
+            + "\"] ",
+        StandardCharsets.UTF_8);
+
+    BootstrapCredentialsFileExporter exporter = fullModeExporter(file);
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(7);
+    enrollment.setEnrollmentChallenge(112233);
+
+    // Admin API restart while the bootstrap enrollment is still CREATED: re-export carries no
+    // plaintext recovery codes, so it must not be the operation that destroys them.
+    exporter.exportIfEnabled(enrollment, "proof.tokenValue", "admin.docker", List.of());
+
+    assertThat(keptCopies(tempDir))
+        .singleElement()
+        .satisfies(kept -> assertThat(kept).content(StandardCharsets.UTF_8).contains(secretCode));
+
+    ObjectNode json = (ObjectNode) new ObjectMapper().readTree(file.toFile());
+    assertThat(json.get("enrollmentId").asInt()).isEqualTo(7);
+    assertThat(json.get("enrollmentProofToken").asString()).isEqualTo("proof.tokenValue");
+  }
+
+  @Test
+  void reExportOverForeignEnrollmentFileKeepsThePreviousRecoveryCodes() throws Exception {
+    Path file = tempDir.resolve("bootstrap-credentials.json");
+    String secretCode = "STALE-VOLUME-CODE-7777-8888";
+
+    BootstrapCredentialsFileExporter exporter = fullModeExporter(file);
+    Enrollment previous = new Enrollment();
+    previous.setEnrollmentId(4);
+    previous.setEnrollmentChallenge(112233);
+    exporter.exportIfEnabled(previous, "stale.token", "admin.docker", List.of(secretCode));
+
+    Enrollment current = new Enrollment();
+    current.setEnrollmentId(9);
+    current.setEnrollmentChallenge(445566);
+    exporter.exportIfEnabled(current, "fresh.token", "admin.docker", List.of());
+
+    assertThat(keptCopies(tempDir))
+        .singleElement()
+        .satisfies(kept -> assertThat(kept).content(StandardCharsets.UTF_8).contains(secretCode));
+
+    ObjectNode json = (ObjectNode) new ObjectMapper().readTree(file.toFile());
+    assertThat(json.get("enrollmentId").asInt()).isEqualTo(9);
+    assertThat(json.has("recoveryCodes")).isFalse();
+  }
+
+  @Test
+  void reExportForTheSameEnrollmentLeavesTheFileUntouched() throws Exception {
+    Path file = tempDir.resolve("bootstrap-credentials.json");
+
+    BootstrapCredentialsFileExporter exporter = fullModeExporter(file);
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(7);
+    enrollment.setEnrollmentChallenge(112233);
+    exporter.exportIfEnabled(
+        enrollment, "proof.tokenValue", "admin.docker", List.of("AAAA-BBBB-CCCC-DDDD"));
+    String before = Files.readString(file, StandardCharsets.UTF_8);
+
+    exporter.exportIfEnabled(enrollment, "proof.tokenValue", "admin.docker", List.of());
+
+    assertThat(Files.readString(file, StandardCharsets.UTF_8)).isEqualTo(before);
+    assertThat(keptCopies(tempDir)).isEmpty();
+  }
+
+  private BootstrapCredentialsFileExporter fullModeExporter(Path file) {
+    BootstrapExportProperties exportProperties = new BootstrapExportProperties();
+    exportProperties.setEnabled(true);
+    exportProperties.setPath(file.toString());
+    AdminMfaProperties mfaProperties = new AdminMfaProperties();
+    mfaProperties.getBootstrap().setCredentialsOutputMode(BootstrapCredentialsOutputMode.FULL);
+    return new BootstrapCredentialsFileExporter(
+        exportProperties, new QrCodeProperties(), mfaProperties);
+  }
+
+  private static List<Path> keptCopies(Path directory) throws Exception {
+    try (var entries = Files.list(directory)) {
+      return entries
+          .filter(
+              path -> path.getFileName().toString().startsWith("bootstrap-credentials.previous"))
+          .toList();
+    }
+  }
+
+  @Test
   void corruptCredentialsFileIsHandledWithoutLoggingContents() throws Exception {
     Path file = tempDir.resolve("bootstrap-credentials.json");
     String secretMarker = "LEAK-ME-RECOVERY-9999-8888-7777-6666";

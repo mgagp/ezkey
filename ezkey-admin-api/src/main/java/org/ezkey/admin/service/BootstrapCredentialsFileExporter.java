@@ -18,6 +18,9 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
@@ -50,7 +53,9 @@ import tools.jackson.databind.node.ObjectNode;
  *
  * <p><b>Idempotent:</b> If the file already exists and contains the same enrollmentId, it will not
  * be overwritten to avoid unnecessary churn (except when new plaintext recovery codes must be
- * persisted).
+ * persisted). An existing file that cannot be parsed, or that names another enrollment, is moved to
+ * a timestamped {@code bootstrap-credentials.previous-*.json} sibling before the re-export — a
+ * re-export carries no plaintext recovery codes, and the database keeps only bcrypt hashes of them.
  *
  * @since 2025
  */
@@ -62,6 +67,9 @@ public class BootstrapCredentialsFileExporter {
 
   private static final Set<PosixFilePermission> OWNER_READ_WRITE_ONLY =
       EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+
+  /** Colon-free so the kept-copy name is valid on NTFS as well as POSIX filesystems. */
+  private static final String KEPT_COPY_TIMESTAMP = "yyyyMMdd'T'HHmmss'Z'";
 
   private final BootstrapExportProperties exportProperties;
   private final QrCodeProperties qrCodeProperties;
@@ -210,8 +218,13 @@ public class BootstrapCredentialsFileExporter {
           // Jackson 3 / ClassCastException are unchecked; never log message (may contain file
           // body).
           logger.warn(
-              "Failed to read existing bootstrap credentials file, will overwrite ({})",
+              "Failed to read existing bootstrap credentials file ({})",
               e.getClass().getSimpleName());
+        }
+        // This re-export carries no plaintext recovery codes (the database keeps hashes only), so
+        // the file about to be replaced may hold the last copy of the operator's codes.
+        if (!keepPreviousCredentialsFile(filePath)) {
+          return;
         }
       }
 
@@ -261,6 +274,41 @@ public class BootstrapCredentialsFileExporter {
           exportProperties.getPath(),
           e.getClass().getSimpleName());
       failClosedIfRecoveryCodesRequired(hasRecoveryCodes, e);
+    }
+  }
+
+  /**
+   * Moves an unreadable or foreign credentials file aside so a re-export without plaintext recovery
+   * codes cannot destroy the codes it may still contain.
+   *
+   * <p>{@link Files#move} keeps the source permissions, so the kept copy stays owner-only. When the
+   * move fails, the caller must not overwrite: an unreadable file with recovery codes is still
+   * recoverable by hand, an overwritten one is not.
+   *
+   * @param filePath current credentials file
+   * @return {@code true} when the file was moved aside and overwriting is safe
+   */
+  private boolean keepPreviousCredentialsFile(Path filePath) {
+    Path parent = filePath.getParent() != null ? filePath.getParent() : Path.of(".");
+    String stamp =
+        DateTimeFormatter.ofPattern(KEPT_COPY_TIMESTAMP)
+            .withZone(ZoneOffset.UTC)
+            .format(Instant.now());
+    Path kept = parent.resolve("bootstrap-credentials.previous-" + stamp + ".json");
+    try {
+      Files.move(filePath, kept);
+      logger.warn(
+          "Kept the previous bootstrap credentials file as {} before re-export; it may still hold"
+              + " plaintext recovery codes — copy them to a safe store, then delete it",
+          kept);
+      return true;
+    } catch (IOException e) {
+      logger.error(
+          "Could not move the previous bootstrap credentials file aside ({}); refusing to overwrite"
+              + " {} because it may hold the only copy of the recovery codes",
+          e.getClass().getSimpleName(),
+          filePath);
+      return false;
     }
   }
 
