@@ -4,19 +4,29 @@
  * Copyright (c) 2025 Ezkey contributors
  *
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Test: AdminAuthControllerBrowserSessionCookieTest
+ * Description: Browser session cookie controller unit tests plus MockMvc CSRF / no servlet cookie.
  */
 
 package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
 import org.ezkey.admin.config.AdminRecoveryProperties;
@@ -26,15 +36,19 @@ import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.dto.response.AdminSessionResponseDto;
 import org.ezkey.admin.dto.response.EvaluatorTempSessionResponseDto;
 import org.ezkey.admin.security.AdminAuthRequestAttributes;
+import org.ezkey.admin.security.AdminCookieCsrfFilter;
 import org.ezkey.admin.security.AdminCsrfTokenService;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
+import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminRecoveryService;
+import org.ezkey.admin.service.AdminTokenValidationService;
 import org.ezkey.admin.service.EvaluatorTempSessionService;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Tenant;
@@ -51,6 +65,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -229,5 +246,97 @@ class AdminAuthControllerBrowserSessionCookieTest {
     ResponseEntity<Void> response = controller.logout(null, httpRequest, httpResponse);
 
     assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+  }
+
+  @Test
+  @DisplayName(
+      "MockMvc: EZKEY_ADMIN_SESSION + X-CSRF-TOKEN on logout returns 2xx without servlet"
+          + " Set-Cookie")
+  void mockMvc_cookieWithCsrf_returns2xxWithoutServletSessionCookie() throws Exception {
+    String sessionToken = "session-token-csrf-ok";
+    AdminCsrfTokenService realCsrf = new AdminCsrfTokenService();
+    MockMvc mockMvc = buildCookieCsrfMockMvc(sessionToken, realCsrf);
+
+    when(browserSessionCookieProperties.isBrowserSessionCookieEnabled()).thenReturn(true);
+    when(browserSessionCookieProperties.getBrowserSessionCookieName())
+        .thenReturn("EZKEY_ADMIN_SESSION");
+    when(authService.getAdminIdForToken(sessionToken)).thenReturn(5);
+
+    String csrfToken = realCsrf.createToken(sessionToken);
+    MvcResult result =
+        mockMvc
+            .perform(
+                post("/api/v1/admin/auth/logout")
+                    .cookie(new Cookie("EZKEY_ADMIN_SESSION", sessionToken))
+                    .header("X-CSRF-TOKEN", csrfToken))
+            .andExpect(status().is2xxSuccessful())
+            .andReturn();
+
+    assertNoServletSessionSetCookie(result);
+    assertTrue(result.getRequest().getSession(false) == null);
+    verify(authService).logout(sessionToken);
+  }
+
+  @Test
+  @DisplayName(
+      "MockMvc: EZKEY_ADMIN_SESSION without X-CSRF-TOKEN on logout returns 403 without servlet"
+          + " Set-Cookie")
+  void mockMvc_cookieWithoutCsrf_returns403WithoutServletSessionCookie() throws Exception {
+    String sessionToken = "session-token-csrf-missing";
+    MockMvc mockMvc = buildCookieCsrfMockMvc(sessionToken, new AdminCsrfTokenService());
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                post("/api/v1/admin/auth/logout")
+                    .cookie(new Cookie("EZKEY_ADMIN_SESSION", sessionToken)))
+            .andExpect(status().isForbidden())
+            .andReturn();
+
+    assertNoServletSessionSetCookie(result);
+    assertTrue(result.getRequest().getSession(false) == null);
+  }
+
+  private MockMvc buildCookieCsrfMockMvc(String sessionToken, AdminCsrfTokenService csrfService) {
+    AdminBrowserSessionCookieProperties cookieProps = new AdminBrowserSessionCookieProperties();
+    cookieProps.setBrowserSessionCookieEnabled(true);
+    cookieProps.setBrowserSessionCookieName("EZKEY_ADMIN_SESSION");
+
+    AdminTokenValidationService tokenValidation = mock(AdminTokenValidationService.class);
+    AdminToken adminToken = mock(AdminToken.class);
+    EzkeyAdmin admin = new EzkeyAdmin();
+    admin.setAdminId(9);
+    admin.setUsername("cookie.admin");
+    admin.setAdminType(AdminType.GLOBAL_ADMIN);
+    when(adminToken.getAdmin()).thenReturn(admin);
+    when(adminToken.getTenant()).thenReturn(null);
+    when(adminToken.getIntegration()).thenReturn(null);
+    when(adminToken.getTokenPurpose()).thenReturn(null);
+    when(adminToken.getExpiresAt()).thenReturn(OffsetDateTime.now().plusHours(1));
+    when(tokenValidation.validateTokenWithRelations(sessionToken))
+        .thenReturn(Optional.of(adminToken));
+    when(tokenValidation.updateTokenLastUsed(any(AdminToken.class)))
+        .thenReturn(Optional.of(OffsetDateTime.now().plusHours(1)));
+
+    AdminTokenAuthenticationFilter tokenFilter =
+        new AdminTokenAuthenticationFilter(tokenValidation, cookieProps);
+    AdminCookieCsrfFilter csrfFilter = new AdminCookieCsrfFilter(cookieProps, csrfService);
+
+    return MockMvcBuilders.standaloneSetup(controller)
+        .addFilters(tokenFilter, csrfFilter)
+        .build();
+  }
+
+  private static void assertNoServletSessionSetCookie(MvcResult result) {
+    Collection<String> setCookies = result.getResponse().getHeaders("Set-Cookie");
+    if (setCookies == null || setCookies.isEmpty()) {
+      return;
+    }
+    for (String setCookie : setCookies) {
+      assertFalse(
+          setCookie.startsWith("EZKEY_ADMIN_API_SESSION=")
+              || setCookie.startsWith("JSESSIONID="),
+          () -> "Unexpected servlet session Set-Cookie: " + setCookie);
+    }
   }
 }

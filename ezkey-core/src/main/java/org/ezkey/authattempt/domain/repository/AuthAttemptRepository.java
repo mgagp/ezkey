@@ -230,8 +230,9 @@ public interface AuthAttemptRepository
    * business rule that only the most recent authentication attempt for a person should be valid.
    *
    * <p><b>#727:</b> When several attempts land within the same second, multiple rows can match.
-   * This default method always returns at most one row (latest {@code createdAt}) via {@link
-   * Pageable} size 1, so wait/respond never raise {@code NonUniqueResultException}.
+   * This default method always returns at most one row (latest {@code createdAt}, then highest
+   * {@code authAttemptId}) via {@link Pageable} size 1, so wait/respond never raise {@code
+   * NonUniqueResultException}.
    *
    * @param enrollmentId the enrollment ID to check
    * @param createdAt the creation time of the current attempt
@@ -250,11 +251,12 @@ public interface AuthAttemptRepository
    * @param enrollmentId the enrollment ID to check
    * @param createdAt the creation time of the current attempt
    * @param pageable page request (callers that need a single row use size 1)
-   * @return matching attempts ordered by {@code createdAt} descending
+   * @return matching attempts ordered by {@code createdAt} descending, then {@code authAttemptId}
+   *     descending (stable tie-breaker when timestamps collide)
    */
   @Query(
       "SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.createdAt >"
-          + " :createdAt ORDER BY a.createdAt DESC")
+          + " :createdAt ORDER BY a.createdAt DESC, a.authAttemptId DESC")
   List<AuthAttempt> findNewerAttemptsByEnrollmentId(
       @Param("enrollmentId") Integer enrollmentId,
       @Param("createdAt") OffsetDateTime createdAt,

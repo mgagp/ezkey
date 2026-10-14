@@ -144,7 +144,8 @@ public class ReencryptionService {
             batchesProcessed++;
           } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
             logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
-            batchProcessingService.markBatchFailed(batch, e.getMessage());
+            // #785: persist classified reason only (never raw exception message).
+            batchProcessingService.markBatchFailed(batch, classifiedFailureReason(e));
           }
         }
         logger.info(
@@ -158,7 +159,9 @@ public class ReencryptionService {
           slice.add(batch);
         }
         parallelRunner.runBatches(
-            slice, (batch, e) -> batchProcessingService.markBatchFailed(batch, e.getMessage()));
+            slice,
+            (batch, e) ->
+                batchProcessingService.markBatchFailed(batch, classifiedFailureReason(e)));
         batchesProcessed = slice.size();
         logger.info(
             "✅ Re-encryption batch processing completed (parallel workers={}). Submitted {}"
@@ -171,8 +174,8 @@ public class ReencryptionService {
       jobLastRunService.recordSuccess(ScheduledJobKey.REENCRYPTION, scope);
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Failed to process re-encryption batches", e);
-      // #785: persist simple name only (same pattern as nightly integrity #741/#783).
-      String failureReason = e.getClass().getSimpleName();
+      // #785: persist classified reason only (same pattern as nightly integrity #741/#783).
+      String failureReason = classifiedFailureReason(e);
       jobLastRunService.recordFailure(
           ScheduledJobKey.REENCRYPTION, "Batch re-encryption cycle", failureReason);
       auditLogService.log(
@@ -315,7 +318,7 @@ public class ReencryptionService {
         batchesToProcess,
         (batch, e) -> {
           logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
-          batchProcessingService.markBatchFailed(batch, e.getMessage());
+          batchProcessingService.markBatchFailed(batch, classifiedFailureReason(e));
         });
 
     int batchesProcessed = 0;
@@ -393,7 +396,7 @@ public class ReencryptionService {
           created,
           (batch, e) -> {
             logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
-            batchProcessingService.markBatchFailed(batch, e.getMessage());
+            batchProcessingService.markBatchFailed(batch, classifiedFailureReason(e));
           });
 
       for (ReencryptionBatch batch : created) {
@@ -437,8 +440,24 @@ public class ReencryptionService {
         batches,
         (batch, e) -> {
           logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
-          batchProcessingService.markBatchFailed(batch, e.getMessage());
+          batchProcessingService.markBatchFailed(batch, classifiedFailureReason(e));
         });
+  }
+
+  /**
+   * Classified failure reason for persisted batch / job-registry rows (#785).
+   *
+   * <p>Same pattern as nightly integrity (#741/#783): store the exception simple name only so SQL,
+   * tokens, or other message text never land in operator-visible failure columns.
+   *
+   * @param failure caught failure
+   * @return non-null simple class name
+   */
+  private static String classifiedFailureReason(Throwable failure) {
+    if (failure == null) {
+      return "UnknownFailure";
+    }
+    return failure.getClass().getSimpleName();
   }
 
   private static String buildReencryptionScope(int batchesProcessed) {

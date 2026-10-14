@@ -24,8 +24,10 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -1089,5 +1091,40 @@ class ReencryptionServiceTest {
     assertEquals("IllegalStateException", auditCaptor.getValue().getErrorMessage());
     assertTrue(auditCaptor.getValue().getEventDetails().contains("IllegalStateException"));
     assertFalse(auditCaptor.getValue().getEventDetails().contains("SELECT"));
+  }
+
+  @Test
+  @DisplayName("processReencryptionBatches: markBatchFailed persists simpleName only (#785)")
+  void processReencryptionBatches_batchException_markBatchFailedUsesSimpleName() {
+    ReencryptionBatchProcessingService spyBatchProcessing = spy(batchProcessingService);
+    parallelRunner =
+        new ReencryptionBatchParallelRunner(
+            reencryptionBatchExecutor, spyBatchProcessing, properties);
+    service =
+        new ReencryptionService(
+            encryptionOperations,
+            keyRepository,
+            batchRepository,
+            properties,
+            auditLogService,
+            batchCreationService,
+            spyBatchProcessing,
+            parallelRunner,
+            jobLastRunService);
+
+    when(batchRepository.findBatchesEligibleForResume()).thenReturn(List.of());
+    when(batchRepository.findByStatus(BatchStatus.PENDING)).thenReturn(List.of(batch));
+    when(keyRepository.findEnabledKeys()).thenReturn(List.of());
+    doThrow(
+            new IllegalStateException(
+                "UPDATE ezkey_encryption_key SET material='leak-must-not-persist'"))
+        .when(spyBatchProcessing)
+        .processBatchInternal(batch);
+
+    service.processReencryptionBatches();
+
+    verify(spyBatchProcessing).markBatchFailed(eq(batch), eq("IllegalStateException"));
+    verify(spyBatchProcessing, never())
+        .markBatchFailed(any(), argThat(msg -> msg != null && msg.contains("UPDATE")));
   }
 }

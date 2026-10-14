@@ -764,9 +764,12 @@ public class AuditLogController {
       description =
           "Marks all chain checkpoints in the specified period as ARCHIVE_SEAL prior to dropping "
               + "the corresponding DB partition. Runs a mandatory pre-flight integrity check -- "
-              + "rejected if any violation is detected. Pre-flight verify runs under the Integrity "
-              + "heavy-crypto gate and `ezkey.audit.integrity.max-window-days` async window cap "
-              + "(#781). Returns the seal HMAC to include in the Git archive manifest. Global "
+              + "rejected if any violation is detected. Pre-flight verify is a synchronous HTTP "
+              + "path: it runs under the Integrity heavy-crypto gate (`busyHolder=SEAL_ARCHIVE`) "
+              + "and `ezkey.audit.integrity.max-sync-window-days` (default 8 — Cloudflare 100 s "
+              + "timeout floor; #781). Longer windows must use async Integrity jobs under "
+              + "`max-window-days`. Lifecycle scheduler auto-seal does not call verifyChain. "
+              + "Returns the seal HMAC to include in the Git archive manifest. Global "
               + "Admin only.\n\n"
               + "**Period identification -- two alternative modes:**\n"
               + "- **Timestamp mode**: provide `periodStart` (inclusive) and `periodEnd` "
@@ -783,8 +786,8 @@ public class AuditLogController {
             responseCode = "400",
             description =
                 "Invalid request: conflicting modes, missing required fields, no checkpoints "
-                    + "found for the given ID range, or period exceeds max-window-days "
-                    + "(type integrity-window-over-cap)",
+                    + "found for the given ID range, or period exceeds max-sync-window-days "
+                    + "(type integrity-window-over-cap, capKind=SYNC)",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",

@@ -253,8 +253,9 @@ public class AuditLifecycleService {
     validateSealableCheckpoints(checkpoints);
 
     // Pre-flight: verify chain integrity for the derived period before sealing.
-    // #781: same heavy-crypto gate + async window cap as other Integrity crypto paths.
-    windowCapProperties.validateWindow(periodStart, periodEnd);
+    // #781 / Christophe m1: sync HTTP path — sync window cap (8-day default), not async 92-day.
+    // Lifecycle scheduler auto-seal does not call verifyChain (see autoSealEligibleCheckpoints).
+    windowCapProperties.validateSyncWindow(periodStart, periodEnd);
     AuditChainVerificationService.ChainVerificationReport verificationReport =
         withHeavyCryptoGate(() -> chainVerificationService.verifyChain(periodStart, periodEnd));
 
@@ -1140,19 +1141,23 @@ public class AuditLifecycleService {
   /**
    * Runs seal-archive pre-verification under the process-local heavy crypto gate (#781).
    *
+   * <p>Uses {@link IntegrityHeavyCryptoGate.Holder#SEAL_ARCHIVE} (not {@code REPORT_GET}) so busy
+   * responses identify this sync HTTP path. The lifecycle scheduler ({@link
+   * #autoSealEligibleCheckpoints}) does not enter this gate and does not call {@code verifyChain}.
+   *
    * @param <T> result type
    * @param action verify work
    * @return action result
    * @throws IntegrityAsyncJobBusyException when the gate is already held (HTTP 409)
    */
   private <T> T withHeavyCryptoGate(Supplier<T> action) {
-    if (!heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.REPORT_GET)) {
+    if (!heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.SEAL_ARCHIVE)) {
       throw IntegrityAsyncJobBusyException.forHeavyCryptoBusy(heavyCryptoGate.holder());
     }
     try {
       return action.get();
     } finally {
-      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.REPORT_GET);
+      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.SEAL_ARCHIVE);
     }
   }
 

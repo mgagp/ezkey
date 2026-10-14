@@ -21,7 +21,7 @@ Re-encryption is split across focused services (see `ezkey-core`):
 
 | Component | Role |
 |-----------|------|
-| `ReencryptionService` | Orchestration only: scheduler, manual triggers; delegates creation, processing, and the parallel runner. **2026-10-14 (#785):** scheduled-cycle `recordFailure` / audit `errorMessage` persist `e.getClass().getSimpleName()` only (not `e.getMessage()`), same pattern as nightly integrity (#741/#783). Reason: exception text can carry query fragments or other sensitive detail into the job registry and audit log. |
+| `ReencryptionService` | Orchestration only: scheduler, manual triggers; delegates creation, processing, and the parallel runner. **2026-10-14 (#785):** scheduled-cycle `recordFailure` / audit `errorMessage`, and every `markBatchFailed(..., reason)` path, persist `e.getClass().getSimpleName()` only (not `e.getMessage()`), same pattern as nightly integrity (#741/#783). Reason: exception text can carry query fragments or other sensitive detail into the job registry, batch error column, and audit log. |
 | `ReencryptionBatchCreationService` | Creates batch rows (`REQUIRES_NEW`); owns `discoverReencryptableTargets()` and primary-key resolution. |
 | `ReencryptionTargetQueryService` | Single implementation of `countRecordsEncryptedWithKey` / `fetchRecords` using the indexed `*_encryption_key_id` companion column (§1.2), not a `ENC:{keyId}:%` prefix scan. |
 | `ReencryptionBatchProcessingService` | Processes one batch per transaction (`REQUIRES_NEW`). |

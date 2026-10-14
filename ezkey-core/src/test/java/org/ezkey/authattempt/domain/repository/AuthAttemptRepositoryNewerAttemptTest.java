@@ -37,7 +37,8 @@ class AuthAttemptRepositoryNewerAttemptTest {
 
   @Test
   @DisplayName(
-      "When several newer attempts exist, default method requests page size 1 and returns latest")
+      "When several newer attempts exist, default method requests page size 1 and returns latest"
+          + " (SQL orders by createdAt DESC, authAttemptId DESC)")
   void findNewerAttempt_multipleNewer_usesPageSizeOneAndReturnsLatest() {
     AuthAttemptRepository repository =
         mock(AuthAttemptRepository.class, withSettings().defaultAnswer(Answers.CALLS_REAL_METHODS));

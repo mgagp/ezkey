@@ -111,7 +111,7 @@ class AuditLifecycleServiceTest {
     OffsetDateTime end = start.plusMinutes(5);
     AuditChainCheckpoint checkpoint = activeRegularCheckpoint(10L, start, end);
     when(checkpointRepository.findByWindowRange(start, end)).thenReturn(List.of(checkpoint));
-    when(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.REPORT_GET)).thenReturn(false);
+    when(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.SEAL_ARCHIVE)).thenReturn(false);
     when(heavyCryptoGate.holder()).thenReturn(IntegrityHeavyCryptoGate.Holder.NIGHTLY);
 
     ArchiveSealRequest request =
@@ -126,9 +126,9 @@ class AuditLifecycleServiceTest {
   }
 
   @Test
-  void sealArchive_whenWindowOverAsyncCap_throwsOverCap() {
+  void sealArchive_whenWindowOverSyncCap_throwsOverCap() {
     OffsetDateTime start = OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
-    OffsetDateTime end = start.plusDays(windowCapProperties.getMaxWindowDays() + 1L);
+    OffsetDateTime end = start.plusDays(windowCapProperties.getMaxSyncWindowDays() + 1L);
     AuditChainCheckpoint checkpoint = activeRegularCheckpoint(11L, start, end);
     when(checkpointRepository.findByWindowRange(start, end)).thenReturn(List.of(checkpoint));
 

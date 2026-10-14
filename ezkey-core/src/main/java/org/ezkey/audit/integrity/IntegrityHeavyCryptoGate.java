@@ -44,6 +44,12 @@ public class IntegrityHeavyCryptoGate {
     NIGHTLY,
     /** Synchronous report GET (chain / entry / retroactive). */
     REPORT_GET,
+    /**
+     * Synchronous seal-archive pre-verification ({@code POST …/lifecycle/seal-archive}).
+     *
+     * <p>Distinct from {@link #REPORT_GET} so operators can see which sync path holds the gate.
+     */
+    SEAL_ARCHIVE,
     /** Operator Integrity async job (VERIFY_* or RUN_VALIDATION). */
     OPERATOR_JOB
   }
