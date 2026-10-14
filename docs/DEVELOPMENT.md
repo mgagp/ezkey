@@ -436,9 +436,11 @@ PR and `main` pushes run the aggregate workflow [`.github/workflows/ci.yml`](../
 A `changes` job (path filter) decides which suites run. Unrelated areas are **skipped**, not left
 pending. Manual `workflow_dispatch` forces **every** suite. The final job **`ci-gate`**
 (`if: always()`) fails if any needed job failed or was cancelled, and **passes when those jobs
-were skipped**. That is the single check intended to become **required** on `main` (repository
-ruleset). Do not require path-filtered job names alone — that leaves docs-only PRs stuck on
-"Expected — waiting".
+were skipped**. That is the single check **required** on `main` via repository ruleset
+**Basic protection** (context `ci-gate` only; verified 2026-10-14). Do not require path-filtered
+job names alone — that leaves docs-only PRs stuck on "Expected — waiting". Evaluator-facing
+inventory and improvement plan:
+[`engineering/ci-cd-best-practices-plan.md`](engineering/ci-cd-best-practices-plan.md).
 
 | Job | When it runs | What it checks |
 |-----|--------------|----------------|
@@ -496,8 +498,9 @@ yarn install --immutable && yarn validate:ci
 # Android JVM + 16 KB gate: see ezkey_mobile/AGENTS.md and the mobile workflow
 ```
 
-**Maintainer follow-up (ruleset):** target `main` with required status check **`ci-gate`** only
-(plus existing non-check rules as desired). No other job names need to be required.
+**Ruleset (maintainer):** keep required status check **`ci-gate`** only (plus non-check rules as
+desired: deletion / non-fast-forward already on). No other job names need to be required. Broader
+ruleset / Settings backlog: [`engineering/ci-cd-best-practices-plan.md`](engineering/ci-cd-best-practices-plan.md).
 
 **CodeQL (advanced setup):** workflow [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml)
 with config [`.github/codeql/codeql-config.yml`](../.github/codeql/codeql-config.yml)

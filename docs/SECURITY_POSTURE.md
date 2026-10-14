@@ -130,6 +130,7 @@ See [`../product-docs/global/normative-posture.md`](../product-docs/global/norma
 - Any caller-controlled value written to logs goes through `org.ezkey.util.LogSanitizer.sanitizeForLog`; secrets are never logged, at any level. Production call sites that still need wrapping are tracked in [#801](https://github.com/mgagp/ezkey/issues/801).
 - In `credentials-output-mode=full` (default), first-start logs print the single-use bootstrap enrollment proof token, challenge and QR — by design (#750, maintainer 2026-10-09); token valid 24 h and only while CREATED; `recovery_primary` omits them (`docs/OPERATIONAL.md:547`).
 - Triage campaign notes: [`../product-docs/global/hygiene/code-scanning/`](../product-docs/global/hygiene/code-scanning/). Decision: approved by Marc 2026-10-13 19:40.
+- CI/CD and repository-settings parity inventory (evaluator-facing): [`engineering/ci-cd-best-practices-plan.md`](engineering/ci-cd-best-practices-plan.md).
 
 ## Review note
 

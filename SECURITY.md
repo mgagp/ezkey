@@ -60,11 +60,13 @@ path **continues** (fail-open; failure must stay observable) or **stops** (fail-
 
 The following are **actually in use** today (they are hygiene and review practices, not a production guarantee):
 
-- Required pull-request CI aggregate check **`ci-gate`** (GitHub Actions)
-- **CodeQL** code scanning (default setup, non-blocking)
-- **Dependabot** alerts and security updates; version updates for Maven, npm, pip and GitHub Actions
-- **Secret scanning** with **push protection**
+- Required pull-request CI aggregate check **`ci-gate`** (GitHub Actions; repository ruleset)
+- **CodeQL** code scanning (advanced setup workflow in-repo; Settings must use Advanced — see [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) § Code scanning policy)
+- **Dependabot** version updates for Maven, npm, pip, Gradle, Docker, docker-compose, and GitHub Actions (alerts / security updates: confirm in repository Settings)
+- **Secret scanning** with **push protection** (confirm in repository Settings)
 - Periodic AI-assisted security and hygiene passes, reviewed by the maintainer (static analysis, local API pentest campaigns, Dependabot triage); see `product-docs/global/hygiene/`
+
+CI/CD and Settings parity inventory (gaps, phased plan): [`docs/engineering/ci-cd-best-practices-plan.md`](docs/engineering/ci-cd-best-practices-plan.md).
 
 Ezkey does **not** claim mandatory peer review of every change, anomaly-detection product features, or real-time operational alerting as part of this policy.
 
@@ -74,4 +76,4 @@ For ordinary bugs and questions, use [GitHub Issues](https://github.com/mgagp/ez
 
 ---
 
-**Last updated:** 2026-10-08
+**Last updated:** 2026-10-14
