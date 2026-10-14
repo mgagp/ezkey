@@ -94,6 +94,61 @@ class AuthApiUrlValidatorTest {
   }
 
   @Test
+  void validate_userinfoEvilAtAllowed_rejectsAsInvalidUrl() {
+    Set<String> allow = Set.of("allowed");
+    // Classic SSRF: authority looks like evil.com@allowed; Java host is "allowed".
+    assertThat(AuthApiUrlValidator.validate("https://evil.com@allowed", allow)).isNull();
+    assertThat(AuthApiUrlValidator.isHostNotAllowed("https://evil.com@allowed", allow)).isFalse();
+  }
+
+  @Test
+  void validate_userinfoAllowedAtEvil_rejectsAsInvalidUrl() {
+    Set<String> allow = Set.of("allowed");
+    assertThat(AuthApiUrlValidator.validate("https://allowed@evil.com", allow)).isNull();
+    assertThat(AuthApiUrlValidator.isHostNotAllowed("https://allowed@evil.com", allow)).isFalse();
+  }
+
+  @Test
+  void validate_suffixHostAllowedDotEvil_rejects() {
+    Set<String> allow = Set.of("allowed");
+    assertThat(AuthApiUrlValidator.validate("https://allowed.evil.com", allow)).isNull();
+    assertThat(AuthApiUrlValidator.isHostNotAllowed("https://allowed.evil.com", allow)).isTrue();
+  }
+
+  @Test
+  void validate_allowedHostOnlyInQueryString_rejects() {
+    Set<String> allow = Set.of("allowed");
+    assertThat(AuthApiUrlValidator.validate("https://evil.com/?h=allowed", allow)).isNull();
+    assertThat(AuthApiUrlValidator.isHostNotAllowed("https://evil.com/?h=allowed", allow)).isTrue();
+  }
+
+  @Test
+  void validate_trailingDotHost_rejects() {
+    Set<String> allow = Set.of("allowed");
+    assertThat(AuthApiUrlValidator.validate("https://allowed.", allow)).isNull();
+    assertThat(AuthApiUrlValidator.isHostNotAllowed("https://allowed.", allow)).isTrue();
+  }
+
+  @Test
+  void validate_uppercaseHost_acceptsNormalizedLowercase() {
+    Set<String> allow = Set.of("allowed");
+    assertThat(AuthApiUrlValidator.validate("https://ALLOWED", allow)).isEqualTo("https://allowed");
+    assertThat(AuthApiUrlValidator.validate("https://ALLOWED:8443/api/", allow))
+        .isEqualTo("https://allowed:8443/api");
+  }
+
+  @Test
+  void validate_httpDockerServiceHostname_rejectsEvenWhenAllowlisted() {
+    // Docker compose uses http://auth-api:8080 as ezkey.auth.api.url (config default path).
+    // Override validation still requires HTTPS outside loopback — see CONFIGURATION.md.
+    Set<String> allow =
+        AuthApiUrlValidator.effectiveAllowlist("http://auth-api:8080", List.of());
+    assertThat(allow).contains("auth-api");
+    assertThat(AuthApiUrlValidator.validate("http://auth-api:8080", allow)).isNull();
+    assertThat(AuthApiUrlValidator.isHostNotAllowed("http://auth-api:8080", allow)).isFalse();
+  }
+
+  @Test
   void validate_allowedHostFromConfiguredAuthApi_accepts() {
     Set<String> allow =
         AuthApiUrlValidator.effectiveAllowlist("https://exp1-auth-api.ezkey.org", List.of());

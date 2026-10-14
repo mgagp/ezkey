@@ -12,7 +12,10 @@ Auth API hosts.
 - **Enrollment proof tokens and bind traffic** are sent only to Auth API hosts on the allowlist
   (`ezkey.demo-device.allowed-auth-api-hosts`). By default that is the host of `ezkey.auth.api.url`
   plus `localhost` and `127.0.0.1`. A QR `authUrl` or bind override outside the allowlist is
-  rejected with a constant message (the rejected URL is not echoed to the UI or logs).
+  rejected with a constant message (the rejected URL is not echoed to the UI or logs). URLs with
+  userinfo are rejected the same way. Docker’s `http://auth-api:8080` is the configured default
+  base URL (config path); override validation still requires HTTPS outside loopback — see
+  `CONFIGURATION.md`.
 - UI pages show a limitations banner so operators see this in ~3 seconds.
 
 Decision trace: CodeQL alerts #9 / #10 (SSRF / ReDoS on Auth API URL handling), code-scanning

@@ -19,7 +19,8 @@ import java.util.Set;
 /**
  * Validates and normalizes Auth API base URLs from enrollment QR payloads. Rules mirror {@code
  * ezkey_mobile/app/utils/urlValidation.ts} and {@code enrollment-qr-import.js}, plus a host
- * allowlist so enrollment tokens are not sent to arbitrary hosts (lab SSRF hardening).
+ * allowlist so enrollment tokens are not sent to arbitrary hosts (lab SSRF hardening). Userinfo is
+ * rejected; the normalized form is rebuilt from scheme, host, port, and path only.
  *
  * @since 2025
  */
@@ -168,6 +169,11 @@ public final class AuthApiUrlValidator {
     if (!"http".equals(scheme) && !"https".equals(scheme)) {
       return null;
     }
+    // Reject userinfo so normalization never keeps credentials or @-authority tricks
+    // (e.g. https://evil.com@allowed). Fail closed with a constant message path — no URL echo.
+    if (uri.getUserInfo() != null) {
+      return null;
+    }
     String host = uri.getHost();
     if (host == null || host.isBlank()) {
       return null;
@@ -182,10 +188,17 @@ public final class AuthApiUrlValidator {
     if (path != null && path.length() > 1) {
       path = stripTrailingSlashes(path);
     }
-    if (path == null || path.isEmpty() || "/".equals(path)) {
-      return uri.getScheme() + "://" + uri.getAuthority();
+    // Rebuild from scheme + host + port + path only (never getAuthority(), which embeds userinfo).
+    StringBuilder normalized = new StringBuilder();
+    normalized.append(scheme).append("://").append(hostname);
+    int port = uri.getPort();
+    if (port != -1) {
+      normalized.append(':').append(port);
     }
-    return uri.getScheme() + "://" + uri.getAuthority() + path;
+    if (path != null && !path.isEmpty() && !"/".equals(path)) {
+      normalized.append(path);
+    }
+    return normalized.toString();
   }
 
   /**
