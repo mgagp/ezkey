@@ -14,8 +14,8 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 
 | Concern | Technology | Why it is used | Notes |
 | --- | --- | --- | --- |
-| Android JDK | **JDK 17** (Temurin in CI; `scripts/resolve-android-jdk.sh` locally) | Matches the RN/Android community baseline most developers still use | RN/AGP also allow 21; **project migration to JDK 21 is a separate decision**. No Gradle daemon JVM Foojay auto-download (`gradle-daemon-jvm.properties` must stay absent; `org.gradle.java.installations.auto-download=false`). |
-| Runtime UI | React Native 0.86.2 | Shared iOS/Android UI codebase | Current Active 0.86 patch. 0.87 is a later program (Node 22, AGP 9, Strict TS API), not this baseline. |
+| Android JDK | **JDK 17** (Temurin in CI; `scripts/resolve-android-jdk.sh` locally) | Matches the RN/Android community baseline most developers still use | RN/AGP also allow 21; **project migration to JDK 21 is a separate decision**. No Gradle daemon JVM Foojay auto-download (`gradle-daemon-jvm.properties` must stay absent — CI `assert-no-gradle-daemon-jvm.sh`; `org.gradle.java.installations.auto-download=false`). Override: `EZKEY_ANDROID_JAVA_HOME`. |
+| Runtime UI | React Native 0.87.1 | Shared iOS/Android UI codebase | Current workspace baseline (Gradle 9.4.1 / AGP 9.2.1 / NDK 28). |
 | React runtime | React 19.2.7 | Rendering model used by the current workspace manifest | Keep React and React Native versions aligned with `package.json` and the RN-renderer constraint. |
 | Language | TypeScript | Typed mobile domain and service layer | Thin wrapper types sit above generated DTOs. |
 | Navigation | React Navigation stack | Simple screen-to-screen mobile flow control | Current stack includes Home, Enrollment, Pending, and supporting screens. |
@@ -49,9 +49,9 @@ holds the S01–S23 session inventory.
 Async Storage 3.x, Vision Camera 5 + `react-native-vision-camera-barcode-scanner`, ESLint 9 flat config.
 Device smoke PASS (Pixel 7 Pro). Maestro deferred on this branch.
 
-**Current workspace baseline (2026-08):** React Native `0.86.2` + aligned `@react-native/*` `0.86.2`,
-React `19.2.7`, CLI `20.2.0`. The 0.85.x program above is historical. Stay on the 0.86 Active line
-until a dedicated 0.87 program is opened.
+**Current workspace baseline (2026-10):** React Native `0.87.1` + aligned `@react-native/*`,
+React `19.3.0`, Gradle 9.4.1 / AGP 9.2.1 / NDK 28, Android JDK **17** (project standard). The 0.85.x /
+0.86.x notes above are historical.
 
 ## Runtime Architecture at a Glance
 
