@@ -36,6 +36,8 @@ import org.ezkey.audit.dto.EntryIntegrityViolation;
 import org.ezkey.audit.dto.IntegrityRuptureConciliationCategory;
 import org.ezkey.audit.dto.IntegrityRuptureReconciliationRequest;
 import org.ezkey.audit.exception.AuditLifecycleConflictException;
+import org.ezkey.audit.exception.IntegrityAsyncJobBusyException;
+import org.ezkey.audit.exception.IntegrityWindowOverCapException;
 import org.ezkey.audit.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,16 +56,19 @@ class AuditLifecycleServiceTest {
   @Mock private org.ezkey.alert.service.AlertService alertService;
   @Mock private EntryIntegrityViolationClassifier entryIntegrityViolationClassifier;
   @Mock private AuditEntryIntegrityConciliationService entryIntegrityConciliationService;
+  @Mock private IntegrityHeavyCryptoGate heavyCryptoGate;
 
   private AuditLifecycleService lifecycleService;
   private AuditHmacService hmacService;
   private AuditArchiveProperties archiveProperties;
+  private IntegrityWindowCapProperties windowCapProperties;
 
   @BeforeEach
   void setUp() {
     hmacService = TestHmacServiceFactory.create();
     AuditChainProperties chainProperties = new AuditChainProperties();
     archiveProperties = new AuditArchiveProperties();
+    windowCapProperties = new IntegrityWindowCapProperties();
     lifecycleService =
         new AuditLifecycleService(
             checkpointRepository,
@@ -75,7 +80,9 @@ class AuditLifecycleServiceTest {
             archiveProperties,
             alertService,
             entryIntegrityViolationClassifier,
-            entryIntegrityConciliationService);
+            entryIntegrityConciliationService,
+            heavyCryptoGate,
+            windowCapProperties);
   }
 
   @Test
@@ -96,6 +103,53 @@ class AuditLifecycleServiceTest {
     assertThrows(
         AuditLifecycleConflictException.class, () -> lifecycleService.sealArchive(request));
     verify(chainVerificationService, never()).verifyChain(any(), any());
+  }
+
+  @Test
+  void sealArchive_whenHeavyCryptoGateBusy_throwsBusy409Contract() {
+    OffsetDateTime start = OffsetDateTime.of(2026, 4, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+    OffsetDateTime end = start.plusMinutes(5);
+    AuditChainCheckpoint checkpoint = activeRegularCheckpoint(10L, start, end);
+    when(checkpointRepository.findByWindowRange(start, end)).thenReturn(List.of(checkpoint));
+    when(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.REPORT_GET)).thenReturn(false);
+    when(heavyCryptoGate.holder()).thenReturn(IntegrityHeavyCryptoGate.Holder.NIGHTLY);
+
+    ArchiveSealRequest request =
+        new ArchiveSealRequest(start, end, null, null, "seal for archival retention");
+
+    IntegrityAsyncJobBusyException ex =
+        assertThrows(
+            IntegrityAsyncJobBusyException.class, () -> lifecycleService.sealArchive(request));
+    assertEquals(IntegrityAsyncJobBusyException.HEAVY_CRYPTO_BUSY_MESSAGE, ex.getMessage());
+    assertEquals(IntegrityHeavyCryptoGate.Holder.NIGHTLY, ex.getBusyHolder());
+    verify(chainVerificationService, never()).verifyChain(any(), any());
+  }
+
+  @Test
+  void sealArchive_whenWindowOverAsyncCap_throwsOverCap() {
+    OffsetDateTime start = OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+    OffsetDateTime end = start.plusDays(windowCapProperties.getMaxWindowDays() + 1L);
+    AuditChainCheckpoint checkpoint = activeRegularCheckpoint(11L, start, end);
+    when(checkpointRepository.findByWindowRange(start, end)).thenReturn(List.of(checkpoint));
+
+    ArchiveSealRequest request =
+        new ArchiveSealRequest(start, end, null, null, "seal for archival retention");
+
+    assertThrows(
+        IntegrityWindowOverCapException.class, () -> lifecycleService.sealArchive(request));
+    verify(heavyCryptoGate, never()).tryEnter(any());
+    verify(chainVerificationService, never()).verifyChain(any(), any());
+  }
+
+  private static AuditChainCheckpoint activeRegularCheckpoint(
+      long id, OffsetDateTime start, OffsetDateTime end) {
+    AuditChainCheckpoint checkpoint = new AuditChainCheckpoint();
+    checkpoint.setCheckpointId(id);
+    checkpoint.setWindowStart(start);
+    checkpoint.setWindowEnd(end);
+    checkpoint.setCheckpointType("REGULAR");
+    checkpoint.setLifecycleState(CheckpointLifecycleState.ACTIVE);
+    return checkpoint;
   }
 
   @Test

@@ -79,4 +79,27 @@ public record EzkeyConfig(
     return new EzkeyConfig(
         DEFAULT_BASE_URL, integrationKey, secretKey, DEFAULT_CONNECT_TIMEOUT, DEFAULT_READ_TIMEOUT);
   }
+
+  /**
+   * Returns a diagnostic string that masks {@code secretKey}.
+   *
+   * <p>#755: the default record {@code toString()} would print the integration secret into adopter
+   * startup logs.
+   *
+   * @return masked representation safe for logs
+   */
+  @Override
+  public String toString() {
+    return "EzkeyConfig["
+        + "baseUrl="
+        + baseUrl
+        + ", integrationKey="
+        + integrationKey
+        + ", secretKey=[PROTECTED]"
+        + ", connectTimeout="
+        + connectTimeout
+        + ", readTimeout="
+        + readTimeout
+        + ']';
+  }
 }

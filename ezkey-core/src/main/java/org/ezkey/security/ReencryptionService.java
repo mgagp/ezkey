@@ -171,8 +171,10 @@ public class ReencryptionService {
       jobLastRunService.recordSuccess(ScheduledJobKey.REENCRYPTION, scope);
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Failed to process re-encryption batches", e);
+      // #785: persist simple name only (same pattern as nightly integrity #741/#783).
+      String failureReason = e.getClass().getSimpleName();
       jobLastRunService.recordFailure(
-          ScheduledJobKey.REENCRYPTION, "Batch re-encryption cycle", e.getMessage());
+          ScheduledJobKey.REENCRYPTION, "Batch re-encryption cycle", failureReason);
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.REENCRYPTION_FAILED)
@@ -182,9 +184,9 @@ public class ReencryptionService {
               .ipAddress("127.0.0.1")
               .eventDetails(
                   AuditDetailsBuilder.builder()
-                      .errorSummary("Scheduled batch processing failed: " + e.getMessage())
+                      .errorSummary("Scheduled batch processing failed: " + failureReason)
                       .toJson())
-              .errorMessage(e.getMessage())
+              .errorMessage(failureReason)
               .build());
     }
   }

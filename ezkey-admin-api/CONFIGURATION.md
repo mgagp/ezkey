@@ -292,7 +292,10 @@ enforce CORS. If `allowed-origins` is **empty**, the API does **not** emit CORS 
 **Servlet session cookie (separate):** `server.servlet.session.cookie.name=EZKEY_ADMIN_API_SESSION` in
 `config/application.properties` — Spring’s container session cookie for localhost isolation (#799).
 Not the Mode B product cookie `EZKEY_ADMIN_SESSION` below. API modules keep this key under external
-`config/`; demos keep theirs in the JAR.
+`config/`; demos keep theirs in the JAR. **#816:** Admin API is `SessionCreationPolicy.STATELESS`
+with `NullRequestCache`, so this cookie is not emitted (401 included). Defense-in-depth attributes:
+`http-only=true`, `same-site=strict`, `secure=${EZKEY_SERVLET_SESSION_COOKIE_SECURE:false}` (set
+`true` under HTTPS).
 
 **Description:** optional mode for **browser** sessions when the Admin UI and Admin API are on different **HTTPS** origins (e.g. `https://exp1-admin-ui.ezkey.org` → `https://exp1-admin-api.ezkey.org`). When enabled, successful login and passwordless-wait responses set an **HttpOnly** cookie on the API host with the same opaque value as today’s bearer token; the JSON body **omits** `token` so JavaScript cannot read the secret. The authentication filter accepts **either** `Authorization: Bearer` (priority if present) **or** the session cookie. **Postman and scripts** can keep using Bearer only.
 

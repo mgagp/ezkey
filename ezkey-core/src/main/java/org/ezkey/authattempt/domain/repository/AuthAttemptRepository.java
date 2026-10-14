@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Optional;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
@@ -227,16 +229,36 @@ public interface AuthAttemptRepository
    * enrollment, which would make the current attempt conceptually expired. This implements the
    * business rule that only the most recent authentication attempt for a person should be valid.
    *
+   * <p><b>#727:</b> When several attempts land within the same second, multiple rows can match.
+   * This default method always returns at most one row (latest {@code createdAt}) via {@link
+   * Pageable} size 1, so wait/respond never raise {@code NonUniqueResultException}.
+   *
    * @param enrollmentId the enrollment ID to check
    * @param createdAt the creation time of the current attempt
    * @return the newer authentication attempt if it exists, empty otherwise
    */
+  default Optional<AuthAttempt> findNewerAttemptByEnrollmentId(
+      Integer enrollmentId, OffsetDateTime createdAt) {
+    List<AuthAttempt> newer =
+        findNewerAttemptsByEnrollmentId(enrollmentId, createdAt, PageRequest.of(0, 1));
+    return newer.stream().findFirst();
+  }
+
+  /**
+   * Pageable lookup of newer attempts for an enrollment (newest first).
+   *
+   * @param enrollmentId the enrollment ID to check
+   * @param createdAt the creation time of the current attempt
+   * @param pageable page request (callers that need a single row use size 1)
+   * @return matching attempts ordered by {@code createdAt} descending
+   */
   @Query(
       "SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.createdAt >"
           + " :createdAt ORDER BY a.createdAt DESC")
-  Optional<AuthAttempt> findNewerAttemptByEnrollmentId(
+  List<AuthAttempt> findNewerAttemptsByEnrollmentId(
       @Param("enrollmentId") Integer enrollmentId,
-      @Param("createdAt") java.time.OffsetDateTime createdAt);
+      @Param("createdAt") OffsetDateTime createdAt,
+      Pageable pageable);
 
   /**
    * Finds all non-final authentication attempts for a given enrollment ID.

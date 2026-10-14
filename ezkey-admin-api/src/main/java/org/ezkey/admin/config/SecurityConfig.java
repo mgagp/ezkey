@@ -21,16 +21,20 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.savedrequest.NullRequestCache;
 
 /**
  * Spring Security configuration for admin API.
  *
  * <p>Admin API authenticates human operators (Bearer token or browser session cookie). API-key
  * machine-to-machine traffic belongs on Integration API. HTTP Basic is disabled; credentials of
- * that form do not authenticate here.
+ * that form do not authenticate here. Servlet sessions are {@link SessionCreationPolicy#STATELESS}
+ * with a {@link NullRequestCache} so anonymous 401s never emit a servlet session cookie (#816).
+ * Mode B {@code EZKEY_ADMIN_SESSION} is set explicitly by {@code AdminSessionCookieService}.
  *
  * <p><b>CORS:</b> When {@code ezkey.admin.cors.allowed-origins} is non-empty, Spring Security
  * applies {@link org.springframework.web.cors.CorsConfigurationSource} for browser clients on a
@@ -92,6 +96,9 @@ public class SecurityConfig {
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http.csrf(csrf -> csrf.disable())
         .cors(Customizer.withDefaults())
+        .sessionManagement(
+            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .requestCache(cache -> cache.requestCache(new NullRequestCache()))
         .authorizeHttpRequests(
             authz ->
                 authz

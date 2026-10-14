@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeast;
@@ -35,6 +36,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.ezkey.audit.domain.entity.AuditLog;
+import org.ezkey.audit.integrity.ScheduledJobKey;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
@@ -1063,5 +1066,28 @@ class ReencryptionServiceTest {
             .orElseThrow()
             .getRecordsTotal()
             .intValue());
+  }
+
+  @Test
+  @DisplayName("processReencryptionBatches: recordFailure uses simpleName only (#785)")
+  void processReencryptionBatches_exception_recordFailureUsesSimpleName() {
+    when(batchRepository.findBatchesEligibleForResume())
+        .thenThrow(
+            new IllegalStateException("SELECT * FROM secrets WHERE token='leak-must-not-persist'"));
+
+    service.processReencryptionBatches();
+
+    verify(jobLastRunService)
+        .recordFailure(
+            eq(ScheduledJobKey.REENCRYPTION),
+            eq("Batch re-encryption cycle"),
+            eq("IllegalStateException"));
+    verify(jobLastRunService, never())
+        .recordFailure(any(), any(), argThat(msg -> msg != null && msg.contains("SELECT")));
+    ArgumentCaptor<AuditLog> auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService).log(auditCaptor.capture());
+    assertEquals("IllegalStateException", auditCaptor.getValue().getErrorMessage());
+    assertTrue(auditCaptor.getValue().getEventDetails().contains("IllegalStateException"));
+    assertFalse(auditCaptor.getValue().getEventDetails().contains("SELECT"));
   }
 }

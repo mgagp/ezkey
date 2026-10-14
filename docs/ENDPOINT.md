@@ -2228,6 +2228,7 @@ Authorization: Bearer ezkey_admin_token...
 
 **Notes:**
 - **Wait `status` vs clock expiry:** The wait `status` field reports a calculated outcome. Persisted final statuses (`ACCEPTED`, `REJECTED`, `INVALID`) take precedence over `expiresAt` — a deny (or accept / invalid) after the TTL clock has passed still returns that final status, not `EXPIRED`. Clock expiry applies only to `PENDING`/`READ`. Wait may also report `EXPIRED` for explicit cancel or supersession. Implementation: `AuthAttemptWaitService`.
+- **2026-10-14 (#727):** Supersession lookup (`findNewerAttemptByEnrollmentId`) always returns at most one row (latest `createdAt`). Reason: several auth attempts created on the same enrollment within ~1 s made Hibernate raise `NonUniqueResultException` and Integration API wait returned HTTP 500.
 
 **Status Codes:**
 - 200: Authentication completed (or timeout reached)
