@@ -85,7 +85,7 @@ Golden device chains (enrollments-auth / auth-attempts-auth) are run folder-by-f
 
 Each former Postman collection is a folder (138 requests total), for example:
 
-- `authentication-login-admin/` — passwordless login, wait, recover, logout
+- `authentication-login-admin/` — passwordless login, wait, cancel, recover, logout
 - `enrollments-auth/` — numbered Crypto-interleaved bind/verify
 - `auth-attempts-auth/` — numbered pending/respond + Crypto oracle
 - `crypto/` — Crypto API surface
