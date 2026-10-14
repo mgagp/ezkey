@@ -79,7 +79,7 @@ class EnrollmentAuthApiUrlResolverTest {
         new Record(
             1, null, "Name", LOCAL, "pk", "token", "pub", "priv", null, "Device", null, null, null,
             null, null, null, null, "NONE");
-    assertThat(EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG))
+    assertThat(EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG, ALLOW))
         .isEqualTo(LOCAL);
   }
 
@@ -89,7 +89,54 @@ class EnrollmentAuthApiUrlResolverTest {
         new Record(
             1, null, "Name", null, "pk", "token", "pub", "priv", null, "Device", null, null, null,
             null, null, null, null, "NONE");
-    assertThat(EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG))
+    assertThat(EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG, ALLOW))
         .isEqualTo(CONFIG);
+  }
+
+  @Test
+  void resolveForStoredEnrollment_disallowedHost_throwsConstantMessageWithoutEcho() {
+    String evil = "https://evil.example/steal-tokens";
+    Record record =
+        new Record(
+            1, null, "Name", evil, "pk", "token", "pub", "priv", null, "Device", null, null, null,
+            null, null, null, null, "NONE");
+    assertThatThrownBy(
+            () -> EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG, ALLOW))
+        .isInstanceOf(InvalidAuthApiUrlException.class)
+        .hasMessage(AuthApiUrlValidator.HOST_NOT_ALLOWED_MESSAGE)
+        .hasMessageNotContaining("evil.example")
+        .hasMessageNotContaining("steal-tokens");
+  }
+
+  @Test
+  void resolveForStoredEnrollment_userinfo_throwsConstantMessageWithoutEcho() {
+    String withUserinfo = "https://attacker:secret@exp1-auth-api.ezkey.org/path";
+    Record record =
+        new Record(
+            1,
+            null,
+            "Name",
+            withUserinfo,
+            "pk",
+            "token",
+            "pub",
+            "priv",
+            null,
+            "Device",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "NONE");
+    assertThatThrownBy(
+            () -> EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG, ALLOW))
+        .isInstanceOf(InvalidAuthApiUrlException.class)
+        .hasMessage(AuthApiUrlValidator.INVALID_URL_MESSAGE)
+        .hasMessageNotContaining("attacker")
+        .hasMessageNotContaining("secret")
+        .hasMessageNotContaining("exp1-auth-api.ezkey.org");
   }
 }

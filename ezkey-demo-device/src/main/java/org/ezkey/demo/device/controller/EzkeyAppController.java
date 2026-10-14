@@ -381,7 +381,8 @@ public class EzkeyAppController {
       logger.info("Verify request submitted for enrollment {}", enrollmentId);
 
       String authApiBase =
-          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(rec, configuredAuthApiBase);
+          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(
+              rec, configuredAuthApiBase, allowedAuthApiHosts);
       EnrollmentVerifyResponseDto verifyResponse =
           authApiService.verify(requestDto, authApiBase).block();
       if (verifyResponse != null) {
@@ -496,7 +497,8 @@ public class EzkeyAppController {
       logger.info("Checking for pending auth attempts for enrollment {}", enrollmentId);
 
       String authApiBase =
-          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(rec, configuredAuthApiBase);
+          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(
+              rec, configuredAuthApiBase, allowedAuthApiHosts);
 
       AuthAttemptPendingResponseDto pendingResponse =
           authApiService.pending(pendingRequest, authApiBase).block();
@@ -625,7 +627,8 @@ public class EzkeyAppController {
       logger.info("Responding to auth attempt {} for enrollment {}", authAttemptId, enrollmentId);
 
       String authApiBase =
-          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(rec, configuredAuthApiBase);
+          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(
+              rec, configuredAuthApiBase, allowedAuthApiHosts);
 
       AuthAttemptRespondResponseDto respondResponse =
           authApiService.respond(respondRequest, authApiBase).block();
