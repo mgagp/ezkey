@@ -225,6 +225,9 @@ jobs:
           node --test sites/ezkey-org/js/community-signup-urls.test.mjs
           node --test ezkey-demo-app-acme/src/test/js/biz-status.test.mjs
 
+      - name: Servlet session cookie name guard (#799)
+        run: node --test scripts/lib/session-cookie-names.test.mjs
+
       - name: Upload Surefire reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

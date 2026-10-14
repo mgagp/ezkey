@@ -22,7 +22,9 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import org.ezkey.demo.device.config.DemoDeviceProperties;
 import org.ezkey.demo.device.service.AuthApiService;
+import org.ezkey.demo.device.service.AuthApiUrlValidator;
 import org.ezkey.demo.device.service.DeviceCryptoService;
 import org.ezkey.demo.device.service.EnrollmentStoreService;
 import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
@@ -73,7 +75,9 @@ class EzkeyAppControllerLoggingTest {
 
   @BeforeEach
   void setUp() {
-    controller = new EzkeyAppController(authApiService, cryptoService, storeService, AUTH_API);
+    DemoDeviceProperties props = new DemoDeviceProperties();
+    controller =
+        new EzkeyAppController(authApiService, cryptoService, storeService, AUTH_API, props);
     controllerLogger = (Logger) LoggerFactory.getLogger(EzkeyAppController.class);
     previousLevel = controllerLogger.getLevel();
     controllerLogger.setLevel(Level.INFO);
@@ -210,6 +214,26 @@ class EzkeyAppControllerLoggingTest {
     String truncated = EzkeyAppController.sanitizeProblemTypeForLog(longType);
     assertThat(truncated).hasSize(120);
     assertThat(truncated).startsWith("https://ezkey.org/problems/");
+  }
+
+  @Test
+  @DisplayName("bind override outside allowlist: constant error, no echo in model or logs")
+  void bindEnrollmentRejectedOverrideDoesNotEchoUrl() {
+    String evil = "https://evil.example/capture-tokens";
+    Model model = new ConcurrentModel();
+    String view = controller.bindEnrollment(ENROLLMENT_ID, ENROLLMENT_PROOF, evil, model);
+
+    assertThat(view).isEqualTo("phone/ezkey/new_enrollment");
+    assertThat(model.getAttribute("error")).isEqualTo(AuthApiUrlValidator.HOST_NOT_ALLOWED_MESSAGE);
+    assertThat(model.getAttribute("error").toString())
+        .doesNotContain("evil.example")
+        .doesNotContain("capture-tokens");
+    assertThat(model.getAttribute("authApiBaseUrl")).isNull();
+
+    String joined = joinedMessages();
+    assertThat(joined).doesNotContain("evil.example");
+    assertThat(joined).doesNotContain("capture-tokens");
+    assertThat(joined).doesNotContain(evil);
   }
 
   @Test

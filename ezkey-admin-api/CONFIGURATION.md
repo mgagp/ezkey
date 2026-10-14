@@ -39,6 +39,7 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.admin.auth.browser-session-cookie-enabled` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | `false` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_NAME` | `EZKEY_ADMIN_SESSION` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-secure` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SECURE` | `true` | optionnel |
+| `server.servlet.session.cookie.name` | — | `EZKEY_ADMIN_API_SESSION` | recommandé |
 | `ezkey.auth-attempt.expiry-scheduler.enabled` | — | `true` | optionnel |
 | `ezkey.auth-attempt.expiry-scheduler.fixed-delay-ms` | — | `60000` | optionnel |
 
@@ -287,6 +288,11 @@ enforce CORS. If `allowed-origins` is **empty**, the API does **not** emit CORS 
 ### 12. Browser HttpOnly session cookie
 
 **Prefix:** `ezkey.admin.auth.*`
+
+**Servlet session cookie (separate):** `server.servlet.session.cookie.name=EZKEY_ADMIN_API_SESSION` in
+`config/application.properties` — Spring’s container session cookie for localhost isolation (#799).
+Not the Mode B product cookie `EZKEY_ADMIN_SESSION` below. API modules keep this key under external
+`config/`; demos keep theirs in the JAR.
 
 **Description:** optional mode for **browser** sessions when the Admin UI and Admin API are on different **HTTPS** origins (e.g. `https://exp1-admin-ui.ezkey.org` → `https://exp1-admin-api.ezkey.org`). When enabled, successful login and passwordless-wait responses set an **HttpOnly** cookie on the API host with the same opaque value as today’s bearer token; the JSON body **omits** `token` so JavaScript cannot read the secret. The authentication filter accepts **either** `Authorization: Bearer` (priority if present) **or** the session cookie. **Postman and scripts** can keep using Bearer only.
 

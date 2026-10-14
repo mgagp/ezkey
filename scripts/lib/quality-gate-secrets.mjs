@@ -531,12 +531,15 @@ export function applyRedactions(rawLine) {
     return '/t/***REDACTED***';
   });
 
-  // 4c) JSESSIONID cookie
-  out = out.replace(/\bJSESSIONID\s*=\s*([^\s;]+)/gi, (full, val) => {
-    if (isMaskedOrNonSecretValue(val)) return full;
-    note('cookie', 'RED', val);
-    return 'JSESSIONID=***REDACTED***';
-  });
+  // 4c) Servlet session cookies (default JSESSIONID + Ezkey localhost names, #799)
+  out = out.replace(
+    /\b((?:JSESSIONID|EZKEY_[A-Z0-9_]*SESSION))\s*=\s*([^\s;]+)/gi,
+    (full, name, val) => {
+      if (isMaskedOrNonSecretValue(val)) return full;
+      note('cookie', 'RED', val);
+      return `${name}=***REDACTED***`;
+    },
+  );
 
   // 5) JSON "key":"value" (compound keys + username / publicKey AMBER)
   out = out.replace(

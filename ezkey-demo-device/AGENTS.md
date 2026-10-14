@@ -22,8 +22,14 @@ When an Admin UI enrollment QR includes `authUrl`, the demo device routes **bind
 - Client: `enrollment-qr-import.js` populates hidden form field `authApiBaseUrl`.
 - Server: `EnrollmentAuthApiUrlResolver` + `AuthApiUrlValidator` (mirrors mobile `urlValidation.ts`).
 - Invalid non-blank QR URL → hard error (no silent fallback to config).
+- **Host allowlist** (`ezkey.demo-device.allowed-auth-api-hosts`): QR `authUrl` / bind overrides must
+  target an allowed hostname. Default = host of `ezkey.auth.api.url` + `localhost` + `127.0.0.1`.
+  Rejection message is constant (no echo of the submitted URL). Userinfo in the URL is rejected;
+  normalized form is scheme + host + port + path only. Docker `http://auth-api:8080` is the
+  **config default** (not an override); HTTP outside loopback still fails override validation —
+  see `CONFIGURATION.md` § Docker. (Code-scanning triage 2026-10-13, alerts #9 / #10.)
 
-Standalone Docker default remains Exp1 (`https://exp1-auth-api.ezkey.org`); QR local enrollments override without `.env` change.
+Standalone Docker default remains Exp1 (`https://exp1-auth-api.ezkey.org`); QR local enrollments override without `.env` change when that host is on the allowlist (default includes the configured Auth API host).
 
 ## EXP1 / Cloudflare error bodies
 
