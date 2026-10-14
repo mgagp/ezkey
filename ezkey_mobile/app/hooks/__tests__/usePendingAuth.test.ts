@@ -403,6 +403,8 @@ describe('handleRespond', () => {
     });
     const {result} = renderHook('enr-1', sampleAttempt);
 
+    expect(result.current.hasSubmittedServerDecision()).toBe(false);
+
     await act(async () => {
       await result.current.handleRespond(false);
     });
@@ -410,10 +412,17 @@ describe('handleRespond', () => {
     expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(1);
     const call = mockAuthAttemptsApi.respond.mock.calls[0][0];
     expect(call.authAttemptAccepted).toBe(false);
+    expect(result.current.hasSubmittedServerDecision()).toBe(true);
     expect(mockSetRecentAuthResult).toHaveBeenCalledWith(
       'enr-1',
       expect.objectContaining({status: 'rejected'}),
     );
+
+    // Second deny (e.g. leave-as-cancel after Deny) must not call Auth API again (#831).
+    await act(async () => {
+      await result.current.handleRespond(false);
+    });
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(1);
   });
 
   it('sets formError and does not call API when challenge is required but input is empty', async () => {

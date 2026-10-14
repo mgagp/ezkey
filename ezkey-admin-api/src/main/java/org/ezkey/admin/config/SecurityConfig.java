@@ -108,6 +108,7 @@ public class SecurityConfig {
                         "/api/v1/admin/auth/evaluator-temp",
                         "/api/v1/admin/auth/login",
                         "/api/v1/admin/auth/passwordless-wait",
+                        "/api/v1/admin/auth/passwordless-cancel",
                         "/api/v1/admin/auth/recover")
                     .permitAll()
                     // Current session metadata requires an authenticated browser or bearer session

@@ -158,6 +158,10 @@ Canon overlay: [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail
 
 ---
 
+## Admin login rate limit (Cancel + retry)
+
+**Symptom (2026-10-14):** passwordless login → Cancel on device / Admin UI → immediate retry → HTTP 429 on `admin-api.ezkey.online` (#831). **Cause:** login and `passwordless-wait` shared a 5/min IP bucket. **Fix:** separate wait bucket (per `authAttemptId`), login 15/min greedy refill, waiter-secret `passwordless-cancel`, mobile leave-as-deny. Redeploy admin-api (+ Admin UI / mobile when those clients are updated).
+
 ## demo-acme HTTPS redirects
 
 **Symptom:** `curl -sI https://demo-acme.ezkey.online/` returned `Location: http://demo-acme.ezkey.online/login` while the session cookie is `Secure` — broken behind Cloudflare Full (strict).

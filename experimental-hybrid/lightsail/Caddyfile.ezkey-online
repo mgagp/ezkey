@@ -79,6 +79,12 @@ admin-api.ezkey.online {
 		protocols tls1.3 tls1.3
 	}
 	import ezkey_online_public_docs_block
+	# Access log for admin auth only (#831). Method/path/status/IP — no request bodies / secrets.
+	@adminAuth path /api/v1/admin/auth/*
+	log @adminAuth {
+		output stdout
+		format filter `{request>remote_ip} {request>method} {request>uri} {status}`
+	}
 	reverse_proxy admin-api:9080 {
 		header_up CF-Connecting-IP {client_ip}
 		header_up X-Forwarded-For {client_ip}

@@ -9,13 +9,13 @@
  *              All business logic is delegated to {@link usePendingAuth}.
  * Security Context: Embeds the polling model, proof token usage, and read-once semantics described in
  *                   docs/features/AUTH_SECURITY.md to keep user actions intentional and replay resistant.
- * UX: Approve and Deny only — there is no mobile "cancel" API; leaving the screen without responding
- *     relies on server-side TTL expiry (see Auth API / Admin batch expiry). Do not add a Cancel
- *     button that implies a distinct server action without an endpoint.
+ * UX: Approve and Deny. Leaving the screen with a loaded pending attempt (hardware back / gesture)
+ *     is treated as Deny via Auth API respond(accepted=false) so Admin login wait unblocks (#831).
+ *     Do not leave PENDING until TTL when the user explicitly abandons the request.
  * @since 2025
  */
 
-import React, {useCallback} from 'react';
+import React, {useCallback, useEffect} from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -71,11 +71,33 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     roleLabel,
     loadPendingAttempt,
     handleRespond,
+    hasSubmittedServerDecision,
   } = usePendingAuth(enrollmentId, initialAttempt, {
     canGoBack: () => navigation.canGoBack(),
     goBack: () => navigation.goBack(),
     navigateToEnrollmentDetail,
   });
+
+  // Leave with a loaded pending attempt → Auth API deny so passwordless-wait unblocks (#831).
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', e => {
+      if (!attempt || isProcessing || hasSubmittedServerDecision()) {
+        return;
+      }
+      e.preventDefault();
+      tracePendingAuthRespond('pendingAuth_leave_as_deny', {
+        authAttemptId: attempt.authAttemptId,
+      });
+      void handleRespond(false).finally(() => {
+        // Successful deny already navigates via handleReturnToEnrollmentDetail.
+        // On failure, still allow leave so the user is not trapped on this screen.
+        if (!hasSubmittedServerDecision()) {
+          navigation.dispatch(e.data.action);
+        }
+      });
+    });
+    return unsubscribe;
+  }, [navigation, attempt, isProcessing, handleRespond, hasSubmittedServerDecision]);
 
   const emptyIdentity = enrollment
     ? buildEnrollmentIdentityDisplay(

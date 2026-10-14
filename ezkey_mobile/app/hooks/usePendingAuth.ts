@@ -139,6 +139,11 @@ export type PendingAuthState = {
   roleLabel: string | undefined;
   loadPendingAttempt: () => void;
   handleRespond: (accepted: boolean) => Promise<void>;
+  /**
+   * True after a respond decision was accepted by the Auth API (approve or deny).
+   * Used so navigation leave does not send a second deny (#831).
+   */
+  hasSubmittedServerDecision: () => boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -351,14 +356,22 @@ export function usePendingAuth(
   // Respond (approve / deny)
   // -------------------------------------------------------------------------
 
+  const serverDecisionSentRef = useRef(false);
+
+  const hasSubmittedServerDecision = useCallback(
+    () => serverDecisionSentRef.current,
+    [],
+  );
+
   const handleRespond = useCallback(
     async (accepted: boolean) => {
-      if (!enrollment || !attempt || isProcessing) {
+      if (!enrollment || !attempt || isProcessing || serverDecisionSentRef.current) {
         tracePendingAuthRespond('handleRespond_skipped_preconditions', {
           accepted,
           hasEnrollment: Boolean(enrollment),
           hasAttempt: Boolean(attempt),
           isProcessing,
+          alreadySubmitted: serverDecisionSentRef.current,
         });
         return;
       }
@@ -414,6 +427,8 @@ export function usePendingAuth(
           },
           enrollment.installation?.authUrl,
         );
+        // Auth API accepted the decision — do not send a second deny on navigation leave (#831).
+        serverDecisionSentRef.current = true;
 
         const integrationPublicKey = enrollment.integrationPublicKey;
         if (!integrationPublicKey) {
@@ -537,5 +552,6 @@ export function usePendingAuth(
     roleLabel,
     loadPendingAttempt,
     handleRespond,
+    hasSubmittedServerDecision,
   };
 }

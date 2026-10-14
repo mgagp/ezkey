@@ -29,18 +29,20 @@ API-key create/wait rate limits live on Integration API (`ezkey.api-key.rate-lim
 **Namespace**: `ezkey.admin.rate-limit.*`
 
 ```properties
-# Admin login rate limiting (IP-based)
+# Admin login rate limiting (IP-based); passwordless-wait is a separate bucket (#831)
 ezkey.admin.rate-limit.enabled=true
-ezkey.admin.rate-limit.login.requests=5
-ezkey.admin.rate-limit.login.window-minutes=5
+ezkey.admin.rate-limit.login.requests=15
+ezkey.admin.rate-limit.login.window-minutes=1
 ezkey.admin.rate-limit.login.block-after-failures=10
 ezkey.admin.rate-limit.login.block-duration-minutes=30
+ezkey.admin.rate-limit.passwordless-wait.requests=10
+ezkey.admin.rate-limit.passwordless-wait.window-minutes=1
 ```
 
 **Protected Endpoints**:
-- `POST /api/v1/admin/auth/login`
-- `POST /api/v1/admin/auth/passwordless-wait`
-- `POST /api/v1/admin/auth/recover`
+- `POST /api/v1/admin/auth/login` (per client IP)
+- `POST /api/v1/admin/auth/passwordless-wait` / `passwordless-cancel` (per authAttemptId)
+- `POST /api/v1/admin/auth/recover` (not in this filter — see dead `recovery.*` keys note in policy)
 
 **Features**:
 - IP-based rate limiting with proxy header support

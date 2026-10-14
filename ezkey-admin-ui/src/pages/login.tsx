@@ -248,9 +248,23 @@ export default function LoginPage() {
   const handleCancel = () => {
     finalStatusRef.current = 'CANCELLED';
     abortRef.current?.abort();
+    const pending = waitingData;
     setLoginState('idle');
     setWaitingData(null);
     setErrorMessage(null);
+    // Server-side cancel so the attempt is not left PENDING until TTL (#831).
+    if (pending?.authAttemptId != null && pending.waiterSecret) {
+      void fetchApi('/api/v1/admin/auth/passwordless-cancel', {
+        method: 'POST',
+        requireAuth: false,
+        body: JSON.stringify({
+          authAttemptId: pending.authAttemptId,
+          waiterSecret: pending.waiterSecret,
+        }),
+      }).catch(() => {
+        // Best-effort: network / 429 must not block returning to idle login.
+      });
+    }
   };
 
   const handleRetry = () => {

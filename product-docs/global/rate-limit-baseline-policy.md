@@ -111,8 +111,9 @@ Reference: [`AdminOperationsRateLimitService.java`](../../ezkey-admin-api/src/ma
 
 | Endpoint | Family | Key | Default (Java) | Docker profile (typical) | Notes |
 |----------|--------|-----|----------------|--------------------------|-------|
-| `POST /api/v1/admin/auth/login` | L | client IP | 5 / 5 min | 5 / 1 min | + block after 10 failures / 30 min |
-| Backstop login (+ passwordless-wait) | L | **none** (per-instance) | 50 / 1 min | 50 / 1 min | IP-rotation residual; N replicas ⇒ N× headroom |
+| `POST /api/v1/admin/auth/login` | L | client IP | 15 / 1 min | 15 / 1 min | `refillGreedy`; + block after 10 failures / 30 min (#831) |
+| `POST /api/v1/admin/auth/passwordless-wait` (+ cancel) | L | authAttemptId (IP fallback) | 10 / 1 min | 10 / 1 min | **Separate** bucket from login (#831 Cancel+retry) |
+| Backstop login | L | **none** (per-instance) | 50 / 1 min | 50 / 1 min | IP-rotation residual on login only; N replicas ⇒ N× headroom |
 
 Reference: [`AdminRateLimitFilter.java`](../../ezkey-admin-api/src/main/java/org/ezkey/admin/security/AdminRateLimitFilter.java).
 

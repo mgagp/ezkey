@@ -34,6 +34,7 @@ import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.authattempt.service.AuthAttemptService;
+import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -356,38 +357,14 @@ public class AdminAuthService {
         authAttemptId,
         challengeCode != null);
 
-    // 1. Fetch auth attempt
-    AuthAttempt authAttempt =
-        authAttemptRepository
-            .findById(authAttemptId)
-            .orElseThrow(
-                () -> {
-                  logger.warn("❌ Auth attempt not found for id: {}", authAttemptId);
-                  return new AdminAuthenticationException("Authentication failed");
-                });
+    // 1. Fetch auth attempt and verify waiter secret capability
+    AuthAttempt authAttempt = requireAuthAttemptWithWaiterSecret(authAttemptId, waiterSecret);
 
     // 2. Pre-check CAS: attempt must not already have issued a session
     if (authAttempt.getSessionIssuedAt() != null) {
       logger.warn("❌ Auth attempt {} already consumed for session issuance", authAttemptId);
       throw new AdminAuthenticationException("Authentication failed");
     }
-
-    // 3. SECURITY: Verify one-time waiter secret capability
-    if (authAttempt.getWaiterSecretHash() == null
-        || waiterSecret == null
-        || waiterSecret.isBlank()) {
-      logger.warn("❌ Missing waiter secret for authAttemptId: {}", authAttemptId);
-      throw new AdminAuthenticationException("Authentication failed");
-    }
-    String incomingHash = SensitiveDataHasher.sha256Hex(waiterSecret.trim());
-    if (incomingHash == null
-        || !MessageDigest.isEqual(
-            incomingHash.getBytes(StandardCharsets.UTF_8),
-            authAttempt.getWaiterSecretHash().getBytes(StandardCharsets.UTF_8))) {
-      logger.warn("❌ Invalid waiter secret for authAttemptId: {}", authAttemptId);
-      throw new AdminAuthenticationException("Authentication failed");
-    }
-    logger.debug("✅ Waiter secret verified for authAttemptId: {}", authAttemptId);
 
     // 4. SECURITY: Enforce challenge requirement from persisted auth attempt state.
     // If an attempt has a stored challenge, clients must provide a matching challengeCode.
@@ -679,6 +656,66 @@ public class AdminAuthService {
       return nested;
     }
     return row;
+  }
+
+  /**
+   * Cancels a pending passwordless login attempt using the waiter secret issued at login.
+   *
+   * <p>Marks the attempt {@code EXPIRED} so any in-flight {@code passwordless-wait} unblocks and an
+   * immediate retry is not blocked by a dangling PENDING attempt (#831). Idempotent when the
+   * attempt is already in a final state.
+   *
+   * @param authAttemptId the authentication attempt ID from the login response
+   * @param waiterSecret the one-time waiter secret capability received at login
+   * @throws AdminAuthenticationException if the attempt is missing or the waiter secret is invalid
+   */
+  public void cancelPasswordlessAuth(Integer authAttemptId, String waiterSecret) {
+    requireAuthAttemptWithWaiterSecret(authAttemptId, waiterSecret);
+    try {
+      authAttemptService.cancel(authAttemptId);
+      logger.info(
+          "Passwordless auth attempt {} cancelled via waiter-secret cancel (#831)", authAttemptId);
+    } catch (AuthAttemptStateConflictException ex) {
+      logger.info(
+          "Passwordless auth attempt {} already final; cancel treated as success", authAttemptId);
+    }
+  }
+
+  /**
+   * Loads an auth attempt and verifies the waiter secret capability (constant-time compare).
+   *
+   * @param authAttemptId authentication attempt id
+   * @param waiterSecret plaintext waiter secret from the login client
+   * @return the auth attempt entity
+   * @throws AdminAuthenticationException if not found or secret invalid
+   */
+  private AuthAttempt requireAuthAttemptWithWaiterSecret(
+      Integer authAttemptId, String waiterSecret) {
+    AuthAttempt authAttempt =
+        authAttemptRepository
+            .findById(authAttemptId)
+            .orElseThrow(
+                () -> {
+                  logger.warn("❌ Auth attempt not found for id: {}", authAttemptId);
+                  return new AdminAuthenticationException("Authentication failed");
+                });
+
+    if (authAttempt.getWaiterSecretHash() == null
+        || waiterSecret == null
+        || waiterSecret.isBlank()) {
+      logger.warn("❌ Missing waiter secret for authAttemptId: {}", authAttemptId);
+      throw new AdminAuthenticationException("Authentication failed");
+    }
+    String incomingHash = SensitiveDataHasher.sha256Hex(waiterSecret.trim());
+    if (incomingHash == null
+        || !MessageDigest.isEqual(
+            incomingHash.getBytes(StandardCharsets.UTF_8),
+            authAttempt.getWaiterSecretHash().getBytes(StandardCharsets.UTF_8))) {
+      logger.warn("❌ Invalid waiter secret for authAttemptId: {}", authAttemptId);
+      throw new AdminAuthenticationException("Authentication failed");
+    }
+    logger.debug("✅ Waiter secret verified for authAttemptId: {}", authAttemptId);
+    return authAttempt;
   }
 
   /**
