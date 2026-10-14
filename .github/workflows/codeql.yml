@@ -1,9 +1,9 @@
 # Advanced CodeQL setup for mgagp/ezkey.
 #
-# Before this workflow can succeed on main/PRs, Marc must switch the repository
-# CodeQL configuration from Default to Advanced (Settings → Code security →
-# CodeQL → disable default setup). Otherwise advanced and default conflict or
-# duplicate. See docs/SECURITY_POSTURE.md § Code scanning policy.
+# Repository CodeQL is Advanced (default setup disabled 2026-10-14 with #805).
+# Query suite: security-extended via .github/codeql/codeql-config.yml (restores
+# coverage the former default setup had). See docs/SECURITY_POSTURE.md
+# § Code scanning policy.
 #
 # Decision: code-scanning triage 2026-10-13, approved by Marc 2026-10-13 19:40.
 name: CodeQL
@@ -48,6 +48,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3

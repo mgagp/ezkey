@@ -2,6 +2,10 @@
 # Requires Settings → Code security → CodeQL → Advanced (default setup must be off).
 # Decision: code-scanning triage 2026-10-13, approved by Marc 2026-10-13 19:40.
 #
+# Query suite: security-extended (same coverage as the former default setup).
+# Default suite omitted log-injection / sensitive-log and related queries; after
+# #805 those alerts were marked fixed without code fixes — restored here.
+#
 # paths-ignore: test harness alerts (sensitive-log 23–47, relative-path 48–61) are
 # closed by exclusion rather than mass dismissal. See docs/SECURITY_POSTURE.md
 # § Code scanning policy and product-docs/global/hygiene/code-scanning/.
@@ -13,6 +17,9 @@
 # from `.github/workflows/codeql.yml` via CODEQL_ACTION_EXTRA_OPTIONS on the
 # java-kotlin analyze step (`--additional-packs` + `--extension-packs=ezkey/java-models`).
 name: Ezkey CodeQL config
+
+queries:
+  - uses: security-extended
 
 paths-ignore:
   - ezkey-tests/**
