@@ -368,4 +368,5 @@ Anything not checked stays marked **unverified** in future inventory refreshes â
 ---
 
 *Inventory date: 2026-10-14 (review-applied). Docs-first; CodeQL checkout `persist-credentials`
-aligned in the same PR when touched.*
+aligned in the same PR when touched. IntegrityMicroDashboard Vitest freshness fixtures fixed so
+workflows-path CI can stay green.*
