@@ -259,11 +259,16 @@ describe('authentication continuity (pending linked to respond)', () => {
   });
 
   it('does not send leave-deny while approve respond is in flight (#833 m2)', async () => {
-    let resolveRespond!: (value: unknown) => void;
+    let resolveRespond!: (value: {
+      authAttemptId: number;
+      authAttemptResult: 'APPROVED';
+      authAttemptMessage: string;
+      authAttemptProofTokenResultSignedByIntegration: string;
+    }) => void;
     mockAuthAttemptsApi.respond.mockImplementation(
       () =>
         new Promise(resolve => {
-          resolveRespond = resolve;
+          resolveRespond = resolve as typeof resolveRespond;
         }),
     );
 
@@ -302,7 +307,8 @@ describe('authentication continuity (pending linked to respond)', () => {
     );
     // Start approve but leave respond hanging (in-flight).
     await renderer.act(async () => {
-      void approve.props.onPress();
+      // Fire-and-forget: respond() is intentionally left unresolved below.
+      approve.props.onPress();
     });
     // Allow microtasks up to the hung respond() call.
     await renderer.act(async () => {

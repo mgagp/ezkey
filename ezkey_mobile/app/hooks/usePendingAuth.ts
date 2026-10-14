@@ -144,6 +144,11 @@ export type PendingAuthState = {
    * Used so navigation leave does not send a second deny (#831).
    */
   hasSubmittedServerDecision: () => boolean;
+  /**
+   * True while {@link handleRespond} is in flight (set synchronously before any await).
+   * Used so leave-as-deny cannot race an in-flight approve (#833 m2).
+   */
+  isRespondInFlight: () => boolean;
 };
 
 // ---------------------------------------------------------------------------
