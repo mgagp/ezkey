@@ -114,13 +114,9 @@ class AdminPasswordlessCancelThenRetryMockMvcTest {
             "waiter-secret-xyz");
     when(authService.authenticate(any(AdminLoginRequestDto.class))).thenReturn(pending);
     doNothing().when(authService).cancelPasswordlessAuth(eq(55), anyString());
-    when(authService.waitForPasswordlessAuth(anyInt(), any(), anyString()))
-        .thenReturn(pending);
+    when(authService.waitForPasswordlessAuth(anyInt(), any(), anyString())).thenReturn(pending);
 
-    mockMvc =
-        MockMvcBuilders.standaloneSetup(controller)
-            .addFilters(rateLimitFilter)
-            .build();
+    mockMvc = MockMvcBuilders.standaloneSetup(controller).addFilters(rateLimitFilter).build();
   }
 
   @Test
@@ -134,10 +130,11 @@ class AdminPasswordlessCancelThenRetryMockMvcTest {
             post("/api/v1/admin/auth/login")
                 .contentType(APPLICATION_JSON)
                 .content(loginBody)
-                .with(request -> {
-                  request.setRemoteAddr("203.0.113.40");
-                  return request;
-                }))
+                .with(
+                    request -> {
+                      request.setRemoteAddr("203.0.113.40");
+                      return request;
+                    }))
         .andExpect(status().isOk());
 
     mockMvc
@@ -146,10 +143,11 @@ class AdminPasswordlessCancelThenRetryMockMvcTest {
                 .contentType(APPLICATION_JSON)
                 .content(
                     "{\"authAttemptId\":55,\"challengeCode\":12,\"waiterSecret\":\"waiter-secret-xyz\"}")
-                .with(request -> {
-                  request.setRemoteAddr("203.0.113.40");
-                  return request;
-                }))
+                .with(
+                    request -> {
+                      request.setRemoteAddr("203.0.113.40");
+                      return request;
+                    }))
         .andExpect(status().isOk());
 
     mockMvc
@@ -157,10 +155,11 @@ class AdminPasswordlessCancelThenRetryMockMvcTest {
             post("/api/v1/admin/auth/passwordless-cancel")
                 .contentType(APPLICATION_JSON)
                 .content("{\"authAttemptId\":55,\"waiterSecret\":\"waiter-secret-xyz\"}")
-                .with(request -> {
-                  request.setRemoteAddr("203.0.113.40");
-                  return request;
-                }))
+                .with(
+                    request -> {
+                      request.setRemoteAddr("203.0.113.40");
+                      return request;
+                    }))
         .andExpect(status().isNoContent());
 
     mockMvc
@@ -168,10 +167,11 @@ class AdminPasswordlessCancelThenRetryMockMvcTest {
             post("/api/v1/admin/auth/login")
                 .contentType(APPLICATION_JSON)
                 .content(loginBody)
-                .with(request -> {
-                  request.setRemoteAddr("203.0.113.40");
-                  return request;
-                }))
+                .with(
+                    request -> {
+                      request.setRemoteAddr("203.0.113.40");
+                      return request;
+                    }))
         .andExpect(status().isOk());
   }
 }

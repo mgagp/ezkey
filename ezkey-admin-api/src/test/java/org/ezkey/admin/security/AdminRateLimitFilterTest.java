@@ -124,9 +124,11 @@ class AdminRateLimitFilterTest {
   @Test
   @DisplayName("Different authAttemptId values do not share the passwordless-wait bucket")
   void passwordlessWait_differentAttemptIds_separateBuckets() throws Exception {
-    assertThat(filterWait("203.0.113.80", "{\"authAttemptId\":1,\"waiterSecret\":\"a\"}").getStatus())
+    assertThat(
+            filterWait("203.0.113.80", "{\"authAttemptId\":1,\"waiterSecret\":\"a\"}").getStatus())
         .isEqualTo(HttpStatus.OK.value());
-    assertThat(filterWait("203.0.113.80", "{\"authAttemptId\":2,\"waiterSecret\":\"b\"}").getStatus())
+    assertThat(
+            filterWait("203.0.113.80", "{\"authAttemptId\":2,\"waiterSecret\":\"b\"}").getStatus())
         .isEqualTo(HttpStatus.OK.value());
   }
 
@@ -154,7 +156,8 @@ class AdminRateLimitFilterTest {
   @Test
   @DisplayName("passwordless-cancel shares the passwordless-wait bucket for the same attempt id")
   void passwordlessCancel_sharesWaitBucket() throws Exception {
-    assertThat(filterWait("203.0.113.90", "{\"authAttemptId\":7,\"waiterSecret\":\"x\"}").getStatus())
+    assertThat(
+            filterWait("203.0.113.90", "{\"authAttemptId\":7,\"waiterSecret\":\"x\"}").getStatus())
         .isEqualTo(HttpStatus.OK.value());
 
     MockHttpServletRequest cancel = new MockHttpServletRequest("POST", PASSWORDLESS_CANCEL_PATH);

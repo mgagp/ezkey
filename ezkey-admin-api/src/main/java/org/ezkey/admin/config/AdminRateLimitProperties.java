@@ -58,9 +58,7 @@ public class AdminRateLimitProperties {
    */
   private PasswordlessWaitConfig passwordlessWait = new PasswordlessWaitConfig();
 
-  /**
-   * Process-wide (no key) budget on admin login. Per-instance, not distributed (ADR-0010).
-   */
+  /** Process-wide (no key) budget on admin login. Per-instance, not distributed (ADR-0010). */
   private BackstopConfig backstop = new BackstopConfig();
 
   /** Configuration for login endpoint rate limiting behavior. */
