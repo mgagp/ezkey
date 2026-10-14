@@ -1113,15 +1113,15 @@ class ReencryptionServiceTest {
             parallelRunner,
             jobLastRunService);
 
-    // Mutable list required: processReencryptionBatches addAlls PENDING into the resume list.
+    // Mutable lists required: resume list is addAll'd; enabledKeys is removeIf'd.
     when(batchRepository.findBatchesEligibleForResume()).thenReturn(new java.util.ArrayList<>());
     when(batchRepository.findByStatus(BatchStatus.PENDING)).thenReturn(List.of(batch));
-    when(keyRepository.findEnabledKeys()).thenReturn(List.of());
+    when(keyRepository.findEnabledKeys()).thenReturn(new java.util.ArrayList<>());
     doThrow(
             new IllegalStateException(
                 "UPDATE ezkey_encryption_key SET material='leak-must-not-persist'"))
         .when(mockBatchProcessing)
-        .processBatchInternal(batch);
+        .processBatchInternal(any(ReencryptionBatch.class));
 
     service.processReencryptionBatches();
 

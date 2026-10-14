@@ -322,9 +322,7 @@ class AdminAuthControllerBrowserSessionCookieTest {
         new AdminTokenAuthenticationFilter(tokenValidation, cookieProps);
     AdminCookieCsrfFilter csrfFilter = new AdminCookieCsrfFilter(cookieProps, csrfService);
 
-    return MockMvcBuilders.standaloneSetup(controller)
-        .addFilters(tokenFilter, csrfFilter)
-        .build();
+    return MockMvcBuilders.standaloneSetup(controller).addFilters(tokenFilter, csrfFilter).build();
   }
 
   private static void assertNoServletSessionSetCookie(MvcResult result) {
@@ -334,8 +332,7 @@ class AdminAuthControllerBrowserSessionCookieTest {
     }
     for (String setCookie : setCookies) {
       assertFalse(
-          setCookie.startsWith("EZKEY_ADMIN_API_SESSION=")
-              || setCookie.startsWith("JSESSIONID="),
+          setCookie.startsWith("EZKEY_ADMIN_API_SESSION=") || setCookie.startsWith("JSESSIONID="),
           () -> "Unexpected servlet session Set-Cookie: " + setCookie);
     }
   }
