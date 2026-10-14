@@ -16,7 +16,9 @@ import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
+import org.ezkey.admin.audit.RecoveryAuditDetails;
 import org.ezkey.admin.config.AdminOperationsRateLimitProperties;
+import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -185,7 +187,8 @@ public class AdminOperationsRateLimitService {
   public void recordCreateApiKey(String adminId) {
     // With Bucket4j, tokens are consumed during canCreateApiKey() check
     // This method is kept for API compatibility
-    logger.debug("Recorded API key creation for admin: {}", adminId);
+    logger.debug(
+        "Recorded API key creation for admin: {}", LogSanitizer.sanitizeForLog(adminId));
   }
 
   /**
@@ -225,7 +228,8 @@ public class AdminOperationsRateLimitService {
    * @param adminId the admin identifier
    */
   public void recordRevokeApiKey(String adminId) {
-    logger.debug("Recorded API key revocation for admin: {}", adminId);
+    logger.debug(
+        "Recorded API key revocation for admin: {}", LogSanitizer.sanitizeForLog(adminId));
   }
 
   /**
@@ -265,7 +269,7 @@ public class AdminOperationsRateLimitService {
    * @param adminId the admin identifier
    */
   public void recordUpdateApiKey(String adminId) {
-    logger.debug("Recorded API key update for admin: {}", adminId);
+    logger.debug("Recorded API key update for admin: {}", LogSanitizer.sanitizeForLog(adminId));
   }
 
   /**
@@ -274,12 +278,18 @@ public class AdminOperationsRateLimitService {
    * <p>Note: With Bucket4j token bucket algorithm, tokens are consumed during the check, so this
    * method is kept for API compatibility but doesn't need to do additional work.
    *
+   * <p>Logs only the recovery-token fingerprint (never the raw token). Callers may pass a recovery
+   * bearer token here; see CodeQL {@code java/sensitive-log} alert #16.
+   *
    * @param tokenOrAdminId the admin identifier or recovery token
    */
   public void recordResetEnrollment(String tokenOrAdminId) {
     // With Bucket4j, tokens are consumed during canResetEnrollment() check
-    // This method is kept for API compatibility
-    logger.debug("Recorded enrollment reset for admin/token: {}", tokenOrAdminId);
+    // This method is kept for API compatibility — never log the raw recovery token.
+    String fingerprint =
+        LogSanitizer.sanitizeForLog(
+            RecoveryAuditDetails.recoveryTokenFingerprint(tokenOrAdminId));
+    logger.debug("Recorded enrollment reset for recovery token fingerprint: {}", fingerprint);
   }
 
   /**
