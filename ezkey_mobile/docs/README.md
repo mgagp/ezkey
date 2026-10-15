@@ -20,10 +20,11 @@ reference mobile app.
 1. [MOBILE_API_MAPPINGS.md](MOBILE_API_MAPPINGS.md)
 2. [MOBILE_FUNCTIONAL_FLOWS.md](MOBILE_FUNCTIONAL_FLOWS.md)
 3. [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) — canonical FSM (states, guards, leave-as-deny)
-4. [MOBILE_DATA_MODEL.md](MOBILE_DATA_MODEL.md)
-5. [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md)
-6. [MOBILE_STACK_AND_ARCHITECTURE.md](MOBILE_STACK_AND_ARCHITECTURE.md)
-7. [MOBILE_POSITIONING.md](MOBILE_POSITIONING.md)
+4. [MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md) — intent from FSM open questions (phased backlog)
+5. [MOBILE_DATA_MODEL.md](MOBILE_DATA_MODEL.md)
+6. [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md)
+7. [MOBILE_STACK_AND_ARCHITECTURE.md](MOBILE_STACK_AND_ARCHITECTURE.md)
+8. [MOBILE_POSITIONING.md](MOBILE_POSITIONING.md)
 
 ## Which Document Answers Which Question
 
@@ -32,6 +33,7 @@ reference mobile app.
 | Which Auth API fields does the mobile app send, store, or display? | [MOBILE_API_MAPPINGS.md](MOBILE_API_MAPPINGS.md) | Primary mapping reference for `bind`, `verify`, `pending`, and `respond`. |
 | How do enrollment and authentication run end to end? | [MOBILE_FUNCTIONAL_FLOWS.md](MOBILE_FUNCTIONAL_FLOWS.md) | Includes nominal and exception paths plus trust checks. |
 | What are the explicit states, events, guards, TTL, and leave/deny rules? | [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) | Canonical FSM from code; Mermaid + optional [HTML](mobile-app-state-machine.html). Post-#833 leave-as-deny. |
+| What product/UX/security intent do the FSM open questions imply, and what phased backlog? | [MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md) | Orientation from the eight FSM findings; phased proposals; Questions pour Marc; collaborator review slots. |
 | What internal concepts and persisted structures exist in the app? | [MOBILE_DATA_MODEL.md](MOBILE_DATA_MODEL.md) | Start at **Cornerstone** (installation trust zone + Keystore/seal split); then local entities and source-of-truth rules. |
 | What does each primary screen show and do? | [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md) | Screen-level responsibilities and navigation model. |
 | How is the mobile app assembled technically? | [MOBILE_STACK_AND_ARCHITECTURE.md](MOBILE_STACK_AND_ARCHITECTURE.md) | Stack, module structure, boundaries, and generation workflow. |

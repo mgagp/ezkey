@@ -311,7 +311,10 @@ stateDiagram-v2
 
 ## 6. Open questions (code vs intent — no code change in this docs task)
 
-1. **No mobile TTL UI:** Server returns / stores `expiresAt`, but `PendingAttempt` omits it and the UI has no countdown. Should Detail/Pending show remaining time, or is “act or leave” enough?
+Strategic analysis, phased proposals, and collaborator review slots:
+[MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md).
+
+1. **No mobile TTL UI:** Server stores `expiresAt`, but pending wire DTO + `PendingAttempt` omit it; UI has no countdown. Should Detail/Pending show remaining time, or is “act or leave” enough?
 2. **`createdAt` on `PendingAttempt`:** Set to local `checkedAt`, not server attempt `createdAt` (`claimPendingAttempt.ts`). Misleading if used for TTL math later.
 3. **HTTP OK then local sig fail:** `serverDecisionSentRef` is set after respond HTTP success, before respond-result signature verification. Server may already be `ACCEPTED`/`REJECTED` while the user sees an error and stay on screen; leave will not re-deny. Is “trust HTTP, then verify for display” the intended fail-closed display rule?
 4. **Leave while `Responding`:** `beforeRemove` allows navigation when `isRespondInFlight()` without waiting for completion. In-flight approve may still finish and call `goBack` again. Confirm this is acceptable.
@@ -326,6 +329,7 @@ stateDiagram-v2
 
 | Doc | Role |
 | --- | --- |
+| [MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md) | Intent + phased backlog from §6 open questions |
 | [MOBILE_FUNCTIONAL_FLOWS.md](MOBILE_FUNCTIONAL_FLOWS.md) | End-to-end nominal/exception narration |
 | [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md) | Screen inventory and wireflows |
 | [MOBILE_API_MAPPINGS.md](MOBILE_API_MAPPINGS.md) | Field-level Auth API mapping |
