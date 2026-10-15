@@ -7,7 +7,8 @@ enrollment and authentication. It combines screen transitions, API calls, local 
 reader can understand the mobile behavior end to end without reopening the source code.
 
 Protocol semantics remain canonical in the root-level Auth API and signature payload documentation. This document is
-the mobile operational view of those semantics.
+the mobile operational view of those semantics. For the explicit finite-state model (guards, leave-as-deny,
+duplicate-tap locks, TTL), see [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) (canonical; post-#833).
 
 ## Flow Inventory and Notation
 

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ezkey Mobile — App State Machine</title>
+  <style>
+    :root {
+      --bg: #0b0d11;
+      --panel: #151923;
+      --border: rgba(54, 115, 223, 0.25);
+      --text: #f4f7ff;
+      --muted: #9aa3b6;
+      --accent: #3076df;
+      --ok: #61d095;
+      --warn: #f5a623;
+      --bad: #ff7878;
+      --edge: #5a6a88;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #1a2740 0%, var(--bg) 55%);
+      color: var(--text);
+      line-height: 1.45;
+      min-height: 100vh;
+    }
+    header {
+      padding: 1.25rem 1.5rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 { margin: 0 0 0.35rem; font-size: 1.35rem; font-weight: 650; }
+    header p { margin: 0; color: var(--muted); font-size: 0.92rem; max-width: 70ch; }
+    .banner {
+      margin: 1rem 1.5rem 0;
+      padding: 0.75rem 1rem;
+      background: rgba(245, 166, 35, 0.12);
+      border-left: 3px solid var(--warn);
+      border-radius: 8px;
+      color: #e8d5a8;
+      font-size: 0.9rem;
+    }
+    main {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 1rem;
+      padding: 1rem 1.5rem 2rem;
+    }
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+    }
+    .machine {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem;
+    }
+    .machine h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+    .tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .tab {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 0.35rem 0.85rem;
+      cursor: pointer;
+      font: inherit;
+    }
+    .tab[aria-selected="true"] {
+      color: var(--text);
+      border-color: var(--accent);
+      background: rgba(48, 118, 223, 0.18);
+    }
+    .canvas {
+      position: relative;
+      min-height: 420px;
+      border-radius: 10px;
+      background: #0e121a;
+      border: 1px dashed rgba(154, 163, 182, 0.25);
+      overflow: auto;
+    }
+    .node {
+      position: absolute;
+      min-width: 118px;
+      max-width: 150px;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid var(--edge);
+      background: #1a2030;
+      cursor: pointer;
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+    }
+    .node:hover, .node:focus-visible, .node.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(48, 118, 223, 0.35);
+      outline: none;
+      transform: translateY(-1px);
+    }
+    .node.ok { border-color: rgba(97, 208, 149, 0.55); }
+    .node.bad { border-color: rgba(255, 120, 120, 0.55); }
+    .node.warn { border-color: rgba(245, 166, 35, 0.55); }
+    svg.edges {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .edge-hit {
+      pointer-events: stroke;
+      cursor: pointer;
+      stroke: transparent;
+      stroke-width: 14;
+      fill: none;
+    }
+    .edge-line {
+      fill: none;
+      stroke: var(--edge);
+      stroke-width: 1.75;
+      marker-end: url(#arrow);
+    }
+    .edge-line.active { stroke: var(--accent); stroke-width: 2.5; }
+    .edge-label {
+      position: absolute;
+      font-size: 0.68rem;
+      color: var(--muted);
+      background: rgba(11, 13, 17, 0.85);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      pointer-events: none;
+      max-width: 140px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .edge-label.active { color: #cfe0ff; }
+    aside {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem;
+      align-self: start;
+      position: sticky;
+      top: 0.75rem;
+    }
+    aside h2 { margin: 0 0 0.5rem; font-size: 1rem; }
+    aside .meta { color: var(--muted); font-size: 0.82rem; margin-bottom: 0.75rem; }
+    aside dl { margin: 0; }
+    aside dt { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-top: 0.65rem; }
+    aside dd { margin: 0.2rem 0 0; font-size: 0.9rem; }
+    .empty { color: var(--muted); font-size: 0.9rem; }
+    footer {
+      padding: 0 1.5rem 1.5rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    footer a { color: #8eb6ff; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Ezkey Mobile — application state machine</h1>
+    <p>
+      Click a state or transition. Canonical detail:
+      <code>MOBILE_APP_STATE_MACHINE.md</code>. Self-contained page (no CDN).
+    </p>
+  </header>
+  <div class="banner">
+    Describes <strong>post-#833</strong> behavior: leave <code>PendingAuthScreen</code> with a loaded
+    attempt = Deny via Auth API <code>respond(accepted=false)</code>. Until #833 merges, main still
+    waits for TTL on abandon.
+  </div>
+  <main>
+    <section class="machine">
+      <div class="tabs" role="tablist" aria-label="Machines">
+        <button class="tab" role="tab" id="tab-enroll" aria-selected="true" data-machine="enroll">Enrollment</button>
+        <button class="tab" role="tab" id="tab-pending" aria-selected="false" data-machine="pending">Pending auth</button>
+      </div>
+      <div id="canvas" class="canvas" aria-live="polite"></div>
+    </section>
+    <aside id="detail">
+      <h2 id="detail-title">Select a state or edge</h2>
+      <p class="meta" id="detail-meta">Interactive complement to the markdown FSM.</p>
+      <dl id="detail-body"></dl>
+    </aside>
+  </main>
+  <footer>
+    Source of truth: <a href="./MOBILE_APP_STATE_MACHINE.md">MOBILE_APP_STATE_MACHINE.md</a>
+    · Issue <a href="https://github.com/mgagp/ezkey/issues/834">#834</a>
+    · Related PR <a href="https://github.com/mgagp/ezkey/pull/833">#833</a>
+  </footer>
+  <script>
+    const machines = {
+      enroll: {
+        title: "Enrollment wizard",
+        width: 720,
+        height: 480,
+        nodes: [
+          { id: "ScanIdle", x: 40, y: 40, label: "ScanIdle", cls: "" },
+          { id: "ScannerOpen", x: 280, y: 40, label: "ScannerOpen", cls: "" },
+          { id: "Binding", x: 520, y: 40, label: "Binding", cls: "warn" },
+          { id: "BindError", x: 280, y: 160, label: "BindError", cls: "bad" },
+          { id: "DraftReady", x: 520, y: 200, label: "DraftReady", cls: "ok" },
+          { id: "Verifying", x: 520, y: 320, label: "Verifying", cls: "warn" },
+          { id: "ChallengeError", x: 280, y: 320, label: "ChallengeError", cls: "bad" },
+          { id: "Done", x: 520, y: 420, label: "Done → Home", cls: "ok" }
+        ],
+        edges: [
+          { id: "e1", from: "ScanIdle", to: "ScannerOpen", label: "primary / camera OK",
+            detail: "handlePrimary opens scanner when permission granted." },
+          { id: "e2", from: "ScannerOpen", to: "Binding", label: "QR / seed",
+            detail: "parseQrPayload then performBinding → POST enrollments/bind." },
+          { id: "e3", from: "Binding", to: "DraftReady", label: "bind + sig OK",
+            detail: "Ed25519 algo check + bind signature verify; draft in memory only." },
+          { id: "e4", from: "Binding", to: "BindError", label: "fail",
+            detail: "Network, algo mismatch, or invalid bind signature." },
+          { id: "e5", from: "BindError", to: "ScannerOpen", label: "retry",
+            detail: "Primary opens scanner again." },
+          { id: "e6", from: "DraftReady", to: "Verifying", label: "6 digits + primary",
+            detail: "Guard: challenge length === 6. Then verify + persist." },
+          { id: "e7", from: "Verifying", to: "Done", label: "success",
+            detail: "Verify-result sig OK → saveEnrollment → popToTop." },
+          { id: "e8", from: "Verifying", to: "ChallengeError", label: "fail",
+            detail: "Deletes key pair if created; clears challenge input." },
+          { id: "e9", from: "ChallengeError", to: "Verifying", label: "retry",
+            detail: "Primary re-runs finalizeEnrollment when length OK." },
+          { id: "e10", from: "DraftReady", to: "ScanIdle", label: "back clears draft",
+            detail: "Blocked while isBinding or isSubmitting." }
+        ],
+        stateDetails: {
+          ScanIdle: { guards: "—", effects: "None", notes: "Scan CTA; optional F2a debug bypass." },
+          ScannerOpen: { guards: "Camera permission", effects: "VisionCamera modal", notes: "Dismiss returns to ScanIdle/BindError." },
+          Binding: { guards: "isBinding blocks re-entry", effects: "POST /enrollments/bind", notes: "Clears prior draft for this attempt." },
+          BindError: { guards: "—", effects: "bindError / cameraError UI", notes: "Still no persisted enrollment." },
+          DraftReady: { guards: "draft set", effects: "In-memory draft only", notes: "Back clears draft; secondary cancels to Home." },
+          Verifying: { guards: "isSubmitting; back no-op", effects: "verify + instance-info + storage", notes: "Keystore key created then deleted on failure." },
+          ChallengeError: { guards: "—", effects: "challengeError banner", notes: "Draft may still exist for retry." },
+          Done: { guards: "—", effects: "popToTop()", notes: "StoredEnrollment written." }
+        }
+      },
+      pending: {
+        title: "Pending authentication",
+        width: 760,
+        height: 500,
+        nodes: [
+          { id: "EnrollmentLoading", x: 40, y: 40, label: "EnrollmentLoading", cls: "" },
+          { id: "LoadingPending", x: 280, y: 40, label: "LoadingPending", cls: "warn" },
+          { id: "Empty", x: 520, y: 40, label: "Empty", cls: "" },
+          { id: "GlobalError", x: 520, y: 160, label: "GlobalError", cls: "bad" },
+          { id: "Ready", x: 280, y: 220, label: "Ready", cls: "ok" },
+          { id: "Responding", x: 280, y: 360, label: "Responding", cls: "warn" },
+          { id: "Completed", x: 520, y: 360, label: "Completed → Detail", cls: "ok" },
+          { id: "Left", x: 40, y: 360, label: "Left screen", cls: "" }
+        ],
+        edges: [
+          { id: "p1", from: "EnrollmentLoading", to: "LoadingPending", label: "no initialAttempt",
+            detail: "Auto-load once per enrollment id." },
+          { id: "p2", from: "EnrollmentLoading", to: "Ready", label: "initialAttempt",
+            detail: "Came from Detail claim; skip re-fetch." },
+          { id: "p3", from: "LoadingPending", to: "Empty", label: "none",
+            detail: "claimPendingAttempt kind none." },
+          { id: "p4", from: "LoadingPending", to: "GlobalError", label: "fail / network",
+            detail: "fail_closed or thrown transport/crypto error." },
+          { id: "p5", from: "LoadingPending", to: "Ready", label: "attempt",
+            detail: "Pending signature verified; attempt in memory." },
+          { id: "p6", from: "Empty", to: "LoadingPending", label: "Check again",
+            detail: "User-initiated pull only." },
+          { id: "p7", from: "GlobalError", to: "LoadingPending", label: "Try again",
+            detail: "Retries claim pending." },
+          { id: "p8", from: "Ready", to: "Responding", label: "Approve / Deny / Leave",
+            detail: "Leave-as-deny (#833) calls handleRespond(false). Guards: refs + isProcessing." },
+          { id: "p9", from: "Responding", to: "Completed", label: "respond OK + sig",
+            detail: "serverDecisionSentRef set after HTTP OK; navigate to Detail." },
+          { id: "p10", from: "Responding", to: "GlobalError", label: "respond fail",
+            detail: "Clears respondInFlightRef; may still allow leave without trap." },
+          { id: "p11", from: "Ready", to: "Left", label: "leave (no attempt path)",
+            detail: "Empty/error leave does not call respond." },
+          { id: "p12", from: "Responding", to: "Left", label: "leave while in flight",
+            detail: "No second deny; in-flight respond continues." }
+        ],
+        stateDetails: {
+          EnrollmentLoading: { guards: "isEnrollmentLoading", effects: "Hydrate enrollment", notes: "—" },
+          LoadingPending: { guards: "loading", effects: "POST auth-attempts/pending", notes: "Pull model; no background poll." },
+          Empty: { guards: "showEmptyState", effects: "—", notes: "No deny on leave." },
+          GlobalError: { guards: "globalError", effects: "Optional debug panel", notes: "Try again reloads pending." },
+          Ready: { guards: "attempt set", effects: "—", notes: "Leave → deny (#833). Challenge length 2 for approve." },
+          Responding: { guards: "respondInFlightRef + isProcessing", effects: "POST respond", notes: "Duplicate taps skipped." },
+          Completed: { guards: "serverDecisionSentRef", effects: "setRecentAuthResult + goBack", notes: "Leave will not re-deny." },
+          Left: { guards: "beforeRemove conditions", effects: "Maybe respond(false)", notes: "On deny failure, dispatch leave anyway." }
+        }
+      }
+    };
+
+    const canvas = document.getElementById("canvas");
+    const detailTitle = document.getElementById("detail-title");
+    const detailMeta = document.getElementById("detail-meta");
+    const detailBody = document.getElementById("detail-body");
+    let current = "enroll";
+    let activeId = null;
+
+    function nodeCenter(n) {
+      return { x: n.x + 65, y: n.y + 28 };
+    }
+
+    function showState(machine, nodeId) {
+      const n = machine.nodes.find(x => x.id === nodeId);
+      const d = machine.stateDetails[nodeId] || {};
+      detailTitle.textContent = n ? n.label : nodeId;
+      detailMeta.textContent = machine.title + " · state";
+      detailBody.innerHTML =
+        "<dt>Guards</dt><dd>" + (d.guards || "—") + "</dd>" +
+        "<dt>Effects</dt><dd>" + (d.effects || "—") + "</dd>" +
+        "<dt>Notes</dt><dd>" + (d.notes || "—") + "</dd>";
+      activeId = nodeId;
+      render(current);
+    }
+
+    function showEdge(machine, edge) {
+      detailTitle.textContent = edge.label;
+      detailMeta.textContent = machine.title + " · " + edge.from + " → " + edge.to;
+      detailBody.innerHTML =
+        "<dt>From</dt><dd>" + edge.from + "</dd>" +
+        "<dt>To</dt><dd>" + edge.to + "</dd>" +
+        "<dt>Detail</dt><dd>" + edge.detail + "</dd>";
+      activeId = edge.id;
+      render(current);
+    }
+
+    function render(name) {
+      const machine = machines[name];
+      canvas.style.minHeight = machine.height + "px";
+      canvas.innerHTML = "";
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.classList.add("edges");
+      svg.setAttribute("viewBox", "0 0 " + machine.width + " " + machine.height);
+      svg.style.width = machine.width + "px";
+      svg.style.height = machine.height + "px";
+      const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+      defs.innerHTML = '<marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#5a6a88" /></marker>';
+      svg.appendChild(defs);
+
+      const byId = Object.fromEntries(machine.nodes.map(n => [n.id, n]));
+      machine.edges.forEach(edge => {
+        const a = nodeCenter(byId[edge.from]);
+        const b = nodeCenter(byId[edge.to]);
+        const midX = (a.x + b.x) / 2;
+        const midY = (a.y + b.y) / 2 - 8;
+        const path = "M " + a.x + " " + a.y + " L " + b.x + " " + b.y;
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        line.setAttribute("d", path);
+        line.classList.add("edge-line");
+        if (activeId === edge.id) line.classList.add("active");
+        const hit = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        hit.setAttribute("d", path);
+        hit.classList.add("edge-hit");
+        hit.addEventListener("click", () => showEdge(machine, edge));
+        svg.appendChild(line);
+        svg.appendChild(hit);
+        const lab = document.createElement("div");
+        lab.className = "edge-label" + (activeId === edge.id ? " active" : "");
+        lab.style.left = midX + "px";
+        lab.style.top = midY + "px";
+        lab.textContent = edge.label;
+        canvas.appendChild(lab);
+      });
+      canvas.appendChild(svg);
+
+      machine.nodes.forEach(n => {
+        const el = document.createElement("button");
+        el.type = "button";
+        el.className = "node " + (n.cls || "") + (activeId === n.id ? " active" : "");
+        el.style.left = n.x + "px";
+        el.style.top = n.y + "px";
+        el.textContent = n.label;
+        el.addEventListener("click", () => showState(machine, n.id));
+        canvas.appendChild(el);
+      });
+    }
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", "false"));
+        tab.setAttribute("aria-selected", "true");
+        current = tab.getAttribute("data-machine");
+        activeId = null;
+        detailTitle.textContent = "Select a state or edge";
+        detailMeta.textContent = machines[current].title;
+        detailBody.innerHTML = '<p class="empty">Click a node or transition line.</p>';
+        render(current);
+      });
+    });
+
+    render("enroll");
+  </script>
+</body>
+</html>

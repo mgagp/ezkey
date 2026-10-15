@@ -7,7 +7,8 @@ which actions it owns, and how navigation moves across enrollment and authentica
 screen implementations rather than an idealized future UX.
 
 It focuses on Home, Enrollment Wizard, Enrollment Detail, and Pending Authentication first, then captures the
-secondary Settings, What's new, About, Danger Zone, and Licenses screens.
+secondary Settings, What's new, About, Danger Zone, and Licenses screens. Decision limits and state transitions
+are canonical in [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) (including post-#833 leave-as-deny).
 
 ## Navigation Model Overview
 
@@ -178,6 +179,7 @@ for request context and respond submission, then returns control to Enrollment D
 | Enter challenge | Satisfies local precondition for approve | Remains on screen |
 | Tap approve | Signs and submits respond payload with accepted decision | Returns to Enrollment Detail with latest response summary |
 | Tap deny | Signs and submits respond payload with denied decision | Returns to Enrollment Detail with latest response summary |
+| Leave with loaded attempt (back / gesture) | Post-#833: same as Deny via `respond(accepted=false)`; see [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) | Returns to Enrollment Detail when deny succeeds; on deny failure still allows leave |
 
 | State type | How it appears | User consequence |
 | --- | --- | --- |
