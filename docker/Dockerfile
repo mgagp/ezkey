@@ -86,6 +86,8 @@ RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS migration
 RUN addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 USER spring:spring
 WORKDIR /app
 COPY --from=build /build/ezkey-migration/target/*.jar app.jar
@@ -102,6 +104,8 @@ RUN apk add --no-cache curl && \
     chmod 700 /etc/ezkey/secrets && \
     chmod 755 /etc/ezkey/keysets /var/lib/ezkey/bootstrap && \
     chown -R spring:spring /app /etc/ezkey /var/lib/ezkey
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-admin-api/target/*.jar app.jar
 COPY --chown=spring:spring --from=build /build/ezkey-admin-api/config ./config
@@ -122,6 +126,8 @@ RUN apk add --no-cache curl && \
     chmod 700 /etc/ezkey/secrets && \
     chmod 755 /etc/ezkey/keysets && \
     chown -R spring:spring /app /etc/ezkey
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-auth-api/target/*.jar app.jar
 COPY --chown=spring:spring --from=build /build/ezkey-auth-api/config ./config
@@ -143,6 +149,8 @@ RUN apk add --no-cache curl && \
     chmod 700 /etc/ezkey/secrets && \
     chmod 755 /etc/ezkey/keysets && \
     chown -R spring:spring /app /etc/ezkey
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-integration-api/target/*.jar app.jar
 COPY --chown=spring:spring --from=build /build/ezkey-integration-api/config ./config
@@ -164,6 +172,8 @@ RUN apk add --no-cache curl && \
     chmod 700 /etc/ezkey/secrets && \
     chmod 755 /etc/ezkey/keysets && \
     chown -R spring:spring /app /etc/ezkey
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-crypto-api/target/*.jar app.jar
 COPY --chown=spring:spring --from=build /build/ezkey-crypto-api/config ./config
@@ -182,6 +192,8 @@ RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
     mkdir -p /app /app/data/enrollments && \
     chown -R spring:spring /app
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-demo-device/target/*.jar app.jar
 USER spring:spring
@@ -199,6 +211,8 @@ RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
     mkdir -p /app /app/config /app/data && \
     chown -R spring:spring /app
+ARG OCI_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-demo-app-acme/target/*.jar app.jar
 # Copy config template

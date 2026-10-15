@@ -41,7 +41,7 @@ As operated today (Seb read-only inventory of ezkey.online):
 | Piece | Where it runs | Traceability note |
 |-------|---------------|-------------------|
 | **Admin UI** | **Cloudflare Pages** (not a Lightsail container) | Record the **git SHA of the tree that was built and published** to Pages. Pages deploy id alone is not enough unless mapped back to that SHA. |
-| **APIs / Demo ACME** | Lightsail Docker VM | Images tagged `*:latest` are **not** deploy traceability. Ledger must record the **full git SHA** that produced (or was intended for) those images. |
+| **APIs / Demo ACME** | Lightsail Docker VM | Images tagged `*:latest` are **not** deploy traceability. Ledger must record the **full git SHA** that produced (or was intended for) those images. Rolling / compose builds also stamp OCI `org.opencontainers.image.revision` via `OCI_IMAGE_REVISION` (#814; see [`experimental-hybrid/BACKEND_ROLLING_UPDATE.md`](../experimental-hybrid/BACKEND_ROLLING_UPDATE.md)). |
 | **Demo ACME / health / actuator** | same VM | Typically expose **no** product version string — do not invent one. |
 
 Closing the pre-convention gap: until the first post-publish ledger row exists, live SHA is

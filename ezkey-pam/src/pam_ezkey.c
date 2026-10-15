@@ -26,6 +26,7 @@
 #include <security/pam_ext.h>
 #include <security/pam_appl.h>
 #include "ezkey_config.h"
+#include "ezkey_filelog.h"
 
 #define EZKEY_URL_MAX 512
 #define EZKEY_KEY_MAX 256
@@ -59,7 +60,8 @@ PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags, int argc,
 
 static void log_pam_info(pam_handle_t *pamh, const EzkeyConfig *cfg,
                          const char *message);
-static void log_pam_error(pam_handle_t *pamh, const char *message);
+static void log_pam_error(pam_handle_t *pamh, const EzkeyConfig *cfg,
+                          const char *message);
 static void parse_module_args(int argc, const char **argv, EzkeyConfig *cfg);
 static void load_config_file(const char *path, EzkeyConfig *cfg);
 static void apply_env_overrides(EzkeyConfig *cfg);
@@ -256,35 +258,54 @@ static void parse_module_args(int argc, const char **argv, EzkeyConfig *cfg) {
     }
 }
 
-static void ezkey_filesyslog_out(const char *message) {
-    FILE *fp = fopen("/tmp/pam_ezkey.out", "a");
-    if (fp) {
-        fprintf(fp, "%s\n", message);
-        fclose(fp);
-    }
-}
+/**
+ * Neutralize CR/LF and other control characters before syslog / file logs (#818 m3).
+ * Writes into dest (NUL-terminated); always succeeds for non-NULL dest.
+ */
+static void ezkey_sanitize_for_log(char *dest, size_t dest_size, const char *src) {
+    size_t i;
+    size_t j = 0;
 
-static void ezkey_filesyslog_err(const char *message) {
-    FILE *fp = fopen("/tmp/pam_ezkey.err", "a");
-    if (fp) {
-        fprintf(fp, "%s\n", message);
-        fclose(fp);
+    if (dest == NULL || dest_size == 0) {
+        return;
     }
+    if (src == NULL) {
+        dest[0] = '\0';
+        return;
+    }
+    for (i = 0; src[i] != '\0' && j + 1 < dest_size; i++) {
+        unsigned char c = (unsigned char)src[i];
+        if (c < 0x20 || c == 0x7f) {
+            dest[j++] = '_';
+        } else {
+            dest[j++] = (char)c;
+        }
+    }
+    dest[j] = '\0';
 }
 
 static void log_pam_info(pam_handle_t *pamh, const EzkeyConfig *cfg,
                          const char *message) {
-    syslog(LOG_INFO, "%s: %s", EZKEY_MODULE_NAME, message);
-    ezkey_filesyslog_out(message);
+    char safe[2048];
+
+    ezkey_sanitize_for_log(safe, sizeof(safe), message);
+    syslog(LOG_INFO, "%s: %s", EZKEY_MODULE_NAME, safe);
     if (cfg != NULL && cfg->debug) {
-        pam_syslog(pamh, LOG_INFO, "%s", message);
+        ezkey_filelog_append(EZKEY_LOG_OUT_NAME, safe);
+        pam_syslog(pamh, LOG_INFO, "%s", safe);
     }
 }
 
-static void log_pam_error(pam_handle_t *pamh, const char *message) {
-    syslog(LOG_ERR, "%s: ERROR: %s", EZKEY_MODULE_NAME, message);
-    ezkey_filesyslog_err(message);
-    pam_syslog(pamh, LOG_ERR, "ERROR: %s", message);
+static void log_pam_error(pam_handle_t *pamh, const EzkeyConfig *cfg,
+                          const char *message) {
+    char safe[2048];
+
+    ezkey_sanitize_for_log(safe, sizeof(safe), message);
+    syslog(LOG_ERR, "%s: ERROR: %s", EZKEY_MODULE_NAME, safe);
+    if (cfg != NULL && cfg->debug) {
+        ezkey_filelog_append(EZKEY_LOG_ERR_NAME, safe);
+    }
+    pam_syslog(pamh, LOG_ERR, "ERROR: %s", safe);
 }
 
 static void ezkey_buf_init(EzkeyBuf *buf) {
@@ -418,7 +439,7 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, const EzkeyConfig *cf
     char msg[2048];
 
     if (cfg->integration_key[0] == '\0' || cfg->secret_key[0] == '\0') {
-        log_pam_error(pamh,
+        log_pam_error(pamh, cfg,
                       "integration_key or secret_key is not set (config file or env)");
         return PAM_AUTH_ERR;
     }
@@ -432,7 +453,7 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, const EzkeyConfig *cf
 
     post_body = build_create_body(cfg, username);
     if (post_body == NULL) {
-        log_pam_error(pamh, "Failed to build auth-attempt JSON body");
+        log_pam_error(pamh, cfg, "Failed to build auth-attempt JSON body");
         return PAM_AUTH_ERR;
     }
 
@@ -444,7 +465,7 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, const EzkeyConfig *cf
     ezkey_buf_init(&buf);
     if (buf.data == NULL) {
         free(post_body);
-        log_pam_error(pamh, "Out of memory");
+        log_pam_error(pamh, cfg, "Out of memory");
         return PAM_AUTH_ERR;
     }
 
@@ -454,14 +475,14 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, const EzkeyConfig *cf
     if (curl_rc != CURLE_OK) {
         snprintf(msg, sizeof(msg), "Failed to POST auth-attempt: %s",
                  curl_easy_strerror(curl_rc));
-        log_pam_error(pamh, msg);
+        log_pam_error(pamh, cfg, msg);
         ezkey_buf_free(&buf);
         return PAM_AUTH_ERR;
     }
     if (http_code != 201) {
         snprintf(msg, sizeof(msg), "POST auth-attempt HTTP %ld body=%s", http_code,
                  buf.data != NULL ? buf.data : "");
-        log_pam_error(pamh, msg);
+        log_pam_error(pamh, cfg, msg);
         ezkey_buf_free(&buf);
         return PAM_AUTH_ERR;
     }
@@ -474,13 +495,13 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, const EzkeyConfig *cf
 
     root = cJSON_Parse(buf.data);
     if (!root) {
-        log_pam_error(pamh, "JSON parse error for authAttemptId");
+        log_pam_error(pamh, cfg, "JSON parse error for authAttemptId");
         ezkey_buf_free(&buf);
         return PAM_AUTH_ERR;
     }
     id_val = cJSON_GetObjectItemCaseSensitive(root, "authAttemptId");
     if (!cJSON_IsNumber(id_val)) {
-        log_pam_error(pamh, "authAttemptId not found or not a number");
+        log_pam_error(pamh, cfg, "authAttemptId not found or not a number");
         cJSON_Delete(root);
         ezkey_buf_free(&buf);
         return PAM_AUTH_ERR;
@@ -501,7 +522,7 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, const EzkeyConfig *cf
 
     ezkey_buf_init(&buf);
     if (buf.data == NULL) {
-        log_pam_error(pamh, "Out of memory");
+        log_pam_error(pamh, cfg, "Out of memory");
         return PAM_AUTH_ERR;
     }
     http_code = 0;
@@ -510,14 +531,14 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, const EzkeyConfig *cf
     if (curl_rc != CURLE_OK) {
         snprintf(msg, sizeof(msg), "Failed to GET wait API: %s",
                  curl_easy_strerror(curl_rc));
-        log_pam_error(pamh, msg);
+        log_pam_error(pamh, cfg, msg);
         ezkey_buf_free(&buf);
         return PAM_AUTH_ERR;
     }
     if (http_code != 200) {
         snprintf(msg, sizeof(msg), "Wait API HTTP %ld body=%s", http_code,
                  buf.data != NULL ? buf.data : "");
-        log_pam_error(pamh, msg);
+        log_pam_error(pamh, cfg, msg);
         ezkey_buf_free(&buf);
         return PAM_AUTH_ERR;
     }
@@ -530,7 +551,7 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, const EzkeyConfig *cf
     root = cJSON_Parse(buf.data);
     ezkey_buf_free(&buf);
     if (!root) {
-        log_pam_error(pamh, "JSON parse error for wait response");
+        log_pam_error(pamh, cfg, "JSON parse error for wait response");
         return PAM_AUTH_ERR;
     }
     status_val = cJSON_GetObjectItemCaseSensitive(root, "status");
@@ -539,7 +560,7 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, const EzkeyConfig *cf
     if (!accepted && cJSON_IsString(status_val) && status_val->valuestring != NULL) {
         snprintf(msg, sizeof(msg), "Authentication not accepted (status=%s)",
                  status_val->valuestring);
-        log_pam_error(pamh, msg);
+        log_pam_error(pamh, cfg, msg);
     }
     cJSON_Delete(root);
 
@@ -581,12 +602,12 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
 
     retval = pam_get_user(pamh, &username, NULL);
     if (retval != PAM_SUCCESS) {
-        log_pam_error(pamh, "Failed to get username");
+        log_pam_error(pamh, &cfg, "Failed to get username");
         closelog();
         return retval;
     }
     if (username == NULL || strlen(username) == 0) {
-        log_pam_error(pamh, "Username is null or empty");
+        log_pam_error(pamh, &cfg, "Username is null or empty");
         closelog();
         return PAM_USER_UNKNOWN;
     }

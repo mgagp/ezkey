@@ -30,6 +30,8 @@
 #   LIGHTSAIL_TARGET     community|exp1 (optional if inferred from host or --target)
 #   EZKEY_CONFIRM_WIPE   must be ezkey-online for community full / --clean-start
 #   EXPORT_DIR           passed through to export script (default: docker/export)
+#   OCI_IMAGE_REVISION   git SHA stamped as org.opencontainers.image.revision on compose builds
+#                        (#814; defaults to `git rev-parse HEAD` when unset)
 #   Root .env            CLOUDFLARE_* and VITE_API_BASE_URL for UI deploy (see scripts/cloudflare/*.sh)
 #   PREVIEW_BRANCH       for preview UI deploy (default: timestamped); set e.g. exp1-admin-ui-preview
 #   CLOUDFLARE_PAGES_PROJECT  default ezkey-admin-ui
@@ -236,9 +238,21 @@ if [[ -n "$DO_BUILD" ]]; then
   if [[ -n "$INCLUDE_DEMO_ACME" ]]; then
     BUILD_TARGETS+=(demo-app-acme)
   fi
+  if [[ -z "${OCI_IMAGE_REVISION:-}" ]]; then
+    OCI_IMAGE_REVISION="$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo unknown)"
+  fi
+  export OCI_IMAGE_REVISION
+  echo "→ OCI_IMAGE_REVISION=${OCI_IMAGE_REVISION} (org.opencontainers.image.revision)"
+  # SHA is always HEAD; warn when the worktree differs so operators know the label
+  # does not describe dirty/uncommitted contents (#814 Christophe nit).
+  if [[ "${OCI_IMAGE_REVISION}" != "unknown" ]] &&
+    [[ -n "$(git -C "${REPO_ROOT}" status --porcelain 2>/dev/null || true)" ]]; then
+    echo "warning: working tree is dirty; OCI_IMAGE_REVISION is HEAD (${OCI_IMAGE_REVISION}), not the dirty worktree contents" >&2
+  fi
   if [[ -n "$DRY_RUN" ]]; then
     printf '[dry-run]'
-    printf ' %q' docker compose -f docker/docker-compose.yml build "${BUILD_TARGETS[@]}"
+    printf ' %q' env "OCI_IMAGE_REVISION=${OCI_IMAGE_REVISION}" \
+      docker compose -f docker/docker-compose.yml build "${BUILD_TARGETS[@]}"
     echo
   else
     echo "→ docker compose build ${BUILD_TARGETS[*]} ..."

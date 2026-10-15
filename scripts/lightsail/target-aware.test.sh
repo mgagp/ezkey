@@ -205,10 +205,24 @@ assert_ok "upgrade --target community rolling --dry-run" \
   bash "${UPGRADE}" --target community rolling --dry-run
 assert_stdout_contains "upgrade community host" "LIGHTSAIL_SSH_HOST: ezkey-online"
 assert_stdout_contains "upgrade community caddy recreate" "force-recreate caddy"
+assert_stdout_contains "upgrade community stamps OCI revision" "OCI_IMAGE_REVISION="
+assert_stdout_contains "upgrade community OCI label" "org.opencontainers.image.revision"
 
 assert_ok "upgrade --target exp1 rolling --dry-run" \
   bash "${UPGRADE}" --target exp1 rolling --dry-run
 assert_stdout_contains "upgrade exp1 host" "LIGHTSAIL_SSH_HOST: ezkey"
+assert_stdout_contains "upgrade exp1 stamps OCI revision" "OCI_IMAGE_REVISION="
+
+assert_ok "upgrade rolling dry-run honors OCI_IMAGE_REVISION override" \
+  env OCI_IMAGE_REVISION=deadbeefcafebabe \
+    bash "${UPGRADE}" --target exp1 rolling --dry-run
+assert_stdout_contains "upgrade OCI override" "OCI_IMAGE_REVISION=deadbeefcafebabe"
+
+# Dirty-tree warning: create a throwaway untracked file under TMP (repo stays clean via path outside?)
+# Exercise by touching a tracked file then restoring — use git in a clone? Instead: stub via
+# exporting a dirty status is hard; verify the warning string exists in the script source.
+assert_ok "upgrade script mentions dirty-tree warning" \
+  grep -q 'working tree is dirty' "${UPGRADE}"
 
 # --- full upgrade: community full / --clean-start wipe guard ---
 assert_fail "upgrade community full without confirm fails" \

@@ -30,7 +30,7 @@
 /* Configuration file path loaded at PAM runtime */
 #define EZKEY_DEFAULT_CONFIG_FILE "/etc/security/pam_ezkey.conf"
 
-/* Debug compile-time flag */
+/* Debug compile-time flag (also forces debug=1 at init; conf can still override) */
 #ifdef DEBUG
 #define EZKEY_DEBUG 1
 #else

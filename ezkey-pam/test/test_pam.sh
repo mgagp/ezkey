@@ -14,10 +14,23 @@ fail() { echo "[FAIL] $1"; FAIL=$((FAIL+1)); }
 
 echo "=== Ezkey PAM Module Tests ==="
 
+LOG_DIR="/var/log/ezkey-pam"
+
 if [ -f "$PAM_SO" ]; then
     ok "pam_ezkey.so exists at $PAM_SO"
 else
     fail "pam_ezkey.so not found at $PAM_SO"
+fi
+
+if [ -d "$LOG_DIR" ]; then
+    mode=$(stat -c '%a' "$LOG_DIR" 2>/dev/null || stat -f '%OLp' "$LOG_DIR" 2>/dev/null || echo "")
+    if [ "$mode" = "700" ]; then
+        ok "$LOG_DIR exists with mode 700"
+    else
+        fail "$LOG_DIR exists but mode is '${mode:-unknown}' (expected 700)"
+    fi
+else
+    fail "$LOG_DIR missing (debug file logs require it; #818)"
 fi
 
 if [ -f "$PAM_CONF" ]; then

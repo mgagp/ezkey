@@ -7,8 +7,9 @@
 # #805 those alerts were marked fixed without code fixes — restored here.
 #
 # paths-ignore: test harness alerts (sensitive-log 23–47, relative-path 48–61) are
-# closed by exclusion rather than mass dismissal. See docs/SECURITY_POSTURE.md
-# § Code scanning policy and product-docs/global/hygiene/code-scanning/.
+# closed by exclusion rather than mass dismissal. ezkey-pam/test/** is the PAM
+# filelog harness (#818) — setup uses private mktemp dirs; product path is
+# ezkey-pam/src/. See docs/SECURITY_POSTURE.md § Code scanning policy.
 #
 # Local model pack (LogSanitizer log-injection barrier):
 #   `.github/codeql/extensions/ezkey-java-models/` (qlpack name `ezkey/java-models`).
@@ -23,3 +24,4 @@ queries:
 
 paths-ignore:
   - ezkey-tests/**
+  - ezkey-pam/test/**
