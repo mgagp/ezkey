@@ -8,7 +8,10 @@ reader can understand the mobile behavior end to end without reopening the sourc
 
 Protocol semantics remain canonical in the root-level Auth API and signature payload documentation. This document is
 the mobile operational view of those semantics. For the explicit finite-state model (guards, leave-as-deny,
-duplicate-tap locks, TTL), see [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) (canonical; post-#833).
+duplicate-tap locks, TTL), see [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) (canonical; baseline
+PR #833 @ `fcc31fbf`). Product/UX open questions and phased proposals:
+[MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md). **Once Marc decides**, behavior
+locks belong in the FSM and this flows doc; undecided items stay in the orientation note only.
 
 ## Flow Inventory and Notation
 

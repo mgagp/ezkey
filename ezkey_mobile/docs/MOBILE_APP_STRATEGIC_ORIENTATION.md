@@ -10,22 +10,23 @@
 
 The canonical FSM in [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) (issue
 [#834](https://github.com/mgagp/ezkey/issues/834), PR [#835](https://github.com/mgagp/ezkey/pull/835))
-surfaced **eight open questions**: places where code behavior exists but product intent / UX / security
+surfaced **open questions**: places where code behavior exists but product intent / UX / security
 posture was never made explicit. Those gaps are not “bugs by default”; they are **hidden decisions**.
 
 This document explores each finding, names the underlying signal, and proposes a **proportionate,
 phased** continuous-improvement backlog. It does **not** open GitHub issues yet and does **not**
-change code.
+change product code. Collaborator reviews @ `4ccecdf3` (Alex, Julie, Christophe, Patrick) are
+integrated below; where reviewers **disagree**, options sit side by side with **no pick**.
 
 | Baseline | Notes |
 | --- | --- |
-| Language | English — matches `ezkey_mobile/docs/` convention (strategy/editorial French lives elsewhere). |
-| Code truth | Main + post-[#833](https://github.com/mgagp/ezkey/pull/833) leave-as-deny / race guards (`fcc31fbf`). |
-| Method | Observed behavior (file:line) → signal → impact → options → recommendation. |
-| Restraint | Prefer Phase 0 docs/copy and small mobile UX before protocol or backend redesign. |
-
-Collaborator review slots (empty for later fill): [§ Revues des collaborateurs](#revues-des-collaborateurs).
-Owner decisions: [§ Questions pour Marc](#questions-pour-marc).
+| Language | English — matches `ezkey_mobile/docs/` convention. |
+| Code truth | **Branch of PR [#833](https://github.com/mgagp/ezkey/pull/833) @ `fcc31fbf`** (not yet an ancestor of `main`). Line citations for leave-as-deny / race guards are from that tip. |
+| Phase 0 gate | **All Phase 0 mobile behavior items are conditional on #833 merging** (otherwise Findings 3–5 line numbers and leave semantics do not apply on `main`). |
+| Closed-test link | Phase 0 honesty fixes (expired copy, leave-deny toast/hint, F3/F6 copy) are proposed as **prerequisites before widening the closed test** under the [#711](https://github.com/mgagp/ezkey/issues/711) gate (Northwind / next Play testers) — Alex. |
+| Method | Observed behavior (file:line) → signal → impact → options → recommendation (or open disagreement). |
+| FSM nature | The FSM is **descriptive of current hooks/flags**, not an implemented state machine in code (Patrick). |
+| Repo-as-memory | Once Marc **decides**, behavior locks land in `MOBILE_APP_STATE_MACHINE.md` + `MOBILE_FUNCTIONAL_FLOWS.md`; 409 / pending `expiresAt` wire semantics in `docs/ENDPOINT.md`. **Undecided items are not recorded as decisions.** |
 
 ---
 
@@ -33,42 +34,46 @@ Owner decisions: [§ Questions pour Marc](#questions-pour-marc).
 
 ### Observed behavior
 
-Server auth attempts carry `expiresAt` / TTL (`ezkey.core.auth-attempt.ttl-seconds`, default 120 s;
-see `docs/ENDPOINT.md`). The Auth API **pending response DTO used by mobile does not expose
-`expiresAt`** (`AuthAttemptPendingResponseDto` in generated model — fields stop at context
-title/message). Mobile `PendingAttempt` likewise has no expiry
-(`ezkey_mobile/app/services/pendingAuth/types.ts` L1–11); claim mapping cannot copy what the wire
-does not send (`claimPendingAttempt.ts` L191–204). Pending Auth UI shows context + Approve/Deny
-only — no timer.
+Server attempts carry `expiresAt` / TTL (`ezkey.core.auth-attempt.ttl-seconds`, default 120 s). The
+Auth API **pending response DTO used by mobile does not expose `expiresAt`**
+(`AuthAttemptPendingResponseDto`). Mobile `PendingAttempt` has no expiry
+(`types.ts` L1–11); claim cannot copy what the wire does not send (`claimPendingAttempt.ts`
+L191–204). UI has no timer.
+
+**Clock / trust (Patrick):** comparing an absolute `expiresAt` to the phone’s `Date.now()` is wrong
+by clock skew. Prefer `expiresInSeconds` relative to the claim response, or `expiresAt` +
+`serverNow`. That field is **not** covered by the integration pending signature
+(`buildPendingPayload` / verify at `claimPendingAttempt.ts` L153, L172–176) → **display-only**, never
+a cryptographic gate. Disabling Approve at local “0” inherits that unsigned clock.
 
 ### Underlying signal
 
-Product lean toward **deliberate action**, not urgency theatre. Pull model already rejects background
-polling; a countdown would be the first “clock anxiety” surface on the phone.
+Missing urgency feedback is a **gap** for late approvers (Alex: not “calm UX by design”). Admin
+login already exposes attempt `expiresAt`; the phone does not.
 
 ### User impact
 
-User may start approving after server expiry → opaque failure. Admin waiters already know the clock;
-the phone user does not.
-
-### Security note
-
-Countdown is UX, not a trust control. Hiding TTL does not strengthen crypto; it can increase
-confused retries after expiry.
+Approve after server expiry → opaque error. Without a terminal expired state, a timer alone is
+half-honest (Julie).
 
 ### Options
 
 | Option | Trade-off |
 | --- | --- |
-| A. Keep no UI timer (status quo) | Simplest; soft-fails after TTL |
-| B. Show remaining time only (no auto-dismiss) | Honest urgency; needs `expiresAt` on claim DTO path |
-| C. Soft banner near expiry + disable Approve after clock | Clearer; more UI states |
+| A. Status quo | Soft-fails after TTL |
+| B. Light remaining-time line + terminal expired | Needs Auth API field; clock skew design |
+| C. Phase 0 expired **message** on post-TTL respond (no new contract), then B in Phase 1 | Alex; honesty before wire change |
 
 ### Recommendation
 
-**Phase 1 — B (light):** first add `expiresAt` to Auth API pending response (contract +
-`update-specs` + Orval), then map it on mobile and show a sober remaining-time line. No auto-leave.
-Until the wire field exists, mobile cannot invent a trustworthy countdown from local clocks alone.
+**Phase 0 — C** (clear “This request expired…” when respond fails for expiry / conflict), without
+waiting for contract. **Phase 1 — B** split into two backlog items: (1) Auth API expose relative
+expiry on pending, (2) mobile map + sober line (“Expires in about 2 min”, amber under ~30 s) **and**
+terminal disable Approve with “This request expired. Ask for a new sign-in.” in the **same** mobile
+delivery (Julie). Do not ship the timer without the terminal copy.
+
+**Open (no pick):** Julie prefers approximate duration always; Marc Q asks whether to show nothing
+until near expiry — see Questions for Marc.
 
 ---
 
@@ -76,146 +81,100 @@ Until the wire field exists, mobile cannot invent a trustworthy countdown from l
 
 ### Observed behavior
 
-`createdAt: checkedAt` uses the local ISO timestamp from the claim call
-(`claimPendingAttempt.ts` L107, L201), not the server attempt’s `createdAt`.
-
-### Underlying signal
-
-Field name implies server provenance; implementation is **local diagnostics / “when I checked”**.
-Dangerous if later reused for TTL math (Finding 1).
-
-### User impact
-
-Today mostly invisible (not shown as “created”). Future countdown or audit copy would be wrong.
-
-### Security note
-
-Misleading timestamps in debug panels can waste incident time; not a crypto bypass.
-
-### Options
-
-| Option | Trade-off |
-| --- | --- |
-| A. Rename to `claimedAt` / `checkedAt` | Honest; small type + call-site churn |
-| B. Keep name; document “local only” | Cheap; trap for future authors |
-| C. Store both server `createdAt` and local `checkedAt` | Clearest; needs API field on pending response |
+`createdAt: checkedAt` (`claimPendingAttempt.ts` L107, L201) is local claim time, not server
+attempt `createdAt`.
 
 ### Recommendation
 
-**Phase 0 — A:** rename to `checkedAt` (or dual-name with deprecation comment). **Phase 1 — C** if
-TTL UI needs server clock alignment.
+**Phase 0 — rename to `checkedAt`** (before any TTL UI). Uncontroversial across reviews.
 
 ---
 
-## Finding 3 — `serverDecisionSentRef` after HTTP OK, before result signature verify
+## Finding 3 — `serverDecisionSentRef` after respond HTTP 200, before result signature verify
 
-### Observed behavior (post-#833)
+### Observed behavior (#833 @ `fcc31fbf`)
 
-After `authAttemptsApi.respond` returns, code sets `serverDecisionSentRef.current = true`
-(`usePendingAuth.ts` on #833 ≈ L448–449), **then** verifies the integration-signed respond-result
-(L451–482). On missing/invalid signature: `globalError`, stay on screen, **no** navigation. Leave
-will not send a second deny because the ref is already true.
+After `authAttemptsApi.respond` returns HTTP 200, code sets `serverDecisionSentRef.current = true`
+(`usePendingAuth.ts` L448–449), **then** verifies the integration-signed respond-result (L451–482).
+On missing/invalid signature: `globalError`, stay on screen. Leave will not send a second deny.
 
-### Underlying signal
+**Correction (Christophe):** HTTP 200 does **not** mean “decision committed as APPROVED/DENIED.”
+A 200 may carry a signed business **`FAILED`** (`AuthAttemptRespondService.java` L135–138); some
+failures leave the row still `READ` (e.g. attempt not in READ / modeling as
+`AuthAttemptRequestFailedException`). Prefer: **decision processed** with outcome
+**`APPROVED` | `DENIED` | `FAILED`** (and 409 for true state conflicts).
 
-Split between **server authority** (decision committed) and **display trust** (signed result for UI
-summary). Fail-closed for *what we show*, fail-open for *not undoing a committed decision*.
+**Nit (Christophe):** leave-as-deny that reaches verify-fail keeps the user on screen
+(`PendingAuthScreen.tsx` L101) — document.
 
-### User impact
+**Safe (Christophe):** setting the ref before local verify is safe; a forged/replayed body cannot
+change server state; server rejects a second decision. **A+C validated; B rejected** (all
+reviewers).
 
-Rare path: user sees “invalid signature” while Admin wait may already be unblocked (approve/deny
-done). Confusing but better than re-denying an approve.
+### Options (copy — aligned direction, wording differs)
 
-### Security note
-
-Correct not to flip a committed decision from the client. Display must not invent APPROVED/DENIED
-without a verified result — current code already withholds `setRecentAuthResult` until verify
-passes (L495+).
-
-### Options
-
-| Option | Trade-off |
+| Option | Wording lean |
 | --- | --- |
-| A. Keep (document as intentional) | Matches integrity of server commit |
-| B. Move ref set to after verify | Leave could re-deny after HTTP OK — **unsafe** with leave-as-deny |
-| C. Dedicated copy: “Decision sent; confirmation could not be verified” | Honest UX; no protocol change |
+| Alex | “Decision sent. Confirmation could not be verified.” Never show APPROVED/DENIED. |
+| Julie | “Your response was sent, but its confirmation couldn't be verified. Check your sign-in on the other device.” Hide Approve/Deny; show Back only. |
+
+**Open (no pick):** whether to point the user at “the other device” given MFA cards intentionally omit
+tenant names (Julie → Marc).
 
 ### Recommendation
 
-**Phase 0 — A + C:** lock intent in FSM/docs; add specific i18n string for post-HTTP verify failure.
-Do **not** choose B.
+**Phase 0 — A + C** (document intent; dedicated copy; hide actions). **Never B** (move ref after
+verify — unsafe with leave-as-deny).
 
 ---
 
 ## Finding 4 — Leave allowed while respond is in flight
 
-### Observed behavior (post-#833)
+### Observed behavior
 
-`beforeRemove` returns early (allows leave) when `isRespondInFlight()` or `isProcessing`
-(`PendingAuthScreen.tsx` on #833 L86–92). No competing deny. In-flight `handleRespond` may still
-complete and call `handleReturnToEnrollmentDetail()` (L503).
-
-### Underlying signal
-
-Priority: **never race leave-deny against approve**. Secondary: don’t trap the user on the screen
-during network/biometric waits.
-
-### User impact
-
-User can leave mid-approve; navigation may pop twice or land oddly if goBack runs after leave.
-Usually benign on a stack.
-
-### Security note
-
-Avoiding a second deny is the security-relevant part; double navigation is operability.
+`beforeRemove` allows leave when `isRespondInFlight()` / `isProcessing` (`PendingAuthScreen.tsx`
+L86–92). In-flight success may still call `handleReturnToEnrollmentDetail` (L503) → **second
+`goBack`**, potentially popping Detail, plus setState on an unmounted hook (Patrick L234–240 /
+L511–512). Not “usually benign.”
 
 ### Options
 
-| Option | Trade-off |
-| --- | --- |
-| A. Keep allow-leave during in-flight | Matches #833 m2 intent |
-| B. Block leave until respond settles | Safer nav; can feel sticky during biometric |
-| C. Allow leave but suppress post-success navigate if screen unfocused | Cleaner nav; small hook change |
+| Option | Who | Phase lean |
+| --- | --- | --- |
+| A. Keep allow-leave; document | — | — |
+| C. Suppress post-success navigate if screen unfocused / unmounted | Julie (Walk proof), Patrick (Phase 0, ~3 lines) | **Disagreement on phase** |
+
+**Note:** Patrick marks this (and Findings 9 lock-reset / uncertain-decision handling below) as
+**being fixed in #833 itself** — track there; do not duplicate a competing mobile PR until #833
+lands.
 
 ### Recommendation
 
-**Phase 0 — A** (document). **Phase 1 — C** if Walk / device tests show confusing double pops.
+Document now. Prefer Option C once #833’s fix set is clear; do not re-pick phase here.
 
 ---
 
 ## Finding 5 — Leave after deny network failure still exits
 
-### Observed behavior (post-#833)
+### Observed behavior
 
-On leave-as-deny, if respond fails, `finally` still `navigation.dispatch(e.data.action)` when
-`!hasSubmittedServerDecision()` (`PendingAuthScreen.tsx` L98–103). Attempt may remain `READ` until
-TTL scheduler or Admin cancel.
+Failed leave-deny still dispatches leave (`PendingAuthScreen.tsx` L98–103). Attempt may stay `READ`
+until TTL. Christophe: TTL 120 s (`EzkeyCoreProperties`); conditional update is idempotent → auto
+retry of deny is safe; pull model avoids push fatigue.
 
-### Underlying signal
+### Options (disagreement on phase / retry)
 
-Explicit **UX fail-open**: “don’t imprison the user on Pending Auth.” Waiter unblocking is
-best-effort on leave, guaranteed only on successful deny or TTL/#833 cancel paths.
-
-### User impact
-
-Admin passwordless-wait may hang until TTL (~120 s) after a flaky leave. Phone user is free.
-
-### Security note
-
-Acceptable for alpha if Admin UX already handles wait timeout. Not a privilege escalation.
-
-### Options
-
-| Option | Trade-off |
+| Option | Who |
 | --- | --- |
-| A. Keep fail-open leave | Current #833 comment intent |
-| B. Stay on screen with error + Retry deny | Better for waiters; can trap impatient users |
-| C. One retry then leave; toast “request may still be waiting” | Compromise |
+| Toast then leave (no auto-retry), Phase 0 | Alex, Julie — copy: “Couldn't send your refusal. The request will expire on its own.” Neutral toast. |
+| One auto-retry then toast, Phase 1 | Christophe |
+
+**No pick** between Phase 0 toast-only and Phase 1 retry+toast.
 
 ### Recommendation
 
-**Phase 0 — A** + short user-visible toast on failed leave-deny (**Phase 1 — C**). Confirm with Julie
-whether Admin wait copy already covers timeout.
+Fail-open leave stays. Ship **some** honesty toast before closed-test widen (#711). Exact retry
+policy awaits Marc if Christophe’s retry is desired.
 
 ---
 
@@ -223,179 +182,245 @@ whether Admin wait copy already covers timeout.
 
 ### Observed behavior
 
-Invalid pending signature / missing key → `{ kind: 'fail_closed' }` and no trusted `attempt`
-(`claimPendingAttempt.ts` L183–188; Detail/Pending clear attempt / show error). Server claim already
-moved attempt to `READ`. Leave without `attempt` does **not** deny (#833 L87).
-
-### Underlying signal
-
-Display fail-closed (don’t show untrusted context) without a paired **server release** strategy.
-Read-once claim + local distrust = stranded `READ` until TTL.
-
-### User impact
-
-Admin waiter blocked ~TTL; user sees scary signature error and cannot Approve (correct) but also
-doesn’t release the attempt (gap).
-
-### Security note
-
-Must not Approve on bad pending sig. Releasing via unsigned cancel is a **product/security design**
-choice (Auth API cancel is not mobile today; deny needs a trusted attempt proof token).
-
-### Options
-
-| Option | Trade-off |
-| --- | --- |
-| A. Status quo (TTL cleans up) | Simple; bad for wait latency |
-| B. Mobile calls Integration/Admin cancel with enrollment proof | New mobile surface; authz design |
-| C. Auth API: claim that fails client verify is rare — add “abandon claimed” with device proof only | Protocol work |
-| D. Document as known alpha limit + Admin cancel / wait timeout | Phase 0 honesty |
+Bad pending sig → `fail_closed`, no local `attempt` (`claimPendingAttempt.ts` L183–188). Leave
+without attempt does not deny. Christophe: no other channel can approve (device Ed25519 required);
+TTL enforced on respond; newer attempt supersedes. **TTL now; device-proof cancel only in Phase 2;
+never unsigned deny.**
 
 ### Recommendation
 
-**Phase 0 — D.** **Phase 2** only if real incidents show stranded READ after bad pending sig;
-otherwise TTL is enough for alpha. Do not rush unsigned deny.
+**Phase 0 — document + calmer copy** (Julie): explain it wasn’t shown, will expire, contact admin if
+it repeats — no “signature” jargon in production copy. Alex: ask Christophe whether an audit event
+is warranted (open). Phase 2 protocol only on real incidents.
 
 ---
 
 ## Finding 7 — Sibling docs still describe pre-#833 leave → TTL
 
-### Observed behavior
-
-FSM + this orientation describe post-#833 leave-as-deny. `MOBILE_FUNCTIONAL_FLOWS` / parts of
-screen docs historically said leave relies on TTL (main `PendingAuthScreen` header comment L12–14
-pre-#833). Risk of agents/humans implementing the old story.
-
-### Underlying signal
-
-Repo-as-memory lag across parallel PRs (#833 code, #835 docs).
-
-### User impact
-
-Indirect: wrong support advice, wrong tests, wrong future patches.
-
-### Security note
-
-Doc drift can reintroduce “leave without deny” as “correct.”
-
-### Options
-
-| Option | Trade-off |
-| --- | --- |
-| A. Update sibling docs in same PR as #833 merge | Clean single cutover |
-| B. Update now with “pending #833” banners | Slight duplication until merge |
-| C. Wait passively | Drift continues |
-
 ### Recommendation
 
-**Phase 0 — B already partly done** in #835. **Phase 0 follow-up — A** as soon as #833 merges:
-refresh functional flows + screen leave row; remove “pending #833” hedges.
+**Phase 0 after #833 merges:** cut over `MOBILE_FUNCTIONAL_FLOWS` / screens; remove “pending #833”
+hedges. Already partly bannered in #835.
 
 ---
 
-## Finding 8 — No dedicated mobile copy for Auth API 409 state conflict
+## Finding 8 — Auth API 409 state conflict copy
 
 ### Observed behavior
 
-Generated client types include `respondResponse409`
-(`authentication-attempts.ts`). UI maps errors via `userFacingAuthApiError` → Problem Detail
-`detail` if Ezkey type, else generic fallback (`authApiProblem.ts` L75–81). No
-`pendingAuth.conflict` / “already cancelled” string.
-
-### Underlying signal
-
-Alpha tolerance for rare races (cancel vs approve, #833 m1). Generic copy is honest enough if
-backend `detail` is safe and clear.
-
-### User impact
-
-User may see a technical or generic line after Admin cancel wins. Recoverable: back to Detail,
-check again later.
-
-### Security note
-
-Prefer catalog `detail` over leaking internal status enums. Don’t invent client-side status.
-
-### Options
-
-| Option | Trade-off |
-| --- | --- |
-| A. Keep generic + server detail | Minimal |
-| B. Map problem type `auth-attempt-state-conflict` to friendly i18n | Clearer; needs stable type URL |
-| C. Special-case HTTP 409 only | Fragile if other 409s appear |
+`TYPE_AUTH_ATTEMPT_STATE_CONFLICT` already exists
+(`AuthApiProblemCatalog.java` L35–36 → `…/auth-attempt-state-conflict`). Mobile
+`userFacingAuthApiError` does not map that `type` to friendly i18n (`authApiProblem.ts` L75–81).
+Today cancelled / expired / already-decided collapse to one conflict (Patrick — say if intentional
+once Marc decides; land semantics in `docs/ENDPOINT.md`).
 
 ### Recommendation
 
-**Phase 1 — B** after confirming Problem Detail `type` stability post-#833. Phase 0: none required
-for alpha if wait/cancel races stay rare.
+**Phase 0** (not Phase 1): map **problem `type`**, not raw HTTP 409. Julie’s proposed single user
+string: “This request is no longer active. No action needed.” → Back to Detail. Prefer this **before**
+the timer so expiry isn’t opaque while `expiresAt` is still missing from pending.
+
+**Open (no pick):** one user-facing string for all causes (Julie) vs distinct problem `type`s per
+cause (Patrick → Marc).
+
+---
+
+## Finding 9 — New attempt on same screen after “decision sent” lock (Patrick)
+
+### Observed behavior
+
+`serverDecisionSentRef` is set true at respond HTTP 200 (`usePendingAuth.ts` L449) and **never
+reset**. `loadPendingAttempt` (L246) does not clear it. Path: Finding 3 (HTTP 200, sig fail →
+`globalError`) → Try again → new attempt loaded → Approve/Deny blocked by guard L381; leave no
+longer denies (L89). Lock is **screen-scoped**, not `authAttemptId`-scoped.
+
+### Recommendation
+
+**Phase 0 / #833:** key the lock per `authAttemptId` (or reset on successful new claim). Patrick:
+items 2–4 of his review (this lock, double goBack, 409 mapping) are **being fixed in #833** — verify
+on that PR rather than opening a parallel fix here.
+
+---
+
+## Finding 10 — Uncertain decision / lost response after server processing (Patrick + Christophe)
+
+### Observed behavior
+
+Network cut **after** server processed respond → mobile `catch` (L504–509), ref may stay false →
+retry Approve or leave-deny → **409** while decision already exists. Christophe (medium before GA):
+approve **ACCEPTED** on server but response lost → retry/leave-deny gets signed **FAILED** / conflict
+UI saying “failure” while a session may already be open.
+
+### Recommendation
+
+**Document now** as alpha limit. FSM should name an **uncertain / NoLongerActive** outcome when 409
+follows an in-flight respond. Before GA: signed respond body should carry the **real final status**
+when re-queried or on conflict (Christophe → Marc). Do not treat 409 after uncertain respond as a
+blind “try again.”
+
+---
+
+## Finding 11 — Biometric on leave-as-deny / deny (Christophe)
+
+### Observed behavior
+
+Leave-as-deny calls `handleRespond(false)`, which may open BiometricPrompt when
+`requiresProtectedApproval` (`usePendingAuth.ts` L423–435; `approvalRequirement.ts` L42–45 applies to
+approve **or** deny). Cancel prompt → `READ` until TTL. Christophe: biometric on **deny** has little
+security value (Level 2); recommend signing deny **without** protected prompt.
+
+### Recommendation
+
+Document current behavior. Product/security decision for Marc (Christophe reco: no biometric on
+deny). Implementation only after GO — may land with #833 or a follow-up.
+
+---
+
+## Finding 12 — Process death / background during respond; TTL during biometric (Christophe + Patrick)
+
+### Observed behavior
+
+App killed or backgrounded during in-flight respond: `beforeRemove` may **not** run → no leave-deny
+→ `READ` until TTL. TTL can expire while biometric UI is open → later respond → 409. Deep links not
+verified.
+
+### Recommendation
+
+Document as **known limits** (no code in Phase 0). Optional later: resume handling — not a protocol
+change.
 
 ---
 
 ## Cross-cutting themes
 
-1. **Server commit vs phone display trust** — Findings 3, 6: crypto fail-closed for UI; server may
-   already have moved.
-2. **Unblock waiters vs don’t trap the human** — Findings 4, 5, #833 leave-as-deny: tension resolved
-   toward human freedom + best-effort deny.
-3. **Clock honesty** — Findings 1, 2: missing or misnamed time fields block sober urgency UX.
-4. **Doc lag is product risk** — Finding 7: continuous-improvement includes documentation cutover.
-5. **Proportion** — Prefer copy/rename/map fields before new Auth API endpoints (Finding 6 Phase 2).
+1. **Processed vs displayed** — HTTP 200 means a respond **outcome** (`APPROVED`/`DENIED`/`FAILED`),
+   not “safe to show APPROVED.”
+2. **Don’t trap the human vs unblock waiters** — leave-as-deny + fail-open leave; honesty toasts/hints.
+3. **Unsigned clocks are UX only** — pending expiry display must not become a crypto gate.
+4. **Descriptive FSM** — flags/refs today; `NoLongerActive` as a **product state**, not a new library.
+5. **#833 is the behavior train** — Phase 0 honesty + Patrick’s lock/nav/409 fixes ride that merge;
+   docs cutover follows.
+6. **Closed-test honesty (#711)** — Phase 0 copy/hint/toast before widening testers.
+
+### Proposed product state: `NoLongerActive` (Julie)
+
+Neutral terminal (expired / cancelled / already decided / conflict after act): **Back only**, not
+retryable like `GlobalError`. Distinct in the FSM diagram and UI.
+
+---
+
+## Reviewer disagreements (no pick)
+
+| Topic | Side A | Side B |
+| --- | --- | --- |
+| F5 honesty | Alex/Julie: Phase 0 toast, then leave | Christophe: Phase 1 one auto-retry + toast |
+| Leave-as-deny visibility | Alex: visible announce “Leaving declines” | Julie: discreet hint under buttons (no dialog) — same direction, different intensity |
+| 409 user copy | Julie: one “no longer active” string | Patrick: ask Marc whether to split cancelled / expired / already-decided `type`s |
+| Timer presentation | Julie: always approximate + amber &lt;30s | Marc Q (via Julie): nothing until near expiry? |
+| F4 double goBack phase | Patrick: Phase 0 (and fixing in #833) | Julie: Phase 1 on Walk proof |
+| Disable Approve at 0 | Julie: same Phase 1 delivery as timer | Patrick: call out dependence on unsigned clock |
 
 ---
 
 ## Phased roadmap
 
-| Item | Phase | Effort | Risk | Dependency | Owner zone | Proposed backlog issue title (not opened) |
-| --- | --- | --- | --- | --- | --- | --- |
-| Lock Finding 3 intent + post-HTTP verify copy | 0 | S | Low | #833 | mobile + docs | Mobile: honest copy when respond HTTP OK but result sig fails |
-| Rename `PendingAttempt.createdAt` → `checkedAt` | 0 | S | Low | — | mobile | Mobile: rename PendingAttempt checkedAt (local claim time) |
-| Toast on failed leave-deny then exit | 0–1 | S | Low | #833 | mobile | Mobile: toast when leave-as-deny fails but navigation continues |
-| Sibling doc cutover leave-as-deny | 0 | S | Low | #833 merge | docs | Docs: align functional flows/screens with leave-as-deny post-#833 |
-| Document stranded READ after fail-closed pending | 0 | S | Low | — | docs | Docs: alpha limit — untrusted pending leaves server READ until TTL |
-| Expose `expiresAt` on pending + light remaining-time UI | 1 | M | Med | Auth API contract + #833 settled | auth-api then mobile | Auth+mobile: pending expiresAt on wire and Remaining time on Pending Auth |
-| Suppress navigate-after-respond if screen left | 1 | S | Low | #833 | mobile | Mobile: avoid double goBack when leaving during in-flight respond |
-| Friendly i18n for auth-attempt state conflict | 1 | S | Low | #833 Problem types | mobile | Mobile: dedicated copy for respond 409 state conflict |
-| Protocol/path to release READ after bad pending sig | 2 | L | High | security design | auth-api + mobile | Auth/mobile: abandon claimed attempt without trusted pending UI |
-| Richer expiry (soft disable Approve at 0) | 2 | M | Med | Phase 1 timer | mobile | Mobile: disable approve after local expiry clock |
+**Phase 0 = after (or in) #833 merge.** Items marked “in #833” should not spawn duplicate issues.
 
-**Phase 0** = quick wins (docs, rename, copy) after/with #833. **Phase 1** = small UX honesty
-(timer, 409 copy, nav polish). **Phase 2** = protocol or rare-path redesign — only with Marc +
-Christophe GO.
+| Item | Phase | Effort | Risk | Dependency | Owner zone | Proposed backlog title (not opened) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Lock Finding 3 language + post-verify-fail copy; hide Approve/Deny | 0 | S | Low | #833 | mobile + docs | Mobile: copy when respond processed but result sig fails |
+| Map `TYPE_AUTH_ATTEMPT_STATE_CONFLICT` → friendly i18n (+ `NoLongerActive`) | 0 | S | Low | type already in Auth API | mobile | Mobile: map auth-attempt-state-conflict to NoLongerActive copy |
+| Phase 0 expired/conflict honesty without pending `expiresAt` | 0 | S | Low | #833; #711 widen | mobile | Mobile: clear expired/inactive copy before closed-test widen |
+| Toast (and/or one retry — TBD) on failed leave-deny | 0 | S | Low | #833; see disagreement | mobile | Mobile: honesty when leave-as-deny fails |
+| Leave-as-deny visible hint under actions | 0 | S | Low | #833; #711 | mobile | Mobile: “Leaving declines this request” hint |
+| Fail-closed pending calmer copy | 0 | S | Low | — | mobile | Mobile: fail-closed pending copy without crypto jargon |
+| Rename `createdAt` → `checkedAt` | 0 | S | Low | — | mobile | Mobile: PendingAttempt.checkedAt |
+| Sibling doc cutover leave-as-deny | 0 | S | Low | #833 merge | docs | Docs: flows/screens match leave-as-deny |
+| Document stranded READ / process death / biometric-on-deny limits | 0 | S | Low | — | docs | Docs: alpha limits — READ until TTL paths |
+| Reset decision lock per `authAttemptId` | 0 | S | Med | **fixing in #833** (Patrick) | mobile | (track #833 — do not duplicate) |
+| Suppress goBack if unmounted / unfocused | 0 | S | Med | **fixing in #833** (Patrick) | mobile | (track #833 — do not duplicate) |
+| Auth API: pending relative expiry (`expiresInSeconds` or `expiresAt`+`serverNow`) | 1 | M | Med | contract refresh | auth-api | Auth API: expose pending attempt remaining lifetime on pending |
+| Mobile: map expiry + approximate line + terminal expired UI | 1 | M | Med | Auth API item above | mobile | Mobile: remaining-time line and expired terminal on Pending Auth |
+| Lost-response / uncertain decision UX (409 after act → NoLongerActive) | 1 | M | Med | #833; Marc on GA bar | mobile (+ auth-api if status echo) | Mobile: treat post-respond conflict as already decided |
+| Deny without biometric when protected mode on | 1–2 | S | Med | Marc + Christophe GO | mobile | Mobile: unprotected deny / leave-as-deny signing |
+| Abandon claimed attempt after bad pending sig | 2 | L | High | security design | auth-api + mobile | Auth/mobile: release READ without trusted pending UI |
+| Signed final status on re-query after lost respond | 2 | L | High | Christophe GA bar | auth-api | Auth API: convey real final status after uncertain client |
 
 ---
 
-## Questions pour Marc
+## Questions for Marc
 
-1. Is **no countdown** a deliberate calm-UX choice, or an oversight to fix in Phase 1?
-2. Confirm **Finding 3**: server commit wins; phone may show verify error without undoing — OK for
-   product language?
-3. Confirm **Finding 5**: fail-open leave after deny failure is preferred over trapping the user?
-4. For **Finding 6**, is TTL-only cleanup acceptable for public alpha, or must stranded `READ` after
-   bad pending sig be a P1?
-5. Should leave-as-deny be explained in end-user copy (“Leaving denies this request”), or remain
-   silent behavior?
-6. Priority between Phase 1 timer vs Phase 1 409 copy vs Phase 0 rename — which first after #833?
-7. Any veto on Phase 2 “abandon claimed attempt” before a security design pass?
+1. Is missing TTL UI an oversight to fix (Alex), and should Phase 0 ship expired/inactive copy before any wire `expiresAt`? (Alex, Julie)
+2. Confirm Finding 3: after respond is **processed**, phone may show verify-fail without undoing server outcome — and never choose “ref after verify”? (all)
+3. Fail-open leave after deny failure: toast-only Phase 0 (Alex/Julie) or one auto-retry then toast Phase 1 (Christophe)?
+4. Stranded `READ` after fail-closed pending: TTL-only alpha OK, or P1 protocol? Audit event needed? (Alex, Christophe)
+5. Leave-as-deny: visible announce vs discreet under-button hint — which intensity? (Alex Q8, Julie c)
+6. Are Phase 0 honesty fixes (expired copy, leave hint, F3/F6/F5 toast) **prerequisites** before widening closed test (#711)? (Alex Q9)
+7. Timer presentation: always “about N min” + amber under 30s, or silent until near expiry? (Julie a)
+8. One user string “no longer active” for expired/cancelled/already-decided, or distinct problem `type`s? (Julie b, Patrick)
+9. After F3 verify-fail, may copy point to “the other device” even though cards omit tenant names? (Julie d)
+10. Alpha: lost approve response shown as failure acceptable, or signed real final status required before GA? (Christophe a)
+11. Should deny / leave-as-deny require biometric when protected mode is on? Christophe reco: **no**. (Christophe b)
+12. Is the 120s `READ` window after fail-closed / abandoned leave an accepted alpha limit without protocol until real incidents? (Christophe c)
+13. Must the “decision processed” lock be per `authAttemptId`, and should 409 after an uncertain respond display as “already decided / check other device”? (Patrick; also Tracking in #833)
+14. Pending expiry on the wire: accept **unsigned display-only** (`expiresInSeconds` / `serverNow`), or require it inside the signed pending payload (Christophe impact)? (Patrick)
 
 ---
 
 ## Revues des collaborateurs
 
-### Alex (intention produit)
+### Alex (product intent)
 
-_À compléter._
+Agrees with restraint: Phase 0 docs/rename/copy before protocol; Phase 2 behind Marc + Christophe GO.
+Partial disagreement on Finding 1: no timer is a **gap**, not calm UX — keep option B but ship a clear
+**expired** message in Phase 0 without contract, then `expiresAt` in Phase 1. Finding 3: A+C, never B;
+copy must not show APPROVED/DENIED. Finding 5: fail-open + toast in Phase 0. Missed signal:
+leave-as-deny is invisible — Q5 is the most important; announce “Leaving declines the request.”
+Finding 6: document for alpha; copy must say what to do (contact admin); ask about audit. Finding 8:
+Phase 1 B originally — **superseded by Patrick**: type already stable → Phase 0 mapping. Phasing:
+tie honesty fixes to Northwind / closed Play test widen (**#711**). Repo-as-memory: each Marc answer
+→ one line with reason + #834 before opening issues.
 
-### Julie (opérabilité / UX)
+### Julie (operability / UX)
 
-_À compléter._
+Compass: Ezkey is never the adopter’s core business; 3-second test; MFA cards must not reintroduce
+tenant names. Finding 1: option B without per-second countdown — approximate “Expires in about 2
+min,” amber “Expires soon” under 30s; **terminal expired state in the same Phase 1 delivery** as the
+timer (move disable-Approve-at-0 up from Phase 2). Finding 8: real case is Approve after admin cancel
+or TTL — needs one “no longer active” string + Back; put **before** the timer. Finding 5: don’t trap
+the user, but silent leave lies — toast Phase 0 (not “0–1”); verify Admin wait expiry copy on Walk.
+Finding 3: most important UX point — “sent but confirmation unverified” + hide Approve/Deny, Back
+only. Finding 6: calmer fail-closed copy, no signature jargon. Leave-as-deny: **discreet hint** under
+buttons, no confirmation dialog. Finding 4: Option C on device Walk proof. Avoid shipping timer
+without 409/expired copy. FSM should add neutral terminal **`NoLongerActive`** distinct from
+retryable `GlobalError`.
 
-### Christophe (sécurité)
+### Christophe (security) — minor
 
-_À compléter._
+Code read @ `fcc31fbf`. Docs: “HTTP OK = decision committed” is **false** — reformulate to
+**processed (`APPROVED`/`DENIED`/`FAILED`)**. `serverDecisionSentRef` before verify is safe; A+C
+OK, B rejected; document leave-as-deny path that stays on screen after verify fail. **Before GA:**
+leave/deny may open BiometricPrompt — little security value on deny; recommend unprotected deny
+signing. Stranded READ after bad pending sig: no alternate approve channel; TTL OK now; Phase 2
+device-proof cancel only; never unsigned deny. Network-failed deny: idempotent update → retry safe;
+option C Phase 1. **Medium before GA:** lost approve response can show failure while session exists —
+document now; signed final status before GA. Flow trace OK if release-disabled and no proof tokens
+logged; check `setRecentAuthResult` persistence. Add transitions: app killed during respond; TTL
+during biometric; deep links unchecked. Questions: lost-response display for alpha; biometric on
+deny (reco no); 120s READ as known alpha limit.
 
-### Patrick (solidité technique)
+### Patrick (senior engineering) — minor (docs)
 
-_À compléter._
+Analysis is sound; #833 line refs accurate. **Baseline wrong** if phrased as main+post-#833 —
+pin #833 @ `fcc31fbf`; condition Phase 0 on merge. FSM missing: **new attempt on same screen**
+(Finding 9 — lock never resets); **uncertain decision after lost response** (409 while decided).
+Finding 4 underestimated — double `goBack` + setState after unmount; Option C is Phase 0 (~3 lines).
+FSM is descriptive (scattered flags/refs), not implemented — say so; no FSM library. 409 type
+**already exists** → Phase 0 map by `type`. `expiresAt` underspecified — relative clock;
+unsigned/display-only; split Auth API vs mobile roadmap rows; resolve ambiguous “0–1” phases.
+Repo-as-memory: behavior decisions belong in FSM + functional flows; 409/`expiresAt` semantics in
+`docs/ENDPOINT.md` once Marc decides. **Items 2–4 of his review (lock per attempt, double goBack,
+409 mapping) are being fixed in #833 itself** — do not duplicate.
 
 ---
 
@@ -403,7 +428,8 @@ _À compléter._
 
 - Parent FSM: [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md)
 - Issue [#834](https://github.com/mgagp/ezkey/issues/834) · PR [#835](https://github.com/mgagp/ezkey/pull/835)
-- Behavior baseline PR [#833](https://github.com/mgagp/ezkey/pull/833)
-- Decision (repo-as-memory): open FSM questions feed this orientation note for phased mobile
-  continuous improvement — reason: make hidden UX/security intent reviewable before backlog issues;
-  issue #834.
+- Behavior baseline: PR [#833](https://github.com/mgagp/ezkey/pull/833) @ `fcc31fbf`
+- Collaborator reviews integrated: Alex, Julie, Christophe, Patrick @ docs tip `4ccecdf3`
+- Decision (repo-as-memory): orientation holds options/phasage; **decided** behavior locks go to FSM
+  + functional flows; **decided** 409 / pending expiry wire semantics go to `docs/ENDPOINT.md` —
+  reason: keep undecided items out of canon; issue #834.

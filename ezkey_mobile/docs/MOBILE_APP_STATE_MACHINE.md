@@ -12,9 +12,12 @@ This document is the **canonical finite-state model** of the React Native refere
 decision points: enrollment (QR → bind → verify), pending-auth claim, approve/deny, leaving
 `PendingAuthScreen`, errors, locks, TTL, and re-entry / duplicate-tap guards.
 
-It is derived from **actual code** (file:line citations). Protocol wire formats and Auth API
-contracts remain canonical in root docs (`docs/ENDPOINT.md`, `docs/CRYPTO.md`, signature payload
-docs). Operational flow narration lives in
+It is derived from **actual code** (file:line citations). It is a **descriptive** model of the
+current hooks, React state, and refs — **not** an implemented FSM library or single `phase`
+enum in the app (see [MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md)).
+
+Protocol wire formats and Auth API contracts remain canonical in root docs (`docs/ENDPOINT.md`,
+`docs/CRYPTO.md`, signature payload docs). Operational flow narration lives in
 [MOBILE_FUNCTIONAL_FLOWS.md](MOBILE_FUNCTIONAL_FLOWS.md); screen inventory in
 [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md). **When behavior and those docs
 disagree, this FSM + the cited code win until the owning docs are updated.**
@@ -22,22 +25,23 @@ disagree, this FSM + the cited code win until the owning docs are updated.**
 Interactive complement (optional): [mobile-app-state-machine.html](mobile-app-state-machine.html)
 (self-contained; no CDN).
 
-## Baseline and pending #833
+## Baseline (#833 branch)
 
 | Baseline | Meaning |
 | --- | --- |
-| **main** | Enrollment FSM, claim/pending, approve/deny respond path, pull model (no background poll). |
-| **Post-#833** (PR [#833](https://github.com/mgagp/ezkey/pull/833), branch `cursor/admin-rate-limit-passwordless-831-f1f9`, head `fcc31fbf`) | Leaving `PendingAuthScreen` with a loaded attempt → Auth API `respond(accepted=false)` (same as Deny). Guards: `serverDecisionSentRef`, `respondInFlightRef` / `isRespondInFlight`. Backend approve/deny uses conditional `UPDATE … WHERE status = READ`; cancel uses `expireIfPendingOrRead`. |
+| **Code truth for leave-as-deny / race guards** | PR [#833](https://github.com/mgagp/ezkey/pull/833) branch tip **`fcc31fbf`** (not yet merged to `main`; not an ancestor of `main`). |
+| **Enrollment / claim / respond (shared)** | Same Auth API `pending` / `respond` on main and #833; no mobile protocol surface change. |
+| **#833 mobile behavior** | Leaving `PendingAuthScreen` with a loaded attempt → Auth API `respond(accepted=false)` (same as Deny). Guards: `serverDecisionSentRef`, `respondInFlightRef` / `isRespondInFlight`. Backend approve/deny uses conditional `UPDATE … WHERE status = READ`; cancel uses `expireIfPendingOrRead`. |
 
-**This document describes post-#833 behavior.** Until #833 merges, main still leaves abandoned
-attempts `PENDING`/`READ` until TTL (see historical UX comment on main
-`PendingAuthScreen.tsx` L12–14). There is **no mobile protocol or Auth API surface change** for
-devices: same `pending` / `respond` endpoints. `POST /api/v1/admin/auth/passwordless-cancel` is
-Admin API (Admin UI); **mobile does not call it**.
+**This document describes behavior on the #833 branch @ `fcc31fbf`.** Until #833 merges, `main`
+still leaves abandoned attempts `PENDING`/`READ` until TTL. Admin
+`POST /api/v1/admin/auth/passwordless-cancel` is **not** used by mobile.
 
 Decision (repo-as-memory): Leave-with-loaded-attempt is Deny via Auth API respond, not cancel and
 not TTL-wait — reason: unblock Admin passwordless-wait when the user abandons the phone screen;
-issue [#834](https://github.com/mgagp/ezkey/issues/834) / PR #833.
+issue [#834](https://github.com/mgagp/ezkey/issues/834) / PR #833. (Further UX honesty — visible
+leave hint, copy, `NoLongerActive` — is proposed in the orientation note; **not locked** until Marc
+decides.)
 
 ---
 
@@ -177,23 +181,28 @@ stateDiagram-v2
 
 **Owner code:** `usePendingAuth.ts`, `PendingAuthScreen.tsx` (post-#833 leave listener).
 
-### UI / hook states
+### UI / hook states (descriptive)
+
+Implementation today is scattered React state + refs (`attempt`, `loading`, `isProcessing`,
+`globalError`, `respondInFlightRef`, `serverDecisionSentRef`) — not a single FSM object.
 
 | State | Recognition | User sees |
 | --- | --- | --- |
 | `EnrollmentLoading` | `isEnrollmentLoading` | Spinner |
 | `LoadingPending` | `loading` | Spinner “Contacting Auth API…” |
 | `Empty` | `showEmptyState` | No pending + Check again |
-| `GlobalError` | `globalError` set, no attempt | Error + Try again (+ optional debug panel) |
+| `GlobalError` | `globalError` set; retryable | Error + Try again (+ optional debug panel) |
+| `NoLongerActive` | **Proposed product state** (not yet a distinct UI mode) | Neutral terminal: expired / cancelled / already decided / conflict after act — **Back only**, not Try again (orientation / Julie) |
 | `Ready` | `attempt` set, `!isProcessing` | Context card; Approve / Deny; optional 2-digit challenge |
 | `Responding` | `isProcessing` / `respondInFlightRef` | Buttons disabled; “Sending…” on approve |
-| `Completed` | After verified respond + `setRecentAuthResult` | Navigates back to Detail |
+| `UncertainDecision` | Network lost after server processed respond; client `catch` | User may retry or leave → often **409**; must not read as “safe to flip decision” |
+| `Completed` | After verified respond result + `setRecentAuthResult` | Navigates back to Detail |
 
-Internal refs (post-#833):
+Internal refs (#833 @ `fcc31fbf`):
 
 | Ref | Set when | Purpose |
 | --- | --- | --- |
-| `serverDecisionSentRef` | Immediately after Auth API `respond` HTTP success (before local signature checks) | Skip leave-as-deny and further respond (`hasSubmittedServerDecision`) — L448–449 on #833 |
+| `serverDecisionSentRef` | After Auth API `respond` returns HTTP 200 (before local result-signature checks) | Skip leave-as-deny and further respond (`hasSubmittedServerDecision`) — L448–449. Means a respond exchange **completed at HTTP layer**; outcome may be `APPROVED`, `DENIED`, or business **`FAILED`** — not “APPROVED committed.” |
 | `respondInFlightRef` | Synchronously at start of `handleRespond`, cleared in `finally` | Block leave-as-deny racing an in-flight approve (`isRespondInFlight`) — L407–408, L511 |
 
 ### Auto-load on mount
@@ -211,41 +220,58 @@ Internal refs (post-#833):
 | Approve / Deny press | `enrollment`, `attempt`, `!isProcessing`, `!serverDecisionSentRef`, `!respondInFlightRef` | Else skip (duplicate / in-flight) |
 | Approve only | If `challengeRequired`, challenge length === 2 (`AUTH_CHALLENGE_LENGTH`) | Else form error; no API |
 | Deny | Challenge **not** required locally; server also skips challenge on reject | Same `respond` path with `accepted=false` |
-| Protected mode | `requiresProtectedApproval` | Biometric / device-credential then `signForRespond` |
-| HTTP `respond` OK | — | Set `serverDecisionSentRef`; verify respond-result signature; `setRecentAuthResult`; `goBack` / navigate Detail |
-| HTTP / crypto fail | — | `globalError`; stay on screen; `respondInFlightRef` cleared |
+| Protected mode | `requiresProtectedApproval` (enrollment policy **or** device preference) | Biometric / device-credential then `signForRespond` — applies to **approve and deny** today (`approvalRequirement.ts` L42–45). Leave-as-deny can therefore open BiometricPrompt; cancel → `READ` until TTL. |
+| HTTP `respond` 200 | — | Set `serverDecisionSentRef`; verify respond-result signature; on success `setRecentAuthResult` + navigate. Body outcome may be `APPROVED` / `DENIED` / **`FAILED`**. |
+| HTTP / transport fail | — | `globalError` or leave dispatch; `respondInFlightRef` cleared; ref may stay **false** → `UncertainDecision` if server already processed |
+| Result sig fail after HTTP 200 | — | `globalError`; stay; leave will **not** re-deny (ref true) |
 | Buttons while processing | `disabled={isProcessing}` | UI lock; refs close the sync gap before re-render |
 
 API: `POST /api/v1/auth-attempts/respond` (Auth API). **Not** Admin cancel / passwordless-cancel.
+Problem type for state conflicts: `TYPE_AUTH_ATTEMPT_STATE_CONFLICT`
+(`…/auth-attempt-state-conflict`) — already in Auth API catalog; mobile has no dedicated i18n map yet.
 
-### Leave screen (post-#833) — critical
+### Leave screen (#833 @ `fcc31fbf`) — critical
 
-`navigation.addListener('beforeRemove')` on `PendingAuthScreen` (#833 L84–105):
+`navigation.addListener('beforeRemove')` on `PendingAuthScreen` (L84–105):
 
 | Condition | Behavior |
 | --- | --- |
-| No `attempt` (empty / error / still loading) | Allow leave; **no** respond |
-| `isProcessing` or `isRespondInFlight()` or `hasSubmittedServerDecision()` | Allow leave; **no** second deny |
-| Else (`Ready` with loaded attempt) | `preventDefault` → `handleRespond(false)` (identical Deny) |
+| No `attempt` (empty / error / still loading / fail-closed) | Allow leave; **no** respond — server may still be `READ` until TTL |
+| `isProcessing` or `isRespondInFlight()` or `hasSubmittedServerDecision()` | Allow leave; **no** second deny (in-flight success may still `goBack` → double pop risk) |
+| Else (`Ready` with loaded attempt) | `preventDefault` → `handleRespond(false)` (identical Deny; may prompt biometric) |
 | Deny succeeds | Hook already navigates via `handleReturnToEnrollmentDetail` |
-| Deny fails | Still `navigation.dispatch(e.data.action)` so the user is **not trapped** |
+| Deny fails (network) | Still `navigation.dispatch(e.data.action)` — user not trapped |
+| Deny HTTP 200 then result-sig fail | User **stays** on screen (`L101` does not dispatch leave) |
 
-**Pre-#833 (main):** leave did not call respond; attempt stayed `READ`/`PENDING` until TTL scheduler.
+**Pre-#833 (`main`):** leave did not call respond; attempt stayed `READ`/`PENDING` until TTL.
+
+**Proposed UX (not locked):** visible hint under actions — “Leaving this screen declines the
+request.” (orientation; Alex/Julie).
+
+### Missing / edge transitions (document as limits)
+
+| Edge | Behavior today |
+| --- | --- |
+| New attempt on same screen after ref=true | `serverDecisionSentRef` never resets; Try again → new claim → Approve/Deny/leave-deny blocked (screen-scoped lock). Fix tracked on **#833** (per-attempt lock). |
+| Lost response after server processed | Client `catch` / uncertain UI; retry or leave-deny → **409**; session may already exist on approve. |
+| App killed / background during respond or biometric | `beforeRemove` may not run → no leave-deny → `READ` until TTL. |
+| TTL expires during biometric | Later respond → **409** state conflict. |
 
 ### Timers / TTL
 
 | Layer | Behavior |
 | --- | --- |
-| Server | Attempt `expiresAt` from `ezkey.core.auth-attempt.ttl-seconds` (default 120). Scheduler in Admin API process marks `EXPIRED`. |
-| Mobile UI | **No countdown**; `PendingAttempt` does not carry `expiresAt` (types.ts). Respond after expiry → Auth API state conflict / failure surfaced as error. |
-| Mobile wait | No client-side timeout loop on Pending Auth; user must act or leave. |
+| Server | Attempt `expiresAt` from `ezkey.core.auth-attempt.ttl-seconds` (default 120). Scheduler marks `EXPIRED`. |
+| Mobile pending wire | **No** `expiresAt` / `expiresInSeconds` on `AuthAttemptPendingResponseDto` today. |
+| Mobile UI | **No countdown**. Respond after expiry → conflict / error (generic). |
+| Future display clock (proposed) | Prefer relative `expiresInSeconds` or `expiresAt`+`serverNow`; **unsigned / display-only** (not in pending signature payload). Undecided — see orientation; semantics → `docs/ENDPOINT.md` when Marc decides. |
 
-### Backend race (post-#833, context for mobile)
+### Backend race (#833, context for mobile)
 
 | Path | Mechanism | Mobile impact |
 | --- | --- | --- |
-| Approve/deny | `updateStatusIfCurrent(id, READ → ACCEPTED\|REJECTED)`; 0 rows → `AuthAttemptStateConflictException` → HTTP **409** | Mobile maps to user-facing error; no special 409 UI |
-| Admin / Integration cancel | `expireIfPendingOrRead(PENDING\|READ → EXPIRED)` | If cancel wins, mobile respond gets 409 / conflict |
+| Approve/deny | `updateStatusIfCurrent(id, READ → ACCEPTED\|REJECTED)`; 0 rows → `AuthAttemptStateConflictException` → HTTP **409** + problem type above | Generic error today; map to `NoLongerActive` proposed |
+| Admin / Integration cancel | `expireIfPendingOrRead(PENDING\|READ → EXPIRED)` | Mobile respond gets 409 / conflict |
 | Admin passwordless-cancel | Admin API only | Not used by mobile |
 
 ```mermaid
@@ -259,13 +285,18 @@ stateDiagram-v2
   Empty --> LoadingPending: Check again
   GlobalError --> LoadingPending: Try again
   Ready --> Responding: Approve / Deny / Leave-as-deny
-  Responding --> Completed: respond OK + result sig OK
-  Responding --> GlobalError: respond / sig / network fail
+  Responding --> Completed: result sig OK (APPROVED/DENIED)
+  Responding --> GlobalError: FAILED body / result sig fail
+  Responding --> UncertainDecision: transport lost after process
+  UncertainDecision --> NoLongerActive: 409 / already decided
+  Responding --> NoLongerActive: 409 cancel/expiry/conflict
+  NoLongerActive --> [*]: Back only
   Completed --> [*]
-  Ready --> [*]: leave without attempt guards\n(empty/error path)
+  Ready --> [*]: leave without attempt\n(empty/fail-closed path)
   note right of Responding
     respondInFlightRef sync
-    serverDecisionSentRef after HTTP OK
+    serverDecisionSentRef after HTTP 200
+    outcome may be FAILED
   end note
 ```
 
@@ -287,11 +318,11 @@ stateDiagram-v2
 | Enrollment verify re-entry | `isSubmitting`; back no-op | `finalizeEnrollment` / `handleBack` |
 | Detail check re-entry | `isCheckingPending` | EnrollmentDetailScreen |
 | Pending load | `loading` UI; auto-load once per enrollment | usePendingAuth |
-| Respond re-entry | `isProcessing` + refs (post-#833) | `handleRespond` |
+| Respond re-entry | `isProcessing` + refs (#833) | `handleRespond` |
 | Leave vs approve race | `respondInFlightRef` set before any `await` | #833 m2 |
-| Second deny after success | `serverDecisionSentRef` | #833 / #831 |
+| Second deny after respond HTTP 200 | `serverDecisionSentRef` (screen-scoped today; per-attempt fix on #833) | #833 / #831 |
 | Unusable enrollment | No Check pending | MOB-015 Detail / Home |
-| Protected approve | Local auth before sign | `signForRespond` + preference |
+| Protected approve **and** deny | Local auth before `signForRespond` when policy/preference requires | `requiresProtectedApproval` |
 
 ---
 
@@ -309,19 +340,14 @@ stateDiagram-v2
 
 ---
 
-## 6. Open questions (code vs intent — no code change in this docs task)
+## 6. Open questions (code vs intent)
 
-Strategic analysis, phased proposals, and collaborator review slots:
-[MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md).
+Full analysis, phased roadmap, collaborator reviews, and the consolidated **Questions for Marc**
+list: [MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md).
 
-1. **No mobile TTL UI:** Server stores `expiresAt`, but pending wire DTO + `PendingAttempt` omit it; UI has no countdown. Should Detail/Pending show remaining time, or is “act or leave” enough?
-2. **`createdAt` on `PendingAttempt`:** Set to local `checkedAt`, not server attempt `createdAt` (`claimPendingAttempt.ts`). Misleading if used for TTL math later.
-3. **HTTP OK then local sig fail:** `serverDecisionSentRef` is set after respond HTTP success, before respond-result signature verification. Server may already be `ACCEPTED`/`REJECTED` while the user sees an error and stay on screen; leave will not re-deny. Is “trust HTTP, then verify for display” the intended fail-closed display rule?
-4. **Leave while `Responding`:** `beforeRemove` allows navigation when `isRespondInFlight()` without waiting for completion. In-flight approve may still finish and call `goBack` again. Confirm this is acceptable.
-5. **Leave after deny network failure:** User is allowed to leave; attempt may remain `READ` until TTL or Admin cancel — intentional fail-open for “don’t trap the user,” but waiters may still block until TTL.
-6. **Empty/error leave:** Leaving without a loaded `attempt` does not deny. If claim succeeded server-side but client failed signature verification (`fail_closed` clears attempt), the server may still be `READ` until TTL — confirm whether fail-closed should still deny/cancel.
-7. **Main vs #833 docs drift:** Until #833 merges, `MOBILE_FUNCTIONAL_FLOWS` / screen docs still describe leave → TTL. This FSM is authoritative for **post-#833**; update sibling docs when #833 lands.
-8. **409 handling:** Mobile has no dedicated copy for Auth API state conflict vs generic request failure — sufficient for alpha?
+Do **not** treat orientation proposals as locked behavior here until Marc decides; then record
+one-line decisions in this FSM / `MOBILE_FUNCTIONAL_FLOWS.md`, and 409 / pending-expiry wire
+semantics in `docs/ENDPOINT.md`.
 
 ---
 

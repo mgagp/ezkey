@@ -226,6 +226,13 @@ Content-Type: application/json
 - `contextTitle`: Short heading displayed as the card header on the mobile device. Null when no context was attached.
 - `contextMessage`: Descriptive body explaining what the approver is authorizing. Null when no context was attached.
 
+**Mobile pending expiry (factual):** The current pending **200** body above does **not** include
+`expiresAt` or `expiresInSeconds`. Attempt expiry still exists server-side (`ezkey.core.auth-attempt.ttl-seconds`;
+create/wait surfaces may expose `expiresAt`). Whether pending should return a **display-only** relative
+lifetime (and clock skew rules) is an open product decision tracked from
+[`ezkey_mobile/docs/MOBILE_APP_STRATEGIC_ORIENTATION.md`](../ezkey_mobile/docs/MOBILE_APP_STRATEGIC_ORIENTATION.md)
+(#834) — **not locked here until Marc decides.**
+
 ### b) Submit response to request
 
 **POST /api/v1/auth-attempts/respond**
