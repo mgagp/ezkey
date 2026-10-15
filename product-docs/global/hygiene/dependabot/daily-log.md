@@ -123,3 +123,24 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
 - Residual: phone smoke for #778 tracked on #627 (gates next Play AAB). Nothing deployed.
 - Monday note (structural): stale `thirdPartyLicenses.json` will fail `js-validate` on every mobile Dependabot PR that bumps a production dependency. Idea: add a Dependabot / CI companion that runs `yarn license:app-data` and commits the snapshot on the PR branch (or a workflow_dispatch bot), so light passes do not need a manual rebase each time.
 
+
+## 2026-10-15
+
+- Pass: weekday light (autonomous); concurrency: clear at start (~09:24 ET pre-check; re-verified before merge batches — no Dependabot/hygiene merges in prior ~30 min; no other in-flight `dependabot-curated` agent)
+- GitHub write: `GH_TOKEN as mgagp`
+- Merged (squash):
+  - Admin UI T2 types: #821 `@types/node` 24.19.1→24.19.2 `4f4f9b54`
+  - SDK JS T2 types: #825 `@types/node` 24.19.1→24.19.2 `b95a01b1`
+  - Admin UI T1: #820 zod 4.6.5→4.6.6 `338c0966`; #824 i18next 26.4.2→26.4.3 `ca000523`
+  - Mobile T1/T2 tooling: #826 prettier 3.9.9→3.9.10 (mobile-tooling) `a11f3043`
+  - Admin UI T3: #823 lucide-react 1.54.0→1.55.0 `d514d614`; #819 react-hook-form 7.89.0→7.90.0 `95ee17ed`
+  - Mobile T1 production: #827 i18next 26.4.2→26.4.3 via hygiene **#836** `3623379d` — Dependabot CI red only on stale `thirdPartyLicenses.json`; companion on Dependabot branch did not re-trigger Actions (PAT lacks `actions:write` / workflow_dispatch 403); hygiene branch exception + `yarn license:app-data`; closed #827 as superseded
+- Held / skipped:
+  - #822 Playwright docker `v1.64.0-noble`→`v1.64.1-noble` — Admin UI lockfile still `@playwright/test` ^1.64.0; do not jump image ahead of npm (until matching npm bump or Monday)
+  - #779 mobile ESLint 10, #653 Jest 30 (ecosystem gates)
+  - #717 Android Gradle group (HITL; weekday light does not reopen)
+  - #767 textual pip floor jump (Monday / T4)
+  - deferred:later-train `#498`/`#337`/`#347` (skip HITL)
+  - Non-Dependabot open PRs out of scope
+- Validation: Dependabot CI green + `mergeStateStatus` CLEAN for #821/#825/#820/#824/#826/#823/#819; Admin UI local Node 24 — `npm run lint` + `tsc -b` + vitest **201/201**; mobile hygiene #836 — local `yarn validate` (jest **42/307**) + PR CI (`js-validate`, `android-jvm-unit-tests`, `android-16kb-alignment`, `ci-gate`). Deferred Rootbeer/Mac stack/Playwright smoke (Docker not required for this light lot).
+- Residual: phone smoke for #826/#836 (i18next) tracked on #627 (gates next Play AAB). Nothing deployed.
