@@ -19,7 +19,10 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {Keyboard} from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {useEnrollmentById, useMarkEnrollmentPendingChecked} from './useEnrollments';
-import {userFacingAuthApiError} from '../services/api/authApiProblem';
+import {
+  resolveAuthApiUserFacingOutcome,
+  type AuthApiUserFacingOutcome,
+} from '../services/api/authApiProblem';
 import {authAttemptsApi} from '../services/api/authAttempts';
 import {buildRespondPayload, buildRespondResultPayload} from '../services/crypto/authAttemptPayload';
 import {cryptoService} from '../services/crypto';
@@ -126,6 +129,11 @@ export type PendingAuthState = {
   formError: string | undefined;
   setFormError: (error: string | undefined) => void;
   globalError: string | undefined;
+  /**
+   * When false with {@link globalError}, the request is no longer actionable (e.g. 409 state
+   * conflict after a lost response) — UI must show Back only, not Try again (#833 Patrick).
+   */
+  globalErrorRetryable: boolean;
   isProcessing: boolean;
   loading: boolean;
   debugInfo: PendingAuthDebugInfo | undefined;
@@ -140,8 +148,9 @@ export type PendingAuthState = {
   loadPendingAttempt: () => void;
   handleRespond: (accepted: boolean) => Promise<void>;
   /**
-   * True after a respond decision was accepted by the Auth API (approve or deny).
-   * Used so navigation leave does not send a second deny (#831).
+   * True after a respond decision was accepted by the Auth API for the *current*
+   * {@link attempt} id (approve, deny, or non-retryable 409 state conflict).
+   * Keyed to authAttemptId so Try again on a new attempt is not locked (#833 Patrick).
    */
   hasSubmittedServerDecision: () => boolean;
   /**
@@ -179,21 +188,31 @@ export function usePendingAuth(
   const setRecentAuthResult = useEnrollmentStore(store => store.setRecentAuthResult);
 
   const autoLoadEnrollmentRef = useRef<string | undefined>(undefined);
+  /** False after unmount — skip setState and a second goBack if leave raced an in-flight respond. */
+  const isMountedRef = useRef(true);
 
   const [attempt, setAttempt] = useState<PendingAttempt | undefined>(initialAttempt);
   const [challengeInput, setChallengeInput] = useState('');
   const [formError, setFormError] = useState<string | undefined>();
   const [globalError, setGlobalError] = useState<string | undefined>();
+  const [globalErrorRetryable, setGlobalErrorRetryable] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState<PendingAuthDebugInfo | undefined>(undefined);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // -------------------------------------------------------------------------
   // Error extraction
   // -------------------------------------------------------------------------
 
-  const extractErrorMessage = useCallback(
-    (error: unknown) => {
+  const extractErrorOutcome = useCallback(
+    (error: unknown): AuthApiUserFacingOutcome => {
       const nativeCode =
         typeof error === 'object' &&
         error != null &&
@@ -202,17 +221,21 @@ export function usePendingAuth(
           ? error.code
           : undefined;
       if (nativeCode === 'EZK_AUTH_CANCELLED') {
-        return t('pendingAuth.localAuthCancelled');
+        return {message: t('pendingAuth.localAuthCancelled'), retryable: true};
       }
       if (nativeCode === 'EZK_AUTH_UNAVAILABLE') {
-        return t('pendingAuth.localAuthUnavailable');
+        return {message: t('pendingAuth.localAuthUnavailable'), retryable: true};
       }
       if (nativeCode === 'EZK_KEY_INVALIDATED') {
-        return t('pendingAuth.localAuthReenroll');
+        return {message: t('pendingAuth.localAuthReenroll'), retryable: true};
       }
       const fallback =
         error instanceof Error ? t('pendingAuth.requestFailed') : t('pendingAuth.unexpectedError');
-      return userFacingAuthApiError(error, fallback);
+      return resolveAuthApiUserFacingOutcome(
+        error,
+        fallback,
+        t('pendingAuth.requestNoLongerActive'),
+      );
     },
     [t],
   );
@@ -232,6 +255,10 @@ export function usePendingAuth(
   }, [initialAttempt, nav]);
 
   const handleReturnToEnrollmentDetail = useCallback(() => {
+    // Leave during in-flight respond already popped this screen — do not goBack again (#833 Patrick).
+    if (!isMountedRef.current) {
+      return;
+    }
     if (nav.canGoBack()) {
       nav.goBack();
       return;
@@ -249,6 +276,7 @@ export function usePendingAuth(
     }
     setLoading(true);
     setGlobalError(undefined);
+    setGlobalErrorRetryable(true);
     setDebugInfo(undefined);
     try {
       const debugSnapshotAt = new Date().toISOString();
@@ -320,19 +348,24 @@ export function usePendingAuth(
       setChallengeInput('');
       setFormError(undefined);
     } catch (error) {
-      const msg = extractErrorMessage(error);
+      const outcome = extractErrorOutcome(error);
       setDebugInfo(prev =>
         prev
-          ? {...prev, lastStep: 'catch', errorMessage: msg}
-          : {lastStep: 'catch', errorMessage: msg, capturedAtIso: new Date().toISOString()},
+          ? {...prev, lastStep: 'catch', errorMessage: outcome.message}
+          : {
+              lastStep: 'catch',
+              errorMessage: outcome.message,
+              capturedAtIso: new Date().toISOString(),
+            },
       );
-      setGlobalError(msg);
+      setGlobalError(outcome.message);
+      setGlobalErrorRetryable(outcome.retryable);
     } finally {
       setLoading(false);
     }
   }, [
     enrollment,
-    extractErrorMessage,
+    extractErrorOutcome,
     handleNoPendingResult,
     markEnrollmentPendingChecked,
     t,
@@ -361,14 +394,20 @@ export function usePendingAuth(
   // Respond (approve / deny)
   // -------------------------------------------------------------------------
 
-  const serverDecisionSentRef = useRef(false);
+  /**
+   * Auth attempt id for which the Auth API already accepted a decision (or reported a
+   * non-retryable state conflict). Compared to the current attempt so Try again on a new
+   * attempt is not permanently locked (#833 Patrick).
+   */
+  const serverDecisionAttemptIdRef = useRef<string | undefined>(undefined);
   /** Sync guard: set before any await so leave-as-deny cannot race an in-flight approve (#833 m2). */
   const respondInFlightRef = useRef(false);
 
-  const hasSubmittedServerDecision = useCallback(
-    () => serverDecisionSentRef.current,
-    [],
-  );
+  const hasSubmittedServerDecision = useCallback(() => {
+    return (
+      attempt != null && serverDecisionAttemptIdRef.current === attempt.authAttemptId
+    );
+  }, [attempt]);
 
   const isRespondInFlight = useCallback(() => respondInFlightRef.current, []);
 
@@ -377,16 +416,16 @@ export function usePendingAuth(
       if (
         !enrollment ||
         !attempt ||
-        isProcessing ||
-        serverDecisionSentRef.current ||
+        serverDecisionAttemptIdRef.current === attempt.authAttemptId ||
         respondInFlightRef.current
       ) {
         tracePendingAuthRespond('handleRespond_skipped_preconditions', {
           accepted,
           hasEnrollment: Boolean(enrollment),
           hasAttempt: Boolean(attempt),
-          isProcessing,
-          alreadySubmitted: serverDecisionSentRef.current,
+          alreadySubmitted:
+            attempt != null &&
+            serverDecisionAttemptIdRef.current === attempt.authAttemptId,
           respondInFlight: respondInFlightRef.current,
         });
         return;
@@ -408,11 +447,13 @@ export function usePendingAuth(
       respondInFlightRef.current = true;
       setIsProcessing(true);
       setGlobalError(undefined);
+      setGlobalErrorRetryable(true);
       setFormError(undefined);
       Keyboard.dismiss();
+      const respondAttemptId = attempt.authAttemptId;
       tracePendingAuthRespond('handleRespond_try_begin', {
         accepted,
-        authAttemptId: attempt.authAttemptId,
+        authAttemptId: respondAttemptId,
         challengeRequired: attempt.challengeRequired,
         challengeLen: challengeInput.trim().length,
       });
@@ -445,13 +486,16 @@ export function usePendingAuth(
           },
           enrollment.installation?.authUrl,
         );
-        // Auth API accepted the decision — do not send a second deny on navigation leave (#831).
-        serverDecisionSentRef.current = true;
+        // Auth API accepted the decision for this attempt id (#831 / #833 Patrick).
+        serverDecisionAttemptIdRef.current = respondAttemptId;
 
         const integrationPublicKey = enrollment.integrationPublicKey;
         if (!integrationPublicKey) {
           tracePendingAuthRespond('handleRespond_abort_missing_integration_public_key', {});
-          setGlobalError(t('pendingAuth.missingRespondPublicKey'));
+          if (isMountedRef.current) {
+            setGlobalError(t('pendingAuth.missingRespondPublicKey'));
+            setGlobalErrorRetryable(true);
+          }
           return;
         }
         const respondSig =
@@ -460,7 +504,10 @@ export function usePendingAuth(
           tracePendingAuthRespond('handleRespond_abort_missing_respond_signature', {
             authAttemptId: response.authAttemptId,
           });
-          setGlobalError(t('pendingAuth.missingRespondSignature'));
+          if (isMountedRef.current) {
+            setGlobalError(t('pendingAuth.missingRespondSignature'));
+            setGlobalErrorRetryable(true);
+          }
           return;
         }
         const respondResultPayload = buildRespondResultPayload(
@@ -478,7 +525,10 @@ export function usePendingAuth(
           tracePendingAuthRespond('handleRespond_abort_invalid_respond_signature', {
             authAttemptId: response.authAttemptId,
           });
-          setGlobalError(t('pendingAuth.invalidRespondSignature'));
+          if (isMountedRef.current) {
+            setGlobalError(t('pendingAuth.invalidRespondSignature'));
+            setGlobalErrorRetryable(true);
+          }
           return;
         }
 
@@ -492,6 +542,7 @@ export function usePendingAuth(
           authAttemptId: response.authAttemptId,
           outcome,
         });
+        // Zustand store — safe after unmount so Detail can still show the result.
         setRecentAuthResult(enrollment.id, {
           status,
           title,
@@ -502,14 +553,27 @@ export function usePendingAuth(
         tracePendingAuthRespond('handleRespond_navigate_back', {recentAuthStatus: status});
         handleReturnToEnrollmentDetail();
       } catch (error) {
-        const msg = extractErrorMessage(error);
+        const errorOutcome = extractErrorOutcome(error);
         tracePendingAuthRespond('handleRespond_catch', {
-          message: msg.length > 240 ? `${msg.slice(0, 240)}...` : msg,
+          message:
+            errorOutcome.message.length > 240
+              ? `${errorOutcome.message.slice(0, 240)}...`
+              : errorOutcome.message,
+          retryable: errorOutcome.retryable,
         });
-        setGlobalError(msg);
+        // 409 state conflict: decision already recorded — lock this attempt id (#833 Patrick).
+        if (!errorOutcome.retryable) {
+          serverDecisionAttemptIdRef.current = respondAttemptId;
+        }
+        if (isMountedRef.current) {
+          setGlobalError(errorOutcome.message);
+          setGlobalErrorRetryable(errorOutcome.retryable);
+        }
       } finally {
         respondInFlightRef.current = false;
-        setIsProcessing(false);
+        if (isMountedRef.current) {
+          setIsProcessing(false);
+        }
         tracePendingAuthRespond('handleRespond_finally');
       }
     },
@@ -517,9 +581,8 @@ export function usePendingAuth(
       attempt,
       challengeInput,
       enrollment,
-      extractErrorMessage,
+      extractErrorOutcome,
       handleReturnToEnrollmentDetail,
-      isProcessing,
       setRecentAuthResult,
       t,
     ],
@@ -562,6 +625,7 @@ export function usePendingAuth(
     formError,
     setFormError,
     globalError,
+    globalErrorRetryable,
     isProcessing,
     loading,
     debugInfo,

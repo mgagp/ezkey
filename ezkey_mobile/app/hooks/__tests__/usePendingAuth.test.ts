@@ -499,6 +499,139 @@ describe('handleRespond', () => {
 
     expect(result.current.globalError).toBeDefined();
   });
+
+  it('keys server-decision lock to authAttemptId so Try again on a new attempt can respond (#833 Patrick)', async () => {
+    // HTTP OK then invalid result signature → lock is set for attempt-1.
+    mockCryptoService.verify.mockResolvedValueOnce(false);
+
+    const {result} = renderHook('enr-1', sampleAttempt);
+
+    await act(async () => {
+      await result.current.handleRespond(true);
+    });
+
+    expect(result.current.hasSubmittedServerDecision()).toBe(true);
+    expect(result.current.globalError).toBeDefined();
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(1);
+
+    // Same attempt still locked — Approve must not call the API again.
+    mockCryptoService.verify.mockResolvedValue(true);
+    await act(async () => {
+      await result.current.handleRespond(true);
+    });
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(1);
+
+    // Try again loads a different pending attempt — lock must not carry over.
+    mockAuthAttemptsApi.pending.mockResolvedValue({
+      authAttemptId: 2,
+      authAttemptProofToken: 'attempt-token-2',
+      authAttemptProofTokenSignedByIntegration: 'attempt-sig-2',
+      authAttemptChallengeRequired: false,
+      contextTitle: 'Second Request',
+      contextMessage: 'Please approve this login.',
+    });
+    mockCryptoService.verify.mockResolvedValue(true);
+
+    await act(async () => {
+      await result.current.loadPendingAttempt();
+    });
+
+    expect(result.current.attempt?.authAttemptId).toBe('2');
+    expect(result.current.hasSubmittedServerDecision()).toBe(false);
+
+    mockAuthAttemptsApi.respond.mockResolvedValue({
+      authAttemptId: 2,
+      authAttemptResult: 'APPROVED',
+      authAttemptMessage: 'Approved',
+      authAttemptProofTokenResultSignedByIntegration: 'respond-result-sig',
+    });
+
+    await act(async () => {
+      await result.current.handleRespond(true);
+    });
+
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(2);
+    expect(defaultNav.goBack).toHaveBeenCalled();
+  });
+
+  it('does not goBack again when the screen unmounts during an in-flight respond (#833 Patrick)', async () => {
+    let resolveRespond!: (value: {
+      authAttemptId: number;
+      authAttemptResult: 'APPROVED';
+      authAttemptMessage: string;
+      authAttemptProofTokenResultSignedByIntegration: string;
+    }) => void;
+    mockAuthAttemptsApi.respond.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveRespond = resolve as typeof resolveRespond;
+        }),
+    );
+
+    const {result, unmount} = renderHook('enr-1', sampleAttempt);
+
+    let respondPromise!: Promise<void>;
+    await act(async () => {
+      respondPromise = result.current.handleRespond(true);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(result.current.isRespondInFlight()).toBe(true);
+    expect(defaultNav.goBack).not.toHaveBeenCalled();
+
+    // Leave while respond is in flight (beforeRemove lets navigation through).
+    unmount();
+
+    await act(async () => {
+      resolveRespond({
+        authAttemptId: 1,
+        authAttemptResult: 'APPROVED',
+        authAttemptMessage: 'Approved',
+        authAttemptProofTokenResultSignedByIntegration: 'respond-result-sig',
+      });
+      await respondPromise;
+    });
+
+    // Completion must not pop EnrollmentDetail a second time; zustand recent result is still set.
+    expect(defaultNav.goBack).not.toHaveBeenCalled();
+    expect(mockSetRecentAuthResult).toHaveBeenCalledWith(
+      'enr-1',
+      expect.objectContaining({status: 'approved'}),
+    );
+  });
+
+  it('maps auth-attempt state conflict to a non-retryable inactive outcome (#833 Patrick)', async () => {
+    mockAuthAttemptsApi.respond.mockRejectedValue({
+      response: {
+        status: 409,
+        data: {
+          type: 'https://ezkey.io/problems/auth/auth-attempt-state-conflict',
+          title: 'Authentication attempt state conflict',
+          status: 409,
+          detail: 'Cannot respond: status is no longer READ',
+        },
+      },
+    });
+
+    const {result} = renderHook('enr-1', sampleAttempt);
+
+    await act(async () => {
+      await result.current.handleRespond(true);
+    });
+
+    expect(result.current.globalError).toBe(
+      'This request is no longer active. No action is required.',
+    );
+    expect(result.current.globalErrorRetryable).toBe(false);
+    expect(result.current.hasSubmittedServerDecision()).toBe(true);
+
+    // Locked for this attempt — leave-deny / Approve must not hit the API again.
+    await act(async () => {
+      await result.current.handleRespond(false);
+    });
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -260,6 +260,7 @@ export const resources = {
         challengeInputHint: 'Enter the 2-digit code shown on the sign-in screen',
         requestFailed: 'Request failed.',
         unexpectedError: 'Unexpected error.',
+        requestNoLongerActive: 'This request is no longer active. No action is required.',
         missingPendingPublicKey:
           'Enrollment missing integration public key; cannot verify pending response.',
         invalidPendingSignature: 'Invalid integration signature on pending response.',
@@ -631,6 +632,7 @@ export const resources = {
         challengeInputHint: 'Entrez le code à 2 chiffres affiché sur l’écran de connexion',
         requestFailed: 'Échec de la requête.',
         unexpectedError: 'Erreur inattendue.',
+        requestNoLongerActive: "Cette demande n'est plus active. Aucune action requise.",
         missingPendingPublicKey:
           'L’enrôlement ne contient pas de clé publique d’intégration; impossible de vérifier la réponse pending.',
         invalidPendingSignature: 'Signature d’intégration invalide sur la réponse pending.',

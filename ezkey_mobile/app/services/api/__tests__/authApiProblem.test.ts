@@ -8,12 +8,17 @@
  */
 
 import {
+  AUTH_ATTEMPT_STATE_CONFLICT_TYPE,
+  isAuthAttemptStateConflict,
   isEzkeyProblemType,
   parseAuthApiProblemDetail,
+  resolveAuthApiUserFacingOutcome,
   userFacingAuthApiError,
 } from '../authApiProblem';
 
 const FALLBACK = 'Request failed.';
+const STATE_CONFLICT_MSG =
+  'This request is no longer active. No action is required.';
 
 const CLOUDFLARE_1020_BODY = {
   type: 'https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1020/',
@@ -147,5 +152,52 @@ describe('userFacingAuthApiError', () => {
         FALLBACK,
       ),
     ).toBe(FALLBACK);
+  });
+
+  it('maps auth-attempt-state-conflict to the neutral inactive message (#833 Patrick)', () => {
+    const error = httpErrorWithData(
+      {
+        type: AUTH_ATTEMPT_STATE_CONFLICT_TYPE,
+        title: 'Authentication attempt state conflict',
+        status: 409,
+        detail: 'Cannot respond: status is no longer READ',
+      },
+      409,
+    );
+    expect(userFacingAuthApiError(error, FALLBACK, STATE_CONFLICT_MSG)).toBe(STATE_CONFLICT_MSG);
+    expect(userFacingAuthApiError(error, FALLBACK, STATE_CONFLICT_MSG)).not.toContain('READ');
+  });
+});
+
+describe('resolveAuthApiUserFacingOutcome / isAuthAttemptStateConflict', () => {
+  it('marks state conflict as non-retryable with the neutral message', () => {
+    const error = httpErrorWithData(
+      {
+        type: AUTH_ATTEMPT_STATE_CONFLICT_TYPE,
+        title: 'Authentication attempt state conflict',
+        status: 409,
+        detail: 'Server detail must not surface',
+      },
+      409,
+    );
+    expect(isAuthAttemptStateConflict(error)).toBe(true);
+    expect(resolveAuthApiUserFacingOutcome(error, FALLBACK, STATE_CONFLICT_MSG)).toEqual({
+      message: STATE_CONFLICT_MSG,
+      retryable: false,
+    });
+  });
+
+  it('marks other Ezkey problems as retryable', () => {
+    const error = httpErrorWithData({
+      type: 'https://ezkey.io/problems/auth/auth-attempt-binding-failed',
+      title: 'Authentication request binding failed',
+      status: 400,
+      detail: 'The authentication request could not be processed.',
+    });
+    expect(isAuthAttemptStateConflict(error)).toBe(false);
+    expect(resolveAuthApiUserFacingOutcome(error, FALLBACK, STATE_CONFLICT_MSG)).toEqual({
+      message: 'The authentication request could not be processed.',
+      retryable: true,
+    });
   });
 });

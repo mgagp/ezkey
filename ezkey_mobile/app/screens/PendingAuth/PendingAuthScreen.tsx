@@ -62,6 +62,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     formError,
     setFormError,
     globalError,
+    globalErrorRetryable,
     isProcessing,
     loading,
     debugInfo,
@@ -81,14 +82,10 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
 
   // Leave with a loaded pending attempt → Auth API deny so passwordless-wait unblocks (#831).
   // Skip when approve/deny is already in flight (sync ref) so leave cannot send a second deny (#833 m2).
+  // isRespondInFlight already covers the isProcessing window — do not also check isProcessing.
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', e => {
-      if (
-        !attempt ||
-        isProcessing ||
-        hasSubmittedServerDecision() ||
-        isRespondInFlight()
-      ) {
+      if (!attempt || hasSubmittedServerDecision() || isRespondInFlight()) {
         return;
       }
       e.preventDefault();
@@ -104,14 +101,15 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
       });
     });
     return unsubscribe;
-  }, [
-    navigation,
-    attempt,
-    isProcessing,
-    handleRespond,
-    hasSubmittedServerDecision,
-    isRespondInFlight,
-  ]);
+  }, [navigation, attempt, handleRespond, hasSubmittedServerDecision, isRespondInFlight]);
+
+  const handleInactiveBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigateToEnrollmentDetail();
+  }, [navigation, navigateToEnrollmentDetail]);
 
   const emptyIdentity = enrollment
     ? buildEnrollmentIdentityDisplay(
@@ -197,12 +195,21 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
               )}
             </View>
           ) : null}
-          <TouchableOpacity
-            testID="ezkey.e2e.pendingAuth.tryAgain"
-            onPress={loadPendingAttempt}
-            style={styles.secondaryButton}>
-            <Text style={styles.secondaryLabel}>{t('pendingAuth.tryAgain')}</Text>
-          </TouchableOpacity>
+          {globalErrorRetryable ? (
+            <TouchableOpacity
+              testID="ezkey.e2e.pendingAuth.tryAgain"
+              onPress={loadPendingAttempt}
+              style={styles.secondaryButton}>
+              <Text style={styles.secondaryLabel}>{t('pendingAuth.tryAgain')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              testID="ezkey.e2e.pendingAuth.inactiveBack"
+              onPress={handleInactiveBack}
+              style={styles.secondaryButton}>
+              <Text style={styles.secondaryLabel}>{t('common.back')}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : showEmptyState ? (
         <View style={styles.emptyState}>
