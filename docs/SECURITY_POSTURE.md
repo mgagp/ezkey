@@ -109,6 +109,16 @@ accepts the host-boundary limit described above.
 SOC 2 remains a **reference vocabulary** for operational discipline, not a certification target.
 See [`../product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md).
 
+## Session and cookies
+
+- **2026-10-14:** Stateless APIs — no servlet session cookie emitted, 401 included
+  ([#816](https://github.com/mgagp/ezkey/issues/816)). Reason: `ExceptionTranslationFilter`'s
+  `HttpSessionRequestCache` was creating `EZKEY_*_API_SESSION` cookies on anonymous 401s with
+  only `HttpOnly` (no `Secure` / `SameSite`). Auth uses Bearer, API key, or Mode B
+  `EZKEY_ADMIN_SESSION`; servlet sessions are unused. Fix: `SessionCreationPolicy.STATELESS` +
+  `NullRequestCache` on Admin/Integration/Auth/Crypto APIs, plus defense-in-depth
+  `Secure`/`SameSite=Strict` on servlet cookie properties when a session is ever created.
+
 ## Traceability
 
 - Internal analysis & decision compass:

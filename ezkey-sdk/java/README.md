@@ -93,6 +93,12 @@ Use the reactor artifact (same version as the parent), not a `system` JAR:
 </dependency>
 ```
 
+## Security notes
+
+- **2026-10-14 (#755):** `EzkeyConfig.toString()` masks `secretKey` as `[PROTECTED]`. Reason: the
+  default record `toString()` printed the integration secret into adopter startup logs. Prefer
+  not logging config objects; if you do, rely on the masked form.
+
 ## License
 
 MIT License — see `LICENSE` in the project root.

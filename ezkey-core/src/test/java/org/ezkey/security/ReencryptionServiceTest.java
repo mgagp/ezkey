@@ -20,10 +20,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -35,6 +38,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.ezkey.audit.domain.entity.AuditLog;
+import org.ezkey.audit.integrity.ScheduledJobKey;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
@@ -1063,5 +1068,65 @@ class ReencryptionServiceTest {
             .orElseThrow()
             .getRecordsTotal()
             .intValue());
+  }
+
+  @Test
+  @DisplayName("processReencryptionBatches: recordFailure uses simpleName only (#785)")
+  void processReencryptionBatches_exception_recordFailureUsesSimpleName() {
+    when(batchRepository.findBatchesEligibleForResume())
+        .thenThrow(
+            new IllegalStateException("SELECT * FROM secrets WHERE token='leak-must-not-persist'"));
+
+    service.processReencryptionBatches();
+
+    verify(jobLastRunService)
+        .recordFailure(
+            eq(ScheduledJobKey.REENCRYPTION),
+            eq("Batch re-encryption cycle"),
+            eq("IllegalStateException"));
+    verify(jobLastRunService, never())
+        .recordFailure(any(), any(), argThat(msg -> msg != null && msg.contains("SELECT")));
+    ArgumentCaptor<AuditLog> auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService).log(auditCaptor.capture());
+    assertEquals("IllegalStateException", auditCaptor.getValue().getErrorMessage());
+    assertTrue(auditCaptor.getValue().getEventDetails().contains("IllegalStateException"));
+    assertFalse(auditCaptor.getValue().getEventDetails().contains("SELECT"));
+  }
+
+  @Test
+  @DisplayName("processReencryptionBatches: markBatchFailed persists simpleName only (#785)")
+  void processReencryptionBatches_batchException_markBatchFailedUsesSimpleName() {
+    ReencryptionBatchProcessingService mockBatchProcessing =
+        mock(ReencryptionBatchProcessingService.class);
+    parallelRunner =
+        new ReencryptionBatchParallelRunner(
+            reencryptionBatchExecutor, mockBatchProcessing, properties);
+    service =
+        new ReencryptionService(
+            encryptionOperations,
+            keyRepository,
+            batchRepository,
+            properties,
+            auditLogService,
+            batchCreationService,
+            mockBatchProcessing,
+            parallelRunner,
+            jobLastRunService);
+
+    // Mutable lists required: resume list is addAll'd; enabledKeys is removeIf'd.
+    when(batchRepository.findBatchesEligibleForResume()).thenReturn(new java.util.ArrayList<>());
+    when(batchRepository.findByStatus(BatchStatus.PENDING)).thenReturn(List.of(batch));
+    when(keyRepository.findEnabledKeys()).thenReturn(new java.util.ArrayList<>());
+    doThrow(
+            new IllegalStateException(
+                "UPDATE ezkey_encryption_key SET material='leak-must-not-persist'"))
+        .when(mockBatchProcessing)
+        .processBatchInternal(any(ReencryptionBatch.class));
+
+    service.processReencryptionBatches();
+
+    verify(mockBatchProcessing).markBatchFailed(eq(batch), eq("IllegalStateException"));
+    verify(mockBatchProcessing, never())
+        .markBatchFailed(any(), argThat(msg -> msg != null && msg.contains("UPDATE")));
   }
 }

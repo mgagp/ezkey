@@ -8,9 +8,11 @@
 
 package org.ezkey.admin.security;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -29,11 +31,21 @@ class AdminSessionCookieServiceTest {
     service.addSessionCookie(response, "session-token", OffsetDateTime.now().plusHours(2));
     service.addCsrfCookie(response, "csrf-token", OffsetDateTime.now().plusHours(2));
 
-    String setCookie = String.join("\n", response.getHeaders(HttpHeaders.SET_COOKIE));
+    List<String> setCookies = response.getHeaders(HttpHeaders.SET_COOKIE);
+    String setCookie = String.join("\n", setCookies);
     assertTrue(setCookie.contains("EZKEY_ADMIN_SESSION=session-token"));
     assertTrue(setCookie.contains("EZKEY_ADMIN_CSRF=csrf-token"));
     assertTrue(setCookie.contains("SameSite=Strict"));
     assertTrue(setCookie.contains("HttpOnly"));
     assertTrue(setCookie.toLowerCase().contains("secure"));
+    // #816: cookie-mode login must not emit the servlet session cookie name.
+    assertFalse(setCookie.contains("EZKEY_ADMIN_API_SESSION"));
+    assertTrue(
+        setCookies.stream()
+            .anyMatch(
+                c ->
+                    c.startsWith("EZKEY_ADMIN_SESSION=")
+                        && c.contains("Secure")
+                        && c.contains("SameSite=Strict")));
   }
 }

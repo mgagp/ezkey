@@ -764,8 +764,13 @@ public class AuditLogController {
       description =
           "Marks all chain checkpoints in the specified period as ARCHIVE_SEAL prior to dropping "
               + "the corresponding DB partition. Runs a mandatory pre-flight integrity check -- "
-              + "rejected if any violation is detected. Returns the seal HMAC to include in the "
-              + "Git archive manifest. Global Admin only.\n\n"
+              + "rejected if any violation is detected. Pre-flight verify is a synchronous HTTP "
+              + "path: it runs under the Integrity heavy-crypto gate (`busyHolder=SEAL_ARCHIVE`) "
+              + "and `ezkey.audit.integrity.max-sync-window-days` (default 8 — Cloudflare 100 s "
+              + "timeout floor; #781). Longer windows must use async Integrity jobs under "
+              + "`max-window-days`. Lifecycle scheduler auto-seal does not call verifyChain. "
+              + "Returns the seal HMAC to include in the Git archive manifest. Global "
+              + "Admin only.\n\n"
               + "**Period identification -- two alternative modes:**\n"
               + "- **Timestamp mode**: provide `periodStart` (inclusive) and `periodEnd` "
               + "(exclusive) as ISO-8601 timestamps.\n"
@@ -780,12 +785,15 @@ public class AuditLogController {
         @ApiResponse(
             responseCode = "400",
             description =
-                "Invalid request: conflicting modes, missing required fields, or no checkpoints "
-                    + "found for the given ID range",
+                "Invalid request: conflicting modes, missing required fields, no checkpoints "
+                    + "found for the given ID range, or period exceeds max-sync-window-days "
+                    + "(type integrity-window-over-cap, capKind=SYNC)",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
-            description = "Chain integrity violation detected -- resolve before sealing",
+            description =
+                "Chain integrity violation, lifecycle conflict, or heavy-crypto gate busy "
+                    + "(Retry-After; type integrity-async-job-busy)",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "401",

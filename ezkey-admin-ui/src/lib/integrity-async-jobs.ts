@@ -30,7 +30,11 @@ export type IntegrityChainStatus =
   | 'NOT_VERIFIED';
 
 /** Who holds the heavy-crypto path (process-local or ShedLock-derived). */
-export type IntegrityBusyHolder = 'NIGHTLY' | 'REPORT_GET' | 'OPERATOR_JOB';
+export type IntegrityBusyHolder =
+  | 'NIGHTLY'
+  | 'REPORT_GET'
+  | 'SEAL_ARCHIVE'
+  | 'OPERATOR_JOB';
 
 export interface IntegrityAsyncJobResponse {
   jobId: string;

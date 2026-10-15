@@ -17,16 +17,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.savedrequest.NullRequestCache;
 
 /**
  * Minimalist Spring Security configuration for the Integration API.
  *
  * <p>The Integration API supports only one authentication method: API key via HTTP Basic Auth
  * ({@link ApiKeyAuthenticationFilter}). There is no admin token filter, no form login, and no CSRF
- * protection (stateless REST API).
+ * protection (stateless REST API). Servlet sessions are {@link SessionCreationPolicy#STATELESS}
+ * with a {@link NullRequestCache} so anonymous 401s never emit a servlet session cookie (#816).
  *
  * <p><b>Filter chain:</b> {@code ApiKeyAuthenticationFilter} → default Spring Security filters.
  *
@@ -71,6 +74,9 @@ public class IntegrationApiSecurityConfig {
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http.csrf(csrf -> csrf.disable())
+        .sessionManagement(
+            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .requestCache(cache -> cache.requestCache(new NullRequestCache()))
         .authorizeHttpRequests(
             authz ->
                 authz

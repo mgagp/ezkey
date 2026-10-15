@@ -34,11 +34,13 @@ import org.springframework.validation.annotation.Validated;
  * <ul>
  *   <li>{@code max-window-days} (default 92) — async VERIFY starts and async {@code
  *       RUN_VALIDATION}.
- *   <li>{@code max-sync-window-days} (default 8) — all synchronous paths: report GETs ({@code
- *       integrity-check}, {@code chain-integrity}) and operator {@code POST
- *       …/integrity-validation/run}. Preserves the #743 Instant-span floor so a sync call cannot
- *       outlive Cloudflare Free’s non-raisable 100 s origin timeout (524) while holding the busy
- *       gate.
+ *   <li>{@code max-sync-window-days} (default 8) — all synchronous HTTP paths that hold the heavy
+ *       crypto gate: report GETs ({@code integrity-check}, {@code chain-integrity}), operator
+ *       {@code POST …/integrity-validation/run}, and seal-archive pre-verification ({@code POST
+ *       …/lifecycle/seal-archive}, #781). Preserves the #743 Instant-span floor so a sync call
+ *       cannot outlive Cloudflare Free’s non-raisable 100 s origin timeout (524) while holding the
+ *       busy gate. The lifecycle scheduler auto-seal path does not call {@code verifyChain} and is
+ *       not gated by either cap.
  * </ul>
  *
  * <p><b>Effective duration:</b> {@code days × 24 h + 1 h} — calendar days with DST fall-back
