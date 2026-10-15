@@ -325,6 +325,7 @@
         "running": "Vérification en cours…",
         "nightlyRunning": "Vérification nocturne en cours…",
         "didNotComplete": "Vérification non aboutie",
+        "nothingToVerify": "Rien à vérifier",
         "idle": "Aucun verdict pour l'instant"
       },
       "stat": {
@@ -583,6 +584,7 @@
     "checkpointTypeRegular": "Régulier",
     "checkpointTypeSealed": "Scellé",
     "checkpointTypeGap": "Lacune",
+    "checkpointTypeGapDeclaration": "Lacune déclarée",
     "checkpointTypeConciliation": "Conciliation",
     "lifecycleStateActive": "Actif",
     "lifecycleStateSealed": "Scellé",

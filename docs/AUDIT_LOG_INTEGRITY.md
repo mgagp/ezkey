@@ -346,10 +346,16 @@ The Integrity page (`/integrity`, Global Admin only) drives gap declaration from
    (aligned with the nightly window). Use **Re-verify** / **Verify chain** to
    re-run after changing the range (explicit click never silently reuses a stale
    result). The Vérifier date picker aligns to the verdict’s scope; if the filter
-   differs, the micro-dashboard says so.
+   differs, the micro-dashboard says so. Deep-links that pass exclusive
+   `createdAfter` / `createdBefore` Instant bounds render inclusive end dates in
+   the effective display timezone (not the browser local zone — #693). After a
+   reload with a finished job, the picker matches that job’s range (#696).
 2. Review the **Undeclared gaps for consultation** list. For each row:
    - **Locate in timeline** focuses the checkpoint timeline on the gap window for context (toggle off with **Clear focus**).
    - **Declare** opens a dialog prefilled with the detected period and duration; the operator only enters a justification.
+   - Filtering the timeline by checkpoint type (e.g. Gap declaration) does **not**
+     invent orange undeclared-gap rows between the filtered neighbors (#695) —
+     those holes are usually filled by REGULAR checkpoints the filter hid.
 3. On success the dialog reports the new `GAP_DECLARATION` checkpoint and the chain check is automatically re-run, removing the row from the list.
 
 When no undeclared gaps remain for the selected range the page shows an explicit "no undeclared gaps detected" confirmation rather than an empty list, so operators can distinguish "nothing to do" from "not yet checked".

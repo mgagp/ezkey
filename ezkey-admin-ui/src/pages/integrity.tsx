@@ -37,6 +37,8 @@ import {
   decideIntegrityOpenAction,
   defaultAutoVerifyInstantRange,
   INTEGRITY_DEFAULT_MAX_WINDOW_DAYS,
+  installIntegrityJobAfterStart,
+  integrityFinishedJobScopeToDisplayRange,
   integrityReverifyDisabled,
   integrityVerifyActionDisabled,
   integrityWindowDaysToHours,
@@ -211,20 +213,6 @@ function ReportBadge({
   return null;
 }
 
-function toDateInputValue(iso?: string | null): string {
-  if (!iso) {
-    return '';
-  }
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) {
-    return '';
-  }
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
 // ── Checkpoint type badge and timeline table ───────────────────────────────────
 
 function LateWrittenBadge() {
@@ -257,7 +245,7 @@ function CheckpointTypeBadge({ type }: { type?: string }) {
   if (type === 'GAP_DECLARATION') {
     return (
       <Tooltip content={t('integrity.helpCheckpointGapDeclaration')}>
-        <Badge variant="warning">{t('integrity.checkpointTypeGap')}</Badge>
+        <Badge variant="warning">{t('integrity.checkpointTypeGapDeclaration')}</Badge>
       </Tooltip>
     );
   }
@@ -621,39 +609,48 @@ function IntegrityPanel({
     },
   });
 
-  // Align Vérifier picker to the glance job scope (#696).
+  // Align Vérifier picker to the glance job scope (#696). Deep-link ranges (#693)
+  // win for the picker so a later job hydration cannot overwrite them.
   useEffect(() => {
-    if (
-      asyncJob?.scopeFrom == null
-      || asyncJob.scopeTo == null
-      || asyncJob.status === 'RUNNING'
-    ) {
+    const display = integrityFinishedJobScopeToDisplayRange(asyncJob, effectiveTimeZoneId);
+    if (display == null) {
       return;
     }
-    if (
-      asyncJob.status !== 'SUCCEEDED'
-      && !isIntegrityAsyncEscapeStatus(asyncJob.status)
-    ) {
-      return;
-    }
-    const display = integrityExclusiveApiParamsToDisplayRange(
-      asyncJob.scopeFrom,
-      asyncJob.scopeTo,
-      effectiveTimeZoneId,
-    );
     setVerdictDisplayRange(display);
+    if (initialCheckRange?.createdAfter && initialCheckRange.createdBefore) {
+      return;
+    }
     setCheckRange(display);
-  }, [asyncJob?.jobId, asyncJob?.status, asyncJob?.scopeFrom, asyncJob?.scopeTo, effectiveTimeZoneId]);
+  }, [
+    asyncJob,
+    asyncJob?.jobId,
+    asyncJob?.status,
+    asyncJob?.scopeFrom,
+    asyncJob?.scopeTo,
+    effectiveTimeZoneId,
+    initialCheckRange?.createdAfter,
+    initialCheckRange?.createdBefore,
+  ]);
 
+  // Deep-link / reconcile Instant bounds → inclusive display dates in the
+  // effective timezone (#693). Never use browser-local Instant→date conversion
+  // for exclusive createdBefore (that shows +1 day).
   useEffect(() => {
     if (!initialCheckRange?.createdAfter || !initialCheckRange.createdBefore) {
       return;
     }
-    setCheckRange({
-      from: toDateInputValue(initialCheckRange.createdAfter),
-      to: toDateInputValue(initialCheckRange.createdBefore),
-    });
-  }, [initialCheckRange?.createdAfter, initialCheckRange?.createdBefore]);
+    setCheckRange(
+      integrityExclusiveApiParamsToDisplayRange(
+        initialCheckRange.createdAfter,
+        initialCheckRange.createdBefore,
+        effectiveTimeZoneId,
+      ),
+    );
+  }, [
+    initialCheckRange?.createdAfter,
+    initialCheckRange?.createdBefore,
+    effectiveTimeZoneId,
+  ]);
 
   // ── Dialogs ──
   const [sealOpen, setSealOpen] = useState(false);
@@ -878,8 +875,10 @@ function IntegrityPanel({
   });
 
   /**
-   * Display rows: orange undeclared-gap detection on the full underlying page sequence,
-   * then optional grey quiet-REGULAR collapse (never invents gaps from skipped empties).
+   * Display rows: orange undeclared-gap detection on the full unfiltered page
+   * sequence, then optional grey quiet-REGULAR collapse. When a type filter is
+   * active, skip inventing gaps between filtered neighbors (#695) — REGULARs
+   * that fill the span are hidden by the API filter, not real undeclared holes.
    */
   const checkpointTimelineRows = useMemo(
     () =>
@@ -888,8 +887,15 @@ function IntegrityPanel({
         checkpointPagination.sort,
         compressQuietWindows,
         expandedQuietIds,
+        !checkpointTypeFilter,
       ),
-    [checkpointData, checkpointPagination.sort, compressQuietWindows, expandedQuietIds],
+    [
+      checkpointData,
+      checkpointPagination.sort,
+      compressQuietWindows,
+      expandedQuietIds,
+      checkpointTypeFilter,
+    ],
   );
 
   /** Format Date to YYYY-MM-DD for checkpoint range filter. */
@@ -998,7 +1004,7 @@ function IntegrityPanel({
       setFocusedGap(null);
     }
     try {
-      await startIntegrityAsyncJob({
+      const accepted = await startIntegrityAsyncJob({
         type: 'VERIFY_CHAIN_RANGE',
         from: createdAfter,
         to: createdBefore,
@@ -1009,7 +1015,18 @@ function IntegrityPanel({
         setCheckRange(displayRange);
         setVerdictDisplayRange(displayRange);
       }
-      handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+      // #788 F1: provisional RUNNING keeps the strip up if the first /current fails.
+      await installIntegrityJobAfterStart(
+        accepted,
+        {
+          type: 'VERIFY_CHAIN_RANGE',
+          from: createdAfter,
+          to: createdBefore,
+          trigger,
+        },
+        getCurrentIntegrityAsyncJob,
+        handleAsyncJobChange,
+      );
     } catch (e) {
       const resume = integrityAsyncBusyResumeLine(e);
       if (resume) {
@@ -1017,7 +1034,11 @@ function IntegrityPanel({
         if (!options?.quietBusy) {
           toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
         }
-        handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        try {
+          handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        } catch {
+          // Keep prior glance; RUNNING poll (if any) will surface inline errors.
+        }
       } else if (isIntegrityWindowOverCapError(e)) {
         // Defense in depth — button should already be disabled for known over-cap.
         return;
@@ -1045,18 +1066,32 @@ function IntegrityPanel({
     setIntegrityReport(null);
     setIntegrityReportRange(null);
     try {
-      await startIntegrityAsyncJob({
+      const accepted = await startIntegrityAsyncJob({
         type: 'VERIFY_ENTRY_HMAC_RANGE',
         from: createdAfter,
         to: createdBefore,
       });
       setIntegrityReportRange({ from: checkRange.from, to: checkRange.to });
-      handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+      await installIntegrityJobAfterStart(
+        accepted,
+        {
+          type: 'VERIFY_ENTRY_HMAC_RANGE',
+          from: createdAfter,
+          to: createdBefore,
+          trigger: 'MANUAL',
+        },
+        getCurrentIntegrityAsyncJob,
+        handleAsyncJobChange,
+      );
     } catch (e) {
       const resume = integrityAsyncBusyResumeLine(e);
       if (resume) {
         toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
-        handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        try {
+          handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        } catch {
+          // Keep prior glance.
+        }
       } else if (isIntegrityWindowOverCapError(e)) {
         // Defense in depth — button should already be disabled for known over-cap.
         return;
@@ -1083,18 +1118,32 @@ function IntegrityPanel({
     setValidationRunLoading(true);
     setValidationRunResult(null);
     try {
-      await startIntegrityAsyncJob({
+      const accepted = await startIntegrityAsyncJob({
         type: 'RUN_VALIDATION',
         from: createdAfter,
         to: createdBefore,
         raiseAlert: true,
       });
-      handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+      await installIntegrityJobAfterStart(
+        accepted,
+        {
+          type: 'RUN_VALIDATION',
+          from: createdAfter,
+          to: createdBefore,
+          trigger: 'MANUAL',
+        },
+        getCurrentIntegrityAsyncJob,
+        handleAsyncJobChange,
+      );
     } catch (e) {
       const resume = integrityAsyncBusyResumeLine(e);
       if (resume) {
         toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
-        handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        try {
+          handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        } catch {
+          // Keep prior glance.
+        }
       } else if (isIntegrityWindowOverCapError(e)) {
         return;
       } else {

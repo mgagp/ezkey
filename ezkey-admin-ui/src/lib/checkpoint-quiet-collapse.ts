@@ -151,14 +151,17 @@ function toYYYYMMDD(d: Date): string {
 
 /**
  * Inserts orange undeclared-gap rows between consecutive checkpoints when sorted by
- * windowStart (ASC or DESC). Gap detection uses the full sequence — never the collapsed view.
+ * windowStart (ASC or DESC). Gap detection uses the full chronological sequence —
+ * never the collapsed view, and never a type-filtered subset (#695).
  *
  * @param checkpoints page content in API sort order
  * @param sort current sort string (e.g. windowStart,DESC)
+ * @param includeUndeclaredGaps when false, emit checkpoint rows only (type filter on)
  */
 export function buildCheckpointRowsWithGaps(
   checkpoints: AuditChainCheckpointResponseDto[],
   sort: string,
+  includeUndeclaredGaps: boolean = true,
 ): Array<CheckpointTimelineCheckpointRow | CheckpointTimelineGapRow> {
   const sortField = sort.split(',')[0] ?? '';
   const sortDir = (sort.split(',')[1] ?? 'ASC').toUpperCase();
@@ -172,7 +175,7 @@ export function buildCheckpointRowsWithGaps(
       row: curr,
       lateWritten: isLateWrittenCheckpoint(curr.windowEnd, curr.createdAt),
     });
-    if (!isChronologicalSort) {
+    if (!includeUndeclaredGaps || !isChronologicalSort) {
       continue;
     }
     const next = checkpoints[i + 1];
@@ -305,19 +308,26 @@ export function collapseQuietRegularWindows(
 }
 
 /**
- * Builds display rows: gap detection on full sequence, then optional quiet collapse.
+ * Builds display rows: gap detection on the full unfiltered sequence (when
+ * requested), then optional quiet collapse.
  *
  * @param checkpoints page content
  * @param sort current sort
  * @param compress quiet collapse enabled
  * @param expandedSummaryIds expanded grey summaries
+ * @param includeUndeclaredGaps false when a checkpoint-type filter is active (#695)
  */
 export function buildCheckpointTimelineDisplayRows(
   checkpoints: AuditChainCheckpointResponseDto[],
   sort: string,
   compress: boolean,
   expandedSummaryIds: ReadonlySet<string> = new Set(),
+  includeUndeclaredGaps: boolean = true,
 ): CheckpointTimelineDisplayRow[] {
-  const withGaps = buildCheckpointRowsWithGaps(checkpoints, sort);
+  const withGaps = buildCheckpointRowsWithGaps(
+    checkpoints,
+    sort,
+    includeUndeclaredGaps,
+  );
   return collapseQuietRegularWindows(withGaps, compress, expandedSummaryIds);
 }

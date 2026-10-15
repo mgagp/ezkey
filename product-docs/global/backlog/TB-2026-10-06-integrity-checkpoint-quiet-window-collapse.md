@@ -184,6 +184,16 @@ Wave C).
 - Walk Gate passed (Julie before Isabelle); FR+EN present.
 - Matrix and issue `#673` point at this TB as canon.
 
+## Follow-up decision (#695 — Lot B)
+
+- **Type filter must not invent orange gaps.** When the checkpoint type filter
+  (`cpType`) is active, the Admin UI skips client-side undeclared-gap rows between
+  filtered neighbors. Reason: the API page is already type-filtered, so holes
+  between e.g. consecutive `GAP_DECLARATION` rows are usually filled by REGULARs
+  the filter hid — not real undeclared gaps (Isabelle #681 re-test). Real orange
+  gaps still appear on the unfiltered timeline. No backend change. Refs #695,
+  #676 / #681.
+
 ## Links
 
 - Visibility: [GitHub issue #673](https://github.com/mgagp/ezkey/issues/673)
