@@ -17,7 +17,6 @@ import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
 import org.ezkey.exception.auth.AuthAttemptRespondBeforeReadException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
-import org.ezkey.exception.auth.IntegrationSigningUnavailableException;
 import org.ezkey.exception.auth.EnrollmentBindingFailedException;
 import org.ezkey.exception.auth.EnrollmentInstanceInfoFailedException;
 import org.ezkey.exception.auth.EnrollmentIntegrationNotFoundException;
@@ -25,6 +24,7 @@ import org.ezkey.exception.auth.EnrollmentInvitationExpiredException;
 import org.ezkey.exception.auth.EnrollmentNotAvailableAfterLockException;
 import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
 import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
+import org.ezkey.exception.auth.IntegrationSigningUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
@@ -211,8 +211,8 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
 
   /**
    * Integration private key missing when a signed respond body is required — never unsigned 200
-   * (#844). Fail-closed, same posture as encryption {@code required=true} refusing to start
-   * without a usable keyset.
+   * (#844). Fail-closed, same posture as encryption {@code required=true} refusing to start without
+   * a usable keyset.
    */
   @ExceptionHandler(IntegrationSigningUnavailableException.class)
   public ResponseEntity<ProblemDetail> handleIntegrationSigningUnavailable(

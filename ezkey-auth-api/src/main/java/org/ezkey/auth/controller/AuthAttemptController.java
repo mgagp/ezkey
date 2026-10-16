@@ -310,7 +310,8 @@ public class AuthAttemptController {
                             implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
-            description = "Authentication attempt state conflict (terminal / cancelled / superseded)",
+            description =
+                "Authentication attempt state conflict (terminal / cancelled / superseded)",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =

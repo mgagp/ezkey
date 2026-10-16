@@ -51,8 +51,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>Signed outcomes (#844):</b> Only decisions and final statuses leave this service as HTTP
  * 200 bodies, and those bodies are always integration-signed. Terminal status, PENDING
- * (respond-before-read), not-found, and missing integration private key escape as problem+json
- * (409 / 400 / 404 / 503) — never as an unsigned 200.
+ * (respond-before-read), not-found, and missing integration private key escape as problem+json (409
+ * / 400 / 404 / 503) — never as an unsigned 200.
  *
  * <p><b>Transaction Management:</b> This service uses Spring's declarative transaction management
  * to ensure data consistency during the authentication response processing.
@@ -393,9 +393,9 @@ public class AuthAttemptRespondService {
   }
 
   /**
-   * Signs {@code proofToken|authAttemptId|result|message} with the integration private key.
-   * Refuses to emit an unsigned body when the key is missing or blank (#844) — same fail-closed
-   * posture as encryption {@code required=true} refusing to start without a usable keyset.
+   * Signs {@code proofToken|authAttemptId|result|message} with the integration private key. Refuses
+   * to emit an unsigned body when the key is missing or blank (#844) — same fail-closed posture as
+   * encryption {@code required=true} refusing to start without a usable keyset.
    *
    * @param response respond body being built
    * @param enrollment enrollment holding the integration private key
