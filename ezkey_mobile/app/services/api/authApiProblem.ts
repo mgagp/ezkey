@@ -17,23 +17,15 @@ const EZKEY_PROBLEM_TYPE_PREFIX = `${EZKEY_PROBLEM_TYPE_BASE}/`;
 /**
  * Matches {@code AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_STATE_CONFLICT}
  * ({@code https://ezkey.io/problems/auth/auth-attempt-state-conflict}).
+ *
+ * On {@code /respond}, not-found / PENDING / terminal all emit this type (#844 Marc m1).
  */
 export const AUTH_ATTEMPT_STATE_CONFLICT_TYPE = `${EZKEY_PROBLEM_TYPE_BASE}/auth/auth-attempt-state-conflict`;
-
-/**
- * Matches {@code AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_RESPOND_BEFORE_READ} (#844).
- */
-export const AUTH_ATTEMPT_RESPOND_BEFORE_READ_TYPE = `${EZKEY_PROBLEM_TYPE_BASE}/auth/auth-attempt-respond-before-read`;
 
 /**
  * Matches {@code AuthApiProblemCatalog.TYPE_INTEGRATION_SIGNING_UNAVAILABLE} (#844).
  */
 export const INTEGRATION_SIGNING_UNAVAILABLE_TYPE = `${EZKEY_PROBLEM_TYPE_BASE}/auth/integration-signing-unavailable`;
-
-/**
- * Matches {@code AuthApiProblemCatalog.TYPE_RESOURCE_NOT_FOUND}.
- */
-export const RESOURCE_NOT_FOUND_TYPE = `${EZKEY_PROBLEM_TYPE_BASE}/auth/resource-not-found`;
 
 /**
  * Shape of RFC 9457 Problem Details from the Auth API (extension properties allowed).
@@ -50,13 +42,11 @@ export type AuthApiProblemDetail = {
 
 /**
  * Local catalog keys for Auth API problem types (EN/FR via i18n). Never display server
- * {@code detail} (#844).
+ * {@code detail} (#844). Respond not-found / PENDING / terminal share {@link stateConflict}.
  */
 export type AuthApiProblemCatalogKey =
   | 'stateConflict'
-  | 'respondBeforeRead'
   | 'integrationSigningUnavailable'
-  | 'resourceNotFound'
   | 'generic';
 
 /**
@@ -75,9 +65,7 @@ export type AuthApiUserFacingOutcome = {
  */
 export type AuthApiProblemCatalogMessages = {
   stateConflict: string;
-  respondBeforeRead: string;
   integrationSigningUnavailable: string;
-  resourceNotFound: string;
   /** Generic fallback for unknown Ezkey types and non-Ezkey bodies. */
   fallback: string;
 };
@@ -123,12 +111,8 @@ export function catalogKeyForAuthApiProblemType(
   switch (trimmed) {
     case AUTH_ATTEMPT_STATE_CONFLICT_TYPE:
       return 'stateConflict';
-    case AUTH_ATTEMPT_RESPOND_BEFORE_READ_TYPE:
-      return 'respondBeforeRead';
     case INTEGRATION_SIGNING_UNAVAILABLE_TYPE:
       return 'integrationSigningUnavailable';
-    case RESOURCE_NOT_FOUND_TYPE:
-      return 'resourceNotFound';
     default:
       return 'generic';
   }
@@ -164,9 +148,7 @@ function normalizeCatalog(
   return {
     fallback,
     stateConflict,
-    respondBeforeRead: fallback,
     integrationSigningUnavailable: fallback,
-    resourceNotFound: fallback,
   };
 }
 
@@ -174,8 +156,9 @@ function normalizeCatalog(
  * Resolves user-visible Auth API error text and retryability.
  *
  * {@link AUTH_ATTEMPT_STATE_CONFLICT_TYPE} maps to a neutral, non-retryable outcome (decision
- * already recorded or attempt no longer active) — callers must show Back only (#833 Patrick).
- * A 409 of another type stays retryable (#844). Never surfaces origin {@code detail}.
+ * already recorded, attempt no longer active, not found, or still PENDING on respond) — callers
+ * must show Back only (#833 Patrick, #844 Marc m1). A 409 of another type stays retryable (#844).
+ * Never surfaces origin {@code detail}.
  *
  * Pass either a full {@link AuthApiProblemCatalogMessages} or the legacy
  * {@code (fallback, stateConflictMessage)} pair (other types then use {@code fallback}).
@@ -200,12 +183,8 @@ export function resolveAuthApiUserFacingOutcome(
   }
   const key = catalogKeyForAuthApiProblemType(type);
   switch (key) {
-    case 'respondBeforeRead':
-      return {message: catalog.respondBeforeRead, retryable: true};
     case 'integrationSigningUnavailable':
       return {message: catalog.integrationSigningUnavailable, retryable: true};
-    case 'resourceNotFound':
-      return {message: catalog.resourceNotFound, retryable: true};
     case 'stateConflict':
       return {message: catalog.stateConflict, retryable: false};
     default:

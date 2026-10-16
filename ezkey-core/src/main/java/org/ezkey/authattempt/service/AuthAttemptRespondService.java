@@ -20,9 +20,7 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
-import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
-import org.ezkey.exception.auth.AuthAttemptRespondBeforeReadException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.IntegrationSigningUnavailableException;
 import org.ezkey.signature.SignatureService;
@@ -50,9 +48,10 @@ import org.springframework.transaction.annotation.Transactional;
  * </ul>
  *
  * <p><b>Signed outcomes (#844):</b> Only decisions and final statuses leave this service as HTTP
- * 200 bodies, and those bodies are always integration-signed. Terminal status, PENDING
- * (respond-before-read), not-found, and missing integration private key escape as problem+json (409
- * / 400 / 404 / 503) — never as an unsigned 200.
+ * 200 bodies, and those bodies are always integration-signed. Not-found, PENDING, and terminal
+ * statuses all map to HTTP <b>409</b> {@code auth-attempt-state-conflict} for clients (distinction
+ * stays in server logs only — Marc m1). Missing integration private key → HTTP <b>503</b>. Never an
+ * unsigned 200.
  *
  * <p><b>Transaction Management:</b> This service uses Spring's declarative transaction management
  * to ensure data consistency during the authentication response processing.
@@ -142,8 +141,9 @@ public class AuthAttemptRespondService {
       return buildResponse(request, authAttempt, enrollment);
     } catch (AuthAttemptRequestFailedException ignored) {
       // Legitimate domain FAILED only (invalid device signature, challenge mismatch, missing
-      // device key after the attempt was loaded). State conflict, respond-before-read, not-found,
-      // and missing integration signing key propagate as problem+json — never unsigned 200 (#844).
+      // device key after the attempt was loaded). State conflict (incl. not-found / PENDING /
+      // terminal) and missing integration signing key propagate as problem+json — never unsigned
+      // 200 (#844).
       return buildFailedResponse(request, authAttempt);
     }
   }
@@ -161,18 +161,31 @@ public class AuthAttemptRespondService {
     Optional<AuthAttempt> authAttemptOpt =
         authAttemptRepository.findById(request.getAuthAttemptId());
     if (authAttemptOpt.isEmpty()) {
-      throw new ResourceNotFoundException("AuthAttempt", request.getAuthAttemptId());
+      // Client sees unified 409; log keeps not-found distinct (#844 Marc m1).
+      logger.warn(
+          "Respond refused: auth attempt {} not found (client → 409 state-conflict)",
+          request.getAuthAttemptId());
+      throw new AuthAttemptStateConflictException(
+          "Cannot respond to authentication attempt: not found");
     }
     AuthAttempt authAttempt = authAttemptOpt.get();
 
     AuthAttemptStatus status = authAttempt.getAuthAttemptStatus();
     if (status == AuthAttemptStatus.PENDING) {
-      // Protocol violation: device must claim via pending before respond (#844).
-      throw new AuthAttemptRespondBeforeReadException(
-          "Auth attempt still PENDING; device must claim via pending first");
+      // Protocol violation — client still gets unified 409; log keeps PENDING distinct (#844 m1).
+      logger.warn(
+          "Respond refused: auth attempt {} still PENDING (respond before claim;"
+              + " client → 409 state-conflict)",
+          authAttempt.getAuthAttemptId());
+      throw new AuthAttemptStateConflictException(
+          "Cannot respond to authentication attempt: status is PENDING");
     }
     if (status != AuthAttemptStatus.READ) {
-      // Terminal: ACCEPTED, REJECTED, EXPIRED, INVALID → conflict (#844).
+      // Terminal: ACCEPTED, REJECTED, EXPIRED, INVALID → 409 (#844).
+      logger.warn(
+          "Respond refused: auth attempt {} status {} (client → 409 state-conflict)",
+          authAttempt.getAuthAttemptId(),
+          status);
       throw new AuthAttemptStateConflictException(
           "Cannot respond to authentication attempt: status is " + status);
     }
@@ -207,11 +220,18 @@ public class AuthAttemptRespondService {
    * @return the validated enrollment
    */
   private Enrollment validateEnrollment(AuthAttempt authAttempt) {
-    Enrollment enrollment =
-        enrollmentRepository
-            .findById(authAttempt.getEnrollmentId())
-            .orElseThrow(
-                () -> new ResourceNotFoundException("Enrollment", authAttempt.getEnrollmentId()));
+    Optional<Enrollment> enrollmentOpt =
+        enrollmentRepository.findById(authAttempt.getEnrollmentId());
+    if (enrollmentOpt.isEmpty()) {
+      logger.warn(
+          "Respond refused: enrollment {} not found for auth attempt {} (client → 409"
+              + " state-conflict)",
+          authAttempt.getEnrollmentId(),
+          authAttempt.getAuthAttemptId());
+      throw new AuthAttemptStateConflictException(
+          "Cannot respond to authentication attempt: enrollment not found");
+    }
+    Enrollment enrollment = enrollmentOpt.get();
 
     // Validate device public key
     String devicePublicKey = enrollment.getDevicePublicKey();
@@ -388,12 +408,18 @@ public class AuthAttemptRespondService {
         authAttempt.getAuthAttemptProofToken() != null
             ? authAttempt.getAuthAttemptProofToken()
             : "";
-    Enrollment enrollment =
-        enrollmentRepository
-            .findById(authAttempt.getEnrollmentId())
-            .orElseThrow(
-                () -> new ResourceNotFoundException("Enrollment", authAttempt.getEnrollmentId()));
-    attachRespondResultSignature(response, enrollment, proofToken);
+    Optional<Enrollment> enrollmentOpt =
+        enrollmentRepository.findById(authAttempt.getEnrollmentId());
+    if (enrollmentOpt.isEmpty()) {
+      logger.warn(
+          "Respond FAILED path: enrollment {} missing for auth attempt {} (client → 409"
+              + " state-conflict)",
+          authAttempt.getEnrollmentId(),
+          authAttempt.getAuthAttemptId());
+      throw new AuthAttemptStateConflictException(
+          "Cannot respond to authentication attempt: enrollment not found");
+    }
+    attachRespondResultSignature(response, enrollmentOpt.get(), proofToken);
     return response;
   }
 

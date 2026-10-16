@@ -263,11 +263,8 @@ export const resources = {
         requestNoLongerActive: 'This request is no longer active. No action is required.',
         resultNotConfirmed:
           'Result not confirmed. The server may already have recorded this decision. No further action is required.',
-        respondBeforeRead:
-          'This request is not ready yet. Tap Try again after the device has claimed it.',
         integrationSigningUnavailable:
           'Authentication signing is temporarily unavailable. Try again later.',
-        resourceNotFound: 'This request could not be found.',
         missingPendingPublicKey:
           'Enrollment missing integration public key; cannot verify pending response.',
         invalidPendingSignature: 'Invalid integration signature on pending response.',
@@ -642,11 +639,8 @@ export const resources = {
         requestNoLongerActive: "Cette demande n'est plus active. Aucune action requise.",
         resultNotConfirmed:
           "Résultat non confirmé. Le serveur a pu déjà enregistrer cette décision. Aucune autre action n'est requise.",
-        respondBeforeRead:
-          "Cette demande n'est pas encore prête. Appuyez sur Réessayer après que l'appareil l'ait réclamée.",
         integrationSigningUnavailable:
           "La signature d'authentification est temporairement indisponible. Réessayez plus tard.",
-        resourceNotFound: "Cette demande est introuvable.",
         missingPendingPublicKey:
           'L’enrôlement ne contient pas de clé publique d’intégration; impossible de vérifier la réponse pending.',
         invalidPendingSignature: 'Signature d’intégration invalide sur la réponse pending.',

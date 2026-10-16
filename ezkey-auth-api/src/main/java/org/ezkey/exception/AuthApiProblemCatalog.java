@@ -32,16 +32,13 @@ public final class AuthApiProblemCatalog {
   public static final String TYPE_ENROLLMENT_STATE_CONFLICT = BASE + "/enrollment-state-conflict";
   public static final String TYPE_AUTH_ATTEMPT_BINDING_FAILED =
       BASE + "/auth-attempt-binding-failed";
-  public static final String TYPE_AUTH_ATTEMPT_STATE_CONFLICT =
-      BASE + "/auth-attempt-state-conflict";
 
   /**
-   * Respond called while the attempt is still {@code PENDING} (device did not claim via pending).
-   * Protocol violation — kept distinct from {@link #TYPE_AUTH_ATTEMPT_STATE_CONFLICT} for diagnosis
-   * (#844).
+   * Unified client-facing conflict for {@code /respond}: attempt not found, still {@code PENDING},
+   * or terminal / superseded / cancelled. Distinction stays in server logs only (#844 Marc m1).
    */
-  public static final String TYPE_AUTH_ATTEMPT_RESPOND_BEFORE_READ =
-      BASE + "/auth-attempt-respond-before-read";
+  public static final String TYPE_AUTH_ATTEMPT_STATE_CONFLICT =
+      BASE + "/auth-attempt-state-conflict";
 
   public static final String TYPE_AUTH_ATTEMPT_RESPOND_FAILED =
       BASE + "/auth-attempt-respond-failed";
@@ -97,8 +94,6 @@ public final class AuthApiProblemCatalog {
       "The authentication request could not be processed.";
   public static final String DETAIL_AUTH_ATTEMPT_STATE_CONFLICT =
       "The authentication request is in a state that does not allow this operation.";
-  public static final String DETAIL_AUTH_ATTEMPT_RESPOND_BEFORE_READ =
-      "The authentication request has not been claimed by the device yet.";
   public static final String DETAIL_AUTH_ATTEMPT_RESPOND_FAILED =
       "The response could not be processed.";
   public static final String DETAIL_INTEGRATION_SIGNING_UNAVAILABLE =

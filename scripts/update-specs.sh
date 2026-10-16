@@ -175,8 +175,16 @@ update_link() {
         cp "$source" "$target"
         print_status "Copied to $(basename "$target")"
     else
-        # Linux/macOS: use symbolic link
-        ln -sf "$(realpath "$source")" "$target"
+        # Linux/macOS: relative symlink so Docker COPY from the repo root can follow the
+        # link (absolute /workspace/... targets break BuildKit checksums on cloud agents).
+        local rel
+        if rel="$(realpath --relative-to="$target_dir" "$source" 2>/dev/null)"; then
+            ln -sfn "$rel" "$target"
+        else
+            # BSD/macOS without --relative-to: absolute fallback (local Mac builds rarely
+            # hit the Docker COPY of these dispatched auth/admin specs the same way).
+            ln -sf "$(realpath "$source")" "$target"
+        fi
         print_status "Linked to $(basename "$target")"
     fi
 }

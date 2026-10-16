@@ -42,9 +42,11 @@ meant to be linked from trust-facing material without inflating the top-level pi
   (#844). Clé d'intégration **par enrollment** : s'il manque la clé privée au respond, le serveur
   répond **503** `integration-signing-unavailable` et la transaction respond est annulée (rollback)
   — il n'existe **pas** de refus de démarrage JVM pour cette clé (#844, revue Christophe m2).
-- **Decision (#844):** PENDING respond gets **400**
-  (`auth-attempt-respond-before-read`) as a protocol violation, kept distinct from the **409**
-  conflict (`auth-attempt-state-conflict`) for diagnosis.
+- **Decision (#844 Marc m1):** On `POST /api/v1/auth-attempts/respond`, attempt not found,
+  still `PENDING`, and terminal / cancelled / superseded all map to a single client **409**
+  `auth-attempt-state-conflict` so sequential auth-attempt ids do not reveal existence or state
+  before the caller is verified; distinction stays in server logs only. Missing integration key
+  remains **503** `integration-signing-unavailable`.
 - **Audit log integrity (tamper-evident).** Every audit entry is signed with **HMAC-SHA256** using a
   key held in a **file separate from the database** (and separate from the encryption master key).
   Periodic **checkpoints** chain windows together for a completeness proof.

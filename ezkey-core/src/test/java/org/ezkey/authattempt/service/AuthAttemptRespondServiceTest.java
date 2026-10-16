@@ -25,8 +25,6 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
-import org.ezkey.exception.ResourceNotFoundException;
-import org.ezkey.exception.auth.AuthAttemptRespondBeforeReadException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.IntegrationSigningUnavailableException;
 import org.ezkey.signature.SignatureService;
@@ -171,31 +169,32 @@ class AuthAttemptRespondServiceTest {
   }
 
   @Test
-  @DisplayName("PENDING respond → respond-before-read protocol violation (#844)")
-  void respond_pendingStatus_raisesRespondBeforeRead() {
+  @DisplayName("PENDING respond → unified 409 state-conflict (#844 Marc m1)")
+  void respond_pendingStatus_raisesStateConflict() {
     AuthAttempt attempt = readAttempt();
     attempt.setAuthAttemptStatus(AuthAttemptStatus.PENDING);
     when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
 
     assertThatThrownBy(() -> respondService.respond(approveRequest()))
-        .isInstanceOf(AuthAttemptRespondBeforeReadException.class);
+        .isInstanceOf(AuthAttemptStateConflictException.class)
+        .hasMessageContaining("PENDING");
     verify(signatureService, never()).signIntegrationPayload(any(), any());
   }
 
   @Test
-  @DisplayName("Attempt not found → ResourceNotFoundException (404), not unsigned FAILED (#844)")
-  void respond_attemptNotFound_raisesResourceNotFound() {
+  @DisplayName("Attempt not found → unified 409 state-conflict, not unsigned FAILED (#844 Marc m1)")
+  void respond_attemptNotFound_raisesStateConflict() {
     when(authAttemptRepository.findById(42)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> respondService.respond(approveRequest()))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessageContaining("AuthAttempt");
+        .isInstanceOf(AuthAttemptStateConflictException.class)
+        .hasMessageContaining("not found");
     verify(signatureService, never()).signIntegrationPayload(any(), any());
   }
 
   @Test
-  @DisplayName("Enrollment not found → ResourceNotFoundException (404) (#844)")
-  void respond_enrollmentNotFound_raisesResourceNotFound() {
+  @DisplayName("Enrollment not found → unified 409 state-conflict (#844 Marc m1)")
+  void respond_enrollmentNotFound_raisesStateConflict() {
     AuthAttempt attempt = readAttempt();
     when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
     when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
@@ -203,8 +202,8 @@ class AuthAttemptRespondServiceTest {
     when(enrollmentRepository.findById(7)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> respondService.respond(approveRequest()))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessageContaining("Enrollment");
+        .isInstanceOf(AuthAttemptStateConflictException.class)
+        .hasMessageContaining("enrollment not found");
     verify(signatureService, never()).signIntegrationPayload(any(), any());
   }
 

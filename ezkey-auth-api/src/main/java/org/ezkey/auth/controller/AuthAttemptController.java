@@ -267,7 +267,7 @@ public class AuthAttemptController {
    *     and signatures
    * @param httpRequest the HTTP servlet request for extracting audit information (IP, user agent)
    * @return ResponseEntity containing response confirmation with HTTP 200 (always
-   *     integration-signed), or 400/404/409/503 Problem Details — never an unsigned 200 (#844)
+   *     integration-signed), or 400/409/503 Problem Details — never an unsigned 200 (#844)
    */
   @PostMapping("/respond")
   @Operation(
@@ -276,10 +276,11 @@ public class AuthAttemptController {
           "Submits mobile device's response to an authentication request. The authAttemptId is"
               + " provided in the request body for uniform API design. HTTP 200 bodies"
               + " (APPROVED/DENIED/FAILED) are always integration-signed; the server never emits"
-              + " an unsigned 200 (#844). Terminal status → 409 auth-attempt-state-conflict;"
-              + " PENDING respond → 400 auth-attempt-respond-before-read; not found → 404;"
-              + " missing per-enrollment integration signing key → runtime 503"
-              + " integration-signing-unavailable (transaction rolls back; no JVM startup gate).")
+              + " an unsigned 200 (#844). Not-found, PENDING, and terminal / cancelled / superseded"
+              + " all map to a single client 409 auth-attempt-state-conflict (distinction only in"
+              + " server logs; #844 Marc m1). Missing per-enrollment integration signing key →"
+              + " runtime 503 integration-signing-unavailable (transaction rolls back; no JVM"
+              + " startup gate).")
   @ApiResponses(
       value = {
         @ApiResponse(
@@ -294,16 +295,7 @@ public class AuthAttemptController {
                             implementation = AuthAttemptRespondResponseDto.class))),
         @ApiResponse(
             responseCode = "400",
-            description =
-                "Invalid response data, validation failed, or respond-before-read (PENDING)",
-            content =
-                @io.swagger.v3.oas.annotations.media.Content(
-                    schema =
-                        @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = ProblemDetail.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Authentication attempt or enrollment not found",
+            description = "Invalid response data or validation failed",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
@@ -312,7 +304,8 @@ public class AuthAttemptController {
         @ApiResponse(
             responseCode = "409",
             description =
-                "Authentication attempt state conflict (terminal / cancelled / superseded)",
+                "Unified auth-attempt-state-conflict: not found, PENDING, or terminal / cancelled"
+                    + " / superseded (#844 Marc m1)",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =

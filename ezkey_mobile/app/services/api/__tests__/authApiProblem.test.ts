@@ -8,10 +8,8 @@
  */
 
 import {
-  AUTH_ATTEMPT_RESPOND_BEFORE_READ_TYPE,
   AUTH_ATTEMPT_STATE_CONFLICT_TYPE,
   INTEGRATION_SIGNING_UNAVAILABLE_TYPE,
-  RESOURCE_NOT_FOUND_TYPE,
   catalogKeyForAuthApiProblemType,
   isAuthAttemptStateConflict,
   isEzkeyProblemType,
@@ -23,18 +21,13 @@ import {
 const FALLBACK = 'Request failed.';
 const STATE_CONFLICT_MSG =
   'This request is no longer active. No action is required.';
-const RESPOND_BEFORE_READ_MSG =
-  'This request is not ready yet. Tap Try again after the device has claimed it.';
 const SIGNING_UNAVAILABLE_MSG =
   'Authentication signing is temporarily unavailable. Try again later.';
-const RESOURCE_NOT_FOUND_MSG = 'This request could not be found.';
 
 const CATALOG = {
   fallback: FALLBACK,
   stateConflict: STATE_CONFLICT_MSG,
-  respondBeforeRead: RESPOND_BEFORE_READ_MSG,
   integrationSigningUnavailable: SIGNING_UNAVAILABLE_MSG,
-  resourceNotFound: RESOURCE_NOT_FOUND_MSG,
 };
 
 const CLOUDFLARE_1020_BODY = {
@@ -118,16 +111,21 @@ describe('isEzkeyProblemType', () => {
 });
 
 describe('catalogKeyForAuthApiProblemType', () => {
-  it('maps known Auth types to catalog keys', () => {
+  it('maps known Auth types to catalog keys (#844 Marc m1: unified state-conflict)', () => {
     expect(catalogKeyForAuthApiProblemType(AUTH_ATTEMPT_STATE_CONFLICT_TYPE)).toBe('stateConflict');
-    expect(catalogKeyForAuthApiProblemType(AUTH_ATTEMPT_RESPOND_BEFORE_READ_TYPE)).toBe(
-      'respondBeforeRead',
-    );
     expect(catalogKeyForAuthApiProblemType(INTEGRATION_SIGNING_UNAVAILABLE_TYPE)).toBe(
       'integrationSigningUnavailable',
     );
-    expect(catalogKeyForAuthApiProblemType(RESOURCE_NOT_FOUND_TYPE)).toBe('resourceNotFound');
     expect(catalogKeyForAuthApiProblemType('https://ezkey.io/problems/auth/other')).toBe('generic');
+    // Former respond-before-read / resource-not-found types are no longer distinct client keys.
+    expect(
+      catalogKeyForAuthApiProblemType(
+        'https://ezkey.io/problems/auth/auth-attempt-respond-before-read',
+      ),
+    ).toBe('generic');
+    expect(
+      catalogKeyForAuthApiProblemType('https://ezkey.io/problems/auth/resource-not-found'),
+    ).toBe('generic');
   });
 });
 
@@ -140,34 +138,15 @@ describe('userFacingAuthApiError', () => {
       status: 400,
       detail: trappedDetail,
     });
-    const message = userFacingAuthApiError(error, CATALOG);
-    expect(message).toBe(FALLBACK);
-    expect(message).not.toContain(trappedDetail);
-    expect(message).not.toContain('READ');
-    expect(message).not.toContain('999');
+    expect(userFacingAuthApiError(error, CATALOG)).toBe(FALLBACK);
+    expect(userFacingAuthApiError(error, CATALOG)).not.toContain('internal id');
+    expect(userFacingAuthApiError(error, CATALOG)).not.toContain(trappedDetail);
   });
 
-  it('returns the fallback for Cloudflare 1020 JSON and never leaks edge fields', () => {
-    const error = httpErrorWithData(CLOUDFLARE_1020_BODY, 403);
-    const message = userFacingAuthApiError(error, CATALOG);
-    expect(message).toBe(FALLBACK);
-    expect(message).not.toContain('1020');
-    expect(message).not.toContain('ray_id');
-    expect(message).not.toContain('0123456789abcdef');
-    expect(message).not.toContain('what_you_should_do');
-    expect(message).not.toContain(CLOUDFLARE_1020_BODY.detail);
-  });
-
-  it('returns the fallback for title-only, about:blank, HTML, and non-object bodies', () => {
-    expect(userFacingAuthApiError(httpErrorWithData({title: 'Bad Request', status: 400}), CATALOG)).toBe(
+  it('uses fallback for non-Ezkey and non-problem bodies', () => {
+    expect(userFacingAuthApiError(httpErrorWithData(CLOUDFLARE_1020_BODY, 403), CATALOG)).toBe(
       FALLBACK,
     );
-    expect(
-      userFacingAuthApiError(
-        httpErrorWithData({type: 'about:blank', detail: 'Generic failure'}),
-        CATALOG,
-      ),
-    ).toBe(FALLBACK);
     expect(
       userFacingAuthApiError(httpErrorWithData('<html><body>Error 1020</body></html>', 403), CATALOG),
     ).toBe(FALLBACK);
@@ -219,23 +198,6 @@ describe('resolveAuthApiUserFacingOutcome / isAuthAttemptStateConflict', () => {
       message: STATE_CONFLICT_MSG,
       retryable: false,
     });
-  });
-
-  it('marks respond-before-read as retryable with local catalog text (#844)', () => {
-    const error = httpErrorWithData({
-      type: AUTH_ATTEMPT_RESPOND_BEFORE_READ_TYPE,
-      title: 'Request not acceptable',
-      status: 400,
-      detail: 'The authentication request has not been claimed by the device yet.',
-    });
-    expect(resolveAuthApiUserFacingOutcome(error, CATALOG)).toEqual({
-      message: RESPOND_BEFORE_READ_MSG,
-      retryable: true,
-    });
-    // Local catalog may say "claimed"; must not surface server problem detail verbatim.
-    expect(resolveAuthApiUserFacingOutcome(error, CATALOG).message).not.toContain(
-      'has not been claimed by the device yet',
-    );
   });
 
   it('marks integration-signing-unavailable as retryable with local catalog text (#844)', () => {

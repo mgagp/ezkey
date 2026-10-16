@@ -234,9 +234,7 @@ export function usePendingAuth(
       return resolveAuthApiUserFacingOutcome(error, {
         fallback,
         stateConflict: t('pendingAuth.requestNoLongerActive'),
-        respondBeforeRead: t('pendingAuth.respondBeforeRead'),
         integrationSigningUnavailable: t('pendingAuth.integrationSigningUnavailable'),
-        resourceNotFound: t('pendingAuth.resourceNotFound'),
       });
     },
     [t],

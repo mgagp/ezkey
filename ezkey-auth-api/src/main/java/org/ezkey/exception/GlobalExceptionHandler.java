@@ -14,7 +14,6 @@ import org.ezkey.audit.integrity.AuditChainHeartbeatEvaluation;
 import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
 import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
-import org.ezkey.exception.auth.AuthAttemptRespondBeforeReadException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
 import org.ezkey.exception.auth.EnrollmentBindingFailedException;
@@ -182,6 +181,10 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
         pathFrom(request));
   }
 
+  /**
+   * Unified 409 for respond not-found / PENDING / terminal (#844 Marc m1). Exception message is
+   * logged for server diagnosis; client receives a stable catalog detail only.
+   */
   @ExceptionHandler(AuthAttemptStateConflictException.class)
   public ResponseEntity<ProblemDetail> handleAuthAttemptStateConflict(
       AuthAttemptStateConflictException ex, WebRequest request) {
@@ -191,21 +194,6 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
         AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_STATE_CONFLICT,
         AuthApiProblemCatalog.TITLE_CONFLICT,
         AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT,
-        pathFrom(request));
-  }
-
-  /**
-   * Respond while still {@code PENDING} — protocol violation, distinct from terminal 409 (#844).
-   */
-  @ExceptionHandler(AuthAttemptRespondBeforeReadException.class)
-  public ResponseEntity<ProblemDetail> handleAuthAttemptRespondBeforeRead(
-      AuthAttemptRespondBeforeReadException ex, WebRequest request) {
-    LOG.warn("Auth attempt respond before read: {}", ex.getMessage());
-    return problemResponse(
-        HttpStatus.BAD_REQUEST,
-        AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_RESPOND_BEFORE_READ,
-        AuthApiProblemCatalog.TITLE_BAD_REQUEST,
-        AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_RESPOND_BEFORE_READ,
         pathFrom(request));
   }
 
