@@ -74,6 +74,7 @@ product-docs/
     design-principles.md        Cross-product design principles.
     lifecycle-model.md          Entity relationships and lifecycle rules.
     test-strategy.md            Global test strategy, taxonomy, QA Sphere.
+    tester-onboarding.md        External mobile tester onboarding runbook (FR).
     spec-test-traceability.md   Global traceability matrix.
     vision/                     Product orientation notes.
       README.md                 Vision scope and usage.

@@ -107,6 +107,7 @@ when relocating it would be disproportionate.
 | Design principles | [`global/design-principles.md`](global/design-principles.md) |
 | Entity relationships and lifecycle rules | [`global/lifecycle-model.md`](global/lifecycle-model.md) |
 | Global test strategy (taxonomy, QA Sphere, pyramid split) | [`global/test-strategy.md`](global/test-strategy.md) |
+| External tester onboarding | [`global/tester-onboarding.md`](global/tester-onboarding.md) |
 | Global traceability | [`global/spec-test-traceability.md`](global/spec-test-traceability.md) |
 | Component architecture | `components/<pack>/stack-and-architecture.md` |
 | Component workflows | `components/<pack>/functional-flows.md` |
