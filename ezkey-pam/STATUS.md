@@ -366,6 +366,11 @@ lessons. No EXP1 cutover, no product promotion, no AWS / ezkey.online touch.
 4. **Observability contract for later milestones:** one `authpriv` syslog line per attempt with
    user, `authAttemptId`, result, PAM code, latency — never secrets. Not implemented in M0
    beyond existing id/status logs; M1 reviews conf `0600` + fail-closed with Patrick/Christophe.
+5. **Demo `authpriv` → `/var/log/secure` may stay empty** in the Rocky/AL2023 SSH containers
+   (rsyslogd runs; `logger -p authpriv.info` still does not land in `/var/log/secure`). Module
+   still calls `syslog`/`pam_syslog`; M0 hygiene was proven on `/var/log/ezkey-pam/debug.*`
+   (`body omitted`, `authAttemptId=`, no secrets). Fixing container rsyslog routing is a small
+   follow-up, not EXP1 cutover.
 
 ### Out of M0
 
