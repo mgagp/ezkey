@@ -11,7 +11,8 @@ require_cmd ssh
 
 CONTAINER="${EZKEY_PAM_CONTAINER:-ezkey-pam-ssh}"
 CONF="/etc/security/pam_ezkey.conf"
-BACKUP="/etc/security/pam_ezkey.conf.m1bak"
+# Stable pristine copy — never moved, only copied from (restore must not consume it).
+PRISTINE="/etc/security/pam_ezkey.conf.m1pristine"
 PORT="${SSH_PORT}"
 
 if ! docker ps --format '{{.Names}}' | grep -qx "${CONTAINER}"; then
@@ -26,8 +27,13 @@ fail() { echo "[FAIL] $1"; FAIL=$((FAIL+1)); }
 
 restore_conf() {
   docker exec "${CONTAINER}" sh -c \
-    "if [ -f '${BACKUP}' ]; then mv -f '${BACKUP}' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'; fi" \
+    "if [ -f '${PRISTINE}' ]; then cp -a '${PRISTINE}' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'; fi" \
     || true
+}
+
+cleanup() {
+  restore_conf
+  docker exec "${CONTAINER}" rm -f "${PRISTINE}" || true
 }
 
 attempt_count() {
@@ -45,14 +51,29 @@ last_attempt() {
 wait_new_attempt() {
   local before="$1"
   local i after
-  for i in $(seq 1 50); do
+  for i in $(seq 1 80); do
     after="$(attempt_count)"
+    # Treat empty/non-numeric counts as 0 so arithmetic never aborts under set -e.
+    before="${before:-0}"
+    after="${after:-0}"
     if [ "$((after - before))" -ge 1 ]; then
       return 0
     fi
     sleep 0.1
   done
   return 1
+}
+
+# Let sshd finish the previous keyboard-interactive failure before the next try.
+settle_sshd() {
+  local i
+  for i in $(seq 1 20); do
+    if docker exec "${CONTAINER}" sh -c 'ss -ltn | grep -q ":22"' 2>/dev/null; then
+      sleep 0.2
+      return 0
+    fi
+    sleep 0.1
+  done
 }
 
 ssh_once() {
@@ -74,11 +95,14 @@ ssh_once() {
 expect_unavail() {
   local label="$1"
   local before ssh_rc after attempt new
+  settle_sshd
   before="$(attempt_count)"
+  before="${before:-0}"
   ssh_rc=0
   ssh_once || ssh_rc=$?
   wait_new_attempt "${before}" || true
   after="$(attempt_count)"
+  after="${after:-0}"
   attempt="$(last_attempt)"
   new=$((after - before))
   restore_conf
@@ -90,38 +114,38 @@ expect_unavail() {
   fi
 }
 
-trap restore_conf EXIT
+trap cleanup EXIT
 
 echo "=== M1 conf security (container ${CONTAINER}) ==="
 
 docker exec "${CONTAINER}" /opt/pam-ezkey/test/test_conf_security.sh
 ok "baseline conf security self-check"
 
-docker exec "${CONTAINER}" cp -a "${CONF}" "${BACKUP}"
+docker exec "${CONTAINER}" cp -a "${CONF}" "${PRISTINE}"
 
 # --- mode 0644 must fail closed (PAM_AUTHINFO_UNAVAIL → SSH deny) ---
 docker exec "${CONTAINER}" chmod 644 "${CONF}"
 expect_unavail "chmod 0644"
 
 # --- mode 0000 must fail closed (root bypasses DAC; exact 0600|0400 required) ---
-docker exec "${CONTAINER}" cp -a "${BACKUP}" "${CONF}"
+restore_conf
 docker exec "${CONTAINER}" sh -c "chown root:root '${CONF}'; chmod 000 '${CONF}'"
 expect_unavail "chmod 0000"
 
 # --- non-root owner must fail closed ---
-docker exec "${CONTAINER}" cp -a "${BACKUP}" "${CONF}"
+restore_conf
 docker exec "${CONTAINER}" sh -c \
   "chown ${SSH_USER}:${SSH_USER} '${CONF}'; chmod 600 '${CONF}'"
 expect_unavail "non-root owner (${SSH_USER})"
 
 # --- URL absent (empty integration_api_url) → UNAVAIL (Patrick B1) ---
-docker exec "${CONTAINER}" cp -a "${BACKUP}" "${CONF}"
+restore_conf
 docker exec "${CONTAINER}" sh -c \
   "sed -i 's|^integration_api_url=.*|integration_api_url=|' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'"
 expect_unavail "URL absent"
 
 # --- missing secret_key must fail closed ---
-docker exec "${CONTAINER}" cp -a "${BACKUP}" "${CONF}"
+restore_conf
 docker exec "${CONTAINER}" sh -c \
   "sed -i 's/^secret_key=.*/secret_key=/' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'"
 expect_unavail "missing secret_key"

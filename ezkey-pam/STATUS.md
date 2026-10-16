@@ -466,7 +466,10 @@ Docker entrypoint maps compose ENV → conf write via temp file +
 7. **SSH retries multiply attempts.** `MaxAuthTries 1` on the demo `sshd_config` keeps “one SSH
    try → one attempt line” for lab proof; host stacks may differ — the module still emits one
    line per `pam_sm_authenticate` call.
-8. **CodeQL c-cpp.** Advanced setup formerly used `build-mode: none` for C/C++, which does not
+8. **OpenSSH 9.9 `PerSourcePenalties`.** Default `authfail:5` blocks the client IP after a handful
+   of denied logins — the fifth M1 conf-security case (`missing secret_key`) saw SSH disconnect
+   with no new attempt line. Demo `sshd_config` sets `PerSourcePenalties no` (lab only).
+9. **CodeQL c-cpp.** Advanced setup formerly used `build-mode: none` for C/C++, which does not
    extract compiled C reliably. Workflow now builds `ezkey-pam` so `pam_ezkey.c` is in the DB.
 
 ### Follow-ups (listed only — not fixed in M1)

@@ -781,15 +781,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
         log_pam_info(pamh, &cfg, user_msg);
     }
 
-    if (cfg.api_url[0] == '\0' || cfg.integration_key[0] == '\0' ||
-        cfg.secret_key[0] == '\0') {
-        log_pam_error_debug(pamh, &cfg,
-                            "Missing integration_api_url, integration_key, or "
-                            "secret_key in conf");
-        retval = PAM_AUTHINFO_UNAVAIL;
-        goto done;
-    }
-
+    /* Resolve username before credential checks so UNAVAIL attempt lines carry user=. */
     retval = pam_get_user(pamh, &username, NULL);
     if (retval != PAM_SUCCESS) {
         log_pam_error(pamh, &cfg, "Failed to get username");
@@ -798,6 +790,15 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     if (username == NULL || strlen(username) == 0) {
         log_pam_error(pamh, &cfg, "Username is null or empty");
         retval = PAM_USER_UNKNOWN;
+        goto done;
+    }
+
+    if (cfg.api_url[0] == '\0' || cfg.integration_key[0] == '\0' ||
+        cfg.secret_key[0] == '\0') {
+        log_pam_error_debug(pamh, &cfg,
+                            "Missing integration_api_url, integration_key, or "
+                            "secret_key in conf");
+        retval = PAM_AUTHINFO_UNAVAIL;
         goto done;
     }
 
