@@ -109,6 +109,18 @@ accepts the host-boundary limit described above.
 SOC 2 remains a **reference vocabulary** for operational discipline, not a certification target.
 See [`../product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md).
 
+## Observability
+
+- **2026-10-16:** Community host (`ezkey.online`) may enable an opt-in JavaMelody collector bound
+  to `127.0.0.1:8088` and reached only over an SSH local forward (`Host ezkey-online-metrics`).
+  Reason: runtime visibility for the lab without a public metrics surface — Caddy returns 404 for
+  `/monitoring` and `/actuator*`; monitoring stays on management ports inside the Docker network;
+  system actions off; CSRF on; update check disabled; no HTTP request logging; URL id
+  normalization; no secrets in JVM `-D` flags
+  ([#846](https://github.com/mgagp/ezkey/issues/846)). Operator runbook:
+  [`lightsail/community-host.md`](lightsail/community-host.md) § Observability. Companion memory
+  cgroup / heap ceilings: [#749](https://github.com/mgagp/ezkey/issues/749).
+
 ## Session and cookies
 
 - **2026-10-14:** Stateless APIs — no servlet session cookie emitted, 401 included

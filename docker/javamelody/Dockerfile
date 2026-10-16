@@ -2,7 +2,8 @@
 # Official executable WAR: https://github.com/javamelody/javamelody/releases
 FROM eclipse-temurin:21-jre-alpine
 
-ARG JAVAMELODY_VERSION=2.8.0
+# Align with parent POM javamelody.version (APIs use javamelody-spring-boot4-starter).
+ARG JAVAMELODY_VERSION=2.9.0
 
 RUN apk add --no-cache curl \
     && mkdir -p /opt/javamelody /tmp/javamelody

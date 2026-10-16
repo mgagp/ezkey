@@ -13,11 +13,18 @@
 	respond @blockedDocs 404
 }
 
+# Same #846 posture as community: never proxy JavaMelody / Actuator on public hostnames.
+(exp1_observability_deny) {
+	@blockedObs path_regexp ^/(monitoring|actuator)(/.*)?$
+	respond @blockedObs 404
+}
+
 exp1-auth-api.ezkey.org {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem {
 		protocols tls1.3 tls1.3
 	}
 	import exp1_public_docs_block
+	import exp1_observability_deny
 	reverse_proxy auth-api:8080
 	header {
 		X-Content-Type-Options "nosniff"
@@ -31,6 +38,7 @@ exp1-admin-api.ezkey.org {
 		protocols tls1.3 tls1.3
 	}
 	import exp1_public_docs_block
+	import exp1_observability_deny
 	reverse_proxy admin-api:9080
 	header {
 		X-Content-Type-Options "nosniff"
@@ -44,6 +52,7 @@ exp1-integration-api.ezkey.org {
 		protocols tls1.3 tls1.3
 	}
 	import exp1_public_docs_block
+	import exp1_observability_deny
 	reverse_proxy integration-api:7080
 	header {
 		X-Content-Type-Options "nosniff"

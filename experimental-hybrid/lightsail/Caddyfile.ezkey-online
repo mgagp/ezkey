@@ -56,11 +56,20 @@
 	respond @blockedDocs 404
 }
 
+# JavaMelody / Actuator must never be reachable via the public reverse proxy (#846).
+# Management-port reports stay on the Docker network only; collector is SSH-tunnel loopback.
+# Regex validated against Caddy 2.10 matcher syntax (path_regexp).
+(ezkey_online_observability_deny) {
+	@blockedObs path_regexp ^/(monitoring|actuator)(/.*)?$
+	respond @blockedObs 404
+}
+
 auth-api.ezkey.online {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem {
 		protocols tls1.3 tls1.3
 	}
 	import ezkey_online_public_docs_block
+	import ezkey_online_observability_deny
 	reverse_proxy auth-api:8080 {
 		header_up CF-Connecting-IP {client_ip}
 		header_up X-Forwarded-For {client_ip}
@@ -79,6 +88,7 @@ admin-api.ezkey.online {
 		protocols tls1.3 tls1.3
 	}
 	import ezkey_online_public_docs_block
+	import ezkey_online_observability_deny
 	reverse_proxy admin-api:9080 {
 		header_up CF-Connecting-IP {client_ip}
 		header_up X-Forwarded-For {client_ip}
@@ -97,6 +107,7 @@ integration-api.ezkey.online {
 		protocols tls1.3 tls1.3
 	}
 	import ezkey_online_public_docs_block
+	import ezkey_online_observability_deny
 	reverse_proxy integration-api:7080 {
 		header_up CF-Connecting-IP {client_ip}
 		header_up X-Forwarded-For {client_ip}

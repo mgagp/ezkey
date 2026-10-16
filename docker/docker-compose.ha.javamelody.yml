@@ -11,9 +11,14 @@ x-javamelody-env: &javamelody-env
   JAVAMELODY_ENABLED: "true"
   JAVAMELODY_MANAGEMENT_ENDPOINT_MONITORING_ENABLED: "true"
   JAVAMELODY_SPRING_MONITORING_ENABLED: "true"
-  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,metrics,threaddump,monitoring"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,monitoring"
   MANAGEMENT_ENDPOINT_MONITORING_ACCESS: unrestricted
-  JAVAMELODY_INIT_PARAMETERS_HTTP_TRANSFORM_PATTERN: "\\d+"
+  JAVAMELODY_INIT_PARAMETERS_SYSTEM_ACTIONS_ENABLED: "false"
+  JAVAMELODY_INIT_PARAMETERS_CSRF_PROTECTION_ENABLED: "true"
+  JAVAMELODY_INIT_PARAMETERS_UPDATE_CHECK_DISABLED: "true"
+  JAVAMELODY_INIT_PARAMETERS_LOG: "false"
+  JAVAMELODY_INIT_PARAMETERS_HTTP_TRANSFORM_PATTERN: "UUID|\\d+"
+  JAVAMELODY_INIT_PARAMETERS_OBSOLETE_GRAPHS_DAYS: "30"
 
 services:
   admin-api-1:
@@ -47,6 +52,8 @@ services:
     build:
       context: ./javamelody
       dockerfile: Dockerfile
+      args:
+        JAVAMELODY_VERSION: "2.9.0"
     container_name: ezkey-javamelody-collector-ha
     depends_on:
       admin-api-1:

@@ -1,0 +1,93 @@
+# Community / EXP1 Lightsail — opt-in JavaMelody collector overlay (#846).
+#
+# Applies Christophe locks: management-port monitoring only, collector bound to
+# loopback, hardened init parameters, no public /monitoring or /actuator (Caddy).
+# Memory limits for the APIs live in docker-compose.yml (#749). This overlay adds
+# the collector at 256m (~3520m total with #749) — prefer a host 1 GiB swapfile
+# (documented in docs/lightsail/community-host.md; do not auto-create).
+#
+# Enable (on the VM, from experimental-hybrid/lightsail/):
+#   export EZKEY_ENABLE_JAVA_MELODY=true
+#   docker compose -f docker-compose.yml -f docker-compose.javamelody.yml up -d
+#
+# Or: ./clean-start.sh --with-java-melody
+#
+# Rollback (one command — removes collector orphan, APIs lose JAVAMELODY_*):
+#   docker compose -f docker-compose.yml up -d --remove-orphans
+# Then optionally: docker volume rm ezkey-experimental-lightsail_javamelody-data
+#
+# Collector UI (SSH tunnel only): http://127.0.0.1:8088
+# Per-API reports: management ports 9081 / 8085 / 7081 /actuator/monitoring (Docker net)
+
+x-javamelody-env: &javamelody-env
+  JAVAMELODY_ENABLED: "true"
+  JAVAMELODY_MANAGEMENT_ENDPOINT_MONITORING_ENABLED: "true"
+  JAVAMELODY_SPRING_MONITORING_ENABLED: "true"
+  # No metrics / threaddump on the management surface in prod (#846 Christophe).
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,monitoring"
+  MANAGEMENT_ENDPOINT_MONITORING_ACCESS: unrestricted
+  JAVAMELODY_INIT_PARAMETERS_SYSTEM_ACTIONS_ENABLED: "false"
+  JAVAMELODY_INIT_PARAMETERS_CSRF_PROTECTION_ENABLED: "true"
+  JAVAMELODY_INIT_PARAMETERS_UPDATE_CHECK_DISABLED: "true"
+  # Explicit: never enable HTTP request logging (PII).
+  JAVAMELODY_INIT_PARAMETERS_LOG: "false"
+  # Normalize path ids (UUID or numeric segments).
+  JAVAMELODY_INIT_PARAMETERS_HTTP_TRANSFORM_PATTERN: "UUID|\\d+"
+  # RRD / graph retention on the collector volume (days).
+  JAVAMELODY_INIT_PARAMETERS_OBSOLETE_GRAPHS_DAYS: "30"
+
+services:
+  admin-api:
+    environment:
+      <<: *javamelody-env
+      JAVAMELODY_INIT_PARAMETERS_APPLICATION_NAME: admin-api
+
+  auth-api:
+    environment:
+      <<: *javamelody-env
+      JAVAMELODY_INIT_PARAMETERS_APPLICATION_NAME: auth-api
+
+  integration-api:
+    environment:
+      <<: *javamelody-env
+      JAVAMELODY_INIT_PARAMETERS_APPLICATION_NAME: integration-api
+
+  javamelody-collector:
+    build:
+      context: ../../docker/javamelody
+      dockerfile: Dockerfile
+      args:
+        JAVAMELODY_VERSION: "2.9.0"
+    image: ezkey-javamelody-collector:2.9.0
+    container_name: ezkey-exp-javamelody-collector
+    # Logging options duplicated (YAML anchors do not cross compose files).
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    mem_limit: 256m
+    memswap_limit: 256m
+    depends_on:
+      admin-api:
+        condition: service_healthy
+      auth-api:
+        condition: service_healthy
+      integration-api:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-UTC}
+      # Heap under the 256m cgroup; no secrets in -D (flags only — see entrypoint.sh).
+      JAVAMELODY_XMX: "160m"
+    volumes:
+      - ../../docker/javamelody/applications.properties:/opt/javamelody/applications.properties:ro
+      - javamelody-data:/tmp/javamelody
+    ports:
+      # Loopback only — public exposure is forbidden (#846). Dev baseline used 0.0.0.0.
+      - "127.0.0.1:8088:8080"
+    networks:
+      - ezkey-exp-net
+    restart: unless-stopped
+
+volumes:
+  javamelody-data:

@@ -9,8 +9,9 @@
 # Prerequisites: built images (skipped in --dry-run); ssh/scp to the resolved host.
 #
 # With --clean-start, syncs lightsail operator files to the VM then runs clean-start.sh (destructive).
-# With --sync-operator-files, copies docker-compose.yml, the target-aware Caddyfile, and clean-start.sh
-# to the VM only (no clean-start) so Caddy and Compose stay aligned with the repo; preserves volumes/DB.
+# With --sync-operator-files, copies docker-compose.yml, docker-compose.javamelody.yml (when present),
+# the target-aware Caddyfile, and clean-start.sh to the VM only (no clean-start) so Caddy and Compose
+# stay aligned with the repo; preserves volumes/DB. Also syncs docker/javamelody/ for the collector.
 # With --remote-up, after load (and after --sync-operator-files if set), runs docker compose up -d on
 # the VM so migration + backends + Caddy pick up the loaded images (no volume wipe).
 # Do not combine --clean-start with --sync-operator-files or --remote-up (incompatible; see script check).
@@ -64,11 +65,13 @@ SSH target (required — no silent default; #812):
 Options:
   --apis-only            Export only admin-api, auth-api, integration-api (no migration image).
   --include-demo-acme    Also export ezkey-demo-app-acme (after API tars; build image first).
-  --sync-operator-files  After load, scp docker-compose.yml, target-aware Caddyfile, clean-start.sh
-                         + host mounts including scripts/ops/ (no volume wipe).
+  --sync-operator-files  After load, scp docker-compose.yml, docker-compose.javamelody.yml (if present),
+                         target-aware Caddyfile, clean-start.sh + host mounts including scripts/ops/
+                         and docker/javamelody/ (collector build context). No volume wipe.
   --remote-up            After load/sync, on the VM: docker compose up -d (rolling apply; DB preserved).
                          With --sync-operator-files: sha256-verify Caddyfile + force-recreate caddy
                          (bind mount; plain up -d does not reload Caddy).
+                         JavaMelody: set EZKEY_ENABLE_JAVA_MELODY=true on the remote up (see community-host.md).
   --clean-start          After load, sync and run clean-start.sh (DESTRUCTIVE). Community requires
                          EZKEY_CONFIRM_WIPE=ezkey-online (first commissioning only). Not with
                          --sync-operator-files or --remote-up.
@@ -152,16 +155,18 @@ run() {
 # failed for user ezkey_migrate". See the postgresql-application-role-split work (TB-2026-07-16).
 sync_host_mounts() {
   echo ""
-  echo "→ sync host-mounted files (postgres init, db grants, keygen, scripts/ops) → ${SSH_HOST}:${REMOTE_REPO_ROOT}"
-  run ssh "${SSH_HOST}" "mkdir -p ${REMOTE_REPO_ROOT}/docker/postgres/init ${REMOTE_REPO_ROOT}/scripts/db ${REMOTE_REPO_ROOT}/scripts/ops"
+  echo "→ sync host-mounted files (postgres init, db grants, keygen, scripts/ops, javamelody) → ${SSH_HOST}:${REMOTE_REPO_ROOT}"
+  run ssh "${SSH_HOST}" "mkdir -p ${REMOTE_REPO_ROOT}/docker/postgres/init ${REMOTE_REPO_ROOT}/scripts/db ${REMOTE_REPO_ROOT}/scripts/ops ${REMOTE_REPO_ROOT}/docker/javamelody"
   run scp "${REPO_ROOT}/docker/postgres/init/"*.sh "${SSH_HOST}:${REMOTE_REPO_ROOT}/docker/postgres/init/"
   run scp "${REPO_ROOT}/docker/generate-encryption-keys.sh" "${SSH_HOST}:${REMOTE_REPO_ROOT}/docker/"
   run scp "${REPO_ROOT}/scripts/db/"* "${SSH_HOST}:${REMOTE_REPO_ROOT}/scripts/db/"
   run scp "${REPO_ROOT}/scripts/ops/"* "${SSH_HOST}:${REMOTE_REPO_ROOT}/scripts/ops/"
+  # Collector image build context + applications.properties for the Lightsail overlay (#846).
+  run scp "${REPO_ROOT}/docker/javamelody/"* "${SSH_HOST}:${REMOTE_REPO_ROOT}/docker/javamelody/"
 }
 
-# Sync docker-compose.yml, target-aware Caddyfile → remote Caddyfile, and clean-start.sh.
-# Community never receives the EXP1 Caddyfile (#812).
+# Sync docker-compose.yml, optional javamelody overlay, target-aware Caddyfile → remote Caddyfile,
+# and clean-start.sh. Community never receives the EXP1 Caddyfile (#812).
 sync_operator_files() {
   local label="$1"
   local caddy_src
@@ -170,8 +175,11 @@ sync_operator_files() {
   echo "→ ${label} → ${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}"
   echo "  target=${LIGHTSAIL_TARGET:-custom} Caddyfile source=$(basename "${caddy_src}")"
   run ssh "${SSH_HOST}" "mkdir -p ${LIGHTSAIL_REMOTE_DIR}"
-  for f in docker-compose.yml clean-start.sh; do
+  for f in docker-compose.yml clean-start.sh docker-compose.javamelody.yml; do
     src="${LIGHTSAIL_LOCAL_DIR}/${f}"
+    if [[ "$f" == "docker-compose.javamelody.yml" && ! -f "$src" ]]; then
+      continue
+    fi
     if [[ ! -f "$src" ]]; then
       echo "error: missing ${src}" >&2
       exit 1
@@ -257,12 +265,19 @@ if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
   echo "→ remote rolling stack (docker compose up -d) on ${SSH_HOST}"
   # Recreate containers so :latest and updated Compose take effect; Postgres keeps postgres-data.
   # Caddyfile is a bind mount — up -d alone does not reload caddy when only the file changed.
-  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && docker compose up -d --remove-orphans"
+  # JavaMelody (#846): when EZKEY_ENABLE_JAVA_MELODY=true on the operator machine, pass the
+  # overlay into the remote compose up (collector + management-port monitoring).
+  remote_compose_cmd='docker compose -f docker-compose.yml'
+  if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
+    remote_compose_cmd='docker compose -f docker-compose.yml -f docker-compose.javamelody.yml'
+    echo "  (EZKEY_ENABLE_JAVA_MELODY set — applying docker-compose.javamelody.yml)"
+  fi
+  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && ${remote_compose_cmd} up -d --remove-orphans"
   if [[ -n "$CADDY_SRC_FOR_VERIFY" ]]; then
     local_sha="$(sha256sum "${CADDY_SRC_FOR_VERIFY}" | awk '{print $1}')"
     echo ""
     echo "→ verify remote Caddyfile sha256=${local_sha} and force-recreate caddy (bind-mount)"
-    run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; remote_sha=\$(sha256sum Caddyfile | awk '{print \$1}'); if [[ \"\${remote_sha}\" != '${local_sha}' ]]; then echo \"error: remote Caddyfile sha256=\${remote_sha} != local ${local_sha}\" >&2; exit 1; fi; docker compose up -d --no-deps --force-recreate caddy"
+    run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; remote_sha=\$(sha256sum Caddyfile | awk '{print \$1}'); if [[ \"\${remote_sha}\" != '${local_sha}' ]]; then echo \"error: remote Caddyfile sha256=\${remote_sha} != local ${local_sha}\" >&2; exit 1; fi; ${remote_compose_cmd} up -d --no-deps --force-recreate caddy"
   fi
 fi
 
