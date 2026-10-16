@@ -7,7 +7,7 @@
 
 /* Module identification */
 #define EZKEY_MODULE_NAME "pam_ezkey"
-#define EZKEY_VERSION "2.2.4"
+#define EZKEY_VERSION "2.2.5"
 
 /*
  * No compiled-in default Integration API URL (Patrick B1 / M1 review).
@@ -22,14 +22,21 @@
  */
 
 /* Timeout defaults when keys are absent from conf (seconds) */
-#define EZKEY_DEFAULT_WAIT_TIMEOUT 90
+#define EZKEY_DEFAULT_WAIT_TIMEOUT 75
 #define EZKEY_DEFAULT_WAIT_POLLING 2
 #define EZKEY_DEFAULT_API_TIMEOUT 10
 /*
- * Cap wait_timeout below demo sshd LoginGraceTime (120s) with margin for
- * handshake + curl slack (wait_timeout+15). See STATUS § timeouts / #726 lesson.
+ * Single auth wall-clock budget (Patrick P3 / #726): finish under demo sshd
+ * LoginGraceTime 120 with margin. pam_sm_authenticate starts the clock;
+ * wait = min(conf, remaining - CURL_SLACK); too little left → UNAVAIL + attempt
+ * line. See STATUS § timeouts inventory.
  */
-#define EZKEY_MAX_WAIT_TIMEOUT 100
+#define EZKEY_AUTH_BUDGET_SECS 105
+#define EZKEY_MAX_API_TIMEOUT 10
+#define EZKEY_CURL_WAIT_SLACK 15
+#define EZKEY_MIN_WAIT_SECS 2
+#define EZKEY_MAX_ENTER_SECS 25
+#define EZKEY_MAX_WAIT_TIMEOUT 90
 
 /* Configuration file path loaded at PAM runtime (override only via pam.d conf=) */
 #define EZKEY_DEFAULT_CONFIG_FILE "/etc/security/pam_ezkey.conf"

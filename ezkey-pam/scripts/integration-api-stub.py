@@ -6,6 +6,9 @@ Modes (EZKEY_STUB_MODE):
   no_challenge  — POST 201 without authAttemptChallenge
   slow_create   — sleep then 201 (for api_timeout)
   pending       — POST 201; GET wait hangs until client timeout
+
+Request paths (incl. ?timeout=) are appended to EZKEY_STUB_REQ_LOG when set
+so tests can assert the effective wait query param (Patrick P3).
 """
 
 from __future__ import annotations
@@ -19,6 +22,15 @@ MODE = os.environ.get("EZKEY_STUB_MODE", "ok")
 PORT = int(os.environ.get("EZKEY_STUB_PORT", "18080"))
 SLOW_SECS = float(os.environ.get("EZKEY_STUB_SLOW_SECS", "3"))
 CHALLENGE = int(os.environ.get("EZKEY_STUB_CHALLENGE", "42"))
+REQ_LOG = os.environ.get("EZKEY_STUB_REQ_LOG", "/tmp/ezkey-pam-stub-reqs.log")
+
+
+def _log_req(method: str, path: str) -> None:
+    try:
+        with open(REQ_LOG, "a", encoding="utf-8") as fh:
+            fh.write(f"{method} {path}\n")
+    except OSError:
+        pass
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -40,6 +52,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         self._read_body()
+        _log_req("POST", self.path)
         if "/api/v1/auth-attempts" not in self.path or self.path.rstrip("/").endswith(
             "/wait"
         ):
@@ -56,6 +69,7 @@ class Handler(BaseHTTPRequestHandler):
         self._json(201, body)
 
     def do_GET(self) -> None:  # noqa: N802
+        _log_req("GET", self.path)
         if "/wait" not in self.path:
             self.send_error(404)
             return
@@ -76,8 +90,12 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    try:
+        open(REQ_LOG, "w", encoding="utf-8").close()
+    except OSError:
+        pass
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
-    print(f"stub mode={MODE} listening on :{PORT}", flush=True)
+    print(f"stub mode={MODE} listening on :{PORT} req_log={REQ_LOG}", flush=True)
     server.serve_forever()
 
 

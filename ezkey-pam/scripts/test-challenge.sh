@@ -341,15 +341,11 @@ close_ssh_ctrl
 ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
   "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
 echo "wrong_attempt_line=${ATTEMPT}" >>"${PROOF_LOG}"
-if [ "${SSH_RC}" -ne 0 ] && echo "${ATTEMPT}" | grep -Eq 'result=(DENIED|UNAVAIL|ERROR)'; then
-  ok "wrong challenge → SSH denied + non-SUCCESS attempt (${ATTEMPT##*result=})"
+# Patrick: wrong code must be DENIED specifically (not UNAVAIL/timeout soft-pass).
+if [ "${SSH_RC}" -ne 0 ] && echo "${ATTEMPT}" | grep -q 'result=DENIED'; then
+  ok "wrong challenge → SSH denied + result=DENIED"
 else
-  # If Demo Device rejected the wrong code without completing, pending may still time out
-  if [ "${SSH_RC}" -ne 0 ]; then
-    ok "wrong challenge → SSH denied (rc=${SSH_RC}; demo reject rc=${wrong_rc})"
-  else
-    fail "wrong challenge unexpectedly succeeded: ${ATTEMPT}"
-  fi
+  fail "wrong challenge expected DENIED (rc=${SSH_RC} demo=${wrong_rc}): ${ATTEMPT}"
 fi
 
 # Clear any leftover pending

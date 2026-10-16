@@ -29,6 +29,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <cjson/cJSON.h>
@@ -84,12 +85,15 @@ static void parse_module_args(int argc, const char **argv, EzkeyConfig *cfg);
 static int load_config_file(const char *path, EzkeyConfig *cfg);
 static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                                        const char *username,
-                                       long *auth_attempt_id_out);
+                                       long *auth_attempt_id_out,
+                                       const struct timespec *auth_started);
 static void trim_inplace(char *s);
 static void ezkey_secure_wipe(void *ptr, size_t len);
 static void wipe_cfg_secrets(EzkeyConfig *cfg);
 static void log_attempt_summary(const char *username, long auth_attempt_id,
                                 int pam_rc, long latency_ms, int lab_http);
+static long elapsed_ms(const struct timespec *start);
+static long remaining_budget_secs(const struct timespec *auth_started);
 
 static void ezkey_config_init(EzkeyConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
@@ -204,6 +208,9 @@ static void apply_config_key(EzkeyConfig *cfg, const char *key,
         cfg->wait_polling = parse_positive_int(value, cfg->wait_polling);
     } else if (strcmp(key, "api_timeout") == 0) {
         cfg->api_timeout = parse_positive_int(value, cfg->api_timeout);
+        if (cfg->api_timeout > EZKEY_MAX_API_TIMEOUT) {
+            cfg->api_timeout = EZKEY_MAX_API_TIMEOUT;
+        }
     } else if (strcmp(key, "challenge_requested") == 0) {
         cfg->challenge_requested = parse_bool(value);
     } else if (strcmp(key, "lab_http") == 0) {
@@ -419,6 +426,29 @@ static long elapsed_ms(const struct timespec *start) {
     return sec * 1000L + nsec / 1000000L;
 }
 
+/**
+ * Seconds left on the single auth budget (EZKEY_AUTH_BUDGET_SECS from auth
+ * start). Floor at 0. Patrick P3: wait and Enter must fit under LoginGraceTime.
+ */
+static long remaining_budget_secs(const struct timespec *auth_started) {
+    long elapsed_s;
+    long rem;
+
+    if (auth_started == NULL) {
+        return EZKEY_AUTH_BUDGET_SECS;
+    }
+    elapsed_s = elapsed_ms(auth_started) / 1000L;
+    rem = (long)EZKEY_AUTH_BUDGET_SECS - elapsed_s;
+    return rem > 0 ? rem : 0;
+}
+
+static volatile sig_atomic_t ezkey_enter_alarm_fired;
+
+static void ezkey_enter_alarm_handler(int signo) {
+    (void)signo;
+    ezkey_enter_alarm_fired = 1;
+}
+
 static void ezkey_buf_init(EzkeyBuf *buf) {
     buf->data = malloc(1);
     if (buf->data != NULL) {
@@ -562,7 +592,8 @@ static int ezkey_api_url_allowed(const EzkeyConfig *cfg) {
 
 static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                                        const char *username,
-                                       long *auth_attempt_id_out) {
+                                       long *auth_attempt_id_out,
+                                       const struct timespec *auth_started) {
     char userpwd[EZKEY_KEY_MAX * 2 + 4];
     char post_url[EZKEY_URL_MAX + 64];
     char wait_url[EZKEY_URL_MAX + 128];
@@ -574,6 +605,9 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     int curl_rc;
     int pam_rc = PAM_AUTH_ERR;
     int curl_inited = 0;
+    int effective_wait;
+    long rem;
+    long curl_limit;
     cJSON *root;
     cJSON *id_val;
     cJSON *chal_val;
@@ -637,7 +671,18 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
         goto cleanup;
     }
 
-    curl_rc = ezkey_http(post_url, userpwd, post_body, cfg->api_timeout, &buf,
+    rem = remaining_budget_secs(auth_started);
+    curl_limit = (long)cfg->api_timeout;
+    if (curl_limit > rem) {
+        curl_limit = rem > 0 ? rem : 1;
+    }
+    if (curl_limit < 1) {
+        log_pam_error_debug(pamh, cfg, "auth budget exhausted before create");
+        ezkey_buf_free(&buf);
+        pam_rc = PAM_AUTHINFO_UNAVAIL;
+        goto cleanup;
+    }
+    curl_rc = ezkey_http(post_url, userpwd, post_body, curl_limit, &buf,
                          &http_code);
     free(post_body);
     post_body = NULL;
@@ -691,11 +736,15 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
      * create response carries authAttemptChallenge. Bound to 0..99 (Christophe);
      * show via PAM conversation before /wait. Never syslog the digits (#750).
      * If no conversation can display the code → UNAVAIL (user must see it).
+     * Enter prompt is alarm-bounded by remaining auth budget (Patrick P3).
      */
     if (cfg->challenge_requested) {
         char *resp = NULL;
         int prc;
         const void *conv_item = NULL;
+        long enter_secs;
+        struct sigaction sa;
+        struct sigaction oldsa;
 
         if (!ezkey_challenge_in_range(challenge)) {
             log_pam_error_debug(pamh, cfg,
@@ -712,6 +761,18 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
             pam_rc = PAM_AUTHINFO_UNAVAIL;
             goto cleanup;
         }
+        rem = remaining_budget_secs(auth_started);
+        enter_secs = rem - (long)EZKEY_MIN_WAIT_SECS - (long)EZKEY_CURL_WAIT_SLACK;
+        if (enter_secs > (long)EZKEY_MAX_ENTER_SECS) {
+            enter_secs = (long)EZKEY_MAX_ENTER_SECS;
+        }
+        if (enter_secs < 1) {
+            log_pam_error_debug(pamh, cfg,
+                                "auth budget exhausted before challenge Enter "
+                                "prompt");
+            pam_rc = PAM_AUTHINFO_UNAVAIL;
+            goto cleanup;
+        }
         /*
          * OpenSSH keyboard-interactive buffers bare PAM_TEXT_INFO until a
          * response prompt is issued, and /wait would otherwise block first
@@ -724,26 +785,71 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                  "device, then approve.\n"
                  "Press Enter to wait for Ezkey device approval: ",
                  challenge);
-        prc = pam_prompt(pamh, PAM_PROMPT_ECHO_OFF, &resp, "%s", msg);
+        memset(&sa, 0, sizeof(sa));
+        memset(&oldsa, 0, sizeof(oldsa));
+        sa.sa_handler = ezkey_enter_alarm_handler;
+        sigemptyset(&sa.sa_mask);
+        ezkey_enter_alarm_fired = 0;
+        {
+            int alarm_armed = 0;
+
+            if (sigaction(SIGALRM, &sa, &oldsa) == 0) {
+                alarm((unsigned int)enter_secs);
+                alarm_armed = 1;
+            }
+            prc = pam_prompt(pamh, PAM_PROMPT_ECHO_OFF, &resp, "%s", msg);
+            if (alarm_armed) {
+                alarm(0);
+                sigaction(SIGALRM, &oldsa, NULL);
+            }
+        }
+        ezkey_secure_wipe(msg, sizeof(msg));
         if (resp != NULL) {
+            ezkey_secure_wipe(resp, strlen(resp));
             free(resp);
             resp = NULL;
         }
-        if (prc != PAM_SUCCESS) {
+        if (ezkey_enter_alarm_fired || prc != PAM_SUCCESS) {
             log_pam_error_debug(pamh, cfg,
-                                "challenge_requested but PAM conversation "
-                                "could not display the code");
+                                ezkey_enter_alarm_fired
+                                    ? "challenge Enter prompt timed out "
+                                      "(auth budget)"
+                                    : "challenge_requested but PAM conversation "
+                                      "could not display the code");
             pam_rc = PAM_AUTHINFO_UNAVAIL;
             goto cleanup;
         }
     }
 
+    /*
+     * Effective /wait timeout: min(conf, remaining_budget - curl_slack).
+     * Too little left → UNAVAIL with attempt line (Patrick P3).
+     */
+    rem = remaining_budget_secs(auth_started);
+    effective_wait = cfg->wait_timeout;
+    if (rem <= (long)EZKEY_CURL_WAIT_SLACK + (long)EZKEY_MIN_WAIT_SECS) {
+        log_pam_error_debug(pamh, cfg,
+                            "auth budget exhausted before /wait");
+        pam_rc = PAM_AUTHINFO_UNAVAIL;
+        goto cleanup;
+    }
+    if ((long)effective_wait > rem - (long)EZKEY_CURL_WAIT_SLACK) {
+        effective_wait = (int)(rem - (long)EZKEY_CURL_WAIT_SLACK);
+    }
+    if (effective_wait < EZKEY_MIN_WAIT_SECS) {
+        log_pam_error_debug(pamh, cfg,
+                            "auth budget too small for /wait");
+        pam_rc = PAM_AUTHINFO_UNAVAIL;
+        goto cleanup;
+    }
+
     snprintf(wait_url, sizeof(wait_url),
              "%s/api/v1/auth-attempts/%ld/wait?timeout=%d&polling=%d", api_url,
-             auth_attempt_id, cfg->wait_timeout, cfg->wait_polling);
+             auth_attempt_id, effective_wait, cfg->wait_polling);
     if (cfg->debug) {
-        snprintf(msg, sizeof(msg), "GET wait authAttemptId=%ld timeout=%d",
-                 auth_attempt_id, cfg->wait_timeout);
+        snprintf(msg, sizeof(msg),
+                 "GET wait authAttemptId=%ld timeout=%d budget_rem=%ld",
+                 auth_attempt_id, effective_wait, rem);
         log_pam_info(pamh, cfg, msg);
     }
 
@@ -754,8 +860,12 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
         goto cleanup;
     }
     http_code = 0;
-    curl_rc = ezkey_http(wait_url, userpwd, NULL, (long)(cfg->wait_timeout + 15),
-                         &buf, &http_code);
+    curl_limit = (long)effective_wait + (long)EZKEY_CURL_WAIT_SLACK;
+    rem = remaining_budget_secs(auth_started);
+    if (curl_limit > rem) {
+        curl_limit = rem > 0 ? rem : 1;
+    }
+    curl_rc = ezkey_http(wait_url, userpwd, NULL, curl_limit, &buf, &http_code);
     if (curl_rc != CURLE_OK) {
         snprintf(msg, sizeof(msg), "Failed to GET wait API: %s",
                  curl_easy_strerror(curl_rc));
@@ -889,7 +999,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
              "Approve this SSH login on your Ezkey device for user %s.",
              username);
 
-    retval = ezkey_authenticate_user_api(pamh, &cfg, username, &auth_attempt_id);
+    retval = ezkey_authenticate_user_api(pamh, &cfg, username, &auth_attempt_id,
+                                         &started);
 
     if (cfg.debug) {
         snprintf(user_msg, sizeof(user_msg), "Authentication result for %s: %s",

@@ -63,4 +63,8 @@ docker exec "${CONTAINER}" /opt/pam-ezkey/test/test_pam.sh || true
 echo "== CI M1: test-conf-security.sh =="
 "${SCRIPT_DIR}/test-conf-security.sh"
 
-echo "== CI M1 conf-security: OK =="
+# Stub-only (no Demo Device / Integration API): timeout budget + ?timeout= assert.
+echo "== CI M1: test-timeouts.sh (stub) =="
+"${SCRIPT_DIR}/test-timeouts.sh"
+
+echo "== CI M1 conf-security + timeouts: OK =="

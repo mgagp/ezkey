@@ -45,7 +45,7 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.4** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
+Version **2.2.5** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
 (observability + conf `root:root` exact `0600`/`0400`, no URL default, no process-ENV
 overrides, `lab_http` gate, optional two-digit challenge via `pam_prompt`). It is still
 **not** a host-operable MFA agent on a real host (sshd cutover remains slice #4+).
@@ -460,7 +460,7 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 | `test/test_challenge_harness.c` | Challenge bound 0..99 (make test). |
 | `test/test_conf_security.sh` | in-container owner/mode/keys self-check (also via `up.sh` path) |
 | `make test` | check-source + compile + filelog + sanitize + challenge harnesses |
-| CI `ezkey-pam` job | `make test` + Rocky builder + `scripts/ci-m1-conf-security.sh` (incl. `lab_http` gate) → `ci-gate` |
+| CI `ezkey-pam` job | `make test` + Rocky builder + `ci-m1-conf-security.sh` (conf-security + stub `test-timeouts.sh`) → `ci-gate` |
 
 ### Lessons learned (M1)
 
@@ -515,16 +515,23 @@ want phishing-resistant matching). When `challenge_requested=true`:
 3. Wrong digits → SSH denied / non-SUCCESS.
 4. Stub create without challenge → `UNAVAIL` + debug.err reason.
 
-### Timeouts (Patrick / #726 lesson) — path:line inventory
+### Timeouts (Patrick / #726 / P3 budget) — path:line inventory
 
-| Knob | Where | Lab default / bound | Beyond-threshold proof |
+Single deadline from `pam_sm_authenticate` start (`pam_ezkey.c` `clock_gettime` /
+`&started`). Wall budget **`EZKEY_AUTH_BUDGET_SECS` 105** — **15 s margin** under
+demo `LoginGraceTime` 120. Effective `/wait` = `min(conf, remaining - CURL_SLACK)`;
+too little left → `UNAVAIL` **with** attempt line (no silent sshd cut mid-prompt).
+
+| Knob | Where (path:line) | Lab default / bound | Beyond-threshold proof |
 |---|---|---|---|
-| `api_timeout` | `ezkey_config.h` `EZKEY_DEFAULT_API_TIMEOUT`; POST `ezkey_http` in `pam_ezkey.c` | **10** s | `test-timeouts.sh`: stub `slow_create` 3s + `api_timeout=1` → UNAVAIL |
-| `wait_timeout` | conf / `EZKEY_DEFAULT_WAIT_TIMEOUT` **90**; clamp `EZKEY_MAX_WAIT_TIMEOUT` **100** | Cap below `LoginGraceTime` | Clamp constant + `wait_timeout=2` vs stub `pending` → non-SUCCESS under 45s |
-| curl `/wait` | `pam_ezkey.c` `ezkey_http(..., wait_timeout + 15)` | wait+15 | Covered by wait_timeout case |
-| `wait_polling` | `/wait?polling=` query; sample conf **2** | Server-side cadence | Sample conf + STATUS (not a client timer) |
+| Auth budget | `ezkey_config.h` `EZKEY_AUTH_BUDGET_SECS` **105**; `remaining_budget_secs` in `pam_ezkey.c` | 105 s (&lt; grace 120) | Delayed-Enter shrink + exhausted → UNAVAIL+attempt |
+| `api_timeout` | `EZKEY_DEFAULT_API_TIMEOUT` / `EZKEY_MAX_API_TIMEOUT` **10**; clamp in `apply_config_key`; POST `ezkey_http` in `ezkey_authenticate_user_api` | max **10** s | stub `slow_create` 3s + `api_timeout=1` → UNAVAIL |
+| Enter prompt | challenge `pam_prompt` + `SIGALRM` `EZKEY_MAX_ENTER_SECS` **25** within remaining | alarm-bounded | delayed Enter 8s shrinks `?timeout=`; overtime → UNAVAIL+attempt |
+| `wait_timeout` | conf / `EZKEY_DEFAULT_WAIT_TIMEOUT` **75**; clamp `EZKEY_MAX_WAIT_TIMEOUT` **90**; runtime `effective_wait` before `/wait` URL | ≤90; shrunk by budget | stub log `?timeout=90` when conf=200; `?timeout=2` short path |
+| curl `/wait` | `EZKEY_CURL_WAIT_SLACK` **15**; `ezkey_http(..., curl_limit)` after effective wait | wait+≤15; ≤ remaining | Covered by wait / delayed-Enter cases |
+| `wait_polling` | `/wait?polling=` query; sample conf **2** | Server-side cadence | Sample conf + STATUS |
 | Server attempt TTL | `ezkey.core.auth-attempt.ttl-seconds` **120** (`ezkey-core/CONFIGURATION.md`) | Aligns with grace | Documented; PAM does not own TTL |
-| `LoginGraceTime` | `sshd_config:20` → **120** | sshd cuts session | Bound wait ≤100; do not set wait near 120 |
+| `LoginGraceTime` | `sshd_config:20` → **120** | sshd cuts session | Budget 105; never schedule wait near 120 |
 
 ### `/wait` response signature — deferred ([#858](https://github.com/mgagp/ezkey/issues/858))
 
@@ -568,6 +575,7 @@ want phishing-resistant matching). When `challenge_requested=true`:
 | Patrick CHANGES | conf tests assert debug.err reason + stub positive control | **Done** |
 | Patrick CHANGES | challenge visible before approve; wrong/absent cases | **Done** |
 | Patrick CHANGES | timeout inventory + wait clamp below LoginGraceTime | **Done** (`test-timeouts.sh`) |
+| Patrick P3 | Single auth budget 105; dynamic `?timeout=`; Enter alarm; attempt line | **Done** (`test-timeouts.sh` stub + CI) |
 | Patrick CHANGES | https scheme case-insensitive + no pam_info fallback | **Done** |
 
 ### Out of M1
