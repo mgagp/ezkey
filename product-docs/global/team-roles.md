@@ -1,6 +1,6 @@
 # Team roles (one-liners)
 
-Roles may be played by a human or an AI agent. The owner (**Marc**) decides merges. See also [`AGENTS.md`](../../AGENTS.md) § *Working conventions*.
+Roles may be played by a human or an AI agent. The owner (**Marc**) decides merges. See also [`AGENTS.md`](../../AGENTS.md) § *Working conventions*. Full bot mandates live outside the repo today; options to version them: [`ai-software-factory-bots-as-code-evaluation-2026-10-16.md`](ai-software-factory-bots-as-code-evaluation-2026-10-16.md) (analysis, no decision).
 
 | Name | Role |
 |------|------|
