@@ -115,7 +115,8 @@ COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY test/test_pam.sh /opt/pam-ezkey/test/test_pam.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh /opt/pam-ezkey/test/test_pam.sh \
     && echo "authpriv.*    /var/log/secure" >> /etc/rsyslog.conf \
-    && mkdir -p /var/log \
+    && mkdir -p /var/log /var/log/ezkey-pam \
+    && chmod 700 /var/log/ezkey-pam \
     && touch /var/log/secure \
     && chmod 640 /var/log/secure
 

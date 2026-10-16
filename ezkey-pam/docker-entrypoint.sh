@@ -12,8 +12,9 @@ API_TIMEOUT="${EZKEY_API_TIMEOUT:-10}"
 TITLE="${EZKEY_CONTEXT_TITLE:-SSH login}"
 MESSAGE="${EZKEY_CONTEXT_MESSAGE:-}"
 SSH_USER="${EZKEY_SSH_USER:-testuser}"
-# Demo containers default debug on so /tmp transcripts and verbose syslog help
-# lab debugging. Host-oriented sample conf defaults to false (see config/).
+# Demo containers default debug on so /var/log/ezkey-pam transcripts and verbose
+# syslog help lab debugging. Host-oriented sample conf defaults to false (see
+# config/). Debug files use O_NOFOLLOW under /var/log/ezkey-pam (#818), not /tmp.
 DEBUG="${EZKEY_DEBUG:-true}"
 
 if ! id "${SSH_USER}" >/dev/null 2>&1; then

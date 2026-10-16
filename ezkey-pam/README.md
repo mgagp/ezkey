@@ -27,8 +27,9 @@ that owns the API key.
 Slices 1–3 from [`STATUS.md`](STATUS.md) §2.8 (lab eval):
 
 - **Hygiene:** syslog/`LOG_AUTHPRIV` only for host path; no wait JSON / proof tokens /
-  secrets in logs; `/tmp` transcripts only when `debug=true`; `debug` defaults **false** in
-  sample conf; explicit conf-open / missing-key errors; curl init/cleanup + secret wipe.
+  secrets in logs; debug file transcripts under `/var/log/ezkey-pam/` only when
+  `debug=true` (#818, not `/tmp`); `debug` defaults **false** in sample conf; explicit
+  conf-open / missing-key errors; curl init/cleanup + secret wipe.
 - **PAM return codes:** fail-closed map (`PAM_AUTHINFO_UNAVAIL` for transport/config,
   `PAM_AUTH_ERR` for reject/expire, never `PAM_IGNORE` / success on API failure). Host stack
   sketch: [`sshd.host-sketch`](sshd.host-sketch).
