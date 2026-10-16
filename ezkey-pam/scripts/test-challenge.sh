@@ -180,8 +180,27 @@ else
   ok "attempt syslog line has no challenge UX text"
 fi
 
+# Lab DB proof (Marc): ACCEPTED + stored challenge digits — no physical phone.
+DB_PROOF="${ARTIFACT_DIR}/pam-challenge-db.txt"
+docker exec -e PGPASSWORD=ezkey ezkey-postgres \
+  psql -U postgres -d ezkey_db -c \
+  "SELECT auth_attempt_id, enrollment_id, auth_attempt_status, auth_attempt_challenge,
+          context_title, created_at
+   FROM ezkey_auth_attempt
+   WHERE auth_attempt_id = ${ATTEMPT_ID};" \
+  | tee "${DB_PROOF}" | tee -a "${PROOF_LOG}"
+DB_ROW="$(docker exec -e PGPASSWORD=ezkey ezkey-postgres \
+  psql -U postgres -d ezkey_db -At -c \
+  "SELECT auth_attempt_status || '|' || COALESCE(auth_attempt_challenge::text,'')
+   FROM ezkey_auth_attempt WHERE auth_attempt_id = ${ATTEMPT_ID};" 2>/dev/null || true)"
+if [ "${DB_ROW}" = "ACCEPTED|${CHALLENGE}" ]; then
+  ok "DB row ACCEPTED with challenge=${CHALLENGE} (authAttemptId=${ATTEMPT_ID})"
+else
+  fail "DB expected ACCEPTED|${CHALLENGE}, got '${DB_ROW}'"
+fi
+
 echo "" | tee -a "${PROOF_LOG}"
 echo "=== Results: $PASS passed, $FAIL failed ===" | tee -a "${PROOF_LOG}"
-echo "Artifacts: ${SSH_LOG} ${PROOF_LOG} ${ARTIFACT_DIR}/pam-challenge-approve.log" \
+echo "Artifacts: ${SSH_LOG} ${PROOF_LOG} ${ARTIFACT_DIR}/pam-challenge-approve.log ${DB_PROOF}" \
   | tee -a "${PROOF_LOG}"
 [ "${FAIL}" -eq 0 ]

@@ -495,12 +495,18 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 5. Fail-closed: `challenge_requested` but missing `authAttemptChallenge` → `PAM_AUTHINFO_UNAVAIL`.
 6. Challenge value is **not** written to authpriv attempt lines (#750).
 
-Proof: `./scripts/test-challenge.sh` (artifacts under `/opt/cursor/artifacts/pam-challenge-*`).
+**Lab proof target (no physical phone).** Acceptance is clean-start stack + Demo Device + DB/log
+evidence — not a Pixel/mobile hand-test. Proof script: `./scripts/test-challenge.sh`
+(artifacts under `/opt/cursor/artifacts/pam-challenge-*`):
 
-**Isabelle (Pixel):** with a host/conf that sets `challenge_requested=true`, start SSH, note the
-two-digit code on the terminal, open the pending card, confirm the app asks for a challenge,
-enter the **same** digits, approve — login should succeed. Wrong digits → attempt `INVALID` /
-SSH denied.
+1. Terminal capture (`script -f`): SSH shows `Ezkey challenge code: NN`.
+2. Demo Device approve with matching `challengeResponse` (same digits).
+3. DB: `ezkey_auth_attempt` row shows `auth_attempt_challenge=NN` and
+   `auth_attempt_status=ACCEPTED` for that `auth_attempt_id`.
+4. Syslog attempt line: `result=SUCCESS` (challenge digits **not** logged — #750).
+
+Admin UI rides the same clean-start stack for optional operator inspection; it is not required
+for the automated proof path. No Pixel / physical-phone step.
 
 ### `/wait` response signature — assessed, deferred to EXP1
 
