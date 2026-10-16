@@ -2,7 +2,7 @@
 
 **Branch:** `cursor/admin-rate-limit-passwordless-831-f1f9`  
 **Base:** `origin/main` @ `0e2b3cda` (`docs(mobile): canonical app state machine (#834) (#835)`)  
-**Tip after rebase:** _(filled after push)_  
+**Tip after rebase:** `391321ac29818cc4c0215f6cfcf3e1ec857f15ea`  
 **Scope:** Rebase only. No behavior change to match post-critique Marc go/no-go beyond what #833 already shipped. No merge.
 
 ---
