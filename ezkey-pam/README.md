@@ -22,6 +22,19 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
 
+## What changed in 2.2 (M1)
+
+On top of 2.1 slices 1–3 ([`STATUS.md`](STATUS.md) § M1):
+
+- **One attempt line** in `authpriv` / `/var/log/secure` per authenticate:
+  `pam_ezkey: attempt user=… authAttemptId=… result=… pam_code=… latency_ms=…`
+  (never secrets / proof / bodies). Debug chatter stays in `/var/log/ezkey-pam/` only.
+- **Conf credentials** (`integration_api_url`, `integration_key`, `secret_key`) only from
+  the conf file; must be `root:root` with mode no wider than `0600` or the module returns
+  `PAM_AUTHINFO_UNAVAIL`.
+- **Demo rsyslog:** entrypoint enables `imuxsock` so authpriv reaches `/var/log/secure`.
+- Tests: `./scripts/test-observability.sh`, `./scripts/test-conf-security.sh`.
+
 ## What changed in 2.1
 
 Slices 1–3 from [`STATUS.md`](STATUS.md) §2.8 (lab eval):

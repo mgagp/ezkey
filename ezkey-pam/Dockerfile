@@ -13,7 +13,7 @@ ARG ROCKY_IMAGE=rockylinux/rockylinux:10
 FROM ${ROCKY_IMAGE} AS builder
 
 LABEL org.ezkey.component="pam-builder"
-LABEL org.ezkey.version="2.1.0"
+LABEL org.ezkey.version="2.2.0"
 
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
@@ -35,7 +35,7 @@ RUN make clean && make all \
 FROM ${ROCKY_IMAGE} AS runtime
 
 LABEL org.ezkey.component="pam-ssh-demo"
-LABEL org.ezkey.version="2.1.0"
+LABEL org.ezkey.version="2.2.0"
 LABEL description="Rocky Linux SSH demo VM authenticated by Ezkey PAM"
 
 ENV LANG=C.UTF-8
@@ -75,12 +75,16 @@ COPY sshd /etc/pam.d/sshd
 COPY sshd_config /etc/ssh/sshd_config
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY test/test_pam.sh /opt/pam-ezkey/test/test_pam.sh
+COPY test/test_conf_security.sh /opt/pam-ezkey/test/test_conf_security.sh
+# rsyslog authpriv routing is fixed at runtime by docker-entrypoint.sh (imuxsock
+# SysSock.Use=on; no journald in the container). Stock conf already has authpriv.*.
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh /opt/pam-ezkey/test/test_pam.sh \
-    && echo "authpriv.*    /var/log/secure" >> /etc/rsyslog.conf \
+        /opt/pam-ezkey/test/test_conf_security.sh \
     && mkdir -p /var/log /var/log/ezkey-pam \
     && chmod 700 /var/log/ezkey-pam \
     && touch /var/log/secure \
-    && chmod 640 /var/log/secure
+    && chmod 640 /var/log/secure \
+    && chown root:root /etc/security/pam_ezkey.conf
 
 EXPOSE 22
 

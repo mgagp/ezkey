@@ -45,9 +45,9 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.1.0** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** (hygiene, PAM
-return codes, AL2023 builder/mirror). It is still **not** a host-operable MFA agent on EXP1
-(sshd cutover remains slice #4+).
+Version **2.2.0** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
+(observability + conf `root:root` `0600` enforcement). It is still **not** a host-operable MFA
+agent on EXP1 (sshd cutover remains slice #4+).
 
 Proven in this repository (clean-start stack + Demo Device + Admin UI):
 
@@ -375,3 +375,71 @@ lessons. No EXP1 cutover, no product promotion, no AWS / ezkey.online touch.
 ### Out of M0
 
 EXP1 sshd cutover, TLS, packages, `failmode=safe`, AWS, ezkey.online, product-roadmap promotion.
+
+---
+
+## M1 — Observability + conf hardening (PR #610)
+
+**Goal (Marc GO):** enough observability for Patrick/Christophe review without expanding product
+scope. Zero lockout risk: module stays fail-closed; no AWS / ezkey.online / EXP1 sshd cutover.
+
+### Attempt syslog line (canonical)
+
+Exactly **one** `LOG_AUTHPRIV` syslog line per `pam_sm_authenticate` call, **regardless of
+`debug`**. Debug chatter (POST/wait details) goes only to `/var/log/ezkey-pam/debug.*` when
+`debug=true` — never to syslog.
+
+Format (stable; parse with `grep 'pam_ezkey: attempt '`):
+
+```text
+pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms>
+```
+
+| Field | Meaning |
+|---|---|
+| `user` | Linux username (sanitized); `-` if unavailable |
+| `authAttemptId` | Numeric id from create, or `-` if never created |
+| `result` | `SUCCESS` \| `DENIED` \| `UNAVAIL` \| `ERROR` \| `UNKNOWN_USER` |
+| `pam_code` | Integer PAM return code |
+| `latency_ms` | Monotonic elapsed ms for the authenticate call |
+
+**Never** logged: `secret_key`, integration key material, Basic `userpwd`, proof tokens, HTTP
+bodies, wait JSON.
+
+Demo containers: entrypoint enables `imuxsock` `SysSock.Use="on"` and disables `imjournal` so
+lines land in `/var/log/secure` (no systemd journal in the SSH VM).
+
+### Conf contract (credentials)
+
+| Rule | Behavior |
+|---|---|
+| `integration_api_url`, `integration_key`, `secret_key` | Only from conf file (not from ENV inside the `.so`) |
+| File ownership | Must be `root:root` |
+| File mode | No group/other bits (no wider than `0600`) |
+| Violation / missing field / unreadable | `PAM_AUTHINFO_UNAVAIL` (fail-closed) |
+
+Docker entrypoint still maps compose ENV → conf file write, then `chown root:root` + `chmod 600`.
+
+### Tests added
+
+| Script | Proves |
+|---|---|
+| `scripts/test-observability.sh` | success / reject / timeout / network → exactly one clean attempt line in `/var/log/secure` |
+| `scripts/test-conf-security.sh` | baseline `root:root` `0600`; `0644` and missing `secret_key` → deny + `UNAVAIL` |
+| `test/test_conf_security.sh` | in-container owner/mode/keys self-check (also via `up.sh` path) |
+
+### Lessons learned (M1)
+
+1. **Stock EL rsyslog ≠ Docker.** `imuxsock SysSock.Use=off` + `imjournal` means `syslog()` and
+   `logger -p authpriv` never reach `/var/log/secure` without a journal. Fix at entrypoint, not
+   by appending duplicate `authpriv.*` rules.
+2. **“One line” forces sink discipline.** Prior `log_pam_info` always called `syslog()`; M1 moves
+   chatter to filelog-only so operators can `grep attempt` without noise or secret risk.
+3. **ENV vs conf.** Keeping ikey/skey only in the conf file matches PAM host reality (sshd does
+   not pass Docker ENV). Entrypoint remains the bridge for demos.
+4. **Patrick / Christophe review surface.** Structure and conf keys stay small; fail-closed codes
+   and the attempt line are the review anchors — see PR report file:line list.
+
+### Out of M1
+
+EXP1 cutover, TLS verify knobs, packages, `failmode=safe`, sudo, username maps, AWS, ezkey.online.

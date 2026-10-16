@@ -2,8 +2,9 @@
  * pam_ezkey.c - Ezkey PAM Module
  *
  * Linux PAM module that authorizes SSH (or other PAM services) via the Ezkey
- * Integration API. Runtime settings come from /etc/security/pam_ezkey.conf,
- * with environment-variable overrides for Docker demos.
+ * Integration API. Runtime settings come from /etc/security/pam_ezkey.conf
+ * (root:root, mode 0600). Docker demos write that file from the entrypoint —
+ * sshd does not pass container ENV into PAM.
  *
  * Flow:
  *   1. POST /api/v1/auth-attempts  (Basic auth, userIdentifier = Linux username)
@@ -11,7 +12,10 @@
  *   3. PAM_SUCCESS when wait status is ACCEPTED
  *
  * Fail-closed: API / transport / config failures never return PAM_SUCCESS or
- * PAM_IGNORE. See STATUS.md §2.1 and §2.4.
+ * PAM_IGNORE. See STATUS.md §2.1, §2.4, and § M1.
+ *
+ * Observability (M1): exactly one authpriv syslog line per attempt (see
+ * log_attempt_summary). Debug chatter goes only to /var/log/ezkey-pam/ files.
  */
 
 #define _DEFAULT_SOURCE
@@ -24,6 +28,9 @@
 #include <strings.h>
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <time.h>
 #include <cjson/cJSON.h>
 #include <unistd.h>
 #include <syslog.h>
@@ -66,14 +73,17 @@ PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags, int argc,
 static void log_pam_info(pam_handle_t *pamh, const EzkeyConfig *cfg,
                          const char *message);
 static void log_pam_error(pam_handle_t *pamh, const EzkeyConfig *cfg,
-                         const char *message);
+                          const char *message);
 static void parse_module_args(int argc, const char **argv, EzkeyConfig *cfg);
 static int load_config_file(const char *path, EzkeyConfig *cfg);
 static void apply_env_overrides(EzkeyConfig *cfg);
 static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
-                                       const char *username);
+                                       const char *username,
+                                       long *auth_attempt_id_out);
 static void trim_inplace(char *s);
 static void ezkey_secure_wipe(void *ptr, size_t len);
+static void log_attempt_summary(const char *username, long auth_attempt_id,
+                                int pam_rc, long latency_ms);
 
 static void ezkey_config_init(EzkeyConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
@@ -123,25 +133,23 @@ static void trim_inplace(char *s) {
         memmove(s, start, strlen(start) + 1);
     }
     len = strlen(s);
-    if (len == 0) {
-        return;
-    }
-    end = s + len - 1;
-    while (end >= s && isspace((unsigned char)*end)) {
-        *end = '\0';
+    end = s + len;
+    while (end > s && isspace((unsigned char)*(end - 1))) {
         end--;
     }
+    *end = '\0';
 }
 
-static int parse_bool(const char *value) {
-    if (value == NULL) {
-        return 0;
+static void set_cfg_str(char *dest, size_t dest_size, const char *src) {
+    if (dest == NULL || dest_size == 0) {
+        return;
     }
-    if (strcmp(value, "1") == 0 || strcasecmp(value, "true") == 0 ||
-        strcasecmp(value, "yes") == 0) {
-        return 1;
+    if (src == NULL) {
+        dest[0] = '\0';
+        return;
     }
-    return 0;
+    strncpy(dest, src, dest_size - 1);
+    dest[dest_size - 1] = '\0';
 }
 
 static int parse_positive_int(const char *value, int fallback) {
@@ -151,23 +159,30 @@ static int parse_positive_int(const char *value, int fallback) {
     if (value == NULL || *value == '\0') {
         return fallback;
     }
+    errno = 0;
     parsed = strtol(value, &end, 10);
-    if (end == value || parsed <= 0 || parsed > 300) {
+    if (errno != 0 || end == value || *end != '\0' || parsed <= 0 ||
+        parsed > 86400) {
         return fallback;
     }
     return (int)parsed;
 }
 
-static void set_cfg_str(char *dest, size_t dest_size, const char *value) {
-    if (dest == NULL || dest_size == 0 || value == NULL) {
-        return;
+static int parse_bool(const char *value) {
+    if (value == NULL) {
+        return 0;
     }
-    strncpy(dest, value, dest_size - 1);
-    dest[dest_size - 1] = '\0';
+    if (strcasecmp(value, "true") == 0 || strcmp(value, "1") == 0 ||
+        strcasecmp(value, "yes") == 0 || strcasecmp(value, "on") == 0) {
+        return 1;
+    }
+    return 0;
 }
 
-static void apply_config_key(EzkeyConfig *cfg, const char *key, const char *value) {
-    if (strcmp(key, "integration_api_url") == 0 || strcmp(key, "m2m_api_url") == 0) {
+static void apply_config_key(EzkeyConfig *cfg, const char *key,
+                             const char *value) {
+    if (strcmp(key, "integration_api_url") == 0 ||
+        strcmp(key, "api_url") == 0) {
         set_cfg_str(cfg->api_url, sizeof(cfg->api_url), value);
     } else if (strcmp(key, "integration_key") == 0) {
         set_cfg_str(cfg->integration_key, sizeof(cfg->integration_key), value);
@@ -191,20 +206,56 @@ static void apply_config_key(EzkeyConfig *cfg, const char *key, const char *valu
 }
 
 /**
- * Load key=value settings from path.
+ * Load key=value settings from path. Requires a regular file owned by root:root
+ * with no group/other permission bits (mode at most 0600).
  *
- * @return 0 on success, -1 if the file could not be opened (errno set)
+ * @return 0 on success
+ * @return -1 if the file could not be opened (errno set)
+ * @return -2 if ownership/permissions are insecure (errno = EPERM) or not a
+ *         regular file (errno = EINVAL)
  */
 static int load_config_file(const char *path, EzkeyConfig *cfg) {
+    int fd;
     FILE *fp;
     char line[EZKEY_LINE_MAX];
+    struct stat st;
 
     if (path == NULL || *path == '\0') {
         errno = EINVAL;
         return -1;
     }
-    fp = fopen(path, "r");
+    fd = open(path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+    if (fd < 0) {
+        return -1;
+    }
+    if (fstat(fd, &st) != 0) {
+        int saved = errno;
+        close(fd);
+        errno = saved;
+        return -1;
+    }
+    if (!S_ISREG(st.st_mode)) {
+        close(fd);
+        errno = EINVAL;
+        return -2;
+    }
+    if (st.st_uid != 0 || st.st_gid != 0) {
+        close(fd);
+        errno = EPERM;
+        return -2;
+    }
+    /* Reject any group/other bits — must be no wider than 0600. */
+    if ((st.st_mode & 077) != 0) {
+        close(fd);
+        errno = EPERM;
+        return -2;
+    }
+
+    fp = fdopen(fd, "r");
     if (fp == NULL) {
+        int saved = errno;
+        close(fd);
+        errno = saved;
         return -1;
     }
     while (fgets(line, sizeof(line), fp) != NULL) {
@@ -239,26 +290,12 @@ static int load_config_file(const char *path, EzkeyConfig *cfg) {
     return 0;
 }
 
+/**
+ * Non-secret demo overrides only. integration_api_url / integration_key /
+ * secret_key are never taken from the environment (M1 — conf file only).
+ */
 static void apply_env_overrides(EzkeyConfig *cfg) {
     const char *value;
-
-    value = getenv(EZKEY_ENV_API_URL);
-    if (value == NULL || *value == '\0') {
-        value = getenv(EZKEY_ENV_API_URL_LEGACY);
-    }
-    if (value != NULL && *value != '\0') {
-        set_cfg_str(cfg->api_url, sizeof(cfg->api_url), value);
-    }
-
-    value = getenv(EZKEY_ENV_INTEGRATION_KEY);
-    if (value != NULL && *value != '\0') {
-        set_cfg_str(cfg->integration_key, sizeof(cfg->integration_key), value);
-    }
-
-    value = getenv(EZKEY_ENV_SECRET_KEY);
-    if (value != NULL && *value != '\0') {
-        set_cfg_str(cfg->secret_key, sizeof(cfg->secret_key), value);
-    }
 
     value = getenv(EZKEY_ENV_WAIT_TIMEOUT);
     if (value != NULL && *value != '\0') {
@@ -319,35 +356,96 @@ static void ezkey_sanitize_for_log(char *dest, size_t dest_size, const char *src
     dest[j] = '\0';
 }
 
+/**
+ * Debug chatter only — never writes to authpriv syslog (M1: one attempt line).
+ */
 static void log_pam_info(pam_handle_t *pamh, const EzkeyConfig *cfg,
                          const char *message) {
     char safe[2048];
 
-    ezkey_sanitize_for_log(safe, sizeof(safe), message);
-    syslog(LOG_INFO, "%s: %s", EZKEY_MODULE_NAME, safe);
-    if (cfg != NULL && cfg->debug) {
-        ezkey_filelog_append(EZKEY_LOG_OUT_NAME, safe);
-        pam_syslog(pamh, LOG_INFO, "%s", safe);
+    (void)pamh;
+    if (cfg == NULL || !cfg->debug) {
+        return;
     }
+    ezkey_sanitize_for_log(safe, sizeof(safe), message);
+    ezkey_filelog_append(EZKEY_LOG_OUT_NAME, safe);
 }
 
 static void log_pam_error(pam_handle_t *pamh, const EzkeyConfig *cfg,
                           const char *message) {
     char safe[2048];
 
-    ezkey_sanitize_for_log(safe, sizeof(safe), message);
-    syslog(LOG_ERR, "%s: ERROR: %s", EZKEY_MODULE_NAME, safe);
-    if (cfg != NULL && cfg->debug) {
-        ezkey_filelog_append(EZKEY_LOG_ERR_NAME, safe);
+    (void)pamh;
+    if (cfg == NULL || !cfg->debug) {
+        return;
     }
-    pam_syslog(pamh, LOG_ERR, "ERROR: %s", safe);
+    ezkey_sanitize_for_log(safe, sizeof(safe), message);
+    ezkey_filelog_append(EZKEY_LOG_ERR_NAME, safe);
 }
-
 
 static void log_pam_error_debug(pam_handle_t *pamh, const EzkeyConfig *cfg,
                                 const char *message) {
-    /* Same sink as log_pam_error; kept for call-site clarity in auth paths. */
     log_pam_error(pamh, cfg, message);
+}
+
+/**
+ * Exactly one authpriv syslog line per authentication attempt (M1).
+ * Format:
+ *   pam_ezkey: attempt user=<u> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms>
+ * Never includes secrets, proof tokens, HTTP bodies, or Basic credentials.
+ */
+static void log_attempt_summary(const char *username, long auth_attempt_id,
+                                int pam_rc, long latency_ms) {
+    char user_safe[128];
+    const char *result;
+    char id_buf[32];
+
+    ezkey_sanitize_for_log(user_safe, sizeof(user_safe),
+                           username != NULL ? username : "-");
+
+    if (pam_rc == PAM_SUCCESS) {
+        result = "SUCCESS";
+    } else if (pam_rc == PAM_AUTH_ERR) {
+        result = "DENIED";
+    } else if (pam_rc == PAM_AUTHINFO_UNAVAIL) {
+        result = "UNAVAIL";
+    } else if (pam_rc == PAM_USER_UNKNOWN) {
+        result = "UNKNOWN_USER";
+    } else {
+        result = "ERROR";
+    }
+
+    if (auth_attempt_id > 0) {
+        snprintf(id_buf, sizeof(id_buf), "%ld", auth_attempt_id);
+    } else {
+        snprintf(id_buf, sizeof(id_buf), "-");
+    }
+
+    if (latency_ms < 0) {
+        latency_ms = 0;
+    }
+
+    syslog(LOG_INFO,
+           "%s: attempt user=%s authAttemptId=%s result=%s pam_code=%d "
+           "latency_ms=%ld",
+           EZKEY_MODULE_NAME, user_safe, id_buf, result, pam_rc, latency_ms);
+}
+
+static long elapsed_ms(const struct timespec *start) {
+    struct timespec now;
+    long sec;
+    long nsec;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) {
+        return 0;
+    }
+    sec = now.tv_sec - start->tv_sec;
+    nsec = now.tv_nsec - start->tv_nsec;
+    if (nsec < 0) {
+        sec -= 1;
+        nsec += 1000000000L;
+    }
+    return sec * 1000L + nsec / 1000000L;
 }
 
 static void ezkey_buf_init(EzkeyBuf *buf) {
@@ -468,12 +566,12 @@ static int pam_rc_for_http(long http_code, long expected) {
     if (http_code >= 500 || http_code == 0) {
         return PAM_AUTHINFO_UNAVAIL;
     }
-    /* 4xx and other unexpected codes: MFA path unavailable / misconfigured */
     return PAM_AUTHINFO_UNAVAIL;
 }
 
 static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
-                                       const char *username) {
+                                       const char *username,
+                                       long *auth_attempt_id_out) {
     char userpwd[EZKEY_KEY_MAX * 2 + 4];
     char post_url[EZKEY_URL_MAX + 64];
     char wait_url[EZKEY_URL_MAX + 128];
@@ -491,10 +589,15 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     int accepted;
     char msg[512];
 
-    if (cfg->integration_key[0] == '\0' || cfg->secret_key[0] == '\0') {
+    if (auth_attempt_id_out != NULL) {
+        *auth_attempt_id_out = -1;
+    }
+
+    if (cfg->api_url[0] == '\0' || cfg->integration_key[0] == '\0' ||
+        cfg->secret_key[0] == '\0') {
         log_pam_error_debug(pamh, cfg,
-                            "integration_key or secret_key is not set "
-                            "(config file or env)");
+                            "integration_api_url, integration_key, or "
+                            "secret_key missing from conf");
         return PAM_AUTHINFO_UNAVAIL;
     }
 
@@ -567,6 +670,9 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
         goto cleanup;
     }
     auth_attempt_id = (long)id_val->valuedouble;
+    if (auth_attempt_id_out != NULL) {
+        *auth_attempt_id_out = auth_attempt_id;
+    }
     cJSON_Delete(root);
     ezkey_buf_free(&buf);
 
@@ -644,15 +750,18 @@ cleanup:
 
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
                                    const char **argv) {
-    const char *username;
-    int retval;
+    const char *username = NULL;
+    int retval = PAM_AUTHINFO_UNAVAIL;
     int conf_rc;
     EzkeyConfig cfg;
     const char *env_conf;
     char user_msg[768];
-    char result_msg[256];
+    long auth_attempt_id = -1;
+    struct timespec started;
 
     (void)flags;
+    clock_gettime(CLOCK_MONOTONIC, &started);
+
     ezkey_config_init(&cfg);
     parse_module_args(argc, argv, &cfg);
 
@@ -664,16 +773,26 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     openlog(EZKEY_MODULE_NAME, LOG_PID, LOG_AUTHPRIV);
 
     conf_rc = load_config_file(cfg.config_file, &cfg);
+    if (conf_rc == -2) {
+        snprintf(user_msg, sizeof(user_msg),
+                 "Config file %s rejected: must be root:root with mode "
+                 "no wider than 0600",
+                 cfg.config_file);
+        log_pam_error_debug(pamh, &cfg, user_msg);
+        retval = PAM_AUTHINFO_UNAVAIL;
+        goto done;
+    }
     if (conf_rc != 0) {
         int saved_errno = errno;
-        apply_env_overrides(&cfg);
-        snprintf(user_msg, sizeof(user_msg),
-                 "Cannot open config file %s: %s (env overrides still applied)",
+        snprintf(user_msg, sizeof(user_msg), "Cannot open config file %s: %s",
                  cfg.config_file, strerror(saved_errno));
         log_pam_error_debug(pamh, &cfg, user_msg);
-    } else {
-        apply_env_overrides(&cfg);
+        retval = PAM_AUTHINFO_UNAVAIL;
+        goto done;
     }
+
+    /* Non-secret overrides only (timeouts / debug). Credentials stay in conf. */
+    apply_env_overrides(&cfg);
 
     log_pam_info(pamh, &cfg, "=== EZKEY PAM MODULE STARTED ===");
 
@@ -683,24 +802,24 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
         log_pam_info(pamh, &cfg, user_msg);
     }
 
-    if (cfg.integration_key[0] == '\0' || cfg.secret_key[0] == '\0') {
+    if (cfg.api_url[0] == '\0' || cfg.integration_key[0] == '\0' ||
+        cfg.secret_key[0] == '\0') {
         log_pam_error_debug(pamh, &cfg,
-                            "Missing integration_key or secret_key after config "
-                            "load");
-        closelog();
-        return PAM_AUTHINFO_UNAVAIL;
+                            "Missing integration_api_url, integration_key, or "
+                            "secret_key in conf");
+        retval = PAM_AUTHINFO_UNAVAIL;
+        goto done;
     }
 
     retval = pam_get_user(pamh, &username, NULL);
     if (retval != PAM_SUCCESS) {
         log_pam_error(pamh, &cfg, "Failed to get username");
-        closelog();
-        return retval;
+        goto done;
     }
     if (username == NULL || strlen(username) == 0) {
         log_pam_error(pamh, &cfg, "Username is null or empty");
-        closelog();
-        return PAM_USER_UNKNOWN;
+        retval = PAM_USER_UNKNOWN;
+        goto done;
     }
 
     snprintf(user_msg, sizeof(user_msg), "Authentication requested for user: %s",
@@ -711,16 +830,19 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
              "Approve this SSH login on your Ezkey device for user %s.",
              username);
 
-    retval = ezkey_authenticate_user_api(pamh, &cfg, username);
+    retval = ezkey_authenticate_user_api(pamh, &cfg, username, &auth_attempt_id);
 
-    snprintf(result_msg, sizeof(result_msg), "Authentication result for %s: %s",
-             username, (retval == PAM_SUCCESS) ? "SUCCESS" : "FAILURE");
-    log_pam_info(pamh, &cfg, result_msg);
     if (cfg.debug) {
-        snprintf(result_msg, sizeof(result_msg), "PAM return code: %d", retval);
-        log_pam_info(pamh, &cfg, result_msg);
+        snprintf(user_msg, sizeof(user_msg), "Authentication result for %s: %s",
+                 username, (retval == PAM_SUCCESS) ? "SUCCESS" : "FAILURE");
+        log_pam_info(pamh, &cfg, user_msg);
+        snprintf(user_msg, sizeof(user_msg), "PAM return code: %d", retval);
+        log_pam_info(pamh, &cfg, user_msg);
+        log_pam_info(pamh, &cfg, "=== EZKEY PAM MODULE FINISHED ===");
     }
-    log_pam_info(pamh, &cfg, "=== EZKEY PAM MODULE FINISHED ===");
+
+done:
+    log_attempt_summary(username, auth_attempt_id, retval, elapsed_ms(&started));
     closelog();
     return retval;
 }

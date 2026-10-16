@@ -46,6 +46,13 @@ fi
 
 if [ -f "$PAM_CONF" ]; then
     ok "pam_ezkey.conf exists at $PAM_CONF"
+    owner=$(stat -c '%u:%g' "$PAM_CONF" 2>/dev/null || stat -f '%u:%g' "$PAM_CONF" 2>/dev/null || echo "")
+    mode=$(stat -c '%a' "$PAM_CONF" 2>/dev/null || stat -f '%OLp' "$PAM_CONF" 2>/dev/null || echo "")
+    if [ "$owner" = "0:0" ] && [ "$mode" = "600" ]; then
+        ok "pam_ezkey.conf is root:root mode 600"
+    else
+        fail "pam_ezkey.conf owner/mode is '${owner:-?}'/'${mode:-?}' (expected 0:0/600)"
+    fi
 else
     fail "pam_ezkey.conf not found at $PAM_CONF"
 fi

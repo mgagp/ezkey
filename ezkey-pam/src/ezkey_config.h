@@ -7,16 +7,18 @@
 
 /* Module identification */
 #define EZKEY_MODULE_NAME "pam_ezkey"
-#define EZKEY_VERSION "2.1.0"
+#define EZKEY_VERSION "2.2.0"
 
 /* Default Integration API endpoint */
 #define EZKEY_DEFAULT_API_URL "http://localhost:7080"
 
-/* Environment variable names (runtime overrides) */
-#define EZKEY_ENV_API_URL "EZKEY_INTEGRATION_API_URL"
-#define EZKEY_ENV_API_URL_LEGACY "EZKEY_M2M_API_URL"
-#define EZKEY_ENV_INTEGRATION_KEY "EZKEY_INTEGRATION_KEY"
-#define EZKEY_ENV_SECRET_KEY "EZKEY_SECRET_KEY"
+/*
+ * Environment variable names.
+ * M1: integration_api_url / integration_key / secret_key are NEVER read from
+ * the environment by the module — only from the conf file (root:root ≤0600).
+ * Docker entrypoint still uses EZKEY_INTEGRATION_* to *write* that conf.
+ * Module-side env overrides are limited to timeouts/debug and conf path.
+ */
 #define EZKEY_ENV_WAIT_TIMEOUT "EZKEY_WAIT_TIMEOUT"
 #define EZKEY_ENV_WAIT_POLLING "EZKEY_WAIT_POLLING"
 #define EZKEY_ENV_API_TIMEOUT "EZKEY_API_TIMEOUT"
