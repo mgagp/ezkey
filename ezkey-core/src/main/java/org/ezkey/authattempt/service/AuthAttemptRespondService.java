@@ -20,8 +20,11 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
+import org.ezkey.exception.auth.AuthAttemptRespondBeforeReadException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.exception.auth.IntegrationSigningUnavailableException;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +48,11 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li><b>Supersession Check:</b> Ensures no newer authentication attempt exists
  *   <li><b>Expiration Check:</b> Validates authentication attempt has not expired
  * </ul>
+ *
+ * <p><b>Signed outcomes (#844):</b> Only decisions and final statuses leave this service as HTTP
+ * 200 bodies, and those bodies are always integration-signed. Terminal status, PENDING
+ * (respond-before-read), not-found, and missing integration private key escape as problem+json
+ * (409 / 400 / 404 / 503) — never as an unsigned 200.
  *
  * <p><b>Transaction Management:</b> This service uses Spring's declarative transaction management
  * to ensure data consistency during the authentication response processing.
@@ -133,8 +141,9 @@ public class AuthAttemptRespondService {
       // Step 6: Build and return response (integration-signed result payload)
       return buildResponse(request, authAttempt, enrollment);
     } catch (AuthAttemptRequestFailedException ignored) {
-      // Domain FAILED response (integration-signed); state conflicts use
-      // AuthAttemptStateConflictException and propagate.
+      // Legitimate domain FAILED only (invalid device signature, challenge mismatch, missing
+      // device key after the attempt was loaded). State conflict, respond-before-read, not-found,
+      // and missing integration signing key propagate as problem+json — never unsigned 200 (#844).
       return buildFailedResponse(request, authAttempt);
     }
   }
@@ -152,13 +161,20 @@ public class AuthAttemptRespondService {
     Optional<AuthAttempt> authAttemptOpt =
         authAttemptRepository.findById(request.getAuthAttemptId());
     if (authAttemptOpt.isEmpty()) {
-      throw new AuthAttemptRequestFailedException("Auth attempt record not found");
+      throw new ResourceNotFoundException("AuthAttempt", request.getAuthAttemptId());
     }
     AuthAttempt authAttempt = authAttemptOpt.get();
 
-    // Check if in READ status (device has claimed the attempt)
-    if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.READ) {
-      throw new AuthAttemptRequestFailedException("Auth attempt not read by device");
+    AuthAttemptStatus status = authAttempt.getAuthAttemptStatus();
+    if (status == AuthAttemptStatus.PENDING) {
+      // Protocol violation: device must claim via pending before respond (#844).
+      throw new AuthAttemptRespondBeforeReadException(
+          "Auth attempt still PENDING; device must claim via pending first");
+    }
+    if (status != AuthAttemptStatus.READ) {
+      // Terminal: ACCEPTED, REJECTED, EXPIRED, INVALID → conflict (#844).
+      throw new AuthAttemptStateConflictException(
+          "Cannot respond to authentication attempt: status is " + status);
     }
     // Check if superseded by a newer authentication attempt for the same enrollment
     Optional<AuthAttempt> newerAttempt =
@@ -195,7 +211,7 @@ public class AuthAttemptRespondService {
         enrollmentRepository
             .findById(authAttempt.getEnrollmentId())
             .orElseThrow(
-                () -> new AuthAttemptRequestFailedException("Enrollment record not found"));
+                () -> new ResourceNotFoundException("Enrollment", authAttempt.getEnrollmentId()));
 
     // Validate device public key
     String devicePublicKey = enrollment.getDevicePublicKey();
@@ -349,41 +365,53 @@ public class AuthAttemptRespondService {
   }
 
   /**
-   * Builds a FAILED result for validation errors and signs when the integration key can be resolved
-   * from the attempt's enrollment.
+   * Builds a FAILED result for validation errors and signs with the integration key. Missing key
+   * refuses to start an unsigned body ({@link IntegrationSigningUnavailableException} → 503).
    */
   private AuthAttemptRespondResponse buildFailedResponse(
       AuthAttemptRespondRequest request, AuthAttempt authAttempt) {
     AuthAttemptRespondResponse response =
         new AuthAttemptRespondResponse(AuthenticationResult.FAILED, RESPOND_FAILURE_CLIENT_MESSAGE);
-    if (authAttempt != null) {
-      response.setAuthAttemptId(authAttempt.getAuthAttemptId());
-      response.setCreatedAt(authAttempt.getCreatedAt());
-      String proofToken =
-          authAttempt.getAuthAttemptProofToken() != null
-              ? authAttempt.getAuthAttemptProofToken()
-              : "";
-      enrollmentRepository
-          .findById(authAttempt.getEnrollmentId())
-          .ifPresent(enrollment -> attachRespondResultSignature(response, enrollment, proofToken));
-    } else {
-      response.setAuthAttemptId(request.getAuthAttemptId());
+    if (authAttempt == null) {
+      // Should not happen: not-found / state gates no longer throw RequestFailed into this catch.
+      throw new IllegalStateException(
+          "buildFailedResponse requires a loaded auth attempt; refuse unsigned FAILED (#844)");
     }
+    response.setAuthAttemptId(authAttempt.getAuthAttemptId());
+    response.setCreatedAt(authAttempt.getCreatedAt());
+    String proofToken =
+        authAttempt.getAuthAttemptProofToken() != null
+            ? authAttempt.getAuthAttemptProofToken()
+            : "";
+    Enrollment enrollment =
+        enrollmentRepository
+            .findById(authAttempt.getEnrollmentId())
+            .orElseThrow(
+                () -> new ResourceNotFoundException("Enrollment", authAttempt.getEnrollmentId()));
+    attachRespondResultSignature(response, enrollment, proofToken);
     return response;
   }
 
   /**
-   * Signs {@code proofToken|authAttemptId|result|message} with the integration private key. Skips
-   * signing if the key is missing.
+   * Signs {@code proofToken|authAttemptId|result|message} with the integration private key.
+   * Refuses to emit an unsigned body when the key is missing or blank (#844) — same fail-closed
+   * posture as encryption {@code required=true} refusing to start without a usable keyset.
+   *
+   * @param response respond body being built
+   * @param enrollment enrollment holding the integration private key
+   * @param proofToken attempt proof token (may be empty string for FAILED edge paths)
+   * @throws IntegrationSigningUnavailableException when the key cannot sign
    */
   private void attachRespondResultSignature(
       AuthAttemptRespondResponse response, Enrollment enrollment, String proofToken) {
     if (enrollment == null) {
-      return;
+      throw new IntegrationSigningUnavailableException(
+          "Enrollment required to sign respond result; refuse unsigned 200");
     }
     String privateKey = enrollment.getIntegrationPrivateKey();
     if (privateKey == null || privateKey.isBlank()) {
-      return;
+      throw new IntegrationSigningUnavailableException(
+          "Integration private key missing or blank; refuse unsigned 200");
     }
     String payload =
         AuthAttemptSignaturePayload.buildRespondResultPayload(

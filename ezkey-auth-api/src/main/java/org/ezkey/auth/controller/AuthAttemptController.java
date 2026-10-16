@@ -266,25 +266,26 @@ public class AuthAttemptController {
    * @param request the response request DTO containing authentication attempt ID, user's decision
    *     and signatures
    * @param httpRequest the HTTP servlet request for extracting audit information (IP, user agent)
-   * @return ResponseEntity containing response confirmation with HTTP 200, or 400 for invalid
-   *     requests, or 409 for conflicting states
+   * @return ResponseEntity containing response confirmation with HTTP 200 (always
+   *     integration-signed), or 400/404/409/503 Problem Details — never an unsigned 200 (#844)
    */
   @PostMapping("/respond")
   @Operation(
       summary = "Submit authentication response",
       description =
           "Submits mobile device's response to an authentication request. The authAttemptId is"
-              + " provided in the request body for uniform API design. HTTP 200 may include a"
-              + " business-level FAILED result in the JSON body (integration-signed) when"
-              + " validation fails in the respond service; uncaught IllegalArgumentException uses"
-              + " 400.")
+              + " provided in the request body for uniform API design. HTTP 200 bodies"
+              + " (APPROVED/DENIED/FAILED) are always integration-signed; the server never emits"
+              + " an unsigned 200 (#844). Terminal status → 409 auth-attempt-state-conflict;"
+              + " PENDING respond → 400 auth-attempt-respond-before-read; not found → 404;"
+              + " missing integration signing key → 503 integration-signing-unavailable.")
   @ApiResponses(
       value = {
         @ApiResponse(
             responseCode = "200",
             description =
-                "Respond processed; body may be APPROVED, DENIED, or FAILED (signed FAILED when "
-                    + "validation/crypto checks fail in the respond service)",
+                "Respond processed; body may be APPROVED, DENIED, or FAILED — always"
+                    + " integration-signed (#844)",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
@@ -292,7 +293,16 @@ public class AuthAttemptController {
                             implementation = AuthAttemptRespondResponseDto.class))),
         @ApiResponse(
             responseCode = "400",
-            description = "Invalid response data or validation failed",
+            description =
+                "Invalid response data, validation failed, or respond-before-read (PENDING)",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Authentication attempt or enrollment not found",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
@@ -300,7 +310,15 @@ public class AuthAttemptController {
                             implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
-            description = "Authentication attempt state conflict",
+            description = "Authentication attempt state conflict (terminal / cancelled / superseded)",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "503",
+            description = "Integration signing unavailable (refuse unsigned 200)",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
