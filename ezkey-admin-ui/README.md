@@ -35,7 +35,7 @@ npm run generate:api
 npm run dev
 ```
 
-`src/generated/` is gitignored (Orval). A fresh clone must run `npm run generate:api` before `npm run dev` or Playwright. The committed `openapi-spec.json` is the input; do not hand-edit it.
+`src/generated/` is gitignored (Orval). A fresh clone must run `npm run generate:api` before `npm run dev` or Playwright. The committed `openapi-spec.json` is the input; do not hand-edit it. After an Admin API contract change (e.g. #833 rate-limit / OpenAPI refresh), run `npm run generate:api` again before starting the UI so the Orval client matches the updated spec.
 
 The dev server starts on `http://localhost:5173`. API calls are proxied to `http://localhost:9080` via the Vite proxy config (see `vite.config.ts`).
 
