@@ -261,8 +261,10 @@ export const resources = {
         requestFailed: 'Request failed.',
         unexpectedError: 'Unexpected error.',
         requestNoLongerActive: 'This request is no longer active. No action is required.',
+        resultNotConfirmed:
+          'Result not confirmed. The server may already have recorded this decision. No further action is required.',
         respondBeforeRead:
-          'This request is not ready yet. Go back and open it again from the list.',
+          'This request is not ready yet. Tap Try again after the device has claimed it.',
         integrationSigningUnavailable:
           'Authentication signing is temporarily unavailable. Try again later.',
         resourceNotFound: 'This request could not be found.',
@@ -638,8 +640,10 @@ export const resources = {
         requestFailed: 'Échec de la requête.',
         unexpectedError: 'Erreur inattendue.',
         requestNoLongerActive: "Cette demande n'est plus active. Aucune action requise.",
+        resultNotConfirmed:
+          "Résultat non confirmé. Le serveur a pu déjà enregistrer cette décision. Aucune autre action n'est requise.",
         respondBeforeRead:
-          "Cette demande n'est pas encore prête. Revenez en arrière et rouvrez-la depuis la liste.",
+          "Cette demande n'est pas encore prête. Appuyez sur Réessayer après que l'appareil l'ait réclamée.",
         integrationSigningUnavailable:
           "La signature d'authentification est temporairement indisponible. Réessayez plus tard.",
         resourceNotFound: "Cette demande est introuvable.",

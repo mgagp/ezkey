@@ -368,6 +368,10 @@ public class AuthAttemptRespondService {
    * Builds a FAILED result for validation errors and signs with the integration key. A missing or
    * blank per-enrollment key throws {@link IntegrationSigningUnavailableException} → HTTP 503 (no
    * unsigned 200); there is no JVM startup check for integration keys (#844).
+   *
+   * <p>Note: callers that already committed {@code INVALID} via {@link
+   * AuthAttemptTxHelper#markAsInvalid} (REQUIRES_NEW) keep that status if signing then fails — a
+   * client retry sees terminal → 409, not a second 503.
    */
   private AuthAttemptRespondResponse buildFailedResponse(
       AuthAttemptRespondRequest request, AuthAttempt authAttempt) {

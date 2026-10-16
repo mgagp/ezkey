@@ -32,12 +32,12 @@ export declare class AuthenticationAttemptsApi extends runtime.BaseAPI {
      */
     pending(requestParameters: PendingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthAttemptPendingResponseDto | null | undefined>;
     /**
-     * Submits mobile device\'s response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 may include a business-level FAILED result in the JSON body (integration-signed) when validation fails in the respond service; uncaught IllegalArgumentException uses 400.
+     * Submits mobile device\'s response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 bodies (APPROVED/DENIED/FAILED) are always integration-signed; the server never emits an unsigned 200 (#844). Terminal status → 409 auth-attempt-state-conflict; PENDING respond → 400 auth-attempt-respond-before-read; not found → 404; missing per-enrollment integration signing key → runtime 503 integration-signing-unavailable (transaction rolls back; no JVM startup gate).
      * Submit authentication response
      */
     respondRaw(requestParameters: RespondRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AuthAttemptRespondResponseDto>>;
     /**
-     * Submits mobile device\'s response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 may include a business-level FAILED result in the JSON body (integration-signed) when validation fails in the respond service; uncaught IllegalArgumentException uses 400.
+     * Submits mobile device\'s response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 bodies (APPROVED/DENIED/FAILED) are always integration-signed; the server never emits an unsigned 200 (#844). Terminal status → 409 auth-attempt-state-conflict; PENDING respond → 400 auth-attempt-respond-before-read; not found → 404; missing per-enrollment integration signing key → runtime 503 integration-signing-unavailable (transaction rolls back; no JVM startup gate).
      * Submit authentication response
      */
     respond(requestParameters: RespondRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthAttemptRespondResponseDto>;

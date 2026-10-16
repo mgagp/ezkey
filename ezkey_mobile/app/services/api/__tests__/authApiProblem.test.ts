@@ -24,7 +24,7 @@ const FALLBACK = 'Request failed.';
 const STATE_CONFLICT_MSG =
   'This request is no longer active. No action is required.';
 const RESPOND_BEFORE_READ_MSG =
-  'This request is not ready yet. Go back and open it again from the list.';
+  'This request is not ready yet. Tap Try again after the device has claimed it.';
 const SIGNING_UNAVAILABLE_MSG =
   'Authentication signing is temporarily unavailable. Try again later.';
 const RESOURCE_NOT_FOUND_MSG = 'This request could not be found.';
@@ -232,7 +232,10 @@ describe('resolveAuthApiUserFacingOutcome / isAuthAttemptStateConflict', () => {
       message: RESPOND_BEFORE_READ_MSG,
       retryable: true,
     });
-    expect(resolveAuthApiUserFacingOutcome(error, CATALOG).message).not.toContain('claimed');
+    // Local catalog may say "claimed"; must not surface server problem detail verbatim.
+    expect(resolveAuthApiUserFacingOutcome(error, CATALOG).message).not.toContain(
+      'has not been claimed by the device yet',
+    );
   });
 
   it('marks integration-signing-unavailable as retryable with local catalog text (#844)', () => {

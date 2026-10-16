@@ -483,7 +483,7 @@ describe('handleRespond', () => {
     expect(mockSetRecentAuthResult).not.toHaveBeenCalled();
   });
 
-  it('unsigned 200 respond → non-retryable neutral Back-only; no enrollment/key wipe (#844)', async () => {
+  it('unsigned 200 respond → non-retryable result-not-confirmed; no enrollment/key wipe (#844)', async () => {
     mockAuthAttemptsApi.respond.mockResolvedValue({
       authAttemptId: 1,
       authAttemptResult: 'APPROVED',
@@ -498,7 +498,7 @@ describe('handleRespond', () => {
     });
 
     expect(result.current.globalError).toBe(
-      'This request is no longer active. No action is required.',
+      'Result not confirmed. The server may already have recorded this decision. No further action is required.',
     );
     expect(result.current.globalErrorRetryable).toBe(false);
     expect(result.current.hasSubmittedServerDecision()).toBe(true);
@@ -506,7 +506,7 @@ describe('handleRespond', () => {
     expect(mockSetRecentAuthResult).not.toHaveBeenCalled();
   });
 
-  it('badly signed 200 respond → non-retryable neutral Back-only (#844)', async () => {
+  it('badly signed 200 respond → non-retryable result-not-confirmed (#844)', async () => {
     mockCryptoService.verify.mockResolvedValueOnce(false);
 
     const {result} = renderHook('enr-1', sampleAttempt);
@@ -516,7 +516,7 @@ describe('handleRespond', () => {
     });
 
     expect(result.current.globalError).toBe(
-      'This request is no longer active. No action is required.',
+      'Result not confirmed. The server may already have recorded this decision. No further action is required.',
     );
     expect(result.current.globalErrorRetryable).toBe(false);
     expect(result.current.hasSubmittedServerDecision()).toBe(true);

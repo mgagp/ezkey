@@ -274,7 +274,7 @@ Content-Type: application/json
 ```
 
 **Response**
-- **200 OK** + validation result (integration-signed; verify `authAttemptProofTokenResultSignedByIntegration` with the integration public key). That signature field is **null** when the server could not sign (for example the integration key is unavailable); treat a missing signature as untrusted.
+- **200 OK** + validation result — always integration-signed (`authAttemptProofTokenResultSignedByIntegration`); verify with the integration public key. The server **never** returns an unsigned 200 on this path (#844). If the per-enrollment integration private key is missing/blank, the API returns **503** `integration-signing-unavailable` (transaction rolls back) instead of a null signature — see the status table under § Error responses above.
 - **429 Too Many Requests** when rate limit is exceeded (same `authAttemptId` or same client IP when body cannot be parsed); **empty body** plus a `Retry-After` header (seconds).
 ```json
 {

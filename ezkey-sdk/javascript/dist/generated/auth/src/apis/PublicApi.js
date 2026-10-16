@@ -59,13 +59,6 @@ class PublicApi extends runtime.BaseAPI {
     async getInstanceInfoRaw(initOverrides) {
         const queryParameters = {};
         const headerParameters = {};
-        if (this.configuration && this.configuration.accessToken) {
-            const token = this.configuration.accessToken;
-            const tokenString = await token("signatureAuth", []);
-            if (tokenString) {
-                headerParameters["Authorization"] = `Bearer ${tokenString}`;
-            }
-        }
         const response = await this.request({
             path: `/api/v1/public/instance-info`,
             method: 'GET',

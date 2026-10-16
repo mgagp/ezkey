@@ -25,17 +25,19 @@
 | Terminal (`ACCEPTED`, `REJECTED`/`DENIED`, `EXPIRED`, `INVALID`) | **409** | `auth-attempt-state-conflict` |
 | Still `PENDING` (respond before claim) — protocol violation | **400** | `auth-attempt-respond-before-read` (kept distinct from 409 for diagnosis) |
 | Attempt or enrollment not found | **404** | `resource-not-found` |
-| Missing/blank **per-enrollment** integration private key (even for APPROVED/DENIED/FAILED) | **503** | `integration-signing-unavailable` — runtime only: throw instead of unsigned 200; outer respond `@Transactional` rolls back (no JVM startup gate for integration keys; they are not instance-global) |
+| Missing/blank **per-enrollment** integration private key (even for APPROVED/DENIED/FAILED) | **503** | `integration-signing-unavailable` — runtime only: throw instead of unsigned 200; outer respond `@Transactional` rolls back when the status flip was in the same transaction (no JVM startup gate for integration keys; they are not instance-global) |
 | Legitimate FAILED (invalid device signature, wrong challenge) | **200** signed `FAILED` | — non-regression tests required |
 
 **Honesty (Christophe m2 @ `6f589ad4`):** There is **no** “refuse to start without an integration signing key” check. Integration Ed25519 keys live on each enrollment row. The protection is **runtime 503** + transaction rollback when signing cannot run.
+
+**`markAsInvalid` before 503 (Patrick nit):** Device-signature / challenge failures call `AuthAttemptTxHelper.markAsInvalid` with `REQUIRES_NEW` **before** building the signed FAILED body. If signing then fails (blank integration key) → **503**, but **INVALID is already committed**. A client retry therefore sees terminal status → **409** `auth-attempt-state-conflict`, not another 503.
 
 Not-found / PENDING / terminal / signing-unavailable must **not** be swallowed by the `AuthAttemptRequestFailedException` catch that builds domain FAILED. Status codes 404/400/409 above are unchanged pending Marc on a possible unified 409.
 
 ### Mobile
 
-- Unsigned or badly signed HTTP **200** → non-retryable → neutral Back-only (`requestNoLongerActive`).
-- Problem+json: map by `type` to local catalog; never show server `detail`. A **409 of another type** stays retryable.
+- Unsigned or badly signed HTTP **200** (or missing local integration public key) → non-retryable Back-only with catalog **`resultNotConfirmed`** (« Résultat non confirmé » / EN equivalent) — not `requestNoLongerActive`, because the server may already have recorded the decision (Patrick).
+- Problem+json: map by `type` to local catalog; never show server `detail`. A **409 of another type** stays retryable. `respondBeforeRead` copy matches the **Try again** button (retryable).
 - Comment: `HTTP OK != decision committed`.
 
 ### Patrick factual correction

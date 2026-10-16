@@ -489,15 +489,16 @@ export function usePendingAuth(
           enrollment.installation?.authUrl,
         );
         // HTTP OK != decision committed / verified. Lock this attempt id so Approve/Deny
-        // cannot fire again; unsigned or badly signed 200 → neutral Back-only (#844).
+        // cannot fire again; unsigned or badly signed 200 → Back-only "result not confirmed"
+        // (server may already have recorded the decision) (#844 Patrick).
         serverDecisionAttemptIdRef.current = respondAttemptId;
 
         const integrationPublicKey = enrollment.integrationPublicKey;
         if (!integrationPublicKey) {
           tracePendingAuthRespond('handleRespond_abort_missing_integration_public_key', {});
           if (isMountedRef.current) {
-            // Neutral Back-only — no enrollment/key wipe, no auto deny/approve (#844).
-            setGlobalError(t('pendingAuth.requestNoLongerActive'));
+            // Back-only — no enrollment/key wipe, no auto deny/approve (#844).
+            setGlobalError(t('pendingAuth.resultNotConfirmed'));
             setGlobalErrorRetryable(false);
           }
           return;
@@ -509,7 +510,7 @@ export function usePendingAuth(
             authAttemptId: response.authAttemptId,
           });
           if (isMountedRef.current) {
-            setGlobalError(t('pendingAuth.requestNoLongerActive'));
+            setGlobalError(t('pendingAuth.resultNotConfirmed'));
             setGlobalErrorRetryable(false);
           }
           return;
@@ -530,7 +531,7 @@ export function usePendingAuth(
             authAttemptId: response.authAttemptId,
           });
           if (isMountedRef.current) {
-            setGlobalError(t('pendingAuth.requestNoLongerActive'));
+            setGlobalError(t('pendingAuth.resultNotConfirmed'));
             setGlobalErrorRetryable(false);
           }
           return;
