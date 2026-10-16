@@ -1,6 +1,7 @@
 # Ezkey.org API spec assets
 
-This directory contains the static OpenAPI JSON assets published with `sites/ezkey-org/`.
+This directory holds the static OpenAPI JSON assets published with `sites/ezkey-org/`
+(Cloudflare Pages deploys this folder as-is).
 
 ## Purpose
 
@@ -13,23 +14,18 @@ These files are the portal-facing copies consumed by:
 
 ## Source of truth
 
-The canonical generated specs remain under the repository-level `specs/` directory:
+Canonical specs live under repository-level `specs/`:
 
 - `specs/admin-api/openapi-spec.json`
 - `specs/auth-api/openapi-spec.json`
 - `specs/integration-api/openapi-spec.json`
 
-Use the centralized update workflow to refresh them and publish portal copies in one step:
+The `*-openapi.json` files here are **gitignored**. Copy them at update or deploy time
+(no git symlinks — [#833](https://github.com/mgagp/ezkey/pull/833)):
 
 ```bash
-./scripts/update-specs.sh --all
+./scripts/update-specs.sh --all          # refreshes specs/ then syncs this folder
+./scripts/sync-ezkey-org-api-specs.sh    # copy only (also run by deploy-ezkey-org-*.sh)
 ```
 
 Do not hand-edit the JSON assets in this directory.
-
-## Last live refresh
-
-- **Date:** 2026-09-23
-- **Stack:** clean-start Docker (Admin `:9080`, Auth `:8080`, Integration `:7080` `/api-docs`)
-- **Command:** `./scripts/update-specs.sh` (jq validate/format; auth + integration `servers` stripped)
-- **Result:** regenerated JSON byte-identical to committed `specs/{admin,auth,integration}-api/openapi-spec.json` (no contract drift)

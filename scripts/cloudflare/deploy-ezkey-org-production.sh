@@ -48,6 +48,8 @@ fi
 echo "Deploying ezkey.org static site to Cloudflare Pages production (project=$PROJECT, branch=$BRANCH)..."
 
 cd "$ROOT"
+# Portal OpenAPI JSON is gitignored; copy from specs/ before Pages deploy (#833).
+bash "$ROOT/scripts/sync-ezkey-org-api-specs.sh"
 exec npx wrangler pages deploy sites/ezkey-org \
   --project-name="$PROJECT" \
   --branch="$BRANCH" \

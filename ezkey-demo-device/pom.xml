@@ -110,7 +110,8 @@
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<inputSpec>${project.basedir}/openapi-spec.json</inputSpec>
+							<!-- Canonical monorepo path (no local symlink/copy — #833). Docker COPY places the same path under /build. -->
+							<inputSpec>${project.basedir}/../specs/auth-api/openapi-spec.json</inputSpec>
 							<generatorName>java</generatorName>
 							<addCompileSourceRoot>false</addCompileSourceRoot>
 							<generateApis>false</generateApis>

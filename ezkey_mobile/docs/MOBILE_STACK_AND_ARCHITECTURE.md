@@ -144,7 +144,7 @@ it is responsible for, but the backend remains authoritative for state transitio
 
 | Step | Source | Artifact | Owner rule |
 | --- | --- | --- | --- |
-| Auth API contract refresh | Root scripts `scripts/update-specs.*` | `ezkey_mobile/openapi-spec.json` | Never hand-edit the local spec copy. |
+| Auth API contract refresh | Root scripts `scripts/update-specs.*` | `specs/auth-api/openapi-spec.json` (Orval reads this path; no local copy — #833) | Never hand-edit the canonical spec. |
 | Client regeneration | Local mobile command `yarn generate:api` | Generated client and generated models | Run after spec refresh only. |
 | Mobile wrapper typing | `app/services/api/types.ts` | Thin local types | Keep thin; do not build a second hand-maintained contract universe. |
 | API facade layer | `app/services/api/*.ts` | Mobile-friendly bind/verify/pending/respond helpers | Owns serialization details and optional per-enrollment base URL routing. |
@@ -152,7 +152,7 @@ it is responsible for, but the backend remains authoritative for state transitio
 Warnings:
 
 - The generated models are the DTO source of truth for Auth API request and response shapes.
-- The local `openapi-spec.json` is versioned for reproducibility, but it is still refreshed only through the root workflow.
+- The Auth OpenAPI contract is the monorepo `specs/auth-api/openapi-spec.json`, refreshed only through the root workflow (#833).
 - Mobile conceptual docs should map the contract, not restate the entire contract canonically.
 
 ## Architecture Decisions and Non-Goals

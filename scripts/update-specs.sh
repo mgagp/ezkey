@@ -1,7 +1,10 @@
 #!/bin/bash
 
 # Ezkey OpenAPI Specifications Update Script
-# This script centralizes the management of OpenAPI specifications for all Ezkey projects
+# This script centralizes the management of OpenAPI specifications for all Ezkey projects.
+# It never creates git symlinks (mode 120000). Consumers either read specs/ directly or
+# receive a physical copy (Admin UI / demo-acme committed copies; ezkey-org portal copies
+# are gitignored and synced at update/deploy time). See specs/README.md (#833).
 
 set -e  # Exit on any error
 
@@ -106,8 +109,8 @@ update_spec() {
             print_warning "Consider installing jq for JSON validation and formatting"
         fi
         
-        # Update project links
-        update_project_links "$api_name" "$spec_file"
+        # Dispatch physical copies where consumers cannot read specs/ directly
+        update_project_copies "$api_name" "$spec_file"
         
     else
         print_error "Failed to download $api_name specification"
@@ -120,73 +123,48 @@ update_spec() {
     fi
 }
 
-# Function to update links to projects
-update_project_links() {
+# Physical copies only (never symlinks). Mobile, SDK, and demo-device read specs/ directly.
+update_project_copies() {
     local api_name=$1
     local spec_file=$2
     
     case $api_name in
         "admin-api")
-            print_status "Updating admin-api links..."
-            update_link "$spec_file" "ezkey-demo-app-acme/openapi-spec.json"
-            update_link "$spec_file" "ezkey-sdk/admin-api-spec.json"
-            update_link "$spec_file" "ezkey-admin-ui/openapi-spec.json"
-            update_link "$spec_file" "sites/ezkey-org/api-specs/admin-api-openapi.json"
+            print_status "Updating admin-api committed copies..."
+            # Admin UI Docker build context is the module folder only — committed copy + CI cmp.
+            update_copy "$spec_file" "ezkey-admin-ui/openapi-spec.json"
+            update_copy "$spec_file" "ezkey-demo-app-acme/openapi-spec.json"
             ;;
         "auth-api")
-            print_status "Updating auth-api links..."
-            update_link "$spec_file" "ezkey-demo-device/openapi-spec.json"
-            update_link "$spec_file" "ezkey-sdk/auth-api-spec.json"
-            update_link "$spec_file" "ezkey_mobile/openapi-spec.json"
-            update_link "$spec_file" "sites/ezkey-org/api-specs/auth-api-openapi.json"
+            # Mobile Orval, SDK openapi-generator, and demo-device Maven read specs/auth-api/
+            # directly — no dispatched file.
             ;;
         "integration-api")
-            print_status "Updating integration-api links..."
-            update_link "$spec_file" "sites/ezkey-org/api-specs/integration-api-openapi.json"
+            # No committed consumer copy outside sites/ezkey-org (synced below).
             ;;
     esac
+
+    # Portal assets are gitignored; always refresh from the canonical specs that exist.
+    if [ -f "$SPECS_DIR/admin-api/openapi-spec.json" ] \
+        && [ -f "$SPECS_DIR/auth-api/openapi-spec.json" ] \
+        && [ -f "$SPECS_DIR/integration-api/openapi-spec.json" ]; then
+        print_status "Syncing sites/ezkey-org/api-specs/ (gitignored portal copies)..."
+        bash "$PROJECT_ROOT/scripts/sync-ezkey-org-api-specs.sh"
+    fi
 }
 
-# Function to create links or copies based on OS
-update_link() {
+# Always copy — never ln. Keeps Windows (core.symlinks=false) and Linux identical.
+update_copy() {
     local source=$1
     local target=$2
-    local target_dir=$(dirname "$target")
-    local running_in_wsl=false
-    local windows_mounted_workspace=false
-
-    if [ -n "$WSL_DISTRO_NAME" ] || grep -qi microsoft /proc/version 2>/dev/null; then
-        running_in_wsl=true
-    fi
-
-    if [[ "$PROJECT_ROOT" =~ ^/mnt/[a-zA-Z]/ ]]; then
-        windows_mounted_workspace=true
-    fi
+    local target_dir
+    target_dir=$(dirname "$target")
     
-    # Ensure target directory exists
-    mkdir -p "$target_dir"
-    
-    # On Windows and WSL workspaces mounted from Windows, prefer copies.
-    # Native Windows tools (PowerShell, Node, Orval) can fail to resolve Linux symlinks.
-    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]] \
-        || [ "$running_in_wsl" = true ] \
-        || [ "$windows_mounted_workspace" = true ]; then
-        rm -f "$target"
-        cp "$source" "$target"
-        print_status "Copied to $(basename "$target")"
-    else
-        # Linux/macOS: relative symlink so Docker COPY from the repo root can follow the
-        # link (absolute /workspace/... targets break BuildKit checksums on cloud agents).
-        local rel
-        if rel="$(realpath --relative-to="$target_dir" "$source" 2>/dev/null)"; then
-            ln -sfn "$rel" "$target"
-        else
-            # BSD/macOS without --relative-to: absolute fallback (local Mac builds rarely
-            # hit the Docker COPY of these dispatched auth/admin specs the same way).
-            ln -sf "$(realpath "$source")" "$target"
-        fi
-        print_status "Linked to $(basename "$target")"
-    fi
+    mkdir -p "$PROJECT_ROOT/$target_dir"
+    # Replace a leftover symlink with a real file if present
+    rm -f "$PROJECT_ROOT/$target"
+    cp "$source" "$PROJECT_ROOT/$target"
+    print_status "Copied to $target"
 }
 
 # Function to show help
@@ -212,6 +190,8 @@ show_help() {
     echo "  - APIs must be running on localhost:9080 (admin), localhost:8080 (auth), and localhost:7080 (integration) as needed"
     echo "  - curl must be available for downloading specifications"
     echo "  - jq is required for auth-api and integration-api (host-neutral normalize) and recommended for other APIs"
+    echo ""
+    echo "Does not create git symlinks. See specs/README.md (#833)."
     echo ""
     echo "Auth API and Integration API: top-level servers are stripped after fetch. Package the"
     echo "EXP1 Cloudflare artifacts with ./scripts/package-auth-api-cloudflare-schema.sh or"

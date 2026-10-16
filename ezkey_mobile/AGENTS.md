@@ -71,7 +71,7 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
   Do not enable `useDatesTransform` unless Admin UI does — it is opt-in date deserialization.
   Orval 8.33+ types `getHeaders` via `RequestInit['headers']` (RN types already cover this); the
   former `orval-dom-shim.d.ts` (`HeadersInit`) is no longer required.
-- Never hand-edit `openapi-spec.json` in `ezkey_mobile/`.
+- Orval reads `../specs/auth-api/openapi-spec.json` directly (no local `openapi-spec.json` symlink/copy — #833). Never hand-edit the canonical file under `specs/`.
 - Refresh specs only through the root script `scripts/update-specs.sh` (Git Bash) after a human has started a clean Docker stack.
 - After refreshing the spec, run `yarn generate:api`.
 - Treat `app/services/api/generated/auth-api/model/` as the source of truth for Auth API DTOs.
