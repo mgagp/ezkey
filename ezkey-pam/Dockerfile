@@ -13,7 +13,7 @@ ARG ROCKY_IMAGE=rockylinux/rockylinux:10
 FROM ${ROCKY_IMAGE} AS builder
 
 LABEL org.ezkey.component="pam-builder"
-LABEL org.ezkey.version="2.2.2"
+LABEL org.ezkey.version="2.2.3"
 
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
@@ -25,9 +25,11 @@ RUN dnf -y install epel-release \
 WORKDIR /src
 COPY src/ /src/src/
 COPY Makefile /src/Makefile
+COPY test/ /src/test/
 
-RUN make clean && make all \
-    && test -f /src/build/pam_ezkey.so
+RUN make clean && make all test \
+    && test -f /src/build/pam_ezkey.so \
+    && test -f /src/build/test_no_conv_client
 
 # ---------------------------------------------------------------------------
 # Runtime — Rocky Linux SSH demo VM
@@ -35,7 +37,7 @@ RUN make clean && make all \
 FROM ${ROCKY_IMAGE} AS runtime
 
 LABEL org.ezkey.component="pam-ssh-demo"
-LABEL org.ezkey.version="2.2.2"
+LABEL org.ezkey.version="2.2.3"
 LABEL description="Rocky Linux SSH demo VM authenticated by Ezkey PAM"
 
 ENV LANG=C.UTF-8
@@ -66,12 +68,15 @@ RUN useradd -m -s /bin/bash "${EZKEY_SSH_USER}" \
     && usermod -aG wheel "${EZKEY_SSH_USER}" || true
 
 COPY --from=builder /src/build/pam_ezkey.so /lib64/security/pam_ezkey.so
-RUN chmod 755 /lib64/security/pam_ezkey.so
+COPY --from=builder /src/build/test_no_conv_client /opt/pam-ezkey/test/test_no_conv_client
+RUN chmod 755 /lib64/security/pam_ezkey.so \
+    && chmod 755 /opt/pam-ezkey/test/test_no_conv_client
 
 COPY config/pam_ezkey.conf /etc/security/pam_ezkey.conf
 RUN chmod 600 /etc/security/pam_ezkey.conf
 
 COPY sshd /etc/pam.d/sshd
+COPY sshd.chal-noconv /etc/pam.d/ezkey-chal-noconv
 COPY sshd_config /etc/ssh/sshd_config
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY test/test_pam.sh /opt/pam-ezkey/test/test_pam.sh

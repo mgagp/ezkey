@@ -113,6 +113,9 @@ expect_unavail() {
   else
     fail "${label} expected deny+UNAVAIL (ssh_rc=${ssh_rc} new=${new} line='${attempt}')"
   fi
+  if [ "${new}" -ge 1 ] && ! echo "${attempt}" | grep -Eq 'lab_http=(true|false)'; then
+    fail "${label}: attempt line missing lab_http=: ${attempt}"
+  fi
 }
 
 trap cleanup EXIT

@@ -27,7 +27,7 @@ that owns the API key.
 On top of 2.1 slices 1–3 ([`STATUS.md`](STATUS.md) § M1):
 
 - **One attempt line** in `authpriv` / `/var/log/secure` per authenticate:
-  `pam_ezkey: attempt user=… authAttemptId=… result=… pam_code=… latency_ms=…`
+  `pam_ezkey: attempt user=… authAttemptId=… result=… pam_code=… latency_ms=… lab_http=…`
   (never secrets / proof / bodies). Debug chatter stays in `/var/log/ezkey-pam/` only.
 - **Conf credentials** (`integration_api_url`, `integration_key`, `secret_key`) only from
   the conf file; must be `root:root` with mode exactly `0600` or `0400` or the module

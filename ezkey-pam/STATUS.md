@@ -45,7 +45,7 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.2** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
+Version **2.2.3** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
 (observability + conf `root:root` exact `0600`/`0400`, no URL default, no process-ENV
 overrides, `lab_http` gate, optional two-digit challenge via `pam_info`). It is still
 **not** a host-operable MFA agent on a real host (sshd cutover remains slice #4+).
@@ -414,7 +414,7 @@ Exactly **one** `LOG_AUTHPRIV` syslog line per `pam_sm_authenticate` call, **reg
 Format (stable; parse with `grep 'pam_ezkey: attempt '`):
 
 ```text
-pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms>
+pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms> lab_http=<true|false>
 ```
 
 | Field | Meaning |
@@ -424,6 +424,7 @@ pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n>
 | `result` | `SUCCESS` \| `DENIED` \| `UNAVAIL` \| `ERROR` \| `UNKNOWN_USER` |
 | `pam_code` | Integer PAM return code |
 | `latency_ms` | Monotonic elapsed ms for the authenticate call |
+| `lab_http` | Conf `lab_http` as `true` or `false` (Christophe) |
 
 **Never** logged: `secret_key`, integration key material, Basic `userpwd`, proof tokens, HTTP
 bodies, wait JSON.
@@ -452,9 +453,11 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 |---|---|
 | `scripts/test-observability.sh` | success / reject / timeout / network → exactly one clean attempt line; secrets absent from secure + debug logs; polled waits. Requires clean-start + Demo Device (local). |
 | `scripts/test-conf-security.sh` | baseline `root:root` `0600`; `0644` / `0000` / non-root / URL absent (empty + deleted line) / `http://`+`lab_http=false` / missing `secret_key` → `UNAVAIL`. |
-| `scripts/test-challenge.sh` | `challenge_requested=true` → SSH shows `Ezkey challenge code: NN`; Demo Device approve with same digits → `SUCCESS`. |
+| `scripts/test-challenge.sh` | `challenge_requested=true` → SSH shows code; Demo Device + DB → `SUCCESS`; attempt line has `lab_http=true`. |
+| `scripts/test-challenge-nits.sh` | Failing PAM conv + `challenge_requested` → `UNAVAIL` + `lab_http=` on attempt line. |
+| `test/test_challenge_harness.c` | Challenge bound 0..99 + `display_ok` (make test). |
 | `test/test_conf_security.sh` | in-container owner/mode/keys self-check (also via `up.sh` path) |
-| `make test` | check-source + compile + filelog harness + sanitize harness (`>=0x7f`, space, `=`) |
+| `make test` | check-source + compile + filelog + sanitize + challenge harnesses |
 | CI `ezkey-pam` job | `make test` + Rocky builder + `scripts/ci-m1-conf-security.sh` (incl. `lab_http` gate) → `ci-gate` |
 
 ### Lessons learned (M1)
@@ -484,16 +487,19 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 
 ### Two-digit challenge (number matching)
 
-**Supported (2.2.2+).** When `challenge_requested=true`:
+**Supported (2.2.3+).** When `challenge_requested=true`:
 
 1. `POST /api/v1/auth-attempts` with `challengeRequested=true`.
 2. Integration API returns `authAttemptChallenge` (default **2** digits —
    `ezkey.core.auth-attempt.challenge-digits`).
-3. Module calls `pam_info()` with `Ezkey challenge code: NN — enter this code…` **before**
-   `GET …/wait` (SSH keyboard-interactive surfaces `PAM_TEXT_INFO`).
-4. Device (Demo Device / mobile) must submit matching `challengeResponse` on approve.
-5. Fail-closed: `challenge_requested` but missing `authAttemptChallenge` → `PAM_AUTHINFO_UNAVAIL`.
-6. Challenge value is **not** written to authpriv attempt lines (#750).
+3. Module requires the value in **0..99**; anything else → `PAM_AUTHINFO_UNAVAIL`.
+4. Module displays `Ezkey challenge code: NN — enter this code…` via `pam_prompt`
+   (`PAM_TEXT_INFO`) before `GET …/wait` (fallback `pam_info`). If no PAM conversation
+   can show the code → `PAM_AUTHINFO_UNAVAIL` (user must see it — Christophe).
+5. Device (Demo Device / mobile) must submit matching `challengeResponse` on approve.
+6. Fail-closed: missing challenge → `PAM_AUTHINFO_UNAVAIL`.
+7. Challenge value is **not** written to authpriv attempt lines (#750); attempt lines
+   include `lab_http=true|false`.
 
 **Lab proof target (no physical phone).** Acceptance is clean-start stack + Demo Device + DB/log
 evidence — not a Pixel/mobile hand-test. Proof script: `./scripts/test-challenge.sh`
@@ -543,6 +549,9 @@ for the automated proof path. No Pixel / physical-phone step.
 | Christophe / follow-up | Refuse `http://` outside lab | **Done** (`lab_http`, default false) |
 | Christophe / follow-up | `/wait` signature on PAM | **Deferred** — see assessment above (no API signature today) |
 | Marc budget | Two-digit challenge UX | **Done** (`challenge_requested` + `pam_info` + `test-challenge.sh`) |
+| Christophe GO | Challenge bound 0..99 → else UNAVAIL | **Done** (`ezkey_challenge_in_range` + harness) |
+| Christophe GO | No conv to display code → UNAVAIL | **Done** (`display_ok` + `test-challenge-nits.sh`) |
+| Christophe GO | `lab_http=` on attempt authpriv line | **Done** |
 
 ### Out of M1
 

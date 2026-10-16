@@ -11,10 +11,11 @@ BUILD_DIR = build
 TEST_DIR = test
 INSTALL_DIR = /lib64/security
 
-OBJECTS = $(BUILD_DIR)/pam_ezkey.o $(BUILD_DIR)/ezkey_filelog.o $(BUILD_DIR)/ezkey_sanitize.o
+OBJECTS = $(BUILD_DIR)/pam_ezkey.o $(BUILD_DIR)/ezkey_filelog.o \
+	$(BUILD_DIR)/ezkey_sanitize.o $(BUILD_DIR)/ezkey_challenge.o
 
 .PHONY: all debug install uninstall clean check-pam check-source lint help \
-	test test-filelog test-sanitize
+	test test-filelog test-sanitize test-challenge
 
 all: $(BUILD_DIR)/$(MODULE_NAME)
 
@@ -22,7 +23,8 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 $(BUILD_DIR)/pam_ezkey.o: $(SRC_DIR)/pam_ezkey.c $(SRC_DIR)/ezkey_config.h \
-		$(SRC_DIR)/ezkey_filelog.h $(SRC_DIR)/ezkey_sanitize.h | $(BUILD_DIR)
+		$(SRC_DIR)/ezkey_filelog.h $(SRC_DIR)/ezkey_sanitize.h \
+		$(SRC_DIR)/ezkey_challenge.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/pam_ezkey.c -o $(BUILD_DIR)/pam_ezkey.o
 
 $(BUILD_DIR)/ezkey_filelog.o: $(SRC_DIR)/ezkey_filelog.c $(SRC_DIR)/ezkey_filelog.h \
@@ -31,6 +33,10 @@ $(BUILD_DIR)/ezkey_filelog.o: $(SRC_DIR)/ezkey_filelog.c $(SRC_DIR)/ezkey_filelo
 
 $(BUILD_DIR)/ezkey_sanitize.o: $(SRC_DIR)/ezkey_sanitize.c $(SRC_DIR)/ezkey_sanitize.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_sanitize.c -o $(BUILD_DIR)/ezkey_sanitize.o
+
+$(BUILD_DIR)/ezkey_challenge.o: $(SRC_DIR)/ezkey_challenge.c $(SRC_DIR)/ezkey_challenge.h \
+		| $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_challenge.c -o $(BUILD_DIR)/ezkey_challenge.o
 
 $(BUILD_DIR)/$(MODULE_NAME): $(OBJECTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $(BUILD_DIR)/$(MODULE_NAME)
@@ -86,8 +92,19 @@ test-sanitize: $(BUILD_DIR)/ezkey_sanitize.o $(TEST_DIR)/test_sanitize_harness.c
 		$(BUILD_DIR)/ezkey_sanitize.o -o $(BUILD_DIR)/test_sanitize_harness
 	$(BUILD_DIR)/test_sanitize_harness
 
-test: check-source all test-filelog test-sanitize
-	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog + sanitize harnesses OK"
+# Harness: challenge 0..99 + display_ok (Christophe nits).
+test-challenge: $(BUILD_DIR)/ezkey_challenge.o $(TEST_DIR)/test_challenge_harness.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_challenge_harness.c \
+		$(BUILD_DIR)/ezkey_challenge.o -lpam -o $(BUILD_DIR)/test_challenge_harness
+	$(BUILD_DIR)/test_challenge_harness
+
+$(BUILD_DIR)/test_no_conv_client: $(TEST_DIR)/test_no_conv_client.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(TEST_DIR)/test_no_conv_client.c -lpam \
+		-o $(BUILD_DIR)/test_no_conv_client
+
+test: check-source all test-filelog test-sanitize test-challenge \
+		$(BUILD_DIR)/test_no_conv_client
+	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog + sanitize + challenge OK"
 
 help:
 	@echo "Available targets:"
@@ -100,5 +117,6 @@ help:
 	@echo "  check-source  - Guard against /tmp debug logs (#818)"
 	@echo "  test-filelog  - Mode/hardlink/FIFO harness (#818 m2)"
 	@echo "  test-sanitize - Sanitize space/=/high-byte harness (M1)"
-	@echo "  test          - check-source + compile + filelog + sanitize"
+	@echo "  test-challenge - Challenge 0..99 + display_ok harness"
+	@echo "  test          - check-source + compile + filelog + sanitize + challenge"
 	@echo "  lint          - Run static code analysis"

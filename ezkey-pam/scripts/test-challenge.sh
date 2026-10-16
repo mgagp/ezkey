@@ -174,6 +174,11 @@ if echo "${ATTEMPT}" | grep -q "authAttemptId=${ATTEMPT_ID}" \
 else
   fail "expected SUCCESS for id=${ATTEMPT_ID}: ${ATTEMPT}"
 fi
+if echo "${ATTEMPT}" | grep -q 'lab_http=true'; then
+  ok "attempt line includes lab_http=true (Docker lab)"
+else
+  fail "expected lab_http=true on attempt line: ${ATTEMPT}"
+fi
 if echo "${ATTEMPT}" | grep -Eiq 'challenge code'; then
   fail "challenge UX text leaked into attempt syslog line"
 else

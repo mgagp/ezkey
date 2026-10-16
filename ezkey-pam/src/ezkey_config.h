@@ -7,7 +7,7 @@
 
 /* Module identification */
 #define EZKEY_MODULE_NAME "pam_ezkey"
-#define EZKEY_VERSION "2.2.2"
+#define EZKEY_VERSION "2.2.3"
 
 /*
  * No compiled-in default Integration API URL (Patrick B1 / M1 review).

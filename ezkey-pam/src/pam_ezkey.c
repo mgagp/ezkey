@@ -37,6 +37,7 @@
 #include <security/pam_modules.h>
 #include <security/pam_ext.h>
 #include <security/pam_appl.h>
+#include "ezkey_challenge.h"
 #include "ezkey_config.h"
 #include "ezkey_filelog.h"
 #include "ezkey_sanitize.h"
@@ -88,7 +89,7 @@ static void trim_inplace(char *s);
 static void ezkey_secure_wipe(void *ptr, size_t len);
 static void wipe_cfg_secrets(EzkeyConfig *cfg);
 static void log_attempt_summary(const char *username, long auth_attempt_id,
-                                int pam_rc, long latency_ms);
+                                int pam_rc, long latency_ms, int lab_http);
 
 static void ezkey_config_init(EzkeyConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
@@ -356,11 +357,12 @@ static void log_pam_error_debug(pam_handle_t *pamh, const EzkeyConfig *cfg,
 /**
  * Exactly one authpriv syslog line per authentication attempt (M1).
  * Format:
- *   pam_ezkey: attempt user=<u> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms>
+ *   pam_ezkey: attempt user=<u> authAttemptId=<id|-> result=<R> pam_code=<n>
+ *   latency_ms=<ms> lab_http=<true|false>
  * Never includes secrets, proof tokens, HTTP bodies, or Basic credentials.
  */
 static void log_attempt_summary(const char *username, long auth_attempt_id,
-                                int pam_rc, long latency_ms) {
+                                int pam_rc, long latency_ms, int lab_http) {
     char user_safe[128];
     const char *result;
     char id_buf[32];
@@ -392,8 +394,9 @@ static void log_attempt_summary(const char *username, long auth_attempt_id,
 
     syslog(LOG_INFO,
            "%s: attempt user=%s authAttemptId=%s result=%s pam_code=%d "
-           "latency_ms=%ld",
-           EZKEY_MODULE_NAME, user_safe, id_buf, result, pam_rc, latency_ms);
+           "latency_ms=%ld lab_http=%s",
+           EZKEY_MODULE_NAME, user_safe, id_buf, result, pam_rc, latency_ms,
+           lab_http ? "true" : "false");
 }
 
 static long elapsed_ms(const struct timespec *start) {
@@ -679,15 +682,28 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
 
     /*
      * Two-digit challenge (number matching): when challenge_requested, the
-     * create response carries authAttemptChallenge. Show it via PAM conversation
-     * (PAM_TEXT_INFO / pam_info) before /wait so the SSH user can confirm the
-     * same code on the device. Never syslog the numeric value (#750).
+     * create response carries authAttemptChallenge. Bound to 0..99 (Christophe);
+     * show via PAM conversation before /wait. Never syslog the digits (#750).
+     * If no conversation can display the code → UNAVAIL (user must see it).
      */
     if (cfg->challenge_requested) {
-        if (challenge < 0) {
+        const void *conv_item = NULL;
+        char *resp = NULL;
+        int prc;
+        int irc = PAM_AUTH_ERR;
+
+        if (!ezkey_challenge_in_range(challenge)) {
             log_pam_error_debug(pamh, cfg,
-                                "challenge_requested but create response "
-                                "omitted authAttemptChallenge");
+                                "challenge_requested but authAttemptChallenge "
+                                "missing or outside 0..99");
+            pam_rc = PAM_AUTHINFO_UNAVAIL;
+            goto cleanup;
+        }
+        if (pam_get_item(pamh, PAM_CONV, &conv_item) != PAM_SUCCESS ||
+            conv_item == NULL) {
+            log_pam_error_debug(pamh, cfg,
+                                "challenge_requested but no PAM conversation "
+                                "to display the code");
             pam_rc = PAM_AUTHINFO_UNAVAIL;
             goto cleanup;
         }
@@ -697,19 +713,22 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                  challenge);
         /*
          * pam_info alone is sometimes not flushed by OpenSSH until a prompt
-         * follows. Use PAM_TEXT_INFO via pam_prompt so keyboard-interactive
-         * always surfaces the code (no echo of a secret — informational only).
+         * follows. Prefer PAM_TEXT_INFO via pam_prompt; fall back to pam_info.
+         * Both failing → UNAVAIL (do not wait on an unseen code).
          */
-        {
-            char *resp = NULL;
-            int prc = pam_prompt(pamh, PAM_TEXT_INFO, &resp, "%s", msg);
-            if (resp != NULL) {
-                free(resp);
-            }
-            if (prc != PAM_SUCCESS) {
-                /* Fall back — still attempt auth wait. */
-                pam_info(pamh, "%s", msg);
-            }
+        prc = pam_prompt(pamh, PAM_TEXT_INFO, &resp, "%s", msg);
+        if (resp != NULL) {
+            free(resp);
+        }
+        if (prc != PAM_SUCCESS) {
+            irc = pam_info(pamh, "%s", msg);
+        }
+        if (!ezkey_challenge_display_ok(prc, irc)) {
+            log_pam_error_debug(pamh, cfg,
+                                "challenge_requested but PAM conversation "
+                                "could not display the code");
+            pam_rc = PAM_AUTHINFO_UNAVAIL;
+            goto cleanup;
         }
     }
 
@@ -876,7 +895,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     }
 
 done:
-    log_attempt_summary(username, auth_attempt_id, retval, elapsed_ms(&started));
+    log_attempt_summary(username, auth_attempt_id, retval, elapsed_ms(&started),
+                        cfg.lab_http);
     wipe_cfg_secrets(&cfg);
     closelog();
     return retval;
