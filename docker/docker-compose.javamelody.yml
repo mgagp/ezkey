@@ -11,6 +11,9 @@
 # Per-API reports remain on management ports: 9081 / 8085 / 7081 /actuator/monitoring
 #
 # Init parameters: SPRING_APPLICATION_JSON with hyphenated Parameter codes.
+# Shared locks: docker/javamelody/init-parameters.base.json (checked by
+# scripts/ops/check-javamelody-spring-json.sh). This overlay *replaces* any
+# SPRING_APPLICATION_JSON set elsewhere (Compose last-wins on that key).
 # Plain JAVAMELODY_INIT_PARAMETERS_* env map keys are silently ignored by JavaMelody
 # after Spring relaxed binding (#847 Christophe runtime proof).
 

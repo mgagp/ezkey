@@ -7,7 +7,9 @@
 #   ./ezkey-tests/clean-start.sh --ha --with-java-melody
 #   EZKEY_ENABLE_JAVA_MELODY=true ./docker/start-ha.sh
 #
-# Init parameters: SPRING_APPLICATION_JSON with hyphenated Parameter codes.
+# Init parameters: SPRING_APPLICATION_JSON with hyphenated Parameter codes
+# (docker/javamelody/init-parameters.base.json; check-javamelody-spring-json.sh).
+# Replaces any SPRING_APPLICATION_JSON set elsewhere.
 
 x-javamelody-env: &javamelody-env
   JAVAMELODY_ENABLED: "true"

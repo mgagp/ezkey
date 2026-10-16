@@ -415,7 +415,11 @@ Collector image/version is aligned with the API starter (**2.9.0**, WAR sha256 p
 - Init parameters are injected via `SPRING_APPLICATION_JSON` with hyphenated JavaMelody Parameter
   codes (`system-actions-enabled`, `http-transform-pattern`, …). Plain
   `JAVAMELODY_INIT_PARAMETERS_SYSTEM_ACTIONS_ENABLED` env vars bind underscore map keys that
-  JavaMelody silently ignores — do not use that form.
+  JavaMelody silently ignores — do not use that form. **Warning:** the overlay sets
+  `SPRING_APPLICATION_JSON` on each API and **replaces** any value defined elsewhere (Compose
+  env merge is last-wins for that key) — do not also set it in the base compose or host `.env`.
+  Shared lock keys live in `docker/javamelody/init-parameters.base.json`;
+  `./scripts/ops/check-javamelody-spring-json.sh` fails if the nine embedded copies diverge.
 - `system-actions-enabled=false`, `csrf-protection-enabled=true`, `update-check-disabled=true`
 - `log=false`; `http-transform-pattern=[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}|\d+`; SQL stays as prepared
   `?` (no bind values in reports)
@@ -445,24 +449,37 @@ curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8088/
 # Business-port /monitoring (C2) — replayable script probes *through* the caddy
 # container (official image has ash/curl, not bash; --via-caddy uses docker exec):
 ./scripts/ops/verify-javamelody-non-exposure.sh --business-ports --via-caddy ezkey-exp-caddy
-# With a live admin session (Christophe authenticated refusal — 401 or 403 OK):
-EZKEY_ADMIN_BEARER='…' EZKEY_ADMIN_COOKIE='…' \
-  ./scripts/ops/verify-javamelody-non-exposure.sh --business-ports \
-    --via-caddy ezkey-exp-caddy --auth-probe
+# Authenticated refusal (Christophe) — secrets via 0600 files (never on argv/`ps`):
+umask 077
+printf '%s' "$TOKEN" > /tmp/jm-bearer
+printf 'EZKEY_ADMIN_SESSION=%s' "$TOKEN" > /tmp/jm-cookie
+chmod 0600 /tmp/jm-bearer /tmp/jm-cookie
+./scripts/ops/verify-javamelody-non-exposure.sh --business-ports \
+  --via-caddy ezkey-exp-caddy --auth-probe \
+  --auth-bearer-file /tmp/jm-bearer \
+  --auth-cookie-file /tmp/jm-cookie
+shred -u /tmp/jm-bearer /tmp/jm-cookie 2>/dev/null || rm -f /tmp/jm-bearer /tmp/jm-cookie
 
-# Runtime proof that init-parameters applied (management port — Docker network / local publish):
+# Runtime proof that init-parameters applied (fail-closed — Patrick craft).
 # Local DEV: http://127.0.0.1:9081/actuator/monitoring
 # Community: docker exec ezkey-exp-admin-api wget -q -O - http://127.0.0.1:9081/actuator/monitoring
-curl -sS 'http://127.0.0.1:9081/actuator/monitoring' | tee /tmp/jm.html \
-  | grep -E 'action=gc|action=heap_dump' \
-  && echo 'FAIL: system actions still visible' || echo 'OK: no GC/heap_dump actions'
-grep -oE 'parameter defined: [^<]+' /tmp/jm.html | grep -E 'system-actions|http-transform|csrf'
-# Expect system-actions-enabled=false, csrf-protection-enabled=true, http-transform-pattern=…
-# HTTP tab should show normalized ids (/api/v$/…/$), not raw UUIDs / numeric ids.
+set -e
+curl -fsS 'http://127.0.0.1:9081/actuator/monitoring' -o /tmp/jm.html
+grep -q 'parameter defined: system-actions-enabled=false' /tmp/jm.html
+grep -q 'parameter defined: csrf-protection-enabled=true' /tmp/jm.html
+grep -q 'parameter defined: http-transform-pattern=' /tmp/jm.html
+! grep -qE 'action=gc|action=heap_dump' /tmp/jm.html
+echo 'OK: init-parameters applied (system-actions off, CSRF on, transform set; no GC/heap links)'
+# Cheap HTTP-tab capture (normalized ids use $): generate a UUID path, then:
+#   curl -fsS 'http://127.0.0.1:9081/actuator/monitoring' | grep -oE '/api/[^ <\"]+' | sort -u
+# Expect segments like /api/v$/…/$ rather than raw UUIDs / numeric ids when traffic exists.
 ```
 
-Local regex / Caddyfile parse + smoke check (no live host):
+Local regex / Caddyfile parse + smoke + **per-site import** check (no live host):
 `./scripts/ops/validate-caddy-observability-regexp.sh`
+
+JSON lock divergence check (nine embedded `SPRING_APPLICATION_JSON` copies vs base):
+`./scripts/ops/check-javamelody-spring-json.sh`
 
 ### Rollback (one command)
 

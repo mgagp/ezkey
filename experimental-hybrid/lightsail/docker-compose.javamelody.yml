@@ -8,8 +8,10 @@
 # Note: memswap_limit = mem_limit, so host swap does not extend container cgroups.
 #
 # Init parameters: SPRING_APPLICATION_JSON with hyphenated Parameter codes (see
-# docker/docker-compose.javamelody.yml). Do not use plain JAVAMELODY_INIT_PARAMETERS_*
-# map env vars — Spring relaxed binding drops hyphens and JavaMelody ignores them.
+# docker/javamelody/init-parameters.base.json + check-javamelody-spring-json.sh).
+# This overlay *replaces* any SPRING_APPLICATION_JSON set elsewhere. Do not use
+# plain JAVAMELODY_INIT_PARAMETERS_* map env vars — Spring relaxed binding drops
+# hyphens and JavaMelody ignores them.
 #
 # Enable (on the VM, from experimental-hybrid/lightsail/):
 #   docker compose -f docker-compose.yml -f docker-compose.javamelody.yml up -d

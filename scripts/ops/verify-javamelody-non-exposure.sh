@@ -27,12 +27,15 @@
 #   # Default URLs (override with BUSINESS_PORT_URLS / --business-port-url):
 #   #   http://admin-api:9080  http://auth-api:8080  http://integration-api:7080
 #
-# Authenticated business-port refusal (Christophe): with a valid admin bearer and/or
-# cookie, /monitoring on each business port must still be refused (401 or 403 — both
-# OK; do not harmonize). If the JavaMelody report HTML is returned, that is blocking.
-#   EZKEY_ADMIN_BEARER='…' EZKEY_ADMIN_COOKIE='…' \
-#     ./scripts/ops/verify-javamelody-non-exposure.sh --business-ports \
-#       --via-caddy ezkey-exp-caddy --auth-probe
+# Authenticated business-port refusal (Christophe): secrets must NOT appear on the
+# curl/docker argv (visible in `ps`). Pass 0600 files (or stdin for bearer):
+#   printf '%s' "$TOKEN" > /tmp/jm-bearer && chmod 0600 /tmp/jm-bearer
+#   ./scripts/ops/verify-javamelody-non-exposure.sh --business-ports \
+#     --via-caddy ezkey-exp-caddy --auth-probe \
+#     --auth-bearer-file /tmp/jm-bearer \
+#     --auth-cookie-file /tmp/jm-cookie
+#   # Or: EZKEY_ADMIN_BEARER_FILE=… EZKEY_ADMIN_COOKIE_FILE=…
+#   # Bearer via stdin: --auth-bearer-file -  (reads one line from stdin)
 #
 # Exit 0 when every selected probe passes; non-zero otherwise.
 #
@@ -41,8 +44,8 @@ set -euo pipefail
 # Capture env BEFORE shadowing with a local array (Patrick m3).
 BASE_URLS_FROM_ENV="${BASE_URLS-}"
 BUSINESS_PORT_URLS_FROM_ENV="${BUSINESS_PORT_URLS-}"
-AUTH_BEARER="${EZKEY_ADMIN_BEARER-}"
-AUTH_COOKIE="${EZKEY_ADMIN_COOKIE-}"
+AUTH_BEARER_FILE="${EZKEY_ADMIN_BEARER_FILE-}"
+AUTH_COOKIE_FILE="${EZKEY_ADMIN_COOKIE_FILE-}"
 VIA_CADDY="${VIA_CADDY-}"
 
 # Paths matched by: (?i)^/+(monitoring|actuator)([/;].*)?$
@@ -80,7 +83,7 @@ CHECK_BUSINESS=""
 AUTH_PROBE=""
 
 usage() {
-  sed -n '2,42p' "$0" | sed 's/^# \?//'
+  sed -n '2,48p' "$0" | sed 's/^# \?//'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -97,7 +100,6 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --business-ports)
-      # Probe /monitoring on each API business port (prefer --via-caddy for Docker DNS).
       CHECK_BUSINESS="1"
       shift
       ;;
@@ -108,14 +110,21 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --auth-probe)
-      # Require EZKEY_ADMIN_BEARER and/or EZKEY_ADMIN_COOKIE; refuse if report leaks.
       AUTH_PROBE="1"
       CHECK_BUSINESS="1"
       shift
       ;;
+    --auth-bearer-file)
+      [[ $# -ge 2 ]] || { echo "error: --auth-bearer-file requires a path (or - for stdin)" >&2; exit 2; }
+      AUTH_BEARER_FILE="$2"
+      shift 2
+      ;;
+    --auth-cookie-file)
+      [[ $# -ge 2 ]] || { echo "error: --auth-cookie-file requires a path" >&2; exit 2; }
+      AUTH_COOKIE_FILE="$2"
+      shift 2
+      ;;
     --check-ss)
-      # Optional: on the Lightsail VM, confirm management / collector ports are not
-      # listening on non-loopback addresses — IPv4 0.0.0.0 and IPv6 [::] (Edgar).
       CHECK_SS="1"
       shift
       ;;
@@ -153,9 +162,59 @@ if [[ -n "$CHECK_BUSINESS" && ${#BUSINESS_PORT_URLS[@]} -eq 0 ]]; then
   fi
 fi
 
-if [[ -n "$AUTH_PROBE" && -z "$AUTH_BEARER" && -z "$AUTH_COOKIE" ]]; then
-  echo "FAIL: --auth-probe requires EZKEY_ADMIN_BEARER and/or EZKEY_ADMIN_COOKIE" >&2
+# Reject legacy env that would encourage putting secrets on the command line.
+if [[ -n "${EZKEY_ADMIN_BEARER-}" || -n "${EZKEY_ADMIN_COOKIE-}" ]]; then
+  echo "FAIL: EZKEY_ADMIN_BEARER / EZKEY_ADMIN_COOKIE are no longer accepted" >&2
+  echo "  (values would leak via curl/docker argv in ps). Use --auth-bearer-file /" >&2
+  echo "  --auth-cookie-file (0600) or EZKEY_ADMIN_BEARER_FILE / EZKEY_ADMIN_COOKIE_FILE." >&2
   exit 2
+fi
+
+AUTH_BEARER=""
+AUTH_COOKIE=""
+if [[ -n "$AUTH_PROBE" ]]; then
+  if [[ -z "$AUTH_BEARER_FILE" && -z "$AUTH_COOKIE_FILE" ]]; then
+    echo "FAIL: --auth-probe requires --auth-bearer-file and/or --auth-cookie-file" >&2
+    exit 2
+  fi
+  if [[ -n "$AUTH_BEARER_FILE" ]]; then
+    if [[ "$AUTH_BEARER_FILE" == "-" ]]; then
+      IFS= read -r AUTH_BEARER || true
+    else
+      if [[ ! -f "$AUTH_BEARER_FILE" ]]; then
+        echo "FAIL: bearer file not found: ${AUTH_BEARER_FILE}" >&2
+        exit 2
+      fi
+      mode="$(stat -c '%a' "$AUTH_BEARER_FILE" 2>/dev/null || stat -f '%Lp' "$AUTH_BEARER_FILE")"
+      if [[ "$mode" != "600" && "$mode" != "0600" ]]; then
+        echo "FAIL: bearer file must be mode 0600 (got ${mode}): ${AUTH_BEARER_FILE}" >&2
+        exit 2
+      fi
+      IFS= read -r AUTH_BEARER <"$AUTH_BEARER_FILE" || true
+    fi
+    AUTH_BEARER="${AUTH_BEARER%%$'\r'}"
+    if [[ -z "$AUTH_BEARER" ]]; then
+      echo "FAIL: bearer file/stdin is empty" >&2
+      exit 2
+    fi
+  fi
+  if [[ -n "$AUTH_COOKIE_FILE" ]]; then
+    if [[ ! -f "$AUTH_COOKIE_FILE" ]]; then
+      echo "FAIL: cookie file not found: ${AUTH_COOKIE_FILE}" >&2
+      exit 2
+    fi
+    mode="$(stat -c '%a' "$AUTH_COOKIE_FILE" 2>/dev/null || stat -f '%Lp' "$AUTH_COOKIE_FILE")"
+    if [[ "$mode" != "600" && "$mode" != "0600" ]]; then
+      echo "FAIL: cookie file must be mode 0600 (got ${mode}): ${AUTH_COOKIE_FILE}" >&2
+      exit 2
+    fi
+    IFS= read -r AUTH_COOKIE <"$AUTH_COOKIE_FILE" || true
+    AUTH_COOKIE="${AUTH_COOKIE%%$'\r'}"
+    if [[ -z "$AUTH_COOKIE" ]]; then
+      echo "FAIL: cookie file is empty" >&2
+      exit 2
+    fi
+  fi
 fi
 
 failures=0
@@ -163,8 +222,6 @@ echo "JavaMelody / Actuator non-exposure check (#846)"
 echo ""
 
 is_public_ss_bind() {
-  # Fail on wildcard / all-interfaces binds for JM collector + management ports.
-  # Matches: 0.0.0.0:PORT, *:PORT, [::]:PORT, and ss "*:PORT" IPv6 forms.
   local line="$1"
   echo "$line" | grep -Eq \
     '0\.0\.0\.0:(8088|9081|8085|7081)\b|\*:(8088|9081|8085|7081)\b|\[::\]:(8088|9081|8085|7081)\b'
@@ -188,42 +245,107 @@ if [[ -n "$CHECK_SS" ]]; then
   echo ""
 fi
 
-# True when body looks like a JavaMelody HTML report (blocking if returned on business port).
 looks_like_javamelody_report() {
   local body_file="$1"
   grep -qiE 'javamelody|Execute the garbage collector|Monitoring on' "$body_file" 2>/dev/null
 }
 
-# HTTP GET; writes body to $1, prints status code. Optional curl -H args follow.
+# Build a curl --config file (0600) so Authorization/Cookie never appear in argv/ps.
+write_curl_config() {
+  local cfg="$1"
+  local url="$2"
+  local body_out="$3"
+  : >"$cfg"
+  chmod 0600 "$cfg"
+  {
+    printf 'url = "%s"\n' "$url"
+    printf 'output = "%s"\n' "$body_out"
+    printf 'write-out = "%%{http_code}"\n'
+    printf 'silent\n'
+    printf 'show-error\n'
+    printf 'path-as-is\n'
+    printf 'connect-timeout = 5\n'
+    printf 'max-time = 15\n'
+    if [[ -n "$AUTH_BEARER" ]]; then
+      # Escape backslashes and double-quotes for curl config double-quoted strings.
+      local esc="${AUTH_BEARER//\\/\\\\}"
+      esc="${esc//\"/\\\"}"
+      printf 'header = "Authorization: Bearer %s"\n' "$esc"
+    fi
+    if [[ -n "$AUTH_COOKIE" ]]; then
+      local esc="${AUTH_COOKIE//\\/\\\\}"
+      esc="${esc//\"/\\\"}"
+      printf 'header = "Cookie: %s"\n' "$esc"
+    fi
+  } >>"$cfg"
+}
+
+# HTTP GET without putting secrets on the process command line.
 http_get() {
   local body_file="$1"
   local url="$2"
-  shift 2
-  local extra=("$@")
+  local with_auth="${3-}"
+  local cfg
+  cfg="$(mktemp)"
+  local remote_body="/tmp/ezkey-jm-probe.body"
+  local remote_cfg="/tmp/ezkey-jm-curl.cfg"
   if [[ -n "$VIA_CADDY" ]]; then
-    # Probe from inside the caddy container (Docker DNS). Official image has curl.
+    if [[ -n "$with_auth" ]]; then
+      write_curl_config "$cfg" "$url" "$remote_body"
+    else
+      : >"$cfg"
+      chmod 0600 "$cfg"
+      {
+        printf 'url = "%s"\n' "$url"
+        printf 'output = "%s"\n' "$remote_body"
+        printf 'write-out = "%%{http_code}"\n'
+        printf 'silent\n'
+        printf 'show-error\n'
+        printf 'path-as-is\n'
+        printf 'connect-timeout = 5\n'
+        printf 'max-time = 15\n'
+      } >>"$cfg"
+    fi
+    docker cp "$cfg" "${VIA_CADDY}:${remote_cfg}" >/dev/null
     local code
-    code="$(docker exec "$VIA_CADDY" curl -sS -o /tmp/ezkey-jm-probe.body -w '%{http_code}' \
-      --path-as-is --connect-timeout 5 --max-time 15 "${extra[@]}" "$url" 2>/dev/null || echo "000")"
-    docker exec "$VIA_CADDY" cat /tmp/ezkey-jm-probe.body >"$body_file" 2>/dev/null || : >"$body_file"
+    code="$(docker exec "$VIA_CADDY" curl --config "$remote_cfg" 2>/dev/null || echo "000")"
+    docker exec "$VIA_CADDY" cat "$remote_body" >"$body_file" 2>/dev/null || : >"$body_file"
+    docker exec "$VIA_CADDY" rm -f "$remote_cfg" "$remote_body" >/dev/null 2>&1 || true
+    rm -f "$cfg"
     printf '%s' "$code"
   else
-    curl -sS -o "$body_file" -w '%{http_code}' --path-as-is --connect-timeout 5 --max-time 15 \
-      "${extra[@]}" "$url" || echo "000"
+    if [[ -n "$with_auth" ]]; then
+      write_curl_config "$cfg" "$url" "$body_file"
+    else
+      : >"$cfg"
+      chmod 0600 "$cfg"
+      {
+        printf 'url = "%s"\n' "$url"
+        printf 'output = "%s"\n' "$body_file"
+        printf 'write-out = "%%{http_code}"\n'
+        printf 'silent\n'
+        printf 'show-error\n'
+        printf 'path-as-is\n'
+        printf 'connect-timeout = 5\n'
+        printf 'max-time = 15\n'
+      } >>"$cfg"
+    fi
+    local code
+    code="$(curl --config "$cfg" 2>/dev/null || echo "000")"
+    rm -f "$cfg"
+    printf '%s' "$code"
   fi
 }
 
 probe_business_monitoring() {
   local base="$1"
   local label="$2"
-  shift 2
-  local curl_auth=("$@")
+  local with_auth="${3-}"
   local url="${base%/}/monitoring"
   local body
   body="$(mktemp)"
   local code
-  code="$(http_get "$body" "$url" "${curl_auth[@]}")"
-  # Accept 401 or 403 only. Never 200 with a JM report.
+  code="$(http_get "$body" "$url" "$with_auth")"
   if [[ "$code" == "401" || "$code" == "403" ]]; then
     if looks_like_javamelody_report "$body"; then
       echo "  FAIL ${code}  ${label} ${url} (status refused but body looks like JM report)" >&2
@@ -256,16 +378,9 @@ if [[ -n "$CHECK_BUSINESS" ]]; then
     probe_business_monitoring "$base" "anon"
   done
   if [[ -n "$AUTH_PROBE" ]]; then
-    echo "→ authenticated business-port /monitoring (Christophe): bearer/cookie must still be refused"
-    auth_args=()
-    if [[ -n "$AUTH_BEARER" ]]; then
-      auth_args+=(-H "Authorization: Bearer ${AUTH_BEARER}")
-    fi
-    if [[ -n "$AUTH_COOKIE" ]]; then
-      auth_args+=(-H "Cookie: ${AUTH_COOKIE}")
-    fi
+    echo "→ authenticated business-port /monitoring (Christophe): bearer/cookie via 0600 curl --config (not argv)"
     for base in "${BUSINESS_PORT_URLS[@]}"; do
-      probe_business_monitoring "$base" "auth" "${auth_args[@]}"
+      probe_business_monitoring "$base" "auth" "1"
     done
   fi
   echo ""
