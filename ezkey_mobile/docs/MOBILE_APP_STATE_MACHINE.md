@@ -39,9 +39,9 @@ still leaves abandoned attempts `PENDING`/`READ` until TTL. Admin
 
 Decision (repo-as-memory): Leave-with-loaded-attempt is Deny via Auth API respond, not cancel and
 not TTL-wait — reason: unblock Admin passwordless-wait when the user abandons the phone screen;
-issue [#834](https://github.com/mgagp/ezkey/issues/834) / PR #833. (Further UX honesty — visible
-leave hint, copy, `NoLongerActive` — is proposed in the orientation note; **not locked** until Marc
-decides.)
+issue [#834](https://github.com/mgagp/ezkey/issues/834) / PR #833. The leave line, the single
+“no longer active” sentence, and the other confirmed honesty items are locked in the orientation
+note (Questions 5, 6, and 8).
 
 ---
 
@@ -53,7 +53,7 @@ decides.)
 | **Event** | User action, navigation event, or async completion. |
 | **Guard** | Condition that must hold for the transition (or that blocks it). |
 | **Effect** | Side effect: Auth API call, crypto, local storage, navigation. |
-| **TTL** | Server auth-attempt lifetime (`ezkey.core.auth-attempt.ttl-seconds`, default **120 s**). |
+| **TTL** | Server auth-attempt lifetime. Property `ezkey.core.auth-attempt.ttl-seconds`, default **120 s**, range **30–600**. “120 seconds” in this review means that default. |
 
 Server auth-attempt statuses (backend): `PENDING` → (device claims) `READ` → `ACCEPTED` |
 `REJECTED` | `INVALID` | `EXPIRED`. Mobile does not model those as local enums; it holds an
@@ -149,7 +149,7 @@ Pending Auth).
 | --- | --- | --- | --- | --- |
 | Check pending | `DetailIdle` | `DetailChecking` | Enrollment present; `!isCheckingPending` (L104–106) | Persist last-checked timestamp (best-effort); `claimPendingAttempt` |
 | Claim `none` | `DetailChecking` | `DetailFeedback` | HTTP empty / 204 | Stay on Detail; “no pending” |
-| Claim `fail_closed` | `DetailChecking` | `DetailFeedback` | Missing key / bad sig / malformed | Stay; fail-closed copy |
+| Claim `fail_closed` | `DetailChecking` | `DetailFeedback` | Missing key / bad sig / malformed | **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Question 4):** stay; do not show the request. Row may stay `READ` until server expiry. No unsigned refusal, no release protocol, no audit event until a real incident. Calm copy, no signature jargon. |
 | Claim `attempt` | `DetailChecking` | navigate `PendingAuth` | Signature verified | Pass `initialAttempt` in route params (L139–142) |
 | Network/crypto throw | `DetailChecking` | `DetailFeedback` | — | `extractErrorMessage` |
 | Double tap Check | `DetailChecking` | same | `isCheckingPending` | Early return (L104–106) |
@@ -163,7 +163,7 @@ Pending Auth).
 | `POST …/auth-attempts/pending` | Auth API claim (server `PENDING`→`READ` on success) |
 | Empty body | `{ kind: 'none' }` |
 | Verify integration sig | Fail-closed on missing key / invalid sig / malformed |
-| Success | `{ kind: 'attempt', attempt }` — **no `expiresAt` stored locally** (open question) |
+| Success | `{ kind: 'attempt', attempt }` — **no `expiresAt` stored locally** (decided: countdown stays on the integrating application; [#834](https://github.com/mgagp/ezkey/issues/834) Question 1) |
 
 ```mermaid
 stateDiagram-v2
@@ -192,10 +192,10 @@ Implementation today is scattered React state + refs (`attempt`, `loading`, `isP
 | `LoadingPending` | `loading` | Spinner “Contacting Auth API…” |
 | `Empty` | `showEmptyState` | No pending + Check again |
 | `GlobalError` | `globalError` set; retryable | Error + Try again (+ optional debug panel) |
-| `NoLongerActive` | **Proposed product state** (not yet a distinct UI mode) | Neutral terminal: expired / cancelled / already decided / conflict after act — **Back only**, not Try again (orientation / Julie) |
+| `NoLongerActive` | **Decided** ([#834](https://github.com/mgagp/ezkey/issues/834) Question 8) | One sentence: the request is no longer active. **Back only**, not Try again. Covers expired, cancelled, and already decided via the single 409 type. |
 | `Ready` | `attempt` set, `!isProcessing` | Context card; Approve / Deny; optional 2-digit challenge |
 | `Responding` | `isProcessing` / `respondInFlightRef` | Buttons disabled; “Sending…” on approve |
-| `UncertainDecision` | Network lost after server processed respond; client `catch` | User may retry or leave → often **409**; must not read as “safe to flip decision” |
+| `UncertainDecision` | **Decided** ([#834](https://github.com/mgagp/ezkey/issues/834) Question 10) | Lost `respond` response. Say the result is uncertain and to check the sign-in where it was started. Not a failure. No retry that sends another decision. |
 | `Completed` | After verified respond result + `setRecentAuthResult` | Navigates back to Detail |
 
 Internal refs (#833 @ `fcc31fbf`):
@@ -220,15 +220,16 @@ Internal refs (#833 @ `fcc31fbf`):
 | Approve / Deny press | `enrollment`, `attempt`, `!isProcessing`, `!serverDecisionSentRef`, `!respondInFlightRef` | Else skip (duplicate / in-flight) |
 | Approve only | If `challengeRequired`, challenge length === 2 (`AUTH_CHALLENGE_LENGTH`) | Else form error; no API |
 | Deny | Challenge **not** required locally; server also skips challenge on reject | Same `respond` path with `accepted=false` |
-| Protected mode | `requiresProtectedApproval` (enrollment policy **or** device preference) | Biometric / device-credential then `signForRespond` — applies to **approve and deny** today (`approvalRequirement.ts` L42–45). Leave-as-deny can therefore open BiometricPrompt; cancel → `READ` until TTL. |
-| HTTP `respond` 200 | — | Set `serverDecisionSentRef`; verify respond-result signature; on success `setRecentAuthResult` + navigate. Body outcome may be `APPROVED` / `DENIED` / **`FAILED`**. |
+| Protected mode | `requiresProtectedApproval` (enrollment policy **or** device preference) | **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Question 11):** biometric or device credential on **Approve only**, then `signForRespond`. Deny and leave-as-deny sign the refusal without that prompt. |
+| HTTP `respond` 200 | — | Set `serverDecisionSentRef` **before** the result-signature check (**decided**, [#834](https://github.com/mgagp/ezkey/issues/834) Question 2); on success `setRecentAuthResult` + navigate. Body outcome may be `APPROVED` / `DENIED` / **`FAILED`**. |
 | HTTP / transport fail | — | `globalError` or leave dispatch; `respondInFlightRef` cleared; ref may stay **false** → `UncertainDecision` if server already processed |
-| Result sig fail after HTTP 200 | — | `globalError`; stay; leave will **not** re-deny (ref true) |
+| Result sig fail after HTTP 200 | — | **Decided (Questions 2 and 9):** stay; do not display approved or denied; hide Approve/Deny; leave will **not** re-deny. Sentence: response sent, confirmation could not be verified, check the sign-in where it was started. No tenant name. Back only. |
 | Buttons while processing | `disabled={isProcessing}` | UI lock; refs close the sync gap before re-render |
 
 API: `POST /api/v1/auth-attempts/respond` (Auth API). **Not** Admin cancel / passwordless-cancel.
 Problem type for state conflicts: `TYPE_AUTH_ATTEMPT_STATE_CONFLICT`
-(`…/auth-attempt-state-conflict`) — already in Auth API catalog; mobile has no dedicated i18n map yet.
+(`…/auth-attempt-state-conflict`). **Decided (Question 8):** mobile shows one “no longer active”
+sentence and Back only. It does not split the type.
 
 ### Leave screen (#833 @ `fcc31fbf`) — critical
 
@@ -238,39 +239,41 @@ Problem type for state conflicts: `TYPE_AUTH_ATTEMPT_STATE_CONFLICT`
 | --- | --- |
 | No `attempt` (empty / error / still loading / fail-closed) | Allow leave; **no** respond — server may still be `READ` until TTL |
 | `isProcessing` or `isRespondInFlight()` or `hasSubmittedServerDecision()` | Allow leave; **no** second deny (in-flight success may still `goBack` → double pop risk) |
-| Else (`Ready` with loaded attempt) | `preventDefault` → `handleRespond(false)` (identical Deny; may prompt biometric) |
+| Else (`Ready` with loaded attempt) | `preventDefault` → `handleRespond(false)` (identical Deny). **Decided (Question 11):** no biometric prompt. |
 | Deny succeeds | Hook already navigates via `handleReturnToEnrollmentDetail` |
-| Deny fails (network) | Still `navigation.dispatch(e.data.action)` — user not trapped |
+| Deny fails (network) | **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Question 3):** still leave (do not trap). One short message. No automatic retry. The person checks the integrating application: refusal arrived, or the countdown is still running and they let it finish or cancel there. |
 | Deny HTTP 200 then result-sig fail | User **stays** on screen (`L101` does not dispatch leave) |
 
 **Pre-#833 (`main`):** leave did not call respond; attempt stayed `READ`/`PENDING` until TTL.
 
-**Proposed UX (not locked):** visible hint under actions — “Leaving this screen declines the
-request.” (orientation; Alex/Julie).
+**Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Question 5):** while a request is
+loaded, a permanent line under Approve and Deny says that leaving this screen declines the request.
+No confirmation dialog. Marc confirmed on a live approval screen that the layout has room and the
+line stays readable.
 
 ### Missing / edge transitions (document as limits)
 
 | Edge | Behavior today |
 | --- | --- |
-| New attempt on same screen after ref=true | `serverDecisionSentRef` never resets; Try again → new claim → Approve/Deny/leave-deny blocked (screen-scoped lock). Fix tracked on **#833** (per-attempt lock). |
-| Lost response after server processed | Client `catch` / uncertain UI; retry or leave-deny → **409**; session may already exist on approve. |
-| App killed / background during respond or biometric | `beforeRemove` may not run → no leave-deny → `READ` until TTL. |
-| TTL expires during biometric | Later respond → **409** state conflict. |
+| New attempt on same screen after ref=true | **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Question 13):** the lock must be per `authAttemptId`. Today it is screen-scoped and never resets. Fix tracked on **#833**. Do not duplicate. A later 409 uses the Question 8 sentence, not a new “already decided” line. |
+| Lost response after server processed | **Decided (Question 10):** uncertain sentence pointing at the sign-in screen. Not a failure. No retry that sends another decision. Idempotent `respond` deferred, not specified. |
+| App killed / background during respond or Approve biometric | **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Question 12):** `beforeRemove` may not run → no leave-deny → `READ` until the configured lifetime (default 120 s, range 30–600). Accepted limit. No release protocol unless a real incident requires it. |
+| Lifetime ends during Approve biometric | Later respond → **409**, Question 8 sentence. Same accepted limit. |
 
 ### Timers / TTL
 
 | Layer | Behavior |
 | --- | --- |
-| Server | Attempt `expiresAt` from `ezkey.core.auth-attempt.ttl-seconds` (default 120). Scheduler marks `EXPIRED`. |
-| Mobile pending wire | **No** `expiresAt` / `expiresInSeconds` on `AuthAttemptPendingResponseDto` today. |
-| Mobile UI | **No countdown**. Respond after expiry → conflict / error (generic). |
-| Future display clock (proposed) | Prefer relative `expiresInSeconds` or `expiresAt`+`serverNow`; **unsigned / display-only** (not in pending signature payload). Undecided — see orientation; semantics → `docs/ENDPOINT.md` when Marc decides. |
+| Server | Attempt `expiresAt` from `ezkey.core.auth-attempt.ttl-seconds` (default **120**, range **30–600**). Scheduler marks `EXPIRED`. **120** in these notes is that default, not a fixed constant. Cloudflare Free on the public hosts cuts the origin at **100 s** (HTTP 524); a blocking wait can end at the proxy while a 120 s attempt is still valid. Deployment note for the community instance (Question 12). Not changed here. |
+| Mobile pending wire | **No** `expiresAt`, `expiresInSeconds`, or `serverNow` on the pending body. **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Questions 1 and 14):** do not add them, unsigned or inside the signed payload. |
+| Mobile UI | **No countdown, by design.** The person watches remaining time on the integrating application (create/wait `expiresAt`). A second timer on the phone would duplicate that clock and drift. |
+| Respond after server expiry | **Decided (Question 8):** **409** `auth-attempt-state-conflict`. One sentence: the request is no longer active. Back only. Same sentence for cancel and already decided. |
 
 ### Backend race (#833, context for mobile)
 
 | Path | Mechanism | Mobile impact |
 | --- | --- | --- |
-| Approve/deny | `updateStatusIfCurrent(id, READ → ACCEPTED\|REJECTED)`; 0 rows → `AuthAttemptStateConflictException` → HTTP **409** + problem type above | Generic error today; map to `NoLongerActive` proposed |
+| Approve/deny | `updateStatusIfCurrent(id, READ → ACCEPTED\|REJECTED)`; 0 rows → `AuthAttemptStateConflictException` → HTTP **409** + problem type above | **Decided (Question 8):** one “no longer active” sentence, Back only. Do not split types. |
 | Admin / Integration cancel | `expireIfPendingOrRead(PENDING\|READ → EXPIRED)` | Mobile respond gets 409 / conflict |
 | Admin passwordless-cancel | Admin API only | Not used by mobile |
 
@@ -320,7 +323,7 @@ stateDiagram-v2
 | Pending load | `loading` UI; auto-load once per enrollment | usePendingAuth |
 | Respond re-entry | `isProcessing` + refs (#833) | `handleRespond` |
 | Leave vs approve race | `respondInFlightRef` set before any `await` | #833 m2 |
-| Second deny after respond HTTP 200 | `serverDecisionSentRef` (screen-scoped today; per-attempt fix on #833) | #833 / #831 |
+| Second deny after respond HTTP 200 | `serverDecisionSentRef`. **Decided (Question 13):** per `authAttemptId`, fix tracked on #833 | #833 / #831 |
 | Unusable enrollment | No Check pending | MOB-015 Detail / Home |
 | Protected approve **and** deny | Local auth before `signForRespond` when policy/preference requires | `requiresProtectedApproval` |
 

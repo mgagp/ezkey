@@ -6,6 +6,14 @@
 
 # Ezkey Mobile — Strategic Orientation (from FSM open questions)
 
+## Lived loop
+
+The person starts sign-in on the integrating application and watches the countdown there. They open
+Ezkey Mobile on purpose to approve or deny, then return to that same screen to see whether the
+sign-in completed. The phone does not push, and it does not keep a second clock. This loop is why
+the decisions below refuse a phone timer, an automatic retry, and a second telling of a result the
+other screen already shows. It is not a use-case catalog.
+
 ## Context and method
 
 The canonical FSM in [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) (issue
@@ -16,14 +24,15 @@ posture was never made explicit. Those gaps are not “bugs by default”; they 
 This document explores each finding, names the underlying signal, and proposes a **proportionate,
 phased** continuous-improvement backlog. It does **not** open GitHub issues yet and does **not**
 change product code. Collaborator reviews @ `4ccecdf3` (Alex, Julie, Christophe, Patrick) are
-integrated below; where reviewers **disagree**, options sit side by side with **no pick**.
+integrated below. Marc’s decisions are in **Decisions** and in **Questions for Marc**. Reviewer
+text that still shows an old option is the path that was considered.
 
 | Baseline | Notes |
 | --- | --- |
 | Language | English — matches `ezkey_mobile/docs/` convention. |
 | Code truth | **Branch of PR [#833](https://github.com/mgagp/ezkey/pull/833) @ `fcc31fbf`** (not yet an ancestor of `main`). Line citations for leave-as-deny / race guards are from that tip. |
 | Phase 0 gate | **All Phase 0 mobile behavior items are conditional on #833 merging** (otherwise Findings 3–5 line numbers and leave semantics do not apply on `main`). |
-| Closed-test link | Phase 0 honesty fixes (expired copy, leave-deny toast/hint, F3/F6 copy) are proposed as **prerequisites before widening the closed test** under the [#711](https://github.com/mgagp/ezkey/issues/711) gate (Northwind / next Play testers) — Alex. |
+| Closed-test link | **Decided (Question 6).** No deadline on internal testers. Ship the confirmed honesty set together, done properly, before widening [#711](https://github.com/mgagp/ezkey/issues/711). Do not cut it down to a minimal pair. Declined items stay declined. |
 | Method | Observed behavior (file:line) → signal → impact → options → recommendation (or open disagreement). |
 | FSM nature | The FSM is **descriptive of current hooks/flags**, not an implemented state machine in code (Patrick). |
 | Repo-as-memory | Once Marc **decides**, behavior locks land in `MOBILE_APP_STATE_MACHINE.md` + `MOBILE_FUNCTIONAL_FLOWS.md`; 409 / pending `expiresAt` wire semantics in `docs/ENDPOINT.md`. **Undecided items are not recorded as decisions.** |
@@ -64,16 +73,360 @@ half-honest (Julie).
 | B. Light remaining-time line + terminal expired | Needs Auth API field; clock skew design |
 | C. Phase 0 expired **message** on post-TTL respond (no new contract), then B in Phase 1 | Alex; honesty before wire change |
 
-### Recommendation
+### Recommendation (superseded)
 
-**Phase 0 — C** (clear “This request expired…” when respond fails for expiry / conflict), without
-waiting for contract. **Phase 1 — B** split into two backlog items: (1) Auth API expose relative
-expiry on pending, (2) mobile map + sober line (“Expires in about 2 min”, amber under ~30 s) **and**
-terminal disable Approve with “This request expired. Ask for a new sign-in.” in the **same** mobile
-delivery (Julie). Do not ship the timer without the terminal copy.
+The review draft recommended Phase 0 copy when respond fails for expiry, then a Phase 1 remaining-time
+line. **That recommendation is not the decision.** See [Decision — Question 1](#decision--question-1--the-countdown-stays-on-the-integrating-application).
 
-**Open (no pick):** Julie prefers approximate duration always; Marc Q asks whether to show nothing
-until near expiry — see Questions for Marc.
+---
+
+## Decisions
+
+### Decision — Question 1 — The countdown stays on the integrating application
+
+**Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
+
+Ezkey does not push an authentication request to the phone. The person starts sign-in in the
+integrating application, then chooses to open Ezkey Mobile and check for a pending request. That
+pull posture is already the product model
+([`docs/MOBILE_DEVELOPER_GUIDE.md`](../../docs/MOBILE_DEVELOPER_GUIDE.md) § User-Initiated Polling
+Model; [`MOBILE_POSITIONING.md`](MOBILE_POSITIONING.md) excludes background polling and push).
+
+While they wait, the countdown in front of them is the one in that integrating application. The SDK
+is expected to show remaining time from the attempt `expiresAt` returned on create and wait. From
+that same screen they can cancel through the API, or they can open the phone and approve or deny.
+The clock that matches real life is there.
+
+A second countdown on the phone would repeat information they already have, and it would drift by a
+few seconds against the handset clock. Two timers that do not agree is a poor experience, and it is
+accidental complexity. The phone therefore does not show remaining time, and the Auth API pending
+response does not gain `expiresAt` or `expiresInSeconds` in order to drive a phone timer.
+
+A request the person did not start does not change this. Nothing notifies the phone, so a reasonable
+person does not open the app to look for a sign-in they did not begin. If they did open it and found
+one, they would still know they were not the initiator, and would let it expire or deny it. A mobile
+timer does not serve that moment.
+
+The earlier finding treated the missing timer as a gap (Phase 0 expired copy, then an approximate
+line). That reading stayed on the mobile screen. It did not step back to the interaction Ezkey
+already chose, or to how a person actually lives the wait. The options above stay as the path that
+was considered. They are not the decision. The correction is recorded here so later passes start
+from the lived flow, not only from the phone UI.
+
+**Locked**
+
+- No TTL countdown on Ezkey Mobile.
+- No pending-wire expiry field whose purpose is a phone timer.
+- Question 7 (always-on “about N min” versus silence until near expiry) is closed by this decision:
+  there is no mobile timer to present.
+
+**Still open, on purpose**
+
+Honest copy when a respond meets an attempt that is already expired, cancelled, or decided is one
+sentence, decided in Question 8. This decision does not choose that wording.
+
+### Decision — Question 2 — Lock on HTTP 200, before the result signature check
+
+**Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834). Confirms the
+review consensus on Finding 3.
+
+The person approves or denies on the phone. The app signs and calls `respond`. As soon as the Auth
+API returns HTTP 200, the app sets `serverDecisionSentRef`, and only then verifies the integration
+signature on the result. That 200 means the exchange was **processed**. The body may be `APPROVED`,
+`DENIED`, or a business `FAILED`. It does not by itself mean “approved.”
+
+If the result signature is missing or invalid, the phone does not display approved or denied, and it
+does not undo the server. Approve and Deny stay hidden. Leaving the screen does not send a second
+decision. The person sees whether the sign-in succeeded on the integrating application, where they
+started it.
+
+The lock stays before the local check. Moving it to after verification would treat a bad signature
+as “nothing was sent,” and leaving the screen could deny over a decision the server already
+processed.
+
+**Locked**
+
+- Set the decision lock on respond HTTP 200, before the result-signature check.
+- On a failed check: no approved/denied display, no second respond, no undo.
+- Hide Approve and Deny on that screen.
+
+**Still open, on purpose**
+
+None. The sentence is decided in Question 9.
+
+### Decision — Question 3 — Short message, then the person decides on the integrating application
+
+**Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
+
+The person is signing in. They open the phone and consume the pending request. They then change
+their mind: Deny, or swipe back to the previous screen. That leave sends a refusal. If the network
+fails at that step, the app still lets them leave and shows a short message. It does not retry by
+itself.
+
+What they do next is look at that message and return to the integrating application. Either the
+refusal arrived and the sign-in is finished, or the countdown there is still running. They choose:
+let it finish, or cancel on that screen. The phone does not choose for them.
+
+An automatic retry is safe on the wire — the deny update is idempotent — and it was a reasonable
+phone-only option. It still acts after the person has already gone back to look. The same zoom-out
+as Question 1 applies: the lived loop is the integrating application, then the phone, then back.
+The short message is what that loop needs.
+
+**Locked**
+
+- Leave stays open. Do not trap the person on the phone.
+- One short message. No automatic retry.
+- Do not add a later auto-retry unless a real incident shows people cannot settle this on the
+  integrating application.
+
+**Still open, on purpose**
+
+This message ships with the rest of the confirmed honesty set before testers are widened
+(Question 6). Exact words can sit next to the leave hint (Question 5). The policy above does not
+wait on the wording.
+
+### Decision — Question 4 — Bad pending signature waits out the server expiry
+
+**Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
+
+The person checks for a pending request. The integration signature on that payload is missing or
+invalid, so the phone does not show it. There is no loaded attempt, so leaving does not send a
+refusal. The server row may stay `READ` until the attempt expires (default 120 seconds). Nothing
+else can approve it: approval needs the device signature. A newer attempt supersedes this one.
+
+On the integrating application the countdown is still running. The person lets it finish or cancels
+there. The phone says, in plain words, that the request was not shown and will expire. It does not
+talk about signatures.
+
+Sending an unsigned refusal would decide a payload the phone has already refused to trust. Releasing
+the row with a device-proven cancel is a protocol change. It waits for a real incident. An audit
+event for repeated failures waits for the same kind of evidence. Neither is part of this decision.
+
+**Locked**
+
+- Fail closed: do not display an unverified pending request.
+- Alpha limit: the row may stay `READ` until server expiry. No release protocol now.
+- Never send an unsigned refusal for this path.
+- Calm copy, without signature jargon.
+- No new audit event unless a real incident shows an operator must see these failures.
+
+**Still open, on purpose**
+
+Question 12 still covers other `READ`-until-expiry windows (for example the app killed during
+respond). This decision covers the bad pending signature only.
+
+### Decision — Question 5 — A permanent line under the actions
+
+**Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
+
+Leaving a screen that shows a loaded request sends the same refusal as Deny. Approve and Deny
+already say what they do. Back does not. A person may swipe back meaning “I refuse,” or meaning
+“I am returning to the integrating application without having decided.” A silent leave refuses for
+them.
+
+Marc checked a live approval screen on a phone. The layout has room for one informative line, and
+that line stays readable. The intensity stays proportionate: visible at the moment of choice, not a
+dialog and not a louder announce.
+
+**Locked**
+
+- While a request is loaded, show a permanent line under Approve and Deny: leaving this screen
+  declines the request.
+- No confirmation dialog.
+
+Whether this line ships before the closed test widens is decided with the rest of the confirmed
+honesty set in Question 6.
+
+### Decision — Question 6 — Ship the confirmed honesty set before widening testers
+
+**Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
+
+There is no deadline on the internal closed test ([#711](https://github.com/mgagp/ezkey/issues/711)).
+The confirmed changes are small. Cutting them down to a minimal pair would leave the phone less
+honest than this review has already judged it should be.
+
+Before testers are widened, implement the honesty practices this review confirms, as one proper
+pass. That includes the decisions already locked (the leave line, the short message when a refusal
+does not send, calm copy when a pending signature fails, and the respond lock when the result
+signature cannot be checked) and the later questions in this list once they are confirmed.
+
+A smaller gate was considered: only the leave line and the failed-refusal message, because those
+are the gestures a tester will actually hit. That reading is understandable. It is not the
+decision. The full confirmed set is what makes the app honest. Items this review declines (a phone
+countdown, an automatic retry, an unsigned refusal, a release protocol without an incident) stay
+declined. They are not part of the set.
+
+**Locked**
+
+- No date pressure on widening #711.
+- Implement every practice this review confirms before that widen.
+- Do not ship a minimal subset first.
+- Do not implement options this review has declined.
+
+### Decision — Question 8 — One sentence when the request is no longer active
+
+**Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
+
+`POST /api/v1/auth-attempts/respond` returns **409** with one problem type,
+`auth-attempt-state-conflict`, when the attempt has expired, was cancelled, or is already decided.
+That collapse is intentional. The phone maps that type to one sentence: the request is no longer
+active. Back only. No Try again.
+
+The person sees which of the three it was on the integrating application: the countdown finished,
+they cancelled, or the sign-in already completed. Splitting the problem type so the phone can
+retell that would duplicate the other screen.
+
+A lost approve response, where a session may already exist, is not this case. That stays
+Question 10. This sentence ships with the confirmed honesty set before testers are widened
+(Question 6).
+
+**Locked**
+
+- Keep a single problem type for expired, cancelled, and already decided.
+- One user sentence. Back only. Not a retryable error.
+- Do not add distinct problem types for those three causes.
+
+### Decision — Question 9 — Point at the sign-in screen, not at a tenant name
+
+**Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
+
+When `respond` returns HTTP 200 and the result signature cannot be checked, the phone already
+hides Approve and Deny and does not show approved or denied (Question 2). The sentence may tell
+the person to look at the screen where they started signing in. That is the integrating
+application, the one with the countdown. It is how they see whether they got in.
+
+The sentence does not name the organization or the tenant. Enrollment cards omit those names for
+a different reason. Pointing at the other screen does not put the names back.
+
+**Locked**
+
+- Say that the response was sent and that its confirmation could not be verified.
+- Say to check the sign-in where it was started.
+- Do not name a tenant or an organization.
+- Back only. This wording ships with the confirmed honesty set (Question 6).
+
+### Decision — Question 10 — Uncertain result, then look at the sign-in screen
+
+**Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
+
+If the `respond` response never comes back, the server may already have accepted the decision and
+opened a session. The phone must not say failure, and it must not offer another try as if the
+decision were still open. It says the result is uncertain and points at the screen where the
+sign-in was started. That screen shows either an open session or a countdown still running.
+
+This case should be rare. Making `respond` idempotent so a replay returns a signed final status
+was considered. It is a large mechanism for a path that should almost never happen: same-signature
+replay, a contrary decision that must not overwrite, expiry staying on the inactive sentence, and
+the one-request-per-five-minutes limit. That is Christophe’s signed-status recommendation, realized
+as idempotent `respond`. It is deferred. It is not designed here, not a backlog item, and not a
+general-availability gate.
+
+**Locked**
+
+- Lost `respond` response: one sentence that the result is uncertain, and to check the sign-in
+  where it was started.
+- Do not label that state a failure.
+- Do not offer a retry that sends another decision.
+- This sentence ships with the confirmed honesty set (Question 6).
+
+**Deferred, not specified**
+
+Idempotent `respond` as a way to return the real signed status. Recorded so a later pass does not
+treat the omission as an overlooked gap.
+
+### Decision — Question 11 — Biometric only when approving
+
+**Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
+
+Protected mode comes from the enrollment policy or the device preference. It guards the yes that
+opens a session. Approve still asks for biometric or device-credential confirmation, then signs.
+
+Deny and leaving the screen send a refusal. They do not open a session. They sign that refusal
+without the biometric prompt. The permanent line that leaving declines stays true: dismissing a
+prompt no longer leaves the attempt `READ` until expiry.
+
+Someone who already holds the unlocked phone can still refuse. The harm is starting the sign-in
+again, not granting access.
+
+**Locked**
+
+- Protected mode: biometric or device credential on Approve only.
+- Deny and leave-as-deny sign without that prompt.
+- This ships with the confirmed honesty set (Question 6).
+
+### Decision — Question 12 — The read window is a known limit
+
+**Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
+
+If the app is killed or backgrounded during `respond`, or the server lifetime ends while Approve
+biometric is open, the attempt may stay `READ` until it expires. There is no release protocol and
+no resume machinery in this set. The person lets the countdown finish on the integrating
+application, or cancels there. Reopen a mechanism only if a real incident requires it. A bad
+pending signature is the same kind of limit, already decided in Question 4.
+
+Figures of **120 seconds** in this review are the **default**, used to illustrate that window. They
+are not a fixed product constant. `ezkey.core.auth-attempt.ttl-seconds` is configurable from **30**
+to **600** seconds (`EzkeyCoreProperties`, default 120). An operator can choose another lifetime.
+
+**Deployment note (not a fix here).** Public hosts on Cloudflare Free, including the community
+instance, are cut at the origin after **100 seconds** (HTTP **524**, not raisable). That fact is
+already in [`product-docs/global/product-intent.md`](../../product-docs/global/product-intent.md)
+for `ezkey.org` and `ezkey.online`. The default attempt lifetime of 120 seconds is longer than
+that cut, so a blocking wait on those hosts can end at the proxy while the attempt is still valid.
+Take that into account when deploying the community instance. This review does not change the
+default or the proxy.
+
+**Locked**
+
+- The `READ`-until-expiry window after a killed app, a backgrounded `respond`, or a lifetime that
+  ends during Approve biometric is an accepted limit.
+- No protocol and no automatic resume unless a real incident requires it.
+- “120 seconds” in these notes means the default of `ezkey.core.auth-attempt.ttl-seconds` (range
+  30–600).
+
+**Noted for later deployment**
+
+Cloudflare Free’s 100-second origin timeout versus that default, for the community instance. Not
+designed in this review.
+
+### Decision — Question 13 — The decision lock follows the attempt
+
+**Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
+
+`serverDecisionSentRef` is set on respond HTTP 200 and today stays set for the whole screen. A
+later claim of a new attempt on that screen still has Approve, Deny, and leave blocked. The lock
+must follow `authAttemptId`: a new attempt is a new decision. Patrick is fixing that on pull
+request [#833](https://github.com/mgagp/ezkey/pull/833). Track it there. Do not open a parallel
+fix.
+
+A lost `respond` response keeps the uncertain sentence from Question 10. A later **409** keeps the
+single “no longer active” sentence from Question 8. There is no third sentence such as “already
+decided, check the other device.”
+
+**Locked**
+
+- The processed-decision lock is per `authAttemptId`.
+- The fix is tracked on #833. Do not duplicate it.
+- No new 409 wording. Questions 8 and 10 already cover those screens.
+
+### Decision — Question 14 — No expiry field on the pending response
+
+**Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
+
+Question 1 already keeps the countdown on the integrating application and refuses a phone timer.
+This question only chooses the shape of a pending expiry field, if one were added: an unsigned
+display value (`expiresInSeconds` or `expiresAt` plus `serverNow`), or the same data inside the
+signed pending payload.
+
+Neither. The pending **200** body does not gain `expiresAt`, `expiresInSeconds`, or `serverNow`.
+Not as display-only fields, and not inside the signed payload. Create and wait already give the
+integrating application the `expiresAt` for the countdown the person watches. Putting a second
+clock on the pending response, signed or not, is the duplication Question 1 declined.
+
+**Locked**
+
+- No expiry field on Auth API `pending`, unsigned or signed.
+- This confirms Question 1. It does not reopen a phone countdown.
 
 ---
 
@@ -86,7 +439,9 @@ attempt `createdAt`.
 
 ### Recommendation
 
-**Phase 0 — rename to `checkedAt`** (before any TTL UI). Uncontroversial across reviews.
+**Phase 0 — rename to `checkedAt`** in the honesty implementation pass, not as a gate on #833.
+The name must not be read as server creation time (Questions 1 and 14). See
+[Order — decisions first, then re-read #833](#order--decisions-first-then-re-read-833).
 
 ---
 
@@ -118,13 +473,15 @@ reviewers).
 | Alex | “Decision sent. Confirmation could not be verified.” Never show APPROVED/DENIED. |
 | Julie | “Your response was sent, but its confirmation couldn't be verified. Check your sign-in on the other device.” Hide Approve/Deny; show Back only. |
 
-**Open (no pick):** whether to point the user at “the other device” given MFA cards intentionally omit
-tenant names (Julie → Marc).
+**Open (no pick):** closed by Question 9. The sentence may point at the sign-in screen. It does not
+name a tenant.
 
 ### Recommendation
 
-**Phase 0 — A + C** (document intent; dedicated copy; hide actions). **Never B** (move ref after
-verify — unsafe with leave-as-deny).
+**Confirmed** in [Decision — Question 2](#decision--question-2--lock-on-http-200-before-the-result-signature-check).
+Lock before the local verify. Hide Approve and Deny. Do not show `APPROVED` or `DENIED`. Do not
+send a second decision. The sentence may point at the sign-in screen and must not name a tenant
+(Question 9).
 
 ---
 
@@ -150,7 +507,9 @@ lands.
 
 ### Recommendation
 
-Document now. Prefer Option C once #833’s fix set is clear; do not re-pick phase here.
+**Decided** in [Order — decisions first, then re-read #833](#order--decisions-first-then-re-read-833).
+Suppress the extra `goBack` inside #833 before that pull request merges. A device walk checks the
+fix. Do not open a second pull request.
 
 ---
 
@@ -169,12 +528,11 @@ retry of deny is safe; pull model avoids push fatigue.
 | Toast then leave (no auto-retry), Phase 0 | Alex, Julie — copy: “Couldn't send your refusal. The request will expire on its own.” Neutral toast. |
 | One auto-retry then toast, Phase 1 | Christophe |
 
-**No pick** between Phase 0 toast-only and Phase 1 retry+toast.
-
 ### Recommendation
 
-Fail-open leave stays. Ship **some** honesty toast before closed-test widen (#711). Exact retry
-policy awaits Marc if Christophe’s retry is desired.
+**Decided** in [Decision — Question 3](#decision--question-3--short-message-then-the-person-decides-on-the-integrating-application).
+Leave stays open. One short message. No automatic retry. The person settles the wait on the
+integrating application.
 
 ---
 
@@ -189,9 +547,9 @@ never unsigned deny.**
 
 ### Recommendation
 
-**Phase 0 — document + calmer copy** (Julie): explain it wasn’t shown, will expire, contact admin if
-it repeats — no “signature” jargon in production copy. Alex: ask Christophe whether an audit event
-is warranted (open). Phase 2 protocol only on real incidents.
+**Decided** in [Decision — Question 4](#decision--question-4--bad-pending-signature-waits-out-the-server-expiry).
+Do not show the request. Leave it `READ` until server expiry. No release protocol and no audit
+event until a real incident. Never an unsigned refusal. Calm copy, no signature jargon.
 
 ---
 
@@ -199,8 +557,9 @@ is warranted (open). Phase 2 protocol only on real incidents.
 
 ### Recommendation
 
-**Phase 0 after #833 merges:** cut over `MOBILE_FUNCTIONAL_FLOWS` / screens; remove “pending #833”
-hedges. Already partly bannered in #835.
+**When #833 merges:** cut over `MOBILE_FUNCTIONAL_FLOWS` / screens in that same change set and
+remove the “pending #833” hedges. Until then the hedges stay, because `main` does not yet refuse
+on leave. See [Order — decisions first, then re-read #833](#order--decisions-first-then-re-read-833).
 
 ---
 
@@ -216,12 +575,9 @@ once Marc decides; land semantics in `docs/ENDPOINT.md`).
 
 ### Recommendation
 
-**Phase 0** (not Phase 1): map **problem `type`**, not raw HTTP 409. Julie’s proposed single user
-string: “This request is no longer active. No action needed.” → Back to Detail. Prefer this **before**
-the timer so expiry isn’t opaque while `expiresAt` is still missing from pending.
-
-**Open (no pick):** one user-facing string for all causes (Julie) vs distinct problem `type`s per
-cause (Patrick → Marc).
+**Decided** in [Decision — Question 8](#decision--question-8--one-sentence-when-the-request-is-no-longer-active).
+Map the existing problem type. One sentence: the request is no longer active. Back only. Do not
+split types. The lost-response case stays Question 10.
 
 ---
 
@@ -236,9 +592,9 @@ longer denies (L89). Lock is **screen-scoped**, not `authAttemptId`-scoped.
 
 ### Recommendation
 
-**Phase 0 / #833:** key the lock per `authAttemptId` (or reset on successful new claim). Patrick:
-items 2–4 of his review (this lock, double goBack, 409 mapping) are **being fixed in #833** — verify
-on that PR rather than opening a parallel fix here.
+**Decided** in [Decision — Question 13](#decision--question-13--the-decision-lock-follows-the-attempt).
+Per `authAttemptId`. Track the fix on #833. Do not duplicate it. No third sentence for a 409 after
+a lost response.
 
 ---
 
@@ -253,10 +609,9 @@ UI saying “failure” while a session may already be open.
 
 ### Recommendation
 
-**Document now** as alpha limit. FSM should name an **uncertain / NoLongerActive** outcome when 409
-follows an in-flight respond. Before GA: signed respond body should carry the **real final status**
-when re-queried or on conflict (Christophe → Marc). Do not treat 409 after uncertain respond as a
-blind “try again.”
+**Decided** in [Decision — Question 10](#decision--question-10--uncertain-result-then-look-at-the-sign-in-screen).
+Uncertain sentence, pointing at the sign-in screen. No failure label. No retry that sends another
+decision. Idempotent `respond` is deferred and not specified.
 
 ---
 
@@ -271,8 +626,8 @@ security value (Level 2); recommend signing deny **without** protected prompt.
 
 ### Recommendation
 
-Document current behavior. Product/security decision for Marc (Christophe reco: no biometric on
-deny). Implementation only after GO — may land with #833 or a follow-up.
+**Decided** in [Decision — Question 11](#decision--question-11--biometric-only-when-approving).
+Biometric or device credential on Approve only. Deny and leave-as-deny sign without that prompt.
 
 ---
 
@@ -286,8 +641,11 @@ verified.
 
 ### Recommendation
 
-Document as **known limits** (no code in Phase 0). Optional later: resume handling — not a protocol
-change.
+**Decided** in [Decision — Question 12](#decision--question-12--the-read-window-is-a-known-limit).
+Known limit. No protocol and no resume unless a real incident requires it. “120 seconds” is the
+default of a configurable lifetime (30–600). Cloudflare Free’s 100-second cut is a deployment note
+for the community instance, not a change in this review. Deep links stay unchecked; they are not
+part of this decision.
 
 ---
 
@@ -296,16 +654,17 @@ change.
 1. **Processed vs displayed** — HTTP 200 means a respond **outcome** (`APPROVED`/`DENIED`/`FAILED`),
    not “safe to show APPROVED.”
 2. **Don’t trap the human vs unblock waiters** — leave-as-deny + fail-open leave; honesty toasts/hints.
-3. **Unsigned clocks are UX only** — pending expiry display must not become a crypto gate.
+3. **Countdown lives on the integrating application** (Question 1). The phone does not show remaining time. An unsigned clock must not become a cryptographic gate.
 4. **Descriptive FSM** — flags/refs today; `NoLongerActive` as a **product state**, not a new library.
 5. **#833 is the behavior train** — Phase 0 honesty + Patrick’s lock/nav/409 fixes ride that merge;
    docs cutover follows.
-6. **Closed-test honesty (#711)** — Phase 0 copy/hint/toast before widening testers.
+6. **Closed-test honesty (#711)** — **Decided (Question 6).** The confirmed honesty set ships together, done properly, before testers are widened. No minimal cut. No deadline.
 
-### Proposed product state: `NoLongerActive` (Julie)
+### `NoLongerActive` (user-facing shape decided in Question 8)
 
-Neutral terminal (expired / cancelled / already decided / conflict after act): **Back only**, not
-retryable like `GlobalError`. Distinct in the FSM diagram and UI.
+One sentence — the request is no longer active — and **Back only**, not Try again. The name is a
+descriptive label for that screen, not a new state-machine library. Expired, cancelled, and already
+decided share it.
 
 ---
 
@@ -313,12 +672,12 @@ retryable like `GlobalError`. Distinct in the FSM diagram and UI.
 
 | Topic | Side A | Side B |
 | --- | --- | --- |
-| F5 honesty | Alex/Julie: Phase 0 toast, then leave | Christophe: Phase 1 one auto-retry + toast |
-| Leave-as-deny visibility | Alex: visible announce “Leaving declines” | Julie: discreet hint under buttons (no dialog) — same direction, different intensity |
-| 409 user copy | Julie: one “no longer active” string | Patrick: ask Marc whether to split cancelled / expired / already-decided `type`s |
-| Timer presentation | Julie: always approximate + amber &lt;30s | Marc Q (via Julie): nothing until near expiry? |
-| F4 double goBack phase | Patrick: Phase 0 (and fixing in #833) | Julie: Phase 1 on Walk proof |
-| Disable Approve at 0 | Julie: same Phase 1 delivery as timer | Patrick: call out dependence on unsigned clock |
+| F5 honesty | **Decided (Q3).** Phase 0 short message, then leave. No automatic retry. | Christophe’s one auto-retry is declined. The person settles the wait on the integrating application. |
+| Leave-as-deny visibility | **Decided (Q5).** Permanent line under Approve and Deny. No dialog. | Alex’s louder announce and a confirmation dialog are declined. The line is visible enough to read before the gesture. |
+| 409 user copy | **Decided (Q8).** One “no longer active” sentence. Back only. One problem type. | Distinct types for cancelled / expired / already-decided are declined. The integrating application shows which it was. |
+| Timer presentation | **Decided (Q1).** No mobile timer. The countdown stays on the integrating application. | Julie’s always-on line and a near-expiry-only line are both declined. |
+| F4 double goBack phase | **Decided.** Suppress the extra navigation inside #833, before that PR merges. | A device walk checks the fix. It does not decide whether to make it. No second PR. |
+| Disable Approve at 0 | **Closed by Q1.** There is no phone clock at which to disable Approve. | Patrick’s unsigned-clock warning stands as a reason not to add that clock. |
 
 ---
 
@@ -328,42 +687,42 @@ retryable like `GlobalError`. Distinct in the FSM diagram and UI.
 
 | Item | Phase | Effort | Risk | Dependency | Owner zone | Proposed backlog title (not opened) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Lock Finding 3 language + post-verify-fail copy; hide Approve/Deny | 0 | S | Low | #833 | mobile + docs | Mobile: copy when respond processed but result sig fails |
-| Map `TYPE_AUTH_ATTEMPT_STATE_CONFLICT` → friendly i18n (+ `NoLongerActive`) | 0 | S | Low | type already in Auth API | mobile | Mobile: map auth-attempt-state-conflict to NoLongerActive copy |
-| Phase 0 expired/conflict honesty without pending `expiresAt` | 0 | S | Low | #833; #711 widen | mobile | Mobile: clear expired/inactive copy before closed-test widen |
-| Toast (and/or one retry — TBD) on failed leave-deny | 0 | S | Low | #833; see disagreement | mobile | Mobile: honesty when leave-as-deny fails |
-| Leave-as-deny visible hint under actions | 0 | S | Low | #833; #711 | mobile | Mobile: “Leaving declines this request” hint |
-| Fail-closed pending calmer copy | 0 | S | Low | — | mobile | Mobile: fail-closed pending copy without crypto jargon |
+| Post-verify-fail copy; hide Approve/Deny | 0 | S | Low | #833; behavior locked (Q2); wording locked (Q9); ships before #711 (Q6) | mobile + docs | Mobile: copy when respond processed but result sig fails. Point at the sign-in screen. No tenant name. |
+| Map `TYPE_AUTH_ATTEMPT_STATE_CONFLICT` → one “no longer active” sentence, Back only | 0 | S | Low | type already in Auth API; behavior locked (Q8); ships before #711 (Q6) | mobile | Mobile: map auth-attempt-state-conflict to one inactive sentence |
+| Phase 0 inactive copy for that same 409 | 0 | S | Low | #833; same sentence as the row above (Q8); ships before #711 (Q6) | mobile | Mobile: clear inactive copy before closed-test widen |
+| Short message when leave-deny fails; no auto-retry | 0 | S | Low | #833; behavior locked (Q3) | mobile | Mobile: honesty when leave-as-deny fails |
+| Permanent line under actions: leaving declines the request | 0 | S | Low | #833; behavior locked (Q5) | mobile | Mobile: “Leaving declines this request” line |
+| Fail-closed pending calmer copy | 0 | S | Low | behavior locked (Q4) | mobile | Mobile: fail-closed pending copy without crypto jargon |
 | Rename `createdAt` → `checkedAt` | 0 | S | Low | — | mobile | Mobile: PendingAttempt.checkedAt |
 | Sibling doc cutover leave-as-deny | 0 | S | Low | #833 merge | docs | Docs: flows/screens match leave-as-deny |
-| Document stranded READ / process death / biometric-on-deny limits | 0 | S | Low | — | docs | Docs: alpha limits — READ until TTL paths |
-| Reset decision lock per `authAttemptId` | 0 | S | Med | **fixing in #833** (Patrick) | mobile | (track #833 — do not duplicate) |
+| Document stranded READ / process death / lifetime-during-biometric limits | 0 | S | Low | behavior locked (Q12); bad-sig window locked (Q4) | docs | Docs: READ-until-expiry is a known limit. 120 s is the default (30–600). Cloudflare Free 100 s is a community-deploy note |
+| Reset decision lock per `authAttemptId` | 0 | S | Med | behavior locked (Q13); **fixing in #833** | mobile | (track #833 — do not duplicate) |
 | Suppress goBack if unmounted / unfocused | 0 | S | Med | **fixing in #833** (Patrick) | mobile | (track #833 — do not duplicate) |
-| Auth API: pending relative expiry (`expiresInSeconds` or `expiresAt`+`serverNow`) | 1 | M | Med | contract refresh | auth-api | Auth API: expose pending attempt remaining lifetime on pending |
-| Mobile: map expiry + approximate line + terminal expired UI | 1 | M | Med | Auth API item above | mobile | Mobile: remaining-time line and expired terminal on Pending Auth |
-| Lost-response / uncertain decision UX (409 after act → NoLongerActive) | 1 | M | Med | #833; Marc on GA bar | mobile (+ auth-api if status echo) | Mobile: treat post-respond conflict as already decided |
-| Deny without biometric when protected mode on | 1–2 | S | Med | Marc + Christophe GO | mobile | Mobile: unprotected deny / leave-as-deny signing |
-| Abandon claimed attempt after bad pending sig | 2 | L | High | security design | auth-api + mobile | Auth/mobile: release READ without trusted pending UI |
-| Signed final status on re-query after lost respond | 2 | L | High | Christophe GA bar | auth-api | Auth API: convey real final status after uncertain client |
+| Auth API: pending relative expiry (`expiresInSeconds` or `expiresAt`+`serverNow`) | Declined (Q1, Q14) | — | — | — | — | Do not add a pending expiry field, unsigned or inside the signed payload |
+| Mobile: map expiry + approximate line + terminal expired UI | Declined (Q1) | — | — | — | — | No remaining-time line on Pending Auth |
+| Uncertain sentence when the respond response is lost | 0 | S | Low | behavior locked (Q10); ships before #711 (Q6) | mobile | Mobile: uncertain result points at the sign-in screen; no failure label; no retry |
+| Biometric on Approve only; Deny and leave sign without it | 0 | S | Low | behavior locked (Q11); ships before #711 (Q6) | mobile | Mobile: no biometric on deny or leave-as-deny |
+| Abandon claimed attempt after bad pending sig | Declined until incident (Q4) | — | — | — | — | Do not add a release protocol for a bad pending signature unless a real incident requires it |
+| Idempotent respond to return a signed final status | Deferred (Q10) | — | — | — | — | Seen and set aside. Not designed. Not a general-availability gate. |
 
 ---
 
 ## Questions for Marc
 
-1. Is missing TTL UI an oversight to fix (Alex), and should Phase 0 ship expired/inactive copy before any wire `expiresAt`? (Alex, Julie)
-2. Confirm Finding 3: after respond is **processed**, phone may show verify-fail without undoing server outcome — and never choose “ref after verify”? (all)
-3. Fail-open leave after deny failure: toast-only Phase 0 (Alex/Julie) or one auto-retry then toast Phase 1 (Christophe)?
-4. Stranded `READ` after fail-closed pending: TTL-only alpha OK, or P1 protocol? Audit event needed? (Alex, Christophe)
-5. Leave-as-deny: visible announce vs discreet under-button hint — which intensity? (Alex Q8, Julie c)
-6. Are Phase 0 honesty fixes (expired copy, leave hint, F3/F6/F5 toast) **prerequisites** before widening closed test (#711)? (Alex Q9)
-7. Timer presentation: always “about N min” + amber under 30s, or silent until near expiry? (Julie a)
-8. One user string “no longer active” for expired/cancelled/already-decided, or distinct problem `type`s? (Julie b, Patrick)
-9. After F3 verify-fail, may copy point to “the other device” even though cards omit tenant names? (Julie d)
-10. Alpha: lost approve response shown as failure acceptable, or signed real final status required before GA? (Christophe a)
-11. Should deny / leave-as-deny require biometric when protected mode is on? Christophe reco: **no**. (Christophe b)
-12. Is the 120s `READ` window after fail-closed / abandoned leave an accepted alpha limit without protocol until real incidents? (Christophe c)
-13. Must the “decision processed” lock be per `authAttemptId`, and should 409 after an uncertain respond display as “already decided / check other device”? (Patrick; also Tracking in #833)
-14. Pending expiry on the wire: accept **unsigned display-only** (`expiresInSeconds` / `serverNow`), or require it inside the signed pending payload (Christophe impact)? (Patrick)
+1. **Decided.** The missing mobile TTL UI is not an oversight. The countdown lives on the integrating application; a phone timer would duplicate it and drift. See [Decision — Question 1](#decision--question-1--the-countdown-stays-on-the-integrating-application). The 409 sentence is Question 8.
+2. **Decided.** Lock on respond HTTP 200, before the result-signature check. A failed check shows that confirmation could not be verified, hides Approve/Deny, and does not send a second decision. See [Decision — Question 2](#decision--question-2--lock-on-http-200-before-the-result-signature-check). The sentence is Question 9.
+3. **Decided.** Leave stays open. One short message, no automatic retry. The person looks back at the integrating application and lets the countdown finish or cancels there. See [Decision — Question 3](#decision--question-3--short-message-then-the-person-decides-on-the-integrating-application).
+4. **Decided.** A bad pending signature is not shown. The row may stay `READ` until server expiry. No release protocol, no unsigned refusal, and no audit event until a real incident. Calm copy, no signature jargon. See [Decision — Question 4](#decision--question-4--bad-pending-signature-waits-out-the-server-expiry).
+5. **Decided.** A permanent line under Approve and Deny: leaving this screen declines the request. No dialog. The live approval screen has room for it. See [Decision — Question 5](#decision--question-5--a-permanent-line-under-the-actions). It ships with the confirmed set before #711 widens (Question 6).
+6. **Decided.** No deadline on internal testers. Implement the full set of practices this review confirms, properly, before widening #711. Do not cut that set down. Declined options stay declined. See [Decision — Question 6](#decision--question-6--ship-the-confirmed-honesty-set-before-widening-testers).
+7. **Closed by Question 1.** There is no mobile timer, so neither an always-on line nor a near-expiry line.
+8. **Decided.** One sentence for `auth-attempt-state-conflict`: the request is no longer active. Back only. Do not split expired, cancelled, and already-decided into separate problem types. See [Decision — Question 8](#decision--question-8--one-sentence-when-the-request-is-no-longer-active). A lost approve response stays Question 10.
+9. **Decided.** The unverified-confirmation sentence may say to check the sign-in where it was started. It does not name a tenant or an organization. Back only. See [Decision — Question 9](#decision--question-9--point-at-the-sign-in-screen-not-at-a-tenant-name).
+10. **Decided.** A lost `respond` response shows that the result is uncertain and points at the sign-in screen. Not a failure. No retry that sends another decision. Idempotent `respond` is deferred and not specified. See [Decision — Question 10](#decision--question-10--uncertain-result-then-look-at-the-sign-in-screen).
+11. **Decided.** Protected mode asks for biometric or device credential on Approve only. Deny and leave-as-deny sign the refusal without that prompt. See [Decision — Question 11](#decision--question-11--biometric-only-when-approving).
+12. **Decided.** A `READ` window until expiry, after a killed or backgrounded app or when the lifetime ends during Approve biometric, is an accepted limit. No protocol unless a real incident requires it. “120 seconds” is the default of `ezkey.core.auth-attempt.ttl-seconds` (30–600). Cloudflare Free cuts the origin at 100 seconds; note that for the community instance, without changing it here. See [Decision — Question 12](#decision--question-12--the-read-window-is-a-known-limit).
+13. **Decided.** The processed-decision lock is per `authAttemptId`. Track the fix on #833; do not duplicate it. A lost response stays the Question 10 sentence. A later 409 stays the Question 8 sentence. See [Decision — Question 13](#decision--question-13--the-decision-lock-follows-the-attempt).
+14. **Decided.** No expiry field on the pending response, neither unsigned for display nor inside the signed payload. The countdown stays on the integrating application (Question 1). See [Decision — Question 14](#decision--question-14--no-expiry-field-on-the-pending-response).
 
 ---
 
@@ -433,3 +792,98 @@ Repo-as-memory: behavior decisions belong in FSM + functional flows; 409/`expire
 - Decision (repo-as-memory): orientation holds options/phasage; **decided** behavior locks go to FSM
   + functional flows; **decided** 409 / pending expiry wire semantics go to `docs/ENDPOINT.md` —
   reason: keep undecided items out of canon; issue #834.
+- Question 1 decided 2026-10-15: no countdown on the phone; pending stays without an expiry field
+  for a mobile timer. Locked in the FSM, functional flows, and `docs/ENDPOINT.md`.
+- Question 2 decided 2026-10-15: decision lock on respond HTTP 200, before the result-signature
+  check. Failed check does not display approved/denied and does not send a second decision. Locked
+  in the FSM and functional flows.
+- Question 9 decided 2026-10-15: that sentence may point at the sign-in screen where the person
+  started. It does not name a tenant or an organization. Back only. Locked in the FSM and
+  functional flows.
+- Question 3 decided 2026-10-15: failed leave-deny still exits, with one short message and no
+  automatic retry. The person settles the wait on the integrating application. Locked in the FSM
+  and functional flows.
+- Question 4 decided 2026-10-15: bad pending signature is not shown; the row may stay `READ` until
+  server expiry. No release protocol, unsigned refusal, or audit event until a real incident.
+  Locked in the FSM and functional flows.
+- Question 5 decided 2026-10-15: permanent line under Approve and Deny that leaving declines the
+  request. No dialog. Confirmed readable on a live approval screen. Locked in the FSM, functional
+  flows, and screens doc.
+- Question 6 decided 2026-10-15: no deadline on #711. The confirmed honesty set ships together,
+  done properly, before testers are widened. Declined options stay out.
+- Question 8 decided 2026-10-15: one `auth-attempt-state-conflict` type and one “no longer active”
+  sentence, Back only. No distinct types for expired, cancelled, or already decided. Locked in the
+  FSM, functional flows, and `docs/ENDPOINT.md`.
+- Question 10 decided 2026-10-15: a lost `respond` response is an uncertain result and points at
+  the sign-in screen. Not a failure. No retry that sends another decision. Idempotent `respond`
+  is deferred and not specified. Locked in the FSM and functional flows.
+- Question 11 decided 2026-10-15: biometric or device credential on Approve only. Deny and
+  leave-as-deny sign without that prompt. Locked in the FSM, functional flows, and screens doc.
+- Question 12 decided 2026-10-15: `READ` until expiry after process death or a lifetime that ends
+  during Approve biometric is an accepted limit. No protocol unless a real incident requires it.
+  120 seconds is the default of `ezkey.core.auth-attempt.ttl-seconds` (range 30–600). Cloudflare
+  Free’s 100-second origin timeout is a deployment note for the community instance, not a change
+  here. Locked in the FSM and functional flows.
+- Question 13 decided 2026-10-15: the processed-decision lock is per `authAttemptId`. Track the
+  fix on #833; do not duplicate it. No third sentence beyond Questions 8 and 10. Locked in the
+  FSM and functional flows.
+- Question 14 decided 2026-10-15: no expiry field on Auth API pending, unsigned or inside the
+  signed payload. Confirms Question 1. Locked in the FSM, functional flows, and
+  `docs/ENDPOINT.md`.
+
+## Order — decisions first, then re-read #833
+
+**Decided 2026-10-15** (Marc). Keep pull request
+[#833](https://github.com/mgagp/ezkey/pull/833) pending until this note is merged to `main`. Then
+re-read #833 against these decisions before merging it.
+
+This note is the intent. #833 is the behavior branch those decisions were read against
+(`fcc31fbf`), and it is not on `main` yet. Merging the note first gives the re-read a fixed
+canon. The note stays honest that, until #833 merges, `main` still leaves a loaded screen without
+sending a refusal. Line citations are the `fcc31fbf` snapshot. Refresh them when #833 changes. Do
+not hold this note for that refresh.
+
+#833’s leave path calls the same respond as Deny and can open a biometric prompt. Question 11
+forbids that prompt on Deny and on leave. The re-read must align #833 with that before merge.
+Shipping the prompt and removing it immediately after would contradict the permanent line that
+leaving declines.
+
+### Three follow-ups
+
+1. **Second `goBack` while respond is in flight (Finding 4).** Suppress the extra navigation when
+   the screen is already gone, so the person lands on Enrollment Detail. Fix it inside #833,
+   before that pull request merges. The bug is born in that change. A device walk checks the fix.
+   It does not decide whether to make it. Do not open a second pull request.
+2. **Rename `PendingAttempt.createdAt` to `checkedAt` (Finding 2).** Do this in the honesty
+   implementation pass, not as a gate on #833. The field is the local claim time. The old name
+   reads like server creation time and would invite the phone countdown Questions 1 and 14
+   refused.
+3. **Sibling docs that still say leave waits for expiry (Finding 7).** Cut them over in the same
+   change set that merges #833. Until then, the hedges in this note are correct, because `main`
+   does not yet send a refusal on leave.
+
+### After this note is on main
+
+Merge this branch first. Then rebase [#833](https://github.com/mgagp/ezkey/pull/833) onto that
+`main` and revise its code against these decisions. Do not reopen the fourteen questions.
+
+Expect a conflict in `docs/ENDPOINT.md` (both branches edit it). Keep this note’s pending-expiry
+rule (Questions 1 and 14) and the single 409 sentence (Question 8). Keep #833’s other endpoint
+edits where they do not contradict those two.
+
+On the rebased #833, before it merges, the code must match:
+
+- Question 11 — no biometric prompt on Deny or on leave.
+- Question 13 — the processed-decision lock is per `authAttemptId`.
+- Finding 4 — no second `goBack` when the screen is already gone.
+- Question 3 — a failed leave-deny still lets the person leave, with no automatic retry.
+
+The honesty pass comes after that merge. It is not a gate on #833: the permanent leave line
+(Question 5), the 409 / unverified-confirmation / uncertain-result sentences (Questions 8, 9, 10),
+the calm fail-closed pending copy (Question 4), and the `checkedAt` rename (Finding 2). Removing
+the “pending #833” hedges (Finding 7) rides the #833 merge itself.
+
+## Closeout — no use-case catalog
+
+**Decided 2026-10-15** (Marc). A separate use-case corpus would add maintenance without a new
+decision. The lived loop at the top of this note is enough. Do not open that catalog.
