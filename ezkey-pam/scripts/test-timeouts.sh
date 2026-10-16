@@ -84,7 +84,7 @@ echo "=== PAM timeout inventory tests ===" | tee "${PROOF}"
   echo "  api_timeout max 10          ezkey_config.h + apply_config_key pam_ezkey.c"
   echo "  wait effective              min(conf, rem-CURL_SLACK) before /wait"
   echo "  curl /wait slack 15         EZKEY_CURL_WAIT_SLACK"
-  echo "  Enter alarm                 EZKEY_MAX_ENTER_SECS 25 within remaining"
+  echo "  Enter measure               EZKEY_MAX_ENTER_SECS 25 (CLOCK_MONOTONIC; no signals)"
   echo "  LoginGraceTime 120          sshd_config:20"
 } | tee -a "${PROOF}"
 
@@ -216,7 +216,7 @@ fi
 stop_stub
 restore_conf
 
-# --- delayed Enter: shrinks ?timeout= and still emits attempt line ---
+# --- delayed Enter (under 25s): shrinks ?timeout= and still emits attempt line ---
 start_stub ok
 docker exec "${CONTAINER}" sh -c \
   "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
@@ -227,33 +227,43 @@ docker exec "${CONTAINER}" sh -c \
    sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
    chown root:root '${CONF}'; chmod 600 '${CONF}'"
 
+run_chal_ssh() {
+  local log="$1"
+  local ctrl="$2"
+  : >"${log}"
+  set +e
+  python3 "${SCRIPT_DIR}/ssh-pty-capture.py" "${log}" "${ctrl}" \
+    ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+    -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
+    -o PasswordAuthentication=no -o ConnectTimeout=15 \
+    "${SSH_USER}@127.0.0.1" 'echo PAM_TMO_OK; exit 0' \
+    >/dev/null 2>&1 &
+  SSH_BG=$!
+  set -e
+}
+
+wait_chal_visible() {
+  local log="$1"
+  local i
+  for i in $(seq 1 80); do
+    if tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null \
+      | grep -q 'Ezkey challenge code'; then
+      return 0
+    fi
+    sleep 0.25
+  done
+  return 1
+}
+
 SSH_LOG="${ARTIFACT_DIR}/pam-timeouts-delayed-enter.log"
 SSH_CTRL="$(mktemp -u /tmp/pam-tmo-ctrl.XXXXXX)"
 mkfifo "${SSH_CTRL}"
-: >"${SSH_LOG}"
-set +e
-python3 "${SCRIPT_DIR}/ssh-pty-capture.py" "${SSH_LOG}" "${SSH_CTRL}" \
-  ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
-  -o PasswordAuthentication=no -o ConnectTimeout=15 \
-  "${SSH_USER}@127.0.0.1" 'echo PAM_TMO_OK; exit 0' \
-  >/dev/null 2>&1 &
-SSH_BG=$!
-set -e
-
-# Wait for challenge prompt in live capture, then delay Enter (Patrick P3).
-for _ in $(seq 1 80); do
-  if tr -cd '\11\12\15\40-\176' <"${SSH_LOG}" 2>/dev/null \
-    | grep -q 'Ezkey challenge code'; then
-    break
-  fi
-  sleep 0.25
-done
+run_chal_ssh "${SSH_LOG}" "${SSH_CTRL}"
+wait_chal_visible "${SSH_LOG}" || true
 DELAY_SECS=8
 echo "Delayed Enter ${DELAY_SECS}s after challenge visible" | tee -a "${PROOF}"
 sleep "${DELAY_SECS}"
 printf 'enter\n' >"${SSH_CTRL}" 2>/dev/null || true
-
 set +e
 wait "${SSH_BG}"
 SSH_RC=$?
@@ -277,14 +287,109 @@ fi
 stop_stub
 restore_conf
 
+# --- Enter >25s → UNAVAIL + attempt line (CLOCK_MONOTONIC measure; no signals) ---
+start_stub ok
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=90/' '${CONF}'; \
+   sed -i 's/^api_timeout=.*/api_timeout=5/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=true/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'; \
+   : > /var/log/ezkey-pam/debug.err"
+SSH_LOG="${ARTIFACT_DIR}/pam-timeouts-enter-over-25.log"
+SSH_CTRL="$(mktemp -u /tmp/pam-tmo-ctrl.XXXXXX)"
+mkfifo "${SSH_CTRL}"
+before="$(docker exec "${CONTAINER}" sh -c \
+  "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+before="${before:-0}"
+run_chal_ssh "${SSH_LOG}" "${SSH_CTRL}"
+wait_chal_visible "${SSH_LOG}" || true
+ENTER_OVER=26
+echo "Enter after ${ENTER_OVER}s (> EZKEY_MAX_ENTER_SECS 25)" | tee -a "${PROOF}"
+sleep "${ENTER_OVER}"
+printf 'enter\n' >"${SSH_CTRL}" 2>/dev/null || true
+set +e
+wait "${SSH_BG}"
+set -e
+rm -f "${SSH_CTRL}"
+for _ in $(seq 1 40); do
+  after="$(docker exec "${CONTAINER}" sh -c \
+    "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+  after="${after:-0}"
+  [ "$((after - before))" -ge 1 ] && break
+  sleep 0.1
+done
+ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
+  "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
+ERR="$(docker exec "${CONTAINER}" sh -c 'tail -n 8 /var/log/ezkey-pam/debug.err' || true)"
+echo "enter>25 attempt=${ATTEMPT}" | tee -a "${PROOF}"
+echo "enter>25 err=${ERR}" | tee -a "${PROOF}"
+if echo "${ATTEMPT}" | grep -q 'result=UNAVAIL' \
+  && echo "${ERR}" | grep -Eqi 'exceeded_max_duration|Enter_exceeded'; then
+  ok "Enter >25s → UNAVAIL + attempt line (monotonic duration; no signals)"
+else
+  fail "Enter >25s expected UNAVAIL+duration reason: ${ATTEMPT} / ${ERR}"
+fi
+stop_stub
+restore_conf
+
+# --- api_timeout cap: conf 60 but max 10 → slow_create 12 must UNAVAIL (~10s, not 60) ---
+start_stub slow_create 12
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^api_timeout=.*/api_timeout=60/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'; \
+   : > /var/log/ezkey-pam/debug.err"
+before="$(docker exec "${CONTAINER}" sh -c \
+  "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+before="${before:-0}"
+start_ts="$(date +%s)"
+set +e
+ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
+  -o PasswordAuthentication=no -o ConnectTimeout=20 \
+  "${SSH_USER}@127.0.0.1" 'echo X' >/dev/null 2>&1
+set -e
+end_ts="$(date +%s)"
+elapsed=$((end_ts - start_ts))
+for _ in $(seq 1 50); do
+  after="$(docker exec "${CONTAINER}" sh -c \
+    "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+  after="${after:-0}"
+  [ "$((after - before))" -ge 1 ] && break
+  sleep 0.1
+done
+ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
+  "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
+ERR="$(docker exec "${CONTAINER}" sh -c 'tail -n 5 /var/log/ezkey-pam/debug.err' || true)"
+echo "api_timeout=60 cap elapsed=${elapsed}s attempt=${ATTEMPT}" | tee -a "${PROOF}"
+echo "api_timeout=60 err=${ERR}" | tee -a "${PROOF}"
+# Cap at 10: must fail well under 60s (allow ~10–20s wall for curl+SSH).
+if echo "${ATTEMPT}" | grep -q 'result=UNAVAIL' \
+  && echo "${ERR}" | grep -Eqi 'Failed_to_POST|timeout|Timeout|timed_out' \
+  && [ "${elapsed}" -lt 35 ]; then
+  ok "api_timeout conf=60 capped at 10: UNAVAIL in ${elapsed}s (stub sleep 12)"
+else
+  fail "api_timeout cap 60→10: elapsed=${elapsed} ${ATTEMPT} / ${ERR}"
+fi
+stop_stub
+restore_conf
+
 # --- constants linkage ---
 if grep -q 'EZKEY_AUTH_BUDGET_SECS 105' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_MAX_WAIT_TIMEOUT 90' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_MAX_API_TIMEOUT 10' "${SCRIPT_DIR}/../src/ezkey_config.h" \
+  && grep -q 'EZKEY_MAX_ENTER_SECS 25' "${SCRIPT_DIR}/../src/ezkey_config.h" \
+  && ! grep -E '\bsigaction\s*\(|\balarm\s*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'LoginGraceTime 120' "${SCRIPT_DIR}/../sshd_config"; then
-  ok "budget 105 / max wait 90 / max api 10 under LoginGraceTime 120"
+  ok "budget 105 / max wait 90 / max api 10 / max enter 25; no signals in pam_ezkey.c"
 else
-  fail "missing budget / clamp / LoginGraceTime linkage"
+  fail "missing budget constants or sigaction/alarm still present"
 fi
 
 if grep -q '^wait_polling=2' "${SCRIPT_DIR}/../config/pam_ezkey.conf"; then

@@ -29,7 +29,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <signal.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <cjson/cJSON.h>
@@ -442,13 +441,6 @@ static long remaining_budget_secs(const struct timespec *auth_started) {
     return rem > 0 ? rem : 0;
 }
 
-static volatile sig_atomic_t ezkey_enter_alarm_fired;
-
-static void ezkey_enter_alarm_handler(int signo) {
-    (void)signo;
-    ezkey_enter_alarm_fired = 1;
-}
-
 static void ezkey_buf_init(EzkeyBuf *buf) {
     buf->data = malloc(1);
     if (buf->data != NULL) {
@@ -736,15 +728,18 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
      * create response carries authAttemptChallenge. Bound to 0..99 (Christophe);
      * show via PAM conversation before /wait. Never syslog the digits (#750).
      * If no conversation can display the code → UNAVAIL (user must see it).
-     * Enter prompt is alarm-bounded by remaining auth budget (Patrick P3).
+     *
+     * Craft rule: a PAM module NEVER touches the host process's signals —
+     * no sigaction/alarm around Enter (would cancel login's alarm, miss under
+     * sshd/fork, or hit the wrong thread). Bound Enter by measuring duration
+     * with CLOCK_MONOTONIC after pam_prompt returns (Patrick).
      */
     if (cfg->challenge_requested) {
         char *resp = NULL;
         int prc;
         const void *conv_item = NULL;
-        long enter_secs;
-        struct sigaction sa;
-        struct sigaction oldsa;
+        struct timespec enter_started;
+        long enter_elapsed_s;
 
         if (!ezkey_challenge_in_range(challenge)) {
             log_pam_error_debug(pamh, cfg,
@@ -762,11 +757,7 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
             goto cleanup;
         }
         rem = remaining_budget_secs(auth_started);
-        enter_secs = rem - (long)EZKEY_MIN_WAIT_SECS - (long)EZKEY_CURL_WAIT_SLACK;
-        if (enter_secs > (long)EZKEY_MAX_ENTER_SECS) {
-            enter_secs = (long)EZKEY_MAX_ENTER_SECS;
-        }
-        if (enter_secs < 1) {
+        if (rem <= (long)EZKEY_MIN_WAIT_SECS + (long)EZKEY_CURL_WAIT_SLACK) {
             log_pam_error_debug(pamh, cfg,
                                 "auth budget exhausted before challenge Enter "
                                 "prompt");
@@ -785,37 +776,32 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                  "device, then approve.\n"
                  "Press Enter to wait for Ezkey device approval: ",
                  challenge);
-        memset(&sa, 0, sizeof(sa));
-        memset(&oldsa, 0, sizeof(oldsa));
-        sa.sa_handler = ezkey_enter_alarm_handler;
-        sigemptyset(&sa.sa_mask);
-        ezkey_enter_alarm_fired = 0;
-        {
-            int alarm_armed = 0;
-
-            if (sigaction(SIGALRM, &sa, &oldsa) == 0) {
-                alarm((unsigned int)enter_secs);
-                alarm_armed = 1;
-            }
-            prc = pam_prompt(pamh, PAM_PROMPT_ECHO_OFF, &resp, "%s", msg);
-            if (alarm_armed) {
-                alarm(0);
-                sigaction(SIGALRM, &oldsa, NULL);
-            }
-        }
+        clock_gettime(CLOCK_MONOTONIC, &enter_started);
+        prc = pam_prompt(pamh, PAM_PROMPT_ECHO_OFF, &resp, "%s", msg);
+        enter_elapsed_s = elapsed_ms(&enter_started) / 1000L;
         ezkey_secure_wipe(msg, sizeof(msg));
         if (resp != NULL) {
             ezkey_secure_wipe(resp, strlen(resp));
             free(resp);
             resp = NULL;
         }
-        if (ezkey_enter_alarm_fired || prc != PAM_SUCCESS) {
+        if (prc != PAM_SUCCESS) {
             log_pam_error_debug(pamh, cfg,
-                                ezkey_enter_alarm_fired
-                                    ? "challenge Enter prompt timed out "
-                                      "(auth budget)"
-                                    : "challenge_requested but PAM conversation "
-                                      "could not display the code");
+                                "challenge_requested but PAM conversation "
+                                "could not display the code");
+            pam_rc = PAM_AUTHINFO_UNAVAIL;
+            goto cleanup;
+        }
+        if (enter_elapsed_s > (long)EZKEY_MAX_ENTER_SECS) {
+            log_pam_error_debug(pamh, cfg,
+                                "challenge Enter exceeded max duration");
+            pam_rc = PAM_AUTHINFO_UNAVAIL;
+            goto cleanup;
+        }
+        rem = remaining_budget_secs(auth_started);
+        if (rem <= (long)EZKEY_CURL_WAIT_SLACK + (long)EZKEY_MIN_WAIT_SECS) {
+            log_pam_error_debug(pamh, cfg,
+                                "auth budget exhausted after challenge Enter");
             pam_rc = PAM_AUTHINFO_UNAVAIL;
             goto cleanup;
         }

@@ -7,7 +7,7 @@
 
 /* Module identification */
 #define EZKEY_MODULE_NAME "pam_ezkey"
-#define EZKEY_VERSION "2.2.5"
+#define EZKEY_VERSION "2.2.6"
 
 /*
  * No compiled-in default Integration API URL (Patrick B1 / M1 review).
@@ -29,7 +29,9 @@
  * Single auth wall-clock budget (Patrick P3 / #726): finish under demo sshd
  * LoginGraceTime 120 with margin. pam_sm_authenticate starts the clock;
  * wait = min(conf, remaining - CURL_SLACK); too little left → UNAVAIL + attempt
- * line. See STATUS § timeouts inventory.
+ * line. Enter is NOT signal-bounded (PAM must not touch host signals); measure
+ * pam_prompt duration with CLOCK_MONOTONIC and reject if > MAX_ENTER_SECS.
+ * See STATUS § timeouts inventory.
  */
 #define EZKEY_AUTH_BUDGET_SECS 105
 #define EZKEY_MAX_API_TIMEOUT 10

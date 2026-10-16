@@ -45,7 +45,7 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.5** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
+Version **2.2.6** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
 (observability + conf `root:root` exact `0600`/`0400`, no URL default, no process-ENV
 overrides, `lab_http` gate, optional two-digit challenge via `pam_prompt`). It is still
 **not** a host-operable MFA agent on a real host (sshd cutover remains slice #4+).
@@ -517,21 +517,30 @@ want phishing-resistant matching). When `challenge_requested=true`:
 
 ### Timeouts (Patrick / #726 / P3 budget) — path:line inventory
 
-Single deadline from `pam_sm_authenticate` start (`pam_ezkey.c` `clock_gettime` /
-`&started`). Wall budget **`EZKEY_AUTH_BUDGET_SECS` 105** — **15 s margin** under
-demo `LoginGraceTime` 120. Effective `/wait` = `min(conf, remaining - CURL_SLACK)`;
-too little left → `UNAVAIL` **with** attempt line (no silent sshd cut mid-prompt).
+Single deadline: `pam_ezkey.c:917` `clock_gettime(CLOCK_MONOTONIC, &started)`.
+Wall budget `ezkey_config.h:36` **`EZKEY_AUTH_BUDGET_SECS` 105** — **15 s margin** under
+demo `LoginGraceTime` 120 (`sshd_config:20`). Effective `/wait` =
+`min(conf, rem − CURL_SLACK)` at `pam_ezkey.c:814-825`; too little left →
+`UNAVAIL` **with** attempt line (`pam_sm_authenticate` `done:` / `log_attempt_summary`).
+
+**Craft rule:** PAM never touches host signals — no `sigaction`/`alarm` in
+`pam_ezkey.c`. Enter bound = measure `pam_prompt` with CLOCK_MONOTONIC
+(`pam_ezkey.c:779-796`); duration **>25 s** → UNAVAIL + attempt line.
+
+**Untested (documented only):** if Enter is **never** pressed, sshd
+`LoginGraceTime` cuts the session with **no** attempt line; the Integration
+API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 
 | Knob | Where (path:line) | Lab default / bound | Beyond-threshold proof |
 |---|---|---|---|
-| Auth budget | `ezkey_config.h` `EZKEY_AUTH_BUDGET_SECS` **105**; `remaining_budget_secs` in `pam_ezkey.c` | 105 s (&lt; grace 120) | Delayed-Enter shrink + exhausted → UNAVAIL+attempt |
-| `api_timeout` | `EZKEY_DEFAULT_API_TIMEOUT` / `EZKEY_MAX_API_TIMEOUT` **10**; clamp in `apply_config_key`; POST `ezkey_http` in `ezkey_authenticate_user_api` | max **10** s | stub `slow_create` 3s + `api_timeout=1` → UNAVAIL |
-| Enter prompt | challenge `pam_prompt` + `SIGALRM` `EZKEY_MAX_ENTER_SECS` **25** within remaining | alarm-bounded | delayed Enter 8s shrinks `?timeout=`; overtime → UNAVAIL+attempt |
-| `wait_timeout` | conf / `EZKEY_DEFAULT_WAIT_TIMEOUT` **75**; clamp `EZKEY_MAX_WAIT_TIMEOUT` **90**; runtime `effective_wait` before `/wait` URL | ≤90; shrunk by budget | stub log `?timeout=90` when conf=200; `?timeout=2` short path |
-| curl `/wait` | `EZKEY_CURL_WAIT_SLACK` **15**; `ezkey_http(..., curl_limit)` after effective wait | wait+≤15; ≤ remaining | Covered by wait / delayed-Enter cases |
-| `wait_polling` | `/wait?polling=` query; sample conf **2** | Server-side cadence | Sample conf + STATUS |
-| Server attempt TTL | `ezkey.core.auth-attempt.ttl-seconds` **120** (`ezkey-core/CONFIGURATION.md`) | Aligns with grace | Documented; PAM does not own TTL |
-| `LoginGraceTime` | `sshd_config:20` → **120** | sshd cuts session | Budget 105; never schedule wait near 120 |
+| Auth budget | `ezkey_config.h:36` **105**; rem helper `pam_ezkey.c:432-441` | 105 s (&lt; grace 120) | Delayed Enter 8s shrinks `?timeout=` (proven). Rem-exhaustion branches are defensive under api≤10 + Enter≤25 (rem stays ≥70) — not claimed proven in CI |
+| `api_timeout` | clamp `pam_ezkey.c:208-211` (`EZKEY_MAX_API_TIMEOUT` `ezkey_config.h:37`); POST curl `pam_ezkey.c:666-676` | max **10** s | stub sleep 3 + conf `1` → UNAVAIL; conf **60** + stub sleep 12 → UNAVAIL in ≪60s (cap proven) |
+| Enter prompt | `pam_ezkey.c:779-796` measure; `EZKEY_MAX_ENTER_SECS` `ezkey_config.h:40` **25** | duration bound (no signals) | Enter **>25 s** → UNAVAIL + attempt + debug.err duration (proven) |
+| `wait_timeout` | clamp `pam_ezkey.c:201-204` (`ezkey_config.h:41` **90**); `effective_wait` `pam_ezkey.c:814-825` | ≤90; shrunk by budget | stub log `?timeout=90` when conf=200; `?timeout=2` short path (proven) |
+| curl `/wait` | `EZKEY_CURL_WAIT_SLACK` `ezkey_config.h:38` **15**; `pam_ezkey.c:849-852` | wait+≤15; ≤ rem | Covered by wait / delayed-Enter cases (proven) |
+| `wait_polling` | sample `config/pam_ezkey.conf` `wait_polling=2` | Server-side cadence | Sample conf present (proven) |
+| Server attempt TTL | `ezkey-core/CONFIGURATION.md` `ttl-seconds` **120** | Aligns with grace | Documented only (PAM does not own TTL) |
+| `LoginGraceTime` | `sshd_config:20` → **120** | sshd cuts session | Budget 105 documented; Enter-never-pressed → cut **without** attempt line (documented, not lab-proven) |
 
 ### `/wait` response signature — deferred ([#858](https://github.com/mgagp/ezkey/issues/858))
 
@@ -575,7 +584,7 @@ too little left → `UNAVAIL` **with** attempt line (no silent sshd cut mid-prom
 | Patrick CHANGES | conf tests assert debug.err reason + stub positive control | **Done** |
 | Patrick CHANGES | challenge visible before approve; wrong/absent cases | **Done** |
 | Patrick CHANGES | timeout inventory + wait clamp below LoginGraceTime | **Done** (`test-timeouts.sh`) |
-| Patrick P3 | Single auth budget 105; dynamic `?timeout=`; Enter alarm; attempt line | **Done** (`test-timeouts.sh` stub + CI) |
+| Patrick P3 | Single auth budget 105; dynamic `?timeout=`; Enter monotonic (no signals) | **Done** (`test-timeouts.sh` stub + CI) |
 | Patrick CHANGES | https scheme case-insensitive + no pam_info fallback | **Done** |
 
 ### Out of M1
