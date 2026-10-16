@@ -231,11 +231,13 @@ export function usePendingAuth(
       }
       const fallback =
         error instanceof Error ? t('pendingAuth.requestFailed') : t('pendingAuth.unexpectedError');
-      return resolveAuthApiUserFacingOutcome(
-        error,
+      return resolveAuthApiUserFacingOutcome(error, {
         fallback,
-        t('pendingAuth.requestNoLongerActive'),
-      );
+        stateConflict: t('pendingAuth.requestNoLongerActive'),
+        respondBeforeRead: t('pendingAuth.respondBeforeRead'),
+        integrationSigningUnavailable: t('pendingAuth.integrationSigningUnavailable'),
+        resourceNotFound: t('pendingAuth.resourceNotFound'),
+      });
     },
     [t],
   );
@@ -486,15 +488,17 @@ export function usePendingAuth(
           },
           enrollment.installation?.authUrl,
         );
-        // Auth API accepted the decision for this attempt id (#831 / #833 Patrick).
+        // HTTP OK != decision committed / verified. Lock this attempt id so Approve/Deny
+        // cannot fire again; unsigned or badly signed 200 → neutral Back-only (#844).
         serverDecisionAttemptIdRef.current = respondAttemptId;
 
         const integrationPublicKey = enrollment.integrationPublicKey;
         if (!integrationPublicKey) {
           tracePendingAuthRespond('handleRespond_abort_missing_integration_public_key', {});
           if (isMountedRef.current) {
-            setGlobalError(t('pendingAuth.missingRespondPublicKey'));
-            setGlobalErrorRetryable(true);
+            // Neutral Back-only — no enrollment/key wipe, no auto deny/approve (#844).
+            setGlobalError(t('pendingAuth.requestNoLongerActive'));
+            setGlobalErrorRetryable(false);
           }
           return;
         }
@@ -505,8 +509,8 @@ export function usePendingAuth(
             authAttemptId: response.authAttemptId,
           });
           if (isMountedRef.current) {
-            setGlobalError(t('pendingAuth.missingRespondSignature'));
-            setGlobalErrorRetryable(true);
+            setGlobalError(t('pendingAuth.requestNoLongerActive'));
+            setGlobalErrorRetryable(false);
           }
           return;
         }
@@ -526,8 +530,8 @@ export function usePendingAuth(
             authAttemptId: response.authAttemptId,
           });
           if (isMountedRef.current) {
-            setGlobalError(t('pendingAuth.invalidRespondSignature'));
-            setGlobalErrorRetryable(true);
+            setGlobalError(t('pendingAuth.requestNoLongerActive'));
+            setGlobalErrorRetryable(false);
           }
           return;
         }

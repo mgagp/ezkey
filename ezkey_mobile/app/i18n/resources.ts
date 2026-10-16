@@ -261,6 +261,11 @@ export const resources = {
         requestFailed: 'Request failed.',
         unexpectedError: 'Unexpected error.',
         requestNoLongerActive: 'This request is no longer active. No action is required.',
+        respondBeforeRead:
+          'This request is not ready yet. Go back and open it again from the list.',
+        integrationSigningUnavailable:
+          'Authentication signing is temporarily unavailable. Try again later.',
+        resourceNotFound: 'This request could not be found.',
         missingPendingPublicKey:
           'Enrollment missing integration public key; cannot verify pending response.',
         invalidPendingSignature: 'Invalid integration signature on pending response.',
@@ -633,6 +638,11 @@ export const resources = {
         requestFailed: 'Échec de la requête.',
         unexpectedError: 'Erreur inattendue.',
         requestNoLongerActive: "Cette demande n'est plus active. Aucune action requise.",
+        respondBeforeRead:
+          "Cette demande n'est pas encore prête. Revenez en arrière et rouvrez-la depuis la liste.",
+        integrationSigningUnavailable:
+          "La signature d'authentification est temporairement indisponible. Réessayez plus tard.",
+        resourceNotFound: "Cette demande est introuvable.",
         missingPendingPublicKey:
           'L’enrôlement ne contient pas de clé publique d’intégration; impossible de vérifier la réponse pending.',
         invalidPendingSignature: 'Signature d’intégration invalide sur la réponse pending.',

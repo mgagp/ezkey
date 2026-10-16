@@ -483,7 +483,7 @@ describe('handleRespond', () => {
     expect(mockSetRecentAuthResult).not.toHaveBeenCalled();
   });
 
-  it('sets globalError when the respond result has no signature', async () => {
+  it('unsigned 200 respond → non-retryable neutral Back-only; no enrollment/key wipe (#844)', async () => {
     mockAuthAttemptsApi.respond.mockResolvedValue({
       authAttemptId: 1,
       authAttemptResult: 'APPROVED',
@@ -497,7 +497,30 @@ describe('handleRespond', () => {
       await result.current.handleRespond(true);
     });
 
-    expect(result.current.globalError).toBeDefined();
+    expect(result.current.globalError).toBe(
+      'This request is no longer active. No action is required.',
+    );
+    expect(result.current.globalErrorRetryable).toBe(false);
+    expect(result.current.hasSubmittedServerDecision()).toBe(true);
+    expect(mockCryptoService.deleteEnrollmentKeyPair).not.toHaveBeenCalled();
+    expect(mockSetRecentAuthResult).not.toHaveBeenCalled();
+  });
+
+  it('badly signed 200 respond → non-retryable neutral Back-only (#844)', async () => {
+    mockCryptoService.verify.mockResolvedValueOnce(false);
+
+    const {result} = renderHook('enr-1', sampleAttempt);
+
+    await act(async () => {
+      await result.current.handleRespond(true);
+    });
+
+    expect(result.current.globalError).toBe(
+      'This request is no longer active. No action is required.',
+    );
+    expect(result.current.globalErrorRetryable).toBe(false);
+    expect(result.current.hasSubmittedServerDecision()).toBe(true);
+    expect(mockCryptoService.deleteEnrollmentKeyPair).not.toHaveBeenCalled();
   });
 
   it('keys server-decision lock to authAttemptId so Try again on a new attempt can respond (#833 Patrick)', async () => {
@@ -512,6 +535,7 @@ describe('handleRespond', () => {
 
     expect(result.current.hasSubmittedServerDecision()).toBe(true);
     expect(result.current.globalError).toBeDefined();
+    expect(result.current.globalErrorRetryable).toBe(false);
     expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(1);
 
     // Same attempt still locked — Approve must not call the API again.
