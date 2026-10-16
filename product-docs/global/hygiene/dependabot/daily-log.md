@@ -154,7 +154,7 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
   - Admin UI T1 tooling: #839 vitest 5.0.3→5.0.4 (admin-ui-vite) `3a54a6cb`
   - Admin UI T1 (security ReDoS GHSA-5jr9-983r-c8x4): #840 i18next 26.4.3→26.4.4 `e411d0aa`
   - Admin UI T1: #841 `@tanstack/react-query` 5.104.1→5.104.2 `54b40253`
-  - Mobile T1 production: #842 i18next 26.4.3→26.4.4 + #843 `@tanstack/react-query` 5.104.1→5.104.2 via hygiene **#850** (squash SHA filled after merge) — Dependabot CI red only on stale `thirdPartyLicenses.json` (`js-validate`); hygiene branch `hygiene/dependabot-mobile-2026-10-16` + `yarn license:app-data`; closed #842/#843 as superseded
+  - Mobile T1 production: #842 i18next 26.4.3→26.4.4 + #843 `@tanstack/react-query` 5.104.1→5.104.2 via hygiene **#850** `3cf655cc` — Dependabot CI red only on stale `thirdPartyLicenses.json` (`js-validate`); hygiene branch `hygiene/dependabot-mobile-2026-10-16` + `yarn license:app-data`; closed #842/#843 as superseded
 - Held / skipped:
   - #822 Playwright docker `v1.64.0-noble`→`v1.64.1-noble` — Admin UI lockfile still `@playwright/test` ^1.64.0 / 1.64.0; do not jump image ahead of npm
   - #779 mobile ESLint 10, #653 Jest 30 (ecosystem gates)
