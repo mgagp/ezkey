@@ -45,9 +45,9 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.3** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
+Version **2.2.4** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
 (observability + conf `root:root` exact `0600`/`0400`, no URL default, no process-ENV
-overrides, `lab_http` gate, optional two-digit challenge via `pam_info`). It is still
+overrides, `lab_http` gate, optional two-digit challenge via `pam_prompt`). It is still
 **not** a host-operable MFA agent on a real host (sshd cutover remains slice #4+).
 
 Proven in this repository (clean-start stack + Demo Device + Admin UI):
@@ -100,8 +100,9 @@ owner `root:root` in the demo image. That path and style match Linux-PAM convent
 | `integration_api_url` | Integration API base URL (**required**; no compiled-in default) | Yes for Docker DNS; non-lab / host installs need HTTPS |
 | `integration_key` / `secret_key` | Basic auth | Yes; file perms are the control |
 | `wait_timeout` / `wait_polling` / `api_timeout` | HTTP waits | Yes |
-| `challenge_requested` | Two-digit number-matching challenge | Yes — `true` shows code via `pam_info` before `/wait` |
+| `challenge_requested` | Two-digit number-matching challenge | **Default `false`** — SSH MFA without number matching; `true` shows code via `pam_prompt` before `/wait` |
 | `lab_http` | Allow `http://` URL | Docker entrypoint sets `true`; host sample default `false` |
+| `wait_timeout` | `/wait` client wait (seconds) | Default **90**; clamped to **`EZKEY_MAX_WAIT_TIMEOUT` 100** (< `LoginGraceTime` 120) |
 | `context_title` / `context_message` | Device copy | Yes |
 | `debug` | Extra filelog under `/var/log/ezkey-pam/` (`O_NOFOLLOW`, 0600) | Docker lab entrypoint sets `true`; sample conf default `false` (#818) |
 
@@ -452,10 +453,11 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 | Script | Proves |
 |---|---|
 | `scripts/test-observability.sh` | success / reject / timeout / network → exactly one clean attempt line; secrets absent from secure + debug logs; polled waits. Requires clean-start + Demo Device (local). |
-| `scripts/test-conf-security.sh` | baseline `root:root` `0600`; `0644` / `0000` / non-root / URL absent (empty + deleted line) / `http://`+`lab_http=false` / missing `secret_key` → `UNAVAIL`. |
-| `scripts/test-challenge.sh` | `challenge_requested=true` → SSH shows code; Demo Device + DB → `SUCCESS`; attempt line has `lab_http=true`. |
-| `scripts/test-challenge-nits.sh` | Failing PAM conv + `challenge_requested` → `UNAVAIL` + `lab_http=` on attempt line. |
-| `test/test_challenge_harness.c` | Challenge bound 0..99 + `display_ok` (make test). |
+| `scripts/test-conf-security.sh` | debug.err **reason** asserts + stub ACCEPTED positive control + lab_http guard-only delta. |
+| `scripts/test-challenge.sh` | Code in live capture **before** approve; wrong code refuse; stub absent → UNAVAIL. |
+| `scripts/test-challenge-nits.sh` | Failing PAM conv → `UNAVAIL` + `lab_http=`. |
+| `scripts/test-timeouts.sh` | api_timeout / wait_timeout thresholds + max clamp vs LoginGraceTime. |
+| `test/test_challenge_harness.c` | Challenge bound 0..99 (make test). |
 | `test/test_conf_security.sh` | in-container owner/mode/keys self-check (also via `up.sh` path) |
 | `make test` | check-source + compile + filelog + sanitize + challenge harnesses |
 | CI `ezkey-pam` job | `make test` + Rocky builder + `scripts/ci-m1-conf-security.sh` (incl. `lab_http` gate) → `ci-gate` |
@@ -487,42 +489,50 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 
 ### Two-digit challenge (number matching)
 
-**Supported (2.2.3+).** When `challenge_requested=true`:
+**Supported (2.2.4+).** Default **`challenge_requested=false`**: ordinary SSH MFA is
+approve/reject only (simpler Demo Device path; number matching is opt-in for hosts that
+want phishing-resistant matching). When `challenge_requested=true`:
 
 1. `POST /api/v1/auth-attempts` with `challengeRequested=true`.
 2. Integration API returns `authAttemptChallenge` (default **2** digits —
    `ezkey.core.auth-attempt.challenge-digits`).
 3. Module requires the value in **0..99**; anything else → `PAM_AUTHINFO_UNAVAIL`.
-4. Module displays `Ezkey challenge code: NN — enter this code…` via `pam_prompt`
-   (`PAM_TEXT_INFO`) before `GET …/wait` (fallback `pam_info`). If no PAM conversation
-   can show the code → `PAM_AUTHINFO_UNAVAIL` (user must see it — Christophe).
-5. Device (Demo Device / mobile) must submit matching `challengeResponse` on approve.
+4. Module displays `Ezkey challenge code: NN — enter this code…` via **`pam_prompt`
+   (`PAM_TEXT_INFO`) only** before `GET …/wait` (no `pam_info` fallback — Patrick).
+   If no PAM conversation can show the code → `PAM_AUTHINFO_UNAVAIL` (Christophe).
+5. Device must submit matching `challengeResponse` on approve; wrong digits → refuse.
 6. Fail-closed: missing challenge → `PAM_AUTHINFO_UNAVAIL`.
 7. Challenge value is **not** written to authpriv attempt lines (#750); attempt lines
    include `lab_http=true|false`.
 
-**Lab proof target (no physical phone).** Acceptance is clean-start stack + Demo Device + DB/log
-evidence — not a Pixel/mobile hand-test. Proof script: `./scripts/test-challenge.sh`
-(artifacts under `/opt/cursor/artifacts/pam-challenge-*`):
+**Lab proof target (no physical phone).** `./scripts/test-challenge.sh`:
 
-1. Terminal capture (`script -f`): SSH shows `Ezkey challenge code: NN`.
-2. Demo Device approve with matching `challengeResponse` (same digits).
-3. DB: `ezkey_auth_attempt` row shows `auth_attempt_challenge=NN` and
-   `auth_attempt_status=ACCEPTED` for that `auth_attempt_id`.
-4. Syslog attempt line: `result=SUCCESS` (challenge digits **not** logged — #750).
+1. Live `script -f` capture must show `Ezkey challenge code: NN` **before** approve.
+2. Demo Device approve with matching digits → `SUCCESS` + DB `ACCEPTED|NN`.
+3. Wrong digits → SSH denied / non-SUCCESS.
+4. Stub create without challenge → `UNAVAIL` + debug.err reason.
 
-Admin UI rides the same clean-start stack for optional operator inspection; it is not required
-for the automated proof path. No Pixel / physical-phone step.
+### Timeouts (Patrick / #726 lesson) — path:line inventory
 
-### `/wait` response signature — assessed, deferred until non-lab host hardening
+| Knob | Where | Lab default / bound | Beyond-threshold proof |
+|---|---|---|---|
+| `api_timeout` | `ezkey_config.h` `EZKEY_DEFAULT_API_TIMEOUT`; POST `ezkey_http` in `pam_ezkey.c` | **10** s | `test-timeouts.sh`: stub `slow_create` 3s + `api_timeout=1` → UNAVAIL |
+| `wait_timeout` | conf / `EZKEY_DEFAULT_WAIT_TIMEOUT` **90**; clamp `EZKEY_MAX_WAIT_TIMEOUT` **100** | Cap below `LoginGraceTime` | Clamp constant + `wait_timeout=2` vs stub `pending` → non-SUCCESS under 45s |
+| curl `/wait` | `pam_ezkey.c` `ezkey_http(..., wait_timeout + 15)` | wait+15 | Covered by wait_timeout case |
+| `wait_polling` | `/wait?polling=` query; sample conf **2** | Server-side cadence | Sample conf + STATUS (not a client timer) |
+| Server attempt TTL | `ezkey.core.auth-attempt.ttl-seconds` **120** (`ezkey-core/CONFIGURATION.md`) | Aligns with grace | Documented; PAM does not own TTL |
+| `LoginGraceTime` | `sshd_config:20` → **120** | sshd cuts session | Bound wait ≤100; do not set wait near 120 |
+
+### `/wait` response signature — deferred ([#858](https://github.com/mgagp/ezkey/issues/858))
 
 | Question | Finding |
 |---|---|
-| Does Ezkey sign `/wait` JSON today? | **No.** `AuthAttemptWaitResponseDto` is `{authAttempt, status, completed, timeoutReached, waitDuration, completedAt}` — no detached signature field. |
-| What *is* signed? | Device **respond** payload (Ed25519) verified by Auth/Integration services before status becomes `ACCEPTED`. |
-| What PAM trusts today | TLS (or lab `http://` + private compose net) + HTTP Basic to Integration API; then trusts `status==ACCEPTED`. |
-| Why not implement in M1? | Would need a **new API contract** (server-signed wait receipt + key material the `.so` can verify) or shipping enrollment device public keys into the PAM host — both disproportionate for lab M1 and change Integration API surface. |
-| Non-lab host direction | Prefer mandatory HTTPS to Integration API first; optional wait-receipt signature if threat model requires binding ACCEPTED to a non-MITM guarantee beyond TLS. |
+| Does Ezkey sign `/wait` JSON today? | **No.** `AuthAttemptWaitResponseDto` has no detached signature field. |
+| What *is* signed? | Device **respond** payload (Ed25519) verified server-side before `ACCEPTED`. |
+| What PAM trusts today | TLS (or lab `http://` + `lab_http`) + HTTP Basic; then `status==ACCEPTED`. |
+| Why not M1? | Needs new API contract or device keys in the `.so` — disproportionate for lab. |
+| Tracking | GitHub **#858** (non-lab host hardening). |
+| URL scheme | **Case-insensitive** `https://` always OK; `http://` only with `lab_http=true`. |
 
 ### Review inventory (Patrick + Christophe) — done / deferred
 
@@ -547,11 +557,15 @@ for the automated proof path. No Pixel / physical-phone step.
 | Christophe | `pam_rc_for_http` 401/404 → UNAVAIL | **Done** (documented; branches intentional) |
 | Christophe | Demo debug always on / no filelog rotation | **Deferred** — lab intentional; host sample `debug=false` |
 | Christophe / follow-up | Refuse `http://` outside lab | **Done** (`lab_http`, default false) |
-| Christophe / follow-up | `/wait` signature on PAM | **Deferred** — see assessment above (no API signature today) |
-| Marc budget | Two-digit challenge UX | **Done** (`challenge_requested` + `pam_info` + `test-challenge.sh`) |
-| Christophe GO | Challenge bound 0..99 → else UNAVAIL | **Done** (`ezkey_challenge_in_range` + harness) |
-| Christophe GO | No conv to display code → UNAVAIL | **Done** (`display_ok` + `test-challenge-nits.sh`) |
+| Christophe / follow-up | `/wait` signature on PAM | **Deferred** — [#858](https://github.com/mgagp/ezkey/issues/858) |
+| Marc budget | Two-digit challenge UX | **Done** (default false; opt-in `pam_prompt`) |
+| Christophe GO | Challenge bound 0..99 → else UNAVAIL | **Done** |
+| Christophe GO | No conv to display code → UNAVAIL | **Done** |
 | Christophe GO | `lab_http=` on attempt authpriv line | **Done** |
+| Patrick CHANGES | conf tests assert debug.err reason + stub positive control | **Done** |
+| Patrick CHANGES | challenge visible before approve; wrong/absent cases | **Done** |
+| Patrick CHANGES | timeout inventory + wait clamp below LoginGraceTime | **Done** (`test-timeouts.sh`) |
+| Patrick CHANGES | https scheme case-insensitive + no pam_info fallback | **Done** |
 
 ### Out of M1
 

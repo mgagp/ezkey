@@ -13,7 +13,7 @@ ARG ROCKY_IMAGE=rockylinux/rockylinux:10
 FROM ${ROCKY_IMAGE} AS builder
 
 LABEL org.ezkey.component="pam-builder"
-LABEL org.ezkey.version="2.2.3"
+LABEL org.ezkey.version="2.2.4"
 
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
@@ -37,7 +37,7 @@ RUN make clean && make all test \
 FROM ${ROCKY_IMAGE} AS runtime
 
 LABEL org.ezkey.component="pam-ssh-demo"
-LABEL org.ezkey.version="2.2.3"
+LABEL org.ezkey.version="2.2.4"
 LABEL description="Rocky Linux SSH demo VM authenticated by Ezkey PAM"
 
 ENV LANG=C.UTF-8
@@ -57,6 +57,7 @@ RUN dnf -y install epel-release \
         iproute \
         libcurl \
         cjson \
+        python3 \
     && dnf clean all
 
 RUN ssh-keygen -A \
@@ -81,10 +82,12 @@ COPY sshd_config /etc/ssh/sshd_config
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY test/test_pam.sh /opt/pam-ezkey/test/test_pam.sh
 COPY test/test_conf_security.sh /opt/pam-ezkey/test/test_conf_security.sh
+COPY scripts/integration-api-stub.py /opt/pam-ezkey/scripts/integration-api-stub.py
 # rsyslog authpriv routing is fixed at runtime by docker-entrypoint.sh (imuxsock
 # SysSock.Use=on; no journald in the container). Stock conf already has authpriv.*.
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh /opt/pam-ezkey/test/test_pam.sh \
         /opt/pam-ezkey/test/test_conf_security.sh \
+        /opt/pam-ezkey/scripts/integration-api-stub.py \
     && mkdir -p /var/log /var/log/ezkey-pam \
     && chmod 700 /var/log/ezkey-pam \
     && touch /var/log/secure \

@@ -7,7 +7,7 @@
 
 /* Module identification */
 #define EZKEY_MODULE_NAME "pam_ezkey"
-#define EZKEY_VERSION "2.2.3"
+#define EZKEY_VERSION "2.2.4"
 
 /*
  * No compiled-in default Integration API URL (Patrick B1 / M1 review).
@@ -25,6 +25,11 @@
 #define EZKEY_DEFAULT_WAIT_TIMEOUT 90
 #define EZKEY_DEFAULT_WAIT_POLLING 2
 #define EZKEY_DEFAULT_API_TIMEOUT 10
+/*
+ * Cap wait_timeout below demo sshd LoginGraceTime (120s) with margin for
+ * handshake + curl slack (wait_timeout+15). See STATUS § timeouts / #726 lesson.
+ */
+#define EZKEY_MAX_WAIT_TIMEOUT 100
 
 /* Configuration file path loaded at PAM runtime (override only via pam.d conf=) */
 #define EZKEY_DEFAULT_CONFIG_FILE "/etc/security/pam_ezkey.conf"

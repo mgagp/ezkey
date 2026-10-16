@@ -197,6 +197,9 @@ static void apply_config_key(EzkeyConfig *cfg, const char *key,
         set_cfg_str(cfg->secret_key, sizeof(cfg->secret_key), value);
     } else if (strcmp(key, "wait_timeout") == 0) {
         cfg->wait_timeout = parse_positive_int(value, cfg->wait_timeout);
+        if (cfg->wait_timeout > EZKEY_MAX_WAIT_TIMEOUT) {
+            cfg->wait_timeout = EZKEY_MAX_WAIT_TIMEOUT;
+        }
     } else if (strcmp(key, "wait_polling") == 0) {
         cfg->wait_polling = parse_positive_int(value, cfg->wait_polling);
     } else if (strcmp(key, "api_timeout") == 0) {
@@ -540,15 +543,18 @@ static int pam_rc_for_http(long http_code, long expected) {
     return PAM_AUTHINFO_UNAVAIL;
 }
 
-/** https always OK; http only when lab_http=true (compose / CI lab). */
+/**
+ * Scheme gate (Patrick): https always OK (case-insensitive); http only when
+ * lab_http=true. Rejects empty and non-http(s) schemes.
+ */
 static int ezkey_api_url_allowed(const EzkeyConfig *cfg) {
     if (cfg == NULL || cfg->api_url[0] == '\0') {
         return 0;
     }
-    if (strncmp(cfg->api_url, "https://", 8) == 0) {
+    if (strncasecmp(cfg->api_url, "https://", 8) == 0) {
         return 1;
     }
-    if (cfg->lab_http && strncmp(cfg->api_url, "http://", 7) == 0) {
+    if (cfg->lab_http && strncasecmp(cfg->api_url, "http://", 7) == 0) {
         return 1;
     }
     return 0;
@@ -690,7 +696,6 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
         const void *conv_item = NULL;
         char *resp = NULL;
         int prc;
-        int irc = PAM_AUTH_ERR;
 
         if (!ezkey_challenge_in_range(challenge)) {
             log_pam_error_debug(pamh, cfg,
@@ -712,18 +717,16 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                  "device, then approve.",
                  challenge);
         /*
-         * pam_info alone is sometimes not flushed by OpenSSH until a prompt
-         * follows. Prefer PAM_TEXT_INFO via pam_prompt; fall back to pam_info.
-         * Both failing → UNAVAIL (do not wait on an unseen code).
+         * Surface the code with pam_prompt(PAM_TEXT_INFO) so OpenSSH
+         * keyboard-interactive delivers it before /wait blocks. Do not fall
+         * back to pam_info: that path does not reliably flush under sshd, and
+         * would hide a failed conversation (Patrick). Fail → UNAVAIL.
          */
         prc = pam_prompt(pamh, PAM_TEXT_INFO, &resp, "%s", msg);
         if (resp != NULL) {
             free(resp);
         }
         if (prc != PAM_SUCCESS) {
-            irc = pam_info(pamh, "%s", msg);
-        }
-        if (!ezkey_challenge_display_ok(prc, irc)) {
             log_pam_error_debug(pamh, cfg,
                                 "challenge_requested but PAM conversation "
                                 "could not display the code");
