@@ -333,3 +333,40 @@ Each slice should stay mergeable on its own:
 
 When unsure, prefer the Rocky demo as the living test, change one operational concern at a time,
 and refuse features that would make the module smarter than the Integration API.
+
+---
+
+## M0 — Stabilize (PR #610 rebase onto main)
+
+**Goal:** keep slices 1–3 behavior from #610, reconcile with main, re-prove lab demos, document
+lessons. No EXP1 cutover, no product promotion, no AWS / ezkey.online touch.
+
+### Substantive conflicts resolved (rebase onto main)
+
+| Area | Main had landed | #610 wanted | Resolution (behavior kept) |
+|---|---|---|---|
+| Debug file path | `#818` — `/var/log/ezkey-pam/` via `ezkey_filelog` (`openat`/`O_NOFOLLOW`/`0600`) + `ezkey_sanitize_for_log` | Gate `/tmp/pam_ezkey.{out,err}` on `debug=true` | **Keep main’s filelog.** Do not reintroduce `/tmp` fixed names. Debug still gated on `debug`. |
+| Log helpers | `log_pam_error(pamh, cfg, …)` always takes cfg; sanitize before syslog/file | Separate `ezkey_filesyslog_*` + `log_pam_error_debug` writing `/tmp` | Main sinks + thin `log_pam_error_debug` → `log_pam_error` for call-site clarity |
+| HTTP / wait logging | Could log response **bodies** (incl. proof token risk) | Omit bodies; log `authAttemptId` / HTTP status / wait status only | **Keep #610** (no bodies/secrets) |
+| PAM return codes | Mostly `PAM_AUTH_ERR` for all failures | Fail-closed map (`AUTHINFO_UNAVAIL` / `AUTH_ERR` / `SERVICE_ERR` / `USER_UNKNOWN`) + `curl_global_*` + `explicit_bzero` | **Keep #610** |
+| Conf / docs | STATUS still listed pre-slice demo limits | Slices 1–3 “done” + AL2023 path | Merge: update limits to post-slice truth; keep `#818` wording |
+| `test_pam.sh` | Assert `/var/log/ezkey-pam` mode `700` | `-n "$PAM_SO"` when locating `.so` | Both |
+| AL2023 runtime image | N/A on main | Separate `Dockerfile.al2023` | Keep #610 split; **add** `mkdir -p /var/log/ezkey-pam` mode `700` so `#818` + `test_pam.sh` pass on AL2023 |
+
+### Lessons / problems for M0
+
+1. **Stale branch vs parallel hygiene.** While #610 was draft, main shipped `#818` PAM `/tmp`
+   hardening. Rebase must prefer main’s safer log path and layer #610’s auth/hygiene on top —
+   not “ours” wholesale for file I/O.
+2. **AL2023 split must inherit Rocky runtime ops.** Splitting `Dockerfile.al2023` without
+   copying the log-dir `mkdir`/`chmod 700` breaks `test_pam.sh` and debug transcripts on the
+   mirror VM.
+3. **Entrypoint comments drift.** Demo still defaults `EZKEY_DEBUG=true`; docs must say
+   `/var/log/ezkey-pam`, not `/tmp`, or operators chase the wrong path.
+4. **Observability contract for later milestones:** one `authpriv` syslog line per attempt with
+   user, `authAttemptId`, result, PAM code, latency — never secrets. Not implemented in M0
+   beyond existing id/status logs; M1 reviews conf `0600` + fail-closed with Patrick/Christophe.
+
+### Out of M0
+
+EXP1 sshd cutover, TLS, packages, `failmode=safe`, AWS, ezkey.online, product-roadmap promotion.
