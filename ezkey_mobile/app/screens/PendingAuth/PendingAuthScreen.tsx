@@ -74,6 +74,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     handleRespond,
     hasSubmittedServerDecision,
     isRespondInFlight,
+    dismissRetryableErrorKeepAttempt,
   } = usePendingAuth(enrollmentId, initialAttempt, {
     canGoBack: () => navigation.canGoBack(),
     goBack: () => navigation.goBack(),
@@ -198,7 +199,11 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
           {globalErrorRetryable ? (
             <TouchableOpacity
               testID="ezkey.e2e.pendingAuth.tryAgain"
-              onPress={loadPendingAttempt}
+              onPress={
+                // 503 (and other retryable respond errors) keep the loaded attempt — do not
+                // re-claim pending (would often land on empty while READ still waits) (#833).
+                attempt ? dismissRetryableErrorKeepAttempt : loadPendingAttempt
+              }
               style={styles.secondaryButton}>
               <Text style={styles.secondaryLabel}>{t('pendingAuth.tryAgain')}</Text>
             </TouchableOpacity>
@@ -290,11 +295,13 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
                   </Text>
                 </TouchableOpacity>
               </View>
-              <Text
-                testID="ezkey.e2e.pendingAuth.leaveDeclinesHint"
-                style={styles.leaveDeclinesHint}>
-                {t('pendingAuth.leaveDeclinesHint')}
-              </Text>
+              {!isProcessing ? (
+                <Text
+                  testID="ezkey.e2e.pendingAuth.leaveDeclinesHint"
+                  style={styles.leaveDeclinesHint}>
+                  {t('pendingAuth.leaveDeclinesHint')}
+                </Text>
+              ) : null}
               {isProcessing ? (
                 <View
                   testID="ezkey.e2e.pendingAuth.respondInFlight"

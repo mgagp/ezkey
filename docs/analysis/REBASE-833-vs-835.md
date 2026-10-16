@@ -1,10 +1,10 @@
 # REBASE #833 onto main (post-#835) — Step 1 report
 
+**Location:** `docs/analysis/` (moved off repo root — Patrick nit on #833).  
 **Branch:** `cursor/admin-rate-limit-passwordless-831-f1f9`  
 **Base:** `origin/main` @ `0e2b3cda` (`docs(mobile): canonical app state machine (#834) (#835)`)  
-**Tip after rebase (product):** `7fd4a484fdef3b06025ca67809e2305971d9e454` (m1 unified 409)  
-**Tip including this report:** use `git rev-parse` on `cursor/admin-rate-limit-passwordless-831-f1f9` (docs-only commits after product tip)  
-**Scope:** Rebase only. No behavior change to match post-critique Marc go/no-go beyond what #833 already shipped. No merge.
+**Historical tip after rebase (product):** `7fd4a484` (m1 unified 409). Later tips delivered Q10/Q9/Q5.  
+**Scope (Step 1):** Rebase only. Gaps A–G below were closed in the subsequent critique-GO commit (see PR #833).
 
 ---
 

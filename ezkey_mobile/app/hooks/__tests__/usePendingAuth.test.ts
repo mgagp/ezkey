@@ -541,6 +541,13 @@ describe('handleRespond', () => {
     );
     expect(result.current.globalErrorRetryable).toBe(true);
     expect(result.current.hasSubmittedServerDecision()).toBe(false);
+    expect(result.current.attempt?.authAttemptId).toBe('attempt-1');
+
+    await act(async () => {
+      result.current.dismissRetryableErrorKeepAttempt();
+    });
+    expect(result.current.globalError).toBeUndefined();
+    expect(result.current.attempt?.authAttemptId).toBe('attempt-1');
 
     mockAuthAttemptsApi.respond.mockResolvedValue({
       authAttemptId: 1,
@@ -552,6 +559,44 @@ describe('handleRespond', () => {
       await result.current.handleRespond(true);
     });
     expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(2);
+  });
+
+  it('HTTP 503 without catalog type still treated as signing-unavailable (#833 Patrick)', async () => {
+    mockAuthAttemptsApi.respond.mockRejectedValue({
+      response: {status: 503, data: {title: 'Service Unavailable'}},
+    });
+
+    const {result} = renderHook('enr-1', sampleAttempt);
+
+    await act(async () => {
+      await result.current.handleRespond(true);
+    });
+
+    expect(result.current.globalErrorRetryable).toBe(true);
+    expect(result.current.hasSubmittedServerDecision()).toBe(false);
+  });
+
+  it('HTTP 429 after respond started stays retryable (not UncertainDecision) (#833 Patrick)', async () => {
+    mockAuthAttemptsApi.respond.mockRejectedValue({
+      response: {
+        status: 429,
+        data: {
+          type: 'https://ezkey.io/problems/auth/rate-limited',
+          title: 'Too Many Requests',
+          status: 429,
+        },
+      },
+    });
+
+    const {result} = renderHook('enr-1', sampleAttempt);
+
+    await act(async () => {
+      await result.current.handleRespond(true);
+    });
+
+    expect(result.current.globalError).not.toBe(UNCERTAIN_DECISION_Q10);
+    expect(result.current.globalErrorRetryable).toBe(true);
+    expect(result.current.hasSubmittedServerDecision()).toBe(false);
   });
 
   it('pre-send biometric cancel stays retryable and does not lock (#833 Q10 boundary)', async () => {

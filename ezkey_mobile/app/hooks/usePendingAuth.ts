@@ -160,6 +160,11 @@ export type PendingAuthState = {
    * Used so leave-as-deny cannot race an in-flight approve (#833 m2).
    */
   isRespondInFlight: () => boolean;
+  /**
+   * Clears a retryable global error while keeping the loaded {@link attempt} (e.g. after 503
+   * respond). Avoids Try again → pending re-claim landing on empty while the attempt is still READ.
+   */
+  dismissRetryableErrorKeepAttempt: () => void;
 };
 
 // ---------------------------------------------------------------------------
@@ -242,14 +247,36 @@ export function usePendingAuth(
     [t],
   );
 
-  /** True when Auth API reported missing integration signing key (HTTP 503; transaction rolled back). */
+  /**
+   * True when Auth API reported missing integration signing key (HTTP 503; transaction rolled
+   * back). Matches catalog {@code type} and/or HTTP status 503 (body may omit type).
+   */
   const isIntegrationSigningUnavailable = useCallback((error: unknown): boolean => {
-    const data =
-      error != null && typeof error === 'object' && 'response' in error
-        ? (error as {response?: {data?: unknown}}).response?.data
-        : undefined;
-    const problem = parseAuthApiProblemDetail(data);
+    if (error == null || typeof error !== 'object' || !('response' in error)) {
+      return false;
+    }
+    const response = (error as {response?: {status?: number; data?: unknown}}).response;
+    if (response?.status === 503) {
+      return true;
+    }
+    const problem = parseAuthApiProblemDetail(response?.data);
     return problem?.type?.trim() === INTEGRATION_SIGNING_UNAVAILABLE_TYPE;
+  }, []);
+
+  /** True when the error has no HTTP response body (timeout / transport cut). */
+  const isTransportWithoutHttpResponse = useCallback((error: unknown): boolean => {
+    if (error == null || typeof error !== 'object') {
+      return true;
+    }
+    if (!('response' in error)) {
+      return true;
+    }
+    return (error as {response?: unknown}).response == null;
+  }, []);
+
+  const dismissRetryableErrorKeepAttempt = useCallback(() => {
+    setGlobalError(undefined);
+    setGlobalErrorRetryable(true);
   }, []);
 
   // -------------------------------------------------------------------------
@@ -599,9 +626,10 @@ export function usePendingAuth(
           }
           return;
         }
-        // After HTTP respond was attempted: timeout / transport / undecidable → UncertainDecision
-        // (Q10). Lock blocks leave-as-deny and a second decision. No idempotent respond (#833/#844).
-        if (respondHttpStarted) {
+        // After HTTP respond was attempted with no response (timeout / transport cut) →
+        // UncertainDecision (Q10). Do not treat HTTP 400/429 bodies as uncertain — those keep
+        // catalog retryability. Lock blocks leave-as-deny / second decision (#833/#844).
+        if (respondHttpStarted && isTransportWithoutHttpResponse(error)) {
           serverDecisionAttemptIdRef.current = respondAttemptId;
           if (isMountedRef.current) {
             setGlobalError(t('pendingAuth.uncertainDecision'));
@@ -609,7 +637,7 @@ export function usePendingAuth(
           }
           return;
         }
-        // Pre-send failure (e.g. biometric cancel) — still retryable; leave-as-deny may run.
+        // Pre-send failure, or post-send HTTP 400/429 with a body — catalog outcome as-is.
         if (isMountedRef.current) {
           setGlobalError(errorOutcome.message);
           setGlobalErrorRetryable(errorOutcome.retryable);
@@ -629,6 +657,7 @@ export function usePendingAuth(
       extractErrorOutcome,
       handleReturnToEnrollmentDetail,
       isIntegrationSigningUnavailable,
+      isTransportWithoutHttpResponse,
       setRecentAuthResult,
       t,
     ],
@@ -683,5 +712,6 @@ export function usePendingAuth(
     handleRespond,
     hasSubmittedServerDecision,
     isRespondInFlight,
+    dismissRetryableErrorKeepAttempt,
   };
 }

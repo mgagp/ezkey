@@ -59,6 +59,13 @@ On Windows agent shells (PowerShell), do **not** pass the PR title/body inline t
 See `AGENTS.md` § *GitHub pull request on Windows (agent shell)* and
 `.cursor/rules/git-pr-windows.mdc`.
 
+## OpenAPI dispatched specs (symlinks)
+
+`scripts/update-specs.sh` links `specs/*/openapi-spec.json` into consumers (Admin UI, mobile, demo
+device, SDK). On **Windows** (e.g. Rootbeer), enable Git symlinks so those links are real
+symlinks rather than plain-text files: `git config core.symlinks true`, and turn on Windows
+**Developer Mode** (or run the shell elevated) so creating symlinks succeeds.
+
 ## Build and verification
 
 On a fresh clone (empty `~/.m2`), from the repository root in Bash (Git Bash on Windows):

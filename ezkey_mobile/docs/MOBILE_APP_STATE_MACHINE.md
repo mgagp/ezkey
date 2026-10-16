@@ -218,12 +218,12 @@ Internal refs (#833):
 
 | Event | Guard | Effect |
 | --- | --- | --- |
-| Approve / Deny press | `enrollment`, `attempt`, `!isProcessing`, `!hasSubmittedServerDecision()`, `!respondInFlightRef` | Else skip (duplicate / in-flight / locked id) |
+| Approve / Deny press | `enrollment`, `attempt`, `!hasSubmittedServerDecision()`, `!respondInFlightRef` | Else skip (duplicate / in-flight / locked id). Buttons also `disabled={isProcessing}` (UI only). |
 | Approve only | If `challengeRequired`, challenge length === 2 (`AUTH_CHALLENGE_LENGTH`) | Else form error; no API |
 | Deny | Challenge **not** required locally; server also skips challenge on reject | Same `respond` path with `accepted=false` |
 | Protected mode | `requiresProtectedApproval` (enrollment policy **or** device preference) | **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Question 11):** biometric or device credential on **Approve only**, then `signForRespond`. Deny and leave-as-deny sign the refusal without that prompt. |
 | HTTP `respond` 200 | — | Set `serverDecisionAttemptIdRef` **before** the result-signature check (**decided**, [#834](https://github.com/mgagp/ezkey/issues/834) Question 2); on success `setRecentAuthResult` + navigate. Body outcome may be `APPROVED` / `DENIED` / **`FAILED`**. |
-| HTTP / transport fail after send | — | **`UncertainDecision` (Q10, #833):** lock id; Back only; no leave-as-deny. Pre-send failures (e.g. biometric cancel) stay retryable without lock. **503** signing unavailable stays retryable without lock (#844). |
+| Timeout / transport cut after send (no HTTP response) | — | **`UncertainDecision` (Q10, #833):** lock id; Back only; no leave-as-deny. HTTP **400**/**429** with a body keep catalog retryability (not UncertainDecision). Pre-send failures (e.g. biometric cancel) stay retryable without lock. **503** signing unavailable stays retryable without lock (#844); Try again dismisses error and keeps the loaded attempt (does not re-claim pending → empty). |
 | Result sig fail after HTTP 200 | — | **Decided (Questions 2 and 9):** stay; do not display approved or denied; hide Approve/Deny; leave will **not** re-deny. Sentence: response sent, confirmation could not be verified, check the sign-in where it was started. No tenant name. Back only. |
 | Buttons while processing | `disabled={isProcessing}` | UI lock; refs close the sync gap before re-render |
 

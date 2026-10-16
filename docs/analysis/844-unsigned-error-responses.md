@@ -73,8 +73,9 @@ After Admin UI **Annuler** while the phone is on `PendingAuthScreen` in `Ready`,
 | Approve/deny success | 200 APPROVED/DENIED | **Yes** | Verify → Completed |
 | Domain FAILED (bad device sig / challenge) | 200 FAILED | **Yes** | Verify → recent failed |
 | Not found / PENDING / terminal / cancel / supersession / TTL | **409** state-conflict | problem+json | `NoLongerActive` (Back only) |
-| Missing integration key | **503** | problem+json | local catalog, retryable |
-| Unsigned / bad-sig 200 (MITM / bug) | 200 without valid sig | N/A | neutral Back-only, non-retryable |
+| Missing integration key | **503** | problem+json | local catalog, **retryable** (no signed body; transaction rolled back) |
+| Unsigned / bad-sig 200 (MITM / bug) | 200 without valid sig | N/A | `resultNotConfirmed` (Q9) Back only |
+| Timeout / transport cut after respond sent | no HTTP response | N/A | `UncertainDecision` (Q10) Back only + id lock |
 
 ---
 
