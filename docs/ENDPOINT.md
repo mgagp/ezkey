@@ -123,7 +123,12 @@ IP-keyed enrollment surfaces (`verify`, `bind`, enrolled `instance-info`) also h
 
 **204 No Content** on `POST /api/v1/auth-attempts/pending` when there is no pending attempt is a **success** (no body), not an error.
 
-**200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level `FAILED` result in the JSON body when validation or cryptographic checks fail in a way modeled as `AuthAttemptRequestFailedException` in the respond service (integration-signed; see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`). HTTP-level failures for state conflicts (e.g. superseded or expired attempt) use **409** Problem Details as above.
+**200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level `FAILED` result in the JSON body when validation or cryptographic checks fail in a way modeled as `AuthAttemptRequestFailedException` in the respond service (integration-signed; see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`). HTTP-level failures for state conflicts (expired, cancelled, or already decided) use **409** Problem
+Details, type `https://ezkey.io/problems/auth/auth-attempt-state-conflict`. **Decided (#834
+Question 8):** that one type stays. Do not split it per cause. The mobile app shows one sentence —
+the request is no longer active — and Back only, not Try again. The integrating application is where
+the person sees which cause it was. A lost approve response, where a session may already exist, is a
+separate mobile case (orientation Question 10), not a new problem type.
 
 ### Public instance metadata (unauthenticated)
 
@@ -225,6 +230,15 @@ Content-Type: application/json
 **Response Fields (context — all nullable):**
 - `contextTitle`: Short heading displayed as the card header on the mobile device. Null when no context was attached.
 - `contextMessage`: Descriptive body explaining what the approver is authorizing. Null when no context was attached.
+
+**Mobile pending expiry (decided, #834 Questions 1 and 14):** The pending **200** body above does
+**not** include `expiresAt`, `expiresInSeconds`, or `serverNow`, and it stays that way. Do not add
+those fields as unsigned display values, and do not put them inside the signed pending payload.
+Attempt expiry still exists server-side (`ezkey.core.auth-attempt.ttl-seconds`). The countdown a
+person watches is on the integrating application, from create/wait `expiresAt` — not on the phone.
+Reason and interaction model:
+[`ezkey_mobile/docs/MOBILE_APP_STRATEGIC_ORIENTATION.md`](../ezkey_mobile/docs/MOBILE_APP_STRATEGIC_ORIENTATION.md)
+§ Decision — Question 1 and Question 14.
 
 ### b) Submit response to request
 
@@ -648,7 +662,7 @@ The client should use `detail` (then `title`) for user-facing messages, not assu
 - `waiterSecret` capability token prevents replay and session hijacking by requiring the unguessable CSPRNG secret returned only to the initial `/login` caller.
 - Atomic CAS guarantees a session is issued at most once per authentication attempt; replays after session issuance are rejected with generic 401 and cannot trigger token rotation or mint survivor tokens.
 - `challengeCode` prevents enumeration attacks (proof of legitimate login initiation)
-- Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). If `ezkey.core.auth-attempt.ttl-seconds` is set above 300 (max 600), the wait may return HTTP 408 while the attempt row is still valid in the database.
+- Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). If `ezkey.core.auth-attempt.ttl-seconds` is set above 300 (max 600), the wait may return HTTP 408 while the attempt row is still valid in the database. The lifetime itself is that property (default **120**, range **30–600**). On Cloudflare Free (`ezkey.org`, `ezkey.online`, including the community instance) the origin is cut at **100 seconds** (HTTP **524**, not raisable; see `product-docs/global/product-intent.md`). A blocking wait can therefore end at the proxy while a default 120-second attempt is still valid. Noted for that deployment (#834 Question 12); the default is not changed here.
 - Device must enter matching challenge code before approval
 - Invalid challenge on device marks attempt as INVALID
 

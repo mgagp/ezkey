@@ -7,7 +7,11 @@ enrollment and authentication. It combines screen transitions, API calls, local 
 reader can understand the mobile behavior end to end without reopening the source code.
 
 Protocol semantics remain canonical in the root-level Auth API and signature payload documentation. This document is
-the mobile operational view of those semantics.
+the mobile operational view of those semantics. For the explicit finite-state model (guards, leave-as-deny,
+duplicate-tap locks, TTL), see [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) (canonical; baseline
+PR #833 @ `fcc31fbf`). Product/UX open questions and phased proposals:
+[MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md). **Once Marc decides**, behavior
+locks belong in the FSM and this flows doc; undecided items stay in the orientation note only.
 
 ## Flow Inventory and Notation
 
@@ -82,9 +86,56 @@ flowchart TD
 | 3 | Enrollment Detail | App submits pending | `POST /api/v1/auth-attempts/pending` | None yet | None before response | Either request payload or empty result |
 | 4 | Enrollment Detail | App validates pending result | None | `PendingAttempt` created in memory only if signature passes | Pending payload signature verified with stored integration public key | Stay on detail when empty; navigate to Pending Authentication when request exists |
 | 5 | Pending Authentication | User reviews context and chooses approve or deny | None | User intent stored in component state | Local challenge presence check when required | Respond can start |
-| 6 | Pending Authentication | App signs canonical respond payload | None | Respond signature prepared in memory | When protected mode is active, the app shows strong biometric or device-credential confirmation, then signs with the enrollment Keystore key; key use is not bound to that confirmation | Respond request ready |
+| 6 | Pending Authentication | App signs canonical respond payload | None | Respond signature prepared in memory | Protected mode asks for strong biometric or device-credential confirmation **on approve only**, then signs with the enrollment Keystore key. Deny and leave sign without that prompt (Question 11). Key use is not bound to that confirmation | Respond request ready |
 | 7 | Pending Authentication | App submits respond | `POST /api/v1/auth-attempts/respond` | None yet | None before response | Respond result received |
 | 8 | Pending Authentication | App validates respond result | None | Volatile local `RecentAuthResult` summary updated for this enrollment | Result signature verified with stored integration public key | App returns immediately to Enrollment Detail, which displays the latest response summary |
+
+The phone does not show a remaining-time countdown. Ezkey does not push the attempt; the person
+starts sign-in in the integrating application, whose SDK shows `expiresAt` from create/wait. That
+is the clock they live with. They approve or deny here, or they cancel on that screen. A second
+timer on the phone would repeat it and drift. The pending response does not gain an expiry field,
+unsigned or inside the signed payload. Decided in
+[MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md) (Questions 1 and 14, #834).
+
+If `respond` returns HTTP 200 and the result signature is missing or invalid, the phone does not
+show approved or denied and does not send another decision. The lock is set on that 200, before the
+local check. The sentence says the response was sent, the confirmation could not be verified, and
+to check the sign-in where it was started. It does not name a tenant. Back only. Decided in the
+same note (Questions 2 and 9, #834).
+
+If the `respond` response never arrives, the phone says the result is uncertain and to check the
+sign-in where it was started. It does not say failure and it does not offer a retry that sends
+another decision. Decided in the same note (Question 10, #834).
+
+Approve in protected mode asks for biometric or device credential before signing. Deny and leaving
+the screen sign the refusal without that prompt. Decided in the same note (Question 11, #834).
+
+If the app is killed or backgrounded during `respond`, or the attempt lifetime ends during Approve
+biometric, the row may stay `READ` until it expires. That window is an accepted limit. “120
+seconds” means the default of `ezkey.core.auth-attempt.ttl-seconds` (range 30–600). On Cloudflare
+Free, including the community instance, the proxy cuts the origin at 100 seconds (HTTP 524); take
+that into account at deploy time. Decided in the same note (Question 12, #834).
+
+The “decision already sent” lock follows `authAttemptId`, so a new attempt on the same screen is
+not stuck behind the previous one. The fix is tracked on pull request #833 and is not duplicated
+here. Decided in the same note (Question 13, #834).
+
+If leaving the screen fails to send the refusal, the person still leaves. The phone shows one short
+message and does not retry. They look back at the integrating application and either see a finished
+sign-in or a countdown still running, which they let finish or cancel there. Decided in the same
+note (Question 3, #834).
+
+If the pending signature is missing or invalid, the phone does not show the request and does not
+send a refusal. The server row may stay `READ` until the attempt expires. The person lets the
+countdown finish on the integrating application, or cancels there. Decided in the same note
+(Question 4, #834).
+
+If `respond` returns **409** `auth-attempt-state-conflict`, the phone shows one sentence: the
+request is no longer active. Back only. The same sentence covers expiry, cancellation, and an
+already decided attempt. Decided in the same note (Question 8, #834).
+
+While a request is on screen, a permanent line under Approve and Deny says that leaving declines
+it. No confirmation dialog. Decided in the same note (Question 5, #834).
 
 ## Authentication Exception Flow
 
@@ -94,11 +145,11 @@ flowchart TD
 | Enrollment missing integration public key | Pending Authentication after API response | App cannot verify pending or respond signatures | Global error shown | Re-enroll or repair local record |
 | Pending request failure | Pending Authentication | Backend or transport failure | Global error with retry | Tap `Try again` |
 | No pending request | Enrollment Detail pending check | `204 No Content` / no usable pending body | User stays on Enrollment Detail with lightweight feedback | Tap `Check pending` again later |
-| Invalid pending signature | Pending Authentication | Request context cannot be trusted | Global error shown | Retry only if a new request is expected |
+| Invalid pending signature | Enrollment Detail pending check | Request context cannot be trusted; no attempt loaded | Stay on Detail. Plain copy: the request was not shown and will expire. No signature jargon. Do not send a refusal | Person lets the integrating-application countdown finish, or cancels there (Question 4) |
 | Missing required 2-digit challenge | Pending Authentication before respond | Local validation failure | Inline form error shown | Enter code and retry |
 | Respond request failure | Pending Authentication | Backend or transport failure | Global error shown | Retry if attempt still valid |
-| Missing respond-result signature | Pending Authentication after respond | Outcome cannot be trusted | Global error shown | No trusted outcome displayed |
-| Invalid respond-result signature | Pending Authentication after respond | Outcome cannot be trusted | Global error shown | No trusted outcome displayed |
+| Missing respond-result signature | Pending Authentication after respond | HTTP 200 already processed; outcome cannot be trusted | Stay; hide Approve/Deny; do not show approved or denied; do not send a second decision. Say to check the sign-in where it was started. No tenant name. Back only | Person checks that sign-in screen (Question 9) |
+| Invalid respond-result signature | Pending Authentication after respond | HTTP 200 already processed; outcome cannot be trusted | Stay; hide Approve/Deny; do not show approved or denied; do not send a second decision. Say to check the sign-in where it was started. No tenant name. Back only | Person checks that sign-in screen (Question 9) |
 | Verified failed result | Pending Authentication after respond | Attempt ended unsuccessfully | Detail screen shows the latest failed response summary | User can review it and start any future check from Enrollment Detail |
 | Protected mode downgraded in Settings | Security screen | User tries to switch from protected mode to standard mode | No backend call | Preference would lower local protection | The app requires strong biometric or device-credential confirmation before saving the new value | Protection remains enabled if the user cancels |
 

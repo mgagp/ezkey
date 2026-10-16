@@ -7,7 +7,8 @@ which actions it owns, and how navigation moves across enrollment and authentica
 screen implementations rather than an idealized future UX.
 
 It focuses on Home, Enrollment Wizard, Enrollment Detail, and Pending Authentication first, then captures the
-secondary Settings, What's new, About, Danger Zone, and Licenses screens.
+secondary Settings, What's new, About, Danger Zone, and Licenses screens. Decision limits and state transitions
+are canonical in [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) (including post-#833 leave-as-deny).
 
 ## Navigation Model Overview
 
@@ -168,7 +169,7 @@ for request context and respond submission, then returns control to Enrollment D
 | Enrollment identity box | Account / Purpose / Role from `enrollmentDisplay`; pending card uses `contextTitle` then Account | Persisted enrollment + trusted pending response |
 | Request context block | `contextTitle`, `contextMessage`, challenge requirement | Trusted pending response |
 | Two-digit challenge input | Challenge entry when required | User input |
-| Action buttons | Approve, deny, retry/check again | Screen state |
+| Action buttons | Approve, deny, and a permanent line that leaving this screen declines the request | Screen state |
 | Debug panel | Optional diagnostics when `pendingAuthDebugPanel` is enabled | Screen debug snapshot |
 
 | User action | Effect | Next state/navigation |
@@ -176,8 +177,9 @@ for request context and respond submission, then returns control to Enrollment D
 | Wait for initial load | Screen may use a preloaded verified pending request or call `pending` when entered directly | Remains on screen |
 | Tap `Check again` | Repeats `pending` load cycle | Remains on screen |
 | Enter challenge | Satisfies local precondition for approve | Remains on screen |
-| Tap approve | Signs and submits respond payload with accepted decision | Returns to Enrollment Detail with latest response summary |
-| Tap deny | Signs and submits respond payload with denied decision | Returns to Enrollment Detail with latest response summary |
+| Tap approve | In protected mode, biometric or device credential, then signs and submits an accepted respond | Returns to Enrollment Detail with latest response summary |
+| Tap deny | Signs and submits a denied respond. No biometric prompt, including in protected mode (Question 11) | Returns to Enrollment Detail with latest response summary |
+| Leave with loaded attempt (back / gesture) | Same as Deny via `respond(accepted=false)`. A permanent line under the buttons says so before the gesture (Question 5). | Returns to Enrollment Detail when deny succeeds; on deny failure still allows leave |
 
 | State type | How it appears | User consequence |
 | --- | --- | --- |
