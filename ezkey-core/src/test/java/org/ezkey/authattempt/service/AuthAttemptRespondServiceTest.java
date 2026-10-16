@@ -210,8 +210,9 @@ class AuthAttemptRespondServiceTest {
 
   @Test
   @DisplayName(
-      "Missing integration private key refuses unsigned 200 — IntegrationSigningUnavailable (#844)")
-  void respond_missingIntegrationKey_refusesUnsignedAndFailsSigningStart() {
+      "Missing per-enrollment integration key → IntegrationSigningUnavailable (runtime 503,"
+          + " no unsigned 200) (#844)")
+  void respond_missingIntegrationKey_throwsUnavailableWithoutUnsigned200() {
     AuthAttempt attempt = readAttempt();
     Enrollment enrollment = enrollmentWithKeys();
     enrollment.setIntegrationPrivateKey(null);
@@ -232,8 +233,10 @@ class AuthAttemptRespondServiceTest {
   }
 
   @Test
-  @DisplayName("Blank integration private key on FAILED path also refuses unsigned 200 (#844)")
-  void respond_blankKeyOnFailedPath_refusesUnsigned() {
+  @DisplayName(
+      "Blank per-enrollment key on FAILED path → IntegrationSigningUnavailable (no unsigned 200)"
+          + " (#844)")
+  void respond_blankKeyOnFailedPath_throwsUnavailableWithoutUnsigned200() {
     AuthAttempt attempt = readAttempt();
     Enrollment enrollment = enrollmentWithKeys();
     enrollment.setIntegrationPrivateKey("   ");

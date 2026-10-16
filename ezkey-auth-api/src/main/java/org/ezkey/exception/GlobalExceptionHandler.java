@@ -210,9 +210,9 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   }
 
   /**
-   * Integration private key missing when a signed respond body is required — never unsigned 200
-   * (#844). Fail-closed, same posture as encryption {@code required=true} refusing to start without
-   * a usable keyset.
+   * Per-enrollment integration private key missing or blank when a signed respond body is required
+   * (#844). Runtime HTTP 503 — never an unsigned 200. There is no JVM startup check for these keys
+   * (they are stored per enrollment); the respond transaction rolls back on this exception.
    */
   @ExceptionHandler(IntegrationSigningUnavailableException.class)
   public ResponseEntity<ProblemDetail> handleIntegrationSigningUnavailable(

@@ -365,8 +365,9 @@ public class AuthAttemptRespondService {
   }
 
   /**
-   * Builds a FAILED result for validation errors and signs with the integration key. Missing key
-   * refuses to start an unsigned body ({@link IntegrationSigningUnavailableException} → 503).
+   * Builds a FAILED result for validation errors and signs with the integration key. A missing or
+   * blank per-enrollment key throws {@link IntegrationSigningUnavailableException} → HTTP 503 (no
+   * unsigned 200); there is no JVM startup check for integration keys (#844).
    */
   private AuthAttemptRespondResponse buildFailedResponse(
       AuthAttemptRespondRequest request, AuthAttempt authAttempt) {
@@ -393,9 +394,11 @@ public class AuthAttemptRespondService {
   }
 
   /**
-   * Signs {@code proofToken|authAttemptId|result|message} with the integration private key. Refuses
-   * to emit an unsigned body when the key is missing or blank (#844) — same fail-closed posture as
-   * encryption {@code required=true} refusing to start without a usable keyset.
+   * Signs {@code proofToken|authAttemptId|result|message} with the enrollment's integration private
+   * key. When the key is missing or blank, throws {@link IntegrationSigningUnavailableException}
+   * (HTTP 503) instead of returning an unsigned body (#844). Integration keys are per enrollment —
+   * there is no application-startup gate; the outer {@code @Transactional} respond method rolls
+   * back (so a status flip to ACCEPTED/REJECTED in the same transaction is undone).
    *
    * @param response respond body being built
    * @param enrollment enrollment holding the integration private key
@@ -406,12 +409,12 @@ public class AuthAttemptRespondService {
       AuthAttemptRespondResponse response, Enrollment enrollment, String proofToken) {
     if (enrollment == null) {
       throw new IntegrationSigningUnavailableException(
-          "Enrollment required to sign respond result; refuse unsigned 200");
+          "Enrollment required to sign respond result");
     }
     String privateKey = enrollment.getIntegrationPrivateKey();
     if (privateKey == null || privateKey.isBlank()) {
       throw new IntegrationSigningUnavailableException(
-          "Integration private key missing or blank; refuse unsigned 200");
+          "Integration private key missing or blank on enrollment");
     }
     String payload =
         AuthAttemptSignaturePayload.buildRespondResultPayload(

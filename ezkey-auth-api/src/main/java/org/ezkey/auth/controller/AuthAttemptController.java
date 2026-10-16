@@ -278,7 +278,8 @@ public class AuthAttemptController {
               + " (APPROVED/DENIED/FAILED) are always integration-signed; the server never emits"
               + " an unsigned 200 (#844). Terminal status → 409 auth-attempt-state-conflict;"
               + " PENDING respond → 400 auth-attempt-respond-before-read; not found → 404;"
-              + " missing integration signing key → 503 integration-signing-unavailable.")
+              + " missing per-enrollment integration signing key → runtime 503"
+              + " integration-signing-unavailable (transaction rolls back; no JVM startup gate).")
   @ApiResponses(
       value = {
         @ApiResponse(
@@ -319,7 +320,9 @@ public class AuthAttemptController {
                             implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "503",
-            description = "Integration signing unavailable (refuse unsigned 200)",
+            description =
+                "Per-enrollment integration signing key missing/blank — runtime 503,"
+                    + " transaction rolls back (never unsigned 200)",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =

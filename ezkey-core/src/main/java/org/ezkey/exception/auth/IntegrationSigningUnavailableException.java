@@ -11,8 +11,10 @@ import java.io.Serial;
 
 /**
  * Thrown when an Auth API response that must be integration-signed cannot be signed because the
- * enrollment integration private key is missing or blank. Maps to HTTP 503 — the server must never
- * emit an unsigned HTTP 200 decision body (#844).
+ * enrollment's integration private key is missing or blank. Maps to HTTP 503 at respond time — the
+ * server must never emit an unsigned HTTP 200 decision body (#844). Keys are per enrollment; there
+ * is no application-startup validation for them. Callers rely on the outer respond transaction to
+ * roll back.
  *
  * <p>Message text is for server logs only.
  *

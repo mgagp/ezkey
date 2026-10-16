@@ -25,10 +25,12 @@
 | Terminal (`ACCEPTED`, `REJECTED`/`DENIED`, `EXPIRED`, `INVALID`) | **409** | `auth-attempt-state-conflict` |
 | Still `PENDING` (respond before claim) — protocol violation | **400** | `auth-attempt-respond-before-read` (kept distinct from 409 for diagnosis) |
 | Attempt or enrollment not found | **404** | `resource-not-found` |
-| Missing/blank integration private key (even for APPROVED/DENIED/FAILED) | **503** | `integration-signing-unavailable` — refuse to start an unsigned body (same fail-closed posture as encryption `required=true` refusing JVM start without a usable keyset) |
+| Missing/blank **per-enrollment** integration private key (even for APPROVED/DENIED/FAILED) | **503** | `integration-signing-unavailable` — runtime only: throw instead of unsigned 200; outer respond `@Transactional` rolls back (no JVM startup gate for integration keys; they are not instance-global) |
 | Legitimate FAILED (invalid device signature, wrong challenge) | **200** signed `FAILED` | — non-regression tests required |
 
-Not-found / PENDING / terminal / signing-unavailable must **not** be swallowed by the `AuthAttemptRequestFailedException` catch that builds domain FAILED.
+**Honesty (Christophe m2 @ `6f589ad4`):** There is **no** “refuse to start without an integration signing key” check. Integration Ed25519 keys live on each enrollment row. The protection is **runtime 503** + transaction rollback when signing cannot run.
+
+Not-found / PENDING / terminal / signing-unavailable must **not** be swallowed by the `AuthAttemptRequestFailedException` catch that builds domain FAILED. Status codes 404/400/409 above are unchanged pending Marc on a possible unified 409.
 
 ### Mobile
 

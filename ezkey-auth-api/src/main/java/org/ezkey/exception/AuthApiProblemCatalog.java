@@ -47,8 +47,8 @@ public final class AuthApiProblemCatalog {
       BASE + "/auth-attempt-respond-failed";
 
   /**
-   * Integration private key missing/blank when a signed respond (or equivalent) body is required.
-   * HTTP 503 — never emit an unsigned 200 (#844).
+   * Per-enrollment integration private key missing/blank when a signed respond body is required.
+   * Runtime HTTP 503 (transaction rolls back) — never an unsigned 200; no JVM startup gate (#844).
    */
   public static final String TYPE_INTEGRATION_SIGNING_UNAVAILABLE =
       BASE + "/integration-signing-unavailable";

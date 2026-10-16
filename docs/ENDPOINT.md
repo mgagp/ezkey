@@ -132,7 +132,7 @@ HTTP-level outcomes for respond (RFC 9457 Problem Details unless noted):
 | Terminal status (`ACCEPTED`, `REJECTED`, `EXPIRED`, `INVALID`) or cancel-win / superseded / wall-clock expiry | **409** | `auth-attempt-state-conflict` |
 | Attempt still `PENDING` (respond before claim) — protocol violation | **400** | `auth-attempt-respond-before-read` |
 | Attempt or enrollment not found | **404** | `resource-not-found` |
-| Integration private key missing/blank when signing is required | **503** | `integration-signing-unavailable` |
+| Per-enrollment integration private key missing/blank when signing is required (runtime; transaction rolls back; no JVM startup gate) | **503** | `integration-signing-unavailable` |
 
 A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`). HTTP-level failures for state conflicts (expired, cancelled, or already decided) use **409** Problem
 Details, type `https://ezkey.io/problems/auth/auth-attempt-state-conflict`. **Decided (#834

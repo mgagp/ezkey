@@ -39,7 +39,9 @@ meant to be linked from trust-facing material without inflating the top-level pi
   (409/4xx/5xx/réseau) mène à un état neutre sans effet (pas d'effacement, deny ni retry
   d'approbation automatique), avec un texte du catalogue local uniquement, car un MITM qui forge
   ou supprime une erreur n'obtient qu'un déni de service déjà possible en coupant le trafic
-  (#844).
+  (#844). Clé d'intégration **par enrollment** : s'il manque la clé privée au respond, le serveur
+  répond **503** `integration-signing-unavailable` et la transaction respond est annulée (rollback)
+  — il n'existe **pas** de refus de démarrage JVM pour cette clé (#844, revue Christophe m2).
 - **Decision (#844):** PENDING respond gets **400**
   (`auth-attempt-respond-before-read`) as a protocol violation, kept distinct from the **409**
   conflict (`auth-attempt-state-conflict`) for diagnosis.
