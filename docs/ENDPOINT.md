@@ -123,7 +123,18 @@ IP-keyed enrollment surfaces (`verify`, `bind`, enrolled `instance-info`) also h
 
 **204 No Content** on `POST /api/v1/auth-attempts/pending` when there is no pending attempt is a **success** (no body), not an error.
 
-**200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level `FAILED` result in the JSON body when validation or cryptographic checks fail in a way modeled as `AuthAttemptRequestFailedException` in the respond service (integration-signed; see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`). HTTP-level failures for state conflicts (expired, cancelled, or already decided) use **409** Problem
+**200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level result in the JSON body (`APPROVED` / `DENIED` / `FAILED`) **only when the body is integration-signed** (see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). Legitimate `FAILED` covers device-signature or challenge validation errors after the attempt was loaded. The server **never** emits an unsigned HTTP 200 on this path (#844).
+
+HTTP-level outcomes for respond (RFC 9457 Problem Details unless noted):
+
+| Condition | Status | `type` (suffix under `https://ezkey.io/problems/auth/`) |
+| --- | --- | --- |
+| Terminal status (`ACCEPTED`, `REJECTED`, `EXPIRED`, `INVALID`) or cancel-win / superseded / wall-clock expiry | **409** | `auth-attempt-state-conflict` |
+| Attempt still `PENDING` (respond before claim) — protocol violation | **400** | `auth-attempt-respond-before-read` |
+| Attempt or enrollment not found | **404** | `resource-not-found` |
+| Integration private key missing/blank when signing is required | **503** | `integration-signing-unavailable` |
+
+A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`). HTTP-level failures for state conflicts (expired, cancelled, or already decided) use **409** Problem
 Details, type `https://ezkey.io/problems/auth/auth-attempt-state-conflict`. **Decided (#834
 Question 8):** that one type stays. Do not split it per cause. The mobile app shows one sentence —
 the request is no longer active — and Back only, not Try again. The integrating application is where

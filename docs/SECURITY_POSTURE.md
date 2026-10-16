@@ -34,6 +34,15 @@ meant to be linked from trust-facing material without inflating the top-level pi
 - **Backend-first cryptographic chain.** Enrollment (`bind`/`verify`) and authentication
   (`pending`/`respond`) are cryptographically linked; the backend is the authoritative verifier;
   one-time proof tokens and signatures bind requests to flows.
+- **Respond/pending :** seules les décisions et statuts finaux sont signés par l'intégration (un 200
+  non signé est refusé, le serveur ne l'émet jamais) ; toute réponse non signée
+  (409/4xx/5xx/réseau) mène à un état neutre sans effet (pas d'effacement, deny ni retry
+  d'approbation automatique), avec un texte du catalogue local uniquement, car un MITM qui forge
+  ou supprime une erreur n'obtient qu'un déni de service déjà possible en coupant le trafic
+  (#844).
+- **Decision (#844):** PENDING respond gets **400**
+  (`auth-attempt-respond-before-read`) as a protocol violation, kept distinct from the **409**
+  conflict (`auth-attempt-state-conflict`) for diagnosis.
 - **Audit log integrity (tamper-evident).** Every audit entry is signed with **HMAC-SHA256** using a
   key held in a **file separate from the database** (and separate from the encryption master key).
   Periodic **checkpoints** chain windows together for a completeness proof.
