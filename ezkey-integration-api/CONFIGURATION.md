@@ -122,6 +122,9 @@ for the full description.
 
 ## JavaMelody (opt-in Docker diagnostics)
 
-Disabled by default. Enable with `./ezkey-tests/clean-start.sh --with-java-melody`. Management-port
-reports: `/actuator/monitoring`. Collector UI: `http://localhost:8088`. See
+Disabled by default. Enable with `./ezkey-tests/clean-start.sh --with-java-melody`, or on Lightsail
+via `experimental-hybrid/lightsail/docker-compose.javamelody.yml` (`EZKEY_ENABLE_JAVA_MELODY=true`).
+Management-port reports: `/actuator/monitoring` only. Collector UI: `http://127.0.0.1:8088` (SSH
+tunnel on community — see [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md)
+§ Observability, [#846](https://github.com/mgagp/ezkey/issues/846)). See
 [`docker/README.md`](../docker/README.md) § JavaMelody collector.

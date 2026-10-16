@@ -219,9 +219,11 @@ If `ezkey-online` already exists as an instance: `--name community-ezkey` (and u
 
 **443 posture (since 2026-09-23):** HTTPS is restricted to the **15 Cloudflare IPv4 ranges** published at [ips-v4](https://www.cloudflare.com/ips-v4). There is no IPv6 Lightsail firewall rule. Confirm with `aws lightsail get-instance-port-states` before a community upgrade go/no-go. **Do not run `open-ports.sh` on `ezkey-online`:** its default `HTTPS_CIDR` is `0.0.0.0/0` and `--mode put` replaces every rule, which would reopen 443 to the world.
 
-### 3. SSH Host alias (separate from EXP1)
+### 3. SSH Host aliases (separate from EXP1)
 
-Keep **`Host ezkey`** → EXP1. Add a **new** alias, e.g. in `~/.ssh/config`:
+Keep **`Host ezkey`** → EXP1. Add community aliases in `~/.ssh/config` (same key / IP as create-or-status).
+`ezkey-online-db` already exists on some workstations (e.g. Rootbeer); document it here so every
+operator laptop matches. `ezkey-online-metrics` is the JavaMelody collector tunnel (#846).
 
 ```sshconfig
 Host ezkey-online
@@ -229,7 +231,28 @@ Host ezkey-online
   User ec2-user
   IdentityFile ~/.ssh/<your-private-key>
   IdentitiesOnly yes
+
+# Postgres on the VM listens on 127.0.0.1:5432 only (compose bind). Match Rootbeer's real alias.
+Host ezkey-online-db
+  HostName <public-ip-from-create-or-status>
+  User ec2-user
+  IdentityFile ~/.ssh/<your-private-key>
+  IdentitiesOnly yes
+  LocalForward 127.0.0.1:6432 127.0.0.1:5432
+  ExitOnForwardFailure yes
+
+# JavaMelody collector (compose publishes 127.0.0.1:8088:8080 only — never 0.0.0.0).
+Host ezkey-online-metrics
+  HostName <public-ip-from-create-or-status>
+  User ec2-user
+  IdentityFile ~/.ssh/<your-private-key>
+  IdentitiesOnly yes
+  LocalForward 127.0.0.1:8088 127.0.0.1:8088
+  ExitOnForwardFailure yes
 ```
+
+Open tunnels: `ssh ezkey-online-db` / `ssh ezkey-online-metrics` (leave the session open). Collector UI
+after metrics tunnel: http://127.0.0.1:8088 — see **Observability (JavaMelody)** below.
 
 Scripts accept `LIGHTSAIL_SSH_HOST` and must not overwrite the EXP1 alias.
 
@@ -303,6 +326,180 @@ After recreate, update Cloudflare **A** records if the public IP changed (no sta
 - [`docs/cloudflare/README.md`](../cloudflare/README.md) -- Cloudflare script style sibling
 - [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md) -- Public alpha claim + git-SHA identity
 - [`community/DEPLOYED.md`](community/DEPLOYED.md) -- live state ledger for ezkey.online (update after successful publish)
+
+## Observability (JavaMelody) — #846 / memory bounds #749
+
+Lab posture only: SSH tunnel to the collector, no public Cloudflare route. Auth for the collector
+is the SSH tunnel alone (do **not** put `authorized-users` / passwords in `-D` flags — they appear
+in the JVM report). Decision line also lives in
+[`docs/SECURITY_POSTURE.md`](../SECURITY_POSTURE.md) § Observability.
+
+### Host memory and swap (do not auto-create)
+
+Edgar’s read-only inventory (2026-10-16): ~3839 MB RAM, ~1498 MB free, **no swap**, unbounded JVM
+heaps (~960 MiB ergonomic ceiling each). Compose now sets cgroup + `MaxRAMPercentage` limits
+(#749) in [`docker-compose.yml`](../../experimental-hybrid/lightsail/docker-compose.yml).
+
+**`memswap_limit` = `mem_limit`:** containers cannot grow into host swap beyond the cgroup. A host
+swapfile still helps the OS / non-cgroup pressure, but it does **not** raise a container’s effective
+memory ceiling.
+
+| Service | mem_limit (= memswap_limit) | MaxRAMPercentage |
+|---------|------------------------------|------------------|
+| admin-api | 1152m | 65% |
+| auth-api | 768m | 60% |
+| integration-api | 576m | 60% |
+| demo-app-acme | 384m | 55% |
+| postgres | 384m | n/a |
+| caddy | 128m | n/a |
+| migration | 512m | 60% |
+| javamelody-collector (overlay) | 256m | `-Xmx160m` |
+
+Sum with collector ≈ **3648m / 3839m** — tight. **Prefer a 1 GiB swapfile** on the VM with
+`vm.swappiness=10` before enabling the collector. **Do not** create swap from this repo’s deploy
+scripts; Marc / Edgar apply it once on the host if approved, for example:
+
+```bash
+# On the VM — operator-approved host change only (not run by agents / export scripts)
+sudo fallocate -l 1G /swapfile   # or: sudo dd if=/dev/zero of=/swapfile bs=1M count=1024
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile swap swap defaults 0 0' | sudo tee -a /etc/fstab
+echo 'vm.swappiness=10' | sudo tee /etc/sysctl.d/99-ezkey-swappiness.conf
+sudo sysctl -p /etc/sysctl.d/99-ezkey-swappiness.conf
+```
+
+APIs use `restart: unless-stopped` (not `on-failure:3`) so a single crash does not leave a service
+permanently down after three failures. Combined with `-XX:+ExitOnOutOfMemoryError`, a repeated OOM
+can restart-loop until the pressure is relieved (Patrick note) — watch `RestartCount` / `docker stats`
+after go-live.
+
+### Deploy JavaMelody (Edgar — after Marc go)
+
+Prerequisites: memory limits from `docker-compose.yml` already rolling; preferred swap in place;
+operator files synced (includes `docker-compose.javamelody.yml` + `docker/javamelody/`).
+
+```bash
+# From workstation — sync compose/Caddy/ops + collector context, then remote up WITH overlay
+EZKEY_ENABLE_JAVA_MELODY=true \
+  ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh \
+    --target community --sync-operator-files --remote-up
+
+# Or on the VM after files are present (non-destructive recreate):
+cd ~/ezkey/experimental-hybrid/lightsail
+docker compose -f docker-compose.yml -f docker-compose.javamelody.yml up -d
+# (recreates APIs with JAVAMELODY_* and starts the collector; short per-service cutover)
+```
+
+**Keep JM on later rolling upgrades:** always pass `EZKEY_ENABLE_JAVA_MELODY=true` on export
+`--remote-up`. A rolling up **without** that flag refuses if the collector container is present
+(APIs would otherwise lose `JAVAMELODY_*` while the collector stays). Intentional teardown:
+`EZKEY_DISABLE_JAVA_MELODY=true … --remote-up`.
+
+**`--remove-orphans` is not passed by default** on export `--remote-up` (intentional — Edgar).
+Only the `EZKEY_DISABLE_JAVA_MELODY=true` path adds `--remove-orphans` so the collector is
+removed as an orphan. A plain `docker compose -f docker-compose.yml up -d` (no flag) leaves
+orphan containers running; use the disable env (or the rollback command below) when you mean
+to drop the collector.
+
+Collector image/version is aligned with the API starter (**2.9.0**, WAR sha256 pinned in
+`docker/javamelody/Dockerfile`). Christophe locks baked into the overlay / entrypoint:
+
+- Collector bind: `127.0.0.1:8088:8080` only
+- Monitoring reports on management ports (`9081` / `8085` / `7081`); Caddy denies `/monitoring` and
+  `/actuator` (and nested / case / `//` / `;` variants) on all public API + demo-acme hostnames
+- Business-port `/monitoring` must stay refused even with a valid admin bearer/cookie (401 or
+  403 — both acceptable; do not harmonize). A JavaMelody HTML report on a business port is
+  blocking.
+- Init parameters are injected via `SPRING_APPLICATION_JSON` with hyphenated JavaMelody Parameter
+  codes (`system-actions-enabled`, `http-transform-pattern`, …). Plain
+  `JAVAMELODY_INIT_PARAMETERS_SYSTEM_ACTIONS_ENABLED` env vars bind underscore map keys that
+  JavaMelody silently ignores — do not use that form. **Warning:** the overlay sets
+  `SPRING_APPLICATION_JSON` on each API and **replaces** any value defined elsewhere (Compose
+  env merge is last-wins for that key) — do not also set it in the base compose or host `.env`.
+  Shared lock keys live in `docker/javamelody/init-parameters.base.json`;
+  `./scripts/ops/check-javamelody-spring-json.sh` fails if the nine embedded copies diverge.
+- `system-actions-enabled=false`, `csrf-protection-enabled=true`, `update-check-disabled=true`
+- `log=false`; `http-transform-pattern=[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}|\d+`; SQL stays as prepared
+  `?` (no bind values in reports)
+- No secrets in `-D` / `JAVA_TOOL_OPTIONS` (heap and flags only)
+- RRD retention: `obsolete-graphs-days=30` and `obsolete-stats-days=30` on named volume
+  `javamelody-data`
+
+### Verify by tunnel + non-exposure
+
+```bash
+# Tunnel
+ssh ezkey-online-metrics
+# Browser / curl on the laptop:
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8088/
+# Expect 200 (collector UI). Management reports are Docker-internal only.
+
+# Public non-exposure (expect 404 everywhere) — from laptop after deploy:
+./scripts/ops/verify-javamelody-non-exposure.sh \
+  --base-url https://admin-api.ezkey.online \
+  --base-url https://auth-api.ezkey.online \
+  --base-url https://integration-api.ezkey.online \
+  --base-url https://demo-acme.ezkey.online
+
+# On the VM: confirm management/collector ports are loopback-only (IPv4 + IPv6 [::])
+./scripts/ops/verify-javamelody-non-exposure.sh --check-ss
+
+# Business-port /monitoring (C2) — replayable script probes *through* the caddy
+# container (official image has ash/curl, not bash; --via-caddy uses docker exec):
+./scripts/ops/verify-javamelody-non-exposure.sh --business-ports --via-caddy ezkey-exp-caddy
+# Authenticated refusal (Christophe) — secrets via 0600 files (never on argv/`ps`):
+umask 077
+printf '%s' "$TOKEN" > /tmp/jm-bearer
+printf 'EZKEY_ADMIN_SESSION=%s' "$TOKEN" > /tmp/jm-cookie
+chmod 0600 /tmp/jm-bearer /tmp/jm-cookie
+./scripts/ops/verify-javamelody-non-exposure.sh --business-ports \
+  --via-caddy ezkey-exp-caddy --auth-probe \
+  --auth-bearer-file /tmp/jm-bearer \
+  --auth-cookie-file /tmp/jm-cookie
+shred -u /tmp/jm-bearer /tmp/jm-cookie 2>/dev/null || rm -f /tmp/jm-bearer /tmp/jm-cookie
+
+# Runtime proof that init-parameters applied (fail-closed — Patrick craft).
+# Local DEV: http://127.0.0.1:9081/actuator/monitoring
+# Community: docker exec ezkey-exp-admin-api wget -q -O - http://127.0.0.1:9081/actuator/monitoring
+set -e
+curl -fsS 'http://127.0.0.1:9081/actuator/monitoring' -o /tmp/jm.html
+grep -q 'parameter defined: system-actions-enabled=false' /tmp/jm.html
+grep -q 'parameter defined: csrf-protection-enabled=true' /tmp/jm.html
+grep -q 'parameter defined: http-transform-pattern=' /tmp/jm.html
+! grep -qE 'action=gc|action=heap_dump' /tmp/jm.html
+echo 'OK: init-parameters applied (system-actions off, CSRF on, transform set; no GC/heap links)'
+# Cheap HTTP-tab capture (normalized ids use $): generate a UUID path, then:
+#   curl -fsS 'http://127.0.0.1:9081/actuator/monitoring' | grep -oE '/api/[^ <\"]+' | sort -u
+# Expect segments like /api/v$/…/$ rather than raw UUIDs / numeric ids when traffic exists.
+```
+
+Local regex / Caddyfile parse + smoke + **per-site import** check (no live host):
+`./scripts/ops/validate-caddy-observability-regexp.sh`
+
+JSON lock divergence check (nine embedded `SPRING_APPLICATION_JSON` copies vs base):
+`./scripts/ops/check-javamelody-spring-json.sh`
+
+### Rollback (one command)
+
+Drops the JavaMelody overlay (APIs lose `JAVAMELODY_*`, collector removed as an orphan). **#749
+memory limits in the base `docker-compose.yml` stay** — this is not a memory rollback.
+
+```bash
+cd ~/ezkey/experimental-hybrid/lightsail
+docker compose -f docker-compose.yml up -d --remove-orphans
+# Optional — wipe collector history (Marc go):
+# docker volume rm ezkey-experimental-lightsail_javamelody-data
+```
+
+Or via export (explicit): `EZKEY_DISABLE_JAVA_MELODY=true … --remote-up`.
+
+Re-verify public non-exposure with `verify-javamelody-non-exposure.sh`. To **keep** JM after a later
+rolling upgrade, pass `EZKEY_ENABLE_JAVA_MELODY=true` again — leaving it unset while the collector
+exists is refused by the export guard.
+
+---
 
 ## Deploy pitfalls (community host)
 
