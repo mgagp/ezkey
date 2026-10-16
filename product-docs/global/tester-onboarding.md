@@ -74,9 +74,16 @@ ezkey.access-codes.<slot>.label=<court libellé, ex. prénom du testeur>
 
 ### Étape 7 : courriel de tests
 
-Contenu : l'URL Acme (avec le code d'accès), le nom d'utilisateur Acme de son enrollment comme
-rappel (celui saisi dans le champ **USERNAME**), la marche à suivre courte et le lien vers la run
-des cas d'usage (ex. « Reine - acme-approuvée »).
+Contenu :
+
+- L'URL Acme (avec le code d'accès).
+- L'identifiant usager exact de l'enrollment (`user_identifier`) — **pas** le nom affiché. C'est
+  la valeur passée à `createAuthAttemptByUserIdentifier`, celle que le testeur saisit dans le
+  champ **USERNAME** d'Acme. Exemple fictif : identifiant `elodie.martin` ; nom affiché
+  « Élodie Martin — iPhone 15 ». Le courriel doit donner l'identifiant exact (`elodie.martin`),
+  jamais seulement le nom affiché.
+- La marche à suivre courte.
+- Le lien vers la run des cas d'usage (ex. « Reine - acme-approuvée »).
 
 ## Cas du premier cycle
 
@@ -117,9 +124,8 @@ change ce flux est inscrite **dans ce document**, dans la même PR que le change
 
 ## Annexe — détail des cas (premier cycle)
 
-Textes d'écran tirés du code mobile (`ezkey_mobile`, locale française) et de l'app démo Acme
-(`ezkey-demo-app-acme`, interface en anglais). Type : `functional`. Chaque cas renvoie à ce
-runbook.
+Textes d'écran tirés du code (`ezkey_mobile` ; `ezkey-demo-app-acme`). Type : `functional`.
+Chaque cas renvoie à ce runbook.
 
 ### DOC-ONB-001 — Initiation à QA Sphere
 
@@ -164,20 +170,22 @@ runbook.
 ### MOB-AUTH-010 — Connexion Acme approuvée
 
 - Dossier : 16 MOB · Priorité : high
-- Préconditions : MOB-ONB-002 passé ; courriel de tests reçu (URL Acme avec code d'accès, nom
-  d'utilisateur).
+- Préconditions : MOB-ONB-002 passé ; courriel de tests reçu (URL Acme avec code d'accès,
+  identifiant usager `user_identifier` exact — ex. fictif `elodie.martin`, pas le nom affiché).
 - Étapes / résultats attendus :
   1. Ouvrir l'URL Acme dans un navigateur. → La page **SIGN IN** s'affiche (sous-titre
      « Passwordless authentication with EZKey »).
-  2. Saisir le nom d'utilisateur dans le champ **USERNAME**, puis toucher **LOGIN WITH EZKEY**. →
-     Acme affiche **AWAITING APPROVAL** / « Waiting for device approval... » et, le cas échéant,
-     le **CHALLENGE CODE** à 2 chiffres.
+  2. Saisir l'identifiant usager (`user_identifier`) dans le champ **USERNAME**, puis toucher
+     **LOGIN WITH EZKEY**. → Acme affiche **AWAITING APPROVAL** / « Waiting for device
+     approval... ». Si l'enrollment exige un challenge, un **CHALLENGE CODE** à 2 chiffres
+     apparaît aussi (sinon non — cela dépend du réglage de l'enrollment, pas d'Acme).
   3. Sur le téléphone, ouvrir l'enrôlement, toucher **Vérifier les demandes en attente**. →
      L'écran **Authentification en attente** s'affiche.
-  4. Si un code à 2 chiffres est affiché sur Acme, le saisir sur le téléphone (consigne : « Entrez
-     le code à 2 chiffres affiché sur l'écran de connexion »), puis toucher **Approuver**. →
-     L'app affiche **Approuvée** ; Acme passe à « Authentication successful! Redirecting... »
-     puis au tableau de bord (**WELCOME, …**).
+  4. Si un code à 2 chiffres est affiché (sur Acme ou sur le téléphone), le saisir / le vérifier
+     (consigne mobile : « Entrez le code à 2 chiffres affiché sur l'écran de connexion »), puis
+     toucher **Approuver**. S'il n'y a pas de code à 2 chiffres, approuver directement. → L'app
+     affiche **Approuvée** ; Acme passe à « Authentication successful! Redirecting... » puis au
+     tableau de bord (**WELCOME, …**).
 - Commentaire : version de l'app et ce qui a semblé confus.
 
 ### MOB-AUTH-011 — Connexion Acme refusée
@@ -187,7 +195,8 @@ runbook.
 - Étapes / résultats attendus :
   1–3. Comme MOB-AUTH-010 jusqu'à l'écran **Authentification en attente**. → La demande
      s'affiche sur le téléphone.
-  4. Toucher **Refuser**. → L'app affiche **Rejetée** ; Acme montre un message clair du type
+  4. Si un code à 2 chiffres est affiché, le saisir / le vérifier ; sinon passer. Puis toucher
+     **Refuser**. → L'app affiche **Rejetée** ; Acme montre un message clair du type
      « Authentication rejected by user. / Authentification refusée sur l'appareil. » (puis retour
      vers la page de connexion).
 - Commentaire : version de l'app et ce qui a semblé confus.
