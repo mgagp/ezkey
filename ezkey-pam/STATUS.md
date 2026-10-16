@@ -134,6 +134,10 @@ operational (TLS, live sshd cutover), not “more keys.”
 - **`PerSourcePenalties no`** in demo [`sshd_config`](sshd_config) (OpenSSH 9.9+). Stock
   `authfail:5` blocks localhost after a handful of denied logins and breaks M1 conf-security
   rapid UNAVAIL proofs. **Lab only** — do not copy this disable onto a hardened non-lab host.
+- **LoginGraceTime ≤ attempt TTL:** abandoning at the prompt leaves the attempt to expire
+  server-side with no PAM line (sshd logs `Timeout before authentication`); if an operator
+  raises `LoginGraceTime` above the TTL it stays fail-closed (`/wait` expired gives
+  `AUTH_ERR`). No cancel/trace mechanism needed.
 
 ### Slices #1–#3 done (this eval)
 
