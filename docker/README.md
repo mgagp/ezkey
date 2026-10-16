@@ -444,12 +444,20 @@ container. There is no Caddy hop.
 ./ezkey-tests/clean-start.sh --ha --with-java-melody
 ```
 
-**Collector UI:** http://localhost:8088 (shared host port for baseline and HA collectors;
-`clean-start` releases the previous collector when switching stacks)
+**Collector UI:** http://127.0.0.1:8088 (loopback bind; shared host port for baseline and HA
+collectors; `clean-start` releases the previous collector when switching stacks). Collector WAR
+version matches the API starter (**2.9.0**). Init parameters disable system actions, enable CSRF,
+disable update checks, keep `log=false`, and normalize URL ids
+(`[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}|\d+`).
 
 After functional-test traffic, the collector should list `admin-api`, `auth-api`, and
 `integration-api`. In HA mode each application shows **two nodes**. Default clean-start
 without the flag leaves JavaMelody disabled.
+
+**Community host (`ezkey.online`):** separate Lightsail overlay
+[`experimental-hybrid/lightsail/docker-compose.javamelody.yml`](../experimental-hybrid/lightsail/docker-compose.javamelody.yml)
+with SSH-tunnel access only — see [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md)
+§ Observability (#846) and memory limits (#749).
 
 See also [`README-HA.md`](README-HA.md) and [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md).
 

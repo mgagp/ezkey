@@ -16,6 +16,15 @@
 	}
 }
 
+# Mirror community #846: JavaMelody / Actuator never via the proxy surface.
+# Case-insensitive; one-or-more leading slashes; / or ; after the segment.
+(observability_deny) {
+	@blockedObs path_regexp (?i)^/+(monitoring|actuator)([/;].*)?$
+	handle @blockedObs {
+		respond 404
+	}
+}
+
 (api_headers) {
 	header {
 		X-Content-Type-Options "nosniff"
@@ -27,6 +36,7 @@
 :9080 {
 	import api_headers
 	import springdoc_deny
+	import observability_deny
 	handle {
 		reverse_proxy admin-api:9080 {
 			header_up X-Forwarded-For {remote_host}
@@ -37,6 +47,7 @@
 :8080 {
 	import api_headers
 	import springdoc_deny
+	import observability_deny
 	handle {
 		reverse_proxy auth-api:8080 {
 			header_up X-Forwarded-For {remote_host}
@@ -47,6 +58,7 @@
 :7080 {
 	import api_headers
 	import springdoc_deny
+	import observability_deny
 	handle {
 		reverse_proxy integration-api:7080 {
 			header_up X-Forwarded-For {remote_host}

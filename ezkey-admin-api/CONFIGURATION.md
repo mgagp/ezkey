@@ -482,6 +482,11 @@ Local QA overlay: [`docker/docker-compose.evaluator-self-reg.yml`](../docker/doc
 ## JavaMelody (opt-in Docker diagnostics)
 
 JavaMelody is **disabled by default** (`javamelody.enabled=false`). Enable it only via
-`./ezkey-tests/clean-start.sh --with-java-melody` (combinable with `--ha`). Reports are on the
-management port at `/actuator/monitoring`; the collector UI is `http://localhost:8088`. Crypto API
-is out of scope. Operator details: [`docker/README.md`](../docker/README.md) § JavaMelody collector.
+`./ezkey-tests/clean-start.sh --with-java-melody` (combinable with `--ha`), or on the community /
+EXP1 Lightsail host via `experimental-hybrid/lightsail/docker-compose.javamelody.yml`
+(`EZKEY_ENABLE_JAVA_MELODY=true` / `./clean-start.sh --with-java-melody`). Reports are on the
+**management port** at `/actuator/monitoring` only (never on the business port). Local collector UI:
+`http://127.0.0.1:8088`. Community access is SSH tunnel only (`Host ezkey-online-metrics`) — see
+[`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) § Observability and
+[`docs/SECURITY_POSTURE.md`](../docs/SECURITY_POSTURE.md) § Observability (#846). Crypto API is out
+of scope. Operator details: [`docker/README.md`](../docker/README.md) § JavaMelody collector.
