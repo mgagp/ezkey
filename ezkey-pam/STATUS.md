@@ -109,9 +109,10 @@ PAM args (root-owned `pam.d` only): `debug`, `conf=/path`.
 **Process ENV is not read by `pam_ezkey.so`.** Compose may still set
 `EZKEY_INTEGRATION_*`, `EZKEY_WAIT_*`, `EZKEY_DEBUG`, and optionally
 `EZKEY_CONFIG_FILE` for **`docker-entrypoint.sh` only** — the entrypoint writes the
-root-owned conf via `mktemp` + `install -m 600 -o root -g root`. That bridge exists
-because sshd does not pass Docker ENV into PAM. A caller-controlled environment
-(e.g. `su`/`sudo`) cannot redirect conf path, debug, or timeouts inside the `.so`.
+root-owned conf via `mktemp` under `/etc/security` (never `/tmp`) +
+`install -m 600 -o root -g root`. That bridge exists because sshd does not pass
+Docker ENV into PAM. A caller-controlled environment (e.g. `su`/`sudo`) cannot
+redirect conf path, debug, or timeouts inside the `.so`.
 
 **Verdict:** the current parameter set is **enough for the demo** and is the right *shape* for
 v1 operable use. It is not missing a second config system. Remaining gaps for EXP1 are
@@ -127,6 +128,9 @@ operational (TLS, live sshd cutover), not “more keys.”
   (`./scripts/build-al2023.sh --extract` for AL2023).
 - **Debug file transcripts** live under `/var/log/ezkey-pam/` only when `debug=true` (#818);
   never `/tmp`. Bodies / proof tokens are not logged (slice #1).
+- **`PerSourcePenalties no`** in demo [`sshd_config`](sshd_config) (OpenSSH 9.9+). Stock
+  `authfail:5` blocks localhost after a handful of denied logins and breaks M1 conf-security
+  rapid UNAVAIL proofs. **Lab only** — do not copy this disable onto a hardened EXP1 host.
 
 ### Slices #1–#3 done (this eval)
 
@@ -435,17 +439,18 @@ lines land in `/var/log/secure` (no systemd journal in the SSH VM).
 | Violation / missing field / unreadable | `PAM_AUTHINFO_UNAVAIL` (fail-closed) |
 | Secrets in memory | Wiped (`explicit_bzero`) on every exit path |
 
-Docker entrypoint maps compose ENV → conf write via temp file +
-`install -m 600 -o root -g root` (rejects newline injection in ENV values).
+Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/security`
+(not `/tmp`) + `install -m 600 -o root -g root` (rejects newline injection in ENV values).
 
 ### Tests added
 
 | Script | Proves |
 |---|---|
-| `scripts/test-observability.sh` | success / reject / timeout / network → exactly one clean attempt line; secrets absent from secure + debug logs; polled waits (no bare sleep-only proofs) |
-| `scripts/test-conf-security.sh` | baseline `root:root` `0600`; `0644` / `0000` / non-root owner / URL absent / missing `secret_key` → deny + `UNAVAIL` |
+| `scripts/test-observability.sh` | success / reject / timeout / network → exactly one clean attempt line; secrets absent from secure + debug logs; polled waits (no bare sleep-only proofs). Requires clean-start + Demo Device (local). |
+| `scripts/test-conf-security.sh` | baseline `root:root` `0600`; `0644` / `0000` / non-root owner / URL absent / missing `secret_key` → deny + `UNAVAIL`. Fails if ikey/skey empty. |
 | `test/test_conf_security.sh` | in-container owner/mode/keys self-check (also via `up.sh` path) |
-| CI `ezkey-pam` job | `make test` (check-source + compile + filelog harness) + Rocky Docker builder; path-filtered; part of `ci-gate` |
+| `make test` | check-source + compile + filelog harness + sanitize harness (`>=0x7f`, space, `=`) |
+| CI `ezkey-pam` job | `make test` + Rocky builder + `scripts/ci-m1-conf-security.sh` (runtime + conf-security: B1 / 0000 / non-root / URL absent) → `ci-gate` |
 
 ### Lessons learned (M1)
 

@@ -39,6 +39,7 @@
 #include <security/pam_appl.h>
 #include "ezkey_config.h"
 #include "ezkey_filelog.h"
+#include "ezkey_sanitize.h"
 
 #define EZKEY_URL_MAX 512
 #define EZKEY_KEY_MAX 256
@@ -303,34 +304,6 @@ static void parse_module_args(int argc, const char **argv, EzkeyConfig *cfg) {
             set_cfg_str(cfg->config_file, sizeof(cfg->config_file), argv[i] + 5);
         }
     }
-}
-
-/**
- * Neutralize control characters, spaces, and '=' before syslog / file logs
- * (#818 m3 + M1 review). Spaces/'=' would let a crafted username forge
- * attempt-line fields (user=… authAttemptId=…). Writes into dest
- * (NUL-terminated); always succeeds for non-NULL dest.
- */
-static void ezkey_sanitize_for_log(char *dest, size_t dest_size, const char *src) {
-    size_t i;
-    size_t j = 0;
-
-    if (dest == NULL || dest_size == 0) {
-        return;
-    }
-    if (src == NULL) {
-        dest[0] = '\0';
-        return;
-    }
-    for (i = 0; src[i] != '\0' && j + 1 < dest_size; i++) {
-        unsigned char c = (unsigned char)src[i];
-        if (c < 0x20 || c == 0x7f || c == ' ' || c == '=') {
-            dest[j++] = '_';
-        } else {
-            dest[j++] = (char)c;
-        }
-    }
-    dest[j] = '\0';
 }
 
 static void wipe_cfg_secrets(EzkeyConfig *cfg) {
@@ -609,7 +582,8 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     }
 
     if (cfg->debug) {
-        snprintf(msg, sizeof(msg), "POST %s (body omitted)", post_url);
+        /* Avoid -Wformat-truncation: post_url can exceed msg[]. */
+        snprintf(msg, sizeof(msg), "POST auth-attempt (body omitted)");
         log_pam_info(pamh, cfg, msg);
     }
 

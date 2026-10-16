@@ -292,15 +292,15 @@ jobs:
       - name: Smoke entry point
         run: ezkey --help
 
-  # PAM module: host compile + filelog harness + Rocky Docker builder.
-  # Full SSH M1 scripts (observability / conf-security) need the local clean-start
-  # stack + Demo Device — not a PR gate (same posture as Playwright).
+  # PAM module: host compile + harnesses + Rocky Docker builder/runtime +
+  # M1 conf-security (B1 / 0000 / non-root / URL absent) without the full Ezkey
+  # stack. Full observability (success/reject + Demo Device) stays local.
   ezkey-pam:
     name: ezkey-pam
     needs: changes
     if: needs.changes.outputs.ezkey-pam == 'true' || needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: ezkey-pam
@@ -316,13 +316,17 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential libpam0g-dev libcurl4-openssl-dev libcjson-dev
+            build-essential libpam0g-dev libcurl4-openssl-dev libcjson-dev \
+            openssh-client
 
-      - name: make test (check-source + compile + filelog harness)
+      - name: make test (check-source + compile + filelog + sanitize harnesses)
         run: make test
 
       - name: Docker builder (Rocky pam_ezkey.so)
         run: docker build --target builder -t ezkey-pam-builder:ci .
+
+      - name: M1 conf-security in CI (B1 / 0000 / non-root / URL absent)
+        run: ./scripts/ci-m1-conf-security.sh
 
   # Single required-check candidate. Skipped path jobs count as success for the gate;
   # failure or cancellation of any needed job fails the gate.

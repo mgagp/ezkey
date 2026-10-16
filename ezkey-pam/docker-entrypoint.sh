@@ -18,7 +18,7 @@ SSH_USER="${EZKEY_SSH_USER:-testuser}"
 # Demo containers default debug on so /var/log/ezkey-pam transcripts help
 # lab debugging. Host-oriented sample conf defaults to false (see config/).
 DEBUG="${EZKEY_DEBUG:-true}"
-IKEy="${EZKEY_INTEGRATION_KEY:-}"
+IKEY="${EZKEY_INTEGRATION_KEY:-}"
 SKEY="${EZKEY_SECRET_KEY:-}"
 
 # Reject newline / CR injection into the conf heredoc (conf key=value lines).
@@ -40,7 +40,7 @@ reject_bad_value API_TIMEOUT "${API_TIMEOUT}"
 reject_bad_value TITLE "${TITLE}"
 reject_bad_value MESSAGE "${MESSAGE}"
 reject_bad_value DEBUG "${DEBUG}"
-reject_bad_value EZKEY_INTEGRATION_KEY "${IKEy}"
+reject_bad_value EZKEY_INTEGRATION_KEY "${IKEY}"
 reject_bad_value EZKEY_SECRET_KEY "${SKEY}"
 reject_bad_value SSH_USER "${SSH_USER}"
 
@@ -50,7 +50,10 @@ if ! id "${SSH_USER}" >/dev/null 2>&1; then
 fi
 
 umask 077
-CONF_TMP="$(mktemp /tmp/pam_ezkey.conf.XXXXXX)"
+# Write secrets under /etc/security (not /tmp) — Christophe N1.
+CONF_DIR="$(dirname "${CONF}")"
+mkdir -p "${CONF_DIR}"
+CONF_TMP="$(mktemp "${CONF_DIR}/pam_ezkey.conf.XXXXXX")"
 # shellcheck disable=SC2064
 trap 'rm -f "${CONF_TMP}"' EXIT
 cat > "${CONF_TMP}" <<EOF
@@ -58,7 +61,7 @@ cat > "${CONF_TMP}" <<EOF
 # (root:root 0600). The pam_ezkey .so does not read process ENV for secrets,
 # URL, timeouts, debug, or conf path — only this file and pam.d module args.
 integration_api_url=${API_URL}
-integration_key=${IKEy}
+integration_key=${IKEY}
 secret_key=${SKEY}
 wait_timeout=${WAIT_TIMEOUT}
 wait_polling=${WAIT_POLLING}
@@ -68,6 +71,7 @@ context_title=${TITLE}
 context_message=${MESSAGE}
 debug=${DEBUG}
 EOF
+# Atomic install keeps root:root 0600 semantics (temp already in CONF_DIR).
 install -m 600 -o root -g root "${CONF_TMP}" "${CONF}"
 rm -f "${CONF_TMP}"
 trap - EXIT
@@ -120,7 +124,7 @@ for key_type in rsa ecdsa ed25519; do
     fi
 done
 
-if [ -z "${IKEy}" ] || [ -z "${SKEY}" ]; then
+if [ -z "${IKEY}" ] || [ -z "${SKEY}" ]; then
     echo "[entrypoint] WARNING: EZKEY_INTEGRATION_KEY or EZKEY_SECRET_KEY is not set."
     echo "[entrypoint] SSH PAM authentication will fail until credentials are provided."
 fi
