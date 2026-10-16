@@ -7,7 +7,7 @@ September 2026 operable-release roadmap. Keep PAM facts in this folder; do not a
 Internal lab evaluation only — experimental SSH MFA dogfood via ezkey-pam; not a product
 feature, not on the public alpha/community path, and not operable roadmap for Sept 2026.
 
-Current status, product geometry, and what “operable” would mean (EXP1 dogfood vs generic
+Current status, product geometry, and what “operable” would mean (Lightsail dogfood vs generic
 Linux extract): [`STATUS.md`](STATUS.md).
 
 Linux PAM module that calls the **Integration API** (port 7080, Docker service
@@ -211,5 +211,5 @@ ezkey-pam/
 ├── Dockerfile.al2023    AL2023 builder + smoke + SSH mirror
 ├── docker-compose.yml
 ├── sshd / sshd_config   PAM + sshd for the demo VMs (Ezkey-only)
-└── sshd.host-sketch     EXP1-style stack sketch (not applied live)
+└── sshd.host-sketch     Host-oriented stack sketch (not applied live)
 ```

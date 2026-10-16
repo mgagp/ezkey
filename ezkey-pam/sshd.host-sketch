@@ -1,6 +1,6 @@
 #%PAM-1.0
-# EXP1-style host sketch ONLY — not installed by the demo image and not applied
-# to any live Lightsail / EXP1 host by this repository.
+# Host-oriented sketch ONLY — not installed by the demo image and not applied
+# to any live Lightsail / dogfood host by this repository.
 #
 # Intent (fail-closed MFA with named break-glass):
 #   - Interactive users: primary factor (pubkey or unix) AND pam_ezkey required.

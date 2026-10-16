@@ -22,10 +22,10 @@ device approval path as any other integration, with the same audit trail.
 
 Two adoption paths, in this order:
 
-1. **Dogfood (EXP1 / Lightsail).** Protect the lab VM that already runs Ezkey. Today that host is
-   Amazon Linux 2023 (`ec2-user`) on Lightsail; EXP1 is the experimental public lab, not yet a
-   future `ezkey.online` cutover. If the module cannot be installed, rolled back, and survived
-   when Integration API is down, it is not ready for this path.
+1. **Dogfood (Lightsail lab VM).** Protect the lab VM that already runs Ezkey. Today that host is
+   Amazon Linux 2023 (`ec2-user`) on Lightsail — a personal lab host, not an `ezkey.online`
+   cutover. If the module cannot be installed, rolled back, and survived when Integration API is
+   down, it is not ready for this path.
 2. **Generic Linux.** Same `.so`, dropped onto a host the way the Rocky Linux 10 demo does it.
    Distribution can stay “build in Docker, extract the artifact.” No GitHub Release and no
    `.rpm` / `.deb` until a second real host exists.
@@ -48,7 +48,7 @@ Non-goals until dogfood is boring:
 Version **2.2.2** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
 (observability + conf `root:root` exact `0600`/`0400`, no URL default, no process-ENV
 overrides, `lab_http` gate, optional two-digit challenge via `pam_info`). It is still
-**not** a host-operable MFA agent on EXP1 (sshd cutover remains slice #4+).
+**not** a host-operable MFA agent on a real host (sshd cutover remains slice #4+).
 
 Proven in this repository (clean-start stack + Demo Device + Admin UI):
 
@@ -97,7 +97,7 @@ owner `root:root` in the demo image. That path and style match Linux-PAM convent
 
 | Key | Role | Demo-adequate? |
 |---|---|---|
-| `integration_api_url` | Integration API base URL (**required**; no compiled-in default) | Yes for Docker DNS; EXP1 needs HTTPS |
+| `integration_api_url` | Integration API base URL (**required**; no compiled-in default) | Yes for Docker DNS; non-lab / host installs need HTTPS |
 | `integration_key` / `secret_key` | Basic auth | Yes; file perms are the control |
 | `wait_timeout` / `wait_polling` / `api_timeout` | HTTP waits | Yes |
 | `challenge_requested` | Two-digit number-matching challenge | Yes — `true` shows code via `pam_info` before `/wait` |
@@ -116,15 +116,15 @@ Docker ENV into PAM. A caller-controlled environment (e.g. `su`/`sudo`) cannot
 redirect conf path, debug, or timeouts inside the `.so`.
 
 **Verdict:** the current parameter set is **enough for the demo** and is the right *shape* for
-v1 operable use. It is not missing a second config system. Remaining gaps for EXP1 are
+v1 operable use. It is not missing a second config system. Remaining gaps for a non-lab host are
 operational (TLS, live sshd cutover), not “more keys.”
 
 ### Known demo limits (honest)
 
 - **HTTP** to `integration-api:7080` only with **`lab_http=true`** (entrypoint sets it). Outside
-  lab, `http://` → `PAM_AUTHINFO_UNAVAIL`. No TLS verify knobs yet. (Slice #4+ / EXP1 HTTPS)
+  lab, `http://` → `PAM_AUTHINFO_UNAVAIL`. No TLS verify knobs yet. (Slice #4+ / non-lab HTTPS)
 - **Demo PAM stack is Ezkey-only** (`pam_ezkey` + `pam_permit`). Host-oriented sketch lives in
-  [`sshd.host-sketch`](sshd.host-sketch) — not applied to EXP1.
+  [`sshd.host-sketch`](sshd.host-sketch) — not applied to any live host by this repo.
 - **`install.sh` can still build on the host.** Prefer image-matched extract for real hosts
   (`./scripts/build-al2023.sh --extract` for AL2023).
 - **Debug file transcripts** live under `/var/log/ezkey-pam/` only when `debug=true` (#818);
@@ -132,7 +132,7 @@ operational (TLS, live sshd cutover), not “more keys.”
   `debug=true` (no filelog rotation) — intentional for lab transcripts.
 - **`PerSourcePenalties no`** in demo [`sshd_config`](sshd_config) (OpenSSH 9.9+). Stock
   `authfail:5` blocks localhost after a handful of denied logins and breaks M1 conf-security
-  rapid UNAVAIL proofs. **Lab only** — do not copy this disable onto a hardened EXP1 host.
+  rapid UNAVAIL proofs. **Lab only** — do not copy this disable onto a hardened non-lab host.
 
 ### Slices #1–#3 done (this eval)
 
@@ -142,13 +142,13 @@ operational (TLS, live sshd cutover), not “more keys.”
 2. PAM return-code map + fail-closed / break-glass stack docs (`STATUS` + `sshd.host-sketch`).
 3. AL2023 builder + extract + smoke + SSH mirror compose profile.
 
-Still out of scope here: EXP1 sshd cutover, TLS enrollment, packages, `failmode=safe`.
+Still out of scope here: host sshd cutover, TLS enrollment, packages, `failmode=safe`.
 
 ---
 
 ## 2. What “operable” would require (still small)
 
-Work in **slices**. Dogfood on EXP1 is the acceptance test. Generic packaging is a by-product of
+Work in **slices**. Dogfood on a Lightsail / AL2023 lab host is the acceptance test. Generic packaging is a by-product of
 that, not a parallel product.
 
 ### 2.1 Failure posture (do this first, conceptually)
@@ -158,17 +158,17 @@ Ezkey design principle: name fail-open vs fail-closed at the boundary.
 | Boundary | Posture | Why |
 |---|---|---|
 | PAM module vs Integration API / timeout / reject | **Fail-closed** | Continuing would grant SSH without the claimed MFA |
-| EXP1 operator lock-out if Ezkey is down | **Break-glass in the PAM *stack* and Lightsail console**, not fail-open in the module | Availability without silently weakening MFA |
+| Operator lock-out on the dogfood host if Ezkey is down | **Break-glass in the PAM *stack* and Lightsail console**, not fail-open in the module | Availability without silently weakening MFA |
 | Debug / audit side effects | Fail-open (login still decided by Ezkey) | Logging must not become a second authenticator |
 
 Do **not** add a Duo-like `failmode=safe` switch in v1. That flag is how MFA modules quietly
-become optional. If EXP1 needs a login when Ezkey is down, name a **local break-glass account**
+become optional. If the dogfood host needs a login when Ezkey is down, name a **local break-glass account**
 (or Lightsail serial/browser console) in `/etc/pam.d/sshd` with `pam_succeed_if` / `pam_unix`,
 and keep `pam_ezkey` `required` for everyone else.
 
 Demo stack (Ezkey-only) stays valid **only** for the Docker SSH VM.
 
-Suggested EXP1 stack (sketch, not shipped):
+Suggested host stack (sketch, not shipped):
 
 - Keep SSH key or a local password for a **named** break-glass user.
 - Interactive users: Unix/publickey **and** `pam_ezkey.so` `required` (MFA), **or** Ezkey as the
@@ -185,7 +185,7 @@ Only these change the module from “demo VM” to “Linux host”:
    until a second Linux account must share one enrollment.
 3. **TLS.** Use HTTPS; keep libcurl defaults (`CURLOPT_SSL_VERIFYPEER`). Optional later:
    `ca_info=` in conf if a private CA appears. No custom crypto.
-4. **API key IP allowlist.** Demo keys have none. EXP1 should allow the Lightsail host (or the
+4. **API key IP allowlist.** Demo keys have none. A dogfood host key should allow that Lightsail host (or the
    Docker bridge if PAM runs in a container). That is Integration API policy, not C code.
 5. **`debug` default false** (sample conf; Docker lab may enable). Syslog via `pam_syslog` /
    `LOG_AUTHPRIV`; optional file transcripts under `/var/log/ezkey-pam/` with `O_NOFOLLOW` /
@@ -278,27 +278,27 @@ docker create --name ezkey-pam-extract ezkey-pam-builder
 docker cp ezkey-pam-extract:/src/build/pam_ezkey.so ./pam_ezkey.so
 docker rm ezkey-pam-extract
 
-# Amazon Linux 2023 (EXP1 ABI)
+# Amazon Linux 2023 (host / dogfood ABI)
 docker build -f Dockerfile.al2023 --target builder-al2023 -t ezkey-pam-builder-al2023:local .
 # or: ./scripts/build-al2023.sh --extract
 ```
 
 Then on the host: install the `.so` next to other PAM modules, install conf `0600`, add one
 `/etc/pam.d/sshd` line, reload `sshd`. `install.sh` can wrap that **after** it copies a
-pre-built `.so` instead of compiling on EXP1.
+pre-built `.so` instead of compiling on the dogfood host.
 
 | Path | Builder image | Notes |
 |---|---|---|
 | Lab demo (done) | Rocky Linux 10 | Nested SSH VM |
-| EXP1 ABI (done for build/mirror) | Amazon Linux 2023 | `builder-al2023` + `runtime-al2023` / smoke; install on Lightsail host is slice #5 |
+| AL2023 host ABI (done for build/mirror) | Amazon Linux 2023 | `builder-al2023` + `runtime-al2023` / smoke; install on Lightsail host is slice #5 |
 | Later generic EL | Rocky / RHEL 9–10 | Same family as the demo |
 | Debian/Ubuntu | later | New builder stage when a host exists |
 
 No project Release is required. The artifact is the `.so` + a 20-line conf + a PAM snippet.
 
-### 2.6 Dogfood on EXP1 (Lightsail, Amazon Linux 2023)
+### 2.6 Dogfood on Lightsail (Amazon Linux 2023)
 
-EXP1 already runs the Ezkey APIs in Docker on that VM
+The Lightsail lab VM already runs the Ezkey APIs in Docker
 (`experimental-hybrid/`). PAM would protect **sshd on the VM**, so a stolen SSH password/key is
 not enough. It does not replace Caddy, Cloudflare, or Admin API login.
 
@@ -320,7 +320,7 @@ Prerequisites before touching `sshd` on the live lab:
 
 **English only** in the module. There is no PAM i18n template worth adopting at this size.
 Device-facing strings are already configuration. Revisit gettext only if a second locale is
-required by a real host — not as a prerequisite for EXP1.
+required by a real host — not as a prerequisite for host dogfood.
 
 ### 2.8 Suggested slice order
 
@@ -331,8 +331,8 @@ Each slice should stay mergeable on its own:
    (`sshd.host-sketch`).
 3. ~~Amazon Linux 2023 builder target + extract instructions; test in an AL2023 container.~~ **Done**
    (`builder-al2023`, `smoke-al2023`, `ezkey-pam-ssh-al2023`).
-4. TLS + EXP1 integration/enrollment/key; dry-run on a spare user before changing `ec2-user`.
-5. EXP1 sshd cutover with rollback window.
+4. TLS + dogfood integration/enrollment/key; dry-run on a spare user before changing `ec2-user`.
+5. Host sshd cutover with rollback window.
 6. Only then: a generic “copy this snippet onto EL10” note. Packages if a second distro appears.
 
 ---
@@ -350,7 +350,7 @@ Each slice should stay mergeable on its own:
 - **Observability.** Operator proof is Ezkey audit (`AUTH_ATTEMPT_*`) plus host `authpriv`. Do not
   add a metrics sidecar in the module.
 - **Methodology.** This stays a hygiene/lab map in `ezkey-pam/`. Promote an `I-*` / `TB-*` only
-  if EXP1 cutover is funded as a program slice. Until then, do not grow a second documentation
+  if a host sshd cutover is funded as a program slice. Until then, do not grow a second documentation
   tree.
 
 When unsure, prefer the Rocky demo as the living test, change one operational concern at a time,
@@ -361,7 +361,7 @@ and refuse features that would make the module smarter than the Integration API.
 ## M0 — Stabilize (PR #610 rebase onto main)
 
 **Goal:** keep slices 1–3 behavior from #610, reconcile with main, re-prove lab demos, document
-lessons. No EXP1 cutover, no product promotion, no AWS / ezkey.online touch.
+lessons. No host sshd cutover, no product promotion, no AWS / ezkey.online touch.
 
 ### Substantive conflicts resolved (rebase onto main)
 
@@ -392,18 +392,18 @@ lessons. No EXP1 cutover, no product promotion, no AWS / ezkey.online touch.
    (rsyslogd runs; `logger -p authpriv.info` still does not land in `/var/log/secure`). Module
    still calls `syslog`/`pam_syslog`; M0 hygiene was proven on `/var/log/ezkey-pam/debug.*`
    (`body omitted`, `authAttemptId=`, no secrets). Fixing container rsyslog routing is a small
-   follow-up, not EXP1 cutover.
+   follow-up, not host sshd cutover.
 
 ### Out of M0
 
-EXP1 sshd cutover, TLS, packages, `failmode=safe`, AWS, ezkey.online, product-roadmap promotion.
+Host sshd cutover, TLS, packages, `failmode=safe`, AWS, ezkey.online, product-roadmap promotion.
 
 ---
 
 ## M1 — Observability + conf hardening (PR #610)
 
 **Goal (Marc GO):** enough observability for Patrick/Christophe review without expanding product
-scope. Zero lockout risk: module stays fail-closed; no AWS / ezkey.online / EXP1 sshd cutover.
+scope. Zero lockout risk: module stays fail-closed; no AWS / ezkey.online / host sshd cutover.
 
 ### Attempt syslog line (canonical)
 
@@ -508,7 +508,7 @@ evidence — not a Pixel/mobile hand-test. Proof script: `./scripts/test-challen
 Admin UI rides the same clean-start stack for optional operator inspection; it is not required
 for the automated proof path. No Pixel / physical-phone step.
 
-### `/wait` response signature — assessed, deferred to EXP1
+### `/wait` response signature — assessed, deferred until non-lab host hardening
 
 | Question | Finding |
 |---|---|
@@ -516,7 +516,7 @@ for the automated proof path. No Pixel / physical-phone step.
 | What *is* signed? | Device **respond** payload (Ed25519) verified by Auth/Integration services before status becomes `ACCEPTED`. |
 | What PAM trusts today | TLS (or lab `http://` + private compose net) + HTTP Basic to Integration API; then trusts `status==ACCEPTED`. |
 | Why not implement in M1? | Would need a **new API contract** (server-signed wait receipt + key material the `.so` can verify) or shipping enrollment device public keys into the PAM host — both disproportionate for lab M1 and change Integration API surface. |
-| EXP1 direction | Prefer mandatory HTTPS to Integration API first; optional wait-receipt signature if threat model requires binding ACCEPTED to a non-MITM guarantee beyond TLS. |
+| Non-lab host direction | Prefer mandatory HTTPS to Integration API first; optional wait-receipt signature if threat model requires binding ACCEPTED to a non-MITM guarantee beyond TLS. |
 
 ### Review inventory (Patrick + Christophe) — done / deferred
 
@@ -546,5 +546,5 @@ for the automated proof path. No Pixel / physical-phone step.
 
 ### Out of M1
 
-EXP1 cutover, TLS verify knobs / curl CA pins, packages, `failmode=safe`, sudo, username maps,
+Host sshd cutover, TLS verify knobs / curl CA pins, packages, `failmode=safe`, sudo, username maps,
 AWS, ezkey.online, wait-receipt signatures, full observability success/reject in CI.

@@ -57,7 +57,7 @@ typedef struct {
     int challenge_requested;
     /* When 0 (default), only https:// Integration API URLs are accepted.
      * Docker lab entrypoint sets lab_http=true so http:// on the compose
-     * network is allowed. Host/EXP1 must leave this false. */
+     * network is allowed. Non-lab / host installs must leave this false. */
     int lab_http;
     char context_title[EZKEY_TITLE_MAX + 1];
     char context_message[EZKEY_MESSAGE_MAX + 1];
