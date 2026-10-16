@@ -439,6 +439,12 @@ Docker entrypoint still maps compose ENV → conf file write, then `chown root:r
    not pass Docker ENV). Entrypoint remains the bridge for demos.
 4. **Patrick / Christophe review surface.** Structure and conf keys stay small; fail-closed codes
    and the attempt line are the review anchors — see PR report file:line list.
+5. **Stale Demo Device pending.** After failed/timeout SSH tries on a shared enrollment, a leftover
+   pending card can be approved while a *new* SSH wait times out. Clear pending (or approve the
+   matching `authAttemptId`) before re-running AL2023/`demo-ssh` after negative tests.
+6. **SSH retries multiply attempts.** `MaxAuthTries 1` on the demo `sshd_config` keeps “one SSH
+   try → one attempt line” for lab proof; host stacks may differ — the module still emits one
+   line per `pam_sm_authenticate` call.
 
 ### Out of M1
 
