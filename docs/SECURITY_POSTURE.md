@@ -35,13 +35,15 @@ meant to be linked from trust-facing material without inflating the top-level pi
   (`pending`/`respond`) are cryptographically linked; the backend is the authoritative verifier;
   one-time proof tokens and signatures bind requests to flows.
 - **Respond/pending :** seules les décisions et statuts finaux sont signés par l'intégration (un 200
-  non signé est refusé, le serveur ne l'émet jamais) ; toute réponse non signée
-  (409/4xx/5xx/réseau) mène à un état neutre sans effet (pas d'effacement, deny ni retry
-  d'approbation automatique), avec un texte du catalogue local uniquement, car un MITM qui forge
-  ou supprime une erreur n'obtient qu'un déni de service déjà possible en coupant le trafic
-  (#844). Clé d'intégration **par enrollment** : s'il manque la clé privée au respond, le serveur
-  répond **503** `integration-signing-unavailable` et la transaction respond est annulée (rollback)
-  — il n'existe **pas** de refus de démarrage JVM pour cette clé (#844, revue Christophe m2).
+  non signé est refusé, le serveur ne l'émet jamais). **Decision (#844 / #833, lived loop):**
+  **409** `auth-attempt-state-conflict` et **200** dont la signature résultat n'est pas vérifiable
+  → état neutre Back-only (catalogue local ; pas d'effacement, deny ni retry d'approbation) ;
+  **503** `integration-signing-unavailable` (clé manquante, transaction annulée) → **retryable** ;
+  coupure / timeout **après** que le `respond` HTTP a été envoyé → `UncertainDecision` (Q10 :
+  résultat incertain, pas un échec, regarder l'écran de connexion d'origine, verrou
+  `authAttemptId`, pas de leave-as-deny ni seconde décision — pas d'idempotent respond). Un MITM
+  qui forge ou coupe le trafic n'obtient qu'un DoS déjà possible en coupant le réseau. Clé
+  d'intégration **par enrollment** : pas de refus de démarrage JVM (#844, revue Christophe m2).
 - **Decision (#844 Marc m1):** On `POST /api/v1/auth-attempts/respond`, attempt not found,
   still `PENDING`, and terminal / cancelled / superseded all map to a single client **409**
   `auth-attempt-state-conflict` so sequential auth-attempt ids do not reveal existence or state

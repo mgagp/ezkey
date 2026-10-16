@@ -20,6 +20,8 @@ import {Keyboard} from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {useEnrollmentById, useMarkEnrollmentPendingChecked} from './useEnrollments';
 import {
+  INTEGRATION_SIGNING_UNAVAILABLE_TYPE,
+  parseAuthApiProblemDetail,
   resolveAuthApiUserFacingOutcome,
   type AuthApiUserFacingOutcome,
 } from '../services/api/authApiProblem';
@@ -240,6 +242,16 @@ export function usePendingAuth(
     [t],
   );
 
+  /** True when Auth API reported missing integration signing key (HTTP 503; transaction rolled back). */
+  const isIntegrationSigningUnavailable = useCallback((error: unknown): boolean => {
+    const data =
+      error != null && typeof error === 'object' && 'response' in error
+        ? (error as {response?: {data?: unknown}}).response?.data
+        : undefined;
+    const problem = parseAuthApiProblemDetail(data);
+    return problem?.type?.trim() === INTEGRATION_SIGNING_UNAVAILABLE_TYPE;
+  }, []);
+
   // -------------------------------------------------------------------------
   // Navigation helpers (internal)
   // -------------------------------------------------------------------------
@@ -451,6 +463,8 @@ export function usePendingAuth(
       setFormError(undefined);
       Keyboard.dismiss();
       const respondAttemptId = attempt.authAttemptId;
+      /** Set true immediately before the Auth HTTP call — drives Q10 UncertainDecision (#833 / #844). */
+      let respondHttpStarted = false;
       tracePendingAuthRespond('handleRespond_try_begin', {
         accepted,
         authAttemptId: respondAttemptId,
@@ -477,6 +491,7 @@ export function usePendingAuth(
         tracePendingAuthRespond('handleRespond_after_device_sign', {
           signedPayloadChars: proofTokenSigned.length,
         });
+        respondHttpStarted = true;
         const response = await authAttemptsApi.respond(
           {
             authAttemptId: attempt.authAttemptId,
@@ -487,8 +502,8 @@ export function usePendingAuth(
           enrollment.installation?.authUrl,
         );
         // HTTP OK != decision committed / verified. Lock this attempt id so Approve/Deny
-        // cannot fire again; unsigned or badly signed 200 → Back-only "result not confirmed"
-        // (server may already have recorded the decision) (#844 Patrick).
+        // cannot fire again; unsigned or badly signed 200 → Back-only Q9 resultNotConfirmed
+        // (server may already have recorded the decision) (#844 Patrick / #834 Q9).
         serverDecisionAttemptIdRef.current = respondAttemptId;
 
         const integrationPublicKey = enrollment.integrationPublicKey;
@@ -557,17 +572,44 @@ export function usePendingAuth(
         handleReturnToEnrollmentDetail();
       } catch (error) {
         const errorOutcome = extractErrorOutcome(error);
+        const signingUnavailable = isIntegrationSigningUnavailable(error);
         tracePendingAuthRespond('handleRespond_catch', {
           message:
             errorOutcome.message.length > 240
               ? `${errorOutcome.message.slice(0, 240)}...`
               : errorOutcome.message,
           retryable: errorOutcome.retryable,
+          respondHttpStarted,
+          signingUnavailable,
         });
-        // 409 state conflict: decision already recorded — lock this attempt id (#833 Patrick).
+        // 503: transaction rolled back — retryable, no decision lock (#844 / critique B).
+        if (signingUnavailable) {
+          if (isMountedRef.current) {
+            setGlobalError(errorOutcome.message);
+            setGlobalErrorRetryable(true);
+          }
+          return;
+        }
+        // 409 / other non-retryable catalog: lock + Back only (#833 Patrick, #834 Q8).
         if (!errorOutcome.retryable) {
           serverDecisionAttemptIdRef.current = respondAttemptId;
+          if (isMountedRef.current) {
+            setGlobalError(errorOutcome.message);
+            setGlobalErrorRetryable(false);
+          }
+          return;
         }
+        // After HTTP respond was attempted: timeout / transport / undecidable → UncertainDecision
+        // (Q10). Lock blocks leave-as-deny and a second decision. No idempotent respond (#833/#844).
+        if (respondHttpStarted) {
+          serverDecisionAttemptIdRef.current = respondAttemptId;
+          if (isMountedRef.current) {
+            setGlobalError(t('pendingAuth.uncertainDecision'));
+            setGlobalErrorRetryable(false);
+          }
+          return;
+        }
+        // Pre-send failure (e.g. biometric cancel) — still retryable; leave-as-deny may run.
         if (isMountedRef.current) {
           setGlobalError(errorOutcome.message);
           setGlobalErrorRetryable(errorOutcome.retryable);
@@ -586,6 +628,7 @@ export function usePendingAuth(
       enrollment,
       extractErrorOutcome,
       handleReturnToEnrollmentDetail,
+      isIntegrationSigningUnavailable,
       setRecentAuthResult,
       t,
     ],

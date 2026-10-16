@@ -131,7 +131,7 @@ sentence, decided in Question 8. This decision does not choose that wording.
 review consensus on Finding 3.
 
 The person approves or denies on the phone. The app signs and calls `respond`. As soon as the Auth
-API returns HTTP 200, the app sets `serverDecisionSentRef`, and only then verifies the integration
+API returns HTTP 200, the app sets `serverDecisionAttemptIdRef` (per `authAttemptId`), and only then verifies the integration
 signature on the result. That 200 means the exchange was **processed**. The body may be `APPROVED`,
 `DENIED`, or a business `FAILED`. It does not by itself mean “approved.”
 
@@ -268,13 +268,14 @@ declined. They are not part of the set.
 **Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
 
 `POST /api/v1/auth-attempts/respond` returns **409** with one problem type,
-`auth-attempt-state-conflict`, when the attempt has expired, was cancelled, or is already decided.
-That collapse is intentional. The phone maps that type to one sentence: the request is no longer
-active. Back only. No Try again.
+`auth-attempt-state-conflict`, when the attempt is not found, still `PENDING`, has expired, was
+cancelled, is already decided, or was superseded (#844 Marc m1 on #833 — same wire type; server
+logs keep the cause). That collapse is intentional (also anti-enumeration of sequential ids). The
+phone maps that type to one sentence: the request is no longer active. Back only. No Try again.
 
-The person sees which of the three it was on the integrating application: the countdown finished,
-they cancelled, or the sign-in already completed. Splitting the problem type so the phone can
-retell that would duplicate the other screen.
+The person sees which cause it was on the integrating application: the countdown finished, they
+cancelled, the sign-in already completed, or the request never became actionable. Splitting the
+problem type so the phone can retell that would duplicate the other screen.
 
 A lost approve response, where a session may already exist, is not this case. That stays
 Question 10. This sentence ships with the confirmed honesty set before testers are widened
@@ -282,9 +283,10 @@ Question 10. This sentence ships with the confirmed honesty set before testers a
 
 **Locked**
 
-- Keep a single problem type for expired, cancelled, and already decided.
+- Keep a single problem type for not-found, still `PENDING`, expired, cancelled, already decided,
+  and superseded (#844 m1 / #833).
 - One user sentence. Back only. Not a retryable error.
-- Do not add distinct problem types for those three causes.
+- Do not add distinct problem types for those causes.
 
 ### Decision — Question 9 — Point at the sign-in screen, not at a tenant name
 
@@ -393,20 +395,17 @@ designed in this review.
 
 **Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
 
-`serverDecisionSentRef` is set on respond HTTP 200 and today stays set for the whole screen. A
-later claim of a new attempt on that screen still has Approve, Deny, and leave blocked. The lock
-must follow `authAttemptId`: a new attempt is a new decision. Patrick is fixing that on pull
-request [#833](https://github.com/mgagp/ezkey/pull/833). Track it there. Do not open a parallel
-fix.
+**Decision (#834 Q13 / delivered on [#833](https://github.com/mgagp/ezkey/pull/833)):** the lock is
+`serverDecisionAttemptIdRef` keyed to `authAttemptId`. A new pending attempt with a different id is
+not locked. Do not open a parallel fix.
 
-A lost `respond` response keeps the uncertain sentence from Question 10. A later **409** keeps the
-single “no longer active” sentence from Question 8. There is no third sentence such as “already
-decided, check the other device.”
+A lost `respond` response keeps the uncertain sentence from Question 10 (also delivered on #833:
+lock + Back only). A later **409** keeps the single “no longer active” sentence from Question 8.
+There is no third sentence such as “already decided, check the other device.”
 
 **Locked**
 
-- The processed-decision lock is per `authAttemptId`.
-- The fix is tracked on #833. Do not duplicate it.
+- The processed-decision lock is per `authAttemptId` (`serverDecisionAttemptIdRef` on #833).
 - No new 409 wording. Questions 8 and 10 already cover those screens.
 
 ### Decision — Question 14 — No expiry field on the pending response
@@ -445,11 +444,11 @@ The name must not be read as server creation time (Questions 1 and 14). See
 
 ---
 
-## Finding 3 — `serverDecisionSentRef` after respond HTTP 200, before result signature verify
+## Finding 3 — `serverDecisionAttemptIdRef` after respond HTTP 200, before result signature verify
 
 ### Observed behavior (#833 @ `fcc31fbf`)
 
-After `authAttemptsApi.respond` returns HTTP 200, code sets `serverDecisionSentRef.current = true`
+After `authAttemptsApi.respond` returns HTTP 200, code sets `serverDecisionAttemptIdRef` to the attempt id
 (`usePendingAuth.ts` L448–449), **then** verifies the integration-signed respond-result (L451–482).
 On missing/invalid signature: `globalError`, stay on screen. Leave will not send a second deny.
 
@@ -585,16 +584,14 @@ split types. The lost-response case stays Question 10.
 
 ### Observed behavior
 
-`serverDecisionSentRef` is set true at respond HTTP 200 (`usePendingAuth.ts` L449) and **never
-reset**. `loadPendingAttempt` (L246) does not clear it. Path: Finding 3 (HTTP 200, sig fail →
-`globalError`) → Try again → new attempt loaded → Approve/Deny blocked by guard L381; leave no
-longer denies (L89). Lock is **screen-scoped**, not `authAttemptId`-scoped.
+Historically `serverDecisionSentRef` (boolean) stayed true for the whole screen. **Delivered on
+#833:** `serverDecisionAttemptIdRef` stores the attempt id; a new pending attempt with a different
+id is not locked (Q13). Path after HTTP 200 + sig fail still locks **that** id (Q9 Back-only).
 
 ### Recommendation
 
-**Decided** in [Decision — Question 13](#decision--question-13--the-decision-lock-follows-the-attempt).
-Per `authAttemptId`. Track the fix on #833. Do not duplicate it. No third sentence for a 409 after
-a lost response.
+**Decided / delivered** in [Decision — Question 13](#decision--question-13--the-decision-lock-follows-the-attempt).
+No third sentence for a 409 after a lost response (Q8 / Q10).
 
 ---
 
@@ -602,7 +599,8 @@ a lost response.
 
 ### Observed behavior
 
-Network cut **after** server processed respond → mobile `catch` (L504–509), ref may stay false →
+Network cut **after** server processed respond → historically mobile `catch` could stay retryable →
+(delivered on #833: `UncertainDecision` + lock after HTTP started; see Q10) — earlier tip
 retry Approve or leave-deny → **409** while decision already exists. Christophe (medium before GA):
 approve **ACCEPTED** on server but response lost → retry/leave-deny gets signed **FAILED** / conflict
 UI saying “failure” while a session may already be open.
@@ -716,12 +714,12 @@ decided share it.
 5. **Decided.** A permanent line under Approve and Deny: leaving this screen declines the request. No dialog. The live approval screen has room for it. See [Decision — Question 5](#decision--question-5--a-permanent-line-under-the-actions). It ships with the confirmed set before #711 widens (Question 6).
 6. **Decided.** No deadline on internal testers. Implement the full set of practices this review confirms, properly, before widening #711. Do not cut that set down. Declined options stay declined. See [Decision — Question 6](#decision--question-6--ship-the-confirmed-honesty-set-before-widening-testers).
 7. **Closed by Question 1.** There is no mobile timer, so neither an always-on line nor a near-expiry line.
-8. **Decided.** One sentence for `auth-attempt-state-conflict`: the request is no longer active. Back only. Do not split expired, cancelled, and already-decided into separate problem types. See [Decision — Question 8](#decision--question-8--one-sentence-when-the-request-is-no-longer-active). A lost approve response stays Question 10.
+8. **Decided.** One sentence for `auth-attempt-state-conflict`: the request is no longer active. Back only. Do not split not-found / PENDING / expired / cancelled / already-decided / superseded into separate problem types (#844 m1). See [Decision — Question 8](#decision--question-8--one-sentence-when-the-request-is-no-longer-active). A lost approve response stays Question 10. Missing integration signing key is **503** retryable (rollback), documented on #833/#844 — not a Q8 split.
 9. **Decided.** The unverified-confirmation sentence may say to check the sign-in where it was started. It does not name a tenant or an organization. Back only. See [Decision — Question 9](#decision--question-9--point-at-the-sign-in-screen-not-at-a-tenant-name).
 10. **Decided.** A lost `respond` response shows that the result is uncertain and points at the sign-in screen. Not a failure. No retry that sends another decision. Idempotent `respond` is deferred and not specified. See [Decision — Question 10](#decision--question-10--uncertain-result-then-look-at-the-sign-in-screen).
 11. **Decided.** Protected mode asks for biometric or device credential on Approve only. Deny and leave-as-deny sign the refusal without that prompt. See [Decision — Question 11](#decision--question-11--biometric-only-when-approving).
 12. **Decided.** A `READ` window until expiry, after a killed or backgrounded app or when the lifetime ends during Approve biometric, is an accepted limit. No protocol unless a real incident requires it. “120 seconds” is the default of `ezkey.core.auth-attempt.ttl-seconds` (30–600). Cloudflare Free cuts the origin at 100 seconds; note that for the community instance, without changing it here. See [Decision — Question 12](#decision--question-12--the-read-window-is-a-known-limit).
-13. **Decided.** The processed-decision lock is per `authAttemptId`. Track the fix on #833; do not duplicate it. A lost response stays the Question 10 sentence. A later 409 stays the Question 8 sentence. See [Decision — Question 13](#decision--question-13--the-decision-lock-follows-the-attempt).
+13. **Decided / delivered on #833.** The processed-decision lock is per `authAttemptId` (`serverDecisionAttemptIdRef`). A lost response stays the Question 10 sentence (UncertainDecision). A later 409 stays the Question 8 sentence. See [Decision — Question 13](#decision--question-13--the-decision-lock-follows-the-attempt).
 14. **Decided.** No expiry field on the pending response, neither unsigned for display nor inside the signed payload. The countdown stays on the integrating application (Question 1). See [Decision — Question 14](#decision--question-14--no-expiry-field-on-the-pending-response).
 
 ---
@@ -757,7 +755,7 @@ retryable `GlobalError`.
 ### Christophe (security) — minor
 
 Code read @ `fcc31fbf`. Docs: “HTTP OK = decision committed” is **false** — reformulate to
-**processed (`APPROVED`/`DENIED`/`FAILED`)**. `serverDecisionSentRef` before verify is safe; A+C
+**processed (`APPROVED`/`DENIED`/`FAILED`)**. `serverDecisionAttemptIdRef` before verify is safe; A+C
 OK, B rejected; document leave-as-deny path that stays on screen after verify fail. **Before GA:**
 leave/deny may open BiometricPrompt — little security value on deny; recommend unprotected deny
 signing. Stranded READ after bad pending sig: no alternate approve channel; TTL OK now; Phase 2

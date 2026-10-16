@@ -290,6 +290,11 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
                   </Text>
                 </TouchableOpacity>
               </View>
+              <Text
+                testID="ezkey.e2e.pendingAuth.leaveDeclinesHint"
+                style={styles.leaveDeclinesHint}>
+                {t('pendingAuth.leaveDeclinesHint')}
+              </Text>
               {isProcessing ? (
                 <View
                   testID="ezkey.e2e.pendingAuth.respondInFlight"
@@ -461,6 +466,12 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: 12,
+  },
+  leaveDeclinesHint: {
+    fontSize: 13,
+    color: '#9aa3b6',
+    textAlign: 'center',
+    lineHeight: 18,
   },
   respondInFlightMarker: {
     alignSelf: 'stretch',

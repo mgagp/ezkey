@@ -262,7 +262,10 @@ export const resources = {
         unexpectedError: 'Unexpected error.',
         requestNoLongerActive: 'This request is no longer active. No action is required.',
         resultNotConfirmed:
-          'Result not confirmed. The server may already have recorded this decision. No further action is required.',
+          'The response was sent, but its confirmation could not be verified. Check the sign-in where it was started.',
+        uncertainDecision:
+          'The result of this request is uncertain. Check the sign-in where it was started. This is not a failure — do not send another decision from this device.',
+        leaveDeclinesHint: 'Leaving this screen declines the request.',
         integrationSigningUnavailable:
           'Authentication signing is temporarily unavailable. Try again later.',
         missingPendingPublicKey:
@@ -638,7 +641,10 @@ export const resources = {
         unexpectedError: 'Erreur inattendue.',
         requestNoLongerActive: "Cette demande n'est plus active. Aucune action requise.",
         resultNotConfirmed:
-          "Résultat non confirmé. Le serveur a pu déjà enregistrer cette décision. Aucune autre action n'est requise.",
+          "La réponse a été envoyée, mais sa confirmation n'a pas pu être vérifiée. Vérifiez l'écran de connexion où vous avez commencé.",
+        uncertainDecision:
+          "Le résultat de cette demande est incertain. Vérifiez l'écran de connexion où vous avez commencé. Ce n'est pas un échec — n'envoyez pas une nouvelle décision depuis cet appareil.",
+        leaveDeclinesHint: 'Quitter cet écran refuse la demande.',
         integrationSigningUnavailable:
           "La signature d'authentification est temporairement indisponible. Réessayez plus tard.",
         missingPendingPublicKey:

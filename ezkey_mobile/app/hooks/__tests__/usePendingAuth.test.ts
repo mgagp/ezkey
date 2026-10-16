@@ -470,8 +470,13 @@ describe('handleRespond', () => {
     expect(mockSetRecentAuthResult).not.toHaveBeenCalled();
   });
 
-  it('sets globalError when the respond API call throws', async () => {
-    mockAuthAttemptsApi.respond.mockRejectedValue(new Error('Server error'));
+  const RESULT_NOT_CONFIRMED_Q9 =
+    'The response was sent, but its confirmation could not be verified. Check the sign-in where it was started.';
+  const UNCERTAIN_DECISION_Q10 =
+    'The result of this request is uncertain. Check the sign-in where it was started. This is not a failure — do not send another decision from this device.';
+
+  it('transport error after respond started → UncertainDecision, lock, no leave-deny (#833 Q10)', async () => {
+    mockAuthAttemptsApi.respond.mockRejectedValue(new Error('Network Error'));
 
     const {result} = renderHook('enr-1', sampleAttempt);
 
@@ -479,11 +484,94 @@ describe('handleRespond', () => {
       await result.current.handleRespond(true);
     });
 
-    expect(result.current.globalError).toBeDefined();
+    expect(result.current.globalError).toBe(UNCERTAIN_DECISION_Q10);
+    expect(result.current.globalErrorRetryable).toBe(false);
+    expect(result.current.hasSubmittedServerDecision()).toBe(true);
     expect(mockSetRecentAuthResult).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.handleRespond(false);
+    });
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(1);
   });
 
-  it('unsigned 200 respond → non-retryable result-not-confirmed; no enrollment/key wipe (#844)', async () => {
+  it('axios timeout after respond started → UncertainDecision + lock (#833 Q10)', async () => {
+    mockAuthAttemptsApi.respond.mockRejectedValue({
+      code: 'ECONNABORTED',
+      message: 'timeout of 10000ms exceeded',
+    });
+
+    const {result} = renderHook('enr-1', sampleAttempt);
+
+    await act(async () => {
+      await result.current.handleRespond(true);
+    });
+
+    expect(result.current.globalError).toBe(UNCERTAIN_DECISION_Q10);
+    expect(result.current.globalErrorRetryable).toBe(false);
+    expect(result.current.hasSubmittedServerDecision()).toBe(true);
+
+    await act(async () => {
+      await result.current.handleRespond(true);
+    });
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(1);
+  });
+
+  it('503 integration-signing-unavailable stays retryable without decision lock (#844)', async () => {
+    mockAuthAttemptsApi.respond.mockRejectedValue({
+      response: {
+        status: 503,
+        data: {
+          type: 'https://ezkey.io/problems/auth/integration-signing-unavailable',
+          title: 'Service unavailable',
+          status: 503,
+          detail: 'Authentication signing is temporarily unavailable. Retry later.',
+        },
+      },
+    });
+
+    const {result} = renderHook('enr-1', sampleAttempt);
+
+    await act(async () => {
+      await result.current.handleRespond(true);
+    });
+
+    expect(result.current.globalError).toBe(
+      'Authentication signing is temporarily unavailable. Try again later.',
+    );
+    expect(result.current.globalErrorRetryable).toBe(true);
+    expect(result.current.hasSubmittedServerDecision()).toBe(false);
+
+    mockAuthAttemptsApi.respond.mockResolvedValue({
+      authAttemptId: 1,
+      authAttemptResult: 'APPROVED',
+      authAttemptMessage: 'Approved',
+      authAttemptProofTokenResultSignedByIntegration: 'respond-result-sig',
+    });
+    await act(async () => {
+      await result.current.handleRespond(true);
+    });
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(2);
+  });
+
+  it('pre-send biometric cancel stays retryable and does not lock (#833 Q10 boundary)', async () => {
+    mockCryptoService.signForRespond.mockRejectedValue({
+      code: 'EZK_AUTH_CANCELLED',
+      message: 'cancelled',
+    });
+
+    const {result} = renderHook('enr-1', sampleAttempt);
+
+    await act(async () => {
+      await result.current.handleRespond(true);
+    });
+
+    expect(result.current.globalErrorRetryable).toBe(true);
+    expect(result.current.hasSubmittedServerDecision()).toBe(false);
+    expect(mockAuthAttemptsApi.respond).not.toHaveBeenCalled();
+  });
+
+  it('unsigned 200 respond → non-retryable result-not-confirmed; no enrollment/key wipe (#844 Q9)', async () => {
     mockAuthAttemptsApi.respond.mockResolvedValue({
       authAttemptId: 1,
       authAttemptResult: 'APPROVED',
@@ -497,16 +585,14 @@ describe('handleRespond', () => {
       await result.current.handleRespond(true);
     });
 
-    expect(result.current.globalError).toBe(
-      'Result not confirmed. The server may already have recorded this decision. No further action is required.',
-    );
+    expect(result.current.globalError).toBe(RESULT_NOT_CONFIRMED_Q9);
     expect(result.current.globalErrorRetryable).toBe(false);
     expect(result.current.hasSubmittedServerDecision()).toBe(true);
     expect(mockCryptoService.deleteEnrollmentKeyPair).not.toHaveBeenCalled();
     expect(mockSetRecentAuthResult).not.toHaveBeenCalled();
   });
 
-  it('badly signed 200 respond → non-retryable result-not-confirmed (#844)', async () => {
+  it('badly signed 200 respond → non-retryable result-not-confirmed (#844 Q9)', async () => {
     mockCryptoService.verify.mockResolvedValueOnce(false);
 
     const {result} = renderHook('enr-1', sampleAttempt);
@@ -515,9 +601,7 @@ describe('handleRespond', () => {
       await result.current.handleRespond(true);
     });
 
-    expect(result.current.globalError).toBe(
-      'Result not confirmed. The server may already have recorded this decision. No further action is required.',
-    );
+    expect(result.current.globalError).toBe(RESULT_NOT_CONFIRMED_Q9);
     expect(result.current.globalErrorRetryable).toBe(false);
     expect(result.current.hasSubmittedServerDecision()).toBe(true);
     expect(mockCryptoService.deleteEnrollmentKeyPair).not.toHaveBeenCalled();
