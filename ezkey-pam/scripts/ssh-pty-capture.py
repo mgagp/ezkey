@@ -41,7 +41,8 @@ def main() -> int:
 
     # RDWR so the fifo stays open across short-lived writers (printf >fifo).
     ctrl_fd = os.open(ctrl_path, os.O_RDWR | os.O_NONBLOCK)
-    log_fd = os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+    # Owner-only: capture may include challenge digits (CodeQL py/overly-permissive-file).
+    log_fd = os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
 
     reaped = False
     status = 1
