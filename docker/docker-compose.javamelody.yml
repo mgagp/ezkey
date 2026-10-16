@@ -9,6 +9,10 @@
 #
 # Collector UI: http://localhost:8088
 # Per-API reports remain on management ports: 9081 / 8085 / 7081 /actuator/monitoring
+#
+# Init parameters: SPRING_APPLICATION_JSON with hyphenated Parameter codes.
+# Plain JAVAMELODY_INIT_PARAMETERS_* env map keys are silently ignored by JavaMelody
+# after Spring relaxed binding (#847 Christophe runtime proof).
 
 x-javamelody-env: &javamelody-env
   JAVAMELODY_ENABLED: "true"
@@ -17,29 +21,33 @@ x-javamelody-env: &javamelody-env
   # Match community posture: no metrics/threaddump/info on the management surface.
   MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,monitoring"
   MANAGEMENT_ENDPOINT_MONITORING_ACCESS: unrestricted
-  JAVAMELODY_INIT_PARAMETERS_SYSTEM_ACTIONS_ENABLED: "false"
-  JAVAMELODY_INIT_PARAMETERS_CSRF_PROTECTION_ENABLED: "true"
-  JAVAMELODY_INIT_PARAMETERS_UPDATE_CHECK_DISABLED: "true"
-  JAVAMELODY_INIT_PARAMETERS_LOG: "false"
-  JAVAMELODY_INIT_PARAMETERS_HTTP_TRANSFORM_PATTERN: "[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}|\\d+"
-  JAVAMELODY_INIT_PARAMETERS_OBSOLETE_GRAPHS_DAYS: "30"
-  JAVAMELODY_INIT_PARAMETERS_OBSOLETE_STATS_DAYS: "30"
+
+# Shared init-parameter JSON fragment (application-name filled per service).
+# Keep as one JSON object so the Map binds with exact hyphenated keys.
+x-jm-init-admin: &jm-init-admin
+  SPRING_APPLICATION_JSON: >-
+    {"javamelody":{"init-parameters":{"system-actions-enabled":"false","csrf-protection-enabled":"true","update-check-disabled":"true","log":"false","http-transform-pattern":"[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}|\\d+","obsolete-graphs-days":"30","obsolete-stats-days":"30","application-name":"admin-api"}}}
+
+x-jm-init-auth: &jm-init-auth
+  SPRING_APPLICATION_JSON: >-
+    {"javamelody":{"init-parameters":{"system-actions-enabled":"false","csrf-protection-enabled":"true","update-check-disabled":"true","log":"false","http-transform-pattern":"[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}|\\d+","obsolete-graphs-days":"30","obsolete-stats-days":"30","application-name":"auth-api"}}}
+
+x-jm-init-integration: &jm-init-integration
+  SPRING_APPLICATION_JSON: >-
+    {"javamelody":{"init-parameters":{"system-actions-enabled":"false","csrf-protection-enabled":"true","update-check-disabled":"true","log":"false","http-transform-pattern":"[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}|\\d+","obsolete-graphs-days":"30","obsolete-stats-days":"30","application-name":"integration-api"}}}
 
 services:
   admin-api:
     environment:
-      <<: *javamelody-env
-      JAVAMELODY_INIT_PARAMETERS_APPLICATION_NAME: admin-api
+      <<: [*javamelody-env, *jm-init-admin]
 
   auth-api:
     environment:
-      <<: *javamelody-env
-      JAVAMELODY_INIT_PARAMETERS_APPLICATION_NAME: auth-api
+      <<: [*javamelody-env, *jm-init-auth]
 
   integration-api:
     environment:
-      <<: *javamelody-env
-      JAVAMELODY_INIT_PARAMETERS_APPLICATION_NAME: integration-api
+      <<: [*javamelody-env, *jm-init-integration]
 
   javamelody-collector:
     build:

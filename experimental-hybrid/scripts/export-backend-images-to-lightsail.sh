@@ -71,10 +71,12 @@ Options:
   --remote-up            After load/sync, on the VM: docker compose up -d (rolling apply; DB preserved).
                          With --sync-operator-files: sha256-verify Caddyfile + force-recreate caddy
                          (bind mount; plain up -d does not reload Caddy).
-                         JavaMelody: EZKEY_ENABLE_JAVA_MELODY=true keeps/starts the collector overlay;
+                         JavaMelody: EZKEY_ENABLE_JAVA_MELODY=true keeps/starts the collector overlay.
                          EZKEY_DISABLE_JAVA_MELODY=true intentionally removes it (--remove-orphans).
+                         Default rolling up does NOT pass --remove-orphans (intentional — Edgar).
                          If the collector is already running and neither flag is set, the script refuses
-                         so a silent orphan-remove cannot happen (see community-host.md).
+                         so APIs are not recreated without the JM overlay while the collector stays
+                         (see community-host.md).
   --clean-start          After load, sync and run clean-start.sh (DESTRUCTIVE). Community requires
                          EZKEY_CONFIRM_WIPE=ezkey-online (first commissioning only). Not with
                          --sync-operator-files or --remote-up.
@@ -269,8 +271,9 @@ if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
   # Recreate containers so :latest and updated Compose take effect; Postgres keeps postgres-data.
   # Caddyfile is a bind mount — up -d alone does not reload caddy when only the file changed.
   #
-  # JavaMelody (#846 / Edgar): --remove-orphans on the base compose alone would silently
-  # tear down ezkey-exp-javamelody-collector. Guard:
+  # JavaMelody (#846 / Edgar): default rolling up does NOT pass --remove-orphans.
+  # Guard so a plain base-only up cannot leave APIs without JM env while the collector
+  # container still runs (or accidentally tear it down if --remove-orphans is restored):
   #   EZKEY_ENABLE_JAVA_MELODY=true  → apply overlay (keep / start collector)
   #   EZKEY_DISABLE_JAVA_MELODY=true → intentional remove (base + --remove-orphans)
   #   neither, but collector present → refuse (must choose enable or disable)
@@ -304,9 +307,11 @@ if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
     fi
     if [[ -n "$collector_present" ]]; then
       echo "error: JavaMelody collector is running on ${SSH_HOST}." >&2
-      echo "  A rolling up without the overlay would remove it via --remove-orphans." >&2
-      echo "  Re-run with EZKEY_ENABLE_JAVA_MELODY=true to keep it, or" >&2
-      echo "  EZKEY_DISABLE_JAVA_MELODY=true to remove it intentionally." >&2
+      echo "  A rolling up without the overlay would recreate APIs without JAVAMELODY_*" >&2
+      echo "  while leaving the collector container (default up does not pass" >&2
+      echo "  --remove-orphans). Re-run with EZKEY_ENABLE_JAVA_MELODY=true to keep it," >&2
+      echo "  or EZKEY_DISABLE_JAVA_MELODY=true to remove it intentionally" >&2
+      echo "  (that path alone passes --remove-orphans)." >&2
       exit 1
     fi
   fi

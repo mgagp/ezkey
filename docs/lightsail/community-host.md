@@ -394,8 +394,14 @@ docker compose -f docker-compose.yml -f docker-compose.javamelody.yml up -d
 
 **Keep JM on later rolling upgrades:** always pass `EZKEY_ENABLE_JAVA_MELODY=true` on export
 `--remote-up`. A rolling up **without** that flag refuses if the collector container is present
-(would otherwise orphan-remove it). Intentional teardown:
+(APIs would otherwise lose `JAVAMELODY_*` while the collector stays). Intentional teardown:
 `EZKEY_DISABLE_JAVA_MELODY=true … --remote-up`.
+
+**`--remove-orphans` is not passed by default** on export `--remote-up` (intentional — Edgar).
+Only the `EZKEY_DISABLE_JAVA_MELODY=true` path adds `--remove-orphans` so the collector is
+removed as an orphan. A plain `docker compose -f docker-compose.yml up -d` (no flag) leaves
+orphan containers running; use the disable env (or the rollback command below) when you mean
+to drop the collector.
 
 Collector image/version is aligned with the API starter (**2.9.0**, WAR sha256 pinned in
 `docker/javamelody/Dockerfile`). Christophe locks baked into the overlay / entrypoint:
@@ -403,6 +409,13 @@ Collector image/version is aligned with the API starter (**2.9.0**, WAR sha256 p
 - Collector bind: `127.0.0.1:8088:8080` only
 - Monitoring reports on management ports (`9081` / `8085` / `7081`); Caddy denies `/monitoring` and
   `/actuator` (and nested / case / `//` / `;` variants) on all public API + demo-acme hostnames
+- Business-port `/monitoring` must stay refused even with a valid admin bearer/cookie (401 or
+  403 — both acceptable; do not harmonize). A JavaMelody HTML report on a business port is
+  blocking.
+- Init parameters are injected via `SPRING_APPLICATION_JSON` with hyphenated JavaMelody Parameter
+  codes (`system-actions-enabled`, `http-transform-pattern`, …). Plain
+  `JAVAMELODY_INIT_PARAMETERS_SYSTEM_ACTIONS_ENABLED` env vars bind underscore map keys that
+  JavaMelody silently ignores — do not use that form.
 - `system-actions-enabled=false`, `csrf-protection-enabled=true`, `update-check-disabled=true`
 - `log=false`; `http-transform-pattern=[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}|\d+`; SQL stays as prepared
   `?` (no bind values in reports)
@@ -426,8 +439,26 @@ curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8088/
   --base-url https://integration-api.ezkey.online \
   --base-url https://demo-acme.ezkey.online
 
-# On the VM (optional): confirm management/collector ports are loopback-only
+# On the VM: confirm management/collector ports are loopback-only (IPv4 + IPv6 [::])
 ./scripts/ops/verify-javamelody-non-exposure.sh --check-ss
+
+# Business-port /monitoring (C2) — replayable script probes *through* the caddy
+# container (official image has ash/curl, not bash; --via-caddy uses docker exec):
+./scripts/ops/verify-javamelody-non-exposure.sh --business-ports --via-caddy ezkey-exp-caddy
+# With a live admin session (Christophe authenticated refusal — 401 or 403 OK):
+EZKEY_ADMIN_BEARER='…' EZKEY_ADMIN_COOKIE='…' \
+  ./scripts/ops/verify-javamelody-non-exposure.sh --business-ports \
+    --via-caddy ezkey-exp-caddy --auth-probe
+
+# Runtime proof that init-parameters applied (management port — Docker network / local publish):
+# Local DEV: http://127.0.0.1:9081/actuator/monitoring
+# Community: docker exec ezkey-exp-admin-api wget -q -O - http://127.0.0.1:9081/actuator/monitoring
+curl -sS 'http://127.0.0.1:9081/actuator/monitoring' | tee /tmp/jm.html \
+  | grep -E 'action=gc|action=heap_dump' \
+  && echo 'FAIL: system actions still visible' || echo 'OK: no GC/heap_dump actions'
+grep -oE 'parameter defined: [^<]+' /tmp/jm.html | grep -E 'system-actions|http-transform|csrf'
+# Expect system-actions-enabled=false, csrf-protection-enabled=true, http-transform-pattern=…
+# HTTP tab should show normalized ids (/api/v$/…/$), not raw UUIDs / numeric ids.
 ```
 
 Local regex / Caddyfile parse + smoke check (no live host):
