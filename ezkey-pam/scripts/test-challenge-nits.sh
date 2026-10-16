@@ -29,7 +29,7 @@ fi
 
 restore_conf() {
   docker exec "${CONTAINER}" sh -c \
-    "if [ -f '${BACKUP}' ]; then mv -f '${BACKUP}' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'; fi" \
+    "if [ -f '${BACKUP}' ]; then cp -a '${BACKUP}' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'; fi" \
     || true
 }
 trap restore_conf EXIT

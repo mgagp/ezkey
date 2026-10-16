@@ -10,12 +10,6 @@ int ezkey_challenge_in_range(long challenge) {
     return challenge >= 0 && challenge <= 99;
 }
 
-int ezkey_challenge_display_ok(int pam_prompt_rc, int pam_info_rc) {
-    if (pam_prompt_rc == PAM_SUCCESS) {
-        return 1;
-    }
-    if (pam_info_rc == PAM_SUCCESS) {
-        return 1;
-    }
-    return 0;
+int ezkey_challenge_display_ok(int pam_prompt_rc) {
+    return pam_prompt_rc == PAM_SUCCESS;
 }

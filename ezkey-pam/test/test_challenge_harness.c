@@ -38,13 +38,11 @@ int main(void) {
     expect_eq("in_range(100)", ezkey_challenge_in_range(100), 0);
     expect_eq("in_range(1000)", ezkey_challenge_in_range(1000), 0);
 
-    /* Production uses pam_prompt only; display_ok still documents fallback math. */
+    /* Production: single pam_prompt path — no pam_info fallback (Patrick). */
     expect_true("display_ok prompt SUCCESS",
-                ezkey_challenge_display_ok(PAM_SUCCESS, PAM_AUTH_ERR));
-    expect_eq("display_ok prompt fail (production REJECTS even if info ok)",
-              ezkey_challenge_display_ok(PAM_CONV_ERR, PAM_SUCCESS), 1);
-    expect_eq("display_ok both fail",
-              ezkey_challenge_display_ok(PAM_CONV_ERR, PAM_CONV_ERR), 0);
+                ezkey_challenge_display_ok(PAM_SUCCESS));
+    expect_eq("display_ok prompt fail → reject (no pam_info fallback)",
+              ezkey_challenge_display_ok(PAM_CONV_ERR), 0);
 
     printf("=== Results: %s ===\n", fails == 0 ? "all passed" : "FAILED");
     return fails == 0 ? 0 : 1;

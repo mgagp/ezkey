@@ -693,9 +693,9 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
      * If no conversation can display the code → UNAVAIL (user must see it).
      */
     if (cfg->challenge_requested) {
-        const void *conv_item = NULL;
         char *resp = NULL;
         int prc;
+        const void *conv_item = NULL;
 
         if (!ezkey_challenge_in_range(challenge)) {
             log_pam_error_debug(pamh, cfg,
@@ -712,19 +712,22 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
             pam_rc = PAM_AUTHINFO_UNAVAIL;
             goto cleanup;
         }
+        /*
+         * OpenSSH keyboard-interactive buffers bare PAM_TEXT_INFO until a
+         * response prompt is issued, and /wait would otherwise block first
+         * (Patrick). Put the digits in a PAM_PROMPT_ECHO_OFF line so the
+         * code reaches the PTY before /wait. No pam_info fallback — same
+         * call path as the prompt, and failure → UNAVAIL.
+         */
         snprintf(msg, sizeof(msg),
                  "Ezkey challenge code: %02ld — enter this code on your Ezkey "
-                 "device, then approve.",
+                 "device, then approve.\n"
+                 "Press Enter to wait for Ezkey device approval: ",
                  challenge);
-        /*
-         * Surface the code with pam_prompt(PAM_TEXT_INFO) so OpenSSH
-         * keyboard-interactive delivers it before /wait blocks. Do not fall
-         * back to pam_info: that path does not reliably flush under sshd, and
-         * would hide a failed conversation (Patrick). Fail → UNAVAIL.
-         */
-        prc = pam_prompt(pamh, PAM_TEXT_INFO, &resp, "%s", msg);
+        prc = pam_prompt(pamh, PAM_PROMPT_ECHO_OFF, &resp, "%s", msg);
         if (resp != NULL) {
             free(resp);
+            resp = NULL;
         }
         if (prc != PAM_SUCCESS) {
             log_pam_error_debug(pamh, cfg,

@@ -498,8 +498,10 @@ want phishing-resistant matching). When `challenge_requested=true`:
    `ezkey.core.auth-attempt.challenge-digits`).
 3. Module requires the value in **0..99**; anything else → `PAM_AUTHINFO_UNAVAIL`.
 4. Module displays `Ezkey challenge code: NN — enter this code…` via **`pam_prompt`
-   (`PAM_TEXT_INFO`) only** before `GET …/wait` (no `pam_info` fallback — Patrick).
-   If no PAM conversation can show the code → `PAM_AUTHINFO_UNAVAIL` (Christophe).
+   (`PAM_PROMPT_ECHO_OFF`, digits in the prompt)** before `GET …/wait` so OpenSSH
+   flushes the code to the PTY (bare `PAM_TEXT_INFO` is buffered; no `pam_info`
+   fallback — Patrick). If no PAM conversation can show the code →
+   `PAM_AUTHINFO_UNAVAIL` (Christophe).
 5. Device must submit matching `challengeResponse` on approve; wrong digits → refuse.
 6. Fail-closed: missing challenge → `PAM_AUTHINFO_UNAVAIL`.
 7. Challenge value is **not** written to authpriv attempt lines (#750); attempt lines
@@ -507,7 +509,8 @@ want phishing-resistant matching). When `challenge_requested=true`:
 
 **Lab proof target (no physical phone).** `./scripts/test-challenge.sh`:
 
-1. Live `script -f` capture must show `Ezkey challenge code: NN` **before** approve.
+1. Live PTY capture (`ssh-pty-capture.py`) must show `Ezkey challenge code: NN`
+   **before** Enter + approve.
 2. Demo Device approve with matching digits → `SUCCESS` + DB `ACCEPTED|NN`.
 3. Wrong digits → SSH denied / non-SUCCESS.
 4. Stub create without challenge → `UNAVAIL` + debug.err reason.

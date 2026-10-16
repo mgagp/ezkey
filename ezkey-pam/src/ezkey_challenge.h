@@ -16,14 +16,13 @@
 int ezkey_challenge_in_range(long challenge);
 
 /**
- * True when at least one PAM conversation call successfully displayed the code.
- * pam_prompt is preferred; pam_info is an acceptable fallback when prompt fails
- * but info succeeds. Both failing means the user cannot see the code.
+ * True when pam_prompt successfully displayed the challenge code.
+ * There is no pam_info fallback — OpenSSH buffers bare TEXT_INFO the same
+ * way, and production uses a single PAM_PROMPT_ECHO_OFF path (Patrick).
  *
- * @param pam_prompt_rc return from pam_prompt(PAM_TEXT_INFO, ...)
- * @param pam_info_rc return from pam_info(...), or PAM_AUTH_ERR if not called
- * @return 1 if displayed, 0 if neither call succeeded
+ * @param pam_prompt_rc return from pam_prompt(PAM_PROMPT_ECHO_OFF, ...)
+ * @return 1 if displayed, 0 otherwise
  */
-int ezkey_challenge_display_ok(int pam_prompt_rc, int pam_info_rc);
+int ezkey_challenge_display_ok(int pam_prompt_rc);
 
 #endif /* EZKEY_CHALLENGE_H */

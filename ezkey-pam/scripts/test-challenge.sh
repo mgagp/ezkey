@@ -44,8 +44,9 @@ if [ -z "${ENROLLMENT_ID}" ]; then
 fi
 
 restore_conf() {
+  # Copy (do not mv): later cases still need BACKUP after an early restore.
   docker exec "${CONTAINER}" sh -c \
-    "if [ -f '${BACKUP}' ]; then mv -f '${BACKUP}' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'; fi" \
+    "if [ -f '${BACKUP}' ]; then cp -a '${BACKUP}' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'; fi" \
     || true
 }
 
@@ -56,6 +57,15 @@ stop_stub() {
 }
 
 cleanup() {
+  if [ -n "${SSH_BG:-}" ]; then
+    if [ -n "${SSH_CTRL:-}" ]; then
+      printf 'quit\n' >"${SSH_CTRL}" 2>/dev/null || true
+    fi
+    kill "${SSH_BG}" 2>/dev/null || true
+    wait "${SSH_BG}" 2>/dev/null || true
+    SSH_BG=""
+  fi
+  close_ssh_ctrl 2>/dev/null || true
   stop_stub
   restore_conf
 }
@@ -85,17 +95,13 @@ clear_stale_pending() {
   fi
 }
 
-# Poll live script capture until challenge line appears (before approve).
+# Poll live capture until challenge line appears (before approve).
 wait_challenge_in_capture() {
   local want="$1"
+  local log="${2:-${SSH_LOG}}"
   local i flat raw
-  for i in $(seq 1 120); do
-    flat="$(tr -cd '\11\12\15\40-\176' <"${SSH_LOG}" 2>/dev/null || true)"
-    if echo "${flat}" | grep -qE "Ezkey challenge code: ${want}"; then
-      echo "${flat}" | grep -oE 'Ezkey challenge code: [0-9]+' | tail -n 1
-      return 0
-    fi
-    # Also accept zero-padded / unpadded match via numeric compare
+  for i in $(seq 1 160); do
+    flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
     if echo "${flat}" | grep -qE 'Ezkey challenge code: [0-9]+'; then
       raw="$(echo "${flat}" | grep -oE 'Ezkey challenge code: [0-9]+' | tail -n 1 | awk '{print $NF}')"
       if [ -n "${raw}" ] && [ "$((10#${raw}))" -eq "$((10#${want}))" ]; then
@@ -108,21 +114,45 @@ wait_challenge_in_capture() {
   return 1
 }
 
+# PTY driver + control fifo: OpenSSH keyboard-interactive reads from the PTY
+# (not redirected stdin). Helper tees live output and accepts "enter".
+SSH_CTRL=""
+
+close_ssh_ctrl() {
+  if [ -n "${SSH_CTRL}" ]; then
+    rm -f "${SSH_CTRL}" 2>/dev/null || true
+  fi
+  SSH_CTRL=""
+}
+
+send_ssh_enter() {
+  if [ -n "${SSH_CTRL}" ]; then
+    # Non-blocking writer: helper holds the read end open.
+    printf 'enter\n' >"${SSH_CTRL}" 2>/dev/null || true
+  fi
+}
+
 start_ssh_capture() {
-  : >"${SSH_LOG}"
+  local log="${1:-${SSH_LOG}}"
+  : >"${log}"
+  close_ssh_ctrl
+  # /opt/cursor/artifacts may be a FUSE mount that cannot host fifos.
+  SSH_CTRL="$(mktemp -u /tmp/pam-chal-ctrl.XXXXXX)"
+  mkfifo "${SSH_CTRL}"
+
   set +e
-  script -q -f -e -c \
-    "ssh -tt \
-      -p ${PORT} \
+  python3 "${SCRIPT_DIR}/ssh-pty-capture.py" "${log}" "${SSH_CTRL}" \
+    ssh -tt \
+      -p "${PORT}" \
       -o StrictHostKeyChecking=no \
       -o UserKnownHostsFile=/dev/null \
       -o PreferredAuthentications=keyboard-interactive \
       -o PubkeyAuthentication=no \
       -o PasswordAuthentication=no \
       -o ConnectTimeout=15 \
-      ${SSH_USER}@127.0.0.1 \
-      'echo PAM_CHALLENGE_OK; exit 0'" \
-    "${SSH_LOG}" >/dev/null 2>&1 &
+      "${SSH_USER}@127.0.0.1" \
+      'echo PAM_CHALLENGE_OK; exit 0' \
+    >/dev/null 2>&1 &
   SSH_BG=$!
   set -e
 }
@@ -141,7 +171,8 @@ docker exec "${CONTAINER}" sh -c \
    sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
    chown root:root '${CONF}'; chmod 600 '${CONF}'"
 
-start_ssh_capture
+SSH_LOG_A="${ARTIFACT_DIR}/pam-challenge-ssh-a.log"
+start_ssh_capture "${SSH_LOG_A}"
 
 ATTEMPT_ID=""
 CHALLENGE=""
@@ -165,70 +196,89 @@ fi
 echo "db: authAttemptId=${ATTEMPT_ID} challenge=${CHALLENGE}" | tee -a "${PROOF_LOG}"
 
 SHOWN=""
-if SHOWN="$(wait_challenge_in_capture "${CHALLENGE}")"; then
+if SHOWN="$(wait_challenge_in_capture "${CHALLENGE}" "${SSH_LOG_A}")"; then
   ok "SSH capture shows challenge BEFORE approve (${SHOWN})"
   {
     echo "=== LIVE capture excerpt (before approve) ==="
-    tr -cd '\11\12\15\40-\176' <"${SSH_LOG}" | grep -E 'Approve|Ezkey challenge|PAM_' || true
+    tr -cd '\11\12\15\40-\176' <"${SSH_LOG_A}" | grep -E 'Approve|Ezkey challenge|PAM_' || true
   } | tee -a "${PROOF_LOG}" | tee "${ARTIFACT_DIR}/pam-challenge-before-approve.txt"
 else
   fail "challenge ${CHALLENGE} not visible in live SSH capture before approve"
+  echo "--- capture so far ---" | tee -a "${PROOF_LOG}"
+  tr -cd '\11\12\15\40-\176' <"${SSH_LOG_A}" | tee -a "${PROOF_LOG}" || true
   kill "${SSH_BG}" 2>/dev/null || true
+  wait "${SSH_BG}" 2>/dev/null || true
+  restore_conf
+  # Still run wrong/absent cases below
+  SHOWN=""
 fi
 
-echo "Approving with challenge=${CHALLENGE} (after capture proof)" | tee -a "${PROOF_LOG}"
-"${SCRIPT_DIR}/respond-pending.sh" approve "${ENROLLMENT_ID}" "${CHALLENGE}" \
-  >"${ARTIFACT_DIR}/pam-challenge-approve.log" 2>&1
-ok "Demo Device approve with matching challenge submitted"
+if [ -n "${SHOWN}" ]; then
+  # Code is on the PTY; answer the Enter prompt so PAM proceeds to /wait,
+  # then approve — order proves display-before-approve (Patrick).
+  echo "Sending Enter on SSH stdin (after live capture proof)" | tee -a "${PROOF_LOG}"
+  send_ssh_enter
+  sleep 0.3
+  echo "Approving with challenge=${CHALLENGE} (after capture proof)" | tee -a "${PROOF_LOG}"
+  "${SCRIPT_DIR}/respond-pending.sh" approve "${ENROLLMENT_ID}" "${CHALLENGE}" \
+    >"${ARTIFACT_DIR}/pam-challenge-approve.log" 2>&1
+  ok "Demo Device approve with matching challenge submitted"
 
-set +e
-wait "${SSH_BG}"
-SSH_RC=$?
-set -e
+  set +e
+  wait "${SSH_BG}"
+  SSH_RC=$?
+  set -e
 
-FLAT="$(tr -cd '\11\12\15\40-\176' <"${SSH_LOG}" 2>/dev/null || true)"
-{
-  echo "--- SSH typescript (full) ---"
-  echo "${FLAT}"
-  echo "--- end ---"
-  echo "ssh_rc=${SSH_RC}"
-} >>"${PROOF_LOG}"
-cp -f "${SSH_LOG}" "${ARTIFACT_DIR}/pam-challenge-ssh-proof.txt"
+  FLAT="$(tr -cd '\11\12\15\40-\176' <"${SSH_LOG_A}" 2>/dev/null || true)"
+  {
+    echo "--- SSH typescript (full) ---"
+    echo "${FLAT}"
+    echo "--- end ---"
+    echo "ssh_rc=${SSH_RC}"
+  } >>"${PROOF_LOG}"
+  cp -f "${SSH_LOG_A}" "${ARTIFACT_DIR}/pam-challenge-ssh-proof.txt"
+  cp -f "${SSH_LOG_A}" "${SSH_LOG}"
 
-if [ "${SSH_RC}" -eq 0 ] && echo "${FLAT}" | grep -q PAM_CHALLENGE_OK; then
-  ok "SSH session succeeded after challenge match + approve"
-else
-  fail "SSH did not complete PAM_CHALLENGE_OK (rc=${SSH_RC})"
-fi
+  # Marker is authoritative: ssh -tt under a PTY helper can return non-zero
+  # even when the remote command printed PAM_CHALLENGE_OK and PAM SUCCESS.
+  if echo "${FLAT}" | grep -q PAM_CHALLENGE_OK; then
+    ok "SSH session succeeded after challenge match + approve (rc=${SSH_RC})"
+  else
+    fail "SSH did not complete PAM_CHALLENGE_OK (rc=${SSH_RC})"
+  fi
+  SSH_BG=""
+  close_ssh_ctrl
 
-ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
-  "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
-echo "attempt_line=${ATTEMPT}" >>"${PROOF_LOG}"
-if echo "${ATTEMPT}" | grep -q "authAttemptId=${ATTEMPT_ID}" \
-  && echo "${ATTEMPT}" | grep -q 'result=SUCCESS' \
-  && echo "${ATTEMPT}" | grep -q 'lab_http=true'; then
-  ok "attempt line SUCCESS + lab_http=true for authAttemptId=${ATTEMPT_ID}"
-else
-  fail "expected SUCCESS lab_http=true for id=${ATTEMPT_ID}: ${ATTEMPT}"
-fi
+  ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
+    "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
+  echo "attempt_line=${ATTEMPT}" >>"${PROOF_LOG}"
+  if echo "${ATTEMPT}" | grep -q "authAttemptId=${ATTEMPT_ID}" \
+    && echo "${ATTEMPT}" | grep -q 'result=SUCCESS' \
+    && echo "${ATTEMPT}" | grep -q 'lab_http=true'; then
+    ok "attempt line SUCCESS + lab_http=true for authAttemptId=${ATTEMPT_ID}"
+  else
+    fail "expected SUCCESS lab_http=true for id=${ATTEMPT_ID}: ${ATTEMPT}"
+  fi
 
-DB_PROOF="${ARTIFACT_DIR}/pam-challenge-db.txt"
-docker exec -e PGPASSWORD=ezkey ezkey-postgres \
-  psql -U postgres -d ezkey_db -c \
-  "SELECT auth_attempt_id, enrollment_id, auth_attempt_status, auth_attempt_challenge
-   FROM ezkey_auth_attempt WHERE auth_attempt_id = ${ATTEMPT_ID};" \
-  | tee "${DB_PROOF}" | tee -a "${PROOF_LOG}"
-DB_ROW="$(docker exec -e PGPASSWORD=ezkey ezkey-postgres \
-  psql -U postgres -d ezkey_db -At -c \
-  "SELECT auth_attempt_status || '|' || COALESCE(auth_attempt_challenge::text,'')
-   FROM ezkey_auth_attempt WHERE auth_attempt_id = ${ATTEMPT_ID};" 2>/dev/null || true)"
-if [ "${DB_ROW}" = "ACCEPTED|${CHALLENGE}" ]; then
-  ok "DB row ACCEPTED with challenge=${CHALLENGE}"
-else
-  fail "DB expected ACCEPTED|${CHALLENGE}, got '${DB_ROW}'"
+  DB_PROOF="${ARTIFACT_DIR}/pam-challenge-db.txt"
+  docker exec -e PGPASSWORD=ezkey ezkey-postgres \
+    psql -U postgres -d ezkey_db -c \
+    "SELECT auth_attempt_id, enrollment_id, auth_attempt_status, auth_attempt_challenge
+     FROM ezkey_auth_attempt WHERE auth_attempt_id = ${ATTEMPT_ID};" \
+    | tee "${DB_PROOF}" | tee -a "${PROOF_LOG}"
+  DB_ROW="$(docker exec -e PGPASSWORD=ezkey ezkey-postgres \
+    psql -U postgres -d ezkey_db -At -c \
+    "SELECT auth_attempt_status || '|' || COALESCE(auth_attempt_challenge::text,'')
+     FROM ezkey_auth_attempt WHERE auth_attempt_id = ${ATTEMPT_ID};" 2>/dev/null || true)"
+  if [ "${DB_ROW}" = "ACCEPTED|${CHALLENGE}" ]; then
+    ok "DB row ACCEPTED with challenge=${CHALLENGE}"
+  else
+    fail "DB expected ACCEPTED|${CHALLENGE}, got '${DB_ROW}'"
+  fi
 fi
 
 restore_conf
+clear_stale_pending
 
 # ---------------------------------------------------------------------------
 # Case B — wrong code → refusal (DENIED), SSH fails
@@ -240,7 +290,8 @@ docker exec "${CONTAINER}" sh -c \
    sed -i 's/^wait_timeout=.*/wait_timeout=45/' '${CONF}'; \
    chown root:root '${CONF}'; chmod 600 '${CONF}'"
 
-start_ssh_capture
+SSH_LOG_B="${ARTIFACT_DIR}/pam-challenge-ssh-b.log"
+start_ssh_capture "${SSH_LOG_B}"
 ATTEMPT_ID=""
 CHALLENGE=""
 for _ in $(seq 1 80); do
@@ -253,19 +304,24 @@ for _ in $(seq 1 80); do
   sleep 0.25
 done
 
-WRONG="$(( (10#${CHALLENGE} + 1) % 100 ))"
+WRONG="$(( (10#${CHALLENGE:-0} + 1) % 100 ))"
 WRONG="$(printf '%02d' "${WRONG}")"
-if [ "$((10#${WRONG}))" -eq "$((10#${CHALLENGE}))" ]; then
+if [ "$((10#${WRONG}))" -eq "$((10#${CHALLENGE:-0}))" ]; then
   WRONG="00"
-  if [ "$((10#${CHALLENGE}))" -eq 0 ]; then
+  if [ "$((10#${CHALLENGE:-0}))" -eq 0 ]; then
     WRONG="01"
   fi
 fi
 
-if [ -n "${CHALLENGE}" ] && wait_challenge_in_capture "${CHALLENGE}" >/dev/null; then
+if [ -n "${CHALLENGE}" ] && wait_challenge_in_capture "${CHALLENGE}" "${SSH_LOG_B}" >/dev/null; then
   ok "wrong-code case: challenge visible before reject attempt"
+  tr -cd '\11\12\15\40-\176' <"${SSH_LOG_B}" | grep -E 'Ezkey challenge' \
+    | tee -a "${PROOF_LOG}" | tee "${ARTIFACT_DIR}/pam-challenge-wrong-before.txt" || true
+  send_ssh_enter
+  sleep 0.3
 else
   fail "wrong-code case: no challenge in capture"
+  send_ssh_enter
 fi
 
 echo "Approving with WRONG challenge=${WRONG} (want ${CHALLENGE})" | tee -a "${PROOF_LOG}"
@@ -279,6 +335,8 @@ set +e
 wait "${SSH_BG}"
 SSH_RC=$?
 set -e
+SSH_BG=""
+close_ssh_ctrl
 
 ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
   "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
