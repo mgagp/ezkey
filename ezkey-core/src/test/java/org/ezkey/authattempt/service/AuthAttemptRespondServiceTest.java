@@ -131,7 +131,7 @@ class AuthAttemptRespondServiceTest {
   @DisplayName("Wrong challenge returns signed FAILED (non-regression #844)")
   void respond_wrongChallenge_returnsSignedFailedResult() {
     AuthAttempt attempt = readAttempt();
-    attempt.setAuthAttemptChallenge("42");
+    attempt.setAuthAttemptChallenge(42);
     Enrollment enrollment = enrollmentWithKeys();
     enrollment.setAuthAttemptChallengeRequired(true);
 
@@ -144,7 +144,7 @@ class AuthAttemptRespondServiceTest {
         .thenReturn("signed-failed-challenge-b64");
 
     AuthAttemptRespondRequest request = approveRequest();
-    request.setAuthAttemptChallengeResponse("99");
+    request.setAuthAttemptChallengeResponse(99);
 
     AuthAttemptRespondResponse response = respondService.respond(request);
 
