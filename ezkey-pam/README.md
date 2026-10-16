@@ -133,7 +133,8 @@ ssh -p 2223 \
 | `wait_timeout` | `90` | Seconds to wait for device approval |
 | `wait_polling` | `2` | Wait poll interval |
 | `api_timeout` | `10` | Timeout for the create call |
-| `challenge_requested` | `false` | Extra numeric challenge (off for SSH demo) |
+| `challenge_requested` | `false` | Two-digit number-matching; `true` shows code via SSH `pam_info` before wait |
+| `lab_http` | `false` | Allow `http://` Integration API URL (Docker entrypoint sets `true`) |
 | `context_title` | `SSH login` | Title shown on the device |
 | `context_message` | *(generated)* | Message shown on the device |
 | `debug` | `false` | Extra filelog `/var/log/ezkey-pam/debug.{out,err}` (Docker lab entrypoint sets `true`) |

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Poll Demo Device for a pending auth request and approve or reject it.
-# Usage: ./scripts/respond-pending.sh [approve|reject] [enrollmentId]
+# Usage: ./scripts/respond-pending.sh [approve|reject] [enrollmentId] [challengeCode]
+# challengeCode is required when the pending card asks for number-matching.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,7 +15,7 @@ ACTION="${1:-approve}"
 case "${ACTION}" in
   approve|reject) ;;
   *)
-    echo "Usage: $0 [approve|reject] [enrollmentId]" >&2
+    echo "Usage: $0 [approve|reject] [enrollmentId] [challengeCode]" >&2
     exit 1
     ;;
 esac
@@ -24,9 +25,11 @@ if [ -z "${ENROLLMENT_ID}" ] && [ -f "${RUNTIME_DIR}/provision.json" ]; then
   ENROLLMENT_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["enrollmentId"])' "${RUNTIME_DIR}/provision.json")"
 fi
 if [ -z "${ENROLLMENT_ID}" ]; then
-  echo "Usage: $0 [approve|reject] [enrollmentId]" >&2
+  echo "Usage: $0 [approve|reject] [enrollmentId] [challengeCode]" >&2
   exit 1
 fi
+
+CHALLENGE="${3:-${EZKEY_CHALLENGE_CODE:-}}"
 
 APPROVED="true"
 if [ "${ACTION}" = "reject" ]; then
@@ -42,13 +45,27 @@ for i in $(seq 1 45); do
   if echo "${html}" | grep -q 'data-testid="demo-device-auth-pending"'; then
     attempt_id="$(html_input_value "${html}" authAttemptId)"
     proof="$(html_input_value "${html}" authAttemptProofToken)"
+    need_chal=0
+    if echo "${html}" | grep -q 'data-testid="demo-device-challenge-input"'; then
+      need_chal=1
+    fi
+    if [ "${need_chal}" -eq 1 ] && [ -z "${CHALLENGE}" ]; then
+      echo "Pending auth requires a challenge code (pass as arg 3 or EZKEY_CHALLENGE_CODE)" >&2
+      exit 1
+    fi
     echo "Responding (${ACTION}) auth attempt ${attempt_id} for enrollment ${ENROLLMENT_ID}"
+    POST_ARGS=(
+      -X POST
+      -H "Content-Type: application/x-www-form-urlencoded"
+      --data-urlencode "authAttemptId=${attempt_id}"
+      --data-urlencode "authAttemptProofToken=${proof}"
+      --data-urlencode "approved=${APPROVED}"
+    )
+    if [ -n "${CHALLENGE}" ]; then
+      POST_ARGS+=(--data-urlencode "challengeResponse=${CHALLENGE}")
+    fi
     result="$(curl -fsS -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" \
-      -X POST \
-      -H "Content-Type: application/x-www-form-urlencoded" \
-      --data-urlencode "authAttemptId=${attempt_id}" \
-      --data-urlencode "authAttemptProofToken=${proof}" \
-      --data-urlencode "approved=${APPROVED}" \
+      "${POST_ARGS[@]}" \
       "${DEMO_DEVICE_URL}/phone/ezkey/enrollments/${ENROLLMENT_ID}/auth/respond")"
     if [ "${ACTION}" = "approve" ]; then
       if echo "${result}" | grep -q 'data-testid="demo-device-result-success"'; then
@@ -56,7 +73,6 @@ for i in $(seq 1 45); do
         exit 0
       fi
     else
-      # Rejected path: success page or rejected marker
       if echo "${result}" | grep -qiE 'reject|denied|demo-device-result'; then
         echo "Demo Device reject submitted"
         exit 0

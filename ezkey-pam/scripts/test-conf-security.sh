@@ -143,7 +143,22 @@ expect_unavail "non-root owner (${SSH_USER})"
 restore_conf
 docker exec "${CONTAINER}" sh -c \
   "sed -i 's|^integration_api_url=.*|integration_api_url=|' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'"
-expect_unavail "URL absent"
+expect_unavail "URL absent (empty value)"
+
+# --- URL key line removed entirely → UNAVAIL (Patrick nit) ---
+restore_conf
+docker exec "${CONTAINER}" sh -c \
+  "sed -i '/^integration_api_url=/d' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'"
+expect_unavail "URL absent (key line deleted)"
+
+# --- http:// without lab_http → UNAVAIL (fail-closed outside lab) ---
+restore_conf
+docker exec "${CONTAINER}" sh -c \
+  "grep -q '^lab_http=' '${CONF}' || echo 'lab_http=true' >> '${CONF}'; \
+   sed -i 's/^lab_http=.*/lab_http=false/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:9|' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+expect_unavail "http:// with lab_http=false"
 
 # --- missing secret_key must fail closed ---
 restore_conf

@@ -67,6 +67,7 @@ wait_timeout=${WAIT_TIMEOUT}
 wait_polling=${WAIT_POLLING}
 api_timeout=${API_TIMEOUT}
 challenge_requested=false
+lab_http=true
 context_title=${TITLE}
 context_message=${MESSAGE}
 debug=${DEBUG}

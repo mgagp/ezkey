@@ -55,6 +55,10 @@ typedef struct {
     int wait_polling;
     int api_timeout;
     int challenge_requested;
+    /* When 0 (default), only https:// Integration API URLs are accepted.
+     * Docker lab entrypoint sets lab_http=true so http:// on the compose
+     * network is allowed. Host/EXP1 must leave this false. */
+    int lab_http;
     char context_title[EZKEY_TITLE_MAX + 1];
     char context_message[EZKEY_MESSAGE_MAX + 1];
     int debug;
@@ -93,6 +97,7 @@ static void ezkey_config_init(EzkeyConfig *cfg) {
     cfg->wait_polling = EZKEY_DEFAULT_WAIT_POLLING;
     cfg->api_timeout = EZKEY_DEFAULT_API_TIMEOUT;
     cfg->challenge_requested = 0;
+    cfg->lab_http = 0;
     cfg->debug = 0;
     strncpy(cfg->context_title, "SSH login", sizeof(cfg->context_title) - 1);
     strncpy(cfg->config_file, EZKEY_DEFAULT_CONFIG_FILE,
@@ -197,6 +202,8 @@ static void apply_config_key(EzkeyConfig *cfg, const char *key,
         cfg->api_timeout = parse_positive_int(value, cfg->api_timeout);
     } else if (strcmp(key, "challenge_requested") == 0) {
         cfg->challenge_requested = parse_bool(value);
+    } else if (strcmp(key, "lab_http") == 0) {
+        cfg->lab_http = parse_bool(value);
     } else if (strcmp(key, "context_title") == 0) {
         set_cfg_str(cfg->context_title, sizeof(cfg->context_title), value);
     } else if (strcmp(key, "context_message") == 0) {
@@ -517,14 +524,31 @@ static int ezkey_http(const char *url, const char *userpwd, const char *post_bod
     return res;
 }
 
+/**
+ * Map unexpected HTTP status to PAM. Transport/config failures are UNAVAIL
+ * (not AUTH_ERR): 401/404/5xx all deny under required/requisite the same way,
+ * but UNAVAIL signals “MFA service unavailable” to the stack (Christophe nit).
+ */
 static int pam_rc_for_http(long http_code, long expected) {
     if (http_code == expected) {
         return PAM_SUCCESS;
     }
-    if (http_code >= 500 || http_code == 0) {
-        return PAM_AUTHINFO_UNAVAIL;
-    }
+    (void)http_code;
     return PAM_AUTHINFO_UNAVAIL;
+}
+
+/** https always OK; http only when lab_http=true (compose / CI lab). */
+static int ezkey_api_url_allowed(const EzkeyConfig *cfg) {
+    if (cfg == NULL || cfg->api_url[0] == '\0') {
+        return 0;
+    }
+    if (strncmp(cfg->api_url, "https://", 8) == 0) {
+        return 1;
+    }
+    if (cfg->lab_http && strncmp(cfg->api_url, "http://", 7) == 0) {
+        return 1;
+    }
+    return 0;
 }
 
 static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
@@ -543,8 +567,10 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     int curl_inited = 0;
     cJSON *root;
     cJSON *id_val;
+    cJSON *chal_val;
     cJSON *status_val;
     int accepted;
+    long challenge = -1;
     char msg[512];
 
     if (auth_attempt_id_out != NULL) {
@@ -556,6 +582,13 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
         log_pam_error_debug(pamh, cfg,
                             "integration_api_url, integration_key, or "
                             "secret_key missing from conf");
+        wipe_cfg_secrets(cfg);
+        return PAM_AUTHINFO_UNAVAIL;
+    }
+    if (!ezkey_api_url_allowed(cfg)) {
+        log_pam_error_debug(pamh, cfg,
+                            "integration_api_url must be https:// "
+                            "(or http:// with lab_http=true)");
         wipe_cfg_secrets(cfg);
         return PAM_AUTHINFO_UNAVAIL;
     }
@@ -634,11 +667,51 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     if (auth_attempt_id_out != NULL) {
         *auth_attempt_id_out = auth_attempt_id;
     }
+    chal_val = cJSON_GetObjectItemCaseSensitive(root, "authAttemptChallenge");
+    if (cJSON_IsNumber(chal_val)) {
+        challenge = (long)chal_val->valuedouble;
+    }
     cJSON_Delete(root);
     ezkey_buf_free(&buf);
 
     snprintf(msg, sizeof(msg), "Auth attempt created, id=%ld", auth_attempt_id);
     log_pam_info(pamh, cfg, msg);
+
+    /*
+     * Two-digit challenge (number matching): when challenge_requested, the
+     * create response carries authAttemptChallenge. Show it via PAM conversation
+     * (PAM_TEXT_INFO / pam_info) before /wait so the SSH user can confirm the
+     * same code on the device. Never syslog the numeric value (#750).
+     */
+    if (cfg->challenge_requested) {
+        if (challenge < 0) {
+            log_pam_error_debug(pamh, cfg,
+                                "challenge_requested but create response "
+                                "omitted authAttemptChallenge");
+            pam_rc = PAM_AUTHINFO_UNAVAIL;
+            goto cleanup;
+        }
+        snprintf(msg, sizeof(msg),
+                 "Ezkey challenge code: %02ld — enter this code on your Ezkey "
+                 "device, then approve.",
+                 challenge);
+        /*
+         * pam_info alone is sometimes not flushed by OpenSSH until a prompt
+         * follows. Use PAM_TEXT_INFO via pam_prompt so keyboard-interactive
+         * always surfaces the code (no echo of a secret — informational only).
+         */
+        {
+            char *resp = NULL;
+            int prc = pam_prompt(pamh, PAM_TEXT_INFO, &resp, "%s", msg);
+            if (resp != NULL) {
+                free(resp);
+            }
+            if (prc != PAM_SUCCESS) {
+                /* Fall back — still attempt auth wait. */
+                pam_info(pamh, "%s", msg);
+            }
+        }
+    }
 
     snprintf(wait_url, sizeof(wait_url),
              "%s/api/v1/auth-attempts/%ld/wait?timeout=%d&polling=%d", api_url,
@@ -772,6 +845,13 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
         log_pam_error_debug(pamh, &cfg,
                             "Missing integration_api_url, integration_key, or "
                             "secret_key in conf");
+        retval = PAM_AUTHINFO_UNAVAIL;
+        goto done;
+    }
+    if (!ezkey_api_url_allowed(&cfg)) {
+        log_pam_error_debug(pamh, &cfg,
+                            "integration_api_url must be https:// "
+                            "(or http:// with lab_http=true)");
         retval = PAM_AUTHINFO_UNAVAIL;
         goto done;
     }

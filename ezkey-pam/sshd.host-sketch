@@ -7,6 +7,9 @@
 #   - Named break-glass account skips pam_ezkey (console / emergency access).
 #   - Never put pam_ezkey on a path that locks root console without a tested bypass.
 #   - Do NOT enable Duo-style failmode=safe inside pam_ezkey.
+#   - Keep pam_ezkey as required/requisite. PAM_AUTHINFO_UNAVAIL is fail-closed only
+#     with those controls; sufficient or [default=ignore] makes MFA fail-open.
+#   - Use https:// Integration API URL; leave lab_http=false on the host conf.
 #
 # Contrast with the demo stack in ./sshd (Ezkey-only + pam_permit): that stack is
 # valid only for the disposable Docker SSH VM.

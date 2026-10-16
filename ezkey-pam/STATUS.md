@@ -45,10 +45,10 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.1** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
+Version **2.2.2** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
 (observability + conf `root:root` exact `0600`/`0400`, no URL default, no process-ENV
-overrides). It is still **not** a host-operable MFA agent on EXP1 (sshd cutover remains
-slice #4+).
+overrides, `lab_http` gate, optional two-digit challenge via `pam_info`). It is still
+**not** a host-operable MFA agent on EXP1 (sshd cutover remains slice #4+).
 
 Proven in this repository (clean-start stack + Demo Device + Admin UI):
 
@@ -100,7 +100,8 @@ owner `root:root` in the demo image. That path and style match Linux-PAM convent
 | `integration_api_url` | Integration API base URL (**required**; no compiled-in default) | Yes for Docker DNS; EXP1 needs HTTPS |
 | `integration_key` / `secret_key` | Basic auth | Yes; file perms are the control |
 | `wait_timeout` / `wait_polling` / `api_timeout` | HTTP waits | Yes |
-| `challenge_requested` | Extra numeric challenge | Yes (keep `false` for SSH) |
+| `challenge_requested` | Two-digit number-matching challenge | Yes — `true` shows code via `pam_info` before `/wait` |
+| `lab_http` | Allow `http://` URL | Docker entrypoint sets `true`; host sample default `false` |
 | `context_title` / `context_message` | Device copy | Yes |
 | `debug` | Extra filelog under `/var/log/ezkey-pam/` (`O_NOFOLLOW`, 0600) | Docker lab entrypoint sets `true`; sample conf default `false` (#818) |
 
@@ -120,14 +121,15 @@ operational (TLS, live sshd cutover), not “more keys.”
 
 ### Known demo limits (honest)
 
-- **HTTP** to `integration-api:7080`. No TLS verify knobs. Fine on a compose network; not fine
-  on a public hostname. (Slice #4+)
+- **HTTP** to `integration-api:7080` only with **`lab_http=true`** (entrypoint sets it). Outside
+  lab, `http://` → `PAM_AUTHINFO_UNAVAIL`. No TLS verify knobs yet. (Slice #4+ / EXP1 HTTPS)
 - **Demo PAM stack is Ezkey-only** (`pam_ezkey` + `pam_permit`). Host-oriented sketch lives in
   [`sshd.host-sketch`](sshd.host-sketch) — not applied to EXP1.
 - **`install.sh` can still build on the host.** Prefer image-matched extract for real hosts
   (`./scripts/build-al2023.sh --extract` for AL2023).
 - **Debug file transcripts** live under `/var/log/ezkey-pam/` only when `debug=true` (#818);
-  never `/tmp`. Bodies / proof tokens are not logged (slice #1).
+  never `/tmp`. Bodies / proof tokens are not logged (slice #1). Demo entrypoint defaults
+  `debug=true` (no filelog rotation) — intentional for lab transcripts.
 - **`PerSourcePenalties no`** in demo [`sshd_config`](sshd_config) (OpenSSH 9.9+). Stock
   `authfail:5` blocks localhost after a handful of denied logins and breaks M1 conf-security
   rapid UNAVAIL proofs. **Lab only** — do not copy this disable onto a hardened EXP1 host.
@@ -341,8 +343,10 @@ Each slice should stay mergeable on its own:
   Deal with it on the AL2023 dogfood host; do not pre-build a policy pack.
 - **sudo later.** Same `.so` can appear in `/etc/pam.d/sudo` once SSH is boring. Do not couple
   the first slice to sudo.
-- **Challenge PIN.** Keep `challenge_requested=false` for SSH. A PIN is essential complexity for
-  a TTY-less or delayed SSH UX.
+- **Challenge (number matching).** Supported when `challenge_requested=true`: create response
+  `authAttemptChallenge` is shown with `pam_info` (SSH keyboard-interactive) before `/wait`.
+  Device must enter the same code. Default demo conf stays `false` for simpler SSH proof;
+  `./scripts/test-challenge.sh` exercises the path.
 - **Observability.** Operator proof is Ezkey audit (`AUTH_ATTEMPT_*`) plus host `authpriv`. Do not
   add a metrics sidecar in the module.
 - **Methodology.** This stays a hygiene/lab map in `ezkey-pam/`. Promote an `I-*` / `TB-*` only
@@ -446,11 +450,12 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 
 | Script | Proves |
 |---|---|
-| `scripts/test-observability.sh` | success / reject / timeout / network → exactly one clean attempt line; secrets absent from secure + debug logs; polled waits (no bare sleep-only proofs). Requires clean-start + Demo Device (local). |
-| `scripts/test-conf-security.sh` | baseline `root:root` `0600`; `0644` / `0000` / non-root owner / URL absent / missing `secret_key` → deny + `UNAVAIL`. Fails if ikey/skey empty. |
+| `scripts/test-observability.sh` | success / reject / timeout / network → exactly one clean attempt line; secrets absent from secure + debug logs; polled waits. Requires clean-start + Demo Device (local). |
+| `scripts/test-conf-security.sh` | baseline `root:root` `0600`; `0644` / `0000` / non-root / URL absent (empty + deleted line) / `http://`+`lab_http=false` / missing `secret_key` → `UNAVAIL`. |
+| `scripts/test-challenge.sh` | `challenge_requested=true` → SSH shows `Ezkey challenge code: NN`; Demo Device approve with same digits → `SUCCESS`. |
 | `test/test_conf_security.sh` | in-container owner/mode/keys self-check (also via `up.sh` path) |
 | `make test` | check-source + compile + filelog harness + sanitize harness (`>=0x7f`, space, `=`) |
-| CI `ezkey-pam` job | `make test` + Rocky builder + `scripts/ci-m1-conf-security.sh` (runtime + conf-security: B1 / 0000 / non-root / URL absent) → `ci-gate` |
+| CI `ezkey-pam` job | `make test` + Rocky builder + `scripts/ci-m1-conf-security.sh` (incl. `lab_http` gate) → `ci-gate` |
 
 ### Lessons learned (M1)
 
@@ -477,16 +482,63 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 9. **CodeQL c-cpp.** Advanced setup formerly used `build-mode: none` for C/C++, which does not
    extract compiled C reliably. Workflow now builds `ezkey-pam` so `pam_ezkey.c` is in the DB.
 
-### Follow-ups (listed only — not fixed in M1)
+### Two-digit challenge (number matching)
 
-| Item | Note |
+**Supported (2.2.2+).** When `challenge_requested=true`:
+
+1. `POST /api/v1/auth-attempts` with `challengeRequested=true`.
+2. Integration API returns `authAttemptChallenge` (default **2** digits —
+   `ezkey.core.auth-attempt.challenge-digits`).
+3. Module calls `pam_info()` with `Ezkey challenge code: NN — enter this code…` **before**
+   `GET …/wait` (SSH keyboard-interactive surfaces `PAM_TEXT_INFO`).
+4. Device (Demo Device / mobile) must submit matching `challengeResponse` on approve.
+5. Fail-closed: `challenge_requested` but missing `authAttemptChallenge` → `PAM_AUTHINFO_UNAVAIL`.
+6. Challenge value is **not** written to authpriv attempt lines (#750).
+
+Proof: `./scripts/test-challenge.sh` (artifacts under `/opt/cursor/artifacts/pam-challenge-*`).
+
+**Isabelle (Pixel):** with a host/conf that sets `challenge_requested=true`, start SSH, note the
+two-digit code on the terminal, open the pending card, confirm the app asks for a challenge,
+enter the **same** digits, approve — login should succeed. Wrong digits → attempt `INVALID` /
+SSH denied.
+
+### `/wait` response signature — assessed, deferred to EXP1
+
+| Question | Finding |
 |---|---|
-| `/wait` response not signature-verified on PAM side | Trusts HTTPS/HTTP body integrity from Integration API; protocol hardening later |
-| Demo over `http://` | Compose lab uses `http://integration-api:7080`; fine on the private network |
-| Refuse `http://` outside lab before EXP1 | Host cutover must require HTTPS (or explicit lab build flag) before dogfood |
+| Does Ezkey sign `/wait` JSON today? | **No.** `AuthAttemptWaitResponseDto` is `{authAttempt, status, completed, timeoutReached, waitDuration, completedAt}` — no detached signature field. |
+| What *is* signed? | Device **respond** payload (Ed25519) verified by Auth/Integration services before status becomes `ACCEPTED`. |
+| What PAM trusts today | TLS (or lab `http://` + private compose net) + HTTP Basic to Integration API; then trusts `status==ACCEPTED`. |
+| Why not implement in M1? | Would need a **new API contract** (server-signed wait receipt + key material the `.so` can verify) or shipping enrollment device public keys into the PAM host — both disproportionate for lab M1 and change Integration API surface. |
+| EXP1 direction | Prefer mandatory HTTPS to Integration API first; optional wait-receipt signature if threat model requires binding ACCEPTED to a non-MITM guarantee beyond TLS. |
+
+### Review inventory (Patrick + Christophe) — done / deferred
+
+| Source | Item | Status |
+|---|---|---|
+| Patrick B1 | No URL default; empty/missing → UNAVAIL + test | **Done** |
+| Patrick | Conf via temp + `install -m 600`; heredoc CR/LF reject | **Done** |
+| Patrick | Non-root owner + mode `0000` tests | **Done** |
+| Patrick | Document `EZKEY_CONFIG_FILE` (entrypoint-only) | **Done** |
+| Patrick | CI builds/tests module; CodeQL c-cpp manual build | **Done** (`ezkey-pam` job + `ci-m1-conf-security`) |
+| Patrick | `PerSourcePenalties no` in demo limits | **Done** |
+| Patrick | URL absent deletes key line (nit) | **Done** (extra conf-security case) |
+| Patrick | `-Wformat-truncation` POST debug | **Done** |
+| Patrick | Full `test-observability` in CI | **Deferred** — needs clean-start + Demo Device; CI runs conf-security (B1/0000/non-root) + sanitize harness instead |
+| Christophe | Sanitize space/`=`/`>=0x80` | **Done** |
+| Christophe | Wipe secrets all exits | **Done** |
+| Christophe | No process ENV in `.so` | **Done** |
+| Christophe | Exact mode 0600\|0400 (reject 0000) | **Done** |
+| Christophe | Document UNAVAIL + `sufficient` fail-open | **Done** (STATUS, README, `sshd.host-sketch`) |
+| Christophe | Deterministic waits; secret grep all logs; fail if keys empty | **Done** |
+| Christophe | Conf mktemp not under `/tmp` | **Done** (`/etc/security`) |
+| Christophe | `pam_rc_for_http` 401/404 → UNAVAIL | **Done** (documented; branches intentional) |
+| Christophe | Demo debug always on / no filelog rotation | **Deferred** — lab intentional; host sample `debug=false` |
+| Christophe / follow-up | Refuse `http://` outside lab | **Done** (`lab_http`, default false) |
+| Christophe / follow-up | `/wait` signature on PAM | **Deferred** — see assessment above (no API signature today) |
+| Marc budget | Two-digit challenge UX | **Done** (`challenge_requested` + `pam_info` + `test-challenge.sh`) |
 
 ### Out of M1
 
-EXP1 cutover, TLS verify knobs, packages, `failmode=safe`, sudo, username maps, AWS, ezkey.online.
-Full SSH M1 scripts (`test-observability.sh` / `test-conf-security.sh`) still need the local
-clean-start stack + Demo Device; CI covers compile + filelog harness + Docker builder.
+EXP1 cutover, TLS verify knobs / curl CA pins, packages, `failmode=safe`, sudo, username maps,
+AWS, ezkey.online, wait-receipt signatures, full observability success/reject in CI.
