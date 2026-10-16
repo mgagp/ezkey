@@ -119,6 +119,9 @@ Norm tags support later gap review. They do **not** imply certification coverage
 Name milestones after the campaign goal and date window. Name runs after who/what executed them
 (person handle or `mcp-agent-<date>`), never after secrets or personal contact data.
 
+External mobile tester campaigns: see [`tester-onboarding.md`](tester-onboarding.md) (one run per
+step per tester; short handle only, never an email address).
+
 ## Relationship with the test pyramid
 
 ```text
@@ -201,6 +204,7 @@ order under [`../methodology/README.md`](../methodology/README.md).
 ## Related documents
 
 - [`spec-test-traceability.md`](spec-test-traceability.md) — feature ↔ spec ↔ automated tests
+- [`tester-onboarding.md`](tester-onboarding.md) — external mobile tester onboarding runbook (FR)
 - [`normative-posture.md`](normative-posture.md) — SOC 2 reference vocabulary; no parallel program
 - [`architecture-decisions.md`](architecture-decisions.md) — ADR-0014
 - [`../GOVERNANCE.md`](../GOVERNANCE.md) — ownership and change rules
