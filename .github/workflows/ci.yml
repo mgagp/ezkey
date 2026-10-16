@@ -36,6 +36,7 @@ jobs:
       backend: ${{ steps.resolve.outputs.backend }}
       mobile: ${{ steps.resolve.outputs.mobile }}
       cli-python: ${{ steps.resolve.outputs.cli-python }}
+      ezkey-pam: ${{ steps.resolve.outputs.ezkey-pam }}
       workflows: ${{ steps.resolve.outputs.workflows }}
     steps:
       - name: Checkout
@@ -84,6 +85,8 @@ jobs:
               - 'ezkey_mobile/**'
             cli-python:
               - 'ezkey-cli-python/**'
+            ezkey-pam:
+              - 'ezkey-pam/**'
 
       # Manual runs must exercise every suite; path filters alone would skip all
       # and leave ci-gate green with nothing checked.
@@ -96,6 +99,7 @@ jobs:
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "mobile=true" >> "$GITHUB_OUTPUT"
             echo "cli-python=true" >> "$GITHUB_OUTPUT"
+            echo "ezkey-pam=true" >> "$GITHUB_OUTPUT"
             echo "workflows=true" >> "$GITHUB_OUTPUT"
             echo "Forced all suites (workflow_dispatch)"
           else
@@ -103,6 +107,7 @@ jobs:
             echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
             echo "mobile=${{ steps.filter.outputs.mobile }}" >> "$GITHUB_OUTPUT"
             echo "cli-python=${{ steps.filter.outputs.cli-python }}" >> "$GITHUB_OUTPUT"
+            echo "ezkey-pam=${{ steps.filter.outputs.ezkey-pam }}" >> "$GITHUB_OUTPUT"
             echo "workflows=${{ steps.filter.outputs.workflows }}" >> "$GITHUB_OUTPUT"
           fi
 
@@ -287,11 +292,43 @@ jobs:
       - name: Smoke entry point
         run: ezkey --help
 
+  # PAM module: host compile + filelog harness + Rocky Docker builder.
+  # Full SSH M1 scripts (observability / conf-security) need the local clean-start
+  # stack + Demo Device — not a PR gate (same posture as Playwright).
+  ezkey-pam:
+    name: ezkey-pam
+    needs: changes
+    if: needs.changes.outputs.ezkey-pam == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: ezkey-pam
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install PAM build dependencies
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential libpam0g-dev libcurl4-openssl-dev libcjson-dev
+
+      - name: make test (check-source + compile + filelog harness)
+        run: make test
+
+      - name: Docker builder (Rocky pam_ezkey.so)
+        run: docker build --target builder -t ezkey-pam-builder:ci .
+
   # Single required-check candidate. Skipped path jobs count as success for the gate;
   # failure or cancellation of any needed job fails the gate.
   ci-gate:
     name: ci-gate
-    needs: [changes, admin-ui, backend, mobile, cli-python]
+    needs: [changes, admin-ui, backend, mobile, cli-python, ezkey-pam]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -304,6 +341,7 @@ jobs:
           echo "backend=${{ needs.backend.result }}"
           echo "mobile=${{ needs.mobile.result }}"
           echo "cli-python=${{ needs.cli-python.result }}"
+          echo "ezkey-pam=${{ needs.ezkey-pam.result }}"
 
           if [[ "${{ needs.changes.result }}" != "success" ]]; then
             echo "::error::changes job did not succeed (${{ needs.changes.result }})"
@@ -314,7 +352,8 @@ jobs:
             "admin-ui:${{ needs.admin-ui.result }}" \
             "backend:${{ needs.backend.result }}" \
             "mobile:${{ needs.mobile.result }}" \
-            "cli-python:${{ needs.cli-python.result }}"; do
+            "cli-python:${{ needs.cli-python.result }}" \
+            "ezkey-pam:${{ needs.ezkey-pam.result }}"; do
             name="${pair%%:*}"
             result="${pair#*:}"
             case "$result" in

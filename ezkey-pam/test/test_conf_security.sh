@@ -27,18 +27,11 @@ else
   fail "conf owner is ${owner}, expected 0:0"
 fi
 
-if [ "${mode}" = "600" ]; then
-  ok "conf mode is 600"
+# Exact owner-readable modes only (0600 or 0400). Demo entrypoint writes 600.
+if [ "${mode}" = "600" ] || [ "${mode}" = "400" ]; then
+  ok "conf mode is ${mode} (0600 or 0400)"
 else
-  fail "conf mode is ${mode}, expected 600"
-fi
-
-# Group/other bits must be clear (no wider than 0600).
-mode_oct="0${mode}"
-if [ "$((mode_oct & 077))" -eq 0 ]; then
-  ok "conf has no group/other permission bits"
-else
-  fail "conf has group/other bits (mode ${mode})"
+  fail "conf mode is ${mode}, expected 600 or 400"
 fi
 
 for key in integration_api_url integration_key secret_key; do

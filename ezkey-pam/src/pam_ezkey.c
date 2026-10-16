@@ -76,18 +76,18 @@ static void log_pam_error(pam_handle_t *pamh, const EzkeyConfig *cfg,
                           const char *message);
 static void parse_module_args(int argc, const char **argv, EzkeyConfig *cfg);
 static int load_config_file(const char *path, EzkeyConfig *cfg);
-static void apply_env_overrides(EzkeyConfig *cfg);
 static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                                        const char *username,
                                        long *auth_attempt_id_out);
 static void trim_inplace(char *s);
 static void ezkey_secure_wipe(void *ptr, size_t len);
+static void wipe_cfg_secrets(EzkeyConfig *cfg);
 static void log_attempt_summary(const char *username, long auth_attempt_id,
                                 int pam_rc, long latency_ms);
 
 static void ezkey_config_init(EzkeyConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
-    strncpy(cfg->api_url, EZKEY_DEFAULT_API_URL, sizeof(cfg->api_url) - 1);
+    /* api_url left empty — must come from conf (no localhost default; B1). */
     cfg->wait_timeout = EZKEY_DEFAULT_WAIT_TIMEOUT;
     cfg->wait_polling = EZKEY_DEFAULT_WAIT_POLLING;
     cfg->api_timeout = EZKEY_DEFAULT_API_TIMEOUT;
@@ -207,7 +207,8 @@ static void apply_config_key(EzkeyConfig *cfg, const char *key,
 
 /**
  * Load key=value settings from path. Requires a regular file owned by root:root
- * with no group/other permission bits (mode at most 0600).
+ * with mode exactly 0600 or 0400 (owner-readable; rejects 0000 and anything
+ * with group/other bits).
  *
  * @return 0 on success
  * @return -1 if the file could not be opened (errno set)
@@ -219,6 +220,7 @@ static int load_config_file(const char *path, EzkeyConfig *cfg) {
     FILE *fp;
     char line[EZKEY_LINE_MAX];
     struct stat st;
+    mode_t mode;
 
     if (path == NULL || *path == '\0') {
         errno = EINVAL;
@@ -244,8 +246,9 @@ static int load_config_file(const char *path, EzkeyConfig *cfg) {
         errno = EPERM;
         return -2;
     }
-    /* Reject any group/other bits — must be no wider than 0600. */
-    if ((st.st_mode & 077) != 0) {
+    /* Exact owner-readable modes only — root bypasses DAC, so 0000 must fail. */
+    mode = st.st_mode & 0777;
+    if (mode != 0600 && mode != 0400) {
         close(fd);
         errno = EPERM;
         return -2;
@@ -290,34 +293,6 @@ static int load_config_file(const char *path, EzkeyConfig *cfg) {
     return 0;
 }
 
-/**
- * Non-secret demo overrides only. integration_api_url / integration_key /
- * secret_key are never taken from the environment (M1 — conf file only).
- */
-static void apply_env_overrides(EzkeyConfig *cfg) {
-    const char *value;
-
-    value = getenv(EZKEY_ENV_WAIT_TIMEOUT);
-    if (value != NULL && *value != '\0') {
-        cfg->wait_timeout = parse_positive_int(value, cfg->wait_timeout);
-    }
-
-    value = getenv(EZKEY_ENV_WAIT_POLLING);
-    if (value != NULL && *value != '\0') {
-        cfg->wait_polling = parse_positive_int(value, cfg->wait_polling);
-    }
-
-    value = getenv(EZKEY_ENV_API_TIMEOUT);
-    if (value != NULL && *value != '\0') {
-        cfg->api_timeout = parse_positive_int(value, cfg->api_timeout);
-    }
-
-    value = getenv(EZKEY_ENV_DEBUG);
-    if (value != NULL && *value != '\0') {
-        cfg->debug = parse_bool(value);
-    }
-}
-
 static void parse_module_args(int argc, const char **argv, EzkeyConfig *cfg) {
     int i;
 
@@ -331,8 +306,10 @@ static void parse_module_args(int argc, const char **argv, EzkeyConfig *cfg) {
 }
 
 /**
- * Neutralize CR/LF and other control characters before syslog / file logs (#818 m3).
- * Writes into dest (NUL-terminated); always succeeds for non-NULL dest.
+ * Neutralize control characters, spaces, and '=' before syslog / file logs
+ * (#818 m3 + M1 review). Spaces/'=' would let a crafted username forge
+ * attempt-line fields (user=… authAttemptId=…). Writes into dest
+ * (NUL-terminated); always succeeds for non-NULL dest.
  */
 static void ezkey_sanitize_for_log(char *dest, size_t dest_size, const char *src) {
     size_t i;
@@ -347,13 +324,21 @@ static void ezkey_sanitize_for_log(char *dest, size_t dest_size, const char *src
     }
     for (i = 0; src[i] != '\0' && j + 1 < dest_size; i++) {
         unsigned char c = (unsigned char)src[i];
-        if (c < 0x20 || c == 0x7f) {
+        if (c < 0x20 || c == 0x7f || c == ' ' || c == '=') {
             dest[j++] = '_';
         } else {
             dest[j++] = (char)c;
         }
     }
     dest[j] = '\0';
+}
+
+static void wipe_cfg_secrets(EzkeyConfig *cfg) {
+    if (cfg == NULL) {
+        return;
+    }
+    ezkey_secure_wipe(cfg->secret_key, sizeof(cfg->secret_key));
+    ezkey_secure_wipe(cfg->integration_key, sizeof(cfg->integration_key));
 }
 
 /**
@@ -598,11 +583,13 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
         log_pam_error_debug(pamh, cfg,
                             "integration_api_url, integration_key, or "
                             "secret_key missing from conf");
+        wipe_cfg_secrets(cfg);
         return PAM_AUTHINFO_UNAVAIL;
     }
 
     if (curl_global_init(CURL_GLOBAL_DEFAULT) != 0) {
         log_pam_error_debug(pamh, cfg, "curl_global_init failed");
+        wipe_cfg_secrets(cfg);
         return PAM_SERVICE_ERR;
     }
     curl_inited = 1;
@@ -741,7 +728,7 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
 
 cleanup:
     ezkey_secure_wipe(userpwd, sizeof(userpwd));
-    ezkey_secure_wipe(cfg->secret_key, sizeof(cfg->secret_key));
+    wipe_cfg_secrets(cfg);
     if (curl_inited) {
         curl_global_cleanup();
     }
@@ -754,7 +741,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     int retval = PAM_AUTHINFO_UNAVAIL;
     int conf_rc;
     EzkeyConfig cfg;
-    const char *env_conf;
     char user_msg[768];
     long auth_attempt_id = -1;
     struct timespec started;
@@ -763,12 +749,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     clock_gettime(CLOCK_MONOTONIC, &started);
 
     ezkey_config_init(&cfg);
+    /* conf= and debug only from pam.d module args — never from process ENV. */
     parse_module_args(argc, argv, &cfg);
-
-    env_conf = getenv(EZKEY_ENV_CONFIG_FILE);
-    if (env_conf != NULL && *env_conf != '\0') {
-        set_cfg_str(cfg.config_file, sizeof(cfg.config_file), env_conf);
-    }
 
     openlog(EZKEY_MODULE_NAME, LOG_PID, LOG_AUTHPRIV);
 
@@ -776,7 +758,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     if (conf_rc == -2) {
         snprintf(user_msg, sizeof(user_msg),
                  "Config file %s rejected: must be root:root with mode "
-                 "no wider than 0600",
+                 "0600 or 0400",
                  cfg.config_file);
         log_pam_error_debug(pamh, &cfg, user_msg);
         retval = PAM_AUTHINFO_UNAVAIL;
@@ -790,9 +772,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
         retval = PAM_AUTHINFO_UNAVAIL;
         goto done;
     }
-
-    /* Non-secret overrides only (timeouts / debug). Credentials stay in conf. */
-    apply_env_overrides(&cfg);
 
     log_pam_info(pamh, &cfg, "=== EZKEY PAM MODULE STARTED ===");
 
@@ -843,6 +822,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
 
 done:
     log_attempt_summary(username, auth_attempt_id, retval, elapsed_ms(&started));
+    wipe_cfg_secrets(&cfg);
     closelog();
     return retval;
 }

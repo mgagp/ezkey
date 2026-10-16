@@ -45,9 +45,10 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.0** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
-(observability + conf `root:root` `0600` enforcement). It is still **not** a host-operable MFA
-agent on EXP1 (sshd cutover remains slice #4+).
+Version **2.2.1** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
+(observability + conf `root:root` exact `0600`/`0400`, no URL default, no process-ENV
+overrides). It is still **not** a host-operable MFA agent on EXP1 (sshd cutover remains
+slice #4+).
 
 Proven in this repository (clean-start stack + Demo Device + Admin UI):
 
@@ -69,7 +70,7 @@ The Linux username is the Ezkey `userIdentifier`. There is no mapping table.
 
 ### How it authenticates
 
-1. Read `/etc/security/pam_ezkey.conf` (optional PAM arg `conf=`, optional env overrides).
+1. Read `/etc/security/pam_ezkey.conf` (optional PAM arg `conf=` only — **no** process ENV).
 2. `POST /api/v1/auth-attempts` with HTTP Basic (`integration_key` / `secret_key`).
 3. `GET /api/v1/auth-attempts/{id}/wait`.
 4. Return codes (fail-closed; never `PAM_IGNORE` / `PAM_SUCCESS` on API failure):
@@ -78,26 +79,39 @@ The Linux username is the Ezkey `userIdentifier`. There is no mapping table.
 |---|---|
 | Wait `ACCEPTED` | `PAM_SUCCESS` |
 | Reject, expire, not ACCEPTED | `PAM_AUTH_ERR` |
-| Conf unreadable / missing keys / DNS / TLS / HTTP unexpected / curl fail | `PAM_AUTHINFO_UNAVAIL` |
+| Conf unreadable / bad mode/owner / missing or empty URL/keys / DNS / TLS / HTTP unexpected / curl fail | `PAM_AUTHINFO_UNAVAIL` |
 | Empty username | `PAM_USER_UNKNOWN` |
 | OOM / internal | `PAM_SERVICE_ERR` |
 
+**Operator note — `UNAVAIL` + PAM control flags:** the module is fail-closed
+(`PAM_AUTHINFO_UNAVAIL`). If the host stack marks the line `sufficient` or
+`[default=ignore]`, that *stack* can still become fail-open for MFA. Keep
+`required` / `requisite` (see [`sshd.host-sketch`](sshd.host-sketch)) unless you
+intentionally accept MFA bypass when the Integration API / conf is unavailable.
+
 ### Configuration today
 
-File format: `key=value` at `/etc/security/pam_ezkey.conf`, mode `0600` in the demo image.
-That path and style match Linux-PAM convention (`pam_access`, `pam_limits`, `pam_faillock`).
+File format: `key=value` at `/etc/security/pam_ezkey.conf`, mode exactly `0600` or `0400`,
+owner `root:root` in the demo image. That path and style match Linux-PAM convention
+(`pam_access`, `pam_limits`, `pam_faillock`).
 
 | Key | Role | Demo-adequate? |
 |---|---|---|
-| `integration_api_url` | Integration API base URL | Yes for Docker DNS; EXP1 needs HTTPS |
+| `integration_api_url` | Integration API base URL (**required**; no compiled-in default) | Yes for Docker DNS; EXP1 needs HTTPS |
 | `integration_key` / `secret_key` | Basic auth | Yes; file perms are the control |
 | `wait_timeout` / `wait_polling` / `api_timeout` | HTTP waits | Yes |
 | `challenge_requested` | Extra numeric challenge | Yes (keep `false` for SSH) |
 | `context_title` / `context_message` | Device copy | Yes |
-| `debug` | Extra syslog + `/var/log/ezkey-pam/` files (`O_NOFOLLOW`, 0600) | Docker lab entrypoint sets `true`; sample conf default `false` (#818) |
+| `debug` | Extra filelog under `/var/log/ezkey-pam/` (`O_NOFOLLOW`, 0600) | Docker lab entrypoint sets `true`; sample conf default `false` (#818) |
 
-PAM args: `debug`, `conf=/path`. Env overrides exist for Docker because **sshd does not pass
-container ENV into PAM**; the entrypoint writes the conf file. That lesson stays.
+PAM args (root-owned `pam.d` only): `debug`, `conf=/path`.
+
+**Process ENV is not read by `pam_ezkey.so`.** Compose may still set
+`EZKEY_INTEGRATION_*`, `EZKEY_WAIT_*`, `EZKEY_DEBUG`, and optionally
+`EZKEY_CONFIG_FILE` for **`docker-entrypoint.sh` only** — the entrypoint writes the
+root-owned conf via `mktemp` + `install -m 600 -o root -g root`. That bridge exists
+because sshd does not pass Docker ENV into PAM. A caller-controlled environment
+(e.g. `su`/`sudo`) cannot redirect conf path, debug, or timeouts inside the `.so`.
 
 **Verdict:** the current parameter set is **enough for the demo** and is the right *shape* for
 v1 operable use. It is not missing a second config system. Remaining gaps for EXP1 are
@@ -414,19 +428,24 @@ lines land in `/var/log/secure` (no systemd journal in the SSH VM).
 | Rule | Behavior |
 |---|---|
 | `integration_api_url`, `integration_key`, `secret_key` | Only from conf file (not from ENV inside the `.so`) |
+| `integration_api_url` missing or empty | `PAM_AUTHINFO_UNAVAIL` — **no** compiled-in `localhost` default (Patrick B1) |
 | File ownership | Must be `root:root` |
-| File mode | No group/other bits (no wider than `0600`) |
+| File mode | Exactly `0600` or `0400` (rejects `0000`, `0644`, etc.; root bypasses DAC) |
+| Timeouts / debug / conf path | Conf file and/or `pam.d` module args only — not process ENV |
 | Violation / missing field / unreadable | `PAM_AUTHINFO_UNAVAIL` (fail-closed) |
+| Secrets in memory | Wiped (`explicit_bzero`) on every exit path |
 
-Docker entrypoint still maps compose ENV → conf file write, then `chown root:root` + `chmod 600`.
+Docker entrypoint maps compose ENV → conf write via temp file +
+`install -m 600 -o root -g root` (rejects newline injection in ENV values).
 
 ### Tests added
 
 | Script | Proves |
 |---|---|
-| `scripts/test-observability.sh` | success / reject / timeout / network → exactly one clean attempt line in `/var/log/secure` |
-| `scripts/test-conf-security.sh` | baseline `root:root` `0600`; `0644` and missing `secret_key` → deny + `UNAVAIL` |
+| `scripts/test-observability.sh` | success / reject / timeout / network → exactly one clean attempt line; secrets absent from secure + debug logs; polled waits (no bare sleep-only proofs) |
+| `scripts/test-conf-security.sh` | baseline `root:root` `0600`; `0644` / `0000` / non-root owner / URL absent / missing `secret_key` → deny + `UNAVAIL` |
 | `test/test_conf_security.sh` | in-container owner/mode/keys self-check (also via `up.sh` path) |
+| CI `ezkey-pam` job | `make test` (check-source + compile + filelog harness) + Rocky Docker builder; path-filtered; part of `ci-gate` |
 
 ### Lessons learned (M1)
 
@@ -435,17 +454,31 @@ Docker entrypoint still maps compose ENV → conf file write, then `chown root:r
    by appending duplicate `authpriv.*` rules.
 2. **“One line” forces sink discipline.** Prior `log_pam_info` always called `syslog()`; M1 moves
    chatter to filelog-only so operators can `grep attempt` without noise or secret risk.
-3. **ENV vs conf.** Keeping ikey/skey only in the conf file matches PAM host reality (sshd does
-   not pass Docker ENV). Entrypoint remains the bridge for demos.
-4. **Patrick / Christophe review surface.** Structure and conf keys stay small; fail-closed codes
+3. **ENV vs conf.** The `.so` must not honor caller ENV for conf path / debug / timeouts
+   (`su`/`sudo` inheritance). Entrypoint remains the *only* ENV→conf bridge for demos.
+4. **No URL default.** A compiled `http://localhost:7080` would send ikey/skey to a local
+   listener on a misconfigured host and could yield `PAM_SUCCESS` — removed (Patrick B1).
+5. **Patrick / Christophe review surface.** Structure and conf keys stay small; fail-closed codes
    and the attempt line are the review anchors — see PR report file:line list.
-5. **Stale Demo Device pending.** After failed/timeout SSH tries on a shared enrollment, a leftover
+6. **Stale Demo Device pending.** After failed/timeout SSH tries on a shared enrollment, a leftover
    pending card can be approved while a *new* SSH wait times out. Clear pending (or approve the
    matching `authAttemptId`) before re-running AL2023/`demo-ssh` after negative tests.
-6. **SSH retries multiply attempts.** `MaxAuthTries 1` on the demo `sshd_config` keeps “one SSH
+7. **SSH retries multiply attempts.** `MaxAuthTries 1` on the demo `sshd_config` keeps “one SSH
    try → one attempt line” for lab proof; host stacks may differ — the module still emits one
    line per `pam_sm_authenticate` call.
+8. **CodeQL c-cpp.** Advanced setup formerly used `build-mode: none` for C/C++, which does not
+   extract compiled C reliably. Workflow now builds `ezkey-pam` so `pam_ezkey.c` is in the DB.
+
+### Follow-ups (listed only — not fixed in M1)
+
+| Item | Note |
+|---|---|
+| `/wait` response not signature-verified on PAM side | Trusts HTTPS/HTTP body integrity from Integration API; protocol hardening later |
+| Demo over `http://` | Compose lab uses `http://integration-api:7080`; fine on the private network |
+| Refuse `http://` outside lab before EXP1 | Host cutover must require HTTPS (or explicit lab build flag) before dogfood |
 
 ### Out of M1
 
 EXP1 cutover, TLS verify knobs, packages, `failmode=safe`, sudo, username maps, AWS, ezkey.online.
+Full SSH M1 scripts (`test-observability.sh` / `test-conf-security.sh`) still need the local
+clean-start stack + Demo Device; CI covers compile + filelog harness + Docker builder.

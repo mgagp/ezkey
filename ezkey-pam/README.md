@@ -22,7 +22,7 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
 
-## What changed in 2.2 (M1)
+## What changed in 2.2 / 2.2.1 (M1)
 
 On top of 2.1 slices 1–3 ([`STATUS.md`](STATUS.md) § M1):
 
@@ -30,8 +30,10 @@ On top of 2.1 slices 1–3 ([`STATUS.md`](STATUS.md) § M1):
   `pam_ezkey: attempt user=… authAttemptId=… result=… pam_code=… latency_ms=…`
   (never secrets / proof / bodies). Debug chatter stays in `/var/log/ezkey-pam/` only.
 - **Conf credentials** (`integration_api_url`, `integration_key`, `secret_key`) only from
-  the conf file; must be `root:root` with mode no wider than `0600` or the module returns
-  `PAM_AUTHINFO_UNAVAIL`.
+  the conf file; must be `root:root` with mode exactly `0600` or `0400` or the module
+  returns `PAM_AUTHINFO_UNAVAIL`. No compiled-in URL default (empty URL → `UNAVAIL`).
+- **No process-ENV overrides** inside the `.so` (conf path / debug / timeouts). Docker
+  compose ENV is applied only by `docker-entrypoint.sh` when writing the conf file.
 - **Demo rsyslog:** entrypoint enables `imuxsock` so authpriv reaches `/var/log/secure`.
 - Tests: `./scripts/test-observability.sh`, `./scripts/test-conf-security.sh`.
 
@@ -125,7 +127,7 @@ ssh -p 2223 \
 
 | Key | Default | Description |
 |---|---|---|
-| `integration_api_url` | `http://localhost:7080` | Integration API base URL |
+| `integration_api_url` | *(required; no default)* | Integration API base URL |
 | `integration_key` | *(required)* | API integration key |
 | `secret_key` | *(required)* | API secret key |
 | `wait_timeout` | `90` | Seconds to wait for device approval |
@@ -134,13 +136,19 @@ ssh -p 2223 \
 | `challenge_requested` | `false` | Extra numeric challenge (off for SSH demo) |
 | `context_title` | `SSH login` | Title shown on the device |
 | `context_message` | *(generated)* | Message shown on the device |
-| `debug` | `false` | Extra syslog + `/var/log/ezkey-pam/debug.{out,err}` (Docker lab entrypoint sets `true`) |
+| `debug` | `false` | Extra filelog `/var/log/ezkey-pam/debug.{out,err}` (Docker lab entrypoint sets `true`) |
 
-Environment overrides (Docker): `EZKEY_INTEGRATION_API_URL` (legacy:
-`EZKEY_M2M_API_URL`), `EZKEY_INTEGRATION_KEY`, `EZKEY_SECRET_KEY`,
-`EZKEY_WAIT_TIMEOUT`, `EZKEY_DEBUG`.
+**Docker entrypoint only** (not read by `pam_ezkey.so`): `EZKEY_INTEGRATION_API_URL`
+(legacy `EZKEY_M2M_API_URL`), `EZKEY_INTEGRATION_KEY`, `EZKEY_SECRET_KEY`,
+`EZKEY_WAIT_TIMEOUT`, `EZKEY_WAIT_POLLING`, `EZKEY_API_TIMEOUT`, `EZKEY_DEBUG`,
+optional `EZKEY_CONFIG_FILE` (path the entrypoint writes). The module ignores process
+ENV so `su`/`sudo` cannot redirect conf path, debug, or timeouts.
 
-PAM arguments: `debug` and `conf=/path/to/file`.
+PAM arguments (root-owned `pam.d`): `debug` and `conf=/path/to/file`.
+
+**Stack note:** `PAM_AUTHINFO_UNAVAIL` is fail-closed inside the module. A host line
+marked `sufficient` or `[default=ignore]` can still make MFA fail-open — keep
+`required` / `requisite` unless that is intentional (see [`STATUS.md`](STATUS.md)).
 
 ## Docker layout
 
@@ -156,11 +164,15 @@ The SSH VMs join the main stack network (`ezkey_ezkey-network` by default) so th
 
 ## Logging
 
-Syslog (`LOG_AUTHPRIV` / `/var/log/secure`) is always used. When `debug=true` (Docker lab
-default via entrypoint), the module also appends to root-owned files under
-`/var/log/ezkey-pam/` opened with `O_NOFOLLOW|O_CLOEXEC` mode `0600` — not `/tmp` (#818).
+Every authenticate emits **exactly one** `authpriv` line (see [`STATUS.md`](STATUS.md) § M1):
 
-Demo debug (`debug=true` / `EZKEY_DEBUG=true`):
+```bash
+docker exec ezkey-pam-ssh grep 'pam_ezkey: attempt ' /var/log/secure
+```
+
+When `debug=true` (Docker lab default via entrypoint), the module also appends to root-owned
+files under `/var/log/ezkey-pam/` opened with `O_NOFOLLOW|O_CLOEXEC` mode `0600` — not `/tmp`
+(#818). Debug chatter does **not** go to syslog.
 
 ```bash
 docker exec ezkey-pam-ssh cat /var/log/ezkey-pam/debug.out

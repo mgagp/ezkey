@@ -7,30 +7,26 @@
 
 /* Module identification */
 #define EZKEY_MODULE_NAME "pam_ezkey"
-#define EZKEY_VERSION "2.2.0"
-
-/* Default Integration API endpoint */
-#define EZKEY_DEFAULT_API_URL "http://localhost:7080"
+#define EZKEY_VERSION "2.2.1"
 
 /*
- * Environment variable names.
- * M1: integration_api_url / integration_key / secret_key are NEVER read from
- * the environment by the module — only from the conf file (root:root ≤0600).
- * Docker entrypoint still uses EZKEY_INTEGRATION_* to *write* that conf.
- * Module-side env overrides are limited to timeouts/debug and conf path.
+ * No compiled-in default Integration API URL (Patrick B1 / M1 review).
+ * integration_api_url must be set in the conf file; empty → PAM_AUTHINFO_UNAVAIL.
  */
-#define EZKEY_ENV_WAIT_TIMEOUT "EZKEY_WAIT_TIMEOUT"
-#define EZKEY_ENV_WAIT_POLLING "EZKEY_WAIT_POLLING"
-#define EZKEY_ENV_API_TIMEOUT "EZKEY_API_TIMEOUT"
-#define EZKEY_ENV_CONFIG_FILE "EZKEY_CONFIG_FILE"
-#define EZKEY_ENV_DEBUG "EZKEY_DEBUG"
 
-/* Timeout defaults (seconds) */
+/*
+ * The module does NOT read credentials, conf path, debug, or timeouts from the
+ * process environment (su/sudo inheritance). Docker compose ENV is applied only
+ * by docker-entrypoint.sh when it *writes* the root-owned conf file.
+ * PAM module args still allow: debug, conf=/path (from root-owned pam.d).
+ */
+
+/* Timeout defaults when keys are absent from conf (seconds) */
 #define EZKEY_DEFAULT_WAIT_TIMEOUT 90
 #define EZKEY_DEFAULT_WAIT_POLLING 2
 #define EZKEY_DEFAULT_API_TIMEOUT 10
 
-/* Configuration file path loaded at PAM runtime */
+/* Configuration file path loaded at PAM runtime (override only via pam.d conf=) */
 #define EZKEY_DEFAULT_CONFIG_FILE "/etc/security/pam_ezkey.conf"
 
 /* Debug compile-time flag (also forces debug=1 at init; conf can still override) */

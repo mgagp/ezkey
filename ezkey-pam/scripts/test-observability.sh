@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # M1 observability: exactly one authpriv attempt line per scenario in /var/log/secure.
-# Scenarios: success, reject, timeout, network error. Never secrets in the line.
+# Scenarios: success, reject, timeout, network error. Never secrets in any log sink.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -50,13 +50,26 @@ attempts_tail_from() {
     "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n ${new}"
 }
 
+wait_new_attempt() {
+  local before="$1"
+  local i after
+  for i in $(seq 1 80); do
+    after="$(attempt_count)"
+    if [ "$((after - before))" -ge 1 ]; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  return 1
+}
+
 assert_one_clean_line() {
   local before="$1"
   local expect_result="$2"
   local label="$3"
   local lines count line
 
-  sleep 0.5
+  wait_new_attempt "${before}" || true
   lines="$(attempts_tail_from "${before}")"
   count="$(echo "${lines}" | grep -c 'pam_ezkey: attempt ' || true)"
   line="$(echo "${lines}" | grep 'pam_ezkey: attempt ' | tail -n 1 || true)"
@@ -95,6 +108,23 @@ assert_one_clean_line() {
   echo "  ${line}"
 }
 
+assert_no_secret_in_logs() {
+  local blob
+  blob="$(docker exec "${CONTAINER}" sh -c \
+    'cat /var/log/secure /var/log/ezkey-pam/debug.out /var/log/ezkey-pam/debug.err 2>/dev/null' || true)"
+  local leak=0
+  local needle
+  for needle in "${EZKEY_SECRET_KEY:-}" "${EZKEY_INTEGRATION_KEY:-}" authAttemptProofToken; do
+    if [ -n "${needle}" ] && echo "${blob}" | grep -Fq "${needle}"; then
+      fail "secret/proof leaked into secure/debug logs: ${needle:0:12}..."
+      leak=1
+    fi
+  done
+  if [ "${leak}" -eq 0 ]; then
+    ok "no ikey/skey/proof across /var/log/secure and debug filelogs"
+  fi
+}
+
 ssh_run() {
   local out="$1"
   local cmd="$2"
@@ -115,10 +145,17 @@ ssh_run() {
 
 echo "=== M1 observability (/var/log/secure on ${CONTAINER}) ==="
 
-PROBE="m1-rsyslog-probe-$(date +%s)"
+PROBE="m1-rsyslog-probe-$$-$(date +%s)"
 docker exec "${CONTAINER}" logger -p authpriv.info "${PROBE}"
-sleep 0.5
-if docker exec "${CONTAINER}" grep -q "${PROBE}" /var/log/secure; then
+PROBE_OK=0
+for _ in $(seq 1 50); do
+  if docker exec "${CONTAINER}" grep -qF "${PROBE}" /var/log/secure 2>/dev/null; then
+    PROBE_OK=1
+    break
+  fi
+  sleep 0.1
+done
+if [ "${PROBE_OK}" -eq 1 ]; then
   ok "rsyslog authpriv → /var/log/secure"
 else
   fail "rsyslog authpriv probe missing from /var/log/secure"
@@ -185,6 +222,8 @@ else
   fail "network-error path unexpectedly succeeded"
 fi
 assert_one_clean_line "${BEFORE}" "UNAVAIL" "network-error"
+
+assert_no_secret_in_logs
 
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="

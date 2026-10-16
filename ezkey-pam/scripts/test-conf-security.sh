@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Host-side M1 conf security: baseline + chmod 0644 / missing key fail-closed via SSH.
+# Host-side M1 conf security: baseline + fail-closed modes / missing URL / owner.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -41,6 +41,20 @@ last_attempt() {
     "grep 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null | tail -n 1" || true
 }
 
+# Poll until attempt_count advances past BEFORE (deterministic; no bare sleep-only wait).
+wait_new_attempt() {
+  local before="$1"
+  local i after
+  for i in $(seq 1 50); do
+    after="$(attempt_count)"
+    if [ "$((after - before))" -ge 1 ]; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  return 1
+}
+
 ssh_once() {
   ssh -tt \
     -p "${PORT}" \
@@ -56,6 +70,26 @@ ssh_once() {
   return 0
 }
 
+# Expect SSH deny + at least one new UNAVAIL attempt line after mutating conf.
+expect_unavail() {
+  local label="$1"
+  local before ssh_rc after attempt new
+  before="$(attempt_count)"
+  ssh_rc=0
+  ssh_once || ssh_rc=$?
+  wait_new_attempt "${before}" || true
+  after="$(attempt_count)"
+  attempt="$(last_attempt)"
+  new=$((after - before))
+  restore_conf
+  if [ "${ssh_rc}" -ne 0 ] && [ "${new}" -ge 1 ] && echo "${attempt}" | grep -q 'result=UNAVAIL'; then
+    ok "${label} → SSH denied + UNAVAIL attempt line (new=${new})"
+    echo "  ${attempt}"
+  else
+    fail "${label} expected deny+UNAVAIL (ssh_rc=${ssh_rc} new=${new} line='${attempt}')"
+  fi
+}
+
 trap restore_conf EXIT
 
 echo "=== M1 conf security (container ${CONTAINER}) ==="
@@ -66,54 +100,55 @@ ok "baseline conf security self-check"
 docker exec "${CONTAINER}" cp -a "${CONF}" "${BACKUP}"
 
 # --- mode 0644 must fail closed (PAM_AUTHINFO_UNAVAIL → SSH deny) ---
-BEFORE="$(attempt_count)"
 docker exec "${CONTAINER}" chmod 644 "${CONF}"
-SSH_RC=0
-ssh_once || SSH_RC=$?
-restore_conf
-sleep 0.5
-AFTER="$(attempt_count)"
-ATTEMPT="$(last_attempt)"
-NEW=$((AFTER - BEFORE))
+expect_unavail "chmod 0644"
 
-if [ "${SSH_RC}" -ne 0 ] && [ "${NEW}" -ge 1 ] && echo "${ATTEMPT}" | grep -q 'result=UNAVAIL'; then
-  ok "chmod 0644 → SSH denied + UNAVAIL attempt line (new=${NEW})"
-  echo "  ${ATTEMPT}"
-else
-  fail "chmod 0644 expected deny+UNAVAIL (ssh_rc=${SSH_RC} new=${NEW} line='${ATTEMPT}')"
-fi
+# --- mode 0000 must fail closed (root bypasses DAC; exact 0600|0400 required) ---
+docker exec "${CONTAINER}" cp -a "${BACKUP}" "${CONF}"
+docker exec "${CONTAINER}" sh -c "chown root:root '${CONF}'; chmod 000 '${CONF}'"
+expect_unavail "chmod 0000"
+
+# --- non-root owner must fail closed ---
+docker exec "${CONTAINER}" cp -a "${BACKUP}" "${CONF}"
+docker exec "${CONTAINER}" sh -c \
+  "chown ${SSH_USER}:${SSH_USER} '${CONF}'; chmod 600 '${CONF}'"
+expect_unavail "non-root owner (${SSH_USER})"
+
+# --- URL absent (empty integration_api_url) → UNAVAIL (Patrick B1) ---
+docker exec "${CONTAINER}" cp -a "${BACKUP}" "${CONF}"
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's|^integration_api_url=.*|integration_api_url=|' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'"
+expect_unavail "URL absent"
 
 # --- missing secret_key must fail closed ---
-BEFORE="$(attempt_count)"
+docker exec "${CONTAINER}" cp -a "${BACKUP}" "${CONF}"
 docker exec "${CONTAINER}" sh -c \
-  "cp -a '${CONF}' '${BACKUP}'; sed -i 's/^secret_key=.*/secret_key=/' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'"
-SSH_RC=0
-ssh_once || SSH_RC=$?
-restore_conf
-sleep 0.5
-AFTER="$(attempt_count)"
-ATTEMPT="$(last_attempt)"
-NEW=$((AFTER - BEFORE))
+  "sed -i 's/^secret_key=.*/secret_key=/' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'"
+expect_unavail "missing secret_key"
 
-if [ "${SSH_RC}" -ne 0 ] && [ "${NEW}" -ge 1 ] && echo "${ATTEMPT}" | grep -q 'result=UNAVAIL'; then
-  ok "missing secret_key → SSH denied + UNAVAIL attempt line (new=${NEW})"
-  echo "  ${ATTEMPT}"
-else
-  fail "missing secret_key expected deny+UNAVAIL (ssh_rc=${SSH_RC} new=${NEW} line='${ATTEMPT}')"
-fi
-
-# Hygiene: attempt lines must not contain secrets from .env
-SECURE_SNIP="$(docker exec "${CONTAINER}" sh -c 'grep "pam_ezkey: attempt " /var/log/secure | tail -n 50' || true)"
-LEAK=0
-for needle in "${EZKEY_SECRET_KEY:-}" "${EZKEY_INTEGRATION_KEY:-}" authAttemptProofToken; do
-  if [ -n "${needle}" ] && echo "${SECURE_SNIP}" | grep -Fq "${needle}"; then
-    fail "secret/proof leaked into attempt lines: ${needle:0:12}..."
-    LEAK=1
+# Hygiene: secrets must not appear anywhere in secure or debug filelogs (not only attempt lines).
+assert_no_secret_leak() {
+  local blob="$1"
+  local label="$2"
+  local leak=0
+  local needle
+  for needle in "${EZKEY_SECRET_KEY:-}" "${EZKEY_INTEGRATION_KEY:-}" authAttemptProofToken; do
+    if [ -n "${needle}" ] && echo "${blob}" | grep -Fq "${needle}"; then
+      fail "secret/proof leaked into ${label}: ${needle:0:12}..."
+      leak=1
+    fi
+  done
+  if [ "${leak}" -eq 0 ]; then
+    ok "no ikey/skey/proof in ${label}"
   fi
-done
-if [ "${LEAK}" -eq 0 ]; then
-  ok "no ikey/skey/proof in attempt lines"
-fi
+}
+
+SECURE_ALL="$(docker exec "${CONTAINER}" sh -c 'cat /var/log/secure 2>/dev/null' || true)"
+assert_no_secret_leak "${SECURE_ALL}" "/var/log/secure"
+
+DEBUG_ALL="$(docker exec "${CONTAINER}" sh -c \
+  'cat /var/log/ezkey-pam/debug.out /var/log/ezkey-pam/debug.err 2>/dev/null' || true)"
+assert_no_secret_leak "${DEBUG_ALL}" "/var/log/ezkey-pam/debug.*"
 
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="
