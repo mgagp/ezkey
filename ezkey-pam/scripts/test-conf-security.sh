@@ -30,7 +30,7 @@ restore_conf() {
 }
 
 ssh_once() {
-  set +e
+  # Do not toggle set -e here — returning non-zero under set -e aborts the caller.
   ssh -tt \
     -p "${PORT}" \
     -o StrictHostKeyChecking=no \
@@ -42,10 +42,8 @@ ssh_once() {
     -o NumberOfPasswordPrompts=0 \
     "${SSH_USER}@127.0.0.1" \
     'echo SHOULD_NOT_AUTH' \
-    >/dev/null 2>&1
-  local rc=$?
-  set -e
-  return "${rc}"
+    >/dev/null 2>&1 || return $?
+  return 0
 }
 
 count_attempt_lines_since() {

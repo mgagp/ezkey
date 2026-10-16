@@ -93,7 +93,8 @@ assert_one_clean_line() {
 ssh_bg_cmd() {
   local out="$1"
   local cmd="$2"
-  set +e
+  local rc=0
+  # Keep set -e off across the ssh failure so the caller can inspect .rc.
   ssh -tt \
     -p "${PORT}" \
     -o StrictHostKeyChecking=no \
@@ -104,9 +105,8 @@ ssh_bg_cmd() {
     -o ConnectTimeout=10 \
     "${SSH_USER}@127.0.0.1" \
     "${cmd}" \
-    >"${out}" 2>&1
-  echo $? >"${out}.rc"
-  set -e
+    >"${out}" 2>&1 || rc=$?
+  echo "${rc}" >"${out}.rc"
 }
 
 echo "=== M1 observability (/var/log/secure on ${CONTAINER}) ==="
