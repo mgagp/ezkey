@@ -487,29 +487,32 @@ public class AuthAttemptService {
    */
   @Transactional
   public AuthAttempt cancel(Integer authAttemptId) {
+    // Conditional UPDATE — no read-modify-write race with approve/deny (#833 m1).
+    int updated =
+        authAttemptRepository.expireIfPendingOrRead(
+            authAttemptId,
+            List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ),
+            AuthAttemptStatus.EXPIRED);
+    if (updated == 1) {
+      AuthAttempt updatedAttempt =
+          authAttemptRepository
+              .findById(authAttemptId)
+              .orElseThrow(
+                  () -> new ResourceNotFoundException("Authentication attempt", authAttemptId));
+      logger.info(
+          "Authentication attempt {} cancelled (marked as EXPIRED) by user request", authAttemptId);
+      return updatedAttempt;
+    }
+
     AuthAttempt authAttempt =
         authAttemptRepository
             .findById(authAttemptId)
             .orElseThrow(
                 () -> new ResourceNotFoundException("Authentication attempt", authAttemptId));
-
-    // Only allow cancellation of non-final states
-    if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.PENDING
-        && authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.READ) {
-      throw new AuthAttemptStateConflictException(
-          "Cannot cancel authentication attempt with status: "
-              + authAttempt.getAuthAttemptStatus()
-              + ". Only PENDING or READ attempts can be cancelled.");
-    }
-
-    // Mark as expired
-    authAttempt.setAuthAttemptStatus(AuthAttemptStatus.EXPIRED);
-    AuthAttempt updatedAttempt = authAttemptRepository.save(authAttempt);
-
-    logger.info(
-        "Authentication attempt {} cancelled (marked as EXPIRED) by user request", authAttemptId);
-
-    return updatedAttempt;
+    throw new AuthAttemptStateConflictException(
+        "Cannot cancel authentication attempt with status: "
+            + authAttempt.getAuthAttemptStatus()
+            + ". Only PENDING or READ attempts can be cancelled.");
   }
 
   /**

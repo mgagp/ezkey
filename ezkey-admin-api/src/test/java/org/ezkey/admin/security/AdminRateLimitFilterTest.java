@@ -12,27 +12,35 @@ package org.ezkey.admin.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.nio.charset.StandardCharsets;
 import org.ezkey.admin.config.AdminRateLimitProperties;
 import org.ezkey.admin.config.TrustedProxyProperties;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 /**
- * Unit tests for {@link AdminRateLimitFilter}: login rate limiting and that forged X-Forwarded-For
- * does not change the rate limit bucket when trusted proxies are empty.
+ * Unit tests for {@link AdminRateLimitFilter}: separate login / passwordless-wait caches, ip+id
+ * keys, per-IP + wait backstop, body cap, and trusted-proxy client IP resolution (#831 / #833 C2).
  *
  * @since 2025
  */
@@ -42,6 +50,7 @@ class AdminRateLimitFilterTest {
 
   private static final String LOGIN_PATH = "/api/v1/admin/auth/login";
   private static final String PASSWORDLESS_WAIT_PATH = "/api/v1/admin/auth/passwordless-wait";
+  private static final String PASSWORDLESS_CANCEL_PATH = "/api/v1/admin/auth/passwordless-cancel";
 
   @Mock private FilterChain filterChain;
 
@@ -49,6 +58,9 @@ class AdminRateLimitFilterTest {
   private TrustedProxyProperties trustedProxyProperties;
   private SimpleMeterRegistry meterRegistry;
   private AdminRateLimitFilter filter;
+  private ListAppender<ILoggingEvent> logAppender;
+  private Logger filterLogger;
+  private Level previousLogLevel;
 
   @BeforeEach
   void setUp() {
@@ -58,10 +70,33 @@ class AdminRateLimitFilterTest {
     login.setRequests(1);
     login.setWindowMinutes(5);
     properties.setLogin(login);
+    AdminRateLimitProperties.PasswordlessWaitConfig wait =
+        new AdminRateLimitProperties.PasswordlessWaitConfig();
+    wait.setRequests(1);
+    wait.setWindowMinutes(5);
+    wait.setIpRequests(100);
+    wait.setIpWindowMinutes(5);
+    properties.setPasswordlessWait(wait);
+    properties.getBackstop().setEnabled(false);
 
     trustedProxyProperties = new TrustedProxyProperties();
     meterRegistry = new SimpleMeterRegistry();
     filter = new AdminRateLimitFilter(properties, trustedProxyProperties, meterRegistry);
+
+    filterLogger = (Logger) LoggerFactory.getLogger(AdminRateLimitFilter.class);
+    previousLogLevel = filterLogger.getLevel();
+    filterLogger.setLevel(Level.WARN);
+    logAppender = new ListAppender<>();
+    logAppender.start();
+    filterLogger.addAppender(logAppender);
+  }
+
+  @AfterEach
+  void tearDownLogs() {
+    if (filterLogger != null && logAppender != null) {
+      filterLogger.detachAppender(logAppender);
+      filterLogger.setLevel(previousLogLevel);
+    }
   }
 
   @Test
@@ -85,36 +120,220 @@ class AdminRateLimitFilterTest {
   }
 
   @Test
-  @DisplayName("POST passwordless-wait is rate limited per client IP")
-  void passwordlessWait_rateLimitedPerClientIp() throws Exception {
-    MockHttpServletRequest request1 = new MockHttpServletRequest("POST", PASSWORDLESS_WAIT_PATH);
-    request1.setRemoteAddr("203.0.113.60");
-    MockHttpServletResponse response1 = new MockHttpServletResponse();
-    filter.doFilter(request1, response1, filterChain);
+  @DisplayName("POST passwordless-wait is rate limited per ip+authAttemptId")
+  void passwordlessWait_rateLimitedPerIpAndAuthAttemptId() throws Exception {
+    MockHttpServletResponse response1 =
+        filterWait("203.0.113.60", "{\"authAttemptId\":42,\"waiterSecret\":\"s\"}");
     assertThat(response1.getStatus()).isEqualTo(HttpStatus.OK.value());
 
-    MockHttpServletRequest request2 = new MockHttpServletRequest("POST", PASSWORDLESS_WAIT_PATH);
-    request2.setRemoteAddr("203.0.113.60");
-    MockHttpServletResponse response2 = new MockHttpServletResponse();
-    filter.doFilter(request2, response2, filterChain);
+    MockHttpServletResponse response2 =
+        filterWait("203.0.113.60", "{\"authAttemptId\":42,\"waiterSecret\":\"s\"}");
     assertThat(response2.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
     assertThat(response2.getHeader("Retry-After")).isNotNull();
   }
 
   @Test
-  @DisplayName("Login and passwordless-wait share the same rate-limit bucket per client IP")
-  void loginAndPasswordlessWait_shareRateLimitBucket() throws Exception {
+  @DisplayName("Same authAttemptId from a different IP does not share the attempt bucket (#833 C2)")
+  void passwordlessWait_sameAttemptIdDifferentIp_separateBuckets() throws Exception {
+    assertThat(
+            filterWait("203.0.113.61", "{\"authAttemptId\":42,\"waiterSecret\":\"s\"}").getStatus())
+        .isEqualTo(HttpStatus.OK.value());
+    assertThat(
+            filterWait("198.51.100.61", "{\"authAttemptId\":42,\"waiterSecret\":\"s\"}")
+                .getStatus())
+        .isEqualTo(HttpStatus.OK.value());
+  }
+
+  @Test
+  @DisplayName("Login and passwordless-wait use separate rate-limit buckets (#831)")
+  void loginAndPasswordlessWait_separateBuckets() throws Exception {
     MockHttpServletRequest loginRequest = new MockHttpServletRequest("POST", LOGIN_PATH);
     loginRequest.setRemoteAddr("203.0.113.70");
     MockHttpServletResponse loginResponse = new MockHttpServletResponse();
     filter.doFilter(loginRequest, loginResponse, filterChain);
     assertThat(loginResponse.getStatus()).isEqualTo(HttpStatus.OK.value());
 
-    MockHttpServletRequest waitRequest = new MockHttpServletRequest("POST", PASSWORDLESS_WAIT_PATH);
-    waitRequest.setRemoteAddr("203.0.113.70");
-    MockHttpServletResponse waitResponse = new MockHttpServletResponse();
-    filter.doFilter(waitRequest, waitResponse, filterChain);
-    assertThat(waitResponse.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+    MockHttpServletResponse waitResponse =
+        filterWait("203.0.113.70", "{\"authAttemptId\":99,\"waiterSecret\":\"w\"}");
+    assertThat(waitResponse.getStatus()).isEqualTo(HttpStatus.OK.value());
+    verify(filterChain, times(2))
+        .doFilter(any(HttpServletRequest.class), any(HttpServletResponse.class));
+  }
+
+  @Test
+  @DisplayName("Different authAttemptId values do not share the passwordless-wait attempt bucket")
+  void passwordlessWait_differentAttemptIds_separateBuckets() throws Exception {
+    assertThat(
+            filterWait("203.0.113.80", "{\"authAttemptId\":1,\"waiterSecret\":\"a\"}").getStatus())
+        .isEqualTo(HttpStatus.OK.value());
+    assertThat(
+            filterWait("203.0.113.80", "{\"authAttemptId\":2,\"waiterSecret\":\"b\"}").getStatus())
+        .isEqualTo(HttpStatus.OK.value());
+  }
+
+  @Test
+  @DisplayName("Rotating fake authAttemptIds trip the per-IP wait aggregate (#833 C2 DoS)")
+  void passwordlessWait_rotatingAttemptIds_tripPerIpBucket() throws Exception {
+    properties.getPasswordlessWait().setRequests(100);
+    properties.getPasswordlessWait().setIpRequests(2);
+    properties.getPasswordlessWait().setIpWindowMinutes(1);
+    filter = new AdminRateLimitFilter(properties, trustedProxyProperties, meterRegistry);
+
+    assertThat(
+            filterWait("203.0.113.200", "{\"authAttemptId\":1,\"waiterSecret\":\"a\"}").getStatus())
+        .isEqualTo(HttpStatus.OK.value());
+    assertThat(
+            filterWait("203.0.113.200", "{\"authAttemptId\":2,\"waiterSecret\":\"b\"}").getStatus())
+        .isEqualTo(HttpStatus.OK.value());
+    MockHttpServletResponse denied =
+        filterWait("203.0.113.200", "{\"authAttemptId\":3,\"waiterSecret\":\"c\"}");
+    assertThat(denied.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+    assertThat(denied.getHeader("X-Rate-Limit-Limit")).isEqualTo("2");
+  }
+
+  @Test
+  @DisplayName("Wait-cache churn does not evict login buckets from the login cache (#833 C2)")
+  void waitCacheChurn_doesNotEvictLoginBuckets() throws Exception {
+    properties.getLogin().setRequests(1);
+    properties.getPasswordlessWait().setRequests(1000);
+    properties.getPasswordlessWait().setIpRequests(1000);
+    filter = new AdminRateLimitFilter(properties, trustedProxyProperties, meterRegistry);
+
+    MockHttpServletRequest loginWarm = new MockHttpServletRequest("POST", LOGIN_PATH);
+    loginWarm.setRemoteAddr("203.0.113.210");
+    filter.doFilter(loginWarm, new MockHttpServletResponse(), filterChain);
+    assertThat(filter.loginBucketCacheEstimatedSize()).isGreaterThanOrEqualTo(1);
+
+    for (int i = 0; i < 1_100; i++) {
+      String ip = "198.51." + (i / 256) + "." + (i % 256);
+      filterWait(ip, "{\"authAttemptId\":" + i + ",\"waiterSecret\":\"x\"}");
+    }
+    filter.waitBucketCacheEstimatedSize(); // touch for clarity in failure dumps
+
+    MockHttpServletRequest loginAgain = new MockHttpServletRequest("POST", LOGIN_PATH);
+    loginAgain.setRemoteAddr("203.0.113.210");
+    MockHttpServletResponse denied = new MockHttpServletResponse();
+    filter.doFilter(loginAgain, denied, filterChain);
+    // Same IP login budget still intact → second login is 429 (not reset by wait-cache eviction).
+    assertThat(denied.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+  }
+
+  @Test
+  @DisplayName("Wait/cancel body larger than 4 KiB is rejected with 413")
+  void passwordlessWait_oversizedBody_payloadTooLarge() throws Exception {
+    String huge = "x".repeat(AdminRateLimitFilter.MAX_WAIT_BODY_BYTES + 1);
+    MockHttpServletResponse response =
+        filterWait("203.0.113.220", "{\"authAttemptId\":1,\"waiterSecret\":\"" + huge + "\"}");
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE.value());
+  }
+
+  @Test
+  @DisplayName("Chunked wait body without Content-Length is accepted and capped (#833 n3)")
+  void passwordlessWait_chunkedBodyWithoutContentLength_ok() throws Exception {
+    byte[] body =
+        "{\"authAttemptId\":11,\"waiterSecret\":\"chunked\"}".getBytes(StandardCharsets.UTF_8);
+    // Spring MockHttpServletRequest derives getContentLength() from setContent(); override to
+    // simulate Transfer-Encoding: chunked with no Content-Length (filter reads the stream only).
+    MockHttpServletRequest request =
+        new MockHttpServletRequest("POST", PASSWORDLESS_WAIT_PATH) {
+          @Override
+          public int getContentLength() {
+            return -1;
+          }
+
+          @Override
+          public long getContentLengthLong() {
+            return -1L;
+          }
+        };
+    request.setRemoteAddr("203.0.113.221");
+    request.setContentType("application/json");
+    request.setContent(body);
+    request.addHeader("Transfer-Encoding", "chunked");
+    request.removeHeader("Content-Length");
+    assertThat(request.getContentLength()).isEqualTo(-1);
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    filter.doFilter(request, response, filterChain);
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
+    verify(filterChain).doFilter(any(HttpServletRequest.class), any(HttpServletResponse.class));
+  }
+
+  @Test
+  @DisplayName("Rotating IPs on wait trip the unkeyed wait backstop (#833 C2)")
+  void rotatingIpsOnWait_tripWaitBackstop() throws Exception {
+    properties.getPasswordlessWait().setRequests(100);
+    properties.getPasswordlessWait().setIpRequests(100);
+    properties.getBackstop().setEnabled(true);
+    properties.getBackstop().getPasswordlessWait().setRequests(2);
+    properties.getBackstop().getPasswordlessWait().setWindowMinutes(1);
+    meterRegistry = new SimpleMeterRegistry();
+    filter = new AdminRateLimitFilter(properties, trustedProxyProperties, meterRegistry);
+
+    assertThat(
+            filterWait("198.51.100.1", "{\"authAttemptId\":1,\"waiterSecret\":\"a\"}").getStatus())
+        .isEqualTo(HttpStatus.OK.value());
+    assertThat(
+            filterWait("198.51.100.2", "{\"authAttemptId\":2,\"waiterSecret\":\"b\"}").getStatus())
+        .isEqualTo(HttpStatus.OK.value());
+    MockHttpServletResponse denied =
+        filterWait("198.51.100.3", "{\"authAttemptId\":3,\"waiterSecret\":\"c\"}");
+    assertThat(denied.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+    assertThat(
+            meterRegistry
+                .counter("ezkey.rate_limit.backstop.rejected", "endpoint", "passwordless-wait")
+                .count())
+        .isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("Retry-After reflects remaining greedy refill seconds when login budget exhausted")
+  void login_retryAfter_fromGreedyRefillProbe() throws Exception {
+    properties.getLogin().setRequests(1);
+    properties.getLogin().setWindowMinutes(1);
+    filter = new AdminRateLimitFilter(properties, trustedProxyProperties, meterRegistry);
+
+    MockHttpServletRequest first = new MockHttpServletRequest("POST", LOGIN_PATH);
+    first.setRemoteAddr("198.51.100.20");
+    filter.doFilter(first, new MockHttpServletResponse(), filterChain);
+
+    MockHttpServletRequest second = new MockHttpServletRequest("POST", LOGIN_PATH);
+    second.setRemoteAddr("198.51.100.20");
+    MockHttpServletResponse denied = new MockHttpServletResponse();
+    filter.doFilter(second, denied, filterChain);
+
+    assertThat(denied.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+    long retryAfter = Long.parseLong(denied.getHeader("Retry-After"));
+    assertThat(retryAfter).isBetween(1L, 60L);
+  }
+
+  @Test
+  @DisplayName("passwordless-cancel shares the passwordless-wait ip+id bucket")
+  void passwordlessCancel_sharesWaitBucket() throws Exception {
+    assertThat(
+            filterWait("203.0.113.90", "{\"authAttemptId\":7,\"waiterSecret\":\"x\"}").getStatus())
+        .isEqualTo(HttpStatus.OK.value());
+
+    MockHttpServletRequest cancel = new MockHttpServletRequest("POST", PASSWORDLESS_CANCEL_PATH);
+    cancel.setRemoteAddr("203.0.113.90");
+    cancel.setContentType("application/json");
+    cancel.setContent(
+        "{\"authAttemptId\":7,\"waiterSecret\":\"x\"}".getBytes(StandardCharsets.UTF_8));
+    MockHttpServletResponse cancelResponse = new MockHttpServletResponse();
+    filter.doFilter(cancel, cancelResponse, filterChain);
+    assertThat(cancelResponse.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+  }
+
+  @Test
+  @DisplayName("extractAuthAttemptId parses JSON body; bucket key includes client IP")
+  void extractAuthAttemptId_parsesBody() {
+    assertThat(
+            AdminRateLimitFilter.extractAuthAttemptId(
+                "{\"authAttemptId\":123,\"waiterSecret\":\"s\"}".getBytes(StandardCharsets.UTF_8)))
+        .isEqualTo(123);
+    assertThat(AdminRateLimitFilter.passwordlessWaitBucketKey(123, "1.2.3.4"))
+        .isEqualTo("passwordless-wait:ip:1.2.3.4:attempt:123");
+    assertThat(AdminRateLimitFilter.passwordlessWaitBucketKey(null, "1.2.3.4"))
+        .isEqualTo("passwordless-wait:ip:1.2.3.4:noid");
   }
 
   @Test
@@ -158,11 +377,46 @@ class AdminRateLimitFilterTest {
     MockHttpServletResponse r3 = new MockHttpServletResponse();
     filter.doFilter(ip3, r3, filterChain);
     assertThat(r3.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
-    assertThat(r3.getHeader("Retry-After")).isEqualTo("60");
+    assertThat(Long.parseLong(r3.getHeader("Retry-After"))).isBetween(1L, 60L);
     assertThat(
             meterRegistry
                 .counter("ezkey.rate_limit.backstop.rejected", "endpoint", "login")
                 .count())
         .isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("Rate-limit WARN logs sanitize CR/LF in client IP (LogSanitizer)")
+  void rateLimitWarnDoesNotEchoCrLfFromClientIp() throws Exception {
+    MockHttpServletRequest first = new MockHttpServletRequest("POST", LOGIN_PATH);
+    first.setRemoteAddr("203.0.113.9\r\ninjected");
+    filter.doFilter(first, new MockHttpServletResponse(), filterChain);
+
+    MockHttpServletRequest second = new MockHttpServletRequest("POST", LOGIN_PATH);
+    second.setRemoteAddr("203.0.113.9\r\ninjected");
+    MockHttpServletResponse denied = new MockHttpServletResponse();
+    filter.doFilter(second, denied, filterChain);
+
+    assertThat(denied.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+
+    String joined =
+        logAppender.list.stream()
+            .map(ILoggingEvent::getFormattedMessage)
+            .reduce("", (a, b) -> a + "\n" + b);
+
+    assertThat(joined).contains("Rate limit exceeded");
+    assertThat(joined).doesNotContain("\rinjected");
+    assertThat(joined).doesNotContain("\ninjected");
+    assertThat(joined).contains("203.0.113.9__injected");
+  }
+
+  private MockHttpServletResponse filterWait(String remoteAddr, String jsonBody) throws Exception {
+    MockHttpServletRequest request = new MockHttpServletRequest("POST", PASSWORDLESS_WAIT_PATH);
+    request.setRemoteAddr(remoteAddr);
+    request.setContentType("application/json");
+    request.setContent(jsonBody.getBytes(StandardCharsets.UTF_8));
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    filter.doFilter(request, response, filterChain);
+    return response;
   }
 }

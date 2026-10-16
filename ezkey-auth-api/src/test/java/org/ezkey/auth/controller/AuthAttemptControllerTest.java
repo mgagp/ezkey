@@ -388,6 +388,78 @@ class AuthAttemptControllerTest {
   }
 
   @Test
+  @DisplayName("POST /api/v1/auth-attempts/respond - PENDING → unified 409 (#844 Marc m1)")
+  void respond_WhenPending_ShouldReturn409StateConflict() throws Exception {
+    when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
+        .thenReturn(respondRequest);
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+        .thenThrow(new AuthAttemptStateConflictException("Auth attempt still PENDING"));
+
+    String json = objectMapper.writeValueAsString(respondRequestDto);
+
+    mockMvc
+        .perform(post(BASE_URL + "/respond").contentType(MediaType.APPLICATION_JSON).content(json))
+        .andExpect(status().isConflict())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_STATE_CONFLICT))
+        .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_CONFLICT))
+        .andExpect(
+            jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT));
+
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+  }
+
+  @Test
+  @DisplayName("POST /api/v1/auth-attempts/respond - missing signing key → 503 (#844)")
+  void respond_WhenIntegrationSigningUnavailable_ShouldReturn503() throws Exception {
+    when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
+        .thenReturn(respondRequest);
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+        .thenThrow(
+            new org.ezkey.exception.auth.IntegrationSigningUnavailableException(
+                "Integration private key missing"));
+
+    String json = objectMapper.writeValueAsString(respondRequestDto);
+
+    mockMvc
+        .perform(post(BASE_URL + "/respond").contentType(MediaType.APPLICATION_JSON).content(json))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(
+            jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_INTEGRATION_SIGNING_UNAVAILABLE))
+        .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_SERVICE_UNAVAILABLE))
+        .andExpect(
+            jsonPath("$.detail")
+                .value(AuthApiProblemCatalog.DETAIL_INTEGRATION_SIGNING_UNAVAILABLE));
+
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+  }
+
+  @Test
+  @DisplayName("POST /api/v1/auth-attempts/respond - not found → unified 409 (#844 Marc m1)")
+  void respond_WhenNotFound_ShouldReturn409StateConflict() throws Exception {
+    when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
+        .thenReturn(respondRequest);
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+        .thenThrow(
+            new AuthAttemptStateConflictException(
+                "Cannot respond to authentication attempt: not found"));
+
+    String json = objectMapper.writeValueAsString(respondRequestDto);
+
+    mockMvc
+        .perform(post(BASE_URL + "/respond").contentType(MediaType.APPLICATION_JSON).content(json))
+        .andExpect(status().isConflict())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_STATE_CONFLICT))
+        .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_CONFLICT))
+        .andExpect(
+            jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT));
+
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+  }
+
+  @Test
   @DisplayName(
       "POST /api/v1/auth-attempts/respond - Missing authAttemptAccepted returns 400 not 500")
   void respond_WhenAcceptedMissing_ShouldReturn400() throws Exception {

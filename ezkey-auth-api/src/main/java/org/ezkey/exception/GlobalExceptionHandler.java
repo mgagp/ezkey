@@ -23,6 +23,7 @@ import org.ezkey.exception.auth.EnrollmentInvitationExpiredException;
 import org.ezkey.exception.auth.EnrollmentNotAvailableAfterLockException;
 import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
 import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
+import org.ezkey.exception.auth.IntegrationSigningUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
@@ -180,6 +181,10 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
         pathFrom(request));
   }
 
+  /**
+   * Unified 409 for respond not-found / PENDING / terminal (#844 Marc m1). Exception message is
+   * logged for server diagnosis; client receives a stable catalog detail only.
+   */
   @ExceptionHandler(AuthAttemptStateConflictException.class)
   public ResponseEntity<ProblemDetail> handleAuthAttemptStateConflict(
       AuthAttemptStateConflictException ex, WebRequest request) {
@@ -189,6 +194,23 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
         AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_STATE_CONFLICT,
         AuthApiProblemCatalog.TITLE_CONFLICT,
         AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT,
+        pathFrom(request));
+  }
+
+  /**
+   * Per-enrollment integration private key missing or blank when a signed respond body is required
+   * (#844). Runtime HTTP 503 — never an unsigned 200. There is no JVM startup check for these keys
+   * (they are stored per enrollment); the respond transaction rolls back on this exception.
+   */
+  @ExceptionHandler(IntegrationSigningUnavailableException.class)
+  public ResponseEntity<ProblemDetail> handleIntegrationSigningUnavailable(
+      IntegrationSigningUnavailableException ex, WebRequest request) {
+    LOG.error("Integration signing unavailable: {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        AuthApiProblemCatalog.TYPE_INTEGRATION_SIGNING_UNAVAILABLE,
+        AuthApiProblemCatalog.TITLE_SERVICE_UNAVAILABLE,
+        AuthApiProblemCatalog.DETAIL_INTEGRATION_SIGNING_UNAVAILABLE,
         pathFrom(request));
   }
 

@@ -184,10 +184,15 @@ export type respondResponse500 = {
   status: 500
 }
 
+export type respondResponse503 = {
+  data: ProblemDetail
+  status: 503
+}
+
 export type respondResponseSuccess = (respondResponse200) & {
   headers: Headers;
 };
-export type respondResponseError = (respondResponse400 | respondResponse409 | respondResponse429 | respondResponse500) & {
+export type respondResponseError = (respondResponse400 | respondResponse409 | respondResponse429 | respondResponse500 | respondResponse503) & {
   headers: Headers;
 };
 
@@ -202,7 +207,7 @@ export const getRespondUrl = () => {
 }
 
 /**
- * Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 may include a business-level FAILED result in the JSON body (integration-signed) when validation fails in the respond service; uncaught IllegalArgumentException uses 400.
+ * Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 bodies (APPROVED/DENIED/FAILED) are always integration-signed; the server never emits an unsigned 200 (#844). Not-found, PENDING, and terminal / cancelled / superseded all map to a single client 409 auth-attempt-state-conflict (distinction only in server logs; #844 Marc m1). Missing per-enrollment integration signing key → runtime 503 integration-signing-unavailable (transaction rolls back; no JVM startup gate).
  * @summary Submit authentication response
  */
 export const respond = async (authAttemptRespondRequestDto: AuthAttemptRespondRequestDto, options?: Parameters<typeof customInstance>[1]): Promise<respondResponse> => {

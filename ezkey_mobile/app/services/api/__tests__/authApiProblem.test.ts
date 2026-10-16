@@ -8,12 +8,27 @@
  */
 
 import {
+  AUTH_ATTEMPT_STATE_CONFLICT_TYPE,
+  INTEGRATION_SIGNING_UNAVAILABLE_TYPE,
+  catalogKeyForAuthApiProblemType,
+  isAuthAttemptStateConflict,
   isEzkeyProblemType,
   parseAuthApiProblemDetail,
+  resolveAuthApiUserFacingOutcome,
   userFacingAuthApiError,
 } from '../authApiProblem';
 
 const FALLBACK = 'Request failed.';
+const STATE_CONFLICT_MSG =
+  'This request is no longer active. No action is required.';
+const SIGNING_UNAVAILABLE_MSG =
+  'Authentication signing is temporarily unavailable. Try again later.';
+
+const CATALOG = {
+  fallback: FALLBACK,
+  stateConflict: STATE_CONFLICT_MSG,
+  integrationSigningUnavailable: SIGNING_UNAVAILABLE_MSG,
+};
 
 const CLOUDFLARE_1020_BODY = {
   type: 'https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1020/',
@@ -95,57 +110,141 @@ describe('isEzkeyProblemType', () => {
   });
 });
 
+describe('catalogKeyForAuthApiProblemType', () => {
+  it('maps known Auth types to catalog keys (#844 Marc m1: unified state-conflict)', () => {
+    expect(catalogKeyForAuthApiProblemType(AUTH_ATTEMPT_STATE_CONFLICT_TYPE)).toBe('stateConflict');
+    expect(catalogKeyForAuthApiProblemType(INTEGRATION_SIGNING_UNAVAILABLE_TYPE)).toBe(
+      'integrationSigningUnavailable',
+    );
+    expect(catalogKeyForAuthApiProblemType('https://ezkey.io/problems/auth/other')).toBe('generic');
+    // Former respond-before-read / resource-not-found types are no longer distinct client keys.
+    expect(
+      catalogKeyForAuthApiProblemType(
+        'https://ezkey.io/problems/auth/auth-attempt-respond-before-read',
+      ),
+    ).toBe('generic');
+    expect(
+      catalogKeyForAuthApiProblemType('https://ezkey.io/problems/auth/resource-not-found'),
+    ).toBe('generic');
+  });
+});
+
 describe('userFacingAuthApiError', () => {
-  it('shows origin detail when type is under the Ezkey namespace', () => {
+  it('never surfaces trapped server detail for Ezkey types — uses local catalog (#844)', () => {
+    const trappedDetail = 'Cannot respond: status is no longer READ — internal id=999';
+    const error = httpErrorWithData({
+      type: 'https://ezkey.io/problems/auth/auth-attempt-binding-failed',
+      title: 'Authentication request binding failed',
+      status: 400,
+      detail: trappedDetail,
+    });
+    expect(userFacingAuthApiError(error, CATALOG)).toBe(FALLBACK);
+    expect(userFacingAuthApiError(error, CATALOG)).not.toContain('internal id');
+    expect(userFacingAuthApiError(error, CATALOG)).not.toContain(trappedDetail);
+  });
+
+  it('uses fallback for non-Ezkey and non-problem bodies', () => {
+    expect(userFacingAuthApiError(httpErrorWithData(CLOUDFLARE_1020_BODY, 403), CATALOG)).toBe(
+      FALLBACK,
+    );
+    expect(
+      userFacingAuthApiError(httpErrorWithData('<html><body>Error 1020</body></html>', 403), CATALOG),
+    ).toBe(FALLBACK);
+    expect(userFacingAuthApiError(httpErrorWithData(null, 502), CATALOG)).toBe(FALLBACK);
+    expect(userFacingAuthApiError(new Error('Network Error'), CATALOG)).toBe(FALLBACK);
+    expect(userFacingAuthApiError('not-json', CATALOG)).toBe(FALLBACK);
+  });
+
+  it('maps auth-attempt-state-conflict to the neutral inactive message (#833 Patrick)', () => {
+    const error = httpErrorWithData(
+      {
+        type: AUTH_ATTEMPT_STATE_CONFLICT_TYPE,
+        title: 'Authentication attempt state conflict',
+        status: 409,
+        detail: 'Cannot respond: status is no longer READ',
+      },
+      409,
+    );
+    expect(userFacingAuthApiError(error, CATALOG)).toBe(STATE_CONFLICT_MSG);
+    expect(userFacingAuthApiError(error, CATALOG)).not.toContain('READ');
+  });
+
+  it('supports legacy (fallback, stateConflict) string overload', () => {
+    const error = httpErrorWithData(
+      {
+        type: AUTH_ATTEMPT_STATE_CONFLICT_TYPE,
+        status: 409,
+        detail: 'must not surface',
+      },
+      409,
+    );
+    expect(userFacingAuthApiError(error, FALLBACK, STATE_CONFLICT_MSG)).toBe(STATE_CONFLICT_MSG);
+  });
+});
+
+describe('resolveAuthApiUserFacingOutcome / isAuthAttemptStateConflict', () => {
+  it('marks state conflict as non-retryable with the neutral message', () => {
+    const error = httpErrorWithData(
+      {
+        type: AUTH_ATTEMPT_STATE_CONFLICT_TYPE,
+        title: 'Authentication attempt state conflict',
+        status: 409,
+        detail: 'Server detail must not surface',
+      },
+      409,
+    );
+    expect(isAuthAttemptStateConflict(error)).toBe(true);
+    expect(resolveAuthApiUserFacingOutcome(error, CATALOG)).toEqual({
+      message: STATE_CONFLICT_MSG,
+      retryable: false,
+    });
+  });
+
+  it('marks integration-signing-unavailable as retryable with local catalog text (#844)', () => {
+    const error = httpErrorWithData(
+      {
+        type: INTEGRATION_SIGNING_UNAVAILABLE_TYPE,
+        title: 'Service unavailable',
+        status: 503,
+        detail: 'Authentication signing is temporarily unavailable. Retry later.',
+      },
+      503,
+    );
+    expect(resolveAuthApiUserFacingOutcome(error, CATALOG)).toEqual({
+      message: SIGNING_UNAVAILABLE_MSG,
+      retryable: true,
+    });
+  });
+
+  it('marks a 409 of another type as retryable (#844)', () => {
+    const error = httpErrorWithData(
+      {
+        type: 'https://ezkey.io/problems/auth/enrollment-already-bound',
+        title: 'Conflict',
+        status: 409,
+        detail: 'must not surface',
+      },
+      409,
+    );
+    expect(isAuthAttemptStateConflict(error)).toBe(false);
+    expect(resolveAuthApiUserFacingOutcome(error, CATALOG)).toEqual({
+      message: FALLBACK,
+      retryable: true,
+    });
+    expect(resolveAuthApiUserFacingOutcome(error, CATALOG).message).not.toContain('must not');
+  });
+
+  it('marks other Ezkey problems as retryable with local fallback only', () => {
     const error = httpErrorWithData({
       type: 'https://ezkey.io/problems/auth/auth-attempt-binding-failed',
       title: 'Authentication request binding failed',
       status: 400,
       detail: 'The authentication request could not be processed.',
     });
-    expect(userFacingAuthApiError(error, FALLBACK)).toBe(
-      'The authentication request could not be processed.',
-    );
-  });
-
-  it('returns the fallback for Cloudflare 1020 JSON and never leaks edge fields', () => {
-    const error = httpErrorWithData(CLOUDFLARE_1020_BODY, 403);
-    const message = userFacingAuthApiError(error, FALLBACK);
-    expect(message).toBe(FALLBACK);
-    expect(message).not.toContain('1020');
-    expect(message).not.toContain('ray_id');
-    expect(message).not.toContain('0123456789abcdef');
-    expect(message).not.toContain('what_you_should_do');
-    expect(message).not.toContain(CLOUDFLARE_1020_BODY.detail);
-  });
-
-  it('returns the fallback for title-only, about:blank, HTML, and non-object bodies', () => {
-    expect(userFacingAuthApiError(httpErrorWithData({title: 'Bad Request', status: 400}), FALLBACK)).toBe(
-      FALLBACK,
-    );
-    expect(
-      userFacingAuthApiError(
-        httpErrorWithData({type: 'about:blank', detail: 'Generic failure'}),
-        FALLBACK,
-      ),
-    ).toBe(FALLBACK);
-    expect(
-      userFacingAuthApiError(httpErrorWithData('<html><body>Error 1020</body></html>', 403), FALLBACK),
-    ).toBe(FALLBACK);
-    expect(userFacingAuthApiError(httpErrorWithData(null, 502), FALLBACK)).toBe(FALLBACK);
-    expect(userFacingAuthApiError(new Error('Network Error'), FALLBACK)).toBe(FALLBACK);
-    expect(userFacingAuthApiError('not-json', FALLBACK)).toBe(FALLBACK);
-  });
-
-  it('returns the fallback when the Ezkey type has no usable detail', () => {
-    expect(
-      userFacingAuthApiError(
-        httpErrorWithData({
-          type: 'https://ezkey.io/problems/auth/auth-attempt-binding-failed',
-          title: 'Authentication request binding failed',
-        }),
-        FALLBACK,
-      ),
-    ).toBe(FALLBACK);
+    expect(isAuthAttemptStateConflict(error)).toBe(false);
+    expect(resolveAuthApiUserFacingOutcome(error, CATALOG)).toEqual({
+      message: FALLBACK,
+      retryable: true,
+    });
   });
 });

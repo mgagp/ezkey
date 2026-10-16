@@ -144,14 +144,20 @@ a blocking mechanism that locks out IPs after repeated failures.
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.admin.rate-limit.enabled` | `boolean` | `true` | optionnel | Global on/off for admin login rate limiting. |
-| `ezkey.admin.rate-limit.login.requests` | `int` | `5` | optionnel | Maximum login requests per window. |
-| `ezkey.admin.rate-limit.login.window-minutes` | `int` | `5` | optionnel | Rate-limit window in minutes. Docker uses `1`. |
+| `ezkey.admin.rate-limit.login.requests` | `int` | `15` | optionnel | Maximum login requests per window (#831). |
+| `ezkey.admin.rate-limit.login.window-minutes` | `int` | `1` | optionnel | Rate-limit window in minutes. |
 | `ezkey.admin.rate-limit.login.key-strategy` | `String` | `client-ip` | optionnel | Key strategy. Only `client-ip` is implemented. |
 | `ezkey.admin.rate-limit.login.block-after-failures` | `int` | `10` | optionnel | Consecutive failures before IP block. `0` disables blocking. |
 | `ezkey.admin.rate-limit.login.block-duration-minutes` | `int` | `30` | optionnel | Duration in minutes for an IP block. |
-| `ezkey.admin.rate-limit.backstop.enabled` | `boolean` | `true` | optionnel | Unkeyed per-process cap on login / passwordless-wait. Follows ADR-0010 (not distributed). |
-| `ezkey.admin.rate-limit.backstop.login.requests` | `int` | `50` | optionnel | Process-wide admin-auth budget. |
+| `ezkey.admin.rate-limit.passwordless-wait.requests` | `int` | `10` | optionnel | Wait/cancel budget per `ip+authAttemptId` (#831 / #833 C2; separate login cache). |
+| `ezkey.admin.rate-limit.passwordless-wait.window-minutes` | `int` | `1` | optionnel | Window for the per-attempt (ip+id) wait/cancel bucket. |
+| `ezkey.admin.rate-limit.passwordless-wait.ip-requests` | `int` | `20` | optionnel | Per-IP aggregate wait/cancel budget (rotating-id DoS brake). |
+| `ezkey.admin.rate-limit.passwordless-wait.ip-window-minutes` | `int` | `1` | optionnel | Window for the per-IP wait/cancel aggregate. |
+| `ezkey.admin.rate-limit.backstop.enabled` | `boolean` | `true` | optionnel | Unkeyed per-process caps on login and wait/cancel. Follows ADR-0010 (not distributed). |
+| `ezkey.admin.rate-limit.backstop.login.requests` | `int` | `50` | optionnel | Process-wide login budget. |
 | `ezkey.admin.rate-limit.backstop.login.window-minutes` | `int` | `1` | optionnel | Window for the login backstop. |
+| `ezkey.admin.rate-limit.backstop.passwordless-wait.requests` | `int` | `100` | optionnel | Process-wide wait/cancel budget. |
+| `ezkey.admin.rate-limit.backstop.passwordless-wait.window-minutes` | `int` | `1` | optionnel | Window for the wait/cancel backstop. |
 
 N Admin replicas imply N times the backstop headroom; edge rate limiting remains the public-host control.
 
@@ -159,14 +165,20 @@ N Admin replicas imply N times the backstop headroom; edge rate limiting remains
 
 ```properties
 ezkey.admin.rate-limit.enabled=true
-ezkey.admin.rate-limit.login.requests=5
+ezkey.admin.rate-limit.login.requests=15
 ezkey.admin.rate-limit.login.window-minutes=1
 ezkey.admin.rate-limit.login.key-strategy=client-ip
 ezkey.admin.rate-limit.login.block-after-failures=10
 ezkey.admin.rate-limit.login.block-duration-minutes=30
+ezkey.admin.rate-limit.passwordless-wait.requests=10
+ezkey.admin.rate-limit.passwordless-wait.window-minutes=1
+ezkey.admin.rate-limit.passwordless-wait.ip-requests=20
+ezkey.admin.rate-limit.passwordless-wait.ip-window-minutes=1
 ezkey.admin.rate-limit.backstop.enabled=true
 ezkey.admin.rate-limit.backstop.login.requests=50
 ezkey.admin.rate-limit.backstop.login.window-minutes=1
+ezkey.admin.rate-limit.backstop.passwordless-wait.requests=100
+ezkey.admin.rate-limit.backstop.passwordless-wait.window-minutes=1
 ```
 
 **`docker-test` profile:** rate limiting disabled (`ezkey.admin.rate-limit.enabled=false`).

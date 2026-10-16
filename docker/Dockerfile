@@ -18,7 +18,8 @@ COPY ezkey-integration-api/pom.xml ./ezkey-integration-api/pom.xml
 COPY ezkey-crypto-api/pom.xml ./ezkey-crypto-api/pom.xml
 COPY ezkey-sdk/java/pom.xml ./ezkey-sdk/java/pom.xml
 COPY ezkey-demo-device/pom.xml ./ezkey-demo-device/pom.xml
-COPY ezkey-demo-device/openapi-spec.json ./ezkey-demo-device/openapi-spec.json
+# Demo-device OpenAPI generator reads ../specs/auth-api/openapi-spec.json (no git symlink — #833).
+COPY specs/auth-api/openapi-spec.json ./specs/auth-api/openapi-spec.json
 COPY ezkey-demo-app-acme/pom.xml ./ezkey-demo-app-acme/pom.xml
 COPY ezkey-tests/pom.xml ./ezkey-tests/pom.xml
 

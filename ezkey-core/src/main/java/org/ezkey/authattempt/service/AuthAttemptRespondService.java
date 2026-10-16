@@ -22,6 +22,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.exception.auth.IntegrationSigningUnavailableException;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +46,12 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li><b>Supersession Check:</b> Ensures no newer authentication attempt exists
  *   <li><b>Expiration Check:</b> Validates authentication attempt has not expired
  * </ul>
+ *
+ * <p><b>Signed outcomes (#844):</b> Only decisions and final statuses leave this service as HTTP
+ * 200 bodies, and those bodies are always integration-signed. Not-found, PENDING, and terminal
+ * statuses all map to HTTP <b>409</b> {@code auth-attempt-state-conflict} for clients (distinction
+ * stays in server logs only — Marc m1). Missing integration private key → HTTP <b>503</b>. Never an
+ * unsigned 200.
  *
  * <p><b>Transaction Management:</b> This service uses Spring's declarative transaction management
  * to ensure data consistency during the authentication response processing.
@@ -133,8 +140,10 @@ public class AuthAttemptRespondService {
       // Step 6: Build and return response (integration-signed result payload)
       return buildResponse(request, authAttempt, enrollment);
     } catch (AuthAttemptRequestFailedException ignored) {
-      // Domain FAILED response (integration-signed); state conflicts use
-      // AuthAttemptStateConflictException and propagate.
+      // Legitimate domain FAILED only (invalid device signature, challenge mismatch, missing
+      // device key after the attempt was loaded). State conflict (incl. not-found / PENDING /
+      // terminal) and missing integration signing key propagate as problem+json — never unsigned
+      // 200 (#844).
       return buildFailedResponse(request, authAttempt);
     }
   }
@@ -152,13 +161,33 @@ public class AuthAttemptRespondService {
     Optional<AuthAttempt> authAttemptOpt =
         authAttemptRepository.findById(request.getAuthAttemptId());
     if (authAttemptOpt.isEmpty()) {
-      throw new AuthAttemptRequestFailedException("Auth attempt record not found");
+      // Client sees unified 409; log keeps not-found distinct (#844 Marc m1).
+      logger.warn(
+          "Respond refused: auth attempt {} not found (client → 409 state-conflict)",
+          request.getAuthAttemptId());
+      throw new AuthAttemptStateConflictException(
+          "Cannot respond to authentication attempt: not found");
     }
     AuthAttempt authAttempt = authAttemptOpt.get();
 
-    // Check if in READ status (device has claimed the attempt)
-    if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.READ) {
-      throw new AuthAttemptRequestFailedException("Auth attempt not read by device");
+    AuthAttemptStatus status = authAttempt.getAuthAttemptStatus();
+    if (status == AuthAttemptStatus.PENDING) {
+      // Protocol violation — client still gets unified 409; log keeps PENDING distinct (#844 m1).
+      logger.warn(
+          "Respond refused: auth attempt {} still PENDING (respond before claim;"
+              + " client → 409 state-conflict)",
+          authAttempt.getAuthAttemptId());
+      throw new AuthAttemptStateConflictException(
+          "Cannot respond to authentication attempt: status is PENDING");
+    }
+    if (status != AuthAttemptStatus.READ) {
+      // Terminal: ACCEPTED, REJECTED, EXPIRED, INVALID → 409 (#844).
+      logger.warn(
+          "Respond refused: auth attempt {} status {} (client → 409 state-conflict)",
+          authAttempt.getAuthAttemptId(),
+          status);
+      throw new AuthAttemptStateConflictException(
+          "Cannot respond to authentication attempt: status is " + status);
     }
     // Check if superseded by a newer authentication attempt for the same enrollment
     Optional<AuthAttempt> newerAttempt =
@@ -191,11 +220,18 @@ public class AuthAttemptRespondService {
    * @return the validated enrollment
    */
   private Enrollment validateEnrollment(AuthAttempt authAttempt) {
-    Enrollment enrollment =
-        enrollmentRepository
-            .findById(authAttempt.getEnrollmentId())
-            .orElseThrow(
-                () -> new AuthAttemptRequestFailedException("Enrollment record not found"));
+    Optional<Enrollment> enrollmentOpt =
+        enrollmentRepository.findById(authAttempt.getEnrollmentId());
+    if (enrollmentOpt.isEmpty()) {
+      logger.warn(
+          "Respond refused: enrollment {} not found for auth attempt {} (client → 409"
+              + " state-conflict)",
+          authAttempt.getEnrollmentId(),
+          authAttempt.getAuthAttemptId());
+      throw new AuthAttemptStateConflictException(
+          "Cannot respond to authentication attempt: enrollment not found");
+    }
+    Enrollment enrollment = enrollmentOpt.get();
 
     // Validate device public key
     String devicePublicKey = enrollment.getDevicePublicKey();
@@ -294,23 +330,33 @@ public class AuthAttemptRespondService {
   /**
    * Updates the authentication attempt status based on the user's decision.
    *
-   * <p>This method sets the final status of the authentication attempt based on whether the user
-   * approved or denied the authentication request.
+   * <p>Uses a conditional {@code UPDATE … WHERE status = READ} so a concurrent cancel that already
+   * committed {@code EXPIRED} cannot be overwritten by approve/deny (#833 m1 re-review).
    *
    * @param authAttempt the authentication attempt to update
+   * @param enrollment the enrollment (last-used timestamp on accept)
    * @param request the authentication response request
+   * @throws AuthAttemptStateConflictException if the attempt is no longer READ (cancel won)
    */
   private void updateAttemptStatus(
       AuthAttempt authAttempt, Enrollment enrollment, AuthAttemptRespondRequest request) {
-    // Update authorization attempt based on user decision
-    if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())) {
-      authAttempt.setAuthAttemptStatus(AuthAttemptStatus.ACCEPTED);
+    AuthAttemptStatus newStatus =
+        Boolean.TRUE.equals(request.getAuthAttemptAccepted())
+            ? AuthAttemptStatus.ACCEPTED
+            : AuthAttemptStatus.REJECTED;
+    int updated =
+        authAttemptRepository.updateStatusIfCurrent(
+            authAttempt.getAuthAttemptId(), AuthAttemptStatus.READ, newStatus);
+    if (updated != 1) {
+      throw new AuthAttemptStateConflictException(
+          "Cannot respond to authentication attempt: status is no longer READ"
+              + " (cancelled or already finalized)");
+    }
+    authAttempt.setAuthAttemptStatus(newStatus);
+    if (newStatus == AuthAttemptStatus.ACCEPTED) {
       enrollment.setLastUsedAt(OffsetDateTime.now());
       enrollmentRepository.save(enrollment);
-    } else {
-      authAttempt.setAuthAttemptStatus(AuthAttemptStatus.REJECTED);
     }
-    authAttemptRepository.save(authAttempt);
   }
 
   /**
@@ -339,41 +385,66 @@ public class AuthAttemptRespondService {
   }
 
   /**
-   * Builds a FAILED result for validation errors and signs when the integration key can be resolved
-   * from the attempt's enrollment.
+   * Builds a FAILED result for validation errors and signs with the integration key. A missing or
+   * blank per-enrollment key throws {@link IntegrationSigningUnavailableException} → HTTP 503 (no
+   * unsigned 200); there is no JVM startup check for integration keys (#844).
+   *
+   * <p>Note: callers that already committed {@code INVALID} via {@link
+   * AuthAttemptTxHelper#markAsInvalid} (REQUIRES_NEW) keep that status if signing then fails — a
+   * client retry sees terminal → 409, not a second 503.
    */
   private AuthAttemptRespondResponse buildFailedResponse(
       AuthAttemptRespondRequest request, AuthAttempt authAttempt) {
     AuthAttemptRespondResponse response =
         new AuthAttemptRespondResponse(AuthenticationResult.FAILED, RESPOND_FAILURE_CLIENT_MESSAGE);
-    if (authAttempt != null) {
-      response.setAuthAttemptId(authAttempt.getAuthAttemptId());
-      response.setCreatedAt(authAttempt.getCreatedAt());
-      String proofToken =
-          authAttempt.getAuthAttemptProofToken() != null
-              ? authAttempt.getAuthAttemptProofToken()
-              : "";
-      enrollmentRepository
-          .findById(authAttempt.getEnrollmentId())
-          .ifPresent(enrollment -> attachRespondResultSignature(response, enrollment, proofToken));
-    } else {
-      response.setAuthAttemptId(request.getAuthAttemptId());
+    if (authAttempt == null) {
+      // Should not happen: not-found / state gates no longer throw RequestFailed into this catch.
+      throw new IllegalStateException(
+          "buildFailedResponse requires a loaded auth attempt; refuse unsigned FAILED (#844)");
     }
+    response.setAuthAttemptId(authAttempt.getAuthAttemptId());
+    response.setCreatedAt(authAttempt.getCreatedAt());
+    String proofToken =
+        authAttempt.getAuthAttemptProofToken() != null
+            ? authAttempt.getAuthAttemptProofToken()
+            : "";
+    Optional<Enrollment> enrollmentOpt =
+        enrollmentRepository.findById(authAttempt.getEnrollmentId());
+    if (enrollmentOpt.isEmpty()) {
+      logger.warn(
+          "Respond FAILED path: enrollment {} missing for auth attempt {} (client → 409"
+              + " state-conflict)",
+          authAttempt.getEnrollmentId(),
+          authAttempt.getAuthAttemptId());
+      throw new AuthAttemptStateConflictException(
+          "Cannot respond to authentication attempt: enrollment not found");
+    }
+    attachRespondResultSignature(response, enrollmentOpt.get(), proofToken);
     return response;
   }
 
   /**
-   * Signs {@code proofToken|authAttemptId|result|message} with the integration private key. Skips
-   * signing if the key is missing.
+   * Signs {@code proofToken|authAttemptId|result|message} with the enrollment's integration private
+   * key. When the key is missing or blank, throws {@link IntegrationSigningUnavailableException}
+   * (HTTP 503) instead of returning an unsigned body (#844). Integration keys are per enrollment —
+   * there is no application-startup gate; the outer {@code @Transactional} respond method rolls
+   * back (so a status flip to ACCEPTED/REJECTED in the same transaction is undone).
+   *
+   * @param response respond body being built
+   * @param enrollment enrollment holding the integration private key
+   * @param proofToken attempt proof token (may be empty string for FAILED edge paths)
+   * @throws IntegrationSigningUnavailableException when the key cannot sign
    */
   private void attachRespondResultSignature(
       AuthAttemptRespondResponse response, Enrollment enrollment, String proofToken) {
     if (enrollment == null) {
-      return;
+      throw new IntegrationSigningUnavailableException(
+          "Enrollment required to sign respond result");
     }
     String privateKey = enrollment.getIntegrationPrivateKey();
     if (privateKey == null || privateKey.isBlank()) {
-      return;
+      throw new IntegrationSigningUnavailableException(
+          "Integration private key missing or blank on enrollment");
     }
     String payload =
         AuthAttemptSignaturePayload.buildRespondResultPayload(

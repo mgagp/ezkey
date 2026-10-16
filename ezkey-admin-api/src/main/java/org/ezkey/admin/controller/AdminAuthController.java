@@ -27,6 +27,7 @@ import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.AdminAuthAuditContext;
 import org.ezkey.admin.dto.request.AdminActivationRequestDto;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
+import org.ezkey.admin.dto.request.AdminPasswordlessCancelRequestDto;
 import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
 import org.ezkey.admin.dto.request.AdminRecoveryRequestDto;
 import org.ezkey.admin.dto.request.EvaluatorTempSessionRequestDto;
@@ -807,6 +808,41 @@ public class AdminAuthController {
           auditCtx, context, AdminAuditConstants.LOGIN_MFA_ERROR, e.getMessage());
       throw e;
     }
+  }
+
+  /**
+   * Cancels a pending passwordless login attempt using the waiter secret from {@code /login}.
+   *
+   * <p>Marks the attempt expired so in-flight {@code passwordless-wait} unblocks and an immediate
+   * retry is not blocked by a dangling PENDING attempt (#831).
+   *
+   * @param request cancel request with authAttemptId and waiterSecret
+   * @return empty 204 on success
+   * @throws AdminAuthenticationException if the waiter secret is missing or invalid
+   * @since 2026
+   */
+  @Operation(
+      summary = "Cancel pending passwordless authentication",
+      description =
+          "Cancels a pending passwordless login attempt using the waiter secret issued at login."
+              + " Marks the attempt expired so wait unblocks and retry is not blocked (#831).")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "204",
+            description = "Auth attempt cancelled (or already final)"),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Missing or invalid waiter secret capability"),
+        @ApiResponse(responseCode = "500", description = "Internal Server Error")
+      })
+  @PostMapping("/passwordless-cancel")
+  public ResponseEntity<Void> passwordlessCancel(
+      @Valid @RequestBody AdminPasswordlessCancelRequestDto request) {
+
+    logger.info("🔐 Passwordless cancel request for authAttemptId: {}", request.authAttemptId());
+    authService.cancelPasswordlessAuth(request.authAttemptId(), request.waiterSecret());
+    return ResponseEntity.noContent().build();
   }
 
   private void logPasswordlessMfaFailure(

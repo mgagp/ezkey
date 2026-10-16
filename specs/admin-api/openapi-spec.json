@@ -3429,6 +3429,63 @@
         }
       }
     },
+    "/api/v1/admin/auth/passwordless-cancel": {
+      "post": {
+        "tags": [
+          "Admin Authentication"
+        ],
+        "summary": "Cancel pending passwordless authentication",
+        "description": "Cancels a pending passwordless login attempt using the waiter secret issued at login. Marks the attempt expired so wait unblocks and retry is not blocked (#831).",
+        "operationId": "passwordlessCancel",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPasswordlessCancelRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Auth attempt cancelled (or already final)"
+          },
+          "401": {
+            "description": "Missing or invalid waiter secret capability",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests. Retry-After is seconds until the rate-limit budget refills.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry is allowed",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/auth/logout": {
       "post": {
         "tags": [
@@ -8501,6 +8558,23 @@
           }
         }
       },
+      "AdminPasswordlessCancelRequestDto": {
+        "type": "object",
+        "properties": {
+          "authAttemptId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "waiterSecret": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "authAttemptId",
+          "waiterSecret"
+        ]
+      },
       "AdminLoginRequestDto": {
         "type": "object",
         "description": "Request DTO for passwordless administrator login",
@@ -10729,42 +10803,42 @@
   },
   "x-tagGroups": [
     {
-      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ]
+      ],
+      "name": "Getting started"
     },
     {
-      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ]
+      ],
+      "name": "Tenant and integration setup"
     },
     {
-      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ]
+      ],
+      "name": "MFA operations"
     },
     {
-      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ]
+      ],
+      "name": "Administration"
     },
     {
-      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ]
+      ],
+      "name": "Platform operations"
     }
   ]
 }

@@ -266,25 +266,28 @@ public class AuthAttemptController {
    * @param request the response request DTO containing authentication attempt ID, user's decision
    *     and signatures
    * @param httpRequest the HTTP servlet request for extracting audit information (IP, user agent)
-   * @return ResponseEntity containing response confirmation with HTTP 200, or 400 for invalid
-   *     requests, or 409 for conflicting states
+   * @return ResponseEntity containing response confirmation with HTTP 200 (always
+   *     integration-signed), or 400/409/503 Problem Details — never an unsigned 200 (#844)
    */
   @PostMapping("/respond")
   @Operation(
       summary = "Submit authentication response",
       description =
           "Submits mobile device's response to an authentication request. The authAttemptId is"
-              + " provided in the request body for uniform API design. HTTP 200 may include a"
-              + " business-level FAILED result in the JSON body (integration-signed) when"
-              + " validation fails in the respond service; uncaught IllegalArgumentException uses"
-              + " 400.")
+              + " provided in the request body for uniform API design. HTTP 200 bodies"
+              + " (APPROVED/DENIED/FAILED) are always integration-signed; the server never emits"
+              + " an unsigned 200 (#844). Not-found, PENDING, and terminal / cancelled / superseded"
+              + " all map to a single client 409 auth-attempt-state-conflict (distinction only in"
+              + " server logs; #844 Marc m1). Missing per-enrollment integration signing key →"
+              + " runtime 503 integration-signing-unavailable (transaction rolls back; no JVM"
+              + " startup gate).")
   @ApiResponses(
       value = {
         @ApiResponse(
             responseCode = "200",
             description =
-                "Respond processed; body may be APPROVED, DENIED, or FAILED (signed FAILED when "
-                    + "validation/crypto checks fail in the respond service)",
+                "Respond processed; body may be APPROVED, DENIED, or FAILED — always"
+                    + " integration-signed (#844)",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
@@ -300,7 +303,19 @@ public class AuthAttemptController {
                             implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
-            description = "Authentication attempt state conflict",
+            description =
+                "Unified auth-attempt-state-conflict: not found, PENDING, or terminal / cancelled"
+                    + " / superseded (#844 Marc m1)",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "503",
+            description =
+                "Per-enrollment integration signing key missing/blank — runtime 503,"
+                    + " transaction rolls back (never unsigned 200)",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =

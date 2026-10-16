@@ -166,16 +166,17 @@ public interface AuthAttemptRepository
       @Param("now") java.time.OffsetDateTime now);
 
   /**
-   * Updates the status of an authorization attempt if it's currently pending.
+   * Atomically updates status only when the attempt is still in {@code currentStatus}.
    *
-   * <p>This method atomically updates the status from PENDING to the new status, preventing race
-   * conditions in concurrent scenarios.
+   * <p>Used by respond to transition {@code READ → ACCEPTED/REJECTED} without a read-modify-write
+   * gap against cancel (#833 m1).
    *
    * @param authAttemptId the authorization attempt ID to update
+   * @param currentStatus required current status (typically READ)
    * @param newStatus the new status to set
-   * @return the number of rows affected (1 if updated, 0 if not pending)
+   * @return the number of rows affected (1 if updated, 0 if status mismatched or missing)
    */
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
       "UPDATE AuthAttempt a SET a.authAttemptStatus = :newStatus WHERE a.authAttemptId ="
           + " :authAttemptId AND a.authAttemptStatus = :currentStatus")
@@ -183,6 +184,24 @@ public interface AuthAttemptRepository
       @Param("authAttemptId") Integer authAttemptId,
       @Param("currentStatus") AuthAttemptStatus currentStatus,
       @Param("newStatus") AuthAttemptStatus newStatus);
+
+  /**
+   * Atomically marks an auth attempt {@code EXPIRED} only when it is still {@code PENDING} or
+   * {@code READ}. Wins the cancel/approve race without a read-modify-write gap (#833 m1).
+   *
+   * @param authAttemptId attempt primary key
+   * @param statuses typically PENDING and READ
+   * @param expired target status (EXPIRED)
+   * @return 1 if cancelled, 0 if already final or missing
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "UPDATE AuthAttempt a SET a.authAttemptStatus = :expired WHERE a.authAttemptId = :id AND"
+          + " a.authAttemptStatus IN :statuses")
+  int expireIfPendingOrRead(
+      @Param("id") Integer authAttemptId,
+      @Param("statuses") List<AuthAttemptStatus> statuses,
+      @Param("expired") AuthAttemptStatus expired);
 
   /**
    * Finds all authorization attempts for a given enrollment ID.

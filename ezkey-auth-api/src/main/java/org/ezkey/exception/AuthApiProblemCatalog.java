@@ -32,10 +32,24 @@ public final class AuthApiProblemCatalog {
   public static final String TYPE_ENROLLMENT_STATE_CONFLICT = BASE + "/enrollment-state-conflict";
   public static final String TYPE_AUTH_ATTEMPT_BINDING_FAILED =
       BASE + "/auth-attempt-binding-failed";
+
+  /**
+   * Unified client-facing conflict for {@code /respond}: attempt not found, still {@code PENDING},
+   * or terminal / superseded / cancelled. Distinction stays in server logs only (#844 Marc m1).
+   */
   public static final String TYPE_AUTH_ATTEMPT_STATE_CONFLICT =
       BASE + "/auth-attempt-state-conflict";
+
   public static final String TYPE_AUTH_ATTEMPT_RESPOND_FAILED =
       BASE + "/auth-attempt-respond-failed";
+
+  /**
+   * Per-enrollment integration private key missing/blank when a signed respond body is required.
+   * Runtime HTTP 503 (transaction rolls back) — never an unsigned 200; no JVM startup gate (#844).
+   */
+  public static final String TYPE_INTEGRATION_SIGNING_UNAVAILABLE =
+      BASE + "/integration-signing-unavailable";
+
   public static final String TYPE_VALIDATION_FAILED = BASE + "/validation-failed";
   public static final String TYPE_INVALID_REQUEST_BODY = BASE + "/invalid-request-body";
   public static final String TYPE_INTERNAL_ERROR = BASE + "/internal-error";
@@ -82,6 +96,8 @@ public final class AuthApiProblemCatalog {
       "The authentication request is in a state that does not allow this operation.";
   public static final String DETAIL_AUTH_ATTEMPT_RESPOND_FAILED =
       "The response could not be processed.";
+  public static final String DETAIL_INTEGRATION_SIGNING_UNAVAILABLE =
+      "Authentication signing is temporarily unavailable. Retry later.";
   public static final String DETAIL_VALIDATION_FAILED =
       "One or more fields are invalid or missing.";
   public static final String DETAIL_INVALID_JSON = "The request body could not be read.";

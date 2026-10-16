@@ -123,12 +123,26 @@ IP-keyed enrollment surfaces (`verify`, `bind`, enrolled `instance-info`) also h
 
 **204 No Content** on `POST /api/v1/auth-attempts/pending` when there is no pending attempt is a **success** (no body), not an error.
 
-**200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level `FAILED` result in the JSON body when validation or cryptographic checks fail in a way modeled as `AuthAttemptRequestFailedException` in the respond service (integration-signed; see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`). HTTP-level failures for state conflicts (expired, cancelled, or already decided) use **409** Problem
-Details, type `https://ezkey.io/problems/auth/auth-attempt-state-conflict`. **Decided (#834
-Question 8):** that one type stays. Do not split it per cause. The mobile app shows one sentence —
-the request is no longer active — and Back only, not Try again. The integrating application is where
-the person sees which cause it was. A lost approve response, where a session may already exist, is a
-separate mobile case (orientation Question 10), not a new problem type.
+**200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level result in the JSON body (`APPROVED` / `DENIED` / `FAILED`) **only when the body is integration-signed** (see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). Legitimate `FAILED` covers device-signature or challenge validation errors after the attempt was loaded. The server **never** emits an unsigned HTTP 200 on this path (#844).
+
+HTTP-level outcomes for respond (RFC 9457 Problem Details unless noted):
+
+| Condition | Status | `type` (suffix under `https://ezkey.io/problems/auth/`) |
+| --- | --- | --- |
+| Attempt or enrollment not found, still `PENDING`, or terminal (`ACCEPTED`, `REJECTED`, `EXPIRED`, `INVALID`) / cancel-win / superseded / wall-clock expiry | **409** | `auth-attempt-state-conflict` (unified client surface; distinction only in server logs — #844 Marc m1) |
+| Per-enrollment integration private key missing/blank when signing is required (runtime; transaction rolls back; no JVM startup gate) | **503** | `integration-signing-unavailable` |
+
+A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`).
+
+**Decision (#834 Question 8 + #844 Marc m1 / #833):** Keep a **single** problem type
+`https://ezkey.io/problems/auth/auth-attempt-state-conflict` for respond not-found, still
+`PENDING`, and terminal / cancelled / superseded / wall-clock expiry — do not split types per
+cause (anti-enumeration of sequential ids; server logs keep the distinction). The official mobile
+app shows one sentence — the request is no longer active — and Back only, not Try again. The
+integrating application is where the person sees which cause it was. A lost approve/deny response
+after the HTTP call was sent (timeout / transport), where a session may already exist, is a
+separate mobile case (orientation Question 10 / `UncertainDecision`), not a new problem type.
+Missing integration signing key remains **503** (retryable; transaction rolled back).
 
 ### Public instance metadata (unauthenticated)
 
@@ -263,7 +277,7 @@ Content-Type: application/json
 ```
 
 **Response**
-- **200 OK** + validation result (integration-signed; verify `authAttemptProofTokenResultSignedByIntegration` with the integration public key). That signature field is **null** when the server could not sign (for example the integration key is unavailable); treat a missing signature as untrusted.
+- **200 OK** + validation result — always integration-signed (`authAttemptProofTokenResultSignedByIntegration`); verify with the integration public key. The server **never** returns an unsigned 200 on this path (#844). If the per-enrollment integration private key is missing/blank, the API returns **503** `integration-signing-unavailable` (transaction rolls back) instead of a null signature — see the status table under § Error responses above.
 - **429 Too Many Requests** when rate limit is exceeded (same `authAttemptId` or same client IP when body cannot be parsed); **empty body** plus a `Retry-After` header (seconds).
 ```json
 {

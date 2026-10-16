@@ -4,8 +4,7 @@ import {defineConfig} from 'orval';
  * Orval configuration — generates TypeScript types and TanStack Query v5 hooks
  * from the Auth API OpenAPI spec.
  *
- * Spec source: specs/auth-api/openapi-spec.json (canonical)
- * Copied locally via: scripts/update-specs.sh
+ * Spec source: ../specs/auth-api/openapi-spec.json (canonical; no local symlink/copy — #833)
  *
  * Run codegen: yarn generate:api
  * Output:      app/services/api/generated/auth-api/  (committed)
@@ -13,7 +12,7 @@ import {defineConfig} from 'orval';
 export default defineConfig({
   authApi: {
     input: {
-      target: './openapi-spec.json',
+      target: '../specs/auth-api/openapi-spec.json',
     },
     output: {
       target: './app/services/api/generated/auth-api',

@@ -77,7 +77,10 @@ public final class OpenApiContractCustomizer implements OpenApiCustomizer {
    */
   public static OpenApiContractCustomizer forAdminApi() {
     Set<String> loginFamily =
-        Set.of("/api/v1/admin/auth/login", "/api/v1/admin/auth/passwordless-wait");
+        Set.of(
+            "/api/v1/admin/auth/login",
+            "/api/v1/admin/auth/passwordless-wait",
+            "/api/v1/admin/auth/passwordless-cancel");
     return new OpenApiContractCustomizer(
         Set.of("/api/v1/public/instance-info", "/api/v1/public/evaluator-signup"),
         loginFamily,

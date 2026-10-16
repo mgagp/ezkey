@@ -2,6 +2,8 @@
 
 This directory contains centralized OpenAPI specifications for all Ezkey APIs. This approach eliminates duplication and ensures consistency across all projects.
 
+**No git symlinks in the repo** (Windows often has `core.symlinks=false`): consumers either read these paths directly or receive a physical copy — see [#833](https://github.com/mgagp/ezkey/pull/833).
+
 ## Structure
 
 ```
@@ -25,10 +27,14 @@ specs/
 
 ### Projects Using These Specifications
 
-- **ezkey-demo-app-acme** → `specs/admin-api/openapi-spec.json`
-- **ezkey-demo-device** → `specs/auth-api/openapi-spec.json`
-- **Public API portal** → generated from these canonical specs and published as static copies under `sites/ezkey-org/api-specs/`
-- **ezkey-sdk** → Relevant specifications for SDK generation
+| Consumer | Resolution |
+| --- | --- |
+| **ezkey-admin-ui** | Committed copy `ezkey-admin-ui/openapi-spec.json` (module Docker build context cannot see `specs/`); CI `cmp` vs this file; refreshed by `update-specs.sh` |
+| **ezkey-demo-app-acme** | Committed copy (historical dispatch); refreshed by `update-specs.sh` |
+| **ezkey-demo-device** | Maven `inputSpec` → `../specs/auth-api/openapi-spec.json`; Docker COPY places the same path under `/build` |
+| **ezkey_mobile** | Orval `../specs/auth-api/openapi-spec.json` |
+| **ezkey-sdk** (JS) | `openapi-generator-cli` → `../../specs/{admin,auth}-api/openapi-spec.json` |
+| **sites/ezkey-org/api-specs/** | Build/deploy-time copy via `scripts/sync-ezkey-org-api-specs.sh` (gitignored; Pages publishes the folder as-is) |
 
 ### Update Process
 

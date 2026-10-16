@@ -23,7 +23,11 @@ import { LoginActivationSection } from '@/components/feature/login-activation-se
 import { LoginRecoverySection } from '@/components/feature/login-recovery-section';
 import { getRecoverySession } from '@/lib/recovery-session';
 import { cn, formatChallengeCode, formatCountdown } from '@/lib/utils';
-import { login as loginApi, passwordlessWait } from '@/generated/admin-api/admin-authentication/admin-authentication';
+import {
+  login as loginApi,
+  passwordlessCancel,
+  passwordlessWait,
+} from '@/generated/admin-api/admin-authentication/admin-authentication';
 import type { AdminLoginResponseDto } from '@/generated/admin-api/model';
 
 type LoginState = 'idle' | 'submitting' | 'waiting' | 'rejected' | 'expired' | 'error';
@@ -248,9 +252,22 @@ export default function LoginPage() {
   const handleCancel = () => {
     finalStatusRef.current = 'CANCELLED';
     abortRef.current?.abort();
+    const pending = waitingData;
     setLoginState('idle');
     setWaitingData(null);
     setErrorMessage(null);
+    // Server-side cancel so the attempt is not left PENDING until TTL (#831).
+    if (pending?.authAttemptId != null && pending.waiterSecret) {
+      void passwordlessCancel(
+        {
+          authAttemptId: pending.authAttemptId,
+          waiterSecret: pending.waiterSecret,
+        },
+        { requireAuth: false },
+      ).catch(() => {
+        // Best-effort: network / 429 must not block returning to idle login.
+      });
+    }
   };
 
   const handleRetry = () => {

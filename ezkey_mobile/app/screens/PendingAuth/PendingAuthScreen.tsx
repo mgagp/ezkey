@@ -9,13 +9,13 @@
  *              All business logic is delegated to {@link usePendingAuth}.
  * Security Context: Embeds the polling model, proof token usage, and read-once semantics described in
  *                   docs/features/AUTH_SECURITY.md to keep user actions intentional and replay resistant.
- * UX: Approve and Deny only — there is no mobile "cancel" API; leaving the screen without responding
- *     relies on server-side TTL expiry (see Auth API / Admin batch expiry). Do not add a Cancel
- *     button that implies a distinct server action without an endpoint.
+ * UX: Approve and Deny. Leaving the screen with a loaded pending attempt (hardware back / gesture)
+ *     is treated as Deny via Auth API respond(accepted=false) so Admin login wait unblocks (#831).
+ *     Do not leave PENDING until TTL when the user explicitly abandons the request.
  * @since 2025
  */
 
-import React, {useCallback} from 'react';
+import React, {useCallback, useEffect} from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -62,6 +62,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     formError,
     setFormError,
     globalError,
+    globalErrorRetryable,
     isProcessing,
     loading,
     debugInfo,
@@ -71,11 +72,45 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     roleLabel,
     loadPendingAttempt,
     handleRespond,
+    hasSubmittedServerDecision,
+    isRespondInFlight,
+    dismissRetryableErrorKeepAttempt,
   } = usePendingAuth(enrollmentId, initialAttempt, {
     canGoBack: () => navigation.canGoBack(),
     goBack: () => navigation.goBack(),
     navigateToEnrollmentDetail,
   });
+
+  // Leave with a loaded pending attempt → Auth API deny so passwordless-wait unblocks (#831).
+  // Skip when approve/deny is already in flight (sync ref) so leave cannot send a second deny (#833 m2).
+  // isRespondInFlight already covers the isProcessing window — do not also check isProcessing.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', e => {
+      if (!attempt || hasSubmittedServerDecision() || isRespondInFlight()) {
+        return;
+      }
+      e.preventDefault();
+      tracePendingAuthRespond('pendingAuth_leave_as_deny', {
+        authAttemptId: attempt.authAttemptId,
+      });
+      void handleRespond(false).finally(() => {
+        // Successful deny already navigates via handleReturnToEnrollmentDetail.
+        // On failure, still allow leave so the user is not trapped on this screen.
+        if (!hasSubmittedServerDecision()) {
+          navigation.dispatch(e.data.action);
+        }
+      });
+    });
+    return unsubscribe;
+  }, [navigation, attempt, handleRespond, hasSubmittedServerDecision, isRespondInFlight]);
+
+  const handleInactiveBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigateToEnrollmentDetail();
+  }, [navigation, navigateToEnrollmentDetail]);
 
   const emptyIdentity = enrollment
     ? buildEnrollmentIdentityDisplay(
@@ -161,12 +196,25 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
               )}
             </View>
           ) : null}
-          <TouchableOpacity
-            testID="ezkey.e2e.pendingAuth.tryAgain"
-            onPress={loadPendingAttempt}
-            style={styles.secondaryButton}>
-            <Text style={styles.secondaryLabel}>{t('pendingAuth.tryAgain')}</Text>
-          </TouchableOpacity>
+          {globalErrorRetryable ? (
+            <TouchableOpacity
+              testID="ezkey.e2e.pendingAuth.tryAgain"
+              onPress={
+                // 503 (and other retryable respond errors) keep the loaded attempt — do not
+                // re-claim pending (would often land on empty while READ still waits) (#833).
+                attempt ? dismissRetryableErrorKeepAttempt : loadPendingAttempt
+              }
+              style={styles.secondaryButton}>
+              <Text style={styles.secondaryLabel}>{t('pendingAuth.tryAgain')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              testID="ezkey.e2e.pendingAuth.inactiveBack"
+              onPress={handleInactiveBack}
+              style={styles.secondaryButton}>
+              <Text style={styles.secondaryLabel}>{t('common.back')}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : showEmptyState ? (
         <View style={styles.emptyState}>
@@ -247,6 +295,13 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
                   </Text>
                 </TouchableOpacity>
               </View>
+              {!isProcessing ? (
+                <Text
+                  testID="ezkey.e2e.pendingAuth.leaveDeclinesHint"
+                  style={styles.leaveDeclinesHint}>
+                  {t('pendingAuth.leaveDeclinesHint')}
+                </Text>
+              ) : null}
               {isProcessing ? (
                 <View
                   testID="ezkey.e2e.pendingAuth.respondInFlight"
@@ -418,6 +473,12 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: 12,
+  },
+  leaveDeclinesHint: {
+    fontSize: 13,
+    color: '#9aa3b6',
+    textAlign: 'center',
+    lineHeight: 18,
   },
   respondInFlightMarker: {
     alignSelf: 'stretch',

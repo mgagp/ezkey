@@ -96,9 +96,13 @@ public class AdminRateLimitConfig {
       MeterRegistry meterRegistry) {
     logger.info("Initializing Admin API Rate Limiting with configuration:");
     logger.info(
-        "  - Login requests: {} per {} minutes",
+        "  - Login requests: {} per {} minutes (greedy refill)",
         properties.getLogin().getRequests(),
         properties.getLogin().getWindowMinutes());
+    logger.info(
+        "  - Passwordless-wait requests: {} per {} minutes (per authAttemptId)",
+        properties.getPasswordlessWait().getRequests(),
+        properties.getPasswordlessWait().getWindowMinutes());
     logger.info("  - Key strategy: {}", properties.getLogin().getKeyStrategy());
     logger.info("  - Block after failures: {}", properties.getLogin().getBlockAfterFailures());
     logger.info("  - Block duration: {} minutes", properties.getLogin().getBlockDurationMinutes());
