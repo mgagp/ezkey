@@ -18,4 +18,5 @@ PrintMotd yes
 AcceptEnv LANG LC_*
 Subsystem sftp /usr/libexec/openssh/sftp-server
 LoginGraceTime 120
-MaxAuthTries 3
+# One PAM authenticate per SSH try — keeps M1 attempt-line demos/tests unambiguous.
+MaxAuthTries 1

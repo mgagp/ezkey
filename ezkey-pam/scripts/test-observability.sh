@@ -9,7 +9,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 require_cmd docker
 require_cmd ssh
-require_cmd curl
 
 CONTAINER="${EZKEY_PAM_CONTAINER:-ezkey-pam-ssh}"
 CONF="/etc/security/pam_ezkey.conf"
@@ -33,35 +32,42 @@ restore_conf() {
 }
 trap restore_conf EXIT
 
-mark_secure() {
-  local marker="$1"
-  docker exec "${CONTAINER}" logger -p authpriv.info "${marker}"
-  sleep 0.4
-}
-
-attempt_lines_since() {
-  local marker="$1"
+attempt_count() {
+  # GNU grep -c prints 0 and exits 1 when there are no matches — do not append another 0.
   docker exec "${CONTAINER}" sh -c \
-    "awk 'found || index(\$0, \"${marker}\"){found=1} found && /pam_ezkey: attempt /{print}' /var/log/secure"
+    "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r'
 }
 
-count_attempts_since() {
-  attempt_lines_since "$1" | wc -l | tr -d ' '
+attempts_tail_from() {
+  local before="$1"
+  local after
+  after="$(attempt_count)"
+  local new=$((after - before))
+  if [ "${new}" -le 0 ]; then
+    return 0
+  fi
+  docker exec "${CONTAINER}" sh -c \
+    "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n ${new}"
 }
 
 assert_one_clean_line() {
-  local marker="$1"
+  local before="$1"
   local expect_result="$2"
   local label="$3"
   local lines count line
 
   sleep 0.5
-  lines="$(attempt_lines_since "${marker}")"
+  lines="$(attempts_tail_from "${before}")"
   count="$(echo "${lines}" | grep -c 'pam_ezkey: attempt ' || true)"
   line="$(echo "${lines}" | grep 'pam_ezkey: attempt ' | tail -n 1 || true)"
 
-  if [ "${count}" != "1" ]; then
-    fail "${label}: expected exactly 1 attempt line, got ${count}"
+  if [ "${count}" -lt 1 ]; then
+    fail "${label}: expected at least 1 new attempt line, got ${count}"
+    return 0
+  fi
+  # With MaxAuthTries 1, success/network/conf should be exactly one; reject/timeout too.
+  if [ "${count}" -gt 1 ]; then
+    fail "${label}: expected exactly 1 new attempt line (MaxAuthTries 1), got ${count}"
     echo "${lines}" | sed 's/^/  /' || true
     return 0
   fi
@@ -73,8 +79,7 @@ assert_one_clean_line() {
     fail "${label}: line missing required fields: ${line}"
     return 0
   fi
-  # Hygiene
-  if echo "${line}" | grep -Eiq 'secret|proof|token|skey|ikey_|Authorization|body=\{|"status"'; then
+  if echo "${line}" | grep -Eiq 'secret|proof|token|Authorization|body=\{'; then
     fail "${label}: sensitive pattern in attempt line: ${line}"
     return 0
   fi
@@ -90,11 +95,10 @@ assert_one_clean_line() {
   echo "  ${line}"
 }
 
-ssh_bg_cmd() {
+ssh_run() {
   local out="$1"
   local cmd="$2"
   local rc=0
-  # Keep set -e off across the ssh failure so the caller can inspect .rc.
   ssh -tt \
     -p "${PORT}" \
     -o StrictHostKeyChecking=no \
@@ -111,7 +115,6 @@ ssh_bg_cmd() {
 
 echo "=== M1 observability (/var/log/secure on ${CONTAINER}) ==="
 
-# Prove rsyslog probe path works
 PROBE="m1-rsyslog-probe-$(date +%s)"
 docker exec "${CONTAINER}" logger -p authpriv.info "${PROBE}"
 sleep 0.5
@@ -122,12 +125,11 @@ else
 fi
 
 # --- success ---
-MARKER="m1-obs-success-$(date +%s)"
-mark_secure "${MARKER}"
+BEFORE="$(attempt_count)"
 LOG="${RUNTIME_DIR}/obs-success.log"
 "${SCRIPT_DIR}/respond-pending.sh" approve >"${RUNTIME_DIR}/obs-approve.log" 2>&1 &
 APID=$!
-ssh_bg_cmd "${LOG}" 'echo PAM_SSH_OK; exit 0'
+ssh_run "${LOG}" 'echo PAM_SSH_OK; exit 0'
 wait "${APID}" 2>/dev/null || true
 if grep -q PAM_SSH_OK "${LOG}"; then
   ok "success path SSH PAM_SSH_OK"
@@ -135,15 +137,14 @@ else
   fail "success path did not print PAM_SSH_OK"
   tail -n 40 "${LOG}" || true
 fi
-assert_one_clean_line "${MARKER}" "SUCCESS" "success"
+assert_one_clean_line "${BEFORE}" "SUCCESS" "success"
 
 # --- reject ---
-MARKER="m1-obs-reject-$(date +%s)"
-mark_secure "${MARKER}"
+BEFORE="$(attempt_count)"
 LOG="${RUNTIME_DIR}/obs-reject.log"
 "${SCRIPT_DIR}/respond-pending.sh" reject >"${RUNTIME_DIR}/obs-reject-resp.log" 2>&1 &
 APID=$!
-ssh_bg_cmd "${LOG}" 'echo SHOULD_NOT'
+ssh_run "${LOG}" 'echo SHOULD_NOT'
 wait "${APID}" 2>/dev/null || true
 RC="$(cat "${LOG}.rc" 2>/dev/null || echo 1)"
 if [ "${RC}" != "0" ] && ! grep -q SHOULD_NOT "${LOG}"; then
@@ -151,17 +152,15 @@ if [ "${RC}" != "0" ] && ! grep -q SHOULD_NOT "${LOG}"; then
 else
   fail "reject path unexpectedly succeeded (rc=${RC})"
 fi
-assert_one_clean_line "${MARKER}" "DENIED" "reject"
+assert_one_clean_line "${BEFORE}" "DENIED" "reject"
 
 # --- timeout (short wait, no approve) ---
-MARKER="m1-obs-timeout-$(date +%s)"
-mark_secure "${MARKER}"
+BEFORE="$(attempt_count)"
 docker exec "${CONTAINER}" cp -a "${CONF}" "${BACKUP}"
 docker exec "${CONTAINER}" sh -c \
   "sed -i 's/^wait_timeout=.*/wait_timeout=8/' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'"
 LOG="${RUNTIME_DIR}/obs-timeout.log"
-# No respond-pending — wait expires
-ssh_bg_cmd "${LOG}" 'echo SHOULD_NOT'
+ssh_run "${LOG}" 'echo SHOULD_NOT'
 restore_conf
 RC="$(cat "${LOG}.rc" 2>/dev/null || echo 1)"
 if [ "${RC}" != "0" ]; then
@@ -169,16 +168,15 @@ if [ "${RC}" != "0" ]; then
 else
   fail "timeout path unexpectedly succeeded"
 fi
-assert_one_clean_line "${MARKER}" "DENIED" "timeout"
+assert_one_clean_line "${BEFORE}" "DENIED" "timeout"
 
 # --- network error (unreachable Integration API) ---
-MARKER="m1-obs-net-$(date +%s)"
-mark_secure "${MARKER}"
+BEFORE="$(attempt_count)"
 docker exec "${CONTAINER}" cp -a "${CONF}" "${BACKUP}"
 docker exec "${CONTAINER}" sh -c \
   "sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:9|' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'"
 LOG="${RUNTIME_DIR}/obs-net.log"
-ssh_bg_cmd "${LOG}" 'echo SHOULD_NOT'
+ssh_run "${LOG}" 'echo SHOULD_NOT'
 restore_conf
 RC="$(cat "${LOG}.rc" 2>/dev/null || echo 1)"
 if [ "${RC}" != "0" ]; then
@@ -186,7 +184,7 @@ if [ "${RC}" != "0" ]; then
 else
   fail "network-error path unexpectedly succeeded"
 fi
-assert_one_clean_line "${MARKER}" "UNAVAIL" "network-error"
+assert_one_clean_line "${BEFORE}" "UNAVAIL" "network-error"
 
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="

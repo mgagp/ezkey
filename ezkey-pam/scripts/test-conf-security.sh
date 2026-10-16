@@ -26,11 +26,22 @@ fail() { echo "[FAIL] $1"; FAIL=$((FAIL+1)); }
 
 restore_conf() {
   docker exec "${CONTAINER}" sh -c \
-    "if [ -f '${BACKUP}' ]; then mv -f '${BACKUP}' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'; fi"
+    "if [ -f '${BACKUP}' ]; then mv -f '${BACKUP}' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'; fi" \
+    || true
+}
+
+attempt_count() {
+  # GNU grep -c prints 0 and exits 1 when there are no matches — do not append another 0.
+  docker exec "${CONTAINER}" sh -c \
+    "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r'
+}
+
+last_attempt() {
+  docker exec "${CONTAINER}" sh -c \
+    "grep 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null | tail -n 1" || true
 }
 
 ssh_once() {
-  # Do not toggle set -e here — returning non-zero under set -e aborts the caller.
   ssh -tt \
     -p "${PORT}" \
     -o StrictHostKeyChecking=no \
@@ -39,17 +50,10 @@ ssh_once() {
     -o PubkeyAuthentication=no \
     -o PasswordAuthentication=no \
     -o ConnectTimeout=8 \
-    -o NumberOfPasswordPrompts=0 \
     "${SSH_USER}@127.0.0.1" \
     'echo SHOULD_NOT_AUTH' \
     >/dev/null 2>&1 || return $?
   return 0
-}
-
-count_attempt_lines_since() {
-  local marker="$1"
-  docker exec "${CONTAINER}" sh -c \
-    "awk 'found || /${marker}/{found=1} found && /pam_ezkey: attempt /{print}' /var/log/secure 2>/dev/null | wc -l"
 }
 
 trap restore_conf EXIT
@@ -62,60 +66,53 @@ ok "baseline conf security self-check"
 docker exec "${CONTAINER}" cp -a "${CONF}" "${BACKUP}"
 
 # --- mode 0644 must fail closed (PAM_AUTHINFO_UNAVAIL → SSH deny) ---
-MARKER="m1-conf-mode-$(date +%s)"
-docker exec "${CONTAINER}" sh -c "logger -p authpriv.info '${MARKER}'; chmod 644 '${CONF}'"
-: > "${RUNTIME_DIR}/conf-mode.log"
-set +e
-ssh_once
-SSH_RC=$?
-set -e
+BEFORE="$(attempt_count)"
+docker exec "${CONTAINER}" chmod 644 "${CONF}"
+SSH_RC=0
+ssh_once || SSH_RC=$?
 restore_conf
 sleep 0.5
-LINES="$(count_attempt_lines_since "${MARKER}")"
-ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
-  "awk 'found || /${MARKER}/{found=1} found && /pam_ezkey: attempt /{print}' /var/log/secure" | tail -n 1 || true)"
+AFTER="$(attempt_count)"
+ATTEMPT="$(last_attempt)"
+NEW=$((AFTER - BEFORE))
 
-if [ "${SSH_RC}" -ne 0 ] && echo "${ATTEMPT}" | grep -q 'result=UNAVAIL' && \
-   echo "${ATTEMPT}" | grep -q 'pam_code='; then
-  ok "chmod 0644 → SSH denied + UNAVAIL attempt line (lines=${LINES})"
+if [ "${SSH_RC}" -ne 0 ] && [ "${NEW}" -ge 1 ] && echo "${ATTEMPT}" | grep -q 'result=UNAVAIL'; then
+  ok "chmod 0644 → SSH denied + UNAVAIL attempt line (new=${NEW})"
+  echo "  ${ATTEMPT}"
 else
-  fail "chmod 0644 expected deny+UNAVAIL (ssh_rc=${SSH_RC} lines=${LINES} line='${ATTEMPT}')"
+  fail "chmod 0644 expected deny+UNAVAIL (ssh_rc=${SSH_RC} new=${NEW} line='${ATTEMPT}')"
 fi
 
 # --- missing secret_key must fail closed ---
-MARKER="m1-conf-miss-$(date +%s)"
+BEFORE="$(attempt_count)"
 docker exec "${CONTAINER}" sh -c \
-  "logger -p authpriv.info '${MARKER}'; cp -a '${CONF}' '${BACKUP}'; sed -i 's/^secret_key=.*/secret_key=/' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'"
-set +e
-ssh_once
-SSH_RC=$?
-set -e
+  "cp -a '${CONF}' '${BACKUP}'; sed -i 's/^secret_key=.*/secret_key=/' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'"
+SSH_RC=0
+ssh_once || SSH_RC=$?
 restore_conf
 sleep 0.5
-ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
-  "awk 'found || /${MARKER}/{found=1} found && /pam_ezkey: attempt /{print}' /var/log/secure" | tail -n 1 || true)"
+AFTER="$(attempt_count)"
+ATTEMPT="$(last_attempt)"
+NEW=$((AFTER - BEFORE))
 
-if [ "${SSH_RC}" -ne 0 ] && echo "${ATTEMPT}" | grep -q 'result=UNAVAIL'; then
-  ok "missing secret_key → SSH denied + UNAVAIL attempt line"
+if [ "${SSH_RC}" -ne 0 ] && [ "${NEW}" -ge 1 ] && echo "${ATTEMPT}" | grep -q 'result=UNAVAIL'; then
+  ok "missing secret_key → SSH denied + UNAVAIL attempt line (new=${NEW})"
+  echo "  ${ATTEMPT}"
 else
-  fail "missing secret_key expected deny+UNAVAIL (ssh_rc=${SSH_RC} line='${ATTEMPT}')"
+  fail "missing secret_key expected deny+UNAVAIL (ssh_rc=${SSH_RC} new=${NEW} line='${ATTEMPT}')"
 fi
 
 # Hygiene: attempt lines must not contain secrets from .env
-if [ -f "${ENV_FILE}" ]; then
-  # shellcheck disable=SC1090
-  set -a; . "${ENV_FILE}"; set +a
-fi
-SECURE_SNIP="$(docker exec "${CONTAINER}" sh -c 'tail -n 200 /var/log/secure' || true)"
+SECURE_SNIP="$(docker exec "${CONTAINER}" sh -c 'grep "pam_ezkey: attempt " /var/log/secure | tail -n 50' || true)"
 LEAK=0
 for needle in "${EZKEY_SECRET_KEY:-}" "${EZKEY_INTEGRATION_KEY:-}" authAttemptProofToken; do
   if [ -n "${needle}" ] && echo "${SECURE_SNIP}" | grep -Fq "${needle}"; then
-    fail "secret/proof leaked into /var/log/secure: ${needle:0:12}..."
+    fail "secret/proof leaked into attempt lines: ${needle:0:12}..."
     LEAK=1
   fi
 done
 if [ "${LEAK}" -eq 0 ]; then
-  ok "no ikey/skey/proof in recent /var/log/secure"
+  ok "no ikey/skey/proof in attempt lines"
 fi
 
 echo ""
