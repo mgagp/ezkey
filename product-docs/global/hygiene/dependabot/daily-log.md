@@ -154,7 +154,7 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
   - Admin UI T1 tooling: #839 vitest 5.0.3→5.0.4 (admin-ui-vite) `3a54a6cb`
   - Admin UI T1 (security ReDoS GHSA-5jr9-983r-c8x4): #840 i18next 26.4.3→26.4.4 `e411d0aa`
   - Admin UI T1: #841 `@tanstack/react-query` 5.104.1→5.104.2 `54b40253`
-  - Mobile T1 production: #842 i18next 26.4.3→26.4.4 + #843 `@tanstack/react-query` 5.104.1→5.104.2 via hygiene **#NNN** `PENDING` — Dependabot CI red only on stale `thirdPartyLicenses.json` (`js-validate`); hygiene branch `hygiene/dependabot-mobile-2026-10-16` + `yarn license:app-data`; closed #842/#843 as superseded
+  - Mobile T1 production: #842 i18next 26.4.3→26.4.4 + #843 `@tanstack/react-query` 5.104.1→5.104.2 via hygiene **#850** (squash SHA filled after merge) — Dependabot CI red only on stale `thirdPartyLicenses.json` (`js-validate`); hygiene branch `hygiene/dependabot-mobile-2026-10-16` + `yarn license:app-data`; closed #842/#843 as superseded
 - Held / skipped:
   - #822 Playwright docker `v1.64.0-noble`→`v1.64.1-noble` — Admin UI lockfile still `@playwright/test` ^1.64.0 / 1.64.0; do not jump image ahead of npm
   - #779 mobile ESLint 10, #653 Jest 30 (ecosystem gates)
@@ -162,5 +162,5 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
   - #767 textual pip floor jump (T4 / Monday)
   - deferred:later-train `#498`/`#337` (and #347 if open) — skip HITL
   - No Orval PRs in queue this pass
-- Validation: Dependabot CI green + `mergeStateStatus` CLEAN for #838/#839/#840/#841; Admin UI local Node 24 — vitest after install; mobile hygiene — local `yarn validate` (jest **42/307**) + PR CI (`js-validate`, `android-jvm-unit-tests`, `android-16kb-alignment`, `ci-gate`). Deferred full `./scripts/build.sh` / Playwright stack (box may lack JDK/Docker; not required for this light lot).
+- Validation: Dependabot CI green + `mergeStateStatus` CLEAN for #838/#839/#840/#841; Admin UI local Node 24 — vitest **206/206** on 5.0.4; mobile hygiene #850 — local `yarn validate` (jest **42/307**) + PR CI (`js-validate`, `android-jvm-unit-tests`, `android-16kb-alignment`, `ci-gate`). Deferred full `./scripts/build.sh` / Playwright stack (box may lack JDK/Docker; not required for this light lot).
 - Residual: phone smoke for mobile bumps tracked on #627 (gates next Play AAB). Nothing deployed.
