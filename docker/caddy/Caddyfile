@@ -17,8 +17,9 @@
 }
 
 # Mirror community #846: JavaMelody / Actuator never via the proxy surface.
+# Case-insensitive; one-or-more leading slashes; / or ; after the segment.
 (observability_deny) {
-	@blockedObs path_regexp ^/(monitoring|actuator)(/.*)?$
+	@blockedObs path_regexp (?i)^/+(monitoring|actuator)([/;].*)?$
 	handle @blockedObs {
 		respond 404
 	}

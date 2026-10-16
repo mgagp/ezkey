@@ -447,7 +447,8 @@ container. There is no Caddy hop.
 **Collector UI:** http://127.0.0.1:8088 (loopback bind; shared host port for baseline and HA
 collectors; `clean-start` releases the previous collector when switching stacks). Collector WAR
 version matches the API starter (**2.9.0**). Init parameters disable system actions, enable CSRF,
-disable update checks, keep `log=false`, and normalize URL ids (`UUID|\d+`).
+disable update checks, keep `log=false`, and normalize URL ids
+(`[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}|\d+`).
 
 After functional-test traffic, the collector should list `admin-api`, `auth-api`, and
 `integration-api`. In HA mode each application shows **two nodes**. Default clean-start

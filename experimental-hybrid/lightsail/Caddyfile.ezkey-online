@@ -58,9 +58,10 @@
 
 # JavaMelody / Actuator must never be reachable via the public reverse proxy (#846).
 # Management-port reports stay on the Docker network only; collector is SSH-tunnel loopback.
-# Regex validated against Caddy 2.10 matcher syntax (path_regexp).
+# Regex validated against Caddy 2.10 matcher syntax (path_regexp): case-insensitive,
+# one-or-more leading slashes, path separator / or ; (matrix/path-param style).
 (ezkey_online_observability_deny) {
-	@blockedObs path_regexp ^/(monitoring|actuator)(/.*)?$
+	@blockedObs path_regexp (?i)^/+(monitoring|actuator)([/;].*)?$
 	respond @blockedObs 404
 }
 
@@ -125,6 +126,8 @@ demo-acme.ezkey.online {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem {
 		protocols tls1.3 tls1.3
 	}
+	# demo-app-acme exposes /actuator/health on the business port — deny at the edge (#846 / Edgar).
+	import ezkey_online_observability_deny
 	# Explicit forwarded headers so Spring (forward-headers-strategy) keeps https on redirects.
 	# Keep X-Forwarded-Proto / X-Forwarded-Host; harden IP headers below.
 	reverse_proxy demo-app-acme:8082 {

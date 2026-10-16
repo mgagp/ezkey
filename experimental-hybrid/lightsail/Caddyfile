@@ -14,8 +14,9 @@
 }
 
 # Same #846 posture as community: never proxy JavaMelody / Actuator on public hostnames.
+# Case-insensitive; one-or-more leading slashes; / or ; after the segment.
 (exp1_observability_deny) {
-	@blockedObs path_regexp ^/(monitoring|actuator)(/.*)?$
+	@blockedObs path_regexp (?i)^/+(monitoring|actuator)([/;].*)?$
 	respond @blockedObs 404
 }
 
@@ -65,6 +66,7 @@ exp1-demo-acme.ezkey.org {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem {
 		protocols tls1.3 tls1.3
 	}
+	import exp1_observability_deny
 	reverse_proxy demo-app-acme:8082
 	header {
 		X-Content-Type-Options "nosniff"

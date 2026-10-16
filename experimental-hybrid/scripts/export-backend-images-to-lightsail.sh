@@ -71,7 +71,10 @@ Options:
   --remote-up            After load/sync, on the VM: docker compose up -d (rolling apply; DB preserved).
                          With --sync-operator-files: sha256-verify Caddyfile + force-recreate caddy
                          (bind mount; plain up -d does not reload Caddy).
-                         JavaMelody: set EZKEY_ENABLE_JAVA_MELODY=true on the remote up (see community-host.md).
+                         JavaMelody: EZKEY_ENABLE_JAVA_MELODY=true keeps/starts the collector overlay;
+                         EZKEY_DISABLE_JAVA_MELODY=true intentionally removes it (--remove-orphans).
+                         If the collector is already running and neither flag is set, the script refuses
+                         so a silent orphan-remove cannot happen (see community-host.md).
   --clean-start          After load, sync and run clean-start.sh (DESTRUCTIVE). Community requires
                          EZKEY_CONFIRM_WIPE=ezkey-online (first commissioning only). Not with
                          --sync-operator-files or --remote-up.
@@ -265,14 +268,49 @@ if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
   echo "→ remote rolling stack (docker compose up -d) on ${SSH_HOST}"
   # Recreate containers so :latest and updated Compose take effect; Postgres keeps postgres-data.
   # Caddyfile is a bind mount — up -d alone does not reload caddy when only the file changed.
-  # JavaMelody (#846): when EZKEY_ENABLE_JAVA_MELODY=true on the operator machine, pass the
-  # overlay into the remote compose up (collector + management-port monitoring).
-  remote_compose_cmd='docker compose -f docker-compose.yml'
+  #
+  # JavaMelody (#846 / Edgar): --remove-orphans on the base compose alone would silently
+  # tear down ezkey-exp-javamelody-collector. Guard:
+  #   EZKEY_ENABLE_JAVA_MELODY=true  → apply overlay (keep / start collector)
+  #   EZKEY_DISABLE_JAVA_MELODY=true → intentional remove (base + --remove-orphans)
+  #   neither, but collector present → refuse (must choose enable or disable)
+  jm_enable=""
+  jm_disable=""
   if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
+    jm_enable="1"
+  fi
+  if [[ "${EZKEY_DISABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_DISABLE_JAVA_MELODY:-}" == "true" ]]; then
+    jm_disable="1"
+  fi
+  if [[ -n "$jm_enable" && -n "$jm_disable" ]]; then
+    echo "error: set only one of EZKEY_ENABLE_JAVA_MELODY or EZKEY_DISABLE_JAVA_MELODY" >&2
+    exit 1
+  fi
+  remote_compose_cmd='docker compose -f docker-compose.yml'
+  remove_orphans=""
+  if [[ -n "$jm_enable" ]]; then
     remote_compose_cmd='docker compose -f docker-compose.yml -f docker-compose.javamelody.yml'
     echo "  (EZKEY_ENABLE_JAVA_MELODY set — applying docker-compose.javamelody.yml)"
+  elif [[ -n "$jm_disable" ]]; then
+    remove_orphans="--remove-orphans"
+    echo "  (EZKEY_DISABLE_JAVA_MELODY set — base compose + --remove-orphans; collector will be removed)"
+  else
+    # Detect a live collector so a plain rolling up cannot orphan-remove it silently.
+    collector_present=""
+    if [[ -z "$DRY_RUN" ]]; then
+      if ssh "${SSH_HOST}" "docker inspect ezkey-exp-javamelody-collector >/dev/null 2>&1"; then
+        collector_present="1"
+      fi
+    fi
+    if [[ -n "$collector_present" ]]; then
+      echo "error: JavaMelody collector is running on ${SSH_HOST}." >&2
+      echo "  A rolling up without the overlay would remove it via --remove-orphans." >&2
+      echo "  Re-run with EZKEY_ENABLE_JAVA_MELODY=true to keep it, or" >&2
+      echo "  EZKEY_DISABLE_JAVA_MELODY=true to remove it intentionally." >&2
+      exit 1
+    fi
   fi
-  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && ${remote_compose_cmd} up -d --remove-orphans"
+  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && ${remote_compose_cmd} up -d ${remove_orphans}"
   if [[ -n "$CADDY_SRC_FOR_VERIFY" ]]; then
     local_sha="$(sha256sum "${CADDY_SRC_FOR_VERIFY}" | awk '{print $1}')"
     echo ""

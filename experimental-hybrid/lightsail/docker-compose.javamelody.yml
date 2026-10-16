@@ -3,16 +3,16 @@
 # Applies Christophe locks: management-port monitoring only, collector bound to
 # loopback, hardened init parameters, no public /monitoring or /actuator (Caddy).
 # Memory limits for the APIs live in docker-compose.yml (#749). This overlay adds
-# the collector at 256m (~3520m total with #749) — prefer a host 1 GiB swapfile
-# (documented in docs/lightsail/community-host.md; do not auto-create).
+# the collector at 256m (~3648m total with #749 after auth-api 768m) — prefer a host
+# 1 GiB swapfile (documented in docs/lightsail/community-host.md; do not auto-create).
+# Note: memswap_limit = mem_limit, so host swap does not extend container cgroups.
 #
 # Enable (on the VM, from experimental-hybrid/lightsail/):
-#   export EZKEY_ENABLE_JAVA_MELODY=true
 #   docker compose -f docker-compose.yml -f docker-compose.javamelody.yml up -d
 #
-# Or: ./clean-start.sh --with-java-melody
+# Or: ./clean-start.sh --with-java-melody (destructive full reset path)
 #
-# Rollback (one command — removes collector orphan, APIs lose JAVAMELODY_*):
+# Rollback JM only (#749 memory limits in the base compose stay):
 #   docker compose -f docker-compose.yml up -d --remove-orphans
 # Then optionally: docker volume rm ezkey-experimental-lightsail_javamelody-data
 #
@@ -23,18 +23,19 @@ x-javamelody-env: &javamelody-env
   JAVAMELODY_ENABLED: "true"
   JAVAMELODY_MANAGEMENT_ENDPOINT_MONITORING_ENABLED: "true"
   JAVAMELODY_SPRING_MONITORING_ENABLED: "true"
-  # No metrics / threaddump on the management surface in prod (#846 Christophe).
-  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,monitoring"
+  # No metrics / threaddump / info on the management surface in prod (#846 Christophe).
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,monitoring"
   MANAGEMENT_ENDPOINT_MONITORING_ACCESS: unrestricted
   JAVAMELODY_INIT_PARAMETERS_SYSTEM_ACTIONS_ENABLED: "false"
   JAVAMELODY_INIT_PARAMETERS_CSRF_PROTECTION_ENABLED: "true"
   JAVAMELODY_INIT_PARAMETERS_UPDATE_CHECK_DISABLED: "true"
   # Explicit: never enable HTTP request logging (PII).
   JAVAMELODY_INIT_PARAMETERS_LOG: "false"
-  # Normalize path ids (UUID or numeric segments).
-  JAVAMELODY_INIT_PARAMETERS_HTTP_TRANSFORM_PATTERN: "UUID|\\d+"
-  # RRD / graph retention on the collector volume (days).
+  # Normalize path ids: real UUID shape (not the literal string "UUID") or numeric segments.
+  JAVAMELODY_INIT_PARAMETERS_HTTP_TRANSFORM_PATTERN: "[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}|\\d+"
+  # RRD / graph / stats retention on the collector volume (days).
   JAVAMELODY_INIT_PARAMETERS_OBSOLETE_GRAPHS_DAYS: "30"
+  JAVAMELODY_INIT_PARAMETERS_OBSOLETE_STATS_DAYS: "30"
 
 services:
   admin-api:

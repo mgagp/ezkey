@@ -18,9 +18,12 @@ x-logging: &default-logging
     max-file: "3"
 
 # JVM heap ceilings for the ~4 GiB Lightsail community/EXP1 host (#749).
-# memswap_limit = mem_limit (no container swap beyond the cgroup). Prefer a host
-# 1 GiB swapfile (swappiness=10) — see docs/lightsail/community-host.md (do not
+# memswap_limit = mem_limit: containers cannot use host swap for growth beyond the
+# cgroup (host swap only helps non-cgroup pressure / the OS). Prefer a host 1 GiB
+# swapfile (swappiness=10) — see docs/lightsail/community-host.md (do not
 # auto-create swap from deploy scripts).
+# restart: unless-stopped (not on-failure:3) so a single OOM/crash does not leave
+# an API permanently down after three failures on a lab host with no pager.
 # Each anchor includes TZ so services use a single YAML merge key (Compose rejects
 # duplicate << keys in one mapping).
 x-env-jvm-serial: &env-jvm-serial
@@ -186,8 +189,8 @@ services:
     image: ezkey-auth-api:latest
     container_name: ezkey-exp-auth-api
     logging: *default-logging
-    mem_limit: 640m
-    memswap_limit: 640m
+    mem_limit: 768m
+    memswap_limit: 768m
     depends_on:
       postgres:
         condition: service_healthy

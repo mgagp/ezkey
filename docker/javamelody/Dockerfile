@@ -4,11 +4,14 @@ FROM eclipse-temurin:21-jre-alpine
 
 # Align with parent POM javamelody.version (APIs use javamelody-spring-boot4-starter).
 ARG JAVAMELODY_VERSION=2.9.0
+# sha256 of javamelody-collector-server-2.9.0.war (GitHub release asset).
+ARG JAVAMELODY_COLLECTOR_SHA256=f5004d7bbcd0298fe420f4cfedc136019d088e7f123a02b4ac5104bb228aa125
 
 RUN apk add --no-cache curl \
     && mkdir -p /opt/javamelody /tmp/javamelody
 
-ADD https://github.com/javamelody/javamelody/releases/download/javamelody-core-${JAVAMELODY_VERSION}/javamelody-collector-server-${JAVAMELODY_VERSION}.war \
+ADD --checksum=sha256:${JAVAMELODY_COLLECTOR_SHA256} \
+    https://github.com/javamelody/javamelody/releases/download/javamelody-core-${JAVAMELODY_VERSION}/javamelody-collector-server-${JAVAMELODY_VERSION}.war \
     /opt/javamelody/collector.war
 
 WORKDIR /opt/javamelody
