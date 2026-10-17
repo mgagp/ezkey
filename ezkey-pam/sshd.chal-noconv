@@ -1,0 +1,5 @@
+#%PAM-1.0
+# Lab-only service for test_no_conv_client (failing PAM conversation).
+auth       required     pam_ezkey.so
+account    required     pam_permit.so
+session    required     pam_permit.so

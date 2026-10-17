@@ -1,5 +1,5 @@
 # Makefile for pam_ezkey
-# Build inside the module Docker image (Rocky Linux). Host builds also work
+# Build inside the module Docker image (Rocky or AL2023). Host builds also work
 # when gcc, pam, libcurl, and cJSON development packages are installed.
 
 CC = gcc
@@ -11,20 +11,32 @@ BUILD_DIR = build
 TEST_DIR = test
 INSTALL_DIR = /lib64/security
 
-OBJECTS = $(BUILD_DIR)/pam_ezkey.o $(BUILD_DIR)/ezkey_filelog.o
+OBJECTS = $(BUILD_DIR)/pam_ezkey.o $(BUILD_DIR)/ezkey_filelog.o \
+	$(BUILD_DIR)/ezkey_sanitize.o $(BUILD_DIR)/ezkey_challenge.o
 
-.PHONY: all debug install uninstall clean check-pam check-source lint help test test-filelog
+.PHONY: all debug install uninstall clean check-pam check-source lint help \
+	test test-filelog test-sanitize test-challenge
 
 all: $(BUILD_DIR)/$(MODULE_NAME)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/pam_ezkey.o: $(SRC_DIR)/pam_ezkey.c $(SRC_DIR)/ezkey_config.h $(SRC_DIR)/ezkey_filelog.h | $(BUILD_DIR)
+$(BUILD_DIR)/pam_ezkey.o: $(SRC_DIR)/pam_ezkey.c $(SRC_DIR)/ezkey_config.h \
+		$(SRC_DIR)/ezkey_filelog.h $(SRC_DIR)/ezkey_sanitize.h \
+		$(SRC_DIR)/ezkey_challenge.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/pam_ezkey.c -o $(BUILD_DIR)/pam_ezkey.o
 
-$(BUILD_DIR)/ezkey_filelog.o: $(SRC_DIR)/ezkey_filelog.c $(SRC_DIR)/ezkey_filelog.h $(SRC_DIR)/ezkey_config.h | $(BUILD_DIR)
+$(BUILD_DIR)/ezkey_filelog.o: $(SRC_DIR)/ezkey_filelog.c $(SRC_DIR)/ezkey_filelog.h \
+		$(SRC_DIR)/ezkey_config.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_filelog.c -o $(BUILD_DIR)/ezkey_filelog.o
+
+$(BUILD_DIR)/ezkey_sanitize.o: $(SRC_DIR)/ezkey_sanitize.c $(SRC_DIR)/ezkey_sanitize.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_sanitize.c -o $(BUILD_DIR)/ezkey_sanitize.o
+
+$(BUILD_DIR)/ezkey_challenge.o: $(SRC_DIR)/ezkey_challenge.c $(SRC_DIR)/ezkey_challenge.h \
+		| $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_challenge.c -o $(BUILD_DIR)/ezkey_challenge.o
 
 $(BUILD_DIR)/$(MODULE_NAME): $(OBJECTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $(BUILD_DIR)/$(MODULE_NAME)
@@ -65,26 +77,46 @@ check-source:
 	@grep -q 'O_NOFOLLOW' $(SRC_DIR)/ezkey_filelog.c
 	@grep -q 'openat' $(SRC_DIR)/ezkey_filelog.c
 	@grep -q 'O_NONBLOCK' $(SRC_DIR)/ezkey_filelog.c
-	@grep -q 'ezkey_sanitize_for_log' $(SRC_DIR)/pam_ezkey.c
+	@grep -q 'ezkey_sanitize_for_log' $(SRC_DIR)/ezkey_sanitize.c
+	@grep -q 'c >= 0x7f' $(SRC_DIR)/ezkey_sanitize.c
 	@grep -q '/var/log/ezkey-pam' $(SRC_DIR)/ezkey_filelog.h
-	@echo "check-source: openat/O_NOFOLLOW/O_NONBLOCK + sanitize + /var/log/ezkey-pam"
+	@echo "check-source: openat/O_NOFOLLOW/O_NONBLOCK + sanitize>=0x7f + /var/log/ezkey-pam"
 
 # Harness: 0644→0600, hardlink refused, FIFO non-blocking (#818 m2).
 test-filelog: $(SRC_DIR)/ezkey_filelog.c $(TEST_DIR)/test_filelog_harness.c | $(BUILD_DIR)
 	@$(TEST_DIR)/run-filelog-harness.sh "$(CC)" "$(CFLAGS)" "$(SRC_DIR)" "$(BUILD_DIR)"
 
-test: check-source all test-filelog
-	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog harness OK"
+# Harness: sanitize space/=/controls/high-bytes (M1 review).
+test-sanitize: $(BUILD_DIR)/ezkey_sanitize.o $(TEST_DIR)/test_sanitize_harness.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_sanitize_harness.c \
+		$(BUILD_DIR)/ezkey_sanitize.o -o $(BUILD_DIR)/test_sanitize_harness
+	$(BUILD_DIR)/test_sanitize_harness
+
+# Harness: challenge 0..99 + display_ok (Christophe nits).
+test-challenge: $(BUILD_DIR)/ezkey_challenge.o $(TEST_DIR)/test_challenge_harness.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_challenge_harness.c \
+		$(BUILD_DIR)/ezkey_challenge.o -lpam -o $(BUILD_DIR)/test_challenge_harness
+	$(BUILD_DIR)/test_challenge_harness
+
+$(BUILD_DIR)/test_no_conv_client: $(TEST_DIR)/test_no_conv_client.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(TEST_DIR)/test_no_conv_client.c -lpam \
+		-o $(BUILD_DIR)/test_no_conv_client
+
+test: check-source all test-filelog test-sanitize test-challenge \
+		$(BUILD_DIR)/test_no_conv_client
+	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog + sanitize + challenge OK"
 
 help:
 	@echo "Available targets:"
-	@echo "  all          - Build the PAM module"
-	@echo "  debug        - Build with debug symbols"
-	@echo "  install      - Install module and config (requires root)"
-	@echo "  uninstall    - Remove module from system"
-	@echo "  clean        - Remove build files"
-	@echo "  check-pam    - Check if module is configured in PAM"
-	@echo "  check-source - Guard against /tmp debug logs (#818)"
-	@echo "  test-filelog - Mode/hardlink/FIFO harness (#818 m2)"
-	@echo "  test         - check-source + compile + filelog harness"
-	@echo "  lint         - Run static code analysis"
+	@echo "  all           - Build the PAM module"
+	@echo "  debug         - Build with debug symbols"
+	@echo "  install       - Install module and config (requires root)"
+	@echo "  uninstall     - Remove module from system"
+	@echo "  clean         - Remove build files"
+	@echo "  check-pam     - Check if module is configured in PAM"
+	@echo "  check-source  - Guard against /tmp debug logs (#818)"
+	@echo "  test-filelog  - Mode/hardlink/FIFO harness (#818 m2)"
+	@echo "  test-sanitize - Sanitize space/=/high-byte harness (M1)"
+	@echo "  test-challenge - Challenge 0..99 + display_ok harness"
+	@echo "  test          - check-source + compile + filelog + sanitize + challenge"
+	@echo "  lint          - Run static code analysis"

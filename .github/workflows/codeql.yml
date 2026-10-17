@@ -6,6 +6,9 @@
 # § Code scanning policy.
 #
 # Decision: code-scanning triage 2026-10-13, approved by Marc 2026-10-13 19:40.
+#
+# c-cpp: build-mode manual compiles ezkey-pam so pam_ezkey.c is extracted into
+# the CodeQL database (build-mode none does not reliably scan compiled C).
 name: CodeQL
 
 on:
@@ -41,7 +44,7 @@ jobs:
           - language: python
             build-mode: none
           - language: c-cpp
-            build-mode: none
+            build-mode: manual
           - language: actions
             build-mode: none
 
@@ -57,6 +60,15 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           config-file: ./.github/codeql/codeql-config.yml
+
+      - name: Build ezkey-pam (C/C++ database)
+        if: matrix.language == 'c-cpp'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential libpam0g-dev libcurl4-openssl-dev libcjson-dev
+          make -C ezkey-pam clean all
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3

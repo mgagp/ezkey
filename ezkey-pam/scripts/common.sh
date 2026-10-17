@@ -113,6 +113,14 @@ require_cmd() {
   }
 }
 
+# M1 m5 — secret-grep proofs must not silently skip when .env keys are empty.
+require_integration_keys() {
+  if [ -z "${EZKEY_INTEGRATION_KEY:-}" ] || [ -z "${EZKEY_SECRET_KEY:-}" ]; then
+    echo "EZKEY_INTEGRATION_KEY and EZKEY_SECRET_KEY must be set (non-empty) in ${ENV_FILE:-.env} or the environment." >&2
+    exit 1
+  fi
+}
+
 wait_http_ok() {
   local url="$1"
   local attempts="${2:-60}"
