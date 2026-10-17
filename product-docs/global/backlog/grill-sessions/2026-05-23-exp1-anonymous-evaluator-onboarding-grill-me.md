@@ -1,5 +1,7 @@
 # Grill Me — 2026-05-23 (EXP1 anonymous evaluator onboarding)
 
+> **Decommissioned lab label (2026-10):** Historical decision record for the former experimental lab → **ezkey.online** community cutover. Live ops use the community host only.
+
 ## Session control
 
 | Field | Value |
@@ -7,7 +9,7 @@
 | **Vision** | `V-2026-05-23-anonymous-evaluator-self-registration` |
 | **Backlog** | `I-2026-05-23-exp1-anonymous-evaluator-onboarding` |
 | **Tracer bullet** | `TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut` |
-| **Cross-links** | [`experimental-preview-exp1.html`](../../../../sites/ezkey-org/experimental-preview-exp1.html), [`exp1-guided-tour.html`](../../../../sites/ezkey-org/exp1-guided-tour.html), [`LIFECYCLE_GOVERNANCE.md`](../../../../docs/LIFECYCLE_GOVERNANCE.md), `I-2026-0011`, `I-2026-0026` |
+| **Cross-links** | [`community-guided-tour.html`](../../../../sites/ezkey-org/community-guided-tour.html), [`LIFECYCLE_GOVERNANCE.md`](../../../../docs/LIFECYCLE_GOVERNANCE.md), `I-2026-0011`, `I-2026-0026` |
 | **Status** | `complete` |
 | **Date** | `2026-05-23` |
 
@@ -16,7 +18,7 @@
 | ID | Decision |
 | ---- | -------- |
 | G1 | Dedicated signup page on **`ezkey.org`** calling a narrow public Admin API endpoint; **not** Admin UI `/signup` in v1 |
-| G2 | New unauthenticated route on Admin API, gated by **`ezkey.evaluator.self-registration.enabled`** (EXP1 installation profile only) |
+| G2 | New unauthenticated route on Admin API, gated by **`ezkey.evaluator.self-registration.enabled`** (community / former-lab installation profile only) |
 | G3 | Server-generated tenant slug (`eval-{random}`) as canonical name; optional short display label (max 40 chars, no email/URL) |
 | G4 | Synthetic admin username (`eval-admin-{suffix}`); **no email**; placeholder first/last name (`Evaluator`, `Preview`) |
 | G5 | **Empty tenant only** at signup — tenant + pending Tenant Admin + activation code; **no** integration, API key, or enrollment (guided tour steps 2–7 remain manual) |

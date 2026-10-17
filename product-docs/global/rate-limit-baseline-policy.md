@@ -122,7 +122,7 @@ Reference: [`AdminRateLimitFilter.java`](../../ezkey-admin-api/src/main/java/org
 
 | Surface | Prefix / mechanism | Family | Default | Notes |
 |---------|-------------------|--------|---------|-------|
-| `POST /api/v1/public/evaluator-signup` | `ezkey.evaluator.self-registration.*` + `EvaluatorSelfRegistrationRateLimiter` | L (capacity) | daily cap 5; 3 success / IP / 24h | EXP1 / community preview; in-memory |
+| `POST /api/v1/public/evaluator-signup` | `ezkey.evaluator.self-registration.*` + `EvaluatorSelfRegistrationRateLimiter` | L (capacity) | daily cap 5; 3 success / IP / 24h | community host / community preview; in-memory |
 
 Reference: [`EvaluatorSelfRegistrationProperties.java`](../../ezkey-admin-api/src/main/java/org/ezkey/admin/config/EvaluatorSelfRegistrationProperties.java).
 

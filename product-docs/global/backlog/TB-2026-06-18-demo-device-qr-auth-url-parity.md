@@ -15,7 +15,7 @@
 ## Objective
 
 Prove end-to-end that Demo Device honors `authUrl` from an Admin UI enrollment QR for the full
-enrollment + auth-attempt simulator path, while manual entry and Exp1-default Docker config remain
+enrollment + auth-attempt simulator path, while manual entry and community-default Docker config remain
 unchanged when no QR URL is supplied.
 
 ## Boundaries in scope
@@ -28,7 +28,7 @@ unchanged when no QR URL is supplied.
 
 - Admin UI / Auth API contract changes
 - Mobile app
-- Replacing Exp1 Docker default URL
+- Replacing community Docker default URL
 - Optional manual Auth API URL field on bind form
 
 ## First executable slice
@@ -66,10 +66,10 @@ See [`case-study-ezkey.md`](../../../methodology/case-study-ezkey.md) § Dual-re
 
 | Flow | Nominal | Exception |
 |------|---------|-----------|
-| QR bind (local) | QR with `authUrl` → bind/verify against local Auth API while Docker default is Exp1 | Invalid URL → clear error, no bind |
+| QR bind (local) | QR with `authUrl` → bind/verify against local Auth API while Docker default is community host | Invalid URL → clear error, no bind |
 | Manual bind | ID + token only → configured default | Same as today |
 | Auth attempt | Pending/respond use stored enrollment URL | Missing stored URL → configured default |
-| Exp1 evaluator | Default config, QR without `authUrl` or Exp1 URL in QR | Unchanged |
+| community evaluator | Default config, QR without `authUrl` or community URL in QR | Unchanged |
 
 ## Evidence plan
 
@@ -85,7 +85,7 @@ Clean-start stack + Admin UI enrollment with QR (`authApiPublicBaseUrl` / local 
 
 1. Standalone demo device on `:3080` **without** `.env` override; import QR; bind + verify succeed.
 2. Same enrollment path on clean-start `:8083` — still works (regression).
-3. Manual ID+token entry on standalone — uses Exp1 default (document expected failure against local enrollment or success against Exp1 enrollment).
+3. Manual ID+token entry on standalone — uses community host default (document expected failure against local enrollment or success against the community host enrollment).
 4. After verify, trigger test auth attempt — pending/respond succeed on standalone when enrollment used QR local URL.
 
 ### UI / browser tests
@@ -131,7 +131,7 @@ Clean-start stack + Admin UI enrollment with QR (`authApiPublicBaseUrl` / local 
 4. [`case-study-ezkey.md`](../../../methodology/case-study-ezkey.md) § Dual-repo delivery
 5. `ezkey-demo-device/AGENTS.md` (monorepo) after edit
 
-**Incident context (why):** Standalone demo device on `:3080` defaults to Exp1 Auth API; local Admin UI
+**Incident context (why):** Standalone demo device on `:3080` defaults to community Auth API; local Admin UI
 enrollment bind failed until clean-start `:8083` used. Java sources identical; QR JS parses `authUrl`
 but server ignores it. Fix = mobile parity.
 

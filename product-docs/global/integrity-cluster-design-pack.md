@@ -106,7 +106,7 @@ run” alert.
 7. Update registry row: `SUCCESS` or `FAILED` (batch infrastructure failure ≠ integrity rupture alert).
 8. Emit audit meta-event `NIGHTLY_INTEGRITY_VALIDATION_COMPLETED` (TB defines event type).
 
-## Pitfalls — detective window vs checkpoint grid (EXP1, 2026-07-09)
+## Pitfalls — detective window vs checkpoint grid (community host, 2026-07-09)
 
 Recorded so future integrity changes do not reintroduce silent CRITICAL noise.
 
@@ -125,7 +125,7 @@ Recorded so future integrity changes do not reintroduce silent CRITICAL noise.
 | ID | Decision for R1 |
 |----|-----------------|
 | **D5-13** Ad hoc + nightly same day | **Settled (B2.7 + B2.6 D4):** Overlap allowed; incident fingerprint dedupe + entry conciliation skip prevent duplicate OPEN alerts. Operator POST and scheduled batch share `RetroactiveIntegrityValidationService`. |
-| **D5-14** Nightly disable in dev | `ezkey.audit.integrity.nightly.enabled=false` default in `application-dev` profile optional; **enabled=true** in Docker clean-start / EXP1. Document in `CONFIGURATION.md`. |
+| **D5-14** Nightly disable in dev | `ezkey.audit.integrity.nightly.enabled=false` default in `application-dev` profile optional; **enabled=true** in Docker clean-start / community host. Document in `CONFIGURATION.md`. |
 | **D5-15** Sealed audits in window | `ARCHIVE_SEAL` checkpoints: verification **skips entries_digest recompute** (existing service behavior); nightly pass still verifies **chain_hmac** linkage. |
 | **C8-6** False manipulation vs heartbeat | Classifier step before alert: if rupture is explainable by active/recovered heartbeat incident in window, emit **heartbeat family** path only. |
 | **INC-1** Incident justification storage | R1: conciliation emits **first-class audit event**; incidents/checkpoints remain operational index; no infinite validator recursion. Detail in `I-2026-0005` TB. |
@@ -194,7 +194,7 @@ Functional tests in `ezkey-tests` where stable; elective tests for long-running 
 | `F-audit-chain` | Feature milestone in [`features-and-phases.md`](features-and-phases.md) |
 | `ML-2026-06-28-wave-b-integrity-cluster-kickoff.md` | Method log for this kickoff |
 | `ML-2026-07-02-entry-integrity-conciliation-kickoff.md` | B2.6 + B2.7 analysis kickoff |
-| `ML-2026-07-09-exp1-nightly-integrity-boundary-false-positives.md` | EXP1 false CRITICAL from misaligned detective window |
+| `ML-2026-07-09-exp1-nightly-integrity-boundary-false-positives.md` | community host false CRITICAL from misaligned detective window |
 | [ADR-0009](architecture-decisions.md#adr-0009-detective-integrity-windows-align-to-checkpoint-grid) | Detective windows align to checkpoint grid |
 | `I-2026-07-10-nightly-integrity-boundary-false-positives` | Lane D fix for boundary false positives |
 

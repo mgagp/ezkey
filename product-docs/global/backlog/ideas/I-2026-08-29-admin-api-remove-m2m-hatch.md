@@ -8,7 +8,7 @@
 - **Created at:** `2026-08-29`
 - **Updated at:** `2026-08-29`
 - **Last reviewed at:** `2026-08-29`
-- **Component tags:** `admin-api`, `integration-api`, `demo-acme`, `infra (EXP1)`, `docs`, `ezkey-tests`, `bruno`, `sdk-java`
+- **Component tags:** `admin-api`, `integration-api`, `demo-acme`, `infra (community)`, `docs`, `ezkey-tests`, `bruno`, `sdk-java`
 - **Captured by:** Marc
 - **Tracer bullet:** `TB-2026-08-29-admin-api-remove-m2m-hatch`
 - **Supersedes (remaining work of):** `I-2026-0004` deferred “Removal” row
@@ -19,18 +19,18 @@
 Make Integration API the **only** backend that authenticates API keys for auth-attempt
 lifecycle traffic. Remove the Admin API opt-in hatch
 (`ezkey.admin.auth.api-key-auth-attempts-enabled` and the API-key authentication filter)
-so there is no supported “Admin API also accepts M2M” posture — including on EXP1 after
+so there is no supported “Admin API also accepts M2M” posture — including on the community host after
 the next rolling upgrade.
 
 ## Problem and value
 
 - **Problem:** R1 (`I-2026-0004`) already defaults the hatch to deny, but the toggle, the
-  Admin-side API-key filter, and dual-auth controller branches remain. EXP1 Lightsail ACME
+  Admin-side API-key filter, and dual-auth controller branches remain. community Lightsail ACME
   still sets `EZKEY_ADMIN_API_URL=http://admin-api:9080`, so the live lab is still wired
   for the old dual-routing shape. Docs and Bruno still describe an opt-in that this
   product no longer wants.
 - **Expected value:** one M2M boundary, a smaller Admin attack surface, honest docs, and an
-  EXP1 upgrade recipe that retargets ACME to Integration API instead of re-enabling the
+  community upgrade recipe that retargets ACME to Integration API instead of re-enabling the
   hatch.
 
 ## Scope
@@ -39,7 +39,7 @@ the next rolling upgrade.
   - Remove Admin API API-key authentication and the acceptance property.
   - Keep Admin Bearer/session auth-attempt **operator** endpoints.
   - Keep API-key **lifecycle** (create / list / revoke) on Admin API with admin auth.
-  - Retarget EXP1 ACME + playbook so the next upgrade lands on Integration API.
+  - Retarget community ACME + playbook so the next upgrade lands on Integration API.
   - Update tests, Bruno, config docs, and leftover “minimal install” language.
 - **Out of scope:**
   - Changing Integration API or Auth API behavior.
@@ -60,7 +60,7 @@ autonomy section is mandatory, not a later optional pass.
 - There is no production fleet that depends on the hatch.
 - Local clean-start ACME already targets `http://integration-api:7080`.
 - Admin UI Test Auth and auth-attempt lists use admin Bearer, not API keys.
-- EXP1 already deploys Integration API; the missing piece is ACME + Admin hatch removal.
+- the community host already deploys Integration API; the missing piece is ACME + Admin hatch removal.
 
 ## Risks and exceptions
 
@@ -69,14 +69,14 @@ autonomy section is mandatory, not a later optional pass.
   M2M on Admin API. The TB locks full removal of Admin API-key authentication.
 - **Controller-deletion trap:** Admin `AuthAttemptController` is the operator surface, not
   a duplicate to delete.
-- **EXP1 leftover env:** a live VM `.env` may still set
+- **community leftover env:** a live VM `.env` may still set
   `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED=true`. The upgrade recipe must drop it
   and retarget ACME in the same pass.
 
 ## Promotion notes
 
 Ready: decisions are locked on the tracer bullet (keep/remove matrix, 401 error contract,
-test list, EXP1 rolling-upgrade recipe). No further grill.
+test list, community rolling-upgrade recipe). No further grill.
 
 ## Links
 

@@ -22,7 +22,7 @@ Scope: **any human UI surface** (Admin UI, demo apps, tester pages, mobile copy)
 ## Stack
 
 - Runtime profile: `default` / `base` / other: `___`
-- How to start: clean-start command or EXP1 URL
+- How to start: clean-start command or community host URL
 - Admin role(s): Global Admin / Tenant Admin / both / N/A (demo/tester)
 - Login path: (e.g. `admin.docker` + Demo Device; challenge off?)
 

@@ -15,7 +15,7 @@
 
 Prove that Admin API no longer authenticates API keys at all, that operator auth-attempt
 and API-key **lifecycle** flows still work on Admin Bearer/session, that Integration API
-remains the sole M2M auth-attempt backend, and that EXP1 Compose + upgrade docs are
+remains the sole M2M auth-attempt backend, and that community Compose + upgrade docs are
 positioned so the next Lightsail rolling update lands ACME on Integration API.
 
 ## Current state (do not rediscover)
@@ -29,14 +29,14 @@ R1 already shipped (`I-2026-0004` / `TB-2026-05-25`):
 - TypeScript SDK is already Integration-API-only.
 
 This slice is the **deferred removal**, not a new architecture. The leftover hatch and
-the EXP1 ACME mis-wire are the work.
+the community ACME mis-wire are the work.
 
-Known EXP1 drift (must be fixed in this slice):
+Known community host drift (must be fixed in this slice):
 
 | Location | Today | Target |
 | --- | --- | --- |
 | `experimental-hybrid/lightsail/docker-compose.yml` `demo-app-acme` | `EZKEY_ADMIN_API_URL: http://admin-api:9080` | `http://integration-api:7080` |
-| `experimental-hybrid/local/.env.example` | `EZKEY_ADMIN_API_URL=https://exp1-admin-api.ezkey.org` | `https://exp1-integration-api.ezkey.org` |
+| `experimental-hybrid/local/.env.example` | `EZKEY_ADMIN_API_URL=https://admin-api.ezkey.online` | `https://integration-api.ezkey.online` |
 | Live VM `.env` (not in git) | may still set `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED` | delete that key during upgrade |
 
 ## Locked decisions
@@ -56,7 +56,7 @@ Known EXP1 drift (must be fixed in this slice):
    intentional, not a duplicate to delete.
 5. **API-key lifecycle stays on Admin API** (create / list / get / revoke) with admin
    Bearer/session only.
-6. **EXP1 is a lab host, not an architecture exception.** The next rolling upgrade must
+6. **the community host is a lab host, not an architecture exception.** The next rolling upgrade must
    apply the new Compose wiring. Do not re-enable the hatch on the VM to “keep ACME
    working.”
 7. **Do not rename** Demo ACME `ezkey.admin-api-url` / `EZKEY_ADMIN_API_URL` in this
@@ -91,8 +91,8 @@ path, delete the Admin wiring and config rows. Do **not** touch Integration API 
   scheme or annotation actually changes.
 - **Do not** treat TypeScript SDK as in-scope rewrite; it already targets Integration API.
   Touch it only if a leftover sentence still mentions the Admin hatch.
-- **Do not** change EXP1 public hostnames (`exp1-admin-api`, `exp1-integration-api`,
-  `exp1-demo-acme`).
+- **Do not** change community public hostnames (`admin-api.ezkey.online`,
+  `integration-api.ezkey.online`, `demo-acme.ezkey.online`).
 
 ## First executable slice
 
@@ -102,11 +102,11 @@ One PR, this order:
    entries, and `ROLE_API_KEY` controller/ACL branches. Tighten `@PreAuthorize`.
 2. Update unit tests listed below (delete hatch tests; keep operator tests; drop Admin
    API-key ownership cases).
-3. Retarget EXP1 Compose + local companion env example + upgrade docs (see EXP1 section).
+3. Retarget community Compose + local companion env example + upgrade docs (see community host section).
 4. Update Bruno negatives, functional reject test, and product/config docs.
 5. `./scripts/build.sh`, then clean-start + the functional/Bruno checks below.
 
-## EXP1 upgrade positioning
+## community upgrade positioning
 
 Repo changes in this slice (so the next upgrade cannot keep the old wire):
 
@@ -115,7 +115,7 @@ Repo changes in this slice (so the next upgrade cannot keep the old wire):
    - `depends_on`: require `integration-api` healthy (keep admin-api if ACME still reads
      bootstrap artifacts; do not keep Admin as the M2M base URL).
 2. `experimental-hybrid/local/.env.example`
-   - ACME base URL → `https://exp1-integration-api.ezkey.org`
+   - ACME base URL → `https://integration-api.ezkey.online`
 3. `experimental-hybrid/README.md` (ACME “App configuration” still says credentials are
    “for the Admin API”) → Integration API.
 4. `experimental-hybrid/lightsail/.env.example`
@@ -124,7 +124,7 @@ Repo changes in this slice (so the next upgrade cannot keep the old wire):
 5. `experimental-hybrid/BACKEND_ROLLING_UPDATE.md` and `DEPLOYMENT_PLAYBOOK.md`
    - Add a short **cutover recipe** (not a second upgrade tool):
 
-**Required EXP1 apply (after this PR is on the branch you deploy):**
+**Required community host apply (after this PR is on the branch you deploy):**
 
 ```text
 ./experimental-hybrid/scripts/full-exp-environment-upgrade.sh rolling --include-demo-acme
@@ -132,7 +132,7 @@ Repo changes in this slice (so the next upgrade cannot keep the old wire):
 
 That syncs Compose, recreates Admin API (hatch gone) and ACME (new base URL), and keeps
 Postgres. A partial recreate that updates Admin API **without** syncing Compose and
-recreating `demo-app-acme` leaves EXP1 on the old dual-routing wire.
+recreating `demo-app-acme` leaves community host on the old dual-routing wire.
 
 On the VM, after sync:
 
@@ -141,8 +141,8 @@ On the VM, after sync:
 - Smoke: ACME login create/wait succeeds against Integration API; Admin API
   `POST /api/v1/auth-attempts` with API-key Basic returns **401**.
 
-EXP1 remains a temporary lab host. This slice does **not** invent a new domain model; it
-makes the existing three-API EXP1 stack match the locked product boundary.
+the community host remains a temporary lab host. This slice does **not** invent a new domain model; it
+makes the existing three-API community stack match the locked product boundary.
 
 ## Tests to deploy
 
@@ -198,7 +198,7 @@ The implementing agent has **full autonomy** to use that stack without waiting f
 second approval. Combine the tools that prove the adjusted API surface contracts.
 Collect evidence while running (command, status, and the decisive response or UI
 outcome). Do not invent a leftover hatch flag to test: the new posture is **no Admin
-API-key auth** plus **EXP1/ACME base URL = Integration API**.
+API-key auth** plus **community ACME base URL = Integration API**.
 
 The only legitimate skip is an environment that cannot start Docker or the browser.
 Then say exactly what was blocked. Do not substitute a hand-edited spec or a
@@ -235,7 +235,7 @@ session**, not a follow-up the operator must ask for.
 | Admin API API-key **lifecycle** with `admin.docker` Bearer (UI or Bruno) | **Positive** | Create/list still works (operator surface). |
 | Admin UI login `admin.docker` via Demo Device Approve | **Positive** | Lands on dashboard; console usable. |
 | Operator auth-attempt (Admin UI Test Auth **or** Admin Bearer create + Demo Device approve) | **Positive** | Attempt completes; proves Admin auth-attempt routes were **not** deleted. |
-| Compose / config docs | **Docs** | Hatch property gone from `CONFIGURATION.md` and config index. EXP1 ACME URL documented as Integration API. No “set the flag true” leftover. |
+| Compose / config docs | **Docs** | Hatch property gone from `CONFIGURATION.md` and config index. community ACME URL documented as Integration API. No “set the flag true” leftover. |
 
 Use Bruno when it is the fastest way to hit the exact Admin-negative and Integration-positive
 contracts. Use the browser + Demo Device when the proof is operator workflow. Use the DB
@@ -245,7 +245,7 @@ when HTTP alone is not enough.
 
 The implementation turn ends with a short report to the operator covering:
 
-1. **Implemented** — what was removed, what was kept, EXP1/ACME wiring and doc changes.
+1. **Implemented** — what was removed, what was kept, community ACME wiring and doc changes.
 2. **Tested** — unit / `build.sh` / clean-start functional / Bruno / browser+Demo Device.
    Name any environment-blocked step; do not omit a live proof to save tokens.
 3. **Evidence** — the decisive positives and negatives (status codes, problem types or
@@ -264,7 +264,7 @@ The implementation turn ends with a short report to the operator covering:
 - `ezkey-sdk/java/README.md` — remove hatch language.
 - `ezkey-admin-api/README_RATE_LIMITING.md` if it still describes Admin API-key
   create/wait limits after those properties are removed.
-- EXP1 files listed above.
+- community files listed above.
 - `ezkey-demo-app-acme` docs only if they still say to point API keys at Admin API
   **9080**. Do not rename the legacy env var.
 
@@ -277,7 +277,7 @@ The implementation turn ends with a short report to the operator covering:
 
 ## Rollback or fallback posture
 
-Revert the PR. There is no residual compatibility flag to leave behind. If EXP1 ACME
+Revert the PR. There is no residual compatibility flag to leave behind. If community ACME
 breaks mid-upgrade, finish Compose sync + ACME recreate against Integration API; do
 **not** turn the hatch back on.
 
@@ -287,7 +287,7 @@ breaks mid-upgrade, finish Compose sync + ACME recreate against Integration API;
 - Admin `POST /api/v1/auth-attempts` with API-key Basic returns **401**.
 - Integration API create/wait with API-key still returns **201** / wait contract.
 - Admin Bearer create/list/get/wait/cancel and API-key lifecycle still work.
-- EXP1 Lightsail Compose ACME URL is Integration API; local companion example matches;
+- community Lightsail Compose ACME URL is Integration API; local companion example matches;
   rolling-upgrade docs name Admin + ACME + Compose sync as the apply set.
 - No canonical doc still presents “set the flag true for minimal installs.”
 - Agent closeout includes `./scripts/build.sh`, clean-start live proofs (Admin 401 +

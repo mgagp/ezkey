@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation`
-- **Status:** `active` (Auth + Integration EXP1 TBs done; Admin Cloudflare deferred)
+- **Status:** `active` (Auth + Integration the community host TBs done; Admin Cloudflare deferred)
 - **Priority:** `P1`
 - **Created at:** `2026-06-02`
 - **Updated at:** `2026-08-25`
@@ -17,7 +17,7 @@
 
 Define and implement an Ezkey-wide OpenAPI spec lifecycle that keeps canonical specs host-neutral,
 then generates deployment-localized schema artifacts for Cloudflare and other ingress validators.
-Use Auth API and EXP1 as the first concrete slice because Auth API is the highest-volume public API
+Use Auth API and community host as the first concrete slice because Auth API is the highest-volume public API
 surface and the most valuable initial Cloudflare schema-validation target.
 
 The Auth API public/enrolled surface now includes, besides bind / verify / pending / respond:
@@ -35,7 +35,7 @@ client.
 
 - **Problem:** Canonical OpenAPI output currently mixes portable API contracts with local and
   deployment-specific hostnames. Cloudflare schema upload then sees duplicate endpoint groupings and
-  cannot cleanly represent the intended EXP1 Auth API host without manual interpretation.
+  cannot cleanly represent the intended community Auth API host without manual interpretation.
 - **Expected value:** Ezkey gains a portable contract baseline for self-hosting, a deterministic
   path to deployment-localized Cloudflare schema artifacts, and a clean foundation for future
   automated schema deployment as part of the Lightsail/Cloudflare operator workflow.
@@ -45,20 +45,20 @@ client.
 - **In scope:**
   - Establish the canonical/deployment artifact split for OpenAPI specs.
   - Normalize Auth API canonical spec output so it has no top-level `servers` array.
-  - Generate an EXP1/Cloudflare Auth API schema artifact with exactly one target server:
-    `https://exp1-auth-api.ezkey.org`.
+  - Generate a community host/Cloudflare Auth API schema artifact with exactly one target server:
+    `https://auth-api.ezkey.online`.
   - Document first-slice operator workflow for manual Cloudflare upload and observe/log-first
     validation posture. The Cloudflare enumeration check must include both instance-info
-    operations once under `exp1-auth-api.ezkey.org`.
+    operations once under `auth-api.ezkey.online`.
   - Verify downstream generation impact for mobile Orval and the JavaScript Auth SDK.
   - Record that Bruno (and leftover Postman) remain environment-driven unless endpoint contracts
     change.
-  - Integration API EXP1 slice: host-neutral canonical spec, one-host Cloudflare artifact, and
-    operator upload on `https://exp1-integration-api.ezkey.org`
+  - Integration API community host slice: host-neutral canonical spec, one-host Cloudflare artifact, and
+    operator upload on `https://integration-api.ezkey.online`
     (`TB-2026-08-23-integration-api-cloudflare-schema`).
 - **Out of scope:**
   - Immediate automated Cloudflare schema upload.
-  - Immediate Admin API Cloudflare upload (Integration EXP1 is the current slice).
+  - Immediate Admin API Cloudflare upload (Integration the community host is the current slice).
   - Broad Postman variable cleanup.
   - Cloudflare blocking enforcement before observation evidence exists.
   - Treating deployment-localized specs as auditable release artifacts before the manual workflow
@@ -66,7 +66,7 @@ client.
 
 ## Key assumptions
 
-- A normalized canonical spec is preferable to embedding EXP1, Cloudflare, or customer-specific
+- A normalized canonical spec is preferable to embedding community host, Cloudflare, or customer-specific
   domains in Java annotations.
 - `scripts/update-specs.sh` should remain the canonical extraction and dispatch entrypoint, while
   deployment localization should be a separately runnable packaging step.
@@ -92,31 +92,31 @@ client.
 - Observe/log-first remains the default whenever third-party traffic is possible: a false Block
   on `POST /api/v1/enrollments/instance-info` (or bind / verify / pending / respond) would
   interrupt the enrolled trust-refresh path.
-- **EXP1 exception (2026-08-23):** the operator confirmed EXP1 has no external evaluators and
-  that the maintainer is the only tester. **Block** is accepted on `exp1-auth-api.ezkey.org`
+- **community-lab exception (2026-08-23):** the operator confirmed the community host has no external evaluators and
+  that the maintainer is the only tester. **Block** is accepted on `auth-api.ezkey.online`
   only, so schema mismatches fail at the edge. Flip to None if a maintainer test locks out
   enroll or MFA. Do not copy that action to a later multi-user host without a fresh observe
   period.
 
 ## Promotion notes
 
-First Auth API slice is implemented. EXP1 schema is uploaded. Mitigation on EXP1 is **Block**
+First Auth API slice is implemented. community schema is uploaded. Mitigation on the community host is **Block**
 (maintainer-only exception, 2026-08-23). Product default elsewhere remains None.
 
 - Tracer bullet (Auth): [`TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md`](../TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md)
-- Tracer bullet (Integration EXP1): [`TB-2026-08-23-integration-api-cloudflare-schema.md`](../TB-2026-08-23-integration-api-cloudflare-schema.md)
+- Tracer bullet (Integration the community host): [`TB-2026-08-23-integration-api-cloudflare-schema.md`](../TB-2026-08-23-integration-api-cloudflare-schema.md)
 - Next-phase context (Admin still deferred): [`TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md`](../TB-2026-06-02-auth-api-cloudflare-schema-next-phase.md)
 - Operator runbook (Auth): [`docs/cloudflare/auth-api-schema-validation.md`](../../../../docs/cloudflare/auth-api-schema-validation.md)
 - Operator runbook (Integration): [`docs/cloudflare/integration-api-schema-validation.md`](../../../../docs/cloudflare/integration-api-schema-validation.md)
 
 ## Close-out notes (2026-08-23 / canon synced 2026-08-25)
 
-- Host-neutral Auth canonical spec + EXP1 packaging path are in repo. Auth TB
+- Host-neutral Auth canonical spec + community packaging path are in repo. Auth TB
   [`TB-2026-06-02-auth-api-cloudflare-schema-first-slice`](../TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md)
   is `done` (PR `#478`).
-- EXP1 Auth Cloudflare upload succeeded; Set action is Block (EXP1-only exception).
-- Integration EXP1 is uploaded and on **Block** (maintainer-only exception, 2026-08-23),
-  same reason as Auth. Schema `ezkey-integration-api-exp1`
+- community Auth Cloudflare upload succeeded; Set action is Block (community-lab-only exception).
+- Integration the community host is uploaded and on **Block** (maintainer-only exception, 2026-08-23),
+  same reason as Auth. Schema `ezkey-integration-api-community`
   (`bf5cab36-d09c-4b0e-b551-5c23bc17682f`). Functional check: schema-invalid create → 403 /
   1020; schema-valid create with dummy Basic → origin 401. Integration TB
   [`TB-2026-08-23-integration-api-cloudflare-schema.md`](../TB-2026-08-23-integration-api-cloudflare-schema.md)
@@ -148,4 +148,4 @@ First Auth API slice is implemented. EXP1 schema is uploaded. Mitigation on EXP1
 - Operator runbook (Integration): [`../../../../docs/cloudflare/integration-api-schema-validation.md`](../../../../docs/cloudflare/integration-api-schema-validation.md)
 - Auth OpenAPI config: [`../../../../ezkey-auth-api/src/main/java/org/ezkey/auth/config/OpenApiConfig.java`](../../../../ezkey-auth-api/src/main/java/org/ezkey/auth/config/OpenApiConfig.java)
 - Spec update script: [`../../../../scripts/update-specs.sh`](../../../../scripts/update-specs.sh)
-- EXP1 Caddy host source: [`../../../../experimental-hybrid/lightsail/Caddyfile`](../../../../experimental-hybrid/lightsail/Caddyfile)
+- community Caddy host source: [`../../../../experimental-hybrid/lightsail/Caddyfile`](../../../../experimental-hybrid/lightsail/Caddyfile)

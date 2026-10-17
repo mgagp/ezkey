@@ -10,12 +10,14 @@
 - **Captured by:** Marc / Alex
 - **Priority:** `P1` (public posture and domain honesty; blocks coherent site + host messaging)
 
+> **Decommissioned lab label (2026-10):** Historical decision record for the former experimental lab → **ezkey.online** community cutover. Live ops use the community host only.
+
 ## Intent
 
-Retire the public **EXP1 / experimental lab** label for the live AWS Lightsail host. Reposition
+Retired the public **EXP1 / experimental lab** label for the live AWS Lightsail host. Repositioned
 Ezkey’s public posture as: **product in alpha**, with a maintained **community instance** hosted
-at **ezkey.online**. Keep **ezkey.org** as the product site. Recycle the current EXP1 VM into that
-community offering. Do **not** claim production readiness, vendor parity, or WebAuthn/passkey
+at **ezkey.online**. Kept **ezkey.org** as the product site. Recycled the then-current EXP1 VM into
+that community offering. Do **not** claim production readiness, vendor parity, or WebAuthn/passkey
 equivalence.
 
 This note is the **decision record** for those locks. Site repositioning on ezkey.org is **done**
@@ -33,14 +35,14 @@ closed with [`V-2026-09-26-public-alpha-posture-closeout`](V-2026-09-26-public-a
 
 ## Product locks (settled)
 
-1. **Community offering on ezkey.online** — Recycle the current EXP1 AWS Lightsail VM into the
+1. **Community offering on ezkey.online** — Recycled the then-current EXP1 AWS Lightsail VM into the
    community instance. Hostnames follow the product domain (see hostname map below). Spelling is
    always **ezkey.online** (never “easykey”).
-2. **Public posture** — Stop positioning the live host as « EXP1 / experimental lab ». Public
+2. **Public posture** — Stopped positioning the live host as « EXP1 / experimental lab ». Public
    language is: Ezkey product in **alpha**, with a maintained **community instance** on
    ezkey.online.
 3. **ezkey.org remains the product site** — Marketing, guides, and evaluator journey stay on
-   ezkey.org. EXP1 journey copy, badges, and URLs are retargeted to this alpha + ezkey.online
+   ezkey.org. Former EXP1 journey copy, badges, and URLs were retargeted to this alpha + ezkey.online
    reality (editorial pass shipped in PR #609).
 4. **Honesty bounds** — Alpha is **not** a production SLA. Ezkey is **not** Duo / Okta /
    Keycloak parity. Ezkey is **not** WebAuthn / passkey equivalence (see

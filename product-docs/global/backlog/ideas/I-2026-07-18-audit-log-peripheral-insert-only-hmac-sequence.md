@@ -120,7 +120,7 @@ INSERT + UPDATE — provided we also (a) allow the identity column to accept an 
 
 ## Key assumptions
 
-- Greenfield migration is acceptable (clean-start / EXP1 recreate the volume; no in-place data
+- Greenfield migration is acceptable (clean-start / community recreate the volume; no in-place data
   migration required for R1).
 - The HMAC canonical form and verification stay byte-for-byte identical; only the *when/how* the id
   and timestamp are obtained changes, not *what* is signed.

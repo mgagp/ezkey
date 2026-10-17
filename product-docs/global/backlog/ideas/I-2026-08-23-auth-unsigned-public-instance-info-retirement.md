@@ -73,7 +73,7 @@ Canon: [`docs/ENDPOINT.md`](../../../../docs/ENDPOINT.md) § Public instance met
 | Admin UI | No — calls **Admin** GET | Keep Admin GET |
 | Bruno `g0` / `bruno/public-auth/get-public-instance-info.bru` | Yes today | Actuator health, or drop Auth from `g0` and keep Admin public GET |
 | `ezkey-tests` Docker public-probe fallback | Yes as Actuator fallback | Prefer Actuator only, or a dedicated public health path |
-| EXP1 / hybrid deployment playbook curl | Yes as reachability check | Actuator or Admin GET |
+| community / hybrid deployment playbook curl | Yes as reachability check | Actuator or Admin GET |
 | OpenAPI presentation (Auth first public item) | Cosmetic | Reorder after removal |
 | Planned pinning hint (`spkiPinningMode` on unsigned GET) | Possible future | Signed POST as authority already; need another pre-enrollment hint or drop the hint channel |
 | Planned version / compat discovery on public instance-info | Possible future | Put advisory fields on signed enrolled instance-info and/or enrollment payload, or keep a public GET |

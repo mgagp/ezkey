@@ -54,7 +54,7 @@ acts, not derived integrity state on `ezkey_audit_log`).
 ### Why this matters (operability + trust)
 
 - **Operator fatigue:** Re-alerts on already-investigated entry tamper erode alert queue trust and
-  block EXP1 soak / lab iteration (including on-demand validation without waiting for cron).
+  block community soak / lab iteration (including on-demand validation without waiting for cron).
 - **Operator-visible narrative:** An explained integrity exception needs a **durable, queryable record** (who,
   when, category, justification) — not only a resolved alert row whose payload is window-scoped.
 - **Honest security posture:** We **do not** claim the entry became cryptographically valid. We claim

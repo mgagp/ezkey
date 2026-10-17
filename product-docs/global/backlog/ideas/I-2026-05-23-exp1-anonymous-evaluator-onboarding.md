@@ -9,21 +9,26 @@
 - **Updated at:** `2026-05-23`
 - **Last reviewed at:** `2026-05-23`
 - **Phase tags:** `P2-functional-mode`
-- **Component tags:** `admin-api`, `admin-ui`, `ezkey-org`, `infra (EXP1)`, `docs`
+- **Component tags:** `admin-api`, `admin-ui`, `ezkey-org`, `infra (community)`, `docs`
 - **Captured by:** Marc
+
+> **Decommissioned lab label (2026-10):** Historical decision record for the former experimental
+> lab → **ezkey.online** community cutover. Live ops use the community host only.
 
 ## Intent
 
-Add an **anonymous self-service evaluator onboarding path** on **EXP1** that creates an **empty
+Add an **anonymous self-service evaluator onboarding path** on the **community evaluator instance**
+(historically designed against the former experimental lab labeled EXP1) that creates an **empty
 tenant** and a **Tenant Admin** provisioned with **`ACTIVATION_CODE` onboarding**, returns the
 activation code immediately, and applies **proportionate rate limits** so the operator can monitor
 volume without building heavyweight anti-abuse infrastructure.
 
 ## Problem and value
 
-- **Problem:** EXP1 access today requires email to `info@ezkey.org` and manual review. With minimal
-  public promotion, **no inbound requests** have arrived. Some potential evaluators may avoid email
-  due to **trust friction** or desire for **anonymity**, leaving no signal of latent interest.
+- **Problem (2026-05):** Lab access required email to `info@ezkey.org` and manual review. With
+  minimal public promotion, **no inbound requests** had arrived. Some potential evaluators may have
+  avoided email due to **trust friction** or desire for **anonymity**, leaving no signal of latent
+  interest.
 - **Expected value:**
   - Lower friction for cautious but interested evaluators.
   - **Measurable anonymous interest** (creation counts via audit/logs).
@@ -34,18 +39,19 @@ volume without building heavyweight anti-abuse infrastructure.
 ## Scope
 
 - **In scope:**
-  - Installation-scoped feature (EXP1) enabling anonymous **empty tenant** + tenant-admin provisioning.
+  - Installation-scoped feature enabling anonymous **empty tenant** + tenant-admin provisioning
+    (originally scoped to the former experimental lab; live target is **ezkey.online** community).
   - Signup page on `ezkey.org` (English first).
   - Return activation code + expiry + URLs; user continues existing guided tour from step 1.
   - Abuse controls: **global daily creation cap (default 5)**, **per-IP success limit (1/24h)**,
     audit-friendly logging.
-  - Public copy update on ezkey.org EXP1 preview page.
-  - Configuration documented in relevant `CONFIGURATION.md` / EXP1 operator notes.
+  - Public copy update on ezkey.org community / evaluator pages.
+  - Configuration documented in relevant `CONFIGURATION.md` / community operator notes.
 
 - **Out of scope (first cut):**
   - Integration, API key, or enrollment auto-provision at signup.
   - CAPTCHA, invite tokens, or email verification for anonymous path.
-  - Self-service on non-EXP1 installations.
+  - Self-service on non-community installations by default.
   - Automated tenant cleanup / TTL.
   - Marketing or advertising push to drive volume.
   - Admin UI `/signup` route.
@@ -86,7 +92,7 @@ See [`../grill-sessions/2026-05-23-exp1-anonymous-evaluator-onboarding-grill-me.
 ## Promotion notes
 
 Promoted to **`TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut`**. Ready for implementation
-when operator prioritizes the slice.
+when operator prioritizes the slice (against **ezkey.online** community, not the retired lab label).
 
 ## Links
 
@@ -94,8 +100,7 @@ when operator prioritizes the slice.
 - Follow-on vision: [`../../vision/V-2026-09-26-evaluator-bootstrap-admin-session.md`](../../vision/V-2026-09-26-evaluator-bootstrap-admin-session.md) — signup also mints Admin UI bootstrap session (community/alpha)
 - Tracer bullet: [`TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut.md`](TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut.md)
 - Grill: [`../grill-sessions/2026-05-23-exp1-anonymous-evaluator-onboarding-grill-me.md`](../grill-sessions/2026-05-23-exp1-anonymous-evaluator-onboarding-grill-me.md)
-- Site: [`../../../../sites/ezkey-org/experimental-preview-exp1.html`](../../../../sites/ezkey-org/experimental-preview-exp1.html)
-- Tour: [`../../../../sites/ezkey-org/exp1-guided-tour.html`](../../../../sites/ezkey-org/exp1-guided-tour.html)
+- Site: [`../../../../sites/ezkey-org/community-guided-tour.html`](../../../../sites/ezkey-org/community-guided-tour.html) (supersedes retired lab preview/tour HTML)
 - Features: `F-public-site`, `F-provisioning-procedures`
 - Adjacent: `I-2026-0011`, `I-2026-0026`
 - API reference: [`../../../../docs/ENDPOINT.md`](../../../../docs/ENDPOINT.md)
