@@ -2,7 +2,7 @@
 
 This folder contains **operator-focused** artifacts to run Ezkey on **Amazon Lightsail** (Postgres, migration, Admin API, Auth API, Integration API, optional Demo ACME, **Caddy** with Origin CA) and optionally run **local** companions (Crypto API, Demo Device, Demo ACME) against the **public** HTTPS APIs.
 
-- **Lightsail:** [`lightsail/`](lightsail/) — `docker-compose.yml`, `Caddyfile` / `Caddyfile.ezkey-online` (community `*.ezkey.online`), `.env.example`, `.env.ezkey-online.example`
+- **Lightsail:** [`lightsail/`](lightsail/) — `docker-compose.yml`, canonical [`Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online) (community `*.ezkey.online`; Compose mounts it as `/etc/caddy/Caddyfile`), `.env.example`, `.env.ezkey-online.example`
 - **Local (optional):** [`local/`](local/) — `docker-compose.yml`, `.env.example`
 - **Runbook:** [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) — phases, **`~/ezkey` VM tree**, **`scp` from a dev clone** (default), optional clone-on-VM, Cloudflare split (manual vs repo)
 - **Single-backend image update (Lightsail):** [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md) — `docker save` / `scp` / `docker load` / `compose up --force-recreate`
@@ -79,7 +79,7 @@ To automate **save → scp → load**, use [`scripts/export-backend-images-to-li
 
 ## Progressive introduction of the ACME demo (Lightsail, no database wipe)
 
-Use this when the stack and Postgres data **already run** and you only add or update the public **ACME demo** (`demo-acme.ezkey.online` in [`lightsail/Caddyfile`](lightsail/Caddyfile) / [`Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online)). Do **not** use [`lightsail/clean-start.sh`](lightsail/clean-start.sh) or **`--clean-start`** on [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) if you need to keep existing volumes.
+Use this when the stack and Postgres data **already run** and you only add or update the public **ACME demo** (`demo-acme.ezkey.online` in [`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online)). Do **not** use [`lightsail/clean-start.sh`](lightsail/clean-start.sh) or **`--clean-start`** on [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) if you need to keep existing volumes.
 
 1. **Cloudflare DNS** — Add **`demo-acme.ezkey.online`** as an **A** record to the Lightsail public IP (or a **CNAME** to another `*.ezkey.online` name that already points there). Enable **proxied (orange)** like the other community hosts. See [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *Phase 0d* / *1b*.
 2. **Origin certificate** — Include the demo FQDN in the **Cloudflare Origin Server** cert SAN list, redeploy **`origin.pem`** / **`origin-key.pem`** to **`lightsail/caddy-certs/`** on the VM, then recreate Caddy: `docker compose up -d --no-deps --force-recreate caddy` from [`lightsail/`](lightsail/) (see [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md)). Without this, TLS from Cloudflare to the origin will fail for the new hostname.
@@ -100,7 +100,7 @@ Use this when the stack and Postgres data **already run** and you only add or up
    `SPRING_PROFILES_ACTIVE=docker,docker-base` (see `.env.example` comments and
    [`docker/README.md`](../docker/README.md) § Runtime profiles). Orthogonal to
    `EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED`.
-3. Edit **`lightsail/Caddyfile`** hostnames if yours differ from `*.ezkey.online`.
+3. Edit **`lightsail/Caddyfile.ezkey-online`** hostnames if yours differ from `*.ezkey.online`.
 4. From `lightsail/`, start the stack **with encryption keys seeded** (pick one):
    - **Recommended for an empty / disposable VM:** `chmod +x clean-start.sh && ./clean-start.sh` — same idea as local `ezkey-tests/clean-start.sh`: wipes Compose volumes, generates master key into the correct Docker volume (`--experimental-lightsail`), then `docker compose up -d`. **Destructive** to the database; see script `--help`.
    - **Without wiping volumes:** `bash ../../docker/generate-encryption-keys.sh --experimental-lightsail --force` then `docker compose up -d`.

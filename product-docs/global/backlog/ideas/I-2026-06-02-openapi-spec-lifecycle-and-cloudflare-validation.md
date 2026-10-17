@@ -148,4 +148,4 @@ First Auth API slice is implemented. community schema is uploaded. Mitigation on
 - Operator runbook (Integration): [`../../../../docs/cloudflare/integration-api-schema-validation.md`](../../../../docs/cloudflare/integration-api-schema-validation.md)
 - Auth OpenAPI config: [`../../../../ezkey-auth-api/src/main/java/org/ezkey/auth/config/OpenApiConfig.java`](../../../../ezkey-auth-api/src/main/java/org/ezkey/auth/config/OpenApiConfig.java)
 - Spec update script: [`../../../../scripts/update-specs.sh`](../../../../scripts/update-specs.sh)
-- community Caddy host source: [`../../../../experimental-hybrid/lightsail/Caddyfile`](../../../../experimental-hybrid/lightsail/Caddyfile)
+- community Caddy host source: [`../../../../experimental-hybrid/lightsail/Caddyfile.ezkey-online`](../../../../experimental-hybrid/lightsail/Caddyfile.ezkey-online)

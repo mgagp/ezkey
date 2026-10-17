@@ -186,7 +186,7 @@ The origin-hardening posture remains meaningful:
 - and the Caddy TLS 1.3-only block still matters for Cloudflare-to-origin traffic if that is the chosen operator policy.
 
 Repo evidence:
-- `experimental-hybrid/lightsail/Caddyfile`
+- `experimental-hybrid/lightsail/Caddyfile.ezkey-online`
 - `experimental-hybrid/DEPLOYMENT_PLAYBOOK.md`
 - `experimental-hybrid/README.md`
 - live passive checks against the then-public Auth, Admin, and Integration Cloudflare hostnames

@@ -305,7 +305,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Canonical source in repo is Caddyfile.ezkey-online; container path stays /etc/caddy/Caddyfile.
+      - ./Caddyfile.ezkey-online:/etc/caddy/Caddyfile:ro
       # Cloudflare Origin CA PEMs (origin.pem, origin-key.pem) — created in dashboard, not in git.
       - ./caddy-certs:/etc/caddy/certs:ro
       - caddy-data:/data

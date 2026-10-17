@@ -44,7 +44,7 @@ replace device-side Ed25519 verification of `instanceInfoPayloadSignedByIntegrat
 - `Integration API` does not declare `@Server`, but Springdoc still emits a generated localhost
   server in the canonical spec output, so annotation cleanup alone is not sufficient.
 - Postman historically modeled hosts through environments. Living operator collections under `bruno/` do the same (environment base URLs); that is the host-neutral proof to follow, not the Postman tree.
-- `community` (ezkey.online) has concrete Cloudflare/Lightsail public hosts in `experimental-hybrid/lightsail/Caddyfile`.
+- `community` (ezkey.online) has concrete Cloudflare/Lightsail public hosts in `experimental-hybrid/lightsail/Caddyfile.ezkey-online`.
 - Ezkey's self-hosting posture argues against embedding project-specific or operator-specific
   domains in portable source annotations.
 

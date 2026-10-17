@@ -2,9 +2,10 @@
 #
 # Product hostnames (PR #609 / Marc lock): *.ezkey.online.
 #
-# On the community VM, install as the active Caddyfile (Compose bind-mounts ./Caddyfile).
-# --sync-operator-files copies Caddyfile.ezkey-online → remote Caddyfile. Always scp from the
-# repo (or use the export script), verify sha256 against the repo, then recreate the caddy service.
+# Canonical Lightsail Caddy source in this repo (single file after EXP1 retirement).
+# docker-compose.yml bind-mounts this file as /etc/caddy/Caddyfile.
+# --sync-operator-files copies it → remote Caddyfile. Always scp from the repo (or use the
+# export script), verify sha256 against the repo, then recreate the caddy service.
 #
 # Manual install example:
 #   scp experimental-hybrid/lightsail/Caddyfile.ezkey-online \

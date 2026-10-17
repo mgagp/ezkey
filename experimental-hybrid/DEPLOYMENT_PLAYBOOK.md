@@ -60,8 +60,7 @@ After a rebuild, set each API **A** record in Cloudflare to the **new** Lightsai
 | Artifact | Role |
 |----------|------|
 | [`lightsail/docker-compose.yml`](lightsail/docker-compose.yml) | Stack: Postgres, migration, APIs, Caddy |
-| [`lightsail/Caddyfile`](lightsail/Caddyfile) | Hostnames → `reverse_proxy`; **TLS 1.3 only**; cert files: `tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem` (community `*.ezkey.online`) |
-| [`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online) | Same structure for **community** `*.ezkey.online` hostnames; sync installs this as remote `Caddyfile`. See [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) |
+| [`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online) | **Canonical** Lightsail Caddy source (community `*.ezkey.online`): hostnames → `reverse_proxy`; **TLS 1.3 only**; Origin CA PEMs. Compose bind-mounts it as `/etc/caddy/Caddyfile`; sync installs it as remote `Caddyfile`. See [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) |
 | [`lightsail/caddy-certs/`](lightsail/caddy-certs/) | On the VM only: **Origin CA** PEMs from Cloudflare (**not** in git; `.gitignore` keeps the folder) |
 | [`lightsail/clean-start.sh`](lightsail/clean-start.sh) | Optional **destructive** reset: `down -v`, keygen, `up -d` |
 | [`lightsail/.env.example`](lightsail/.env.example) | Template for `lightsail/.env` |
@@ -75,7 +74,7 @@ After a rebuild, set each API **A** record in Cloudflare to the **new** Lightsai
 **Goal:** Browsers trust **Cloudflare’s** certificate; the origin trusts **Cloudflare Origin CA** (issued in the dashboard, long-lived).
 
 1. **SSL/TLS** → **Full** or **Full (strict)** (strict once the origin presents the Origin cert correctly).
-2. **Origin Server** → **Create certificate** → hostnames: your **API** FQDNs (e.g. `auth-api.ezkey.online`, `admin-api.ezkey.online`, `integration-api.ezkey.online`) and, if you use it, the **ACME demo** hostname (e.g. `demo-acme.ezkey.online` — see [`lightsail/Caddyfile`](lightsail/Caddyfile)) so Caddy can present the cert for that site block. Save **`origin.pem`** and **`origin-key.pem`** locally (never commit). Re-issue the Origin cert when you add a new hostname.
+2. **Origin Server** → **Create certificate** → hostnames: your **API** FQDNs (e.g. `auth-api.ezkey.online`, `admin-api.ezkey.online`, `integration-api.ezkey.online`) and, if you use it, the **ACME demo** hostname (e.g. `demo-acme.ezkey.online` — see [`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online)) so Caddy can present the cert for that site block. Save **`origin.pem`** and **`origin-key.pem`** locally (never commit). Re-issue the Origin cert when you add a new hostname.
 3. On the VM: `mkdir -p ~/ezkey/experimental-hybrid/lightsail/caddy-certs`, `chmod 700`, copy PEMs, `chmod 600` on the key.
 4. **DNS:** set API **A** records to the Lightsail IP, then enable **proxied (orange)**.
 5. **HSTS** (optional): start with a **short** `max-age` or disable until stable; add **`includeSubDomains`** / **preload** only when the whole zone is ready. Enable **No-Sniff** if offered in the same UI.
@@ -165,7 +164,7 @@ Without **`/etc/ezkey/secrets/master.key`**, Tink may stay disabled. Prefer **`c
 
 ## TLS 1.3 (API hostnames on Caddy)
 
-[`lightsail/Caddyfile`](lightsail/Caddyfile) uses **TLS 1.3 only** on the origin certificate block. **Public users** see **Cloudflare’s** TLS when DNS is orange; **Cloudflare → origin** uses your **Origin CA** + Full (strict).
+[`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online) uses **TLS 1.3 only** on the origin certificate block. **Public users** see **Cloudflare’s** TLS when DNS is orange; **Cloudflare → origin** uses your **Origin CA** + Full (strict).
 
 **Admin UI (Pages):** set zone **Minimum TLS 1.3** for the UI hostname. See [`docs/cloudflare/admin-ui-pages.md`](../docs/cloudflare/admin-ui-pages.md).
 

@@ -88,7 +88,7 @@ docker compose exec auth-api curl -sf http://localhost:8085/actuator/health
 
 Use the **service** name in `docker compose … <service>` (first column).
 
-**`demo-app-acme`:** after `docker load`, use `docker compose up -d --no-deps --force-recreate demo-app-acme`. Recreate **Caddy** only if you changed [`lightsail/Caddyfile`](lightsail/Caddyfile) or origin TLS PEMs, e.g. `docker compose up -d --no-deps --force-recreate caddy` — not required for a demo image-only update.
+**`demo-app-acme`:** after `docker load`, use `docker compose up -d --no-deps --force-recreate demo-app-acme`. Recreate **Caddy** only if you changed [`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online) or origin TLS PEMs, e.g. `docker compose up -d --no-deps --force-recreate caddy` — not required for a demo image-only update.
 
 ## Multiple backends in one pass
 

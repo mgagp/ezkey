@@ -128,12 +128,7 @@ lightsail_resolve_ssh_target() {
     local mapped
     mapped="$(lightsail_ssh_host_for_target "${declared_target}")"
     if [[ -n "${host_from_env}" && "${host_from_env}" != "${mapped}" ]]; then
-      local host_inferred
-      host_inferred="$(lightsail_infer_target_from_host "${host_from_env}")"
-      if [[ -n "${host_inferred}" && "${host_inferred}" != "${declared_target}" ]]; then
-        lightsail_die "LIGHTSAIL_SSH_HOST=${host_from_env} belongs to target '${host_inferred}', but --target is '${declared_target}'. Refusing mismatch that would push the wrong Caddyfile (#812)."
-      fi
-      # Custom (unknown) host may override mapped alias; target still selects Caddyfile.
+      # Custom host may override the mapped alias; target still selects the Caddyfile source.
       LIGHTSAIL_SSH_HOST="${host_from_env}"
       echo "note: LIGHTSAIL_SSH_HOST=${host_from_env} overrides mapped host ${mapped} for --target ${declared_target}" >&2
     else
@@ -165,7 +160,8 @@ lightsail_require_community_wipe_confirm() {
 }
 
 # Local Caddyfile path to scp as remote Caddyfile for the resolved target.
-# community → Caddyfile.ezkey-online (same content as lightsail/Caddyfile).
+# Canonical source: experimental-hybrid/lightsail/Caddyfile.ezkey-online (single file in repo).
+# Sync installs it as remote Caddyfile (Compose bind-mount name on the VM).
 # Custom host without LIGHTSAIL_TARGET → die (must declare --target for sync).
 lightsail_caddyfile_source_for_sync() {
   local lightsail_local_dir="$1"
