@@ -151,8 +151,7 @@ class AuthApiUrlValidatorTest {
   void validate_allowedHostFromConfiguredAuthApi_accepts() {
     Set<String> allow =
         AuthApiUrlValidator.effectiveAllowlist("https://auth-api.ezkey.online", List.of());
-    assertThat(allow)
-        .containsExactlyInAnyOrder("localhost", "127.0.0.1", "auth-api.ezkey.online");
+    assertThat(allow).containsExactlyInAnyOrder("localhost", "127.0.0.1", "auth-api.ezkey.online");
     assertThat(AuthApiUrlValidator.validate("https://auth-api.ezkey.online", allow))
         .isEqualTo("https://auth-api.ezkey.online");
   }

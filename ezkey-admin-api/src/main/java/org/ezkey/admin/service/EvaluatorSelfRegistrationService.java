@@ -48,8 +48,7 @@ public class EvaluatorSelfRegistrationService {
   private static final String ADMIN_USERNAME_PREFIX = "eval-admin-";
   private static final String DEFAULT_FIRST_NAME = "Evaluator";
   private static final String DEFAULT_LAST_NAME = "Preview";
-  private static final String DEFAULT_TENANT_DESCRIPTION =
-      "Anonymous evaluator preview tenant";
+  private static final String DEFAULT_TENANT_DESCRIPTION = "Anonymous evaluator preview tenant";
 
   private final EvaluatorSelfRegistrationProperties properties;
   private final EvaluatorSelfRegistrationRateLimiter rateLimiter;
