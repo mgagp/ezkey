@@ -27,8 +27,8 @@ Demo application for Ezkey passwordless login. Demonstrates backend-side authent
 - **API Key**: Resolution order — access-code slot → pasted session keys → legacy single config —
   via `DemoApiKeyConfigService` + `AccessCodeService` + `EzkeyClientProvider`. Temporary access
   links use `GET /t/{code}`. Do not store a process-wide key.
-- **Internet host:** `experimental-hybrid/` (`exp1-demo-acme`). Do not fold EXP1 facts into
-  `docs/` or `docker/README.md`.
+- **Internet host:** `experimental-hybrid/` (`demo-acme.ezkey.online`). Do not fold Lightsail-only
+  facts into `docs/` or `docker/README.md`.
 - **User Mapping**: External JSON file (`data/acme-users.json`) with hot-reload
 
 ## Login Flow

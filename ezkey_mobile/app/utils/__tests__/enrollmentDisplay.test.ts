@@ -239,10 +239,10 @@ describe('legacy and generic branding', () => {
     const display = buildEnrollmentIdentityDisplay(
       {
         enrollmentName: 'Marie Dupont',
-        integrationName: 'exp1-auth-api.ezkey.org',
+        integrationName: 'auth-api.ezkey.online',
         installation: {
-          name: 'exp1-auth-api.ezkey.org',
-          host: 'exp1-auth-api.ezkey.org',
+          name: 'auth-api.ezkey.online',
+          host: 'auth-api.ezkey.online',
         },
       },
       'Ezkey installation',
@@ -250,7 +250,7 @@ describe('legacy and generic branding', () => {
     );
 
     expect(display.showHostHint).toBe(true);
-    expect(display.host).toBe('exp1-auth-api.ezkey.org');
+    expect(display.host).toBe('auth-api.ezkey.online');
     expect(display.installationContext).toBeUndefined();
     expect(display.purposeLabel).toBeUndefined();
   });

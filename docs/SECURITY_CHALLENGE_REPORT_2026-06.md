@@ -17,7 +17,7 @@ this report, or “what’s next on SEC-*”.
 
 | Gate | Status |
 |------|--------|
-| SEC-001 → SEC-012 (HIGH / MEDIUM program items) | **Done** (code + docker/EXP1 ops where applicable) |
+| SEC-001 → SEC-012 (HIGH / MEDIUM program items) | **Done** (code + docker/community ops where applicable) |
 | Follow-up `I-2026-07-09` (`encryption.required` read-path parity) | **Done** (`AtRestEncryptionAccess` on `ApiKey`, `Enrollment`, `AuthAttempt`) |
 | Security Challenge **program milestone** | **Reached** — no remaining HIGH/MEDIUM backlog from this audit |
 | SEC-013 → SEC-016 | **Open but LOW only** — polish / defense-in-depth, not a program queue |
@@ -38,7 +38,7 @@ implementation status lives in the status table in the executive summary.
 **Recommendation:** close the Security Challenge as complete for release planning. Do **not**
 schedule SEC-013–016 ahead of the September operable-release compass
 ([`product-docs/global/operational-readiness-prioritization-2026-09.md`](../product-docs/global/operational-readiness-prioritization-2026-09.md)
-— integrity cluster / EXP1 soak). If idle hygiene time appears, prefer a tiny PR for SEC-015
+— integrity cluster / community soak). If idle hygiene time appears, prefer a tiny PR for SEC-015
 (and optionally SEC-013); skip SEC-016 until there is a real observability need.
 
 ### If the operator asks “continue the security challenge”
@@ -64,7 +64,7 @@ La fondation cryptographique d'Ezkey est solide. L'architecture backend-first es
 | SEC-002 | **Fait** | PR #293 — `encryption.required` + health Actuator Tink ; **ops:** `true` sur profil `docker` |
 | SEC-003 | **Fait** | PR #266 — Caffeine bounded sur maps rate limit admin |
 | SEC-004 | **Fait** | PR #266 — rate limit `/passwordless-wait` |
-| SEC-005 | **Fait** | Auth API rate limit — `ezkey.rate-limit.enabled=true` sur profil `docker` (EXP1, `--prod-safe`); `docker-test` le désactive volontairement pour les tests |
+| SEC-005 | **Fait** | Auth API rate limit — `ezkey.rate-limit.enabled=true` sur profil `docker` (community / `--prod-safe`); `docker-test` le désactive volontairement pour les tests |
 | SEC-006 | **Fait** | PR #308 — login admin 401 générique (anti-énumération) |
 | SEC-007 | **Fait** | PR #297 — device proof token hash-only (V16) |
 | SEC-008 | **Fait** | PR #293 — `audit.integrity.required` + health HMAC ; **ops:** `true` sur profil `docker` |
@@ -75,7 +75,7 @@ La fondation cryptographique d'Ezkey est solide. L'architecture backend-first es
 | SEC-013–016 | **Ouvert (LOW)** | Durcissement optionnel — **non prioritaire** (voir [Cold-start guidance](#cold-start-guidance-agents-and-operators)) |
 | **Suivi** | **Fait** | Parité read-path `encryption.required` — [`I-2026-07-09`](../product-docs/global/backlog/ideas/I-2026-07-09-encryption-required-read-path-parity.md) (`AtRestEncryptionAccess` sur `ApiKey`, `Enrollment`, `AuthAttempt`) |
 
-**Jalon challenge :** phases 1–3 + ops docker/EXP1 + suivi read-path = **clos**. Residual = SEC-013–016 only (LOW). Default next work is **not** this report — use the September operational-readiness compass.
+**Jalon challenge :** phases 1–3 + ops docker/community + suivi read-path = **clos**. Residual = SEC-013–016 only (LOW). Default next work is **not** this report — use the September operational-readiness compass.
 
 ### Top 3 risques (historique — juin 2026 ; tous traités)
 
@@ -637,7 +637,7 @@ Voir F-07-B. Applicable aussi en Domaine 10 : sous re-encryption concurrente, to
 - SEC-008 : Health check HMAC audit
 
 ### Phase 3 — Milestone 4 / operational discipline
-- SEC-005 : Rate limiting Auth API (**fait** — profil `docker` / EXP1)
+- SEC-005 : Rate limiting Auth API (**fait** — profil `docker` / community)
 - SEC-009 : `ReadWriteLock` Tink (**fait** — [`ADR-0008`](../product-docs/global/architecture-decisions.md#adr-0008-tink-keyset-sync-concurrent-read-path))
 - SEC-010 : Chiffrement hash API key (**fait** — PR #312)
 - SEC-011 : Validation config IP audit (**fait** — PR #310 ; ops Lightsail / `--with-proxy`)

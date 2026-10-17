@@ -90,7 +90,7 @@ Then re-open `/integrity` (hard refresh) for the healthy paint.
 
 ### Non-healthy fixture (pick **at least one**)
 
-Prefer existing lab helpers (EXP1 / local disposable). Do **not** invent a second journal.
+Prefer existing lab helpers (community host / local disposable). Do **not** invent a second journal.
 
 | Intent | How | Expected UI |
 |--------|-----|-------------|

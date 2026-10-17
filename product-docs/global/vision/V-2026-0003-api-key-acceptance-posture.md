@@ -4,12 +4,12 @@
 - **Status:** `promoted`
 - **Intent:** **R1 (shipped):** one Admin API property, default **`false`**, gated API-key
   auth-attempt M2M on Admin API. Integration API = canonical M2M surface. **R2 (2026-08-29):**
-  remove the hatch entirely — no opt-in, no Admin API-key authentication. EXP1 ACME must
+  remove the hatch entirely — no opt-in, no Admin API-key authentication. community ACME must
   target Integration API on the next rolling upgrade.
 - **Signals:** Grilling D3 (2026-05-19) — Demo ACME + Java SDK mis-targeted Admin API; uniform
   `false` default including clean-start; RFC 9457 on reject; brief docs note (no production
-  fleet). R2 review (2026-08-29): leftover toggle + EXP1 ACME still on `admin-api:9080`.
-- **Potential impact:** `admin-api`, `sdk-java`, `docs`, `ezkey-demo-app-acme`, EXP1 Compose,
+  fleet). R2 review (2026-08-29): leftover toggle + community ACME still on `admin-api:9080`.
+- **Potential impact:** `admin-api`, `sdk-java`, `docs`, `ezkey-demo-app-acme`, community Compose,
   functional tests; `I-2026-0004`, `I-2026-08-29`.
 - **Next step:** implement `TB-2026-08-29-admin-api-remove-m2m-hatch`.
 - **Captured by:** Marc

@@ -108,8 +108,11 @@ public enum EventType {
   TENANT_DEACTIVATED, // Tenant deactivated (+ reason when provided)
   TENANT_ACTIVATED, // Tenant reactivated (+ reason when provided)
   /**
-   * Anonymous evaluator self-registration completed (EXP1 preview signup; empty tenant + activation
+   * Anonymous evaluator self-registration completed (preview signup; empty tenant + activation
    * code).
+   *
+   * <p>Persisted as {@code EnumType.STRING} on {@code audit_log.event_type}. Do not rename this
+   * constant — historical rows store the literal {@code EVALUATOR_SELF_REGISTRATION}.
    */
   EVALUATOR_SELF_REGISTRATION,
 

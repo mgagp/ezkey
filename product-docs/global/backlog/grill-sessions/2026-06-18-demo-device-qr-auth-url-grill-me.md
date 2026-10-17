@@ -13,10 +13,10 @@
 
 ## Context (observed)
 
-- Standalone `ezkey-demo-device` Docker default: `EZKEY_AUTH_API_URL=https://exp1-auth-api.ezkey.org`
+- Standalone `ezkey-demo-device` Docker default: `EZKEY_AUTH_API_URL=https://auth-api.ezkey.online`
   (port `3080` on host).
 - Clean-start monorepo demo device: `http://auth-api:8080` (port `8083`).
-- Enrollment created in **local** Admin UI; bind via standalone failed (HTTP 400 to Exp1); same
+- Enrollment created in **local** Admin UI; bind via standalone failed (HTTP 400 to community host); same
   enrollment succeeded on clean-start demo device.
 - Java `src/` identical between monorepo and standalone; QR JS already parses `authUrl` but does not
   act on it.

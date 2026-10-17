@@ -4,7 +4,7 @@
 # Default: dry-run. Pass --apply to call Lightsail APIs.
 #
 # Lab default opens 443 to 0.0.0.0/0. TODO (follow-up, human OK): restrict 443 to Cloudflare
-# IPv4 CIDRs like EXP1 (https://www.cloudflare.com/ips-v4). No DNS/cert changes here.
+# IPv4 CIDRs (https://www.cloudflare.com/ips-v4). No DNS/cert changes here.
 #
 # Usage (from repository root, Git Bash):
 #   ./scripts/lightsail/open-ports.sh
@@ -33,7 +33,6 @@ Usage (from repository root, Git Bash):
 Safety:
   Default is dry-run. Pass --apply to mutate the instance firewall.
   Does not allocate static IPs, change DNS, or touch certificates.
-  Does not target exp1-ezkey unless you explicitly pass --name exp1-ezkey (discouraged).
 
 Options:
   --name NAME           Instance name (default: ezkey-online / LIGHTSAIL_INSTANCE_NAME)
@@ -96,10 +95,6 @@ case "${MODE}" in
   open|put) ;;
   *) lightsail_die "--mode must be open or put" ;;
 esac
-
-if [[ "${INSTANCE_NAME}" == "${LIGHTSAIL_EXP1_INSTANCE_NAME}" ]]; then
-  echo "warning: targeting live EXP1 instance '${LIGHTSAIL_EXP1_INSTANCE_NAME}'. Proceed only if intentional." >&2
-fi
 
 if [[ -n "${APPLY}" ]]; then
   lightsail_require_aws_cli

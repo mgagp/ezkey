@@ -1,9 +1,9 @@
 # Lightsail VM lifecycle scripts (community / ezkey.online)
 
-Self-contained AWS CLI helpers for **creating and bootstrapping** a NEW Lightsail VM parallel to EXP1. Dry-run by default for create / ports / delete.
+Self-contained AWS CLI helpers for **creating and bootstrapping** the Lightsail VM for the ezkey.online community host. Dry-run by default for create / ports / delete.
 
 **Owns:** instance create, firewall ports, Docker bootstrap, status, delete.  
-**Does not own:** Compose/Caddy/app images — reuse [`experimental-hybrid/lightsail/`](../../experimental-hybrid/lightsail/) and [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with **`--target community|exp1`** (or `LIGHTSAIL_SSH_HOST`). No silent SSH host default (#812).
+**Does not own:** Compose/Caddy/app images — reuse [`experimental-hybrid/lightsail/`](../../experimental-hybrid/lightsail/) and [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with **`--target community`** (or `LIGHTSAIL_SSH_HOST`). No silent SSH host default (#812).
 
 **Runbook:** [`docs/lightsail/community-host.md`](../../docs/lightsail/community-host.md).
 

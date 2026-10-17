@@ -19,7 +19,7 @@ A cold agent should start here, then follow the skill. Keep this block current a
 | **Then** | Kept files remain. Hors-passe (`ff-main.prompt.md`, mini-rfc) untouched. Next documentary ablation, if any: `plans/` (P-071). |
 | **Kept (do not delete)** | `.cursor/plans/authentication_wait_evolution_brainstorm.plan.md`; `.github/prompts/reported/plan-worktreeDockerStackNaming.prompt.md` |
 | **HITL** | Plan queue finished. Do not invent `I-*` / `TB-*` for leftover parking. |
-| **Do not** | Invent `I-*` / `TB-*`. Re-create deleted plans. Re-rebase this branch unless `origin/main` moved. Push unless asked. Touch `docker/README-HA.md` without preserving Integration HA + V5 ShedLock wording. Fold experimental `ezkey-pam` / `ezkey_dart` / EXP1 facts into `docs/` or `docker/README.md` — keep those lanes in their folders (`ezkey-pam/`, `ezkey_dart/`, `experimental-hybrid/`). |
+| **Do not** | Invent `I-*` / `TB-*`. Re-create deleted plans. Re-rebase this branch unless `origin/main` moved. Push unless asked. Touch `docker/README-HA.md` without preserving Integration HA + V5 ShedLock wording. Fold experimental `ezkey-pam` / `ezkey_dart` / community-lab facts into `docs/` or `docker/README.md` — keep those lanes in their folders (`ezkey-pam/`, `ezkey_dart/`, `experimental-hybrid/`). |
 | **Branch** | `hygiene/corpus-ablation-2026-08` |
 | **Open parking** | Verified residue: P-056, P-059–P-069, P-071, P-073, P-077, P-085–P-089, P-091, P-093, P-103–P-105, P-107–P-108. Grouped in the 2026-08-17 closeout note. |
 | **Conflict / posture** | Git history is the archive. Project files in English. |
@@ -178,12 +178,12 @@ A cold agent should start here, then follow the skill. Keep this block current a
 | `.github/prompts/plan-openApiSpecLifecycle.prompt.md` | Deleted. Unshipped; canon is V/I/TB 2026-06-02 host-neutral specs. In-pass: retarget V/I; Bruno env-var note. No parking. |
 | `.github/prompts/plan-paintingTheAdminUiWithAi.prompt.md` | Deleted. Essay published EN/FR 2026-05-26; research stays in `ezkey-org-editorial/`. No parking. |
 | `.github/prompts/plan-postmanEnrollmentAuthCryptoFlow.prompt.md` | Deleted. Crypto payload-helper enrollment types + Bruno `enrollments-auth/` shipped. Parked P-078. |
-| `.github/prompts/plan-prePilotageExperimentalEzkey.prompt.md` | Deleted. EXP1 lab is `experimental-hybrid/` (not September release). In-pass: README lab framing. Onboarding track remains `I-2026-05-23` (activation codes), not recovery-codes-first. Parked P-079, P-080. |
+| `.github/prompts/plan-prePilotageExperimentalEzkey.prompt.md` | Deleted. community host lab is `experimental-hybrid/` (not September release). In-pass: README lab framing. Onboarding track remains `I-2026-05-23` (activation codes), not recovery-codes-first. Parked P-079, P-080. |
 | `.github/prompts/plan-reencryptionSqlIndexing.prompt.md` | Deleted. Option B shipped as `I-2026-0029` / `TB-2026-07-26`. In-pass: ezkey-core AGENTS indexed `*_encryption_key_id` vs LIKE. No parking. |
 | `.github/prompts/plan-refreshToken.prompt.md` | Deleted. Unshipped OAuth Access/Refresh; deferred in the prompt itself. Opaque single token + sliding 2h TTL shipped. In-pass: admin-api AGENTS. Parked P-081. |
 | `.github/prompts/plan-securityPentestCurated.prompt.md` | Deleted. Lane shipped (`I-2026-07-12` / `TB-2026-07-12`, runner, campaign notes through pass-03). In-pass: root AGENTS keyword; retarget I/TB/evaluation plan cites. Parked P-082. |
 | `.github/prompts/reported/plan-worktreeDockerStackNaming.prompt.md` | Kept. Unique Compose identity option space (`buildQualifier` → `-p` + drop `container_name`); Maven qualifier already isolates artifacts only. No `I-*`. |
-| `.github/prompts/archived/2026-04/plan-acmeDemoInternetExposureHardening.prompt.md` | Deleted. Session isolation + Lightsail ACME shipped. In-pass: demo-app-acme AGENTS per-`HttpSession` + EXP1 folder pointer. Parked P-083 (closed 2026-08-15). |
+| `.github/prompts/archived/2026-04/plan-acmeDemoInternetExposureHardening.prompt.md` | Deleted. Session isolation + Lightsail ACME shipped. In-pass: demo-app-acme AGENTS per-`HttpSession` + community folder pointer. Parked P-083 (closed 2026-08-15). |
 | `.github/prompts/archived/2026-04/plan-adminUiLifecycleGovernancePlan2.prompt.md` | Deleted. `OperationalWarning` shipped. In-pass: Admin UI AGENTS § Detail Danger Zone; retarget operator-reference prompt. No parking. |
 | `.github/prompts/archived/2026-04/plan-auditChainLifecycle.prompt.md` | Deleted. Closeout twin of already-deleted Cursor plan. In-pass: core AGENTS lifecycle pointer; INTEGRITY FSM + exceptional `seal-archive`; banners on REFRAMING / NEXT_SESSION_BRIEF; retarget data-model + integrity-cluster cites. Export remains `I-2026-06-28`. Parked P-084. |
 | `.github/prompts/archived/2026-04/plan-auditGapDeclarationUx.prompt.md` | Deleted. Phase 1 UI + `ezkey_alert` shipped. In-pass: INTEGRITY auto-run; Admin UI AGENTS gap pointer; dropped dead plan cite in `audit-logs.tsx`. Parked P-085–P-087. |
@@ -271,7 +271,7 @@ Not unfinished documentary work. Grouped in
 | P-070 | Deferred experimental: Dart Crypto oracle tests stay in `ezkey_dart/`. |
 | P-075 | Deferred experimental: `EZKEY_M2M_API_URL` rename stays inside `ezkey-pam/`. |
 | P-076 | Deferred tooling: optional `scripts/test-docker.sh`. |
-| P-079 | Deferred experimental: RDS / managed Postgres for EXP1. |
+| P-079 | Deferred experimental: RDS / managed Postgres for the community host. |
 | P-080 | Deferred experimental: dedicated tunnel vs orange-cloud Lightsail. |
 | P-090 | Deferred product: signed installation snapshot on bind. |
 | P-094 | Deferred product: remote signed release announcements. |

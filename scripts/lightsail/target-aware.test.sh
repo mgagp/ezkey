@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Dry-run / unit checks for Lightsail SSH target resolution (#812).
+# Community-only: --target community → Host ezkey-online.
 # Run from repo root: ./scripts/lightsail/target-aware.test.sh
 set -euo pipefail
 
@@ -107,25 +108,12 @@ assert_stderr_contains() {
   source "${COMMON}"
   unset LIGHTSAIL_SSH_HOST || true
   LIGHTSAIL_TARGET=""
-  lightsail_resolve_ssh_target "exp1"
-  [[ "${LIGHTSAIL_SSH_HOST}" == "ezkey" ]]
-  [[ "${LIGHTSAIL_TARGET}" == "exp1" ]]
-  src="$(lightsail_caddyfile_source_for_sync "${ROOT}/experimental-hybrid/lightsail")"
-  [[ "$(basename "${src}")" == "Caddyfile" ]]
-  echo "PASS: exp1 maps host + EXP1 Caddyfile"
-) && pass=$((pass + 1)) || fail=$((fail + 1))
-
-(
-  # shellcheck source=common.sh
-  source "${COMMON}"
-  LIGHTSAIL_SSH_HOST=ezkey-online
-  LIGHTSAIL_TARGET=""
-  if (lightsail_resolve_ssh_target "exp1") 2>"${ERR}"; then
-    echo "FAIL: conflicting host/target should die" >&2
+  if (lightsail_resolve_ssh_target "legacy") 2>"${ERR}"; then
+    echo "FAIL: unknown --target legacy should die" >&2
     exit 1
   fi
-  grep -q 'belongs to target' "${ERR}"
-  echo "PASS: LIGHTSAIL_SSH_HOST=ezkey-online + --target exp1 refused"
+  grep -q 'unknown --target' "${ERR}"
+  echo "PASS: unknown --target refused (community-only)"
 ) && pass=$((pass + 1)) || fail=$((fail + 1))
 
 (
@@ -133,12 +121,11 @@ assert_stderr_contains() {
   source "${COMMON}"
   LIGHTSAIL_SSH_HOST=ezkey
   LIGHTSAIL_TARGET=""
-  if (lightsail_resolve_ssh_target "community") 2>"${ERR}"; then
-    echo "FAIL: conflicting host/target should die" >&2
-    exit 1
-  fi
-  grep -q 'belongs to target' "${ERR}"
-  echo "PASS: LIGHTSAIL_SSH_HOST=ezkey + --target community refused"
+  # Custom/unknown host + --target community: note override (host not a known alias).
+  lightsail_resolve_ssh_target "community"
+  [[ "${LIGHTSAIL_SSH_HOST}" == "ezkey" ]]
+  [[ "${LIGHTSAIL_TARGET}" == "community" ]]
+  echo "PASS: custom LIGHTSAIL_SSH_HOST=ezkey overrides mapped community host"
 ) && pass=$((pass + 1)) || fail=$((fail + 1))
 
 # --- export: no target fails loudly ---
@@ -153,12 +140,12 @@ assert_ok "export --target community --dry-run --sync" \
 assert_stdout_contains "community dry-run SSH host" "SSH: ezkey-online"
 assert_stdout_contains "community dry-run Caddyfile source" "Caddyfile source=Caddyfile.ezkey-online"
 assert_stdout_contains "community dry-run scp Caddyfile.ezkey-online" "Caddyfile.ezkey-online"
-# Must never scp the EXP1-named Caddyfile as the Caddyfile source for community
+# Sync must scp Caddyfile.ezkey-online (not a bare lightsail/Caddyfile path alone)
 if grep -E 'scp .*lightsail/Caddyfile ' "${OUT}" | grep -vq 'Caddyfile.ezkey-online'; then
-  echo "FAIL: community sync must not scp EXP1 Caddyfile" >&2
+  echo "FAIL: community sync must scp Caddyfile.ezkey-online" >&2
   fail=$((fail + 1))
 else
-  echo "PASS: community sync does not scp EXP1 Caddyfile"
+  echo "PASS: community sync uses Caddyfile.ezkey-online"
   pass=$((pass + 1))
 fi
 
@@ -176,22 +163,15 @@ assert_stderr_contains "export wipe confirm required" "EZKEY_CONFIRM_WIPE=ezkey-
 assert_ok "export community --clean-start with confirm" \
   env EZKEY_CONFIRM_WIPE=ezkey-online bash "${EXPORT}" --target community --dry-run --apis-only --clean-start
 
-# --- export: exp1 dry-run ---
-assert_ok "export --target exp1 --dry-run --sync" \
-  bash "${EXPORT}" --target exp1 --dry-run --apis-only --sync-operator-files
-assert_stdout_contains "exp1 dry-run SSH host" "SSH: ezkey"
-assert_stdout_contains "exp1 dry-run Caddyfile source" "Caddyfile source=Caddyfile"
-assert_stdout_contains "exp1 dry-run scp EXP1 Caddyfile" "lightsail/Caddyfile"
-
 # --- export: LIGHTSAIL_SSH_HOST alone ---
 assert_ok "export via LIGHTSAIL_SSH_HOST=ezkey-online" \
   env LIGHTSAIL_SSH_HOST=ezkey-online bash "${EXPORT}" --dry-run --apis-only
 assert_stdout_contains "env host community" "SSH: ezkey-online"
 
-# --- export: conflicting env host + --target ---
-assert_fail "export conflict host/target fails" \
-  env LIGHTSAIL_SSH_HOST=ezkey-online bash "${EXPORT}" --target exp1 --dry-run --apis-only
-assert_stderr_contains "export conflict message" "belongs to target"
+# --- export: unknown --target ---
+assert_fail "export --target legacy refused" \
+  bash "${EXPORT}" --target legacy --dry-run --apis-only
+assert_stderr_contains "export unknown target" "unknown --target"
 
 # --- full upgrade: no target / no subcommand ---
 assert_fail "upgrade rolling without target fails" bash "${UPGRADE}" rolling --dry-run
@@ -200,7 +180,7 @@ assert_stderr_contains "upgrade fail mentions target" "no Lightsail SSH target d
 assert_ok "upgrade --target community alone prints help" bash "${UPGRADE}" --target community
 assert_stdout_contains "upgrade help mentions Usage" "Usage:"
 
-# --- full upgrade: both targets dry-run ---
+# --- full upgrade: community dry-run ---
 assert_ok "upgrade --target community rolling --dry-run" \
   bash "${UPGRADE}" --target community rolling --dry-run
 assert_stdout_contains "upgrade community host" "LIGHTSAIL_SSH_HOST: ezkey-online"
@@ -208,19 +188,12 @@ assert_stdout_contains "upgrade community caddy recreate" "force-recreate caddy"
 assert_stdout_contains "upgrade community stamps OCI revision" "OCI_IMAGE_REVISION="
 assert_stdout_contains "upgrade community OCI label" "org.opencontainers.image.revision"
 
-assert_ok "upgrade --target exp1 rolling --dry-run" \
-  bash "${UPGRADE}" --target exp1 rolling --dry-run
-assert_stdout_contains "upgrade exp1 host" "LIGHTSAIL_SSH_HOST: ezkey"
-assert_stdout_contains "upgrade exp1 stamps OCI revision" "OCI_IMAGE_REVISION="
-
 assert_ok "upgrade rolling dry-run honors OCI_IMAGE_REVISION override" \
   env OCI_IMAGE_REVISION=deadbeefcafebabe \
-    bash "${UPGRADE}" --target exp1 rolling --dry-run
+    bash "${UPGRADE}" --target community rolling --dry-run
 assert_stdout_contains "upgrade OCI override" "OCI_IMAGE_REVISION=deadbeefcafebabe"
 
-# Dirty-tree warning: create a throwaway untracked file under TMP (repo stays clean via path outside?)
-# Exercise by touching a tracked file then restoring — use git in a clone? Instead: stub via
-# exporting a dirty status is hard; verify the warning string exists in the script source.
+# Dirty-tree warning: verify the warning string exists in the script source.
 assert_ok "upgrade script mentions dirty-tree warning" \
   grep -q 'working tree is dirty' "${UPGRADE}"
 
@@ -232,6 +205,8 @@ assert_stderr_contains "upgrade wipe confirm required" "EZKEY_CONFIRM_WIPE=ezkey
 assert_ok "upgrade community full with confirm" \
   env EZKEY_CONFIRM_WIPE=ezkey-online bash "${UPGRADE}" --target community full --dry-run
 
+assert_fail "upgrade --target legacy refused" bash "${UPGRADE}" --target legacy rolling --dry-run
+
 # --- bootstrap ---
 assert_fail "bootstrap without target fails" bash "${BOOTSTRAP}" --dry-run
 assert_ok "bootstrap --target community --dry-run" bash "${BOOTSTRAP}" --target community --dry-run
@@ -241,7 +216,7 @@ assert_stdout_contains "bootstrap community" "ezkey-online"
 assert_fail "create without target fails" bash "${CREATE}"
 assert_ok "create --target community dry-run" bash "${CREATE}" --target community
 assert_stdout_contains "create dry-run skips get-instance" "skipping get-instance"
-assert_fail "create --target exp1 refused" bash "${CREATE}" --target exp1
+assert_fail "create --target legacy refused" bash "${CREATE}" --target legacy
 
 echo
 echo "Results: ${pass} passed, ${fail} failed"

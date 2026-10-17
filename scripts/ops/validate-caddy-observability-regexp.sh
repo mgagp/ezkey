@@ -19,7 +19,6 @@ EXPECTED_REGEXP='(?i)^/+(monitoring|actuator)([/;].*)?$'
 
 FILES=(
   "${REPO_ROOT}/experimental-hybrid/lightsail/Caddyfile.ezkey-online"
-  "${REPO_ROOT}/experimental-hybrid/lightsail/Caddyfile"
   "${REPO_ROOT}/docker/caddy/Caddyfile"
 )
 

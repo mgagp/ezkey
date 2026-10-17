@@ -54,7 +54,7 @@ These stay on the phone unless the user deletes enrollments or uses Danger Zone 
 
 Only Auth API protocol traffic to the **Auth URL encoded in the enrollment QR** (the self-hosted
 instance the user enrolled with): bind, verify, pending, respond, and enrolled instance-info
-refresh. The Ezkey project does not receive that traffic unless the user enrolled with an Ezkey-operated instance (for example EXP1).
+refresh. The Ezkey project does not receive that traffic unless the user enrolled with an Ezkey-operated instance (for example the community preview).
 
 ## Security practices (Play checkboxes)
 

@@ -150,18 +150,17 @@ class AuthApiUrlValidatorTest {
   @Test
   void validate_allowedHostFromConfiguredAuthApi_accepts() {
     Set<String> allow =
-        AuthApiUrlValidator.effectiveAllowlist("https://exp1-auth-api.ezkey.org", List.of());
-    assertThat(allow)
-        .containsExactlyInAnyOrder("localhost", "127.0.0.1", "exp1-auth-api.ezkey.org");
-    assertThat(AuthApiUrlValidator.validate("https://exp1-auth-api.ezkey.org", allow))
-        .isEqualTo("https://exp1-auth-api.ezkey.org");
+        AuthApiUrlValidator.effectiveAllowlist("https://auth-api.ezkey.online", List.of());
+    assertThat(allow).containsExactlyInAnyOrder("localhost", "127.0.0.1", "auth-api.ezkey.online");
+    assertThat(AuthApiUrlValidator.validate("https://auth-api.ezkey.online", allow))
+        .isEqualTo("https://auth-api.ezkey.online");
   }
 
   @Test
   void effectiveAllowlist_explicitPropertyOverridesDefault() {
     Set<String> allow =
         AuthApiUrlValidator.effectiveAllowlist(
-            "https://exp1-auth-api.ezkey.org", List.of("auth.lab.example"));
+            "https://auth-api.ezkey.online", List.of("auth.lab.example"));
     assertThat(allow).containsExactly("auth.lab.example");
   }
 

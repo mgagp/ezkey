@@ -23,7 +23,7 @@ For repo-wide rules (Maven, Java, etc.), see **[../../AGENTS.md](../../AGENTS.md
 - **Discovery & sharing (static):** [`sitemap.xml`](sitemap.xml) and [`robots.txt`](robots.txt) at the site root; [`monthly-digest.rss`](monthly-digest.rss) / [`fr/monthly-digest.rss`](fr/monthly-digest.rss) mirror the monthly digest entries (newest items first in the feed). All published `*.html` pages include **Open Graph** and **Twitter Card** meta tags (`og:*`, `twitter:*`), using `https://ezkey.org/logo.svg` as the share image unless you introduce a dedicated social image later.
 - **Logo / hero signature:** landing and inner hub pages reuse the same gradient, floating logo treatment, and particle background as before (`<img src="/logo.svg">` on published pages).
 - **Public hostname:** **`ezkey.org`** (canonical production URL for this site).
-- **Community runtime hostname:** **`ezkey.online`** (alpha community instance; service hosts such as `admin-ui.ezkey.online`, `admin-api.ezkey.online`, `demo-acme.ezkey.online`). Spelling is always **ezkey.online** (never “easykey”). Public posture is **product in alpha**, not EXP1 / experimental lab.
+- **Community runtime hostname:** **`ezkey.online`** (alpha community instance; service hosts such as `admin-ui.ezkey.online`, `admin-api.ezkey.online`, `demo-acme.ezkey.online`). Spelling is always **ezkey.online** (never “easykey”). Public posture is **product in alpha** (experimental lab retired).
 - **Cloudflare:** The live site is deployed via **Cloudflare Pages** (project `ezkey-org`, domain `ezkey.org`). **Always use the dedicated scripts** — never invoke Wrangler ad hoc:
   - Preview: `scripts/cloudflare/deploy-ezkey-org-preview.sh` (sources `.env`, no git push required)
   - Production: `scripts/cloudflare/deploy-ezkey-org-production.sh` (same credentials, `--branch=main`)
@@ -170,8 +170,8 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 ## Guides & community evaluator content (alpha)
 
 - **Purpose:** Step-by-step evaluator flows (e.g. mobile preview) live in the **Guides & walkthroughs** lane on [`articles.html`](articles.html) / [`fr/articles.html`](fr/articles.html), not mixed with generic essay cards without labeling.
-- **Published (bilingual):** [`community-guided-tour.html`](community-guided-tour.html) and [`fr/community-guided-tour.html`](fr/community-guided-tour.html) — canonical `hreflang` pair with `x-default` on the English URL. Screenshots and other assets: **ASCII kebab-case** filenames under [`exp1-guided-tour/`](exp1-guided-tour/) (legacy asset folder name; e.g. `exp1-tour-04-enrollment-qr-challenge.webp`); both locale pages reference the same paths. Public titles use **community / alpha**, not EXP1.
-- **Working drafts (French, not linked from indexes):** e.g. historical drafts may still use `draft-exp1-*` filenames under `sites/ezkey-org-editorial/` (not linked from live navigation). Do **not** link `draft-*.md` from live navigation or the article index.
+- **Published (bilingual):** [`community-guided-tour.html`](community-guided-tour.html) and [`fr/community-guided-tour.html`](fr/community-guided-tour.html) — canonical `hreflang` pair with `x-default` on the English URL. Screenshots and other assets: **ASCII kebab-case** filenames under [`community-guided-tour/`](community-guided-tour/) (e.g. `community-tour-04-enrollment-qr-challenge.webp`); both locale pages reference the same paths. Public titles use **community / alpha**. Retired lab URL paths 301 via [`_redirects`](_redirects).
+- **Working drafts (French, not linked from indexes):** drafts live under `sites/ezkey-org-editorial/fr/`. Do **not** link `draft-*.md` from live navigation or the article index.
 - **Checklist when adding or changing a guide page:** update the `guides.html` / `fr/guides.html` hub, add or bump URLs in [`sitemap.xml`](sitemap.xml), and mirror Open Graph / Twitter / `hreflang` like other standalone articles.
 
 ---

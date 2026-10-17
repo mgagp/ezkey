@@ -1,6 +1,6 @@
 # Next-phase context — OpenAPI Cloudflare schema after Auth API first slice
 
-Resume notes after the Auth and Integration EXP1 slices (`done`, canon synced 2026-08-25).
+Resume notes after the Auth and Integration the community host slices (`done`, canon synced 2026-08-25).
 Admin Cloudflare upload stays deferred — that is the remaining executable work on
 `I-2026-06-02`.
 
@@ -18,7 +18,7 @@ Admin Cloudflare upload stays deferred — that is the remaining executable work
 - Deployment hosts belong in a separately runnable packaging step
   (`scripts/package-auth-api-cloudflare-schema.sh`), not in Java annotations.
 - Mobile Orval and the JavaScript Auth SDK generate successfully without canonical `servers`.
-  The JS SDK wrapper already injects `config.authApiUrl`. Do not restore localhost / EXP1 hosts
+  The JS SDK wrapper already injects `config.authApiUrl`. Do not restore localhost / community hosts
   in annotations if a later generator defaults to `http://localhost`.
 - Git Bash/MSYS rewrites `jq --arg` values that look like `/api/...` paths. Prefer listing
   `.paths | keys[]` and comparing in Bash.
@@ -26,14 +26,14 @@ Admin Cloudflare upload stays deferred — that is the remaining executable work
   (`type: ["string","null"]`). The packaging step must downlevel to `type` + `nullable: true`
   and set `openapi: 3.0.3`. Uploading the canonical 3.1 file fails with error 50010.
 
-## EXP1 mitigation (2026-08-23)
+## community host mitigation (2026-08-23)
 
-The operator uploaded the localized schema and set **Block** on `exp1-auth-api.ezkey.org`.
-That is an EXP1 maintainer-only exception (no external evaluators; the operator wants
+The operator uploaded the localized schema and set **Block** on `auth-api.ezkey.online`.
+That is a community host maintainer-only exception (no external evaluators; the operator wants
 fail-closed feedback). Escape hatch: **None** if a self-test locks out enroll or MFA.
 
 Product default for any later host that might see third-party traffic remains **None** until
-a dedicated observe period says otherwise. Do not treat EXP1 Block as the Admin/Integration
+a dedicated observe period says otherwise. Do not treat community host Block as the Admin/Integration
 rollout default.
 
 Still useful to record from maintainer tests: schema-validation events on
@@ -43,8 +43,8 @@ Runbook: [`docs/cloudflare/auth-api-schema-validation.md`](../../../docs/cloudfl
 
 ## How to generalize
 
-Integration EXP1 copied the Auth recipe and is uploaded. Mitigation on
-`exp1-integration-api.ezkey.org` is **Block** (2026-08-23 maintainer-only exception, same
+Integration the community host copied the Auth recipe and is uploaded. Mitigation on
+`integration-api.ezkey.online` is **Block** (2026-08-23 maintainer-only exception, same
 reason as Auth). Escape hatch remains None. Do not treat that as the Admin or later-host
 default.
 
@@ -61,7 +61,7 @@ Admin remains the later analysis, not this Integration slice:
 
 ## Out of scope for the Integration slice
 
-- Copying EXP1 Auth Block to Integration or Admin by default
+- Copying community Auth Block to Integration or Admin by default
 - Admin API Cloudflare upload
 - Coupling schema upload to Lightsail deploy
 - Treating localized specs as versioned release artifacts

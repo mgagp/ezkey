@@ -14,7 +14,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 
 /**
- * Activation material for anonymous EXP1 evaluator onboarding.
+ * Activation material for anonymous evaluator onboarding.
  *
  * @param activationCode one-time activation code for Tenant Admin onboarding
  * @param activationCodeExpiresAt activation code expiration (UTC)

@@ -37,7 +37,7 @@ Keep Admin UI coherent with product intent: operable, simple, pragmatic, efficie
 |----------|--------|
 | Direction | **Hard split** — Integrity first-class; not declutter-in-place on `/audit-logs`. |
 | Priority | Not P0 / no hard date. After Wave B R1 — IA matches shipped semantics. No new September gate. |
-| Delivery posture | **Fully greenfield** — no prod installs to spare; EXP1 disposable. No migration redirects, dual-read, or transition shims. |
+| Delivery posture | **Fully greenfield** — no prod installs to spare; former experimental lab disposable. No migration redirects, dual-read, or transition shims. |
 | API gap pass | After split is walkable: close API↔UI gaps (`reconcile-integrity-rupture`, `confirm-archived`, peers) before calling the area done. |
 | Alerts vs Integrity | Alerts = signal list. Integrity = investigation + remediation. Do not merge. |
 | Proof model | **One proof, multiple views** on the same `audit_log` (HMAC + chain). No second event journal. Alerts / incidents / conciliation = operational indexes. Conciliation = explanation not rewrite. |

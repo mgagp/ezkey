@@ -194,7 +194,7 @@ show_help() {
     echo "Does not create git symlinks. See specs/README.md (#833)."
     echo ""
     echo "Auth API and Integration API: top-level servers are stripped after fetch. Package the"
-    echo "EXP1 Cloudflare artifacts with ./scripts/package-auth-api-cloudflare-schema.sh or"
+    echo "community Cloudflare artifacts with ./scripts/package-auth-api-cloudflare-schema.sh or"
     echo "./scripts/package-integration-api-cloudflare-schema.sh (does not upload)."
 }
 

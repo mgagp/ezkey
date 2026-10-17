@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 /** Unit tests for {@link EnrollmentAuthApiUrlResolver} precedence (QR URL vs config default). */
 class EnrollmentAuthApiUrlResolverTest {
 
-  private static final String CONFIG = "https://exp1-auth-api.ezkey.org";
+  private static final String CONFIG = "https://auth-api.ezkey.online";
   private static final String LOCAL = "http://localhost:8080";
   private static final Set<String> ALLOW =
       AuthApiUrlValidator.effectiveAllowlist(CONFIG, List.of());
@@ -110,7 +110,7 @@ class EnrollmentAuthApiUrlResolverTest {
 
   @Test
   void resolveForStoredEnrollment_userinfo_throwsConstantMessageWithoutEcho() {
-    String withUserinfo = "https://attacker:secret@exp1-auth-api.ezkey.org/path";
+    String withUserinfo = "https://attacker:secret@auth-api.ezkey.online/path";
     Record record =
         new Record(
             1,
@@ -137,6 +137,6 @@ class EnrollmentAuthApiUrlResolverTest {
         .hasMessage(AuthApiUrlValidator.INVALID_URL_MESSAGE)
         .hasMessageNotContaining("attacker")
         .hasMessageNotContaining("secret")
-        .hasMessageNotContaining("exp1-auth-api.ezkey.org");
+        .hasMessageNotContaining("auth-api.ezkey.online");
   }
 }

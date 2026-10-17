@@ -55,7 +55,7 @@ traceability, but it implies unbounded growth of the alerts table over long-runn
 
 ## Key assumptions
 
-- R1 and near-term EXP1 volumes do not force purge; capturing the debt now is enough.
+- R1 and near-term community volumes do not force purge; capturing the debt now is enough.
 - Resolve-by-UPDATE remains the primary lifecycle; purge is a **second lifecycle** for aged
   resolved rows only.
 - Any DELETE grant must stay admin-scoped and justified by a named retention job — not a general
@@ -73,7 +73,7 @@ traceability, but it implies unbounded growth of the alerts table over long-runn
 ## Promotion notes
 
 Keep `captured` / low urgency (`P3`). Move to `incubating` when a real volume or operator-hygiene
-signal appears (e.g. EXP1 soak, multi-month resolved backlog). Promote to `ready` + `TB-*` only
+signal appears (e.g. community soak, multi-month resolved backlog). Promote to `ready` + `TB-*` only
 after grill of: retention window, who may purge, audit of purge, and exact grant change for
 `ezkey_admin`.
 

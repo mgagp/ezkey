@@ -12,7 +12,7 @@ The first cut is intentionally a **bounded one-shot implementation slice**, not 
 2. add one public documentation page per API in the public/prod-capable group;
 3. extend the centralized spec-update workflow so `Integration API` joins the published spec set;
 4. publish the required static spec assets for those pages;
-5. define and implement the first prod-like hardening step on the public API hosts, starting with `EXP1`.
+5. define and implement the first prod-like hardening step on the public API hosts, starting with `community` (ezkey.online).
 
 ## Scope in this slice
 
@@ -20,7 +20,7 @@ The first cut is intentionally a **bounded one-shot implementation slice**, not 
 - Static `ReDoc CE` integration pattern compatible with Cloudflare Pages.
 - Static publication of public-portal OpenAPI specs for `Admin API`, `Auth API`, and optional `Integration API`.
 - Lightweight extension of `scripts/update-specs.sh` so `Integration API` has the same centralized publication path as `Admin API` and `Auth API`.
-- First hardening step that removes raw Springdoc as a public reference surface on `EXP1` API hostnames.
+- First hardening step that removes raw Springdoc as a public reference surface on `community` (ezkey.online) API hostnames.
 - Minimal documentation updates to make the portal the public reference entry point.
 
 ## Proposed public information architecture
@@ -142,11 +142,11 @@ Why these route shapes:
 
 ### Selected first runtime target
 
-Use `EXP1` as the first concrete prod-like hardening target.
+Use `community` (ezkey.online) as the first concrete prod-like hardening target.
 
 ### First-cut hardening objective
 
-On `EXP1` public API hostnames:
+On `community` (ezkey.online) public API hostnames:
 
 - raw `/api-docs` should no longer be treated as a public documentation surface;
 - embedded Swagger UI should no longer be treated as a public documentation surface;
@@ -158,7 +158,7 @@ On `EXP1` public API hostnames:
 - reverse-proxy deny or equivalent route blocking on public hostnames;
 - another explicit mechanism that achieves the same public effect cleanly.
 
-The slice does **not** need to settle the final universal mechanism for every future deployment, but it must establish one clean prod-like pattern on `EXP1`.
+The slice does **not** need to settle the final universal mechanism for every future deployment, but it must establish one clean prod-like pattern on `community` (ezkey.online).
 
 ## Data and mapping impact
 
@@ -184,7 +184,7 @@ The slice does **not** need to settle the final universal mechanism for every fu
 - Public-site review of landing page and API pages.
 - Validation that each page resolves its intended static spec asset.
 - Validation that the centralized spec-update workflow now produces the `Integration API` spec from the running local stack.
-- Validation that `EXP1` no longer exposes the selected raw Springdoc public routes once the hardening slice is implemented.
+- Validation that `community` (ezkey.online) no longer exposes the selected raw Springdoc public routes once the hardening slice is implemented.
 - Manual exploratory verification is appropriate for the first cut; deeper automation can follow if the pattern stabilizes.
 
 ## Documentation impact
@@ -196,7 +196,7 @@ The slice does **not** need to settle the final universal mechanism for every fu
 
 ## Resolved in this slice
 
-- `EXP1` hardening mechanism selected for the first implementation cut: **edge/proxy block** on the public API hostnames via the Lightsail `Caddyfile`.
+- `community` (ezkey.online) hardening mechanism selected for the first implementation cut: **edge/proxy block** on the public API hostnames via the Lightsail `Caddyfile`.
 - `ReDoc CE` deployment posture selected for the first implementation cut: **official CDN with explicit version pin** (`v2.5.2`).
 - French parity decision for the first implementation cut: **portal-shell parity is sufficient**; OpenAPI annotation text remains in the source-language generated specs.
 

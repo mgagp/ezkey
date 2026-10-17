@@ -10,9 +10,13 @@
 - **Updated at:** `2026-05-23`
 - **Captured by:** Marc
 
+> **Decommissioned lab label (2026-10):** Historical decision record for the former experimental
+> lab → **ezkey.online** community cutover. Live ops use the community host only.
+
 ## Objective
 
-Deliver the smallest end-to-end slice that proves anonymous EXP1 evaluator onboarding: a visitor on
+Deliver the smallest end-to-end slice that proves anonymous evaluator onboarding (originally
+designed for the former experimental lab labeled EXP1; live target **ezkey.online**): a visitor on
 `ezkey.org` self-provisions an **empty tenant** and a **pending Tenant Admin** with an **activation
 code**, then continues the existing guided tour unchanged (steps 2–7 manual).
 
@@ -22,7 +26,7 @@ code**, then continues the existing guided tour unchanged (steps 2–7 manual).
   daily cap + per-IP) + CORS for `ezkey.org` origins + audit event.
 - **Internal reuse:** existing tenant creation and `ACTIVATION_CODE` tenant-admin provisioning
   semantics via a dedicated service path (not exposed authenticated controllers).
-- **ezkey.org:** signup page (English first) + copy update on `experimental-preview-exp1.html`.
+- **ezkey.org:** signup page (English first) + copy update on community / evaluator pages.
 - **Configuration:** properties documented in `ezkey-admin-api/CONFIGURATION.md` (prefix TBD, e.g.
   `ezkey.evaluator.self-registration.*`).
 - **Tests:** unit tests for limiter logic; controller/service tests for happy path and cap exhaustion.
@@ -35,13 +39,13 @@ code**, then continues the existing guided tour unchanged (steps 2–7 manual).
 - Global Admin UI counter screen (audit/logs only in v1).
 - French signup page (follow-up after English-first validation).
 - Tenant cleanup / TTL policy.
-- Non-EXP1 installations.
+- Self-service on non-community installations by default.
 
 ## Critical flows
 
 ### Nominal path
 
-1. Visitor opens `ezkey.org` signup page (linked from EXP1 preview copy).
+1. Visitor opens `ezkey.org` signup page (linked from community evaluator copy).
 2. Optionally enters a short tenant label; submits.
 3. Browser POSTs to public Admin API endpoint (CORS with credentials off).
 4. Backend checks feature flag, per-IP limit, global daily cap.
@@ -64,9 +68,9 @@ code**, then continues the existing guided tour unchanged (steps 2–7 manual).
 | Config | `enabled`, `daily-cap` (default 5), `per-ip-window-hours` (24), `per-ip-max-success` (1), `allowed-origins`, URL templates for `adminUiUrl` / `guidedTourUrl` |
 | Service | `EvaluatorSelfRegistrationService` — atomic tenant + admin provisioning under system authority |
 | Controller | `POST /api/v1/public/evaluator-signup` (path TBD at implementation; unauthenticated, narrow DTO) |
-| Rate limit | Dedicated limiter or extension of existing rate-limit patterns; persisted or in-memory counter for daily cap (acceptable in-memory for EXP1 single node) |
+| Rate limit | Dedicated limiter or extension of existing rate-limit patterns; persisted or in-memory counter for daily cap (acceptable in-memory for single-node community) |
 | Audit | Event type e.g. `evaluator_self_registration_completed` with tenant slug, client IP (coarse), no activation code in audit payload |
-| Site | `exp1-signup.html` + EN copy on `experimental-preview-exp1.html` |
+| Site | Community evaluator signup page + EN copy on community / guided-tour pages |
 
 ## Evidence plan
 
@@ -87,19 +91,19 @@ code**, then continues the existing guided tour unchanged (steps 2–7 manual).
 ## Implementation outcome (2026-05-23)
 
 - Admin API: `POST /api/v1/public/evaluator-signup` with feature flag, rate limits, audit event.
-- Site: [`exp1-signup.html`](../../../../sites/ezkey-org/exp1-signup.html) + EXP1 preview copy (EN/FR).
+- Site: community evaluator signup + preview/tour copy (EN/FR); retired lab HTML paths redirected.
 - Docs: `CONFIGURATION.md`, `ENDPOINT.md`, Postman public admin collection, Lightsail `.env.example`.
 
-Pending operator validation on EXP1 deploy (enable flag + CORS + redeploy site).
+Pending operator validation on the **community** deploy (enable flag + CORS + redeploy site).
 
 ## Exit criteria
 
 `TB-2026-05-23` is validated when:
 
-1. EXP1 (or clean-start with flag enabled) accepts anonymous signup and returns activation code + URLs.
+1. Community host (or clean-start with flag enabled) accepts anonymous signup and returns activation code + URLs.
 2. Rate limits enforce 5/day global and 1 success/IP/24h defaults.
 3. Created tenant is empty (no integrations); evaluator can complete tour step 2 after activation.
-4. `ezkey.org` signup page and EXP1 preview copy describe instant access + email alternative.
+4. `ezkey.org` signup page and community evaluator copy describe instant access + email alternative.
 5. Audit/log evidence allows operator to count daily signups without a new Admin UI screen.
 
 ## Links
@@ -107,4 +111,4 @@ Pending operator validation on EXP1 deploy (enable flag + CORS + redeploy site).
 - [`I-2026-05-23-exp1-anonymous-evaluator-onboarding.md`](I-2026-05-23-exp1-anonymous-evaluator-onboarding.md)
 - [`../../vision/V-2026-05-23-anonymous-evaluator-self-registration.md`](../../vision/V-2026-05-23-anonymous-evaluator-self-registration.md)
 - [`../../vision/V-2026-09-26-evaluator-bootstrap-admin-session.md`](../../vision/V-2026-09-26-evaluator-bootstrap-admin-session.md) — follow-on: activation emit also mints opaque bootstrap session (not in this TB)
-- [`../../../../sites/ezkey-org/exp1-guided-tour.html`](../../../../sites/ezkey-org/exp1-guided-tour.html)
+- [`../../../../sites/ezkey-org/community-guided-tour.html`](../../../../sites/ezkey-org/community-guided-tour.html)

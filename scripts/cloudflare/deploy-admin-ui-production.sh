@@ -62,8 +62,7 @@ if [[ "$DO_BUILD" == true ]]; then
   if [[ -z "${VITE_API_BASE_URL:-}" ]]; then
     echo "error: VITE_API_BASE_URL is required when using --build" >&2
     echo "       Set it in the repo-root .env (see .env.example) or export it." >&2
-    echo "       Examples: https://exp1-admin-api.ezkey.org (EXP1)" >&2
-    echo "                 https://admin-api.ezkey.online (community)" >&2
+    echo "       Example: https://admin-api.ezkey.online (community)" >&2
     exit 1
   fi
   export VITE_API_BASE_URL

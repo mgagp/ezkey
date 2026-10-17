@@ -31,9 +31,9 @@ When an Admin UI enrollment QR includes `authUrl`, the demo device routes **bind
   still fails override validation — see `CONFIGURATION.md` § Docker. (Code-scanning triage
   2026-10-13, alerts #9 / #10.)
 
-Standalone Docker default remains Exp1 (`https://exp1-auth-api.ezkey.org`); QR local enrollments override without `.env` change when that host is on the allowlist (default includes the configured Auth API host).
+Standalone Docker default remains the public Auth API (`https://auth-api.ezkey.online`); QR local enrollments override without `.env` change when that host is on the allowlist (default includes the configured Auth API host).
 
-## EXP1 / Cloudflare error bodies
+## Cloudflare error bodies
 
 When Auth is the Cloudflare hostname, HTTP errors may be **origin** RFC 9457
 (`type` under `https://ezkey.io/problems/`) or **edge** Cloudflare 403/1020
@@ -94,6 +94,6 @@ bootstrap Global Admin:
 
 **Clean-start stack (monorepo):** demo device on http://localhost:8083, Auth API via Docker internal URL.
 
-**Standalone Docker (Exp1):** `./start.sh` — http://localhost:3080 (see standalone repo).
+**Standalone Docker:** `./start.sh` — http://localhost:3080 (see standalone repo).
 
 **Local JDK:** from module directory, `mvn test` then `mvn spring-boot:run` or run the repackaged JAR.

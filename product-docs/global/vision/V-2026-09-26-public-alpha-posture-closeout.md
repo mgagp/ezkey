@@ -14,7 +14,7 @@
 ## Intent
 
 Light **posture closeout** for cold agents and operators after Waves A–C and Wave D (attention
-freeze) closed, and after the public EXP1 → ezkey.online alpha repositioning
+freeze) closed, and after the public community host → ezkey.online alpha repositioning
 ([`V-2026-09-22-exp1-to-ezkey-online-alpha`](V-2026-09-22-exp1-to-ezkey-online-alpha.md)).
 
 This note is the live **“Where are we?”** compass. It is **not** a PRD, not a new release program,

@@ -52,7 +52,7 @@ Deliver the first validated public portal slice for Ezkey API documentation: an 
 - `ReDoc CE` integrated as a static renderer and pinned to `v2.5.2`.
 - `Integration API` added to the centralized generated-spec workflow and to the portal-published static spec set.
 - English-first preview delivered, visually validated, then expanded to French portal-shell parity in the same dossier.
-- `EXP1` raw Springdoc exposure hardened on public API hostnames through explicit `Caddy` route blocking.
+- `community` (ezkey.online) raw Springdoc exposure hardened on public API hostnames through explicit `Caddy` route blocking.
 
 ## Quality gates
 

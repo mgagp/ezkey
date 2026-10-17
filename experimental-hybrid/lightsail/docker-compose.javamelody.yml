@@ -1,4 +1,4 @@
-# Community / EXP1 Lightsail — opt-in JavaMelody collector overlay (#846).
+# Community Lightsail — opt-in JavaMelody collector overlay (#846).
 #
 # Applies Christophe locks: management-port monitoring only, collector bound to
 # loopback, hardened init parameters, no public /monitoring or /actuator (Caddy).

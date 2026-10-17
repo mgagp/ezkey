@@ -25,11 +25,11 @@
 > and [`backlog/index.md`](backlog/index.md) first. Keep this file for **Waves A–C + freeze D**
 > history and the integrity-cluster ordering narrative.
 
-**2026-08-25:** Waves A–C are **closed**. Wave D (EXP1 soak) is **closed as an attention freeze**,
+**2026-08-25:** Waves A–C are **closed**. Wave D (community soak) is **closed as an attention freeze**,
 not a remaining executable gate. “What should be next?” is the active backlog in
 [`backlog/index.md`](backlog/index.md), not soak.
 
-**2026-09-22 (public posture):** Public EXP1 / “experimental lab” branding is retired in favor of
+**2026-09-22 (public posture):** Public community host / “experimental lab” branding is retired in favor of
 **Ezkey product in alpha** + a maintained **community instance** on **ezkey.online** (ezkey.org
 remains the product site; editorial pass live via PR #609). Decision record (promoted):
 [`vision/V-2026-09-22-exp1-to-ezkey-online-alpha.md`](vision/V-2026-09-22-exp1-to-ezkey-online-alpha.md).
@@ -53,13 +53,14 @@ polish** (P3 residual). A prioritization review challenged that default:
    pipeline exists: rolling checkpoints, peripheral degraded mode, gap declaration, nightly
    retroactive validation, and (where applicable) manipulation rupture handling.
 
-3. **Project posture today:** experimental deployment only (`EXP1`, clean-start, local stack). There
-   is **no production pressure** and no obligation to support live customer environments. The goal
-   is to **complete structural work properly**, eliminate unknowns, and **maximize calendar time**
-   for soak and scenario simulation before treating a release as “operable in real life.”
+3. **Project posture (as of 2026-06):** experimental deployment only (community host / clean-start /
+   local stack). There is **no production pressure** and no obligation to support live customer
+   environments. The goal is to **complete structural work properly**, eliminate unknowns, and
+   **maximize calendar time** for soak and scenario simulation before treating a release as
+   “operable in real life.”
 
 4. **Desired end state (September):** structural integrity/alerting work is **reputed complete** for
-   R1; then deploy on **EXP1**, leave the system running for **hours, days, or weeks**, and exercise
+   R1; then deploy on the **community host**, leave the system running for **hours, days, or weeks**, and exercise
    scenarios such as:
    - stop Admin API and validate recovery / degraded-mode behavior;
    - induce cryptographic continuity breaks or tampering and validate detection, alert generation,
@@ -92,7 +93,7 @@ Applied from [`design-principles.md`](design-principles.md) and
 | **Operator value** | Readability of an existing list | **Correct behavior under failure and tampering** |
 | **Testability today** | Static UI review only | End-to-end scenarios (Admin down, gap, manipulation) |
 | **Dependency** | Assumes alert types + resolution flows are stable | **Produces** those types and flows |
-| **Risk if done first** | Polished UI over incomplete semantics | Unblocks honest EXP1 soak |
+| **Risk if done first** | Polished UI over incomplete semantics | Unblocks honest community soak |
 
 **Decision:** **Do not promote** Alerts matrix polish to the next TB until the integrity cluster
 reaches its R1 “structurally complete” gate (see below). Update `I-2026-0028` P3 residual accordingly.
@@ -147,10 +148,10 @@ stop/start scenarios).
 2. GitHub program issue **#269** — **closed** (PRs #270, #287, #288, #289 + B2/B2.5 lineage).
 3. B1–B3 + B2.6/B2.7 — **shipped**. Closeout:
    [`backlog/method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](backlog/method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
-4. Scenario tests / EXP1 soak — recast 2026-08-25: Wave D was the **attention freeze** after R1,
-   not a remaining work item. EXP1 stays the live experimental host (operator watch only).
+4. Scenario tests / community soak — recast 2026-08-25: Wave D was the **attention freeze** after R1,
+   not a remaining work item. The community host stays the live experimental host (operator watch only).
 
-**Exit gate for Wave B:** met for R1 implementation. Do not treat EXP1 soak as an open wave.
+**Exit gate for Wave B:** met for R1 implementation. Do not treat community soak as an open wave.
 
 ### Wave C — Operator UI residuals (**closed** 2026-07-05)
 
@@ -163,19 +164,19 @@ stop/start scenarios).
 
 **Wave C exit gate:** met when checkpoints TB merges and matrix row is `implemented`.
 
-### Wave D — EXP1 soak (attention freeze; **closed** 2026-08-25)
+### Wave D — community soak (attention freeze; **closed** 2026-08-25)
 
 Wave D was **never** an `I-*` / `TB-*`. It was a release-order pause: after Waves A–C, do not
-pile more structural work; leave calendar time on the live EXP1 host.
+pile more structural work; leave calendar time on the live community host.
 
 That freeze **did its job**. Findings that appeared were opened as analysis (hygiene or a new
-idea), not as a soak program. Residual watch is **human operator activity**: look at EXP1 from
-time to time; if a signal appears, open analysis. Do **not** treat soak as the next executable
-gate or invent soak backlog.
+idea), not as a soak program. Residual watch is **human operator activity**: look at the community
+host from time to time; if a signal appears, open analysis. Do **not** treat soak as the next
+executable gate or invent soak backlog.
 
-Historical note: EXP1 was the experimental host name for that soak window. Public/live host
-framing is now **community instance / ezkey.online** (see `V-2026-09-22` / `V-2026-09-26`). Soak
-remains observation, not a deliverable.
+Historical note: the former experimental lab (retired 2026-10) was the soak-window host name.
+Public/live host framing is now **community instance / ezkey.online** (see `V-2026-09-22` /
+`V-2026-09-26`). Soak remains observation, not a deliverable.
 
 ## Explicitly deferred (September release lens)
 
@@ -183,7 +184,7 @@ remains observation, not a deliverable.
 |------|--------|
 | Mobile / channel features (`I-2026-0010`, `I-2026-0023`, `I-2026-0024`) | Not on operability critical path for first release line. |
 | Profile generator / methodology product (`I-2026-0017`, `I-2026-0018`) | Methodology publication; parallel to product release. |
-| HA Docker parity (`I-2026-0003`) | Valuable; not blocking EXP1 experimental soak. |
+| HA Docker parity (`I-2026-0003`) | Valuable; not blocking former experimental lab soak. |
 | Paginated screen analysis ideas (`I-2026-0013`, `I-2026-0014`) | Largely satisfied by completed operator program; incubating unless new gap found. |
 
 ## Parallel tracks (if capacity — do not block Wave B)
@@ -191,7 +192,7 @@ remains observation, not a deliverable.
 | ID | Notes |
 |----|-------|
 | `I-2026-0004` | Promoted P1 — API-key auth configurability; orthogonal to integrity. |
-| `I-2026-0011` | Bootstrap activation-code default — operability; schedule after Wave B if bootstrap blocks EXP1. |
+| `I-2026-0011` | Bootstrap activation-code default — operability; schedule after Wave B if bootstrap blocks community host. |
 | `I-2026-0021` | **Done 2026-07-18** — PostgreSQL migrate/runtime role split delivered and validated; linked P3 hardening remains non-blocking. |
 | `V-2026-08-02-mobile-official-play-release-posture` and its four `I-2026-08-02-mobile-*` ideas | Mobile Play official-release track (exit experimental messaging, Play compliance gate, client update mechanism, installation version/compat discovery). Explicitly **not** a claim on the September operable-release scope — the two tracks address different product surfaces (backend integrity/alerting vs. mobile app distribution posture) and can proceed independently. |
 
@@ -204,7 +205,7 @@ For the **September 2026** target, “operable” means:
 3. **Nightly detection** runs and surfaces anomalies through the **alert model**.
 4. Dashboard gives an honest **health snapshot** (batch last-run + open alerts).
 5. A **live community / lab host** exists so the maintainer can observe (and, if needed, simulate
-   failures) without treating soak as a backlog slice (historically EXP1; now ezkey.online).
+   failures) without treating soak as a backlog slice (former experimental lab, retired 2026-10; now ezkey.online).
 
 It does **not** mean: full SOC 2 certification, iOS mobile parity, HA stack, or every P2 backlog
 idea closed.

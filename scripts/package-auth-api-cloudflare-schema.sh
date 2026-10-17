@@ -2,9 +2,8 @@
 # Package a deployment-localized Auth API OpenAPI artifact for Cloudflare schema upload.
 #
 # Reads the host-neutral canonical spec and writes a copy with exactly one server URL.
-# Default server is EXP1 (https://exp1-auth-api.ezkey.org). Override for community
-# (https://auth-api.ezkey.online) via --server, --community, or
-# EZKEY_AUTH_CLOUDFLARE_SERVER_URL.
+# Default server is the community host (https://auth-api.ezkey.online).
+# Override via --server, --community, or EZKEY_AUTH_CLOUDFLARE_SERVER_URL.
 #
 # Cloudflare API Shield accepts OpenAPI 3.0 only. The packaging step therefore
 # downlevels OAS 3.1 nullable type arrays (["string","null"]) to type + nullable.
@@ -17,19 +16,17 @@
 #   ./scripts/package-auth-api-cloudflare-schema.sh --self-test
 #
 # This script does not upload to Cloudflare and does not modify the canonical spec.
-# Upload (EXP1): ./scripts/cloudflare/upload-auth-api-schema-exp1.sh --upload
-# Upload (community): ./scripts/cloudflare/upload-auth-api-schema-community.sh --upload
+# Upload: ./scripts/cloudflare/upload-auth-api-schema.sh --upload
+# Alias: ./scripts/cloudflare/upload-auth-api-schema-community.sh --upload
 # Operator runbook: docs/cloudflare/auth-api-schema-validation.md
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CANONICAL="${EZKEY_AUTH_CANONICAL_SPEC:-$ROOT/specs/auth-api/openapi-spec.json}"
-EXP1_SERVER_URL="https://exp1-auth-api.ezkey.org"
 COMMUNITY_SERVER_URL="https://auth-api.ezkey.online"
-EXP1_OUTPUT="$ROOT/specs/auth-api/deployments/exp1-cloudflare-openapi.json"
 COMMUNITY_OUTPUT="$ROOT/specs/auth-api/deployments/community-cloudflare-openapi.json"
-SERVER_URL="${EZKEY_AUTH_CLOUDFLARE_SERVER_URL:-$EXP1_SERVER_URL}"
+SERVER_URL="${EZKEY_AUTH_CLOUDFLARE_SERVER_URL:-$COMMUNITY_SERVER_URL}"
 OUTPUT=""
 OUTPUT_SET=false
 SELF_TEST=false
@@ -55,17 +52,16 @@ Usage:
   ./scripts/package-auth-api-cloudflare-schema.sh --self-test
 
 Options:
-  --server URL    Single servers[0].url (default: https://exp1-auth-api.ezkey.org;
+  --server URL    Single servers[0].url (default: https://auth-api.ezkey.online;
                   or EZKEY_AUTH_CLOUDFLARE_SERVER_URL)
   --community     Shorthand for --server https://auth-api.ezkey.online
-  --output PATH   Write the localized artifact here (default: EXP1 or community
+  --output PATH   Write the localized artifact here (default: community
                   path under specs/auth-api/deployments/; or EZKEY_AUTH_CLOUDFLARE_SCHEMA)
   --self-test     Run fixture-based checks without touching the live spec
   --help          Show this help
 
-Default output paths:
-  EXP1:       specs/auth-api/deployments/exp1-cloudflare-openapi.json
-  community:  specs/auth-api/deployments/community-cloudflare-openapi.json
+Default output path:
+  specs/auth-api/deployments/community-cloudflare-openapi.json
 EOF
 }
 
@@ -84,20 +80,13 @@ resolve_output() {
     OUTPUT="$EZKEY_AUTH_CLOUDFLARE_SCHEMA"
     return 0
   fi
-  if [ "$SERVER_URL" = "$COMMUNITY_SERVER_URL" ]; then
-    OUTPUT="$COMMUNITY_OUTPUT"
-  else
-    OUTPUT="$EXP1_OUTPUT"
-  fi
+  OUTPUT="$COMMUNITY_OUTPUT"
 }
 
 server_description() {
   case "$SERVER_URL" in
     "$COMMUNITY_SERVER_URL"|*ezkey.online*)
       echo "Community Auth API"
-      ;;
-    "$EXP1_SERVER_URL"|*exp1-auth-api*)
-      echo "EXP1 Auth API"
       ;;
     *)
       echo "Auth API"

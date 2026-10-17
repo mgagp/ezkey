@@ -118,11 +118,11 @@ Campaign notes: [`product-docs/global/hygiene/quality-gate/`](../product-docs/gl
 
 - [`cloudflare/deploy-ezkey-org-preview.sh`](cloudflare/deploy-ezkey-org-preview.sh) — deploy [`sites/ezkey-org/`](../sites/ezkey-org/) to Cloudflare Pages as a **preview** (requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`). See [`docs/cloudflare/ezkey-org-site.md`](../docs/cloudflare/ezkey-org-site.md).
 - [`cloudflare/deploy-ezkey-org-production.sh`](cloudflare/deploy-ezkey-org-production.sh) — deploy the same folder to the Pages **production** branch (serves the custom domain, e.g. `ezkey.org`, when configured in Cloudflare). Same environment variables.
-- [`cloudflare/upload-auth-api-schema-exp1.sh`](cloudflare/upload-auth-api-schema-exp1.sh) / [`cloudflare/upload-integration-api-schema-exp1.sh`](cloudflare/upload-integration-api-schema-exp1.sh) — API Shield schema list/upload/delete (`CLOUDFLARE_API_SHIELD_TOKEN`, not the Pages token).
+- [`cloudflare/upload-auth-api-schema.sh`](cloudflare/upload-auth-api-schema.sh) / [`cloudflare/upload-integration-api-schema.sh`](cloudflare/upload-integration-api-schema.sh) — API Shield schema list/upload/delete for community (`CLOUDFLARE_API_SHIELD_TOKEN`, not the Pages token). Thin aliases: `upload-*-schema-community.sh`.
 
 ## Lightsail (community / ezkey.online host)
 
-AWS CLI helpers under [`lightsail/`](lightsail/) to create and bootstrap a **NEW** all-in-one Lightsail VM parallel to EXP1 (`exp1-ezkey`). **VM lifecycle only** (create / ports / bootstrap / status / delete). Dry-run by default for create / delete / ports. Does **not** change DNS or certificates. Self-contained tree — may later extract to a private ops repo after e2e validation (see runbook). Runbook: [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).
+AWS CLI helpers under [`lightsail/`](lightsail/) to create and bootstrap a **NEW** all-in-one Lightsail VM for the community host (`ezkey-online` / `*.ezkey.online`). **VM lifecycle only** (create / ports / bootstrap / status / delete). Dry-run by default for create / delete / ports. Does **not** change DNS or certificates. Self-contained tree — may later extract to a private ops repo after e2e validation (see runbook). Runbook: [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).
 
 ```bash
 export AWS_PROFILE=ezkey-lightsail
@@ -133,7 +133,7 @@ export AWS_PROFILE=ezkey-lightsail
 ./scripts/lightsail/delete-instance.sh --help
 ```
 
-App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with **`--target community`** (or `exp1`) — no silent SSH host default (#812). Community `--sync-operator-files` installs `Caddyfile.ezkey-online` as remote `Caddyfile`. Do not put community-only secrets or ezkey.online-only DNS checklists into the public compose tree.
+App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with **`--target community`** — no silent SSH host default (#812). Community `--sync-operator-files` installs `Caddyfile.ezkey-online` as remote `Caddyfile`. Do not put community-only secrets or ezkey.online-only DNS checklists into the public compose tree.
 
 ## Ops — Docker log hygiene (host-local)
 
@@ -266,19 +266,15 @@ Ezkey now uses a centralized approach for managing OpenAPI specifications. All s
 - `--help` : Display help
 
 Auth API and Integration API canonical output is host-neutral: `update-specs.sh --auth-only`
-and `--integration-only` strip top-level `servers` after fetch. Do not put EXP1 or localhost
+and `--integration-only` strip top-level `servers` after fetch. Do not put community or localhost
 hosts back into Java `@Server` annotations. To build Cloudflare upload artifacts:
 
 ```bash
-# EXP1 (default)
+# Community (ezkey.online) — default
 ./scripts/package-auth-api-cloudflare-schema.sh
-./scripts/cloudflare/upload-auth-api-schema-exp1.sh --list
+./scripts/cloudflare/upload-auth-api-schema.sh --list
 ./scripts/package-integration-api-cloudflare-schema.sh
-./scripts/cloudflare/upload-integration-api-schema-exp1.sh --list
-
-# Community (ezkey.online)
-./scripts/package-auth-api-cloudflare-schema.sh --community
-./scripts/package-integration-api-cloudflare-schema.sh --community
+./scripts/cloudflare/upload-integration-api-schema.sh --list
 ```
 
 See [`docs/cloudflare/auth-api-schema-validation.md`](../docs/cloudflare/auth-api-schema-validation.md)
@@ -287,12 +283,12 @@ and [`docs/cloudflare/integration-api-schema-validation.md`](../docs/cloudflare/
 ## Additional Scripts
 
 - `format-specs.sh` - Format existing JSON specifications for better readability
-- `package-auth-api-cloudflare-schema.sh` - Auth API Cloudflare schema (EXP1 default; `--community` / `--server`)
-- `cloudflare/upload-auth-api-schema-exp1.sh` - list or upload EXP1 Auth artifact (`CLOUDFLARE_API_SHIELD_TOKEN`)
-- `cloudflare/upload-auth-api-schema-community.sh` - thin community defaults for Auth (`ezkey.online`, None mitigation)
-- `package-integration-api-cloudflare-schema.sh` - Integration API Cloudflare schema (EXP1 default; `--community` / `--server`)
-- `cloudflare/upload-integration-api-schema-exp1.sh` - list or upload EXP1 Integration artifact (same shield token; does not delete Auth)
-- `cloudflare/upload-integration-api-schema-community.sh` - thin community defaults for Integration
+- `package-auth-api-cloudflare-schema.sh` - Auth API Cloudflare schema (community default; `--server` to override)
+- `cloudflare/upload-auth-api-schema.sh` - list or upload community Auth artifact (`CLOUDFLARE_API_SHIELD_TOKEN`)
+- `cloudflare/upload-auth-api-schema-community.sh` - thin alias of `upload-auth-api-schema.sh`
+- `package-integration-api-cloudflare-schema.sh` - Integration API Cloudflare schema (community default; `--server`)
+- `cloudflare/upload-integration-api-schema.sh` - list or upload community Integration artifact (same shield token; does not delete Auth)
+- `cloudflare/upload-integration-api-schema-community.sh` - thin alias of `upload-integration-api-schema.sh`
 
 ## Recommended Workflow
 
