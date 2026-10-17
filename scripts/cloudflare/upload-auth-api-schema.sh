@@ -1,26 +1,28 @@
 #!/usr/bin/env bash
-# List or upload the EXP1 Integration API OpenAPI schema for Cloudflare API Shield.
+# List or upload the community Auth API OpenAPI schema for Cloudflare API Shield
+# (ezkey.online by default).
 #
 # Uses CLOUDFLARE_API_SHIELD_TOKEN only. Never falls back to CLOUDFLARE_API_TOKEN
 # (that token is Pages-only).
 #
 # Usage (from repo root, Git Bash):
-#   ./scripts/cloudflare/upload-integration-api-schema-exp1.sh --list
-#   ./scripts/cloudflare/upload-integration-api-schema-exp1.sh --upload
-#   ./scripts/cloudflare/upload-integration-api-schema-exp1.sh --upload --package
-#   ./scripts/cloudflare/upload-integration-api-schema-exp1.sh --delete <schema-id>
+#   ./scripts/cloudflare/upload-auth-api-schema.sh --list
+#   ./scripts/cloudflare/upload-auth-api-schema.sh --upload
+#   ./scripts/cloudflare/upload-auth-api-schema.sh --upload --package
+#   ./scripts/cloudflare/upload-auth-api-schema.sh --delete <schema-id>
+#
+# Thin wrapper with the same defaults:
+#   ./scripts/cloudflare/upload-auth-api-schema-community.sh
 #
 # This script does not change WAF / schema-validation mitigation (Block vs None).
-# Do not delete the Auth schema with this script.
-# Operator runbook: docs/cloudflare/integration-api-schema-validation.md
+# Operator runbook: docs/cloudflare/auth-api-schema-validation.md
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-ARTIFACT="${EZKEY_INTEGRATION_CLOUDFLARE_SCHEMA:-$ROOT/specs/integration-api/deployments/exp1-cloudflare-openapi.json}"
-SCHEMA_NAME="${EZKEY_INTEGRATION_CLOUDFLARE_SCHEMA_NAME:-ezkey-integration-api-exp1}"
-AUTH_SCHEMA_NAME="${EZKEY_AUTH_CLOUDFLARE_SCHEMA_NAME:-ezkey-auth-api-exp1}"
-ZONE_NAME="${CLOUDFLARE_ZONE_NAME:-ezkey.org}"
+ARTIFACT="${EZKEY_AUTH_CLOUDFLARE_SCHEMA:-$ROOT/specs/auth-api/deployments/community-cloudflare-openapi.json}"
+SCHEMA_NAME="${EZKEY_AUTH_CLOUDFLARE_SCHEMA_NAME:-ezkey-auth-api-community}"
+ZONE_NAME="${CLOUDFLARE_ZONE_NAME:-ezkey.online}"
 MODE=""
 DO_PACKAGE=false
 DELETE_IDS=()
@@ -28,28 +30,27 @@ CF_API="https://api.cloudflare.com/client/v4"
 
 usage() {
   cat <<'EOF'
-List or upload the EXP1 Integration API schema on Cloudflare API Shield.
+List or upload the community Auth API schema on Cloudflare API Shield.
 
 Usage:
-  ./scripts/cloudflare/upload-integration-api-schema-exp1.sh --list
-  ./scripts/cloudflare/upload-integration-api-schema-exp1.sh --upload
-  ./scripts/cloudflare/upload-integration-api-schema-exp1.sh --upload --package
-  ./scripts/cloudflare/upload-integration-api-schema-exp1.sh --delete <schema-id>
-  ./scripts/cloudflare/upload-integration-api-schema-exp1.sh --delete <id> --delete <id>
+  ./scripts/cloudflare/upload-auth-api-schema.sh --list
+  ./scripts/cloudflare/upload-auth-api-schema.sh --upload
+  ./scripts/cloudflare/upload-auth-api-schema.sh --upload --package
+  ./scripts/cloudflare/upload-auth-api-schema.sh --delete <schema-id>
+  ./scripts/cloudflare/upload-auth-api-schema.sh --delete <id> --delete <id>
 
 Options:
   --list         Verify the shield token and list uploaded schemas (no write)
-  --upload       POST specs/integration-api/deployments/exp1-cloudflare-openapi.json
-  --package      Run package-integration-api-cloudflare-schema.sh before --upload
+  --upload       POST specs/auth-api/deployments/community-cloudflare-openapi.json
+  --package      Run package-auth-api-cloudflare-schema.sh before --upload
   --delete ID    Delete one uploaded schema by UUID (repeatable). Use --list first.
   --help         Show this help
 
 Requires repo-root .env:
   CLOUDFLARE_API_SHIELD_TOKEN   zone-scoped API Gateway token (not the Pages token)
-  CLOUDFLARE_ZONE_ID            optional; resolved from CLOUDFLARE_ZONE_NAME (ezkey.org)
+  CLOUDFLARE_ZONE_ID            optional; resolved from CLOUDFLARE_ZONE_NAME (ezkey.online)
 
 Does not use CLOUDFLARE_API_TOKEN. Does not change Block / None mitigation.
-Does not delete the Auth schema (ezkey-auth-api-exp1).
 EOF
 }
 
@@ -214,35 +215,11 @@ is_schema_uuid() {
   [[ "$1" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
 }
 
-schema_name_for_id() {
-  local zone_id=$1
-  local schema_id=$2
-  cf_request GET "${CF_API}/zones/${zone_id}/schema_validation/schemas/${schema_id}"
-  if [[ "$CF_HTTP" == "404" ]]; then
-    rm -f "$CF_BODY"
-    cf_request GET "${CF_API}/zones/${zone_id}/api_gateway/user_schemas/${schema_id}"
-  fi
-  if [[ "$CF_HTTP" != "200" ]]; then
-    rm -f "$CF_BODY"
-    echo ""
-    return 0
-  fi
-  jq -r '.result.name // .result.schema.name // empty' "$CF_BODY"
-  rm -f "$CF_BODY"
-}
-
 delete_schema() {
   local zone_id=$1
   local schema_id=$2
   if ! is_schema_uuid "$schema_id"; then
     echo "error: --delete requires a schema UUID from --list, got: ${schema_id}" >&2
-    exit 1
-  fi
-  local existing_name
-  existing_name="$(schema_name_for_id "$zone_id" "$schema_id")"
-  if [[ "$existing_name" == "$AUTH_SCHEMA_NAME" ]]; then
-    echo "error: refusing to delete Auth schema ${schema_id} (${AUTH_SCHEMA_NAME})" >&2
-    echo "       use ./scripts/cloudflare/upload-auth-api-schema-exp1.sh --delete" >&2
     exit 1
   fi
   cf_request DELETE "${CF_API}/zones/${zone_id}/schema_validation/schemas/${schema_id}"
@@ -264,7 +241,7 @@ upload_schema() {
   local zone_id=$1
   if [[ ! -f "$ARTIFACT" ]]; then
     echo "error: missing ${ARTIFACT}" >&2
-    echo "       run ./scripts/package-integration-api-cloudflare-schema.sh first" >&2
+    echo "       run ./scripts/package-auth-api-cloudflare-schema.sh first" >&2
     exit 1
   fi
   local payload
@@ -346,7 +323,7 @@ if [[ "$DO_PACKAGE" == true ]]; then
     echo "error: --package is only valid with --upload" >&2
     exit 1
   fi
-  "$ROOT/scripts/package-integration-api-cloudflare-schema.sh"
+  "$ROOT/scripts/package-auth-api-cloudflare-schema.sh"
 fi
 
 verify_token

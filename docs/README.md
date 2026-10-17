@@ -60,7 +60,7 @@ Installing a **host JDK** to build Java modules from a fresh clone is a differen
 
 - [monitoring/](monitoring/): dashboards, monitoring setup, and supporting notes.
 - [cloudflare/](cloudflare/): site and edge workflow notes.
-- [lightsail/community-host.md](lightsail/community-host.md): create/bootstrap a NEW community Lightsail host for ezkey.online (parallel to EXP1; AWS CLI scripts under `scripts/lightsail/`).
+- [lightsail/community-host.md](lightsail/community-host.md): create/bootstrap a NEW community Lightsail host for ezkey.online (AWS CLI scripts under `scripts/lightsail/`).
 - [lightsail/community/DEPLOYED.md](lightsail/community/DEPLOYED.md): live state ledger for the community surface (update after successful publish).
 - [VERSIONING_AND_DEPLOY_TRACEABILITY.md](VERSIONING_AND_DEPLOY_TRACEABILITY.md): public alpha + git-SHA deploy traceability (pointer for cold agents).
 - [dev-tools/](dev-tools/): internal development tools and helper assets.

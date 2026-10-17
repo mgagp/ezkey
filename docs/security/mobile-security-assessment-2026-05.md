@@ -1,7 +1,7 @@
 # Ezkey Mobile Security Assessment
 
 ## Scope
-This assessment reviews the current Ezkey Mobile posture from a pragmatic attacker perspective, grounded in the repository and a small set of live passive checks against the EXP1 deployment surface.
+This assessment reviews the current Ezkey Mobile posture from a pragmatic attacker perspective, grounded in the repository and a small set of live passive checks against the then-public Cloudflare-fronted deployment surface (former experimental lab; retired 2026-10 — community host is now `*.ezkey.online`).
 
 The goal is not to maximize theoretical criticism. The goal is to identify realistic weaknesses, honest product boundaries, and the highest-value hardening actions for Ezkey's actual market position.
 
@@ -9,10 +9,10 @@ The goal is not to maximize theoretical criticism. The goal is to identify reali
 The review used:
 - repository docs and mobile implementation code,
 - mobile dependency and supply-chain triage,
-- passive external checks against `exp1-*.ezkey.org`,
+- passive external checks against the then-public Cloudflare-fronted API hostnames,
 - attack-scenario design based on the current protocol and deployment model.
 
-This was intentionally non-destructive. No active exploit attempts were run against EXP1.
+This was intentionally non-destructive. No active exploit attempts were run against the public edge.
 
 ## Executive Summary
 The current mobile posture is credible in its core protocol design, especially around signed flow continuity, user-initiated polling, and native Android keystore use. This assessment should be read as an **Android-first current-state review**. iOS is a later product phase and is not a short-term parity or release target, so the absence of iOS parity should not be treated as a present security defect by itself. The most important current gaps are not exotic cryptographic breaks. They are practical implementation and deployment issues:
@@ -20,7 +20,7 @@ The current mobile posture is credible in its core protocol design, especially a
 1. Sensitive enrollment material is still persisted in the AsyncStorage-backed enrollment collection instead of the secure-storage path.
 2. The mobile documentation and assessment outputs should clearly state that current security conclusions apply to the Android-first implementation, while iOS remains a later phase.
 3. The mobile client currently relies on standard platform TLS trust without certificate pinning or equivalent origin binding.
-4. The EXP1 posture must be interpreted as a Cloudflare-fronted origin, so public edge observations need to be attributed carefully between Cloudflare policy and origin hardening.
+4. The public deployment posture must be interpreted as a Cloudflare-fronted origin, so public edge observations need to be attributed carefully between Cloudflare policy and origin hardening.
 
 The good news is that none of the strongest concerns found here indicate a trivial remote break of the Ezkey protocol itself. The weaker news is that a security product cannot afford ambiguity between implementation, documentation, and operator-facing claims.
 
@@ -32,7 +32,7 @@ The most relevant adversaries for Ezkey Mobile are:
 - A reverse engineer extracting data from an APK, logs, or local storage.
 - A network attacker on hostile Wi-Fi, or an attacker controlling a user-installed root CA / MDM trust context.
 - A malicious or compromised operator-side integration endpoint trying to exploit mobile routing assumptions.
-- An internet attacker probing the public EXP1 edge for deployment drift, weak headers, CORS mistakes, or proxy misconfiguration.
+- An internet attacker probing the public community edge for deployment drift, weak headers, CORS mistakes, or proxy misconfiguration.
 
 Less relevant for this assessment:
 - nation-state or certification-grade laboratory attacks,
@@ -162,15 +162,15 @@ Recommended action:
 - Treat the pending debug panel as a support-only diagnostic feature with stricter redaction.
 - Add a short operator rule that screenshots and recordings must never contain real enrollment material.
 
-### 5. EXP1 is a Cloudflare-fronted origin and should be assessed as such
+### 5. Public deployment is a Cloudflare-fronted origin and should be assessed as such
 **Disposition:** Clarified deployment boundary; validate edge-vs-origin policy intentionally  
 **Severity:** Low to Medium depending on intended Cloudflare policy  
 **Primary impact:** Attribution accuracy, public-edge policy clarity, documentation alignment
 
-The checked-in experimental deployment docs already describe EXP1 as a Cloudflare-proxied setup where Caddy acts as the origin-facing TLS endpoint for Cloudflare rather than as a directly exposed public origin. That materially changes how public observations should be interpreted.
+The checked-in experimental deployment docs already describe the public hybrid as a Cloudflare-proxied setup where Caddy acts as the origin-facing TLS endpoint for Cloudflare rather than as a directly exposed public origin. That materially changes how public observations should be interpreted.
 
-Observed live results:
-- `https://exp1-auth-api.ezkey.org/api/v1/public/instance-info` and `https://exp1-admin-api.ezkey.org/api/v1/public/instance-info` are publicly reachable.
+Observed live results (May 2026 lab; community equivalents today are `*.ezkey.online`):
+- Public Auth and Admin `instance-info` endpoints were reachable through the Cloudflare hostname.
 - The public hostname accepted TLS 1.2 during a passive probe, but in a Cloudflare orange-proxy model that reflects the effective **Cloudflare edge** posture presented to the internet, not necessarily the TLS policy enforced by the Caddy origin.
 - Live headers show `Strict-Transport-Security: max-age=0`, which means HSTS is effectively disabled.
 - Live headers show `X-Frame-Options: SAMEORIGIN`, while the checked-in Caddyfile expresses `DENY`.
@@ -189,7 +189,7 @@ Repo evidence:
 - `experimental-hybrid/lightsail/Caddyfile`
 - `experimental-hybrid/DEPLOYMENT_PLAYBOOK.md`
 - `experimental-hybrid/README.md`
-- live passive checks against `exp1-auth-api.ezkey.org`, `exp1-admin-api.ezkey.org`, and `exp1-integration-api.ezkey.org`
+- live passive checks against the then-public Auth, Admin, and Integration Cloudflare hostnames
 
 Recommended action:
 - Keep the analysis split between **Cloudflare edge posture** and **Cloudflare-to-origin posture**.
@@ -297,7 +297,7 @@ Focus:
 Expected value:
 - strengthens confidence in the protocol design itself, or reveals gaps in edge-case handling.
 
-### Scenario E: Proxy and rate-limit misconfiguration review on EXP1-like stacks
+### Scenario E: Proxy and rate-limit misconfiguration review on community-like stacks
 Objective:
 - validate whether spoofable proxy headers or incorrect trusted-proxy CIDRs could weaken rate limiting or audit attribution.
 
@@ -316,7 +316,7 @@ Expected value:
 - Move `enrollmentProofToken` into secure storage.
 - Remove raw QR logging from `__DEV__` unless an additional explicit debug gate is enabled.
 - Tighten or redact the pending debug panel.
-- Reconcile EXP1 public header posture with intended hardening.
+- Reconcile public header posture with intended hardening.
 
 ### Medium-effort improvements
 - Implement or explicitly reject certificate/SPKI pinning as a product decision.

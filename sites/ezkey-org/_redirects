@@ -1,7 +1,17 @@
-# Retired EXP1 journey URLs → alpha community pages
+# Retired EXP1 public URLs → alpha community pages (keep forever for bookmarks / inbound links)
 /experimental-preview-exp1.html /community-instance.html 301
 /exp1-guided-tour.html /community-guided-tour.html 301
 /exp1-signup.html /community-signup.html 301
 /fr/experimental-preview-exp1.html /fr/community-instance.html 301
 /fr/exp1-guided-tour.html /fr/community-guided-tour.html 301
 /fr/exp1-signup.html /fr/community-signup.html 301
+
+# Legacy guided-tour screenshot paths (folder renamed community-guided-tour/)
+/exp1-guided-tour/exp1-tour-01-admin-login-activation.webp /community-guided-tour/community-tour-01-admin-login-activation.webp 301
+/exp1-guided-tour/exp1-tour-02-integration-created.webp /community-guided-tour/community-tour-02-integration-created.webp 301
+/exp1-guided-tour/exp1-tour-03-api-key-created.webp /community-guided-tour/community-tour-03-api-key-created.webp 301
+/exp1-guided-tour/exp1-tour-04-enrollment-qr-challenge.webp /community-guided-tour/community-tour-04-enrollment-qr-challenge.webp 301
+/exp1-guided-tour/exp1-tour-05-demo-acme-api-key.webp /community-guided-tour/community-tour-05-demo-acme-api-key.webp 301
+/exp1-guided-tour/exp1-tour-06-demo-acme-login-pending.webp /community-guided-tour/community-tour-06-demo-acme-login-pending.webp 301
+/exp1-guided-tour/exp1-tour-07-demo-acme-session-success.webp /community-guided-tour/community-tour-07-demo-acme-session-success.webp 301
+/exp1-guided-tour/exp1-tour-08-dashboard-overview.webp /community-guided-tour/community-tour-08-dashboard-overview.webp 301

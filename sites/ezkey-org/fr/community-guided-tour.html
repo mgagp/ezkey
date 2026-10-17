@@ -258,14 +258,14 @@
                 <li>Suivre le flux pour <strong>associer le téléphone</strong> : <strong>scanner le QR</strong> avec l’app mobile Ezkey ou le <strong>Demo Device</strong> (localhost:3080) et compléter les étapes à l’écran.</li>
             </ol>
             <figure class="guide-figure">
-                <img src="/exp1-guided-tour/exp1-tour-01-admin-login-activation.webp" alt="Admin UI : écran de connexion avec code d’activation et zone QR pour l’app mobile" width="960" height="540" loading="lazy" decoding="async">
+                <img src="/community-guided-tour/community-tour-01-admin-login-activation.webp" alt="Admin UI : écran de connexion avec code d’activation et zone QR pour l’app mobile" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Connexion avec code d’activation et fil QR pour associer l’app mobile.</figcaption>
             </figure>
 
             <h2>Étape 2 — Créer une intégration</h2>
             <p>Aller à la section <strong>integrations</strong>, puis <strong>créer une intégration</strong> avec les champs requis par l’instance communautaire (libellés, identifiants fonctionnels selon le formulaire).</p>
             <figure class="guide-figure">
-                <img src="/exp1-guided-tour/exp1-tour-02-integration-created.webp" alt="Admin UI : formulaire ou liste montrant une intégration créée" width="960" height="540" loading="lazy" decoding="async">
+                <img src="/community-guided-tour/community-tour-02-integration-created.webp" alt="Admin UI : formulaire ou liste montrant une intégration créée" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Intégration créée dans l’Admin UI (formulaire ou liste).</figcaption>
             </figure>
 
@@ -276,7 +276,7 @@
                 <li>Lorsque l’UI affiche <strong>identifiant + secret</strong> (secrets machine-à-machine), les <strong>copier et les stocker hors navigateur</strong> immédiatement ; la récupération ultérieure n’est en général plus possible telle quelle.</li>
             </ol>
             <figure class="guide-figure">
-                <img src="/exp1-guided-tour/exp1-tour-03-api-key-created.webp" alt="Admin UI : clé d’API nouvellement créée (secret partiellement masqué)" width="960" height="540" loading="lazy" decoding="async">
+                <img src="/community-guided-tour/community-tour-03-api-key-created.webp" alt="Admin UI : clé d’API nouvellement créée (secret partiellement masqué)" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Identifiant et secret de clé API affichés une seule fois juste après la création.</figcaption>
             </figure>
 
@@ -287,7 +287,7 @@
                 <strong>Alpha communautaire et déploiement durci.</strong> Sur ezkey.online, le QR et le défi numérique apparaissent souvent <strong>sur un même écran</strong> de l’Admin UI. Dans des environnements plus stricts, on <strong>répartit plutôt les canaux</strong> (par ex. QR par courriel, défi par SMS). L’instance communautaire n’intègre pas tous les connecteurs de messagerie ou d’opérateurs qu’on attendrait d’un produit mature.
             </div>
             <figure class="guide-figure">
-                <img src="/exp1-guided-tour/exp1-tour-04-enrollment-qr-challenge.webp" alt="Admin UI : écran d’enrôlement avec QR et défi" width="960" height="540" loading="lazy" decoding="async">
+                <img src="/community-guided-tour/community-tour-04-enrollment-qr-challenge.webp" alt="Admin UI : écran d’enrôlement avec QR et défi" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Enrôlement avec QR et défi numérique complété depuis le téléphone.</figcaption>
             </figure>
 
@@ -300,7 +300,7 @@
             </ol>
             <p>Dans vos propres intégrations, traitez les clés comme des <strong>secrets côté serveur</strong> — pas comme quelque chose que les utilisateurs finaux collent dans une page.</p>
             <figure class="guide-figure">
-                <img src="/exp1-guided-tour/exp1-tour-05-demo-acme-api-key.webp" alt="Demo Acme : saisie de la clé d’API" width="960" height="540" loading="lazy" decoding="async">
+                <img src="/community-guided-tour/community-tour-05-demo-acme-api-key.webp" alt="Demo Acme : saisie de la clé d’API" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Démo Acme : saisie de la clé d’API d’intégration.</figcaption>
             </figure>
 
@@ -308,21 +308,21 @@
             <p>Au login, utilisez le même identifiant (la valeur de l’Identifiant utilisateur, pas le Nom).</p>
             <p>La démo affiche un <strong>défi à 2 chiffres</strong> sur l’écran d’attente. Sur l’app mobile ou le Demo Device : ouvrir la demande en attente, <strong>saisir ce même défi à 2 chiffres</strong>, puis <strong>approuver</strong> dans la fenêtre affichée par la démo.</p>
             <figure class="guide-figure">
-                <img src="/exp1-guided-tour/exp1-tour-06-demo-acme-login-pending.webp" alt="Demo Acme : écran d’attente pendant la validation mobile" width="960" height="540" loading="lazy" decoding="async">
+                <img src="/community-guided-tour/community-tour-06-demo-acme-login-pending.webp" alt="Demo Acme : écran d’attente pendant la validation mobile" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>La démo attend l’approbation dans l’app mobile Ezkey.</figcaption>
             </figure>
 
             <h2>Étape 7 — Session établie côté démo</h2>
             <p>Après accord sur le téléphone, la démo doit passer à une vue <strong>session active</strong> (pseudo-application) avec <strong>déconnexion</strong> disponible selon les écrans.</p>
             <figure class="guide-figure">
-                <img src="/exp1-guided-tour/exp1-tour-07-demo-acme-session-success.webp" alt="Demo Acme : session active" width="960" height="540" loading="lazy" decoding="async">
+                <img src="/community-guided-tour/community-tour-07-demo-acme-session-success.webp" alt="Demo Acme : session active" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Session réussie dans la démo après accord sur le téléphone.</figcaption>
             </figure>
 
             <h2>Ensuite : tableau de bord du tenant</h2>
             <p>Revenir sur le <strong>tableau de bord</strong> du tenant dans l’Admin UI : il résume l’activité et renvoie vers les autres sections utilisées dans ce parcours.</p>
             <figure class="guide-figure">
-                <img src="/exp1-guided-tour/exp1-tour-08-dashboard-overview.webp" alt="Admin UI : tableau de bord du tenant" width="960" height="540" loading="lazy" decoding="async">
+                <img src="/community-guided-tour/community-tour-08-dashboard-overview.webp" alt="Admin UI : tableau de bord du tenant" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Vue d’ensemble du tableau de bord après le parcours démo.</figcaption>
             </figure>
 

@@ -1,20 +1,20 @@
 # Community Lightsail host (ezkey.online) — create & bootstrap
 
-Short runbook for creating a **NEW** Amazon Lightsail VM for the **ezkey.online** community-host evaluation path. This is **parallel to EXP1** (`exp1-ezkey` / `*.ezkey.org`). It is **not** a public launch by itself and does **not** shut down or rebrand live EXP1.
+Short runbook for creating a **NEW** Amazon Lightsail VM for the **ezkey.online** community-host evaluation path. This is the **canonical public alpha community host** (not a second lab alongside a retired stack). Former experimental lab hostnames were retired in 2026-10.
 
 **Stack model:** same all-in-one Docker VM as today’s experimental hybrid (Postgres + APIs + Caddy on one Lightsail instance). App layer stays in [`experimental-hybrid/lightsail/`](../../experimental-hybrid/lightsail/) — do not fork Compose/Caddy for this v1.
 
 **Automation style:** AWS CLI only (no Terraform, no CloudFormation), thin Bash under [`scripts/lightsail/`](../../scripts/lightsail/), Git Bash friendly, dry-run by default for create / delete / ports.
 
-**SSH target (#812):** deploy/bootstrap scripts never silent-default to Host `ezkey` (dead EXP1). Pass `--target community` (→ `ezkey-online`) or `--target exp1` (→ `ezkey`), or set `LIGHTSAIL_SSH_HOST` explicitly; community `--sync-operator-files` never overwrites with the EXP1 Caddyfile.
+**SSH target (#812):** deploy/bootstrap scripts never silent-default to a bare Host alias. Pass `--target community` (→ `ezkey-online`) or set `LIGHTSAIL_SSH_HOST` explicitly; community `--sync-operator-files` installs `Caddyfile.ezkey-online` as remote `Caddyfile`.
 
-**Public cutover context (do not invent product language):** publish repositioned **ezkey.org** first; then community host on **ezkey.online**. Creating a parallel Lightsail instance for testing is OK.
+**Public cutover context (do not invent product language):** publish repositioned **ezkey.org** first; then community host on **ezkey.online**.
 
 ---
 
 ## Ownership boundary (monorepo now, extractable later)
 
-Starting these scripts in the **monorepo** is intentional and pragmatic (one clone, reuse the EXP1 image-export path). Longer-term, the **Marc-operated canonical community host** (`ezkey.online`) may move its *operator* scripting into a separate **private** GitHub repo: that instance is owned/operated by Marc and is **not** the same story as the public OSS “how to stand up an experimental hybrid” path (which stays in [`experimental-hybrid/`](../../experimental-hybrid/), like EXP1).
+Starting these scripts in the **monorepo** is intentional and pragmatic (one clone, reuse the experimental-hybrid image-export path). Longer-term, the **Marc-operated canonical community host** (`ezkey.online`) may move its *operator* scripting into a separate **private** GitHub repo: that instance is owned/operated by Marc and is **not** the same story as the public OSS “how to stand up an experimental hybrid” path (which stays in [`experimental-hybrid/`](../../experimental-hybrid/)).
 
 | Layer | Lives in | Owns |
 |-------|----------|------|
@@ -27,7 +27,7 @@ This PR does **not** create that private repo.
 
 ---
 
-## Defaults (match EXP1 shape, new name)
+## Defaults
 
 | Setting | Default | Override |
 |---------|---------|----------|
@@ -38,11 +38,9 @@ This PR does **not** create that private repo.
 | Bundle | `medium_3_0` | `--bundle` |
 | AZ | `ca-central-1a` | `--az` |
 | Key pair name | **`ezkey-online-kp`** | `--key-pair-name` / `LIGHTSAIL_KEY_PAIR_NAME` |
-| SSH Host alias | **no silent default** — `--target community` → `ezkey-online` (#812) | `--target community\|exp1` / `LIGHTSAIL_SSH_HOST` / `--host` |
+| SSH Host alias | **no silent default** — `--target community` → `ezkey-online` (#812) | `--target community` / `LIGHTSAIL_SSH_HOST` / `--host` |
 
 **Lightsail name uniqueness:** resource names are unique **across types**. The key-pair name **must differ** from the instance name (e.g. instance `ezkey-online` + key pair `ezkey-online-kp`). Using the same string for both fails `CreateInstances` with `InvalidInputException` (“names are already in use”). `create-instance.sh` refuses that combination.
-
-**Live EXP1 (leave alone):** name `exp1-ezkey`, public IP `3.99.189.207`, AZ `ca-central-1a`, same blueprint/bundle. Scripts refuse to create or delete that name unless you force delete (discouraged).
 
 **No Lightsail static IP in v1.** If you recreate the instance, the public IPv4 may change — the operator updates Cloudflare **A** records manually.
 
@@ -67,7 +65,7 @@ These scripts **never** change production DNS or certificates. They **never** co
 
 ## Product hostnames (ezkey.online)
 
-Locked for the community host (Marc / PR #609). EXP1 keeps `exp1-*.ezkey.org` on the live EXP1 stack — do **not** replace [`experimental-hybrid/lightsail/Caddyfile`](../../experimental-hybrid/lightsail/Caddyfile).
+Locked for the community host (Marc / PR #609). Use the community Caddyfile overlay; do not invent alternate public hostnames in generic defaults.
 
 | Role | Hostname |
 |------|----------|
@@ -77,7 +75,7 @@ Locked for the community host (Marc / PR #609). EXP1 keeps `exp1-*.ezkey.org` on
 | Integration API | `integration-api.ezkey.online` |
 | Demo ACME | `demo-acme.ezkey.online` |
 
-Community Caddy site blocks: [`experimental-hybrid/lightsail/Caddyfile.ezkey-online`](../../experimental-hybrid/lightsail/Caddyfile.ezkey-online) (TLS 1.3 Origin CA paths, docs block, reverse_proxy targets — mirrors EXP1 structure).
+Community Caddy site blocks: [`experimental-hybrid/lightsail/Caddyfile.ezkey-online`](../../experimental-hybrid/lightsail/Caddyfile.ezkey-online) (TLS 1.3 Origin CA paths, docs block, reverse_proxy targets).
 
 ---
 
@@ -86,7 +84,7 @@ Community Caddy site blocks: [`experimental-hybrid/lightsail/Caddyfile.ezkey-onl
 Do these **after** VM create → ports → Docker bootstrap (below). No secrets in git; Origin CA / DNS / Pages stay human OK.
 
 1. **Hostnames** — use the table above (Caddy + DNS + Origin CA SANs must match).
-2. **Community Caddyfile on the VM** — Compose bind-mounts `./Caddyfile`. Keep the repo’s EXP1 [`Caddyfile`](../../experimental-hybrid/lightsail/Caddyfile) unchanged. With `--target community`, [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) `--sync-operator-files` installs `Caddyfile.ezkey-online` as remote `Caddyfile` (never the EXP1 file — #812). Because the file is bind-mounted, plain `docker compose up -d` does **not** recreate caddy — use `--sync-operator-files --remote-up` (sha256 verify + `force-recreate caddy`) or recreate caddy manually after a sync-only pass:
+2. **Community Caddyfile on the VM** — Compose bind-mounts `./Caddyfile`. With `--target community`, [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) `--sync-operator-files` installs `Caddyfile.ezkey-online` as remote `Caddyfile` (#812). Because the file is bind-mounted, plain `docker compose up -d` does **not** recreate caddy — use `--sync-operator-files --remote-up` (sha256 verify + `force-recreate caddy`) or recreate caddy manually after a sync-only pass:
    ```bash
    ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh \
      --target community --sync-operator-files --remote-up
@@ -126,7 +124,7 @@ EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED=true
 EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online,https://ezkey.org,https://www.ezkey.org
 ```
 
-Canon: [`docs/cloudflare/admin-ui-pages.md`](../cloudflare/admin-ui-pages.md), [`docs/admin-ui-security.md`](../admin-ui-security.md). Shared EXP1 [`.env.example`](../../experimental-hybrid/lightsail/.env.example) may still show `false` for lab Bearer mode; community overlay is [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example).
+Canon: [`docs/cloudflare/admin-ui-pages.md`](../cloudflare/admin-ui-pages.md), [`docs/admin-ui-security.md`](../admin-ui-security.md). Base [`.env.example`](../../experimental-hybrid/lightsail/.env.example) may still show `false` for lab Bearer mode; community overlay is [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example).
 
 
 
@@ -225,11 +223,12 @@ If `ezkey-online` already exists as an instance: `--name community-ezkey` (and u
 
 **443 posture (since 2026-09-23):** HTTPS is restricted to the **15 Cloudflare IPv4 ranges** published at [ips-v4](https://www.cloudflare.com/ips-v4). There is no IPv6 Lightsail firewall rule. Confirm with `aws lightsail get-instance-port-states` before a community upgrade go/no-go. **Do not run `open-ports.sh` on `ezkey-online`:** its default `HTTPS_CIDR` is `0.0.0.0/0` and `--mode put` replaces every rule, which would reopen 443 to the world.
 
-### 3. SSH Host aliases (separate from EXP1)
+### 3. SSH Host aliases
 
-Keep **`Host ezkey`** → EXP1. Add community aliases in `~/.ssh/config` (same key / IP as create-or-status).
-`ezkey-online-db` already exists on some workstations (e.g. Rootbeer); document it here so every
-operator laptop matches. `ezkey-online-metrics` is the JavaMelody collector tunnel (#846).
+Add community aliases in `~/.ssh/config` (same key / IP as create-or-status). Prefer **`Host ezkey-online`**
+(not a bare `ezkey` alias). `ezkey-online-db` already exists on some workstations (e.g. Rootbeer);
+document it here so every operator laptop matches. `ezkey-online-metrics` is the JavaMelody
+collector tunnel (#846).
 
 ```sshconfig
 Host ezkey-online
@@ -260,7 +259,7 @@ Host ezkey-online-metrics
 Open tunnels: `ssh ezkey-online-db` / `ssh ezkey-online-metrics` (leave the session open). Collector UI
 after metrics tunnel: http://127.0.0.1:8088 — see **Observability (JavaMelody)** below.
 
-Scripts accept `LIGHTSAIL_SSH_HOST` and must not overwrite the EXP1 alias.
+Scripts accept `LIGHTSAIL_SSH_HOST` when the Host alias differs from the `--target community` default.
 
 ### 4. Bootstrap Docker
 
@@ -271,7 +270,7 @@ Scripts accept `LIGHTSAIL_SSH_HOST` and must not overwrite the EXP1 alias.
 
 Then open a **new** SSH session so the `docker` group applies.
 
-### 5. Reuse the EXP1 image export path
+### 5. Image export path
 
 App compose stays under `experimental-hybrid/lightsail/`. Push images with the **existing** export script and a **declared** target (`--target community` → Host `ezkey-online`; no silent default — #812), then follow **Ordered path** steps 2–8 (Origin CA, DNS, `.env`, optional `--include-demo-acme`, clean-start, Pages).
 
@@ -317,7 +316,6 @@ After recreate, update Cloudflare **A** records if the public IP changed (no sta
 
 - Creating the AWS instance from CI / cloud agents without credentials
 - Cloudflare DNS, Origin CA issuance, Pages project creation
-- Recycling or renaming `exp1-ezkey`
 - Terraform / CloudFormation / ECR
 - ezkey-pam / host sshd MFA
 
@@ -511,13 +509,12 @@ exists is refused by the export guard.
 
 Short operator checklist verified against repo scripts/compose (not live VM observation):
 
-1. **Caddyfile sync / SSH target** — deploy scripts require `--target community|exp1` or
-   `LIGHTSAIL_SSH_HOST` (no silent `ezkey` default — #812). With `--target community`,
+1. **Caddyfile sync / SSH target** — deploy scripts require `--target community` or
+   `LIGHTSAIL_SSH_HOST` (no silent Host default — #812). With `--target community`,
    `--sync-operator-files` / `--clean-start` install `Caddyfile.ezkey-online` as remote
-   `Caddyfile` (never the EXP1 file). With `--target exp1`, they install the EXP1 `Caddyfile`.
-   A known Host alias that belongs to the *other* target is refused (no silent host override).
-   After `--sync-operator-files --remote-up`, the script verifies remote Caddyfile sha256 and
-   `force-recreate`s caddy (bind mount; plain `up -d` does not reload Caddy).
+   `Caddyfile`. After `--sync-operator-files --remote-up`, the script verifies remote
+   Caddyfile sha256 and `force-recreate`s caddy (bind mount; plain `up -d` does not reload
+   Caddy).
 2. **Grants container** — Compose service `db-grants` (`container_name: ezkey-exp-db-grants` in
    [`docker-compose.yml`](../../experimental-hybrid/lightsail/docker-compose.yml)) applies
    [`scripts/db/apply-grants.sql`](../../scripts/db/apply-grants.sql) after migration. APIs depend on
