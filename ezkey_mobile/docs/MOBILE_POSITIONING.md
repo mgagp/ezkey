@@ -113,7 +113,7 @@ Design density for **one hat per person**, which is the real-life default. A tes
 - Same person name twice: role and/or the existing ` (username)` uniqueness suffix. No client parser of old blobs.
 - Regular enrollments of a distinct business tenant sit in that tenant section; admin MFA stays under the installation with no extra folder.
 
-**EXP1 / generic branding**
+**Community / generic branding**
 
 - Host hint when the installation name equals the host. No full URL.
 

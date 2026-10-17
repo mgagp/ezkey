@@ -50,7 +50,7 @@ confirmation. At that stage, the feature was framed pragmatically:
 - immediate UX value
 - no backend policy yet
 
-This was the right initial cut for EXP1, but it contained an important conceptual shortcut.
+This was the right initial cut for early preview, but it contained an important conceptual shortcut.
 
 ### 2. Where the misunderstanding came from
 
@@ -116,7 +116,7 @@ Meaning:
 
 - It is stronger than accepting weak biometrics.
 - It remains usable on real phones where strong biometrics may not be configured but the device credential is.
-- It gives a practical EXP1 security improvement without introducing a brittle or exclusionary UX.
+- It gives a practical early-preview security improvement without introducing a brittle or exclusionary UX.
 
 ### What we are not doing now
 
@@ -154,7 +154,7 @@ Advantages:
 - clear mental model for the user
 - low ambiguity in audits and future reasoning
 - lower risk of accidental approval during a stale trust window
-- no need to explain session semantics in EXP1
+- no need to explain session semantics in early preview
 
 This is especially reasonable because `respond` is a sensitive, explicit, human approval action rather than a high-frequency background operation.
 
@@ -220,7 +220,7 @@ Giving end users many timing choices too early introduces several problems:
 - weaker supportability
 - users may choose convenience-heavy values without understanding the security impact
 
-For EXP1, a small number of strong defaults is preferable to a timing matrix.
+For early preview, a small number of strong defaults is preferable to a timing matrix.
 
 ### Should this become policy-controlled later?
 

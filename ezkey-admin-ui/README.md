@@ -51,7 +51,7 @@ Set `VITE_API_BASE_URL` in `.env.production` to the Admin API base URL if the UI
 
 ### Cloudflare Pages (split UI / API)
 
-For a static deploy where the Admin API is a separate HTTPS origin (set `VITE_API_BASE_URL` explicitly — e.g. EXP1 `https://exp1-admin-api.ezkey.org` or community `https://admin-api.ezkey.online`):
+For a static deploy where the Admin API is a separate HTTPS origin (set `VITE_API_BASE_URL` explicitly — e.g. community `https://admin-api.ezkey.online`):
 
 ```bash
 npm ci

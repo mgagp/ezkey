@@ -258,7 +258,7 @@ direct TCP connection originates from an IP in this list.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). Set via **`EZKEY_TRUSTED_PROXIES_REQUIRED=true`** on EXP1 / `--with-proxy` (not on direct-port clean-start). |
+| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). Set via **`EZKEY_TRUSTED_PROXIES_REQUIRED=true`** on Docker / Lightsail / `--with-proxy` (not on direct-port clean-start). |
 | `ezkey.trusted-proxies.cidrs` | `List<String>` | *(empty)* | optionnel | CIDR ranges of trusted reverse proxies (e.g. `10.0.0.0/8`, `172.16.0.0/12`). In Docker, set comma-separated **`EZKEY_TRUSTED_PROXIES_CIDRS`**. |
 
 **YAML example:**
@@ -277,7 +277,7 @@ ezkey:
 ### 11. Admin CORS — browser cross-origin (`ezkey.admin.cors.*`)
 
 **Description:** when the Admin UI is served from a **different origin** than the Admin API (for
-example static hosting on Cloudflare Pages calling `https://exp1-admin-api.ezkey.org`), browsers
+example static hosting on Cloudflare Pages calling `https://admin-api.ezkey.online`), browsers
 enforce CORS. If `allowed-origins` is **empty**, the API does **not** emit CORS response headers
 (unchanged behavior for same-origin setups such as the Admin UI behind Caddy in Docker).
 
@@ -309,7 +309,7 @@ with `NullRequestCache`, so this cookie is not emitted (401 included). Defense-i
 `http-only=true`, `same-site=strict`, `secure=${EZKEY_SERVLET_SESSION_COOKIE_SECURE:false}` (set
 `true` under HTTPS).
 
-**Description:** optional mode for **browser** sessions when the Admin UI and Admin API are on different **HTTPS** origins (e.g. `https://exp1-admin-ui.ezkey.org` → `https://exp1-admin-api.ezkey.org`). When enabled, successful login and passwordless-wait responses set an **HttpOnly** cookie on the API host with the same opaque value as today’s bearer token; the JSON body **omits** `token` so JavaScript cannot read the secret. The authentication filter accepts **either** `Authorization: Bearer` (priority if present) **or** the session cookie. **Postman and scripts** can keep using Bearer only.
+**Description:** optional mode for **browser** sessions when the Admin UI and Admin API are on different **HTTPS** origins (e.g. `https://admin-ui.ezkey.online` → `https://admin-api.ezkey.online`). When enabled, successful login and passwordless-wait responses set an **HttpOnly** cookie on the API host with the same opaque value as today’s bearer token; the JSON body **omits** `token` so JavaScript cannot read the secret. The authentication filter accepts **either** `Authorization: Bearer` (priority if present) **or** the session cookie. **Postman and scripts** can keep using Bearer only.
 
 **Defined in:** `AdminBrowserSessionCookieProperties`, `AdminBrowserSessionCookieConfig`, `AdminSessionCookieService`
 
@@ -461,7 +461,7 @@ Local QA overlay: [`docker/docker-compose.evaluator-self-reg.yml`](../docker/doc
   hostname.
 - Optional TTL override: `EZKEY_EVALUATOR_SELF_REGISTRATION_TEMPORARY_SESSION_TTL_HOURS`.
 - Community overlay example: [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../experimental-hybrid/lightsail/.env.ezkey-online.example).
-- EXP1 lab example values: [`experimental-hybrid/lightsail/.env.example`](../experimental-hybrid/lightsail/.env.example) (commented block when enabling).
+- Lightsail lab example values: [`experimental-hybrid/lightsail/.env.example`](../experimental-hybrid/lightsail/.env.example) (commented block when enabling).
 - Add marketing / Pages origins to `ezkey.admin.cors.allowed-origins` for cross-origin signup POSTs.
 
 ---
@@ -483,7 +483,7 @@ Local QA overlay: [`docker/docker-compose.evaluator-self-reg.yml`](../docker/doc
 
 JavaMelody is **disabled by default** (`javamelody.enabled=false`). Enable it only via
 `./ezkey-tests/clean-start.sh --with-java-melody` (combinable with `--ha`), or on the community /
-EXP1 Lightsail host via `experimental-hybrid/lightsail/docker-compose.javamelody.yml`
+Lightsail host via `experimental-hybrid/lightsail/docker-compose.javamelody.yml`
 (`EZKEY_ENABLE_JAVA_MELODY=true` / `./clean-start.sh --with-java-melody`). Reports are on the
 **management port** at `/actuator/monitoring` only (never on the business port). Local collector UI:
 `http://127.0.0.1:8088`. Community access is SSH tunnel only (`Host ezkey-online-metrics`) — see

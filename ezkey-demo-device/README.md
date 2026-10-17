@@ -31,7 +31,7 @@ See [`CONFIGURATION.md`](CONFIGURATION.md) for `ezkey.auth.api.url` and
 | Mode | URL |
 |------|-----|
 | Clean-start stack (monorepo) | http://localhost:8083 |
-| Standalone Docker (Exp1) | see standalone mirror `mgagp/ezkey-demo-device` |
+| Standalone Docker | see standalone mirror `mgagp/ezkey-demo-device` |
 | Local JDK | `mvn test` then `mvn spring-boot:run` from this module |
 
 Agent notes: [`AGENTS.md`](AGENTS.md).

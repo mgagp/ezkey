@@ -137,7 +137,7 @@ Guessing codes never gets a more generous allowance. Rate-limit UI copy is ident
 invalid `/t` responses. Apply-api-key is a separate bucket (5 / 10 min). Limits are **on by default**
 on a normal clean-start / Docker stack.
 
-Community / EXP1 overlay: `demo-app-acme-config` (`/app/config/application.properties`) or env
+Community / Lightsail overlay: `demo-app-acme-config` (`/app/config/application.properties`) or env
 `EZKEY_RATE_LIMIT_LOGIN_REQUESTS` / `EZKEY_RATE_LIMIT_LOGIN_IP_BOUND_REQUESTS`, then recreate
 `demo-app-acme`.
 
