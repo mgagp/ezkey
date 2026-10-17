@@ -2,7 +2,7 @@
 
 Use this when you **already run** the experimental Lightsail stack ([`README.md`](README.md), [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md)) and only need to deploy a **new image** for **one** API, **migration**, or the **ACME demo app** **without** wiping volumes or running a full `clean-start.sh`.
 
-**Full stack in one go (Caddy, Compose, migration, all backends, optional demo):** from the repo root run **`./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target exp1 rolling`** (or `--target community`; add **`--include-demo-acme`** for the demo). That builds the images, loads them on the VM, syncs `docker-compose.yml` / **target-aware** `Caddyfile` / `clean-start.sh`, and runs **`docker compose up -d`** remotely — **Postgres data and other named volumes are kept**; the **`migration`** service runs Flyway from the new image. Alternatively call [`export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) with **`--target …`**, **`--sync-operator-files`**, **`--remote-up`**, and the image flags you need. No silent SSH host default (#812).
+**Full stack in one go (Caddy, Compose, migration, all backends, optional demo):** from the repo root run **`./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target community rolling`** (add **`--include-demo-acme`** for the demo). That builds the images, loads them on the VM, syncs `docker-compose.yml` / **target-aware** `Caddyfile` / `clean-start.sh`, and runs **`docker compose up -d`** remotely — **Postgres data and other named volumes are kept**; the **`migration`** service runs Flyway from the new image. Alternatively call [`export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) with **`--target …`**, **`--sync-operator-files`**, **`--remote-up`**, and the image flags you need. No silent SSH host default (#812).
 
 **OCI revision on rolling builds (#814):** the upgrade script exports `OCI_IMAGE_REVISION` (default: full `git rev-parse HEAD`) so compose/`docker/Dockerfile` stamp `org.opencontainers.image.revision` on migration and backend images. On the VM after load: `docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' ezkey-auth-api:latest`. If the worktree is dirty, the script warns that the label is still HEAD (not the dirty contents). Dockerfile keeps `ARG OCI_IMAGE_REVISION` after `RUN apk` so revision changes do not bust the apk cache layer. This is image-label traceability only — not the broader #740 surface (`git.properties` / `/actuator/info`).
 
@@ -11,10 +11,10 @@ Use this when you **already run** the experimental Lightsail stack ([`README.md`
 After this branch is on the tree you deploy, apply Compose **and** recreate ACME together:
 
 ```text
-./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target exp1 rolling --include-demo-acme
+./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target community rolling --include-demo-acme
 ```
 
-A partial recreate that updates Admin API without syncing Compose and recreating `demo-app-acme` leaves EXP1 pointing ACME at Admin API. After sync:
+A partial recreate that updates Admin API without syncing Compose and recreating `demo-app-acme` leaves the stack pointing ACME at Admin API. After sync:
 
 - Confirm `demo-app-acme` env is `EZKEY_ADMIN_API_URL=http://integration-api:7080` (name is historical).
 - Remove `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED` from the live `.env` if present.
@@ -45,10 +45,10 @@ Other backends — same pattern; only the `--target` and tar filename change (se
 
 ## 2. Copy to the VM
 
-Declare SSH with **`--target exp1`** (Host `ezkey`) or **`--target community`** (Host `ezkey-online`), or set `LIGHTSAIL_SSH_HOST` — see [`README.md`](README.md#declared-lightsail-ssh-target-no-silent-default) (#812).
+Declare SSH with **`--target community`** (Host `ezkey-online`), or set `LIGHTSAIL_SSH_HOST` — see [`README.md`](README.md#declared-lightsail-ssh-target-no-silent-default) (#812).
 
 ```bash
-scp docker/export/ezkey-auth-api.tar ezkey:~/
+scp docker/export/ezkey-auth-api.tar ezkey-online:~/
 ```
 
 ## 3. Load and recreate (on the VM)

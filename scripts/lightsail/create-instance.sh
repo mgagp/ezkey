@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 #
 # Create a NEW Amazon Lightsail instance for the ezkey.online community-host evaluation path.
-# Defaults match EXP1 shape (AL2023, medium_3_0, ca-central-1a) but use a separate instance name.
-# Does NOT touch exp1-ezkey. Does NOT change Cloudflare DNS or certificates.
+# Defaults: AL2023, medium_3_0, ca-central-1a. Does NOT change Cloudflare DNS or certificates.
 # VM lifecycle only — app stack stays in experimental-hybrid/lightsail/ (see docs/lightsail/community-host.md).
 #
 # AWS CLI only (no Terraform / CloudFormation). Default is dry-run; pass --apply to create.
@@ -40,7 +39,7 @@ DECLARED_TARGET=""
 
 usage() {
   cat <<EOF
-Create a NEW Lightsail instance for ezkey.online community-host evaluation (parallel to EXP1).
+Create a NEW Lightsail instance for ezkey.online community-host evaluation.
 
 Usage (from repository root, Git Bash):
   ./scripts/lightsail/create-instance.sh --target community [options]
@@ -48,11 +47,10 @@ Usage (from repository root, Git Bash):
 Safety:
   Default is dry-run (prints planned aws CLI). Pass --apply to create.
   Refuses to create if the instance name already exists.
-  Never targets exp1-ezkey; never allocates a static IP; never changes DNS/certs.
+  Never allocates a static IP; never changes DNS/certs.
 
 SSH handoff target (required for bootstrap/export examples — no silent default; #812):
   --target community   Maps to OpenSSH Host ${LIGHTSAIL_SSH_HOST_COMMUNITY}
-  (exp1 is refused here — use community for this parallel VM path)
 
 Options:
   --name NAME                 Instance name (default: ezkey-online / LIGHTSAIL_INSTANCE_NAME)
@@ -90,7 +88,7 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --target)
-      [[ $# -ge 2 ]] || lightsail_die "--target requires community|exp1"
+      [[ $# -ge 2 ]] || lightsail_die "--target requires community"
       DECLARED_TARGET="$2"
       shift 2
       ;;
@@ -165,10 +163,6 @@ if [[ -z "${DECLARED_TARGET}" ]]; then
   DECLARED_TARGET="community"
 fi
 lightsail_resolve_ssh_target "${DECLARED_TARGET}"
-
-if [[ "${INSTANCE_NAME}" == "${LIGHTSAIL_EXP1_INSTANCE_NAME}" ]]; then
-  lightsail_die "refusing to create/replace live EXP1 instance '${LIGHTSAIL_EXP1_INSTANCE_NAME}'. Choose another --name."
-fi
 
 if [[ -n "${USE_KEY_PAIR}" && "${KEY_PAIR_NAME}" == "${INSTANCE_NAME}" ]]; then
   lightsail_die "Lightsail resource names are unique across types: key-pair name '${KEY_PAIR_NAME}' must differ from instance name '${INSTANCE_NAME}' (e.g. use '${INSTANCE_NAME}-kp')."
@@ -333,7 +327,7 @@ echo "  publicIp=${public_ip}"
 echo "  az=${az_out:-${AZ}}"
 echo
 echo "Next:"
-echo "  1. Add an OpenSSH Host alias (${LIGHTSAIL_SSH_HOST}) separate from EXP1 Host ezkey"
+echo "  1. Add an OpenSSH Host alias (${LIGHTSAIL_SSH_HOST})"
 echo "  2. ./scripts/lightsail/open-ports.sh --apply --name ${INSTANCE_NAME}"
 echo "  3. ./scripts/lightsail/bootstrap-host.sh --target community"
 echo "  4. ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --dry-run"

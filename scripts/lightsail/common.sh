@@ -8,11 +8,11 @@
 # This tree is monorepo-pragmatic and may later extract to a private ops repo after e2e
 # validation (see docs/lightsail/community-host.md § Ownership boundary).
 #
-# Defaults match the live EXP1 experimental-hybrid instance shape (AL2023, medium_3_0,
-# ca-central-1) but target a NEW parallel instance name. They never touch exp1-ezkey.
+# Defaults match the community experimental-hybrid instance shape (AL2023, medium_3_0,
+# ca-central-1) for the ezkey.online community host.
 #
-# SSH host: NEVER silent-default to ezkey (dead EXP1 trap) or ezkey-online. Require
-# --target community|exp1 or an explicit LIGHTSAIL_SSH_HOST (#812).
+# SSH host: NEVER silent-default to a Host alias. Require --target community or an
+# explicit LIGHTSAIL_SSH_HOST (#812).
 #
 # shellcheck shell=bash
 
@@ -34,14 +34,10 @@ _EZKEY_LIGHTSAIL_COMMON_SOURCED=1
 : "${LIGHTSAIL_KEY_PAIR_NAME:=ezkey-online-kp}"
 : "${LIGHTSAIL_SSH_USER:=ec2-user}"
 
-# Canonical OpenSSH Host aliases — map from --target; do not use as silent defaults.
+# Canonical OpenSSH Host alias — map from --target; do not use as a silent default.
 readonly LIGHTSAIL_SSH_HOST_COMMUNITY="ezkey-online"
-readonly LIGHTSAIL_SSH_HOST_EXP1="ezkey"
 
-# Live EXP1 instance name — documented for operators; scripts must never default to this name.
-readonly LIGHTSAIL_EXP1_INSTANCE_NAME="exp1-ezkey"
-
-# Optional: set by lightsail_resolve_ssh_target (community|exp1). Empty until resolved.
+# Optional: set by lightsail_resolve_ssh_target (community). Empty until resolved.
 LIGHTSAIL_TARGET="${LIGHTSAIL_TARGET:-}"
 
 lightsail_die() {
@@ -93,9 +89,8 @@ lightsail_run_or_dry_aws() {
 lightsail_ssh_host_for_target() {
   case "$1" in
     community) echo "${LIGHTSAIL_SSH_HOST_COMMUNITY}" ;;
-    exp1) echo "${LIGHTSAIL_SSH_HOST_EXP1}" ;;
     *)
-      lightsail_die "unknown Lightsail target '$1' (expected community|exp1)"
+      lightsail_die "unknown Lightsail target '$1' (expected community)"
       ;;
   esac
 }
@@ -106,9 +101,6 @@ lightsail_infer_target_from_host() {
     "${LIGHTSAIL_SSH_HOST_COMMUNITY}"|*"@${LIGHTSAIL_SSH_HOST_COMMUNITY}")
       echo "community"
       ;;
-    "${LIGHTSAIL_SSH_HOST_EXP1}"|*"@${LIGHTSAIL_SSH_HOST_EXP1}")
-      echo "exp1"
-      ;;
     *)
       echo ""
       ;;
@@ -117,19 +109,19 @@ lightsail_infer_target_from_host() {
 
 # Resolve LIGHTSAIL_SSH_HOST and LIGHTSAIL_TARGET.
 # Call after parsing CLI flags. Pass optional --target value as $1 (may be empty).
-# Requires either a declared target (community|exp1) or an explicit LIGHTSAIL_SSH_HOST
+# Requires either a declared target (community) or an explicit LIGHTSAIL_SSH_HOST
 # (env or --host). Fails loudly otherwise — no silent default (#812).
 #
-# Sets: LIGHTSAIL_SSH_HOST, LIGHTSAIL_TARGET (community|exp1|empty for custom host).
+# Sets: LIGHTSAIL_SSH_HOST, LIGHTSAIL_TARGET (community|empty for custom host).
 lightsail_resolve_ssh_target() {
   local declared_target="${1:-}"
   local host_from_env="${LIGHTSAIL_SSH_HOST:-}"
 
   if [[ -n "${declared_target}" ]]; then
     case "${declared_target}" in
-      community|exp1) ;;
+      community) ;;
       *)
-        lightsail_die "unknown --target '${declared_target}' (expected community|exp1)"
+        lightsail_die "unknown --target '${declared_target}' (expected community)"
         ;;
     esac
     LIGHTSAIL_TARGET="${declared_target}"
@@ -158,7 +150,7 @@ lightsail_resolve_ssh_target() {
     return 0
   fi
 
-  lightsail_die "no Lightsail SSH target declared. Pass --target community|exp1 or set LIGHTSAIL_SSH_HOST (see docs/lightsail/community-host.md; #812)."
+  lightsail_die "no Lightsail SSH target declared. Pass --target community or set LIGHTSAIL_SSH_HOST (see docs/lightsail/community-host.md; #812)."
 }
 
 # Refuse community Postgres wipe unless the operator explicitly confirms.
@@ -173,8 +165,7 @@ lightsail_require_community_wipe_confirm() {
 }
 
 # Local Caddyfile path to scp as remote Caddyfile for the resolved target.
-# community → Caddyfile.ezkey-online (never the EXP1 Caddyfile — #812).
-# exp1 → Caddyfile.
+# community → Caddyfile.ezkey-online (same content as lightsail/Caddyfile).
 # Custom host without LIGHTSAIL_TARGET → die (must declare --target for sync).
 lightsail_caddyfile_source_for_sync() {
   local lightsail_local_dir="$1"
@@ -182,11 +173,8 @@ lightsail_caddyfile_source_for_sync() {
     community)
       echo "${lightsail_local_dir}/Caddyfile.ezkey-online"
       ;;
-    exp1)
-      echo "${lightsail_local_dir}/Caddyfile"
-      ;;
     "")
-      lightsail_die "cannot sync Caddyfile: SSH host '${LIGHTSAIL_SSH_HOST:-}' is not a known alias; pass --target community|exp1 so the correct Caddyfile is chosen (#812)."
+      lightsail_die "cannot sync Caddyfile: SSH host '${LIGHTSAIL_SSH_HOST:-}' is not a known alias; pass --target community so the correct Caddyfile is chosen (#812)."
       ;;
     *)
       lightsail_die "cannot sync Caddyfile for unknown LIGHTSAIL_TARGET='${LIGHTSAIL_TARGET}'"
@@ -208,13 +196,11 @@ Defaults (env overrides):
 
 SSH host (no silent default — #812):
   --target community  →  ${LIGHTSAIL_SSH_HOST_COMMUNITY}
-  --target exp1       →  ${LIGHTSAIL_SSH_HOST_EXP1}
   or set LIGHTSAIL_SSH_HOST explicitly
   current LIGHTSAIL_SSH_HOST=${LIGHTSAIL_SSH_HOST:-<unset>}
   current LIGHTSAIL_TARGET=${LIGHTSAIL_TARGET:-<unset>}
 
-Live EXP1 (do not modify with community VM scripts): ${LIGHTSAIL_EXP1_INSTANCE_NAME}
-Preferred new name: ezkey-online (override with --name / LIGHTSAIL_INSTANCE_NAME;
+Preferred instance name: ezkey-online (override with --name / LIGHTSAIL_INSTANCE_NAME;
   use community-ezkey if the preferred name is taken).
 Key pair default: ezkey-online-kp — must differ from the instance name (Lightsail
   names are unique across resource types).

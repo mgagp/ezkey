@@ -28,14 +28,11 @@ Usage (from repository root, Git Bash):
 Safety:
   Default is dry-run (prints planned aws CLI only).
   Actual delete requires BOTH --apply and --i-mean-it.
-  Refuses to delete live EXP1 (exp1-ezkey) unless --force-exp1 is also passed
-  (still requires --apply --i-mean-it). Prefer leaving EXP1 alone.
 
 Options:
   --name NAME       Instance name (default: ezkey-online / LIGHTSAIL_INSTANCE_NAME)
   --apply           Required with --i-mean-it to delete
   --i-mean-it       Extra confirm flag for destroy
-  --force-exp1      Allow targeting exp1-ezkey (discouraged)
   -h, --help        Show this help
 
 Environment: AWS_PROFILE, LIGHTSAIL_REGION, LIGHTSAIL_INSTANCE_NAME
@@ -43,8 +40,6 @@ EOF
   echo
   lightsail_print_defaults
 }
-
-FORCE_EXP1=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -61,10 +56,6 @@ while [[ $# -gt 0 ]]; do
       I_MEAN_IT="1"
       shift
       ;;
-    --force-exp1)
-      FORCE_EXP1="1"
-      shift
-      ;;
     -h|--help)
       usage
       exit 0
@@ -76,10 +67,6 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
-
-if [[ "${INSTANCE_NAME}" == "${LIGHTSAIL_EXP1_INSTANCE_NAME}" && -z "${FORCE_EXP1}" ]]; then
-  lightsail_die "refusing to delete live EXP1 '${LIGHTSAIL_EXP1_INSTANCE_NAME}'. Use a community name, or pass --force-exp1 with --apply --i-mean-it (discouraged)."
-fi
 
 CMD_ARGS=(delete-instance --instance-name "${INSTANCE_NAME}")
 

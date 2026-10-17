@@ -1,14 +1,14 @@
 # Community Lightsail (ezkey.online) — TLS termination and reverse proxy for Ezkey APIs.
 #
-# Product hostnames (PR #609 / Marc lock). EXP1 keeps experimental-hybrid/lightsail/Caddyfile
-# (exp1-*.ezkey.org). Do NOT overwrite EXP1's Caddyfile with this file.
+# Product hostnames (PR #609 / Marc lock): *.ezkey.online.
 #
-# On the community VM, install as the active Caddyfile (Compose bind-mounts ./Caddyfile) via scp only:
+# On the community VM, install as the active Caddyfile (Compose bind-mounts ./Caddyfile).
+# --sync-operator-files copies Caddyfile.ezkey-online → remote Caddyfile. Always scp from the
+# repo (or use the export script), verify sha256 against the repo, then recreate the caddy service.
+#
+# Manual install example:
 #   scp experimental-hybrid/lightsail/Caddyfile.ezkey-online \
 #       ezkey-online:ezkey/experimental-hybrid/lightsail/Caddyfile
-# Do not rely on a local `cp` of Caddyfile.ezkey-online on the VM — that variant is not present
-# after --sync-operator-files (which copies the EXP1 Caddyfile). Always scp from the repo, verify
-# sha256 against the repo, then recreate the caddy service.
 #
 # Model: Cloudflare proxied (orange) DNS → this host. Use a Cloudflare Origin Certificate
 # covering the hostnames below; place PEM files in ./caddy-certs/ on the VM.
