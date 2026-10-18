@@ -32,10 +32,11 @@ docs {
   Deliberately invalid Auth bind body: `enrollmentId` is a string, but the OpenAPI schema
   requires `integer` (`int32`). The mobile app cannot produce this request.
 
-  **Use with environment `exp1`.** On EXP1 Cloudflare schema validation **Block**, expect HTTP
+  **Use with environment `community`.** On Cloudflare schema validation **Block**, expect HTTP
   **403** Error **1020** (API Shield / WAF). Bruno sends `Accept` JSON, so the body is Cloudflare's
   RFC 9457 JSON (`cloudflare_error: true`, `error_code: 1020`, `ray_id`, `type` under
   `developers.cloudflare.com`), not an Ezkey `https://ezkey.io/problems/…` ProblemDetail.
+  Community mitigation default is **None** (request reaches origin).
 
   A Spring ProblemDetail (`type` under `https://ezkey.io/problems/`, often HTTP 400) means the
   request **reached origin** — not schema-Block evidence. Against **local**, Jackson/Bean

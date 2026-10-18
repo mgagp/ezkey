@@ -6,12 +6,12 @@ This document provides operational guidance for deploying and configuring Ezkey 
 
 **Public maturity and “what is live”:** Ezkey’s operator-facing claim is **Public alpha**; technical identity is the **git SHA**. See [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](VERSIONING_AND_DEPLOY_TRACEABILITY.md). The community/Lightsail live ledger is [`lightsail/community/DEPLOYED.md`](lightsail/community/DEPLOYED.md) (update after a successful publish).
 
-## Production security posture (docker / EXP1)
+## Production security posture (docker / community)
 
-Spring profile **`docker`** (used by EXP1 Lightsail and `clean-start --prod-safe`) enables fail-closed and rate-limit defaults:
+Spring profile **`docker`** (used by the community Lightsail host and `clean-start --prod-safe`) enables fail-closed and rate-limit defaults:
 
-| Property | Docker / EXP1 | Notes |
-|----------|---------------|-------|
+| Property | Docker / community | Notes |
+|----------|--------------------|-------|
 | `ezkey.rate-limit.enabled` | `true` | Auth API pending/respond/bind/verify (SEC-005). `docker-test` turns this off for churn tests only. |
 | `ezkey.encryption.required` | `true` | Fail startup if Tink cannot initialize (SEC-002). |
 | `ezkey.audit.integrity.required` | `true` | Fail startup if HMAC signing is inactive (SEC-008). |
@@ -23,21 +23,20 @@ See module `CONFIGURATION.md` files and [`experimental-hybrid/lightsail/.env.exa
 ### No public hostname in generic defaults
 
 Product defaults (Spring properties, generic Compose `${VAR:-…}` fallbacks, Cloudflare Admin UI
-deploy scripts) must **not** embed a named public hostname such as `exp1-*.ezkey.org` or
-`*.ezkey.online`. Local / Docker uses localhost, Compose DNS, or relative URLs. Live surfaces set
-URLs via **explicit env or overlay only**. When a feature is enabled and a required URL is
-missing, fail closed at startup (or script exit ≠ 0).
+deploy scripts) must **not** embed a named public hostname such as `*.ezkey.online`. Local /
+Docker uses localhost, Compose DNS, or relative URLs. Live surfaces set URLs via **explicit env
+or overlay only**. When a feature is enabled and a required URL is missing, fail closed at
+startup (or script exit ≠ 0).
 
 | Surface | Where operators set it |
 |---------|------------------------|
-| Community (ezkey.online) | [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../experimental-hybrid/lightsail/.env.ezkey-online.example), [`docs/lightsail/community-host.md`](lightsail/community-host.md) |
-| EXP1 lab | [`experimental-hybrid/lightsail/.env.example`](../experimental-hybrid/lightsail/.env.example) (EXP1 playbook values); repo [`Caddyfile`](../experimental-hybrid/lightsail/Caddyfile) stays EXP1-named — community installs [`Caddyfile.ezkey-online`](../experimental-hybrid/lightsail/Caddyfile.ezkey-online) |
+| Community (ezkey.online) | [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../experimental-hybrid/lightsail/.env.ezkey-online.example), [`docs/lightsail/community-host.md`](lightsail/community-host.md); community installs [`Caddyfile.ezkey-online`](../experimental-hybrid/lightsail/Caddyfile.ezkey-online) |
 | Admin UI Pages build | Root `.env` `VITE_API_BASE_URL` (required for `deploy-admin-ui-*.sh --build`); commented examples in `ezkey-admin-ui/.env.cloudflare` |
 
 Seb inventory context (community already overrides most live values): QR Auth base, evaluator
 `admin-ui-url` / `guided-tour-url`, Admin UI `VITE_API_BASE_URL`, and Caddyfile choice were the
 remaining silent footguns if an override dropped — closed in code/docs above; do not reintroduce
-EXP1 (or community) hostnames into generic defaults.
+community hostnames into generic defaults.
 
 ### Runtime profile (integrity vs base)
 
@@ -634,7 +633,7 @@ Ceiling ≈ **8 services × 20 MiB × 3 files ≈ 480 MiB** of container json lo
 
 **What the script never does:** change Compose or recreate containers; talk to remote hosts; print secret values from `--scan`; truncate logs of **running** containers; delete Postgres or named volumes; purge rotated logs outside the selected project's container IDs.
 
-**Pre-upgrade `--scan` order (community):** sync `--sync-operator-files` **without** `--remote-up` (or `scp` the hygiene script) → **immediately** re-scp `Caddyfile.ezkey-online` → remote `Caddyfile` (sync overwrites with EXP1) → `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan` → `--remote-up`.
+**Pre-upgrade `--scan` order (community):** sync `--sync-operator-files` **without** `--remote-up` (or `scp` the hygiene script) → confirm remote `Caddyfile` is still the community variant (`Caddyfile.ezkey-online` content) → `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan` → `--remote-up`.
 
 ### Post-upgrade checks (m6) — community VM `ezkey-experimental-lightsail`
 

@@ -14,7 +14,7 @@ Maintainer review concluded that **integrity cluster work** (`I-2026-0005`, `I-2
 - alerts exist for **exceptional operational events** (degradation, integrity rupture);
 - meaningful validation requires heartbeat, nightly batch, and remediation flows;
 - project is in **experimental deployment** mode — prioritize eliminating structural unknowns and
-  preserve time for **EXP1 soak** before September 2026 release target.
+  preserve time for **community soak** before September 2026 release target.
 
 ## Actions taken
 

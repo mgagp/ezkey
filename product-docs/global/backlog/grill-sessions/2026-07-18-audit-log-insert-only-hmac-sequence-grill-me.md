@@ -46,7 +46,7 @@
 | G4 | **Preserve atomicity:** allocate-id → compute-HMAC → single INSERT stay inside one `REQUIRES_NEW` transaction. Sequence gaps on rollback are acceptable for audit ids. | Analysis (non-negotiable from `TB-2026-07-16`) |
 | G5 | **HMAC canonical form unchanged:** `buildCanonicalForm` field order and semantics stay byte-for-byte identical; only *when/how* id and timestamp are obtained changes. | Analysis |
 | G6 | **App owns `created_at`:** the service sets `created_at` truncated to microseconds and inserts it explicitly, removing the post-insert `refresh`. Stored == signed. | Analysis |
-| G7 | **Greenfield migration:** fold the identity change into the Flyway baseline (dev/EXP1 recreate volume); no in-place production data migration. | Analysis (matches `I-2026-0029` G6 posture) |
+| G7 | **Greenfield migration:** fold the identity change into the Flyway baseline (dev/community recreate volume); no in-place production data migration. | Analysis (matches `I-2026-0029` G6 posture) |
 | G8 | **Explicit named sequence** created in the Flyway baseline (owned by `ezkey_migrate`), referenced by the JPA `@SequenceGenerator`; stable name, clean grants. (Resolves OQ1.) | Operator 2026-07-18 |
 | G9 | **`allocationSize = 1`** on the sequence generator: monotonic, one `nextval` per audit row, simplest to reason about. (Resolves OQ2.) | Operator 2026-07-18 |
 | G10 | **Application owns `created_at`** (truncated to microseconds, inserted explicitly); no `INSERT ... RETURNING` read-back. HA clock skew acceptable (partition-boundary microsecond only). (Resolves OQ3.) | Operator 2026-07-18 |

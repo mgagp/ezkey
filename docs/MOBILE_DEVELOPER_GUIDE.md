@@ -837,7 +837,7 @@ Stable `type` URIs for origin errors are under **`https://ezkey.io/problems/`** 
 `https://ezkey.io/problems/system/audit-chain-heartbeat-degraded`). Those are the only Problem
 Details a client should treat as Ezkey domain copy (`detail` / `title` from the API).
 
-When Auth is reached through Cloudflare (for example EXP1 `https://exp1-auth-api.ezkey.org`), a
+When Auth is reached through Cloudflare (for example community `https://auth-api.ezkey.online`), a
 schema-validation **Block** or other WAF rule can return **before** origin. Clients that send
 `Accept: application/json` or `application/problem+json` then receive Cloudflare's own RFC 9457
 JSON (HTTP 403, Error 1020, `cloudflare_error: true`, `type` under

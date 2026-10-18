@@ -2,7 +2,7 @@
 
 **Status:** `ready to implement` in the **mobile** workspace.
 **Keyword:** hygiene / client honesty — not a methodology `I-*` / `TB-*` unless the operator asks.
-**Origin:** EXP1 Cloudflare API Shield schema-validation check (2026-08-23). Operator confirmed:
+**Origin:** Cloudflare API Shield schema-validation check (2026-08-23). Operator confirmed:
 no Cloudflare-specific mobile UX; categorize errors and show Auth `detail` only for the Ezkey
 problem namespace.
 
@@ -23,7 +23,7 @@ type is under the Ezkey namespace.
 Auth API origin errors are RFC 9457 with type under https://ezkey.io/problems/ (Auth catalog
 https://ezkey.io/problems/auth/… plus https://ezkey.io/problems/system/audit-chain-heartbeat-degraded).
 
-When Auth is reached through Cloudflare (EXP1 https://exp1-auth-api.ezkey.org), a schema-validation
+When Auth is reached through Cloudflare (https://auth-api.ezkey.online), a schema-validation
 Block or other WAF rule can return BEFORE origin. Clients that send Accept: application/json or
 application/problem+json get Cloudflare's own RFC 9457 JSON: HTTP 403, Error 1020,
 cloudflare_error: true, type under https://developers.cloudflare.com/…, retryable: false.
@@ -111,7 +111,7 @@ Do not retry on 403/1020. Do not change Auth API, OpenAPI specs, or Bruno.
 - Demo Device Java UI.
 - Mapping every AuthApiProblemCatalog type to a unique mobile string.
 - Showing Ray ID in production.
-- Signed instance-info EXP1 deploy.
+- Signed instance-info community deploy.
 ```
 
 ---
@@ -123,7 +123,7 @@ Do not retry on 403/1020. Do not change Auth API, OpenAPI specs, or Bruno.
 3. Schema-invalid 1020 is not a path a correct mobile client should hit; generic copy is enough.
 4. Implement in the dedicated mobile workspace, not as part of the Auth Cloudflare schema TB.
 
-## Evidence (EXP1, 2026-08-23)
+## Evidence (community Cloudflare, 2026-08-23)
 
 Origin 400 (schema-valid, failed pending bind) vs Cloudflare 403/1020 (schema-invalid bind)
 recorded in `docs/cloudflare/auth-api-schema-validation.md` § Reading responses.

@@ -303,7 +303,7 @@ class AuditChainVerificationServiceTest {
 
   @Test
   void verifyChain_subSecondFromExcludesFirstGridCheckpoint_reportsLeadingGap() {
-    // ADR-0008 / EXP1 pitfall: wall-clock from with nanos excludes windowStart == exact grid.
+    // ADR-0008 pitfall: wall-clock from with nanos excludes windowStart == exact grid.
     AuditLog entry = buildSignedEntry(1L);
     AuditChainCheckpoint first = buildGenesisCheckpoint(List.of(entry));
     AuditChainCheckpoint second =

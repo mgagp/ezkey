@@ -46,10 +46,10 @@ docs {
   validity, IP whitelist, or enrollment ownership. Dummy Basic credentials are enough for the
   edge check.
 
-  **Use with environment `exp1`.** `base_url_integration_api` is
-  `https://exp1-integration-api.ezkey.org`.
+  **Use with environment `community`.** `base_url_integration_api` is
+  `https://integration-api.ezkey.online`.
 
-  On EXP1 Cloudflare schema validation **Block**, expect HTTP **403** Error **1020** (API Shield
+  On Cloudflare schema validation **Block**, expect HTTP **403** Error **1020** (API Shield
   / WAF). Bruno sends `Accept` JSON / problem+json, so the body is Cloudflare's RFC 9457 JSON
   (`cloudflare_error: true`, `error_code: 1020`, `ray_id`, `type` under
   `developers.cloudflare.com`), not an Ezkey `https://ezkey.io/problems/…` ProblemDetail.

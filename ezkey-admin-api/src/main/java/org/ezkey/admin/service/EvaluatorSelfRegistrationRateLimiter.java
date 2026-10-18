@@ -23,7 +23,7 @@ import org.springframework.stereotype.Service;
 /**
  * Applies global daily and per-IP success limits for evaluator self-registration.
  *
- * <p>In-memory counters are acceptable for single-node EXP1 / community preview instances.
+ * <p>In-memory counters are acceptable for single-node community preview instances.
  */
 @Service
 public class EvaluatorSelfRegistrationRateLimiter {

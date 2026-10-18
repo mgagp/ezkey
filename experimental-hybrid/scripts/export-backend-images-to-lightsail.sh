@@ -2,9 +2,8 @@
 #
 # Export Ezkey backend images (docker save), copy to Lightsail (scp), docker load on the VM.
 #
-# SSH host: no silent default (#812). Pass --target community|exp1 or set LIGHTSAIL_SSH_HOST.
+# SSH host: no silent default (#812). Pass --target community or set LIGHTSAIL_SSH_HOST.
 #   --target community  →  ezkey-online  (sync uses Caddyfile.ezkey-online → remote Caddyfile)
-#   --target exp1       →  ezkey         (sync uses EXP1 Caddyfile)
 #
 # Prerequisites: built images (skipped in --dry-run); ssh/scp to the resolved host.
 #
@@ -19,7 +18,7 @@
 #
 # Usage (from repository root):
 #   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --dry-run
-#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target exp1 --apis-only
+#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --apis-only
 #   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --sync-operator-files --remote-up
 #   LIGHTSAIL_SSH_HOST=ezkey-online ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --dry-run
 #
@@ -54,12 +53,11 @@ usage() {
 Export Ezkey backend images → Lightsail: docker save, scp, remote docker load.
 
 Usage (from repository root):
-  ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community|exp1 [options]
+  ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community [options]
   LIGHTSAIL_SSH_HOST=ezkey-online ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh [options]
 
 SSH target (required — no silent default; #812):
   --target community   SSH Host ${LIGHTSAIL_SSH_HOST_COMMUNITY}; sync uses Caddyfile.ezkey-online
-  --target exp1        SSH Host ${LIGHTSAIL_SSH_HOST_EXP1}; sync uses EXP1 Caddyfile
   or set LIGHTSAIL_SSH_HOST explicitly (known aliases infer target for Caddyfile sync)
 
 Options:
@@ -92,7 +90,7 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --target)
-      [[ $# -ge 2 ]] || lightsail_die "--target requires community|exp1"
+      [[ $# -ge 2 ]] || lightsail_die "--target requires community"
       DECLARED_TARGET="$2"
       shift 2
       continue
@@ -171,7 +169,7 @@ sync_host_mounts() {
 }
 
 # Sync docker-compose.yml, optional javamelody overlay, target-aware Caddyfile → remote Caddyfile,
-# and clean-start.sh. Community never receives the EXP1 Caddyfile (#812).
+# and clean-start.sh. Community sync uses Caddyfile.ezkey-online (#812).
 sync_operator_files() {
   local label="$1"
   local caddy_src

@@ -39,7 +39,7 @@ Against the operable-release compass for September 2026:
 - Wave A: closed.
 - Wave B (integrity cluster R1): closed.
 - Wave C (operator UI residuals tied to integrity): closed.
-- Wave D (EXP1 soak and simulation): ongoing.
+- Wave D (community soak and simulation): ongoing.
 
 Operational interpretation:
 
@@ -121,7 +121,7 @@ Value is therefore ranked by:
 Goal: secure operable-release confidence with the smallest high-impact set.
 
 - Finalize and validate I-2026-07-10-nightly-integrity-boundary-false-positives.
-- Execute Wave D discipline: EXP1 soak + scenario simulation evidence capture.
+- Execute Wave D discipline: community soak + scenario simulation evidence capture.
 - Pull one realistic first slice of I-2026-0021 if capacity allows (audit-log rights hardening first).
 - Keep release scope tight: no broad feature expansion.
 

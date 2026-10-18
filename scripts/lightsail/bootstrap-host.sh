@@ -44,7 +44,6 @@ It does NOT:
 
 SSH target (required — no silent default; #812):
   --target community   SSH Host ${LIGHTSAIL_SSH_HOST_COMMUNITY}
-  --target exp1        SSH Host ${LIGHTSAIL_SSH_HOST_EXP1} (discouraged for this community bootstrap path)
   --host ALIAS         Explicit OpenSSH Host / hostname (or set LIGHTSAIL_SSH_HOST)
 
 Options:
@@ -54,7 +53,7 @@ Options:
   --print-next-steps      After success (or with --dry-run), print image-export handoff
   -h, --help              Show this help
 
-SSH config tip (workstation ~/.ssh/config) — keep EXP1 on Host ezkey untouched:
+SSH config tip (workstation ~/.ssh/config):
 
   Host ezkey-online
     HostName <public-ip-from-create-instance>
@@ -72,7 +71,7 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --target)
-      [[ $# -ge 2 ]] || lightsail_die "--target requires community|exp1"
+      [[ $# -ge 2 ]] || lightsail_die "--target requires community"
       DECLARED_TARGET="$2"
       shift 2
       ;;
@@ -116,10 +115,6 @@ if [[ -n "${HOST_FLAG}" ]]; then
 fi
 lightsail_resolve_ssh_target "${DECLARED_TARGET}"
 SSH_HOST="${LIGHTSAIL_SSH_HOST}"
-
-if [[ "${LIGHTSAIL_TARGET:-}" == "exp1" ]]; then
-  echo "warning: bootstrapping EXP1 alias (${LIGHTSAIL_SSH_HOST_EXP1}). Prefer --target community for ezkey.online." >&2
-fi
 
 REMOTE_SCRIPT=$(
   cat <<'REMOTE'

@@ -4,13 +4,13 @@
 # optional no-wipe sync of Caddy/Compose to the VM and remote docker compose up (optional),
 # remote clean-start (optional, destructive), deploy Admin UI to Cloudflare (optional).
 #
-# SSH host: no silent default (#812). Pass --target community|exp1 or set LIGHTSAIL_SSH_HOST
+# SSH host: no silent default (#812). Pass --target community or set LIGHTSAIL_SSH_HOST
 # before any --export / rolling / full path that talks to a VM.
 #
 # Usage (from repository root, Git Bash):
-#   ./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target exp1 rolling
+#   ./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target community rolling
 #   ./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target community rolling --dry-run
-#   ./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target exp1 full
+#   ./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target community full
 #   ./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --help
 #
 # Subcommand is required: full | rolling (or pass explicit --build/--export/… flags).
@@ -27,13 +27,13 @@
 #
 # Environment:
 #   LIGHTSAIL_SSH_HOST   explicit OpenSSH Host alias (alternative to --target)
-#   LIGHTSAIL_TARGET     community|exp1 (optional if inferred from host or --target)
+#   LIGHTSAIL_TARGET     community (optional if inferred from host or --target)
 #   EZKEY_CONFIRM_WIPE   must be ezkey-online for community full / --clean-start
 #   EXPORT_DIR           passed through to export script (default: docker/export)
 #   OCI_IMAGE_REVISION   git SHA stamped as org.opencontainers.image.revision on compose builds
 #                        (#814; defaults to `git rev-parse HEAD` when unset)
 #   Root .env            CLOUDFLARE_* and VITE_API_BASE_URL for UI deploy (see scripts/cloudflare/*.sh)
-#   PREVIEW_BRANCH       for preview UI deploy (default: timestamped); set e.g. exp1-admin-ui-preview
+#   PREVIEW_BRANCH       for preview UI deploy (default: timestamped); set e.g. community-admin-ui-preview
 #   CLOUDFLARE_PAGES_PROJECT  default ezkey-admin-ui
 #
 set -euo pipefail
@@ -62,11 +62,10 @@ DECLARED_TARGET=""
 
 usage() {
   cat <<EOF
-Usage: $0 [--target community|exp1] [full|rolling] [options]
+Usage: $0 [--target community] [full|rolling] [options]
 
 SSH target (required when exporting — no silent default; #812):
   --target community   SSH Host ${LIGHTSAIL_SSH_HOST_COMMUNITY}; community Caddyfile on sync
-  --target exp1        SSH Host ${LIGHTSAIL_SSH_HOST_EXP1}; EXP1 Caddyfile on sync
   or set LIGHTSAIL_SSH_HOST explicitly
 
   full             Destructive preset: --build --export --clean-start --remove-remote-tars
@@ -78,8 +77,8 @@ SSH target (required when exporting — no silent default; #812):
   (no subcommand)  Prints this help and exits (does not imply full).
 
   After "full" or "rolling", option flags can override or add, e.g.:
-    $0 --target exp1 full --ui-preview
-    $0 --target exp1 rolling --include-demo-acme
+    $0 --target community full --ui-preview
+    $0 --target community rolling --include-demo-acme
     $0 --target community --export --sync-operator-files --remote-up --dry-run
 
   --build            Run docker compose -f docker/docker-compose.yml build (see preset / flags).
@@ -103,13 +102,13 @@ Preset "full" enables:
   --build --export --clean-start --remove-remote-tars --deploy-ui --ui-production --ui-build
 
 Examples:
-  $0 --target exp1 full
-  $0 --target exp1 rolling
+  $0 --target community full
+  $0 --target community rolling
   $0 --target community rolling --dry-run
-  $0 --target exp1 rolling --include-demo-acme
+  $0 --target community rolling --include-demo-acme
   $0 --target community --build --export --sync-operator-files --remote-up --remove-remote-tars
   EZKEY_CONFIRM_WIPE=${LIGHTSAIL_SSH_HOST_COMMUNITY} $0 --target community full
-  $0 --target exp1 --export --clean-start
+  $0 --target community --export --clean-start
   $0 --deploy-ui --ui-build
 EOF
 }
@@ -124,7 +123,7 @@ ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --target)
-      [[ $# -ge 2 ]] || lightsail_die "--target requires community|exp1"
+      [[ $# -ge 2 ]] || lightsail_die "--target requires community"
       DECLARED_TARGET="$2"
       shift 2
       ;;

@@ -78,7 +78,7 @@ Why this posture is used now:
 
 - it is stronger and more realistic than relying on weak biometrics
 - it avoids making the feature unavailable on phones where strong biometric is not configured but a device credential is present
-- it keeps the UX practical for EXP1 while still treating both approval confirmation and security-setting downgrade as security-sensitive actions
+- it keeps the UX practical for early adopters while still treating both approval confirmation and security-setting downgrade as security-sensitive actions
 
 Documentation must therefore avoid claiming `biometric-only` behavior unless a future implementation explicitly removes the device-credential fallback.
 

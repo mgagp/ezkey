@@ -417,9 +417,9 @@ See also: enrollment QR JSON and `authUrl` (same property as `ezkey.qr.auth-base
 
 **Base path:** `POST http://localhost:9080/api/v1/public/evaluator-signup` (no `Authorization` header).
 
-Available only when `ezkey.evaluator.self-registration.enabled=true` (intended for EXP1 preview). When disabled, returns **404 Not Found** (no response body enumeration).
+Available only when `ezkey.evaluator.self-registration.enabled=true` (intended for the community alpha preview). When disabled, returns **404 Not Found** (no response body enumeration).
 
-Creates an **empty tenant** and a **pending Tenant Admin** with **`ACTIVATION_CODE`** onboarding. Does **not** create integrations, API keys, or enrollments — evaluators follow the [Exp1 guided tour](https://ezkey.org/exp1-guided-tour.html) from step 1.
+Creates an **empty tenant** and a **pending Tenant Admin** with **`ACTIVATION_CODE`** onboarding. Does **not** create integrations, API keys, or enrollments — evaluators follow the [community guided tour](https://ezkey.org/community-guided-tour.html) from step 1.
 
 **Rate limits (defaults):** global **5 successful signups per UTC day**; **3 successful signups per client IP per 24h**. Failures return **429** with a generic capacity message.
 
@@ -441,8 +441,8 @@ Creates an **empty tenant** and a **pending Tenant Admin** with **`ACTIVATION_CO
 {
   "activationCode": "ABCD-1234",
   "activationCodeExpiresAt": "2026-05-30T12:00:00Z",
-  "adminUiUrl": "https://exp1-admin-ui.ezkey.org",
-  "guidedTourUrl": "https://ezkey.org/exp1-guided-tour.html",
+  "adminUiUrl": "https://admin-ui.ezkey.online",
+  "guidedTourUrl": "https://ezkey.org/community-guided-tour.html",
   "tenantLabel": "eval-a1b2c3d4"
 }
 ```

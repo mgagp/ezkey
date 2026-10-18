@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Controller: PublicEvaluatorSignupController
- * Description: Unauthenticated evaluator self-registration for EXP1 preview instances.
+ * Description: Unauthenticated evaluator self-registration for preview instances.
  */
 
 package org.ezkey.admin.controller;
@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Public anonymous evaluator signup for experimental preview instances (EXP1).
+ * Public anonymous evaluator signup for preview instances.
  *
  * <p>Responds with HTTP 404 when the installation-scoped feature flag is disabled.
  */

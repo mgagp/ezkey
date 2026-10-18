@@ -25,7 +25,7 @@ Historical September operable-release compass (Waves A–C + freeze D narrative 
 
 **Earlier summary (2026-08-25 / 2026-09-22):** Wave B integrity cluster R1 **closed** (GitHub #269).
 Wave C operator UI residuals **closed**. Wave D was an **attention freeze**, not a backlog item.
-Public posture moved EXP1 → alpha + community on **ezkey.online** (site PR #609) — see
+Public posture moved the former experimental lab → alpha + community on **ezkey.online** (site PR #609) — see
 [`V-2026-09-22-exp1-to-ezkey-online-alpha`](../vision/V-2026-09-22-exp1-to-ezkey-online-alpha.md).
 Canon sync 2026-08-24/25 closed delivered-but-stale index rows. Parallel mobile Play track
 ([`V-2026-08-02-mobile-official-play-release-posture`](../vision/V-2026-08-02-mobile-official-play-release-posture.md))
@@ -39,7 +39,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-08-24-java-melody-collector` | JavaMelody collector (opt-in Docker, baseline + HA) | `active` | `P2` | `infra`, `admin-api`, `auth-api`, `integration-api`, `docs` | `2026-08-24` |
 | `I-2026-0001` | Per-enrollment local authentication policy for mobile respond | `incubating` | `P1` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-07-26` |
 | `I-2026-0003` | High-availability Docker stack: parity review with `cleanstart.sh` | `incubating` | `P2` | `infra`, `admin-api`, `auth-api`, `integration-api` | `2026-05-19` |
-| `I-2026-08-29-admin-api-remove-m2m-hatch` | Remove the Admin API API-key M2M hatch | `done` | `P1` | `admin-api`, `integration-api`, `demo-acme`, `infra (EXP1)`, `docs`, `ezkey-tests` | `2026-08-29` |
+| `I-2026-08-29-admin-api-remove-m2m-hatch` | Remove the Admin API API-key M2M hatch | `done` | `P1` | `admin-api`, `integration-api`, `demo-acme`, `infra (community)`, `docs`, `ezkey-tests` | `2026-08-29` |
 | `I-2026-0004` | Admin API: configurable acceptance of API-key authentication | `promoted` | `P1` | `admin-api`, `sdk-java`, `docs` | `2026-08-29` |
 | `I-2026-0010` | Phone-to-phone enrollment transfer ceremony | `ready` | `P2` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-05-24` |
 | `I-2026-0011` | Bootstrap clean-start: activation-code mode as default | `incubating` | `P1` | `admin-api`, `infra`, `bootstrap`, `docs` | `2026-05-19` |
@@ -56,7 +56,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-24` |
 | `I-2026-0025` | Auth API protocol capability versioning | `incubating` | `P2` | `auth-api`, `mobile`, `admin-api`, `docs` | `2026-05-24` |
 | `I-2026-0027` | iOS app implementation — fresh native rebuild | `ready` | `P1` | `mobile` | `2026-05-24` |
-| `I-2026-05-23-exp1-anonymous-evaluator-onboarding` | EXP1 anonymous evaluator onboarding | `active` | `P2` | `admin-api`, `admin-ui`, `ezkey-org`, `infra (EXP1)`, `docs` | `2026-05-23` |
+| `I-2026-05-23-exp1-anonymous-evaluator-onboarding` | EXP1 anonymous evaluator onboarding | `active` | `P2` | `admin-api`, `admin-ui`, `ezkey-org`, `infra (community)`, `docs` | `2026-05-23` |
 | `I-2026-05-31-mobile-android-stack-followups` | Mobile Android stack follow-ups (post-#177) | `incubating` | `P2` | `mobile`, `android`, `ezkey-tests` | `2026-05-31` |
 | `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation` | OpenAPI spec lifecycle and Cloudflare validation | `active` | `P1` | `auth-api`, `admin-api`, `integration-api`, `specs`, `scripts`, `postman`, `cloudflare`, `sdk`, `mobile` | `2026-08-25` |
 | `I-2026-06-03-admin-api-openapi-intra-tag-journey-order` | Admin API OpenAPI intra-tag journey order | `captured` | `P3` | `admin-api`, `docs`, `specs`, `sites/ezkey-org` | `2026-06-02` |
@@ -112,8 +112,8 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 |----|-------|-------------|-------|
 | `admin-ui-audit-integrity-hard-split-intention` | Audit trail vs Integrity hard split (cut 1) | `2026-09-18` | Compass (no `I-*`/`TB-*`). Docs PR `#562`; implementation PR `#563`. `/integrity` first-class GA page. Cut 2 phase A (density) **delivered** PR `#588`: [`admin-ui-integrity-cut2-phase-a.md`](../admin-ui-integrity-cut2-phase-a.md) + `WALK-2026-09-21-integrity-cut2-phase-a`. Cut 2 phase B+B′ **intention-locked**: [`admin-ui-integrity-cut2-phase-b.md`](../admin-ui-integrity-cut2-phase-b.md) + `WALK-2026-09-21-integrity-cut2-phase-b`. Cut 3 (last verdict, micro-dashboard, verify cap) **intention-locked** (OQ1–OQ3 APPROVED Marc 2026-10-12; OQ4 open for PR 1 design): [`admin-ui-integrity-cut3.md`](../admin-ui-integrity-cut3.md) + `WALK-2026-10-09-integrity-cut3` (#692/#743 #696 #741; D1 supersedes phase-A auto-verify-on-mount; `max-window-days` supersedes provisional 193 h). |
 | `TB-2026-08-09-mobile-signed-instance-info` | Signed enrolled instance-info | `2026-08-10` | PR `#445`. Auth `POST /enrollments/instance-info` + mobile Ed25519 verify. Parent `I-2026-08-09` stays `active` for honesty UI + branding-change confirmation. Canon status synced 2026-08-25 after index lag. |
-| `TB-2026-08-23-integration-api-cloudflare-schema` | Integration API Cloudflare schema (EXP1) | `2026-08-23` | PR `#479`. EXP1 Integration schema upload; Set action **Block** (maintainer-only). Parent `I-2026-06-02` stays `active` for Admin Cloudflare. Canon status synced 2026-08-25. |
-| `TB-2026-06-02-auth-api-cloudflare-schema-first-slice` | Auth API Cloudflare schema-first slice | `2026-08-23` | PR `#478`. Host-neutral Auth spec + EXP1 schema; Set action **Block** (maintainer-only). Parent `I-2026-06-02` stays `active`. Canon status synced 2026-08-25. |
+| `TB-2026-08-23-integration-api-cloudflare-schema` | Integration API Cloudflare schema (community) | `2026-08-23` | PR `#479`. Community Integration schema upload; Set action **Block** (maintainer-only). Parent `I-2026-06-02` stays `active` for Admin Cloudflare. Canon status synced 2026-08-25. |
+| `TB-2026-06-02-auth-api-cloudflare-schema-first-slice` | Auth API Cloudflare schema-first slice | `2026-08-23` | PR `#478`. Host-neutral Auth spec + community schema; Set action **Block** (maintainer-only). Parent `I-2026-06-02` stays `active`. Canon status synced 2026-08-25. |
 | `I-2026-07-17-admin-enrollment-reset-missing-authorization-header-500` | Admin enrollment reset: missing Authorization header returns 500 instead of 401 | `2026-07-19` | PR `#388`. `MissingRequestHeaderException` → RFC 9457 401. Delivered on `I-*` (no `TB-*`). Canon status synced 2026-08-24 after merge closeout gap. Pentest LGbal6. |
 | `I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement` | Enforce challenge presence on `passwordless-wait` | `2026-06-26` | PR `#255` / `#251` / TB `TB-2026-06-23`. SEC-001. Canon status synced 2026-08-24 after merge closeout gap. Residual S3 replay after ACCEPTED stays out of scope. |
 | `I-2026-07-10-nightly-integrity-boundary-false-positives` | Nightly integrity: boundary false positives (grid align + alert honesty) | `2026-07-11` | PR `#318` / `#315`. Delivered on `I-*` (no `TB-*`). Canon status synced 2026-08-02 after merge closeout gap. ADR-0009 + design-pack pitfall. |
@@ -147,7 +147,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-0016` | Methodology hygiene follow-ups (Tier 2 from 2026-05-08 nomenclature pass) | `2026-05-24` | Closed Tier 2 items E–K: decision recording scopes, phase/component tags, superseded links, optional automation follow-up, corpus completeness audit checklist. Decision record `2026-05-24-artifact-tagging-canonization-conventions.md`. |
 | `I-2026-0008` | Rate-limit baseline analysis and generalization | `2026-05-24` | Policy deliverable [`rate-limit-baseline-policy.md`](../rate-limit-baseline-policy.md): four families (device / integration / admin ops / login); honest no-single-baseline outcome; CONFIGURATION cross-links; no code unification R1. Closes Blitz D1 with registry downscope. |
 | `I-2026-05-24-admin-ui-vite8-upgrade` | Admin UI Vite 8 upgrade | `2026-05-24` | Delivered via PR #154 / TB-2026-05-24: Vite 8, Vitest 4, Tailwind 4.2.2+, plugin-react v6; Rolldown demo DCE fix in `demo-mode.ts`. First Lane A toolchain chore with GitHub issue workflow. |
-| `I-2026-0026` | OpenAPI exposure and API portal posture | `2026-05-22` | Delivered through `TB-2026-0003`: public API portal on `ezkey.org`, `ReDoc CE` pinning, `Integration API` spec publication path, and first prod-like raw-doc hardening on `EXP1`. |
+| `I-2026-0026` | OpenAPI exposure and API portal posture | `2026-05-22` | Delivered through `TB-2026-0003`: public API portal on `ezkey.org`, `ReDoc CE` pinning, `Integration API` spec publication path, and first prod-like raw-doc hardening on the community host. |
 
 ## Parked
 

@@ -25,7 +25,7 @@
 | **S5** | Alerts vs Integrity | Alerts = signal list; Integrity = investigation + remediation. Do not merge. (Alex) |
 | **S6** | Nav label | **Integrity** (G4). Seal/archive/confirm = remediation under that screen. |
 | **S7** | Proof model | **One proof, multiple views** on the same `audit_log`. No second event journal. Complementary tables = operational indexes. Conciliation = explanation not rewrite. (Christophe) |
-| **S8** | Delivery posture | **Fully greenfield** — private repo, no prod installs, EXP1 disposable. No migration / redirect / dual-read / transition shims. (Marc 2026-09-17) |
+| **S8** | Delivery posture | **Fully greenfield** — private repo, no prod installs, former experimental lab disposable. No migration / redirect / dual-read / transition shims. (Marc 2026-09-17) |
 | **G1** | Nav | New GA-only sidebar item; `/audit-logs` trail for all. |
 | **G2** | Remediation | Alerts Resolve → Integrity (single atelier). |
 | **G3** | Investigation | Integrity for investigate/verify/resolve; trail only for around-event; same `audit_log`. (Christophe-aligned) |

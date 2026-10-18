@@ -1,4 +1,4 @@
-# Vision Note — `V-2026-05-23` Anonymous evaluator self-registration (EXP1)
+# Vision Note — `V-2026-05-23` Anonymous evaluator self-registration (community)
 
 ## Metadata
 
@@ -8,16 +8,19 @@
 - **Updated at:** `2026-05-23`
 - **Captured by:** Marc
 
+> **Historical note (2026-10):** Written for the former experimental lab evaluator instance; live
+> posture is the **ezkey.online** community host. Site paths below point at community pages.
+
 ## Intent
 
-Offer a **low-friction, anonymous onboarding path** on the **EXP1 evaluator instance** so
+Offer a **low-friction, anonymous onboarding path** on the **community evaluator instance** so
 technically curious people can self-provision a **tenant-scoped Tenant Admin** and receive an
 **activation code** without sending email first — while keeping abuse controls proportional to
-EXP1's current low visibility and limited capacity.
+the community host's low visibility and limited capacity.
 
 ## Motivation
 
-The current EXP1 access model on [ezkey.org](https://ezkey.org/experimental-preview-exp1.html)
+The community access model on [ezkey.org](https://ezkey.org/) (evaluator / community pages)
 relies on **invitation or email request** to `info@ezkey.org`, manual review, and delivery of an
 activation code by email (typically within about two business days). With **no broad public
 advertising**, inbound interest has been **effectively zero** — which was expected.
@@ -33,10 +36,10 @@ for a deliberately small, experimental deployment.
 ## Potential impact
 
 - **Product phases:** `P2-functional-mode` (evaluator funnel), `F-public-site` (site copy and CTA),
-  future `F-provisioning-procedures` (operator runbook for EXP1 provisioning modes).
+  future `F-provisioning-procedures` (operator runbook for community provisioning modes).
 - **Components:** `admin-api` (new unauthenticated or public provisioning boundary),
   `admin-ui` or a **dedicated lightweight portal** (UX TBD), `ezkey.org` (second access path
-  alongside email), EXP1 **configuration / edge** (rate limits, feature flag, observability).
+  alongside email), community host **configuration / edge** (rate limits, feature flag, observability).
 - **User segments:** anonymous technical evaluators; existing invited / email-reviewed evaluators
   unchanged.
 
@@ -44,7 +47,7 @@ for a deliberately small, experimental deployment.
 
 ### Evidence
 
-- EXP1 preview page documents email-based access only; activation-code onboarding is already the
+- community preview page documents email-based access only; activation-code onboarding is already the
   documented evaluator path once access is granted.
 - Platform already supports **two-step admin onboarding** via `ACTIVATION_CODE` mode on admin
   creation (`POST /api/v1/admins/tenant` today requires an authenticated admin).
@@ -61,7 +64,7 @@ for a deliberately small, experimental deployment.
 
 ### Constraints
 
-- EXP1 is **prod-like** for several exposure decisions (see `I-2026-0026`, `openapi-exposure-matrix.md`).
+- the community host is **prod-like** for several exposure decisions (see `I-2026-0026`, `openapi-exposure-matrix.md`).
 - Must not weaken production-grade tenant/admin lifecycle semantics; anonymous provisioning is a
   **controlled exception** scoped to an installation profile, not a platform default.
 - Repository and broader promotion remain intentionally limited until later milestones.
@@ -72,7 +75,7 @@ Three plausible surfaces for the first cut — decision deferred to `I-*` triage
 
 1. **Dedicated evaluator signup portal** (static page on `ezkey.org` calling a narrow Admin API
    endpoint, or a minimal standalone UI) — clearest separation from authenticated Admin UI.
-2. **Admin UI anonymous route** (e.g. `/signup` on EXP1 Admin UI) — fewer moving parts, but mixes
+2. **Admin UI anonymous route** (e.g. `/signup` on the community host Admin UI) — fewer moving parts, but mixes
    evaluator funnel with operator product chrome.
 3. **API-only endpoint** documented for integrators — insufficient alone for the trust/friction
    problem; likely needs a human-facing portal regardless.
@@ -87,12 +90,12 @@ installation-scoped feature flag.
 | -------- | ------------- |
 | `I-2026-0011` Bootstrap activation-code default | Adjacent — platform bootstrap posture; not evaluator self-registration |
 | `I-2026-0026` / `V-2026-0014` API portal | Adjacent — public API **documentation** for evaluators, not access provisioning |
-| `F-provisioning-procedures` | Complementary — formal operator procedures; this vision adds an EXP1-specific self-service mode |
-| EXP1 email request flow on ezkey.org | **Coexists** — email path remains for reviewed access; anonymous path is an additional lane |
+| `F-provisioning-procedures` | Complementary — formal operator procedures; this vision adds a community-specific self-service mode |
+| community email request flow on ezkey.org | **Coexists** — email path remains for reviewed access; anonymous path is an additional lane |
 
 ## Non-goals (initial)
 
-- Open self-registration on non-EXP1 installations by default.
+- Open self-registration on non-community installations by default.
 - Replacing Global Admin bootstrap or clean-start Docker ceremonies.
 - Full anti-abuse program (CAPTCHA farms, payment verification, KYC, invite codes).
 - Guarantee of perpetual anonymous tenants (retention / cleanup policy is a separate decision).
@@ -101,15 +104,15 @@ installation-scoped feature flag.
 
 Promote to backlog execution when:
 
-1. EXP1 operator accepts **coexistence** of email-reviewed and anonymous paths with clear public copy.
+1. community operator accepts **coexistence** of email-reviewed and anonymous paths with clear public copy.
 2. Abuse posture (daily cap, IP throttle, operator visibility) is agreed at a proportionate level.
 3. Surface choice (portal vs Admin UI route) is narrowed to one first cut.
 4. Lifecycle questions are answered: tenant naming, default demo integration, optional auto-expiry.
 
 ## Related documents
 
-- [experimental-preview-exp1.html](../../../sites/ezkey-org/experimental-preview-exp1.html)
-- [exp1-guided-tour.html](../../../sites/ezkey-org/exp1-guided-tour.html)
+- [community-guided-tour.html](../../../sites/ezkey-org/community-guided-tour.html)
+- Community evaluator pages on ezkey.org (retired experimental-preview lab URLs redirected)
 - [ENDPOINT.md](../../../docs/ENDPOINT.md) — tenant and admin provisioning
 - [LIFECYCLE_GOVERNANCE.md](../../../docs/LIFECYCLE_GOVERNANCE.md)
 - `I-2026-05-23-exp1-anonymous-evaluator-onboarding.md` — backlog seed

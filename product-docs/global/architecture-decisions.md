@@ -461,7 +461,7 @@ Cryptographic formats, storage modes (`FILE` / `DATABASE` / `HYBRID`), and
 ### Context
 
 Wave B shipped a two-layer integrity model: rolling **attach** (5-minute checkpoints) and nightly
-**detect** (retroactive HMAC + chain verification). On EXP1, the nightly batch raised daily CRITICAL
+**detect** (retroactive HMAC + chain verification). On the community host, the nightly batch raised daily CRITICAL
 `AUDIT_INTEGRITY_RUPTURE` alerts with zero entry and zero chain crypto violations. Investigation
 showed the detective window used wall-clock `now()` (sub-second precision) while checkpoints sit on
 exact grid boundaries, so `findByWindowRange` excluded the first aligned checkpoint and reported a
@@ -501,7 +501,7 @@ that **operator-facing rupture alerts must distinguish coverage findings from cr
   integrity jobs inherit an explicit time-base rule.
 - **Negative.** Slightly less "up to the millisecond" coverage at the trailing edge of the nightly
   window (by design — that edge is not yet a sealed checkpoint).
-- **Neutral.** Historical false-positive OPEN alerts on EXP1 may need manual resolve.
+- **Neutral.** Historical false-positive OPEN alerts on the community host may need manual resolve.
 
 ### Impact
 
@@ -516,7 +516,7 @@ that **operator-facing rupture alerts must distinguish coverage findings from cr
 
 - Unit: sub-second window end does not produce leading undeclared gap on a contiguous checkpoint grid.
 - Regression: real interior gap and digest mismatch still raise/touch `AUDIT_INTEGRITY_RUPTURE`.
-- EXP1: after deploy, next nightly run leaves no new zero-violation rupture alert.
+- community host: after deploy, next nightly run leaves no new zero-violation rupture alert.
 - **Execution:** PR `#318` / issue `#315` merged and closed 2026-07-11; backlog idea
   `I-2026-07-10-nightly-integrity-boundary-false-positives` marked `done` (canon synced 2026-08-02).
 

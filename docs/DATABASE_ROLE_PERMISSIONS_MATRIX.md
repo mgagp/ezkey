@@ -124,7 +124,7 @@ Grants on parents `ezkey_audit_log` and `ezkey_auth_attempt` apply to partitions
 
 ## Operational notes
 
-- **Clean-start / EXP1:** recreate `postgres-data` volume so init roles run; then migrate → apply-grants → APIs.
+- **Clean-start / community:** recreate `postgres-data` volume so init roles run; then migrate → apply-grants → APIs.
 - **Local IDE:** run `scripts/db/create-roles.sh` then migrate as `ezkey_migrate` then `scripts/db/apply-grants.sh`.
 - **Passwords:** `EZKEY_DB_MIGRATE_PASSWORD`, `EZKEY_DB_ADMIN_PASSWORD`, `EZKEY_DB_AUTH_PASSWORD`, `EZKEY_DB_INTEGRATION_PASSWORD` (see `docker/.env.example`).
 - **Monitoring / Grafana:** may continue to use `postgres` or a future read-only role (not in this matrix).

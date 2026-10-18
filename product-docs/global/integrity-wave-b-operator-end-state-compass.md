@@ -61,7 +61,7 @@ operable** handling of audit log integrity at **two cryptographic layers**:
 | **C9** | Snooze | Deferred |
 | **Wave C** | `I-2026-0028` P3 Alerts list polish | **Done** (historical Wave C) |
 | **Wave C** | Audit chain checkpoints matrix row | **Done** (historical Wave C) |
-| **Community watch** | Live community host (ezkey.online; historical EXP1); human observation | Not a remaining wave (Wave D closed 2026-08-25 as attention freeze) |
+| **Community watch** | Live community host (ezkey.online); human observation | Not a remaining wave (Wave D closed 2026-08-25 as attention freeze) |
 
 ---
 

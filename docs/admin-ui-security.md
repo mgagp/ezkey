@@ -18,7 +18,7 @@ This document implements the operational guidance from the security hardening pl
 
 | Mechanism | Detail |
 |-----------|--------|
-| **Storage** | **No secret in JS.** `sessionStorage` holds only **metadata** (username, `adminType`, `expiresAt`, ids). The opaque token is in an **HttpOnly** cookie on the **API host** (host-only, e.g. `exp1-admin-api.ezkey.org`). |
+| **Storage** | **No secret in JS.** `sessionStorage` holds only **metadata** (username, `adminType`, `expiresAt`, ids). The opaque token is in an **HttpOnly** cookie on the **API host** (host-only, e.g. `admin-api.ezkey.online`). |
 | **Transport** | Browser sends the cookie on cross-origin requests with **`fetch(..., { credentials: 'include' })`**. `Authorization` is still used for recovery / explicit bearer flows. Unsafe cookie-authenticated requests send `X-CSRF-TOKEN`. |
 | **API** | `ezkey.admin.auth.browser-session-cookie-enabled=true`; login JSON **omits** `token` when this is on. |
 | **UI build** | `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true` (e.g. in `.env.cloudflare` for production-like bundles). |

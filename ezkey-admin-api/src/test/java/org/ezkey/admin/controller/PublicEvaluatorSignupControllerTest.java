@@ -70,8 +70,8 @@ class PublicEvaluatorSignupControllerTest {
         new EvaluatorSelfRegistrationResponseDto(
             "WXYZ-5678",
             OffsetDateTime.now().plusDays(7),
-            "https://exp1-admin-ui.ezkey.org",
-            "https://ezkey.org/exp1-guided-tour.html",
+            "https://admin-ui.ezkey.online",
+            "https://ezkey.org/community-guided-tour.html",
             "eval-cafebabe");
     when(evaluatorSelfRegistrationService.register(eq("Lab"), eq("203.0.113.8"))).thenReturn(body);
 

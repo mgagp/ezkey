@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Service: EvaluatorSelfRegistrationService
- * Description: Provisions empty preview tenants for anonymous EXP1 evaluators.
+ * Description: Provisions empty preview tenants for anonymous evaluators.
  */
 
 package org.ezkey.admin.service;
@@ -48,8 +48,7 @@ public class EvaluatorSelfRegistrationService {
   private static final String ADMIN_USERNAME_PREFIX = "eval-admin-";
   private static final String DEFAULT_FIRST_NAME = "Evaluator";
   private static final String DEFAULT_LAST_NAME = "Preview";
-  private static final String DEFAULT_TENANT_DESCRIPTION =
-      "EXP1 anonymous evaluator preview tenant";
+  private static final String DEFAULT_TENANT_DESCRIPTION = "Anonymous evaluator preview tenant";
 
   private final EvaluatorSelfRegistrationProperties properties;
   private final EvaluatorSelfRegistrationRateLimiter rateLimiter;

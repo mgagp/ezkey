@@ -34,7 +34,7 @@ feature branches.
 | ID | Title | Promoted date | Canonical destination |
 |----|-------|---------------|-----------------------|
 | `V-2026-09-26-public-alpha-posture-closeout` | Public alpha posture closeout (lab · discreet · mobile Play production ok; platform stays alpha) | `2026-09-26` | Live cold-start / next-P0 compass; 2026-10-08 amendment: mobile app may go Play production, backends stay alpha |
-| `V-2026-09-22-exp1-to-ezkey-online-alpha` | EXP1 → ezkey.online alpha community instance | `2026-09-22` | Domain/host locks; site PR #609; community ledger |
+| `V-2026-09-22-exp1-to-ezkey-online-alpha` | former experimental lab → ezkey.online alpha community instance | `2026-09-22` | Domain/host locks; site PR #609; community ledger |
 | `V-2026-0014` | API documentation exposure and portal posture | `2026-05-22` | `I-2026-0026` → `TB-2026-0003` |
 
 ## Archived

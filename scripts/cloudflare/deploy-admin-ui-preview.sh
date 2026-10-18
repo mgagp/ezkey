@@ -13,7 +13,7 @@
 #
 # When using `--build`, `VITE_API_BASE_URL` is **required** (root `.env` or environment).
 # There is no product default hostname — set the Admin API origin for your surface explicitly
-# (EXP1, community, or other). See `.env.example` and `ezkey-admin-ui/.env.cloudflare`.
+# (community or other). See `.env.example` and `ezkey-admin-ui/.env.cloudflare`.
 #
 # Public alpha chrome: `VITE_GIT_SHA` is stamped into the Admin UI build (override via env;
 # else short git SHA when available). See docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md.
@@ -64,8 +64,7 @@ if [[ "$DO_BUILD" == true ]]; then
   if [[ -z "${VITE_API_BASE_URL:-}" ]]; then
     echo "error: VITE_API_BASE_URL is required when using --build" >&2
     echo "       Set it in the repo-root .env (see .env.example) or export it." >&2
-    echo "       Examples: https://exp1-admin-api.ezkey.org (EXP1)" >&2
-    echo "                 https://admin-api.ezkey.online (community)" >&2
+    echo "       Example: https://admin-api.ezkey.online (community)" >&2
     exit 1
   fi
   export VITE_API_BASE_URL

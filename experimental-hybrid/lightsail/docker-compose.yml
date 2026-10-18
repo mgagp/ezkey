@@ -17,7 +17,7 @@ x-logging: &default-logging
     max-size: "20m"
     max-file: "3"
 
-# JVM heap ceilings for the ~4 GiB Lightsail community/EXP1 host (#749).
+# JVM heap ceilings for the ~4 GiB Lightsail community host (#749).
 # memswap_limit = mem_limit: containers cannot use host swap for growth beyond the
 # cgroup (host swap only helps non-cgroup pressure / the OS). Prefer a host 1 GiB
 # swapfile (swappiness=10) — see docs/lightsail/community-host.md (do not
@@ -157,14 +157,14 @@ services:
       EZKEY_ADMIN_INITIAL_LAST_NAME: ${EZKEY_ADMIN_INITIAL_LAST_NAME:-Docker}
       MANAGEMENT_SERVER_PORT: 9081
       EZKEY_DATABASE_PARTITION_SCHEDULER_CRON: ${EZKEY_DATABASE_PARTITION_SCHEDULER_CRON:-0 */20 * * * ?}
-      # No product default hostname — set EZKEY_QR_AUTH_BASE_URL in .env (EXP1 or community overlay).
+      # No product default hostname — set EZKEY_QR_AUTH_BASE_URL in .env (community overlay).
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
       EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
       EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
       EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE: ${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:-full}
       EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
-      # Fail-fast when CIDRs missing (SEC-011). EXP1 always sits behind Caddy.
+      # Fail-fast when CIDRs missing (SEC-011). Community always sits behind Caddy.
       EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
       # Required when Admin UI is on another origin (e.g. Cloudflare Pages). Comma-separated origins.
       EZKEY_ADMIN_CORS_ALLOWED_ORIGINS: ${EZKEY_ADMIN_CORS_ALLOWED_ORIGINS:-}
@@ -205,7 +205,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ezkey_auth
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       MANAGEMENT_SERVER_PORT: 8085
-      # No product default hostname — set EZKEY_QR_AUTH_BASE_URL in .env (EXP1 or community overlay).
+      # No product default hostname — set EZKEY_QR_AUTH_BASE_URL in .env (community overlay).
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
       EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
       EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
@@ -305,7 +305,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Canonical source in repo is Caddyfile.ezkey-online; container path stays /etc/caddy/Caddyfile.
+      - ./Caddyfile.ezkey-online:/etc/caddy/Caddyfile:ro
       # Cloudflare Origin CA PEMs (origin.pem, origin-key.pem) — created in dashboard, not in git.
       - ./caddy-certs:/etc/caddy/certs:ro
       - caddy-data:/data

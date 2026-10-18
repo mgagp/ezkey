@@ -159,13 +159,13 @@ describe('EnrollmentDetailScreen', () => {
         enrollments: [
           {
             ...healthyEnrollment,
-            integrationName: 'exp1-auth-api.ezkey.org',
-            tenantName: 'exp1-auth-api.ezkey.org',
+            integrationName: 'auth-api.ezkey.online',
+            tenantName: 'auth-api.ezkey.online',
             installation: {
-              id: 'https://exp1-auth-api.ezkey.org',
-              authUrl: 'https://exp1-auth-api.ezkey.org',
-              name: 'exp1-auth-api.ezkey.org',
-              host: 'exp1-auth-api.ezkey.org',
+              id: 'https://auth-api.ezkey.online',
+              authUrl: 'https://auth-api.ezkey.online',
+              name: 'auth-api.ezkey.online',
+              host: 'auth-api.ezkey.online',
             },
           },
         ],
@@ -188,8 +188,8 @@ describe('EnrollmentDetailScreen', () => {
       .map(node => node.props.children)
       .flat()
       .join(' ');
-    expect(textContent).toContain('exp1-auth-api.ezkey.org');
-    expect(textContent).not.toContain('https://exp1-auth-api.ezkey.org');
+    expect(textContent).toContain('auth-api.ezkey.online');
+    expect(textContent).not.toContain('https://auth-api.ezkey.online');
   });
 
   it('shows latest response as status, not the stored title', async () => {
