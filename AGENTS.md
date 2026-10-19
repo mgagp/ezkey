@@ -373,7 +373,10 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
   (canonical **Orval risk grid**, cadence, concurrency).
 - Standing policy: [`product-docs/global/hygiene/dependabot/README.md`](product-docs/global/hygiene/dependabot/README.md).
 - **Cadence:** Dependabot daily (Maven + npm) with cooldown; weekday **light** pass (T1–T3 + Orval
-  O0/O1; silent when empty); **Monday full** (BOM + Mobile RN pulses + holds + campaign note).
+  O0/O1; silent when empty); **Monday full** at **09:14 ET** (BOM + Mobile RN pulses with
+  `yarn deps:monitor --strict` + holds + campaign note). Cadence index:
+  [`product-docs/global/hygiene/README.md`](product-docs/global/hygiene/README.md)
+  § *Cadence & automation*.
   **One owning pass per day** — back off if concurrent merges (~30 min) or another in-flight pass.
 - **Cursor Cloud `GH_TOKEN`:** the harness read-only `gh` note is the default `cursor`/`ghs_`
   identity. If env `GH_TOKEN` is set, probe `gh auth status` (never print the secret) and use that

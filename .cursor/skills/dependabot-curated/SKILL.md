@@ -30,8 +30,13 @@ full pass (keep, tune, or roll back).
 
 | Pass | When | Scope | Reporting |
 |------|------|-------|-----------|
-| **Weekday light** | Every weekday (Mon–Fri) | T1–T3 lots + Orval **O0/O1** only (Admin UI and mobile **separately**). Skip Java BOM pulse, Mobile RN pulse, and holds/deferral deep review. **Silent when the actionable queue is empty** (no file write). | Short append-only dated section in [`daily-log.md`](../../product-docs/global/hygiene/dependabot/daily-log.md) **only when something was merged/held/deferred** |
-| **Monday full** | Monday (or first working day of the week) | Full pass: T1–T4, Orval O0–O3, **Java BOM pulse**, **Mobile RN pulse**, holds review, ecosystem-gate check | One consolidated campaign note `YYYY-MM-DD-pass-N.md` from [`TEMPLATE.md`](../../product-docs/global/hygiene/dependabot/TEMPLATE.md); may summarize the prior week's daily-log entries |
+| **Weekday light** | **Weekdays 09:14 ET** (Mon–Fri) | T1–T3 lots + Orval **O0/O1** only (Admin UI and mobile **separately**). Skip Java BOM pulse, Mobile RN pulse, and holds/deferral deep review. **Silent when the actionable queue is empty** (no file write). | Short append-only dated section in [`daily-log.md`](../../product-docs/global/hygiene/dependabot/daily-log.md) **only when something was merged/held/deferred** |
+| **Monday full** | **Monday 09:14 ET** (or first working day of the week) | Full pass: T1–T4, Orval O0–O3, **Java BOM pulse**, **Mobile RN pulse** (`yarn deps:monitor --strict`), holds review, ecosystem-gate check | One consolidated campaign note `YYYY-MM-DD-pass-N.md` from [`TEMPLATE.md`](../../product-docs/global/hygiene/dependabot/TEMPLATE.md); may summarize the prior week's daily-log entries |
+
+**2026-10-19:** clock fixed at **09:14 ET** and Monday full requires `yarn deps:monitor --strict`
+(Marc hygiene-cadence approval; avoids collision with code-scanning triage at **10:15 ET**).
+Authority: [`product-docs/global/hygiene/README.md`](../../product-docs/global/hygiene/README.md)
+§ *Cadence & automation*.
 
 Dependabot itself opens PRs on a **daily** schedule for Maven and npm (Admin UI, SDK JS, mobile),
 with a **cooldown** (~3 days patch/minor, ~7 days major) and `open-pull-requests-limit: 10` per
@@ -257,20 +262,22 @@ UI Orval). **Do not treat an empty Dependabot mobile list as "mobile is current.
 1. Record declared `react`, `react-native`, and key coupled libs from
    `ezkey_mobile/package.json` (at least VisionCamera / worklets / nitro family, navigation, and
    the Orval exact pin).
-2. Prefer existing tooling from `ezkey_mobile/`:
+2. Prefer existing tooling from `ezkey_mobile/` — **Monday full requires `--strict`**:
 
    ```bash
-   yarn deps:monitor
-   # or: node scripts/dependency-monitor.mjs
+   yarn deps:monitor --strict
+   # or: node scripts/dependency-monitor.mjs --strict
+   # (weekday / ad-hoc inventory may still use yarn deps:monitor without --strict)
    ```
 
    The monitor already classifies **actionable** vs **ecosystem-gated deferred** (e.g. ESLint 10,
-   Jest 30, TypeScript 7). Capture actionable / deferred / high-audit highlights in the campaign
+   Jest 30, TypeScript 7). `--strict` fails closed on actionable upgrades so the pulse cannot
+   silently report “clean.” Capture actionable / deferred / high-audit highlights in the campaign
    note.
 3. Peel Dependabot mobile PRs into lots under normal T1–T4 rules (see escalators below).
-4. If there are **no** Dependabot mobile PRs but `deps:monitor` shows **actionable** upgrades,
-   propose lots from the pulse. Hygiene-branch exception applies **only** when no Dependabot PR
-   exists for that bump (same posture as a Boot property bump with no Maven PR).
+4. If there are **no** Dependabot mobile PRs but `deps:monitor --strict` shows **actionable**
+   upgrades, propose lots from the pulse. Hygiene-branch exception applies **only** when no
+   Dependabot PR exists for that bump (same posture as a Boot property bump with no Maven PR).
 
 ### Mobile escalators
 
@@ -382,8 +389,8 @@ stack/Playwright were deferred to the next T2+ session or weekly milestone.
 
 Record the **Java BOM pulse** result in the campaign note even when no Boot bump was needed
 (`none` is a valid outcome). Same for the nested `google-java-format` check. Record the
-**Mobile RN pulse** (`deps:monitor` + declared RN versions + Dependabot mobile PRs peeled) even
-when no mobile lot was proposed.
+**Mobile RN pulse** (`deps:monitor --strict` + declared RN versions + Dependabot mobile PRs
+peeled) even when no mobile lot was proposed.
 
 ## Pin, install, and codegen hygiene (after merges)
 
@@ -460,7 +467,9 @@ build/mobile plans; Marc decides).
   React Native line only. Security opinion in that issue when `security: true`.
 - Crypto/auth **library** majors on npm/Maven stay T4 here. Exception in the register: libs whose
   majors Dependabot ignores (Gradle ecosystem, #712) — e.g. Conscrypt, AndroidX Biometric.
-- Monthly endoflife.date check workflow: **upcoming**, not present yet.
+- Monthly endoflife.date check workflow:
+  [`.github/workflows/endoflife-check.yml`](../../.github/workflows/endoflife-check.yml)
+  (first Monday ~14:30 UTC; standing `hygiene` issue).
 - Full agent contract: root `AGENTS.md` § Dependabot curated → *Major upgrades*.
 
 ## Deferred labels

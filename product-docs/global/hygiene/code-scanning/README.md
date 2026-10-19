@@ -28,6 +28,14 @@ stay out unless methodology explicitly merges lanes.
 | `YYYY-MM-DD-pass-N.md` | Dated triage pass (alerts, lots, dismiss list, decision owners) |
 | First instance | [`2026-10-13-pass-01.md`](2026-10-13-pass-01.md) — initial open-alert triage |
 
+## Cadence
+
+- **Monday 10:15 ET** weekly triage (Fred proposes, Christophe decides/executes).
+- **Weekday light:** new high/critical alerts (do not wait for Monday).
+- **2026-10-19:** Monday slot moved from 09:17 ET to avoid Dependabot curated collision — see
+  [`../README.md`](../README.md) § *Cadence & automation* and
+  [`docs/SECURITY_POSTURE.md`](../../../../docs/SECURITY_POSTURE.md) § Code scanning policy.
+
 ## Operating contract
 
 1. Pull open alerts (`state=open`) and triage against source on `main`.

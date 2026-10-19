@@ -18,9 +18,14 @@ full pass (keep, tune, or roll back).
 | Layer | Cadence | Notes |
 |-------|---------|-------|
 | Dependabot opens PRs | **Daily** for Maven (`/`) and npm (`/ezkey-admin-ui`, `/ezkey-sdk/javascript`, `/ezkey_mobile`); **weekly** for `github-actions` and `pip` | Cooldown ~**3** days patch/minor, ~**7** days semver-major (npm/maven/pip); Actions uses `default-days: 3` only (schema has no semver keys). `open-pull-requests-limit: 10` per ecosystem — see `.github/dependabot.yml` |
-| Agent curation — weekday light | Every weekday | T1–T3 + Orval **O0/O1** only; **silent when queue empty**; default autonomy on that scope |
-| Agent curation — Monday full | Monday (or first working day) | Full lots + **Java BOM** + **Mobile RN** pulses + holds review; one campaign note from `TEMPLATE.md` |
+| Agent curation — weekday light | **Weekdays 09:14 ET** | T1–T3 + Orval **O0/O1** only; **silent when queue empty**; default autonomy on that scope |
+| Agent curation — Monday full | **Monday 09:14 ET** (or first working day) | Full lots + **Java BOM** + **Mobile RN** pulses (`yarn deps:monitor --strict`) + holds review; one campaign note from `TEMPLATE.md` |
 | Concurrency | **One owning pass per day** | Before merge/close/hygiene PR: if concurrent merges (~30 min) or another in-flight pass → back off, report only |
+
+**2026-10-19:** fixed **09:14 ET** weekday/Monday slot (Marc hygiene-cadence approval) so Dependabot
+curation does not collide with code-scanning triage at **10:15 ET**; Monday full adds
+`yarn deps:monitor --strict` in `ezkey_mobile/` so an empty Dependabot mobile queue is not treated
+as “current.” Index: [`../README.md`](../README.md) § *Cadence & automation*.
 
 Authority: skill
 [`.cursor/skills/dependabot-curated/SKILL.md`](../../../.cursor/skills/dependabot-curated/SKILL.md)
@@ -89,7 +94,9 @@ pass in January / April / July / October (not weekday light). Light path vs dedi
 `security: true` opinion-only issue on light path, and test-plan floors: lane README + root
 `AGENTS.md` § *Major upgrades*. Crypto/auth **library** majors on npm/Maven stay in this
 Dependabot lane (T4); Gradle-ecosystem libs Dependabot ignores (#712) live in the register.
-Monthly endoflife.date check: upcoming, not present yet.
+Monthly endoflife.date check:
+[`.github/workflows/endoflife-check.yml`](../../../../.github/workflows/endoflife-check.yml)
+(see [`../major-upgrades/`](../major-upgrades/)).
 
 ## Contents
 
