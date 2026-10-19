@@ -29,6 +29,8 @@ x-javamelody-env: &javamelody-env
   JAVAMELODY_ENABLED: "true"
   JAVAMELODY_MANAGEMENT_ENDPOINT_MONITORING_ENABLED: "true"
   JAVAMELODY_SPRING_MONITORING_ENABLED: "true"
+  # Collector reaches APIs on the Docker network — reopen management bind (base compose uses 127.0.0.1).
+  MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
   # No metrics / threaddump / info on the management surface in prod (#846 Christophe).
   MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,monitoring"
   MANAGEMENT_ENDPOINT_MONITORING_ACCESS: unrestricted

@@ -19,13 +19,19 @@
 # On the VM (ss bind gate — IPv4 0.0.0.0 and IPv6 [::] / *):
 #   ./scripts/ops/verify-javamelody-non-exposure.sh --check-ss
 #
-# Business-port /monitoring (C2) via the caddy container (Edgar live gate).
+# Business-port probes via the caddy container (Edgar live gate).
 # The official Caddy image has ash/curl but not bash — run this script on the VM
 # (or laptop) and pass --via-caddy so probes use Docker DNS inside the network:
 #   ./scripts/ops/verify-javamelody-non-exposure.sh --business-ports --via-caddy ezkey-exp-caddy
 #   # Local stack: --via-caddy ezkey-caddy
 #   # Default URLs (override with BUSINESS_PORT_URLS / --business-port-url):
 #   #   http://admin-api:9080  http://auth-api:8080  http://integration-api:7080
+#   #   http://demo-app-acme:8082
+#   # Probes: /actuator/health (expect 404) and /monitoring (401/403/404 OK).
+#
+# When JavaMelody overlay is used, management must listen on 0.0.0.0 (collector scrape):
+#   ./scripts/ops/verify-javamelody-non-exposure.sh --check-jm-overlay-bind \
+#     experimental-hybrid/lightsail
 #
 # Authenticated business-port refusal (Christophe): secrets must NOT appear on the
 # curl/docker argv (visible in `ps`). Pass 0600 files (or stdin for bearer):
@@ -74,6 +80,7 @@ DEFAULT_BUSINESS_PORT_URLS=(
   http://admin-api:9080
   http://auth-api:8080
   http://integration-api:7080
+  http://demo-app-acme:8082
 )
 
 BASE_URLS=()
@@ -81,9 +88,11 @@ BUSINESS_PORT_URLS=()
 CHECK_SS=""
 CHECK_BUSINESS=""
 AUTH_PROBE=""
+CHECK_JM_OVERLAY_BIND=""
+JM_OVERLAY_DIR=""
 
 usage() {
-  sed -n '2,48p' "$0" | sed 's/^# \?//'
+  sed -n '2,55p' "$0" | sed 's/^# \?//'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -128,6 +137,15 @@ while [[ $# -gt 0 ]]; do
       CHECK_SS="1"
       shift
       ;;
+    --check-jm-overlay-bind)
+      CHECK_JM_OVERLAY_BIND="1"
+      if [[ $# -ge 2 && "$2" != -* ]]; then
+        JM_OVERLAY_DIR="$2"
+        shift 2
+      else
+        shift
+      fi
+      ;;
     -h|--help)
       usage
       exit 0
@@ -144,7 +162,9 @@ if [[ ${#BASE_URLS[@]} -eq 0 ]]; then
   if [[ -n "$BASE_URLS_FROM_ENV" ]]; then
     # shellcheck disable=SC2206
     BASE_URLS=(${BASE_URLS_FROM_ENV})
-  elif [[ -z "$CHECK_SS" && -z "$CHECK_BUSINESS" ]]; then
+  elif [[ -z "$CHECK_SS" && -z "$CHECK_BUSINESS" && -z "$CHECK_JM_OVERLAY_BIND" ]]; then
+    # Do not fill default edge URLs when the caller only asked for --check-jm-overlay-bind
+    # (otherwise offline overlay-bind CI probes localhost and fails spuriously).
     BASE_URLS=(
       http://localhost:19080
       http://localhost:18080
@@ -396,10 +416,52 @@ probe_business_monitoring() {
   rm -f "$body"
 }
 
+# Native Spring: Actuator is not mounted on the business port when management.server.port is set.
+probe_business_actuator_health() {
+  local base="$1"
+  local url="${base%/}/actuator/health"
+  local body
+  body="$(mktemp)"
+  local code
+  code="$(http_get "$body" "$url")"
+  if [[ "$code" == "404" ]]; then
+    echo "  OK  ${code}  ${url} (Actuator absent on business port)"
+  else
+    echo "  FAIL ${code}  ${url} (expected native 404 — Actuator must not serve the business port)" >&2
+    failures=$((failures + 1))
+  fi
+  rm -f "$body"
+}
+
+# When the JavaMelody compose overlay is active, management must bind 0.0.0.0 so the collector
+# can scrape /actuator/monitoring from another container. Base community compose uses 127.0.0.1.
+check_jm_overlay_management_address() {
+  local compose_dir="${1:-.}"
+  local overlay="${compose_dir}/docker-compose.javamelody.yml"
+  if [[ ! -f "$overlay" ]]; then
+    echo "FAIL: JavaMelody overlay not found: ${overlay}" >&2
+    failures=$((failures + 1))
+    return
+  fi
+  if grep -Eq 'MANAGEMENT_SERVER_ADDRESS:[[:space:]]*"?0\.0\.0\.0"?' "$overlay"; then
+    echo "  OK  ${overlay} sets MANAGEMENT_SERVER_ADDRESS=0.0.0.0 (collector can scrape)"
+  else
+    echo "  FAIL ${overlay} is active/required but MANAGEMENT_SERVER_ADDRESS is not 0.0.0.0" >&2
+    echo "       (collector would stay empty while management listens on 127.0.0.1 only)" >&2
+    failures=$((failures + 1))
+  fi
+}
+
+if [[ -n "$CHECK_JM_OVERLAY_BIND" ]]; then
+  echo "→ JavaMelody overlay: MANAGEMENT_SERVER_ADDRESS must be 0.0.0.0 (collector scrape)"
+  check_jm_overlay_management_address "${JM_OVERLAY_DIR:-.}"
+  echo ""
+fi
+
 if [[ -n "$CHECK_BUSINESS" ]]; then
-  echo "→ business-port /monitoring (C2): 401/403/404 = not exposed; 200 or JM HTML = exposed; other codes = inconclusive"
+  echo "→ business-port /actuator/health: expect native HTTP 404 (management port only)"
   if [[ -n "$VIA_CADDY" ]]; then
-    echo "  (via docker exec ${VIA_CADDY} — Docker DNS for admin-api/auth-api/integration-api)"
+    echo "  (via docker exec ${VIA_CADDY} — Docker DNS)"
     if ! docker inspect "$VIA_CADDY" >/dev/null 2>&1; then
       echo "FAIL: --via-caddy container not found: ${VIA_CADDY}" >&2
       failures=$((failures + 1))
@@ -407,6 +469,11 @@ if [[ -n "$CHECK_BUSINESS" ]]; then
   else
     echo "  (direct curl; use --via-caddy <caddy-container> for Docker-network DNS)"
   fi
+  for base in "${BUSINESS_PORT_URLS[@]}"; do
+    probe_business_actuator_health "$base"
+  done
+  echo ""
+  echo "→ business-port /monitoring (C2): 401/403/404 = not exposed; 200 or JM HTML = exposed; other codes = inconclusive"
   for base in "${BUSINESS_PORT_URLS[@]}"; do
     probe_business_monitoring "$base" "anon"
   done
@@ -437,8 +504,8 @@ if [[ ${#BASE_URLS[@]} -gt 0 ]]; then
   echo ""
 fi
 
-if [[ ${#BASE_URLS[@]} -eq 0 && -z "$CHECK_SS" && -z "$CHECK_BUSINESS" ]]; then
-  echo "FAIL: no base URLs and no --check-ss / --business-ports" >&2
+if [[ ${#BASE_URLS[@]} -eq 0 && -z "$CHECK_SS" && -z "$CHECK_BUSINESS" && -z "$CHECK_JM_OVERLAY_BIND" ]]; then
+  echo "FAIL: no base URLs and no --check-ss / --business-ports / --check-jm-overlay-bind" >&2
   exit 2
 fi
 

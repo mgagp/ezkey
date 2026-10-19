@@ -31,6 +31,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0012](#adr-0012-admin-owned-keyset-materialization) | Admin-owned keyset materialization | accepted | 2026-08-28 |
 | [ADR-0013](#adr-0013-admin-role-admin-umbrella-keep-vs-split) | Admin `ROLE_ADMIN` umbrella — keep vs split | proposed | 2026-09-16 |
 | [ADR-0014](#adr-0014-qa-sphere-for-test-execution-tracking) | QA Sphere for test execution tracking | accepted | 2026-10-13 |
+| [ADR-0015](#adr-0015-management-port-separation-actuator-javamelody) | Management port separation (Actuator / JavaMelody) | accepted | 2026-10-19 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -939,3 +940,82 @@ Standards posture for that canon:
 
 - Complements normative posture (SOC 2 vocabulary only): [`normative-posture.md`](normative-posture.md).
 - Traceability home for automated proof remains [`spec-test-traceability.md`](spec-test-traceability.md).
+
+## ADR-0015 — Management port separation (Actuator / JavaMelody)
+
+### Metadata
+
+- **ID:** ADR-0015.
+- **Date:** 2026-10-19.
+- **Status:** accepted.
+- **Scope:** global (community host + Docker management surface).
+- **Owners:** Platform / ops.
+
+### Context
+
+Actuator and JavaMelody reports must not share the public business HTTP port. The three core APIs
+already used a separate management port; demo-app-acme still served Actuator on 8082. JavaMelody
+without `management-endpoint-monitoring-enabled` would serve `/monitoring` on the business port.
+Community management listeners defaulted to `0.0.0.0` inside the container (reachable from any
+Docker peer).
+
+### Decision
+
+- **Management port = internal.** Never routed by Caddy. Community base compose binds
+  `management.server.address=127.0.0.1`; healthchecks use `127.0.0.1`.
+- **JavaMelody collection** stays on the business-port filter; **reports** are only
+  `/actuator/monitoring` on the management port. Enabling JavaMelody without
+  `management-endpoint-monitoring-enabled=true` fails startup. Enabling JavaMelody without
+  `management.server.port` also fails (report would mount on the business port). Equal
+  business/management ports fail startup. JavaMelody off + unset management port remains OK
+  (local / IDE).
+- **JM overlay** reopens management to `0.0.0.0` so the collector can scrape; verify/export fail
+  if the overlay omits that reopen.
+- **demo-app-acme** uses management port **8086**. Caddy observability deny remains defense in
+  depth (unchanged).
+
+### Alternatives Considered
+
+- **Rely on Caddy deny alone for Acme Actuator.** Rejected — peer containers on the Docker network
+  could still reach 8082 `/actuator`.
+- **Bind community management to 127.0.0.1 even with JavaMelody.** Rejected — collector in another
+  container would see an empty surface.
+- **Bind local compose management to 127.0.0.1 in the same change.** Deferred (PAM/integration
+  health from other containers needs Docker-network reachability).
+
+### Consequences
+
+- **Positive.** Actuator off business ports for Acme; fail-closed JM misconfig; smaller residual
+  SSRF surface when JM is off.
+- **Negative.** The dangerous rolling pair is **new Acme image + old compose** (healthcheck still
+  on `8082/actuator/health` → Acme unhealthy → Caddy `depends_on` blocks public APIs). Export
+  refuses `--include-demo-acme --remote-up` without `--sync-operator-files` and checks remote
+  compose for `8086/actuator/health`. Old image + new compose is usually OK (env vars move the
+  port).
+- **Neutral.** Spring Security `permitAll` `/actuator/**` on the management context is required for
+  anonymous health and JM monitoring endpoint access.
+
+### Impact
+
+- Admin / Auth / Integration APIs, demo-app-acme, community compose, JM overlay, verify/export
+  scripts, operator docs.
+
+### Validation
+
+- Unit tests for startup validator; dual-port `@SpringBootTest` (management health **200**,
+  business `/actuator/health` exact **404**; Auth with JM: business `/monitoring` **403**;
+  Admin/Integration minimal chains: business `/monitoring` **401** matching production LIVE;
+  management `/actuator/monitoring` **200**).
+- `verify-javamelody-non-exposure.sh --business-ports` expects native 404 on `/actuator/health`.
+
+### Follow-up
+
+- **N5:** `--check-jm-overlay-bind` is a static grep; a live `docker exec`/`ss` check when JM is on
+  would be stronger (#866).
+- **N7:** `JavaMelodyStartupValidator` is duplicated in acme (no ezkey-core dependency) — keep
+  rules aligned until a shared module is justified.
+
+### Related Decisions
+
+- Observability locks in [`docs/SECURITY_POSTURE.md`](../../docs/SECURITY_POSTURE.md) § Observability.
+- Community runbook: [`docs/lightsail/community-host.md`](../../docs/lightsail/community-host.md).

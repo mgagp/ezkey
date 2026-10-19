@@ -156,6 +156,8 @@ services:
       EZKEY_ADMIN_INITIAL_FIRST_NAME: ${EZKEY_ADMIN_INITIAL_FIRST_NAME:-Admin}
       EZKEY_ADMIN_INITIAL_LAST_NAME: ${EZKEY_ADMIN_INITIAL_LAST_NAME:-Docker}
       MANAGEMENT_SERVER_PORT: 9081
+      # Loopback inside the container — Docker healthchecks use 127.0.0.1. JM overlay reopens 0.0.0.0.
+      MANAGEMENT_SERVER_ADDRESS: 127.0.0.1
       EZKEY_DATABASE_PARTITION_SCHEDULER_CRON: ${EZKEY_DATABASE_PARTITION_SCHEDULER_CRON:-0 */20 * * * ?}
       # No product default hostname — set EZKEY_QR_AUTH_BASE_URL in .env (community overlay).
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
@@ -179,7 +181,7 @@ services:
       - ezkey-exp-net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9081/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:9081/actuator/health || exit 1"]
       interval: 30s
       timeout: 5s
       start_period: 90s
@@ -205,6 +207,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ezkey_auth
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       MANAGEMENT_SERVER_PORT: 8085
+      MANAGEMENT_SERVER_ADDRESS: 127.0.0.1
       # No product default hostname — set EZKEY_QR_AUTH_BASE_URL in .env (community overlay).
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
       EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
@@ -219,7 +222,7 @@ services:
       - ezkey-exp-net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8085/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8085/actuator/health || exit 1"]
       interval: 30s
       timeout: 5s
       start_period: 90s
@@ -247,6 +250,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ezkey_integration
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
       MANAGEMENT_SERVER_PORT: 7081
+      MANAGEMENT_SERVER_ADDRESS: 127.0.0.1
       EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
       EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
@@ -255,7 +259,7 @@ services:
       - ezkey-exp-net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:7081/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:7081/actuator/health || exit 1"]
       interval: 30s
       timeout: 5s
       start_period: 90s
@@ -282,6 +286,9 @@ services:
       SERVER_FORWARD_HEADERS_STRATEGY: ${SERVER_FORWARD_HEADERS_STRATEGY:-framework}
       # Same CIDRs as other APIs: trust Caddy on the Docker network for CF-Connecting-IP / X-Forwarded-For.
       EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
+      # Management port (Actuator) — must ship with an image that listens on 8086.
+      MANAGEMENT_SERVER_PORT: 8086
+      MANAGEMENT_SERVER_ADDRESS: 127.0.0.1
     volumes:
       - demo-app-acme-data:/app/data
       - demo-app-acme-config:/app/config
@@ -289,7 +296,7 @@ services:
       - ezkey-exp-net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8086/actuator/health || exit 1"]
       interval: 30s
       timeout: 3s
       start_period: 40s

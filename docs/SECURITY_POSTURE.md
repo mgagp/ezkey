@@ -137,6 +137,12 @@ See [`../product-docs/global/normative-posture.md`](../product-docs/global/norma
   ([#846](https://github.com/mgagp/ezkey/issues/846)). Operator runbook:
   [`lightsail/community-host.md`](lightsail/community-host.md) § Observability. Companion memory
   cgroup / heap ceilings: [#749](https://github.com/mgagp/ezkey/issues/749).
+- **2026-10-19:** Management ports are internal-only (community: `MANAGEMENT_SERVER_ADDRESS=127.0.0.1`
+  unless the JavaMelody overlay reopens `0.0.0.0` for the collector). Demo App ACME uses management
+  port **8086** (Actuator off business port 8082). Startup fails closed if JavaMelody is enabled
+  without management-endpoint monitoring, or if management port equals business port. Spring
+  Security `permitAll` on `/actuator/**` applies on the management context (health and
+  `/actuator/monitoring` need no auth). Caddy deny remains defense in depth. ADR-0015.
 
 ## Session and cookies
 

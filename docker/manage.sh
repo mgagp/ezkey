@@ -146,8 +146,8 @@ function show_status() {
         echo "  ❌ Demo Device: Unhealthy"
     fi
 
-    # Check Demo App ACME (optional companion; started with the default compose stack)
-    if curl -sf http://localhost:8082/actuator/health > /dev/null 2>&1; then
+    # Check Demo App ACME (optional companion; management port inside the container)
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T demo-app-acme curl -sf http://localhost:8086/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Demo App ACME: Healthy"
     else
         echo "  ⚠️  Demo App ACME: Not available"

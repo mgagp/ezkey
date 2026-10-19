@@ -431,12 +431,25 @@ Collector image/version is aligned with the API starter (**2.9.0**, WAR sha256 p
 `docker/javamelody/Dockerfile`). Christophe locks baked into the overlay / entrypoint:
 
 - Collector bind: `127.0.0.1:8088:8080` only
-- Monitoring reports on management ports (`9081` / `8085` / `7081`); Caddy denies `/monitoring` and
-  `/actuator` (and nested / case / `//` / `;` variants) on all public API + demo-acme hostnames
-- Business-port `/monitoring` must stay non-exposed: only **401**, **403**, or **404**
-  without a JavaMelody body count as OK (do not harmonize). **HTTP 200** or any response
-  whose body looks like JavaMelody is an exposure failure. Any other code (`000`, 3xx,
-  5xx, 204, …) is **probe inconclusive** and fails
+- Management ports: base compose binds `MANAGEMENT_SERVER_ADDRESS=127.0.0.1` (healthchecks use
+  `127.0.0.1`, not `localhost`). The JM overlay **must** set `MANAGEMENT_SERVER_ADDRESS=0.0.0.0`
+  or the collector stays empty — export/`verify-javamelody-non-exposure.sh --check-jm-overlay-bind`
+  fail closed if the overlay omits that reopen.
+- Monitoring reports on management ports (`9081` / `8085` / `7081`); demo-app-acme management is
+  **8086** (Actuator not on business 8082). Caddy denies `/monitoring` and `/actuator` (and nested /
+  case / `//` / `;` variants) on all public API + demo-acme hostnames — defense in depth; do not
+  remove the deny when ports move.
+- **Deploy risk (image ↔ compose):** The dangerous pair is a **new** Acme image (classpath
+  `management.server.port=8086`) with an **old** compose whose healthcheck still probes
+  `8082/actuator/health` → Acme unhealthy → Caddy `depends_on: demo-app-acme: service_healthy`
+  blocks public APIs on recreate. Old image + new compose is usually OK (env vars move Actuator).
+  Always ship Acme image with `--sync-operator-files` on the same `--remote-up` (export refuses
+  `--include-demo-acme --remote-up` without sync, and checks remote compose for
+  `8086/actuator/health`).
+- Business-port `/actuator/health` must be native **404**; `/monitoring` must stay non-exposed:
+  only **401**, **403**, or **404** without a JavaMelody body count as OK (do not harmonize).
+  **HTTP 200** or any response whose body looks like JavaMelody is an exposure failure. Any other
+  code (`000`, 3xx, 5xx, 204, …) is **probe inconclusive** and fails
   (`verify-javamelody-non-exposure.sh --business-ports`).
 - Init parameters are injected via `SPRING_APPLICATION_JSON` with hyphenated JavaMelody Parameter
   codes (`system-actions-enabled`, `http-transform-pattern`, …). Plain
