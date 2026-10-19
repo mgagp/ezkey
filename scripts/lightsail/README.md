@@ -16,8 +16,13 @@ export AWS_PROFILE=ezkey-lightsail
 ./scripts/lightsail/create-instance.sh --target community
 ./scripts/lightsail/open-ports.sh
 ./scripts/lightsail/bootstrap-host.sh --target community --dry-run
+./scripts/lightsail/os-patch-check.sh --target community --dry-run
 ./scripts/lightsail/status.sh --help
 ./scripts/lightsail/delete-instance.sh --help
 # Target + delete-guard tests (fake aws; never hits real AWS):
 ./scripts/lightsail/target-aware.test.sh
 ```
+
+Read-only Host OS signal (`os-patch-check.sh`, #909): see
+[`product-docs/global/hygiene/host-os/README.md`](../../product-docs/global/hygiene/host-os/README.md).
+Rootbeer-local only; never updates packages.

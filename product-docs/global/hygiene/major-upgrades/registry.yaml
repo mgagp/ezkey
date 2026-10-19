@@ -273,6 +273,25 @@
   last_review: 2026-10-19
   notes: "ARG ROCKY_IMAGE; Dependabot does not rewrite ARG defaults — light path via normal PR"
 
+- id: amazon-linux-community
+  component: Amazon Linux (community Lightsail host ezkey-online)
+  owner: fred
+  eol_slug: amazon-linux
+  current: "2023"
+  sources:
+    - { file: scripts/lightsail/common.sh, expect: "amazon_linux_2023" }
+    - { file: docs/lightsail/community-host.md, expect: "amazon_linux_2023" }
+  eol: 2029-06-30
+  target: "2023"
+  decision: keep
+  security: true
+  issue: 909
+  last_review: 2026-10-19
+  notes: >
+    Community host OS (not a container base image). Quarterly minors until 2027-06-30;
+    EOL 2029-06-30. Deterministic upgrades via dnf --releasever=… (never latest).
+    Hygiene lane product-docs/global/hygiene/host-os/ (#909). H3 blue/green plan by 2028.
+
 - id: maven-build-image
   component: Maven (build image)
   owner: fred

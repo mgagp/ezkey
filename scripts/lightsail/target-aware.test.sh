@@ -15,6 +15,7 @@ COMMON="${ROOT}/scripts/lightsail/common.sh"
 EXPORT="${ROOT}/experimental-hybrid/scripts/export-backend-images-to-lightsail.sh"
 UPGRADE="${ROOT}/experimental-hybrid/scripts/full-exp-environment-upgrade.sh"
 BOOTSTRAP="${ROOT}/scripts/lightsail/bootstrap-host.sh"
+OS_PATCH_CHECK="${ROOT}/scripts/lightsail/os-patch-check.sh"
 CREATE="${ROOT}/scripts/lightsail/create-instance.sh"
 DELETE="${ROOT}/scripts/lightsail/delete-instance.sh"
 ADMIN_UI_PROD="${ROOT}/scripts/cloudflare/deploy-admin-ui-production.sh"
@@ -392,6 +393,34 @@ assert_fail "upgrade --target legacy refused" bash "${UPGRADE}" --target legacy 
 assert_fail "bootstrap without target fails" bash "${BOOTSTRAP}" --dry-run
 assert_ok "bootstrap --target community --dry-run" bash "${BOOTSTRAP}" --target community --dry-run
 assert_stdout_contains "bootstrap community" "ezkey-online"
+
+# --- os-patch-check (read-only Host OS signal; #909) ---
+: >"${FAKE_SSH_LOG}"
+assert_fail "os-patch-check without target fails" bash "${OS_PATCH_CHECK}" --dry-run
+assert_ok "os-patch-check --target community --dry-run" \
+  bash "${OS_PATCH_CHECK}" --target community --dry-run
+assert_stdout_contains "os-patch-check community host" "ezkey-online"
+assert_stdout_contains "os-patch-check read-only label" "[read-only]"
+assert_stdout_contains "os-patch-check mentions check-release-update" "dnf check-release-update"
+assert_stdout_contains "os-patch-check mentions updateinfo" "dnf updateinfo list"
+assert_stdout_contains "os-patch-check mentions needs-restarting" "needs-restarting -r"
+assert_stdout_contains "os-patch-check mentions docker ps" "docker ps"
+if grep -Eqi 'dnf (update|upgrade) -y' "${OUT}"; then
+  echo "FAIL: os-patch-check dry-run must not include mutating dnf update/upgrade -y" >&2
+  grep -Ei 'dnf (update|upgrade)' "${OUT}" >&2 || true
+  fail=$((fail + 1))
+else
+  echo "PASS: os-patch-check dry-run has no mutating dnf update/upgrade"
+  pass=$((pass + 1))
+fi
+if [[ ! -s "${FAKE_SSH_LOG}" ]]; then
+  echo "PASS: os-patch-check dry-run never called fake ssh"
+  pass=$((pass + 1))
+else
+  echo "FAIL: os-patch-check dry-run should not invoke ssh" >&2
+  cat "${FAKE_SSH_LOG}" >&2 || true
+  fail=$((fail + 1))
+fi
 
 # --- create-instance ---
 assert_fail "create without target fails" bash "${CREATE}"

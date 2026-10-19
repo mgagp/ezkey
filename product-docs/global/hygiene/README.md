@@ -6,8 +6,9 @@ mobile static analysis), weekly **Dependabot** triage, the **major-upgrades** pl
 **javamelody-curated** live-stack performance extracts, on-demand **quality-gate** full-suite
 runs (cloud agent), mandate-driven **assessment-curated** white-box investigation follow-ups,
 **document-hygiene-curated** passes for legacy document canonicality / archive-vs-delete
-decisions, **code-scanning** (CodeQL SAST) triage passes, and **corpus-ablation** passes that
-prune ephemeral plans/prompts into existing canon.
+decisions, **code-scanning** (CodeQL SAST) triage passes, **corpus-ablation** passes that
+prune ephemeral plans/prompts into existing canon, and **host-os** hygiene for the community
+Lightsail AL2023 VM (H1/H2/H3; #909).
 
 These folders are **not** product vision, ADR, or backlog execution. They record per-campaign triage
 (fix / suppress / skip / defer, or Dependabot merge / hold / defer) so cold sessions can see *why* a
@@ -44,6 +45,7 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 | [`document-hygiene/`](document-hygiene/) | `document-hygiene-curated` | Legacy document canonicality, discoverability, and archive-vs-delete decisions |
 | [`corpus-ablation/`](corpus-ablation/) | `corpus-ablation` | Cursor plans / prompt scaffolds → canon + discoverability; skill `.cursor/skills/corpus-ablation` (**not scheduled** — pending challenger repositioning, Mathieu 2026-10-19) |
 | [`critical-review/`](critical-review/) | `critical-review` | Launched adversarial / critical review (fresh cloud agent, forced ≠ author model family, read-only HITL); tools Stage 2 |
+| [`host-os/`](host-os/) | `host-os` (H1/H2/H3) | Community Lightsail host OS hygiene (`ezkey-online`, AL2023); signal `scripts/lightsail/os-patch-check.sh`; **rootbeer-local only** (#909) |
 
 ## Cadence & automation
 
@@ -74,6 +76,15 @@ Repo-is-memory decisions (one line + reason):
   Mathieu, 2026-10-19); do not invent a calendar until that lands.
 - **Mobile `yarn deps:monitor --strict` on Monday full** — empty Dependabot mobile queue is not
   proof the stack is current; strict monitor feeds the Mobile RN pulse.
+- **Host OS H1 monthly Monday (or ≤7 days for Critical/Important kernel/openssh/openssl/glibc)** —
+  community Lightsail stays on a locked AL2023 `releasever`; autonomous rootbeer agent after
+  snapshot; Marc go only if reboot needed (#909).
+- **Host OS H2 quarterly with major-upgrades walk** — AL2023 minor via
+  `dnf upgrade --releasever=…` + reboot; Marc go; snapshot + pg_dump on rootbeer (#909).
+- **Host OS H3 ad hoc (plan by 2028)** — major / new instance blue-green before AL2023 EOL
+  2029-06-30; Marc go, Edgar executes, Christophe posture (#909).
+- **dnf-automatic not adopted on community host** — conflicts with deterministic `releasever`
+  upgrades; no unattended swap (#909).
 
 | Procedure | Owner lane | Trigger | Cadence | Signal | Prioritization rule | Human gate |
 |-----------|------------|---------|---------|--------|---------------------|------------|
@@ -100,6 +111,9 @@ Repo-is-memory decisions (one line + reason):
 | **Ops: `check-ezkey-online-hosts`** / **`check-local-mgmt-port-publish`** (`scripts/ops/`; CI jobs) | Ops / CI | CI path filter | Every relevant CI run | Forbidden hosts / mgmt port publish | Fail = fix before merge | Author |
 | **Ops: `docker-log-hygiene`** (`scripts/ops/docker-log-hygiene.sh`) | Ops / Lightsail | Pre-upgrade + after compose up | On community upgrade checklist | Missing `max-size` / `max-file` | Fix before `--remote-up` | Operator on VM |
 | **Ops: `verify-javamelody-non-exposure`** / **`check-javamelody-spring-json`** / **`validate-caddy-observability-regexp`** | Ops / security | After JM or Caddy change; JM deploy smoke | On change + with monthly JM/pentest when JM in scope | Exposure / JSON drift / regexp | Fail = fix | Operator / Christophe |
+| **Host OS H1** (security patch within `releasever`; [`host-os/`](host-os/); `./scripts/lightsail/os-patch-check.sh --target community`) | `host-os` | rootbeer-local agent | **Monthly Monday**, or **≤7 days** when Critical/Important hits kernel / openssh / openssl / glibc | `os-patch-check` + `dnf updateinfo` | Patch within locked releasever; snapshot before apply; rotate older snapshots | Autonomous after snapshot; **Marc go only if reboot needed** |
+| **Host OS H2** (AL2023 minor + reboot; [`host-os/`](host-os/)) | `host-os` | Quarterly with major-upgrades walk | **Quarterly** Jan / Apr / Jul / Oct | `dnf check-release-update` → pin `--releasever=` | Snapshot + pg_dump (rootbeer) before apply; reboot after Marc go | **Marc go**; rootbeer agent executes |
+| **Host OS H3** (major / new instance blue-green; [`host-os/`](host-os/)) | `host-os` | Ad hoc | **Plan by 2028** (AL2023 EOL 2029-06-30) | EOL proximity + register `amazon-linux-community` | `create-instance` + `bootstrap-host` + pg_dump restore + static IP move | **Marc go**; Edgar executes; Christophe posture |
 
 Doctor biweekly rotation order (repeat): **Java → mobile → React → …**. Empty high-signal lot → no campaign note.
 
