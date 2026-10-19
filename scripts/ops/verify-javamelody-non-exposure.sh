@@ -250,6 +250,21 @@ looks_like_javamelody_report() {
   grep -qiE 'javamelody|Execute the garbage collector|Monitoring on' "$body_file" 2>/dev/null
 }
 
+# Business-port /monitoring is non-exposed when the response is not a successful
+# page and not a JavaMelody report. 404 (JM disabled or route absent), 401, and
+# 403 all count as OK — only HTTP 200 or JM HTML content fail (#863 follow-up).
+business_port_probe_is_ok() {
+  local code="$1"
+  local body_file="$2"
+  if looks_like_javamelody_report "$body_file"; then
+    return 1
+  fi
+  if [[ "$code" == "200" ]]; then
+    return 1
+  fi
+  return 0
+}
+
 # Build a curl --config file (0600) so Authorization/Cookie never appear in argv/ps.
 write_curl_config() {
   local cfg="$1"
@@ -346,25 +361,20 @@ probe_business_monitoring() {
   body="$(mktemp)"
   local code
   code="$(http_get "$body" "$url" "$with_auth")"
-  if [[ "$code" == "401" || "$code" == "403" ]]; then
-    if looks_like_javamelody_report "$body"; then
-      echo "  FAIL ${code}  ${label} ${url} (status refused but body looks like JM report)" >&2
-      failures=$((failures + 1))
-    else
-      echo "  OK  ${code}  ${label} ${url}"
-    fi
-  elif [[ "$code" == "200" ]] && looks_like_javamelody_report "$body"; then
+  if business_port_probe_is_ok "$code" "$body"; then
+    echo "  OK  ${code}  ${label} ${url}"
+  elif looks_like_javamelody_report "$body"; then
     echo "  FAIL ${code}  ${label} ${url} (JavaMelody report on business port — blocking)" >&2
     failures=$((failures + 1))
   else
-    echo "  FAIL ${code}  ${label} ${url} (expected 401 or 403)" >&2
+    echo "  FAIL ${code}  ${label} ${url} (HTTP 200 on business-port /monitoring — blocking)" >&2
     failures=$((failures + 1))
   fi
   rm -f "$body"
 }
 
 if [[ -n "$CHECK_BUSINESS" ]]; then
-  echo "→ business-port /monitoring (C2): expect 401 or 403; JM report HTML is blocking"
+  echo "→ business-port /monitoring (C2): 404/401/403 = not exposed; HTTP 200 or JM HTML is blocking"
   if [[ -n "$VIA_CADDY" ]]; then
     echo "  (via docker exec ${VIA_CADDY} — Docker DNS for admin-api/auth-api/integration-api)"
     if ! docker inspect "$VIA_CADDY" >/dev/null 2>&1; then

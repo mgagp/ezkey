@@ -433,9 +433,9 @@ Collector image/version is aligned with the API starter (**2.9.0**, WAR sha256 p
 - Collector bind: `127.0.0.1:8088:8080` only
 - Monitoring reports on management ports (`9081` / `8085` / `7081`); Caddy denies `/monitoring` and
   `/actuator` (and nested / case / `//` / `;` variants) on all public API + demo-acme hostnames
-- Business-port `/monitoring` must stay refused even with a valid admin bearer/cookie (401 or
-  403 — both acceptable; do not harmonize). A JavaMelody HTML report on a business port is
-  blocking.
+- Business-port `/monitoring` must stay non-exposed: **404** (JM disabled / route absent),
+  **401**, or **403** are all OK; do not harmonize. Only **HTTP 200** or a JavaMelody HTML
+  body fails (`verify-javamelody-non-exposure.sh --business-ports`).
 - Init parameters are injected via `SPRING_APPLICATION_JSON` with hyphenated JavaMelody Parameter
   codes (`system-actions-enabled`, `http-transform-pattern`, …). Plain
   `JAVAMELODY_INIT_PARAMETERS_SYSTEM_ACTIONS_ENABLED` env vars bind underscore map keys that
