@@ -277,10 +277,10 @@ public class AuthAttemptController {
               + " provided in the request body for uniform API design. HTTP 200 bodies"
               + " (APPROVED/DENIED/FAILED) are always integration-signed; the server never emits"
               + " an unsigned 200 (#844). Not-found, PENDING, and terminal / cancelled / superseded"
-              + " all map to a single client 409 auth-attempt-state-conflict (distinction only in"
-              + " server logs; #844 Marc m1). Missing per-enrollment integration signing key →"
-              + " runtime 503 integration-signing-unavailable (transaction rolls back; no JVM"
-              + " startup gate).")
+              + " map to 409 auth-attempt-state-conflict (#844 Marc m1). Wall-clock expiry after"
+              + " expiresAt maps to 409 auth-attempt-expired (#895). Missing per-enrollment"
+              + " integration signing key → runtime 503 integration-signing-unavailable"
+              + " (transaction rolls back; no JVM startup gate).")
   @ApiResponses(
       value = {
         @ApiResponse(
@@ -304,8 +304,8 @@ public class AuthAttemptController {
         @ApiResponse(
             responseCode = "409",
             description =
-                "Unified auth-attempt-state-conflict: not found, PENDING, or terminal / cancelled"
-                    + " / superseded (#844 Marc m1)",
+                "auth-attempt-state-conflict (not found, PENDING, terminal / cancelled /"
+                    + " superseded — #844) or auth-attempt-expired (wall-clock expiry — #895)",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
