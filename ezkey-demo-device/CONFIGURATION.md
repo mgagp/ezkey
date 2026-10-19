@@ -11,6 +11,15 @@ Lab-only phone simulator (port 8083). Properties bind from JAR `application.prop
 
 Redeploying the demo device drops any in-memory sessions that still used the previous cookie name.
 
+## Management port (Actuator)
+
+| Property | Default (IDE) | Docker | Description |
+|----------|---------------|--------|-------------|
+| `management.server.port` | `8084` | `8084` | Dedicated Actuator port; business stays on `8083`. |
+| `management.server.address` | `127.0.0.1` | unset | Loopback for IDE; local compose publishes `127.0.0.1:8084:8084`. |
+
+See [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) and [ADR-0015](../product-docs/global/architecture-decisions.md#adr-0015-management-port-separation-actuator-javamelody).
+
 ## Auth API target (`ezkey.auth.api.url`)
 
 | Property | Default (local) | Default (Docker) | Obligation | Description |

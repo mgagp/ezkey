@@ -133,14 +133,14 @@ function show_status() {
     fi
 
     # Check Crypto API
-    if curl -sf http://localhost:9090/actuator/health > /dev/null 2>&1; then
+    if curl -sf http://localhost:9091/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Crypto API: Healthy"
     else
         echo "  ❌ Crypto API: Unhealthy"
     fi
 
     # Check Demo Device (always started by clean-start / docker compose)
-    if curl -sf http://localhost:8083/actuator/health > /dev/null 2>&1; then
+    if curl -sf http://localhost:8084/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Demo Device: Healthy"
     else
         echo "  ❌ Demo Device: Unhealthy"

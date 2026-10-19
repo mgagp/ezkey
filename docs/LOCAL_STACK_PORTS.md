@@ -13,15 +13,25 @@ For **what to test** on each URL (headers, Bruno, `curl`), see **[admin-ui-secur
 | Admin API                    | `9080`                             | `19080` → forwards to `admin-api:9080`                    |
 | Integration API              | `7080`                             | `17080` → forwards to `integration-api:7080`              |
 | Crypto API                   | `9090`                             | **No Caddy hop in the current compose file** — use `9090` |
-| Admin API (management)       | `9081`                             | **Not exposed through this Caddy file** — use `9081`      |
-| Auth API (management)        | `8085`                             | **Not exposed through this Caddy file** — use `8085`      |
-| Integration API (management) | `7081`                             | **Not exposed through this Caddy file** — use `7081`      |
+| Admin API (management)       | `127.0.0.1:9081`                   | **Not exposed through this Caddy file** — use `9081`      |
+| Auth API (management)        | `127.0.0.1:8085`                   | **Not exposed through this Caddy file** — use `8085`      |
+| Integration API (management) | `127.0.0.1:7081`                   | **Not exposed through this Caddy file** — use `7081`      |
+| Crypto API (management)      | `127.0.0.1:9091`                   | **Not exposed through Caddy** — use `9091`                 |
+| Demo Device (management)     | `127.0.0.1:8084`                   | **Not exposed through Caddy** — use `8084`                 |
 | Demo App ACME                | `8082`                             | Via proxy hostname when configured — Actuator is **not** on `8082` |
-| Demo App ACME (management)   | `8086` (in-container; not published by default) | Health/Actuator only — never routed by Caddy |
+| Demo App ACME (management)   | `127.0.0.1:8086`                   | Health/Actuator only — never routed by Caddy |
 | JavaMelody collector (opt-in `--with-java-melody`) | `8088` | **No Caddy hop** — collector UI only |
 
-**Port 8086** is reserved for demo-app-acme management (Actuator). Confirm it stays free of other
-services in compose files before reassigning.
+**Management host publish:** local `docker-compose.yml` maps management ports as
+`127.0.0.1:<port>:<port>` only. Inside the container the JVM still listens on `0.0.0.0` so
+Docker peers (e.g. `ezkey-pam/test/test_pam.sh` → `integration-api:7081`) keep working. Do **not**
+set `MANAGEMENT_SERVER_ADDRESS=127.0.0.1` on the local compose (that binding is community-only).
+
+**Reserved management ports:** `8084` (demo-device), `8086` (acme), `8087` (crypto IDE default),
+`9091` (crypto Docker). Confirm they stay free of other services before reassigning.
+
+**IDE defaults** (`config/application.properties` / demo-device JAR defaults): management port +
+`management.server.address=127.0.0.1` on Admin/Auth/Integration/Crypto/Demo Device (E5).
 
 
 **Servlet session cookies on localhost:** each Spring servlet app sets a distinct `server.servlet.session.cookie.name` (Acme `EZKEY_ACME_SESSION`, demo-device `EZKEY_DEVICE_SESSION`, plus `EZKEY_*_API_SESSION` on the APIs) so browsers do not overwrite sessions across ports — shared default `JSESSIONID` caused Acme “session expired” after using the demo device (#799). APIs keep the property in `config/application.properties` (external config shipped with the image); demos keep it in the JAR `src/main/resources/application.properties`. Redeploying Acme or the demo device drops any in-memory sessions that still used the old cookie name. Cross-cutting guard: `node --test scripts/lib/session-cookie-names.test.mjs` (RED fixtures under `scripts/lib/fixtures/session-cookie-names/`; tolerates `=` / `:` with spaces; last assignment within a file; each `application-*.properties` profile checked separately as base+that-profile — #807).

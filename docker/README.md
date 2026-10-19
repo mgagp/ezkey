@@ -164,14 +164,14 @@ Compose passes `TZ: ${TZ:-UTC}` into services; if `TZ` is unset, behavior stays 
 - **Port**: `9090`
 - **Purpose**: Cryptographic services for testing (key generation, signing, validation)
 - **Depends on**: PostgreSQL (healthy), Migration (completed)
-- **Health Check**: http://localhost:9090/actuator/health
+- **Health Check**: http://localhost:9091/actuator/health (management port; business port remains `9090`)
 - **Note**: No database required, but included in stack for consistency
 
 ### Demo Device (demo-device)
 - **Port**: `8083`
 - **Purpose**: Simulated mobile device for testing enrollment and authentication flows
 - **Depends on**: Auth API (healthy)
-- **Health Check**: http://localhost:8083/actuator/health
+- **Health Check**: http://localhost:8084/actuator/health (management port; business port remains `8083`)
 - **Bootstrap**: Pre-seeded with global admin enrollment on first startup
 
 The Python CLI is a **host-side** optional tool, not a stack service. Clean-start does not start

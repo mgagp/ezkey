@@ -180,9 +180,9 @@ WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-crypto-api/target/*.jar app.jar
 COPY --chown=spring:spring --from=build /build/ezkey-crypto-api/config ./config
 USER spring:spring
-EXPOSE 9090
+EXPOSE 9090 9091
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:9090/actuator/health || exit 1
+  CMD curl -f http://localhost:9091/actuator/health || exit 1
 ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================
@@ -199,9 +199,9 @@ LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-demo-device/target/*.jar app.jar
 USER spring:spring
-EXPOSE 8083
+EXPOSE 8083 8084
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:8083/actuator/health || exit 1
+  CMD curl -f http://localhost:8084/actuator/health || exit 1
 ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================

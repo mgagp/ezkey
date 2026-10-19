@@ -195,7 +195,7 @@ parse_surefire_counts() {
 
 stack_up() {
   curl -sf http://127.0.0.1:9080/api/v1/public/instance-info >/dev/null 2>&1 \
-    && curl -sf http://127.0.0.1:8083/actuator/health >/dev/null 2>&1
+    && curl -sf http://127.0.0.1:8084/actuator/health >/dev/null 2>&1
 }
 
 ha_compose_cmd() {

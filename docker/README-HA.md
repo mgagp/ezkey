@@ -145,7 +145,7 @@ replicas. Crypto API is excluded. See [`README.md`](README.md) § JavaMelody col
 - **Port**: `9090` (exposed to host)
 - **Purpose**: Cryptographic operations service
 - **Depends on**: PostgreSQL (healthy), Migration (completed)
-- **Health Check**: http://localhost:9090/actuator/health
+- **Health Check**: http://localhost:9091/actuator/health (management port; business port remains `9090`)
 
 ### Demo Device (demo-device)
 - **Container**: `ezkey-demo-device-ha`
@@ -154,7 +154,7 @@ replicas. Crypto API is excluded. See [`README.md`](README.md) § JavaMelody col
 - **Depends on**: HAProxy Auth (healthy)
 - **Auth API URL**: Points to HAProxy Auth (`http://haproxy-auth:8080`) for load-balanced access
 - **Volume**: `demo-device-data-ha` (persistent data storage)
-- **Health Check**: http://localhost:8083/actuator/health
+- **Health Check**: http://localhost:8084/actuator/health (management port; business port remains `8083`)
 
 ## Management Commands
 

@@ -29,8 +29,8 @@ docker ps | grep crypto-api
 # Check logs
 docker logs ezkey-crypto-api --tail 50
 
-# Test health
-curl http://localhost:9090/actuator/health
+# Test health (management port; business API remains :9090)
+curl http://localhost:9091/actuator/health
 ```
 
 ## 🔑 Core Endpoints
@@ -270,9 +270,9 @@ source of truth, not `postman/`.
 ### When API is Unavailable
 
 1. **Verify container is running**: `docker ps | grep crypto-api`
-2. **Check health endpoint**: `curl http://localhost:9090/actuator/health`
+2. **Check health endpoint**: `curl http://localhost:9091/actuator/health` (management port)
 3. **Review startup logs**: `docker logs ezkey-crypto-api --tail 100`
-4. **Check port mapping**: Ensure port 9090 is accessible
+4. **Check port mapping**: Ensure business port 9090 and management port 9091 are accessible
 5. **Verify volume mounts**: Encryption secrets volume should be mounted
 
 ## 📚 Documentation References
