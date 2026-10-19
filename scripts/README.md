@@ -135,6 +135,22 @@ export AWS_PROFILE=ezkey-lightsail
 
 App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with **`--target community`** — no silent SSH host default (#812). Community `--sync-operator-files` installs `Caddyfile.ezkey-online` under that same remote basename (compose bind mount — #863). Do not put community-only secrets or ezkey.online-only DNS checklists into the public compose tree.
 
+## Ops — ezkey.online hostname allowlist (CI)
+
+[`ops/check-ezkey-online-hosts.sh`](ops/check-ezkey-online-hosts.sh) — greps tracked files for
+`*.ezkey.online` and fails on any label outside `{auth-api, admin-api, integration-api,
+demo-acme, admin-ui}`. Bare zone `ezkey.online` is allowed only when it is **not** written as
+an `http(s)` URL to the apex (that form fails). Not-served names (`n`, `auth`, `www`, …) may
+appear only in [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) §
+*Product hostnames*. Wired into the `lightsail` job in
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml). Unit tests:
+[`ops/check-ezkey-online-hosts.test.sh`](ops/check-ezkey-online-hosts.test.sh).
+
+```bash
+./scripts/ops/check-ezkey-online-hosts.sh
+./scripts/ops/check-ezkey-online-hosts.test.sh
+```
+
 ## Ops — Docker log hygiene (host-local)
 
 [`ops/docker-log-hygiene.sh`](ops/docker-log-hygiene.sh) — check json-file rotation / sizes (default), optional `--scan` (pattern **counts** only; stdout+stderr; `--since`; streamed), `--project`, `--purge` dry-run / `--purge --apply --yes` (project container IDs only; rotated-file search often needs **sudo**). No remote/SSH. Canon: [`docs/OPERATIONAL.md`](../docs/OPERATIONAL.md) § Log rotation and hygiene.

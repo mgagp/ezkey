@@ -1,9 +1,11 @@
 ﻿# Community deploy ledger (ezkey.online)
 
-**Source of truth** for what is live on the **community** surface:
+**Source of truth** for what is live on the **community** surface (deploy SHA / timing).
+Public product hostnames (served vs not served, DNS, expected `/` codes): see
+[`../community-host.md`](../community-host.md) § *Product hostnames (ezkey.online)*.
 
-- **Admin UI** — Cloudflare Pages (`admin-ui.ezkey.online`), not a VM container
-- **APIs / Demo ACME** — Lightsail Docker host behind `*.ezkey.online`
+- **Admin UI** — Cloudflare Pages (not a VM container)
+- **APIs / Demo ACME** — Lightsail Docker host behind Caddy
 
 Normative rules: [`../VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md).
 

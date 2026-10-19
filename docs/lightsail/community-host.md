@@ -78,17 +78,44 @@ These scripts **never** change production DNS or certificates. They **never** co
 
 ## Product hostnames (ezkey.online)
 
-Locked for the community host (Marc / PR #609). Use the community Caddyfile overlay; do not invent alternate public hostnames in generic defaults.
+**Single source of truth** for public `*.ezkey.online` product hostnames (Marc / PR #609;
+inventory 2026-10-19). Use the community Caddyfile overlay; do not invent alternate public
+hostnames in generic defaults. Other docs should **link here** instead of duplicating this table.
 
-| Role | Hostname |
-|------|----------|
-| Admin UI (Pages) | `admin-ui.ezkey.online` |
-| Admin API | `admin-api.ezkey.online` |
-| Auth API | `auth-api.ezkey.online` |
-| Integration API | `integration-api.ezkey.online` |
-| Demo ACME | `demo-acme.ezkey.online` |
+| Host | Role | Served by | DNS | Expected on `/` |
+|------|------|-----------|-----|-----------------|
+| `admin-ui.ezkey.online` | Admin UI | Cloudflare Pages (custom domain) | Pages | 200 |
+| `admin-api.ezkey.online` | Admin API | Caddy on Lightsail | A proxied → `<static-ip ezkey-online-community>` | 401 |
+| `auth-api.ezkey.online` | Auth API (QR URL) | Caddy on Lightsail | A proxied → `<static-ip ezkey-online-community>` | 404 (no `/` route) |
+| `integration-api.ezkey.online` | Integration API | Caddy on Lightsail | A proxied → `<static-ip ezkey-online-community>` | 401 |
+| `demo-acme.ezkey.online` | Demo ACME | Caddy on Lightsail | A proxied → `<static-ip ezkey-online-community>` | 302 |
 
-Community Caddy site blocks: [`experimental-hybrid/lightsail/Caddyfile.ezkey-online`](../../experimental-hybrid/lightsail/Caddyfile.ezkey-online) (TLS 1.3 Origin CA paths, docs block, reverse_proxy targets).
+Community Caddy site blocks (four hosts only): [`experimental-hybrid/lightsail/Caddyfile.ezkey-online`](../../experimental-hybrid/lightsail/Caddyfile.ezkey-online) (TLS 1.3 Origin CA paths, docs block, reverse_proxy targets). Admin UI is Pages, not Caddy.
+
+### Not served
+
+These names are **not** product endpoints. Do not publish them in defaults, QR URLs, Bruno
+environments, or client configs:
+
+| Name | Notes |
+|------|--------|
+| `ezkey.online` (apex) | No A/CNAME; not an API or UI origin |
+| `n.ezkey.online` | No DNS; does not exist |
+| `auth.ezkey.online` | No DNS; does not exist (use `auth-api.ezkey.online`) |
+| `admin.ezkey.online` | No DNS; does not exist (use `admin-api` / `admin-ui`) |
+| `acme.ezkey.online` | No DNS; does not exist (use `demo-acme.ezkey.online`) |
+| `api.ezkey.online` | No DNS; does not exist |
+| `www.ezkey.online` | A proxied with no valid origin → Cloudflare **530**; DNS decision pending with Marc |
+
+**Any other `*.ezkey.online` name does not exist** and must not be introduced without updating
+this section and the CI allowlist in [`scripts/ops/check-ezkey-online-hosts.sh`](../../scripts/ops/check-ezkey-online-hosts.sh).
+
+**Decision (2026-10-19):** hostname canon and “not served” inventory locked from Edgar’s
+read-only probe + live Caddyfile; `www` disposition deferred to Marc.
+
+**CI guard:** [`scripts/ops/check-ezkey-online-hosts.sh`](../../scripts/ops/check-ezkey-online-hosts.sh)
+(lightsail job in CI) rejects new `*.ezkey.online` labels outside the allowlist above; see
+[`scripts/README.md`](../../scripts/README.md) § *Ops — ezkey.online hostname allowlist*.
 
 ---
 
