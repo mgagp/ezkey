@@ -192,11 +192,11 @@ else
 fi
 assert_one_clean_line "${BEFORE}" "DENIED" "reject"
 
-# --- timeout (short wait, no approve) ---
+# --- timeout (short wait, no approve) → result=TIMEOUT (#895) ---
 BEFORE="$(attempt_count)"
 docker exec "${CONTAINER}" cp -a "${CONF}" "${BACKUP}"
 docker exec "${CONTAINER}" sh -c \
-  "sed -i 's/^wait_timeout=.*/wait_timeout=8/' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'"
+  "sed -i 's/^wait_timeout=.*/wait_timeout=15/' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'"
 LOG="${RUNTIME_DIR}/obs-timeout.log"
 ssh_run "${LOG}" 'echo SHOULD_NOT'
 restore_conf
@@ -206,7 +206,7 @@ if [ "${RC}" != "0" ]; then
 else
   fail "timeout path unexpectedly succeeded"
 fi
-assert_one_clean_line "${BEFORE}" "DENIED" "timeout"
+assert_one_clean_line "${BEFORE}" "TIMEOUT" "timeout"
 
 # --- network error (unreachable Integration API) ---
 BEFORE="$(attempt_count)"

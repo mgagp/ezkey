@@ -102,11 +102,11 @@ owner `root:root` in the demo image. That path and style match Linux-PAM convent
 | `wait_timeout` / `wait_polling` / `api_timeout` | HTTP waits | Yes |
 | `challenge_requested` | Two-digit number-matching challenge | **Default `false`** — SSH MFA without number matching; `true` shows code via `pam_prompt` before `/wait` |
 | `lab_http` | Allow `http://` URL | Docker entrypoint sets `true`; host sample default `false` |
-| `wait_timeout` | `/wait` client wait (seconds) | Default **90**; clamped to **`EZKEY_MAX_WAIT_TIMEOUT` 100** (< `LoginGraceTime` 120) |
+| `wait_timeout` | `/wait` client wait + create `ttlSeconds` (seconds) | Default **90**; clamped **15–90** (`EZKEY_MIN_TTL_SECONDS` / `EZKEY_MAX_WAIT_TIMEOUT`); aligned on applied TTL from create response (#895) |
 | `context_title` / `context_message` | Device copy | Yes |
 | `debug` | Extra filelog under `/var/log/ezkey-pam/` (`O_NOFOLLOW`, 0600) | Docker lab entrypoint sets `true`; sample conf default `false` (#818) |
 
-PAM args (root-owned `pam.d` only): `debug`, `conf=/path`.
+PAM args (root-owned `pam.d` only): `debug`, `conf=/path`, optional `wait_timeout=N` (overrides conf).
 
 **Process ENV is not read by `pam_ezkey.so`.** Compose may still set
 `EZKEY_INTEGRATION_*`, `EZKEY_WAIT_*`, `EZKEY_DEBUG`, and optionally
@@ -134,10 +134,9 @@ operational (TLS, live sshd cutover), not “more keys.”
 - **`PerSourcePenalties no`** in demo [`sshd_config`](sshd_config) (OpenSSH 9.9+). Stock
   `authfail:5` blocks localhost after a handful of denied logins and breaks M1 conf-security
   rapid UNAVAIL proofs. **Lab only** — do not copy this disable onto a hardened non-lab host.
-- **LoginGraceTime ≤ attempt TTL:** abandoning at the prompt leaves the attempt to expire
-  server-side with no PAM line (sshd logs `Timeout before authentication`); if an operator
-  raises `LoginGraceTime` above the TTL it stays fail-closed (`/wait` expired gives
-  `AUTH_ERR`). No cancel/trace mechanism needed.
+- **LoginGraceTime ≥ 120 s** (demo `sshd_config`). Abandoning at the prompt no longer relies
+  solely on server TTL: PAM best-effort `POST …/cancel` on non-ACCEPTED exit after create
+  (#895). If sshd cuts the session before PAM returns, there may still be no attempt line.
 
 ### Slices #1–#3 done (this eval)
 
@@ -426,7 +425,7 @@ pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n>
 |---|---|
 | `user` | Linux username (sanitized); `-` if unavailable |
 | `authAttemptId` | Numeric id from create, or `-` if never created |
-| `result` | `SUCCESS` \| `DENIED` \| `UNAVAIL` \| `ERROR` \| `UNKNOWN_USER` |
+| `result` | `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `UNAVAIL` \| `ERROR` \| `UNKNOWN_USER` |
 | `pam_code` | Integer PAM return code |
 | `latency_ms` | Monotonic elapsed ms for the authenticate call |
 | `lab_http` | Conf `lab_http` as `true` or `false` (Christophe) |
@@ -435,7 +434,8 @@ pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n>
 bodies, wait JSON.
 
 Demo containers: entrypoint enables `imuxsock` `SysSock.Use="on"` and disables `imjournal` so
-lines land in `/var/log/secure` (no systemd journal in the SSH VM).
+lines land in `/var/log/secure` (no systemd journal in the SSH VM). On **AL2023 hosts**,
+authpriv goes to journald — use `journalctl -t pam_ezkey` (not `/var/log/secure`).
 
 ### Conf contract (credentials)
 
@@ -540,11 +540,14 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | Auth budget | `ezkey_config.h:36` **105**; rem helper `pam_ezkey.c:432-441` | 105 s (&lt; grace 120) | Delayed Enter 8s shrinks `?timeout=` (proven). Rem-exhaustion branches are defensive under api≤10 + Enter≤25 (rem stays ≥70) — not claimed proven in CI |
 | `api_timeout` | clamp `pam_ezkey.c:208-211` (`EZKEY_MAX_API_TIMEOUT` `ezkey_config.h:37`); POST curl `pam_ezkey.c:666-676` | max **10** s | stub sleep 3 + conf `1` → UNAVAIL; conf **60** + stub sleep 12 → UNAVAIL in ≪60s (cap proven) |
 | Enter prompt | `pam_ezkey.c:779-796` measure; `EZKEY_MAX_ENTER_SECS` `ezkey_config.h:40` **25** | duration bound (no signals) | Enter **>25 s** → UNAVAIL + attempt + debug.err duration (proven) |
-| `wait_timeout` | clamp `pam_ezkey.c:201-204` (`ezkey_config.h:41` **90**); `effective_wait` `pam_ezkey.c:814-825` | ≤90; shrunk by budget | stub log `?timeout=90` when conf=200; `?timeout=2` short path (proven) |
-| curl `/wait` | `EZKEY_CURL_WAIT_SLACK` `ezkey_config.h:38` **15**; `pam_ezkey.c:849-852` | wait+≤15; ≤ rem | Covered by wait / delayed-Enter cases (proven) |
+| `wait_timeout` | clamp floor **15** / max **90**; `ttlSeconds` on create; `effective_wait` = min(conf, applied_ttl, rem−slack) | 15–90; shrunk by budget + applied TTL | conf=200 → ttl+`?timeout=90`; conf=2 → floor **15** (proven) |
+| curl `/wait` | `EZKEY_CURL_WAIT_SLACK` **15** (cancel margin inside) | wait+≤15; ≤ rem | Covered by wait / delayed-Enter cases (proven) |
+| Cancel | `POST …/cancel` best-effort on non-ACCEPTED after create | ≤ api_timeout from rem | pending→TIMEOUT + cancel; EXPIRED + cancel; Enter>25 + cancel (proven) |
+| Summary outcomes | `EXPIRED` / `TIMEOUT` / `DENIED` | lacune 5 | stub expired / pending / rejected (proven) |
 | `wait_polling` | sample `config/pam_ezkey.conf` `wait_polling=2` | Server-side cadence | Sample conf present (proven) |
-| Server attempt TTL | `ezkey-core/CONFIGURATION.md` `ttl-seconds` **120** | Aligns with grace | Documented only (PAM does not own TTL) |
-| `LoginGraceTime` | `sshd_config:20` → **120** | sshd cuts session | Budget 105 documented; Enter-never-pressed → cut **without** attempt line (documented, not lab-proven) |
+| Server attempt TTL | create `ttlSeconds` (PAM) + core global ceiling **120** | Align on applied duration | PAM sends planned wait; ignores `expiresAt` wall clock |
+| `LoginGraceTime` | `sshd_config:20` → **120** (runbook ≥120) | sshd cuts session | Budget 105 documented; Enter-never-pressed → cut **without** attempt line (documented, not lab-proven) |
+| Auth `/pending` | `ezkey.rate-limit.pending` **10/min** | Device polling | Runbook note (Lightsail) |
 
 ### `/wait` response signature — deferred ([#858](https://github.com/mgagp/ezkey/issues/858))
 
@@ -590,6 +593,7 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | Patrick CHANGES | timeout inventory + wait clamp below LoginGraceTime | **Done** (`test-timeouts.sh`) |
 | Patrick P3 | Single auth budget 105; dynamic `?timeout=`; Enter monotonic (no signals) | **Done** (`test-timeouts.sh` stub + CI) |
 | Patrick CHANGES | https scheme case-insensitive + no pam_info fallback | **Done** |
+| #895 PR-B | `ttlSeconds` + applied-TTL align + cancel + EXPIRED/TIMEOUT/DENIED | **Done** (`test-timeouts.sh` + README runbook) |
 
 ### Out of M1
 
