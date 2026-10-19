@@ -56,9 +56,9 @@ if [ -f "${SSHD_CFG}" ] && command -v sshd >/dev/null 2>&1; then
   # Global MaxAuthTries 1 (before any Match) still discouraged — pubkey rejects count.
   if awk '
     /^[[:space:]]*#/ { next }
-    /^[[:space:]]*Match[[:space:]]/ { exit 1 }
-    /^[[:space:]]*MaxAuthTries[[:space:]]+1([[:space:]]|$)/ { exit 0 }
-    END { exit 1 }
+    /^[[:space:]]*Match[[:space:]]/ { exit }
+    /^[[:space:]]*MaxAuthTries[[:space:]]+1([[:space:]]|$)/ { found=1; exit }
+    END { exit !found }
   ' "${SSHD_CFG}"; then
     echo ""
     echo "WARNING: global MaxAuthTries 1 found (before Match) — refused public keys"

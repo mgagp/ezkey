@@ -226,9 +226,18 @@ else
   echo "kill-during-wait create_ttlSeconds=${GOT_TTL:-missing} expected=${CASE_C_WAIT_TTL}" \
     | tee -a "${PROOF}"
   if [ "${GOT_TTL}" = "${CASE_C_WAIT_TTL}" ]; then
-    ok "B2b/R5: applied TTL bound ttlSeconds=${GOT_TTL} (residual window ≤ TTL; cancel best-effort)"
+    ok "requested ttlSeconds=${GOT_TTL} (server-side expiry: #898)"
   else
     fail "B2b/R5: expected create ttlSeconds=${CASE_C_WAIT_TTL}, got '${GOT_TTL:-missing}'"
+  fi
+
+  CREATES_END="$(count_creates)"
+  CREATES_END="${CREATES_END:-0}"
+  echo "kill-during-wait creates_end=${CREATES_END}" | tee -a "${PROOF}"
+  if [ "${CREATES_END}" -eq 1 ]; then
+    ok "B2b: creates still 1 at end of case (no orphan retry create)"
+  else
+    fail "B2b: expected creates=1 at end of case, got ${CREATES_END}"
   fi
 
   if [ "${CANCEL_SEEN}" -eq 1 ] && [ "${CANCEL_ELAPSED}" -le 5 ]; then

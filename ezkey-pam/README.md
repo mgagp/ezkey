@@ -40,8 +40,8 @@ that owns the API key.
   during wait — flag then restore; Christophe security GO). When the signal is
   delivered, curl aborts and cancel runs within `min(api_timeout, 5)`. On OpenSSH
   9.9 pre-auth client kill, SIGTERM often never arrives — cancel is then skipped
-  and the **applied TTL** from create is the residual bound. Do not rely on
-  `pam_end` under OpenSSH.
+  and the **applied TTL** from create (≤ 90 s) is the residual bound. Do not rely
+  on `pam_end` under OpenSSH.
 - Proof: `scripts/test-f9-retry.sh` A/B (multitry vs Match) gate CI. Case C
   (kill-client) documents best-effort cancel and asserts the TTL bound; it does
   **not** require cancel ≤5 s and does not fail CI when cancel is absent.
