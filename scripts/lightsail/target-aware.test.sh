@@ -4,10 +4,10 @@
 # Community-only: --target community → Host ezkey-online.
 # Run from repo root: ./scripts/lightsail/target-aware.test.sh
 #
-# Safety: fake `aws`, `ssh`, `scp`, and `docker` are prepended to PATH for the
-# whole run. They record invocations and never reach a real Lightsail VM or AWS.
-# delete-instance against fake aws exits non-zero. ssh/scp refuse any Host that
-# is not the expected community alias unless FAKE_SSH_ALLOW is set.
+# Safety: fake `aws`, `ssh`, `scp`, `docker`, and `npx` are prepended to PATH for
+# the whole run. They record invocations and never reach a real Lightsail VM,
+# AWS, or Cloudflare Pages. delete-instance against fake aws exits non-zero.
+# ssh/scp refuse any Host that is not the expected community alias.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -18,6 +18,7 @@ BOOTSTRAP="${ROOT}/scripts/lightsail/bootstrap-host.sh"
 CREATE="${ROOT}/scripts/lightsail/create-instance.sh"
 DELETE="${ROOT}/scripts/lightsail/delete-instance.sh"
 ADMIN_UI_PROD="${ROOT}/scripts/cloudflare/deploy-admin-ui-production.sh"
+ADMIN_UI_PREVIEW="${ROOT}/scripts/cloudflare/deploy-admin-ui-preview.sh"
 COMPOSE="${ROOT}/experimental-hybrid/lightsail/docker-compose.yml"
 
 TMP="$(mktemp -d)"
@@ -29,11 +30,13 @@ FAKE_AWS_LOG="${TMP}/fake-aws.log"
 FAKE_SSH_LOG="${TMP}/fake-ssh.log"
 FAKE_SCP_LOG="${TMP}/fake-scp.log"
 FAKE_DOCKER_LOG="${TMP}/fake-docker.log"
+FAKE_NPX_LOG="${TMP}/fake-npx.log"
 mkdir -p "${FAKE_AWS_BIN}"
 : >"${FAKE_AWS_LOG}"
 : >"${FAKE_SSH_LOG}"
 : >"${FAKE_SCP_LOG}"
 : >"${FAKE_DOCKER_LOG}"
+: >"${FAKE_NPX_LOG}"
 
 # Isolate from workstation AWS config / credentials (never hit real AWS).
 export AWS_PROFILE="ezkey-test-no-such-profile"
@@ -50,8 +53,11 @@ export FAKE_AWS_LOG
 export FAKE_SSH_LOG
 export FAKE_SCP_LOG
 export FAKE_DOCKER_LOG
+export FAKE_NPX_LOG
 # Only allow ssh/scp to this Host alias (blocks accidental real VM contact).
 export FAKE_SSH_ALLOWED_HOST="${FAKE_SSH_ALLOWED_HOST:-ezkey-online}"
+# Admin UI deploy tests: never source workstation .env (would override fake tokens — #863 B1).
+export EZKEY_SKIP_DOTENV=1
 
 cat >"${FAKE_AWS_BIN}/aws" <<'FAKE_AWS'
 #!/usr/bin/env bash
@@ -125,10 +131,20 @@ exit 96
 FAKE_DOCKER
 chmod +x "${FAKE_AWS_BIN}/docker"
 
+# Fake npx: never run real wrangler / Pages deploy (#863 B1).
+cat >"${FAKE_AWS_BIN}/npx" <<'FAKE_NPX'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >>"${FAKE_NPX_LOG:?FAKE_NPX_LOG unset}"
+echo "error: FAKE npx refused live execution (would deploy Pages): $*" >&2
+exit 95
+FAKE_NPX
+chmod +x "${FAKE_AWS_BIN}/npx"
+
 export PATH="${FAKE_AWS_BIN}:${PATH}"
 
-# Prove the harness shadows any real aws/ssh/scp/docker.
-for tool in aws ssh scp docker; do
+# Prove the harness shadows any real aws/ssh/scp/docker/npx.
+for tool in aws ssh scp docker npx; do
   if [[ "$(command -v "${tool}")" != "${FAKE_AWS_BIN}/${tool}" ]]; then
     echo "FAIL: expected fake ${tool} at ${FAKE_AWS_BIN}/${tool}, got $(command -v "${tool}")" >&2
     exit 1
@@ -529,27 +545,114 @@ fi
   echo "PASS: compose bind-mount list includes Caddyfile file + certs/init dirs"
 ) && pass=$((pass + 1)) || fail=$((fail + 1))
 
-# --- deploy-admin-ui-production.sh: no silent EXP1 Pages default (#863) ---
+# --- deploy-admin-ui-production.sh / preview: no silent EXP1 Pages default (#863 B1/N6) ---
+# Early-exit guards must never reach npx/wrangler (even if workstation has .env + dist).
+: >"${FAKE_NPX_LOG}"
 assert_fail "admin-ui production without CLOUDFLARE_PAGES_PROJECT fails" \
   env -u CLOUDFLARE_PAGES_PROJECT \
+    EZKEY_SKIP_DOTENV=1 \
     CLOUDFLARE_API_TOKEN=fake CLOUDFLARE_ACCOUNT_ID=fake \
     bash "${ADMIN_UI_PROD}"
 assert_stderr_contains "admin-ui prod requires Pages project" "CLOUDFLARE_PAGES_PROJECT"
 assert_stderr_contains "admin-ui prod mentions community project" "admin-ui-ezkey-online"
 assert_stderr_contains "admin-ui prod mentions community API URL" "admin-api.ezkey.online"
 
-# With project set but missing dist, should fail on dist (not on EXP1 default).
-assert_fail "admin-ui production with project but missing dist fails on dist" \
-  env CLOUDFLARE_PAGES_PROJECT=admin-ui-ezkey-online \
-    CLOUDFLARE_API_TOKEN=fake CLOUDFLARE_ACCOUNT_ID=fake \
-    bash "${ADMIN_UI_PROD}"
-assert_stderr_contains "admin-ui prod missing dist" "missing or empty"
-
 assert_fail "admin-ui production --build without VITE_API_BASE_URL fails" \
   env CLOUDFLARE_PAGES_PROJECT=admin-ui-ezkey-online \
+    EZKEY_SKIP_DOTENV=1 \
     CLOUDFLARE_API_TOKEN=fake CLOUDFLARE_ACCOUNT_ID=fake \
     bash "${ADMIN_UI_PROD}" --build
 assert_stderr_contains "admin-ui prod build needs VITE_API_BASE_URL" "VITE_API_BASE_URL is required"
+
+assert_fail "admin-ui preview without CLOUDFLARE_PAGES_PROJECT fails" \
+  env -u CLOUDFLARE_PAGES_PROJECT \
+    EZKEY_SKIP_DOTENV=1 \
+    CLOUDFLARE_API_TOKEN=fake CLOUDFLARE_ACCOUNT_ID=fake \
+    bash "${ADMIN_UI_PREVIEW}"
+assert_stderr_contains "admin-ui preview requires Pages project" "CLOUDFLARE_PAGES_PROJECT"
+
+if [[ ! -s "${FAKE_NPX_LOG}" ]]; then
+  echo "PASS: fake npx never called during early-exit admin-ui guard tests (#863 B1)"
+  pass=$((pass + 1))
+else
+  echo "FAIL: fake npx was invoked during early-exit guards (must not reach deploy):" >&2
+  cat "${FAKE_NPX_LOG}" >&2
+  fail=$((fail + 1))
+fi
+
+# If dist exists (operator workstation), deploy would reach npx — fake must refuse (never real wrangler).
+: >"${FAKE_NPX_LOG}"
+assert_fail "admin-ui production with project blocked before real Pages deploy" \
+  env CLOUDFLARE_PAGES_PROJECT=admin-ui-ezkey-online \
+    EZKEY_SKIP_DOTENV=1 \
+    CLOUDFLARE_API_TOKEN=fake CLOUDFLARE_ACCOUNT_ID=fake \
+    bash "${ADMIN_UI_PROD}"
+if grep -q 'missing or empty' "${ERR}"; then
+  if [[ ! -s "${FAKE_NPX_LOG}" ]]; then
+    echo "PASS: admin-ui prod failed on missing dist; npx not called"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: npx called despite missing-dist path" >&2
+    fail=$((fail + 1))
+  fi
+elif grep -q 'FAKE npx refused' "${ERR}" && grep -q 'pages deploy' "${FAKE_NPX_LOG}"; then
+  echo "PASS: admin-ui prod reached fake npx only (dist present; real wrangler blocked)"
+  pass=$((pass + 1))
+else
+  echo "FAIL: expected missing dist or FAKE npx pages-deploy refusal" >&2
+  cat "${ERR}" >&2
+  cat "${FAKE_NPX_LOG}" >&2
+  fail=$((fail + 1))
+fi
+
+# --- #863 N7: bind-mount preflight fails when a directory replaces an expected file ---
+(
+  # shellcheck source=common.sh
+  source "${COMMON}"
+  fixture="${TMP}/preflight-fixture"
+  mkdir -p "${fixture}/caddy-certs"
+  # #863 artifact: compose expects a file, Docker left a directory.
+  mkdir -p "${fixture}/Caddyfile.ezkey-online"
+  remote_path="${fixture}/Caddyfile.ezkey-online"
+  if [[ -d "${remote_path}" ]]; then
+    if ! ( [[ -f "${remote_path}" ]] ); then
+      echo "PASS: preflight detects directory where file expected (Caddyfile.ezkey-online)"
+      exit 0
+    fi
+  fi
+  echo "FAIL: fixture setup for dir-as-file preflight" >&2
+  exit 1
+) && pass=$((pass + 1)) || fail=$((fail + 1))
+
+(
+  # Simulate the remote refuse-if-directory body used before scp (B3) — no auto-rmdir.
+  fixture="${TMP}/b3-fixture"
+  mkdir -p "${fixture}"
+  mkdir -p "${fixture}/Caddyfile.ezkey-online"
+  if (
+    set -euo pipefail
+    cd "${fixture}"
+    if [[ -d Caddyfile.ezkey-online ]]; then
+      echo "error: remote ${fixture}/Caddyfile.ezkey-online is a directory (Docker empty-dir artifact when the bind-mount file was missing — #863)" >&2
+      echo "  Manual remediation (requires Marc's go):" >&2
+      echo "    ssh ezkey-online 'sudo rmdir ${fixture}/Caddyfile.ezkey-online'" >&2
+      exit 1
+    fi
+  ) 2>"${ERR}"; then
+    echo "FAIL: B3 directory check should fail" >&2
+    exit 1
+  fi
+  grep -q 'is a directory' "${ERR}"
+  grep -q "sudo rmdir" "${ERR}"
+  grep -q "Marc's go" "${ERR}"
+  echo "PASS: B3 refuse-if-directory surfaces manual sudo rmdir + Marc go"
+) && pass=$((pass + 1)) || fail=$((fail + 1))
+
+# Dry-run sync must advertise the pre-scp directory refuse (no auto-rmdir).
+assert_ok "export dry-run sync mentions refuse-if-directory" \
+  bash "${EXPORT}" --target community --dry-run --apis-only --sync-operator-files
+assert_stdout_contains "dry-run refuse directory before scp" "refuse sync if remote Caddyfile.ezkey-online is a directory"
+assert_stdout_contains "dry-run no auto-rmdir" "no auto-rmdir"
 
 echo
 echo "Results: ${pass} passed, ${fail} failed"

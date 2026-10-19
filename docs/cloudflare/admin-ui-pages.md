@@ -91,7 +91,8 @@ Build and deploy in one step (requires `VITE_API_BASE_URL` in root `.env` or the
 
 (Or `export CLOUDFLARE_API_TOKEN=...` and `CLOUDFLARE_ACCOUNT_ID=...` in the shell instead of `.env`.)
 
-Override project name: `CLOUDFLARE_PAGES_PROJECT=ezkey-admin-ui ./scripts/cloudflare/deploy-admin-ui-preview.sh`
+`CLOUDFLARE_PAGES_PROJECT` is **required** (no silent EXP1 default — #863). Community example:
+`CLOUDFLARE_PAGES_PROJECT=admin-ui-ezkey-online ./scripts/cloudflare/deploy-admin-ui-preview.sh`
 
 **Production:** `CLOUDFLARE_PAGES_PROJECT` is **required** (no silent default after EXP1 retirement — #863). Community example from the repo root:
 

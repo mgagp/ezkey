@@ -27,7 +27,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
-if [[ -f "$ROOT/.env" ]]; then
+# Tests set EZKEY_SKIP_DOTENV=1 so a workstation .env cannot override fake tokens (#863 B1).
+if [[ -z "${EZKEY_SKIP_DOTENV:-}" && -f "$ROOT/.env" ]]; then
   set -a
   # shellcheck disable=SC1091
   source "$ROOT/.env"

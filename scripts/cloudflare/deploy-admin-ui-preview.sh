@@ -2,32 +2,35 @@
 # Deploy ezkey-admin-ui/dist to Cloudflare Pages as a PREVIEW deployment.
 # Build first: cd ezkey-admin-ui && npm ci && npm run build:cloudflare
 #
-# Requires: npx, Wrangler, CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+# Requires: npx, Wrangler, CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID,
+#           CLOUDFLARE_PAGES_PROJECT (no silent default — #863)
 #
-# Usage (from repo root):
-#   ./scripts/cloudflare/deploy-admin-ui-preview.sh
+# Usage (from repo root) — community preview example:
+#   CLOUDFLARE_PAGES_PROJECT=admin-ui-ezkey-online \
+#   VITE_API_BASE_URL=https://admin-api.ezkey.online \
+#     ./scripts/cloudflare/deploy-admin-ui-preview.sh --build
 #
 # Or export the variables in the shell. Same as deploy-ezkey-org-preview.sh: if a gitignored
 # `.env` exists at the repo root, it is sourced automatically (CLOUDFLARE_API_TOKEN,
 # CLOUDFLARE_ACCOUNT_ID — Bash: export VAR=value or VAR=value per line).
+# Tests may set EZKEY_SKIP_DOTENV=1 to skip sourcing `.env`.
 #
 # When using `--build`, `VITE_API_BASE_URL` is **required** (root `.env` or environment).
-# There is no product default hostname — set the Admin API origin for your surface explicitly
-# (community or other). See `.env.example` and `ezkey-admin-ui/.env.cloudflare`.
+# There is no product default hostname and no default Pages project — set both explicitly
+# so a retired EXP1 project name cannot be selected by accident (#863).
 #
 # Public alpha chrome: `VITE_GIT_SHA` is stamped into the Admin UI build (override via env;
 # else short git SHA when available). See docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md.
 #
 # Optional:
-#   ./scripts/cloudflare/deploy-admin-ui-preview.sh --build   # npm run build:cloudflare then deploy
-#   CLOUDFLARE_PAGES_PROJECT=ezkey-admin-ui ./scripts/cloudflare/deploy-admin-ui-preview.sh
 #   PREVIEW_BRANCH=my-branch ./scripts/cloudflare/deploy-admin-ui-preview.sh
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
-if [[ -f "$ROOT/.env" ]]; then
+# Tests set EZKEY_SKIP_DOTENV=1 so a workstation .env cannot override fake tokens (#863 B1).
+if [[ -z "${EZKEY_SKIP_DOTENV:-}" && -f "$ROOT/.env" ]]; then
   set -a
   # shellcheck disable=SC1091
   source "$ROOT/.env"
@@ -47,7 +50,6 @@ if [[ "${1:-}" == "--build" ]]; then
   shift
 fi
 
-PROJECT="${CLOUDFLARE_PAGES_PROJECT:-ezkey-admin-ui}"
 BRANCH="${PREVIEW_BRANCH:-preview-$(date -u +%Y%m%d-%H%M%S)}"
 DIST="$ROOT/ezkey-admin-ui/dist"
 
@@ -59,12 +61,20 @@ if [[ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
   echo "error: set CLOUDFLARE_ACCOUNT_ID" >&2
   exit 1
 fi
+# Require an explicit Pages project (#863). No silent EXP1 default (ezkey-admin-ui).
+if [[ -z "${CLOUDFLARE_PAGES_PROJECT:-}" ]]; then
+  echo "error: set CLOUDFLARE_PAGES_PROJECT (no silent default after EXP1 retirement; #863)" >&2
+  echo "       Community: CLOUDFLARE_PAGES_PROJECT=admin-ui-ezkey-online" >&2
+  echo "                  VITE_API_BASE_URL=https://admin-api.ezkey.online" >&2
+  exit 1
+fi
+PROJECT="${CLOUDFLARE_PAGES_PROJECT}"
 
 if [[ "$DO_BUILD" == true ]]; then
   if [[ -z "${VITE_API_BASE_URL:-}" ]]; then
     echo "error: VITE_API_BASE_URL is required when using --build" >&2
     echo "       Set it in the repo-root .env (see .env.example) or export it." >&2
-    echo "       Example: https://admin-api.ezkey.online (community)" >&2
+    echo "       Community: https://admin-api.ezkey.online" >&2
     exit 1
   fi
   export VITE_API_BASE_URL

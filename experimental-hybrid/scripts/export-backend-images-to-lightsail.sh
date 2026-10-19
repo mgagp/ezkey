@@ -200,12 +200,16 @@ sync_operator_files() {
     echo "error: missing ${caddy_src}" >&2
     exit 1
   fi
+  # Pre-scp: the compose-mounted basename must not be a directory (#863). Docker creates an
+  # empty root-owned dir when the bind source was missing; scp into it would nest the file
+  # silently or fail with Permission denied. Never auto-rmdir — Marc's go + manual sudo.
+  echo "→ refuse sync if remote ${remote_caddy_basename} is a directory (no auto-rmdir; #863)"
+  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; if [[ -d ${remote_caddy_basename} ]]; then echo \"error: remote ${LIGHTSAIL_REMOTE_DIR}/${remote_caddy_basename} is a directory (Docker empty-dir artifact when the bind-mount file was missing — #863)\" >&2; echo \"  Do not scp into it (the file would land inside the directory).\" >&2; echo \"  Manual remediation (requires Marc's go):\" >&2; echo \"    ssh ${SSH_HOST} 'sudo rmdir ${LIGHTSAIL_REMOTE_DIR}/${remote_caddy_basename}'\" >&2; echo \"  Then re-run --sync-operator-files.\" >&2; exit 1; fi"
   # Remote name must match the compose bind mount host path (#863). Do not rename to Caddyfile.
   run scp "${caddy_src}" "${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}/${remote_caddy_basename}"
-  # Transition: after #859 both Caddyfile and Caddyfile.ezkey-online may exist on the VM.
-  # Remove a Docker-created empty directory named Caddyfile (the #863 failure mode); leave a
-  # legacy regular-file Caddyfile in place (harmless; compose no longer mounts it).
-  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; if [[ -d Caddyfile ]]; then echo 'removing stale Caddyfile directory (Docker bind-mount artifact from name mismatch)'; rmdir Caddyfile; elif [[ -f Caddyfile && '${remote_caddy_basename}' != 'Caddyfile' ]]; then echo 'note: legacy remote Caddyfile file left in place (compose mounts ${remote_caddy_basename})'; fi"
+  # Legacy remote Caddyfile (pre-#863 sync name) may still exist as a regular file — leave it;
+  # compose mounts ${remote_caddy_basename}. Cleanup is manual with Marc's go if desired.
+  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; if [[ -f Caddyfile && '${remote_caddy_basename}' != 'Caddyfile' ]]; then echo 'note: legacy remote Caddyfile file left in place (compose mounts ${remote_caddy_basename})'; fi"
   sync_host_mounts
 }
 

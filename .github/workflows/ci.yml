@@ -95,6 +95,7 @@ jobs:
             lightsail:
               - 'scripts/lightsail/**'
               - 'scripts/cloudflare/deploy-admin-ui-production.sh'
+              - 'scripts/cloudflare/deploy-admin-ui-preview.sh'
               - 'scripts/ops/verify-javamelody-non-exposure.sh'
               - 'scripts/ops/verify-javamelody-non-exposure.test.sh'
               - 'experimental-hybrid/scripts/export-backend-images-to-lightsail.sh'
