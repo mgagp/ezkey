@@ -7,6 +7,9 @@
 
 QUALITY_GATE_RESTORE_TIMEOUT_S="${QUALITY_GATE_RESTORE_TIMEOUT_S:-180}"
 QUALITY_GATE_RESTORE_POLL_S="${QUALITY_GATE_RESTORE_POLL_S:-5}"
+# Docker Desktop macOS: Linux VM clock can lag the host by a few seconds.
+# Back off docker logs --since so early container lines are not excluded.
+QUALITY_GATE_SINCE_BACKOFF_S="${QUALITY_GATE_SINCE_BACKOFF_S:-5}"
 
 # Epoch milliseconds for phase timing.
 # GNU date supports %3N; BSD date on macOS does not — it often prints a literal "N"
@@ -28,24 +31,67 @@ now_ms() {
     return 0
   fi
   # Last resort: whole seconds as ms (duration math still works; lower precision).
+  echo "[quality-gate] now_ms: falling back to whole-second precision (no GNU %3N / python3 / node)" >&2
   printf '%s\n' "$(($(date +%s) * 1000))"
+}
+
+# Back off an ISO-8601 UTC timestamp by QUALITY_GATE_SINCE_BACKOFF_S (default 5).
+# Prints adjusted ISO Zulu. On failure, warns and echoes the input unchanged.
+quality_gate_since_backoff() {
+  local iso="$1"
+  local secs="${QUALITY_GATE_SINCE_BACKOFF_S:-5}"
+  if [[ -z "$iso" || "$secs" -eq 0 ]]; then
+    printf '%s\n' "$iso"
+    return 0
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c '
+import sys
+from datetime import datetime, timedelta, timezone
+raw = sys.argv[1].rstrip("Z")
+secs = int(sys.argv[2])
+dt = datetime.fromisoformat(raw)
+if dt.tzinfo is None:
+    dt = dt.replace(tzinfo=timezone.utc)
+print((dt - timedelta(seconds=secs)).strftime("%Y-%m-%dT%H:%M:%SZ"))
+' "$iso" "$secs"
+    return 0
+  fi
+  echo "[quality-gate] warning: cannot back off --since by ${secs}s (no python3); using raw timestamp" >&2
+  printf '%s\n' "$iso"
+}
+
+# Match needle in docker logs without grep -q.
+# Under set -o pipefail, grep -q exits at first match → writer gets SIGPIPE (141) →
+# the pipeline is false even when the signature was found (Patrick B1 / #747).
+# grep -F without -q drains the pipe; >/dev/null keeps logs quiet.
+_qg_docker_logs_match() {
+  local needle="$1"
+  shift
+  docker logs "$@" 2>&1 | grep -F "$needle" >/dev/null
 }
 
 # Detect #747 encryption keyset PK race in admin-api replica logs.
 # Scans each replica with docker logs --since (no tail cap — verbose Spring Boot
 # startup can push the signature past a short window; Carl 2026-10-19 macOS).
-# $1 = ISO-8601 since timestamp (GATE_STARTED_AT or clean-start phase start).
+# $1 = ISO-8601 since timestamp (GATE_STARTED_AT or clean-start phase start);
+#     empty/omit = full container logs (no --since).
 # Returns 0 if ezkey_encryption_key_pkey appears, 1 otherwise.
 detect_encryption_key_pkey_race() {
   local since="${1:-}"
-  local name
+  local since_adj name
+  if [[ -n "$since" ]]; then
+    since_adj="$(quality_gate_since_backoff "$since")"
+  else
+    since_adj=""
+  fi
   for name in ezkey-admin-api-1 ezkey-admin-api-2; do
-    if [[ -n "$since" ]]; then
-      if docker logs --since "$since" "$name" 2>&1 | grep -Fq 'ezkey_encryption_key_pkey'; then
+    if [[ -n "$since_adj" ]]; then
+      if _qg_docker_logs_match 'ezkey_encryption_key_pkey' --since "$since_adj" "$name"; then
         return 0
       fi
     else
-      if docker logs "$name" 2>&1 | grep -Fq 'ezkey_encryption_key_pkey'; then
+      if _qg_docker_logs_match 'ezkey_encryption_key_pkey' "$name"; then
         return 0
       fi
     fi
@@ -94,8 +140,9 @@ check_oom_evidence() {
     return 0
   fi
   for name in $HA_REPLICAS; do
-    if docker logs --since "${GATE_STARTED_AT:-}" "$name" 2>&1 \
-      | grep -q 'Terminating due to java.lang.OutOfMemoryError'; then
+    # Same pipefail/SIGPIPE rule as #747 detect: no grep -q (Patrick B1).
+    if _qg_docker_logs_match 'Terminating due to java.lang.OutOfMemoryError' \
+      --since "${GATE_STARTED_AT:-}" "$name"; then
       echo "[$KEYWORD] OOM log line in $name"
       OVERALL_RED=1
       printf '%s\n' "OOM: Terminating due to java.lang.OutOfMemoryError in $name" >>"$RUN_DIR/findings-extra.txt"

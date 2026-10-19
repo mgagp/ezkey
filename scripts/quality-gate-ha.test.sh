@@ -224,6 +224,40 @@ detect_rc=$?
 set -e
 assert_eq "$detect_rc" "1" "5c: no #747 signature → not detected"
 
+# 5c-bis) #747 detect: no --since branch (full container logs)
+all_healthy
+echo 'ERROR: duplicate key value violates unique constraint "ezkey_encryption_key_pkey"' \
+  >"$FAKE_DOCKER_STATE/ezkey-admin-api-2.logs"
+: >"$FAKE_DOCKER_STATE/ezkey-admin-api-1.logs"
+detect_encryption_key_pkey_race ""
+assert_eq "$?" "0" "5c-bis: #747 detect without --since → detected"
+set +e
+detect_encryption_key_pkey_race
+detect_rc=$?
+set -e
+assert_eq "$detect_rc" "0" "5c-bis: #747 detect with omitted since → detected"
+
+# 5e) Patrick B1: under pipefail, signature FIRST then >64 KiB noise must still match.
+# grep -q exits at first hit → writer SIGPIPE 141 → pipeline false (the #747 case).
+all_healthy
+{
+  echo 'ERROR: duplicate key value violates unique constraint "ezkey_encryption_key_pkey"'
+  # >64 KiB after the signature (beyond typical pipe buffer) so early close is fatal.
+  dd if=/dev/zero bs=1024 count=70 status=none 2>/dev/null | tr '\0' 'x'
+  printf '\n'
+} >"$FAKE_DOCKER_STATE/ezkey-admin-api-1.logs"
+: >"$FAKE_DOCKER_STATE/ezkey-admin-api-2.logs"
+set -o pipefail
+set +e
+detect_encryption_key_pkey_race "2026-10-19T00:00:00Z"
+detect_rc=$?
+set -e
+assert_eq "$detect_rc" "0" "5e B1: early signature + 70KiB noise under pipefail → detected"
+
+# 5e-bis) since backoff moves timestamp earlier by QUALITY_GATE_SINCE_BACKOFF_S
+backed="$(QUALITY_GATE_SINCE_BACKOFF_S=5 quality_gate_since_backoff "2026-10-19T12:00:10Z")"
+assert_eq "$backed" "2026-10-19T12:00:05Z" "5e-bis: since backoff −5s"
+
 # 5d) now_ms always returns digits (portable; BSD date must not poison arithmetic)
 ms="$(now_ms)"
 if [[ "$ms" =~ ^[0-9]+$ ]]; then
@@ -233,11 +267,12 @@ else
 fi
 # Simulate BSD date: %3N → literal "3N", exit 0 (macOS). Fallback must still be numeric.
 mkdir -p "$TMP/bin-bsd-date"
+# #!/bin/bash (not env): seconds-fallback test uses PATH=bin-bsd-date only.
 cat >"$TMP/bin-bsd-date/date" <<'BSDDATE'
-#!/usr/bin/env bash
+#!/bin/bash
 for arg in "$@"; do
-  if [[ "$arg" == *%N* ]]; then
-    # GNU would expand %3N; BSD prints literal — match observed macOS behaviour.
+  # Match %N and %3N (BSD leaves the N-family conversion as a literal suffix).
+  if [[ "$arg" == *%*N* ]]; then
     printf '%s3N\n' "$(/bin/date +%s 2>/dev/null || echo 1700000000)"
     exit 0
   fi
@@ -245,7 +280,7 @@ done
 exec /bin/date "$@"
 BSDDATE
 chmod +x "$TMP/bin-bsd-date/date"
-ms_bsd="$(PATH="$TMP/bin-bsd-date:$PATH" bash -c '
+ms_bsd="$(PATH="$TMP/bin-bsd-date:$PATH" /bin/bash -c '
   source "'"$ROOT"'/scripts/lib/quality-gate-ha.sh"
   now_ms
 ')"
@@ -260,6 +295,25 @@ if d=$((ms_bsd + 1)) && [[ "$d" =~ ^[0-9]+$ ]]; then
 else
   echo "not ok - now_ms BSD fallback is arithmetic-safe"; fail=$((fail+1))
 fi
+# Seconds fallback must warn on stderr when python3/node are unavailable.
+# PATH is only the BSD-date stub (it execs /bin/date for +%s). Do not append
+# /bin — usr-merged distros expose /bin/python3 and would skip this path.
+# Invoke /bin/bash by absolute path: PATH=… bash looks up bash on the new PATH.
+ms_sec_err="$TMP/now_ms_seconds.err"
+ms_sec="$(
+  PATH="$TMP/bin-bsd-date" /bin/bash -c '
+    source "'"$ROOT"'/scripts/lib/quality-gate-ha.sh"
+    now_ms
+  ' 2>"$ms_sec_err"
+)"
+if [[ "$ms_sec" =~ ^[0-9]+$ ]]; then
+  echo "ok - now_ms seconds fallback returns digits"; pass=$((pass+1))
+else
+  echo "not ok - now_ms seconds fallback returns digits (got=$ms_sec)"; fail=$((fail+1))
+fi
+grep -Fq 'falling back to whole-second precision' "$ms_sec_err" \
+  && echo "ok - now_ms seconds fallback warns on stderr" && pass=$((pass+1)) \
+  || { echo "not ok - now_ms seconds fallback warns on stderr"; fail=$((fail+1)); cat "$ms_sec_err" || true; }
 
 # 6) Missing ShedLock kill (failover skipped / unresolved / no kill in 30s) → INCONCLUSIVE
 all_healthy
