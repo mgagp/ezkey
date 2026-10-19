@@ -268,7 +268,7 @@ line stays readable.
 | --- | --- |
 | Server | Attempt `expiresAt` from `ezkey.core.auth-attempt.ttl-seconds` (default **120**, range **30–600**). Scheduler marks `EXPIRED`. **120** in these notes is that default, not a fixed constant. Cloudflare Free on the public hosts cuts the origin at **100 s** (HTTP 524); a blocking wait can end at the proxy while a 120 s attempt is still valid. Deployment note for the community instance (Question 12). Not changed here. |
 | Mobile pending wire | **No** `expiresAt`, `expiresInSeconds`, or `serverNow` on the pending body. **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Questions 1 and 14):** do not add them, unsigned or inside the signed payload. |
-| Mobile UI | **No countdown, by design.** The person watches remaining time on the integrating application (create/wait `expiresAt`). A second timer on the phone would duplicate that clock and drift. |
+| Mobile UI | **No countdown, by design.** The person watches remaining time on the integrating application (create/wait `expiresAt`). A second timer on the phone would duplicate that clock and drift. No countdown on mobile: the initiator watches the integrating app's login dialog, which owns the timer; a second timer would be redundant and drift (team retro 2026-10-19). |
 | Respond after server expiry | **Decided (Question 8 + #844 m1):** **409** `auth-attempt-state-conflict`. One sentence: the request is no longer active. Back only. Same sentence for not-found, PENDING, cancel, and already decided. |
 
 ### Backend race (#833, context for mobile)
