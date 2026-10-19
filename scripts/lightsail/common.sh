@@ -159,6 +159,19 @@ lightsail_require_community_wipe_confirm() {
   fi
 }
 
+# Refuse delete of the community instance unless the operator explicitly confirms.
+# Required when instance name is ezkey-online: EZKEY_CONFIRM_DELETE=ezkey-online.
+# Scripts never release static IP ezkey-online-community.
+lightsail_require_community_delete_confirm() {
+  local instance_name="$1"
+  if [[ "${instance_name}" != "${LIGHTSAIL_SSH_HOST_COMMUNITY}" ]]; then
+    return 0
+  fi
+  if [[ "${EZKEY_CONFIRM_DELETE:-}" != "${LIGHTSAIL_SSH_HOST_COMMUNITY}" ]]; then
+    lightsail_die "refusing to delete community instance '${instance_name}'. Set EZKEY_CONFIRM_DELETE=${LIGHTSAIL_SSH_HOST_COMMUNITY}. Scripts never release static IP ezkey-online-community — re-attach it after recreate."
+  fi
+}
+
 # Local Caddyfile path to scp as remote Caddyfile for the resolved target.
 # Canonical source: experimental-hybrid/lightsail/Caddyfile.ezkey-online (single file in repo).
 # Sync installs it as remote Caddyfile (Compose bind-mount name on the VM).

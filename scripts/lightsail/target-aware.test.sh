@@ -10,6 +10,7 @@ EXPORT="${ROOT}/experimental-hybrid/scripts/export-backend-images-to-lightsail.s
 UPGRADE="${ROOT}/experimental-hybrid/scripts/full-exp-environment-upgrade.sh"
 BOOTSTRAP="${ROOT}/scripts/lightsail/bootstrap-host.sh"
 CREATE="${ROOT}/scripts/lightsail/create-instance.sh"
+DELETE="${ROOT}/scripts/lightsail/delete-instance.sh"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -217,6 +218,34 @@ assert_fail "create without target fails" bash "${CREATE}"
 assert_ok "create --target community dry-run" bash "${CREATE}" --target community
 assert_stdout_contains "create dry-run skips get-instance" "skipping get-instance"
 assert_fail "create --target legacy refused" bash "${CREATE}" --target legacy
+
+# --- delete-instance: static-IP warning + apply guards ---
+unset EZKEY_CONFIRM_DELETE || true
+assert_ok "delete dry-run shows static-IP warning" bash "${DELETE}" --name ezkey-online
+assert_stdout_contains "delete dry-run warns static IP" "WARNING: Deleting a Lightsail instance detaches"
+assert_stdout_contains "delete dry-run never release" "never release"
+assert_stdout_contains "delete dry-run mentions community confirm" "EZKEY_CONFIRM_DELETE=ezkey-online"
+
+assert_fail "delete --apply without --name fails" bash "${DELETE}" --apply --i-mean-it
+assert_stderr_contains "delete apply requires --name" "--apply requires an explicit --name"
+
+assert_fail "delete community apply without EZKEY_CONFIRM_DELETE fails" \
+  bash "${DELETE}" --name ezkey-online --apply --i-mean-it
+assert_stderr_contains "delete community confirm required" "EZKEY_CONFIRM_DELETE=ezkey-online"
+
+(
+  # shellcheck source=common.sh
+  source "${COMMON}"
+  if (lightsail_require_community_delete_confirm "ezkey-online") 2>"${ERR}"; then
+    echo "FAIL: community delete confirm should die without env" >&2
+    exit 1
+  fi
+  grep -q 'EZKEY_CONFIRM_DELETE=ezkey-online' "${ERR}"
+  EZKEY_CONFIRM_DELETE=ezkey-online
+  lightsail_require_community_delete_confirm "ezkey-online"
+  lightsail_require_community_delete_confirm "other-instance"
+  echo "PASS: community delete confirm helper"
+) && pass=$((pass + 1)) || fail=$((fail + 1))
 
 echo
 echo "Results: ${pass} passed, ${fail} failed"

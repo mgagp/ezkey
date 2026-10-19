@@ -59,7 +59,7 @@ This PR does **not** create that private repo.
 | [`create-instance.sh`](../../scripts/lightsail/create-instance.sh) | `create-instances`; dry-run default; `--apply` to create; waits until `running`; refuses existing name |
 | [`open-ports.sh`](../../scripts/lightsail/open-ports.sh) | SSH 22 + HTTPS 443 (`open-instance-public-ports` or `--mode put`); dry-run default |
 | [`bootstrap-host.sh`](../../scripts/lightsail/bootstrap-host.sh) | SSH Phase 0b/0c: Docker + Compose v2 + `docker` group; no clean-start / no image push |
-| [`delete-instance.sh`](../../scripts/lightsail/delete-instance.sh) | Delete by name; requires `--apply` **and** `--i-mean-it` |
+| [`delete-instance.sh`](../../scripts/lightsail/delete-instance.sh) | Delete by name; `--apply` requires explicit `--name`; community `ezkey-online` also needs `EZKEY_CONFIRM_DELETE=ezkey-online`; never releases static IPs |
 | [`status.sh`](../../scripts/lightsail/status.sh) | `get-instance` / `--list` → `get-instances` |
 | [`common.sh`](../../scripts/lightsail/common.sh) | Shared defaults and helpers (sourced; not run directly) |
 
@@ -231,8 +231,8 @@ If `ezkey-online` already exists as an instance: `--name community-ezkey` (and u
 
 Add community aliases in `~/.ssh/config` (same key / IP as create-or-status). Prefer **`Host ezkey-online`**
 (not a bare `ezkey` alias). `ezkey-online-db` already exists on some workstations (e.g. Rootbeer);
-document it here so every operator laptop matches. `ezkey-online-metrics` is the JavaMelody
-collector tunnel (#846).
+document it here so every operator laptop matches. `ezkey-online-metrics` is the **planned**
+JavaMelody collector tunnel (#846); it is not yet configured on Rootbeer.
 
 ```sshconfig
 Host ezkey-online
@@ -309,10 +309,13 @@ Do not commit private keys, PEMs, Origin CA files, or `.env`.
 
 ```bash
 ./scripts/lightsail/delete-instance.sh --name ezkey-online
-./scripts/lightsail/delete-instance.sh --name ezkey-online --apply --i-mean-it
+EZKEY_CONFIRM_DELETE=ezkey-online \
+  ./scripts/lightsail/delete-instance.sh --name ezkey-online --apply --i-mean-it
 ```
 
-After recreate, re-attach static IP `ezkey-online-community` (keeps **`15.157.54.178`**) when possible; otherwise update Cloudflare **A** records and SSH `HostName` values to whatever public IPv4 Lightsail assigns.
+`--apply` requires an explicit `--name` (no silent default). Deleting community instance `ezkey-online` also requires `EZKEY_CONFIRM_DELETE=ezkey-online`. The script prints a static-IP billing warning on dry-run and apply; it never calls `release-static-ip`.
+
+After delete, static IP `ezkey-online-community` detaches and stays allocated (~USD 3.60/month while unattached). **Re-attach it immediately after recreate** (keeps **`15.157.54.178`**); **never release `ezkey-online-community`**. Then re-run `open-ports.sh` with the Cloudflare 443 posture (see § Open ports — do not reopen 443 to `0.0.0.0/0`).
 
 ---
 
@@ -530,10 +533,15 @@ Short operator checklist verified against repo scripts/compose (not live VM obse
 4. **Static IP attach / detach changes the instance public IPv4** — attaching or detaching
    `ezkey-online-community` (or any Lightsail static IP) immediately changes the address the
    instance presents. Update the four proxied Cloudflare **A** records
-   (`admin-api`, `auth-api`, `integration-api`, `demo-acme`) and SSH aliases
-   (`ezkey-online`, `ezkey-online-db`, and `ezkey-online-metrics` if used) right after the
-   change. Until DNS and SSH catch up, API calls time out and deploy scripts fail to connect.
-   Stop/start with the static IP **still attached** does **not** change `15.157.54.178`.
+   (`admin-api`, `auth-api`, `integration-api`, `demo-acme`) and SSH `HostName` on the
+   aliases that exist (`ezkey-online`, `ezkey-online-db`; planned alias
+   `ezkey-online-metrics` is not yet on Rootbeer — see decision 2026-10-19) right after the
+   change. The Lightsail firewall and Origin CA certificate do **not** change on
+   attach/detach — only DNS **A** records and SSH `HostName` do. After an instance
+   **recreate**, re-run `open-ports.sh` (Cloudflare 443 posture — do not reopen 443 to
+   `0.0.0.0/0`). Until DNS and SSH catch up, API calls time out and deploy scripts fail to
+   connect. Stop/start with the static IP **still attached** does **not** change
+   `15.157.54.178`.
 5. **Docker `json-file` log rotation** — Compose sets `x-logging` on every service
    (`max-size: 20m`, `max-file: 3` — sized for a ~4 GB RAM / ~80 GB-disk VM; ceiling ≈ 480 MiB).
    Rotation applies only when a container is **created**; it does not resize logging on an
