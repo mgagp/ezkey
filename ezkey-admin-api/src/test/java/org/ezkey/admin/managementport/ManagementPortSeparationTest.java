@@ -116,8 +116,8 @@ class ManagementPortSeparationTest {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-      http.csrf(csrf -> csrf.disable())
-          .sessionManagement(
+      // CSRF left enabled: this test only issues GET (no state-changing calls).
+      http.sessionManagement(
               session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
           .requestCache(cache -> cache.requestCache(new NullRequestCache()))
           .authorizeHttpRequests(
