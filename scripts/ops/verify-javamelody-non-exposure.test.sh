@@ -386,18 +386,42 @@ else
 fi
 
 # --check-jm-overlay-bind against the real community overlay (must set 0.0.0.0).
+# Must NOT fill default edge BASE_URLS (localhost:19/18/17080) when overlay-bind runs alone.
 if bash "${SCRIPT}" --check-jm-overlay-bind \
   "${ROOT}/experimental-hybrid/lightsail" >"${OUT}" 2>"${ERR}"; then
-  if grep -q 'MANAGEMENT_SERVER_ADDRESS=0.0.0.0' "${OUT}"; then
+  if grep -q 'MANAGEMENT_SERVER_ADDRESS=0.0.0.0' "${OUT}" \
+    && ! grep -qE 'localhost:1[789]080' "${OUT}" \
+    && ! grep -qE 'localhost:1[789]080' "${ERR}"; then
     echo "PASS: --check-jm-overlay-bind accepts community overlay"
     pass=$((pass + 1))
   else
-    echo "FAIL: expected OK overlay message" >&2
+    echo "FAIL: expected OK overlay message without default edge BASE_URLS probes" >&2
     cat "${OUT}" >&2
+    cat "${ERR}" >&2
     fail=$((fail + 1))
   fi
 else
   echo "FAIL: community JM overlay should pass --check-jm-overlay-bind" >&2
+  cat "${OUT}" >&2
+  cat "${ERR}" >&2
+  fail=$((fail + 1))
+fi
+
+# Explicit: overlay-bind alone must exit 0 and never probe default public/edge URLs.
+if bash "${SCRIPT}" --check-jm-overlay-bind \
+  "${ROOT}/experimental-hybrid/lightsail" >"${OUT}" 2>"${ERR}"; then
+  if ! grep -qE 'http://localhost:1(9080|8080|7080)' "${OUT}" \
+    && ! grep -qE 'http://localhost:1(9080|8080|7080)' "${ERR}"; then
+    echo "PASS: --check-jm-overlay-bind alone does not probe default BASE_URLS"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: --check-jm-overlay-bind alone must not probe localhost:19080/18080/17080" >&2
+    cat "${OUT}" >&2
+    cat "${ERR}" >&2
+    fail=$((fail + 1))
+  fi
+else
+  echo "FAIL: --check-jm-overlay-bind alone should exit 0" >&2
   cat "${OUT}" >&2
   cat "${ERR}" >&2
   fail=$((fail + 1))

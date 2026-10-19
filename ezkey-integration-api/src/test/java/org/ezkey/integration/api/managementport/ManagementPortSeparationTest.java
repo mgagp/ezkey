@@ -12,6 +12,7 @@ package org.ezkey.integration.api.managementport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import jakarta.servlet.DispatcherType;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -40,8 +41,11 @@ import org.springframework.test.context.TestPropertySource;
  * Minimal Integration-shaped security chain mirroring production {@code /actuator/**} permitAll.
  *
  * <p><b>Documented result:</b> management-port {@code /actuator/monitoring} returns 200 without
- * credentials because Spring Security applies the same filter chain to the management context and
- * {@code permitAll} covers {@code /actuator/**}.
+ * credentials. Business {@code /actuator/health} is exact <b>404</b>. Business {@code /monitoring}
+ * is <b>401</b> (production LIVE — Security, not JavaMelody 403).
+ *
+ * <p>Test-only: {@code DispatcherType.ERROR} permitAll so Boot's {@code /error} after a missing
+ * handler is not turned into 401 (production exception handling returns 404 directly).
  */
 @SpringBootTest(
     classes = ManagementPortSeparationTest.TestApp.class,
@@ -75,10 +79,9 @@ class ManagementPortSeparationTest {
     assertThat(managementPort).isNotEqualTo(businessPort);
 
     assertThat(status("http://127.0.0.1:" + managementPort + "/actuator/health")).isEqualTo(200);
-    // Target: native 404 — Actuator is not mounted on the business port (LIVE + verify script).
     assertThat(status("http://127.0.0.1:" + businessPort + "/actuator/health")).isEqualTo(404);
 
-    assertThat(status("http://127.0.0.1:" + businessPort + "/monitoring")).isEqualTo(403);
+    assertThat(status("http://127.0.0.1:" + businessPort + "/monitoring")).isEqualTo(401);
 
     assertThat(status("http://127.0.0.1:" + managementPort + "/actuator/monitoring"))
         .isEqualTo(200);
@@ -96,8 +99,8 @@ class ManagementPortSeparationTest {
   static class TestApp {}
 
   /**
-   * String matchers (Security 7 → PathPatternRequestMatcher) so missing business-port Actuator
-   * handlers still permitAll → native 404; and so {@code /monitoring} reaches JavaMelody's 403.
+   * String matchers (Security 7 → PathPatternRequestMatcher) plus test-only ERROR permitAll for
+   * native 404 on missing business-port Actuator handlers.
    */
   @Configuration
   @EnableWebSecurity
@@ -112,9 +115,9 @@ class ManagementPortSeparationTest {
           .authorizeHttpRequests(
               authz ->
                   authz
-                      .requestMatchers("/actuator/**")
+                      .dispatcherTypeMatchers(DispatcherType.ERROR)
                       .permitAll()
-                      .requestMatchers("/monitoring")
+                      .requestMatchers("/actuator/**")
                       .permitAll()
                       .anyRequest()
                       .authenticated())

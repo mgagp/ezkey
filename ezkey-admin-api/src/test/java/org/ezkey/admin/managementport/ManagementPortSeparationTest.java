@@ -12,6 +12,7 @@ package org.ezkey.admin.managementport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import jakarta.servlet.DispatcherType;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -38,13 +39,17 @@ import org.springframework.test.context.TestPropertySource;
 
 /**
  * Minimal Admin-shaped security chain: {@code /actuator/**} permitAll, everything else
- * authenticated — mirrors production {@link SecurityConfig} actuator rule without loading filters
- * that need the full Admin application.
+ * authenticated — mirrors production {@link org.ezkey.admin.config.SecurityConfig} actuator rule
+ * without loading filters that need the full Admin application.
  *
- * <p><b>Documented result:</b> {@code permitAll} for {@code /actuator/**} applies on the management
- * port, so {@code /actuator/health} and {@code /actuator/monitoring} return 200 without auth. Bare
- * {@code /monitoring} on the business port stays 403 under JavaMelody management-endpoint mode
- * (filter), not Spring Security.
+ * <p><b>Documented result:</b> management-port {@code /actuator/health} and {@code
+ * /actuator/monitoring} return 200. Business-port {@code /actuator/health} is native <b>404</b>
+ * (Actuator not mounted). Business {@code /monitoring} is <b>401</b> under this chain (same as
+ * production LIVE — Security answers before JavaMelody's 403).
+ *
+ * <p>Test-only: {@code DispatcherType.ERROR} is permitAll so Boot's {@code /error} dispatch after a
+ * missing handler is not turned into 401. Production returns 404 via the exception handler without
+ * that auth failure (LIVE confirmed).
  */
 @SpringBootTest(
     classes = ManagementPortSeparationTest.TestApp.class,
@@ -78,13 +83,12 @@ class ManagementPortSeparationTest {
     assertThat(managementPort).isNotEqualTo(businessPort);
 
     assertThat(status("http://127.0.0.1:" + managementPort + "/actuator/health")).isEqualTo(200);
-    // Target: native 404 — Actuator is not mounted on the business port (LIVE + verify script).
+    // Exact 404 — Actuator is not mounted on the business port (LIVE + verify script).
     assertThat(status("http://127.0.0.1:" + businessPort + "/actuator/health")).isEqualTo(404);
 
-    // JavaMelody management-endpoint mode refuses the business-port report with 403.
-    assertThat(status("http://127.0.0.1:" + businessPort + "/monitoring")).isEqualTo(403);
+    // Production LIVE: Security returns 401 on business /monitoring (not JM's 403).
+    assertThat(status("http://127.0.0.1:" + businessPort + "/monitoring")).isEqualTo(401);
 
-    // Proves /actuator/** permitAll on the management port (no 401).
     assertThat(status("http://127.0.0.1:" + managementPort + "/actuator/monitoring"))
         .isEqualTo(200);
   }
@@ -101,10 +105,10 @@ class ManagementPortSeparationTest {
   static class TestApp {}
 
   /**
-   * Mirrors production Admin actuator permitAll. Spring Security 7 resolves string patterns via
-   * {@code PathPatternRequestMatcher}, so {@code /actuator/**} still matches when no MVC handler
-   * exists on the business port (native 404). {@code /monitoring} is permitted so the JavaMelody
-   * filter can return 403.
+   * Mirrors production Admin actuator permitAll. String patterns use Security 7 {@code
+   * PathPatternRequestMatcher}. {@code DispatcherType.ERROR} permitAll is test-only (see class
+   * Javadoc) so a missing business-port Actuator handler yields native 404 instead of 401 on {@code
+   * /error}.
    */
   @Configuration
   @EnableWebSecurity
@@ -119,9 +123,9 @@ class ManagementPortSeparationTest {
           .authorizeHttpRequests(
               authz ->
                   authz
-                      .requestMatchers("/actuator/**")
+                      .dispatcherTypeMatchers(DispatcherType.ERROR)
                       .permitAll()
-                      .requestMatchers("/monitoring")
+                      .requestMatchers("/actuator/**")
                       .permitAll()
                       .anyRequest()
                       .authenticated())
