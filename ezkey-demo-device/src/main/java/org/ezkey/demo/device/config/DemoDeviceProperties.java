@@ -31,10 +31,11 @@ public class DemoDeviceProperties {
   private List<String> allowedAuthApiHosts = new ArrayList<>();
 
   /**
-   * Bound used as claim {@code expiresAt} when Auth API pending does not expose attempt expiry
-   * (#834). Default matches {@code ezkey.core.auth-attempt.ttl-seconds} (120). Raise this if the
-   * Auth API TTL is configured higher, or Approve/Deny may disappear while the attempt is still
-   * valid (read-once pending). Cap remains {@link
+   * Fallback duration for claim {@code expiresAt} when the pending JSON has no server {@code
+   * expiresAt} (#834 / #895). Prefer the server field when present. Default matches {@code
+   * ezkey.core.auth-attempt.ttl-seconds} (120). Lower this when initiator TTLs are shorter (e.g.
+   * PAM 90 s) to avoid a stale Approve/Deny window; raise it when the Auth API TTL is higher, or
+   * Approve/Deny may disappear while the attempt is still valid (read-once). Cap remains {@link
    * org.ezkey.demo.device.service.PendingAuthClaimSession#DEFAULT_TTL} (10 minutes).
    */
   private Duration claimedPendingAttemptTtl = Duration.ofSeconds(120);

@@ -1,6 +1,7 @@
 package org.ezkey.demo.device.service;
 
 import java.time.Duration;
+import java.time.Instant;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingResponseDto;
 import org.ezkey.demodevice.generated.dto.AuthAttemptRespondRequestDto;
@@ -16,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Service to call Ezkey Auth API endpoints needed by the demo device. Uses generated DTOs for type
@@ -30,6 +33,8 @@ import reactor.core.publisher.Mono;
 public class AuthApiService {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthApiService.class);
+
+  private static final ObjectMapper JSON = new ObjectMapper();
 
   private final WebClient defaultClient;
 
@@ -106,24 +111,29 @@ public class AuthApiService {
   /**
    * Calls POST /api/v1/auth-attempts/pending to check for pending authentication attempts.
    *
+   * <p>Deserializes the JSON body first so an optional server {@code expiresAt} can be captured
+   * even when the generated DTO omits the field (#834 / #895 PR-C).
+   *
    * @param requestDto typed request DTO with enrollmentId, enrollmentProofToken, deviceProofToken,
    *     deviceProofTokenSigned
    * @param authApiBaseUrl optional per-enrollment Auth API base URL override
-   * @return typed response DTO with auth attempt details or empty when no pending attempt
+   * @return pull result with typed DTO and optional server {@code expiresAt}, or empty when no
+   *     pending attempt
    */
-  public Mono<AuthAttemptPendingResponseDto> pending(
+  public Mono<PendingAuthPull> pending(
       AuthAttemptPendingRequestDto requestDto, String authApiBaseUrl) {
     String uri = "/api/v1/auth-attempts/pending";
 
     WebClient client = clientFor(authApiBaseUrl);
-    Mono<AuthAttemptPendingResponseDto> responseMono =
+    Mono<PendingAuthPull> responseMono =
         client
             .post()
             .uri(uri)
             .bodyValue(requestDto)
             .retrieve()
-            .bodyToMono(AuthAttemptPendingResponseDto.class)
-            .timeout(Duration.ofSeconds(15));
+            .bodyToMono(JsonNode.class)
+            .timeout(Duration.ofSeconds(15))
+            .map(AuthApiService::toPendingAuthPull);
 
     return responseMono
         .doOnSuccess(
@@ -141,6 +151,19 @@ public class AuthApiService {
               return Mono.error(ex);
             })
         .onErrorResume(Exception.class, ex -> Mono.error(ex));
+  }
+
+  /**
+   * Maps pending JSON to the typed DTO plus optional {@code expiresAt}.
+   *
+   * @param body pending response JSON
+   * @return pull result
+   */
+  static PendingAuthPull toPendingAuthPull(JsonNode body) {
+    Instant expiresAt = ClaimExpiresAtResolver.parseOptionalExpiresAt(body);
+    AuthAttemptPendingResponseDto dto =
+        JSON.convertValue(body, AuthAttemptPendingResponseDto.class);
+    return new PendingAuthPull(dto, expiresAt);
   }
 
   /**

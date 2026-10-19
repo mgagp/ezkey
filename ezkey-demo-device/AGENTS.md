@@ -12,9 +12,14 @@ Bind response `tenantId` / `tenantName` / `tenantDescription` are persisted on `
 
 Auth API pending is read-once (`PENDING` → `READ`). After a successful claim, `ClaimedPendingAuth` is stored in the HTTP session so a second GET can re-show Approve/Deny without calling pending again (204).
 
-Auth API pending **does not** put `expiresAt` on the wire (#834 — countdown stays on the integrating app). Demo Device still stores a claim `expiresAt` = `claimedAt + ezkey.demo-device.claimed-pending-attempt-ttl` (default **120s**, aligned with `ezkey.core.auth-attempt.ttl-seconds`). `PendingAuthClaimSession.findOpen` invalidates at `min(expiresAt, claimedAt + 10 min)` so a stale claim cannot hide a newer pending request.
+**Claim `expiresAt` resolution** (`ClaimExpiresAtResolver`):
 
-On `POST …/auth/respond`, HTTP **409** with ProblemDetail type ending in `auth-attempt-expired` (PR-A contract) shows the expired result UI. Other 409s (including older `auth-attempt-state-conflict` or a missing type) show a neutral “no longer active” message — tolerant when PR-A is not yet deployed. Raise `claimed-pending-attempt-ttl` if the Auth API TTL is configured above 120s.
+1. Prefer server `expiresAt` from the pending JSON when present (`AuthApiService` keeps the raw field even if the generated DTO omits it).
+2. Otherwise fall back to `claimedAt + ezkey.demo-device.claimed-pending-attempt-ttl` (default **120s**, aligned with `ezkey.core.auth-attempt.ttl-seconds`).
+
+Auth API pending currently omits expiry on the wire (#834 — countdown stays on the integrating app). The local fallback can drift: e.g. PAM `ttlSeconds` 90 with a 120 s fallback leaves a stale Approve/Deny visible for ~30 s after server expiry. Prefer aligning the property with the initiator TTL, or rely on respond **409** as the fail-closed net. `PendingAuthClaimSession.findOpen` invalidates at `min(expiresAt, claimedAt + 10 min)`.
+
+On `POST …/auth/respond`, HTTP **409** with ProblemDetail type ending in `auth-attempt-expired` (PR-A) shows the expired result with initiator-neutral copy (“Restart the login from the application” — Admin UI, PAM/SSH, SDK, …). Other 409s (including older `auth-attempt-state-conflict` or a missing type) show “no longer active” — tolerant when PR-A is not yet deployed.
 
 ## QR `authUrl` routing (mobile parity)
 

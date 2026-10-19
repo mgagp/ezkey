@@ -136,7 +136,7 @@
              th:text="${message ?: 
                         denied ? 'Authentication was denied by user' : 
                         failed ? 'Authentication failed due to technical error' : 
-                        expired ? 'Authentication attempt expired. Please create a new request.' :
+                        expired ? 'This authentication request has expired. Restart the login from the application.' :
                         'Authentication response submitted'}">
           Result message
         </div>

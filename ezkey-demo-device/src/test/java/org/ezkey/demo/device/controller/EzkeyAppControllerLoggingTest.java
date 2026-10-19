@@ -28,6 +28,7 @@ import org.ezkey.demo.device.service.AuthApiUrlValidator;
 import org.ezkey.demo.device.service.DeviceCryptoService;
 import org.ezkey.demo.device.service.EnrollmentStoreService;
 import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
+import org.ezkey.demo.device.service.PendingAuthPull;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingResponseDto;
 import org.ezkey.demodevice.generated.dto.AuthAttemptRespondResponseDto;
 import org.junit.jupiter.api.AfterEach;
@@ -107,7 +108,8 @@ class EzkeyAppControllerLoggingTest {
     pending.contextTitle("Pay");
     pending.contextMessage("Approve $10");
 
-    when(authApiService.pending(any(), anyString())).thenReturn(Mono.just(pending));
+    when(authApiService.pending(any(), anyString()))
+        .thenReturn(Mono.just(new PendingAuthPull(pending, null)));
     when(cryptoService.validateSignature(anyString(), eq(INTEGRATION_SIG), anyString()))
         .thenReturn(true);
 

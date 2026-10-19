@@ -89,7 +89,8 @@ class EzkeyAppControllerRespondConflictTest {
     assertThat(model.getAttribute("expired")).isEqualTo(true);
     assertThat(model.getAttribute("failed")).isEqualTo(false);
     assertThat(model.getAttribute("success")).isEqualTo(false);
-    assertThat(model.getAttribute("message").toString()).containsIgnoringCase("expired");
+    assertThat(model.getAttribute("message")).isEqualTo(EzkeyAppController.MSG_AUTH_EXPIRED);
+    assertThat(model.getAttribute("message").toString()).doesNotContain("Admin UI");
   }
 
   @Test
@@ -116,7 +117,9 @@ class EzkeyAppControllerRespondConflictTest {
 
     assertThat(model.getAttribute("expired")).isEqualTo(false);
     assertThat(model.getAttribute("failed")).isEqualTo(true);
-    assertThat(model.getAttribute("message").toString()).contains("no longer active");
+    assertThat(model.getAttribute("message"))
+        .isEqualTo(EzkeyAppController.MSG_AUTH_NO_LONGER_ACTIVE);
+    assertThat(model.getAttribute("message").toString()).doesNotContain("Admin UI");
   }
 
   @Test
@@ -140,7 +143,8 @@ class EzkeyAppControllerRespondConflictTest {
 
     assertThat(model.getAttribute("expired")).isEqualTo(false);
     assertThat(model.getAttribute("failed")).isEqualTo(true);
-    assertThat(model.getAttribute("message").toString()).contains("no longer active");
+    assertThat(model.getAttribute("message"))
+        .isEqualTo(EzkeyAppController.MSG_AUTH_NO_LONGER_ACTIVE);
   }
 
   @Test
@@ -167,7 +171,7 @@ class EzkeyAppControllerRespondConflictTest {
 
     assertThat(model.getAttribute("expired")).isEqualTo(true);
     assertThat(model.getAttribute("failed")).isEqualTo(false);
-    assertThat(model.getAttribute("message").toString()).containsIgnoringCase("expired");
+    assertThat(model.getAttribute("message")).isEqualTo(EzkeyAppController.MSG_AUTH_EXPIRED);
   }
 
   private static Record sampleRecord() {

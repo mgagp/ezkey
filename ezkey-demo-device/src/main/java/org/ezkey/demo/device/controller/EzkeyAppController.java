@@ -9,6 +9,7 @@ import org.ezkey.demo.device.config.DemoDeviceProperties;
 import org.ezkey.demo.device.service.AuthApiService;
 import org.ezkey.demo.device.service.AuthApiUrlValidator;
 import org.ezkey.demo.device.service.AuthAttemptPayloadUtil;
+import org.ezkey.demo.device.service.ClaimExpiresAtResolver;
 import org.ezkey.demo.device.service.ClaimedPendingAuth;
 import org.ezkey.demo.device.service.DeviceCryptoService;
 import org.ezkey.demo.device.service.DeviceCryptoService.ECP256DeviceKeyPair;
@@ -19,6 +20,7 @@ import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
 import org.ezkey.demo.device.service.EnrollmentVerifyPayloadUtil;
 import org.ezkey.demo.device.service.InvalidAuthApiUrlException;
 import org.ezkey.demo.device.service.PendingAuthClaimSession;
+import org.ezkey.demo.device.service.PendingAuthPull;
 import org.ezkey.demo.device.util.LogSanitizer;
 import org.ezkey.demo.device.view.EnrollmentTenantGrouper;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
@@ -103,6 +105,14 @@ public class EzkeyAppController {
    * Suffix of ProblemDetail {@code type} for a late respond after attempt expiry (PR-A contract).
    */
   static final String AUTH_ATTEMPT_EXPIRED_TYPE_SUFFIX = "auth-attempt-expired";
+
+  /** Neutral copy when the attempt expired — any initiator (Admin UI, PAM/SSH, SDK, …). */
+  static final String MSG_AUTH_EXPIRED =
+      "This authentication request has expired. Restart the login from the application.";
+
+  /** Neutral copy when the attempt is no longer active (superseded, decided, …). */
+  static final String MSG_AUTH_NO_LONGER_ACTIVE =
+      "This authentication request is no longer active. Restart the login from the application.";
 
   /**
    * Creates the controller.
@@ -530,9 +540,9 @@ public class EzkeyAppController {
           EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(
               rec, configuredAuthApiBase, allowedAuthApiHosts);
 
-      AuthAttemptPendingResponseDto pendingResponse =
-          authApiService.pending(pendingRequest, authApiBase).block();
-      if (pendingResponse != null) {
+      PendingAuthPull pendingPull = authApiService.pending(pendingRequest, authApiBase).block();
+      if (pendingPull != null && pendingPull.response() != null) {
+        AuthAttemptPendingResponseDto pendingResponse = pendingPull.response();
         // There's a pending authentication attempt
         logger.info(
             "Found pending auth attempt {} for enrollment {}",
@@ -556,18 +566,22 @@ public class EzkeyAppController {
           model.addAttribute("error", "Invalid integration signature");
           return "phone/ezkey/auth";
         }
-        // Auth API pending omits attempt expiresAt (#834). Bound session rehydration to the
-        // configured attempt TTL so a stale READ claim cannot hide a newer pending (#895 PR-C).
+        // Prefer server expiresAt when pending JSON includes it; else local TTL fallback (#895).
+        Instant claimedAt = Instant.now();
         Instant claimExpiresAt =
-            Instant.now().plus(demoDeviceProperties.getClaimedPendingAttemptTtl());
+            ClaimExpiresAtResolver.resolve(
+                pendingPull.expiresAt(),
+                claimedAt,
+                demoDeviceProperties.getClaimedPendingAttemptTtl());
         ClaimedPendingAuth claim =
-            ClaimedPendingAuth.of(
+            new ClaimedPendingAuth(
                 enrollmentId,
                 pendingResponse.getAuthAttemptId(),
                 pendingResponse.getAuthAttemptProofToken(),
                 Boolean.TRUE.equals(pendingResponse.getAuthAttemptChallengeRequired()),
                 pendingResponse.getContextTitle(),
                 pendingResponse.getContextMessage(),
+                claimedAt,
                 claimExpiresAt);
         PendingAuthClaimSession.store(session, claim);
         applyClaimedPendingToModel(model, claim);
@@ -584,9 +598,7 @@ public class EzkeyAppController {
 
       // Check if it's an expired authentication attempt
       if (e.getMessage() != null && e.getMessage().contains("No pending authentication request")) {
-        model.addAttribute(
-            "message",
-            "The authentication request has expired. Start a new login from the Admin UI.");
+        model.addAttribute("message", MSG_AUTH_EXPIRED);
       } else {
         model.addAttribute("error", "Authentication check failed: " + e.getMessage());
       }
@@ -788,17 +800,13 @@ public class EzkeyAppController {
     if (statusCode == 409 && isAuthAttemptExpiredProblem(problemType)) {
       model.addAttribute("failed", false);
       model.addAttribute("expired", true);
-      model.addAttribute(
-          "message",
-          "This authentication request has expired. Start a new login from the Admin UI.");
+      model.addAttribute("message", MSG_AUTH_EXPIRED);
       return;
     }
     if (statusCode == 409) {
       model.addAttribute("failed", true);
       model.addAttribute("expired", false);
-      model.addAttribute(
-          "message",
-          "This authentication request is no longer active. Start a new login from the Admin UI.");
+      model.addAttribute("message", MSG_AUTH_NO_LONGER_ACTIVE);
       return;
     }
     model.addAttribute("failed", true);
