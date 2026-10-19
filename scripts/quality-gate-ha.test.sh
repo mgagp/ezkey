@@ -237,14 +237,14 @@ detect_rc=$?
 set -e
 assert_eq "$detect_rc" "0" "5c-bis: #747 detect with omitted since → detected"
 
-# 5e) Patrick B1: under pipefail, signature FIRST then >64 KiB noise must still match.
-# grep -q exits at first hit → writer SIGPIPE 141 → pipeline false (the #747 case).
+# 5e) Patrick B1-bis: under pipefail, signature FIRST then a continuing writer.
+# A single fat line (~70 KiB) is often one write() and does NOT SIGPIPE — so that
+# proof passed on the old grep -Fq code too. Use many lines after the match
+# (seq) so cat keeps writing after grep -q would have closed the pipe.
 all_healthy
 {
   echo 'ERROR: duplicate key value violates unique constraint "ezkey_encryption_key_pkey"'
-  # >64 KiB after the signature (beyond typical pipe buffer) so early close is fatal.
-  dd if=/dev/zero bs=1024 count=70 status=none 2>/dev/null | tr '\0' 'x'
-  printf '\n'
+  seq 1 2000000
 } >"$FAKE_DOCKER_STATE/ezkey-admin-api-1.logs"
 : >"$FAKE_DOCKER_STATE/ezkey-admin-api-2.logs"
 set -o pipefail
@@ -252,11 +252,36 @@ set +e
 detect_encryption_key_pkey_race "2026-10-19T00:00:00Z"
 detect_rc=$?
 set -e
-assert_eq "$detect_rc" "0" "5e B1: early signature + 70KiB noise under pipefail → detected"
+assert_eq "$detect_rc" "0" "5e B1: early signature + seq noise under pipefail → detected"
 
 # 5e-bis) since backoff moves timestamp earlier by QUALITY_GATE_SINCE_BACKOFF_S
 backed="$(QUALITY_GATE_SINCE_BACKOFF_S=5 quality_gate_since_backoff "2026-10-19T12:00:10Z")"
 assert_eq "$backed" "2026-10-19T12:00:05Z" "5e-bis: since backoff −5s"
+
+# 5e-ter) N1: python3 failure → raw timestamp + stderr (never empty --since drop)
+mkdir -p "$TMP/bin-bad-py"
+printf '%s\n' '#!/bin/bash' 'echo boom >&2' 'exit 1' >"$TMP/bin-bad-py/python3"
+chmod +x "$TMP/bin-bad-py/python3"
+backoff_err="$TMP/backoff-pyfail.err"
+backed_fail="$(
+  PATH="$TMP/bin-bad-py:$PATH" QUALITY_GATE_SINCE_BACKOFF_S=5 \
+    quality_gate_since_backoff "2026-10-19T12:00:10Z" 2>"$backoff_err"
+)"
+assert_eq "$backed_fail" "2026-10-19T12:00:10Z" "5e-ter N1: python3 fail → raw timestamp"
+grep -Fq 'python3 failed' "$backoff_err" \
+  && echo "ok - 5e-ter N1: python3 fail warns on stderr" && pass=$((pass+1)) \
+  || { echo "not ok - 5e-ter N1: python3 fail warns on stderr"; fail=$((fail+1)); cat "$backoff_err" || true; }
+
+# 5e-quater) N2: non-numeric backoff secs → raw timestamp (no bash -eq error)
+backoff_err2="$TMP/backoff-badsecs.err"
+backed_bad="$(
+  QUALITY_GATE_SINCE_BACKOFF_S=abc quality_gate_since_backoff "2026-10-19T12:00:10Z" \
+    2>"$backoff_err2"
+)"
+assert_eq "$backed_bad" "2026-10-19T12:00:10Z" "5e-quater N2: bad secs → raw timestamp"
+grep -Fq 'not a non-negative integer' "$backoff_err2" \
+  && echo "ok - 5e-quater N2: bad secs warns on stderr" && pass=$((pass+1)) \
+  || { echo "not ok - 5e-quater N2: bad secs warns on stderr"; fail=$((fail+1)); cat "$backoff_err2" || true; }
 
 # 5d) now_ms always returns digits (portable; BSD date must not poison arithmetic)
 ms="$(now_ms)"
