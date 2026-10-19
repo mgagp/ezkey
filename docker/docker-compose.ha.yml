@@ -112,6 +112,8 @@ services:
       EZKEY_ADMIN_INITIAL_FIRST_NAME: Admin
       EZKEY_ADMIN_INITIAL_LAST_NAME: Docker
       MANAGEMENT_SERVER_PORT: 9081
+      # Env required beyond application-docker.properties: docker-dev alone does not
+      # activate the docker profile, so IDE 127.0.0.1 would stick (#905 Patrick M1).
       MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: admin-api-1
       EZKEY_DATABASE_PARTITION_SCHEDULER_CRON: "0 */20 * * * ?"

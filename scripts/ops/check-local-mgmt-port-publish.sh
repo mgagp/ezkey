@@ -150,59 +150,45 @@ for p in 9081 8085 7081 8084 9091 8086; do
   need_health_127 "$COMPOSE" "$p" "docker-compose.yml"
 done
 
-if grep -Eq '127\.0\.0\.1:9081:9081' "$DEV" \
-  && grep -Eq '127\.0\.0\.1:8085:8085' "$DEV" \
-  && grep -Eq '127\.0\.0\.1:7081:7081' "$DEV"; then
-  echo "PASS: docker-dev overlay keeps 127.0.0.1 management publishes"
-  pass=$((pass + 1))
-else
-  echo "FAIL: docker-compose.docker-dev.yml must publish management on 127.0.0.1" >&2
-  fail=$((fail + 1))
-fi
-
-# HA docker-dev: per-replica management host ports must be loopback-only (#905 M1).
-need_ha_dev_loopback() {
-  local host_port="$1"
-  local container_port="$2"
-  if grep -Eq "127\\.0\\.0\\.1:${host_port}:${container_port}" "$HA_DEV"; then
-    echo "PASS: ha.docker-dev publishes 127.0.0.1:${host_port}:${container_port}"
-    pass=$((pass + 1))
-  else
-    echo "FAIL: docker-compose.ha.docker-dev.yml must publish 127.0.0.1:${host_port}:${container_port}" >&2
+# #905 Patrick M4: any ports: publish in docker-dev overlays must be loopback-only.
+# Generic rule — do not maintain an explicit port allowlist (Christophe M1 + future ports).
+require_docker_dev_ports_loopback() {
+  local file="$1"
+  local label="$2"
+  local line bare=0 ok=0
+  if [[ ! -f "$file" ]]; then
+    echo "FAIL: missing ${label} (${file})" >&2
     fail=$((fail + 1))
+    return
   fi
-  # Reject bare host:container publishes (all interfaces).
-  if grep -Eq "^[[:space:]]*-[[:space:]]*\"${host_port}:${container_port}\"" "$HA_DEV"; then
-    echo "FAIL: ha.docker-dev still publishes ${host_port}:${container_port} on all interfaces" >&2
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    # Compose short syntax port mapping: - "host:container" / - host:container / - ip:host:container
+    case "$line" in
+      *ports:*|*'#'*) continue ;;
+    esac
+    if printf '%s\n' "$line" | grep -Eq '^[[:space:]]*-[[:space:]]*["'\'']?[0-9]'; then
+      if printf '%s\n' "$line" | grep -Eq '127\.0\.0\.1:[0-9]+:[0-9]+'; then
+        ok=$((ok + 1))
+      else
+        echo "FAIL: ${label} ports entry is not loopback-only: ${line//$'\r'/}" >&2
+        bare=$((bare + 1))
+      fi
+    fi
+  done <"$file"
+  if [[ "$bare" -gt 0 ]]; then
     fail=$((fail + 1))
+  elif [[ "$ok" -eq 0 ]]; then
+    echo "FAIL: ${label} has no ports: publishes to validate" >&2
+    fail=$((fail + 1))
+  else
+    echo "PASS: ${label} all ${ok} ports: publishes are 127.0.0.1:…"
+    pass=$((pass + 1))
   fi
 }
 
-need_ha_dev_loopback "18085" "8085"
-need_ha_dev_loopback "28085" "8085"
-need_ha_dev_loopback "19081" "9081"
-need_ha_dev_loopback "29081" "9081"
-need_ha_dev_loopback "17081" "7081"
-need_ha_dev_loopback "27081" "7081"
-
-# JMX docker-dev: unauthenticated JMX must be loopback-only (#905 M1).
-need_jmx_dev_loopback() {
-  local port="$1"
-  if grep -Eq "127\\.0\\.0\\.1:${port}:${port}" "$JMX_DEV"; then
-    echo "PASS: jmx docker-dev publishes 127.0.0.1:${port}:${port}"
-    pass=$((pass + 1))
-  else
-    echo "FAIL: docker-compose.docker-dev.jmx.yml must publish 127.0.0.1:${port}:${port}" >&2
-    fail=$((fail + 1))
-  fi
-  if grep -Eq "^[[:space:]]*-[[:space:]]*\"${port}:${port}\"" "$JMX_DEV"; then
-    echo "FAIL: jmx docker-dev still publishes ${port}:${port} on all interfaces" >&2
-    fail=$((fail + 1))
-  fi
-}
-
-need_jmx_dev_loopback "9010"
-need_jmx_dev_loopback "9011"
+require_docker_dev_ports_loopback "$DEV" "docker-compose.docker-dev.yml"
+require_docker_dev_ports_loopback "$HA_DEV" "docker-compose.ha.docker-dev.yml"
+require_docker_dev_ports_loopback "$JMX_DEV" "docker-compose.docker-dev.jmx.yml"
 
 # HA compose: crypto/demo management publish + in-container health on 9091/8084.
 need_publish "$HA" "9091" "docker-compose.ha.yml"

@@ -14,6 +14,9 @@ cd "$ROOT"
 
 SKIP_START=0
 KEEP_STACK=0
+# Bounded retry: HAProxy backends can lag Docker health a few seconds after start.
+PROBE_ATTEMPTS="${PROBE_ATTEMPTS:-6}"
+PROBE_SLEEP_S="${PROBE_SLEEP_S:-5}"
 
 usage() {
   cat <<'EOF'
@@ -38,21 +41,34 @@ probe_lb() {
   local name="$1"
   local url="$2"
   local expect="$3"
-  local code
-  code="$(curl -sS -o /tmp/ezkey-ha-lb-smoke.body -w '%{http_code}' --max-time 30 "$url" || true)"
+  local attempt=1
+  local code=""
+  local body_file
+  body_file="$(mktemp)"
+
+  while (( attempt <= PROBE_ATTEMPTS )); do
+    code="$(curl -sS -o "${body_file}" -w '%{http_code}' --max-time 30 "$url" || true)"
+    if [[ "$code" != "503" && "$code" == "$expect" ]]; then
+      echo "PASS: ${name} HTTP ${code} (${url}) attempt=${attempt}/${PROBE_ATTEMPTS}"
+      rm -f "${body_file}"
+      return 0
+    fi
+    if (( attempt < PROBE_ATTEMPTS )); then
+      echo "  … ${name} got HTTP ${code:-curl-fail}, retry ${attempt}/${PROBE_ATTEMPTS} in ${PROBE_SLEEP_S}s"
+      sleep "${PROBE_SLEEP_S}"
+    fi
+    attempt=$((attempt + 1))
+  done
+
   if [[ "$code" == "503" ]]; then
-    echo "FAIL: ${name} returned 503 (HAProxy backends DOWN?) url=${url}" >&2
-    head -c 500 /tmp/ezkey-ha-lb-smoke.body >&2 || true
-    echo >&2
-    return 1
+    echo "FAIL: ${name} returned 503 after ${PROBE_ATTEMPTS} attempts (HAProxy backends DOWN?) url=${url}" >&2
+  else
+    echo "FAIL: ${name} expected HTTP ${expect}, got ${code:-curl-fail} after ${PROBE_ATTEMPTS} attempts (budget $((PROBE_ATTEMPTS * PROBE_SLEEP_S))s) url=${url}" >&2
   fi
-  if [[ "$code" != "$expect" ]]; then
-    echo "FAIL: ${name} expected HTTP ${expect}, got ${code} url=${url}" >&2
-    head -c 500 /tmp/ezkey-ha-lb-smoke.body >&2 || true
-    echo >&2
-    return 1
-  fi
-  echo "PASS: ${name} HTTP ${code} (${url})"
+  head -c 500 "${body_file}" >&2 || true
+  echo >&2
+  rm -f "${body_file}"
+  return 1
 }
 
 cleanup() {
@@ -75,13 +91,14 @@ if [[ "${SKIP_START}" -eq 0 ]]; then
   bash "${ROOT}/ezkey-tests/clean-start.sh" --ha --no-proxy
 fi
 
-echo "==> Probing HA load balancers (expect no 503)"
+echo "==> Probing HA load balancers (expect no 503; ${PROBE_ATTEMPTS}×${PROBE_SLEEP_S}s budget)"
 # Admin + Auth: unsigned public instance-info through HAProxy business ports.
 probe_lb "admin-lb" "http://127.0.0.1:9080/api/v1/public/instance-info" "200"
 probe_lb "auth-lb" "http://127.0.0.1:8080/api/v1/public/instance-info" "200"
 # Integration: no public instance-info; OpenAPI docs are anonymous 200 when backends are up.
 probe_lb "integration-lb" "http://127.0.0.1:7080/api-docs" "200"
-# Crypto is not behind HAProxy; host management publish must still answer (same #905 bind class).
+# Crypto / Demo Device are not behind HAProxy; host management publish must still answer (#905).
 probe_lb "crypto-mgmt" "http://127.0.0.1:9091/actuator/health" "200"
+probe_lb "demo-device-mgmt" "http://127.0.0.1:8084/actuator/health" "200"
 
 echo "HA LB smoke PASSED"

@@ -122,6 +122,11 @@ services:
       EZKEY_ADMIN_INITIAL_LAST_NAME: Docker
       MANAGEMENT_SERVER_PORT: 9081
       # In-container bind all interfaces; host publish is 127.0.0.1:9081 only (#905).
+      # Env is required in addition to application-docker.properties: SPRING_PROFILES_ACTIVE=
+      # docker-dev alone does not activate the docker profile, so the IDE default
+      # management.server.address=127.0.0.1 would stick (application-docker-dev.properties
+      # does not override address). start.sh/start-ha.sh prepend docker, but raw compose
+      # and docs examples often set docker-dev only — env covers that path (#905 Patrick M1).
       MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_DATABASE_PARTITION_SCHEDULER_CRON: "0 */20 * * * ?"
       # Public Auth API base URL for enrollment QR authUrl + GET /api/v1/public/instance-info.
@@ -176,6 +181,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ezkey_auth
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       MANAGEMENT_SERVER_PORT: 8085
+      # See admin-api MANAGEMENT_SERVER_ADDRESS comment (#905 Patrick M1).
       MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       # Same public metadata as admin-api for GET /api/v1/public/instance-info (mobile, operators).
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
@@ -222,6 +228,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ezkey_integration
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
       MANAGEMENT_SERVER_PORT: 7081
+      # See admin-api MANAGEMENT_SERVER_ADDRESS comment (#905 Patrick M1).
       MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_ENCRYPTION_KEYSET_BOOTSTRAP_WAIT: ${EZKEY_ENCRYPTION_KEYSET_BOOTSTRAP_WAIT:-PT90S}
     volumes:
@@ -253,6 +260,7 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       EZKEY_AUTH_API_URL: http://auth-api:8080
       MANAGEMENT_SERVER_PORT: 8084
+      # See admin-api MANAGEMENT_SERVER_ADDRESS comment (#905 Patrick M1).
       MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
     volumes:
       - demo-device-data:/app/data
@@ -285,6 +293,7 @@ services:
       <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       MANAGEMENT_SERVER_PORT: 9091
+      # See admin-api MANAGEMENT_SERVER_ADDRESS comment (#905 Patrick M1).
       MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
     volumes:
       - encryption-secrets:/etc/ezkey
