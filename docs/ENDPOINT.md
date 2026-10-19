@@ -130,7 +130,7 @@ HTTP-level outcomes for respond (RFC 9457 Problem Details unless noted):
 | Condition | Status | `type` (suffix under `https://ezkey.io/problems/auth/`) |
 | --- | --- | --- |
 | Attempt or enrollment not found, still `PENDING`, or terminal (`ACCEPTED`, `REJECTED`, `EXPIRED`, `INVALID`) / cancel-win / superseded | **409** | `auth-attempt-state-conflict` (unified client surface; distinction only in server logs — #844 Marc m1) |
-| Wall-clock expiry (`expiresAt` reached; conditional UPDATE refused) | **409** | `auth-attempt-expired` (#895) |
+| Wall-clock expiry after ownership proof (`expiresAt` reached; conditional UPDATE refused) | **409** | `auth-attempt-expired` (#895; only after device-signature verification — Christophe) |
 | Per-enrollment integration private key missing/blank when signing is required (runtime; transaction rolls back; no JVM startup gate) | **503** | `integration-signing-unavailable` |
 
 A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`).
@@ -141,11 +141,13 @@ A raw `IllegalArgumentException` or other uncaught exception from that flow is n
 sequential ids; server logs keep the distinction). **Exception (#895):** wall-clock expiry after
 `expiresAt` uses `https://ezkey.io/problems/auth/auth-attempt-expired` so Demo Device / PAM /
 mobile can show an expired message; respond UPDATE is fail-closed (`status = READ AND expires_at >
-now`). The official mobile app may still map both 409 types to one sentence until the typed-expiry
-UI slice lands. A lost approve/deny response after the HTTP call was sent (timeout / transport),
-where a session may already exist, is a separate mobile case (orientation Question 10 /
-`UncertainDecision`), not a new problem type. Missing integration signing key remains **503**
-(retryable; transaction rolled back).
+now`). **Ordering (#895 Christophe):** typed `auth-attempt-expired` is raised only after enrollment
+load and device-signature (ownership) verification; a non-owner signature on an expired attempt
+keeps generic `auth-attempt-state-conflict` (no INVALID flip). The official mobile app may still
+map both 409 types to one sentence until the typed-expiry UI slice lands. A lost approve/deny
+response after the HTTP call was sent (timeout / transport), where a session may already exist, is
+a separate mobile case (orientation Question 10 / `UncertainDecision`), not a new problem type.
+Missing integration signing key remains **503** (retryable; transaction rolled back).
 
 ### Public instance metadata (unauthenticated)
 

@@ -54,6 +54,12 @@ import org.springframework.transaction.annotation.Transactional;
  * stays in server logs only — Marc m1). Missing integration private key → HTTP <b>503</b>. Never an
  * unsigned 200.
  *
+ * <p><b>Wall-clock expiry (#895, Christophe):</b> {@code auth-attempt-expired} is raised only
+ * <em>after</em> enrollment load and device-signature (ownership) verification succeed. An unknown
+ * attempt, a still-{@code PENDING} or terminal attempt, or a non-owner device (invalid signature on
+ * an already-expired attempt) keep the generic {@code auth-attempt-state-conflict} surface so
+ * sequential ids do not reveal expiry before the caller is verified.
+ *
  * <p><b>Transaction Management:</b> This service uses Spring's declarative transaction management
  * to ensure data consistency during the authentication response processing.
  *
@@ -123,22 +129,25 @@ public class AuthAttemptRespondService {
   public AuthAttemptRespondResponse respond(AuthAttemptRespondRequest request) {
     AuthAttempt authAttempt = null;
     try {
-      // Step 1: Validate and get the authentication attempt
+      // Step 1: Validate and get the authentication attempt (no wall-clock expiry yet — #895)
       authAttempt = validateAndGetAttempt(request);
 
       // Step 2: Validate enrollment
       Enrollment enrollment = validateEnrollment(authAttempt);
 
-      // Step 3: Validate device signature
+      // Step 3: Validate device signature (ownership) before typed expiry (#895 Christophe)
       validateDeviceSignature(request, authAttempt, enrollment);
 
       // Step 4: Validate challenge if required
       validateChallenge(request, authAttempt, enrollment);
 
-      // Step 5: Update attempt status
+      // Step 5: Wall-clock expiry only after ownership proof (#895)
+      ensureNotExpired(authAttempt);
+
+      // Step 6: Update attempt status
       updateAttemptStatus(authAttempt, enrollment, request);
 
-      // Step 6: Build and return response (integration-signed result payload)
+      // Step 7: Build and return response (integration-signed result payload)
       return buildResponse(request, authAttempt, enrollment);
     } catch (AuthAttemptRequestFailedException ignored) {
       // Legitimate domain FAILED only (invalid device signature, challenge mismatch, missing
@@ -203,12 +212,32 @@ public class AuthAttemptRespondService {
       throw new AuthAttemptStateConflictException(
           "Authentication attempt superseded by newer request");
     }
-    // Check if expired (fail-closed: refuse at expiresAt, not only after)
-    OffsetDateTime now = OffsetDateTime.now();
-    if (authAttempt.getExpiresAt() != null && !authAttempt.getExpiresAt().isAfter(now)) {
+    // Wall-clock expiry is checked only after device-signature ownership (#895 Christophe).
+    return authAttempt;
+  }
+
+  /**
+   * Returns whether the attempt's wall-clock {@code expiresAt} has been reached (fail-closed: refuse
+   * at {@code expiresAt}, not only after).
+   *
+   * @param authAttempt the attempt to inspect
+   * @return {@code true} when {@code expiresAt} is set and not strictly after now
+   */
+  private static boolean isWallClockExpired(AuthAttempt authAttempt) {
+    OffsetDateTime expiresAt = authAttempt.getExpiresAt();
+    return expiresAt != null && !expiresAt.isAfter(OffsetDateTime.now());
+  }
+
+  /**
+   * Raises typed expiry only after enrollment and device-signature checks have succeeded (#895).
+   *
+   * @param authAttempt the attempt under respond
+   * @throws AuthAttemptExpiredException when {@code expiresAt} has been reached
+   */
+  private void ensureNotExpired(AuthAttempt authAttempt) {
+    if (isWallClockExpired(authAttempt)) {
       throw new AuthAttemptExpiredException("Authentication attempt expired");
     }
-    return authAttempt;
   }
 
   /**
@@ -267,6 +296,16 @@ public class AuthAttemptRespondService {
             request.getAuthAttemptProofTokenSignedByDevice(),
             enrollment.getDevicePublicKey());
     if (!isValid) {
+      // Non-owner probe on an already-expired attempt: keep generic 409 — do not reveal typed
+      // expiry and do not flip the row to INVALID (#895 Christophe).
+      if (isWallClockExpired(authAttempt)) {
+        logger.warn(
+            "Respond refused: invalid device signature on expired auth attempt {}"
+                + " (client → 409 state-conflict)",
+            authAttempt.getAuthAttemptId());
+        throw new AuthAttemptStateConflictException(
+            "Cannot respond to authentication attempt: not authorized");
+      }
       authAttemptTxHelper.markAsInvalid(authAttempt.getAuthAttemptId());
       throw new AuthAttemptRequestFailedException("Invalid signature for auth attempt code");
     }

@@ -281,17 +281,48 @@ class AuthAttemptRespondServiceTest {
   }
 
   @Test
-  @DisplayName("Respond after expiresAt → AuthAttemptExpiredException (#895)")
+  @DisplayName(
+      "Respond after expiresAt → AuthAttemptExpiredException only after valid device signature"
+          + " (#895 Christophe)")
   void respond_afterExpiresAt_raisesExpired() {
     AuthAttempt attempt = readAttempt();
     attempt.setExpiresAt(OffsetDateTime.now().minusSeconds(1));
+    Enrollment enrollment = enrollmentWithKeys();
+
     when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
     when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
         .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
 
     assertThatThrownBy(() -> respondService.respond(approveRequest()))
         .isInstanceOf(AuthAttemptExpiredException.class)
         .hasMessageContaining("expired");
+    verify(signatureService).validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY));
+    verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
+    verify(signatureService, never()).signIntegrationPayload(any(), any());
+    verify(authAttemptTxHelper, never()).markAsInvalid(any());
+  }
+
+  @Test
+  @DisplayName(
+      "Invalid signature on expired attempt → state-conflict (no typed expiry, no INVALID)"
+          + " (#895 Christophe)")
+  void respond_expiredInvalidSignature_raisesStateConflict() {
+    AuthAttempt attempt = readAttempt();
+    attempt.setExpiresAt(OffsetDateTime.now().minusSeconds(1));
+    Enrollment enrollment = enrollmentWithKeys();
+
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(false);
+
+    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+        .isInstanceOf(AuthAttemptStateConflictException.class)
+        .hasMessageContaining("not authorized");
+    verify(authAttemptTxHelper, never()).markAsInvalid(any());
     verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
     verify(signatureService, never()).signIntegrationPayload(any(), any());
   }
