@@ -155,7 +155,7 @@ echo "=== PAM timeout inventory tests (#895 PR-B) ===" | tee "${PROOF}"
   echo "  wait effective              min(conf, applied_ttl, rem-CURL_SLACK); chunked ≤5s (#907)"
   echo "  curl /wait slack 15         EZKEY_CURL_WAIT_SLACK (cancel margin inside)"
   echo "  Enter measure               EZKEY_MAX_ENTER_SECS 25 (CLOCK_MONOTONIC; no alarm)"
-  echo "  wait disconnect             peer FIN / getppid between chunks (no sigaction)"
+  echo "  wait SIGTERM                absorbed only during /wait (flag); restore after"
   echo "  LoginGraceTime 120          sshd_config (runbook: >= 120 s)"
   echo "  Auth /pending rate          10/min (ezkey.rate-limit.pending.*)"
 } | tee -a "${PROOF}"
@@ -923,16 +923,14 @@ if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'EZKEY_INTERRUPT_CANCEL_MAX 5' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_AUTH_BUDGET_SECS 105' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'cancel=%s' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
-  && grep -q 'ezkey_tcp_peer_fin_seen' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
-  && ! grep -q 'ezkey_sigterm_wait' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -q 'ezkey_sigterm_wait' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && ! grep -E '\balarm\s*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
-  && ! grep -E '\bsigaction\s*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'LoginGraceTime 120' "${SCRIPT_DIR}/../sshd_config" \
   && grep -q 'Match User testuser' "${SCRIPT_DIR}/../sshd_config" \
   && grep -q 'AuthenticationMethods keyboard-interactive' "${SCRIPT_DIR}/../sshd_config" \
   && grep -q '^wait_polling=2' "${SCRIPT_DIR}/../config/pam_ezkey.conf" \
   && grep -q '^wait_timeout=90' "${SCRIPT_DIR}/../config/pam_ezkey.conf"; then
-  ok "#726 chunk=5 interrupt_cancel=5 budget=105 (110<120) + peer-FIN R5 + Match; no alarm/sigaction"
+  ok "#726 chunk=5 interrupt_cancel=5 budget=105 (110<120) + cancel/SIGTERM + Match AuthMethods; no alarm"
 else
   fail "missing linkage guards (#726 thresholds/cancel/chunk/Match/alarm/sample conf)"
 fi

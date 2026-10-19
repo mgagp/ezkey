@@ -36,12 +36,15 @@ that owns the API key.
   Match, a retry in the same TCP connection creates a new auth attempt.
 - Authpriv **`start`** line at call begin (before create); summary includes
   `timeoutSeconds=`.
-- **R5 (signal-free):** chunked `/wait`; between chunks / xferinfo detect TCP peer
-  FIN (and `getppid` change) → bounded cancel (`min(api_timeout, 5)`). No
-  `sigaction` — OpenSSH 9.9 does not SIGTERM the PAM child on pre-auth client
-  kill. Do not rely on `pam_end` under OpenSSH.
-- Proof: `scripts/test-f9-retry.sh` A/B (multitry vs Match). Case C (kill-client
-  cancel ≤5 s) is lab-exercised; **not claimed CI-proven** until the job is green.
+- **R5 (best-effort):** chunked `/wait` + wait-scoped `SIGTERM` (absorbed only
+  during wait — flag then restore; Christophe security GO). When the signal is
+  delivered, curl aborts and cancel runs within `min(api_timeout, 5)`. On OpenSSH
+  9.9 pre-auth client kill, SIGTERM often never arrives — cancel is then skipped
+  and the **applied TTL** from create is the residual bound. Do not rely on
+  `pam_end` under OpenSSH.
+- Proof: `scripts/test-f9-retry.sh` A/B (multitry vs Match) gate CI. Case C
+  (kill-client) documents best-effort cancel and asserts the TTL bound; it does
+  **not** require cancel ≤5 s and does not fail CI when cancel is absent.
 - In-process final marker kept as fail-closed for same-handle callers only.
 - Harness: `make test-session` (interrupt cancel cap + final-verdict helpers).
 
@@ -273,14 +276,13 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
 - **Auth API `/pending` rate limit: 10/min** (`ezkey.rate-limit.pending.requests=10`,
   `window-minutes=1`). Rapid SSH retries plus Demo Device / mobile pending checks share that
   budget — back off when testing EXPIRER / abandon loops.
-- **SSH client keepalive / disconnect (R5).** Prefer keepalive that covers at least
-  `wait_timeout` + margin for MFA tests. On pre-auth client disconnect during
-  `/wait`, OpenSSH 9.9 `sshd-session` leaves the PAM child running with the client
-  socket in `CLOSE-WAIT` (no SIGTERM from `auth-pam.c:164-168` in that window).
-  The module polls TCP peer FIN (and `getppid`) between chunks / via curl
-  xferinfo, then best-effort cancels within `min(api_timeout, 5)` seconds — not
-  via `pam_end`. Residual: hard `SIGKILL` / fds without FIN can still skip cancel;
-  applied TTL remains the bound.
+- **SSH client keepalive / disconnect (R5 — best-effort).** Prefer keepalive that
+  covers at least `wait_timeout` + margin for MFA tests. The module installs a
+  wait-scoped `SIGTERM` handler (`auth-pam.c:164-168` path when delivered): absorb
+  → flag → abort chunked curl → best-effort cancel within `min(api_timeout, 5)`.
+  On OpenSSH 9.9 pre-auth kill, that SIGTERM often never arrives; cancel is then
+  skipped and the **applied TTL** from create is the residual bound — not via
+  `pam_end`. Residual: hard `SIGKILL` also skips cancel.
 - After abandon (Ctrl-C, wait timeout, Enter over-limit), PAM **best-effort** cancels the
   attempt so a new create is not blocked by a stale PENDING/READ card. Cancel is **not
   guaranteed when the wait timeout is reached** (remaining monotonic budget may be too

@@ -2,7 +2,8 @@
 # #907 F9 proof (Patrick B3 / B2b / option A): real sshd behaviour.
 # A) Without Match MaxAuthTries 1 + client NumberOfPasswordPrompts=3 → ≥2 creates
 # B) With demo Match MaxAuthTries 1 → exactly 1 create
-# C) Kill SSH client during /wait → stub sees cancel within ≤5 s (B2b)
+# C) Kill SSH client during /wait — R5 best-effort (TTL-bounded); does not fail CI
+#    when cancel is absent; asserts create carried a finite applied TTL.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -162,13 +163,14 @@ else
   fail "expected exactly 1 create with Match MaxAuthTries 1, got ${CREATES_MATCH}"
 fi
 
-# --- Case C (B2b): kill client during pending /wait → cancel ≤5 s ---
-# H1 instrument: debug.err must show peer FIN / no SIGTERM (sshd does not signal).
+# --- Case C (B2b): R5 best-effort disconnect — TTL bound gates CI, not cancel ≤5 s ---
+# On OpenSSH 9.9 pre-auth kill, wait-scoped SIGTERM often never arrives; missing
+# cancel is an expected documented outcome and must not fail CI (Marc #907).
+CASE_C_WAIT_TTL=30
 start_stub pending
-point_conf_at_stub 30
+point_conf_at_stub "${CASE_C_WAIT_TTL}"
 install_sshd_cfg "${SCRIPT_DIR}/../sshd_config"
-docker exec "${CONTAINER}" sh -c \
-  ": >'${STUB_REQ_LOG}'; : > /var/log/ezkey-pam/debug.err"
+docker exec "${CONTAINER}" sh -c ": >'${STUB_REQ_LOG}'"
 
 set +e
 ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
@@ -179,7 +181,6 @@ ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 SSH_PID=$!
 set -e
 
-# Wait until create is posted (module entered /wait soon after).
 CREATED=0
 for _ in $(seq 1 80); do
   CREATED="$(count_creates)"
@@ -195,13 +196,13 @@ if [ "${CREATED}" -lt 1 ]; then
   wait "${SSH_PID}" 2>/dev/null || true
   fail "B2b: no create before kill (stub/pending path)"
 else
-  # Brief settle so curl is inside chunked /wait, then kill the SSH client.
   sleep 0.5
   kill "${SSH_PID}" 2>/dev/null || true
   KILL_TS="$(date +%s)"
   CANCEL_SEEN=0
   CANCEL_ELAPSED=99
-  for _ in $(seq 1 60); do
+  # Observe cancel briefly (best-effort only — absence is OK).
+  for _ in $(seq 1 50); do
     CN="$(count_cancels)"
     CN="${CN:-0}"
     if [ "${CN}" -ge 1 ]; then
@@ -213,17 +214,29 @@ else
     sleep 0.1
   done
   wait "${SSH_PID}" 2>/dev/null || true
+  STUB_LOG="$(docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null || true)"
+  echo "${STUB_LOG}" | tee -a "${PROOF}" || true
   echo "kill-during-wait cancel_seen=${CANCEL_SEEN} elapsed_s=${CANCEL_ELAPSED}" \
     | tee -a "${PROOF}"
-  docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null | tee -a "${PROOF}" || true
-  ERR="$(docker exec "${CONTAINER}" sh -c 'cat /var/log/ezkey-pam/debug.err' 2>/dev/null || true)"
-  echo "B2b H1 debug.err=${ERR}" | tee -a "${PROOF}"
-  # Filelog sanitizes spaces → '_' (and other chars); match the stable token.
-  if [ "${CANCEL_SEEN}" -eq 1 ] && [ "${CANCEL_ELAPSED}" -le 5 ] \
-    && echo "${ERR}" | grep -Eqi 'tcp.peer.FIN.*no.SIGTERM|tcp_peer_FIN.*no_SIGTERM'; then
-    ok "B2b: client killed during wait → cancel in ${CANCEL_ELAPSED}s (≤5); H1 peer FIN (no SIGTERM)"
+
+  # Hard CI gate: create requested a finite ttlSeconds (= conf wait) as residual bound.
+  GOT_TTL="$(printf '%s\n' "${STUB_LOG}" \
+    | grep -oE 'ttlSeconds[=:][0-9]+|"ttlSeconds"[[:space:]]*:[[:space:]]*[0-9]+' \
+    | head -n1 | grep -oE '[0-9]+$' || true)"
+  echo "kill-during-wait create_ttlSeconds=${GOT_TTL:-missing} expected=${CASE_C_WAIT_TTL}" \
+    | tee -a "${PROOF}"
+  if [ "${GOT_TTL}" = "${CASE_C_WAIT_TTL}" ]; then
+    ok "B2b/R5: applied TTL bound ttlSeconds=${GOT_TTL} (residual window ≤ TTL; cancel best-effort)"
   else
-    fail "B2b: expected cancel ≤5s + peer FIN debug, seen=${CANCEL_SEEN} elapsed=${CANCEL_ELAPSED} err=${ERR}"
+    fail "B2b/R5: expected create ttlSeconds=${CASE_C_WAIT_TTL}, got '${GOT_TTL:-missing}'"
+  fi
+
+  if [ "${CANCEL_SEEN}" -eq 1 ] && [ "${CANCEL_ELAPSED}" -le 5 ]; then
+    echo "[NOTE] B2b: cancel observed in ${CANCEL_ELAPSED}s (best-effort win; not required)" \
+      | tee -a "${PROOF}"
+  else
+    echo "[NOTE] B2b: cancel absent or >5s (expected on OpenSSH 9.9 pre-auth; TTL bounds residual)" \
+      | tee -a "${PROOF}"
   fi
 fi
 

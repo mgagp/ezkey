@@ -37,15 +37,10 @@
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <limits.h>
-#include <poll.h>
 #include <signal.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <time.h>
 #include <cjson/cJSON.h>
 #include <unistd.h>
@@ -71,11 +66,7 @@
 /* Non-heap marker for pam_set_data(EZKEY_PAM_DATA_FINAL) — same process only. */
 static char ezkey_final_marker = 1;
 
-/*
- * Set when /wait should abort (signal-free R5): TCP peer FIN and/or parent
- * change via getppid(). OpenSSH 9.9 sshd-session does not SIGTERM the PAM
- * child on pre-auth client kill (socket stays CLOSE-WAIT; [pam]/net] live).
- */
+/* Set by wait-scoped SIGTERM handler; curl xferinfo aborts the in-flight /wait. */
 static volatile sig_atomic_t ezkey_wait_abort = 0;
 
 typedef struct {
@@ -143,8 +134,7 @@ static const char *ezkey_cancel_best_effort(pam_handle_t *pamh,
 static int ezkey_xferinfo_abort(void *clientp, curl_off_t dltotal,
                                 curl_off_t dlnow, curl_off_t ultotal,
                                 curl_off_t ulnow);
-static int ezkey_tcp_peer_fin_seen(void);
-static int ezkey_wait_parent_gone(pid_t ppid_at_start);
+static void ezkey_sigterm_wait(int signo);
 
 static void ezkey_config_init(EzkeyConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
@@ -528,107 +518,9 @@ static void log_attempt_summary(const char *username, long auth_attempt_id,
            lab_http ? "true" : "false", cancel_status, timeout_buf);
 }
 
-/**
- * True if any connected TCP peer has finished (FIN / CLOSE-WAIT).
- * Instrument / primary R5 path when sshd does not SIGTERM the PAM child.
- *
- * @return 1 if a peer FIN was observed, 0 otherwise
- */
-static int ezkey_tcp_peer_fin_seen(void) {
-    DIR *dir;
-    struct dirent *ent;
-    int found = 0;
-
-    dir = opendir("/proc/self/fd");
-    if (dir == NULL) {
-        return 0;
-    }
-    while ((ent = readdir(dir)) != NULL) {
-        char path[64];
-        char link[64];
-        ssize_t n;
-        int fd;
-        int sock_type = 0;
-        socklen_t tlen;
-        struct sockaddr_storage peer;
-        socklen_t plen;
-        struct pollfd pfd;
-        char peek;
-        ssize_t rn;
-        char *end = NULL;
-        long fd_long;
-
-        if (ent->d_name[0] < '0' || ent->d_name[0] > '9') {
-            continue;
-        }
-        errno = 0;
-        fd_long = strtol(ent->d_name, &end, 10);
-        if (errno != 0 || end == ent->d_name || *end != '\0' || fd_long < 0 ||
-            fd_long > INT_MAX) {
-            continue;
-        }
-        fd = (int)fd_long;
-        snprintf(path, sizeof(path), "/proc/self/fd/%d", fd);
-        n = readlink(path, link, sizeof(link) - 1);
-        if (n < 0) {
-            continue;
-        }
-        link[n] = '\0';
-        if (strncmp(link, "socket:", 7) != 0) {
-            continue;
-        }
-        tlen = sizeof(sock_type);
-        if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &sock_type, &tlen) != 0 ||
-            sock_type != SOCK_STREAM) {
-            continue;
-        }
-        plen = sizeof(peer);
-        if (getpeername(fd, (struct sockaddr *)&peer, &plen) != 0) {
-            continue;
-        }
-        if (peer.ss_family != AF_INET && peer.ss_family != AF_INET6) {
-            continue;
-        }
-        memset(&pfd, 0, sizeof(pfd));
-        pfd.fd = fd;
-        /* POLLHUP covers CLOSE-WAIT peer FIN; avoid POLLRDHUP (needs _GNU_SOURCE). */
-        pfd.events = POLLIN | POLLHUP | POLLERR;
-        if (poll(&pfd, 1, 0) <= 0) {
-            continue;
-        }
-        if ((pfd.revents & (POLLHUP | POLLERR)) != 0) {
-            found = 1;
-            break;
-        }
-        if ((pfd.revents & POLLIN) == 0) {
-            continue;
-        }
-        rn = recv(fd, &peek, 1, MSG_DONTWAIT | MSG_PEEK);
-        if (rn == 0) {
-            found = 1;
-            break;
-        }
-    }
-    closedir(dir);
-    return found;
-}
-
-/**
- * True if the PAM child's parent changed (reparent / parent exit).
- * On OpenSSH 9.9 pre-auth disconnect the [priv] parent usually stays alive —
- * peer FIN is the path that fires; this check is kept as a cheap complement.
- *
- * @param ppid_at_start getppid() captured at /wait start
- * @return 1 if parent is gone or differs, 0 otherwise
- */
-static int ezkey_wait_parent_gone(pid_t ppid_at_start) {
-    pid_t now;
-
-    if (ppid_at_start <= 1) {
-        return 0;
-    }
-    now = getppid();
-    return (now == 1 || now != ppid_at_start) ? 1 : 0;
+static void ezkey_sigterm_wait(int signo) {
+    (void)signo;
+    ezkey_wait_abort = 1;
 }
 
 static int ezkey_xferinfo_abort(void *clientp, curl_off_t dltotal,
@@ -641,10 +533,6 @@ static int ezkey_xferinfo_abort(void *clientp, curl_off_t dltotal,
     (void)ultotal;
     (void)ulnow;
     if (flag != NULL && *flag != 0) {
-        return 1;
-    }
-    if (ezkey_tcp_peer_fin_seen()) {
-        ezkey_wait_abort = 1;
         return 1;
     }
     return 0;
@@ -766,8 +654,9 @@ static char *build_create_body(const EzkeyConfig *cfg, const char *username,
 }
 
 /**
- * HTTP helper. When abort_flag is non-NULL, install xferinfo so peer-FIN /
- * abort flag can stop curl mid-chunk (#907 R5; signal-free).
+ * HTTP helper. When abort_flag is non-NULL, install xferinfo so SIGTERM during
+ * /wait can abort curl in-process (OpenSSH kills the auth child on disconnect;
+ * pam_end cleanup never runs in that child — #907 R5).
  */
 static int ezkey_http(const char *url, const char *userpwd, const char *post_body,
                       long timeout_seconds, EzkeyBuf *buf, long *http_code,
@@ -1239,50 +1128,39 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     }
 
     /*
-     * Chunked /wait (#907 R5, signal-free): between chunks (and via xferinfo)
-     * poll TCP peer FIN / getppid() change — OpenSSH 9.9 does not SIGTERM the
-     * PAM child on pre-auth client kill (CLOSE-WAIT). No sigaction.
+     * Chunked /wait (#907 R5): OpenSSH portable runs PAM in a forked child that
+     * _exit's — pam_end cleanup never runs. Slice wait so SIGTERM on client
+     * disconnect can abort curl via xferinfo and cancel in this process.
      */
     {
         int wait_left = effective_wait;
-        pid_t wait_ppid = getppid();
+        struct sigaction sa_new;
+        struct sigaction sa_old;
+        int sig_installed = 0;
 
+        memset(&sa_new, 0, sizeof(sa_new));
+        sa_new.sa_handler = ezkey_sigterm_wait;
+        sigemptyset(&sa_new.sa_mask);
         ezkey_wait_abort = 0;
+        if (sigaction(SIGTERM, &sa_new, &sa_old) == 0) {
+            sig_installed = 1;
+        }
 
         pam_rc = PAM_AUTH_ERR;
         summary = "TIMEOUT";
 
         while (wait_left > 0) {
             int chunk = wait_left;
-            int peer_fin;
-            int parent_gone;
 
             if (chunk > EZKEY_WAIT_CHUNK_SECS) {
                 chunk = EZKEY_WAIT_CHUNK_SECS;
-            }
-            peer_fin = ezkey_tcp_peer_fin_seen();
-            parent_gone = ezkey_wait_parent_gone(wait_ppid);
-            if (ezkey_wait_abort == 0 && (peer_fin || parent_gone)) {
-                ezkey_wait_abort = 1;
             }
             if (ezkey_wait_abort != 0) {
                 interrupted = 1;
                 pam_rc = PAM_AUTHINFO_UNAVAIL;
                 summary = "UNAVAIL";
-                /* Instrumented reason: proves abort without SIGTERM (H1). */
-                if (peer_fin) {
-                    log_pam_error_debug(pamh, cfg,
-                                        "client disconnect during wait "
-                                        "(tcp peer FIN; no SIGTERM)");
-                } else if (parent_gone) {
-                    log_pam_error_debug(pamh, cfg,
-                                        "client disconnect during wait "
-                                        "(parent gone; no SIGTERM)");
-                } else {
-                    log_pam_error_debug(pamh, cfg,
-                                        "client disconnect during wait "
-                                        "(abort flag; no SIGTERM)");
-                }
+                log_pam_error_debug(pamh, cfg,
+                                    "client disconnect during wait (SIGTERM)");
                 break;
             }
 
@@ -1330,9 +1208,6 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                     interrupted = 1;
                     pam_rc = PAM_AUTHINFO_UNAVAIL;
                     summary = "UNAVAIL";
-                    log_pam_error_debug(pamh, cfg,
-                                        "client disconnect during wait "
-                                        "(tcp peer FIN; no SIGTERM)");
                 } else if (curl_rc == CURLE_OPERATION_TIMEDOUT) {
                     wait_left -= chunk;
                     if (wait_left <= 0 ||
@@ -1442,6 +1317,9 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
             /* PENDING/READ (or chunk timeoutReached): continue next chunk. */
         }
 
+        if (sig_installed) {
+            (void)sigaction(SIGTERM, &sa_old, NULL);
+        }
         ezkey_wait_abort = 0;
     }
 
