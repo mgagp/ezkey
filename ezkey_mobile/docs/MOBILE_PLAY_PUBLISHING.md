@@ -40,7 +40,7 @@ Delivery is **AAB** (not APK). Play App Signing holds the app-signing key; you k
 ## Technical
 
 - [x] **Release signing** path exists (upload key outside the repo). Repeat for the **final GA AAB** before submit.
-- [x] **Version policy** documented below. Next closed-testing upload: `versionName` `0.1.0-alpha` (`package.json`), `versionCode` **3**. In-app chrome says Public alpha (plus git short SHA on About), not `v1.0.0`.
+- [x] **Version policy** documented below. Next closed-testing upload: `versionName` `0.1.0-alpha` (`package.json`), `versionCode` **4**. In-app chrome says Public alpha (plus git short SHA on About), not `v1.0.0`.
 - [x] **Target API level** — `targetSdkVersion` / `compileSdkVersion` **36**. `minSdkVersion` **31** (Android 12+).
 - [x] **16 KB page-size** — NDK r28+, datastore 1.2.1 force, `yarn android:bundle:release` runs
   `scripts/check-16kb-alignment.sh` (see [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md)).
@@ -69,7 +69,7 @@ Before each Play upload:
 4. If dependencies changed, run `yarn license:app-data` and commit the JSON snapshot.
 5. Build the signed AAB (`./scripts/build-install-release-clean.sh` or `yarn android:bundle:release` with JDK 17).
 
-**This workspace (2026-09-25):** `versionName` `0.1.0-alpha`, `versionCode` `3`. Play Console internal testing already holds `versionCode` `2`. Do not reuse a `versionCode`.
+**This workspace (2026-10-19):** `versionName` `0.1.0-alpha`, `versionCode` `4`. Play Console highest uploaded AAB is `versionCode` `1`; `versionCode` `3` was built locally and validated on a Pixel but never uploaded. Do not reuse a `versionCode`.
 
 ## In-app third-party licenses snapshot
 
