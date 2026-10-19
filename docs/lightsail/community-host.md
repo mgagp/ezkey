@@ -105,13 +105,21 @@ environments, or client configs:
 | `admin.ezkey.online` | No DNS; does not exist (use `admin-api` / `admin-ui`) |
 | `acme.ezkey.online` | No DNS; does not exist (use `demo-acme.ezkey.online`) |
 | `api.ezkey.online` | No DNS; does not exist |
-| `www.ezkey.online` | A proxied with no valid origin → Cloudflare **530**; DNS decision pending with Marc |
+| `www.ezkey.online` | CNAME proxied; Cloudflare Single Redirect **301** → `https://ezkey.org/` (not a product origin) |
 
 **Any other `*.ezkey.online` name does not exist** and must not be introduced without updating
 this section and the CI allowlist in [`scripts/ops/check-ezkey-online-hosts.sh`](../../scripts/ops/check-ezkey-online-hosts.sh).
 
 **Decision (2026-10-19):** hostname canon and “not served” inventory locked from Edgar’s
-read-only probe + live Caddyfile; `www` disposition deferred to Marc.
+read-only probe + live Caddyfile.
+
+**Decision (2026-10-19, www → ezkey.org):** Marc decided that `www.ezkey.online` and
+`www.ezkey.org` each return **301** to `https://ezkey.org/` via a Cloudflare Single Redirect
+(one `http_request_dynamic_redirect` ruleset per zone, one rule each). Apex `ezkey.online`
+remains unchanged (still not served). Applied by Edgar at 16:19 Eastern; verified with
+`curl -sI`. Resolves the #894 follow-up “www.ezkey.online DNS — delete orphan A or redirect”
+(resolved by redirect; DNS is now CNAME proxied, not an orphan A). Do not record ruleset IDs
+or origin IPs in git.
 
 **CI guard:** [`scripts/ops/check-ezkey-online-hosts.sh`](../../scripts/ops/check-ezkey-online-hosts.sh)
 (lightsail job in CI) rejects new `*.ezkey.online` labels outside the allowlist above; see

@@ -49,7 +49,7 @@ cat >"${TMP}/docs/lightsail/community-host.md" <<'EOF'
 ### Not served
 | `n.ezkey.online` | does not exist |
 | `auth.ezkey.online` | does not exist |
-| `www.ezkey.online` | 530 pending Marc |
+| `www.ezkey.online` | CNAME proxied; 301 → https://ezkey.org/ |
 EOF
 
 # Allowlisted host elsewhere — OK.
