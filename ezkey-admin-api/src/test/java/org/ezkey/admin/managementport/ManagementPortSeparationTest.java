@@ -83,7 +83,9 @@ class ManagementPortSeparationTest {
     // and falls through to anyRequest().authenticated(). Never 200.
     assertThat(status("http://127.0.0.1:" + businessPort + "/actuator/health")).isIn(401, 404);
 
-    assertThat(status("http://127.0.0.1:" + businessPort + "/monitoring")).isEqualTo(403);
+    // JM management-endpoint mode returns 403 from MonitoringFilter; if Security runs first,
+    // anyRequest().authenticated() yields 401. Both mean the report is not exposed (verify script).
+    assertThat(status("http://127.0.0.1:" + businessPort + "/monitoring")).isIn(401, 403);
 
     // Proves /actuator/** permitAll on the management port (no 401).
     assertThat(status("http://127.0.0.1:" + managementPort + "/actuator/monitoring"))

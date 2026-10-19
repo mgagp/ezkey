@@ -78,7 +78,8 @@ class ManagementPortSeparationTest {
     // Not mounted on the business port (LIVE 404; minimal chain may 401 — never 200).
     assertThat(status("http://127.0.0.1:" + businessPort + "/actuator/health")).isIn(401, 404);
 
-    assertThat(status("http://127.0.0.1:" + businessPort + "/monitoring")).isEqualTo(403);
+    // JM 403 or Security 401 — both non-exposure (see verify-javamelody-non-exposure.sh).
+    assertThat(status("http://127.0.0.1:" + businessPort + "/monitoring")).isIn(401, 403);
 
     assertThat(status("http://127.0.0.1:" + managementPort + "/actuator/monitoring"))
         .isEqualTo(200);
