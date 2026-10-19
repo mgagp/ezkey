@@ -100,6 +100,8 @@ jobs:
               - 'scripts/ops/verify-javamelody-non-exposure.test.sh'
               - 'scripts/ops/check-local-mgmt-port-publish.sh'
               - 'scripts/ops/check-local-mgmt-port-publish.test.sh'
+              - 'scripts/ops/check-ezkey-online-hosts.sh'
+              - 'scripts/ops/check-ezkey-online-hosts.test.sh'
               - 'experimental-hybrid/scripts/export-backend-images-to-lightsail.sh'
               - 'experimental-hybrid/scripts/full-exp-environment-upgrade.sh'
               - 'experimental-hybrid/lightsail/docker-compose.yml'
@@ -384,6 +386,12 @@ jobs:
 
       - name: Local management port publish unit tests (B1 regression)
         run: ./scripts/ops/check-local-mgmt-port-publish.test.sh
+
+      - name: ezkey.online product hostname allowlist
+        run: ./scripts/ops/check-ezkey-online-hosts.sh
+
+      - name: ezkey.online hostname allowlist unit tests
+        run: ./scripts/ops/check-ezkey-online-hosts.test.sh
 
   # Single required-check candidate. Skipped path jobs count as success for the gate;
   # failure or cancellation of any needed job fails the gate.

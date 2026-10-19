@@ -27,12 +27,13 @@ Bruno **desktop** is separate: open this `bruno/` folder as a collection for GUI
 | `environments/local.bru` | Direct localhost ports (default) |
 | `environments/local-via-caddy-proxy.bru` | Caddy proxy ports |
 | `environments/local-ngrok.bru` | Ngrok / tunnel workflows |
-| `environments/community.bru` | Public community hosts (`*-api.ezkey.online`) |
+| `environments/community.bru` | Public community hosts (see hostname canon) |
 
 Runtime secrets (`token`, `secretKey`, device keys, …) stay empty in git. Scripts populate them during a run. Never commit filled tokens.
 
 **Community notes:** Auth (`base_url`), Admin, and Integration use the public Cloudflare hostnames
-from [`experimental-hybrid/lightsail/Caddyfile.ezkey-online`](../experimental-hybrid/lightsail/Caddyfile.ezkey-online).
+listed in [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) § *Product
+hostnames (ezkey.online)* (Caddy: [`experimental-hybrid/lightsail/Caddyfile.ezkey-online`](../experimental-hybrid/lightsail/Caddyfile.ezkey-online)).
 Crypto API is not published on the community host, so `base_url_crypto_api` stays
 `http://localhost:9090` for a local oracle while Auth calls go to community. Integration
 management (`7081`) has no public community hostname.

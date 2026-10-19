@@ -44,7 +44,17 @@ When an Admin UI enrollment QR includes `authUrl`, the demo device routes **bind
   still fails override validation — see `CONFIGURATION.md` § Docker. (Code-scanning triage
   2026-10-13, alerts #9 / #10.)
 
-Standalone Docker default remains the public Auth API (`https://auth-api.ezkey.online`); QR local enrollments override without `.env` change when that host is on the allowlist (default includes the configured Auth API host).
+**Auth API URL defaults** (`ezkey.auth.api.url` / `EZKEY_AUTH_API_URL`):
+
+| Mode | Default / example |
+|------|-------------------|
+| Docker Compose (monorepo / `application-docker.properties`) | `http://auth-api:8080` |
+| Standalone against community | set `EZKEY_AUTH_API_URL=https://auth-api.ezkey.online` |
+
+QR local enrollments override without `.env` change when that host is on the allowlist (default
+includes the configured Auth API host). Public community hostnames (and names that must not be
+used): [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) § *Product
+hostnames (ezkey.online)*.
 
 ## Cloudflare error bodies
 

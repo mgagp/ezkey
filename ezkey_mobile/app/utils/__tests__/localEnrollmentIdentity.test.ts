@@ -35,8 +35,8 @@ describe('deriveInstallationScopeId', () => {
   // contract (MOB-011 / MOB-017). A changed digest would orphan existing enrollments.
   it('pins known Keystore scope ids (MOB-011 / MOB-017 key-name contract)', () => {
     expect(deriveInstallationScopeId('https://ezkey.acme.com')).toBe('iae7f469e654d439f');
-    expect(deriveInstallationScopeId('https://auth.ezkey.online')).toBe(
-      'i65e9ad05668632ba',
+    expect(deriveInstallationScopeId('https://auth-api.ezkey.online')).toBe(
+      'i6ce12cd023344cf0',
     );
   });
 
