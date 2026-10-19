@@ -31,6 +31,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
+import org.ezkey.exception.auth.AuthAttemptRequestInvalidException;
 import org.ezkey.integration.api.security.AccessControlService;
 import org.ezkey.integration.api.security.RateLimitService;
 import org.ezkey.integration.domain.entity.Integration;
@@ -143,9 +144,9 @@ class IntegrationApiAuthAttemptControllerTest {
     AuthAttemptCreateRequestDto dto =
         new AuthAttemptCreateRequestDto(123, null, false, null, null, 14);
 
-    AuthAttemptCreateValidationException exception =
+    AuthAttemptRequestInvalidException exception =
         assertThrows(
-            AuthAttemptCreateValidationException.class, () -> controller.create(dto, request));
+            AuthAttemptRequestInvalidException.class, () -> controller.create(dto, request));
 
     assertEquals("ttlSeconds must be at least 15", exception.getMessage());
     verify(enrollmentRepository, org.mockito.Mockito.never()).findById(any());
@@ -162,9 +163,9 @@ class IntegrationApiAuthAttemptControllerTest {
     AuthAttemptCreateRequestDto dto =
         new AuthAttemptCreateRequestDto(null, "nobody@example.com", false, null, null, 14);
 
-    AuthAttemptCreateValidationException exception =
+    AuthAttemptRequestInvalidException exception =
         assertThrows(
-            AuthAttemptCreateValidationException.class, () -> controller.create(dto, request));
+            AuthAttemptRequestInvalidException.class, () -> controller.create(dto, request));
 
     assertEquals("ttlSeconds must be at least 15", exception.getMessage());
     verify(enrollmentRepository, org.mockito.Mockito.never())

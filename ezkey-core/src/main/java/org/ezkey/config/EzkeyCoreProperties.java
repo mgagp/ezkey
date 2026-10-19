@@ -69,7 +69,12 @@ public class EzkeyCoreProperties {
     @Max(value = 6, message = "Challenge digits cannot exceed 6")
     private int challengeDigits = 2;
 
-    /** Time-to-live for authentication attempts in seconds. Default: 120 seconds (2 minutes) */
+    /**
+     * Default time-to-live for authentication attempts in seconds when Integration create omits
+     * {@code ttlSeconds}. Bean Validation allows 30–600; applied create TTL is always {@code
+     * min(request|default, 120)}. A configured value above 120 is clamped to 120 at startup with a
+     * WARN (#895 Patrick M2). Default: 120.
+     */
     @Min(value = 30, message = "TTL must be at least 30 seconds")
     @Max(value = 600, message = "TTL cannot exceed 600 seconds (10 minutes)")
     private int ttlSeconds = 120;

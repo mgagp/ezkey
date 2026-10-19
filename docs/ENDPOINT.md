@@ -2080,11 +2080,19 @@ Content-Type: application/json
 ```
 
 **Optional `ttlSeconds` (Integration API, #895):** Initiator-requested attempt lifetime in seconds.
-Absent → server default (`ezkey.core.auth-attempt.ttl-seconds`, typically 120). Values below 15
-(or non-integer / ≤ 0) → **400** Problem Details before enrollment/user lookup (same body whether
-the user exists). Values above 120 are clamped to 120. Response `timeoutSeconds` is the **applied**
-TTL; `expiresAt` is computed from it. Prefer `timeoutSeconds` over comparing wall clocks (PAM /
-Demo Device).
+**Effective applied TTL:** `min(ttlSeconds ?? configuredDefault, 120)` where `configuredDefault` is
+`ezkey.core.auth-attempt.ttl-seconds` (property range 30–600; at startup a configured default above
+120 is clamped to 120 with a WARN). Values below 15, explicit JSON `null`, floats (e.g. `20.5`),
+strings (e.g. `"20"`), or non-integers → **400** Problem Details type
+`https://ezkey.io/problems/validation/request-invalid` (title `Invalid Request`, detail `One or
+more fields are invalid.`) before enrollment/user lookup — same body for the explicit TTL floor
+gate, `@Valid`, and unreadable/strict-deserialization JSON, whether or not the user exists. Values
+above 120 are clamped to 120. Absent field → server default (after the min/120 rule). Response
+`timeoutSeconds` is the **applied** TTL (field name unchanged for PAM); `expiresAt` is computed from
+it. Prefer `timeoutSeconds` over comparing wall clocks (PAM / Demo Device).
+
+**`challengeRequested` (required, unchanged):** `@NotNull` / OpenAPI required since before #895 —
+omission fails `@Valid` with the same generic 400. Not a contract break from this PR (Patrick M3).
 
 **Ownership on wait/cancel:** Integration API `@PreAuthorize` requires the auth attempt’s enrollment
 to belong to the API key’s integration (`AccessControlService.canAccessAuthAttempt`). Foreign
@@ -2161,10 +2169,10 @@ Content-Type: application/json
 - `enrollmentId`: Enrollment to authenticate (use this OR `userIdentifier`)
 - `userIdentifier`: User identifier for lookup within integration scope (use this OR `enrollmentId`)
 - `integrationId`: Required when `userIdentifier` is used on Admin API; Integration API ignores it (scope is the API key's integration)
-- `challengeRequested` (**required**): Whether a challenge code is requested
+- `challengeRequested` (**required**, `@NotNull` since before #895): Whether a challenge code is requested; omission → same generic 400 as other `@Valid` failures (Patrick M3 — no contract break)
 - `contextTitle` (optional): Short heading displayed as card header on mobile, max 200 chars
 - `contextMessage` (optional): Descriptive body explaining what the approver is authorizing, max 2 000 chars
-- `ttlSeconds` (optional, **Integration API only**, #895): Per-request TTL; min 15; values above 120 clamped; see Integration create example above
+- `ttlSeconds` (optional, **Integration API only**, #895): Per-request TTL; JSON integer only; min 15; `effective = min(request|default, 120)`; see Integration create example above
 
 **Response (201 Created):**
 ```json

@@ -23,8 +23,10 @@ import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.ezkey.exception.auth.AuthAttemptExpiredException;
+import org.ezkey.exception.auth.AuthAttemptRequestInvalidException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
+import org.ezkey.integration.api.controller.IntegrationApiAuthAttemptController;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.ezkey.util.LogSanitizer;
@@ -72,6 +74,13 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * }
  * }</pre>
  *
+ * <p><b>Scope (#895 Patrick M4):</b> Limited to {@link IntegrationApiAuthAttemptController}. The
+ * Integration API module exposes a single REST controller; the unified invalid-request 400 handlers
+ * ({@code MethodArgumentNotValid}, {@code AuthAttemptRequestInvalid}, {@code
+ * HttpMessageNotReadable}) therefore cannot leak onto unrelated controllers. If a second
+ * Integration controller is added later, either broaden {@code assignableTypes} deliberately or
+ * extract a dedicated advice for that surface.
+ *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
@@ -79,7 +88,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * @author Ezkey contributors
  * @since 2025
  */
-@RestControllerAdvice
+@RestControllerAdvice(assignableTypes = IntegrationApiAuthAttemptController.class)
 public class GlobalExceptionHandler {
 
   private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
@@ -240,8 +249,8 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * Bean Validation failures on request bodies (e.g. {@code ttlSeconds < 15}). Stable generic
-   * detail — does not reveal whether a user or enrollment exists (#895 non-enumeration).
+   * Bean Validation failures on request bodies (e.g. {@code ttlSeconds < 15}). Same ProblemDetail
+   * as {@link #handleAuthAttemptRequestInvalid} and {@link #handleHttpMessageNotReadable} (#895).
    */
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ProblemDetail> handleMethodArgumentNotValid(
@@ -250,17 +259,26 @@ public class GlobalExceptionHandler {
         "Validation failed on {}: {}",
         LogSanitizer.sanitizeForLog(request.getRequestURI()),
         LogSanitizer.sanitizeForLog(ex.getMessage()));
-    return buildProblemDetail(
-        "One or more fields are invalid.",
-        HttpStatus.BAD_REQUEST,
-        "https://ezkey.io/problems/validation/request-invalid",
-        "Invalid Request",
-        request);
+    return invalidRequestProblem(request);
+  }
+
+  /**
+   * Explicit create-field gate (TTL floor before enrollment lookup). Must return the exact same 400
+   * body as {@link #handleMethodArgumentNotValid} (#895 Christophe nit).
+   */
+  @ExceptionHandler(AuthAttemptRequestInvalidException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptRequestInvalid(
+      AuthAttemptRequestInvalidException ex, HttpServletRequest request) {
+    logger.debug(
+        "Request invalid on {}: {}",
+        LogSanitizer.sanitizeForLog(request.getRequestURI()),
+        LogSanitizer.sanitizeForLog(ex.getMessage()));
+    return invalidRequestProblem(request);
   }
 
   /**
    * JSON parse / type coercion failures (e.g. non-integer {@code ttlSeconds}). Same generic 400 as
-   * Bean Validation so clients cannot distinguish unknown users via error shape (#895).
+   * Bean Validation (#895).
    */
   @ExceptionHandler(HttpMessageNotReadableException.class)
   public ResponseEntity<ProblemDetail> handleHttpMessageNotReadable(
@@ -269,11 +287,21 @@ public class GlobalExceptionHandler {
         "Unreadable body on {}: {}",
         LogSanitizer.sanitizeForLog(request.getRequestURI()),
         LogSanitizer.sanitizeForLog(ex.getMessage()));
+    return invalidRequestProblem(request);
+  }
+
+  /**
+   * Shared non-enumerating invalid-request ProblemDetail for create validation paths.
+   *
+   * @param request HTTP servlet request for path extraction
+   * @return HTTP 400 with stable catalog type/title/detail
+   */
+  private ResponseEntity<ProblemDetail> invalidRequestProblem(HttpServletRequest request) {
     return buildProblemDetail(
-        "One or more fields are invalid.",
+        IntegrationApiProblemCatalog.DETAIL_REQUEST_INVALID,
         HttpStatus.BAD_REQUEST,
-        "https://ezkey.io/problems/validation/request-invalid",
-        "Invalid Request",
+        IntegrationApiProblemCatalog.TYPE_REQUEST_INVALID,
+        IntegrationApiProblemCatalog.TITLE_REQUEST_INVALID,
         request);
   }
 

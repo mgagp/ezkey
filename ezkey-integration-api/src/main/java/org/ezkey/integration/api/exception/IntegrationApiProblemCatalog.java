@@ -26,11 +26,21 @@ public final class IntegrationApiProblemCatalog {
   public static final String TYPE_METHOD_NOT_ALLOWED =
       "https://ezkey.io/problems/http/method-not-allowed";
 
+  /**
+   * Non-enumerating invalid create body (Bean Validation, unreadable JSON, or explicit TTL floor
+   * gate). All three paths must return the same title/detail/type (#895).
+   */
+  public static final String TYPE_REQUEST_INVALID =
+      "https://ezkey.io/problems/validation/request-invalid";
+
   public static final String TITLE_SERVICE_UNAVAILABLE = "Service unavailable";
   public static final String TITLE_METHOD_NOT_ALLOWED = "Method not allowed";
+  public static final String TITLE_REQUEST_INVALID = "Invalid Request";
 
   public static final String DETAIL_METHOD_NOT_ALLOWED =
       "The HTTP method is not allowed for this resource.";
+
+  public static final String DETAIL_REQUEST_INVALID = "One or more fields are invalid.";
 
   public static final String DETAIL_AUDIT_CHAIN_HEARTBEAT_DEGRADED =
       "The service is temporarily unavailable because audit-chain supervision cannot confirm "

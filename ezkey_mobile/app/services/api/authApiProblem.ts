@@ -23,6 +23,12 @@ const EZKEY_PROBLEM_TYPE_PREFIX = `${EZKEY_PROBLEM_TYPE_BASE}/`;
 export const AUTH_ATTEMPT_STATE_CONFLICT_TYPE = `${EZKEY_PROBLEM_TYPE_BASE}/auth/auth-attempt-state-conflict`;
 
 /**
+ * Matches {@code AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_EXPIRED} (#895 Patrick M1).
+ * Wall-clock expiry after {@code expiresAt} — distinct from state-conflict.
+ */
+export const AUTH_ATTEMPT_EXPIRED_TYPE = `${EZKEY_PROBLEM_TYPE_BASE}/auth/auth-attempt-expired`;
+
+/**
  * Matches {@code AuthApiProblemCatalog.TYPE_INTEGRATION_SIGNING_UNAVAILABLE} (#844).
  */
 export const INTEGRATION_SIGNING_UNAVAILABLE_TYPE = `${EZKEY_PROBLEM_TYPE_BASE}/auth/integration-signing-unavailable`;
@@ -46,6 +52,7 @@ export type AuthApiProblemDetail = {
  */
 export type AuthApiProblemCatalogKey =
   | 'stateConflict'
+  | 'attemptExpired'
   | 'integrationSigningUnavailable'
   | 'generic';
 
@@ -65,6 +72,8 @@ export type AuthApiUserFacingOutcome = {
  */
 export type AuthApiProblemCatalogMessages = {
   stateConflict: string;
+  /** Neutral expired copy for {@link AUTH_ATTEMPT_EXPIRED_TYPE} (#895). */
+  attemptExpired: string;
   integrationSigningUnavailable: string;
   /** Generic fallback for unknown Ezkey types and non-Ezkey bodies. */
   fallback: string;
@@ -111,6 +120,8 @@ export function catalogKeyForAuthApiProblemType(
   switch (trimmed) {
     case AUTH_ATTEMPT_STATE_CONFLICT_TYPE:
       return 'stateConflict';
+    case AUTH_ATTEMPT_EXPIRED_TYPE:
+      return 'attemptExpired';
     case INTEGRATION_SIGNING_UNAVAILABLE_TYPE:
       return 'integrationSigningUnavailable';
     default:
@@ -148,6 +159,7 @@ function normalizeCatalog(
   return {
     fallback,
     stateConflict,
+    attemptExpired: fallback,
     integrationSigningUnavailable: fallback,
   };
 }
@@ -178,6 +190,9 @@ export function resolveAuthApiUserFacingOutcome(
   if (type === AUTH_ATTEMPT_STATE_CONFLICT_TYPE) {
     return {message: catalog.stateConflict, retryable: false};
   }
+  if (type === AUTH_ATTEMPT_EXPIRED_TYPE) {
+    return {message: catalog.attemptExpired, retryable: false};
+  }
   if (!isEzkeyProblemType(type)) {
     return {message: catalog.fallback, retryable: true};
   }
@@ -187,6 +202,8 @@ export function resolveAuthApiUserFacingOutcome(
       return {message: catalog.integrationSigningUnavailable, retryable: true};
     case 'stateConflict':
       return {message: catalog.stateConflict, retryable: false};
+    case 'attemptExpired':
+      return {message: catalog.attemptExpired, retryable: false};
     default:
       // Other Ezkey types (including a future non-conflict 409): local fallback only, retryable.
       return {message: catalog.fallback, retryable: true};

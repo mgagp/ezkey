@@ -16,6 +16,8 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.ezkey.authattempt.dto.jackson.StrictIntegerDeserializer;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 /**
  * Request DTO for creating a new authentication attempt via the Integration API.
@@ -44,9 +46,11 @@ import jakarta.validation.constraints.Size;
  * @param userIdentifier the user identifier to look up a verified enrollment (optional; required if
  *     enrollmentId not provided)
  * @param challengeRequested whether a numeric challenge should be generated and sent to the device
+ *     ({@code @NotNull} / required — unchanged from before #895; omission fails {@code @Valid})
  * @param contextTitle optional short title for the approval request (max 200 chars)
  * @param contextMessage optional descriptive message for the approver (max 2 000 chars)
- * @param ttlSeconds optional per-request TTL in seconds (min 15; values above 120 are clamped)
+ * @param ttlSeconds optional per-request TTL in seconds (min 15; values above 120 are clamped;
+ *     floats/strings/booleans/null rejected by {@link StrictIntegerDeserializer})
  * @author Ezkey contributors
  * @since 2025
  */
@@ -54,8 +58,9 @@ import jakarta.validation.constraints.Size;
     description =
         "Request body for creating a new authentication attempt. Optional context fields "
             + "(contextTitle, contextMessage) attach business context visible to the approver "
-            + "on the mobile device. Optional ttlSeconds overrides the server default TTL "
-            + "(clamped to a maximum of 120 seconds; values below 15 are rejected).")
+            + "on the mobile device. challengeRequested is required (@NotNull, pre-#895)."
+            + " Optional ttlSeconds overrides the server default TTL (clamped to a maximum of"
+            + " 120 seconds; values below 15 are rejected; non-integer JSON rejected).")
 public record AuthAttemptCreateRequestDto(
     /**
      * Direct reference to the enrollment. Optional when userIdentifier is provided; when both are
@@ -76,10 +81,15 @@ public record AuthAttemptCreateRequestDto(
             example = "john.doe@example.com",
             requiredMode = RequiredMode.NOT_REQUIRED)
         String userIdentifier,
-    /** Whether to generate and send a numeric challenge code to the mobile device. */
+    /**
+     * Whether to generate and send a numeric challenge code to the mobile device. Required via
+     * {@code @NotNull} since before #895 — not a new contract break (Patrick M3).
+     */
     @NotNull
         @Schema(
-            description = "Whether to generate a numeric challenge for additional verification",
+            description =
+                "Whether to generate a numeric challenge for additional verification. Required"
+                    + " (unchanged pre-#895).",
             example = "true",
             requiredMode = RequiredMode.REQUIRED)
         Boolean challengeRequested,
@@ -110,18 +120,21 @@ public record AuthAttemptCreateRequestDto(
         @JsonProperty("contextMessage")
         String contextMessage,
     /**
-     * Optional initiator-requested TTL in seconds. Absent uses the server default ({@code
-     * ezkey.core.auth-attempt.ttl-seconds}, typically 120). Values below 15 are rejected with 400
-     * before enrollment lookup. Values above 120 are clamped to 120; the applied duration is
-     * returned as {@code timeoutSeconds} with {@code expiresAt} (#895).
+     * Optional initiator-requested TTL in seconds. Absent uses {@code min(configured default,
+     * 120)}. Values below 15 are rejected with 400 before enrollment lookup. Values above 120 are
+     * clamped to 120. Non-integer JSON (float, string, boolean, explicit null) fails strict
+     * deserialization → same generic 400 (#895 Patrick B2). Applied duration is returned as {@code
+     * timeoutSeconds} with {@code expiresAt}.
      */
     @Schema(
             description =
-                "Optional TTL in seconds for this attempt. Minimum 15. Values above 120 are"
-                    + " clamped to 120. When omitted, the server default applies (typically 120).",
+                "Optional TTL in seconds for this attempt. JSON integer only (no float/string)."
+                    + " Minimum 15. Values above 120 are clamped to 120. When omitted, min(server"
+                    + " default, 120) applies.",
             example = "75",
             minimum = "15",
             requiredMode = RequiredMode.NOT_REQUIRED)
         @Min(value = 15, message = "ttlSeconds must be at least 15")
         @JsonProperty("ttlSeconds")
+        @JsonDeserialize(using = StrictIntegerDeserializer.class)
         Integer ttlSeconds) {}

@@ -44,6 +44,7 @@ import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
+import org.ezkey.exception.auth.AuthAttemptRequestInvalidException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.ezkey.integration.api.constants.IntegrationApiAuditConstants;
@@ -200,10 +201,10 @@ public class IntegrationApiAuthAttemptController {
       throw new RateLimitExceededException("CREATE_AUTH_ATTEMPT", 100, 0, 15);
     }
 
-    // TTL floor before enrollment/user lookup — non-enumerating 400 (#895 / Christophe).
-    // Bean Validation (@Min) also runs via @Valid; this keeps the same gate for direct callers.
+    // TTL floor before enrollment/user lookup — non-enumerating 400 (#895).
+    // Must map to the same ProblemDetail as @Valid / unreadable JSON (Christophe nit on #898).
     if (request.ttlSeconds() != null && request.ttlSeconds() < 15) {
-      throw new AuthAttemptCreateValidationException("ttlSeconds must be at least 15");
+      throw new AuthAttemptRequestInvalidException("ttlSeconds must be at least 15");
     }
 
     // Resolve effective enrollment ID from the request

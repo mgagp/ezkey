@@ -261,6 +261,7 @@ export const resources = {
         requestFailed: 'Request failed.',
         unexpectedError: 'Unexpected error.',
         requestNoLongerActive: 'This request is no longer active. No action is required.',
+        requestExpired: 'This request has expired.',
         resultNotConfirmed:
           'The response was sent, but its confirmation could not be verified. Check the sign-in where it was started.',
         uncertainDecision:
@@ -640,6 +641,7 @@ export const resources = {
         requestFailed: 'Échec de la requête.',
         unexpectedError: 'Erreur inattendue.',
         requestNoLongerActive: "Cette demande n'est plus active. Aucune action requise.",
+        requestExpired: 'Cette demande a expiré.',
         resultNotConfirmed:
           "La réponse a été envoyée, mais sa confirmation n'a pas pu être vérifiée. Vérifiez l'écran de connexion où vous avez commencé.",
         uncertainDecision:

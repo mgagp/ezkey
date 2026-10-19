@@ -131,6 +131,21 @@ class AuthAttemptServiceTtlTest {
   }
 
   @Test
+  @DisplayName("Absent ttlSeconds with configured default 300 → applied min(300,120)=120 (M2)")
+  void resolveAppliedTtlSeconds_configuredDefaultAboveCeiling_clamped() {
+    properties.getAuthAttempt().setTtlSeconds(300);
+    assertThat(authAttemptService.resolveAppliedTtlSeconds(null)).isEqualTo(120);
+  }
+
+  @Test
+  @DisplayName("Startup clamp: configured default >120 reduced to 120 (M2)")
+  void clampConfiguredDefaultTtlIfAboveHardCeiling_reducesProperty() {
+    properties.getAuthAttempt().setTtlSeconds(480);
+    authAttemptService.clampConfiguredDefaultTtlIfAboveHardCeiling();
+    assertThat(properties.getAuthAttempt().getTtlSeconds()).isEqualTo(120);
+  }
+
+  @Test
   @DisplayName("Cancel then create immediately → 201 path (no retention) (#895)")
   void create_afterCancel_succeedsImmediately() {
     when(enrollmentRepository.findById(1)).thenReturn(Optional.of(verifiedEnrollment()));

@@ -8,6 +8,7 @@
  */
 
 import {
+  AUTH_ATTEMPT_EXPIRED_TYPE,
   AUTH_ATTEMPT_STATE_CONFLICT_TYPE,
   INTEGRATION_SIGNING_UNAVAILABLE_TYPE,
   catalogKeyForAuthApiProblemType,
@@ -21,12 +22,14 @@ import {
 const FALLBACK = 'Request failed.';
 const STATE_CONFLICT_MSG =
   'This request is no longer active. No action is required.';
+const ATTEMPT_EXPIRED_MSG = 'Cette demande a expiré.';
 const SIGNING_UNAVAILABLE_MSG =
   'Authentication signing is temporarily unavailable. Try again later.';
 
 const CATALOG = {
   fallback: FALLBACK,
   stateConflict: STATE_CONFLICT_MSG,
+  attemptExpired: ATTEMPT_EXPIRED_MSG,
   integrationSigningUnavailable: SIGNING_UNAVAILABLE_MSG,
 };
 
@@ -113,6 +116,7 @@ describe('isEzkeyProblemType', () => {
 describe('catalogKeyForAuthApiProblemType', () => {
   it('maps known Auth types to catalog keys (#844 Marc m1: unified state-conflict)', () => {
     expect(catalogKeyForAuthApiProblemType(AUTH_ATTEMPT_STATE_CONFLICT_TYPE)).toBe('stateConflict');
+    expect(catalogKeyForAuthApiProblemType(AUTH_ATTEMPT_EXPIRED_TYPE)).toBe('attemptExpired');
     expect(catalogKeyForAuthApiProblemType(INTEGRATION_SIGNING_UNAVAILABLE_TYPE)).toBe(
       'integrationSigningUnavailable',
     );
@@ -198,6 +202,25 @@ describe('resolveAuthApiUserFacingOutcome / isAuthAttemptStateConflict', () => {
       message: STATE_CONFLICT_MSG,
       retryable: false,
     });
+  });
+
+  it('marks auth-attempt-expired as non-retryable with neutral expired copy (#895 M1)', () => {
+    const error = httpErrorWithData(
+      {
+        type: AUTH_ATTEMPT_EXPIRED_TYPE,
+        title: 'Authentication attempt expired',
+        status: 409,
+        detail: 'Server detail must not surface',
+      },
+      409,
+    );
+    expect(isAuthAttemptStateConflict(error)).toBe(false);
+    expect(catalogKeyForAuthApiProblemType(AUTH_ATTEMPT_EXPIRED_TYPE)).toBe('attemptExpired');
+    expect(resolveAuthApiUserFacingOutcome(error, CATALOG)).toEqual({
+      message: ATTEMPT_EXPIRED_MSG,
+      retryable: false,
+    });
+    expect(resolveAuthApiUserFacingOutcome(error, CATALOG).message).not.toContain('Server detail');
   });
 
   it('marks integration-signing-unavailable as retryable with local catalog text (#844)', () => {
