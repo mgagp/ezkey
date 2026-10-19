@@ -37,10 +37,15 @@
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <poll.h>
 #include <signal.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <time.h>
 #include <cjson/cJSON.h>
 #include <unistd.h>
@@ -66,7 +71,12 @@
 /* Non-heap marker for pam_set_data(EZKEY_PAM_DATA_FINAL) — same process only. */
 static char ezkey_final_marker = 1;
 
-/* Set by wait-scoped SIGTERM handler; curl xferinfo aborts the in-flight /wait. */
+/*
+ * Set when /wait should abort: wait-scoped SIGTERM (if delivered) or SSH peer
+ * FIN detected on a connected TCP fd (OpenSSH 9.9 sshd-session: client kill
+ * leaves [pam]/net] alive with the client socket in CLOSE-WAIT — auth-pam.c
+ * SIGTERM via SIGCHLD on privsep slave exit does not fire in that window).
+ */
 static volatile sig_atomic_t ezkey_wait_abort = 0;
 
 typedef struct {
@@ -523,6 +533,91 @@ static void ezkey_sigterm_wait(int signo) {
     ezkey_wait_abort = 1;
 }
 
+/**
+ * True if any connected TCP peer has finished (FIN / CLOSE-WAIT).
+ * Used when OpenSSH does not SIGTERM the PAM child on client disconnect.
+ *
+ * @return 1 if a peer FIN was observed, 0 otherwise
+ */
+static int ezkey_tcp_peer_fin_seen(void) {
+    DIR *dir;
+    struct dirent *ent;
+    int found = 0;
+
+    dir = opendir("/proc/self/fd");
+    if (dir == NULL) {
+        return 0;
+    }
+    while ((ent = readdir(dir)) != NULL) {
+        char path[64];
+        char link[64];
+        ssize_t n;
+        int fd;
+        int sock_type = 0;
+        socklen_t tlen;
+        struct sockaddr_storage peer;
+        socklen_t plen;
+        struct pollfd pfd;
+        char peek;
+        ssize_t rn;
+        char *end = NULL;
+        long fd_long;
+
+        if (ent->d_name[0] < '0' || ent->d_name[0] > '9') {
+            continue;
+        }
+        errno = 0;
+        fd_long = strtol(ent->d_name, &end, 10);
+        if (errno != 0 || end == ent->d_name || *end != '\0' || fd_long < 0 ||
+            fd_long > INT_MAX) {
+            continue;
+        }
+        fd = (int)fd_long;
+        snprintf(path, sizeof(path), "/proc/self/fd/%d", fd);
+        n = readlink(path, link, sizeof(link) - 1);
+        if (n < 0) {
+            continue;
+        }
+        link[n] = '\0';
+        if (strncmp(link, "socket:", 7) != 0) {
+            continue;
+        }
+        tlen = sizeof(sock_type);
+        if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &sock_type, &tlen) != 0 ||
+            sock_type != SOCK_STREAM) {
+            continue;
+        }
+        plen = sizeof(peer);
+        if (getpeername(fd, (struct sockaddr *)&peer, &plen) != 0) {
+            continue;
+        }
+        if (peer.ss_family != AF_INET && peer.ss_family != AF_INET6) {
+            continue;
+        }
+        memset(&pfd, 0, sizeof(pfd));
+        pfd.fd = fd;
+        /* POLLHUP covers CLOSE-WAIT peer FIN; avoid POLLRDHUP (needs _GNU_SOURCE). */
+        pfd.events = POLLIN | POLLHUP | POLLERR;
+        if (poll(&pfd, 1, 0) <= 0) {
+            continue;
+        }
+        if ((pfd.revents & (POLLHUP | POLLERR)) != 0) {
+            found = 1;
+            break;
+        }
+        if ((pfd.revents & POLLIN) == 0) {
+            continue;
+        }
+        rn = recv(fd, &peek, 1, MSG_DONTWAIT | MSG_PEEK);
+        if (rn == 0) {
+            found = 1;
+            break;
+        }
+    }
+    closedir(dir);
+    return found;
+}
+
 static int ezkey_xferinfo_abort(void *clientp, curl_off_t dltotal,
                                 curl_off_t dlnow, curl_off_t ultotal,
                                 curl_off_t ulnow) {
@@ -533,6 +628,10 @@ static int ezkey_xferinfo_abort(void *clientp, curl_off_t dltotal,
     (void)ultotal;
     (void)ulnow;
     if (flag != NULL && *flag != 0) {
+        return 1;
+    }
+    if (ezkey_tcp_peer_fin_seen()) {
+        ezkey_wait_abort = 1;
         return 1;
     }
     return 0;
@@ -1129,8 +1228,8 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
 
     /*
      * Chunked /wait (#907 R5): OpenSSH portable runs PAM in a forked child that
-     * _exit's — pam_end cleanup never runs. Slice wait so SIGTERM on client
-     * disconnect can abort curl via xferinfo and cancel in this process.
+     * _exit's — pam_end cleanup never runs. Abort on wait-scoped SIGTERM (when
+     * delivered) and on SSH peer FIN (CLOSE-WAIT) — see ezkey_tcp_peer_fin_seen.
      */
     {
         int wait_left = effective_wait;
@@ -1155,12 +1254,15 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
             if (chunk > EZKEY_WAIT_CHUNK_SECS) {
                 chunk = EZKEY_WAIT_CHUNK_SECS;
             }
+            if (ezkey_wait_abort == 0 && ezkey_tcp_peer_fin_seen()) {
+                ezkey_wait_abort = 1;
+            }
             if (ezkey_wait_abort != 0) {
                 interrupted = 1;
                 pam_rc = PAM_AUTHINFO_UNAVAIL;
                 summary = "UNAVAIL";
                 log_pam_error_debug(pamh, cfg,
-                                    "client disconnect during wait (SIGTERM)");
+                                    "client disconnect during wait");
                 break;
             }
 

@@ -578,8 +578,13 @@ disposition applies again. **Why:** OpenSSH portable sends `SIGTERM` to the PAM
 child on client disconnect (`auth-pam.c:164-168`); without catching it in the
 waiting process, cancel never runs under `_exit`. Decision: keep this scoped
 handler. **Christophe security GO** on this wait-scoped absorption (review @61453d18).
-Enter bound remains measure-only (`pam_prompt` + CLOCK_MONOTONIC,
-`pam_ezkey.c:779-796`); duration **>25 s** → UNAVAIL + attempt line.
+**B2b reality (OpenSSH 9.9 `sshd-session`):** killing the SSH client leaves `[pam]` /
+`[net]` alive with the client TCP socket in `CLOSE-WAIT`; `auth-pam.c:164-168`
+SIGTERM (SIGCHLD when privsep slave exits) does **not** fire in that window — so
+cancel also aborts when `ezkey_tcp_peer_fin_seen()` observes peer FIN (poll /
+`recv` peek), not only on SIGTERM. Enter bound remains measure-only
+(`pam_prompt` + CLOCK_MONOTONIC, `pam_ezkey.c:779-796`); duration **>25 s** →
+UNAVAIL + attempt line.
 
 **Untested (documented only):** if Enter is **never** pressed, sshd
 `LoginGraceTime` cuts the session with **no** attempt line; the Integration
