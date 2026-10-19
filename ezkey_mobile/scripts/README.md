@@ -105,11 +105,14 @@ After a successful `assembleRelease`, the script also runs
 
 Uploads an **already-built** signed AAB to the Google Play **internal** track via the
 Android Publisher API v3 (edits → bundles.upload → tracks.update → commit). Does **not**
-wire the Gradle Play Publisher plugin into the app build.
+wire the Gradle Play Publisher plugin into the app build. Reads `versionCode` from the AAB
+protobuf manifest (`aapt.pb.XmlNode`); optional `BUNDLETOOL_JAR` fallback.
 
 ```bash
 pip install -r scripts/requirements-play-upload.txt
-export EZKEY_PLAY_SERVICE_ACCOUNT_JSON="/path/to/play-sa.json"  # outside the repo
+export EZKEY_PLAY_SERVICE_ACCOUNT_JSON="/c/Users/marcg/.gradle/ezkey-play-publisher.json"
+# Optional on Windows if python3 is the Store stub:
+# export EZKEY_PYTHON="/c/Users/marcg/AppData/Local/Programs/Python/Python312/python.exe"
 ./scripts/bundle-release.sh
 ./scripts/play-upload-internal.sh [--dry-run] [--status draft|completed] path/to/app-release.aab
 ./scripts/play-upload-internal.sh --self-test

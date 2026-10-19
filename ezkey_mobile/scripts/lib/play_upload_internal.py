@@ -9,11 +9,16 @@
 #   pip install -r scripts/requirements-play-upload.txt
 #
 # Never prints service-account JSON contents.
+#
+# AAB manifests are aapt2 protobuf (aapt.pb.XmlNode), not binary AXML.
+# See frameworks/base/tools/aapt2/Resources.proto.
 
 from __future__ import annotations
 
 import argparse
+import os
 import struct
+import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -25,6 +30,13 @@ INTERNAL_TRACK = "internal"
 _VERSION_CODE_ATTR = 0x0101021B
 _TYPE_INT_DEC = 0x10
 _TYPE_INT_HEX = 0x11
+# Binary AXML file magic (ResChunk RES_XML_TYPE=0x0003, headerSize=8)
+_AXML_MAGIC = b"\x03\x00\x08\x00"
+
+_WIRE_VARINT = 0
+_WIRE_64 = 1
+_WIRE_LEN = 2
+_WIRE_32 = 5
 
 
 def read_version_code_from_aab(aab_path: Path) -> int:
@@ -36,14 +48,260 @@ def read_version_code_from_aab(aab_path: Path) -> int:
             raise ValueError(
                 f"AAB missing base/manifest/AndroidManifest.xml: {aab_path}"
             ) from exc
-    return _version_code_from_axml(data)
+    try:
+        return version_code_from_manifest_bytes(data)
+    except ValueError as primary:
+        # Optional fallback when BUNDLETOOL_JAR is set (operator workstation).
+        fallback = _version_code_via_bundletool(aab_path)
+        if fallback is not None:
+            return fallback
+        raise primary
+
+
+def version_code_from_manifest_bytes(data: bytes) -> int:
+    """Decode versionCode from AAB proto XmlNode or (legacy) binary AXML."""
+    if len(data) < 4:
+        raise ValueError("AndroidManifest.xml too small")
+    if data.startswith(_AXML_MAGIC):
+        return _version_code_from_axml(data)
+    # AAB / aapt2 proto format starts with field 1 (element) length-delimited → 0x0a
+    return _version_code_from_proto_xml(data)
+
+
+def _version_code_via_bundletool(aab_path: Path) -> int | None:
+    jar = os.environ.get("BUNDLETOOL_JAR", "").strip()
+    if not jar:
+        return None
+    jar_path = Path(jar).expanduser()
+    if not jar_path.is_file():
+        print(
+            f"Warning: BUNDLETOOL_JAR set but not found: {jar_path}",
+            file=sys.stderr,
+        )
+        return None
+    cmd = [
+        "java",
+        "-jar",
+        str(jar_path),
+        "dump",
+        "manifest",
+        f"--bundle={aab_path}",
+        "--xpath=/manifest/@android:versionCode",
+    ]
+    try:
+        proc = subprocess.run(
+            cmd, check=True, capture_output=True, text=True, timeout=120
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"Warning: bundletool fallback failed: {exc}", file=sys.stderr)
+        return None
+    text = (proc.stdout or "").strip()
+    if not text:
+        return None
+    try:
+        return int(text)
+    except ValueError:
+        print(
+            f"Warning: bundletool returned non-integer versionCode: {text!r}",
+            file=sys.stderr,
+        )
+        return None
+
+
+# --- protobuf (aapt.pb.XmlNode) walker ---------------------------------
+
+
+def _read_varint(buf: bytes, pos: int) -> tuple[int, int]:
+    result = 0
+    shift = 0
+    while pos < len(buf):
+        byte = buf[pos]
+        pos += 1
+        result |= (byte & 0x7F) << shift
+        if not (byte & 0x80):
+            return result, pos
+        shift += 7
+        if shift > 70:
+            raise ValueError("varint too long")
+    raise ValueError("truncated varint")
+
+
+def _skip_field(buf: bytes, pos: int, wire: int) -> int:
+    if wire == _WIRE_VARINT:
+        _, pos = _read_varint(buf, pos)
+        return pos
+    if wire == _WIRE_64:
+        return pos + 8
+    if wire == _WIRE_32:
+        return pos + 4
+    if wire == _WIRE_LEN:
+        length, pos = _read_varint(buf, pos)
+        return pos + length
+    raise ValueError(f"unsupported wire type {wire}")
+
+
+def _read_len_payload(buf: bytes, pos: int) -> tuple[bytes, int]:
+    length, pos = _read_varint(buf, pos)
+    end = pos + length
+    if end > len(buf):
+        raise ValueError("truncated length-delimited field")
+    return buf[pos:end], end
+
+
+def _as_signed_int32(n: int) -> int:
+    n &= 0xFFFFFFFF
+    if n >= 0x80000000:
+        return n - 0x100000000
+    return n
+
+
+def _version_code_from_proto_xml(data: bytes) -> int:
+    """Walk aapt.pb.XmlNode for android:versionCode on the manifest element."""
+    pos = 0
+    while pos < len(data):
+        tag, pos = _read_varint(data, pos)
+        field, wire = tag >> 3, tag & 7
+        if field == 1 and wire == _WIRE_LEN:  # XmlNode.element
+            payload, pos = _read_len_payload(data, pos)
+            found = _find_version_code_in_element(payload, depth=0)
+            if found is not None:
+                return found
+        elif field == 2 and wire == _WIRE_LEN:  # XmlNode.text — ignore
+            _, pos = _read_len_payload(data, pos)
+        else:
+            pos = _skip_field(data, pos, wire)
+    raise ValueError("versionCode not found in protobuf AndroidManifest.xml")
+
+
+def _find_version_code_in_element(buf: bytes, depth: int) -> int | None:
+    if depth > 64:
+        raise ValueError("protobuf XmlNode nesting too deep")
+    pos = 0
+    while pos < len(buf):
+        tag, pos = _read_varint(buf, pos)
+        field, wire = tag >> 3, tag & 7
+        if field == 4 and wire == _WIRE_LEN:  # XmlElement.attribute
+            payload, pos = _read_len_payload(buf, pos)
+            vc = _version_code_from_attribute(payload)
+            if vc is not None:
+                return vc
+        elif field == 5 and wire == _WIRE_LEN:  # XmlElement.child (XmlNode)
+            child, pos = _read_len_payload(buf, pos)
+            # Child XmlNode: look for element = 1
+            cpos = 0
+            while cpos < len(child):
+                ctag, cpos = _read_varint(child, cpos)
+                cfield, cwire = ctag >> 3, ctag & 7
+                if cfield == 1 and cwire == _WIRE_LEN:
+                    el, cpos = _read_len_payload(child, cpos)
+                    found = _find_version_code_in_element(el, depth + 1)
+                    if found is not None:
+                        return found
+                else:
+                    cpos = _skip_field(child, cpos, cwire)
+        else:
+            pos = _skip_field(buf, pos, wire)
+    return None
+
+
+def _version_code_from_attribute(buf: bytes) -> int | None:
+    """Return versionCode from one XmlAttribute, or None if not that attr."""
+    name = ""
+    value_str = ""
+    resource_id = 0
+    compiled: int | None = None
+    pos = 0
+    while pos < len(buf):
+        tag, pos = _read_varint(buf, pos)
+        field, wire = tag >> 3, tag & 7
+        if field == 2 and wire == _WIRE_LEN:  # name
+            raw, pos = _read_len_payload(buf, pos)
+            name = raw.decode("utf-8", errors="replace")
+        elif field == 3 and wire == _WIRE_LEN:  # value
+            raw, pos = _read_len_payload(buf, pos)
+            value_str = raw.decode("utf-8", errors="replace")
+        elif field == 5 and wire == _WIRE_VARINT:  # resource_id
+            resource_id, pos = _read_varint(buf, pos)
+            resource_id &= 0xFFFFFFFF
+        elif field == 6 and wire == _WIRE_LEN:  # compiled_item (Item)
+            item, pos = _read_len_payload(buf, pos)
+            compiled = _int_from_item(item)
+        else:
+            pos = _skip_field(buf, pos, wire)
+
+    is_vc = resource_id == _VERSION_CODE_ATTR or name == "versionCode"
+    if not is_vc:
+        return None
+    if compiled is not None:
+        return compiled
+    if value_str:
+        try:
+            return int(value_str, 0)
+        except ValueError as exc:
+            raise ValueError(
+                f"versionCode attribute has non-integer value: {value_str!r}"
+            ) from exc
+    return None
+
+
+def _int_from_item(buf: bytes) -> int | None:
+    """Extract int from aapt.pb.Item (prim / str)."""
+    pos = 0
+    while pos < len(buf):
+        tag, pos = _read_varint(buf, pos)
+        field, wire = tag >> 3, tag & 7
+        if field == 2 and wire == _WIRE_LEN:  # String { value = 1 }
+            inner, pos = _read_len_payload(buf, pos)
+            return _int_from_string_wrapper(inner)
+        if field == 7 and wire == _WIRE_LEN:  # Primitive
+            inner, pos = _read_len_payload(buf, pos)
+            return _int_from_primitive(inner)
+        pos = _skip_field(buf, pos, wire)
+    return None
+
+
+def _int_from_string_wrapper(buf: bytes) -> int | None:
+    pos = 0
+    while pos < len(buf):
+        tag, pos = _read_varint(buf, pos)
+        field, wire = tag >> 3, tag & 7
+        if field == 1 and wire == _WIRE_LEN:
+            raw, pos = _read_len_payload(buf, pos)
+            text = raw.decode("utf-8", errors="replace")
+            try:
+                return int(text, 0)
+            except ValueError:
+                return None
+        pos = _skip_field(buf, pos, wire)
+    return None
+
+
+def _int_from_primitive(buf: bytes) -> int | None:
+    """
+    Decode aapt.pb.Primitive integer fields.
+
+    Current AOSP Resources.proto: int_decimal_value = 6, int_hexadecimal_value = 7.
+    Older schemas (and some third-party docs) used 4 / 5 — accept both.
+    """
+    pos = 0
+    while pos < len(buf):
+        tag, pos = _read_varint(buf, pos)
+        field, wire = tag >> 3, tag & 7
+        if wire == _WIRE_VARINT and field in (4, 5, 6, 7):
+            raw, pos = _read_varint(buf, pos)
+            if field in (4, 6):  # int_decimal (legacy 4 or current 6)
+                return _as_signed_int32(raw)
+            # hexadecimal / unsigned
+            return int(raw & 0xFFFFFFFF)
+        pos = _skip_field(buf, pos, wire)
+    return None
+
+
+# --- binary AXML (APK-style; rare inside modern AABs) ------------------
 
 
 def _version_code_from_axml(data: bytes) -> int:
     """Scan binary AndroidManifest for android:versionCode (INT_DEC/HEX)."""
-    if len(data) < 8:
-        raise ValueError("AndroidManifest.xml too small")
-    # Prefer structured walk; fall back to raw scan of attr resource id.
     try:
         return _version_code_via_chunks(data)
     except ValueError:
@@ -51,17 +309,12 @@ def _version_code_from_axml(data: bytes) -> int:
 
 
 def _version_code_via_chunks(data: bytes) -> int:
-    # ResChunk header: type(u16) headerSize(u16) size(u32)
     offset = 0
     while offset + 8 <= len(data):
         chunk_type, header_size, chunk_size = struct.unpack_from("<HHI", data, offset)
         if chunk_size < 8 or offset + chunk_size > len(data):
             break
-        # RES_XML_START_ELEMENT_TYPE = 0x0102
         if chunk_type == 0x0102 and header_size >= 16:
-            # After ResXMLTree_node (lineNumber, comment) comes ResXMLTree_attrExt
-            # node: type, headerSize, size, lineNumber, comment = 16 bytes
-            # attrExt: ns, name, attributeStart, attributeSize, attributeCount, ...
             node_base = offset
             attr_ext = node_base + 16
             if attr_ext + 20 > offset + chunk_size:
@@ -80,7 +333,6 @@ def _version_code_via_chunks(data: bytes) -> int:
             if attribute_size < 20:
                 offset += chunk_size
                 continue
-            # attributeStart is relative to the start of ResXMLTree_attrExt.
             attrs_base = attr_ext + attribute_start
             for i in range(attribute_count):
                 attr_off = attrs_base + i * attribute_size
@@ -95,7 +347,6 @@ def _version_code_via_chunks(data: bytes) -> int:
                     value_type,
                     value_data,
                 ) = struct.unpack_from("<IIIHBBI", data, attr_off)
-                # When compiled with resource ids, attr_name holds the resid.
                 if attr_name == _VERSION_CODE_ATTR and value_type in (
                     _TYPE_INT_DEC,
                     _TYPE_INT_HEX,
@@ -112,9 +363,6 @@ def _version_code_via_raw_scan(data: bytes) -> int:
         idx = data.find(needle, start)
         if idx < 0:
             break
-        # Attribute name at idx; typed value follows: rawValue(4) + size(2)+res0(1)+type(1)+data(4)
-        # Full attr: ns(4) name(4) raw(4) size(2) res0(1) type(1) data(4)
-        # If needle is the name field, typed value starts at idx+8.
         typed_off = idx + 8
         if typed_off + 8 <= len(data):
             _size, _res0, value_type, value_data = struct.unpack_from(
@@ -330,7 +578,15 @@ def main(argv: list[str] | None = None) -> int:
     )
 
 
+def _fixture_proto_manifest_path() -> Path:
+    return Path(__file__).resolve().parent.parent / "fixtures" / (
+        "aab-proto-manifest-vc42.bin"
+    )
+
+
 def _self_test() -> int:
+    import tempfile
+
     failures = 0
 
     def check(label: str, cond: bool) -> None:
@@ -366,6 +622,30 @@ def _self_test() -> int:
         == 3,
     )
 
+    # Real AAB format: checked-in aapt.pb.XmlNode fixture (not Ezkey signed AAB).
+    fixture = _fixture_proto_manifest_path()
+    check("proto fixture file exists", fixture.is_file())
+    if fixture.is_file():
+        proto_bytes = fixture.read_bytes()
+        check("proto fixture starts with 0x0a (not AXML magic)", proto_bytes[:1] == b"\n")
+        check("proto fixture is not AXML magic", not proto_bytes.startswith(_AXML_MAGIC))
+        try:
+            vc = version_code_from_manifest_bytes(proto_bytes)
+            check(f"proto fixture versionCode == 42 (got {vc})", vc == 42)
+        except ValueError as exc:
+            check(f"proto fixture decode ({exc})", False)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            aab = Path(tmp) / "sample.aab"
+            with zipfile.ZipFile(aab, "w") as zf:
+                zf.writestr("base/manifest/AndroidManifest.xml", proto_bytes)
+            try:
+                vc_aab = read_version_code_from_aab(aab)
+                check(f"zip-wrapped proto AAB versionCode == 42 (got {vc_aab})", vc_aab == 42)
+            except ValueError as exc:
+                check(f"zip-wrapped proto AAB decode ({exc})", False)
+
+    # Legacy binary-AXML path (APK-style); synthetic start-element chunk.
     attr = struct.pack(
         "<IIIHBBI",
         0xFFFFFFFF,
@@ -390,20 +670,19 @@ def _self_test() -> int:
     chunk_size = 16 + 20 + 20
     node_prefix = struct.pack("<HHIIi", 0x0102, 16, chunk_size, 1, -1)
     start_el = node_prefix + attr_ext + attr
-
-    chunk_ok = False
     try:
-        chunk_ok = _version_code_via_chunks(start_el) == 4
-    except ValueError:
-        chunk_ok = False
-    check("chunk-walk versionCode=4 from synthetic start-element", chunk_ok)
-
-    raw_ok = False
+        check("AXML chunk-walk versionCode=4", _version_code_via_chunks(start_el) == 4)
+    except ValueError as exc:
+        check(f"AXML chunk-walk ({exc})", False)
+    # Dispatcher: AXML magic → AXML path (raw scan finds attr after 8-byte hdr).
+    file_hdr = struct.pack("<HHI", 0x0003, 8, 8 + len(start_el))
     try:
-        raw_ok = _version_code_via_raw_scan(start_el) == 4
-    except ValueError:
-        raw_ok = False
-    check("raw-scan versionCode=4 from synthetic attr", raw_ok)
+        check(
+            "AXML magic dispatch versionCode=4",
+            version_code_from_manifest_bytes(file_hdr + start_el) == 4,
+        )
+    except ValueError as exc:
+        check(f"AXML magic dispatch ({exc})", False)
 
     if failures:
         print(f"self-test: {failures} failure(s)", file=sys.stderr)

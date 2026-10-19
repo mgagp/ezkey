@@ -79,23 +79,26 @@ Service account (created by Marc, GCP project `ezkey-play`):
 |------|--------|
 | Account | `ezkey-play-publisher@ezkey-play.iam.gserviceaccount.com` |
 | Play Console access | `org.ezkey.mobile` only — view app information + **release to testing tracks** (no production) |
-| JSON key | On Rootbeer under `C:\Users\marcg\.gradle\` (exact filename confirmed locally); **never** commit the key |
+| JSON key | Conventionally `C:\Users\marcg\.gradle\ezkey-play-publisher.json` on Rootbeer (outside the repo); **never** commit the key |
 
-Host prerequisite (not part of the app Gradle build):
+Scripts live under `ezkey_mobile/` — run them from that directory. Host prerequisite (not part of the app Gradle build):
 
 ```bash
+cd ezkey_mobile
 pip install -r scripts/requirements-play-upload.txt
 ```
 
 Build the signed AAB, then upload to the **internal** track as a **draft** by default (review in Play Console before rolling out to testers):
 
 ```bash
-export EZKEY_PLAY_SERVICE_ACCOUNT_JSON="/c/Users/marcg/.gradle/<play-sa-key>.json"  # outside the repo
+cd ezkey_mobile
+export EZKEY_PLAY_SERVICE_ACCOUNT_JSON="/c/Users/marcg/.gradle/ezkey-play-publisher.json"
 ./scripts/bundle-release.sh
+./scripts/play-upload-internal.sh --dry-run android/app/build/outputs/bundle/release/app-release.aab
 ./scripts/play-upload-internal.sh android/app/build/outputs/bundle/release/app-release.aab
 ```
 
-Optional flags: `--dry-run` (auth + list tracks/versionCodes, delete edit, no commit), `--status draft|completed` (default `draft`). The script refuses any track other than `internal` and refuses an AAB whose `versionCode` is not strictly greater than the highest `versionCode` already on any track.
+Optional flags: `--dry-run` (auth + list tracks/versionCodes, delete edit, no commit), `--status draft|completed` (default `draft`). The script refuses any track other than `internal` and refuses an AAB whose `versionCode` is not strictly greater than the highest `versionCode` already on any track. On Windows Git Bash set `EZKEY_PYTHON` if `python3` is the Microsoft Store stub. (Why the proto-manifest fix: AAB `base/manifest/AndroidManifest.xml` is aapt2 protobuf `XmlNode`, not binary AXML — the first upload dry-run failed until the reader handled that format.)
 
 ## In-app third-party licenses snapshot
 
