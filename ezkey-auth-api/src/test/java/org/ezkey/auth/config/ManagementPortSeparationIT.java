@@ -46,7 +46,11 @@ import org.springframework.test.context.TestPropertySource;
       "management.endpoint.monitoring.access=unrestricted",
       "javamelody.enabled=true",
       "javamelody.management-endpoint-monitoring-enabled=true",
-      "spring.main.banner-mode=off"
+      "spring.main.banner-mode=off",
+      "spring.autoconfigure.exclude="
+          + "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
+          + "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration,"
+          + "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration"
     })
 class ManagementPortSeparationIT {
 
