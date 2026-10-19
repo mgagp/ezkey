@@ -7,6 +7,8 @@ Self-contained AWS CLI helpers for **creating and bootstrapping** the Lightsail 
 
 **Runbook:** [`docs/lightsail/community-host.md`](../../docs/lightsail/community-host.md).
 
+**Live public IPv4 (2026-10-19):** static IP `ezkey-online-community` → `<static-ip ezkey-online-community>` on instance `ezkey-online` (resolve with `aws lightsail get-static-ip --static-ip-name ezkey-online-community --profile ezkey-lightsail --region ca-central-1`; origin IPv4 is never versioned — defense in depth). These scripts never allocate, attach, or release static IPs; see the runbook decision lines and deploy pitfall on attach/detach. `delete-instance.sh --apply` requires explicit `--name`; deleting `ezkey-online` also needs `EZKEY_CONFIRM_DELETE=ezkey-online`.
+
 **Monorepo now, extractable later:** shipping here is pragmatic. After e2e validation, this directory (+ the runbook) may move to a **private** ops repo for the Marc-operated `ezkey.online` community host. Keep community-only secrets and site-specific DNS out of the public OSS compose tree. Do not create that private repo from these scripts.
 
 ```bash
@@ -16,5 +18,6 @@ export AWS_PROFILE=ezkey-lightsail
 ./scripts/lightsail/bootstrap-host.sh --target community --dry-run
 ./scripts/lightsail/status.sh --help
 ./scripts/lightsail/delete-instance.sh --help
-# Dry-run target checks: ./scripts/lightsail/target-aware.test.sh
+# Target + delete-guard tests (fake aws; never hits real AWS):
+./scripts/lightsail/target-aware.test.sh
 ```

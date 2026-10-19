@@ -42,9 +42,22 @@ This PR does **not** create that private repo.
 
 **Lightsail name uniqueness:** resource names are unique **across types**. The key-pair name **must differ** from the instance name (e.g. instance `ezkey-online` + key pair `ezkey-online-kp`). Using the same string for both fails `CreateInstances` with `InvalidInputException` (“names are already in use”). `create-instance.sh` refuses that combination.
 
-**No Lightsail static IP in v1.** If you recreate the instance, the public IPv4 may change — the operator updates Cloudflare **A** records manually.
+**Static IP (live community host):** Lightsail static IP **`ezkey-online-community`** → **`<static-ip ezkey-online-community>`**, attached to instance **`ezkey-online`**. Resolve the current IPv4 with:
 
-**IAM:** workstation profile `ezkey-lightsail` / policy **EzkeyLightsailOperator** (instance lifecycle + ports + key pairs; no static IP, no snapshots).
+```bash
+aws lightsail get-static-ip \
+  --static-ip-name ezkey-online-community \
+  --profile ezkey-lightsail \
+  --region ca-central-1
+```
+
+**Decision (2026-10-19):** Marc attached static IP `ezkey-online-community` (`<static-ip ezkey-online-community>`) to `ezkey-online`. Stop/start no longer changes the public IPv4. The address is free while it stays attached. Marc updated the four proxied Cloudflare **A** records (`admin-api`, `auth-api`, `integration-api`, `demo-acme`) and SSH aliases `ezkey-online` / `ezkey-online-db` in the same cutover.
+
+**Decision (2026-10-19, origin IP):** The origin IPv4 is **never versioned** in this public repository — use the `<static-ip ezkey-online-community>` marker and the `get-static-ip` command above. Direct origin access is already limited by the Lightsail firewall (HTTPS sources = Cloudflare IPv4 ranges only; see § Open ports). Keeping the address out of git is **defense in depth**, not the primary control.
+
+`scripts/lightsail/` still do **not** allocate, attach, or release static IPs — attach/detach remains an operator/console action. After any attach or detach, update Cloudflare **A** records and SSH `HostName` values immediately (see **Deploy pitfalls**).
+
+**IAM:** workstation profile `ezkey-lightsail` / policy **EzkeyLightsailOperator** (instance lifecycle + ports + key pairs; no static-IP API in that policy, no snapshots).
 
 ---
 
@@ -55,7 +68,7 @@ This PR does **not** create that private repo.
 | [`create-instance.sh`](../../scripts/lightsail/create-instance.sh) | `create-instances`; dry-run default; `--apply` to create; waits until `running`; refuses existing name |
 | [`open-ports.sh`](../../scripts/lightsail/open-ports.sh) | SSH 22 + HTTPS 443 (`open-instance-public-ports` or `--mode put`); dry-run default |
 | [`bootstrap-host.sh`](../../scripts/lightsail/bootstrap-host.sh) | SSH Phase 0b/0c: Docker + Compose v2 + `docker` group; no clean-start / no image push |
-| [`delete-instance.sh`](../../scripts/lightsail/delete-instance.sh) | Delete by name; requires `--apply` **and** `--i-mean-it` |
+| [`delete-instance.sh`](../../scripts/lightsail/delete-instance.sh) | Delete by name; `--apply` requires explicit `--name`; community `ezkey-online` also needs `EZKEY_CONFIRM_DELETE=ezkey-online`; never releases static IPs |
 | [`status.sh`](../../scripts/lightsail/status.sh) | `get-instance` / `--list` → `get-instances` |
 | [`common.sh`](../../scripts/lightsail/common.sh) | Shared defaults and helpers (sourced; not run directly) |
 
@@ -92,7 +105,7 @@ Do these **after** VM create → ports → Docker bootstrap (below). No secrets 
    # ssh ezkey-online 'cd ~/ezkey/experimental-hybrid/lightsail && docker compose up -d --no-deps --force-recreate caddy'
    ```
 3. **Origin CA** — Cloudflare Origin Server cert covering all API + demo hostnames above; place `origin.pem` / `origin-key.pem` in `~/ezkey/experimental-hybrid/lightsail/caddy-certs/` on the VM (`chmod 700` dir, `chmod 600` key). Never commit.
-4. **DNS** — Cloudflare **A** records (orange / proxied) for those API/demo names → instance public IP (from `./scripts/lightsail/status.sh`). Admin UI name points at Pages, not the Lightsail IP.
+4. **DNS** — Cloudflare **A** records (orange / proxied) for those API/demo names → **`<static-ip ezkey-online-community>`** (resolve via `get-static-ip` above, or `./scripts/lightsail/status.sh`). Admin UI name points at Pages, not the Lightsail IP.
 5. **`.env`** — on the VM: copy [`.env.example`](../../experimental-hybrid/lightsail/.env.example) → `.env`, then overlay community URLs/CORS from [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example). **Mode B (Pages cookie)** requires all of:
    - `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online,https://ezkey.org,https://www.ezkey.org` (UI + community-signup marketing origins)
    - `EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS=true`
@@ -227,19 +240,19 @@ If `ezkey-online` already exists as an instance: `--name community-ezkey` (and u
 
 Add community aliases in `~/.ssh/config` (same key / IP as create-or-status). Prefer **`Host ezkey-online`**
 (not a bare `ezkey` alias). `ezkey-online-db` already exists on some workstations (e.g. Rootbeer);
-document it here so every operator laptop matches. `ezkey-online-metrics` is the JavaMelody
-collector tunnel (#846).
+document it here so every operator laptop matches. `ezkey-online-metrics` is the **planned**
+JavaMelody collector tunnel (#846); it is not yet configured on Rootbeer.
 
 ```sshconfig
 Host ezkey-online
-  HostName <public-ip-from-create-or-status>
+  HostName <static-ip ezkey-online-community>
   User ec2-user
   IdentityFile ~/.ssh/<your-private-key>
   IdentitiesOnly yes
 
 # Postgres on the VM listens on 127.0.0.1:5432 only (compose bind). Match Rootbeer's real alias.
 Host ezkey-online-db
-  HostName <public-ip-from-create-or-status>
+  HostName <static-ip ezkey-online-community>
   User ec2-user
   IdentityFile ~/.ssh/<your-private-key>
   IdentitiesOnly yes
@@ -247,14 +260,17 @@ Host ezkey-online-db
   ExitOnForwardFailure yes
 
 # JavaMelody collector (compose publishes 127.0.0.1:8088:8080 only — never 0.0.0.0).
+# Planned alias — not yet on Rootbeer.
 Host ezkey-online-metrics
-  HostName <public-ip-from-create-or-status>
+  HostName <static-ip ezkey-online-community>
   User ec2-user
   IdentityFile ~/.ssh/<your-private-key>
   IdentitiesOnly yes
   LocalForward 127.0.0.1:8088 127.0.0.1:8088
   ExitOnForwardFailure yes
 ```
+
+Replace `HostName` with the IPv4 from `aws lightsail get-static-ip --static-ip-name ezkey-online-community --profile ezkey-lightsail --region ca-central-1` (never commit the literal address).
 
 Open tunnels: `ssh ezkey-online-db` / `ssh ezkey-online-metrics` (leave the session open). Collector UI
 after metrics tunnel: http://127.0.0.1:8088 — see **Observability (JavaMelody)** below.
@@ -305,10 +321,13 @@ Do not commit private keys, PEMs, Origin CA files, or `.env`.
 
 ```bash
 ./scripts/lightsail/delete-instance.sh --name ezkey-online
-./scripts/lightsail/delete-instance.sh --name ezkey-online --apply --i-mean-it
+EZKEY_CONFIRM_DELETE=ezkey-online \
+  ./scripts/lightsail/delete-instance.sh --name ezkey-online --apply --i-mean-it
 ```
 
-After recreate, update Cloudflare **A** records if the public IP changed (no static IP in v1).
+`--apply` requires an explicit `--name` (no silent default). `EZKEY_CONFIRM_DELETE=ezkey-online` is required when the normalized instance name is `ezkey-online` (trim + case-insensitive) **or** when static IP `ezkey-online-community` is attached to the target (read via `get-static-ip` before delete). The script prints a static-IP billing warning on dry-run and apply; it never calls `release-static-ip`.
+
+After delete, static IP `ezkey-online-community` detaches and stays allocated (~USD 3.60/month while unattached). **Re-attach it immediately after recreate** (keeps **`<static-ip ezkey-online-community>`**); **never release `ezkey-online-community`**. Then re-run `open-ports.sh` with the Cloudflare 443 posture (see § Open ports — do not reopen 443 to `0.0.0.0/0`).
 
 ---
 
@@ -523,7 +542,19 @@ Short operator checklist verified against repo scripts/compose (not live VM obse
    (`docker compose down -v`). Community requires `EZKEY_CONFIRM_WIPE=ezkey-online` and is for
    **first commissioning only**. For upgrades: `--target community rolling` (or
    `--sync-operator-files` + `--remote-up`).
-4. **Docker `json-file` log rotation** — Compose sets `x-logging` on every service
+4. **Static IP attach / detach changes the instance public IPv4** — attaching or detaching
+   `ezkey-online-community` (or any Lightsail static IP) immediately changes the address the
+   instance presents. Update the four proxied Cloudflare **A** records
+   (`admin-api`, `auth-api`, `integration-api`, `demo-acme`) and SSH `HostName` on the
+   aliases that exist (`ezkey-online`, `ezkey-online-db`; planned alias
+   `ezkey-online-metrics` is not yet on Rootbeer — see decision 2026-10-19) right after the
+   change. The Lightsail firewall and Origin CA certificate do **not** change on
+   attach/detach — only DNS **A** records and SSH `HostName` do. After an instance
+   **recreate**, re-run `open-ports.sh` (Cloudflare 443 posture — do not reopen 443 to
+   `0.0.0.0/0`). Until DNS and SSH catch up, API calls time out and deploy scripts fail to
+   connect. Stop/start with the static IP **still attached** does **not** change
+   `<static-ip ezkey-online-community>`.
+5. **Docker `json-file` log rotation** — Compose sets `x-logging` on every service
    (`max-size: 20m`, `max-file: 3` — sized for a ~4 GB RAM / ~80 GB-disk VM; ceiling ≈ 480 MiB).
    Rotation applies only when a container is **created**; it does not resize logging on an
    already-running host.
