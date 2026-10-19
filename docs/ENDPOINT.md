@@ -141,13 +141,15 @@ A raw `IllegalArgumentException` or other uncaught exception from that flow is n
 sequential ids; server logs keep the distinction). **Exception (#895):** wall-clock expiry after
 `expiresAt` uses `https://ezkey.io/problems/auth/auth-attempt-expired` so Demo Device / PAM /
 mobile can show an expired message; respond UPDATE is fail-closed (`status = READ AND expires_at >
-now`). **Ordering (#895 Christophe):** typed `auth-attempt-expired` is raised only after enrollment
-load and device-signature (ownership) verification; a non-owner signature on an expired attempt
-keeps generic `auth-attempt-state-conflict` (no INVALID flip). The official mobile app may still
-map both 409 types to one sentence until the typed-expiry UI slice lands. A lost approve/deny
-response after the HTTP call was sent (timeout / transport), where a session may already exist, is
-a separate mobile case (orientation Question 10 / `UncertainDecision`), not a new problem type.
-Missing integration signing key remains **503** (retryable; transaction rolled back).
+now`). **Ordering (#895 Christophe + Patrick M1/M2):** typed `auth-attempt-expired` is raised after
+enrollment load and device-signature (ownership) verification, and **before** challenge validation
+(so a wrong challenge on an expired attempt does not flip `INVALID`). A non-owner signature or a
+missing device public key on an expired attempt keeps generic `auth-attempt-state-conflict` (no
+INVALID flip). The official mobile app may still map both 409 types to one sentence until the
+typed-expiry UI slice lands. A lost approve/deny response after the HTTP call was sent (timeout /
+transport), where a session may already exist, is a separate mobile case (orientation Question 10 /
+`UncertainDecision`), not a new problem type. Missing integration signing key remains **503**
+(retryable; transaction rolled back).
 
 ### Public instance metadata (unauthenticated)
 

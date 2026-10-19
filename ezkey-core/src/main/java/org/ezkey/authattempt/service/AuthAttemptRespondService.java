@@ -54,11 +54,14 @@ import org.springframework.transaction.annotation.Transactional;
  * stays in server logs only — Marc m1). Missing integration private key → HTTP <b>503</b>. Never an
  * unsigned 200.
  *
- * <p><b>Wall-clock expiry (#895, Christophe):</b> {@code auth-attempt-expired} is raised only
- * <em>after</em> enrollment load and device-signature (ownership) verification succeed. An unknown
- * attempt, a still-{@code PENDING} or terminal attempt, or a non-owner device (invalid signature on
- * an already-expired attempt) keep the generic {@code auth-attempt-state-conflict} surface so
- * sequential ids do not reveal expiry before the caller is verified.
+ * <p><b>Wall-clock expiry (#895, Christophe + Patrick M1/M2):</b> {@code auth-attempt-expired} is
+ * raised only <em>after</em> enrollment load and device-signature (ownership) verification succeed,
+ * and <em>before</em> challenge validation — so an owner with a valid signature on an expired
+ * attempt gets typed expiry even when the challenge is wrong. An unknown attempt, a still-{@code
+ * PENDING} or terminal attempt, a missing device public key on an expired attempt, or a non-owner
+ * device (invalid signature on an already-expired attempt) keep the generic {@code
+ * auth-attempt-state-conflict} surface (no {@code INVALID} flip) so sequential ids do not reveal
+ * expiry before the caller is verified.
  *
  * <p><b>Transaction Management:</b> This service uses Spring's declarative transaction management
  * to ensure data consistency during the authentication response processing.
@@ -138,11 +141,11 @@ public class AuthAttemptRespondService {
       // Step 3: Validate device signature (ownership) before typed expiry (#895 Christophe)
       validateDeviceSignature(request, authAttempt, enrollment);
 
-      // Step 4: Validate challenge if required
-      validateChallenge(request, authAttempt, enrollment);
-
-      // Step 5: Wall-clock expiry only after ownership proof (#895)
+      // Step 4: Wall-clock expiry after ownership, before challenge (#895 Patrick M1)
       ensureNotExpired(authAttempt);
+
+      // Step 5: Validate challenge if required
+      validateChallenge(request, authAttempt, enrollment);
 
       // Step 6: Update attempt status
       updateAttemptStatus(authAttempt, enrollment, request);
@@ -217,8 +220,8 @@ public class AuthAttemptRespondService {
   }
 
   /**
-   * Returns whether the attempt's wall-clock {@code expiresAt} has been reached (fail-closed: refuse
-   * at {@code expiresAt}, not only after).
+   * Returns whether the attempt's wall-clock {@code expiresAt} has been reached (fail-closed:
+   * refuse at {@code expiresAt}, not only after).
    *
    * @param authAttempt the attempt to inspect
    * @return {@code true} when {@code expiresAt} is set and not strictly after now
@@ -229,7 +232,8 @@ public class AuthAttemptRespondService {
   }
 
   /**
-   * Raises typed expiry only after enrollment and device-signature checks have succeeded (#895).
+   * Raises typed expiry after enrollment and device-signature checks succeed, and before challenge
+   * validation (#895 Christophe; Patrick M1).
    *
    * @param authAttempt the attempt under respond
    * @throws AuthAttemptExpiredException when {@code expiresAt} has been reached
@@ -266,6 +270,16 @@ public class AuthAttemptRespondService {
     // Validate device public key
     String devicePublicKey = enrollment.getDevicePublicKey();
     if (devicePublicKey == null) {
+      // Expired + missing key: generic 409, no INVALID flip (#895 Patrick M2) — ownership cannot
+      // be proven and typed expiry must not leak.
+      if (isWallClockExpired(authAttempt)) {
+        logger.warn(
+            "Respond refused: missing device public key on expired auth attempt {}"
+                + " (client → 409 state-conflict)",
+            authAttempt.getAuthAttemptId());
+        throw new AuthAttemptStateConflictException(
+            "Cannot respond to authentication attempt: not authorized");
+      }
       // Use TxHelper to commit INVALID status before throwing exception
       authAttemptTxHelper.markAsInvalid(authAttempt.getAuthAttemptId());
       throw new AuthAttemptRequestFailedException("Device public key not found");
