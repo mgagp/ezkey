@@ -69,7 +69,33 @@ Before each Play upload:
 4. If dependencies changed, run `yarn license:app-data` and commit the JSON snapshot.
 5. Build the signed AAB (`./scripts/build-install-release-clean.sh` or `yarn android:bundle:release` with JDK 17).
 
-**This workspace (2026-10-19):** `versionName` `0.1.0-alpha`, `versionCode` `4`. Play Console highest uploaded AAB is `versionCode` `1`; `versionCode` `3` was built locally and validated on a Pixel but never uploaded. Do not reuse a `versionCode`.
+**This workspace (2026-10-19):** `versionName` `0.1.0-alpha`, `versionCode` `4`. On 2026-10-19 the Play Console App bundle explorer showed `versionCode` `3` as the most recent uploaded AAB, so `versionCode` `4` is the next upload. Do not reuse a `versionCode`. (Earlier notes that said the Console highest was `versionCode` `1` were wrong.)
+
+## Upload signed AAB to internal testing (CLI)
+
+Service account (created by Marc, GCP project `ezkey-play`):
+
+| Item | Value |
+|------|--------|
+| Account | `ezkey-play-publisher@ezkey-play.iam.gserviceaccount.com` |
+| Play Console access | `org.ezkey.mobile` only — view app information + **release to testing tracks** (no production) |
+| JSON key | On Rootbeer under `C:\Users\marcg\.gradle\` (exact filename confirmed locally); **never** commit the key |
+
+Host prerequisite (not part of the app Gradle build):
+
+```bash
+pip install -r scripts/requirements-play-upload.txt
+```
+
+Build the signed AAB, then upload to the **internal** track as a **draft** by default (review in Play Console before rolling out to testers):
+
+```bash
+export EZKEY_PLAY_SERVICE_ACCOUNT_JSON="/c/Users/marcg/.gradle/<play-sa-key>.json"  # outside the repo
+./scripts/bundle-release.sh
+./scripts/play-upload-internal.sh android/app/build/outputs/bundle/release/app-release.aab
+```
+
+Optional flags: `--dry-run` (auth + list tracks/versionCodes, delete edit, no commit), `--status draft|completed` (default `draft`). The script refuses any track other than `internal` and refuses an AAB whose `versionCode` is not strictly greater than the highest `versionCode` already on any track.
 
 ## In-app third-party licenses snapshot
 

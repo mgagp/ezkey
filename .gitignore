@@ -147,3 +147,7 @@ specs/**/*.backup
 # Operator-only Lightsail env snapshots / working secrets (never commit)
 experimental-hybrid/lightsail/.local/
 
+# Google Play service-account JSON keys (keep outside the repo; never commit)
+*play*service*account*.json
+*play*publisher*.json
+

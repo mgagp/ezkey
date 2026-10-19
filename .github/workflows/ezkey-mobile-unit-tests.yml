@@ -69,6 +69,12 @@ jobs:
           chmod +x scripts/metro-adb-selftest.sh scripts/lib/metro-adb.sh
           ./scripts/metro-adb-selftest.sh
 
+      - name: Play internal upload script self-test
+        working-directory: ezkey_mobile
+        run: |
+          chmod +x scripts/play-upload-internal.sh
+          ./scripts/play-upload-internal.sh --self-test
+
       - name: yarn validate
         working-directory: ezkey_mobile
         run: yarn validate:ci

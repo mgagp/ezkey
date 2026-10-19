@@ -1,0 +1,5 @@
+# Host prerequisites for scripts/play-upload-internal.sh (not part of the app Gradle build).
+# Install once on the machine that uploads AABs (e.g. Rootbeer Git Bash):
+#   pip install -r scripts/requirements-play-upload.txt
+google-auth>=2.29.0,<3
+google-api-python-client>=2.127.0,<3
