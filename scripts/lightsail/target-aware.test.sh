@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Dry-run / unit checks for Lightsail SSH target resolution (#812).
+# Dry-run / unit checks for Lightsail SSH target resolution (#812) and
+# Caddyfile bind-mount sync alignment (#863).
 # Community-only: --target community → Host ezkey-online.
 # Run from repo root: ./scripts/lightsail/target-aware.test.sh
 #
-# Safety: a fake `aws` is prepended to PATH for the whole run. It records
-# invocations and exits non-zero on any delete-instance so a regressing
-# delete guard cannot destroy a real Lightsail VM (e.g. on Rootbeer).
+# Safety: fake `aws`, `ssh`, `scp`, and `docker` are prepended to PATH for the
+# whole run. They record invocations and never reach a real Lightsail VM or AWS.
+# delete-instance against fake aws exits non-zero. ssh/scp refuse any Host that
+# is not the expected community alias unless FAKE_SSH_ALLOW is set.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -15,6 +17,8 @@ UPGRADE="${ROOT}/experimental-hybrid/scripts/full-exp-environment-upgrade.sh"
 BOOTSTRAP="${ROOT}/scripts/lightsail/bootstrap-host.sh"
 CREATE="${ROOT}/scripts/lightsail/create-instance.sh"
 DELETE="${ROOT}/scripts/lightsail/delete-instance.sh"
+ADMIN_UI_PROD="${ROOT}/scripts/cloudflare/deploy-admin-ui-production.sh"
+COMPOSE="${ROOT}/experimental-hybrid/lightsail/docker-compose.yml"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -22,8 +26,14 @@ OUT="${TMP}/out"
 ERR="${TMP}/err"
 FAKE_AWS_BIN="${TMP}/fake-bin"
 FAKE_AWS_LOG="${TMP}/fake-aws.log"
+FAKE_SSH_LOG="${TMP}/fake-ssh.log"
+FAKE_SCP_LOG="${TMP}/fake-scp.log"
+FAKE_DOCKER_LOG="${TMP}/fake-docker.log"
 mkdir -p "${FAKE_AWS_BIN}"
 : >"${FAKE_AWS_LOG}"
+: >"${FAKE_SSH_LOG}"
+: >"${FAKE_SCP_LOG}"
+: >"${FAKE_DOCKER_LOG}"
 
 # Isolate from workstation AWS config / credentials (never hit real AWS).
 export AWS_PROFILE="ezkey-test-no-such-profile"
@@ -37,6 +47,11 @@ unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN || true
 # Optional: which instance name get-static-ip reports as attachedTo (empty = not attached).
 export FAKE_AWS_STATIC_IP_ATTACHED_TO="${FAKE_AWS_STATIC_IP_ATTACHED_TO:-}"
 export FAKE_AWS_LOG
+export FAKE_SSH_LOG
+export FAKE_SCP_LOG
+export FAKE_DOCKER_LOG
+# Only allow ssh/scp to this Host alias (blocks accidental real VM contact).
+export FAKE_SSH_ALLOWED_HOST="${FAKE_SSH_ALLOWED_HOST:-ezkey-online}"
 
 cat >"${FAKE_AWS_BIN}/aws" <<'FAKE_AWS'
 #!/usr/bin/env bash
@@ -65,17 +80,60 @@ done
 exit 0
 FAKE_AWS
 chmod +x "${FAKE_AWS_BIN}/aws"
+
+# Fake ssh/scp: never contact a real host. Dry-run paths should not invoke these;
+# if a regressing script drops --dry-run, refuse unknown hosts.
+cat >"${FAKE_AWS_BIN}/ssh" <<'FAKE_SSH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >>"${FAKE_SSH_LOG:?FAKE_SSH_LOG unset}"
+host=""
+for arg in "$@"; do
+  case "${arg}" in
+    -*) continue ;;
+    *)
+      host="${arg}"
+      break
+      ;;
+  esac
+done
+allowed="${FAKE_SSH_ALLOWED_HOST:-ezkey-online}"
+if [[ "${host}" != "${allowed}" ]]; then
+  echo "error: FAKE ssh refused host '${host}' (allowed=${allowed}); refusing real network" >&2
+  exit 98
+fi
+echo "error: FAKE ssh refused live execution (tests must use --dry-run): $*" >&2
+exit 97
+FAKE_SSH
+chmod +x "${FAKE_AWS_BIN}/ssh"
+
+cat >"${FAKE_AWS_BIN}/scp" <<'FAKE_SCP'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >>"${FAKE_SCP_LOG:?FAKE_SCP_LOG unset}"
+echo "error: FAKE scp refused live execution (tests must use --dry-run): $*" >&2
+exit 97
+FAKE_SCP
+chmod +x "${FAKE_AWS_BIN}/scp"
+
+cat >"${FAKE_AWS_BIN}/docker" <<'FAKE_DOCKER'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >>"${FAKE_DOCKER_LOG:?FAKE_DOCKER_LOG unset}"
+echo "error: FAKE docker refused live execution (tests must use --dry-run / no real docker): $*" >&2
+exit 96
+FAKE_DOCKER
+chmod +x "${FAKE_AWS_BIN}/docker"
+
 export PATH="${FAKE_AWS_BIN}:${PATH}"
 
-# Prove the harness shadows any real aws.
-if ! command -v aws >/dev/null 2>&1; then
-  echo "FAIL: fake aws not on PATH" >&2
-  exit 1
-fi
-if [[ "$(command -v aws)" != "${FAKE_AWS_BIN}/aws" ]]; then
-  echo "FAIL: expected fake aws at ${FAKE_AWS_BIN}/aws, got $(command -v aws)" >&2
-  exit 1
-fi
+# Prove the harness shadows any real aws/ssh/scp/docker.
+for tool in aws ssh scp docker; do
+  if [[ "$(command -v "${tool}")" != "${FAKE_AWS_BIN}/${tool}" ]]; then
+    echo "FAIL: expected fake ${tool} at ${FAKE_AWS_BIN}/${tool}, got $(command -v "${tool}")" >&2
+    exit 1
+  fi
+done
 
 pass=0
 fail=0
@@ -169,9 +227,13 @@ assert_stderr_contains() {
   lightsail_resolve_ssh_target "community"
   [[ "${LIGHTSAIL_SSH_HOST}" == "ezkey-online" ]]
   [[ "${LIGHTSAIL_TARGET}" == "community" ]]
-  src="$(lightsail_caddyfile_source_for_sync "${ROOT}/experimental-hybrid/lightsail")"
+  remote_base="$(lightsail_caddyfile_remote_basename_from_compose "${COMPOSE}")"
+  [[ "${remote_base}" == "Caddyfile.ezkey-online" ]]
+  src="$(lightsail_caddyfile_source_for_sync "${ROOT}/experimental-hybrid/lightsail" "${COMPOSE}")"
   [[ "$(basename "${src}")" == "Caddyfile.ezkey-online" ]]
-  echo "PASS: community maps host + Caddyfile.ezkey-online"
+  [[ "$(basename "${src}")" == "${remote_base}" ]]
+  lightsail_assert_caddyfile_sync_matches_compose "${COMPOSE}" "${remote_base}" >/dev/null
+  echo "PASS: community maps host + compose-derived Caddyfile.ezkey-online"
 ) && pass=$((pass + 1)) || fail=$((fail + 1))
 
 (
@@ -205,26 +267,58 @@ unset EZKEY_CONFIRM_WIPE || true
 assert_fail "export without target fails" bash "${EXPORT}" --dry-run --apis-only
 assert_stderr_contains "export fail mentions #812 or target" "no Lightsail SSH target declared"
 
-# --- export: community dry-run uses ezkey-online + community Caddyfile ---
+# --- export: community dry-run uses ezkey-online + community Caddyfile (#863) ---
 assert_ok "export --target community --dry-run --sync" \
   bash "${EXPORT}" --target community --dry-run --apis-only --sync-operator-files
 assert_stdout_contains "community dry-run SSH host" "SSH: ezkey-online"
 assert_stdout_contains "community dry-run Caddyfile source" "Caddyfile source=Caddyfile.ezkey-online"
+assert_stdout_contains "community dry-run sync alignment" "Caddyfile sync aligned with compose bind"
 assert_stdout_contains "community dry-run scp Caddyfile.ezkey-online" "Caddyfile.ezkey-online"
-# Sync must scp Caddyfile.ezkey-online (not a bare lightsail/Caddyfile path alone)
-if grep -E 'scp .*lightsail/Caddyfile ' "${OUT}" | grep -vq 'Caddyfile.ezkey-online'; then
-  echo "FAIL: community sync must scp Caddyfile.ezkey-online" >&2
+# Sync must scp to remote basename Caddyfile.ezkey-online (not renamed to .../Caddyfile)
+if grep -E 'scp .*Caddyfile\.ezkey-online[^ ]* [^ ]+:.*/Caddyfile$' "${OUT}" >/dev/null; then
+  echo "FAIL: community sync must not rename to remote Caddyfile (#863)" >&2
+  grep -E 'scp .*Caddyfile' "${OUT}" >&2 || true
   fail=$((fail + 1))
 else
-  echo "PASS: community sync uses Caddyfile.ezkey-online"
+  echo "PASS: community sync does not rename to remote Caddyfile"
   pass=$((pass + 1))
 fi
+if grep -E 'scp .*Caddyfile\.ezkey-online[^ ]* [^ ]+:.*/Caddyfile\.ezkey-online' "${OUT}" >/dev/null; then
+  echo "PASS: community sync scp destination is Caddyfile.ezkey-online"
+  pass=$((pass + 1))
+else
+  echo "FAIL: community sync must scp to remote Caddyfile.ezkey-online" >&2
+  grep -E 'scp .*Caddyfile' "${OUT}" >&2 || true
+  fail=$((fail + 1))
+fi
+# Dry-run must not have invoked real ssh/scp/docker (fake tools would have logged).
+if [[ ! -s "${FAKE_SSH_LOG}" && ! -s "${FAKE_SCP_LOG}" && ! -s "${FAKE_DOCKER_LOG}" ]]; then
+  echo "PASS: dry-run sync never called fake ssh/scp/docker"
+  pass=$((pass + 1))
+else
+  echo "FAIL: dry-run should not invoke ssh/scp/docker" >&2
+  fail=$((fail + 1))
+fi
 
-# --- export: community sync + remote-up force-recreates caddy ---
+# --- export: community sync + remote-up: bind preflight + force-recreate (#863) ---
+: >"${FAKE_SSH_LOG}"
+: >"${FAKE_SCP_LOG}"
+: >"${FAKE_DOCKER_LOG}"
 assert_ok "export community sync+remote-up dry-run" \
   bash "${EXPORT}" --target community --dry-run --apis-only --sync-operator-files --remote-up
 assert_stdout_contains "community force-recreate caddy" "force-recreate caddy"
-assert_stdout_contains "community sha256 verify" "verify remote Caddyfile sha256"
+assert_stdout_contains "community sha256 verify mounted file" "verify remote Caddyfile.ezkey-online sha256"
+assert_stdout_contains "community bind-mount preflight" "bind-mount preflight"
+assert_stdout_contains "community bind expect Caddyfile file" "expect file: ./Caddyfile.ezkey-online"
+assert_stdout_contains "community bind expect caddy-certs dir" "expect dir: ./caddy-certs"
+if [[ ! -s "${FAKE_SSH_LOG}" && ! -s "${FAKE_SCP_LOG}" && ! -s "${FAKE_DOCKER_LOG}" ]]; then
+  echo "PASS: dry-run remote-up never called fake ssh/scp/docker"
+  pass=$((pass + 1))
+else
+  echo "FAIL: dry-run remote-up should not invoke ssh/scp/docker" >&2
+  cat "${FAKE_SSH_LOG}" >&2 || true
+  fail=$((fail + 1))
+fi
 
 # --- export: community --clean-start requires wipe confirm ---
 assert_fail "export community --clean-start without confirm fails" \
@@ -405,6 +499,57 @@ fi
   lightsail_require_community_delete_confirm "other-instance"
   echo "PASS: community delete confirm helper (normalize + static IP)"
 ) && pass=$((pass + 1)) || fail=$((fail + 1))
+
+# --- #863: compose bind basename is source of truth; mismatch is reported ---
+(
+  # shellcheck source=common.sh
+  source "${COMMON}"
+  # Simulate the #859 bug: sync renamed to remote Caddyfile while compose mounts .ezkey-online.
+  if (lightsail_assert_caddyfile_sync_matches_compose "${COMPOSE}" "Caddyfile") \
+      >"${OUT}" 2>"${ERR}"; then
+    echo "FAIL: sync/compose mismatch should die" >&2
+    exit 1
+  fi
+  grep -q 'Caddyfile sync/compose mismatch' "${ERR}"
+  grep -q '#863' "${ERR}"
+  grep -q 'Caddyfile.ezkey-online' "${ERR}"
+  # Correct alignment succeeds.
+  lightsail_assert_caddyfile_sync_matches_compose "${COMPOSE}" "Caddyfile.ezkey-online" >/dev/null
+  echo "PASS: dry-run path surfaces sync/compose Caddyfile mismatch (#863)"
+) && pass=$((pass + 1)) || fail=$((fail + 1))
+
+(
+  # shellcheck source=common.sh
+  source "${COMMON}"
+  mapfile -t binds < <(lightsail_list_compose_bind_mounts "${COMPOSE}")
+  [[ "${#binds[@]}" -ge 2 ]]
+  printf '%s\n' "${binds[@]}" | grep -qx $'file\t./Caddyfile.ezkey-online'
+  printf '%s\n' "${binds[@]}" | grep -qx $'dir\t./caddy-certs'
+  printf '%s\n' "${binds[@]}" | grep -q $'dir\t../../docker/postgres/init'
+  echo "PASS: compose bind-mount list includes Caddyfile file + certs/init dirs"
+) && pass=$((pass + 1)) || fail=$((fail + 1))
+
+# --- deploy-admin-ui-production.sh: no silent EXP1 Pages default (#863) ---
+assert_fail "admin-ui production without CLOUDFLARE_PAGES_PROJECT fails" \
+  env -u CLOUDFLARE_PAGES_PROJECT \
+    CLOUDFLARE_API_TOKEN=fake CLOUDFLARE_ACCOUNT_ID=fake \
+    bash "${ADMIN_UI_PROD}"
+assert_stderr_contains "admin-ui prod requires Pages project" "CLOUDFLARE_PAGES_PROJECT"
+assert_stderr_contains "admin-ui prod mentions community project" "admin-ui-ezkey-online"
+assert_stderr_contains "admin-ui prod mentions community API URL" "admin-api.ezkey.online"
+
+# With project set but missing dist, should fail on dist (not on EXP1 default).
+assert_fail "admin-ui production with project but missing dist fails on dist" \
+  env CLOUDFLARE_PAGES_PROJECT=admin-ui-ezkey-online \
+    CLOUDFLARE_API_TOKEN=fake CLOUDFLARE_ACCOUNT_ID=fake \
+    bash "${ADMIN_UI_PROD}"
+assert_stderr_contains "admin-ui prod missing dist" "missing or empty"
+
+assert_fail "admin-ui production --build without VITE_API_BASE_URL fails" \
+  env CLOUDFLARE_PAGES_PROJECT=admin-ui-ezkey-online \
+    CLOUDFLARE_API_TOKEN=fake CLOUDFLARE_ACCOUNT_ID=fake \
+    bash "${ADMIN_UI_PROD}" --build
+assert_stderr_contains "admin-ui prod build needs VITE_API_BASE_URL" "VITE_API_BASE_URL is required"
 
 echo
 echo "Results: ${pass} passed, ${fail} failed"

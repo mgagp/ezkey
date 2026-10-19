@@ -225,15 +225,59 @@ lightsail_require_community_delete_confirm() {
   fi
 }
 
-# Local Caddyfile path to scp as remote Caddyfile for the resolved target.
-# Canonical source: experimental-hybrid/lightsail/Caddyfile.ezkey-online (single file in repo).
-# Sync installs it as remote Caddyfile (Compose bind-mount name on the VM).
+# Host-side basename of the Caddyfile bind mount in the Lightsail compose file.
+# Single source of truth for the remote sync name (#863): Compose mounts
+# ./<name>:/etc/caddy/Caddyfile — sync must scp to that same <name> on the VM.
+# Prints e.g. Caddyfile.ezkey-online. Dies if the bind is missing or ambiguous.
+lightsail_caddyfile_remote_basename_from_compose() {
+  local compose_file="$1"
+  local basename_out
+  if [[ ! -f "${compose_file}" ]]; then
+    lightsail_die "compose file not found: ${compose_file}"
+  fi
+  basename_out="$(
+    python3 - "${compose_file}" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path, encoding="utf-8").read()
+# Short or long-ish forms: ./Name:/etc/caddy/Caddyfile or ./Name:/etc/caddy/Caddyfile:ro
+pat = re.compile(
+    r"^\s*-\s*(?:\./)?(?P<name>[^\s:]+):/etc/caddy/Caddyfile(?::\w+)?\s*$",
+    re.MULTILINE,
+)
+names = [m.group("name") for m in pat.finditer(text)]
+# Ignore named-volume style false positives (no path separators / dots only if Caddyfile*)
+names = [n for n in names if "Caddyfile" in n or n.endswith("Caddyfile")]
+if not names:
+    # Broader: any host path mapped to /etc/caddy/Caddyfile
+    pat2 = re.compile(
+        r"^\s*-\s*(?P<source>\./[^\s:]+):/etc/caddy/Caddyfile(?::\w+)?\s*$",
+        re.MULTILINE,
+    )
+    names = [m.group("source").lstrip("./") for m in pat2.finditer(text)]
+if len(names) != 1:
+    sys.stderr.write(
+        f"error: expected exactly one ./…:/etc/caddy/Caddyfile bind in {path}, found {len(names)}: {names}\n"
+    )
+    raise SystemExit(1)
+print(names[0])
+PY
+  )" || lightsail_die "failed to parse Caddyfile bind mount from ${compose_file}"
+  printf '%s\n' "${basename_out}"
+}
+
+# Local Caddyfile path to scp for the resolved target.
+# Canonical source basename is derived from the Lightsail compose bind mount (#863).
+# Sync installs it under that same remote basename (not a renamed remote "Caddyfile").
 # Custom host without LIGHTSAIL_TARGET → die (must declare --target for sync).
 lightsail_caddyfile_source_for_sync() {
   local lightsail_local_dir="$1"
+  local compose_file="${2:-${lightsail_local_dir}/docker-compose.yml}"
+  local remote_basename
   case "${LIGHTSAIL_TARGET:-}" in
     community)
-      echo "${lightsail_local_dir}/Caddyfile.ezkey-online"
+      remote_basename="$(lightsail_caddyfile_remote_basename_from_compose "${compose_file}")"
+      echo "${lightsail_local_dir}/${remote_basename}"
       ;;
     "")
       lightsail_die "cannot sync Caddyfile: SSH host '${LIGHTSAIL_SSH_HOST:-}' is not a known alias; pass --target community so the correct Caddyfile is chosen (#812)."
@@ -242,6 +286,58 @@ lightsail_caddyfile_source_for_sync() {
       lightsail_die "cannot sync Caddyfile for unknown LIGHTSAIL_TARGET='${LIGHTSAIL_TARGET}'"
       ;;
   esac
+}
+
+# Assert the remote sync basename matches the compose Caddyfile bind mount (#863).
+# Pass the basename that will be used as the scp destination (and sha256 target).
+# Prints a dry-run-friendly note on success; dies on mismatch (the #859/#863 failure mode).
+lightsail_assert_caddyfile_sync_matches_compose() {
+  local compose_file="$1"
+  local sync_remote_basename="$2"
+  local compose_basename
+  compose_basename="$(lightsail_caddyfile_remote_basename_from_compose "${compose_file}")"
+  if [[ "${sync_remote_basename}" != "${compose_basename}" ]]; then
+    lightsail_die "Caddyfile sync/compose mismatch (#863): sync remote name='${sync_remote_basename}' but compose mounts './${compose_basename}'. Align sync remote name with the compose bind mount (do not rename to a different file)."
+  fi
+  echo "Caddyfile sync aligned with compose bind: remote name='${compose_basename}' (sha verified on that file)"
+}
+
+# List short-form bind-mount host paths from a compose file (relative or absolute).
+# Each line: TYPE<TAB>REL_OR_ABS_PATH  where TYPE is "file" or "dir".
+# Heuristic: paths whose basename contains "Caddyfile" or ends with common file suffixes → file;
+# otherwise → dir. Used for dry-run and remote preflight without requiring docker (#863).
+lightsail_list_compose_bind_mounts() {
+  local compose_file="$1"
+  if [[ ! -f "${compose_file}" ]]; then
+    lightsail_die "compose file not found: ${compose_file}"
+  fi
+  python3 - "${compose_file}" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path, encoding="utf-8").read()
+# Match host:container[:mode] where host looks like a path (./ ../ or absolute)
+pat = re.compile(
+    r"^\s*-\s*(?P<source>(?:\.\.?/|/)[^\s:]+):(?P<target>[^\s:]+)(?::(?P<mode>\w+))?\s*$",
+    re.MULTILINE,
+)
+file_basenames = ("Caddyfile", ".yml", ".yaml", ".sh", ".sql", ".properties", ".json", ".pem", ".key")
+seen = set()
+for m in pat.finditer(text):
+    src = m.group("source")
+    if src in seen:
+        continue
+    seen.add(src)
+    base = src.rsplit("/", 1)[-1]
+    kind = "dir"
+    if "Caddyfile" in base:
+        kind = "file"
+    else:
+        for suf in file_basenames:
+            if base == suf or base.endswith(suf):
+                kind = "file"
+                break
+    print(f"{kind}\t{src}")
+PY
 }
 
 lightsail_print_defaults() {

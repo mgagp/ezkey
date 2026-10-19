@@ -60,7 +60,7 @@ After a rebuild, set each API **A** record in Cloudflare to the **new** Lightsai
 | Artifact | Role |
 |----------|------|
 | [`lightsail/docker-compose.yml`](lightsail/docker-compose.yml) | Stack: Postgres, migration, APIs, Caddy |
-| [`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online) | **Canonical** Lightsail Caddy source (community `*.ezkey.online`): hostnames → `reverse_proxy`; **TLS 1.3 only**; Origin CA PEMs. Compose bind-mounts it as `/etc/caddy/Caddyfile`; sync installs it as remote `Caddyfile`. See [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) |
+| [`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online) | **Canonical** Lightsail Caddy source (community `*.ezkey.online`): hostnames → `reverse_proxy`; **TLS 1.3 only**; Origin CA PEMs. Compose bind-mounts `./Caddyfile.ezkey-online` → `/etc/caddy/Caddyfile`; sync keeps that remote basename (#863). See [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) |
 | [`lightsail/caddy-certs/`](lightsail/caddy-certs/) | On the VM only: **Origin CA** PEMs from Cloudflare (**not** in git; `.gitignore` keeps the folder) |
 | [`lightsail/clean-start.sh`](lightsail/clean-start.sh) | Optional **destructive** reset: `down -v`, keygen, `up -d` |
 | [`lightsail/.env.example`](lightsail/.env.example) | Template for `lightsail/.env` |
@@ -112,7 +112,7 @@ ssh ezkey-online "mkdir -p ezkey/docker ezkey/experimental-hybrid/lightsail/cadd
 scp docker/generate-encryption-keys.sh ezkey-online:ezkey/docker/
 scp experimental-hybrid/lightsail/clean-start.sh ezkey-online:ezkey/experimental-hybrid/lightsail/
 scp experimental-hybrid/lightsail/docker-compose.yml ezkey-online:ezkey/experimental-hybrid/lightsail/
-scp experimental-hybrid/lightsail/Caddyfile.ezkey-online ezkey-online:ezkey/experimental-hybrid/lightsail/Caddyfile
+scp experimental-hybrid/lightsail/Caddyfile.ezkey-online ezkey-online:ezkey/experimental-hybrid/lightsail/Caddyfile.ezkey-online
 scp experimental-hybrid/lightsail/.env.example ezkey-online:ezkey/experimental-hybrid/lightsail/
 
 scp origin.pem origin-key.pem ezkey-online:ezkey/experimental-hybrid/lightsail/caddy-certs/
@@ -232,6 +232,6 @@ For a **NEW** all-in-one Lightsail instance aimed at **ezkey.online** evaluation
 
 **Layer split:** `scripts/lightsail/` = **VM lifecycle** only; this folder’s [`lightsail/`](lightsail/) + [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) = **OSS app stack**. Keep community-only secrets / ezkey.online-only DNS checklists out of the public compose tree. The VM-lifecycle tree may later extract to a **private** ops repo after e2e validation (see runbook § *Ownership boundary*); no private repo is created by that automation.
 
-**Community Caddy / hostnames:** sync installs [`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online) as remote `Caddyfile` (`--target community`). Ordered path (Origin CA, DNS, `.env`, export, clean-start, Pages): [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).
+**Community Caddy / hostnames:** sync installs [`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online) under that same remote basename (`--target community`; compose bind — #863). Ordered path (Origin CA, DNS, `.env`, export, clean-start, Pages): [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).
 
 **Handoff:** `create-instance.sh --target community` → `open-ports.sh` → `bootstrap-host.sh --target community` → [`export-backend-images-to-lightsail.sh --target community`](scripts/export-backend-images-to-lightsail.sh) (sync installs community Caddyfile; #812) → Origin CA / DNS later with human OK. No production DNS or cert changes in the Lightsail create scripts.

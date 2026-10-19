@@ -93,13 +93,15 @@ Build and deploy in one step (requires `VITE_API_BASE_URL` in root `.env` or the
 
 Override project name: `CLOUDFLARE_PAGES_PROJECT=ezkey-admin-ui ./scripts/cloudflare/deploy-admin-ui-preview.sh`
 
-**Production:** from the repo root, after `dist/` is built:
+**Production:** `CLOUDFLARE_PAGES_PROJECT` is **required** (no silent default after EXP1 retirement — #863). Community example from the repo root:
 
 ```bash
-./scripts/cloudflare/deploy-admin-ui-production.sh
+CLOUDFLARE_PAGES_PROJECT=admin-ui-ezkey-online \
+VITE_API_BASE_URL=https://admin-api.ezkey.online \
+  ./scripts/cloudflare/deploy-admin-ui-production.sh --build
 ```
 
-Optional `--build` runs `npm run build:cloudflare` first. Override branch with `CLOUDFLARE_PAGES_PRODUCTION_BRANCH` if your Pages project uses something other than `main`. You can also deploy from the dashboard; keep the production branch name aligned with Cloudflare project settings.
+Without `--build`, still set `CLOUDFLARE_PAGES_PROJECT` and ensure `dist/` is already built. Override branch with `CLOUDFLARE_PAGES_PRODUCTION_BRANCH` if your Pages project uses something other than `main`. You can also deploy from the dashboard; keep the production branch name aligned with Cloudflare project settings.
 
 **Git-connected builds:** root directory `ezkey-admin-ui`, build command `npm ci && npm run build:cloudflare`, add `VITE_API_BASE_URL` in the Pages project env if you prefer not to rely on committed `.env.cloudflare`.
 

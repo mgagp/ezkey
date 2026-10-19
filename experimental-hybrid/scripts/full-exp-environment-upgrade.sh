@@ -34,7 +34,8 @@
 #                        (#814; defaults to `git rev-parse HEAD` when unset)
 #   Root .env            CLOUDFLARE_* and VITE_API_BASE_URL for UI deploy (see scripts/cloudflare/*.sh)
 #   PREVIEW_BRANCH       for preview UI deploy (default: timestamped); set e.g. community-admin-ui-preview
-#   CLOUDFLARE_PAGES_PROJECT  default ezkey-admin-ui
+#   CLOUDFLARE_PAGES_PROJECT  required for --ui-production (no silent default; #863;
+#                             community: admin-ui-ezkey-online)
 #
 set -euo pipefail
 

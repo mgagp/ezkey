@@ -94,8 +94,10 @@ jobs:
               - 'ezkey-pam/**'
             lightsail:
               - 'scripts/lightsail/**'
+              - 'scripts/cloudflare/deploy-admin-ui-production.sh'
               - 'experimental-hybrid/scripts/export-backend-images-to-lightsail.sh'
               - 'experimental-hybrid/scripts/full-exp-environment-upgrade.sh'
+              - 'experimental-hybrid/lightsail/docker-compose.yml'
               - 'docs/lightsail/**'
 
       # Manual runs must exercise every suite; path filters alone would skip all
