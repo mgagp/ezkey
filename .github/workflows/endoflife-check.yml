@@ -1,0 +1,77 @@
+# Monthly endoflife.date check against the major-upgrades register.
+#
+# Non-blocking: never joins ci-gate; findings open/update one standing issue
+# labeled `hygiene`. See product-docs/global/hygiene/major-upgrades/README.md
+# and product-docs/global/hygiene/README.md § Cadence & automation.
+#
+# Decision: hygiene cadence PR approved by Marc 2026-10-19 — full-quality,
+# automated, continuous hygiene across the whole project.
+name: End-of-life check
+
+on:
+  schedule:
+    # First Monday of each month ~14:30 UTC. Cron fires every Monday; the job
+    # skips unless day-of-month is 1–7 (first Monday).
+    - cron: "30 14 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: endoflife-check
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  endoflife-check:
+    name: endoflife-check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Skip unless first Monday (or workflow_dispatch)
+        id: gate
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "workflow_dispatch — always run"
+            exit 0
+          fi
+          day="$(date -u +%-d)"
+          if [ "$day" -le 7 ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "First Monday of month (day=$day) — run"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Not first Monday (day=$day) — skip"
+          fi
+
+      - name: Checkout
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        if: steps.gate.outputs.run == 'true'
+        run: pip install --disable-pip-version-check -q "pyyaml==6.0.2"
+
+      - name: Run endoflife check (update standing hygiene issue)
+        if: steps.gate.outputs.run == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          python3 scripts/endoflife-check.py --update-issue --json

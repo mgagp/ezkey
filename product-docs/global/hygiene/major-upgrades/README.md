@@ -7,8 +7,9 @@ not be forgotten.
 
 Inspired by SOC 2–style **traceable registers**: a versioned list of what we run, when we last
 reviewed it, and what we decided. Proportionate — nothing in this lane blocks CI or merges.
-Readable view of the register is the (upcoming) monthly review issue; there is no committed
-dashboard and no generated index.
+Readable view of the register is the standing monthly hygiene issue opened/updated by
+[`.github/workflows/endoflife-check.yml`](../../../../.github/workflows/endoflife-check.yml);
+there is no committed dashboard and no generated index.
 
 ## What counts as a major upgrade
 
@@ -70,7 +71,7 @@ forgotten.
 `target` may also be `follow:<id>` (for example `follow:react-native`) when the component must
 move with another register entry rather than under the LTS-age rule alone.
 
-## Signal rules (for the upcoming monthly check)
+## Signal rules (for the monthly endoflife.date check)
 
 Default warning window: **6 months** before end of support (`warn_months`, overridable per entry;
 React Native uses `3`).
@@ -130,9 +131,11 @@ Floor today: **>=3.12** (next raise to 3.13 on 2027-04-02, then 3.14 on 2028-04-
 are already ≥3.12 (latest Ubuntu LTS **26.04** ships 3.14; Ubuntu 24.04, RHEL 10, Debian 13,
 Fedora, Homebrew, Docker `python:3`); `click` 8.5 / `requests` 2.34 already need ≥3.10 so the old
 `>=3.8` was false; a 3-year SPEC 0 window would force 3.13 and exclude the default `python3` of
-**RHEL 10 (3.12)** and of **Ubuntu 24.04**, still very widespread. The monthly check (future PR)
-will flag: computed floor > `current`, CI latest lagging, and `python_requires` / CI floor drift
-vs the registry.
+**RHEL 10 (3.12)** and of **Ubuntu 24.04**, still very widespread. The monthly
+[endoflife-check](../../../../.github/workflows/endoflife-check.yml) workflow flags register
+cycles within 90 days of EOL (or already EOL) and source/`eol` drift; Python floor-raise
+scheduling stays a quarterly human judgment (computed floor > `current`, CI latest lagging,
+`python_requires` / CI floor drift vs the registry).
 
 ## Test-plan floors (by family)
 
@@ -208,18 +211,25 @@ Dated campaign notes live next to this README (for example
 [`2026-10-19-quarterly-review.md`](2026-10-19-quarterly-review.md)). A short pointer may also
 appear in that Monday's Dependabot campaign note when the walk is folded into the full pass.
 
-## Upcoming — monthly endoflife.date check
+## Monthly endoflife.date check
 
-A **non-blocking** monthly GitHub Actions workflow (compare `registry.yaml` to endoflife.date,
-verify each `expect` still appears in its source files, update **one** standing issue) is
-**planned** and is **not present yet**. It will not join `ci-gate`, will not open PRs, and will
-not commit into the tree. See follow-up PR 3 in the major-upgrades rollout.
+**Non-blocking** GitHub Actions workflow:
+[`.github/workflows/endoflife-check.yml`](../../../../.github/workflows/endoflife-check.yml)
+(script [`scripts/endoflife-check.py`](../../../../scripts/endoflife-check.py)).
 
-When implemented, the drift check must verify **all** occurrences of an `expect` in a source
-file (examples today: HAProxy ×3 in `docker-compose.ha.yml`, Postgres ×2 per compose including
-`db-grants`, Temurin `25` ×8 across `docker/Dockerfile` stages). The standing issue stays
-idempotent via a hidden body marker `<!-- major-upgrades-review -->` plus an author filter
-(`app/github-actions`), so each run edits one issue rather than opening duplicates.
+- **Schedule:** first Monday of each month ~**14:30 UTC** (`workflow_dispatch` always runs).
+- **Permissions:** `contents: read`, `issues: write` only; SHA-pinned actions;
+  `persist-credentials: false`.
+- **Behavior:** compare `registry.yaml` to [endoflife.date](https://endoflife.date), verify each
+  `expect` still appears in its source files, open/update/close **one** standing issue labeled
+  `hygiene` when any `keep`/`plan` cycle is within **90 days** of EOL or already EOL.
+  Does **not** join `ci-gate`, open PRs, or commit into the tree.
+- **Idempotency:** hidden body marker `<!-- major-upgrades-review -->` plus author filter
+  (`app/github-actions`) so each run edits one issue rather than opening duplicates.
+- **Slug aliases:** registry `openjdk` → API `temurin` (Eclipse Temurin); `alpine` →
+  `alpine-linux`.
+- **Decision:** shipped 2026-10-19 (Marc hygiene-cadence approval) — replace the former
+  “upcoming / not present yet” placeholder.
 
 ## Related
 

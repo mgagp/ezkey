@@ -175,7 +175,18 @@ CodeQL runs on every PR and on `main` (advanced setup:
 
 ### Triage cadence
 
-- **Weekly** triage: **Fred proposes, Christophe decides and executes**.
+- **Weekly** triage at **Monday 10:15 ET**: **Fred proposes, Christophe decides and
+  executes**. (**2026-10-19:** moved from 09:17 ET so the pass does not collide with
+  Dependabot curated Monday full at 09:14 ET — see
+  [`../product-docs/global/hygiene/README.md`](../product-docs/global/hygiene/README.md)
+  § *Cadence & automation*.)
+- **Same Monday slot — remediation budget:** remediate **up to 3 real alerts per week**
+  (severity first, then nearest SLA deadline); **one fix PR per alert** via cloud agent.
+  Security/crypto fixes need **Christophe's** review; behavior changes need **Marc's** go;
+  **no deploy**. (**2026-10-19**, Marc — triage without a bounded fix budget leaves the open
+  stock growing.)
+- **Weekday light:** check for **new high/critical** alerts without waiting for Monday
+  (same immediate-trigger table below).
 - Fred (hygiene bot) runs the weekly pass and proposes dispositions; Christophe
   (security bot) decides and executes dismissals with the read-write code-scanning
   token. Each dismissal carries a GitHub reason (false positive, used in tests,

@@ -48,6 +48,25 @@ build gate. See root [`AGENTS.md`](../AGENTS.md) § Java doctor-curated.
 
 Config: [`config/java-doctor/`](../config/java-doctor/). Outputs: `logs/java-doctor/` (gitignored).
 
+## End-of-life check (major-upgrades register)
+
+Monthly non-blocking check of
+[`product-docs/global/hygiene/major-upgrades/registry.yaml`](../product-docs/global/hygiene/major-upgrades/registry.yaml)
+against [endoflife.date](https://endoflife.date). Driven by
+[`.github/workflows/endoflife-check.yml`](../.github/workflows/endoflife-check.yml).
+
+```bash
+pip install pyyaml   # once, if needed
+python3 scripts/endoflife-check.py
+python3 scripts/endoflife-check.py --json
+# GITHUB_TOKEN + GITHUB_REPOSITORY required for issue sync:
+python3 scripts/endoflife-check.py --update-issue
+```
+
+Exit **0** when the check completes (findings open/update a standing `hygiene` issue — not a CI
+failure). See [`product-docs/global/hygiene/README.md`](../product-docs/global/hygiene/README.md)
+§ *Cadence & automation*.
+
 ## Security pentest curated (runtime hygiene)
 
 Keyword: **`security-pentest-curated`**. Local-first bounded runtime campaign runner for
