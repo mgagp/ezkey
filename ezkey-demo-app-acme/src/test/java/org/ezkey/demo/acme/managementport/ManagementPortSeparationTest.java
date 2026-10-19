@@ -4,7 +4,7 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * Test: ManagementPortSeparationIT
+ * Test: ManagementPortSeparationTest
  * Description: Actuator health on management port only (404 on business port) for demo-app-acme.
  */
 
@@ -41,7 +41,7 @@ import org.springframework.test.context.TestPropertySource;
       "javamelody.enabled=false",
       "javamelody.management-endpoint-monitoring-enabled=false"
     })
-class ManagementPortSeparationIT {
+class ManagementPortSeparationTest {
 
   @LocalServerPort private int businessPort;
 

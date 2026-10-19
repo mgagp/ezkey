@@ -4,7 +4,7 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * Test: ManagementPortSeparationIT
+ * Test: ManagementPortSeparationTest
  * Description: Dual-port Actuator + JavaMelody separation for Integration API (minimal security).
  */
 
@@ -44,7 +44,7 @@ import org.springframework.test.context.TestPropertySource;
  * {@code permitAll} covers {@code /actuator/**}.
  */
 @SpringBootTest(
-    classes = ManagementPortSeparationIT.TestApp.class,
+    classes = ManagementPortSeparationTest.TestApp.class,
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(
     properties = {
@@ -62,7 +62,7 @@ import org.springframework.test.context.TestPropertySource;
           + "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration,"
           + "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration"
     })
-class ManagementPortSeparationIT {
+class ManagementPortSeparationTest {
 
   @LocalServerPort private int businessPort;
 
