@@ -189,7 +189,7 @@ Next steps (manual / existing scripts — not run by bootstrap-host.sh):
   2. Copy lightsail layout / images (declared target — no silent SSH default; #812):
        ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh ${export_target_flag} --dry-run
        # then without --dry-run, optionally --sync-operator-files / --clean-start
-       # community --sync-operator-files installs Caddyfile.ezkey-online as remote Caddyfile
+       # community --sync-operator-files installs Caddyfile.ezkey-online (compose bind basename)
   3. Origin CA + Cloudflare DNS for ezkey.online: human OK only (not automated here).
   See docs/lightsail/community-host.md
 EOF

@@ -94,8 +94,13 @@ jobs:
               - 'ezkey-pam/**'
             lightsail:
               - 'scripts/lightsail/**'
+              - 'scripts/cloudflare/deploy-admin-ui-production.sh'
+              - 'scripts/cloudflare/deploy-admin-ui-preview.sh'
+              - 'scripts/ops/verify-javamelody-non-exposure.sh'
+              - 'scripts/ops/verify-javamelody-non-exposure.test.sh'
               - 'experimental-hybrid/scripts/export-backend-images-to-lightsail.sh'
               - 'experimental-hybrid/scripts/full-exp-environment-upgrade.sh'
+              - 'experimental-hybrid/lightsail/docker-compose.yml'
               - 'docs/lightsail/**'
 
       # Manual runs must exercise every suite; path filters alone would skip all
@@ -365,6 +370,9 @@ jobs:
 
       - name: Lightsail target-aware + delete guards (fake aws)
         run: ./scripts/lightsail/target-aware.test.sh
+
+      - name: JavaMelody non-exposure business-port acceptance (fake curl)
+        run: ./scripts/ops/verify-javamelody-non-exposure.test.sh
 
   # Single required-check candidate. Skipped path jobs count as success for the gate;
   # failure or cancellation of any needed job fails the gate.

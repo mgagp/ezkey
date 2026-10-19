@@ -250,6 +250,35 @@ looks_like_javamelody_report() {
   grep -qiE 'javamelody|Execute the garbage collector|Monitoring on' "$body_file" 2>/dev/null
 }
 
+# Classify a business-port /monitoring probe (#863 B2 / Edgar):
+#   ok            — 401, 403, or 404 without a JavaMelody body (not exposed)
+#   exposed       — HTTP 200, or any status whose body looks like a JM report
+#   inconclusive  — everything else (000, 3xx, 5xx, 204, …) — probe did not verify
+business_port_probe_classify() {
+  local code="$1"
+  local body_file="$2"
+  if looks_like_javamelody_report "$body_file"; then
+    printf '%s\n' "exposed"
+    return 0
+  fi
+  if [[ "$code" == "200" ]]; then
+    printf '%s\n' "exposed"
+    return 0
+  fi
+  if [[ "$code" == "401" || "$code" == "403" || "$code" == "404" ]]; then
+    printf '%s\n' "ok"
+    return 0
+  fi
+  printf '%s\n' "inconclusive"
+}
+
+# True when classify == ok (kept for callers/tests that want a boolean).
+business_port_probe_is_ok() {
+  local code="$1"
+  local body_file="$2"
+  [[ "$(business_port_probe_classify "$code" "$body_file")" == "ok" ]]
+}
+
 # Build a curl --config file (0600) so Authorization/Cookie never appear in argv/ps.
 write_curl_config() {
   local cfg="$1"
@@ -344,27 +373,31 @@ probe_business_monitoring() {
   local url="${base%/}/monitoring"
   local body
   body="$(mktemp)"
-  local code
+  local code verdict
   code="$(http_get "$body" "$url" "$with_auth")"
-  if [[ "$code" == "401" || "$code" == "403" ]]; then
-    if looks_like_javamelody_report "$body"; then
-      echo "  FAIL ${code}  ${label} ${url} (status refused but body looks like JM report)" >&2
-      failures=$((failures + 1))
-    else
+  verdict="$(business_port_probe_classify "$code" "$body")"
+  case "${verdict}" in
+    ok)
       echo "  OK  ${code}  ${label} ${url}"
-    fi
-  elif [[ "$code" == "200" ]] && looks_like_javamelody_report "$body"; then
-    echo "  FAIL ${code}  ${label} ${url} (JavaMelody report on business port — blocking)" >&2
-    failures=$((failures + 1))
-  else
-    echo "  FAIL ${code}  ${label} ${url} (expected 401 or 403)" >&2
-    failures=$((failures + 1))
-  fi
+      ;;
+    exposed)
+      if looks_like_javamelody_report "$body"; then
+        echo "  FAIL ${code}  ${label} ${url} (JavaMelody report on business port — blocking)" >&2
+      else
+        echo "  FAIL ${code}  ${label} ${url} (HTTP ${code} on business-port /monitoring — blocking)" >&2
+      fi
+      failures=$((failures + 1))
+      ;;
+    *)
+      echo "  FAIL ${code}  ${label} ${url} (probe inconclusive — expected 401/403/404 without JM body)" >&2
+      failures=$((failures + 1))
+      ;;
+  esac
   rm -f "$body"
 }
 
 if [[ -n "$CHECK_BUSINESS" ]]; then
-  echo "→ business-port /monitoring (C2): expect 401 or 403; JM report HTML is blocking"
+  echo "→ business-port /monitoring (C2): 401/403/404 = not exposed; 200 or JM HTML = exposed; other codes = inconclusive"
   if [[ -n "$VIA_CADDY" ]]; then
     echo "  (via docker exec ${VIA_CADDY} — Docker DNS for admin-api/auth-api/integration-api)"
     if ! docker inspect "$VIA_CADDY" >/dev/null 2>&1; then

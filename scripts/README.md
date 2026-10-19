@@ -133,7 +133,7 @@ export AWS_PROFILE=ezkey-lightsail
 ./scripts/lightsail/delete-instance.sh --help
 ```
 
-App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with **`--target community`** — no silent SSH host default (#812). Community `--sync-operator-files` installs `Caddyfile.ezkey-online` as remote `Caddyfile`. Do not put community-only secrets or ezkey.online-only DNS checklists into the public compose tree.
+App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with **`--target community`** — no silent SSH host default (#812). Community `--sync-operator-files` installs `Caddyfile.ezkey-online` under that same remote basename (compose bind mount — #863). Do not put community-only secrets or ezkey.online-only DNS checklists into the public compose tree.
 
 ## Ops — Docker log hygiene (host-local)
 

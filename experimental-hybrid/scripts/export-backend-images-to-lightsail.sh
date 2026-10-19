@@ -3,17 +3,18 @@
 # Export Ezkey backend images (docker save), copy to Lightsail (scp), docker load on the VM.
 #
 # SSH host: no silent default (#812). Pass --target community or set LIGHTSAIL_SSH_HOST.
-#   --target community  →  ezkey-online  (sync uses Caddyfile.ezkey-online → remote Caddyfile)
+#   --target community  →  ezkey-online  (sync uses compose bind basename, e.g. Caddyfile.ezkey-online)
 #
 # Prerequisites: built images (skipped in --dry-run); ssh/scp to the resolved host.
 #
 # With --clean-start, syncs lightsail operator files to the VM then runs clean-start.sh (destructive).
 # With --sync-operator-files, copies docker-compose.yml, docker-compose.javamelody.yml (when present),
-# the target-aware Caddyfile, and clean-start.sh to the VM only (no clean-start) so Caddy and Compose
-# stay aligned with the repo; preserves volumes/DB. Also syncs docker/javamelody/ for the collector.
-# With --remote-up, after load (and after --sync-operator-files if set), runs docker compose up -d on
-# the VM so migration + backends + Caddy pick up the loaded images (no volume wipe).
-# Do not combine --clean-start with --sync-operator-files or --remote-up (incompatible; see script check).
+# the target-aware Caddyfile (remote name = compose ./…:/etc/caddy/Caddyfile bind — #863), and
+# clean-start.sh to the VM only (no clean-start) so Caddy and Compose stay aligned with the repo;
+# preserves volumes/DB. Also syncs docker/javamelody/ for the collector.
+# With --remote-up, after load (and after --sync-operator-files if set), validates bind-mount sources
+# on the VM then runs docker compose up -d so migration + backends + Caddy pick up the loaded images
+# (no volume wipe). Do not combine --clean-start with --sync-operator-files or --remote-up.
 # Override remote path with LIGHTSAIL_REMOTE_DIR if needed.
 #
 # Usage (from repository root):
@@ -57,18 +58,21 @@ Usage (from repository root):
   LIGHTSAIL_SSH_HOST=ezkey-online ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh [options]
 
 SSH target (required — no silent default; #812):
-  --target community   SSH Host ${LIGHTSAIL_SSH_HOST_COMMUNITY}; sync uses Caddyfile.ezkey-online
+  --target community   SSH Host ${LIGHTSAIL_SSH_HOST_COMMUNITY}; sync Caddyfile basename from compose
   or set LIGHTSAIL_SSH_HOST explicitly (known aliases infer target for Caddyfile sync)
 
 Options:
   --apis-only            Export only admin-api, auth-api, integration-api (no migration image).
   --include-demo-acme    Also export ezkey-demo-app-acme (after API tars; build image first).
   --sync-operator-files  After load, scp docker-compose.yml, docker-compose.javamelody.yml (if present),
-                         target-aware Caddyfile, clean-start.sh + host mounts including scripts/ops/
-                         and docker/javamelody/ (collector build context). No volume wipe.
-  --remote-up            After load/sync, on the VM: docker compose up -d (rolling apply; DB preserved).
-                         With --sync-operator-files: sha256-verify Caddyfile + force-recreate caddy
-                         (bind mount; plain up -d does not reload Caddy).
+                         target-aware Caddyfile (remote name = compose bind basename, #863),
+                         clean-start.sh + host mounts including scripts/ops/ and docker/javamelody/.
+                         No volume wipe. --dry-run reports sync/compose Caddyfile alignment.
+  --remote-up            After load/sync, on the VM: bind-mount preflight then docker compose up -d
+                         (rolling apply; DB preserved). Fails before up if a bind source is missing
+                         or the wrong type (file vs directory) — #863.
+                         With --sync-operator-files: sha256-verify the mounted Caddyfile + force-recreate
+                         caddy (bind mount; plain up -d does not reload Caddy).
                          JavaMelody: EZKEY_ENABLE_JAVA_MELODY=true keeps/starts the collector overlay.
                          EZKEY_DISABLE_JAVA_MELODY=true intentionally removes it (--remove-orphans).
                          Default rolling up does NOT pass --remove-orphans (intentional — Edgar).
@@ -168,15 +172,18 @@ sync_host_mounts() {
   run scp "${REPO_ROOT}/docker/javamelody/"* "${SSH_HOST}:${REMOTE_REPO_ROOT}/docker/javamelody/"
 }
 
-# Sync docker-compose.yml, optional javamelody overlay, target-aware Caddyfile → remote Caddyfile,
-# and clean-start.sh. Community sync uses Caddyfile.ezkey-online (#812).
+# Sync docker-compose.yml, optional javamelody overlay, target-aware Caddyfile (remote basename =
+# compose ./…:/etc/caddy/Caddyfile bind — #863), and clean-start.sh. Community (#812).
 sync_operator_files() {
   local label="$1"
-  local caddy_src
-  caddy_src="$(lightsail_caddyfile_source_for_sync "${LIGHTSAIL_LOCAL_DIR}")"
+  local caddy_src remote_caddy_basename compose_local
+  compose_local="${LIGHTSAIL_LOCAL_DIR}/docker-compose.yml"
+  caddy_src="$(lightsail_caddyfile_source_for_sync "${LIGHTSAIL_LOCAL_DIR}" "${compose_local}")"
+  remote_caddy_basename="$(basename "${caddy_src}")"
   echo ""
   echo "→ ${label} → ${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}"
-  echo "  target=${LIGHTSAIL_TARGET:-custom} Caddyfile source=$(basename "${caddy_src}")"
+  echo "  target=${LIGHTSAIL_TARGET:-custom} Caddyfile source=${remote_caddy_basename} → remote ${remote_caddy_basename}"
+  lightsail_assert_caddyfile_sync_matches_compose "${compose_local}" "${remote_caddy_basename}"
   run ssh "${SSH_HOST}" "mkdir -p ${LIGHTSAIL_REMOTE_DIR}"
   for f in docker-compose.yml clean-start.sh docker-compose.javamelody.yml; do
     src="${LIGHTSAIL_LOCAL_DIR}/${f}"
@@ -193,8 +200,72 @@ sync_operator_files() {
     echo "error: missing ${caddy_src}" >&2
     exit 1
   fi
-  run scp "${caddy_src}" "${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}/Caddyfile"
+  # Pre-scp: the compose-mounted basename must not be a directory (#863). Docker creates an
+  # empty root-owned dir when the bind source was missing; scp into it would nest the file
+  # silently or fail with Permission denied. Never auto-rmdir — Marc's go + manual sudo.
+  echo "→ refuse sync if remote ${remote_caddy_basename} is a directory (no auto-rmdir; #863)"
+  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; if [[ -d ${remote_caddy_basename} ]]; then echo \"error: remote ${LIGHTSAIL_REMOTE_DIR}/${remote_caddy_basename} is a directory (Docker empty-dir artifact when the bind-mount file was missing — #863)\" >&2; echo \"  Do not scp into it (the file would land inside the directory).\" >&2; echo \"  Manual remediation (requires Marc's go):\" >&2; echo \"    ssh ${SSH_HOST} 'sudo rmdir ${LIGHTSAIL_REMOTE_DIR}/${remote_caddy_basename}'\" >&2; echo \"  Then re-run --sync-operator-files.\" >&2; exit 1; fi"
+  # Remote name must match the compose bind mount host path (#863). Do not rename to Caddyfile.
+  run scp "${caddy_src}" "${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}/${remote_caddy_basename}"
+  # Legacy remote Caddyfile (pre-#863 sync name) may still exist as a regular file — leave it;
+  # compose mounts ${remote_caddy_basename}. Cleanup is manual with Marc's go if desired.
+  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; if [[ -f Caddyfile && '${remote_caddy_basename}' != 'Caddyfile' ]]; then echo 'note: legacy remote Caddyfile file left in place (compose mounts ${remote_caddy_basename})'; fi"
   sync_host_mounts
+}
+
+# Resolve a compose bind source path relative to the remote lightsail dir / repo root.
+# Prints an absolute-looking remote path suitable for test -e / test -f / test -d on the VM.
+lightsail_remote_path_for_bind_source() {
+  local src="$1"
+  case "${src}" in
+    ./*)
+      echo "${LIGHTSAIL_REMOTE_DIR}/${src#./}"
+      ;;
+    ../*)
+      # Compose lives under experimental-hybrid/lightsail; ../.. is repo root on the VM layout.
+      echo "${REMOTE_REPO_ROOT}/${src#../../}"
+      ;;
+    /*)
+      echo "${src}"
+      ;;
+    *)
+      echo "${LIGHTSAIL_REMOTE_DIR}/${src}"
+      ;;
+  esac
+}
+
+# Before remote compose up: every bind-mount source must exist and be the expected type (#863).
+# Uses the local compose file (already synced, or about to be used) — same contract as
+# `docker compose config` bind sources without requiring docker on the workstation for dry-run.
+# On a real run, checks run on the VM via ssh. Dry-run prints planned checks and still fails
+# locally if the Caddyfile sync name would not match the compose bind.
+verify_remote_bind_mounts() {
+  local compose_local="${LIGHTSAIL_LOCAL_DIR}/docker-compose.yml"
+  local kind src remote_path checks="" line
+  echo ""
+  echo "→ bind-mount preflight on ${SSH_HOST} (fail before compose up if missing/wrong type)"
+  # Re-check Caddyfile name alignment even when --sync-operator-files was omitted.
+  local caddy_bind
+  caddy_bind="$(lightsail_caddyfile_remote_basename_from_compose "${compose_local}")"
+  lightsail_assert_caddyfile_sync_matches_compose "${compose_local}" "${caddy_bind}"
+  while IFS=$'\t' read -r kind src; do
+    [[ -n "${src}" ]] || continue
+    remote_path="$(lightsail_remote_path_for_bind_source "${src}")"
+    echo "  expect ${kind}: ${src} → ${remote_path}"
+    if [[ "${kind}" == "file" ]]; then
+      checks+="if [[ ! -e ${remote_path} ]]; then echo \"error: bind source missing: ${remote_path} (compose ${src})\" >&2; exit 1; fi; "
+      checks+="if [[ -d ${remote_path} ]]; then echo \"error: bind source is a directory but compose expects a file: ${remote_path} (compose ${src}) — often Docker created an empty dir when the path was missing (#863)\" >&2; exit 1; fi; "
+      checks+="if [[ ! -f ${remote_path} ]]; then echo \"error: bind source is not a regular file: ${remote_path} (compose ${src})\" >&2; exit 1; fi; "
+    else
+      checks+="if [[ ! -e ${remote_path} ]]; then echo \"error: bind source missing: ${remote_path} (compose ${src})\" >&2; exit 1; fi; "
+      checks+="if [[ ! -d ${remote_path} ]]; then echo \"error: bind source is not a directory: ${remote_path} (compose ${src})\" >&2; exit 1; fi; "
+    fi
+  done < <(lightsail_list_compose_bind_mounts "${compose_local}")
+  if [[ -z "${checks}" ]]; then
+    echo "error: no bind mounts parsed from ${compose_local}" >&2
+    exit 1
+  fi
+  run ssh "${SSH_HOST}" "set -euo pipefail; ${checks} echo 'bind-mount preflight OK'"
 }
 
 echo "=========================================="
@@ -269,6 +340,10 @@ if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
   # Recreate containers so :latest and updated Compose take effect; Postgres keeps postgres-data.
   # Caddyfile is a bind mount — up -d alone does not reload caddy when only the file changed.
   #
+  # Bind-mount preflight (#863): fail before any restart if a host path is missing or the wrong
+  # type (Docker would otherwise create an empty directory for a missing file bind).
+  verify_remote_bind_mounts
+  #
   # JavaMelody (#846 / Edgar): default rolling up does NOT pass --remove-orphans.
   # Guard so a plain base-only up cannot leave APIs without JM env while the collector
   # container still runs (or accidentally tear it down if --remove-orphans is restored):
@@ -316,9 +391,10 @@ if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
   run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && ${remote_compose_cmd} up -d ${remove_orphans}"
   if [[ -n "$CADDY_SRC_FOR_VERIFY" ]]; then
     local_sha="$(sha256sum "${CADDY_SRC_FOR_VERIFY}" | awk '{print $1}')"
+    remote_caddy_basename="$(basename "${CADDY_SRC_FOR_VERIFY}")"
     echo ""
-    echo "→ verify remote Caddyfile sha256=${local_sha} and force-recreate caddy (bind-mount)"
-    run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; remote_sha=\$(sha256sum Caddyfile | awk '{print \$1}'); if [[ \"\${remote_sha}\" != '${local_sha}' ]]; then echo \"error: remote Caddyfile sha256=\${remote_sha} != local ${local_sha}\" >&2; exit 1; fi; ${remote_compose_cmd} up -d --no-deps --force-recreate caddy"
+    echo "→ verify remote ${remote_caddy_basename} sha256=${local_sha} and force-recreate caddy (bind-mount)"
+    run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; if [[ -d ${remote_caddy_basename} ]]; then echo \"error: ${remote_caddy_basename} is a directory (Docker empty-dir artifact); expected a file (#863)\" >&2; exit 1; fi; remote_sha=\$(sha256sum ${remote_caddy_basename} | awk '{print \$1}'); if [[ \"\${remote_sha}\" != '${local_sha}' ]]; then echo \"error: remote ${remote_caddy_basename} sha256=\${remote_sha} != local ${local_sha}\" >&2; exit 1; fi; ${remote_compose_cmd} up -d --no-deps --force-recreate caddy"
   fi
 fi
 

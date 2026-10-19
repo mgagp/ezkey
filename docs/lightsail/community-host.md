@@ -6,7 +6,7 @@ Short runbook for creating a **NEW** Amazon Lightsail VM for the **ezkey.online*
 
 **Automation style:** AWS CLI only (no Terraform, no CloudFormation), thin Bash under [`scripts/lightsail/`](../../scripts/lightsail/), Git Bash friendly, dry-run by default for create / delete / ports.
 
-**SSH target (#812):** deploy/bootstrap scripts never silent-default to a bare Host alias. Pass `--target community` (→ `ezkey-online`) or set `LIGHTSAIL_SSH_HOST` explicitly; community `--sync-operator-files` installs `Caddyfile.ezkey-online` as remote `Caddyfile`.
+**SSH target (#812):** deploy/bootstrap scripts never silent-default to a bare Host alias. Pass `--target community` (→ `ezkey-online`) or set `LIGHTSAIL_SSH_HOST` explicitly; community `--sync-operator-files` installs `Caddyfile.ezkey-online` under that same remote basename (compose bind mount — #863).
 
 **Public cutover context (do not invent product language):** publish repositioned **ezkey.org** first; then community host on **ezkey.online**.
 
@@ -97,7 +97,7 @@ Community Caddy site blocks: [`experimental-hybrid/lightsail/Caddyfile.ezkey-onl
 Do these **after** VM create → ports → Docker bootstrap (below). No secrets in git; Origin CA / DNS / Pages stay human OK.
 
 1. **Hostnames** — use the table above (Caddy + DNS + Origin CA SANs must match).
-2. **Community Caddyfile on the VM** — Compose bind-mounts `./Caddyfile`. With `--target community`, [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) `--sync-operator-files` installs `Caddyfile.ezkey-online` as remote `Caddyfile` (#812). Because the file is bind-mounted, plain `docker compose up -d` does **not** recreate caddy — use `--sync-operator-files --remote-up` (sha256 verify + `force-recreate caddy`) or recreate caddy manually after a sync-only pass:
+2. **Community Caddyfile on the VM** — Compose bind-mounts `./Caddyfile.ezkey-online`. With `--target community`, [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) `--sync-operator-files` installs that file under the **same remote basename** as the compose bind (not a renamed remote `Caddyfile` — #812 / #863). Because the file is bind-mounted, plain `docker compose up -d` does **not** recreate caddy — use `--sync-operator-files --remote-up` (bind-mount preflight + sha256 verify + `force-recreate caddy`) or recreate caddy manually after a sync-only pass:
    ```bash
    ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh \
      --target community --sync-operator-files --remote-up
@@ -192,7 +192,7 @@ Canon overlay: [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail
 # From workstation: sync compose + community Caddyfile, recreate demo + caddy
 ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh \
   --target community --sync-operator-files --apis-only
-# (or manual scp of compose + Caddyfile.ezkey-online → remote Caddyfile)
+# (or manual scp of compose + Caddyfile.ezkey-online under that same remote basename)
 ssh ezkey-online 'cd ~/ezkey/experimental-hybrid/lightsail && \
   docker compose up -d --no-deps --force-recreate demo-app-acme caddy'
 ```
@@ -293,7 +293,8 @@ App compose stays under `experimental-hybrid/lightsail/`. Push images with the *
 ```bash
 ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --dry-run
 # then real run; optional --include-demo-acme / --sync-operator-files / --clean-start
-# --sync-operator-files with --target community installs Caddyfile.ezkey-online as remote Caddyfile
+# --sync-operator-files with --target community installs Caddyfile.ezkey-online
+# under that same remote basename (compose bind mount)
 ```
 
 Full Phase 0–3 detail: [`experimental-hybrid/DEPLOYMENT_PLAYBOOK.md`](../../experimental-hybrid/DEPLOYMENT_PLAYBOOK.md).
@@ -432,9 +433,11 @@ Collector image/version is aligned with the API starter (**2.9.0**, WAR sha256 p
 - Collector bind: `127.0.0.1:8088:8080` only
 - Monitoring reports on management ports (`9081` / `8085` / `7081`); Caddy denies `/monitoring` and
   `/actuator` (and nested / case / `//` / `;` variants) on all public API + demo-acme hostnames
-- Business-port `/monitoring` must stay refused even with a valid admin bearer/cookie (401 or
-  403 — both acceptable; do not harmonize). A JavaMelody HTML report on a business port is
-  blocking.
+- Business-port `/monitoring` must stay non-exposed: only **401**, **403**, or **404**
+  without a JavaMelody body count as OK (do not harmonize). **HTTP 200** or any response
+  whose body looks like JavaMelody is an exposure failure. Any other code (`000`, 3xx,
+  5xx, 204, …) is **probe inconclusive** and fails
+  (`verify-javamelody-non-exposure.sh --business-ports`).
 - Init parameters are injected via `SPRING_APPLICATION_JSON` with hyphenated JavaMelody Parameter
   codes (`system-actions-enabled`, `http-transform-pattern`, …). Plain
   `JAVAMELODY_INIT_PARAMETERS_SYSTEM_ACTIONS_ENABLED` env vars bind underscore map keys that
@@ -528,12 +531,16 @@ exists is refused by the export guard.
 
 Short operator checklist verified against repo scripts/compose (not live VM observation):
 
-1. **Caddyfile sync / SSH target** — deploy scripts require `--target community` or
-   `LIGHTSAIL_SSH_HOST` (no silent Host default — #812). With `--target community`,
-   `--sync-operator-files` / `--clean-start` install `Caddyfile.ezkey-online` as remote
-   `Caddyfile`. After `--sync-operator-files --remote-up`, the script verifies remote
-   Caddyfile sha256 and `force-recreate`s caddy (bind mount; plain `up -d` does not reload
-   Caddy).
+1. **Caddyfile sync name must match the compose bind mount (#863)** — Compose mounts
+   `./Caddyfile.ezkey-online`; `--sync-operator-files` must scp to that same remote
+   basename and verify sha256 on **that** file. Renaming to remote `Caddyfile` while
+   compose still mounts `./Caddyfile.ezkey-online` makes Docker create an empty
+   root-owned directory, leaves caddy `Created`, and surfaces as Cloudflare **521** on
+   all API hosts. `--dry-run` and bind-mount preflight (before remote `up`) must catch
+   this. Deploy scripts still require `--target community` or `LIGHTSAIL_SSH_HOST`
+   (no silent Host default — #812). After `--sync-operator-files --remote-up`, the
+   script runs bind-mount preflight, verifies the mounted Caddyfile sha256, and
+   `force-recreate`s caddy (plain `up -d` does not reload Caddy).
 2. **Grants container** — Compose service `db-grants` (`container_name: ezkey-exp-db-grants` in
    [`docker-compose.yml`](../../experimental-hybrid/lightsail/docker-compose.yml)) applies
    [`scripts/db/apply-grants.sql`](../../scripts/db/apply-grants.sql) after migration. APIs depend on
