@@ -25,6 +25,7 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.auth.AuthAttemptExpiredException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.IntegrationSigningUnavailableException;
 import org.ezkey.signature.SignatureService;
@@ -80,7 +81,7 @@ class AuthAttemptRespondServiceTest {
     when(signatureService.signIntegrationPayload(any(), eq(INTEGRATION_PRIVATE_KEY)))
         .thenReturn("signed-result-b64");
     when(authAttemptRepository.updateStatusIfCurrent(
-            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.ACCEPTED)))
+            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.ACCEPTED), any()))
         .thenReturn(1);
 
     AuthAttemptRespondResponse response = respondService.respond(approveRequest());
@@ -97,7 +98,8 @@ class AuthAttemptRespondServiceTest {
             "proof-token-xyz", 42, AuthenticationResult.APPROVED, "Auth attempt completed");
     assertThat(payloadCaptor.getValue()).isEqualTo(expectedPayload);
     verify(authAttemptRepository)
-        .updateStatusIfCurrent(42, AuthAttemptStatus.READ, AuthAttemptStatus.ACCEPTED);
+        .updateStatusIfCurrent(
+            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.ACCEPTED), any());
     verify(authAttemptRepository, never()).save(any());
   }
 
@@ -222,7 +224,7 @@ class AuthAttemptRespondServiceTest {
         .thenReturn(Optional.empty());
     when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
     when(authAttemptRepository.updateStatusIfCurrent(
-            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.ACCEPTED)))
+            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.ACCEPTED), any()))
         .thenReturn(1);
 
     assertThatThrownBy(() -> respondService.respond(approveRequest()))
@@ -263,13 +265,59 @@ class AuthAttemptRespondServiceTest {
         .thenReturn(Optional.empty());
     when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
     when(authAttemptRepository.updateStatusIfCurrent(
-            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.ACCEPTED)))
+            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.ACCEPTED), any()))
         .thenReturn(0);
+    AuthAttempt cancelled = readAttempt();
+    cancelled.setAuthAttemptStatus(AuthAttemptStatus.EXPIRED);
+    when(authAttemptRepository.findById(42))
+        .thenReturn(Optional.of(attempt))
+        .thenReturn(Optional.of(cancelled));
 
     assertThatThrownBy(() -> respondService.respond(approveRequest()))
         .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessageContaining("no longer READ");
     verify(authAttemptRepository, never()).save(any());
+    verify(enrollmentRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("Respond after expiresAt → AuthAttemptExpiredException (#895)")
+  void respond_afterExpiresAt_raisesExpired() {
+    AuthAttempt attempt = readAttempt();
+    attempt.setExpiresAt(OffsetDateTime.now().minusSeconds(1));
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+        .isInstanceOf(AuthAttemptExpiredException.class)
+        .hasMessageContaining("expired");
+    verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
+    verify(signatureService, never()).signIntegrationPayload(any(), any());
+  }
+
+  @Test
+  @DisplayName("Conditional UPDATE 0 rows because expiresAt passed → AuthAttemptExpiredException")
+  void respond_updateRefusedByExpiresAt_raisesExpired() {
+    AuthAttempt attempt = readAttempt();
+    Enrollment enrollment = enrollmentWithKeys();
+
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
+    when(authAttemptRepository.updateStatusIfCurrent(
+            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.ACCEPTED), any()))
+        .thenReturn(0);
+    AuthAttempt expiredStillRead = readAttempt();
+    expiredStillRead.setExpiresAt(OffsetDateTime.now().minusSeconds(1));
+    when(authAttemptRepository.findById(42))
+        .thenReturn(Optional.of(attempt))
+        .thenReturn(Optional.of(expiredStillRead));
+
+    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+        .isInstanceOf(AuthAttemptExpiredException.class);
     verify(enrollmentRepository, never()).save(any());
   }
 

@@ -10,6 +10,7 @@
 
 package org.ezkey.authattempt.service;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
@@ -140,6 +141,12 @@ public class AuthAttemptService {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthAttemptService.class);
 
+  /** Minimum accepted per-request {@code ttlSeconds} (#895). Below this → 400. */
+  static final int REQUEST_TTL_MIN_SECONDS = 15;
+
+  /** Hard ceiling for per-request {@code ttlSeconds} (#895). Above this → clamped. */
+  static final int REQUEST_TTL_MAX_SECONDS = 120;
+
   private final AuthAttemptRepository authAttemptRepository;
   private final EnrollmentRepository enrollmentRepository;
   private final SignatureService signatureService;
@@ -178,6 +185,26 @@ public class AuthAttemptService {
     this.pendingService = pendingService;
     this.respondService = respondService;
     this.waitService = waitService;
+  }
+
+  /**
+   * Clamps a configured default TTL above the hard ceiling at startup (#895 Patrick M2).
+   *
+   * <p>Property validation still allows {@code 30–600}; applied create TTL is always {@code
+   * min(request|default, 120)}. When the configured default exceeds 120, it is reduced to 120 with
+   * a WARN so operators notice the effective ceiling.
+   */
+  @PostConstruct
+  void clampConfiguredDefaultTtlIfAboveHardCeiling() {
+    int configured = ezkeyCoreProperties.getAuthAttempt().getTtlSeconds();
+    if (configured > REQUEST_TTL_MAX_SECONDS) {
+      logger.warn(
+          "ezkey.core.auth-attempt.ttl-seconds={} exceeds hard ceiling {}; clamping default to {}",
+          configured,
+          REQUEST_TTL_MAX_SECONDS,
+          REQUEST_TTL_MAX_SECONDS);
+      ezkeyCoreProperties.getAuthAttempt().setTtlSeconds(REQUEST_TTL_MAX_SECONDS);
+    }
   }
 
   /**
@@ -435,7 +462,7 @@ public class AuthAttemptService {
     authAttempt.setContextMessage(authRequest.getContextMessage());
     authAttempt.setWaiterSecretHash(authRequest.getWaiterSecretHash());
 
-    int ttlSeconds = ezkeyCoreProperties.getAuthAttempt().getTtlSeconds();
+    int ttlSeconds = resolveAppliedTtlSeconds(authRequest.getTtlSeconds());
     authAttempt.setCreatedAt(OffsetDateTime.now());
     authAttempt.setExpiresAt(OffsetDateTime.now().plusSeconds(ttlSeconds));
 
@@ -448,12 +475,39 @@ public class AuthAttemptService {
     response.setAuthAttemptChallenge(
         savedAuthAttempt.getAuthAttemptChallenge()); // Include challenge if generated
     response.setCreatedAt(savedAuthAttempt.getCreatedAt()); // Required for FK to partitioned table
-    response.setTimeoutSeconds(ttlSeconds);
+    response.setTimeoutSeconds(ttlSeconds); // Applied TTL (request clamp or server default)
     response.setExpiresAt(savedAuthAttempt.getExpiresAt()); // Absolute expiration timestamp
     response.setContextTitle(savedAuthAttempt.getContextTitle());
     response.setContextMessage(savedAuthAttempt.getContextMessage());
 
     return response;
+  }
+
+  /**
+   * Resolves the applied attempt TTL for a create request (#895 Patrick M2).
+   *
+   * <p>Effective rule: {@code min(ttlSeconds ?? configuredDefault, 120)}.
+   *
+   * <ul>
+   *   <li>Absent → {@code min(ezkey.core.auth-attempt.ttl-seconds, 120)}
+   *   <li>{@code < 15} → {@link AuthAttemptCreateValidationException} (400)
+   *   <li>{@code > 120} → clamped to 120
+   * </ul>
+   *
+   * @param requestedTtlSeconds optional per-request TTL from the initiator
+   * @return applied TTL in seconds
+   * @throws AuthAttemptCreateValidationException when the requested TTL is below 15
+   */
+  int resolveAppliedTtlSeconds(Integer requestedTtlSeconds) {
+    if (requestedTtlSeconds != null && requestedTtlSeconds < REQUEST_TTL_MIN_SECONDS) {
+      throw new AuthAttemptCreateValidationException(
+          "ttlSeconds must be at least " + REQUEST_TTL_MIN_SECONDS);
+    }
+    int candidate =
+        requestedTtlSeconds != null
+            ? requestedTtlSeconds
+            : ezkeyCoreProperties.getAuthAttempt().getTtlSeconds();
+    return Math.min(candidate, REQUEST_TTL_MAX_SECONDS);
   }
 
   /**

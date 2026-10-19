@@ -20,6 +20,7 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.auth.AuthAttemptExpiredException;
 import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.IntegrationSigningUnavailableException;
@@ -202,10 +203,10 @@ public class AuthAttemptRespondService {
       throw new AuthAttemptStateConflictException(
           "Authentication attempt superseded by newer request");
     }
-    // Check if expired
+    // Check if expired (fail-closed: refuse at expiresAt, not only after)
     OffsetDateTime now = OffsetDateTime.now();
-    if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())) {
-      throw new AuthAttemptStateConflictException("Authentication attempt expired");
+    if (authAttempt.getExpiresAt() != null && !authAttempt.getExpiresAt().isAfter(now)) {
+      throw new AuthAttemptExpiredException("Authentication attempt expired");
     }
     return authAttempt;
   }
@@ -330,12 +331,14 @@ public class AuthAttemptRespondService {
   /**
    * Updates the authentication attempt status based on the user's decision.
    *
-   * <p>Uses a conditional {@code UPDATE … WHERE status = READ} so a concurrent cancel that already
-   * committed {@code EXPIRED} cannot be overwritten by approve/deny (#833 m1 re-review).
+   * <p>Uses a conditional {@code UPDATE … WHERE status = READ AND expiresAt > now} so a concurrent
+   * cancel that already committed {@code EXPIRED}, or a wall-clock expiry, cannot be overwritten by
+   * approve/deny (#833 m1, #895).
    *
    * @param authAttempt the authentication attempt to update
    * @param enrollment the enrollment (last-used timestamp on accept)
    * @param request the authentication response request
+   * @throws AuthAttemptExpiredException if the attempt expired between the pre-check and UPDATE
    * @throws AuthAttemptStateConflictException if the attempt is no longer READ (cancel won)
    */
   private void updateAttemptStatus(
@@ -344,10 +347,23 @@ public class AuthAttemptRespondService {
         Boolean.TRUE.equals(request.getAuthAttemptAccepted())
             ? AuthAttemptStatus.ACCEPTED
             : AuthAttemptStatus.REJECTED;
+    OffsetDateTime now = OffsetDateTime.now();
     int updated =
         authAttemptRepository.updateStatusIfCurrent(
-            authAttempt.getAuthAttemptId(), AuthAttemptStatus.READ, newStatus);
+            authAttempt.getAuthAttemptId(), AuthAttemptStatus.READ, newStatus, now);
     if (updated != 1) {
+      AuthAttempt latest =
+          authAttemptRepository
+              .findById(authAttempt.getAuthAttemptId())
+              .orElseThrow(
+                  () ->
+                      new AuthAttemptStateConflictException(
+                          "Cannot respond to authentication attempt: not found after update"));
+      OffsetDateTime recheckNow = OffsetDateTime.now();
+      if (latest.getExpiresAt() != null && !latest.getExpiresAt().isAfter(recheckNow)) {
+        throw new AuthAttemptExpiredException(
+            "Authentication attempt expired (conditional update refused)");
+      }
       throw new AuthAttemptStateConflictException(
           "Cannot respond to authentication attempt: status is no longer READ"
               + " (cancelled or already finalized)");

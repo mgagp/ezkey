@@ -62,12 +62,14 @@ public record AuthAttemptWaitResponseDto(
      *   <li><b>INVALID:</b> Authentication was invalid (wrong signature, challenge, etc.)
      *   <li><b>REJECTED:</b> User rejected the authentication request
      *   <li><b>ACCEPTED:</b> User accepted the authentication request
+     *   <li><b>EXPIRED:</b> Attempt cancelled, superseded, or past {@code expiresAt} while still
+     *       pending/read
      * </ul>
      */
     @Schema(
             description = "Calculated authentication status",
             example = "ACCEPTED",
-            allowableValues = {"PENDING", "READ", "INVALID", "REJECTED", "ACCEPTED"},
+            allowableValues = {"PENDING", "READ", "INVALID", "REJECTED", "ACCEPTED", "EXPIRED"},
             requiredMode = RequiredMode.REQUIRED)
         String status,
     /**

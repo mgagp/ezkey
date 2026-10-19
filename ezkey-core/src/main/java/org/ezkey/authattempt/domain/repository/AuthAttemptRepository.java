@@ -166,24 +166,28 @@ public interface AuthAttemptRepository
       @Param("now") java.time.OffsetDateTime now);
 
   /**
-   * Atomically updates status only when the attempt is still in {@code currentStatus}.
+   * Atomically updates status only when the attempt is still in {@code currentStatus} and has not
+   * passed {@code expiresAt}.
    *
    * <p>Used by respond to transition {@code READ → ACCEPTED/REJECTED} without a read-modify-write
-   * gap against cancel (#833 m1).
+   * gap against cancel (#833 m1) or wall-clock expiry (#895). The {@code expiresAt > :now} clause
+   * is fail-closed against TOCTOU between a Java pre-check and this UPDATE.
    *
    * @param authAttemptId the authorization attempt ID to update
    * @param currentStatus required current status (typically READ)
    * @param newStatus the new status to set
-   * @return the number of rows affected (1 if updated, 0 if status mismatched or missing)
+   * @param now server clock used for the expiry predicate
+   * @return the number of rows affected (1 if updated, 0 if status mismatched, expired, or missing)
    */
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
       "UPDATE AuthAttempt a SET a.authAttemptStatus = :newStatus WHERE a.authAttemptId ="
-          + " :authAttemptId AND a.authAttemptStatus = :currentStatus")
+          + " :authAttemptId AND a.authAttemptStatus = :currentStatus AND a.expiresAt > :now")
   int updateStatusIfCurrent(
       @Param("authAttemptId") Integer authAttemptId,
       @Param("currentStatus") AuthAttemptStatus currentStatus,
-      @Param("newStatus") AuthAttemptStatus newStatus);
+      @Param("newStatus") AuthAttemptStatus newStatus,
+      @Param("now") OffsetDateTime now);
 
   /**
    * Atomically marks an auth attempt {@code EXPIRED} only when it is still {@code PENDING} or

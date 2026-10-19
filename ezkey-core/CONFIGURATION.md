@@ -58,7 +58,7 @@ plus authentication attempt challenge configuration.
 | `ezkey.core.crypto.signature-algorithm` | `String` | `SHA256withRSA` | optionnel | Digital signature algorithm. |
 | `ezkey.core.crypto.minimum-key-size` | `int` | `2048` | optionnel | Minimum RSA key size for validation; keys smaller than this are rejected. |
 | `ezkey.core.auth-attempt.challenge-digits` | `int` | `2` | optionnel | Number of digits in the challenge code (range 1–6). |
-| `ezkey.core.auth-attempt.ttl-seconds` | `int` | `120` | optionnel | Auth attempt time-to-live in seconds (range 30–600). |
+| `ezkey.core.auth-attempt.ttl-seconds` | `int` | `120` | optionnel | Default auth attempt TTL when Integration create omits `ttlSeconds` (Bean Validation range **30–600**). **Applied** create TTL is always `min(request\|default, **120**)` (#895 Patrick M2). At startup a configured default **> 120** is clamped to **120** with a WARN. Per-request `ttlSeconds`: min **15**, hard clamp **120**; non-integer JSON rejected. |
 
 **Exemple minimal :**
 

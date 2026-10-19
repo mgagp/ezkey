@@ -13,6 +13,7 @@ import java.util.Set;
 import org.ezkey.audit.integrity.AuditChainHeartbeatEvaluation;
 import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
+import org.ezkey.exception.auth.AuthAttemptExpiredException;
 import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
@@ -183,7 +184,8 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
 
   /**
    * Unified 409 for respond not-found / PENDING / terminal (#844 Marc m1). Exception message is
-   * logged for server diagnosis; client receives a stable catalog detail only.
+   * logged for server diagnosis; client receives a stable catalog detail only. Wall-clock expiry
+   * uses {@link #handleAuthAttemptExpired} (#895).
    */
   @ExceptionHandler(AuthAttemptStateConflictException.class)
   public ResponseEntity<ProblemDetail> handleAuthAttemptStateConflict(
@@ -194,6 +196,22 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
         AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_STATE_CONFLICT,
         AuthApiProblemCatalog.TITLE_CONFLICT,
         AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT,
+        pathFrom(request));
+  }
+
+  /**
+   * 409 when respond arrives at or after {@code expiresAt} (#895). Typed separately from state
+   * conflict so clients can show an expired message.
+   */
+  @ExceptionHandler(AuthAttemptExpiredException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptExpired(
+      AuthAttemptExpiredException ex, WebRequest request) {
+    LOG.warn("Auth attempt expired: {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.CONFLICT,
+        AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_EXPIRED,
+        AuthApiProblemCatalog.TITLE_CONFLICT,
+        AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_EXPIRED,
         pathFrom(request));
   }
 

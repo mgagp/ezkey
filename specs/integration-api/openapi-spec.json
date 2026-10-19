@@ -32,7 +32,7 @@
           "Auth Attempts"
         ],
         "summary": "Create authentication attempt",
-        "description": "Creates a new MFA authentication attempt. The integration is derived from the API key.",
+        "description": "Creates a new MFA authentication attempt. The integration is derived from the API key. Optional ttlSeconds (min 15) overrides the server default; values above 120 are clamped. Response timeoutSeconds and expiresAt reflect the applied TTL (#895).",
         "operationId": "create",
         "requestBody": {
           "content": {
@@ -107,7 +107,7 @@
           "Auth Attempts"
         ],
         "summary": "Wait for device response",
-        "description": "Blocks until device responds or timeout elapses. Uses virtual threads for high concurrency.",
+        "description": "Blocks until device responds or timeout elapses. Uses virtual threads for high concurrency. Status may be EXPIRED (cancel, supersession, or clock expiry). Ownership is enforced: the API key may only wait on attempts for enrollments of its integration.",
         "operationId": "waitForResponse",
         "parameters": [
           {
@@ -149,6 +149,16 @@
         "responses": {
           "200": {
             "description": "Response received (or timeout reached with status still pending)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Auth attempt does not belong to this integration",
             "content": {
               "*/*": {
                 "schema": {
@@ -199,7 +209,7 @@
           "Auth Attempts"
         ],
         "summary": "Cancel authentication attempt",
-        "description": "Marks a pending or read authentication attempt as expired (cancelled).",
+        "description": "Marks a pending or read authentication attempt as EXPIRED (cancelled). There is no separate CANCELLED status — cancel and TTL expiry share EXPIRED. Ownership is enforced: the API key may only cancel attempts for enrollments of its integration.",
         "operationId": "cancel",
         "parameters": [
           {
@@ -216,7 +226,17 @@
         ],
         "responses": {
           "200": {
-            "description": "Auth attempt cancelled successfully",
+            "description": "Auth attempt cancelled successfully (status EXPIRED)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Auth attempt does not belong to this integration",
             "content": {
               "*/*": {
                 "schema": {
@@ -307,6 +327,13 @@
             "example": "Authorize payment batch #1497 to Acme Corp for $1,400",
             "maxLength": 2000,
             "minLength": 0
+          },
+          "ttlSeconds": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Optional TTL in seconds for this attempt. Minimum 15. Values above 120 are clamped to 120. When omitted, the server default applies (typically 120).",
+            "example": 75,
+            "minimum": 15
           }
         },
         "required": [
@@ -426,7 +453,8 @@
               "READ",
               "INVALID",
               "REJECTED",
-              "ACCEPTED"
+              "ACCEPTED",
+              "EXPIRED"
             ],
             "example": "ACCEPTED"
           },

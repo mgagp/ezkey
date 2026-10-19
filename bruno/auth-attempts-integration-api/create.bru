@@ -74,11 +74,12 @@ docs {
   - `enrollmentId` (optional): Direct enrollment ID — must belong to the API key's integration
   - `userIdentifier` (optional): Username/user ID for enrollment lookup within the API key's integration. Returns 400 if multiple active enrollments are found for that user.
   - `challengeRequested` (required): Whether to generate a numeric challenge code displayed to the user
+  - `ttlSeconds` (optional, #895): Per-request TTL. Min 15 (400 if lower, before user lookup). Values above 120 are clamped to 120. Absent → server default (typically 120).
   
   **Response (201 Created):**
   - `authAttemptId`: Use this ID for subsequent `/wait` and `/cancel` calls
   - `authAttemptChallenge`: Numeric challenge to display to the user (null if not requested)
-  - `timeoutSeconds`: Seconds until this attempt expires
+  - `timeoutSeconds`: Applied TTL in seconds (after clamp / default) — prefer this over wall-clock comparison
   - `expiresAt`: Absolute expiration timestamp (ISO-8601 with timezone)
   
   **Challenge Flow:**
