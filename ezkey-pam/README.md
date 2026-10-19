@@ -15,9 +15,13 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 
 1. Reads runtime settings from `/etc/security/pam_ezkey.conf` (written at container start).
 2. Creates an auth attempt (`POST /api/v1/auth-attempts`) using the Linux username as
-   `userIdentifier`, with `challengeRequested=false`.
-3. Waits for approve or reject (`GET /api/v1/auth-attempts/{id}/wait`).
-4. Grants SSH access when wait `status` is `ACCEPTED`.
+   `userIdentifier`, with `challengeRequested=false` and optional `ttlSeconds` equal to the
+   effective wait (servers that ignore the field remain compatible).
+3. Waits for approve or reject (`GET /api/v1/auth-attempts/{id}/wait?timeout=N`), aligning `N`
+   on the applied TTL duration (monotonic budget) — never on host clock vs server `expiresAt`.
+4. Grants SSH access when wait `status` is `ACCEPTED`. On any non-accepted exit after create,
+   best-effort `POST …/cancel` (failure is logged; PAM outcome unchanged). Cancel is not
+   guaranteed when the wait timeout is reached; the real bound is the applied TTL.
 
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
@@ -26,9 +30,23 @@ that owns the API key.
 
 On top of 2.1 slices 1–3 ([`STATUS.md`](STATUS.md) § M1):
 
-- **One attempt line** in `authpriv` / `/var/log/secure` per authenticate:
-  `pam_ezkey: attempt user=… authAttemptId=… result=… pam_code=… latency_ms=… lab_http=…`
-  (never secrets / proof / bodies). Debug chatter stays in `/var/log/ezkey-pam/` only.
+- **One attempt line** in `authpriv` / `/var/log/secure` per authenticate (stable format):
+
+  ```text
+  pam_ezkey: attempt user=… authAttemptId=… result=… pam_code=… latency_ms=… lab_http=… cancel=…
+  ```
+
+  - `result`: `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `UNAVAIL` \| …
+  - `cancel` (only these four literals — `EZKEY_CANCEL_*`):
+    | Value | Meaning |
+    |---|---|
+    | `ok` | Cancel HTTP 2xx |
+    | `fail` | Cancel transport error or non-2xx (except 409) |
+    | `skipped` | Cancel never attempted (SUCCESS / pre-create / no budget) |
+    | `final` | Cancel HTTP **409** already-final (possible late approve; **no** `pam_rc` change) |
+
+  Never secrets / proof / bodies. Debug chatter stays in `/var/log/ezkey-pam/` only.
+  Full field table: [`STATUS.md`](STATUS.md) § M1 observability.
 - **Conf credentials** (`integration_api_url`, `integration_key`, `secret_key`) only from
   the conf file; must be `root:root` with mode exactly `0600` or `0400` or the module
   returns `PAM_AUTHINFO_UNAVAIL`. No compiled-in URL default (empty URL → `UNAVAIL`).
@@ -130,14 +148,20 @@ ssh -p 2223 \
 | `integration_api_url` | *(required; no default)* | Integration API base URL |
 | `integration_key` | *(required)* | API integration key |
 | `secret_key` | *(required)* | API secret key |
-| `wait_timeout` | `90` | Seconds to wait for device approval |
+| `wait_timeout` | `90` | Seconds to wait for device approval (clamped **15–90**). Sent as create `ttlSeconds`; `/wait?timeout=` aligns on create response `timeoutSeconds` (PR-A) when present |
 | `wait_polling` | `2` | Wait poll interval |
-| `api_timeout` | `10` | Timeout for the create call |
-| `challenge_requested` | `false` | Two-digit number-matching; `true` shows code via SSH `pam_info` before wait |
+| `api_timeout` | `10` | Timeout for create/cancel calls (max 10) |
+| `challenge_requested` | `false` | Two-digit number-matching; `true` shows code via SSH `pam_prompt` before wait |
 | `lab_http` | `false` | Allow `http://` Integration API URL (Docker entrypoint sets `true`) |
 | `context_title` | `SSH login` | Title shown on the device |
 | `context_message` | *(generated)* | Message shown on the device |
 | `debug` | `false` | Extra filelog `/var/log/ezkey-pam/debug.{out,err}` (Docker lab entrypoint sets `true`) |
+
+**Default `wait_timeout` is 90 s** (`EZKEY_DEFAULT_WAIT_TIMEOUT` in `ezkey_config.h`). Override it via:
+
+- `pam.d` module argument `wait_timeout=N` (overrides conf),
+- `/etc/security/pam_ezkey.conf` key `wait_timeout=…`, or
+- Docker/lab env `EZKEY_WAIT_TIMEOUT` (applied only when `docker-entrypoint.sh` writes the conf — the `.so` does not read process ENV).
 
 **Docker entrypoint only** (not read by `pam_ezkey.so`): `EZKEY_INTEGRATION_API_URL`
 (legacy `EZKEY_M2M_API_URL`), `EZKEY_INTEGRATION_KEY`, `EZKEY_SECRET_KEY`,
@@ -145,7 +169,7 @@ ssh -p 2223 \
 optional `EZKEY_CONFIG_FILE` (path the entrypoint writes). The module ignores process
 ENV so `su`/`sudo` cannot redirect conf path, debug, or timeouts.
 
-PAM arguments (root-owned `pam.d`): `debug` and `conf=/path/to/file`.
+PAM arguments (root-owned `pam.d`): `debug`, `conf=/path/to/file`, and optional `wait_timeout=N`.
 
 **Stack note:** `PAM_AUTHINFO_UNAVAIL` is fail-closed inside the module. A host line
 marked `sufficient` or `[default=ignore]` can still make MFA fail-open — keep
@@ -171,6 +195,17 @@ Every authenticate emits **exactly one** `authpriv` line (see [`STATUS.md`](STAT
 docker exec ezkey-pam-ssh grep 'pam_ezkey: attempt ' /var/log/secure
 ```
 
+**Amazon Linux 2023 hosts:** authpriv lines go to **journald**, not `/var/log/secure`:
+
+```bash
+journalctl -t pam_ezkey
+# or
+journalctl -t pam_ezkey -u sshd --since '10 min ago'
+```
+
+Demo Docker images (Rocky / AL2023 SSH VMs) still use rsyslog → `/var/log/secure` because
+containers have no systemd journal.
+
 When `debug=true` (Docker lab default via entrypoint), the module also appends to root-owned
 files under `/var/log/ezkey-pam/` opened with `O_NOFOLLOW|O_CLOEXEC` mode `0600` — not `/tmp`
 (#818). Debug chatter does **not** go to syslog.
@@ -183,6 +218,26 @@ docker exec ezkey-pam-ssh tail -n 50 /var/log/secure
 
 Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth headers.
 
+## Runbook notes (Lightsail / host SSH)
+
+- **`LoginGraceTime` ≥ 120 s.** Demo `sshd_config` sets `LoginGraceTime 120`. The module’s
+  monotonic budget is 105 s; a lower grace time cuts the session before PAM can finish (often
+  with **no** attempt line). Keep host sshd grace ≥ 120 when using this module.
+- **Auth API `/pending` rate limit: 10/min** (`ezkey.rate-limit.pending.requests=10`,
+  `window-minutes=1`). Rapid SSH retries plus Demo Device / mobile pending checks share that
+  budget — back off when testing EXPIRER / abandon loops.
+- **SSH client keepalive may give up before `wait_timeout`.** Clients with aggressive
+  `ServerAliveInterval` / `ServerAliveCountMax` (or GUI wrappers) can drop the TCP session
+  while PAM is still waiting for device approval. Prefer keepalive that covers at least
+  `wait_timeout` + margin, or disable client keepalive for MFA login tests.
+- After abandon (Ctrl-C, wait timeout, Enter over-limit), PAM **best-effort** cancels the
+  attempt so a new create is not blocked by a stale PENDING/READ card. Cancel is **not
+  guaranteed when the wait timeout is reached** (remaining monotonic budget may be too
+  small for the cancel HTTP call). The real hard bound on late approval is the **applied
+  TTL** from create (`timeoutSeconds` in the create response, ≤ 90 s for PAM), not the
+  cancel. A late approval after a failed cancel can leave an orphan `ACCEPTED` attempt
+  (nothing granted on SSH); residual risk is approval fatigue.
+
 ## Troubleshooting
 
 ### Immediate deny / `PAM_AUTHINFO_UNAVAIL`
@@ -191,13 +246,15 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
 - `curl http://integration-api:7080/actuator/health` from the SSH VM.
 - Confirm a **VERIFIED** enrollment exists with `userIdentifier=testuser` on that integration.
 
-### Reject / expire (`PAM_AUTH_ERR`)
-- Approve on Demo Device within `wait_timeout` (default 90s).
+### Reject / expire / timeout (`PAM_AUTH_ERR`)
+- Approve on Demo Device within `wait_timeout` (default **90 s**).
+- Attempt summary `result=`: `DENIED` (reject), `EXPIRED` (server expiry), `TIMEOUT` (wait
+  budget elapsed without ACCEPTED) — check `/var/log/secure` or `journalctl -t pam_ezkey`.
 - Open the PAM enrollment card, not the bootstrap `admin.docker` card.
 
 ### API key 401 / IP whitelist
 The demo key is created without an IP whitelist. If you add one, include the Docker bridge
-range (`172.16.0.0/12`) used by the SSH VM.
+range used by the SSH VM (see your host’s Docker bridge network).
 
 ## Directory structure
 
