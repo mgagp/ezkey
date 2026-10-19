@@ -423,7 +423,7 @@ Exactly **one** `LOG_AUTHPRIV` syslog line per `pam_sm_authenticate` call, **reg
 Format (stable; parse with `grep 'pam_ezkey: attempt '`):
 
 ```text
-pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms> lab_http=<true|false> cancel=<ok|fail|skipped>
+pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms> lab_http=<true|false> cancel=<ok|fail|skipped|final>
 ```
 
 | Field | Meaning |
@@ -434,7 +434,7 @@ pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n>
 | `pam_code` | Integer PAM return code |
 | `latency_ms` | Monotonic elapsed ms for the authenticate call |
 | `lab_http` | Conf `lab_http` as `true` or `false` (Christophe) |
-| `cancel` | `ok` \| `fail` \| `skipped` only (`EZKEY_CANCEL_*`; Patrick #897 M2) — best-effort cancel after non-ACCEPTED; `skipped` when never attempted (SUCCESS / pre-create) |
+| `cancel` | `ok` \| `fail` \| `skipped` \| `final` only (`EZKEY_CANCEL_*`; Patrick #897 M2 + Christophe) — best-effort cancel after non-ACCEPTED; `skipped` when never attempted; `final` = HTTP **409** already-final (possible late approve; no `pam_rc` effect) |
 
 **Never** logged: `secret_key`, integration key material, Basic `userpwd`, proof tokens, HTTP
 bodies, wait JSON.
@@ -548,7 +548,7 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | Enter prompt | `pam_ezkey.c:779-796` measure; `EZKEY_MAX_ENTER_SECS` `ezkey_config.h:40` **25** | duration bound (no signals) | Enter **>25 s** → UNAVAIL + attempt + debug.err duration (proven) |
 | `wait_timeout` | clamp floor **15** / max **90**; `ttlSeconds` on create; `effective_wait` = min(conf, applied_ttl, rem−slack) | 15–90; shrunk by budget + applied TTL | conf=200 → ttl+`?timeout=90`; conf=2 → floor **15** (proven) |
 | curl `/wait` | `EZKEY_CURL_WAIT_SLACK` **15** (cancel margin inside) | wait+≤15; ≤ rem | Covered by wait / delayed-Enter cases (proven) |
-| Cancel | `POST …/cancel` best-effort on non-ACCEPTED; summary `cancel=ok\|fail\|skipped` | ≤ api_timeout from rem; **not guaranteed when wait timeout is reached**. If cancel fails, window = applied TTL (≤90 s); late approve → orphan `ACCEPTED` (no SSH grant); residual = approval fatigue | pending→TIMEOUT + `cancel=ok`; EXPIRED + `cancel=ok`; `cancel_fail` 503 → `cancel=fail`; SUCCESS → `cancel=skipped` (proven) |
+| Cancel | `POST …/cancel` best-effort on non-ACCEPTED; summary `cancel=ok\|fail\|skipped\|final` | ≤ api_timeout from rem; **not guaranteed when wait timeout is reached**. If cancel fails, window = applied TTL (≤90 s); late approve → orphan `ACCEPTED` (no SSH grant); residual = approval fatigue; cancel **409** → `cancel=final` (observability only) | pending→TIMEOUT + `cancel=ok`; EXPIRED + `cancel=ok`; `cancel_fail` 503 → `cancel=fail`; `cancel_final` 409 → `cancel=final`; SUCCESS → `cancel=skipped` (proven) |
 | Summary outcomes | `EXPIRED` / `TIMEOUT` / `DENIED` | lacune 5 | stub expired / pending / rejected (proven) |
 | `wait_polling` | sample `config/pam_ezkey.conf` `wait_polling=2` | Server-side cadence | Sample conf present (proven) |
 | Server attempt TTL | request `ttlSeconds`; response **`timeoutSeconds`** (PR-A #898) | Align down on applied ∈ `[1, planned]`; ignore grow / 0 / null | `applied_shrink` → applied; `applied_grow` 120 vs ask 45 → stay 45; `applied_zero` / `applied_null` → conf wait; legacy + reject/timeout (proven) |
@@ -602,6 +602,7 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | #895 PR-B | `ttlSeconds` + applied-TTL align + cancel + EXPIRED/TIMEOUT/DENIED | **Done** (`test-timeouts.sh` + README runbook) |
 | Patrick #897 CHANGES | stub `legacy_create` / `cancel_fail`; applied-shrink; budget harness (rem→−1) | **Done** (`test-budget` + `test-timeouts.sh`) |
 | Patrick #897 M1/M2 | `applied_grow` / zero / null; `cancel=ok\|fail\|skipped`; legacy+reject/timeout | **Done** (`test-timeouts.sh`) |
+| Christophe #897 obs | cancel HTTP 409 → `cancel=final` (`EZKEY_CANCEL_FINAL`); no pam_rc change | **Done** (`cancel_final` stub) |
 
 ### Out of M1
 

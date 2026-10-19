@@ -18,6 +18,8 @@ Modes (EZKEY_STUB_MODE):
   applied_zero   — create response timeoutSeconds = 0 (ignored → conf wait)
   applied_null   — create response timeoutSeconds = null (ignored → conf wait)
   cancel_fail    — like expired, but POST …/cancel returns 503 (PAM outcome must not change)
+  cancel_final   — like expired, but POST …/cancel returns 409 already-final
+                   (PAM keeps EXPIRED; summary cancel=final — Christophe observability)
 
 Request paths (incl. ?timeout=) and POST bodies are appended to EZKEY_STUB_REQ_LOG
 when set so tests can assert ttlSeconds / timeoutSeconds and cancel (#895 PR-B / #897).
@@ -118,7 +120,15 @@ class Handler(BaseHTTPRequestHandler):
                 # 5xx — PAM must keep its wait outcome (EXPIRED/TIMEOUT/…).
                 self.send_error(503)
                 return
-            # Idempotent for clients: already-final → 409 (PAM ignores outcome).
+            if MODE == "cancel_final":
+                # Already final (late approve / race) — PAM pam_rc unchanged; cancel=final.
+                self.send_response(409)
+                self.send_header("Content-Type", "application/json")
+                body409 = b'{"status":"ACCEPTED","cancelled":false}'
+                self.send_header("Content-Length", str(len(body409)))
+                self.end_headers()
+                self.wfile.write(body409)
+                return
             self._json(200, {"status": "EXPIRED", "cancelled": True})
             return
 
@@ -203,7 +213,7 @@ class Handler(BaseHTTPRequestHandler):
                 },
             )
             return
-        if MODE in ("expired", "cancel_fail"):
+        if MODE in ("expired", "cancel_fail", "cancel_final"):
             self._json(
                 200,
                 {

@@ -33,8 +33,8 @@ On top of 2.1 slices 1–3 ([`STATUS.md`](STATUS.md) § M1):
 - **One attempt line** in `authpriv` / `/var/log/secure` per authenticate:
   `pam_ezkey: attempt user=… authAttemptId=… result=… pam_code=… latency_ms=… lab_http=… cancel=…`
   where `result` distinguishes `SUCCESS` / `EXPIRED` / `TIMEOUT` / `DENIED` / `UNAVAIL` / …
-  and `cancel` is only `ok` / `fail` / `skipped` (never secrets / proof / bodies). Debug
-  chatter stays in `/var/log/ezkey-pam/` only.
+  and `cancel` is only `ok` / `fail` / `skipped` / `final` (HTTP 409 already-final;
+  never secrets / proof / bodies). Debug chatter stays in `/var/log/ezkey-pam/` only.
 - **Conf credentials** (`integration_api_url`, `integration_key`, `secret_key`) only from
   the conf file; must be `root:root` with mode exactly `0600` or `0400` or the module
   returns `PAM_AUTHINFO_UNAVAIL`. No compiled-in URL default (empty URL → `UNAVAIL`).

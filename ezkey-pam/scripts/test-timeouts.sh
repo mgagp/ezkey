@@ -694,6 +694,38 @@ fi
 stop_stub
 restore_conf
 
+# --- Christophe: cancel HTTP 409 already-final → cancel=final (pam_rc unchanged) ---
+start_stub cancel_final
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=30/' '${CONF}'; \
+   sed -i 's/^api_timeout=.*/api_timeout=5/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'; \
+   : > /var/log/ezkey-pam/debug.err; : > /var/log/ezkey-pam/debug.out"
+before="$(docker exec "${CONTAINER}" sh -c \
+  "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+before="${before:-0}"
+ssh_attempt_once
+wait_attempt_line "${before}" || true
+ATTEMPT="$(last_attempt_line)"
+CANCEL_N="$(stub_saw_cancel)"
+OUT="$(docker exec "${CONTAINER}" sh -c 'tail -n 12 /var/log/ezkey-pam/debug.out' || true)"
+echo "cancel_final attempt=${ATTEMPT} cancel=${CANCEL_N}" | tee -a "${PROOF}"
+echo "cancel_final out=${OUT}" | tee -a "${PROOF}"
+if echo "${ATTEMPT}" | grep -q 'result=EXPIRED' \
+  && echo "${ATTEMPT}" | grep -q 'cancel=final' \
+  && [ "${CANCEL_N}" -ge 1 ] \
+  && echo "${OUT}" | grep -Eqi 'cancel_best-effort.*HTTP_409|HTTP_409'; then
+  ok "cancel_final 409: result=EXPIRED unchanged + cancel=final"
+else
+  fail "cancel_final expected EXPIRED+cancel=final: ${ATTEMPT} cancel=${CANCEL_N} / ${OUT}"
+fi
+stop_stub
+restore_conf
+
 # --- applied TTL < requested via timeoutSeconds (#898): wait aligns on applied ---
 start_stub applied_shrink 3 30
 docker exec "${CONTAINER}" sh -c \
@@ -830,12 +862,13 @@ if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'EZKEY_CANCEL_OK' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_CANCEL_FAIL' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_CANCEL_SKIPPED' "${SCRIPT_DIR}/../src/ezkey_config.h" \
+  && grep -q 'EZKEY_CANCEL_FINAL' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'cancel=%s' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && ! grep -E '\bsigaction\s*\(|\balarm\s*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'LoginGraceTime 120' "${SCRIPT_DIR}/../sshd_config" \
   && grep -q '^wait_polling=2' "${SCRIPT_DIR}/../config/pam_ezkey.conf" \
   && grep -q '^wait_timeout=90' "${SCRIPT_DIR}/../config/pam_ezkey.conf"; then
-  ok "ttlSeconds/timeoutSeconds + cancel=ok|fail|skipped; no signals; sample conf"
+  ok "ttlSeconds/timeoutSeconds + cancel=ok|fail|skipped|final; no signals; sample conf"
 else
   fail "missing linkage guards (ttlSeconds/timeoutSeconds/cancel constants/signals/sample conf)"
 fi

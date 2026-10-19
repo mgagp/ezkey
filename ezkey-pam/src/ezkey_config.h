@@ -10,12 +10,14 @@
 #define EZKEY_VERSION "2.2.8"
 
 /*
- * Cancel outcome on the authpriv attempt summary line (Patrick #897 M2).
- * Only these three literals — never free-form HTTP text.
+ * Cancel outcome on the authpriv attempt summary line (Patrick #897 M2;
+ * Christophe observability: FINAL for HTTP 409 already-final).
+ * Only these literals — never free-form HTTP text.
  */
 #define EZKEY_CANCEL_OK "ok"
 #define EZKEY_CANCEL_FAIL "fail"
 #define EZKEY_CANCEL_SKIPPED "skipped"
+#define EZKEY_CANCEL_FINAL "final"
 
 /*
  * No compiled-in default Integration API URL (Patrick B1 / M1 review).

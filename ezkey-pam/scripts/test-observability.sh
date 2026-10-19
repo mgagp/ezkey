@@ -89,7 +89,7 @@ assert_one_clean_line() {
     fail "${label}: expected result=${expect_result} in: ${line}"
     return 0
   fi
-  if ! echo "${line}" | grep -Eq 'user=[^ ]+ authAttemptId=[^ ]+ result=[^ ]+ pam_code=[0-9]+ latency_ms=[0-9]+ lab_http=(true|false) cancel=(ok|fail|skipped)'; then
+  if ! echo "${line}" | grep -Eq 'user=[^ ]+ authAttemptId=[^ ]+ result=[^ ]+ pam_code=[0-9]+ latency_ms=[0-9]+ lab_http=(true|false) cancel=(ok|fail|skipped|final)'; then
     fail "${label}: line missing required fields (incl. lab_http + cancel): ${line}"
     return 0
   fi

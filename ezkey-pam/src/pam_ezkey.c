@@ -19,7 +19,7 @@
  *
  * Observability (M1): exactly one authpriv syslog line per attempt (see
  * log_attempt_summary). result distinguishes SUCCESS / EXPIRED / TIMEOUT /
- * DENIED / UNAVAIL / …. cancel= is only ok|fail|skipped (EZKEY_CANCEL_*).
+ * DENIED / UNAVAIL / …. cancel= is only ok|fail|skipped|final (EZKEY_CANCEL_*).
  * Debug chatter goes only to /var/log/ezkey-pam/ files.
  */
 
@@ -400,10 +400,11 @@ static void log_pam_error_debug(pam_handle_t *pamh, const EzkeyConfig *cfg,
  * Exactly one authpriv syslog line per authentication attempt (M1).
  * Format:
  *   pam_ezkey: attempt user=<u> authAttemptId=<id|-> result=<R> pam_code=<n>
- *   latency_ms=<ms> lab_http=<true|false> cancel=<ok|fail|skipped>
+ *   latency_ms=<ms> lab_http=<true|false> cancel=<ok|fail|skipped|final>
  * result prefers the explicit outcome from the auth path (EXPIRED / TIMEOUT /
  * DENIED / …) so lacune-5 collapses no longer hide EXPIRED behind DENIED.
- * cancel uses only EZKEY_CANCEL_OK / FAIL / SKIPPED (Patrick #897 M2).
+ * cancel uses only EZKEY_CANCEL_OK / FAIL / SKIPPED / FINAL (Patrick #897 M2;
+ * Christophe: FINAL = HTTP 409 already-final / possible late approve).
  * Never includes secrets, proof tokens, HTTP bodies, or Basic credentials.
  */
 static void log_attempt_summary(const char *username, long auth_attempt_id,
@@ -433,7 +434,8 @@ static void log_attempt_summary(const char *username, long auth_attempt_id,
         cancel_status = EZKEY_CANCEL_SKIPPED;
     } else if (strcmp(cancel_status, EZKEY_CANCEL_OK) != 0 &&
                strcmp(cancel_status, EZKEY_CANCEL_FAIL) != 0 &&
-               strcmp(cancel_status, EZKEY_CANCEL_SKIPPED) != 0) {
+               strcmp(cancel_status, EZKEY_CANCEL_SKIPPED) != 0 &&
+               strcmp(cancel_status, EZKEY_CANCEL_FINAL) != 0) {
         /* Defensive: never emit free-form cancel text on authpriv. */
         cancel_status = EZKEY_CANCEL_SKIPPED;
     }
@@ -607,9 +609,9 @@ static int ezkey_http(const char *url, const char *userpwd, const char *post_bod
 /**
  * Best-effort cancel after abandon. Uses a short curl timeout taken from the
  * remaining monotonic budget (≤ api_timeout / MAX_API). Failure is debug-logged
- * only — never changes the PAM outcome (409 on already-final is expected).
+ * only — never changes the PAM outcome (409 already-final → cancel=final).
  *
- * @return EZKEY_CANCEL_OK, EZKEY_CANCEL_FAIL, or EZKEY_CANCEL_SKIPPED only.
+ * @return EZKEY_CANCEL_OK, FAIL, SKIPPED, or FINAL only (no pam_rc effect).
  */
 static const char *ezkey_cancel_best_effort(pam_handle_t *pamh,
                                             const EzkeyConfig *cfg,
@@ -651,9 +653,12 @@ static const char *ezkey_cancel_best_effort(pam_handle_t *pamh,
              "cancel best-effort authAttemptId=%ld HTTP %ld", auth_attempt_id,
              http_code);
     log_pam_info(pamh, cfg, msg);
-    /* 2xx success; 409 already-final is expected and still "ok" for summary. */
-    if ((http_code >= 200 && http_code < 300) || http_code == 409) {
+    if (http_code >= 200 && http_code < 300) {
         return EZKEY_CANCEL_OK;
+    }
+    /* Already final (e.g. late device approve) — observability only; pam_rc unchanged. */
+    if (http_code == 409) {
+        return EZKEY_CANCEL_FINAL;
     }
     return EZKEY_CANCEL_FAIL;
 }
