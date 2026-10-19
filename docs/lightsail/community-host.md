@@ -53,7 +53,7 @@ aws lightsail get-static-ip \
 
 **Decision (2026-10-19):** Marc attached static IP `ezkey-online-community` (`<static-ip ezkey-online-community>`) to `ezkey-online`. Stop/start no longer changes the public IPv4. The address is free while it stays attached. Marc updated the four proxied Cloudflare **A** records (`admin-api`, `auth-api`, `integration-api`, `demo-acme`) and SSH aliases `ezkey-online` / `ezkey-online-db` in the same cutover.
 
-**Decision (2026-10-19, origin IP):** The origin IPv4 is **never versioned** in this public repository — use the `<static-ip ezkey-online-community>` marker and the `get-static-ip` command above. Publishing the address would make it easier to bypass the Cloudflare proxy.
+**Decision (2026-10-19, origin IP):** The origin IPv4 is **never versioned** in this public repository — use the `<static-ip ezkey-online-community>` marker and the `get-static-ip` command above. Direct origin access is already limited by the Lightsail firewall (HTTPS sources = Cloudflare IPv4 ranges only; see § Open ports). Keeping the address out of git is **defense in depth**, not the primary control.
 
 `scripts/lightsail/` still do **not** allocate, attach, or release static IPs — attach/detach remains an operator/console action. After any attach or detach, update Cloudflare **A** records and SSH `HostName` values immediately (see **Deploy pitfalls**).
 
