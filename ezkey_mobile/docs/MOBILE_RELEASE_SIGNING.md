@@ -91,32 +91,19 @@ release mode, it is almost always a missing ProGuard `-keep` rule; add it to
 
 ## 5. Version bumping
 
-Edit **`ezkey_mobile/package.json`** and bump the semantic version there before each
-Play Store upload. Android `versionName` is injected from that file during the build,
-so `package.json` is the human-readable source of truth:
+Canon: [`MOBILE_PLAY_PUBLISHING.md`](MOBILE_PLAY_PUBLISHING.md) § *Versioning policy*.
 
-```gradle
-versionCode 4     // monotonically increasing integer; +1 per Play upload
-```
+- **`versionCode`** — bump in `android/app/build.gradle` every Play upload (strictly increasing).
+- **`versionName`** — bump `ezkey_mobile/package.json` `"version"` every Play upload
+  (`0.y.z-alpha` while in public alpha; patch for fixes, minor for features). Gradle injects
+  it as Android `versionName`.
+- **Play release name** — `play-upload-internal.sh` sets `'<versionCode> (<versionName>)'`.
 
-Confirm the next integer against **Play Console → App bundle explorer** before upload. On
-2026-10-19 the Console showed `versionCode` `3` as most recent; workspace next upload is `4`
-(see [`MOBILE_PLAY_PUBLISHING.md`](MOBILE_PLAY_PUBLISHING.md)). Then update
-**`ezkey_mobile/android/app/build.gradle`** only for that Android-specific counter:
-
-```gradle
-versionCode 4
-```
-
-Example: if `package.json` contains `"version": "1.0.1"`, Android will package
-that same value as `versionName`, and the About screen will surface `1.0.1` from
-the same source.
+Confirm the next `versionCode` against **Play Console → App bundle explorer** before upload.
+vc4 reused `versionName` `0.1.0-alpha` from vc3 — do not repeat that; bump both fields next time.
 
 > Play Console rejects an AAB whose `versionCode` is not strictly greater than
-> the previously published one in the same track.
-
-A future iteration can automate this from `git describe`; for v1 the manual
-process is intentionally explicit and reviewable.
+> every previously uploaded AAB for the app.
 
 ## 6. What never goes in the repo
 

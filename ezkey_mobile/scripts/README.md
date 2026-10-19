@@ -114,13 +114,16 @@ export EZKEY_PLAY_SERVICE_ACCOUNT_JSON="/c/Users/marcg/.gradle/ezkey-play-publis
 # Optional on Windows if python3 is the Store stub:
 # export EZKEY_PYTHON="/c/Users/marcg/AppData/Local/Programs/Python/Python312/python.exe"
 ./scripts/bundle-release.sh
-./scripts/play-upload-internal.sh [--dry-run] [--status draft|completed] path/to/app-release.aab
+./scripts/play-upload-internal.sh [--dry-run] [--status draft|completed] \
+  [--release-name NAME] [--allow-same-version-name] path/to/app-release.aab
 ./scripts/play-upload-internal.sh --self-test
 ```
 
-Default `--status` is `draft`. Hard-refuses any track other than `internal`. Refuses if the
-AAB `versionCode` is ≤ the highest `versionCode` already on any track. Never prints the
-service-account JSON. Docs: [`docs/MOBILE_PLAY_PUBLISHING.md`](../docs/MOBILE_PLAY_PUBLISHING.md).
+Default `--status` is `draft`. Default Play release name is `'<versionCode> (<versionName>)'`
+from the AAB manifest. Hard-refuses any track other than `internal`. Refuses if the AAB
+`versionCode` is ≤ the highest on any track, or if `versionName` already appears on a Play
+release (override with `--allow-same-version-name`). Never prints the service-account JSON.
+Docs: [`docs/MOBILE_PLAY_PUBLISHING.md`](../docs/MOBILE_PLAY_PUBLISHING.md).
 
 ## `bundle-release.sh` + `check-16kb-alignment.sh` (16 KB page-size gate)
 
