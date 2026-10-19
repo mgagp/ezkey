@@ -83,13 +83,7 @@ class EzkeyAppControllerRespondConflictTest {
     Model model = new ConcurrentModel();
     String view =
         controller.respondToAuth(
-            ENROLLMENT_ID,
-            AUTH_ATTEMPT_ID,
-            true,
-            null,
-            PROOF_TOKEN,
-            model,
-            new MockHttpSession());
+            ENROLLMENT_ID, AUTH_ATTEMPT_ID, true, null, PROOF_TOKEN, model, new MockHttpSession());
 
     assertThat(view).isEqualTo("phone/ezkey/auth_result");
     assertThat(model.getAttribute("expired")).isEqualTo(true);

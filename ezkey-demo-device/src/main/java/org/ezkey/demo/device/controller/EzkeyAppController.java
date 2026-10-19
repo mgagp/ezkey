@@ -57,8 +57,8 @@ import tools.jackson.databind.ObjectMapper;
  * <p>Pending auth is read-once on Auth API. After a successful claim, this controller keeps the
  * claim in the HTTP session so a second GET (double navigation, re-check, refresh) can re-show
  * Approve/Deny without calling pending again. The session claim carries {@code expiresAt} (Demo
- * Device bound; pending wire omits attempt expiry per #834) and is dropped at {@code
- * min(expiresAt, claimedAt + 10 min)} so a stale request cannot hide a newer pending (#895 PR-C).
+ * Device bound; pending wire omits attempt expiry per #834) and is dropped at {@code min(expiresAt,
+ * claimedAt + 10 min)} so a stale request cannot hide a newer pending (#895 PR-C).
  *
  * <p>The controller manages the mobile device's cryptographic state and communicates with the Ezkey
  * Auth API to complete the enrollment and authentication flows.
