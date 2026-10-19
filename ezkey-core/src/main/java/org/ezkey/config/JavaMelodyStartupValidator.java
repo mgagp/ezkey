@@ -15,8 +15,9 @@ package org.ezkey.config;
  *
  * <p>When JavaMelody is enabled without {@code
  * javamelody.management-endpoint-monitoring-enabled=true}, the starter serves the report on the
- * business port. Refuse to start in that configuration. Also refuse when the management port equals
- * the business port (Actuator would share the business surface).
+ * business port. Refuse to start in that configuration. Also refuse when JavaMelody is enabled
+ * without a distinct management port (Actuator {@code /actuator/monitoring} would mount on the
+ * business surface), or when the management port equals the business port.
  *
  * @since 2026
  */
@@ -34,7 +35,8 @@ public final class JavaMelodyStartupValidator {
    * @param managementServerPort management HTTP port ({@code management.server.port}); may be null
    *     when unset (Actuator shares the business port)
    * @throws IllegalStateException when JavaMelody is enabled without management-endpoint
-   *     monitoring, or when both ports are set and equal
+   *     monitoring, when JavaMelody is enabled without a distinct management port, or when both
+   *     ports are set, positive, and equal
    */
   public static void enforce(
       boolean javaMelodyEnabled,
@@ -47,6 +49,11 @@ public final class JavaMelodyStartupValidator {
               + " javamelody.management-endpoint-monitoring-enabled=true so reports stay on the"
               + " management port (/actuator/monitoring) and /monitoring on the business port"
               + " returns 403.");
+    }
+    if (javaMelodyEnabled && managementServerPort == null) {
+      throw new IllegalStateException(
+          "javamelody.enabled=true requires management.server.port so"
+              + " /actuator/monitoring is not mounted on the business port.");
     }
     // Port 0 means "pick a random free port" in Spring Boot tests — skip equality then.
     if (serverPort != null

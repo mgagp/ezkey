@@ -14,6 +14,7 @@ package org.ezkey.demo.acme.config;
  * Fail-closed startup validation for JavaMelody and management-port separation.
  *
  * <p>Mirrors {@code org.ezkey.config.JavaMelodyStartupValidator} without depending on ezkey-core.
+ * Keep rules aligned with the core copy (N7 follow-up: shared module later).
  *
  * @since 2026
  */
@@ -30,7 +31,8 @@ public final class JavaMelodyStartupValidator {
    * @param serverPort business HTTP port; may be null when unset
    * @param managementServerPort management HTTP port; may be null when unset
    * @throws IllegalStateException when JavaMelody is enabled without management-endpoint
-   *     monitoring, or when both ports are set, positive, and equal
+   *     monitoring, when JavaMelody is enabled without a distinct management port, or when both
+   *     ports are set, positive, and equal
    */
   public static void enforce(
       boolean javaMelodyEnabled,
@@ -43,6 +45,11 @@ public final class JavaMelodyStartupValidator {
               + " javamelody.management-endpoint-monitoring-enabled=true so reports stay on the"
               + " management port (/actuator/monitoring) and /monitoring on the business port"
               + " returns 403.");
+    }
+    if (javaMelodyEnabled && managementServerPort == null) {
+      throw new IllegalStateException(
+          "javamelody.enabled=true requires management.server.port so"
+              + " /actuator/monitoring is not mounted on the business port.");
     }
     // Port 0 means "pick a random free port" in Spring Boot tests — skip equality then.
     if (serverPort != null

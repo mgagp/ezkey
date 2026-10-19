@@ -30,7 +30,8 @@ public class JavaMelodyStartupGuardConfig {
    */
   public JavaMelodyStartupGuardConfig(Environment environment) {
     JavaMelodyStartupValidator.enforce(
-        environment.getProperty("javamelody.enabled", Boolean.class, false),
+        // Starter matchIfMissing=true — default true so a missing property stays fail-closed.
+        environment.getProperty("javamelody.enabled", Boolean.class, true),
         environment.getProperty(
             "javamelody.management-endpoint-monitoring-enabled", Boolean.class, false),
         environment.getProperty("server.port", Integer.class),

@@ -41,6 +41,19 @@ class JavaMelodyStartupGuardConfigTest {
   }
 
   @Test
+  void enforceFailsWhenJavaMelodyWithoutManagementPort() {
+    assertThatThrownBy(() -> JavaMelodyStartupValidator.enforce(true, true, 8082, null))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("management.server.port");
+  }
+
+  @Test
+  void enforceAllowsUnsetManagementPortWhenJavaMelodyOff() {
+    assertThatCode(() -> JavaMelodyStartupValidator.enforce(false, false, 8082, null))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
   void contextFailsWhenManagementPortEqualsBusinessPort() {
     SpringApplication app = new SpringApplication(DemoAcmeApplication.class);
     Throwable thrown =

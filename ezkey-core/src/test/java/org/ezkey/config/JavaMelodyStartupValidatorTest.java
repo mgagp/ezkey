@@ -59,8 +59,19 @@ class JavaMelodyStartupValidatorTest {
   }
 
   @Test
+  @DisplayName("fails when JavaMelody is on without management.server.port")
+  void failsWhenJavaMelodyWithoutManagementPort() {
+    IllegalStateException ex =
+        assertThrows(
+            IllegalStateException.class,
+            () -> JavaMelodyStartupValidator.enforce(true, true, 8080, null));
+    assertTrue(ex.getMessage().contains("management.server.port"));
+  }
+
+  @Test
   @DisplayName("allows both ports 0 (Spring Boot random-port placeholder)")
   void allowsRandomPortPlaceholders() {
     assertDoesNotThrow(() -> JavaMelodyStartupValidator.enforce(false, false, 0, 0));
+    assertDoesNotThrow(() -> JavaMelodyStartupValidator.enforce(true, true, 0, 0));
   }
 }
