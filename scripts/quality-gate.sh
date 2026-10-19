@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # quality-gate — on-demand full-suite gate.
-# Cloud agent tooling; Git Bash best-effort, untested on macOS.
+# Cloud agent tooling; portable Bash (Linux, Git Bash, macOS).
 #
 # Phase order (unit tests before stack — memory headroom on ~16Gi VMs):
 #   preflight → unit-tests → clean-start HA+JM (+gate memory overlay)
@@ -154,7 +154,7 @@ cleanup_churn() {
 }
 trap cleanup_churn INT TERM EXIT
 
-now_ms() { date +%s%3N 2>/dev/null || node -e 'console.log(Date.now())'; }
+# now_ms — defined in lib/quality-gate-ha.sh (portable; BSD date safe).
 duration_ms() { echo $(($2 - $1)); }
 ms_to_human() {
   local ms="${1:-0}"
@@ -325,7 +325,9 @@ ha_compose_retry() {
 run_phase_clean_start() {
   local log="$RUN_DIR/phases/clean-start.log" start end code=0 verdict=GREEN
   local note="HA + JavaMelody + gate memory overlay"
+  local phase_since
   COMPOSE_RETRY_FIRED=0
+  phase_since="$(iso_now)"
   start="$(now_ms)"
   {
     echo "=== clean-start HA + JavaMelody + quality-gate memory overlay ==="
@@ -335,11 +337,9 @@ run_phase_clean_start() {
     ./ezkey-tests/clean-start.sh --ha --with-java-melody
     local cs=$?
     if [[ "$cs" -ne 0 ]]; then
-      local keyset=0
-      # Log file is mid-write under this redirection; also inspect admin replica logs.
-      docker logs ezkey-admin-api-1 2>&1 | tail -400 | grep -q 'ezkey_encryption_key_pkey' && keyset=1
-      docker logs ezkey-admin-api-2 2>&1 | tail -400 | grep -q 'ezkey_encryption_key_pkey' && keyset=1
-      if [[ "$keyset" -eq 1 ]]; then
+      # Phase log is mid-write under this redirection; inspect admin replica logs
+      # since phase start (full --since window, no tail cap — #747 / macOS).
+      if detect_encryption_key_pkey_race "$phase_since"; then
         echo "Detected #747 keyset race — temporary compose retry"
         ha_compose_retry || true
       else
