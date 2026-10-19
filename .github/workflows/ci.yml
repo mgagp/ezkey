@@ -98,10 +98,14 @@ jobs:
               - 'scripts/cloudflare/deploy-admin-ui-preview.sh'
               - 'scripts/ops/verify-javamelody-non-exposure.sh'
               - 'scripts/ops/verify-javamelody-non-exposure.test.sh'
+              - 'scripts/ops/check-local-mgmt-port-publish.sh'
               - 'experimental-hybrid/scripts/export-backend-images-to-lightsail.sh'
               - 'experimental-hybrid/scripts/full-exp-environment-upgrade.sh'
               - 'experimental-hybrid/lightsail/docker-compose.yml'
+              - 'docker/docker-compose.yml'
+              - 'docker/docker-compose.docker-dev.yml'
               - 'docs/lightsail/**'
+              - 'docs/LOCAL_STACK_PORTS.md'
 
       # Manual runs must exercise every suite; path filters alone would skip all
       # and leave ci-gate green with nothing checked.
@@ -373,6 +377,9 @@ jobs:
 
       - name: JavaMelody non-exposure business-port acceptance (fake curl)
         run: ./scripts/ops/verify-javamelody-non-exposure.test.sh
+
+      - name: Local management port publish (127.0.0.1) fake check
+        run: ./scripts/ops/check-local-mgmt-port-publish.sh
 
   # Single required-check candidate. Skipped path jobs count as success for the gate;
   # failure or cancellation of any needed job fails the gate.

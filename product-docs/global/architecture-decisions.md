@@ -980,13 +980,16 @@ Docker peer).
   could still reach 8082 `/actuator`.
 - **Bind community management to 127.0.0.1 even with JavaMelody.** Rejected — collector in another
   container would see an empty surface.
-- **Bind local compose management to 127.0.0.1 in the same change.** Deferred (PAM/integration
-  health from other containers needs Docker-network reachability).
+- **Bind local compose JVM management to 127.0.0.1.** Rejected for local Docker — peers such as
+  `ezkey-pam/test/test_pam.sh` call `integration-api:7081` on the Docker network. Local harden instead
+  publishes management host ports as `127.0.0.1:port:port` while the in-container bind stays
+  `0.0.0.0` (PR B).
 
 ### Consequences
 
 - **Positive.** Actuator off business ports for Acme; fail-closed JM misconfig; smaller residual
-  SSRF surface when JM is off.
+  SSRF surface when JM is off. Local host cannot reach management from non-loopback interfaces;
+  IDE defaults bind management to `127.0.0.1`.
 - **Negative.** The dangerous rolling pair is **new Acme image + old compose** (healthcheck still
   on `8082/actuator/health` → Acme unhealthy → Caddy `depends_on` blocks public APIs). Export
   refuses `--include-demo-acme --remote-up` without `--sync-operator-files` and checks remote
@@ -1012,6 +1015,8 @@ Docker peer).
 
 - **N5:** `--check-jm-overlay-bind` is a static grep; a live `docker exec`/`ss` check when JM is on
   would be stronger (#866).
+- **N6:** HA compose (`docker-compose.ha.yml`) still uses host `localhost` healthchecks and open
+  management publishes — align in a later HA pass if needed.
 - **N7:** `JavaMelodyStartupValidator` is duplicated in acme (no ezkey-core dependency) — keep
   rules aligned until a shared module is justified.
 

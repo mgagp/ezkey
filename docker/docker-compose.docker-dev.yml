@@ -1,7 +1,7 @@
 # Local Docker diagnostics override.
 #
-# This file publishes the management/Actuator port to the host for local development only.
-# Do not use this override in staging or production.
+# This file republishes management/Actuator ports to the host for local development only.
+# Host bind is 127.0.0.1 (same as base compose). Do not use this override in staging or production.
 #
 # Usage:
 #   # Linux/Mac
@@ -13,10 +13,10 @@
 services:
   admin-api:
     ports:
-      - "9081:9081"
+      - "127.0.0.1:9081:9081"
   auth-api:
     ports:
-      - "8085:8085"
+      - "127.0.0.1:8085:8085"
   integration-api:
     ports:
-      - "7081:7081"
+      - "127.0.0.1:7081:7081"
