@@ -31,6 +31,9 @@ stay out unless methodology explicitly merges lanes.
 ## Cadence
 
 - **Monday 10:15 ET** weekly triage (Fred proposes, Christophe decides/executes).
+- **Same slot — remediation:** up to **3 real alerts/week** (severity then nearest SLA
+  deadline); one fix PR each via cloud agent. Security/crypto → Christophe review; behavior
+  change → Marc's go; **no deploy**. (**2026-10-19**, Marc.)
 - **Weekday light:** new high/critical alerts (do not wait for Monday).
 - **2026-10-19:** Monday slot moved from 09:17 ET to avoid Dependabot curated collision — see
   [`../README.md`](../README.md) § *Cadence & automation* and

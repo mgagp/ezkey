@@ -57,6 +57,10 @@ Repo-is-memory decisions (one line + reason):
   humans share one slot; avoids ad-hoc “whenever” drift.
 - **Code-scanning triage Monday 10:15 ET** (moved from 09:17) — avoid collision with the
   Dependabot Monday full pass; weekday light still catches new high/critical.
+- **Code-scanning remediation ≤3 real alerts/week** (same Monday 10:15 ET slot; severity then
+  nearest SLA deadline; one fix PR each via cloud agent) — triage without a bounded fix budget
+  leaves the open stock growing; security/crypto fixes need Christophe's review, behavior changes
+  need Marc's go, no deploy (Marc 2026-10-19).
 - **Doctors biweekly Java → mobile → React** — one surface per window keeps HITL cheap; campaign
   notes only when new P1/P2 appear.
 - **Quality-gate Wednesday 19:00 ET** — weekly full-suite signal without weekday merge noise;
@@ -77,7 +81,7 @@ Repo-is-memory decisions (one line + reason):
 | **Mobile `deps:monitor --strict`** (`ezkey_mobile` `yarn deps:monitor --strict`) | `dependabot-curated` (Monday full) | Part of Monday full Mobile RN pulse | **Monday** with full pass | Actionable vs ecosystem-gated deferred | Feeds mobile lots (T1–T4 / Orval grid) | Same as Dependabot curated |
 | **Dependabot opens PRs** ([`.github/dependabot.yml`](../../../.github/dependabot.yml)) | Dependabot app | Schedule | **Daily** Maven + npm; **weekly** Actions + pip (cooldown ~3d patch/minor, ~7d major) | New upgrade PRs | N/A (feeds curated) | None — curation owns merge |
 | **Maven dependency submission** ([`.github/workflows/maven-dependency-submission.yml`](../../../.github/workflows/maven-dependency-submission.yml)) | CI / Insights | Push to `main` (pom paths) + `workflow_dispatch` | On change | GitHub dependency graph | N/A | Maintainer: Automatic Dependency Submission stays **Disabled** |
-| **Code scanning triage** ([`code-scanning/`](code-scanning/); policy [`docs/SECURITY_POSTURE.md`](../../../docs/SECURITY_POSTURE.md)) | `code-scanning` | Fred proposes; Christophe executes | **Monday 10:15 ET** full; **weekday light** for new high/critical | Open CodeQL alerts | Exposure-aware **SLAs** (critical/high deployed → 24h triage / 14d fix; medium 60d; low 180d; KEV 3d) | Christophe decides/executes; **Marc** for high-impact dismissals |
+| **Code scanning triage + remediation** ([`code-scanning/`](code-scanning/); policy [`docs/SECURITY_POSTURE.md`](../../../docs/SECURITY_POSTURE.md)) | `code-scanning` | Fred proposes; Christophe executes; cloud agent opens fix PRs | **Monday 10:15 ET** full; **weekday light** for new high/critical | Open CodeQL alerts | Exposure-aware **SLAs** (critical/high deployed → 24h triage / 14d fix; medium 60d; low 180d; KEV 3d). Remediates **≤3 real alerts/week** (severity first, then nearest deadline); **one fix PR per alert** via cloud agent | Christophe decides/executes dismissals; **Christophe** reviews security/crypto fix PRs; **Marc** for high-impact dismissals and any behavior-change fix; **no deploy** |
 | **CodeQL workflow** ([`.github/workflows/codeql.yml`](../../../.github/workflows/codeql.yml)) | CI / security | PR + push + schedule | Every PR/`main`; weekly Sun **05:17 UTC** | New/fixed alerts | Feeds triage | None (analysis only) |
 | **CI / `ci-gate`** ([`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)) | CI | PR + push | Every PR | Job failures | Block merge until green | Author fixes; merge only on owner go |
 | **Java doctor** (`./scripts/java-doctor-curated.sh`; [`java-doctor/`](java-doctor/)) | `java-doctor-curated` | Routine + cloud agent | **Biweekly** rotation slot (Java week) | SpotBugs + Semgrep + PMD shortlist | **P1 / P2 / P3**; write campaign note **only on new P1/P2** | HITL one-finding; suppress-with-reason OK |
