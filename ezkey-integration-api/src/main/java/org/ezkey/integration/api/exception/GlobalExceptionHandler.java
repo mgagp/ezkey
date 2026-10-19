@@ -27,6 +27,7 @@ import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
+import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -245,7 +246,10 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ProblemDetail> handleMethodArgumentNotValid(
       MethodArgumentNotValidException ex, HttpServletRequest request) {
-    logger.debug("Validation failed on {}: {}", request.getRequestURI(), ex.getMessage());
+    logger.debug(
+        "Validation failed on {}: {}",
+        LogSanitizer.sanitizeForLog(request.getRequestURI()),
+        LogSanitizer.sanitizeForLog(ex.getMessage()));
     return buildProblemDetail(
         "One or more fields are invalid.",
         HttpStatus.BAD_REQUEST,
@@ -261,7 +265,10 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(HttpMessageNotReadableException.class)
   public ResponseEntity<ProblemDetail> handleHttpMessageNotReadable(
       HttpMessageNotReadableException ex, HttpServletRequest request) {
-    logger.debug("Unreadable body on {}: {}", request.getRequestURI(), ex.getMessage());
+    logger.debug(
+        "Unreadable body on {}: {}",
+        LogSanitizer.sanitizeForLog(request.getRequestURI()),
+        LogSanitizer.sanitizeForLog(ex.getMessage()));
     return buildProblemDetail(
         "One or more fields are invalid.",
         HttpStatus.BAD_REQUEST,
