@@ -261,7 +261,7 @@ echo "  ✅ Integration API instances are healthy"
 echo "  - Waiting for Crypto API..."
 timeout=120
 elapsed=0
-while ! curl -sf http://localhost:9090/actuator/health > /dev/null 2>&1; do
+while ! curl -sf http://localhost:9091/actuator/health > /dev/null 2>&1; do
     if [ $elapsed -ge $timeout ]; then
         echo "❌ Error: Crypto API did not become healthy within ${timeout} seconds"
         ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs crypto-api
@@ -275,7 +275,7 @@ echo "  ✅ Crypto API is healthy"
 echo "  - Waiting for Demo Device..."
 timeout=120
 elapsed=0
-while ! curl -sf http://localhost:8083/actuator/health > /dev/null 2>&1; do
+while ! curl -sf http://localhost:8084/actuator/health > /dev/null 2>&1; do
     if [ $elapsed -ge $timeout ]; then
         echo "❌ Error: Demo Device did not become healthy within ${timeout} seconds"
         ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs demo-device

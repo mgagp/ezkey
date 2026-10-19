@@ -259,7 +259,7 @@ def _wait_for_services():
     services = [
         ("http://localhost:9080/actuator/health", "admin-api"),
         ("http://localhost:8080/actuator/health", "auth-api"),
-        ("http://localhost:9090/actuator/health", "crypto-api"),
+        ("http://localhost:9091/actuator/health", "crypto-api"),
     ]
     
     max_wait = 120  # 2 minutes
