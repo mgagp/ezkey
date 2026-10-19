@@ -101,6 +101,24 @@ Contract: [`docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`](../docs/MOBILE_TES
 After a successful `assembleRelease`, the script also runs
 [`check-16kb-alignment.sh`](check-16kb-alignment.sh) on the release APK.
 
+## `play-upload-internal.sh` (Play internal track upload)
+
+Uploads an **already-built** signed AAB to the Google Play **internal** track via the
+Android Publisher API v3 (edits → bundles.upload → tracks.update → commit). Does **not**
+wire the Gradle Play Publisher plugin into the app build.
+
+```bash
+pip install -r scripts/requirements-play-upload.txt
+export EZKEY_PLAY_SERVICE_ACCOUNT_JSON="/path/to/play-sa.json"  # outside the repo
+./scripts/bundle-release.sh
+./scripts/play-upload-internal.sh [--dry-run] [--status draft|completed] path/to/app-release.aab
+./scripts/play-upload-internal.sh --self-test
+```
+
+Default `--status` is `draft`. Hard-refuses any track other than `internal`. Refuses if the
+AAB `versionCode` is ≤ the highest `versionCode` already on any track. Never prints the
+service-account JSON. Docs: [`docs/MOBILE_PLAY_PUBLISHING.md`](../docs/MOBILE_PLAY_PUBLISHING.md).
+
 ## `bundle-release.sh` + `check-16kb-alignment.sh` (16 KB page-size gate)
 
 `yarn android:bundle:release` → `scripts/bundle-release.sh` → Gradle `bundleRelease` →

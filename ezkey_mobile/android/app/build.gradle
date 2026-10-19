@@ -150,7 +150,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Strictly increasing Play upload integer. Confirm against Play Console App bundle
         // explorer before each official upload; bump when the Console already has this value.
-        // Play Console highest upload is versionCode 1; next planned upload is 4 (see
+        // 2026-10-19 Console showed versionCode 3 as most recent; next upload is 4 (see
         // MOBILE_PLAY_PUBLISHING.md).
         versionCode 4
         versionName appVersionName

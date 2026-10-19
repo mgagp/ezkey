@@ -99,9 +99,9 @@ so `package.json` is the human-readable source of truth:
 versionCode 4     // monotonically increasing integer; +1 per Play upload
 ```
 
-Confirm the next integer against **Play Console → App bundle explorer** before upload. Current
-Console highest is `versionCode` `1`; workspace next upload is `4` (see
-[`MOBILE_PLAY_PUBLISHING.md`](MOBILE_PLAY_PUBLISHING.md)). Then update
+Confirm the next integer against **Play Console → App bundle explorer** before upload. On
+2026-10-19 the Console showed `versionCode` `3` as most recent; workspace next upload is `4`
+(see [`MOBILE_PLAY_PUBLISHING.md`](MOBILE_PLAY_PUBLISHING.md)). Then update
 **`ezkey_mobile/android/app/build.gradle`** only for that Android-specific counter:
 
 ```gradle
