@@ -13,10 +13,13 @@
 # plain JAVAMELODY_INIT_PARAMETERS_* map env vars — Spring relaxed binding drops
 # hyphens and JavaMelody ignores them.
 #
-# Enable (on the VM, from experimental-hybrid/lightsail/):
-#   docker compose -f docker-compose.yml -f docker-compose.javamelody.yml up -d
+# Enable (on the VM, from experimental-hybrid/lightsail/) — image must already be loaded:
+#   docker compose -f docker-compose.yml -f docker-compose.javamelody.yml up -d --no-build
 #
-# Or: ./clean-start.sh --with-java-melody (destructive full reset path)
+# Or: ./clean-start.sh --with-java-melody (destructive full reset path; also --no-build)
+#
+# Never build the collector on the VM (buildx often < Compose requirement). Ship with:
+#   EZKEY_ENABLE_JAVA_MELODY=true ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh ...
 #
 # Rollback JM only (#749 memory limits in the base compose stay):
 #   docker compose -f docker-compose.yml up -d --remove-orphans
@@ -61,12 +64,11 @@ services:
       <<: [*javamelody-env, *jm-init-integration]
 
   javamelody-collector:
-    build:
-      context: ../../docker/javamelody
-      dockerfile: Dockerfile
-      args:
-        JAVAMELODY_VERSION: "2.9.0"
+    # Image-only on Lightsail: never build on the VM (remote buildx is often < 0.17 and
+    # Compose would fail). Ship via export-backend-images-to-lightsail.sh when
+    # EZKEY_ENABLE_JAVA_MELODY=true (local docker build from docker/javamelody).
     image: ezkey-javamelody-collector:2.9.0
+    pull_policy: never
     container_name: ezkey-exp-javamelody-collector
     # Logging options duplicated (YAML anchors do not cross compose files).
     logging:

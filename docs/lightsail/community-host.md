@@ -402,30 +402,44 @@ after go-live.
 ### Deploy JavaMelody (Edgar — after Marc go)
 
 Prerequisites: memory limits from `docker-compose.yml` already rolling; preferred swap in place;
-operator files synced (includes `docker-compose.javamelody.yml` + `docker/javamelody/`).
+operator files synced (includes `docker-compose.javamelody.yml` + `docker/javamelody/` bind context).
+
+**Collector image is never built on the VM.** The Lightsail overlay is **image-only**
+(`ezkey-javamelody-collector:2.9.0`, `pull_policy: never`, no `build:`). Remote Docker Compose
+often ships buildx **0.12.x**, which is below the **0.17** Compose requirement — a remote
+`build` fails. With `EZKEY_ENABLE_JAVA_MELODY=true`, export builds the collector locally from
+`docker/javamelody`, includes it in save/scp/`docker load`, then runs remote
+`docker compose … up -d --no-build`.
 
 ```bash
-# From workstation — sync compose/Caddy/ops + collector context, then remote up WITH overlay
+# Dry-run first — confirm collector appears in the image list and remote up uses --no-build
+EZKEY_ENABLE_JAVA_MELODY=true \
+  ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh \
+    --target community --dry-run --sync-operator-files --remote-up
+
+# From workstation — build+ship collector, sync compose/Caddy/ops, remote up WITH overlay
 EZKEY_ENABLE_JAVA_MELODY=true \
   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh \
     --target community --sync-operator-files --remote-up
 
-# Or on the VM after files are present (non-destructive recreate):
+# Or on the VM after the image is already loaded (non-destructive recreate):
 cd ~/ezkey/experimental-hybrid/lightsail
-docker compose -f docker-compose.yml -f docker-compose.javamelody.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.javamelody.yml up -d --no-build
 # (recreates APIs with JAVAMELODY_* and starts the collector; short per-service cutover)
+# If the image is missing, compose fails fast (pull_policy: never) — re-run export with JM enabled.
 ```
 
 **Keep JM on later rolling upgrades:** always pass `EZKEY_ENABLE_JAVA_MELODY=true` on export
-`--remote-up`. A rolling up **without** that flag refuses if the collector container is present
-(APIs would otherwise lose `JAVAMELODY_*` while the collector stays). Intentional teardown:
-`EZKEY_DISABLE_JAVA_MELODY=true … --remote-up`.
+`--remote-up` (re-ships the collector image and applies the overlay). A rolling up **without**
+that flag refuses if the collector container is present (APIs would otherwise lose `JAVAMELODY_*`
+while the collector stays). Intentional teardown: `EZKEY_DISABLE_JAVA_MELODY=true … --remote-up`.
 
 **`--remove-orphans` is not passed by default** on export `--remote-up` (intentional — Edgar).
 Only the `EZKEY_DISABLE_JAVA_MELODY=true` path adds `--remove-orphans` so the collector is
 removed as an orphan. A plain `docker compose -f docker-compose.yml up -d` (no flag) leaves
 orphan containers running; use the disable env (or the rollback command below) when you mean
-to drop the collector.
+to drop the collector. Export remote-up always passes **`--no-build`** so the VM never compiles
+images.
 
 Collector image/version is aligned with the API starter (**2.9.0**, WAR sha256 pinned in
 `docker/javamelody/Dockerfile`). Christophe locks baked into the overlay / entrypoint:
@@ -527,7 +541,7 @@ memory limits in the base `docker-compose.yml` stay** — this is not a memory r
 
 ```bash
 cd ~/ezkey/experimental-hybrid/lightsail
-docker compose -f docker-compose.yml up -d --remove-orphans
+docker compose -f docker-compose.yml up -d --no-build --remove-orphans
 # Optional — wipe collector history (Marc go):
 # docker volume rm ezkey-experimental-lightsail_javamelody-data
 ```

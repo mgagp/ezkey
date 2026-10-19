@@ -673,6 +673,65 @@ else
   fail=$((fail + 1))
 fi
 
+# --- JavaMelody collector: ship image when enabled; never remote build ---
+JM_OVERLAY="${ROOT}/experimental-hybrid/lightsail/docker-compose.javamelody.yml"
+(
+  grep -Eq '^\s*image:\s*ezkey-javamelody-collector:2\.9\.0' "${JM_OVERLAY}"
+  grep -Eq '^\s*pull_policy:[[:space:]]*never' "${JM_OVERLAY}"
+  if grep -Eq '^\s*build:' "${JM_OVERLAY}"; then
+    echo "FAIL: Lightsail JM overlay must not declare build:" >&2
+    exit 1
+  fi
+  echo "PASS: Lightsail JM overlay is image-only + pull_policy never"
+) && pass=$((pass + 1)) || fail=$((fail + 1))
+
+: >"${FAKE_SSH_LOG}"
+: >"${FAKE_DOCKER_LOG}"
+assert_ok "export JM enable dry-run ships collector image" \
+  env EZKEY_ENABLE_JAVA_MELODY=true \
+    bash "${EXPORT}" --target community --dry-run --apis-only --sync-operator-files --remote-up
+assert_stdout_contains "JM dry-run lists collector in images" "ezkey-javamelody-collector:2.9.0"
+assert_stdout_contains "JM dry-run docker save collector" "docker save ezkey-javamelody-collector:2.9.0"
+assert_stdout_contains "JM dry-run builds collector locally" "docker build"
+assert_stdout_contains "JM dry-run mentions no remote build" "no remote build"
+# Dry-run uses printf %q — spaces appear as '\ ' in the recorded ssh command.
+assert_stdout_contains "JM dry-run remote compose --no-build" 'up\ -d\ --no-build'
+assert_stdout_contains "JM dry-run applies overlay" "docker-compose.javamelody.yml"
+# Collector tar name includes version
+assert_stdout_contains "JM dry-run scp collector tar" "ezkey-javamelody-collector-2.9.0.tar"
+if [[ ! -s "${FAKE_SSH_LOG}" && ! -s "${FAKE_DOCKER_LOG}" ]]; then
+  echo "PASS: JM dry-run never called fake ssh/docker"
+  pass=$((pass + 1))
+else
+  echo "FAIL: JM dry-run should not invoke ssh/docker" >&2
+  cat "${FAKE_SSH_LOG}" >&2 || true
+  cat "${FAKE_DOCKER_LOG}" >&2 || true
+  fail=$((fail + 1))
+fi
+
+# Without JM enable, collector must not appear in the image list / save list
+assert_ok "export without JM does not ship collector" \
+  bash "${EXPORT}" --target community --dry-run --apis-only
+if grep -qF 'ezkey-javamelody-collector' "${OUT}"; then
+  echo "FAIL: collector must not be shipped unless EZKEY_ENABLE_JAVA_MELODY is set" >&2
+  grep -F 'ezkey-javamelody-collector' "${OUT}" >&2 || true
+  fail=$((fail + 1))
+else
+  echo "PASS: export without JM omits collector image"
+  pass=$((pass + 1))
+fi
+
+# Conflicting enable+disable fails early
+assert_fail "export JM enable+disable conflict fails" \
+  env EZKEY_ENABLE_JAVA_MELODY=true EZKEY_DISABLE_JAVA_MELODY=true \
+    bash "${EXPORT}" --target community --dry-run --apis-only
+assert_stderr_contains "JM enable/disable conflict" "set only one of EZKEY_ENABLE_JAVA_MELODY or EZKEY_DISABLE_JAVA_MELODY"
+
+# Remote-up without JM still uses --no-build (never build on VM)
+assert_ok "export remote-up dry-run uses --no-build without JM" \
+  bash "${EXPORT}" --target community --dry-run --apis-only --sync-operator-files --remote-up
+assert_stdout_contains "remote-up always --no-build" 'up\ -d\ --no-build'
+
 echo
 echo "Results: ${pass} passed, ${fail} failed"
 if [[ "${fail}" -ne 0 ]]; then

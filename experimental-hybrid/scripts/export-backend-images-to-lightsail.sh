@@ -11,11 +11,14 @@
 # With --sync-operator-files, copies docker-compose.yml, docker-compose.javamelody.yml (when present),
 # the target-aware Caddyfile (remote name = compose ./…:/etc/caddy/Caddyfile bind — #863), and
 # clean-start.sh to the VM only (no clean-start) so Caddy and Compose stay aligned with the repo;
-# preserves volumes/DB. Also syncs docker/javamelody/ for the collector.
+# preserves volumes/DB. Also syncs docker/javamelody/ for the collector bind-mounts (applications.properties).
+# With EZKEY_ENABLE_JAVA_MELODY=true: builds ezkey-javamelody-collector:<JAVAMELODY_VERSION> locally
+# from docker/javamelody, includes it in save/scp/load, and remote compose uses --no-build (overlay is
+# image-only + pull_policy: never — never build on the VM; remote buildx is often too old).
 # With --remote-up, after load (and after --sync-operator-files if set), validates bind-mount sources
-# on the VM then runs docker compose up -d so migration + backends + Caddy pick up the loaded images
-# (no volume wipe). Do not combine --clean-start with --sync-operator-files or --remote-up.
-# Override remote path with LIGHTSAIL_REMOTE_DIR if needed.
+# on the VM then runs docker compose up -d --no-build so migration + backends + Caddy pick up the
+# loaded images (no volume wipe, no remote build). Do not combine --clean-start with
+# --sync-operator-files or --remote-up. Override remote path with LIGHTSAIL_REMOTE_DIR if needed.
 #
 # Usage (from repository root):
 #   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --dry-run
@@ -76,12 +79,14 @@ Options:
                          or the wrong type (file vs directory) — #863.
                          With --sync-operator-files: sha256-verify the mounted Caddyfile + force-recreate
                          caddy (bind mount; plain up -d does not reload Caddy).
-                         JavaMelody: EZKEY_ENABLE_JAVA_MELODY=true keeps/starts the collector overlay.
-                         EZKEY_DISABLE_JAVA_MELODY=true intentionally removes it (--remove-orphans).
-                         Default rolling up does NOT pass --remove-orphans (intentional — Edgar).
-                         If the collector is already running and neither flag is set, the script refuses
-                         so APIs are not recreated without the JM overlay while the collector stays
-                         (see community-host.md).
+                         JavaMelody: EZKEY_ENABLE_JAVA_MELODY=true builds/ships the collector image
+                         (ezkey-javamelody-collector:<version> from docker/javamelody) and applies the
+                         overlay with --no-build (never build on the VM). EZKEY_DISABLE_JAVA_MELODY=true
+                         intentionally removes it (--remove-orphans). Default rolling up does NOT pass
+                         --remove-orphans (intentional — Edgar). If the collector is already running and
+                         neither flag is set, the script refuses so APIs are not recreated without the
+                         JM overlay while the collector stays (see community-host.md).
+                         Remote compose always uses --no-build (images must already be loaded).
   --clean-start          After load, sync and run clean-start.sh (DESTRUCTIVE). Community requires
                          EZKEY_CONFIRM_WIPE=ezkey-online (first commissioning only). Not with
                          --sync-operator-files or --remote-up.
@@ -156,6 +161,53 @@ if [[ -n "$INCLUDE_DEMO_ACME" ]]; then
   TARS+=(ezkey-demo-app-acme.tar)
 fi
 
+# JavaMelody collector: ship a pre-built image when enabling JM (never build on the VM).
+JM_ENABLE=""
+JM_DISABLE=""
+if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
+  JM_ENABLE="1"
+fi
+if [[ "${EZKEY_DISABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_DISABLE_JAVA_MELODY:-}" == "true" ]]; then
+  JM_DISABLE="1"
+fi
+if [[ -n "$JM_ENABLE" && -n "$JM_DISABLE" ]]; then
+  echo "error: set only one of EZKEY_ENABLE_JAVA_MELODY or EZKEY_DISABLE_JAVA_MELODY" >&2
+  exit 1
+fi
+
+JAVAMELODY_OVERLAY="${LIGHTSAIL_LOCAL_DIR}/docker-compose.javamelody.yml"
+JAVAMELODY_COLLECTOR_IMAGE=""
+JAVAMELODY_VERSION=""
+resolve_javamelody_collector_image() {
+  local overlay="$1"
+  local img_line version
+  if [[ ! -f "${overlay}" ]]; then
+    echo "error: JavaMelody overlay missing: ${overlay}" >&2
+    exit 1
+  fi
+  img_line="$(grep -E '^\s*image:\s*ezkey-javamelody-collector:[^[:space:]]+' "${overlay}" | head -n1 || true)"
+  if [[ -z "${img_line}" ]]; then
+    echo "error: could not parse ezkey-javamelody-collector image from ${overlay}" >&2
+    exit 1
+  fi
+  version="${img_line##*:}"
+  version="${version//[[:space:]]/}"
+  version="${version//\"/}"
+  version="${version//\'/}"
+  if [[ -z "${version}" ]]; then
+    echo "error: empty JAVAMELODY_VERSION parsed from ${overlay}" >&2
+    exit 1
+  fi
+  JAVAMELODY_VERSION="${version}"
+  JAVAMELODY_COLLECTOR_IMAGE="ezkey-javamelody-collector:${JAVAMELODY_VERSION}"
+}
+
+if [[ -n "$JM_ENABLE" ]]; then
+  resolve_javamelody_collector_image "${JAVAMELODY_OVERLAY}"
+  IMAGES+=("${JAVAMELODY_COLLECTOR_IMAGE}")
+  TARS+=("ezkey-javamelody-collector-${JAVAMELODY_VERSION}.tar")
+fi
+
 run() {
   if [[ -n "$DRY_RUN" ]]; then
     printf '[dry-run]'
@@ -164,6 +216,39 @@ run() {
     return 0
   fi
   "$@"
+}
+
+# Build the collector locally from docker/javamelody (Lightsail overlay is image-only).
+build_javamelody_collector_image() {
+  local img="$1"
+  local version="$2"
+  local ctx="${REPO_ROOT}/docker/javamelody"
+  local dockerfile="${ctx}/Dockerfile"
+  if [[ ! -f "${dockerfile}" ]]; then
+    echo "error: JavaMelody Dockerfile missing: ${dockerfile}" >&2
+    exit 1
+  fi
+  echo "→ docker build JavaMelody collector ${img} (JAVAMELODY_VERSION=${version})"
+  if [[ -n "$DRY_RUN" ]]; then
+    printf '[dry-run]'
+    printf ' %q' docker build \
+      -f "${dockerfile}" \
+      --build-arg "JAVAMELODY_VERSION=${version}" \
+      -t "${img}" \
+      "${ctx}"
+    echo
+    echo "  (no remote build: overlay is image-only + pull_policy: never; compose up uses --no-build)"
+    return 0
+  fi
+  docker build \
+    -f "${dockerfile}" \
+    --build-arg "JAVAMELODY_VERSION=${version}" \
+    -t "${img}" \
+    "${ctx}"
+  if ! docker image inspect "${img}" >/dev/null 2>&1; then
+    echo "error: JavaMelody collector image missing after build: ${img}" >&2
+    exit 1
+  fi
 }
 
 # Sync the host-side files that the Lightsail docker-compose.yml bind-mounts through ../../ paths.
@@ -287,6 +372,10 @@ echo "  target: ${LIGHTSAIL_TARGET:-custom (explicit host)}"
 if [[ -n "$INCLUDE_DEMO_ACME" ]]; then
   echo "  (including demo-app-acme)"
 fi
+if [[ -n "$JM_ENABLE" ]]; then
+  echo "  (JavaMelody collector: ${JAVAMELODY_COLLECTOR_IMAGE} — ship pre-built; no remote build)"
+fi
+echo "  images: ${IMAGES[*]}"
 echo "=========================================="
 echo ""
 
@@ -296,6 +385,10 @@ if [[ ! -f "$COMPOSE_FILE" ]]; then
 fi
 
 mkdir -p "$EXPORT_DIR"
+
+if [[ -n "$JM_ENABLE" ]]; then
+  build_javamelody_collector_image "${JAVAMELODY_COLLECTOR_IMAGE}" "${JAVAMELODY_VERSION}"
+fi
 
 for i in "${!IMAGES[@]}"; do
   img="${IMAGES[$i]}"
@@ -308,6 +401,9 @@ for i in "${!IMAGES[@]}"; do
       if [[ "$img" == "ezkey-demo-app-acme:latest" ]]; then
         echo "  Build first, e.g. from repo root:" >&2
         echo "    docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest ." >&2
+      elif [[ "$img" == ezkey-javamelody-collector:* ]]; then
+        echo "  Build first (or re-run with EZKEY_ENABLE_JAVA_MELODY=true so this script builds it):" >&2
+        echo "    docker build -f docker/javamelody/Dockerfile --build-arg JAVAMELODY_VERSION=${JAVAMELODY_VERSION:-2.9.0} -t ${img} docker/javamelody" >&2
       else
         echo "  Build first, e.g. from repo root:" >&2
         echo "    docker compose -f docker/docker-compose.yml build migration admin-api auth-api integration-api" >&2
@@ -381,35 +477,34 @@ if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
   # JavaMelody (#846 / Edgar): default rolling up does NOT pass --remove-orphans.
   # Guard so a plain base-only up cannot leave APIs without JM env while the collector
   # container still runs (or accidentally tear it down if --remove-orphans is restored):
-  #   EZKEY_ENABLE_JAVA_MELODY=true  → apply overlay (keep / start collector)
+  #   EZKEY_ENABLE_JAVA_MELODY=true  → apply overlay (keep / start collector; image already loaded)
   #   EZKEY_DISABLE_JAVA_MELODY=true → intentional remove (base + --remove-orphans)
   #   neither, but collector present → refuse (must choose enable or disable)
-  jm_enable=""
-  jm_disable=""
-  if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
-    jm_enable="1"
-  fi
-  if [[ "${EZKEY_DISABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_DISABLE_JAVA_MELODY:-}" == "true" ]]; then
-    jm_disable="1"
-  fi
-  if [[ -n "$jm_enable" && -n "$jm_disable" ]]; then
-    echo "error: set only one of EZKEY_ENABLE_JAVA_MELODY or EZKEY_DISABLE_JAVA_MELODY" >&2
-    exit 1
-  fi
+  # Always --no-build: VM must use images from docker load (remote buildx often < Compose need).
   remote_compose_cmd='docker compose -f docker-compose.yml'
   remove_orphans=""
-  if [[ -n "$jm_enable" ]]; then
+  if [[ -n "$JM_ENABLE" ]]; then
     remote_compose_cmd='docker compose -f docker-compose.yml -f docker-compose.javamelody.yml'
-    echo "  (EZKEY_ENABLE_JAVA_MELODY set — applying docker-compose.javamelody.yml)"
+    echo "  (EZKEY_ENABLE_JAVA_MELODY set — applying docker-compose.javamelody.yml; --no-build)"
+    echo "  (collector image ${JAVAMELODY_COLLECTOR_IMAGE} loaded locally → scp → docker load; no remote build)"
     # Fail closed: collector scrapes management from another container; overlay must reopen 0.0.0.0.
-    jm_overlay_local="${SCRIPT_DIR}/../lightsail/docker-compose.javamelody.yml"
+    jm_overlay_local="${JAVAMELODY_OVERLAY}"
     if [[ -f "$jm_overlay_local" ]] \
       && ! grep -Eq 'MANAGEMENT_SERVER_ADDRESS:[[:space:]]*"?0\.0\.0\.0"?' "$jm_overlay_local"; then
       echo "error: ${jm_overlay_local} enables JavaMelody but MANAGEMENT_SERVER_ADDRESS is not 0.0.0.0" >&2
       echo "  (base community compose binds management to 127.0.0.1; without the overlay reopen the collector stays empty)" >&2
       exit 1
     fi
-  elif [[ -n "$jm_disable" ]]; then
+    # Fail closed: Lightsail overlay must stay image-only (no build:) + pull_policy never.
+    if grep -Eq '^\s*build:' "$jm_overlay_local"; then
+      echo "error: ${jm_overlay_local} must not declare build: (Lightsail is image-only; ship via export)" >&2
+      exit 1
+    fi
+    if ! grep -Eq '^\s*pull_policy:[[:space:]]*never' "$jm_overlay_local"; then
+      echo "error: ${jm_overlay_local} must set pull_policy: never on javamelody-collector" >&2
+      exit 1
+    fi
+  elif [[ -n "$JM_DISABLE" ]]; then
     remove_orphans="--remove-orphans"
     echo "  (EZKEY_DISABLE_JAVA_MELODY set — base compose + --remove-orphans; collector will be removed)"
   else
@@ -430,13 +525,13 @@ if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
       exit 1
     fi
   fi
-  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && ${remote_compose_cmd} up -d ${remove_orphans}"
+  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && ${remote_compose_cmd} up -d --no-build ${remove_orphans}"
   if [[ -n "$CADDY_SRC_FOR_VERIFY" ]]; then
     local_sha="$(sha256sum "${CADDY_SRC_FOR_VERIFY}" | awk '{print $1}')"
     remote_caddy_basename="$(basename "${CADDY_SRC_FOR_VERIFY}")"
     echo ""
     echo "→ verify remote ${remote_caddy_basename} sha256=${local_sha} and force-recreate caddy (bind-mount)"
-    run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; if [[ -d ${remote_caddy_basename} ]]; then echo \"error: ${remote_caddy_basename} is a directory (Docker empty-dir artifact); expected a file (#863)\" >&2; exit 1; fi; remote_sha=\$(sha256sum ${remote_caddy_basename} | awk '{print \$1}'); if [[ \"\${remote_sha}\" != '${local_sha}' ]]; then echo \"error: remote ${remote_caddy_basename} sha256=\${remote_sha} != local ${local_sha}\" >&2; exit 1; fi; ${remote_compose_cmd} up -d --no-deps --force-recreate caddy"
+    run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; if [[ -d ${remote_caddy_basename} ]]; then echo \"error: ${remote_caddy_basename} is a directory (Docker empty-dir artifact); expected a file (#863)\" >&2; exit 1; fi; remote_sha=\$(sha256sum ${remote_caddy_basename} | awk '{print \$1}'); if [[ \"\${remote_sha}\" != '${local_sha}' ]]; then echo \"error: remote ${remote_caddy_basename} sha256=\${remote_sha} != local ${local_sha}\" >&2; exit 1; fi; ${remote_compose_cmd} up -d --no-build --no-deps --force-recreate caddy"
   fi
 fi
 
@@ -445,7 +540,12 @@ if [[ -n "$DO_CLEAN_START" ]]; then
   sync_operator_files "sync lightsail operator files (before clean-start)"
   echo ""
   echo "→ remote clean-start (destructive: docker compose down -v, keygen, up)"
-  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && bash clean-start.sh"
+  clean_start_cmd='bash clean-start.sh'
+  if [[ -n "$JM_ENABLE" ]]; then
+    clean_start_cmd='EZKEY_ENABLE_JAVA_MELODY=true bash clean-start.sh --with-java-melody'
+    echo "  (EZKEY_ENABLE_JAVA_MELODY set — clean-start will apply JM overlay with --no-build)"
+  fi
+  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && ${clean_start_cmd}"
 fi
 
 echo ""
