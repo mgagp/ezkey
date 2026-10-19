@@ -78,6 +78,10 @@ jobs:
               - 'scripts/update-specs.sh'
               - 'scripts/sync-ezkey-org-api-specs.sh'
               - 'docker/Dockerfile'
+              - 'docker/**'
+              - 'scripts/ci-ha-lb-smoke.sh'
+              - 'scripts/ci-ha-lb-smoke.test.sh'
+              - 'scripts/lib/ci-ha-lb-smoke-lib.sh'
               - 'specs/**'
               - 'scripts/quality-gate.sh'
               - 'scripts/quality-gate-*.sh'
@@ -256,6 +260,9 @@ jobs:
       - name: Quality-gate HA helper tests
         run: bash scripts/quality-gate-ha.test.sh
 
+      - name: HA LB smoke probe retry unit tests (#905 Patrick M2)
+        run: bash scripts/ci-ha-lb-smoke.test.sh
+
       - name: Quality-gate secrets unit tests
         run: node --test scripts/lib/quality-gate-secrets.test.mjs
 
@@ -277,6 +284,22 @@ jobs:
             **/target/surefire-reports/
           retention-days: 7
           if-no-files-found: ignore
+
+  # Live HA stack smoke: catch management bind regressions that unit tests miss (#905).
+  ha-smoke:
+    name: ha-smoke
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: HA load-balancer smoke (#905)
+        run: bash scripts/ci-ha-lb-smoke.sh
 
   mobile:
     name: mobile
@@ -397,7 +420,7 @@ jobs:
   # failure or cancellation of any needed job fails the gate.
   ci-gate:
     name: ci-gate
-    needs: [changes, admin-ui, backend, mobile, cli-python, ezkey-pam, lightsail]
+    needs: [changes, admin-ui, backend, ha-smoke, mobile, cli-python, ezkey-pam, lightsail]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -408,6 +431,7 @@ jobs:
           echo "changes=${{ needs.changes.result }}"
           echo "admin-ui=${{ needs.admin-ui.result }}"
           echo "backend=${{ needs.backend.result }}"
+          echo "ha-smoke=${{ needs.ha-smoke.result }}"
           echo "mobile=${{ needs.mobile.result }}"
           echo "cli-python=${{ needs.cli-python.result }}"
           echo "ezkey-pam=${{ needs.ezkey-pam.result }}"
@@ -421,6 +445,7 @@ jobs:
           for pair in \
             "admin-ui:${{ needs.admin-ui.result }}" \
             "backend:${{ needs.backend.result }}" \
+            "ha-smoke:${{ needs.ha-smoke.result }}" \
             "mobile:${{ needs.mobile.result }}" \
             "cli-python:${{ needs.cli-python.result }}" \
             "ezkey-pam:${{ needs.ezkey-pam.result }}" \

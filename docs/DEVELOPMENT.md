@@ -446,7 +446,8 @@ inventory and improvement plan:
 |-----|--------------|----------------|
 | `changes` | Always | Path filter outputs (`admin-ui`, `backend`, `mobile`, `workflows`); all forced on `workflow_dispatch` |
 | `admin-ui` | `ezkey-admin-ui/**`, `specs/**`, or any `.github/workflows/**` change | `cmp` of `specs/admin-api/openapi-spec.json` vs `ezkey-admin-ui/openapi-spec.json`; Node from root `.nvmrc` (24 LTS); `npm ci`; `generate:api`; `tsc -b`; lint; Vitest; `vite build`; no-demo assert on `dist/` |
-| `backend` | Java reactor paths / root `pom.xml` / `scripts/build.sh` / `.mvn/**` or workflows | JDK 25; install `checkstyle-config`; `spotless:check`; Checkstyle; full-reactor `install -DskipTests` (so `ezkey-tests` **compiles**); `test -pl '!ezkey-tests'` (H2 unit tests; **does not run** the Docker `ezkey-tests` suite) |
+| `backend` | Java reactor paths / root `pom.xml` / `scripts/build.sh` / `.mvn/**` / `docker/**` or workflows | JDK 25; install `checkstyle-config`; `spotless:check`; Checkstyle; full-reactor `install -DskipTests` (so `ezkey-tests` **compiles**); `test -pl '!ezkey-tests'` (H2 unit tests; **does not run** the Docker `ezkey-tests` suite) |
+| `ha-smoke` | Same path filter as `backend` (or workflows) | Live HA clean-start + HTTP probes through each HAProxy LB (and crypto management); expect documented status codes, never 503 (#905). Script: `scripts/ci-ha-lb-smoke.sh` |
 | `mobile` | `ezkey_mobile/**` or workflows | Calls reusable [`.github/workflows/ezkey-mobile-unit-tests.yml`](../.github/workflows/ezkey-mobile-unit-tests.yml): Yarn validate, Android JVM unit tests, **16 KB APK alignment** |
 | `ci-gate` | Always | Aggregate pass/fail for the jobs above |
 
@@ -455,8 +456,9 @@ guarantee that copy matches the real running Admin API — refresh the committed
 `./scripts/update-specs.sh` against a live stack.
 
 **Not in PR CI:** Playwright Admin UI browser tests (need a live Docker stack + Demo Device),
-running the `ezkey-tests` functional suite, doctor-curated / java-doctor / pentest hygiene
-passes, and any tag-triggered Maven Central release (not implemented).
+running the full `ezkey-tests` functional suite, doctor-curated / java-doctor / pentest hygiene
+passes, and any tag-triggered Maven Central release (not implemented). The `ha-smoke` job is the
+exception that **does** start a Docker stack on PRs that touch backend/docker paths.
 
 **Maven dependency graph (not a PR check):** workflow
 [`.github/workflows/maven-dependency-submission.yml`](../.github/workflows/maven-dependency-submission.yml)

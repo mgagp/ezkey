@@ -184,7 +184,7 @@ for the full description.
 | Property | Default (IDE / `windows`) | Docker | Description |
 |---|---|---|---|
 | `management.server.port` | `8085` | `8085` | Dedicated management port (not on `8080`). |
-| `management.server.address` | `127.0.0.1` | unset (`0.0.0.0`) | Loopback for IDE; local compose publishes `127.0.0.1:8085:8085`. |
+| `management.server.address` | `127.0.0.1` | `0.0.0.0` | Loopback for IDE; Docker profile sets `0.0.0.0` for HAProxy/peers (#905); local compose publishes `127.0.0.1:8085:8085`. |
 
 See [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) and [ADR-0015](../product-docs/global/architecture-decisions.md#adr-0015-management-port-separation-actuator-javamelody).
 

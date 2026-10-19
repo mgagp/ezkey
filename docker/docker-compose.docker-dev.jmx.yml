@@ -2,6 +2,7 @@
 #
 # Enables unauthenticated, non-SSL JMX so VisualVM can connect to the JVM inside containers.
 # DO NOT use this override in staging or production.
+# Dev only: never publish JMX outside loopback (host bind must stay 127.0.0.1 — #905).
 #
 # Ports:
 # - auth-api JMX:  localhost:9010
@@ -33,7 +34,8 @@ services:
         -Dcom.sun.management.jmxremote.ssl=false
         -Djava.rmi.server.hostname=127.0.0.1
     ports:
-      - "9010:9010"
+      # Loopback-only: unauthenticated JMX must not be LAN-reachable (#905 M1).
+      - "127.0.0.1:9010:9010"
 
   admin-api:
     environment:
@@ -45,5 +47,5 @@ services:
         -Dcom.sun.management.jmxremote.ssl=false
         -Djava.rmi.server.hostname=127.0.0.1
     ports:
-      - "9011:9011"
+      - "127.0.0.1:9011:9011"
 

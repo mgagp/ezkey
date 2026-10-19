@@ -23,9 +23,12 @@ For **what to test** on each URL (headers, Bruno, `curl`), see **[admin-ui-secur
 | JavaMelody collector (opt-in `--with-java-melody`) | `8088` | **No Caddy hop** — collector UI only |
 
 **Management host publish:** local `docker-compose.yml` maps management ports as
-`127.0.0.1:<port>:<port>` only. Inside the container the JVM still listens on `0.0.0.0` so
-Docker peers (e.g. `ezkey-pam/test/test_pam.sh` → `integration-api:7081`) keep working. Do **not**
-set `MANAGEMENT_SERVER_ADDRESS=127.0.0.1` on the local compose (that binding is community-only).
+`127.0.0.1:<port>:<port>` only. Inside the container the JVM listens on `0.0.0.0`
+(`management.server.address=0.0.0.0` in each `application-docker.properties`, #905) so
+Docker peers and HAProxy healthchecks (e.g. `ezkey-pam/test/test_pam.sh` →
+`integration-api:7081`, HA `check port 8085`) keep working. Do **not** set
+`MANAGEMENT_SERVER_ADDRESS=127.0.0.1` on the local compose (that binding is community-only).
+IDE defaults keep `127.0.0.1`.
 
 **Reserved management ports:** `8084` (demo-device), `8086` (acme), `8087` (crypto IDE default),
 `9091` (crypto Docker). Confirm they stay free of other services before reassigning.
@@ -70,8 +73,9 @@ same as the daily Caddy overlay — do not mix HA and single-stack assumptions.
 |------|-----------|--------|
 | Admin API (via HAProxy) | `9080` | Round-robin to `admin-api-1` / `admin-api-2` |
 | Auth API (via HAProxy) | `8080` | Round-robin to `auth-api-1` / `auth-api-2` |
-| HAProxy Admin stats | `9081` | `http://localhost:9081/stats` |
-| HAProxy Auth stats | `8085` | `http://localhost:8085/stats` |
+| HAProxy Admin stats | `127.0.0.1:9081` | `http://localhost:9081/stats` (loopback-only host publish, #905) |
+| HAProxy Auth stats | `127.0.0.1:8085` | `http://localhost:8085/stats` (loopback-only) |
+| HAProxy Integration stats | `127.0.0.1:7081` | `http://localhost:7081/stats` (loopback-only) |
 | JavaMelody collector (opt-in) | `8088` | `./clean-start.sh --ha --with-java-melody` — both replicas per API |
 
 Entrypoints: `./docker/start-ha.sh`, `./ezkey-tests/clean-start.sh --ha`. Full runbook:

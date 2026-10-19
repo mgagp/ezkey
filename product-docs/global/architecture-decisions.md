@@ -983,7 +983,10 @@ Docker peer).
 - **Bind local compose JVM management to 127.0.0.1.** Rejected for local Docker — peers such as
   `ezkey-pam/test/test_pam.sh` call `integration-api:7081` on the Docker network. Local harden instead
   publishes management host ports as `127.0.0.1:port:port` while the in-container bind stays
-  `0.0.0.0` (PR B).
+  `0.0.0.0` (PR B). **Decision (2026-10-19, #905):** after PR #889 set IDE defaults to
+  `management.server.address=127.0.0.1`, Docker profiles must **explicitly** set `0.0.0.0` —
+  leaving the key unset inherits the IDE default and breaks HAProxy healthchecks (backends DOWN,
+  LB 503).
 
 ### Consequences
 
@@ -1015,8 +1018,8 @@ Docker peer).
 
 - **N5:** `--check-jm-overlay-bind` is a static grep; a live `docker exec`/`ss` check when JM is on
   would be stronger (#866).
-- **N6:** HA compose (`docker-compose.ha.yml`) still uses host `localhost` healthchecks and open
-  management publishes — align in a later HA pass if needed.
+- **N6:** Closed by #905 — Docker profiles + compose set management bind `0.0.0.0`; HA API replicas
+  keep management on `expose` only; CI `ha-smoke` probes each LB.
 - **N7:** `JavaMelodyStartupValidator` is duplicated in acme (no ezkey-core dependency) — keep
   rules aligned until a shared module is justified.
 

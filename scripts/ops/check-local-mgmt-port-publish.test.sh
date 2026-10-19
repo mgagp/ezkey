@@ -47,10 +47,15 @@ mkdir -p \
   "${TMP}/ezkey-pam/scripts" \
   "${TMP}/scripts" \
   "${TMP}/ezkey-admin-api/config" \
-  "${TMP}/ezkey-auth-api/config"
+  "${TMP}/ezkey-auth-api/config" \
+  "${TMP}/ezkey-integration-api/config" \
+  "${TMP}/ezkey-crypto-api/config" \
+  "${TMP}/ezkey-demo-device/src/main/resources"
 
 cp "${ROOT}/docker/docker-compose.yml" "${TMP}/docker/"
 cp "${ROOT}/docker/docker-compose.docker-dev.yml" "${TMP}/docker/"
+cp "${ROOT}/docker/docker-compose.ha.docker-dev.yml" "${TMP}/docker/"
+cp "${ROOT}/docker/docker-compose.docker-dev.jmx.yml" "${TMP}/docker/"
 cp "${ROOT}/docker/docker-compose.ha.yml" "${TMP}/docker/"
 cp "${ROOT}/docker/Dockerfile" "${TMP}/docker/"
 cp "${ROOT}/docker/start.sh" "${TMP}/docker/"
@@ -62,7 +67,13 @@ cp "${ROOT}/ezkey-pam/scripts/common.sh" "${TMP}/ezkey-pam/scripts/"
 cp "${ROOT}/scripts/quality-gate.sh" "${TMP}/scripts/"
 cp "${ROOT}/ezkey-admin-api/config/application-windows.properties" "${TMP}/ezkey-admin-api/config/"
 cp "${ROOT}/ezkey-admin-api/config/application-docker-dev.properties" "${TMP}/ezkey-admin-api/config/"
+cp "${ROOT}/ezkey-admin-api/config/application-docker.properties" "${TMP}/ezkey-admin-api/config/"
 cp "${ROOT}/ezkey-auth-api/config/application-docker-dev.properties" "${TMP}/ezkey-auth-api/config/"
+cp "${ROOT}/ezkey-auth-api/config/application-docker.properties" "${TMP}/ezkey-auth-api/config/"
+cp "${ROOT}/ezkey-integration-api/config/application-docker.properties" "${TMP}/ezkey-integration-api/config/"
+cp "${ROOT}/ezkey-crypto-api/config/application-docker.properties" "${TMP}/ezkey-crypto-api/config/"
+cp "${ROOT}/ezkey-demo-device/src/main/resources/application-docker.properties" \
+  "${TMP}/ezkey-demo-device/src/main/resources/"
 
 assert_ok "fixture clone of current tree still passes" \
   env CHECK_LOCAL_MGMT_ROOT="${TMP}" bash "${CHECK}"
@@ -85,6 +96,37 @@ cp "${ROOT}/docker/Dockerfile" "${TMP}/docker/Dockerfile"
 sed -i 's|localhost:9091/actuator/health|localhost:9090/actuator/health|g' "${TMP}/docker/docker-compose.ha.yml"
 
 assert_fail "stale docker-compose.ha.yml crypto health :9090 is rejected" \
+  env CHECK_LOCAL_MGMT_ROOT="${TMP}" bash "${CHECK}"
+
+# #905 M1: bare HA docker-dev management publish (all interfaces) must fail.
+cp "${ROOT}/docker/docker-compose.ha.yml" "${TMP}/docker/docker-compose.ha.yml"
+cp "${ROOT}/docker/docker-compose.ha.docker-dev.yml" "${TMP}/docker/docker-compose.ha.docker-dev.yml"
+sed -i 's|127\.0\.0\.1:18085:8085|18085:8085|g' "${TMP}/docker/docker-compose.ha.docker-dev.yml"
+
+assert_fail "bare ha.docker-dev 18085:8085 (all interfaces) is rejected" \
+  env CHECK_LOCAL_MGMT_ROOT="${TMP}" bash "${CHECK}"
+
+# #905 M1: bare JMX publish must fail.
+cp "${ROOT}/docker/docker-compose.ha.docker-dev.yml" "${TMP}/docker/docker-compose.ha.docker-dev.yml"
+sed -i 's|127\.0\.0\.1:9010:9010|9010:9010|g' "${TMP}/docker/docker-compose.docker-dev.jmx.yml"
+
+assert_fail "bare jmx docker-dev 9010:9010 (all interfaces) is rejected" \
+  env CHECK_LOCAL_MGMT_ROOT="${TMP}" bash "${CHECK}"
+
+# #905: bare HAProxy stats publish (all interfaces) must fail.
+cp "${ROOT}/docker/docker-compose.docker-dev.jmx.yml" "${TMP}/docker/docker-compose.docker-dev.jmx.yml"
+sed -i 's|127\.0\.0\.1:9081:9081|9081:9081|g' "${TMP}/docker/docker-compose.ha.yml"
+
+assert_fail "bare HAProxy stats 9081:9081 (all interfaces) is rejected" \
+  env CHECK_LOCAL_MGMT_ROOT="${TMP}" bash "${CHECK}"
+
+# #905 Patrick M4: bare publish with trailing comment must still be rejected
+# (previously skipped because the line contained '#').
+cp "${ROOT}/docker/docker-compose.ha.yml" "${TMP}/docker/docker-compose.ha.yml"
+cp "${ROOT}/docker/docker-compose.ha.docker-dev.yml" "${TMP}/docker/docker-compose.ha.docker-dev.yml"
+sed -i 's|127\.0\.0\.1:18085:8085"|18085:8085"  # dev|g' "${TMP}/docker/docker-compose.ha.docker-dev.yml"
+
+assert_fail "bare ha.docker-dev 18085:8085 with trailing # comment is rejected" \
   env CHECK_LOCAL_MGMT_ROOT="${TMP}" bash "${CHECK}"
 
 echo

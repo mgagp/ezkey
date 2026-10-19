@@ -8,6 +8,8 @@ set -euo pipefail
 ROOT="${CHECK_LOCAL_MGMT_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 COMPOSE="${ROOT}/docker/docker-compose.yml"
 DEV="${ROOT}/docker/docker-compose.docker-dev.yml"
+HA_DEV="${ROOT}/docker/docker-compose.ha.docker-dev.yml"
+JMX_DEV="${ROOT}/docker/docker-compose.docker-dev.jmx.yml"
 HA="${ROOT}/docker/docker-compose.ha.yml"
 DOCKERFILE="${ROOT}/docker/Dockerfile"
 HYBRID="${ROOT}/experimental-hybrid/local/docker-compose.yml"
@@ -76,20 +78,145 @@ else
   pass=$((pass + 1))
 fi
 
+# #905: Docker profiles must override IDE 127.0.0.1 so HAProxy/peers can health-check.
+need_docker_mgmt_bind_all() {
+  local file="$1"
+  local label="$2"
+  if grep -Eq '^[[:space:]]*management\.server\.address[[:space:]]*=[[:space:]]*0\.0\.0\.0[[:space:]]*$' "$file"; then
+    echo "PASS: ${label} sets management.server.address=0.0.0.0"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: ${label} must set management.server.address=0.0.0.0 (#905)" >&2
+    fail=$((fail + 1))
+  fi
+  if grep -Eq '^[[:space:]]*management\.server\.address[[:space:]]*=[[:space:]]*127\.0\.0\.1[[:space:]]*$' "$file"; then
+    echo "FAIL: ${label} must not set management.server.address=127.0.0.1" >&2
+    fail=$((fail + 1))
+  fi
+}
+
+need_docker_mgmt_bind_all \
+  "${ROOT}/ezkey-admin-api/config/application-docker.properties" "admin-api docker profile"
+need_docker_mgmt_bind_all \
+  "${ROOT}/ezkey-auth-api/config/application-docker.properties" "auth-api docker profile"
+need_docker_mgmt_bind_all \
+  "${ROOT}/ezkey-integration-api/config/application-docker.properties" "integration-api docker profile"
+need_docker_mgmt_bind_all \
+  "${ROOT}/ezkey-crypto-api/config/application-docker.properties" "crypto-api docker profile"
+need_docker_mgmt_bind_all \
+  "${ROOT}/ezkey-demo-device/src/main/resources/application-docker.properties" "demo-device docker profile"
+
+# Local + HA compose must pin MANAGEMENT_SERVER_ADDRESS=0.0.0.0 (env beats IDE default).
+need_compose_mgmt_address_all() {
+  local file="$1"
+  local label="$2"
+  local count
+  count="$(grep -cE 'MANAGEMENT_SERVER_ADDRESS:[[:space:]]*"?0\.0\.0\.0"?' "$file" || true)"
+  if [[ "${count}" -ge 1 ]]; then
+    echo "PASS: ${label} sets MANAGEMENT_SERVER_ADDRESS=0.0.0.0 (${count}×)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: ${label} must set MANAGEMENT_SERVER_ADDRESS=0.0.0.0 (#905)" >&2
+    fail=$((fail + 1))
+  fi
+  if grep -Eq 'MANAGEMENT_SERVER_ADDRESS:[[:space:]]*"?127\.0\.0\.1"?' "$file"; then
+    echo "FAIL: ${label} must not set MANAGEMENT_SERVER_ADDRESS=127.0.0.1" >&2
+    fail=$((fail + 1))
+  fi
+}
+
+need_compose_mgmt_address_all "$COMPOSE" "docker-compose.yml"
+need_compose_mgmt_address_all "$HA" "docker-compose.ha.yml"
+
+# HA API replicas must not publish management ports on the host (expose only; HAProxy owns 9081/8085/7081 stats).
+if awk '
+  /^  [a-z0-9-]+:/ { svc=$1; gsub(":","",svc); in_ports=0 }
+  /^    ports:/ { in_ports=1; next }
+  /^    [a-z]/ { in_ports=0 }
+  in_ports && /"(9081|8085|7081):(9081|8085|7081)"/ {
+    if (svc ~ /^(admin-api|auth-api|integration-api)/) { bad=1; print svc }
+  }
+  END { exit bad ? 1 : 0 }
+' "$HA"; then
+  echo "PASS: HA API replicas do not publish management ports on the host"
+  pass=$((pass + 1))
+else
+  echo "FAIL: HA API replicas must not publish management ports on the host (expose only)" >&2
+  fail=$((fail + 1))
+fi
+
+# HAProxy stats host publishes must be loopback-only (#905 Christophe).
+need_ha_stats_loopback() {
+  local port="$1"
+  if grep -Eq "127\\.0\\.0\\.1:${port}:${port}" "$HA"; then
+    echo "PASS: HA HAProxy stats publishes 127.0.0.1:${port}:${port}"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: docker-compose.ha.yml must publish HAProxy stats as 127.0.0.1:${port}:${port}" >&2
+    fail=$((fail + 1))
+  fi
+  if grep -Eq "^[[:space:]]*-[[:space:]]*\"${port}:${port}\"" "$HA"; then
+    echo "FAIL: HA still publishes HAProxy stats ${port}:${port} on all interfaces" >&2
+    fail=$((fail + 1))
+  fi
+}
+
+need_ha_stats_loopback "9081"
+need_ha_stats_loopback "8085"
+need_ha_stats_loopback "7081"
+
 for p in 9081 8085 7081 8084 9091 8086; do
   need_publish "$COMPOSE" "$p" "docker-compose.yml"
   need_health_127 "$COMPOSE" "$p" "docker-compose.yml"
 done
 
-if grep -Eq '127\.0\.0\.1:9081:9081' "$DEV" \
-  && grep -Eq '127\.0\.0\.1:8085:8085' "$DEV" \
-  && grep -Eq '127\.0\.0\.1:7081:7081' "$DEV"; then
-  echo "PASS: docker-dev overlay keeps 127.0.0.1 management publishes"
-  pass=$((pass + 1))
-else
-  echo "FAIL: docker-compose.docker-dev.yml must publish management on 127.0.0.1" >&2
-  fail=$((fail + 1))
-fi
+# #905 Patrick M4: any ports: publish in docker-dev overlays must be loopback-only.
+# Generic rule — do not maintain an explicit port allowlist (Christophe M1 + future ports).
+require_docker_dev_ports_loopback() {
+  local file="$1"
+  local label="$2"
+  local line bare=0 ok=0
+  if [[ ! -f "$file" ]]; then
+    echo "FAIL: missing ${label} (${file})" >&2
+    fail=$((fail + 1))
+    return
+  fi
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    # Strip CR and end-of-line comments before classifying (#905 Patrick M4).
+    # Do not skip the whole line merely because it contains '#' — otherwise
+    # `- "18085:8085"  # dev` would be ignored and pass the check.
+    line="${line//$'\r'/}"
+    line="${line%%#*}"
+    # Trim trailing whitespace after comment strip.
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "${line//[[:space:]]/}" ]] && continue
+    case "$line" in
+      *ports:*) continue ;;
+    esac
+    # Compose short syntax port mapping: - "host:container" / - host:container / - ip:host:container
+    if printf '%s\n' "$line" | grep -Eq '^[[:space:]]*-[[:space:]]*["'\'']?[0-9]'; then
+      if printf '%s\n' "$line" | grep -Eq '127\.0\.0\.1:[0-9]+:[0-9]+'; then
+        ok=$((ok + 1))
+      else
+        echo "FAIL: ${label} ports entry is not loopback-only: ${line}" >&2
+        bare=$((bare + 1))
+      fi
+    fi
+  done <"$file"
+  if [[ "$bare" -gt 0 ]]; then
+    fail=$((fail + 1))
+  elif [[ "$ok" -eq 0 ]]; then
+    echo "FAIL: ${label} has no ports: publishes to validate" >&2
+    fail=$((fail + 1))
+  else
+    echo "PASS: ${label} all ${ok} ports: publishes are 127.0.0.1:…"
+    pass=$((pass + 1))
+  fi
+}
+
+require_docker_dev_ports_loopback "$DEV" "docker-compose.docker-dev.yml"
+require_docker_dev_ports_loopback "$HA_DEV" "docker-compose.ha.docker-dev.yml"
+require_docker_dev_ports_loopback "$JMX_DEV" "docker-compose.docker-dev.jmx.yml"
 
 # HA compose: crypto/demo management publish + in-container health on 9091/8084.
 need_publish "$HA" "9091" "docker-compose.ha.yml"
