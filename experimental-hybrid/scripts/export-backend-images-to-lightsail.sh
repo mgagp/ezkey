@@ -64,6 +64,9 @@ SSH target (required — no silent default; #812):
 Options:
   --apis-only            Export only admin-api, auth-api, integration-api (no migration image).
   --include-demo-acme    Also export ezkey-demo-app-acme (after API tars; build image first).
+                         With --remote-up, requires --sync-operator-files (new image + old compose
+                         healthcheck on 8082 breaks Caddy depends_on). Remote compose must contain
+                         8086/actuator/health before up.
   --sync-operator-files  After load, scp docker-compose.yml, docker-compose.javamelody.yml (if present),
                          target-aware Caddyfile (remote name = compose bind basename, #863),
                          clean-start.sh + host mounts including scripts/ops/ and docker/javamelody/.
@@ -123,6 +126,15 @@ if [[ -n "$DO_CLEAN_START" ]] && { [[ -n "$SYNC_OPERATOR_FILES" ]] || [[ -n "$RE
   echo "error: --clean-start cannot be combined with --sync-operator-files or --remote-up." >&2
   echo "  For a no-wipe upgrade (Caddy, Compose, images, migration), use --sync-operator-files and/or --remote-up only." >&2
   echo "  For a disposable full reset, use --clean-start alone." >&2
+  exit 1
+fi
+
+# New Acme image + old compose (healthcheck still on 8082) breaks Caddy depends_on.
+# Refuse --include-demo-acme --remote-up without syncing operator files in the same pass.
+if [[ -n "$INCLUDE_DEMO_ACME" && -n "$REMOTE_UP" && -z "$SYNC_OPERATOR_FILES" ]]; then
+  echo "error: --include-demo-acme with --remote-up requires --sync-operator-files." >&2
+  echo "  Dangerous pair: new Acme image (management port 8086) + old compose healthcheck on 8082" >&2
+  echo "  → Acme unhealthy → Caddy depends_on blocks public APIs. Ship image and compose together." >&2
   exit 1
 fi
 
@@ -343,6 +355,28 @@ if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
   # Bind-mount preflight (#863): fail before any restart if a host path is missing or the wrong
   # type (Docker would otherwise create an empty directory for a missing file bind).
   verify_remote_bind_mounts
+
+  # Acme image↔compose: remote healthcheck must target 8086 before up (Edgar S1).
+  if [[ -n "$INCLUDE_DEMO_ACME" ]]; then
+    acme_health_needle="8086/actuator/health"
+    local_compose="${LIGHTSAIL_LOCAL_DIR}/docker-compose.yml"
+    if [[ -n "$DRY_RUN" ]]; then
+      if [[ ! -f "$local_compose" ]] || ! grep -Fq "$acme_health_needle" "$local_compose"; then
+        echo "error: local ${local_compose} must contain ${acme_health_needle} before Acme remote-up" >&2
+        exit 1
+      fi
+      echo "[dry-run] would verify remote docker-compose.yml contains ${acme_health_needle}"
+    else
+      if ! ssh "${SSH_HOST}" \
+        "grep -Fq '${acme_health_needle}' ${LIGHTSAIL_REMOTE_DIR}/docker-compose.yml"; then
+        echo "error: remote docker-compose.yml on ${SSH_HOST} lacks ${acme_health_needle}." >&2
+        echo "  Sync operator files (new compose) before loading a new Acme image — old 8082" >&2
+        echo "  healthcheck + new classpath management port 8086 leaves Acme unhealthy and" >&2
+        echo "  blocks Caddy." >&2
+        exit 1
+      fi
+    fi
+  fi
   #
   # JavaMelody (#846 / Edgar): default rolling up does NOT pass --remove-orphans.
   # Guard so a plain base-only up cannot leave APIs without JM env while the collector

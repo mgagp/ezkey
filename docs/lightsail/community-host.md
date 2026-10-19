@@ -439,9 +439,13 @@ Collector image/version is aligned with the API starter (**2.9.0**, WAR sha256 p
   **8086** (Actuator not on business 8082). Caddy denies `/monitoring` and `/actuator` (and nested /
   case / `//` / `;` variants) on all public API + demo-acme hostnames — defense in depth; do not
   remove the deny when ports move.
-- **Deploy risk:** Acme healthcheck targets 8086 and Caddy `depends_on: demo-app-acme: service_healthy`.
-  Ship the new Acme image and compose in the same rolling export — otherwise Caddy never becomes
-  healthy and public APIs stay down.
+- **Deploy risk (image ↔ compose):** The dangerous pair is a **new** Acme image (classpath
+  `management.server.port=8086`) with an **old** compose whose healthcheck still probes
+  `8082/actuator/health` → Acme unhealthy → Caddy `depends_on: demo-app-acme: service_healthy`
+  blocks public APIs on recreate. Old image + new compose is usually OK (env vars move Actuator).
+  Always ship Acme image with `--sync-operator-files` on the same `--remote-up` (export refuses
+  `--include-demo-acme --remote-up` without sync, and checks remote compose for
+  `8086/actuator/health`).
 - Business-port `/actuator/health` must be native **404**; `/monitoring` must stay non-exposed:
   only **401**, **403**, or **404** without a JavaMelody body count as OK (do not harmonize).
   **HTTP 200** or any response whose body looks like JavaMelody is an exposure failure. Any other

@@ -70,10 +70,14 @@ Spring Boot supports external configuration files that override JAR-internal pro
 - **Docker**: Place `application.properties` in `/app/config/` (mounted volume)
 - **Local**: Place `application.properties` in `./config/` directory next to the JAR
 
-Properties can be hot-reloaded via Actuator `/refresh` endpoint:
+Actuator lives on the **management** port (**8086** locally / in Docker), not on business 8082.
+Health example:
+
 ```bash
-curl -X POST http://localhost:8082/actuator/refresh
+curl -f http://127.0.0.1:8086/actuator/health
 ```
+
+(`refresh` is not exposed in the default Acme Actuator set.)
 
 ### Configuration Properties
 
