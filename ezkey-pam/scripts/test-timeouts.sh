@@ -51,12 +51,23 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Isolate debug.out/err per case so scrapes cannot leak floor-15 wait_left etc. (#907 Patrick).
+reset_case_debug() {
+  local tag="${1:-case}"
+  docker exec "${CONTAINER}" sh -c \
+    ": > /var/log/ezkey-pam/debug.out
+     : > /var/log/ezkey-pam/debug.err
+     printf '%s\n' '____EZKEY_CASE_${tag}____' >> /var/log/ezkey-pam/debug.out" \
+    || true
+}
+
 start_stub() {
   local mode="$1"
   local slow="${2:-3}"
   local applied="${3:-30}"
   stop_stub
   docker exec "${CONTAINER}" sh -c "rm -f '${STUB_REQ_LOG}'; : >'${STUB_REQ_LOG}'" || true
+  reset_case_debug "${mode}"
   # Bind-mount host scripts into the running CI/runtime container is not
   # available — copy the stub from the image workspace path if present, else
   # from the repo bind used by up.sh. ci-m1 copies scripts into the image.
@@ -102,10 +113,24 @@ last_attempt_line() {
     "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true
 }
 
+# Last wait ?timeout= (chunk size under #907 chunked wait; typically ≤5).
 stub_wait_timeout_param() {
   docker exec "${CONTAINER}" sh -c \
     "grep 'GET .*/wait' '${STUB_REQ_LOG}' 2>/dev/null | tail -n 1" \
     | grep -oE 'timeout=[0-9]+' | tail -n 1 | cut -d= -f2 || true
+}
+
+# Sum of all wait ?timeout= values (covers full effective wait across chunks).
+stub_wait_timeout_sum() {
+  docker exec "${CONTAINER}" sh -c \
+    "grep 'GET .*/wait' '${STUB_REQ_LOG}' 2>/dev/null \
+     | grep -oE 'timeout=[0-9]+' | cut -d= -f2 \
+     | awk '{s+=\$1} END {print s+0}'" | tr -d ' \r'
+}
+
+attempt_timeout_seconds() {
+  local line="$1"
+  echo "${line}" | grep -oE 'timeoutSeconds=(-|[0-9]+)' | head -n1 | cut -d= -f2 || true
 }
 
 stub_create_ttl() {
@@ -127,10 +152,11 @@ echo "=== PAM timeout inventory tests (#895 PR-B) ===" | tee "${PROOF}"
   echo "  EZKEY_DEFAULT_WAIT_TIMEOUT 90  ezkey_config.h"
   echo "  EZKEY_MIN_TTL_SECONDS 15    create ttlSeconds floor (Integration API)"
   echo "  api_timeout max 10          ezkey_config.h + apply_config_key pam_ezkey.c"
-  echo "  wait effective              min(conf, applied_ttl, rem-CURL_SLACK) before /wait"
+  echo "  wait effective              min(conf, applied_ttl, rem-CURL_SLACK); chunked ≤5s (#907)"
   echo "  curl /wait slack 15         EZKEY_CURL_WAIT_SLACK (cancel margin inside)"
-  echo "  Enter measure               EZKEY_MAX_ENTER_SECS 25 (CLOCK_MONOTONIC; no signals)"
-  echo "  LoginGraceTime 120          sshd_config:20 (runbook: >= 120 s)"
+  echo "  Enter measure               EZKEY_MAX_ENTER_SECS 25 (CLOCK_MONOTONIC; no alarm)"
+  echo "  wait SIGTERM                absorbed only during /wait (flag); restore after"
+  echo "  LoginGraceTime 120          sshd_config (runbook: >= 120 s)"
   echo "  Auth /pending rate          10/min (ezkey.rate-limit.pending.*)"
 } | tee -a "${PROOF}"
 
@@ -206,14 +232,16 @@ ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
   "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
 GOT_TO="$(stub_wait_timeout_param)"
 GOT_TTL="$(stub_create_ttl)"
-echo "clamp wait_timeout=200 → stub ?timeout=${GOT_TO} ttlSeconds=${GOT_TTL} attempt=${ATTEMPT}" \
+AT_TO="$(attempt_timeout_seconds "${ATTEMPT}")"
+echo "clamp wait_timeout=200 → chunk=${GOT_TO} ttlSeconds=${GOT_TTL} attempt_timeoutSeconds=${AT_TO} attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
 docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null | tee -a "${PROOF}" || true
-if [ "${GOT_TO}" = "90" ] && [ "${GOT_TTL}" = "90" ] \
+if [ "${GOT_TTL}" = "90" ] && [ "${AT_TO}" = "90" ] \
+  && [ -n "${GOT_TO}" ] && [ "${GOT_TO}" -le 5 ] \
   && echo "${ATTEMPT}" | grep -q 'result=SUCCESS'; then
-  ok "wait_timeout=200 clamped: ttlSeconds=90 + ?timeout=90 (EZKEY_MAX_WAIT_TIMEOUT)"
+  ok "wait_timeout=200 clamped: ttlSeconds=90 + attempt timeoutSeconds=90 (chunked ≤5)"
 else
-  fail "clamp expected ttl=90 timeout=90 + SUCCESS, got ttl='${GOT_TTL}' to='${GOT_TO}' line=${ATTEMPT}"
+  fail "clamp expected ttl=90 timeoutSeconds=90 chunk≤5 + SUCCESS, got ttl='${GOT_TTL}' chunk='${GOT_TO}' at='${AT_TO}' line=${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -248,13 +276,15 @@ ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
   "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
 GOT_TO="$(stub_wait_timeout_param)"
 GOT_TTL="$(stub_create_ttl)"
-echo "floor wait_timeout=2 → ttl=${GOT_TTL} ?timeout=${GOT_TO} attempt=${ATTEMPT}" \
+AT_TO="$(attempt_timeout_seconds "${ATTEMPT}")"
+echo "floor wait_timeout=2 → ttl=${GOT_TTL} chunk=${GOT_TO} attempt_timeoutSeconds=${AT_TO} attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
-if [ "${GOT_TO}" = "15" ] && [ "${GOT_TTL}" = "15" ] \
+if [ "${GOT_TTL}" = "15" ] && [ "${AT_TO}" = "15" ] \
+  && [ -n "${GOT_TO}" ] && [ "${GOT_TO}" -le 5 ] \
   && echo "${ATTEMPT}" | grep -q 'result=SUCCESS'; then
-  ok "wait_timeout=2 clamped to EZKEY_MIN_TTL_SECONDS 15 (ttl + ?timeout)"
+  ok "wait_timeout=2 clamped to EZKEY_MIN_TTL_SECONDS 15 (ttl + attempt timeoutSeconds)"
 else
-  fail "floor 15 expected ttl=15 timeout=15 + SUCCESS, got ttl='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+  fail "floor 15 expected ttl=15 timeoutSeconds=15 chunk≤5 + SUCCESS, got ttl='${GOT_TTL}' chunk='${GOT_TO}' at='${AT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -292,16 +322,17 @@ done
 ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
   "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
 GOT_TO="$(stub_wait_timeout_param)"
+GOT_SUM="$(stub_wait_timeout_sum)"
 CANCEL_N="$(stub_saw_cancel)"
-echo "pending TIMEOUT stub=?timeout=${GOT_TO} cancel=${CANCEL_N} elapsed=${elapsed}s attempt=${ATTEMPT}" \
+echo "pending TIMEOUT stub chunk=${GOT_TO} sum=${GOT_SUM} cancel=${CANCEL_N} elapsed=${elapsed}s attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
 docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null | tee -a "${PROOF}" || true
-if [ "${GOT_TO}" = "15" ] && echo "${ATTEMPT}" | grep -q 'result=TIMEOUT' \
+if [ "${GOT_SUM}" = "15" ] && echo "${ATTEMPT}" | grep -q 'result=TIMEOUT' \
   && echo "${ATTEMPT}" | grep -q 'cancel=ok' \
   && [ "${CANCEL_N}" -ge 1 ] && [ "${elapsed}" -lt 60 ]; then
-  ok "pending > wait_timeout → result=TIMEOUT + cancel=ok"
+  ok "pending > wait_timeout → result=TIMEOUT + cancel=ok (chunk sum=15)"
 else
-  fail "TIMEOUT+cancel: to='${GOT_TO}' cancel=${CANCEL_N} elapsed=${elapsed} line=${ATTEMPT}"
+  fail "TIMEOUT+cancel: sum='${GOT_SUM}' chunk='${GOT_TO}' cancel=${CANCEL_N} elapsed=${elapsed} line=${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -385,6 +416,7 @@ stop_stub
 restore_conf
 
 # --- delayed Enter (under 25s): shrinks ?timeout= and still emits attempt line ---
+# Christophe: isolate debug.out (start_stub resets; re-truncate after conf; scrape last).
 start_stub ok
 docker exec "${CONTAINER}" sh -c \
   "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
@@ -394,6 +426,7 @@ docker exec "${CONTAINER}" sh -c \
    sed -i 's/^challenge_requested=.*/challenge_requested=true/' '${CONF}'; \
    sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
    chown root:root '${CONF}'; chmod 600 '${CONF}'"
+reset_case_debug "delayed_enter"
 
 run_chal_ssh() {
   local log="$1"
@@ -441,16 +474,21 @@ rm -f "${SSH_CTRL}"
 ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
   "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
 GOT_TO="$(stub_wait_timeout_param)"
-echo "delayed-enter stub=?timeout=${GOT_TO} ssh_rc=${SSH_RC} attempt=${ATTEMPT}" \
+OUT="$(docker exec "${CONTAINER}" sh -c 'cat /var/log/ezkey-pam/debug.out' || true)"
+# Filelog sanitizes '=' → '_'; scrape this attempt's wait_left (last match after truncate).
+WAIT_LEFT="$(echo "${OUT}" | grep -oE 'wait_left_[0-9]+' | tail -n1 | cut -d_ -f3 || true)"
+echo "delayed-enter chunk=${GOT_TO} wait_left=${WAIT_LEFT} ssh_rc=${SSH_RC} attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
 docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null | tee -a "${PROOF}" || true
+echo "delayed-enter debug.out=${OUT}" | tee -a "${PROOF}"
 
-# After ~8s Enter, rem≈97 → wait=min(90, applied, 97-15)=82 (± a few for create/latency).
+# After ~8s Enter, rem≈97 → effective wait≈82 (± a few); URL chunk ≤5.
 if echo "${ATTEMPT}" | grep -Eq 'result=(SUCCESS|UNAVAIL|DENIED|TIMEOUT|EXPIRED)' \
-  && [ -n "${GOT_TO}" ] && [ "${GOT_TO}" -lt 90 ] && [ "${GOT_TO}" -ge 70 ]; then
-  ok "delayed Enter ${DELAY_SECS}s → ?timeout=${GOT_TO} (shrunk) + attempt line"
+  && [ -n "${WAIT_LEFT}" ] && [ "${WAIT_LEFT}" -lt 90 ] && [ "${WAIT_LEFT}" -ge 70 ] \
+  && [ -n "${GOT_TO}" ] && [ "${GOT_TO}" -le 5 ]; then
+  ok "delayed Enter ${DELAY_SECS}s → wait_left=${WAIT_LEFT} (shrunk) + chunk≤5"
 else
-  fail "delayed Enter expected shrunk timeout in [70,89] + attempt, got '${GOT_TO}' ${ATTEMPT}"
+  fail "delayed Enter expected wait_left in [70,89] + chunk≤5, got wait_left='${WAIT_LEFT}' chunk='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -568,21 +606,23 @@ wait_attempt_line "${before}" || true
 ATTEMPT="$(last_attempt_line)"
 GOT_TO="$(stub_wait_timeout_param)"
 GOT_TTL="$(stub_create_ttl)"
+AT_TO="$(attempt_timeout_seconds "${ATTEMPT}")"
 REQ_LOG_SNAP="$(docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null || true)"
-echo "legacy_create ttl_sent=${GOT_TTL} ?timeout=${GOT_TO} attempt=${ATTEMPT}" \
+echo "legacy_create ttl_sent=${GOT_TTL} chunk=${GOT_TO} attempt_timeoutSeconds=${AT_TO} attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
 echo "${REQ_LOG_SNAP}" | tee -a "${PROOF}" || true
 # PAM still sends ttlSeconds; legacy response has none → wait uses conf=45.
 OUT="$(docker exec "${CONTAINER}" sh -c 'tail -n 20 /var/log/ezkey-pam/debug.out' || true)"
 echo "legacy_create debug.out=${OUT}" | tee -a "${PROOF}"
 # Filelog sanitizes '=' → '_', so look for applied_ttl_45 (not applied_ttl=45).
-if [ "${GOT_TTL}" = "45" ] && [ "${GOT_TO}" = "45" ] \
+if [ "${GOT_TTL}" = "45" ] && [ "${AT_TO}" = "45" ] \
+  && [ -n "${GOT_TO}" ] && [ "${GOT_TO}" -le 5 ] \
   && echo "${ATTEMPT}" | grep -q 'result=SUCCESS' \
   && echo "${ATTEMPT}" | grep -q 'cancel=skipped' \
   && echo "${OUT}" | grep -Eq 'applied_ttl_45'; then
-  ok "legacy_create: no ttl/expiresAt in response → fallback wait_timeout=45 + SUCCESS + cancel=skipped"
+  ok "legacy_create: no ttl/expiresAt → fallback wait_timeout=45 + SUCCESS + cancel=skipped"
 else
-  fail "legacy_create expected ttl=45 timeout=45 applied_ttl_45 SUCCESS cancel=skipped, got ttl='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+  fail "legacy_create expected ttl=45 timeoutSeconds=45 applied_ttl_45 SUCCESS cancel=skipped, got ttl='${GOT_TTL}' chunk='${GOT_TO}' at='${AT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -604,16 +644,18 @@ ssh_attempt_once
 wait_attempt_line "${before}" || true
 ATTEMPT="$(last_attempt_line)"
 GOT_TO="$(stub_wait_timeout_param)"
+AT_TO="$(attempt_timeout_seconds "${ATTEMPT}")"
 CANCEL_N="$(stub_saw_cancel)"
-echo "legacy_rejected ?timeout=${GOT_TO} cancel=${CANCEL_N} attempt=${ATTEMPT}" \
+echo "legacy_rejected chunk=${GOT_TO} attempt_timeoutSeconds=${AT_TO} cancel=${CANCEL_N} attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
-if [ "${GOT_TO}" = "45" ] \
+if [ "${AT_TO}" = "45" ] \
+  && [ -n "${GOT_TO}" ] && [ "${GOT_TO}" -le 5 ] \
   && echo "${ATTEMPT}" | grep -q 'result=DENIED' \
   && echo "${ATTEMPT}" | grep -q 'cancel=ok' \
   && [ "${CANCEL_N}" -ge 1 ]; then
   ok "legacy_rejected: no applied TTL + REJECTED → DENIED cancel=ok"
 else
-  fail "legacy_rejected expected timeout=45 DENIED cancel=ok: to='${GOT_TO}' ${ATTEMPT}"
+  fail "legacy_rejected expected timeoutSeconds=45 DENIED cancel=ok: at='${AT_TO}' chunk='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -644,17 +686,18 @@ elapsed=$((end_ts - start_ts))
 wait_attempt_line "${before}" || true
 ATTEMPT="$(last_attempt_line)"
 GOT_TO="$(stub_wait_timeout_param)"
+GOT_SUM="$(stub_wait_timeout_sum)"
 CANCEL_N="$(stub_saw_cancel)"
-echo "legacy_pending ?timeout=${GOT_TO} cancel=${CANCEL_N} elapsed=${elapsed}s attempt=${ATTEMPT}" \
+echo "legacy_pending chunk=${GOT_TO} sum=${GOT_SUM} cancel=${CANCEL_N} elapsed=${elapsed}s attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
-if [ "${GOT_TO}" = "15" ] \
+if [ "${GOT_SUM}" = "15" ] \
   && echo "${ATTEMPT}" | grep -q 'result=TIMEOUT' \
   && echo "${ATTEMPT}" | grep -q 'cancel=ok' \
   && [ "${CANCEL_N}" -ge 1 ] \
   && [ "${elapsed}" -lt 60 ]; then
-  ok "legacy_pending: no applied TTL + wait timeout → TIMEOUT cancel=ok"
+  ok "legacy_pending: no applied TTL + wait timeout → TIMEOUT cancel=ok (chunk sum=15)"
 else
-  fail "legacy_pending expected timeout=15 TIMEOUT cancel=ok: to='${GOT_TO}' ${ATTEMPT}"
+  fail "legacy_pending expected sum=15 TIMEOUT cancel=ok: sum='${GOT_SUM}' chunk='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -749,17 +792,19 @@ wait_attempt_line "${before}" || true
 ATTEMPT="$(last_attempt_line)"
 GOT_TO="$(stub_wait_timeout_param)"
 GOT_TTL="$(stub_create_ttl)"
+AT_TO="$(attempt_timeout_seconds "${ATTEMPT}")"
 REQ_SNAP="$(docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null || true)"
-echo "applied_shrink sent_ttl=${GOT_TTL} ?timeout=${GOT_TO} attempt=${ATTEMPT}" \
+echo "applied_shrink sent_ttl=${GOT_TTL} chunk=${GOT_TO} attempt_timeoutSeconds=${AT_TO} attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
 echo "${REQ_SNAP}" | tee -a "${PROOF}" || true
-# Request still ttlSeconds=90; response carries timeoutSeconds=30 (not logged — assert wait).
-if [ "${GOT_TTL}" = "90" ] && [ "${GOT_TO}" = "30" ] \
+# Request still ttlSeconds=90; response carries timeoutSeconds=30 → attempt line.
+if [ "${GOT_TTL}" = "90" ] && [ "${AT_TO}" = "30" ] \
+  && [ -n "${GOT_TO}" ] && [ "${GOT_TO}" -le 5 ] \
   && echo "${ATTEMPT}" | grep -q 'result=SUCCESS' \
   && echo "${ATTEMPT}" | grep -q 'cancel=skipped'; then
-  ok "applied_shrink: asked ttlSeconds=90, wait aligned on timeoutSeconds=30 + cancel=skipped"
+  ok "applied_shrink: asked ttlSeconds=90, attempt timeoutSeconds=30 + cancel=skipped"
 else
-  fail "applied_shrink expected sent=90 ?timeout=30 SUCCESS cancel=skipped, got sent='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+  fail "applied_shrink expected sent=90 timeoutSeconds=30 SUCCESS cancel=skipped, got sent='${GOT_TTL}' at='${AT_TO}' chunk='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -782,13 +827,15 @@ wait_attempt_line "${before}" || true
 ATTEMPT="$(last_attempt_line)"
 GOT_TO="$(stub_wait_timeout_param)"
 GOT_TTL="$(stub_create_ttl)"
-echo "applied_grow sent_ttl=${GOT_TTL} ?timeout=${GOT_TO} attempt=${ATTEMPT}" \
+AT_TO="$(attempt_timeout_seconds "${ATTEMPT}")"
+echo "applied_grow sent_ttl=${GOT_TTL} chunk=${GOT_TO} attempt_timeoutSeconds=${AT_TO} attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
-if [ "${GOT_TTL}" = "45" ] && [ "${GOT_TO}" = "45" ] \
+if [ "${GOT_TTL}" = "45" ] && [ "${AT_TO}" = "45" ] \
+  && [ -n "${GOT_TO}" ] && [ "${GOT_TO}" -le 5 ] \
   && echo "${ATTEMPT}" | grep -q 'result=SUCCESS'; then
-  ok "applied_grow: asked 45, server timeoutSeconds=120 → wait stays 45"
+  ok "applied_grow: asked 45, server timeoutSeconds=120 → attempt stays 45"
 else
-  fail "applied_grow expected sent=45 ?timeout=45 SUCCESS, got sent='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+  fail "applied_grow expected sent=45 timeoutSeconds=45 SUCCESS, got sent='${GOT_TTL}' at='${AT_TO}' chunk='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -811,13 +858,15 @@ wait_attempt_line "${before}" || true
 ATTEMPT="$(last_attempt_line)"
 GOT_TO="$(stub_wait_timeout_param)"
 GOT_TTL="$(stub_create_ttl)"
-echo "applied_zero sent_ttl=${GOT_TTL} ?timeout=${GOT_TO} attempt=${ATTEMPT}" \
+AT_TO="$(attempt_timeout_seconds "${ATTEMPT}")"
+echo "applied_zero sent_ttl=${GOT_TTL} chunk=${GOT_TO} attempt_timeoutSeconds=${AT_TO} attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
-if [ "${GOT_TTL}" = "45" ] && [ "${GOT_TO}" = "45" ] \
+if [ "${GOT_TTL}" = "45" ] && [ "${AT_TO}" = "45" ] \
+  && [ -n "${GOT_TO}" ] && [ "${GOT_TO}" -le 5 ] \
   && echo "${ATTEMPT}" | grep -q 'result=SUCCESS'; then
   ok "applied_zero: timeoutSeconds=0 ignored → wait_timeout=45"
 else
-  fail "applied_zero expected sent=45 ?timeout=45 SUCCESS, got sent='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+  fail "applied_zero expected sent=45 timeoutSeconds=45 SUCCESS, got sent='${GOT_TTL}' at='${AT_TO}' chunk='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -840,13 +889,15 @@ wait_attempt_line "${before}" || true
 ATTEMPT="$(last_attempt_line)"
 GOT_TO="$(stub_wait_timeout_param)"
 GOT_TTL="$(stub_create_ttl)"
-echo "applied_null sent_ttl=${GOT_TTL} ?timeout=${GOT_TO} attempt=${ATTEMPT}" \
+AT_TO="$(attempt_timeout_seconds "${ATTEMPT}")"
+echo "applied_null sent_ttl=${GOT_TTL} chunk=${GOT_TO} attempt_timeoutSeconds=${AT_TO} attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
-if [ "${GOT_TTL}" = "45" ] && [ "${GOT_TO}" = "45" ] \
+if [ "${GOT_TTL}" = "45" ] && [ "${AT_TO}" = "45" ] \
+  && [ -n "${GOT_TO}" ] && [ "${GOT_TO}" -le 5 ] \
   && echo "${ATTEMPT}" | grep -q 'result=SUCCESS'; then
   ok "applied_null: timeoutSeconds=null ignored → wait_timeout=45"
 else
-  fail "applied_null expected sent=45 ?timeout=45 SUCCESS, got sent='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+  fail "applied_null expected sent=45 timeoutSeconds=45 SUCCESS, got sent='${GOT_TTL}' at='${AT_TO}' chunk='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -868,14 +919,20 @@ if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'EZKEY_CANCEL_FAIL' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_CANCEL_SKIPPED' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_CANCEL_FINAL' "${SCRIPT_DIR}/../src/ezkey_config.h" \
+  && grep -q 'EZKEY_WAIT_CHUNK_SECS 5' "${SCRIPT_DIR}/../src/ezkey_config.h" \
+  && grep -q 'EZKEY_INTERRUPT_CANCEL_MAX 5' "${SCRIPT_DIR}/../src/ezkey_config.h" \
+  && grep -q 'EZKEY_AUTH_BUDGET_SECS 105' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'cancel=%s' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
-  && ! grep -E '\bsigaction\s*\(|\balarm\s*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -q 'ezkey_sigterm_wait' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && ! grep -E '\balarm\s*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'LoginGraceTime 120' "${SCRIPT_DIR}/../sshd_config" \
+  && grep -q 'Match User testuser' "${SCRIPT_DIR}/../sshd_config" \
+  && grep -q 'AuthenticationMethods keyboard-interactive' "${SCRIPT_DIR}/../sshd_config" \
   && grep -q '^wait_polling=2' "${SCRIPT_DIR}/../config/pam_ezkey.conf" \
   && grep -q '^wait_timeout=90' "${SCRIPT_DIR}/../config/pam_ezkey.conf"; then
-  ok "ttlSeconds/timeoutSeconds + cancel=ok|fail|skipped|final; no signals; sample conf"
+  ok "#726 chunk=5 interrupt_cancel=5 budget=105 (110<120) + cancel/SIGTERM + Match AuthMethods; no alarm"
 else
-  fail "missing linkage guards (ttlSeconds/timeoutSeconds/cancel constants/signals/sample conf)"
+  fail "missing linkage guards (#726 thresholds/cancel/chunk/Match/alarm/sample conf)"
 fi
 
 echo "" | tee -a "${PROOF}"

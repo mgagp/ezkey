@@ -17,10 +17,15 @@
  * Fail-closed: API / transport / config failures never return PAM_SUCCESS or
  * PAM_IGNORE. See STATUS.md §2.1, §2.4, and § M1.
  *
- * Observability (M1): exactly one authpriv syslog line per attempt (see
- * log_attempt_summary). result distinguishes SUCCESS / EXPIRED / TIMEOUT /
- * DENIED / UNAVAIL / …. cancel= is only ok|fail|skipped|final (EZKEY_CANCEL_*).
- * Debug chatter goes only to /var/log/ezkey-pam/ files.
+ * Observability (M1 / #907): authpriv start line at call begin (before create),
+ * then exactly one attempt summary per authenticate including timeoutSeconds.
+ * result distinguishes SUCCESS / EXPIRED / TIMEOUT / DENIED / MAXTRIES /
+ * UNAVAIL / …. cancel= is only ok|fail|skipped|final (EZKEY_CANCEL_*).
+ * In-process final-verdict marker is fail-closed for the same PAM handle only;
+ * under OpenSSH portable each keyboard-interactive round forks and _exit's, so
+ * sshd must enforce a single try via Match MaxAuthTries (option A) — do not
+ * treat PAM_MAXTRIES as effective across OpenSSH rounds. Debug chatter goes
+ * only to /var/log/ezkey-pam/ files.
  */
 
 #define _DEFAULT_SOURCE
@@ -34,6 +39,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <cjson/cJSON.h>
@@ -47,12 +53,21 @@
 #include "ezkey_config.h"
 #include "ezkey_filelog.h"
 #include "ezkey_sanitize.h"
+#include "ezkey_session.h"
 
 #define EZKEY_URL_MAX 512
 #define EZKEY_KEY_MAX 256
 #define EZKEY_TITLE_MAX 200
 #define EZKEY_MESSAGE_MAX 512
 #define EZKEY_LINE_MAX 1024
+
+#define EZKEY_PAM_DATA_FINAL "ezkey_session_final"
+
+/* Non-heap marker for pam_set_data(EZKEY_PAM_DATA_FINAL) — same process only. */
+static char ezkey_final_marker = 1;
+
+/* Set by wait-scoped SIGTERM handler; curl xferinfo aborts the in-flight /wait. */
+static volatile sig_atomic_t ezkey_wait_abort = 0;
 
 typedef struct {
     char api_url[EZKEY_URL_MAX];
@@ -91,15 +106,19 @@ static int load_config_file(const char *path, EzkeyConfig *cfg);
 static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                                        const char *username,
                                        long *auth_attempt_id_out,
+                                       int *timeout_seconds_out,
                                        const struct timespec *auth_started,
                                        const char **summary_result_out,
                                        const char **cancel_status_out);
 static void trim_inplace(char *s);
 static void ezkey_secure_wipe(void *ptr, size_t len);
 static void wipe_cfg_secrets(EzkeyConfig *cfg);
+static void log_attempt_start(const char *username, long auth_attempt_id,
+                              int timeout_seconds);
 static void log_attempt_summary(const char *username, long auth_attempt_id,
                                 const char *result, const char *cancel_status,
-                                int pam_rc, long latency_ms, int lab_http);
+                                int pam_rc, long latency_ms, int lab_http,
+                                int timeout_seconds);
 static long elapsed_ms(const struct timespec *start);
 static long remaining_budget_secs(const struct timespec *auth_started);
 static int compute_planned_wait(const EzkeyConfig *cfg,
@@ -112,6 +131,10 @@ static const char *ezkey_cancel_best_effort(pam_handle_t *pamh,
                                             const char *userpwd,
                                             long auth_attempt_id,
                                             long timeout_secs);
+static int ezkey_xferinfo_abort(void *clientp, curl_off_t dltotal,
+                                curl_off_t dlnow, curl_off_t ultotal,
+                                curl_off_t ulnow);
+static void ezkey_sigterm_wait(int signo);
 
 static void ezkey_config_init(EzkeyConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
@@ -365,7 +388,7 @@ static void wipe_cfg_secrets(EzkeyConfig *cfg) {
 }
 
 /**
- * Debug chatter only — never writes to authpriv syslog (M1: one attempt line).
+ * Debug chatter only — never writes to authpriv syslog (M1: start + attempt).
  */
 static void log_pam_info(pam_handle_t *pamh, const EzkeyConfig *cfg,
                          const char *message) {
@@ -397,21 +420,51 @@ static void log_pam_error_debug(pam_handle_t *pamh, const EzkeyConfig *cfg,
 }
 
 /**
- * Exactly one authpriv syslog line per authentication attempt (M1).
+ * Authpriv start line at the beginning of authenticate (#907), before create.
+ * Format:
+ *   pam_ezkey: start user=<u> authAttemptId=<id|-> timeoutSeconds=<n|->
+ */
+static void log_attempt_start(const char *username, long auth_attempt_id,
+                              int timeout_seconds) {
+    char user_safe[128];
+    char id_buf[32];
+    char timeout_buf[32];
+
+    ezkey_sanitize_for_log(user_safe, sizeof(user_safe),
+                           username != NULL ? username : "-");
+    if (auth_attempt_id > 0) {
+        snprintf(id_buf, sizeof(id_buf), "%ld", auth_attempt_id);
+    } else {
+        snprintf(id_buf, sizeof(id_buf), "-");
+    }
+    if (timeout_seconds > 0) {
+        snprintf(timeout_buf, sizeof(timeout_buf), "%d", timeout_seconds);
+    } else {
+        snprintf(timeout_buf, sizeof(timeout_buf), "-");
+    }
+    syslog(LOG_INFO, "%s: start user=%s authAttemptId=%s timeoutSeconds=%s",
+           EZKEY_MODULE_NAME, user_safe, id_buf, timeout_buf);
+}
+
+/**
+ * Authpriv summary line at end of authentication (M1 / #907; pairs with start).
  * Format:
  *   pam_ezkey: attempt user=<u> authAttemptId=<id|-> result=<R> pam_code=<n>
  *   latency_ms=<ms> lab_http=<true|false> cancel=<ok|fail|skipped|final>
+ *   timeoutSeconds=<n|->
  * result prefers the explicit outcome from the auth path (EXPIRED / TIMEOUT /
- * DENIED / …) so lacune-5 collapses no longer hide EXPIRED behind DENIED.
- * cancel uses only EZKEY_CANCEL_OK / FAIL / SKIPPED / FINAL (Patrick #897 M2;
- * Christophe: FINAL = HTTP 409 already-final / possible late approve).
+ * DENIED / MAXTRIES / …) so lacune-5 collapses no longer hide EXPIRED behind
+ * DENIED. cancel uses only EZKEY_CANCEL_OK / FAIL / SKIPPED / FINAL
+ * (Patrick #897 M2; Christophe: FINAL = HTTP 409 already-final).
  * Never includes secrets, proof tokens, HTTP bodies, or Basic credentials.
  */
 static void log_attempt_summary(const char *username, long auth_attempt_id,
                                 const char *result, const char *cancel_status,
-                                int pam_rc, long latency_ms, int lab_http) {
+                                int pam_rc, long latency_ms, int lab_http,
+                                int timeout_seconds) {
     char user_safe[128];
     char id_buf[32];
+    char timeout_buf[32];
 
     ezkey_sanitize_for_log(user_safe, sizeof(user_safe),
                            username != NULL ? username : "-");
@@ -419,6 +472,8 @@ static void log_attempt_summary(const char *username, long auth_attempt_id,
     if (result == NULL || result[0] == '\0') {
         if (pam_rc == PAM_SUCCESS) {
             result = "SUCCESS";
+        } else if (pam_rc == PAM_MAXTRIES) {
+            result = "MAXTRIES";
         } else if (pam_rc == PAM_AUTH_ERR) {
             result = "DENIED";
         } else if (pam_rc == PAM_AUTHINFO_UNAVAIL) {
@@ -446,15 +501,41 @@ static void log_attempt_summary(const char *username, long auth_attempt_id,
         snprintf(id_buf, sizeof(id_buf), "-");
     }
 
+    if (timeout_seconds > 0) {
+        snprintf(timeout_buf, sizeof(timeout_buf), "%d", timeout_seconds);
+    } else {
+        snprintf(timeout_buf, sizeof(timeout_buf), "-");
+    }
+
     if (latency_ms < 0) {
         latency_ms = 0;
     }
 
     syslog(LOG_INFO,
            "%s: attempt user=%s authAttemptId=%s result=%s pam_code=%d "
-           "latency_ms=%ld lab_http=%s cancel=%s",
+           "latency_ms=%ld lab_http=%s cancel=%s timeoutSeconds=%s",
            EZKEY_MODULE_NAME, user_safe, id_buf, result, pam_rc, latency_ms,
-           lab_http ? "true" : "false", cancel_status);
+           lab_http ? "true" : "false", cancel_status, timeout_buf);
+}
+
+static void ezkey_sigterm_wait(int signo) {
+    (void)signo;
+    ezkey_wait_abort = 1;
+}
+
+static int ezkey_xferinfo_abort(void *clientp, curl_off_t dltotal,
+                                curl_off_t dlnow, curl_off_t ultotal,
+                                curl_off_t ulnow) {
+    volatile sig_atomic_t *flag = (volatile sig_atomic_t *)clientp;
+
+    (void)dltotal;
+    (void)dlnow;
+    (void)ultotal;
+    (void)ulnow;
+    if (flag != NULL && *flag != 0) {
+        return 1;
+    }
+    return 0;
 }
 
 static long elapsed_ms(const struct timespec *start) {
@@ -572,8 +653,14 @@ static char *build_create_body(const EzkeyConfig *cfg, const char *username,
     return printed;
 }
 
+/**
+ * HTTP helper. When abort_flag is non-NULL, install xferinfo so SIGTERM during
+ * /wait can abort curl in-process (OpenSSH kills the auth child on disconnect;
+ * pam_end cleanup never runs in that child — #907 R5).
+ */
 static int ezkey_http(const char *url, const char *userpwd, const char *post_body,
-                      long timeout_seconds, EzkeyBuf *buf, long *http_code) {
+                      long timeout_seconds, EzkeyBuf *buf, long *http_code,
+                      volatile sig_atomic_t *abort_flag) {
     CURL *curl;
     CURLcode res;
     struct curl_slist *headers = NULL;
@@ -589,6 +676,11 @@ static int ezkey_http(const char *url, const char *userpwd, const char *post_bod
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, buf);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout_seconds);
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+    if (abort_flag != NULL) {
+        curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, ezkey_xferinfo_abort);
+        curl_easy_setopt(curl, CURLOPT_XFERINFODATA, (void *)abort_flag);
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+    }
     if (post_body != NULL) {
         headers = curl_slist_append(headers, "Content-Type: application/json");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -641,7 +733,7 @@ static const char *ezkey_cancel_best_effort(pam_handle_t *pamh,
         return EZKEY_CANCEL_SKIPPED;
     }
     curl_rc = ezkey_http(cancel_url, userpwd, "{}", timeout_secs, &buf,
-                         &http_code);
+                         &http_code, NULL);
     ezkey_buf_free(&buf);
     if (curl_rc != CURLE_OK) {
         snprintf(msg, sizeof(msg), "cancel best-effort failed: %s",
@@ -696,6 +788,7 @@ static int ezkey_api_url_allowed(const EzkeyConfig *cfg) {
 static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                                        const char *username,
                                        long *auth_attempt_id_out,
+                                       int *timeout_seconds_out,
                                        const struct timespec *auth_started,
                                        const char **summary_result_out,
                                        const char **cancel_status_out) {
@@ -711,9 +804,11 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     int pam_rc = PAM_AUTH_ERR;
     int curl_inited = 0;
     int do_cancel = 0;
+    int interrupted = 0;
     int planned_wait;
     int applied_ttl;
     int effective_wait;
+    int logged_timeout_seconds = -1;
     long rem;
     long curl_limit;
     long cancel_limit;
@@ -734,6 +829,9 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
 
     if (auth_attempt_id_out != NULL) {
         *auth_attempt_id_out = -1;
+    }
+    if (timeout_seconds_out != NULL) {
+        *timeout_seconds_out = -1;
     }
     if (summary_result_out != NULL) {
         *summary_result_out = "UNAVAIL";
@@ -827,7 +925,7 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
         goto cleanup;
     }
     curl_rc = ezkey_http(post_url, userpwd, post_body, curl_limit, &buf,
-                         &http_code);
+                         &http_code, NULL);
     free(post_body);
     post_body = NULL;
     if (curl_rc != CURLE_OK) {
@@ -898,6 +996,11 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     }
     cJSON_Delete(root);
     ezkey_buf_free(&buf);
+
+    logged_timeout_seconds = applied_ttl;
+    if (timeout_seconds_out != NULL) {
+        *timeout_seconds_out = applied_ttl;
+    }
 
     snprintf(msg, sizeof(msg),
              "Auth attempt created, id=%ld applied_ttl=%d", auth_attempt_id,
@@ -970,6 +1073,8 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
             resp = NULL;
         }
         if (prc != PAM_SUCCESS) {
+            /* Client cut / conversation failed — cancel promptly (R5). */
+            interrupted = 1;
             log_pam_error_debug(pamh, cfg,
                                 "challenge_requested but PAM conversation "
                                 "could not display the code");
@@ -1022,129 +1127,219 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
         goto cleanup;
     }
 
-    snprintf(wait_url, sizeof(wait_url),
-             "%s/api/v1/auth-attempts/%ld/wait?timeout=%d&polling=%d", api_url,
-             auth_attempt_id, effective_wait, cfg->wait_polling);
-    if (cfg->debug) {
-        snprintf(msg, sizeof(msg),
-                 "GET wait authAttemptId=%ld timeout=%d applied_ttl=%d "
-                 "budget_rem=%ld",
-                 auth_attempt_id, effective_wait, applied_ttl, rem);
-        log_pam_info(pamh, cfg, msg);
-    }
+    /*
+     * Chunked /wait (#907 R5): OpenSSH portable runs PAM in a forked child that
+     * _exit's — pam_end cleanup never runs. Slice wait so SIGTERM on client
+     * disconnect can abort curl via xferinfo and cancel in this process.
+     */
+    {
+        int wait_left = effective_wait;
+        struct sigaction sa_new;
+        struct sigaction sa_old;
+        int sig_installed = 0;
 
-    ezkey_buf_init(&buf);
-    if (buf.data == NULL) {
-        log_pam_error_debug(pamh, cfg, "Out of memory");
-        pam_rc = PAM_SERVICE_ERR;
-        summary = "ERROR";
-        goto cleanup;
-    }
-    http_code = 0;
-    curl_limit = (long)effective_wait + (long)EZKEY_CURL_WAIT_SLACK;
-    rem = remaining_budget_secs(auth_started);
-    if (curl_limit > rem) {
-        curl_limit = rem > 0 ? rem : 1;
-    }
-    curl_rc = ezkey_http(wait_url, userpwd, NULL, curl_limit, &buf, &http_code);
-    if (curl_rc != CURLE_OK) {
-        snprintf(msg, sizeof(msg), "Failed to GET wait API: %s",
-                 curl_easy_strerror(curl_rc));
-        log_pam_error_debug(pamh, cfg, msg);
-        ezkey_buf_free(&buf);
-        /* Client-side wait curl timeout → TIMEOUT (abandon); other transport → UNAVAIL. */
-        if (curl_rc == CURLE_OPERATION_TIMEDOUT) {
-            pam_rc = PAM_AUTH_ERR;
-            summary = "TIMEOUT";
-        } else {
-            pam_rc = PAM_AUTHINFO_UNAVAIL;
-            summary = "UNAVAIL";
+        memset(&sa_new, 0, sizeof(sa_new));
+        sa_new.sa_handler = ezkey_sigterm_wait;
+        sigemptyset(&sa_new.sa_mask);
+        ezkey_wait_abort = 0;
+        if (sigaction(SIGTERM, &sa_new, &sa_old) == 0) {
+            sig_installed = 1;
         }
-        goto cleanup;
-    }
-    pam_rc = pam_rc_for_http(http_code, 200);
-    if (pam_rc != PAM_SUCCESS) {
-        snprintf(msg, sizeof(msg), "Wait API HTTP %ld authAttemptId=%ld",
-                 http_code, auth_attempt_id);
-        log_pam_error_debug(pamh, cfg, msg);
-        ezkey_buf_free(&buf);
-        summary = "UNAVAIL";
-        goto cleanup;
-    }
 
-    root = cJSON_Parse(buf.data);
-    ezkey_buf_free(&buf);
-    if (!root) {
-        log_pam_error_debug(pamh, cfg, "JSON parse error for wait response");
-        pam_rc = PAM_SERVICE_ERR;
-        summary = "ERROR";
-        goto cleanup;
-    }
-    status_val = cJSON_GetObjectItemCaseSensitive(root, "status");
-    timeout_reached_val =
-        cJSON_GetObjectItemCaseSensitive(root, "timeoutReached");
-    if (cJSON_IsBool(timeout_reached_val)) {
-        timeout_reached = cJSON_IsTrue(timeout_reached_val) ? 1 : 0;
-    }
-    if (cJSON_IsString(status_val) && status_val->valuestring != NULL) {
-        status_str = status_val->valuestring;
-    }
-    /* Server-controlled status string — sanitize before any debug log (#897 n1). */
-    ezkey_sanitize_for_log(status_safe, sizeof(status_safe),
-                           status_str != NULL ? status_str : "missing");
-    accepted = (status_str != NULL && strcmp(status_str, "ACCEPTED") == 0);
-    if (accepted) {
-        pam_rc = PAM_SUCCESS;
-        summary = "SUCCESS";
-        do_cancel = 0;
-    } else if (status_str != NULL && strcmp(status_str, "EXPIRED") == 0) {
-        pam_rc = PAM_AUTH_ERR;
-        summary = "EXPIRED";
-        snprintf(msg, sizeof(msg),
-                 "Authentication expired (authAttemptId=%ld status=%s)",
-                 auth_attempt_id, status_safe);
-        log_pam_error_debug(pamh, cfg, msg);
-    } else if (status_str != NULL &&
-               (strcmp(status_str, "REJECTED") == 0 ||
-                strcmp(status_str, "INVALID") == 0)) {
-        pam_rc = PAM_AUTH_ERR;
-        summary = "DENIED";
-        snprintf(msg, sizeof(msg),
-                 "Authentication not accepted (authAttemptId=%ld status=%s)",
-                 auth_attempt_id, status_safe);
-        log_pam_error_debug(pamh, cfg, msg);
-    } else if (timeout_reached ||
-               (status_str != NULL &&
-                (strcmp(status_str, "PENDING") == 0 ||
-                 strcmp(status_str, "READ") == 0))) {
         pam_rc = PAM_AUTH_ERR;
         summary = "TIMEOUT";
-        snprintf(msg, sizeof(msg),
-                 "Authentication wait timeout (authAttemptId=%ld status=%s)",
-                 auth_attempt_id, status_safe);
-        log_pam_error_debug(pamh, cfg, msg);
-    } else {
-        pam_rc = PAM_AUTH_ERR;
-        summary = "DENIED";
-        snprintf(msg, sizeof(msg),
-                 "Authentication not accepted (authAttemptId=%ld status=%s)",
-                 auth_attempt_id, status_safe);
-        log_pam_error_debug(pamh, cfg, msg);
+
+        while (wait_left > 0) {
+            int chunk = wait_left;
+
+            if (chunk > EZKEY_WAIT_CHUNK_SECS) {
+                chunk = EZKEY_WAIT_CHUNK_SECS;
+            }
+            if (ezkey_wait_abort != 0) {
+                interrupted = 1;
+                pam_rc = PAM_AUTHINFO_UNAVAIL;
+                summary = "UNAVAIL";
+                log_pam_error_debug(pamh, cfg,
+                                    "client disconnect during wait (SIGTERM)");
+                break;
+            }
+
+            snprintf(wait_url, sizeof(wait_url),
+                     "%s/api/v1/auth-attempts/%ld/wait?timeout=%d&polling=%d",
+                     api_url, auth_attempt_id, chunk, cfg->wait_polling);
+            if (cfg->debug) {
+                snprintf(msg, sizeof(msg),
+                         "GET wait authAttemptId=%ld chunk=%d wait_left=%d "
+                         "applied_ttl=%d budget_rem=%ld",
+                         auth_attempt_id, chunk, wait_left, applied_ttl,
+                         remaining_budget_secs(auth_started));
+                log_pam_info(pamh, cfg, msg);
+            }
+
+            ezkey_buf_init(&buf);
+            if (buf.data == NULL) {
+                log_pam_error_debug(pamh, cfg, "Out of memory");
+                pam_rc = PAM_SERVICE_ERR;
+                summary = "ERROR";
+                break;
+            }
+            http_code = 0;
+            rem = remaining_budget_secs(auth_started);
+            /* Christophe M-a: never continue with curl_limit=1 when rem<=0. */
+            if (rem <= 0) {
+                ezkey_buf_free(&buf);
+                pam_rc = PAM_AUTH_ERR;
+                summary = "TIMEOUT";
+                break;
+            }
+            curl_limit = (long)chunk + 2;
+            if (curl_limit > rem) {
+                curl_limit = rem;
+            }
+            curl_rc = ezkey_http(wait_url, userpwd, NULL, curl_limit, &buf,
+                                 &http_code, &ezkey_wait_abort);
+            if (curl_rc != CURLE_OK) {
+                snprintf(msg, sizeof(msg), "Failed to GET wait API: %s",
+                         curl_easy_strerror(curl_rc));
+                log_pam_error_debug(pamh, cfg, msg);
+                ezkey_buf_free(&buf);
+                if (ezkey_wait_abort != 0 ||
+                    curl_rc == CURLE_ABORTED_BY_CALLBACK) {
+                    interrupted = 1;
+                    pam_rc = PAM_AUTHINFO_UNAVAIL;
+                    summary = "UNAVAIL";
+                } else if (curl_rc == CURLE_OPERATION_TIMEDOUT) {
+                    wait_left -= chunk;
+                    if (wait_left <= 0 ||
+                        remaining_budget_secs(auth_started) <= 0) {
+                        pam_rc = PAM_AUTH_ERR;
+                        summary = "TIMEOUT";
+                        break;
+                    }
+                    continue;
+                } else {
+                    interrupted = 1;
+                    pam_rc = PAM_AUTHINFO_UNAVAIL;
+                    summary = "UNAVAIL";
+                }
+                break;
+            }
+            if (pam_rc_for_http(http_code, 200) != PAM_SUCCESS) {
+                snprintf(msg, sizeof(msg),
+                         "Wait API HTTP %ld authAttemptId=%ld", http_code,
+                         auth_attempt_id);
+                log_pam_error_debug(pamh, cfg, msg);
+                ezkey_buf_free(&buf);
+                pam_rc = PAM_AUTHINFO_UNAVAIL;
+                summary = "UNAVAIL";
+                break;
+            }
+
+            root = cJSON_Parse(buf.data);
+            ezkey_buf_free(&buf);
+            if (!root) {
+                log_pam_error_debug(pamh, cfg,
+                                    "JSON parse error for wait response");
+                pam_rc = PAM_SERVICE_ERR;
+                summary = "ERROR";
+                break;
+            }
+            status_val = cJSON_GetObjectItemCaseSensitive(root, "status");
+            timeout_reached_val =
+                cJSON_GetObjectItemCaseSensitive(root, "timeoutReached");
+            timeout_reached = 0;
+            if (cJSON_IsBool(timeout_reached_val)) {
+                timeout_reached = cJSON_IsTrue(timeout_reached_val) ? 1 : 0;
+            }
+            status_str = NULL;
+            if (cJSON_IsString(status_val) && status_val->valuestring != NULL) {
+                status_str = status_val->valuestring;
+            }
+            ezkey_sanitize_for_log(status_safe, sizeof(status_safe),
+                                   status_str != NULL ? status_str : "missing");
+            accepted =
+                (status_str != NULL && strcmp(status_str, "ACCEPTED") == 0);
+            if (accepted) {
+                pam_rc = PAM_SUCCESS;
+                summary = "SUCCESS";
+                do_cancel = 0;
+                cJSON_Delete(root);
+                break;
+            }
+            if (status_str != NULL && strcmp(status_str, "EXPIRED") == 0) {
+                pam_rc = PAM_AUTH_ERR;
+                summary = "EXPIRED";
+                snprintf(msg, sizeof(msg),
+                         "Authentication expired (authAttemptId=%ld status=%s)",
+                         auth_attempt_id, status_safe);
+                log_pam_error_debug(pamh, cfg, msg);
+                cJSON_Delete(root);
+                break;
+            }
+            if (status_str != NULL &&
+                (strcmp(status_str, "REJECTED") == 0 ||
+                 strcmp(status_str, "INVALID") == 0)) {
+                pam_rc = PAM_AUTH_ERR;
+                summary = "DENIED";
+                snprintf(msg, sizeof(msg),
+                         "Authentication not accepted (authAttemptId=%ld "
+                         "status=%s)",
+                         auth_attempt_id, status_safe);
+                log_pam_error_debug(pamh, cfg, msg);
+                cJSON_Delete(root);
+                break;
+            }
+            if (status_str != NULL && strcmp(status_str, "PENDING") != 0 &&
+                strcmp(status_str, "READ") != 0) {
+                pam_rc = PAM_AUTH_ERR;
+                summary = "DENIED";
+                snprintf(msg, sizeof(msg),
+                         "Authentication not accepted (authAttemptId=%ld "
+                         "status=%s)",
+                         auth_attempt_id, status_safe);
+                log_pam_error_debug(pamh, cfg, msg);
+                cJSON_Delete(root);
+                break;
+            }
+            cJSON_Delete(root);
+            (void)timeout_reached;
+            wait_left -= chunk;
+            if (wait_left <= 0) {
+                pam_rc = PAM_AUTH_ERR;
+                summary = "TIMEOUT";
+                snprintf(msg, sizeof(msg),
+                         "Authentication wait timeout "
+                         "(authAttemptId=%ld status=%s)",
+                         auth_attempt_id, status_safe);
+                log_pam_error_debug(pamh, cfg, msg);
+                break;
+            }
+            /* PENDING/READ (or chunk timeoutReached): continue next chunk. */
+        }
+
+        if (sig_installed) {
+            (void)sigaction(SIGTERM, &sa_old, NULL);
+        }
+        ezkey_wait_abort = 0;
     }
-    cJSON_Delete(root);
 
 cleanup:
-    if (do_cancel && auth_attempt_id > 0 && pam_rc != PAM_SUCCESS) {
-        cancel_limit = (long)cfg->api_timeout;
-        if (cancel_limit > (long)EZKEY_MAX_API_TIMEOUT) {
-            cancel_limit = (long)EZKEY_MAX_API_TIMEOUT;
-        }
+    if (ezkey_should_cancel_attempt(do_cancel && auth_attempt_id > 0,
+                                    pam_rc == PAM_SUCCESS)) {
         rem = remaining_budget_secs(auth_started);
-        if (cancel_limit > rem) {
-            cancel_limit = rem;
+        cancel_limit = ezkey_bounded_cancel_timeout((long)cfg->api_timeout, rem,
+                                                    interrupted);
+        if (cancel_limit >= 1) {
+            cancel_status = ezkey_cancel_best_effort(
+                pamh, cfg, api_url, userpwd, auth_attempt_id, cancel_limit);
+        } else {
+            cancel_status = EZKEY_CANCEL_SKIPPED;
         }
-        cancel_status = ezkey_cancel_best_effort(
-            pamh, cfg, api_url, userpwd, auth_attempt_id, cancel_limit);
+    }
+    /* Wipe Basic credentials immediately after last HTTP use (cancel/create). */
+    ezkey_secure_wipe(userpwd, sizeof(userpwd));
+    if (timeout_seconds_out != NULL && logged_timeout_seconds > 0) {
+        *timeout_seconds_out = logged_timeout_seconds;
     }
     if (summary_result_out != NULL) {
         *summary_result_out = summary;
@@ -1152,7 +1347,6 @@ cleanup:
     if (cancel_status_out != NULL) {
         *cancel_status_out = cancel_status;
     }
-    ezkey_secure_wipe(userpwd, sizeof(userpwd));
     wipe_cfg_secrets(cfg);
     if (curl_inited) {
         curl_global_cleanup();
@@ -1168,8 +1362,10 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     EzkeyConfig cfg;
     char user_msg[768];
     long auth_attempt_id = -1;
+    int timeout_seconds = -1;
     const char *summary_result = NULL;
     const char *cancel_status = EZKEY_CANCEL_SKIPPED;
+    const void *final_item = NULL;
     struct timespec started;
 
     (void)flags;
@@ -1180,6 +1376,24 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     parse_module_args(argc, argv, &cfg);
 
     openlog(EZKEY_MODULE_NAME, LOG_PID, LOG_AUTHPRIV);
+
+    /*
+     * In-process fail-closed only: if this PAM handle already saw a final
+     * verdict, refuse recreate. Under OpenSSH portable this does NOT span
+     * keyboard-interactive rounds (each forks and _exit's) — host Match
+     * MaxAuthTries is the real guarantee (#907 option A).
+     */
+    if (pam_get_data(pamh, EZKEY_PAM_DATA_FINAL, &final_item) == PAM_SUCCESS &&
+        final_item != NULL) {
+        (void)pam_get_user(pamh, &username, NULL);
+        retval = PAM_MAXTRIES;
+        summary_result = "MAXTRIES";
+        cancel_status = EZKEY_CANCEL_SKIPPED;
+        log_pam_error_debug(pamh, &cfg,
+                            "final verdict already recorded for this PAM "
+                            "handle; refusing recreate");
+        goto done;
+    }
 
     conf_rc = load_config_file(cfg.config_file, &cfg);
     if (conf_rc == -2) {
@@ -1248,13 +1462,26 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
              username);
     log_pam_info(pamh, &cfg, user_msg);
 
+    {
+        int planned = compute_planned_wait(&cfg, &started);
+
+        /* Start line before create (#907) — id unknown until POST succeeds. */
+        log_attempt_start(username, -1,
+                          planned > 0 ? planned : cfg.wait_timeout);
+    }
+
     pam_info(pamh,
              "Approve this SSH login on your Ezkey device for user %s.",
              username);
 
     retval = ezkey_authenticate_user_api(pamh, &cfg, username, &auth_attempt_id,
-                                         &started, &summary_result,
-                                         &cancel_status);
+                                         &timeout_seconds, &started,
+                                         &summary_result, &cancel_status);
+
+    if (ezkey_result_is_final(summary_result)) {
+        (void)pam_set_data(pamh, EZKEY_PAM_DATA_FINAL, &ezkey_final_marker,
+                           NULL);
+    }
 
     if (cfg.debug) {
         snprintf(user_msg, sizeof(user_msg), "Authentication result for %s: %s",
@@ -1267,7 +1494,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
 
 done:
     log_attempt_summary(username, auth_attempt_id, summary_result, cancel_status,
-                        retval, elapsed_ms(&started), cfg.lab_http);
+                        retval, elapsed_ms(&started), cfg.lab_http,
+                        timeout_seconds);
     wipe_cfg_secrets(&cfg);
     closelog();
     return retval;

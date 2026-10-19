@@ -27,6 +27,34 @@ fi
 echo ""
 echo "Installation complete."
 echo "  1. Edit ${PAM_CONF_DIR}/pam_ezkey.conf (API URL + keys)."
+echo "     Use https:// only; never commit origin IPs — placeholder"
+echo "     <static-ip ezkey-online-community> for community docs."
 echo "  2. Add this line at the top of /etc/pam.d/sshd:"
-echo "       auth  required  pam_ezkey.so debug conf=/etc/security/pam_ezkey.conf"
-echo "  3. Restart sshd."
+echo "       auth  required  pam_ezkey.so conf=/etc/security/pam_ezkey.conf"
+echo "  3. In sshd_config: LoginGraceTime >= 120. Enforce a single Ezkey try with a"
+echo "     dedicated Match (User/Group), NOT a global MaxAuthTries 1:"
+echo "       Match User <mfa-user>"
+echo "           MaxAuthTries 1"
+echo "           AuthenticationMethods keyboard-interactive"
+echo "           PubkeyAuthentication no"
+echo "     WARNING: without that Match, OpenSSH recreates auth attempts after"
+echo "     Deny/Expire in the same TCP connection (#907 F9)."
+echo "  4. Clients: ssh -o NumberOfPasswordPrompts=1 …"
+echo "  5. Restart sshd (sshd -t first)."
+# Effective MaxAuthTries for the MFA user (sshd -T; avoids regex matching 10/12).
+CHECK_USER="${EZKEY_SSH_USER:-testuser}"
+SSHD_CFG="/etc/ssh/sshd_config"
+if [ -f "${SSHD_CFG}" ] && command -v sshd >/dev/null 2>&1; then
+  if ! sshd -T -f "${SSHD_CFG}" \
+      -C "user=${CHECK_USER},host=localhost,addr=127.0.0.1" 2>/dev/null \
+    | grep -qx 'maxauthtries 1'; then
+    echo ""
+    echo "WARNING: sshd -T for user=${CHECK_USER} does not show maxauthtries 1."
+    echo "         Add Match User|Group … MaxAuthTries 1 (effective value must be 1)."
+    echo "         Without it, OpenSSH may recreate auth attempts after Deny/Expire (#907 F9)."
+  fi
+elif [ -f "${SSHD_CFG}" ]; then
+  echo ""
+  echo "WARNING: sshd not on PATH — could not verify maxauthtries 1 via sshd -T."
+  echo "         Ensure Match User|Group … MaxAuthTries 1 for ${CHECK_USER}."
+fi

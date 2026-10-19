@@ -26,17 +26,37 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
 
+## What changed in 2.2.10 (#907 F9 — Patrick/Christophe review, option A)
+
+- **OpenSSH reality:** each keyboard-interactive round runs in a forked child that
+  `_exit`s — a `pam_set_data` marker does **not** span rounds. Do not treat
+  `PAM_MAXTRIES` as effective under sshd. The demo/`sshd` guarantee is a dedicated
+  `Match User …` / `Match Group …` block with `MaxAuthTries 1` (prefer that over a
+  **global** `MaxAuthTries 1`, which also counts refused public keys). Without that
+  Match, a retry in the same TCP connection creates a new auth attempt.
+- Authpriv **`start`** line at call begin (before create); summary includes
+  `timeoutSeconds=`.
+- **R5:** chunked `/wait` + wait-scoped `SIGTERM` (absorbed only during wait —
+  flag then restore; does not kill the child) → curl abort → bounded cancel in
+  the waiting process (`min(api_timeout, 5)`). Do not rely on `pam_end` cleanup
+  under OpenSSH.
+- Proof: `scripts/test-f9-retry.sh` (A multitry ≥2 creates; B Match = 1 create; C kill-client cancel ≤5 s).
+- In-process final marker kept as fail-closed for same-handle callers only.
+- Harness: `make test-session` (interrupt cancel cap + final-verdict helpers).
+
 ## What changed in 2.2 / 2.2.1 (M1)
 
 On top of 2.1 slices 1–3 ([`STATUS.md`](STATUS.md) § M1):
 
-- **One attempt line** in `authpriv` / `/var/log/secure` per authenticate (stable format):
+- **Start + attempt lines** in `authpriv` / `/var/log/secure` (stable format):
 
   ```text
-  pam_ezkey: attempt user=… authAttemptId=… result=… pam_code=… latency_ms=… lab_http=… cancel=…
+  pam_ezkey: start user=… authAttemptId=- timeoutSeconds=…   (before create)
+  pam_ezkey: attempt user=… authAttemptId=… result=… pam_code=… latency_ms=… lab_http=… cancel=… timeoutSeconds=…
   ```
 
-  - `result`: `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `UNAVAIL` \| …
+  - `result`: `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `MAXTRIES` \| `UNAVAIL` \| …
+    (`MAXTRIES` is same-handle only — not effective across OpenSSH kbdint forks)
   - `cancel` (only these four literals — `EZKEY_CANCEL_*`):
     | Value | Meaning |
     |---|---|
@@ -92,6 +112,7 @@ Manual SSH:
 ssh -p 2222 \
   -o PreferredAuthentications=keyboard-interactive \
   -o PubkeyAuthentication=no \
+  -o NumberOfPasswordPrompts=1 \
   testuser@127.0.0.1
 ```
 
@@ -223,13 +244,41 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
 - **`LoginGraceTime` ≥ 120 s.** Demo `sshd_config` sets `LoginGraceTime 120`. The module’s
   monotonic budget is 105 s; a lower grace time cuts the session before PAM can finish (often
   with **no** attempt line). Keep host sshd grace ≥ 120 when using this module.
+- **Single try via `Match` (sshd), not a global `MaxAuthTries 1`.** After Deny or
+  expiration, OpenSSH portable retries **keyboard-interactive in the same TCP connection**,
+  each round in a **new forked PAM child** (`auth-pam.c` `_exit`) — so in-process PAM
+  markers do not stop a second create (#907 F9 / option A). Enforce one try with a
+  dedicated block, for example:
+
+  ```text
+  Match User testuser
+      MaxAuthTries 1
+      AuthenticationMethods keyboard-interactive
+      PubkeyAuthentication no
+  ```
+
+  Prefer pinning `AuthenticationMethods keyboard-interactive` and/or
+  `PubkeyAuthentication no` **inside the Match** (not only globally). **Avoid global
+  `MaxAuthTries 1`:** refused public keys also consume tries and can lock out mixed
+  auth methods. **Match limits:** applies until EOF or the next `Match`; first matching
+  value wins; protection is **per TCP connection**, not a cross-connection rate limit.
+  **Forgetting the Match is an easy miss** — OpenSSH then recreates auth attempts after
+  Deny/Expire in the same session (F9; proven by `scripts/test-f9-retry.sh` case A).
+  `install.sh` / entrypoint check effective `maxauthtries 1` with
+  `sshd -T -C user=…`. Client helper: `-o NumberOfPasswordPrompts=1`. Demo
+  `sshd_config` uses that Match with global `MaxAuthTries 6`.
+- **HTTP 429 during `/wait`:** fail-closed — PAM returns `UNAVAIL` and the SSH
+  approval fails (no silent retry inside the wait loop).
 - **Auth API `/pending` rate limit: 10/min** (`ezkey.rate-limit.pending.requests=10`,
   `window-minutes=1`). Rapid SSH retries plus Demo Device / mobile pending checks share that
   budget — back off when testing EXPIRER / abandon loops.
-- **SSH client keepalive may give up before `wait_timeout`.** Clients with aggressive
-  `ServerAliveInterval` / `ServerAliveCountMax` (or GUI wrappers) can drop the TCP session
-  while PAM is still waiting for device approval. Prefer keepalive that covers at least
-  `wait_timeout` + margin, or disable client keepalive for MFA login tests.
+- **SSH client keepalive / disconnect (R5).** Prefer keepalive that covers at least
+  `wait_timeout` + margin for MFA tests. On client disconnect during `/wait`, sshd
+  sends `SIGTERM` to the PAM child (`auth-pam.c:164-168`); the module **absorbs**
+  that signal only while waiting (wait-scoped handler → flag → restore), aborts the
+  in-process chunked curl, and best-effort cancels within `min(api_timeout, 5)`
+  seconds — not via `pam_end` (unused under OpenSSH `_exit`). Residual: hard
+  `SIGKILL` can still skip cancel; applied TTL remains the bound.
 - After abandon (Ctrl-C, wait timeout, Enter over-limit), PAM **best-effort** cancels the
   attempt so a new create is not blocked by a stale PENDING/READ card. Cancel is **not
   guaranteed when the wait timeout is reached** (remaining monotonic budget may be too
@@ -237,6 +286,8 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
   TTL** from create (`timeoutSeconds` in the create response, ≤ 90 s for PAM), not the
   cancel. A late approval after a failed cancel can leave an orphan `ACCEPTED` attempt
   (nothing granted on SSH); residual risk is approval fatigue.
+- **Never version origin IPs** in docs or conf samples — use the placeholder
+  `<static-ip ezkey-online-community>` for community-host notes.
 
 ## Troubleshooting
 
