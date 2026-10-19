@@ -480,6 +480,12 @@ def _build_service(json_path: Path):
     return build("androidpublisher", "v3", credentials=credentials, cache_discovery=False)
 
 
+def _is_deleted_edit_error(exc: BaseException) -> bool:
+    """True when Play reports the current edit was invalidated (often concurrency)."""
+    text = str(exc)
+    return "This Edit has been deleted" in text or "edit has been deleted" in text.lower()
+
+
 def _run_upload(
     *,
     aab_path: Path,
@@ -507,103 +513,118 @@ def _run_upload(
     print(f"Opened edit id={edit_id}")
 
     try:
-        tracks_payload = (
-            service.edits()
-            .tracks()
-            .list(packageName=PACKAGE_NAME, editId=edit_id)
-            .execute()
-        )
-        print("Tracks / releases (versionCodes):")
-        for track in tracks_payload.get("tracks") or []:
-            track_name = track.get("track", "?")
-            releases = track.get("releases") or []
-            if not releases:
-                print(f"  {track_name}: (no releases)")
-                continue
-            for release in releases:
-                codes = release.get("versionCodes") or []
-                rel_status = release.get("status", "?")
-                rel_name = release.get("name", "")
-                print(
-                    f"  {track_name}: status={rel_status} "
-                    f"versionCodes={codes} name={rel_name!r}"
-                )
-
-        highest = highest_version_code_from_tracks(tracks_payload)
-        print(f"Highest versionCode on any track: {highest}")
-        if info.version_code <= highest:
-            print(
-                f"Refusing upload: AAB versionCode {info.version_code} is not strictly "
-                f"greater than highest on Play ({highest}).",
-                file=sys.stderr,
+        try:
+            tracks_payload = (
+                service.edits()
+                .tracks()
+                .list(packageName=PACKAGE_NAME, editId=edit_id)
+                .execute()
             )
-            return 1
+            print("Tracks / releases (versionCodes):")
+            for track in tracks_payload.get("tracks") or []:
+                track_name = track.get("track", "?")
+                releases = track.get("releases") or []
+                if not releases:
+                    print(f"  {track_name}: (no releases)")
+                    continue
+                for release in releases:
+                    codes = release.get("versionCodes") or []
+                    rel_status = release.get("status", "?")
+                    rel_name = release.get("name", "")
+                    print(
+                        f"  {track_name}: status={rel_status} "
+                        f"versionCodes={codes} name={rel_name!r}"
+                    )
 
-        play_names = version_names_on_tracks(tracks_payload)
-        if info.version_name and info.version_name in play_names:
-            msg = (
-                f"AAB versionName {info.version_name!r} already appears on a Play "
-                f"release name ({sorted(play_names)}). Bump package.json version "
-                f"before the next upload (see MOBILE_PLAY_PUBLISHING.md)."
-            )
-            if allow_same_version_name:
-                print(f"WARNING: {msg} Continuing because --allow-same-version-name.")
-            else:
+            highest = highest_version_code_from_tracks(tracks_payload)
+            print(f"Highest versionCode on any track: {highest}")
+            if info.version_code <= highest:
                 print(
-                    f"Refusing upload: {msg}\n"
-                    "Pass --allow-same-version-name to override.",
+                    f"Refusing upload: AAB versionCode {info.version_code} is not strictly "
+                    f"greater than highest on Play ({highest}).",
                     file=sys.stderr,
                 )
                 return 1
 
-        if dry_run:
-            print(
-                "Dry-run: skipping bundles.upload / tracks.update / commit; "
-                "deleting edit."
+            play_names = version_names_on_tracks(tracks_payload)
+            if info.version_name and info.version_name in play_names:
+                msg = (
+                    f"AAB versionName {info.version_name!r} already appears on a Play "
+                    f"release name ({sorted(play_names)}). Bump package.json version "
+                    f"before the next upload (see MOBILE_PLAY_PUBLISHING.md)."
+                )
+                if allow_same_version_name:
+                    print(
+                        f"WARNING: {msg} Continuing because --allow-same-version-name."
+                    )
+                else:
+                    print(
+                        f"Refusing upload: {msg}\n"
+                        "Pass --allow-same-version-name to override.",
+                        file=sys.stderr,
+                    )
+                    return 1
+
+            if dry_run:
+                print(
+                    "Dry-run: skipping bundles.upload / tracks.update / commit; "
+                    "deleting edit."
+                )
+                return 0
+
+            print(f"Uploading AAB to edit (track={INTERNAL_TRACK}, status={status})…")
+            media = MediaFileUpload(
+                str(aab_path),
+                mimetype="application/octet-stream",
+                resumable=True,
             )
+            bundle = (
+                service.edits()
+                .bundles()
+                .upload(packageName=PACKAGE_NAME, editId=edit_id, media_body=media)
+                .execute()
+            )
+            uploaded_vc = int(bundle.get("versionCode", info.version_code))
+            print(f"Uploaded bundle versionCode={uploaded_vc}")
+            if not (release_name_override or "").strip():
+                release_name = format_release_name(uploaded_vc, info.version_name)
+
+            track_body = {
+                "track": INTERNAL_TRACK,
+                "releases": [
+                    {
+                        "name": release_name,
+                        "versionCodes": [str(uploaded_vc)],
+                        "status": status,
+                    }
+                ],
+            }
+            service.edits().tracks().update(
+                packageName=PACKAGE_NAME,
+                editId=edit_id,
+                track=INTERNAL_TRACK,
+                body=track_body,
+            ).execute()
+            print(
+                f"Updated track '{INTERNAL_TRACK}' status={status} name={release_name!r}"
+            )
+
+            service.edits().commit(packageName=PACKAGE_NAME, editId=edit_id).execute()
+            print("Committed edit.")
+            edit_id = None  # committed; do not delete
             return 0
-
-        print(f"Uploading AAB to edit (track={INTERNAL_TRACK}, status={status})…")
-        media = MediaFileUpload(
-            str(aab_path),
-            mimetype="application/octet-stream",
-            resumable=True,
-        )
-        bundle = (
-            service.edits()
-            .bundles()
-            .upload(packageName=PACKAGE_NAME, editId=edit_id, media_body=media)
-            .execute()
-        )
-        uploaded_vc = int(bundle.get("versionCode", info.version_code))
-        print(f"Uploaded bundle versionCode={uploaded_vc}")
-        if not (release_name_override or "").strip():
-            release_name = format_release_name(uploaded_vc, info.version_name)
-
-        track_body = {
-            "track": INTERNAL_TRACK,
-            "releases": [
-                {
-                    "name": release_name,
-                    "versionCodes": [str(uploaded_vc)],
-                    "status": status,
-                }
-            ],
-        }
-        service.edits().tracks().update(
-            packageName=PACKAGE_NAME,
-            editId=edit_id,
-            track=INTERNAL_TRACK,
-            body=track_body,
-        ).execute()
-        print(
-            f"Updated track '{INTERNAL_TRACK}' status={status} name={release_name!r}"
-        )
-
-        service.edits().commit(packageName=PACKAGE_NAME, editId=edit_id).execute()
-        print("Committed edit.")
-        edit_id = None  # committed; do not delete
-        return 0
+        except Exception as exc:  # noqa: BLE001 — surface Play edit concurrency clearly
+            if _is_deleted_edit_error(exc):
+                print(
+                    "ERROR: Play reported 'This Edit has been deleted.' — another edit "
+                    "was opened concurrently; run uploads serially "
+                    "(dry-run first, then the real upload after it exits). "
+                    "See MOBILE_PLAY_PUBLISHING.md.",
+                    file=sys.stderr,
+                )
+                print(f"Detail: {exc}", file=sys.stderr)
+                return 1
+            raise
     finally:
         if edit_id is not None:
             try:
@@ -757,6 +778,14 @@ def _self_test() -> int:
     check(
         "format_release_name",
         format_release_name(4, "0.1.0-alpha") == "4 (0.1.0-alpha)",
+    )
+    check(
+        "deleted-edit error detection",
+        _is_deleted_edit_error(RuntimeError("HttpError 400 This Edit has been deleted.")),
+    )
+    check(
+        "deleted-edit detection ignores unrelated errors",
+        not _is_deleted_edit_error(RuntimeError("versionCode too low")),
     )
     check(
         "parse release name with code",

@@ -106,7 +106,13 @@ export EZKEY_PLAY_SERVICE_ACCOUNT_JSON="/c/Users/marcg/.gradle/ezkey-play-publis
 ./scripts/play-upload-internal.sh android/app/build/outputs/bundle/release/app-release.aab
 ```
 
+**One edit at a time:** the Play Developer API allows only one open edit per app. On 2026-10-19 a parallel `--dry-run` deleted the edit under a concurrent vc5 upload (`HttpError 400 This Edit has been deleted.`); the retry succeeded alone — never run `play-upload-internal.sh` (dry-run or real) concurrently; dry-run first, then upload only after it has exited.
+
 Optional flags: `--dry-run` (auth + list tracks/versionCodes, delete edit, no commit), `--status draft|completed` (default `draft`), `--release-name` (override the default `'<versionCode> (<versionName>)'`), `--allow-same-version-name` (escape hatch if the AAB `versionName` already appears on a Play release — default is refuse). The script refuses any track other than `internal` and refuses an AAB whose `versionCode` is not strictly greater than the highest `versionCode` already on any track. On Windows Git Bash set `EZKEY_PYTHON` if `python3` is the Microsoft Store stub. (Why the proto-manifest fix: AAB `base/manifest/AndroidManifest.xml` is aapt2 protobuf `XmlNode`, not binary AXML — the first upload dry-run failed until the reader handled that format.)
+
+### Track hygiene
+
+Each track has one active release; a new upload on that track replaces the previous active release. Older bundles remain in Console history and cannot be deleted — that is normal. Keep tracks tidy on purpose: **alpha** (closed testing) may still serve vc3 `3 (0.1.0-alpha)` to its testers while **internal** moves ahead — either promote the current internal build to alpha or pause/stop alpha when it is unused (Marc’s call). Promotion is **not** automated by `play-upload-internal.sh` (internal-only by design).
 
 ## In-app third-party licenses snapshot
 
