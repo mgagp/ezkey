@@ -77,7 +77,7 @@ Before each Play upload:
 4. If dependencies changed, run `yarn license:app-data` and commit the JSON snapshot.
 5. Build the signed AAB (`./scripts/build-install-release-clean.sh` or `yarn android:bundle:release` with JDK 17).
 
-**This workspace (2026-10-19):** `versionName` `0.1.0-alpha`, `versionCode` `4` (already uploaded to internal). Next upload must bump both: `versionCode` → `5` and a new `versionName` (Marc chooses the next number). Do not reuse a `versionCode`. (Earlier notes that said the Console highest was `versionCode` `1` were wrong; Console showed `3` before vc4.)
+**Upload history:** vc4 = `0.1.0-alpha` (internal; same name as vc3 — why the policy exists). **vc5 = `0.1.1-alpha`** (patch; first upload under the policy). Do not reuse a `versionCode`.
 
 ## Upload signed AAB to internal testing (CLI)
 
