@@ -34,6 +34,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.savedrequest.NullRequestCache;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.test.context.TestPropertySource;
 
 /**
@@ -78,14 +79,11 @@ class ManagementPortSeparationTest {
     assertThat(managementPort).isNotEqualTo(businessPort);
 
     assertThat(status("http://127.0.0.1:" + managementPort + "/actuator/health")).isEqualTo(200);
-    // Actuator is not mounted on the business port. Production LIVE returns 404; a minimal
-    // SecurityFilterChain may yield 401 when MvcRequestMatcher does not match a missing handler
-    // and falls through to anyRequest().authenticated(). Never 200.
-    assertThat(status("http://127.0.0.1:" + businessPort + "/actuator/health")).isIn(401, 404);
+    // Target: native 404 — Actuator is not mounted on the business port (LIVE + verify script).
+    assertThat(status("http://127.0.0.1:" + businessPort + "/actuator/health")).isEqualTo(404);
 
-    // JM management-endpoint mode returns 403 from MonitoringFilter; if Security runs first,
-    // anyRequest().authenticated() yields 401. Both mean the report is not exposed (verify script).
-    assertThat(status("http://127.0.0.1:" + businessPort + "/monitoring")).isIn(401, 403);
+    // JavaMelody management-endpoint mode refuses the business-port report with 403.
+    assertThat(status("http://127.0.0.1:" + businessPort + "/monitoring")).isEqualTo(403);
 
     // Proves /actuator/** permitAll on the management port (no 401).
     assertThat(status("http://127.0.0.1:" + managementPort + "/actuator/monitoring"))
@@ -104,8 +102,10 @@ class ManagementPortSeparationTest {
   static class TestApp {}
 
   /**
-   * Same actuator rule as production Admin {@code SecurityConfig}: {@code /actuator/**} permitAll,
-   * {@code anyRequest} authenticated.
+   * Mirrors production Admin actuator permitAll. Uses {@link AntPathRequestMatcher} so {@code
+   * /actuator/**} still matches when no MVC handler exists on the business port (otherwise
+   * MvcRequestMatcher misses and {@code anyRequest().authenticated()} returns 401 instead of the
+   * target native 404). {@code /monitoring} is permitted so the JavaMelody filter can return 403.
    */
   @Configuration
   @EnableWebSecurity
@@ -119,7 +119,13 @@ class ManagementPortSeparationTest {
           .requestCache(cache -> cache.requestCache(new NullRequestCache()))
           .authorizeHttpRequests(
               authz ->
-                  authz.requestMatchers("/actuator/**").permitAll().anyRequest().authenticated())
+                  authz
+                      .requestMatchers(AntPathRequestMatcher.antMatcher("/actuator/**"))
+                      .permitAll()
+                      .requestMatchers(AntPathRequestMatcher.antMatcher("/monitoring"))
+                      .permitAll()
+                      .anyRequest()
+                      .authenticated())
           .exceptionHandling(
               exceptions ->
                   exceptions.authenticationEntryPoint(

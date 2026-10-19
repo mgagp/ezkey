@@ -34,6 +34,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.savedrequest.NullRequestCache;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.test.context.TestPropertySource;
 
 /**
@@ -75,11 +76,10 @@ class ManagementPortSeparationTest {
     assertThat(managementPort).isNotEqualTo(businessPort);
 
     assertThat(status("http://127.0.0.1:" + managementPort + "/actuator/health")).isEqualTo(200);
-    // Not mounted on the business port (LIVE 404; minimal chain may 401 — never 200).
-    assertThat(status("http://127.0.0.1:" + businessPort + "/actuator/health")).isIn(401, 404);
+    // Target: native 404 — Actuator is not mounted on the business port (LIVE + verify script).
+    assertThat(status("http://127.0.0.1:" + businessPort + "/actuator/health")).isEqualTo(404);
 
-    // JM 403 or Security 401 — both non-exposure (see verify-javamelody-non-exposure.sh).
-    assertThat(status("http://127.0.0.1:" + businessPort + "/monitoring")).isIn(401, 403);
+    assertThat(status("http://127.0.0.1:" + businessPort + "/monitoring")).isEqualTo(403);
 
     assertThat(status("http://127.0.0.1:" + managementPort + "/actuator/monitoring"))
         .isEqualTo(200);
@@ -96,6 +96,10 @@ class ManagementPortSeparationTest {
   @Import({ActuatorPermitAllSecurityConfig.class, JavaMelodyStartupGuardConfig.class})
   static class TestApp {}
 
+  /**
+   * Ant-path matchers so missing business-port Actuator handlers still permitAll → native 404; and
+   * so {@code /monitoring} reaches JavaMelody's 403.
+   */
   @Configuration
   @EnableWebSecurity
   static class ActuatorPermitAllSecurityConfig {
@@ -108,7 +112,13 @@ class ManagementPortSeparationTest {
           .requestCache(cache -> cache.requestCache(new NullRequestCache()))
           .authorizeHttpRequests(
               authz ->
-                  authz.requestMatchers("/actuator/**").permitAll().anyRequest().authenticated())
+                  authz
+                      .requestMatchers(AntPathRequestMatcher.antMatcher("/actuator/**"))
+                      .permitAll()
+                      .requestMatchers(AntPathRequestMatcher.antMatcher("/monitoring"))
+                      .permitAll()
+                      .anyRequest()
+                      .authenticated())
           .exceptionHandling(
               exceptions ->
                   exceptions.authenticationEntryPoint(
