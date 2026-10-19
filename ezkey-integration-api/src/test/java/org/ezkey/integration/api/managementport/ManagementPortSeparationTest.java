@@ -34,7 +34,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.savedrequest.NullRequestCache;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.test.context.TestPropertySource;
 
 /**
@@ -97,8 +96,8 @@ class ManagementPortSeparationTest {
   static class TestApp {}
 
   /**
-   * Ant-path matchers so missing business-port Actuator handlers still permitAll → native 404; and
-   * so {@code /monitoring} reaches JavaMelody's 403.
+   * String matchers (Security 7 → PathPatternRequestMatcher) so missing business-port Actuator
+   * handlers still permitAll → native 404; and so {@code /monitoring} reaches JavaMelody's 403.
    */
   @Configuration
   @EnableWebSecurity
@@ -113,9 +112,9 @@ class ManagementPortSeparationTest {
           .authorizeHttpRequests(
               authz ->
                   authz
-                      .requestMatchers(AntPathRequestMatcher.antMatcher("/actuator/**"))
+                      .requestMatchers("/actuator/**")
                       .permitAll()
-                      .requestMatchers(AntPathRequestMatcher.antMatcher("/monitoring"))
+                      .requestMatchers("/monitoring")
                       .permitAll()
                       .anyRequest()
                       .authenticated())

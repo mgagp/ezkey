@@ -162,7 +162,9 @@ if [[ ${#BASE_URLS[@]} -eq 0 ]]; then
   if [[ -n "$BASE_URLS_FROM_ENV" ]]; then
     # shellcheck disable=SC2206
     BASE_URLS=(${BASE_URLS_FROM_ENV})
-  elif [[ -z "$CHECK_SS" && -z "$CHECK_BUSINESS" ]]; then
+  elif [[ -z "$CHECK_SS" && -z "$CHECK_BUSINESS" && -z "$CHECK_JM_OVERLAY_BIND" ]]; then
+    # Do not fill default edge URLs when the caller only asked for --check-jm-overlay-bind
+    # (otherwise offline overlay-bind CI probes localhost and fails spuriously).
     BASE_URLS=(
       http://localhost:19080
       http://localhost:18080

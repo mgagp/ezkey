@@ -34,7 +34,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.savedrequest.NullRequestCache;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.test.context.TestPropertySource;
 
 /**
@@ -102,10 +101,10 @@ class ManagementPortSeparationTest {
   static class TestApp {}
 
   /**
-   * Mirrors production Admin actuator permitAll. Uses {@link AntPathRequestMatcher} so {@code
-   * /actuator/**} still matches when no MVC handler exists on the business port (otherwise
-   * MvcRequestMatcher misses and {@code anyRequest().authenticated()} returns 401 instead of the
-   * target native 404). {@code /monitoring} is permitted so the JavaMelody filter can return 403.
+   * Mirrors production Admin actuator permitAll. Spring Security 7 resolves string patterns via
+   * {@code PathPatternRequestMatcher}, so {@code /actuator/**} still matches when no MVC handler
+   * exists on the business port (native 404). {@code /monitoring} is permitted so the JavaMelody
+   * filter can return 403.
    */
   @Configuration
   @EnableWebSecurity
@@ -120,9 +119,9 @@ class ManagementPortSeparationTest {
           .authorizeHttpRequests(
               authz ->
                   authz
-                      .requestMatchers(AntPathRequestMatcher.antMatcher("/actuator/**"))
+                      .requestMatchers("/actuator/**")
                       .permitAll()
-                      .requestMatchers(AntPathRequestMatcher.antMatcher("/monitoring"))
+                      .requestMatchers("/monitoring")
                       .permitAll()
                       .anyRequest()
                       .authenticated())
