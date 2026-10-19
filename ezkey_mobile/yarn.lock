@@ -6165,7 +6165,7 @@ __metadata:
     react-native-nitro-modules: "npm:0.37.1"
     react-native-safe-area-context: "npm:5.10.1"
     react-native-screens: "npm:4.29.0"
-    react-native-svg: "npm:15.15.5"
+    react-native-svg: "npm:15.16.0"
     react-native-svg-transformer: "npm:1.5.3"
     react-native-vision-camera: "npm:5.2.3"
     react-native-vision-camera-barcode-scanner: "npm:5.2.3"
@@ -9714,16 +9714,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-svg@npm:15.15.5":
-  version: 15.15.5
-  resolution: "react-native-svg@npm:15.15.5"
+"react-native-svg@npm:15.16.0":
+  version: 15.16.0
+  resolution: "react-native-svg@npm:15.16.0"
   dependencies:
     css-select: "npm:^5.1.0"
     css-tree: "npm:^1.1.3"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/34b71b6c83d7235efbc4263abaffcbad780375f9e0fca95786e4f1a543a2b6d07e90c7df426f708e85be68331c412066cdc639f4a6ce82bed42bc728050d9402
+  checksum: 10c0/8196b9f9fae75643a58c61c3411a2121d65d33c9ddd447f9cf2cba8e7131e45b621e34950b3e1918788ee4137ee034e7ae59f960cb85e79561b180d9bfb31539
   languageName: node
   linkType: hard
 
