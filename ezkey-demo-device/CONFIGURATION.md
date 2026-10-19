@@ -31,6 +31,7 @@ See [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) and [ADR-0015](.
 | Property | Default | Obligation | Description |
 |----------|---------|------------|-------------|
 | `ezkey.demo-device.allowed-auth-api-hosts` | _(empty)_ | optionnel | Comma-separated **hostnames** (no scheme/port) allowed as Auth API targets for QR `authUrl` and bind overrides. When empty, the effective allowlist is the host of `ezkey.auth.api.url` plus `localhost` and `127.0.0.1`. When set, **only** the listed hosts are allowed. |
+| `ezkey.demo-device.claimed-pending-attempt-ttl` | `120s` | optionnel | Bound stored as claim `expiresAt` after a successful pending pull. Auth API pending does **not** expose attempt expiry (#834); Demo Device uses this duration so session rehydration invalidates at `min(claimedAt + this, claimedAt + 10 min)` and a stale READ claim cannot hide a newer pending (#895 PR-C). Align with `ezkey.core.auth-attempt.ttl-seconds` when you raise the server TTL, or Approve/Deny may disappear while the attempt is still valid (read-once). |
 
 Env override example: `EZKEY_DEMO_DEVICE_ALLOWED_AUTH_API_HOSTS=localhost,127.0.0.1,auth-api`.
 

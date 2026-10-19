@@ -8,6 +8,14 @@ Monorepo copy lives under `ezkey/ezkey-demo-device/`; public standalone mirror: 
 
 Bind response `tenantId` / `tenantName` / `tenantDescription` are persisted on `EnrollmentStoreService.Record`. The Ezkey app home groups enrollments via `EnrollmentTenantGrouper` into `tenantGroups` (header + list per tenant). Use `EnrollmentTenantGrouper.normalizeTenantName`: null `tenantId` / absent name → **Platform**. Do not invent “Unknown tenant”. Prefer that helper over ad-hoc sorting in the controller or template.
 
+## Claimed pending session expiry (#895 PR-C)
+
+Auth API pending is read-once (`PENDING` → `READ`). After a successful claim, `ClaimedPendingAuth` is stored in the HTTP session so a second GET can re-show Approve/Deny without calling pending again (204).
+
+Auth API pending **does not** put `expiresAt` on the wire (#834 — countdown stays on the integrating app). Demo Device still stores a claim `expiresAt` = `claimedAt + ezkey.demo-device.claimed-pending-attempt-ttl` (default **120s**, aligned with `ezkey.core.auth-attempt.ttl-seconds`). `PendingAuthClaimSession.findOpen` invalidates at `min(expiresAt, claimedAt + 10 min)` so a stale claim cannot hide a newer pending request.
+
+On `POST …/auth/respond`, HTTP **409** with ProblemDetail type ending in `auth-attempt-expired` (PR-A contract) shows the expired result UI. Other 409s (including older `auth-attempt-state-conflict` or a missing type) show a neutral “no longer active” message — tolerant when PR-A is not yet deployed. Raise `claimed-pending-attempt-ttl` if the Auth API TTL is configured above 120s.
+
 ## QR `authUrl` routing (mobile parity)
 
 When an Admin UI enrollment QR includes `authUrl`, the demo device routes **bind**, **verify**, **pending**, and **respond** for that enrollment to that base URL. The validated URL is persisted in `EnrollmentStoreService.Record.enrollmentUrl`.

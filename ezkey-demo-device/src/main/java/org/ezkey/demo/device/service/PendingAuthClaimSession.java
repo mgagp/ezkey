@@ -18,6 +18,10 @@ import java.util.Optional;
  * <p>Keeps a short-lived open claim per enrollment so Demo Device UI survives a second GET after
  * Auth API has already moved the attempt to {@code READ}.
  *
+ * <p>Invalidation uses {@code min(expiresAt, claimedAt + ttl)} when {@code expiresAt} is set, so a
+ * stale claim cannot hide a newer pending request after the attempt lifetime (#895 PR-C / lacune
+ * 3).
+ *
  * @since 2026
  */
 public final class PendingAuthClaimSession {
@@ -32,7 +36,9 @@ public final class PendingAuthClaimSession {
   /**
    * Returns an open (non-expired) claim for the enrollment, if present.
    *
-   * <p>Expired entries are removed from the session.
+   * <p>Expired entries are removed from the session. A claim is expired when {@code now} is not
+   * strictly before {@code min(expiresAt, claimedAt + ttl)} (or {@code claimedAt + ttl} when {@code
+   * expiresAt} is null).
    *
    * @param session HTTP session (may be {@code null})
    * @param enrollmentId enrollment id
@@ -53,11 +59,34 @@ public final class PendingAuthClaimSession {
       clear(session, enrollmentId);
       return Optional.empty();
     }
-    if (claim.claimedAt() == null || claim.claimedAt().plus(ttl).isBefore(now)) {
+    Instant deadline = effectiveDeadline(claim, ttl);
+    if (deadline == null || !deadline.isAfter(now)) {
       clear(session, enrollmentId);
       return Optional.empty();
     }
     return Optional.of(claim);
+  }
+
+  /**
+   * Computes the instant at which a stored claim must be dropped.
+   *
+   * <p>When {@code expiresAt} is present: {@code min(expiresAt, claimedAt + ttl)}. Otherwise {@code
+   * claimedAt + ttl}.
+   *
+   * @param claim stored claim
+   * @param ttl session TTL cap
+   * @return deadline instant, or {@code null} when {@code claimedAt} is missing
+   */
+  public static Instant effectiveDeadline(ClaimedPendingAuth claim, Duration ttl) {
+    if (claim == null || claim.claimedAt() == null || ttl == null) {
+      return null;
+    }
+    Instant sessionCap = claim.claimedAt().plus(ttl);
+    Instant expiresAt = claim.expiresAt();
+    if (expiresAt == null) {
+      return sessionCap;
+    }
+    return expiresAt.isBefore(sessionCap) ? expiresAt : sessionCap;
   }
 
   /**
