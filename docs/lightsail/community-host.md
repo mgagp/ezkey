@@ -57,7 +57,7 @@ aws lightsail get-static-ip \
 
 `scripts/lightsail/` still do **not** allocate, attach, or release static IPs — attach/detach remains an operator/console action. After any attach or detach, update Cloudflare **A** records and SSH `HostName` values immediately (see **Deploy pitfalls**).
 
-**IAM:** workstation profile `ezkey-lightsail` / policy **EzkeyLightsailOperator** (instance lifecycle + ports + key pairs; no static-IP API in that policy, no snapshots).
+**IAM:** workstation profile `ezkey-lightsail` / policy **EzkeyLightsailOperator** (instance lifecycle + ports + key pairs; no static-IP API in that policy). **Decision (2026-10-19, #909):** Marc added `lightsail:CreateInstanceSnapshot`, `GetInstanceSnapshot` / `GetInstanceSnapshots`, and `DeleteInstanceSnapshot` (Resource `*`) for Host OS hygiene pre-intervention snapshots. Read verified from rootbeer: 0 snapshots present; Lightsail **automatic** snapshots are **not** enabled. Create has not been exercised yet — the first H1 run validates it. Scoping Resource to the instance ARN is a Christophe follow-up. Snapshot rotation: keep the latest pre-intervention snapshot, delete older ones. Canon: [`product-docs/global/hygiene/host-os/README.md`](../../product-docs/global/hygiene/host-os/README.md).
 
 ---
 
@@ -68,6 +68,7 @@ aws lightsail get-static-ip \
 | [`create-instance.sh`](../../scripts/lightsail/create-instance.sh) | `create-instances`; dry-run default; `--apply` to create; waits until `running`; refuses existing name |
 | [`open-ports.sh`](../../scripts/lightsail/open-ports.sh) | SSH 22 + HTTPS 443 (`open-instance-public-ports` or `--mode put`); dry-run default |
 | [`bootstrap-host.sh`](../../scripts/lightsail/bootstrap-host.sh) | SSH Phase 0b/0c: Docker + Compose v2 + `docker` group; no clean-start / no image push |
+| [`os-patch-check.sh`](../../scripts/lightsail/os-patch-check.sh) | Read-only Host OS signal over SSH (`--target community`); releasever / security updateinfo / reboot hint / `docker ps` (#909) |
 | [`delete-instance.sh`](../../scripts/lightsail/delete-instance.sh) | Delete by name; `--apply` requires explicit `--name`; community `ezkey-online` also needs `EZKEY_CONFIRM_DELETE=ezkey-online`; never releases static IPs |
 | [`status.sh`](../../scripts/lightsail/status.sh) | `get-instance` / `--list` → `get-instances` |
 | [`common.sh`](../../scripts/lightsail/common.sh) | Shared defaults and helpers (sourced; not run directly) |
@@ -376,6 +377,14 @@ After delete, static IP `ezkey-online-community` detaches and stays allocated (~
 
 ---
 
+## Host OS hygiene (#909)
+
+Community host OS patching and AL2023 minor/major moves are a separate hygiene lane (not
+app deploy). Canon: [`product-docs/global/hygiene/host-os/README.md`](../../product-docs/global/hygiene/host-os/README.md).
+Read-only signal: `./scripts/lightsail/os-patch-check.sh --target community` (rootbeer-local
+agent only — cloud agents have no SSH route). Live Host OS fields:
+[`community/DEPLOYED.md`](community/DEPLOYED.md).
+
 ## Related
 
 - [`experimental-hybrid/DEPLOYMENT_PLAYBOOK.md`](../../experimental-hybrid/DEPLOYMENT_PLAYBOOK.md) -- Phase 0 fresh AL2023; community section cross-link
@@ -385,6 +394,7 @@ After delete, static IP `ezkey-online-community` detaches and stays allocated (~
 - [`docs/cloudflare/README.md`](../cloudflare/README.md) -- Cloudflare script style sibling
 - [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md) -- Public alpha claim + git-SHA identity
 - [`community/DEPLOYED.md`](community/DEPLOYED.md) -- live state ledger for ezkey.online (update after successful publish)
+- [`product-docs/global/hygiene/host-os/README.md`](../../product-docs/global/hygiene/host-os/README.md) -- Host OS hygiene lane H1/H2/H3 (#909)
 
 ## Observability (JavaMelody) — #846 / memory bounds #749
 

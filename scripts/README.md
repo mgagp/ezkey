@@ -148,9 +148,16 @@ export AWS_PROFILE=ezkey-lightsail
 ./scripts/lightsail/create-instance.sh --target community
 ./scripts/lightsail/open-ports.sh
 ./scripts/lightsail/bootstrap-host.sh --target community --dry-run
+./scripts/lightsail/os-patch-check.sh --target community --dry-run
 ./scripts/lightsail/status.sh --help
 ./scripts/lightsail/delete-instance.sh --help
 ```
+
+[`lightsail/os-patch-check.sh`](lightsail/os-patch-check.sh) — **read-only** Host OS signal over SSH
+(`--target community` required; #812): system-release, `dnf check-release-update`, Critical/Important
+updateinfo, `needs-restarting -r`, kernel, `docker ps`. Never updates packages or reboots. Canon:
+[`product-docs/global/hygiene/host-os/README.md`](../product-docs/global/hygiene/host-os/README.md)
+(#909). Rootbeer-local agents only (cloud agents have no SSH route).
 
 App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with **`--target community`** — no silent SSH host default (#812). Community `--sync-operator-files` installs `Caddyfile.ezkey-online` under that same remote basename (compose bind mount — #863). Do not put community-only secrets or ezkey.online-only DNS checklists into the public compose tree.
 
