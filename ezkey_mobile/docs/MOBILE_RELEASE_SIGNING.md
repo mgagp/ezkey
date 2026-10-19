@@ -96,15 +96,16 @@ Play Store upload. Android `versionName` is injected from that file during the b
 so `package.json` is the human-readable source of truth:
 
 ```gradle
-versionCode 2     // monotonically increasing integer; +1 per Play upload
+versionCode 4     // monotonically increasing integer; +1 per Play upload
 ```
 
-Confirm the next integer against **Play Console → App bundle explorer** before upload. The
-workspace default is `2` because the experimental drop used `versionCode` `1`. Then update
+Confirm the next integer against **Play Console → App bundle explorer** before upload. Current
+Console highest is `versionCode` `1`; workspace next upload is `4` (see
+[`MOBILE_PLAY_PUBLISHING.md`](MOBILE_PLAY_PUBLISHING.md)). Then update
 **`ezkey_mobile/android/app/build.gradle`** only for that Android-specific counter:
 
 ```gradle
-versionCode 2
+versionCode 4
 ```
 
 Example: if `package.json` contains `"version": "1.0.1"`, Android will package
