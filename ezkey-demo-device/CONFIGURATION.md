@@ -31,6 +31,7 @@ See [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) and [ADR-0015](.
 | Property | Default | Obligation | Description |
 |----------|---------|------------|-------------|
 | `ezkey.demo-device.allowed-auth-api-hosts` | _(empty)_ | optionnel | Comma-separated **hostnames** (no scheme/port) allowed as Auth API targets for QR `authUrl` and bind overrides. When empty, the effective allowlist is the host of `ezkey.auth.api.url` plus `localhost` and `127.0.0.1`. When set, **only** the listed hosts are allowed. |
+| `ezkey.demo-device.claimed-pending-attempt-ttl` | `120s` | optionnel | **Fallback only** when the pending JSON has no `expiresAt`. Prefer the server field when present. Fallback is `claimedAt + this`; session invalidates at `min(expiresAt, claimedAt + 10 min)` (#895 PR-C). Default matches `ezkey.core.auth-attempt.ttl-seconds` (120). If the initiator TTL is shorter (e.g. PAM 90 s) and pending still omits `expiresAt` (#834), a stale Approve/Deny can remain for the delta — lower this property to match, or rely on respond 409. If the Auth API TTL is **higher** than this fallback, raise it or Approve/Deny may disappear while the attempt is still valid (read-once). |
 
 Env override example: `EZKEY_DEMO_DEVICE_ALLOWED_AUTH_API_HOSTS=localhost,127.0.0.1,auth-api`.
 

@@ -10,6 +10,7 @@
 
 package org.ezkey.demo.device.config;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -30,6 +31,16 @@ public class DemoDeviceProperties {
   private List<String> allowedAuthApiHosts = new ArrayList<>();
 
   /**
+   * Fallback duration for claim {@code expiresAt} when the pending JSON has no server {@code
+   * expiresAt} (#834 / #895). Prefer the server field when present. Default matches {@code
+   * ezkey.core.auth-attempt.ttl-seconds} (120). Lower this when initiator TTLs are shorter (e.g.
+   * PAM 90 s) to avoid a stale Approve/Deny window; raise it when the Auth API TTL is higher, or
+   * Approve/Deny may disappear while the attempt is still valid (read-once). Cap remains {@link
+   * org.ezkey.demo.device.service.PendingAuthClaimSession#DEFAULT_TTL} (10 minutes).
+   */
+  private Duration claimedPendingAttemptTtl = Duration.ofSeconds(120);
+
+  /**
    * Returns the configured host allowlist (may be empty when defaults should apply).
    *
    * @return mutable list bound by Spring (never {@code null} after construction)
@@ -46,5 +57,25 @@ public class DemoDeviceProperties {
   public void setAllowedAuthApiHosts(List<String> allowedAuthApiHosts) {
     this.allowedAuthApiHosts =
         allowedAuthApiHosts != null ? new ArrayList<>(allowedAuthApiHosts) : new ArrayList<>();
+  }
+
+  /**
+   * Returns the session claim expiry bound for a successful pending pull.
+   *
+   * @return duration added to {@code claimedAt} to form {@code expiresAt}
+   */
+  public Duration getClaimedPendingAttemptTtl() {
+    return claimedPendingAttemptTtl;
+  }
+
+  /**
+   * Sets the session claim expiry bound.
+   *
+   * @param claimedPendingAttemptTtl duration aligned with Auth API auth-attempt TTL; {@code null}
+   *     resets to 120 seconds
+   */
+  public void setClaimedPendingAttemptTtl(Duration claimedPendingAttemptTtl) {
+    this.claimedPendingAttemptTtl =
+        claimedPendingAttemptTtl != null ? claimedPendingAttemptTtl : Duration.ofSeconds(120);
   }
 }
