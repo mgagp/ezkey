@@ -143,6 +143,9 @@ See [`../product-docs/global/normative-posture.md`](../product-docs/global/norma
   without management-endpoint monitoring, or if management port equals business port. Spring
   Security `permitAll` on `/actuator/**` applies on the management context (health and
   `/actuator/monitoring` need no auth). Caddy deny remains defense in depth. ADR-0015.
+- **2026-10-19 (#905):** Local/HA Docker profiles set `management.server.address=0.0.0.0` so
+  HAProxy and peers can health-check management ports; IDE defaults stay `127.0.0.1`. Host
+  exposure remains `127.0.0.1:port:port` (non-HA) or `expose` only (HA API replicas).
 
 ## Session and cookies
 

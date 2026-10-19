@@ -76,6 +76,73 @@ else
   pass=$((pass + 1))
 fi
 
+# #905: Docker profiles must override IDE 127.0.0.1 so HAProxy/peers can health-check.
+need_docker_mgmt_bind_all() {
+  local file="$1"
+  local label="$2"
+  if grep -Eq '^[[:space:]]*management\.server\.address[[:space:]]*=[[:space:]]*0\.0\.0\.0[[:space:]]*$' "$file"; then
+    echo "PASS: ${label} sets management.server.address=0.0.0.0"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: ${label} must set management.server.address=0.0.0.0 (#905)" >&2
+    fail=$((fail + 1))
+  fi
+  if grep -Eq '^[[:space:]]*management\.server\.address[[:space:]]*=[[:space:]]*127\.0\.0\.1[[:space:]]*$' "$file"; then
+    echo "FAIL: ${label} must not set management.server.address=127.0.0.1" >&2
+    fail=$((fail + 1))
+  fi
+}
+
+need_docker_mgmt_bind_all \
+  "${ROOT}/ezkey-admin-api/config/application-docker.properties" "admin-api docker profile"
+need_docker_mgmt_bind_all \
+  "${ROOT}/ezkey-auth-api/config/application-docker.properties" "auth-api docker profile"
+need_docker_mgmt_bind_all \
+  "${ROOT}/ezkey-integration-api/config/application-docker.properties" "integration-api docker profile"
+need_docker_mgmt_bind_all \
+  "${ROOT}/ezkey-crypto-api/config/application-docker.properties" "crypto-api docker profile"
+need_docker_mgmt_bind_all \
+  "${ROOT}/ezkey-demo-device/src/main/resources/application-docker.properties" "demo-device docker profile"
+
+# Local + HA compose must pin MANAGEMENT_SERVER_ADDRESS=0.0.0.0 (env beats IDE default).
+need_compose_mgmt_address_all() {
+  local file="$1"
+  local label="$2"
+  local count
+  count="$(grep -cE 'MANAGEMENT_SERVER_ADDRESS:[[:space:]]*"?0\.0\.0\.0"?' "$file" || true)"
+  if [[ "${count}" -ge 1 ]]; then
+    echo "PASS: ${label} sets MANAGEMENT_SERVER_ADDRESS=0.0.0.0 (${count}×)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: ${label} must set MANAGEMENT_SERVER_ADDRESS=0.0.0.0 (#905)" >&2
+    fail=$((fail + 1))
+  fi
+  if grep -Eq 'MANAGEMENT_SERVER_ADDRESS:[[:space:]]*"?127\.0\.0\.1"?' "$file"; then
+    echo "FAIL: ${label} must not set MANAGEMENT_SERVER_ADDRESS=127.0.0.1" >&2
+    fail=$((fail + 1))
+  fi
+}
+
+need_compose_mgmt_address_all "$COMPOSE" "docker-compose.yml"
+need_compose_mgmt_address_all "$HA" "docker-compose.ha.yml"
+
+# HA API replicas must not publish management ports on the host (expose only; HAProxy owns 9081/8085/7081 stats).
+if awk '
+  /^  [a-z0-9-]+:/ { svc=$1; gsub(":","",svc); in_ports=0 }
+  /^    ports:/ { in_ports=1; next }
+  /^    [a-z]/ { in_ports=0 }
+  in_ports && /"(9081|8085|7081):(9081|8085|7081)"/ {
+    if (svc ~ /^(admin-api|auth-api|integration-api)/) { bad=1; print svc }
+  }
+  END { exit bad ? 1 : 0 }
+' "$HA"; then
+  echo "PASS: HA API replicas do not publish management ports on the host"
+  pass=$((pass + 1))
+else
+  echo "FAIL: HA API replicas must not publish management ports on the host (expose only)" >&2
+  fail=$((fail + 1))
+fi
+
 for p in 9081 8085 7081 8084 9091 8086; do
   need_publish "$COMPOSE" "$p" "docker-compose.yml"
   need_health_127 "$COMPOSE" "$p" "docker-compose.yml"

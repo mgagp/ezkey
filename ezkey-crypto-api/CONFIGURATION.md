@@ -14,7 +14,7 @@ and no scheduled jobs. It reads encryption keys from files via the Docker volume
 |---|---|---|---|
 | `server.port` | `8081` (IDE) / `9090` (docker) | recommandé | Business HTTP port. |
 | `management.server.port` | `8087` (IDE) / `9091` (docker) | recommandé | Dedicated Actuator port; host publish `127.0.0.1:9091` locally. |
-| `management.server.address` | `127.0.0.1` (IDE only) | recommandé [IDE] | Loopback for IDE; unset in Docker. |
+| `management.server.address` | `127.0.0.1` (IDE only) | recommandé [IDE] | Loopback for IDE; Docker profile sets `0.0.0.0` (#905). |
 | `server.servlet.session.cookie.name` | `EZKEY_CRYPTO_API_SESSION` | recommandé | Distinct from other localhost servlet apps (#799). In `config/application.properties`. |
 | `ezkey.encryption.enabled` | `true` | optionnel | Enable Tink encryption. |
 | `ezkey.encryption.master-key-file` | `/etc/ezkey/secrets/master.key` | requis [docker] | Path to the master key file. |

@@ -23,9 +23,12 @@ For **what to test** on each URL (headers, Bruno, `curl`), see **[admin-ui-secur
 | JavaMelody collector (opt-in `--with-java-melody`) | `8088` | **No Caddy hop** — collector UI only |
 
 **Management host publish:** local `docker-compose.yml` maps management ports as
-`127.0.0.1:<port>:<port>` only. Inside the container the JVM still listens on `0.0.0.0` so
-Docker peers (e.g. `ezkey-pam/test/test_pam.sh` → `integration-api:7081`) keep working. Do **not**
-set `MANAGEMENT_SERVER_ADDRESS=127.0.0.1` on the local compose (that binding is community-only).
+`127.0.0.1:<port>:<port>` only. Inside the container the JVM listens on `0.0.0.0`
+(`management.server.address=0.0.0.0` in each `application-docker.properties`, #905) so
+Docker peers and HAProxy healthchecks (e.g. `ezkey-pam/test/test_pam.sh` →
+`integration-api:7081`, HA `check port 8085`) keep working. Do **not** set
+`MANAGEMENT_SERVER_ADDRESS=127.0.0.1` on the local compose (that binding is community-only).
+IDE defaults keep `127.0.0.1`.
 
 **Reserved management ports:** `8084` (demo-device), `8086` (acme), `8087` (crypto IDE default),
 `9091` (crypto Docker). Confirm they stay free of other services before reassigning.

@@ -4,7 +4,7 @@ This directory contains Docker configuration files and scripts to run the Ezkey 
 
 ## Overview
 
-The HA stack runs **2 instances** of each API (**admin-api**, **auth-api**, and **integration-api**) behind **HAProxy load balancers**, plus **Crypto API**, **Demo Device**, and **Demo App ACME**. This setup allows testing ShedLock distributed locking and multi-instance request routing.
+The HA stack runs **2 instances** of each API (**admin-api**, **auth-api**, and **integration-api**) behind **HAProxy load balancers**, plus **Crypto API**, **Demo Device**, and **Demo App ACME**. This setup allows testing ShedLock distributed locking and multi-instance request routing. Management Actuator binds `0.0.0.0` inside containers (`MANAGEMENT_SERVER_ADDRESS` / `application-docker.properties`) so HAProxy healthchecks reach `:9081` / `:8085` / `:7081`; API replicas use `expose` only (host publish is HAProxy stats). See #905.
 
 ## Architecture
 

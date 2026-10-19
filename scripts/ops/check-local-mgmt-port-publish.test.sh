@@ -47,7 +47,10 @@ mkdir -p \
   "${TMP}/ezkey-pam/scripts" \
   "${TMP}/scripts" \
   "${TMP}/ezkey-admin-api/config" \
-  "${TMP}/ezkey-auth-api/config"
+  "${TMP}/ezkey-auth-api/config" \
+  "${TMP}/ezkey-integration-api/config" \
+  "${TMP}/ezkey-crypto-api/config" \
+  "${TMP}/ezkey-demo-device/src/main/resources"
 
 cp "${ROOT}/docker/docker-compose.yml" "${TMP}/docker/"
 cp "${ROOT}/docker/docker-compose.docker-dev.yml" "${TMP}/docker/"
@@ -62,7 +65,13 @@ cp "${ROOT}/ezkey-pam/scripts/common.sh" "${TMP}/ezkey-pam/scripts/"
 cp "${ROOT}/scripts/quality-gate.sh" "${TMP}/scripts/"
 cp "${ROOT}/ezkey-admin-api/config/application-windows.properties" "${TMP}/ezkey-admin-api/config/"
 cp "${ROOT}/ezkey-admin-api/config/application-docker-dev.properties" "${TMP}/ezkey-admin-api/config/"
+cp "${ROOT}/ezkey-admin-api/config/application-docker.properties" "${TMP}/ezkey-admin-api/config/"
 cp "${ROOT}/ezkey-auth-api/config/application-docker-dev.properties" "${TMP}/ezkey-auth-api/config/"
+cp "${ROOT}/ezkey-auth-api/config/application-docker.properties" "${TMP}/ezkey-auth-api/config/"
+cp "${ROOT}/ezkey-integration-api/config/application-docker.properties" "${TMP}/ezkey-integration-api/config/"
+cp "${ROOT}/ezkey-crypto-api/config/application-docker.properties" "${TMP}/ezkey-crypto-api/config/"
+cp "${ROOT}/ezkey-demo-device/src/main/resources/application-docker.properties" \
+  "${TMP}/ezkey-demo-device/src/main/resources/"
 
 assert_ok "fixture clone of current tree still passes" \
   env CHECK_LOCAL_MGMT_ROOT="${TMP}" bash "${CHECK}"

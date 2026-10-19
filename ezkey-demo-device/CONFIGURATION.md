@@ -16,7 +16,7 @@ Redeploying the demo device drops any in-memory sessions that still used the pre
 | Property | Default (IDE) | Docker | Description |
 |----------|---------------|--------|-------------|
 | `management.server.port` | `8084` | `8084` | Dedicated Actuator port; business stays on `8083`. |
-| `management.server.address` | `127.0.0.1` | unset | Loopback for IDE; local compose publishes `127.0.0.1:8084:8084`. |
+| `management.server.address` | `127.0.0.1` | `0.0.0.0` | Loopback for IDE; Docker profile sets `0.0.0.0` (#905); local compose publishes `127.0.0.1:8084:8084`. |
 
 See [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) and [ADR-0015](../product-docs/global/architecture-decisions.md#adr-0015-management-port-separation-actuator-javamelody).
 

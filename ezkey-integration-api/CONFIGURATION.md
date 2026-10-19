@@ -125,7 +125,7 @@ for the full description.
 | Property | Default (IDE) | Docker | Description |
 |---|---|---|---|
 | `management.server.port` | `7081` | `7081` | Dedicated management port (not on `7080`). |
-| `management.server.address` | `127.0.0.1` | unset (`0.0.0.0`) | Loopback for IDE; local compose publishes `127.0.0.1:7081:7081` so PAM peers still reach `integration-api:7081` on the Docker network. |
+| `management.server.address` | `127.0.0.1` | `0.0.0.0` | Loopback for IDE; Docker profile sets `0.0.0.0` so PAM/HAProxy peers reach `integration-api:7081` (#905); local compose publishes `127.0.0.1:7081:7081`. |
 
 See [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) and [ADR-0015](../product-docs/global/architecture-decisions.md#adr-0015-management-port-separation-actuator-javamelody).
 

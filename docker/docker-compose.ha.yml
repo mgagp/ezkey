@@ -112,6 +112,7 @@ services:
       EZKEY_ADMIN_INITIAL_FIRST_NAME: Admin
       EZKEY_ADMIN_INITIAL_LAST_NAME: Docker
       MANAGEMENT_SERVER_PORT: 9081
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: admin-api-1
       EZKEY_DATABASE_PARTITION_SCHEDULER_CRON: "0 */20 * * * ?"
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
@@ -161,6 +162,7 @@ services:
       EZKEY_ADMIN_INITIAL_FIRST_NAME: Admin
       EZKEY_ADMIN_INITIAL_LAST_NAME: Docker
       MANAGEMENT_SERVER_PORT: 9081
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: admin-api-2
       EZKEY_DATABASE_PARTITION_SCHEDULER_CRON: "0 */20 * * * ?"
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
@@ -228,6 +230,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ezkey_auth
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       MANAGEMENT_SERVER_PORT: 8085
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: auth-api-1
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
       EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
@@ -269,6 +272,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ezkey_auth
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       MANAGEMENT_SERVER_PORT: 8085
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: auth-api-2
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
       EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
@@ -335,6 +339,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ezkey_integration
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
       MANAGEMENT_SERVER_PORT: 7081
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: integration-api-1
     volumes:
       - encryption-secrets-ha:/etc/ezkey
@@ -374,6 +379,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ezkey_integration
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
       MANAGEMENT_SERVER_PORT: 7081
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: integration-api-2
     volumes:
       - encryption-secrets-ha:/etc/ezkey
@@ -431,6 +437,7 @@ services:
       <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       MANAGEMENT_SERVER_PORT: 9091
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
     volumes:
       - encryption-secrets-ha:/etc/ezkey
     ports:
@@ -462,6 +469,7 @@ services:
       # Point to HAProxy for Auth API (internal network name)
       EZKEY_AUTH_API_URL: http://haproxy-auth:8080
       MANAGEMENT_SERVER_PORT: 8084
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
     volumes:
       - demo-device-data-ha:/app/data
     ports:
