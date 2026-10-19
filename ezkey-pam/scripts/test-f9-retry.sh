@@ -87,6 +87,8 @@ point_conf_at_stub() {
      if ! grep -q '^lab_http=' '${CONF}.tmp'; then echo 'lab_http=true' >>'${CONF}.tmp'; fi
      sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}.tmp'
      if ! grep -q '^api_timeout=' '${CONF}.tmp'; then echo 'api_timeout=5' >>'${CONF}.tmp'; fi
+     if ! grep -q '^debug=' '${CONF}.tmp'; then echo 'debug=true' >>'${CONF}.tmp'; fi
+     sed -i 's/^debug=.*/debug=true/' '${CONF}.tmp'
      install -m 600 -o root -g root '${CONF}.tmp' '${CONF}'
      rm -f '${CONF}.tmp'"
 }
@@ -161,10 +163,12 @@ else
 fi
 
 # --- Case C (B2b): kill client during pending /wait → cancel ≤5 s ---
+# H1 instrument: debug.err must show peer FIN / no SIGTERM (sshd does not signal).
 start_stub pending
 point_conf_at_stub 30
 install_sshd_cfg "${SCRIPT_DIR}/../sshd_config"
-docker exec "${CONTAINER}" sh -c ": >'${STUB_REQ_LOG}'"
+docker exec "${CONTAINER}" sh -c \
+  ": >'${STUB_REQ_LOG}'; : > /var/log/ezkey-pam/debug.err"
 
 set +e
 ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
@@ -212,10 +216,14 @@ else
   echo "kill-during-wait cancel_seen=${CANCEL_SEEN} elapsed_s=${CANCEL_ELAPSED}" \
     | tee -a "${PROOF}"
   docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null | tee -a "${PROOF}" || true
-  if [ "${CANCEL_SEEN}" -eq 1 ] && [ "${CANCEL_ELAPSED}" -le 5 ]; then
-    ok "B2b: client killed during wait → cancel in ${CANCEL_ELAPSED}s (≤5)"
+  ERR="$(docker exec "${CONTAINER}" sh -c 'cat /var/log/ezkey-pam/debug.err' 2>/dev/null || true)"
+  echo "B2b H1 debug.err=${ERR}" | tee -a "${PROOF}"
+  # Filelog sanitizes spaces → '_' (and other chars); match the stable token.
+  if [ "${CANCEL_SEEN}" -eq 1 ] && [ "${CANCEL_ELAPSED}" -le 5 ] \
+    && echo "${ERR}" | grep -Eqi 'tcp.peer.FIN.*no.SIGTERM|tcp_peer_FIN.*no_SIGTERM'; then
+    ok "B2b: client killed during wait → cancel in ${CANCEL_ELAPSED}s (≤5); H1 peer FIN (no SIGTERM)"
   else
-    fail "B2b: expected cancel ≤5s after client kill, seen=${CANCEL_SEEN} elapsed=${CANCEL_ELAPSED}"
+    fail "B2b: expected cancel ≤5s + peer FIN debug, seen=${CANCEL_SEEN} elapsed=${CANCEL_ELAPSED} err=${ERR}"
   fi
 fi
 

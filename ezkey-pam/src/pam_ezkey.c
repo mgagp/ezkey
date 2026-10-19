@@ -72,10 +72,9 @@
 static char ezkey_final_marker = 1;
 
 /*
- * Set when /wait should abort: wait-scoped SIGTERM (if delivered) or SSH peer
- * FIN detected on a connected TCP fd (OpenSSH 9.9 sshd-session: client kill
- * leaves [pam]/net] alive with the client socket in CLOSE-WAIT — auth-pam.c
- * SIGTERM via SIGCHLD on privsep slave exit does not fire in that window).
+ * Set when /wait should abort (signal-free R5): TCP peer FIN and/or parent
+ * change via getppid(). OpenSSH 9.9 sshd-session does not SIGTERM the PAM
+ * child on pre-auth client kill (socket stays CLOSE-WAIT; [pam]/net] live).
  */
 static volatile sig_atomic_t ezkey_wait_abort = 0;
 
@@ -144,7 +143,8 @@ static const char *ezkey_cancel_best_effort(pam_handle_t *pamh,
 static int ezkey_xferinfo_abort(void *clientp, curl_off_t dltotal,
                                 curl_off_t dlnow, curl_off_t ultotal,
                                 curl_off_t ulnow);
-static void ezkey_sigterm_wait(int signo);
+static int ezkey_tcp_peer_fin_seen(void);
+static int ezkey_wait_parent_gone(pid_t ppid_at_start);
 
 static void ezkey_config_init(EzkeyConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
@@ -528,14 +528,9 @@ static void log_attempt_summary(const char *username, long auth_attempt_id,
            lab_http ? "true" : "false", cancel_status, timeout_buf);
 }
 
-static void ezkey_sigterm_wait(int signo) {
-    (void)signo;
-    ezkey_wait_abort = 1;
-}
-
 /**
  * True if any connected TCP peer has finished (FIN / CLOSE-WAIT).
- * Used when OpenSSH does not SIGTERM the PAM child on client disconnect.
+ * Instrument / primary R5 path when sshd does not SIGTERM the PAM child.
  *
  * @return 1 if a peer FIN was observed, 0 otherwise
  */
@@ -616,6 +611,24 @@ static int ezkey_tcp_peer_fin_seen(void) {
     }
     closedir(dir);
     return found;
+}
+
+/**
+ * True if the PAM child's parent changed (reparent / parent exit).
+ * On OpenSSH 9.9 pre-auth disconnect the [priv] parent usually stays alive —
+ * peer FIN is the path that fires; this check is kept as a cheap complement.
+ *
+ * @param ppid_at_start getppid() captured at /wait start
+ * @return 1 if parent is gone or differs, 0 otherwise
+ */
+static int ezkey_wait_parent_gone(pid_t ppid_at_start) {
+    pid_t now;
+
+    if (ppid_at_start <= 1) {
+        return 0;
+    }
+    now = getppid();
+    return (now == 1 || now != ppid_at_start) ? 1 : 0;
 }
 
 static int ezkey_xferinfo_abort(void *clientp, curl_off_t dltotal,
@@ -753,9 +766,8 @@ static char *build_create_body(const EzkeyConfig *cfg, const char *username,
 }
 
 /**
- * HTTP helper. When abort_flag is non-NULL, install xferinfo so SIGTERM during
- * /wait can abort curl in-process (OpenSSH kills the auth child on disconnect;
- * pam_end cleanup never runs in that child — #907 R5).
+ * HTTP helper. When abort_flag is non-NULL, install xferinfo so peer-FIN /
+ * abort flag can stop curl mid-chunk (#907 R5; signal-free).
  */
 static int ezkey_http(const char *url, const char *userpwd, const char *post_body,
                       long timeout_seconds, EzkeyBuf *buf, long *http_code,
@@ -1227,42 +1239,50 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     }
 
     /*
-     * Chunked /wait (#907 R5): OpenSSH portable runs PAM in a forked child that
-     * _exit's — pam_end cleanup never runs. Abort on wait-scoped SIGTERM (when
-     * delivered) and on SSH peer FIN (CLOSE-WAIT) — see ezkey_tcp_peer_fin_seen.
+     * Chunked /wait (#907 R5, signal-free): between chunks (and via xferinfo)
+     * poll TCP peer FIN / getppid() change — OpenSSH 9.9 does not SIGTERM the
+     * PAM child on pre-auth client kill (CLOSE-WAIT). No sigaction.
      */
     {
         int wait_left = effective_wait;
-        struct sigaction sa_new;
-        struct sigaction sa_old;
-        int sig_installed = 0;
+        pid_t wait_ppid = getppid();
 
-        memset(&sa_new, 0, sizeof(sa_new));
-        sa_new.sa_handler = ezkey_sigterm_wait;
-        sigemptyset(&sa_new.sa_mask);
         ezkey_wait_abort = 0;
-        if (sigaction(SIGTERM, &sa_new, &sa_old) == 0) {
-            sig_installed = 1;
-        }
 
         pam_rc = PAM_AUTH_ERR;
         summary = "TIMEOUT";
 
         while (wait_left > 0) {
             int chunk = wait_left;
+            int peer_fin;
+            int parent_gone;
 
             if (chunk > EZKEY_WAIT_CHUNK_SECS) {
                 chunk = EZKEY_WAIT_CHUNK_SECS;
             }
-            if (ezkey_wait_abort == 0 && ezkey_tcp_peer_fin_seen()) {
+            peer_fin = ezkey_tcp_peer_fin_seen();
+            parent_gone = ezkey_wait_parent_gone(wait_ppid);
+            if (ezkey_wait_abort == 0 && (peer_fin || parent_gone)) {
                 ezkey_wait_abort = 1;
             }
             if (ezkey_wait_abort != 0) {
                 interrupted = 1;
                 pam_rc = PAM_AUTHINFO_UNAVAIL;
                 summary = "UNAVAIL";
-                log_pam_error_debug(pamh, cfg,
-                                    "client disconnect during wait");
+                /* Instrumented reason: proves abort without SIGTERM (H1). */
+                if (peer_fin) {
+                    log_pam_error_debug(pamh, cfg,
+                                        "client disconnect during wait "
+                                        "(tcp peer FIN; no SIGTERM)");
+                } else if (parent_gone) {
+                    log_pam_error_debug(pamh, cfg,
+                                        "client disconnect during wait "
+                                        "(parent gone; no SIGTERM)");
+                } else {
+                    log_pam_error_debug(pamh, cfg,
+                                        "client disconnect during wait "
+                                        "(abort flag; no SIGTERM)");
+                }
                 break;
             }
 
@@ -1310,6 +1330,9 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                     interrupted = 1;
                     pam_rc = PAM_AUTHINFO_UNAVAIL;
                     summary = "UNAVAIL";
+                    log_pam_error_debug(pamh, cfg,
+                                        "client disconnect during wait "
+                                        "(tcp peer FIN; no SIGTERM)");
                 } else if (curl_rc == CURLE_OPERATION_TIMEDOUT) {
                     wait_left -= chunk;
                     if (wait_left <= 0 ||
@@ -1419,9 +1442,6 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
             /* PENDING/READ (or chunk timeoutReached): continue next chunk. */
         }
 
-        if (sig_installed) {
-            (void)sigaction(SIGTERM, &sa_old, NULL);
-        }
         ezkey_wait_abort = 0;
     }
 

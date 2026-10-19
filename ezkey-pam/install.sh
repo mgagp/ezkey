@@ -53,6 +53,17 @@ if [ -f "${SSHD_CFG}" ] && command -v sshd >/dev/null 2>&1; then
     echo "         Add Match User|Group … MaxAuthTries 1 (effective value must be 1)."
     echo "         Without it, OpenSSH may recreate auth attempts after Deny/Expire (#907 F9)."
   fi
+  # Global MaxAuthTries 1 (before any Match) still discouraged — pubkey rejects count.
+  if awk '
+    /^[[:space:]]*#/ { next }
+    /^[[:space:]]*Match[[:space:]]/ { exit 1 }
+    /^[[:space:]]*MaxAuthTries[[:space:]]+1([[:space:]]|$)/ { exit 0 }
+    END { exit 1 }
+  ' "${SSHD_CFG}"; then
+    echo ""
+    echo "WARNING: global MaxAuthTries 1 found (before Match) — refused public keys"
+    echo "         also consume tries. Prefer Match-scoped MaxAuthTries 1 (see README)."
+  fi
 elif [ -f "${SSHD_CFG}" ]; then
   echo ""
   echo "WARNING: sshd not on PATH — could not verify maxauthtries 1 via sshd -T."

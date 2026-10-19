@@ -451,14 +451,15 @@ OpenSSH rounds; keep the marker only as same-handle fail-closed. Prefer
 `install.sh` verify effective `maxauthtries 1` via `sshd -T -C user=…`. **Match limits:**
 applies until EOF or the next `Match`; first matching value wins; it caps tries **per
 TCP connection**, not a cross-connection rate limit — forgetting it is an easy
-operator miss and recreates orphan pending attempts (F9). R5: chunked `/wait`
-(`EZKEY_WAIT_CHUNK_SECS` 5) + wait-scoped `SIGTERM` (see § M1 craft-rule / B2a;
-**Christophe security GO** on the amendment) aborts curl in the waiting process and
-cancels with `ezkey_bounded_cancel_timeout(..., interrupted=1)` =
+operator miss and recreates orphan pending attempts (F9). R5 (signal-free): chunked
+`/wait` (`EZKEY_WAIT_CHUNK_SECS` 5); between chunks / xferinfo poll TCP peer FIN
+(+ `getppid` complement); then
+`ezkey_bounded_cancel_timeout(..., interrupted=1)` =
 `min(api_timeout, EZKEY_INTERRUPT_CANCEL_MAX 5)` so worst case 105+5=110 <
-`LoginGraceTime` 120 (#726). HTTP **429** during `/wait` → `UNAVAIL` (fail-closed;
-approval fails). Do **not** rely on `pam_end` cleanup under OpenSSH. Proof:
-`scripts/test-f9-retry.sh` (A/B/C). Client: `NumberOfPasswordPrompts=1`.
+`LoginGraceTime` 120 (#726). No `sigaction`. HTTP **429** during `/wait` →
+`UNAVAIL` (fail-closed). Do **not** rely on `pam_end` under OpenSSH. Proof:
+`scripts/test-f9-retry.sh` A/B in CI; **C/R5 not claimed CI-proven** until green
+after peer-FIN. Client: `NumberOfPasswordPrompts=1`.
 
 **`cancel=` vocabulary (authpriv only; never changes `pam_rc`):**
 
@@ -569,22 +570,15 @@ demo `LoginGraceTime` 120 (`sshd_config:20`). Effective `/wait` =
 `min(conf, rem − CURL_SLACK)` at `pam_ezkey.c:814-825`; too little left →
 `UNAVAIL` **with** attempt line (`pam_sm_authenticate` `done:` / `log_attempt_summary`).
 
-**Craft rule (amended #907 B2a / Marc):** no `alarm` and no global `sigaction`.
-**Exception — wait-scoped `SIGTERM` only:** installed solely around chunked `/wait`,
-restored immediately after, handler only sets `ezkey_wait_abort` (curl xferinfo
-aborts; no work in the handler). While installed, that `SIGTERM` is **absorbed**
-(does not terminate the PAM child) so cancel can run; after restore, default
-disposition applies again. **Why:** OpenSSH portable sends `SIGTERM` to the PAM
-child on client disconnect (`auth-pam.c:164-168`); without catching it in the
-waiting process, cancel never runs under `_exit`. Decision: keep this scoped
-handler. **Christophe security GO** on this wait-scoped absorption (review @61453d18).
-**B2b reality (OpenSSH 9.9 `sshd-session`):** killing the SSH client leaves `[pam]` /
-`[net]` alive with the client TCP socket in `CLOSE-WAIT`; `auth-pam.c:164-168`
-SIGTERM (SIGCHLD when privsep slave exits) does **not** fire in that window — so
-cancel also aborts when `ezkey_tcp_peer_fin_seen()` observes peer FIN (poll /
-`recv` peek), not only on SIGTERM. Enter bound remains measure-only
-(`pam_prompt` + CLOCK_MONOTONIC, `pam_ezkey.c:779-796`); duration **>25 s** →
-UNAVAIL + attempt line.
+**Craft rule (#907 R5 / Christophe signal-free):** no `alarm` and no `sigaction`
+in `pam_ezkey.c`. **Instrumented H1:** on OpenSSH 9.9 `sshd-session`, pre-auth
+client kill leaves `[pam]`/`[net]` alive with the client TCP socket in
+`CLOSE-WAIT`; `auth-pam.c:164-168` SIGTERM does **not** arrive — so R5 does **not**
+use a SIGTERM handler. Between `/wait` chunks (and via curl xferinfo): poll TCP
+peer FIN (`ezkey_tcp_peer_fin_seen`) and `getppid()` vs start; then
+`interrupted=1` + bounded cancel (≤5 s). Debug.err reason includes
+`tcp peer FIN; no SIGTERM` (or `parent gone`). Enter bound remains measure-only
+(`pam_prompt` + CLOCK_MONOTONIC); duration **>25 s** → UNAVAIL + attempt line.
 
 **Untested (documented only):** if Enter is **never** pressed, sshd
 `LoginGraceTime` cuts the session with **no** attempt line; the Integration
@@ -597,7 +591,7 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | Enter prompt | `pam_ezkey.c:779-796` measure; `EZKEY_MAX_ENTER_SECS` `ezkey_config.h:40` **25** | duration bound (no signals) | Enter **>25 s** → UNAVAIL + attempt + debug.err duration (proven) |
 | `wait_timeout` | clamp floor **15** / max **90**; `ttlSeconds` on create; `effective_wait` = min(conf, applied_ttl, rem−slack) | 15–90; shrunk by budget + applied TTL | conf=200 → ttl+`?timeout=90`; conf=2 → floor **15** (proven) |
 | curl `/wait` | `EZKEY_CURL_WAIT_SLACK` **15** (cancel margin inside) | wait+≤15; ≤ rem | Covered by wait / delayed-Enter cases (proven) |
-| Cancel | `POST …/cancel` best-effort on non-ACCEPTED; interrupt path uses wait-scoped `SIGTERM` (B2a); summary `cancel=ok\|fail\|skipped\|final` | ≤ api_timeout from rem; interrupt cap `min(api,5)`; **not guaranteed when wait timeout is reached**. If cancel fails, window = applied TTL (≤90 s); late approve → orphan `ACCEPTED` (no SSH grant); residual = approval fatigue; cancel **409** → `cancel=final` (observability only) | pending→TIMEOUT + `cancel=ok`; EXPIRED + `cancel=ok`; `cancel_fail` 503 → `cancel=fail`; `cancel_final` 409 → `cancel=final`; SUCCESS → `cancel=skipped`; B2b kill-client ≤5 s (proven) |
+| Cancel | `POST …/cancel` best-effort on non-ACCEPTED; interrupt path = peer FIN / `getppid` (signal-free R5); summary `cancel=ok\|fail\|skipped\|final` | ≤ api_timeout from rem; interrupt cap `min(api,5)`; **not guaranteed when wait timeout is reached**. If cancel fails, window = applied TTL (≤90 s); late approve → orphan `ACCEPTED` (no SSH grant); residual = approval fatigue; cancel **409** → `cancel=final` (observability only) | pending→TIMEOUT + `cancel=ok`; EXPIRED + `cancel=ok`; `cancel_fail` 503 → `cancel=fail`; `cancel_final` 409 → `cancel=final`; SUCCESS → `cancel=skipped`; B2b kill-client ≤5 s **lab-only until CI green** (not claimed proven) |
 | Summary outcomes | `EXPIRED` / `TIMEOUT` / `DENIED` | lacune 5 | stub expired / pending / rejected (proven) |
 | `wait_polling` | sample `config/pam_ezkey.conf` `wait_polling=2` | Server-side cadence | Sample conf present (proven) |
 | Server attempt TTL | request `ttlSeconds`; response **`timeoutSeconds`** (PR-A #898) | Align down on applied ∈ `[1, planned]`; ignore grow / 0 / null | `applied_shrink` → applied; `applied_grow` 120 vs ask 45 → stay 45; `applied_zero` / `applied_null` → conf wait; legacy + reject/timeout (proven) |
@@ -647,9 +641,10 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | Patrick CHANGES | challenge visible before approve; wrong/absent cases | **Done** |
 | Patrick CHANGES | timeout inventory + wait clamp below LoginGraceTime | **Done** (`test-timeouts.sh`) |
 | Patrick P3 | Single auth budget 105; dynamic `?timeout=`; Enter monotonic (no signals) | **Done** (`test-timeouts.sh` stub + CI) |
-| Marc #907 B2a | Keep wait-scoped `SIGTERM` (absorbed during wait; flag-only; install/restore; sshd `auth-pam.c:164-168`) | **Done** — craft rule amended; **Christophe security GO** |
+| Marc #907 B2a | Wait-scoped SIGTERM (then superseded) | **Superseded** — signal-free peer FIN / `getppid` (Christophe) |
 | Christophe #907 M-a | `rem<=0` → TIMEOUT break (no `curl_limit=1`) | **Done** |
 | Christophe #907 M-b | `sshd -T -C user=… \| grep -qx 'maxauthtries 1'` (not regex) | **Done** |
+| Christophe #907 R5 | Signal-free disconnect: peer FIN / `getppid` between chunks; drop SIGTERM | **Done** — H1 instrumented (`no SIGTERM` in debug.err); CI proof pending |
 | Patrick CHANGES | https scheme case-insensitive + no pam_info fallback | **Done** |
 | #895 PR-B | `ttlSeconds` + applied-TTL align + cancel + EXPIRED/TIMEOUT/DENIED | **Done** (`test-timeouts.sh` + README runbook) |
 | Patrick #897 CHANGES | stub `legacy_create` / `cancel_fail`; applied-shrink; budget harness (rem→−1) | **Done** (`test-budget` + `test-timeouts.sh`) |
