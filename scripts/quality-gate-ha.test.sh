@@ -83,6 +83,17 @@ case "$cmd" in
     exit 0
     ;;
   logs)
+    # docker logs [--since ISO] NAME — dump STATE/NAME.logs when present.
+    name=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --since) shift 2 ;;
+        *) name="$1"; shift ;;
+      esac
+    done
+    if [[ -n "$name" && -f "$STATE/$name.logs" ]]; then
+      cat "$STATE/$name.logs"
+    fi
     exit 0
     ;;
   *) echo "fake-docker: unsupported $cmd" >&2; exit 1 ;;
@@ -188,6 +199,146 @@ v="$(classify_clean_start_verdict 1 1 1 1)"
 assert_eq "$v" "AMBER" "C2 contrast: #747 retry → AMBER"
 v="$(classify_clean_start_verdict 0 0 1 1)"
 assert_eq "$v" "GREEN" "C2 contrast: clean exit → GREEN"
+
+# 5b) #747 detect: signature buried past a 400-line window still matches (no tail cap)
+all_healthy
+: >"$FAKE_DOCKER_STATE/ezkey-admin-api-1.logs"
+: >"$FAKE_DOCKER_STATE/ezkey-admin-api-2.logs"
+i=0
+while [[ $i -lt 500 ]]; do
+  echo "filler line $i — Spring Boot noise" >>"$FAKE_DOCKER_STATE/ezkey-admin-api-1.logs"
+  i=$((i + 1))
+done
+echo 'ERROR: duplicate key value violates unique constraint "ezkey_encryption_key_pkey"' \
+  >>"$FAKE_DOCKER_STATE/ezkey-admin-api-1.logs"
+detect_encryption_key_pkey_race "2026-10-19T00:00:00Z"
+assert_eq "$?" "0" "5b: #747 signature past 400 lines → detected"
+
+# 5c) #747 detect: no signature → not detected
+all_healthy
+echo "no keyset race here" >"$FAKE_DOCKER_STATE/ezkey-admin-api-1.logs"
+echo "no keyset race here" >"$FAKE_DOCKER_STATE/ezkey-admin-api-2.logs"
+set +e
+detect_encryption_key_pkey_race "2026-10-19T00:00:00Z"
+detect_rc=$?
+set -e
+assert_eq "$detect_rc" "1" "5c: no #747 signature → not detected"
+
+# 5c-bis) #747 detect: no --since branch (full container logs)
+all_healthy
+echo 'ERROR: duplicate key value violates unique constraint "ezkey_encryption_key_pkey"' \
+  >"$FAKE_DOCKER_STATE/ezkey-admin-api-2.logs"
+: >"$FAKE_DOCKER_STATE/ezkey-admin-api-1.logs"
+detect_encryption_key_pkey_race ""
+assert_eq "$?" "0" "5c-bis: #747 detect without --since → detected"
+set +e
+detect_encryption_key_pkey_race
+detect_rc=$?
+set -e
+assert_eq "$detect_rc" "0" "5c-bis: #747 detect with omitted since → detected"
+
+# 5e) Patrick B1-bis: under pipefail, signature FIRST then a continuing writer.
+# A single fat line (~70 KiB) is often one write() and does NOT SIGPIPE — so that
+# proof passed on the old grep -Fq code too. Use many lines after the match
+# (seq) so cat keeps writing after grep -q would have closed the pipe.
+all_healthy
+{
+  echo 'ERROR: duplicate key value violates unique constraint "ezkey_encryption_key_pkey"'
+  seq 1 2000000
+} >"$FAKE_DOCKER_STATE/ezkey-admin-api-1.logs"
+: >"$FAKE_DOCKER_STATE/ezkey-admin-api-2.logs"
+set -o pipefail
+set +e
+detect_encryption_key_pkey_race "2026-10-19T00:00:00Z"
+detect_rc=$?
+set -e
+assert_eq "$detect_rc" "0" "5e B1: early signature + seq noise under pipefail → detected"
+
+# 5e-bis) since backoff moves timestamp earlier by QUALITY_GATE_SINCE_BACKOFF_S
+backed="$(QUALITY_GATE_SINCE_BACKOFF_S=5 quality_gate_since_backoff "2026-10-19T12:00:10Z")"
+assert_eq "$backed" "2026-10-19T12:00:05Z" "5e-bis: since backoff −5s"
+
+# 5e-ter) N1: python3 failure → raw timestamp + stderr (never empty --since drop)
+mkdir -p "$TMP/bin-bad-py"
+printf '%s\n' '#!/bin/bash' 'echo boom >&2' 'exit 1' >"$TMP/bin-bad-py/python3"
+chmod +x "$TMP/bin-bad-py/python3"
+backoff_err="$TMP/backoff-pyfail.err"
+backed_fail="$(
+  PATH="$TMP/bin-bad-py:$PATH" QUALITY_GATE_SINCE_BACKOFF_S=5 \
+    quality_gate_since_backoff "2026-10-19T12:00:10Z" 2>"$backoff_err"
+)"
+assert_eq "$backed_fail" "2026-10-19T12:00:10Z" "5e-ter N1: python3 fail → raw timestamp"
+grep -Fq 'python3 failed' "$backoff_err" \
+  && echo "ok - 5e-ter N1: python3 fail warns on stderr" && pass=$((pass+1)) \
+  || { echo "not ok - 5e-ter N1: python3 fail warns on stderr"; fail=$((fail+1)); cat "$backoff_err" || true; }
+
+# 5e-quater) N2: non-numeric backoff secs → raw timestamp (no bash -eq error)
+backoff_err2="$TMP/backoff-badsecs.err"
+backed_bad="$(
+  QUALITY_GATE_SINCE_BACKOFF_S=abc quality_gate_since_backoff "2026-10-19T12:00:10Z" \
+    2>"$backoff_err2"
+)"
+assert_eq "$backed_bad" "2026-10-19T12:00:10Z" "5e-quater N2: bad secs → raw timestamp"
+grep -Fq 'not a non-negative integer' "$backoff_err2" \
+  && echo "ok - 5e-quater N2: bad secs warns on stderr" && pass=$((pass+1)) \
+  || { echo "not ok - 5e-quater N2: bad secs warns on stderr"; fail=$((fail+1)); cat "$backoff_err2" || true; }
+
+# 5d) now_ms always returns digits (portable; BSD date must not poison arithmetic)
+ms="$(now_ms)"
+if [[ "$ms" =~ ^[0-9]+$ ]]; then
+  echo "ok - now_ms returns digits only"; pass=$((pass+1))
+else
+  echo "not ok - now_ms returns digits only (got=$ms)"; fail=$((fail+1))
+fi
+# Simulate BSD date: %3N → literal "3N", exit 0 (macOS). Fallback must still be numeric.
+mkdir -p "$TMP/bin-bsd-date"
+# #!/bin/bash (not env): seconds-fallback test uses PATH=bin-bsd-date only.
+cat >"$TMP/bin-bsd-date/date" <<'BSDDATE'
+#!/bin/bash
+for arg in "$@"; do
+  # Match %N and %3N (BSD leaves the N-family conversion as a literal suffix).
+  if [[ "$arg" == *%*N* ]]; then
+    printf '%s3N\n' "$(/bin/date +%s 2>/dev/null || echo 1700000000)"
+    exit 0
+  fi
+done
+exec /bin/date "$@"
+BSDDATE
+chmod +x "$TMP/bin-bsd-date/date"
+ms_bsd="$(PATH="$TMP/bin-bsd-date:$PATH" /bin/bash -c '
+  source "'"$ROOT"'/scripts/lib/quality-gate-ha.sh"
+  now_ms
+')"
+if [[ "$ms_bsd" =~ ^[0-9]+$ ]]; then
+  echo "ok - now_ms BSD-date fallback returns digits"; pass=$((pass+1))
+else
+  echo "not ok - now_ms BSD-date fallback returns digits (got=$ms_bsd)"; fail=$((fail+1))
+fi
+# Arithmetic must succeed (the old %3N path produced "…3N" and broke duration_ms).
+if d=$((ms_bsd + 1)) && [[ "$d" =~ ^[0-9]+$ ]]; then
+  echo "ok - now_ms BSD fallback is arithmetic-safe"; pass=$((pass+1))
+else
+  echo "not ok - now_ms BSD fallback is arithmetic-safe"; fail=$((fail+1))
+fi
+# Seconds fallback must warn on stderr when python3/node are unavailable.
+# PATH is only the BSD-date stub (it execs /bin/date for +%s). Do not append
+# /bin — usr-merged distros expose /bin/python3 and would skip this path.
+# Invoke /bin/bash by absolute path: PATH=… bash looks up bash on the new PATH.
+ms_sec_err="$TMP/now_ms_seconds.err"
+ms_sec="$(
+  PATH="$TMP/bin-bsd-date" /bin/bash -c '
+    source "'"$ROOT"'/scripts/lib/quality-gate-ha.sh"
+    now_ms
+  ' 2>"$ms_sec_err"
+)"
+if [[ "$ms_sec" =~ ^[0-9]+$ ]]; then
+  echo "ok - now_ms seconds fallback returns digits"; pass=$((pass+1))
+else
+  echo "not ok - now_ms seconds fallback returns digits (got=$ms_sec)"; fail=$((fail+1))
+fi
+grep -Fq 'falling back to whole-second precision' "$ms_sec_err" \
+  && echo "ok - now_ms seconds fallback warns on stderr" && pass=$((pass+1)) \
+  || { echo "not ok - now_ms seconds fallback warns on stderr"; fail=$((fail+1)); cat "$ms_sec_err" || true; }
 
 # 6) Missing ShedLock kill (failover skipped / unresolved / no kill in 30s) → INCONCLUSIVE
 all_healthy
