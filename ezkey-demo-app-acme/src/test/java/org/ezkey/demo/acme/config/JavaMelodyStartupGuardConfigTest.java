@@ -22,21 +22,21 @@ class JavaMelodyStartupGuardConfigTest {
 
   @Test
   void enforceFailsWhenJavaMelodyWithoutManagementEndpoint() {
-    assertThatThrownBy(() -> JavaMelodyStartupGuardConfig.enforce(true, false, 8082, 8086))
+    assertThatThrownBy(() -> JavaMelodyStartupValidator.enforce(true, false, 8082, 8086))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("management-endpoint-monitoring-enabled");
   }
 
   @Test
   void enforceFailsWhenPortsEqual() {
-    assertThatThrownBy(() -> JavaMelodyStartupGuardConfig.enforce(false, false, 8082, 8082))
+    assertThatThrownBy(() -> JavaMelodyStartupValidator.enforce(false, false, 8082, 8082))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("must differ");
   }
 
   @Test
   void enforceAllowsSeparatedPorts() {
-    assertThatCode(() -> JavaMelodyStartupGuardConfig.enforce(false, false, 8082, 8086))
+    assertThatCode(() -> JavaMelodyStartupValidator.enforce(false, false, 8082, 8086))
         .doesNotThrowAnyException();
   }
 
