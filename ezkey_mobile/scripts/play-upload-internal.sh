@@ -11,6 +11,8 @@
 #
 # Prerequisites (host Python, not app Gradle):
 #   pip install -r scripts/requirements-play-upload.txt
+# Optional: EZKEY_PYTHON=/path/to/python3  (skip WindowsApps Store stubs)
+# Optional: BUNDLETOOL_JAR=/path/to/bundletool.jar  (versionCode fallback)
 #
 # Build the AAB first with ./scripts/bundle-release.sh (JDK 17 via resolve-android-jdk.sh).
 set -euo pipefail
@@ -26,7 +28,7 @@ SELF_TEST=false
 AAB_PATH=""
 
 usage() {
-  sed -n '2,16p' "$0"
+  sed -n '2,18p' "$0"
 }
 
 die() {
@@ -77,24 +79,46 @@ if [[ "${STATUS}" != "draft" && "${STATUS}" != "completed" ]]; then
   die "--status must be 'draft' or 'completed' (got '${STATUS}')"
 fi
 
+# Return 0 if the candidate actually runs Python (not a Windows Store stub).
+_python_candidate_works() {
+  local cand="$1"
+  if [[ "${cand}" == "py -3" ]]; then
+    py -3 -c "import sys" >/dev/null 2>&1
+  else
+    "${cand}" -c "import sys" >/dev/null 2>&1
+  fi
+}
+
+# Pick the first working interpreter. On Windows Git Bash, `python3` often
+# resolves to the Microsoft Store stub under WindowsApps — those appear on
+# PATH but do not run. Prefer EZKEY_PYTHON when set.
 resolve_python() {
-  if command -v python3 >/dev/null 2>&1; then
-    command -v python3
-    return 0
+  local cand
+  if [[ -n "${EZKEY_PYTHON:-}" ]]; then
+    if _python_candidate_works "${EZKEY_PYTHON}"; then
+      printf '%s\n' "${EZKEY_PYTHON}"
+      return 0
+    fi
+    echo "WARNING: EZKEY_PYTHON=${EZKEY_PYTHON} did not run; trying PATH candidates" >&2
   fi
-  if command -v python >/dev/null 2>&1; then
-    command -v python
-    return 0
-  fi
-  # Windows py launcher (Git Bash)
-  if command -v py >/dev/null 2>&1; then
-    echo "py -3"
-    return 0
-  fi
+  for cand in python3 python "py -3"; do
+    if [[ "${cand}" == "py -3" ]]; then
+      command -v py >/dev/null 2>&1 || continue
+    else
+      command -v "${cand}" >/dev/null 2>&1 || continue
+    fi
+    if _python_candidate_works "${cand}"; then
+      printf '%s\n' "${cand}"
+      return 0
+    fi
+  done
   return 1
 }
 
-PYTHON_BIN="$(resolve_python)" || die "Python 3 is required (python3, python, or py -3)"
+PYTHON_BIN="$(resolve_python)" || die \
+  "Python 3 is required (working python3, python, or py -3).
+On Windows Git Bash, the Microsoft Store stub is not enough — install Python
+from python.org (or use py -3) and/or set EZKEY_PYTHON to the real interpreter."
 
 run_python() {
   # shellcheck disable=SC2086
@@ -102,7 +126,7 @@ run_python() {
 }
 
 if [[ "${SELF_TEST}" == true ]]; then
-  echo "[play-upload-internal] offline self-test"
+  echo "[play-upload-internal] offline self-test (python=${PYTHON_BIN})"
   run_python "${PYTHON_HELPER}" --self-test
 
   # Bash-layer: env gate messages (no real key / no API)
@@ -132,7 +156,7 @@ fi
 if [[ -z "${EZKEY_PLAY_SERVICE_ACCOUNT_JSON:-}" ]]; then
   die "EZKEY_PLAY_SERVICE_ACCOUNT_JSON is unset.
 Set it to the Play service-account JSON key path (outside the repo), for example:
-  export EZKEY_PLAY_SERVICE_ACCOUNT_JSON=\"\$HOME/.gradle/your-play-sa.json\"
+  export EZKEY_PLAY_SERVICE_ACCOUNT_JSON=\"/c/Users/marcg/.gradle/ezkey-play-publisher.json\"
 Never commit the key. Package: ${PACKAGE_NAME}; track: ${ALLOWED_TRACK} only."
 fi
 
@@ -155,6 +179,7 @@ echo "  track:   ${ALLOWED_TRACK}"
 echo "  status:  ${STATUS}"
 echo "  dry-run: ${DRY_RUN}"
 echo "  aab:     ${AAB_PATH}"
+echo "  python:  ${PYTHON_BIN}"
 echo "  sa json: (path set, not printed)"
 
 PY_ARGS=("${PYTHON_HELPER}" --json "${JSON_PATH}" --status "${STATUS}")
