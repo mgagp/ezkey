@@ -21,10 +21,14 @@ logger = logging.getLogger(__name__)
 # Path to docker-compose.yml
 DOCKER_COMPOSE_PATH = Path(__file__).parent.parent.parent.parent / "docker" / "docker-compose.yml"
 
-# Service URLs (assuming default ports)
+# Service URLs (assuming default ports — business listeners)
 ADMIN_API_URL = "http://localhost:9080"
 AUTH_API_URL = "http://localhost:8080"
 CRYPTO_API_URL = "http://localhost:9090"
+# Actuator health on dedicated management ports (ADR-0015 / PR B)
+ADMIN_HEALTH_URL = "http://localhost:9081/actuator/health"
+AUTH_HEALTH_URL = "http://localhost:8085/actuator/health"
+CRYPTO_HEALTH_URL = "http://localhost:9091/actuator/health"
 
 
 def _wait_for_service(url: str, service_name: str, max_wait: int = 120) -> bool:
@@ -103,9 +107,9 @@ def docker_stack():
 
     # Wait for all services to be healthy
     services = [
-        (f"{ADMIN_API_URL}/actuator/health", "admin-api"),
-        (f"{AUTH_API_URL}/actuator/health", "auth-api"),
-        (f"{CRYPTO_API_URL}/actuator/health", "crypto-api"),
+        (ADMIN_HEALTH_URL, "admin-api"),
+        (AUTH_HEALTH_URL, "auth-api"),
+        (CRYPTO_HEALTH_URL, "crypto-api"),
     ]
 
     for url, name in services:
