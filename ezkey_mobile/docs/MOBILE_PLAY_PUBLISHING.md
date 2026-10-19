@@ -40,7 +40,7 @@ Delivery is **AAB** (not APK). Play App Signing holds the app-signing key; you k
 ## Technical
 
 - [x] **Release signing** path exists (upload key outside the repo). Repeat for the **final GA AAB** before submit.
-- [x] **Version policy** documented below. Next closed-testing upload: `versionName` `0.1.0-alpha` (`package.json`), `versionCode` **4**. In-app chrome says Public alpha (plus git short SHA on About), not `v1.0.0`.
+- [x] **Version policy** documented below (`versionCode` + `versionName` bump every Play upload; release name `'<code> (<name>)'`). In-app chrome says Public alpha (plus git short SHA on About), not `v1.0.0`.
 - [x] **Target API level** — `targetSdkVersion` / `compileSdkVersion` **36**. `minSdkVersion` **31** (Android 12+).
 - [x] **16 KB page-size** — NDK r28+, datastore 1.2.1 force, `yarn android:bundle:release` runs
   `scripts/check-16kb-alignment.sh` (see [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md)).
@@ -55,21 +55,29 @@ Delivery is **AAB** (not APK). Play App Signing holds the app-signing key; you k
 - [x] **Monochrome adaptive icon** (Android 13+) — see `mipmap-anydpi-v26/ic_launcher*.xml`.
 - [ ] **Back gesture** and predictive back behavior on supported devices (smoke on device at GA).
 
-## Version bump recipe
+## Versioning policy
 
-`package.json` `"version"` is the human-readable **versionName** (Gradle reads it; Settings/About show `APP_VERSION` from the same file).
+Keep Play uploads readable without inventing a second versioning system:
 
-Android **`versionCode`** is a separate integer in [`android/app/build.gradle`](../android/app/build.gradle). Play requires it to be **strictly greater** than every previously uploaded AAB for `org.ezkey.mobile`, in every track.
+| Field | Where | Rule |
+|-------|--------|------|
+| **`versionCode`** | `android/app/build.gradle` | Strictly increasing integer per Play upload (hard requirement). Bump by PR before each upload. |
+| **`versionName`** | `ezkey_mobile/package.json` `"version"` | Semver with a pre-release tag while in public alpha: `0.y.z-alpha`. **Bump on every Play upload** (patch for fixes, minor for features). Gradle injects this as Android `versionName`; Settings/About show the same string. |
+| **Play release name** | set by `play-upload-internal.sh` | `'<versionCode> (<versionName>)'` (e.g. `4 (0.1.1-alpha)`). Override with `--release-name` only when needed. |
+
+**Why this exists:** vc4 went to the internal track as bare `0.1.0-alpha` while alpha showed hand-named `3 (0.1.0-alpha)` — same `versionName` as vc3, so the Console could not tell the uploads apart. Name releases with both code and name, and bump `versionName` every upload.
+
+### Version bump recipe
 
 Before each Play upload:
 
 1. Open Play Console → the Ezkey app → **App bundle explorer**. Note the highest published `versionCode`.
 2. If the workspace `versionCode` is **not** greater than that number, bump it in `android/app/build.gradle`.
-3. Bump `ezkey_mobile/package.json` `"version"` when the user-visible release string should change (for example `1.0.0` → `1.0.1`).
+3. Bump `ezkey_mobile/package.json` `"version"` for this upload (patch or minor under `0.y.z-alpha`).
 4. If dependencies changed, run `yarn license:app-data` and commit the JSON snapshot.
 5. Build the signed AAB (`./scripts/build-install-release-clean.sh` or `yarn android:bundle:release` with JDK 17).
 
-**This workspace (2026-10-19):** `versionName` `0.1.0-alpha`, `versionCode` `4`. On 2026-10-19 the Play Console App bundle explorer showed `versionCode` `3` as the most recent uploaded AAB, so `versionCode` `4` is the next upload. Do not reuse a `versionCode`. (Earlier notes that said the Console highest was `versionCode` `1` were wrong.)
+**This workspace (2026-10-19):** `versionName` `0.1.0-alpha`, `versionCode` `4` (already uploaded to internal). Next upload must bump both: `versionCode` → `5` and a new `versionName` (Marc chooses the next number). Do not reuse a `versionCode`. (Earlier notes that said the Console highest was `versionCode` `1` were wrong; Console showed `3` before vc4.)
 
 ## Upload signed AAB to internal testing (CLI)
 
@@ -98,7 +106,7 @@ export EZKEY_PLAY_SERVICE_ACCOUNT_JSON="/c/Users/marcg/.gradle/ezkey-play-publis
 ./scripts/play-upload-internal.sh android/app/build/outputs/bundle/release/app-release.aab
 ```
 
-Optional flags: `--dry-run` (auth + list tracks/versionCodes, delete edit, no commit), `--status draft|completed` (default `draft`). The script refuses any track other than `internal` and refuses an AAB whose `versionCode` is not strictly greater than the highest `versionCode` already on any track. On Windows Git Bash set `EZKEY_PYTHON` if `python3` is the Microsoft Store stub. (Why the proto-manifest fix: AAB `base/manifest/AndroidManifest.xml` is aapt2 protobuf `XmlNode`, not binary AXML — the first upload dry-run failed until the reader handled that format.)
+Optional flags: `--dry-run` (auth + list tracks/versionCodes, delete edit, no commit), `--status draft|completed` (default `draft`), `--release-name` (override the default `'<versionCode> (<versionName>)'`), `--allow-same-version-name` (escape hatch if the AAB `versionName` already appears on a Play release — default is refuse). The script refuses any track other than `internal` and refuses an AAB whose `versionCode` is not strictly greater than the highest `versionCode` already on any track. On Windows Git Bash set `EZKEY_PYTHON` if `python3` is the Microsoft Store stub. (Why the proto-manifest fix: AAB `base/manifest/AndroidManifest.xml` is aapt2 protobuf `XmlNode`, not binary AXML — the first upload dry-run failed until the reader handled that format.)
 
 ## In-app third-party licenses snapshot
 

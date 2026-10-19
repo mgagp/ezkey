@@ -17,17 +17,20 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import struct
 import subprocess
 import sys
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 PACKAGE_NAME = "org.ezkey.mobile"
 INTERNAL_TRACK = "internal"
-# android:versionCode resource id
+# android:versionCode / android:versionName resource ids
 _VERSION_CODE_ATTR = 0x0101021B
+_VERSION_NAME_ATTR = 0x0101021C
 _TYPE_INT_DEC = 0x10
 _TYPE_INT_HEX = 0x11
 # Binary AXML file magic (ResChunk RES_XML_TYPE=0x0003, headerSize=8)
@@ -38,9 +41,40 @@ _WIRE_64 = 1
 _WIRE_LEN = 2
 _WIRE_32 = 5
 
+# Play Console release name: "4 (0.1.0-alpha)" — code then human versionName.
+_RELEASE_NAME_RE = re.compile(r"^\s*(\d+)\s*\((.+)\)\s*$")
 
-def read_version_code_from_aab(aab_path: Path) -> int:
-    """Extract android:versionCode from an AAB's base AndroidManifest.xml."""
+
+@dataclass(frozen=True)
+class VersionInfo:
+    """AAB identity from AndroidManifest."""
+
+    version_code: int
+    version_name: str
+
+
+def format_release_name(version_code: int, version_name: str) -> str:
+    """Play Console release display name: '<versionCode> (<versionName>)'."""
+    name = (version_name or "").strip() or "unknown"
+    return f"{version_code} ({name})"
+
+
+def parse_version_name_from_release_name(release_name: str | None) -> str | None:
+    """Extract versionName from a Play release name, if present."""
+    if not release_name:
+        return None
+    text = release_name.strip()
+    if not text:
+        return None
+    match = _RELEASE_NAME_RE.match(text)
+    if match:
+        return match.group(2).strip() or None
+    # Bare versionName (e.g. Console default before this script named releases).
+    return text
+
+
+def read_version_info_from_aab(aab_path: Path) -> VersionInfo:
+    """Extract versionCode + versionName from an AAB's base AndroidManifest.xml."""
     with zipfile.ZipFile(aab_path) as zf:
         try:
             data = zf.read("base/manifest/AndroidManifest.xml")
@@ -49,26 +83,54 @@ def read_version_code_from_aab(aab_path: Path) -> int:
                 f"AAB missing base/manifest/AndroidManifest.xml: {aab_path}"
             ) from exc
     try:
-        return version_code_from_manifest_bytes(data)
+        return version_info_from_manifest_bytes(data)
     except ValueError as primary:
-        # Optional fallback when BUNDLETOOL_JAR is set (operator workstation).
-        fallback = _version_code_via_bundletool(aab_path)
-        if fallback is not None:
-            return fallback
+        fallback_code = _version_code_via_bundletool(aab_path)
+        if fallback_code is not None:
+            fallback_name = _version_name_via_bundletool(aab_path) or ""
+            return VersionInfo(fallback_code, fallback_name)
         raise primary
 
 
-def version_code_from_manifest_bytes(data: bytes) -> int:
-    """Decode versionCode from AAB proto XmlNode or (legacy) binary AXML."""
+def read_version_code_from_aab(aab_path: Path) -> int:
+    """Extract android:versionCode from an AAB (compat wrapper)."""
+    return read_version_info_from_aab(aab_path).version_code
+
+
+def version_info_from_manifest_bytes(data: bytes) -> VersionInfo:
+    """Decode versionCode + versionName from AAB proto XmlNode or binary AXML."""
     if len(data) < 4:
         raise ValueError("AndroidManifest.xml too small")
     if data.startswith(_AXML_MAGIC):
-        return _version_code_from_axml(data)
-    # AAB / aapt2 proto format starts with field 1 (element) length-delimited → 0x0a
-    return _version_code_from_proto_xml(data)
+        code = _version_code_from_axml(data)
+        return VersionInfo(code, "")
+    return _version_info_from_proto_xml(data)
+
+
+def version_code_from_manifest_bytes(data: bytes) -> int:
+    """Decode versionCode only (compat wrapper)."""
+    return version_info_from_manifest_bytes(data).version_code
 
 
 def _version_code_via_bundletool(aab_path: Path) -> int | None:
+    text = _bundletool_xpath(aab_path, "/manifest/@android:versionCode")
+    if text is None:
+        return None
+    try:
+        return int(text)
+    except ValueError:
+        print(
+            f"Warning: bundletool returned non-integer versionCode: {text!r}",
+            file=sys.stderr,
+        )
+        return None
+
+
+def _version_name_via_bundletool(aab_path: Path) -> str | None:
+    return _bundletool_xpath(aab_path, "/manifest/@android:versionName")
+
+
+def _bundletool_xpath(aab_path: Path, xpath: str) -> str | None:
     jar = os.environ.get("BUNDLETOOL_JAR", "").strip()
     if not jar:
         return None
@@ -86,7 +148,7 @@ def _version_code_via_bundletool(aab_path: Path) -> int | None:
         "dump",
         "manifest",
         f"--bundle={aab_path}",
-        "--xpath=/manifest/@android:versionCode",
+        f"--xpath={xpath}",
     ]
     try:
         proc = subprocess.run(
@@ -96,16 +158,7 @@ def _version_code_via_bundletool(aab_path: Path) -> int | None:
         print(f"Warning: bundletool fallback failed: {exc}", file=sys.stderr)
         return None
     text = (proc.stdout or "").strip()
-    if not text:
-        return None
-    try:
-        return int(text)
-    except ValueError:
-        print(
-            f"Warning: bundletool returned non-integer versionCode: {text!r}",
-            file=sys.stderr,
-        )
-        return None
+    return text or None
 
 
 # --- protobuf (aapt.pb.XmlNode) walker ---------------------------------
@@ -155,17 +208,19 @@ def _as_signed_int32(n: int) -> int:
     return n
 
 
-def _version_code_from_proto_xml(data: bytes) -> int:
-    """Walk aapt.pb.XmlNode for android:versionCode on the manifest element."""
+def _version_info_from_proto_xml(data: bytes) -> VersionInfo:
+    """Walk aapt.pb.XmlNode for android:versionCode and versionName."""
     pos = 0
     while pos < len(data):
         tag, pos = _read_varint(data, pos)
         field, wire = tag >> 3, tag & 7
         if field == 1 and wire == _WIRE_LEN:  # XmlNode.element
             payload, pos = _read_len_payload(data, pos)
-            found = _find_version_code_in_element(payload, depth=0)
-            if found is not None:
-                return found
+            found = _find_version_info_in_element(payload, depth=0)
+            if found is not None and found.version_code is not None:
+                return VersionInfo(
+                    found.version_code, found.version_name or ""
+                )
         elif field == 2 and wire == _WIRE_LEN:  # XmlNode.text — ignore
             _, pos = _read_len_payload(data, pos)
         else:
@@ -173,43 +228,58 @@ def _version_code_from_proto_xml(data: bytes) -> int:
     raise ValueError("versionCode not found in protobuf AndroidManifest.xml")
 
 
-def _find_version_code_in_element(buf: bytes, depth: int) -> int | None:
+@dataclass
+class _PartialVersion:
+    version_code: int | None = None
+    version_name: str | None = None
+
+
+def _find_version_info_in_element(buf: bytes, depth: int) -> _PartialVersion | None:
     if depth > 64:
         raise ValueError("protobuf XmlNode nesting too deep")
+    partial = _PartialVersion()
     pos = 0
     while pos < len(buf):
         tag, pos = _read_varint(buf, pos)
         field, wire = tag >> 3, tag & 7
         if field == 4 and wire == _WIRE_LEN:  # XmlElement.attribute
             payload, pos = _read_len_payload(buf, pos)
-            vc = _version_code_from_attribute(payload)
-            if vc is not None:
-                return vc
+            _apply_attribute(payload, partial)
         elif field == 5 and wire == _WIRE_LEN:  # XmlElement.child (XmlNode)
             child, pos = _read_len_payload(buf, pos)
-            # Child XmlNode: look for element = 1
             cpos = 0
             while cpos < len(child):
                 ctag, cpos = _read_varint(child, cpos)
                 cfield, cwire = ctag >> 3, ctag & 7
                 if cfield == 1 and cwire == _WIRE_LEN:
                     el, cpos = _read_len_payload(child, cpos)
-                    found = _find_version_code_in_element(el, depth + 1)
-                    if found is not None:
-                        return found
+                    child_partial = _find_version_info_in_element(el, depth + 1)
+                    if child_partial is not None:
+                        if (
+                            partial.version_code is None
+                            and child_partial.version_code is not None
+                        ):
+                            partial.version_code = child_partial.version_code
+                        if (
+                            not partial.version_name
+                            and child_partial.version_name
+                        ):
+                            partial.version_name = child_partial.version_name
                 else:
                     cpos = _skip_field(child, cpos, cwire)
         else:
             pos = _skip_field(buf, pos, wire)
-    return None
+    if partial.version_code is None and not partial.version_name:
+        return None
+    return partial
 
 
-def _version_code_from_attribute(buf: bytes) -> int | None:
-    """Return versionCode from one XmlAttribute, or None if not that attr."""
+def _apply_attribute(buf: bytes, partial: _PartialVersion) -> None:
     name = ""
     value_str = ""
     resource_id = 0
-    compiled: int | None = None
+    compiled_int: int | None = None
+    compiled_str: str | None = None
     pos = 0
     while pos < len(buf):
         tag, pos = _read_varint(buf, pos)
@@ -223,55 +293,50 @@ def _version_code_from_attribute(buf: bytes) -> int | None:
         elif field == 5 and wire == _WIRE_VARINT:  # resource_id
             resource_id, pos = _read_varint(buf, pos)
             resource_id &= 0xFFFFFFFF
-        elif field == 6 and wire == _WIRE_LEN:  # compiled_item (Item)
+        elif field == 6 and wire == _WIRE_LEN:  # compiled_item
             item, pos = _read_len_payload(buf, pos)
-            compiled = _int_from_item(item)
+            compiled_int, compiled_str = _values_from_item(item)
         else:
             pos = _skip_field(buf, pos, wire)
 
     is_vc = resource_id == _VERSION_CODE_ATTR or name == "versionCode"
-    if not is_vc:
-        return None
-    if compiled is not None:
-        return compiled
-    if value_str:
-        try:
-            return int(value_str, 0)
-        except ValueError as exc:
-            raise ValueError(
-                f"versionCode attribute has non-integer value: {value_str!r}"
-            ) from exc
-    return None
+    is_vn = resource_id == _VERSION_NAME_ATTR or name == "versionName"
+    if is_vc:
+        if compiled_int is not None:
+            partial.version_code = compiled_int
+        elif value_str:
+            partial.version_code = int(value_str, 0)
+    elif is_vn:
+        if value_str:
+            partial.version_name = value_str
+        elif compiled_str:
+            partial.version_name = compiled_str
 
 
-def _int_from_item(buf: bytes) -> int | None:
-    """Extract int from aapt.pb.Item (prim / str)."""
+def _values_from_item(buf: bytes) -> tuple[int | None, str | None]:
+    """Extract optional int and/or string from aapt.pb.Item."""
     pos = 0
     while pos < len(buf):
         tag, pos = _read_varint(buf, pos)
         field, wire = tag >> 3, tag & 7
         if field == 2 and wire == _WIRE_LEN:  # String { value = 1 }
             inner, pos = _read_len_payload(buf, pos)
-            return _int_from_string_wrapper(inner)
+            return None, _string_from_string_wrapper(inner)
         if field == 7 and wire == _WIRE_LEN:  # Primitive
             inner, pos = _read_len_payload(buf, pos)
-            return _int_from_primitive(inner)
+            return _int_from_primitive(inner), None
         pos = _skip_field(buf, pos, wire)
-    return None
+    return None, None
 
 
-def _int_from_string_wrapper(buf: bytes) -> int | None:
+def _string_from_string_wrapper(buf: bytes) -> str | None:
     pos = 0
     while pos < len(buf):
         tag, pos = _read_varint(buf, pos)
         field, wire = tag >> 3, tag & 7
         if field == 1 and wire == _WIRE_LEN:
             raw, pos = _read_len_payload(buf, pos)
-            text = raw.decode("utf-8", errors="replace")
-            try:
-                return int(text, 0)
-            except ValueError:
-                return None
+            return raw.decode("utf-8", errors="replace")
         pos = _skip_field(buf, pos, wire)
     return None
 
@@ -281,7 +346,7 @@ def _int_from_primitive(buf: bytes) -> int | None:
     Decode aapt.pb.Primitive integer fields.
 
     Current AOSP Resources.proto: int_decimal_value = 6, int_hexadecimal_value = 7.
-    Older schemas (and some third-party docs) used 4 / 5 — accept both.
+    Older schemas used 4 / 5 — accept both.
     """
     pos = 0
     while pos < len(buf):
@@ -289,9 +354,8 @@ def _int_from_primitive(buf: bytes) -> int | None:
         field, wire = tag >> 3, tag & 7
         if wire == _WIRE_VARINT and field in (4, 5, 6, 7):
             raw, pos = _read_varint(buf, pos)
-            if field in (4, 6):  # int_decimal (legacy 4 or current 6)
+            if field in (4, 6):
                 return _as_signed_int32(raw)
-            # hexadecimal / unsigned
             return int(raw & 0xFFFFFFFF)
         pos = _skip_field(buf, pos, wire)
     return None
@@ -387,6 +451,17 @@ def highest_version_code_from_tracks(tracks_payload: dict[str, Any]) -> int:
     return highest
 
 
+def version_names_on_tracks(tracks_payload: dict[str, Any]) -> set[str]:
+    """Collect versionName strings visible on Play (from release name fields)."""
+    names: set[str] = set()
+    for track in tracks_payload.get("tracks") or []:
+        for release in track.get("releases") or []:
+            parsed = parse_version_name_from_release_name(release.get("name"))
+            if parsed:
+                names.add(parsed)
+    return names
+
+
 def _build_service(json_path: Path):
     try:
         from google.oauth2 import service_account
@@ -411,11 +486,20 @@ def _run_upload(
     json_path: Path,
     status: str,
     dry_run: bool,
+    release_name_override: str | None,
+    allow_same_version_name: bool,
 ) -> int:
     from googleapiclient.http import MediaFileUpload
 
-    version_code = read_version_code_from_aab(aab_path)
-    print(f"AAB versionCode={version_code} package={PACKAGE_NAME}")
+    info = read_version_info_from_aab(aab_path)
+    release_name = (release_name_override or "").strip() or format_release_name(
+        info.version_code, info.version_name
+    )
+    print(
+        f"AAB versionCode={info.version_code} versionName={info.version_name!r} "
+        f"package={PACKAGE_NAME}"
+    )
+    print(f"Play release name: {release_name}")
 
     service = _build_service(json_path)
     edit = service.edits().insert(body={}, packageName=PACKAGE_NAME).execute()
@@ -439,17 +523,38 @@ def _run_upload(
             for release in releases:
                 codes = release.get("versionCodes") or []
                 rel_status = release.get("status", "?")
-                print(f"  {track_name}: status={rel_status} versionCodes={codes}")
+                rel_name = release.get("name", "")
+                print(
+                    f"  {track_name}: status={rel_status} "
+                    f"versionCodes={codes} name={rel_name!r}"
+                )
 
         highest = highest_version_code_from_tracks(tracks_payload)
         print(f"Highest versionCode on any track: {highest}")
-        if version_code <= highest:
+        if info.version_code <= highest:
             print(
-                f"Refusing upload: AAB versionCode {version_code} is not strictly "
+                f"Refusing upload: AAB versionCode {info.version_code} is not strictly "
                 f"greater than highest on Play ({highest}).",
                 file=sys.stderr,
             )
             return 1
+
+        play_names = version_names_on_tracks(tracks_payload)
+        if info.version_name and info.version_name in play_names:
+            msg = (
+                f"AAB versionName {info.version_name!r} already appears on a Play "
+                f"release name ({sorted(play_names)}). Bump package.json version "
+                f"before the next upload (see MOBILE_PLAY_PUBLISHING.md)."
+            )
+            if allow_same_version_name:
+                print(f"WARNING: {msg} Continuing because --allow-same-version-name.")
+            else:
+                print(
+                    f"Refusing upload: {msg}\n"
+                    "Pass --allow-same-version-name to override.",
+                    file=sys.stderr,
+                )
+                return 1
 
         if dry_run:
             print(
@@ -470,13 +575,16 @@ def _run_upload(
             .upload(packageName=PACKAGE_NAME, editId=edit_id, media_body=media)
             .execute()
         )
-        uploaded_vc = int(bundle.get("versionCode", version_code))
+        uploaded_vc = int(bundle.get("versionCode", info.version_code))
         print(f"Uploaded bundle versionCode={uploaded_vc}")
+        if not (release_name_override or "").strip():
+            release_name = format_release_name(uploaded_vc, info.version_name)
 
         track_body = {
             "track": INTERNAL_TRACK,
             "releases": [
                 {
+                    "name": release_name,
                     "versionCodes": [str(uploaded_vc)],
                     "status": status,
                 }
@@ -488,7 +596,9 @@ def _run_upload(
             track=INTERNAL_TRACK,
             body=track_body,
         ).execute()
-        print(f"Updated track '{INTERNAL_TRACK}' status={status}")
+        print(
+            f"Updated track '{INTERNAL_TRACK}' status={status} name={release_name!r}"
+        )
 
         service.edits().commit(packageName=PACKAGE_NAME, editId=edit_id).execute()
         print("Committed edit.")
@@ -528,9 +638,24 @@ def main(argv: list[str] | None = None) -> int:
         help="Auth + list tracks/versionCodes, then delete edit without committing",
     )
     parser.add_argument(
+        "--release-name",
+        default=None,
+        help="Override Play release name (default: '<versionCode> (<versionName>)')",
+    )
+    parser.add_argument(
+        "--allow-same-version-name",
+        action="store_true",
+        help="Allow upload when AAB versionName already appears on a Play release",
+    )
+    parser.add_argument(
         "--print-version-code",
         action="store_true",
         help="Only print versionCode from the AAB and exit (no API calls)",
+    )
+    parser.add_argument(
+        "--print-version-info",
+        action="store_true",
+        help="Print versionCode and versionName from the AAB and exit",
     )
     parser.add_argument(
         "--self-test",
@@ -557,6 +682,11 @@ def main(argv: list[str] | None = None) -> int:
         print(read_version_code_from_aab(aab_path))
         return 0
 
+    if args.print_version_info:
+        info = read_version_info_from_aab(aab_path)
+        print(f"{info.version_code}\t{info.version_name}")
+        return 0
+
     if args.json is None:
         print("--json is required for upload / dry-run", file=sys.stderr)
         return 1
@@ -575,6 +705,8 @@ def main(argv: list[str] | None = None) -> int:
         json_path=json_path,
         status=args.status,
         dry_run=args.dry_run,
+        release_name_override=args.release_name,
+        allow_same_version_name=args.allow_same_version_name,
     )
 
 
@@ -622,7 +754,49 @@ def _self_test() -> int:
         == 3,
     )
 
-    # Real AAB format: checked-in aapt.pb.XmlNode fixture (not Ezkey signed AAB).
+    check(
+        "format_release_name",
+        format_release_name(4, "0.1.0-alpha") == "4 (0.1.0-alpha)",
+    )
+    check(
+        "parse release name with code",
+        parse_version_name_from_release_name("3 (0.1.0-alpha)") == "0.1.0-alpha",
+    )
+    check(
+        "parse bare release name",
+        parse_version_name_from_release_name("0.1.0-alpha") == "0.1.0-alpha",
+    )
+    check(
+        "version_names_on_tracks",
+        version_names_on_tracks(
+            {
+                "tracks": [
+                    {
+                        "track": "internal",
+                        "releases": [
+                            {
+                                "name": "0.1.0-alpha",
+                                "versionCodes": ["4"],
+                                "status": "completed",
+                            }
+                        ],
+                    },
+                    {
+                        "track": "alpha",
+                        "releases": [
+                            {
+                                "name": "3 (0.1.0-alpha)",
+                                "versionCodes": ["3"],
+                                "status": "completed",
+                            }
+                        ],
+                    },
+                ]
+            }
+        )
+        == {"0.1.0-alpha"},
+    )
+
     fixture = _fixture_proto_manifest_path()
     check("proto fixture file exists", fixture.is_file())
     if fixture.is_file():
@@ -630,8 +804,17 @@ def _self_test() -> int:
         check("proto fixture starts with 0x0a (not AXML magic)", proto_bytes[:1] == b"\n")
         check("proto fixture is not AXML magic", not proto_bytes.startswith(_AXML_MAGIC))
         try:
-            vc = version_code_from_manifest_bytes(proto_bytes)
-            check(f"proto fixture versionCode == 42 (got {vc})", vc == 42)
+            info = version_info_from_manifest_bytes(proto_bytes)
+            check(f"proto fixture versionCode == 42 (got {info.version_code})", info.version_code == 42)
+            check(
+                f"proto fixture versionName == 0.1.0-alpha (got {info.version_name!r})",
+                info.version_name == "0.1.0-alpha",
+            )
+            check(
+                "default release name from fixture",
+                format_release_name(info.version_code, info.version_name)
+                == "42 (0.1.0-alpha)",
+            )
         except ValueError as exc:
             check(f"proto fixture decode ({exc})", False)
 
@@ -640,12 +823,18 @@ def _self_test() -> int:
             with zipfile.ZipFile(aab, "w") as zf:
                 zf.writestr("base/manifest/AndroidManifest.xml", proto_bytes)
             try:
-                vc_aab = read_version_code_from_aab(aab)
-                check(f"zip-wrapped proto AAB versionCode == 42 (got {vc_aab})", vc_aab == 42)
+                info_aab = read_version_info_from_aab(aab)
+                check(
+                    f"zip-wrapped proto AAB versionCode == 42 (got {info_aab.version_code})",
+                    info_aab.version_code == 42,
+                )
+                check(
+                    f"zip-wrapped proto AAB versionName (got {info_aab.version_name!r})",
+                    info_aab.version_name == "0.1.0-alpha",
+                )
             except ValueError as exc:
                 check(f"zip-wrapped proto AAB decode ({exc})", False)
 
-    # Legacy binary-AXML path (APK-style); synthetic start-element chunk.
     attr = struct.pack(
         "<IIIHBBI",
         0xFFFFFFFF,
@@ -674,7 +863,6 @@ def _self_test() -> int:
         check("AXML chunk-walk versionCode=4", _version_code_via_chunks(start_el) == 4)
     except ValueError as exc:
         check(f"AXML chunk-walk ({exc})", False)
-    # Dispatcher: AXML magic → AXML path (raw scan finds attr after 8-byte hdr).
     file_hdr = struct.pack("<HHI", 0x0003, 8, 8 + len(start_el))
     try:
         check(

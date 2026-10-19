@@ -3,10 +3,12 @@
 #
 # Usage (from ezkey_mobile/, Git Bash on Windows OK):
 #   export EZKEY_PLAY_SERVICE_ACCOUNT_JSON="/path/to/key.json"   # outside the repo
-#   ./scripts/play-upload-internal.sh [--dry-run] [--status draft|completed] <aab>
+#   ./scripts/play-upload-internal.sh [--dry-run] [--status draft|completed] \
+#       [--release-name NAME] [--allow-same-version-name] <aab>
 #   ./scripts/play-upload-internal.sh --self-test
 #
-# Default release status is *draft* (review in Play Console before rolling out).
+# Default release status is *draft*. Default Play release name is
+# '<versionCode> (<versionName>)' from the AAB manifest.
 # Hard-refuses any track other than internal. Never prints the service-account JSON.
 #
 # Prerequisites (host Python, not app Gradle):
@@ -25,10 +27,12 @@ ALLOWED_TRACK="internal"
 DRY_RUN=false
 STATUS="draft"
 SELF_TEST=false
+RELEASE_NAME=""
+ALLOW_SAME_VERSION_NAME=false
 AAB_PATH=""
 
 usage() {
-  sed -n '2,18p' "$0"
+  sed -n '2,20p' "$0"
 }
 
 die() {
@@ -54,6 +58,15 @@ while [[ $# -gt 0 ]]; do
       [[ $# -ge 2 ]] || die "--status requires draft or completed"
       STATUS="$2"
       shift 2
+      ;;
+    --release-name)
+      [[ $# -ge 2 ]] || die "--release-name requires a value"
+      RELEASE_NAME="$2"
+      shift 2
+      ;;
+    --allow-same-version-name)
+      ALLOW_SAME_VERSION_NAME=true
+      shift
       ;;
     --track)
       [[ $# -ge 2 ]] || die "--track requires a value"
@@ -180,11 +193,22 @@ echo "  status:  ${STATUS}"
 echo "  dry-run: ${DRY_RUN}"
 echo "  aab:     ${AAB_PATH}"
 echo "  python:  ${PYTHON_BIN}"
+if [[ -n "${RELEASE_NAME}" ]]; then
+  echo "  release: ${RELEASE_NAME} (override)"
+else
+  echo "  release: <versionCode> (<versionName>) from AAB"
+fi
 echo "  sa json: (path set, not printed)"
 
 PY_ARGS=("${PYTHON_HELPER}" --json "${JSON_PATH}" --status "${STATUS}")
 if [[ "${DRY_RUN}" == true ]]; then
   PY_ARGS+=(--dry-run)
+fi
+if [[ -n "${RELEASE_NAME}" ]]; then
+  PY_ARGS+=(--release-name "${RELEASE_NAME}")
+fi
+if [[ "${ALLOW_SAME_VERSION_NAME}" == true ]]; then
+  PY_ARGS+=(--allow-same-version-name)
 fi
 PY_ARGS+=("${AAB_PATH}")
 
