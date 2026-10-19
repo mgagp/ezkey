@@ -571,12 +571,13 @@ echo "${REQ_LOG_SNAP}" | tee -a "${PROOF}" || true
 # PAM still sends ttlSeconds; legacy response has none → wait uses conf=45.
 OUT="$(docker exec "${CONTAINER}" sh -c 'tail -n 20 /var/log/ezkey-pam/debug.out' || true)"
 echo "legacy_create debug.out=${OUT}" | tee -a "${PROOF}"
+# Filelog sanitizes '=' → '_', so look for applied_ttl_45 (not applied_ttl=45).
 if [ "${GOT_TTL}" = "45" ] && [ "${GOT_TO}" = "45" ] \
   && echo "${ATTEMPT}" | grep -q 'result=SUCCESS' \
-  && echo "${OUT}" | grep -Eq 'applied_ttl=45'; then
+  && echo "${OUT}" | grep -Eq 'applied_ttl_45'; then
   ok "legacy_create: no ttl/expiresAt in response → fallback wait_timeout=45 + SUCCESS"
 else
-  fail "legacy_create expected ttl=45 timeout=45 applied_ttl=45 SUCCESS, got ttl='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+  fail "legacy_create expected ttl=45 timeout=45 applied_ttl_45 SUCCESS, got ttl='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -615,7 +616,7 @@ fi
 stop_stub
 restore_conf
 
-# --- applied TTL < requested: wait aligns on applied (stub returns 30, conf 90) ---
+# --- applied TTL < requested via timeoutSeconds (#898): wait aligns on applied ---
 start_stub applied_shrink 3 30
 docker exec "${CONTAINER}" sh -c \
   "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
@@ -633,14 +634,16 @@ wait_attempt_line "${before}" || true
 ATTEMPT="$(last_attempt_line)"
 GOT_TO="$(stub_wait_timeout_param)"
 GOT_TTL="$(stub_create_ttl)"
+REQ_SNAP="$(docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null || true)"
 echo "applied_shrink sent_ttl=${GOT_TTL} ?timeout=${GOT_TO} attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
-docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null | tee -a "${PROOF}" || true
+echo "${REQ_SNAP}" | tee -a "${PROOF}" || true
+# Request still ttlSeconds=90; response carries timeoutSeconds=30 (not logged — assert wait).
 if [ "${GOT_TTL}" = "90" ] && [ "${GOT_TO}" = "30" ] \
   && echo "${ATTEMPT}" | grep -q 'result=SUCCESS'; then
-  ok "applied_shrink: asked ttlSeconds=90, wait aligned on applied 30"
+  ok "applied_shrink: asked ttlSeconds=90, wait aligned on timeoutSeconds=30"
 else
-  fail "applied_shrink expected sent=90 timeout=30 SUCCESS, got sent='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+  fail "applied_shrink expected sent=90 ?timeout=30 SUCCESS, got sent='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -656,14 +659,15 @@ else
 fi
 
 if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -q 'timeoutSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q '/cancel' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && ! grep -E '\bsigaction\s*\(|\balarm\s*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'LoginGraceTime 120' "${SCRIPT_DIR}/../sshd_config" \
   && grep -q '^wait_polling=2' "${SCRIPT_DIR}/../config/pam_ezkey.conf" \
   && grep -q '^wait_timeout=90' "${SCRIPT_DIR}/../config/pam_ezkey.conf"; then
-  ok "ttlSeconds+cancel present; no signals; sample conf wait_timeout=90"
+  ok "ttlSeconds request + timeoutSeconds response + cancel; no signals; sample conf"
 else
-  fail "missing linkage guards (ttlSeconds/cancel/signals/sample conf)"
+  fail "missing linkage guards (ttlSeconds/timeoutSeconds/cancel/signals/sample conf)"
 fi
 
 echo "" | tee -a "${PROOF}"

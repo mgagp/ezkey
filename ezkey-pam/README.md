@@ -135,7 +135,7 @@ ssh -p 2223 \
 | `integration_api_url` | *(required; no default)* | Integration API base URL |
 | `integration_key` | *(required)* | API integration key |
 | `secret_key` | *(required)* | API secret key |
-| `wait_timeout` | `90` | Seconds to wait for device approval (clamped **15–90**). Sent as create `ttlSeconds` and as `/wait?timeout=` after applied-TTL align |
+| `wait_timeout` | `90` | Seconds to wait for device approval (clamped **15–90**). Sent as create `ttlSeconds`; `/wait?timeout=` aligns on create response `timeoutSeconds` (PR-A) when present |
 | `wait_polling` | `2` | Wait poll interval |
 | `api_timeout` | `10` | Timeout for create/cancel calls (max 10) |
 | `challenge_requested` | `false` | Two-digit number-matching; `true` shows code via SSH `pam_prompt` before wait |
@@ -221,7 +221,9 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
   attempt so a new create is not blocked by a stale PENDING/READ card. Cancel is **not
   guaranteed when the wait timeout is reached** (remaining monotonic budget may be too
   small for the cancel HTTP call). The real hard bound on late approval is the **applied
-  TTL** from create (`ttlSeconds` / server `expiresAt`), not the cancel.
+  TTL** from create (`timeoutSeconds` in the create response, ≤ 90 s for PAM), not the
+  cancel. A late approval after a failed cancel can leave an orphan `ACCEPTED` attempt
+  (nothing granted on SSH); residual risk is approval fatigue.
 
 ## Troubleshooting
 

@@ -8,12 +8,13 @@ Modes (EZKEY_STUB_MODE):
   pending        — POST 201; GET wait sleeps for ?timeout= then PENDING + timeoutReached
   expired        — POST 201; GET wait → EXPIRED
   rejected       — POST 201; GET wait → REJECTED
-  legacy_create  — ignore request ttlSeconds; response has neither ttlSeconds nor expiresAt
-  applied_shrink — echo create with ttlSeconds = min(request, EZKEY_STUB_APPLIED_TTL)
+  legacy_create  — ignore request ttlSeconds; response has neither timeoutSeconds nor expiresAt
+  applied_shrink — create response timeoutSeconds = min(request, EZKEY_STUB_APPLIED_TTL)
+                   (mirrors PR-A #898 applied field name; proves wait aligns down)
   cancel_fail    — like expired, but POST …/cancel returns 503 (PAM outcome must not change)
 
 Request paths (incl. ?timeout=) and POST bodies are appended to EZKEY_STUB_REQ_LOG
-when set so tests can assert ttlSeconds and cancel (#895 PR-B / #897 B1).
+when set so tests can assert ttlSeconds / timeoutSeconds and cancel (#895 PR-B / #897).
 """
 
 from __future__ import annotations
@@ -112,7 +113,7 @@ class Handler(BaseHTTPRequestHandler):
         req_ttl = _parse_req_ttl(body)
 
         if MODE == "legacy_create":
-            # Pre-ttlSeconds server: ignore request field; no ttlSeconds/expiresAt.
+            # Pre-TTL server: ignore request field; no timeoutSeconds/expiresAt.
             resp = {
                 "authAttemptId": 9001,
                 "status": "PENDING",
@@ -134,10 +135,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_error(400)
                 return
 
+        # PR-A (#898): applied duration is timeoutSeconds (request field stays ttlSeconds).
         resp = {
             "authAttemptId": 9001,
             "status": "PENDING",
-            "ttlSeconds": applied_ttl,
+            "timeoutSeconds": applied_ttl,
             "expiresAt": "2099-01-01T00:00:00Z",
         }
         if MODE != "no_challenge":

@@ -840,12 +840,16 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
         challenge = (long)chal_val->valuedouble;
     }
     /*
-     * Applied TTL from create response when present. Absent ⇒ keep planned
-     * (compatible with servers that ignore ttlSeconds). Never derive wait from
-     * expiresAt wall-clock arithmetic. Validate the double in-range before
-     * casting to int (Christophe #897 n2) — reject NaN / ≤0 / > planned.
+     * Applied TTL from create response when present. PR-A (#898) returns the
+     * applied duration as timeoutSeconds (not request ttlSeconds). Fall back to
+     * ttlSeconds for older stubs. Absent ⇒ keep planned (legacy servers).
+     * Never derive wait from expiresAt wall-clock arithmetic. Validate the
+     * double in-range before casting to int (Christophe #897 n2).
      */
-    ttl_val = cJSON_GetObjectItemCaseSensitive(root, "ttlSeconds");
+    ttl_val = cJSON_GetObjectItemCaseSensitive(root, "timeoutSeconds");
+    if (!cJSON_IsNumber(ttl_val)) {
+        ttl_val = cJSON_GetObjectItemCaseSensitive(root, "ttlSeconds");
+    }
     if (cJSON_IsNumber(ttl_val)) {
         double ttl_d = ttl_val->valuedouble;
 

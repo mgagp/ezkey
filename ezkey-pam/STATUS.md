@@ -137,6 +137,11 @@ operational (TLS, live sshd cutover), not “more keys.”
 - **LoginGraceTime ≥ 120 s** (demo `sshd_config`). Abandoning at the prompt no longer relies
   solely on server TTL: PAM best-effort `POST …/cancel` on non-ACCEPTED exit after create
   (#895). If sshd cuts the session before PAM returns, there may still be no attempt line.
+- **Cancel best-effort / not guaranteed at wait timeout** (Christophe #897 n3): if cancel
+  fails or is skipped (budget exhausted), the attempt window lasts until the **applied TTL**
+  from create (`timeoutSeconds`, ≤ **90 s** for PAM). A late device approval then marks an
+  orphan attempt `ACCEPTED` while nobody is waiting on that id — SSH already failed closed.
+  Residual risk is **approval fatigue** (operator/device sees a prompt that grants nothing).
 
 ### Slices #1–#3 done (this eval)
 
@@ -542,10 +547,10 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | Enter prompt | `pam_ezkey.c:779-796` measure; `EZKEY_MAX_ENTER_SECS` `ezkey_config.h:40` **25** | duration bound (no signals) | Enter **>25 s** → UNAVAIL + attempt + debug.err duration (proven) |
 | `wait_timeout` | clamp floor **15** / max **90**; `ttlSeconds` on create; `effective_wait` = min(conf, applied_ttl, rem−slack) | 15–90; shrunk by budget + applied TTL | conf=200 → ttl+`?timeout=90`; conf=2 → floor **15** (proven) |
 | curl `/wait` | `EZKEY_CURL_WAIT_SLACK` **15** (cancel margin inside) | wait+≤15; ≤ rem | Covered by wait / delayed-Enter cases (proven) |
-| Cancel | `POST …/cancel` best-effort on non-ACCEPTED after create | ≤ api_timeout from rem; **not guaranteed when wait timeout is reached** (budget may be exhausted). Real late-approve bound = **applied TTL** | pending→TIMEOUT + cancel; EXPIRED + cancel; Enter>25 + cancel (proven) |
+| Cancel | `POST …/cancel` best-effort on non-ACCEPTED after create | ≤ api_timeout from rem; **not guaranteed when wait timeout is reached**. If cancel fails, window = applied TTL (≤90 s); late approve → orphan `ACCEPTED` (no SSH grant); residual = approval fatigue | pending→TIMEOUT + cancel; EXPIRED + cancel; Enter>25 + cancel; `cancel_fail` 503 (proven) |
 | Summary outcomes | `EXPIRED` / `TIMEOUT` / `DENIED` | lacune 5 | stub expired / pending / rejected (proven) |
 | `wait_polling` | sample `config/pam_ezkey.conf` `wait_polling=2` | Server-side cadence | Sample conf present (proven) |
-| Server attempt TTL | create `ttlSeconds` (PAM) + core global ceiling **120** | Align on applied duration | PAM sends planned wait; ignores `expiresAt` wall clock |
+| Server attempt TTL | request `ttlSeconds`; response **`timeoutSeconds`** (PR-A #898) | Align on applied duration | `applied_shrink` → `?timeout=` = applied; legacy omits field → conf wait (proven) |
 | `LoginGraceTime` | `sshd_config:20` → **120** (runbook ≥120) | sshd cuts session | Budget 105 documented; Enter-never-pressed → cut **without** attempt line (documented, not lab-proven) |
 | Auth `/pending` | `ezkey.rate-limit.pending` **10/min** | Device polling | Runbook note (Lightsail) |
 
