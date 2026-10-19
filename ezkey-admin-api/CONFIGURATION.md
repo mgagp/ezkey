@@ -485,8 +485,12 @@ JavaMelody is **disabled by default** (`javamelody.enabled=false`). Enable it on
 `./ezkey-tests/clean-start.sh --with-java-melody` (combinable with `--ha`), or on the community /
 Lightsail host via `experimental-hybrid/lightsail/docker-compose.javamelody.yml`
 (`EZKEY_ENABLE_JAVA_MELODY=true` / `./clean-start.sh --with-java-melody`). Reports are on the
-**management port** at `/actuator/monitoring` only (never on the business port). Local collector UI:
-`http://127.0.0.1:8088`. Community access is SSH tunnel only (`Host ezkey-online-metrics`) — see
+**management port** at `/actuator/monitoring` only (never on the business port). Startup refuses
+`javamelody.enabled=true` without `management-endpoint-monitoring-enabled=true`, and refuses equal
+business/management ports. Community base compose binds management to `127.0.0.1`; the JM overlay
+reopens `0.0.0.0` so the collector can scrape. Local collector UI: `http://127.0.0.1:8088`.
+Community access is SSH tunnel only (`Host ezkey-online-metrics`) — see
 [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) § Observability and
 [`docs/SECURITY_POSTURE.md`](../docs/SECURITY_POSTURE.md) § Observability (#846). Crypto API is out
 of scope. Operator details: [`docker/README.md`](../docker/README.md) § JavaMelody collector.
+Decision: [ADR-0015](../product-docs/global/architecture-decisions.md#adr-0015-management-port-separation-actuator-javamelody).

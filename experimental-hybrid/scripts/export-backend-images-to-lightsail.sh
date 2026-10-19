@@ -367,6 +367,14 @@ if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
   if [[ -n "$jm_enable" ]]; then
     remote_compose_cmd='docker compose -f docker-compose.yml -f docker-compose.javamelody.yml'
     echo "  (EZKEY_ENABLE_JAVA_MELODY set — applying docker-compose.javamelody.yml)"
+    # Fail closed: collector scrapes management from another container; overlay must reopen 0.0.0.0.
+    jm_overlay_local="${SCRIPT_DIR}/../lightsail/docker-compose.javamelody.yml"
+    if [[ -f "$jm_overlay_local" ]] \
+      && ! grep -Eq 'MANAGEMENT_SERVER_ADDRESS:[[:space:]]*"?0\.0\.0\.0"?' "$jm_overlay_local"; then
+      echo "error: ${jm_overlay_local} enables JavaMelody but MANAGEMENT_SERVER_ADDRESS is not 0.0.0.0" >&2
+      echo "  (base community compose binds management to 127.0.0.1; without the overlay reopen the collector stays empty)" >&2
+      exit 1
+    fi
   elif [[ -n "$jm_disable" ]]; then
     remove_orphans="--remove-orphans"
     echo "  (EZKEY_DISABLE_JAVA_MELODY set — base compose + --remove-orphans; collector will be removed)"

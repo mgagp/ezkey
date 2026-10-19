@@ -1,7 +1,20 @@
 # Ezkey Demo App ACME — Configuration
 
-Demo-only browser app (port 8082). Properties bind from JAR `application.properties`, optional
-external `/app/config/` (volume `demo-app-acme-config`), and environment variables.
+Demo-only browser app (business port **8082**). Properties bind from JAR `application.properties`,
+optional external `/app/config/` (volume `demo-app-acme-config`), and environment variables.
+
+## Management / Actuator
+
+| Property | Default | Obligation | Description |
+|----------|---------|------------|-------------|
+| `management.server.port` | `8086` | recommandé | Dedicated management port. Actuator (`/actuator/health`) is **not** on 8082. |
+| `management.endpoints.web.exposure.include` | `health` | recommandé | Minimal exposure; `show-details=never`. |
+| `javamelody.enabled` | `false` | recommandé | Starter not on classpath today; flag kept fail-closed if added later. |
+
+Community compose sets `MANAGEMENT_SERVER_PORT=8086` and `MANAGEMENT_SERVER_ADDRESS=127.0.0.1`
+(healthchecks use `http://127.0.0.1:8086/...`). Caddy still reverse-proxies only **8082** and keeps
+the observability deny block. Deploy image + compose together: a healthcheck on 8086 with an old
+image that only listens on 8082 blocks Caddy (`depends_on: service_healthy`).
 
 ## Session cookie
 

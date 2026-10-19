@@ -124,7 +124,10 @@ for the full description.
 
 Disabled by default. Enable with `./ezkey-tests/clean-start.sh --with-java-melody`, or on Lightsail
 via `experimental-hybrid/lightsail/docker-compose.javamelody.yml` (`EZKEY_ENABLE_JAVA_MELODY=true`).
-Management-port reports: `/actuator/monitoring` only. Collector UI: `http://127.0.0.1:8088` (SSH
-tunnel on community — see [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md)
+Management-port reports: `/actuator/monitoring` only. Startup refuses JavaMelody without
+`management-endpoint-monitoring-enabled=true` (and equal business/management ports). Community
+binds management to `127.0.0.1`; JM overlay reopens `0.0.0.0`. Collector UI: `http://127.0.0.1:8088`
+(SSH tunnel on community — see [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md)
 § Observability, [#846](https://github.com/mgagp/ezkey/issues/846)). See
-[`docker/README.md`](../docker/README.md) § JavaMelody collector.
+[`docker/README.md`](../docker/README.md) § JavaMelody collector and
+[ADR-0015](../product-docs/global/architecture-decisions.md#adr-0015-management-port-separation-actuator-javamelody).

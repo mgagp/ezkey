@@ -95,6 +95,7 @@ assert_eq "classify 500 → inconclusive" "inconclusive" "$(business_port_probe_
 assert_eq "classify 404+JM → exposed" "exposed" "$(business_port_probe_classify 404 "${jm}")"
 
 # End-to-end: fake curl returns 404 for business ports (auth + acme) — must PASS.
+# (Covers both /actuator/health and /monitoring probes.)
 FAKE_BIN="${TMP}/fake-bin"
 mkdir -p "${FAKE_BIN}"
 cat >"${FAKE_BIN}/curl" <<'FAKE_CURL'
@@ -157,12 +158,13 @@ else
   fail=$((fail + 1))
 fi
 
-# Fake curl returns 200 + JM body → must FAIL (exposure).
+# Path-aware fake: 404 for /actuator/health, 200+JM for /monitoring → must FAIL (exposure).
 cat >"${FAKE_BIN}/curl" <<'FAKE_CURL'
 #!/usr/bin/env bash
 set -euo pipefail
 cfg=""
 out=""
+url=""
 i=1
 while [[ $i -le $# ]]; do
   eval "arg=\${$i}"
@@ -179,8 +181,18 @@ if [[ -n "${cfg}" && -f "${cfg}" ]]; then
         out="${out%\"}"
         out="${out#\"}"
         ;;
+      'url = '*)
+        url="${line#url = }"
+        url="${url%\"}"
+        url="${url#\"}"
+        ;;
     esac
   done <"${cfg}"
+fi
+if [[ "${url}" == *'/actuator/health'* ]]; then
+  [[ -n "${out}" ]] && : >"${out}"
+  printf '404'
+  exit 0
 fi
 if [[ -n "${out}" ]]; then
   printf '%s\n' '<html>Monitoring on JavaMelody</html>' >"${out}"
@@ -206,9 +218,41 @@ else
   fi
 fi
 
-# Fake curl returns 000 (connect failure) → inconclusive FAIL with real code in message.
+# Path-aware: 404 health, connect failure on /monitoring → inconclusive.
 cat >"${FAKE_BIN}/curl" <<'FAKE_CURL'
 #!/usr/bin/env bash
+set -euo pipefail
+cfg=""
+url=""
+i=1
+while [[ $i -le $# ]]; do
+  eval "arg=\${$i}"
+  case "${arg}" in
+    --config) i=$((i + 1)); eval "cfg=\${$i}" ;;
+  esac
+  i=$((i + 1))
+done
+if [[ -n "${cfg}" && -f "${cfg}" ]]; then
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    case "${line}" in
+      'url = '*)
+        url="${line#url = }"
+        url="${url%\"}"
+        url="${url#\"}"
+        ;;
+      'output = '*)
+        out="${line#output = }"
+        out="${out%\"}"
+        out="${out#\"}"
+        [[ -n "${out}" ]] && : >"${out}"
+        ;;
+    esac
+  done <"${cfg}"
+fi
+if [[ "${url}" == *'/actuator/health'* ]]; then
+  printf '404'
+  exit 0
+fi
 exit 1
 FAKE_CURL
 chmod +x "${FAKE_BIN}/curl"
@@ -229,12 +273,13 @@ else
   fi
 fi
 
-# Fake curl returns 302 → inconclusive with real code (not "HTTP 200").
+# Path-aware: 404 health, 302 monitoring → inconclusive with real code.
 cat >"${FAKE_BIN}/curl" <<'FAKE_CURL'
 #!/usr/bin/env bash
 set -euo pipefail
 cfg=""
 out=""
+url=""
 i=1
 while [[ $i -le $# ]]; do
   eval "arg=\${$i}"
@@ -251,11 +296,20 @@ if [[ -n "${cfg}" && -f "${cfg}" ]]; then
         out="${out%\"}"
         out="${out#\"}"
         ;;
+      'url = '*)
+        url="${line#url = }"
+        url="${url%\"}"
+        url="${url#\"}"
+        ;;
     esac
   done <"${cfg}"
 fi
 [[ -n "${out}" ]] && : >"${out}"
-printf '302'
+if [[ "${url}" == *'/actuator/health'* ]]; then
+  printf '404'
+else
+  printf '302'
+fi
 FAKE_CURL
 chmod +x "${FAKE_BIN}/curl"
 
@@ -275,12 +329,13 @@ else
   fi
 fi
 
-# Fake curl returns 500 → inconclusive.
+# Path-aware: 404 health, 500 monitoring → inconclusive.
 cat >"${FAKE_BIN}/curl" <<'FAKE_CURL'
 #!/usr/bin/env bash
 set -euo pipefail
 cfg=""
 out=""
+url=""
 i=1
 while [[ $i -le $# ]]; do
   eval "arg=\${$i}"
@@ -297,11 +352,20 @@ if [[ -n "${cfg}" && -f "${cfg}" ]]; then
         out="${out%\"}"
         out="${out#\"}"
         ;;
+      'url = '*)
+        url="${line#url = }"
+        url="${url%\"}"
+        url="${url#\"}"
+        ;;
     esac
   done <"${cfg}"
 fi
 [[ -n "${out}" ]] && : >"${out}"
-printf '500'
+if [[ "${url}" == *'/actuator/health'* ]]; then
+  printf '404'
+else
+  printf '500'
+fi
 FAKE_CURL
 chmod +x "${FAKE_BIN}/curl"
 
@@ -316,6 +380,42 @@ else
     pass=$((pass + 1))
   else
     echo "FAIL: expected FAIL 500 … probe inconclusive" >&2
+    cat "${ERR}" >&2
+    fail=$((fail + 1))
+  fi
+fi
+
+# --check-jm-overlay-bind against the real community overlay (must set 0.0.0.0).
+if bash "${SCRIPT}" --check-jm-overlay-bind \
+  "${ROOT}/experimental-hybrid/lightsail" >"${OUT}" 2>"${ERR}"; then
+  if grep -q 'MANAGEMENT_SERVER_ADDRESS=0.0.0.0' "${OUT}"; then
+    echo "PASS: --check-jm-overlay-bind accepts community overlay"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: expected OK overlay message" >&2
+    cat "${OUT}" >&2
+    fail=$((fail + 1))
+  fi
+else
+  echo "FAIL: community JM overlay should pass --check-jm-overlay-bind" >&2
+  cat "${OUT}" >&2
+  cat "${ERR}" >&2
+  fail=$((fail + 1))
+fi
+
+# Overlay missing 0.0.0.0 → FAIL (no real deploy / token).
+BAD_OVERLAY_DIR="${TMP}/bad-overlay"
+mkdir -p "${BAD_OVERLAY_DIR}"
+printf '%s\n' 'services: {}' >"${BAD_OVERLAY_DIR}/docker-compose.javamelody.yml"
+if bash "${SCRIPT}" --check-jm-overlay-bind "${BAD_OVERLAY_DIR}" >"${OUT}" 2>"${ERR}"; then
+  echo "FAIL: overlay without 0.0.0.0 should exit non-zero" >&2
+  fail=$((fail + 1))
+else
+  if grep -q 'MANAGEMENT_SERVER_ADDRESS is not 0.0.0.0' "${ERR}"; then
+    echo "PASS: --check-jm-overlay-bind rejects overlay without 0.0.0.0"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: expected overlay address failure message" >&2
     cat "${ERR}" >&2
     fail=$((fail + 1))
   fi

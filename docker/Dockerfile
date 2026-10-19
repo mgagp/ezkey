@@ -112,8 +112,9 @@ COPY --chown=spring:spring --from=build /build/ezkey-admin-api/target/*.jar app.
 COPY --chown=spring:spring --from=build /build/ezkey-admin-api/config ./config
 USER spring:spring
 EXPOSE 9080
+EXPOSE 9081
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:9080/actuator/health || exit 1
+  CMD curl -f http://127.0.0.1:9081/actuator/health || exit 1
 ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================
@@ -136,7 +137,7 @@ USER spring:spring
 EXPOSE 8080
 EXPOSE 8085
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=5 \
-    CMD curl -f http://localhost:8085/actuator/health || exit 1
+    CMD curl -f http://127.0.0.1:8085/actuator/health || exit 1
 ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================
@@ -159,7 +160,7 @@ USER spring:spring
 EXPOSE 7080
 EXPOSE 7081
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=5 \
-    CMD curl -f http://localhost:7081/actuator/health || exit 1
+    CMD curl -f http://127.0.0.1:7081/actuator/health || exit 1
 ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================
@@ -223,7 +224,8 @@ COPY --chown=spring:spring docker/demo-app-acme-entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 USER spring:spring
 EXPOSE 8082
+EXPOSE 8086
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:8082/actuator/health || exit 1
+  CMD curl -f http://127.0.0.1:8086/actuator/health || exit 1
 ENTRYPOINT ["/app/entrypoint.sh"]
 
