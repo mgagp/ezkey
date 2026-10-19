@@ -84,6 +84,7 @@ if ! docker info >/dev/null 2>&1; then
 fi
 
 COMPOSE_ARGS=(-f "${COMPOSE_FILE}")
+JAVAMELODY_COLLECTOR_IMAGE=""
 if [ -n "$WITH_JAVA_MELODY" ]; then
     if [ ! -f "$JAVAMELODY_OVERRIDE" ]; then
         echo "❌ JavaMelody overlay requested but missing: ${JAVAMELODY_OVERRIDE}" >&2
@@ -91,6 +92,23 @@ if [ -n "$WITH_JAVA_MELODY" ]; then
     fi
     COMPOSE_ARGS+=(-f "${JAVAMELODY_OVERRIDE}")
     echo "JavaMelody overlay enabled (#846): ${JAVAMELODY_OVERRIDE}"
+    # Lightsail overlay is image-only (no build:); fail fast if the collector was not docker load'd.
+    img_line="$(grep -E '^\s*image:\s*ezkey-javamelody-collector:[^[:space:]]+' "${JAVAMELODY_OVERRIDE}" | head -n1 || true)"
+    if [ -z "${img_line}" ]; then
+        echo "❌ Could not parse ezkey-javamelody-collector image from ${JAVAMELODY_OVERRIDE}" >&2
+        exit 1
+    fi
+    jm_version="${img_line##*:}"
+    jm_version="${jm_version//[[:space:]]/}"
+    jm_version="${jm_version//\"/}"
+    JAVAMELODY_COLLECTOR_IMAGE="ezkey-javamelody-collector:${jm_version}"
+    if ! docker image inspect "${JAVAMELODY_COLLECTOR_IMAGE}" >/dev/null 2>&1; then
+        echo "❌ JavaMelody collector image missing: ${JAVAMELODY_COLLECTOR_IMAGE}" >&2
+        echo "   Lightsail never builds this image on the VM (overlay is image-only + pull_policy: never)." >&2
+        echo "   Ship it from the workstation first, e.g.:" >&2
+        echo "     EZKEY_ENABLE_JAVA_MELODY=true ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community ..." >&2
+        exit 1
+    fi
 fi
 
 cd "${SCRIPT_DIR}"
@@ -133,8 +151,10 @@ else
 fi
 echo ""
 
-echo "Step 3/3: Starting stack (docker compose up -d)..."
-"${DOCKER_COMPOSE[@]}" "${COMPOSE_ARGS[@]}" up -d
+# Always --no-build: community images are docker load'd from the workstation (remote buildx
+# is often too old for Compose; JM collector overlay has no build: section).
+echo "Step 3/3: Starting stack (docker compose up -d --no-build)..."
+"${DOCKER_COMPOSE[@]}" "${COMPOSE_ARGS[@]}" up -d --no-build
 echo "  ✅ Stack started"
 echo ""
 
