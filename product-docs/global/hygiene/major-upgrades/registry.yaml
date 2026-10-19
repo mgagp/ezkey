@@ -27,8 +27,9 @@
 #   last_review   YYYY-MM-DD of last human/register review
 #   notes         free text; link Christophe opinion here when present
 #
-# Baseline: main @ f7c84f37 · EOL values from endoflife.date 2026-10-07
-# (proposal annex B). Line-level expect pass: craft review Patrick 2026-10-08.
+# Baseline: quarterly review 2026-10-19 (Marc-approved). EOL values from
+# endoflife.date API 2026-10-19. Campaign note: 2026-10-19-quarterly-review.md.
+# Alpine 3.24 already in tree via #762; register caught up this review.
 
 - id: haproxy
   component: HAProxy (local HA stack; absent from Lightsail)
@@ -38,32 +39,33 @@
   sources:
     - { file: docker/docker-compose.ha.yml, expect: "haproxy:2.9-alpine" }
   eol: 2025-03-21
-  target: "3.4" # LTS since 2026-06-03 (3.4.6); EOL 2031-04-01
+  target: "3.4" # LTS since 2026-06-03 (3.4.7 at review); EOL 2031-04-01
   decision: plan
   security: true
   issue: null
-  last_review: 2026-10-07
-  notes: "EOL overdue since 2025-03-21; dedicated issue for 3.4 LTS upgrade"
+  last_review: 2026-10-19
+  notes: >
+    EOL overdue since 2025-03-21 (~19 months). Loudest register debt. Dedicated
+    issue for 3.4 LTS when Marc funds; Christophe opinion required. No bump in
+    Oct 2026 quarterly docs PR.
 
 - id: alpine-bootstrap-init
   component: Alpine (bootstrap-init image)
   owner: fred
   eol_slug: alpine
-  current: "3.19"
+  current: "3.24"
   sources:
-    - { file: docker/bootstrap-init/Dockerfile, expect: "alpine:3.19" }
-  eol: 2025-11-01
-  target: "3.24" # EOL 2028-06-01
-  decision: plan
+    - { file: docker/bootstrap-init/Dockerfile, expect: "alpine:3.24" }
+  eol: 2028-06-01
+  target: "3.24"
+  decision: keep
   security: true
   issue: null
-  last_review: 2026-10-07
+  last_review: 2026-10-19
   notes: >
-    security: true — image reads enrollment proof token from
-    bootstrap-credentials.json and writes demo-device private key into the
-    demo-device volume (docker/bootstrap-init/bootstrap-init.sh). Local/demo
-    stacks only; absent from Lightsail. Semver-minor line bump → light path +
-    short opinion-only security issue linked to the existing PR.
+    Line bump 3.19→3.24 landed in #762 (split of Dependabot #718; Temurin 25
+    kept). security: true — image reads enrollment proof token and writes
+    demo-device private key (local/demo stacks only; absent from Lightsail).
 
 - id: python-cli-min
   component: Python (CLI declared minimum)
@@ -80,10 +82,11 @@
   floor_policy: window-42m
   ci_matrix: ["3.12", "3.14"]
   issue: null
-  last_review: 2026-10-08
+  last_review: 2026-10-19
   notes: >
     Planned floor raise to 3.13 on 2027-04-02 (subject to distro guard: Ubuntu 26.04
-    3.14, Debian 13 3.13, RHEL 10 3.12 + 3.14 AppStream).
+    3.14, Debian 13 3.13, RHEL 10 3.12 + 3.14 AppStream). CPython 3.15 released
+    2026-10-09 — CI latest stays 3.14 until ≥3 months age if matrix expands.
 
 - id: kotlin-android
   component: Kotlin (Android)
@@ -92,13 +95,15 @@
   current: "2.2"
   sources:
     - { file: ezkey_mobile/android/build.gradle, expect: 'kotlinVersion = "2.2.' }
-  eol: 2025-12-16 # Kotlin supports only its latest line
+  eol: 2025-12-16 # Kotlin supports only its latest line; 2.4 is current at review
   target: follow:react-native
   decision: follow:react-native
   security: false
   issue: null
-  last_review: 2026-10-07
-  notes: "Value matches RN 0.87.1 template; no EOL proximity flag while follow: holds"
+  last_review: 2026-10-19
+  notes: >
+    Value matches RN 0.87.1 template. Latest Kotlin line is 2.4; no EOL proximity
+    flag while follow: holds. Solo bump deferred to Android Gradle / RN HITL.
 
 - id: eslint-mobile
   component: ESLint (mobile tooling)
@@ -112,8 +117,10 @@
   decision: accept-risk
   security: false
   issue: null
-  last_review: 2026-10-07
-  notes: "RN preset constraint; no runtime exposure; accept_until not required (security: false)"
+  last_review: 2026-10-19
+  notes: >
+    RN preset constraint; no runtime exposure; accept_until not required
+    (security: false). Admin UI already on ESLint 10 (out of this entry).
 
 - id: react-native
   component: React Native
@@ -122,15 +129,16 @@
   current: "0.87"
   sources:
     - { file: ezkey_mobile/package.json, expect: '"react-native": "0.87' }
-  eol: 2027-02-01 # estimate — API returns false until 0.90 ships (à confirmer)
+  eol: null # API returns false while supported; prior 2027-02-01 estimate withdrawn 2026-10-19
   target: "0.88 / 0.89"
   decision: plan
   security: true
   warn_months: 3
   issue: null
-  last_review: 2026-10-07
-  # Christophe opinion link goes in notes when the dedicated issue exists.
-  notes: "Plan T1 2027; dedicated issue; Pixel smoke pattern #627"
+  last_review: 2026-10-19
+  notes: >
+    Plan T1 2027; dedicated issue + Pixel smoke pattern #627 before line move.
+    Marc go required. endoflife.date still reports eol:false / support:true for 0.87.
 
 - id: node
   component: Node.js (repository reference)
@@ -142,18 +150,21 @@
     - { file: ezkey-admin-ui/docker/Dockerfile, expect: "node:24-alpine" }
     # Hard-coded major gate in Admin UI CI job (must move with .nvmrc)
     - { file: .github/workflows/ci.yml, expect: "maj!==24" }
-  eol: 2028-04-30 # Node 22 EOL 2027-04-30
+  eol: 2028-04-30 # Maintenance EOL; Active LTS ended 2026-10-20
   target: "26" # LTS from 2026-10-28 → eligible from 2027-01-28
   decision: keep
   security: false
   issue: null
-  last_review: 2026-10-08
-  notes: "Admin UI image aligned to node:24-alpine (PR 2); engines >=24 matches .nvmrc / Orval >=22.18"
+  last_review: 2026-10-19
+  notes: >
+    Stay on 24 LTS (Maintenance until 2028-04-30). Node 26 entered LTS 2026-10-28;
+    target-rule eligible after 3 months (~2027-01-28). Admin UI image node:24-alpine;
+    engines >=24 matches .nvmrc / Orval >=22.18.
 
 - id: java-jdk
-  component: Java / JDK (backend)
+  component: Java / JDK (backend; Eclipse Temurin LTS)
   owner: fred
-  eol_slug: openjdk
+  eol_slug: temurin
   current: "25"
   sources:
     - { file: pom.xml, expect: "<java.version>25</java.version>" }
@@ -165,13 +176,13 @@
   decision: keep
   security: true
   issue: null
-  last_review: 2026-10-07
-  notes: ""
+  last_review: 2026-10-19
+  notes: "Marc lock 2026-10-19 quarterly: stay on JDK 25 LTS. eol_slug corrected openjdk→temurin."
 
 - id: jdk-javamelody
   component: JDK (JavaMelody sidecar)
   owner: fred
-  eol_slug: openjdk
+  eol_slug: temurin
   current: "21"
   sources:
     - { file: docker/javamelody/Dockerfile, expect: "eclipse-temurin:21-jre-alpine" }
@@ -180,13 +191,13 @@
   decision: keep
   security: false
   issue: null
-  last_review: 2026-10-07
-  notes: ""
+  last_review: 2026-10-19
+  notes: "eol_slug corrected openjdk→temurin."
 
 - id: jdk-android-ci
   component: JDK (Android CI build)
   owner: fred
-  eol_slug: openjdk
+  eol_slug: temurin
   current: "17"
   sources:
     - { file: .github/workflows/ezkey-mobile-unit-tests.yml, expect: "java-version: '17'" }
@@ -195,8 +206,8 @@
   decision: follow:react-native
   security: false
   issue: null
-  last_review: 2026-10-07
-  notes: ""
+  last_review: 2026-10-19
+  notes: "Outside 6-month warn window; move with RN toolchain. eol_slug→temurin."
 
 - id: spring-boot
   component: Spring Boot (Framework 7.0.x / Hibernate 7.4.x / Security 7.1.x via Boot)
@@ -210,7 +221,7 @@
   decision: keep
   security: true
   issue: null
-  last_review: 2026-10-07
+  last_review: 2026-10-19
   notes: "Patches via Java BOM pulse; line change → light path + short opinion-only security issue"
 
 - id: postgresql
@@ -227,7 +238,7 @@
   decision: keep
   security: true
   issue: null
-  last_review: 2026-10-07
+  last_review: 2026-10-19
   notes: "Any major = dedicated issue + dump/restore; db-grants image tag must move with postgres"
 
 - id: caddy
@@ -244,7 +255,7 @@
   decision: keep
   security: true
   issue: null
-  last_review: 2026-10-07
+  last_review: 2026-10-19
   notes: ""
 
 - id: rocky-linux-pam
@@ -259,23 +270,25 @@
   decision: keep
   security: true
   issue: null
-  last_review: 2026-10-07
+  last_review: 2026-10-19
   notes: "ARG ROCKY_IMAGE; Dependabot does not rewrite ARG defaults — light path via normal PR"
 
 - id: maven-build-image
   component: Maven (build image)
   owner: fred
-  eol_slug: null
+  eol_slug: maven
   current: "3.9"
   sources:
     - { file: docker/Dockerfile, expect: "maven:3.9-" }
-  eol: null
-  target: "3.9"
+  eol: null # 3.9 still supported (eol:false); 3.10 released 2026-09-27
+  target: "3.9" # 3.10 eligible under target rule ~2026-12-27
   decision: keep
   security: false
   issue: null
-  last_review: 2026-10-07
-  notes: "Manual / Dependabot Docker minor; not on endoflife.date as a first-class product"
+  last_review: 2026-10-19
+  notes: >
+    Now on endoflife.date as product maven. Observe 3.10 until ≥3 months old, then
+    light path (Docker image tag). Paired with Temurin 25 in maven:3.9-eclipse-temurin-25.
 
 - id: react
   component: React
@@ -290,7 +303,7 @@
   decision: keep
   security: false
   issue: null
-  last_review: 2026-10-07
+  last_review: 2026-10-19
   notes: ""
 
 - id: gradle
@@ -305,8 +318,8 @@
   decision: follow:react-native
   security: false
   issue: null
-  last_review: 2026-10-07
-  notes: ""
+  last_review: 2026-10-19
+  notes: "Android Gradle HITL — open Dependabot #717; Marc go before merge."
 
 - id: android-gradle-plugin
   component: Android Gradle Plugin
@@ -320,8 +333,8 @@
   decision: follow:react-native
   security: false
   issue: null
-  last_review: 2026-10-07
-  notes: "Not on endoflife.date; semver-major fallback"
+  last_review: 2026-10-19
+  notes: "Not on endoflife.date; semver-major fallback. HITL with #717 / RN."
 
 - id: typescript
   component: TypeScript
@@ -337,7 +350,7 @@
   decision: keep
   security: false
   issue: null
-  last_review: 2026-10-07
+  last_review: 2026-10-19
   notes: "Already deferred:later-train (#337, #498, #347)"
 
 - id: vite
@@ -352,7 +365,7 @@
   decision: keep
   security: false
   issue: null
-  last_review: 2026-10-07
+  last_review: 2026-10-19
   notes: "Not on endoflife.date; semver-major fallback"
 
 - id: github-actions-runner
@@ -368,8 +381,8 @@
   decision: keep
   security: false
   issue: null
-  last_review: 2026-10-07
-  notes: ""
+  last_review: 2026-10-19
+  notes: "Ubuntu 26.04 LTS exists; runners stay on 24.04 until deliberate move."
 
 - id: express-methodology-site
   component: Express (methodology micro-site)
@@ -383,7 +396,7 @@
   decision: keep
   security: false
   issue: null
-  last_review: 2026-10-12
+  last_review: 2026-10-19
   notes: "Upgraded 4→5 with marked 18 + adm-zip 0.6 (supersedes Dependabot #713/#714/#715)"
 
 - id: conscrypt-android
@@ -398,7 +411,7 @@
   decision: keep
   security: true
   issue: null
-  last_review: 2026-10-07
+  last_review: 2026-10-19
   notes: "In register because Gradle majors ignored per #712; 2.7.x required for 16 KB gate (#659)"
 
 - id: androidx-biometric
@@ -413,5 +426,7 @@
   decision: keep
   security: true
   issue: null
-  last_review: 2026-10-07
-  notes: "In register because Gradle majors ignored per #712; review at first quarterly walk"
+  last_review: 2026-10-19
+  notes: >
+    In register because Gradle majors ignored per #712. Oct 2026 quarterly: no line
+    pressure; security opinion if a semver major appears.
