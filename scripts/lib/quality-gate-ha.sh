@@ -36,16 +36,28 @@ now_ms() {
 }
 
 # Back off an ISO-8601 UTC timestamp by QUALITY_GATE_SINCE_BACKOFF_S (default 5).
-# Prints adjusted ISO Zulu. On failure, warns and echoes the input unchanged.
+# Prints adjusted ISO Zulu. On failure, warns and echoes the input unchanged
+# (never empty — empty would make detect_encryption_key_pkey_race drop --since
+# and silently scan all logs; Patrick N1).
 quality_gate_since_backoff() {
   local iso="$1"
   local secs="${QUALITY_GATE_SINCE_BACKOFF_S:-5}"
-  if [[ -z "$iso" || "$secs" -eq 0 ]]; then
+  local out=""
+  if [[ -z "$iso" ]]; then
+    printf '%s\n' "$iso"
+    return 0
+  fi
+  if [[ ! "$secs" =~ ^[0-9]+$ ]]; then
+    echo "[quality-gate] warning: QUALITY_GATE_SINCE_BACKOFF_S not a non-negative integer (${secs}); using raw timestamp" >&2
+    printf '%s\n' "$iso"
+    return 0
+  fi
+  if [[ "$secs" -eq 0 ]]; then
     printf '%s\n' "$iso"
     return 0
   fi
   if command -v python3 >/dev/null 2>&1; then
-    python3 -c '
+    if out="$(python3 -c '
 import sys
 from datetime import datetime, timedelta, timezone
 raw = sys.argv[1].rstrip("Z")
@@ -54,7 +66,12 @@ dt = datetime.fromisoformat(raw)
 if dt.tzinfo is None:
     dt = dt.replace(tzinfo=timezone.utc)
 print((dt - timedelta(seconds=secs)).strftime("%Y-%m-%dT%H:%M:%SZ"))
-' "$iso" "$secs"
+' "$iso" "$secs" 2>/dev/null)" && [[ -n "$out" ]]; then
+      printf '%s\n' "$out"
+      return 0
+    fi
+    echo "[quality-gate] warning: cannot back off --since by ${secs}s (python3 failed); using raw timestamp" >&2
+    printf '%s\n' "$iso"
     return 0
   fi
   echo "[quality-gate] warning: cannot back off --since by ${secs}s (no python3); using raw timestamp" >&2
