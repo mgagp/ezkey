@@ -12,11 +12,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+# shellcheck source=lib/ci-ha-lb-smoke-lib.sh
+source "${ROOT}/scripts/lib/ci-ha-lb-smoke-lib.sh"
+
 SKIP_START=0
 KEEP_STACK=0
-# Bounded retry: HAProxy backends can lag Docker health a few seconds after start.
-PROBE_ATTEMPTS="${PROBE_ATTEMPTS:-6}"
-PROBE_SLEEP_S="${PROBE_SLEEP_S:-5}"
 
 usage() {
   cat <<'EOF'
@@ -36,40 +36,6 @@ while [[ $# -gt 0 ]]; do
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
-
-probe_lb() {
-  local name="$1"
-  local url="$2"
-  local expect="$3"
-  local attempt=1
-  local code=""
-  local body_file
-  body_file="$(mktemp)"
-
-  while (( attempt <= PROBE_ATTEMPTS )); do
-    code="$(curl -sS -o "${body_file}" -w '%{http_code}' --max-time 30 "$url" || true)"
-    if [[ "$code" != "503" && "$code" == "$expect" ]]; then
-      echo "PASS: ${name} HTTP ${code} (${url}) attempt=${attempt}/${PROBE_ATTEMPTS}"
-      rm -f "${body_file}"
-      return 0
-    fi
-    if (( attempt < PROBE_ATTEMPTS )); then
-      echo "  … ${name} got HTTP ${code:-curl-fail}, retry ${attempt}/${PROBE_ATTEMPTS} in ${PROBE_SLEEP_S}s"
-      sleep "${PROBE_SLEEP_S}"
-    fi
-    attempt=$((attempt + 1))
-  done
-
-  if [[ "$code" == "503" ]]; then
-    echo "FAIL: ${name} returned 503 after ${PROBE_ATTEMPTS} attempts (HAProxy backends DOWN?) url=${url}" >&2
-  else
-    echo "FAIL: ${name} expected HTTP ${expect}, got ${code:-curl-fail} after ${PROBE_ATTEMPTS} attempts (budget $((PROBE_ATTEMPTS * PROBE_SLEEP_S))s) url=${url}" >&2
-  fi
-  head -c 500 "${body_file}" >&2 || true
-  echo >&2
-  rm -f "${body_file}"
-  return 1
-}
 
 cleanup() {
   if [[ "${KEEP_STACK}" -eq 1 ]]; then

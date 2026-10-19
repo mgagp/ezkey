@@ -120,6 +120,15 @@ sed -i 's|127\.0\.0\.1:9081:9081|9081:9081|g' "${TMP}/docker/docker-compose.ha.y
 assert_fail "bare HAProxy stats 9081:9081 (all interfaces) is rejected" \
   env CHECK_LOCAL_MGMT_ROOT="${TMP}" bash "${CHECK}"
 
+# #905 Patrick M4: bare publish with trailing comment must still be rejected
+# (previously skipped because the line contained '#').
+cp "${ROOT}/docker/docker-compose.ha.yml" "${TMP}/docker/docker-compose.ha.yml"
+cp "${ROOT}/docker/docker-compose.ha.docker-dev.yml" "${TMP}/docker/docker-compose.ha.docker-dev.yml"
+sed -i 's|127\.0\.0\.1:18085:8085"|18085:8085"  # dev|g' "${TMP}/docker/docker-compose.ha.docker-dev.yml"
+
+assert_fail "bare ha.docker-dev 18085:8085 with trailing # comment is rejected" \
+  env CHECK_LOCAL_MGMT_ROOT="${TMP}" bash "${CHECK}"
+
 echo
 echo "Test results: ${pass} passed, ${fail} failed"
 [[ "${fail}" -eq 0 ]]

@@ -182,15 +182,23 @@ require_docker_dev_ports_loopback() {
     return
   fi
   while IFS= read -r line || [[ -n "$line" ]]; do
-    # Compose short syntax port mapping: - "host:container" / - host:container / - ip:host:container
+    # Strip CR and end-of-line comments before classifying (#905 Patrick M4).
+    # Do not skip the whole line merely because it contains '#' — otherwise
+    # `- "18085:8085"  # dev` would be ignored and pass the check.
+    line="${line//$'\r'/}"
+    line="${line%%#*}"
+    # Trim trailing whitespace after comment strip.
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "${line//[[:space:]]/}" ]] && continue
     case "$line" in
-      *ports:*|*'#'*) continue ;;
+      *ports:*) continue ;;
     esac
+    # Compose short syntax port mapping: - "host:container" / - host:container / - ip:host:container
     if printf '%s\n' "$line" | grep -Eq '^[[:space:]]*-[[:space:]]*["'\'']?[0-9]'; then
       if printf '%s\n' "$line" | grep -Eq '127\.0\.0\.1:[0-9]+:[0-9]+'; then
         ok=$((ok + 1))
       else
-        echo "FAIL: ${label} ports entry is not loopback-only: ${line//$'\r'/}" >&2
+        echo "FAIL: ${label} ports entry is not loopback-only: ${line}" >&2
         bare=$((bare + 1))
       fi
     fi

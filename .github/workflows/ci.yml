@@ -80,6 +80,8 @@ jobs:
               - 'docker/Dockerfile'
               - 'docker/**'
               - 'scripts/ci-ha-lb-smoke.sh'
+              - 'scripts/ci-ha-lb-smoke.test.sh'
+              - 'scripts/lib/ci-ha-lb-smoke-lib.sh'
               - 'specs/**'
               - 'scripts/quality-gate.sh'
               - 'scripts/quality-gate-*.sh'
@@ -257,6 +259,9 @@ jobs:
       # N6: quality-gate HA + secret-scan unit tests (no Docker stack).
       - name: Quality-gate HA helper tests
         run: bash scripts/quality-gate-ha.test.sh
+
+      - name: HA LB smoke probe retry unit tests (#905 Patrick M2)
+        run: bash scripts/ci-ha-lb-smoke.test.sh
 
       - name: Quality-gate secrets unit tests
         run: node --test scripts/lib/quality-gate-secrets.test.mjs
