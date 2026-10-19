@@ -19,7 +19,8 @@
  *
  * Observability (M1): exactly one authpriv syslog line per attempt (see
  * log_attempt_summary). result distinguishes SUCCESS / EXPIRED / TIMEOUT /
- * DENIED / UNAVAIL / …. Debug chatter goes only to /var/log/ezkey-pam/ files.
+ * DENIED / UNAVAIL / …. cancel= is only ok|fail|skipped (EZKEY_CANCEL_*).
+ * Debug chatter goes only to /var/log/ezkey-pam/ files.
  */
 
 #define _DEFAULT_SOURCE
@@ -91,22 +92,26 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                                        const char *username,
                                        long *auth_attempt_id_out,
                                        const struct timespec *auth_started,
-                                       const char **summary_result_out);
+                                       const char **summary_result_out,
+                                       const char **cancel_status_out);
 static void trim_inplace(char *s);
 static void ezkey_secure_wipe(void *ptr, size_t len);
 static void wipe_cfg_secrets(EzkeyConfig *cfg);
 static void log_attempt_summary(const char *username, long auth_attempt_id,
-                                const char *result, int pam_rc, long latency_ms,
-                                int lab_http);
+                                const char *result, const char *cancel_status,
+                                int pam_rc, long latency_ms, int lab_http);
 static long elapsed_ms(const struct timespec *start);
 static long remaining_budget_secs(const struct timespec *auth_started);
 static int compute_planned_wait(const EzkeyConfig *cfg,
                                 const struct timespec *auth_started);
 static char *build_create_body(const EzkeyConfig *cfg, const char *username,
                                int ttl_seconds);
-static void ezkey_cancel_best_effort(pam_handle_t *pamh, const EzkeyConfig *cfg,
-                                     const char *api_url, const char *userpwd,
-                                     long auth_attempt_id, long timeout_secs);
+static const char *ezkey_cancel_best_effort(pam_handle_t *pamh,
+                                            const EzkeyConfig *cfg,
+                                            const char *api_url,
+                                            const char *userpwd,
+                                            long auth_attempt_id,
+                                            long timeout_secs);
 
 static void ezkey_config_init(EzkeyConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
@@ -395,14 +400,15 @@ static void log_pam_error_debug(pam_handle_t *pamh, const EzkeyConfig *cfg,
  * Exactly one authpriv syslog line per authentication attempt (M1).
  * Format:
  *   pam_ezkey: attempt user=<u> authAttemptId=<id|-> result=<R> pam_code=<n>
- *   latency_ms=<ms> lab_http=<true|false>
+ *   latency_ms=<ms> lab_http=<true|false> cancel=<ok|fail|skipped>
  * result prefers the explicit outcome from the auth path (EXPIRED / TIMEOUT /
  * DENIED / …) so lacune-5 collapses no longer hide EXPIRED behind DENIED.
+ * cancel uses only EZKEY_CANCEL_OK / FAIL / SKIPPED (Patrick #897 M2).
  * Never includes secrets, proof tokens, HTTP bodies, or Basic credentials.
  */
 static void log_attempt_summary(const char *username, long auth_attempt_id,
-                                const char *result, int pam_rc, long latency_ms,
-                                int lab_http) {
+                                const char *result, const char *cancel_status,
+                                int pam_rc, long latency_ms, int lab_http) {
     char user_safe[128];
     char id_buf[32];
 
@@ -423,6 +429,15 @@ static void log_attempt_summary(const char *username, long auth_attempt_id,
         }
     }
 
+    if (cancel_status == NULL || cancel_status[0] == '\0') {
+        cancel_status = EZKEY_CANCEL_SKIPPED;
+    } else if (strcmp(cancel_status, EZKEY_CANCEL_OK) != 0 &&
+               strcmp(cancel_status, EZKEY_CANCEL_FAIL) != 0 &&
+               strcmp(cancel_status, EZKEY_CANCEL_SKIPPED) != 0) {
+        /* Defensive: never emit free-form cancel text on authpriv. */
+        cancel_status = EZKEY_CANCEL_SKIPPED;
+    }
+
     if (auth_attempt_id > 0) {
         snprintf(id_buf, sizeof(id_buf), "%ld", auth_attempt_id);
     } else {
@@ -435,9 +450,9 @@ static void log_attempt_summary(const char *username, long auth_attempt_id,
 
     syslog(LOG_INFO,
            "%s: attempt user=%s authAttemptId=%s result=%s pam_code=%d "
-           "latency_ms=%ld lab_http=%s",
+           "latency_ms=%ld lab_http=%s cancel=%s",
            EZKEY_MODULE_NAME, user_safe, id_buf, result, pam_rc, latency_ms,
-           lab_http ? "true" : "false");
+           lab_http ? "true" : "false", cancel_status);
 }
 
 static long elapsed_ms(const struct timespec *start) {
@@ -593,10 +608,15 @@ static int ezkey_http(const char *url, const char *userpwd, const char *post_bod
  * Best-effort cancel after abandon. Uses a short curl timeout taken from the
  * remaining monotonic budget (≤ api_timeout / MAX_API). Failure is debug-logged
  * only — never changes the PAM outcome (409 on already-final is expected).
+ *
+ * @return EZKEY_CANCEL_OK, EZKEY_CANCEL_FAIL, or EZKEY_CANCEL_SKIPPED only.
  */
-static void ezkey_cancel_best_effort(pam_handle_t *pamh, const EzkeyConfig *cfg,
-                                     const char *api_url, const char *userpwd,
-                                     long auth_attempt_id, long timeout_secs) {
+static const char *ezkey_cancel_best_effort(pam_handle_t *pamh,
+                                            const EzkeyConfig *cfg,
+                                            const char *api_url,
+                                            const char *userpwd,
+                                            long auth_attempt_id,
+                                            long timeout_secs) {
     char cancel_url[EZKEY_URL_MAX + 96];
     EzkeyBuf buf;
     long http_code = 0;
@@ -604,19 +624,19 @@ static void ezkey_cancel_best_effort(pam_handle_t *pamh, const EzkeyConfig *cfg,
     char msg[256];
 
     if (auth_attempt_id <= 0 || api_url == NULL || userpwd == NULL) {
-        return;
+        return EZKEY_CANCEL_SKIPPED;
     }
     if (timeout_secs < 1) {
         log_pam_error_debug(pamh, cfg,
                             "cancel skipped: no monotonic budget left");
-        return;
+        return EZKEY_CANCEL_SKIPPED;
     }
     snprintf(cancel_url, sizeof(cancel_url),
              "%s/api/v1/auth-attempts/%ld/cancel", api_url, auth_attempt_id);
     ezkey_buf_init(&buf);
     if (buf.data == NULL) {
         log_pam_error_debug(pamh, cfg, "cancel skipped: out of memory");
-        return;
+        return EZKEY_CANCEL_SKIPPED;
     }
     curl_rc = ezkey_http(cancel_url, userpwd, "{}", timeout_secs, &buf,
                          &http_code);
@@ -625,12 +645,17 @@ static void ezkey_cancel_best_effort(pam_handle_t *pamh, const EzkeyConfig *cfg,
         snprintf(msg, sizeof(msg), "cancel best-effort failed: %s",
                  curl_easy_strerror(curl_rc));
         log_pam_error_debug(pamh, cfg, msg);
-        return;
+        return EZKEY_CANCEL_FAIL;
     }
     snprintf(msg, sizeof(msg),
              "cancel best-effort authAttemptId=%ld HTTP %ld", auth_attempt_id,
              http_code);
     log_pam_info(pamh, cfg, msg);
+    /* 2xx success; 409 already-final is expected and still "ok" for summary. */
+    if ((http_code >= 200 && http_code < 300) || http_code == 409) {
+        return EZKEY_CANCEL_OK;
+    }
+    return EZKEY_CANCEL_FAIL;
 }
 
 /**
@@ -667,7 +692,8 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                                        const char *username,
                                        long *auth_attempt_id_out,
                                        const struct timespec *auth_started,
-                                       const char **summary_result_out) {
+                                       const char **summary_result_out,
+                                       const char **cancel_status_out) {
     char userpwd[EZKEY_KEY_MAX * 2 + 4];
     char post_url[EZKEY_URL_MAX + 64];
     char wait_url[EZKEY_URL_MAX + 128];
@@ -697,6 +723,7 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     const char *status_str = NULL;
     char status_safe[64];
     const char *summary = "DENIED";
+    const char *cancel_status = EZKEY_CANCEL_SKIPPED;
     long challenge = -1;
     char msg[512];
 
@@ -705,6 +732,9 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     }
     if (summary_result_out != NULL) {
         *summary_result_out = "UNAVAIL";
+    }
+    if (cancel_status_out != NULL) {
+        *cancel_status_out = EZKEY_CANCEL_SKIPPED;
     }
 
     if (cfg->api_url[0] == '\0' || cfg->integration_key[0] == '\0' ||
@@ -842,7 +872,8 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     /*
      * Applied TTL from create response when present. PR-A (#898) returns the
      * applied duration as timeoutSeconds (not request ttlSeconds). Fall back to
-     * ttlSeconds for older stubs. Absent ⇒ keep planned (legacy servers).
+     * ttlSeconds for older stubs. Absent / null / 0 / value > planned ⇒ keep
+     * planned (legacy servers; Patrick #897 M1 applied_grow / zero / null).
      * Never derive wait from expiresAt wall-clock arithmetic. Validate the
      * double in-range before casting to int (Christophe #897 n2).
      */
@@ -1107,11 +1138,14 @@ cleanup:
         if (cancel_limit > rem) {
             cancel_limit = rem;
         }
-        ezkey_cancel_best_effort(pamh, cfg, api_url, userpwd, auth_attempt_id,
-                                 cancel_limit);
+        cancel_status = ezkey_cancel_best_effort(
+            pamh, cfg, api_url, userpwd, auth_attempt_id, cancel_limit);
     }
     if (summary_result_out != NULL) {
         *summary_result_out = summary;
+    }
+    if (cancel_status_out != NULL) {
+        *cancel_status_out = cancel_status;
     }
     ezkey_secure_wipe(userpwd, sizeof(userpwd));
     wipe_cfg_secrets(cfg);
@@ -1130,6 +1164,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     char user_msg[768];
     long auth_attempt_id = -1;
     const char *summary_result = NULL;
+    const char *cancel_status = EZKEY_CANCEL_SKIPPED;
     struct timespec started;
 
     (void)flags;
@@ -1213,7 +1248,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
              username);
 
     retval = ezkey_authenticate_user_api(pamh, &cfg, username, &auth_attempt_id,
-                                         &started, &summary_result);
+                                         &started, &summary_result,
+                                         &cancel_status);
 
     if (cfg.debug) {
         snprintf(user_msg, sizeof(user_msg), "Authentication result for %s: %s",
@@ -1225,8 +1261,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     }
 
 done:
-    log_attempt_summary(username, auth_attempt_id, summary_result, retval,
-                        elapsed_ms(&started), cfg.lab_http);
+    log_attempt_summary(username, auth_attempt_id, summary_result, cancel_status,
+                        retval, elapsed_ms(&started), cfg.lab_http);
     wipe_cfg_secrets(&cfg);
     closelog();
     return retval;

@@ -297,8 +297,9 @@ echo "pending TIMEOUT stub=?timeout=${GOT_TO} cancel=${CANCEL_N} elapsed=${elaps
   | tee -a "${PROOF}"
 docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null | tee -a "${PROOF}" || true
 if [ "${GOT_TO}" = "15" ] && echo "${ATTEMPT}" | grep -q 'result=TIMEOUT' \
+  && echo "${ATTEMPT}" | grep -q 'cancel=ok' \
   && [ "${CANCEL_N}" -ge 1 ] && [ "${elapsed}" -lt 60 ]; then
-  ok "pending > wait_timeout → result=TIMEOUT + cancel emitted"
+  ok "pending > wait_timeout → result=TIMEOUT + cancel=ok"
 else
   fail "TIMEOUT+cancel: to='${GOT_TO}' cancel=${CANCEL_N} elapsed=${elapsed} line=${ATTEMPT}"
 fi
@@ -335,8 +336,10 @@ ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
   "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
 CANCEL_N="$(stub_saw_cancel)"
 echo "EXPIRED attempt=${ATTEMPT} cancel=${CANCEL_N}" | tee -a "${PROOF}"
-if echo "${ATTEMPT}" | grep -q 'result=EXPIRED' && [ "${CANCEL_N}" -ge 1 ]; then
-  ok "wait status EXPIRED → result=EXPIRED (not DENIED) + cancel"
+if echo "${ATTEMPT}" | grep -q 'result=EXPIRED' \
+  && echo "${ATTEMPT}" | grep -q 'cancel=ok' \
+  && [ "${CANCEL_N}" -ge 1 ]; then
+  ok "wait status EXPIRED → result=EXPIRED (not DENIED) + cancel=ok"
 else
   fail "EXPIRED expected: ${ATTEMPT} cancel=${CANCEL_N}"
 fi
@@ -372,8 +375,9 @@ done
 ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
   "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
 echo "REJECTED→DENIED attempt=${ATTEMPT}" | tee -a "${PROOF}"
-if echo "${ATTEMPT}" | grep -q 'result=DENIED'; then
-  ok "wait status REJECTED → result=DENIED"
+if echo "${ATTEMPT}" | grep -q 'result=DENIED' \
+  && echo "${ATTEMPT}" | grep -q 'cancel=ok'; then
+  ok "wait status REJECTED → result=DENIED + cancel=ok"
 else
   fail "DENIED expected for REJECTED: ${ATTEMPT}"
 fi
@@ -574,10 +578,83 @@ echo "legacy_create debug.out=${OUT}" | tee -a "${PROOF}"
 # Filelog sanitizes '=' → '_', so look for applied_ttl_45 (not applied_ttl=45).
 if [ "${GOT_TTL}" = "45" ] && [ "${GOT_TO}" = "45" ] \
   && echo "${ATTEMPT}" | grep -q 'result=SUCCESS' \
+  && echo "${ATTEMPT}" | grep -q 'cancel=skipped' \
   && echo "${OUT}" | grep -Eq 'applied_ttl_45'; then
-  ok "legacy_create: no ttl/expiresAt in response → fallback wait_timeout=45 + SUCCESS"
+  ok "legacy_create: no ttl/expiresAt in response → fallback wait_timeout=45 + SUCCESS + cancel=skipped"
 else
-  fail "legacy_create expected ttl=45 timeout=45 applied_ttl_45 SUCCESS, got ttl='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+  fail "legacy_create expected ttl=45 timeout=45 applied_ttl_45 SUCCESS cancel=skipped, got ttl='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+fi
+stop_stub
+restore_conf
+
+# --- Nit: legacy_create + REJECTED → DENIED + cancel=ok ---
+start_stub legacy_rejected
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=45/' '${CONF}'; \
+   sed -i 's/^api_timeout=.*/api_timeout=5/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+before="$(docker exec "${CONTAINER}" sh -c \
+  "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+before="${before:-0}"
+ssh_attempt_once
+wait_attempt_line "${before}" || true
+ATTEMPT="$(last_attempt_line)"
+GOT_TO="$(stub_wait_timeout_param)"
+CANCEL_N="$(stub_saw_cancel)"
+echo "legacy_rejected ?timeout=${GOT_TO} cancel=${CANCEL_N} attempt=${ATTEMPT}" \
+  | tee -a "${PROOF}"
+if [ "${GOT_TO}" = "45" ] \
+  && echo "${ATTEMPT}" | grep -q 'result=DENIED' \
+  && echo "${ATTEMPT}" | grep -q 'cancel=ok' \
+  && [ "${CANCEL_N}" -ge 1 ]; then
+  ok "legacy_rejected: no applied TTL + REJECTED → DENIED cancel=ok"
+else
+  fail "legacy_rejected expected timeout=45 DENIED cancel=ok: to='${GOT_TO}' ${ATTEMPT}"
+fi
+stop_stub
+restore_conf
+
+# --- Nit: legacy_create + pending timeout → TIMEOUT + cancel=ok ---
+start_stub legacy_pending
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=15/' '${CONF}'; \
+   sed -i 's/^api_timeout=.*/api_timeout=5/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+before="$(docker exec "${CONTAINER}" sh -c \
+  "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+before="${before:-0}"
+start_ts="$(date +%s)"
+set +e
+ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
+  -o PasswordAuthentication=no -o ConnectTimeout=10 \
+  -o ServerAliveInterval=5 -o ServerAliveCountMax=30 \
+  "${SSH_USER}@127.0.0.1" 'echo X' >/dev/null 2>&1
+set -e
+end_ts="$(date +%s)"
+elapsed=$((end_ts - start_ts))
+wait_attempt_line "${before}" || true
+ATTEMPT="$(last_attempt_line)"
+GOT_TO="$(stub_wait_timeout_param)"
+CANCEL_N="$(stub_saw_cancel)"
+echo "legacy_pending ?timeout=${GOT_TO} cancel=${CANCEL_N} elapsed=${elapsed}s attempt=${ATTEMPT}" \
+  | tee -a "${PROOF}"
+if [ "${GOT_TO}" = "15" ] \
+  && echo "${ATTEMPT}" | grep -q 'result=TIMEOUT' \
+  && echo "${ATTEMPT}" | grep -q 'cancel=ok' \
+  && [ "${CANCEL_N}" -ge 1 ] \
+  && [ "${elapsed}" -lt 60 ]; then
+  ok "legacy_pending: no applied TTL + wait timeout → TIMEOUT cancel=ok"
+else
+  fail "legacy_pending expected timeout=15 TIMEOUT cancel=ok: to='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -607,11 +684,12 @@ echo "cancel_fail err=${ERR}" | tee -a "${PROOF}"
 echo "cancel_fail out=${OUT}" | tee -a "${PROOF}"
 # Filelog sanitizes spaces → underscores; HTTP 503 still logged; summary stays EXPIRED.
 if echo "${ATTEMPT}" | grep -q 'result=EXPIRED' \
+  && echo "${ATTEMPT}" | grep -q 'cancel=fail' \
   && [ "${CANCEL_N}" -ge 1 ] \
   && echo "${OUT}${ERR}" | grep -Eqi 'cancel_best-effort.*HTTP_503|HTTP_503|cancel_best-effort_failed'; then
-  ok "cancel_fail 503: result=EXPIRED unchanged + cancel still attempted"
+  ok "cancel_fail 503: result=EXPIRED unchanged + cancel=fail"
 else
-  fail "cancel_fail expected EXPIRED+cancel 503 log: ${ATTEMPT} cancel=${CANCEL_N} / ${OUT} ${ERR}"
+  fail "cancel_fail expected EXPIRED+cancel=fail: ${ATTEMPT} cancel=${CANCEL_N} / ${OUT} ${ERR}"
 fi
 stop_stub
 restore_conf
@@ -640,10 +718,98 @@ echo "applied_shrink sent_ttl=${GOT_TTL} ?timeout=${GOT_TO} attempt=${ATTEMPT}" 
 echo "${REQ_SNAP}" | tee -a "${PROOF}" || true
 # Request still ttlSeconds=90; response carries timeoutSeconds=30 (not logged — assert wait).
 if [ "${GOT_TTL}" = "90" ] && [ "${GOT_TO}" = "30" ] \
-  && echo "${ATTEMPT}" | grep -q 'result=SUCCESS'; then
-  ok "applied_shrink: asked ttlSeconds=90, wait aligned on timeoutSeconds=30"
+  && echo "${ATTEMPT}" | grep -q 'result=SUCCESS' \
+  && echo "${ATTEMPT}" | grep -q 'cancel=skipped'; then
+  ok "applied_shrink: asked ttlSeconds=90, wait aligned on timeoutSeconds=30 + cancel=skipped"
 else
-  fail "applied_shrink expected sent=90 ?timeout=30 SUCCESS, got sent='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+  fail "applied_shrink expected sent=90 ?timeout=30 SUCCESS cancel=skipped, got sent='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+fi
+stop_stub
+restore_conf
+
+# --- M1 applied_grow: server timeoutSeconds=120 for ask 45 → wait stays 45 ---
+start_stub applied_grow
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=45/' '${CONF}'; \
+   sed -i 's/^api_timeout=.*/api_timeout=5/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+before="$(docker exec "${CONTAINER}" sh -c \
+  "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+before="${before:-0}"
+ssh_attempt_once
+wait_attempt_line "${before}" || true
+ATTEMPT="$(last_attempt_line)"
+GOT_TO="$(stub_wait_timeout_param)"
+GOT_TTL="$(stub_create_ttl)"
+echo "applied_grow sent_ttl=${GOT_TTL} ?timeout=${GOT_TO} attempt=${ATTEMPT}" \
+  | tee -a "${PROOF}"
+if [ "${GOT_TTL}" = "45" ] && [ "${GOT_TO}" = "45" ] \
+  && echo "${ATTEMPT}" | grep -q 'result=SUCCESS'; then
+  ok "applied_grow: asked 45, server timeoutSeconds=120 → wait stays 45"
+else
+  fail "applied_grow expected sent=45 ?timeout=45 SUCCESS, got sent='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+fi
+stop_stub
+restore_conf
+
+# --- M1 timeoutSeconds=0 → ignore, keep conf wait ---
+start_stub applied_zero
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=45/' '${CONF}'; \
+   sed -i 's/^api_timeout=.*/api_timeout=5/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+before="$(docker exec "${CONTAINER}" sh -c \
+  "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+before="${before:-0}"
+ssh_attempt_once
+wait_attempt_line "${before}" || true
+ATTEMPT="$(last_attempt_line)"
+GOT_TO="$(stub_wait_timeout_param)"
+GOT_TTL="$(stub_create_ttl)"
+echo "applied_zero sent_ttl=${GOT_TTL} ?timeout=${GOT_TO} attempt=${ATTEMPT}" \
+  | tee -a "${PROOF}"
+if [ "${GOT_TTL}" = "45" ] && [ "${GOT_TO}" = "45" ] \
+  && echo "${ATTEMPT}" | grep -q 'result=SUCCESS'; then
+  ok "applied_zero: timeoutSeconds=0 ignored → wait_timeout=45"
+else
+  fail "applied_zero expected sent=45 ?timeout=45 SUCCESS, got sent='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+fi
+stop_stub
+restore_conf
+
+# --- M1 timeoutSeconds=null → ignore, keep conf wait ---
+start_stub applied_null
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=45/' '${CONF}'; \
+   sed -i 's/^api_timeout=.*/api_timeout=5/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+before="$(docker exec "${CONTAINER}" sh -c \
+  "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+before="${before:-0}"
+ssh_attempt_once
+wait_attempt_line "${before}" || true
+ATTEMPT="$(last_attempt_line)"
+GOT_TO="$(stub_wait_timeout_param)"
+GOT_TTL="$(stub_create_ttl)"
+echo "applied_null sent_ttl=${GOT_TTL} ?timeout=${GOT_TO} attempt=${ATTEMPT}" \
+  | tee -a "${PROOF}"
+if [ "${GOT_TTL}" = "45" ] && [ "${GOT_TO}" = "45" ] \
+  && echo "${ATTEMPT}" | grep -q 'result=SUCCESS'; then
+  ok "applied_null: timeoutSeconds=null ignored → wait_timeout=45"
+else
+  fail "applied_null expected sent=45 ?timeout=45 SUCCESS, got sent='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -661,13 +827,17 @@ fi
 if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'timeoutSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q '/cancel' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -q 'EZKEY_CANCEL_OK' "${SCRIPT_DIR}/../src/ezkey_config.h" \
+  && grep -q 'EZKEY_CANCEL_FAIL' "${SCRIPT_DIR}/../src/ezkey_config.h" \
+  && grep -q 'EZKEY_CANCEL_SKIPPED' "${SCRIPT_DIR}/../src/ezkey_config.h" \
+  && grep -q 'cancel=%s' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && ! grep -E '\bsigaction\s*\(|\balarm\s*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'LoginGraceTime 120' "${SCRIPT_DIR}/../sshd_config" \
   && grep -q '^wait_polling=2' "${SCRIPT_DIR}/../config/pam_ezkey.conf" \
   && grep -q '^wait_timeout=90' "${SCRIPT_DIR}/../config/pam_ezkey.conf"; then
-  ok "ttlSeconds request + timeoutSeconds response + cancel; no signals; sample conf"
+  ok "ttlSeconds/timeoutSeconds + cancel=ok|fail|skipped; no signals; sample conf"
 else
-  fail "missing linkage guards (ttlSeconds/timeoutSeconds/cancel/signals/sample conf)"
+  fail "missing linkage guards (ttlSeconds/timeoutSeconds/cancel constants/signals/sample conf)"
 fi
 
 echo "" | tee -a "${PROOF}"

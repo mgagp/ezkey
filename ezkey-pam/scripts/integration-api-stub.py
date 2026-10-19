@@ -9,8 +9,14 @@ Modes (EZKEY_STUB_MODE):
   expired        — POST 201; GET wait → EXPIRED
   rejected       — POST 201; GET wait → REJECTED
   legacy_create  — ignore request ttlSeconds; response has neither timeoutSeconds nor expiresAt
+  legacy_rejected — legacy create body + wait REJECTED (Patrick #897 nit)
+  legacy_pending  — legacy create body + wait PENDING/timeoutReached (Patrick #897 nit)
   applied_shrink — create response timeoutSeconds = min(request, EZKEY_STUB_APPLIED_TTL)
                    (mirrors PR-A #898 applied field name; proves wait aligns down)
+  applied_grow   — create response timeoutSeconds = EZKEY_STUB_TTL_CAP (120) even when
+                   client asked less; PAM wait must stay at asked (Patrick #897 M1)
+  applied_zero   — create response timeoutSeconds = 0 (ignored → conf wait)
+  applied_null   — create response timeoutSeconds = null (ignored → conf wait)
   cancel_fail    — like expired, but POST …/cancel returns 503 (PAM outcome must not change)
 
 Request paths (incl. ?timeout=) and POST bodies are appended to EZKEY_STUB_REQ_LOG
@@ -34,6 +40,10 @@ REQ_LOG = os.environ.get("EZKEY_STUB_REQ_LOG", "/tmp/ezkey-pam-stub-reqs.log")
 GLOBAL_TTL_CAP = int(os.environ.get("EZKEY_STUB_TTL_CAP", "120"))
 # applied_shrink: server returns a lower applied TTL than the client asked.
 APPLIED_TTL = int(os.environ.get("EZKEY_STUB_APPLIED_TTL", "30"))
+
+LEGACY_CREATE_MODES = frozenset(
+    {"legacy_create", "legacy_rejected", "legacy_pending"}
+)
 
 
 def _log_req(method: str, path: str, body: bytes | None = None) -> None:
@@ -70,6 +80,15 @@ def _parse_req_ttl(body: bytes) -> int | None:
     except (json.JSONDecodeError, UnicodeDecodeError, TypeError, ValueError):
         return None
     return None
+
+
+def _legacy_create_body() -> dict:
+    # Pre-TTL server: ignore request field; no timeoutSeconds/expiresAt.
+    return {
+        "authAttemptId": 9001,
+        "status": "PENDING",
+        "authAttemptChallenge": CHALLENGE,
+    }
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -112,18 +131,37 @@ class Handler(BaseHTTPRequestHandler):
 
         req_ttl = _parse_req_ttl(body)
 
-        if MODE == "legacy_create":
-            # Pre-TTL server: ignore request field; no timeoutSeconds/expiresAt.
+        if MODE in LEGACY_CREATE_MODES:
+            self._json(201, _legacy_create_body())
+            return
+
+        if MODE == "applied_null":
             resp = {
                 "authAttemptId": 9001,
                 "status": "PENDING",
+                "timeoutSeconds": None,
+                "expiresAt": "2099-01-01T00:00:00Z",
+                "authAttemptChallenge": CHALLENGE,
+            }
+            self._json(201, resp)
+            return
+
+        if MODE == "applied_zero":
+            resp = {
+                "authAttemptId": 9001,
+                "status": "PENDING",
+                "timeoutSeconds": 0,
+                "expiresAt": "2099-01-01T00:00:00Z",
                 "authAttemptChallenge": CHALLENGE,
             }
             self._json(201, resp)
             return
 
         applied_ttl = 120
-        if MODE == "applied_shrink":
+        if MODE == "applied_grow":
+            # Server "grows" beyond PAM's ask — PAM must keep planned wait.
+            applied_ttl = GLOBAL_TTL_CAP
+        elif MODE == "applied_shrink":
             if req_ttl is None:
                 applied_ttl = APPLIED_TTL
             else:
@@ -151,7 +189,7 @@ class Handler(BaseHTTPRequestHandler):
         if "/wait" not in self.path:
             self.send_error(404)
             return
-        if MODE == "pending":
+        if MODE in ("pending", "legacy_pending"):
             # Match Integration wait: hold for client timeout then return PENDING.
             time.sleep(_parse_timeout(self.path))
             self._json(
@@ -177,7 +215,7 @@ class Handler(BaseHTTPRequestHandler):
                 },
             )
             return
-        if MODE == "rejected":
+        if MODE in ("rejected", "legacy_rejected"):
             self._json(
                 200,
                 {
@@ -189,7 +227,7 @@ class Handler(BaseHTTPRequestHandler):
                 },
             )
             return
-        # ok / legacy_create / applied_shrink / no_challenge / slow_create
+        # ok / legacy_create / applied_* / no_challenge / slow_create
         self._json(
             200,
             {
@@ -210,7 +248,7 @@ def main() -> None:
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(
         f"stub mode={MODE} listening on :{PORT} req_log={REQ_LOG} "
-        f"applied_ttl={APPLIED_TTL}",
+        f"applied_ttl={APPLIED_TTL} ttl_cap={GLOBAL_TTL_CAP}",
         flush=True,
     )
     server.serve_forever()
