@@ -8,7 +8,7 @@
  * Description: Actuator health on management port only (404 on business port) for demo-app-acme.
  */
 
-package org.ezkey.demo.acme.config;
+package org.ezkey.demo.acme.managementport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

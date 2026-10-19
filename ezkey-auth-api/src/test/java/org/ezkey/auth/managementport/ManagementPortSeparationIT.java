@@ -8,7 +8,7 @@
  * Description: Dual-port Actuator + JavaMelody separation for Auth API (minimal context).
  */
 
-package org.ezkey.auth.config;
+package org.ezkey.auth.managementport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -16,6 +16,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import org.ezkey.auth.config.JavaMelodyStartupGuardConfig;
+import org.ezkey.auth.config.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;

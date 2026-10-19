@@ -8,7 +8,7 @@
  * Description: Dual-port Actuator + JavaMelody separation for Admin API (minimal security chain).
  */
 
-package org.ezkey.admin.config;
+package org.ezkey.admin.managementport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -16,6 +16,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import org.ezkey.admin.config.JavaMelodyStartupGuardConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -98,8 +99,8 @@ class ManagementPortSeparationIT {
   static class TestApp {}
 
   /**
-   * Same actuator rule as production Admin {@code SecurityConfig}: {@code /actuator/**}
-   * permitAll, {@code anyRequest} authenticated.
+   * Same actuator rule as production Admin {@code SecurityConfig}: {@code /actuator/**} permitAll,
+   * {@code anyRequest} authenticated.
    */
   @Configuration
   @EnableWebSecurity
@@ -113,11 +114,7 @@ class ManagementPortSeparationIT {
           .requestCache(cache -> cache.requestCache(new NullRequestCache()))
           .authorizeHttpRequests(
               authz ->
-                  authz
-                      .requestMatchers("/actuator/**")
-                      .permitAll()
-                      .anyRequest()
-                      .authenticated())
+                  authz.requestMatchers("/actuator/**").permitAll().anyRequest().authenticated())
           .exceptionHandling(
               exceptions ->
                   exceptions.authenticationEntryPoint(

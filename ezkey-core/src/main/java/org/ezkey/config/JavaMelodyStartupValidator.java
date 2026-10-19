@@ -33,8 +33,8 @@ public final class JavaMelodyStartupValidator {
    * @param serverPort business HTTP port ({@code server.port}); may be null when unset
    * @param managementServerPort management HTTP port ({@code management.server.port}); may be null
    *     when unset (Actuator shares the business port)
-   * @throws IllegalStateException when JavaMelody is enabled without management-endpoint monitoring,
-   *     or when both ports are set and equal
+   * @throws IllegalStateException when JavaMelody is enabled without management-endpoint
+   *     monitoring, or when both ports are set and equal
    */
   public static void enforce(
       boolean javaMelodyEnabled,
