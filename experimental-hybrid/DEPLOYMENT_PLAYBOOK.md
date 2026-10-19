@@ -228,6 +228,8 @@ That syncs Compose (`EZKEY_ADMIN_API_URL=http://integration-api:7080`), recreate
 
 For a **NEW** all-in-one Lightsail instance aimed at **ezkey.online** evaluation, use the AWS CLI helpers under [`scripts/lightsail/`](../scripts/lightsail/) and the short runbook [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).
 
+**Live community public IPv4 (2026-10-19):** static IP `ezkey-online-community` → `15.157.54.178` on `ezkey-online` (stop/start keeps it; free while attached). Attach/detach changes the public address — update Cloudflare **A** records and SSH aliases immediately (runbook § Deploy pitfalls). Former ephemeral IP `99.79.69.235` is historical only (released).
+
 **Layer split:** `scripts/lightsail/` = **VM lifecycle** only; this folder’s [`lightsail/`](lightsail/) + [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) = **OSS app stack**. Keep community-only secrets / ezkey.online-only DNS checklists out of the public compose tree. The VM-lifecycle tree may later extract to a **private** ops repo after e2e validation (see runbook § *Ownership boundary*); no private repo is created by that automation.
 
 **Community Caddy / hostnames:** sync installs [`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online) as remote `Caddyfile` (`--target community`). Ordered path (Origin CA, DNS, `.env`, export, clean-start, Pages): [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).

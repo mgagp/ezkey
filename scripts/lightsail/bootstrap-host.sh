@@ -56,7 +56,7 @@ Options:
 SSH config tip (workstation ~/.ssh/config):
 
   Host ezkey-online
-    HostName <public-ip-from-create-instance>
+    HostName 15.157.54.178
     User ec2-user
     IdentityFile ~/.ssh/<your-key>
     IdentitiesOnly yes

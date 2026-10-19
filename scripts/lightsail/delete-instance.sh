@@ -2,7 +2,8 @@
 #
 # Delete a Lightsail instance by name. Default is dry-run.
 # Destroy requires BOTH --apply and --i-mean-it (supports future one-shot recreate tests).
-# Never prints secrets. Does not release static IPs (v1 allocates none) or change DNS.
+# Never prints secrets. Does not release static IPs (community static IP is operator-managed)
+# or change DNS.
 #
 # Usage (from repository root, Git Bash):
 #   ./scripts/lightsail/delete-instance.sh --name ezkey-online
