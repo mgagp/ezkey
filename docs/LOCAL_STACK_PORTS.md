@@ -73,8 +73,9 @@ same as the daily Caddy overlay — do not mix HA and single-stack assumptions.
 |------|-----------|--------|
 | Admin API (via HAProxy) | `9080` | Round-robin to `admin-api-1` / `admin-api-2` |
 | Auth API (via HAProxy) | `8080` | Round-robin to `auth-api-1` / `auth-api-2` |
-| HAProxy Admin stats | `9081` | `http://localhost:9081/stats` |
-| HAProxy Auth stats | `8085` | `http://localhost:8085/stats` |
+| HAProxy Admin stats | `127.0.0.1:9081` | `http://localhost:9081/stats` (loopback-only host publish, #905) |
+| HAProxy Auth stats | `127.0.0.1:8085` | `http://localhost:8085/stats` (loopback-only) |
+| HAProxy Integration stats | `127.0.0.1:7081` | `http://localhost:7081/stats` (loopback-only) |
 | JavaMelody collector (opt-in) | `8088` | `./clean-start.sh --ha --with-java-melody` — both replicas per API |
 
 Entrypoints: `./docker/start-ha.sh`, `./ezkey-tests/clean-start.sh --ha`. Full runbook:

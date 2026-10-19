@@ -201,7 +201,7 @@ services:
       - ./haproxy/haproxy-admin.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
       - "9080:9080"
-      - "9081:9081"  # Stats page
+      - "127.0.0.1:9081:9081"  # Stats page (loopback-only; #905)
     networks:
       - ezkey-network-ha
     restart: unless-stopped
@@ -308,7 +308,7 @@ services:
       - ./haproxy/haproxy-auth.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
       - "8080:8080"
-      - "8085:8085"  # Stats page
+      - "127.0.0.1:8085:8085"  # Stats page (loopback-only; #905)
     networks:
       - ezkey-network-ha
     restart: unless-stopped
@@ -411,7 +411,7 @@ services:
       - ./haproxy/haproxy-integration.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
       - "7080:7080"
-      - "7081:7081"  # Stats page
+      - "127.0.0.1:7081:7081"  # Stats page (loopback-only; #905)
     networks:
       - ezkey-network-ha
     restart: unless-stopped

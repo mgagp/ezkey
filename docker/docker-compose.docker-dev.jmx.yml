@@ -2,6 +2,7 @@
 #
 # Enables unauthenticated, non-SSL JMX so VisualVM can connect to the JVM inside containers.
 # DO NOT use this override in staging or production.
+# Dev only: never publish JMX outside loopback (host bind must stay 127.0.0.1 — #905).
 #
 # Ports:
 # - auth-api JMX:  localhost:9010

@@ -113,6 +113,13 @@ sed -i 's|127\.0\.0\.1:9010:9010|9010:9010|g' "${TMP}/docker/docker-compose.dock
 assert_fail "bare jmx docker-dev 9010:9010 (all interfaces) is rejected" \
   env CHECK_LOCAL_MGMT_ROOT="${TMP}" bash "${CHECK}"
 
+# #905: bare HAProxy stats publish (all interfaces) must fail.
+cp "${ROOT}/docker/docker-compose.docker-dev.jmx.yml" "${TMP}/docker/docker-compose.docker-dev.jmx.yml"
+sed -i 's|127\.0\.0\.1:9081:9081|9081:9081|g' "${TMP}/docker/docker-compose.ha.yml"
+
+assert_fail "bare HAProxy stats 9081:9081 (all interfaces) is rejected" \
+  env CHECK_LOCAL_MGMT_ROOT="${TMP}" bash "${CHECK}"
+
 echo
 echo "Test results: ${pass} passed, ${fail} failed"
 [[ "${fail}" -eq 0 ]]

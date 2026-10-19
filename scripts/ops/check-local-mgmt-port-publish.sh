@@ -145,6 +145,26 @@ else
   fail=$((fail + 1))
 fi
 
+# HAProxy stats host publishes must be loopback-only (#905 Christophe).
+need_ha_stats_loopback() {
+  local port="$1"
+  if grep -Eq "127\\.0\\.0\\.1:${port}:${port}" "$HA"; then
+    echo "PASS: HA HAProxy stats publishes 127.0.0.1:${port}:${port}"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: docker-compose.ha.yml must publish HAProxy stats as 127.0.0.1:${port}:${port}" >&2
+    fail=$((fail + 1))
+  fi
+  if grep -Eq "^[[:space:]]*-[[:space:]]*\"${port}:${port}\"" "$HA"; then
+    echo "FAIL: HA still publishes HAProxy stats ${port}:${port} on all interfaces" >&2
+    fail=$((fail + 1))
+  fi
+}
+
+need_ha_stats_loopback "9081"
+need_ha_stats_loopback "8085"
+need_ha_stats_loopback "7081"
+
 for p in 9081 8085 7081 8084 9091 8086; do
   need_publish "$COMPOSE" "$p" "docker-compose.yml"
   need_health_127 "$COMPOSE" "$p" "docker-compose.yml"
