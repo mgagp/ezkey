@@ -58,7 +58,7 @@ plus authentication attempt challenge configuration.
 | `ezkey.core.crypto.signature-algorithm` | `String` | `SHA256withRSA` | optionnel | Digital signature algorithm. |
 | `ezkey.core.crypto.minimum-key-size` | `int` | `2048` | optionnel | Minimum RSA key size for validation; keys smaller than this are rejected. |
 | `ezkey.core.auth-attempt.challenge-digits` | `int` | `2` | optionnel | Number of digits in the challenge code (range 1–6). |
-| `ezkey.core.auth-attempt.ttl-seconds` | `int` | `120` | optionnel | Auth attempt time-to-live in seconds (range 30–600). |
+| `ezkey.core.auth-attempt.ttl-seconds` | `int` | `120` | optionnel | Default auth attempt TTL in seconds when Integration create omits `ttlSeconds` (range **30–600**). Per-request `ttlSeconds` (#895) is separate: min **15**, hard clamp **120**. |
 
 **Exemple minimal :**
 

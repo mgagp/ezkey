@@ -53,10 +53,16 @@ public record AuthAttemptCreateResponseDto(
             example = "123456",
             requiredMode = RequiredMode.NOT_REQUIRED)
         Integer authAttemptChallenge,
-    /** Duration in seconds until this authentication attempt expires. */
+    /**
+     * Applied TTL in seconds for this attempt (request {@code ttlSeconds} after clamp, or the
+     * server default when omitted). Same value used to compute {@code expiresAt} (#895).
+     */
     @Schema(
-            description = "Seconds until this attempt expires",
-            example = "300",
+            description =
+                "Applied TTL in seconds (after server clamp of request ttlSeconds, or server"
+                    + " default when omitted). Use with expiresAt; prefer this duration over"
+                    + " comparing wall clocks.",
+            example = "120",
             requiredMode = RequiredMode.REQUIRED)
         Integer timeoutSeconds,
     /** Absolute timestamp when this authentication attempt expires. */

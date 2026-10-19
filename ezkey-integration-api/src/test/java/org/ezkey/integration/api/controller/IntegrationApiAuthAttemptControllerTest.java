@@ -91,7 +91,7 @@ class IntegrationApiAuthAttemptControllerTest {
 
     HttpServletRequest request = new MockHttpServletRequest();
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(null, null, false, null, null);
+        new AuthAttemptCreateRequestDto(null, null, false, null, null, null);
 
     AuthAttemptCreateValidationException exception =
         assertThrows(
@@ -122,7 +122,8 @@ class IntegrationApiAuthAttemptControllerTest {
                 "No verified enrollment found for userIdentifier 'alice'."));
 
     HttpServletRequest request = new MockHttpServletRequest();
-    AuthAttemptCreateRequestDto dto = new AuthAttemptCreateRequestDto(123, null, false, null, null);
+    AuthAttemptCreateRequestDto dto =
+        new AuthAttemptCreateRequestDto(123, null, false, null, null, null);
 
     AuthAttemptCreateValidationException exception =
         assertThrows(
@@ -130,6 +131,44 @@ class IntegrationApiAuthAttemptControllerTest {
 
     assertEquals(
         "No verified enrollment found for userIdentifier 'alice'.", exception.getMessage());
+  }
+
+  @Test
+  @DisplayName("create() - ttlSeconds=14 rejects before enrollment lookup (known user)")
+  void create_ttlBelowFloor_rejectsBeforeLookup_knownUser() {
+    setupApiKeyAuthentication(77);
+    when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
+
+    HttpServletRequest request = new MockHttpServletRequest();
+    AuthAttemptCreateRequestDto dto =
+        new AuthAttemptCreateRequestDto(123, null, false, null, null, 14);
+
+    AuthAttemptCreateValidationException exception =
+        assertThrows(
+            AuthAttemptCreateValidationException.class, () -> controller.create(dto, request));
+
+    assertEquals("ttlSeconds must be at least 15", exception.getMessage());
+    verify(enrollmentRepository, org.mockito.Mockito.never()).findById(any());
+  }
+
+  @Test
+  @DisplayName(
+      "create() - ttlSeconds=14 same rejection for unknown userIdentifier (non-enumerating)")
+  void create_ttlBelowFloor_rejectsBeforeLookup_unknownUser() {
+    setupApiKeyAuthentication(77);
+    when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
+
+    HttpServletRequest request = new MockHttpServletRequest();
+    AuthAttemptCreateRequestDto dto =
+        new AuthAttemptCreateRequestDto(null, "nobody@example.com", false, null, null, 14);
+
+    AuthAttemptCreateValidationException exception =
+        assertThrows(
+            AuthAttemptCreateValidationException.class, () -> controller.create(dto, request));
+
+    assertEquals("ttlSeconds must be at least 15", exception.getMessage());
+    verify(enrollmentRepository, org.mockito.Mockito.never())
+        .findByIntegrationIdAndUserIdentifierAndStatusAndActive(any(), any(), any(), any());
   }
 
   @Test
@@ -149,7 +188,8 @@ class IntegrationApiAuthAttemptControllerTest {
     when(enrollmentRepository.findById(123)).thenReturn(Optional.of(enrollment));
     when(integrationRepository.findById(77)).thenReturn(Optional.of(integration));
     HttpServletRequest request = new MockHttpServletRequest();
-    AuthAttemptCreateRequestDto dto = new AuthAttemptCreateRequestDto(123, null, false, null, null);
+    AuthAttemptCreateRequestDto dto =
+        new AuthAttemptCreateRequestDto(123, null, false, null, null, null);
 
     EnrollmentInactiveException exception =
         assertThrows(EnrollmentInactiveException.class, () -> controller.create(dto, request));

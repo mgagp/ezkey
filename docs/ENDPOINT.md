@@ -129,20 +129,23 @@ HTTP-level outcomes for respond (RFC 9457 Problem Details unless noted):
 
 | Condition | Status | `type` (suffix under `https://ezkey.io/problems/auth/`) |
 | --- | --- | --- |
-| Attempt or enrollment not found, still `PENDING`, or terminal (`ACCEPTED`, `REJECTED`, `EXPIRED`, `INVALID`) / cancel-win / superseded / wall-clock expiry | **409** | `auth-attempt-state-conflict` (unified client surface; distinction only in server logs — #844 Marc m1) |
+| Attempt or enrollment not found, still `PENDING`, or terminal (`ACCEPTED`, `REJECTED`, `EXPIRED`, `INVALID`) / cancel-win / superseded | **409** | `auth-attempt-state-conflict` (unified client surface; distinction only in server logs — #844 Marc m1) |
+| Wall-clock expiry (`expiresAt` reached; conditional UPDATE refused) | **409** | `auth-attempt-expired` (#895) |
 | Per-enrollment integration private key missing/blank when signing is required (runtime; transaction rolls back; no JVM startup gate) | **503** | `integration-signing-unavailable` |
 
 A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`).
 
-**Decision (#834 Question 8 + #844 Marc m1 / #833):** Keep a **single** problem type
+**Decision (#834 Question 8 + #844 Marc m1 / #833; amended #895):** Keep a **single** problem type
 `https://ezkey.io/problems/auth/auth-attempt-state-conflict` for respond not-found, still
-`PENDING`, and terminal / cancelled / superseded / wall-clock expiry — do not split types per
-cause (anti-enumeration of sequential ids; server logs keep the distinction). The official mobile
-app shows one sentence — the request is no longer active — and Back only, not Try again. The
-integrating application is where the person sees which cause it was. A lost approve/deny response
-after the HTTP call was sent (timeout / transport), where a session may already exist, is a
-separate mobile case (orientation Question 10 / `UncertainDecision`), not a new problem type.
-Missing integration signing key remains **503** (retryable; transaction rolled back).
+`PENDING`, and terminal / cancelled / superseded — do not split those causes (anti-enumeration of
+sequential ids; server logs keep the distinction). **Exception (#895):** wall-clock expiry after
+`expiresAt` uses `https://ezkey.io/problems/auth/auth-attempt-expired` so Demo Device / PAM /
+mobile can show an expired message; respond UPDATE is fail-closed (`status = READ AND expires_at >
+now`). The official mobile app may still map both 409 types to one sentence until the typed-expiry
+UI slice lands. A lost approve/deny response after the HTTP call was sent (timeout / transport),
+where a session may already exist, is a separate mobile case (orientation Question 10 /
+`UncertainDecision`), not a new problem type. Missing integration signing key remains **503**
+(retryable; transaction rolled back).
 
 ### Public instance metadata (unauthenticated)
 
@@ -2071,9 +2074,21 @@ Content-Type: application/json
 
 {
   "enrollmentId": 456,
-  "challengeRequested": false
+  "challengeRequested": false,
+  "ttlSeconds": 75
 }
 ```
+
+**Optional `ttlSeconds` (Integration API, #895):** Initiator-requested attempt lifetime in seconds.
+Absent → server default (`ezkey.core.auth-attempt.ttl-seconds`, typically 120). Values below 15
+(or non-integer / ≤ 0) → **400** Problem Details before enrollment/user lookup (same body whether
+the user exists). Values above 120 are clamped to 120. Response `timeoutSeconds` is the **applied**
+TTL; `expiresAt` is computed from it. Prefer `timeoutSeconds` over comparing wall clocks (PAM /
+Demo Device).
+
+**Ownership on wait/cancel:** Integration API `@PreAuthorize` requires the auth attempt’s enrollment
+to belong to the API key’s integration (`AccessControlService.canAccessAuthAttempt`). Foreign
+attempts → **403**. Cancel marks the row `EXPIRED` (no separate `CANCELLED` status).
 
 **Rate Limiting (Integration API):**
 - Create auth attempt: 100 requests per minute per API key (default)
@@ -2149,6 +2164,7 @@ Content-Type: application/json
 - `challengeRequested` (**required**): Whether a challenge code is requested
 - `contextTitle` (optional): Short heading displayed as card header on mobile, max 200 chars
 - `contextMessage` (optional): Descriptive body explaining what the approver is authorizing, max 2 000 chars
+- `ttlSeconds` (optional, **Integration API only**, #895): Per-request TTL; min 15; values above 120 clamped; see Integration create example above
 
 **Response (201 Created):**
 ```json
@@ -2213,8 +2229,9 @@ Authorization: Bearer ezkey_admin_token...
 
 **Notes:**
 - Only attempts in `PENDING` or `READ` status can be cancelled
+- Cancel sets status to **`EXPIRED`** (there is no separate `CANCELLED` status — #895)
 - Attempts that are already in a final state (`ACCEPTED`, `REJECTED`, `INVALID`, `EXPIRED`) cannot be cancelled
-- Admin API: Bearer token or browser session. Integration API: API-key HTTP Basic.
+- Admin API: Bearer token or browser session. Integration API: API-key HTTP Basic (ownership enforced per integration)
 - All cancellation operations are audited for security monitoring
 - **Automatic TTL expiry (no HTTP call):** When `expires_at` passes without a response, a scheduled job in the Admin API process (default interval `ezkey.auth-attempt.expiry-scheduler.fixed-delay-ms`, often 60s) persists `EXPIRED` for eligible `PENDING`/`READ` rows and writes an `AUTH_ATTEMPT_EXPIRED` audit row with `event_action` `auth_attempt_expired_scheduler`. This is distinct from explicit cancel (`AUTH_ATTEMPT_CANCELLED`).
 

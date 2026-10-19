@@ -1,0 +1,57 @@
+meta {
+  name: create with ttlSeconds
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url_integration_api}}/api/v1/auth-attempts
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{integrationKey}}
+  password: {{secretKey}}
+}
+
+body:json {
+  {
+      "enrollmentId": {{enrollmentId}},
+      "challengeRequested": false,
+      "ttlSeconds": 75
+  }
+}
+
+script:post-response {
+  test("Status code is 201", function () {
+      expect(res.getStatus()).to.equal(201);
+  });
+  
+  if (res.getStatus() === 201) {
+      var jsonData = res.getBody();
+      bru.setEnvVar("authAttemptId", jsonData.authAttemptId);
+  
+      test("Applied TTL is 75", function () {
+          expect(jsonData.timeoutSeconds).to.equal(75);
+      });
+  
+      test("Response contains expiresAt", function () {
+          expect(jsonData).to.have.property('expiresAt');
+      });
+  
+      console.log('authAttemptId saved:', jsonData.authAttemptId);
+      console.log('timeoutSeconds (applied):', jsonData.timeoutSeconds);
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates an auth attempt with initiator-requested `ttlSeconds` (#895 PR-A).
+  
+  - Min 15; values above 120 are clamped.
+  - Response `timeoutSeconds` is the applied duration; align PAM wait on that value, not local wall clock.
+}

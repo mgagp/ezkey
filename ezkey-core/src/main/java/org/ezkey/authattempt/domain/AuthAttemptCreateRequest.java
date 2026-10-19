@@ -70,6 +70,14 @@ public class AuthAttemptCreateRequest {
   private String waiterSecretHash;
 
   /**
+   * Optional per-request TTL in seconds from the initiator (Integration API {@code ttlSeconds}).
+   *
+   * <p>When null, the service uses {@code ezkey.core.auth-attempt.ttl-seconds}. When present,
+   * values below 15 are rejected; values above 120 are clamped to 120 (#895).
+   */
+  private Integer ttlSeconds;
+
+  /**
    * Gets the enrollment ID for this authentication attempt.
    *
    * @return the enrollment ID
@@ -157,5 +165,23 @@ public class AuthAttemptCreateRequest {
    */
   public void setWaiterSecretHash(String waiterSecretHash) {
     this.waiterSecretHash = waiterSecretHash;
+  }
+
+  /**
+   * Gets the optional per-request TTL in seconds.
+   *
+   * @return requested TTL, or null to use the server default
+   */
+  public Integer getTtlSeconds() {
+    return ttlSeconds;
+  }
+
+  /**
+   * Sets the optional per-request TTL in seconds.
+   *
+   * @param ttlSeconds requested TTL, or null for the server default
+   */
+  public void setTtlSeconds(Integer ttlSeconds) {
+    this.ttlSeconds = ttlSeconds;
   }
 }

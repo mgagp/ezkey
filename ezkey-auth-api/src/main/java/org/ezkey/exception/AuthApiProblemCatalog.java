@@ -36,9 +36,17 @@ public final class AuthApiProblemCatalog {
   /**
    * Unified client-facing conflict for {@code /respond}: attempt not found, still {@code PENDING},
    * or terminal / superseded / cancelled. Distinction stays in server logs only (#844 Marc m1).
+   * Wall-clock expiry after {@code expiresAt} uses {@link #TYPE_AUTH_ATTEMPT_EXPIRED} instead
+   * (#895).
    */
   public static final String TYPE_AUTH_ATTEMPT_STATE_CONFLICT =
       BASE + "/auth-attempt-state-conflict";
+
+  /**
+   * Respond refused because the attempt's {@code expiresAt} has passed (#895). Distinct from {@link
+   * #TYPE_AUTH_ATTEMPT_STATE_CONFLICT} so Demo Device / mobile can show an expired message.
+   */
+  public static final String TYPE_AUTH_ATTEMPT_EXPIRED = BASE + "/auth-attempt-expired";
 
   public static final String TYPE_AUTH_ATTEMPT_RESPOND_FAILED =
       BASE + "/auth-attempt-respond-failed";
@@ -94,6 +102,8 @@ public final class AuthApiProblemCatalog {
       "The authentication request could not be processed.";
   public static final String DETAIL_AUTH_ATTEMPT_STATE_CONFLICT =
       "The authentication request is in a state that does not allow this operation.";
+  public static final String DETAIL_AUTH_ATTEMPT_EXPIRED =
+      "This authentication request has expired.";
   public static final String DETAIL_AUTH_ATTEMPT_RESPOND_FAILED =
       "The response could not be processed.";
   public static final String DETAIL_INTEGRATION_SIGNING_UNAVAILABLE =

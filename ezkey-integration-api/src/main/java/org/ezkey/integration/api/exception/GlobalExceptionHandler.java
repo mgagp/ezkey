@@ -22,6 +22,7 @@ import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
+import org.ezkey.exception.auth.AuthAttemptExpiredException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
@@ -33,7 +34,9 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -213,6 +216,17 @@ public class GlobalExceptionHandler {
         request);
   }
 
+  @ExceptionHandler(AuthAttemptExpiredException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptExpiredException(
+      AuthAttemptExpiredException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        "This authentication request has expired.",
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/domain/auth-attempt-expired",
+        "Auth Attempt Expired",
+        request);
+  }
+
   @ExceptionHandler(AuthAttemptWaitValidationException.class)
   public ResponseEntity<ProblemDetail> handleAuthAttemptWaitValidationException(
       AuthAttemptWaitValidationException ex, HttpServletRequest request) {
@@ -221,6 +235,38 @@ public class GlobalExceptionHandler {
         HttpStatus.BAD_REQUEST,
         "https://ezkey.io/problems/validation/auth-attempt-wait-invalid",
         "Invalid Auth Attempt Wait Request",
+        request);
+  }
+
+  /**
+   * Bean Validation failures on request bodies (e.g. {@code ttlSeconds < 15}). Stable generic
+   * detail — does not reveal whether a user or enrollment exists (#895 non-enumeration).
+   */
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<ProblemDetail> handleMethodArgumentNotValid(
+      MethodArgumentNotValidException ex, HttpServletRequest request) {
+    logger.debug("Validation failed on {}: {}", request.getRequestURI(), ex.getMessage());
+    return buildProblemDetail(
+        "One or more fields are invalid.",
+        HttpStatus.BAD_REQUEST,
+        "https://ezkey.io/problems/validation/request-invalid",
+        "Invalid Request",
+        request);
+  }
+
+  /**
+   * JSON parse / type coercion failures (e.g. non-integer {@code ttlSeconds}). Same generic 400 as
+   * Bean Validation so clients cannot distinguish unknown users via error shape (#895).
+   */
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ProblemDetail> handleHttpMessageNotReadable(
+      HttpMessageNotReadableException ex, HttpServletRequest request) {
+    logger.debug("Unreadable body on {}: {}", request.getRequestURI(), ex.getMessage());
+    return buildProblemDetail(
+        "One or more fields are invalid.",
+        HttpStatus.BAD_REQUEST,
+        "https://ezkey.io/problems/validation/request-invalid",
+        "Invalid Request",
         request);
   }
 

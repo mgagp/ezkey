@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -169,7 +170,9 @@ public class IntegrationApiAuthAttemptController {
   @Operation(
       summary = "Create authentication attempt",
       description =
-          "Creates a new MFA authentication attempt. The integration is derived from the API key.")
+          "Creates a new MFA authentication attempt. The integration is derived from the API key."
+              + " Optional ttlSeconds (min 15) overrides the server default; values above 120 are"
+              + " clamped. Response timeoutSeconds and expiresAt reflect the applied TTL (#895).")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "201", description = "Auth attempt created successfully"),
@@ -183,7 +186,9 @@ public class IntegrationApiAuthAttemptController {
   @PreAuthorize("hasRole('API_KEY')")
   @PostMapping
   public ResponseEntity<?> create(
-      @Parameter(description = "Auth attempt creation parameters", required = true) @RequestBody
+      @Parameter(description = "Auth attempt creation parameters", required = true)
+          @Valid
+          @RequestBody
           AuthAttemptCreateRequestDto request,
       HttpServletRequest httpRequest) {
 
@@ -193,6 +198,12 @@ public class IntegrationApiAuthAttemptController {
     // Rate limiting check
     if (apiKeyId != null && !rateLimitService.canCreateAuthAttempt(apiKeyId)) {
       throw new RateLimitExceededException("CREATE_AUTH_ATTEMPT", 100, 0, 15);
+    }
+
+    // TTL floor before enrollment/user lookup — non-enumerating 400 (#895 / Christophe).
+    // Bean Validation (@Min) also runs via @Valid; this keeps the same gate for direct callers.
+    if (request.ttlSeconds() != null && request.ttlSeconds() < 15) {
+      throw new AuthAttemptCreateValidationException("ttlSeconds must be at least 15");
     }
 
     // Resolve effective enrollment ID from the request
@@ -236,6 +247,7 @@ public class IntegrationApiAuthAttemptController {
       createRequest.setChallengeRequested(request.challengeRequested());
       createRequest.setContextTitle(request.contextTitle());
       createRequest.setContextMessage(request.contextMessage());
+      createRequest.setTtlSeconds(request.ttlSeconds());
 
       AuthAttemptCreateResponse response = authAttemptService.create(createRequest);
 
@@ -341,7 +353,9 @@ public class IntegrationApiAuthAttemptController {
       summary = "Wait for device response",
       description =
           "Blocks until device responds or timeout elapses. Uses virtual threads for high"
-              + " concurrency.")
+              + " concurrency. Status may be EXPIRED (cancel, supersession, or clock expiry)."
+              + " Ownership is enforced: the API key may only wait on attempts for enrollments of"
+              + " its integration.")
   @ApiResponses(
       value = {
         @ApiResponse(
@@ -349,6 +363,9 @@ public class IntegrationApiAuthAttemptController {
             description = "Response received (or timeout reached with status still pending)",
             content =
                 @Content(schema = @Schema(implementation = AuthAttemptWaitResponseDto.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Auth attempt does not belong to this integration"),
         @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
         @ApiResponse(responseCode = "429", description = "Rate limit exceeded"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
@@ -419,10 +436,19 @@ public class IntegrationApiAuthAttemptController {
    */
   @Operation(
       summary = "Cancel authentication attempt",
-      description = "Marks a pending or read authentication attempt as expired (cancelled).")
+      description =
+          "Marks a pending or read authentication attempt as EXPIRED (cancelled). There is no"
+              + " separate CANCELLED status — cancel and TTL expiry share EXPIRED. Ownership is"
+              + " enforced: the API key may only cancel attempts for enrollments of its"
+              + " integration.")
   @ApiResponses(
       value = {
-        @ApiResponse(responseCode = "200", description = "Auth attempt cancelled successfully"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "Auth attempt cancelled successfully (status EXPIRED)"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Auth attempt does not belong to this integration"),
         @ApiResponse(
             responseCode = "409",
             description = "Auth attempt already in final state (cannot be cancelled)"),

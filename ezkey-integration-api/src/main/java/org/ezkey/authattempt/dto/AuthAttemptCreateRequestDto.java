@@ -13,6 +13,7 @@ package org.ezkey.authattempt.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -45,6 +46,7 @@ import jakarta.validation.constraints.Size;
  * @param challengeRequested whether a numeric challenge should be generated and sent to the device
  * @param contextTitle optional short title for the approval request (max 200 chars)
  * @param contextMessage optional descriptive message for the approver (max 2 000 chars)
+ * @param ttlSeconds optional per-request TTL in seconds (min 15; values above 120 are clamped)
  * @author Ezkey contributors
  * @since 2025
  */
@@ -52,7 +54,8 @@ import jakarta.validation.constraints.Size;
     description =
         "Request body for creating a new authentication attempt. Optional context fields "
             + "(contextTitle, contextMessage) attach business context visible to the approver "
-            + "on the mobile device.")
+            + "on the mobile device. Optional ttlSeconds overrides the server default TTL "
+            + "(clamped to a maximum of 120 seconds; values below 15 are rejected).")
 public record AuthAttemptCreateRequestDto(
     /**
      * Direct reference to the enrollment. Optional when userIdentifier is provided; when both are
@@ -105,4 +108,20 @@ public record AuthAttemptCreateRequestDto(
             requiredMode = RequiredMode.NOT_REQUIRED)
         @Size(max = 2000, message = "contextMessage must not exceed 2000 characters")
         @JsonProperty("contextMessage")
-        String contextMessage) {}
+        String contextMessage,
+    /**
+     * Optional initiator-requested TTL in seconds. Absent uses the server default ({@code
+     * ezkey.core.auth-attempt.ttl-seconds}, typically 120). Values below 15 are rejected with 400
+     * before enrollment lookup. Values above 120 are clamped to 120; the applied duration is
+     * returned as {@code timeoutSeconds} with {@code expiresAt} (#895).
+     */
+    @Schema(
+            description =
+                "Optional TTL in seconds for this attempt. Minimum 15. Values above 120 are"
+                    + " clamped to 120. When omitted, the server default applies (typically 120).",
+            example = "75",
+            minimum = "15",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        @Min(value = 15, message = "ttlSeconds must be at least 15")
+        @JsonProperty("ttlSeconds")
+        Integer ttlSeconds) {}

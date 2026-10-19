@@ -388,6 +388,29 @@ class AuthAttemptControllerTest {
   }
 
   @Test
+  @DisplayName("POST /api/v1/auth-attempts/respond - expired → 409 auth-attempt-expired (#895)")
+  void respond_WhenExpired_ShouldReturn409AuthAttemptExpired() throws Exception {
+    when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
+        .thenReturn(respondRequest);
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+        .thenThrow(
+            new org.ezkey.exception.auth.AuthAttemptExpiredException(
+                "Authentication attempt expired"));
+
+    String json = objectMapper.writeValueAsString(respondRequestDto);
+
+    mockMvc
+        .perform(post(BASE_URL + "/respond").contentType(MediaType.APPLICATION_JSON).content(json))
+        .andExpect(status().isConflict())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_EXPIRED))
+        .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_CONFLICT))
+        .andExpect(jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_EXPIRED));
+
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+  }
+
+  @Test
   @DisplayName("POST /api/v1/auth-attempts/respond - PENDING → unified 409 (#844 Marc m1)")
   void respond_WhenPending_ShouldReturn409StateConflict() throws Exception {
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
