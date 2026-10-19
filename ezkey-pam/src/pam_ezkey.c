@@ -725,6 +725,7 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     int accepted = 0;
     int timeout_reached = 0;
     const char *status_str = NULL;
+    char status_safe[64];
     const char *summary = "DENIED";
     long challenge = -1;
     char msg[512];
@@ -871,13 +872,18 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     /*
      * Applied TTL from create response when present. Absent ⇒ keep planned
      * (compatible with servers that ignore ttlSeconds). Never derive wait from
-     * expiresAt wall-clock arithmetic.
+     * expiresAt wall-clock arithmetic. Validate the double in-range before
+     * casting to int (Christophe #897 n2) — reject NaN / ≤0 / > planned.
      */
     ttl_val = cJSON_GetObjectItemCaseSensitive(root, "ttlSeconds");
-    if (cJSON_IsNumber(ttl_val) && ttl_val->valuedouble > 0) {
-        applied_ttl = (int)ttl_val->valuedouble;
-        if (applied_ttl < planned_wait) {
-            planned_wait = applied_ttl;
+    if (cJSON_IsNumber(ttl_val)) {
+        double ttl_d = ttl_val->valuedouble;
+
+        if (ttl_d >= 1.0 && ttl_d <= (double)planned_wait) {
+            applied_ttl = (int)ttl_d;
+            if (applied_ttl < planned_wait) {
+                planned_wait = applied_ttl;
+            }
         }
     }
     cJSON_Delete(root);
@@ -1073,6 +1079,9 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     if (cJSON_IsString(status_val) && status_val->valuestring != NULL) {
         status_str = status_val->valuestring;
     }
+    /* Server-controlled status string — sanitize before any debug log (#897 n1). */
+    ezkey_sanitize_for_log(status_safe, sizeof(status_safe),
+                           status_str != NULL ? status_str : "missing");
     accepted = (status_str != NULL && strcmp(status_str, "ACCEPTED") == 0);
     if (accepted) {
         pam_rc = PAM_SUCCESS;
@@ -1082,7 +1091,8 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
         pam_rc = PAM_AUTH_ERR;
         summary = "EXPIRED";
         snprintf(msg, sizeof(msg),
-                 "Authentication expired (authAttemptId=%ld)", auth_attempt_id);
+                 "Authentication expired (authAttemptId=%ld status=%s)",
+                 auth_attempt_id, status_safe);
         log_pam_error_debug(pamh, cfg, msg);
     } else if (status_str != NULL &&
                (strcmp(status_str, "REJECTED") == 0 ||
@@ -1091,7 +1101,7 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
         summary = "DENIED";
         snprintf(msg, sizeof(msg),
                  "Authentication not accepted (authAttemptId=%ld status=%s)",
-                 auth_attempt_id, status_str);
+                 auth_attempt_id, status_safe);
         log_pam_error_debug(pamh, cfg, msg);
     } else if (timeout_reached ||
                (status_str != NULL &&
@@ -1101,14 +1111,14 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
         summary = "TIMEOUT";
         snprintf(msg, sizeof(msg),
                  "Authentication wait timeout (authAttemptId=%ld status=%s)",
-                 auth_attempt_id, status_str != NULL ? status_str : "missing");
+                 auth_attempt_id, status_safe);
         log_pam_error_debug(pamh, cfg, msg);
     } else {
         pam_rc = PAM_AUTH_ERR;
         summary = "DENIED";
         snprintf(msg, sizeof(msg),
                  "Authentication not accepted (authAttemptId=%ld status=%s)",
-                 auth_attempt_id, status_str != NULL ? status_str : "missing");
+                 auth_attempt_id, status_safe);
         log_pam_error_debug(pamh, cfg, msg);
     }
     cJSON_Delete(root);

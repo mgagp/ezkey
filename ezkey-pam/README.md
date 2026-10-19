@@ -20,7 +20,8 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 3. Waits for approve or reject (`GET /api/v1/auth-attempts/{id}/wait?timeout=N`), aligning `N`
    on the applied TTL duration (monotonic budget) — never on host clock vs server `expiresAt`.
 4. Grants SSH access when wait `status` is `ACCEPTED`. On any non-accepted exit after create,
-   best-effort `POST …/cancel` (failure is logged; PAM outcome unchanged).
+   best-effort `POST …/cancel` (failure is logged; PAM outcome unchanged). Cancel is not
+   guaranteed when the wait timeout is reached; the real bound is the applied TTL.
 
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
@@ -216,8 +217,11 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
   `ServerAliveInterval` / `ServerAliveCountMax` (or GUI wrappers) can drop the TCP session
   while PAM is still waiting for device approval. Prefer keepalive that covers at least
   `wait_timeout` + margin, or disable client keepalive for MFA login tests.
-- After abandon (Ctrl-C, wait timeout, Enter over-limit), PAM best-effort cancels the attempt
-  so a new create is not blocked by a stale PENDING/READ card.
+- After abandon (Ctrl-C, wait timeout, Enter over-limit), PAM **best-effort** cancels the
+  attempt so a new create is not blocked by a stale PENDING/READ card. Cancel is **not
+  guaranteed when the wait timeout is reached** (remaining monotonic budget may be too
+  small for the cancel HTTP call). The real hard bound on late approval is the **applied
+  TTL** from create (`ttlSeconds` / server `expiresAt`), not the cancel.
 
 ## Troubleshooting
 

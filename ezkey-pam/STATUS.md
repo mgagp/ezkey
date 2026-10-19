@@ -542,7 +542,7 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | Enter prompt | `pam_ezkey.c:779-796` measure; `EZKEY_MAX_ENTER_SECS` `ezkey_config.h:40` **25** | duration bound (no signals) | Enter **>25 s** → UNAVAIL + attempt + debug.err duration (proven) |
 | `wait_timeout` | clamp floor **15** / max **90**; `ttlSeconds` on create; `effective_wait` = min(conf, applied_ttl, rem−slack) | 15–90; shrunk by budget + applied TTL | conf=200 → ttl+`?timeout=90`; conf=2 → floor **15** (proven) |
 | curl `/wait` | `EZKEY_CURL_WAIT_SLACK` **15** (cancel margin inside) | wait+≤15; ≤ rem | Covered by wait / delayed-Enter cases (proven) |
-| Cancel | `POST …/cancel` best-effort on non-ACCEPTED after create | ≤ api_timeout from rem | pending→TIMEOUT + cancel; EXPIRED + cancel; Enter>25 + cancel (proven) |
+| Cancel | `POST …/cancel` best-effort on non-ACCEPTED after create | ≤ api_timeout from rem; **not guaranteed when wait timeout is reached** (budget may be exhausted). Real late-approve bound = **applied TTL** | pending→TIMEOUT + cancel; EXPIRED + cancel; Enter>25 + cancel (proven) |
 | Summary outcomes | `EXPIRED` / `TIMEOUT` / `DENIED` | lacune 5 | stub expired / pending / rejected (proven) |
 | `wait_polling` | sample `config/pam_ezkey.conf` `wait_polling=2` | Server-side cadence | Sample conf present (proven) |
 | Server attempt TTL | create `ttlSeconds` (PAM) + core global ceiling **120** | Align on applied duration | PAM sends planned wait; ignores `expiresAt` wall clock |
