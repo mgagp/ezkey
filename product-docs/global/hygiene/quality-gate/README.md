@@ -7,7 +7,7 @@ Cloud-agent gate between merge batches. Exit **0** GO · **1** NO-GO · **2** us
 Artifacts under `logs/quality-gate/<UTC>-<shortsha>/` (gitignored).
 
 **Not** a CI gate. A phase that can show GREEN wrongly is worse than no gate.
-Cloud agent tooling; Git Bash best-effort, untested on macOS.
+Cloud agent tooling; portable Bash (Linux, Git Bash, macOS).
 
 ## Command
 
@@ -59,7 +59,7 @@ UNKNOWN/AMBER (never silent "no OOM").
 
 | Issue | Gate behaviour |
 | --- | --- |
-| [#747](https://github.com/mgagp/ezkey/issues/747) | Retry only if `ezkey_encryption_key_pkey`; else clean-start RED. Allowlist: `requires=COMPOSE_RETRY_FIRED` + Spring `<TS> ERROR` signature. |
+| [#747](https://github.com/mgagp/ezkey/issues/747) | Retry only if `ezkey_encryption_key_pkey` appears in admin-api replica logs **since clean-start phase start** (`docker logs --since`, no `tail` cap); else clean-start RED. Allowlist: `requires=COMPOSE_RETRY_FIRED` + Spring `<TS> ERROR` signature. Phase timing uses portable `now_ms` (GNU `%3N` when numeric; else `python3` / `node` / whole seconds) — BSD `date` on macOS must not poison arithmetic (Carl 2026-10-19). |
 | [#748](https://github.com/mgagp/ezkey/issues/748) | Auth security false pass (sticky RestAssured → crypto). Fixed in product tests. |
 | [#750](https://github.com/mgagp/ezkey/issues/750) | Bootstrap proof/challenge/QR **emitted during clean-start only** (`kind=secret-channel`). Still valid when scanned later; emission outside clean-start stays RED. |
 | [#751](https://github.com/mgagp/ezkey/issues/751) | Recovery codes / login challenges no longer logged. |

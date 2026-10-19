@@ -1,5 +1,5 @@
 # quality-gate HA helpers — sourced by quality-gate.sh and quality-gate-ha.test.sh.
-# Cloud agent tooling; Git Bash best-effort, untested on macOS.
+# Cloud agent tooling; portable Bash (Linux, Git Bash, macOS).
 #
 # Expected globals: KEYWORD HA_REPLICAS PREV_RESTARTS HA_INVALID OVERALL_AMBER
 #   OVERALL_RED RUN_DIR REPLICAS_TSV RESTARTS_TSV SHEDLOCK_* GATE_STARTED_AT
@@ -7,6 +7,51 @@
 
 QUALITY_GATE_RESTORE_TIMEOUT_S="${QUALITY_GATE_RESTORE_TIMEOUT_S:-180}"
 QUALITY_GATE_RESTORE_POLL_S="${QUALITY_GATE_RESTORE_POLL_S:-5}"
+
+# Epoch milliseconds for phase timing.
+# GNU date supports %3N; BSD date on macOS does not — it often prints a literal "N"
+# (or "3N") and still exits 0, so a bare `date +%s%3N || fallback` never triggers.
+# Validate digits before trusting date; then python3 / node / whole seconds.
+now_ms() {
+  local t
+  t="$(date +%s%3N 2>/dev/null || true)"
+  if [[ "$t" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$t"
+    return 0
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import time; print(int(time.time() * 1000))'
+    return 0
+  fi
+  if command -v node >/dev/null 2>&1; then
+    node -e 'console.log(Date.now())'
+    return 0
+  fi
+  # Last resort: whole seconds as ms (duration math still works; lower precision).
+  printf '%s\n' "$(($(date +%s) * 1000))"
+}
+
+# Detect #747 encryption keyset PK race in admin-api replica logs.
+# Scans each replica with docker logs --since (no tail cap — verbose Spring Boot
+# startup can push the signature past a short window; Carl 2026-10-19 macOS).
+# $1 = ISO-8601 since timestamp (GATE_STARTED_AT or clean-start phase start).
+# Returns 0 if ezkey_encryption_key_pkey appears, 1 otherwise.
+detect_encryption_key_pkey_race() {
+  local since="${1:-}"
+  local name
+  for name in ezkey-admin-api-1 ezkey-admin-api-2; do
+    if [[ -n "$since" ]]; then
+      if docker logs --since "$since" "$name" 2>&1 | grep -Fq 'ezkey_encryption_key_pkey'; then
+        return 0
+      fi
+    else
+      if docker logs "$name" 2>&1 | grep -Fq 'ezkey_encryption_key_pkey'; then
+        return 0
+      fi
+    fi
+  done
+  return 1
+}
 
 # Patrick: kill-missing may downgrade GREEN→AMBER only — never rewrite elective RED.
 # Prints the phase verdict to apply (AMBER or the unchanged last verdict).

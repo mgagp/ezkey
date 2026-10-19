@@ -83,6 +83,17 @@ case "$cmd" in
     exit 0
     ;;
   logs)
+    # docker logs [--since ISO] NAME — dump STATE/NAME.logs when present.
+    name=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --since) shift 2 ;;
+        *) name="$1"; shift ;;
+      esac
+    done
+    if [[ -n "$name" && -f "$STATE/$name.logs" ]]; then
+      cat "$STATE/$name.logs"
+    fi
     exit 0
     ;;
   *) echo "fake-docker: unsupported $cmd" >&2; exit 1 ;;
@@ -188,6 +199,67 @@ v="$(classify_clean_start_verdict 1 1 1 1)"
 assert_eq "$v" "AMBER" "C2 contrast: #747 retry → AMBER"
 v="$(classify_clean_start_verdict 0 0 1 1)"
 assert_eq "$v" "GREEN" "C2 contrast: clean exit → GREEN"
+
+# 5b) #747 detect: signature buried past a 400-line window still matches (no tail cap)
+all_healthy
+: >"$FAKE_DOCKER_STATE/ezkey-admin-api-1.logs"
+: >"$FAKE_DOCKER_STATE/ezkey-admin-api-2.logs"
+i=0
+while [[ $i -lt 500 ]]; do
+  echo "filler line $i — Spring Boot noise" >>"$FAKE_DOCKER_STATE/ezkey-admin-api-1.logs"
+  i=$((i + 1))
+done
+echo 'ERROR: duplicate key value violates unique constraint "ezkey_encryption_key_pkey"' \
+  >>"$FAKE_DOCKER_STATE/ezkey-admin-api-1.logs"
+detect_encryption_key_pkey_race "2026-10-19T00:00:00Z"
+assert_eq "$?" "0" "5b: #747 signature past 400 lines → detected"
+
+# 5c) #747 detect: no signature → not detected
+all_healthy
+echo "no keyset race here" >"$FAKE_DOCKER_STATE/ezkey-admin-api-1.logs"
+echo "no keyset race here" >"$FAKE_DOCKER_STATE/ezkey-admin-api-2.logs"
+set +e
+detect_encryption_key_pkey_race "2026-10-19T00:00:00Z"
+detect_rc=$?
+set -e
+assert_eq "$detect_rc" "1" "5c: no #747 signature → not detected"
+
+# 5d) now_ms always returns digits (portable; BSD date must not poison arithmetic)
+ms="$(now_ms)"
+if [[ "$ms" =~ ^[0-9]+$ ]]; then
+  echo "ok - now_ms returns digits only"; pass=$((pass+1))
+else
+  echo "not ok - now_ms returns digits only (got=$ms)"; fail=$((fail+1))
+fi
+# Simulate BSD date: %3N → literal "3N", exit 0 (macOS). Fallback must still be numeric.
+mkdir -p "$TMP/bin-bsd-date"
+cat >"$TMP/bin-bsd-date/date" <<'BSDDATE'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  if [[ "$arg" == *%N* ]]; then
+    # GNU would expand %3N; BSD prints literal — match observed macOS behaviour.
+    printf '%s3N\n' "$(/bin/date +%s 2>/dev/null || echo 1700000000)"
+    exit 0
+  fi
+done
+exec /bin/date "$@"
+BSDDATE
+chmod +x "$TMP/bin-bsd-date/date"
+ms_bsd="$(PATH="$TMP/bin-bsd-date:$PATH" bash -c '
+  source "'"$ROOT"'/scripts/lib/quality-gate-ha.sh"
+  now_ms
+')"
+if [[ "$ms_bsd" =~ ^[0-9]+$ ]]; then
+  echo "ok - now_ms BSD-date fallback returns digits"; pass=$((pass+1))
+else
+  echo "not ok - now_ms BSD-date fallback returns digits (got=$ms_bsd)"; fail=$((fail+1))
+fi
+# Arithmetic must succeed (the old %3N path produced "…3N" and broke duration_ms).
+if d=$((ms_bsd + 1)) && [[ "$d" =~ ^[0-9]+$ ]]; then
+  echo "ok - now_ms BSD fallback is arithmetic-safe"; pass=$((pass+1))
+else
+  echo "not ok - now_ms BSD fallback is arithmetic-safe"; fail=$((fail+1))
+fi
 
 # 6) Missing ShedLock kill (failover skipped / unresolved / no kill in 30s) → INCONCLUSIVE
 all_healthy
