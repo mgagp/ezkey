@@ -75,7 +75,8 @@ class ManagementPortSeparationTest {
     assertThat(managementPort).isNotEqualTo(businessPort);
 
     assertThat(status("http://127.0.0.1:" + managementPort + "/actuator/health")).isEqualTo(200);
-    assertThat(status("http://127.0.0.1:" + businessPort + "/actuator/health")).isEqualTo(404);
+    // Not mounted on the business port (LIVE 404; minimal chain may 401 — never 200).
+    assertThat(status("http://127.0.0.1:" + businessPort + "/actuator/health")).isIn(401, 404);
 
     assertThat(status("http://127.0.0.1:" + businessPort + "/monitoring")).isEqualTo(403);
 
