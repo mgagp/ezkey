@@ -544,7 +544,6 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
 
       Integer integrationId = testDataFactory.createIntegration();
       VerifiedEnrollmentFixture owner = createVerifiedEnrollment(integrationId, adminToken);
-      VerifiedEnrollmentFixture otherDevice = createVerifiedEnrollment(integrationId, adminToken);
       Integer authAttemptId = testDataFactory.createAuthAttempt(owner.enrollmentId(), false);
       PendingAttemptFixture pendingAttempt = claimPendingAttempt(owner, authAttemptId);
 
@@ -555,11 +554,11 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
                   + authAttemptId);
       assertThat(updated).isTrue();
 
-      // Other device signs the owner's proof token — signature fails ownership check.
+      // Foreign key pair signs the owner's proof token — ownership check fails (non-owner).
+      EcP256KeyPair foreignDeviceKeyPair = cryptoApiClient.generateKeyPair();
       String foreignSignature =
           cryptoApiClient.signData(
-              pendingAttempt.authAttemptProofToken() + "|true",
-              otherDevice.deviceKeyPair().privateKey());
+              pendingAttempt.authAttemptProofToken() + "|true", foreignDeviceKeyPair.privateKey());
 
       configureForAuthApi(dockerStackConfig);
       Map<String, Object> respondRequest = new HashMap<>();
