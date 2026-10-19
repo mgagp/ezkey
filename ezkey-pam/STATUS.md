@@ -434,7 +434,18 @@ pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n>
 | `pam_code` | Integer PAM return code |
 | `latency_ms` | Monotonic elapsed ms for the authenticate call |
 | `lab_http` | Conf `lab_http` as `true` or `false` (Christophe) |
-| `cancel` | `ok` \| `fail` \| `skipped` \| `final` only (`EZKEY_CANCEL_*`; Patrick #897 M2 + Christophe) — best-effort cancel after non-ACCEPTED; `skipped` when never attempted; `final` = HTTP **409** already-final (possible late approve; no `pam_rc` effect) |
+| `cancel` | Exactly one of `ok` \| `fail` \| `skipped` \| `final` (`EZKEY_CANCEL_*`; Patrick #897 M2 + Christophe observability) |
+
+**`cancel=` vocabulary (authpriv only; never changes `pam_rc`):**
+
+| Value | When |
+|---|---|
+| `ok` | Best-effort cancel returned HTTP 2xx |
+| `fail` | Cancel curl error or HTTP other than 2xx/409 (e.g. 503) |
+| `skipped` | Cancel not attempted (SUCCESS, pre-create, or no monotonic budget) |
+| `final` | Cancel returned HTTP **409** already-final (possible late device approve / race) |
+
+Proven in `scripts/test-timeouts.sh`: stub `cancel_final` → attempt line contains `cancel=final`.
 
 **Never** logged: `secret_key`, integration key material, Basic `userpwd`, proof tokens, HTTP
 bodies, wait JSON.

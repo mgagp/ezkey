@@ -694,7 +694,8 @@ fi
 stop_stub
 restore_conf
 
-# --- Christophe: cancel HTTP 409 already-final → cancel=final (pam_rc unchanged) ---
+# --- Christophe: stub cancel HTTP 409 → authpriv line must contain cancel=final ---
+# Contract: pam_rc / result stay EXPIRED; cancel=final (not ok); no pam_rc effect.
 start_stub cancel_final
 docker exec "${CONTAINER}" sh -c \
   "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
@@ -715,13 +716,17 @@ CANCEL_N="$(stub_saw_cancel)"
 OUT="$(docker exec "${CONTAINER}" sh -c 'tail -n 12 /var/log/ezkey-pam/debug.out' || true)"
 echo "cancel_final attempt=${ATTEMPT} cancel=${CANCEL_N}" | tee -a "${PROOF}"
 echo "cancel_final out=${OUT}" | tee -a "${PROOF}"
-if echo "${ATTEMPT}" | grep -q 'result=EXPIRED' \
-  && echo "${ATTEMPT}" | grep -q 'cancel=final' \
-  && [ "${CANCEL_N}" -ge 1 ] \
-  && echo "${OUT}" | grep -Eqi 'cancel_best-effort.*HTTP_409|HTTP_409'; then
-  ok "cancel_final 409: result=EXPIRED unchanged + cancel=final"
+# Primary assertion (Christophe): stub 409 on cancel → summary line contains cancel=final.
+if ! echo "${ATTEMPT}" | grep -q 'cancel=final'; then
+  fail "stub cancel 409 → expected attempt line to contain cancel=final, got: ${ATTEMPT}"
+elif ! echo "${ATTEMPT}" | grep -q 'result=EXPIRED'; then
+  fail "cancel_final: pam_rc/result must stay EXPIRED, got: ${ATTEMPT}"
+elif [ "${CANCEL_N}" -lt 1 ]; then
+  fail "cancel_final: expected POST …/cancel in stub log"
+elif ! echo "${OUT}" | grep -Eqi 'cancel_best-effort.*HTTP_409|HTTP_409'; then
+  fail "cancel_final: expected debug HTTP_409, got: ${OUT}"
 else
-  fail "cancel_final expected EXPIRED+cancel=final: ${ATTEMPT} cancel=${CANCEL_N} / ${OUT}"
+  ok "stub cancel 409 → attempt line contains cancel=final (result=EXPIRED unchanged)"
 fi
 stop_stub
 restore_conf
