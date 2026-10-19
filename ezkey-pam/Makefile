@@ -12,10 +12,11 @@ TEST_DIR = test
 INSTALL_DIR = /lib64/security
 
 OBJECTS = $(BUILD_DIR)/pam_ezkey.o $(BUILD_DIR)/ezkey_filelog.o \
-	$(BUILD_DIR)/ezkey_sanitize.o $(BUILD_DIR)/ezkey_challenge.o
+	$(BUILD_DIR)/ezkey_sanitize.o $(BUILD_DIR)/ezkey_challenge.o \
+	$(BUILD_DIR)/ezkey_budget.o
 
 .PHONY: all debug install uninstall clean check-pam check-source lint help \
-	test test-filelog test-sanitize test-challenge
+	test test-filelog test-sanitize test-challenge test-budget
 
 all: $(BUILD_DIR)/$(MODULE_NAME)
 
@@ -24,7 +25,7 @@ $(BUILD_DIR):
 
 $(BUILD_DIR)/pam_ezkey.o: $(SRC_DIR)/pam_ezkey.c $(SRC_DIR)/ezkey_config.h \
 		$(SRC_DIR)/ezkey_filelog.h $(SRC_DIR)/ezkey_sanitize.h \
-		$(SRC_DIR)/ezkey_challenge.h | $(BUILD_DIR)
+		$(SRC_DIR)/ezkey_challenge.h $(SRC_DIR)/ezkey_budget.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/pam_ezkey.c -o $(BUILD_DIR)/pam_ezkey.o
 
 $(BUILD_DIR)/ezkey_filelog.o: $(SRC_DIR)/ezkey_filelog.c $(SRC_DIR)/ezkey_filelog.h \
@@ -37,6 +38,10 @@ $(BUILD_DIR)/ezkey_sanitize.o: $(SRC_DIR)/ezkey_sanitize.c $(SRC_DIR)/ezkey_sani
 $(BUILD_DIR)/ezkey_challenge.o: $(SRC_DIR)/ezkey_challenge.c $(SRC_DIR)/ezkey_challenge.h \
 		| $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_challenge.c -o $(BUILD_DIR)/ezkey_challenge.o
+
+$(BUILD_DIR)/ezkey_budget.o: $(SRC_DIR)/ezkey_budget.c $(SRC_DIR)/ezkey_budget.h \
+		$(SRC_DIR)/ezkey_config.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_budget.c -o $(BUILD_DIR)/ezkey_budget.o
 
 $(BUILD_DIR)/$(MODULE_NAME): $(OBJECTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $(BUILD_DIR)/$(MODULE_NAME)
@@ -98,13 +103,19 @@ test-challenge: $(BUILD_DIR)/ezkey_challenge.o $(TEST_DIR)/test_challenge_harnes
 		$(BUILD_DIR)/ezkey_challenge.o -lpam -o $(BUILD_DIR)/test_challenge_harness
 	$(BUILD_DIR)/test_challenge_harness
 
+# Harness: AUTH_BUDGET 105 + rem-too-small → −1 (Patrick #897 CHANGES).
+test-budget: $(BUILD_DIR)/ezkey_budget.o $(TEST_DIR)/test_budget_harness.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_budget_harness.c \
+		$(BUILD_DIR)/ezkey_budget.o -o $(BUILD_DIR)/test_budget_harness
+	$(BUILD_DIR)/test_budget_harness
+
 $(BUILD_DIR)/test_no_conv_client: $(TEST_DIR)/test_no_conv_client.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(TEST_DIR)/test_no_conv_client.c -lpam \
 		-o $(BUILD_DIR)/test_no_conv_client
 
-test: check-source all test-filelog test-sanitize test-challenge \
+test: check-source all test-filelog test-sanitize test-challenge test-budget \
 		$(BUILD_DIR)/test_no_conv_client
-	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog + sanitize + challenge OK"
+	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog + sanitize + challenge + budget OK"
 
 help:
 	@echo "Available targets:"
@@ -118,5 +129,6 @@ help:
 	@echo "  test-filelog  - Mode/hardlink/FIFO harness (#818 m2)"
 	@echo "  test-sanitize - Sanitize space/=/high-byte harness (M1)"
 	@echo "  test-challenge - Challenge 0..99 + display_ok harness"
-	@echo "  test          - check-source + compile + filelog + sanitize + challenge"
+	@echo "  test-budget   - AUTH_BUDGET 105 + rem-too-small planned-wait harness"
+	@echo "  test          - check-source + compile + filelog + sanitize + challenge + budget"
 	@echo "  lint          - Run static code analysis"

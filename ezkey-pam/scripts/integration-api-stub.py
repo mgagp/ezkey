@@ -2,15 +2,18 @@
 """Minimal Integration API stub for ezkey-pam lab/CI proofs (Patrick CHANGES / #895).
 
 Modes (EZKEY_STUB_MODE):
-  ok            — POST 201 with challenge 42; GET wait → ACCEPTED
-  no_challenge  — POST 201 without authAttemptChallenge
-  slow_create   — sleep then 201 (for api_timeout)
-  pending       — POST 201; GET wait sleeps for ?timeout= then PENDING + timeoutReached
-  expired       — POST 201; GET wait → EXPIRED
-  rejected      — POST 201; GET wait → REJECTED
+  ok             — POST 201 with challenge 42; GET wait → ACCEPTED
+  no_challenge   — POST 201 without authAttemptChallenge
+  slow_create    — sleep then 201 (for api_timeout)
+  pending        — POST 201; GET wait sleeps for ?timeout= then PENDING + timeoutReached
+  expired        — POST 201; GET wait → EXPIRED
+  rejected       — POST 201; GET wait → REJECTED
+  legacy_create  — ignore request ttlSeconds; response has neither ttlSeconds nor expiresAt
+  applied_shrink — echo create with ttlSeconds = min(request, EZKEY_STUB_APPLIED_TTL)
+  cancel_fail    — like expired, but POST …/cancel returns 503 (PAM outcome must not change)
 
 Request paths (incl. ?timeout=) and POST bodies are appended to EZKEY_STUB_REQ_LOG
-when set so tests can assert ttlSeconds and cancel (#895 PR-B).
+when set so tests can assert ttlSeconds and cancel (#895 PR-B / #897 B1).
 """
 
 from __future__ import annotations
@@ -28,6 +31,8 @@ CHALLENGE = int(os.environ.get("EZKEY_STUB_CHALLENGE", "42"))
 REQ_LOG = os.environ.get("EZKEY_STUB_REQ_LOG", "/tmp/ezkey-pam-stub-reqs.log")
 # Cap applied TTL like Integration API global ceiling (PR-A); PAM asks ≤90.
 GLOBAL_TTL_CAP = int(os.environ.get("EZKEY_STUB_TTL_CAP", "120"))
+# applied_shrink: server returns a lower applied TTL than the client asked.
+APPLIED_TTL = int(os.environ.get("EZKEY_STUB_APPLIED_TTL", "30"))
 
 
 def _log_req(method: str, path: str, body: bytes | None = None) -> None:
@@ -53,6 +58,19 @@ def _parse_timeout(path: str) -> int:
         return 2
 
 
+def _parse_req_ttl(body: bytes) -> int | None:
+    if not body:
+        return None
+    try:
+        parsed = json.loads(body.decode("utf-8"))
+        req_ttl = parsed.get("ttlSeconds")
+        if isinstance(req_ttl, (int, float)) and not isinstance(req_ttl, bool):
+            return int(req_ttl)
+    except (json.JSONDecodeError, UnicodeDecodeError, TypeError, ValueError):
+        return None
+    return None
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt: str, *args) -> None:  # noqa: A003
         sys_stderr = __import__("sys").stderr
@@ -76,6 +94,10 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0].rstrip("/")
 
         if path.endswith("/cancel") and "/api/v1/auth-attempts/" in path:
+            if MODE == "cancel_fail":
+                # 5xx — PAM must keep its wait outcome (EXPIRED/TIMEOUT/…).
+                self.send_error(503)
+                return
             # Idempotent for clients: already-final → 409 (PAM ignores outcome).
             self._json(200, {"status": "EXPIRED", "cancelled": True})
             return
@@ -87,19 +109,30 @@ class Handler(BaseHTTPRequestHandler):
         if MODE == "slow_create":
             time.sleep(SLOW_SECS)
 
+        req_ttl = _parse_req_ttl(body)
+
+        if MODE == "legacy_create":
+            # Pre-ttlSeconds server: ignore request field; no ttlSeconds/expiresAt.
+            resp = {
+                "authAttemptId": 9001,
+                "status": "PENDING",
+                "authAttemptChallenge": CHALLENGE,
+            }
+            self._json(201, resp)
+            return
+
         applied_ttl = 120
-        if body:
-            try:
-                parsed = json.loads(body.decode("utf-8"))
-                req_ttl = parsed.get("ttlSeconds")
-                if isinstance(req_ttl, (int, float)) and not isinstance(req_ttl, bool):
-                    applied_ttl = min(int(req_ttl), GLOBAL_TTL_CAP)
-                    if applied_ttl < 15:
-                        # Mirror PR-A: <15 → 400 (PAM should never send this).
-                        self.send_error(400)
-                        return
-            except (json.JSONDecodeError, UnicodeDecodeError, TypeError, ValueError):
-                pass
+        if MODE == "applied_shrink":
+            if req_ttl is None:
+                applied_ttl = APPLIED_TTL
+            else:
+                applied_ttl = min(req_ttl, APPLIED_TTL, GLOBAL_TTL_CAP)
+        elif req_ttl is not None:
+            applied_ttl = min(req_ttl, GLOBAL_TTL_CAP)
+            if applied_ttl < 15:
+                # Mirror PR-A: <15 → 400 (PAM should never send this).
+                self.send_error(400)
+                return
 
         resp = {
             "authAttemptId": 9001,
@@ -130,7 +163,7 @@ class Handler(BaseHTTPRequestHandler):
                 },
             )
             return
-        if MODE == "expired":
+        if MODE in ("expired", "cancel_fail"):
             self._json(
                 200,
                 {
@@ -154,6 +187,7 @@ class Handler(BaseHTTPRequestHandler):
                 },
             )
             return
+        # ok / legacy_create / applied_shrink / no_challenge / slow_create
         self._json(
             200,
             {
@@ -172,7 +206,11 @@ def main() -> None:
     except OSError:
         pass
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
-    print(f"stub mode={MODE} listening on :{PORT} req_log={REQ_LOG}", flush=True)
+    print(
+        f"stub mode={MODE} listening on :{PORT} req_log={REQ_LOG} "
+        f"applied_ttl={APPLIED_TTL}",
+        flush=True,
+    )
     server.serve_forever()
 
 

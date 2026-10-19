@@ -54,11 +54,15 @@ trap cleanup EXIT
 start_stub() {
   local mode="$1"
   local slow="${2:-3}"
+  local applied="${3:-30}"
   stop_stub
   docker exec "${CONTAINER}" sh -c "rm -f '${STUB_REQ_LOG}'; : >'${STUB_REQ_LOG}'" || true
+  # Bind-mount host scripts into the running CI/runtime container is not
+  # available — copy the stub from the image workspace path if present, else
+  # from the repo bind used by up.sh. ci-m1 copies scripts into the image.
   docker exec -d "${CONTAINER}" sh -c \
     "EZKEY_STUB_MODE='${mode}' EZKEY_STUB_PORT='${STUB_PORT}' EZKEY_STUB_SLOW_SECS='${slow}' \
-     EZKEY_STUB_REQ_LOG='${STUB_REQ_LOG}' \
+     EZKEY_STUB_APPLIED_TTL='${applied}' EZKEY_STUB_REQ_LOG='${STUB_REQ_LOG}' \
      python3 /opt/pam-ezkey/scripts/integration-api-stub.py \
      >/tmp/ezkey-pam-stub-tmo.log 2>&1 & echo \$! >'${STUB_PID_FILE}'"
   local i
@@ -68,6 +72,34 @@ start_stub() {
   done
   fail "stub :${STUB_PORT} not listening"
   return 1
+}
+
+ssh_attempt_once() {
+  set +e
+  ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+    -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
+    -o PasswordAuthentication=no -o ConnectTimeout=10 \
+    "${SSH_USER}@127.0.0.1" 'echo X' >/dev/null 2>&1
+  set -e
+}
+
+wait_attempt_line() {
+  local before="$1"
+  local after
+  local _
+  for _ in $(seq 1 50); do
+    after="$(docker exec "${CONTAINER}" sh -c \
+      "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+    after="${after:-0}"
+    [ "$((after - before))" -ge 1 ] && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
+last_attempt_line() {
+  docker exec "${CONTAINER}" sh -c \
+    "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true
 }
 
 stub_wait_timeout_param() {
@@ -513,27 +545,125 @@ fi
 stop_stub
 restore_conf
 
-# --- constants linkage (#895) ---
-if grep -q 'EZKEY_AUTH_BUDGET_SECS 105' "${SCRIPT_DIR}/../src/ezkey_config.h" \
-  && grep -q 'EZKEY_DEFAULT_WAIT_TIMEOUT 90' "${SCRIPT_DIR}/../src/ezkey_config.h" \
-  && grep -q 'EZKEY_MIN_TTL_SECONDS 15' "${SCRIPT_DIR}/../src/ezkey_config.h" \
-  && grep -q 'EZKEY_MAX_WAIT_TIMEOUT 90' "${SCRIPT_DIR}/../src/ezkey_config.h" \
-  && grep -q 'EZKEY_MAX_API_TIMEOUT 10' "${SCRIPT_DIR}/../src/ezkey_config.h" \
-  && grep -q 'EZKEY_MAX_ENTER_SECS 25' "${SCRIPT_DIR}/../src/ezkey_config.h" \
-  && grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
-  && grep -q '/cancel' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
-  && ! grep -E '\bsigaction\s*\(|\balarm\s*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
-  && grep -q 'LoginGraceTime 120' "${SCRIPT_DIR}/../sshd_config"; then
-  ok "budget 105 / default wait 90 / min TTL 15 / max wait 90; ttlSeconds+cancel; no signals"
+# --- B1 legacy_create: no ttlSeconds/expiresAt in response → fall back to wait_timeout ---
+start_stub legacy_create
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=45/' '${CONF}'; \
+   sed -i 's/^api_timeout=.*/api_timeout=5/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'; \
+   : > /var/log/ezkey-pam/debug.out"
+before="$(docker exec "${CONTAINER}" sh -c \
+  "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+before="${before:-0}"
+ssh_attempt_once
+wait_attempt_line "${before}" || true
+ATTEMPT="$(last_attempt_line)"
+GOT_TO="$(stub_wait_timeout_param)"
+GOT_TTL="$(stub_create_ttl)"
+REQ_LOG_SNAP="$(docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null || true)"
+echo "legacy_create ttl_sent=${GOT_TTL} ?timeout=${GOT_TO} attempt=${ATTEMPT}" \
+  | tee -a "${PROOF}"
+echo "${REQ_LOG_SNAP}" | tee -a "${PROOF}" || true
+# PAM still sends ttlSeconds; legacy response has none → wait uses conf=45.
+OUT="$(docker exec "${CONTAINER}" sh -c 'tail -n 20 /var/log/ezkey-pam/debug.out' || true)"
+echo "legacy_create debug.out=${OUT}" | tee -a "${PROOF}"
+if [ "${GOT_TTL}" = "45" ] && [ "${GOT_TO}" = "45" ] \
+  && echo "${ATTEMPT}" | grep -q 'result=SUCCESS' \
+  && echo "${OUT}" | grep -Eq 'applied_ttl=45'; then
+  ok "legacy_create: no ttl/expiresAt in response → fallback wait_timeout=45 + SUCCESS"
 else
-  fail "missing #895 constants or sigaction/alarm still present"
+  fail "legacy_create expected ttl=45 timeout=45 applied_ttl=45 SUCCESS, got ttl='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+fi
+stop_stub
+restore_conf
+
+# --- B1 cancel_fail: cancel 503 must not change PAM EXPIRED outcome ---
+start_stub cancel_fail
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=30/' '${CONF}'; \
+   sed -i 's/^api_timeout=.*/api_timeout=5/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'; \
+   : > /var/log/ezkey-pam/debug.err; : > /var/log/ezkey-pam/debug.out"
+before="$(docker exec "${CONTAINER}" sh -c \
+  "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+before="${before:-0}"
+ssh_attempt_once
+wait_attempt_line "${before}" || true
+ATTEMPT="$(last_attempt_line)"
+CANCEL_N="$(stub_saw_cancel)"
+ERR="$(docker exec "${CONTAINER}" sh -c 'tail -n 12 /var/log/ezkey-pam/debug.err' || true)"
+OUT="$(docker exec "${CONTAINER}" sh -c 'tail -n 12 /var/log/ezkey-pam/debug.out' || true)"
+echo "cancel_fail attempt=${ATTEMPT} cancel=${CANCEL_N}" | tee -a "${PROOF}"
+echo "cancel_fail err=${ERR}" | tee -a "${PROOF}"
+echo "cancel_fail out=${OUT}" | tee -a "${PROOF}"
+# Filelog sanitizes spaces → underscores; HTTP 503 still logged; summary stays EXPIRED.
+if echo "${ATTEMPT}" | grep -q 'result=EXPIRED' \
+  && [ "${CANCEL_N}" -ge 1 ] \
+  && echo "${OUT}${ERR}" | grep -Eqi 'cancel_best-effort.*HTTP_503|HTTP_503|cancel_best-effort_failed'; then
+  ok "cancel_fail 503: result=EXPIRED unchanged + cancel still attempted"
+else
+  fail "cancel_fail expected EXPIRED+cancel 503 log: ${ATTEMPT} cancel=${CANCEL_N} / ${OUT} ${ERR}"
+fi
+stop_stub
+restore_conf
+
+# --- applied TTL < requested: wait aligns on applied (stub returns 30, conf 90) ---
+start_stub applied_shrink 3 30
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=90/' '${CONF}'; \
+   sed -i 's/^api_timeout=.*/api_timeout=5/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+before="$(docker exec "${CONTAINER}" sh -c \
+  "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+before="${before:-0}"
+ssh_attempt_once
+wait_attempt_line "${before}" || true
+ATTEMPT="$(last_attempt_line)"
+GOT_TO="$(stub_wait_timeout_param)"
+GOT_TTL="$(stub_create_ttl)"
+echo "applied_shrink sent_ttl=${GOT_TTL} ?timeout=${GOT_TO} attempt=${ATTEMPT}" \
+  | tee -a "${PROOF}"
+docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null | tee -a "${PROOF}" || true
+if [ "${GOT_TTL}" = "90" ] && [ "${GOT_TO}" = "30" ] \
+  && echo "${ATTEMPT}" | grep -q 'result=SUCCESS'; then
+  ok "applied_shrink: asked ttlSeconds=90, wait aligned on applied 30"
+else
+  fail "applied_shrink expected sent=90 timeout=30 SUCCESS, got sent='${GOT_TTL}' to='${GOT_TO}' ${ATTEMPT}"
+fi
+stop_stub
+restore_conf
+
+# --- budget / planned-wait harness (replaces grep-only AUTH_BUDGET 105 check) ---
+# rem-too-small → −1 is the UNAVAIL-before-create path; executable in make test-budget.
+if make -C "${SCRIPT_DIR}/.." test-budget >/tmp/pam-budget-harness.out 2>&1; then
+  cat /tmp/pam-budget-harness.out | tee -a "${PROOF}"
+  ok "budget harness: AUTH_BUDGET 105 + rem≤30 → planned -1 (UNAVAIL before create)"
+else
+  cat /tmp/pam-budget-harness.out | tee -a "${PROOF}" || true
+  fail "budget harness failed"
 fi
 
-if grep -q '^wait_polling=2' "${SCRIPT_DIR}/../config/pam_ezkey.conf" \
+if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -q '/cancel' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && ! grep -E '\bsigaction\s*\(|\balarm\s*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -q 'LoginGraceTime 120' "${SCRIPT_DIR}/../sshd_config" \
+  && grep -q '^wait_polling=2' "${SCRIPT_DIR}/../config/pam_ezkey.conf" \
   && grep -q '^wait_timeout=90' "${SCRIPT_DIR}/../config/pam_ezkey.conf"; then
-  ok "sample conf wait_timeout=90 wait_polling=2"
+  ok "ttlSeconds+cancel present; no signals; sample conf wait_timeout=90"
 else
-  fail "sample conf defaults missing/wrong"
+  fail "missing linkage guards (ttlSeconds/cancel/signals/sample conf)"
 fi
 
 echo "" | tee -a "${PROOF}"

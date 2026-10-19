@@ -41,6 +41,7 @@
 #include <security/pam_modules.h>
 #include <security/pam_ext.h>
 #include <security/pam_appl.h>
+#include "ezkey_budget.h"
 #include "ezkey_challenge.h"
 #include "ezkey_config.h"
 #include "ezkey_filelog.h"
@@ -99,7 +100,6 @@ static void log_attempt_summary(const char *username, long auth_attempt_id,
                                 int lab_http);
 static long elapsed_ms(const struct timespec *start);
 static long remaining_budget_secs(const struct timespec *auth_started);
-static int clamp_wait_timeout(int value);
 static int compute_planned_wait(const EzkeyConfig *cfg,
                                 const struct timespec *auth_started);
 static char *build_create_body(const EzkeyConfig *cfg, const char *username,
@@ -213,8 +213,8 @@ static void apply_config_key(EzkeyConfig *cfg, const char *key,
     } else if (strcmp(key, "secret_key") == 0) {
         set_cfg_str(cfg->secret_key, sizeof(cfg->secret_key), value);
     } else if (strcmp(key, "wait_timeout") == 0) {
-        cfg->wait_timeout =
-            clamp_wait_timeout(parse_positive_int(value, cfg->wait_timeout));
+        cfg->wait_timeout = ezkey_clamp_wait_timeout(
+            parse_positive_int(value, cfg->wait_timeout));
     } else if (strcmp(key, "wait_polling") == 0) {
         cfg->wait_polling = parse_positive_int(value, cfg->wait_polling);
     } else if (strcmp(key, "api_timeout") == 0) {
@@ -332,53 +332,23 @@ static void parse_module_args(int argc, const char **argv, EzkeyConfig *cfg) {
         } else if (strncmp(argv[i], "conf=", 5) == 0) {
             set_cfg_str(cfg->config_file, sizeof(cfg->config_file), argv[i] + 5);
         } else if (strncmp(argv[i], "wait_timeout=", 13) == 0) {
-            cfg->wait_timeout =
-                clamp_wait_timeout(parse_positive_int(argv[i] + 13,
-                                                      cfg->wait_timeout));
+            cfg->wait_timeout = ezkey_clamp_wait_timeout(
+                parse_positive_int(argv[i] + 13, cfg->wait_timeout));
         }
     }
 }
 
 /**
- * Clamp conf / pam.d wait_timeout into the Integration API ttlSeconds window
- * (15..90). Values below 15 would 400 on create; above 90 exceed LoginGraceTime
- * margin (EZKEY_MAX_WAIT_TIMEOUT).
- */
-static int clamp_wait_timeout(int value) {
-    if (value < EZKEY_MIN_TTL_SECONDS) {
-        return EZKEY_MIN_TTL_SECONDS;
-    }
-    if (value > EZKEY_MAX_WAIT_TIMEOUT) {
-        return EZKEY_MAX_WAIT_TIMEOUT;
-    }
-    return value;
-}
-
-/**
- * Planned /wait duration before create: min(conf, rem − curl_slack), still
- * ≥ EZKEY_MIN_TTL_SECONDS so ttlSeconds is server-legal. Returns −1 when the
- * monotonic budget cannot cover a legal TTL.
+ * Planned /wait duration before create from remaining monotonic budget.
+ * See ezkey_planned_wait_from_rem (UNAVAIL before create when rem too small).
  */
 static int compute_planned_wait(const EzkeyConfig *cfg,
                                 const struct timespec *auth_started) {
-    long rem;
-    int planned;
-
     if (cfg == NULL) {
         return -1;
     }
-    rem = remaining_budget_secs(auth_started);
-    planned = cfg->wait_timeout;
-    if (rem <= (long)EZKEY_CURL_WAIT_SLACK + (long)EZKEY_MIN_TTL_SECONDS) {
-        return -1;
-    }
-    if ((long)planned > rem - (long)EZKEY_CURL_WAIT_SLACK) {
-        planned = (int)(rem - (long)EZKEY_CURL_WAIT_SLACK);
-    }
-    if (planned < EZKEY_MIN_TTL_SECONDS) {
-        return -1;
-    }
-    return planned;
+    return ezkey_planned_wait_from_rem(cfg->wait_timeout,
+                                       remaining_budget_secs(auth_started));
 }
 
 static void wipe_cfg_secrets(EzkeyConfig *cfg) {
