@@ -325,7 +325,7 @@ EZKEY_CONFIRM_DELETE=ezkey-online \
   ./scripts/lightsail/delete-instance.sh --name ezkey-online --apply --i-mean-it
 ```
 
-`--apply` requires an explicit `--name` (no silent default). Deleting community instance `ezkey-online` also requires `EZKEY_CONFIRM_DELETE=ezkey-online`. The script prints a static-IP billing warning on dry-run and apply; it never calls `release-static-ip`.
+`--apply` requires an explicit `--name` (no silent default). `EZKEY_CONFIRM_DELETE=ezkey-online` is required when the normalized instance name is `ezkey-online` (trim + case-insensitive) **or** when static IP `ezkey-online-community` is attached to the target (read via `get-static-ip` before delete). The script prints a static-IP billing warning on dry-run and apply; it never calls `release-static-ip`.
 
 After delete, static IP `ezkey-online-community` detaches and stays allocated (~USD 3.60/month while unattached). **Re-attach it immediately after recreate** (keeps **`<static-ip ezkey-online-community>`**); **never release `ezkey-online-community`**. Then re-run `open-ports.sh` with the Cloudflare 443 posture (see § Open ports — do not reopen 443 to `0.0.0.0/0`).
 

@@ -2,6 +2,10 @@
 # Dry-run / unit checks for Lightsail SSH target resolution (#812).
 # Community-only: --target community → Host ezkey-online.
 # Run from repo root: ./scripts/lightsail/target-aware.test.sh
+#
+# Safety: a fake `aws` is prepended to PATH for the whole run. It records
+# invocations and exits non-zero on any delete-instance so a regressing
+# delete guard cannot destroy a real Lightsail VM (e.g. on Rootbeer).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -16,9 +20,75 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 OUT="${TMP}/out"
 ERR="${TMP}/err"
+FAKE_AWS_BIN="${TMP}/fake-bin"
+FAKE_AWS_LOG="${TMP}/fake-aws.log"
+mkdir -p "${FAKE_AWS_BIN}"
+: >"${FAKE_AWS_LOG}"
+
+# Isolate from workstation AWS config / credentials (never hit real AWS).
+export AWS_PROFILE="ezkey-test-no-such-profile"
+export AWS_DEFAULT_PROFILE="ezkey-test-no-such-profile"
+export AWS_CONFIG_FILE="${TMP}/aws-config-empty"
+export AWS_SHARED_CREDENTIALS_FILE="${TMP}/aws-credentials-empty"
+: >"${AWS_CONFIG_FILE}"
+: >"${AWS_SHARED_CREDENTIALS_FILE}"
+unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN || true
+
+# Optional: which instance name get-static-ip reports as attachedTo (empty = not attached).
+export FAKE_AWS_STATIC_IP_ATTACHED_TO="${FAKE_AWS_STATIC_IP_ATTACHED_TO:-}"
+export FAKE_AWS_LOG
+
+cat >"${FAKE_AWS_BIN}/aws" <<'FAKE_AWS'
+#!/usr/bin/env bash
+set -euo pipefail
+log="${FAKE_AWS_LOG:?FAKE_AWS_LOG unset}"
+printf '%s\n' "$*" >>"${log}"
+for arg in "$@"; do
+  if [[ "${arg}" == "delete-instance" ]]; then
+    echo "error: FAKE AWS refused delete-instance (test harness): $*" >&2
+    exit 99
+  fi
+done
+# get-static-ip — JSON for attachment checks (read-only path before delete).
+for arg in "$@"; do
+  if [[ "${arg}" == "get-static-ip" ]]; then
+    attached="${FAKE_AWS_STATIC_IP_ATTACHED_TO:-}"
+    if [[ -n "${attached}" ]]; then
+      printf '%s\n' "{\"staticIp\":{\"name\":\"ezkey-online-community\",\"isAttached\":true,\"attachedTo\":\"${attached}\"}}"
+    else
+      printf '%s\n' '{"staticIp":{"name":"ezkey-online-community","isAttached":false}}'
+    fi
+    exit 0
+  fi
+done
+# Other aws lightsail subcommands used by dry-run paths: succeed silently.
+exit 0
+FAKE_AWS
+chmod +x "${FAKE_AWS_BIN}/aws"
+export PATH="${FAKE_AWS_BIN}:${PATH}"
+
+# Prove the harness shadows any real aws.
+if ! command -v aws >/dev/null 2>&1; then
+  echo "FAIL: fake aws not on PATH" >&2
+  exit 1
+fi
+if [[ "$(command -v aws)" != "${FAKE_AWS_BIN}/aws" ]]; then
+  echo "FAIL: expected fake aws at ${FAKE_AWS_BIN}/aws, got $(command -v aws)" >&2
+  exit 1
+fi
 
 pass=0
 fail=0
+
+fake_aws_log_has() {
+  local needle="$1"
+  grep -qF -- "${needle}" "${FAKE_AWS_LOG}"
+}
+
+fake_aws_log_lacks() {
+  local needle="$1"
+  ! grep -qF -- "${needle}" "${FAKE_AWS_LOG}"
+}
 
 assert_ok() {
   local name="$1"
@@ -219,32 +289,121 @@ assert_ok "create --target community dry-run" bash "${CREATE}" --target communit
 assert_stdout_contains "create dry-run skips get-instance" "skipping get-instance"
 assert_fail "create --target legacy refused" bash "${CREATE}" --target legacy
 
-# --- delete-instance: static-IP warning + apply guards ---
+# --- delete-instance: static-IP warning + apply guards (fake aws only) ---
+: >"${FAKE_AWS_LOG}"
 unset EZKEY_CONFIRM_DELETE || true
+export FAKE_AWS_STATIC_IP_ATTACHED_TO=""
+
 assert_ok "delete dry-run shows static-IP warning" bash "${DELETE}" --name ezkey-online
 assert_stdout_contains "delete dry-run warns static IP" "WARNING: Deleting a Lightsail instance detaches"
 assert_stdout_contains "delete dry-run never release" "never release"
 assert_stdout_contains "delete dry-run mentions community confirm" "EZKEY_CONFIRM_DELETE=ezkey-online"
+if fake_aws_log_lacks "delete-instance"; then
+  echo "PASS: delete dry-run never called delete-instance"
+  pass=$((pass + 1))
+else
+  echo "FAIL: delete dry-run must not call delete-instance" >&2
+  cat "${FAKE_AWS_LOG}" >&2 || true
+  fail=$((fail + 1))
+fi
 
 assert_fail "delete --apply without --name fails" bash "${DELETE}" --apply --i-mean-it
 assert_stderr_contains "delete apply requires --name" "--apply requires an explicit --name"
 
+: >"${FAKE_AWS_LOG}"
 assert_fail "delete community apply without EZKEY_CONFIRM_DELETE fails" \
   bash "${DELETE}" --name ezkey-online --apply --i-mean-it
 assert_stderr_contains "delete community confirm required" "EZKEY_CONFIRM_DELETE=ezkey-online"
+if fake_aws_log_lacks "delete-instance"; then
+  echo "PASS: community delete without confirm never reached delete-instance"
+  pass=$((pass + 1))
+else
+  echo "FAIL: community delete without confirm called delete-instance" >&2
+  cat "${FAKE_AWS_LOG}" >&2 || true
+  fail=$((fail + 1))
+fi
+
+: >"${FAKE_AWS_LOG}"
+assert_fail "delete EZKEY-ONLINE (case) without confirm fails" \
+  bash "${DELETE}" --name 'EZKEY-ONLINE' --apply --i-mean-it
+assert_stderr_contains "delete case-normalize confirm" "EZKEY_CONFIRM_DELETE=ezkey-online"
+if fake_aws_log_lacks "delete-instance"; then
+  echo "PASS: case-variant name without confirm never reached delete-instance"
+  pass=$((pass + 1))
+else
+  echo "FAIL: case-variant delete without confirm called delete-instance" >&2
+  fail=$((fail + 1))
+fi
+
+: >"${FAKE_AWS_LOG}"
+assert_fail "delete spaced name without confirm fails" \
+  bash "${DELETE}" --name '  ezkey-online  ' --apply --i-mean-it
+assert_stderr_contains "delete trim-normalize confirm" "EZKEY_CONFIRM_DELETE=ezkey-online"
+
+: >"${FAKE_AWS_LOG}"
+export FAKE_AWS_STATIC_IP_ATTACHED_TO="lab-scratch"
+assert_fail "delete attached-static-ip instance without confirm fails" \
+  bash "${DELETE}" --name lab-scratch --apply --i-mean-it
+assert_stderr_contains "delete attached static IP confirm" "EZKEY_CONFIRM_DELETE=ezkey-online"
+if fake_aws_log_has "get-static-ip"; then
+  echo "PASS: attachment check called get-static-ip"
+  pass=$((pass + 1))
+else
+  echo "FAIL: expected get-static-ip before delete confirm" >&2
+  cat "${FAKE_AWS_LOG}" >&2 || true
+  fail=$((fail + 1))
+fi
+if fake_aws_log_lacks "delete-instance"; then
+  echo "PASS: attached-static-ip without confirm never reached delete-instance"
+  pass=$((pass + 1))
+else
+  echo "FAIL: attached-static-ip without confirm called delete-instance" >&2
+  fail=$((fail + 1))
+fi
+
+: >"${FAKE_AWS_LOG}"
+export FAKE_AWS_STATIC_IP_ATTACHED_TO=""
+# With confirm, apply reaches delete-instance; fake aws must refuse (exit 99).
+assert_fail "delete community with confirm hits fake aws delete refusal" \
+  env EZKEY_CONFIRM_DELETE=ezkey-online bash "${DELETE}" --name ezkey-online --apply --i-mean-it
+assert_stderr_contains "fake aws blocks delete-instance" "FAKE AWS refused delete-instance"
+if fake_aws_log_has "delete-instance"; then
+  echo "PASS: confirmed delete attempted delete-instance (blocked by fake aws)"
+  pass=$((pass + 1))
+else
+  echo "FAIL: confirmed delete should attempt delete-instance against fake aws" >&2
+  cat "${FAKE_AWS_LOG}" >&2 || true
+  fail=$((fail + 1))
+fi
 
 (
   # shellcheck source=common.sh
   source "${COMMON}"
+  export FAKE_AWS_STATIC_IP_ATTACHED_TO=""
+  [[ "$(lightsail_normalize_instance_name '  EZKEY-ONLINE  ')" == "ezkey-online" ]]
+  lightsail_is_community_instance_name ' EZKEY-ONLINE ' || exit 1
   if (lightsail_require_community_delete_confirm "ezkey-online") 2>"${ERR}"; then
     echo "FAIL: community delete confirm should die without env" >&2
     exit 1
   fi
   grep -q 'EZKEY_CONFIRM_DELETE=ezkey-online' "${ERR}"
+  if (lightsail_require_community_delete_confirm "  EZKEY-ONLINE  ") 2>"${ERR}"; then
+    echo "FAIL: normalized community name should require confirm" >&2
+    exit 1
+  fi
   EZKEY_CONFIRM_DELETE=ezkey-online
   lightsail_require_community_delete_confirm "ezkey-online"
   lightsail_require_community_delete_confirm "other-instance"
-  echo "PASS: community delete confirm helper"
+  export FAKE_AWS_STATIC_IP_ATTACHED_TO="other-instance"
+  unset EZKEY_CONFIRM_DELETE || true
+  if (lightsail_require_community_delete_confirm "other-instance") 2>"${ERR}"; then
+    echo "FAIL: static-IP attachment should require confirm" >&2
+    exit 1
+  fi
+  grep -q 'EZKEY_CONFIRM_DELETE=ezkey-online' "${ERR}"
+  EZKEY_CONFIRM_DELETE=ezkey-online
+  lightsail_require_community_delete_confirm "other-instance"
+  echo "PASS: community delete confirm helper (normalize + static IP)"
 ) && pass=$((pass + 1)) || fail=$((fail + 1))
 
 echo

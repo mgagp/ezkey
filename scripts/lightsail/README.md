@@ -18,5 +18,6 @@ export AWS_PROFILE=ezkey-lightsail
 ./scripts/lightsail/bootstrap-host.sh --target community --dry-run
 ./scripts/lightsail/status.sh --help
 ./scripts/lightsail/delete-instance.sh --help
-# Dry-run target checks: ./scripts/lightsail/target-aware.test.sh
+# Target + delete-guard tests (fake aws; never hits real AWS):
+./scripts/lightsail/target-aware.test.sh
 ```

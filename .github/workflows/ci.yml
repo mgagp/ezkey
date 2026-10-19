@@ -37,6 +37,7 @@ jobs:
       mobile: ${{ steps.resolve.outputs.mobile }}
       cli-python: ${{ steps.resolve.outputs.cli-python }}
       ezkey-pam: ${{ steps.resolve.outputs.ezkey-pam }}
+      lightsail: ${{ steps.resolve.outputs.lightsail }}
       workflows: ${{ steps.resolve.outputs.workflows }}
     steps:
       - name: Checkout
@@ -91,6 +92,11 @@ jobs:
               - 'ezkey-cli-python/**'
             ezkey-pam:
               - 'ezkey-pam/**'
+            lightsail:
+              - 'scripts/lightsail/**'
+              - 'experimental-hybrid/scripts/export-backend-images-to-lightsail.sh'
+              - 'experimental-hybrid/scripts/full-exp-environment-upgrade.sh'
+              - 'docs/lightsail/**'
 
       # Manual runs must exercise every suite; path filters alone would skip all
       # and leave ci-gate green with nothing checked.
@@ -104,6 +110,7 @@ jobs:
             echo "mobile=true" >> "$GITHUB_OUTPUT"
             echo "cli-python=true" >> "$GITHUB_OUTPUT"
             echo "ezkey-pam=true" >> "$GITHUB_OUTPUT"
+            echo "lightsail=true" >> "$GITHUB_OUTPUT"
             echo "workflows=true" >> "$GITHUB_OUTPUT"
             echo "Forced all suites (workflow_dispatch)"
           else
@@ -112,6 +119,7 @@ jobs:
             echo "mobile=${{ steps.filter.outputs.mobile }}" >> "$GITHUB_OUTPUT"
             echo "cli-python=${{ steps.filter.outputs.cli-python }}" >> "$GITHUB_OUTPUT"
             echo "ezkey-pam=${{ steps.filter.outputs.ezkey-pam }}" >> "$GITHUB_OUTPUT"
+            echo "lightsail=${{ steps.filter.outputs.lightsail }}" >> "$GITHUB_OUTPUT"
             echo "workflows=${{ steps.filter.outputs.workflows }}" >> "$GITHUB_OUTPUT"
           fi
 
@@ -343,11 +351,26 @@ jobs:
       - name: M1 conf-security in CI (B1 / 0000 / non-root / URL absent)
         run: ./scripts/ci-m1-conf-security.sh
 
+  lightsail:
+    name: lightsail
+    needs: changes
+    if: needs.changes.outputs.lightsail == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Lightsail target-aware + delete guards (fake aws)
+        run: ./scripts/lightsail/target-aware.test.sh
+
   # Single required-check candidate. Skipped path jobs count as success for the gate;
   # failure or cancellation of any needed job fails the gate.
   ci-gate:
     name: ci-gate
-    needs: [changes, admin-ui, backend, mobile, cli-python, ezkey-pam]
+    needs: [changes, admin-ui, backend, mobile, cli-python, ezkey-pam, lightsail]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -361,6 +384,7 @@ jobs:
           echo "mobile=${{ needs.mobile.result }}"
           echo "cli-python=${{ needs.cli-python.result }}"
           echo "ezkey-pam=${{ needs.ezkey-pam.result }}"
+          echo "lightsail=${{ needs.lightsail.result }}"
 
           if [[ "${{ needs.changes.result }}" != "success" ]]; then
             echo "::error::changes job did not succeed (${{ needs.changes.result }})"
@@ -372,7 +396,8 @@ jobs:
             "backend:${{ needs.backend.result }}" \
             "mobile:${{ needs.mobile.result }}" \
             "cli-python:${{ needs.cli-python.result }}" \
-            "ezkey-pam:${{ needs.ezkey-pam.result }}"; do
+            "ezkey-pam:${{ needs.ezkey-pam.result }}" \
+            "lightsail:${{ needs.lightsail.result }}"; do
             name="${pair%%:*}"
             result="${pair#*:}"
             case "$result" in

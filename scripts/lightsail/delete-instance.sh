@@ -42,8 +42,9 @@ Safety:
   Default is dry-run (prints planned aws CLI only).
   Actual delete requires BOTH --apply and --i-mean-it.
   --apply requires an explicit --name (no silent default).
-  Deleting community instance ezkey-online also requires
-  EZKEY_CONFIRM_DELETE=ezkey-online.
+  Deleting the community instance (name ezkey-online, case/space
+  insensitive) or any instance with static IP ezkey-online-community
+  attached also requires EZKEY_CONFIRM_DELETE=ezkey-online.
   Never releases static IPs (see WARNING below).
 
 Options:
@@ -54,7 +55,8 @@ Options:
   -h, --help        Show this help
 
 Environment: AWS_PROFILE, LIGHTSAIL_REGION, LIGHTSAIL_INSTANCE_NAME,
-  EZKEY_CONFIRM_DELETE (must be ezkey-online when deleting that instance)
+  EZKEY_CONFIRM_DELETE (must be ezkey-online for community name or when
+  static IP ezkey-online-community is attached to the target)
 EOF
   echo
   lightsail_print_defaults
@@ -100,8 +102,8 @@ echo "Plan: delete Lightsail instance '${INSTANCE_NAME}' (region=${LIGHTSAIL_REG
 
 if [[ -z "${APPLY}" || -z "${I_MEAN_IT}" ]]; then
   echo "Dry-run / incomplete confirm. Delete requires: --apply --i-mean-it"
-  if [[ "${INSTANCE_NAME}" == "${LIGHTSAIL_SSH_HOST_COMMUNITY}" ]]; then
-    echo "Community instance: apply also requires EZKEY_CONFIRM_DELETE=${LIGHTSAIL_SSH_HOST_COMMUNITY}"
+  if lightsail_is_community_instance_name "${INSTANCE_NAME}"; then
+    echo "Community instance: apply also requires EZKEY_CONFIRM_DELETE=${LIGHTSAIL_COMMUNITY_INSTANCE_NAME}"
   fi
   lightsail_print_dry_run_aws "${CMD_ARGS[@]}"
   if [[ -n "${APPLY}" && -z "${I_MEAN_IT}" ]]; then
@@ -113,10 +115,10 @@ if [[ -z "${APPLY}" || -z "${I_MEAN_IT}" ]]; then
   exit 0
 fi
 
-lightsail_require_community_delete_confirm "${INSTANCE_NAME}"
 lightsail_require_aws_cli
+lightsail_require_community_delete_confirm "${INSTANCE_NAME}"
 echo "Deleting instance '${INSTANCE_NAME}'…"
 lightsail_warn_static_ip_on_delete
 lightsail_aws "${CMD_ARGS[@]}"
 echo "Delete requested. Confirm with: ./scripts/lightsail/status.sh --name ${INSTANCE_NAME}"
-echo "Reminder: re-attach static IP ezkey-online-community if this was the community host; never release it."
+echo "Reminder: re-attach static IP ${LIGHTSAIL_COMMUNITY_STATIC_IP_NAME} if this was the community host; never release it."

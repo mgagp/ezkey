@@ -36,6 +36,10 @@ _EZKEY_LIGHTSAIL_COMMON_SOURCED=1
 
 # Canonical OpenSSH Host alias — map from --target; do not use as a silent default.
 readonly LIGHTSAIL_SSH_HOST_COMMUNITY="ezkey-online"
+# Canonical Lightsail instance name for the community host (delete confirm compares to this).
+readonly LIGHTSAIL_COMMUNITY_INSTANCE_NAME="ezkey-online"
+# Operator-managed static IP name attached to the community instance (never released by scripts).
+readonly LIGHTSAIL_COMMUNITY_STATIC_IP_NAME="ezkey-online-community"
 
 # Optional: set by lightsail_resolve_ssh_target (community). Empty until resolved.
 LIGHTSAIL_TARGET="${LIGHTSAIL_TARGET:-}"
@@ -159,16 +163,65 @@ lightsail_require_community_wipe_confirm() {
   fi
 }
 
+# Trim leading/trailing whitespace and lowercase an instance name for comparisons.
+lightsail_normalize_instance_name() {
+  local n="$1"
+  n="${n#"${n%%[![:space:]]*}"}"
+  n="${n%"${n##*[![:space:]]}"}"
+  n="${n,,}"
+  printf '%s' "${n}"
+}
+
+# True if normalized name equals the community instance name.
+lightsail_is_community_instance_name() {
+  local normalized
+  normalized="$(lightsail_normalize_instance_name "$1")"
+  [[ "${normalized}" == "${LIGHTSAIL_COMMUNITY_INSTANCE_NAME}" ]]
+}
+
+# True (exit 0) if community static IP is attached to the given instance name.
+# Uses get-static-ip (read-only). Returns 1 when not attached or the IP is missing.
+lightsail_community_static_ip_attached_to() {
+  local instance_name="$1"
+  local normalized json attached_to
+  normalized="$(lightsail_normalize_instance_name "${instance_name}")"
+  [[ -n "${normalized}" ]] || return 1
+  if ! json="$(lightsail_aws get-static-ip --static-ip-name "${LIGHTSAIL_COMMUNITY_STATIC_IP_NAME}" --output json 2>/dev/null)"; then
+    return 1
+  fi
+  attached_to="$(
+    printf '%s' "${json}" | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+static_ip = data.get("staticIp") or {}
+if not static_ip.get("isAttached"):
+    print("")
+    raise SystemExit(0)
+print(static_ip.get("attachedTo") or "")
+'
+  )"
+  [[ -n "${attached_to}" ]] || return 1
+  [[ "$(lightsail_normalize_instance_name "${attached_to}")" == "${normalized}" ]]
+}
+
 # Refuse delete of the community instance unless the operator explicitly confirms.
-# Required when instance name is ezkey-online: EZKEY_CONFIRM_DELETE=ezkey-online.
-# Scripts never release static IP ezkey-online-community.
+# Required when normalized name is ezkey-online, or when static IP
+# ezkey-online-community is attached to the target instance (AWS read).
+# Confirm value: EZKEY_CONFIRM_DELETE=ezkey-online.
+# Scripts never release that static IP.
 lightsail_require_community_delete_confirm() {
   local instance_name="$1"
-  if [[ "${instance_name}" != "${LIGHTSAIL_SSH_HOST_COMMUNITY}" ]]; then
+  local need_confirm=0
+  if lightsail_is_community_instance_name "${instance_name}"; then
+    need_confirm=1
+  elif lightsail_community_static_ip_attached_to "${instance_name}"; then
+    need_confirm=1
+  fi
+  if [[ "${need_confirm}" -eq 0 ]]; then
     return 0
   fi
-  if [[ "${EZKEY_CONFIRM_DELETE:-}" != "${LIGHTSAIL_SSH_HOST_COMMUNITY}" ]]; then
-    lightsail_die "refusing to delete community instance '${instance_name}'. Set EZKEY_CONFIRM_DELETE=${LIGHTSAIL_SSH_HOST_COMMUNITY}. Scripts never release static IP ezkey-online-community — re-attach it after recreate."
+  if [[ "${EZKEY_CONFIRM_DELETE:-}" != "${LIGHTSAIL_COMMUNITY_INSTANCE_NAME}" ]]; then
+    lightsail_die "refusing to delete instance '${instance_name}' (community name or static IP ${LIGHTSAIL_COMMUNITY_STATIC_IP_NAME} attached). Set EZKEY_CONFIRM_DELETE=${LIGHTSAIL_COMMUNITY_INSTANCE_NAME}. Scripts never release that static IP — re-attach it after recreate."
   fi
 }
 
