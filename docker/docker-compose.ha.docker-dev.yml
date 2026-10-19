@@ -7,6 +7,7 @@
 # IMPORTANT:
 # - Do not use this override in staging or production.
 # - Avoid host port collisions with HAProxy stats ports (8085, 9081, 7081).
+# - Host bind is 127.0.0.1 only (same posture as base compose / #905 M1).
 #
 # Usage:
 #   # Windows PowerShell
@@ -18,21 +19,21 @@
 services:
   auth-api-1:
     ports:
-      - "18085:8085"
+      - "127.0.0.1:18085:8085"
   auth-api-2:
     ports:
-      - "28085:8085"
+      - "127.0.0.1:28085:8085"
 
   admin-api-1:
     ports:
-      - "19081:9081"
+      - "127.0.0.1:19081:9081"
   admin-api-2:
     ports:
-      - "29081:9081"
+      - "127.0.0.1:29081:9081"
 
   integration-api-1:
     ports:
-      - "17081:7081"
+      - "127.0.0.1:17081:7081"
   integration-api-2:
     ports:
-      - "27081:7081"
+      - "127.0.0.1:27081:7081"

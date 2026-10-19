@@ -8,6 +8,8 @@ set -euo pipefail
 ROOT="${CHECK_LOCAL_MGMT_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 COMPOSE="${ROOT}/docker/docker-compose.yml"
 DEV="${ROOT}/docker/docker-compose.docker-dev.yml"
+HA_DEV="${ROOT}/docker/docker-compose.ha.docker-dev.yml"
+JMX_DEV="${ROOT}/docker/docker-compose.docker-dev.jmx.yml"
 HA="${ROOT}/docker/docker-compose.ha.yml"
 DOCKERFILE="${ROOT}/docker/Dockerfile"
 HYBRID="${ROOT}/experimental-hybrid/local/docker-compose.yml"
@@ -157,6 +159,50 @@ else
   echo "FAIL: docker-compose.docker-dev.yml must publish management on 127.0.0.1" >&2
   fail=$((fail + 1))
 fi
+
+# HA docker-dev: per-replica management host ports must be loopback-only (#905 M1).
+need_ha_dev_loopback() {
+  local host_port="$1"
+  local container_port="$2"
+  if grep -Eq "127\\.0\\.0\\.1:${host_port}:${container_port}" "$HA_DEV"; then
+    echo "PASS: ha.docker-dev publishes 127.0.0.1:${host_port}:${container_port}"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: docker-compose.ha.docker-dev.yml must publish 127.0.0.1:${host_port}:${container_port}" >&2
+    fail=$((fail + 1))
+  fi
+  # Reject bare host:container publishes (all interfaces).
+  if grep -Eq "^[[:space:]]*-[[:space:]]*\"${host_port}:${container_port}\"" "$HA_DEV"; then
+    echo "FAIL: ha.docker-dev still publishes ${host_port}:${container_port} on all interfaces" >&2
+    fail=$((fail + 1))
+  fi
+}
+
+need_ha_dev_loopback "18085" "8085"
+need_ha_dev_loopback "28085" "8085"
+need_ha_dev_loopback "19081" "9081"
+need_ha_dev_loopback "29081" "9081"
+need_ha_dev_loopback "17081" "7081"
+need_ha_dev_loopback "27081" "7081"
+
+# JMX docker-dev: unauthenticated JMX must be loopback-only (#905 M1).
+need_jmx_dev_loopback() {
+  local port="$1"
+  if grep -Eq "127\\.0\\.0\\.1:${port}:${port}" "$JMX_DEV"; then
+    echo "PASS: jmx docker-dev publishes 127.0.0.1:${port}:${port}"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: docker-compose.docker-dev.jmx.yml must publish 127.0.0.1:${port}:${port}" >&2
+    fail=$((fail + 1))
+  fi
+  if grep -Eq "^[[:space:]]*-[[:space:]]*\"${port}:${port}\"" "$JMX_DEV"; then
+    echo "FAIL: jmx docker-dev still publishes ${port}:${port} on all interfaces" >&2
+    fail=$((fail + 1))
+  fi
+}
+
+need_jmx_dev_loopback "9010"
+need_jmx_dev_loopback "9011"
 
 # HA compose: crypto/demo management publish + in-container health on 9091/8084.
 need_publish "$HA" "9091" "docker-compose.ha.yml"

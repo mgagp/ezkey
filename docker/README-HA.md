@@ -21,7 +21,7 @@ The HA stack runs **2 instances** of each API (**admin-api**, **auth-api**, and 
 │                      ──► Demo App ACME :8082             │
 │                                                          │
 │  HAProxy stats: Admin :9081 | Auth :8085 | Integ :7081   │
-│  docker-dev override publishes per-instance Actuator:    │
+│  docker-dev override (127.0.0.1 only) per-instance Actuator: │
 │    Admin 19081/29081, Auth 18085/28085, Integ 17081/27081│
 └─────────────────────────────────────────────────────────┘
 ```

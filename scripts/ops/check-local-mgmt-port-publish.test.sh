@@ -54,6 +54,8 @@ mkdir -p \
 
 cp "${ROOT}/docker/docker-compose.yml" "${TMP}/docker/"
 cp "${ROOT}/docker/docker-compose.docker-dev.yml" "${TMP}/docker/"
+cp "${ROOT}/docker/docker-compose.ha.docker-dev.yml" "${TMP}/docker/"
+cp "${ROOT}/docker/docker-compose.docker-dev.jmx.yml" "${TMP}/docker/"
 cp "${ROOT}/docker/docker-compose.ha.yml" "${TMP}/docker/"
 cp "${ROOT}/docker/Dockerfile" "${TMP}/docker/"
 cp "${ROOT}/docker/start.sh" "${TMP}/docker/"
@@ -94,6 +96,21 @@ cp "${ROOT}/docker/Dockerfile" "${TMP}/docker/Dockerfile"
 sed -i 's|localhost:9091/actuator/health|localhost:9090/actuator/health|g' "${TMP}/docker/docker-compose.ha.yml"
 
 assert_fail "stale docker-compose.ha.yml crypto health :9090 is rejected" \
+  env CHECK_LOCAL_MGMT_ROOT="${TMP}" bash "${CHECK}"
+
+# #905 M1: bare HA docker-dev management publish (all interfaces) must fail.
+cp "${ROOT}/docker/docker-compose.ha.yml" "${TMP}/docker/docker-compose.ha.yml"
+cp "${ROOT}/docker/docker-compose.ha.docker-dev.yml" "${TMP}/docker/docker-compose.ha.docker-dev.yml"
+sed -i 's|127\.0\.0\.1:18085:8085|18085:8085|g' "${TMP}/docker/docker-compose.ha.docker-dev.yml"
+
+assert_fail "bare ha.docker-dev 18085:8085 (all interfaces) is rejected" \
+  env CHECK_LOCAL_MGMT_ROOT="${TMP}" bash "${CHECK}"
+
+# #905 M1: bare JMX publish must fail.
+cp "${ROOT}/docker/docker-compose.ha.docker-dev.yml" "${TMP}/docker/docker-compose.ha.docker-dev.yml"
+sed -i 's|127\.0\.0\.1:9010:9010|9010:9010|g' "${TMP}/docker/docker-compose.docker-dev.jmx.yml"
+
+assert_fail "bare jmx docker-dev 9010:9010 (all interfaces) is rejected" \
   env CHECK_LOCAL_MGMT_ROOT="${TMP}" bash "${CHECK}"
 
 echo
