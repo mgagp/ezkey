@@ -20,9 +20,9 @@ import tools.jackson.databind.ValueDeserializer;
  * Field-scoped integer deserializer that rejects Jackson's default coercions.
  *
  * <p>Accepts only JSON integer number tokens. Floats ({@code 20.5}), strings ({@code "20"}),
- * booleans, and explicit {@code null} fail deserialization so Spring maps them to the same
- * generic HTTP 400 as other unreadable bodies (#895 Patrick B2). Absent properties are not
- * deserialized and remain {@code null} (server default applies).
+ * booleans, and explicit {@code null} fail deserialization so Spring maps them to the same generic
+ * HTTP 400 as other unreadable bodies (#895 Patrick B2). Absent properties are not deserialized and
+ * remain {@code null} (server default applies).
  *
  * @author Ezkey contributors
  * @since 2026
@@ -51,8 +51,19 @@ public final class StrictIntegerDeserializer extends ValueDeserializer<Integer> 
   }
 
   /**
-   * Explicit JSON {@code null} must fail (same generic 400 path). Absent fields do not invoke this
-   * method — they stay unset so the Integration create default applies.
+   * Absent property → {@code null} so the Integration create server default applies. Must override
+   * because the base {@link ValueDeserializer#getAbsentValue} delegates to {@link #getNullValue}.
+   *
+   * @param ctxt deserialization context
+   * @return {@code null} (use server default)
+   */
+  @Override
+  public Integer getAbsentValue(DeserializationContext ctxt) {
+    return null;
+  }
+
+  /**
+   * Explicit JSON {@code null} must fail (same generic 400 path as float/string).
    *
    * @param ctxt deserialization context
    * @return never returns normally
