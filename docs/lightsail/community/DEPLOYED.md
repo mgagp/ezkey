@@ -20,11 +20,11 @@ actuator/health with no version string are **not** deploy identity.
 | Field | Value |
 |-------|-------|
 | **Surface** | community (ezkey.online) |
-| **Full git SHA** | `435f9cf0f32580bfa3e55f8906d17e5dfc45baab` |
-| **Short SHA** | `435f9cf` |
-| **Deployed at (UTC)** | 2026-09-24T13:07:05Z |
+| **Full git SHA** | `36bac04e833ec359e4453cf17003e207653d454c` |
+| **Short SHA** | `36bac04e` |
+| **Deployed at (UTC)** | 2026-10-20T14:31:00Z |
 | **Operator** | Edgar |
-| **Note** | Pages-only republish for Public alpha SHA chrome (#619); backend VM images unchanged (`*:latest`); fail-closed env overrides already live (#620 posture). GUIDED_TOUR/admin-ui/QR already set. |
+| **Note** | Full backend deploy 2026-10-20 ~14:31–14:33 UTC (10:31–10:33 EDT). Flyway schema version 25; no new migration applied. Image IDs: admin `547e07a91e8f`, auth `e028eab2ab6c`, integration `4203f0871a87`, acme `728769c0560f`. Pre-deploy rollback tag: `rollback-pre-36bac04e`. Host: `<static-ip ezkey-online-community>`. |
 
 ## Host OS
 
