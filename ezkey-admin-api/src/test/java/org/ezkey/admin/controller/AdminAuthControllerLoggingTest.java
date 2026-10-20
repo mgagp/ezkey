@@ -144,7 +144,8 @@ class AdminAuthControllerLoggingTest {
   }
 
   @Test
-  @DisplayName("recovery attempt WARN does not echo CR/LF from username or client IP (LogSanitizer)")
+  @DisplayName(
+      "recovery attempt WARN does not echo CR/LF from username or client IP (LogSanitizer)")
   void recoveryAttemptSanitizesUsernameAndClientIp() {
     when(recoveryService.validateRecoveryCode(INJECTED_USERNAME, SAMPLE_CODE))
         .thenReturn("temp-recovery-token");
