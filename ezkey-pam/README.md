@@ -37,6 +37,8 @@ that owns the API key.
   a **global** `MaxAuthTries 1`, which also counts refused public keys and would
   affect non-MFA users (e.g. `ec2-user`). Without that Match, one SSH login can
   create multiple orphan pending attempts (Edgar retest 2026-10-20 / #908 F9).
+  `install.sh` / entrypoint **warn** when effective `maxauthtries` is not 1;
+  they do not rewrite `sshd_config`.
 - Authpriv **`start`** line at call begin (before create); summary includes
   `timeoutSeconds=`.
 - **R5 (best-effort):** chunked `/wait` + wait-scoped `SIGTERM` (absorbed only
@@ -261,7 +263,16 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
   PAM markers cannot stop a second create (#907 F9 / option A). Edgar’s 2026-10-20
   retest of #908 showed F9 (one SSH login → three auth requests) is fixed **only**
   when `MaxAuthTries 1` is inside the MFA `Match` (other users such as `ec2-user`
-  stay on the global try budget). This step is **mandatory** for every host install:
+  stay on the global try budget). This step is **mandatory** for every host install
+  — `install.sh` / entrypoint **warn** when it is missing or when a global
+  `MaxAuthTries 1` appears before `Match`; they do **not** rewrite `sshd_config`.
+
+  Create the group and add MFA Linux users so `Match Group` applies:
+
+  ```bash
+  groupadd ezkey-mfa
+  usermod -aG ezkey-mfa <mfa-user>
+  ```
 
   ```text
   # Host dogfood (recommended): MFA accounts in group ezkey-mfa only
@@ -277,17 +288,26 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
       PubkeyAuthentication no
   ```
 
-  Prefer pinning `AuthenticationMethods keyboard-interactive` and/or
-  `PubkeyAuthentication no` **inside the Match** (not only globally). **Avoid global
-  `MaxAuthTries 1`:** refused public keys also consume tries and can lock out mixed
-  auth methods for non-MFA users. **Match limits:** applies until EOF or the next
-  `Match`; first matching value wins; protection is **per TCP connection**, not a
-  cross-connection rate limit. **Forgetting the Match is an easy miss** — OpenSSH
-  then recreates auth attempts after Deny/Expire in the same session (F9; proven by
-  `scripts/test-f9-retry.sh` case A). `install.sh` / entrypoint check effective
-  `maxauthtries 1` with `sshd -T -C user=…` and warn if a **global** `MaxAuthTries 1`
-  appears before any `Match`. Client helper: `-o NumberOfPasswordPrompts=1`. Demo
-  `sshd_config` uses `Match User testuser` with global `MaxAuthTries 6`.
+  Keep `PubkeyAuthentication no` inside the Match (security GO): with
+  `MaxAuthTries 1`, a client-offered pubkey that is refused consumes the single
+  try before keyboard-interactive and locks out the MFA account;
+  `AuthenticationMethods keyboard-interactive` makes pubkey unused anyway.
+  Combining `publickey,keyboard-interactive` requires raising `MaxAuthTries`
+  (out of scope here; document separately if funded). Prefer pinning
+  `AuthenticationMethods keyboard-interactive` **inside the Match** (not only
+  globally). **Avoid global `MaxAuthTries 1`:** refused public keys also consume
+  tries and can lock out mixed auth methods for non-MFA users. **Match limits:**
+  applies until EOF or the next `Match`; first matching value wins; protection is
+  **per TCP connection**, not a cross-connection rate limit. **Forgetting the
+  Match is an easy miss** — OpenSSH then recreates auth attempts after Deny/Expire
+  in the same session (F9; proven by `scripts/test-f9-retry.sh` case A).
+  `install.sh` / entrypoint check effective `maxauthtries 1` with
+  `sshd -T -C user=…` and run the shared
+  `scripts/sshd-warn-global-maxauthtries-1.awk` detector for a global
+  `MaxAuthTries 1` before any `Match` (unit-tested by
+  `scripts/test-install-sshd-warn.sh` against that same file). Client helper:
+  `-o NumberOfPasswordPrompts=1`. Demo `sshd_config` uses `Match User testuser`
+  with global `MaxAuthTries 6`.
 - **HTTP 429 during `/wait`:** fail-closed — PAM returns `UNAVAIL` and the SSH
   approval fails (no silent retry inside the wait loop).
 - **Auth API `/pending` rate limit: 10/min** (`ezkey.rate-limit.pending.requests=10`,

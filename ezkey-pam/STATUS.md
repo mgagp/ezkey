@@ -453,12 +453,18 @@ users such as `ec2-user` keep the global try budget). Edgar’s 2026-10-20 retes
 claim the in-process final marker or `PAM_MAXTRIES` protects across OpenSSH rounds;
 keep the marker only as same-handle fail-closed. Prefer `Match User|Group` over
 global `MaxAuthTries 1` (pubkey failures count). Entrypoint / `install.sh` verify
-effective `maxauthtries 1` via `sshd -T -C user=…` and warn on global
-`MaxAuthTries 1` before `Match` (awk unit-tested in
-`scripts/test-install-sshd-warn.sh`). **Match limits:** applies until EOF or the
-next `Match`; first matching value wins; it caps tries **per TCP connection**, not
-a cross-connection rate limit — forgetting it is an easy operator miss and
-recreates orphan pending attempts (F9). R5 (**best-effort, TTL-bounded**): chunked
+effective `maxauthtries 1` via `sshd -T -C user=…` and **warn** (do not rewrite
+`sshd_config`) on global `MaxAuthTries 1` before `Match` using the shared
+`scripts/sshd-warn-global-maxauthtries-1.awk` (same file consumed by
+`scripts/test-install-sshd-warn.sh` — case-insensitive, exact `1` only, tab-safe;
+no duplicated awk body). **Match limits:** applies until EOF or the next `Match`;
+first matching value wins; it caps tries **per TCP connection**, not a
+cross-connection rate limit — forgetting it is an easy operator miss and
+recreates orphan pending attempts (F9). Host: `groupadd ezkey-mfa` +
+`usermod -aG ezkey-mfa <user>` so `Match Group` applies. Keep
+`PubkeyAuthentication no` with `MaxAuthTries 1` (refused pubkey would consume the
+single try; `publickey,keyboard-interactive` needs a higher try budget — out of
+scope). R5 (**best-effort, TTL-bounded**): chunked
 `/wait` (`EZKEY_WAIT_CHUNK_SECS` 5) + wait-scoped `SIGTERM` (see § M1 craft-rule /
 B2a; Christophe security GO). When delivered, cancel uses
 `ezkey_bounded_cancel_timeout(..., interrupted=1)` =
@@ -512,7 +518,7 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 | `scripts/test-challenge.sh` | Code in live capture **before** approve; wrong code refuse; stub absent → UNAVAIL. |
 | `scripts/test-challenge-nits.sh` | Failing PAM conv → `UNAVAIL` + `lab_http=`. |
 | `scripts/test-timeouts.sh` | api_timeout / wait_timeout thresholds + max clamp vs LoginGraceTime. |
-| `scripts/test-install-sshd-warn.sh` | `install.sh` global `MaxAuthTries 1` awk warning semantics (no Docker; Patrick #908). |
+| `scripts/test-install-sshd-warn.sh` | Shared `sshd-warn-global-maxauthtries-1.awk` (install.sh + entrypoint); case/tab/10/empty edge cases; callers must reference the shared file (no Docker; Patrick #908 / #934 B1). |
 | `test/test_challenge_harness.c` | Challenge bound 0..99 (make test). |
 | `test/test_conf_security.sh` | in-container owner/mode/keys self-check (also via `up.sh` path) |
 | `make test` | check-source + compile + filelog + sanitize + challenge harnesses |

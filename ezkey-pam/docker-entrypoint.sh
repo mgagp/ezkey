@@ -135,13 +135,19 @@ fi
 
 # #907 F9: effective maxauthtries must be 1 for SSH_USER (sshd -T; not a regex).
 # Host installs: MANDATORY Match Group ezkey-mfa (or Match User) with MaxAuthTries 1 —
-# each prompt round is one auth request (see README Runbook).
-if [ -f /etc/ssh/sshd_config ] && command -v sshd >/dev/null 2>&1; then
-    if ! sshd -T -f /etc/ssh/sshd_config \
+# each prompt round is one auth request (see README Runbook). Checked by WARNING only
+# (not enforced / not written into sshd_config).
+SSHD_CFG="/etc/ssh/sshd_config"
+SSHD_WARN_AWK="${EZKEY_SSHD_WARN_AWK:-/opt/pam-ezkey/scripts/sshd-warn-global-maxauthtries-1.awk}"
+if [ -f "${SSHD_CFG}" ] && command -v sshd >/dev/null 2>&1; then
+    if ! sshd -T -f "${SSHD_CFG}" \
         -C "user=${SSH_USER},host=localhost,addr=127.0.0.1" 2>/dev/null \
       | grep -qx 'maxauthtries 1'; then
         echo "[entrypoint] WARNING: sshd -T for user=${SSH_USER} is not maxauthtries 1." >&2
-        echo "[entrypoint] WARNING: MANDATORY Match … MaxAuthTries 1 — each prompt round recreates after Deny/Expire (#907 F9)." >&2
+        echo "[entrypoint] WARNING: MANDATORY Match … MaxAuthTries 1 (warn only) — each prompt round recreates after Deny/Expire (#907 F9)." >&2
+    fi
+    if [ -f "${SSHD_WARN_AWK}" ] && awk -f "${SSHD_WARN_AWK}" "${SSHD_CFG}"; then
+        echo "[entrypoint] WARNING: global MaxAuthTries 1 before Match (sshd-warn-global-maxauthtries-1.awk) — prefer Match-scoped 1." >&2
     fi
 fi
 

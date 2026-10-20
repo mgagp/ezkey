@@ -117,6 +117,7 @@ COPY test/test_pam.sh /opt/pam-ezkey/test/test_pam.sh
 COPY test/test_conf_security.sh /opt/pam-ezkey/test/test_conf_security.sh
 COPY scripts/integration-api-stub.py /opt/pam-ezkey/scripts/integration-api-stub.py
 COPY scripts/test-f9-retry.sh /opt/pam-ezkey/scripts/test-f9-retry.sh
+COPY scripts/sshd-warn-global-maxauthtries-1.awk /opt/pam-ezkey/scripts/sshd-warn-global-maxauthtries-1.awk
 # rsyslog authpriv routing is fixed at runtime by docker-entrypoint.sh (imuxsock
 # SysSock.Use=on; no journald in the container). Stock conf already has authpriv.*.
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh /opt/pam-ezkey/test/test_pam.sh \

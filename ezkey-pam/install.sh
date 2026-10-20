@@ -31,16 +31,25 @@ echo "     Use https:// only; never commit origin IPs — placeholder"
 echo "     <static-ip ezkey-online-community> for community docs."
 echo "  2. Add this line at the top of /etc/pam.d/sshd:"
 echo "       auth  required  pam_ezkey.so conf=/etc/security/pam_ezkey.conf"
-echo "  3. MANDATORY sshd_config: LoginGraceTime >= 120, and MaxAuthTries 1 inside"
-echo "     a dedicated Match (Group/User) for MFA accounts only — NOT global."
+echo "  3. MANDATORY sshd_config (operator must apply — install.sh only WARNs):"
+echo "     LoginGraceTime >= 120, and MaxAuthTries 1 inside a dedicated Match"
+echo "     (Group/User) for MFA accounts only — NOT global."
 echo "     Why: each keyboard-interactive prompt round is one forked PAM child and"
 echo "     one auth request; without Match MaxAuthTries 1, one SSH login can create"
 echo "     multiple orphan pending attempts (#907 F9 / Edgar retest #908)."
+echo "     Create the group and add MFA users so Match Group applies:"
+echo "       groupadd ezkey-mfa"
+echo "       usermod -aG ezkey-mfa <mfa-user>"
 echo "     Host dogfood (other users like ec2-user stay on the global try budget):"
 echo "       Match Group ezkey-mfa"
 echo "           MaxAuthTries 1"
 echo "           AuthenticationMethods keyboard-interactive"
 echo "           PubkeyAuthentication no"
+echo "     PubkeyAuthentication no: with MaxAuthTries 1, a refused client-offered"
+echo "     pubkey consumes the single try before keyboard-interactive and locks out"
+echo "     the MFA account; AuthenticationMethods keyboard-interactive makes pubkey"
+echo "     unused anyway. Combining publickey,keyboard-interactive needs a higher"
+echo "     MaxAuthTries (out of scope — document separately if funded)."
 echo "     Single-user lab alternative: Match User <mfa-user> with the same three"
 echo "     directives. See README Runbook / sshd.host-sketch."
 echo "  4. Clients: ssh -o NumberOfPasswordPrompts=1 …"
@@ -48,24 +57,20 @@ echo "  5. Restart sshd (sshd -t first)."
 # Effective MaxAuthTries for the MFA user (sshd -T; avoids regex matching 10/12).
 CHECK_USER="${EZKEY_SSH_USER:-testuser}"
 SSHD_CFG="/etc/ssh/sshd_config"
+# Shared detector (case-insensitive; exact 1 only) — also used by entrypoint + tests.
+SSHD_WARN_AWK="${SCRIPT_DIR}/scripts/sshd-warn-global-maxauthtries-1.awk"
 if [ -f "${SSHD_CFG}" ] && command -v sshd >/dev/null 2>&1; then
   if ! sshd -T -f "${SSHD_CFG}" \
       -C "user=${CHECK_USER},host=localhost,addr=127.0.0.1" 2>/dev/null \
     | grep -qx 'maxauthtries 1'; then
     echo ""
     echo "WARNING: sshd -T for user=${CHECK_USER} does not show maxauthtries 1."
-    echo "         MANDATORY: add Match Group ezkey-mfa (or Match User …) with"
-    echo "         MaxAuthTries 1 — effective value must be 1 for MFA users."
+    echo "         MANDATORY (not auto-enforced): add Match Group ezkey-mfa (or"
+    echo "         Match User …) with MaxAuthTries 1 — effective value must be 1."
     echo "         Without it, each prompt round recreates an auth attempt (#907 F9)."
   fi
   # Global MaxAuthTries 1 (before any Match) still discouraged — pubkey rejects count.
-  # Awk semantics covered by scripts/test-install-sshd-warn.sh (Patrick #908 nit).
-  if awk '
-    /^[[:space:]]*#/ { next }
-    /^[[:space:]]*Match[[:space:]]/ { exit }
-    /^[[:space:]]*MaxAuthTries[[:space:]]+1([[:space:]]|$)/ { found=1; exit }
-    END { exit !found }
-  ' "${SSHD_CFG}"; then
+  if [ -f "${SSHD_WARN_AWK}" ] && awk -f "${SSHD_WARN_AWK}" "${SSHD_CFG}"; then
     echo ""
     echo "WARNING: global MaxAuthTries 1 found (before Match) — refused public keys"
     echo "         also consume tries and can lock out non-MFA users (e.g. ec2-user)."
@@ -74,6 +79,9 @@ if [ -f "${SSHD_CFG}" ] && command -v sshd >/dev/null 2>&1; then
 elif [ -f "${SSHD_CFG}" ]; then
   echo ""
   echo "WARNING: sshd not on PATH — could not verify maxauthtries 1 via sshd -T."
-  echo "         MANDATORY: Match Group ezkey-mfa (or Match User …) MaxAuthTries 1"
-  echo "         for MFA account ${CHECK_USER}."
+  echo "         MANDATORY (not auto-enforced): Match Group ezkey-mfa (or Match User …)"
+  echo "         MaxAuthTries 1 for MFA account ${CHECK_USER}."
+  if [ -f "${SSHD_WARN_AWK}" ] && awk -f "${SSHD_WARN_AWK}" "${SSHD_CFG}"; then
+    echo "WARNING: global MaxAuthTries 1 found (before Match) — prefer Match-scoped 1."
+  fi
 fi
