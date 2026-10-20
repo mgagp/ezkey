@@ -37,16 +37,23 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # init language id is java-kotlin; SARIF category must be /language:java (DB language)
+          # or the PR CodeQL check can go NEUTRAL ("configuration /language:java-kotlin not found").
           - language: java-kotlin
             build-mode: none
+            category: /language:java
           - language: javascript-typescript
             build-mode: none
+            category: /language:javascript-typescript
           - language: python
             build-mode: none
+            category: /language:python
           - language: c-cpp
             build-mode: manual
+            category: /language:c-cpp
           - language: actions
             build-mode: none
+            category: /language:actions
 
     steps:
       - name: Checkout
@@ -73,7 +80,7 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
-          category: "/language:${{ matrix.language }}"
+          category: ${{ matrix.category }}
         env:
           # Advanced setup does NOT auto-detect `.github/codeql/extensions/`.
           # `packs:` in codeql-config.yml only accepts registry `scope/name` refs,

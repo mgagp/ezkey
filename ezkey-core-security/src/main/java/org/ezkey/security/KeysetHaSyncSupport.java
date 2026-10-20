@@ -236,6 +236,10 @@ final class KeysetHaSyncSupport {
         reloadAction.getAsBoolean();
       }
     } catch (DataAccessException | IllegalStateException e) {
+      // DATABASE: blob is SoT — fail closed (do not mutate from a possibly stale memory keyset).
+      if (storageMode == TinkProperties.Keyset.StorageMode.DATABASE) {
+        throw e;
+      }
       logger.warn(
           "Failed to check/reload keyset before mutation: {}. Proceeding with memory keyset.",
           e.getMessage());

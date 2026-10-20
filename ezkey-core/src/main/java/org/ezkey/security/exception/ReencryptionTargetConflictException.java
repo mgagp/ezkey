@@ -15,13 +15,15 @@ package org.ezkey.security.exception;
  * keyset reload (would create silent no-op batches).
  *
  * <p>Map to HTTP 409 Conflict with a clear message — never {@code 202 Accepted} followed by skipped
- * old==new batches (#921).
+ * old==new batches (#921). Extends {@link RuntimeException} (not {@link IllegalStateException}) so
+ * {@code ValidationExceptionHandler}'s catch-all {@code IllegalStateException} mapping cannot
+ * intercept it before {@code DomainExceptionHandler}.
  *
  * @author Ezkey contributors
  * @since 2026
  */
 @SuppressWarnings("serial")
-public class ReencryptionTargetConflictException extends IllegalStateException {
+public class ReencryptionTargetConflictException extends RuntimeException {
 
   private final Long oldKeyId;
   private final Long newKeyId;

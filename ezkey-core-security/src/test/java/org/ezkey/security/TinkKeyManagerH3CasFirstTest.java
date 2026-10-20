@@ -20,9 +20,13 @@ import static org.mockito.Mockito.when;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.ezkey.config.TinkProperties;
@@ -31,6 +35,8 @@ import org.ezkey.security.domain.repository.KeysetBlobRepository;
 import org.ezkey.security.exception.KeysetConcurrentModificationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.ObjectProvider;
@@ -102,6 +108,101 @@ class TinkKeyManagerH3CasFirstTest {
           manager.getCurrentPrimaryKeyId() == pending,
           "H3: pending must not become in-memory primary after failed CAS");
     } finally {
+      manager.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  @Test
+  @DisplayName("H3: CAS miss on add leaves primary, kids, and file unchanged")
+  void add_whenCasMisses_leavesMemoryAndFileUnchanged(@TempDir Path tempDir) throws Exception {
+    AtomicReference<KeysetBlob> sharedBlob = new AtomicReference<>();
+    AtomicBoolean forceCasMiss = new AtomicBoolean(false);
+    KeysetBlobRepository repository = casRepository(sharedBlob, forceCasMiss);
+    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
+
+    TinkKeyManager manager =
+        initializeManager(tempDir.resolve("master.key"), keysetPath, repository, true);
+    try {
+      long primaryBefore = manager.getCurrentPrimaryKeyId();
+      List<Long> kidsBefore = new ArrayList<>(manager.getAllKeyIds());
+      byte[] fileBefore = Files.readAllBytes(keysetPath);
+
+      forceCasMiss.set(true);
+      assertThrows(KeysetConcurrentModificationException.class, manager::addKeyWithoutPromotion);
+
+      assertEquals(primaryBefore, manager.getCurrentPrimaryKeyId(), "H3 add: primary unchanged");
+      assertEquals(kidsBefore, manager.getAllKeyIds(), "H3 add: kid list unchanged");
+      assertTrue(
+          java.util.Arrays.equals(fileBefore, Files.readAllBytes(keysetPath)),
+          "H3 add: keyset file unchanged after CAS miss");
+    } finally {
+      manager.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
+  @DisplayName(
+      "N1: after CAS, file-cache write failure keeps memory==blob; next mutation retains key")
+  void fileCacheWriteFails_memoryMatchesBlob_subsequentMutationKeepsKey(@TempDir Path tempDir)
+      throws Exception {
+    AtomicReference<KeysetBlob> sharedBlob = new AtomicReference<>();
+    KeysetBlobRepository repository = casRepository(sharedBlob, new AtomicBoolean(false));
+    Path keysetDir = tempDir.resolve("ks-cache");
+    Files.createDirectories(keysetDir);
+    Path keysetPath = keysetDir.resolve("keyset.json.encrypted");
+    Path masterKeyPath = tempDir.resolve("master.key");
+
+    TinkKeyManager manager = initializeManager(masterKeyPath, keysetPath, repository, true);
+    try {
+      long primaryBefore = manager.getCurrentPrimaryKeyId();
+      // Existing file + parent dir writable still allows overwrite; make the keyset file itself
+      // read-only so Files.writeString fails (N1: file is best-effort cache only).
+      Set<PosixFilePermission> readOnlyFile =
+          EnumSet.copyOf(PosixFilePermissions.fromString("r--r--r--"));
+      Files.setPosixFilePermissions(keysetPath, readOnlyFile);
+
+      manager.rotateKey();
+
+      long primaryAfterRotate = manager.getCurrentPrimaryKeyId();
+      assertTrue(
+          primaryAfterRotate != primaryBefore,
+          "N1: rotate must succeed (CAS) even when file cache write fails");
+      assertTrue(
+          manager.getAllKeyIds().contains(primaryAfterRotate),
+          "N1: memory must contain the new primary after CAS");
+
+      // Memory must match blob: a cold verifier loading only from DB sees the same primary.
+      Path verifierKeyset = tempDir.resolve("verifier-keyset.json.encrypted");
+      TinkKeyManager verifier = initializeManager(masterKeyPath, verifierKeyset, repository, true);
+      try {
+        assertEquals(
+            primaryAfterRotate,
+            verifier.getCurrentPrimaryKeyId(),
+            "N1: memory primary must equal blob primary after file-cache failure");
+        assertTrue(
+            verifier.getAllKeyIds().contains(primaryAfterRotate),
+            "N1: blob must retain rotated primary");
+      } finally {
+        verifier.shutdownKeysetCheckExecutor();
+      }
+
+      // Subsequent mutation must not lose the rotated key (memory stayed aligned with blob).
+      Files.setPosixFilePermissions(keysetPath, PosixFilePermissions.fromString("rw-r--r--"));
+      long pending = manager.addKeyWithoutPromotion();
+      assertTrue(
+          manager.getAllKeyIds().contains(primaryAfterRotate),
+          "N1: subsequent mutation must retain the key introduced while file was unwritable");
+      assertTrue(manager.getAllKeyIds().contains(pending));
+    } finally {
+      try {
+        if (Files.exists(keysetPath)) {
+          Files.setPosixFilePermissions(keysetPath, PosixFilePermissions.fromString("rw-r--r--"));
+        }
+        Files.setPosixFilePermissions(keysetDir, PosixFilePermissions.fromString("rwxr-xr-x"));
+      } catch (Exception ignored) {
+        // best-effort restore for temp cleanup
+      }
       manager.shutdownKeysetCheckExecutor();
     }
   }

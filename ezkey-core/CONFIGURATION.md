@@ -90,17 +90,20 @@ Admin-only materialization of the blob and of `ezkey_encryption_key` metadata:
 
 **HA keyset sync (operator summary):** Use `storage-mode=DATABASE` so `ezkey_keyset_blob` is the
 shared source of truth across Admin/Auth/Integration instances. **Reload before mutate; write only
-via CAS** (`UPDATE … WHERE version = :read`). **H3:** install the new in-memory handle and rewrite
-the keyset file only after a successful CAS (DATABASE/HYBRID); a lost CAS or other DB error leaves
-memory and file unchanged and propagates. A traffic-independent version tick
-(`keyset.version-check-interval-seconds`, default 5) keeps idle replicas current; keep
-`tick < rotation.sync-window-seconds` (prefer `tick <= syncWindow/2`) or startup logs WARN. On
-introduce, a new key stays `PENDING` for `rotation.sync-window-seconds` before promotion to
-`PRIMARY` while encrypt still uses the previous primary; Tink can decrypt with older ENABLED keys
-throughout. Decrypt-failure path may perform one throttled synchronous reload (H2); the encrypt /
-decrypt hot path never does a synchronous `findVersion` (SEC-009). In the Docker stack the mode
-remains `DATABASE`, but the shared `encryption-secrets` volume also mounts the keyset file as a
-cache/backup path — do not treat that shared file alone as the multi-instance sync contract.
+via CAS** (`UPDATE … WHERE version = :read`). **H3 / N1:** after a successful CAS, install the new
+in-memory handle immediately, then rewrite the keyset file as a **best-effort cache** (file write
+failure → ERROR log, mutation still succeeds). A lost CAS or other DB error leaves memory and file
+unchanged and propagates. Reload-before-mutation check/reload failures **fail closed in DATABASE**
+(propagate; do not proceed with a possibly stale memory keyset) — so rotate/promote fail if the DB
+is unavailable. A traffic-independent version tick (`keyset.version-check-interval-seconds`, default
+5) keeps idle replicas current; keep `tick < rotation.sync-window-seconds` (prefer
+`tick <= syncWindow/2`) or startup logs WARN. On introduce, a new key stays `PENDING` for
+`rotation.sync-window-seconds` before promotion to `PRIMARY` while encrypt still uses the previous
+primary; Tink can decrypt with older ENABLED keys throughout. Decrypt-failure path may perform one
+throttled synchronous reload (H2); the encrypt / decrypt hot path never does a synchronous
+`findVersion` (SEC-009). In the Docker stack the mode remains `DATABASE`, but the shared
+`encryption-secrets` volume also mounts the keyset file as a cache/backup path — **the file is a
+cache, best-effort**; do not treat that shared file alone as the multi-instance sync contract.
 
 **Defined in:** `TinkProperties`
 

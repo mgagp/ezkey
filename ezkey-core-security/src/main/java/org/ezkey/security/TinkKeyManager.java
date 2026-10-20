@@ -1379,8 +1379,10 @@ public class TinkKeyManager implements KeyManagementOperations {
   }
 
   /**
-   * Persists a mutated keyset: CAS first in DATABASE/HYBRID (propagate all DB errors), then commit
-   * memory + file. On CAS miss, memory and file stay unchanged (H3).
+   * Persists a mutated keyset: CAS first in DATABASE/HYBRID (propagate all DB errors), then install
+   * memory immediately, then rewrite the keyset file as a best-effort cache. On CAS miss, memory
+   * and file stay unchanged (H3). After a successful CAS, a file-cache write failure is logged at
+   * ERROR and does not fail the mutation (DATABASE/HYBRID) — the file is a cache, best-effort.
    *
    * @param newHandle mutated keyset (not yet installed)
    * @param updatedBy CAS actor label
@@ -1388,10 +1390,17 @@ public class TinkKeyManager implements KeyManagementOperations {
   private void commitMutatedKeysetUnlocked(KeysetHandle newHandle, String updatedBy)
       throws GeneralSecurityException, IOException {
     StorageMode storageMode = properties.getKeyset().getStorageMode();
-    if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
-        && keysetBlobRepository != null) {
+    boolean databaseBacked =
+        (storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
+            && keysetBlobRepository != null;
+    if (databaseBacked) {
       saveKeysetHandleToDatabaseUnlocked(newHandle, updatedBy);
       logger.info("✅ Keyset saved to database ({})", updatedBy);
+      // CAS fixed databaseKeysetVersion — install memory immediately so memory matches the blob
+      // even if the local file cache write fails.
+      this.keysetHandle = newHandle;
+      writeKeysetFileCacheBestEffort(newHandle);
+      return;
     }
     String normalizedPath = normalizePath(properties.getKeysetFile());
     saveKeyset(newHandle, normalizedPath);
@@ -1400,6 +1409,30 @@ public class TinkKeyManager implements KeyManagementOperations {
     if (keysetFile.exists()) {
       this.keysetFileLastModified = keysetFile.lastModified();
       this.keysetFilePath = normalizedPath;
+    }
+  }
+
+  /**
+   * Writes the keyset file as a best-effort local cache after a successful DATABASE/HYBRID CAS.
+   * Failure is logged at ERROR and does not roll back memory or the blob.
+   *
+   * @param handle keyset already committed to the database and installed in memory
+   */
+  private void writeKeysetFileCacheBestEffort(KeysetHandle handle) {
+    String normalizedPath = normalizePath(properties.getKeysetFile());
+    try {
+      saveKeyset(handle, normalizedPath);
+      File keysetFile = new File(normalizedPath);
+      if (keysetFile.exists()) {
+        this.keysetFileLastModified = keysetFile.lastModified();
+        this.keysetFilePath = normalizedPath;
+      }
+    } catch (IOException | GeneralSecurityException e) {
+      logger.error(
+          "Keyset file cache write failed after successful DB CAS"
+              + " (file is a best-effort cache; memory matches blob): {}",
+          e.getMessage());
+      logger.debug("Keyset file cache write error", e);
     }
   }
 
