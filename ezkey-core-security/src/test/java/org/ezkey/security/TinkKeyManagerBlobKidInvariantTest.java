@@ -5,17 +5,28 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: TinkKeyManagerBlobKidInvariantTest
- * Description: B3 invariant — no startup/mutation path may remove kids from the blob except
- *     explicit removal; injected failures must leave the blob intact or fail closed.
+ * Description: B3/B4 invariant — no startup path may remove kids from the blob or stay ready with
+ *     orphan kids; injected failures leave the blob intact and fail closed.
  */
 
 package org.ezkey.security;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.crypto.tink.Aead;
+import com.google.crypto.tink.CleartextKeysetHandle;
+import com.google.crypto.tink.JsonKeysetWriter;
+import com.google.crypto.tink.KeyTemplates;
+import com.google.crypto.tink.KeysetHandle;
+import com.google.crypto.tink.aead.AeadConfig;
+import com.google.crypto.tink.subtle.AesGcmJce;
+import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -37,8 +48,8 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.QueryTimeoutException;
 
 /**
- * Patrick / Christophe B3: load failures must not be treated as ABSENT and must never CAS-replace a
- * live blob that still holds kids.
+ * Patrick / Christophe B3/B4: load or claim failures must never destroy kids or leave a ready
+ * orphan handle.
  *
  * @since 2026
  */
@@ -54,42 +65,58 @@ class TinkKeyManagerBlobKidInvariantTest {
     FIND_PERSISTENT_FAILURE,
     WRONG_MASTER_KEY,
     STALE_UNREADABLE_FILE,
-    FIRST_BOOT_RACE_LOSER_LOAD_FAILS
+    /** exists=false → insert 0 → find throws (claim path race loser). */
+    FIRST_BOOT_RACE_LOSER_LOAD_FAILS,
+    /** Same claim-path race as FIRST_BOOT (explicit alias for lot 5). */
+    RACE_LOSER_EXISTS_FALSE_INSERT_ZERO_FIND_THROWS,
+    /** Opt-in legacy replace with CAS miss — blob kids must survive; fail closed. */
+    LEGACY_REPLACE_CAS_FAILS
   }
 
   static Stream<Arguments> failureModes() {
     return Stream.of(FailureMode.values()).map(Arguments::of);
   }
 
-  @ParameterizedTest(name = "B3 kid invariant: {0}")
+  @ParameterizedTest(name = "kid invariant: {0}")
   @MethodSource("failureModes")
   @DisplayName(
-      "Invariant: injected startup failure never removes kids from the blob (byte-intact or"
-          + " fail-closed)")
+      "Invariant: injected startup failure never removes kids; fail-closed when not adopted")
   void startupOrMutation_neverRemovesKidsFromBlob(FailureMode mode, @TempDir Path tempDir)
       throws Exception {
+    AeadConfig.register();
     AtomicReference<KeysetBlob> sharedBlob = new AtomicReference<>();
     KeysetBlobRepository seedRepo = casRepository(sharedBlob);
 
     Path masterKey = tempDir.resolve("master.key");
     Path peerFile = tempDir.resolve("peer-keyset.json.encrypted");
     Path writerFile = tempDir.resolve("writer-keyset.json.encrypted");
+    byte[] masterKeyBytes = TestMasterKeys.write(masterKey);
 
-    TinkKeyManager peer = initializeManager(masterKey, peerFile, seedRepo);
     long keyK;
-    try {
-      Files.copy(peerFile, writerFile);
-      keyK = peer.addKeyWithoutPromotion();
-      peer.promoteToPrimary(keyK);
-      assertTrue(peer.getAllKeyIds().contains(keyK), "setup: peer blob must contain K");
-    } finally {
-      peer.shutdownKeysetCheckExecutor();
+    byte[] blobBefore;
+    long versionBefore;
+
+    if (mode == FailureMode.LEGACY_REPLACE_CAS_FAILS) {
+      KeysetBlob legacy = legacyOuterEncryptedBlob(masterKeyBytes);
+      sharedBlob.set(legacy);
+      keyK = -1L; // not used for memory assert when fail-closed
+      blobBefore = legacy.getKeysetData().clone();
+      versionBefore = legacy.getVersion();
+    } else {
+      TinkKeyManager peer = initializeManager(masterKey, peerFile, seedRepo);
+      try {
+        Files.copy(peerFile, writerFile);
+        keyK = peer.addKeyWithoutPromotion();
+        peer.promoteToPrimary(keyK);
+        assertTrue(peer.getAllKeyIds().contains(keyK), "setup: peer blob must contain K");
+      } finally {
+        peer.shutdownKeysetCheckExecutor();
+      }
+      blobBefore = sharedBlob.get().getKeysetData().clone();
+      versionBefore = sharedBlob.get().getVersion();
     }
 
-    byte[] blobBefore = sharedBlob.get().getKeysetData().clone();
-    long versionBefore = sharedBlob.get().getVersion();
-
-    KeysetBlobRepository flaky = repositoryForMode(mode, sharedBlob, blobBefore, versionBefore);
+    KeysetBlobRepository flaky = repositoryForMode(mode, sharedBlob);
     TinkProperties props = writerProps(masterKey, writerFile);
     if (mode == FailureMode.WRONG_MASTER_KEY) {
       Path wrongMaster = tempDir.resolve("wrong-master.key");
@@ -100,12 +127,15 @@ class TinkKeyManagerBlobKidInvariantTest {
         Files.setPosixFilePermissions(
             wrongMaster, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
       } catch (UnsupportedOperationException ignored) {
-        // non-POSIX temp FS
+        // non-POSIX
       }
       props.setMasterKeyFile(wrongMaster.toString());
     }
     if (mode == FailureMode.STALE_UNREADABLE_FILE) {
       Files.writeString(writerFile, "not-a-valid-keyset");
+    }
+    if (mode == FailureMode.LEGACY_REPLACE_CAS_FAILS) {
+      props.getKeyset().setAllowLegacyEnvelopeReplace(true);
     }
 
     TinkKeyManager writer = new TinkKeyManager(props, fixedProvider(flaky));
@@ -114,32 +144,55 @@ class TinkKeyManagerBlobKidInvariantTest {
 
       assertTrue(
           Arrays.equals(blobBefore, sharedBlob.get().getKeysetData()),
-          "B3 FAILURE ["
+          "FAILURE ["
               + mode
-              + "]: blob bytes changed — kids were destroyed (version now "
+              + "]: blob bytes changed — kids destroyed (version now "
               + sharedBlob.get().getVersion()
               + ", was "
               + versionBefore
               + ")");
       assertTrue(
           sharedBlob.get().getVersion() == versionBefore,
-          "B3 FAILURE [" + mode + "]: blob version advanced (destructive CAS)");
+          "FAILURE [" + mode + "]: blob version advanced (destructive CAS)");
 
-      if (writer.isInitialized()) {
+      if (mode == FailureMode.FIRST_BOOT_RACE_LOSER_LOAD_FAILS
+          || mode == FailureMode.RACE_LOSER_EXISTS_FALSE_INSERT_ZERO_FIND_THROWS) {
+        verify(flaky, atLeastOnce()).insertSingletonIfAbsent(any(), any(), any());
+        assertFalse(
+            writer.isInitialized(),
+            "FAILURE [" + mode + "]: race loser must fail closed (not ready with orphan kids)");
+      }
+      if (mode == FailureMode.LEGACY_REPLACE_CAS_FAILS) {
+        assertFalse(
+            writer.isInitialized(), "FAILURE [" + mode + "]: legacy CAS miss must fail closed");
+      }
+
+      if (writer.isInitialized() && keyK != -1L) {
         assertTrue(
             writer.getAllKeyIds().contains(keyK),
-            "B3 FAILURE [" + mode + "]: memory missing K while initialized (memory != blob)");
+            "FAILURE [" + mode + "]: memory missing K while initialized (memory != blob)");
       }
     } finally {
       writer.shutdownKeysetCheckExecutor();
     }
   }
 
+  @SuppressWarnings("deprecation")
+  private static KeysetBlob legacyOuterEncryptedBlob(byte[] masterKey) throws Exception {
+    Aead masterAead = new AesGcmJce(masterKey);
+    KeysetHandle legacyHandle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+    byte[] keysetJson;
+    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+      CleartextKeysetHandle.write(legacyHandle, JsonKeysetWriter.withOutputStream(outputStream));
+      keysetJson = outputStream.toByteArray();
+    }
+    KeysetBlob blob = new KeysetBlob(masterAead.encrypt(keysetJson, null), "TEST_LEGACY");
+    blob.setVersion(3L);
+    return blob;
+  }
+
   private static KeysetBlobRepository repositoryForMode(
-      FailureMode mode,
-      AtomicReference<KeysetBlob> sharedBlob,
-      byte[] blobBefore,
-      long versionBefore) {
+      FailureMode mode, AtomicReference<KeysetBlob> sharedBlob) {
     AtomicInteger finds = new AtomicInteger();
     KeysetBlobRepository repository = casRepository(sharedBlob);
 
@@ -174,30 +227,24 @@ class TinkKeyManagerBlobKidInvariantTest {
           when(repository.findKeyset())
               .thenThrow(new QueryTimeoutException("persistent findKeyset failure"));
       case WRONG_MASTER_KEY, STALE_UNREADABLE_FILE -> {
-        // repository returns the real blob; failure is master key / file side
+        // real blob; failure is master key / file
       }
-      case FIRST_BOOT_RACE_LOSER_LOAD_FAILS -> {
-        // Pretend insert lost the race (row exists) but every load fails — must not overwrite.
-        when(repository.keysetExists()).thenReturn(true);
+      case FIRST_BOOT_RACE_LOSER_LOAD_FAILS, RACE_LOSER_EXISTS_FALSE_INSERT_ZERO_FIND_THROWS -> {
+        // Claim path: exists=false so materialize generates; insert loses; find throws.
+        when(repository.keysetExists()).thenReturn(false);
         when(repository.insertSingletonIfAbsent(any(), any(), any())).thenReturn(0);
         when(repository.findKeyset())
-            .thenThrow(new QueryTimeoutException("race loser cannot load winner row"));
-        // Keep update path honest so a destructive CAS would mutate bytes if attempted.
-        when(repository.updateKeysetIfVersionMatches(any(), any(), any(), anyLong()))
             .thenAnswer(
-                invocation -> {
-                  long expected = invocation.getArgument(3);
-                  KeysetBlob current = sharedBlob.get();
-                  if (current == null || current.getVersion() != expected) {
-                    return 0;
+                _ -> {
+                  int n = finds.getAndIncrement();
+                  if (n < 2) {
+                    return Optional.empty();
                   }
-                  KeysetBlob updated =
-                      new KeysetBlob(invocation.getArgument(0), invocation.getArgument(2));
-                  updated.setLastUpdatedAt(invocation.getArgument(1));
-                  updated.setVersion(expected + 1);
-                  sharedBlob.set(updated);
-                  return 1;
+                  throw new QueryTimeoutException("race loser cannot load winner row");
                 });
+      }
+      case LEGACY_REPLACE_CAS_FAILS -> {
+        when(repository.updateKeysetIfVersionMatches(any(), any(), any(), anyLong())).thenReturn(0);
       }
       default -> throw new IllegalStateException("unhandled mode " + mode);
     }

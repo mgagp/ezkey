@@ -653,8 +653,13 @@ existing master AEAD, empty associated data, and `RegistryConfiguration.get()` o
 database column as `BYTEA`, keep the file keyset format unchanged, and do not change data ciphertexts,
 algorithms, master-key source, rotation ownership, or `DATABASE` / `HYBRID` reload semantics.
 
-This is a clean-start pre-production cutover. Existing production deployments do not need a legacy
-dual-read migration because there are no production installations to preserve at this point.
+New deployments write the Tink-native envelope only. Remaining outer-encrypted (legacy) rows are
+**not** dual-read and are **not** replaced by default. A writer may replace a **positively
+identified** legacy outer envelope only when
+`ezkey.encryption.keyset.allow-legacy-envelope-replace=true` (default `false`): write a unique
+`.legacy-backup.v{version}.{epochMs}` sidecar (atomic `CREATE_NEW`, POSIX 600), CAS-update the blob
+against the live version, then install memory and rewrite the keyset file. Load failures that are
+not positively identified as legacy fail closed and never overwrite kids (B3/B4).
 
 ### Alternatives Considered
 
@@ -663,9 +668,8 @@ dual-read migration because there are no production installations to preserve at
   facade and left future readers to reconcile two keyset persistence models.
 - **Add a second custom encryption layer around the Tink envelope.** Rejected. Hiding non-secret
   metadata would mostly move the trust problem to another wrapping key and risk security theater.
-- **Add dual-read legacy compatibility.** Rejected for this pre-production cutover. Clean-start is
-  acceptable, while dual-read logic would add format ambiguity and migration surface before any
-  production installation exists.
+- **Always dual-read / auto-replace legacy blobs.** Rejected. Silent replace on ambiguous load
+  failure destroyed live kids (B3). Opt-in gated replace with backup is the residual upgrade path.
 - **Use contextual associated data for the DB blob.** Deferred. Empty associated data preserves the
   prior Tink file semantics and avoids backup / restore / environment-cloning brittleness. Contextual
   AD can be revisited only if a concrete binding requirement appears.
@@ -678,8 +682,9 @@ dual-read migration because there are no production installations to preserve at
   semantics.
 - **Negative.** Tink envelope metadata such as key IDs and primary-key status is visible to a reader
   with database access. Ezkey treats that as non-secret operational metadata, not as key material.
+  Legacy replace remains a manual opt-in; operators must enable the flag deliberately.
 - **Neutral.** The database schema remains unchanged; application ciphertexts and re-encryption
-  posture are unchanged; old outer-encrypted DB blobs are not a supported current representation.
+  posture are unchanged. Old outer-encrypted DB blobs are not auto-migrated.
 
 ### Impact
 
@@ -693,8 +698,8 @@ dual-read migration because there are no production installations to preserve at
 ### Validation
 
 - Unit: `TinkKeyManagerConcurrencyTest` characterizes the Tink-native DB blob shape, visible
-  envelope metadata, Tink parse round-trip, tamper rejection, legacy DB blob clean-start posture,
-  and DB reload after rotation.
+  envelope metadata, Tink parse round-trip, tamper rejection, opt-in legacy replace with backup,
+  and DB reload after rotation. Kid-invariant coverage: `TinkKeyManagerBlobKidInvariantTest`.
 - Build: `mvn spotless:apply`, `mvn checkstyle:check`, `mvn clean`, and
   `mvn install -DskipTests` passed from the repository root.
 - Operational smoke: `ezkey-tests/clean-start.sh --no-proxy` produced a healthy Docker stack;

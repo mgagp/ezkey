@@ -317,9 +317,16 @@ class TinkKeyManagerConcurrencyTest {
       String blobJson = new String(storedBlob.get().getKeysetData(), StandardCharsets.UTF_8);
       assertTrue(blobJson.contains("\"encryptedKeyset\""));
       assertTrue(blobJson.contains("\"keysetInfo\""));
-      assertTrue(
-          Files.exists(Path.of(keysetPath.toString() + ".legacy-backup")),
-          "ADR-0011 replace must keep a backup of the old row");
+      try (var backups =
+          Files.list(keysetPath.getParent())
+              .filter(
+                  p ->
+                      p.getFileName()
+                          .toString()
+                          .startsWith(keysetPath.getFileName() + ".legacy-backup.v"))) {
+        assertTrue(
+            backups.findAny().isPresent(), "ADR-0011 replace must keep a unique legacy backup");
+      }
     } finally {
       manager.shutdownKeysetCheckExecutor();
     }
