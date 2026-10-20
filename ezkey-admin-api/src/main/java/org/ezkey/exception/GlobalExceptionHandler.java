@@ -12,6 +12,7 @@ package org.ezkey.exception;
 
 import java.net.URI;
 import java.util.Set;
+import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
@@ -143,7 +144,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(NoResourceFoundException.class)
   public ResponseEntity<ProblemDetail> handleNoResourceFoundException(
       NoResourceFoundException ex, WebRequest request) {
-    LOG.debug("No resource: {}", pathFrom(request));
+    LOG.debug("No resource: {}", LogSanitizer.sanitizeForLog(pathFrom(request)));
     return problemResponse(
         HttpStatus.NOT_FOUND,
         AdminApiProblemCatalog.TYPE_RESOURCE_NOT_FOUND,
@@ -159,7 +160,10 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(NoHandlerFoundException.class)
   public ResponseEntity<ProblemDetail> handleNoHandlerFoundException(
       NoHandlerFoundException ex, WebRequest request) {
-    LOG.debug("No handler: {} {}", ex.getHttpMethod(), ex.getRequestURL());
+    LOG.debug(
+        "No handler: {} {}",
+        LogSanitizer.sanitizeForLog(ex.getHttpMethod()),
+        LogSanitizer.sanitizeForLog(ex.getRequestURL()));
     return problemResponse(
         HttpStatus.NOT_FOUND,
         AdminApiProblemCatalog.TYPE_RESOURCE_NOT_FOUND,
@@ -175,7 +179,10 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
   public ResponseEntity<ProblemDetail> handleHttpRequestMethodNotSupported(
       HttpRequestMethodNotSupportedException ex, WebRequest request) {
-    LOG.debug("Method not allowed: {} {}", ex.getMethod(), pathFrom(request));
+    LOG.debug(
+        "Method not allowed: {} {}",
+        LogSanitizer.sanitizeForLog(ex.getMethod()),
+        LogSanitizer.sanitizeForLog(pathFrom(request)));
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(
             HttpStatus.METHOD_NOT_ALLOWED, AdminApiProblemCatalog.DETAIL_METHOD_NOT_ALLOWED);

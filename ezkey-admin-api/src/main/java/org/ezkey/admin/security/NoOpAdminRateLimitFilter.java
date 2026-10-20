@@ -18,6 +18,7 @@ import jakarta.servlet.ServletResponse;
 import java.io.IOException;
 import org.ezkey.admin.config.AdminRateLimitProperties;
 import org.ezkey.admin.config.TrustedProxyProperties;
+import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -136,7 +137,8 @@ public class NoOpAdminRateLimitFilter extends AdminRateLimitFilter {
   public void recordFailedAttempt(String clientId) {
     // No-op: rate limiting is disabled
     logger.trace(
-        "recordFailedAttempt called but rate limiting is disabled - clientId: {}", clientId);
+        "recordFailedAttempt called but rate limiting is disabled - clientId: {}",
+        LogSanitizer.sanitizeForLog(clientId));
   }
 
   /**
@@ -151,6 +153,7 @@ public class NoOpAdminRateLimitFilter extends AdminRateLimitFilter {
   public void recordSuccessfulAttempt(String clientId) {
     // No-op: rate limiting is disabled
     logger.trace(
-        "recordSuccessfulAttempt called but rate limiting is disabled - clientId: {}", clientId);
+        "recordSuccessfulAttempt called but rate limiting is disabled - clientId: {}",
+        LogSanitizer.sanitizeForLog(clientId));
   }
 }
