@@ -173,22 +173,34 @@ class TestAuthManagerTls:
 
     assert mock_request.call_args.kwargs["verify"] is True
 
-  @patch("ezkey_cli.utils.tls.requests.Session")
-  def test_login_insecure_uses_session_not_verify_kwarg(self, mock_session_cls):
-    """Insecure path must not pass verify=False to requests.* (CodeQL)."""
-    mock_session = Mock()
+  @patch("ezkey_cli.utils.tls.requests.request")
+  def test_login_insecure_uses_explicit_verify_false_and_no_redirects(self, mock_request):
+    """Loopback insecure path: explicit verify=False + allow_redirects=False."""
     mock_response = Mock()
     mock_response.text = '{"token": "t"}'
     mock_response.json.return_value = {"token": "t"}
-    mock_session.request.return_value = mock_response
-    mock_session_cls.return_value = mock_session
+    mock_request.return_value = mock_response
 
     manager = AuthManager("https://localhost:9080", verify_ssl=False)
     manager.login("admin")
 
-    assert mock_session.verify is False
-    mock_session.request.assert_called_once()
-    assert "verify" not in mock_session.request.call_args.kwargs
+    assert mock_request.call_args.kwargs["verify"] is False
+    assert mock_request.call_args.kwargs["allow_redirects"] is False
+
+  @patch("ezkey_cli.utils.tls.requests.request")
+  def test_insecure_disables_redirects_even_if_caller_asks(self, mock_request):
+    """Redirects must stay off under --insecure (no off-loopback hop)."""
+    from ezkey_cli.utils.tls import requests_get
+
+    mock_response = Mock()
+    mock_response.text = ""
+    mock_response.json.return_value = {}
+    mock_request.return_value = mock_response
+
+    requests_get("https://localhost:9080/x", verify=False, allow_redirects=True)
+
+    assert mock_request.call_args.kwargs["verify"] is False
+    assert mock_request.call_args.kwargs["allow_redirects"] is False
 
 
 class TestHttpClientTls:
@@ -240,6 +252,25 @@ class TestHttpClientTls:
     config.set_ssl_runtime(insecure=True)
     with pytest.raises(InsecureTlsNotAllowedError):
       HttpClient(config)
+
+  def test_session_insecure_forces_no_redirects(self):
+    """HttpClient/Session insecure path must force allow_redirects=False."""
+    from ezkey_cli.utils.tls import apply_session_verify
+
+    session = __import__("requests").Session()
+    seen = []
+
+    def base_request(method, url, **kwargs):
+      seen.append(kwargs.get("allow_redirects"))
+      resp = Mock()
+      resp.status_code = 200
+      return resp
+
+    session.request = base_request
+    apply_session_verify(session, False)
+    assert session.verify is False
+    session.request("GET", "https://localhost:9080/", allow_redirects=True)
+    assert seen == [False]
 
   def test_ssl_runtime_not_persisted_on_save(self, tmp_path, monkeypatch):
     home = tmp_path / "home"
@@ -322,21 +353,27 @@ class TestTuiReauthUsesSharedVerify:
 
 
 class TestNoSilentVerifyFalse:
-  """AST guard: no requests ``verify=False`` / ``verify_ssl=False`` keyword anywhere."""
+  """AST guard: verify=False only in the intentional TLS helper (#802)."""
 
-  def test_no_hardcoded_verify_false_keyword(self):
+  ALLOWED_FILES = {
+      "ezkey_cli/utils/tls.py",
+  }
+
+  def test_no_hardcoded_verify_false_outside_tls_helper(self):
     root = Path(__file__).resolve().parents[2] / "ezkey_cli"
     offenders = []
 
     for path in root.rglob("*.py"):
       rel = path.relative_to(root.parent).as_posix()
+      if rel in self.ALLOWED_FILES:
+        continue
       tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
       for node in ast.walk(tree):
         if isinstance(node, ast.keyword) and node.arg in {"verify", "verify_ssl"}:
           if isinstance(node.value, ast.Constant) and node.value.value is False:
             offenders.append(f"{rel}:{node.lineno}")
 
-    assert offenders == [], f"Hard-coded verify=False keyword found: {offenders}"
+    assert offenders == [], f"Hard-coded verify=False outside tls helper: {offenders}"
 
 
 class TestSslVerifyFromConfig:

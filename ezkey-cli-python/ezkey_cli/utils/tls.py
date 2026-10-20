@@ -234,59 +234,58 @@ def ensure_configured_urls_allow_insecure(config) -> None:
       )
 
 
+def _force_session_no_redirects(session) -> None:
+  """
+  Force ``allow_redirects=False`` on every Session request.
+
+  Used only for loopback ``--insecure`` so a Location header cannot leave
+  loopback without TLS verification (Christophe / #802 security review).
+  """
+  if getattr(session, "_ezkey_insecure_no_redirects", False):
+    return
+  inner = session.request
+
+  def request_no_redirect(method, url, **kwargs):
+    kwargs["allow_redirects"] = False
+    return inner(method, url, **kwargs)
+
+  session.request = request_no_redirect  # type: ignore[method-assign]
+  session._ezkey_insecure_no_redirects = True
+
+
 def apply_session_verify(session, verify: SslVerify) -> None:
   """
   Apply resolved TLS verify settings to a ``requests.Session``.
 
-  Insecure mode sets ``session.verify`` (session attribute) so individual
-  ``requests.*(verify=False)`` call-site keywords are never introduced —
-  those are what CodeQL ``py/request-without-cert-validation`` flags
-  (#802 / alerts #121 #122).
+  When ``verify`` is ``False`` (loopback-only explicit opt-in), also disable
+  redirects so the session cannot follow a hop off loopback.
 
   Args:
       session: ``requests.Session`` instance.
       verify: Resolved verify value (``True``, CA path, or ``False``).
   """
   session.verify = verify
-
-
-def _request_insecure(method: str, url: str, **kwargs):
-  """
-  Loopback-only insecure request via Session.verify (no verify= kwarg).
-
-  Call only after ``resolve_ssl_verify`` accepted an explicit opt-in (#802).
-  """
-  session = requests.Session()
-  apply_session_verify(session, False)
-  try:
-    return session.request(method, url, **kwargs)
-  finally:
-    session.close()
-
-
-def _request_verified(method: str, url: str, *, ca_bundle: Optional[str] = None, **kwargs):
-  """
-  Request with TLS verification enabled (system CAs or an explicit CA path).
-
-  Never accepts a boolean False — keeps CodeQL from tainting ``verify=``.
-  """
-  if ca_bundle is not None:
-    return requests.request(method, url, verify=ca_bundle, **kwargs)
-  return requests.request(method, url, verify=True, **kwargs)
+  if verify is False:
+    _force_session_no_redirects(session)
 
 
 def _request_with_verify(method: str, url: str, *, verify: SslVerify, **kwargs):
   """
   Issue an HTTP request with TLS verify on by default.
 
-  Dispatches insecure vs verified paths so ``requests.request(..., verify=)``
-  never receives a value that can be boolean False (CodeQL taint).
+  The ``verify=False`` branch is only reachable after ``resolve_ssl_verify``
+  accepted an explicit loopback-only insecure opt-in (#802). CodeQL
+  ``py/request-without-cert-validation`` will flag that branch; security
+  dismisses it with reason (do not evade the scanner). Redirects are disabled
+  in that branch so a Location cannot leave loopback without verification.
   """
   if verify is False:
-    return _request_insecure(method, url, **kwargs)
-  if isinstance(verify, str):
-    return _request_verified(method, url, ca_bundle=verify, **kwargs)
-  return _request_verified(method, url, **kwargs)
+    # Intentional loopback-only --insecure / EZKEY_CLI_INSECURE (#802).
+    # CodeQL alert expected; dismiss with security justification — do not wrap
+    # to hide verify=False (Christophe review on #946).
+    kwargs["allow_redirects"] = False
+    return requests.request(method, url, verify=False, **kwargs)
+  return requests.request(method, url, verify=verify, **kwargs)
 
 
 def requests_get(url: str, *, verify: SslVerify, **kwargs):
