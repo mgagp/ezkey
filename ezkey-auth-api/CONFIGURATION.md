@@ -22,6 +22,8 @@ serves them to enrolled mobile devices, and processes responses. It runs **no sc
 | `ezkey.rate-limit.pending.window-minutes` | — | `1` | optionnel |
 | `ezkey.rate-limit.respond.requests` | — | `1` | optionnel |
 | `ezkey.rate-limit.respond.window-minutes` | — | `5` | optionnel |
+| `ezkey.rate-limit.respond.fail-ip-requests` | — | `30` | optionnel |
+| `ezkey.rate-limit.respond.fail-ip-window-minutes` | — | `1` | optionnel |
 | `ezkey.rate-limit.verify.requests` | — | `10` | optionnel |
 | `ezkey.rate-limit.bind.requests` | — | `10` | optionnel |
 | `ezkey.rate-limit.backstop.verify.requests` | — | `100` | optionnel |
@@ -57,9 +59,11 @@ inventory: [rate-limit-baseline-policy.md](../product-docs/global/rate-limit-bas
 | `ezkey.rate-limit.pending.requests` | `int` | `10` | optionnel | Max pending-check requests per window. |
 | `ezkey.rate-limit.pending.window-minutes` | `int` | `1` | optionnel | Window for `pending` endpoint (minutes). |
 | `ezkey.rate-limit.pending.key-strategy` | `String` | `client-ip` | optionnel | Rate-limit key strategy. Docker: `enrollment-id`. |
-| `ezkey.rate-limit.respond.requests` | `int` | `1` | optionnel | Max respond requests per auth-attempt per window. Strict by design (one approve/deny per attempt). |
-| `ezkey.rate-limit.respond.window-minutes` | `int` | `5` | optionnel | Window for `respond` endpoint (minutes). |
-| `ezkey.rate-limit.respond.key-strategy` | `String` | `auth-attempt-id` | optionnel | Default `auth-attempt-id`. Do not change. |
+| `ezkey.rate-limit.respond.requests` | `int` | `1` | optionnel | Max respond requests **per auth-attempt after ownership** per window (#912 C1). |
+| `ezkey.rate-limit.respond.window-minutes` | `int` | `5` | optionnel | Window for the post-ownership per-id budget (minutes). |
+| `ezkey.rate-limit.respond.key-strategy` | `String` | `auth-attempt-id` | optionnel | Default `auth-attempt-id`. Filter uses fail-IP; id budget is post-signature. |
+| `ezkey.rate-limit.respond.fail-ip-requests` | `int` | `30` | optionnel | Filter IP ceiling for **all** respond requests (#912 C1). |
+| `ezkey.rate-limit.respond.fail-ip-window-minutes` | `int` | `1` | optionnel | Window for the respond fail-IP ceiling (minutes). |
 | `ezkey.rate-limit.verify.requests` | `int` | `10` | optionnel | Max enrollment-verify requests per window. |
 | `ezkey.rate-limit.verify.window-minutes` | `int` | `1` | optionnel | Window for `verify` endpoint (minutes). |
 | `ezkey.rate-limit.verify.key-strategy` | `String` | `client-ip` | optionnel | Key strategy. Docker: `client-ip`. |

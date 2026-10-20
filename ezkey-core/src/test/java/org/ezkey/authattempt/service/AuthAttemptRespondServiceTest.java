@@ -11,12 +11,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import java.util.OptionalLong;
+import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.domain.entity.AuditLog;
+import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.util.ClientContext;
 import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
@@ -27,6 +34,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.auth.AuthAttemptExpiredException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.exception.auth.AuthRespondRateLimitExceededException;
 import org.ezkey.exception.auth.IntegrationSigningUnavailableException;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +46,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 
 /**
  * Unit tests for integration-signed Respond result payloads and #844 status gates in {@link
@@ -58,13 +67,23 @@ class AuthAttemptRespondServiceTest {
 
   @Mock private AuthAttemptTxHelper authAttemptTxHelper;
 
+  @Mock private AuditLogService auditLogService;
+
+  @Mock private ObjectProvider<AuthRespondOwnershipRateLimiter> ownershipRateLimiter;
+
   private AuthAttemptRespondService respondService;
 
   @BeforeEach
   void setUp() {
+    lenient().when(ownershipRateLimiter.getIfAvailable()).thenReturn(null);
     respondService =
         new AuthAttemptRespondService(
-            authAttemptRepository, enrollmentRepository, signatureService, authAttemptTxHelper);
+            authAttemptRepository,
+            enrollmentRepository,
+            signatureService,
+            authAttemptTxHelper,
+            auditLogService,
+            ownershipRateLimiter);
   }
 
   @Test
@@ -84,7 +103,7 @@ class AuthAttemptRespondServiceTest {
             eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.ACCEPTED), any()))
         .thenReturn(1);
 
-    AuthAttemptRespondResponse response = respondService.respond(approveRequest());
+    AuthAttemptRespondResponse response = respondService.respond(approveRequest(), null);
 
     assertThat(response.getResult()).isEqualTo(AuthenticationResult.APPROVED);
     assertThat(response.getAuthAttemptProofTokenResultSignedByIntegration())
@@ -105,8 +124,65 @@ class AuthAttemptRespondServiceTest {
 
   @Test
   @DisplayName(
-      "Invalid device signature returns signed FAILED (non-regression #844) — never unsigned")
-  void respond_invalidSignature_returnsSignedFailedResult() {
+      "Invalid device signature → state-conflict, no INVALID, signature-rejected audit (#912)")
+  void respond_invalidSignature_raisesStateConflictNoInvalid() {
+    AuthAttempt attempt = readAttempt();
+    Enrollment enrollment = enrollmentWithKeys();
+    ClientContext clientContext = new ClientContext("203.0.113.10", "EzkeyTestAgent/1.0");
+
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(false);
+
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), clientContext))
+        .isInstanceOf(AuthAttemptStateConflictException.class)
+        .hasMessageContaining("not authorized");
+    verify(authAttemptTxHelper, never()).markAsInvalid(any());
+    verify(signatureService, never()).signIntegrationPayload(any(), any());
+    ArgumentCaptor<AuditLog> auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService).log(auditCaptor.capture());
+    AuditLog audit = auditCaptor.getValue();
+    assertThat(audit.getEventType()).isEqualTo(EventType.AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED);
+    assertThat(audit.getAuthAttemptId()).isEqualTo(42);
+    assertThat(audit.getEnrollmentId()).isEqualTo(7);
+    assertThat(audit.getIpAddress()).isEqualTo("203.0.113.10");
+    assertThat(audit.getUserAgent()).isEqualTo("EzkeyTestAgent/1.0");
+    assertThat(audit.getEventDetails()).doesNotContain("device-sig");
+    assertThat(audit.getEventDetails()).doesNotContain("signature");
+  }
+
+  @Test
+  @DisplayName(
+      "Post-ownership budget exhausted → AuthRespondRateLimitExceededException (#912 Patrick M6)")
+  void respond_validSignature_whenOwnershipBudgetExhausted_raises429Exception() {
+    AuthAttempt attempt = readAttempt();
+    Enrollment enrollment = enrollmentWithKeys();
+    AuthRespondOwnershipRateLimiter limiter = mock(AuthRespondOwnershipRateLimiter.class);
+    when(ownershipRateLimiter.getIfAvailable()).thenReturn(limiter);
+    when(limiter.tryConsumeAfterOwnership(42)).thenReturn(OptionalLong.of(300L));
+
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
+
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
+        .isInstanceOf(AuthRespondRateLimitExceededException.class)
+        .satisfies(
+            ex ->
+                assertThat(((AuthRespondRateLimitExceededException) ex).getRetryAfterSeconds())
+                    .isEqualTo(300L));
+    verify(limiter).tryConsumeAfterOwnership(42);
+    verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
+    verify(signatureService, never()).signIntegrationPayload(any(), any());
+  }
+
+  @Test
+  @DisplayName("Invalid signature never debits post-ownership limiter (#912 Patrick M6)")
+  void respond_invalidSignature_doesNotCallOwnershipLimiter() {
     AuthAttempt attempt = readAttempt();
     Enrollment enrollment = enrollmentWithKeys();
 
@@ -115,16 +191,76 @@ class AuthAttemptRespondServiceTest {
     when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
         .thenReturn(Optional.empty());
     when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(false);
-    when(signatureService.signIntegrationPayload(any(), eq(INTEGRATION_PRIVATE_KEY)))
-        .thenReturn("signed-failed-result-b64");
 
-    AuthAttemptRespondResponse response = respondService.respond(approveRequest());
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
+        .isInstanceOf(AuthAttemptStateConflictException.class);
+    verify(ownershipRateLimiter, never()).getIfAvailable();
+  }
 
-    assertThat(response.getResult()).isEqualTo(AuthenticationResult.FAILED);
-    assertThat(response.getMessage()).isEqualTo("The response could not be processed.");
-    assertThat(response.getAuthAttemptProofTokenResultSignedByIntegration())
-        .isEqualTo("signed-failed-result-b64");
-    verify(authAttemptTxHelper).markAsInvalid(42);
+  /**
+   * Security property for #912: a third-party (or otherwise invalid) signature on a READ,
+   * non-expired attempt must not flip the row to INVALID and must stay on the generic
+   * state-conflict surface.
+   */
+  @Test
+  @DisplayName(
+      "Invalid signature on READ non-expired attempt must not mark INVALID (#912 third-party DoS)")
+  void respond_readNonExpired_invalidSignature_mustNotMarkInvalid() {
+    AuthAttempt attempt = readAttempt();
+    Enrollment enrollment = enrollmentWithKeys();
+
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(false);
+
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
+        .isInstanceOf(AuthAttemptStateConflictException.class)
+        .hasMessageContaining("not authorized");
+    verify(authAttemptTxHelper, never()).markAsInvalid(any());
+    verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
+    verify(signatureService, never()).signIntegrationPayload(any(), any());
+    verify(auditLogService).log(any(AuditLog.class));
+  }
+
+  @Test
+  @DisplayName(
+      "Missing device public key on non-expired READ attempt → state-conflict, no INVALID (#912)")
+  void respond_missingDeviceKey_raisesStateConflict() {
+    AuthAttempt attempt = readAttempt();
+    Enrollment enrollment = enrollmentWithKeys();
+    enrollment.setDevicePublicKey(null);
+
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
+        .isInstanceOf(AuthAttemptStateConflictException.class)
+        .hasMessageContaining("not authorized");
+    verify(authAttemptTxHelper, never()).markAsInvalid(any());
+    verify(signatureService, never()).validateSignature(any(), any(), any());
+    verify(auditLogService, never()).log(any());
+  }
+
+  @Test
+  @DisplayName(
+      "Unknown authAttemptId + signature → unified 409 state-conflict (#912 no enrollment)")
+  void respond_unknownAttemptIdWithSignature_raisesStateConflict() {
+    when(authAttemptRepository.findById(999_999)).thenReturn(Optional.empty());
+
+    AuthAttemptRespondRequest request = approveRequest();
+    request.setAuthAttemptId(999_999);
+    request.setAuthAttemptProofTokenSignedByDevice("junk-signature-for-unknown-id");
+
+    assertThatThrownBy(() -> respondService.respond(request, null))
+        .isInstanceOf(AuthAttemptStateConflictException.class)
+        .hasMessageContaining("not found");
+    verify(authAttemptTxHelper, never()).markAsInvalid(any());
+    verify(signatureService, never()).validateSignature(any(), any(), any());
+    verify(auditLogService, never()).log(any());
   }
 
   @Test
@@ -146,7 +282,7 @@ class AuthAttemptRespondServiceTest {
     AuthAttemptRespondRequest request = approveRequest();
     request.setAuthAttemptChallengeResponse(99);
 
-    AuthAttemptRespondResponse response = respondService.respond(request);
+    AuthAttemptRespondResponse response = respondService.respond(request, null);
 
     assertThat(response.getResult()).isEqualTo(AuthenticationResult.FAILED);
     assertThat(response.getAuthAttemptProofTokenResultSignedByIntegration())
@@ -164,7 +300,7 @@ class AuthAttemptRespondServiceTest {
     attempt.setAuthAttemptStatus(terminal);
     when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
 
-    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
         .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessageContaining(terminal.name());
     verify(signatureService, never()).signIntegrationPayload(any(), any());
@@ -177,7 +313,7 @@ class AuthAttemptRespondServiceTest {
     attempt.setAuthAttemptStatus(AuthAttemptStatus.PENDING);
     when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
 
-    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
         .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessageContaining("PENDING");
     verify(signatureService, never()).signIntegrationPayload(any(), any());
@@ -188,7 +324,7 @@ class AuthAttemptRespondServiceTest {
   void respond_attemptNotFound_raisesStateConflict() {
     when(authAttemptRepository.findById(42)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
         .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessageContaining("not found");
     verify(signatureService, never()).signIntegrationPayload(any(), any());
@@ -203,7 +339,7 @@ class AuthAttemptRespondServiceTest {
         .thenReturn(Optional.empty());
     when(enrollmentRepository.findById(7)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
         .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessageContaining("enrollment not found");
     verify(signatureService, never()).signIntegrationPayload(any(), any());
@@ -227,7 +363,7 @@ class AuthAttemptRespondServiceTest {
             eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.ACCEPTED), any()))
         .thenReturn(1);
 
-    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
         .isInstanceOf(IntegrationSigningUnavailableException.class)
         .hasMessageContaining("missing or blank");
     verify(signatureService, never()).signIntegrationPayload(any(), any());
@@ -235,22 +371,28 @@ class AuthAttemptRespondServiceTest {
 
   @Test
   @DisplayName(
-      "Blank per-enrollment key on FAILED path → IntegrationSigningUnavailable (no unsigned 200)"
-          + " (#844)")
+      "Blank per-enrollment key on challenge-FAILED path → IntegrationSigningUnavailable"
+          + " (no unsigned 200) (#844)")
   void respond_blankKeyOnFailedPath_throwsUnavailableWithoutUnsigned200() {
     AuthAttempt attempt = readAttempt();
+    attempt.setAuthAttemptChallenge(42);
     Enrollment enrollment = enrollmentWithKeys();
+    enrollment.setAuthAttemptChallengeRequired(true);
     enrollment.setIntegrationPrivateKey("   ");
 
     when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
     when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
     when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
         .thenReturn(Optional.empty());
-    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(false);
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
 
-    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+    AuthAttemptRespondRequest request = approveRequest();
+    request.setAuthAttemptChallengeResponse(99);
+
+    assertThatThrownBy(() -> respondService.respond(request, null))
         .isInstanceOf(IntegrationSigningUnavailableException.class);
     verify(signatureService, never()).signIntegrationPayload(any(), any());
+    verify(authAttemptTxHelper).markAsInvalid(42);
   }
 
   @Test
@@ -273,7 +415,7 @@ class AuthAttemptRespondServiceTest {
         .thenReturn(Optional.of(attempt))
         .thenReturn(Optional.of(cancelled));
 
-    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
         .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessageContaining("no longer READ");
     verify(authAttemptRepository, never()).save(any());
@@ -295,7 +437,7 @@ class AuthAttemptRespondServiceTest {
         .thenReturn(Optional.empty());
     when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
 
-    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
         .isInstanceOf(AuthAttemptExpiredException.class)
         .hasMessageContaining("expired");
     verify(signatureService).validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY));
@@ -319,12 +461,13 @@ class AuthAttemptRespondServiceTest {
         .thenReturn(Optional.empty());
     when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(false);
 
-    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
         .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessageContaining("not authorized");
     verify(authAttemptTxHelper, never()).markAsInvalid(any());
     verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
     verify(signatureService, never()).signIntegrationPayload(any(), any());
+    verify(auditLogService).log(any(AuditLog.class));
   }
 
   @Test
@@ -342,7 +485,7 @@ class AuthAttemptRespondServiceTest {
         .thenReturn(Optional.empty());
     when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
 
-    assertThatThrownBy(() -> respondService.respond(denyRequest()))
+    assertThatThrownBy(() -> respondService.respond(denyRequest(), null))
         .isInstanceOf(AuthAttemptExpiredException.class)
         .hasMessageContaining("expired");
     verify(signatureService).validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY));
@@ -371,7 +514,7 @@ class AuthAttemptRespondServiceTest {
     AuthAttemptRespondRequest request = approveRequest();
     request.setAuthAttemptChallengeResponse(99);
 
-    assertThatThrownBy(() -> respondService.respond(request))
+    assertThatThrownBy(() -> respondService.respond(request, null))
         .isInstanceOf(AuthAttemptExpiredException.class)
         .hasMessageContaining("expired");
     verify(signatureService).validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY));
@@ -395,7 +538,7 @@ class AuthAttemptRespondServiceTest {
     when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
         .thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
         .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessageContaining("not authorized");
     verify(authAttemptTxHelper, never()).markAsInvalid(any());
@@ -423,7 +566,7 @@ class AuthAttemptRespondServiceTest {
         .thenReturn(Optional.of(attempt))
         .thenReturn(Optional.of(expiredStillRead));
 
-    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
         .isInstanceOf(AuthAttemptExpiredException.class);
     verify(enrollmentRepository, never()).save(any());
   }
@@ -439,7 +582,7 @@ class AuthAttemptRespondServiceTest {
     when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
         .thenReturn(Optional.of(newerAttempt));
 
-    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
         .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessage("Authentication attempt superseded by newer request");
   }

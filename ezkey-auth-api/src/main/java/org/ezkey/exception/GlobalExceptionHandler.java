@@ -16,6 +16,7 @@ import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
 import org.ezkey.exception.auth.AuthAttemptExpiredException;
 import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.exception.auth.AuthRespondRateLimitExceededException;
 import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
 import org.ezkey.exception.auth.EnrollmentBindingFailedException;
 import org.ezkey.exception.auth.EnrollmentInstanceInfoFailedException;
@@ -197,6 +198,22 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
         AuthApiProblemCatalog.TITLE_CONFLICT,
         AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT,
         pathFrom(request));
+  }
+
+  /**
+   * Empty-body 429 when the post-ownership per-id respond budget is exhausted (#912 C1). Same
+   * surface as the servlet filter rate-limit response.
+   */
+  @ExceptionHandler(AuthRespondRateLimitExceededException.class)
+  public ResponseEntity<Void> handleAuthRespondRateLimitExceeded(
+      AuthRespondRateLimitExceededException ex, WebRequest request) {
+    LOG.warn(
+        "Respond rate limit after ownership: path={} retryAfter={}",
+        pathFrom(request),
+        ex.getRetryAfterSeconds());
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+        .build();
   }
 
   /**

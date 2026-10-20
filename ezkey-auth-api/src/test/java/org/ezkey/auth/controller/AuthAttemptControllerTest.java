@@ -295,7 +295,7 @@ class AuthAttemptControllerTest {
     // Arrange
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
-    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
         .thenReturn(respondResponse);
     when(authAttemptMapper.toAuthAttemptRespondResponseDto(respondResponse))
         .thenReturn(respondResponseDto);
@@ -310,7 +310,7 @@ class AuthAttemptControllerTest {
     // Verify service interactions
     verify(authAttemptMapper, times(1))
         .toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class));
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
     verify(authAttemptMapper, times(1)).toAuthAttemptRespondResponseDto(respondResponse);
   }
 
@@ -321,7 +321,7 @@ class AuthAttemptControllerTest {
   void respond_WhenServiceThrowsLegacyIllegalArgument_ShouldReturn400() throws Exception {
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
-    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
         .thenThrow(new IllegalArgumentException("legacy validation"));
 
     String json = objectMapper.writeValueAsString(respondRequestDto);
@@ -333,7 +333,7 @@ class AuthAttemptControllerTest {
         .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_VALIDATION_FAILED))
         .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_BAD_REQUEST));
 
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
   }
 
   @Test
@@ -344,7 +344,7 @@ class AuthAttemptControllerTest {
     // Arrange
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
-    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
         .thenThrow(new AuthAttemptRequestFailedException("Invalid signature or response data"));
 
     String json = objectMapper.writeValueAsString(respondRequestDto);
@@ -359,7 +359,7 @@ class AuthAttemptControllerTest {
         .andExpect(jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_FAILED));
 
     // Verify service interactions
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
   }
 
   @Test
@@ -368,7 +368,7 @@ class AuthAttemptControllerTest {
     // Arrange
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
-    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
         .thenThrow(new AuthAttemptStateConflictException("Auth attempt already responded"));
 
     String json = objectMapper.writeValueAsString(respondRequestDto);
@@ -384,7 +384,7 @@ class AuthAttemptControllerTest {
             jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT));
 
     // Verify service interactions
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
   }
 
   @Test
@@ -392,7 +392,7 @@ class AuthAttemptControllerTest {
   void respond_WhenExpired_ShouldReturn409AuthAttemptExpired() throws Exception {
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
-    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
         .thenThrow(
             new org.ezkey.exception.auth.AuthAttemptExpiredException(
                 "Authentication attempt expired"));
@@ -407,7 +407,7 @@ class AuthAttemptControllerTest {
         .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_CONFLICT))
         .andExpect(jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_EXPIRED));
 
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
   }
 
   @Test
@@ -415,7 +415,7 @@ class AuthAttemptControllerTest {
   void respond_WhenPending_ShouldReturn409StateConflict() throws Exception {
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
-    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
         .thenThrow(new AuthAttemptStateConflictException("Auth attempt still PENDING"));
 
     String json = objectMapper.writeValueAsString(respondRequestDto);
@@ -429,7 +429,7 @@ class AuthAttemptControllerTest {
         .andExpect(
             jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT));
 
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
   }
 
   @Test
@@ -437,7 +437,7 @@ class AuthAttemptControllerTest {
   void respond_WhenIntegrationSigningUnavailable_ShouldReturn503() throws Exception {
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
-    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
         .thenThrow(
             new org.ezkey.exception.auth.IntegrationSigningUnavailableException(
                 "Integration private key missing"));
@@ -455,7 +455,7 @@ class AuthAttemptControllerTest {
             jsonPath("$.detail")
                 .value(AuthApiProblemCatalog.DETAIL_INTEGRATION_SIGNING_UNAVAILABLE));
 
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
   }
 
   @Test
@@ -463,7 +463,7 @@ class AuthAttemptControllerTest {
   void respond_WhenNotFound_ShouldReturn409StateConflict() throws Exception {
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
-    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
         .thenThrow(
             new AuthAttemptStateConflictException(
                 "Cannot respond to authentication attempt: not found"));
@@ -479,7 +479,7 @@ class AuthAttemptControllerTest {
         .andExpect(
             jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT));
 
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
   }
 
   @Test
@@ -499,6 +499,6 @@ class AuthAttemptControllerTest {
         .andExpect(jsonPath("$.status").value(400))
         .andExpect(jsonPath("$.path").value("/api/v1/auth-attempts/respond"));
 
-    verify(authAttemptService, never()).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService, never()).respond(any(AuthAttemptRespondRequest.class), any());
   }
 }

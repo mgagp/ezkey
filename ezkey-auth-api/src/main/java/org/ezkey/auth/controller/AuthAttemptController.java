@@ -21,6 +21,7 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.util.ClientContext;
 import org.ezkey.auth.config.TrustedProxyProperties;
 import org.ezkey.auth.util.AuditHelper;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
@@ -343,8 +344,10 @@ public class AuthAttemptController {
     boolean accepted = Boolean.TRUE.equals(request.authAttemptAccepted());
 
     try {
+      ClientContext clientContext = new ClientContext(clientIp, userAgent);
       AuthAttemptRespondResponse response =
-          authAttemptService.respond(authAttemptMapper.toAuthAttemptRespondRequest(request));
+          authAttemptService.respond(
+              authAttemptMapper.toAuthAttemptRespondRequest(request), clientContext);
 
       String action = accepted ? "auth_attempt_approved" : "auth_attempt_denied";
 

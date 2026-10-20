@@ -12,6 +12,15 @@ package org.ezkey.authattempt.service;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import java.util.OptionalLong;
+import org.ezkey.audit.constants.AuthAttemptAuditConstants;
+import org.ezkey.audit.domain.ApiName;
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.domain.entity.AuditLog;
+import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.util.AuditDetailsBuilder;
+import org.ezkey.audit.util.ClientContext;
 import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
@@ -23,10 +32,13 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.auth.AuthAttemptExpiredException;
 import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.exception.auth.AuthRespondRateLimitExceededException;
 import org.ezkey.exception.auth.IntegrationSigningUnavailableException;
 import org.ezkey.signature.SignatureService;
+import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,10 +70,14 @@ import org.springframework.transaction.annotation.Transactional;
  * raised only <em>after</em> enrollment load and device-signature (ownership) verification succeed,
  * and <em>before</em> challenge validation — so an owner with a valid signature on an expired
  * attempt gets typed expiry even when the challenge is wrong. An unknown attempt, a still-{@code
- * PENDING} or terminal attempt, a missing device public key on an expired attempt, or a non-owner
- * device (invalid signature on an already-expired attempt) keep the generic {@code
- * auth-attempt-state-conflict} surface (no {@code INVALID} flip) so sequential ids do not reveal
- * expiry before the caller is verified.
+ * PENDING} or terminal attempt, a missing device public key, or a non-owner device (invalid
+ * signature) keep the generic {@code auth-attempt-state-conflict} surface (no {@code INVALID} flip)
+ * so sequential ids do not reveal expiry or READ state before the caller is verified (#912).
+ *
+ * <p><b>Invalid signature / missing device key (#912):</b> Before proof of possession, never
+ * transition the attempt and return generic 409. Emit audit {@code
+ * AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED} (attempt id, enrollment id, sanitized IP/UA — never the
+ * signature).
  *
  * <p><b>Transaction Management:</b> This service uses Spring's declarative transaction management
  * to ensure data consistency during the authentication response processing.
@@ -100,6 +116,10 @@ public class AuthAttemptRespondService {
 
   private final AuthAttemptTxHelper authAttemptTxHelper;
 
+  private final AuditLogService auditLogService;
+
+  private final ObjectProvider<AuthRespondOwnershipRateLimiter> ownershipRateLimiter;
+
   /**
    * Constructs the respond service with required dependencies.
    *
@@ -107,16 +127,23 @@ public class AuthAttemptRespondService {
    * @param enrollmentRepository the JPA repository for enrollments
    * @param signatureService the signature service for cryptographic operations
    * @param authAttemptTxHelper the transaction helper for independent status commits
+   * @param auditLogService audit trail (signature-rejected probes, #912)
+   * @param ownershipRateLimiter optional post-ownership per-id budget (#912 C1); empty when rate
+   *     limiting is disabled
    */
   public AuthAttemptRespondService(
       AuthAttemptRepository authAttemptRepository,
       EnrollmentRepository enrollmentRepository,
       SignatureService signatureService,
-      AuthAttemptTxHelper authAttemptTxHelper) {
+      AuthAttemptTxHelper authAttemptTxHelper,
+      AuditLogService auditLogService,
+      ObjectProvider<AuthRespondOwnershipRateLimiter> ownershipRateLimiter) {
     this.authAttemptRepository = authAttemptRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.authAttemptTxHelper = authAttemptTxHelper;
     this.signatureService = signatureService;
+    this.auditLogService = auditLogService;
+    this.ownershipRateLimiter = ownershipRateLimiter;
   }
 
   /**
@@ -127,9 +154,11 @@ public class AuthAttemptRespondService {
    * challenge responses if required, and updates the authentication attempt status accordingly.
    *
    * @param request the authentication response request from mobile device
+   * @param clientContext optional client IP/UA for signature-rejected audit (#912); may be null
    * @return the authentication response result with status and message
    */
-  public AuthAttemptRespondResponse respond(AuthAttemptRespondRequest request) {
+  public AuthAttemptRespondResponse respond(
+      AuthAttemptRespondRequest request, ClientContext clientContext) {
     AuthAttempt authAttempt = null;
     try {
       // Step 1: Validate and get the authentication attempt (no wall-clock expiry yet — #895)
@@ -139,7 +168,10 @@ public class AuthAttemptRespondService {
       Enrollment enrollment = validateEnrollment(authAttempt);
 
       // Step 3: Validate device signature (ownership) before typed expiry (#895 Christophe)
-      validateDeviceSignature(request, authAttempt, enrollment);
+      validateDeviceSignature(request, authAttempt, enrollment, clientContext);
+
+      // Step 3b: per-authAttemptId budget only after ownership (#912 C1)
+      consumeOwnershipRateLimit(authAttempt.getAuthAttemptId());
 
       // Step 4: Wall-clock expiry after ownership, before challenge (#895 Patrick M1)
       ensureNotExpired(authAttempt);
@@ -153,10 +185,9 @@ public class AuthAttemptRespondService {
       // Step 7: Build and return response (integration-signed result payload)
       return buildResponse(request, authAttempt, enrollment);
     } catch (AuthAttemptRequestFailedException ignored) {
-      // Legitimate domain FAILED only (invalid device signature, challenge mismatch, missing
-      // device key after the attempt was loaded). State conflict (incl. not-found / PENDING /
-      // terminal) and missing integration signing key propagate as problem+json — never unsigned
-      // 200 (#844).
+      // Legitimate domain FAILED only (challenge mismatch after ownership). Invalid signature and
+      // missing device key are state-conflict (#912). Missing integration signing key propagates
+      // as problem+json — never unsigned 200 (#844).
       return buildFailedResponse(request, authAttempt);
     }
   }
@@ -245,6 +276,22 @@ public class AuthAttemptRespondService {
   }
 
   /**
+   * Debits the optional post-ownership per-id respond budget (#912 C1).
+   *
+   * @param authAttemptId attempt id
+   */
+  private void consumeOwnershipRateLimit(Integer authAttemptId) {
+    AuthRespondOwnershipRateLimiter limiter = ownershipRateLimiter.getIfAvailable();
+    if (limiter == null) {
+      return;
+    }
+    OptionalLong retryAfter = limiter.tryConsumeAfterOwnership(authAttemptId);
+    if (retryAfter.isPresent()) {
+      throw new AuthRespondRateLimitExceededException(retryAfter.getAsLong());
+    }
+  }
+
+  /**
    * Validates the enrollment for the authentication attempt.
    *
    * <p>This method ensures the enrollment exists and contains the necessary cryptographic keys for
@@ -267,22 +314,15 @@ public class AuthAttemptRespondService {
     }
     Enrollment enrollment = enrollmentOpt.get();
 
-    // Validate device public key
+    // Validate device public key — missing key: generic 409, no INVALID (#895 Patrick M2 / #912)
     String devicePublicKey = enrollment.getDevicePublicKey();
     if (devicePublicKey == null) {
-      // Expired + missing key: generic 409, no INVALID flip (#895 Patrick M2) — ownership cannot
-      // be proven and typed expiry must not leak.
-      if (isWallClockExpired(authAttempt)) {
-        logger.warn(
-            "Respond refused: missing device public key on expired auth attempt {}"
-                + " (client → 409 state-conflict)",
-            authAttempt.getAuthAttemptId());
-        throw new AuthAttemptStateConflictException(
-            "Cannot respond to authentication attempt: not authorized");
-      }
-      // Use TxHelper to commit INVALID status before throwing exception
-      authAttemptTxHelper.markAsInvalid(authAttempt.getAuthAttemptId());
-      throw new AuthAttemptRequestFailedException("Device public key not found");
+      logger.warn(
+          "Respond refused: missing device public key on auth attempt {}"
+              + " (client → 409 state-conflict)",
+          authAttempt.getAuthAttemptId());
+      throw new AuthAttemptStateConflictException(
+          "Cannot respond to authentication attempt: not authorized");
     }
     return enrollment;
   }
@@ -294,12 +334,19 @@ public class AuthAttemptRespondService {
    * authAttemptAccepted cannot be flipped by a MITM. See {@link AuthAttemptSignaturePayload} and
    * docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md.
    *
+   * <p>Invalid signature → generic 409, no status transition, audit {@code
+   * AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED} (#912 / #895). Never logs the signature bytes.
+   *
    * @param request the authentication response request
    * @param authAttempt the authentication attempt
    * @param enrollment the enrollment containing device public key
+   * @param clientContext optional client IP/UA for the reject audit
    */
   private void validateDeviceSignature(
-      AuthAttemptRespondRequest request, AuthAttempt authAttempt, Enrollment enrollment) {
+      AuthAttemptRespondRequest request,
+      AuthAttempt authAttempt,
+      Enrollment enrollment,
+      ClientContext clientContext) {
     boolean accepted = Boolean.TRUE.equals(request.getAuthAttemptAccepted());
     String payload =
         AuthAttemptSignaturePayload.buildRespondPayload(
@@ -310,19 +357,46 @@ public class AuthAttemptRespondService {
             request.getAuthAttemptProofTokenSignedByDevice(),
             enrollment.getDevicePublicKey());
     if (!isValid) {
-      // Non-owner probe on an already-expired attempt: keep generic 409 — do not reveal typed
-      // expiry and do not flip the row to INVALID (#895 Christophe).
-      if (isWallClockExpired(authAttempt)) {
-        logger.warn(
-            "Respond refused: invalid device signature on expired auth attempt {}"
-                + " (client → 409 state-conflict)",
-            authAttempt.getAuthAttemptId());
-        throw new AuthAttemptStateConflictException(
-            "Cannot respond to authentication attempt: not authorized");
-      }
-      authAttemptTxHelper.markAsInvalid(authAttempt.getAuthAttemptId());
-      throw new AuthAttemptRequestFailedException("Invalid signature for auth attempt code");
+      logger.warn(
+          "Respond refused: invalid device signature on auth attempt {}"
+              + " (client → 409 state-conflict)",
+          authAttempt.getAuthAttemptId());
+      auditSignatureRejected(authAttempt, clientContext);
+      throw new AuthAttemptStateConflictException(
+          "Cannot respond to authentication attempt: not authorized");
     }
+  }
+
+  /**
+   * Audits a failed ownership (device-signature) check. Never includes the signature in details or
+   * logs. IP and User-Agent are passed through {@link LogSanitizer}.
+   *
+   * @param authAttempt the attempt under respond
+   * @param clientContext optional client context (null-safe)
+   */
+  private void auditSignatureRejected(AuthAttempt authAttempt, ClientContext clientContext) {
+    String clientIp =
+        clientContext != null ? LogSanitizer.sanitizeForLog(clientContext.clientIp()) : null;
+    String userAgent =
+        clientContext != null ? LogSanitizer.sanitizeForLog(clientContext.userAgent()) : null;
+    String details =
+        AuditDetailsBuilder.builder()
+            .custom("authAttemptId", authAttempt.getAuthAttemptId())
+            .custom("enrollmentId", authAttempt.getEnrollmentId())
+            .toJson();
+    auditLogService.log(
+        AuditLog.builder()
+            .eventType(EventType.AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED)
+            .eventAction(AuthAttemptAuditConstants.AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED)
+            .eventStatus(EventStatus.FAILURE)
+            .apiName(ApiName.AUTH_API)
+            .ipAddress(clientIp)
+            .userAgent(userAgent)
+            .authAttemptId(authAttempt.getAuthAttemptId())
+            .authAttemptCreatedAt(authAttempt.getCreatedAt())
+            .enrollmentId(authAttempt.getEnrollmentId())
+            .eventDetails(details)
+            .build());
   }
 
   /**

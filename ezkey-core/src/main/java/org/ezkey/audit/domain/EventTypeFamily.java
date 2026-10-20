@@ -49,6 +49,7 @@ public enum EventTypeFamily {
       EventType.AUTH_ATTEMPT_CREATED,
       EventType.AUTH_ATTEMPT_PENDING,
       EventType.AUTH_ATTEMPT_RESPOND,
+      EventType.AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED,
       EventType.AUTH_ATTEMPT_CANCELLED,
       EventType.AUTH_ATTEMPT_EXPIRED),
   API_KEY(
