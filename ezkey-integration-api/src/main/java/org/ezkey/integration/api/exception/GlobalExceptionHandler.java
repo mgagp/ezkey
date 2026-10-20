@@ -123,7 +123,7 @@ public class GlobalExceptionHandler {
       EnrollmentInactiveException ex, HttpServletRequest request) {
     logger.warn(
         "Integration API auth attempt blocked: enrollment inactive. Path: {}",
-        request.getRequestURI());
+        LogSanitizer.sanitizeForLog(request.getRequestURI()));
     return buildProblemDetail(
         ex.getMessage(),
         HttpStatus.FORBIDDEN,
@@ -311,7 +311,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(NoResourceFoundException.class)
   public ResponseEntity<ProblemDetail> handleNoResourceFoundException(
       NoResourceFoundException ex, HttpServletRequest request) {
-    logger.debug("No resource: {}", request.getRequestURI());
+    logger.debug("No resource: {}", LogSanitizer.sanitizeForLog(request.getRequestURI()));
     return buildProblemDetail(
         "The requested resource could not be found.",
         HttpStatus.NOT_FOUND,
@@ -323,7 +323,10 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(NoHandlerFoundException.class)
   public ResponseEntity<ProblemDetail> handleNoHandlerFoundException(
       NoHandlerFoundException ex, HttpServletRequest request) {
-    logger.debug("No handler: {} {}", ex.getHttpMethod(), ex.getRequestURL());
+    logger.debug(
+        "No handler: {} {}",
+        LogSanitizer.sanitizeForLog(ex.getHttpMethod()),
+        LogSanitizer.sanitizeForLog(ex.getRequestURL()));
     return buildProblemDetail(
         "The requested resource could not be found.",
         HttpStatus.NOT_FOUND,
@@ -340,7 +343,10 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
   public ResponseEntity<ProblemDetail> handleHttpRequestMethodNotSupported(
       HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
-    logger.debug("Method not allowed: {} {}", ex.getMethod(), request.getRequestURI());
+    logger.debug(
+        "Method not allowed: {} {}",
+        LogSanitizer.sanitizeForLog(ex.getMethod()),
+        LogSanitizer.sanitizeForLog(request.getRequestURI()));
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(
             HttpStatus.METHOD_NOT_ALLOWED, IntegrationApiProblemCatalog.DETAIL_METHOD_NOT_ALLOWED);
@@ -370,7 +376,7 @@ public class GlobalExceptionHandler {
         "Integration API 503 heartbeat-degraded (path={}, phase={}, anchorCheckpointId={}, "
             + "latestWindowEnd={}, stalePhaseStartsAt={}, failClosedNotBefore={}, "
             + "problemType=https://ezkey.io/problems/system/audit-chain-heartbeat-degraded)",
-        request.getRequestURI(),
+        LogSanitizer.sanitizeForLog(request.getRequestURI()),
         ev.phase(),
         ev.anchorCheckpointId(),
         ev.latestWindowEnd(),
@@ -399,7 +405,10 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ProblemDetail> handleGenericException(
       Exception ex, HttpServletRequest request) {
-    logger.error("Unhandled exception in Integration API: {}", ex.getMessage(), ex);
+    logger.error(
+        "Unhandled exception in Integration API: {}",
+        LogSanitizer.sanitizeForLog(ex.getMessage()),
+        ex);
     return buildProblemDetail(
         "An unexpected error occurred.",
         HttpStatus.INTERNAL_SERVER_ERROR,
