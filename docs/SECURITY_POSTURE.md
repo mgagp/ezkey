@@ -92,20 +92,22 @@ meant to be linked from trust-facing material without inflating the top-level pi
 - **HA keyset contract (#914 / #920 / #921):** the **database blob is the source of truth**; in-memory
   and **file copies are caches** (the keyset file is **best-effort** — a local cache rewrite failure
   after a successful CAS is logged at ERROR and does not fail the mutation in DATABASE/HYBRID).
-  Admin writers **reload under the write lock before every mutation** (`promote` / `add` / `rotate`)
-  when the blob is newer, then **write only via CAS**
-  (`UPDATE ezkey_keyset_blob … WHERE version = :read`). Zero rows updated → typed
-  `KeysetConcurrentModificationException` (no auto-retry). **H3 / N1:** CAS (or DB error) is decided
-  **before** installing the new handle; on CAS success, memory is installed **immediately**, then the
-  file cache is rewritten best-effort. A lost CAS leaves memory and file unchanged. Reload-before-
-  mutation DB errors **propagate in DATABASE** (fail-closed: do not mutate from stale memory). A
-  traffic-independent version tick (default 5 s, must be **strictly less than the sync window**) keeps
-  idle replicas current without putting `findVersion` on the encrypt/decrypt hot path (SEC-009).
-  Decrypt-failure may perform one throttled synchronous reload per node (≤ 1/s; throttle stamped per
-  attempt). Re-encryption chooses the target primary from the reloaded blob; `old == new` is refused
-  (HTTP 409), never “accepted” as a silent no-op. Unknown kid after reload → fail-closed (no
-  `setPrimary`, no blob write). Expected HA conflicts audit as `KEY_PROMOTION_CONFLICT` (WARN /
-  FAILURE); ERROR only for true inconsistency or ≥ 3 consecutive conflicts.
+  **At startup, an existing DB blob takes precedence over the file** (adopt blob → rewrite file
+  cache). The file may only **claim** an absent row (`insertSingletonIfAbsent`); it must never
+  blind-CAS overwrite a present blob (`STARTUP_FILE_SYNC` removed). If the DB is unreachable or the
+  row exists but cannot be loaded, startup **fail-closes** (no file→DB sync). Admin writers
+  **reload under the write lock before every mutation** (`promote` / `add` / `rotate`) when the blob
+  is newer, then **write only via CAS** (`UPDATE ezkey_keyset_blob … WHERE version = :read`). Zero
+  rows or memory version 0 with a present row → typed `KeysetConcurrentModificationException` (no
+  auto-retry; no “re-read live version as expected”). **H3 / N1:** CAS first; on success install
+  memory immediately, then best-effort file cache. Reload-before-mutation errors **propagate in
+  DATABASE/HYBRID** (fail-closed). A traffic-independent version tick (default 5 s, must be
+  **strictly less than the sync window**) keeps idle replicas current without putting `findVersion`
+  on the encrypt/decrypt hot path (SEC-009). Decrypt-failure may perform one throttled synchronous
+  reload per node (≤ 1/s; throttle stamped per attempt). Re-encryption chooses the target primary
+  from the reloaded blob; `old == new` is refused (HTTP 409). Unknown kid after reload → fail-closed.
+  Expected HA conflicts audit as `KEY_PROMOTION_CONFLICT` (WARN / FAILURE); ERROR only for true
+  inconsistency or ≥ 3 consecutive conflicts.
 
 ## What Ezkey does not do (current limits, stated honestly)
 

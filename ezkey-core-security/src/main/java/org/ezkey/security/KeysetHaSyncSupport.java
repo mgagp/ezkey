@@ -38,6 +38,16 @@ import org.springframework.dao.DataAccessException;
  */
 final class KeysetHaSyncSupport {
 
+  /** Outcome of preferring the DB blob over a local file at process startup (B2/S1). */
+  enum StartupBlobOutcome {
+    /** Blob loaded into memory (file may be rewritten as best-effort cache). */
+    LOADED,
+    /** No blob row yet — writer may claim via insert. */
+    ABSENT,
+    /** DB unreachable or row unloadable — do not sync file→DB. */
+    FAILED_CLOSED
+  }
+
   private static final Logger logger = LoggerFactory.getLogger(KeysetHaSyncSupport.class);
 
   private final TinkProperties properties;
@@ -154,6 +164,74 @@ final class KeysetHaSyncSupport {
   }
 
   /**
+   * Startup SoT: if a blob row exists, adopt it (with one retry); never fall through to file→DB
+   * sync on failure.
+   *
+   * @param writer whether this process is the keyset writer
+   * @param keysetExists whether {@code ezkey_keyset_blob} has a row
+   * @param loadFromDatabase loads blob into memory
+   * @param onLoadedRewriteFileCache best-effort file cache rewrite after a successful load
+   * @param awaitDatabaseKeyset non-writer bootstrap wait
+   * @return startup outcome
+   */
+  StartupBlobOutcome loadExistingBlobAtStartup(
+      boolean writer,
+      BooleanSupplier keysetExists,
+      BooleanSupplier loadFromDatabase,
+      Runnable onLoadedRewriteFileCache,
+      BooleanSupplier awaitDatabaseKeyset) {
+    try {
+      if (keysetExists.getAsBoolean()) {
+        boolean loaded = loadFromDatabase.getAsBoolean();
+        if (!loaded) {
+          loaded = loadFromDatabase.getAsBoolean();
+        }
+        if (loaded) {
+          logger.info(
+              "✅ Keyset loaded from database at startup (existing blob takes precedence over"
+                  + " file)");
+          onLoadedRewriteFileCache.run();
+          return StartupBlobOutcome.LOADED;
+        }
+        // Unloadable legacy/corrupt row: writer may ADR-0011-replace; peripherals fail closed.
+        // Transient DB errors are DataAccessException (FAILED_CLOSED below) — not this path.
+        if (!writer) {
+          logger.error(
+              "Keyset blob exists but could not be loaded; refusing file→DB sync (fail closed)");
+          return StartupBlobOutcome.FAILED_CLOSED;
+        }
+        logger.warn(
+            "Keyset blob exists but could not be loaded; writer will attempt ADR-0011 replace"
+                + " (not a stale-file STARTUP_FILE_SYNC)");
+        return StartupBlobOutcome.ABSENT;
+      }
+      if (!writer) {
+        if (awaitDatabaseKeyset.getAsBoolean()) {
+          onLoadedRewriteFileCache.run();
+          return StartupBlobOutcome.LOADED;
+        }
+      }
+      return StartupBlobOutcome.ABSENT;
+    } catch (DataAccessException | IllegalStateException e) {
+      if (writer) {
+        logger.error(
+            "Failed to reach keyset blob at startup; refusing file→DB sync (fail closed): {}",
+            e.getMessage());
+        logger.debug("Database keyset load error (fail closed)", e);
+        return StartupBlobOutcome.FAILED_CLOSED;
+      }
+      logger.warn(
+          "Failed to load keyset from database while waiting for Admin materialization: {}",
+          e.getMessage());
+      if (awaitDatabaseKeyset.getAsBoolean()) {
+        onLoadedRewriteFileCache.run();
+        return StartupBlobOutcome.LOADED;
+      }
+      return StartupBlobOutcome.ABSENT;
+    }
+  }
+
+  /**
    * Claims the singleton row when absent, otherwise CAS-updates with {@code expectedVersion}.
    * Updates {@code onVersionAdvanced} with the resulting version (1 after claim, expected+1 after
    * CAS). P6: does not read JPA {@code @Version} before flush.
@@ -183,9 +261,15 @@ final class KeysetHaSyncSupport {
     }
 
     long expectedVersion = memoryVersionSupplier.get();
+    // Never re-read the live DB version as the CAS expected version (B2/S1): that turned
+    // memory version 0 into a blind overwrite of the authoritative blob (e.g. STARTUP_FILE_SYNC).
     if (expectedVersion <= 0) {
-      expectedVersion = findBlobVersionInstrumented().orElse(1L);
-      onVersionAdvanced.accept(expectedVersion);
+      throw new KeysetConcurrentModificationException(
+          expectedVersion,
+          "Keyset blob CAS refused: in-memory version is unset (0) while a blob row exists;"
+              + " refusing blind write (updatedBy attempted="
+              + updatedBy
+              + ")");
     }
 
     int updated =
@@ -233,17 +317,20 @@ final class KeysetHaSyncSupport {
             "🔄 Reloading keyset before mutation (db version {} > memory {})",
             dbVersion.get(),
             memoryVersion);
-        reloadAction.getAsBoolean();
+        boolean reloaded = reloadAction.getAsBoolean();
+        if (!reloaded) {
+          throw new IllegalStateException(
+              "Reload-before-mutation: database version "
+                  + dbVersion.get()
+                  + " is newer than memory "
+                  + memoryVersion
+                  + " but keyset load returned false");
+        }
       }
     } catch (DataAccessException | IllegalStateException e) {
-      // DATABASE: blob is SoT — fail closed (do not mutate from a possibly stale memory keyset).
-      if (storageMode == TinkProperties.Keyset.StorageMode.DATABASE) {
-        throw e;
-      }
-      logger.warn(
-          "Failed to check/reload keyset before mutation: {}. Proceeding with memory keyset.",
-          e.getMessage());
-      logger.debug("Reload-before-mutation error", e);
+      // DATABASE/HYBRID: blob is SoT — fail closed (do not mutate from a possibly stale memory
+      // keyset).
+      throw e;
     }
   }
 

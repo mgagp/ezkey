@@ -138,11 +138,13 @@ class TinkKeyManagerAdminFirstBootstrapTest {
 
     AtomicInteger finds = new AtomicInteger();
     KeysetBlobRepository repository = Mockito.mock(KeysetBlobRepository.class);
+    // find #1: empty (startup / pre-materialize probe); after insert loses claim, adopt peer.
     when(repository.findKeyset())
         .thenAnswer(
-            _ -> finds.incrementAndGet() >= 3 ? Optional.of(peer.blob()) : Optional.empty());
+            _ -> finds.incrementAndGet() >= 2 ? Optional.of(peer.blob()) : Optional.empty());
     when(repository.keysetExists()).thenReturn(false);
     when(repository.insertSingletonIfAbsent(any(), any(), any())).thenReturn(0);
+    when(repository.findVersion()).thenReturn(Optional.of(1L));
 
     TinkKeyManager manager =
         new TinkKeyManager(
