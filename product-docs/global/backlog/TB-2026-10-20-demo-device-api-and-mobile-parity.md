@@ -1,31 +1,46 @@
-# Tracer Bullet Brief — `TB-2026-10-20-demo-device-api-and-mobile-parity` Demo Device API + mobile FSM parity (draft spec)
+# Tracer Bullet Brief — `TB-2026-10-20-demo-device-api-and-mobile-parity` Demo Device API + mobile FSM parity
 
 ## Metadata
 
 - **ID:** `TB-2026-10-20-demo-device-api-and-mobile-parity`
-- **Status:** `draft`
+- **Status:** `under-review`
 - **Related idea:** `I-2026-10-20-demo-device-api-and-mobile-parity`
 - **GitHub issue:** `#943`
+- **GitHub PR (analysis):** `#948`
 - **Lane:** `D`
-- **Posture:** `analysis-first` (this PR is doc-only; implementation after Marc go/no-go)
+- **Posture:** `analysis-first` (this PR is doc-only; F1+F4 implementation is a follow-up)
 - **Created at:** `2026-10-20`
 - **Updated at:** `2026-10-20`
 - **Captured by:** Marc
+- **Reviews:** Alex (product), Julie (operability), Patrick (craft) — decisions locked below
 
 ## Objective
 
-Produce a **draft specification** that:
+Specify a **pragmatic fidelity** for the Demo Device against Auth/Integration contracts and the
+mobile FSM
+([`MOBILE_APP_STATE_MACHINE.md`](../../../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md)): keep the
+behaviour developers need for local MFA labs, leave out full mobile complexity, and lock error-copy
+honesty to mobile catalog fidelity.
 
-1. Inventories drift between `ezkey-demo-device` and current Auth / Integration OpenAPI contracts.
-2. Inventories drift versus the mobile reference FSM and on-screen states
-   ([`MOBILE_APP_STATE_MACHINE.md`](../../../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md)).
-3. Classifies each gap (**fix** / **accept** / **out of scope**).
-4. Maps each FSM state, transition, and edge case to **kept** / **simplified** / **deliberately
-   omitted**, with rationale.
-5. States an explicit **balance-point proposal** for Alex, Julie, Patrick, and Marc to validate,
-   with open questions and rough effort per fix group.
+No product code in this analysis PR.
 
-No product code in this slice.
+---
+
+## Product posture (compass)
+
+The Demo Device is **never** part of any official or community deployment. It is a **local
+internal test tool**, run by a developer on their own workstation (CLI or Docker). What they enroll
+and test only concerns them.
+
+| Consequence | Posture |
+| --- | --- |
+| External evaluators | **Not** a Demo Device audience |
+| Security-grade UI locks | **Not** required (no biometric gate, no Q10 decision-lock UX) |
+| Error-copy honesty | **Required** — justified by **fidelity to the mobile app**, not by protecting external users |
+| Language | **English only** |
+
+Alex’s balance (locked): Demo Device = **“faithful device stub.”** Trace that phrase in this TB and
+in a planned `ezkey-demo-device/AGENTS.md` section (kept vs omitted, #943).
 
 ---
 
@@ -33,15 +48,11 @@ No product code in this slice.
 
 | Axis | Target |
 | --- | --- |
-| Role | Internal lab / agent / QA tool — not a second product mobile client |
-| Behaviour | **Faithful** on the Auth API device path (bind → verify → pending → respond) and on the
-  HTTP/problem outcomes operators hit in demos |
-| Exhaustiveness | **Not** required: no biometrics, no Keystore tiers, no Settings hub, no i18n pack, no
-  installation trust-zone chrome, no full race-ref matrix |
-| UI honesty | Enough that Approve/Deny/expired/conflict/rate-limit/signing-unavailable are
-  distinguishable without reading server `detail` |
-| Initiator clocks | Countdown remains on Admin UI / Acme / PAM / SDK (#834 Q1). Demo Device does not
-  add a competing phone timer unless Marc explicitly opts the lab tool in |
+| Role | Local internal workstation tool — not a product mobile client |
+| Behaviour | **Faithful** on Auth API bind → verify → pending → respond and on HTTP/problem outcomes |
+| Exhaustiveness | **Not** required: no biometrics, Keystore tiers, Settings hub, i18n, installation chrome, race-ref matrix |
+| UI honesty | Expired / no longer active / 429 / 503 distinguishable **without** HTTP codes or server `detail` |
+| Initiator clocks & verdicts | Demo Device duplicates **neither** the countdown **nor** the initiator’s wait verdict (Part D) |
 
 ---
 
@@ -49,281 +60,271 @@ No product code in this slice.
 
 | Surface | Who initiates | What they watch |
 | --- | --- | --- |
-| Integrating app (Admin UI passwordless, Acme, PAM/SSH, SDK) | End user / operator starts login | Create + wait; `expiresAt` / countdown; wait verdict (`ACCEPTED` / `REJECTED` / `EXPIRED` / …) |
+| Integrating app (Admin UI, Acme, PAM/SSH, SDK) | Developer starts login | Create + wait; `expiresAt` / countdown; wait verdict |
 | Auth API | Device protocol | `pending` (PENDING→READ), `respond` (typed 409 / 503 / 429 / signed 200) |
-| Integration API | Integrating app (API key) | `POST /auth-attempts` (+ optional `ttlSeconds`), `GET …/wait`, `POST …/cancel` |
-| Demo Device | End user / agent who opens the phone UI to approve or deny | Bind/verify/pending/respond **client** of Auth API only |
-| Mobile app (reference) | Same human role as Demo Device | Full FSM in `MOBILE_APP_STATE_MACHINE.md` |
-| Evaluator self-registration | Anonymous visitor on Admin API / ezkey.org | **Not** a Demo Device surface |
+| Integration API | Integrating app (API key) | create (+ `ttlSeconds`), wait, cancel |
+| Demo Device | Developer / agent who opens the phone UI | Auth API **client** only |
+| Mobile app (reference) | Same human role as Demo Device | Full FSM |
+| Evaluator self-registration | Admin API / ezkey.org | **Out of scope** |
 
-Demo Device never calls Integration API. Wait/verdict fidelity is therefore **interactional**: when
-wait returns `EXPIRED`, a late Demo Device Approve must surface typed expiry (409), not a silent or
-opaque failure.
+---
+
+## Decisions (Marc — locked 2026-10-20)
+
+| ID | Decision |
+| --- | --- |
+| **Q1 Leave-as-deny** | **Not implemented.** Document caveat in `AGENTS.md` + this TB. **No** on-screen leave-declines hint. **F2 is out.** |
+| **409 terminal UI** | Final state after 409 expired / no longer active: **no Approve/Deny**, **Back only** — belongs to **F1** (not F5). Acceptance: late Approve → expired page with **no** buttons. |
+| **503** | Keep claim and re-show the same pending card; retryable message **above** the buttons. Today the claim is cleared on entry to respond (`EzkeyAppController` ~L620) — **F1 must reorder**: clear claim only after a terminal outcome (200 decision, non-retryable 409); on **503** (and **429** on respond) **do not** clear / restore claim so Approve/Deny remain. |
+| **Language** | English only. |
+| **Budget** | **F1** (includes `e.getMessage()` leak removal from former F3: ~L178, L270, L485, L603, L780 + body echo L350–363) + **F4**. Defer remainder of F3. **Omit F5 / UncertainDecision.** Free-text challenge kept. Local TTL fallback + 409 net kept; **no** pending-wire `expiresAt`. |
+| **#916** | Invalid device signature on respond → generic **409** `auth-attempt-state-conflict` shown as **no longer active**. **Forbid** any client-side differentiation of signature refusal. |
+| **Pending “expired” inference** | Today pending infers expired from exception string (~L599–603). When message leaks are removed, **replace** with a typed signal (or drop the special-case); no string sniffing. |
 
 ---
 
 ## Part A — API contract inventory (evidence)
 
-Specs on `main`: `specs/auth-api/openapi-spec.json`, `specs/integration-api/openapi-spec.json`.
+Specs: `specs/auth-api/openapi-spec.json`, `specs/integration-api/openapi-spec.json`.
 Problem types: `ezkey-auth-api/.../AuthApiProblemCatalog.java`.
 
 ### A1. Auth `POST /api/v1/enrollments/bind`
 
 | | |
 | --- | --- |
-| **API** | 200 bind DTO; **400**; **409** already bound / proof used; **429** + `Retry-After`; **500**. OpenAPI path L60–132 (`specs/auth-api/openapi-spec.json`). |
-| **Demo Device** | Maps **409** to clear “already bound” copy; **400** to invitation guidance; other statuses append raw response body into the UI error (`EzkeyAppController.toBindErrorMessage` L350–363, catch L258–267). No **429** catalog / Retry-After. |
-| **Classification** | **fix** — stop echoing ProblemDetail bodies; add a short 429 message (Retry-After optional in lab). **Accept** not parsing every bind problem `type` beyond 409/400. |
+| **API** | 200; **400**; **409**; **429** + `Retry-After`; **500**. OpenAPI L60–132. |
+| **Demo Device** | 409/400 mapped; other statuses may echo body (`toBindErrorMessage` L350–363). No 429 catalog. |
+| **Classification** | **Fix (F1)** — stop body echo; Julie 429 copy; no HTTP code in UI. |
 
 ### A2. Auth `POST /api/v1/enrollments/verify`
 
 | | |
 | --- | --- |
-| **API** | 200; **400**; **409** state conflict; **429** + `Retry-After`; **500**. OpenAPI L134–206. |
-| **Demo Device** | Broad `catch (Exception)` → `"Verification failed: " + e.getMessage()` and deletes local enrollment (L478–486). No typed 409/429 UX. |
-| **Classification** | **fix** — map WebClient status to calm lab copy (409 conflict / 429 retry); keep fail-closed delete on hard verify failure. |
+| **API** | 200; **400**; **409**; **429** + `Retry-After`; **500**. OpenAPI L134–206. |
+| **Demo Device** | Broad catch with `e.getMessage()` (~L485); deletes local enrollment on failure. |
+| **Classification** | **Fix (F1)** — remove `e.getMessage()` leak; calm status-based copy for 429. **Defer (rest of F3)** — full typed verify-409 polish beyond leak removal. |
 
 ### A3. Auth `POST /api/v1/auth-attempts/pending`
 
 | | |
 | --- | --- |
-| **API** | **200** pending DTO (no `expiresAt` property — schema L789+); **204** none; **400**; **429** + `Retry-After`. OpenAPI L272–327. |
-| **Demo Device** | 204 → empty / “No pending…”; 200 → verify integration sig → session claim with local TTL fallback (`ClaimExpiresAtResolver`, `AuthApiService.toPendingAuthPull` L162–167). **429**/other → generic exception message on auth idle (L596–606). Optional wire `expiresAt` parsed if present (forward-compatible; schema omits it per #834). |
-| **Classification** | **Accept** no phone countdown and no pending-wire `expiresAt` (aligns mobile #834 Q1). **fix** 429 calm copy on pending. **Accept** session-claim rehydration as lab substitute for mobile route `initialAttempt` (read-once). |
+| **API** | 200 (no `expiresAt` in schema); **204**; **400**; **429**. OpenAPI L272–327 / schema L789+. |
+| **Demo Device** | Session claim + local TTL fallback; optional parse if `expiresAt` present; string-sniff “expired” on exception (~L599–603); 429 opaque. |
+| **Classification** | **Accept** no countdown / no pending-wire `expiresAt`. **Fix (F1)** — 429 copy; replace string sniff with typed signal when leaks removed. |
 
 ### A4. Auth `POST /api/v1/auth-attempts/respond`
 
 | | |
 | --- | --- |
-| **API** | **200** signed `APPROVED`/`DENIED`/`FAILED` (#844); wall-clock expiry → **409** `auth-attempt-expired` (#895); other conflicts → **409** `auth-attempt-state-conflict` (#844); missing signing key → **503** `integration-signing-unavailable`; **429** + `Retry-After`. OpenAPI description L335; responses L368–401. Catalog: `AuthApiProblemCatalog` L42–59. |
-| **Demo Device** | Typed **409 expired** vs generic **409** (`applyRespondConflictToModel` L797–815; tests `EzkeyAppControllerRespondConflictTest`). **503** / **429** → `"server returned {status}"` (L812–814). Still handles `EXPIRED` in **200** body (L737–743) though contract says expiry is 409. |
-| **Classification** | **fix** — catalog 503 (retryable, keep claim if possible) and 429; do not show server `detail`. **Accept** defensive 200/`EXPIRED` branch (dead/legacy). **Keep** split expired vs “no longer active” (#895 parity with mobile `authApiProblem.ts`). |
+| **API** | 200 signed APPROVED/DENIED/FAILED; **409** `auth-attempt-expired` (#895) or `auth-attempt-state-conflict` (#844 / **#916** signature refuse); **503** `integration-signing-unavailable`; **429**. OpenAPI L335, L368–401. |
+| **Demo Device** | Typed expired vs generic 409; 503/429 → `"server returned {status}"`; claim cleared at respond entry (~L620). |
+| **Classification** | **Fix (F1)** — Julie copy; 409 terminal Back-only (no buttons); 503 keep claim + reorder clear; 429 retryable banner; **never** split #916 from other state-conflict 409s. **Accept** defensive 200/`EXPIRED` branch. |
 
-### A5. Integration create / wait / cancel (initiator)
+### A5. Integration create / wait / cancel
 
 | | |
 | --- | --- |
-| **API** | Create: optional `ttlSeconds` (min 15, clamp 120), response carries applied TTL / `expiresAt` (#895) — OpenAPI Integration L29–35, `ttlSeconds` L331. Wait: status enum includes `EXPIRED` — L104–110, schema L440–457. Cancel: PENDING/READ → `EXPIRED`, **409** if terminal — L206–248. |
-| **Demo Device** | Does not call these endpoints. |
-| **Classification** | **Out of scope** as client code. **Accept** documenting the interaction: initiator owns countdown; device must honour late-respond 409. Acme wait UX (#728) stays on Acme. |
+| **API** | `ttlSeconds`, wait `EXPIRED`, cancel → `EXPIRED`. Integration OpenAPI L29–35, L104–248. |
+| **Demo Device** | Not a client. |
+| **Classification** | **Out of scope** as client. Interaction: initiator owns countdown **and** wait verdict; device only shows its own respond outcome. |
 
 ### A6. Evaluator self-registration
 
-| | |
-| --- | --- |
-| **API** | Admin `POST /api/v1/public/evaluator-signup` (`specs/admin-api/openapi-spec.json` ~L463). |
-| **Demo Device** | No consumer. |
-| **Classification** | **Out of scope** for this TB. |
+**Out of scope** (Admin API / ezkey.org; not a Demo Device surface).
 
-### A7. Related closed hygiene (context only)
+### A7. Related hygiene
 
-| Issue | Status vs Demo Device |
+| Issue | Note |
 | --- | --- |
-| #799 distinct session cookies | Done — not reopened here |
-| #753 log scrubbing | Done — keep invariant in any error-mapping work |
+| #799 session cookies | Done |
+| #753 log scrubbing | Keep invariant |
+| #916 invalid respond signature | Generic 409 → **no longer active** only; no client differentiation |
 
 ---
 
-## Part B — On-screen state comparison (mobile vs Demo Device)
+## Part B — On-screen state comparison (locked)
 
-Canonical mobile screens:
-[`MOBILE_SCREENS_AND_WIREFLOWS.md`](../../../ezkey_mobile/docs/MOBILE_SCREENS_AND_WIREFLOWS.md).
-Demo Device templates under `ezkey-demo-device/src/main/resources/templates/phone/ezkey/`.
-
-| Moment | Mobile shows | Demo Device shows | Gap note |
+| Moment | Mobile | Demo Device (target) | Posture |
 | --- | --- | --- | --- |
-| Home / list | Installation + tenant groups; unusable rows (MOB-015) | Tenant groups (`EnrollmentTenantGrouper`); no MOB-015 unusable taxonomy | Accept omit MOB-015 |
-| Enroll scan | Camera / QR wizard states | File/paste QR + manual ID/token | Simplified entry (lab) |
-| Bind in flight | “Binding…” | Full page post; no in-flight button lock beyond form submit | Accept |
-| Bind error | Calm banner; no server `detail` | 409/400 mapped; else may echo body | Fix body echo |
-| Verify challenge | 6-digit PinCodeInput | Free-text challenge | Accept (lab console) |
-| Detail → pending | Explicit **Check pending**; feedback on Detail if none / fail-closed | Auth idle + **Check for Authentication Requests**; message/error on same shell | Simplified navigation OK |
-| Pending Ready | Context card; Approve/Deny; **leave-declines hint**; 2-digit challenge | Context card; Approve/Deny; **no** leave-declines hint; free-text challenge | Fix hint + optional leave-as-deny (see FSM); accept challenge UX |
-| Pending Empty | Empty + Check again | Message + recheck link | Kept (simplified copy) |
-| No longer active | Back only; catalog sentence | Result page “no longer active” / expired | Kept; Back to enrollments |
-| Expired (#895) | Distinct `requestExpired` catalog | Distinct `MSG_AUTH_EXPIRED` + expired icon | Kept |
-| 503 signing | Retryable; keeps loaded attempt | Generic failed + status code | **Fix** |
-| 429 | Retryable catalog | Generic / exception text | **Fix** |
-| UncertainDecision (Q10) | Back only; lock attempt id | N/A (sync WebClient; timeout → failed message) | Simplify or omit — see FSM map |
-| Completed | Navigate to Detail + recent summary | Dedicated `auth_result` page | Simplified (kept) |
-| Protected approve | Biometric / device credential | None | Deliberately omit |
-| Side exit / leave with loaded attempt | Leave → Deny (#833) | Side-exit → enrollments **without** respond (`auth_pending.html` L192–196) | **Fix or accept with caveat** — open Q |
+| Pending Ready | Approve/Deny + leave-declines hint | Approve/Deny; **no** leave hint | **Accept** (Q1) |
+| Leave / side-exit with claim | Leave → Deny | Leaves without respond; READ until TTL | **Accept** — document caveat |
+| 409 expired | Distinct catalog; Back only | Expired page; **no** Approve/Deny; Back only | **F1** |
+| 409 no longer active (incl. #916) | One sentence; Back only | Same; **no** buttons | **F1** |
+| 503 | Retryable; keep attempt | Neutral banner + Retry; same card + buttons | **F1** |
+| 429 | Retryable | Neutral banner + Retry | **F1** |
+| UncertainDecision | Back only + lock | Absent | **Omit** |
+| Challenge | 2-digit PIN | Free text | **Accept** |
+| Phone countdown / initiator verdict | None / N/A | Neither duplicated | **Accept** (Part D) |
+
+Julie copy (**no HTTP code, no server `detail`**):
+
+| Case | Copy | Presentation |
+| --- | --- | --- |
+| Expired | `This request expired. Ask for a new sign-in.` | Result / terminal; Back only |
+| No longer active | `This request is no longer active.` | Result / terminal; Back only |
+| 429 | `Too many attempts. Try again in a few seconds.` | **Neutral** banner + Retry (not red error) |
+| 503 | `Signing is temporarily unavailable. Try again.` | **Neutral** banner above Approve/Deny + Retry |
 
 ---
 
 ## Part C — FSM map (keep / simplify / omit)
 
-Source of truth: [`MOBILE_APP_STATE_MACHINE.md`](../../../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md)
-(plus #895 expired problem type in mobile `authApiProblem.ts`). Demo Device is **not** required to
-implement an FSM library — only behaviour/UI outcomes.
+Source: [`MOBILE_APP_STATE_MACHINE.md`](../../../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md).
 
-### C1. Enrollment wizard FSM
+### C1. Enrollment wizard
 
-| Mobile state / transition | Demo Device posture | Rationale |
+| Mobile | Demo Device | Rationale |
 | --- | --- | --- |
-| `ScanIdle` / `ScannerOpen` | **Simplified** — QR file/paste + manual fields | Lab browser has no camera product path |
-| `Binding` / `BindError` | **Simplified** — server-rendered bind result/errors | Enough for operators; fix body echo |
-| Bind signature / algo fail-closed | **Simplified** — trusts bind response fields; no full mobile algo gate UI | Lab; protocol still signs verify later |
-| `DraftReady` / `Verifying` / `ChallengeError` | **Kept (simplified)** — bind then verify form | Same two-step ceremony |
-| Back clears draft without persist | **Simplified** — local JSON may exist after bind before verify | Accept: lab can delete file / re-bind |
-| Mid-flight back no-op | **Omitted** | Low value for form posts |
-| Signed `instance-info` after verify | **Omitted** | Display branding not needed for MFA lab |
-| Duplicate bind guard (`isBinding`) | **Omitted** | Accept rare double-submit |
+| Scan / camera | **Simplified** — QR file/paste + manual | Local lab browser |
+| Bind / verify ceremony | **Kept (simplified)** | Same two-step |
+| Mid-flight back no-op / bind re-entry guards | **Omitted** | Form posts; no security-grade UI lock |
+| Signed instance-info | **Omitted** | Not needed for MFA lab |
 
 ### C2. Detail → claim pending
 
-| Mobile state / transition | Demo Device posture | Rationale |
+| Mobile | Demo Device | Rationale |
 | --- | --- | --- |
-| Pull model, user-initiated | **Kept** | Same product posture |
-| `DetailChecking` busy guard | **Simplified** — one-shot `data-armed` on recheck link (`auth.html`) | Enough against double GET |
-| Claim `none` (204) | **Kept** | Idle message |
-| Claim `fail_closed` (bad sig / malformed) | **Kept (simplified)** — “Invalid integration signature” / errors; does not show Approve | Aligns #834 Q4 honesty |
-| Claim `attempt` → PendingAuth | **Simplified** — session `ClaimedPendingAuth` instead of route params | Lab read-once rehydration (#895 PR-C) |
-| Store `expiresAt` from pending | **Simplified** — parse if present; else local TTL fallback | Wire omits field; fallback drift accepted or fixed via property |
-| Phone countdown | **Deliberately omitted** | #834 Q1 — initiator owns clock |
+| User-initiated pull | **Kept** | Same posture |
+| Fail-closed bad pending sig | **Kept (simplified)** | No Approve |
+| Session claim rehydration | **Simplified** | Lab substitute for `initialAttempt` |
+| Phone countdown / pending `expiresAt` | **Deliberately omitted** | #834 Q1; local fallback + 409 net |
 
-### C3. Pending Auth FSM
+### C3. Pending Auth
 
-| Mobile state / transition | Demo Device posture | Rationale |
+| Mobile | Demo Device | Rationale |
 | --- | --- | --- |
-| `Ready` Approve / Deny | **Kept** | Core lab job |
-| Challenge on Approve (2 digits) | **Simplified** — free-text numeric when required | Console demos vary digit length |
-| Leave-as-deny + permanent hint | **Simplified proposed fix** — wire side-exit (and optionally Back) to Deny; show one hint line | Unblocks Admin wait; see balance proposal |
-| `respondInFlightRef` / `serverDecisionAttemptIdRef` | **Simplified** — clear session claim on respond entry; no full ref matrix | Lab sync posts; accept residual double-click risk |
-| HTTP 200 + result-sig verify | **Kept** | Tamper honesty |
-| Result-sig fail after 200 | **Simplified** — failed result message; no Q2 Back-only lock UX | Accept for lab |
-| `NoLongerActive` (409 state-conflict) | **Kept** | Already mapped |
-| Expired 409 (`auth-attempt-expired`) | **Kept** | #895 PR-C |
-| `SigningUnavailable` (503) | **Fix → keep (simplified)** — retryable failed copy; re-show pending if claim still open | Mobile catalog; lab needs distinguishable 503 |
-| 429 retryable | **Fix → keep (simplified)** — calm “too many requests; retry shortly” | Rate-limit demos / agent churn |
-| `UncertainDecision` (Q10) | **Deliberately omitted** (default) | Sync WebClient rarely yields “sent but no response”; open Q if agents need it |
-| Biometric protected approve | **Deliberately omitted** | Not a lab requirement |
-| App-kill during respond | **Accept omit** | Same as mobile accepted limit (#834 Q12) |
-| `EXPIRED` in 200 body branch | **Accept** defensive dead code | Contract path is 409 |
+| Approve / Deny | **Kept** | Core job |
+| Leave-as-deny + hint | **Deliberately omitted** | Marc Q1; caveat in AGENTS.md |
+| 409 expired / state-conflict | **Kept** (F1 terminal Back-only) | Mobile fidelity; #916 undifferentiated |
+| 503 keep attempt | **Kept (simplified)** — F1 + clear-reorder | Patrick S2 |
+| 429 retryable | **Kept (simplified)** — F1 | Rate-limit labs |
+| UncertainDecision / biometric / decision-lock refs | **Deliberately omitted** | Internal tool; no security-grade UI lock |
+| Free-text challenge | **Accept** | Lab console |
 
-### C4. Cross-cutting / API side-effects
+### C4. Cross-cutting
 
 | Concern | Posture |
 | --- | --- |
-| Never call Integration cancel / Admin passwordless-cancel | **Kept** (same as mobile) |
-| Cloudflare edge vs origin problem bodies | **Accept** current AGENTS.md guidance — no edge catalog in Demo Device |
-| Standalone repo sync after monorepo changes | **Kept** process (existing dual-repo note) |
+| No Integration cancel / Admin passwordless-cancel | **Kept** |
+| Cloudflare edge catalog | **Accept** — no edge catalog in Demo Device |
+| #916 signature refuse | **Must** map to **no longer active** only |
 
 ---
 
-## Part D — Balance-point proposal (for stakeholder validation)
+## Part D — Balance point (Alex — locked)
 
-**Proposal name:** Demo Device = “faithful device stub.”
+**Name:** Demo Device = **“faithful device stub.”**
 
-### In (must remain or become true)
+### In
 
-1. Correct Auth API ceremony: bind → verify → pending (sig verify) → respond (sig verify).
-2. Read-once pending: session claim rehydration without a second successful pending claim.
-3. Distinguish **expired** vs **no longer active** on respond 409 (#895 / #844).
-4. Calm, non-echoing error catalog for **429** (all device endpoints) and **503** respond
-   (`integration-signing-unavailable`), without showing server `detail`.
-5. Leave / side-exit with a loaded attempt **declines** the request (simplified leave-as-deny) **or**
-   an explicit accepted caveat documented in AGENTS.md if Marc declines the code change.
-6. Fail-closed on bad pending integration signature (do not show Approve).
+1. Auth ceremony: bind → verify → pending (sig verify) → respond (sig verify).
+2. Read-once pending via session claim (local TTL fallback; no phone timer).
+3. Distinguish **expired** vs **no longer active** on respond 409; terminal UI = Back only, no buttons.
+4. Calm catalog for **429** and **503** (Julie copy); never echo `detail` or status codes in UI.
+5. On **503**, same pending card + buttons (claim clear reordered).
+6. Fail-closed on bad pending integration signature.
+7. English only.
 
-### Out (explicit non-goals)
+### Out
 
-1. Phone TTL countdown / pending-wire `expiresAt` for UI timer (#834 Q1 stands).
-2. Biometrics, Keystore storage tiers, protected-approve policy, Settings / Danger Zone / i18n.
-3. Full Q10 UncertainDecision UX and per-attempt decision-lock refs.
-4. MOB-015 unusable-enrollment taxonomy; signed instance-info branding path.
-5. Integration API client; evaluator signup; Acme wait-page work (#728).
-6. Exhaustive ProblemDetail `type` matrix for every bind/verify failure mode.
+1. Leave-as-deny and any leave-declines hint (documented caveat instead).
+2. Phone countdown; pending-wire `expiresAt`; **duplicating the initiator’s wait verdict**.
+3. Biometrics, Keystore tiers, Q10 UncertainDecision, decision-lock refs.
+4. MOB-015; signed instance-info branding path.
+5. Integration API client; evaluator signup; Acme wait UX (#728).
+6. Client-side differentiation of #916 signature refuse from other state-conflict 409s.
+7. Exhaustive ProblemDetail `type` matrix for every bind/verify mode (beyond F1 leak removal).
 
-### Stakeholder lenses
+### Planned AGENTS.md line (F4)
 
-| Role | Ask |
+Record under `ezkey-demo-device/AGENTS.md`: **Faithful device stub (#943)** — short kept vs omitted
+list pointing at this TB.
+
+---
+
+## Open questions (remaining)
+
+None for Marc on the former Q1–Q6 set (all answered 2026-10-20).
+
+Residual for F1 implementation design only (not blocking this analysis PR):
+
+1. Exact typed signal shape for pending failures once `e.getMessage()` sniffing is removed (status +
+   ProblemDetail `type` vs status alone) — Patrick S3 follow-through in the F1 PR.
+
+---
+
+## Fix groups and effort (implementation follow-up)
+
+| Group | Contents | Effort | Status |
+| --- | --- | --- | --- |
+| **F1 — Error catalog + terminal 409 + 503 reorder** | Julie copy; no body echo / no `e.getMessage()` UI leaks (~L178, L270, L350–363, L485, L603, L780); 409 expired & no-longer-active **Back only / no buttons**; late-Approve acceptance test; 503 keep claim (reorder clear vs ~L620) + neutral banner; 429 neutral banner; pending typed failure (no string sniff); #916 undifferentiated | **1–1.5 days** | **Budget GO** |
+| **F2 — Leave-as-deny lite** | — | — | **Out** (Marc Q1) |
+| **F3 — Verify conflict polish (remainder)** | Broader typed verify-409 UX beyond leak removal | Small | **Deferred** |
+| **F4 — Docs acceptances** | AGENTS.md leave caveat + faithful-device-stub kept/omitted; CONFIGURATION if needed; dual-repo sync note | Tiny | **Budget GO** |
+| **F5 — UncertainDecision / extras** | — | — | **Omit** |
+
+### Walk Gate before F1 merge (Julie)
+
+Use [`ui-walk-gate.template.md`](../../templates/ui-walk-gate.template.md). Surface: Demo Device.
+Locales: **EN only**. Asserts (binary):
+
+| # | Assert | Must NOT |
+| --- | --- | --- |
+| 1 | Late Approve after TTL → expired page with Julie expired copy | Approve/Deny buttons; HTTP code; server `detail` |
+| 2 | Respond 409 state-conflict (incl. #916-style) → no longer active; Back only | Buttons; distinct “bad signature” copy |
+| 3 | Respond/pending **429** → neutral banner + Julie 429 copy + Retry | Red error style; status code in UI |
+| 4 | Respond **503** → same pending card, message above buttons, Julie 503 copy + Retry | Cleared claim forcing empty pending; red error style |
+
+Walk ID suggestion: `WALK-2026-10-20-demo-device-error-catalog` (fill when F1 PR exists).
+
+---
+
+## First executable slice (follow-up PR — not #948)
+
+1. F1 in monorepo `ezkey-demo-device` + unit tests (incl. late Approve → expired, no buttons).
+2. F4 AGENTS.md updates (caveat already started in analysis PR; complete stub list on F1 closeout if needed).
+3. Walk Gate with Isabelle (or agent Walk) before F1 merge.
+4. Sync standalone `mgagp/ezkey-demo-device` after monorepo merge.
+
+## Rollback
+
+- Analysis PR: revert docs.
+- F1: independently revertable; must not break agent Approve → `demo-device-back-to-enrollments`.
+
+## Critical flows (F1 acceptance)
+
+| Flow | Expected |
 | --- | --- |
-| **Alex** (intent) | Does “faithful device stub” match the product story of Demo Device vs mobile? |
-| **Julie** (operability) | Are expired / conflict / 503 / 429 / leave-as-deny copy and navigation operable in ~3 seconds? |
-| **Patrick** (craft) | Is omit of Q10 / race refs proportionate? Any security honesty gap (body echo, leave without deny)? |
-| **Marc** (budget) | Go / no-go on fix groups below; resolve open questions. |
+| Late Approve after TTL | Expired page; Julie copy; **no** Approve/Deny |
+| State-conflict 409 (incl. bad signature #916) | No longer active; Back only; **no** signature-specific copy |
+| 503 signing unavailable | Same card + buttons; neutral 503 banner |
+| 429 | Neutral banner + Retry |
+| Side-exit with loaded claim | Leaves without Deny; initiator waits until TTL (**documented**) |
 
----
+## Evidence plan
 
-## Open questions for Marc
-
-1. **Leave-as-deny on Demo Device:** Implement simplified Deny-on-side-exit (and hint line), or
-   **accept** “escape hatch leaves READ until TTL” with a permanent AGENTS.md caveat?
-2. **503 retry UX:** After 503, should Demo Device keep the session claim and re-show
-   Approve/Deny (mobile-like), or clear claim and require Check again?
-3. **Local TTL fallback vs PAM 90 s:** Keep property tuning + 409 net, or invest in Auth pending
-   `expiresAt` **only for Demo Device** (would reopen #834 Q1 for lab — not recommended)?
-4. **UncertainDecision:** Omit entirely for Demo Device, or add a single “response may have been
-   recorded — check the application” page on WebClient timeout after respond started?
-5. **Challenge digit UX:** Keep free-text, or constrain auth challenge to 2 digits to match mobile?
-6. **Budget ceiling:** Approve Groups F1+F2 only (errors + leave), or also F3 (verify 409 polish /
-   tests)?
-
----
-
-## Rough effort estimate (implementation follow-up, not this PR)
-
-| Group | Contents | Rough size |
-| --- | --- | --- |
-| **F1 — Error catalog** | Bind/verify/pending/respond: 429 + respond 503 typed messages; never echo response bodies; unit tests | Small (½–1 day eng) |
-| **F2 — Leave-as-deny lite** | Side-exit / leave with claim → `respond(false)`; permanent hint under buttons; agent recipe update | Small–medium |
-| **F3 — Verify conflict polish** | Typed verify 409/429; reduce `e.getMessage()` leakage | Small |
-| **F4 — Docs-only acceptances** | AGENTS.md / CONFIGURATION.md caveats for omitted FSM edges; dual-repo sync note | Tiny (docs) |
-| **F5 — Optional** | UncertainDecision page; 2-digit challenge constraint; claim keep-on-503 | Small each; only if Q1–Q4 say yes |
-
-Suggested default after go: **F1 + F2 + F4**; defer F3/F5 unless Julie/Patrick flag them in review.
-
----
-
-## First executable slice (after go — not this PR)
-
-1. F1 error catalog + tests in monorepo `ezkey-demo-device`.
-2. F2 leave-as-deny lite if Marc answers Q1 = implement.
-3. Sync standalone `mgagp/ezkey-demo-device` after monorepo merge.
-4. Manual matrix: Admin passwordless leave; PAM short TTL late approve; forced 429/503 if injectable.
-
-## Rollback or fallback posture
-
-- Doc-only draft: revert the product-docs PR.
-- Future code: each fix group is independently revertable; leave-as-deny lite must not break agent
-  handshake (`demo-device-back-to-enrollments` after Approve).
-
-## Critical flows (acceptance when implemented)
-
-| Flow | Nominal | Exception |
-| --- | --- | --- |
-| Admin passwordless | Check → Approve → Admin proceeds | Leave with loaded attempt → Admin sees deny/reject, not TTL wait |
-| PAM short TTL | Approve inside TTL | After TTL → expired result (409 typed), not opaque 500 text |
-| Signing key missing | — | 503 retryable copy |
-| Rate limit | — | 429 calm copy |
-| Bad pending sig | — | No Approve UI |
-
-## Evidence plan (this analysis PR)
-
-- [x] OpenAPI + controller/template citations in Parts A–C
-- [x] FSM keep/simplify/omit table
-- [x] Balance proposal + open questions
-- [ ] Collaborator critique (Alex / Julie / Patrick) — after draft PR
-- [ ] Marc go/no-go on budget
+- [x] OpenAPI + controller citations
+- [x] FSM keep/simplify/omit
+- [x] Alex balance locked; Julie copy; Patrick S1/S2/S3
+- [x] Marc decisions + budget F1+F4
+- [ ] F1 implementation + Walk Gate (follow-up)
 
 ## Quality gates
 
-- analysis gate — inventory complete with file/line / OpenAPI path evidence
-- design gate — balance proposal + FSM map ready for adversarial / collaborator review
-- implementation gate — **deferred** until Marc go
+- analysis gate — complete
+- design gate — collaborator reviews + Marc decisions recorded
+- implementation gate — F1+F4 follow-up after #948 merges or as a sibling PR
 
-## Exit criteria (for this draft TB)
+## Exit criteria (this analysis TB / #948)
 
-1. Draft PR open against `main` with this brief + idea linked to #943.
-2. Stakeholders can answer the open questions without reading the full mobile FSM.
-3. Implementation does not start until Marc validates the balance point (or a trimmed variant).
+1. Draft PR documents inventory, FSM map, locked balance, Julie copy, Walk Gate plan.
+2. Answered questions removed; only residual F1 design note remains.
+3. No product code; CI green; not merged from this agent.
 
 ## References
 
-- Issue [#943](https://github.com/mgagp/ezkey/issues/943)
+- Issue [#943](https://github.com/mgagp/ezkey/issues/943); PR [#948](https://github.com/mgagp/ezkey/pull/948)
 - Idea [`I-2026-10-20-demo-device-api-and-mobile-parity`](ideas/I-2026-10-20-demo-device-api-and-mobile-parity.md)
-- Mobile FSM [`MOBILE_APP_STATE_MACHINE.md`](../../../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md)
-- Mobile orientation [`MOBILE_APP_STRATEGIC_ORIENTATION.md`](../../../ezkey_mobile/docs/MOBILE_APP_STRATEGIC_ORIENTATION.md)
-- Demo Device notes [`ezkey-demo-device/AGENTS.md`](../../../ezkey-demo-device/AGENTS.md)
-- Prior Demo Device TB [`TB-2026-06-18-demo-device-qr-auth-url-parity`](TB-2026-06-18-demo-device-qr-auth-url-parity.md)
+- #895, #844, #834, #833, #916, #753, #799, #728
+- Mobile FSM / orientation under `ezkey_mobile/docs/`
+- Walk template [`ui-walk-gate.template.md`](../../templates/ui-walk-gate.template.md)
