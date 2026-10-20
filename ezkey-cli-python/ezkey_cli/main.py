@@ -19,13 +19,36 @@ from .commands import admin, auth, configure, database, db, openapi, crypto, dev
 @click.option('--admin-url', help='Admin API URL')
 @click.option('--auth-url', help='Auth API URL')
 @click.option('--crypto-url', help='Crypto API URL')
+@click.option(
+    '--ca-bundle',
+    type=click.Path(exists=True, dir_okay=False),
+    help='Path to a custom CA bundle for TLS verification '
+         '(also EZKEY_CA_BUNDLE / REQUESTS_CA_BUNDLE)',
+)
+@click.option(
+    '--insecure',
+    is_flag=True,
+    help='Disable TLS certificate verification (loopback hosts only; '
+         'also EZKEY_CLI_INSECURE=1). Prefer --ca-bundle for self-signed certs.',
+)
 @click.option('--no-pretty', is_flag=True, help='Disable pretty printing of JSON output')
 @click.option('--timeout', type=int, help='Request timeout in milliseconds')
 @click.option('--verbose', is_flag=True, help='Enable verbose output')
 @click.option('--tui', is_flag=True, help='Start interactive admin console')
 @click.version_option(version='1.0.0', prog_name='ezkey')
 @click.pass_context
-def cli(ctx, admin_url, auth_url, crypto_url, no_pretty, timeout, verbose, tui):
+def cli(
+    ctx,
+    admin_url,
+    auth_url,
+    crypto_url,
+    ca_bundle,
+    insecure,
+    no_pretty,
+    timeout,
+    verbose,
+    tui,
+):
     """
     Ezkey CLI - Command line interface for Ezkey MFA system.
 
@@ -34,6 +57,9 @@ def cli(ctx, admin_url, auth_url, crypto_url, no_pretty, timeout, verbose, tui):
     Use 'ezkey <command> --help' for more information on a specific command.
 
     Use 'ezkey --tui' to start the interactive admin console.
+
+    TLS certificate verification is ON by default. Use --ca-bundle for a custom
+    CA, or --insecure only against localhost / 127.0.0.1 / ::1.
     """
     # Initialize configuration first
     config = ConfigManager()
@@ -43,14 +69,36 @@ def cli(ctx, admin_url, auth_url, crypto_url, no_pretty, timeout, verbose, tui):
         admin_url is not None or
         auth_url is not None or
         crypto_url is not None or
+        ca_bundle is not None or
+        insecure or
         no_pretty or
         timeout is not None or
         verbose
     )
-    
+
     # Check if there are any arguments passed (beyond the program name)
     # sys.argv[0] is the program name, so if len > 1, there are arguments
     has_arguments = len(sys.argv) > 1
+
+    # Override config with command line options before TUI/CLI dispatch so TLS
+    # settings apply to both modes.
+    overrides = {}
+    if admin_url is not None:
+        overrides['adminUrl'] = admin_url
+    if auth_url is not None:
+        overrides['authUrl'] = auth_url
+    if crypto_url is not None:
+        overrides['cryptoUrl'] = crypto_url
+    if ca_bundle is not None:
+        overrides['sslCaBundle'] = ca_bundle
+    if insecure:
+        overrides['sslInsecure'] = True
+    if timeout is not None:
+        overrides['timeout'] = timeout
+    if no_pretty:
+        overrides['prettyPrint'] = False
+
+    config.override(overrides)
 
     # Handle TUI mode with proper precedence:
     # 1. Explicit --tui flag takes priority
@@ -69,21 +117,6 @@ def cli(ctx, admin_url, auth_url, crypto_url, no_pretty, timeout, verbose, tui):
         from .tui import start_tui
         start_tui(config)
         return
-
-    # Override config with command line options
-    overrides = {}
-    if admin_url is not None:
-        overrides['adminUrl'] = admin_url
-    if auth_url is not None:
-        overrides['authUrl'] = auth_url
-    if crypto_url is not None:
-        overrides['cryptoUrl'] = crypto_url
-    if timeout is not None:
-        overrides['timeout'] = timeout
-    if no_pretty:
-        overrides['prettyPrint'] = False
-
-    config.override(overrides)
 
     # Set up context
     ctx.ensure_object(dict)

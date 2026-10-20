@@ -147,9 +147,10 @@ class QuickReAuthScreen(ModalScreen):
 
       log.debug(f"Starting quick re-auth for user: {username}")
 
+      # Thread the same TLS verify setting the main TUI API client uses (#802).
       self.auth_manager = AuthManager(
           self.admin_url,
-          verify_ssl=False  # Dev mode
+          verify_ssl=self.api_client.verify_ssl
       )
 
       # Call login endpoint

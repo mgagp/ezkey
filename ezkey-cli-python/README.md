@@ -165,10 +165,27 @@ All commands support these global options:
 - `--admin-url <url>` - Override admin API URL
 - `--auth-url <url>` - Override auth API URL
 - `--crypto-url <url>` - Override crypto API URL
+- `--ca-bundle <path>` - Custom CA bundle for TLS verification (also `EZKEY_CA_BUNDLE` / `REQUESTS_CA_BUNDLE`)
+- `--insecure` - Disable TLS verification (**loopback hosts only**: `localhost`, `127.0.0.1`, `::1`; also `EZKEY_CLI_INSECURE=1`). Prefer `--ca-bundle` for self-signed certs.
 - `--no-pretty` - Disable pretty printing of JSON output
 - `--timeout <ms>` - Set request timeout in milliseconds
 - `--verbose` - Enable verbose output
 - `--tui` - Start interactive admin console
+
+## TLS certificate verification
+
+TLS verification is **on by default** for CLI and TUI (including login, recover, and re-auth). Hostname alone (for example `localhost` or a Docker hostname) does **not** disable verification.
+
+```bash
+# Custom CA (recommended for self-signed local HTTPS)
+ezkey --ca-bundle /path/to/ca-bundle.pem admin auth login --username admin
+
+# Escape hatch: loopback only; prints a WARNING each time
+ezkey --insecure --admin-url https://localhost:9080 admin auth login --username admin
+# Same via env: EZKEY_CLI_INSECURE=1
+```
+
+`--insecure` against a non-loopback host is refused. There is no silent `verify=False`.
 
 ## JSON Input Support
 

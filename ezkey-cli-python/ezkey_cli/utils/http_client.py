@@ -13,6 +13,12 @@ from typing import Any, Dict, Optional, Union
 from dataclasses import dataclass
 
 from ..config import ConfigManager
+from .tls import (
+    InsecureTlsNotAllowedError,
+    apply_session_verify,
+    is_loopback_url,
+    ssl_verify_from_config,
+)
 
 
 @dataclass
@@ -44,6 +50,18 @@ class HttpClient:
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         })
+
+        # TLS: verify on by default; optional CA bundle or loopback-only insecure (#802)
+        verify = ssl_verify_from_config(config)
+        if verify is False:
+            for key in ("authUrl", "cryptoUrl", "adminHealthUrl"):
+                other = config.get(key)
+                if other and not is_loopback_url(other):
+                    raise InsecureTlsNotAllowedError(
+                        "--insecure / EZKEY_CLI_INSECURE is only allowed for loopback "
+                        f"hosts; refused for configured {key}: {other}"
+                    )
+        apply_session_verify(self.session, verify)
 
         # Set timeout from config or custom timeout
         if custom_timeout is not None:
