@@ -87,13 +87,13 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-08-23-auth-unsigned-public-instance-info-retirement` | Auth unsigned public instance-info retirement | `captured` | `P3` | `auth-api`, `docs`, `mobile`, `testing`, `security` | `2026-08-23` |
 | `I-2026-09-15-mobile-admin-enrollment-account-label` | Mobile admin enrollment account label (bind/pending) | `done` | `P1` | `auth-api`, `admin-api`, `mobile`, `docs` | `2026-09-15` |
 | `I-2026-10-13-pam-tmp-log-hardening` | PAM debug logs under `/tmp` (TOCTOU / symlink; CodeQL 123/124) | `done` | `P3` | `pam`, `security`, `docs` | `2026-10-13` |
-| `I-2026-10-20-demo-device-api-and-mobile-parity` | Demo Device parity with Auth/Integration contracts and mobile FSM | `incubating` | `P2` | `demo-device`, `auth-api`, `integration-api`, `mobile`, `docs` | `2026-10-20` |
+| `I-2026-10-20-demo-device-api-and-mobile-parity` | Demo Device parity with Auth/Integration contracts and mobile FSM | `ready` | `P2` | `demo-device`, `auth-api`, `integration-api`, `mobile`, `docs` | `2026-10-20` |
 
 ## Tracer bullets (draft / ready / in progress)
 
 | ID | Title | Status | Related idea |
 |----|-------|--------|--------------|
-| `TB-2026-10-20-demo-device-api-and-mobile-parity` | Demo Device API + mobile FSM parity (draft spec) | `draft` | `I-2026-10-20-demo-device-api-and-mobile-parity` (#943) |
+| `TB-2026-10-20-demo-device-api-and-mobile-parity` | Demo Device API + mobile FSM parity (F1+F4 budget locked) | `under-review` | `I-2026-10-20-demo-device-api-and-mobile-parity` (#943 / #948) |
 | `TB-2026-08-29-admin-api-remove-m2m-hatch` | Remove Admin API API-key M2M hatch | `done` | `I-2026-08-29-admin-api-remove-m2m-hatch` |
 | `TB-2026-08-28-admin-first-keyset-bootstrap` | Admin-first keyset bootstrap | `implemented` | `I-2026-07-17-keyset-blob-admin-first-bootstrap` |
 | `TB-2026-08-14-mobile-exit-experimental-messaging` | Exit experimental in-app messaging | `under-review` | `I-2026-08-02-mobile-exit-experimental-messaging` |

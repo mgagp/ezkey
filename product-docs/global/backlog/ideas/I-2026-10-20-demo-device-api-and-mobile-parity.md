@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `I-2026-10-20-demo-device-api-and-mobile-parity`
-- **Status:** `incubating`
+- **Status:** `ready`
 - **Priority:** `P2`
 - **Created at:** `2026-10-20`
 - **Updated at:** `2026-10-20`
@@ -61,13 +61,14 @@ that operators and agents trust simulator behaviour, without cloning full mobile
 
 ## Promotion notes
 
-Ready for implementation TBs once Marc validates the balance proposal in
-`TB-2026-10-20-demo-device-api-and-mobile-parity` (go/no-go on budget and open questions).
+Marc locked budget **F1 + F4** (2026-10-20) after Alex / Julie / Patrick review. Implementation
+follow-up: error catalog + 503 claim reorder + docs; leave-as-deny **out**. See TB decisions table.
 
 ## Links
 
 - GitHub issue: [#943](https://github.com/mgagp/ezkey/issues/943)
-- Tracer bullet (draft): [`TB-2026-10-20-demo-device-api-and-mobile-parity`](../TB-2026-10-20-demo-device-api-and-mobile-parity.md)
+- Analysis PR: [#948](https://github.com/mgagp/ezkey/pull/948)
+- Tracer bullet: [`TB-2026-10-20-demo-device-api-and-mobile-parity`](../TB-2026-10-20-demo-device-api-and-mobile-parity.md)
 - Related: #895, #844, #834, #833, #799 (session cookies — done), #753 (log scrub — done), #728 (Acme wait UX)
 - Mobile FSM: [`ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md`](../../../../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md)
 - Mobile orientation: [`ezkey_mobile/docs/MOBILE_APP_STRATEGIC_ORIENTATION.md`](../../../../ezkey_mobile/docs/MOBILE_APP_STRATEGIC_ORIENTATION.md)
