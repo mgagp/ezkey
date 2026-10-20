@@ -19,7 +19,11 @@ from pathlib import Path
 from typing import Optional
 
 from ..config import ConfigManager
-from ..utils.tls import InsecureTlsNotAllowedError, ssl_verify_from_config
+from ..utils.tls import (
+  InsecureTlsNotAllowedError,
+  ensure_configured_urls_allow_insecure,
+  ssl_verify_from_config,
+)
 from .screens import (
   HomeScreen,
   IntegrationsScreen,
@@ -154,6 +158,8 @@ class EzkeyAdminTUI(App):
 
     try:
       verify_ssl = ssl_verify_from_config(self.config, admin_url)
+      if verify_ssl is False:
+        ensure_configured_urls_allow_insecure(self.config)
     except InsecureTlsNotAllowedError as e:
       log.error("%s", e)
       raise

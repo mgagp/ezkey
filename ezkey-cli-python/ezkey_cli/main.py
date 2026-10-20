@@ -81,7 +81,7 @@ def cli(
     has_arguments = len(sys.argv) > 1
 
     # Override config with command line options before TUI/CLI dispatch so TLS
-    # settings apply to both modes.
+    # settings apply to both modes. TLS flags are ephemeral (not saved to ezkey.json).
     overrides = {}
     if admin_url is not None:
         overrides['adminUrl'] = admin_url
@@ -89,16 +89,17 @@ def cli(
         overrides['authUrl'] = auth_url
     if crypto_url is not None:
         overrides['cryptoUrl'] = crypto_url
-    if ca_bundle is not None:
-        overrides['sslCaBundle'] = ca_bundle
-    if insecure:
-        overrides['sslInsecure'] = True
     if timeout is not None:
         overrides['timeout'] = timeout
     if no_pretty:
         overrides['prettyPrint'] = False
 
     config.override(overrides)
+    if ca_bundle is not None or insecure:
+        config.set_ssl_runtime(
+            ca_bundle=ca_bundle,
+            insecure=True if insecure else None,
+        )
 
     # Handle TUI mode with proper precedence:
     # 1. Explicit --tui flag takes priority

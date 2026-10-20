@@ -27,6 +27,9 @@ class ConfigManager:
     def __init__(self):
         """Initialize configuration manager with default values."""
         self._config: Dict[str, Any] = {}
+        # Process-lifetime TLS flags from CLI/env — never written by save() (#802 / Bugbot).
+        self._ssl_ca_bundle: Optional[str] = None
+        self._ssl_insecure: Optional[bool] = None
         self._load_config()
 
     def _load_config(self) -> None:
@@ -85,6 +88,35 @@ class ConfigManager:
             if value is not None:
                 self._config[key] = value
 
+    def set_ssl_runtime(
+        self,
+        *,
+        ca_bundle: Optional[str] = None,
+        insecure: Optional[bool] = None,
+    ) -> None:
+        """
+        Set ephemeral TLS options for this process only.
+
+        These are not stored in ``_config`` and are never written by ``save()``,
+        so a one-shot ``--insecure`` / ``--ca-bundle`` cannot stick across runs.
+
+        Args:
+            ca_bundle: Optional path from ``--ca-bundle``.
+            insecure: Optional explicit ``--insecure`` (True only when flag set).
+        """
+        if ca_bundle is not None:
+            self._ssl_ca_bundle = ca_bundle
+        if insecure is not None:
+            self._ssl_insecure = insecure
+
+    def get_ssl_ca_bundle(self) -> Optional[str]:
+        """Return ephemeral CA bundle path, if set for this process."""
+        return self._ssl_ca_bundle
+
+    def get_ssl_insecure(self) -> Optional[bool]:
+        """Return ephemeral insecure flag (True/False/None) for this process."""
+        return self._ssl_insecure
+
     def save(self, global_config: bool = False) -> None:
         """
         Save current configuration to file.
@@ -99,8 +131,15 @@ class ConfigManager:
         else:
             config_path = Path.cwd() / self.CONFIG_FILENAME
 
+        # Never persist one-shot TLS escape-hatch keys if present in _config.
+        persistable = {
+            key: value
+            for key, value in self._config.items()
+            if key not in {"sslInsecure", "sslCaBundle"}
+        }
+
         with open(config_path, 'w', encoding='utf-8') as f:
-            json.dump(self._config, f, indent=2)
+            json.dump(persistable, f, indent=2)
 
     def get_all(self) -> Dict[str, Any]:
         """Get all configuration values."""

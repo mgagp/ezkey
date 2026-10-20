@@ -131,18 +131,19 @@ class TestLegacyBearerTokenMigration:
 class TestAuthManager:
   """Passwordless auth HTTP delegation (mocked requests)."""
 
-  @patch("ezkey_cli.utils.tls.requests.post")
-  def test_login_posts_expected_payload(self, mock_post):
+  @patch("ezkey_cli.utils.tls.requests.request")
+  def test_login_posts_expected_payload(self, mock_request):
     mock_response = Mock()
     mock_response.text = '{"authAttemptId": 42, "challengeCode": 7}'
     mock_response.json.return_value = {"authAttemptId": 42, "challengeCode": 7}
-    mock_post.return_value = mock_response
+    mock_request.return_value = mock_response
 
     manager = AuthManager("http://localhost:9080")
     result = manager.login("admin.docker", non_blocking=True)
 
     assert result == {"authAttemptId": 42, "challengeCode": 7}
-    mock_post.assert_called_once_with(
+    mock_request.assert_called_once_with(
+      "POST",
       "http://localhost:9080/api/v1/admin/auth/login",
       json={
         "username": "admin.docker",
@@ -153,37 +154,41 @@ class TestAuthManager:
       verify=True,
     )
 
-  @patch("ezkey_cli.utils.tls.requests.post")
-  def test_wait_for_challenge_posts_expected_payload(self, mock_post):
+  @patch("ezkey_cli.utils.tls.requests.request")
+  def test_wait_for_challenge_posts_expected_payload(self, mock_request):
     mock_response = Mock()
     mock_response.text = '{"token": "approved-token"}'
     mock_response.json.return_value = {"token": "approved-token"}
-    mock_post.return_value = mock_response
+    mock_request.return_value = mock_response
 
     manager = AuthManager("http://localhost:9080")
     result = manager.wait_for_challenge(42, challenge_code=7, waiter_secret="ws-secret")
 
     assert result == {"token": "approved-token"}
-    mock_post.assert_called_once_with(
+    mock_request.assert_called_once_with(
+      "POST",
       "http://localhost:9080/api/v1/admin/auth/passwordless-wait",
       json={"authAttemptId": 42, "challengeCode": 7, "waiterSecret": "ws-secret"},
       timeout=365,
       verify=True,
     )
 
-  @patch("ezkey_cli.utils.tls.requests.post")
-  def test_wait_for_challenge_non_blocking_sends_waiter_secret_without_challenge(self, mock_post):
+  @patch("ezkey_cli.utils.tls.requests.request")
+  def test_wait_for_challenge_non_blocking_sends_waiter_secret_without_challenge(self, mock_request):
     mock_response = Mock()
     mock_response.text = '{"token": "approved-token"}'
     mock_response.json.return_value = {"token": "approved-token"}
-    mock_post.return_value = mock_response
+    mock_request.return_value = mock_response
 
     manager = AuthManager("http://localhost:9080")
     manager.wait_for_challenge(42, waiter_secret="ws-secret")
 
-    assert mock_post.call_args.kwargs["json"] == {"authAttemptId": 42, "waiterSecret": "ws-secret"}
+    assert mock_request.call_args.kwargs["json"] == {
+      "authAttemptId": 42,
+      "waiterSecret": "ws-secret",
+    }
 
-  @patch("ezkey_cli.utils.tls.requests.post", side_effect=TimeoutError("network"))
-  def test_login_returns_none_on_request_failure(self, _mock_post):
+  @patch("ezkey_cli.utils.tls.requests.request", side_effect=TimeoutError("network"))
+  def test_login_returns_none_on_request_failure(self, _mock_request):
     manager = AuthManager("http://localhost:9080")
     assert manager.login("admin.docker") is None

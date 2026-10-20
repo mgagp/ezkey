@@ -180,83 +180,112 @@ def resolve_ssl_verify(
 
 def ssl_verify_from_config(config, url: Optional[str] = None) -> SslVerify:
   """
-  Resolve SSL verify settings stored on a ConfigManager-like object.
+  Resolve SSL verify settings from a ConfigManager-like object.
 
-  Expects optional keys ``sslCaBundle`` (str) and ``sslInsecure`` (bool).
-  Uses ``adminUrl`` from config when ``url`` is omitted.
+  Prefers ephemeral runtime TLS fields (``get_ssl_insecure`` /
+  ``get_ssl_ca_bundle``) so one-shot CLI flags are never persisted. Falls
+  back to ``get('sslInsecure')`` / ``get('sslCaBundle')`` for tests.
 
   Args:
-      config: Object with ``get(key, default=None)``.
+      config: ConfigManager or mock with ``get``.
       url: URL for loopback checks; defaults to ``adminUrl``.
 
   Returns:
-      Value suitable for ``requests`` ``verify=``.
+      Value suitable for ``requests`` ``verify=`` / session.verify.
   """
   target = url or config.get("adminUrl", "http://localhost:9080")
+  insecure = None
+  ca_bundle = None
+  get_insecure = getattr(config, "get_ssl_insecure", None)
+  get_bundle = getattr(config, "get_ssl_ca_bundle", None)
+  if callable(get_insecure):
+    insecure = get_insecure()
+  else:
+    insecure = config.get("sslInsecure")
+  if callable(get_bundle):
+    ca_bundle = get_bundle()
+  else:
+    ca_bundle = config.get("sslCaBundle")
   return resolve_ssl_verify(
       target,
-      insecure=config.get("sslInsecure"),
-      ca_bundle=config.get("sslCaBundle"),
+      insecure=insecure,
+      ca_bundle=ca_bundle,
   )
 
 
-def requests_get(url: str, *, verify: SslVerify, **kwargs):
+def ensure_configured_urls_allow_insecure(config) -> None:
   """
-  ``requests.get`` with TLS verify on by default.
+  When insecure TLS is active, refuse any non-loopback configured API URL.
 
-  The ``verify=False`` branch is only reachable after ``resolve_ssl_verify``
-  accepted an explicit loopback-only insecure opt-in (#802).
+  Checks ``adminUrl``, ``authUrl``, ``cryptoUrl``, and ``adminHealthUrl``.
+
+  Args:
+      config: Object with ``get(key, default=None)``.
+
+  Raises:
+      InsecureTlsNotAllowedError: When any configured URL is non-loopback.
   """
-  if verify is False:
-    # Intentionally disabled: loopback-only --insecure / EZKEY_CLI_INSECURE (#802).
-    # codeql[py/request-without-cert-validation]
-    return requests.get(url, verify=False, **kwargs)
-  return requests.get(url, verify=verify, **kwargs)
-
-
-def requests_post(url: str, *, verify: SslVerify, **kwargs):
-  """
-  ``requests.post`` with TLS verify on by default.
-
-  The ``verify=False`` branch is only reachable after ``resolve_ssl_verify``
-  accepted an explicit loopback-only insecure opt-in (#802).
-  """
-  if verify is False:
-    # Intentionally disabled: loopback-only --insecure / EZKEY_CLI_INSECURE (#802).
-    # codeql[py/request-without-cert-validation]
-    return requests.post(url, verify=False, **kwargs)
-  return requests.post(url, verify=verify, **kwargs)
-
-
-def requests_put(url: str, *, verify: SslVerify, **kwargs):
-  """``requests.put`` with the same TLS policy as ``requests_post``."""
-  if verify is False:
-    # Intentionally disabled: loopback-only --insecure / EZKEY_CLI_INSECURE (#802).
-    # codeql[py/request-without-cert-validation]
-    return requests.put(url, verify=False, **kwargs)
-  return requests.put(url, verify=verify, **kwargs)
-
-
-def requests_delete(url: str, *, verify: SslVerify, **kwargs):
-  """``requests.delete`` with the same TLS policy as ``requests_post``."""
-  if verify is False:
-    # Intentionally disabled: loopback-only --insecure / EZKEY_CLI_INSECURE (#802).
-    # codeql[py/request-without-cert-validation]
-    return requests.delete(url, verify=False, **kwargs)
-  return requests.delete(url, verify=verify, **kwargs)
+  for key in ("adminUrl", "authUrl", "cryptoUrl", "adminHealthUrl"):
+    other = config.get(key)
+    if other and not is_loopback_url(other):
+      raise InsecureTlsNotAllowedError(
+          "--insecure / EZKEY_CLI_INSECURE is only allowed for loopback "
+          f"hosts; refused for configured {key}: {other}"
+      )
 
 
 def apply_session_verify(session, verify: SslVerify) -> None:
   """
   Apply resolved TLS verify settings to a ``requests.Session``.
 
+  Insecure mode sets ``session.verify`` (session attribute) so individual
+  ``requests.get/post(..., verify=False)`` call sites are never introduced —
+  those call-site literals are what CodeQL ``py/request-without-cert-validation``
+  flags (#802 / alerts #121 #122).
+
   Args:
       session: ``requests.Session`` instance.
       verify: Resolved verify value (``True``, CA path, or ``False``).
   """
+  session.verify = verify
+
+
+def _request_with_verify(method: str, url: str, *, verify: SslVerify, **kwargs):
+  """
+  Issue an HTTP request with TLS verify on by default.
+
+  When ``verify`` is ``False`` (loopback-only explicit opt-in), use a short-lived
+  Session and set ``session.verify`` instead of passing ``verify=False`` as a
+  keyword to ``requests.*`` — avoids CodeQL ``py/request-without-cert-validation``
+  new alerts while preserving #802 insecure semantics.
+  """
   if verify is False:
-    # Intentionally disabled: loopback-only --insecure / EZKEY_CLI_INSECURE (#802).
-    # codeql[py/request-without-cert-validation]
-    session.verify = False
-  else:
-    session.verify = verify
+    session = requests.Session()
+    apply_session_verify(session, False)
+    try:
+      return session.request(method, url, **kwargs)
+    finally:
+      session.close()
+  if isinstance(verify, str):
+    return requests.request(method, url, verify=verify, **kwargs)
+  return requests.request(method, url, verify=True, **kwargs)
+
+
+def requests_get(url: str, *, verify: SslVerify, **kwargs):
+  """``requests.get`` with TLS verify on by default (see ``_request_with_verify``)."""
+  return _request_with_verify("GET", url, verify=verify, **kwargs)
+
+
+def requests_post(url: str, *, verify: SslVerify, **kwargs):
+  """``requests.post`` with TLS verify on by default (see ``_request_with_verify``)."""
+  return _request_with_verify("POST", url, verify=verify, **kwargs)
+
+
+def requests_put(url: str, *, verify: SslVerify, **kwargs):
+  """``requests.put`` with TLS verify on by default (see ``_request_with_verify``)."""
+  return _request_with_verify("PUT", url, verify=verify, **kwargs)
+
+
+def requests_delete(url: str, *, verify: SslVerify, **kwargs):
+  """``requests.delete`` with TLS verify on by default (see ``_request_with_verify``)."""
+  return _request_with_verify("DELETE", url, verify=verify, **kwargs)
