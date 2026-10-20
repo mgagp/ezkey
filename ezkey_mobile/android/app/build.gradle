@@ -245,7 +245,7 @@ dependencies {
     }
 
     // Unit tests for crypto (IntegrationKeyVerifier) — JVM only, no device
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.14.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // Instrumentation tests for Android Keystore paths (emulator OK; StrongBox is manual)
