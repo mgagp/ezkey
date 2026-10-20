@@ -134,12 +134,14 @@ if [ -z "${API_URL}" ]; then
 fi
 
 # #907 F9: effective maxauthtries must be 1 for SSH_USER (sshd -T; not a regex).
+# Host installs: MANDATORY Match Group ezkey-mfa (or Match User) with MaxAuthTries 1 —
+# each prompt round is one auth request (see README Runbook).
 if [ -f /etc/ssh/sshd_config ] && command -v sshd >/dev/null 2>&1; then
     if ! sshd -T -f /etc/ssh/sshd_config \
         -C "user=${SSH_USER},host=localhost,addr=127.0.0.1" 2>/dev/null \
       | grep -qx 'maxauthtries 1'; then
         echo "[entrypoint] WARNING: sshd -T for user=${SSH_USER} is not maxauthtries 1." >&2
-        echo "[entrypoint] WARNING: without Match … MaxAuthTries 1, OpenSSH recreates after Deny/Expire (#907 F9)." >&2
+        echo "[entrypoint] WARNING: MANDATORY Match … MaxAuthTries 1 — each prompt round recreates after Deny/Expire (#907 F9)." >&2
     fi
 fi
 

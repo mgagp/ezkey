@@ -31,14 +31,18 @@ echo "     Use https:// only; never commit origin IPs — placeholder"
 echo "     <static-ip ezkey-online-community> for community docs."
 echo "  2. Add this line at the top of /etc/pam.d/sshd:"
 echo "       auth  required  pam_ezkey.so conf=/etc/security/pam_ezkey.conf"
-echo "  3. In sshd_config: LoginGraceTime >= 120. Enforce a single Ezkey try with a"
-echo "     dedicated Match (User/Group), NOT a global MaxAuthTries 1:"
-echo "       Match User <mfa-user>"
+echo "  3. MANDATORY sshd_config: LoginGraceTime >= 120, and MaxAuthTries 1 inside"
+echo "     a dedicated Match (Group/User) for MFA accounts only — NOT global."
+echo "     Why: each keyboard-interactive prompt round is one forked PAM child and"
+echo "     one auth request; without Match MaxAuthTries 1, one SSH login can create"
+echo "     multiple orphan pending attempts (#907 F9 / Edgar retest #908)."
+echo "     Host dogfood (other users like ec2-user stay on the global try budget):"
+echo "       Match Group ezkey-mfa"
 echo "           MaxAuthTries 1"
 echo "           AuthenticationMethods keyboard-interactive"
 echo "           PubkeyAuthentication no"
-echo "     WARNING: without that Match, OpenSSH recreates auth attempts after"
-echo "     Deny/Expire in the same TCP connection (#907 F9)."
+echo "     Single-user lab alternative: Match User <mfa-user> with the same three"
+echo "     directives. See README Runbook / sshd.host-sketch."
 echo "  4. Clients: ssh -o NumberOfPasswordPrompts=1 …"
 echo "  5. Restart sshd (sshd -t first)."
 # Effective MaxAuthTries for the MFA user (sshd -T; avoids regex matching 10/12).
@@ -50,10 +54,12 @@ if [ -f "${SSHD_CFG}" ] && command -v sshd >/dev/null 2>&1; then
     | grep -qx 'maxauthtries 1'; then
     echo ""
     echo "WARNING: sshd -T for user=${CHECK_USER} does not show maxauthtries 1."
-    echo "         Add Match User|Group … MaxAuthTries 1 (effective value must be 1)."
-    echo "         Without it, OpenSSH may recreate auth attempts after Deny/Expire (#907 F9)."
+    echo "         MANDATORY: add Match Group ezkey-mfa (or Match User …) with"
+    echo "         MaxAuthTries 1 — effective value must be 1 for MFA users."
+    echo "         Without it, each prompt round recreates an auth attempt (#907 F9)."
   fi
   # Global MaxAuthTries 1 (before any Match) still discouraged — pubkey rejects count.
+  # Awk semantics covered by scripts/test-install-sshd-warn.sh (Patrick #908 nit).
   if awk '
     /^[[:space:]]*#/ { next }
     /^[[:space:]]*Match[[:space:]]/ { exit }
@@ -62,10 +68,12 @@ if [ -f "${SSHD_CFG}" ] && command -v sshd >/dev/null 2>&1; then
   ' "${SSHD_CFG}"; then
     echo ""
     echo "WARNING: global MaxAuthTries 1 found (before Match) — refused public keys"
-    echo "         also consume tries. Prefer Match-scoped MaxAuthTries 1 (see README)."
+    echo "         also consume tries and can lock out non-MFA users (e.g. ec2-user)."
+    echo "         Prefer Match Group ezkey-mfa / Match User … MaxAuthTries 1 (README)."
   fi
 elif [ -f "${SSHD_CFG}" ]; then
   echo ""
   echo "WARNING: sshd not on PATH — could not verify maxauthtries 1 via sshd -T."
-  echo "         Ensure Match User|Group … MaxAuthTries 1 for ${CHECK_USER}."
+  echo "         MANDATORY: Match Group ezkey-mfa (or Match User …) MaxAuthTries 1"
+  echo "         for MFA account ${CHECK_USER}."
 fi

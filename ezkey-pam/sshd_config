@@ -28,8 +28,8 @@ MaxAuthTries 6
 PerSourcePenalties no
 
 # Demo MFA user: one auth try per TCP session (prevents F9 orphan create).
-# Host installs: inside Match also set AuthenticationMethods keyboard-interactive
-# and/or PubkeyAuthentication no (see README / sshd.host-sketch).
+# Host installs: MANDATORY Match Group ezkey-mfa (or Match User) with
+# MaxAuthTries 1 — each prompt round = one auth request (README / sshd.host-sketch).
 Match User testuser
 	MaxAuthTries 1
 	AuthenticationMethods keyboard-interactive

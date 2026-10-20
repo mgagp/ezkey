@@ -28,12 +28,15 @@ that owns the API key.
 
 ## What changed in 2.2.10 (#907 F9 — Patrick/Christophe review, option A)
 
-- **OpenSSH reality:** each keyboard-interactive round runs in a forked child that
-  `_exit`s — a `pam_set_data` marker does **not** span rounds. Do not treat
-  `PAM_MAXTRIES` as effective under sshd. The demo/`sshd` guarantee is a dedicated
-  `Match User …` / `Match Group …` block with `MaxAuthTries 1` (prefer that over a
-  **global** `MaxAuthTries 1`, which also counts refused public keys). Without that
-  Match, a retry in the same TCP connection creates a new auth attempt.
+- **OpenSSH reality (mandatory sshd step):** each keyboard-interactive **prompt
+  round** runs in a forked PAM child that `_exit`s — a `pam_set_data` marker does
+  **not** span rounds, and each round creates **one** Integration API auth
+  request. Do not treat `PAM_MAXTRIES` as effective under sshd. Host and demo
+  installs **must** set `MaxAuthTries 1` inside a dedicated `Match User …` /
+  `Match Group …` block (host dogfood: `Match Group ezkey-mfa`). Prefer that over
+  a **global** `MaxAuthTries 1`, which also counts refused public keys and would
+  affect non-MFA users (e.g. `ec2-user`). Without that Match, one SSH login can
+  create multiple orphan pending attempts (Edgar retest 2026-10-20 / #908 F9).
 - Authpriv **`start`** line at call begin (before create); summary includes
   `timeoutSeconds=`.
 - **R5 (best-effort):** chunked `/wait` + wait-scoped `SIGTERM` (absorbed only
@@ -43,8 +46,9 @@ that owns the API key.
   and the **applied TTL** from create (≤ 90 s) is the residual bound. Do not rely
   on `pam_end` under OpenSSH.
 - Proof: `scripts/test-f9-retry.sh` A/B (multitry vs Match) gate CI. Case C
-  (kill-client) documents best-effort cancel and asserts the TTL bound; it does
-  **not** require cancel ≤5 s and does not fail CI when cancel is absent.
+  (kill-client) documents best-effort cancel and asserts requested TTL + single
+  create; it does **not** require cancel ≤5 s and does not fail CI when cancel is
+  absent.
 - In-process final marker kept as fail-closed for same-handle callers only.
 - Harness: `make test-session` (interrupt cancel cap + final-verdict helpers).
 
@@ -143,8 +147,10 @@ docker rm ezkey-pam-extract-al2023
 ```
 
 On an AL2023 host, install under `/usr/lib64/security/`, conf `0600` at
-`/etc/security/pam_ezkey.conf`, and add a PAM line (see `sshd.host-sketch`). **Do not**
-copy a Rocky-built `.so` onto AL2023.
+`/etc/security/pam_ezkey.conf`, add a PAM line, and **mandatory** sshd
+`Match Group ezkey-mfa` / `Match User …` with `MaxAuthTries 1` (see
+`sshd.host-sketch` and Runbook below). **Do not** copy a Rocky-built `.so` onto
+AL2023.
 
 ### Smoke (module load, no Ezkey stack)
 
@@ -248,13 +254,23 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
 - **`LoginGraceTime` ≥ 120 s.** Demo `sshd_config` sets `LoginGraceTime 120`. The module’s
   monotonic budget is 105 s; a lower grace time cuts the session before PAM can finish (often
   with **no** attempt line). Keep host sshd grace ≥ 120 when using this module.
-- **Single try via `Match` (sshd), not a global `MaxAuthTries 1`.** After Deny or
-  expiration, OpenSSH portable retries **keyboard-interactive in the same TCP connection**,
-  each round in a **new forked PAM child** (`auth-pam.c` `_exit`) — so in-process PAM
-  markers do not stop a second create (#907 F9 / option A). Enforce one try with a
-  dedicated block, for example:
+- **MANDATORY — single try via `Match` (sshd), not a global `MaxAuthTries 1`.**
+  After Deny or expiration, OpenSSH portable retries **keyboard-interactive in the
+  same TCP connection**. Each **prompt round** is a **new forked PAM child**
+  (`auth-pam.c` `_exit`) and therefore **one new** `POST /auth-attempts` — in-process
+  PAM markers cannot stop a second create (#907 F9 / option A). Edgar’s 2026-10-20
+  retest of #908 showed F9 (one SSH login → three auth requests) is fixed **only**
+  when `MaxAuthTries 1` is inside the MFA `Match` (other users such as `ec2-user`
+  stay on the global try budget). This step is **mandatory** for every host install:
 
   ```text
+  # Host dogfood (recommended): MFA accounts in group ezkey-mfa only
+  Match Group ezkey-mfa
+      MaxAuthTries 1
+      AuthenticationMethods keyboard-interactive
+      PubkeyAuthentication no
+
+  # Demo / single-user lab equivalent:
   Match User testuser
       MaxAuthTries 1
       AuthenticationMethods keyboard-interactive
@@ -264,13 +280,14 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
   Prefer pinning `AuthenticationMethods keyboard-interactive` and/or
   `PubkeyAuthentication no` **inside the Match** (not only globally). **Avoid global
   `MaxAuthTries 1`:** refused public keys also consume tries and can lock out mixed
-  auth methods. **Match limits:** applies until EOF or the next `Match`; first matching
-  value wins; protection is **per TCP connection**, not a cross-connection rate limit.
-  **Forgetting the Match is an easy miss** — OpenSSH then recreates auth attempts after
-  Deny/Expire in the same session (F9; proven by `scripts/test-f9-retry.sh` case A).
-  `install.sh` / entrypoint check effective `maxauthtries 1` with
-  `sshd -T -C user=…`. Client helper: `-o NumberOfPasswordPrompts=1`. Demo
-  `sshd_config` uses that Match with global `MaxAuthTries 6`.
+  auth methods for non-MFA users. **Match limits:** applies until EOF or the next
+  `Match`; first matching value wins; protection is **per TCP connection**, not a
+  cross-connection rate limit. **Forgetting the Match is an easy miss** — OpenSSH
+  then recreates auth attempts after Deny/Expire in the same session (F9; proven by
+  `scripts/test-f9-retry.sh` case A). `install.sh` / entrypoint check effective
+  `maxauthtries 1` with `sshd -T -C user=…` and warn if a **global** `MaxAuthTries 1`
+  appears before any `Match`. Client helper: `-o NumberOfPasswordPrompts=1`. Demo
+  `sshd_config` uses `Match User testuser` with global `MaxAuthTries 6`.
 - **HTTP 429 during `/wait`:** fail-closed — PAM returns `UNAVAIL` and the SSH
   approval fails (no silent retry inside the wait loop).
 - **Auth API `/pending` rate limit: 10/min** (`ezkey.rate-limit.pending.requests=10`,
