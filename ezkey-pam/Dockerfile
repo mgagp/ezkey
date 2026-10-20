@@ -26,6 +26,10 @@ WORKDIR /src
 COPY src/ /src/src/
 COPY Makefile /src/Makefile
 COPY test/ /src/test/
+# Host-side install.sh awk unit test (Patrick #908) — needs install.sh + demo sshd_config.
+COPY install.sh /src/install.sh
+COPY sshd_config /src/sshd_config
+COPY scripts/test-install-sshd-warn.sh /src/scripts/test-install-sshd-warn.sh
 
 RUN make clean && make all test \
     && test -f /src/build/pam_ezkey.so \
