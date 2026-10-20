@@ -13,6 +13,7 @@ package org.ezkey.audit.integrity;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
+import org.ezkey.util.LogSanitizer;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,8 +64,11 @@ public class AuditChainHeartbeatPeripheralInterceptor implements HandlerIntercep
 
     String path = normalizePath(request.getServletPath());
 
-    boolean blockAuthPending = "/api/v1/auth-attempts/pending".equals(path);
-    boolean blockIntegrationCreate = "/api/v1/auth-attempts".equals(path);
+    // Match the MFA create routes after stripping CR/LF so a log-injection attempt on the path
+    // cannot bypass the fail-closed gate. HMAC / audit-chain evaluation is unchanged.
+    String pathForGate = stripCrLf(path);
+    boolean blockAuthPending = "/api/v1/auth-attempts/pending".equals(pathForGate);
+    boolean blockIntegrationCreate = "/api/v1/auth-attempts".equals(pathForGate);
 
     if (!blockAuthPending && !blockIntegrationCreate) {
       return true;
@@ -76,7 +80,7 @@ public class AuditChainHeartbeatPeripheralInterceptor implements HandlerIntercep
             + " anchorCheckpointId={}, latestWindowEnd={}, stalePhaseStartsAt={},"
             + " failClosedNotBefore={}, "
             + "problemType=https://ezkey.io/problems/system/audit-chain-heartbeat-degraded)",
-        path,
+        LogSanitizer.sanitizeForLog(path),
         diagnostic.phase(),
         diagnostic.anchorCheckpointId(),
         diagnostic.latestWindowEnd(),
@@ -91,5 +95,18 @@ public class AuditChainHeartbeatPeripheralInterceptor implements HandlerIntercep
       return servletPath.substring(0, servletPath.length() - 1);
     }
     return servletPath;
+  }
+
+  /**
+   * Removes CR/LF for route matching only (not for logging — use {@link LogSanitizer}).
+   *
+   * @param value raw path (may be null)
+   * @return value without CR/LF, or null
+   */
+  private static String stripCrLf(String value) {
+    if (value == null) {
+      return null;
+    }
+    return value.replace("\r", "").replace("\n", "");
   }
 }
