@@ -482,8 +482,9 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
   }
 
   @Test
-  @DisplayName("Respond expired attempt returns safe RFC 9457 state conflict")
-  public void testRespondExpiredAttemptReturnsSafeStateConflict() {
+  @DisplayName(
+      "Respond expired attempt (owner, valid signature) returns 409 auth-attempt-expired (#895)")
+  public void testRespondExpiredAttemptReturnsAuthAttemptExpired() {
     try {
       String adminToken = authTokenManager.getAdminToken();
       configureForAdminApi(dockerStackConfig);
@@ -522,11 +523,66 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
+      assertThat(response.jsonPath().getString("type")).endsWith("/auth-attempt-expired");
+      assertThat(response.jsonPath().getString("title")).isEqualTo("Request cannot be completed");
+      assertThat(response.jsonPath().getString("detail"))
+          .isEqualTo("This authentication request has expired.");
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "Non-owner respond on expired attempt returns generic state-conflict (no typed expiry)"
+          + " (#895 Christophe)")
+  public void testRespondExpiredAttemptByNonOwnerReturnsSafeStateConflict() {
+    try {
+      String adminToken = authTokenManager.getAdminToken();
+      configureForAdminApi(dockerStackConfig);
+
+      Integer integrationId = testDataFactory.createIntegration();
+      VerifiedEnrollmentFixture owner = createVerifiedEnrollment(integrationId, adminToken);
+      Integer authAttemptId = testDataFactory.createAuthAttempt(owner.enrollmentId(), false);
+      PendingAttemptFixture pendingAttempt = claimPendingAttempt(owner, authAttemptId);
+
+      boolean updated =
+          databaseHelper.executeUpdate(
+              "UPDATE ezkey_auth_attempt SET expires_at = NOW() - INTERVAL '5 minutes' "
+                  + "WHERE auth_attempt_id = "
+                  + authAttemptId);
+      assertThat(updated).isTrue();
+
+      // Foreign key pair signs the owner's proof token — ownership check fails (non-owner).
+      EcP256KeyPair foreignDeviceKeyPair = cryptoApiClient.generateKeyPair();
+      String foreignSignature =
+          cryptoApiClient.signData(
+              pendingAttempt.authAttemptProofToken() + "|true", foreignDeviceKeyPair.privateKey());
+
+      configureForAuthApi(dockerStackConfig);
+      Map<String, Object> respondRequest = new HashMap<>();
+      respondRequest.put("authAttemptId", authAttemptId);
+      respondRequest.put("authAttemptAccepted", true);
+      respondRequest.put("authAttemptProofTokenSignedByDevice", foreignSignature);
+
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .body(respondRequest)
+              .when()
+              .post("/auth-attempts/respond")
+              .then()
+              .statusCode(409)
+              .extract()
+              .response();
+
       assertThat(response.jsonPath().getString("type")).endsWith("/auth-attempt-state-conflict");
       assertThat(response.jsonPath().getString("title")).isEqualTo("Request cannot be completed");
       assertThat(response.jsonPath().getString("detail"))
           .isEqualTo(
               "The authentication request is in a state that does not allow this operation.");
+      assertThat(response.jsonPath().getString("type")).doesNotContain("auth-attempt-expired");
       assertThat(response.jsonPath().getString("detail")).doesNotContain("expired");
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(

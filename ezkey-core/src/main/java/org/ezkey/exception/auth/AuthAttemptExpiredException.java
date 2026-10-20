@@ -16,6 +16,9 @@ import java.io.Serial;
  * terminal state conflicts ({@link AuthAttemptStateConflictException}). Message text is for server
  * logs only.
  *
+ * <p><b>Ordering (#895 Christophe):</b> raised only after enrollment load and device-signature
+ * (ownership) verification. Non-owner or unverified callers must not observe this type.
+ *
  * @author Ezkey contributors
  * @since 2026
  */

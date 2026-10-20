@@ -281,19 +281,126 @@ class AuthAttemptRespondServiceTest {
   }
 
   @Test
-  @DisplayName("Respond after expiresAt → AuthAttemptExpiredException (#895)")
+  @DisplayName(
+      "Respond after expiresAt → AuthAttemptExpiredException only after valid device signature"
+          + " (#895 Christophe)")
   void respond_afterExpiresAt_raisesExpired() {
     AuthAttempt attempt = readAttempt();
     attempt.setExpiresAt(OffsetDateTime.now().minusSeconds(1));
+    Enrollment enrollment = enrollmentWithKeys();
+
     when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
     when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
         .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
 
     assertThatThrownBy(() -> respondService.respond(approveRequest()))
         .isInstanceOf(AuthAttemptExpiredException.class)
         .hasMessageContaining("expired");
+    verify(signatureService).validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY));
     verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
     verify(signatureService, never()).signIntegrationPayload(any(), any());
+    verify(authAttemptTxHelper, never()).markAsInvalid(any());
+  }
+
+  @Test
+  @DisplayName(
+      "Invalid signature on expired attempt → state-conflict (no typed expiry, no INVALID)"
+          + " (#895 Christophe)")
+  void respond_expiredInvalidSignature_raisesStateConflict() {
+    AuthAttempt attempt = readAttempt();
+    attempt.setExpiresAt(OffsetDateTime.now().minusSeconds(1));
+    Enrollment enrollment = enrollmentWithKeys();
+
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(false);
+
+    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+        .isInstanceOf(AuthAttemptStateConflictException.class)
+        .hasMessageContaining("not authorized");
+    verify(authAttemptTxHelper, never()).markAsInvalid(any());
+    verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
+    verify(signatureService, never()).signIntegrationPayload(any(), any());
+  }
+
+  @Test
+  @DisplayName(
+      "Deny after expiresAt → AuthAttemptExpiredException after valid device signature"
+          + " (#895 Christophe)")
+  void respond_denyAfterExpiresAt_raisesExpired() {
+    AuthAttempt attempt = readAttempt();
+    attempt.setExpiresAt(OffsetDateTime.now().minusSeconds(1));
+    Enrollment enrollment = enrollmentWithKeys();
+
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
+
+    assertThatThrownBy(() -> respondService.respond(denyRequest()))
+        .isInstanceOf(AuthAttemptExpiredException.class)
+        .hasMessageContaining("expired");
+    verify(signatureService).validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY));
+    verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
+    verify(signatureService, never()).signIntegrationPayload(any(), any());
+    verify(authAttemptTxHelper, never()).markAsInvalid(any());
+  }
+
+  @Test
+  @DisplayName(
+      "Owner + expired + wrong challenge → AuthAttemptExpiredException"
+          + " (expiry between signature and challenge — #895 Patrick M1)")
+  void respond_expiredWrongChallenge_raisesExpiredBeforeChallenge() {
+    AuthAttempt attempt = readAttempt();
+    attempt.setExpiresAt(OffsetDateTime.now().minusSeconds(1));
+    attempt.setAuthAttemptChallenge(42);
+    Enrollment enrollment = enrollmentWithKeys();
+    enrollment.setAuthAttemptChallengeRequired(true);
+
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
+
+    AuthAttemptRespondRequest request = approveRequest();
+    request.setAuthAttemptChallengeResponse(99);
+
+    assertThatThrownBy(() -> respondService.respond(request))
+        .isInstanceOf(AuthAttemptExpiredException.class)
+        .hasMessageContaining("expired");
+    verify(signatureService).validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY));
+    verify(authAttemptTxHelper, never()).markAsInvalid(any());
+    verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
+    verify(signatureService, never()).signIntegrationPayload(any(), any());
+  }
+
+  @Test
+  @DisplayName(
+      "Missing device public key on expired attempt → state-conflict (no INVALID)"
+          + " (#895 Patrick M2)")
+  void respond_expiredMissingDeviceKey_raisesStateConflict() {
+    AuthAttempt attempt = readAttempt();
+    attempt.setExpiresAt(OffsetDateTime.now().minusSeconds(1));
+    Enrollment enrollment = enrollmentWithKeys();
+    enrollment.setDevicePublicKey(null);
+
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> respondService.respond(approveRequest()))
+        .isInstanceOf(AuthAttemptStateConflictException.class)
+        .hasMessageContaining("not authorized");
+    verify(authAttemptTxHelper, never()).markAsInvalid(any());
+    verify(signatureService, never()).validateSignature(any(), any(), any());
+    verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
   }
 
   @Test
@@ -360,6 +467,14 @@ class AuthAttemptRespondServiceTest {
     AuthAttemptRespondRequest request = new AuthAttemptRespondRequest();
     request.setAuthAttemptId(42);
     request.setAuthAttemptAccepted(true);
+    request.setAuthAttemptProofTokenSignedByDevice("device-sig");
+    return request;
+  }
+
+  private static AuthAttemptRespondRequest denyRequest() {
+    AuthAttemptRespondRequest request = new AuthAttemptRespondRequest();
+    request.setAuthAttemptId(42);
+    request.setAuthAttemptAccepted(false);
     request.setAuthAttemptProofTokenSignedByDevice("device-sig");
     return request;
   }
