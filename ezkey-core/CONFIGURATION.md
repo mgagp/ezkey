@@ -18,6 +18,9 @@ instance metadata. Applications that depend on ezkey-core declare these properti
 | `ezkey.encryption.algorithm` | — | `AES256_GCM` | optionnel |
 | `ezkey.encryption.keyset.storage-mode` | — | `DATABASE` | optionnel |
 | `ezkey.encryption.keyset.writer` | `EZKEY_ENCRYPTION_KEYSET_WRITER` | `false` | **true [admin]** |
+| `ezkey.encryption.keyset.reload-before-mutation` | — | `true` | optionnel |
+| `ezkey.encryption.keyset.version-check-interval-seconds` | — | `5` | optionnel |
+| `ezkey.encryption.keyset.decrypt-failure-reload-throttle-ms` | — | `1000` | optionnel |
 | `ezkey.encryption.keyset.bootstrap-wait` | `EZKEY_ENCRYPTION_KEYSET_BOOTSTRAP_WAIT` | `PT90S` | optionnel |
 | `ezkey.audit.integrity.enabled` | — | `true` | optionnel |
 | `ezkey.audit.integrity.required` | `EZKEY_AUDIT_INTEGRITY_REQUIRED` | `false` | optionnel [prod] / **true [docker]** |
@@ -86,11 +89,15 @@ Admin-only materialization of the blob and of `ezkey_encryption_key` metadata:
 [ADR-0012](../product-docs/global/architecture-decisions.md#adr-0012-admin-owned-keyset-materialization).
 
 **HA keyset sync (operator summary):** Use `storage-mode=DATABASE` so `ezkey_keyset_blob` is the
-shared source of truth across Admin/Auth/Integration instances. On introduce, a new key stays
-`PENDING` for `rotation.sync-window-seconds` before promotion to `PRIMARY`, giving instances time
-to reload the updated keyset (async check in ADR-0008) while encrypt still uses the previous
-primary; Tink can decrypt with older ENABLED keys throughout. In the Docker stack the mode remains
-`DATABASE`, but the shared `encryption-secrets` volume also mounts the keyset file as a
+shared source of truth across Admin/Auth/Integration instances. **Reload before mutate; write only
+via CAS** (`UPDATE … WHERE version = :read`). A traffic-independent version tick
+(`keyset.version-check-interval-seconds`, default 5) keeps idle replicas current; keep
+`tick < rotation.sync-window-seconds` (prefer `tick <= syncWindow/2`) or startup logs WARN. On
+introduce, a new key stays `PENDING` for `rotation.sync-window-seconds` before promotion to
+`PRIMARY` while encrypt still uses the previous primary; Tink can decrypt with older ENABLED keys
+throughout. Decrypt-failure path may perform one throttled synchronous reload (H2); the encrypt /
+decrypt hot path never does a synchronous `findVersion` (SEC-009). In the Docker stack the mode
+remains `DATABASE`, but the shared `encryption-secrets` volume also mounts the keyset file as a
 cache/backup path — do not treat that shared file alone as the multi-instance sync contract.
 
 **Defined in:** `TinkProperties`
@@ -120,6 +127,9 @@ treated as non-secret operational metadata.
 | `ezkey.encryption.keyset.bootstrap-poll-interval` | `Duration` | `PT1S` | optionnel | Sleep between blob polls during `bootstrap-wait`. Tests may use a millisecond interval. |
 | `ezkey.encryption.keyset.degraded-mode-enabled` | `boolean` | `false` | optionnel | When true, a decryption failure triggers a DB reload and a read-only degraded mode instead of a hard failure. |
 | `ezkey.encryption.keyset.max-reload-retries` | `int` | `1` | optionnel | Maximum keyset reload attempts on decryption failure. |
+| `ezkey.encryption.keyset.reload-before-mutation` | `boolean` | `true` | optionnel | Option A (#914): under the write lock, reload the blob when DB version is newer before `promote`/`add`/`rotate`. Emergency rollback only; CAS save remains mandatory. |
+| `ezkey.encryption.keyset.version-check-interval-seconds` | `int` | `5` | optionnel | Traffic-independent keyset version tick (seconds). Must be **strictly less than** `rotation.sync-window-seconds`; prefer `<= syncWindow/2`. Startup WARN when `tick >= syncWindow`. |
+| `ezkey.encryption.keyset.decrypt-failure-reload-throttle-ms` | `long` | `1000` | optionnel | H2 (#914): minimum interval between decrypt-failure synchronous reloads on this node (anti-amplification). |
 
 #### Key Rotation (`ezkey.encryption.rotation.*`)
 

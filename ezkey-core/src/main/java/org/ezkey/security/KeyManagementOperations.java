@@ -62,4 +62,25 @@ public interface KeyManagementOperations {
    * @return key ids currently present in the keyset
    */
   List<Long> getAllKeyIds();
+
+  /**
+   * Reloads the in-memory keyset from the database blob when the blob version is newer.
+   *
+   * <p>Used before choosing a re-encryption target so the blob (not a stale memory primary) is the
+   * source of truth (#921).
+   *
+   * @return {@code true} when a reload was performed, {@code false} when already current or DB
+   *     storage is unavailable
+   */
+  boolean reloadKeysetIfDatabaseNewer();
+
+  /**
+   * Single-flight, throttled synchronous reload for the decrypt-failure path only (H2).
+   *
+   * <p>Does not run on the encrypt/decrypt hot path. At most one reload per throttle window per
+   * JVM.
+   *
+   * @return {@code true} when a reload completed successfully
+   */
+  boolean tryReloadAfterDecryptFailure();
 }

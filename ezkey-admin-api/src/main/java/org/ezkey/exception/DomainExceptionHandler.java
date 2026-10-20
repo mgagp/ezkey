@@ -23,7 +23,9 @@ import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.ezkey.integration.exception.SystemIntegrationLifecycleException;
 import org.ezkey.security.exception.EncryptionLifecycleDisabledException;
+import org.ezkey.security.exception.KeysetConcurrentModificationException;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
+import org.ezkey.security.exception.ReencryptionTargetConflictException;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -123,6 +125,49 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
         HttpStatus.CONFLICT,
         "https://ezkey.io/problems/domain/pending-encryption-key-exists",
         "Pending Encryption Key Exists",
+        request);
+  }
+
+  /**
+   * Handles ReencryptionTargetConflictException and returns HTTP 409 Conflict.
+   *
+   * <p>Triggered when re-encryption would be a silent no-op (old key equals primary after keyset
+   * blob reload) — #921.
+   *
+   * @param ex the ReencryptionTargetConflictException that was thrown
+   * @param request the HTTP servlet request for path extraction
+   * @return ResponseEntity containing ProblemDetail and HTTP 409 status
+   * @since 2026
+   */
+  @ExceptionHandler(ReencryptionTargetConflictException.class)
+  public ResponseEntity<ProblemDetail> handleReencryptionTargetConflictException(
+      ReencryptionTargetConflictException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/domain/reencryption-target-conflict",
+        "Re-encryption Target Conflict",
+        request);
+  }
+
+  /**
+   * Handles KeysetConcurrentModificationException and returns HTTP 409 Conflict.
+   *
+   * <p>Triggered when a keyset blob CAS write loses to another HA writer (#920).
+   *
+   * @param ex the KeysetConcurrentModificationException that was thrown
+   * @param request the HTTP servlet request for path extraction
+   * @return ResponseEntity containing ProblemDetail and HTTP 409 status
+   * @since 2026
+   */
+  @ExceptionHandler(KeysetConcurrentModificationException.class)
+  public ResponseEntity<ProblemDetail> handleKeysetConcurrentModificationException(
+      KeysetConcurrentModificationException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/domain/keyset-concurrent-modification",
+        "Keyset Concurrent Modification",
         request);
   }
 

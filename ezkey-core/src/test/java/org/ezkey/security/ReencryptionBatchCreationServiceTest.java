@@ -8,6 +8,7 @@
 package org.ezkey.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -25,6 +26,7 @@ import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
 import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
+import org.ezkey.security.exception.ReencryptionTargetConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -218,5 +220,22 @@ class ReencryptionBatchCreationServiceTest {
         .allMatch(b -> Integer.valueOf(4).equals(b.getShardCount()))
         .extracting(ReencryptionBatch::getShardIndex)
         .containsExactlyInAnyOrder(0, 1, 2, 3);
+  }
+
+  @Test
+  @DisplayName("#921 old==new primary refuses silent no-op (ReencryptionTargetConflictException)")
+  void createBatchesForTarget_whenOldEqualsPrimary_throwsTargetConflict() {
+    String table = ReencryptionBatchCreationService.EZKEY_AUTH_ATTEMPT_TABLE;
+    String column = "auth_attempt_proof_token";
+    EncryptionKey same =
+        new EncryptionKey(200L, KeyStatus.PRIMARY, "AES256_GCM", OffsetDateTime.now(), "TEST");
+
+    assertThatThrownBy(
+            () ->
+                service.createBatchesForTarget(
+                    same, same, new ReencryptionBatchCreationService.Target(table, column), "TEST"))
+        .isInstanceOf(ReencryptionTargetConflictException.class)
+        .hasMessageContaining("refusing silent no-op");
+    verify(batchRepository, never()).save(any());
   }
 }

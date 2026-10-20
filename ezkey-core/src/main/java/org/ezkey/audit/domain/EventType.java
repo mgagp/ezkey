@@ -90,6 +90,7 @@ public enum EventType {
   // Encryption key lifecycle events
   KEY_INTRODUCED, // New encryption key added to keyset
   KEY_PROMOTED_PRIMARY, // Key promoted to primary for new encryption
+  KEY_PROMOTION_CONFLICT, // Expected HA conflict (CAS lost / kid absent before current blob)
   KEY_DEMOTED, // Key demoted from PRIMARY to ENABLED
   KEY_DISABLED, // Key disabled (no longer for decryption)
   KEYSET_BACKUP_CREATED, // Backup created before rotation

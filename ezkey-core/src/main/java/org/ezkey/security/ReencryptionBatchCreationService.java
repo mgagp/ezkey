@@ -26,6 +26,7 @@ import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
+import org.ezkey.security.exception.ReencryptionTargetConflictException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -81,6 +82,13 @@ public class ReencryptionBatchCreationService {
     List<Target> targets = discoverReencryptableTargets();
 
     for (EncryptionKey oldKey : enabledKeys) {
+      if (oldKey.getKeyId().equals(primaryKey.getKeyId())) {
+        logger.warn(
+            "Skipping re-encryption batch: old key {} equals primary after keyset reload "
+                + "(would be a silent no-op)",
+            Long.toUnsignedString(oldKey.getKeyId()));
+        continue;
+      }
       for (Target target : targets) {
         createBatchesForTarget(oldKey, primaryKey, target, "SYSTEM");
       }
@@ -104,6 +112,17 @@ public class ReencryptionBatchCreationService {
     String table = target.table();
     String column = target.column();
     List<ReencryptionBatch> created = new ArrayList<>();
+
+    if (oldKey.getKeyId().equals(primaryKey.getKeyId())) {
+      throw new ReencryptionTargetConflictException(
+          oldKey.getKeyId(),
+          primaryKey.getKeyId(),
+          "Cannot re-encrypt: old key "
+              + Long.toUnsignedString(oldKey.getKeyId())
+              + " equals the current primary from the keyset blob. "
+              + "Reload the keyset on this node or wait for version sync; "
+              + "refusing silent no-op batches.");
+    }
 
     List<ReencryptionBatch> anyActive =
         batchRepository.findAnyActiveBatchesByTargetAndOldKey(table, column, oldKey.getKeyId());
@@ -253,18 +272,30 @@ public class ReencryptionBatchCreationService {
             .build());
   }
 
+  /**
+   * Resolves the primary encryption key from the <b>database keyset blob</b> after a versioned
+   * reload under the write lock.
+   *
+   * <p>The blob is the HA source of truth; in-memory and file copies are caches (#914 / #921). Do
+   * not treat a stale in-memory primary as authoritative.
+   *
+   * @return the PRIMARY key metadata row matching the reloaded blob primary, or {@code null}
+   */
   public EncryptionKey getPrimaryKeyFromKeyset() {
     if (!keyManagementOperations.isInitialized()) {
       logger.warn("Tink keyset not initialized, cannot determine PRIMARY key");
       return null;
     }
 
+    keyManagementOperations.reloadKeysetIfDatabaseNewer();
+
     long primaryKeyId = keyManagementOperations.getCurrentPrimaryKeyId();
 
     EncryptionKey primaryKey = keyRepository.findById(primaryKeyId).orElse(null);
     if (primaryKey == null) {
       logger.warn(
-          "PRIMARY key {} from keyset not found in database. Database may need synchronization.",
+          "PRIMARY key {} from keyset blob not found in database. Database may need"
+              + " synchronization.",
           Long.toUnsignedString(primaryKeyId));
       return null;
     }
@@ -272,9 +303,9 @@ public class ReencryptionBatchCreationService {
     if (primaryKey.getKeyStatus() != EncryptionKey.KeyStatus.PRIMARY) {
       logger.warn(
           "⚠️ KEY AUDIT: PRIMARY key mismatch detected! "
-              + "Keyset PRIMARY: {} (unsigned: {}), "
+              + "Keyset blob PRIMARY: {} (unsigned: {}), "
               + "Database status: {}. "
-              + "Database may need synchronization. Using keyset value (source of truth).",
+              + "Database may need synchronization. Using keyset blob value (source of truth).",
           primaryKeyId,
           Long.toUnsignedString(primaryKeyId),
           primaryKey.getKeyStatus());
@@ -291,12 +322,12 @@ public class ReencryptionBatchCreationService {
                       .custom("keyset_primary_key_id", Long.toUnsignedString(primaryKeyId))
                       .custom("database_key_status", primaryKey.getKeyStatus().toString())
                       .errorSummary(
-                          "PRIMARY key status mismatch between keyset and database. "
-                              + "Keyset is source of truth. "
+                          "PRIMARY key status mismatch between keyset blob and database. "
+                              + "Keyset blob is source of truth. "
                               + "Database synchronization may be needed.")
                       .toJson())
               .errorMessage(
-                  "PRIMARY key status mismatch: keyset="
+                  "PRIMARY key status mismatch: keyset_blob="
                       + Long.toUnsignedString(primaryKeyId)
                       + ", database_status="
                       + primaryKey.getKeyStatus())

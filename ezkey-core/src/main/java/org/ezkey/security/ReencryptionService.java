@@ -31,6 +31,7 @@ import org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
 import org.ezkey.security.exception.EncryptionLifecycleDisabledException;
+import org.ezkey.security.exception.ReencryptionTargetConflictException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -268,6 +269,16 @@ public class ReencryptionService {
     EncryptionKey primaryKey = batchCreationService.getPrimaryKeyFromKeyset();
     if (primaryKey == null) {
       throw new IllegalStateException("No PRIMARY key found");
+    }
+
+    if (oldKey.getKeyId().equals(primaryKey.getKeyId())) {
+      throw new ReencryptionTargetConflictException(
+          oldKey.getKeyId(),
+          primaryKey.getKeyId(),
+          "Cannot re-encrypt key "
+              + Long.toUnsignedString(keyId)
+              + ": it equals the current primary from the keyset blob after reload. "
+              + "Nothing to migrate (refusing silent no-op).");
     }
 
     List<ReencryptionBatchCreationService.Target> targets =

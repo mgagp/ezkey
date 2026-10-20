@@ -23,6 +23,7 @@ import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -33,6 +34,8 @@ import org.ezkey.config.TinkProperties;
 import org.ezkey.config.TinkProperties.Keyset.StorageMode;
 import org.ezkey.security.domain.entity.KeysetBlob;
 import org.ezkey.security.domain.repository.KeysetBlobRepository;
+import org.ezkey.security.exception.KeysetConcurrentModificationException;
+import org.ezkey.security.exception.KeysetKeyNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
@@ -68,6 +71,7 @@ public class TinkKeyManager implements KeyManagementOperations {
 
   private final TinkProperties properties;
   private final KeysetBlobRepository keysetBlobRepository;
+  private final KeysetHaSyncSupport haSync;
 
   private volatile KeysetHandle keysetHandle;
   private volatile long keysetFileLastModified = 0;
@@ -131,6 +135,7 @@ public class TinkKeyManager implements KeyManagementOperations {
           keysetBlobRepositoryProvider) {
     this.properties = Objects.requireNonNull(properties, "properties");
     this.keysetBlobRepository = keysetBlobRepositoryProvider.getIfAvailable();
+    this.haSync = new KeysetHaSyncSupport(this.properties, this.keysetBlobRepository);
     try {
       AeadConfig.register();
     } catch (GeneralSecurityException e) {
@@ -216,6 +221,8 @@ public class TinkKeyManager implements KeyManagementOperations {
 
       if (isInitialized()) {
         verifyKeyset();
+        haSync.startPeriodicVersionTickIfDatabaseBacked(
+            databaseBacked, CHECKING_DATABASE, this::checkAndReloadKeysetIfNeeded);
         logger.info("Tink encryption ready for operation");
       }
     } catch (FileNotFoundException e) {
@@ -340,6 +347,11 @@ public class TinkKeyManager implements KeyManagementOperations {
         try {
           saveKeysetToDatabase("STARTUP_FILE_SYNC");
           logger.info("✅ Keyset synchronized to database from file");
+        } catch (KeysetConcurrentModificationException e) {
+          logger.info(
+              "Startup file sync lost CAS (peer writer ahead); adopting database blob: {}",
+              e.getMessage());
+          loadKeysetFromDatabase();
         } catch (GeneralSecurityException
             | IOException
             | DataAccessException
@@ -372,6 +384,11 @@ public class TinkKeyManager implements KeyManagementOperations {
         && keysetBlobRepository != null) {
       try {
         claimOrAdoptGeneratedKeyset(normalizedKeysetPath);
+      } catch (KeysetConcurrentModificationException e) {
+        logger.info(
+            "Startup new-keyset CAS lost (peer writer ahead); adopting database blob: {}",
+            e.getMessage());
+        loadKeysetFromDatabase();
       } catch (GeneralSecurityException
           | IOException
           | DataAccessException
@@ -406,7 +423,7 @@ public class TinkKeyManager implements KeyManagementOperations {
         keysetBlobRepository.insertSingletonIfAbsent(
             encryptedData, OffsetDateTime.now(), "STARTUP_NEW_KEYSET");
     if (claimed > 0) {
-      var version = keysetBlobRepository.findVersion();
+      var version = findBlobVersionInstrumented();
       this.databaseKeysetVersion = version.orElse(1L);
       logger.info("✅ New keyset claimed in database (version: {})", databaseKeysetVersion);
       return;
@@ -442,14 +459,25 @@ public class TinkKeyManager implements KeyManagementOperations {
   @PreDestroy
   void shutdownKeysetCheckExecutor() {
     keysetCheckExecutor.shutdown();
+    haSync.shutdown();
     try {
       if (!keysetCheckExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
         keysetCheckExecutor.shutdownNow();
       }
     } catch (InterruptedException e) {
       keysetCheckExecutor.shutdownNow();
+      haSync.shutdownNow();
       Thread.currentThread().interrupt();
     }
+  }
+
+  /**
+   * Reads the blob version and increments the SEC-009 / test instrumentation counter.
+   *
+   * @return optional blob version
+   */
+  private Optional<Long> findBlobVersionInstrumented() {
+    return haSync.findBlobVersionInstrumented();
   }
 
   /**
@@ -603,7 +631,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
         && keysetBlobRepository != null) {
       try {
-        var dbVersion = keysetBlobRepository.findVersion();
+        var dbVersion = findBlobVersionInstrumented();
         if (dbVersion.isPresent() && dbVersion.get() > databaseKeysetVersion) {
           shouldReloadFromDatabase = true;
         }
@@ -639,7 +667,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     try {
       if (shouldReloadFromDatabase && keysetBlobRepository != null) {
         try {
-          var dbVersion = keysetBlobRepository.findVersion();
+          var dbVersion = findBlobVersionInstrumented();
           if (dbVersion.isPresent() && dbVersion.get() > databaseKeysetVersion) {
             logger.info(
                 "🔄 Database keyset updated (version: {} > {}), reloading keyset...",
@@ -974,6 +1002,8 @@ public class TinkKeyManager implements KeyManagementOperations {
           "Tink encryption not initialized. Cannot rotate keys without initialized keyset.");
     }
 
+    reloadKeysetBeforeMutationUnlocked();
+
     logger.info("🔄 Starting key rotation...");
     long signedOldPrimaryKeyId = keysetHandle.getPrimary().getId();
     long oldPrimaryKeyIdUnsigned = toUnsignedLong(signedOldPrimaryKeyId);
@@ -1017,6 +1047,8 @@ public class TinkKeyManager implements KeyManagementOperations {
       try {
         saveKeysetToDatabaseUnlocked("KEY_ROTATION");
         logger.info("✅ Rotated keyset saved to database");
+      } catch (KeysetConcurrentModificationException e) {
+        throw e;
       } catch (GeneralSecurityException
           | IOException
           | DataAccessException
@@ -1048,6 +1080,8 @@ public class TinkKeyManager implements KeyManagementOperations {
       throw new IllegalStateException(
           "Tink encryption not initialized. Cannot add keys without initialized keyset.");
     }
+
+    reloadKeysetBeforeMutationUnlocked();
 
     logger.info("🔄 Adding new key to keyset (without promotion)...");
     long signedCurrentPrimaryKeyId = keysetHandle.getPrimary().getId();
@@ -1086,6 +1120,8 @@ public class TinkKeyManager implements KeyManagementOperations {
       try {
         saveKeysetToDatabaseUnlocked("KEY_ADDED_PENDING");
         logger.info("✅ Updated keyset (with new pending key) saved to database");
+      } catch (KeysetConcurrentModificationException e) {
+        throw e;
       } catch (GeneralSecurityException
           | IOException
           | DataAccessException
@@ -1121,6 +1157,8 @@ public class TinkKeyManager implements KeyManagementOperations {
           "Tink encryption not initialized. Cannot promote keys without initialized keyset.");
     }
 
+    reloadKeysetBeforeMutationUnlocked();
+
     logger.info(
         "🔄 Promoting key {} (unsigned: {}) to PRIMARY...",
         toSignedLong(keyId),
@@ -1137,8 +1175,11 @@ public class TinkKeyManager implements KeyManagementOperations {
     boolean keyExists = containsSignedKeyId(keysetHandle, signedKeyIdInt);
 
     if (!keyExists) {
-      throw new GeneralSecurityException(
-          "Key %s (unsigned: %s) not found in keyset. Cannot promote non-existent key."
+      boolean blobCurrent = isDatabaseBlobCurrentUnlocked();
+      throw new KeysetKeyNotFoundException(
+          keyId,
+          blobCurrent,
+          "Key %s (unsigned: %s) not found in keyset after versioned reload. Cannot promote."
               .formatted(signedKeyIdInt, Long.toUnsignedString(keyId)));
     }
 
@@ -1168,6 +1209,8 @@ public class TinkKeyManager implements KeyManagementOperations {
       try {
         saveKeysetToDatabaseUnlocked("KEY_PROMOTED_PRIMARY");
         logger.info("✅ Keyset with promoted primary key saved to database");
+      } catch (KeysetConcurrentModificationException e) {
+        throw e;
       } catch (GeneralSecurityException
           | IOException
           | DataAccessException
@@ -1377,37 +1420,57 @@ public class TinkKeyManager implements KeyManagementOperations {
     if (keysetHandle == null) {
       throw new IllegalStateException("No keyset loaded, cannot save to database");
     }
-
     if (masterAead == null) {
       throw new IllegalStateException("Master AEAD not initialized, cannot encrypt keyset");
     }
-
     try {
       String encryptedKeysetJson =
           TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
               keysetHandle, masterAead, KEYSET_ASSOCIATED_DATA, RegistryConfiguration.get());
       byte[] encryptedData = encryptedKeysetJson.getBytes(StandardCharsets.UTF_8);
-
-      KeysetBlob keysetBlob =
-          keysetBlobRepository.findKeyset().orElse(new KeysetBlob(encryptedData, updatedBy));
-      keysetBlob.setKeysetData(encryptedData);
-      keysetBlob.setUpdatedBy(updatedBy);
-      keysetBlob.setLastUpdatedAt(OffsetDateTime.now());
-
-      KeysetBlob saved = keysetBlobRepository.save(keysetBlob);
-      if (saved == null) {
-        throw new IllegalStateException("Keyset repository returned null on save");
-      }
-      this.databaseKeysetVersion = saved.getVersion() != null ? saved.getVersion() : 0;
-
-      logger.info(
-          "✅ Keyset saved to database (version: {}, updated by: {})",
-          databaseKeysetVersion,
-          updatedBy);
+      haSync.claimOrCasUpdateKeyset(
+          encryptedData, updatedBy, () -> databaseKeysetVersion, v -> databaseKeysetVersion = v);
+    } catch (KeysetConcurrentModificationException e) {
+      logger.warn("Keyset CAS conflict: {}", e.getMessage());
+      throw e;
     } catch (GeneralSecurityException | DataAccessException | IllegalStateException e) {
       logger.error("Failed to save keyset to database: {}", e.getMessage());
       throw e;
     }
+  }
+
+  /** Reload once under write lock when DB blob is newer (Option A). */
+  private void reloadKeysetBeforeMutationUnlocked() {
+    haSync.reloadKeysetBeforeMutationIfNeeded(
+        () -> databaseKeysetVersion, this::loadKeysetFromDatabaseUnlocked);
+  }
+
+  private boolean isDatabaseBlobCurrentUnlocked() {
+    return haSync.isDatabaseBlobCurrent(databaseKeysetVersion);
+  }
+
+  @Override
+  public boolean reloadKeysetIfDatabaseNewer() {
+    StorageMode storageMode = properties.getKeyset().getStorageMode();
+    if ((storageMode != StorageMode.DATABASE && storageMode != StorageMode.HYBRID)
+        || keysetBlobRepository == null) {
+      return false;
+    }
+    keysetLock.writeLock().lock();
+    try {
+      Optional<Long> dbVersion = findBlobVersionInstrumented();
+      if (dbVersion.isPresent() && dbVersion.get() > databaseKeysetVersion) {
+        return loadKeysetFromDatabaseUnlocked();
+      }
+      return false;
+    } finally {
+      keysetLock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public boolean tryReloadAfterDecryptFailure() {
+    return haSync.tryReloadAfterDecryptFailure(this::loadKeysetFromDatabase);
   }
 
   public boolean forceReloadFromDatabase() {
@@ -1421,5 +1484,14 @@ public class TinkKeyManager implements KeyManagementOperations {
 
   public long getDatabaseKeysetVersion() {
     return databaseKeysetVersion;
+  }
+
+  /** Test / SEC-009: cumulative {@code findVersion} invocations. */
+  long getFindVersionInvocationCountForTests() {
+    return haSync.getFindVersionInvocationCount();
+  }
+
+  void resetFindVersionInvocationCountForTests() {
+    haSync.resetFindVersionInvocationCount();
   }
 }

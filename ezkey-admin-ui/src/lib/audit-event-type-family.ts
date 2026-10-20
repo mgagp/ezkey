@@ -99,6 +99,7 @@ export const AUDIT_EVENT_TYPE_GROUPS: readonly AuditEventTypeGroup[] = [
     memberKeys: [
       'KEY_INTRODUCED',
       'KEY_PROMOTED_PRIMARY',
+      'KEY_PROMOTION_CONFLICT',
       'KEY_DEMOTED',
       'KEY_DISABLED',
       'KEYSET_BACKUP_CREATED',

@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 import com.google.crypto.tink.Aead;
@@ -43,6 +44,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.ezkey.config.TinkProperties;
 import org.ezkey.security.domain.entity.KeysetBlob;
 import org.ezkey.security.domain.repository.KeysetBlobRepository;
+import org.ezkey.security.exception.KeysetConcurrentModificationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -344,6 +346,21 @@ class TinkKeyManagerConcurrencyTest {
             });
     when(repository.findVersion())
         .thenAnswer(_ -> Optional.ofNullable(storedBlob.get()).map(KeysetBlob::getVersion));
+    when(repository.updateKeysetIfVersionMatches(any(), any(), any(), anyLong()))
+        .thenAnswer(
+            invocation -> {
+              long expectedVersion = invocation.getArgument(3);
+              KeysetBlob current = storedBlob.get();
+              if (current == null || current.getVersion() != expectedVersion) {
+                return 0;
+              }
+              KeysetBlob updated =
+                  new KeysetBlob(invocation.getArgument(0), invocation.getArgument(2));
+              updated.setLastUpdatedAt(invocation.getArgument(1));
+              updated.setVersion(expectedVersion + 1);
+              storedBlob.set(updated);
+              return 1;
+            });
     when(repository.save(any(KeysetBlob.class)))
         .thenAnswer(
             invocation -> {
@@ -449,8 +466,9 @@ class TinkKeyManagerConcurrencyTest {
   }
 
   @Test
-  @DisplayName("saveKeysetToDatabase throws IllegalStateException when repository returns null")
-  void saveKeysetToDatabase_whenRepositoryReturnsNull_throwsIllegalStateException(
+  @DisplayName(
+      "saveKeysetToDatabase throws KeysetConcurrentModificationException on CAS miss (#920)")
+  void saveKeysetToDatabase_whenCasMisses_throwsKeysetConcurrentModificationException(
       @TempDir Path tempDir) throws Exception {
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
@@ -461,19 +479,22 @@ class TinkKeyManagerConcurrencyTest {
     when(repository.keysetExists()).thenReturn(false);
     when(repository.insertSingletonIfAbsent(any(), any(), any())).thenReturn(1);
     when(repository.findVersion()).thenReturn(Optional.of(1L));
-    when(repository.save(any(KeysetBlob.class))).thenReturn(null);
+    when(repository.updateKeysetIfVersionMatches(any(), any(), any(), anyLong())).thenReturn(0);
 
     TinkKeyManager manager =
         initializeManager(
             masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.DATABASE, repository);
 
     try {
-      IllegalStateException exception =
+      // Post-insert path: singleton exists; CAS always misses (peer advanced the version).
+      when(repository.keysetExists()).thenReturn(true);
+      when(repository.updateKeysetIfVersionMatches(any(), any(), any(), anyLong())).thenReturn(0);
+      KeysetConcurrentModificationException exception =
           assertThrows(
-              IllegalStateException.class, () -> manager.saveKeysetToDatabase("TEST_NULL_SAVE"));
-      assertTrue(
-          exception.getMessage().contains("repository returned null"),
-          "Exception message should mention null repository return");
+              KeysetConcurrentModificationException.class,
+              () -> manager.saveKeysetToDatabase("TEST_CAS_MISS"));
+      assertTrue(exception.getExpectedVersion() > 0);
+      assertTrue(exception.getMessage().contains("CAS failed"));
     } finally {
       manager.shutdownKeysetCheckExecutor();
     }

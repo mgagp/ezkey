@@ -64,6 +64,7 @@ public enum EventTypeFamily {
   ENCRYPTION_KEY(
       EventType.KEY_INTRODUCED,
       EventType.KEY_PROMOTED_PRIMARY,
+      EventType.KEY_PROMOTION_CONFLICT,
       EventType.KEY_DEMOTED,
       EventType.KEY_DISABLED,
       EventType.KEYSET_BACKUP_CREATED),

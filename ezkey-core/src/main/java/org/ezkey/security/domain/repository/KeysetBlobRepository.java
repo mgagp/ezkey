@@ -104,4 +104,36 @@ public interface KeysetBlobRepository extends JpaRepository<KeysetBlob, Integer>
    */
   @Query("SELECT k.version FROM KeysetBlob k WHERE k.id = 1")
   Optional<Long> findVersion();
+
+  /**
+   * Conditionally updates the singleton keyset blob only when the row still has {@code
+   * expectedVersion} (CAS write for HA multi-writer safety — #920).
+   *
+   * <p>Returns {@code 1} when the row was updated (caller should treat the new version as {@code
+   * expectedVersion + 1}), or {@code 0} when another writer advanced the version first.
+   *
+   * @param keysetData encrypted Tink keyset envelope
+   * @param lastUpdatedAt update timestamp
+   * @param updatedBy actor recorded on the row
+   * @param expectedVersion version read before the mutation (CAS predicate)
+   * @return {@code 1} if updated, {@code 0} if version mismatch
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Transactional
+  @Query(
+      value =
+          """
+          UPDATE ezkey_keyset_blob
+          SET keyset_data = :keysetData,
+              last_updated_at = :lastUpdatedAt,
+              updated_by = :updatedBy,
+              version = version + 1
+          WHERE id = 1 AND version = :expectedVersion
+          """,
+      nativeQuery = true)
+  int updateKeysetIfVersionMatches(
+      @Param("keysetData") byte[] keysetData,
+      @Param("lastUpdatedAt") OffsetDateTime lastUpdatedAt,
+      @Param("updatedBy") String updatedBy,
+      @Param("expectedVersion") long expectedVersion);
 }

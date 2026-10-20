@@ -14,6 +14,8 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
@@ -26,6 +28,8 @@ import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.exception.EncryptionLifecycleDisabledException;
+import org.ezkey.security.exception.KeysetConcurrentModificationException;
+import org.ezkey.security.exception.KeysetKeyNotFoundException;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,12 +78,24 @@ public class KeyRotationService {
 
   private static final Logger logger = LoggerFactory.getLogger(KeyRotationService.class);
 
+  /**
+   * Consecutive expected promotion conflicts before escalating to ERROR (Christophe §4). Audit
+   * entries are never deleted or deduplicated.
+   */
+  static final int PROMOTION_CONFLICT_ERROR_THRESHOLD = 3;
+
   private final KeyManagementOperations keyManagementOperations;
   private final EncryptionKeyRepository keyRepository;
   private final TinkProperties properties;
   private final AuditLogService auditLogService;
   private final EncryptionKeyMigrationScopeService migrationScopeService;
   private final KeyUsageVerificationService keyUsageVerificationService;
+
+  /** Consecutive expected KEY_PROMOTION_CONFLICT audits on this JVM (reset on success). */
+  private final AtomicInteger consecutivePromotionConflicts = new AtomicInteger(0);
+
+  /** Lifetime count of typed promotion conflicts (CAS / kid-absent-before-current). */
+  private final AtomicLong promotionConflictCounter = new AtomicLong(0);
 
   public KeyRotationService(
       KeyManagementOperations keyManagementOperations,
@@ -94,6 +110,15 @@ public class KeyRotationService {
     this.auditLogService = auditLogService;
     this.migrationScopeService = migrationScopeService;
     this.keyUsageVerificationService = keyUsageVerificationService;
+  }
+
+  /**
+   * Returns the lifetime promotion-conflict counter (tests / HA gates).
+   *
+   * @return number of typed conflicts observed on this JVM
+   */
+  public long getPromotionConflictCount() {
+    return promotionConflictCounter.get();
   }
 
   /**
@@ -252,12 +277,16 @@ public class KeyRotationService {
    *   <li>Emits audit log events
    * </ol>
    *
-   * <p><b>CRITICAL:</b> The Tink keyset promotion must happen FIRST. This ensures:
+   * <p><b>CRITICAL:</b> The Tink keyset promotion must happen FIRST. Under HA, the promoting
+   * replica reloads the blob under the write lock before {@code setPrimary} (Option A / #914). The
+   * sync window is a wait, not a propagation guarantee — replicas that remain idle still catch up
+   * via the traffic-independent version tick and reload-before-mutation.
    *
    * <ul>
-   *   <li>The keyset file/database blob is updated with the new PRIMARY key
-   *   <li>All instances that sync the keyset will use the new key for encryption
-   *   <li>Database metadata stays synchronized with actual Tink state
+   *   <li>The keyset database blob is the source of truth; file and memory are caches
+   *   <li>Blob writes use CAS ({@code UPDATE … WHERE version = :read}); lost CAS is a typed
+   *       conflict
+   *   <li>Database metadata stays synchronized with the blob after a successful promote
    * </ul>
    *
    * <p><b>Transaction boundary:</b> not a Spring transaction entry. Joins the caller: {@link
@@ -272,15 +301,40 @@ public class KeyRotationService {
         pendingKey.getKeyId(),
         Long.toUnsignedString(pendingKey.getKeyId()));
 
+    // Invariant (Christophe §3): promoted kid must be PENDING in metadata (caller guarantees)
+    // and present in the reloaded blob (enforced inside promoteToPrimary).
+    if (pendingKey.getKeyStatus() != KeyStatus.PENDING) {
+      throw new IllegalStateException(
+          "Refusing to promote key "
+              + Long.toUnsignedString(pendingKey.getKeyId())
+              + ": metadata status is "
+              + pendingKey.getKeyStatus()
+              + ", expected PENDING");
+    }
+
     // STEP 1: Promote in Tink keyset FIRST (this is the critical change!)
     // This updates the keyset file and database blob so all instances will use the new key
     Long oldPrimaryKeyId = null;
     try {
       oldPrimaryKeyId = keyManagementOperations.promoteToPrimary(pendingKey.getKeyId());
+      consecutivePromotionConflicts.set(0);
       logger.info(
           "✅ Tink keyset updated: key {} is now PRIMARY (old primary was {})",
           Long.toUnsignedString(pendingKey.getKeyId()),
           oldPrimaryKeyId != null ? Long.toUnsignedString(oldPrimaryKeyId) : "none");
+    } catch (KeysetConcurrentModificationException e) {
+      handleExpectedPromotionConflict(pendingKey, "cas_lost", e.getMessage(), false);
+      return;
+    } catch (KeysetKeyNotFoundException e) {
+      handleExpectedPromotionConflict(
+          pendingKey,
+          e.isAfterFreshReload() ? "kid_absent_after_fresh_reload" : "kid_absent_after_reload",
+          e.getMessage(),
+          e.isAfterFreshReload());
+      if (e.isAfterFreshReload()) {
+        throw new RuntimeException("Failed to promote key in Tink keyset (true inconsistency)", e);
+      }
+      return;
     } catch (GeneralSecurityException | IOException e) {
       logger.error(
           "❌ Failed to promote key {} in Tink keyset: {}",
@@ -362,6 +416,62 @@ public class KeyRotationService {
             + "Tink keyset and database are now synchronized.",
         pendingKey.getKeyId(),
         Long.toUnsignedString(pendingKey.getKeyId()));
+  }
+
+  /**
+   * Records an expected HA promotion conflict: WARN + {@link EventType#KEY_PROMOTION_CONFLICT}
+   * audit + counter. Escalates to ERROR only for true inconsistency or after {@link
+   * #PROMOTION_CONFLICT_ERROR_THRESHOLD} consecutive conflicts. Never deletes prior audit rows.
+   *
+   * @param pendingKey key that failed promotion
+   * @param conflictKind machine-readable kind ({@code cas_lost}, {@code kid_absent_*})
+   * @param detail human-readable detail
+   * @param trueInconsistency when {@code true}, always emit ERROR status on the conflict audit
+   */
+  private void handleExpectedPromotionConflict(
+      EncryptionKey pendingKey, String conflictKind, String detail, boolean trueInconsistency) {
+    long total = promotionConflictCounter.incrementAndGet();
+    int consecutive = consecutivePromotionConflicts.incrementAndGet();
+    boolean escalate = trueInconsistency || consecutive >= PROMOTION_CONFLICT_ERROR_THRESHOLD;
+    // Audit has no WARNING status: expected conflicts use FAILURE; escalations use ERROR.
+    EventStatus status = escalate ? EventStatus.ERROR : EventStatus.FAILURE;
+
+    if (escalate) {
+      logger.error(
+          "KEY_PROMOTION_CONFLICT ({}) for key {} (consecutive={}, total={}): {}",
+          conflictKind,
+          Long.toUnsignedString(pendingKey.getKeyId()),
+          consecutive,
+          total,
+          detail);
+    } else {
+      logger.warn(
+          "KEY_PROMOTION_CONFLICT ({}) for key {} (consecutive={}, total={}): {}",
+          conflictKind,
+          Long.toUnsignedString(pendingKey.getKeyId()),
+          consecutive,
+          total,
+          detail);
+    }
+
+    auditLogService.log(
+        AuditLog.builder()
+            .eventType(EventType.KEY_PROMOTION_CONFLICT)
+            .eventAction("promote_pending_to_primary")
+            .eventStatus(status)
+            .apiName(ApiName.ADMIN_API)
+            .ipAddress("127.0.0.1")
+            .eventDetails(
+                AuditDetailsBuilder.builder()
+                    .encryptionKeyId(pendingKey.getKeyId())
+                    .custom("conflict_kind", conflictKind)
+                    .custom("consecutive_conflicts", consecutive)
+                    .custom("total_conflicts", total)
+                    .custom("true_inconsistency", trueInconsistency)
+                    .errorSummary(detail)
+                    .toJson())
+            .errorMessage(detail)
+            .build());
   }
 
   /**
@@ -497,13 +607,15 @@ public class KeyRotationService {
    * </ol>
    *
    * <p>The new key remains PENDING until effective_at timestamp passes, then a scheduled job
-   * promotes it to PRIMARY. This allows all instances to synchronize before key activation.
+   * promotes it to PRIMARY. The sync window is a wait, not a propagation guarantee — replicas catch
+   * up via the traffic-independent version tick and reload-before-mutation (blob is source of
+   * truth; CAS on write).
    *
    * <p><b>Defensive Measures:</b>
    *
    * <ul>
    *   <li>Detects and corrects multiple PRIMARY keys before rotation
-   *   <li>Uses keyset primary key as source of truth
+   *   <li>Uses the database keyset blob primary as source of truth
    *   <li>Checks for existing PENDING keys before creating new one
    * </ul>
    *

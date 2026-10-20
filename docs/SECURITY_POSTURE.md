@@ -89,6 +89,17 @@ meant to be linked from trust-facing material without inflating the top-level pi
   is protected by a file-based master key; both the file keyset and the `ezkey_keyset_blob` database
   synchronization row use Tink's encrypted-keyset JSON envelope. Tink envelope metadata such as key
   IDs and primary-key status is treated as non-secret operational metadata, not as a security layer.
+- **HA keyset contract (#914 / #920 / #921):** the **database blob is the source of truth**; in-memory
+  and file copies are caches. Admin writers **reload under the write lock before every mutation**
+  (`promote` / `add` / `rotate`) when the blob is newer, then **write only via CAS**
+  (`UPDATE ezkey_keyset_blob … WHERE version = :read`). Zero rows updated → typed
+  `KeysetConcurrentModificationException` (no auto-retry). A traffic-independent version tick (default
+  5 s, must be **strictly less than the sync window**) keeps idle replicas current without putting `findVersion` on the
+  encrypt/decrypt hot path (SEC-009). Decrypt-failure may perform one throttled synchronous reload per
+  node (≤ 1/s). Re-encryption chooses the target primary from the reloaded blob; `old == new` is
+  refused (HTTP 409), never “accepted” as a silent no-op. Unknown kid after reload → fail-closed (no
+  `setPrimary`, no blob write). Expected HA conflicts audit as `KEY_PROMOTION_CONFLICT` (WARN /
+  FAILURE); ERROR only for true inconsistency or repeated conflicts.
 
 ## What Ezkey does not do (current limits, stated honestly)
 

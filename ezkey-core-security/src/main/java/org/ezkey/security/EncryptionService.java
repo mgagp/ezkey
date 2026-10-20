@@ -7,7 +7,6 @@ import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.ezkey.config.TinkProperties;
-import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -219,16 +218,11 @@ public class EncryptionService implements EncryptionOperations {
   }
 
   /**
-   * Handle decryption failure with defensive synchronization.
+   * Handle decryption failure with defensive synchronization (H2).
    *
-   * <p>When decryption fails with a GeneralSecurityException, this method:
-   *
-   * <ol>
-   *   <li>Checks if the key ID exists in the database
-   *   <li>If key exists but decryption failed, tries to reload keyset from database
-   *   <li>Retries decryption once after reload
-   *   <li>If still fails, logs critical error and returns original value
-   * </ol>
+   * <p>On the decrypt-failure path only: attempt one throttled, single-flight synchronous keyset
+   * reload and one decrypt retry. The encrypt/decrypt hot path ({@link
+   * TinkKeyManager#getAeadPrimitive()}) is unchanged (SEC-009).
    *
    * @param encryptedValue the original encrypted value
    * @param ciphertextBase64 the extracted ciphertext
@@ -245,45 +239,39 @@ public class EncryptionService implements EncryptionOperations {
         "Decryption failed for key ID {}. Attempting defensive recovery...",
         keyId != null ? Long.toUnsignedString(keyId) : "unknown");
 
-    // Check if key exists in database (indicates key is valid but not in local keyset)
-    boolean keyExistsInDb = false;
     if (keyRepository != null && keyId != null) {
       try {
         var keyOpt = keyRepository.findById(keyId);
         if (keyOpt.isPresent()) {
-          KeyStatus status = keyOpt.get().getKeyStatus();
-          keyExistsInDb = (status == KeyStatus.PRIMARY || status == KeyStatus.ENABLED);
           logger.info(
-              "Key {} exists in database with status {}", Long.toUnsignedString(keyId), status);
+              "Key {} exists in database with status {}",
+              Long.toUnsignedString(keyId),
+              keyOpt.get().getKeyStatus());
         }
       } catch (DataAccessException | IllegalStateException e) {
         logger.debug("Failed to check key in database: {}", e.getMessage());
       }
     }
 
-    // If key exists in DB but not in local keyset, try reloading from database
-    // Note: keyId cannot be null here since keyExistsInDb would be false if keyId was null
-    if (keyExistsInDb && keyManager.isDatabaseStorageAvailable() && keyId != null) {
+    // H2: always try one throttled reload on decrypt failure when DB storage is available
+    // (not only when metadata confirms the kid — idle replicas may lack the new primary).
+    if (keyManager.isDatabaseStorageAvailable()) {
       int maxRetries = properties != null ? properties.getKeyset().getMaxReloadRetries() : 1;
-      long keyIdValue = keyId; // Safe unboxing after null check
-
       for (int retry = 0; retry < maxRetries; retry++) {
         logger.info(
-            "🔄 Key {} exists in database but decryption failed. "
-                + "Attempting keyset reload from database (attempt {}/{})...",
-            Long.toUnsignedString(keyIdValue),
+            "🔄 Decrypt-failure reload attempt {}/{} for key {}",
             retry + 1,
-            maxRetries);
+            maxRetries,
+            keyId != null ? Long.toUnsignedString(keyId) : "unknown");
 
-        if (keyManager.forceReloadFromDatabase()) {
-          // Retry decryption after reload
+        if (keyManager.tryReloadAfterDecryptFailure()) {
           try {
             Aead aead = keyManager.getAeadPrimitive();
             byte[] ct = Base64.getDecoder().decode(ciphertextBase64);
             byte[] pt = aead.decrypt(ct, null);
             logger.info(
                 "✅ Decryption succeeded after keyset reload for key {}",
-                Long.toUnsignedString(keyIdValue));
+                keyId != null ? Long.toUnsignedString(keyId) : "unknown");
             return new String(pt, StandardCharsets.UTF_8);
           } catch (GeneralSecurityException
               | IllegalArgumentException
@@ -294,12 +282,12 @@ public class EncryptionService implements EncryptionOperations {
                 retryException.getMessage());
           }
         } else {
-          logger.warn("Failed to reload keyset from database");
+          logger.warn(
+              "Decrypt-failure reload skipped or failed (throttle/single-flight/unavailable)");
         }
       }
     }
 
-    // If we get here, recovery failed
     logger.error(
         "❌ CRITICAL: Decryption failed for key {} and recovery was unsuccessful. "
             + "This may indicate: "
@@ -310,11 +298,8 @@ public class EncryptionService implements EncryptionOperations {
         keyId != null ? Long.toUnsignedString(keyId) : "unknown",
         originalException.getMessage());
 
-    // Check if degraded mode should be enabled
     if (properties != null && properties.getKeyset().isDegradedModeEnabled()) {
       logger.warn("⚠️ Degraded mode is enabled. Consider investigating this decryption failure.");
-      // In degraded mode, we return the original encrypted value
-      // The application can continue but encrypted data is not accessible
     }
 
     return encryptedValue;

@@ -426,6 +426,30 @@ public class TinkProperties {
     private int maxReloadRetries = 1;
 
     /**
+     * When true, mutations ({@code promote}/{@code add}/{@code rotate}) reload the keyset from the
+     * database blob under the write lock when the DB version is newer (Option A / #914).
+     *
+     * <p>Default: {@code true}. Set {@code false} only as an emergency rollback; CAS save remains
+     * mandatory.
+     */
+    private boolean reloadBeforeMutation = true;
+
+    /**
+     * Interval in seconds for the traffic-independent keyset version tick (P1 / H2 coverage).
+     *
+     * <p>Default: {@code 5}. Must be strictly less than {@code
+     * ezkey.encryption.rotation.sync-window-seconds}; startup logs WARN when {@code tick >=
+     * syncWindow}. Prefer {@code tick <= syncWindow / 2}.
+     */
+    private int versionCheckIntervalSeconds = 5;
+
+    /**
+     * Minimum interval in milliseconds between decrypt-failure keyset reloads on this node
+     * (anti-amplification, Christophe H2). Default: {@code 1000} (at most one reload per second).
+     */
+    private long decryptFailureReloadThrottleMs = 1000L;
+
+    /**
      * When true, this process may materialize {@code ezkey_keyset_blob} and {@code
      * ezkey_encryption_key} metadata. Default false (Auth / Integration). Admin API sets true.
      */
@@ -462,6 +486,30 @@ public class TinkProperties {
 
     public void setMaxReloadRetries(int maxReloadRetries) {
       this.maxReloadRetries = maxReloadRetries;
+    }
+
+    public boolean isReloadBeforeMutation() {
+      return reloadBeforeMutation;
+    }
+
+    public void setReloadBeforeMutation(boolean reloadBeforeMutation) {
+      this.reloadBeforeMutation = reloadBeforeMutation;
+    }
+
+    public int getVersionCheckIntervalSeconds() {
+      return versionCheckIntervalSeconds;
+    }
+
+    public void setVersionCheckIntervalSeconds(int versionCheckIntervalSeconds) {
+      this.versionCheckIntervalSeconds = versionCheckIntervalSeconds;
+    }
+
+    public long getDecryptFailureReloadThrottleMs() {
+      return decryptFailureReloadThrottleMs;
+    }
+
+    public void setDecryptFailureReloadThrottleMs(long decryptFailureReloadThrottleMs) {
+      this.decryptFailureReloadThrottleMs = decryptFailureReloadThrottleMs;
     }
 
     public boolean isWriter() {
