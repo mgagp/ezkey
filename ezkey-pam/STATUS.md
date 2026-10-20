@@ -443,26 +443,40 @@ pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n>
 | `timeoutSeconds` | Planned wait on `start` (before create); applied TTL on `attempt` (or `-`) (#907) |
 
 **#907 F9 / R5 (option A — Patrick/Christophe review):** Under OpenSSH portable, each
-keyboard-interactive round runs in a forked child that `_exit`s — **without a dedicated
-sshd `Match` (`MaxAuthTries 1` plus `AuthenticationMethods keyboard-interactive`
-and/or `PubkeyAuthentication no`), a retry in the same connection creates a new auth
-attempt.** Do not claim the in-process final marker or `PAM_MAXTRIES` protects across
-OpenSSH rounds; keep the marker only as same-handle fail-closed. Prefer
-`Match User|Group` over global `MaxAuthTries 1` (pubkey failures count). Entrypoint /
-`install.sh` verify effective `maxauthtries 1` via `sshd -T -C user=…`. **Match limits:**
-applies until EOF or the next `Match`; first matching value wins; it caps tries **per
-TCP connection**, not a cross-connection rate limit — forgetting it is an easy
-operator miss and recreates orphan pending attempts (F9). R5 (**best-effort,
-TTL-bounded**): chunked `/wait` (`EZKEY_WAIT_CHUNK_SECS` 5) + wait-scoped
-`SIGTERM` (see § M1 craft-rule / B2a; Christophe security GO). When delivered,
-cancel uses `ezkey_bounded_cancel_timeout(..., interrupted=1)` =
+keyboard-interactive **prompt round** runs in a forked child that `_exit`s and
+creates **one** auth request — **without a dedicated sshd `Match` (`MaxAuthTries 1`
+plus `AuthenticationMethods keyboard-interactive` and/or `PubkeyAuthentication no`),
+a retry in the same connection creates a new auth attempt.** This Match step is
+**mandatory** on host install (recommended: `Match Group ezkey-mfa` so non-MFA
+users such as `ec2-user` keep the global try budget). Edgar’s 2026-10-20 retest of
+#908 confirmed F9 is only fixed when `MaxAuthTries 1` is inside that Match. Do not
+claim the in-process final marker or `PAM_MAXTRIES` protects across OpenSSH rounds;
+keep the marker only as same-handle fail-closed. Prefer `Match User|Group` over
+global `MaxAuthTries 1` (pubkey failures count). Entrypoint / `install.sh` verify
+effective `maxauthtries 1` via `sshd -T -C user=…` and **warn** (do not rewrite
+`sshd_config`) on global `MaxAuthTries 1` before `Match` using the shared helper
+`scripts/sshd-warn-global-maxauthtries-1.sh` + sibling
+`sshd-warn-global-maxauthtries-1.awk` (same code path as
+`scripts/test-install-sshd-warn.sh` — case-insensitive, exact `1` only, tab-safe;
+missing awk WARNs, never silent-skip; `EZKEY_SSHD_WARN_AWK` overrides path for
+mutation tests). **Match limits:** applies until EOF or the next `Match`;
+first matching value wins; it caps tries **per TCP connection**, not a
+cross-connection rate limit — forgetting it is an easy operator miss and
+recreates orphan pending attempts (F9). Host: `groupadd ezkey-mfa` +
+`usermod -aG ezkey-mfa <user>` so `Match Group` applies. Keep
+`PubkeyAuthentication no` with `MaxAuthTries 1` (refused pubkey would consume the
+single try; `publickey,keyboard-interactive` needs a higher try budget — out of
+scope). R5 (**best-effort, TTL-bounded**): chunked
+`/wait` (`EZKEY_WAIT_CHUNK_SECS` 5) + wait-scoped `SIGTERM` (see § M1 craft-rule /
+B2a; Christophe security GO). When delivered, cancel uses
+`ezkey_bounded_cancel_timeout(..., interrupted=1)` =
 `min(api_timeout, EZKEY_INTERRUPT_CANCEL_MAX 5)` so worst case 105+5=110 <
 `LoginGraceTime` 120 (#726). On OpenSSH 9.9 pre-auth client kill, SIGTERM often
 does **not** arrive — cancel may be skipped; the **applied TTL** from create is
 the residual bound. HTTP **429** during `/wait` → `UNAVAIL` (fail-closed). Do
 **not** rely on `pam_end` under OpenSSH. Proof: `scripts/test-f9-retry.sh` A/B
-gate CI; case C documents best-effort + TTL bound (does not fail CI when cancel
-is absent). Client: `NumberOfPasswordPrompts=1`.
+gate CI; case C documents best-effort and asserts requested TTL + single create
+(does not fail CI when cancel is absent). Client: `NumberOfPasswordPrompts=1`.
 
 **`cancel=` vocabulary (authpriv only; never changes `pam_rc`):**
 
@@ -506,6 +520,7 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 | `scripts/test-challenge.sh` | Code in live capture **before** approve; wrong code refuse; stub absent → UNAVAIL. |
 | `scripts/test-challenge-nits.sh` | Failing PAM conv → `UNAVAIL` + `lab_http=`. |
 | `scripts/test-timeouts.sh` | api_timeout / wait_timeout thresholds + max clamp vs LoginGraceTime. |
+| `scripts/test-install-sshd-warn.sh` | Runs shared `sshd-warn-global-maxauthtries-1.sh` (install.sh + entrypoint); exact `awk -f "${SSHD_WARN_AWK}"`; missing-file warn; mutation via `EZKEY_SSHD_WARN_AWK` (no Docker; #908 / #934). |
 | `test/test_challenge_harness.c` | Challenge bound 0..99 (make test). |
 | `test/test_conf_security.sh` | in-container owner/mode/keys self-check (also via `up.sh` path) |
 | `make test` | check-source + compile + filelog + sanitize + challenge harnesses |
@@ -528,9 +543,10 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 6. **Stale Demo Device pending.** After failed/timeout SSH tries on a shared enrollment, a leftover
    pending card can be approved while a *new* SSH wait times out. Clear pending (or approve the
    matching `authAttemptId`) before re-running AL2023/`demo-ssh` after negative tests.
-7. **SSH retries multiply attempts.** Demo `Match User testuser` / `MaxAuthTries 1` keeps “one SSH
-   try → one create” for lab proof; host stacks may differ — the module still emits
-   `start` + `attempt` per `pam_sm_authenticate` call. Forgetting Match is an easy miss.
+7. **SSH retries multiply attempts.** Each prompt round = one create. Demo
+   `Match User testuser` / `MaxAuthTries 1` (host: **mandatory**
+   `Match Group ezkey-mfa`) keeps “one SSH try → one create”; forgetting Match is
+   an easy miss (Edgar #908 retest: 3 requests without it).
 8. **OpenSSH 9.9 `PerSourcePenalties`.** Default `authfail:5` blocks the client IP after a handful
    of denied logins — the fifth M1 conf-security case (`missing secret_key`) saw SSH disconnect
    with no new attempt line. Demo `sshd_config` sets `PerSourcePenalties no` (lab only).
@@ -599,7 +615,7 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | Enter prompt | `pam_ezkey.c:779-796` measure; `EZKEY_MAX_ENTER_SECS` `ezkey_config.h:40` **25** | duration bound (no signals) | Enter **>25 s** → UNAVAIL + attempt + debug.err duration (proven) |
 | `wait_timeout` | clamp floor **15** / max **90**; `ttlSeconds` on create; `effective_wait` = min(conf, applied_ttl, rem−slack) | 15–90; shrunk by budget + applied TTL | conf=200 → ttl+`?timeout=90`; conf=2 → floor **15** (proven) |
 | curl `/wait` | `EZKEY_CURL_WAIT_SLACK` **15** (cancel margin inside) | wait+≤15; ≤ rem | Covered by wait / delayed-Enter cases (proven) |
-| Cancel | `POST …/cancel` best-effort on non-ACCEPTED; interrupt path = wait-scoped `SIGTERM` (B2a/R5); summary `cancel=ok\|fail\|skipped\|final` | ≤ api_timeout from rem; interrupt cap `min(api,5)`; **not guaranteed** at wait timeout **or** on pre-auth disconnect when SIGTERM is not delivered. Residual bound = **applied TTL** (≤90 s); late approve → orphan `ACCEPTED` (no SSH grant); residual = approval fatigue; cancel **409** → `cancel=final` (observability only) | pending→TIMEOUT + `cancel=ok`; EXPIRED + `cancel=ok`; `cancel_fail` 503 → `cancel=fail`; `cancel_final` 409 → `cancel=final`; SUCCESS → `cancel=skipped`; B2b kill-client = **best-effort** (case C asserts TTL bound; does not require cancel ≤5 s) |
+| Cancel | `POST …/cancel` best-effort on non-ACCEPTED; interrupt path = wait-scoped `SIGTERM` (B2a/R5); summary `cancel=ok\|fail\|skipped\|final` | ≤ api_timeout from rem; interrupt cap `min(api,5)`; **not guaranteed** at wait timeout **or** on pre-auth disconnect when SIGTERM is not delivered. Residual bound = **applied TTL** (≤90 s); late approve → orphan `ACCEPTED` (no SSH grant); residual = approval fatigue; cancel **409** → `cancel=final` (observability only) | pending→TIMEOUT + `cancel=ok`; EXPIRED + `cancel=ok`; `cancel_fail` 503 → `cancel=fail`; `cancel_final` 409 → `cancel=final`; SUCCESS → `cancel=skipped`; B2b kill-client = **best-effort** (case C asserts requested TTL + single create; does not require cancel ≤5 s) |
 | Summary outcomes | `EXPIRED` / `TIMEOUT` / `DENIED` | lacune 5 | stub expired / pending / rejected (proven) |
 | `wait_polling` | sample `config/pam_ezkey.conf` `wait_polling=2` | Server-side cadence | Sample conf present (proven) |
 | Server attempt TTL | request `ttlSeconds`; response **`timeoutSeconds`** (PR-A #898) | Align down on applied ∈ `[1, planned]`; ignore grow / 0 / null | `applied_shrink` → applied; `applied_grow` 120 vs ask 45 → stay 45; `applied_zero` / `applied_null` → conf wait; legacy + reject/timeout (proven) |

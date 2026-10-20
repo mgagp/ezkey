@@ -3,7 +3,7 @@
 # A) Without Match MaxAuthTries 1 + client NumberOfPasswordPrompts=3 → ≥2 creates
 # B) With demo Match MaxAuthTries 1 → exactly 1 create
 # C) Kill SSH client during /wait — R5 best-effort (TTL-bounded); does not fail CI
-#    when cancel is absent; asserts create carried a finite applied TTL.
+#    when cancel is absent; asserts requested TTL + single create (not server expiry).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -163,7 +163,7 @@ else
   fail "expected exactly 1 create with Match MaxAuthTries 1, got ${CREATES_MATCH}"
 fi
 
-# --- Case C (B2b): R5 best-effort disconnect — TTL bound gates CI, not cancel ≤5 s ---
+# --- Case C (B2b): R5 best-effort disconnect — requested TTL + single create gate CI ---
 # On OpenSSH 9.9 pre-auth kill, wait-scoped SIGTERM often never arrives; missing
 # cancel is an expected documented outcome and must not fail CI (Marc #907).
 CASE_C_WAIT_TTL=30

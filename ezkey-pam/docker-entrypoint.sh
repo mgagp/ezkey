@@ -134,13 +134,22 @@ if [ -z "${API_URL}" ]; then
 fi
 
 # #907 F9: effective maxauthtries must be 1 for SSH_USER (sshd -T; not a regex).
-if [ -f /etc/ssh/sshd_config ] && command -v sshd >/dev/null 2>&1; then
-    if ! sshd -T -f /etc/ssh/sshd_config \
+# Host installs: MANDATORY Match Group ezkey-mfa (or Match User) with MaxAuthTries 1 —
+# each prompt round is one auth request (see README Runbook). Checked by WARNING only
+# (not enforced / not written into sshd_config). Shared helper + awk with install.sh.
+# shellcheck source=/opt/pam-ezkey/scripts/sshd-warn-global-maxauthtries-1.sh
+. /opt/pam-ezkey/scripts/sshd-warn-global-maxauthtries-1.sh
+SSHD_CFG="/etc/ssh/sshd_config"
+if [ -f "${SSHD_CFG}" ] && command -v sshd >/dev/null 2>&1; then
+    if ! sshd -T -f "${SSHD_CFG}" \
         -C "user=${SSH_USER},host=localhost,addr=127.0.0.1" 2>/dev/null \
       | grep -qx 'maxauthtries 1'; then
         echo "[entrypoint] WARNING: sshd -T for user=${SSH_USER} is not maxauthtries 1." >&2
-        echo "[entrypoint] WARNING: without Match … MaxAuthTries 1, OpenSSH recreates after Deny/Expire (#907 F9)." >&2
+        echo "[entrypoint] WARNING: MANDATORY Match … MaxAuthTries 1 (warn only) — each prompt round recreates after Deny/Expire (#907 F9)." >&2
     fi
+    # Missing detector → helper WARNs (rc=2); never silent-skip.
+    EZKEY_SSHD_WARN_PREFIX="[entrypoint] " \
+      ezkey_pam_warn_global_maxauthtries_1 "${SSHD_CFG}" >&2 || true
 fi
 
 echo "[entrypoint] Ezkey PAM SSH demo ready."

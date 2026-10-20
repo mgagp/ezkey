@@ -16,7 +16,8 @@ OBJECTS = $(BUILD_DIR)/pam_ezkey.o $(BUILD_DIR)/ezkey_filelog.o \
 	$(BUILD_DIR)/ezkey_budget.o $(BUILD_DIR)/ezkey_session.o
 
 .PHONY: all debug install uninstall clean check-pam check-source lint help \
-	test test-filelog test-sanitize test-challenge test-budget test-session
+	test test-filelog test-sanitize test-challenge test-budget test-session \
+	test-install-sshd-warn
 
 all: $(BUILD_DIR)/$(MODULE_NAME)
 
@@ -120,13 +121,17 @@ test-session: $(BUILD_DIR)/ezkey_session.o $(TEST_DIR)/test_session_harness.c | 
 		$(BUILD_DIR)/ezkey_session.o -o $(BUILD_DIR)/test_session_harness
 	$(BUILD_DIR)/test_session_harness
 
+# Host-side: shared sshd-warn-global-maxauthtries-1.awk (Patrick #908 / #934 B1).
+test-install-sshd-warn:
+	./scripts/test-install-sshd-warn.sh
+
 $(BUILD_DIR)/test_no_conv_client: $(TEST_DIR)/test_no_conv_client.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(TEST_DIR)/test_no_conv_client.c -lpam \
 		-o $(BUILD_DIR)/test_no_conv_client
 
 test: check-source all test-filelog test-sanitize test-challenge test-budget \
-		test-session $(BUILD_DIR)/test_no_conv_client
-	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog + sanitize + challenge + budget + session OK"
+		test-session test-install-sshd-warn $(BUILD_DIR)/test_no_conv_client
+	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog + sanitize + challenge + budget + session + install-sshd-warn OK"
 
 help:
 	@echo "Available targets:"
@@ -142,5 +147,6 @@ help:
 	@echo "  test-challenge - Challenge 0..99 + display_ok harness"
 	@echo "  test-budget   - AUTH_BUDGET 105 + rem-too-small planned-wait harness"
 	@echo "  test-session  - final-verdict + interrupt cancel harness (#907)"
+	@echo "  test-install-sshd-warn - shared MaxAuthTries 1 awk (#908 / #934 B1)"
 	@echo "  test          - check-source + compile + harnesses (incl. session)"
 	@echo "  lint          - Run static code analysis"
