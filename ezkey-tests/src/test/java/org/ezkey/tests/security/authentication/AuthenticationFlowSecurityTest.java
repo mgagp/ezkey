@@ -422,9 +422,93 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
     }
   }
 
+  /**
+   * #912 security property: device B (separate enrollment, same integration/tenant) responds to
+   * device A's READ, non-expired attempt with a signature that cannot verify against A's device
+   * public key. A's attempt must remain READ; B must receive generic 409 state-conflict (not signed
+   * FAILED). Sequential attempt ids aggravate enumeration but are not required once the id is
+   * known.
+   */
   @Test
-  @DisplayName("Respond invalid signature returns signed FAILED business result")
-  public void testRespondInvalidSignatureReturnsSignedFailedResult() {
+  @DisplayName(
+      "Non-owner invalid signature on READ non-expired attempt must leave status READ (#912)")
+  public void testNonOwnerInvalidSignatureOnReadAttemptLeavesStatusRead() {
+    try {
+      String adminToken = authTokenManager.getAdminToken();
+      configureForAdminApi(dockerStackConfig);
+
+      Integer integrationId = testDataFactory.createIntegration();
+      String suffix = String.valueOf(System.nanoTime());
+      VerifiedEnrollmentFixture owner =
+          createVerifiedEnrollment(integrationId, adminToken, "Owner Device " + suffix);
+      VerifiedEnrollmentFixture otherDevice =
+          createVerifiedEnrollment(integrationId, adminToken, "Other Device " + suffix);
+      Integer authAttemptId = testDataFactory.createAuthAttempt(owner.enrollmentId(), false);
+      PendingAttemptFixture pendingAttempt = claimPendingAttempt(owner, authAttemptId);
+
+      // Device B signs A's proof token with B's private key — fails ownership vs A's public key.
+      String foreignSignature =
+          cryptoApiClient.signData(
+              pendingAttempt.authAttemptProofToken() + "|true",
+              otherDevice.deviceKeyPair().privateKey());
+
+      configureForAuthApi(dockerStackConfig);
+      Map<String, Object> respondRequest = new HashMap<>();
+      respondRequest.put("authAttemptId", authAttemptId);
+      respondRequest.put("authAttemptAccepted", true);
+      respondRequest.put("authAttemptProofTokenSignedByDevice", foreignSignature);
+
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .body(respondRequest)
+              .when()
+              .post("/auth-attempts/respond")
+              .then()
+              .extract()
+              .response();
+
+      configureForAdminApi(dockerStackConfig);
+      Response statusResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/auth-attempts/" + authAttemptId)
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      String ownerStatus = statusResponse.jsonPath().getString("authAttemptStatus");
+      int bStatus = response.statusCode();
+      String bResult = response.jsonPath().getString("authAttemptResult");
+      String bMessage = response.jsonPath().getString("authAttemptMessage");
+      String bType = response.jsonPath().getString("type");
+
+      assertThat(ownerStatus)
+          .as(
+              "A must stay READ after B's invalid signature (B HTTP %s result=%s message=%s"
+                  + " type=%s)",
+              bStatus, bResult, bMessage, bType)
+          .isEqualTo("READ");
+      assertThat(bStatus)
+          .as("B must get generic 409 (got result=%s message=%s type=%s)", bResult, bMessage, bType)
+          .isEqualTo(409);
+      assertThat(bType).endsWith("/auth-attempt-state-conflict");
+      assertThat(response.jsonPath().getString("detail"))
+          .isEqualTo(
+              "The authentication request is in a state that does not allow this operation.");
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "Respond invalid signature returns 409 state-conflict and leaves attempt READ (#912)")
+  public void testRespondInvalidSignatureReturnsStateConflictLeavesRead() {
     try {
       String adminToken = authTokenManager.getAdminToken();
       configureForAdminApi(dockerStackConfig);
@@ -452,15 +536,14 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
               .when()
               .post("/auth-attempts/respond")
               .then()
-              .statusCode(200)
+              .statusCode(409)
               .extract()
               .response();
 
-      assertThat(response.jsonPath().getString("authAttemptResult")).isEqualTo("FAILED");
-      assertThat(response.jsonPath().getString("authAttemptMessage"))
-          .isEqualTo("The response could not be processed.");
-      assertThat(response.jsonPath().getString("authAttemptProofTokenResultSignedByIntegration"))
-          .isNotBlank();
+      assertThat(response.jsonPath().getString("type")).endsWith("/auth-attempt-state-conflict");
+      assertThat(response.jsonPath().getString("detail"))
+          .isEqualTo(
+              "The authentication request is in a state that does not allow this operation.");
 
       configureForAdminApi(dockerStackConfig);
       Response statusResponse =
@@ -474,7 +557,45 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      assertThat(statusResponse.jsonPath().getString("authAttemptStatus")).isEqualTo("INVALID");
+      assertThat(statusResponse.jsonPath().getString("authAttemptStatus")).isEqualTo("READ");
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "Respond unknown authAttemptId with signature returns generic 409 state-conflict (#912)")
+  public void testRespondUnknownAttemptIdWithSignatureReturnsSafeStateConflict() {
+    try {
+      authTokenManager.getAdminToken();
+      configureForAuthApi(dockerStackConfig);
+
+      Map<String, Object> respondRequest = new HashMap<>();
+      respondRequest.put("authAttemptId", 9_999_999);
+      respondRequest.put("authAttemptAccepted", true);
+      respondRequest.put(
+          "authAttemptProofTokenSignedByDevice",
+          "MEUCIQDjunkSignatureForUnknownAttemptIdAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
+
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .body(respondRequest)
+              .when()
+              .post("/auth-attempts/respond")
+              .then()
+              .statusCode(409)
+              .extract()
+              .response();
+
+      assertThat(response.jsonPath().getString("type")).endsWith("/auth-attempt-state-conflict");
+      assertThat(response.jsonPath().getString("detail"))
+          .isEqualTo(
+              "The authentication request is in a state that does not allow this operation.");
+      assertThat(response.jsonPath().getString("detail")).doesNotContain("not found");
+      assertThat(response.jsonPath().getString("detail")).doesNotContain("signature");
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
@@ -592,7 +713,12 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
 
   private VerifiedEnrollmentFixture createVerifiedEnrollment(
       Integer integrationId, String adminToken) {
-    Integer enrollmentId = testDataFactory.createEnrollment(integrationId);
+    return createVerifiedEnrollment(integrationId, adminToken, "Test Device");
+  }
+
+  private VerifiedEnrollmentFixture createVerifiedEnrollment(
+      Integer integrationId, String adminToken, String enrollmentName) {
+    Integer enrollmentId = testDataFactory.createEnrollment(integrationId, enrollmentName, false);
 
     Response enrollmentResponse =
         given()

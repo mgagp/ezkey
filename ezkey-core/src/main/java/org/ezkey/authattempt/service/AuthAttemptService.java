@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import org.ezkey.audit.util.ClientContext;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptDashboard24hStats;
@@ -675,6 +676,18 @@ public class AuthAttemptService {
    */
   public AuthAttemptRespondResponse respond(AuthAttemptRespondRequest request) {
     return respondService.respond(request);
+  }
+
+  /**
+   * Processes an authentication response with client context for signature-reject audit (#912).
+   *
+   * @param request the authentication response request from mobile device
+   * @param clientContext client IP/UA for audit (may be null)
+   * @return the authentication response result with status and message
+   */
+  public AuthAttemptRespondResponse respond(
+      AuthAttemptRespondRequest request, ClientContext clientContext) {
+    return respondService.respond(request, clientContext);
   }
 
   /**

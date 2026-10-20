@@ -123,13 +123,14 @@ IP-keyed enrollment surfaces (`verify`, `bind`, enrolled `instance-info`) also h
 
 **204 No Content** on `POST /api/v1/auth-attempts/pending` when there is no pending attempt is a **success** (no body), not an error.
 
-**200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level result in the JSON body (`APPROVED` / `DENIED` / `FAILED`) **only when the body is integration-signed** (see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). Legitimate `FAILED` covers device-signature or challenge validation errors after the attempt was loaded. The server **never** emits an unsigned HTTP 200 on this path (#844).
+**200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level result in the JSON body (`APPROVED` / `DENIED` / `FAILED`) **only when the body is integration-signed** (see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). Legitimate `FAILED` covers **challenge validation errors after ownership** (valid device signature). Invalid device signature and missing device public key are **not** FAILED — they are generic **409** `auth-attempt-state-conflict` with **no** attempt status transition (#912). The server **never** emits an unsigned HTTP 200 on this path (#844).
 
 HTTP-level outcomes for respond (RFC 9457 Problem Details unless noted):
 
 | Condition | Status | `type` (suffix under `https://ezkey.io/problems/auth/`) |
 | --- | --- | --- |
 | Attempt or enrollment not found, still `PENDING`, or terminal (`ACCEPTED`, `REJECTED`, `EXPIRED`, `INVALID`) / cancel-win / superseded | **409** | `auth-attempt-state-conflict` (unified client surface; distinction only in server logs — #844 Marc m1) |
+| Invalid device signature or missing device public key (before proof of possession) | **409** | `auth-attempt-state-conflict` (no status transition; audit `AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED` for invalid signature — #912) |
 | Wall-clock expiry after ownership proof (`expiresAt` reached; conditional UPDATE refused) | **409** | `auth-attempt-expired` (#895; only after device-signature verification — Christophe) |
 | Per-enrollment integration private key missing/blank when signing is required (runtime; transaction rolls back; no JVM startup gate) | **503** | `integration-signing-unavailable` |
 
@@ -144,9 +145,9 @@ mobile can show an expired message; respond UPDATE is fail-closed (`status = REA
 now`). **Ordering (#895 Christophe + Patrick M1/M2):** typed `auth-attempt-expired` is raised after
 enrollment load and device-signature (ownership) verification, and **before** challenge validation
 (so a wrong challenge on an expired attempt does not flip `INVALID`). A non-owner signature or a
-missing device public key on an expired attempt keeps generic `auth-attempt-state-conflict` (no
-INVALID flip). The official mobile app may still map both 409 types to one sentence until the
-typed-expiry UI slice lands. A lost approve/deny response after the HTTP call was sent (timeout /
+missing device public key (expired or not) or an invalid device signature keeps generic
+`auth-attempt-state-conflict` (no INVALID flip — #912). The official mobile app may still map both
+409 types to one sentence until the typed-expiry UI slice lands. A lost approve/deny response after the HTTP call was sent (timeout /
 transport), where a session may already exist, is a separate mobile case (orientation Question 10 /
 `UncertainDecision`), not a new problem type. Missing integration signing key remains **503**
 (retryable; transaction rolled back).
@@ -267,8 +268,8 @@ Reason and interaction model:
 
 - **Description**: The mobile device submits the user's response (approved, denied, signature, etc.) for the received authentication request.
 - **Rate limiting**: When rate limiting is enabled (`ezkey.rate-limit.enabled=true`), this endpoint is limited **per auth attempt** (by `authAttemptId` from the request body). Default: 1 request per 5 minutes per `authAttemptId`. If the body is missing or invalid, the limit is applied per client IP. When exceeded, the API returns **429 Too Many Requests** with a `Retry-After` header.
-- **One attempt per auth request**: The backend invalidates the authentication attempt on **first failed validation** (invalid signature, wrong challenge, or missing device key). There is no retry: after one failure the attempt is marked INVALID and the user must start a new authentication flow from the integrating application (e.g. log in again and receive a new pending request).
-- **Deny vs challenge:** When `authAttemptAccepted` is `false`, challenge response is not required after a valid device signature — the attempt is stored as `REJECTED`. Wrong or missing challenge on **accept** still marks the attempt `INVALID`.
+- **Ownership before state change (#912 / #844):** Invalid device signature or missing device public key → generic **409** `auth-attempt-state-conflict`, attempt stays in its prior status (typically `READ`), and an audit event `AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED` is recorded (attempt id, enrollment id, sanitized IP/UA — **never** the signature). Wrong challenge on **accept** after a valid device signature still marks the attempt `INVALID` (conditional on status still `READ`).
+- **Deny vs challenge:** When `authAttemptAccepted` is `false`, challenge response is not required after a valid device signature — the attempt is stored as `REJECTED`.
 
 **Request**
 ```http

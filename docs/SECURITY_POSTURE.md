@@ -50,14 +50,21 @@ meant to be linked from trust-facing material without inflating the top-level pi
   `auth-attempt-state-conflict` so sequential auth-attempt ids do not reveal existence or state
   before the caller is verified; distinction stays in server logs only. Missing integration key
   remains **503** `integration-signing-unavailable`.
+- **Decision (#912, Christophe):** Before proof of possession (invalid device signature or missing
+  device public key), **no** attempt status transition and the same generic **409**
+  `auth-attempt-state-conflict`. Invalid signature also emits audit
+  `AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED` (attempt id, enrollment id, IP/UA via `LogSanitizer` —
+  never the signature). `markAsInvalid` remains only for post-ownership failures (e.g. wrong
+  challenge) and is conditional on status still `READ`. Sequential ids aggravate enumeration but
+  are not required once an id is known.
 - **Decision (#895, Christophe + Patrick M1/M2):** Wall-clock expiry after `expiresAt` maps to
   **409** `auth-attempt-expired` so Demo Device / PAM / mobile can show a clear expired message.
   That typed problem is emitted **only after** enrollment load and device-signature (ownership)
   verification succeed, and **before** challenge validation (owner + valid signature + wrong
   challenge on an expired attempt → typed expiry, not `INVALID`/`FAILED`). An unauthenticated or
-  non-owner caller, a missing device public key on an expired attempt, an unknown attempt, or a
-  still-`PENDING` / terminal attempt keeps the generic **409** `auth-attempt-state-conflict` (no
-  `INVALID` flip) so sequential ids do not reveal expiry before the caller is verified.
+  non-owner caller, a missing device public key, an unknown attempt, or a still-`PENDING` /
+  terminal attempt keeps the generic **409** `auth-attempt-state-conflict` (no `INVALID` flip) so
+  sequential ids do not reveal expiry or READ state before the caller is verified.
 - **Audit log integrity (tamper-evident).** Every audit entry is signed with **HMAC-SHA256** using a
   key held in a **file separate from the database** (and separate from the encryption master key).
   Periodic **checkpoints** chain windows together for a completeness proof.
