@@ -55,10 +55,11 @@ echo "     directives. See README Runbook / sshd.host-sketch."
 echo "  4. Clients: ssh -o NumberOfPasswordPrompts=1 …"
 echo "  5. Restart sshd (sshd -t first)."
 # Effective MaxAuthTries for the MFA user (sshd -T; avoids regex matching 10/12).
+# Global MaxAuthTries 1 check: shared helper + awk (also entrypoint + unit tests).
+# shellcheck source=scripts/sshd-warn-global-maxauthtries-1.sh
+. "${SCRIPT_DIR}/scripts/sshd-warn-global-maxauthtries-1.sh"
 CHECK_USER="${EZKEY_SSH_USER:-testuser}"
 SSHD_CFG="/etc/ssh/sshd_config"
-# Shared detector (case-insensitive; exact 1 only) — also used by entrypoint + tests.
-SSHD_WARN_AWK="${SCRIPT_DIR}/scripts/sshd-warn-global-maxauthtries-1.awk"
 if [ -f "${SSHD_CFG}" ] && command -v sshd >/dev/null 2>&1; then
   if ! sshd -T -f "${SSHD_CFG}" \
       -C "user=${CHECK_USER},host=localhost,addr=127.0.0.1" 2>/dev/null \
@@ -70,18 +71,25 @@ if [ -f "${SSHD_CFG}" ] && command -v sshd >/dev/null 2>&1; then
     echo "         Without it, each prompt round recreates an auth attempt (#907 F9)."
   fi
   # Global MaxAuthTries 1 (before any Match) still discouraged — pubkey rejects count.
-  if [ -f "${SSHD_WARN_AWK}" ] && awk -f "${SSHD_WARN_AWK}" "${SSHD_CFG}"; then
+  # Missing detector → helper WARNs (rc=2); never silent-skip.
+  set +e
+  _ezkey_sshd_warn_out="$(ezkey_pam_warn_global_maxauthtries_1 "${SSHD_CFG}")"
+  _ezkey_sshd_warn_rc=$?
+  set -e
+  if [ "${_ezkey_sshd_warn_rc}" -eq 0 ] || [ "${_ezkey_sshd_warn_rc}" -eq 2 ]; then
     echo ""
-    echo "WARNING: global MaxAuthTries 1 found (before Match) — refused public keys"
-    echo "         also consume tries and can lock out non-MFA users (e.g. ec2-user)."
-    echo "         Prefer Match Group ezkey-mfa / Match User … MaxAuthTries 1 (README)."
+    printf '%s\n' "${_ezkey_sshd_warn_out}"
   fi
 elif [ -f "${SSHD_CFG}" ]; then
   echo ""
   echo "WARNING: sshd not on PATH — could not verify maxauthtries 1 via sshd -T."
   echo "         MANDATORY (not auto-enforced): Match Group ezkey-mfa (or Match User …)"
   echo "         MaxAuthTries 1 for MFA account ${CHECK_USER}."
-  if [ -f "${SSHD_WARN_AWK}" ] && awk -f "${SSHD_WARN_AWK}" "${SSHD_CFG}"; then
-    echo "WARNING: global MaxAuthTries 1 found (before Match) — prefer Match-scoped 1."
+  set +e
+  _ezkey_sshd_warn_out="$(ezkey_pam_warn_global_maxauthtries_1 "${SSHD_CFG}")"
+  _ezkey_sshd_warn_rc=$?
+  set -e
+  if [ "${_ezkey_sshd_warn_rc}" -eq 0 ] || [ "${_ezkey_sshd_warn_rc}" -eq 2 ]; then
+    printf '%s\n' "${_ezkey_sshd_warn_out}"
   fi
 fi

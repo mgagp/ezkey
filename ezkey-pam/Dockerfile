@@ -26,11 +26,12 @@ WORKDIR /src
 COPY src/ /src/src/
 COPY Makefile /src/Makefile
 COPY test/ /src/test/
-# Shared MaxAuthTries awk + unit test (Patrick #908 / #934 B1).
+# Shared MaxAuthTries helper + awk + unit test (Patrick #908 / #934).
 COPY install.sh /src/install.sh
 COPY docker-entrypoint.sh /src/docker-entrypoint.sh
 COPY sshd_config /src/sshd_config
 COPY scripts/sshd-warn-global-maxauthtries-1.awk /src/scripts/sshd-warn-global-maxauthtries-1.awk
+COPY scripts/sshd-warn-global-maxauthtries-1.sh /src/scripts/sshd-warn-global-maxauthtries-1.sh
 COPY scripts/test-install-sshd-warn.sh /src/scripts/test-install-sshd-warn.sh
 
 RUN make clean && make all test \
@@ -92,6 +93,7 @@ COPY test/test_conf_security.sh /opt/pam-ezkey/test/test_conf_security.sh
 COPY scripts/integration-api-stub.py /opt/pam-ezkey/scripts/integration-api-stub.py
 COPY scripts/test-f9-retry.sh /opt/pam-ezkey/scripts/test-f9-retry.sh
 COPY scripts/sshd-warn-global-maxauthtries-1.awk /opt/pam-ezkey/scripts/sshd-warn-global-maxauthtries-1.awk
+COPY scripts/sshd-warn-global-maxauthtries-1.sh /opt/pam-ezkey/scripts/sshd-warn-global-maxauthtries-1.sh
 # rsyslog authpriv routing is fixed at runtime by docker-entrypoint.sh (imuxsock
 # SysSock.Use=on; no journald in the container). Stock conf already has authpriv.*.
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh /opt/pam-ezkey/test/test_pam.sh \

@@ -302,10 +302,11 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
   Match is an easy miss** — OpenSSH then recreates auth attempts after Deny/Expire
   in the same session (F9; proven by `scripts/test-f9-retry.sh` case A).
   `install.sh` / entrypoint check effective `maxauthtries 1` with
-  `sshd -T -C user=…` and run the shared
-  `scripts/sshd-warn-global-maxauthtries-1.awk` detector for a global
-  `MaxAuthTries 1` before any `Match` (unit-tested by
-  `scripts/test-install-sshd-warn.sh` against that same file). Client helper:
+  `sshd -T -C user=…` and run the shared helper
+  `scripts/sshd-warn-global-maxauthtries-1.sh` (sibling
+  `sshd-warn-global-maxauthtries-1.awk`) for a global `MaxAuthTries 1` before
+  any `Match` — unit-tested by invoking that same helper (not a name-only
+  grep). Client helper:
   `-o NumberOfPasswordPrompts=1`. Demo `sshd_config` uses `Match User testuser`
   with global `MaxAuthTries 6`.
 - **HTTP 429 during `/wait`:** fail-closed — PAM returns `UNAVAIL` and the SSH

@@ -454,10 +454,12 @@ claim the in-process final marker or `PAM_MAXTRIES` protects across OpenSSH roun
 keep the marker only as same-handle fail-closed. Prefer `Match User|Group` over
 global `MaxAuthTries 1` (pubkey failures count). Entrypoint / `install.sh` verify
 effective `maxauthtries 1` via `sshd -T -C user=…` and **warn** (do not rewrite
-`sshd_config`) on global `MaxAuthTries 1` before `Match` using the shared
-`scripts/sshd-warn-global-maxauthtries-1.awk` (same file consumed by
+`sshd_config`) on global `MaxAuthTries 1` before `Match` using the shared helper
+`scripts/sshd-warn-global-maxauthtries-1.sh` + sibling
+`sshd-warn-global-maxauthtries-1.awk` (same code path as
 `scripts/test-install-sshd-warn.sh` — case-insensitive, exact `1` only, tab-safe;
-no duplicated awk body). **Match limits:** applies until EOF or the next `Match`;
+missing awk WARNs, never silent-skip; `EZKEY_SSHD_WARN_AWK` overrides path for
+mutation tests). **Match limits:** applies until EOF or the next `Match`;
 first matching value wins; it caps tries **per TCP connection**, not a
 cross-connection rate limit — forgetting it is an easy operator miss and
 recreates orphan pending attempts (F9). Host: `groupadd ezkey-mfa` +
@@ -518,7 +520,7 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 | `scripts/test-challenge.sh` | Code in live capture **before** approve; wrong code refuse; stub absent → UNAVAIL. |
 | `scripts/test-challenge-nits.sh` | Failing PAM conv → `UNAVAIL` + `lab_http=`. |
 | `scripts/test-timeouts.sh` | api_timeout / wait_timeout thresholds + max clamp vs LoginGraceTime. |
-| `scripts/test-install-sshd-warn.sh` | Shared `sshd-warn-global-maxauthtries-1.awk` (install.sh + entrypoint); case/tab/10/empty edge cases; callers must reference the shared file (no Docker; Patrick #908 / #934 B1). |
+| `scripts/test-install-sshd-warn.sh` | Runs shared `sshd-warn-global-maxauthtries-1.sh` (install.sh + entrypoint); exact `awk -f "${SSHD_WARN_AWK}"`; missing-file warn; mutation via `EZKEY_SSHD_WARN_AWK` (no Docker; #908 / #934). |
 | `test/test_challenge_harness.c` | Challenge bound 0..99 (make test). |
 | `test/test_conf_security.sh` | in-container owner/mode/keys self-check (also via `up.sh` path) |
 | `make test` | check-source + compile + filelog + sanitize + challenge harnesses |
