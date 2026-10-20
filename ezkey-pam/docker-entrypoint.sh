@@ -133,6 +133,16 @@ if [ -z "${API_URL}" ]; then
     echo "[entrypoint] WARNING: integration_api_url is empty — PAM will return UNAVAIL."
 fi
 
+# #907 F9: effective maxauthtries must be 1 for SSH_USER (sshd -T; not a regex).
+if [ -f /etc/ssh/sshd_config ] && command -v sshd >/dev/null 2>&1; then
+    if ! sshd -T -f /etc/ssh/sshd_config \
+        -C "user=${SSH_USER},host=localhost,addr=127.0.0.1" 2>/dev/null \
+      | grep -qx 'maxauthtries 1'; then
+        echo "[entrypoint] WARNING: sshd -T for user=${SSH_USER} is not maxauthtries 1." >&2
+        echo "[entrypoint] WARNING: without Match … MaxAuthTries 1, OpenSSH recreates after Deny/Expire (#907 F9)." >&2
+    fi
+fi
+
 echo "[entrypoint] Ezkey PAM SSH demo ready."
 echo "[entrypoint] Integration API URL: ${API_URL}"
 echo "[entrypoint] SSH user (must match enrollment userIdentifier): ${SSH_USER}"

@@ -67,4 +67,8 @@ echo "== CI M1: test-conf-security.sh =="
 echo "== CI M1: test-timeouts.sh (stub) =="
 "${SCRIPT_DIR}/test-timeouts.sh"
 
-echo "== CI M1 conf-security + timeouts: OK =="
+# #907 F9: multitry vs Match MaxAuthTries 1 (Patrick B3 / option A).
+echo "== CI M1: test-f9-retry.sh (stub) =="
+"${SCRIPT_DIR}/test-f9-retry.sh"
+
+echo "== CI M1 conf-security + timeouts + f9-retry: OK =="

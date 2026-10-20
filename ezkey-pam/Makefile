@@ -13,10 +13,10 @@ INSTALL_DIR = /lib64/security
 
 OBJECTS = $(BUILD_DIR)/pam_ezkey.o $(BUILD_DIR)/ezkey_filelog.o \
 	$(BUILD_DIR)/ezkey_sanitize.o $(BUILD_DIR)/ezkey_challenge.o \
-	$(BUILD_DIR)/ezkey_budget.o
+	$(BUILD_DIR)/ezkey_budget.o $(BUILD_DIR)/ezkey_session.o
 
 .PHONY: all debug install uninstall clean check-pam check-source lint help \
-	test test-filelog test-sanitize test-challenge test-budget
+	test test-filelog test-sanitize test-challenge test-budget test-session
 
 all: $(BUILD_DIR)/$(MODULE_NAME)
 
@@ -25,7 +25,8 @@ $(BUILD_DIR):
 
 $(BUILD_DIR)/pam_ezkey.o: $(SRC_DIR)/pam_ezkey.c $(SRC_DIR)/ezkey_config.h \
 		$(SRC_DIR)/ezkey_filelog.h $(SRC_DIR)/ezkey_sanitize.h \
-		$(SRC_DIR)/ezkey_challenge.h $(SRC_DIR)/ezkey_budget.h | $(BUILD_DIR)
+		$(SRC_DIR)/ezkey_challenge.h $(SRC_DIR)/ezkey_budget.h \
+		$(SRC_DIR)/ezkey_session.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/pam_ezkey.c -o $(BUILD_DIR)/pam_ezkey.o
 
 $(BUILD_DIR)/ezkey_filelog.o: $(SRC_DIR)/ezkey_filelog.c $(SRC_DIR)/ezkey_filelog.h \
@@ -42,6 +43,10 @@ $(BUILD_DIR)/ezkey_challenge.o: $(SRC_DIR)/ezkey_challenge.c $(SRC_DIR)/ezkey_ch
 $(BUILD_DIR)/ezkey_budget.o: $(SRC_DIR)/ezkey_budget.c $(SRC_DIR)/ezkey_budget.h \
 		$(SRC_DIR)/ezkey_config.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_budget.c -o $(BUILD_DIR)/ezkey_budget.o
+
+$(BUILD_DIR)/ezkey_session.o: $(SRC_DIR)/ezkey_session.c $(SRC_DIR)/ezkey_session.h \
+		$(SRC_DIR)/ezkey_config.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_session.c -o $(BUILD_DIR)/ezkey_session.o
 
 $(BUILD_DIR)/$(MODULE_NAME): $(OBJECTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $(BUILD_DIR)/$(MODULE_NAME)
@@ -109,13 +114,19 @@ test-budget: $(BUILD_DIR)/ezkey_budget.o $(TEST_DIR)/test_budget_harness.c | $(B
 		$(BUILD_DIR)/ezkey_budget.o -o $(BUILD_DIR)/test_budget_harness
 	$(BUILD_DIR)/test_budget_harness
 
+# Harness: final-verdict block + interrupt cancel timeout (#907 F9).
+test-session: $(BUILD_DIR)/ezkey_session.o $(TEST_DIR)/test_session_harness.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_session_harness.c \
+		$(BUILD_DIR)/ezkey_session.o -o $(BUILD_DIR)/test_session_harness
+	$(BUILD_DIR)/test_session_harness
+
 $(BUILD_DIR)/test_no_conv_client: $(TEST_DIR)/test_no_conv_client.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(TEST_DIR)/test_no_conv_client.c -lpam \
 		-o $(BUILD_DIR)/test_no_conv_client
 
 test: check-source all test-filelog test-sanitize test-challenge test-budget \
-		$(BUILD_DIR)/test_no_conv_client
-	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog + sanitize + challenge + budget OK"
+		test-session $(BUILD_DIR)/test_no_conv_client
+	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog + sanitize + challenge + budget + session OK"
 
 help:
 	@echo "Available targets:"
@@ -130,5 +141,6 @@ help:
 	@echo "  test-sanitize - Sanitize space/=/high-byte harness (M1)"
 	@echo "  test-challenge - Challenge 0..99 + display_ok harness"
 	@echo "  test-budget   - AUTH_BUDGET 105 + rem-too-small planned-wait harness"
-	@echo "  test          - check-source + compile + filelog + sanitize + challenge + budget"
+	@echo "  test-session  - final-verdict + interrupt cancel harness (#907)"
+	@echo "  test          - check-source + compile + harnesses (incl. session)"
 	@echo "  lint          - Run static code analysis"

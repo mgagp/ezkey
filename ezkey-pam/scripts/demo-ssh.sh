@@ -30,6 +30,7 @@ ssh -tt \
   -o PreferredAuthentications=keyboard-interactive \
   -o PubkeyAuthentication=no \
   -o PasswordAuthentication=no \
+  -o NumberOfPasswordPrompts=1 \
   -o ConnectTimeout=10 \
   "${SSH_USER}@127.0.0.1" \
   'echo PAM_SSH_OK; id; hostname' \

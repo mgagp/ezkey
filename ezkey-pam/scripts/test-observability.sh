@@ -79,9 +79,9 @@ assert_one_clean_line() {
     fail "${label}: expected at least 1 new attempt line, got ${count}"
     return 0
   fi
-  # With MaxAuthTries 1, success/network/conf should be exactly one; reject/timeout too.
+  # Demo Match User MaxAuthTries 1 → one pam_sm_authenticate per SSH try.
   if [ "${count}" -gt 1 ]; then
-    fail "${label}: expected exactly 1 new attempt line (MaxAuthTries 1), got ${count}"
+    fail "${label}: expected exactly 1 new attempt line (Match MaxAuthTries 1), got ${count}"
     echo "${lines}" | sed 's/^/  /' || true
     return 0
   fi
@@ -89,8 +89,8 @@ assert_one_clean_line() {
     fail "${label}: expected result=${expect_result} in: ${line}"
     return 0
   fi
-  if ! echo "${line}" | grep -Eq 'user=[^ ]+ authAttemptId=[^ ]+ result=[^ ]+ pam_code=[0-9]+ latency_ms=[0-9]+ lab_http=(true|false) cancel=(ok|fail|skipped|final)'; then
-    fail "${label}: line missing required fields (incl. lab_http + cancel): ${line}"
+  if ! echo "${line}" | grep -Eq 'user=[^ ]+ authAttemptId=[^ ]+ result=[^ ]+ pam_code=[0-9]+ latency_ms=[0-9]+ lab_http=(true|false) cancel=(ok|fail|skipped|final) timeoutSeconds=(-|[0-9]+)'; then
+    fail "${label}: line missing required fields (incl. lab_http + cancel + timeoutSeconds): ${line}"
     return 0
   fi
   if echo "${line}" | grep -Eiq 'secret|proof|token|Authorization|body=\{'; then

@@ -7,7 +7,7 @@
 
 /* Module identification */
 #define EZKEY_MODULE_NAME "pam_ezkey"
-#define EZKEY_VERSION "2.2.8"
+#define EZKEY_VERSION "2.2.10"
 
 /*
  * Cancel outcome on the authpriv attempt summary line (Patrick #897 M2;
@@ -56,6 +56,14 @@
 #define EZKEY_MIN_TTL_SECONDS 15
 #define EZKEY_MAX_ENTER_SECS 25
 #define EZKEY_MAX_WAIT_TIMEOUT 90
+/*
+ * #907 review (Patrick/Christophe, option A): chunked /wait so the waiting
+ * process can abort on client disconnect (SIGTERM) and cancel in-process.
+ * Interrupt cancel is capped at min(api_timeout, INTERRUPT_CANCEL_MAX) so
+ * worst-case auth+cancel stays under LoginGraceTime 120 (105+5=110).
+ */
+#define EZKEY_WAIT_CHUNK_SECS 5
+#define EZKEY_INTERRUPT_CANCEL_MAX 5
 
 /* Configuration file path loaded at PAM runtime (override only via pam.d conf=) */
 #define EZKEY_DEFAULT_CONFIG_FILE "/etc/security/pam_ezkey.conf"

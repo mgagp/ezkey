@@ -79,15 +79,18 @@ RUN chmod 600 /etc/security/pam_ezkey.conf
 COPY sshd /etc/pam.d/sshd
 COPY sshd.chal-noconv /etc/pam.d/ezkey-chal-noconv
 COPY sshd_config /etc/ssh/sshd_config
+COPY sshd_config.f9-multitry /opt/pam-ezkey/sshd_config.f9-multitry
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY test/test_pam.sh /opt/pam-ezkey/test/test_pam.sh
 COPY test/test_conf_security.sh /opt/pam-ezkey/test/test_conf_security.sh
 COPY scripts/integration-api-stub.py /opt/pam-ezkey/scripts/integration-api-stub.py
+COPY scripts/test-f9-retry.sh /opt/pam-ezkey/scripts/test-f9-retry.sh
 # rsyslog authpriv routing is fixed at runtime by docker-entrypoint.sh (imuxsock
 # SysSock.Use=on; no journald in the container). Stock conf already has authpriv.*.
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh /opt/pam-ezkey/test/test_pam.sh \
         /opt/pam-ezkey/test/test_conf_security.sh \
         /opt/pam-ezkey/scripts/integration-api-stub.py \
+        /opt/pam-ezkey/scripts/test-f9-retry.sh \
     && mkdir -p /var/log /var/log/ezkey-pam \
     && chmod 700 /var/log/ezkey-pam \
     && touch /var/log/secure \

@@ -18,9 +18,19 @@ PrintMotd yes
 AcceptEnv LANG LC_*
 Subsystem sftp /usr/libexec/openssh/sftp-server
 LoginGraceTime 120
-# One PAM authenticate per SSH try — keeps M1 attempt-line demos/tests unambiguous.
-MaxAuthTries 1
+# Do NOT set MaxAuthTries 1 globally: refused public keys also consume tries.
+# Single Ezkey keyboard-interactive try is enforced per-user Match below
+# (#907 option A — OpenSSH forks each kbdint round; PAM markers do not span).
+MaxAuthTries 6
 # OpenSSH 9.9+ default PerSourcePenalties (authfail:5) blocks the client IP after a
 # handful of denied logins — breaks M1 conf-security rapid UNAVAIL proofs from
 # localhost. Lab demo only; do not copy this disable onto a hardened host.
 PerSourcePenalties no
+
+# Demo MFA user: one auth try per TCP session (prevents F9 orphan create).
+# Host installs: inside Match also set AuthenticationMethods keyboard-interactive
+# and/or PubkeyAuthentication no (see README / sshd.host-sketch).
+Match User testuser
+	MaxAuthTries 1
+	AuthenticationMethods keyboard-interactive
+	PubkeyAuthentication no

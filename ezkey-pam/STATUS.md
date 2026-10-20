@@ -45,7 +45,10 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.6** is a **working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
+Version **2.2.10** (#907 F9 option A: sshd `Match` MaxAuthTries; chunked wait +
+best-effort disconnect cancel TTL-bounded; honest OpenSSH fork limit) builds on
+**2.2.6**
+**working lab demo** plus STATUS §2.8 slices **#1–#3** and **M1**
 (observability + conf `root:root` exact `0600`/`0400`, no URL default, no process-ENV
 overrides, `lab_http` gate, optional two-digit challenge via `pam_prompt`). It is still
 **not** a host-operable MFA agent on a real host (sshd cutover remains slice #4+).
@@ -414,27 +417,52 @@ Host sshd cutover, TLS, packages, `failmode=safe`, AWS, ezkey.online, product-ro
 **Goal (Marc GO):** enough observability for Patrick/Christophe review without expanding product
 scope. Zero lockout risk: module stays fail-closed; no AWS / ezkey.online / host sshd cutover.
 
-### Attempt syslog line (canonical)
+### Attempt syslog lines (canonical)
 
-Exactly **one** `LOG_AUTHPRIV` syslog line per `pam_sm_authenticate` call, **regardless of
-`debug`**. Debug chatter (POST/wait details) goes only to `/var/log/ezkey-pam/debug.*` when
+Up to **two** `LOG_AUTHPRIV` syslog lines per `pam_sm_authenticate` call, **regardless of
+`debug`**: a `start` line at call begin (before create) and an `attempt` summary at the end.
+Debug chatter (POST/wait details) goes only to `/var/log/ezkey-pam/debug.*` when
 `debug=true` — never to syslog.
 
-Format (stable; parse with `grep 'pam_ezkey: attempt '`):
+Format (stable; parse with `grep 'pam_ezkey: attempt '` or `pam_ezkey: start `):
 
 ```text
-pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms> lab_http=<true|false> cancel=<ok|fail|skipped|final>
+pam_ezkey: start user=<linuxUser> authAttemptId=<id> timeoutSeconds=<n>
+pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms> lab_http=<true|false> cancel=<ok|fail|skipped|final> timeoutSeconds=<n|->
 ```
 
 | Field | Meaning |
 |---|---|
 | `user` | Linux username (sanitized); `-` if unavailable |
 | `authAttemptId` | Numeric id from create, or `-` if never created |
-| `result` | `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `UNAVAIL` \| `ERROR` \| `UNKNOWN_USER` |
+| `result` | `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `MAXTRIES` \| `UNAVAIL` \| `ERROR` \| `UNKNOWN_USER` |
 | `pam_code` | Integer PAM return code |
 | `latency_ms` | Monotonic elapsed ms for the authenticate call |
 | `lab_http` | Conf `lab_http` as `true` or `false` (Christophe) |
 | `cancel` | Exactly one of `ok` \| `fail` \| `skipped` \| `final` (`EZKEY_CANCEL_*`; Patrick #897 M2 + Christophe observability) |
+| `timeoutSeconds` | Planned wait on `start` (before create); applied TTL on `attempt` (or `-`) (#907) |
+
+**#907 F9 / R5 (option A — Patrick/Christophe review):** Under OpenSSH portable, each
+keyboard-interactive round runs in a forked child that `_exit`s — **without a dedicated
+sshd `Match` (`MaxAuthTries 1` plus `AuthenticationMethods keyboard-interactive`
+and/or `PubkeyAuthentication no`), a retry in the same connection creates a new auth
+attempt.** Do not claim the in-process final marker or `PAM_MAXTRIES` protects across
+OpenSSH rounds; keep the marker only as same-handle fail-closed. Prefer
+`Match User|Group` over global `MaxAuthTries 1` (pubkey failures count). Entrypoint /
+`install.sh` verify effective `maxauthtries 1` via `sshd -T -C user=…`. **Match limits:**
+applies until EOF or the next `Match`; first matching value wins; it caps tries **per
+TCP connection**, not a cross-connection rate limit — forgetting it is an easy
+operator miss and recreates orphan pending attempts (F9). R5 (**best-effort,
+TTL-bounded**): chunked `/wait` (`EZKEY_WAIT_CHUNK_SECS` 5) + wait-scoped
+`SIGTERM` (see § M1 craft-rule / B2a; Christophe security GO). When delivered,
+cancel uses `ezkey_bounded_cancel_timeout(..., interrupted=1)` =
+`min(api_timeout, EZKEY_INTERRUPT_CANCEL_MAX 5)` so worst case 105+5=110 <
+`LoginGraceTime` 120 (#726). On OpenSSH 9.9 pre-auth client kill, SIGTERM often
+does **not** arrive — cancel may be skipped; the **applied TTL** from create is
+the residual bound. HTTP **429** during `/wait` → `UNAVAIL` (fail-closed). Do
+**not** rely on `pam_end` under OpenSSH. Proof: `scripts/test-f9-retry.sh` A/B
+gate CI; case C documents best-effort + TTL bound (does not fail CI when cancel
+is absent). Client: `NumberOfPasswordPrompts=1`.
 
 **`cancel=` vocabulary (authpriv only; never changes `pam_rc`):**
 
@@ -488,8 +516,9 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 1. **Stock EL rsyslog ≠ Docker.** `imuxsock SysSock.Use=off` + `imjournal` means `syslog()` and
    `logger -p authpriv` never reach `/var/log/secure` without a journal. Fix at entrypoint, not
    by appending duplicate `authpriv.*` rules.
-2. **“One line” forces sink discipline.** Prior `log_pam_info` always called `syslog()`; M1 moves
-   chatter to filelog-only so operators can `grep attempt` without noise or secret risk.
+2. **Authpriv sink discipline.** Prior `log_pam_info` always called `syslog()`; M1 moves
+   chatter to filelog-only so operators can `grep` `start` / `attempt` without noise or
+   secret risk (two authpriv lines per call since #907 `start`).
 3. **ENV vs conf.** The `.so` must not honor caller ENV for conf path / debug / timeouts
    (`su`/`sudo` inheritance). Entrypoint remains the *only* ENV→conf bridge for demos.
 4. **No URL default.** A compiled `http://localhost:7080` would send ikey/skey to a local
@@ -499,9 +528,9 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 6. **Stale Demo Device pending.** After failed/timeout SSH tries on a shared enrollment, a leftover
    pending card can be approved while a *new* SSH wait times out. Clear pending (or approve the
    matching `authAttemptId`) before re-running AL2023/`demo-ssh` after negative tests.
-7. **SSH retries multiply attempts.** `MaxAuthTries 1` on the demo `sshd_config` keeps “one SSH
-   try → one attempt line” for lab proof; host stacks may differ — the module still emits one
-   line per `pam_sm_authenticate` call.
+7. **SSH retries multiply attempts.** Demo `Match User testuser` / `MaxAuthTries 1` keeps “one SSH
+   try → one create” for lab proof; host stacks may differ — the module still emits
+   `start` + `attempt` per `pam_sm_authenticate` call. Forgetting Match is an easy miss.
 8. **OpenSSH 9.9 `PerSourcePenalties`.** Default `authfail:5` blocks the client IP after a handful
    of denied logins — the fifth M1 conf-security case (`missing secret_key`) saw SSH disconnect
    with no new attempt line. Demo `sshd_config` sets `PerSourcePenalties no` (lab only).
@@ -544,9 +573,20 @@ demo `LoginGraceTime` 120 (`sshd_config:20`). Effective `/wait` =
 `min(conf, rem − CURL_SLACK)` at `pam_ezkey.c:814-825`; too little left →
 `UNAVAIL` **with** attempt line (`pam_sm_authenticate` `done:` / `log_attempt_summary`).
 
-**Craft rule:** PAM never touches host signals — no `sigaction`/`alarm` in
-`pam_ezkey.c`. Enter bound = measure `pam_prompt` with CLOCK_MONOTONIC
-(`pam_ezkey.c:779-796`); duration **>25 s** → UNAVAIL + attempt line.
+**Craft rule (amended #907 B2a / Marc; R5 best-effort):** no `alarm` and no
+global `sigaction`. **Exception — wait-scoped `SIGTERM` only:** installed solely
+around chunked `/wait`, restored immediately after, handler only sets
+`ezkey_wait_abort` (curl xferinfo aborts; no work in the handler). While
+installed, that `SIGTERM` is **absorbed** (does not terminate the PAM child) so
+cancel can run; after restore, default disposition applies again. **Why:**
+OpenSSH portable *may* send `SIGTERM` to the PAM child on client disconnect
+(`auth-pam.c:164-168`); catching it in the waiting process is the only path that
+can cancel under `_exit`. **Honest limit:** on OpenSSH 9.9 pre-auth kill,
+SIGTERM often never arrives — R5 cancel is then **best-effort**; the **applied
+TTL** from create bounds the residual pending window. **Christophe security GO**
+on this wait-scoped absorption. Enter bound remains measure-only (`pam_prompt` +
+CLOCK_MONOTONIC, `pam_ezkey.c:779-796`); duration **>25 s** → UNAVAIL + attempt
+line.
 
 **Untested (documented only):** if Enter is **never** pressed, sshd
 `LoginGraceTime` cuts the session with **no** attempt line; the Integration
@@ -559,7 +599,7 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | Enter prompt | `pam_ezkey.c:779-796` measure; `EZKEY_MAX_ENTER_SECS` `ezkey_config.h:40` **25** | duration bound (no signals) | Enter **>25 s** → UNAVAIL + attempt + debug.err duration (proven) |
 | `wait_timeout` | clamp floor **15** / max **90**; `ttlSeconds` on create; `effective_wait` = min(conf, applied_ttl, rem−slack) | 15–90; shrunk by budget + applied TTL | conf=200 → ttl+`?timeout=90`; conf=2 → floor **15** (proven) |
 | curl `/wait` | `EZKEY_CURL_WAIT_SLACK` **15** (cancel margin inside) | wait+≤15; ≤ rem | Covered by wait / delayed-Enter cases (proven) |
-| Cancel | `POST …/cancel` best-effort on non-ACCEPTED; summary `cancel=ok\|fail\|skipped\|final` | ≤ api_timeout from rem; **not guaranteed when wait timeout is reached**. If cancel fails, window = applied TTL (≤90 s); late approve → orphan `ACCEPTED` (no SSH grant); residual = approval fatigue; cancel **409** → `cancel=final` (observability only) | pending→TIMEOUT + `cancel=ok`; EXPIRED + `cancel=ok`; `cancel_fail` 503 → `cancel=fail`; `cancel_final` 409 → `cancel=final`; SUCCESS → `cancel=skipped` (proven) |
+| Cancel | `POST …/cancel` best-effort on non-ACCEPTED; interrupt path = wait-scoped `SIGTERM` (B2a/R5); summary `cancel=ok\|fail\|skipped\|final` | ≤ api_timeout from rem; interrupt cap `min(api,5)`; **not guaranteed** at wait timeout **or** on pre-auth disconnect when SIGTERM is not delivered. Residual bound = **applied TTL** (≤90 s); late approve → orphan `ACCEPTED` (no SSH grant); residual = approval fatigue; cancel **409** → `cancel=final` (observability only) | pending→TIMEOUT + `cancel=ok`; EXPIRED + `cancel=ok`; `cancel_fail` 503 → `cancel=fail`; `cancel_final` 409 → `cancel=final`; SUCCESS → `cancel=skipped`; B2b kill-client = **best-effort** (case C asserts TTL bound; does not require cancel ≤5 s) |
 | Summary outcomes | `EXPIRED` / `TIMEOUT` / `DENIED` | lacune 5 | stub expired / pending / rejected (proven) |
 | `wait_polling` | sample `config/pam_ezkey.conf` `wait_polling=2` | Server-side cadence | Sample conf present (proven) |
 | Server attempt TTL | request `ttlSeconds`; response **`timeoutSeconds`** (PR-A #898) | Align down on applied ∈ `[1, planned]`; ignore grow / 0 / null | `applied_shrink` → applied; `applied_grow` 120 vs ask 45 → stay 45; `applied_zero` / `applied_null` → conf wait; legacy + reject/timeout (proven) |
@@ -609,6 +649,10 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | Patrick CHANGES | challenge visible before approve; wrong/absent cases | **Done** |
 | Patrick CHANGES | timeout inventory + wait clamp below LoginGraceTime | **Done** (`test-timeouts.sh`) |
 | Patrick P3 | Single auth budget 105; dynamic `?timeout=`; Enter monotonic (no signals) | **Done** (`test-timeouts.sh` stub + CI) |
+| Marc #907 B2a | Keep wait-scoped `SIGTERM` (absorbed during wait; flag-only; install/restore; sshd `auth-pam.c:164-168`) | **Done** — craft rule amended; **Christophe security GO** |
+| Christophe #907 M-a | `rem<=0` → TIMEOUT break (no `curl_limit=1`) | **Done** |
+| Christophe #907 M-b | `sshd -T -C user=… \| grep -qx 'maxauthtries 1'` (not regex) | **Done** |
+| Marc #907 R5 | Disconnect cancel = **best-effort, TTL-bounded** (no new mechanism; SIGTERM kept) | **Done** — case C documents expected miss; A/B gate CI |
 | Patrick CHANGES | https scheme case-insensitive + no pam_info fallback | **Done** |
 | #895 PR-B | `ttlSeconds` + applied-TTL align + cancel + EXPIRED/TIMEOUT/DENIED | **Done** (`test-timeouts.sh` + README runbook) |
 | Patrick #897 CHANGES | stub `legacy_create` / `cancel_fail`; applied-shrink; budget harness (rem→−1) | **Done** (`test-budget` + `test-timeouts.sh`) |

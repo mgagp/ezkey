@@ -28,5 +28,22 @@
 # account    required     pam_unix.so
 # session    required     pam_unix.so
 #
+# sshd_config (host): LoginGraceTime >= 120.
+# OpenSSH portable forks each keyboard-interactive PAM round and _exit's — a
+# pam_set_data marker does NOT stop a second create after Deny/Expire (#907).
+# Enforce one try with a dedicated Match (prefer over global MaxAuthTries 1,
+# which also counts refused public keys):
+#
+# Match User mfa-user
+#     MaxAuthTries 1
+#     AuthenticationMethods keyboard-interactive
+#     PubkeyAuthentication no
+#
+# WARNING: without this Match, OpenSSH recreates auth attempts after Deny/Expire
+# in the same TCP connection (#907 F9). Do not rely on PAM_MAXTRIES across rounds.
+#
+# Clients: ssh -o NumberOfPasswordPrompts=1 …
+#
 # Rollback: restore /etc/pam.d/sshd from a copy taken the same day; sshd -t before
 # restart. Confirm Lightsail serial/browser console the same day as any cutover.
+# Never commit origin IPs — use <static-ip ezkey-online-community> in notes.
