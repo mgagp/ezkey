@@ -102,8 +102,22 @@ public class RateLimitProperties {
     /**
      * Strategy for identifying clients for rate limiting. Options: "client-ip", "enrollment-id", or
      * "auth-attempt-id" (respond endpoint only). Default: "client-ip"
+     *
+     * <p>For respond + {@code auth-attempt-id}: the filter applies the {@link #failIpRequests} /
+     * {@link #failIpWindowMinutes} IP ceiling only. The per-{@code authAttemptId} budget ({@link
+     * #requests} / {@link #windowMinutes}) is consumed <em>after</em> a valid device signature
+     * (#912 C1).
      */
     private String keyStrategy = "client-ip";
+
+    /**
+     * Respond-only: max requests per client IP in the fail-IP window (probe / invalid-signature
+     * ceiling). Default: 30.
+     */
+    private int failIpRequests = 30;
+
+    /** Respond-only: fail-IP window in minutes. Default: 1. */
+    private int failIpWindowMinutes = 1;
 
     // Getters and Setters for EndpointConfig
     public int getRequests() {
@@ -128,6 +142,22 @@ public class RateLimitProperties {
 
     public void setKeyStrategy(String keyStrategy) {
       this.keyStrategy = keyStrategy;
+    }
+
+    public int getFailIpRequests() {
+      return failIpRequests;
+    }
+
+    public void setFailIpRequests(int failIpRequests) {
+      this.failIpRequests = failIpRequests;
+    }
+
+    public int getFailIpWindowMinutes() {
+      return failIpWindowMinutes;
+    }
+
+    public void setFailIpWindowMinutes(int failIpWindowMinutes) {
+      this.failIpWindowMinutes = failIpWindowMinutes;
     }
   }
 

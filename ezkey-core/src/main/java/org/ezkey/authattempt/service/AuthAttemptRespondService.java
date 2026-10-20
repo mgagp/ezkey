@@ -12,6 +12,7 @@ package org.ezkey.authattempt.service;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import java.util.OptionalLong;
 import org.ezkey.audit.constants.AuthAttemptAuditConstants;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
@@ -31,11 +32,13 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.auth.AuthAttemptExpiredException;
 import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.exception.auth.AuthRespondRateLimitExceededException;
 import org.ezkey.exception.auth.IntegrationSigningUnavailableException;
 import org.ezkey.signature.SignatureService;
 import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -115,6 +118,8 @@ public class AuthAttemptRespondService {
 
   private final AuditLogService auditLogService;
 
+  private final ObjectProvider<AuthRespondOwnershipRateLimiter> ownershipRateLimiter;
+
   /**
    * Constructs the respond service with required dependencies.
    *
@@ -123,28 +128,22 @@ public class AuthAttemptRespondService {
    * @param signatureService the signature service for cryptographic operations
    * @param authAttemptTxHelper the transaction helper for independent status commits
    * @param auditLogService audit trail (signature-rejected probes, #912)
+   * @param ownershipRateLimiter optional post-ownership per-id budget (#912 C1); empty when rate
+   *     limiting is disabled
    */
   public AuthAttemptRespondService(
       AuthAttemptRepository authAttemptRepository,
       EnrollmentRepository enrollmentRepository,
       SignatureService signatureService,
       AuthAttemptTxHelper authAttemptTxHelper,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      ObjectProvider<AuthRespondOwnershipRateLimiter> ownershipRateLimiter) {
     this.authAttemptRepository = authAttemptRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.authAttemptTxHelper = authAttemptTxHelper;
     this.signatureService = signatureService;
     this.auditLogService = auditLogService;
-  }
-
-  /**
-   * Processes an authentication response from a mobile device (no client context for audit).
-   *
-   * @param request the authentication response request from mobile device
-   * @return the authentication response result with status and message
-   */
-  public AuthAttemptRespondResponse respond(AuthAttemptRespondRequest request) {
-    return respond(request, null);
+    this.ownershipRateLimiter = ownershipRateLimiter;
   }
 
   /**
@@ -170,6 +169,9 @@ public class AuthAttemptRespondService {
 
       // Step 3: Validate device signature (ownership) before typed expiry (#895 Christophe)
       validateDeviceSignature(request, authAttempt, enrollment, clientContext);
+
+      // Step 3b: per-authAttemptId budget only after ownership (#912 C1)
+      consumeOwnershipRateLimit(authAttempt.getAuthAttemptId());
 
       // Step 4: Wall-clock expiry after ownership, before challenge (#895 Patrick M1)
       ensureNotExpired(authAttempt);
@@ -270,6 +272,22 @@ public class AuthAttemptRespondService {
   private void ensureNotExpired(AuthAttempt authAttempt) {
     if (isWallClockExpired(authAttempt)) {
       throw new AuthAttemptExpiredException("Authentication attempt expired");
+    }
+  }
+
+  /**
+   * Debits the optional post-ownership per-id respond budget (#912 C1).
+   *
+   * @param authAttemptId attempt id
+   */
+  private void consumeOwnershipRateLimit(Integer authAttemptId) {
+    AuthRespondOwnershipRateLimiter limiter = ownershipRateLimiter.getIfAvailable();
+    if (limiter == null) {
+      return;
+    }
+    OptionalLong retryAfter = limiter.tryConsumeAfterOwnership(authAttemptId);
+    if (retryAfter.isPresent()) {
+      throw new AuthRespondRateLimitExceededException(retryAfter.getAsLong());
     }
   }
 

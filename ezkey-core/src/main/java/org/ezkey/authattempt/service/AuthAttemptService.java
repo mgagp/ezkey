@@ -665,21 +665,8 @@ public class AuthAttemptService {
    * @see AuthenticationResult
    */
   /**
-   * Processes an authentication response from a mobile device.
-   *
-   * <p>This method delegates to the specialized AuthAttemptRespondService to handle the complex
-   * logic of processing authentication responses while maintaining the same public API for backward
-   * compatibility.
-   *
-   * @param request the authentication response request from mobile device
-   * @return the authentication response result with status and message
-   */
-  public AuthAttemptRespondResponse respond(AuthAttemptRespondRequest request) {
-    return respondService.respond(request);
-  }
-
-  /**
-   * Processes an authentication response with client context for signature-reject audit (#912).
+   * Processes an authentication response with optional client context for signature-reject audit
+   * (#912). Controllers must pass {@link ClientContext}; tests may pass {@code null}.
    *
    * @param request the authentication response request from mobile device
    * @param clientContext client IP/UA for audit (may be null)

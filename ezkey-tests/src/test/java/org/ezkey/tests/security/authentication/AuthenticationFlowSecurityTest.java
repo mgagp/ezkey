@@ -505,6 +505,85 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
     }
   }
 
+  /**
+   * #912 C1: with {@code ezkey.rate-limit.enabled=true} and respond keyed by authAttemptId (Docker
+   * default 1 req / 5 min), a third-party invalid respond must not burn the owner's per-id quota.
+   * After B gets 409, A's valid signed approve must still receive 200 APPROVED (not 429).
+   */
+  @Test
+  @DisplayName("Invalid third-party respond must not exhaust owner per-id rate limit (#912 C1)")
+  public void testInvalidThirdPartyRespondDoesNotExhaustOwnerRateLimit() {
+    try {
+      String adminToken = authTokenManager.getAdminToken();
+      configureForAdminApi(dockerStackConfig);
+
+      Integer integrationId = testDataFactory.createIntegration();
+      String suffix = String.valueOf(System.nanoTime());
+      VerifiedEnrollmentFixture owner =
+          createVerifiedEnrollment(integrationId, adminToken, "Owner RL " + suffix);
+      VerifiedEnrollmentFixture otherDevice =
+          createVerifiedEnrollment(integrationId, adminToken, "Other RL " + suffix);
+      Integer authAttemptId = testDataFactory.createAuthAttempt(owner.enrollmentId(), false);
+      PendingAttemptFixture pendingAttempt = claimPendingAttempt(owner, authAttemptId);
+
+      String foreignSignature =
+          cryptoApiClient.signData(
+              pendingAttempt.authAttemptProofToken() + "|true",
+              otherDevice.deviceKeyPair().privateKey());
+
+      configureForAuthApi(dockerStackConfig);
+      Map<String, Object> bRequest = new HashMap<>();
+      bRequest.put("authAttemptId", authAttemptId);
+      bRequest.put("authAttemptAccepted", true);
+      bRequest.put("authAttemptProofTokenSignedByDevice", foreignSignature);
+
+      Response bResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .body(bRequest)
+              .when()
+              .post("/auth-attempts/respond")
+              .then()
+              .extract()
+              .response();
+
+      assertThat(bResponse.statusCode())
+          .as("B invalid signature must be 409 before ownership (got %s)", bResponse.statusCode())
+          .isEqualTo(409);
+      assertThat(bResponse.jsonPath().getString("type")).endsWith("/auth-attempt-state-conflict");
+
+      String ownerSignature =
+          cryptoApiClient.signData(
+              pendingAttempt.authAttemptProofToken() + "|true", owner.deviceKeyPair().privateKey());
+
+      Map<String, Object> aRequest = new HashMap<>();
+      aRequest.put("authAttemptId", authAttemptId);
+      aRequest.put("authAttemptAccepted", true);
+      aRequest.put("authAttemptProofTokenSignedByDevice", ownerSignature);
+
+      Response aResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .body(aRequest)
+              .when()
+              .post("/auth-attempts/respond")
+              .then()
+              .extract()
+              .response();
+
+      assertThat(aResponse.statusCode())
+          .as(
+              "A valid respond must not be 429 after B burned the per-id bucket (got HTTP %s"
+                  + " body=%s Retry-After=%s)",
+              aResponse.statusCode(), aResponse.asString(), aResponse.getHeader("Retry-After"))
+          .isEqualTo(200);
+      assertThat(aResponse.jsonPath().getString("authAttemptResult")).isEqualTo("APPROVED");
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
+
   @Test
   @DisplayName(
       "Respond invalid signature returns 409 state-conflict and leaves attempt READ (#912)")

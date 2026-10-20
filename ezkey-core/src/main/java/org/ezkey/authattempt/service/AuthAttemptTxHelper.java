@@ -10,6 +10,7 @@
 
 package org.ezkey.authattempt.service;
 
+import java.time.OffsetDateTime;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
@@ -64,20 +65,23 @@ public class AuthAttemptTxHelper {
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void markAsInvalid(Integer authAttemptId) {
-    AuthAttempt authAttempt = authAttemptRepository.findById(authAttemptId).orElse(null);
-    if (authAttempt == null) {
+    OffsetDateTime now = OffsetDateTime.now();
+    int updated =
+        authAttemptRepository.updateStatusIfCurrent(
+            authAttemptId, AuthAttemptStatus.READ, AuthAttemptStatus.INVALID, now);
+    if (updated == 1) {
+      logger.warn("🔒 Auth attempt {} marked as INVALID (committed independently)", authAttemptId);
       return;
     }
-    if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.READ) {
-      logger.warn(
-          "Skip markAsInvalid for auth attempt {}: status is {} (not READ)",
-          authAttemptId,
-          authAttempt.getAuthAttemptStatus());
+    AuthAttempt latest = authAttemptRepository.findById(authAttemptId).orElse(null);
+    if (latest == null) {
+      logger.warn("Skip markAsInvalid for auth attempt {}: not found", authAttemptId);
       return;
     }
-    authAttempt.setAuthAttemptStatus(AuthAttemptStatus.INVALID);
-    authAttemptRepository.save(authAttempt);
-    logger.warn("🔒 Auth attempt {} marked as INVALID (committed independently)", authAttemptId);
+    logger.warn(
+        "Skip markAsInvalid for auth attempt {}: status is {} (not READ or expired)",
+        authAttemptId,
+        latest.getAuthAttemptStatus());
     // Transaction commits here when method returns
   }
 

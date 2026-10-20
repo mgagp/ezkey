@@ -55,8 +55,15 @@ meant to be linked from trust-facing material without inflating the top-level pi
   `auth-attempt-state-conflict`. Invalid signature also emits audit
   `AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED` (attempt id, enrollment id, IP/UA via `LogSanitizer` —
   never the signature). `markAsInvalid` remains only for post-ownership failures (e.g. wrong
-  challenge) and is conditional on status still `READ`. Sequential ids aggravate enumeration but
-  are not required once an id is known.
+  challenge) and is conditional on status still `READ` (atomic `updateStatusIfCurrent`). Sequential
+  ids aggravate enumeration but are not required once an id is known.
+- **Decision (#912 C1):** The respond per-`authAttemptId` budget (default 1 / 5 min) is consumed
+  **only after** a valid device signature. The filter applies an IP fail ceiling for probes; a
+  third-party invalid respond must not starve the owner into HTTP 429 past the attempt TTL.
+- **Decision (#912 C2, accepted):** Timing differences between not-found and invalid-signature
+  respond paths can hint that an id is a live `READ` attempt. That gap is **not** equalized: the
+  same existence signal is already available from sequential auth-attempt ids. Documented; no
+  latency padding.
 - **Decision (#895, Christophe + Patrick M1/M2):** Wall-clock expiry after `expiresAt` maps to
   **409** `auth-attempt-expired` so Demo Device / PAM / mobile can show a clear expired message.
   That typed problem is emitted **only after** enrollment load and device-signature (ownership)
