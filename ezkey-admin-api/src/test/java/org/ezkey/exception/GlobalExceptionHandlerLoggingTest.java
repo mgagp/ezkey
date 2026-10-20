@@ -65,7 +65,8 @@ class GlobalExceptionHandlerLoggingTest {
     ServletWebRequest request = new ServletWebRequest(httpRequest);
 
     handler.handleNoResourceFoundException(
-        new NoResourceFoundException(HttpMethod.GET, "/scanner\r\ninjected", "/scanner\r\ninjected"),
+        new NoResourceFoundException(
+            HttpMethod.GET, "/scanner\r\ninjected", "/scanner\r\ninjected"),
         request);
 
     String joined = joinedMessages();
