@@ -44,7 +44,8 @@ public class AuthRespondRateLimitService implements AuthRespondOwnershipRateLimi
   }
 
   /**
-   * Consumes one fail-IP token for a respond probe (filter layer).
+   * Consumes one IP-ceiling token for a respond request (filter layer — every respond, not
+   * failures-only).
    *
    * @param clientIp resolved client IP
    * @return decision with retry-after when denied

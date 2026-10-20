@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: AuthAttemptTxHelperTest
- * Description: Atomic markAsInvalid only when status is READ (#912 M1).
+ * Description: Atomic markAsInvalid only when status is READ (#912 M1 / Patrick M5).
  */
 
 package org.ezkey.authattempt.service;
@@ -64,19 +64,29 @@ class AuthAttemptTxHelperTest {
     verify(authAttemptRepository, never()).save(any());
   }
 
+  /**
+   * Discriminant vs the old read-then-save path (#912 Patrick M5): when the conditional UPDATE
+   * loses the race (0 rows), the helper must not {@code save} even if a subsequent {@code findById}
+   * still returns {@code READ} (stale view that the old implementation would overwrite onto a
+   * concurrent ACCEPTED/EXPIRED).
+   */
   @Test
-  @DisplayName("markAsInvalid skips when status is no longer READ (concurrent approve/cancel)")
-  void markAsInvalid_whenNotRead_doesNotOverwrite() {
+  @DisplayName(
+      "markAsInvalid after lost conditional update never saves (even if findById still shows READ)")
+  void markAsInvalid_whenConditionalUpdateLoses_doesNotSaveEvenIfFindReturnsRead() {
     when(authAttemptRepository.updateStatusIfCurrent(
             eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.INVALID), any()))
         .thenReturn(0);
-    AuthAttempt accepted = new AuthAttempt();
-    accepted.setAuthAttemptId(42);
-    accepted.setAuthAttemptStatus(AuthAttemptStatus.ACCEPTED);
-    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(accepted));
+    AuthAttempt staleRead = new AuthAttempt();
+    staleRead.setAuthAttemptId(42);
+    staleRead.setAuthAttemptStatus(AuthAttemptStatus.READ);
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(staleRead));
 
     helper.markAsInvalid(42);
 
+    verify(authAttemptRepository)
+        .updateStatusIfCurrent(
+            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.INVALID), any());
     verify(authAttemptRepository, never()).save(any());
   }
 }

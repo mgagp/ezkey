@@ -12,12 +12,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import java.util.OptionalLong;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
@@ -32,6 +34,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.auth.AuthAttemptExpiredException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.exception.auth.AuthRespondRateLimitExceededException;
 import org.ezkey.exception.auth.IntegrationSigningUnavailableException;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
@@ -148,6 +151,50 @@ class AuthAttemptRespondServiceTest {
     assertThat(audit.getUserAgent()).isEqualTo("EzkeyTestAgent/1.0");
     assertThat(audit.getEventDetails()).doesNotContain("device-sig");
     assertThat(audit.getEventDetails()).doesNotContain("signature");
+  }
+
+  @Test
+  @DisplayName(
+      "Post-ownership budget exhausted → AuthRespondRateLimitExceededException (#912 Patrick M6)")
+  void respond_validSignature_whenOwnershipBudgetExhausted_raises429Exception() {
+    AuthAttempt attempt = readAttempt();
+    Enrollment enrollment = enrollmentWithKeys();
+    AuthRespondOwnershipRateLimiter limiter = mock(AuthRespondOwnershipRateLimiter.class);
+    when(ownershipRateLimiter.getIfAvailable()).thenReturn(limiter);
+    when(limiter.tryConsumeAfterOwnership(42)).thenReturn(OptionalLong.of(300L));
+
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
+
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
+        .isInstanceOf(AuthRespondRateLimitExceededException.class)
+        .satisfies(
+            ex ->
+                assertThat(((AuthRespondRateLimitExceededException) ex).getRetryAfterSeconds())
+                    .isEqualTo(300L));
+    verify(limiter).tryConsumeAfterOwnership(42);
+    verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
+    verify(signatureService, never()).signIntegrationPayload(any(), any());
+  }
+
+  @Test
+  @DisplayName("Invalid signature never debits post-ownership limiter (#912 Patrick M6)")
+  void respond_invalidSignature_doesNotCallOwnershipLimiter() {
+    AuthAttempt attempt = readAttempt();
+    Enrollment enrollment = enrollmentWithKeys();
+
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(false);
+
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
+        .isInstanceOf(AuthAttemptStateConflictException.class);
+    verify(ownershipRateLimiter, never()).getIfAvailable();
   }
 
   /**

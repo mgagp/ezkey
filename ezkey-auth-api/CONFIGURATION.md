@@ -62,7 +62,7 @@ inventory: [rate-limit-baseline-policy.md](../product-docs/global/rate-limit-bas
 | `ezkey.rate-limit.respond.requests` | `int` | `1` | optionnel | Max respond requests **per auth-attempt after ownership** per window (#912 C1). |
 | `ezkey.rate-limit.respond.window-minutes` | `int` | `5` | optionnel | Window for the post-ownership per-id budget (minutes). |
 | `ezkey.rate-limit.respond.key-strategy` | `String` | `auth-attempt-id` | optionnel | Default `auth-attempt-id`. Filter uses fail-IP; id budget is post-signature. |
-| `ezkey.rate-limit.respond.fail-ip-requests` | `int` | `30` | optionnel | Filter IP ceiling for respond probes (#912 C1). |
+| `ezkey.rate-limit.respond.fail-ip-requests` | `int` | `30` | optionnel | Filter IP ceiling for **all** respond requests (#912 C1). |
 | `ezkey.rate-limit.respond.fail-ip-window-minutes` | `int` | `1` | optionnel | Window for the respond fail-IP ceiling (minutes). |
 | `ezkey.rate-limit.verify.requests` | `int` | `10` | optionnel | Max enrollment-verify requests per window. |
 | `ezkey.rate-limit.verify.window-minutes` | `int` | `1` | optionnel | Window for `verify` endpoint (minutes). |

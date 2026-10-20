@@ -506,9 +506,10 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
   }
 
   /**
-   * #912 C1: with {@code ezkey.rate-limit.enabled=true} and respond keyed by authAttemptId (Docker
-   * default 1 req / 5 min), a third-party invalid respond must not burn the owner's per-id quota.
-   * After B gets 409, A's valid signed approve must still receive 200 APPROVED (not 429).
+   * #912 C1: requires {@code ezkey.rate-limit.enabled=true} (e.g. {@code ./clean-start.sh
+   * --prod-safe}). B's invalid respond must not burn A's per-id budget; A's first valid approve is
+   * 200. Proof rate-limit is active: reset row to READ and a second valid owner respond must be
+   * HTTP 429 with positive {@code Retry-After} (post-ownership budget 1 / 5 min).
    */
   @Test
   @DisplayName("Invalid third-party respond must not exhaust owner per-id rate limit (#912 C1)")
@@ -578,6 +579,37 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
               aResponse.statusCode(), aResponse.asString(), aResponse.getHeader("Retry-After"))
           .isEqualTo(200);
       assertThat(aResponse.jsonPath().getString("authAttemptResult")).isEqualTo("APPROVED");
+
+      // Prove rate-limit is actually on: first valid respond consumed the per-id token. Force the
+      // row back to READ so a second ownership-proven respond reaches the limiter (not status 409).
+      boolean reset =
+          databaseHelper.executeUpdate(
+              "UPDATE ezkey_auth_attempt SET auth_attempt_status = 'READ'"
+                  + " WHERE auth_attempt_id = "
+                  + authAttemptId);
+      assertThat(reset).as("DB reset to READ for rate-limit proof").isTrue();
+
+      Response a2Response =
+          given()
+              .contentType(ContentType.JSON)
+              .body(aRequest)
+              .when()
+              .post("/auth-attempts/respond")
+              .then()
+              .extract()
+              .response();
+
+      assertThat(a2Response.statusCode())
+          .as(
+              "Rate-limit must be active: second valid respond on same id → 429 (got HTTP %s"
+                  + " body=%s Retry-After=%s). Start stack with ./clean-start.sh --prod-safe",
+              a2Response.statusCode(), a2Response.asString(), a2Response.getHeader("Retry-After"))
+          .isEqualTo(429);
+      assertThat(a2Response.asString()).isEmpty();
+      long retryAfter = Long.parseLong(a2Response.getHeader("Retry-After"));
+      assertThat(retryAfter)
+          .as("Retry-After must be a positive refill delay in seconds")
+          .isBetween(1L, 5L * 60L);
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");

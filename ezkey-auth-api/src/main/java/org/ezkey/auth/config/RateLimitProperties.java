@@ -111,12 +111,12 @@ public class RateLimitProperties {
     private String keyStrategy = "client-ip";
 
     /**
-     * Respond-only: max requests per client IP in the fail-IP window (probe / invalid-signature
-     * ceiling). Default: 30.
+     * Respond-only: max respond requests per client IP in the window (every respond, not
+     * failures-only). Default: 30.
      */
     private int failIpRequests = 30;
 
-    /** Respond-only: fail-IP window in minutes. Default: 1. */
+    /** Respond-only: IP-ceiling window in minutes. Default: 1. */
     private int failIpWindowMinutes = 1;
 
     // Getters and Setters for EndpointConfig

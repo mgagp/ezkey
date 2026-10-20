@@ -58,8 +58,10 @@ meant to be linked from trust-facing material without inflating the top-level pi
   challenge) and is conditional on status still `READ` (atomic `updateStatusIfCurrent`). Sequential
   ids aggravate enumeration but are not required once an id is known.
 - **Decision (#912 C1):** The respond per-`authAttemptId` budget (default 1 / 5 min) is consumed
-  **only after** a valid device signature. The filter applies an IP fail ceiling for probes; a
-  third-party invalid respond must not starve the owner into HTTP 429 past the attempt TTL.
+  **only after** a valid device signature. The filter applies an IP ceiling on **all** respond
+  requests (not failures only); a third-party invalid respond must not starve the owner into HTTP
+  429 past the attempt TTL. `Retry-After` uses Bucket4j refill delay (also for pending / verify /
+  bind keyed denials).
 - **Decision (#912 C2, accepted):** Timing differences between not-found and invalid-signature
   respond paths can hint that an id is a live `READ` attempt. That gap is **not** equalized: the
   same existence signal is already available from sequential auth-attempt ids. Documented; no
