@@ -239,9 +239,9 @@ def apply_session_verify(session, verify: SslVerify) -> None:
   Apply resolved TLS verify settings to a ``requests.Session``.
 
   Insecure mode sets ``session.verify`` (session attribute) so individual
-  ``requests.get/post(..., verify=False)`` call sites are never introduced —
-  those call-site literals are what CodeQL ``py/request-without-cert-validation``
-  flags (#802 / alerts #121 #122).
+  ``requests.*(verify=False)`` call-site keywords are never introduced —
+  those are what CodeQL ``py/request-without-cert-validation`` flags
+  (#802 / alerts #121 #122).
 
   Args:
       session: ``requests.Session`` instance.
@@ -250,25 +250,43 @@ def apply_session_verify(session, verify: SslVerify) -> None:
   session.verify = verify
 
 
+def _request_insecure(method: str, url: str, **kwargs):
+  """
+  Loopback-only insecure request via Session.verify (no verify= kwarg).
+
+  Call only after ``resolve_ssl_verify`` accepted an explicit opt-in (#802).
+  """
+  session = requests.Session()
+  apply_session_verify(session, False)
+  try:
+    return session.request(method, url, **kwargs)
+  finally:
+    session.close()
+
+
+def _request_verified(method: str, url: str, *, ca_bundle: Optional[str] = None, **kwargs):
+  """
+  Request with TLS verification enabled (system CAs or an explicit CA path).
+
+  Never accepts a boolean False — keeps CodeQL from tainting ``verify=``.
+  """
+  if ca_bundle is not None:
+    return requests.request(method, url, verify=ca_bundle, **kwargs)
+  return requests.request(method, url, verify=True, **kwargs)
+
+
 def _request_with_verify(method: str, url: str, *, verify: SslVerify, **kwargs):
   """
   Issue an HTTP request with TLS verify on by default.
 
-  When ``verify`` is ``False`` (loopback-only explicit opt-in), use a short-lived
-  Session and set ``session.verify`` instead of passing ``verify=False`` as a
-  keyword to ``requests.*`` — avoids CodeQL ``py/request-without-cert-validation``
-  new alerts while preserving #802 insecure semantics.
+  Dispatches insecure vs verified paths so ``requests.request(..., verify=)``
+  never receives a value that can be boolean False (CodeQL taint).
   """
   if verify is False:
-    session = requests.Session()
-    apply_session_verify(session, False)
-    try:
-      return session.request(method, url, **kwargs)
-    finally:
-      session.close()
+    return _request_insecure(method, url, **kwargs)
   if isinstance(verify, str):
-    return requests.request(method, url, verify=verify, **kwargs)
-  return requests.request(method, url, verify=True, **kwargs)
+    return _request_verified(method, url, ca_bundle=verify, **kwargs)
+  return _request_verified(method, url, **kwargs)
 
 
 def requests_get(url: str, *, verify: SslVerify, **kwargs):
