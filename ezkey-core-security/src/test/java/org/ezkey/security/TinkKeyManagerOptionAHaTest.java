@@ -178,6 +178,45 @@ class TinkKeyManagerOptionAHaTest {
   }
 
   @Test
+  @DisplayName("§4.4 idle replica caught up by version tick with no crypto traffic")
+  void idleReplica_caughtUpByVersionTick_withoutTraffic(@TempDir Path tempDir) throws Exception {
+    AtomicReference<KeysetBlob> sharedBlob = new AtomicReference<>();
+    KeysetBlobRepository repository = casRepository(sharedBlob);
+
+    TinkKeyManager api1 =
+        initializeManager(
+            tempDir.resolve("master.key"),
+            tempDir.resolve("api1-keyset.json.encrypted"),
+            repository,
+            true);
+
+    TinkProperties props2 = baseProperties(tempDir);
+    props2.setKeysetFile(tempDir.resolve("api2-keyset.json.encrypted").toString());
+    props2.getKeyset().setVersionCheckIntervalSeconds(1);
+    props2.getRotation().setSyncWindowSeconds(30);
+    TinkKeyManager api2 = new TinkKeyManager(props2, fixedProvider(repository));
+    api2.initialize();
+
+    try {
+      api2.loadKeysetFromDatabase();
+      long pending = api1.addKeyWithoutPromotion();
+      assertFalse(api2.getAllKeyIds().contains(pending), "precondition: api2 idle/stale");
+
+      // No getAeadPrimitive / crypto traffic — only the traffic-independent tick.
+      long deadline = System.currentTimeMillis() + 4000;
+      while (System.currentTimeMillis() < deadline && !api2.getAllKeyIds().contains(pending)) {
+        Thread.sleep(200);
+      }
+      assertTrue(
+          api2.getAllKeyIds().contains(pending),
+          "idle replica must pick up peer key via version tick without traffic");
+    } finally {
+      api1.shutdownKeysetCheckExecutor();
+      api2.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  @Test
   @DisplayName("§4.2 stale promote reloads under lock and succeeds (Option A)")
   void stalePromote_reloadsAndSucceeds(@TempDir Path tempDir) throws Exception {
     AtomicReference<KeysetBlob> sharedBlob = new AtomicReference<>();

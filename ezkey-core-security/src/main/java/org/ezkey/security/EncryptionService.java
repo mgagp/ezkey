@@ -7,11 +7,9 @@ import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.ezkey.config.TinkProperties;
-import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 /**
@@ -63,26 +61,20 @@ public class EncryptionService implements EncryptionOperations {
   private static final int MIN_CIPHERTEXT_BASE64_LENGTH = 20;
 
   private final TinkProperties properties;
-  private final EncryptionKeyRepository keyRepository;
 
   /**
-   * Constructor with optional dependencies for defensive decryption handling.
+   * Constructor with optional Tink properties.
    *
-   * <p>Uses Spring's ObjectProvider to handle optional dependencies gracefully. This allows the
-   * service to work even when TinkProperties or EncryptionKeyRepository are not available (e.g., in
-   * simpler deployment scenarios).
+   * <p>Decrypt-failure recovery uses throttled keyset reload only (H2); no per-failure metadata
+   * {@code findById} (review #936 — avoids unthrottled DB amplification).
    *
    * @param keyManager the Tink key manager (required)
    * @param propertiesProvider optional provider for Tink configuration properties
-   * @param keyRepositoryProvider optional provider for key repository (for defensive decryption)
    */
   public EncryptionService(
-      TinkKeyManager keyManager,
-      ObjectProvider<TinkProperties> propertiesProvider,
-      ObjectProvider<EncryptionKeyRepository> keyRepositoryProvider) {
+      TinkKeyManager keyManager, ObjectProvider<TinkProperties> propertiesProvider) {
     this.keyManager = keyManager;
     this.properties = propertiesProvider.getIfAvailable();
-    this.keyRepository = keyRepositoryProvider.getIfAvailable();
     if (!keyManager.isInitialized()) {
       logger.warn(
           "EncryptionService created but TinkKeyManager is not initialized. "
@@ -239,22 +231,8 @@ public class EncryptionService implements EncryptionOperations {
         "Decryption failed for key ID {}. Attempting defensive recovery...",
         keyId != null ? Long.toUnsignedString(keyId) : "unknown");
 
-    if (keyRepository != null && keyId != null) {
-      try {
-        var keyOpt = keyRepository.findById(keyId);
-        if (keyOpt.isPresent()) {
-          logger.info(
-              "Key {} exists in database with status {}",
-              Long.toUnsignedString(keyId),
-              keyOpt.get().getKeyStatus());
-        }
-      } catch (DataAccessException | IllegalStateException e) {
-        logger.debug("Failed to check key in database: {}", e.getMessage());
-      }
-    }
-
-    // H2: always try one throttled reload on decrypt failure when DB storage is available
-    // (not only when metadata confirms the kid — idle replicas may lack the new primary).
+    // H2: throttled single-flight reload only — no unthrottled metadata findById per failure
+    // (avoids DB amplification under decrypt storms; kid status stays in ERROR log below).
     if (keyManager.isDatabaseStorageAvailable()) {
       int maxRetries = properties != null ? properties.getKeyset().getMaxReloadRetries() : 1;
       for (int retry = 0; retry < maxRetries; retry++) {

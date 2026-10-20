@@ -12,7 +12,6 @@ import com.google.crypto.tink.Aead;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import org.ezkey.config.TinkProperties;
-import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,8 +38,6 @@ class EncryptionServiceTest {
 
   @Mock private ObjectProvider<TinkProperties> propertiesProvider;
 
-  @Mock private ObjectProvider<EncryptionKeyRepository> keyRepositoryProvider;
-
   private EncryptionService encryptionService;
 
   private static final long TEST_KEY_ID = 1234567L;
@@ -51,10 +48,8 @@ class EncryptionServiceTest {
     when(keyManager.getCurrentPrimaryKeyId()).thenReturn(TEST_KEY_ID);
     when(keyManager.getAeadPrimitive()).thenReturn(aead);
     when(propertiesProvider.getIfAvailable()).thenReturn(null);
-    when(keyRepositoryProvider.getIfAvailable()).thenReturn(null);
 
-    encryptionService =
-        new EncryptionService(keyManager, propertiesProvider, keyRepositoryProvider);
+    encryptionService = new EncryptionService(keyManager, propertiesProvider);
   }
 
   @Test

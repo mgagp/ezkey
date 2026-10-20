@@ -99,6 +99,11 @@ final class KeysetHaSyncSupport {
           checkingFlag.set(true);
           try {
             checkAndReload.run();
+          } catch (RuntimeException e) { // CHECKSTYLE IGNORE IllegalCatch
+            logger.error(
+                "Traffic-independent keyset version tick failed (will retry next interval): {}",
+                e.getMessage());
+            logger.debug("Version tick error", e);
           } finally {
             checkingFlag.set(false);
           }
@@ -281,11 +286,9 @@ final class KeysetHaSyncSupport {
     }
     try {
       logger.info("🔄 Decrypt-failure path: synchronous keyset reload from database");
-      boolean reloaded = reloadAction.getAsBoolean();
-      if (reloaded) {
-        lastDecryptReloadTimeMs = System.currentTimeMillis();
-      }
-      return reloaded;
+      // Stamp throttle on every attempt (success or failure) to bound amplification.
+      lastDecryptReloadTimeMs = System.currentTimeMillis();
+      return reloadAction.getAsBoolean();
     } finally {
       decryptReloadInFlight.set(false);
     }

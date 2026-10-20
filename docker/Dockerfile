@@ -60,7 +60,7 @@ COPY ezkey-demo-app-acme/config ./ezkey-demo-app-acme/config
 # -am (also-make) ensures dependencies are built, -amd (also-make-dependents) not needed here
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "🔨 Building all modules (using cached dependencies)..." && \
-    mvn clean package -Dmaven.test.skip=true -Pno-checkstyle -B \
+    mvn clean package -DskipTests -Pno-checkstyle -B \
         -pl checkstyle-config,ezkey-core,ezkey-core-security,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
         -am && \
     echo "✅ Build completed successfully"

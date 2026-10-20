@@ -90,7 +90,9 @@ Admin-only materialization of the blob and of `ezkey_encryption_key` metadata:
 
 **HA keyset sync (operator summary):** Use `storage-mode=DATABASE` so `ezkey_keyset_blob` is the
 shared source of truth across Admin/Auth/Integration instances. **Reload before mutate; write only
-via CAS** (`UPDATE … WHERE version = :read`). A traffic-independent version tick
+via CAS** (`UPDATE … WHERE version = :read`). **H3:** install the new in-memory handle and rewrite
+the keyset file only after a successful CAS (DATABASE/HYBRID); a lost CAS or other DB error leaves
+memory and file unchanged and propagates. A traffic-independent version tick
 (`keyset.version-check-interval-seconds`, default 5) keeps idle replicas current; keep
 `tick < rotation.sync-window-seconds` (prefer `tick <= syncWindow/2`) or startup logs WARN. On
 introduce, a new key stays `PENDING` for `rotation.sync-window-seconds` before promotion to

@@ -106,4 +106,26 @@ class KeyRotationServicePromotionConflictTest {
     assertEquals(EventType.KEY_PROMOTION_CONFLICT, audit.getEventType());
     assertEquals(EventStatus.ERROR, audit.getEventStatus());
   }
+
+  @Test
+  @DisplayName("ERROR escalation at PROMOTION_CONFLICT_ERROR_THRESHOLD (3) consecutive CAS losses")
+  void promote_whenThreeConsecutiveCasLosses_escalatesToError() throws Exception {
+    EncryptionKey pending =
+        new EncryptionKey(7L, KeyStatus.PENDING, "AES256_GCM", OffsetDateTime.now(), "TEST");
+    when(keyManagementOperations.promoteToPrimary(7L))
+        .thenThrow(new KeysetConcurrentModificationException(1L, "CAS failed"));
+
+    ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+    for (int i = 0; i < KeyRotationService.PROMOTION_CONFLICT_ERROR_THRESHOLD; i++) {
+      keyRotationService.promotePendingToPrimary(pending);
+    }
+    verify(auditLogService, times(KeyRotationService.PROMOTION_CONFLICT_ERROR_THRESHOLD))
+        .log(captor.capture());
+    assertEquals(EventStatus.FAILURE, captor.getAllValues().get(0).getEventStatus());
+    assertEquals(EventStatus.FAILURE, captor.getAllValues().get(1).getEventStatus());
+    assertEquals(
+        EventStatus.ERROR,
+        captor.getAllValues().get(2).getEventStatus(),
+        "3rd consecutive conflict must escalate to ERROR");
+  }
 }

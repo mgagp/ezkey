@@ -1030,32 +1030,8 @@ public class TinkKeyManager implements KeyManagementOperations {
         signedNewPrimaryKeyId,
         Long.toUnsignedString(newPrimaryKeyId));
 
-    String keysetPath = properties.getKeysetFile();
-    String normalizedPath = normalizePath(keysetPath);
-    saveKeyset(rotatedHandle, normalizedPath);
-
-    this.keysetHandle = rotatedHandle;
-    File keysetFile = new File(normalizedPath);
-    if (keysetFile.exists()) {
-      this.keysetFileLastModified = keysetFile.lastModified();
-      this.keysetFilePath = normalizedPath;
-    }
-
-    StorageMode storageMode = properties.getKeyset().getStorageMode();
-    if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
-        && keysetBlobRepository != null) {
-      try {
-        saveKeysetToDatabaseUnlocked("KEY_ROTATION");
-        logger.info("✅ Rotated keyset saved to database");
-      } catch (KeysetConcurrentModificationException e) {
-        throw e;
-      } catch (GeneralSecurityException
-          | IOException
-          | DataAccessException
-          | IllegalStateException e) {
-        logger.error("Failed to save rotated keyset to database: {}", e.getMessage());
-      }
-    }
+    // H3: CAS (or FILE commit) before mutating this.keysetHandle / file.
+    commitMutatedKeysetUnlocked(rotatedHandle, "KEY_ROTATION");
 
     logger.info(
         "✅ Key rotation completed. Old primary: {} (unsigned: {}), New primary: {} (unsigned: {})",
@@ -1103,32 +1079,8 @@ public class TinkKeyManager implements KeyManagementOperations {
     long newKeyId = toUnsignedLong(signedNewKeyId);
 
     KeysetHandle updatedHandle = updatedManager.getKeysetHandle();
-    String keysetPath = properties.getKeysetFile();
-    String normalizedPath = normalizePath(keysetPath);
-    saveKeyset(updatedHandle, normalizedPath);
-
-    this.keysetHandle = updatedHandle;
-    File keysetFile = new File(normalizedPath);
-    if (keysetFile.exists()) {
-      this.keysetFileLastModified = keysetFile.lastModified();
-      this.keysetFilePath = normalizedPath;
-    }
-
-    StorageMode storageMode = properties.getKeyset().getStorageMode();
-    if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
-        && keysetBlobRepository != null) {
-      try {
-        saveKeysetToDatabaseUnlocked("KEY_ADDED_PENDING");
-        logger.info("✅ Updated keyset (with new pending key) saved to database");
-      } catch (KeysetConcurrentModificationException e) {
-        throw e;
-      } catch (GeneralSecurityException
-          | IOException
-          | DataAccessException
-          | IllegalStateException e) {
-        logger.error("Failed to save updated keyset to database: {}", e.getMessage());
-      }
-    }
+    // H3: CAS (or FILE commit) before mutating this.keysetHandle / file.
+    commitMutatedKeysetUnlocked(updatedHandle, "KEY_ADDED_PENDING");
 
     logger.info(
         "✅ New key added (NOT promoted). New key ID: {} (unsigned: {}). "
@@ -1192,32 +1144,8 @@ public class TinkKeyManager implements KeyManagementOperations {
               .formatted(Long.toUnsignedString(keyId), Long.toUnsignedString(newPrimaryKeyId)));
     }
 
-    String keysetPath = properties.getKeysetFile();
-    String normalizedPath = normalizePath(keysetPath);
-    saveKeyset(promotedHandle, normalizedPath);
-
-    this.keysetHandle = promotedHandle;
-    File keysetFile = new File(normalizedPath);
-    if (keysetFile.exists()) {
-      this.keysetFileLastModified = keysetFile.lastModified();
-      this.keysetFilePath = normalizedPath;
-    }
-
-    StorageMode storageMode = properties.getKeyset().getStorageMode();
-    if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
-        && keysetBlobRepository != null) {
-      try {
-        saveKeysetToDatabaseUnlocked("KEY_PROMOTED_PRIMARY");
-        logger.info("✅ Keyset with promoted primary key saved to database");
-      } catch (KeysetConcurrentModificationException e) {
-        throw e;
-      } catch (GeneralSecurityException
-          | IOException
-          | DataAccessException
-          | IllegalStateException e) {
-        logger.error("Failed to save keyset to database after promotion: {}", e.getMessage());
-      }
-    }
+    // H3: CAS (or FILE commit) before mutating this.keysetHandle / file.
+    commitMutatedKeysetUnlocked(promotedHandle, "KEY_PROMOTED_PRIMARY");
 
     logger.info(
         "✅ Key promotion completed. Old primary: {} (unsigned: {}), New primary: {} (unsigned: {})",
@@ -1417,7 +1345,18 @@ public class TinkKeyManager implements KeyManagementOperations {
 
   private void saveKeysetToDatabaseUnlocked(String updatedBy)
       throws GeneralSecurityException, IOException {
-    if (keysetHandle == null) {
+    saveKeysetHandleToDatabaseUnlocked(keysetHandle, updatedBy);
+  }
+
+  /**
+   * CAS-writes {@code handle} to the blob without updating {@link #keysetHandle} first (H3).
+   *
+   * @param handle keyset to persist
+   * @param updatedBy actor label
+   */
+  private void saveKeysetHandleToDatabaseUnlocked(KeysetHandle handle, String updatedBy)
+      throws GeneralSecurityException, IOException {
+    if (handle == null) {
       throw new IllegalStateException("No keyset loaded, cannot save to database");
     }
     if (masterAead == null) {
@@ -1426,7 +1365,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     try {
       String encryptedKeysetJson =
           TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
-              keysetHandle, masterAead, KEYSET_ASSOCIATED_DATA, RegistryConfiguration.get());
+              handle, masterAead, KEYSET_ASSOCIATED_DATA, RegistryConfiguration.get());
       byte[] encryptedData = encryptedKeysetJson.getBytes(StandardCharsets.UTF_8);
       haSync.claimOrCasUpdateKeyset(
           encryptedData, updatedBy, () -> databaseKeysetVersion, v -> databaseKeysetVersion = v);
@@ -1436,6 +1375,31 @@ public class TinkKeyManager implements KeyManagementOperations {
     } catch (GeneralSecurityException | DataAccessException | IllegalStateException e) {
       logger.error("Failed to save keyset to database: {}", e.getMessage());
       throw e;
+    }
+  }
+
+  /**
+   * Persists a mutated keyset: CAS first in DATABASE/HYBRID (propagate all DB errors), then commit
+   * memory + file. On CAS miss, memory and file stay unchanged (H3).
+   *
+   * @param newHandle mutated keyset (not yet installed)
+   * @param updatedBy CAS actor label
+   */
+  private void commitMutatedKeysetUnlocked(KeysetHandle newHandle, String updatedBy)
+      throws GeneralSecurityException, IOException {
+    StorageMode storageMode = properties.getKeyset().getStorageMode();
+    if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
+        && keysetBlobRepository != null) {
+      saveKeysetHandleToDatabaseUnlocked(newHandle, updatedBy);
+      logger.info("✅ Keyset saved to database ({})", updatedBy);
+    }
+    String normalizedPath = normalizePath(properties.getKeysetFile());
+    saveKeyset(newHandle, normalizedPath);
+    this.keysetHandle = newHandle;
+    File keysetFile = new File(normalizedPath);
+    if (keysetFile.exists()) {
+      this.keysetFileLastModified = keysetFile.lastModified();
+      this.keysetFilePath = normalizedPath;
     }
   }
 
