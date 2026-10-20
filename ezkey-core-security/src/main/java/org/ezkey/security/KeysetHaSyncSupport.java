@@ -38,14 +38,23 @@ import org.springframework.dao.DataAccessException;
  */
 final class KeysetHaSyncSupport {
 
-  /** Outcome of preferring the DB blob over a local file at process startup (B2/S1). */
+  /** Outcome of preferring the DB blob over a local file at process startup (B2/S1/B3). */
   enum StartupBlobOutcome {
     /** Blob loaded into memory (file may be rewritten as best-effort cache). */
     LOADED,
     /** No blob row yet — writer may claim via insert. */
     ABSENT,
-    /** DB unreachable or row unloadable — do not sync file→DB. */
-    FAILED_CLOSED
+    /**
+     * DB unreachable, decrypt failure, or unloadable non-legacy row — do not generate or overwrite
+     * (B3). The previous comment that mapped this to ADR-0011 replace was wrong: {@link
+     * KeysetLoadResult#FAILED_CLOSED} is not “absent”.
+     */
+    FAILED_CLOSED,
+    /**
+     * Positively identified legacy envelope and {@code allow-legacy-envelope-replace=true} — writer
+     * may replace with backup.
+     */
+    LEGACY_REPLACE_ELIGIBLE
   }
 
   private static final Logger logger = LoggerFactory.getLogger(KeysetHaSyncSupport.class);
@@ -164,12 +173,13 @@ final class KeysetHaSyncSupport {
   }
 
   /**
-   * Startup SoT: if a blob row exists, adopt it (with one retry); never fall through to file→DB
-   * sync on failure.
+   * Startup SoT: if a blob row exists, adopt it (with one retry). Load failures are {@link
+   * StartupBlobOutcome#FAILED_CLOSED}, never {@link StartupBlobOutcome#ABSENT} (B3).
    *
    * @param writer whether this process is the keyset writer
    * @param keysetExists whether {@code ezkey_keyset_blob} has a row
-   * @param loadFromDatabase loads blob into memory
+   * @param loadFromDatabase typed blob load
+   * @param allowLegacyReplace whether ADR-0011 replace is opted in
    * @param onLoadedRewriteFileCache best-effort file cache rewrite after a successful load
    * @param awaitDatabaseKeyset non-writer bootstrap wait
    * @return startup outcome
@@ -177,33 +187,32 @@ final class KeysetHaSyncSupport {
   StartupBlobOutcome loadExistingBlobAtStartup(
       boolean writer,
       BooleanSupplier keysetExists,
-      BooleanSupplier loadFromDatabase,
+      Supplier<KeysetLoadResult> loadFromDatabase,
+      boolean allowLegacyReplace,
       Runnable onLoadedRewriteFileCache,
       BooleanSupplier awaitDatabaseKeyset) {
     try {
       if (keysetExists.getAsBoolean()) {
-        boolean loaded = loadFromDatabase.getAsBoolean();
-        if (!loaded) {
-          loaded = loadFromDatabase.getAsBoolean();
-        }
-        if (loaded) {
+        KeysetLoadResult first = loadFromDatabase.get();
+        KeysetLoadResult result = first == KeysetLoadResult.LOADED ? first : loadFromDatabase.get();
+        if (result == KeysetLoadResult.LOADED) {
           logger.info(
               "✅ Keyset loaded from database at startup (existing blob takes precedence over"
                   + " file)");
           onLoadedRewriteFileCache.run();
           return StartupBlobOutcome.LOADED;
         }
-        // Unloadable legacy/corrupt row: writer may ADR-0011-replace; peripherals fail closed.
-        // Transient DB errors are DataAccessException (FAILED_CLOSED below) — not this path.
-        if (!writer) {
-          logger.error(
-              "Keyset blob exists but could not be loaded; refusing file→DB sync (fail closed)");
-          return StartupBlobOutcome.FAILED_CLOSED;
+        if (result == KeysetLoadResult.LEGACY_ENVELOPE && writer && allowLegacyReplace) {
+          logger.warn(
+              "Positively identified ADR-0011 legacy envelope; allow-legacy-envelope-replace=true"
+                  + " — replace with backup is eligible");
+          return StartupBlobOutcome.LEGACY_REPLACE_ELIGIBLE;
         }
-        logger.warn(
-            "Keyset blob exists but could not be loaded; writer will attempt ADR-0011 replace"
-                + " (not a stale-file STARTUP_FILE_SYNC)");
-        return StartupBlobOutcome.ABSENT;
+        // B3: FAILED_CLOSED, LEGACY without opt-in, or unexpected — never map to ABSENT.
+        logger.error(
+            "Keyset blob exists but load result={} — fail closed (will not generate or overwrite)",
+            result);
+        return StartupBlobOutcome.FAILED_CLOSED;
       }
       if (!writer) {
         if (awaitDatabaseKeyset.getAsBoolean()) {

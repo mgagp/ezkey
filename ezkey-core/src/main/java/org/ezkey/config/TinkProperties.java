@@ -456,6 +456,13 @@ public class TinkProperties {
     private boolean writer = false;
 
     /**
+     * When true, a writer that positively identifies an ADR-0011 legacy outer-encrypted blob may
+     * replace it with a Tink-native envelope after writing a backup of the old row. Default {@code
+     * false} (fail closed). Never enabled by ambiguous load failures (B3).
+     */
+    private boolean allowLegacyEnvelopeReplace = false;
+
+    /**
      * How long a non-writer waits for {@code ezkey_keyset_blob} on DATABASE/HYBRID boot before
      * failing required encryption.
      */
@@ -518,6 +525,14 @@ public class TinkProperties {
 
     public void setWriter(boolean writer) {
       this.writer = writer;
+    }
+
+    public boolean isAllowLegacyEnvelopeReplace() {
+      return allowLegacyEnvelopeReplace;
+    }
+
+    public void setAllowLegacyEnvelopeReplace(boolean allowLegacyEnvelopeReplace) {
+      this.allowLegacyEnvelopeReplace = allowLegacyEnvelopeReplace;
     }
 
     public Duration getBootstrapWait() {

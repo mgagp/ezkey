@@ -287,7 +287,9 @@ class TinkKeyManagerConcurrencyTest {
   }
 
   @Test
-  @DisplayName("database keyset reader no longer treats legacy outer-encrypted blobs as current")
+  @DisplayName(
+      "legacy outer-encrypted blob replaces only when allow-legacy-envelope-replace=true"
+          + " (ADR-0011)")
   void initialize_whenLegacyDatabaseKeysetBlobExists_createsTinkNativeBlob(@TempDir Path tempDir)
       throws Exception {
     Path masterKeyPath = tempDir.resolve("master.key");
@@ -296,18 +298,28 @@ class TinkKeyManagerConcurrencyTest {
     LegacyDatabaseKeyset legacyKeyset = legacyEncryptedDatabaseKeyset(masterKey);
     AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>(legacyKeyset.blob());
 
+    TinkProperties properties = new TinkProperties();
+    properties.setEnabled(true);
+    properties.setRequired(false);
+    properties.setMasterKeyFile(masterKeyPath.toString());
+    properties.setKeysetFile(keysetPath.toString());
+    properties.getKeyset().setStorageMode(TinkProperties.Keyset.StorageMode.DATABASE);
+    properties.getKeyset().setWriter(true);
+    properties.getKeyset().setAllowLegacyEnvelopeReplace(true);
+    properties.getRotation().setBackupBeforeRotation(false);
+
     TinkKeyManager manager =
-        initializeManager(
-            masterKeyPath,
-            keysetPath,
-            TinkProperties.Keyset.StorageMode.DATABASE,
-            versionedRepository(storedBlob));
+        new TinkKeyManager(properties, fixedProvider(versionedRepository(storedBlob)));
+    manager.initialize();
 
     try {
       assertNotEquals(legacyKeyset.primaryKeyId(), manager.getCurrentPrimaryKeyId());
       String blobJson = new String(storedBlob.get().getKeysetData(), StandardCharsets.UTF_8);
       assertTrue(blobJson.contains("\"encryptedKeyset\""));
       assertTrue(blobJson.contains("\"keysetInfo\""));
+      assertTrue(
+          Files.exists(Path.of(keysetPath.toString() + ".legacy-backup")),
+          "ADR-0011 replace must keep a backup of the old row");
     } finally {
       manager.shutdownKeysetCheckExecutor();
     }

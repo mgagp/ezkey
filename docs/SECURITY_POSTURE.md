@@ -94,8 +94,11 @@ meant to be linked from trust-facing material without inflating the top-level pi
   after a successful CAS is logged at ERROR and does not fail the mutation in DATABASE/HYBRID).
   **At startup, an existing DB blob takes precedence over the file** (adopt blob → rewrite file
   cache). The file may only **claim** an absent row (`insertSingletonIfAbsent`); it must never
-  blind-CAS overwrite a present blob (`STARTUP_FILE_SYNC` removed). If the DB is unreachable or the
-  row exists but cannot be loaded, startup **fail-closes** (no file→DB sync). Admin writers
+  blind-CAS overwrite a present blob. Load results are typed (`LOADED` / `ABSENT` /
+  `FAILED_CLOSED` / `LEGACY_ENVELOPE`): DB unreachable, wrong master key, or decrypt failure is
+  **fail-closed** — never treated as “absent” (B3). Destructive ADR-0011 replace only for a
+  positively identified legacy envelope behind `allow-legacy-envelope-replace` (default false)
+  with a `.legacy-backup` of the old row. Race loser that cannot load the winner **fails closed**. Admin writers
   **reload under the write lock before every mutation** (`promote` / `add` / `rotate`) when the blob
   is newer, then **write only via CAS** (`UPDATE ezkey_keyset_blob … WHERE version = :read`). Zero
   rows or memory version 0 with a present row → typed `KeysetConcurrentModificationException` (no

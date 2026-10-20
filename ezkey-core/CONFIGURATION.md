@@ -21,6 +21,7 @@ instance metadata. Applications that depend on ezkey-core declare these properti
 | `ezkey.encryption.keyset.reload-before-mutation` | — | `true` | optionnel |
 | `ezkey.encryption.keyset.version-check-interval-seconds` | — | `5` | optionnel |
 | `ezkey.encryption.keyset.decrypt-failure-reload-throttle-ms` | — | `1000` | optionnel |
+| `ezkey.encryption.keyset.allow-legacy-envelope-replace` | — | `false` | optionnel |
 | `ezkey.encryption.keyset.bootstrap-wait` | `EZKEY_ENCRYPTION_KEYSET_BOOTSTRAP_WAIT` | `PT90S` | optionnel |
 | `ezkey.audit.integrity.enabled` | — | `true` | optionnel |
 | `ezkey.audit.integrity.required` | `EZKEY_AUDIT_INTEGRITY_REQUIRED` | `false` | optionnel [prod] / **true [docker]** |
@@ -138,6 +139,7 @@ treated as non-secret operational metadata.
 | `ezkey.encryption.keyset.reload-before-mutation` | `boolean` | `true` | optionnel | Option A (#914): under the write lock, reload the blob when DB version is newer before `promote`/`add`/`rotate`. Emergency rollback only; CAS save remains mandatory. |
 | `ezkey.encryption.keyset.version-check-interval-seconds` | `int` | `5` | optionnel | Traffic-independent keyset version tick (seconds). Must be **strictly less than** `rotation.sync-window-seconds`; prefer `<= syncWindow/2`. Startup WARN when `tick >= syncWindow`. |
 | `ezkey.encryption.keyset.decrypt-failure-reload-throttle-ms` | `long` | `1000` | optionnel | H2 (#914): minimum interval between decrypt-failure synchronous reloads on this node (anti-amplification). |
+| `ezkey.encryption.keyset.allow-legacy-envelope-replace` | `boolean` | `false` | optionnel | ADR-0011 / B3: when `true`, a writer may replace a **positively identified** legacy outer-encrypted blob with a Tink-native envelope after writing a `.legacy-backup` of the old row. Default `false` (fail closed). Never triggered by ambiguous DB/decrypt failures. |
 
 #### Key Rotation (`ezkey.encryption.rotation.*`)
 

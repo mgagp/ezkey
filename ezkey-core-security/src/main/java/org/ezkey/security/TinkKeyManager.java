@@ -167,7 +167,8 @@ public class TinkKeyManager implements KeyManagementOperations {
             haSync.loadExistingBlobAtStartup(
                 writer,
                 keysetBlobRepository::keysetExists,
-                this::loadKeysetFromDatabase,
+                this::loadKeysetFromDatabaseTyped,
+                properties.getKeyset().isAllowLegacyEnvelopeReplace(),
                 () -> writeKeysetFileCacheBestEffort(keysetHandle),
                 this::awaitDatabaseKeyset);
         loadedFromDatabase = startupOutcome == KeysetHaSyncSupport.StartupBlobOutcome.LOADED;
@@ -186,6 +187,9 @@ public class TinkKeyManager implements KeyManagementOperations {
           logger.error(
               "Encryption not initialized: database unreachable or blob unloadable at startup"
                   + " (fail closed; local file was not synced to ezkey_keyset_blob)");
+        } else if (startupOutcome
+            == KeysetHaSyncSupport.StartupBlobOutcome.LEGACY_REPLACE_ELIGIBLE) {
+          replaceLegacyEnvelopeWithBackup(keysetPath);
         } else {
           materializeWriterKeyset(keysetPath, storageMode);
         }
@@ -216,11 +220,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     enforceRequiredEncryption();
   }
 
-  /**
-   * Polls {@code ezkey_keyset_blob} until Admin materializes it or {@code bootstrap-wait} elapses.
-   *
-   * @return {@code true} if the keyset was loaded
-   */
+  /** Polls until Admin materializes the blob or bootstrap-wait elapses. */
   private boolean awaitDatabaseKeyset() {
     Duration wait = properties.getKeyset().getBootstrapWait();
     Duration interval = properties.getKeyset().getBootstrapPollInterval();
@@ -253,12 +253,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     return false;
   }
 
-  /**
-   * FILE-mode peripheral: load an existing keyset file, never generate one.
-   *
-   * @param keysetPath configured keyset file path
-   * @return {@code true} if a file was loaded
-   */
+  /** FILE-mode peripheral: load existing keyset file, never generate. */
   private boolean loadExistingKeysetFileOnly(String keysetPath) {
     if (keysetPath == null || keysetPath.isBlank()) {
       logger.warn("ezkey.encryption.keyset-file is not configured. Encryption disabled.");
@@ -285,13 +280,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
   }
 
-  /**
-   * Writer first-boot / empty-blob materialization. Never CAS-overwrites an existing blob from a
-   * local file (B2/S1); file may only {@code insertSingletonIfAbsent}.
-   *
-   * @param keysetPath configured keyset file path
-   * @param storageMode current storage mode
-   */
+  /** Writer empty-blob materialize; never CAS-overwrite an existing row from a file (B2/B3). */
   private void materializeWriterKeyset(String keysetPath, StorageMode storageMode)
       throws GeneralSecurityException, IOException {
     if (keysetPath == null || keysetPath.isBlank()) {
@@ -312,38 +301,25 @@ public class TinkKeyManager implements KeyManagementOperations {
         keysetFile.exists());
 
     // Belt-and-suspenders: if a peer row appeared and is loadable, adopt it.
-    if (databaseBacked && loadKeysetFromDatabase()) {
-      writeKeysetFileCacheBestEffort(keysetHandle);
-      logger.info(
-          "✅ Keyset adopted from database before materialize (existing blob takes precedence over"
-              + " file)");
-      return;
-    }
-
-    // Unloadable existing row (ADR-0011): generate fresh and CAS-replace — never push a stale file.
-    if (databaseBacked && keysetBlobRepository.keysetExists()) {
-      logger.warn(
-          "Existing keyset blob is unloadable; generating a new keyset for ADR-0011 replace"
-              + " (local file is not used as source)");
-      this.keysetHandle = generateAndSaveKeyset(normalizedKeysetPath);
-      this.keysetFilePath = normalizedKeysetPath;
-      this.keysetFileLastModified = keysetFile.lastModified();
-      try {
-        claimOrAdoptGeneratedKeyset(normalizedKeysetPath);
-      } catch (KeysetConcurrentModificationException e) {
+    if (databaseBacked) {
+      KeysetLoadResult probe = loadKeysetFromDatabaseTyped();
+      if (probe == KeysetLoadResult.LOADED) {
+        writeKeysetFileCacheBestEffort(keysetHandle);
         logger.info(
-            "ADR-0011 replace lost CAS (peer writer ahead); adopting database blob: {}",
-            e.getMessage());
-        if (loadKeysetFromDatabase()) {
-          writeKeysetFileCacheBestEffort(keysetHandle);
-        }
-      } catch (GeneralSecurityException
-          | IOException
-          | DataAccessException
-          | IllegalStateException e) {
-        logger.warn("Failed to replace unloadable keyset blob: {}", e.getMessage());
+            "✅ Keyset adopted from database before materialize (existing blob takes precedence"
+                + " over file)");
+        return;
       }
-      return;
+      if (probe == KeysetLoadResult.FAILED_CLOSED
+          || probe == KeysetLoadResult.LEGACY_ENVELOPE
+          || keysetBlobRepository.keysetExists()) {
+        // B3: row present but not loadable here — never generate+CAS overwrite.
+        logger.error(
+            "Refusing materialize overwrite (loadResult={}, exists={}); fail closed",
+            probe,
+            keysetBlobRepository.keysetExists());
+        return;
+      }
     }
 
     if (keysetFile.exists()) {
@@ -403,14 +379,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
   }
 
-  /**
-   * Claims the singleton via insert, or adopts a peer row. Unloadable legacy blob → CAS replace
-   * against the live DB version (ADR-0011), never memory version 0.
-   *
-   * @param normalizedKeysetPath file path to keep in sync after adopting a peer keyset
-   * @throws GeneralSecurityException if the adopted keyset cannot be parsed or rewritten
-   * @throws IOException if the adopted keyset cannot be written to disk
-   */
+  /** Claims via insert or adopts peer; race loser that cannot load fails closed (B3). */
   private void claimOrAdoptGeneratedKeyset(String normalizedKeysetPath)
       throws GeneralSecurityException, IOException {
     String encryptedKeysetJson =
@@ -426,21 +395,41 @@ public class TinkKeyManager implements KeyManagementOperations {
       logger.info("✅ New keyset claimed in database (version: {})", databaseKeysetVersion);
       return;
     }
-    if (loadKeysetFromDatabase()) {
+    KeysetLoadResult peerLoad = loadKeysetFromDatabaseTyped();
+    if (peerLoad == KeysetLoadResult.LOADED) {
       writeKeysetFileCacheBestEffort(keysetHandle);
       logger.info("✅ Adopted peer keyset blob after losing first-boot claim");
       return;
     }
-    // Unloadable legacy blob (ADR-0011): CAS against the live DB version — never treat memory 0
-    // as "read current version and overwrite" inside claimOrCasUpdateKeyset.
-    Optional<Long> liveVersion = findBlobVersionInstrumented();
-    if (liveVersion.isEmpty()) {
-      throw new IllegalStateException(
-          "Keyset blob claim lost and no version is available to replace an unloadable row");
+    if (peerLoad == KeysetLoadResult.LEGACY_ENVELOPE
+        && properties.getKeyset().isAllowLegacyEnvelopeReplace()) {
+      replaceLegacyEnvelopeWithBackup(normalizedKeysetPath);
+      return;
     }
-    this.databaseKeysetVersion = liveVersion.get();
-    saveKeysetToDatabase("STARTUP_NEW_KEYSET");
-    logger.info("✅ Replaced unloadable keyset blob with newly generated keyset");
+    throw new IllegalStateException(
+        "First-boot claim lost and peer blob cannot be loaded (result="
+            + peerLoad
+            + "); fail closed — refusing overwrite");
+  }
+
+  /** ADR-0011 opt-in: backup old row, generate Tink-native envelope, CAS-replace. */
+  private void replaceLegacyEnvelopeWithBackup(String keysetPath)
+      throws GeneralSecurityException, IOException {
+    String normalized = normalizePath(keysetPath);
+    KeysetBlob old =
+        keysetBlobRepository
+            .findKeyset()
+            .orElseThrow(
+                () -> new IllegalStateException("Legacy replace requested but blob row is absent"));
+    Path backupPath = Path.of(normalized + ".legacy-backup");
+    Files.write(backupPath, old.getKeysetData());
+    logger.warn("Wrote ADR-0011 legacy blob backup to {}", backupPath);
+    this.keysetHandle = generateAndSaveKeyset(normalized);
+    this.keysetFilePath = normalized;
+    this.keysetFileLastModified = new File(normalized).lastModified();
+    this.databaseKeysetVersion = old.getVersion() != null ? old.getVersion() : 1L;
+    saveKeysetToDatabase("STARTUP_LEGACY_REPLACE");
+    logger.info("✅ Replaced positively identified legacy envelope (backup at {})", backupPath);
   }
 
   /** Shuts down the async keyset version check executor on application stop. */
@@ -670,7 +659,7 @@ public class TinkKeyManager implements KeyManagementOperations {
                 "🔄 Database keyset updated (version: {} > {}), reloading keyset...",
                 dbVersion.get(),
                 databaseKeysetVersion);
-            if (loadKeysetFromDatabaseUnlocked()) {
+            if (loadKeysetFromDatabaseUnlocked() == KeysetLoadResult.LOADED) {
               logger.info("✅ Keyset reloaded from database successfully");
             }
           }
@@ -1270,6 +1259,11 @@ public class TinkKeyManager implements KeyManagementOperations {
   }
 
   public boolean loadKeysetFromDatabase() {
+    return loadKeysetFromDatabaseTyped() == KeysetLoadResult.LOADED;
+  }
+
+  /** Typed blob load under write lock (B3 — failures are never ABSENT). */
+  KeysetLoadResult loadKeysetFromDatabaseTyped() {
     keysetLock.writeLock().lock();
     try {
       return loadKeysetFromDatabaseUnlocked();
@@ -1278,28 +1272,37 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
   }
 
-  private boolean loadKeysetFromDatabaseUnlocked() {
+  private KeysetLoadResult loadKeysetFromDatabaseUnlocked() {
     if (keysetBlobRepository == null) {
       logger.debug("KeysetBlobRepository not available, cannot load from database");
-      return false;
+      return KeysetLoadResult.ABSENT;
     }
 
     if (masterAead == null) {
       logger.warn("Master AEAD not initialized, cannot decrypt keyset from database");
-      return false;
+      return KeysetLoadResult.FAILED_CLOSED;
     }
 
     try {
       var keysetBlobOpt = keysetBlobRepository.findKeyset();
       if (keysetBlobOpt.isEmpty()) {
         logger.debug("No keyset blob found in database");
-        return false;
+        return KeysetLoadResult.ABSENT;
       }
 
       KeysetBlob keysetBlob = keysetBlobOpt.get();
       byte[] encryptedData = keysetBlob.getKeysetData();
-      String encryptedKeysetJson = new String(encryptedData, StandardCharsets.UTF_8);
+      KeysetLoadResult classified =
+          KeysetBlobEnvelopeClassifier.classify(encryptedData, masterAead);
+      if (classified == KeysetLoadResult.LEGACY_ENVELOPE) {
+        logger.warn("Positively identified ADR-0011 legacy outer-encrypted keyset blob");
+        return KeysetLoadResult.LEGACY_ENVELOPE;
+      }
+      if (classified == KeysetLoadResult.FAILED_CLOSED) {
+        return KeysetLoadResult.FAILED_CLOSED;
+      }
 
+      String encryptedKeysetJson = new String(encryptedData, StandardCharsets.UTF_8);
       this.keysetHandle =
           TinkJsonProtoKeysetFormat.parseEncryptedKeyset(
               encryptedKeysetJson, masterAead, KEYSET_ASSOCIATED_DATA, RegistryConfiguration.get());
@@ -1312,11 +1315,16 @@ public class TinkKeyManager implements KeyManagementOperations {
           unsignedPrimaryKeyId,
           signedPrimaryKeyId,
           databaseKeysetVersion);
-      return true;
-    } catch (GeneralSecurityException | DataAccessException | IllegalArgumentException e) {
-      logger.error("Failed to load keyset from database: {}", e.getMessage());
+      return KeysetLoadResult.LOADED;
+    } catch (DataAccessException e) {
+      logger.error("Failed to load keyset from database (DB unreachable): {}", e.getMessage());
       logger.debug("Database keyset load error", e);
-      return false;
+      return KeysetLoadResult.FAILED_CLOSED;
+    } catch (GeneralSecurityException | IllegalArgumentException e) {
+      logger.error(
+          "Failed to decrypt/parse keyset from database (fail closed): {}", e.getMessage());
+      logger.debug("Database keyset decrypt/parse error", e);
+      return KeysetLoadResult.FAILED_CLOSED;
     }
   }
 
@@ -1345,12 +1353,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     saveKeysetHandleToDatabaseUnlocked(keysetHandle, updatedBy);
   }
 
-  /**
-   * CAS-writes {@code handle} to the blob without updating {@link #keysetHandle} first (H3).
-   *
-   * @param handle keyset to persist
-   * @param updatedBy actor label
-   */
+  /** CAS-writes handle without installing memory first (H3). */
   private void saveKeysetHandleToDatabaseUnlocked(KeysetHandle handle, String updatedBy)
       throws GeneralSecurityException, IOException {
     if (handle == null) {
@@ -1375,15 +1378,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
   }
 
-  /**
-   * Persists a mutated keyset: CAS first in DATABASE/HYBRID (propagate all DB errors), then install
-   * memory immediately, then rewrite the keyset file as a best-effort cache. On CAS miss, memory
-   * and file stay unchanged (H3). After a successful CAS, a file-cache write failure is logged at
-   * ERROR and does not fail the mutation (DATABASE/HYBRID) — the file is a cache, best-effort.
-   *
-   * @param newHandle mutated keyset (not yet installed)
-   * @param updatedBy CAS actor label
-   */
+  /** CAS first (H3), install memory, best-effort file cache. */
   private void commitMutatedKeysetUnlocked(KeysetHandle newHandle, String updatedBy)
       throws GeneralSecurityException, IOException {
     StorageMode storageMode = properties.getKeyset().getStorageMode();
@@ -1409,12 +1404,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
   }
 
-  /**
-   * Writes the keyset file as a best-effort local cache after a successful DATABASE/HYBRID CAS.
-   * Failure is logged at ERROR and does not roll back memory or the blob.
-   *
-   * @param handle keyset already committed to the database and installed in memory
-   */
+  /** Best-effort file cache after successful CAS (ERROR log on failure; no rollback). */
   private void writeKeysetFileCacheBestEffort(KeysetHandle handle) {
     String normalizedPath = normalizePath(properties.getKeysetFile());
     try {
@@ -1436,10 +1426,11 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
   }
 
-  /** Reload once under write lock when DB blob is newer (Option A). */
+  /** Reload under write lock when DB blob is newer (Option A). */
   private void reloadKeysetBeforeMutationUnlocked() {
     haSync.reloadKeysetBeforeMutationIfNeeded(
-        () -> databaseKeysetVersion, this::loadKeysetFromDatabaseUnlocked);
+        () -> databaseKeysetVersion,
+        () -> loadKeysetFromDatabaseUnlocked() == KeysetLoadResult.LOADED);
   }
 
   private boolean isDatabaseBlobCurrentUnlocked() {
@@ -1457,7 +1448,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     try {
       Optional<Long> dbVersion = findBlobVersionInstrumented();
       if (dbVersion.isPresent() && dbVersion.get() > databaseKeysetVersion) {
-        return loadKeysetFromDatabaseUnlocked();
+        return loadKeysetFromDatabaseUnlocked() == KeysetLoadResult.LOADED;
       }
       return false;
     } finally {
