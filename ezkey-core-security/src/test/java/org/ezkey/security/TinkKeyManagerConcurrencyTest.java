@@ -317,15 +317,20 @@ class TinkKeyManagerConcurrencyTest {
       String blobJson = new String(storedBlob.get().getKeysetData(), StandardCharsets.UTF_8);
       assertTrue(blobJson.contains("\"encryptedKeyset\""));
       assertTrue(blobJson.contains("\"keysetInfo\""));
-      try (var backups =
-          Files.list(keysetPath.getParent())
-              .filter(
-                  p ->
-                      p.getFileName()
-                          .toString()
-                          .startsWith(keysetPath.getFileName() + ".legacy-backup.v"))) {
-        assertTrue(
-            backups.findAny().isPresent(), "ADR-0011 replace must keep a unique legacy backup");
+      String backupPrefix = keysetPath.getFileName() + ".legacy-backup.v";
+      try (var stream = Files.list(keysetPath.getParent())) {
+        var backups =
+            stream.filter(p -> p.getFileName().toString().startsWith(backupPrefix)).toList();
+        assertEquals(1, backups.size(), "ADR-0011 replace must keep exactly one legacy backup");
+        try {
+          assertEquals(
+              java.util.Set.of(
+                  java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+                  java.nio.file.attribute.PosixFilePermission.OWNER_WRITE),
+              Files.getPosixFilePermissions(backups.get(0)));
+        } catch (UnsupportedOperationException e) {
+          // non-POSIX
+        }
       }
     } finally {
       manager.shutdownKeysetCheckExecutor();

@@ -11,6 +11,7 @@
 
 package org.ezkey.security;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -24,13 +25,20 @@ import com.google.crypto.tink.CleartextKeysetHandle;
 import com.google.crypto.tink.JsonKeysetWriter;
 import com.google.crypto.tink.KeyTemplates;
 import com.google.crypto.tink.KeysetHandle;
+import com.google.crypto.tink.RegistryConfiguration;
+import com.google.crypto.tink.TinkJsonProtoKeysetFormat;
 import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.subtle.AesGcmJce;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -39,6 +47,7 @@ import org.ezkey.config.TinkProperties;
 import org.ezkey.security.domain.entity.KeysetBlob;
 import org.ezkey.security.domain.repository.KeysetBlobRepository;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -67,8 +76,6 @@ class TinkKeyManagerBlobKidInvariantTest {
     STALE_UNREADABLE_FILE,
     /** exists=false → insert 0 → find throws (claim path race loser). */
     FIRST_BOOT_RACE_LOSER_LOAD_FAILS,
-    /** Same claim-path race as FIRST_BOOT (explicit alias for lot 5). */
-    RACE_LOSER_EXISTS_FALSE_INSERT_ZERO_FIND_THROWS,
     /** Opt-in legacy replace with CAS miss — blob kids must survive; fail closed. */
     LEGACY_REPLACE_CAS_FAILS
   }
@@ -155,16 +162,22 @@ class TinkKeyManagerBlobKidInvariantTest {
           sharedBlob.get().getVersion() == versionBefore,
           "FAILURE [" + mode + "]: blob version advanced (destructive CAS)");
 
-      if (mode == FailureMode.FIRST_BOOT_RACE_LOSER_LOAD_FAILS
-          || mode == FailureMode.RACE_LOSER_EXISTS_FALSE_INSERT_ZERO_FIND_THROWS) {
+      if (mode == FailureMode.FIRST_BOOT_RACE_LOSER_LOAD_FAILS) {
         verify(flaky, atLeastOnce()).insertSingletonIfAbsent(any(), any(), any());
         assertFalse(
             writer.isInitialized(),
             "FAILURE [" + mode + "]: race loser must fail closed (not ready with orphan kids)");
+        assertFalse(
+            Files.exists(writerFile),
+            "FAILURE [" + mode + "]: no keyset file may be written before a successful claim");
       }
       if (mode == FailureMode.LEGACY_REPLACE_CAS_FAILS) {
         assertFalse(
             writer.isInitialized(), "FAILURE [" + mode + "]: legacy CAS miss must fail closed");
+        assertFalse(
+            Files.exists(writerFile),
+            "FAILURE [" + mode + "]: no keyset file may be written before a successful CAS");
+        assertExactlyOneLegacyBackupWithOwnerRw(writerFile);
       }
 
       if (writer.isInitialized() && keyK != -1L) {
@@ -174,6 +187,97 @@ class TinkKeyManagerBlobKidInvariantTest {
       }
     } finally {
       writer.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "B5 HYBRID tick: divergent newer local file never installs kids absent from the blob")
+  void hybridTick_divergentNewerFile_doesNotAdoptKidsAbsentFromBlob(@TempDir Path tempDir)
+      throws Exception {
+    AeadConfig.register();
+    AtomicReference<KeysetBlob> sharedBlob = new AtomicReference<>();
+    KeysetBlobRepository repo = casRepository(sharedBlob);
+
+    Path masterKey = tempDir.resolve("master.key");
+    Path peerFile = tempDir.resolve("peer-keyset.json.encrypted");
+    Path writerFile = tempDir.resolve("writer-keyset.json.encrypted");
+    byte[] masterKeyBytes = TestMasterKeys.write(masterKey);
+
+    long keyK;
+    TinkKeyManager peer = initializeManager(masterKey, peerFile, repo);
+    try {
+      keyK = peer.addKeyWithoutPromotion();
+      peer.promoteToPrimary(keyK);
+      assertTrue(peer.getAllKeyIds().contains(keyK));
+    } finally {
+      peer.shutdownKeysetCheckExecutor();
+    }
+
+    TinkProperties hybridProps = writerProps(masterKey, writerFile);
+    hybridProps.getKeyset().setStorageMode(TinkProperties.Keyset.StorageMode.HYBRID);
+    TinkKeyManager writer = new TinkKeyManager(hybridProps, fixedProvider(repo));
+    try {
+      writer.initialize();
+      assertTrue(writer.isInitialized());
+      assertTrue(writer.getAllKeyIds().contains(keyK));
+
+      Aead masterAead = new AesGcmJce(masterKeyBytes);
+      KeysetHandle orphan = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+      long orphanPrimary = Integer.toUnsignedLong(orphan.getPrimary().getId());
+      String encrypted =
+          TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
+              orphan, masterAead, new byte[0], RegistryConfiguration.get());
+      Files.writeString(writerFile, encrypted, StandardCharsets.UTF_8);
+      writer.setKeysetFileLastModifiedForTests(0L);
+      writer.resetDatabaseCheckThrottleForTests();
+      writer.runKeysetVersionCheckSynchronouslyForTests();
+
+      assertTrue(
+          writer.getAllKeyIds().contains(keyK),
+          "HYBRID tick must keep blob kid K after divergent file");
+      assertFalse(
+          writer.getAllKeyIds().contains(orphanPrimary),
+          "HYBRID tick must not adopt orphan kid from divergent local file");
+      assertEquals(
+          new HashSet<>(writer.getAllKeyIds()),
+          blobKids(sharedBlob.get().getKeysetData(), masterAead),
+          "memory kids must match blob after HYBRID tick");
+    } finally {
+      writer.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  private static Set<Long> blobKids(byte[] encryptedBlob, Aead masterAead) throws Exception {
+    KeysetHandle handle =
+        TinkJsonProtoKeysetFormat.parseEncryptedKeyset(
+            new String(encryptedBlob, StandardCharsets.UTF_8),
+            masterAead,
+            new byte[0],
+            RegistryConfiguration.get());
+    Set<Long> kids = new HashSet<>();
+    for (var entry : handle.getKeysetInfo().getKeyInfoList()) {
+      kids.add(Integer.toUnsignedLong(entry.getKeyId()));
+    }
+    return kids;
+  }
+
+  private static void assertExactlyOneLegacyBackupWithOwnerRw(Path keysetFile) throws Exception {
+    String prefix = keysetFile.getFileName() + ".legacy-backup.v";
+    List<Path> backups;
+    try (Stream<Path> stream = Files.list(keysetFile.getParent())) {
+      backups = stream.filter(p -> p.getFileName().toString().startsWith(prefix)).toList();
+    }
+    assertEquals(1, backups.size(), "exactly one legacy backup expected");
+    Path backup = backups.get(0);
+    try {
+      Set<PosixFilePermission> perms = Files.getPosixFilePermissions(backup);
+      assertEquals(
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+          perms,
+          "legacy backup must be created with POSIX 600");
+    } catch (UnsupportedOperationException e) {
+      // non-POSIX filesystems (e.g. some CI images) skip the 600 assert
     }
   }
 
@@ -229,7 +333,7 @@ class TinkKeyManagerBlobKidInvariantTest {
       case WRONG_MASTER_KEY, STALE_UNREADABLE_FILE -> {
         // real blob; failure is master key / file
       }
-      case FIRST_BOOT_RACE_LOSER_LOAD_FAILS, RACE_LOSER_EXISTS_FALSE_INSERT_ZERO_FIND_THROWS -> {
+      case FIRST_BOOT_RACE_LOSER_LOAD_FAILS -> {
         // Claim path: exists=false so materialize generates; insert loses; find throws.
         when(repository.keysetExists()).thenReturn(false);
         when(repository.insertSingletonIfAbsent(any(), any(), any())).thenReturn(0);

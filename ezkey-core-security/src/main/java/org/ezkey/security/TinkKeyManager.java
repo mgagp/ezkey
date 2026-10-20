@@ -348,13 +348,20 @@ public class TinkKeyManager implements KeyManagementOperations {
             + "NOTE: If this is not the first startup, check that the keyset file exists "
             + "and is accessible. All APIs must use the same keyset file.",
         normalizedKeysetPath);
+    // B5: claim blob first; file is post-claim cache only.
+    if (databaseBacked) {
+      this.keysetHandle = KeysetHandle.generateNew(getKeyTemplate());
+      this.keysetFilePath = normalizedKeysetPath;
+      claimOrAdoptOrFailClosed(normalizedKeysetPath, "startup-new-keyset-claim");
+      if (isInitialized()) {
+        writeKeysetFileCacheBestEffort(keysetHandle);
+      }
+      return;
+    }
     this.keysetHandle = generateAndSaveKeyset(normalizedKeysetPath);
     this.keysetFilePath = normalizedKeysetPath;
     this.keysetFileLastModified = keysetFile.lastModified();
     logger.info("🆕 New keyset created and saved to: {}", normalizedKeysetPath);
-    if (databaseBacked) {
-      claimOrAdoptOrFailClosed(normalizedKeysetPath, "startup-new-keyset-claim");
-    }
   }
 
   /** Claims/adopts peer; on failure adopts winner or clears handle (B4). */
@@ -384,12 +391,24 @@ public class TinkKeyManager implements KeyManagementOperations {
   }
 
   private void clearKeysetHandleFailClosed(String context) {
+    String configured = properties.getKeysetFile();
+    String orphan =
+        keysetFilePath != null && !keysetFilePath.isBlank()
+            ? keysetFilePath
+            : configured == null || configured.isBlank() ? null : normalizePath(configured);
     this.keysetHandle = null;
     this.keysetFilePath = null;
     this.keysetFileLastModified = 0;
     this.databaseKeysetVersion = 0;
+    KeysetBlobEnvelopeClassifier.deleteFileCacheBestEffort(orphan, context);
     logger.error(
         "Fail closed: cleared in-memory keyset ({}); process is not ready for encryption", context);
+  }
+
+  /** Restores prior memory after a failed legacy-replace CAS (tests + replace catch). */
+  void restoreHandleAfterFailedCas(KeysetHandle previousHandle, long previousVersion) {
+    this.keysetHandle = previousHandle;
+    this.databaseKeysetVersion = previousVersion;
   }
 
   /** Claims via insert or adopts peer; race loser that cannot load fails closed (B3). */
@@ -451,8 +470,7 @@ public class TinkKeyManager implements KeyManagementOperations {
         | IllegalStateException
         | GeneralSecurityException
         | IOException e) {
-      this.databaseKeysetVersion = previousVersion;
-      this.keysetHandle = previousHandle;
+      restoreHandleAfterFailedCas(previousHandle, previousVersion);
       throw e;
     }
     this.keysetHandle = newHandle;
@@ -508,6 +526,11 @@ public class TinkKeyManager implements KeyManagementOperations {
   /** Tests only: set cached blob version. */
   void setDatabaseKeysetVersionForTests(long version) {
     databaseKeysetVersion = version;
+  }
+
+  /** Tests only: cached keyset file mtime for the version tick. */
+  void setKeysetFileLastModifiedForTests(long lastModified) {
+    keysetFileLastModified = lastModified;
   }
 
   /** Tests only: wait for scheduled async version check. */
@@ -632,9 +655,9 @@ public class TinkKeyManager implements KeyManagementOperations {
       }
     }
 
+    // B5: only FILE mode reloads from disk; HYBRID file is cache-only.
     boolean shouldReloadFromFile = false;
-    if ((storageMode == StorageMode.FILE || storageMode == StorageMode.HYBRID)
-        && keysetFilePath != null) {
+    if (storageMode == StorageMode.FILE && keysetFilePath != null) {
       try {
         File keysetFile = new File(keysetFilePath);
         if (keysetFile.exists() && keysetFile.lastModified() > keysetFileLastModified) {
@@ -663,6 +686,7 @@ public class TinkKeyManager implements KeyManagementOperations {
                 dbVersion.get(),
                 databaseKeysetVersion);
             if (loadKeysetFromDatabaseUnlocked() == KeysetLoadResult.LOADED) {
+              writeKeysetFileCacheBestEffort(keysetHandle);
               logger.info("✅ Keyset reloaded from database successfully");
             }
           }
@@ -902,27 +926,8 @@ public class TinkKeyManager implements KeyManagementOperations {
   private KeysetHandle generateAndSaveKeyset(String keysetPath)
       throws GeneralSecurityException, IOException {
     logger.info("🆕 Generating new keyset...");
-    String normalizedPath = normalizePath(keysetPath);
-    var template = getKeyTemplate();
-    KeysetHandle newKeyset = KeysetHandle.generateNew(template);
-
-    File keysetFile = new File(normalizedPath);
-    File parentDir = keysetFile.getParentFile();
-    if (parentDir != null && !parentDir.exists()) {
-      if (!parentDir.mkdirs()) {
-        logger.warn("Could not create keyset directory: {}", parentDir);
-      }
-    }
-
-    String encryptedKeysetJson =
-        TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
-            newKeyset, masterAead, KEYSET_ASSOCIATED_DATA, RegistryConfiguration.get());
-    Files.writeString(keysetFile.toPath(), encryptedKeysetJson, StandardCharsets.UTF_8);
-
-    if (!isWindows()) {
-      setSecureFilePermissions(keysetFile.toPath());
-    }
-
+    KeysetHandle newKeyset = KeysetHandle.generateNew(getKeyTemplate());
+    saveKeyset(newKeyset, normalizePath(keysetPath));
     logger.info("✅ New keyset generated and encrypted");
     return newKeyset;
   }

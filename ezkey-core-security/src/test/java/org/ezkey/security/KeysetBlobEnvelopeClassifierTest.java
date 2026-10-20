@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tightens ADR-0011 legacy detection beyond “not encryptedKeyset”.
@@ -39,6 +40,32 @@ class KeysetBlobEnvelopeClassifierTest {
     assertFalse(
         KeysetBlobEnvelopeClassifier.looksLikeTinkCleartextKeysetJson(
             "{\"encryptedKeyset\":\"abc\",\"primaryKeyId\":1}"));
+    // Substring markers without structure must not count as legacy cleartext.
+    assertFalse(
+        KeysetBlobEnvelopeClassifier.looksLikeTinkCleartextKeysetJson(
+            "{\"primaryKeyId\":1,\"key\":\"not-an-array\",\"keyData\":1,"
+                + "\"outputPrefixType\":\"TINK\",\"status\":\"ENABLED\"}"));
+  }
+
+  @Test
+  @DisplayName("writeUniqueLegacyBackup creates exactly one file with POSIX 600 when supported")
+  void writeUniqueLegacyBackup_atomicOwnerRw(@TempDir java.nio.file.Path tempDir) throws Exception {
+    java.nio.file.Path keyset = tempDir.resolve("keyset.json.encrypted");
+    java.nio.file.Files.writeString(keyset, "placeholder");
+    byte[] payload = new byte[] {1, 2, 3};
+    java.nio.file.Path backup =
+        KeysetBlobEnvelopeClassifier.writeUniqueLegacyBackup(keyset.toString(), 9L, payload);
+    assertTrue(java.nio.file.Files.exists(backup));
+    assertEquals(3, java.nio.file.Files.size(backup));
+    try {
+      assertEquals(
+          java.util.Set.of(
+              java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+              java.nio.file.attribute.PosixFilePermission.OWNER_WRITE),
+          java.nio.file.Files.getPosixFilePermissions(backup));
+    } catch (UnsupportedOperationException e) {
+      // non-POSIX
+    }
   }
 
   @Test

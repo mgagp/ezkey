@@ -10,6 +10,9 @@
 
 package org.ezkey.security;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.crypto.tink.Aead;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -17,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.GeneralSecurityException;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -31,6 +35,9 @@ import org.slf4j.LoggerFactory;
 final class KeysetBlobEnvelopeClassifier {
 
   private static final Logger logger = LoggerFactory.getLogger(KeysetBlobEnvelopeClassifier.class);
+  private static final ObjectMapper JSON = new ObjectMapper();
+  private static final Set<PosixFilePermission> OWNER_RW =
+      Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
 
   private KeysetBlobEnvelopeClassifier() {}
 
@@ -70,49 +77,84 @@ final class KeysetBlobEnvelopeClassifier {
   }
 
   /**
-   * Requires several Tink cleartext keyset field names after a successful master-AEAD decrypt.
+   * Structural check: Tink cleartext keyset JSON after a successful master-AEAD decrypt.
    *
    * @param clearJson decrypted UTF-8 payload
-   * @return {@code true} only when the payload looks like a Tink cleartext keyset JSON
+   * @return {@code true} only when the payload parses as a Tink cleartext keyset object
    */
   static boolean looksLikeTinkCleartextKeysetJson(String clearJson) {
     if (clearJson == null || !clearJson.startsWith("{")) {
       return false;
     }
-    if (clearJson.contains("\"encryptedKeyset\"")) {
+    try {
+      JsonNode root = JSON.readTree(clearJson);
+      if (!root.isObject() || root.has("encryptedKeyset") || !root.has("primaryKeyId")) {
+        return false;
+      }
+      JsonNode keys = root.get("key");
+      if (keys == null || !keys.isArray() || keys.isEmpty()) {
+        return false;
+      }
+      for (JsonNode key : keys) {
+        if (!key.isObject()
+            || !key.has("keyData")
+            || !key.has("outputPrefixType")
+            || !key.has("status")) {
+          return false;
+        }
+      }
+      return true;
+    } catch (JsonProcessingException e) {
       return false;
     }
-    return clearJson.contains("\"primaryKeyId\"")
-        && clearJson.contains("\"key\"")
-        && clearJson.contains("\"keyData\"")
-        && clearJson.contains("\"outputPrefixType\"")
-        && clearJson.contains("\"status\"");
   }
 
   /**
-   * Atomically creates a unique legacy backup (CREATE_NEW) and sets POSIX 600 when supported.
+   * Atomically creates a unique legacy backup with POSIX 600 at create time when supported.
    *
    * @param keysetPath normalized keyset file path (backup is a sibling sidecar)
    * @param liveVersion blob version included in the filename
    * @param legacyBytes old row bytes
    * @return backup path
-   * @throws IOException if create-new or permission set fails
+   * @throws IOException if create-new or write fails
    */
   static Path writeUniqueLegacyBackup(String keysetPath, long liveVersion, byte[] legacyBytes)
       throws IOException {
     Path backupPath =
         Path.of(keysetPath + ".legacy-backup.v" + liveVersion + "." + System.currentTimeMillis());
-    try (var out =
-        Files.newOutputStream(
-            backupPath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+    try {
+      Files.createFile(backupPath, PosixFilePermissions.asFileAttribute(OWNER_RW));
+    } catch (UnsupportedOperationException e) {
+      logger.debug("POSIX create attrs unsupported for {}: {}", backupPath, e.getMessage());
+      Files.createFile(backupPath);
+    }
+    try (var out = Files.newOutputStream(backupPath, StandardOpenOption.WRITE)) {
       out.write(legacyBytes);
     }
-    try {
-      Files.setPosixFilePermissions(
-          backupPath, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
-    } catch (UnsupportedOperationException e) {
-      logger.debug("POSIX 600 not supported for legacy backup {}: {}", backupPath, e.getMessage());
-    }
     return backupPath;
+  }
+
+  /**
+   * Best-effort delete of a local keyset file cache after fail-closed clear (Christophe orphan
+   * rule).
+   *
+   * @param path absolute or normalized keyset path; ignored when null/blank
+   * @param context fail-closed reason for logs
+   */
+  static void deleteFileCacheBestEffort(String path, String context) {
+    if (path == null || path.isBlank()) {
+      return;
+    }
+    try {
+      if (Files.deleteIfExists(Path.of(path))) {
+        logger.warn("Deleted orphan keyset file cache after fail-closed ({}): {}", context, path);
+      }
+    } catch (IOException | SecurityException e) {
+      logger.warn(
+          "Could not delete orphan keyset file cache after fail-closed ({}): {} — {}",
+          context,
+          path,
+          e.getMessage());
+    }
   }
 }
