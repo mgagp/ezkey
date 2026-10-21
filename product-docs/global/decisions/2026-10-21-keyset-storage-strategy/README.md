@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Date:** 2026-10-21
-- **Status:** proposed (direction adopted on [#952](https://github.com/mgagp/ezkey/issues/952); implementation not started)
+- **Status:** proposed (direction adopted on [#952](https://github.com/mgagp/ezkey/issues/952); open questions 1–7 **DECIDED** 2026-10-21; implementation not started)
 - **Scope:** At-rest encryption keyset lifecycle (`TinkKeyManager`, crypto-api, Windows/dev profiles, community host)
 - **Related ADR (draft):** [ADR-0016](../../architecture-decisions.md#adr-0016-keyset-blob-single-source-of-truth)
 - **GitHub:** [#952](https://github.com/mgagp/ezkey/issues/952) (supersedes paused [#936](https://github.com/mgagp/ezkey/pull/936))
@@ -20,7 +20,7 @@ This pack is the **analysis + detailed design + characterization gate** before a
 
 | File | Role |
 |------|------|
-| [`design.md`](design.md) | Current behavior (path:line), target design, eight invariants → planned tests, removals, doc plan, validation plan, open questions |
+| [`design.md`](design.md) | Current behavior (path:line), target design, eight invariants → planned tests, removals, doc plan, validation plan, decisions (§8) |
 | [`community-upgrade-impact.md`](community-upgrade-impact.md) | Dedicated in-place upgrade assessment for the community instance (ezkey.online) |
 | [`adr-0016-draft.md`](adr-0016-draft.md) | Short superseding ADR draft (also mirrored as proposed in `architecture-decisions.md`) |
 

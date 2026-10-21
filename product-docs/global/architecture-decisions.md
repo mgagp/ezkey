@@ -1065,10 +1065,12 @@ divergence between file and blob (blockers B2, B5, B6). Real deployments already
    not read, write, or delete a keyset file.
 2. **Remove `FILE` and `HYBRID`** modes and related flags. Windows and crypto-api align on
    database-backed load. `master.key` remains a file/secret.
-3. **crypto-api** (local lab only) uses a read-only DataSource and a SELECT-only DB role on
-   `ezkey_keyset_blob` (no `ezkey_encryption_key`); AEAD recovery reloads the blob; bounded
-   bootstrap wait then explicit failure; never `ezkey.encryption.required=false`
-   ([#942](https://github.com/mgagp/ezkey/issues/942) property purge is an adjacent thin PR).
+3. **crypto-api** runs **only** in the disposable local clean-start stack (Marc deployment models,
+   2026-10-21: local clean-start · Lightsail VMs · future AWS/#953; no hybrid laptop+remote-DB). It
+   uses a read-only DataSource and a SELECT-only DB role on `ezkey_keyset_blob` (no
+   `ezkey_encryption_key`); AEAD recovery reloads the blob; split health; never
+   `ezkey.encryption.required=false` ([#942](https://github.com/mgagp/ezkey/issues/942) property
+   purge is an adjacent thin PR).
 4. **Online rotation** remains, **DB-CAS-first** and fail closed. Invariants 1–3 are a **new CAS
    protocol** inspired by #936 (install only after successful CAS). Invariants 4–8 carry from that
    line (short tick; unknown kid fail closed; DB errors never generate; no DELETE/TRUNCATE of the

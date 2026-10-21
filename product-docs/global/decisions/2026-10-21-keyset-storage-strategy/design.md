@@ -167,9 +167,19 @@ Ordering vs existing `ApplicationReadyStartupOrder.KEYSET_SYNC`: keep Admin keys
 | DB role | `ezkey_crypto` with **SELECT only** on `ezkey_keyset_blob` (deny elsewhere), proven by `verify-grants.sh` |
 | AEAD recovery | On decrypt AEAD failure: **reload the blob** (force version check / `forceReloadFromDatabase`) and retry. **Do not** consult `ezkey_encryption_key` metadata — no GRANT on that table. |
 | Wait | Bounded `bootstrap-wait`, then **explicit failure** |
-| `required` | **Never** `required=false` for crypto-api (see [#942](https://github.com/mgagp/ezkey/issues/942)). Prefer process fail-closed when encryption cannot initialize; health-split remains a product dial (§8 Q1). |
+| `required` / health | **DECIDED (§8):** never `required=false`; **split health** (liveness OK; encryption readiness separate). See [#942](https://github.com/mgagp/ezkey/issues/942). |
 | Secrets | Still needs `master.key`; adds DB credentials for SELECT-only role. Acceptable under Marc’s lab proportionality. |
-| experimental-hybrid local | Do **not** open community Postgres to the internet; run crypto-api on the VM only (recommended — §8 Q8). |
+| Where it runs | **DECIDED (Marc, 2026-10-21):** crypto-api runs **only** in the disposable local clean-start stack (deployment model 1). Not on Lightsail / ezkey.online. |
+
+### 2.5.1 Deployment models (Marc, 2026-10-21)
+
+Until proven otherwise, **only three** deployment models exist:
+
+1. **Disposable local clean-start stack** — all local development, testing, and experiments. **The only place `crypto-api` runs.**
+2. **Remote Lightsail VMs** (today ezkey.online) — everything runs on the VM.
+3. **Future full AWS cloud** — tracked under [#953](https://github.com/mgagp/ezkey/issues/953).
+
+There is **no** hybrid laptop + remote-DB mode.
 
 ### 2.6 SELECT-only role
 
@@ -265,18 +275,21 @@ Tests **must pass on current `main`**. Methods expected to flip after the refact
 
 ---
 
-## 8. Open questions for Marc (with recommendations)
+## 8. Decisions (Marc, 2026-10-21)
 
-| # | Question | Recommendation |
-|---|----------|----------------|
-| 1 | **crypto-api health vs #942:** full fail-closed vs split liveness / encryption readiness? | **Split health** (liveness OK; encryption readiness separate) so bootstrap-init keypair/sign is not blocked 90s, while encrypt/decrypt and any `required` path stay fail-closed. Never `required=false`. |
-| 2 | **SELECT on `ezkey_encryption_key`?** | **Decided: blob SELECT only.** AEAD recovery = reload blob + retry (§2.5 / §2.6). No metadata GRANT. |
-| 3 | **Leftover community keyset file:** rename `.orphaned` vs delete after canary? | **Rename + retain** until one extra green restart after canary; then optional operator delete. |
-| 4 | **Rotate-after-failed-CAS:** must in-memory rotation be rolled back? | **Yes — fail closed.** Staging handle only; live primary installs after CAS. Today’s orphan behavior is characterized and must flip (§2.3). |
-| 5 | **Tick interval:** keep 5 s vs configurable upper bound? | **Keep 5 s** as the default constant; allow config only with a hard upper bound (≤ 5 s) enforced by tests. |
-| 6 | **CLI import/export timing?** | **Adjacent thin PR after cutover** (not in the cutover PR). |
-| 7 | **#942 sequencing?** | **Adjacent thin PR** immediately after (or just before) cutover — property purge only. Decrypt fail-closed stays in cutover. |
-| 8 | **experimental-hybrid local crypto-api?** | **crypto-api on the VM only** — no laptop→Lightsail Postgres. |
+Former open questions **1–7** are **DECIDED** as written below (Marc approved 2026-10-21). Former Q8 is **dropped** and replaced by the deployment-model rule in §2.5.1.
+
+| # | Topic | DECIDED |
+|---|-------|---------|
+| 1 | crypto-api health vs #942 | **Split health** (liveness OK; encryption readiness separate) so bootstrap-init keypair/sign is not blocked 90s, while encrypt/decrypt and any `required` path stay fail-closed. Never `required=false`. |
+| 2 | SELECT on `ezkey_encryption_key` | **Blob SELECT only.** AEAD recovery = reload blob + retry (§2.5 / §2.6). No metadata GRANT. |
+| 3 | Leftover community keyset file | **Rename + retain** until one extra green restart after canary; then optional operator delete. |
+| 4 | Rotate-after-failed-CAS | **Fail closed.** Staging handle only; live primary installs after CAS. Today’s orphan behavior is characterized and must flip (§2.3). |
+| 5 | Tick interval | **Keep 5 s** as the default constant; allow config only with a hard upper bound (≤ 5 s) enforced by tests. |
+| 6 | CLI import/export timing | **Adjacent thin PR after cutover** (not in the cutover PR). |
+| 7 | #942 sequencing | **Adjacent thin PR** immediately after (or just before) cutover — property purge only. Decrypt fail-closed stays in cutover. |
+
+**Deployment models (replaces former Q8):** see §2.5.1 — local clean-start (only crypto-api home) · Lightsail VMs · future AWS (#953). No hybrid laptop + remote-DB.
 
 ---
 
