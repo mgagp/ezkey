@@ -21,6 +21,11 @@ from .pagination_utils import (
     is_paginated_response,
     SORTABLE_FIELDS,
 )
+from .tls import (
+    InsecureTlsNotAllowedError,
+    resolve_ssl_verify,
+    ssl_verify_from_config,
+)
 
 __all__ = [
     "HttpClient",
@@ -35,4 +40,7 @@ __all__ = [
     "extract_page_content",
     "is_paginated_response",
     "SORTABLE_FIELDS",
+    "InsecureTlsNotAllowedError",
+    "resolve_ssl_verify",
+    "ssl_verify_from_config",
 ]
