@@ -183,7 +183,11 @@ public class EncryptionService implements EncryptionOperations {
       return null;
     }
     if (!isEncryptionAvailable()) {
-      logger.debug("Encryption not available, assuming plaintext");
+      if (isEncrypted(encryptedValue)) {
+        throw new IllegalStateException(
+            "Cannot decrypt ENC:-prefixed value; encryption is not available (fail-closed)");
+      }
+      logger.debug("Encryption not available; returning non-ENC value as plaintext");
       return encryptedValue;
     }
     if (!isEncrypted(encryptedValue)) {

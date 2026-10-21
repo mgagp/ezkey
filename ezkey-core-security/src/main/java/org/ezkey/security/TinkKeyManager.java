@@ -113,6 +113,12 @@ public class TinkKeyManager implements KeyManagementOperations {
   private final AtomicBoolean keysetCheckScheduled = new AtomicBoolean(false);
 
   /**
+   * Set when a tick finds a newer blob that cannot be loaded (legacy/corrupt). Cache is kept;
+   * health signals degraded so operators see the failure (ADR-0016 review — not silent).
+   */
+  private final AtomicBoolean keysetReloadDegraded = new AtomicBoolean(false);
+
+  /**
    * Constructs the manager with optional {@link KeysetBlobRepository}.
    *
    * <p>When encryption is enabled, a repository is required for successful initialization. Missing
@@ -328,6 +334,24 @@ public class TinkKeyManager implements KeyManagementOperations {
   }
 
   /**
+   * Runs one keyset version check/reload synchronously (tests only).
+   *
+   * <p>Bypasses the async executor so tick fail-closed / cache-keep behaviour is deterministic.
+   */
+  void runKeysetVersionCheckForTests() {
+    checkAndReloadKeysetIfNeeded();
+  }
+
+  /**
+   * Whether the last tick found an unloadable newer blob while keeping the cached keyset.
+   *
+   * @return {@code true} when encryption health should report degraded reload state
+   */
+  public boolean isKeysetReloadDegraded() {
+    return keysetReloadDegraded.get();
+  }
+
+  /**
    * Runs the keyset version check synchronously on the calling thread (tests only).
    *
    * <p>Bypasses the async executor so reload behavior can be asserted deterministically.
@@ -509,16 +533,24 @@ public class TinkKeyManager implements KeyManagementOperations {
               dbVersion.get(),
               databaseKeysetVersion);
           if (loadKeysetFromDatabaseUnlocked()) {
+            keysetReloadDegraded.set(false);
             logger.info("✅ Keyset reloaded from database successfully");
           }
         }
       } catch (DataAccessException e) {
+        // Keep serving the last blob-backed cache; do not clear the live handle (M11).
         logger.warn(
             "Failed to reload keyset from database. Using cached keyset. Error: {}",
             e.getMessage());
         logger.debug("Database keyset reload error", e);
+      } catch (IllegalStateException e) {
+        // Unloadable/legacy peer blob: keep cache, signal health (not silent fail-open).
+        keysetReloadDegraded.set(true);
+        logger.error(
+            "Peer keyset blob is present but unloadable during version tick; keeping cached"
+                + " keyset and marking encryption health degraded. Error: {}",
+            e.getMessage());
       }
-      // IllegalStateException (unloadable) propagates — fail closed on corrupt peer update.
     } finally {
       keysetLock.writeLock().unlock();
     }
@@ -945,10 +977,14 @@ public class TinkKeyManager implements KeyManagementOperations {
    */
   private void casInstallStagingHandle(KeysetHandle stagingHandle, String updatedBy)
       throws GeneralSecurityException, IOException {
+    // Capture before any install so CAS+reload failure never leaves a staging primary that is
+    // absent from the blob (invariant 2 / probe A). Mutating to install before save is killed
+    // by restoring this handle when reload also fails.
+    KeysetHandle previousLive = this.keysetHandle;
     long expectedVersion = databaseKeysetVersion;
     try {
       saveKeysetToDatabaseUnlocked(stagingHandle, updatedBy);
-      // Invariant 2: install only after successful CAS.
+      // Invariant 2: install only after successful CAS (never before).
       this.keysetHandle = stagingHandle;
     } catch (DataAccessException | IllegalStateException e) {
       // Invariant 3 / Q4: discard staging, reload blob, fail closed — no orphan primary.
@@ -960,9 +996,20 @@ public class TinkKeyManager implements KeyManagementOperations {
           expectedVersion,
           e.getMessage());
       try {
-        loadKeysetFromDatabaseUnlocked();
+        if (!loadKeysetFromDatabaseUnlocked()) {
+          logger.error(
+              "CAS loser reload found no blob; restoring pre-mutation live handle"
+                  + " (updatedBy={})",
+              updatedBy);
+          this.keysetHandle = previousLive;
+        }
       } catch (DataAccessException | IllegalStateException reloadError) {
-        logger.error("Failed to reload keyset blob after CAS loss: {}", reloadError.getMessage());
+        logger.error(
+            "Failed to reload keyset blob after CAS loss; restoring pre-mutation live handle"
+                + " so a key absent from the blob is never served (updatedBy={}): {}",
+            updatedBy,
+            reloadError.getMessage());
+        this.keysetHandle = previousLive;
       }
       throw new IllegalStateException(
           "Keyset mutation CAS failed (updatedBy="
@@ -1134,9 +1181,14 @@ public class TinkKeyManager implements KeyManagementOperations {
       previousData = keysetBlob.getKeysetData();
       previousUpdatedBy = keysetBlob.getUpdatedBy();
       previousUpdatedAt = keysetBlob.getLastUpdatedAt();
-      // Version mismatch vs in-memory cache → treat as CAS loss before Hibernate save.
+      // Application CAS vs the version observed at re-read (invariant 1). Hibernate @Version
+      // alone is not enough: findKeyset() here loads a fresh entity, so @Version would match
+      // a peer commit between re-read and save (B2 / probe B).
+      if (databaseKeysetVersion <= 0) {
+        throw new IllegalStateException(
+            "Refusing keyset blob save with non-positive in-memory version (expected > 0)");
+      }
       if (keysetBlob.getVersion() != null
-          && databaseKeysetVersion > 0
           && !keysetBlob.getVersion().equals(databaseKeysetVersion)) {
         throw new OptimisticLockingFailureException(
             "Keyset blob version mismatch before save (expected="

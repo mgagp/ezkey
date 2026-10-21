@@ -210,15 +210,21 @@ class EncryptionServiceTest {
   }
 
   @Test
-  void testDecryptWhenNotAvailable() {
+  void testDecryptWhenNotAvailable_encPrefixFailsClosed() {
     when(keyManager.isInitialized()).thenReturn(false);
     String validBase64 =
         Base64.getEncoder().encodeToString("test-data-1234567890".getBytes(StandardCharsets.UTF_8));
     String encryptedValue = "ENC:1234567:" + validBase64;
 
-    String result = encryptionService.decrypt(encryptedValue);
+    IllegalStateException thrown =
+        assertThrows(IllegalStateException.class, () -> encryptionService.decrypt(encryptedValue));
+    assertTrue(thrown.getMessage().contains("fail-closed"));
+  }
 
-    assertEquals(encryptedValue, result);
+  @Test
+  void testDecryptWhenNotAvailable_plaintextPassesThrough() {
+    when(keyManager.isInitialized()).thenReturn(false);
+    assertEquals("plain-lab-value", encryptionService.decrypt("plain-lab-value"));
   }
 
   @Test
