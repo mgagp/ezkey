@@ -15,6 +15,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -23,6 +25,8 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
+import java.util.EnumSet;
+import java.util.Set;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.ezkey.audit.domain.entity.AuditLog;
@@ -329,8 +333,9 @@ public class AuditHmacService {
   /**
    * Generates a new 256-bit HMAC key file at the specified path.
    *
-   * <p>Creates parent directories if they do not exist and writes a Base64-encoded 32-byte key.
-   * This auto-generation mirrors the Tink master key behavior for first-startup convenience.
+   * <p>Creates parent directories if they do not exist and writes a Base64-encoded 32-byte key with
+   * POSIX mode {@code 600} when the filesystem supports it (same bar as {@code master.key}; ADR-0016
+   * §2.9). On Windows, POSIX permissions are skipped — operators should apply an ACL equivalent.
    *
    * @param path the file path to write the key to
    * @throws IOException if the file cannot be written
@@ -341,6 +346,28 @@ public class AuditHmacService {
     new SecureRandom().nextBytes(keyBytes);
     String keyBase64 = Base64.getEncoder().encodeToString(keyBytes);
     Files.writeString(path, keyBase64, StandardCharsets.UTF_8);
-    logger.info("Generated new audit HMAC key file: {}", path);
+    applyOwnerReadWriteOnly(path);
+    logger.info("Generated new audit HMAC key file: {} (mode 600 when POSIX)", path);
+  }
+
+  /**
+   * Restricts the HMAC key file to owner read/write only on POSIX filesystems.
+   *
+   * @param path the key file path
+   */
+  private void applyOwnerReadWriteOnly(Path path) {
+    try {
+      Set<PosixFilePermission> perms =
+          EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+      Files.setPosixFilePermissions(path, perms);
+      logger.debug(
+          "Set audit HMAC key permissions to {}", PosixFilePermissions.toString(perms));
+    } catch (UnsupportedOperationException e) {
+      logger.debug(
+          "POSIX permissions not supported for audit HMAC key at {} (Windows ACL equivalent)",
+          path);
+    } catch (IOException e) {
+      logger.warn("Could not set mode 600 on audit HMAC key {}: {}", path, e.getMessage());
+    }
   }
 }
