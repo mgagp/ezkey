@@ -10,7 +10,9 @@
 
 package org.ezkey.demo.acme.config;
 
+import java.time.Clock;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -24,5 +26,16 @@ import org.springframework.context.annotation.Configuration;
  * @since 2025
  */
 @Configuration
-@EnableConfigurationProperties(AcmeProperties.class)
-public class EzkeyClientConfig {}
+@EnableConfigurationProperties({AcmeProperties.class, TenantAliasProperties.class})
+public class EzkeyClientConfig {
+
+  /**
+   * System UTC clock for request-driven tenant-alias reload throttling.
+   *
+   * @return system UTC clock
+   */
+  @Bean
+  Clock clock() {
+    return Clock.systemUTC();
+  }
+}

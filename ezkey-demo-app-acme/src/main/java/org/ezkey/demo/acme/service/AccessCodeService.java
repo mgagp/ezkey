@@ -79,34 +79,19 @@ public class AccessCodeService {
   private boolean externalLoadedOnce;
 
   /**
-   * Creates the service with configuration that will be validated at startup (single Spring
-   * constructor).
+   * Creates the service with configuration that will be validated at startup.
+   *
+   * <p>Only constructor (required for Spring constructor injection without {@code @Autowired}).
    *
    * @param properties ACME configuration including optional {@code ezkey.access-codes}
    * @param tenantAliasProperties external mapping file path and reload throttle
+   * @param clock clock used for reload throttle (bean provided by the application)
    */
-  public AccessCodeService(AcmeProperties properties, TenantAliasProperties tenantAliasProperties) {
-    this(properties, tenantAliasProperties, Clock.systemUTC());
-  }
-
-  private AccessCodeService(
+  public AccessCodeService(
       AcmeProperties properties, TenantAliasProperties tenantAliasProperties, Clock clock) {
     this.properties = properties;
     this.tenantAliasProperties = tenantAliasProperties;
-    this.clock = clock;
-  }
-
-  /**
-   * Test factory with an explicit clock (keeps a single Spring-injectable constructor).
-   *
-   * @param properties ACME configuration
-   * @param tenantAliasProperties external mapping file path and reload throttle
-   * @param clock clock for throttle tests
-   * @return service instance
-   */
-  static AccessCodeService forTests(
-      AcmeProperties properties, TenantAliasProperties tenantAliasProperties, Clock clock) {
-    return new AccessCodeService(properties, tenantAliasProperties, clock);
+    this.clock = clock != null ? clock : Clock.systemUTC();
   }
 
   /**
@@ -117,6 +102,19 @@ public class AccessCodeService {
    */
   static AccessCodeService forTests(AcmeProperties properties) {
     return new AccessCodeService(properties, new TenantAliasProperties(), Clock.systemUTC());
+  }
+
+  /**
+   * Test factory with an explicit clock for throttle tests.
+   *
+   * @param properties ACME configuration
+   * @param tenantAliasProperties external mapping file path and reload throttle
+   * @param clock clock for throttle tests
+   * @return service instance
+   */
+  static AccessCodeService forTests(
+      AcmeProperties properties, TenantAliasProperties tenantAliasProperties, Clock clock) {
+    return new AccessCodeService(properties, tenantAliasProperties, clock);
   }
 
   /**
