@@ -6185,7 +6185,7 @@ __metadata:
     orval: "npm:8.43.0"
     prettier: "npm:3.9.10"
     react: "npm:19.3.0"
-    react-i18next: "npm:17.0.21"
+    react-i18next: "npm:17.1.0"
     react-native: "npm:0.87.1"
     react-native-config: "npm:1.7.2"
     react-native-gesture-handler: "npm:3.4.0"
@@ -9597,9 +9597,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-i18next@npm:17.0.21":
-  version: 17.0.21
-  resolution: "react-i18next@npm:17.0.21"
+"react-i18next@npm:17.1.0":
+  version: 17.1.0
+  resolution: "react-i18next@npm:17.1.0"
   dependencies:
     "@babel/runtime": "npm:^7.29.7"
     html-parse-stringify: "npm:^4.0.1"
@@ -9615,7 +9615,7 @@ __metadata:
       optional: true
     typescript:
       optional: true
-  checksum: 10c0/51f1ced3d0501f011591bc79e13e66e5bef5fc9757408bf42093d3fff4e32f4be73714f61f896de05d6f114950025999f54b0acb4027749872284b1664246b24
+  checksum: 10c0/5ba9de18304f8fc20511de9f64f2a71594cb607c55b06692463867721f256770ae71489639bd96554bc556b5b310d495cff526ebbbaac091f9bae0ca8f547f24
   languageName: node
   linkType: hard
 
