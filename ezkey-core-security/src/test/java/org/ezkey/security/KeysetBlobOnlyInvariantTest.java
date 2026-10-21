@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -25,6 +26,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.CleartextKeysetHandle;
 import com.google.crypto.tink.JsonKeysetWriter;
@@ -54,6 +59,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -372,7 +378,7 @@ class KeysetBlobOnlyInvariantTest {
   @Test
   @DisplayName(
       "probe A / B1: CAS save fails and reload findKeyset fails — live primary unchanged"
-          + " (kills install-before-CAS)")
+          + " (neutralizes install-before-CAS)")
   void probeA_casFailAndReloadFail_livePrimaryUnchanged(@TempDir Path tempDir) throws Exception {
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
@@ -591,6 +597,61 @@ class KeysetBlobOnlyInvariantTest {
   }
 
   @Test
+  @DisplayName(
+      "minor: tick reload-step DB error keeps cached keyset, logs WARN, no partial install")
+  void tick_reloadStep_dbError_keepsCachedKeyset(@TempDir Path tempDir) throws Exception {
+    Path masterKeyPath = tempDir.resolve("master.key");
+    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
+    TestMasterKeys.write(masterKeyPath);
+
+    AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>();
+    KeysetBlobRepository repository = versionedRepository(storedBlob);
+
+    TinkKeyManager manager = initializeManager(masterKeyPath, keysetPath, repository, true);
+    Logger tinkLogger = (Logger) LoggerFactory.getLogger(TinkKeyManager.class);
+    ListAppender<ILoggingEvent> logCapture = new ListAppender<>();
+    logCapture.start();
+    tinkLogger.addAppender(logCapture);
+    try {
+      long primaryBefore = manager.getCurrentPrimaryKeyId();
+      long versionBefore = manager.getDatabaseKeysetVersion();
+      byte[] envelopeBefore = storedBlob.get().getKeysetData().clone();
+
+      // Version check succeeds and advances → enter reload; findKeyset fails on reload step.
+      when(repository.findVersion()).thenReturn(Optional.of(versionBefore + 1));
+      when(repository.findKeyset())
+          .thenThrow(new DataAccessResourceFailureException("simulated tick reload outage"));
+
+      assertDoesNotThrow(manager::runKeysetVersionCheckForTests);
+      assertEquals(
+          primaryBefore,
+          manager.getCurrentPrimaryKeyId(),
+          "reload-step DB error must keep the last blob-backed primary");
+      assertEquals(
+          versionBefore,
+          manager.getDatabaseKeysetVersion(),
+          "reload-step DB error must not partially install a newer version");
+      assertArrayEquals(envelopeBefore, storedBlob.get().getKeysetData());
+      assertTrue(manager.isInitialized());
+      assertFalse(
+          manager.isKeysetReloadDegraded(),
+          "DataAccessException on reload is kept-cache WARN, not KEYSET_RELOAD_DEGRADED");
+      verify(repository, never()).save(any(KeysetBlob.class));
+      assertTrue(
+          logCapture.list.stream()
+              .anyMatch(
+                  event ->
+                      event.getLevel() == Level.WARN
+                          && event.getFormattedMessage().contains("Failed to reload keyset")
+                          && event.getFormattedMessage().contains("simulated tick reload outage")),
+          "reload-step DB error must be surfaced in logs");
+    } finally {
+      tinkLogger.detachAppender(logCapture);
+      manager.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  @Test
   @DisplayName("minor: tick unloadable peer blob keeps cache and signals degraded health")
   void tick_unloadablePeerBlob_keepsCacheAndSignalsDegraded(@TempDir Path tempDir)
       throws Exception {
@@ -621,7 +682,8 @@ class KeysetBlobOnlyInvariantTest {
 
   @Test
   @DisplayName(
-      "minor: non-writer bootstrap fails closed when legacy blob appears during wait (M13)")
+      "minor: non-writer bootstrap fails closed when legacy blob appears during wait (M13)"
+          + " — assert failure and cause")
   void invariant8_nonWriter_legacyBlobDuringWait_failsClosed(@TempDir Path tempDir)
       throws Exception {
     Path masterKeyPath = tempDir.resolve("master.key");
@@ -655,10 +717,21 @@ class KeysetBlobOnlyInvariantTest {
 
     TinkKeyManager manager = new TinkKeyManager(properties, fixedProvider(repository));
     try {
-      assertThrows(IllegalStateException.class, manager::initialize);
+      IllegalStateException thrown = assertThrows(IllegalStateException.class, manager::initialize);
+      assertTrue(
+          thrown.getMessage().contains("legacy or tampered envelope")
+              || thrown.getMessage().contains("cannot be parsed"),
+          "non-writer must fail closed with the unloadable-blob message, got: "
+              + thrown.getMessage());
+      assertNotNull(thrown.getCause(), "legacy parse failure must carry the Tink cause");
+      assertInstanceOf(
+          GeneralSecurityException.class,
+          thrown.getCause(),
+          "cause must be the Tink parse/decrypt failure, not a generic wrapper");
       assertFalse(manager.isInitialized());
       assertArrayEquals(originalBytes, storedBlob.get().getKeysetData());
       verify(repository, never()).save(any(KeysetBlob.class));
+      verify(repository, never()).insertSingletonIfAbsent(any(), any(), any());
     } finally {
       manager.shutdownKeysetCheckExecutor();
     }

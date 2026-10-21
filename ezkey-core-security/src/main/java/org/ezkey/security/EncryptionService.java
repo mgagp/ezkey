@@ -125,8 +125,12 @@ public class EncryptionService implements EncryptionOperations {
    * rotation operations.
    *
    * @param plaintext the plaintext string to encrypt
-   * @return encrypted value with "ENC:keyID:" prefix, or plaintext if encryption unavailable
-   * @throws IllegalStateException if encryption fails or key ID cannot be retrieved
+   * @return {@code ENC:keyID:Base64(ciphertext)} when encryption is initialized; the unchanged
+   *     plaintext when the key manager is not initialized (passthrough — encrypt does not invent
+   *     ciphertext without a live keyset). AEAD failures after initialization never fall back to
+   *     plaintext.
+   * @throws IllegalStateException if encryption is initialized but AEAD encryption fails or the
+   *     primary key ID cannot be retrieved
    */
   public String encrypt(String plaintext) {
     if (plaintext == null) {
