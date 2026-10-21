@@ -122,8 +122,8 @@ install_sshd_cfg "${SCRIPT_DIR}/../sshd_config.f9-multitry"
 
 docker exec "${CONTAINER}" sh -c ": >'${STUB_REQ_LOG}'"
 set +e
-# #941: waiting prompt needs Enter; autoenter keeps create-count gates honest.
-ezkey_ssh_kbdint_autoenter "${ARTIFACT_DIR}/pam-f9-multitry-ssh.log" 'echo X' 10
+# #941: waiting prompt needs Enter; prompts=3 for multitry recreate proof.
+ezkey_ssh_kbdint_autoenter "${ARTIFACT_DIR}/pam-f9-multitry-ssh.log" 'echo X' 10 3
 set -e
 
 CREATES_MULTI="$(count_creates)"

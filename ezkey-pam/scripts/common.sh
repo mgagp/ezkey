@@ -147,17 +147,18 @@ ezkey_ssh_capture_has_prewait_prompt() {
 
 # Run one keyboard-interactive SSH under a PTY; auto-send Enter when the
 # pre-wait prompt appears (#941). Create-fail paths never show a prompt — the
-# helper just waits for ssh to exit. Optional 3rd arg is ConnectTimeout (default 15).
-# Prints remote stdout to stdout; returns ssh exit status.
+# helper just waits for ssh to exit.
+# Args: <log> [remote_cmd] [ConnectTimeout] [NumberOfPasswordPrompts]
+# Default prompts=1 (Match MaxAuthTries 1). Pass 3 for F9 multitry case A.
 ezkey_ssh_kbdint_autoenter() {
   local log="$1"
   local remote_cmd="${2:-echo X}"
   local connect_to="${3:-15}"
+  local password_prompts="${4:-1}"
   local ctrl=""
   local bg=""
   local i
   local rc=1
-  local entered=0
   local since_enter=999
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -177,7 +178,7 @@ ezkey_ssh_kbdint_autoenter() {
       -o PreferredAuthentications=keyboard-interactive \
       -o PubkeyAuthentication=no \
       -o PasswordAuthentication=no \
-      -o NumberOfPasswordPrompts=3 \
+      -o "NumberOfPasswordPrompts=${password_prompts}" \
       -o ConnectTimeout="${connect_to}" \
       "${SSH_USER}@127.0.0.1" \
       "${remote_cmd}" \
@@ -187,24 +188,23 @@ ezkey_ssh_kbdint_autoenter() {
 
   # Re-send Enter on a short cooldown so OpenSSH multitry rounds (Match forgotten)
   # each clear the waiting/challenge prompt (#941 + #907 F9 case A).
-  since_enter=999
-  for i in $(seq 1 300); do
+  for i in $(seq 1 600); do
     if ! kill -0 "${bg}" 2>/dev/null; then
       break
     fi
     since_enter=$((since_enter + 1))
     if ezkey_ssh_capture_has_prewait_prompt "${log}" && [ "${since_enter}" -ge 15 ]; then
       printf 'enter\n' >"${ctrl}" 2>/dev/null || true
-      entered=1
       since_enter=0
     fi
     sleep 0.1
   done
 
+  # Keep set +e through return: a non-zero `return` under set -e aborts the
+  # whole caller script in Bash (not only the function).
   set +e
   wait "${bg}"
   rc=$?
-  set -e
   rm -f "${ctrl}" 2>/dev/null || true
   return "${rc}"
 }
