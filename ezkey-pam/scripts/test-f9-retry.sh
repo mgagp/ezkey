@@ -170,8 +170,8 @@ point_conf_at_stub "${CASE_C_WAIT_TTL}"
 install_sshd_cfg "${SCRIPT_DIR}/../sshd_config"
 docker exec "${CONTAINER}" sh -c ": >'${STUB_REQ_LOG}'"
 
-# Drive SSH under PTY with auto-Enter so create completes and /wait starts
-# before kill (#941 waiting prompt + #907 R5).
+# Drive SSH under PTY: confirm-before-create needs ok first, then create +
+# /wait, then kill (#941 / #975 / #907 R5).
 KILL_LOG="${ARTIFACT_DIR}/pam-f9-kill-ssh.log"
 KILL_CTRL="$(ezkey_mk_ctrl_fifo)"
 KILL_CTRL_DIR="$(dirname "${KILL_CTRL}")"
@@ -186,6 +186,15 @@ python3 "${SCRIPT_DIR}/ssh-pty-capture.py" "${KILL_LOG}" "${KILL_CTRL}" \
   >/dev/null 2>&1 &
 SSH_PID=$!
 set -e
+
+# Pre-create ok → POST; only then can /wait start.
+for _ in $(seq 1 80); do
+  if ezkey_ssh_capture_has_prewait_prompt "${KILL_LOG}"; then
+    printf 'ok\n' >"${KILL_CTRL}" 2>/dev/null || true
+    break
+  fi
+  sleep 0.1
+done
 
 CREATED=0
 for _ in $(seq 1 80); do
@@ -204,14 +213,6 @@ if [ "${CREATED}" -lt 1 ]; then
   rm -rf "${KILL_CTRL_DIR}"
   fail "B2b: no create before kill (stub/pending path)"
 else
-  # Flush waiting prompt then allow /wait to begin before client kill.
-  for _ in $(seq 1 40); do
-    if ezkey_ssh_capture_has_prewait_prompt "${KILL_LOG}"; then
-      printf 'ok\n' >"${KILL_CTRL}" 2>/dev/null || true
-      break
-    fi
-    sleep 0.1
-  done
   for _ in $(seq 1 40); do
     WAITS="$(docker exec "${CONTAINER}" sh -c \
       "grep -c 'GET .*/wait' '${STUB_REQ_LOG}' 2>/dev/null || true" | tr -d ' \r')"
