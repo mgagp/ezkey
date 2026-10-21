@@ -5,8 +5,8 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: KeysetStorageCharacterizationTest
- * Description: Pins current main keyset load/startup/rotation/failure behavior before the
- *              DB-only refactor (#952 / ADR-0016).
+ * Description: Post-cutover assertions for blob-only keyset behavior (#952 / ADR-0016).
+ *              Mutation-probed invariants 1–8 live in KeysetBlobOnlyInvariantTest.
  */
 package org.ezkey.security;
 
@@ -55,12 +55,13 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataAccessResourceFailureException;
 
 /**
- * Characterization of keyset storage behavior on {@code main} before the DB-blob-only cutover.
+ * Post-cutover keyset storage assertions for the DB-blob-only cutover (ADR-0016 / #952).
  *
  * <p>Decision pack: {@code
- * product-docs/global/decisions/2026-10-21-keyset-storage-strategy/design.md}. Methods that pin
- * behavior the refactor will invert are marked {@code EXPECTED TO CHANGE} with the design section
- * that owns the target.
+ * product-docs/global/decisions/2026-10-21-keyset-storage-strategy/design.md}. Suite methods that
+ * formerly pinned pre-refactor behavior have been flipped to target post-cutover semantics.
+ * Mutation-probed invariants 1–8 are in {@link KeysetBlobOnlyInvariantTest}. The remaining {@code
+ * EXPECTED TO CHANGE} marker is deferred to GitHub issue 942 ({@code required=false} purge).
  *
  * @since 2026
  */
@@ -323,7 +324,7 @@ class KeysetStorageCharacterizationTest {
   @Test
   @DisplayName("rotateKey persists a new blob version and updates the in-memory primary kid")
   void rotateKey_persistsNewBlobVersion(@TempDir Path tempDir) throws Exception {
-    // Preserve intent of design §2.3 online rotation; CAS loser semantics still to be hardened.
+    // Post-cutover: design §2.3 online rotation via CAS (see KeysetBlobOnlyInvariantTest).
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
     TestMasterKeys.write(masterKeyPath);
