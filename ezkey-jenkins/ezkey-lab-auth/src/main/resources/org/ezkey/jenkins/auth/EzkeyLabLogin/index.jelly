@@ -1,0 +1,27 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
+  <l:layout title="Ezkey login" norefresh="true">
+    <l:main-panel>
+      <h1>Ezkey MFA (lab)</h1>
+      <p>
+        Confirm below <strong>before</strong> an Integration API auth attempt is created.
+        Break-glass admin uses the <a href="${rootURL}/login">standard Jenkins login</a>.
+      </p>
+      <form method="post" action="confirm" style="max-width: 28rem;">
+        <j:set var="crumbIssuer" value="${app.getCrumbIssuer()}"/>
+        <j:if test="${crumbIssuer != null}">
+          <input type="hidden" name="${crumbIssuer.crumbRequestField}" value="${crumbIssuer.crumb}"/>
+        </j:if>
+        <div style="margin-bottom: 0.75rem;">
+          <label for="username">Username (Integration userIdentifier)</label><br/>
+          <input type="text" id="username" name="username" autocomplete="username" required="true" style="width:100%;"/>
+        </div>
+        <div style="margin-bottom: 0.75rem;">
+          <label for="confirm">Type <code>ok</code> to confirm starting Ezkey MFA</label><br/>
+          <input type="text" id="confirm" name="confirm" required="true" placeholder="ok" style="width:100%;"/>
+        </div>
+        <button type="submit" data-testid="ezkey-lab-confirm">Continue</button>
+      </form>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>

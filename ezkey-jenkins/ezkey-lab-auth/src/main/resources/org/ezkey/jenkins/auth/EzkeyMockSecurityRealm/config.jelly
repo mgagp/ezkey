@@ -1,7 +1,7 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
-  <f:section title="Ezkey (mock — no live round-trip in M2)">
-    <f:entry title="Ezkey base URL" field="ezkeyBaseUrl">
+  <f:section title="Ezkey Integration API (SDK)">
+    <f:entry title="Integration API base URL" field="ezkeyBaseUrl">
       <f:textbox/>
     </f:entry>
     <f:entry title="Integration key" field="integrationKey">

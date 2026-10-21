@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install ezkey-lab-auth if needed and switch SecurityRealm to EzkeyMockSecurityRealm.
+# Install ezkey-lab-auth and apply EzkeyMockSecurityRealm (break-glass + Integration MFA).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -35,18 +35,20 @@ for _ in $(seq 1 90); do
   sleep 2
 done
 
-# Wait until plugin class is loadable via script console.
 COOKIE_JAR="$(mktemp)"
-trap 'rm -f "$COOKIE_JAR"' EXIT
+SCRIPT="$(mktemp)"
+trap 'rm -f "$COOKIE_JAR" "$SCRIPT"' EXIT
 
 ADMIN_USER="$(jenkins_user)"
 ADMIN_PASS="$(jenkins_pass)"
-BASE_URL="${EZKEY_MOCK_BASE_URL:-http://127.0.0.1:7080}"
+# From Jenkins container → Integration API (join ezkey_ezkey-network; else host.docker.internal)
+BASE_URL="${EZKEY_MOCK_BASE_URL:-http://integration-api:7080}"
 INT_KEY="${EZKEY_MOCK_INTEGRATION_KEY:-lab-integration-key}"
 SECRET="${EZKEY_MOCK_SECRET:-lab-ezkey-secret}"
 
-SCRIPT="$(mktemp)"
-trap 'rm -f "$COOKIE_JAR" "$SCRIPT"' EXIT
+# Escape for Groovy single-quoted string (keys/secrets must not contain ')
+escape_sq() { printf '%s' "$1" | sed "s/'/\\\\'/g"; }
+
 cat >"${SCRIPT}" <<EOF
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy
 import hudson.util.Secret
@@ -55,11 +57,11 @@ import org.ezkey.jenkins.auth.EzkeyMockSecurityRealm
 
 def j = Jenkins.get()
 def realm = new EzkeyMockSecurityRealm(
-  '${BASE_URL}',
-  '${INT_KEY}',
-  Secret.fromString('${SECRET}'),
-  '${ADMIN_USER}',
-  Secret.fromString('${ADMIN_PASS}')
+  '$(escape_sq "${BASE_URL}")',
+  '$(escape_sq "${INT_KEY}")',
+  Secret.fromString('$(escape_sq "${SECRET}")'),
+  '$(escape_sq "${ADMIN_USER}")',
+  Secret.fromString('$(escape_sq "${ADMIN_PASS}")')
 )
 j.setSecurityRealm(realm)
 def strategy = new FullControlOnceLoggedInAuthorizationStrategy()
@@ -88,7 +90,7 @@ for attempt in $(seq 1 30); do
     break
   fi
   if [[ "$attempt" -eq 30 ]]; then
-    echo "Failed to apply mock realm. Last output:" >&2
+    echo "Failed to apply realm. Last output:" >&2
     echo "$out" >&2
     exit 1
   fi
@@ -102,14 +104,14 @@ if [[ "$code" != "200" ]]; then
   exit 1
 fi
 
-echo "Verifying mock auto-accept login (user=labuser) ..."
-code="$(curl -sS -o /dev/null -w '%{http_code}' -u "labuser:mock-pass" "${BASE}/api/json")"
+echo "Verifying Ezkey MFA entry page ..."
+code="$(curl -sS -o /dev/null -w '%{http_code}' "${BASE}/ezkey-lab-login/")"
 if [[ "$code" != "200" ]]; then
-  echo "Mock user basic auth failed HTTP ${code}" >&2
+  echo "Ezkey lab login page failed HTTP ${code}" >&2
   exit 1
 fi
 
-echo "M2 configure OK."
-echo "  UI login: ${BASE}/login"
-echo "  Break-glass: ${ADMIN_USER} / (EZKEY_JENKINS_ADMIN_PASSWORD)"
-echo "  Mock user: any username / any non-empty password (secret+URL+key must be set)"
+echo "Configure OK."
+echo "  Break-glass: ${BASE}/login  (${ADMIN_USER})"
+echo "  Ezkey MFA:   ${BASE}/ezkey-lab-login/"
+echo "  Integration base URL in realm: ${BASE_URL}"

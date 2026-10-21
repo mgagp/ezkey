@@ -9,58 +9,49 @@ Tracking: [GitHub #972](https://github.com/mgagp/ezkey/issues/972).
 
 - Status: [`STATUS.md`](STATUS.md)
 - Tutorial: [`TUTORIAL.md`](TUTORIAL.md)
-- Design / prior-art / **M3 SDK decision** / M4 Integration flow: [`DESIGN.md`](DESIGN.md)
+- Design / SDK decision / M4 Integration flow: [`DESIGN.md`](DESIGN.md)
 
 ## What is here
 
 | Piece | Role |
 |-------|------|
-| `docker-compose.yml` + `scripts/up.sh` | M0: stock Jenkins LTS |
-| `ref/jobs/m0-ls/` | M0: freestyle `ls` smoke job |
-| `ezkey-lab-hello/` | M1: hello-world build step |
-| `ezkey-lab-auth/` | M2: mock `SecurityRealm` (break-glass + auto-accept) |
-| `scripts/configure-mock-auth.sh` | M2: install auth `.hpi` and apply realm |
-| `maven-settings.xml` | Jenkins Maven repos for plugin builds |
+| `docker-compose.yml` + `scripts/up.sh` | Jenkins LTS (+ `host.docker.internal` → host Integration API) |
+| `ref/jobs/m0-ls/` | Freestyle `ls` smoke job |
+| `ezkey-lab-hello/` | Hello-world build step |
+| `ezkey-lab-auth/` | SecurityRealm + `/ezkey-lab-login/` MFA conversation |
+| `scripts/configure-mock-auth.sh` | Install auth `.hpi` and apply realm |
+| `scripts/m4-provision-integration.sh` | Lab helper: Admin token + API key + userIdentifier |
+| `maven/ezkey-sdk-standalone.pom` | Packaging helper so the plugin can resolve `ezkey-sdk` |
 
 ## Prerequisites
 
 - Docker Engine + Compose v2
 - Host ports (defaults): `28080` (UI), `50000` (agent)
 - Plugin builds: **JDK 21** and **Maven 3.9+**
+- For M4 live: Ezkey stack with Integration API on host `:7080` + Demo Device
 
-## Quick start (M0 → M2)
+## Quick start
 
 ```bash
 cd ezkey-jenkins
 ./scripts/up.sh
-./scripts/build-plugin.sh          # M1 hello .hpi (optional if already installed)
-./scripts/install-plugin.sh
-./scripts/build-auth-plugin.sh     # M2 auth .hpi
-./scripts/configure-mock-auth.sh   # replaces unsecured realm; enables mock + break-glass
-./scripts/smoke.sh                 # uses break-glass basic auth
+./scripts/build-auth-plugin.sh
+# Optional live keys (otherwise placeholders):
+#   ./scripts/m4-provision-integration.sh && source .ezkey/m4-integration.env
+./scripts/configure-mock-auth.sh
+./scripts/smoke.sh   # break-glass basic auth
 ```
 
-- Login: [http://localhost:28080/login](http://localhost:28080/login)
-- Break-glass: `admin` / `ezkey-lab-admin` (override with `EZKEY_JENKINS_ADMIN_*`)
-- Mock user: any other username + any non-empty password (after configure)
-- Security: [http://localhost:28080/manage/configureSecurity/](http://localhost:28080/manage/configureSecurity/)
-
-If the named volume still has the old M0 unsecured init applied, `configure-mock-auth.sh`
-is the source of truth (or `./scripts/down.sh --volumes` for a clean home).
+- Break-glass: [http://localhost:28080/login](http://localhost:28080/login) — `admin` / `ezkey-lab-admin`
+- Ezkey MFA: [http://localhost:28080/ezkey-lab-login/](http://localhost:28080/ezkey-lab-login/) — confirm `ok` → challenge → Demo Device approve/deny
 
 ## Lab notes
 
 - **Port 28080:** avoids Auth `8080` and Caddy Auth proxy `18080`.
-- **Interaction model:** Auth API ↔ phone (device); Integration API ↔ SDK (this
-  plugin). See `DESIGN.md`.
-- **M2 secret:** `hudson.util.Secret` on the realm (never logged). Credentials plugin
-  deferred — see `DESIGN.md`.
-- **M3 SDK:** `org.ezkey:ezkey-sdk` adequate as-is for Integration login (thin
-  plugin UX adapter only) — see `DESIGN.md`.
-- **No live Integration HTTP** until M4. Confirm-before-create + display challenge
-  from create response / fail-closed / never-log are locked in `DESIGN.md`.
-- **Independent compose:** own stack; not on `ezkey-network`.
+- **Interaction model:** Auth API ↔ phone; Integration API ↔ SDK (this plugin).
+- **Secret:** `hudson.util.Secret` (Credentials plugin deferred — `DESIGN.md`).
+- **Compose:** separate project; joins `ezkey_ezkey-network` as external for Integration DNS (`integration-api:7080`).
 
 ## Out of scope until later
 
-Real Integration API round-trip (M4), publishing, deploying, infrastructure.
+Publishing, deploying, infrastructure; optional Credentials migration (M5).

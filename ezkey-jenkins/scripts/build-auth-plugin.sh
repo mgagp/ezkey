@@ -41,6 +41,25 @@ if [[ -z "${MVN_BIN}" ]]; then
 fi
 
 export PATH="${JAVA_HOME}/bin:${PATH}"
+
+# Plugin depends on org.ezkey:ezkey-sdk. Install a standalone POM+jar into ~/.m2 so the
+# Jenkins-plugin Maven reactor (outside Ezkey parent) can resolve it without CI-friendly
+# ${revision} placeholders left in the reactor-published POM.
+REPO_ROOT="$(cd "${ROOT}/.." && pwd)"
+SDK_JAR="${REPO_ROOT}/ezkey-sdk/java/target/ezkey-sdk-0.0.1-SNAPSHOT.jar"
+STANDALONE_POM="${ROOT}/maven/ezkey-sdk-standalone.pom"
+echo "Building/installing org.ezkey:ezkey-sdk for plugin packaging ..."
+(cd "${REPO_ROOT}" && "${MVN_BIN}" -pl ezkey-sdk/java -am package -DskipTests -q)
+test -f "${SDK_JAR}"
+"${MVN_BIN}" install:install-file \
+  -DgroupId=org.ezkey \
+  -DartifactId=ezkey-sdk \
+  -Dversion=0.0.1-SNAPSHOT \
+  -Dpackaging=jar \
+  -Dfile="${SDK_JAR}" \
+  -DpomFile="${STANDALONE_POM}" \
+  -q
+
 cd "${PLUGIN_DIR}"
 "${MVN_BIN}" -s "${SETTINGS}" test package
 HPI="${PLUGIN_DIR}/target/ezkey-lab-auth.hpi"

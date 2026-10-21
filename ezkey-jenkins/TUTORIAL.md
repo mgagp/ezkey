@@ -117,27 +117,33 @@ a high ReDoS risk on user input. The lab replaces it with a simple character sca
 Effects:
 
 1. Unsecured realm is replaced (login required).
-2. Security realm = **Ezkey Lab Mock Auth (experimental)** with base URL, integration
+2. Security realm = **Ezkey Lab Auth (experimental)** with Integration API base URL,
    key, and secret (`hudson.util.Secret`, concealed in UI, never logged).
-3. Break-glass `admin` / `ezkey-lab-admin` always works without Ezkey.
-4. Any other username + non-empty password is **mock auto-accepted**.
+3. Break-glass `admin` / `ezkey-lab-admin` always works without Ezkey (`/login`).
+4. Ezkey MFA users use [`/ezkey-lab-login/`](http://localhost:28080/ezkey-lab-login/) —
+   type username + `ok` to confirm **before** create; then match the challenge on
+   Demo Device and Approve or Deny.
 
-Prior-art and Integration API ↔ SDK model for M3/M4: [`DESIGN.md`](DESIGN.md).
+Prior-art and Integration API ↔ SDK model: [`DESIGN.md`](DESIGN.md).
 
-Smoke after M2 uses break-glass basic auth (`./scripts/smoke.sh`).
+Smoke uses break-glass basic auth (`./scripts/smoke.sh`).
 
-## 8. M3 — SDK fit (design only)
+## 8. M3 — SDK fit (design)
 
 Recorded in [`DESIGN.md`](DESIGN.md): **Java SDK adequate as-is** for Jenkins as an
-Integration API consumer; plugin-local thin adapter for confirm → create → challenge
-display → wait. Auth API / device path is out of scope for this plugin.
-Credentials-plugin secret migration still deferred (not cheap without pulling
-detached plugins into the lab).
+Integration API consumer. Auth API / device path is out of scope for this plugin.
+Credentials-plugin secret migration deferred (not cheap).
 
-M4 will implement the live Integration round-trip using that decision and the
-consumer rules in `DESIGN.md`.
+## 9. M4 — live Integration round-trip
+
+1. Ezkey stack up (Integration API `:7080`) + Demo Device with a verified enrollment.
+2. Provision key + `userIdentifier` (e.g. `./scripts/m4-provision-integration.sh`) and
+   `source .ezkey/m4-integration.env`.
+3. `./scripts/build-auth-plugin.sh && ./scripts/configure-mock-auth.sh`
+4. Open `/ezkey-lab-login/` → confirm `ok` → note challenge → Approve (or Deny) on Demo Device.
+5. Never log the challenge or Integration secret.
 
 ## Out of scope (later milestones)
 
-Live Integration HTTP (M4), Credentials-plugin migration (optional later),
-community/ngrok endpoints, publishing to the Jenkins update center.
+Credentials-plugin migration (optional), community/ngrok endpoints, publishing to the
+Jenkins update center.

@@ -14,19 +14,30 @@
   <version>${revision}${changelist}</version>
   <packaging>hpi</packaging>
 
-  <name>Ezkey Lab Mock Auth</name>
-  <description>Experimental mock SecurityRealm for the ezkey-jenkins lab (#972). Auto-accepts non-break-glass logins. Not for production.</description>
+  <name>Ezkey Lab Auth</name>
+  <description>Experimental SecurityRealm for the ezkey-jenkins lab (#972): break-glass plus Integration API MFA via ezkey-sdk. Not for production.</description>
 
   <properties>
     <revision>0.1.0</revision>
     <changelist>-SNAPSHOT</changelist>
     <jenkins.baseline>2.528</jenkins.baseline>
     <jenkins.version>${jenkins.baseline}.3</jenkins.version>
+    <ezkey.sdk.version>0.0.1-SNAPSHOT</ezkey.sdk.version>
     <spotless.check.skip>false</spotless.check.skip>
     <ban-junit4-imports.skip>false</ban-junit4-imports.skip>
     <ban-commons-lang-2.skip>false</ban-commons-lang-2.skip>
     <hpi.strictBundledArtifacts>true</hpi.strictBundledArtifacts>
+    <!-- Bundle zero-dep Integration SDK into the .hpi (not a Jenkins plugin). -->
+    <hpi.bundledArtifacts>ezkey-sdk</hpi.bundledArtifacts>
   </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.ezkey</groupId>
+      <artifactId>ezkey-sdk</artifactId>
+      <version>${ezkey.sdk.version}</version>
+    </dependency>
+  </dependencies>
 
   <dependencyManagement>
     <dependencies>

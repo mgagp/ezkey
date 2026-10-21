@@ -16,16 +16,15 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 /**
- * Lab-only mock SecurityRealm for #972 M2.
+ * Lab SecurityRealm for #972: break-glass local admin + Ezkey Integration MFA path.
  *
- * <p>Break-glass admin authenticates with a local password (anti-lockout). All other usernames are
- * auto-accepted after a non-empty password — simulating an Integration-side approve. Live
- * Integration API round-trips via the Java SDK are M4.
+ * <p>Break-glass authenticates with a local password (anti-lockout) via the standard Jenkins login
+ * form. All other users use {@link EzkeyLabLogin} (confirm → create → challenge → wait) against the
+ * Integration API via {@code org.ezkey:ezkey-sdk}. This realm never calls the Auth API.
  *
- * <p>The Ezkey integration secret is stored as {@link Secret} (Jenkins secret handling). Secret and
- * challenge codes must never appear in logs. Credentials-plugin {@code StringCredentials} migration
- * was assessed in M3 and deferred (not cheap: lab skips setup wizard; avoids detached-plugin
- * fan-out). See {@code ezkey-jenkins/DESIGN.md}.
+ * <p>The Ezkey integration secret is stored as {@link Secret}. Secret and challenge codes must never
+ * appear in logs. Credentials-plugin migration remains deferred — see {@code
+ * ezkey-jenkins/DESIGN.md}.
  *
  * @since 2026
  */
@@ -40,10 +39,10 @@ public class EzkeyMockSecurityRealm extends AbstractPasswordBasedSecurityRealm {
     private final Secret breakGlassPassword;
 
     /**
-     * @param ezkeyBaseUrl Integration / Auth API base URL (config only in M2; unused for HTTP)
-     * @param integrationKey Ezkey integration key id/string (config only in M2)
+     * @param ezkeyBaseUrl Integration API base URL (e.g. {@code http://host.docker.internal:7080})
+     * @param integrationKey Ezkey integration key
      * @param ezkeySecret Ezkey integration secret (Jenkins {@link Secret}; never logged)
-     * @param breakGlassUsername local admin username that bypasses the mock Ezkey path
+     * @param breakGlassUsername local admin username that bypasses Ezkey MFA
      * @param breakGlassPassword local password for the break-glass user
      */
     @DataBoundConstructor
@@ -100,24 +99,13 @@ public class EzkeyMockSecurityRealm extends AbstractPasswordBasedSecurityRealm {
             return userDetails(username);
         }
 
-        // Mock Ezkey path (M2): require secret configured, then auto-accept.
-        String secretPlain = Secret.toString(ezkeySecret);
-        if (secretPlain == null || secretPlain.isEmpty()) {
-            LOGGER.warning("ezkey-lab mock login denied: ezkey secret not configured");
-            throw new BadCredentialsException("Ezkey secret not configured");
-        }
-        if (ezkeyBaseUrl.isEmpty() || integrationKey.isEmpty()) {
-            LOGGER.warning("ezkey-lab mock login denied: base URL or integration key missing");
-            throw new BadCredentialsException("Ezkey base URL and integration key required");
-        }
-        // Secret intentionally never logged. Challenge-display rules for M3/M4: see DESIGN.md.
-        LOGGER.info("ezkey-lab mock auto-accept user="
-                + sanitizeForLog(username)
-                + " baseUrl="
-                + sanitizeForLog(ezkeyBaseUrl)
-                + " integrationKey="
-                + sanitizeForLog(integrationKey));
-        return userDetails(username);
+        // Non-break-glass users must complete EzkeyLabLogin (Integration MFA). Basic-auth / form
+        // password path intentionally does not auto-accept (M4).
+        LOGGER.info(
+                "ezkey-lab password login denied for non-break-glass user="
+                        + sanitizeForLog(username)
+                        + " — use /ezkey-lab-login/");
+        throw new BadCredentialsException("Use /ezkey-lab-login/ for Ezkey MFA (not break-glass password login)");
     }
 
     @Override
@@ -159,7 +147,7 @@ public class EzkeyMockSecurityRealm extends AbstractPasswordBasedSecurityRealm {
         @NonNull
         @Override
         public String getDisplayName() {
-            return "Ezkey Lab Mock Auth (experimental)";
+            return "Ezkey Lab Auth (experimental)";
         }
     }
 }

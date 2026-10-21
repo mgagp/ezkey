@@ -32,14 +32,8 @@ class EzkeyMockSecurityRealmTest {
     }
 
     @Test
-    void mockAutoAcceptsOtherUsers() {
-        UserDetails details = realm().authenticateByPassword("alice", "any-password");
-        assertEquals("alice", details.getUsername());
-    }
-
-    @Test
-    void mockRejectsEmptyPassword() {
-        assertThrows(BadCredentialsException.class, () -> realm().authenticateByPassword("alice", ""));
+    void nonBreakGlassPasswordPathRejected() {
+        assertThrows(BadCredentialsException.class, () -> realm().authenticateByPassword("alice", "any-password"));
     }
 
     @Test

@@ -1,0 +1,10 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+  <l:layout title="Ezkey login error" norefresh="true">
+    <l:main-panel>
+      <h1>Ezkey login</h1>
+      <p data-testid="ezkey-lab-error">${it.errorMessage}</p>
+      <p><a href=".">Back</a> · <a href="${rootURL}/login">Jenkins login</a></p>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>

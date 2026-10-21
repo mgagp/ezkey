@@ -1,9 +1,11 @@
 # ezkey-lab-auth
 
-Experimental mock **SecurityRealm** for the `ezkey-jenkins` lab (#972 M2).
+Experimental Jenkins plugin (#972).
 
-- Break-glass admin (local password) — anti-lockout
-- All other users: mock Ezkey auto-accept (no live HTTP; that is M4)
-- Ezkey base URL, integration key, and secret (`hudson.util.Secret`, never logged)
+- Break-glass admin: local password on the standard Jenkins login form
+- Ezkey MFA: `/ezkey-lab-login/` — confirm → Integration `createAuthAttemptByUserIdentifier` →
+  display challenge → `waitForAuthAttempt` / cancel
+- Bundles `org.ezkey:ezkey-sdk` (Integration API only; never Auth API)
+- Secret: `hudson.util.Secret` (never logged; never log challenge codes)
 
-See [`../DESIGN.md`](../DESIGN.md) and [`../TUTORIAL.md`](../TUTORIAL.md).
+Not for production.

@@ -1,0 +1,51 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+  <l:layout title="Awaiting Ezkey approval" norefresh="true">
+    <l:main-panel>
+      <h1>Awaiting device approval</h1>
+      <p>User: <strong>${it.pendingUsername}</strong></p>
+      <j:if test="${it.pendingChallengeFormatted != null}">
+        <p data-testid="ezkey-lab-challenge">
+          Challenge code:
+          <strong style="font-size: 1.75rem; letter-spacing: 0.15em;">${it.pendingChallengeFormatted}</strong>
+        </p>
+        <p>Enter or match this code on your Ezkey device, then approve or deny.</p>
+      </j:if>
+      <p id="status" data-testid="ezkey-lab-status">Waiting…</p>
+      <form method="post" action="cancel" style="margin-top: 1rem;">
+        <j:set var="crumbIssuer" value="${app.getCrumbIssuer()}"/>
+        <j:if test="${crumbIssuer != null}">
+          <input type="hidden" name="${crumbIssuer.crumbRequestField}" value="${crumbIssuer.crumb}"/>
+        </j:if>
+        <button type="submit" data-testid="ezkey-lab-cancel">Cancel</button>
+      </form>
+      <script><![CDATA[
+        (function () {
+          var statusEl = document.getElementById('status');
+          var stopped = false;
+          function poll() {
+            if (stopped) return;
+            fetch('poll', { credentials: 'same-origin' })
+              .then(function (r) { return r.text().then(function (t) { return { ok: r.ok, text: t.trim() }; }); })
+              .then(function (res) {
+                statusEl.textContent = res.text;
+                if (res.text === 'ACCEPTED') {
+                  stopped = true;
+                  window.location.href = '${rootURL}/';
+                  return;
+                }
+                if (res.text === 'REJECTED' || res.text === 'EXPIRED' || res.text === 'INVALID') {
+                  stopped = true;
+                  statusEl.textContent = 'Denied (' + res.text + ').';
+                  return;
+                }
+                setTimeout(poll, 1500);
+              })
+              .catch(function () { setTimeout(poll, 2000); });
+          }
+          poll();
+        })();
+      ]]></script>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>
