@@ -789,11 +789,30 @@ public class SecurityConfig {
 
 ## Backup and Recovery
 
+### What constitutes a restore set (ADR-0016)
+
+After the blob-only keyset cutover, a recoverable backup is:
+
+1. **Database dump** (`pg_dump` of the Ezkey database, including `ezkey_keyset_blob`)
+2. **`master.key`** (file/secret that wraps the Tink keyset envelope)
+
+There is **no keyset-file primary**. Leftover keyset files on a secrets volume (if any) are not a
+supported restore path. Encrypted off-host backup / KMS escrow is tracked separately
+([#953](https://github.com/mgagp/ezkey/issues/953)).
+
+### Community host honesty
+
+The community public-alpha host (`<static-ip ezkey-online-community>`, also known as ezkey.online)
+has **no guaranteed backup**. Operators must not assume `pg_dump` or `master.key` escrow exists
+there unless they have verified a backup they themselves control. Prefer in-place upgrade over
+full reinstall when possible; see
+[`product-docs/global/decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md`](../product-docs/global/decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md).
+
 ### Database Backup
 
 ```bash
 #!/bin/bash
-# backup-ezkey-db.sh
+# backup-ezkey-db.sh — restore set part 1 (pg_dump includes ezkey_keyset_blob)
 
 BACKUP_DIR="/var/backups/ezkey"
 DATE=$(date +%Y%m%d_%H%M%S)
@@ -812,17 +831,22 @@ find $BACKUP_DIR -name "ezkey_*.sql.gz" -mtime +30 -delete
 gunzip -t $BACKUP_DIR/ezkey_$DATE.sql.gz
 ```
 
-### Application Backup
+### Master key (restore set part 2)
+
+Escrow `master.key` (and `audit-hmac.key` when integrity is enabled) with the same care as the
+database dump. Without the master key, the keyset blob in a restored dump cannot be opened.
+
+### Application configuration backup
 
 ```bash
 #!/bin/bash
-# backup-ezkey-app.sh
+# backup-ezkey-app.sh — config/systemd only (not a keyset restore path)
 
 APP_DIR="/opt/ezkey"
 BACKUP_DIR="/var/backups/ezkey/app"
 DATE=$(date +%Y%m%d_%H%M%S)
 
-# Backup application configuration
+# Backup application configuration (not keyset authority)
 tar -czf $BACKUP_DIR/ezkey_config_$DATE.tar.gz \
     $APP_DIR/config/ \
     $APP_DIR/application.properties \
