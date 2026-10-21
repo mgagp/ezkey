@@ -1071,7 +1071,9 @@ divergence between file and blob (blockers B2, B5, B6). Real deployments already
    uses a read-only DataSource and a SELECT-only DB role on `ezkey_keyset_blob` (no
    `ezkey_encryption_key`); AEAD recovery reloads the blob; split health; never
    `ezkey.encryption.required=false` ([#942](https://github.com/mgagp/ezkey/issues/942) property
-   purge is an adjacent thin PR).
+   purge is an adjacent thin PR). JPA for the blob is registered via Boot
+   `AutoConfiguration` after `DataSourceAutoConfiguration` (not component-scanned
+   `@ConditionalOnBean` alone — that ordered before the pool and yielded 0 repositories).
 4. **Online rotation** remains, **DB-CAS-first** and fail closed. Invariants 1–3 are a **new CAS
    protocol** inspired by #936 (install only after successful CAS). Invariants 4–8 carry from that
    line (short tick; unknown kid fail closed; DB errors never generate; no DELETE/TRUNCATE of the

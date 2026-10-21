@@ -164,12 +164,13 @@ Ordering vs existing `ApplicationReadyStartupOrder.KEYSET_SYNC`: keep Admin keys
 | Scope | Local clean-start / lab stacks only. **Not** in online/community compose. |
 | Storage | `DATABASE`, `writer=false` |
 | DataSource | Enable Spring DataSource; Flyway stays off |
-| DB role | `ezkey_crypto` with **SELECT only** on `ezkey_keyset_blob` (deny elsewhere), proven by `verify-grants.sh` |
+| DB role | `ezkey_crypto` with **SELECT only** on `ezkey_keyset_blob` (deny elsewhere), proven by `verify-grants.sh` (also run from `scripts/ci-ha-lb-smoke.sh`) |
 | AEAD recovery | On decrypt AEAD failure: **reload the blob** (force version check / `forceReloadFromDatabase`) and retry. **Do not** consult `ezkey_encryption_key` metadata — no GRANT on that table. |
 | Wait | Bounded `bootstrap-wait`, then **explicit failure** |
 | `required` / health | **DECIDED (§8):** never `required=false`; **split health** (liveness OK; encryption readiness separate). See [#942](https://github.com/mgagp/ezkey/issues/942). |
-| Secrets | Still needs `master.key`; adds DB credentials for SELECT-only role. Acceptable under Marc’s lab proportionality. |
+| Secrets | Still needs `master.key`; adds DB credentials for SELECT-only role. Acceptable under Marc’s lab proportionality. Lab default password equals the role name (same pattern as other stack roles) — **lab only**, never Lightsail. |
 | Where it runs | **DECIDED (Marc, 2026-10-21):** crypto-api runs **only** in the disposable local clean-start stack (deployment model 1). Not on Lightsail / ezkey.online. |
+| JPA wiring | **`CryptoJpaConfig` is Boot AutoConfiguration** (`META-INF/spring/...AutoConfiguration.imports`), ordered `@AutoConfiguration(after = DataSourceAutoConfiguration.class)` with `@ConditionalOnBean(DataSource)`, and excluded from `CryptoApplication` component-scan. A scanned `@ConditionalOnBean(DataSource)` evaluated before the pool existed and registered **0** repositories (ha-smoke). Deviation traced here (repo is the memory). |
 
 ### 2.5.1 Deployment models (Marc, 2026-10-21)
 

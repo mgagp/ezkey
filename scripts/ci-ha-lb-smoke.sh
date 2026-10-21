@@ -67,4 +67,8 @@ probe_lb "integration-lb" "http://127.0.0.1:7080/api-docs" "200"
 probe_lb "crypto-mgmt" "http://127.0.0.1:9091/actuator/health/liveness" "200"
 probe_lb "demo-device-mgmt" "http://127.0.0.1:8084/actuator/health" "200"
 
+echo "==> verify-grants (ezkey_crypto SELECT-only on ezkey_keyset_blob; ADR-0016)"
+EZKEY_POSTGRES_CONTAINER="${EZKEY_POSTGRES_CONTAINER:-ezkey-postgres-ha}" \
+  bash "${ROOT}/scripts/db/verify-grants.sh" --docker
+
 echo "HA LB smoke PASSED"

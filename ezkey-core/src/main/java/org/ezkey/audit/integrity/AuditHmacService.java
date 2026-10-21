@@ -346,7 +346,17 @@ public class AuditHmacService {
     byte[] keyBytes = new byte[32];
     new SecureRandom().nextBytes(keyBytes);
     String keyBase64 = Base64.getEncoder().encodeToString(keyBytes);
-    Files.writeString(path, keyBase64, StandardCharsets.UTF_8);
+    // Create with owner-only mode when POSIX supports it so the file is never world-readable
+    // under a brief umask window before chmod (ADR-0016 §2.9 / review nit).
+    try {
+      Files.createFile(
+          path,
+          PosixFilePermissions.asFileAttribute(
+              EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE)));
+      Files.writeString(path, keyBase64, StandardCharsets.UTF_8);
+    } catch (UnsupportedOperationException e) {
+      Files.writeString(path, keyBase64, StandardCharsets.UTF_8);
+    }
     applyOwnerReadWriteOnly(path);
     logger.info("Generated new audit HMAC key file: {} (mode 600 when POSIX)", path);
   }
