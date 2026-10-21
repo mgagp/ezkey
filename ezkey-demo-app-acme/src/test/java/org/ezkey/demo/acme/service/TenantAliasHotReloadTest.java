@@ -42,9 +42,7 @@ class TenantAliasHotReloadTest {
   void setUp() throws Exception {
     mappingFile = tempDir.resolve("tenant-aliases.properties");
     Files.writeString(
-        mappingFile,
-        ALIAS + "|ikey-a|skey-a|Northwind Portal\n",
-        StandardCharsets.UTF_8);
+        mappingFile, ALIAS + "|ikey-a|skey-a|Northwind Portal\n", StandardCharsets.UTF_8);
 
     aliasProperties = new TenantAliasProperties();
     aliasProperties.setFile(mappingFile.toString());
@@ -69,7 +67,7 @@ class TenantAliasHotReloadTest {
           }
         };
 
-    service = new AccessCodeService(new AcmeProperties(), aliasProperties, clock);
+    service = AccessCodeService.forTests(new AcmeProperties(), aliasProperties, clock);
     service.initialize();
   }
 
@@ -90,10 +88,7 @@ class TenantAliasHotReloadTest {
     now.set(now.get().plusSeconds(6));
     Files.writeString(
         mappingFile,
-        ALIAS
-            + "|ikey-a|skey-a|Northwind Portal\n"
-            + ALIAS_2
-            + "|ikey-b|skey-b|Partner Demo\n",
+        ALIAS + "|ikey-a|skey-a|Northwind Portal\n" + ALIAS_2 + "|ikey-b|skey-b|Partner Demo\n",
         StandardCharsets.UTF_8);
     bumpMtime(mappingFile);
 

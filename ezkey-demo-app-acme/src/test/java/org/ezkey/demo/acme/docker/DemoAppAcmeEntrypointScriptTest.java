@@ -97,8 +97,10 @@ class DemoAppAcmeEntrypointScriptTest {
 
     Set<PosixFilePermission> expected =
         Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-    assertThat(Files.getPosixFilePermissions(configFile)).containsExactlyInAnyOrderElementsOf(expected);
-    assertThat(Files.getPosixFilePermissions(aliasFile)).containsExactlyInAnyOrderElementsOf(expected);
+    assertThat(Files.getPosixFilePermissions(configFile))
+        .containsExactlyInAnyOrderElementsOf(expected);
+    assertThat(Files.getPosixFilePermissions(aliasFile))
+        .containsExactlyInAnyOrderElementsOf(expected);
   }
 
   private static Path resolveEntrypoint() {

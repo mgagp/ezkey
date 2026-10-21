@@ -58,7 +58,8 @@ class TenantAliasFileParserTest {
 
   @Test
   void shouldIgnoreIncompleteTrailingLineWithoutNewline() {
-    String text = ALIAS_A + "|ikey-a|skey-a|Complete\n" + ALIAS_B + "|ikey-partial|skey-partial|Incomplete";
+    String text =
+        ALIAS_A + "|ikey-a|skey-a|Complete\n" + ALIAS_B + "|ikey-partial|skey-partial|Incomplete";
 
     ParseResult result = TenantAliasFileParser.parse(text);
     assertThat(result.mappings()).containsOnlyKeys(ALIAS_A);

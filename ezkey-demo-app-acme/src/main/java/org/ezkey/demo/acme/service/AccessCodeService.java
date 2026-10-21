@@ -36,7 +36,6 @@ import org.ezkey.demo.acme.service.TenantAliasFileParser.ParseResult;
 import org.ezkey.demo.acme.service.TenantAliasFileParser.ParsedAlias;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 /**
@@ -80,27 +79,17 @@ public class AccessCodeService {
   private boolean externalLoadedOnce;
 
   /**
-   * Creates the service with configuration that will be validated at startup.
+   * Creates the service with configuration that will be validated at startup (single Spring
+   * constructor).
    *
    * @param properties ACME configuration including optional {@code ezkey.access-codes}
    * @param tenantAliasProperties external mapping file path and reload throttle
-   * @param clockProvider optional clock (defaults to system UTC)
    */
-  public AccessCodeService(
-      AcmeProperties properties,
-      TenantAliasProperties tenantAliasProperties,
-      ObjectProvider<Clock> clockProvider) {
-    this(properties, tenantAliasProperties, clockProvider.getIfAvailable(Clock::systemUTC));
+  public AccessCodeService(AcmeProperties properties, TenantAliasProperties tenantAliasProperties) {
+    this(properties, tenantAliasProperties, Clock.systemUTC());
   }
 
-  /**
-   * Creates the service with an explicit clock (unit tests).
-   *
-   * @param properties ACME configuration including optional {@code ezkey.access-codes}
-   * @param tenantAliasProperties external mapping file path and reload throttle
-   * @param clock clock for throttle tests and production
-   */
-  AccessCodeService(
+  private AccessCodeService(
       AcmeProperties properties, TenantAliasProperties tenantAliasProperties, Clock clock) {
     this.properties = properties;
     this.tenantAliasProperties = tenantAliasProperties;
@@ -108,12 +97,26 @@ public class AccessCodeService {
   }
 
   /**
-   * Creates the service with system UTC clock (tests that only exercise base slots).
+   * Test factory with an explicit clock (keeps a single Spring-injectable constructor).
    *
-   * @param properties ACME configuration including optional {@code ezkey.access-codes}
+   * @param properties ACME configuration
+   * @param tenantAliasProperties external mapping file path and reload throttle
+   * @param clock clock for throttle tests
+   * @return service instance
    */
-  AccessCodeService(AcmeProperties properties) {
-    this(properties, new TenantAliasProperties(), Clock.systemUTC());
+  static AccessCodeService forTests(
+      AcmeProperties properties, TenantAliasProperties tenantAliasProperties, Clock clock) {
+    return new AccessCodeService(properties, tenantAliasProperties, clock);
+  }
+
+  /**
+   * Test factory that only exercises base {@code ezkey.access-codes} slots.
+   *
+   * @param properties ACME configuration
+   * @return service instance
+   */
+  static AccessCodeService forTests(AcmeProperties properties) {
+    return new AccessCodeService(properties, new TenantAliasProperties(), Clock.systemUTC());
   }
 
   /**
@@ -258,8 +261,7 @@ public class AccessCodeService {
     try {
       text = Files.readString(path, StandardCharsets.UTF_8);
     } catch (IOException e) {
-      LOG.warn(
-          "Could not read tenant-alias mapping file; keeping last valid external mappings");
+      LOG.warn("Could not read tenant-alias mapping file; keeping last valid external mappings");
       return;
     }
 
@@ -296,8 +298,7 @@ public class AccessCodeService {
       digests.add(digest);
       String slotId = externalSlotId(alias.alias());
       nextExternal.add(
-          new LoadedSlot(
-              slotId, digest, alias.integrationKey(), alias.secretKey(), alias.label()));
+          new LoadedSlot(slotId, digest, alias.integrationKey(), alias.secretKey(), alias.label()));
     }
 
     lock.writeLock().lock();

@@ -26,8 +26,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class TenantAliasProperties {
 
   /**
-   * Absolute or relative path to the mapping file. Empty disables external-file loading (base {@code
-   * ezkey.access-codes} in application.properties still apply).
+   * Absolute or relative path to the mapping file. Empty disables external-file loading (base
+   * {@code ezkey.access-codes} in application.properties still apply).
    */
   private String file = "/app/config/tenant-aliases.properties";
 
