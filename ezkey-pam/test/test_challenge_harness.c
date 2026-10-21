@@ -91,8 +91,8 @@ int main(void) {
     expect_true("format_waiting contains Approve line",
                 strstr(buf, "Approve this SSH login on your Ezkey device for "
                             "user testuser.") != NULL);
-    expect_true("format_waiting contains Type ok confirm",
-                strstr(buf, "Type ok and press Enter to wait for Ezkey device "
+    expect_true("format_waiting contains Type ok request confirm",
+                strstr(buf, "Type ok and press Enter to request device "
                             "approval:") != NULL);
     expect_eq("format_challenge ok",
               ezkey_format_challenge_prompt(buf, sizeof(buf), 42), 0);

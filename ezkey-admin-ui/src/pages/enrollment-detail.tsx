@@ -1348,7 +1348,12 @@ export default function EnrollmentDetailPage() {
               checked={editChallenge}
               onChange={(e) => setEditChallenge(e.target.checked)}
             />
-            <span className="text-sm font-bold">{t('detail.editChallengeRequired')}</span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold">{t('detail.editChallengeRequired')}</span>
+              <span className="mt-1 block text-xs text-fg-muted font-normal">
+                {t('detail.editChallengeRequiredHelp')}
+              </span>
+            </span>
           </label>
           <div className="space-y-1.5">
             <Label htmlFor="edit-expires">{t('detail.editExpiresAt')}</Label>

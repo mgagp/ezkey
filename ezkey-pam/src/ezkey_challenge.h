@@ -56,8 +56,9 @@ int ezkey_challenge_display_ok(int pam_prompt_rc);
 int ezkey_prewait_response_confirmed(const char *resp);
 
 /**
- * Format the no-challenge SSH waiting prompt (shown via PAM_PROMPT_ECHO_OFF
- * before /wait so OpenSSH flushes it to the PTY — #941 / #975 D4).
+ * Format the pre-create confirm prompt (shown via PAM_PROMPT_ECHO_OFF
+ * **before** POST /auth-attempts — #941 / #975 confirm-before-create).
+ * Batch/empty clients fail here with zero attempts created.
  *
  * @param buf destination buffer
  * @param buflen capacity of buf
@@ -67,7 +68,8 @@ int ezkey_prewait_response_confirmed(const char *resp);
 int ezkey_format_waiting_prompt(char *buf, size_t buflen, const char *username);
 
 /**
- * Format the challenge-code SSH prompt (digits + explicit ok confirmation).
+ * Format the post-create challenge-code prompt (second ECHO_OFF in the same
+ * authenticate call when create returned a valid code — #975).
  *
  * @param buf destination buffer
  * @param buflen capacity of buf

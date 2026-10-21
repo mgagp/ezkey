@@ -132,6 +132,23 @@ send_ssh_enter() {
   fi
 }
 
+# Confirm-before-create: wait for the pre-create "Type ok… request" line, then
+# send ok so POST /auth-attempts runs (challenge appears only after create).
+wait_precreate_and_confirm() {
+  local log="${1:-${SSH_LOG}}"
+  local i flat
+  for i in $(seq 1 80); do
+    flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
+    if echo "${flat}" | grep -qE \
+      'Type ok and press Enter to request device approval|Approve this SSH login'; then
+      send_ssh_enter
+      return 0
+    fi
+    sleep 0.25
+  done
+  return 1
+}
+
 start_ssh_capture() {
   local log="${1:-${SSH_LOG}}"
   : >"${log}"
@@ -174,6 +191,17 @@ docker exec "${CONTAINER}" sh -c \
 SSH_LOG_A="${ARTIFACT_DIR}/pam-challenge-ssh-a.log"
 start_ssh_capture "${SSH_LOG_A}"
 
+# Confirm-before-create: ok #1 creates the attempt; challenge is prompt #2.
+if wait_precreate_and_confirm "${SSH_LOG_A}"; then
+  ok "Case A: pre-create ok sent (confirm-before-create)"
+else
+  fail "Case A: pre-create prompt missing"
+  kill "${SSH_BG}" 2>/dev/null || true
+  wait "${SSH_BG}" 2>/dev/null || true
+  echo "=== Results: $PASS passed, $FAIL failed ===" | tee -a "${PROOF_LOG}"
+  exit 1
+fi
+
 ATTEMPT_ID=""
 CHALLENGE=""
 for _ in $(seq 1 80); do
@@ -214,9 +242,9 @@ else
 fi
 
 if [ -n "${SHOWN}" ]; then
-  # Code is on the PTY; answer the Enter prompt so PAM proceeds to /wait,
+  # Code is on the PTY; answer the challenge confirm so PAM proceeds to /wait,
   # then approve — order proves display-before-approve (Patrick).
-  echo "Sending Enter on SSH stdin (after live capture proof)" | tee -a "${PROOF_LOG}"
+  echo "Sending ok on challenge prompt (after live capture proof)" | tee -a "${PROOF_LOG}"
   send_ssh_enter
   sleep 0.3
   echo "Approving with challenge=${CHALLENGE} (after capture proof)" | tee -a "${PROOF_LOG}"
@@ -292,6 +320,9 @@ docker exec "${CONTAINER}" sh -c \
 
 SSH_LOG_B="${ARTIFACT_DIR}/pam-challenge-ssh-b.log"
 start_ssh_capture "${SSH_LOG_B}"
+if ! wait_precreate_and_confirm "${SSH_LOG_B}"; then
+  fail "wrong-code case: pre-create prompt missing"
+fi
 ATTEMPT_ID=""
 CHALLENGE=""
 for _ in $(seq 1 80); do
@@ -376,13 +407,17 @@ docker exec "${CONTAINER}" sh -c ': > /var/log/ezkey-pam/debug.err'
 before="$(docker exec "${CONTAINER}" sh -c \
   "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
 before="${before:-0}"
+# Confirm-before-create: must ok the pre-create prompt before stub create runs;
+# then missing challenge → UNAVAIL (fail-closed #726 / #975).
+SSH_LOG_C="${ARTIFACT_DIR}/pam-challenge-ssh-c-absent.log"
+start_ssh_capture "${SSH_LOG_C}"
+wait_precreate_and_confirm "${SSH_LOG_C}" || true
 set +e
-ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
-  -o PasswordAuthentication=no -o ConnectTimeout=10 \
-  "${SSH_USER}@127.0.0.1" 'echo SHOULD_FAIL' >/dev/null 2>&1
+wait "${SSH_BG}"
 abs_rc=$?
 set -e
+SSH_BG=""
+close_ssh_ctrl
 for _ in $(seq 1 40); do
   after="$(docker exec "${CONTAINER}" sh -c \
     "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
@@ -429,6 +464,9 @@ docker exec "${CONTAINER}" sh -c \
 
 SSH_LOG_D="${ARTIFACT_DIR}/pam-challenge-ssh-d-enrollment.log"
 start_ssh_capture "${SSH_LOG_D}"
+if ! wait_precreate_and_confirm "${SSH_LOG_D}"; then
+  fail "#975 Case D: pre-create prompt missing"
+fi
 if wait_challenge_in_capture "42" "${SSH_LOG_D}" >/dev/null; then
   ok "#975 Case D: challenge 42 visible with challenge_requested=false (enrollment stub)"
   tr -cd '\11\12\15\40-\176' <"${SSH_LOG_D}" | grep -E 'Ezkey challenge' \

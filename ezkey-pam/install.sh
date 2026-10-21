@@ -54,6 +54,9 @@ echo "     Single-user lab alternative: Match User <mfa-user> with the same thre
 echo "     directives. See README Runbook / sshd.host-sketch."
 echo "  4. Clients: ssh -o NumberOfPasswordPrompts=1 …"
 echo "  5. Restart sshd (sshd -t first)."
+echo "  6. Interaction model (confirm-before-create, challenge prompts, batch"
+echo "     clients create nothing): see docs/INTERACTION-MODEL.md next to this"
+echo "     installer in the ezkey-pam tree (also README Runbook)."
 # Effective MaxAuthTries for the MFA user (sshd -T; avoids regex matching 10/12).
 # Global MaxAuthTries 1 check: shared helper + awk (also entrypoint + unit tests).
 # shellcheck source=scripts/sshd-warn-global-maxauthtries-1.sh

@@ -407,16 +407,21 @@ function EnrollmentCreateDialog({
           </div>
 
           {/* Challenge required */}
-          <div className="flex items-center gap-2.5">
-            <input
-              id="enr-challenge"
-              type="checkbox"
-              className="size-4 border-2 border-fg accent-accent"
-              {...register('authAttemptChallengeRequired')}
-            />
-            <Label htmlFor="enr-challenge" className="cursor-pointer">
-              {t('create.challengeRequired')}
-            </Label>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2.5">
+              <input
+                id="enr-challenge"
+                type="checkbox"
+                className="size-4 border-2 border-fg accent-accent"
+                {...register('authAttemptChallengeRequired')}
+              />
+              <Label htmlFor="enr-challenge" className="cursor-pointer">
+                {t('create.challengeRequired')}
+              </Label>
+            </div>
+            <p className="text-xs text-fg-muted pl-[1.625rem]">
+              {t('create.challengeRequiredHelp')}
+            </p>
           </div>
 
           {/* API error */}

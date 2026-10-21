@@ -14,44 +14,49 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 `integration-api`). When a user connects over SSH, the module:
 
 1. Reads runtime settings from `/etc/security/pam_ezkey.conf` (written at container start).
-2. Creates an auth attempt (`POST /api/v1/auth-attempts`) using the Linux username as
-   `userIdentifier`, with `challengeRequested=false` and optional `ttlSeconds` equal to the
-   effective wait (servers that ignore the field remain compatible).
-3. Shows a pre-wait SSH prompt (`PAM_PROMPT_ECHO_OFF`): the two-digit challenge code when
-   the create response includes `authAttemptChallenge` (host requested it, or the
-   enrollment requires it — #975), otherwise the waiting “Approve this SSH login…” line
-   (#941). The operator types **`ok`** and presses Enter (explicit confirm — #975 D4),
-   then the module waits.
-4. Waits for approve or reject (`GET /api/v1/auth-attempts/{id}/wait?timeout=N`), aligning `N`
-   on the applied TTL duration (monotonic budget) — never on host clock vs server `expiresAt`.
-5. Grants SSH access when wait `status` is `ACCEPTED`. On any non-accepted exit after create,
-   best-effort `POST …/cancel` (failure is logged; PAM outcome unchanged). Cancel is not
-   guaranteed when the wait timeout is reached; the real bound is the applied TTL.
+2. Shows a **pre-create** SSH confirm (`PAM_PROMPT_ECHO_OFF`): “Approve this SSH
+   login… / Type ok … to request device approval”. Trimmed **`ok`** is required
+   before any Integration API call (confirm-before-create — #975 / Patrick
+   [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) §5). Empty / EOF /
+   Ctrl-C → `UNAVAIL` with **zero** auth attempts (no phone noise).
+3. Creates an auth attempt (`POST /api/v1/auth-attempts`) using the Linux username as
+   `userIdentifier`, with `challengeRequested` from conf and optional `ttlSeconds`.
+4. If create returns a valid `authAttemptChallenge` (host requested or enrollment-
+   required — #975), shows a **second** prompt with the digits and requires another
+   `ok`. Digits never go to authpriv (#750). Host `challenge_requested` but
+   missing code → fail-closed `UNAVAIL` + cancel.
+5. Waits for approve or reject (`GET …/wait?timeout=N`), aligning `N` on the applied
+   TTL (monotonic budget) — never on host clock vs `expiresAt`.
+6. Grants SSH access when wait `status` is `ACCEPTED`. On any non-accepted exit after
+   create, best-effort `POST …/cancel`. Cancel is not guaranteed when the wait
+   timeout is reached; the real bound is the applied TTL.
 
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
 
-## What changed in 2.2.12 (#975 — enrollment challenge + explicit ok confirm)
+## What changed in 2.2.12 (#975 — enrollment challenge + confirm-before-create)
 
+- **Confirm-before-create (Patrick interaction model §5):** require trimmed
+  **`ok`** on a pre-create prompt **before** `POST /auth-attempts`. Batch /
+  empty / `ssh -T </dev/null` / Ctrl-C at that prompt → `UNAVAIL` with
+  **zero** creates (no phone noise). Challenge path: same pre-create `ok`,
+  then a **second** prompt shows the code after create. Still one authenticate
+  call → at most one create under `Match … MaxAuthTries 1`. See
+  [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md).
 - **Server-provided challenge always displayed:** when create returns a valid
   `authAttemptChallenge` (0..99), the module shows `Ezkey challenge code: NN…`
-  via `pam_prompt` **even if** host `challenge_requested=false` (enrollment
-  with `authAttemptChallengeRequired`). Pre-2.2.12 dropped the code on the
-  default conf path and login expired after ~75 s (Isabelle / ezkey-pam-test).
-- **Explicit pre-wait confirm (D4):** the prompt asks `Type ok and press Enter…`.
-  Empty / bare Enter / `ssh -T </dev/null` EOF all return `PAM_SUCCESS` with an
-  empty response — indistinguishable from “Press Enter” — so device approval
-  alone could open a shell with no visible prompt (Isabelle D4 FAIL vs README).
-  Requiring trimmed case-insensitive **`ok`** fail-closes that path without a
-  timing heuristic. Interactive operators type `ok`; lab autoenter helpers send
-  `ok`. `BatchMode` pubkey logins (e.g. `ec2-user`) never hit this conversation.
+  **even if** host `challenge_requested=false` (enrollment
+  `authAttemptChallengeRequired`). Pre-2.2.12 dropped the code on the default
+  conf path (Isabelle / #975).
+- **D4 fail-closed:** OpenSSH empty EOF is indistinguishable from bare Enter;
+  requiring `ok` (and doing it before create) closes the “approve with no
+  visible prompt” path. Lab autoenter helpers send `ok`.
 - **Fail-closed unchanged** when `challenge_requested=true` and no/out-of-range
-  challenge comes back → `PAM_AUTHINFO_UNAVAIL`.
-- **#750 preserved:** challenge digits stay out of authpriv/syslog; waiting line
-  still used when no challenge is present.
-- Proof: `ezkey_prewait_prompt_mode` + `ezkey_prewait_response_confirmed`
-  harness; stub `enrollment_challenge`; D4 `ssh -T </dev/null` + bare-Enter
-  → UNAVAIL in `test-timeouts.sh` (CI).
+  challenge → `PAM_AUTHINFO_UNAVAIL` + cancel. **#750:** digits never in
+  authpriv. **#726** wait/budget/cancel behaviour kept.
+- Proof: harness + stub `enrollment_challenge`; D4 zero-creates;
+  `#941` Approve visible with creates==0; exactly one create after `ok`
+  (`test-timeouts.sh` CI).
 
 ## What changed in 2.2.11 (#941 F1 — waiting message before device wait)
 
@@ -251,7 +256,7 @@ ssh -p 2223 \
 | `wait_timeout` | `90` | Seconds to wait for device approval (clamped **15–90**). Sent as create `ttlSeconds`; `/wait?timeout=` aligns on create response `timeoutSeconds` (PR-A) when present |
 | `wait_polling` | `2` | Wait poll interval |
 | `api_timeout` | `10` | Timeout for create/cancel calls (max 10) |
-| `challenge_requested` | `false` | Ask the Integration API for a challenge on create. When the response includes a valid challenge (requested here, or enrollment-required), the code is shown via SSH `pam_prompt` before wait (#975). When no challenge is present, the waiting “Approve this SSH login…” line still uses `pam_prompt` (#941). `true` + missing challenge → UNAVAIL |
+| `challenge_requested` | `false` | Ask the Integration API for a challenge on create. Operator always confirms with **`ok` before create** (confirm-before-create). When the response includes a valid challenge (requested here, or enrollment-required in Admin UI), a **second** `pam_prompt` shows the digits (#975). No challenge → wait after the first `ok` only (#941). `true` + missing challenge → UNAVAIL. Full matrix: [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) |
 | `lab_http` | `false` | Allow `http://` Integration API URL (Docker entrypoint sets `true`) |
 | `context_title` | `SSH login` | Title shown on the device |
 | `context_message` | *(generated)* | Message shown on the device |
@@ -320,6 +325,10 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
 
 ## Runbook notes (Lightsail / host SSH)
 
+- **Interaction model:** one SSH login → pre-create `ok` → at most one create →
+  optional challenge prompt → `/wait`. Batch / empty clients create nothing.
+  See [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) (scenario catalogue
+  + sshd / client inventory).
 - **`LoginGraceTime` ≥ 120 s.** Demo `sshd_config` sets `LoginGraceTime 120`. The module’s
   monotonic budget is 105 s; a lower grace time cuts the session before PAM can finish (often
   with **no** attempt line). Keep host sshd grace ≥ 120 when using this module.

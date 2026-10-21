@@ -64,9 +64,10 @@ int ezkey_format_waiting_prompt(char *buf, size_t buflen,
     if (safe_user[0] == '\0') {
         return -1;
     }
+    /* Confirm-before-create (#975): ok here creates the Integration API attempt. */
     n = snprintf(buf, buflen,
                  "Approve this SSH login on your Ezkey device for user %s.\n"
-                 "Type ok and press Enter to wait for Ezkey device approval: ",
+                 "Type ok and press Enter to request device approval: ",
                  safe_user);
     if (n < 0 || (size_t)n >= buflen) {
         return -1;

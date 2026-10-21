@@ -264,7 +264,8 @@ python3 "${SCRIPT_DIR}/ssh-pty-capture.py" "${SSH_LOG_941}" "${SSH_CTRL_941}" \
   >/dev/null 2>&1 &
 SSH_BG_941=$!
 set -e
-BEFORE_WAIT_OK=0
+# Confirm-before-create: Approve/ok must be visible with **zero** stub creates.
+BEFORE_CREATE_OK=0
 for _ in $(seq 1 80); do
   CREATES_941="$(docker exec "${CONTAINER}" sh -c \
     "n=\$(grep 'POST .*/auth-attempts' '${STUB_REQ_LOG}' 2>/dev/null | grep -v cancel | wc -l)
@@ -274,26 +275,26 @@ for _ in $(seq 1 80); do
     "n=\$(grep -c 'GET .*/wait' '${STUB_REQ_LOG}' 2>/dev/null || true)
      echo \"\${n:-0}\"" | tr -d ' \r' | head -n1)"
   WAITS_941="${WAITS_941:-0}"
-  if [ "${CREATES_941}" -ge 1 ] && [ "${WAITS_941}" -eq 0 ] \
+  if [ "${CREATES_941}" -eq 0 ] && [ "${WAITS_941}" -eq 0 ] \
     && ezkey_ssh_capture_has_prewait_prompt "${SSH_LOG_941}"; then
-    BEFORE_WAIT_OK=1
+    BEFORE_CREATE_OK=1
     break
   fi
-  # If /wait already started before Approve was visible → pam_info-style race.
-  if [ "${WAITS_941}" -ge 1 ] && ! ezkey_ssh_capture_has_prewait_prompt "${SSH_LOG_941}"; then
+  # Create already happened before Approve visible → confirm-before-create broken.
+  if [ "${CREATES_941}" -ge 1 ] && ! ezkey_ssh_capture_has_prewait_prompt "${SSH_LOG_941}"; then
     break
   fi
   sleep 0.25
 done
-if [ "${BEFORE_WAIT_OK}" -eq 1 ]; then
-  ok "#941 Approve/Type ok visible BEFORE stub /wait (prompt path)"
+if [ "${BEFORE_CREATE_OK}" -eq 1 ]; then
+  ok "#941/#975 Approve/ok visible BEFORE create (confirm-before-create)"
   {
-    echo "=== #941 before-wait capture excerpt ==="
+    echo "=== #941 before-create capture excerpt ==="
     tr -cd '\11\12\15\40-\176' <"${SSH_LOG_941}" \
       | grep -E 'Approve this SSH|Type ok' || true
   } | tee -a "${PROOF}"
 else
-  fail "#941 waiting prompt not visible before /wait (creates=${CREATES_941:-?} waits=${WAITS_941:-?})"
+  fail "#941/#975 pre-create prompt missing (creates=${CREATES_941:-?} waits=${WAITS_941:-?})"
   tr -cd '\11\12\15\40-\176' <"${SSH_LOG_941}" | tee -a "${PROOF}" || true
   docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null | tee -a "${PROOF}" || true
 fi
@@ -302,6 +303,16 @@ set +e
 wait "${SSH_BG_941}"
 set -e
 rm -rf "${SSH_CTRL_941_DIR}"
+# After ok: exactly one create under Match MaxAuthTries 1.
+CREATES_941_END="$(docker exec "${CONTAINER}" sh -c \
+  "n=\$(grep 'POST .*/auth-attempts' '${STUB_REQ_LOG}' 2>/dev/null | grep -v cancel | wc -l)
+   echo \"\${n:-0}\"" | tr -d ' \r' | head -n1)"
+CREATES_941_END="${CREATES_941_END:-0}"
+if [ "${CREATES_941_END}" -eq 1 ]; then
+  ok "#975 exactly one create after pre-create ok (MaxAuthTries 1)"
+else
+  fail "#975 expected exactly 1 create after ok, got ${CREATES_941_END}"
+fi
 stop_stub
 restore_conf
 
@@ -518,9 +529,12 @@ SSH_LOG="${ARTIFACT_DIR}/pam-timeouts-delayed-enter.log"
 SSH_CTRL="$(ezkey_mk_ctrl_fifo)"
 SSH_CTRL_DIR="$(dirname "${SSH_CTRL}")"
 run_chal_ssh "${SSH_LOG}" "${SSH_CTRL}"
+# Confirm-before-create: ok #1 creates; challenge is the second prompt.
+wait_prewait_visible "${SSH_LOG}" || true
+printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
 wait_chal_visible "${SSH_LOG}" || true
 DELAY_SECS=8
-echo "Delayed Enter ${DELAY_SECS}s after challenge visible" | tee -a "${PROOF}"
+echo "Delayed Enter ${DELAY_SECS}s after challenge visible (2nd prompt)" | tee -a "${PROOF}"
 sleep "${DELAY_SECS}"
 printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
 set +e
@@ -551,7 +565,7 @@ fi
 stop_stub
 restore_conf
 
-# --- Enter >25s → UNAVAIL + attempt line + cancel (create already done) ---
+# --- Enter >25s on challenge (2nd) prompt → UNAVAIL + cancel (create done) ---
 start_stub ok
 docker exec "${CONTAINER}" sh -c \
   "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
@@ -569,9 +583,12 @@ before="$(docker exec "${CONTAINER}" sh -c \
   "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
 before="${before:-0}"
 run_chal_ssh "${SSH_LOG}" "${SSH_CTRL}"
+wait_prewait_visible "${SSH_LOG}" || true
+printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
 wait_chal_visible "${SSH_LOG}" || true
 ENTER_OVER=26
-echo "Enter after ${ENTER_OVER}s (> EZKEY_MAX_ENTER_SECS 25)" | tee -a "${PROOF}"
+echo "Challenge-prompt Enter after ${ENTER_OVER}s (> EZKEY_MAX_ENTER_SECS 25)" \
+  | tee -a "${PROOF}"
 sleep "${ENTER_OVER}"
 printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
 set +e
@@ -592,11 +609,11 @@ CANCEL_N="$(stub_saw_cancel)"
 echo "enter>25 attempt=${ATTEMPT} cancel=${CANCEL_N}" | tee -a "${PROOF}"
 echo "enter>25 err=${ERR}" | tee -a "${PROOF}"
 if echo "${ATTEMPT}" | grep -q 'result=UNAVAIL' \
-  && echo "${ERR}" | grep -Eqi 'exceeded_max_duration|Enter_exceeded' \
+  && echo "${ERR}" | grep -Eqi 'exceeded_max_duration|Enter_exceeded|challenge confirm' \
   && [ "${CANCEL_N}" -ge 1 ]; then
-  ok "Enter >25s → UNAVAIL + cancel (monotonic duration; no signals)"
+  ok "challenge Enter >25s → UNAVAIL + cancel (create already done)"
 else
-  fail "Enter >25s expected UNAVAIL+cancel: ${ATTEMPT} cancel=${CANCEL_N} / ${ERR}"
+  fail "challenge Enter >25s expected UNAVAIL+cancel: ${ATTEMPT} cancel=${CANCEL_N} / ${ERR}"
 fi
 stop_stub
 restore_conf
@@ -643,7 +660,8 @@ fi
 stop_stub
 restore_conf
 
-# --- M1 (#956): Enter >25s on default path (no-challenge) ---
+# --- M1 (#956): Enter >25s on pre-create confirm (no-challenge) ---
+# Confirm-before-create: slow ok never reaches POST → zero creates, no cancel.
 start_stub ok
 docker exec "${CONTAINER}" sh -c \
   "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
@@ -653,7 +671,7 @@ docker exec "${CONTAINER}" sh -c \
    sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
    sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
    chown root:root '${CONF}'; chmod 600 '${CONF}'; \
-   : > /var/log/ezkey-pam/debug.err"
+   : > /var/log/ezkey-pam/debug.err; : > '${STUB_REQ_LOG}'"
 SSH_LOG="${ARTIFACT_DIR}/pam-timeouts-enter-over-25-nochal.log"
 SSH_CTRL="$(ezkey_mk_ctrl_fifo)"
 SSH_CTRL_DIR="$(dirname "${SSH_CTRL}")"
@@ -663,7 +681,8 @@ before="${before:-0}"
 run_chal_ssh "${SSH_LOG}" "${SSH_CTRL}"
 wait_prewait_visible "${SSH_LOG}" || true
 ENTER_OVER=26
-echo "No-challenge Enter after ${ENTER_OVER}s (> EZKEY_MAX_ENTER_SECS 25)" | tee -a "${PROOF}"
+echo "No-challenge pre-create Enter after ${ENTER_OVER}s (> EZKEY_MAX_ENTER_SECS 25)" \
+  | tee -a "${PROOF}"
 sleep "${ENTER_OVER}"
 printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
 set +e
@@ -681,14 +700,19 @@ ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
   "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
 ERR="$(docker exec "${CONTAINER}" sh -c 'tail -n 8 /var/log/ezkey-pam/debug.err' || true)"
 CANCEL_N="$(stub_saw_cancel)"
-echo "nochal-enter>25 attempt=${ATTEMPT} cancel=${CANCEL_N}" | tee -a "${PROOF}"
+CREATES_SLOW="$(docker exec "${CONTAINER}" sh -c \
+  "n=\$(grep 'POST .*/auth-attempts' '${STUB_REQ_LOG}' 2>/dev/null | grep -v cancel | wc -l)
+   echo \"\${n:-0}\"" | tr -d ' \r' | head -n1)"
+CREATES_SLOW="${CREATES_SLOW:-0}"
+echo "nochal-enter>25 attempt=${ATTEMPT} cancel=${CANCEL_N} creates=${CREATES_SLOW}" \
+  | tee -a "${PROOF}"
 echo "nochal-enter>25 err=${ERR}" | tee -a "${PROOF}"
 if echo "${ATTEMPT}" | grep -q 'result=UNAVAIL' \
-  && echo "${ERR}" | grep -Eqi 'exceeded_max_duration|Enter_exceeded|waiting Enter' \
-  && [ "${CANCEL_N}" -ge 1 ]; then
-  ok "no-challenge Enter >25s → UNAVAIL + cancel (monotonic duration; no signals)"
+  && echo "${ERR}" | grep -Eqi 'exceeded_max_duration|Enter_exceeded|pre-create confirm' \
+  && [ "${CREATES_SLOW}" -eq 0 ] && [ "${CANCEL_N}" -eq 0 ]; then
+  ok "no-challenge Enter >25s → UNAVAIL + zero creates (confirm-before-create)"
 else
-  fail "no-challenge Enter >25s expected UNAVAIL+cancel: ${ATTEMPT} cancel=${CANCEL_N} / ${ERR}"
+  fail "no-challenge Enter >25s expected UNAVAIL+0 creates: ${ATTEMPT} cancel=${CANCEL_N} creates=${CREATES_SLOW} / ${ERR}"
 fi
 stop_stub
 restore_conf
@@ -1069,6 +1093,14 @@ python3 "${SCRIPT_DIR}/ssh-pty-capture.py" "${SSH_LOG_975}" "${SSH_CTRL_975}" \
   >/dev/null 2>&1 &
 SSH_BG_975=$!
 set -e
+# Pre-create ok → create → enrollment challenge is the second prompt.
+for _ in $(seq 1 80); do
+  if ezkey_ssh_capture_has_prewait_prompt "${SSH_LOG_975}"; then
+    break
+  fi
+  sleep 0.25
+done
+printf 'ok\n' >"${SSH_CTRL_975}" 2>/dev/null || true
 CHAL_975_OK=0
 for _ in $(seq 1 80); do
   if tr -cd '\11\12\15\40-\176' <"${SSH_LOG_975}" 2>/dev/null \
@@ -1108,9 +1140,8 @@ fi
 stop_stub
 restore_conf
 
-# --- #975 D4: ssh -T </dev/null auto-answers empty → must UNAVAIL (not SUCCESS) ---
-# Isabelle retest: no prompt shown, yet empty EOF satisfied pam_prompt and device
-# approve opened a shell. Explicit "ok" confirm closes that hole.
+# --- #975 D4: ssh -T </dev/null → UNAVAIL + **zero** stub creates ---
+# Confirm-before-create: empty EOF never reaches POST /auth-attempts.
 start_stub ok
 docker exec "${CONTAINER}" sh -c \
   "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
@@ -1119,7 +1150,7 @@ docker exec "${CONTAINER}" sh -c \
    sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
    sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
    chown root:root '${CONF}'; chmod 600 '${CONF}'; \
-   : > /var/log/ezkey-pam/debug.err"
+   : > /var/log/ezkey-pam/debug.err; : > '${STUB_REQ_LOG}'"
 before_d4="$(docker exec "${CONTAINER}" sh -c \
   "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
 before_d4="${before_d4:-0}"
@@ -1142,16 +1173,22 @@ ATTEMPT_D4="$(docker exec "${CONTAINER}" sh -c \
   "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
 ERR_D4="$(docker exec "${CONTAINER}" sh -c \
   'tail -n 8 /var/log/ezkey-pam/debug.err' || true)"
-echo "d4_rc=${d4_rc} attempt=${ATTEMPT_D4}" | tee -a "${PROOF}"
+CREATES_D4="$(docker exec "${CONTAINER}" sh -c \
+  "n=\$(grep 'POST .*/auth-attempts' '${STUB_REQ_LOG}' 2>/dev/null | grep -v cancel | wc -l)
+   echo \"\${n:-0}\"" | tr -d ' \r' | head -n1)"
+CREATES_D4="${CREATES_D4:-0}"
+echo "d4_rc=${d4_rc} creates=${CREATES_D4} attempt=${ATTEMPT_D4}" | tee -a "${PROOF}"
 echo "d4_err=${ERR_D4}" | tee -a "${PROOF}"
 if [ "${d4_rc}" -ne 0 ] \
+  && [ "${CREATES_D4}" -eq 0 ] \
   && echo "${ATTEMPT_D4}" | grep -q 'result=UNAVAIL' \
   && echo "${ERR_D4}" | grep -Eq 'pre-wait confirm missing|empty/EOF|not ok'; then
-  ok "#975 D4 ssh -T </dev/null → UNAVAIL (empty confirm rejected)"
+  ok "#975 D4 ssh -T </dev/null → UNAVAIL + zero creates"
 else
-  fail "#975 D4 expected UNAVAIL+confirm reason (rc=${d4_rc}): ${ATTEMPT_D4} err=${ERR_D4}"
+  fail "#975 D4 expected UNAVAIL+0 creates (rc=${d4_rc} creates=${CREATES_D4}): ${ATTEMPT_D4}"
 fi
-# Bare Enter on a PTY (empty response) must also fail — same hole as EOF.
+# Bare Enter on a PTY (empty) → UNAVAIL + zero creates.
+docker exec "${CONTAINER}" sh -c ": >'${STUB_REQ_LOG}'"
 SSH_LOG_D4E="${ARTIFACT_DIR}/pam-timeouts-d4-bare-enter.log"
 SSH_CTRL_D4E="$(ezkey_mk_ctrl_fifo)"
 SSH_CTRL_D4E_DIR="$(dirname "${SSH_CTRL_D4E}")"
@@ -1179,11 +1216,17 @@ set -e
 rm -rf "${SSH_CTRL_D4E_DIR}"
 ATTEMPT_D4E="$(docker exec "${CONTAINER}" sh -c \
   "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
-echo "d4_bare_enter_rc=${d4e_rc} attempt=${ATTEMPT_D4E}" | tee -a "${PROOF}"
-if [ "${d4e_rc}" -ne 0 ] && echo "${ATTEMPT_D4E}" | grep -q 'result=UNAVAIL'; then
-  ok "#975 D4 bare Enter (empty) → UNAVAIL"
+CREATES_D4E="$(docker exec "${CONTAINER}" sh -c \
+  "n=\$(grep 'POST .*/auth-attempts' '${STUB_REQ_LOG}' 2>/dev/null | grep -v cancel | wc -l)
+   echo \"\${n:-0}\"" | tr -d ' \r' | head -n1)"
+CREATES_D4E="${CREATES_D4E:-0}"
+echo "d4_bare_enter_rc=${d4e_rc} creates=${CREATES_D4E} attempt=${ATTEMPT_D4E}" \
+  | tee -a "${PROOF}"
+if [ "${d4e_rc}" -ne 0 ] && [ "${CREATES_D4E}" -eq 0 ] \
+  && echo "${ATTEMPT_D4E}" | grep -q 'result=UNAVAIL'; then
+  ok "#975 D4 bare Enter → UNAVAIL + zero creates"
 else
-  fail "#975 D4 bare Enter expected UNAVAIL (rc=${d4e_rc}): ${ATTEMPT_D4E}"
+  fail "#975 D4 bare Enter expected UNAVAIL+0 creates (rc=${d4e_rc} creates=${CREATES_D4E})"
 fi
 stop_stub
 restore_conf
