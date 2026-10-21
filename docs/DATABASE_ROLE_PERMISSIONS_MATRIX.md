@@ -113,6 +113,7 @@ Grants on parents `ezkey_audit_log` and `ezkey_auth_attempt` apply to partitions
 3. **Partition DDL:** app roles never get CREATE TABLE; only EXECUTE on the whitelist function.
 4. **RLS / column grants:** out of scope (see `I-2026-0021`).
 5. **Functional tests:** `DatabaseHelper` and similar may keep using `postgres` for opportunistic DB inspection — not a runtime path.
+6. **Crypto lab role:** `ezkey_crypto` is SELECT-only on `ezkey_keyset_blob` for the disposable local clean-start stack. No default privileges on future tables; no grant on `ezkey_encryption_key`. Application `writer=false` is defense in depth — the DB GRANT is the barrier.
 
 ## 2-role vs 3-role (recorded)
 
@@ -125,7 +126,7 @@ Grants on parents `ezkey_audit_log` and `ezkey_auth_attempt` apply to partitions
 
 - **Clean-start / community:** recreate `postgres-data` volume so init roles run; then migrate → apply-grants → APIs.
 - **Local IDE:** run `scripts/db/create-roles.sh` then migrate as `ezkey_migrate` then `scripts/db/apply-grants.sh`.
-- **Passwords:** `EZKEY_DB_MIGRATE_PASSWORD`, `EZKEY_DB_ADMIN_PASSWORD`, `EZKEY_DB_AUTH_PASSWORD`, `EZKEY_DB_INTEGRATION_PASSWORD` (see `docker/.env.example`).
+- **Passwords:** `EZKEY_DB_MIGRATE_PASSWORD`, `EZKEY_DB_ADMIN_PASSWORD`, `EZKEY_DB_AUTH_PASSWORD`, `EZKEY_DB_INTEGRATION_PASSWORD`, `EZKEY_DB_CRYPTO_PASSWORD` (see `docker/.env.example`).
 - **Monitoring / Grafana:** may continue to use `postgres` or a future read-only role (not in this matrix).
 - **Backup:** prefer `postgres` or `ezkey_migrate` for `pg_dump`.
 - **Docs debt cleared:** [`OPERATIONAL.md`](OPERATIONAL.md) § Database Security must match this matrix (not a single full-CRUD app user).

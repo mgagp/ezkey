@@ -64,7 +64,7 @@ probe_lb "auth-lb" "http://127.0.0.1:8080/api/v1/public/instance-info" "200"
 # Integration: no public instance-info; OpenAPI docs are anonymous 200 when backends are up.
 probe_lb "integration-lb" "http://127.0.0.1:7080/api-docs" "200"
 # Crypto / Demo Device are not behind HAProxy; host management publish must still answer (#905).
-probe_lb "crypto-mgmt" "http://127.0.0.1:9091/actuator/health" "200"
+probe_lb "crypto-mgmt" "http://127.0.0.1:9091/actuator/health/liveness" "200"
 probe_lb "demo-device-mgmt" "http://127.0.0.1:8084/actuator/health" "200"
 
 echo "HA LB smoke PASSED"

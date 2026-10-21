@@ -29,9 +29,11 @@ docker ps | grep crypto-api
 # Check logs
 docker logs ezkey-crypto-api --tail 50
 
-# Test health (management port; business API remains :9090)
-curl http://localhost:9091/actuator/health
+# Test liveness (orchestration; encryption readiness is a separate group)
+curl http://localhost:9091/actuator/health/liveness
+curl http://localhost:9091/actuator/health/encryption
 ```
+
 
 ## 🔑 Core Endpoints
 
@@ -145,41 +147,27 @@ Experimental Dart interop stays in `ezkey_dart/`.
 - `errorMessage`: Error details if decryption failed
 - `encryptionAvailable`: Whether EncryptionService is initialized
 
-## 🔄 Keyset Management
+## 🔄 Keyset Management (ADR-0016)
 
-### Keyset Loading Behavior
+Local clean-start **only** (not Lightsail). Read-only DataSource (`ezkey_crypto`) loads
+`ezkey_keyset_blob`. `master.key` from the secrets volume. `writer=false`, `required=true`.
 
-**Keyset is loaded at startup** from the configured keyset file (`/etc/ezkey/keysets/keyset.json.encrypted` in Docker).
+### Loading / recovery
 
-### Key Rotation Impact
+- Startup: non-writer wait for Admin blob, then install.
+- Online: version tick reloads blob; AEAD failure → force blob reload + retry (no
+  `ezkey_encryption_key` grant).
+- Restart after Admin rotation is **not** required for blob sync.
 
-When key rotation occurs in the main application (admin-api or auth-api):
+### Split health
 
-1. ✅ Keyset file is updated with new primary key
-2. ⚠️ **Crypto API continues using keyset loaded at startup** (old keyset)
-3. 🔄 **Restart Crypto API** to load the new keyset
-
-**Why Restart is Required**:
-- Simplicity: Crypto API is a debugging tool - restart ensures predictable behavior
-- No database sync: Crypto API uses FILE storage mode only (no database access)
-- Predictable state: Guarantees exact keyset from file at startup time
-
-**Workflow After Key Rotation**:
-```bash
-# 1. Key rotation occurs in admin-api/auth-api
-# 2. Keyset file is updated
-# 3. Restart Crypto API
-docker restart ezkey-crypto-api
-
-# 4. Crypto API now uses new keyset
-```
+- Liveness (Docker healthcheck / bootstrap-init): `/actuator/health/liveness`
+- Encryption readiness: `/actuator/health/encryption`
 
 ### Decryption Capabilities
 
-Crypto API can decrypt values encrypted with:
-- ✅ **Current keyset**: Keys loaded at startup
-- ✅ **Previous keysets**: Tink supports multiple keys - old keys remain available until removed from keyset
-- ❌ **Keys not in keyset**: Decryption fails if key was removed from keyset file
+- ✅ Kids present in the loaded blob (current + previous Tink keys)
+- ❌ Kids removed from the blob → fail-closed decrypt
 
 ## 💡 Common Workflows
 
@@ -247,9 +235,9 @@ source of truth, not `postman/`.
 - ⚠️ **Never expose in production**: This is a testing/debugging tool only
 
 ### Keyset Synchronization
-- ⚠️ **Restart required after key rotation**: Crypto API doesn't auto-reload keyset
-- ⚠️ **File-based only**: No database sync - uses keyset file only
-- ⚠️ **Startup keyset**: Uses keyset loaded at startup, not current file state
+- ✅ Blob reload on version advance and AEAD recovery (ADR-0016)
+- ⚠️ **Lab only**: not deployed on Lightsail / ezkey.online
+- ⚠️ **SELECT-only DB role**: `ezkey_crypto` cannot mutate the blob
 
 ### Error Handling
 - **200 OK doesn't mean success**: Check `decryptionSuccessful` field in decrypt response
@@ -270,7 +258,7 @@ source of truth, not `postman/`.
 ### When API is Unavailable
 
 1. **Verify container is running**: `docker ps | grep crypto-api`
-2. **Check health endpoint**: `curl http://localhost:9091/actuator/health` (management port)
+2. **Check liveness**: `curl http://localhost:9091/actuator/health/liveness` (management port)
 3. **Review startup logs**: `docker logs ezkey-crypto-api --tail 100`
 4. **Check port mapping**: Ensure business port 9090 and management port 9091 are accessible
 5. **Verify volume mounts**: Encryption secrets volume should be mounted

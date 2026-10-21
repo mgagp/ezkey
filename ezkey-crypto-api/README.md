@@ -284,47 +284,35 @@ Common error codes:
 - `INTERNAL_ERROR`: Internal server error
 - `UNKNOWN_ERROR`: Unexpected error
 
-## Keyset Management and Key Rotation
+## Keyset Management (ADR-0016)
 
-### Keyset Loading Behavior
+Crypto API runs **only** in the disposable local clean-start stack (not on Lightsail). It uses a
+**read-only** DataSource (role `ezkey_crypto`) to `SELECT` `ezkey_keyset_blob`. `master.key` still
+comes from the secrets volume. `writer=false`, `required=true`, `storage-mode=DATABASE`.
 
-The Crypto API loads the encryption keyset from the configured keyset file (`ezkey.encryption.keyset-file`) **at application startup**. The keyset is loaded once during initialization and remains in memory for the duration of the application's lifecycle.
+### Loading and recovery
 
-### Key Rotation Impact
+1. On startup, non-writer crypto waits (bounded bootstrap wait) for Admin to materialize the blob.
+2. Online, `TinkKeyManager` reloads when the blob version advances.
+3. On AEAD decrypt failure: **reload the blob** and retry (`max-reload-retries`). There is **no**
+   grant on `ezkey_encryption_key` — recovery never consults metadata tables.
 
-When a key rotation occurs in the main application (admin-api or auth-api):
+### After Admin key rotation
 
-1. **The keyset file is updated** with the new primary key
-2. **Crypto API continues using the keyset loaded at startup** (the old keyset)
-3. **To use the new keyset, Crypto API must be restarted**
+Admin CAS-writes a new blob version. Crypto picks it up via the version tick / force reload on AEAD
+failure. A restart is **not** required for blob-sync recovery (unlike the former FILE-only story).
 
-### Why Restart is Required
+### Split health
 
-- **Simplicity**: Crypto API is a debugging tool. Requiring a restart ensures predictable behavior and avoids complexity
-- **No Database Sync**: Crypto API does not have database access, so it cannot detect keyset changes via database synchronization
-- **File-based Only**: Crypto API uses FILE storage mode exclusively (no DATABASE or HYBRID mode support)
-- **Predictable State**: Restart guarantees that Crypto API uses the exact keyset that exists in the file at startup time
+- Docker / orchestration: `GET http://localhost:9091/actuator/health/liveness` (stays UP for
+  keypair/sign even if encryption is not ready).
+- Encryption readiness: `GET http://localhost:9091/actuator/health/encryption` (`tinkEncryption`).
+- See [CONFIGURATION.md](CONFIGURATION.md) § Split health.
 
-**Note**: While `TinkKeyManager` has a mechanism to check for keyset file changes during runtime (`checkAndReloadKeysetIfNeeded()`), this automatic reload is not guaranteed. It only occurs when encryption operations are performed, is throttled (checks max every 5 seconds), and may fail silently. For a debugging tool, requiring a restart after key rotation is simpler, more predictable, and more reliable than depending on automatic reload behavior.
+### Decryption capabilities
 
-### Workflow After Key Rotation
-
-1. Key rotation occurs in the main application (admin-api or auth-api)
-2. The keyset file is updated with the new primary key
-3. **Restart Crypto API** to load the new keyset:
-   ```bash
-   # Stop Crypto API
-   # Start Crypto API (it will load the updated keyset file)
-   ```
-4. Crypto API can now decrypt values encrypted with the new key
-
-### Decryption Capabilities
-
-Crypto API can decrypt values encrypted with:
-- **Current keyset**: Values encrypted with keys in the keyset loaded at startup
-- **Previous keysets**: Tink supports multiple keys in a keyset, so old keys remain available for decryption until they are removed from the keyset
-
-**Note**: If a value was encrypted with a key that is no longer in the keyset file, decryption will fail. In this case, ensure Crypto API is using a keyset file that contains the required key.
+Crypto can decrypt values whose kids are present in the loaded blob (current and previous keys in
+the Tink keyset). If a kid was removed from the blob, decryption fails closed.
 
 ## Security Notes
 
