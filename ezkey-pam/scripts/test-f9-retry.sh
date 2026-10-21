@@ -168,8 +168,8 @@ docker exec "${CONTAINER}" sh -c ": >'${STUB_REQ_LOG}'"
 # Drive SSH under PTY with auto-Enter so create completes and /wait starts
 # before kill (#941 waiting prompt + #907 R5).
 KILL_LOG="${ARTIFACT_DIR}/pam-f9-kill-ssh.log"
-KILL_CTRL="$(mktemp -u /tmp/ezkey-f9-kill-ctrl.XXXXXX)"
-mkfifo "${KILL_CTRL}"
+KILL_CTRL="$(ezkey_mk_ctrl_fifo)"
+KILL_CTRL_DIR="$(dirname "${KILL_CTRL}")"
 : >"${KILL_LOG}"
 set +e
 python3 "${SCRIPT_DIR}/ssh-pty-capture.py" "${KILL_LOG}" "${KILL_CTRL}" \
@@ -196,7 +196,7 @@ if [ "${CREATED}" -lt 1 ]; then
   printf 'quit\n' >"${KILL_CTRL}" 2>/dev/null || true
   kill "${SSH_PID}" 2>/dev/null || true
   wait "${SSH_PID}" 2>/dev/null || true
-  rm -f "${KILL_CTRL}"
+  rm -rf "${KILL_CTRL_DIR}"
   fail "B2b: no create before kill (stub/pending path)"
 else
   # Flush waiting prompt then allow /wait to begin before client kill.
@@ -232,7 +232,7 @@ else
     sleep 0.1
   done
   wait "${SSH_PID}" 2>/dev/null || true
-  rm -f "${KILL_CTRL}"
+  rm -rf "${KILL_CTRL_DIR}"
   STUB_LOG="$(docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null || true)"
   echo "${STUB_LOG}" | tee -a "${PROOF}" || true
   echo "kill-during-wait cancel_seen=${CANCEL_SEEN} elapsed_s=${CANCEL_ELAPSED}" \

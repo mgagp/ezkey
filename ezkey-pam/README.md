@@ -49,9 +49,16 @@ that owns the API key.
   in logs or argv.
 - Operator UX: Press Enter once after the waiting (or challenge) line, then
   approve or deny on the device while the module waits.
-- Proof: harness `ezkey_format_waiting_prompt`; CI stub capture asserts the
-  Approve line (`test-timeouts.sh`, `test-conf-security.sh`);
-  `ezkey_ssh_kbdint_autoenter` in `scripts/common.sh` drives Enter for demos.
+- **No TTY / non-interactive SSH:** the default path now always requires a PAM
+  conversation to display the waiting prompt. Without a TTY (cron, CI runners,
+  `ssh` without a PTY, scripts that provide no conversation), the module
+  **fail-closes** with `PAM_AUTHINFO_UNAVAIL`. Device approval alone is no
+  longer enough when no prompt can be shown (#956 M2).
+- Proof: harness `ezkey_format_waiting_prompt` + username control sanitization;
+  CI stub suites (`test-conf-security.sh`, `test-timeouts.sh`,
+  `test-f9-retry.sh` via `ci-m1-conf-security.sh`) assert Approve **before**
+  `/wait` and no-challenge failing-conv → UNAVAIL; `ezkey_ssh_kbdint_autoenter`
+  in `scripts/common.sh` drives Enter for demos.
 
 ## What changed in 2.2.10 (#907 F9 — Patrick/Christophe review, option A)
 

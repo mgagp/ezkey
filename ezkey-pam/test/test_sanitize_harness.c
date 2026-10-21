@@ -48,6 +48,26 @@ int main(void) {
     ezkey_sanitize_for_log(buf, sizeof(buf), "user=evil authAttemptId=1");
     expect_eq("field injection attempt", buf, "user_evil_authAttemptId_1");
 
+    printf("=== ezkey_sanitize_for_prompt harness (#941 nit b) ===\n");
+
+    ezkey_sanitize_for_prompt(buf, sizeof(buf), "alice");
+    expect_eq("prompt plain ascii", buf, "alice");
+
+    ezkey_sanitize_for_prompt(buf, sizeof(buf), "a b=c");
+    expect_eq("prompt keeps space and equals", buf, "a b=c");
+
+    ezkey_sanitize_for_prompt(buf, sizeof(buf), "a\nb\tc\r");
+    expect_eq("prompt controls CR/LF/TAB", buf, "a_b_c_");
+
+    {
+        char src[] = {'x', (char)0x7f, 'y', (char)0x80, (char)0xff, 'z', '\0'};
+        ezkey_sanitize_for_prompt(buf, sizeof(buf), src);
+        expect_eq("prompt DEL and high bytes", buf, "x_y__z");
+    }
+
+    ezkey_sanitize_for_prompt(buf, sizeof(buf), NULL);
+    expect_eq("prompt NULL src", buf, "");
+
     printf("=== Results: %s ===\n", failures == 0 ? "all passed" : "FAILED");
     return failures == 0 ? 0 : 1;
 }

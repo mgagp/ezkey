@@ -377,13 +377,17 @@ jobs:
             build-essential libpam0g-dev libcurl4-openssl-dev libcjson-dev \
             openssh-client
 
-      - name: make test (check-source + compile + filelog + sanitize harnesses)
+      - name: make test (check-source + compile + harnesses + #941 prompt guards)
         run: make test
 
       - name: Docker builder (Rocky pam_ezkey.so)
         run: docker build --target builder -t ezkey-pam-builder:ci .
 
-      - name: M1 conf-security in CI (B1 / 0000 / non-root / URL absent)
+      # E1 (#956 / #941): stub suites must run in CI — make test alone does not
+      # catch pam_info-on-default-path or a neutered display_ok call site.
+      # ci-m1-conf-security.sh builds the runtime image and runs:
+      #   test-conf-security.sh · test-timeouts.sh · test-f9-retry.sh
+      - name: Stub suites in CI (conf-security + timeouts + f9-retry, #941)
         run: ./scripts/ci-m1-conf-security.sh
 
   lightsail:

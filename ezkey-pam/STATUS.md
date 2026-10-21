@@ -569,6 +569,24 @@ Operator presses Enter once, then approves or denies on the device. One prompt
 inside the same `pam_sm_authenticate` call does **not** create a second
 Integration API request under `Match … MaxAuthTries 1`. Conversation failure →
 `PAM_AUTHINFO_UNAVAIL` + best-effort cancel (fail-closed; no `pam_info` fallback).
+Client-supplied username characters that are not printable ASCII are replaced
+with `_` before the prompt (`ezkey_sanitize_for_prompt`, #956 nit b).
+
+**No TTY (#956 M2).** Without a PAM conversation (cron, CI, non-interactive
+`ssh`, missing PTY), the default path **always denies** (`PAM_AUTHINFO_UNAVAIL`).
+Before #941, bare `pam_info` did not require a response prompt, so a device
+approval alone could complete MFA with no client-visible waiting line. That
+fail-open-on-silent-client behavior is gone; non-interactive callers must not
+expect SSH MFA to succeed without a conversation.
+
+**Quit at the waiting/challenge prompt (#956 M3).** Wait-scoped `SIGTERM` is
+armed only around chunked `/wait` (`pam_ezkey.c` sigaction install before the
+wait loop). Quitting (Ctrl-C / client disconnect) **while still on the Enter
+prompt** does not run that handler: create has already succeeded, so the
+Integration API attempt stays pending until the **applied TTL** (at most 90 s)
+or a best-effort cancel if the conversation returns an error. Arming SIGTERM
+earlier was not taken — absorption during `pam_prompt` would need a separate
+Christophe security review and would not unblock a stuck conversation call.
 
 **Two-digit challenge (2.2.4+).** Opt-in for hosts that want phishing-resistant
 number matching (`challenge_requested=true`):
@@ -589,9 +607,13 @@ number matching (`challenge_requested=true`):
 
 **Lab proof target (no physical phone).**
 
-- No-challenge (#941): stub SUCCESS capture in `test-timeouts.sh` /
-  `test-conf-security.sh` must show `Approve this SSH login…` (auto-Enter via
-  `ezkey_ssh_kbdint_autoenter`).
+- No-challenge (#941 / #956 E1): `test-timeouts.sh` asserts Approve/Press Enter
+  **while stub has create and zero `/wait` GETs**; `test-conf-security.sh`
+  asserts failing PAM conversation → UNAVAIL with `challenge_requested=false`
+  (display_ok guard). Both run in CI via `ci-m1-conf-security.sh`.
+- Enter thresholds on the **default path** (#956 M1): delayed Enter (~8 s) and
+  Enter >25 s in `test-timeouts.sh` with `challenge_requested=false` (same
+  assertions as the challenge variants).
 - Challenge: `./scripts/test-challenge.sh`:
   1. Live PTY capture (`ssh-pty-capture.py`) must show `Ezkey challenge code: NN`
      **before** Enter + approve.
@@ -689,6 +711,12 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | Marc #907 R5 | Disconnect cancel = **best-effort, TTL-bounded** (no new mechanism; SIGTERM kept) | **Done** — case C documents expected miss; A/B gate CI |
 | Patrick CHANGES | https scheme case-insensitive + no pam_info fallback | **Done** |
 | #941 F1 (Edgar) | No-challenge waiting line via `pam_prompt` before `/wait` (not buffered `pam_info`) | **Done** (2.2.11) |
+| #956 Patrick E1 | Stub suites + before-wait / no-conv asserts in `ezkey-pam` CI job | **Done** |
+| #956 Patrick M1 | No-challenge delayed Enter + Enter >25 s in `test-timeouts.sh` | **Done** |
+| #956 Patrick M2 | Document no-TTY fail-closed on default path | **Done** |
+| #956 Patrick M3 | Document SIGTERM only during `/wait`; quit-at-prompt → TTL ≤90 s | **Done** (document; no early arm) |
+| #956 Patrick nit a | `mktemp -d` + fifo inside (common.sh / timeouts / f9) | **Done** |
+| #956 Patrick nit b | Sanitize username controls before waiting prompt | **Done** |
 | #895 PR-B | `ttlSeconds` + applied-TTL align + cancel + EXPIRED/TIMEOUT/DENIED | **Done** (`test-timeouts.sh` + README runbook) |
 | Patrick #897 CHANGES | stub `legacy_create` / `cancel_fail`; applied-shrink; budget harness (rem→−1) | **Done** (`test-budget` + `test-timeouts.sh`) |
 | Patrick #897 M1/M2 | `applied_grow` / zero / null; `cancel=ok\|fail\|skipped`; legacy+reject/timeout | **Done** (`test-timeouts.sh`) |

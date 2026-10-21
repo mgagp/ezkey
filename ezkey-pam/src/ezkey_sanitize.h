@@ -19,4 +19,17 @@
  */
 void ezkey_sanitize_for_log(char *dest, size_t dest_size, const char *src);
 
+/**
+ * Neutralize control characters and non-ASCII bytes before embedding a
+ * client-supplied username in a PAM prompt (#941 nit b). Printable ASCII
+ * (0x20–0x7e) is kept; everything else becomes '_'. Unlike
+ * ezkey_sanitize_for_log, spaces and '=' are preserved so ordinary Linux
+ * usernames remain readable in the SSH prompt.
+ *
+ * @param dest destination buffer
+ * @param dest_size capacity of dest
+ * @param src source string (may be NULL → empty dest)
+ */
+void ezkey_sanitize_for_prompt(char *dest, size_t dest_size, const char *src);
+
 #endif /* EZKEY_SANITIZE_H */

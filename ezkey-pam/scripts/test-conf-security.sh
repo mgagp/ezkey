@@ -281,6 +281,35 @@ else
   fail "stub positive control attempt line: ${attempt}"
 fi
 
+# #941 / #956 E1: no-challenge + failing PAM conversation → UNAVAIL (display_ok guard).
+# Neutering the display_ok check in pam_ezkey.c would let stub ok → SUCCESS here.
+docker exec "${CONTAINER}" test -x /opt/pam-ezkey/test/test_no_conv_client \
+  || { fail "test_no_conv_client missing"; }
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=15/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+before="$(attempt_count)"; before="${before:-0}"
+set +e
+noconv_out="$(docker exec "${CONTAINER}" /opt/pam-ezkey/test/test_no_conv_client testuser 2>&1)"
+noconv_rc=$?
+set -e
+echo "no_conv_nochal rc=${noconv_rc} out=${noconv_out}"
+if [ "${noconv_rc}" -eq 0 ] && echo "${noconv_out}" | grep -q 'pam_authenticate_rc=9'; then
+  ok "#941 no-challenge failing conv → UNAVAIL (display_ok guard)"
+else
+  fail "#941 no-challenge failing conv expected UNAVAIL rc=0 pam_rc=9, got rc=${noconv_rc} ${noconv_out}"
+fi
+wait_new_attempt "${before}" || true
+attempt="$(last_attempt)"
+if echo "${attempt}" | grep -q 'result=UNAVAIL'; then
+  ok "#941 no-challenge no-conv attempt line UNAVAIL"
+else
+  fail "#941 no-challenge no-conv attempt line: ${attempt}"
+fi
+
 # Same stub URL, lab_http=false → scheme gate only (proves guard is the delta).
 restore_conf
 docker exec "${CONTAINER}" sh -c \

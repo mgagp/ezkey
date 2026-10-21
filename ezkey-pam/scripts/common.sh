@@ -156,6 +156,7 @@ ezkey_ssh_kbdint_autoenter() {
   local connect_to="${3:-15}"
   local password_prompts="${4:-1}"
   local ctrl=""
+  local ctrl_dir=""
   local bg=""
   local i
   local rc=1
@@ -166,7 +167,9 @@ ezkey_ssh_kbdint_autoenter() {
   require_cmd python3
   require_cmd ssh
   : >"${log}"
-  ctrl="$(mktemp -u /tmp/ezkey-pam-kbdint-ctrl.XXXXXX)"
+  # Nit a (#956): mktemp -d then fifo inside — avoid mktemp -u race.
+  ctrl_dir="$(mktemp -d /tmp/ezkey-pam-kbdint.XXXXXX)"
+  ctrl="${ctrl_dir}/enter.fifo"
   mkfifo "${ctrl}"
 
   set +e
@@ -206,5 +209,16 @@ ezkey_ssh_kbdint_autoenter() {
   wait "${bg}"
   rc=$?
   rm -f "${ctrl}" 2>/dev/null || true
+  rmdir "${ctrl_dir}" 2>/dev/null || true
   return "${rc}"
+}
+
+# Create a control fifo under a private mktemp -d (Patrick #956 nit a).
+# Prints the fifo path on stdout; caller should rm -rf the parent dir later.
+ezkey_mk_ctrl_fifo() {
+  local dir fifo
+  dir="$(mktemp -d /tmp/ezkey-pam-ctrl.XXXXXX)"
+  fifo="${dir}/enter.fifo"
+  mkfifo "${fifo}"
+  printf '%s\n' "${fifo}"
 }

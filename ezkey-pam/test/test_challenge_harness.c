@@ -66,6 +66,12 @@ int main(void) {
                     NULL);
     expect_eq("format_waiting too small",
               ezkey_format_waiting_prompt(tiny, sizeof(tiny), "testuser"), -1);
+    expect_eq("format_waiting strips controls in username",
+              ezkey_format_waiting_prompt(buf, sizeof(buf), "u\nser"), 0);
+    expect_true("format_waiting sanitized user is u_ser",
+                strstr(buf, "user u_ser.") != NULL);
+    expect_true("format_waiting no raw control from username",
+                strstr(buf, "user u\nser") == NULL);
 
     printf("=== Results: %s ===\n", fails == 0 ? "all passed" : "FAILED");
     return fails == 0 ? 0 : 1;
