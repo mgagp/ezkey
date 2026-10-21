@@ -1097,9 +1097,10 @@ rm -rf "${SSH_CTRL_975_DIR}"
 ATTEMPT_975="$(docker exec "${CONTAINER}" sh -c \
   "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
 echo "975_attempt=${ATTEMPT_975}" | tee -a "${PROOF}"
-# Challenge digits must not land in authpriv (#750).
+# Challenge digits / challenge fields must not land in authpriv (#750).
+# Avoid matching pam_code= (false positive on older 'code=' greps).
 if echo "${ATTEMPT_975}" | grep -q 'result=SUCCESS' \
-  && ! echo "${ATTEMPT_975}" | grep -qE 'challenge|code='; then
+  && ! echo "${ATTEMPT_975}" | grep -qi 'challenge'; then
   ok "#975 SUCCESS + challenge digits absent from attempt line (#750)"
 else
   fail "#975 expected SUCCESS without challenge digits in authpriv: ${ATTEMPT_975}"

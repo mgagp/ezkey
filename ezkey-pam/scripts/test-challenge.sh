@@ -450,7 +450,7 @@ ATTEMPT_D="$(docker exec "${CONTAINER}" sh -c \
 echo "case_d_attempt=${ATTEMPT_D} ssh_rc=${SSH_RC_D}" >>"${PROOF_LOG}"
 if echo "${FLAT_D}" | grep -q PAM_CHALLENGE_OK \
   && echo "${ATTEMPT_D}" | grep -q 'result=SUCCESS' \
-  && ! echo "${ATTEMPT_D}" | grep -qE 'challenge|code='; then
+  && ! echo "${ATTEMPT_D}" | grep -qi 'challenge'; then
   ok "#975 Case D: SUCCESS after enrollment challenge + no digits in authpriv"
 else
   fail "#975 Case D expected SUCCESS without authpriv digits (rc=${SSH_RC_D}): ${ATTEMPT_D}"
