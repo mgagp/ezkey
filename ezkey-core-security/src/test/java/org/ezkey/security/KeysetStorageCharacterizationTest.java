@@ -57,10 +57,10 @@ import org.springframework.dao.DataAccessResourceFailureException;
 /**
  * Characterization of keyset storage behavior on {@code main} before the DB-blob-only cutover.
  *
- * <p>Decision pack:
- * {@code product-docs/global/decisions/2026-10-21-keyset-storage-strategy/design.md}. Methods that
- * pin behavior the refactor will invert are marked {@code EXPECTED TO CHANGE} with the design
- * section that owns the target.
+ * <p>Decision pack: {@code
+ * product-docs/global/decisions/2026-10-21-keyset-storage-strategy/design.md}. Methods that pin
+ * behavior the refactor will invert are marked {@code EXPECTED TO CHANGE} with the design section
+ * that owns the target.
  *
  * @since 2026
  */
@@ -81,7 +81,8 @@ class KeysetStorageCharacterizationTest {
   }
 
   @Test
-  @DisplayName("version-check throttle constant is 5000 ms (tick shorter than typical sync windows)")
+  @DisplayName(
+      "version-check throttle constant is 5000 ms (tick shorter than typical sync windows)")
   void databaseCheckIntervalMs_isFiveSeconds() throws Exception {
     // Pins invariant-4 baseline (design §3 #4); implementation may keep or bound this value.
     Field field = TinkKeyManager.class.getDeclaredField("DATABASE_CHECK_INTERVAL_MS");
@@ -104,7 +105,11 @@ class KeysetStorageCharacterizationTest {
 
     TinkKeyManager manager =
         initializeManager(
-            masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.DATABASE, repository, true);
+            masterKeyPath,
+            keysetPath,
+            TinkProperties.Keyset.StorageMode.DATABASE,
+            repository,
+            true);
 
     try {
       assertTrue(manager.isInitialized());
@@ -130,7 +135,11 @@ class KeysetStorageCharacterizationTest {
 
     TinkKeyManager manager =
         initializeManager(
-            masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.DATABASE, repository, true);
+            masterKeyPath,
+            keysetPath,
+            TinkProperties.Keyset.StorageMode.DATABASE,
+            repository,
+            true);
 
     try {
       assertTrue(manager.isInitialized());
@@ -222,7 +231,8 @@ class KeysetStorageCharacterizationTest {
   }
 
   @Test
-  @DisplayName("legacy outer-encrypted DB blob is overwritten with a Tink-native envelope on writer boot")
+  @DisplayName(
+      "legacy outer-encrypted DB blob is overwritten with a Tink-native envelope on writer boot")
   void initialize_legacyDatabaseBlob_overwritesWithNativeEnvelope(@TempDir Path tempDir)
       throws Exception {
     // EXPECTED TO CHANGE — design §3 invariant #8 / §2.3 (legacy fails startup; no overwrite)
@@ -261,7 +271,8 @@ class KeysetStorageCharacterizationTest {
     byte[] masterKey = TestMasterKeys.write(masterKeyPath);
     writeNativeEncryptedKeysetFile(keysetPath, masterKey);
 
-    KeysetBlob tampered = new KeysetBlob("not-a-valid-envelope".getBytes(StandardCharsets.UTF_8), "TAMPER");
+    KeysetBlob tampered =
+        new KeysetBlob("not-a-valid-envelope".getBytes(StandardCharsets.UTF_8), "TAMPER");
     tampered.setVersion(1L);
     AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>(tampered);
 
@@ -275,17 +286,20 @@ class KeysetStorageCharacterizationTest {
 
     try {
       assertTrue(Files.exists(keysetPath), "runtime must not delete the keyset file today");
-      assertTrue(manager.isInitialized(), "writer falls back to the existing file after unloadable blob");
+      assertTrue(
+          manager.isInitialized(), "writer falls back to the existing file after unloadable blob");
     } finally {
       manager.shutdownKeysetCheckExecutor();
     }
   }
 
   @Test
-  @DisplayName("DataAccessException on findKeyset does not invent a second blob when a file already exists")
+  @DisplayName(
+      "DataAccessException on findKeyset does not invent a second blob when a file already exists")
   void initialize_writer_dbFindThrows_fallsBackToExistingFile(@TempDir Path tempDir)
       throws Exception {
-    // EXPECTED TO CHANGE — design §3 invariant #6 (DB error must never generate; also no file fallback)
+    // EXPECTED TO CHANGE — design §3 invariant #6 (DB error must never generate; also no file
+    // fallback)
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
     byte[] masterKey = TestMasterKeys.write(masterKeyPath);
@@ -298,7 +312,11 @@ class KeysetStorageCharacterizationTest {
 
     TinkKeyManager manager =
         initializeManager(
-            masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.DATABASE, repository, true);
+            masterKeyPath,
+            keysetPath,
+            TinkProperties.Keyset.StorageMode.DATABASE,
+            repository,
+            true);
 
     try {
       assertTrue(manager.isInitialized());
@@ -322,7 +340,11 @@ class KeysetStorageCharacterizationTest {
 
     TinkKeyManager manager =
         initializeManager(
-            masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.DATABASE, repository, true);
+            masterKeyPath,
+            keysetPath,
+            TinkProperties.Keyset.StorageMode.DATABASE,
+            repository,
+            true);
 
     try {
       long before = manager.getCurrentPrimaryKeyId();
@@ -376,7 +398,8 @@ class KeysetStorageCharacterizationTest {
   @Test
   @DisplayName("EncryptionService.decrypt returns the original ciphertext when AEAD decrypt fails")
   void decrypt_whenAeadFails_returnsOriginalCiphertext() throws Exception {
-    // EXPECTED TO CHANGE — design §2.7 / §3 invariant #5 (fail closed on unknown kid / AEAD failure)
+    // EXPECTED TO CHANGE — design §2.7 / §3 invariant #5 (fail closed on unknown kid / AEAD
+    // failure)
     TinkKeyManager keyManager = Mockito.mock(TinkKeyManager.class);
     Aead aead = Mockito.mock(Aead.class);
     when(keyManager.isInitialized()).thenReturn(true);
@@ -385,7 +408,8 @@ class KeysetStorageCharacterizationTest {
         .thenThrow(new GeneralSecurityException("unknown key id / AEAD failure"));
 
     ObjectProvider<TinkProperties> propertiesProvider = Mockito.mock(ObjectProvider.class);
-    ObjectProvider<EncryptionKeyRepository> keyRepositoryProvider = Mockito.mock(ObjectProvider.class);
+    ObjectProvider<EncryptionKeyRepository> keyRepositoryProvider =
+        Mockito.mock(ObjectProvider.class);
     when(propertiesProvider.getIfAvailable()).thenReturn(null);
     when(keyRepositoryProvider.getIfAvailable()).thenReturn(null);
 
