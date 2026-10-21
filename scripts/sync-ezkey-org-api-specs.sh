@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Copy canonical OpenAPI specs into sites/ezkey-org/api-specs/ for Cloudflare Pages.
-# Those JSON files are gitignored (no git symlinks; Windows core.symlinks=false — #833).
+# Portal JSON files are committed physical copies (no git symlinks — #833).
 # Called by scripts/update-specs.sh and by ezkey-org deploy scripts.
+# Drift gate: scripts/check-ezkey-org-api-specs.sh (CI).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

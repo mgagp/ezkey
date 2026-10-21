@@ -34,7 +34,7 @@ specs/
 | **ezkey-demo-device** | Maven `inputSpec` → `../specs/auth-api/openapi-spec.json`; Docker COPY places the same path under `/build` |
 | **ezkey_mobile** | Orval `../specs/auth-api/openapi-spec.json` |
 | **ezkey-sdk** (JS) | `openapi-generator-cli` → `../../specs/{admin,auth}-api/openapi-spec.json` |
-| **sites/ezkey-org/api-specs/** | Build/deploy-time copy via `scripts/sync-ezkey-org-api-specs.sh` (gitignored; Pages publishes the folder as-is) |
+| **sites/ezkey-org/api-specs/** | Committed physical copies via `scripts/sync-ezkey-org-api-specs.sh` (CI `cmp` via `scripts/check-ezkey-org-api-specs.sh`; Pages publishes the folder as-is) |
 
 ### Update Process
 

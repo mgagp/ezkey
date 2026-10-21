@@ -77,6 +77,8 @@ jobs:
               - 'scripts/build.sh'
               - 'scripts/update-specs.sh'
               - 'scripts/sync-ezkey-org-api-specs.sh'
+              - 'scripts/check-ezkey-org-api-specs.sh'
+              - 'sites/ezkey-org/api-specs/**'
               - 'docker/Dockerfile'
               - 'docker/**'
               - 'scripts/ci-ha-lb-smoke.sh'
@@ -222,6 +224,10 @@ jobs:
             echo "::error::git symlinks (mode 120000) are forbidden. Point generators at specs/ or use a physical copy (#833)."
             exit 1
           fi
+
+      # #977: ezkey.org ReDoc portal copies must match canonical specs/.
+      - name: Assert ezkey.org API portal OpenAPI copies match specs/
+        run: bash scripts/check-ezkey-org-api-specs.sh
 
       - name: Set up JDK 25
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0

@@ -28,7 +28,7 @@ This folder is the **source of truth** for the static public site served at **ez
 | `sitemap.xml` | Sitemap; URL listed in `robots.txt`. |
 | `robots.txt` | `Allow: /` and `Sitemap:` pointer. |
 | `monthly-digest.rss` / `fr/monthly-digest.rss` | RSS feeds for **Monthly digests**; keep in sync when adding entries (see **AGENTS.md**). |
-| `api-specs/` | Static OpenAPI JSON assets consumed by the public API portal pages. |
+| `api-specs/` | Committed OpenAPI JSON copies (from `specs/`) consumed by the public API portal pages; refresh with `./scripts/sync-ezkey-org-api-specs.sh`. |
 
 **Locales:** Default URL `/` is English; `/fr/` is French. Hub pages expose `hreflang` alternates; in-page language switches link between paired locales.
 
