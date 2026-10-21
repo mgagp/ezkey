@@ -5,7 +5,7 @@
 - **Document ID:** `database-role-permissions-matrix`
 - **Status:** `active`
 - **Created at:** `2026-07-16`
-- **Last reviewed at:** `2026-09-26`
+- **Last reviewed at:** `2026-10-21`
 - **Related backlog:** [`I-2026-0021`](../product-docs/global/backlog/ideas/I-2026-0021-postgresql-application-role-permissions-matrix.md)
 - **Related TB:** [`TB-2026-07-16`](../product-docs/global/backlog/TB-2026-07-16-postgresql-application-role-split.md)
 - **Companion docs:** [`DATABASE_PARTITIONING_SECURITY_ANALYSIS.md`](DATABASE_PARTITIONING_SECURITY_ANALYSIS.md), [`OPERATIONAL.md`](OPERATIONAL.md)
@@ -25,8 +25,7 @@ Normative matrix of PostgreSQL roles and per-table DML for Ezkey backends. This 
 | `ezkey_admin` | yes | Broadest runtime DML + all schedulers | `admin-api` |
 | `ezkey_auth` | yes | Device-facing Auth API DML | `auth-api` |
 | `ezkey_integration` | yes | M2M Integration API DML | `integration-api` |
-
-Crypto API has **no** datasource and **no** role.
+| `ezkey_crypto` | yes | SELECT-only on `ezkey_keyset_blob` (ADR-0016) | `crypto-api` (local clean-start lab only; not Lightsail) |
 
 ### Provisioning (not Flyway)
 
@@ -75,29 +74,29 @@ the admin’s enrollment is already VERIFIED. Auth-api has **no** DML on `ezkey_
 
 Legend: **S**=SELECT · **I**=INSERT · **U**=UPDATE · **D**=DELETE · **X**=EXECUTE · **—**=no grant
 
-| Table / object | `ezkey_migrate` | `ezkey_admin` | `ezkey_auth` | `ezkey_integration` | Notes |
-|----------------|-----------------|---------------|--------------|---------------------|-------|
-| DDL (CREATE/ALTER/DROP) | full | — | — | — | Flyway only |
-| `flyway_schema_history` | full | — | — | — | Migration module only |
-| `ezkey_tenant` | owner | S I U | S | S | Writes: admin provisioning / bootstrap |
-| `ezkey_admin` | owner | S I U | S | S | Auth/integration: join / eligibility reads |
-| `ezkey_admin_tokens` | owner | S I U D | — | — | Admin only (mint/cleanup + TEMP supersede at SESSION mint and validation gate). Auth/Integration: none |
-| `ezkey_integration` | owner | S I U D | S | S | |
-| `ezkey_enrollment` | owner | S I U D | S U | S | Auth: bind/verify/`lastUsedAt`; integration: read |
-| `ezkey_auth_attempt` | owner | S I U | S U | S I U | Auth does not create attempts |
-| `ezkey_api_key` | owner | S I U D | — | S U | Integration: `lastUsedAt` on validate |
-| `ezkey_audit_log` | owner | S I U D | S I | S I | **DELETE admin only** (lifecycle purge). Peripherals are **SELECT + INSERT** only (single-INSERT HMAC seal via named sequence `ezkey_audit_log_id_seq`; no UPDATE). `ezkey_admin` retains UPDATE/DELETE. |
-| `ezkey_encryption_key` | owner | S I U | S | S | Writers: key rotation (admin) |
-| `ezkey_reencryption_batch` | owner | S I U | — | — | Admin schedulers only |
-| `ezkey_keyset_blob` | owner | S I U | S | S | Writers: Admin keyset materialization only (ADR-0012). Peripherals SELECT + reload. |
-| `ezkey_audit_chain_checkpoint` | owner | S I U D | S | S | Writers: admin chain schedulers |
-| `ezkey_audit_chain_incident` | owner | S I U | S I U | S I U | Heartbeat on all three APIs |
-| `ezkey_audit_entry_integrity_conciliation` | owner | S I U | — | — | Admin reconcile only |
-| `ezkey_alert` | owner | S I U | S I U | S I U | Resolve = UPDATE; no hard DELETE (intentional). Future retention/purge of aged `RESOLVED` rows: [`I-2026-07-17-alert-resolved-retention-purge`](../product-docs/global/backlog/ideas/I-2026-07-17-alert-resolved-retention-purge.md) |
-| `ezkey_scheduled_job_last_run` | owner | S U | — | — | Seeded by migration; admin updates |
-| `ezkey_integrity_async_job` | owner | S I U | — | — | Admin-only Integrity async operator slot. Auth/Integration must not SELECT (no runtime path; Hibernate `ddl-auto=none` + Admin-only `org.ezkey.audit.asyncjob` EntityScan). |
-| `ezkey_shedlock` | owner | S I U | — | — | Admin ShedLock only |
-| `create_monthly_partition(...)` | owner | X | — | — | SECURITY DEFINER; admin `PartitionSchedulerService` |
+| Table / object | `ezkey_migrate` | `ezkey_admin` | `ezkey_auth` | `ezkey_integration` | `ezkey_crypto` | Notes |
+|----------------|-----------------|---------------|--------------|---------------------|---------------|-------|
+| DDL (CREATE/ALTER/DROP) | full | — | — | — | — | Flyway only |
+| `flyway_schema_history` | full | — | — | — | — | Migration module only |
+| `ezkey_tenant` | owner | S I U | S | S | — | Writes: admin provisioning / bootstrap |
+| `ezkey_admin` | owner | S I U | S | S | — | Auth/integration: join / eligibility reads |
+| `ezkey_admin_tokens` | owner | S I U D | — | — | — | Admin only (mint/cleanup + TEMP supersede at SESSION mint and validation gate). Auth/Integration/crypto: none |
+| `ezkey_integration` | owner | S I U D | S | S | — | |
+| `ezkey_enrollment` | owner | S I U D | S U | S | — | Auth: bind/verify/`lastUsedAt`; integration: read |
+| `ezkey_auth_attempt` | owner | S I U | S U | S I U | — | Auth does not create attempts |
+| `ezkey_api_key` | owner | S I U D | — | S U | — | Integration: `lastUsedAt` on validate |
+| `ezkey_audit_log` | owner | S I U D | S I | S I | — | **DELETE admin only** (lifecycle purge). Peripherals are **SELECT + INSERT** only (single-INSERT HMAC seal via named sequence `ezkey_audit_log_id_seq`; no UPDATE). `ezkey_admin` retains UPDATE/DELETE. |
+| `ezkey_encryption_key` | owner | S I U | S | S | — | Writers: key rotation (admin). Crypto: **no** grant (blob reload only; ADR-0016 §2.6). |
+| `ezkey_reencryption_batch` | owner | S I U | — | — | — | Admin schedulers only |
+| `ezkey_keyset_blob` | owner | S I U | S | S | **S** | Writers: Admin keyset materialization only (ADR-0012). Auth/Integration/crypto SELECT + reload. Crypto: **SELECT only** (no I/U/D). |
+| `ezkey_audit_chain_checkpoint` | owner | S I U D | S | S | — | Writers: admin chain schedulers |
+| `ezkey_audit_chain_incident` | owner | S I U | S I U | S I U | — | Heartbeat on all three APIs |
+| `ezkey_audit_entry_integrity_conciliation` | owner | S I U | — | — | — | Admin reconcile only |
+| `ezkey_alert` | owner | S I U | S I U | S I U | — | Resolve = UPDATE; no hard DELETE (intentional). Future retention/purge of aged `RESOLVED` rows: [`I-2026-07-17-alert-resolved-retention-purge`](../product-docs/global/backlog/ideas/I-2026-07-17-alert-resolved-retention-purge.md) |
+| `ezkey_scheduled_job_last_run` | owner | S U | — | — | — | Seeded by migration; admin updates |
+| `ezkey_integrity_async_job` | owner | S I U | — | — | — | Admin-only Integrity async operator slot. Auth/Integration must not SELECT (no runtime path; Hibernate `ddl-auto=none` + Admin-only `org.ezkey.audit.asyncjob` EntityScan). |
+| `ezkey_shedlock` | owner | S I U | — | — | — | Admin ShedLock only |
+| `create_monthly_partition(...)` | owner | X | — | — | — | SECURITY DEFINER; admin `PartitionSchedulerService` |
 
 ### Sequences / identity
 
