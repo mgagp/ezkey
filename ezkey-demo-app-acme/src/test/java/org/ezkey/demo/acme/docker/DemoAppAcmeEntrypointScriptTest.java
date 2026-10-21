@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: DemoAppAcmeEntrypointScriptTest
- * Description: Entrypoint creates config at 0600 and always re-chmods existing volumes.
+ * Description: Entrypoint creates config + tenant-aliases at 0600 and always re-chmods volumes.
  */
 
 package org.ezkey.demo.acme.docker;
@@ -29,12 +29,13 @@ class DemoAppAcmeEntrypointScriptTest {
   @TempDir Path tempDir;
 
   @Test
-  void entrypointSourceUsesChmod600OnceWithWarnOnFailure() throws IOException {
+  void entrypointSourceUsesChmod600ForConfigAndAliasesWithWarnOnFailure() throws IOException {
     Path script = resolveEntrypoint();
     String content = Files.readString(script, StandardCharsets.UTF_8);
     assertThat(content).contains("chmod 600 /app/config/application.properties");
+    assertThat(content).contains("chmod 600 /app/config/tenant-aliases.properties");
     assertThat(content).contains("WARN: could not chmod 600");
-    assertThat(content.split("chmod 600", -1)).hasSize(3);
+    assertThat(content).contains("tenant-aliases.properties");
     assertThat(content).doesNotContain("chmod 644");
     assertThat(content).doesNotContain("2>/dev/null || true");
 
@@ -51,14 +52,17 @@ class DemoAppAcmeEntrypointScriptTest {
     Path configDir = appRoot.resolve("config");
     Files.createDirectories(configDir);
     Path configFile = configDir.resolve("application.properties");
+    Path aliasFile = configDir.resolve("tenant-aliases.properties");
     Files.writeString(configFile, "ezkey.integration-key=\n", StandardCharsets.UTF_8);
-    Files.setPosixFilePermissions(
-        configFile,
+    Files.writeString(aliasFile, "# empty\n", StandardCharsets.UTF_8);
+    Set<PosixFilePermission> worldReadable =
         Set.of(
             PosixFilePermission.OWNER_READ,
             PosixFilePermission.OWNER_WRITE,
             PosixFilePermission.GROUP_READ,
-            PosixFilePermission.OTHERS_READ));
+            PosixFilePermission.OTHERS_READ);
+    Files.setPosixFilePermissions(configFile, worldReadable);
+    Files.setPosixFilePermissions(aliasFile, worldReadable);
 
     Path javaWrapper = appRoot.resolve("java");
     Files.writeString(javaWrapper, "#!/bin/sh\nexit 0\n", StandardCharsets.UTF_8);
@@ -75,6 +79,7 @@ class DemoAppAcmeEntrypointScriptTest {
     String adapted =
         Files.readString(script, StandardCharsets.UTF_8)
             .replace("/app/config/application.properties", configFile.toString())
+            .replace("/app/config/tenant-aliases.properties", aliasFile.toString())
             .replace(
                 "/app/config-template.properties",
                 appRoot.resolve("template.properties").toString())
@@ -90,9 +95,10 @@ class DemoAppAcmeEntrypointScriptTest {
     assertThat(finished).isTrue();
     assertThat(process.exitValue()).isZero();
 
-    Set<PosixFilePermission> perms = Files.getPosixFilePermissions(configFile);
-    assertThat(perms)
-        .containsExactlyInAnyOrder(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+    Set<PosixFilePermission> expected =
+        Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+    assertThat(Files.getPosixFilePermissions(configFile)).containsExactlyInAnyOrderElementsOf(expected);
+    assertThat(Files.getPosixFilePermissions(aliasFile)).containsExactlyInAnyOrderElementsOf(expected);
   }
 
   private static Path resolveEntrypoint() {

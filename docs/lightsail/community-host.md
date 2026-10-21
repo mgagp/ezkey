@@ -8,6 +8,11 @@ Short runbook for creating a **NEW** Amazon Lightsail VM for the **ezkey.online*
 
 **SSH target (#812):** deploy/bootstrap scripts never silent-default to a bare Host alias. Pass `--target community` (→ `ezkey-online`) or set `LIGHTSAIL_SSH_HOST` explicitly; community `--sync-operator-files` installs `Caddyfile.ezkey-online` under that same remote basename (compose bind mount — #863).
 
+**Acme evaluator aliases (#958):** when Marc provisions an evaluator tenant, Edgar appends a line to
+the hot-reloaded mapping file — see
+[`community/acme-tenant-alias-runbook.md`](community/acme-tenant-alias-runbook.md). Do not put real
+secrets in this host doc.
+
 **Public cutover context (do not invent product language):** publish repositioned **ezkey.org** first; then community host on **ezkey.online**.
 
 ---

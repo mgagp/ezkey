@@ -111,6 +111,11 @@ meant to be linked from trust-facing material without inflating the top-level pi
 - **It does not rely on hiding Tink keyset metadata.** Key material is secret; key IDs, primary-key
   status, and similar Tink envelope metadata are not treated as secrets. Ezkey deliberately avoids a
   second custom envelope whose only purpose would be to hide non-secret metadata.
+- **Demo App ACME community tenant-alias secrets are plaintext on the host volume.** Integration keys
+  and secrets for evaluator `/t/{alias}` mappings live in
+  `/app/config/tenant-aliases.properties` on the `demo-app-acme-config` volume (mode 0600, non-root
+  `spring` uid). There is **no** encryption-at-rest guarantee for those demo secrets
+  ([#958](https://github.com/mgagp/ezkey/issues/958)).
 
 ## What Ezkey aims to do (planned, if adoption justifies)
 

@@ -7,7 +7,7 @@
 - **Status:** `under-review`
 - **Lane:** `D` (community alpha / mobile Play closed-testing friction)
 - **Created at:** `2026-10-07`
-- **Updated at:** `2026-10-08`
+- **Updated at:** `2026-10-21`
 - **Captured by:** Marc / Alex (Product Direction)
 - **Priority:** `P1` (serves **mobile app** Play production; platform backends stay alpha/lab —
   compass amended 2026-10-08 in
@@ -142,11 +142,16 @@ developer account and satisfy the 12×14 continuous opt-in rule.
 9. **Security controls (pilot):** always `challengeRequested=true`; named secure channel for **QR +
    enrollment code** (activation secret — not plain email); backend global per-IP rate limit;
    Cloudflare rate-limit rule optional; `Referrer-Policy: no-referrer` via **Caddy** on
-   `demo-acme.ezkey.online` (app also sends it for local/direct access). Access-code file on the
-   `demo-app-acme-config` volume: mode **0600**, owner **spring** (uid **100** / gid **101**). API
-   key `ip_whitelist` (e.g. `172.16.0.0/12`) is **defense in depth only after** community Caddy
-   client-IP hardening is live and 443 stays Cloudflare-only — do not present it as the primary
-   control before that. **No** tester IP allowlist.
+   `demo-acme.ezkey.online` (app also sends it for local/direct access). Access-code / tenant-alias
+   files on the `demo-app-acme-config` volume: mode **0600**, owner **spring** (uid **100** /
+   gid **101**). API key `ip_whitelist` (e.g. `172.16.0.0/12`) is **defense in depth only after**
+   community Caddy client-IP hardening is live and 443 stays Cloudflare-only — do not present it as
+   the primary control before that. **No** tester IP allowlist.
+9a. **External hot-reloaded alias file (#958):** community evaluator mappings live in a second volume
+    file (`tenant-aliases.properties`); reload on URL access via mtime + throttle (no restart, no
+    polling). Alias is a capability URL token; same generic response for unknown/malformed; secrets
+    never in logs. Edgar runbook:
+    [`docs/lightsail/community/acme-tenant-alias-runbook.md`](../../../docs/lightsail/community/acme-tenant-alias-runbook.md).
 10. **Play cohort ops:** open closed-test opt-ins **now**; never opt out (resets the 14-day window);
     feedback channel in the pilot; App access demo credentials for Google reviewers — **M1 decision**.
 11. **Closed-testing commercial recruitment** (Mathieu / Isabelle / QA Sphere) remains a separate

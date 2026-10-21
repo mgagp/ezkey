@@ -25,6 +25,24 @@ image that only listens on 8082 blocks Caddy (`depends_on: service_healthy`).
 Redeploying Acme drops any in-memory sessions that still used the previous cookie name. Do not
 override this to `JSESSIONID` in the optional `/app/config/` volume.
 
+## Tenant-alias mapping file (`ezkey.tenant-aliases.*`) — #958
+
+External hot-reloaded mappings for community evaluator links (`GET /t/{alias}`). The file lives on
+the `demo-app-acme-config` volume (outside the image and the git repo). `application.properties`
+remains the base config; optional `ezkey.access-codes.*` slots there still work but need a restart.
+
+| Property | Default | Obligation | Description |
+|----------|---------|------------|-------------|
+| `ezkey.tenant-aliases.file` | `/app/config/tenant-aliases.properties` | recommandé (community) | Path to the line-oriented mapping file. Empty disables external loading. |
+| `ezkey.tenant-aliases.reload-throttle-seconds` | `5` | optionnel | Minimum seconds between mtime checks on URL access. Reread only when mtime changed. No periodic polling. |
+
+Line format: `alias|integration-key|secret-key|label` (alias = 16 lowercase hex for community). Mode
+**0600**, owner **spring** (uid **100** / gid **101**). Unreadable or unusable content keeps the last
+valid mappings; WARN logs never include the secret or full alias. Operator runbook:
+[`docs/lightsail/community/acme-tenant-alias-runbook.md`](../docs/lightsail/community/acme-tenant-alias-runbook.md).
+
+Env overrides: `EZKEY_TENANT_ALIASES_FILE`, `EZKEY_TENANT_ALIASES_RELOAD_THROTTLE_SECONDS`.
+
 ## Rate limiting (`ezkey.rate-limit.*`)
 
 | Property | Default | Obligation | Description |
