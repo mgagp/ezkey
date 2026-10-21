@@ -606,6 +606,11 @@ program slice whether an issue helps — retroactive issues are valid.
 When opening a GitHub issue (operator request, program slice visibility, or retroactive board
 anchor):
 
+**Review existing labels first.** Before creating an issue, list the repo labels
+(`gh label list`, or `GET /repos/{owner}/{repo}/labels`) and apply every label that fits.
+Create a new label only when none of the existing ones fit, and justify that new label in the
+issue body.
+
 1. Apply **all five label groups** via `gh issue create --label ...` (lane, type, component, priority, status) — see [`.cursor/rules/github-issue-labels.mdc`](.cursor/rules/github-issue-labels.mdc).
 2. Verify with `gh issue view <N> --json labels` before reporting the issue URL.
 3. Record `#NNN` (and label list) in `I-*` / `TB-*` metadata.
