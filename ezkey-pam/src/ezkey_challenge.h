@@ -18,6 +18,21 @@
 int ezkey_challenge_in_range(long challenge);
 
 /**
+ * Pre-wait prompt decision after create (#975 / #941).
+ *
+ * Show the challenge code whenever the create response contains a valid
+ * value (host requested it, or enrollment requires it), regardless of the
+ * host `challenge_requested` flag. Fail closed only when the host requested
+ * a challenge and none came back. Otherwise show the no-challenge waiting
+ * line.
+ *
+ * @param challenge_requested host conf challenge_requested (0/1)
+ * @param challenge create response authAttemptChallenge, or -1 if absent
+ * @return 1 show challenge code, 0 show waiting line, -1 fail-closed (UNAVAIL)
+ */
+int ezkey_prewait_prompt_mode(int challenge_requested, long challenge);
+
+/**
  * True when pam_prompt successfully displayed a pre-wait prompt (challenge or
  * no-challenge waiting message). There is no pam_info fallback — OpenSSH
  * buffers bare TEXT_INFO until the next prompt or the end of the round, so
@@ -29,8 +44,20 @@ int ezkey_challenge_in_range(long challenge);
 int ezkey_challenge_display_ok(int pam_prompt_rc);
 
 /**
+ * True when the pre-wait conversation response is an explicit confirmation
+ * (trimmed case-insensitive "ok"). Empty / EOF / bare Enter is rejected —
+ * OpenSSH keyboard-interactive with `ssh -T </dev/null` answers the prompt
+ * with an empty string and PAM_SUCCESS, so "Press Enter" alone cannot prove
+ * the operator saw the prompt (Isabelle D4 / #956 M2 correction).
+ *
+ * @param resp pam_prompt response (may be NULL)
+ * @return 1 if confirmed, 0 otherwise
+ */
+int ezkey_prewait_response_confirmed(const char *resp);
+
+/**
  * Format the no-challenge SSH waiting prompt (shown via PAM_PROMPT_ECHO_OFF
- * before /wait so OpenSSH flushes it to the PTY — #941).
+ * before /wait so OpenSSH flushes it to the PTY — #941 / #975 D4).
  *
  * @param buf destination buffer
  * @param buflen capacity of buf
@@ -38,5 +65,15 @@ int ezkey_challenge_display_ok(int pam_prompt_rc);
  * @return 0 on success, -1 if args invalid or the message does not fit
  */
 int ezkey_format_waiting_prompt(char *buf, size_t buflen, const char *username);
+
+/**
+ * Format the challenge-code SSH prompt (digits + explicit ok confirmation).
+ *
+ * @param buf destination buffer
+ * @param buflen capacity of buf
+ * @param challenge value in 0..99 (caller must validate)
+ * @return 0 on success, -1 if args invalid or the message does not fit
+ */
+int ezkey_format_challenge_prompt(char *buf, size_t buflen, long challenge);
 
 #endif /* EZKEY_CHALLENGE_H */

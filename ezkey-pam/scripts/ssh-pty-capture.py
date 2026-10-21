@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Run ssh under a PTY, tee output live, accept Enter via a control fifo.
+"""Run ssh under a PTY, tee output live, accept confirm via a control fifo.
 
 OpenSSH keyboard-interactive reads prompts from the local PTY, not from a
-redirected stdin pipe — so tests that need to answer \"Press Enter…\" must
-drive a real PTY (Patrick challenge-before-approve).
+redirected stdin pipe — so tests that need to answer the pre-wait prompt
+must drive a real PTY (Patrick challenge-before-approve).
+
+Control commands (write to the fifo):
+  ok     — type the required confirmation token then Enter (2.2.12 / #975 D4)
+  enter  — bare Enter only (empty response; used for negative tests)
+  quit   — SIGTERM the ssh child
 """
 from __future__ import annotations
 
@@ -86,7 +91,10 @@ def main() -> int:
                         raise
                 if cmd:
                     lower = cmd.lower()
-                    if b"enter" in lower:
+                    # Prefer "ok" over bare enter — module requires explicit confirm.
+                    if b"ok" in lower:
+                        os.write(master, b"ok\n")
+                    elif b"enter" in lower:
                         os.write(master, b"\n")
                     if b"quit" in lower or b"exit" in lower:
                         try:

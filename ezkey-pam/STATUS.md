@@ -45,14 +45,16 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.11** (#941 F1: no-challenge waiting line via `pam_prompt` before
-`/wait`; builds on **2.2.10** #907 F9 option A: sshd `Match` MaxAuthTries;
-chunked wait + best-effort disconnect cancel TTL-bounded; honest OpenSSH fork
-limit) plus STATUS §2.8 slices **#1–#3** and **M1** (observability + conf
-`root:root` exact `0600`/`0400`, no URL default, no process-ENV overrides,
-`lab_http` gate, optional two-digit challenge via `pam_prompt`). It is still
-**not** a host-operable MFA agent on a real host (sshd cutover remains slice #4+).
-**Experimental** status is unchanged pending Marc host validation.
+Version **2.2.12** (#975: display server-provided challenge even when host
+`challenge_requested=false`; builds on **2.2.11** #941 F1 no-challenge waiting
+line via `pam_prompt` before `/wait`, and **2.2.10** #907 F9 option A: sshd
+`Match` MaxAuthTries; chunked wait + best-effort disconnect cancel TTL-bounded;
+honest OpenSSH fork limit) plus STATUS §2.8 slices **#1–#3** and **M1**
+(observability + conf `root:root` exact `0600`/`0400`, no URL default, no
+process-ENV overrides, `lab_http` gate, optional two-digit challenge via
+`pam_prompt`). It is still **not** a host-operable MFA agent on a real host
+(sshd cutover remains slice #4+). **Experimental** status is unchanged pending
+Marc host validation.
 
 Proven in this repository (clean-start stack + Demo Device + Admin UI):
 
@@ -104,7 +106,7 @@ owner `root:root` in the demo image. That path and style match Linux-PAM convent
 | `integration_api_url` | Integration API base URL (**required**; no compiled-in default) | Yes for Docker DNS; non-lab / host installs need HTTPS |
 | `integration_key` / `secret_key` | Basic auth | Yes; file perms are the control |
 | `wait_timeout` / `wait_polling` / `api_timeout` | HTTP waits | Yes |
-| `challenge_requested` | Two-digit number-matching challenge | **Default `false`** — SSH MFA without number matching; waiting line still uses `pam_prompt` before `/wait` (#941). `true` shows challenge code via `pam_prompt` before `/wait` |
+| `challenge_requested` | Two-digit number-matching challenge | **Default `false`** — create asks without challenge; waiting line via `pam_prompt` when response has no code (#941). When the response **does** include a valid challenge (enrollment-required), the code is still shown (#975). `true` requests a challenge; missing/out-of-range → UNAVAIL |
 | `lab_http` | Allow `http://` URL | Docker entrypoint sets `true`; host sample default `false` |
 | `wait_timeout` | `/wait` client wait + create `ttlSeconds` (seconds) | Default **90**; clamped **15–90** (`EZKEY_MIN_TTL_SECONDS` / `EZKEY_MAX_WAIT_TIMEOUT`); aligned on applied TTL from create response (#895) |
 | `context_title` / `context_message` | Device copy | Yes |
@@ -558,26 +560,35 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 
 ### SSH waiting message and two-digit challenge
 
-**No-challenge waiting line (2.2.11 / #941 F1).** Default
+**No-challenge waiting line (2.2.11 / #941 F1; confirm 2.2.12 / #975 D4).** Default
 **`challenge_requested=false`**: after create, the module shows
 `Approve this SSH login on your Ezkey device for user <user>.` and
-`Press Enter to wait for Ezkey device approval:` via **`pam_prompt`
+`Type ok and press Enter to wait for Ezkey device approval:` via **`pam_prompt`
 (`PAM_PROMPT_ECHO_OFF`)** before `GET …/wait`. OpenSSH keyboard-interactive
 buffers bare `pam_info` / `PAM_TEXT_INFO` until the next prompt or the end of
 the round (Edgar F1), so the old `pam_info` path only flushed with the verdict.
-Operator presses Enter once, then approves or denies on the device. One prompt
-inside the same `pam_sm_authenticate` call does **not** create a second
-Integration API request under `Match … MaxAuthTries 1`. Conversation failure →
-`PAM_AUTHINFO_UNAVAIL` + best-effort cancel (fail-closed; no `pam_info` fallback).
-Client-supplied username characters that are not printable ASCII are replaced
-with `_` before the prompt (`ezkey_sanitize_for_prompt`, #956 nit b).
+Operator types **`ok`** (trimmed, case-insensitive), then approves or denies on
+the device. Empty / bare Enter / EOF is **rejected** (`UNAVAIL`) — see D4.
+One prompt inside the same `pam_sm_authenticate` call does **not** create a
+second Integration API request under `Match … MaxAuthTries 1`. Conversation
+failure → `PAM_AUTHINFO_UNAVAIL` + best-effort cancel (fail-closed; no
+`pam_info` fallback). Client-supplied username characters that are not printable
+ASCII are replaced with `_` before the prompt (`ezkey_sanitize_for_prompt`,
+#956 nit b).
 
-**No TTY (#956 M2).** Without a PAM conversation (cron, CI, non-interactive
-`ssh`, missing PTY), the default path **always denies** (`PAM_AUTHINFO_UNAVAIL`).
-Before #941, bare `pam_info` did not require a response prompt, so a device
-approval alone could complete MFA with no client-visible waiting line. That
-fail-open-on-silent-client behavior is gone; non-interactive callers must not
-expect SSH MFA to succeed without a conversation.
+**No TTY / empty auto-answer (#956 M2 + #975 D4).**
+
+| Client situation | Pre-2.2.12 | 2.2.12 |
+|---|---|---|
+| No `PAM_CONV` / `PAM_CONV_ERR` (cron helper, `test_no_conv_client`) | UNAVAIL | UNAVAIL |
+| `ssh -T </dev/null` kbd-int (empty EOF, `PAM_SUCCESS`) | **SUCCESS if device approved** (README was wrong) | **UNAVAIL** (require `ok`) |
+| Interactive bare Enter (empty) | SUCCESS path continued | **UNAVAIL** (must type `ok`) |
+| `BatchMode` + pubkey outside MFA Match (e.g. `ec2-user`) | unchanged | unchanged |
+
+**D1 (known, not fixed in PAM):** some Windows OpenSSH clients without a TTY
+hang on keyboard-interactive until sshd **`LoginGraceTime` 120 s** (demo
+`sshd_config`) and still create an Integration API auth attempt. PAM cannot
+unblock the client; use `ssh -tt` or keep automation on non-MFA Match accounts.
 
 **Quit at the waiting/challenge prompt (#956 M3).** Wait-scoped `SIGTERM` is
 armed only around chunked `/wait` (`pam_ezkey.c` sigaction install before the
@@ -588,38 +599,52 @@ or a best-effort cancel if the conversation returns an error. Arming SIGTERM
 earlier was not taken — absorption during `pam_prompt` would need a separate
 Christophe security review and would not unblock a stuck conversation call.
 
-**Two-digit challenge (2.2.4+).** Opt-in for hosts that want phishing-resistant
-number matching (`challenge_requested=true`):
+**Two-digit challenge (2.2.4+; display rule 2.2.12 / #975).**
 
-1. `POST /api/v1/auth-attempts` with `challengeRequested=true`.
+1. Host may set `challenge_requested=true` so create sends `challengeRequested=true`,
+   **or** the enrollment may require a challenge even when the host leaves the
+   default `false` (server still returns `authAttemptChallenge`).
 2. Integration API returns `authAttemptChallenge` (default **2** digits —
-   `ezkey.core.auth-attempt.challenge-digits`).
-3. Module requires the value in **0..99**; anything else → `PAM_AUTHINFO_UNAVAIL`.
-4. Module displays `Ezkey challenge code: NN — enter this code…` via **`pam_prompt`
-   (`PAM_PROMPT_ECHO_OFF`, digits in the prompt)** before `GET …/wait` so OpenSSH
-   flushes the code to the PTY (same flush rule as the waiting line; no `pam_info`
-   fallback — Patrick). If no PAM conversation can show the code →
-   `PAM_AUTHINFO_UNAVAIL` (Christophe).
+   `ezkey.core.auth-attempt.challenge-digits`) when a challenge applies.
+3. **Display rule (#975):** if the create response contains a value in **0..99**,
+   the module shows it — independent of host `challenge_requested`. Pre-2.2.12
+   only displayed inside `if (cfg->challenge_requested)`, so enrollment-required
+   challenges were dropped on the default conf path (login → DENIED/EXPIRED ~75 s).
+4. Module displays `Ezkey challenge code: NN — enter this code…` plus
+   `Type ok and press Enter…` via **`pam_prompt` (`PAM_PROMPT_ECHO_OFF`)** before
+   `GET …/wait` so OpenSSH flushes the code to the PTY (same flush rule as the
+   waiting line; no `pam_info` fallback — Patrick). If no PAM conversation can
+   show the code → `PAM_AUTHINFO_UNAVAIL` (Christophe). Response must be
+   trimmed `ok` (#975 D4).
 5. Device must submit matching `challengeResponse` on approve; wrong digits → refuse.
-6. Fail-closed: missing challenge → `PAM_AUTHINFO_UNAVAIL`.
+6. Fail-closed when **host** `challenge_requested=true` and challenge is missing or
+   outside 0..99 → `PAM_AUTHINFO_UNAVAIL`. When host did not request a challenge and
+   none came back → waiting line (#941).
 7. Challenge value is **not** written to authpriv attempt lines (#750); attempt lines
    include `lab_http=true|false`.
 
 **Lab proof target (no physical phone).**
 
-- No-challenge (#941 / #956 E1): `test-timeouts.sh` asserts Approve/Press Enter
+- No-challenge (#941 / #956 E1): `test-timeouts.sh` asserts Approve/Type ok
   **while stub has create and zero `/wait` GETs**; `test-conf-security.sh`
   asserts failing PAM conversation → UNAVAIL with `challenge_requested=false`
   (display_ok guard). Both run in CI via `ci-m1-conf-security.sh`.
-- Enter thresholds on the **default path** (#956 M1): delayed Enter (~8 s) and
-  Enter >25 s in `test-timeouts.sh` with `challenge_requested=false` (same
+- Confirm thresholds on the **default path** (#956 M1): delayed `ok` (~8 s) and
+  confirm >25 s in `test-timeouts.sh` with `challenge_requested=false` (same
   assertions as the challenge variants).
+- Enrollment-required challenge (#975): stub mode `enrollment_challenge` +
+  `challenge_requested=false` in `test-timeouts.sh` (CI) must show
+  `Ezkey challenge code: 42` before confirm; SUCCESS without digits in authpriv.
+  Harness: `ezkey_prewait_prompt_mode`.
+- D4 empty confirm (#975): `ssh -T </dev/null` and PTY bare Enter → `UNAVAIL`;
+  harness `ezkey_prewait_response_confirmed`.
 - Challenge: `./scripts/test-challenge.sh`:
   1. Live PTY capture (`ssh-pty-capture.py`) must show `Ezkey challenge code: NN`
-     **before** Enter + approve.
+     **before** `ok` + approve.
   2. Demo Device approve with matching digits → `SUCCESS` + DB `ACCEPTED|NN`.
   3. Wrong digits → SSH denied / non-SUCCESS.
   4. Stub create without challenge → `UNAVAIL` + debug.err reason.
+  5. Case D: enrollment stub + `challenge_requested=false` → code visible + SUCCESS.
 
 ### Timeouts (Patrick / #726 / P3 budget) — path:line inventory
 
@@ -711,9 +736,12 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | Marc #907 R5 | Disconnect cancel = **best-effort, TTL-bounded** (no new mechanism; SIGTERM kept) | **Done** — case C documents expected miss; A/B gate CI |
 | Patrick CHANGES | https scheme case-insensitive + no pam_info fallback | **Done** |
 | #941 F1 (Edgar) | No-challenge waiting line via `pam_prompt` before `/wait` (not buffered `pam_info`) | **Done** (2.2.11) |
+| #975 (Isabelle) | Show server challenge even when `challenge_requested=false` (enrollment-required) | **Done** (2.2.12) |
+| #975 D4 (Isabelle) | Explicit `ok` confirm — empty/`ssh -T` EOF → UNAVAIL; correct #956 M2 README | **Done** (2.2.12) |
+| #975 D1 | Windows no-TTY hang until LoginGraceTime 120 s (known; document) | **Documented** (2.2.12) |
 | #956 Patrick E1 | Stub suites + before-wait / no-conv asserts in `ezkey-pam` CI job | **Done** |
 | #956 Patrick M1 | No-challenge delayed Enter + Enter >25 s in `test-timeouts.sh` | **Done** |
-| #956 Patrick M2 | Document no-TTY fail-closed on default path | **Done** |
+| #956 Patrick M2 | No-TTY / empty auto-answer fail-closed (corrected: require `ok`) | **Done** (2.2.12) |
 | #956 Patrick M3 | Document SIGTERM only during `/wait`; quit-at-prompt → TTL ≤90 s | **Done** (document; no early arm) |
 | #956 Patrick nit a | `mktemp -d` + fifo inside (common.sh / timeouts / f9) | **Done** |
 | #956 Patrick nit b | Sanitize username controls before waiting prompt | **Done** |

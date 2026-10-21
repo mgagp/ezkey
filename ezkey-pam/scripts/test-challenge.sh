@@ -115,7 +115,7 @@ wait_challenge_in_capture() {
 }
 
 # PTY driver + control fifo: OpenSSH keyboard-interactive reads from the PTY
-# (not redirected stdin). Helper tees live output and accepts "enter".
+# (not redirected stdin). Helper tees live output and accepts "ok" confirm.
 SSH_CTRL=""
 
 close_ssh_ctrl() {
@@ -127,8 +127,8 @@ close_ssh_ctrl() {
 
 send_ssh_enter() {
   if [ -n "${SSH_CTRL}" ]; then
-    # Non-blocking writer: helper holds the read end open.
-    printf 'enter\n' >"${SSH_CTRL}" 2>/dev/null || true
+    # Non-blocking writer: helper holds the read end open. "ok" = confirm token.
+    printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
   fi
 }
 
@@ -400,6 +400,60 @@ if [ "${abs_rc}" -ne 0 ] && echo "${ATTEMPT}" | grep -q 'result=UNAVAIL' \
   ok "absent challenge (stub) → UNAVAIL + debug.err bound/missing reason"
 else
   fail "absent challenge expected UNAVAIL+reason (rc=${abs_rc} line=${ATTEMPT} err=${ERR})"
+fi
+stop_stub
+restore_conf
+
+# ---------------------------------------------------------------------------
+# Case D — #975: enrollment-required challenge with challenge_requested=false
+# Stub forces authAttemptChallenge; host conf stays false. Code must still show.
+# ---------------------------------------------------------------------------
+stop_stub
+docker exec -d "${CONTAINER}" sh -c \
+  "EZKEY_STUB_MODE=enrollment_challenge EZKEY_STUB_PORT='${STUB_PORT}' \
+   EZKEY_STUB_CHALLENGE=42 \
+   python3 /opt/pam-ezkey/scripts/integration-api-stub.py \
+   >/tmp/ezkey-pam-stub.log 2>&1 & echo \$! >'${STUB_PID_FILE}'"
+for _ in $(seq 1 40); do
+  docker exec "${CONTAINER}" sh -c "ss -ltn | grep -q ':${STUB_PORT}'" 2>/dev/null && break
+  sleep 0.1
+done
+
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=30/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+
+SSH_LOG_D="${ARTIFACT_DIR}/pam-challenge-ssh-d-enrollment.log"
+start_ssh_capture "${SSH_LOG_D}"
+if wait_challenge_in_capture "42" "${SSH_LOG_D}" >/dev/null; then
+  ok "#975 Case D: challenge 42 visible with challenge_requested=false (enrollment stub)"
+  tr -cd '\11\12\15\40-\176' <"${SSH_LOG_D}" | grep -E 'Ezkey challenge' \
+    | tee -a "${PROOF_LOG}" | tee "${ARTIFACT_DIR}/pam-challenge-enrollment-false.txt" || true
+  send_ssh_enter
+else
+  fail "#975 Case D: challenge not visible with challenge_requested=false"
+  send_ssh_enter
+fi
+set +e
+wait "${SSH_BG}"
+SSH_RC_D=$?
+set -e
+SSH_BG=""
+close_ssh_ctrl
+FLAT_D="$(tr -cd '\11\12\15\40-\176' <"${SSH_LOG_D}" 2>/dev/null || true)"
+ATTEMPT_D="$(docker exec "${CONTAINER}" sh -c \
+  "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
+echo "case_d_attempt=${ATTEMPT_D} ssh_rc=${SSH_RC_D}" >>"${PROOF_LOG}"
+if echo "${FLAT_D}" | grep -q PAM_CHALLENGE_OK \
+  && echo "${ATTEMPT_D}" | grep -q 'result=SUCCESS' \
+  && ! echo "${ATTEMPT_D}" | grep -qE 'challenge|code='; then
+  ok "#975 Case D: SUCCESS after enrollment challenge + no digits in authpriv"
+else
+  fail "#975 Case D expected SUCCESS without authpriv digits (rc=${SSH_RC_D}): ${ATTEMPT_D}"
 fi
 stop_stub
 restore_conf

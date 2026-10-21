@@ -286,18 +286,18 @@ for _ in $(seq 1 80); do
   sleep 0.25
 done
 if [ "${BEFORE_WAIT_OK}" -eq 1 ]; then
-  ok "#941 Approve/Press Enter visible BEFORE stub /wait (prompt path)"
+  ok "#941 Approve/Type ok visible BEFORE stub /wait (prompt path)"
   {
     echo "=== #941 before-wait capture excerpt ==="
     tr -cd '\11\12\15\40-\176' <"${SSH_LOG_941}" \
-      | grep -E 'Approve this SSH|Press Enter' || true
+      | grep -E 'Approve this SSH|Type ok' || true
   } | tee -a "${PROOF}"
 else
   fail "#941 waiting prompt not visible before /wait (creates=${CREATES_941:-?} waits=${WAITS_941:-?})"
   tr -cd '\11\12\15\40-\176' <"${SSH_LOG_941}" | tee -a "${PROOF}" || true
   docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null | tee -a "${PROOF}" || true
 fi
-printf 'enter\n' >"${SSH_CTRL_941}" 2>/dev/null || true
+printf 'ok\n' >"${SSH_CTRL_941}" 2>/dev/null || true
 set +e
 wait "${SSH_BG_941}"
 set -e
@@ -522,7 +522,7 @@ wait_chal_visible "${SSH_LOG}" || true
 DELAY_SECS=8
 echo "Delayed Enter ${DELAY_SECS}s after challenge visible" | tee -a "${PROOF}"
 sleep "${DELAY_SECS}"
-printf 'enter\n' >"${SSH_CTRL}" 2>/dev/null || true
+printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
 set +e
 wait "${SSH_BG}"
 SSH_RC=$?
@@ -573,7 +573,7 @@ wait_chal_visible "${SSH_LOG}" || true
 ENTER_OVER=26
 echo "Enter after ${ENTER_OVER}s (> EZKEY_MAX_ENTER_SECS 25)" | tee -a "${PROOF}"
 sleep "${ENTER_OVER}"
-printf 'enter\n' >"${SSH_CTRL}" 2>/dev/null || true
+printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
 set +e
 wait "${SSH_BG}"
 set -e
@@ -620,7 +620,7 @@ wait_prewait_visible "${SSH_LOG}" || true
 DELAY_SECS=8
 echo "No-challenge delayed Enter ${DELAY_SECS}s after waiting prompt" | tee -a "${PROOF}"
 sleep "${DELAY_SECS}"
-printf 'enter\n' >"${SSH_CTRL}" 2>/dev/null || true
+printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
 set +e
 wait "${SSH_BG}"
 SSH_RC=$?
@@ -665,7 +665,7 @@ wait_prewait_visible "${SSH_LOG}" || true
 ENTER_OVER=26
 echo "No-challenge Enter after ${ENTER_OVER}s (> EZKEY_MAX_ENTER_SECS 25)" | tee -a "${PROOF}"
 sleep "${ENTER_OVER}"
-printf 'enter\n' >"${SSH_CTRL}" 2>/dev/null || true
+printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
 set +e
 wait "${SSH_BG}"
 set -e
@@ -1045,6 +1045,148 @@ fi
 stop_stub
 restore_conf
 
+# --- #975: enrollment-required challenge with challenge_requested=false ---
+# Stub forces authAttemptChallenge even though create body says challengeRequested=false.
+# Regression: pre-2.2.12 dropped the code and showed the waiting line instead.
+start_stub enrollment_challenge
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=30/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+SSH_LOG_975="${ARTIFACT_DIR}/pam-timeouts-975-enrollment-chal.log"
+SSH_CTRL_975="$(ezkey_mk_ctrl_fifo)"
+SSH_CTRL_975_DIR="$(dirname "${SSH_CTRL_975}")"
+: >"${SSH_LOG_975}"
+set +e
+python3 "${SCRIPT_DIR}/ssh-pty-capture.py" "${SSH_LOG_975}" "${SSH_CTRL_975}" \
+  ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
+  -o PasswordAuthentication=no -o ConnectTimeout=15 \
+  "${SSH_USER}@127.0.0.1" 'echo PAM_975_OK; exit 0' \
+  >/dev/null 2>&1 &
+SSH_BG_975=$!
+set -e
+CHAL_975_OK=0
+for _ in $(seq 1 80); do
+  if tr -cd '\11\12\15\40-\176' <"${SSH_LOG_975}" 2>/dev/null \
+    | grep -qE 'Ezkey challenge code: 42'; then
+    CHAL_975_OK=1
+    break
+  fi
+  sleep 0.25
+done
+if [ "${CHAL_975_OK}" -eq 1 ]; then
+  ok "#975 enrollment challenge visible with challenge_requested=false"
+  {
+    echo "=== #975 capture excerpt ==="
+    tr -cd '\11\12\15\40-\176' <"${SSH_LOG_975}" \
+      | grep -E 'Ezkey challenge|Approve this SSH|Type ok' || true
+  } | tee -a "${PROOF}"
+else
+  fail "#975 expected Ezkey challenge code: 42 with challenge_requested=false"
+  tr -cd '\11\12\15\40-\176' <"${SSH_LOG_975}" | tee -a "${PROOF}" || true
+fi
+printf 'ok\n' >"${SSH_CTRL_975}" 2>/dev/null || true
+set +e
+wait "${SSH_BG_975}"
+set -e
+rm -rf "${SSH_CTRL_975_DIR}"
+ATTEMPT_975="$(docker exec "${CONTAINER}" sh -c \
+  "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
+echo "975_attempt=${ATTEMPT_975}" | tee -a "${PROOF}"
+# Challenge digits must not land in authpriv (#750).
+if echo "${ATTEMPT_975}" | grep -q 'result=SUCCESS' \
+  && ! echo "${ATTEMPT_975}" | grep -qE 'challenge|code='; then
+  ok "#975 SUCCESS + challenge digits absent from attempt line (#750)"
+else
+  fail "#975 expected SUCCESS without challenge digits in authpriv: ${ATTEMPT_975}"
+fi
+stop_stub
+restore_conf
+
+# --- #975 D4: ssh -T </dev/null auto-answers empty → must UNAVAIL (not SUCCESS) ---
+# Isabelle retest: no prompt shown, yet empty EOF satisfied pam_prompt and device
+# approve opened a shell. Explicit "ok" confirm closes that hole.
+start_stub ok
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=30/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'; \
+   : > /var/log/ezkey-pam/debug.err"
+before_d4="$(docker exec "${CONTAINER}" sh -c \
+  "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+before_d4="${before_d4:-0}"
+set +e
+ssh -T -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
+  -o PasswordAuthentication=no -o ConnectTimeout=15 -o NumberOfPasswordPrompts=1 \
+  "${SSH_USER}@127.0.0.1" 'echo PAM_D4_SHOULD_FAIL; exit 0' </dev/null \
+  >"${ARTIFACT_DIR}/pam-timeouts-d4-notty.log" 2>&1
+d4_rc=$?
+set -e
+for _ in $(seq 1 40); do
+  after_d4="$(docker exec "${CONTAINER}" sh -c \
+    "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
+  after_d4="${after_d4:-0}"
+  [ "$((after_d4 - before_d4))" -ge 1 ] && break
+  sleep 0.1
+done
+ATTEMPT_D4="$(docker exec "${CONTAINER}" sh -c \
+  "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
+ERR_D4="$(docker exec "${CONTAINER}" sh -c \
+  'tail -n 8 /var/log/ezkey-pam/debug.err' || true)"
+echo "d4_rc=${d4_rc} attempt=${ATTEMPT_D4}" | tee -a "${PROOF}"
+echo "d4_err=${ERR_D4}" | tee -a "${PROOF}"
+if [ "${d4_rc}" -ne 0 ] \
+  && echo "${ATTEMPT_D4}" | grep -q 'result=UNAVAIL' \
+  && echo "${ERR_D4}" | grep -Eq 'pre-wait confirm missing|empty/EOF|not ok'; then
+  ok "#975 D4 ssh -T </dev/null → UNAVAIL (empty confirm rejected)"
+else
+  fail "#975 D4 expected UNAVAIL+confirm reason (rc=${d4_rc}): ${ATTEMPT_D4} err=${ERR_D4}"
+fi
+# Bare Enter on a PTY (empty response) must also fail — same hole as EOF.
+SSH_LOG_D4E="${ARTIFACT_DIR}/pam-timeouts-d4-bare-enter.log"
+SSH_CTRL_D4E="$(ezkey_mk_ctrl_fifo)"
+SSH_CTRL_D4E_DIR="$(dirname "${SSH_CTRL_D4E}")"
+: >"${SSH_LOG_D4E}"
+set +e
+python3 "${SCRIPT_DIR}/ssh-pty-capture.py" "${SSH_LOG_D4E}" "${SSH_CTRL_D4E}" \
+  ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
+  -o PasswordAuthentication=no -o ConnectTimeout=15 \
+  "${SSH_USER}@127.0.0.1" 'echo PAM_D4_ENTER_SHOULD_FAIL; exit 0' \
+  >/dev/null 2>&1 &
+SSH_BG_D4E=$!
+set -e
+for _ in $(seq 1 80); do
+  if ezkey_ssh_capture_has_prewait_prompt "${SSH_LOG_D4E}"; then
+    break
+  fi
+  sleep 0.25
+done
+printf 'enter\n' >"${SSH_CTRL_D4E}" 2>/dev/null || true
+set +e
+wait "${SSH_BG_D4E}"
+d4e_rc=$?
+set -e
+rm -rf "${SSH_CTRL_D4E_DIR}"
+ATTEMPT_D4E="$(docker exec "${CONTAINER}" sh -c \
+  "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
+echo "d4_bare_enter_rc=${d4e_rc} attempt=${ATTEMPT_D4E}" | tee -a "${PROOF}"
+if [ "${d4e_rc}" -ne 0 ] && echo "${ATTEMPT_D4E}" | grep -q 'result=UNAVAIL'; then
+  ok "#975 D4 bare Enter (empty) → UNAVAIL"
+else
+  fail "#975 D4 bare Enter expected UNAVAIL (rc=${d4e_rc}): ${ATTEMPT_D4E}"
+fi
+stop_stub
+restore_conf
+
 # --- budget / planned-wait harness (replaces grep-only AUTH_BUDGET 105 check) ---
 # rem-too-small → −1 is the UNAVAIL-before-create path; executable in make test-budget.
 if make -C "${SCRIPT_DIR}/.." test-budget >/tmp/pam-budget-harness.out 2>&1; then
@@ -1069,6 +1211,8 @@ if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_sigterm_wait' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_format_waiting_prompt' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_challenge_display_ok' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -q 'ezkey_prewait_prompt_mode' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -q 'ezkey_prewait_response_confirmed' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'PAM_PROMPT_ECHO_OFF' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && ! grep -E '\balarm\s*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'LoginGraceTime 120' "${SCRIPT_DIR}/../sshd_config" \

@@ -17,9 +17,11 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 2. Creates an auth attempt (`POST /api/v1/auth-attempts`) using the Linux username as
    `userIdentifier`, with `challengeRequested=false` and optional `ttlSeconds` equal to the
    effective wait (servers that ignore the field remain compatible).
-3. Shows a pre-wait SSH prompt (`PAM_PROMPT_ECHO_OFF`): the waiting “Approve this SSH
-   login…” line when `challenge_requested=false`, or the two-digit challenge code when
-   `true` (#941). The operator presses Enter, then the module waits.
+3. Shows a pre-wait SSH prompt (`PAM_PROMPT_ECHO_OFF`): the two-digit challenge code when
+   the create response includes `authAttemptChallenge` (host requested it, or the
+   enrollment requires it — #975), otherwise the waiting “Approve this SSH login…” line
+   (#941). The operator types **`ok`** and presses Enter (explicit confirm — #975 D4),
+   then the module waits.
 4. Waits for approve or reject (`GET /api/v1/auth-attempts/{id}/wait?timeout=N`), aligning `N`
    on the applied TTL duration (monotonic budget) — never on host clock vs server `expiresAt`.
 5. Grants SSH access when wait `status` is `ACCEPTED`. On any non-accepted exit after create,
@@ -28,6 +30,28 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
+
+## What changed in 2.2.12 (#975 — enrollment challenge + explicit ok confirm)
+
+- **Server-provided challenge always displayed:** when create returns a valid
+  `authAttemptChallenge` (0..99), the module shows `Ezkey challenge code: NN…`
+  via `pam_prompt` **even if** host `challenge_requested=false` (enrollment
+  with `authAttemptChallengeRequired`). Pre-2.2.12 dropped the code on the
+  default conf path and login expired after ~75 s (Isabelle / ezkey-pam-test).
+- **Explicit pre-wait confirm (D4):** the prompt asks `Type ok and press Enter…`.
+  Empty / bare Enter / `ssh -T </dev/null` EOF all return `PAM_SUCCESS` with an
+  empty response — indistinguishable from “Press Enter” — so device approval
+  alone could open a shell with no visible prompt (Isabelle D4 FAIL vs README).
+  Requiring trimmed case-insensitive **`ok`** fail-closes that path without a
+  timing heuristic. Interactive operators type `ok`; lab autoenter helpers send
+  `ok`. `BatchMode` pubkey logins (e.g. `ec2-user`) never hit this conversation.
+- **Fail-closed unchanged** when `challenge_requested=true` and no/out-of-range
+  challenge comes back → `PAM_AUTHINFO_UNAVAIL`.
+- **#750 preserved:** challenge digits stay out of authpriv/syslog; waiting line
+  still used when no challenge is present.
+- Proof: `ezkey_prewait_prompt_mode` + `ezkey_prewait_response_confirmed`
+  harness; stub `enrollment_challenge`; D4 `ssh -T </dev/null` + bare-Enter
+  → UNAVAIL in `test-timeouts.sh` (CI).
 
 ## What changed in 2.2.11 (#941 F1 — waiting message before device wait)
 
@@ -40,25 +64,34 @@ that owns the API key.
   keyboard-interactive until the next prompt or the end of the round, so the
   old line only appeared with the verdict (Edgar F1 / RETEST-908 / QA Sphere
   EZK-12/13).
-- **With challenge (`challenge_requested=true`):** unchanged — the two-digit
-  code is still shown in a `PAM_PROMPT_ECHO_OFF` prompt before `/wait`; Press
-  Enter then continues to the device wait.
+- **With challenge (`challenge_requested=true`):** the two-digit code is shown
+  in a `PAM_PROMPT_ECHO_OFF` prompt before `/wait`; the operator then confirms
+  (2.2.12: type `ok`) before the device wait. (2.2.12 also shows the code when
+  the enrollment requires a challenge and the host left
+  `challenge_requested=false`.)
 - **Constraints held:** one create per login under `Match … MaxAuthTries 1`
   (#934 / #907); 75 s-class wait budget / applied TTL / cancel / EXPIRED
   behavior (#895) unchanged; fail-closed unchanged; no secrets or proof tokens
   in logs or argv.
-- Operator UX: Press Enter once after the waiting (or challenge) line, then
-  approve or deny on the device while the module waits.
-- **No TTY / non-interactive SSH:** the default path now always requires a PAM
-  conversation to display the waiting prompt. Without a TTY (cron, CI runners,
-  `ssh` without a PTY, scripts that provide no conversation), the module
-  **fail-closes** with `PAM_AUTHINFO_UNAVAIL`. Device approval alone is no
-  longer enough when no prompt can be shown (#956 M2).
+- Operator UX (2.2.12): type **`ok`** after the waiting (or challenge) line,
+  then approve or deny on the device while the module waits.
+- **No TTY / non-interactive SSH (#956 M2, corrected in 2.2.12 D4):**
+  - Missing PAM conversation (`PAM_CONV` null / `PAM_CONV_ERR`) →
+    `PAM_AUTHINFO_UNAVAIL` (unchanged).
+  - Keyboard-interactive clients that **auto-answer** the prompt with an empty
+    string (`ssh -T </dev/null`) also → `UNAVAIL` once the prompt requires
+    explicit `ok` (2.2.12). Pre-2.2.12 README claimed device approval alone was
+    never enough; that was false for this client type.
+  - **D1 (known):** some Windows OpenSSH clients without a TTY hang on
+    keyboard-interactive until sshd `LoginGraceTime` (demo **120 s**) and still
+    create an Integration API auth attempt; PAM cannot unblock the client hang.
+    Prefer a real TTY (`ssh -tt`) or avoid MFA Match users for non-interactive
+    automation (`BatchMode` + pubkey outside the MFA Match).
 - Proof: harness `ezkey_format_waiting_prompt` + username control sanitization;
   CI stub suites (`test-conf-security.sh`, `test-timeouts.sh`,
   `test-f9-retry.sh` via `ci-m1-conf-security.sh`) assert Approve **before**
   `/wait` and no-challenge failing-conv → UNAVAIL; `ezkey_ssh_kbdint_autoenter`
-  in `scripts/common.sh` drives Enter for demos.
+  in `scripts/common.sh` drives `ok` for demos.
 
 ## What changed in 2.2.10 (#907 F9 — Patrick/Christophe review, option A)
 
@@ -218,7 +251,7 @@ ssh -p 2223 \
 | `wait_timeout` | `90` | Seconds to wait for device approval (clamped **15–90**). Sent as create `ttlSeconds`; `/wait?timeout=` aligns on create response `timeoutSeconds` (PR-A) when present |
 | `wait_polling` | `2` | Wait poll interval |
 | `api_timeout` | `10` | Timeout for create/cancel calls (max 10) |
-| `challenge_requested` | `false` | Two-digit number-matching; `true` shows code via SSH `pam_prompt` before wait. When `false`, the waiting “Approve this SSH login…” line still uses `pam_prompt` so OpenSSH shows it before `/wait` (#941) |
+| `challenge_requested` | `false` | Ask the Integration API for a challenge on create. When the response includes a valid challenge (requested here, or enrollment-required), the code is shown via SSH `pam_prompt` before wait (#975). When no challenge is present, the waiting “Approve this SSH login…” line still uses `pam_prompt` (#941). `true` + missing challenge → UNAVAIL |
 | `lab_http` | `false` | Allow `http://` Integration API URL (Docker entrypoint sets `true`) |
 | `context_title` | `SSH login` | Title shown on the device |
 | `context_message` | *(generated)* | Message shown on the device |

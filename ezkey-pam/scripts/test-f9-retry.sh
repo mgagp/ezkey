@@ -202,7 +202,7 @@ else
   # Flush waiting prompt then allow /wait to begin before client kill.
   for _ in $(seq 1 40); do
     if ezkey_ssh_capture_has_prewait_prompt "${KILL_LOG}"; then
-      printf 'enter\n' >"${KILL_CTRL}" 2>/dev/null || true
+      printf 'ok\n' >"${KILL_CTRL}" 2>/dev/null || true
       break
     fi
     sleep 0.1
