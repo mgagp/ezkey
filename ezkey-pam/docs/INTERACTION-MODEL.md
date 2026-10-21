@@ -235,7 +235,7 @@ Tags as in §0. **2.2.12** = confirm-before-create + enrollment challenge displa
 | **S3** | P2 | Batch + enrollment challenge (Marc) | B | **none** | UNAVAIL; **0 creates** (never learns the code) | ✔ [test] | **Covered** |
 | **S4** | P2 | `BatchMode=yes` | B | no | Immediate denial, no PAM | ✔ [isa] D2 | **Covered** |
 | **S5** | P2 | Pubkey-only non-MFA (ec2-user) | I/B | no | No PAM call | ✔ [isa] E | **Covered** |
-| **S6** | P2 | Ctrl-C at prompt / during wait | I | pre-create: no; after create: until cancel/TTL | Pre-create: 0 creates [test]; wait: cancel=ok ≤ 5 s [test] f9 B2b | ✔ | **Covered** |
+| **S6** | P2 | Ctrl-C at prompt / during wait | I | pre-create: no; after create: until cancel/TTL | Pre-create Ctrl-C: 0 creates [test]; wait kill-client: cancel=ok ≤5s when SIGTERM delivered, else best-effort NOTE (OpenSSH 9.9) [test] f9 B2b; wait-timeout cancel=ok [test-timeouts] | ✔ | **Covered** |
 | **S7** | P2 | `ok` after > 25 s | I | pre-create: 0; challenge prompt: cancel | UNAVAIL | ✔ [test] | **Covered** |
 | **S8** | P3 | Windows OpenSSH no console | S | **none** | Hang ≤ grace; **0 creates**; use `ssh -tt` | Doc + 0-create | **Doc** |
 | **S9** | P3 | ControlMaster reuse | S | no | MFA once per master | [inf] | **Doc** |
