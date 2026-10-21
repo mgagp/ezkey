@@ -9,7 +9,7 @@ Tracking: [GitHub #972](https://github.com/mgagp/ezkey/issues/972).
 
 - Status: [`STATUS.md`](STATUS.md)
 - Tutorial: [`TUTORIAL.md`](TUTORIAL.md)
-- Design / prior-art / challenge rules: [`DESIGN.md`](DESIGN.md)
+- Design / prior-art / **M3 SDK decision** / M4 confirm+challenge flow: [`DESIGN.md`](DESIGN.md)
 
 ## What is here
 
@@ -53,10 +53,11 @@ is the source of truth (or `./scripts/down.sh --volumes` for a clean home).
 - **Port 28080:** avoids Auth `8080` and Caddy Auth proxy `18080`.
 - **M2 secret:** `hudson.util.Secret` on the realm (never logged). Credentials plugin
   deferred — see `DESIGN.md`.
-- **No live Ezkey HTTP** until M4. Challenge display / fail-closed / never-log rules
-  for M3/M4 are recorded in `DESIGN.md` (PAM lesson).
+- **M3 SDK:** `org.ezkey:ezkey-sdk` adequate as-is (thin plugin UX adapter only) — see `DESIGN.md`.
+- **No live Ezkey HTTP** until M4. Confirm-before-create + always-display challenge /
+  fail-closed / never-log (PAM #975 / PR #976 lesson) are locked in `DESIGN.md`.
 - **Independent compose:** not on `ezkey-network`; no PAM coupling.
 
 ## Out of scope until later
 
-Real Ezkey round-trip, SDK decision (M3), publishing, deploying, infrastructure.
+Real Ezkey round-trip (M4), publishing, deploying, infrastructure.

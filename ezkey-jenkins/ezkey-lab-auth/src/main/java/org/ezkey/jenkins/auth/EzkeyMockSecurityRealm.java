@@ -22,9 +22,10 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
  * usernames are auto-accepted after a non-empty password — simulating an Ezkey device approve.
  * Real Ezkey HTTP round-trips are M4.
  *
- * <p>The Ezkey integration secret is stored as {@link Secret} (Jenkins secret handling). It must
- * never appear in logs. Credentials-plugin {@code StringCredentials} is preferred for production;
- * deferred here because the lab skips the setup wizard and avoids a large detached-plugin fan-out.
+ * <p>The Ezkey integration secret is stored as {@link Secret} (Jenkins secret handling). Secret and
+ * challenge codes must never appear in logs. Credentials-plugin {@code StringCredentials} migration
+ * was assessed in M3 and deferred (not cheap: lab skips setup wizard; avoids detached-plugin
+ * fan-out). See {@code ezkey-jenkins/DESIGN.md}.
  *
  * @since 2026
  */

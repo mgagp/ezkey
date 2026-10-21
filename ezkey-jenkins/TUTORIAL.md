@@ -126,7 +126,16 @@ Prior-art table and PAM challenge rules for M3/M4: [`DESIGN.md`](DESIGN.md).
 
 Smoke after M2 uses break-glass basic auth (`./scripts/smoke.sh`).
 
+## 8. M3 — SDK fit (design only)
+
+Recorded in [`DESIGN.md`](DESIGN.md): **Java SDK adequate as-is**; plugin-local thin
+adapter for confirm → create → challenge display → wait. Credentials-plugin secret
+migration still deferred (not cheap without pulling detached plugins into the lab).
+
+M4 will implement the live round-trip using that decision and the confirm/challenge
+rules in `DESIGN.md` (aligned with PAM #975 / PR #976).
+
 ## Out of scope (later milestones)
 
-Live Ezkey HTTP (M4), SDK fit decision (M3), Credentials-plugin migration,
+Live Ezkey HTTP (M4), Credentials-plugin migration (optional later),
 community/ngrok endpoints, publishing to the Jenkins update center.
