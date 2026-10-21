@@ -12,7 +12,8 @@ services:
     container_name: ezkey-jenkins
     hostname: ezkey-jenkins
     ports:
-      - "${EZKEY_JENKINS_HTTP_PORT:-18080}:8080"
+      # 28080: avoid Caddy Auth proxy host port 18080 and direct Auth 8080
+      - "${EZKEY_JENKINS_HTTP_PORT:-28080}:8080"
       - "${EZKEY_JENKINS_AGENT_PORT:-50000}:50000"
     environment:
       # Lab-only: skip setup wizard; seed job + unsecured realm via ref/

@@ -17,7 +17,7 @@ must be **SUCCESS**. No Ezkey plugin yet (that is M1+).
 ## Prerequisites
 
 - Docker Engine + Compose v2
-- Free host ports (defaults): `18080` (UI), `50000` (agent; unused in M0)
+- Free host ports (defaults): `28080` (UI), `50000` (agent; unused in M0)
 
 ## Run
 
@@ -27,8 +27,8 @@ cd ezkey-jenkins
 ./scripts/smoke.sh
 ```
 
-Open the UI: [http://localhost:18080/](http://localhost:18080/)  
-Job: [http://localhost:18080/job/m0-ls/](http://localhost:18080/job/m0-ls/)
+Open the UI: [http://localhost:28080/](http://localhost:28080/)  
+Job: [http://localhost:28080/job/m0-ls/](http://localhost:28080/job/m0-ls/)
 
 Stop (keeps the named volume):
 
@@ -45,17 +45,17 @@ Reset Jenkins home:
 Override ports if needed:
 
 ```bash
-export EZKEY_JENKINS_HTTP_PORT=18081
+export EZKEY_JENKINS_HTTP_PORT=28081
 ./scripts/up.sh
-EZKEY_JENKINS_HTTP_PORT=18081 ./scripts/smoke.sh
+EZKEY_JENKINS_HTTP_PORT=28081 ./scripts/smoke.sh
 ```
 
 ## Lab notes (M0 decisions)
 
 - **Image:** `jenkins/jenkins:lts-jdk21` — current LTS line; JDK 21 matches the
   ecosystem Jenkins documents for this LTS.
-- **Port 18080:** avoids clashing with common local `8080` (Admin UI demos,
-  other labs). Not the community host; never commit real IPs.
+- **Port 28080:** avoids direct Auth `8080` and Caddy Auth proxy `18080` on a
+  typical clean-start host. Not the community host; never commit real IPs.
 - **Unsecured realm:** init groovy disables authentication so Marc can open the
   UI and smoke scripts can trigger builds without a wizard. Replace before M2
   auth work (break-glass admin path required then).

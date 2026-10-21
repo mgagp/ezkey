@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-export EZKEY_JENKINS_HTTP_PORT="${EZKEY_JENKINS_HTTP_PORT:-18080}"
+export EZKEY_JENKINS_HTTP_PORT="${EZKEY_JENKINS_HTTP_PORT:-28080}"
 export EZKEY_JENKINS_AGENT_PORT="${EZKEY_JENKINS_AGENT_PORT:-50000}"
 
 echo "Starting ezkey-jenkins on http://localhost:${EZKEY_JENKINS_HTTP_PORT} ..."
