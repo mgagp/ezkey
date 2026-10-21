@@ -130,17 +130,11 @@ ssh_run() {
   local out="$1"
   local cmd="$2"
   local rc=0
-  ssh -tt \
-    -p "${PORT}" \
-    -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null \
-    -o PreferredAuthentications=keyboard-interactive \
-    -o PubkeyAuthentication=no \
-    -o PasswordAuthentication=no \
-    -o ConnectTimeout=10 \
-    "${SSH_USER}@127.0.0.1" \
-    "${cmd}" \
-    >"${out}" 2>&1 || rc=$?
+  # #941: no-challenge waiting prompt needs Enter; capture includes PAM markers.
+  set +e
+  ezkey_ssh_kbdint_autoenter "${out}" "${cmd}" 10
+  rc=$?
+  set -e
   echo "${rc}" >"${out}.rc"
 }
 

@@ -122,11 +122,8 @@ install_sshd_cfg "${SCRIPT_DIR}/../sshd_config.f9-multitry"
 
 docker exec "${CONTAINER}" sh -c ": >'${STUB_REQ_LOG}'"
 set +e
-ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
-  -o PasswordAuthentication=no -o NumberOfPasswordPrompts=3 -o ConnectTimeout=10 \
-  -o ServerAliveInterval=5 -o ServerAliveCountMax=24 \
-  "${SSH_USER}@127.0.0.1" 'echo X' >/tmp/ezkey-f9-multitry-ssh.log 2>&1
+# #941: waiting prompt needs Enter; prompts=3 for multitry recreate proof.
+ezkey_ssh_kbdint_autoenter "${ARTIFACT_DIR}/pam-f9-multitry-ssh.log" 'echo X' 10 3
 set -e
 
 CREATES_MULTI="$(count_creates)"
@@ -147,11 +144,7 @@ install_sshd_cfg "${SCRIPT_DIR}/../sshd_config"
 
 docker exec "${CONTAINER}" sh -c ": >'${STUB_REQ_LOG}'"
 set +e
-ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
-  -o PasswordAuthentication=no -o NumberOfPasswordPrompts=3 -o ConnectTimeout=10 \
-  -o ServerAliveInterval=5 -o ServerAliveCountMax=24 \
-  "${SSH_USER}@127.0.0.1" 'echo X' >/tmp/ezkey-f9-match-ssh.log 2>&1
+ezkey_ssh_kbdint_autoenter "${ARTIFACT_DIR}/pam-f9-match-ssh.log" 'echo X' 10
 set -e
 
 CREATES_MATCH="$(count_creates)"
@@ -172,12 +165,20 @@ point_conf_at_stub "${CASE_C_WAIT_TTL}"
 install_sshd_cfg "${SCRIPT_DIR}/../sshd_config"
 docker exec "${CONTAINER}" sh -c ": >'${STUB_REQ_LOG}'"
 
+# Drive SSH under PTY with auto-Enter so create completes and /wait starts
+# before kill (#941 waiting prompt + #907 R5).
+KILL_LOG="${ARTIFACT_DIR}/pam-f9-kill-ssh.log"
+KILL_CTRL="$(ezkey_mk_ctrl_fifo)"
+KILL_CTRL_DIR="$(dirname "${KILL_CTRL}")"
+: >"${KILL_LOG}"
 set +e
-ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+python3 "${SCRIPT_DIR}/ssh-pty-capture.py" "${KILL_LOG}" "${KILL_CTRL}" \
+  ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
   -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
   -o PasswordAuthentication=no -o NumberOfPasswordPrompts=1 -o ConnectTimeout=10 \
   -o ServerAliveInterval=2 -o ServerAliveCountMax=60 \
-  "${SSH_USER}@127.0.0.1" 'echo X' >/tmp/ezkey-f9-kill-ssh.log 2>&1 &
+  "${SSH_USER}@127.0.0.1" 'echo X' \
+  >/dev/null 2>&1 &
 SSH_PID=$!
 set -e
 
@@ -192,11 +193,28 @@ for _ in $(seq 1 80); do
 done
 echo "kill-during-wait creates_before_kill=${CREATED}" | tee -a "${PROOF}"
 if [ "${CREATED}" -lt 1 ]; then
+  printf 'quit\n' >"${KILL_CTRL}" 2>/dev/null || true
   kill "${SSH_PID}" 2>/dev/null || true
   wait "${SSH_PID}" 2>/dev/null || true
+  rm -rf "${KILL_CTRL_DIR}"
   fail "B2b: no create before kill (stub/pending path)"
 else
-  sleep 0.5
+  # Flush waiting prompt then allow /wait to begin before client kill.
+  for _ in $(seq 1 40); do
+    if ezkey_ssh_capture_has_prewait_prompt "${KILL_LOG}"; then
+      printf 'enter\n' >"${KILL_CTRL}" 2>/dev/null || true
+      break
+    fi
+    sleep 0.1
+  done
+  for _ in $(seq 1 40); do
+    WAITS="$(docker exec "${CONTAINER}" sh -c \
+      "grep -c 'GET .*/wait' '${STUB_REQ_LOG}' 2>/dev/null || true" | tr -d ' \r')"
+    WAITS="${WAITS:-0}"
+    [ "${WAITS}" -ge 1 ] && break
+    sleep 0.1
+  done
+  sleep 0.3
   kill "${SSH_PID}" 2>/dev/null || true
   KILL_TS="$(date +%s)"
   CANCEL_SEEN=0
@@ -214,6 +232,7 @@ else
     sleep 0.1
   done
   wait "${SSH_PID}" 2>/dev/null || true
+  rm -rf "${KILL_CTRL_DIR}"
   STUB_LOG="$(docker exec "${CONTAINER}" cat "${STUB_REQ_LOG}" 2>/dev/null || true)"
   echo "${STUB_LOG}" | tee -a "${PROOF}" || true
   echo "kill-during-wait cancel_seen=${CANCEL_SEEN} elapsed_s=${CANCEL_ELAPSED}" \

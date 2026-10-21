@@ -134,3 +134,91 @@ wait_http_ok() {
   echo "Timed out waiting for ${url}" >&2
   return 1
 }
+
+# True when a live SSH capture already shows a pre-wait PAM_PROMPT_ECHO_OFF
+# line (no-challenge waiting message or challenge code) — #941 F1.
+ezkey_ssh_capture_has_prewait_prompt() {
+  local log="$1"
+  local flat
+  flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
+  echo "${flat}" | grep -qE \
+    'Approve this SSH login on your Ezkey device|Ezkey challenge code:|Press Enter to wait for Ezkey device approval'
+}
+
+# Run one keyboard-interactive SSH under a PTY; auto-send Enter when the
+# pre-wait prompt appears (#941). Create-fail paths never show a prompt — the
+# helper just waits for ssh to exit.
+# Args: <log> [remote_cmd] [ConnectTimeout] [NumberOfPasswordPrompts]
+# Default prompts=1 (Match MaxAuthTries 1). Pass 3 for F9 multitry case A.
+ezkey_ssh_kbdint_autoenter() {
+  local log="$1"
+  local remote_cmd="${2:-echo X}"
+  local connect_to="${3:-15}"
+  local password_prompts="${4:-1}"
+  local ctrl=""
+  local ctrl_dir=""
+  local bg=""
+  local i
+  local rc=1
+  local since_enter=999
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  require_cmd python3
+  require_cmd ssh
+  : >"${log}"
+  # Nit a (#956): mktemp -d then fifo inside — avoid mktemp -u race.
+  ctrl_dir="$(mktemp -d /tmp/ezkey-pam-kbdint.XXXXXX)"
+  ctrl="${ctrl_dir}/enter.fifo"
+  mkfifo "${ctrl}"
+
+  set +e
+  python3 "${script_dir}/ssh-pty-capture.py" "${log}" "${ctrl}" \
+    ssh -tt \
+      -p "${SSH_PORT}" \
+      -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null \
+      -o PreferredAuthentications=keyboard-interactive \
+      -o PubkeyAuthentication=no \
+      -o PasswordAuthentication=no \
+      -o "NumberOfPasswordPrompts=${password_prompts}" \
+      -o ConnectTimeout="${connect_to}" \
+      "${SSH_USER}@127.0.0.1" \
+      "${remote_cmd}" \
+    >/dev/null 2>&1 &
+  bg=$!
+  set -e
+
+  # Re-send Enter on a short cooldown so OpenSSH multitry rounds (Match forgotten)
+  # each clear the waiting/challenge prompt (#941 + #907 F9 case A).
+  for i in $(seq 1 600); do
+    if ! kill -0 "${bg}" 2>/dev/null; then
+      break
+    fi
+    since_enter=$((since_enter + 1))
+    if ezkey_ssh_capture_has_prewait_prompt "${log}" && [ "${since_enter}" -ge 15 ]; then
+      printf 'enter\n' >"${ctrl}" 2>/dev/null || true
+      since_enter=0
+    fi
+    sleep 0.1
+  done
+
+  # Keep set +e through return: a non-zero `return` under set -e aborts the
+  # whole caller script in Bash (not only the function).
+  set +e
+  wait "${bg}"
+  rc=$?
+  rm -f "${ctrl}" 2>/dev/null || true
+  rmdir "${ctrl_dir}" 2>/dev/null || true
+  return "${rc}"
+}
+
+# Create a control fifo under a private mktemp -d (Patrick #956 nit a).
+# Prints the fifo path on stdout; caller should rm -rf the parent dir later.
+ezkey_mk_ctrl_fifo() {
+  local dir fifo
+  dir="$(mktemp -d /tmp/ezkey-pam-ctrl.XXXXXX)"
+  fifo="${dir}/enter.fifo"
+  mkfifo "${fifo}"
+  printf '%s\n' "${fifo}"
+}
