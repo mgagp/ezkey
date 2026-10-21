@@ -7,7 +7,7 @@ roadmap. Success means demonstrable, not shipped.
 |-----------|--------|------|
 | **M0** skeleton + Jenkins in Docker + `m0-ls` green | **done** | Marc sees Jenkins up with the job green |
 | **M1** hello-world plugin + tutorial | **done** | plugin built, installed, visible + working |
-| M2 mock auth plugin + prior-art | not started | login hooked; mock accepts; break-glass admin |
+| **M2** mock auth + prior-art + break-glass | **done** | login hooked; mock accepts; break-glass admin |
 | M3 SDK fit decision | not started | one-line SDK decision |
 | M4 real Ezkey round trip | not started | approve/deny on Docker Jenkins |
 
@@ -17,19 +17,18 @@ roadmap. Success means demonstrable, not shipped.
 cd ezkey-jenkins && ./scripts/up.sh && ./scripts/smoke.sh
 ```
 
-Expect: `M0 smoke OK: job m0-ls is green.`
-
 ## M1 proof
 
 ```bash
-cd ezkey-jenkins
-./scripts/build-plugin.sh
-./scripts/install-plugin.sh
-./scripts/demo-hello-job.sh
+./scripts/build-plugin.sh && ./scripts/install-plugin.sh && ./scripts/demo-hello-job.sh
 ```
 
-Expect:
+## M2 proof
 
-- Plugin `ezkey-lab-hello` listed as installed
-- Job `m1-hello` console contains `Hello, Ezkey!`
-- Tutorial: [`TUTORIAL.md`](TUTORIAL.md)
+```bash
+./scripts/build-auth-plugin.sh
+./scripts/configure-mock-auth.sh
+# anonymous API → 403; admin break-glass → 200; labuser:any → 200
+```
+
+Design / prior-art / challenge rules: [`DESIGN.md`](DESIGN.md).

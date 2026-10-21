@@ -1,48 +1,50 @@
 #!/usr/bin/env bash
-# Trigger m0-ls and assert last build is SUCCESS.
+# Trigger m0-ls and assert last build is SUCCESS (works with secured or unsecured).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=lib/jenkins-auth.sh
+source "${ROOT}/scripts/lib/jenkins-auth.sh"
 cd "$ROOT"
 
-PORT="${EZKEY_JENKINS_HTTP_PORT:-28080}"
-BASE="http://127.0.0.1:${PORT}"
+BASE="$(jenkins_base)"
 JOB="m0-ls"
-
-echo "Waiting for Jenkins API at ${BASE} ..."
-for _ in $(seq 1 60); do
-  if curl -fsS "${BASE}/api/json" >/dev/null 2>&1; then
-    break
-  fi
-  sleep 2
-done
-curl -fsS "${BASE}/api/json" >/dev/null
-
-echo "Waiting for job ${JOB} ..."
-for _ in $(seq 1 30); do
-  if curl -fsS "${BASE}/job/${JOB}/api/json" >/dev/null 2>&1; then
-    break
-  fi
-  sleep 2
-done
-curl -fsS "${BASE}/job/${JOB}/api/json" >/dev/null
+USER="$(jenkins_user)"
+PASS="$(jenkins_pass)"
 
 COOKIE_JAR="$(mktemp)"
 trap 'rm -f "$COOKIE_JAR"' EXIT
 
-echo "Fetching CSRF crumb (session-bound) ..."
-CRUMB_JSON="$(curl -fsS -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" "${BASE}/crumbIssuer/api/json")"
-CRUMB_FIELD="$(printf '%s' "$CRUMB_JSON" | sed -n 's/.*"crumbRequestField":"\([^"]*\)".*/\1/p')"
-CRUMB_VALUE="$(printf '%s' "$CRUMB_JSON" | sed -n 's/.*"crumb":"\([^"]*\)".*/\1/p')"
-if [[ -z "$CRUMB_FIELD" || -z "$CRUMB_VALUE" ]]; then
-  echo "Could not parse CSRF crumb from: ${CRUMB_JSON}" >&2
-  exit 1
-fi
+auth_curl() {
+  if jenkins_is_unsecured; then
+    curl -fsS -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" "$@"
+  else
+    curl -fsS -u "${USER}:${PASS}" -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" "$@"
+  fi
+}
+
+echo "Waiting for Jenkins API at ${BASE} ..."
+for _ in $(seq 1 60); do
+  if auth_curl "${BASE}/api/json" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+auth_curl "${BASE}/api/json" >/dev/null
+
+echo "Waiting for job ${JOB} ..."
+for _ in $(seq 1 30); do
+  if auth_curl "${BASE}/job/${JOB}/api/json" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+auth_curl "${BASE}/job/${JOB}/api/json" >/dev/null
+
+jenkins_prepare_crumb
 
 echo "Triggering ${JOB} ..."
-# Freestyle may return 201 with empty body; crumb + same session cookie required.
-curl -fsS -X POST -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" \
-  -H "${CRUMB_FIELD}: ${CRUMB_VALUE}" \
+auth_curl -X POST -H "${CRUMB_FIELD}: ${CRUMB_VALUE}" \
   -D /tmp/ezkey-jenkins-build.hdr -o /dev/null \
   "${BASE}/job/${JOB}/build" || {
   echo "Build trigger failed. Headers:" >&2
@@ -52,7 +54,7 @@ curl -fsS -X POST -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" \
 
 echo "Waiting for build SUCCESS ..."
 for _ in $(seq 1 60); do
-  json="$(curl -fsS "${BASE}/job/${JOB}/lastBuild/api/json" 2>/dev/null || true)"
+  json="$(auth_curl "${BASE}/job/${JOB}/lastBuild/api/json" 2>/dev/null || true)"
   if [[ -n "$json" ]]; then
     result="$(printf '%s' "$json" | sed -n 's/.*"result":"\([^"]*\)".*/\1/p' | head -1)"
     building="$(printf '%s' "$json" | sed -n 's/.*"building":\([^,]*\).*/\1/p' | head -1)"
@@ -65,7 +67,7 @@ for _ in $(seq 1 60); do
         exit 0
       fi
       echo "Expected SUCCESS, got ${result}. Console:" >&2
-      curl -fsS "${BASE}/job/${JOB}/lastBuild/consoleText" >&2 || true
+      auth_curl "${BASE}/job/${JOB}/lastBuild/consoleText" >&2 || true
       exit 1
     fi
   fi

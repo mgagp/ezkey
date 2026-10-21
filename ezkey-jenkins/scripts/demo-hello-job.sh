@@ -2,27 +2,37 @@
 # Create/update freestyle job m1-hello that uses the Ezkey lab hello build step.
 set -euo pipefail
 
-PORT="${EZKEY_JENKINS_HTTP_PORT:-28080}"
-BASE="http://127.0.0.1:${PORT}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=lib/jenkins-auth.sh
+source "${ROOT}/scripts/lib/jenkins-auth.sh"
+
+BASE="$(jenkins_base)"
 JOB="m1-hello"
+USER="$(jenkins_user)"
+PASS="$(jenkins_pass)"
 
 COOKIE_JAR="$(mktemp)"
-trap 'rm -f "$COOKIE_JAR"' EXIT
+CONFIG="$(mktemp)"
+trap 'rm -f "$COOKIE_JAR" "$CONFIG"' EXIT
+
+auth_curl() {
+  if jenkins_is_unsecured; then
+    curl -fsS -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" "$@"
+  else
+    curl -fsS -u "${USER}:${PASS}" -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" "$@"
+  fi
+}
 
 echo "Waiting for Jenkins at ${BASE} ..."
 for _ in $(seq 1 60); do
-  if curl -fsS -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" "${BASE}/api/json" >/dev/null 2>&1; then
+  if auth_curl "${BASE}/api/json" >/dev/null 2>&1; then
     break
   fi
   sleep 2
 done
 
-CRUMB_JSON="$(curl -fsS -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" "${BASE}/crumbIssuer/api/json")"
-CRUMB_FIELD="$(printf '%s' "$CRUMB_JSON" | sed -n 's/.*"crumbRequestField":"\([^"]*\)".*/\1/p')"
-CRUMB_VALUE="$(printf '%s' "$CRUMB_JSON" | sed -n 's/.*"crumb":"\([^"]*\)".*/\1/p')"
+jenkins_prepare_crumb
 
-CONFIG="$(mktemp)"
-trap 'rm -f "$COOKIE_JAR" "$CONFIG"' EXIT
 cat >"${CONFIG}" <<'EOF'
 <?xml version='1.1' encoding='UTF-8'?>
 <project>
@@ -47,40 +57,34 @@ cat >"${CONFIG}" <<'EOF'
 </project>
 EOF
 
-if curl -fsS -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" "${BASE}/job/${JOB}/api/json" >/dev/null 2>&1; then
+if auth_curl "${BASE}/job/${JOB}/api/json" >/dev/null 2>&1; then
   echo "Updating job ${JOB} ..."
-  curl -fsS -X POST -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" \
-    -H "${CRUMB_FIELD}: ${CRUMB_VALUE}" \
+  auth_curl -X POST -H "${CRUMB_FIELD}: ${CRUMB_VALUE}" \
     -H "Content-Type: application/xml" \
     --data-binary @"${CONFIG}" \
     "${BASE}/job/${JOB}/config.xml" >/dev/null
 else
   echo "Creating job ${JOB} ..."
-  curl -fsS -X POST -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" \
-    -H "${CRUMB_FIELD}: ${CRUMB_VALUE}" \
+  auth_curl -X POST -H "${CRUMB_FIELD}: ${CRUMB_VALUE}" \
     -H "Content-Type: application/xml" \
     --data-binary @"${CONFIG}" \
     "${BASE}/createItem?name=${JOB}" >/dev/null
 fi
 
+jenkins_prepare_crumb
 echo "Triggering ${JOB} ..."
-# Refresh crumb after create (same jar).
-CRUMB_JSON="$(curl -fsS -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" "${BASE}/crumbIssuer/api/json")"
-CRUMB_FIELD="$(printf '%s' "$CRUMB_JSON" | sed -n 's/.*"crumbRequestField":"\([^"]*\)".*/\1/p')"
-CRUMB_VALUE="$(printf '%s' "$CRUMB_JSON" | sed -n 's/.*"crumb":"\([^"]*\)".*/\1/p')"
-curl -fsS -X POST -c "${COOKIE_JAR}" -b "${COOKIE_JAR}" \
-  -H "${CRUMB_FIELD}: ${CRUMB_VALUE}" \
+auth_curl -X POST -H "${CRUMB_FIELD}: ${CRUMB_VALUE}" \
   "${BASE}/job/${JOB}/build" >/dev/null
 
 echo "Waiting for SUCCESS ..."
 for _ in $(seq 1 60); do
-  json="$(curl -fsS "${BASE}/job/${JOB}/lastBuild/api/json" 2>/dev/null || true)"
+  json="$(auth_curl "${BASE}/job/${JOB}/lastBuild/api/json" 2>/dev/null || true)"
   if [[ -n "$json" ]]; then
     result="$(printf '%s' "$json" | sed -n 's/.*"result":"\([^"]*\)".*/\1/p' | head -1)"
     building="$(printf '%s' "$json" | sed -n 's/.*"building":\([^,]*\).*/\1/p' | head -1)"
     if [[ "$building" == "false" && -n "$result" ]]; then
       echo "Build result=${result}"
-      curl -fsS "${BASE}/job/${JOB}/lastBuild/consoleText" || true
+      auth_curl "${BASE}/job/${JOB}/lastBuild/consoleText" || true
       if [[ "$result" == "SUCCESS" ]]; then
         echo "M1 demo job OK: ${BASE}/job/${JOB}/"
         exit 0

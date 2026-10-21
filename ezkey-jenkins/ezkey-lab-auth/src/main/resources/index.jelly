@@ -1,0 +1,4 @@
+<?jelly escape-by-default='true'?>
+<div>
+    Ezkey lab mock SecurityRealm (#972 M2). Break-glass admin + auto-accept mock. Experimental.
+</div>

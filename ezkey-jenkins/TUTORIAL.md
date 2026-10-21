@@ -107,7 +107,26 @@ The stock `doCheckName` used `value.matches(".*[éáàç].*")`. CodeQL flagged t
 a high ReDoS risk on user input. The lab replaces it with a simple character scan
 (same UX warning). Keep that change if you regenerate from the archetype.
 
+## 7. M2 — mock SecurityRealm + break-glass
+
+```bash
+./scripts/build-auth-plugin.sh
+./scripts/configure-mock-auth.sh
+```
+
+Effects:
+
+1. Unsecured realm is replaced (login required).
+2. Security realm = **Ezkey Lab Mock Auth (experimental)** with base URL, integration
+   key, and secret (`hudson.util.Secret`, concealed in UI, never logged).
+3. Break-glass `admin` / `ezkey-lab-admin` always works without Ezkey.
+4. Any other username + non-empty password is **mock auto-accepted**.
+
+Prior-art table and PAM challenge rules for M3/M4: [`DESIGN.md`](DESIGN.md).
+
+Smoke after M2 uses break-glass basic auth (`./scripts/smoke.sh`).
+
 ## Out of scope (later milestones)
 
-Security realm / login, Ezkey SDK, credentials for integration key/secret,
-community or ngrok endpoints, publishing to the Jenkins update center.
+Live Ezkey HTTP (M4), SDK fit decision (M3), Credentials-plugin migration,
+community/ngrok endpoints, publishing to the Jenkins update center.
