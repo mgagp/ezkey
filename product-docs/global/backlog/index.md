@@ -32,6 +32,12 @@ Canon sync 2026-08-24/25 closed delivered-but-stale index rows. Parallel mobile 
 remains orthogonal to the closed September operability program. Wave B closeout:
 [`method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
 
+## Lab / experimental (folder-local)
+
+| Folder | Issue | Note |
+|--------|-------|------|
+| [`ezkey-jenkins/`](../../../ezkey-jenkins/) | [#972](https://github.com/mgagp/ezkey/issues/972) | Jenkins auth plugin lab (Ezkey SDK); experimental; M0 skeleton only — does not delay PAM or community-alpha |
+
 ## Active ideas
 
 | ID | Title | Status | Priority | Components | Last reviewed |

@@ -1,0 +1,35 @@
+# Ezkey Jenkins lab (M0) — stock Jenkins LTS only.
+#
+# Usage (from this directory):
+#   ./scripts/up.sh
+#   ./scripts/smoke.sh
+#
+# Independent of the main Ezkey Docker stack. Do not attach to ezkey-network.
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts-jdk21
+    container_name: ezkey-jenkins
+    hostname: ezkey-jenkins
+    ports:
+      - "${EZKEY_JENKINS_HTTP_PORT:-18080}:8080"
+      - "${EZKEY_JENKINS_AGENT_PORT:-50000}:50000"
+    environment:
+      # Lab-only: skip setup wizard; seed job + unsecured realm via ref/
+      JAVA_OPTS: >-
+        -Djenkins.install.runSetupWizard=false
+        -Djava.awt.headless=true
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - ./ref/jobs:/usr/share/jenkins/ref/jobs:ro
+      - ./ref/init.groovy.d:/usr/share/jenkins/ref/init.groovy.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/login >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:
