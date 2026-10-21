@@ -10,6 +10,8 @@
 
 package org.ezkey.crypto;
 
+import javax.sql.DataSource;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
@@ -23,9 +25,13 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * stay excluded from {@link CryptoApplication} component scan. The DB role {@code ezkey_crypto} is
  * SELECT-only on the blob table — application {@code writer=false} is defense in depth.
  *
+ * <p>Gated on {@link DataSource} so {@code @WebMvcTest} slices (no JDBC) do not register JPA
+ * repositories without an {@code EntityManagerFactory}.
+ *
  * @since 2026
  */
 @Configuration
+@ConditionalOnBean(DataSource.class)
 @EnableJpaRepositories(basePackages = {"org.ezkey.security.domain.repository"})
 @EntityScan(basePackages = {"org.ezkey.security.domain.entity"})
 public class CryptoJpaConfig {
