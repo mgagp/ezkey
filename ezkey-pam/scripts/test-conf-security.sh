@@ -140,16 +140,27 @@ ssh_success_once() {
 }
 
 # Expect deny + UNAVAIL + debug.err matching reason_re (sanitized filelog).
+# Optional 3rd arg "need_ok": send confirm-before-create "ok" so the module
+# reaches POST (needed when conf/scheme checks pass and the assert is on curl).
 expect_unavail_reason() {
   local label="$1"
   local reason_re="$2"
+  local need_ok="${3:-}"
   local before ssh_rc after attempt new err
+  local log=""
   settle_sshd
   clear_debug_err
   before="$(attempt_count)"
   before="${before:-0}"
   ssh_rc=0
-  ssh_once || ssh_rc=$?
+  if [ "${need_ok}" = "need_ok" ]; then
+    log="${ARTIFACT_DIR:-/opt/cursor/artifacts}/pam-conf-security-need-ok.log"
+    mkdir -p "$(dirname "${log}")"
+    ezkey_ssh_kbdint_autoenter "${log}" 'echo SHOULD_NOT_AUTH; exit 0' 8 \
+      || ssh_rc=$?
+  else
+    ssh_once || ssh_rc=$?
+  fi
   wait_new_attempt "${before}" || true
   after="$(attempt_count)"
   after="${after:-0}"
@@ -233,13 +244,14 @@ docker exec "${CONTAINER}" sh -c \
 expect_unavail_reason "HTTP:// (uppercase) with lab_http=false" 'must_be_https'
 
 # Case-insensitive HTTPS:// is allowed through the scheme gate (then connect fails).
+# Confirm-before-create: must type ok so POST runs and curl/SSL reason is logged.
 restore_conf
 docker exec "${CONTAINER}" sh -c \
   "sed -i 's/^lab_http=.*/lab_http=false/' '${CONF}'; \
    sed -i 's|^integration_api_url=.*|integration_api_url=HTTPS://127.0.0.1:9|' '${CONF}'; \
    chown root:root '${CONF}'; chmod 600 '${CONF}'"
 expect_unavail_reason "HTTPS:// (uppercase) passes scheme gate" \
-  'Failed_to_POST|Failed_to_GET|curl|SSL|connect|Connection'
+  'Failed_to_POST|Failed_to_GET|curl|SSL|connect|Connection' need_ok
 
 # --- missing secret_key ---
 restore_conf
