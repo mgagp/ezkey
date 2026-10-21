@@ -36,18 +36,20 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(CryptoController.class)
+@WebMvcTest(controllers = CryptoController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @Import({SecurityConfig.class, CryptoControllerTest.TestConfig.class})
 @TestPropertySource(
     properties = {
       // Slice tests mock EncryptionService; do not boot Tink / JDBC (ADR-0016 DataSource).
+      // CryptoJpaConfig is @ConditionalOnBean(DataSource) after DataSourceAutoConfiguration.
       "ezkey.encryption.enabled=false",
       "ezkey.encryption.required=false",
       "spring.autoconfigure.exclude="
           + "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
           + "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration,"
-          + "org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration"
+          + "org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration,"
+          + "org.ezkey.crypto.autoconfigure.CryptoJpaConfig"
     })
 class CryptoControllerTest {
 
