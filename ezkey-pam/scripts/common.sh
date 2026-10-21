@@ -134,3 +134,77 @@ wait_http_ok() {
   echo "Timed out waiting for ${url}" >&2
   return 1
 }
+
+# True when a live SSH capture already shows a pre-wait PAM_PROMPT_ECHO_OFF
+# line (no-challenge waiting message or challenge code) — #941 F1.
+ezkey_ssh_capture_has_prewait_prompt() {
+  local log="$1"
+  local flat
+  flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
+  echo "${flat}" | grep -qE \
+    'Approve this SSH login on your Ezkey device|Ezkey challenge code:|Press Enter to wait for Ezkey device approval'
+}
+
+# Run one keyboard-interactive SSH under a PTY; auto-send Enter when the
+# pre-wait prompt appears (#941). Create-fail paths never show a prompt — the
+# helper just waits for ssh to exit. Optional 3rd arg is ConnectTimeout (default 15).
+# Prints remote stdout to stdout; returns ssh exit status.
+ezkey_ssh_kbdint_autoenter() {
+  local log="$1"
+  local remote_cmd="${2:-echo X}"
+  local connect_to="${3:-15}"
+  local ctrl=""
+  local bg=""
+  local i
+  local rc=1
+  local entered=0
+  local since_enter=999
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  require_cmd python3
+  require_cmd ssh
+  : >"${log}"
+  ctrl="$(mktemp -u /tmp/ezkey-pam-kbdint-ctrl.XXXXXX)"
+  mkfifo "${ctrl}"
+
+  set +e
+  python3 "${script_dir}/ssh-pty-capture.py" "${log}" "${ctrl}" \
+    ssh -tt \
+      -p "${SSH_PORT}" \
+      -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null \
+      -o PreferredAuthentications=keyboard-interactive \
+      -o PubkeyAuthentication=no \
+      -o PasswordAuthentication=no \
+      -o NumberOfPasswordPrompts=3 \
+      -o ConnectTimeout="${connect_to}" \
+      "${SSH_USER}@127.0.0.1" \
+      "${remote_cmd}" \
+    >/dev/null 2>&1 &
+  bg=$!
+  set -e
+
+  # Re-send Enter on a short cooldown so OpenSSH multitry rounds (Match forgotten)
+  # each clear the waiting/challenge prompt (#941 + #907 F9 case A).
+  since_enter=999
+  for i in $(seq 1 300); do
+    if ! kill -0 "${bg}" 2>/dev/null; then
+      break
+    fi
+    since_enter=$((since_enter + 1))
+    if ezkey_ssh_capture_has_prewait_prompt "${log}" && [ "${since_enter}" -ge 15 ]; then
+      printf 'enter\n' >"${ctrl}" 2>/dev/null || true
+      entered=1
+      since_enter=0
+    fi
+    sleep 0.1
+  done
+
+  set +e
+  wait "${bg}"
+  rc=$?
+  set -e
+  rm -f "${ctrl}" 2>/dev/null || true
+  return "${rc}"
+}

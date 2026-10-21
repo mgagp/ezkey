@@ -17,14 +17,41 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 2. Creates an auth attempt (`POST /api/v1/auth-attempts`) using the Linux username as
    `userIdentifier`, with `challengeRequested=false` and optional `ttlSeconds` equal to the
    effective wait (servers that ignore the field remain compatible).
-3. Waits for approve or reject (`GET /api/v1/auth-attempts/{id}/wait?timeout=N`), aligning `N`
+3. Shows a pre-wait SSH prompt (`PAM_PROMPT_ECHO_OFF`): the waiting “Approve this SSH
+   login…” line when `challenge_requested=false`, or the two-digit challenge code when
+   `true` (#941). The operator presses Enter, then the module waits.
+4. Waits for approve or reject (`GET /api/v1/auth-attempts/{id}/wait?timeout=N`), aligning `N`
    on the applied TTL duration (monotonic budget) — never on host clock vs server `expiresAt`.
-4. Grants SSH access when wait `status` is `ACCEPTED`. On any non-accepted exit after create,
+5. Grants SSH access when wait `status` is `ACCEPTED`. On any non-accepted exit after create,
    best-effort `POST …/cancel` (failure is logged; PAM outcome unchanged). Cancel is not
    guaranteed when the wait timeout is reached; the real bound is the applied TTL.
 
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
+
+## What changed in 2.2.11 (#941 F1 — waiting message before device wait)
+
+- **Client-visible waiting line (no-challenge):** after create and before
+  `/wait`, the module shows
+  `Approve this SSH login on your Ezkey device for user <user>.` plus
+  `Press Enter to wait for Ezkey device approval:` via
+  **`pam_prompt(PAM_PROMPT_ECHO_OFF)`** (same OpenSSH flush technique as the
+  challenge path). Bare `pam_info` / `PAM_TEXT_INFO` is buffered by OpenSSH
+  keyboard-interactive until the next prompt or the end of the round, so the
+  old line only appeared with the verdict (Edgar F1 / RETEST-908 / QA Sphere
+  EZK-12/13).
+- **With challenge (`challenge_requested=true`):** unchanged — the two-digit
+  code is still shown in a `PAM_PROMPT_ECHO_OFF` prompt before `/wait`; Press
+  Enter then continues to the device wait.
+- **Constraints held:** one create per login under `Match … MaxAuthTries 1`
+  (#934 / #907); 75 s-class wait budget / applied TTL / cancel / EXPIRED
+  behavior (#895) unchanged; fail-closed unchanged; no secrets or proof tokens
+  in logs or argv.
+- Operator UX: Press Enter once after the waiting (or challenge) line, then
+  approve or deny on the device while the module waits.
+- Proof: harness `ezkey_format_waiting_prompt`; CI stub capture asserts the
+  Approve line (`test-timeouts.sh`, `test-conf-security.sh`);
+  `ezkey_ssh_kbdint_autoenter` in `scripts/common.sh` drives Enter for demos.
 
 ## What changed in 2.2.10 (#907 F9 — Patrick/Christophe review, option A)
 
@@ -184,7 +211,7 @@ ssh -p 2223 \
 | `wait_timeout` | `90` | Seconds to wait for device approval (clamped **15–90**). Sent as create `ttlSeconds`; `/wait?timeout=` aligns on create response `timeoutSeconds` (PR-A) when present |
 | `wait_polling` | `2` | Wait poll interval |
 | `api_timeout` | `10` | Timeout for create/cancel calls (max 10) |
-| `challenge_requested` | `false` | Two-digit number-matching; `true` shows code via SSH `pam_prompt` before wait |
+| `challenge_requested` | `false` | Two-digit number-matching; `true` shows code via SSH `pam_prompt` before wait. When `false`, the waiting “Approve this SSH login…” line still uses `pam_prompt` so OpenSSH shows it before `/wait` (#941) |
 | `lab_http` | `false` | Allow `http://` Integration API URL (Docker entrypoint sets `true`) |
 | `context_title` | `SSH login` | Title shown on the device |
 | `context_message` | *(generated)* | Message shown on the device |

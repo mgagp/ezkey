@@ -85,12 +85,11 @@ start_stub() {
   return 1
 }
 
+# #941: no-challenge path uses PAM_PROMPT_ECHO_OFF — auto-Enter via PTY helper.
 ssh_attempt_once() {
+  local log="${ARTIFACT_DIR}/pam-timeouts-ssh-once.log"
   set +e
-  ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
-    -o PasswordAuthentication=no -o ConnectTimeout=10 \
-    "${SSH_USER}@127.0.0.1" 'echo X' >/dev/null 2>&1
+  ezkey_ssh_kbdint_autoenter "${log}" 'echo X' 10
   set -e
 }
 
@@ -176,10 +175,7 @@ before="$(docker exec "${CONTAINER}" sh -c \
   "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
 before="${before:-0}"
 set +e
-ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
-  -o PasswordAuthentication=no -o ConnectTimeout=10 \
-  "${SSH_USER}@127.0.0.1" 'echo X' >/dev/null 2>&1
+ssh_attempt_once
 set -e
 for _ in $(seq 1 50); do
   after="$(docker exec "${CONTAINER}" sh -c \
@@ -216,10 +212,7 @@ before="$(docker exec "${CONTAINER}" sh -c \
   "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
 before="${before:-0}"
 set +e
-ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
-  -o PasswordAuthentication=no -o ConnectTimeout=10 \
-  "${SSH_USER}@127.0.0.1" 'echo X' >/dev/null 2>&1
+ssh_attempt_once
 set -e
 for _ in $(seq 1 40); do
   after="$(docker exec "${CONTAINER}" sh -c \
@@ -243,6 +236,20 @@ if [ "${GOT_TTL}" = "90" ] && [ "${AT_TO}" = "90" ] \
 else
   fail "clamp expected ttl=90 timeoutSeconds=90 chunk≤5 + SUCCESS, got ttl='${GOT_TTL}' chunk='${GOT_TO}' at='${AT_TO}' line=${ATTEMPT}"
 fi
+# #941 F1: waiting message must reach the PTY (prompt path, not buffered pam_info).
+if ezkey_ssh_capture_has_prewait_prompt \
+  "${ARTIFACT_DIR}/pam-timeouts-ssh-once.log"; then
+  ok "#941 waiting prompt visible in SSH capture (Approve… / Press Enter)"
+  {
+    echo "=== #941 capture excerpt ==="
+    tr -cd '\11\12\15\40-\176' <"${ARTIFACT_DIR}/pam-timeouts-ssh-once.log" \
+      | grep -E 'Approve this SSH|Press Enter' || true
+  } | tee -a "${PROOF}"
+else
+  fail "#941 waiting prompt missing from SSH capture"
+  tr -cd '\11\12\15\40-\176' <"${ARTIFACT_DIR}/pam-timeouts-ssh-once.log" \
+    | tee -a "${PROOF}" || true
+fi
 stop_stub
 restore_conf
 
@@ -260,10 +267,7 @@ before="$(docker exec "${CONTAINER}" sh -c \
   "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
 before="${before:-0}"
 set +e
-ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
-  -o PasswordAuthentication=no -o ConnectTimeout=10 \
-  "${SSH_USER}@127.0.0.1" 'echo X' >/dev/null 2>&1
+ssh_attempt_once
 set -e
 for _ in $(seq 1 40); do
   after="$(docker exec "${CONTAINER}" sh -c \
@@ -304,11 +308,7 @@ before="$(docker exec "${CONTAINER}" sh -c \
 before="${before:-0}"
 start_ts="$(date +%s)"
 set +e
-ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
-  -o PasswordAuthentication=no -o ConnectTimeout=5 \
-  -o ServerAliveInterval=5 -o ServerAliveCountMax=30 \
-  "${SSH_USER}@127.0.0.1" 'echo X' >/dev/null 2>&1
+ssh_attempt_once
 set -e
 end_ts="$(date +%s)"
 elapsed=$((end_ts - start_ts))
@@ -351,10 +351,7 @@ before="$(docker exec "${CONTAINER}" sh -c \
   "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
 before="${before:-0}"
 set +e
-ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
-  -o PasswordAuthentication=no -o ConnectTimeout=10 \
-  "${SSH_USER}@127.0.0.1" 'echo X' >/dev/null 2>&1
+ssh_attempt_once
 set -e
 for _ in $(seq 1 40); do
   after="$(docker exec "${CONTAINER}" sh -c \
@@ -391,10 +388,7 @@ before="$(docker exec "${CONTAINER}" sh -c \
   "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
 before="${before:-0}"
 set +e
-ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
-  -o PasswordAuthentication=no -o ConnectTimeout=10 \
-  "${SSH_USER}@127.0.0.1" 'echo X' >/dev/null 2>&1
+ssh_attempt_once
 set -e
 for _ in $(seq 1 40); do
   after="$(docker exec "${CONTAINER}" sh -c \
@@ -558,10 +552,7 @@ before="$(docker exec "${CONTAINER}" sh -c \
 before="${before:-0}"
 start_ts="$(date +%s)"
 set +e
-ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
-  -o PasswordAuthentication=no -o ConnectTimeout=20 \
-  "${SSH_USER}@127.0.0.1" 'echo X' >/dev/null 2>&1
+ssh_attempt_once
 set -e
 end_ts="$(date +%s)"
 elapsed=$((end_ts - start_ts))
@@ -675,11 +666,7 @@ before="$(docker exec "${CONTAINER}" sh -c \
 before="${before:-0}"
 start_ts="$(date +%s)"
 set +e
-ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
-  -o PasswordAuthentication=no -o ConnectTimeout=10 \
-  -o ServerAliveInterval=5 -o ServerAliveCountMax=30 \
-  "${SSH_USER}@127.0.0.1" 'echo X' >/dev/null 2>&1
+ssh_attempt_once
 set -e
 end_ts="$(date +%s)"
 elapsed=$((end_ts - start_ts))

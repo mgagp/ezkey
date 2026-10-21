@@ -8,6 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 require_cmd ssh
 require_cmd docker
+require_cmd python3
 
 if ! docker ps --format '{{.Names}}' | grep -qx 'ezkey-pam-ssh'; then
   echo "ezkey-pam-ssh is not running. Start it with ./scripts/up.sh" >&2
@@ -22,19 +23,9 @@ echo "== Starting Demo Device approver in the background =="
 APPROVE_PID=$!
 
 echo "== Starting SSH (keyboard-interactive / PAM, waits for Ezkey approval) =="
+echo "== Pre-wait prompt (#941): auto-Enter when Approve/challenge line appears =="
 set +e
-ssh -tt \
-  -p "${SSH_PORT}" \
-  -o StrictHostKeyChecking=no \
-  -o UserKnownHostsFile=/dev/null \
-  -o PreferredAuthentications=keyboard-interactive \
-  -o PubkeyAuthentication=no \
-  -o PasswordAuthentication=no \
-  -o NumberOfPasswordPrompts=1 \
-  -o ConnectTimeout=10 \
-  "${SSH_USER}@127.0.0.1" \
-  'echo PAM_SSH_OK; id; hostname' \
-  >"${LOG}" 2>&1
+ezkey_ssh_kbdint_autoenter "${LOG}" 'echo PAM_SSH_OK; id; hostname' 10
 SSH_RC=$?
 set -e
 
@@ -43,7 +34,8 @@ wait "${APPROVE_PID}" 2>/dev/null || true
 echo "SSH exit code: ${SSH_RC}"
 if grep -q 'PAM_SSH_OK' "${LOG}"; then
   echo "SSH session succeeded through Ezkey PAM."
-  grep -E 'PAM_SSH_OK|^uid=' "${LOG}" || true
+  grep -E 'PAM_SSH_OK|^uid=|Approve this SSH|Ezkey challenge' "${LOG}" \
+    | tr -cd '\11\12\15\40-\176\n' || true
   exit 0
 fi
 

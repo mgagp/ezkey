@@ -18,6 +18,8 @@ PRISTINE="/etc/security/pam_ezkey.conf.m1pristine"
 PORT="${SSH_PORT}"
 STUB_PORT="${EZKEY_STUB_PORT:-18080}"
 STUB_PID_FILE="/tmp/ezkey-pam-stub.pid"
+ARTIFACT_DIR="${EZKEY_PAM_ARTIFACT_DIR:-/opt/cursor/artifacts}"
+mkdir -p "${ARTIFACT_DIR}"
 
 if ! docker ps --format '{{.Names}}' | grep -qx "${CONTAINER}"; then
   echo "${CONTAINER} is not running. Start with ./scripts/up.sh" >&2
@@ -129,17 +131,12 @@ ssh_once() {
 }
 
 ssh_success_once() {
-  ssh -tt \
-    -p "${PORT}" \
-    -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null \
-    -o PreferredAuthentications=keyboard-interactive \
-    -o PubkeyAuthentication=no \
-    -o PasswordAuthentication=no \
-    -o ConnectTimeout=15 \
-    "${SSH_USER}@127.0.0.1" \
-    'echo PAM_STUB_OK; exit 0' \
-    2>/dev/null | tr -d '\r' | grep -q PAM_STUB_OK
+  local log="${ARTIFACT_DIR:-/opt/cursor/artifacts}/pam-conf-security-success.log"
+  mkdir -p "$(dirname "${log}")"
+  # #941: waiting prompt requires Enter before /wait.
+  ezkey_ssh_kbdint_autoenter "${log}" 'echo PAM_STUB_OK; exit 0' 15 \
+    || true
+  tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null | grep -q PAM_STUB_OK
 }
 
 # Expect deny + UNAVAIL + debug.err matching reason_re (sanitized filelog).
@@ -268,6 +265,12 @@ if ssh_success_once; then
 else
   fail "stub positive control: SSH did not succeed"
   docker exec "${CONTAINER}" cat /tmp/ezkey-pam-stub.log 2>/dev/null || true
+fi
+if ezkey_ssh_capture_has_prewait_prompt \
+  "${ARTIFACT_DIR}/pam-conf-security-success.log"; then
+  ok "#941 waiting prompt visible on stub SUCCESS path"
+else
+  fail "#941 waiting prompt missing on stub SUCCESS path"
 fi
 wait_new_attempt "${before}" || true
 attempt="$(last_attempt)"

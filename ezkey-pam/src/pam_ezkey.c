@@ -9,10 +9,12 @@
  * Flow:
  *   1. POST /api/v1/auth-attempts  (Basic auth, userIdentifier = Linux username,
  *      optional ttlSeconds = planned wait; servers that ignore the field stay OK)
- *   2. GET  /api/v1/auth-attempts/{id}/wait  (timeout aligned on applied TTL,
+ *   2. PAM_PROMPT_ECHO_OFF waiting or challenge line (OpenSSH flush before /wait;
+ *      #941 — do not use pam_info for client-visible waiting copy)
+ *   3. GET  /api/v1/auth-attempts/{id}/wait  (timeout aligned on applied TTL,
  *      monotonic budget — never host clock vs server expiresAt)
- *   3. PAM_SUCCESS when wait status is ACCEPTED
- *   4. Best-effort POST …/cancel on any non-ACCEPTED exit after create
+ *   4. PAM_SUCCESS when wait status is ACCEPTED
+ *   5. Best-effort POST …/cancel on any non-ACCEPTED exit after create
  *
  * Fail-closed: API / transport / config failures never return PAM_SUCCESS or
  * PAM_IGNORE. See STATUS.md §2.1, §2.4, and § M1.
@@ -1008,61 +1010,92 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     log_pam_info(pamh, cfg, msg);
 
     /*
-     * Two-digit challenge (number matching): when challenge_requested, the
-     * create response carries authAttemptChallenge. Bound to 0..99 (Christophe);
-     * show via PAM conversation before /wait. Never syslog the digits (#750).
-     * If no conversation can display the code → UNAVAIL (user must see it).
+     * Pre-wait PTY prompt (#941 F1 / Patrick): OpenSSH keyboard-interactive
+     * buffers bare PAM_TEXT_INFO (pam_info) until a response prompt or the end
+     * of the round — so a waiting line sent with pam_info only appears with the
+     * verdict. Use PAM_PROMPT_ECHO_OFF after create and before /wait so the
+     * client sees the message immediately (same technique as challenge).
+     *
+     * - challenge_requested: digits in the prompt (never syslog — #750).
+     * - otherwise: "Approve this SSH login…" waiting line.
+     * Failure to display → UNAVAIL + cancel (fail-closed; no pam_info fallback).
      *
      * Craft rule: a PAM module NEVER touches the host process's signals —
-     * no sigaction/alarm around Enter (would cancel login's alarm, miss under
-     * sshd/fork, or hit the wrong thread). Bound Enter by measuring duration
-     * with CLOCK_MONOTONIC after pam_prompt returns (Patrick).
+     * no sigaction/alarm around Enter. Bound Enter by measuring duration with
+     * CLOCK_MONOTONIC after pam_prompt returns (Patrick). One prompt inside this
+     * authenticate call does not create a second Integration API request under
+     * Match MaxAuthTries 1 (#934 / #907).
      */
-    if (cfg->challenge_requested) {
+    {
         char *resp = NULL;
         int prc;
         const void *conv_item = NULL;
         struct timespec enter_started;
         long enter_elapsed_s;
+        const char *prompt_fail_dbg;
+        const char *enter_over_dbg;
+        const char *budget_before_dbg;
+        const char *budget_after_dbg;
 
-        if (!ezkey_challenge_in_range(challenge)) {
-            log_pam_error_debug(pamh, cfg,
-                                "challenge_requested but authAttemptChallenge "
-                                "missing or outside 0..99");
-            pam_rc = PAM_AUTHINFO_UNAVAIL;
-            summary = "UNAVAIL";
-            goto cleanup;
+        if (cfg->challenge_requested) {
+            if (!ezkey_challenge_in_range(challenge)) {
+                log_pam_error_debug(pamh, cfg,
+                                    "challenge_requested but authAttemptChallenge "
+                                    "missing or outside 0..99");
+                pam_rc = PAM_AUTHINFO_UNAVAIL;
+                summary = "UNAVAIL";
+                goto cleanup;
+            }
+            snprintf(msg, sizeof(msg),
+                     "Ezkey challenge code: %02ld — enter this code on your "
+                     "Ezkey device, then approve.\n"
+                     "Press Enter to wait for Ezkey device approval: ",
+                     challenge);
+            prompt_fail_dbg =
+                "challenge_requested but PAM conversation could not display "
+                "the code";
+            enter_over_dbg = "challenge Enter exceeded max duration";
+            budget_before_dbg =
+                "auth budget exhausted before challenge Enter prompt";
+            budget_after_dbg =
+                "auth budget exhausted after challenge Enter";
+        } else {
+            if (ezkey_format_waiting_prompt(msg, sizeof(msg), username) != 0) {
+                log_pam_error_debug(pamh, cfg,
+                                    "failed to format waiting prompt");
+                pam_rc = PAM_AUTHINFO_UNAVAIL;
+                summary = "UNAVAIL";
+                goto cleanup;
+            }
+            prompt_fail_dbg =
+                "PAM conversation could not display the waiting message";
+            enter_over_dbg = "waiting Enter exceeded max duration";
+            budget_before_dbg =
+                "auth budget exhausted before waiting Enter prompt";
+            budget_after_dbg = "auth budget exhausted after waiting Enter";
         }
+
         if (pam_get_item(pamh, PAM_CONV, &conv_item) != PAM_SUCCESS ||
             conv_item == NULL) {
             log_pam_error_debug(pamh, cfg,
-                                "challenge_requested but no PAM conversation "
-                                "to display the code");
+                                cfg->challenge_requested
+                                    ? "challenge_requested but no PAM "
+                                      "conversation to display the code"
+                                    : "no PAM conversation to display the "
+                                      "waiting message");
+            ezkey_secure_wipe(msg, sizeof(msg));
             pam_rc = PAM_AUTHINFO_UNAVAIL;
             summary = "UNAVAIL";
             goto cleanup;
         }
         rem = remaining_budget_secs(auth_started);
         if (rem <= (long)EZKEY_MIN_WAIT_SECS + (long)EZKEY_CURL_WAIT_SLACK) {
-            log_pam_error_debug(pamh, cfg,
-                                "auth budget exhausted before challenge Enter "
-                                "prompt");
+            log_pam_error_debug(pamh, cfg, budget_before_dbg);
+            ezkey_secure_wipe(msg, sizeof(msg));
             pam_rc = PAM_AUTHINFO_UNAVAIL;
             summary = "UNAVAIL";
             goto cleanup;
         }
-        /*
-         * OpenSSH keyboard-interactive buffers bare PAM_TEXT_INFO until a
-         * response prompt is issued, and /wait would otherwise block first
-         * (Patrick). Put the digits in a PAM_PROMPT_ECHO_OFF line so the
-         * code reaches the PTY before /wait. No pam_info fallback — same
-         * call path as the prompt, and failure → UNAVAIL.
-         */
-        snprintf(msg, sizeof(msg),
-                 "Ezkey challenge code: %02ld — enter this code on your Ezkey "
-                 "device, then approve.\n"
-                 "Press Enter to wait for Ezkey device approval: ",
-                 challenge);
         clock_gettime(CLOCK_MONOTONIC, &enter_started);
         prc = pam_prompt(pamh, PAM_PROMPT_ECHO_OFF, &resp, "%s", msg);
         enter_elapsed_s = elapsed_ms(&enter_started) / 1000L;
@@ -1072,27 +1105,23 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
             free(resp);
             resp = NULL;
         }
-        if (prc != PAM_SUCCESS) {
+        if (!ezkey_challenge_display_ok(prc)) {
             /* Client cut / conversation failed — cancel promptly (R5). */
             interrupted = 1;
-            log_pam_error_debug(pamh, cfg,
-                                "challenge_requested but PAM conversation "
-                                "could not display the code");
+            log_pam_error_debug(pamh, cfg, prompt_fail_dbg);
             pam_rc = PAM_AUTHINFO_UNAVAIL;
             summary = "UNAVAIL";
             goto cleanup;
         }
         if (enter_elapsed_s > (long)EZKEY_MAX_ENTER_SECS) {
-            log_pam_error_debug(pamh, cfg,
-                                "challenge Enter exceeded max duration");
+            log_pam_error_debug(pamh, cfg, enter_over_dbg);
             pam_rc = PAM_AUTHINFO_UNAVAIL;
             summary = "UNAVAIL";
             goto cleanup;
         }
         rem = remaining_budget_secs(auth_started);
         if (rem <= (long)EZKEY_CURL_WAIT_SLACK + (long)EZKEY_MIN_WAIT_SECS) {
-            log_pam_error_debug(pamh, cfg,
-                                "auth budget exhausted after challenge Enter");
+            log_pam_error_debug(pamh, cfg, budget_after_dbg);
             pam_rc = PAM_AUTHINFO_UNAVAIL;
             summary = "UNAVAIL";
             goto cleanup;
@@ -1470,10 +1499,11 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
                           planned > 0 ? planned : cfg.wait_timeout);
     }
 
-    pam_info(pamh,
-             "Approve this SSH login on your Ezkey device for user %s.",
-             username);
-
+    /*
+     * Waiting / challenge lines are shown inside ezkey_authenticate_user_api
+     * via PAM_PROMPT_ECHO_OFF after create (#941). Do not pam_info here —
+     * OpenSSH buffers TEXT_INFO until the verdict without a prompt round.
+     */
     retval = ezkey_authenticate_user_api(pamh, &cfg, username, &auth_attempt_id,
                                          &timeout_seconds, &started,
                                          &summary_result, &cancel_status);

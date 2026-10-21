@@ -1,5 +1,6 @@
 /*
- * Harness: challenge 0..99 bound + display_ok (Christophe nits on #610).
+ * Harness: challenge 0..99 bound + display_ok (Christophe nits on #610) and
+ * no-challenge waiting prompt format (#941 F1).
  */
 
 #include "ezkey_challenge.h"
@@ -7,6 +8,7 @@
 #include <security/pam_appl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static int fails;
 
@@ -29,6 +31,9 @@ static void expect_eq(const char *name, int got, int want) {
 }
 
 int main(void) {
+    char buf[256];
+    char tiny[8];
+
     printf("=== ezkey_challenge harness ===\n");
 
     expect_eq("in_range(-1)", ezkey_challenge_in_range(-1), 0);
@@ -43,6 +48,24 @@ int main(void) {
                 ezkey_challenge_display_ok(PAM_SUCCESS));
     expect_eq("display_ok prompt fail → reject (no pam_info fallback)",
               ezkey_challenge_display_ok(PAM_CONV_ERR), 0);
+
+    /* #941: waiting prompt format (no-challenge path). */
+    expect_eq("format_waiting null buf",
+              ezkey_format_waiting_prompt(NULL, 64, "u"), -1);
+    expect_eq("format_waiting empty user",
+              ezkey_format_waiting_prompt(buf, sizeof(buf), ""), -1);
+    expect_eq("format_waiting null user",
+              ezkey_format_waiting_prompt(buf, sizeof(buf), NULL), -1);
+    expect_eq("format_waiting ok",
+              ezkey_format_waiting_prompt(buf, sizeof(buf), "testuser"), 0);
+    expect_true("format_waiting contains Approve line",
+                strstr(buf, "Approve this SSH login on your Ezkey device for "
+                            "user testuser.") != NULL);
+    expect_true("format_waiting contains Press Enter",
+                strstr(buf, "Press Enter to wait for Ezkey device approval:") !=
+                    NULL);
+    expect_eq("format_waiting too small",
+              ezkey_format_waiting_prompt(tiny, sizeof(tiny), "testuser"), -1);
 
     printf("=== Results: %s ===\n", fails == 0 ? "all passed" : "FAILED");
     return fails == 0 ? 0 : 1;
