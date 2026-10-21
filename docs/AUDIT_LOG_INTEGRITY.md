@@ -73,9 +73,19 @@ openssl rand -base64 32 > /etc/ezkey/secrets/audit-hmac.key
 chmod 600 /etc/ezkey/secrets/audit-hmac.key
 ```
 
-**Option B -- Automatic (convenience for first startup):**
+POSIX mode **600** is mandatory (same bar as `master.key`; ADR-0016 §2.9). On Windows, apply an
+ACL equivalent (owner-only read/write); the runtime skips the POSIX permission check there.
 
-If the configured key file does not exist at startup, `AuditHmacService` auto-generates a 256-bit key using `java.security.SecureRandom` and writes it to the configured path. This mirrors the Tink master key auto-generation behavior.
+**Option B -- Docker keygen script:**
+
+`./docker/generate-encryption-keys.sh` creates `audit-hmac.key` next to `master.key` at mode **600**
+when missing (and re-applies `chmod 600` when the file already exists).
+
+**Option C -- Automatic (convenience for first startup):**
+
+If the configured key file does not exist at startup, `AuditHmacService` auto-generates a 256-bit
+key using `java.security.SecureRandom`, writes it to the configured path, and sets POSIX mode
+**600** when supported. This mirrors the Tink master key auto-generation behavior.
 
 ### Key Sharing in HA Deployments
 

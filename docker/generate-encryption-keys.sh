@@ -143,6 +143,24 @@ if ! docker run --rm \
         # Change ownership to spring user (matches runtime container user)
         chown spring:spring /etc/ezkey/secrets/master.key
 
+        # Optional audit HMAC key (ADR-0016 §2.9) — same mode 600 bar as master.key.
+        # Skip if already present so clean-start does not rotate an existing HMAC secret.
+        if [ ! -f /etc/ezkey/secrets/audit-hmac.key ]; then
+            AUDIT_HMAC_KEY=\$(head -c 32 /dev/urandom | base64)
+            if [ -z \"\$AUDIT_HMAC_KEY\" ] || [ \${#AUDIT_HMAC_KEY} -lt 40 ]; then
+                echo \"❌ Error: Failed to generate audit-hmac.key\" >&2
+                exit 1
+            fi
+            echo \"\$AUDIT_HMAC_KEY\" > /etc/ezkey/secrets/audit-hmac.key
+            chmod 600 /etc/ezkey/secrets/audit-hmac.key
+            chown spring:spring /etc/ezkey/secrets/audit-hmac.key
+            echo \"✅ audit-hmac.key generated (mode 600)\"
+        else
+            chmod 600 /etc/ezkey/secrets/audit-hmac.key 2>/dev/null || true
+            chown spring:spring /etc/ezkey/secrets/audit-hmac.key 2>/dev/null || true
+            echo \"ℹ️  audit-hmac.key already present — ensured mode 600\"
+        fi
+
         # Set directory permissions and ownership
         chmod 700 /etc/ezkey/secrets
         chmod 755 /etc/ezkey/keysets
@@ -151,6 +169,7 @@ if ! docker run --rm \
 
         echo \"✅ Master key generated successfully\"
         echo \"📁 Location: /etc/ezkey/secrets/master.key\"
+        echo \"📁 Audit HMAC: /etc/ezkey/secrets/audit-hmac.key\"
         echo \"👤 Owner: spring:spring (UID 100, GID 101)\"
         echo \"🔒 Permissions: 600 (owner read/write only)\"
     "; then
@@ -160,7 +179,7 @@ if ! docker run --rm \
 fi
 
 echo ""
-echo "✅ Master key generation complete!"
+echo "✅ Encryption secrets generation complete (master.key + audit-hmac.key at mode 600)!"
 echo ""
 echo "📋 Next steps:"
 if [ -n "$EXPERIMENTAL_LIGHTSAIL_MODE" ]; then
@@ -168,14 +187,15 @@ if [ -n "$EXPERIMENTAL_LIGHTSAIL_MODE" ]; then
     echo "      (or run ./experimental-hybrid/lightsail/clean-start.sh which does down -v, keygen, up)"
 else
     echo "   1. Start Docker stack: ./docker/start.sh"
-    echo "   2. The keyset will be automatically generated on first startup"
-    echo "   3. Both admin-api and auth-api will use the same encryption keys"
+    echo "   2. The keyset blob will be written by admin-api on first startup (ADR-0016)"
+    echo "   3. admin-api, auth-api, and crypto-api share master.key; crypto loads the blob RO"
 fi
 echo ""
-echo "⚠️  IMPORTANT: Backup the master key securely!"
-echo "   To backup: docker run --rm -v $VOLUME_NAME:/data alpine tar czf - /data/secrets/master.key | gzip > master-key-backup.tar.gz"
+echo "⚠️  IMPORTANT: Backup the master key (and audit-hmac.key) securely!"
+echo "   To backup: docker run --rm -v $VOLUME_NAME:/data alpine tar czf - /data/secrets/master.key /data/secrets/audit-hmac.key | gzip > encryption-secrets-backup.tar.gz"
 echo ""
 echo "📝 Note: Volume name in docker-compose.yml is 'encryption-secrets'"
 echo "         Docker Compose creates it as '$VOLUME_NAME' (with project prefix)"
+echo "         Keyset file on this volume is not authority — blob in Postgres is (ADR-0016)."
 echo ""
 
