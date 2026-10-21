@@ -114,17 +114,18 @@ Rows assume `Match … MaxAuthTries 1` and an interactive client unless stated.
 | Conf `challenge_requested` | Enrollment `authAttemptChallengeRequired` | Server code? | 2.2.11 | **2.2.12 (confirm-before-create)** |
 | --- | --- | --- | --- | --- |
 | false | false | none | Msg after create; bare Enter accepted | Pre-create `ok` → create → wait (no 2nd prompt). Empty → **0 creates** [test] |
-| true | false | yes (request) | Msg + Code after create | Pre-create `ok` → create → **2nd** prompt with code → `ok` → wait [test] |
+| true | false | yes (request) | Msg + Code after create | Pre-create `ok` → create → **2nd** prompt with code → `ok` → wait [test] S1-H |
 | false | **true** | yes (enrollment) | **Code not shown** (bug #975) | Code shown on 2nd prompt whenever create returns it (`ezkey_prewait_prompt_mode`) [test] stub `enrollment_challenge` |
 | true | true | yes | Msg + Code ✔ | Same two-prompt flow |
-| any | any, server `challenge-digits` ≥ 3 | 3–6 digit code | 0..99 reject → UNAVAIL | Same (PAM still requires 2 digits) |
+| **true** | any | code missing or outside 0..99 | UNAVAIL (`ezkey_prewait_prompt_mode` −1) | Same fail-closed [test] |
+| **false** | any | code outside 0..99 (e.g. `challenge-digits` ≥ 3) | Waiting line (mode 0); code not shown → device INVALID or EXPIRED | Same: **not** UNAVAIL — silent deny after INVALID/expiry [code] |
 
 ### 2.2 Toggling the enrollment flag (Marc's test)
 
 | When toggled | Effect | Tag |
 | --- | --- | --- |
 | Between two logins | The next create follows the new flag (OR with the conf). | [code] `AuthAttemptService:449-451` |
-| Off → **on** after create, before `/respond` | The attempt has **no** code, but pending/respond now say "required". The device asks for a code; respond compares it to `null` and marks the attempt INVALID (`AuthAttemptRespondService:434-447`). PAM gets `INVALID` and denies (`pam.c:1309-1311`). FC ✔, confusing UX. | [code] |
+| Off → **on** after create, before `/respond` | The attempt has **no** code, but pending/respond now say "required". The device asks for a code; respond compares it to `null` and marks the attempt INVALID (`AuthAttemptRespondService`). PAM maps INVALID → DENIED (`PAM_AUTH_ERR`). FC ✔, confusing UX. | [code] |
 | On → **off** after create | The attempt keeps its code, and `respond` still requires it (`… \|\| authAttempt.getAuthAttemptChallenge() != null`). Safe. On main, if the conf is false, the code was never shown → INVALID or expiry. | [code] |
 | Deny with a challenge | Validation is skipped on reject, so REJECTED (`AuthAttemptRespondService:425-431`). | [code] |
 
@@ -139,8 +140,8 @@ Rows assume `Match … MaxAuthTries 1` and an interactive client unless stated.
 | BatchMode=yes | — | — | — | — | ✔ | none (no PAM) | [isa] D2 |
 | Pre-create `ok` after > 25 s | ✔ | n/a | — | — | ✔ UNAVAIL | **0 creates** | [test] |
 | Challenge (2nd) confirm > 25 s | ✔ | n/a | — | — | ✔ UNAVAIL | 1 create + cancel | [test] |
-| Late `ok` (< 25 s) | ✔ | wait shortened | | | ✔ | 1 | [test] |
-| Ctrl-C at pre-create prompt | ✔ | — | — | — | ✔ | **0 creates** | [code] |
+| Late `ok` (< 25 s) | ✔ | wait **and** create `ttlSeconds` shortened (computed after confirm — Patrick B1) | | | ✔ | 1 | [test] |
+| Ctrl-C at pre-create prompt | ✔ | — | — | — | ✔ | **0 creates** | [code][test] M3 |
 | Ctrl-C at challenge / during `/wait` | ✔ | — | — | — | ✔ | cancel if conv error / SIGTERM in wait; else TTL | [code], STATUS M3 |
 | Client disconnect during `/wait` | ✔ | — | — | — | ✔ | cancel within the 5 s chunk | [test] #908 |
 | ControlMaster reuse | — | no auth | — | — | n/a | none | [inf] |
@@ -159,7 +160,7 @@ Rows assume `Match … MaxAuthTries 1` and an interactive client unless stated.
 | U5 | **D1 Windows hang**. | Medium | Document `ssh -tt`. Confirm-before-create removes the orphan (hang before create). | Doc + 0-create |
 | U6 | **The PAM stack is not scoped by `Match`.** Any user who reaches PAM `auth` (password or kbd-int) runs pam_ezkey: unenrolled users get UNAVAIL, so they are locked out, or their login is attempted against Ezkey. | Medium (availability; stack ordering mistakes can lead to fail-open) | Document a host recipe: MFA users via Match + `AuthenticationMethods`, others pubkey-only. If someone adds `pam_succeed_if user notingroup ezkey-mfa`, it must be `[success=1 default=ignore]`-style **skip of pam_ezkey only**, never `sufficient` for the whole stack. | No |
 | U7 | **Host stack order**: "top of /etc/pam.d/sshd" followed by `password-auth`, so a password prompt **also** appears after Ezkey. Wait budget plus password typing must still fit within `LoginGraceTime`. | Low (UX) | Document the exact RHEL/AL2023 stack in `sshd.host-sketch`. | No |
-| U8 | **Server `challenge-digits` ≥ 3** makes PAM UNAVAIL on every login (0..99 check). | Low (fail-closed, unusable) | Accept the code length up to 6 in PAM, or document "PAM requires challenge-digits=2". | No |
+| U8 | **Server `challenge-digits` ≥ 3:** host `challenge_requested=true` → UNAVAIL (fail-closed). Host `false` → waiting line, code never shown → INVALID/EXPIRED on the device (silent deny). | Low | Prefer `challenge-digits=2` for PAM, or extend PAM to 1–6 digits. | Doc |
 | U9 | **Enrollment toggle off→on mid-attempt** gives INVALID with a confusing device UX. | Low | Snapshot "challenge required" on the attempt at create, and stop re-reading the enrollment in pending/respond (`AuthAttemptPendingService:266-269`, `AuthAttemptRespondService:434-437`). Or document it. | No |
 | U10 | **SSH_ASKPASS automation** can answer `ok` (#976). | Low (the factor still holds) | Document: `ok` proves a conversation, not a human. | Partly (out of its stated scope) |
 | U11 | **Case/normalisation of `userIdentifier`**: the Linux username is sent verbatim, and the case-sensitivity of the Ezkey lookup was not checked. | Low [inf] | Verify and document. | No |
@@ -204,7 +205,7 @@ Purpose: replace "effect of each setting" with **one decision per plausible scen
 | `pam_get_item(PAM_TTY)`? | Useless. sshd sets `PAM_TTY` to the constant `"ssh"` for every connection before auth; the client's terminal is never visible to the server. | OpenSSH `auth-pam.c` [inf]; not used in `pam_ezkey.c` [code] |
 | `isatty()` server-side? | Meaningless. The PAM child has no link to the client terminal. | [inf] |
 | BatchMode? | Never reaches PAM: the client does not offer kbd-int. | Isabelle D2 [isa] |
-| Hung client (Windows no console)? | The conversation never returns, so PAM cannot act. Only `LoginGraceTime` ends it, with a SIGTERM while no handler is armed. | Isabelle D1 [isa], `pam.c:1166` [code] |
+| Hung client (Windows no console)? | The conversation never returns, so PAM cannot act. Only `LoginGraceTime` ends it; SIGTERM during the pre-create prompt leaves **0 creates** (confirm-before-create). | Isabelle D1 [isa]; [code] |
 | **What PAM *can* do** | Require a **non-empty explicit token** (`ok`), which rejects every client that auto-answers empty. Do it **before create**, so that rejected clients leave no attempt. | **Done in 2.2.12** [code][test] |
 | Integration API cancel with a typed reason? | **No.** `POST /api/v1/auth-attempts/{id}/cancel` has no body and sets status `EXPIRED`; there is no `CANCELLED` status and no reason field. | Integration API OpenAPI [code] |
 | Typed reason on the PAM side | Authpriv summary `result=… cancel=ok\|fail\|skipped\|final` plus debug.err ("pre-wait confirm missing or not ok"). | [code] |
@@ -215,8 +216,10 @@ Purpose: replace "effect of each setting" with **one decision per plausible scen
 round and one create under `Match … MaxAuthTries 1`. Batch / empty / Ctrl-C at
 the first prompt → **zero** attempts. Remaining limit: a client that answered
 `ok` but cannot display the second (challenge) prompt fails closed via the
-conversation-error path after create. Cost: two prompts on the challenge path;
-the 25 s Enter cap on the first prompt runs **before** the server TTL starts.
+conversation-error path after create. Cost: two prompts on the challenge path.
+Create `ttlSeconds` is computed from the remaining auth budget **after** the
+pre-create `ok` (Patrick B1), so typing time shrinks the server TTL as well as
+the PAM wait. The 25 s Enter cap still applies to each confirm.
 
 ### 5.3 Catalogue (ranked)
 
@@ -226,13 +229,13 @@ Tags as in §0. **2.2.12** = confirm-before-create + enrollment challenge displa
 | ID | Tier | Scenario | Interactive | Phone noise | Expected decision | 2.2.12 | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | **S0** | P1 | Baseline: no challenge, interactive `ssh` | I | yes (wanted) | Pre-create `ok` → 1 create → wait; approve/deny/expire | ✔ [test] | **Covered** |
-| **S1-H** | P1 | Challenge from host conf | I | yes | `ok` → create → code prompt → `ok` → wait | ✔ [test] | **Covered** |
+| **S1-H** | P1 | Challenge from host conf | I | yes | `ok` → create → code prompt → `ok` → SUCCESS | ✔ [test] | **Covered** |
 | **S1-E** | P1 | Challenge from **enrollment**, host false | I | yes | Code shown on 2nd prompt (#975) | ✔ [test] stub | **Covered** |
 | **S2** | P2 | Batch / no tty, no challenge | B | **none** | UNAVAIL; **0 creates** | ✔ [test] D4 | **Covered** |
 | **S3** | P2 | Batch + enrollment challenge (Marc) | B | **none** | UNAVAIL; **0 creates** (never learns the code) | ✔ [test] | **Covered** |
 | **S4** | P2 | `BatchMode=yes` | B | no | Immediate denial, no PAM | ✔ [isa] D2 | **Covered** |
 | **S5** | P2 | Pubkey-only non-MFA (ec2-user) | I/B | no | No PAM call | ✔ [isa] E | **Covered** |
-| **S6** | P2 | Ctrl-C at prompt / during wait | I | pre-create: no; after create: until cancel/TTL | Pre-create: 0 creates; wait: cancel ≤ 5 s | ✔ / accepted M3 after create | **Covered** / accepted |
+| **S6** | P2 | Ctrl-C at prompt / during wait | I | pre-create: no; after create: until cancel/TTL | Pre-create: 0 creates [test]; wait: cancel=ok ≤ 5 s [test] f9 B2b | ✔ | **Covered** |
 | **S7** | P2 | `ok` after > 25 s | I | pre-create: 0; challenge prompt: cancel | UNAVAIL | ✔ [test] | **Covered** |
 | **S8** | P3 | Windows OpenSSH no console | S | **none** | Hang ≤ grace; **0 creates**; use `ssh -tt` | Doc + 0-create | **Doc** |
 | **S9** | P3 | ControlMaster reuse | S | no | MFA once per master | [inf] | **Doc** |
@@ -241,7 +244,7 @@ Tags as in §0. **2.2.12** = confirm-before-create + enrollment challenge displa
 | **S12** | P3 | Toggle on→off mid-attempt | I | yes | Attempt keeps its code | ✔ | **Covered** |
 | **S13** | P3 | Username-only push spam | B | yes if they type `ok` | Throttle / pubkey+kbd-int | posture | **Doc + Christophe** |
 | — cutoff — | | | | | | | | | |
-| S14 | P4 | Server `challenge-digits` ≥ 3 | I | yes | Show any 1–6 digit code | UNAVAIL always (0..99 check `pam.c:1041-1047`) | same | unusable, fail-closed | **Doc** ("PAM requires 2 digits") |
+| S14 | P4 | Server `challenge-digits` ≥ 3 | I | yes | Show any 1–6 digit code | host true → UNAVAIL; host false → waiting line then INVALID/EXPIRED (code never shown) | silent deny when host false | **Doc** (prefer digits=2) |
 | S15 | P4 | Non-MFA users reaching PAM `auth` (password/kbd-int allowed outside Match) | I | yes (unenrolled) | Not reach pam_ezkey | runs pam_ezkey (no group filter) [code] | same | host recipe | **Doc** (stack recipe; never `sufficient`) |
 | S16 | P4 | `SSH_ASKPASS` automation answering `ok` | B | yes | Device approval still required | n/a | `ok` accepted | none for the factor | **Doc** |
 | S17 | P4 | Username case/normalisation mismatch | I | — | Consistent lookup | not verified [inf] | same | unknown | **Doc after check** |

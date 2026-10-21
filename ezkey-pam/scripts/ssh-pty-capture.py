@@ -9,6 +9,7 @@ Control commands (write to the fifo):
   ok     — type the required confirmation token then Enter (2.2.12 / #975 D4)
   enter  — bare Enter only (empty response; used for negative tests)
   quit   — SIGTERM the ssh child
+  intr   — SIGINT the ssh child (Ctrl-C at the prompt)
 """
 from __future__ import annotations
 
@@ -96,7 +97,12 @@ def main() -> int:
                         os.write(master, b"ok\n")
                     elif b"enter" in lower:
                         os.write(master, b"\n")
-                    if b"quit" in lower or b"exit" in lower:
+                    if b"intr" in lower:
+                        try:
+                            os.kill(pid, 2)  # SIGINT — Ctrl-C
+                        except OSError:
+                            pass
+                    elif b"quit" in lower or b"exit" in lower:
                         try:
                             os.kill(pid, 15)
                         except OSError:

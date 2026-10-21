@@ -646,16 +646,19 @@ rm -rf "${SSH_CTRL_DIR}"
 ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
   "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
 GOT_TO="$(stub_wait_timeout_param)"
+GOT_TTL="$(stub_create_ttl)"
 OUT="$(docker exec "${CONTAINER}" sh -c 'cat /var/log/ezkey-pam/debug.out' || true)"
 WAIT_LEFT="$(echo "${OUT}" | grep -oE 'wait_left_[0-9]+' | tail -n1 | cut -d_ -f3 || true)"
-echo "nochal-delayed-enter chunk=${GOT_TO} wait_left=${WAIT_LEFT} ssh_rc=${SSH_RC} attempt=${ATTEMPT}" \
+echo "nochal-delayed-enter chunk=${GOT_TO} wait_left=${WAIT_LEFT} sent_ttl=${GOT_TTL} ssh_rc=${SSH_RC} attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
+# B1: TTL is computed after ok, so ~8s typing shrinks both wait_left and sent ttl.
 if echo "${ATTEMPT}" | grep -Eq 'result=(SUCCESS|UNAVAIL|DENIED|TIMEOUT|EXPIRED)' \
   && [ -n "${WAIT_LEFT}" ] && [ "${WAIT_LEFT}" -lt 90 ] && [ "${WAIT_LEFT}" -ge 70 ] \
+  && [ -n "${GOT_TTL}" ] && [ "${GOT_TTL}" -le 85 ] && [ "${GOT_TTL}" -ge 70 ] \
   && [ -n "${GOT_TO}" ] && [ "${GOT_TO}" -le 5 ]; then
-  ok "no-challenge delayed Enter ${DELAY_SECS}s → wait_left=${WAIT_LEFT} (shrunk) + chunk≤5"
+  ok "no-challenge delayed Enter ${DELAY_SECS}s → wait_left=${WAIT_LEFT} sent_ttl=${GOT_TTL} (both shrunk) + chunk≤5"
 else
-  fail "no-challenge delayed Enter expected wait_left in [70,89] + chunk≤5, got wait_left='${WAIT_LEFT}' chunk='${GOT_TO}' ${ATTEMPT}"
+  fail "no-challenge delayed Enter expected wait_left/ttl in [70,85] + chunk≤5, got wait_left='${WAIT_LEFT}' ttl='${GOT_TTL}' chunk='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -1227,6 +1230,177 @@ if [ "${d4e_rc}" -ne 0 ] && [ "${CREATES_D4E}" -eq 0 ] \
   ok "#975 D4 bare Enter → UNAVAIL + zero creates"
 else
   fail "#975 D4 bare Enter expected UNAVAIL+0 creates (rc=${d4e_rc} creates=${CREATES_D4E})"
+fi
+stop_stub
+restore_conf
+
+# --- Patrick B1: ok at 20s → create ttlSeconds from remaining budget (≤70) ---
+# AUTH_BUDGET 105 − 20 − CURL_SLACK 15 → planned ≤ 70 when wait_timeout=90.
+start_stub ok
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=90/' '${CONF}'; \
+   sed -i 's/^api_timeout=.*/api_timeout=5/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'; \
+   : > '${STUB_REQ_LOG}'"
+reset_case_debug "b1_ttl_after_ok"
+SSH_LOG_B1="${ARTIFACT_DIR}/pam-timeouts-b1-ttl-after-ok.log"
+SSH_CTRL_B1="$(ezkey_mk_ctrl_fifo)"
+SSH_CTRL_B1_DIR="$(dirname "${SSH_CTRL_B1}")"
+run_chal_ssh "${SSH_LOG_B1}" "${SSH_CTRL_B1}"
+wait_prewait_visible "${SSH_LOG_B1}" || true
+DELAY_B1=20
+echo "B1: pre-create ok after ${DELAY_B1}s → expect sent ttlSeconds ≤70" | tee -a "${PROOF}"
+sleep "${DELAY_B1}"
+printf 'ok\n' >"${SSH_CTRL_B1}" 2>/dev/null || true
+set +e
+wait "${SSH_BG}"
+set -e
+rm -rf "${SSH_CTRL_B1_DIR}"
+GOT_TTL_B1="$(stub_create_ttl)"
+ATTEMPT_B1="$(last_attempt_line)"
+echo "b1_sent_ttl=${GOT_TTL_B1} attempt=${ATTEMPT_B1}" | tee -a "${PROOF}"
+if [ -n "${GOT_TTL_B1}" ] && [ "${GOT_TTL_B1}" -le 70 ] && [ "${GOT_TTL_B1}" -ge 55 ] \
+  && echo "${ATTEMPT_B1}" | grep -Eq 'result=(SUCCESS|UNAVAIL|DENIED|TIMEOUT|EXPIRED)'; then
+  ok "B1 ok@${DELAY_B1}s → sent ttlSeconds=${GOT_TTL_B1} (≤70, from rem after confirm)"
+else
+  fail "B1 expected sent ttlSeconds in [55,70], got '${GOT_TTL_B1}' ${ATTEMPT_B1}"
+fi
+stop_stub
+restore_conf
+
+# --- M1 S1-H: host challenge_requested=true → code visible + SUCCESS ---
+start_stub ok
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=30/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=true/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+SSH_LOG_S1H="${ARTIFACT_DIR}/pam-timeouts-s1h-host-chal.log"
+SSH_CTRL_S1H="$(ezkey_mk_ctrl_fifo)"
+SSH_CTRL_S1H_DIR="$(dirname "${SSH_CTRL_S1H}")"
+: >"${SSH_LOG_S1H}"
+set +e
+python3 "${SCRIPT_DIR}/ssh-pty-capture.py" "${SSH_LOG_S1H}" "${SSH_CTRL_S1H}" \
+  ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
+  -o PasswordAuthentication=no -o ConnectTimeout=15 \
+  "${SSH_USER}@127.0.0.1" 'echo PAM_S1H_OK; exit 0' \
+  >/dev/null 2>&1 &
+SSH_BG_S1H=$!
+set -e
+wait_prewait_visible "${SSH_LOG_S1H}" || true
+printf 'ok\n' >"${SSH_CTRL_S1H}" 2>/dev/null || true
+S1H_CHAL=0
+for _ in $(seq 1 80); do
+  if tr -cd '\11\12\15\40-\176' <"${SSH_LOG_S1H}" 2>/dev/null \
+    | grep -qE 'Ezkey challenge code:'; then
+    S1H_CHAL=1
+    break
+  fi
+  sleep 0.25
+done
+printf 'ok\n' >"${SSH_CTRL_S1H}" 2>/dev/null || true
+set +e
+wait "${SSH_BG_S1H}"
+set -e
+rm -rf "${SSH_CTRL_S1H_DIR}"
+ATTEMPT_S1H="$(last_attempt_line)"
+FLAT_S1H="$(tr -cd '\11\12\15\40-\176' <"${SSH_LOG_S1H}" 2>/dev/null || true)"
+echo "s1h_attempt=${ATTEMPT_S1H}" | tee -a "${PROOF}"
+if [ "${S1H_CHAL}" -eq 1 ] \
+  && echo "${FLAT_S1H}" | grep -q PAM_S1H_OK \
+  && echo "${ATTEMPT_S1H}" | grep -q 'result=SUCCESS' \
+  && ! echo "${ATTEMPT_S1H}" | grep -qi 'challenge'; then
+  ok "S1-H host challenge → code visible + SUCCESS (no authpriv digits)"
+else
+  fail "S1-H expected code+SUCCESS (chal=${S1H_CHAL}): ${ATTEMPT_S1H}"
+fi
+stop_stub
+restore_conf
+
+# --- M2 S3: batch + enrollment challenge → 0 creates (confirm-before-create) ---
+start_stub enrollment_challenge
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=30/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'; \
+   : > '${STUB_REQ_LOG}'"
+set +e
+ssh -T -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
+  -o PasswordAuthentication=no -o ConnectTimeout=15 -o NumberOfPasswordPrompts=1 \
+  "${SSH_USER}@127.0.0.1" 'echo PAM_S3_SHOULD_FAIL; exit 0' </dev/null \
+  >"${ARTIFACT_DIR}/pam-timeouts-s3-batch-enrollment.log" 2>&1
+s3_rc=$?
+set -e
+CREATES_S3="$(docker exec "${CONTAINER}" sh -c \
+  "n=\$(grep 'POST .*/auth-attempts' '${STUB_REQ_LOG}' 2>/dev/null | grep -v cancel | wc -l)
+   echo \"\${n:-0}\"" | tr -d ' \r' | head -n1)"
+CREATES_S3="${CREATES_S3:-0}"
+ATTEMPT_S3="$(last_attempt_line)"
+echo "s3_rc=${s3_rc} creates=${CREATES_S3} attempt=${ATTEMPT_S3}" | tee -a "${PROOF}"
+if [ "${s3_rc}" -ne 0 ] && [ "${CREATES_S3}" -eq 0 ] \
+  && echo "${ATTEMPT_S3}" | grep -q 'result=UNAVAIL'; then
+  ok "S3 batch + enrollment challenge → UNAVAIL + zero creates"
+else
+  fail "S3 expected UNAVAIL+0 creates (rc=${s3_rc} creates=${CREATES_S3}): ${ATTEMPT_S3}"
+fi
+stop_stub
+restore_conf
+
+# --- M3: Ctrl-C (SIGINT) at pre-create prompt → 0 creates ---
+start_stub ok
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=30/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'; \
+   : > '${STUB_REQ_LOG}'"
+SSH_LOG_INTR="${ARTIFACT_DIR}/pam-timeouts-ctrlc-precreate.log"
+SSH_CTRL_INTR="$(ezkey_mk_ctrl_fifo)"
+SSH_CTRL_INTR_DIR="$(dirname "${SSH_CTRL_INTR}")"
+: >"${SSH_LOG_INTR}"
+set +e
+python3 "${SCRIPT_DIR}/ssh-pty-capture.py" "${SSH_LOG_INTR}" "${SSH_CTRL_INTR}" \
+  ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
+  -o PasswordAuthentication=no -o ConnectTimeout=15 \
+  "${SSH_USER}@127.0.0.1" 'echo PAM_INTR_SHOULD_FAIL; exit 0' \
+  >/dev/null 2>&1 &
+SSH_BG_INTR=$!
+set -e
+for _ in $(seq 1 80); do
+  if ezkey_ssh_capture_has_prewait_prompt "${SSH_LOG_INTR}"; then
+    break
+  fi
+  sleep 0.25
+done
+printf 'intr\n' >"${SSH_CTRL_INTR}" 2>/dev/null || true
+set +e
+wait "${SSH_BG_INTR}"
+intr_rc=$?
+set -e
+rm -rf "${SSH_CTRL_INTR_DIR}"
+CREATES_INTR="$(docker exec "${CONTAINER}" sh -c \
+  "n=\$(grep 'POST .*/auth-attempts' '${STUB_REQ_LOG}' 2>/dev/null | grep -v cancel | wc -l)
+   echo \"\${n:-0}\"" | tr -d ' \r' | head -n1)"
+CREATES_INTR="${CREATES_INTR:-0}"
+echo "ctrlc_rc=${intr_rc} creates=${CREATES_INTR}" | tee -a "${PROOF}"
+if [ "${CREATES_INTR}" -eq 0 ]; then
+  ok "M3 Ctrl-C at pre-create prompt → zero creates"
+else
+  fail "M3 Ctrl-C expected 0 creates, got ${CREATES_INTR}"
 fi
 stop_stub
 restore_conf

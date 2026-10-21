@@ -963,21 +963,6 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     snprintf(post_url, sizeof(post_url), "%s/api/v1/auth-attempts", api_url);
 
     /*
-     * Compute planned wait (and ttlSeconds) before create. Align later on the
-     * applied duration from the create response — never compare host clock to
-     * expiresAt (#895 Patrick §4.3).
-     */
-    planned_wait = compute_planned_wait(cfg, auth_started);
-    if (planned_wait < 0) {
-        log_pam_error_debug(pamh, cfg,
-                            "auth budget too small for server-legal ttlSeconds");
-        pam_rc = PAM_AUTHINFO_UNAVAIL;
-        summary = "UNAVAIL";
-        goto cleanup;
-    }
-    applied_ttl = planned_wait;
-
-    /*
      * Confirm-before-create (#975 / Patrick INTERACTION-MODEL §5.2): require
      * trimmed "ok" **before** POST /auth-attempts so batch/empty clients
      * (ssh -T </dev/null, cron) fail with zero phone noise. Ctrl-C / empty at
@@ -1006,6 +991,23 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
             goto cleanup;
         }
     }
+
+    /*
+     * Planned wait / create ttlSeconds from remaining budget **after** the
+     * pre-create confirm (Patrick B1 / #976). Typing time must shrink the
+     * server TTL, not only the PAM-side wait. Align later on applied duration
+     * from the create response — never host clock vs expiresAt (#895).
+     */
+    planned_wait = compute_planned_wait(cfg, auth_started);
+    if (planned_wait < 0) {
+        log_pam_error_debug(pamh, cfg,
+                            "auth budget too small for server-legal ttlSeconds "
+                            "after pre-create confirm");
+        pam_rc = PAM_AUTHINFO_UNAVAIL;
+        summary = "UNAVAIL";
+        goto cleanup;
+    }
+    applied_ttl = planned_wait;
 
     post_body = build_create_body(cfg, username, planned_wait);
     if (post_body == NULL) {
