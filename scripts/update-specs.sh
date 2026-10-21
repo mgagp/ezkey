@@ -140,15 +140,15 @@ update_project_copies() {
             # directly — no dispatched file.
             ;;
         "integration-api")
-            # No committed consumer copy outside sites/ezkey-org (synced below).
+            # Portal consumer copy under sites/ezkey-org/api-specs/ (synced below).
             ;;
     esac
 
-    # Portal assets are gitignored; always refresh from the canonical specs that exist.
+    # Portal assets are committed physical copies; always refresh from canonical specs/.
     if [ -f "$SPECS_DIR/admin-api/openapi-spec.json" ] \
         && [ -f "$SPECS_DIR/auth-api/openapi-spec.json" ] \
         && [ -f "$SPECS_DIR/integration-api/openapi-spec.json" ]; then
-        print_status "Syncing sites/ezkey-org/api-specs/ (gitignored portal copies)..."
+        print_status "Syncing sites/ezkey-org/api-specs/ (committed portal copies)..."
         bash "$PROJECT_ROOT/scripts/sync-ezkey-org-api-specs.sh"
     fi
 }
