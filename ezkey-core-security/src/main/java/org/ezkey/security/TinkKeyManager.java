@@ -978,8 +978,8 @@ public class TinkKeyManager implements KeyManagementOperations {
   private void casInstallStagingHandle(KeysetHandle stagingHandle, String updatedBy)
       throws GeneralSecurityException, IOException {
     // Capture before any install so CAS+reload failure never leaves a staging primary that is
-    // absent from the blob (invariant 2 / probe A). Mutating to install before save is killed
-    // by restoring this handle when reload also fails.
+    // absent from the blob (invariant 2 / probe A). An install-before-CAS mutation is neutralized
+    // (not eliminated) by restoring this handle when reload also fails.
     KeysetHandle previousLive = this.keysetHandle;
     long expectedVersion = databaseKeysetVersion;
     try {
