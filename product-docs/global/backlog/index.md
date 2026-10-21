@@ -36,7 +36,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 
 | Folder | Issue | Note |
 |--------|-------|------|
-| [`ezkey-jenkins/`](../../../ezkey-jenkins/) | [#972](https://github.com/mgagp/ezkey/issues/972) | Jenkins auth plugin lab (Ezkey SDK); experimental; M0 skeleton only — does not delay PAM or community-alpha |
+| [`ezkey-jenkins/`](../../../ezkey-jenkins/) | [#972](https://github.com/mgagp/ezkey/issues/972) | Jenkins auth plugin lab (Integration API ↔ Java SDK); experimental; independent compose — does not delay community-alpha |
 
 ## Active ideas
 

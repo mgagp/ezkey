@@ -122,20 +122,22 @@ Effects:
 3. Break-glass `admin` / `ezkey-lab-admin` always works without Ezkey.
 4. Any other username + non-empty password is **mock auto-accepted**.
 
-Prior-art table and PAM challenge rules for M3/M4: [`DESIGN.md`](DESIGN.md).
+Prior-art and Integration API ↔ SDK model for M3/M4: [`DESIGN.md`](DESIGN.md).
 
 Smoke after M2 uses break-glass basic auth (`./scripts/smoke.sh`).
 
 ## 8. M3 — SDK fit (design only)
 
-Recorded in [`DESIGN.md`](DESIGN.md): **Java SDK adequate as-is**; plugin-local thin
-adapter for confirm → create → challenge display → wait. Credentials-plugin secret
-migration still deferred (not cheap without pulling detached plugins into the lab).
+Recorded in [`DESIGN.md`](DESIGN.md): **Java SDK adequate as-is** for Jenkins as an
+Integration API consumer; plugin-local thin adapter for confirm → create → challenge
+display → wait. Auth API / device path is out of scope for this plugin.
+Credentials-plugin secret migration still deferred (not cheap without pulling
+detached plugins into the lab).
 
-M4 will implement the live round-trip using that decision and the confirm/challenge
-rules in `DESIGN.md` (aligned with PAM #975 / PR #976).
+M4 will implement the live Integration round-trip using that decision and the
+consumer rules in `DESIGN.md`.
 
 ## Out of scope (later milestones)
 
-Live Ezkey HTTP (M4), Credentials-plugin migration (optional later),
+Live Integration HTTP (M4), Credentials-plugin migration (optional later),
 community/ngrok endpoints, publishing to the Jenkins update center.

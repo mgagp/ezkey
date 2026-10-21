@@ -13,9 +13,9 @@ roadmap. Success means demonstrable, not shipped.
 
 ## M3 decision (gate)
 
-> Java SDK (`org.ezkey:ezkey-sdk`) is **adequate as-is** for Jenkins login; the plugin adds only a thin UX/session adapter (confirm → create → display challenge → wait), not a new SDK.
+> Java SDK (`org.ezkey:ezkey-sdk`) is **adequate as-is** for Jenkins login over the Integration API; the plugin adds only a thin UX/session adapter (confirm → create → display challenge → wait), not a new SDK.
 
-Evidence and M4 confirm/challenge flow: [`DESIGN.md`](DESIGN.md).
+Frame: Auth API ↔ phone (device); Integration API ↔ SDK (this plugin). Evidence and M4 Integration consumer flow: [`DESIGN.md`](DESIGN.md).
 
 ## Proof commands
 

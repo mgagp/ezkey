@@ -1,15 +1,15 @@
 # Ezkey Jenkins lab
 
-**Experimental.** Personal-lab R&D for a Jenkins authentication plugin that will
-use the Ezkey SDK. Same spirit as `ezkey-pam/`: learn by building; no production
-claim; no WebAuthn/FIDO2 equivalence. Keep Jenkins facts in this folder; do not
-fold them into `docs/` or `docker/README.md`.
+**Experimental.** Personal-lab R&D for a Jenkins authentication plugin that
+uses the Ezkey **Java SDK** against the **Integration API**. Learn by building;
+no production claim; no WebAuthn/FIDO2 equivalence. Keep Jenkins facts in this
+folder; do not fold them into `docs/` or `docker/README.md`.
 
 Tracking: [GitHub #972](https://github.com/mgagp/ezkey/issues/972).
 
 - Status: [`STATUS.md`](STATUS.md)
 - Tutorial: [`TUTORIAL.md`](TUTORIAL.md)
-- Design / prior-art / **M3 SDK decision** / M4 confirm+challenge flow: [`DESIGN.md`](DESIGN.md)
+- Design / prior-art / **M3 SDK decision** / M4 Integration flow: [`DESIGN.md`](DESIGN.md)
 
 ## What is here
 
@@ -51,13 +51,16 @@ is the source of truth (or `./scripts/down.sh --volumes` for a clean home).
 ## Lab notes
 
 - **Port 28080:** avoids Auth `8080` and Caddy Auth proxy `18080`.
+- **Interaction model:** Auth API ↔ phone (device); Integration API ↔ SDK (this
+  plugin). See `DESIGN.md`.
 - **M2 secret:** `hudson.util.Secret` on the realm (never logged). Credentials plugin
   deferred — see `DESIGN.md`.
-- **M3 SDK:** `org.ezkey:ezkey-sdk` adequate as-is (thin plugin UX adapter only) — see `DESIGN.md`.
-- **No live Ezkey HTTP** until M4. Confirm-before-create + always-display challenge /
-  fail-closed / never-log (PAM #975 / PR #976 lesson) are locked in `DESIGN.md`.
-- **Independent compose:** not on `ezkey-network`; no PAM coupling.
+- **M3 SDK:** `org.ezkey:ezkey-sdk` adequate as-is for Integration login (thin
+  plugin UX adapter only) — see `DESIGN.md`.
+- **No live Integration HTTP** until M4. Confirm-before-create + display challenge
+  from create response / fail-closed / never-log are locked in `DESIGN.md`.
+- **Independent compose:** own stack; not on `ezkey-network`.
 
 ## Out of scope until later
 
-Real Ezkey round-trip (M4), publishing, deploying, infrastructure.
+Real Integration API round-trip (M4), publishing, deploying, infrastructure.

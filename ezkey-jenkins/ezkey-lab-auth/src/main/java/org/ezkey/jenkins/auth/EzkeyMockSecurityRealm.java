@@ -18,9 +18,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 /**
  * Lab-only mock SecurityRealm for #972 M2.
  *
- * <p>Break-glass admin authenticates with a local password (anti-lockout, PAM spirit). All other
- * usernames are auto-accepted after a non-empty password — simulating an Ezkey device approve.
- * Real Ezkey HTTP round-trips are M4.
+ * <p>Break-glass admin authenticates with a local password (anti-lockout). All other usernames are
+ * auto-accepted after a non-empty password — simulating an Integration-side approve. Live
+ * Integration API round-trips via the Java SDK are M4.
  *
  * <p>The Ezkey integration secret is stored as {@link Secret} (Jenkins secret handling). Secret and
  * challenge codes must never appear in logs. Credentials-plugin {@code StringCredentials} migration
