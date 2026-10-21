@@ -4,7 +4,9 @@
 
 **Base:** `main` @ characterization PR head. Line numbers refer to that tree unless noted.
 
-**Adopted direction (Marc, #952):** DB blob is the single source of truth; FILE and HYBRID removed; crypto-api gets a read-only DataSource (local lab only); eight invariants from closed PR #936 are ported; online rotation kept (DB-CAS-first, fail closed). Deferred to [#953](https://github.com/mgagp/ezkey/issues/953): encrypted off-host backup, KMS, RDS, secret separation, HA production.
+**Adopted direction (Marc, #952):** DB blob is the single source of truth; FILE and HYBRID removed; crypto-api gets a read-only DataSource (local lab only); online rotation kept (DB-CAS-first, fail closed). Invariants **4–8** carry forward from the #936 hardening line; invariants **1–3** are a **new CAS protocol inspired by #936**, not a literal port (see §2.3 / §3). Deferred to [#953](https://github.com/mgagp/ezkey/issues/953): encrypted off-host backup, KMS, RDS, secret separation, HA production.
+
+**Cutover sequencing:** decrypt fail-closed (§2.7) and the new CAS protocol (§2.3) land in the **same cutover PR**. The [#942](https://github.com/mgagp/ezkey/issues/942) `required=false` property purge and the explicit CLI import/export are **adjacent thin PRs**, not folded into the cutover.
 
 ---
 
@@ -106,28 +108,43 @@ Encrypted columns via `EncryptionEntityListener` / `EncryptionService`:
 
 - Runtime authority: **only** `ezkey_keyset_blob` (Tink encrypted-keyset JSON envelope, ADR-0011).
 - `master.key` remains a file/secret (envelope key). No keyset file is read, written, or deleted by API processes.
-- Explicit CLI import/export may exist later for recovery; **never** re-introduced as a silent cache. Runtime **never** deletes key material (invariant 7).
+- Explicit CLI import/export is an **adjacent thin PR** after cutover (recovery tool only); **never** re-introduced as a silent cache. Invariant 7 (blob-only): see §3.
 
 ### 2.2 Modes and flags removed
 
-Remove `StorageMode.FILE`, `StorageMode.HYBRID`, properties `keyset-file` (runtime), `degraded-mode-enabled` as a dual-path crutch, file version-check branches, `STARTUP_FILE_SYNC`, file backups in `TinkKeyManager`, HA shared keyset volume dependency, and Windows FILE profiles.
+Remove `StorageMode.FILE`, `StorageMode.HYBRID`, properties `keyset-file` (runtime), `degraded-mode-enabled` as a dual-path crutch, file version-check branches, `STARTUP_FILE_SYNC`, file backups in `TinkKeyManager`, and Windows FILE profiles.
 
-**Windows:** admin and auth `application-windows.properties` move to `DATABASE` (Postgres already required for the app).
+**HA volume:** keep `encryption-secrets-ha` (and community `encryption-secrets`) **only** for `master.key` and `audit-hmac.key`. The keyset file path on that volume is no longer a sync or authority mechanism.
+
+**Windows cutover checklist** (`application-windows.properties` today: admin `:167-169`, auth `:101-102`):
+
+| Property | Admin | Auth |
+|----------|-------|------|
+| `ezkey.encryption.keyset.storage-mode` | `DATABASE` | `DATABASE` |
+| `ezkey.encryption.keyset.writer` | `true` | `false` |
+| `ezkey.encryption.keyset.degraded-mode-enabled` | `false` | `false` |
+| `ezkey.encryption.required` | `true` | `true` |
+
+Postgres is already required for the app on Windows; FILE mode ends with this cutover.
 
 **crypto-api:** see §2.5.
 
 ### 2.3 Online rotation via CAS on version
 
-Target protocol (ports #936 intent):
+**Invariants 1–3 are a NEW CAS protocol inspired by #936**, not a port of the paused PR’s file↔blob machinery. Probes for 1–3 must **fail if the in-memory install happens before a successful CAS**.
+
+Target protocol:
 
 1. Under write lock (or equivalent exclusive mutation section): **re-read** blob version (invariant 1).
-2. Mutate candidate keyset in memory **or** prepare serialized envelope.
-3. **CAS** persist: update row only if version matches expected; on success install in-memory handle and version **immediately after** CAS (invariant 2).
+2. Mutate candidate keyset in a **staging** handle / serialized envelope — do **not** publish as the live primary yet.
+3. **CAS** persist: update row only if version matches expected; **only after** successful CAS install in-memory handle and version (invariant 2). A probe that installs before CAS must fail.
 4. On CAS loss: **discard** candidate, reload blob, do not keep orphan local kids (invariant 3).
-5. Periodic tick remains **shorter than any sync window** operators rely on (keep ≤ 5 s unless redesign justifies change) (invariant 4).
+5. Periodic tick remains **shorter than any sync window** operators rely on (keep ≤ 5 s unless redesign justifies change) (invariant 4 — carried from #936).
 6. Unknown kid on decrypt → **fail closed** (invariant 5) — see §2.7.
 7. DB errors during load/save → **never** generate a new keyset (invariant 6).
 8. Legacy / unloadable envelope → **fail startup** with clear error; **no overwrite** (invariant 8).
+
+**Today’s gap (characterized):** `rotateKey` installs the rotated handle at `TinkKeyManager.java:1007` then attempts DB save `:1014-1025`; on save failure it only logs — orphan in-memory primary remains. See `rotateKey_whenDbSaveFails_keepsOrphanInMemoryPrimary` (EXPECTED TO CHANGE).
 
 Admin remains sole writer (`keyset.writer=true`, ADR-0012).
 
@@ -147,15 +164,16 @@ Ordering vs existing `ApplicationReadyStartupOrder.KEYSET_SYNC`: keep Admin keys
 | Scope | Local clean-start / lab stacks only. **Not** in online/community compose. |
 | Storage | `DATABASE`, `writer=false` |
 | DataSource | Enable Spring DataSource; Flyway stays off |
-| DB role | Prefer `ezkey_crypto` with **SELECT only** on `ezkey_keyset_blob` (and deny elsewhere), proven by `verify-grants.sh` |
+| DB role | `ezkey_crypto` with **SELECT only** on `ezkey_keyset_blob` (deny elsewhere), proven by `verify-grants.sh` |
+| AEAD recovery | On decrypt AEAD failure: **reload the blob** (force version check / `forceReloadFromDatabase`) and retry. **Do not** consult `ezkey_encryption_key` metadata — no GRANT on that table. |
 | Wait | Bounded `bootstrap-wait`, then **explicit failure** |
-| `required` | **Never** `required=false` for crypto-api (see [#942](https://github.com/mgagp/ezkey/issues/942)). Endpoints that need encryption fail closed if the manager is down; non-keyset endpoints may still be reachable only if product accepts splitting health — default lean: process fails closed if encryption cannot initialize when encrypt/decrypt are part of the same process contract. Exact health split is an open question (§8). |
+| `required` | **Never** `required=false` for crypto-api (see [#942](https://github.com/mgagp/ezkey/issues/942)). Prefer process fail-closed when encryption cannot initialize; health-split remains a product dial (§8 Q1). |
 | Secrets | Still needs `master.key`; adds DB credentials for SELECT-only role. Acceptable under Marc’s lab proportionality. |
-| experimental-hybrid local | Do **not** open community Postgres to the internet; run crypto-api on the VM or use a documented one-shot export that APIs never re-read. |
+| experimental-hybrid local | Do **not** open community Postgres to the internet; run crypto-api on the VM only (recommended — §8 Q8). |
 
 ### 2.6 SELECT-only role
 
-- New LOGIN role `ezkey_crypto` (or equivalent name): `SELECT` on `ezkey_keyset_blob` only.
+- New LOGIN role `ezkey_crypto`: `SELECT` on `ezkey_keyset_blob` **only** (decided — no `ezkey_encryption_key`).
 - Grants in `01-create-roles.sh` / `scripts/db/apply-grants.sql`; denials asserted in `verify-grants.sh`.
 - Update `docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`.
 - Application `writer=false` is defense in depth; **DB GRANT is the real barrier**.
@@ -164,7 +182,7 @@ Ordering vs existing `ApplicationReadyStartupOrder.KEYSET_SYNC`: keep Admin keys
 
 Target: decrypt failures (unknown kid, AEAD failure after reload budget, corruption) **throw** or return a typed failure that callers treat as fail-closed — never return the ciphertext as if it were plaintext.
 
-Coordinate with `AtRestEncryptionAccess` so read paths under `required` (and post-#942 always-on encryption) fail closed consistently.
+Lands in the **cutover PR** (same batch as CAS). Coordinate with `AtRestEncryptionAccess`. The [#942](https://github.com/mgagp/ezkey/issues/942) property purge remains an adjacent thin PR.
 
 ### 2.8 Logs carry kids only
 
@@ -180,15 +198,17 @@ Align generation/deploy scripts and docs so `audit-hmac.key` is created and veri
 
 Each invariant gets at least one **mutation-probed** test in the implementation PR (fail the assertion when the guard is removed or inverted). Characterization on this PR pins today’s related behavior where it already exists.
 
+**Lineage:** invariants **1–3** = **NEW CAS protocol** (inspired by #936; probes must fail if install precedes successful CAS). Invariants **4–8** = carried / adapted from the #936 hardening line.
+
 | # | Invariant | Planned mutation-probed test (implementation PR) | Characterization today |
 |---|-----------|--------------------------------------------------|------------------------|
-| 1 | Re-read under lock before any mutation | Force stale in-memory version; mutation that skips re-read must fail the probe | Partial: version check re-reads under write lock (`TinkKeyManagerConcurrencyTest` reload) |
-| 2 | CAS on blob version, then in-memory install right after CAS | Two writers; winner’s version installed; loser must not keep local handle | Partial: `@Version` save; **gap** on rotate-after-failed-save |
-| 3 | Race loser discards local keyset and reloads blob | Inject CAS failure after local mutate; assert kids match blob | `initialize_writerLosesClaim_adoptsPeerBlob` (first-boot only) |
-| 4 | Periodic tick shorter than sync window | Assert schedule interval ≤ configured bound; stall injection | Char: 5 s constant / reload path |
-| 5 | Fail closed on unknown kid | Decrypt with kid absent from keyset → exception / fail-closed API | Char: **today returns ciphertext** (fail-open) — marked EXPECTED TO CHANGE |
+| 1 | Re-read under lock before any mutation (**NEW CAS**) | Force stale in-memory version; mutation that skips re-read must fail the probe | Partial: version check re-reads under write lock (`TinkKeyManagerConcurrencyTest` reload) |
+| 2 | CAS on blob version, then in-memory install **only after** successful CAS (**NEW CAS**) | Probe fails if live primary is published before CAS ack; two writers — winner installed, loser not | Partial: `@Version` save; **orphan gap** — `rotateKey_whenDbSaveFails_keepsOrphanInMemoryPrimary` (EXPECTED TO CHANGE, §2.3 / Q4) |
+| 3 | Race loser discards local keyset and reloads blob (**NEW CAS**) | Inject CAS failure after staged mutate; assert kids match blob; no orphan primary | First-boot only today: `TinkKeyManagerAdminFirstBootstrapTest.java:133` (`initialize_writerLosesClaim_adoptsPeerBlob`) |
+| 4 | Periodic tick shorter than sync window | Assert schedule interval ≤ configured bound; stall injection | Char: 5 s constant / DATABASE + HYBRID reload paths |
+| 5 | Fail closed on unknown kid | Decrypt with kid absent from keyset → exception / fail-closed API | Char: **today returns ciphertext** (fail-open) — EXPECTED TO CHANGE |
 | 6 | DB error never triggers generation of a new keyset | Inject `DataAccessException` on find; assert no generate/save of new kids | Char: writer may fall back to file path today — EXPECTED TO CHANGE |
-| 7 | Runtime never deletes key material | Mutation that deletes keyset file / clears handle without reload must fail | Char: no B6 delete on `main`; file survives failed DB load |
+| 7 | **Blob-only delete ban:** no `DELETE`/`TRUNCATE` of `ezkey_keyset_blob`; API processes never unlink key material files; disabling a kid does **not** delete the envelope | Mutation probe: grant/role or code path that issues DELETE/TRUNCATE on the blob must fail; disable-kid leaves envelope bytes intact; no `Files.delete` of key material from API code | Char: no B6 delete on `main`; file survives failed DB load (file-era proxy for the ban) |
 | 8 | Legacy blob fails startup, no overwrite | Seed legacy outer-AEAD blob; assert startup failure and unchanged row | Char: **today overwrites** to native envelope — EXPECTED TO CHANGE |
 
 ---
@@ -199,25 +219,27 @@ Each invariant gets at least one **mutation-probed** test in the implementation 
 |----------|--------|
 | Modes / flags | `StorageMode.FILE`, `StorageMode.HYBRID`; runtime reliance on `keyset-file`; Windows `FILE` + `degraded-mode-enabled` as FILE companion |
 | Code paths | `loadExistingKeysetFileOnly`; `STARTUP_FILE_SYNC`; `persistHandleToKeysetFile` in normal boot; file branch of version check; file backup/retention in `TinkKeyManager`; legacy overwrite in `claimOrAdoptGeneratedKeyset`; #936 B2/B5/B6 file-authority paths |
-| Deploy | Shared keyset file as HA sync mechanism (`encryption-secrets-ha` keyset path); crypto-api FILE-only story; generate-encryption-keys scripts’ keyset file section (keep `master.key`) |
+| Deploy | Keyset file as HA sync mechanism (volume **kept** for master + audit keys only); crypto-api FILE-only story; generate-encryption-keys scripts’ keyset file section (keep `master.key`) |
 | Docs claims | “file as cache”, HYBRID, FILE restore runbooks as primary |
 
-**Kept:** `master.key`; blob CAS/version; Admin writer; non-writer wait; online rotation (redesigned); optional explicit CLI import/export (later).
+**Kept:** `master.key`; `audit-hmac.key` on the secrets volume; blob CAS/version; Admin writer; non-writer wait; online rotation (new CAS); CLI import/export as adjacent thin PR.
 
 ---
 
-## 5. Documentation updates (implementation PR)
+## 5. Documentation updates (cutover PR)
 
 | Document | Change |
 |----------|--------|
 | `docs/OPERATIONAL.md` | Restore = pg_dump + `master.key` (+ escrow when #953 lands); no keyset-file primary; honest: ezkey.online has **no guaranteed backup** |
 | `docs/SECURITY_POSTURE.md` | Blob-only keyset; PII cleartext outside keyset; kids non-secret |
-| `docs/KEY_ROTATION_PROCEDURES.md` | Drop file-centric backup as SOOT; rotation = CAS blob; recovery via DB + master |
+| `docs/KEY_ROTATION_PROCEDURES.md` | **Must update in the same cutover PR** — drop file-centric backup as SOOT; rotation = CAS blob; recovery via DB + master |
 | ADR-0008 / 0011 / 0012 | Annotate storage-mode sentences **superseded by ADR-0016** |
 | ADR-0016 | Accept short ADR (draft in this pack) |
-| `ezkey-core/CONFIGURATION.md` | Single mode; crypto-api DataSource; remove FILE/HYBRID matrix rows |
-| `docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md` | Add `ezkey_crypto` SELECT-only |
-| crypto-api README / CONFIGURATION | Remove “restart after rotation” FILE story; document RO blob load |
+| `ezkey-core/CONFIGURATION.md` | Single mode; crypto-api DataSource; remove FILE/HYBRID matrix rows; Windows checklist |
+| `docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md` | Add `ezkey_crypto` SELECT-only on blob |
+| crypto-api README / CONFIGURATION | Remove “restart after rotation” FILE story; document RO blob load + blob-reload recovery |
+
+**Adjacent thin PRs (not cutover):** [#942](https://github.com/mgagp/ezkey/issues/942) property purge; CLI import/export tooling.
 
 ---
 
@@ -226,8 +248,8 @@ Each invariant gets at least one **mutation-probed** test in the implementation 
 | Stage | Host | Focus |
 |-------|------|--------|
 | 1 | Mac (Marc) | Fast `./scripts/build.sh`, clean-start, writer/non-writer boot, rotation CAS, crypto-api RO blob, characterization → green then mutation probes |
-| 2 | Windows (Rootbeer) | DATABASE Windows profiles; POSIX permission checks skipped; ACL/`audit-hmac.key` / master key path under `ProgramData`; no FILE fallback |
-| 3 | Community (`<static-ip ezkey-online-community>`) | In-place upgrade per [`community-upgrade-impact.md`](community-upgrade-impact.md); kid continuity; canary decrypt; leftover keyset file handling |
+| 2 | Windows (Rootbeer) | §2.2 checklist (`DATABASE`, Admin `writer=true`, Auth `writer=false`, `degraded-mode-enabled=false`, `required=true`); ACL for master/audit keys under `ProgramData`; no FILE fallback |
+| 3 | Community (`<static-ip ezkey-online-community>`) | In-place upgrade per [`community-upgrade-impact.md`](community-upgrade-impact.md) including **Tink-native envelope pre-check**; kid continuity; canary decrypt; leftover keyset file handling |
 
 Do not treat a full reinstall of ezkey.online as the default path.
 
@@ -243,19 +265,21 @@ Tests **must pass on current `main`**. Methods expected to flip after the refact
 
 ---
 
-## 8. Open questions for Marc
+## 8. Open questions for Marc (with recommendations)
 
-1. **crypto-api health vs #942:** If the blob is missing at clean-start, should crypto-api refuse to become healthy entirely (blocking bootstrap-init until Admin writes the blob), or expose a split health (liveness OK / encryption readiness separate) while still never using `required=false`?
-2. **SELECT on `ezkey_encryption_key`:** Does crypto-api need metadata SELECT for decrypt recovery, or is blob-only SELECT enough?
-3. **Leftover keyset file on community:** Prefer leave-in-place (renamed `.orphaned`) vs operator-deleted after verified canary — default proposal is rename+retain until one successful post-upgrade canary (§ community doc)?
-4. **Rotate-after-failed-CAS:** Confirm product rule: in-memory rotation must not remain installed if blob CAS fails (fail closed the admin rotation API).
-5. **Tick interval:** Keep 5 s, or make configurable with an upper bound enforced in tests?
-6. **CLI import/export:** Same implementation PR as DB-only cutover, or a fast follow once community upgrade is proven?
-7. **#942 sequencing:** Fold always-on encryption into the keyset refactor PR, or land #942 immediately before/after?
-8. **experimental-hybrid local crypto-api:** Confirm “crypto-api on the VM only” for community debugging (no laptop→Lightsail Postgres).
+| # | Question | Recommendation |
+|---|----------|----------------|
+| 1 | **crypto-api health vs #942:** full fail-closed vs split liveness / encryption readiness? | **Split health** (liveness OK; encryption readiness separate) so bootstrap-init keypair/sign is not blocked 90s, while encrypt/decrypt and any `required` path stay fail-closed. Never `required=false`. |
+| 2 | **SELECT on `ezkey_encryption_key`?** | **Decided: blob SELECT only.** AEAD recovery = reload blob + retry (§2.5 / §2.6). No metadata GRANT. |
+| 3 | **Leftover community keyset file:** rename `.orphaned` vs delete after canary? | **Rename + retain** until one extra green restart after canary; then optional operator delete. |
+| 4 | **Rotate-after-failed-CAS:** must in-memory rotation be rolled back? | **Yes — fail closed.** Staging handle only; live primary installs after CAS. Today’s orphan behavior is characterized and must flip (§2.3). |
+| 5 | **Tick interval:** keep 5 s vs configurable upper bound? | **Keep 5 s** as the default constant; allow config only with a hard upper bound (≤ 5 s) enforced by tests. |
+| 6 | **CLI import/export timing?** | **Adjacent thin PR after cutover** (not in the cutover PR). |
+| 7 | **#942 sequencing?** | **Adjacent thin PR** immediately after (or just before) cutover — property purge only. Decrypt fail-closed stays in cutover. |
+| 8 | **experimental-hybrid local crypto-api?** | **crypto-api on the VM only** — no laptop→Lightsail Postgres. |
 
 ---
 
 ## 9. Out of scope (tracked elsewhere)
 
-Encrypted age/minisign backup, restore drill, KMS envelope, production HA IAM/RDS — [#953](https://github.com/mgagp/ezkey/issues/953). Christophe’s Q2 backup design informs #953; this pack only requires honest docs that community has no guaranteed backup today.
+Encrypted age/minisign backup, restore drill, KMS envelope, production HA IAM/RDS — [#953](https://github.com/mgagp/ezkey/issues/953). Christophe’s backup design informs #953; this pack only requires honest docs that community has no guaranteed backup today.

@@ -20,9 +20,9 @@ At-rest encryption uses a Tink keyset wrapped by a file-based master key. ADR-00
 1. **`ezkey_keyset_blob` is the only runtime source of truth** for the Tink keyset. API processes do not read, write, or delete a keyset file.
 2. **Remove `FILE` and `HYBRID`** modes and related flags. Windows and crypto-api align on database-backed load. `master.key` remains a file/secret.
 3. **crypto-api** (local lab only) uses a read-only DataSource and a SELECT-only DB role on the blob; bounded bootstrap wait then explicit failure; never `ezkey.encryption.required=false` ([#942](https://github.com/mgagp/ezkey/issues/942)).
-4. **Online rotation** remains, **DB-CAS-first** and fail closed, with the eight invariants from the #936 line (re-read under lock; CAS then install; loser reloads; short tick; unknown kid fail closed; DB errors never generate; never delete key material; legacy blob fails startup without overwrite).
-5. **Decrypt paths fail closed** (fix `EncryptionService.decrypt` returning ciphertext as plaintext). Logs carry **kids** (and versions) only. `audit-hmac.key` is mode `600` on POSIX.
-6. Supersedes storage-mode dual-authority statements in ADR-0008, ADR-0011, and ADR-0012. Encrypted off-host backup, KMS, and production HA remain [#953](https://github.com/mgagp/ezkey/issues/953).
+4. **Online rotation** remains, **DB-CAS-first** and fail closed. Invariants 1–3 are a **new CAS protocol** inspired by #936 (install only after successful CAS). Invariants 4–8 carry from that line (short tick; unknown kid fail closed; DB errors never generate; no DELETE/TRUNCATE of the blob / no API unlink of key material / disable-kid does not delete the envelope; legacy blob fails startup without overwrite).
+5. **Decrypt paths fail closed** (fix `EncryptionService.decrypt` returning ciphertext as plaintext) in the cutover PR. Logs carry **kids** (and versions) only. `audit-hmac.key` is mode `600` on POSIX. Secrets volumes keep **master + audit keys only** (no keyset-file authority).
+6. Supersedes storage-mode dual-authority statements in ADR-0008, ADR-0011, and ADR-0012. Encrypted off-host backup, KMS, and production HA remain [#953](https://github.com/mgagp/ezkey/issues/953). [#942](https://github.com/mgagp/ezkey/issues/942) property purge and CLI import/export are adjacent thin PRs.
 
 ## Alternatives Considered
 

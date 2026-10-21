@@ -19,7 +19,7 @@ A **full reinstall is last resort** only if instability remains unexplained afte
 | `storage-mode` override | None in repo compose; inherits DATABASE |
 | crypto-api | Not part of the online community compose (lab-only after change) |
 
-**Pre-check (read-only on the VM):** confirm `SPRING_PROFILES_ACTIVE` / env has no `FILE`/`HYBRID` override; confirm blob row exists (`SELECT version, length(keyset_data), last_updated_at FROM ezkey_keyset_blob` — no key material printed); list `/etc/ezkey` paths **by name only** (do not `cat` secrets).
+**Pre-check (read-only on the VM):** confirm `SPRING_PROFILES_ACTIVE` / env has no `FILE`/`HYBRID` override; confirm blob row exists (`SELECT version, length(keyset_data), last_updated_at FROM ezkey_keyset_blob` — no key material printed); list `/etc/ezkey` paths **by name only** (do not `cat` secrets); **Tink-native envelope gate** (§2.2).
 
 ---
 
@@ -40,10 +40,27 @@ Goal: new images that speak **blob-only** boot against the **existing** blob and
 | Check | Pass criteria |
 |-------|----------------|
 | Blob readable | Admin (current build) already serves encrypted fields |
+| **Blob is Tink-native envelope** | Structural markers only — see below. **Abort deploy if legacy.** |
 | Master key present | Path exists; permissions owner-only on Linux |
 | Disk / volume | Enough space for rename; volume not read-only |
 | No HYBRID/FILE env override | Compose/env inspection |
 | Flyway | No migration required for blob-only if schema already has `ezkey_keyset_blob` (confirm against release notes) |
+
+**Tink-native envelope pre-check (abort on legacy):**
+
+Convert `keyset_data` to text in SQL **only long enough** to test markers; **never** print or log the bytes:
+
+```sql
+-- Returns true when the blob looks like ADR-0011 Tink encrypted-keyset JSON.
+-- Do NOT SELECT keyset_data into tickets, chat, or logs.
+SELECT
+  position('"encryptedKeyset"' in convert_from(keyset_data, 'UTF8')) > 0
+  AND position('"keysetInfo"' in convert_from(keyset_data, 'UTF8')) > 0
+FROM ezkey_keyset_blob;
+```
+
+- **Pass:** both markers present → proceed.
+- **Fail (legacy / unloadable):** either marker missing → **abort the deploy**. Do not cut over to blob-only fail-closed until the blob is a native envelope (or a controlled one-shot import is run offline). Never paste `keyset_data`.
 
 ### 2.3 Verification (kid continuity + canary decrypt)
 

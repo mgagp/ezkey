@@ -359,9 +359,12 @@ class KeysetStorageCharacterizationTest {
   }
 
   @Test
-  @DisplayName("HYBRID mode reloads when the database blob version advances")
-  void hybrid_databaseVersionBump_reloadsKeyset(@TempDir Path tempDir) throws Exception {
-    // EXPECTED TO CHANGE — design §4 (HYBRID removed; DB-only reload remains)
+  @DisplayName(
+      "rotateKey keeps the new in-memory primary when database save fails (orphan primary today)")
+  void rotateKey_whenDbSaveFails_keepsOrphanInMemoryPrimary(@TempDir Path tempDir)
+      throws Exception {
+    // EXPECTED TO CHANGE — design §2.3 / Q4 (NEW CAS: install only after successful CAS;
+    // TinkKeyManager.java:1007-1025 installs before save and swallows DB errors)
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
     TestMasterKeys.write(masterKeyPath);
@@ -371,7 +374,60 @@ class KeysetStorageCharacterizationTest {
 
     TinkKeyManager manager =
         initializeManager(
-            masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.HYBRID, repository, true);
+            masterKeyPath,
+            keysetPath,
+            TinkProperties.Keyset.StorageMode.DATABASE,
+            repository,
+            true);
+
+    try {
+      long before = manager.getCurrentPrimaryKeyId();
+      long versionBefore = storedBlob.get().getVersion();
+
+      when(repository.save(any(KeysetBlob.class)))
+          .thenThrow(new DataAccessResourceFailureException("simulated rotation save failure"));
+
+      long after = manager.rotateKey();
+
+      assertNotEquals(
+          before,
+          after,
+          "today rotateKey still returns/installs the new primary after DB save fails");
+      assertEquals(after, manager.getCurrentPrimaryKeyId());
+      assertEquals(
+          versionBefore,
+          storedBlob.get().getVersion(),
+          "blob version must not advance when save throws");
+    } finally {
+      manager.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  @Test
+  @DisplayName("HYBRID mode reloads when the database blob version advances")
+  void hybrid_databaseVersionBump_reloadsKeyset(@TempDir Path tempDir) throws Exception {
+    // EXPECTED TO CHANGE — design §4 (HYBRID removed; DB-only reload remains)
+    assertDatabaseVersionBumpReloads(tempDir, TinkProperties.Keyset.StorageMode.HYBRID);
+  }
+
+  @Test
+  @DisplayName("DATABASE mode reloads when the database blob version advances")
+  void database_databaseVersionBump_reloadsKeyset(@TempDir Path tempDir) throws Exception {
+    // Preserve: design §2.3 / §3 invariant #4 tick + DB reload (DATABASE twin of HYBRID char)
+    assertDatabaseVersionBumpReloads(tempDir, TinkProperties.Keyset.StorageMode.DATABASE);
+  }
+
+  private static void assertDatabaseVersionBumpReloads(
+      Path tempDir, TinkProperties.Keyset.StorageMode storageMode) throws Exception {
+    Path masterKeyPath = tempDir.resolve("master.key");
+    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
+    TestMasterKeys.write(masterKeyPath);
+
+    AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>();
+    KeysetBlobRepository repository = versionedRepository(storedBlob);
+
+    TinkKeyManager manager =
+        initializeManager(masterKeyPath, keysetPath, storageMode, repository, true);
     long primaryAtStartup = manager.getCurrentPrimaryKeyId();
 
     manager.saveKeysetToDatabase("TEST_INIT");

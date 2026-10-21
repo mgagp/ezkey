@@ -12,7 +12,7 @@
 
 ## Why this pack exists
 
-[#936](https://github.com/mgagp/ezkey/pull/936) (keyset HA) paused after repeated file↔blob divergence blockers (B2, B5, B6). Marc adopted **option A**: the `ezkey_keyset_blob` row is the only runtime source of truth; FILE and HYBRID modes and flags are removed; crypto-api (local lab only) gets a read-only DataSource on the blob; the eight #936 invariants are ported with mutation-probed tests.
+[#936](https://github.com/mgagp/ezkey/pull/936) (keyset HA) paused after repeated file↔blob divergence blockers (B2, B5, B6). Marc adopted **option A**: the `ezkey_keyset_blob` row is the only runtime source of truth; FILE and HYBRID modes and flags are removed; crypto-api (local lab only) gets a read-only DataSource on the blob. Invariants **4–8** carry from the #936 line; invariants **1–3** are a **new CAS protocol** inspired by #936 (not a literal port), each with mutation-probed tests.
 
 This pack is the **analysis + detailed design + characterization gate** before any production refactor. Characterization tests in `ezkey-core-security` pin current `main` behavior and mark paths expected to change.
 
