@@ -164,3 +164,28 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
   - No Orval PRs in queue this pass
 - Validation: Dependabot CI green + `mergeStateStatus` CLEAN for #838/#839/#840/#841; Admin UI local Node 24 — vitest **206/206** on 5.0.4; mobile hygiene #850 — local `yarn validate` (jest **42/307**) + PR CI (`js-validate`, `android-jvm-unit-tests`, `android-16kb-alignment`, `ci-gate`). Deferred full `./scripts/build.sh` / Playwright stack (box may lack JDK/Docker; not required for this light lot).
 - Residual: phone smoke for mobile bumps tracked on #627 (gates next Play AAB). Nothing deployed.
+
+## 2026-10-21
+
+- Pass: weekday light (autonomous); concurrency: clear (re-checked before first write — no Dependabot/hygiene merges in prior ~45 min; no other in-flight `dependabot-curated`/Orval agent; other cloud agents were keyset/PAM/docs out of scope)
+- GitHub write: `GH_TOKEN as mgagp`
+- Merged (squash):
+  - GitHub Actions T2: #924 `actions/setup-java` 6.0.1→6.1.0 `e4f1d06f`
+  - Hygiene **#957** `83698cb8` (branch `cursor/hygiene-dependabot-2026-10-21-69b6`) superseding:
+    - CodeQL T2: #932+#935 `github/codeql-action` init/analyze 4.38.3→4.39.0 together (solo PRs fail Analyze version mismatch)
+    - Admin UI T1: #877+#931 react/react-dom 19.3.0→19.3.1 together; #925 i18next 26.4.4→26.4.7; #928 react-i18next 17.0.16→17.0.21; #927 `@hookform/resolvers` 5.9.1→5.9.2
+    - Admin UI T3: #926 lucide-react 1.58.0→1.59.0
+    - Mobile T1: #933 react-i18next 17.0.20→17.0.21; Mobile T3: #930 react-native-gesture-handler 3.3.0→3.4.0 + `yarn license:app-data` (`thirdPartyLicenses.json`; precedent #836/#850)
+- Held (out of light scope; not closed):
+  - #929 android-gradle-minor-patch (Marc: Android Gradle HITL on full passes)
+  - #878 mobile-rn-core (never auto-merge without Marc)
+  - #870 com.google.crypto.tink 1.23→1.24 (crypto hard escalator; Christophe opinion)
+  - #779 mobile ESLint 10, #653 Jest 30 (ecosystem gates)
+  - #767 textual pip floor jump (Monday/T4)
+  - deferred:later-train `#498`/`#337` (skip)
+- Red-CI evidence (pre-hygiene; not merged as-is):
+  - #932/#935 Analyze: `Loaded a configuration file for version '4.39.0', but running version '4.38.3'` (and inverse) — runs `39439048338` / `39439226421`
+  - #877/#931 admin-ui: react/react-dom version mismatch / ERESOLVE peer — runs `39344363630` / `39439043809`
+  - #933/#930 `js-validate`: stale `app/data/thirdPartyLicenses.json` only — runs `39439091461` / `39439023542`
+- Validation: #924 + #957 `ci-gate` green / `mergeStateStatus` CLEAN; local Node 24 Admin lint + `tsc -b` + vitest **206/206**; Playwright **6/6**; mobile `yarn validate` jest **323/323** + PR `js-validate` / android jobs / `ci-gate`
+- Residual: phone smoke for mobile bumps tracked on #627 (gates next Play AAB). Nothing deployed.
