@@ -19,8 +19,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  *
  * <p>Crypto API (local lab clean-start only) needs a read-only DataSource solely to {@code SELECT}
  * {@code ezkey_keyset_blob} via {@code KeysetBlobRepository}. Entity and repository scanning is
- * limited to {@code org.ezkey.security.domain.*}. Write-path services (rotation, re-encryption) stay
- * excluded from {@link CryptoApplication} component scan. The DB role {@code ezkey_crypto} is
+ * limited to {@code org.ezkey.security.domain.*}. Write-path services (rotation, re-encryption)
+ * stay excluded from {@link CryptoApplication} component scan. The DB role {@code ezkey_crypto} is
  * SELECT-only on the blob table — application {@code writer=false} is defense in depth.
  *
  * @since 2026
