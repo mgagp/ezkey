@@ -334,8 +334,9 @@ public class AuditHmacService {
    * Generates a new 256-bit HMAC key file at the specified path.
    *
    * <p>Creates parent directories if they do not exist and writes a Base64-encoded 32-byte key with
-   * POSIX mode {@code 600} when the filesystem supports it (same bar as {@code master.key}; ADR-0016
-   * §2.9). On Windows, POSIX permissions are skipped — operators should apply an ACL equivalent.
+   * POSIX mode {@code 600} when the filesystem supports it (same bar as {@code master.key};
+   * ADR-0016 §2.9). On Windows, POSIX permissions are skipped — operators should apply an ACL
+   * equivalent.
    *
    * @param path the file path to write the key to
    * @throws IOException if the file cannot be written
@@ -360,8 +361,7 @@ public class AuditHmacService {
       Set<PosixFilePermission> perms =
           EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
       Files.setPosixFilePermissions(path, perms);
-      logger.debug(
-          "Set audit HMAC key permissions to {}", PosixFilePermissions.toString(perms));
+      logger.debug("Set audit HMAC key permissions to {}", PosixFilePermissions.toString(perms));
     } catch (UnsupportedOperationException e) {
       logger.debug(
           "POSIX permissions not supported for audit HMAC key at {} (Windows ACL equivalent)",
