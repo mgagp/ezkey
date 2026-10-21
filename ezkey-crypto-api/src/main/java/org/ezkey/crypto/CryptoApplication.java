@@ -40,6 +40,10 @@ import org.springframework.context.annotation.FilterType;
       "org.ezkey.security", //
     },
     excludeFilters = {
+      // JPA for KeysetBlob is auto-config only (after DataSource) — see CryptoJpaConfig.
+      @ComponentScan.Filter(
+          type = FilterType.REGEX,
+          pattern = "org\\.ezkey\\.crypto\\.autoconfigure\\..*"),
       @ComponentScan.Filter(
           type = FilterType.ASSIGNABLE_TYPE,
           classes = {
