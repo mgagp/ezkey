@@ -75,6 +75,18 @@ meant to be linked from trust-facing material without inflating the top-level pi
   non-owner caller, a missing device public key, an unknown attempt, or a still-`PENDING` /
   terminal attempt keeps the generic **409** `auth-attempt-state-conflict` (no `INVALID` flip) so
   sequential ids do not reveal expiry or READ state before the caller is verified.
+- **Decision (#960, Christophe):** Challenge-code direction is intentional: the integrating app
+  shows a two-digit code; the user enters it in the mobile app, then approves or denies. Same
+  principle as CISA number matching
+  ([Implementing Number Matching in MFA Applications](https://www.cisa.gov/sites/default/files/publications/fact-sheet-implement-number-matching-in-mfa-applications-508c.pdf),
+  Oct 2022) — approving requires access to the login screen, so prompt spam (MFA fatigue) does not
+  work; no vendor implementation equivalence is implied. Honest entropy: two digits are a 1-in-100
+  blind guess; the code counters reflex approval, nothing more. The approve/deny decision is signed
+  by the device key within the signed protocol (explicit deny remains an audit/alert signal). This
+  does **not** resist real-time proxy phishing and is **not** WebAuthn/FIDO2/passkey-equivalent.
+  An inverted mode (mobile shows the code; integration enters it) stays parked as additive-only —
+  see
+  [`I-2026-10-21-inverted-challenge-code-mode`](../product-docs/global/backlog/ideas/I-2026-10-21-inverted-challenge-code-mode.md).
 - **Audit log integrity (tamper-evident).** Every audit entry is signed with **HMAC-SHA256** using a
   key held in a **file separate from the database** (and separate from the encryption master key).
   Periodic **checkpoints** chain windows together for a completeness proof.
