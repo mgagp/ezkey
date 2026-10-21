@@ -7,12 +7,10 @@ import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.ezkey.config.TinkProperties;
-import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 /**
@@ -26,6 +24,13 @@ import org.springframework.stereotype.Service;
  *
  * <p>The key ID in the format enables future SQL queries to identify records encrypted with
  * specific keys, facilitating key rotation and re-encryption operations.
+ *
+ * <p><b>Decrypt fail-closed (ADR-0016 / #952 §2.7):</b> values that match the {@code ENC:} format
+ * but fail format/Base64/AEAD validation after the reload budget throw {@link
+ * IllegalStateException}. Ciphertext is never returned as if it were plaintext. Plaintext values
+ * without the {@code ENC:} prefix are still returned as-is. AEAD recovery reloads {@code
+ * ezkey_keyset_blob} and retries (design Q2 — no {@code ezkey_encryption_key} metadata required).
+ * Logs carry key IDs (kids) only.
  *
  * @since 2025
  */
@@ -162,12 +167,16 @@ public class EncryptionService implements EncryptionOperations {
    *   <li>Base64 validation (valid encoding, minimum length)
    * </ul>
    *
-   * <p>If the value does not match the encrypted format, it is assumed to be plaintext.
+   * <p>If the value does not match the encrypted format, it is assumed to be plaintext and returned
+   * as-is.
    *
-   * <p>If decryption fails (e.g., corrupted data or not encrypted), the original value is returned.
+   * <p><b>Fail-closed:</b> when the value matches {@code ENC:} but format/Base64/AEAD decryption
+   * fails after the reload budget, this method throws {@link IllegalStateException}. It never
+   * returns the ciphertext as if it were plaintext (ADR-0016 / #952 §2.7 / invariant 5).
    *
    * @param encryptedValue the encrypted value (with "ENC:keyID:" prefix) or plaintext
-   * @return decrypted plaintext string, or original value if not encrypted/decryption fails
+   * @return decrypted plaintext string, or the original value when it is not encrypted
+   * @throws IllegalStateException when an {@code ENC:}-prefixed value cannot be decrypted
    */
   public String decrypt(String encryptedValue) {
     if (encryptedValue == null) {
@@ -178,25 +187,22 @@ public class EncryptionService implements EncryptionOperations {
       return encryptedValue;
     }
     if (!isEncrypted(encryptedValue)) {
-      logger.debug("Value not encrypted (no prefix), returning as plaintext");
+      logger.debug("Value not encrypted (no ENC: prefix), returning as plaintext");
       return encryptedValue;
     }
 
     String ciphertextBase64 = extractCiphertext(encryptedValue);
     if (ciphertextBase64 == null) {
-      logger.warn(
-          "Failed to extract/validate ciphertext from encrypted value, returning as plaintext");
-      return encryptedValue;
+      throw new IllegalStateException(
+          "Failed to extract/validate ciphertext from ENC:-prefixed value (fail-closed)");
     }
 
     Long keyId = parseKeyIdFromPrefix(encryptedValue);
     if (keyId == null) {
-      logger.warn(
-          "Invalid key ID in encrypted value (format validation failed), returning as plaintext");
-      return encryptedValue;
+      throw new IllegalStateException("Invalid key ID in ENC:-prefixed value (fail-closed)");
     }
 
-    logger.trace("Decrypting value encrypted with key ID: {}", keyId);
+    logger.trace("Decrypting value encrypted with key ID: {}", Long.toUnsignedString(keyId));
 
     try {
       Aead aead = keyManager.getAeadPrimitive();
@@ -205,85 +211,55 @@ public class EncryptionService implements EncryptionOperations {
       return new String(pt, StandardCharsets.UTF_8);
     } catch (IllegalArgumentException e) {
       logger.warn(
-          "Base64 decoding failed during decryption (validation should have caught this): {}",
+          "Base64 decoding failed during decryption for kid {} (fail-closed): {}",
+          Long.toUnsignedString(keyId),
           e.getMessage());
-      logger.debug("Base64 decoding error", e);
-      return encryptedValue;
+      throw new IllegalStateException("Base64 decoding failed during decryption (fail-closed)", e);
     } catch (GeneralSecurityException e) {
-      return handleDecryptionFailureWithSync(encryptedValue, ciphertextBase64, keyId, e);
+      return handleDecryptionFailureWithSync(ciphertextBase64, keyId, e);
     } catch (IllegalStateException e) {
-      logger.warn("Decryption failed, returning original value: {}", e.getMessage());
-      logger.debug("Decryption error details", e);
-      return encryptedValue;
+      logger.warn(
+          "Decryption failed for kid {} (fail-closed): {}",
+          Long.toUnsignedString(keyId),
+          e.getMessage());
+      throw e;
     }
   }
 
   /**
-   * Handle decryption failure with defensive synchronization.
+   * Handles AEAD decryption failure with blob reload recovery (design Q2).
    *
-   * <p>When decryption fails with a GeneralSecurityException, this method:
+   * <p>Does not consult {@code ezkey_encryption_key} metadata. Reloads {@code ezkey_keyset_blob}
+   * via {@link TinkKeyManager#forceReloadFromDatabase()} and retries within the configured budget.
+   * On exhaustion, throws fail-closed (invariant 5).
    *
-   * <ol>
-   *   <li>Checks if the key ID exists in the database
-   *   <li>If key exists but decryption failed, tries to reload keyset from database
-   *   <li>Retries decryption once after reload
-   *   <li>If still fails, logs critical error and returns original value
-   * </ol>
-   *
-   * @param encryptedValue the original encrypted value
    * @param ciphertextBase64 the extracted ciphertext
    * @param keyId the key ID from the encrypted value
    * @param originalException the original decryption exception
-   * @return decrypted value if recovery succeeds, original value otherwise
+   * @return decrypted value if recovery succeeds
+   * @throws IllegalStateException when recovery is exhausted
    */
   private String handleDecryptionFailureWithSync(
-      String encryptedValue,
-      String ciphertextBase64,
-      Long keyId,
-      GeneralSecurityException originalException) {
-    logger.warn(
-        "Decryption failed for key ID {}. Attempting defensive recovery...",
-        keyId != null ? Long.toUnsignedString(keyId) : "unknown");
+      String ciphertextBase64, Long keyId, GeneralSecurityException originalException) {
+    String kidLabel = keyId != null ? Long.toUnsignedString(keyId) : "unknown";
+    logger.warn("Decryption failed for key ID {}. Attempting blob reload recovery...", kidLabel);
 
-    // Check if key exists in database (indicates key is valid but not in local keyset)
-    boolean keyExistsInDb = false;
-    if (keyRepository != null && keyId != null) {
-      try {
-        var keyOpt = keyRepository.findById(keyId);
-        if (keyOpt.isPresent()) {
-          KeyStatus status = keyOpt.get().getKeyStatus();
-          keyExistsInDb = (status == KeyStatus.PRIMARY || status == KeyStatus.ENABLED);
-          logger.info(
-              "Key {} exists in database with status {}", Long.toUnsignedString(keyId), status);
-        }
-      } catch (DataAccessException | IllegalStateException e) {
-        logger.debug("Failed to check key in database: {}", e.getMessage());
-      }
-    }
-
-    // If key exists in DB but not in local keyset, try reloading from database
-    // Note: keyId cannot be null here since keyExistsInDb would be false if keyId was null
-    if (keyExistsInDb && keyManager.isDatabaseStorageAvailable() && keyId != null) {
+    if (keyManager.isDatabaseStorageAvailable()) {
       int maxRetries = properties != null ? properties.getKeyset().getMaxReloadRetries() : 1;
-      long keyIdValue = keyId; // Safe unboxing after null check
 
       for (int retry = 0; retry < maxRetries; retry++) {
         logger.info(
-            "🔄 Key {} exists in database but decryption failed. "
-                + "Attempting keyset reload from database (attempt {}/{})...",
-            Long.toUnsignedString(keyIdValue),
+            "🔄 AEAD failure for kid {}. Reloading keyset blob (attempt {}/{})...",
+            kidLabel,
             retry + 1,
             maxRetries);
 
         if (keyManager.forceReloadFromDatabase()) {
-          // Retry decryption after reload
           try {
             Aead aead = keyManager.getAeadPrimitive();
             byte[] ct = Base64.getDecoder().decode(ciphertextBase64);
             byte[] pt = aead.decrypt(ct, null);
-            logger.info(
-                "✅ Decryption succeeded after keyset reload for key {}",
-                Long.toUnsignedString(keyIdValue));
+            logger.info("✅ Decryption succeeded after keyset reload for kid {}", kidLabel);
             return new String(pt, StandardCharsets.UTF_8);
           } catch (GeneralSecurityException
               | IllegalArgumentException
@@ -299,25 +275,25 @@ public class EncryptionService implements EncryptionOperations {
       }
     }
 
-    // If we get here, recovery failed
     logger.error(
-        "❌ CRITICAL: Decryption failed for key {} and recovery was unsuccessful. "
+        "❌ CRITICAL: Decryption failed for kid {} and recovery was unsuccessful. "
             + "This may indicate: "
-            + "(1) Key was disabled/deleted, "
+            + "(1) Unknown/disabled key, "
             + "(2) Data corruption, "
             + "(3) Keyset synchronization failure. "
             + "Original error: {}",
-        keyId != null ? Long.toUnsignedString(keyId) : "unknown",
+        kidLabel,
         originalException.getMessage());
 
-    // Check if degraded mode should be enabled
     if (properties != null && properties.getKeyset().isDegradedModeEnabled()) {
-      logger.warn("⚠️ Degraded mode is enabled. Consider investigating this decryption failure.");
-      // In degraded mode, we return the original encrypted value
-      // The application can continue but encrypted data is not accessible
+      logger.warn(
+          "⚠️ Degraded mode is enabled, but decrypt remains fail-closed (never returns"
+              + " ciphertext as plaintext).");
     }
 
-    return encryptedValue;
+    throw new IllegalStateException(
+        "Decryption failed for kid " + kidLabel + " after reload budget (fail-closed)",
+        originalException);
   }
 
   /**
