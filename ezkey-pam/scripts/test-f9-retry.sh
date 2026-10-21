@@ -81,6 +81,9 @@ start_stub() {
 
 point_conf_at_stub() {
   local wait_to="${1:-15}"
+  # Prefer cp+chmod over install(1): on some Rocky runtime images install -o/-g
+  # fails with EEXIST when replacing the live conf, leaving URL/stub pointing
+  # at the CI dummy and zero stub creates.
   docker exec "${CONTAINER}" sh -c \
     "grep -v '^integration_api_url=' '${CONF}' | grep -v '^wait_timeout=' >'${CONF}.tmp'
      echo 'integration_api_url=http://127.0.0.1:${STUB_PORT}' >>'${CONF}.tmp'
@@ -90,7 +93,9 @@ point_conf_at_stub() {
      if ! grep -q '^api_timeout=' '${CONF}.tmp'; then echo 'api_timeout=5' >>'${CONF}.tmp'; fi
      if ! grep -q '^debug=' '${CONF}.tmp'; then echo 'debug=true' >>'${CONF}.tmp'; fi
      sed -i 's/^debug=.*/debug=true/' '${CONF}.tmp'
-     install -m 600 -o root -g root '${CONF}.tmp' '${CONF}'
+     cp -f '${CONF}.tmp' '${CONF}'
+     chown root:root '${CONF}'
+     chmod 600 '${CONF}'
      rm -f '${CONF}.tmp'"
 }
 
