@@ -9,6 +9,7 @@
 #   PGHOST PGPORT PGDATABASE PGUSER PGPASSWORD
 #   EZKEY_DB_MIGRATE_PASSWORD EZKEY_DB_ADMIN_PASSWORD
 #   EZKEY_DB_AUTH_PASSWORD EZKEY_DB_INTEGRATION_PASSWORD
+#   EZKEY_DB_CRYPTO_PASSWORD
 
 set -euo pipefail
 
@@ -25,6 +26,7 @@ MIGRATE_PASS="${EZKEY_DB_MIGRATE_PASSWORD:-ezkey_migrate}"
 ADMIN_PASS="${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}"
 AUTH_PASS="${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}"
 INTEGRATION_PASS="${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}"
+CRYPTO_PASS="${EZKEY_DB_CRYPTO_PASSWORD:-ezkey_crypto}"
 
 echo "Creating Ezkey roles on ${PGHOST}:${PGPORT}/${PGDATABASE} as ${PGUSER}..."
 
@@ -51,12 +53,17 @@ BEGIN
   ELSE
     EXECUTE format('ALTER ROLE ezkey_integration PASSWORD %L', '${INTEGRATION_PASS}');
   END IF;
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'ezkey_crypto') THEN
+    EXECUTE format('CREATE ROLE ezkey_crypto LOGIN PASSWORD %L', '${CRYPTO_PASS}');
+  ELSE
+    EXECUTE format('ALTER ROLE ezkey_crypto PASSWORD %L', '${CRYPTO_PASS}');
+  END IF;
 END
 \$\$;
 
-GRANT CONNECT ON DATABASE ${PGDATABASE} TO ezkey_migrate, ezkey_admin, ezkey_auth, ezkey_integration;
+GRANT CONNECT ON DATABASE ${PGDATABASE} TO ezkey_migrate, ezkey_admin, ezkey_auth, ezkey_integration, ezkey_crypto;
 GRANT ALL ON SCHEMA public TO ezkey_migrate;
-GRANT USAGE ON SCHEMA public TO ezkey_admin, ezkey_auth, ezkey_integration;
+GRANT USAGE ON SCHEMA public TO ezkey_admin, ezkey_auth, ezkey_integration, ezkey_crypto;
 ALTER SCHEMA public OWNER TO ezkey_migrate;
 EOSQL
 

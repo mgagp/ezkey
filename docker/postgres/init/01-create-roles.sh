@@ -3,7 +3,8 @@
 # Invoked by the official postgres image via /docker-entrypoint-initdb.d/.
 # Passwords come from container env (see docker-compose.yml / docker/.env.example).
 #
-# Roles: ezkey_migrate (DDL/Flyway), ezkey_admin, ezkey_auth, ezkey_integration.
+# Roles: ezkey_migrate (DDL/Flyway), ezkey_admin, ezkey_auth, ezkey_integration,
+#        ezkey_crypto (SELECT-only on ezkey_keyset_blob — crypto-api lab stack).
 # DML grants are applied later by scripts/db/apply-grants.sh after Flyway.
 # Use /bin/sh (Alpine postgres image has no bash).
 # Must be executable (git mode 100755). Docker Desktop on macOS can report -x on a
@@ -16,8 +17,9 @@ MIGRATE_PASS="${EZKEY_DB_MIGRATE_PASSWORD:-ezkey_migrate}"
 ADMIN_PASS="${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}"
 AUTH_PASS="${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}"
 INTEGRATION_PASS="${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}"
+CRYPTO_PASS="${EZKEY_DB_CRYPTO_PASSWORD:-ezkey_crypto}"
 
-echo "Creating Ezkey database roles (migrate, admin, auth, integration)..."
+echo "Creating Ezkey database roles (migrate, admin, auth, integration, crypto)..."
 
 # Passwords are passed via shell expansion into format(%L) — operator-controlled env vars only.
 psql -v ON_ERROR_STOP=1 \
@@ -46,12 +48,17 @@ BEGIN
   ELSE
     EXECUTE format('ALTER ROLE ezkey_integration PASSWORD %L', '${INTEGRATION_PASS}');
   END IF;
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'ezkey_crypto') THEN
+    EXECUTE format('CREATE ROLE ezkey_crypto LOGIN PASSWORD %L', '${CRYPTO_PASS}');
+  ELSE
+    EXECUTE format('ALTER ROLE ezkey_crypto PASSWORD %L', '${CRYPTO_PASS}');
+  END IF;
 END
 \$\$;
 
-GRANT CONNECT ON DATABASE ${POSTGRES_DB} TO ezkey_migrate, ezkey_admin, ezkey_auth, ezkey_integration;
+GRANT CONNECT ON DATABASE ${POSTGRES_DB} TO ezkey_migrate, ezkey_admin, ezkey_auth, ezkey_integration, ezkey_crypto;
 GRANT ALL ON SCHEMA public TO ezkey_migrate;
-GRANT USAGE ON SCHEMA public TO ezkey_admin, ezkey_auth, ezkey_integration;
+GRANT USAGE ON SCHEMA public TO ezkey_admin, ezkey_auth, ezkey_integration, ezkey_crypto;
 ALTER SCHEMA public OWNER TO ezkey_migrate;
 EOSQL
 
