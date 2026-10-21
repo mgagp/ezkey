@@ -101,6 +101,12 @@ http://localhost:28080/job/m1-hello/
 2. Plugin appears as installed in the M0 UI.
 3. A job can add **Ezkey lab: Say hello world** and the build prints a greeting.
 
+## Lab fix on top of the archetype
+
+The stock `doCheckName` used `value.matches(".*[éáàç].*")`. CodeQL flagged that as
+a high ReDoS risk on user input. The lab replaces it with a simple character scan
+(same UX warning). Keep that change if you regenerate from the archetype.
+
 ## Out of scope (later milestones)
 
 Security realm / login, Ezkey SDK, credentials for integration key/secret,

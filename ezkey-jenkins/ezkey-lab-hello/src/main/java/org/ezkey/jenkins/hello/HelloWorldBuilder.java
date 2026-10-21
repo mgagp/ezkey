@@ -61,10 +61,23 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
                 return FormValidation.error(Messages.HelloWorldBuilder_DescriptorImpl_errors_missingName());
             if (value.length() < 4)
                 return FormValidation.warning(Messages.HelloWorldBuilder_DescriptorImpl_warnings_tooShort());
-            if (!useFrench && value.matches(".*[éáàç].*")) {
+            // Avoid regex on user input (CodeQL: polynomial ReDoS on .*….*).
+            if (!useFrench && containsFrenchAccent(value)) {
                 return FormValidation.warning(Messages.HelloWorldBuilder_DescriptorImpl_warnings_reallyFrench());
             }
             return FormValidation.ok();
+        }
+
+        private static boolean containsFrenchAccent(String value) {
+            for (int i = 0; i < value.length(); i++) {
+                switch (value.charAt(i)) {
+                    case 'é', 'á', 'à', 'ç':
+                        return true;
+                    default:
+                        break;
+                }
+            }
+            return false;
         }
 
         @Override
