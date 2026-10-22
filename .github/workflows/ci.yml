@@ -374,7 +374,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.ezkey-pam == 'true' || needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    # Stub suites (Docker image + conf-security/timeouts/f9-retry) routinely need >30m on GHA.
+    timeout-minutes: 50
     defaults:
       run:
         working-directory: ezkey-pam
