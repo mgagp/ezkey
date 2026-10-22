@@ -192,6 +192,9 @@ ezkey_ssh_kbdint_autoenter() {
 
   # First visible prompt → ok (pre-create). Later challenge line → bare Enter
   # (#982 tier 1). Cooldown covers OpenSSH multitry (#907 F9 / #975 D4).
+  # Prefer the *latest* prompt (#995): after a challenge round the log still
+  # contains "Ezkey challenge code:" from earlier; whole-log matching would
+  # send Enter on the next pre-create "Type ok" and block F9 multitry creates.
   for i in $(seq 1 600); do
     if ! kill -0 "${bg}" 2>/dev/null; then
       break
@@ -199,7 +202,15 @@ ezkey_ssh_kbdint_autoenter() {
     since_enter=$((since_enter + 1))
     if ezkey_ssh_capture_has_prewait_prompt "${log}" && [ "${since_enter}" -ge 15 ]; then
       flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
-      if echo "${flat}" | grep -q 'Ezkey challenge code:'; then
+      last_chal_n="$(echo "${flat}" \
+        | grep -nE 'Ezkey challenge code:|Approve on your phone, then press Enter' \
+        | tail -1 | cut -d: -f1)"
+      last_ok_n="$(echo "${flat}" \
+        | grep -nE 'Type ok and press Enter to request device approval|SSH login for user ' \
+        | tail -1 | cut -d: -f1)"
+      last_chal_n="${last_chal_n:-0}"
+      last_ok_n="${last_ok_n:-0}"
+      if [ "${last_chal_n}" -gt "${last_ok_n}" ]; then
         printf 'enter\n' >"${ctrl}" 2>/dev/null || true
       else
         printf 'ok\n' >"${ctrl}" 2>/dev/null || true
