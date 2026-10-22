@@ -57,8 +57,8 @@
               })
               .then(function (res) {
                 if (stopped) return;
-                // 401 / 5xx are terminal (no infinite retry).
-                if (res.status === 401 || res.status >= 500) {
+                // Read res.ok: 401 NO_SESSION/NO_PENDING, 500 NO_REALM, 502 ERROR are terminal.
+                if (!res.ok) {
                   go('error');
                   return;
                 }
@@ -73,6 +73,7 @@
               })
               .catch(function () {
                 if (stopped) return;
+                // Network errors retry only until SESSION_TIMEOUT deadline.
                 if (pastDeadline()) { go('expired'); return; }
                 setTimeout(poll, errorMs);
               });
