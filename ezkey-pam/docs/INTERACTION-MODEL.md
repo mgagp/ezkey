@@ -6,16 +6,43 @@ client during one keyboard-interactive login. Maintained with the module
 `challenge_requested`, or the sshd recipe updates §2 and keeps the evidence
 tags honest.
 
-> Origin: Patrick craft draft (2026-10-21). State below is **ezkey-pam 2.2.13**
-> (#982 tiers 0–1 on top of #976 confirm-before-create + enrollment challenge).
+> Origin: Patrick craft draft (2026-10-21). State below is **ezkey-pam 2.2.14**
+> (#995 connector default `challenge_requested=true` on top of #982 tiers 0–1 /
+> #976 confirm-before-create + enrollment challenge).
 > Evidence tags: **[code]** verified in source, **[test]** automated assert,
 > **[isa]** Isabelle on ezkey-pam-test, **[inf]** OpenSSH/PAM inference.
 > Paths relative to the repo root. `pam.c` = `ezkey-pam/src/pam_ezkey.c`.
 
+### Decision — challenge default (#995)
+
+**Decision by Alex, confirmed by Marc on 2026-10-22:** the PAM connector
+requests the challenge code by default. Reason: the challenge code is the
+**safer default for SSH logins**. The **connector owns the default** — no
+Admin UI / Integration API notion of a “PAM integration type”, no server-side
+default, no migration. Refs [#995](https://github.com/mgagp/ezkey/issues/995).
+
+**Precedence (which level wins):**
+
+1. **Enrollment wins on the server.** When the enrollment (integration) has
+   `authAttemptChallengeRequired`, the server includes a challenge in the
+   create response whatever the connector sent in `challengeRequested`. PAM
+   always shows a valid 0..99 code from the response (#975) [code][test].
+2. **Connector `challenge_requested=true`** (compiled-in + sample conf +
+   Docker entrypoint default since 2.2.14) **asks** for a code when the
+   enrollment does not require one. Missing/out-of-range → fail-closed UNAVAIL.
+3. **Connector `false`** only means **“not requested by the connector”** —
+   it does not forbid a server-imposed code. Opt-out path for labs that want
+   approve-only SSH (S0 in the catalogue).
+
+**`ok` prompt (unchanged):** the pre-create `ok` confirm stays as is. It is an
+**anti-accident filter for batch clients** (empty / EOF / `ssh -T </dev/null`
+→ zero creates), **not a security defense**. Device approval (and the
+challenge code when present) is the factor.
+
 ## 0. The model in one paragraph
 
 One SSH login under `Match … MaxAuthTries 1` gives one `pam_sm_authenticate`
-call in sshd's PAM child. That call (2.2.13):
+call in sshd's PAM child. That call (2.2.14):
 
 1. Shows a **pre-create** `PAM_PROMPT_ECHO_ON` confirm
    ("SSH login for user… / Type ok … to request device approval") and
@@ -24,15 +51,18 @@ call in sshd's PAM child. That call (2.2.13):
    Empty / EOF / wrong token / Ctrl-C / conversation error →
    `PAM_AUTHINFO_UNAVAIL` with **zero** Integration API creates (batch clients
    and Windows hang before create leave no phone noise) [code][test].
+   The `ok` token is an anti-accident filter, not a security defense (#995).
 2. Only then `POST /auth-attempts` with `userIdentifier=<linux user>`,
-   `challengeRequested=<conf>`, `ttlSeconds=<planned>`.
+   `challengeRequested=<conf>` (default **true** since #995),
+   `ttlSeconds=<planned>`.
 3. If the create response carries a valid `authAttemptChallenge` (0..99) —
-   host requested **or** enrollment-required (#975) — shows a **second**
-   `PAM_PROMPT_ECHO_ON` with the digits and **"Approve on your phone, then
-   press Enter"** (no second `Type ok` — #982 tier 1). After Enter the module
-   polls `/wait` until ACCEPTED / REJECTED / TTL. Host `challenge_requested`
-   but missing/out-of-range code → UNAVAIL + cancel. Digits never go to
-   authpriv (#750). No-challenge path: skip this prompt; go straight to wait.
+   host requested **or** enrollment-required (#975; server wins) — shows a
+   **second** `PAM_PROMPT_ECHO_ON` with the digits and **"Approve on your
+   phone, then press Enter"** (no second `Type ok` — #982 tier 1). After Enter
+   the module polls `/wait` until ACCEPTED / REJECTED / TTL. Host
+   `challenge_requested` but missing/out-of-range code → UNAVAIL + cancel.
+   Digits never go to authpriv (#750). Connector-opt-out + no enrollment code:
+   skip this prompt; go straight to wait.
 4. Polls `GET …/wait` in 5 s chunks, SIGTERM handler armed only here (#726 / #941).
 5. Maps the result: `ACCEPTED` → `PAM_SUCCESS`; `EXPIRED` / `REJECTED` /
    `INVALID` / unknown → `PAM_AUTH_ERR`; transport/config/conversation →
@@ -50,7 +80,8 @@ The device decides; PAM never sees the challenge answer typed on the phone.
 `enrollment.authAttemptChallengeRequired` **or** the request's
 `challengeRequested` is true (`AuthAttemptService`). Decided **once at
 create**. Default length is 2 digits (`ezkey.core.auth-attempt.challenge-digits`);
-PAM accepts 0..99 only.
+PAM accepts 0..99 only. PAM's connector default is `challengeRequested=true`
+(#995); enrollment-required still overrides a connector `false`.
 
 **Key fact most people miss.** The keyboard-interactive prompt is rendered by
 the **ssh client on its own controlling terminal (`/dev/tty`)**, not on the
@@ -101,7 +132,7 @@ console / askpass, OpenSSH answers with an **empty string** (Isabelle D4
 | PAM stack: `auth required pam_ezkey.so` | Failure ends auth. | Demo: `ezkey-pam/sshd:4`. | [code] |
 | PAM `sufficient`, `optional` or `[default=ignore]` | UNAVAIL/ERR is ignored and the next modules decide. | **Fail-open** if a later module succeeds (e.g. `pam_permit`, or the password module in `password-auth`). Documented (README:242-243, STATUS:91-93). | [code] doc |
 | Module position "top of /etc/pam.d/sshd" (`install.sh:32`) | Runs before `password-auth`. | With kbd-int on a RHEL host, `pam_unix` will **also** prompt for a password after Ezkey. That gives 2 factors, but it is undocumented UX (§3 U7). | [inf] |
-| Module args | `debug`, `conf=` (`ezkey-pam/sshd:4`). Settings come from the conf file (`config/*:32-42`): `wait_timeout`, `api_timeout`, `challenge_requested`, `lab_http`, `context_*`. `wait_polling` is legacy (chunked wait). | `challenge_requested` only **asks**; the enrollment can still impose a code (§2). | [code] |
+| Module args | `debug`, `conf=` (`ezkey-pam/sshd:4`). Settings come from the conf file (`config/*`): `wait_timeout`, `api_timeout`, `challenge_requested` (default **true**, #995), `lab_http`, `context_*`. `wait_polling` is legacy (chunked wait). | `challenge_requested` only **asks**; enrollment can still impose a code (§ Decision / §2). | [code] |
 
 ## 2. Outcome matrix
 
@@ -116,14 +147,14 @@ Rows assume `Match … MaxAuthTries 1` and an interactive client unless stated.
 
 ### 2.1 Challenge source × module version
 
-| Conf `challenge_requested` | Enrollment `authAttemptChallengeRequired` | Server code? | 2.2.12 | **2.2.13 (#982)** |
+| Conf `challenge_requested` | Enrollment `authAttemptChallengeRequired` | Server code? | 2.2.13 | **2.2.14 (#995 default true)** |
 | --- | --- | --- | --- | --- |
-| false | false | none | Pre-create `ok` → create → wait | Same; ECHO_ON wording. Empty → **0 creates** [test] |
-| true | false | yes (request) | Pre-create `ok` → code → 2nd `ok` → wait | Pre-create `ok` → code prompt → **Enter** → poll `/wait` [test] S1-H / #982 |
-| false | **true** | yes (enrollment) | Code on 2nd prompt + `ok` | Code on 2nd prompt; **Enter** → poll [test] stub `enrollment_challenge` |
-| true | true | yes | Msg + Code ✔ | Same: `ok` → code → Enter → poll |
+| false (opt-out) | false | none | Pre-create `ok` → create → wait | Same; S0 opt-out path. Empty → **0 creates** [test] |
+| **true (default)** | false | yes (request) | Pre-create `ok` → code → Enter → poll | Same; now the **default** demo/host path [test] S1-H |
+| false | **true** | yes (enrollment) | Code on 2nd prompt; Enter → poll | Same — **server wins** even when connector opts out [test] stub |
+| true | true | yes | `ok` → code → Enter → poll | Same |
 | **true** | any | code missing or outside 0..99 | UNAVAIL (`ezkey_prewait_prompt_mode` −1) | Same fail-closed [test] |
-| **false** | any | code outside 0..99 (e.g. `challenge-digits` ≥ 3) | Waiting line (mode 0); code not shown → device INVALID or EXPIRED | Same: **not** UNAVAIL — silent deny after INVALID/expiry [code] |
+| **false** | any | code outside 0..99 (e.g. `challenge-digits` ≥ 3) | Skip post-create prompt; device INVALID/EXPIRED | Same: **not** UNAVAIL — silent deny after INVALID/expiry [code] |
 
 ### 2.2 Toggling the enrollment flag (Marc's test)
 
@@ -159,7 +190,7 @@ Rows assume `Match … MaxAuthTries 1` and an interactive client unless stated.
 
 | # | Case | Severity | Recommendation | #976 covers? |
 | --- | --- | --- | --- | --- |
-| U1 | **Push fatigue / username-only initiation.** With `AuthenticationMethods keyboard-interactive` and `challenge_requested=false` (both defaults), anyone who can reach sshd and knows an MFA username can push approval requests. One mistaken tap gives a shell. Demo `PerSourcePenalties no`. There is no create rate limit per enrollment in PAM (the server-side create limit is not verified here). | **High** (human fail-open). → Christophe | Document as a threat. Recommend `publickey,keyboard-interactive` or challenge on for internet-facing hosts. Verify the server create rate limit per enrollment. Keep `PerSourcePenalties` on outside the lab. | No |
+| U1 | **Push fatigue / username-only initiation.** With `AuthenticationMethods keyboard-interactive` (sshd default in the demo) anyone who can reach sshd and knows an MFA username can push approval requests after typing `ok`. Default `challenge_requested=true` (#995) reduces mistaken-tap risk when the device requires the code; opting conf out to `false` restores the approve-only path. Demo `PerSourcePenalties no`. There is no create rate limit per enrollment in PAM (the server-side create limit is not verified here). | **High** (human fail-open when challenge opted out). → Christophe | Keep challenge default on. Recommend `publickey,keyboard-interactive` for internet-facing hosts. Verify the server create rate limit per enrollment. Keep `PerSourcePenalties` on outside the lab. | No |
 | U2 | **D4: device approval with no visible prompt** (no-tty client). | High → fix | Require explicit `ok` **before** create. | **Yes** (2.2.12) |
 | U3 | **ControlMaster/ControlPersist** reuse skips MFA for every later session. | Medium (by design of SSH) | Document. Optionally recommend `MaxSessions 1` for MFA accounts (limits concurrency, not reuse) and "one approval = one master lifetime". | Doc |
 | U4 | **Pushes from non-interactive clients.** | Medium (noise) | **Confirm-before-create** (done): empty/batch fail with **zero** creates, challenge or not. | **Yes** (2.2.12) |
@@ -236,8 +267,8 @@ Tags as in §0. **2.2.13** = #982 tiers 0–1 on #976 confirm-before-create.
 
 | ID | Tier | Scenario | Interactive | Phone noise | Expected decision | 2.2.13 | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| **S0** | P1 | Baseline: no challenge, interactive `ssh` | I | yes (wanted) | Pre-create `ok` (ECHO_ON) → 1 create → wait | ✔ [test] | **Covered** |
-| **S1-H** | P1 | Challenge from host conf | I | yes | `ok` → create → code → **Enter** → poll → SUCCESS | ✔ [test] #982 | **Covered** |
+| **S0** | P1 | Opt-out: no connector challenge (`challenge_requested=false`), interactive `ssh` | I | yes (wanted) | Pre-create `ok` (ECHO_ON) → 1 create → wait | ✔ [test] | **Covered** (opt-out since #995; QA reorder by Isabelle) |
+| **S1-H** | P1 | Challenge from host conf (**default** since #995) | I | yes | `ok` → create → code → **Enter** → poll → SUCCESS | ✔ [test] #982/#995 | **Covered** |
 | **S1-E** | P1 | Challenge from **enrollment**, host false | I | yes | Code → Enter → poll (#975/#982) | ✔ [test] stub | **Covered** |
 | **S1-before** | P1 | Approve on phone **before** challenge Enter | I | yes | SUCCESS after late Enter (no cancel) | ✔ [test] #982 B1 Enter@30s | **Covered** |
 | **S1-after** | P1 | Approve on phone **after** challenge Enter | I | yes | SUCCESS after delayed `/wait` | ✔ [test] #982 delayed_accept | **Covered** |
@@ -285,11 +316,11 @@ Common preconditions: ezkey-pam-test VM with 2.2.12+ (#976 or later); `Match Gro
 
 | ID | Scenario | Preconditions | Steps | Expected |
 | --- | --- | --- | --- | --- |
-| PAM-S0-01 | S0 approve | host `challenge_requested=false`; enrollment challenge off | 1. `ssh testuser@host`. 2. Read pre-create prompt. 3. Type `ok`. 4. Approve on the device. | "Approve… request device approval" **before** create; shell; `result=SUCCESS`; **exactly 1** create |
+| PAM-S0-01 | S0 approve (opt-out) | host `challenge_requested=false` (opt-out of default true); enrollment challenge off | 1. `ssh testuser@host`. 2. Read pre-create prompt. 3. Type `ok`. 4. Approve on the device. | "SSH login… request device approval" **before** create; shell; `result=SUCCESS`; **exactly 1** create; no challenge prompt |
 | PAM-S0-02 | S0 deny | same | steps 1-3, then Deny | Access denied; `result=DENIED`; 1 attempt |
 | PAM-S0-03 | S0 expire | same | steps 1-3, no device action | Denied at ≈ applied TTL; `result=EXPIRED`; 1 attempt |
 | PAM-S0-04 | S0 wrong confirm | same | step 1, Enter (empty) or type `x` | `UNAVAIL`; debug "confirm"; **no attempt created** |
-| PAM-S1H-01 | S1-H code | host `challenge_requested=true` | `ssh`, `ok` (create), read code on 2nd prompt, `ok`, enter code on device, Approve | Code visible; SUCCESS; code **not** in `/var/log/secure` |
+| PAM-S1H-01 | S1-H code (default) | host `challenge_requested=true` (sample/entrypoint default since #995) | `ssh`, `ok` (create), read code on 2nd prompt, Enter, enter code on device, Approve | Code visible; SUCCESS; code **not** in `/var/log/secure` |
 | PAM-S1H-02 | S1-H wrong code | same | wrong code on device | `result=DENIED` (INVALID); 1 attempt |
 | PAM-S1E-01 | S1-E enrollment challenge | host **false**; enrollment challenge **on** | as S1H-01 | Code visible (#975); SUCCESS |
 | PAM-S1E-02 | S1-E deny | same | Deny without code | `result=DENIED` (REJECTED) |

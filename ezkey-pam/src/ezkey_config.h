@@ -7,7 +7,7 @@
 
 /* Module identification */
 #define EZKEY_MODULE_NAME "pam_ezkey"
-#define EZKEY_VERSION "2.2.13"
+#define EZKEY_VERSION "2.2.14"
 
 /*
  * Cancel outcome on the authpriv attempt summary line (Patrick #897 M2;
@@ -36,6 +36,13 @@
 #define EZKEY_DEFAULT_WAIT_TIMEOUT 90
 #define EZKEY_DEFAULT_WAIT_POLLING 2
 #define EZKEY_DEFAULT_API_TIMEOUT 10
+/*
+ * Connector default for create challengeRequested (#995 — Alex, confirmed by
+ * Marc on 2026-10-22). Safer default for SSH: request the two-digit code unless
+ * conf opts out. Enrollment authAttemptChallengeRequired still wins on the
+ * server regardless of this connector flag.
+ */
+#define EZKEY_DEFAULT_CHALLENGE_REQUESTED 1
 /*
  * Single auth wall-clock budget (Patrick P3 / #726): finish under demo sshd
  * LoginGraceTime 120 with margin. pam_sm_authenticate starts the clock;

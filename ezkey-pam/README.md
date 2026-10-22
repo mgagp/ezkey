@@ -35,6 +35,22 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
 
+## What changed in 2.2.14 (#995 — challenge requested by default)
+
+- **`challenge_requested=true`** is the connector default in
+  `config/pam_ezkey.conf`, `docker-entrypoint.sh`, and
+  `EZKEY_DEFAULT_CHALLENGE_REQUESTED` (compiled-in when the key is absent).
+- **Decision (Alex, confirmed by Marc on 2026-10-22):** the challenge code is
+  the safer default for SSH logins; the **connector** owns the default — no
+  Admin UI / Integration API “PAM type”, no server-side default, no migration
+  (refs [#995](https://github.com/mgagp/ezkey/issues/995)).
+- **Precedence:** enrollment `authAttemptChallengeRequired` is enforced by the
+  server whatever the connector requests; connector `true` asks for a code
+  otherwise; `false` only means “not requested by the connector.” See
+  [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md).
+- Pre-create **`ok`** prompt unchanged: anti-accident filter for batch clients,
+  not a security defense.
+
 ## What changed in 2.2.13 (#982 — fluidity tiers 0–1)
 
 - Pre-create confirm uses **`PAM_PROMPT_ECHO_ON`** (typed `ok` is visible) with
@@ -269,7 +285,7 @@ ssh -p 2223 \
 | `wait_timeout` | `90` | Seconds to wait for device approval (clamped **15–90**). Sent as create `ttlSeconds`; `/wait?timeout=` aligns on create response `timeoutSeconds` (PR-A) when present |
 | `wait_polling` | `2` | Wait poll interval |
 | `api_timeout` | `10` | Timeout for create/cancel calls (max 10) |
-| `challenge_requested` | `false` | Ask the Integration API for a challenge on create. Operator always confirms with **`ok` before create** (confirm-before-create). When the response includes a valid challenge (requested here, or enrollment-required in Admin UI), a **second** `pam_prompt` shows the digits (#975). No challenge → wait after the first `ok` only (#941). `true` + missing challenge → UNAVAIL. Full matrix: [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) |
+| `challenge_requested` | `true` | Ask the Integration API for a challenge on create (**default `true` since #995** — safer SSH default; connector owns the default). Operator always confirms with **`ok` before create** (confirm-before-create; anti-accident filter for batch clients, not a security defense). When the response includes a valid challenge (requested here, **or** enrollment-required — server enforces regardless of this flag), a **second** `pam_prompt` shows the digits (#975). Set `false` only to opt out of *connector-requested* challenge; enrollment-required still shows a code. `true` + missing challenge → UNAVAIL. Precedence: [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) |
 | `lab_http` | `false` | Allow `http://` Integration API URL (Docker entrypoint sets `true`) |
 | `context_title` | `SSH login` | Title shown on the device |
 | `context_message` | *(generated)* | Message shown on the device |

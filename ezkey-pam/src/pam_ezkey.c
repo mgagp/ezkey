@@ -162,7 +162,7 @@ static void ezkey_config_init(EzkeyConfig *cfg) {
     cfg->wait_timeout = EZKEY_DEFAULT_WAIT_TIMEOUT;
     cfg->wait_polling = EZKEY_DEFAULT_WAIT_POLLING;
     cfg->api_timeout = EZKEY_DEFAULT_API_TIMEOUT;
-    cfg->challenge_requested = 0;
+    cfg->challenge_requested = EZKEY_DEFAULT_CHALLENGE_REQUESTED;
     cfg->lab_http = 0;
     cfg->debug = 0;
     strncpy(cfg->context_title, "SSH login", sizeof(cfg->context_title) - 1);
