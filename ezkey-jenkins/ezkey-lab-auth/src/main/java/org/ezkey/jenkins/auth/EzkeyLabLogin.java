@@ -447,6 +447,10 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
     }
 
     private static void establishLogin(StaplerRequest2 req, EzkeyMockSecurityRealm realm, String username) {
+        // Session fixation: rotate id before elevating (Servlet 3.1), like Jenkins login.
+        if (req.getSession(false) != null) {
+            req.changeSessionId();
+        }
         UserDetails details = realm.loadUserByUsername2(username);
         UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());

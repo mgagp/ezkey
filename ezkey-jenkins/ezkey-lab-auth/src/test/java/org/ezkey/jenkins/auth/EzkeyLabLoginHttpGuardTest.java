@@ -1,6 +1,8 @@
 package org.ezkey.jenkins.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -19,19 +21,21 @@ import org.htmlunit.Page;
 import org.htmlunit.WebRequest;
 import org.htmlunit.html.HtmlForm;
 import org.htmlunit.html.HtmlPage;
+import org.htmlunit.util.Cookie;
 import org.htmlunit.util.NameValuePair;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 /**
- * Mutation-killing HTTP / Integration guards (#972 Patrick B2).
+ * Mutation-killing HTTP / Integration guards (#972 Patrick B2 + Christophe M2).
  *
  * <ul>
  *   <li>GET send → 405 — kills removal of {@code @RequirePOST}
  *   <li>POST without crumb → 403 — CrumbFilter still enforced
  *   <li>index form embeds crumb field
  *   <li>case D create → {@code bestEffortCancel} actually called (live HTTP stub)
+ *   <li>ACCEPTED poll rotates session id (session fixation)
  * </ul>
  *
  * @since 2026
@@ -76,6 +80,88 @@ class EzkeyLabLoginHttpGuardTest {
         assertTrue(
                 form.getInputsByName(crumbField).size() >= 1,
                 "index.jelly must embed CSRF crumb (kills mutation that strips jelly crumb)");
+    }
+
+    @Test
+    void acceptedPollRotatesSessionId(JenkinsRule j) throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext(
+                "/api/v1/auth-attempts",
+                exchange -> {
+                    String method = exchange.getRequestMethod();
+                    String path = exchange.getRequestURI().getPath();
+                    exchange.getRequestBody().readAllBytes();
+                    if ("POST".equals(method) && path.equals("/api/v1/auth-attempts")) {
+                        byte[] body =
+                                """
+                                {"authAttemptId":42,"authAttemptChallenge":null,"timeoutSeconds":60,"expiresAt":"t"}
+                                """
+                                        .getBytes(StandardCharsets.UTF_8);
+                        exchange.getResponseHeaders().add("Content-Type", "application/json");
+                        exchange.sendResponseHeaders(201, body.length);
+                        try (OutputStream os = exchange.getResponseBody()) {
+                            os.write(body);
+                        }
+                        return;
+                    }
+                    if ("GET".equals(method) && path.contains("/wait")) {
+                        byte[] body =
+                                """
+                                {"status":"ACCEPTED","completed":true,"timeoutReached":false}
+                                """
+                                        .getBytes(StandardCharsets.UTF_8);
+                        exchange.getResponseHeaders().add("Content-Type", "application/json");
+                        exchange.sendResponseHeaders(200, body.length);
+                        try (OutputStream os = exchange.getResponseBody()) {
+                            os.write(body);
+                        }
+                        return;
+                    }
+                    exchange.sendResponseHeaders(404, -1);
+                    exchange.close();
+                });
+        server.start();
+        try {
+            String base = "http://127.0.0.1:" + server.getAddress().getPort();
+            j.jenkins.setCrumbIssuer(new DefaultCrumbIssuer(false));
+            j.jenkins.setSecurityRealm(labRealm(base));
+
+            JenkinsRule.WebClient wc = j.createWebClient();
+            wc.setThrowExceptionOnFailingStatusCode(false);
+            // Disable wait.jelly auto-poll JS so we control the ACCEPTED poll ourselves.
+            wc.getOptions().setJavaScriptEnabled(false);
+            HtmlPage index = wc.goTo("ezkey-lab-login/");
+            HtmlForm form = index.getForms().get(0);
+            form.getInputByName("username").setValueAttribute("labuser");
+            // JenkinsRule.submit injects a valid crumb (form POST path).
+            HtmlPage waitPage = j.submit(form);
+            assertTrue(
+                    waitPage.getUrl().getPath().contains("wait")
+                            || waitPage.asNormalizedText().contains("Awaiting"),
+                    "send should reach wait; url="
+                            + waitPage.getUrl()
+                            + " text="
+                            + waitPage.asNormalizedText().substring(
+                                    0, Math.min(200, waitPage.asNormalizedText().length())));
+
+            String before = sessionCookieValue(wc);
+            assertNotNull(before, "pre-auth session cookie after send");
+
+            Page poll =
+                    wc.getPage(
+                            new WebRequest(new URL(j.getURL(), "ezkey-lab-login/poll"), HttpMethod.GET));
+            assertEquals(
+                    200,
+                    poll.getWebResponse().getStatusCode(),
+                    "poll should succeed: " + poll.getWebResponse().getContentAsString());
+            assertEquals("ACCEPTED", poll.getWebResponse().getContentAsString().trim());
+
+            String after = sessionCookieValue(wc);
+            assertNotNull(after, "post-auth session cookie after ACCEPTED");
+            assertNotEquals(before, after, "establishLogin must rotate session id (session fixation)");
+        } finally {
+            server.stop(0);
+        }
     }
 
     @Test
@@ -131,6 +217,16 @@ class EzkeyLabLoginHttpGuardTest {
         } finally {
             server.stop(0);
         }
+    }
+
+    private static String sessionCookieValue(JenkinsRule.WebClient wc) {
+        for (Cookie cookie : wc.getCookieManager().getCookies()) {
+            if ("JSESSIONID".equalsIgnoreCase(cookie.getName())
+                    || cookie.getName().startsWith("JSESSIONID")) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 
     private static EzkeyMockSecurityRealm labRealm(String baseUrl) {
