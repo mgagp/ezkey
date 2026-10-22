@@ -136,14 +136,29 @@ Credentials-plugin secret migration deferred (not cheap).
 
 ## 9. M4 — live Integration round-trip
 
-1. Ezkey stack up (Integration API `:7080`) + Demo Device with a verified enrollment.
-2. Provision key + `userIdentifier` (e.g. `./scripts/m4-provision-integration.sh`) and
-   `source .ezkey/m4-integration.env`.
+1. Ezkey stack up (Integration API `:7080`) + Demo Device.
+2. Provision a dedicated lab integration (M5 script below) and `source .ezkey/m5-integration.env`.
 3. `./scripts/build-auth-plugin.sh && ./scripts/configure-mock-auth.sh`
 4. Open `/ezkey-lab-login/` → confirm `ok` → note challenge → Approve (or Deny) on Demo Device.
 5. Never log the challenge or Integration secret.
 
+## 10. M5 — dedicated seed + clear login states
+
+1. From a clean-start Ezkey stack + Demo Device + Jenkins lab up:
+   ```bash
+   cd ezkey-jenkins
+   ./scripts/m5-provision-lab-integration.sh   # creates jenkins-lab integration + labuser enrollment
+   source .ezkey/m5-integration.env
+   ./scripts/build-auth-plugin.sh && ./scripts/configure-mock-auth.sh
+   ./scripts/m4-live-demo.sh approve           # or deny
+   ```
+2. Admin login during provision uses system enrollment `#1` (`admin.docker`) only for a token —
+   Jenkins MFA uses the new enrollment id written to the env file (not enrollment `#1`).
+3. UI states on `/ezkey-lab-login/`: **confirm** → **challenge** + **waiting** → **approved** /
+   **denied** / **expired** / **cancelled** (`data-ezkey-lab-state` on each page).
+4. Credentials-plugin migration remains deferred (not low-risk for this lab — see `DESIGN.md`).
+
 ## Out of scope (later milestones)
 
-Credentials-plugin migration (optional), community/ngrok endpoints, publishing to the
+Credentials-plugin migration (deferred), community/ngrok endpoints, publishing to the
 Jenkins update center.

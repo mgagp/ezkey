@@ -8,6 +8,7 @@ import hudson.security.SecurityRealm;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
@@ -30,11 +31,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 
 /**
- * Multi-step Jenkins login against the Integration API (#972 M4).
+ * Multi-step Jenkins login against the Integration API (#972 M4/M5).
  *
  * <p>Flow: confirm (GET form) → POST confirm creates attempt → wait page shows challenge → poll
- * wait → ACCEPTED establishes session / REJECTED fails. Never calls Auth API. Never logs challenge
- * or integration secret.
+ * wait → result states (approved / denied / expired / cancelled). Never calls Auth API. Never logs
+ * challenge or integration secret.
  *
  * @since 2026
  */
@@ -47,6 +48,7 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
     static final String SESSION_USERNAME = "ezkey.lab.pendingUsername";
     static final String SESSION_CHALLENGE = "ezkey.lab.pendingChallenge";
     static final String SESSION_TIMEOUT = "ezkey.lab.pendingTimeoutSeconds";
+    static final String ATTR_RESULT_STATE = "ezkeyLabResultState";
 
     @CheckForNull
     @Override
@@ -234,6 +236,7 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
             }
             if ("REJECTED".equalsIgnoreCase(status)
                     || "EXPIRED".equalsIgnoreCase(status)
+                    || "CANCELLED".equalsIgnoreCase(status)
                     || "INVALID".equalsIgnoreCase(status)) {
                 clearPending(session);
                 return text(200, status.toUpperCase());
@@ -272,7 +275,91 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
             }
             clearPending(session);
         }
-        return HttpResponses.redirectTo(".");
+        return HttpResponses.redirectTo("result?state=cancelled");
+    }
+
+    /**
+     * Terminal result page (approved / denied / expired / cancelled).
+     *
+     * @param req stapler request
+     * @param rsp stapler response
+     * @param state result state query param
+     * @throws IOException on redirect/write failure
+     * @throws ServletException on view forward failure
+     */
+    @GET
+    public void doResult(
+            StaplerRequest2 req, StaplerResponse2 rsp, @QueryParameter String state)
+            throws IOException, ServletException {
+        String normalized = normalizeResultState(state);
+        req.setAttribute(ATTR_RESULT_STATE, normalized);
+        req.getView(this, "result.jelly").forward(req, rsp);
+    }
+
+    /** Machine state key for {@code result.jelly} ({@code data-ezkey-lab-state}). */
+    @NonNull
+    public String getResultState() {
+        return currentResultState();
+    }
+
+    /** Short human label for the result state line. */
+    @NonNull
+    public String getResultStateLabel() {
+        return switch (currentResultState()) {
+            case "approved" -> "Approved";
+            case "denied" -> "Denied";
+            case "expired" -> "Expired";
+            case "cancelled" -> "Cancelled";
+            default -> "Result";
+        };
+    }
+
+    /** Result page heading. */
+    @NonNull
+    public String getResultTitle() {
+        return switch (currentResultState()) {
+            case "approved" -> "Approved";
+            case "denied" -> "Denied";
+            case "expired" -> "Expired";
+            case "cancelled" -> "Cancelled";
+            default -> "Ezkey login";
+        };
+    }
+
+    /** Operator-facing result explanation. */
+    @NonNull
+    public String getResultMessage() {
+        return switch (currentResultState()) {
+            case "approved" -> "Device approved. Your Jenkins session is ready.";
+            case "denied" -> "Device denied this sign-in. No Jenkins session was created.";
+            case "expired" -> "The auth attempt expired before a device response. Try again.";
+            case "cancelled" -> "Sign-in was cancelled. No Jenkins session was created.";
+            default -> "Unknown result.";
+        };
+    }
+
+    @NonNull
+    private String currentResultState() {
+        StaplerRequest2 req = Stapler.getCurrentRequest2();
+        if (req == null) {
+            return "unknown";
+        }
+        Object s = req.getAttribute(ATTR_RESULT_STATE);
+        return s instanceof String str ? str : "unknown";
+    }
+
+    @NonNull
+    private static String normalizeResultState(@CheckForNull String state) {
+        if (state == null || state.isBlank()) {
+            return "unknown";
+        }
+        return switch (state.trim().toLowerCase(Locale.ROOT)) {
+            case "approved", "accepted" -> "approved";
+            case "denied", "rejected" -> "denied";
+            case "expired" -> "expired";
+            case "cancelled", "canceled", "invalid" -> "cancelled";
+            default -> "unknown";
+        };
     }
 
     @CheckForNull

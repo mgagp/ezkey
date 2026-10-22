@@ -1,44 +1,47 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
-  <l:layout title="Awaiting Ezkey approval" norefresh="true">
+  <l:layout title="Ezkey login — Waiting" norefresh="true">
     <l:main-panel>
-      <h1>Awaiting device approval</h1>
-      <p>User: <strong>${it.pendingUsername}</strong></p>
-      <j:if test="${it.pendingChallengeFormatted != null}">
-        <p data-testid="ezkey-lab-challenge">
-          Challenge code:
-          <strong style="font-size: 1.75rem; letter-spacing: 0.15em;">${it.pendingChallengeFormatted}</strong>
-        </p>
-        <p>Enter or match this code on your Ezkey device, then approve or deny.</p>
-      </j:if>
-      <p id="status" data-testid="ezkey-lab-status">Waiting…</p>
-      <form method="post" action="cancel" style="margin-top: 1rem;">
-        <j:set var="crumbIssuer" value="${app.getCrumbIssuer()}"/>
-        <j:if test="${crumbIssuer != null}">
-          <input type="hidden" name="${crumbIssuer.crumbRequestField}" value="${crumbIssuer.crumb}"/>
+      <div data-testid="ezkey-lab-state" data-ezkey-lab-state="waiting">
+        <p style="margin:0 0 0.5rem;color:#666;font-size:0.9rem;">State: Challenge · Waiting</p>
+        <h1>Awaiting device approval</h1>
+        <p>User: <strong data-testid="ezkey-lab-username">${it.pendingUsername}</strong></p>
+        <j:if test="${it.pendingChallengeFormatted != null}">
+          <div data-testid="ezkey-lab-challenge" data-ezkey-lab-state="challenge"
+               style="margin:1rem 0;padding:1rem;border:1px solid #ccc;max-width:20rem;">
+            <div style="font-size:0.85rem;color:#666;">Challenge code</div>
+            <strong style="font-size: 1.75rem; letter-spacing: 0.15em;">${it.pendingChallengeFormatted}</strong>
+            <p style="margin:0.5rem 0 0;">Match this code on your Ezkey device, then approve or deny.</p>
+          </div>
         </j:if>
-        <button type="submit" data-testid="ezkey-lab-cancel">Cancel</button>
-      </form>
+        <p id="status" data-testid="ezkey-lab-status">Waiting for device response…</p>
+        <form method="post" action="cancel" style="margin-top: 1rem;">
+          <j:set var="crumbIssuer" value="${app.getCrumbIssuer()}"/>
+          <j:if test="${crumbIssuer != null}">
+            <input type="hidden" name="${crumbIssuer.crumbRequestField}" value="${crumbIssuer.crumb}"/>
+          </j:if>
+          <button type="submit" data-testid="ezkey-lab-cancel">Cancel</button>
+        </form>
+      </div>
       <script><![CDATA[
         (function () {
           var statusEl = document.getElementById('status');
           var stopped = false;
+          function go(state) {
+            stopped = true;
+            window.location.href = 'result?state=' + encodeURIComponent(state);
+          }
           function poll() {
             if (stopped) return;
             fetch('poll', { credentials: 'same-origin' })
               .then(function (r) { return r.text().then(function (t) { return { ok: r.ok, text: t.trim() }; }); })
               .then(function (res) {
-                statusEl.textContent = res.text;
-                if (res.text === 'ACCEPTED') {
-                  stopped = true;
-                  window.location.href = '${rootURL}/';
-                  return;
-                }
-                if (res.text === 'REJECTED' || res.text === 'EXPIRED' || res.text === 'INVALID') {
-                  stopped = true;
-                  statusEl.textContent = 'Denied (' + res.text + ').';
-                  return;
-                }
+                var t = res.text;
+                if (t === 'ACCEPTED') { go('approved'); return; }
+                if (t === 'REJECTED') { go('denied'); return; }
+                if (t === 'EXPIRED') { go('expired'); return; }
+                if (t === 'CANCELLED' || t === 'INVALID') { go('cancelled'); return; }
+                statusEl.textContent = 'Waiting… (' + (t || 'PENDING') + ')';
                 setTimeout(poll, 1500);
               })
               .catch(function () { setTimeout(poll, 2000); });

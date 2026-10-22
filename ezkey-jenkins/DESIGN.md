@@ -34,9 +34,9 @@ A local admin path that does **not** depend on Ezkey / Integration API being up.
 
 ## Secret handling — `hudson.util.Secret` vs Credentials plugin
 
-**Current (M2–M4):** integration secret stored as `hudson.util.Secret` on the realm (Jenkins instance encryption). **Never logged** (no integration secret, no challenge codes).
+**Current (M2–M5):** integration secret stored as `hudson.util.Secret` on the realm (Jenkins instance encryption). **Never logged** (no integration secret, no challenge codes).
 
-**Credentials plugin (`StringCredentials`) — deferred (not cheap):** the lab skips the setup wizard, so credentials + plain-credentials + transitive detached plugins are not present. Pulling that fan-out solely to relocate one secret is accidental complexity.
+**Credentials plugin (`StringCredentials`) — deferred (M5 confirmed not low-risk):** the lab skips the setup wizard, so credentials + plain-credentials + transitive detached plugins are not present. Pulling that fan-out solely to relocate one secret is accidental complexity. Remains deferred until a product need forces Credentials install for other reasons.
 
 **When migration would make sense:** if the lab (or a future product plugin) already installs the Credentials plugin for other reasons, or operators need shared secret rotation / ACL-scoped credentials across plugins — then move the Integration secret to `StringCredentials` and reference it by ID from the realm. Until then, keep `hudson.util.Secret`.
 
@@ -73,6 +73,30 @@ Implemented: `EzkeyLabLogin` (`/ezkey-lab-login/`) + `EzkeyLabLoginSupport` + `E
    `integration-api:7080`). No shared volumes; still a separate compose project. Fallback:
    `host.docker.internal:7080` when the external network is unavailable.
 
+## M5 — dedicated lab seed + login UI states
+
+**Dedicated integration + enrollment (not system enrollment #1):**
+
+| Piece | Lab default | Notes |
+|-------|-------------|--------|
+| Integration | code `jenkins-lab` | Created via Admin API; reused on re-run |
+| Enrollment | name `Jenkins Lab labuser` | `userIdentifier=labuser`, challenge required |
+| Demo Device bind/verify | `scripts/lib/demo-device-enroll.sh` | Uses create challenge + proof token; never logs them |
+| API key | description `jenkins-lab-m5` | Written to gitignored `.ezkey/m5-integration.env` |
+| Admin token bootstrap | system enrollment `#1` / `admin.docker` | Token only — Jenkins MFA does **not** patch enrollment `#1` |
+
+Setup: `./scripts/m5-provision-lab-integration.sh` then `source .ezkey/m5-integration.env` and
+`./scripts/configure-mock-auth.sh`. Live: `./scripts/m4-live-demo.sh approve|deny` (reads
+`EZKEY_JENKINS_ENROLLMENT_ID` from the env file).
+
+**`/ezkey-lab-login/` states (M5):** confirm → challenge + waiting → approved | denied | expired |
+cancelled (plus error). Each page exposes `data-ezkey-lab-state` / `data-testid="ezkey-lab-state"`.
+
+**Credentials:** still deferred (see above) — not low-risk for this lab.
+
+**Boundaries:** no Admin UI changes; integration behaviour documented only in this folder
+(`DESIGN.md` / `README.md` / `TUTORIAL.md`). Break-glass unchanged.
+
 ## Milestone map
 
 | M | Focus |
@@ -81,5 +105,5 @@ Implemented: `EzkeyLabLogin` (`/ezkey-lab-login/`) + `EzkeyLabLoginSupport` + `E
 | M1 | Hello-world `.hpi` |
 | M2 | SecurityRealm + break-glass + prior-art |
 | M3 | SDK / Integration API fit decision |
-| **M4** | **Live Integration round-trip + confirm/challenge UI** |
-| M5 | (proposed) polish / Credentials-optional / seed automation |
+| M4 | Live Integration round-trip + confirm/challenge UI |
+| **M5** | **Dedicated lab integration/enrollment + UI states; Credentials deferred** |

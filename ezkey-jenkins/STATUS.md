@@ -10,7 +10,7 @@ roadmap. Success means demonstrable, not shipped.
 | **M2** mock auth + prior-art + break-glass | **done** | login hooked; break-glass admin |
 | **M3** SDK fit decision | **done** | one-line SDK decision recorded |
 | **M4** real Ezkey Integration round-trip | **done** | confirm → create → challenge → wait; approve + deny |
-| M5 polish / optional Credentials | not started | — |
+| **M5** dedicated seed + UI states; Credentials deferred | **done** | lab integration ≠ system #1; clear login states |
 
 ## M3 decision (gate)
 
@@ -26,7 +26,10 @@ cd ezkey-jenkins
 ./scripts/build-plugin.sh && ./scripts/install-plugin.sh \
   && ./scripts/demo-hello-job.sh                               # M1
 ./scripts/build-auth-plugin.sh
-# M4: source Integration keys, then:
-./scripts/configure-mock-auth.sh                               # break-glass + /ezkey-lab-login/
-# Live: open /ezkey-lab-login/ → type ok → match challenge on Demo Device → Approve/Deny
+# M5: dedicated integration+enrollment (requires Ezkey clean-start + Demo Device):
+./scripts/m5-provision-lab-integration.sh
+source .ezkey/m5-integration.env
+./scripts/configure-mock-auth.sh
+./scripts/m4-live-demo.sh approve                              # or deny
+# UI: /ezkey-lab-login/ states confirm → challenge/waiting → approved|denied|expired|cancelled
 ```

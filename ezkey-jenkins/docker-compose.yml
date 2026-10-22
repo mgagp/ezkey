@@ -6,7 +6,7 @@
 #
 # Own compose project. Optionally joins the main stack network as *external*
 # so the plugin can call Integration API at http://integration-api:7080 (M4).
-# That is DNS reachability only — no shared volumes or PAM coupling.
+# DNS reachability only — no shared volumes with the main stack.
 
 services:
   jenkins:
