@@ -2,8 +2,11 @@
 """Minimal Integration API stub for ezkey-pam lab/CI proofs (Patrick CHANGES / #895).
 
 Modes (EZKEY_STUB_MODE):
-  ok             — POST 201 with challenge 42; GET wait → ACCEPTED
-  no_challenge   — POST 201 without authAttemptChallenge
+  ok             — POST 201; challenge only when request challengeRequested=true;
+                   GET wait → ACCEPTED
+  no_challenge   — POST 201 without authAttemptChallenge (even if requested)
+  enrollment_challenge — POST 201 with authAttemptChallenge even when request
+                   challengeRequested=false (enrollment-required; #975); wait → ACCEPTED
   slow_create    — sleep then 201 (for api_timeout)
   pending        — POST 201; GET wait sleeps for ?timeout= then PENDING + timeoutReached
   expired        — POST 201; GET wait → EXPIRED
@@ -84,6 +87,25 @@ def _parse_req_ttl(body: bytes) -> int | None:
     return None
 
 
+def _req_challenge_requested(body: bytes) -> bool:
+    if not body:
+        return False
+    try:
+        parsed = json.loads(body.decode("utf-8"))
+        return bool(parsed.get("challengeRequested"))
+    except (json.JSONDecodeError, UnicodeDecodeError, TypeError, ValueError):
+        return False
+
+
+def _include_challenge(body: bytes) -> bool:
+    """Mirror Integration API: challenge when requested, forced, or legacy fixture."""
+    if MODE == "no_challenge":
+        return False
+    if MODE == "enrollment_challenge" or MODE in LEGACY_CREATE_MODES:
+        return True
+    return _req_challenge_requested(body)
+
+
 def _legacy_create_body() -> dict:
     # Pre-TTL server: ignore request field; no timeoutSeconds/expiresAt.
     return {
@@ -151,8 +173,9 @@ class Handler(BaseHTTPRequestHandler):
                 "status": "PENDING",
                 "timeoutSeconds": None,
                 "expiresAt": "2099-01-01T00:00:00Z",
-                "authAttemptChallenge": CHALLENGE,
             }
+            if _include_challenge(body):
+                resp["authAttemptChallenge"] = CHALLENGE
             self._json(201, resp)
             return
 
@@ -162,8 +185,9 @@ class Handler(BaseHTTPRequestHandler):
                 "status": "PENDING",
                 "timeoutSeconds": 0,
                 "expiresAt": "2099-01-01T00:00:00Z",
-                "authAttemptChallenge": CHALLENGE,
             }
+            if _include_challenge(body):
+                resp["authAttemptChallenge"] = CHALLENGE
             self._json(201, resp)
             return
 
@@ -190,7 +214,7 @@ class Handler(BaseHTTPRequestHandler):
             "timeoutSeconds": applied_ttl,
             "expiresAt": "2099-01-01T00:00:00Z",
         }
-        if MODE != "no_challenge":
+        if _include_challenge(body):
             resp["authAttemptChallenge"] = CHALLENGE
         self._json(201, resp)
 
@@ -237,7 +261,7 @@ class Handler(BaseHTTPRequestHandler):
                 },
             )
             return
-        # ok / legacy_create / applied_* / no_challenge / slow_create
+        # ok / enrollment_challenge / legacy_create / applied_* / no_challenge / slow_create
         self._json(
             200,
             {

@@ -81,6 +81,9 @@ start_stub() {
 
 point_conf_at_stub() {
   local wait_to="${1:-15}"
+  # Prefer cp+chmod over install(1): on some Rocky runtime images install -o/-g
+  # fails with EEXIST when replacing the live conf, leaving URL/stub pointing
+  # at the CI dummy and zero stub creates.
   docker exec "${CONTAINER}" sh -c \
     "grep -v '^integration_api_url=' '${CONF}' | grep -v '^wait_timeout=' >'${CONF}.tmp'
      echo 'integration_api_url=http://127.0.0.1:${STUB_PORT}' >>'${CONF}.tmp'
@@ -90,7 +93,9 @@ point_conf_at_stub() {
      if ! grep -q '^api_timeout=' '${CONF}.tmp'; then echo 'api_timeout=5' >>'${CONF}.tmp'; fi
      if ! grep -q '^debug=' '${CONF}.tmp'; then echo 'debug=true' >>'${CONF}.tmp'; fi
      sed -i 's/^debug=.*/debug=true/' '${CONF}.tmp'
-     install -m 600 -o root -g root '${CONF}.tmp' '${CONF}'
+     cp -f '${CONF}.tmp' '${CONF}'
+     chown root:root '${CONF}'
+     chmod 600 '${CONF}'
      rm -f '${CONF}.tmp'"
 }
 
@@ -165,8 +170,8 @@ point_conf_at_stub "${CASE_C_WAIT_TTL}"
 install_sshd_cfg "${SCRIPT_DIR}/../sshd_config"
 docker exec "${CONTAINER}" sh -c ": >'${STUB_REQ_LOG}'"
 
-# Drive SSH under PTY with auto-Enter so create completes and /wait starts
-# before kill (#941 waiting prompt + #907 R5).
+# Drive SSH under PTY: confirm-before-create needs ok first, then create +
+# /wait, then kill (#941 / #975 / #907 R5).
 KILL_LOG="${ARTIFACT_DIR}/pam-f9-kill-ssh.log"
 KILL_CTRL="$(ezkey_mk_ctrl_fifo)"
 KILL_CTRL_DIR="$(dirname "${KILL_CTRL}")"
@@ -181,6 +186,15 @@ python3 "${SCRIPT_DIR}/ssh-pty-capture.py" "${KILL_LOG}" "${KILL_CTRL}" \
   >/dev/null 2>&1 &
 SSH_PID=$!
 set -e
+
+# Pre-create ok → POST; only then can /wait start.
+for _ in $(seq 1 80); do
+  if ezkey_ssh_capture_has_prewait_prompt "${KILL_LOG}"; then
+    printf 'ok\n' >"${KILL_CTRL}" 2>/dev/null || true
+    break
+  fi
+  sleep 0.1
+done
 
 CREATED=0
 for _ in $(seq 1 80); do
@@ -199,14 +213,6 @@ if [ "${CREATED}" -lt 1 ]; then
   rm -rf "${KILL_CTRL_DIR}"
   fail "B2b: no create before kill (stub/pending path)"
 else
-  # Flush waiting prompt then allow /wait to begin before client kill.
-  for _ in $(seq 1 40); do
-    if ezkey_ssh_capture_has_prewait_prompt "${KILL_LOG}"; then
-      printf 'enter\n' >"${KILL_CTRL}" 2>/dev/null || true
-      break
-    fi
-    sleep 0.1
-  done
   for _ in $(seq 1 40); do
     WAITS="$(docker exec "${CONTAINER}" sh -c \
       "grep -c 'GET .*/wait' '${STUB_REQ_LOG}' 2>/dev/null || true" | tr -d ' \r')"
@@ -259,9 +265,19 @@ else
     fail "B2b: expected creates=1 at end of case, got ${CREATES_END}"
   fi
 
-  if [ "${CANCEL_SEEN}" -eq 1 ] && [ "${CANCEL_ELAPSED}" -le 5 ]; then
-    echo "[NOTE] B2b: cancel observed in ${CANCEL_ELAPSED}s (best-effort win; not required)" \
-      | tee -a "${PROOF}"
+  # Patrick M3 / S6: when OpenSSH delivers wait-scoped SIGTERM, cancel must be
+  # ok ≤5s. On OpenSSH 9.9 pre-auth kill, SIGTERM often never arrives — then
+  # cancel is best-effort (STATUS R5); hard gates above are TTL + single create.
+  ATTEMPT_KILL="$(docker exec "${CONTAINER}" sh -c \
+    "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
+  echo "kill-during-wait attempt=${ATTEMPT_KILL}" | tee -a "${PROOF}"
+  if [ "${CANCEL_SEEN}" -eq 1 ]; then
+    if [ "${CANCEL_ELAPSED}" -le 5 ] \
+      && echo "${ATTEMPT_KILL}" | grep -q 'cancel=ok'; then
+      ok "B2b: cancel=ok within ${CANCEL_ELAPSED}s after kill during /wait"
+    else
+      fail "B2b: cancel seen but not ok≤5s (elapsed=${CANCEL_ELAPSED}): ${ATTEMPT_KILL}"
+    fi
   else
     echo "[NOTE] B2b: cancel absent or >5s (expected on OpenSSH 9.9 pre-auth; TTL bounds residual)" \
       | tee -a "${PROOF}"

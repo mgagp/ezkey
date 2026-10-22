@@ -2,6 +2,11 @@
 # Host-oriented sketch ONLY — not installed by the demo image and not applied
 # to any live Lightsail / dogfood host by this repository.
 #
+# Interaction model (2.2.12 confirm-before-create): one kbd-int round →
+# pre-create "ok" → at most one POST /auth-attempts → optional challenge
+# prompt → /wait. Batch / empty / Ctrl-C at the first prompt create nothing.
+# Full catalogue: docs/INTERACTION-MODEL.md
+#
 # Intent (fail-closed MFA with named break-glass):
 #   - Interactive users: primary factor (pubkey or unix) AND pam_ezkey required.
 #   - Named break-glass account skips pam_ezkey (console / emergency access).

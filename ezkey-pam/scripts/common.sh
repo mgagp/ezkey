@@ -135,19 +135,20 @@ wait_http_ok() {
   return 1
 }
 
-# True when a live SSH capture already shows a pre-wait PAM_PROMPT_ECHO_OFF
-# line (no-challenge waiting message or challenge code) — #941 F1.
+# True when a live SSH capture already shows a PAM_PROMPT_ECHO_OFF line —
+# pre-create confirm (#975) and/or post-create challenge code (#941 / #975).
 ezkey_ssh_capture_has_prewait_prompt() {
   local log="$1"
   local flat
   flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
   echo "${flat}" | grep -qE \
-    'Approve this SSH login on your Ezkey device|Ezkey challenge code:|Press Enter to wait for Ezkey device approval'
+    'Approve this SSH login on your Ezkey device|Ezkey challenge code:|Type ok and press Enter to (request device approval|wait for Ezkey device approval)'
 }
 
-# Run one keyboard-interactive SSH under a PTY; auto-send Enter when the
-# pre-wait prompt appears (#941). Create-fail paths never show a prompt — the
-# helper just waits for ssh to exit.
+# Run one keyboard-interactive SSH under a PTY; auto-send "ok" when a
+# confirm/challenge prompt appears (#941 / #975 confirm-before-create).
+# Re-sends on cooldown so a challenge path (ok #1 create, ok #2 wait) works.
+# Create-fail paths that never show a prompt — helper waits for ssh to exit.
 # Args: <log> [remote_cmd] [ConnectTimeout] [NumberOfPasswordPrompts]
 # Default prompts=1 (Match MaxAuthTries 1). Pass 3 for F9 multitry case A.
 ezkey_ssh_kbdint_autoenter() {
@@ -189,15 +190,15 @@ ezkey_ssh_kbdint_autoenter() {
   bg=$!
   set -e
 
-  # Re-send Enter on a short cooldown so OpenSSH multitry rounds (Match forgotten)
-  # each clear the waiting/challenge prompt (#941 + #907 F9 case A).
+  # Re-send ok on a short cooldown so OpenSSH multitry rounds (Match forgotten)
+  # each clear the waiting/challenge prompt (#941 + #907 F9 case A / #975 D4).
   for i in $(seq 1 600); do
     if ! kill -0 "${bg}" 2>/dev/null; then
       break
     fi
     since_enter=$((since_enter + 1))
     if ezkey_ssh_capture_has_prewait_prompt "${log}" && [ "${since_enter}" -ge 15 ]; then
-      printf 'enter\n' >"${ctrl}" 2>/dev/null || true
+      printf 'ok\n' >"${ctrl}" 2>/dev/null || true
       since_enter=0
     fi
     sleep 0.1
