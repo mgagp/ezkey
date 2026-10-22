@@ -38,6 +38,7 @@ jobs:
       cli-python: ${{ steps.resolve.outputs.cli-python }}
       ezkey-pam: ${{ steps.resolve.outputs.ezkey-pam }}
       lightsail: ${{ steps.resolve.outputs.lightsail }}
+      dart-sdk: ${{ steps.resolve.outputs.dart-sdk }}
       ezkey-jenkins: ${{ steps.resolve.outputs.ezkey-jenkins }}
       workflows: ${{ steps.resolve.outputs.workflows }}
     steps:
@@ -78,6 +79,8 @@ jobs:
               - 'scripts/build.sh'
               - 'scripts/update-specs.sh'
               - 'scripts/sync-ezkey-org-api-specs.sh'
+              - 'scripts/check-ezkey-org-api-specs.sh'
+              - 'sites/ezkey-org/api-specs/**'
               - 'docker/Dockerfile'
               - 'docker/**'
               - 'scripts/ci-ha-lb-smoke.sh'
@@ -114,6 +117,8 @@ jobs:
               - 'docker/docker-compose.docker-dev.yml'
               - 'docs/lightsail/**'
               - 'docs/LOCAL_STACK_PORTS.md'
+            dart-sdk:
+              - 'ezkey_dart/**'
             ezkey-jenkins:
               - 'ezkey-jenkins/**'
 
@@ -130,6 +135,7 @@ jobs:
             echo "cli-python=true" >> "$GITHUB_OUTPUT"
             echo "ezkey-pam=true" >> "$GITHUB_OUTPUT"
             echo "lightsail=true" >> "$GITHUB_OUTPUT"
+            echo "dart-sdk=true" >> "$GITHUB_OUTPUT"
             echo "ezkey-jenkins=true" >> "$GITHUB_OUTPUT"
             echo "workflows=true" >> "$GITHUB_OUTPUT"
             echo "Forced all suites (workflow_dispatch)"
@@ -140,6 +146,7 @@ jobs:
             echo "cli-python=${{ steps.filter.outputs.cli-python }}" >> "$GITHUB_OUTPUT"
             echo "ezkey-pam=${{ steps.filter.outputs.ezkey-pam }}" >> "$GITHUB_OUTPUT"
             echo "lightsail=${{ steps.filter.outputs.lightsail }}" >> "$GITHUB_OUTPUT"
+            echo "dart-sdk=${{ steps.filter.outputs.dart-sdk }}" >> "$GITHUB_OUTPUT"
             echo "ezkey-jenkins=${{ steps.filter.outputs.ezkey-jenkins }}" >> "$GITHUB_OUTPUT"
             echo "workflows=${{ steps.filter.outputs.workflows }}" >> "$GITHUB_OUTPUT"
           fi
@@ -227,6 +234,10 @@ jobs:
             echo "::error::git symlinks (mode 120000) are forbidden. Point generators at specs/ or use a physical copy (#833)."
             exit 1
           fi
+
+      # #977: ezkey.org ReDoc portal copies must match canonical specs/.
+      - name: Assert ezkey.org API portal OpenAPI copies match specs/
+        run: bash scripts/check-ezkey-org-api-specs.sh
 
       - name: Set up JDK 25
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
@@ -425,6 +436,25 @@ jobs:
       - name: ezkey.online hostname allowlist unit tests
         run: ./scripts/ops/check-ezkey-online-hosts.test.sh
 
+  # Experimental Dart SDK: offline gate only (format, analyze, unit tests) in the
+  # pinned official Dart image. The live-stack suite (ezkey_dart/scripts/e2e.sh) stays local.
+  dart-sdk:
+    name: dart-sdk
+    needs: changes
+    if: needs.changes.outputs.dart-sdk == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      EZKEY_DART_IMAGE: dart:3.13.6@sha256:bf07cd831c34d7cef047bcd50803fa38e3af59664a276440893ca9db77014ca0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Format, analyze, unit tests (Docker)
+        run: ./ezkey_dart/scripts/test.sh
+
   # Experimental Jenkins lab plugins (#972): Docker Temurin 21 + mvn test.
   ezkey-jenkins:
     name: ezkey-jenkins
@@ -445,7 +475,7 @@ jobs:
   # failure or cancellation of any needed job fails the gate.
   ci-gate:
     name: ci-gate
-    needs: [changes, admin-ui, backend, ha-smoke, mobile, cli-python, ezkey-pam, lightsail, ezkey-jenkins]
+    needs: [changes, admin-ui, backend, ha-smoke, mobile, cli-python, ezkey-pam, lightsail, dart-sdk, ezkey-jenkins]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -461,6 +491,7 @@ jobs:
           echo "cli-python=${{ needs.cli-python.result }}"
           echo "ezkey-pam=${{ needs.ezkey-pam.result }}"
           echo "lightsail=${{ needs.lightsail.result }}"
+          echo "dart-sdk=${{ needs.dart-sdk.result }}"
           echo "ezkey-jenkins=${{ needs.ezkey-jenkins.result }}"
 
           if [[ "${{ needs.changes.result }}" != "success" ]]; then
@@ -476,6 +507,7 @@ jobs:
             "cli-python:${{ needs.cli-python.result }}" \
             "ezkey-pam:${{ needs.ezkey-pam.result }}" \
             "lightsail:${{ needs.lightsail.result }}" \
+            "dart-sdk:${{ needs.dart-sdk.result }}" \
             "ezkey-jenkins:${{ needs.ezkey-jenkins.result }}"; do
             name="${pair%%:*}"
             result="${pair#*:}"

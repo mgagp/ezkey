@@ -23,6 +23,8 @@ Historical September operable-release compass (Waves A–C + freeze D narrative 
 [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
 — superseded as next-P0 gate by `V-2026-09-26-public-alpha-posture-closeout`.
 
+**Integration lab candidates (reference study, not a roadmap commitment):** [`../integration-lab-candidates-evaluation-2026-10-22.md`](../integration-lab-candidates-evaluation-2026-10-22.md) ([#988](https://github.com/mgagp/ezkey/issues/988)) — one lab at a time; not before Jenkins (#972) M3.
+
 **Earlier summary (2026-08-25 / 2026-09-22):** Wave B integrity cluster R1 **closed** (GitHub #269).
 Wave C operator UI residuals **closed**. Wave D was an **attention freeze**, not a backlog item.
 Public posture moved the former experimental lab → alpha + community on **ezkey.online** (site PR #609) — see

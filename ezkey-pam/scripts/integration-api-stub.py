@@ -2,8 +2,13 @@
 """Minimal Integration API stub for ezkey-pam lab/CI proofs (Patrick CHANGES / #895).
 
 Modes (EZKEY_STUB_MODE):
-  ok             — POST 201 with challenge 42; GET wait → ACCEPTED
-  no_challenge   — POST 201 without authAttemptChallenge
+  ok             — POST 201; challenge only when request challengeRequested=true;
+                   GET wait → ACCEPTED
+  no_challenge   — POST 201 without authAttemptChallenge (even if requested)
+  enrollment_challenge — POST 201 with authAttemptChallenge even when request
+                   challengeRequested=false (enrollment-required; #975); wait → ACCEPTED
+  delayed_accept — POST 201 (+ challenge when requested); GET wait sleeps
+                   EZKEY_STUB_ACCEPT_DELAY then ACCEPTED (#982 approve-after-Enter)
   slow_create    — sleep then 201 (for api_timeout)
   pending        — POST 201; GET wait sleeps for ?timeout= then PENDING + timeoutReached
   expired        — POST 201; GET wait → EXPIRED
@@ -36,6 +41,7 @@ from urllib.parse import parse_qs, urlparse
 MODE = os.environ.get("EZKEY_STUB_MODE", "ok")
 PORT = int(os.environ.get("EZKEY_STUB_PORT", "18080"))
 SLOW_SECS = float(os.environ.get("EZKEY_STUB_SLOW_SECS", "3"))
+ACCEPT_DELAY = float(os.environ.get("EZKEY_STUB_ACCEPT_DELAY", "3"))
 CHALLENGE = int(os.environ.get("EZKEY_STUB_CHALLENGE", "42"))
 REQ_LOG = os.environ.get("EZKEY_STUB_REQ_LOG", "/tmp/ezkey-pam-stub-reqs.log")
 # Cap applied TTL like Integration API global ceiling (PR-A); PAM asks ≤90.
@@ -82,6 +88,25 @@ def _parse_req_ttl(body: bytes) -> int | None:
     except (json.JSONDecodeError, UnicodeDecodeError, TypeError, ValueError):
         return None
     return None
+
+
+def _req_challenge_requested(body: bytes) -> bool:
+    if not body:
+        return False
+    try:
+        parsed = json.loads(body.decode("utf-8"))
+        return bool(parsed.get("challengeRequested"))
+    except (json.JSONDecodeError, UnicodeDecodeError, TypeError, ValueError):
+        return False
+
+
+def _include_challenge(body: bytes) -> bool:
+    """Mirror Integration API: challenge when requested, forced, or legacy fixture."""
+    if MODE == "no_challenge":
+        return False
+    if MODE == "enrollment_challenge" or MODE in LEGACY_CREATE_MODES:
+        return True
+    return _req_challenge_requested(body)
 
 
 def _legacy_create_body() -> dict:
@@ -151,8 +176,9 @@ class Handler(BaseHTTPRequestHandler):
                 "status": "PENDING",
                 "timeoutSeconds": None,
                 "expiresAt": "2099-01-01T00:00:00Z",
-                "authAttemptChallenge": CHALLENGE,
             }
+            if _include_challenge(body):
+                resp["authAttemptChallenge"] = CHALLENGE
             self._json(201, resp)
             return
 
@@ -162,8 +188,9 @@ class Handler(BaseHTTPRequestHandler):
                 "status": "PENDING",
                 "timeoutSeconds": 0,
                 "expiresAt": "2099-01-01T00:00:00Z",
-                "authAttemptChallenge": CHALLENGE,
             }
+            if _include_challenge(body):
+                resp["authAttemptChallenge"] = CHALLENGE
             self._json(201, resp)
             return
 
@@ -190,7 +217,7 @@ class Handler(BaseHTTPRequestHandler):
             "timeoutSeconds": applied_ttl,
             "expiresAt": "2099-01-01T00:00:00Z",
         }
-        if MODE != "no_challenge":
+        if _include_challenge(body):
             resp["authAttemptChallenge"] = CHALLENGE
         self._json(201, resp)
 
@@ -237,7 +264,21 @@ class Handler(BaseHTTPRequestHandler):
                 },
             )
             return
-        # ok / legacy_create / applied_* / no_challenge / slow_create
+        if MODE == "delayed_accept":
+            # Simulate phone approve shortly after /wait starts (#982).
+            time.sleep(ACCEPT_DELAY)
+            self._json(
+                200,
+                {
+                    "authAttempt": 9001,
+                    "status": "ACCEPTED",
+                    "completed": True,
+                    "timeoutReached": False,
+                    "waitDuration": int(ACCEPT_DELAY),
+                },
+            )
+            return
+        # ok / enrollment_challenge / legacy_create / applied_* / no_challenge / slow_create
         self._json(
             200,
             {
@@ -258,7 +299,8 @@ def main() -> None:
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(
         f"stub mode={MODE} listening on :{PORT} req_log={REQ_LOG} "
-        f"applied_ttl={APPLIED_TTL} ttl_cap={GLOBAL_TTL_CAP}",
+        f"applied_ttl={APPLIED_TTL} ttl_cap={GLOBAL_TTL_CAP} "
+        f"accept_delay={ACCEPT_DELAY}",
         flush=True,
     )
     server.serve_forever()

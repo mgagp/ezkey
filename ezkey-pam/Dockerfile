@@ -18,7 +18,19 @@ LABEL org.ezkey.version="2.2.6"
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 
-RUN dnf -y install epel-release \
+# Pin EPEL to Fedora CDN: metalink can hand CI a campus mirror with broken TLS
+# (repomd SSL / checksum flake). Rocky 10 only — hardcode path (no $releasever).
+RUN dnf -y install epel-release ca-certificates \
+    && printf '%s\n' \
+        '[epel]' \
+        'name=Extra Packages for Enterprise Linux 10 - x86_64' \
+        'baseurl=https://download.fedoraproject.org/pub/epel/10/Everything/x86_64/' \
+        'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-10' \
+        'gpgcheck=1' \
+        'repo_gpgcheck=0' \
+        'metadata_expire=24h' \
+        'enabled=1' \
+        > /etc/yum.repos.d/epel.repo \
     && dnf -y install gcc make pam-devel libcurl-devel cjson-devel \
     && dnf clean all
 
@@ -54,7 +66,18 @@ ENV EZKEY_SSH_USER=testuser
 ENV EZKEY_WAIT_TIMEOUT=90
 ENV EZKEY_DEBUG=true
 
-RUN dnf -y install epel-release \
+# Same EPEL CDN pin as builder (cjson is the only EPEL package here).
+RUN dnf -y install epel-release ca-certificates \
+    && printf '%s\n' \
+        '[epel]' \
+        'name=Extra Packages for Enterprise Linux 10 - x86_64' \
+        'baseurl=https://download.fedoraproject.org/pub/epel/10/Everything/x86_64/' \
+        'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-10' \
+        'gpgcheck=1' \
+        'repo_gpgcheck=0' \
+        'metadata_expire=24h' \
+        'enabled=1' \
+        > /etc/yum.repos.d/epel.repo \
     && dnf -y install --allowerasing \
         openssh-server \
         openssh-clients \
