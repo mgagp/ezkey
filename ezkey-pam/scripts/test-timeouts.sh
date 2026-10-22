@@ -656,9 +656,10 @@ CANCEL_N="$(stub_saw_cancel)"
 ERR="$(docker exec "${CONTAINER}" sh -c 'tail -n 8 /var/log/ezkey-pam/debug.err' || true)"
 echo "chal-enter>88 attempt=${ATTEMPT} cancel=${CANCEL_N}" | tee -a "${PROOF}"
 echo "chal-enter>88 err=${ERR}" | tee -a "${PROOF}"
+# debug.err sanitizes spaces → underscores (same as other Enter-bound cases).
 if echo "${ATTEMPT}" | grep -q 'result=UNAVAIL' \
   && echo "${ATTEMPT}" | grep -q 'cancel=ok' \
-  && echo "${ERR}" | grep -Eqi 'auth budget exhausted after challenge prompt' \
+  && echo "${ERR}" | grep -Eqi 'auth_budget_exhausted_after_challenge|budget_exhausted_after_challenge' \
   && [ "${CANCEL_N}" -ge 1 ]; then
   ok "#982 B3 challenge Enter>88s → UNAVAIL + cancel=ok (rem-budget bound)"
 else
