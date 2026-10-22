@@ -45,7 +45,8 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.12** (#975 / PR #976: **confirm-before-create** + display
+Version **2.2.13** (#982 tiers 0–1 on #976: ECHO_ON confirm + challenge
+Enter-only wait). Prior **2.2.12** (#975 / PR #976: **confirm-before-create** + display
 server-provided challenge even when host `challenge_requested=false`; builds on
 **2.2.11** #941 F1 waiting line via `pam_prompt`, and **2.2.10** #907 F9 option A:
 sshd `Match` MaxAuthTries; chunked wait + best-effort disconnect cancel
@@ -559,24 +560,29 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 
 ### SSH waiting message and two-digit challenge
 
-**Confirm-before-create + waiting / challenge prompts (2.2.12 / #975; builds on
+**Confirm-before-create + fluidity (#982 tiers 0–1 / 2.2.13; builds on #976 /
 #941 F1).** Canonical matrix:
 [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md).
 
 Default **`challenge_requested=false`**:
 
-1. **Pre-create** `pam_prompt(PAM_PROMPT_ECHO_OFF)`:
-   `Approve this SSH login on your Ezkey device for user <user>.` +
+1. **Pre-create** `pam_prompt(PAM_PROMPT_ECHO_ON)`:
+   `SSH login for user <user>.` +
    `Type ok and press Enter to request device approval:`
+   (#982 M1 — no “Approve on your phone” before the request exists).
 2. Trimmed case-insensitive **`ok`** required. Empty / bare Enter / EOF →
    `UNAVAIL` with **zero** creates (D4 / S2 / S3).
 3. `POST /auth-attempts`. If response has no challenge → `/wait` (no second prompt).
-4. If response has a valid challenge (0..99) → **second** prompt with digits +
-   another `ok`, then `/wait`. Digits never in authpriv (#750).
+4. If response has a valid challenge (0..99) → **second** `PAM_PROMPT_ECHO_ON`
+   with digits + `Approve on your phone, then press Enter:` (no second Type ok);
+   after Enter, poll `/wait` until ACCEPTED / REJECTED / TTL. Challenge Enter
+   has **no** 25 s cap — rem auth-budget only (#982 Patrick B1). Digits never in
+   authpriv (#750).
 
 OpenSSH buffers bare `pam_info` / `PAM_TEXT_INFO` until the next prompt (Edgar
-F1) — hence ECHO_OFF only. One authenticate call → at most one create under
-`Match … MaxAuthTries 1`. Username controls sanitized (`ezkey_sanitize_for_prompt`).
+F1) — hence a real prompt (now ECHO_ON). One authenticate call → at most one
+create under `Match … MaxAuthTries 1`. Username controls sanitized
+(`ezkey_sanitize_for_prompt`).
 
 **No TTY / empty auto-answer (#956 M2 + #975 D4 + confirm-before-create).**
 
@@ -615,8 +621,9 @@ until applied TTL (≤ 90 s). Arming SIGTERM during `pam_prompt` was declined
   Enter → UNAVAIL + **0 creates**.
 - Enrollment challenge (#975): stub `enrollment_challenge` + conf false → code
   `42` on 2nd prompt; SUCCESS without digits in authpriv.
-- Delayed / >25 s Enter on pre-create (0 creates) and on challenge prompt (cancel)
-  in `test-timeouts.sh`.
+- Delayed / >25 s Enter on pre-create (0 creates); challenge Enter@30s with
+  already-approved → SUCCESS (B1); challenge Enter>88s → UNAVAIL + cancel=ok
+  (B3 rem-budget) in `test-timeouts.sh` (#982).
 - Challenge live: `./scripts/test-challenge.sh` Cases A–D (pre-create `ok` then
   challenge prompt). Harness: `ezkey_prewait_prompt_mode` /
   `ezkey_prewait_response_confirmed`.
@@ -640,9 +647,21 @@ OpenSSH portable *may* send `SIGTERM` to the PAM child on client disconnect
 can cancel under `_exit`. **Honest limit:** on OpenSSH 9.9 pre-auth kill,
 SIGTERM often never arrives — R5 cancel is then **best-effort**; the **applied
 TTL** from create bounds the residual pending window. **Christophe security GO**
-on this wait-scoped absorption. Enter bound remains measure-only (`pam_prompt` +
-CLOCK_MONOTONIC, `pam_ezkey.c:779-796`); duration **>25 s** → UNAVAIL + attempt
-line.
+on this wait-scoped absorption. Pre-create Enter bound remains measure-only
+(`pam_prompt` + CLOCK_MONOTONIC); duration **>25 s** → UNAVAIL + attempt line
+(0 creates). Challenge (code) Enter: **no** 25 s cap — rem-budget only (#982
+Patrick B1).
+
+**Approve-vs-cancel race (#982 / #726):** phone may ACCEPTED while the
+operator still sits on the code prompt. A 25 s Enter cap on that prompt would
+refuse and `POST …/cancel` an already-approved attempt. Fix: challenge
+`prompt_echo_on(require_ok=0)` keeps only the remaining auth-budget bound;
+proof = Enter@30s + stub already ACCEPTED → SUCCESS + `cancel=skipped` (B1).
+Rem exhaustion on that prompt (elapsed **>88 s**, rem ≤ CURL_SLACK+MIN_WAIT) →
+UNAVAIL + cancel (B3). **If the request is already ACCEPTED** when rem-exhaust
+cancel runs, the server conditional UPDATE matches 0 rows → HTTP **409** →
+`cancel=final`; **login is still refused** (PAM never reached `/wait`
+ACCEPTED).
 
 **Untested (documented only):** if Enter is **never** pressed, sshd
 `LoginGraceTime` cuts the session with **no** attempt line; the Integration
@@ -650,13 +669,14 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 
 | Knob | Where (path:line) | Lab default / bound | Beyond-threshold proof |
 |---|---|---|---|
-| Auth budget | `ezkey_config.h:36` **105**; rem helper `pam_ezkey.c:432-441` | 105 s (&lt; grace 120) | Delayed Enter 8s shrinks `?timeout=` (proven). Rem-exhaustion branches are defensive under api≤10 + Enter≤25 (rem stays ≥70) — not claimed proven in CI |
-| `api_timeout` | clamp `pam_ezkey.c:208-211` (`EZKEY_MAX_API_TIMEOUT` `ezkey_config.h:37`); POST curl `pam_ezkey.c:666-676` | max **10** s | stub sleep 3 + conf `1` → UNAVAIL; conf **60** + stub sleep 12 → UNAVAIL in ≪60s (cap proven) |
-| Enter prompt | `pam_ezkey.c:779-796` measure; `EZKEY_MAX_ENTER_SECS` `ezkey_config.h:40` **25** | duration bound (no signals) | Enter **>25 s** → UNAVAIL + attempt + debug.err duration (proven) |
+| Auth budget | `ezkey_config.h` **105**; rem helper `remaining_budget_secs` | 105 s (&lt; grace 120) | Delayed Enter 8s shrinks `?timeout=` (proven). Challenge Enter **>88 s** → UNAVAIL + cancel (B3 rem-exhaust proven) |
+| `api_timeout` | clamp / `EZKEY_MAX_API_TIMEOUT` **10**; POST curl | max **10** s | stub sleep 3 + conf `1` → UNAVAIL; conf **60** + stub sleep 12 → UNAVAIL in ≪60s (cap proven) |
+| Enter (pre-create) | `prompt_echo_on(require_ok=1)`; `EZKEY_MAX_ENTER_SECS` **25** | duration bound (no signals) | Enter **>25 s** → UNAVAIL + 0 creates (proven) |
+| Enter (challenge / code) | `prompt_echo_on(require_ok=0)`; rem budget only — **no** 25 s cap; after-Enter check `pam_ezkey.c` rem ≤ CURL_SLACK+MIN_WAIT | rem &gt; 17 (105−88) | Enter@30s + ACCEPTED → SUCCESS (B1); Enter**>88 s** → UNAVAIL + `cancel=ok` (B3) |
 | `wait_timeout` | clamp floor **15** / max **90**; `ttlSeconds` on create; `effective_wait` = min(conf, applied_ttl, rem−slack) | 15–90; shrunk by budget + applied TTL | conf=200 → ttl+`?timeout=90`; conf=2 → floor **15** (proven) |
 | curl `/wait` | `EZKEY_CURL_WAIT_SLACK` **15** (cancel margin inside) | wait+≤15; ≤ rem | Covered by wait / delayed-Enter cases (proven) |
-| Cancel | `POST …/cancel` best-effort on non-ACCEPTED; interrupt path = wait-scoped `SIGTERM` (B2a/R5); summary `cancel=ok\|fail\|skipped\|final` | ≤ api_timeout from rem; interrupt cap `min(api,5)`; **not guaranteed** at wait timeout **or** on pre-auth disconnect when SIGTERM is not delivered. Residual bound = **applied TTL** (≤90 s); late approve → orphan `ACCEPTED` (no SSH grant); residual = approval fatigue; cancel **409** → `cancel=final` (observability only) | pending→TIMEOUT + `cancel=ok`; EXPIRED + `cancel=ok`; `cancel_fail` 503 → `cancel=fail`; `cancel_final` 409 → `cancel=final`; SUCCESS → `cancel=skipped`; B2b kill-client = **best-effort** (case C asserts requested TTL + single create; does not require cancel ≤5 s) |
-| Summary outcomes | `EXPIRED` / `TIMEOUT` / `DENIED` | lacune 5 | stub expired / pending / rejected (proven) |
+| Cancel / concurrency | PAM `POST …/cancel`; server **`AuthAttemptRepository.expireIfPendingOrRead`** conditional UPDATE (`AuthAttemptService.cancel`, #833 m1) — wins approve/deny race without read-modify-write | ≤ api_timeout from rem; interrupt cap `min(api,5)`; UPDATE 0 rows when already final → HTTP **409** → `cancel=final` (login refused if PAM never saw `/wait` ACCEPTED) | pending→TIMEOUT + `cancel=ok`; EXPIRED + `cancel=ok`; `cancel_fail` 503 → `cancel=fail`; `cancel_final` 409 → `cancel=final`; SUCCESS → `cancel=skipped`; B3 rem-exhaust → `cancel=ok`; already-ACCEPTED + rem-exhaust cancel → **409 / final** (documented); B2b kill-client = **best-effort** |
+| Summary outcomes | `EXPIRED` / `TIMEOUT` / `DENIED` | lacune 5 | stub expired / pending / rejected (proven); #982 challenge path: PAM TIMEOUT vs server EXPIRED both covered |
 | `wait_polling` | sample `config/pam_ezkey.conf` `wait_polling=2` | Server-side cadence | Sample conf present (proven) |
 | Server attempt TTL | request `ttlSeconds`; response **`timeoutSeconds`** (PR-A #898) | Align down on applied ∈ `[1, planned]`; ignore grow / 0 / null | `applied_shrink` → applied; `applied_grow` 120 vs ask 45 → stay 45; `applied_zero` / `applied_null` → conf wait; legacy + reject/timeout (proven) |
 | `LoginGraceTime` | `sshd_config:20` → **120** (runbook ≥120) | sshd cuts session | Budget 105 documented; Enter-never-pressed → cut **without** attempt line (documented, not lab-proven) |

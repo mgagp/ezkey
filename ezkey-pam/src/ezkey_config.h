@@ -7,7 +7,7 @@
 
 /* Module identification */
 #define EZKEY_MODULE_NAME "pam_ezkey"
-#define EZKEY_VERSION "2.2.12"
+#define EZKEY_VERSION "2.2.13"
 
 /*
  * Cancel outcome on the authpriv attempt summary line (Patrick #897 M2;
@@ -41,7 +41,8 @@
  * LoginGraceTime 120 with margin. pam_sm_authenticate starts the clock;
  * wait = min(conf, remaining - CURL_SLACK); too little left → UNAVAIL + attempt
  * line. Enter is NOT signal-bounded (PAM must not touch host signals); measure
- * pam_prompt duration with CLOCK_MONOTONIC and reject if > MAX_ENTER_SECS.
+ * pam_prompt duration with CLOCK_MONOTONIC. Pre-create reject if >
+ * MAX_ENTER_SECS; challenge (code) Enter keeps only rem-budget (#982 B1).
  * See STATUS § timeouts inventory.
  *
  * Server attempt TTL (#895 / PR-B): create sends ttlSeconds = planned wait

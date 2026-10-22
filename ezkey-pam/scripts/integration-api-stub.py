@@ -7,6 +7,8 @@ Modes (EZKEY_STUB_MODE):
   no_challenge   — POST 201 without authAttemptChallenge (even if requested)
   enrollment_challenge — POST 201 with authAttemptChallenge even when request
                    challengeRequested=false (enrollment-required; #975); wait → ACCEPTED
+  delayed_accept — POST 201 (+ challenge when requested); GET wait sleeps
+                   EZKEY_STUB_ACCEPT_DELAY then ACCEPTED (#982 approve-after-Enter)
   slow_create    — sleep then 201 (for api_timeout)
   pending        — POST 201; GET wait sleeps for ?timeout= then PENDING + timeoutReached
   expired        — POST 201; GET wait → EXPIRED
@@ -39,6 +41,7 @@ from urllib.parse import parse_qs, urlparse
 MODE = os.environ.get("EZKEY_STUB_MODE", "ok")
 PORT = int(os.environ.get("EZKEY_STUB_PORT", "18080"))
 SLOW_SECS = float(os.environ.get("EZKEY_STUB_SLOW_SECS", "3"))
+ACCEPT_DELAY = float(os.environ.get("EZKEY_STUB_ACCEPT_DELAY", "3"))
 CHALLENGE = int(os.environ.get("EZKEY_STUB_CHALLENGE", "42"))
 REQ_LOG = os.environ.get("EZKEY_STUB_REQ_LOG", "/tmp/ezkey-pam-stub-reqs.log")
 # Cap applied TTL like Integration API global ceiling (PR-A); PAM asks ≤90.
@@ -261,6 +264,20 @@ class Handler(BaseHTTPRequestHandler):
                 },
             )
             return
+        if MODE == "delayed_accept":
+            # Simulate phone approve shortly after /wait starts (#982).
+            time.sleep(ACCEPT_DELAY)
+            self._json(
+                200,
+                {
+                    "authAttempt": 9001,
+                    "status": "ACCEPTED",
+                    "completed": True,
+                    "timeoutReached": False,
+                    "waitDuration": int(ACCEPT_DELAY),
+                },
+            )
+            return
         # ok / enrollment_challenge / legacy_create / applied_* / no_challenge / slow_create
         self._json(
             200,
@@ -282,7 +299,8 @@ def main() -> None:
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(
         f"stub mode={MODE} listening on :{PORT} req_log={REQ_LOG} "
-        f"applied_ttl={APPLIED_TTL} ttl_cap={GLOBAL_TTL_CAP}",
+        f"applied_ttl={APPLIED_TTL} ttl_cap={GLOBAL_TTL_CAP} "
+        f"accept_delay={ACCEPT_DELAY}",
         flush=True,
     )
     server.serve_forever()

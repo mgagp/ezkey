@@ -96,11 +96,15 @@ check-source:
 	@grep -q 'ezkey_challenge_display_ok' $(SRC_DIR)/pam_ezkey.c
 	@grep -q 'ezkey_prewait_prompt_mode' $(SRC_DIR)/pam_ezkey.c
 	@grep -q 'ezkey_prewait_response_confirmed' $(SRC_DIR)/pam_ezkey.c
-	@grep -q 'PAM_PROMPT_ECHO_OFF' $(SRC_DIR)/pam_ezkey.c
+	# Patrick B2 (#982): match the real pam_prompt call — comments alone must not pass.
+	@grep -qE 'pam_prompt[[:space:]]*\([^)]*PAM_PROMPT_ECHO_ON' $(SRC_DIR)/pam_ezkey.c
+	@if grep -nE 'pam_prompt[[:space:]]*\([^)]*PAM_PROMPT_ECHO_OFF' $(SRC_DIR)/pam_ezkey.c; then \
+		echo "error: pam_prompt(..., PAM_PROMPT_ECHO_OFF) must not remain (#982 tier 0)" >&2; exit 1; \
+	fi
 	@if grep -nE '(^|[^_[:alnum:]])pam_info[[:space:]]*\(' $(SRC_DIR)/pam_ezkey.c; then \
 		echo "error: pam_info() must not appear in pam_ezkey.c (#941 — use pam_prompt)" >&2; exit 1; \
 	fi
-	@echo "check-source: openat/O_NOFOLLOW/O_NONBLOCK + sanitize + #941/#975 prompt guards"
+	@echo "check-source: openat/O_NOFOLLOW/O_NONBLOCK + sanitize + #941/#975/#982 prompt guards"
 
 # Harness: 0644→0600, hardlink refused, FIFO non-blocking (#818 m2).
 test-filelog: $(SRC_DIR)/ezkey_filelog.c $(TEST_DIR)/test_filelog_harness.c | $(BUILD_DIR)

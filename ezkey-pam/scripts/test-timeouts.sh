@@ -85,7 +85,7 @@ start_stub() {
   return 1
 }
 
-# #941: no-challenge path uses PAM_PROMPT_ECHO_OFF — auto-Enter via PTY helper.
+# #941 / #982: prompts use PAM_PROMPT_ECHO_ON — auto-ok/Enter via PTY helper.
 ssh_attempt_once() {
   local log="${ARTIFACT_DIR}/pam-timeouts-ssh-once.log"
   set +e
@@ -153,7 +153,7 @@ echo "=== PAM timeout inventory tests (#895 PR-B) ===" | tee "${PROOF}"
   echo "  api_timeout max 10          ezkey_config.h + apply_config_key pam_ezkey.c"
   echo "  wait effective              min(conf, applied_ttl, rem-CURL_SLACK); chunked ≤5s (#907)"
   echo "  curl /wait slack 15         EZKEY_CURL_WAIT_SLACK (cancel margin inside)"
-  echo "  Enter measure               EZKEY_MAX_ENTER_SECS 25 (CLOCK_MONOTONIC; no alarm)"
+  echo "  Enter measure               pre-create EZKEY_MAX_ENTER_SECS 25; challenge=rem budget (#982 B1)"
   echo "  wait SIGTERM                absorbed only during /wait (flag); restore after"
   echo "  LoginGraceTime 120          sshd_config (runbook: >= 120 s)"
   echo "  Auth /pending rate          10/min (ezkey.rate-limit.pending.*)"
@@ -287,11 +287,11 @@ for _ in $(seq 1 80); do
   sleep 0.25
 done
 if [ "${BEFORE_CREATE_OK}" -eq 1 ]; then
-  ok "#941/#975 Approve/ok visible BEFORE create (confirm-before-create)"
+  ok "#941/#975 pre-create Type ok visible BEFORE create (confirm-before-create)"
   {
     echo "=== #941 before-create capture excerpt ==="
     tr -cd '\11\12\15\40-\176' <"${SSH_LOG_941}" \
-      | grep -E 'Approve this SSH|Type ok' || true
+      | grep -E 'SSH login for user |Type ok|Approve on your phone' || true
   } | tee -a "${PROOF}"
 else
   fail "#941/#975 pre-create prompt missing (creates=${CREATES_941:-?} waits=${WAITS_941:-?})"
@@ -303,6 +303,15 @@ set +e
 wait "${SSH_BG_941}"
 set -e
 rm -rf "${SSH_CTRL_941_DIR}"
+FLAT_941="$(tr -cd '\11\12\15\40-\176' <"${SSH_LOG_941}" 2>/dev/null || true)"
+# Patrick B2 (#982): ECHO_ON must actually echo the typed token in the PTY capture
+# (Makefile string grep alone can pass on comments).
+if echo "${FLAT_941}" | grep -qE 'to request device approval:[[:space:]]*ok'; then
+  ok "#982 B2 PTY capture echoes typed ok (PAM_PROMPT_ECHO_ON)"
+else
+  fail "#982 B2 expected echoed 'ok' after pre-create prompt in PTY capture"
+  echo "${FLAT_941}" | tee -a "${PROOF}" || true
+fi
 # After ok: exactly one create under Match MaxAuthTries 1.
 CREATES_941_END="$(docker exec "${CONTAINER}" sh -c \
   "n=\$(grep 'POST .*/auth-attempts' '${STUB_REQ_LOG}' 2>/dev/null | grep -v cancel | wc -l)
@@ -529,14 +538,14 @@ SSH_LOG="${ARTIFACT_DIR}/pam-timeouts-delayed-enter.log"
 SSH_CTRL="$(ezkey_mk_ctrl_fifo)"
 SSH_CTRL_DIR="$(dirname "${SSH_CTRL}")"
 run_chal_ssh "${SSH_LOG}" "${SSH_CTRL}"
-# Confirm-before-create: ok #1 creates; challenge is the second prompt.
+# Confirm-before-create: ok #1 creates; challenge Enter continues to /wait (#982).
 wait_prewait_visible "${SSH_LOG}" || true
 printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
 wait_chal_visible "${SSH_LOG}" || true
 DELAY_SECS=8
 echo "Delayed Enter ${DELAY_SECS}s after challenge visible (2nd prompt)" | tee -a "${PROOF}"
 sleep "${DELAY_SECS}"
-printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
+printf 'enter\n' >"${SSH_CTRL}" 2>/dev/null || true
 set +e
 wait "${SSH_BG}"
 SSH_RC=$?
@@ -565,7 +574,9 @@ fi
 stop_stub
 restore_conf
 
-# --- Enter >25s on challenge (2nd) prompt → UNAVAIL + cancel (create done) ---
+# --- #982 Patrick B1: challenge Enter @30s with request already approved → SUCCESS ---
+# Formerly froze Enter>25s → UNAVAIL+cancel on the code prompt (race: phone already
+# ACCEPTED, late Enter cancelled it). Challenge path keeps only rem-budget bound.
 start_stub ok
 docker exec "${CONTAINER}" sh -c \
   "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
@@ -575,45 +586,84 @@ docker exec "${CONTAINER}" sh -c \
    sed -i 's/^challenge_requested=.*/challenge_requested=true/' '${CONF}'; \
    sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
    chown root:root '${CONF}'; chmod 600 '${CONF}'; \
-   : > /var/log/ezkey-pam/debug.err"
-SSH_LOG="${ARTIFACT_DIR}/pam-timeouts-enter-over-25.log"
+   : > /var/log/ezkey-pam/debug.err; : > '${STUB_REQ_LOG}'"
+SSH_LOG="${ARTIFACT_DIR}/pam-timeouts-chal-enter-30-approved.log"
 SSH_CTRL="$(ezkey_mk_ctrl_fifo)"
 SSH_CTRL_DIR="$(dirname "${SSH_CTRL}")"
-before="$(docker exec "${CONTAINER}" sh -c \
-  "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
-before="${before:-0}"
 run_chal_ssh "${SSH_LOG}" "${SSH_CTRL}"
 wait_prewait_visible "${SSH_LOG}" || true
 printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
 wait_chal_visible "${SSH_LOG}" || true
-ENTER_OVER=26
-echo "Challenge-prompt Enter after ${ENTER_OVER}s (> EZKEY_MAX_ENTER_SECS 25)" \
+ENTER_LATE=30
+echo "Challenge-prompt Enter after ${ENTER_LATE}s (stub already ACCEPTED; rem budget only)" \
   | tee -a "${PROOF}"
-sleep "${ENTER_OVER}"
-printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
+sleep "${ENTER_LATE}"
+printf 'enter\n' >"${SSH_CTRL}" 2>/dev/null || true
 set +e
 wait "${SSH_BG}"
 set -e
 rm -rf "${SSH_CTRL_DIR}"
-for _ in $(seq 1 40); do
-  after="$(docker exec "${CONTAINER}" sh -c \
-    "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
-  after="${after:-0}"
-  [ "$((after - before))" -ge 1 ] && break
-  sleep 0.1
-done
-ATTEMPT="$(docker exec "${CONTAINER}" sh -c \
-  "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
-ERR="$(docker exec "${CONTAINER}" sh -c 'tail -n 8 /var/log/ezkey-pam/debug.err' || true)"
+ATTEMPT="$(last_attempt_line)"
 CANCEL_N="$(stub_saw_cancel)"
-echo "enter>25 attempt=${ATTEMPT} cancel=${CANCEL_N}" | tee -a "${PROOF}"
-echo "enter>25 err=${ERR}" | tee -a "${PROOF}"
-if echo "${ATTEMPT}" | grep -q 'result=UNAVAIL' \
-  && echo "${ERR}" | grep -Eqi 'exceeded_max_duration|Enter_exceeded|challenge confirm' \
-  && [ "${CANCEL_N}" -ge 1 ]; then
-  ok "challenge Enter >25s → UNAVAIL + cancel (create already done)"
+FLAT_B1="$(tr -cd '\11\12\15\40-\176' <"${SSH_LOG}" 2>/dev/null || true)"
+echo "chal-enter@30 attempt=${ATTEMPT} cancel=${CANCEL_N}" | tee -a "${PROOF}"
+# Ordering: create done before the 30s dwell; stub ok → ACCEPTED on first /wait.
+# Proves late Enter after phone approve does not cancel (B1 + M2).
+if echo "${ATTEMPT}" | grep -q 'result=SUCCESS' \
+  && echo "${ATTEMPT}" | grep -q 'cancel=skipped' \
+  && echo "${FLAT_B1}" | grep -q 'Approve on your phone, then press Enter' \
+  && [ "${CANCEL_N}" -eq 0 ]; then
+  ok "#982 B1 challenge Enter@30s + already-approved → SUCCESS (no 25s Enter cap; no cancel)"
 else
-  fail "challenge Enter >25s expected UNAVAIL+cancel: ${ATTEMPT} cancel=${CANCEL_N} / ${ERR}"
+  fail "#982 B1 Enter@30s expected SUCCESS cancel=skipped: ${ATTEMPT} cancel=${CANCEL_N}"
+fi
+stop_stub
+restore_conf
+
+# --- #982 Patrick B3: challenge Enter after >88 s → rem-budget refusal + cancel=ok ---
+# Bound: rem <= CURL_WAIT_SLACK(15)+MIN_WAIT(2)=17 ⇒ elapsed >= 88 from auth start.
+# Create stays PENDING (no /wait); cancel succeeds → cancel=ok. If the device had
+# already ACCEPTED, cancel would be HTTP 409 → cancel=final; login still refused
+# (documented in STATUS / INTERACTION-MODEL — stub cannot race ACCEPTED without /wait).
+start_stub ok
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=90/' '${CONF}'; \
+   sed -i 's/^api_timeout=.*/api_timeout=5/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=true/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'; \
+   : > /var/log/ezkey-pam/debug.err; : > '${STUB_REQ_LOG}'"
+SSH_LOG="${ARTIFACT_DIR}/pam-timeouts-chal-enter-over-88.log"
+SSH_CTRL="$(ezkey_mk_ctrl_fifo)"
+SSH_CTRL_DIR="$(dirname "${SSH_CTRL}")"
+run_chal_ssh "${SSH_LOG}" "${SSH_CTRL}"
+wait_prewait_visible "${SSH_LOG}" || true
+printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
+wait_chal_visible "${SSH_LOG}" || true
+ENTER_OVER_BUDGET=89
+echo "Challenge-prompt Enter after ${ENTER_OVER_BUDGET}s (>88s rem-budget bound)" \
+  | tee -a "${PROOF}"
+sleep "${ENTER_OVER_BUDGET}"
+printf 'enter\n' >"${SSH_CTRL}" 2>/dev/null || true
+set +e
+wait "${SSH_BG}"
+set -e
+rm -rf "${SSH_CTRL_DIR}"
+ATTEMPT="$(last_attempt_line)"
+CANCEL_N="$(stub_saw_cancel)"
+ERR="$(docker exec "${CONTAINER}" sh -c 'tail -n 8 /var/log/ezkey-pam/debug.err' || true)"
+echo "chal-enter>88 attempt=${ATTEMPT} cancel=${CANCEL_N}" | tee -a "${PROOF}"
+echo "chal-enter>88 err=${ERR}" | tee -a "${PROOF}"
+# debug.err sanitizes spaces → underscores (same as other Enter-bound cases).
+if echo "${ATTEMPT}" | grep -q 'result=UNAVAIL' \
+  && echo "${ATTEMPT}" | grep -q 'cancel=ok' \
+  && echo "${ERR}" | grep -Eqi 'auth_budget_exhausted_after_challenge|budget_exhausted_after_challenge' \
+  && [ "${CANCEL_N}" -ge 1 ]; then
+  ok "#982 B3 challenge Enter>88s → UNAVAIL + cancel=ok (rem-budget bound)"
+else
+  fail "#982 B3 Enter>88s expected UNAVAIL cancel=ok: ${ATTEMPT} cancel=${CANCEL_N} / ${ERR}"
 fi
 stop_stub
 restore_conf
@@ -1118,13 +1168,13 @@ if [ "${CHAL_975_OK}" -eq 1 ]; then
   {
     echo "=== #975 capture excerpt ==="
     tr -cd '\11\12\15\40-\176' <"${SSH_LOG_975}" \
-      | grep -E 'Ezkey challenge|Approve this SSH|Type ok' || true
+      | grep -E 'Ezkey challenge|Approve on your phone|Type ok' || true
   } | tee -a "${PROOF}"
 else
   fail "#975 expected Ezkey challenge code: 42 with challenge_requested=false"
   tr -cd '\11\12\15\40-\176' <"${SSH_LOG_975}" | tee -a "${PROOF}" || true
 fi
-printf 'ok\n' >"${SSH_CTRL_975}" 2>/dev/null || true
+printf 'enter\n' >"${SSH_CTRL_975}" 2>/dev/null || true
 set +e
 wait "${SSH_BG_975}"
 set -e
@@ -1305,7 +1355,8 @@ for _ in $(seq 1 80); do
   fi
   sleep 0.25
 done
-printf 'ok\n' >"${SSH_CTRL_S1H}" 2>/dev/null || true
+# #982: bare Enter on challenge prompt (no second Type ok).
+printf 'enter\n' >"${SSH_CTRL_S1H}" 2>/dev/null || true
 set +e
 wait "${SSH_BG_S1H}"
 set -e
@@ -1315,11 +1366,13 @@ FLAT_S1H="$(tr -cd '\11\12\15\40-\176' <"${SSH_LOG_S1H}" 2>/dev/null || true)"
 echo "s1h_attempt=${ATTEMPT_S1H}" | tee -a "${PROOF}"
 if [ "${S1H_CHAL}" -eq 1 ] \
   && echo "${FLAT_S1H}" | grep -q PAM_S1H_OK \
+  && echo "${FLAT_S1H}" | grep -q 'Approve on your phone, then press Enter' \
+  && ! echo "${FLAT_S1H}" | grep -q 'Type ok and press Enter to wait' \
   && echo "${ATTEMPT_S1H}" | grep -q 'result=SUCCESS' \
   && ! echo "${ATTEMPT_S1H}" | grep -qi 'challenge'; then
-  ok "S1-H host challenge → code visible + SUCCESS (no authpriv digits)"
+  ok "S1-H host challenge → code visible + Enter → SUCCESS (no 2nd Type ok)"
 else
-  fail "S1-H expected code+SUCCESS (chal=${S1H_CHAL}): ${ATTEMPT_S1H}"
+  fail "S1-H expected code+Enter+SUCCESS (chal=${S1H_CHAL}): ${ATTEMPT_S1H}"
 fi
 stop_stub
 restore_conf
@@ -1405,6 +1458,216 @@ fi
 stop_stub
 restore_conf
 
+# =============================================================================
+# #982 tiers 0–1: challenge single-wait + ECHO_ON confirm
+# =============================================================================
+
+# --- #982: challenge Enter → SUCCESS (smoke; stub ok ACCEPTs on first /wait) ---
+# M2: this stub cannot distinguish phone-before vs phone-after Enter (always
+# ACCEPTED). Ordering / approve-vs-cancel is proven by B1 Enter@30s above.
+start_stub ok
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=30/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=true/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'; \
+   : > '${STUB_REQ_LOG}'"
+SSH_LOG_982A="${ARTIFACT_DIR}/pam-982-challenge-enter-success.log"
+SSH_CTRL_982A="$(ezkey_mk_ctrl_fifo)"
+SSH_CTRL_982A_DIR="$(dirname "${SSH_CTRL_982A}")"
+run_chal_ssh "${SSH_LOG_982A}" "${SSH_CTRL_982A}"
+wait_prewait_visible "${SSH_LOG_982A}" || true
+printf 'ok\n' >"${SSH_CTRL_982A}" 2>/dev/null || true
+wait_chal_visible "${SSH_LOG_982A}" || true
+printf 'enter\n' >"${SSH_CTRL_982A}" 2>/dev/null || true
+set +e
+wait "${SSH_BG}"
+set -e
+rm -rf "${SSH_CTRL_982A_DIR}"
+ATTEMPT_982A="$(last_attempt_line)"
+FLAT_982A="$(tr -cd '\11\12\15\40-\176' <"${SSH_LOG_982A}" 2>/dev/null || true)"
+echo "982_chal_enter_smoke attempt=${ATTEMPT_982A}" | tee -a "${PROOF}"
+if echo "${FLAT_982A}" | grep -q 'Approve on your phone, then press Enter' \
+  && ! echo "${FLAT_982A}" | grep -q 'Type ok and press Enter to wait' \
+  && echo "${FLAT_982A}" | grep -q PAM_TMO_OK \
+  && echo "${ATTEMPT_982A}" | grep -q 'result=SUCCESS'; then
+  ok "#982 challenge Enter → SUCCESS (smoke; order covered by B1 Enter@30s)"
+else
+  fail "#982 challenge Enter smoke expected SUCCESS: ${ATTEMPT_982A}"
+fi
+stop_stub
+restore_conf
+
+# --- #982: approval after Enter (stub delayed_accept) ---
+start_stub delayed_accept
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=30/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=true/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+SSH_LOG_982B="${ARTIFACT_DIR}/pam-982-approve-after-enter.log"
+SSH_CTRL_982B="$(ezkey_mk_ctrl_fifo)"
+SSH_CTRL_982B_DIR="$(dirname "${SSH_CTRL_982B}")"
+run_chal_ssh "${SSH_LOG_982B}" "${SSH_CTRL_982B}"
+wait_prewait_visible "${SSH_LOG_982B}" || true
+printf 'ok\n' >"${SSH_CTRL_982B}" 2>/dev/null || true
+wait_chal_visible "${SSH_LOG_982B}" || true
+printf 'enter\n' >"${SSH_CTRL_982B}" 2>/dev/null || true
+set +e
+wait "${SSH_BG}"
+set -e
+rm -rf "${SSH_CTRL_982B_DIR}"
+ATTEMPT_982B="$(last_attempt_line)"
+LAT_982B="$(echo "${ATTEMPT_982B}" | grep -oE 'latency_ms=[0-9]+' | cut -d= -f2 || true)"
+echo "982_after_enter attempt=${ATTEMPT_982B}" | tee -a "${PROOF}"
+# ACCEPT_DELAY default 3s → latency should reflect poll wait (≥2s, ≪ wait_timeout).
+if echo "${ATTEMPT_982B}" | grep -q 'result=SUCCESS' \
+  && [ -n "${LAT_982B}" ] && [ "${LAT_982B}" -ge 2000 ] && [ "${LAT_982B}" -lt 20000 ]; then
+  ok "#982 approval-after-Enter → SUCCESS (latency_ms=${LAT_982B} reflects delayed_accept)"
+else
+  fail "#982 approval-after-Enter expected SUCCESS with delay: ${ATTEMPT_982B}"
+fi
+stop_stub
+restore_conf
+
+# --- #982: deny while polling after challenge Enter ---
+start_stub rejected
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=30/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=true/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+SSH_LOG_982D="${ARTIFACT_DIR}/pam-982-deny.log"
+SSH_CTRL_982D="$(ezkey_mk_ctrl_fifo)"
+SSH_CTRL_982D_DIR="$(dirname "${SSH_CTRL_982D}")"
+run_chal_ssh "${SSH_LOG_982D}" "${SSH_CTRL_982D}"
+wait_prewait_visible "${SSH_LOG_982D}" || true
+printf 'ok\n' >"${SSH_CTRL_982D}" 2>/dev/null || true
+wait_chal_visible "${SSH_LOG_982D}" || true
+printf 'enter\n' >"${SSH_CTRL_982D}" 2>/dev/null || true
+set +e
+wait "${SSH_BG}"
+set -e
+rm -rf "${SSH_CTRL_982D_DIR}"
+ATTEMPT_982D="$(last_attempt_line)"
+echo "982_deny attempt=${ATTEMPT_982D}" | tee -a "${PROOF}"
+if echo "${ATTEMPT_982D}" | grep -q 'result=DENIED' \
+  && echo "${ATTEMPT_982D}" | grep -q 'cancel=ok'; then
+  ok "#982 deny after challenge Enter → DENIED + cancel=ok"
+else
+  fail "#982 deny expected DENIED cancel=ok: ${ATTEMPT_982D}"
+fi
+stop_stub
+restore_conf
+
+# --- #982 M4: PAM-side wait TIMEOUT while polling after challenge Enter ---
+# stub pending never ACCEPTs; PAM exhausts effective_wait → TIMEOUT (not server EXPIRED).
+start_stub pending
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=15/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=true/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+SSH_LOG_982T="${ARTIFACT_DIR}/pam-982-pam-timeout-poll.log"
+SSH_CTRL_982T="$(ezkey_mk_ctrl_fifo)"
+SSH_CTRL_982T_DIR="$(dirname "${SSH_CTRL_982T}")"
+run_chal_ssh "${SSH_LOG_982T}" "${SSH_CTRL_982T}"
+wait_prewait_visible "${SSH_LOG_982T}" || true
+printf 'ok\n' >"${SSH_CTRL_982T}" 2>/dev/null || true
+wait_chal_visible "${SSH_LOG_982T}" || true
+printf 'enter\n' >"${SSH_CTRL_982T}" 2>/dev/null || true
+set +e
+wait "${SSH_BG}"
+set -e
+rm -rf "${SSH_CTRL_982T_DIR}"
+ATTEMPT_982T="$(last_attempt_line)"
+echo "982_pam_timeout attempt=${ATTEMPT_982T}" | tee -a "${PROOF}"
+if echo "${ATTEMPT_982T}" | grep -q 'result=TIMEOUT' \
+  && echo "${ATTEMPT_982T}" | grep -q 'cancel=ok'; then
+  ok "#982 PAM-side wait TIMEOUT after challenge Enter → TIMEOUT + cancel=ok"
+else
+  fail "#982 PAM TIMEOUT poll expected TIMEOUT cancel=ok: ${ATTEMPT_982T}"
+fi
+stop_stub
+restore_conf
+
+# --- #982 M4: server EXPIRED while polling after challenge Enter ---
+start_stub expired
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=30/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=true/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+SSH_LOG_982E="${ARTIFACT_DIR}/pam-982-server-expired-poll.log"
+SSH_CTRL_982E="$(ezkey_mk_ctrl_fifo)"
+SSH_CTRL_982E_DIR="$(dirname "${SSH_CTRL_982E}")"
+run_chal_ssh "${SSH_LOG_982E}" "${SSH_CTRL_982E}"
+wait_prewait_visible "${SSH_LOG_982E}" || true
+printf 'ok\n' >"${SSH_CTRL_982E}" 2>/dev/null || true
+wait_chal_visible "${SSH_LOG_982E}" || true
+printf 'enter\n' >"${SSH_CTRL_982E}" 2>/dev/null || true
+set +e
+wait "${SSH_BG}"
+set -e
+rm -rf "${SSH_CTRL_982E_DIR}"
+ATTEMPT_982E="$(last_attempt_line)"
+echo "982_server_expired attempt=${ATTEMPT_982E}" | tee -a "${PROOF}"
+if echo "${ATTEMPT_982E}" | grep -q 'result=EXPIRED' \
+  && echo "${ATTEMPT_982E}" | grep -q 'cancel=ok'; then
+  ok "#982 server EXPIRED after challenge Enter → EXPIRED + cancel=ok"
+else
+  fail "#982 server EXPIRED expected EXPIRED cancel=ok: ${ATTEMPT_982E}"
+fi
+stop_stub
+restore_conf
+
+# --- #982: batch empty reply still cancels with typed error (0 creates) ---
+start_stub ok
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=30/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=true/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'; \
+   : > '${STUB_REQ_LOG}'; \
+   : > /var/log/ezkey-pam/debug.err"
+set +e
+ssh -T -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
+  -o PasswordAuthentication=no -o ConnectTimeout=15 -o NumberOfPasswordPrompts=1 \
+  "${SSH_USER}@127.0.0.1" 'echo PAM_982_BATCH_SHOULD_FAIL; exit 0' </dev/null \
+  >"${ARTIFACT_DIR}/pam-982-batch-cancel.log" 2>&1
+batch_982_rc=$?
+set -e
+CREATES_982B="$(docker exec "${CONTAINER}" sh -c \
+  "n=\$(grep 'POST .*/auth-attempts' '${STUB_REQ_LOG}' 2>/dev/null | grep -v cancel | wc -l)
+   echo \"\${n:-0}\"" | tr -d ' \r' | head -n1)"
+CREATES_982B="${CREATES_982B:-0}"
+ATTEMPT_982BATCH="$(last_attempt_line)"
+ERR_982B="$(docker exec "${CONTAINER}" sh -c 'tail -n 5 /var/log/ezkey-pam/debug.err' || true)"
+echo "982_batch rc=${batch_982_rc} creates=${CREATES_982B} attempt=${ATTEMPT_982BATCH}" \
+  | tee -a "${PROOF}"
+if [ "${batch_982_rc}" -ne 0 ] && [ "${CREATES_982B}" -eq 0 ] \
+  && echo "${ATTEMPT_982BATCH}" | grep -q 'result=UNAVAIL' \
+  && echo "${ERR_982B}" | grep -Eqi 'confirm missing or not ok|empty/EOF'; then
+  ok "#982 batch empty reply → UNAVAIL + 0 creates + typed confirm error"
+else
+  fail "#982 batch expected UNAVAIL+0 creates+typed err (rc=${batch_982_rc} creates=${CREATES_982B}): ${ATTEMPT_982BATCH} / ${ERR_982B}"
+fi
+stop_stub
+restore_conf
+
 # --- budget / planned-wait harness (replaces grep-only AUTH_BUDGET 105 check) ---
 # rem-too-small → −1 is the UNAVAIL-before-create path; executable in make test-budget.
 if make -C "${SCRIPT_DIR}/.." test-budget >/tmp/pam-budget-harness.out 2>&1; then
@@ -1431,7 +1694,8 @@ if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_challenge_display_ok' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_prewait_prompt_mode' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_prewait_response_confirmed' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
-  && grep -q 'PAM_PROMPT_ECHO_OFF' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -qE 'pam_prompt[[:space:]]*\([^)]*PAM_PROMPT_ECHO_ON' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && ! grep -E 'pam_prompt[[:space:]]*\([^)]*PAM_PROMPT_ECHO_OFF' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && ! grep -E '\balarm\s*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'LoginGraceTime 120' "${SCRIPT_DIR}/../sshd_config" \
   && grep -q 'Match User testuser' "${SCRIPT_DIR}/../sshd_config" \

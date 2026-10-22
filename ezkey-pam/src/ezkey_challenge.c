@@ -1,6 +1,6 @@
 /*
  * ezkey_challenge.c — two-digit challenge helpers (Christophe M1 nits) and
- * no-challenge waiting prompt format (#941 F1).
+ * confirm / challenge prompt format (#941 F1 / #982 tiers 0–1).
  */
 
 #include "ezkey_challenge.h"
@@ -64,9 +64,12 @@ int ezkey_format_waiting_prompt(char *buf, size_t buflen,
     if (safe_user[0] == '\0') {
         return -1;
     }
-    /* Confirm-before-create (#975): ok here creates the Integration API attempt. */
+    /*
+     * #982 M1: do not say "Approve on your phone" before the request exists.
+     * Typed ok still required (confirm-before-create / tier 0 ECHO_ON).
+     */
     n = snprintf(buf, buflen,
-                 "Approve this SSH login on your Ezkey device for user %s.\n"
+                 "SSH login for user %s.\n"
                  "Type ok and press Enter to request device approval: ",
                  safe_user);
     if (n < 0 || (size_t)n >= buflen) {
@@ -81,10 +84,11 @@ int ezkey_format_challenge_prompt(char *buf, size_t buflen, long challenge) {
     if (buf == NULL || buflen == 0 || !ezkey_challenge_in_range(challenge)) {
         return -1;
     }
+    /* #982 tier 1: code prompt is the only wait; Enter continues to /wait (no 2nd ok). */
     n = snprintf(buf, buflen,
                  "Ezkey challenge code: %02ld — enter this code on your "
                  "Ezkey device, then approve.\n"
-                 "Type ok and press Enter to wait for Ezkey device approval: ",
+                 "Approve on your phone, then press Enter: ",
                  challenge);
     if (n < 0 || (size_t)n >= buflen) {
         return -1;
