@@ -3144,9 +3144,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rnx-kit/third-party-notices@npm:3.0.3":
-  version: 3.0.3
-  resolution: "@rnx-kit/third-party-notices@npm:3.0.3"
+"@rnx-kit/third-party-notices@npm:3.0.4":
+  version: 3.0.4
+  resolution: "@rnx-kit/third-party-notices@npm:3.0.4"
   dependencies:
     "@rnx-kit/console": "npm:^3.0.0"
     "@rnx-kit/tools-node": "npm:^3.0.6"
@@ -3154,7 +3154,7 @@ __metadata:
     yargs: "npm:^17.0.0"
   bin:
     build-tpn: ./lib/build-tpn.js
-  checksum: 10c0/f4af464ffe163586621dfdaeacc3e11364b22359abc432b31030f5897bc757e4bf70a40cfc412b8bad3eb47c797b80378c9bdf9f390f0324be6c4181ae18cd18
+  checksum: 10c0/ace4fb254ae7d62ba8c790f6fd9c833c6eada669bc3332108b16d5538623f259c7c825c376d53c833e85bc1f446369ad5141db32368a59cbb57d6ee59079cf2c
   languageName: node
   linkType: hard
 
@@ -6173,7 +6173,7 @@ __metadata:
     "@react-navigation/native": "npm:7.5.1"
     "@react-navigation/native-stack": "npm:7.21.0"
     "@react-navigation/stack": "npm:7.12.1"
-    "@rnx-kit/third-party-notices": "npm:3.0.3"
+    "@rnx-kit/third-party-notices": "npm:3.0.4"
     "@tanstack/react-query": "npm:5.104.4"
     "@types/jest": "npm:29.5.14"
     "@types/react": "npm:19.3.0"
