@@ -147,7 +147,7 @@ wait_precreate_and_confirm() {
   for i in $(seq 1 80); do
     flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
     if echo "${flat}" | grep -qE \
-      'Type ok and press Enter to request device approval|Approve on your phone'; then
+      'Type ok and press Enter to request device approval|SSH login for user |Approve on your phone, then press Enter'; then
       send_ssh_ok
       return 0
     fi

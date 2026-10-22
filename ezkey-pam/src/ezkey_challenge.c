@@ -64,9 +64,12 @@ int ezkey_format_waiting_prompt(char *buf, size_t buflen,
     if (safe_user[0] == '\0') {
         return -1;
     }
-    /* #982 tier 0: clearer wording; typed ok still required (confirm-before-create). */
+    /*
+     * #982 M1: do not say "Approve on your phone" before the request exists.
+     * Typed ok still required (confirm-before-create / tier 0 ECHO_ON).
+     */
     n = snprintf(buf, buflen,
-                 "Approve on your phone for SSH user %s.\n"
+                 "SSH login for user %s.\n"
                  "Type ok and press Enter to request device approval: ",
                  safe_user);
     if (n < 0 || (size_t)n >= buflen) {

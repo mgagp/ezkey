@@ -79,7 +79,7 @@ int main(void) {
     expect_eq("display_ok prompt fail → reject (no pam_info fallback)",
               ezkey_challenge_display_ok(PAM_CONV_ERR), 0);
 
-    /* #982 tier 0: pre-create wording + Type ok. */
+    /* #982 tier 0 / M1: pre-create wording (no phone-approve before create). */
     expect_eq("format_waiting null buf",
               ezkey_format_waiting_prompt(NULL, 64, "u"), -1);
     expect_eq("format_waiting empty user",
@@ -88,12 +88,13 @@ int main(void) {
               ezkey_format_waiting_prompt(buf, sizeof(buf), NULL), -1);
     expect_eq("format_waiting ok",
               ezkey_format_waiting_prompt(buf, sizeof(buf), "testuser"), 0);
-    expect_true("format_waiting contains Approve on your phone",
-                strstr(buf, "Approve on your phone for SSH user testuser.") !=
-                    NULL);
+    expect_true("format_waiting contains SSH login for user",
+                strstr(buf, "SSH login for user testuser.") != NULL);
     expect_true("format_waiting contains Type ok request confirm",
                 strstr(buf, "Type ok and press Enter to request device "
                             "approval:") != NULL);
+    expect_true("format_waiting has no Approve on your phone before create",
+                strstr(buf, "Approve on your phone") == NULL);
     expect_true("format_waiting has no second-wait Type ok",
                 strstr(buf, "Type ok and press Enter to wait") == NULL);
 
@@ -113,7 +114,8 @@ int main(void) {
     expect_eq("format_waiting strips controls in username",
               ezkey_format_waiting_prompt(buf, sizeof(buf), "u\nser"), 0);
     expect_true("format_waiting sanitized user is u_ser",
-                strstr(buf, "user u_ser.") != NULL);
+                strstr(buf, "user u_ser.") != NULL ||
+                    strstr(buf, "SSH login for user u_ser.") != NULL);
     expect_true("format_waiting no raw control from username",
                 strstr(buf, "user u\nser") == NULL);
 

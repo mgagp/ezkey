@@ -18,8 +18,9 @@ One SSH login under `Match … MaxAuthTries 1` gives one `pam_sm_authenticate`
 call in sshd's PAM child. That call (2.2.13):
 
 1. Shows a **pre-create** `PAM_PROMPT_ECHO_ON` confirm
-   ("Approve on your phone… / Type ok … to request device approval") and
-   requires trimmed case-insensitive **`ok`** (echo visible — #982 tier 0).
+   ("SSH login for user… / Type ok … to request device approval") and
+   requires trimmed case-insensitive **`ok`** (echo visible — #982 tier 0 /
+   M1: no “Approve on your phone” before the request exists).
    Empty / EOF / wrong token / Ctrl-C / conversation error →
    `PAM_AUTHINFO_UNAVAIL` with **zero** Integration API creates (batch clients
    and Windows hang before create leave no phone noise) [code][test].
@@ -39,9 +40,11 @@ call in sshd's PAM child. That call (2.2.13):
    non-ACCEPTED exit **after** create.
 
 The single budget is 105 s from the start of authenticate, Enter included
-(`EZKEY_AUTH_BUDGET_SECS`). Each prompt Enter is capped at 25 s
-(`EZKEY_MAX_ENTER_SECS`). The server-side TTL starts at create (≤ 90 s). The
-device decides; PAM never sees the challenge answer typed on the phone.
+(`EZKEY_AUTH_BUDGET_SECS`). Pre-create Enter is capped at 25 s
+(`EZKEY_MAX_ENTER_SECS`); the challenge Enter keeps only the remaining
+auth-budget bound (Patrick B1 / #982 — late Enter must not cancel an
+already-approved request). The server-side TTL starts at create (≤ 90 s).
+The device decides; PAM never sees the challenge answer typed on the phone.
 
 **Where the challenge comes from.** The server generates a code if
 `enrollment.authAttemptChallengeRequired` **or** the request's
@@ -220,9 +223,10 @@ and one create under `Match … MaxAuthTries 1`. Batch / empty / Ctrl-C at the
 first prompt → **zero** attempts + typed debug error. Operator may approve on
 the phone **before or after** the challenge Enter; the module polls until
 ACCEPTED / REJECTED / TTL. Create `ttlSeconds` is computed from the remaining
-auth budget **after** the pre-create `ok` (Patrick B1). The 25 s Enter cap
-applies to each prompt. **Out of scope here:** tier 2 (drop pre-create `ok` on
-no-challenge path — needs Christophe + Alex) and tiers 3–4.
+auth budget **after** the pre-create `ok`. The 25 s Enter cap applies to the
+**pre-create** prompt only; challenge Enter uses rem-budget only (Patrick B1 /
+#982 — approve-vs-cancel race). **Out of scope here:** tier 2 (drop pre-create
+`ok` on no-challenge path — needs Christophe + Alex) and tiers 3–4.
 
 ### 5.3 Catalogue (ranked)
 
@@ -234,16 +238,18 @@ Tags as in §0. **2.2.13** = #982 tiers 0–1 on #976 confirm-before-create.
 | **S0** | P1 | Baseline: no challenge, interactive `ssh` | I | yes (wanted) | Pre-create `ok` (ECHO_ON) → 1 create → wait | ✔ [test] | **Covered** |
 | **S1-H** | P1 | Challenge from host conf | I | yes | `ok` → create → code → **Enter** → poll → SUCCESS | ✔ [test] #982 | **Covered** |
 | **S1-E** | P1 | Challenge from **enrollment**, host false | I | yes | Code → Enter → poll (#975/#982) | ✔ [test] stub | **Covered** |
-| **S1-before** | P1 | Approve on phone **before** challenge Enter | I | yes | SUCCESS after Enter (wait short) | ✔ [test] #982 | **Covered** |
-| **S1-after** | P1 | Approve on phone **after** challenge Enter | I | yes | SUCCESS after delayed `/wait` | ✔ [test] #982 | **Covered** |
+| **S1-before** | P1 | Approve on phone **before** challenge Enter | I | yes | SUCCESS after late Enter (no cancel) | ✔ [test] #982 B1 Enter@30s | **Covered** |
+| **S1-after** | P1 | Approve on phone **after** challenge Enter | I | yes | SUCCESS after delayed `/wait` | ✔ [test] #982 delayed_accept | **Covered** |
 | **S1-deny** | P1 | Deny while polling after challenge Enter | I | yes | DENIED + cancel | ✔ [test] #982 | **Covered** |
-| **S1-ttl** | P1 | TTL expiry while polling after challenge Enter | I | yes | TIMEOUT + cancel | ✔ [test] #982 | **Covered** |
+| **S1-timeout** | P1 | PAM wait budget exhausted while polling | I | yes | TIMEOUT + cancel | ✔ [test] #982 M4 | **Covered** |
+| **S1-expired** | P1 | Server EXPIRED while polling after challenge Enter | I | yes | EXPIRED + cancel | ✔ [test] #982 M4 | **Covered** |
 | **S2** | P2 | Batch / no tty, no challenge | B | **none** | UNAVAIL; **0 creates** | ✔ [test] D4 | **Covered** |
 | **S3** | P2 | Batch + enrollment challenge (Marc) | B | **none** | UNAVAIL; **0 creates** (never learns the code) | ✔ [test] | **Covered** |
 | **S4** | P2 | `BatchMode=yes` | B | no | Immediate denial, no PAM | ✔ [isa] D2 | **Covered** |
 | **S5** | P2 | Pubkey-only non-MFA (ec2-user) | I/B | no | No PAM call | ✔ [isa] E | **Covered** |
 | **S6** | P2 | Ctrl-C at prompt / during wait | I | pre-create: no; after create: until cancel/TTL | Pre-create Ctrl-C: 0 creates [test]; wait kill-client: cancel=ok ≤5s when SIGTERM delivered, else best-effort NOTE (OpenSSH 9.9) [test] f9 B2b; wait-timeout cancel=ok [test-timeouts] | ✔ | **Covered** |
-| **S7** | P2 | `ok` after > 25 s | I | pre-create: 0; challenge prompt: cancel | UNAVAIL | ✔ [test] | **Covered** |
+| **S7** | P2 | Pre-create `ok` after > 25 s | I | **none** (0 creates) | UNAVAIL | ✔ [test] | **Covered** |
+| **S7b** | P2 | Challenge Enter after 30 s (already approved) | I | yes (wanted) | SUCCESS; no cancel | ✔ [test] #982 B1 | **Covered** |
 | **S8** | P3 | Windows OpenSSH no console | S | **none** | Hang ≤ grace; **0 creates**; use `ssh -tt` | Doc + 0-create | **Doc** |
 | **S9** | P3 | ControlMaster reuse | S | no | MFA once per master | [inf] | **Doc** |
 | **S10** | P3 | Match forgotten | I | yes ×N | N creates; install warn | [test] f9 A | **Doc + warn** |

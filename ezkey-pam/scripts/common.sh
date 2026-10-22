@@ -142,7 +142,7 @@ ezkey_ssh_capture_has_prewait_prompt() {
   local flat
   flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
   echo "${flat}" | grep -qE \
-    'Approve on your phone|Ezkey challenge code:|Type ok and press Enter to request device approval'
+    'SSH login for user |Ezkey challenge code:|Type ok and press Enter to request device approval|Approve on your phone, then press Enter'
 }
 
 # Run one keyboard-interactive SSH under a PTY; auto-send "ok" / Enter when a

@@ -576,8 +576,12 @@ static long elapsed_ms(const struct timespec *start) {
 }
 
 /**
- * Echo-visible PAM prompt (#982 tier 0). Pre-create requires trimmed "ok";
- * challenge path accepts any Enter then polls /wait (tier 1).
+ * Echo-visible PAM prompt (#982 tier 0 / Patrick B1).
+ *
+ * Pre-create (require_ok): trimmed "ok" + EZKEY_MAX_ENTER_SECS (25) + rem
+ * budget. Challenge path (require_ok=0): any Enter; **no** 25 s Enter cap —
+ * only the remaining auth-budget bound so a late Enter after phone approve
+ * still reaches /wait (does not cancel an already-approved attempt).
  */
 static int prompt_echo_on(pam_handle_t *pamh, const EzkeyConfig *cfg,
                           const struct timespec *auth_started, char *msg,
@@ -638,7 +642,8 @@ static int prompt_echo_on(pam_handle_t *pamh, const EzkeyConfig *cfg,
         ezkey_secure_wipe(resp, strlen(resp));
         free(resp);
     }
-    if (enter_elapsed_s > (long)EZKEY_MAX_ENTER_SECS) {
+    /* 25 s Enter cap: pre-create only (#982 Patrick B1). */
+    if (require_ok && enter_elapsed_s > (long)EZKEY_MAX_ENTER_SECS) {
         log_pam_error_debug(pamh, cfg, enter_over_dbg);
         return -3;
     }
