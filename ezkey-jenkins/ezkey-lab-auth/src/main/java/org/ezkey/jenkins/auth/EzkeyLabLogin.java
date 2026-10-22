@@ -33,7 +33,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 /**
  * Multi-step Jenkins login against the Integration API (#972 M4/M5).
  *
- * <p>Flow: confirm (GET form) → POST confirm creates attempt → wait page shows challenge → poll
+ * <p>Flow: form (GET) → POST send creates attempt → wait page shows challenge when present → poll
  * wait → result states (approved / denied / expired / cancelled). Never calls Auth API. Never logs
  * challenge or integration secret.
  *
@@ -68,25 +68,20 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
         return "ezkey-lab-login";
     }
 
-    /** Confirm form (no create yet). */
+    /** Send form (no create yet). CSRF crumb required on POST. */
     public void doIndex(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
         req.getView(this, "index.jelly").forward(req, rsp);
     }
 
     /**
-     * Operator confirmed — create Integration auth attempt, then redirect to wait.
+     * Operator clicked Send — create Integration auth attempt, then redirect to wait.
      *
      * @param req stapler request
      * @param username Jenkins / Integration userIdentifier
-     * @param confirm must be {@code ok} (explicit affirmative)
      * @return redirect or error
      */
     @RequirePOST
-    public HttpResponse doConfirm(
-            StaplerRequest2 req, @QueryParameter String username, @QueryParameter String confirm) {
-        if (!"ok".equalsIgnoreCase(trim(confirm))) {
-            return HttpResponses.forwardToView(this, "index.jelly");
-        }
+    public HttpResponse doSend(StaplerRequest2 req, @QueryParameter String username) {
         String user = trim(username);
         if (user.isEmpty()) {
             return withError(req, "Username required.");
@@ -101,21 +96,25 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
         }
 
         clearPending(req.getSession(true));
+        boolean forceChallenge = realm.isForceChallenge();
 
         try {
             EzkeyClient client = EzkeyLabLoginSupport.newClient(realm);
-            EzkeyLabLoginSupport.CreateOutcome created = EzkeyLabLoginSupport.createAfterConfirm(client, user);
+            EzkeyLabLoginSupport.CreateOutcome created =
+                    EzkeyLabLoginSupport.createAfterConfirm(client, user, forceChallenge);
             HttpSession session = req.getSession(true);
             session.setAttribute(SESSION_ATTEMPT_ID, created.authAttemptId());
             session.setAttribute(SESSION_USERNAME, user);
-            // Challenge held for wait.jelly display only — never written to logs.
-            session.setAttribute(SESSION_CHALLENGE, created.challenge());
+            // Challenge held for wait.jelly display only when present — never written to logs.
+            if (created.challenge() != null) {
+                session.setAttribute(SESSION_CHALLENGE, created.challenge());
+            }
             session.setAttribute(SESSION_TIMEOUT, created.timeoutSeconds());
             return HttpResponses.redirectTo("wait");
         } catch (EzkeyLabLoginSupport.ChallengeMissingException e) {
             LOGGER.log(
                     Level.WARNING,
-                    "ezkey-lab fail-closed: missing challenge authAttemptId={0}",
+                    "ezkey-lab fail-closed: missing challenge authAttemptId={0} forceChallenge=true",
                     e.getAuthAttemptId());
             return withError(req, "Ezkey did not return a challenge code. Login denied.");
         } catch (IllegalStateException e) {
@@ -129,6 +128,18 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
             return withError(
                     req, "Could not start Ezkey authentication. Check Integration key and enrollment.");
         }
+    }
+
+    /**
+     * Compatibility alias for older lab scripts that POST to {@code confirm}.
+     *
+     * @param req stapler request
+     * @param username Jenkins / Integration userIdentifier
+     * @return redirect or error
+     */
+    @RequirePOST
+    public HttpResponse doConfirm(StaplerRequest2 req, @QueryParameter String username) {
+        return doSend(req, username);
     }
 
     /** Wait page: shows challenge; client polls {@code poll}. */

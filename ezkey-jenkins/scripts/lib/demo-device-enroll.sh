@@ -2,14 +2,16 @@
 # Bind + verify a pending enrollment on Demo Device (lab helper).
 # Usage: demo_device_enroll <enrollmentId> <enrollmentProofToken> <enrollmentChallenge>
 # Does not echo proof token or challenge.
+# shellcheck source=lab-temp.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lab-temp.sh"
 demo_device_enroll() {
   local enrollment_id="$1"
   local proof_token="$2"
   local challenge="$3"
   local base="${EZKEY_DEMO_DEVICE_URL:-http://127.0.0.1:8083}"
   local jar html
-  jar="$(mktemp)"
-  html="$(mktemp)"
+  jar="$(ezkey_lab_mktemp)"
+  html="$(ezkey_lab_mktemp)"
   # shellcheck disable=SC2064
   trap "rm -f '$jar' '$html'" RETURN
 

@@ -121,7 +121,7 @@ Effects:
    key, and secret (`hudson.util.Secret`, concealed in UI, never logged).
 3. Break-glass `admin` / `ezkey-lab-admin` always works without Ezkey (`/login`).
 4. Ezkey MFA users use [`/ezkey-lab-login/`](http://localhost:28080/ezkey-lab-login/) —
-   type username + `ok` to confirm **before** create; then match the challenge on
+   enter username and click **Envoyer la demande Ezkey**; then match any challenge on
    Demo Device and Approve or Deny.
 
 Prior-art and Integration API ↔ SDK model: [`DESIGN.md`](DESIGN.md).
@@ -139,7 +139,7 @@ Credentials-plugin secret migration deferred (not cheap).
 1. Ezkey stack up (Integration API `:7080`) + Demo Device.
 2. Provision a dedicated lab integration (M5 script below) and `source .ezkey/m5-integration.env`.
 3. `./scripts/build-auth-plugin.sh && ./scripts/configure-mock-auth.sh`
-4. Open `/ezkey-lab-login/` → confirm `ok` → note challenge → Approve (or Deny) on Demo Device.
+4. Open `/ezkey-lab-login/` → **Envoyer la demande Ezkey** → note challenge if shown → Approve/Deny.
 5. Never log the challenge or Integration secret.
 
 ## 10. M5 — dedicated seed + clear login states
@@ -149,14 +149,16 @@ Credentials-plugin secret migration deferred (not cheap).
    cd ezkey-jenkins
    ./scripts/m5-provision-lab-integration.sh   # creates jenkins-lab integration + labuser enrollment
    source .ezkey/m5-integration.env
-   ./scripts/build-auth-plugin.sh && ./scripts/configure-mock-auth.sh
-   ./scripts/m4-live-demo.sh approve           # or deny
+   ./scripts/build-auth-plugin.sh              # Docker JDK 21 — no local Maven/JDK
+   ./scripts/configure-mock-auth.sh            # EZKEY_JENKINS_FORCE_CHALLENGE optional
+   ./scripts/m4-live-demo.sh approve           # or deny (matrix B with default seed)
+   ./scripts/m5-live-no-challenge.sh           # matrix A
    ```
 2. Admin login during provision uses system enrollment `#1` (`admin.docker`) only for a token —
    Jenkins MFA uses the new enrollment id written to the env file (not enrollment `#1`).
 3. UI states on `/ezkey-lab-login/`: **confirm** → **challenge** + **waiting** → **approved** /
    **denied** / **expired** / **cancelled** (`data-ezkey-lab-state` on each page).
-4. Credentials-plugin migration remains deferred (not low-risk for this lab — see `DESIGN.md`).
+4. Challenge matrix A/B/C/D: [`DESIGN.md`](DESIGN.md). Credentials-plugin migration remains deferred.
 
 ## Out of scope (later milestones)
 

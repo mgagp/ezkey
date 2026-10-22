@@ -5,10 +5,13 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export EZKEY_JENKINS_ROOT="${ROOT}"
 # shellcheck source=lib/demo-device-respond.sh
 source "${ROOT}/scripts/lib/demo-device-respond.sh"
 # shellcheck source=lib/demo-device-enroll.sh
 source "${ROOT}/scripts/lib/demo-device-enroll.sh"
+# shellcheck source=lib/lab-temp.sh
+source "${ROOT}/scripts/lib/lab-temp.sh"
 
 OUT_DIR="${ROOT}/.ezkey"
 OUT_FILE="${OUT_DIR}/m5-integration.env"
@@ -56,19 +59,18 @@ for row in page.get('content') or []:
 )"
 
 if [[ -z "${INTEGRATION_ID}" ]]; then
-  CREATE_HTTP="$(mktemp)"
-  CREATE_BODY="$(mktemp)"
+  CREATE_BODY="$(ezkey_lab_mktemp)"
   CODE="$(curl -sS -o "${CREATE_BODY}" -w '%{http_code}' -X POST "${ADMIN_API}/api/v1/integrations" \
     "${auth_hdr[@]}" \
     -d "{\"code\":\"${INTEGRATION_CODE}\",\"name\":\"${INTEGRATION_NAME}\",\"description\":\"Jenkins lab MFA (#972 M5)\"}")"
   if [[ "${CODE}" != "201" && "${CODE}" != "200" ]]; then
     echo "Failed to create integration HTTP ${CODE}" >&2
     cat "${CREATE_BODY}" >&2 || true
-    rm -f "${CREATE_HTTP}" "${CREATE_BODY}"
+    rm -f "${CREATE_BODY}"
     exit 1
   fi
   INTEGRATION_ID="$(python3 -c "import json; print(json.load(open('${CREATE_BODY}'))['id'])")"
-  rm -f "${CREATE_HTTP}" "${CREATE_BODY}"
+  rm -f "${CREATE_BODY}"
   echo "Created integration id=${INTEGRATION_ID} code=${INTEGRATION_CODE}"
 else
   echo "Reusing integration id=${INTEGRATION_ID} code=${INTEGRATION_CODE}"
@@ -92,7 +94,7 @@ if [[ -n "${EXISTING}" ]]; then
   ENROLLMENT_ID="${EXISTING}"
   echo "Reusing VERIFIED enrollment id=${ENROLLMENT_ID} userIdentifier=${USERNAME}"
 else
-  ENROLL_BODY="$(mktemp)"
+  ENROLL_BODY="$(ezkey_lab_mktemp)"
   ECODE="$(curl -sS -o "${ENROLL_BODY}" -w '%{http_code}' -X POST "${ADMIN_API}/api/v1/enrollments" \
     "${auth_hdr[@]}" \
     -d "{\"integrationId\":${INTEGRATION_ID},\"name\":\"${ENROLLMENT_NAME}\",\"authAttemptChallengeRequired\":true,\"userIdentifier\":\"${USERNAME}\"}")"

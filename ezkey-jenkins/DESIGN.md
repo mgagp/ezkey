@@ -58,20 +58,38 @@ A local admin path that does **not** depend on Ezkey / Integration API being up.
 
 **Not needed:** Admin API client, Auth API / device crypto, or OpenAPI codegen.
 
-## Login flow (M4) — Integration API consumer
+## Login flow (M4/M5) — Integration API consumer
 
 Implemented: `EzkeyLabLogin` (`/ezkey-lab-login/`) + `EzkeyLabLoginSupport` + `EzkeyClient`.
 
 1. **Break-glass** → standard `/login` local password only.
 2. **Ezkey path** (`/ezkey-lab-login/`):
-   1. Confirm form: username + typed `ok` — **before** create (no orphan attempts on abandoned pages).
-   2. On confirm → `createAuthAttemptByUserIdentifier(user, true)`.
-   3. If create returns a usable `authAttemptChallenge` → **display** on the wait page (never log it).
-   4. If challenge missing → **fail closed** + best-effort `cancelAuthAttempt`.
+   1. Form: username + POST button **Envoyer la demande Ezkey** (Jenkins CSRF crumb; `@RequirePOST`).
+   2. On send → `createAuthAttemptByUserIdentifier(user, realm.forceChallenge)`.
+   3. If create returns `authAttemptChallenge` → **display** on the wait page (never log it).
+   4. If challenge missing and `forceChallenge=true` → **fail closed** + best-effort `cancelAuthAttempt`.
    5. Poll `waitForAuthAttempt`; Cancel button → cancel; ACCEPTED → Jenkins session; REJECTED/EXPIRED → deny.
 3. Jenkins compose joins `ezkey_ezkey-network` as an **external** network only (DNS to
    `integration-api:7080`). No shared volumes; still a separate compose project. Fallback:
    `host.docker.internal:7080` when the external network is unavailable.
+
+## Challenge matrix (A / B / C / D)
+
+Server generates a code when `enrollment.authAttemptChallengeRequired || request.challengeRequested`.
+Realm field `forceChallenge` (default **false**, `@DataBoundSetter`) maps to Integration
+`challengeRequested`. Configure via UI or `EZKEY_JENKINS_FORCE_CHALLENGE` in
+`configure-mock-auth.sh`.
+
+| Case | Enrollment requires code | Realm `forceChallenge` | Result |
+|------|--------------------------|------------------------|--------|
+| **A** | no | false | No code; wait page has no challenge block |
+| **B** | yes | false | Code returned → **display** |
+| **C** | — | — | Per-login opt-in **not offered** (lab scope) |
+| **D** | no (or ignored) | true | Code requested; missing code → **fail closed** |
+
+Display rule: show the code whenever `authAttemptChallenge != null`. Reject only when
+`forceChallenge=true` and the code is missing. Live matrix A:
+`./scripts/m5-live-no-challenge.sh`.
 
 ## M5 — dedicated lab seed + login UI states
 

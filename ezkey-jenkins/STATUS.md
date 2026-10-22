@@ -25,11 +25,12 @@ cd ezkey-jenkins
 ./scripts/up.sh && ./scripts/smoke.sh                          # M0
 ./scripts/build-plugin.sh && ./scripts/install-plugin.sh \
   && ./scripts/demo-hello-job.sh                               # M1
-./scripts/build-auth-plugin.sh
+./scripts/build-auth-plugin.sh                                 # Docker JDK 21
 # M5: dedicated integration+enrollment (requires Ezkey clean-start + Demo Device):
 ./scripts/m5-provision-lab-integration.sh
 source .ezkey/m5-integration.env
-./scripts/configure-mock-auth.sh
-./scripts/m4-live-demo.sh approve                              # or deny
-# UI: /ezkey-lab-login/ states confirm → challenge/waiting → approved|denied|expired|cancelled
+./scripts/configure-mock-auth.sh                               # EZKEY_JENKINS_FORCE_CHALLENGE optional
+./scripts/m4-live-demo.sh approve                              # matrix B (seed challenge required)
+./scripts/m5-live-no-challenge.sh                              # matrix A
+# UI: /ezkey-lab-login/ → Envoyer la demande Ezkey → waiting → result
 ```

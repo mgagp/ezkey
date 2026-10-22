@@ -14,6 +14,9 @@
             <p style="margin:0.5rem 0 0;">Match this code on your Ezkey device, then approve or deny.</p>
           </div>
         </j:if>
+        <j:if test="${it.pendingChallengeFormatted == null}">
+          <p data-testid="ezkey-lab-no-challenge">No challenge code for this attempt — approve or deny on your device.</p>
+        </j:if>
         <p id="status" data-testid="ezkey-lab-status">Waiting for device response…</p>
         <form method="post" action="cancel" style="margin-top: 1rem;">
           <j:set var="crumbIssuer" value="${app.getCrumbIssuer()}"/>

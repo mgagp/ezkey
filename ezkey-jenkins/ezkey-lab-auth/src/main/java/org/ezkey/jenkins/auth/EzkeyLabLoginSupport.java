@@ -12,9 +12,10 @@ import org.ezkey.sdk.EzkeyClient;
 import org.ezkey.sdk.EzkeyException;
 
 /**
- * Thin Integration-API adapter for the Jenkins lab login conversation (#972 M4).
+ * Thin Integration-API adapter for the Jenkins lab login conversation (#972 M4/M5).
  *
  * <p>Never logs integration secrets or challenge codes. Challenge is returned only for UI display.
+ * Challenge request follows realm {@code forceChallenge} (matrix A/B/D in {@code DESIGN.md}).
  *
  * @since 2026
  */
@@ -22,7 +23,7 @@ public final class EzkeyLabLoginSupport {
 
     private static final Logger LOGGER = Logger.getLogger(EzkeyLabLoginSupport.class.getName());
 
-    /** Outcome of confirm → create (fail-closed when challenge missing). */
+    /** Outcome of send → create (fail-closed when forceChallenge and challenge missing). */
     public record CreateOutcome(
             int authAttemptId,
             @CheckForNull Integer challenge,
@@ -54,18 +55,21 @@ public final class EzkeyLabLoginSupport {
     }
 
     /**
-     * Creates an auth attempt after the operator has already confirmed.
+     * Creates an auth attempt after the operator clicked Send.
      *
-     * <p>Always requests a challenge. If the Integration API returns no usable challenge, cancels
-     * the attempt (best effort) and fails closed.
+     * <p>Passes {@code forceChallenge} as Integration {@code challengeRequested}. When the response
+     * includes a challenge, it is returned for display. When forceChallenge is true and no
+     * challenge is returned, cancels the attempt (best effort) and fails closed.
      *
      * @param client Integration SDK client
      * @param userIdentifier Jenkins username / Integration userIdentifier
-     * @return create outcome including challenge for display
+     * @param forceChallenge realm setting — request a challenge and require one when true
+     * @return create outcome including optional challenge for display
      * @throws EzkeyException on Integration API errors
-     * @throws ChallengeMissingException when challenge was required but missing
+     * @throws ChallengeMissingException when forceChallenge and challenge missing
      */
-    public static CreateOutcome createAfterConfirm(@NonNull EzkeyClient client, @NonNull String userIdentifier)
+    public static CreateOutcome createAfterConfirm(
+            @NonNull EzkeyClient client, @NonNull String userIdentifier, boolean forceChallenge)
             throws EzkeyException, ChallengeMissingException {
         Objects.requireNonNull(client, "client");
         Objects.requireNonNull(userIdentifier, "userIdentifier");
@@ -74,15 +78,42 @@ public final class EzkeyLabLoginSupport {
             throw new IllegalArgumentException("userIdentifier required");
         }
 
-        AuthAttemptCreateResponse created = client.createAuthAttemptByUserIdentifier(user, true);
+        AuthAttemptCreateResponse created = client.createAuthAttemptByUserIdentifier(user, forceChallenge);
         LOGGER.log(
                 Level.INFO,
-                "ezkey-lab Integration create ok authAttemptId={0} user={1}",
-                new Object[] {created.authAttemptId(), EzkeyMockSecurityRealm.sanitizeForLog(user)});
+                "ezkey-lab Integration create ok authAttemptId={0} user={1} forceChallenge={2}",
+                new Object[] {
+                    created.authAttemptId(), EzkeyMockSecurityRealm.sanitizeForLog(user), forceChallenge
+                });
 
-        Integer challenge = created.authAttemptChallenge();
-        if (challenge == null) {
+        try {
+            return outcomeFromCreate(created, forceChallenge);
+        } catch (ChallengeMissingException e) {
             bestEffortCancel(client, created.authAttemptId());
+            throw e;
+        }
+    }
+
+    /**
+     * Challenge display / fail-closed policy after Integration create (matrix A/B/D).
+     *
+     * <ul>
+     *   <li>A — forceChallenge false, no challenge → OK, no code to display
+     *   <li>B — challenge non-null → display (regardless of forceChallenge)
+     *   <li>D — forceChallenge true, challenge null → fail closed
+     * </ul>
+     *
+     * @param created Integration create response
+     * @param forceChallenge realm forceChallenge
+     * @return outcome for the wait page
+     * @throws ChallengeMissingException when forceChallenge and challenge missing
+     */
+    public static CreateOutcome outcomeFromCreate(
+            @NonNull AuthAttemptCreateResponse created, boolean forceChallenge)
+            throws ChallengeMissingException {
+        Objects.requireNonNull(created, "created");
+        Integer challenge = created.authAttemptChallenge();
+        if (challenge == null && forceChallenge) {
             throw new ChallengeMissingException(created.authAttemptId());
         }
         return new CreateOutcome(
@@ -123,7 +154,7 @@ public final class EzkeyLabLoginSupport {
     }
 
     /**
-     * Thrown when create returned no challenge despite challengeRequested=true (fail closed).
+     * Thrown when forceChallenge was set but create returned no challenge (fail closed).
      *
      * @since 2026
      */
@@ -135,7 +166,7 @@ public final class EzkeyLabLoginSupport {
          * @param authAttemptId attempt that was cancelled after missing challenge
          */
         public ChallengeMissingException(int authAttemptId) {
-            super("Integration API returned no challenge; login denied (fail closed)");
+            super("Integration API returned no challenge while forceChallenge=true; login denied");
             this.authAttemptId = authAttemptId;
         }
 

@@ -10,6 +10,7 @@ import hudson.util.Secret;
 import java.util.Collections;
 import java.util.logging.Logger;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,8 +20,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
  * Lab SecurityRealm for #972: break-glass local admin + Ezkey Integration MFA path.
  *
  * <p>Break-glass authenticates with a local password (anti-lockout) via the standard Jenkins login
- * form. All other users use {@link EzkeyLabLogin} (confirm → create → challenge → wait) against the
- * Integration API via {@code org.ezkey:ezkey-sdk}. This realm never calls the Auth API.
+ * form. All other users use {@link EzkeyLabLogin} (send → create → optional challenge → wait)
+ * against the Integration API via {@code org.ezkey:ezkey-sdk}. This realm never calls the Auth API.
  *
  * <p>The Ezkey integration secret is stored as {@link Secret}. Secret and challenge codes must never
  * appear in logs. Credentials-plugin migration remains deferred — see {@code
@@ -37,9 +38,11 @@ public class EzkeyMockSecurityRealm extends AbstractPasswordBasedSecurityRealm {
     private final Secret ezkeySecret;
     private final String breakGlassUsername;
     private final Secret breakGlassPassword;
+    /** When true, Integration create requests a challenge and login fails closed if none returns. */
+    private boolean forceChallenge;
 
     /**
-     * @param ezkeyBaseUrl Integration API base URL (e.g. {@code http://host.docker.internal:7080})
+     * @param ezkeyBaseUrl Integration API base URL (e.g. {@code http://integration-api:7080})
      * @param integrationKey Ezkey integration key
      * @param ezkeySecret Ezkey integration secret (Jenkins {@link Secret}; never logged)
      * @param breakGlassUsername local admin username that bypasses Ezkey MFA
@@ -78,6 +81,25 @@ public class EzkeyMockSecurityRealm extends AbstractPasswordBasedSecurityRealm {
 
     public Secret getBreakGlassPassword() {
         return breakGlassPassword;
+    }
+
+    /**
+     * Whether this realm forces a challenge code on every Integration create (matrix D).
+     *
+     * @return true when challenge is requested and required
+     */
+    public boolean isForceChallenge() {
+        return forceChallenge;
+    }
+
+    /**
+     * Opt-in force challenge (default {@code false} — matrix A/B when enrollment decides).
+     *
+     * @param forceChallenge true to request and require a challenge code
+     */
+    @DataBoundSetter
+    public void setForceChallenge(boolean forceChallenge) {
+        this.forceChallenge = forceChallenge;
     }
 
     @Override

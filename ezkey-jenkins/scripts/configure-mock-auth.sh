@@ -3,8 +3,11 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export EZKEY_JENKINS_ROOT="${ROOT}"
 # shellcheck source=lib/jenkins-auth.sh
 source "${ROOT}/scripts/lib/jenkins-auth.sh"
+# shellcheck source=lib/lab-temp.sh
+source "${ROOT}/scripts/lib/lab-temp.sh"
 
 CONTAINER="${EZKEY_JENKINS_CONTAINER:-ezkey-jenkins}"
 HPI="${ROOT}/ezkey-lab-auth/target/ezkey-lab-auth.hpi"
@@ -35,8 +38,8 @@ for _ in $(seq 1 90); do
   sleep 2
 done
 
-COOKIE_JAR="$(mktemp)"
-SCRIPT="$(mktemp)"
+COOKIE_JAR="$(ezkey_lab_mktemp)"
+SCRIPT="$(ezkey_lab_mktemp)"
 trap 'rm -f "$COOKIE_JAR" "$SCRIPT"' EXIT
 
 ADMIN_USER="$(jenkins_user)"
@@ -45,9 +48,16 @@ ADMIN_PASS="$(jenkins_pass)"
 BASE_URL="${EZKEY_MOCK_BASE_URL:-http://integration-api:7080}"
 INT_KEY="${EZKEY_MOCK_INTEGRATION_KEY:-lab-integration-key}"
 SECRET="${EZKEY_MOCK_SECRET:-lab-ezkey-secret}"
+FORCE_CHALLENGE="${EZKEY_JENKINS_FORCE_CHALLENGE:-false}"
 
 # Escape for Groovy single-quoted string (keys/secrets must not contain ')
 escape_sq() { printf '%s' "$1" | sed "s/'/\\\\'/g"; }
+
+# Normalize boolean for Groovy
+case "$(printf '%s' "${FORCE_CHALLENGE}" | tr '[:upper:]' '[:lower:]')" in
+  1|true|yes|on) FORCE_GROOVY=true ;;
+  *) FORCE_GROOVY=false ;;
+esac
 
 cat >"${SCRIPT}" <<EOF
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy
@@ -63,15 +73,16 @@ def realm = new EzkeyMockSecurityRealm(
   '$(escape_sq "${ADMIN_USER}")',
   Secret.fromString('$(escape_sq "${ADMIN_PASS}")')
 )
+realm.setForceChallenge(${FORCE_GROOVY})
 j.setSecurityRealm(realm)
 def strategy = new FullControlOnceLoggedInAuthorizationStrategy()
 strategy.setAllowAnonymousRead(false)
 j.setAuthorizationStrategy(strategy)
 j.save()
-println 'ezkey-lab: EzkeyMockSecurityRealm applied'
+println 'ezkey-lab: EzkeyMockSecurityRealm applied forceChallenge=' + realm.isForceChallenge()
 EOF
 
-echo "Applying EzkeyMockSecurityRealm via script console ..."
+echo "Applying EzkeyMockSecurityRealm via script console (forceChallenge=${FORCE_GROOVY}) ..."
 for attempt in $(seq 1 30); do
   jenkins_prepare_crumb || { sleep 2; continue; }
   if jenkins_is_unsecured; then
@@ -115,3 +126,4 @@ echo "Configure OK."
 echo "  Break-glass: ${BASE}/login  (${ADMIN_USER})"
 echo "  Ezkey MFA:   ${BASE}/ezkey-lab-login/"
 echo "  Integration base URL in realm: ${BASE_URL}"
+echo "  forceChallenge: ${FORCE_GROOVY}"

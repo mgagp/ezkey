@@ -3,16 +3,19 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export EZKEY_JENKINS_ROOT="${ROOT}"
 # shellcheck source=lib/jenkins-auth.sh
 source "${ROOT}/scripts/lib/jenkins-auth.sh"
+# shellcheck source=lib/lab-temp.sh
+source "${ROOT}/scripts/lib/lab-temp.sh"
 
 BASE="$(jenkins_base)"
 JOB="m1-hello"
 USER="$(jenkins_user)"
 PASS="$(jenkins_pass)"
 
-COOKIE_JAR="$(mktemp)"
-CONFIG="$(mktemp)"
+COOKIE_JAR="$(ezkey_lab_mktemp)"
+CONFIG="$(ezkey_lab_mktemp)"
 trap 'rm -f "$COOKIE_JAR" "$CONFIG"' EXIT
 
 auth_curl() {
