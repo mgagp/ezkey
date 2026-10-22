@@ -21,12 +21,17 @@ requests the challenge code by default. Reason: the challenge code is the
 Admin UI / Integration API notion of a “PAM integration type”, no server-side
 default, no migration. Refs [#995](https://github.com/mgagp/ezkey/issues/995).
 
+ezkey-pam is **experimental and has never been released**: there is no product
+release note and no rollback procedure for this default flip.
+
 **Precedence (which level wins):**
 
-1. **Enrollment wins on the server.** When the enrollment (integration) has
-   `authAttemptChallengeRequired`, the server includes a challenge in the
-   create response whatever the connector sent in `challengeRequested`. PAM
-   always shows a valid 0..99 code from the response (#975) [code][test].
+1. **Enrollment wins on the server.** When the **enrollment** has
+   `authAttemptChallengeRequired` (`Enrollment`), the server includes a
+   challenge in the create response whatever the connector sent in
+   `challengeRequested`. Server rule: enrollment requires it **OR** the
+   request asks (`AuthAttemptService`). PAM always shows a valid 0..99 code
+   from the response (#975) [code][test].
 2. **Connector `challenge_requested=true`** (compiled-in + sample conf +
    Docker entrypoint default since 2.2.14) **asks** for a code when the
    enrollment does not require one. Missing/out-of-range → fail-closed UNAVAIL.
@@ -34,10 +39,20 @@ default, no migration. Refs [#995](https://github.com/mgagp/ezkey/issues/995).
    it does not forbid a server-imposed code. Opt-out path for labs that want
    approve-only SSH (S0 in the catalogue).
 
+**No minimum server version** for this OR: enrollment-required-or-request has
+existed since `e5711d4d` (2025-06-28). Any current Integration API that
+implements that rule is enough.
+
 **`ok` prompt (unchanged):** the pre-create `ok` confirm stays as is. It is an
 **anti-accident filter for batch clients** (empty / EOF / `ssh -T </dev/null`
-→ zero creates), **not a security defense**. Device approval (and the
+→ zero creates), **not a security defense**. It keeps its **25 s** Enter cap
+(`EZKEY_MAX_ENTER_SECS`). The **challenge-code prompt** timeout stays as in
+#982 (rem auth-budget only — no separate 25 s cap). Device approval (and the
 challenge code when present) is the factor.
+
+**Case C (future):** an operator-chosen “require a code” path beyond host conf /
+enrollment flags is **not covered today** — tracked as
+[#997](https://github.com/mgagp/ezkey/issues/997).
 
 ## 0. The model in one paragraph
 
@@ -76,12 +91,13 @@ auth-budget bound (Patrick B1 / #982 — late Enter must not cancel an
 already-approved request). The server-side TTL starts at create (≤ 90 s).
 The device decides; PAM never sees the challenge answer typed on the phone.
 
-**Where the challenge comes from.** The server generates a code if
-`enrollment.authAttemptChallengeRequired` **or** the request's
-`challengeRequested` is true (`AuthAttemptService`). Decided **once at
-create**. Default length is 2 digits (`ezkey.core.auth-attempt.challenge-digits`);
-PAM accepts 0..99 only. PAM's connector default is `challengeRequested=true`
-(#995); enrollment-required still overrides a connector `false`.
+**Where the challenge comes from.** The server generates a code if the
+**enrollment** has `authAttemptChallengeRequired` **or** the request's
+`challengeRequested` is true (`AuthAttemptService`; OR since `e5711d4d`,
+2025-06-28 — no PAM minimum-server gate). Decided **once at create**. Default
+length is 2 digits (`ezkey.core.auth-attempt.challenge-digits`); PAM accepts
+0..99 only. PAM's connector default is `challengeRequested=true` (#995);
+enrollment-required still overrides a connector `false`.
 
 **Key fact most people miss.** The keyboard-interactive prompt is rendered by
 the **ssh client on its own controlling terminal (`/dev/tty`)**, not on the

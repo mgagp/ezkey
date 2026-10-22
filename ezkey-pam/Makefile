@@ -13,11 +13,12 @@ INSTALL_DIR = /lib64/security
 
 OBJECTS = $(BUILD_DIR)/pam_ezkey.o $(BUILD_DIR)/ezkey_filelog.o \
 	$(BUILD_DIR)/ezkey_sanitize.o $(BUILD_DIR)/ezkey_challenge.o \
-	$(BUILD_DIR)/ezkey_budget.o $(BUILD_DIR)/ezkey_session.o
+	$(BUILD_DIR)/ezkey_budget.o $(BUILD_DIR)/ezkey_session.o \
+	$(BUILD_DIR)/ezkey_conf.o
 
 .PHONY: all debug install uninstall clean check-pam check-source lint help \
-	test test-filelog test-sanitize test-challenge test-budget test-session \
-	test-install-sshd-warn
+	test test-filelog test-sanitize test-challenge test-conf test-budget \
+	test-session test-install-sshd-warn
 
 all: $(BUILD_DIR)/$(MODULE_NAME)
 
@@ -25,10 +26,14 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 $(BUILD_DIR)/pam_ezkey.o: $(SRC_DIR)/pam_ezkey.c $(SRC_DIR)/ezkey_config.h \
-		$(SRC_DIR)/ezkey_filelog.h $(SRC_DIR)/ezkey_sanitize.h \
-		$(SRC_DIR)/ezkey_challenge.h $(SRC_DIR)/ezkey_budget.h \
-		$(SRC_DIR)/ezkey_session.h | $(BUILD_DIR)
+		$(SRC_DIR)/ezkey_conf.h $(SRC_DIR)/ezkey_filelog.h \
+		$(SRC_DIR)/ezkey_sanitize.h $(SRC_DIR)/ezkey_challenge.h \
+		$(SRC_DIR)/ezkey_budget.h $(SRC_DIR)/ezkey_session.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/pam_ezkey.c -o $(BUILD_DIR)/pam_ezkey.o
+
+$(BUILD_DIR)/ezkey_conf.o: $(SRC_DIR)/ezkey_conf.c $(SRC_DIR)/ezkey_conf.h \
+		$(SRC_DIR)/ezkey_config.h $(SRC_DIR)/ezkey_budget.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_conf.c -o $(BUILD_DIR)/ezkey_conf.o
 
 $(BUILD_DIR)/ezkey_filelog.o: $(SRC_DIR)/ezkey_filelog.c $(SRC_DIR)/ezkey_filelog.h \
 		$(SRC_DIR)/ezkey_config.h | $(BUILD_DIR)
@@ -97,7 +102,9 @@ check-source:
 	@grep -q 'ezkey_prewait_prompt_mode' $(SRC_DIR)/pam_ezkey.c
 	@grep -q 'ezkey_prewait_response_confirmed' $(SRC_DIR)/pam_ezkey.c
 	@grep -q 'EZKEY_DEFAULT_CHALLENGE_REQUESTED' $(SRC_DIR)/ezkey_config.h
-	@grep -q 'EZKEY_DEFAULT_CHALLENGE_REQUESTED' $(SRC_DIR)/pam_ezkey.c
+	# Patrick #995 B1: assignment only — a comment must not satisfy this guard.
+	@grep -qE 'cfg->challenge_requested[[:space:]]*=[[:space:]]*EZKEY_DEFAULT_CHALLENGE_REQUESTED' \
+		$(SRC_DIR)/ezkey_conf.c
 	@grep -qE '^challenge_requested=true$$' config/pam_ezkey.conf
 	@grep -qE '^challenge_requested=true$$' docker-entrypoint.sh
 	# Patrick B2 (#982): match the real pam_prompt call — comments alone must not pass.
@@ -128,6 +135,14 @@ test-challenge: $(BUILD_DIR)/ezkey_challenge.o $(BUILD_DIR)/ezkey_sanitize.o \
 		-lpam -o $(BUILD_DIR)/test_challenge_harness
 	$(BUILD_DIR)/test_challenge_harness
 
+# Harness: conf missing challenge_requested key + bool typo fallback (#995 B1/m1).
+test-conf: $(BUILD_DIR)/ezkey_conf.o $(BUILD_DIR)/ezkey_budget.o \
+		$(TEST_DIR)/test_conf_harness.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_conf_harness.c \
+		$(BUILD_DIR)/ezkey_conf.o $(BUILD_DIR)/ezkey_budget.o \
+		-o $(BUILD_DIR)/test_conf_harness
+	$(BUILD_DIR)/test_conf_harness
+
 # Harness: AUTH_BUDGET 105 + rem-too-small → −1 (Patrick #897 CHANGES).
 test-budget: $(BUILD_DIR)/ezkey_budget.o $(TEST_DIR)/test_budget_harness.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_budget_harness.c \
@@ -148,9 +163,10 @@ $(BUILD_DIR)/test_no_conv_client: $(TEST_DIR)/test_no_conv_client.c | $(BUILD_DI
 	$(CC) $(CFLAGS) $(TEST_DIR)/test_no_conv_client.c -lpam \
 		-o $(BUILD_DIR)/test_no_conv_client
 
-test: check-source all test-filelog test-sanitize test-challenge test-budget \
-		test-session test-install-sshd-warn $(BUILD_DIR)/test_no_conv_client
-	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog + sanitize + challenge + budget + session + install-sshd-warn OK"
+test: check-source all test-filelog test-sanitize test-challenge test-conf \
+		test-budget test-session test-install-sshd-warn \
+		$(BUILD_DIR)/test_no_conv_client
+	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog + sanitize + challenge + conf + budget + session + install-sshd-warn OK"
 
 help:
 	@echo "Available targets:"
@@ -164,6 +180,7 @@ help:
 	@echo "  test-filelog  - Mode/hardlink/FIFO harness (#818 m2)"
 	@echo "  test-sanitize - Sanitize space/=/high-byte harness (M1)"
 	@echo "  test-challenge - Challenge 0..99 + display_ok harness"
+	@echo "  test-conf     - Conf default + bool typo fallback (#995 B1/m1)"
 	@echo "  test-budget   - AUTH_BUDGET 105 + rem-too-small planned-wait harness"
 	@echo "  test-session  - final-verdict + interrupt cancel harness (#907)"
 	@echo "  test-install-sshd-warn - shared MaxAuthTries 1 awk (#908 / #934 B1)"

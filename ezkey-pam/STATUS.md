@@ -107,7 +107,7 @@ owner `root:root` in the demo image. That path and style match Linux-PAM convent
 | `integration_api_url` | Integration API base URL (**required**; no compiled-in default) | Yes for Docker DNS; non-lab / host installs need HTTPS |
 | `integration_key` / `secret_key` | Basic auth | Yes; file perms are the control |
 | `wait_timeout` / `wait_polling` / `api_timeout` | HTTP waits | Yes |
-| `challenge_requested` | Two-digit number-matching challenge | **Default `true` (#995)**. Connector owns the default (safer for SSH). Operator types **`ok` before create** (confirm-before-create; anti-accident, not a security defense). Create asks for a challenge unless conf opts out with `false`; enrollment-required still forces a code on the server. Valid challenge in the response → **second** `pam_prompt` (#975). `true` + missing/out-of-range → UNAVAIL. See [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) |
+| `challenge_requested` | Two-digit number-matching challenge | **Default `true` (#995)**. Connector owns the default (safer for SSH). Operator types **`ok` before create** (confirm-before-create; anti-accident; 25 s Enter cap). Create asks for a challenge unless conf opts out with `false`; when the **enrollment** has `authAttemptChallengeRequired` the server still forces a code. Unknown/empty conf values keep the prior default + warning. Valid challenge in the response → **second** `pam_prompt` (#975; challenge Enter = rem-budget / #982). `true` + missing/out-of-range → UNAVAIL. See [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) |
 | `lab_http` | Allow `http://` URL | Docker entrypoint sets `true`; host sample default `false` |
 | `wait_timeout` | `/wait` client wait + create `ttlSeconds` (seconds) | Default **90**; clamped **15–90** (`EZKEY_MIN_TTL_SECONDS` / `EZKEY_MAX_WAIT_TIMEOUT`); aligned on applied TTL from create response (#895) |
 | `context_title` / `context_message` | Device copy | Yes |
@@ -364,8 +364,11 @@ Each slice should stay mergeable on its own:
 - **Challenge (number matching).** Default **`challenge_requested=true`** (#995): create
   requests a code; response `authAttemptChallenge` is shown with `pam_prompt` before `/wait`.
   Device must enter the same code. Set conf `false` to opt out of *connector-requested*
-  challenge (enrollment-required still shows a code). Decision: Alex, confirmed by Marc on
-  2026-10-22 — safer SSH default; connector owns it (refs #995).
+  challenge (when the **enrollment** has `authAttemptChallengeRequired` the server still
+  shows a code; OR since `e5711d4d` / 2025-06-28 — no PAM min-server gate). Decision: Alex,
+  confirmed by Marc on 2026-10-22 — safer SSH default; connector owns it (refs #995).
+  Experimental / never released: no release note or rollback procedure. Case C (operator
+  “require a code” beyond conf/enrollment) → [#997](https://github.com/mgagp/ezkey/issues/997).
   `./scripts/test-challenge.sh` exercises the path.
 - **Observability.** Operator proof is Ezkey audit (`AUTH_ATTEMPT_*`) plus host `authpriv`. Do not
   add a metrics sidecar in the module.

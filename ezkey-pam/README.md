@@ -44,12 +44,18 @@ that owns the API key.
   the safer default for SSH logins; the **connector** owns the default — no
   Admin UI / Integration API “PAM type”, no server-side default, no migration
   (refs [#995](https://github.com/mgagp/ezkey/issues/995)).
-- **Precedence:** enrollment `authAttemptChallengeRequired` is enforced by the
-  server whatever the connector requests; connector `true` asks for a code
-  otherwise; `false` only means “not requested by the connector.” See
+- **Precedence:** when the **enrollment** has `authAttemptChallengeRequired`,
+  the server enforces a code whatever the connector requests; connector `true`
+  asks for a code otherwise; `false` only means “not requested by the
+  connector.” No minimum server version (OR since `e5711d4d`, 2025-06-28). See
   [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md).
-- Pre-create **`ok`** prompt unchanged: anti-accident filter for batch clients,
-  not a security defense.
+- Pre-create **`ok`** prompt unchanged (anti-accident filter; **25 s** Enter
+  cap). Challenge-code prompt timeout unchanged from #982 (rem-budget only).
+- Experimental / never released: no product release note and no rollback
+  procedure for this default. Case C (operator “require a code” beyond conf /
+  enrollment) is future work ([#997](https://github.com/mgagp/ezkey/issues/997)).
+- Unknown/empty `challenge_requested` values keep the prior default and log an
+  authpriv warning (do not silently disable the code).
 
 ## What changed in 2.2.13 (#982 — fluidity tiers 0–1)
 
@@ -98,17 +104,18 @@ that owns the API key.
   keyboard-interactive until the next prompt or the end of the round, so the
   old line only appeared with the verdict (Edgar F1 / RETEST-908 / QA Sphere
   EZK-12/13).
-- **With challenge (`challenge_requested=true`):** the two-digit code is shown
-  in a `PAM_PROMPT_ECHO_OFF` prompt before `/wait`; the operator then confirms
-  (2.2.12: type `ok`) before the device wait. (2.2.12 also shows the code when
-  the enrollment requires a challenge and the host left
-  `challenge_requested=false`.)
+- **With challenge (`challenge_requested=true`) — historical 2.2.11 (2026-10,
+  superseded):** the two-digit code was shown in a `PAM_PROMPT_ECHO_OFF`
+  prompt before `/wait`. **2.2.12 (2026-10, #975 / #976)** then required
+  typed `ok` after that line (and showed the code when the **enrollment**
+  requires a challenge even if the host left `challenge_requested=false`).
+  **2.2.13 (2026-10, #982)** switched pre-create confirm to `ECHO_ON` and made
+  the challenge prompt Enter-only (no second `ok`). Prefer the 2.2.13 / 2.2.14
+  sections above for current behaviour.
 - **Constraints held:** one create per login under `Match … MaxAuthTries 1`
   (#934 / #907); 75 s-class wait budget / applied TTL / cancel / EXPIRED
   behavior (#895) unchanged; fail-closed unchanged; no secrets or proof tokens
   in logs or argv.
-- Operator UX (2.2.12): type **`ok`** after the waiting (or challenge) line,
-  then approve or deny on the device while the module waits.
 - **No TTY / non-interactive SSH (#956 M2, corrected in 2.2.12 D4):**
   - Missing PAM conversation (`PAM_CONV` null / `PAM_CONV_ERR`) →
     `PAM_AUTHINFO_UNAVAIL` (unchanged).
@@ -285,7 +292,7 @@ ssh -p 2223 \
 | `wait_timeout` | `90` | Seconds to wait for device approval (clamped **15–90**). Sent as create `ttlSeconds`; `/wait?timeout=` aligns on create response `timeoutSeconds` (PR-A) when present |
 | `wait_polling` | `2` | Wait poll interval |
 | `api_timeout` | `10` | Timeout for create/cancel calls (max 10) |
-| `challenge_requested` | `true` | Ask the Integration API for a challenge on create (**default `true` since #995** — safer SSH default; connector owns the default). Operator always confirms with **`ok` before create** (confirm-before-create; anti-accident filter for batch clients, not a security defense). When the response includes a valid challenge (requested here, **or** enrollment-required — server enforces regardless of this flag), a **second** `pam_prompt` shows the digits (#975). Set `false` only to opt out of *connector-requested* challenge; enrollment-required still shows a code. `true` + missing challenge → UNAVAIL. Precedence: [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) |
+| `challenge_requested` | `true` | Ask the Integration API for a challenge on create (**default `true` since #995** — safer SSH default; connector owns the default). Operator always confirms with **`ok` before create** (confirm-before-create; anti-accident filter; 25 s Enter cap). When the response includes a valid challenge (requested here, **or** the **enrollment** has `authAttemptChallengeRequired` — server enforces regardless of this flag; OR since 2025-06-28), a **second** `pam_prompt` shows the digits (#975). Set `false` only to opt out of *connector-requested* challenge. Unknown/empty values keep the prior default + authpriv warning. `true` + missing challenge → UNAVAIL. Precedence: [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) |
 | `lab_http` | `false` | Allow `http://` Integration API URL (Docker entrypoint sets `true`) |
 | `context_title` | `SSH login` | Title shown on the device |
 | `context_message` | *(generated)* | Message shown on the device |
