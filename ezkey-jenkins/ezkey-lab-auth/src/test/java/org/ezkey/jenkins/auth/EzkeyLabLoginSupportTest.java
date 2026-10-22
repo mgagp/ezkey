@@ -1,7 +1,6 @@
 package org.ezkey.jenkins.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -161,16 +160,6 @@ class EzkeyLabLoginSupportTest {
         assertTrue(EzkeyLabLoginSupport.CLIENT_POLL_WAIT_SECONDS > 0);
         assertTrue(EzkeyLabLoginSupport.WAIT_PAGE_POLL_INTERVAL_MS < 2000);
         assertTrue(EzkeyLabLoginSupport.WAIT_PAGE_POLL_ERROR_INTERVAL_MS > 1500);
-    }
-
-    /** B1: 401 and 5xx are terminal for the wait-page loop. */
-    @Test
-    void terminalPollHttpStatus_401And5xx() {
-        assertTrue(EzkeyLabLoginSupport.isTerminalPollHttpStatus(401));
-        assertTrue(EzkeyLabLoginSupport.isTerminalPollHttpStatus(500));
-        assertTrue(EzkeyLabLoginSupport.isTerminalPollHttpStatus(502));
-        assertFalse(EzkeyLabLoginSupport.isTerminalPollHttpStatus(200));
-        assertFalse(EzkeyLabLoginSupport.isTerminalPollHttpStatus(404));
     }
 
     @Test

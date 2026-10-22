@@ -63,16 +63,6 @@ public final class EzkeyLabLoginSupport {
     }
 
     /**
-     * Whether a poll HTTP status must stop the wait-page loop (401 or 5xx).
-     *
-     * @param httpStatus response status from {@code poll}
-     * @return true when the client must not retry
-     */
-    public static boolean isTerminalPollHttpStatus(int httpStatus) {
-        return httpStatus == 401 || httpStatus >= 500;
-    }
-
-    /**
      * Builds an {@link EzkeyClient} from realm configuration.
      *
      * @param realm configured lab realm

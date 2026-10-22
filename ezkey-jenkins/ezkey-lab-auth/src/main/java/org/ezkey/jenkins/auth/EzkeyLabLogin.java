@@ -275,8 +275,11 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
         }
 
         if (isPastDeadline(session)) {
+            // Server-authoritative expiry: cancel + terminal non-2xx (wait.jelly stops on !res.ok).
+            EzkeyMockSecurityRealm expiredRealm = requireRealm();
+            bestEffortCancelPending(session, expiredRealm);
             clearPending(session);
-            return text(200, "EXPIRED");
+            return text(410, "EXPIRED");
         }
 
         EzkeyMockSecurityRealm realm = requireRealm();

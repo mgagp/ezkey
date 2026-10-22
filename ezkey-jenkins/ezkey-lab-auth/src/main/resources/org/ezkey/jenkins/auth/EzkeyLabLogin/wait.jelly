@@ -57,12 +57,13 @@
               })
               .then(function (res) {
                 if (stopped) return;
-                // Read res.ok: 401 NO_SESSION/NO_PENDING, 500 NO_REALM, 502 ERROR are terminal.
+                var t = res.text;
+                // Server-authoritative terminals: !res.ok (401/410/5xx). 410 EXPIRED → expired page.
                 if (!res.ok) {
+                  if (t === 'EXPIRED') { go('expired'); return; }
                   go('error');
                   return;
                 }
-                var t = res.text;
                 if (t === 'ACCEPTED') { go('approved'); return; }
                 if (t === 'REJECTED') { go('denied'); return; }
                 if (t === 'EXPIRED') { go('expired'); return; }

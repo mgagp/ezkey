@@ -92,8 +92,9 @@ Display rule: show the code whenever `authAttemptChallenge != null`. Reject only
 
 **Wait / poll thresholds** (single source in `EzkeyLabLoginSupport`): wait clamp 1..30 s,
 Integration poll interval 2 s, per-poll wait 8 s, wait-page JS 1500 ms (2000 ms on
-transport error). Session `timeoutSeconds` sets a deadline; 401 and 5xx from `poll` are
-terminal (result `error`), not infinite retries.
+transport error). Session `timeoutSeconds` sets `SESSION_DEADLINE_MS`; past that deadline
+`doPoll` cancels the attempt and returns **410 EXPIRED** (terminal non-2xx). Other
+`!res.ok` poll statuses (401 / 5xx) stop the wait-page loop at result `error`.
 
 **Default seed (matrix B):** `m5-provision-lab-integration.sh` creates `labuser` with
 `authAttemptChallengeRequired=true`. For matrix A at provision time:
