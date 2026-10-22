@@ -18,7 +18,7 @@
             <label for="username">Username (Integration userIdentifier)</label><br/>
             <input type="text" id="username" name="username" autocomplete="username" required="true" style="width:100%;"/>
           </div>
-          <button type="submit" data-testid="ezkey-lab-confirm">Envoyer la demande Ezkey</button>
+          <button type="submit" data-testid="ezkey-lab-send">Envoyer la demande Ezkey</button>
         </form>
       </div>
     </l:main-panel>

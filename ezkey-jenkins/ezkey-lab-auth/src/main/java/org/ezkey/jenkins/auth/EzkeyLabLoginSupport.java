@@ -23,6 +23,24 @@ public final class EzkeyLabLoginSupport {
 
     private static final Logger LOGGER = Logger.getLogger(EzkeyLabLoginSupport.class.getName());
 
+    /** Lower clamp for Integration wait {@code timeoutSeconds} (inclusive). */
+    public static final int WAIT_TIMEOUT_CLAMP_MIN_SECONDS = 1;
+
+    /** Upper clamp for Integration wait {@code timeoutSeconds} (inclusive). */
+    public static final int WAIT_TIMEOUT_CLAMP_MAX_SECONDS = 30;
+
+    /** Integration wait poll interval passed to {@link EzkeyClient#waitForAuthAttempt}. */
+    public static final int WAIT_POLL_INTERVAL_SECONDS = 2;
+
+    /** Per-poll server wait used by {@link EzkeyLabLogin#doPoll}. */
+    public static final int CLIENT_POLL_WAIT_SECONDS = 8;
+
+    /** Wait-page JS delay between successful poll responses (ms). */
+    public static final int WAIT_PAGE_POLL_INTERVAL_MS = 1500;
+
+    /** Wait-page JS delay after a transport error before retry (ms), until deadline. */
+    public static final int WAIT_PAGE_POLL_ERROR_INTERVAL_MS = 2000;
+
     /** Outcome of send → create (fail-closed when forceChallenge and challenge missing). */
     public record CreateOutcome(
             int authAttemptId,
@@ -31,6 +49,28 @@ public final class EzkeyLabLoginSupport {
             @CheckForNull String expiresAt) {}
 
     private EzkeyLabLoginSupport() {}
+
+    /**
+     * Clamps Integration wait timeout to {@code [1, 30]} seconds.
+     *
+     * @param timeoutSeconds requested timeout
+     * @return clamped value
+     */
+    public static int clampWaitTimeoutSeconds(int timeoutSeconds) {
+        return Math.max(
+                WAIT_TIMEOUT_CLAMP_MIN_SECONDS,
+                Math.min(timeoutSeconds, WAIT_TIMEOUT_CLAMP_MAX_SECONDS));
+    }
+
+    /**
+     * Whether a poll HTTP status must stop the wait-page loop (401 or 5xx).
+     *
+     * @param httpStatus response status from {@code poll}
+     * @return true when the client must not retry
+     */
+    public static boolean isTerminalPollHttpStatus(int httpStatus) {
+        return httpStatus == 401 || httpStatus >= 500;
+    }
 
     /**
      * Builds an {@link EzkeyClient} from realm configuration.
@@ -125,14 +165,14 @@ public final class EzkeyLabLoginSupport {
      *
      * @param client SDK client
      * @param authAttemptId attempt id
-     * @param timeoutSeconds server wait timeout for this poll
+     * @param timeoutSeconds server wait timeout for this poll (clamped to 1..30)
      * @return wait response
      * @throws EzkeyException on API errors
      */
     public static AuthAttemptWaitResponse waitOnce(
             @NonNull EzkeyClient client, int authAttemptId, int timeoutSeconds) throws EzkeyException {
-        int t = Math.max(1, Math.min(timeoutSeconds, 30));
-        return client.waitForAuthAttempt(authAttemptId, t, 2);
+        int t = clampWaitTimeoutSeconds(timeoutSeconds);
+        return client.waitForAuthAttempt(authAttemptId, t, WAIT_POLL_INTERVAL_SECONDS);
     }
 
     /**

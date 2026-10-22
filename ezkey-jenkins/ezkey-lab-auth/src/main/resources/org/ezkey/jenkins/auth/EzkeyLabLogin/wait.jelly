@@ -2,7 +2,11 @@
 <j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
   <l:layout title="Ezkey login — Waiting" norefresh="true">
     <l:main-panel>
-      <div data-testid="ezkey-lab-state" data-ezkey-lab-state="waiting">
+      <div data-testid="ezkey-lab-state" data-ezkey-lab-state="waiting"
+           id="ezkey-lab-wait-config"
+           data-poll-ms="${it.waitPagePollIntervalMs}"
+           data-poll-error-ms="${it.waitPagePollErrorIntervalMs}"
+           data-timeout-seconds="${it.pendingTimeoutSeconds}">
         <p style="margin:0 0 0.5rem;color:#666;font-size:0.9rem;">State: Challenge · Waiting</p>
         <h1>Awaiting device approval</h1>
         <p>User: <strong data-testid="ezkey-lab-username">${it.pendingUsername}</strong></p>
@@ -28,26 +32,50 @@
       </div>
       <script><![CDATA[
         (function () {
+          var cfg = document.getElementById('ezkey-lab-wait-config');
+          var pollMs = parseInt(cfg.getAttribute('data-poll-ms'), 10) || 1500;
+          var errorMs = parseInt(cfg.getAttribute('data-poll-error-ms'), 10) || 2000;
+          var timeoutSec = parseInt(cfg.getAttribute('data-timeout-seconds'), 10) || 60;
+          var deadlineMs = Date.now() + (timeoutSec * 1000);
           var statusEl = document.getElementById('status');
           var stopped = false;
           function go(state) {
             stopped = true;
             window.location.href = 'result?state=' + encodeURIComponent(state);
           }
+          function pastDeadline() {
+            return Date.now() > deadlineMs;
+          }
           function poll() {
             if (stopped) return;
+            if (pastDeadline()) { go('expired'); return; }
             fetch('poll', { credentials: 'same-origin' })
-              .then(function (r) { return r.text().then(function (t) { return { ok: r.ok, text: t.trim() }; }); })
+              .then(function (r) {
+                return r.text().then(function (t) {
+                  return { ok: r.ok, status: r.status, text: t.trim() };
+                });
+              })
               .then(function (res) {
+                if (stopped) return;
+                // 401 / 5xx are terminal (no infinite retry).
+                if (res.status === 401 || res.status >= 500) {
+                  go('error');
+                  return;
+                }
                 var t = res.text;
                 if (t === 'ACCEPTED') { go('approved'); return; }
                 if (t === 'REJECTED') { go('denied'); return; }
                 if (t === 'EXPIRED') { go('expired'); return; }
                 if (t === 'CANCELLED' || t === 'INVALID') { go('cancelled'); return; }
+                if (pastDeadline()) { go('expired'); return; }
                 statusEl.textContent = 'Waiting… (' + (t || 'PENDING') + ')';
-                setTimeout(poll, 1500);
+                setTimeout(poll, pollMs);
               })
-              .catch(function () { setTimeout(poll, 2000); });
+              .catch(function () {
+                if (stopped) return;
+                if (pastDeadline()) { go('expired'); return; }
+                setTimeout(poll, errorMs);
+              });
           }
           poll();
         })();

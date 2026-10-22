@@ -6,7 +6,7 @@ Experimental Jenkins plugin (#972).
 - Ezkey MFA: `/ezkey-lab-login/` — confirm → Integration `createAuthAttemptByUserIdentifier` →
   display challenge → `waitForAuthAttempt` / cancel
 - Bundles `org.ezkey:ezkey-sdk` (Integration API only; never Auth API)
-- Realm `forceChallenge` (default false) — see `../DESIGN.md` challenge matrix A/B/C/D
+- Realm `forceChallenge` (default false) — see `../DESIGN.md` challenge matrix A/B/D (C out of scope)
 - Build: `../scripts/build-auth-plugin.sh` (Docker `maven:3.9-eclipse-temurin-21`)
 - Secret: `hudson.util.Secret` (never logged; never log challenge codes)
 

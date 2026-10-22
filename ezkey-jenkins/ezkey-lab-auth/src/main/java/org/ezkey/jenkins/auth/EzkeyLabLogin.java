@@ -34,8 +34,8 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
  * Multi-step Jenkins login against the Integration API (#972 M4/M5).
  *
  * <p>Flow: form (GET) → POST send creates attempt → wait page shows challenge when present → poll
- * wait → result states (approved / denied / expired / cancelled). Never calls Auth API. Never logs
- * challenge or integration secret.
+ * wait → result states (approved / denied / expired / cancelled / error). Never calls Auth API.
+ * Never logs challenge or integration secret.
  *
  * @since 2026
  */
@@ -47,7 +47,11 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
     static final String SESSION_ATTEMPT_ID = "ezkey.lab.pendingAuthAttemptId";
     static final String SESSION_USERNAME = "ezkey.lab.pendingUsername";
     static final String SESSION_CHALLENGE = "ezkey.lab.pendingChallenge";
+    /** Integration create {@code timeoutSeconds} — drives wait-page deadline. */
     static final String SESSION_TIMEOUT = "ezkey.lab.pendingTimeoutSeconds";
+    /** Epoch millis when the wait loop must stop (now + timeout at create). */
+    static final String SESSION_DEADLINE_MS = "ezkey.lab.pendingDeadlineMs";
+
     static final String ATTR_RESULT_STATE = "ezkeyLabResultState";
 
     @CheckForNull
@@ -95,21 +99,26 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
             return withError(req, "Break-glass admin uses the standard Jenkins login form, not Ezkey MFA.");
         }
 
-        clearPending(req.getSession(true));
+        HttpSession session = req.getSession(true);
+        // Double-submit / resend: cancel the previous Integration attempt before replacing it.
+        bestEffortCancelPending(session, realm);
+        clearPending(session);
         boolean forceChallenge = realm.isForceChallenge();
 
         try {
             EzkeyClient client = EzkeyLabLoginSupport.newClient(realm);
             EzkeyLabLoginSupport.CreateOutcome created =
                     EzkeyLabLoginSupport.createAfterConfirm(client, user, forceChallenge);
-            HttpSession session = req.getSession(true);
             session.setAttribute(SESSION_ATTEMPT_ID, created.authAttemptId());
             session.setAttribute(SESSION_USERNAME, user);
             // Challenge held for wait.jelly display only when present — never written to logs.
             if (created.challenge() != null) {
                 session.setAttribute(SESSION_CHALLENGE, created.challenge());
             }
-            session.setAttribute(SESSION_TIMEOUT, created.timeoutSeconds());
+            int timeoutSeconds = Math.max(1, created.timeoutSeconds());
+            session.setAttribute(SESSION_TIMEOUT, timeoutSeconds);
+            session.setAttribute(
+                    SESSION_DEADLINE_MS, System.currentTimeMillis() + timeoutSeconds * 1000L);
             return HttpResponses.redirectTo("wait");
         } catch (EzkeyLabLoginSupport.ChallengeMissingException e) {
             LOGGER.log(
@@ -153,7 +162,14 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
         req.getView(this, "wait.jelly").forward(req, rsp);
     }
 
-    /** Expose challenge to wait.jelly only (escaped by Jelly). */
+    /**
+     * Formats the pending challenge for wait.jelly.
+     *
+     * <p>Integration challenge codes are two-digit values in {@code 00..99}; {@code %02d} zero-pads
+     * within that range.
+     *
+     * @return zero-padded two-digit code, or null when absent
+     */
     @CheckForNull
     public String getPendingChallengeFormatted() {
         StaplerRequest2 req = Stapler.getCurrentRequest2();
@@ -166,6 +182,7 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
         }
         Object c = session.getAttribute(SESSION_CHALLENGE);
         if (c instanceof Integer i) {
+            // Challenge codes are 00–99 (Integration API); %02d assumes that range.
             return String.format("%02d", i);
         }
         return null;
@@ -198,6 +215,37 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
         return id instanceof Integer i ? i : -1;
     }
 
+    /**
+     * Integration create timeout (seconds) for the wait-page deadline.
+     *
+     * @return timeout seconds, or {@link EzkeyLabLoginSupport#CLIENT_POLL_WAIT_SECONDS} fallback
+     */
+    public int getPendingTimeoutSeconds() {
+        StaplerRequest2 req = Stapler.getCurrentRequest2();
+        if (req == null) {
+            return EzkeyLabLoginSupport.CLIENT_POLL_WAIT_SECONDS;
+        }
+        HttpSession session = req.getSession(false);
+        if (session == null) {
+            return EzkeyLabLoginSupport.CLIENT_POLL_WAIT_SECONDS;
+        }
+        Object t = session.getAttribute(SESSION_TIMEOUT);
+        if (t instanceof Integer i && i > 0) {
+            return i;
+        }
+        return EzkeyLabLoginSupport.CLIENT_POLL_WAIT_SECONDS;
+    }
+
+    /** Wait-page poll interval (ms) — single source with unit tests. */
+    public int getWaitPagePollIntervalMs() {
+        return EzkeyLabLoginSupport.WAIT_PAGE_POLL_INTERVAL_MS;
+    }
+
+    /** Wait-page poll retry after transport error (ms). */
+    public int getWaitPagePollErrorIntervalMs() {
+        return EzkeyLabLoginSupport.WAIT_PAGE_POLL_ERROR_INTERVAL_MS;
+    }
+
     @CheckForNull
     public String getErrorMessage() {
         StaplerRequest2 req = Stapler.getCurrentRequest2();
@@ -212,7 +260,7 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
      * Poll Integration wait once; on ACCEPTED establish Jenkins session.
      *
      * @param req stapler request
-     * @return JSON-ish plain text status for the wait page
+     * @return plain-text status for the wait page
      */
     @GET
     public HttpResponse doPoll(StaplerRequest2 req) {
@@ -226,6 +274,11 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
             return text(401, "NO_PENDING");
         }
 
+        if (isPastDeadline(session)) {
+            clearPending(session);
+            return text(200, "EXPIRED");
+        }
+
         EzkeyMockSecurityRealm realm = requireRealm();
         if (realm == null) {
             return text(500, "NO_REALM");
@@ -233,7 +286,9 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
 
         try {
             EzkeyClient client = EzkeyLabLoginSupport.newClient(realm);
-            AuthAttemptWaitResponse wait = EzkeyLabLoginSupport.waitOnce(client, attemptId, 8);
+            AuthAttemptWaitResponse wait =
+                    EzkeyLabLoginSupport.waitOnce(
+                            client, attemptId, EzkeyLabLoginSupport.CLIENT_POLL_WAIT_SECONDS);
             String status = wait.status() == null ? "" : wait.status();
             LOGGER.log(
                     Level.INFO,
@@ -250,12 +305,12 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
                     || "CANCELLED".equalsIgnoreCase(status)
                     || "INVALID".equalsIgnoreCase(status)) {
                 clearPending(session);
-                return text(200, status.toUpperCase());
+                return text(200, status.toUpperCase(Locale.ROOT));
             }
             if (wait.timeoutReached() && !wait.completed()) {
                 return text(200, "PENDING");
             }
-            return text(200, status.isEmpty() ? "PENDING" : status.toUpperCase());
+            return text(200, status.isEmpty() ? "PENDING" : status.toUpperCase(Locale.ROOT));
         } catch (EzkeyException e) {
             if (e.isReadTimeout()) {
                 return text(200, "PENDING");
@@ -273,24 +328,14 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
     public HttpResponse doCancel(StaplerRequest2 req) {
         HttpSession session = req.getSession(false);
         if (session != null) {
-            Object idObj = session.getAttribute(SESSION_ATTEMPT_ID);
-            if (idObj instanceof Integer attemptId) {
-                EzkeyMockSecurityRealm realm = requireRealm();
-                if (realm != null) {
-                    try {
-                        EzkeyLabLoginSupport.bestEffortCancel(EzkeyLabLoginSupport.newClient(realm), attemptId);
-                    } catch (IllegalStateException e) {
-                        LOGGER.log(Level.FINE, "ezkey-lab cancel skipped: {0}", e.getMessage());
-                    }
-                }
-            }
+            bestEffortCancelPending(session, requireRealm());
             clearPending(session);
         }
         return HttpResponses.redirectTo("result?state=cancelled");
     }
 
     /**
-     * Terminal result page (approved / denied / expired / cancelled).
+     * Terminal result page (approved / denied / expired / cancelled / error).
      *
      * @param req stapler request
      * @param rsp stapler response
@@ -321,6 +366,7 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
             case "denied" -> "Denied";
             case "expired" -> "Expired";
             case "cancelled" -> "Cancelled";
+            case "error" -> "Error";
             default -> "Result";
         };
     }
@@ -333,6 +379,7 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
             case "denied" -> "Denied";
             case "expired" -> "Expired";
             case "cancelled" -> "Cancelled";
+            case "error" -> "Sign-in error";
             default -> "Ezkey login";
         };
     }
@@ -345,6 +392,7 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
             case "denied" -> "Device denied this sign-in. No Jenkins session was created.";
             case "expired" -> "The auth attempt expired before a device response. Try again.";
             case "cancelled" -> "Sign-in was cancelled. No Jenkins session was created.";
+            case "error" -> "Ezkey login could not continue (session lost or Integration error). Try again.";
             default -> "Unknown result.";
         };
     }
@@ -369,6 +417,7 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
             case "denied", "rejected" -> "denied";
             case "expired" -> "expired";
             case "cancelled", "canceled", "invalid" -> "cancelled";
+            case "error" -> "error";
             default -> "unknown";
         };
     }
@@ -377,6 +426,24 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
     private static EzkeyMockSecurityRealm requireRealm() {
         SecurityRealm realm = Jenkins.get().getSecurityRealm();
         return realm instanceof EzkeyMockSecurityRealm ez ? ez : null;
+    }
+
+    private static boolean isPastDeadline(HttpSession session) {
+        Object deadline = session.getAttribute(SESSION_DEADLINE_MS);
+        return deadline instanceof Long d && System.currentTimeMillis() > d;
+    }
+
+    private static void bestEffortCancelPending(
+            HttpSession session, @CheckForNull EzkeyMockSecurityRealm realm) {
+        Object idObj = session.getAttribute(SESSION_ATTEMPT_ID);
+        if (!(idObj instanceof Integer attemptId) || realm == null) {
+            return;
+        }
+        try {
+            EzkeyLabLoginSupport.bestEffortCancel(EzkeyLabLoginSupport.newClient(realm), attemptId);
+        } catch (IllegalStateException e) {
+            LOGGER.log(Level.FINE, "ezkey-lab cancel skipped: {0}", e.getMessage());
+        }
     }
 
     private static void establishLogin(StaplerRequest2 req, EzkeyMockSecurityRealm realm, String username) {
@@ -400,6 +467,7 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
         session.removeAttribute(SESSION_USERNAME);
         session.removeAttribute(SESSION_CHALLENGE);
         session.removeAttribute(SESSION_TIMEOUT);
+        session.removeAttribute(SESSION_DEADLINE_MS);
     }
 
     private HttpResponse withError(StaplerRequest2 req, String message) {

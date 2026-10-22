@@ -159,7 +159,7 @@ Credentials-plugin secret migration deferred (not cheap).
    Jenkins MFA uses the new enrollment id written to the env file (not enrollment `#1`).
 3. UI states on `/ezkey-lab-login/`: **confirm** → **challenge** + **waiting** → **approved** /
    **denied** / **expired** / **cancelled** (`data-ezkey-lab-state` on each page).
-4. Challenge matrix A/B/C/D: [`DESIGN.md`](DESIGN.md). Credentials-plugin migration remains deferred.
+4. Challenge matrix A/B/D (C out of scope): [`DESIGN.md`](DESIGN.md). Credentials-plugin migration remains deferred.
 
 ## Out of scope (later milestones)
 

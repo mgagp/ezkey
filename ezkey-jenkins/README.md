@@ -53,8 +53,11 @@ cd ezkey-jenkins
 |---|--------------------------|------------------|-----------|
 | **A** | no | false | No code shown |
 | **B** | yes | false | Code displayed |
-| **C** | — | — | Per-login opt-in not offered |
+| **C** | — | — | **Out of scope** — no per-login opt-in parameter |
 | **D** | — | true | Code forced; missing → deny |
+
+Lab-proven / unit-tested cases are **A, B, D**. Case **C** is explicitly out of
+scope (no per-login challenge toggle on the send form).
 
 Default `m5-provision-lab-integration.sh` seeds **matrix B**
 (`authAttemptChallengeRequired=true`). For **matrix A** at provision:

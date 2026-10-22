@@ -34,4 +34,11 @@ source .ezkey/m5-integration.env
 ./scripts/m4-live-demo.sh approve                              # matrix B with default seed
 ./scripts/m5-live-no-challenge.sh                              # matrix A (patch enrollment)
 # UI: /ezkey-lab-login/ → Envoyer la demande Ezkey → waiting → result
+./scripts/ci-plugin-test.sh                                    # Docker Temurin 21 + mvn test (CI)
 ```
+
+## Challenge matrix notes
+
+- Lab / unit coverage: **A, B, D**.
+- **C = out of scope** for this lab — no per-login opt-in parameter on the send form
+  (not offered, not tested).

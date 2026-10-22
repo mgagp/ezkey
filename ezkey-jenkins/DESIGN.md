@@ -84,11 +84,16 @@ Realm field `forceChallenge` (default **false**, `@DataBoundSetter`) maps to Int
 |------|--------------------------|------------------------|--------|
 | **A** | no | false | No code; wait page has no challenge block |
 | **B** | yes | false | Code returned → **display** |
-| **C** | — | — | Per-login opt-in **not offered** (lab scope) |
+| **C** | — | — | **Out of scope** — no per-login opt-in; not tested |
 | **D** | no (or ignored) | true | Code requested; missing code → **fail closed** |
 
 Display rule: show the code whenever `authAttemptChallenge != null`. Reject only when
-`forceChallenge=true` and the code is missing.
+`forceChallenge=true` and the code is missing. Lab tests cover **A / B / D** only.
+
+**Wait / poll thresholds** (single source in `EzkeyLabLoginSupport`): wait clamp 1..30 s,
+Integration poll interval 2 s, per-poll wait 8 s, wait-page JS 1500 ms (2000 ms on
+transport error). Session `timeoutSeconds` sets a deadline; 401 and 5xx from `poll` are
+terminal (result `error`), not infinite retries.
 
 **Default seed (matrix B):** `m5-provision-lab-integration.sh` creates `labuser` with
 `authAttemptChallengeRequired=true`. For matrix A at provision time:
