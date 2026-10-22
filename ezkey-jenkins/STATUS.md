@@ -27,10 +27,11 @@ cd ezkey-jenkins
   && ./scripts/demo-hello-job.sh                               # M1
 ./scripts/build-auth-plugin.sh                                 # Docker JDK 21
 # M5: dedicated integration+enrollment (requires Ezkey clean-start + Demo Device):
-./scripts/m5-provision-lab-integration.sh
+./scripts/m5-provision-lab-integration.sh                      # matrix B seed (challenge required)
+# Case A seed: EZKEY_JENKINS_ENROLLMENT_CHALLENGE_REQUIRED=false ./scripts/m5-provision-lab-integration.sh
 source .ezkey/m5-integration.env
 ./scripts/configure-mock-auth.sh                               # EZKEY_JENKINS_FORCE_CHALLENGE optional
-./scripts/m4-live-demo.sh approve                              # matrix B (seed challenge required)
-./scripts/m5-live-no-challenge.sh                              # matrix A
+./scripts/m4-live-demo.sh approve                              # matrix B with default seed
+./scripts/m5-live-no-challenge.sh                              # matrix A (patch enrollment)
 # UI: /ezkey-lab-login/ → Envoyer la demande Ezkey → waiting → result
 ```

@@ -2,6 +2,7 @@
 # Shared Docker builder for lab .hpi plugins (JDK 21 image).
 # Prefers BuildKit cache mount (id=ezkey-jenkins-m2); falls back to a named volume
 # when buildx is unavailable — host still needs only Docker (no local JDK).
+# Never writes a root-of-repo .dockerignore (use --ignorefile or docker run).
 # shellcheck shell=bash
 
 ezkey_jenkins_docker_build_plugin() {
@@ -23,22 +24,17 @@ ezkey_jenkins_docker_build_plugin() {
   mkdir -p "${out_dir}"
   rm -f "${out_dir}/${module}.hpi"
 
-  if _ezkey_jenkins_buildx_ok && [[ -f "${dockerfile}" ]]; then
+  # BuildKit path only when buildx AND --ignorefile are available (no root .dockerignore).
+  if _ezkey_jenkins_buildx_ok && _ezkey_jenkins_ignorefile_ok && [[ -f "${dockerfile}" ]]; then
     echo "Building ${module}.hpi with ${image} (BuildKit cache id=ezkey-jenkins-m2) ..."
-    local -a build_args=(
-      build
-      -f "${dockerfile}"
-      --build-arg "MAVEN_IMAGE=${image}"
-      --build-arg "PLUGIN_MODULE=${module}"
-      --target export
-      -o "type=local,dest=${out_dir}"
-    )
-    if docker build --help 2>&1 | grep -q -- '--ignorefile'; then
-      build_args+=(--ignorefile "${ignorefile}")
-    else
-      cp -f "${ignorefile}" "${repo_root}/.dockerignore"
-    fi
-    DOCKER_BUILDKIT=1 docker "${build_args[@]}" "${repo_root}"
+    DOCKER_BUILDKIT=1 docker build \
+      -f "${dockerfile}" \
+      --ignorefile "${ignorefile}" \
+      --build-arg "MAVEN_IMAGE=${image}" \
+      --build-arg "PLUGIN_MODULE=${module}" \
+      --target export \
+      -o "type=local,dest=${out_dir}" \
+      "${repo_root}"
   else
     echo "Building ${module}.hpi with ${image} (docker run + volume ${volume}) ..."
     docker volume create "${volume}" >/dev/null
@@ -83,9 +79,12 @@ ezkey_jenkins_docker_build_plugin() {
 }
 
 _ezkey_jenkins_buildx_ok() {
-  # BuildKit export needs a working buildx; many minimal Docker installs lack it.
   if ! docker buildx version >/dev/null 2>&1; then
     return 1
   fi
   return 0
+}
+
+_ezkey_jenkins_ignorefile_ok() {
+  docker build --help 2>&1 | grep -q -- '--ignorefile'
 }

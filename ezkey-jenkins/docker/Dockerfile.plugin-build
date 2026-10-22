@@ -19,7 +19,7 @@ FROM ${MAVEN_IMAGE} AS build
 ARG PLUGIN_MODULE=ezkey-lab-auth
 WORKDIR /src
 
-# Full checkout context (see .dockerignore next to this file via build script context).
+# Full checkout context (ignore via docker/plugin-build.dockerignore + --ignorefile, or docker run).
 COPY . .
 
 RUN --mount=type=cache,target=/root/.m2,id=ezkey-jenkins-m2,sharing=shared \

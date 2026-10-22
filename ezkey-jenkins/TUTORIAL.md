@@ -147,12 +147,13 @@ Credentials-plugin secret migration deferred (not cheap).
 1. From a clean-start Ezkey stack + Demo Device + Jenkins lab up:
    ```bash
    cd ezkey-jenkins
-   ./scripts/m5-provision-lab-integration.sh   # creates jenkins-lab integration + labuser enrollment
+   ./scripts/m5-provision-lab-integration.sh   # matrix B seed (challenge required)
+   # Case A: EZKEY_JENKINS_ENROLLMENT_CHALLENGE_REQUIRED=false ./scripts/m5-provision-lab-integration.sh
    source .ezkey/m5-integration.env
    ./scripts/build-auth-plugin.sh              # Docker JDK 21 — no local Maven/JDK
    ./scripts/configure-mock-auth.sh            # EZKEY_JENKINS_FORCE_CHALLENGE optional
    ./scripts/m4-live-demo.sh approve           # or deny (matrix B with default seed)
-   ./scripts/m5-live-no-challenge.sh           # matrix A
+   ./scripts/m5-live-no-challenge.sh           # matrix A without re-provision
    ```
 2. Admin login during provision uses system enrollment `#1` (`admin.docker`) only for a token —
    Jenkins MFA uses the new enrollment id written to the env file (not enrollment `#1`).

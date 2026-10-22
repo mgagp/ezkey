@@ -88,8 +88,17 @@ Realm field `forceChallenge` (default **false**, `@DataBoundSetter`) maps to Int
 | **D** | no (or ignored) | true | Code requested; missing code → **fail closed** |
 
 Display rule: show the code whenever `authAttemptChallenge != null`. Reject only when
-`forceChallenge=true` and the code is missing. Live matrix A:
-`./scripts/m5-live-no-challenge.sh`.
+`forceChallenge=true` and the code is missing.
+
+**Default seed (matrix B):** `m5-provision-lab-integration.sh` creates `labuser` with
+`authAttemptChallengeRequired=true`. For matrix A at provision time:
+
+```bash
+EZKEY_JENKINS_ENROLLMENT_CHALLENGE_REQUIRED=false ./scripts/m5-provision-lab-integration.sh
+```
+
+(Re-runs PATCH an existing VERIFIED lab enrollment to match.) Alternate live A without
+re-provision: `./scripts/m5-live-no-challenge.sh`.
 
 ## M5 — dedicated lab seed + login UI states
 

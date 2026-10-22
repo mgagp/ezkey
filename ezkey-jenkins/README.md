@@ -56,7 +56,14 @@ cd ezkey-jenkins
 | **C** | — | — | Per-login opt-in not offered |
 | **D** | — | true | Code forced; missing → deny |
 
-Live A: `./scripts/m5-live-no-challenge.sh` (after m5 provision).
+Default `m5-provision-lab-integration.sh` seeds **matrix B**
+(`authAttemptChallengeRequired=true`). For **matrix A** at provision:
+
+```bash
+EZKEY_JENKINS_ENROLLMENT_CHALLENGE_REQUIRED=false ./scripts/m5-provision-lab-integration.sh
+```
+
+Or patch after the fact: `./scripts/m5-live-no-challenge.sh`.
 
 ## Lab notes
 
@@ -64,7 +71,8 @@ Live A: `./scripts/m5-live-no-challenge.sh` (after m5 provision).
 - **Interaction model:** Auth API ↔ phone; Integration API ↔ SDK (this plugin).
 - **Seed:** M5 creates integration `jenkins-lab` + enrollment for `labuser`.
 - **Secret:** `hudson.util.Secret` (Credentials plugin deferred — `DESIGN.md`).
-- **Temps:** scripts use `.ezkey/tmp` (`ezkey_lab_mktemp`) — no `TMPDIR`/`cygpath` workaround on Git Bash.
+- **Temps:** scripts use `.ezkey/tmp` (`ezkey_lab_mktemp`); on Git Bash, paths are
+  Windows-native (`cygpath -m`) so Windows curl can open `@file` args.
 - **THIRD-PARTY.txt:** lab Docker build skips `aggregate-add-third-party` so the tracked root file is not rewritten.
 - **Compose:** separate project; joins `ezkey_ezkey-network` as external for Integration DNS (`integration-api:7080`).
 
