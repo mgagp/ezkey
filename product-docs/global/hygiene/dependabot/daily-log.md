@@ -189,3 +189,24 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
   - #933/#930 `js-validate`: stale `app/data/thirdPartyLicenses.json` only — runs `39439091461` / `39439023542`
 - Validation: #924 + #957 `ci-gate` green / `mergeStateStatus` CLEAN; local Node 24 Admin lint + `tsc -b` + vitest **206/206**; Playwright **6/6**; mobile `yarn validate` jest **323/323** + PR `js-validate` / android jobs / `ci-gate`
 - Residual: phone smoke for mobile bumps tracked on #627 (gates next Play AAB). Nothing deployed.
+
+## 2026-10-22
+
+- Pass: weekday light (autonomous); concurrency: clear (no Dependabot/hygiene merges in prior ~30 min; only this `dependabot-curated` agent owning the pass; idle docs agent #984 out of scope)
+- GitHub write: `GH_TOKEN as mgagp`
+- Merged (squash):
+  - Maven T1: #965 `jackson-2-bom.version` 2.22.3→2.22.4 `20c40f68`
+  - Admin UI T1: #967 `@tanstack/react-query` 5.104.3→5.104.4 `69517d00`
+  - Admin UI T3: #968 i18next 26.4.7→26.5.2 `51187fe0`; #966 react-i18next 17.0.21→17.1.0 `7a656eb8`
+  - Mobile T1/T3 via hygiene **#986** `172d91cc` (branch `cursor/dependabot-mobile-licenses-1dbc`) superseding #969 i18next 26.5.2 (T3), #970 `@tanstack/react-query` 5.104.4 (T1), #971 react-i18next 17.1.0 (T3) + `yarn license:app-data` (`thirdPartyLicenses.json`; same pattern as #850/#957)
+- Held (out of light scope; not closed — Marc hold 2026-10-21 / gates):
+  - #870 Tink 1.23→1.24 (crypto; PAM/Tink restructuring)
+  - #878 mobile-rn-core (never auto-merge without Marc)
+  - #929 android-gradle junit (HITL until PAM/Tink stabilize)
+  - #779 ESLint 10, #653 Jest 30 (ecosystem gates)
+  - #767 textual pip (Monday)
+  - deferred:later-train `#498`/`#337` (skip)
+- Red-CI evidence (pre-hygiene; not merged as-is):
+  - #969/#970/#971 `mobile / js-validate`: stale `app/data/thirdPartyLicenses.json` only (package version bump in snapshot) — runs `39616637307` / `39616678938` / `39616713754` — not infra
+- Validation: Dependabot CI green for #965/#966/#967/#968; #986 `ci-gate` + `js-validate` / android jobs green; `./scripts/build.sh` OK; clean-start OK (Admin `9081` UP, audit HMAC READY); smoke excl. prod-safe-only rate-limit assertion OK (full smoke needs `--prod-safe`); Admin Node 24 lint + vitest **206/206**; Playwright **6/6**; mobile jest **323/323**
+- Residual: phone smoke for mobile bumps tracked on #627 (gates next Play AAB). Nothing deployed.
