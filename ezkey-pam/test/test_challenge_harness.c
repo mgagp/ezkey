@@ -1,6 +1,6 @@
 /*
  * Harness: challenge 0..99 bound + display_ok (Christophe nits on #610) and
- * no-challenge waiting prompt format (#941 F1).
+ * confirm / challenge prompt format (#941 F1 / #982 tiers 0–1).
  */
 
 #include "ezkey_challenge.h"
@@ -48,13 +48,13 @@ int main(void) {
               ezkey_prewait_prompt_mode(0, 42), 1);
     expect_eq("prewait requested + chal → show code",
               ezkey_prewait_prompt_mode(1, 7), 1);
-    expect_eq("prewait no chal + conf false → waiting line",
+    expect_eq("prewait no chal + conf false → skip post-create prompt",
               ezkey_prewait_prompt_mode(0, -1), 0);
     expect_eq("prewait requested + missing → fail-closed",
               ezkey_prewait_prompt_mode(1, -1), -1);
     expect_eq("prewait requested + out of range → fail-closed",
               ezkey_prewait_prompt_mode(1, 100), -1);
-    expect_eq("prewait conf false + out of range → waiting line",
+    expect_eq("prewait conf false + out of range → skip post-create prompt",
               ezkey_prewait_prompt_mode(0, 100), 0);
 
     /* #975 D4: empty/EOF is not confirmation; require trimmed "ok". */
@@ -79,7 +79,7 @@ int main(void) {
     expect_eq("display_ok prompt fail → reject (no pam_info fallback)",
               ezkey_challenge_display_ok(PAM_CONV_ERR), 0);
 
-    /* #941: waiting prompt format (no-challenge path). */
+    /* #982 tier 0: pre-create wording + Type ok. */
     expect_eq("format_waiting null buf",
               ezkey_format_waiting_prompt(NULL, 64, "u"), -1);
     expect_eq("format_waiting empty user",
@@ -88,19 +88,24 @@ int main(void) {
               ezkey_format_waiting_prompt(buf, sizeof(buf), NULL), -1);
     expect_eq("format_waiting ok",
               ezkey_format_waiting_prompt(buf, sizeof(buf), "testuser"), 0);
-    expect_true("format_waiting contains Approve line",
-                strstr(buf, "Approve this SSH login on your Ezkey device for "
-                            "user testuser.") != NULL);
+    expect_true("format_waiting contains Approve on your phone",
+                strstr(buf, "Approve on your phone for SSH user testuser.") !=
+                    NULL);
     expect_true("format_waiting contains Type ok request confirm",
                 strstr(buf, "Type ok and press Enter to request device "
                             "approval:") != NULL);
+    expect_true("format_waiting has no second-wait Type ok",
+                strstr(buf, "Type ok and press Enter to wait") == NULL);
+
+    /* #982 tier 1: challenge prompt — Enter only, no Type ok. */
     expect_eq("format_challenge ok",
               ezkey_format_challenge_prompt(buf, sizeof(buf), 42), 0);
     expect_true("format_challenge contains code 42",
                 strstr(buf, "Ezkey challenge code: 42") != NULL);
-    expect_true("format_challenge contains Type ok confirm",
-                strstr(buf, "Type ok and press Enter to wait for Ezkey device "
-                            "approval:") != NULL);
+    expect_true("format_challenge contains Approve on your phone Enter",
+                strstr(buf, "Approve on your phone, then press Enter:") != NULL);
+    expect_true("format_challenge has no Type ok",
+                strstr(buf, "Type ok") == NULL);
     expect_eq("format_challenge out of range",
               ezkey_format_challenge_prompt(buf, sizeof(buf), 100), -1);
     expect_eq("format_waiting too small",

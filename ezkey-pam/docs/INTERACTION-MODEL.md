@@ -6,8 +6,8 @@ client during one keyboard-interactive login. Maintained with the module
 `challenge_requested`, or the sshd recipe updates §2 and keeps the evidence
 tags honest.
 
-> Origin: Patrick craft draft (2026-10-21). State below is **ezkey-pam 2.2.12**
-> (PR #976 / #975): enrollment challenge display + **confirm-before-create**.
+> Origin: Patrick craft draft (2026-10-21). State below is **ezkey-pam 2.2.13**
+> (#982 tiers 0–1 on top of #976 confirm-before-create + enrollment challenge).
 > Evidence tags: **[code]** verified in source, **[test]** automated assert,
 > **[isa]** Isabelle on ezkey-pam-test, **[inf]** OpenSSH/PAM inference.
 > Paths relative to the repo root. `pam.c` = `ezkey-pam/src/pam_ezkey.c`.
@@ -15,21 +15,23 @@ tags honest.
 ## 0. The model in one paragraph
 
 One SSH login under `Match … MaxAuthTries 1` gives one `pam_sm_authenticate`
-call in sshd's PAM child. That call (2.2.12):
+call in sshd's PAM child. That call (2.2.13):
 
-1. Shows a **pre-create** `PAM_PROMPT_ECHO_OFF` confirm
-   ("Approve this SSH login… / Type ok … to request device approval") and
-   requires trimmed case-insensitive **`ok`**. Empty / EOF / wrong token /
-   Ctrl-C / conversation error → `PAM_AUTHINFO_UNAVAIL` with **zero**
-   Integration API creates (batch clients and Windows hang before create leave
-   no phone noise) [code][test].
+1. Shows a **pre-create** `PAM_PROMPT_ECHO_ON` confirm
+   ("Approve on your phone… / Type ok … to request device approval") and
+   requires trimmed case-insensitive **`ok`** (echo visible — #982 tier 0).
+   Empty / EOF / wrong token / Ctrl-C / conversation error →
+   `PAM_AUTHINFO_UNAVAIL` with **zero** Integration API creates (batch clients
+   and Windows hang before create leave no phone noise) [code][test].
 2. Only then `POST /auth-attempts` with `userIdentifier=<linux user>`,
    `challengeRequested=<conf>`, `ttlSeconds=<planned>`.
 3. If the create response carries a valid `authAttemptChallenge` (0..99) —
    host requested **or** enrollment-required (#975) — shows a **second**
-   ECHO_OFF prompt with the digits and requires another `ok`. Host
-   `challenge_requested` but missing/out-of-range code → UNAVAIL + cancel.
-   Digits never go to authpriv (#750).
+   `PAM_PROMPT_ECHO_ON` with the digits and **"Approve on your phone, then
+   press Enter"** (no second `Type ok` — #982 tier 1). After Enter the module
+   polls `/wait` until ACCEPTED / REJECTED / TTL. Host `challenge_requested`
+   but missing/out-of-range code → UNAVAIL + cancel. Digits never go to
+   authpriv (#750). No-challenge path: skip this prompt; go straight to wait.
 4. Polls `GET …/wait` in 5 s chunks, SIGTERM handler armed only here (#726 / #941).
 5. Maps the result: `ACCEPTED` → `PAM_SUCCESS`; `EXPIRED` / `REJECTED` /
    `INVALID` / unknown → `PAM_AUTH_ERR`; transport/config/conversation →
@@ -37,7 +39,7 @@ call in sshd's PAM child. That call (2.2.12):
    non-ACCEPTED exit **after** create.
 
 The single budget is 105 s from the start of authenticate, Enter included
-(`EZKEY_AUTH_BUDGET_SECS`). Each confirm is capped at 25 s
+(`EZKEY_AUTH_BUDGET_SECS`). Each prompt Enter is capped at 25 s
 (`EZKEY_MAX_ENTER_SECS`). The server-side TTL starts at create (≤ 90 s). The
 device decides; PAM never sees the challenge answer typed on the phone.
 
@@ -111,12 +113,12 @@ Rows assume `Match … MaxAuthTries 1` and an interactive client unless stated.
 
 ### 2.1 Challenge source × module version
 
-| Conf `challenge_requested` | Enrollment `authAttemptChallengeRequired` | Server code? | 2.2.11 | **2.2.12 (confirm-before-create)** |
+| Conf `challenge_requested` | Enrollment `authAttemptChallengeRequired` | Server code? | 2.2.12 | **2.2.13 (#982)** |
 | --- | --- | --- | --- | --- |
-| false | false | none | Msg after create; bare Enter accepted | Pre-create `ok` → create → wait (no 2nd prompt). Empty → **0 creates** [test] |
-| true | false | yes (request) | Msg + Code after create | Pre-create `ok` → create → **2nd** prompt with code → `ok` → wait [test] S1-H |
-| false | **true** | yes (enrollment) | **Code not shown** (bug #975) | Code shown on 2nd prompt whenever create returns it (`ezkey_prewait_prompt_mode`) [test] stub `enrollment_challenge` |
-| true | true | yes | Msg + Code ✔ | Same two-prompt flow |
+| false | false | none | Pre-create `ok` → create → wait | Same; ECHO_ON wording. Empty → **0 creates** [test] |
+| true | false | yes (request) | Pre-create `ok` → code → 2nd `ok` → wait | Pre-create `ok` → code prompt → **Enter** → poll `/wait` [test] S1-H / #982 |
+| false | **true** | yes (enrollment) | Code on 2nd prompt + `ok` | Code on 2nd prompt; **Enter** → poll [test] stub `enrollment_challenge` |
+| true | true | yes | Msg + Code ✔ | Same: `ok` → code → Enter → poll |
 | **true** | any | code missing or outside 0..99 | UNAVAIL (`ezkey_prewait_prompt_mode` −1) | Same fail-closed [test] |
 | **false** | any | code outside 0..99 (e.g. `challenge-digits` ≥ 3) | Waiting line (mode 0); code not shown → device INVALID or EXPIRED | Same: **not** UNAVAIL — silent deny after INVALID/expiry [code] |
 
@@ -210,27 +212,32 @@ Purpose: replace "effect of each setting" with **one decision per plausible scen
 | Integration API cancel with a typed reason? | **No.** `POST /api/v1/auth-attempts/{id}/cancel` has no body and sets status `EXPIRED`; there is no `CANCELLED` status and no reason field. | Integration API OpenAPI [code] |
 | Typed reason on the PAM side | Authpriv summary `result=… cancel=ok\|fail\|skipped\|final` plus debug.err ("pre-wait confirm missing or not ok"). | [code] |
 
-**Confirm-before-create (shipped in 2.2.12 / #976).** Prompt and require `ok`
-**first**, then create, then show the challenge code (if present) in a
-**second** ECHO_OFF prompt in the same authenticate call. Still one kbd-int
-round and one create under `Match … MaxAuthTries 1`. Batch / empty / Ctrl-C at
-the first prompt → **zero** attempts. Remaining limit: a client that answered
-`ok` but cannot display the second (challenge) prompt fails closed via the
-conversation-error path after create. Cost: two prompts on the challenge path.
-Create `ttlSeconds` is computed from the remaining auth budget **after** the
-pre-create `ok` (Patrick B1), so typing time shrinks the server TTL as well as
-the PAM wait. The 25 s Enter cap still applies to each confirm.
+**Confirm-before-create (2.2.12 / #976) + fluidity tiers 0–1 (2.2.13 / #982).**
+Prompt and require `ok` **first** (`PAM_PROMPT_ECHO_ON`), then create, then —
+when a code is present — show it in a **second** `PAM_PROMPT_ECHO_ON` where
+**Enter** continues to `/wait` (no second `Type ok`). Still one kbd-int round
+and one create under `Match … MaxAuthTries 1`. Batch / empty / Ctrl-C at the
+first prompt → **zero** attempts + typed debug error. Operator may approve on
+the phone **before or after** the challenge Enter; the module polls until
+ACCEPTED / REJECTED / TTL. Create `ttlSeconds` is computed from the remaining
+auth budget **after** the pre-create `ok` (Patrick B1). The 25 s Enter cap
+applies to each prompt. **Out of scope here:** tier 2 (drop pre-create `ok` on
+no-challenge path — needs Christophe + Alex) and tiers 3–4.
 
 ### 5.3 Catalogue (ranked)
 
 Tiers: **P1** core · **P2** common variant · **P3** edge · **P4** exotic.
-Tags as in §0. **2.2.12** = confirm-before-create + enrollment challenge display (#976).
+Tags as in §0. **2.2.13** = #982 tiers 0–1 on #976 confirm-before-create.
 
-| ID | Tier | Scenario | Interactive | Phone noise | Expected decision | 2.2.12 | Verdict |
+| ID | Tier | Scenario | Interactive | Phone noise | Expected decision | 2.2.13 | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| **S0** | P1 | Baseline: no challenge, interactive `ssh` | I | yes (wanted) | Pre-create `ok` → 1 create → wait; approve/deny/expire | ✔ [test] | **Covered** |
-| **S1-H** | P1 | Challenge from host conf | I | yes | `ok` → create → code prompt → `ok` → SUCCESS | ✔ [test] | **Covered** |
-| **S1-E** | P1 | Challenge from **enrollment**, host false | I | yes | Code shown on 2nd prompt (#975) | ✔ [test] stub | **Covered** |
+| **S0** | P1 | Baseline: no challenge, interactive `ssh` | I | yes (wanted) | Pre-create `ok` (ECHO_ON) → 1 create → wait | ✔ [test] | **Covered** |
+| **S1-H** | P1 | Challenge from host conf | I | yes | `ok` → create → code → **Enter** → poll → SUCCESS | ✔ [test] #982 | **Covered** |
+| **S1-E** | P1 | Challenge from **enrollment**, host false | I | yes | Code → Enter → poll (#975/#982) | ✔ [test] stub | **Covered** |
+| **S1-before** | P1 | Approve on phone **before** challenge Enter | I | yes | SUCCESS after Enter (wait short) | ✔ [test] #982 | **Covered** |
+| **S1-after** | P1 | Approve on phone **after** challenge Enter | I | yes | SUCCESS after delayed `/wait` | ✔ [test] #982 | **Covered** |
+| **S1-deny** | P1 | Deny while polling after challenge Enter | I | yes | DENIED + cancel | ✔ [test] #982 | **Covered** |
+| **S1-ttl** | P1 | TTL expiry while polling after challenge Enter | I | yes | TIMEOUT + cancel | ✔ [test] #982 | **Covered** |
 | **S2** | P2 | Batch / no tty, no challenge | B | **none** | UNAVAIL; **0 creates** | ✔ [test] D4 | **Covered** |
 | **S3** | P2 | Batch + enrollment challenge (Marc) | B | **none** | UNAVAIL; **0 creates** (never learns the code) | ✔ [test] | **Covered** |
 | **S4** | P2 | `BatchMode=yes` | B | no | Immediate denial, no PAM | ✔ [isa] D2 | **Covered** |

@@ -1,5 +1,5 @@
 /*
- * ezkey_challenge.h — two-digit challenge helpers + waiting-prompt format.
+ * ezkey_challenge.h — two-digit challenge helpers + confirm/challenge prompts.
  *
  * @since 2026
  */
@@ -18,33 +18,32 @@
 int ezkey_challenge_in_range(long challenge);
 
 /**
- * Pre-wait prompt decision after create (#975 / #941).
+ * Pre-wait prompt decision after create (#975 / #941 / #982).
  *
  * Show the challenge code whenever the create response contains a valid
  * value (host requested it, or enrollment requires it), regardless of the
  * host `challenge_requested` flag. Fail closed only when the host requested
- * a challenge and none came back. Otherwise show the no-challenge waiting
- * line.
+ * a challenge and none came back. Otherwise skip the post-create prompt
+ * (no-challenge path: pre-create confirm already ran).
  *
  * @param challenge_requested host conf challenge_requested (0/1)
  * @param challenge create response authAttemptChallenge, or -1 if absent
- * @return 1 show challenge code, 0 show waiting line, -1 fail-closed (UNAVAIL)
+ * @return 1 show challenge code, 0 skip post-create prompt, -1 fail-closed
  */
 int ezkey_prewait_prompt_mode(int challenge_requested, long challenge);
 
 /**
- * True when pam_prompt successfully displayed a pre-wait prompt (challenge or
- * no-challenge waiting message). There is no pam_info fallback — OpenSSH
- * buffers bare TEXT_INFO until the next prompt or the end of the round, so
- * production uses PAM_PROMPT_ECHO_OFF (Patrick / #941 F1).
+ * True when pam_prompt successfully displayed a confirm or challenge prompt.
+ * There is no pam_info fallback — OpenSSH buffers bare TEXT_INFO until the
+ * next prompt or the end of the round (#941 F1 / #982 ECHO_ON).
  *
- * @param pam_prompt_rc return from pam_prompt(PAM_PROMPT_ECHO_OFF, ...)
+ * @param pam_prompt_rc return from pam_prompt(...)
  * @return 1 if displayed, 0 otherwise
  */
 int ezkey_challenge_display_ok(int pam_prompt_rc);
 
 /**
- * True when the pre-wait conversation response is an explicit confirmation
+ * True when the pre-create conversation response is an explicit confirmation
  * (trimmed case-insensitive "ok"). Empty / EOF / bare Enter is rejected —
  * OpenSSH keyboard-interactive with `ssh -T </dev/null` answers the prompt
  * with an empty string and PAM_SUCCESS, so "Press Enter" alone cannot prove
@@ -56,8 +55,8 @@ int ezkey_challenge_display_ok(int pam_prompt_rc);
 int ezkey_prewait_response_confirmed(const char *resp);
 
 /**
- * Format the pre-create confirm prompt (shown via PAM_PROMPT_ECHO_OFF
- * **before** POST /auth-attempts — #941 / #975 confirm-before-create).
+ * Format the pre-create confirm prompt (shown via PAM_PROMPT_ECHO_ON
+ * **before** POST /auth-attempts — #941 / #975 / #982 tier 0).
  * Batch/empty clients fail here with zero attempts created.
  *
  * @param buf destination buffer
@@ -68,8 +67,9 @@ int ezkey_prewait_response_confirmed(const char *resp);
 int ezkey_format_waiting_prompt(char *buf, size_t buflen, const char *username);
 
 /**
- * Format the post-create challenge-code prompt (second ECHO_OFF in the same
- * authenticate call when create returned a valid code — #975).
+ * Format the post-create challenge-code prompt (#975 / #982 tier 1).
+ * This prompt is the only wait for the challenge path: after Enter the module
+ * polls /wait (no second "Type ok").
  *
  * @param buf destination buffer
  * @param buflen capacity of buf

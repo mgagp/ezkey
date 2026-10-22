@@ -6,15 +6,16 @@
  * (root:root, mode 0600). Docker demos write that file from the entrypoint —
  * sshd does not pass container ENV into PAM.
  *
- * Flow:
- *   1. POST /api/v1/auth-attempts  (Basic auth, userIdentifier = Linux username,
+ * Flow (#982 tiers 0–1):
+ *   1. PAM_PROMPT_ECHO_ON pre-create confirm (trimmed "ok" required)
+ *   2. POST /api/v1/auth-attempts  (Basic auth, userIdentifier = Linux username,
  *      optional ttlSeconds = planned wait; servers that ignore the field stay OK)
- *   2. PAM_PROMPT_ECHO_OFF waiting or challenge line (OpenSSH flush before /wait;
- *      #941 — do not use pam_info for client-visible waiting copy)
- *   3. GET  /api/v1/auth-attempts/{id}/wait  (timeout aligned on applied TTL,
+ *   3. Optional PAM_PROMPT_ECHO_ON challenge line (code visible; Enter continues —
+ *      no second "ok"; OpenSSH flush before /wait — #941 / #982)
+ *   4. GET  /api/v1/auth-attempts/{id}/wait  (timeout aligned on applied TTL,
  *      monotonic budget — never host clock vs server expiresAt)
- *   4. PAM_SUCCESS when wait status is ACCEPTED
- *   5. Best-effort POST …/cancel on any non-ACCEPTED exit after create
+ *   5. PAM_SUCCESS when wait status is ACCEPTED
+ *   6. Best-effort POST …/cancel on any non-ACCEPTED exit after create
  *
  * Fail-closed: API / transport / config failures never return PAM_SUCCESS or
  * PAM_IGNORE. See STATUS.md §2.1, §2.4, and § M1.
@@ -128,18 +129,22 @@ static int compute_planned_wait(const EzkeyConfig *cfg,
 static char *build_create_body(const EzkeyConfig *cfg, const char *username,
                                int ttl_seconds);
 /**
- * Show msg via PAM_PROMPT_ECHO_OFF and require trimmed "ok".
+ * Show msg via PAM_PROMPT_ECHO_ON.
  *
- * @return 0 on confirmed ok; -1 conversation/display failure; -2 empty/wrong
- *         confirm; -3 Enter over EZKEY_MAX_ENTER_SECS; -4 budget too small
+ * @param require_ok 1 = trimmed "ok" required (pre-create); 0 = any Enter
+ *                   continues (challenge path — #982 tier 1)
+ * @return 0 on success; -1 conversation/display failure; -2 empty/wrong
+ *         confirm (require_ok only); -3 Enter over EZKEY_MAX_ENTER_SECS;
+ *         -4 budget too small
  */
-static int prompt_ok_confirm(pam_handle_t *pamh, const EzkeyConfig *cfg,
-                             const struct timespec *auth_started, char *msg,
-                             size_t msg_len, const char *prompt_fail_dbg,
-                             const char *enter_over_dbg,
-                             const char *budget_before_dbg,
-                             const char *budget_after_dbg,
-                             const char *no_conv_dbg, int *interrupted_out);
+static int prompt_echo_on(pam_handle_t *pamh, const EzkeyConfig *cfg,
+                          const struct timespec *auth_started, char *msg,
+                          size_t msg_len, int require_ok,
+                          const char *prompt_fail_dbg,
+                          const char *enter_over_dbg,
+                          const char *budget_before_dbg,
+                          const char *budget_after_dbg,
+                          const char *no_conv_dbg, int *interrupted_out);
 static const char *ezkey_cancel_best_effort(pam_handle_t *pamh,
                                             const EzkeyConfig *cfg,
                                             const char *api_url,
@@ -571,16 +576,17 @@ static long elapsed_ms(const struct timespec *start) {
 }
 
 /**
- * Seconds left on the single auth budget (EZKEY_AUTH_BUDGET_SECS from auth
- * start). Floor at 0. Patrick P3: wait and Enter must fit under LoginGraceTime.
+ * Echo-visible PAM prompt (#982 tier 0). Pre-create requires trimmed "ok";
+ * challenge path accepts any Enter then polls /wait (tier 1).
  */
-static int prompt_ok_confirm(pam_handle_t *pamh, const EzkeyConfig *cfg,
-                             const struct timespec *auth_started, char *msg,
-                             size_t msg_len, const char *prompt_fail_dbg,
-                             const char *enter_over_dbg,
-                             const char *budget_before_dbg,
-                             const char *budget_after_dbg,
-                             const char *no_conv_dbg, int *interrupted_out) {
+static int prompt_echo_on(pam_handle_t *pamh, const EzkeyConfig *cfg,
+                          const struct timespec *auth_started, char *msg,
+                          size_t msg_len, int require_ok,
+                          const char *prompt_fail_dbg,
+                          const char *enter_over_dbg,
+                          const char *budget_before_dbg,
+                          const char *budget_after_dbg,
+                          const char *no_conv_dbg, int *interrupted_out) {
     char *resp = NULL;
     int prc;
     const void *conv_item = NULL;
@@ -604,7 +610,7 @@ static int prompt_ok_confirm(pam_handle_t *pamh, const EzkeyConfig *cfg,
         return -4;
     }
     clock_gettime(CLOCK_MONOTONIC, &enter_started);
-    prc = pam_prompt(pamh, PAM_PROMPT_ECHO_OFF, &resp, "%s", msg);
+    prc = pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &resp, "%s", msg);
     enter_elapsed_s = elapsed_ms(&enter_started) / 1000L;
     ezkey_secure_wipe(msg, msg_len);
     if (!ezkey_challenge_display_ok(prc)) {
@@ -618,7 +624,7 @@ static int prompt_ok_confirm(pam_handle_t *pamh, const EzkeyConfig *cfg,
         log_pam_error_debug(pamh, cfg, prompt_fail_dbg);
         return -1;
     }
-    if (!ezkey_prewait_response_confirmed(resp)) {
+    if (require_ok && !ezkey_prewait_response_confirmed(resp)) {
         if (resp != NULL) {
             ezkey_secure_wipe(resp, strlen(resp));
             free(resp);
@@ -977,8 +983,8 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     {
         int conf_rc;
 
-        conf_rc = prompt_ok_confirm(
-            pamh, cfg, auth_started, msg, sizeof(msg),
+        conf_rc = prompt_echo_on(
+            pamh, cfg, auth_started, msg, sizeof(msg), 1 /* require ok */,
             "PAM conversation could not display the pre-create confirm",
             "pre-create confirm exceeded max duration",
             "auth budget exhausted before pre-create confirm",
@@ -1129,12 +1135,12 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     log_pam_info(pamh, cfg, msg);
 
     /*
-     * Post-create challenge prompt (#975): if create returned a valid code
-     * (host requested or enrollment-required), show digits in a **second**
-     * PAM_PROMPT_ECHO_OFF in the same authenticate call (never syslog — #750).
-     * challenge_requested but missing/out-of-range → UNAVAIL + cancel.
-     * No-challenge path: skip second prompt; pre-create confirm already ran.
-     * One authenticate call → at most one create under Match MaxAuthTries 1.
+     * Post-create challenge prompt (#975 / #982 tier 1): if create returned a
+     * valid code, show digits in PAM_PROMPT_ECHO_ON (never syslog — #750).
+     * Enter continues to /wait — no second "Type ok". Operator may approve on
+     * the phone before or after Enter; the module polls until ACCEPTED /
+     * REJECTED / TTL. challenge_requested but missing/out-of-range → UNAVAIL
+     * + cancel. No-challenge path: skip; pre-create confirm already ran.
      */
     {
         int prewait_mode;
@@ -1159,12 +1165,12 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                 summary = "UNAVAIL";
                 goto cleanup;
             }
-            conf_rc = prompt_ok_confirm(
-                pamh, cfg, auth_started, msg, sizeof(msg),
+            conf_rc = prompt_echo_on(
+                pamh, cfg, auth_started, msg, sizeof(msg), 0 /* Enter only */,
                 "PAM conversation could not display the challenge code",
-                "challenge confirm exceeded max duration",
-                "auth budget exhausted before challenge confirm prompt",
-                "auth budget exhausted after challenge confirm",
+                "challenge prompt exceeded max duration",
+                "auth budget exhausted before challenge prompt",
+                "auth budget exhausted after challenge prompt",
                 "no PAM conversation to display the challenge code",
                 &interrupted);
             if (conf_rc != 0) {
@@ -1548,7 +1554,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
 
     /*
      * Pre-create confirm + optional challenge lines are shown inside
-     * ezkey_authenticate_user_api via PAM_PROMPT_ECHO_OFF (#941 / #975
+     * ezkey_authenticate_user_api via PAM_PROMPT_ECHO_ON (#941 / #975 / #982
      * confirm-before-create). Do not pam_info here — OpenSSH buffers
      * TEXT_INFO until the verdict without a prompt round.
      */

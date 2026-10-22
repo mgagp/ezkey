@@ -14,8 +14,8 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 `integration-api`). When a user connects over SSH, the module:
 
 1. Reads runtime settings from `/etc/security/pam_ezkey.conf` (written at container start).
-2. Shows a **pre-create** SSH confirm (`PAM_PROMPT_ECHO_OFF`): “Approve this SSH
-   login… / Type ok … to request device approval”. Trimmed **`ok`** is required
+2. Shows a **pre-create** SSH confirm (`PAM_PROMPT_ECHO_ON`, #982): “Approve on
+   your phone… / Type ok … to request device approval”. Trimmed **`ok`** is required
    before any Integration API call (confirm-before-create — #975 / Patrick
    [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) §5). Empty / EOF /
    Ctrl-C → `UNAVAIL` with **zero** auth attempts (no phone noise).
@@ -33,6 +33,15 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
+
+## What changed in 2.2.13 (#982 — fluidity tiers 0–1)
+
+- Pre-create confirm uses **`PAM_PROMPT_ECHO_ON`** (typed `ok` is visible) with
+  clearer “Approve on your phone…” wording.
+- Challenge path: the prompt that shows the code is the **only** wait; after
+  **Enter** the module polls `/wait` until approve / deny / TTL. **No second
+  “Type ok”.** Confirm-before-create and batch → 0 creates are unchanged.
+- Canonical detail: [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md).
 
 ## What changed in 2.2.12 (#975 — enrollment challenge + confirm-before-create)
 

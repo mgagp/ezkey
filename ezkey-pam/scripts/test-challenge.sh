@@ -125,10 +125,17 @@ close_ssh_ctrl() {
   SSH_CTRL=""
 }
 
+send_ssh_ok() {
+  if [ -n "${SSH_CTRL}" ]; then
+    # Pre-create confirm token (#975 / #982 tier 0).
+    printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
+  fi
+}
+
 send_ssh_enter() {
   if [ -n "${SSH_CTRL}" ]; then
-    # Non-blocking writer: helper holds the read end open. "ok" = confirm token.
-    printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
+    # Challenge path: bare Enter continues to /wait (#982 tier 1).
+    printf 'enter\n' >"${SSH_CTRL}" 2>/dev/null || true
   fi
 }
 
@@ -140,8 +147,8 @@ wait_precreate_and_confirm() {
   for i in $(seq 1 80); do
     flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
     if echo "${flat}" | grep -qE \
-      'Type ok and press Enter to request device approval|Approve this SSH login'; then
-      send_ssh_enter
+      'Type ok and press Enter to request device approval|Approve on your phone'; then
+      send_ssh_ok
       return 0
     fi
     sleep 0.25
@@ -242,15 +249,16 @@ else
 fi
 
 if [ -n "${SHOWN}" ]; then
-  # Code is on the PTY; answer the challenge confirm so PAM proceeds to /wait,
-  # then approve — order proves display-before-approve (Patrick).
-  echo "Sending ok on challenge prompt (after live capture proof)" | tee -a "${PROOF_LOG}"
-  send_ssh_enter
-  sleep 0.3
-  echo "Approving with challenge=${CHALLENGE} (after capture proof)" | tee -a "${PROOF_LOG}"
+  # #982: approve while still on the challenge prompt, then Enter → /wait
+  # (approval-before-Enter). Code was already proven visible above.
+  echo "Approving with challenge=${CHALLENGE} before challenge Enter (#982)" \
+    | tee -a "${PROOF_LOG}"
   "${SCRIPT_DIR}/respond-pending.sh" approve "${ENROLLMENT_ID}" "${CHALLENGE}" \
     >"${ARTIFACT_DIR}/pam-challenge-approve.log" 2>&1
-  ok "Demo Device approve with matching challenge submitted"
+  ok "Demo Device approve with matching challenge submitted (before Enter)"
+  echo "Sending Enter on challenge prompt (after approve)" | tee -a "${PROOF_LOG}"
+  send_ssh_enter
+  sleep 0.3
 
   set +e
   wait "${SSH_BG}"

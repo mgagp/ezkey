@@ -96,7 +96,7 @@ check-source:
 	@grep -q 'ezkey_challenge_display_ok' $(SRC_DIR)/pam_ezkey.c
 	@grep -q 'ezkey_prewait_prompt_mode' $(SRC_DIR)/pam_ezkey.c
 	@grep -q 'ezkey_prewait_response_confirmed' $(SRC_DIR)/pam_ezkey.c
-	@grep -q 'PAM_PROMPT_ECHO_OFF' $(SRC_DIR)/pam_ezkey.c
+	@grep -q 'PAM_PROMPT_ECHO_ON' $(SRC_DIR)/pam_ezkey.c
 	@if grep -nE '(^|[^_[:alnum:]])pam_info[[:space:]]*\(' $(SRC_DIR)/pam_ezkey.c; then \
 		echo "error: pam_info() must not appear in pam_ezkey.c (#941 — use pam_prompt)" >&2; exit 1; \
 	fi

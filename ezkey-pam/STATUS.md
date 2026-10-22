@@ -45,7 +45,8 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.12** (#975 / PR #976: **confirm-before-create** + display
+Version **2.2.13** (#982 tiers 0–1 on #976: ECHO_ON confirm + challenge
+Enter-only wait). Prior **2.2.12** (#975 / PR #976: **confirm-before-create** + display
 server-provided challenge even when host `challenge_requested=false`; builds on
 **2.2.11** #941 F1 waiting line via `pam_prompt`, and **2.2.10** #907 F9 option A:
 sshd `Match` MaxAuthTries; chunked wait + best-effort disconnect cancel
@@ -559,24 +560,27 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 
 ### SSH waiting message and two-digit challenge
 
-**Confirm-before-create + waiting / challenge prompts (2.2.12 / #975; builds on
+**Confirm-before-create + fluidity (#982 tiers 0–1 / 2.2.13; builds on #976 /
 #941 F1).** Canonical matrix:
 [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md).
 
 Default **`challenge_requested=false`**:
 
-1. **Pre-create** `pam_prompt(PAM_PROMPT_ECHO_OFF)`:
-   `Approve this SSH login on your Ezkey device for user <user>.` +
+1. **Pre-create** `pam_prompt(PAM_PROMPT_ECHO_ON)`:
+   `Approve on your phone for SSH user <user>.` +
    `Type ok and press Enter to request device approval:`
 2. Trimmed case-insensitive **`ok`** required. Empty / bare Enter / EOF →
    `UNAVAIL` with **zero** creates (D4 / S2 / S3).
 3. `POST /auth-attempts`. If response has no challenge → `/wait` (no second prompt).
-4. If response has a valid challenge (0..99) → **second** prompt with digits +
-   another `ok`, then `/wait`. Digits never in authpriv (#750).
+4. If response has a valid challenge (0..99) → **second** `PAM_PROMPT_ECHO_ON`
+   with digits + `Approve on your phone, then press Enter:` (no second Type ok);
+   after Enter, poll `/wait` until ACCEPTED / REJECTED / TTL. Digits never in
+   authpriv (#750).
 
 OpenSSH buffers bare `pam_info` / `PAM_TEXT_INFO` until the next prompt (Edgar
-F1) — hence ECHO_OFF only. One authenticate call → at most one create under
-`Match … MaxAuthTries 1`. Username controls sanitized (`ezkey_sanitize_for_prompt`).
+F1) — hence a real prompt (now ECHO_ON). One authenticate call → at most one
+create under `Match … MaxAuthTries 1`. Username controls sanitized
+(`ezkey_sanitize_for_prompt`).
 
 **No TTY / empty auto-answer (#956 M2 + #975 D4 + confirm-before-create).**
 
