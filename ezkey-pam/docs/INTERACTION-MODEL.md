@@ -144,8 +144,9 @@ Rows assume `Match … MaxAuthTries 1` and an interactive client unless stated.
 | Windows OpenSSH, no console | ✘ (hangs) | n/a | — | grace cut 120 s | ✔ | **0 creates** (hang before create) | [isa] D1; [code] |
 | BatchMode=yes | — | — | — | — | ✔ | none (no PAM) | [isa] D2 |
 | Pre-create `ok` after > 25 s | ✔ | n/a | — | — | ✔ UNAVAIL | **0 creates** | [test] |
-| Challenge (2nd) confirm > 25 s | ✔ | n/a | — | — | ✔ UNAVAIL | 1 create + cancel | [test] |
-| Late `ok` (< 25 s) | ✔ | wait **and** create `ttlSeconds` shortened (computed after confirm — Patrick B1) | | | ✔ | 1 | [test] |
+| Challenge Enter after > 88 s (rem ≤ CURL_SLACK+MIN_WAIT) | ✔ | n/a | — | — | ✔ UNAVAIL | 1 create + `cancel=ok`; if already ACCEPTED → cancel HTTP **409** / `cancel=final`, login still refused | [test] #982 B3 |
+| Challenge Enter @30 s (already approved) | ✔ | SUCCESS | — | — | ✔ | 1; `cancel=skipped` | [test] #982 B1 |
+| Late pre-create `ok` (< 25 s) | ✔ | wait **and** create `ttlSeconds` shortened (computed after confirm) | | | ✔ | 1 | [test] |
 | Ctrl-C at pre-create prompt | ✔ | — | — | — | ✔ | **0 creates** | [code][test] M3 |
 | Ctrl-C at challenge / during `/wait` | ✔ | — | — | — | ✔ | cancel if conv error / SIGTERM in wait; else TTL | [code], STATUS M3 |
 | Client disconnect during `/wait` | ✔ | — | — | — | ✔ | cancel within the 5 s chunk | [test] #908 |
@@ -250,6 +251,7 @@ Tags as in §0. **2.2.13** = #982 tiers 0–1 on #976 confirm-before-create.
 | **S6** | P2 | Ctrl-C at prompt / during wait | I | pre-create: no; after create: until cancel/TTL | Pre-create Ctrl-C: 0 creates [test]; wait kill-client: cancel=ok ≤5s when SIGTERM delivered, else best-effort NOTE (OpenSSH 9.9) [test] f9 B2b; wait-timeout cancel=ok [test-timeouts] | ✔ | **Covered** |
 | **S7** | P2 | Pre-create `ok` after > 25 s | I | **none** (0 creates) | UNAVAIL | ✔ [test] | **Covered** |
 | **S7b** | P2 | Challenge Enter after 30 s (already approved) | I | yes (wanted) | SUCCESS; no cancel | ✔ [test] #982 B1 | **Covered** |
+| **S7c** | P2 | Challenge Enter after > 88 s (rem exhausted) | I | yes (until cancel) | UNAVAIL + cancel=ok; if already ACCEPTED → cancel=final 409, login refused | ✔ [test] #982 B3 | **Covered** |
 | **S8** | P3 | Windows OpenSSH no console | S | **none** | Hang ≤ grace; **0 creates**; use `ssh -tt` | Doc + 0-create | **Doc** |
 | **S9** | P3 | ControlMaster reuse | S | no | MFA once per master | [inf] | **Doc** |
 | **S10** | P3 | Match forgotten | I | yes ×N | N creates; install warn | [test] f9 A | **Doc + warn** |

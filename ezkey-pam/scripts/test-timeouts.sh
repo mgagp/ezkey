@@ -620,6 +620,53 @@ fi
 stop_stub
 restore_conf
 
+# --- #982 Patrick B3: challenge Enter after >88 s → rem-budget refusal + cancel=ok ---
+# Bound: rem <= CURL_WAIT_SLACK(15)+MIN_WAIT(2)=17 ⇒ elapsed >= 88 from auth start.
+# Create stays PENDING (no /wait); cancel succeeds → cancel=ok. If the device had
+# already ACCEPTED, cancel would be HTTP 409 → cancel=final; login still refused
+# (documented in STATUS / INTERACTION-MODEL — stub cannot race ACCEPTED without /wait).
+start_stub ok
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=90/' '${CONF}'; \
+   sed -i 's/^api_timeout=.*/api_timeout=5/' '${CONF}'; \
+   sed -i 's/^challenge_requested=.*/challenge_requested=true/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'; \
+   : > /var/log/ezkey-pam/debug.err; : > '${STUB_REQ_LOG}'"
+SSH_LOG="${ARTIFACT_DIR}/pam-timeouts-chal-enter-over-88.log"
+SSH_CTRL="$(ezkey_mk_ctrl_fifo)"
+SSH_CTRL_DIR="$(dirname "${SSH_CTRL}")"
+run_chal_ssh "${SSH_LOG}" "${SSH_CTRL}"
+wait_prewait_visible "${SSH_LOG}" || true
+printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
+wait_chal_visible "${SSH_LOG}" || true
+ENTER_OVER_BUDGET=89
+echo "Challenge-prompt Enter after ${ENTER_OVER_BUDGET}s (>88s rem-budget bound)" \
+  | tee -a "${PROOF}"
+sleep "${ENTER_OVER_BUDGET}"
+printf 'enter\n' >"${SSH_CTRL}" 2>/dev/null || true
+set +e
+wait "${SSH_BG}"
+set -e
+rm -rf "${SSH_CTRL_DIR}"
+ATTEMPT="$(last_attempt_line)"
+CANCEL_N="$(stub_saw_cancel)"
+ERR="$(docker exec "${CONTAINER}" sh -c 'tail -n 8 /var/log/ezkey-pam/debug.err' || true)"
+echo "chal-enter>88 attempt=${ATTEMPT} cancel=${CANCEL_N}" | tee -a "${PROOF}"
+echo "chal-enter>88 err=${ERR}" | tee -a "${PROOF}"
+if echo "${ATTEMPT}" | grep -q 'result=UNAVAIL' \
+  && echo "${ATTEMPT}" | grep -q 'cancel=ok' \
+  && echo "${ERR}" | grep -Eqi 'auth budget exhausted after challenge prompt' \
+  && [ "${CANCEL_N}" -ge 1 ]; then
+  ok "#982 B3 challenge Enter>88s → UNAVAIL + cancel=ok (rem-budget bound)"
+else
+  fail "#982 B3 Enter>88s expected UNAVAIL cancel=ok: ${ATTEMPT} cancel=${CANCEL_N} / ${ERR}"
+fi
+stop_stub
+restore_conf
+
 # --- M1 (#956): delayed Enter on default path (no-challenge) ---
 start_stub ok
 docker exec "${CONTAINER}" sh -c \

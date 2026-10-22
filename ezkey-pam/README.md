@@ -41,8 +41,10 @@ that owns the API key.
   “SSH login for user…” wording (no phone-approve copy before create).
 - Challenge path: the prompt that shows the code is the **only** wait; after
   **Enter** the module polls `/wait` until approve / deny / TTL. **No second
-  “Type ok”.** Challenge Enter has no 25 s cap (rem-budget only). Confirm-
-  before-create and batch → 0 creates are unchanged.
+  “Type ok”.** Challenge Enter has no 25 s cap (rem-budget only; Enter after
+  rem exhaustion → UNAVAIL + cancel — if already ACCEPTED, cancel is HTTP 409 /
+  `cancel=final` and login is still refused). Confirm-before-create and batch →
+  0 creates are unchanged.
 - Canonical detail: [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md).
 
 ## What changed in 2.2.12 (#975 — enrollment challenge + confirm-before-create)
