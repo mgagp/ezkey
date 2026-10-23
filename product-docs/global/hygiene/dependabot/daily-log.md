@@ -210,3 +210,21 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
   - #969/#970/#971 `mobile / js-validate`: stale `app/data/thirdPartyLicenses.json` only (package version bump in snapshot) — runs `39616637307` / `39616678938` / `39616713754` — not infra
 - Validation: Dependabot CI green for #965/#966/#967/#968; #986 `ci-gate` + `js-validate` / android jobs green; `./scripts/build.sh` OK; clean-start OK (Admin `9081` UP, audit HMAC READY); smoke excl. prod-safe-only rate-limit assertion OK (full smoke needs `--prod-safe`); Admin Node 24 lint + vitest **206/206**; Playwright **6/6**; mobile jest **323/323**
 - Residual: phone smoke for mobile bumps tracked on #627 (gates next Play AAB). Nothing deployed.
+
+## 2026-10-23
+
+- Pass: weekday light (autonomous); concurrency: clear at merge time (operator check 09:25 ET + re-check; no Dependabot/hygiene merges in prior ~30 min; last unrelated merge #996 PAM at 2026-10-23T00:17Z; only this `dependabot-curated` agent owning the pass)
+- GitHub write: `GH_TOKEN as mgagp`
+- Merged (squash):
+  - Maven T1: #990 `jackson-bom.version` 3.2.3→3.2.4 `d81e069a` (Dependabot CI CLEAN: backend + `ci-gate`; run `39795325472`)
+  - Mobile T1: #991 `@rnx-kit/third-party-notices` 3.0.3→3.0.4 `41d80fc2` — direct squash after update-branch onto main; `mobile / js-validate` green on rebased head (no `yarn license:app-data` companion; unlike #969–#971/#933/#930); android-jvm + android-16kb + `ci-gate` SUCCESS (post-rebase run `39960907148`)
+- Held (out of light scope; not closed — Marc hold / gates):
+  - #870 Tink 1.23→1.24 (crypto; PAM + Tink at-rest restructuring; Christophe)
+  - #878 mobile-rn-core (never auto-merge without Marc)
+  - #929 android-gradle junit (Marc hold)
+  - #779 ESLint 10, #653 Jest 30 (ecosystem gates)
+  - #767 textual pip floor (Monday)
+  - deferred:later-train `#498`/`#337` (skip)
+- Red-CI evidence: none for actionable queue (both Dependabot CIs green before merge)
+- Validation: T1-only shortcut — `./scripts/build.sh` BUILD SUCCESS on `main` @ `d81e069a` (pre-#991); after #991, mobile `yarn validate` jest **323/323** (42 suites; eslint 0 errors / 5 pre-existing warnings). Stack/Playwright deferred (T1-only).
+- Residual: phone smoke for #991 tracked on #627 (gates next Play AAB; non-blocking). Nothing deployed.
