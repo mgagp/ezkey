@@ -1,9 +1,11 @@
 /*
- * Harness: challenge 0..99 bound + display_ok (Christophe nits on #610) and
- * confirm / challenge prompt format (#941 F1 / #982 tiers 0–1).
+ * Harness: challenge 0..99 bound + display_ok (Christophe nits on #610),
+ * confirm / challenge prompt format (#941 F1 / #982 tiers 0–1), and
+ * connector default + precedence (#995).
  */
 
 #include "ezkey_challenge.h"
+#include "ezkey_config.h"
 
 #include <security/pam_appl.h>
 #include <stdio.h>
@@ -43,13 +45,28 @@ int main(void) {
     expect_eq("in_range(100)", ezkey_challenge_in_range(100), 0);
     expect_eq("in_range(1000)", ezkey_challenge_in_range(1000), 0);
 
-    /* #975: show server challenge even when host did not request it. */
-    expect_eq("prewait enrollment chal + conf false → show code",
+    /* #995: connector compiled-in default is challenge requested. */
+    expect_eq("connector default challenge_requested is true (#995)",
+              EZKEY_DEFAULT_CHALLENGE_REQUESTED, 1);
+
+    /*
+     * #975 / #995 precedence: enrollment-forced code in the create response
+     * always shows (server wins). Connector true asks and fail-closes when
+     * missing; connector false only means "not requested" (skip post-create
+     * prompt when no code).
+     */
+    expect_eq("prewait enrollment chal + conf false → show code (server wins)",
               ezkey_prewait_prompt_mode(0, 42), 1);
+    expect_eq("prewait default true + chal → show code",
+              ezkey_prewait_prompt_mode(EZKEY_DEFAULT_CHALLENGE_REQUESTED, 7),
+              1);
     expect_eq("prewait requested + chal → show code",
               ezkey_prewait_prompt_mode(1, 7), 1);
-    expect_eq("prewait no chal + conf false → skip post-create prompt",
+    expect_eq("prewait no chal + conf false → skip (not requested)",
               ezkey_prewait_prompt_mode(0, -1), 0);
+    expect_eq("prewait default true + missing → fail-closed",
+              ezkey_prewait_prompt_mode(EZKEY_DEFAULT_CHALLENGE_REQUESTED, -1),
+              -1);
     expect_eq("prewait requested + missing → fail-closed",
               ezkey_prewait_prompt_mode(1, -1), -1);
     expect_eq("prewait requested + out of range → fail-closed",

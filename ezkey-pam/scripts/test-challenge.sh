@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Two-digit challenge: prove code appears in live SSH capture BEFORE approve
 # (Patrick). Cases: match → SUCCESS; wrong code → refuse; absent challenge
-# (stub) → UNAVAIL. Default challenge_requested=false (see STATUS).
+# (stub) → UNAVAIL. Default challenge_requested=true since #995 (see STATUS);
+# cases that need no-challenge or explicit true still sed the conf.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -38,6 +38,8 @@ WORKDIR /src
 COPY src/ /src/src/
 COPY Makefile /src/Makefile
 COPY test/ /src/test/
+# Sample conf for check-source (#995 challenge_requested=true guard).
+COPY config/ /src/config/
 # Shared MaxAuthTries helper + awk + unit test (Patrick #908 / #934).
 COPY install.sh /src/install.sh
 COPY docker-entrypoint.sh /src/docker-entrypoint.sh

@@ -1,15 +1,20 @@
+/// Ezkey device-side protocol SDK (pure Dart, no `dart:io`, usable from Flutter).
+///
+/// Start with [EzkeyAuthenticator]; implement [EzkeyDeviceKeyStore] and [EzkeyEnrollmentStore]
+/// on top of the platform keystore and secure storage. See `README.md`.
 library;
 
+export 'src/ec_p256.dart';
 export 'src/ed25519.dart';
 export 'src/encoding.dart';
-export 'src/ec_p256.dart';
 export 'src/ezkey_crypto.dart';
-export 'src/live/auth_api_client.dart';
-export 'src/live/auth_api_models.dart';
-export 'src/live/auth_session.dart';
-export 'src/live/admin_api_client.dart';
-export 'src/live/env_config.dart';
-export 'src/live/enrollment_code.dart';
-export 'src/live/enrollment_snapshot.dart';
 export 'src/payload.dart';
+export 'src/sdk/auth_api_client.dart';
+export 'src/sdk/auth_api_models.dart';
+export 'src/sdk/authenticator.dart';
+export 'src/sdk/enrollment_store.dart';
+export 'src/sdk/errors.dart';
+export 'src/sdk/key_store.dart';
+export 'src/sdk/models.dart';
+export 'src/sdk/url_policy.dart';
 export 'src/secure_random.dart';

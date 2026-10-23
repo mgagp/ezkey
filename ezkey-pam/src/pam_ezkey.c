@@ -53,16 +53,16 @@
 #include <security/pam_appl.h>
 #include "ezkey_budget.h"
 #include "ezkey_challenge.h"
+#include "ezkey_conf.h"
 #include "ezkey_config.h"
 #include "ezkey_filelog.h"
 #include "ezkey_sanitize.h"
 #include "ezkey_session.h"
 
-#define EZKEY_URL_MAX 512
-#define EZKEY_KEY_MAX 256
-#define EZKEY_TITLE_MAX 200
-#define EZKEY_MESSAGE_MAX 512
-#define EZKEY_LINE_MAX 1024
+#define EZKEY_URL_MAX EZKEY_CONF_URL_MAX
+#define EZKEY_KEY_MAX EZKEY_CONF_KEY_MAX
+#define EZKEY_TITLE_MAX EZKEY_CONF_TITLE_MAX
+#define EZKEY_MESSAGE_MAX EZKEY_CONF_MESSAGE_MAX
 
 #define EZKEY_PAM_DATA_FINAL "ezkey_session_final"
 
@@ -71,24 +71,6 @@ static char ezkey_final_marker = 1;
 
 /* Set by wait-scoped SIGTERM handler; curl xferinfo aborts the in-flight /wait. */
 static volatile sig_atomic_t ezkey_wait_abort = 0;
-
-typedef struct {
-    char api_url[EZKEY_URL_MAX];
-    char integration_key[EZKEY_KEY_MAX];
-    char secret_key[EZKEY_KEY_MAX];
-    int wait_timeout;
-    int wait_polling;
-    int api_timeout;
-    int challenge_requested;
-    /* When 0 (default), only https:// Integration API URLs are accepted.
-     * Docker lab entrypoint sets lab_http=true so http:// on the compose
-     * network is allowed. Non-lab / host installs must leave this false. */
-    int lab_http;
-    char context_title[EZKEY_TITLE_MAX + 1];
-    char context_message[EZKEY_MESSAGE_MAX + 1];
-    int debug;
-    char config_file[EZKEY_URL_MAX];
-} EzkeyConfig;
 
 typedef struct {
     char *data;
@@ -113,7 +95,6 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
                                        const struct timespec *auth_started,
                                        const char **summary_result_out,
                                        const char **cancel_status_out);
-static void trim_inplace(char *s);
 static void ezkey_secure_wipe(void *ptr, size_t len);
 static void wipe_cfg_secrets(EzkeyConfig *cfg);
 static void log_attempt_start(const char *username, long auth_attempt_id,
@@ -156,23 +137,6 @@ static int ezkey_xferinfo_abort(void *clientp, curl_off_t dltotal,
                                 curl_off_t ulnow);
 static void ezkey_sigterm_wait(int signo);
 
-static void ezkey_config_init(EzkeyConfig *cfg) {
-    memset(cfg, 0, sizeof(*cfg));
-    /* api_url left empty — must come from conf (no localhost default; B1). */
-    cfg->wait_timeout = EZKEY_DEFAULT_WAIT_TIMEOUT;
-    cfg->wait_polling = EZKEY_DEFAULT_WAIT_POLLING;
-    cfg->api_timeout = EZKEY_DEFAULT_API_TIMEOUT;
-    cfg->challenge_requested = 0;
-    cfg->lab_http = 0;
-    cfg->debug = 0;
-    strncpy(cfg->context_title, "SSH login", sizeof(cfg->context_title) - 1);
-    strncpy(cfg->config_file, EZKEY_DEFAULT_CONFIG_FILE,
-            sizeof(cfg->config_file) - 1);
-#if EZKEY_DEBUG
-    cfg->debug = 1;
-#endif
-}
-
 static void ezkey_secure_wipe(void *ptr, size_t len) {
     if (ptr == NULL || len == 0) {
         return;
@@ -189,104 +153,10 @@ static void ezkey_secure_wipe(void *ptr, size_t len) {
 #endif
 }
 
-static void trim_inplace(char *s) {
-    char *start;
-    char *end;
-    size_t len;
-
-    if (s == NULL) {
-        return;
-    }
-    start = s;
-    while (*start != '\0' && isspace((unsigned char)*start)) {
-        start++;
-    }
-    if (start != s) {
-        memmove(s, start, strlen(start) + 1);
-    }
-    len = strlen(s);
-    end = s + len;
-    while (end > s && isspace((unsigned char)*(end - 1))) {
-        end--;
-    }
-    *end = '\0';
-}
-
-static void set_cfg_str(char *dest, size_t dest_size, const char *src) {
-    if (dest == NULL || dest_size == 0) {
-        return;
-    }
-    if (src == NULL) {
-        dest[0] = '\0';
-        return;
-    }
-    strncpy(dest, src, dest_size - 1);
-    dest[dest_size - 1] = '\0';
-}
-
-static int parse_positive_int(const char *value, int fallback) {
-    char *end = NULL;
-    long parsed;
-
-    if (value == NULL || *value == '\0') {
-        return fallback;
-    }
-    errno = 0;
-    parsed = strtol(value, &end, 10);
-    if (errno != 0 || end == value || *end != '\0' || parsed <= 0 ||
-        parsed > 86400) {
-        return fallback;
-    }
-    return (int)parsed;
-}
-
-static int parse_bool(const char *value) {
-    if (value == NULL) {
-        return 0;
-    }
-    if (strcasecmp(value, "true") == 0 || strcmp(value, "1") == 0 ||
-        strcasecmp(value, "yes") == 0 || strcasecmp(value, "on") == 0) {
-        return 1;
-    }
-    return 0;
-}
-
-static void apply_config_key(EzkeyConfig *cfg, const char *key,
-                             const char *value) {
-    if (strcmp(key, "integration_api_url") == 0 ||
-        strcmp(key, "api_url") == 0) {
-        set_cfg_str(cfg->api_url, sizeof(cfg->api_url), value);
-    } else if (strcmp(key, "integration_key") == 0) {
-        set_cfg_str(cfg->integration_key, sizeof(cfg->integration_key), value);
-    } else if (strcmp(key, "secret_key") == 0) {
-        set_cfg_str(cfg->secret_key, sizeof(cfg->secret_key), value);
-    } else if (strcmp(key, "wait_timeout") == 0) {
-        cfg->wait_timeout = ezkey_clamp_wait_timeout(
-            parse_positive_int(value, cfg->wait_timeout));
-    } else if (strcmp(key, "wait_polling") == 0) {
-        cfg->wait_polling = parse_positive_int(value, cfg->wait_polling);
-    } else if (strcmp(key, "api_timeout") == 0) {
-        cfg->api_timeout = parse_positive_int(value, cfg->api_timeout);
-        if (cfg->api_timeout > EZKEY_MAX_API_TIMEOUT) {
-            cfg->api_timeout = EZKEY_MAX_API_TIMEOUT;
-        }
-    } else if (strcmp(key, "challenge_requested") == 0) {
-        cfg->challenge_requested = parse_bool(value);
-    } else if (strcmp(key, "lab_http") == 0) {
-        cfg->lab_http = parse_bool(value);
-    } else if (strcmp(key, "context_title") == 0) {
-        set_cfg_str(cfg->context_title, sizeof(cfg->context_title), value);
-    } else if (strcmp(key, "context_message") == 0) {
-        set_cfg_str(cfg->context_message, sizeof(cfg->context_message), value);
-    } else if (strcmp(key, "debug") == 0) {
-        cfg->debug = parse_bool(value);
-    }
-}
-
 /**
  * Load key=value settings from path. Requires a regular file owned by root:root
  * with mode exactly 0600 or 0400 (owner-readable; rejects 0000 and anything
- * with group/other bits).
+ * with group/other bits). Parsing / defaults live in ezkey_conf.c.
  *
  * @return 0 on success
  * @return -1 if the file could not be opened (errno set)
@@ -296,9 +166,9 @@ static void apply_config_key(EzkeyConfig *cfg, const char *key,
 static int load_config_file(const char *path, EzkeyConfig *cfg) {
     int fd;
     FILE *fp;
-    char line[EZKEY_LINE_MAX];
     struct stat st;
     mode_t mode;
+    int parse_rc;
 
     if (path == NULL || *path == '\0') {
         errno = EINVAL;
@@ -339,36 +209,9 @@ static int load_config_file(const char *path, EzkeyConfig *cfg) {
         errno = saved;
         return -1;
     }
-    while (fgets(line, sizeof(line), fp) != NULL) {
-        char *hash;
-        char *eq;
-        char *key;
-        char *value;
-
-        hash = strchr(line, '#');
-        if (hash != NULL) {
-            *hash = '\0';
-        }
-        trim_inplace(line);
-        if (line[0] == '\0') {
-            continue;
-        }
-        eq = strchr(line, '=');
-        if (eq == NULL) {
-            continue;
-        }
-        *eq = '\0';
-        key = line;
-        value = eq + 1;
-        trim_inplace(key);
-        trim_inplace(value);
-        if (*key == '\0') {
-            continue;
-        }
-        apply_config_key(cfg, key, value);
-    }
+    parse_rc = ezkey_conf_load_fp(fp, cfg);
     fclose(fp);
-    return 0;
+    return parse_rc;
 }
 
 static void parse_module_args(int argc, const char **argv, EzkeyConfig *cfg) {
@@ -378,10 +221,11 @@ static void parse_module_args(int argc, const char **argv, EzkeyConfig *cfg) {
         if (strcmp(argv[i], "debug") == 0) {
             cfg->debug = 1;
         } else if (strncmp(argv[i], "conf=", 5) == 0) {
-            set_cfg_str(cfg->config_file, sizeof(cfg->config_file), argv[i] + 5);
+            strncpy(cfg->config_file, argv[i] + 5, sizeof(cfg->config_file) - 1);
+            cfg->config_file[sizeof(cfg->config_file) - 1] = '\0';
         } else if (strncmp(argv[i], "wait_timeout=", 13) == 0) {
-            cfg->wait_timeout = ezkey_clamp_wait_timeout(
-                parse_positive_int(argv[i] + 13, cfg->wait_timeout));
+            /* Reuse conf apply so clamp/floor match the conf-file path. */
+            ezkey_conf_apply_key(cfg, "wait_timeout", argv[i] + 13);
         }
     }
 }

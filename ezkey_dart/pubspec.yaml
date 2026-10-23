@@ -1,16 +1,19 @@
 name: ezkey_dart
-description: Pure Dart cryptographic helpers and live-stack bridge utilities for EZKey.
-version: 0.1.0
+description: >-
+  Experimental pure-Dart device-side SDK for the Ezkey protocol (enrollment, auth-attempt
+  approval, request signing and response verification), plus lab CLIs for end-to-end tests.
+version: 0.2.0
+publish_to: none
 
 executables:
   ezkey_dart: ezkey_dart
-  ezkey_auth_runner: ezkey_auth_runner
+  ezkey_e2e: ezkey_e2e
 
 environment:
   sdk: '>=3.7.0 <4.0.0'
+
 dependencies:
   args: ^2.7.0
-  convert: ^3.1.2
   cryptography: ^2.9.0
   http: ^1.6.0
   pointycastle: ^4.0.0

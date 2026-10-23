@@ -121,6 +121,9 @@ count_cancels() {
 }
 
 # --- Case A: multitry sshd — F9 recreates (Match forgotten) ---
+# Runs with connector default challenge_requested=true (#995); autoenter
+# answers latest prompt (ok then challenge Enter) so each MaxAuthTries round
+# can create again after REJECTED.
 start_stub rejected
 point_conf_at_stub 15
 install_sshd_cfg "${SCRIPT_DIR}/../sshd_config.f9-multitry"
