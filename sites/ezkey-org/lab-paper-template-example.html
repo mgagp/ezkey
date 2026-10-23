@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Template example for an Ezkey Lab Paper reading layout. Not a real experiment report.">
+    <meta property="og:title" content="Lab Paper template example — Ezkey">
+    <meta property="og:description" content="Template example for an Ezkey Lab Paper reading layout. Not a real experiment report.">
+    <meta property="og:url" content="https://ezkey.org/lab-paper-template-example.html">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Lab Paper template example — Ezkey">
+    <meta name="twitter:description" content="Template example for an Ezkey Lab Paper reading layout. Not a real experiment report.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/lab-paper-template-example.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/lab-paper-template-example.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/lab-paper-template-example.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/lab-paper-template-example.html">
+    <title>Lab Paper template example — Ezkey</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1a1a2e;
+            line-height: 1.65;
+        }
+        .shell { max-width: 1100px; margin: 0 auto; padding: 28px 20px 48px; }
+        .nav-top { font-size: 0.95rem; margin-bottom: 16px; color: rgba(255,255,255,0.95); }
+        .nav-top a { color: rgba(255,255,255,0.95); text-decoration: underline; }
+        .site-nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px 18px;
+            margin-bottom: 18px;
+            font-size: 0.9rem;
+        }
+        .site-nav a {
+            color: rgba(255, 255, 255, 0.92);
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+            padding-bottom: 2px;
+        }
+        .site-nav a:hover { color: white; border-bottom-color: white; }
+
+        .paper-layout {
+            display: grid;
+            grid-template-columns: 220px minmax(0, 1fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        .toc {
+            position: sticky;
+            top: 16px;
+            background: rgba(255,255,255,0.96);
+            border-radius: 4px;
+            padding: 16px 14px;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+            font-size: 0.86rem;
+        }
+        .toc summary {
+            cursor: pointer;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            color: #555;
+            list-style: none;
+        }
+        .toc summary::-webkit-details-marker { display: none; }
+        .toc nav { margin-top: 12px; }
+        .toc ol {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toc a {
+            color: #3d3f5c;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+        }
+        .toc a:hover { border-bottom-color: #667eea; color: #2b2d4a; }
+
+        article.paper {
+            background: #fffef9;
+            border-radius: 4px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+            padding: 36px 40px 44px;
+            font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+            text-align: left;
+        }
+
+        .example-banner {
+            display: inline-block;
+            margin-bottom: 14px;
+            padding: 4px 10px;
+            border: 1px solid #b45309;
+            color: #92400e;
+            background: #fff7ed;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .paper-meta {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.78rem;
+            color: #555;
+            margin-bottom: 10px;
+        }
+        .paper h1 {
+            font-size: 1.7rem;
+            line-height: 1.25;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+        .authors { font-size: 0.98rem; color: #333; margin-bottom: 4px; }
+        .affiliation { font-size: 0.92rem; color: #555; font-style: italic; margin-bottom: 18px; }
+
+        .key-findings {
+            border: 1px solid #d6d3c4;
+            background: #f7f4ea;
+            padding: 14px 16px;
+            margin: 0 0 18px;
+        }
+        .key-findings h2 {
+            font-size: 0.95rem;
+            margin: 0 0 8px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .key-findings ul { margin: 0 0 0 1.1rem; }
+        .key-findings li { margin-bottom: 4px; font-size: 0.95rem; }
+
+        .abstract {
+            font-style: italic;
+            border-top: 1px solid #ddd6c4;
+            border-bottom: 1px solid #ddd6c4;
+            padding: 14px 0;
+            margin-bottom: 22px;
+        }
+        .abstract .label {
+            font-style: normal;
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 6px;
+            color: #444;
+        }
+
+        .paper h2 {
+            font-size: 1.15rem;
+            margin: 26px 0 10px;
+            scroll-margin-top: 16px;
+        }
+        .paper p { margin-bottom: 12px; font-size: 1rem; }
+        .paper a { color: #4a56c4; }
+
+        .table-scroll {
+            width: 100%;
+            overflow-x: auto;
+            margin: 12px 0 18px;
+            border: 1px solid #e5e0d2;
+        }
+        table {
+            border-collapse: collapse;
+            min-width: 640px;
+            width: 100%;
+            font-size: 0.92rem;
+        }
+        th, td {
+            border: 1px solid #e5e0d2;
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th { background: #f3efe3; font-weight: 700; }
+
+        .coauthor-note {
+            margin: 14px 0;
+            padding: 12px 14px;
+            border-left: 3px solid #667eea;
+            background: #f5f6fd;
+            font-size: 0.95rem;
+        }
+        .coauthor-note strong { display: block; margin-bottom: 6px; }
+
+        details.appendix {
+            margin-top: 16px;
+            border: 1px solid #e5e0d2;
+            padding: 10px 12px;
+            background: #fcfaf3;
+        }
+        details.appendix summary {
+            cursor: pointer;
+            font-weight: 700;
+        }
+        details.appendix p { margin-top: 10px; }
+
+        .transparency {
+            margin-top: 24px;
+            font-size: 0.9rem;
+            color: #444;
+        }
+
+        footer.doc-footer {
+            margin-top: 22px;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.75);
+            text-align: center;
+        }
+        footer.doc-footer a { color: rgba(255,255,255,0.9); }
+
+        @media (max-width: 860px) {
+            .paper-layout { grid-template-columns: 1fr; }
+            .toc { position: static; }
+            .toc[open] nav { display: block; }
+            article.paper { padding: 28px 20px 36px; }
+        }
+        @media (min-width: 861px) {
+            .toc summary { pointer-events: none; }
+            .toc nav { display: block !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top">
+            <span style="font-weight:600;color:#fff;">English</span>
+            · <a href="/fr/lab-paper-template-example.html">Français</a>
+            · <a href="/lab.html">Lab Papers</a>
+        </p>
+        <nav class="site-nav" aria-label="Primary">
+            <a href="/">Home</a>
+            <a href="/source-and-evaluation.html#documentation">Docs</a>
+            <a href="/api-docs.html">API Docs</a>
+            <a href="/source-and-evaluation.html#run-locally">Run locally</a>
+            <a href="/trust.html">Trust</a>
+            <a href="/monthly-digest.html">Monthly digests</a>
+            <a href="/guides.html">Guides</a>
+            <a href="/articles.html">Articles</a>
+            <a href="/methodology.html">Methodology</a>
+        </nav>
+
+        <div class="paper-layout">
+            <details class="toc" open>
+                <summary>Contents</summary>
+                <nav aria-label="Table of contents">
+                    <ol>
+                        <li><a href="#key-findings">Key findings</a></li>
+                        <li><a href="#abstract">Abstract</a></li>
+                        <li><a href="#introduction">1. Introduction</a></li>
+                        <li><a href="#protocol">4. Protocol</a></li>
+                        <li><a href="#results">6. Results</a></li>
+                        <li><a href="#limitations">8. Limitations</a></li>
+                        <li><a href="#who">Who did what</a></li>
+                        <li><a href="#appendix-a">Appendix A</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <article class="paper">
+                <span class="example-banner">Template / example — not a real Lab Paper</span>
+                <p class="paper-meta">EZK-LAB-0000-000 · status: example · reading time ~4 min</p>
+                <h1>Lab Paper template example</h1>
+                <p class="authors">Marc</p>
+                <p class="affiliation">Ezkey Lab</p>
+
+                <section class="key-findings" id="key-findings">
+                    <h2>Key findings</h2>
+                    <ul>
+                        <li>This page demonstrates layout only; it does not report an experiment.</li>
+                        <li>Key findings appear before the abstract on every Lab Paper.</li>
+                        <li>Empty guide sections are omitted — only sections with real content remain.</li>
+                        <li>Nothing in a Lab Paper is a security guarantee.</li>
+                    </ul>
+                </section>
+
+                <section class="abstract" id="abstract">
+                    <span class="label">Abstract</span>
+                    <p>
+                        This sample shows the intended reading layout for Ezkey Lab Papers:
+                        a key-findings box, a short abstract, a side table of contents (collapsible on small screens),
+                        a horizontally scrollable table, and a collapsed appendix.
+                        No experimental measurements are claimed here.
+                    </p>
+                </section>
+
+                <h2 id="introduction">1. Introduction and motivation</h2>
+                <p>
+                    Lab Papers document what happened and what was measured in an Ezkey experimental sub-project.
+                    Experience reports on the Articles lane own reflection and meaning.
+                    This example exists so editors and agents can see the HTML shape before the first real paper is written.
+                </p>
+
+                <h2 id="protocol">4. Protocol</h2>
+                <p>
+                    Real papers describe the working bounds without secrets, tokens, internal hosts, or real IP addresses.
+                    Placeholder rows in the table below illustrate structure only.
+                </p>
+
+                <h2 id="results">6. Results</h2>
+                <p>Table&nbsp;1. Placeholder columns for a future paper (scroll horizontally on narrow viewports).</p>
+                <div class="table-scroll" role="region" aria-label="Scrollable results table" tabindex="0">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Id</th>
+                                <th>Observation</th>
+                                <th>Source</th>
+                                <th>Notes</th>
+                                <th>Status in a real paper</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>R1</td>
+                                <td>[MISSING DATA]</td>
+                                <td>n/a — template</td>
+                                <td>Replace with a measured fact</td>
+                                <td>Must cite git, tests, CI, logs, or Marc’s dictation</td>
+                            </tr>
+                            <tr>
+                                <td>R2</td>
+                                <td>[TO VERIFY]</td>
+                                <td>n/a — template</td>
+                                <td>Mark gaps explicitly</td>
+                                <td>Never invent precision</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="coauthor-note">
+                    <strong>Co-author note — (example shape)</strong>
+                    Real papers may include short attributed notes (80–150 words) from named bot co-authors
+                    listed in <code>product-docs/global/team-roles.md</code>, after a retrospective round with evidence.
+                    This box is decorative scaffolding only.
+                </div>
+
+                <h2 id="limitations">8. Limitations</h2>
+                <p>
+                    This page is not an experiment report. It must not be cited as evidence of any Ezkey capability,
+                    security property, or operational result.
+                </p>
+
+                <h2 id="who">Who did what</h2>
+                <ul>
+                    <li><strong>Marc:</strong> editorial responsibility for the Lab Papers method and this template page.</li>
+                </ul>
+
+                <h2>References</h2>
+                <ul>
+                    <li><a href="https://github.com/mgagp/ezkey/issues/999">GitHub issue #999</a> — Lab Papers publication method</li>
+                    <li><a href="/lab.html">Lab Papers hub</a></li>
+                </ul>
+
+                <details class="appendix" id="appendix-a">
+                    <summary>Appendix A — Template notes (collapsed)</summary>
+                    <p>
+                        Appendices start collapsed. Put supporting material here only when it helps a reader
+                        verify a claim in the main text. Do not use appendices to hide weak evidence.
+                    </p>
+                </details>
+
+                <p class="transparency" id="transparency">
+                    Transparency: when bot co-authors appear on a real Lab Paper, they are AI agents.
+                    Marc holds editorial responsibility. Nothing in Lab Papers is a security guarantee.
+                </p>
+            </article>
+        </div>
+
+        <footer class="doc-footer">
+            <p><a href="/lab.html">← Back to Lab Papers</a> · <a href="/privacy.html">Privacy Policy</a></p>
+        </footer>
+    </div>
+</body>
+</html>

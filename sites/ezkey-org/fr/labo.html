@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Cahiers du labo Ezkey — comptes rendus de sous-projets expérimentaux. Pas de garantie de sécurité.">
+    <meta property="og:title" content="Ezkey — Cahiers du labo">
+    <meta property="og:description" content="Cahiers du labo Ezkey — comptes rendus de sous-projets expérimentaux. Pas de garantie de sécurité.">
+    <meta property="og:url" content="https://ezkey.org/fr/labo.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="fr_FR">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Ezkey — Cahiers du labo">
+    <meta name="twitter:description" content="Cahiers du labo Ezkey — comptes rendus de sous-projets expérimentaux. Pas de garantie de sécurité.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/lab.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/labo.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/lab.html">
+    <link rel="canonical" href="https://ezkey.org/fr/labo.html">
+    <title>Ezkey — Cahiers du labo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            overflow-x: hidden;
+            padding: 36px 0 56px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .logo-container { margin-bottom: 24px; position: relative; }
+        .logo {
+            width: 160px;
+            height: 160px;
+            margin: 0 auto 20px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: float 6s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+        }
+        .logo::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 3s infinite;
+        }
+        .logo img { width: 150px !important; height: 150px !important; position: relative; z-index: 2; display: block !important; }
+
+        .site-nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px 18px;
+            margin-bottom: 16px;
+            font-size: 0.92rem;
+        }
+        .site-nav a {
+            color: rgba(255, 255, 255, 0.92);
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+            padding-bottom: 2px;
+        }
+        .site-nav a:hover { color: white; border-bottom-color: white; }
+        .site-nav a[aria-current="page"] { color: white; border-bottom-color: white; }
+
+        .lang-switch { font-size: 0.95rem; margin-bottom: 16px; color: rgba(255, 255, 255, 0.9); }
+        .lang-switch a { color: rgba(255, 255, 255, 0.9); text-decoration: underline; }
+
+        .page-panel {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            padding: 36px 40px 40px;
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 28px;
+            text-align: left;
+        }
+
+        .section-eyebrow {
+            display: block;
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.65);
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .page-panel h1 {
+            color: white;
+            font-size: 1.75rem;
+            margin-bottom: 18px;
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.25;
+            font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+        }
+
+        .page-intro {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.05rem;
+            line-height: 1.6;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+
+        .page-intro a { color: #fff; font-weight: 600; }
+
+        .lab-note {
+            margin: 18px 0 28px;
+            padding: 14px 16px;
+            border-left: 3px solid rgba(254, 243, 199, 0.85);
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 0 10px 10px 0;
+            color: rgba(255, 255, 255, 0.88);
+            font-size: 0.95rem;
+            line-height: 1.55;
+        }
+
+        .page-subheading {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 28px 0 18px;
+        }
+        .page-subheading::before,
+        .page-subheading::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+        }
+        .page-subheading::before {
+            background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.62));
+        }
+        .page-subheading::after {
+            background: linear-gradient(90deg, rgba(251, 191, 36, 0.62), transparent);
+        }
+        .page-subheading span {
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #fef3c7;
+            white-space: nowrap;
+            padding: 5px 15px;
+            border-radius: 20px;
+            background: rgba(251, 191, 36, 0.13);
+            border: 1px solid rgba(251, 191, 36, 0.48);
+            box-shadow: 0 0 14px rgba(251, 191, 36, 0.2);
+        }
+
+        .lab-card-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .lab-card {
+            display: block;
+            text-align: left;
+            text-decoration: none;
+            color: inherit;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            border-radius: 4px;
+            padding: 20px 22px 18px;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .lab-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
+        }
+
+        .lab-card-meta {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.04em;
+            color: #5b5b72;
+            margin-bottom: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 12px;
+        }
+        .lab-card-meta .status {
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #7c5a10;
+        }
+        .lab-card-title {
+            font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+        .lab-card-abstract {
+            font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+            font-size: 0.98rem;
+            color: #33344a;
+            line-height: 1.5;
+            margin-bottom: 10px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .lab-card-authors {
+            font-size: 0.82rem;
+            color: #666780;
+        }
+
+        .footer {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+        .footer a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .footer a:hover { color: white; border-bottom-color: white; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        .particle {
+            position: fixed;
+            width: 6px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: floatParticle 15s infinite linear;
+        }
+        @keyframes floatParticle {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+
+        @media (max-width: 768px) {
+            .page-panel { padding: 28px 20px 32px; }
+            .page-panel h1 { font-size: 1.45rem; }
+            .container { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="particle" style="left: 15%; animation-delay: 1s;"></div>
+    <div class="particle" style="left: 45%; animation-delay: 3s;"></div>
+    <div class="particle" style="left: 75%; animation-delay: 5s;"></div>
+
+    <div class="container">
+        <p class="lang-switch">
+            <a href="/lab.html">English</a>
+            · <span style="color:white;font-weight:600;">Français</span>
+        </p>
+        <nav class="site-nav" aria-label="Navigation principale">
+            <a href="/fr/">Accueil</a>
+            <a href="/fr/source-and-evaluation.html#documentation">Documentation</a>
+            <a href="/fr/api-docs.html">Documentation API</a>
+            <a href="/fr/source-and-evaluation.html#run-locally">Exécuter en local</a>
+            <a href="/fr/trust.html">Confiance</a>
+            <a href="/fr/monthly-digest.html">Sommaires mensuels</a>
+            <a href="/fr/guides.html">Guides</a>
+            <a href="/fr/articles.html">Articles</a>
+            <a href="/fr/methodologie.html">M&eacute;thodologie</a>
+        </nav>
+        <div class="logo-container">
+            <a href="/fr/" aria-label="Accueil Ezkey">
+                <div class="logo">
+                    <img src="/logo.svg" alt="">
+                </div>
+            </a>
+        </div>
+
+        <div class="page-panel">
+            <span class="section-eyebrow">Labo</span>
+            <h1>Cahiers du labo</h1>
+            <p class="page-intro">
+                Ezkey est un projet de laboratoire&nbsp;: on y expérimente, on mesure, on écrit ce qui s’est passé.
+                Les co-auteurs bots nommés sont des agents IA&nbsp;; Marc assume la responsabilité éditoriale.
+                Rien sur cette page ne constitue une garantie de sécurité.
+            </p>
+            <p class="page-intro">
+                Distinct des <a href="/fr/articles.html">Articles</a> (ce qu’une expérience a appris et ce que cela signifie)
+                et des <a href="/fr/monthly-digest.html">sommaires mensuels</a> (signal d’activité mois par mois).
+            </p>
+            <p class="lab-note">
+                Collection en cours de mise en place. La carte ci-dessous est une page <strong>gabarit / exemple</strong> qui montre la mise en page de lecture — pas un compte rendu d’expérience réelle.
+            </p>
+
+            <p class="page-subheading"><span>Papiers</span></p>
+            <div class="lab-card-list">
+                <a class="lab-card" href="/fr/lab-paper-template-example.html">
+                    <div class="lab-card-meta">
+                        <span>EZK-LAB-0000-000</span>
+                        <span class="status">Exemple</span>
+                        <span>Gabarit</span>
+                        <span>~4 min</span>
+                    </div>
+                    <div class="lab-card-title">Exemple de gabarit Lab Paper</div>
+                    <p class="lab-card-abstract">
+                        Échantillon structurel de la mise en page de lecture&nbsp;: points clés, résumé, table des matières latérale, tableau défilant et annexe repliée. Aucun résultat expérimental n’est affirmé.
+                    </p>
+                    <div class="lab-card-authors">Marc · gabarit éditorial</div>
+                </a>
+            </div>
+        </div>
+
+        <p style="text-align:center;margin-bottom:20px;"><a href="/fr/" style="color:rgba(255,255,255,0.9);font-weight:600;text-decoration:underline;">← Retour à l’accueil</a></p>
+
+        <div class="footer">
+            <p><a href="/fr/confidentialite.html">Politique de confidentialité</a></p>
+        </div>
+    </div>
+</body>
+</html>

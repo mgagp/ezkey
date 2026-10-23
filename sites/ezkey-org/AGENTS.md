@@ -18,12 +18,13 @@ For repo-wide rules (Maven, Java, etc.), see **[../../AGENTS.md](../../AGENTS.md
 - **Source & evaluation hub:** [`source-and-evaluation.html`](source-and-evaluation.html) / [`fr/source-and-evaluation.html`](fr/source-and-evaluation.html) — public MIT repo (`https://github.com/mgagp/ezkey`), alpha status, docs and **Run locally** (clean-start); anchors `#documentation` and `#run-locally` are the nav targets for **Docs** / **Run locally**.
 - **Monthly digests (reverse chronological):** [`monthly-digest.html`](monthly-digest.html) / [`fr/monthly-digest.html`](fr/monthly-digest.html) — distilled month-by-month activity from Git history; optional type pill on legacy index-only entries. Full months link to detail pages (`monthly-digest-YYYY-MM.html`). Cross-links to the changelog for future versioned release notes.
 - **Guides & walkthroughs hub:** [`guides.html`](guides.html) / [`fr/guides.html`](fr/guides.html) — dedicated hub for evaluator-oriented step-by-step content (community guided tour, upcoming guides). Linked from the primary nav as **Guides**.
-- **Articles & notes index:** [`articles.html`](articles.html) / [`fr/articles.html`](fr/articles.html) — two labeled sections: **About Ezkey** (product-explaining content, newest first) and **Craft & engineering** (independent essays, newest first). No longer contains a guides lane.
+- **Articles & notes index:** [`articles.html`](articles.html) / [`fr/articles.html`](fr/articles.html) — three labeled sections: **About Ezkey** (product-explaining content, newest first), **Craft & engineering** (independent essays, newest first), and **Lab papers** (pointer card into `/lab.html` / `/fr/labo.html`). No longer contains a guides lane.
 - **Changelog placeholder (technical release notes later):** [`changelog.html`](changelog.html) / [`fr/changelog.html`](fr/changelog.html) — reserved for versioned technical notes. **Not** listed on the primary navigation of the landing page or content hubs so an empty section does not dilute IA integrity; the changelog page itself repeats full nav **plus** a contextual “Changelog” / “Notes de version” item with `aria-current="page"`. Discoverable by URL and from copy on **Monthly digests**.
 - **Discovery & sharing (static):** [`sitemap.xml`](sitemap.xml) and [`robots.txt`](robots.txt) at the site root; [`monthly-digest.rss`](monthly-digest.rss) / [`fr/monthly-digest.rss`](fr/monthly-digest.rss) mirror the monthly digest entries (newest items first in the feed). All published `*.html` pages include **Open Graph** and **Twitter Card** meta tags (`og:*`, `twitter:*`), using `https://ezkey.org/logo.svg` as the share image unless you introduce a dedicated social image later.
 - **Logo / hero signature:** landing and inner hub pages reuse the same gradient, floating logo treatment, and particle background as before (`<img src="/logo.svg">` on published pages).
 - **Public hostname:** **`ezkey.org`** (canonical production URL for this site).
-- **Community runtime hostname:** **`ezkey.online`** (alpha community instance; service hosts such as `admin-ui.ezkey.online`, `admin-api.ezkey.online`, `demo-acme.ezkey.online`). Spelling is always **ezkey.online** (never “easykey”). Public posture is **product in alpha** (experimental lab retired).
+- **Community runtime hostname:** **`ezkey.online`** (alpha community instance; service hosts such as `admin-ui.ezkey.online`, `admin-api.ezkey.online`, `demo-acme.ezkey.online`). Spelling is always **ezkey.online** (never “easykey”). Public posture is **product in alpha**; Ezkey remains a lab project (experiments documented under `/lab.html`).
+- **Lab Papers collection:** [`lab.html`](lab.html) / [`fr/labo.html`](fr/labo.html) — accounts of experimental sub-projects (what happened / what was measured). Page title **Lab Papers** / **Cahiers du labo**; nav label when promoted **Lab** / **Labo**. **Do not** add a primary-nav tab until roughly three published papers. Method canon and templates live under [`../ezkey-org-editorial/LAB-PAPERS.md`](../ezkey-org-editorial/LAB-PAPERS.md) (not deployed). Sample layout only: [`lab-paper-template-example.html`](lab-paper-template-example.html).
 - **Cloudflare:** The live site is deployed via **Cloudflare Pages** (project `ezkey-org`, domain `ezkey.org`). **Always use the dedicated scripts** — never invoke Wrangler ad hoc:
   - Preview: `scripts/cloudflare/deploy-ezkey-org-preview.sh` (sources `.env`, no git push required)
   - Production: `scripts/cloudflare/deploy-ezkey-org-production.sh` (same credentials, `--branch=main`)
@@ -187,7 +188,9 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 | `/monthly-digest.html` | `/fr/monthly-digest.html` | Monthly digests index (newest first) |
 | `/monthly-digest-YYYY-MM.html` | `/fr/monthly-digest-YYYY-MM.html` | Full monthly digest detail (when published) |
 | `/guides.html` | `/fr/guides.html` | Evaluator guides & walkthroughs hub |
-| `/articles.html` | `/fr/articles.html` | Guides lane + article index |
+| `/articles.html` | `/fr/articles.html` | About Ezkey + Craft & engineering + Lab papers pointer |
+| `/lab.html` | `/fr/labo.html` | Lab Papers / Cahiers du labo hub (no primary-nav tab yet) |
+| `/lab-paper-template-example.html` | `/fr/lab-paper-template-example.html` | Lab Paper reading-layout sample (template/example only) |
 | `/admin-api-reference.html` | `/fr/admin-api-reference.html` | Admin API public reference |
 | `/auth-api-reference.html` | `/fr/auth-api-reference.html` | Auth API public reference |
 | `/integration-api-reference.html` | `/fr/integration-api-reference.html` | Integration API public reference |
@@ -213,7 +216,7 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 - **Experimental does not mean casual:** when copy mentions that the project is opinionated, AI-first, or exploratory, pair that with signals of discipline, seriousness, and care.
 - **Keep the homepage short:** the landing page may contain a compact positioning block, but longer arguments belong in standalone article pages linked from the home or `articles.html`.
 - **Use the founder article as the canonical long explanation:** the current anchor text is [`why-ezkey-exists.html`](why-ezkey-exists.html) / [`fr/why-ezkey-exists.html`](fr/why-ezkey-exists.html); reuse and refine that narrative instead of re-explaining it differently on every page.
-- **Distinguish content lanes clearly:** month-over-month activity belongs on `monthly-digest.html`; evaluator walkthroughs belong on `guides.html`; product-explaining writing belongs in the **About Ezkey** section on `articles.html`; engineering craft essays belong in the **Craft & engineering** section on `articles.html`.
+- **Distinguish content lanes clearly:** month-over-month activity belongs on `monthly-digest.html`; evaluator walkthroughs belong on `guides.html`; product-explaining writing belongs in the **About Ezkey** section on `articles.html`; engineering craft essays belong in the **Craft & engineering** section on `articles.html`; experimental sub-project accounts (what happened / what was measured) belong on `lab.html` / `fr/labo.html` (Lab Papers), with a pointer group on Articles.
 - **Write for a serious technical audience:** sober tone, concrete claims, explicit constraints, and no inflated startup-style language.
 - **Avoid defensive wording:** do not over-explain that the project is solo, AI-assisted, or unconventional; present those facts plainly and move quickly to architecture, trust boundaries, APIs, and operator value.
 - **Do not overstate security assurance:** describe Ezkey as a pragmatic, opinionated middle ground that aims to be stronger than passwords and classic TOTP for some backend-oriented contexts; do not imply formal attestation chains, standards equivalence, complete certificate validation, or full-strength certificate pinning unless those capabilities truly exist.
@@ -244,8 +247,28 @@ replaces the former separate Updates and Field notes lanes.
 | Lane | Role |
 | ---- | ---- |
 | **Monthly digests** | Month-over-month activity signal (index + detail when published) |
-| **Articles** | Long-form essays and craft writing |
+| **Articles** | Long-form essays and craft writing (reflection / meaning) |
+| **Lab Papers** | Experimental sub-project accounts (what happened / what was measured) |
 | **Changelog** | Versioned technical release notes (future) |
+
+---
+
+## Lab Papers
+
+Lab Papers are a third publication type. Full method: [`../ezkey-org-editorial/LAB-PAPERS.md`](../ezkey-org-editorial/LAB-PAPERS.md).
+
+**Agent rules:**
+
+- English first; French only after Marc’s explicit go.
+- Drafts and templates stay under `sites/ezkey-org-editorial/` (never in the Wrangler deploy folder).
+- Use [`templates/lab-paper.en.template.md`](../ezkey-org-editorial/templates/lab-paper.en.template.md) then the FR template; pass [`templates/lab-paper-review-checklist.md`](../ezkey-org-editorial/templates/lab-paper-review-checklist.md) before publish.
+- Sharing rule: Lab Paper = what happened and what was measured; Article / experience report = what it taught and what it means. Keep reciprocal **Distinct from…** sentences on both hubs.
+- Do **not** add **Lab** / **Labo** to the primary nav until roughly three real papers are published (promotion threshold). Hub remains discoverable via Articles, sitemap, and direct URL.
+- Reading layout: Key findings before abstract; side TOC (collapsible on mobile); horizontally scrollable tables; collapsed appendices; **no PDF export**.
+- Co-authors: only names from [`product-docs/global/team-roles.md`](../../product-docs/global/team-roles.md) with evidence; “K” is excluded. Affiliation is **Ezkey Lab**. Disclose AI co-authors; Marc holds editorial responsibility.
+- Security: no secrets, tokens, internal hosts, real IPs, or exploitable configuration. Nothing here is a security guarantee — Trust page states Lab Papers sit outside its claims perimeter.
+- Do **not** invent the first real paper (e.g. PAM) under this method setup; that is a separate issue.
+- On publish: card on `lab.html` / `fr/labo.html`, monthly-digest mention for that month, sitemap bump, draft front matter update.
 
 ---
 
@@ -265,7 +288,7 @@ This section records the design decisions made during active development, in rev
 
 **Rationale:** The pill is immediately recognisable during fast scroll; it creates a visual pause without being aggressive. It borrows directly from the amber Alpha / community badge color vocabulary on the homepage, creating site-wide coherence without introducing a new palette.
 
-**Sections using this pattern:** "About Ezkey" / "À propos d'Ezkey" and "Craft & engineering" / "Craft & ingénierie" on `articles.html` / `fr/articles.html`.
+**Sections using this pattern:** "About Ezkey" / "À propos d'Ezkey", "Craft & engineering" / "Craft & ingénierie", and "Lab papers" on `articles.html` / `fr/articles.html`.
 
 ---
 
@@ -314,7 +337,10 @@ The site uses a **single coherent palette** derived from the background gradient
 | [monthly-digest.html](monthly-digest.html) / [fr/monthly-digest.html](fr/monthly-digest.html) | Monthly digests index |
 | [monthly-digest-YYYY-MM.html](monthly-digest-2026-06.html) / [fr/monthly-digest-YYYY-MM.html](fr/monthly-digest-2026-06.html) | Full monthly digest detail pages |
 | [guides.html](guides.html) / [fr/guides.html](fr/guides.html) | Evaluator guides & walkthroughs hub |
-| [articles.html](articles.html) / [fr/articles.html](fr/articles.html) | About Ezkey + Craft & engineering sections |
+| [articles.html](articles.html) / [fr/articles.html](fr/articles.html) | About Ezkey + Craft & engineering + Lab papers pointer |
+| [lab.html](lab.html) / [fr/labo.html](fr/labo.html) | Lab Papers / Cahiers du labo hub |
+| [lab-paper-template-example.html](lab-paper-template-example.html) / [fr/lab-paper-template-example.html](fr/lab-paper-template-example.html) | Lab Paper layout sample |
+| [../ezkey-org-editorial/LAB-PAPERS.md](../ezkey-org-editorial/LAB-PAPERS.md) | Lab Papers method canon (not deployed) |
 | [community-guided-tour.html](community-guided-tour.html) / [fr/community-guided-tour.html](fr/community-guided-tour.html) | Community guided tour (EN/FR)
 | [community-instance.html](community-instance.html) / [fr/community-instance.html](fr/community-instance.html) | Alpha community instance (EN/FR)
 | [community-signup.html](community-signup.html) / [fr/community-signup.html](fr/community-signup.html) | Community signup (EN/FR) |
