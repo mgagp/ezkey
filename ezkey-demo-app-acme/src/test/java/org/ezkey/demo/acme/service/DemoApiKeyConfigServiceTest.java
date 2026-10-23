@@ -30,7 +30,7 @@ class DemoApiKeyConfigServiceTest {
     AcmeProperties properties = new AcmeProperties();
     properties.setIntegrationKey("ezkey_ikey_default");
     properties.setSecretKey("ezkey_skey_default");
-    AccessCodeService accessCodeService = new AccessCodeService(properties);
+    AccessCodeService accessCodeService = AccessCodeService.forTests(properties);
     accessCodeService.loadSlots(Map.of());
     DemoApiKeyConfigService service = new DemoApiKeyConfigService(properties, accessCodeService);
     MockHttpSession firstSession = new MockHttpSession();
@@ -54,7 +54,7 @@ class DemoApiKeyConfigServiceTest {
   @Test
   void shouldRejectBlankSessionScopedCredentials() {
     AcmeProperties properties = new AcmeProperties();
-    AccessCodeService accessCodeService = new AccessCodeService(properties);
+    AccessCodeService accessCodeService = AccessCodeService.forTests(properties);
     accessCodeService.loadSlots(Map.of());
     DemoApiKeyConfigService service = new DemoApiKeyConfigService(properties, accessCodeService);
     MockHttpSession session = new MockHttpSession();
@@ -70,7 +70,7 @@ class DemoApiKeyConfigServiceTest {
     AcmeProperties properties = new AcmeProperties();
     properties.setIntegrationKey("ezkey_ikey_legacy");
     properties.setSecretKey("ezkey_skey_legacy");
-    AccessCodeService accessCodeService = new AccessCodeService(properties);
+    AccessCodeService accessCodeService = AccessCodeService.forTests(properties);
     Map<String, AccessCodeSlotProperties> slots = new LinkedHashMap<>();
     AccessCodeSlotProperties slot = new AccessCodeSlotProperties();
     slot.setCode("0123456789abcdef0123456789abcdef");

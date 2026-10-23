@@ -27,7 +27,7 @@ class AccessCodeServiceTest {
 
   @Test
   void shouldFailFastWhenCodeTooShort() {
-    AccessCodeService service = new AccessCodeService(new AcmeProperties());
+    AccessCodeService service = AccessCodeService.forTests(new AcmeProperties());
     Map<String, AccessCodeSlotProperties> slots = new LinkedHashMap<>();
     slots.put("short", slot("abcd", "ikey", "skey", "Short"));
 
@@ -38,7 +38,7 @@ class AccessCodeServiceTest {
 
   @Test
   void shouldFailFastWhenCodesDuplicate() {
-    AccessCodeService service = new AccessCodeService(new AcmeProperties());
+    AccessCodeService service = AccessCodeService.forTests(new AcmeProperties());
     Map<String, AccessCodeSlotProperties> slots = new LinkedHashMap<>();
     slots.put("a", slot(CODE_A, "ikey-a", "skey-a", "Northwind Portal"));
     slots.put("b", slot(CODE_A, "ikey-b", "skey-b", "Partner Demo"));
@@ -50,7 +50,7 @@ class AccessCodeServiceTest {
 
   @Test
   void shouldFailFastWhenLabelBlank() {
-    AccessCodeService service = new AccessCodeService(new AcmeProperties());
+    AccessCodeService service = AccessCodeService.forTests(new AcmeProperties());
     Map<String, AccessCodeSlotProperties> slots = new LinkedHashMap<>();
     slots.put("a", slot(CODE_A, "ikey", "skey", " "));
 
@@ -80,7 +80,7 @@ class AccessCodeServiceTest {
   }
 
   private static AccessCodeService loadTwoSlots() {
-    AccessCodeService service = new AccessCodeService(new AcmeProperties());
+    AccessCodeService service = AccessCodeService.forTests(new AcmeProperties());
     Map<String, AccessCodeSlotProperties> slots = new LinkedHashMap<>();
     slots.put("northwind", slot(CODE_A, "ikey-a", "skey-a", "Northwind Portal"));
     slots.put("partner", slot(CODE_B, "ikey-b", "skey-b", "Partner Demo"));

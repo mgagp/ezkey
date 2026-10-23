@@ -31,9 +31,9 @@ import org.springframework.web.servlet.view.RedirectView;
 /**
  * Handles {@code GET /t/{code}} for temporary evaluator access links.
  *
- * <p>Unknown codes render the login page with the generic error (no distinct 404). Known codes
+ * <p>Unknown and malformed codes render the same generic login error (no oracle). Known codes
  * invalidate any existing session, store only the slot id, and 303-redirect to {@code /login}.
- * Access codes are never logged.
+ * Access codes / aliases are never logged. External mappings hot-reload on access (#958).
  *
  * @author Ezkey contributors
  * @since 2026
@@ -99,7 +99,8 @@ public class AccessCodeController {
 
     String resolvedSlotId = slotId.get();
     String label = accessCodeService.getLabel(resolvedSlotId);
-    LOG.info("Access-code slot activated: label={}", label != null ? label : resolvedSlotId);
+    // Never log the URL alias/code or opaque slot id (capability token hygiene — #958).
+    LOG.info("Access-code slot activated: label={}", label != null ? label : "(unnamed)");
 
     HttpSession session = SessionHelpers.invalidateAndCreate(request);
     demoApiKeyConfigService.activateAccessCodeSlot(session, resolvedSlotId);

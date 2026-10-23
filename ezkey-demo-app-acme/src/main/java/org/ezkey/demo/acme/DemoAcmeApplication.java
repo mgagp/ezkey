@@ -13,6 +13,7 @@ package org.ezkey.demo.acme;
 import java.nio.file.Path;
 import org.ezkey.demo.acme.config.AcmeProperties;
 import org.ezkey.demo.acme.config.AcmeRateLimitProperties;
+import org.ezkey.demo.acme.config.TenantAliasProperties;
 import org.ezkey.demo.acme.config.TrustedProxyProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +53,7 @@ import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoCon
 @EnableConfigurationProperties({
   AcmeProperties.class,
   AcmeRateLimitProperties.class,
+  TenantAliasProperties.class,
   TrustedProxyProperties.class
 })
 public class DemoAcmeApplication {

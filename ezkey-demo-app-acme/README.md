@@ -91,34 +91,43 @@ curl -f http://127.0.0.1:8086/actuator/health
 
 **Authentication Format**: `Authorization: Basic base64(integrationKey:secretKey)`
 
-## Temporary Access Codes (Play closed testing)
+## Temporary Access Codes / Tenant Aliases (Play closed testing)
 
-Optional multi-tenant slots for evaluator links. Operator steps (no personal data in the repo):
+Optional multi-tenant slots for evaluator links. **Community preferred path (#958):** append a line to
+the hot-reloaded file `/app/config/tenant-aliases.properties` (no restart). Full Edgar runbook:
+[`docs/lightsail/community/acme-tenant-alias-runbook.md`](../docs/lightsail/community/acme-tenant-alias-runbook.md).
 
-1. **Generate a code** (32 lowercase hex chars):
+### Hot-reloaded external file (community)
+
+1. **Generate an alias** (16 lowercase hex — UUID v4 without dashes, first 16 chars):
 
    ```bash
-   openssl rand -hex 16
+   python3 -c "import uuid; print(uuid.uuid4().hex[:16])"
    ```
 
-2. **Edit** `/app/config/application.properties` (Docker volume) or the local external config file:
+2. **Append** one line to `/app/config/tenant-aliases.properties` (temp file + `mv`, as user `spring`):
 
-   ```properties
-   ezkey.access-codes.northwind.code=<openssl-rand-hex-16>
-   ezkey.access-codes.northwind.integration-key=ezkey_ikey_…
-   ezkey.access-codes.northwind.secret-key=ezkey_skey_…
-   ezkey.access-codes.northwind.label=Northwind Portal
+   ```text
+   <alias>|<integration-key>|<secret-key>|<label>
    ```
 
-3. **Restart** the demo container so slots load (fail-fast if a code is malformed or duplicated).
+3. **No restart.** The next `GET /t/{alias}` checks mtime (throttled) and reloads if the file changed.
 
-4. **Tester URL:** `https://<host>/t/{code}` (local: `http://localhost:8082/t/{code}`). Unknown codes show the generic sign-in error.
+4. **Tester URL:** `https://demo-acme.ezkey.online/t/{alias}` (local: `http://localhost:8082/t/{alias}`).
+   Unknown and malformed aliases get the same generic sign-in page (no oracle). Per-IP rate limit
+   applies. Never log the full alias or secret.
 
-5. **Revoke:** remove or rotate the slot (delete the `ezkey.access-codes.<slot>.*` block, or change `.code`) and restart.
+5. **Revoke:** remove the line (same atomic write) — takes effect on the next URL access after throttle.
 
-6. **File permissions:** the image runs as `spring` (uid `100` / gid `101`). Config should be mode `0600`. The entrypoint applies `chmod 600` on every start; if that fails (e.g. root-owned volume file), it prints a WARN — fix ownership on the host volume.
+6. **File permissions:** mode `0600`, owner `spring` (uid `100` / gid `101`). Entrypoint creates the
+   empty file and `chmod 600` on every start.
 
-Never commit real access codes or personal tester data. See `config/application.properties.example` for the slot shape.
+### Base slots in application.properties (restart required)
+
+Still supported for local/dev. Edit `ezkey.access-codes.<slot>.*` then restart the container
+(fail-fast if a code is malformed or duplicated). Prefer the external file on the community host.
+
+Never commit real access codes, aliases, or personal tester data.
 
 ## Rate limiting (QA notes)
 

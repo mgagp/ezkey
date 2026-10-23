@@ -38,20 +38,20 @@ ezkey.admin-api-url=http://integration-api:7080
 ezkey.integration-key=
 ezkey.secret-key=
 
-# Optional multi-tenant access-code slots for temporary access links (/t/{code}).
-# Issue codes with: openssl rand -hex 16 (32 lowercase hex chars).
-# Keep this file mode 0600 owned by spring (uid 100 / gid 101). Edit via docker exec as spring
-# with umask 077 — never as root in the volume _data directory. Never put codes in the VM .env.
+# Community evaluators (#958): prefer /app/config/tenant-aliases.properties (hot-reloaded).
+# Format: alias|integration-key|secret-key|label  — see docs/lightsail/community/acme-tenant-alias-runbook.md
+# Optional base slots below still work but require a container restart.
+# Keep this file and tenant-aliases.properties mode 0600 owned by spring (uid 100 / gid 101).
+# Edit via docker exec as spring with umask 077 — never as root in the volume _data directory.
+# Never put codes or secrets in the VM .env.
 #
 # ezkey.access-codes.northwind.code=<openssl-rand-hex-16>
 # ezkey.access-codes.northwind.integration-key=
 # ezkey.access-codes.northwind.secret-key=
 # ezkey.access-codes.northwind.label=Northwind Portal
 #
-# ezkey.access-codes.partner.code=<openssl-rand-hex-16>
-# ezkey.access-codes.partner.integration-key=
-# ezkey.access-codes.partner.secret-key=
-# ezkey.access-codes.partner.label=Partner Demo Tenant
+# ezkey.tenant-aliases.file=/app/config/tenant-aliases.properties
+# ezkey.tenant-aliases.reload-throttle-seconds=5
 
 # =============================================================================
 # Internet-exposed demo hardening

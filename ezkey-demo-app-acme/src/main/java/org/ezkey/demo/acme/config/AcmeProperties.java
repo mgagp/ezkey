@@ -18,7 +18,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Type-safe configuration properties for ACME demo application.
  *
  * <p>Binds externalized configuration from application.properties with validation and type safety.
- * Configuration changes require container restart to take effect.
+ * Most configuration changes require container restart. Community tenant-alias mappings use a
+ * separate volume file ({@link TenantAliasProperties}) and hot-reload on URL access (#958).
  *
  * <p>Optional multi-tenant access-code slots bind from {@code ezkey.access-codes.<slotId>.*}.
  * {@link org.ezkey.demo.acme.service.AccessCodeService} validates codes at startup and uses only
