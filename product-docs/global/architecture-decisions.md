@@ -32,7 +32,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0013](#adr-0013-admin-role-admin-umbrella-keep-vs-split) | Admin `ROLE_ADMIN` umbrella — keep vs split | proposed | 2026-09-16 |
 | [ADR-0014](#adr-0014-qa-sphere-for-test-execution-tracking) | QA Sphere for test execution tracking | accepted | 2026-10-13 |
 | [ADR-0015](#adr-0015-management-port-separation-actuator-javamelody) | Management port separation (Actuator / JavaMelody) | accepted | 2026-10-19 |
-| [ADR-0016](#adr-0016-keyset-blob-single-source-of-truth) | Keyset blob as single source of truth | proposed | 2026-10-21 |
+| [ADR-0016](#adr-0016-keyset-blob-single-source-of-truth) | Keyset blob as single source of truth | accepted | 2026-10-21 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -1044,8 +1044,9 @@ Docker peer).
 
 - **ID:** ADR-0016.
 - **Date:** 2026-10-21.
-- **Status:** proposed (direction adopted on GitHub
-  [#952](https://github.com/mgagp/ezkey/issues/952); code cutover pending).
+- **Status:** accepted (direction adopted on GitHub
+  [#952](https://github.com/mgagp/ezkey/issues/952); blob-only CAS cutover in progress on the
+  implementation PR).
 - **Scope:** global.
 - **Owners:** Platform architecture / security.
 - **Decision pack:**
@@ -1070,7 +1071,9 @@ divergence between file and blob (blockers B2, B5, B6). Real deployments already
    uses a read-only DataSource and a SELECT-only DB role on `ezkey_keyset_blob` (no
    `ezkey_encryption_key`); AEAD recovery reloads the blob; split health; never
    `ezkey.encryption.required=false` ([#942](https://github.com/mgagp/ezkey/issues/942) property
-   purge is an adjacent thin PR).
+   purge is an adjacent thin PR). JPA for the blob is registered via Boot
+   `AutoConfiguration` after `DataSourceAutoConfiguration` (not component-scanned
+   `@ConditionalOnBean` alone — that ordered before the pool and yielded 0 repositories).
 4. **Online rotation** remains, **DB-CAS-first** and fail closed. Invariants 1–3 are a **new CAS
    protocol** inspired by #936 (install only after successful CAS). Invariants 4–8 carry from that
    line (short tick; unknown kid fail closed; DB errors never generate; no DELETE/TRUNCATE of the
@@ -1112,9 +1115,9 @@ divergence between file and blob (blockers B2, B5, B6). Real deployments already
 
 ### Validation
 
-- Characterization tests pin pre-refactor behavior (decision-pack PR).
-- Implementation PR: mutation-probed tests for all eight invariants; Mac → Windows → community
-  in-place upgrade
+- Characterization suite flipped to post-cutover assertions (`KeysetStorageCharacterizationTest`).
+- Mutation-probed tests for all eight invariants (`KeysetBlobOnlyInvariantTest`).
+- Host ladder: Mac → Windows → community in-place upgrade
   ([`community-upgrade-impact.md`](decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md)).
 
 ### Related Decisions

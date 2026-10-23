@@ -131,13 +131,13 @@ Postgres is already required for the app on Windows; FILE mode ends with this cu
 
 ### 2.3 Online rotation via CAS on version
 
-**Invariants 1–3 are a NEW CAS protocol inspired by #936**, not a port of the paused PR’s file↔blob machinery. Probes for 1–3 must **fail if the in-memory install happens before a successful CAS**.
+**Invariants 1–3 are a NEW CAS protocol inspired by #936**, not a port of the paused PR’s file↔blob machinery. Probes for 1–3 must **fail if an install-before-CAS mutation would leave an orphan live primary**.
 
 Target protocol:
 
 1. Under write lock (or equivalent exclusive mutation section): **re-read** blob version (invariant 1).
 2. Mutate candidate keyset in a **staging** handle / serialized envelope — do **not** publish as the live primary yet.
-3. **CAS** persist: update row only if version matches expected; **only after** successful CAS install in-memory handle and version (invariant 2). A probe that installs before CAS must fail.
+3. **CAS** persist: update row only if version matches expected; **only after** successful CAS install in-memory handle and version (invariant 2). Install-before-CAS is **neutralized** (not eliminated) by restoring the pre-mutation live handle when CAS+reload fails (probe A / B1); probes assert the live primary stays unchanged.
 4. On CAS loss: **discard** candidate, reload blob, do not keep orphan local kids (invariant 3).
 5. Periodic tick remains **shorter than any sync window** operators rely on (keep ≤ 5 s unless redesign justifies change) (invariant 4 — carried from #936).
 6. Unknown kid on decrypt → **fail closed** (invariant 5) — see §2.7.
@@ -164,12 +164,13 @@ Ordering vs existing `ApplicationReadyStartupOrder.KEYSET_SYNC`: keep Admin keys
 | Scope | Local clean-start / lab stacks only. **Not** in online/community compose. |
 | Storage | `DATABASE`, `writer=false` |
 | DataSource | Enable Spring DataSource; Flyway stays off |
-| DB role | `ezkey_crypto` with **SELECT only** on `ezkey_keyset_blob` (deny elsewhere), proven by `verify-grants.sh` |
+| DB role | `ezkey_crypto` with **SELECT only** on `ezkey_keyset_blob` (deny elsewhere), proven by `verify-grants.sh` (also run from `scripts/ci-ha-lb-smoke.sh`) |
 | AEAD recovery | On decrypt AEAD failure: **reload the blob** (force version check / `forceReloadFromDatabase`) and retry. **Do not** consult `ezkey_encryption_key` metadata — no GRANT on that table. |
 | Wait | Bounded `bootstrap-wait`, then **explicit failure** |
 | `required` / health | **DECIDED (§8):** never `required=false`; **split health** (liveness OK; encryption readiness separate). See [#942](https://github.com/mgagp/ezkey/issues/942). |
-| Secrets | Still needs `master.key`; adds DB credentials for SELECT-only role. Acceptable under Marc’s lab proportionality. |
+| Secrets | Still needs `master.key`; adds DB credentials for SELECT-only role. Acceptable under Marc’s lab proportionality. Lab default password equals the role name (same pattern as other stack roles) — **lab only**, never Lightsail. |
 | Where it runs | **DECIDED (Marc, 2026-10-21):** crypto-api runs **only** in the disposable local clean-start stack (deployment model 1). Not on Lightsail / ezkey.online. |
+| JPA wiring | **`CryptoJpaConfig` is Boot AutoConfiguration** (`META-INF/spring/...AutoConfiguration.imports`), ordered `@AutoConfiguration(after = DataSourceAutoConfiguration.class)` with `@ConditionalOnBean(DataSource)`, and excluded from `CryptoApplication` component-scan. A scanned `@ConditionalOnBean(DataSource)` evaluated before the pool existed and registered **0** repositories (ha-smoke). Deviation traced here (repo is the memory). |
 
 ### 2.5.1 Deployment models (Marc, 2026-10-21)
 

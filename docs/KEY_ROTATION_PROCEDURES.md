@@ -1,7 +1,7 @@
 # Encryption Key Rotation Procedures
 
-**Document Version**: 1.0  
-**Last Updated**: December 2025  
+**Document Version**: 1.1  
+**Last Updated**: 2026-10-21 (ADR-0016 blob-only cutover / #952)  
 **Classification**: Internal - Operational Procedures  
 **Owner**: Security Team
 
@@ -50,7 +50,8 @@ This document covers:
 | **Disabled Key** | A key that is no longer used and may be archived |
 | **Key Rotation** | The process of introducing a new primary key and demoting the old primary key |
 | **Re-encryption Batch** | A batch job that re-encrypts existing data from an old key to a new key |
-| **Keyset** | The encrypted file containing all encryption keys managed by Tink |
+| **Keyset** | The Tink keyset envelope stored in `ezkey_keyset_blob` (sole runtime source of truth; ADR-0016). Wrapped by file-based `master.key`. |
+| **CAS rotation** | Online rotation that stages a candidate keyset, persists it only when the blob `@Version` matches, then installs the live in-memory handle |
 
 ---
 
@@ -101,19 +102,20 @@ INTRODUCED → ENABLED → PRIMARY → ENABLED → DISABLED
    - Verify database connection
    - Check for active re-encryption batches (should be none or completed)
 
-3. **Backup Creation** (if configured)
-   - Create timestamped backup of keyset file
-   - Store backup in secure location
-   - Log backup creation in audit log
+3. **Restore-set hygiene** (operator responsibility)
+   - Ensure a recent `pg_dump` (includes `ezkey_keyset_blob`) and escrowed `master.key` exist
+     before elective rotation when the deployment guarantees backups
+   - Do **not** treat a leftover keyset file as source of truth or as a substitute for DB + master
+   - Community host (`<static-ip ezkey-online-community>`): **no guaranteed backup**
 
-4. **Key Rotation**
-   - Generate new key using Tink KeysetManager
-   - Promote new key to PRIMARY status
-   - Demote old primary key to ENABLED status
-   - Save encrypted keyset to disk
+4. **Key Rotation (CAS on blob)**
+   - Under write lock: re-read `ezkey_keyset_blob` version
+   - Stage a candidate keyset (new key + primary) without publishing the live handle yet
+   - CAS-persist the envelope; **install the in-memory primary only after successful CAS**
+   - On CAS loss: discard staging, reload blob, fail closed (no orphan primary)
 
-5. **Database Synchronization**
-   - Create `EncryptionKey` record for new key (status: PRIMARY)
+5. **Database metadata synchronization**
+   - Create `EncryptionKey` record for new key (status: PRIMARY / PENDING per sync window)
    - Update old key record (status: PRIMARY → ENABLED)
    - Update timestamps (`promoted_primary_at` for new key)
 
@@ -144,7 +146,7 @@ Configure alerts for:
 - Rotation failure (exception logged)
 - Database sync failure
 - Missing audit logs
-- Keyset backup failure
+- Keyset CAS / blob persist failure
 
 ### Manual Key Rotation
 
@@ -163,8 +165,8 @@ Configure alerts for:
 
 2. **Verify Rotation Readiness**
    - Check for active re-encryption batches
-   - Verify keyset file exists and is accessible
-   - Confirm database connectivity
+   - Confirm database connectivity and that `ezkey_keyset_blob` is readable
+   - Confirm `master.key` is available to the Admin writer process
 
 3. **Trigger Manual Rotation**
    ```bash
@@ -344,12 +346,16 @@ All audit events include:
 
 ## Recovery Procedures
 
-### Keyset Corruption
+### Keyset / blob recovery
 
 **Symptoms**:
 - `TinkKeyManager` fails to initialize
 - Decryption errors
-- Keyset file cannot be read
+- Unloadable or missing `ezkey_keyset_blob` row
+
+**Recovery model (ADR-0016):** restore = **database dump** (includes `ezkey_keyset_blob`) + **`master.key`**.
+A leftover keyset file is **not** a supported recovery path. Explicit CLI import/export (when
+landed) is a thin operator tool only — never a silent file cache.
 
 **Recovery Steps**:
 
@@ -358,33 +364,25 @@ All audit events include:
    systemctl stop ezkey-admin-api
    ```
 
-2. **Restore from Backup**
+2. **Restore database + master key**
    ```bash
-   # Locate latest backup
-   ls -lt /etc/ezkey/keysets/backups/
-   
-   # Restore keyset
-   cp /etc/ezkey/keysets/backups/keyset-2025-12-03-02-00-00.json.encrypted \
-      /etc/ezkey/keysets/keyset.json.encrypted
-   
-   # Verify permissions
-   chmod 600 /etc/ezkey/keysets/keyset.json.encrypted
+   # Restore from a verified pg_dump that includes ezkey_keyset_blob
+   gunzip -c /var/backups/ezkey/ezkey_<timestamp>.sql.gz | psql -h localhost -U ezkey_user -d ezkey_production
+
+   # Restore master.key to the configured path (permissions: owner-only on POSIX)
+   # chmod 600 /etc/ezkey/secrets/master.key
    ```
 
-3. **Synchronize Database**
-   - Database may be out of sync after restore
-   - Service will auto-sync on startup via `ApplicationReadyEvent` (`@Order` keyset-sync, before Admin MFA bootstrap)
-   - Verify sync in logs: `"Keyset synchronized to database"`
-
-4. **Restart Application**
+3. **Restart Application**
    ```bash
    systemctl start ezkey-admin-api
    ```
 
-5. **Verify Operation**
-   - Check logs for successful initialization
-   - Verify keys are synchronized in database
+4. **Verify Operation**
+   - Check logs for successful blob load (Admin writer / non-writer wait)
+   - Verify `ezkey_encryption_key` metadata sync on Admin
    - Test encryption/decryption
+   - Do not overwrite a legacy unloadable blob; fix the envelope or restore a known-good dump
 
 ### Database Out of Sync
 
@@ -522,11 +520,10 @@ WHERE key_status = 'ENABLED'
 #### Backup Verification
 
 ```bash
-# List keyset backups
-ls -lh /etc/ezkey/keysets/backups/
-
-# Verify backup integrity (attempt to decrypt)
-# This requires Tink CLI or custom script
+# Verify restore-set pieces (when backups are guaranteed for that host)
+ls -lh /var/backups/ezkey/ezkey_*.sql.gz
+# Confirm master.key escrow exists separately from the dump
+# Community (<static-ip ezkey-online-community>): no guaranteed backup
 ```
 
 ### Monthly Operations
@@ -613,8 +610,8 @@ LIMIT 100;
    ```
 
 3. **Recovery**
-   - If rotation incomplete: Restore from backup
-   - If rotation complete: Verify keyset and database are synchronized
+   - If rotation incomplete: restore from `pg_dump` + `master.key` (not a keyset file)
+   - If rotation complete: verify blob version and `ezkey_encryption_key` metadata
    - Restart service
 
 ---

@@ -36,6 +36,7 @@ services:
       EZKEY_DB_ADMIN_PASSWORD: ${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}
       EZKEY_DB_AUTH_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       EZKEY_DB_INTEGRATION_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
+      EZKEY_DB_CRYPTO_PASSWORD: ${EZKEY_DB_CRYPTO_PASSWORD:-ezkey_crypto}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -287,24 +288,31 @@ services:
         condition: service_healthy
       migration:
         condition: service_completed_successfully
+      db-grants:
+        condition: service_completed_successfully
       admin-api:
         condition: service_healthy
     environment:
       <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
+      SPRING_DATASOURCE_USERNAME: ezkey_crypto
+      SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_CRYPTO_PASSWORD:-ezkey_crypto}
       MANAGEMENT_SERVER_PORT: 9091
       # See admin-api MANAGEMENT_SERVER_ADDRESS comment (#905 Patrick M1).
       MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
     volumes:
       - encryption-secrets:/etc/ezkey
     ports:
-      - "9090:9090"
+      # Bind crypto-api business port to loopback only (lab decrypt surface; Christophe #961).
+      - "127.0.0.1:9090:9090"
       - "127.0.0.1:9091:9091"
     networks:
       - ezkey-network
     restart: on-failure:3
+    # Liveness only — encryption readiness is a separate actuator group (ADR-0016 Q1).
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://127.0.0.1:9091/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:9091/actuator/health/liveness || exit 1"]
       interval: 30s
       timeout: 3s
       start_period: 40s

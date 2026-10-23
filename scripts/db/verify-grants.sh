@@ -16,6 +16,7 @@ MIGRATE_PASS="${EZKEY_DB_MIGRATE_PASSWORD:-ezkey_migrate}"
 ADMIN_PASS="${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}"
 AUTH_PASS="${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}"
 INTEGRATION_PASS="${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}"
+CRYPTO_PASS="${EZKEY_DB_CRYPTO_PASSWORD:-ezkey_crypto}"
 
 VERIFY_OUT="$(mktemp "${TMPDIR:-/tmp}/ezkey-verify-grants.out.XXXXXX")"
 VERIFY_ERR="$(mktemp "${TMPDIR:-/tmp}/ezkey-verify-grants.err.XXXXXX")"
@@ -269,5 +270,50 @@ echo "OK (denied): auth has no EXECUTE on create_monthly_partition"
 
 expect_ok "migrate can see flyway_schema_history" \
   run_psql ezkey_migrate "${MIGRATE_PASS}" -c "SELECT 1 FROM flyway_schema_history LIMIT 0;"
+
+# ---------------------------------------------------------------------------
+# ezkey_crypto — SELECT-only on ezkey_keyset_blob (ADR-0016 / #952)
+# ---------------------------------------------------------------------------
+expect_ok "crypto can SELECT ezkey_keyset_blob" \
+  run_psql ezkey_crypto "${CRYPTO_PASS}" -c "SELECT 1 FROM ezkey_keyset_blob LIMIT 0;"
+
+crypto_blob_ins="$(run_psql ezkey_crypto "${CRYPTO_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_crypto', 'ezkey_keyset_blob', 'INSERT');" \
+  | tr -d '[:space:]')"
+if [[ "${crypto_blob_ins}" == "t" ]]; then
+  echo "FAIL: ezkey_crypto must not INSERT ezkey_keyset_blob" >&2
+  exit 1
+fi
+echo "OK (denied): crypto cannot INSERT ezkey_keyset_blob"
+
+crypto_blob_upd="$(run_psql ezkey_crypto "${CRYPTO_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_crypto', 'ezkey_keyset_blob', 'UPDATE');" \
+  | tr -d '[:space:]')"
+if [[ "${crypto_blob_upd}" == "t" ]]; then
+  echo "FAIL: ezkey_crypto must not UPDATE ezkey_keyset_blob" >&2
+  exit 1
+fi
+echo "OK (denied): crypto cannot UPDATE ezkey_keyset_blob"
+
+crypto_blob_del="$(run_psql ezkey_crypto "${CRYPTO_PASS}" -tAc \
+  "SELECT has_table_privilege('ezkey_crypto', 'ezkey_keyset_blob', 'DELETE');" \
+  | tr -d '[:space:]')"
+if [[ "${crypto_blob_del}" == "t" ]]; then
+  echo "FAIL: ezkey_crypto must not DELETE ezkey_keyset_blob" >&2
+  exit 1
+fi
+echo "OK (denied): crypto cannot DELETE ezkey_keyset_blob"
+
+expect_fail "crypto cannot SELECT ezkey_encryption_key" \
+  run_psql ezkey_crypto "${CRYPTO_PASS}" -c "SELECT 1 FROM ezkey_encryption_key LIMIT 0;"
+
+expect_fail "crypto cannot SELECT ezkey_enrollment" \
+  run_psql ezkey_crypto "${CRYPTO_PASS}" -c "SELECT 1 FROM ezkey_enrollment LIMIT 0;"
+
+expect_fail "crypto cannot SELECT ezkey_audit_log" \
+  run_psql ezkey_crypto "${CRYPTO_PASS}" -c "SELECT 1 FROM ezkey_audit_log LIMIT 0;"
+
+expect_fail "crypto cannot SELECT ezkey_admin_tokens" \
+  run_psql ezkey_crypto "${CRYPTO_PASS}" -c "SELECT 1 FROM ezkey_admin_tokens LIMIT 0;"
 
 echo "All grant checks passed."
