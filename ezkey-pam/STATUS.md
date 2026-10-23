@@ -45,8 +45,9 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.13** (#982 tiers 0–1 on #976: ECHO_ON confirm + challenge
-Enter-only wait). Prior **2.2.12** (#975 / PR #976: **confirm-before-create** + display
+Version **2.2.14** (#995: connector default `challenge_requested=true`). Prior
+**2.2.13** (#982 tiers 0–1 on #976: ECHO_ON confirm + challenge Enter-only
+wait). Prior **2.2.12** (#975 / PR #976: **confirm-before-create** + display
 server-provided challenge even when host `challenge_requested=false`; builds on
 **2.2.11** #941 F1 waiting line via `pam_prompt`, and **2.2.10** #907 F9 option A:
 sshd `Match` MaxAuthTries; chunked wait + best-effort disconnect cancel
@@ -106,7 +107,7 @@ owner `root:root` in the demo image. That path and style match Linux-PAM convent
 | `integration_api_url` | Integration API base URL (**required**; no compiled-in default) | Yes for Docker DNS; non-lab / host installs need HTTPS |
 | `integration_key` / `secret_key` | Basic auth | Yes; file perms are the control |
 | `wait_timeout` / `wait_polling` / `api_timeout` | HTTP waits | Yes |
-| `challenge_requested` | Two-digit number-matching challenge | **Default `false`**. Operator types **`ok` before create** (confirm-before-create). Create asks without challenge unless `true`; when the response includes a valid challenge (host or enrollment-required), a **second** `pam_prompt` shows the code (#975). `true` + missing/out-of-range → UNAVAIL. See [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) |
+| `challenge_requested` | Two-digit number-matching challenge | **Default `true` (#995)**. Connector owns the default (safer for SSH). Operator types **`ok` before create** (confirm-before-create; anti-accident; 25 s Enter cap). Create asks for a challenge unless conf opts out with `false`; when the **enrollment** has `authAttemptChallengeRequired` the server still forces a code. Unknown/empty conf values keep the prior default + warning. Valid challenge in the response → **second** `pam_prompt` (#975; challenge Enter = rem-budget / #982). `true` + missing/out-of-range → UNAVAIL. See [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) |
 | `lab_http` | Allow `http://` URL | Docker entrypoint sets `true`; host sample default `false` |
 | `wait_timeout` | `/wait` client wait + create `ttlSeconds` (seconds) | Default **90**; clamped **15–90** (`EZKEY_MIN_TTL_SECONDS` / `EZKEY_MAX_WAIT_TIMEOUT`); aligned on applied TTL from create response (#895) |
 | `context_title` / `context_message` | Device copy | Yes |
@@ -360,9 +361,14 @@ Each slice should stay mergeable on its own:
   Deal with it on the AL2023 dogfood host; do not pre-build a policy pack.
 - **sudo later.** Same `.so` can appear in `/etc/pam.d/sudo` once SSH is boring. Do not couple
   the first slice to sudo.
-- **Challenge (number matching).** Supported when `challenge_requested=true`: create response
-  `authAttemptChallenge` is shown with `pam_prompt` (SSH keyboard-interactive) before `/wait`.
-  Device must enter the same code. Default demo conf stays `false` for simpler SSH proof;
+- **Challenge (number matching).** Default **`challenge_requested=true`** (#995): create
+  requests a code; response `authAttemptChallenge` is shown with `pam_prompt` before `/wait`.
+  Device must enter the same code. Set conf `false` to opt out of *connector-requested*
+  challenge (when the **enrollment** has `authAttemptChallengeRequired` the server still
+  shows a code; OR since `e5711d4d` / 2025-06-28 — no PAM min-server gate). Decision: Alex,
+  confirmed by Marc on 2026-10-22 — safer SSH default; connector owns it (refs #995).
+  Experimental / never released: no release note or rollback procedure. Case C (operator
+  “require a code” beyond conf/enrollment) → [#997](https://github.com/mgagp/ezkey/issues/997).
   `./scripts/test-challenge.sh` exercises the path.
 - **Observability.** Operator proof is Ezkey audit (`AUTH_ATTEMPT_*`) plus host `authpriv`. Do not
   add a metrics sidecar in the module.
@@ -564,20 +570,23 @@ Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/secur
 #941 F1).** Canonical matrix:
 [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md).
 
-Default **`challenge_requested=false`**:
+Default **`challenge_requested=true`** (#995 — connector default):
 
 1. **Pre-create** `pam_prompt(PAM_PROMPT_ECHO_ON)`:
    `SSH login for user <user>.` +
    `Type ok and press Enter to request device approval:`
-   (#982 M1 — no “Approve on your phone” before the request exists).
+   (#982 M1 — no “Approve on your phone” before the request exists). The `ok`
+   prompt is an **anti-accident filter for batch clients**, not a security
+   defense (stays as-is per #995).
 2. Trimmed case-insensitive **`ok`** required. Empty / bare Enter / EOF →
    `UNAVAIL` with **zero** creates (D4 / S2 / S3).
-3. `POST /auth-attempts`. If response has no challenge → `/wait` (no second prompt).
-4. If response has a valid challenge (0..99) → **second** `PAM_PROMPT_ECHO_ON`
+3. `POST /auth-attempts` with `challengeRequested=true` (unless conf opts out).
+4. Valid challenge (0..99) in the response → **second** `PAM_PROMPT_ECHO_ON`
    with digits + `Approve on your phone, then press Enter:` (no second Type ok);
    after Enter, poll `/wait` until ACCEPTED / REJECTED / TTL. Challenge Enter
    has **no** 25 s cap — rem auth-budget only (#982 Patrick B1). Digits never in
-   authpriv (#750).
+   authpriv (#750). Opt-out (`false`) with no enrollment-required code skips
+   the second prompt and goes straight to `/wait`.
 
 OpenSSH buffers bare `pam_info` / `PAM_TEXT_INFO` until the next prompt (Edgar
 F1) — hence a real prompt (now ECHO_ON). One authenticate call → at most one
@@ -717,7 +726,8 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | Christophe | Demo debug always on / no filelog rotation | **Deferred** — lab intentional; host sample `debug=false` |
 | Christophe / follow-up | Refuse `http://` outside lab | **Done** (`lab_http`, default false) |
 | Christophe / follow-up | `/wait` signature on PAM | **Deferred** — [#858](https://github.com/mgagp/ezkey/issues/858) |
-| Marc budget | Two-digit challenge UX | **Done** (default false; opt-in `pam_prompt`) |
+| Marc budget | Two-digit challenge UX | **Done** (default **true** since #995; opt-out via conf) |
+| #995 (Alex / Marc 2026-10-22) | Connector default `challenge_requested=true`; no server PAM type | **Done** (2.2.14) |
 | Christophe GO | Challenge bound 0..99 → else UNAVAIL | **Done** |
 | Christophe GO | No conv to display code → UNAVAIL | **Done** |
 | Christophe GO | `lab_http=` on attempt authpriv line | **Done** |
