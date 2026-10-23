@@ -1,0 +1,20 @@
+# Context = repository root. Keep sources/POMs; drop heavy build outputs only.
+.git
+**/.git
+**/target
+**/node_modules
+**/.ezkey
+**/logs
+**/.idea
+**/.vscode
+**/*.log
+**/coverage
+**/dist
+**/.yarn/cache
+ezkey_mobile/android
+ezkey_mobile/ios
+ezkey-admin-ui/node_modules
+.playwright-mcp
+sites
+*.md
+!ezkey-jenkins/**/*.md

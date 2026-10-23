@@ -151,3 +151,4 @@ experimental-hybrid/lightsail/.local/
 *play*service*account*.json
 *play*publisher*.json
 
+.playwright-mcp/

@@ -1,0 +1,6 @@
+# Local overrides / agent noise
+.env
+*.log
+/tmp/
+plugins-cache/
+.ezkey/

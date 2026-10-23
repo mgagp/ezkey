@@ -1,0 +1,48 @@
+# Ezkey Jenkins lab — stock Jenkins LTS.
+#
+# Usage (from this directory):
+#   ./scripts/up.sh
+#   ./scripts/smoke.sh
+#
+# Own compose project. Optionally joins the main stack network as *external*
+# so the plugin can call Integration API at http://integration-api:7080 (M4).
+# DNS reachability only — no shared volumes with the main stack.
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts-jdk21
+    container_name: ezkey-jenkins
+    hostname: ezkey-jenkins
+    ports:
+      # 28080: avoid Caddy Auth proxy host port 18080 and direct Auth 8080
+      - "${EZKEY_JENKINS_HTTP_PORT:-28080}:8080"
+      - "${EZKEY_JENKINS_AGENT_PORT:-50000}:50000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Lab-only: skip setup wizard; seed job + unsecured realm via ref/
+      JAVA_OPTS: >-
+        -Djenkins.install.runSetupWizard=false
+        -Djava.awt.headless=true
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - ./ref/jobs:/usr/share/jenkins/ref/jobs:ro
+      - ./ref/init.groovy.d:/usr/share/jenkins/ref/init.groovy.d:ro
+    networks:
+      - default
+      - ezkey
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/login >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    restart: unless-stopped
+
+networks:
+  ezkey:
+    external: true
+    name: ezkey_ezkey-network
+
+volumes:
+  jenkins_home:

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Standalone POM for packaging ezkey-sdk into the Jenkins lab plugin (outside the Ezkey reactor). -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.ezkey</groupId>
+  <artifactId>ezkey-sdk</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>jar</packaging>
+  <name>Ezkey Java SDK</name>
+  <description>Zero-dependency Integration API client (lab packaging for Jenkins plugin)</description>
+</project>
