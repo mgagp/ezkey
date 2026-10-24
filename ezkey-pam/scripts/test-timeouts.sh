@@ -1695,8 +1695,8 @@ if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'EZKEY_WAIT_CHUNK_SECS 5' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_INTERRUPT_CANCEL_MAX 5' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_AUTH_BUDGET_SECS 105' "${SCRIPT_DIR}/../src/ezkey_config.h" \
-  && grep -qE '"cancel=%s' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
-  && grep -qE '"stage=%s' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -qE 'cancel=%s timeoutSeconds=%s' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -qE '"stage=%s reason=%s' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
   && grep -qE 'LOG_AUTHPRIV[[:space:]]*\|[[:space:]]*LOG_INFO' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
   && grep -qE 'ezkey_sigterm_handler' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -qE 'ezkey_diag_emit_signal_safe[[:space:]]*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \

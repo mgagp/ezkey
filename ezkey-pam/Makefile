@@ -118,7 +118,9 @@ check-source:
 		echo "error: challenge_requested comment still says default false (#1011)" >&2; exit 1; \
 	fi
 	# #1011 B3: format/call sites must be real statements (comment-only fails).
-	@grep -qE '"stage=%s' $(SRC_DIR)/ezkey_diag.c
+	# cancel=%s sits mid-string (not at a quote boundary) after the #1011 field split.
+	@grep -qE 'cancel=%s timeoutSeconds=%s' $(SRC_DIR)/ezkey_diag.c
+	@grep -qE '"stage=%s reason=%s' $(SRC_DIR)/ezkey_diag.c
 	@grep -qE 'LOG_AUTHPRIV[[:space:]]*\|[[:space:]]*LOG_INFO' $(SRC_DIR)/ezkey_diag.c
 	@grep -qE 'ezkey_diag_emit_signal_safe[[:space:]]*\(' $(SRC_DIR)/pam_ezkey.c
 	@grep -qE 'ezkey_in_wait[[:space:]]*!=' $(SRC_DIR)/pam_ezkey.c
