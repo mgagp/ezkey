@@ -1693,8 +1693,10 @@ if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'EZKEY_WAIT_CHUNK_SECS 5' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_INTERRUPT_CANCEL_MAX 5' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_AUTH_BUDGET_SECS 105' "${SCRIPT_DIR}/../src/ezkey_config.h" \
-  && grep -q 'cancel=%s' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
-  && grep -q 'ezkey_sigterm_wait' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -q 'cancel=%s' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -q 'stage=%s' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -q 'ezkey_sigterm_handler' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -q 'ezkey_diag_emit_signal_safe' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_format_waiting_prompt' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_challenge_display_ok' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_prewait_prompt_mode' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
