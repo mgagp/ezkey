@@ -332,8 +332,9 @@ if [[ "${crypto_table_grants}" != "ezkey_keyset_blob:SELECT" ]]; then
 fi
 echo "OK: ezkey_crypto table grants enumeration is ezkey_keyset_blob:SELECT only"
 
+# Boolean without ::text so psql -tAc prints f/t (not true/false) — matches other checks.
 crypto_dangerous_attrs="$(run_psql "${SUPER_USER}" "${SUPER_PASS}" -tAc \
-  "SELECT (rolsuper OR rolcreaterole OR rolcreatedb OR rolbypassrls OR rolreplication)::text
+  "SELECT rolsuper OR rolcreaterole OR rolcreatedb OR rolbypassrls OR rolreplication
    FROM pg_roles WHERE rolname = 'ezkey_crypto';" | tr -d '[:space:]')"
 if [[ "${crypto_dangerous_attrs}" != "f" ]]; then
   echo "FAIL: ezkey_crypto must not have superuser/createrole/createdb/bypassrls/replication; got: ${crypto_dangerous_attrs}" >&2
