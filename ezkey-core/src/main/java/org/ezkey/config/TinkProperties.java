@@ -20,9 +20,10 @@ public class TinkProperties {
 
   /**
    * When true, the application fails to start if encryption is enabled in configuration but Tink
-   * cannot initialize (SEC-002). Default false preserves backward-compatible degraded mode.
+   * cannot initialize (SEC-002). Default true: fail startup when encryption is enabled but Tink
+   * cannot initialize.
    */
-  private boolean required = false;
+  private boolean required = true;
 
   /** Path to the master key file (Base64-encoded 256-bit key). */
   private String masterKeyFile;

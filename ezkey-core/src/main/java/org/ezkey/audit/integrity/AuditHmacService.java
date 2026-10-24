@@ -373,10 +373,11 @@ public class AuditHmacService {
    */
   void applyOwnerReadWriteOnly(Path path) throws IOException {
     try {
-      Set<PosixFilePermission> perms =
-          EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-      Files.setPosixFilePermissions(path, perms);
-      logger.debug("Set audit HMAC key permissions to {}", PosixFilePermissions.toString(perms));
+      applyPosixOwnerReadWrite(path);
+      logger.debug(
+          "Set audit HMAC key permissions to {}",
+          PosixFilePermissions.toString(
+              EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE)));
     } catch (UnsupportedOperationException e) {
       logger.debug(
           "POSIX permissions not supported for audit HMAC key at {} (Windows ACL equivalent)",
@@ -393,5 +394,19 @@ public class AuditHmacService {
       throw new IOException(
           "Refusing to keep audit HMAC key without mode 600 at " + path + ": " + e.getMessage(), e);
     }
+  }
+
+  /**
+   * Applies owner-only POSIX mode {@code 600}. Package-visible for tests that simulate chmod
+   * failure while the key file still exists (#961 P-M4).
+   *
+   * @param path key file path
+   * @throws IOException if POSIX permissions cannot be set
+   * @throws UnsupportedOperationException when the filesystem has no POSIX view
+   */
+  void applyPosixOwnerReadWrite(Path path) throws IOException {
+    Set<PosixFilePermission> perms =
+        EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+    Files.setPosixFilePermissions(path, perms);
   }
 }

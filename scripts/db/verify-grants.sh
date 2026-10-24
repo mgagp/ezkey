@@ -17,6 +17,8 @@ ADMIN_PASS="${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}"
 AUTH_PASS="${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}"
 INTEGRATION_PASS="${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}"
 CRYPTO_PASS="${EZKEY_DB_CRYPTO_PASSWORD:-ezkey_crypto}"
+SUPER_USER="${PGUSER:-postgres}"
+SUPER_PASS="${PGPASSWORD:-ezkey}"
 
 VERIFY_OUT="$(mktemp "${TMPDIR:-/tmp}/ezkey-verify-grants.out.XXXXXX")"
 VERIFY_ERR="$(mktemp "${TMPDIR:-/tmp}/ezkey-verify-grants.err.XXXXXX")"
@@ -315,5 +317,47 @@ expect_fail "crypto cannot SELECT ezkey_audit_log" \
 
 expect_fail "crypto cannot SELECT ezkey_admin_tokens" \
   run_psql ezkey_crypto "${CRYPTO_PASS}" -c "SELECT 1 FROM ezkey_admin_tokens LIMIT 0;"
+
+# ---------------------------------------------------------------------------
+# ezkey_crypto — catalog enumeration / attributes (Christophe C-M2 / #961)
+# Superuser reads only; never print role passwords.
+# ---------------------------------------------------------------------------
+crypto_table_grants="$(run_psql "${SUPER_USER}" "${SUPER_PASS}" -tAc \
+  "SELECT coalesce(string_agg(table_name || ':' || privilege_type, ',' ORDER BY 1), '')
+   FROM information_schema.role_table_grants
+   WHERE grantee = 'ezkey_crypto';" | tr -d '[:space:]')"
+if [[ "${crypto_table_grants}" != "ezkey_keyset_blob:SELECT" ]]; then
+  echo "FAIL: ezkey_crypto table grants must be exactly ezkey_keyset_blob:SELECT; got: ${crypto_table_grants}" >&2
+  exit 1
+fi
+echo "OK: ezkey_crypto table grants enumeration is ezkey_keyset_blob:SELECT only"
+
+crypto_dangerous_attrs="$(run_psql "${SUPER_USER}" "${SUPER_PASS}" -tAc \
+  "SELECT (rolsuper OR rolcreaterole OR rolcreatedb OR rolbypassrls OR rolreplication)::text
+   FROM pg_roles WHERE rolname = 'ezkey_crypto';" | tr -d '[:space:]')"
+if [[ "${crypto_dangerous_attrs}" != "f" ]]; then
+  echo "FAIL: ezkey_crypto must not have superuser/createrole/createdb/bypassrls/replication; got: ${crypto_dangerous_attrs}" >&2
+  exit 1
+fi
+echo "OK: ezkey_crypto has no elevated role attributes"
+
+crypto_memberships="$(run_psql "${SUPER_USER}" "${SUPER_PASS}" -tAc \
+  "SELECT count(*)::text FROM pg_auth_members m
+   JOIN pg_roles r ON r.oid = m.member
+   WHERE r.rolname = 'ezkey_crypto';" | tr -d '[:space:]')"
+if [[ "${crypto_memberships}" != "0" ]]; then
+  echo "FAIL: ezkey_crypto must not be a member of other roles; membership count=${crypto_memberships}" >&2
+  exit 1
+fi
+echo "OK: ezkey_crypto has no role memberships"
+
+crypto_usage_grants="$(run_psql "${SUPER_USER}" "${SUPER_PASS}" -tAc \
+  "SELECT count(*)::text FROM information_schema.role_usage_grants
+   WHERE grantee = 'ezkey_crypto' AND object_type <> 'TYPE';" | tr -d '[:space:]')"
+if [[ "${crypto_usage_grants}" != "0" ]]; then
+  echo "FAIL: ezkey_crypto must have no sequence/function USAGE grants; count=${crypto_usage_grants}" >&2
+  exit 1
+fi
+echo "OK: ezkey_crypto has no sequence/function USAGE grants"
 
 echo "All grant checks passed."

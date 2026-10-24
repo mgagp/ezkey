@@ -265,6 +265,10 @@ mvn spring-boot:run
 
 The application will start on port 8080.
 
+**Lab Docker note:** clean-start mounts the whole `encryption-secrets` volume at `/etc/ezkey`, so the
+crypto-api container can also see `audit-hmac.key` beside `master.key`. That is lab-only; crypto-api
+does not use the HMAC key.
+
 ## Error Handling
 
 All endpoints return standardized error responses:

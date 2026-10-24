@@ -10,6 +10,7 @@
 package org.ezkey.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -27,6 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.ezkey.config.TinkProperties;
 import org.ezkey.security.domain.entity.KeysetBlob;
 import org.ezkey.security.domain.repository.KeysetBlobRepository;
+import org.ezkey.security.exception.KeysetCasConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -151,6 +153,117 @@ class KeysetBlobCasPostgresTest {
           keysetBlobRepository.findVersion().orElseThrow(),
           "peer-winning blob version must remain committed");
     } finally {
+      writerA.shutdownKeysetCheckExecutor();
+      writerB.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "P-M3: barrier between findKeyset and flush — one winner; loser KeysetCasConflictException"
+          + " (@Version TOCTOU guard)")
+  void concurrentWriters_barrierBetweenFindAndFlush_loserGetsKeysetCasConflict() throws Exception {
+    // Delta note (1af1a08b → 6e26d16d): KeysetBlobCasPostgresTest itself was unchanged in that
+    // commit; only TinkKeyManager gained afterCommit install + KeysetCasConflictException wrap.
+    // The older concurrent test races without holding both writers inside the find→flush window,
+    // so removing @Version can still leave all Postgres tests green (app pre-check alone often
+    // serializes). This barrier forces the TOCTOU window so Hibernate @Version is the guard.
+    Path masterKeyPath = tempDir.resolve("master-toctou.key");
+    TestMasterKeys.write(masterKeyPath);
+    TinkKeyManager writerA = newWriterManager(masterKeyPath);
+    TinkKeyManager writerB = newWriterManager(masterKeyPath);
+    try {
+      long bootPrimary = writerA.getCurrentPrimaryKeyId();
+      assertEquals(1L, writerA.getDatabaseKeysetVersion());
+
+      CountDownLatch enteredWindow = new CountDownLatch(2);
+      CountDownLatch releaseFlush = new CountDownLatch(1);
+      Runnable toctouBarrier =
+          () -> {
+            try {
+              enteredWindow.countDown();
+              if (!enteredWindow.await(30, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("TOCTOU barrier: peer did not enter window");
+              }
+              if (!releaseFlush.await(30, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("TOCTOU barrier: flush release timed out");
+              }
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              throw new IllegalStateException("TOCTOU barrier interrupted", e);
+            }
+          };
+      writerA.setBetweenFindKeysetAndFlushForTests(toctouBarrier);
+      writerB.setBetweenFindKeysetAndFlushForTests(toctouBarrier);
+
+      ExecutorService pool = Executors.newFixedThreadPool(2);
+      Future<?> futureA =
+          pool.submit(
+              () -> {
+                try {
+                  writerA.rotateKey();
+                } catch (RuntimeException runtimeException) {
+                  throw runtimeException;
+                } catch (Exception e) {
+                  throw new RuntimeException(e);
+                }
+              });
+      Future<?> futureB =
+          pool.submit(
+              () -> {
+                try {
+                  writerB.rotateKey();
+                } catch (RuntimeException runtimeException) {
+                  throw runtimeException;
+                } catch (Exception e) {
+                  throw new RuntimeException(e);
+                }
+              });
+
+      assertTrue(
+          enteredWindow.await(30, TimeUnit.SECONDS),
+          "both writers must reach the findKeyset→flush window");
+      releaseFlush.countDown();
+
+      Throwable errorA = null;
+      Throwable errorB = null;
+      try {
+        futureA.get(30, TimeUnit.SECONDS);
+      } catch (Exception e) {
+        errorA = e.getCause() != null ? e.getCause() : e;
+      }
+      try {
+        futureB.get(30, TimeUnit.SECONDS);
+      } catch (Exception e) {
+        errorB = e.getCause() != null ? e.getCause() : e;
+      }
+      pool.shutdownNow();
+      writerA.setBetweenFindKeysetAndFlushForTests(null);
+      writerB.setBetweenFindKeysetAndFlushForTests(null);
+
+      assertTrue(
+          (errorA == null) ^ (errorB == null),
+          "exactly one writer must win; a=" + errorA + " b=" + errorB);
+      Throwable loserError = errorA != null ? errorA : errorB;
+      assertInstanceOf(
+          KeysetCasConflictException.class,
+          loserError,
+          "CAS loser must surface KeysetCasConflictException (P-n1)");
+
+      assertEquals(
+          2L,
+          keysetBlobRepository.findVersion().orElseThrow(),
+          "exactly one successful CAS must bump version to 2 (not stay 1 / not double)");
+      TinkKeyManager winner = errorA == null ? writerA : writerB;
+      TinkKeyManager loser = winner == writerA ? writerB : writerA;
+      assertEquals(2, winner.getAllKeyIds().size(), "winner keeps boot kid + one new primary");
+      assertTrue(winner.getAllKeyIds().contains(bootPrimary));
+      assertTrue(loser.forceReloadFromDatabase());
+      assertEquals(winner.getCurrentPrimaryKeyId(), loser.getCurrentPrimaryKeyId());
+      assertEquals(2L, loser.getDatabaseKeysetVersion());
+    } finally {
+      writerA.setBetweenFindKeysetAndFlushForTests(null);
+      writerB.setBetweenFindKeysetAndFlushForTests(null);
       writerA.shutdownKeysetCheckExecutor();
       writerB.shutdownKeysetCheckExecutor();
     }

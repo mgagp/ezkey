@@ -128,6 +128,9 @@ if ! docker run --rm \
             exit 1
         fi
 
+        # Owner-only create (no world-readable umask window before chmod) — #961 C nit / m4.
+        umask 077
+
         # Save master key
         echo \"\$MASTER_KEY\" > /etc/ezkey/secrets/master.key
 
@@ -137,7 +140,7 @@ if ! docker run --rm \
             exit 1
         fi
 
-        # Set secure permissions (600 = owner read/write only)
+        # Set secure permissions (600 = owner read/write only); set -e — do not swallow failures.
         chmod 600 /etc/ezkey/secrets/master.key
 
         # Change ownership to spring user (matches runtime container user)
@@ -156,8 +159,8 @@ if ! docker run --rm \
             chown spring:spring /etc/ezkey/secrets/audit-hmac.key
             echo \"✅ audit-hmac.key generated (mode 600)\"
         else
-            chmod 600 /etc/ezkey/secrets/audit-hmac.key 2>/dev/null || true
-            chown spring:spring /etc/ezkey/secrets/audit-hmac.key 2>/dev/null || true
+            chmod 600 /etc/ezkey/secrets/audit-hmac.key
+            chown spring:spring /etc/ezkey/secrets/audit-hmac.key
             echo \"ℹ️  audit-hmac.key already present — ensured mode 600\"
         fi
 

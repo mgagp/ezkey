@@ -303,7 +303,47 @@ class KeyRotationTransactionalInstallPostgresTest {
   }
 
   @Test
-  @DisplayName("m1: restorePreMutationLive independently undoes a premature live install")
+  @DisplayName(
+      "P-M2: afterCompletion on rollback restores corrupted live version (TX wiring, not direct"
+          + " helper call)")
+  void afterCompletion_onRollback_restoresPrematureLiveCorruption() {
+    long primaryBefore = tinkKeyManager.getCurrentPrimaryKeyId();
+    long versionBefore = tinkKeyManager.getDatabaseKeysetVersion();
+
+    TransactionTemplate tx = new TransactionTemplate(transactionManager);
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            tx.executeWithoutResult(
+                _ -> {
+                  try {
+                    tinkKeyManager.rotateKey();
+                  } catch (RuntimeException runtimeException) {
+                    throw runtimeException;
+                  } catch (Exception e) {
+                    throw new RuntimeException(e);
+                  }
+                  // Simulate install-before-commit corruption while deferred sync is registered.
+                  org.springframework.test.util.ReflectionTestUtils.setField(
+                      tinkKeyManager, "databaseKeysetVersion", versionBefore + 99);
+                  assertEquals(versionBefore + 99, tinkKeyManager.getDatabaseKeysetVersion());
+                  throw new RuntimeException("force rollback for afterCompletion restore");
+                }));
+
+    assertEquals(
+        versionBefore,
+        tinkKeyManager.getDatabaseKeysetVersion(),
+        "P-M2: afterCompletion must restore pre-mutation version on rollback");
+    assertEquals(
+        primaryBefore,
+        tinkKeyManager.getCurrentPrimaryKeyId(),
+        "P-M2: live primary must remain pre-mutation after rollback");
+  }
+
+  @Test
+  @DisplayName(
+      "m1/P-M2 helper: restorePreMutationLive undoes a premature live install (unit; wired via"
+          + " afterCompletion above)")
   void restorePreMutationLive_independentlyUndoesPrematureInstall() throws Exception {
     assertTrue(tinkKeyManager.forceReloadFromDatabase());
     long primaryBefore = tinkKeyManager.getCurrentPrimaryKeyId();
@@ -321,6 +361,43 @@ class KeyRotationTransactionalInstallPostgresTest {
     tinkKeyManager.restorePreMutationLive(previousLive, versionBefore, "M1_RESTORE");
     assertEquals(versionBefore, tinkKeyManager.getDatabaseKeysetVersion());
     assertEquals(primaryBefore, tinkKeyManager.getCurrentPrimaryKeyId());
+  }
+
+  @Test
+  @DisplayName(
+      "C-M3: second keyset mutation in the same TX fails closed; rollback keeps pre-TX primary")
+  void secondKeysetMutationInSameTransaction_failsClosed() {
+    long primaryBefore = tinkKeyManager.getCurrentPrimaryKeyId();
+    long versionBefore = tinkKeyManager.getDatabaseKeysetVersion();
+
+    TransactionTemplate tx = new TransactionTemplate(transactionManager);
+    IllegalStateException thrown =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                tx.executeWithoutResult(
+                    _ -> {
+                      try {
+                        tinkKeyManager.rotateKey();
+                        tinkKeyManager.addKeyWithoutPromotion();
+                      } catch (RuntimeException runtimeException) {
+                        throw runtimeException;
+                      } catch (Exception e) {
+                        throw new RuntimeException(e);
+                      }
+                    }));
+    assertTrue(
+        thrown.getMessage().contains("second keyset mutation in the same transaction"),
+        "got: " + thrown.getMessage());
+
+    assertEquals(
+        primaryBefore,
+        tinkKeyManager.getCurrentPrimaryKeyId(),
+        "C-M3: after rollback live primary must be pre-transaction");
+    assertEquals(
+        versionBefore,
+        keysetBlobRepository.findVersion().orElseThrow(),
+        "C-M3: first mutation flush must roll back with the TX");
   }
 
   @Test

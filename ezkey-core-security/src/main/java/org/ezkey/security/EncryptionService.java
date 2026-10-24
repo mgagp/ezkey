@@ -126,8 +126,9 @@ public class EncryptionService implements EncryptionOperations {
    *
    * @param plaintext the plaintext string to encrypt
    * @return {@code ENC:keyID:Base64(ciphertext)} when encryption is initialized; the unchanged
-   *     plaintext when the key manager is not initialized (passthrough — encrypt does not invent
-   *     ciphertext without a live keyset). AEAD failures after initialization never fall back to
+   *     plaintext only when {@code ezkey.encryption.enabled=false} (passthrough). With the default
+   *     {@code required=true}, startup fails if Tink cannot initialize, so encrypt does not invent
+   *     ciphertext without a live keyset. AEAD failures after initialization never fall back to
    *     plaintext.
    * @throws IllegalStateException if encryption is initialized but AEAD encryption fails or the
    *     primary key ID cannot be retrieved

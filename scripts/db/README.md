@@ -52,3 +52,8 @@ The role bootstrap recognizes:
 - `EZKEY_DB_CRYPTO_PASSWORD` — **required** by `apply-grants.sh` (no default on the grants/upgrade path)
 
 Do not use runtime API credentials for Flyway. Do not use `ezkey_migrate` as an API datasource.
+
+**Note (role creation / PL/pgSQL):** a failing dynamic `CREATE ROLE … PASSWORD` can echo the
+SQL (including the password literal) in PostgreSQL `CONTEXT` on stderr or in the server log.
+`apply-grants.sh` uses `PERFORM set_config` + `format(%L)` and does not print query results; still
+treat DB server logs as sensitive when diagnosing role-create failures.

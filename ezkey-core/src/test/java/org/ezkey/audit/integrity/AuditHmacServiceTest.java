@@ -397,17 +397,18 @@ class AuditHmacServiceTest {
     AuditHmacService failing =
         new AuditHmacService(properties) {
           @Override
-          void applyOwnerReadWriteOnly(Path path) throws java.io.IOException {
-            // Delegate to production body after forcing an IOException via missing path.
-            Files.deleteIfExists(path);
-            super.applyOwnerReadWriteOnly(path);
+          void applyPosixOwnerReadWrite(Path path) throws java.io.IOException {
+            // File must still exist when chmod fails — proves deleteIfExists is load-bearing
+            // (#961 P-M4). Mutant that removes deleteIfExists leaves the key on disk.
+            assertTrue(Files.exists(path), "chmod failure must be simulated with file present");
+            throw new java.io.IOException("simulated chmod failure");
           }
         };
 
     java.io.IOException thrown =
         assertThrows(java.io.IOException.class, () -> failing.applyOwnerReadWriteOnly(doomed));
     assertTrue(thrown.getMessage().contains("Refusing to keep audit HMAC key without mode 600"));
-    assertFalse(Files.exists(doomed), "fail-closed must not leave a key file behind");
+    assertFalse(Files.exists(doomed), "fail-closed must delete the key after chmod failure");
   }
 
   // -----------------------------------------------------------------------

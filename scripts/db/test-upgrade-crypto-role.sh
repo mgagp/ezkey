@@ -111,15 +111,33 @@ if docker exec -i -e PGPASSWORD="${PGPASSWORD_SUPER}" "${CONTAINER}" \
   exit 1
 fi
 
-echo "B1: apply-grants.sh --docker must succeed with EZKEY_DB_CRYPTO_PASSWORD..."
+echo "P-M5: apply-grants.sh must fail when EZKEY_DB_CRYPTO_PASSWORD is absent..."
 EZKEY_POSTGRES_CONTAINER="${CONTAINER}"
-EZKEY_DB_CRYPTO_PASSWORD="${CRYPTO_PASS}"
 PGPASSWORD="${PGPASSWORD_SUPER}"
-export EZKEY_POSTGRES_CONTAINER EZKEY_DB_CRYPTO_PASSWORD PGPASSWORD
+export EZKEY_POSTGRES_CONTAINER PGPASSWORD
+unset EZKEY_DB_CRYPTO_PASSWORD || true
+if env -u EZKEY_DB_CRYPTO_PASSWORD \
+  EZKEY_POSTGRES_CONTAINER="${CONTAINER}" PGPASSWORD="${PGPASSWORD_SUPER}" \
+  "${ROOT}/scripts/db/apply-grants.sh" --docker \
+  >/tmp/ezkey-b1-absent-crypto-pass.log 2>&1; then
+  echo "error: expected apply-grants.sh to fail without EZKEY_DB_CRYPTO_PASSWORD" >&2
+  cat /tmp/ezkey-b1-absent-crypto-pass.log >&2 || true
+  exit 1
+fi
+if ! grep -q 'EZKEY_DB_CRYPTO_PASSWORD must be set' /tmp/ezkey-b1-absent-crypto-pass.log; then
+  echo "error: absent-password failure must mention EZKEY_DB_CRYPTO_PASSWORD" >&2
+  cat /tmp/ezkey-b1-absent-crypto-pass.log >&2 || true
+  exit 1
+fi
+echo "P-M5: absent EZKEY_DB_CRYPTO_PASSWORD correctly fails closed."
+
+echo "B1: apply-grants.sh --docker must succeed with EZKEY_DB_CRYPTO_PASSWORD..."
+EZKEY_DB_CRYPTO_PASSWORD="${CRYPTO_PASS}"
+export EZKEY_DB_CRYPTO_PASSWORD
 "${ROOT}/scripts/db/apply-grants.sh" --docker
 echo "B1: verifying ezkey_crypto exists and can SELECT keyset blob..."
 docker exec -i -e PGPASSWORD="${CRYPTO_PASS}" "${CONTAINER}" \
   psql -v ON_ERROR_STOP=1 -U ezkey_crypto -d ezkey_db -c \
   'SELECT version FROM ezkey_keyset_blob WHERE id = 1;' >/dev/null
 
-echo "B1 upgrade test PASSED (pre-PR volume → ensure crypto role → grants)."
+echo "B1 upgrade test PASSED (pre-PR volume → ensure crypto role → grants; P-M5 absent password)."

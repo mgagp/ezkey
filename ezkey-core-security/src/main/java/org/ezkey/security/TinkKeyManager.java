@@ -51,7 +51,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * {@code @Version} CAS ({@code saveAndFlush}) plus an application version pre-check, and install
  * the live primary only after the surrounding transaction commits when one is active (otherwise
  * immediately after a successful flush). CAS losers discard the staging handle, reload the blob,
- * and fail closed.
+ * and fail closed. <b>At most one keyset mutation per Spring transaction</b> (#961 C-M3): a second
+ * {@code rotateKey}/{@code add}/{@code promote} in the same TX fails closed before flush.
  *
  * <p><b>Security properties:</b>
  *
@@ -68,6 +69,12 @@ public class TinkKeyManager implements KeyManagementOperations {
 
   private static final Logger logger = LoggerFactory.getLogger(TinkKeyManager.class);
   private static final byte[] KEYSET_ASSOCIATED_DATA = new byte[0];
+
+  /**
+   * TransactionSynchronizationManager resource key: marks that a live-install synchronization was
+   * already registered for the current transaction (one mutation per TX — #961 C-M3).
+   */
+  private static final Object KEYSET_MUTATION_TX_MARKER = new Object();
 
   /**
    * Hard upper bound for database version-check ticks (milliseconds).
@@ -959,6 +966,7 @@ public class TinkKeyManager implements KeyManagementOperations {
    * @throws IllegalStateException if the blob cannot be loaded
    */
   private void reloadBlobUnderWriteLockOrThrow(String reason) {
+    rejectSecondKeysetMutationInSameTransaction();
     try {
       if (!loadKeysetFromDatabaseUnlocked()) {
         throw new IllegalStateException(
@@ -967,6 +975,22 @@ public class TinkKeyManager implements KeyManagementOperations {
     } catch (DataAccessException e) {
       throw new IllegalStateException(
           "Cannot mutate keyset: database error re-reading blob (reason=" + reason + ")", e);
+    }
+  }
+
+  /**
+   * Fail-closed guard: at most one keyset mutation may schedule a live install in the current
+   * Spring transaction (#961 C-M3).
+   *
+   * @throws IllegalStateException when a prior mutation in this TX already registered install sync
+   */
+  private void rejectSecondKeysetMutationInSameTransaction() {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      return;
+    }
+    if (TransactionSynchronizationManager.hasResource(KEYSET_MUTATION_TX_MARKER)) {
+      throw new IllegalStateException(
+          "second keyset mutation in the same transaction is not supported");
     }
   }
 
@@ -1055,6 +1079,9 @@ public class TinkKeyManager implements KeyManagementOperations {
       return;
     }
 
+    rejectSecondKeysetMutationInSameTransaction();
+    TransactionSynchronizationManager.bindResource(KEYSET_MUTATION_TX_MARKER, Boolean.TRUE);
+
     TransactionSynchronizationManager.registerSynchronization(
         new TransactionSynchronization() {
           @Override
@@ -1071,12 +1098,15 @@ public class TinkKeyManager implements KeyManagementOperations {
 
           @Override
           public void afterCompletion(int status) {
+            if (TransactionSynchronizationManager.hasResource(KEYSET_MUTATION_TX_MARKER)) {
+              TransactionSynchronizationManager.unbindResource(KEYSET_MUTATION_TX_MARKER);
+            }
             if (status == STATUS_COMMITTED) {
               return;
             }
             // Defense in depth if a future path installs before commit; on the deferred path this
-            // is a no-op (handle/version were never published). Covered by package-visible restore
-            // test (Patrick m1).
+            // is a no-op (handle/version were never published). Wired by real-TX rollback test
+            // (Patrick P-M2); helper also unit-tested directly.
             restorePreMutationLive(previousLive, previousVersion, updatedBy);
           }
         });
@@ -1089,12 +1119,27 @@ public class TinkKeyManager implements KeyManagementOperations {
   private volatile Runnable betweenHandleAndVersionPublish;
 
   /**
+   * Optional test probe invoked after the application version pre-check and before {@code
+   * saveAndFlush} (Patrick P-M3 TOCTOU window). Null in production.
+   */
+  private volatile Runnable betweenFindKeysetAndFlush;
+
+  /**
    * Test-only: registers a probe between handle and version publish (Patrick B2).
    *
    * @param probe runnable invoked mid-publish; {@code null} clears the probe
    */
   void setBetweenHandleAndVersionPublishForTests(Runnable probe) {
     this.betweenHandleAndVersionPublish = probe;
+  }
+
+  /**
+   * Test-only: registers a probe in the findKeyset→flush TOCTOU window (Patrick P-M3).
+   *
+   * @param probe runnable invoked after the app version pre-check; {@code null} clears the probe
+   */
+  void setBetweenFindKeysetAndFlushForTests(Runnable probe) {
+    this.betweenFindKeysetAndFlush = probe;
   }
 
   /**
@@ -1317,6 +1362,11 @@ public class TinkKeyManager implements KeyManagementOperations {
     keysetBlob.setKeysetData(encryptedData);
     keysetBlob.setUpdatedBy(updatedBy);
     keysetBlob.setLastUpdatedAt(OffsetDateTime.now());
+
+    Runnable toctouProbe = betweenFindKeysetAndFlush;
+    if (toctouProbe != null) {
+      toctouProbe.run();
+    }
 
     long flushedVersion;
     try {
