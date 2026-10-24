@@ -144,5 +144,6 @@ Run like a team retrospective:
 | [`templates/lab-paper-review-checklist.md`](templates/lab-paper-review-checklist.md) | Pre-publish review checklist |
 | [`../ezkey-org/lab.html`](../ezkey-org/lab.html) | Public EN hub |
 | [`../ezkey-org/fr/labo.html`](../ezkey-org/fr/labo.html) | Public FR hub |
+| [`../ezkey-org/lab-paper-template-example.html`](../ezkey-org/lab-paper-template-example.html) | Layout sample only (`noindex`; omitted from `sitemap.xml`). Real published papers are indexed and listed in the sitemap. |
 | [`../ezkey-org/AGENTS.md`](../ezkey-org/AGENTS.md) | Agent guidelines for the static site |
 | [`../../product-docs/global/team-roles.md`](../../product-docs/global/team-roles.md) | Eligible co-author names and roles |
