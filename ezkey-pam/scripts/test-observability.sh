@@ -89,8 +89,8 @@ assert_one_clean_line() {
     fail "${label}: expected result=${expect_result} in: ${line}"
     return 0
   fi
-  if ! echo "${line}" | grep -Eq 'user=[^ ]+ authAttemptId=[^ ]+ result=[^ ]+ pam_code=[0-9]+ latency_ms=[0-9]+ lab_http=(true|false) cancel=(ok|fail|skipped|final) timeoutSeconds=(-|[0-9]+)'; then
-    fail "${label}: line missing required fields (incl. lab_http + cancel + timeoutSeconds): ${line}"
+  if ! echo "${line}" | grep -Eq 'user=[^ ]+ authAttemptId=[^ ]+ result=[^ ]+ pam_code=[0-9]+ latency_ms=[0-9]+ lab_http=(true|false) cancel=(ok|fail|skipped|final) timeoutSeconds=(-|[0-9]+) stage=[^ ]+ reason=[^ ]+ curl_rc=(-|[0-9]+) http=(-|[0-9]+) confirm_ms=(-|[0-9]+) api_ms=(-|[0-9]+)'; then
+    fail "${label}: line missing required fields (incl. #1011 stage/reason/timings): ${line}"
     return 0
   fi
   if echo "${line}" | grep -Eiq 'secret|proof|token|Authorization|body=\{'; then

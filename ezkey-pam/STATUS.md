@@ -45,7 +45,8 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.14** (#995: connector default `challenge_requested=true`). Prior
+Version **2.2.15** (#1011: richer UNAVAIL/CONFIRM/SIGNAL diagnostics + runbook).
+Prior **2.2.14** (#995: connector default `challenge_requested=true`). Prior
 **2.2.13** (#982 tiers 0–1 on #976: ECHO_ON confirm + challenge Enter-only
 wait). Prior **2.2.12** (#975 / PR #976: **confirm-before-create** + display
 server-provided challenge even when host `challenge_requested=false`; builds on
@@ -439,19 +440,31 @@ Format (stable; parse with `grep 'pam_ezkey: attempt '` or `pam_ezkey: start `):
 
 ```text
 pam_ezkey: start user=<linuxUser> authAttemptId=<id> timeoutSeconds=<n>
-pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms> lab_http=<true|false> cancel=<ok|fail|skipped|final> timeoutSeconds=<n|->
+pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms> lab_http=<true|false> cancel=<ok|fail|skipped|final> timeoutSeconds=<n|-> stage=<S> reason=<R> curl_rc=<n|-> http=<n|-> confirm_ms=<n|-> api_ms=<n|->
 ```
 
 | Field | Meaning |
 |---|---|
 | `user` | Linux username (sanitized); `-` if unavailable |
 | `authAttemptId` | Numeric id from create, or `-` if never created |
-| `result` | `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `MAXTRIES` \| `UNAVAIL` \| `ERROR` \| `UNKNOWN_USER` |
+| `result` | `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `MAXTRIES` \| `UNAVAIL` \| `CONFIRM` \| `SIGNAL` \| `ERROR` \| `UNKNOWN_USER` |
 | `pam_code` | Integer PAM return code |
 | `latency_ms` | Monotonic elapsed ms for the authenticate call |
 | `lab_http` | Conf `lab_http` as `true` or `false` (Christophe) |
 | `cancel` | Exactly one of `ok` \| `fail` \| `skipped` \| `final` (`EZKEY_CANCEL_*`; Patrick #897 M2 + Christophe observability) |
 | `timeoutSeconds` | Planned wait on `start` (before create); applied TTL on `attempt` (or `-`) (#907) |
+| `stage` | Fixed vocab: `init` \| `conf` \| `confirm` \| `create` \| `challenge` \| `wait` (#1011) |
+| `reason` | Fixed vocab (e.g. `empty_confirm`, `curl`, `http`, `budget`, `signal`, `challenge_missing`, `-`) — never free-form secrets |
+| `curl_rc` | libcurl code on the failing call, or `-` |
+| `http` | Last HTTP status on the failing call, or `-` |
+| `confirm_ms` | Pre-create `ok` prompt duration (ms), or `-` |
+| `api_ms` | Cumulative create/wait HTTP time (ms), or `-` |
+
+**#1011 notes:** `CONFIRM` = empty/wrong pre-create `ok` (still `pam_code=9`).
+`SIGNAL` = best-effort authpriv line when sshd SIGTERMs the PAM child during a
+blocking `pam_prompt` (async-signal-safe `write` to `/dev/log`). Wait-path
+SIGTERM still uses abort → cancel → normal summary (#1012 behaviour unchanged).
+Experimental / never released: no log-format compatibility promise.
 
 **#907 F9 / R5 (option A — Patrick/Christophe review):** Under OpenSSH portable, each
 keyboard-interactive **prompt round** runs in a forked child that `_exit`s and
@@ -598,8 +611,8 @@ create under `Match … MaxAuthTries 1`. Username controls sanitized
 | Client situation | Pre-2.2.12 | 2.2.12 |
 |---|---|---|
 | No `PAM_CONV` / `PAM_CONV_ERR` | UNAVAIL | UNAVAIL (0 creates) |
-| `ssh -T </dev/null` (empty EOF) | **SUCCESS if device approved** | **UNAVAIL + 0 creates** |
-| Interactive bare Enter | SUCCESS path continued | **UNAVAIL + 0 creates** |
+| `ssh -T </dev/null` (empty EOF) | **SUCCESS if device approved** | **CONFIRM + 0 creates** (#1011) |
+| Interactive bare Enter | SUCCESS path continued | **CONFIRM + 0 creates** (#1011) |
 | `BatchMode` + pubkey outside MFA Match | unchanged | unchanged |
 
 **D1 (known):** some Windows OpenSSH clients without a console hang until

@@ -18,7 +18,7 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
    for user… / Type ok … to request device approval”. Trimmed **`ok`** is required
    before any Integration API call (confirm-before-create — #975 / Patrick
    [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) §5). Empty / EOF /
-   Ctrl-C → `UNAVAIL` with **zero** auth attempts (no phone noise).
+   Ctrl-C → `UNAVAIL`/`CONFIRM`/`SIGNAL` with **zero** auth attempts (no phone noise).
 3. Creates an auth attempt (`POST /api/v1/auth-attempts`) using the Linux username as
    `userIdentifier`, with `challengeRequested` from conf and optional `ttlSeconds`.
 4. If create returns a valid `authAttemptChallenge` (host requested or enrollment-
@@ -73,8 +73,8 @@ that owns the API key.
 
 - **Confirm-before-create (Patrick interaction model §5):** require trimmed
   **`ok`** on a pre-create prompt **before** `POST /auth-attempts`. Batch /
-  empty / `ssh -T </dev/null` / Ctrl-C at that prompt → `UNAVAIL` with
-  **zero** creates (no phone noise). Challenge path: same pre-create `ok`,
+  empty / `ssh -T </dev/null` at that prompt → `CONFIRM` with **zero**
+  creates (no phone noise; #1011). Challenge path: same pre-create `ok`,
   then a **second** prompt shows the code after create. Still one authenticate
   call → at most one create under `Match … MaxAuthTries 1`. See
   [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md).
@@ -166,15 +166,19 @@ that owns the API key.
 
 On top of 2.1 slices 1–3 ([`STATUS.md`](STATUS.md) § M1):
 
-- **Start + attempt lines** in `authpriv` / `/var/log/secure` (stable format):
+- **Start + attempt lines** in `authpriv` / `/var/log/secure` (#1011 fields):
 
   ```text
   pam_ezkey: start user=… authAttemptId=- timeoutSeconds=…   (before create)
-  pam_ezkey: attempt user=… authAttemptId=… result=… pam_code=… latency_ms=… lab_http=… cancel=… timeoutSeconds=…
+  pam_ezkey: attempt user=… authAttemptId=… result=… pam_code=… latency_ms=… lab_http=… cancel=… timeoutSeconds=… stage=… reason=… curl_rc=… http=… confirm_ms=… api_ms=…
   ```
 
-  - `result`: `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `MAXTRIES` \| `UNAVAIL` \| …
-    (`MAXTRIES` is same-handle only — not effective across OpenSSH kbdint forks)
+  - `result`: `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `MAXTRIES` \| `UNAVAIL` \| `CONFIRM` \| `SIGNAL` \| …
+    (`CONFIRM` = empty/wrong pre-create `ok`; `SIGNAL` = best-effort line when
+    sshd SIGTERMs during a blocking prompt; `MAXTRIES` is same-handle only —
+    not effective across OpenSSH kbdint forks)
+  - `stage` / `reason` / `curl_rc` / `http` / `confirm_ms` / `api_ms`: diagnose
+    UNAVAIL without `debug=true` (values `-` when N/A; never secrets/tokens/IPs)
   - `cancel` (only these four literals — `EZKEY_CANCEL_*`):
     | Value | Meaning |
     |---|---|
@@ -296,7 +300,7 @@ ssh -p 2223 \
 | `lab_http` | `false` | Allow `http://` Integration API URL (Docker entrypoint sets `true`) |
 | `context_title` | `SSH login` | Title shown on the device |
 | `context_message` | *(generated)* | Message shown on the device |
-| `debug` | `false` | Extra filelog `/var/log/ezkey-pam/debug.{out,err}` (Docker lab entrypoint sets `true`) |
+| `debug` | `false` | Extra filelog `/var/log/ezkey-pam/debug.{out,err}` (Docker lab entrypoint sets `true`). Prefer authpriv `stage`/`reason` first (#1011) |
 
 **Default `wait_timeout` is 90 s** (`EZKEY_DEFAULT_WAIT_TIMEOUT` in `ezkey_config.h`). Override it via:
 
@@ -365,9 +369,39 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
   optional challenge prompt → `/wait`. Batch / empty clients create nothing.
   See [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) (scenario catalogue
   + sshd / client inventory).
+- **Two different clocks — do not conflate them (#1011).**
+  - **`LoginGraceTime` 120 s** (demo `sshd_config`): sshd’s client-connection
+    budget. If the PAM child is still in a prompt or `/wait` when grace expires,
+    sshd kills the child. Keep host grace **≥ 120**.
+  - **Module `EZKEY_AUTH_BUDGET_SECS` 105 s**: monotonic budget inside
+    `pam_sm_authenticate` (margin under 120).
+  - **`wait_timeout` / create `ttlSeconds` (often ~75 s on the phone):** conf
+    default is 90 (clamped 15–90), then shrunk at runtime to fit the remaining
+    auth budget after the pre-create `ok` (and optional challenge Enter). The
+    device card TTL is this **applied** value — **not** LoginGraceTime 120 and
+    **not** “always 90”. Lab QA often sees ~75 s on the phone; that is expected.
+- **Pre-create `ok` prompt:** the first keyboard-interactive line asks for
+  trimmed **`ok`** (visible, 25 s Enter cap). Empty / bare Enter / EOF /
+  `ssh -T </dev/null` → `result=CONFIRM` `reason=empty_confirm` with **zero**
+  Integration API creates. This is an anti-accident filter, not the MFA factor.
+- **`challenge_requested` toggle:** sample/default **`true`** (#995). Set
+  `false` only to opt out of *connector-requested* challenge; enrollment
+  `authAttemptChallengeRequired` still forces a code on the server. Unknown
+  values keep the prior default + authpriv warning.
+- **`debug` toggle:** sample default **`false`**. When `true`, extra transcripts
+  go to `/var/log/ezkey-pam/debug.{out,err}` only — not authpriv. Docker lab
+  entrypoint sets `true`. Use `debug=true` to see prompt/curl detail; authpriv
+  `stage=` / `reason=` / `curl_rc=` / `http=` / `confirm_ms=` / `api_ms=` are
+  enough for most UNAVAIL diagnosis without debug (#1011).
+- **`MaxAuthTries 1` misleading client message:** with Match `MaxAuthTries 1`,
+  a single failed PAM round (including empty `ok` → CONFIRM/UNAVAIL) can surface
+  to the SSH client as **“Too many authentication failures”**. That string is
+  OpenSSH’s generic try-budget message — **not** proof of repeated password
+  guessing. Check authpriv `result=` / `reason=` first.
 - **`LoginGraceTime` ≥ 120 s.** Demo `sshd_config` sets `LoginGraceTime 120`. The module’s
   monotonic budget is 105 s; a lower grace time cuts the session before PAM can finish (often
-  with **no** attempt line). Keep host sshd grace ≥ 120 when using this module.
+  with **no** attempt line, unless the #1011 signal-safe path wrote `result=SIGNAL`
+  during a blocking prompt). Keep host sshd grace ≥ 120 when using this module.
 - **MANDATORY — single try via `Match` (sshd), not a global `MaxAuthTries 1`.**
   After Deny or expiration, OpenSSH portable retries **keyboard-interactive in the
   same TCP connection**. Each **prompt round** is a **new forked PAM child**
@@ -445,11 +479,18 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
 
 ## Troubleshooting
 
-### Immediate deny / `PAM_AUTHINFO_UNAVAIL`
+### Immediate deny / `PAM_AUTHINFO_UNAVAIL` / `CONFIRM`
+- Read authpriv `stage=` + `reason=` first (#1011) — e.g. `CONFIRM` /
+  `empty_confirm` means the client did not type `ok`; `create`+`curl`/`http`
+  means Integration API transport; `challenge_missing` means connector asked
+  for a code the server omitted.
 - Confirm `/etc/security/pam_ezkey.conf` inside the container has both keys.
 - Conf open failures are syslog’d explicitly; missing keys return `PAM_AUTHINFO_UNAVAIL`.
 - `curl http://integration-api:7080/actuator/health` from the SSH VM.
 - Confirm a **VERIFIED** enrollment exists with `userIdentifier=testuser` on that integration.
+- If the SSH client says **“Too many authentication failures”** after one try
+  under `MaxAuthTries 1`, treat it as OpenSSH’s generic message — check
+  authpriv before assuming repeated failures.
 
 ### Reject / expire / timeout (`PAM_AUTH_ERR`)
 - Approve on Demo Device within `wait_timeout` (default **90 s**).

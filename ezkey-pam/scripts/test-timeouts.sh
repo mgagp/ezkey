@@ -1193,7 +1193,7 @@ fi
 stop_stub
 restore_conf
 
-# --- #975 D4: ssh -T </dev/null → UNAVAIL + **zero** stub creates ---
+# --- #975 D4: ssh -T </dev/null → CONFIRM + **zero** stub creates (#1011) ---
 # Confirm-before-create: empty EOF never reaches POST /auth-attempts.
 start_stub ok
 docker exec "${CONTAINER}" sh -c \
@@ -1234,13 +1234,15 @@ echo "d4_rc=${d4_rc} creates=${CREATES_D4} attempt=${ATTEMPT_D4}" | tee -a "${PR
 echo "d4_err=${ERR_D4}" | tee -a "${PROOF}"
 if [ "${d4_rc}" -ne 0 ] \
   && [ "${CREATES_D4}" -eq 0 ] \
-  && echo "${ATTEMPT_D4}" | grep -q 'result=UNAVAIL' \
+  && echo "${ATTEMPT_D4}" | grep -q 'result=CONFIRM' \
+  && echo "${ATTEMPT_D4}" | grep -q 'reason=empty_confirm' \
+  && echo "${ATTEMPT_D4}" | grep -q 'stage=confirm' \
   && echo "${ERR_D4}" | grep -Eq 'pre-wait confirm missing|empty/EOF|not ok'; then
-  ok "#975 D4 ssh -T </dev/null → UNAVAIL + zero creates"
+  ok "#975 D4 ssh -T </dev/null → CONFIRM + zero creates (#1011)"
 else
-  fail "#975 D4 expected UNAVAIL+0 creates (rc=${d4_rc} creates=${CREATES_D4}): ${ATTEMPT_D4}"
+  fail "#975 D4 expected CONFIRM+0 creates (rc=${d4_rc} creates=${CREATES_D4}): ${ATTEMPT_D4}"
 fi
-# Bare Enter on a PTY (empty) → UNAVAIL + zero creates.
+# Bare Enter on a PTY (empty) → CONFIRM + zero creates.
 docker exec "${CONTAINER}" sh -c ": >'${STUB_REQ_LOG}'"
 SSH_LOG_D4E="${ARTIFACT_DIR}/pam-timeouts-d4-bare-enter.log"
 SSH_CTRL_D4E="$(ezkey_mk_ctrl_fifo)"
@@ -1276,10 +1278,11 @@ CREATES_D4E="${CREATES_D4E:-0}"
 echo "d4_bare_enter_rc=${d4e_rc} creates=${CREATES_D4E} attempt=${ATTEMPT_D4E}" \
   | tee -a "${PROOF}"
 if [ "${d4e_rc}" -ne 0 ] && [ "${CREATES_D4E}" -eq 0 ] \
-  && echo "${ATTEMPT_D4E}" | grep -q 'result=UNAVAIL'; then
-  ok "#975 D4 bare Enter → UNAVAIL + zero creates"
+  && echo "${ATTEMPT_D4E}" | grep -q 'result=CONFIRM' \
+  && echo "${ATTEMPT_D4E}" | grep -q 'reason=empty_confirm'; then
+  ok "#975 D4 bare Enter → CONFIRM + zero creates (#1011)"
 else
-  fail "#975 D4 bare Enter expected UNAVAIL+0 creates (rc=${d4e_rc} creates=${CREATES_D4E})"
+  fail "#975 D4 bare Enter expected CONFIRM+0 creates (rc=${d4e_rc} creates=${CREATES_D4E}): ${ATTEMPT_D4E}"
 fi
 stop_stub
 restore_conf
@@ -1402,10 +1405,11 @@ CREATES_S3="${CREATES_S3:-0}"
 ATTEMPT_S3="$(last_attempt_line)"
 echo "s3_rc=${s3_rc} creates=${CREATES_S3} attempt=${ATTEMPT_S3}" | tee -a "${PROOF}"
 if [ "${s3_rc}" -ne 0 ] && [ "${CREATES_S3}" -eq 0 ] \
-  && echo "${ATTEMPT_S3}" | grep -q 'result=UNAVAIL'; then
-  ok "S3 batch + enrollment challenge → UNAVAIL + zero creates"
+  && echo "${ATTEMPT_S3}" | grep -q 'result=CONFIRM' \
+  && echo "${ATTEMPT_S3}" | grep -q 'reason=empty_confirm'; then
+  ok "S3 batch + enrollment challenge → CONFIRM + zero creates (#1011)"
 else
-  fail "S3 expected UNAVAIL+0 creates (rc=${s3_rc} creates=${CREATES_S3}): ${ATTEMPT_S3}"
+  fail "S3 expected CONFIRM+0 creates (rc=${s3_rc} creates=${CREATES_S3}): ${ATTEMPT_S3}"
 fi
 stop_stub
 restore_conf
@@ -1659,11 +1663,12 @@ ERR_982B="$(docker exec "${CONTAINER}" sh -c 'tail -n 5 /var/log/ezkey-pam/debug
 echo "982_batch rc=${batch_982_rc} creates=${CREATES_982B} attempt=${ATTEMPT_982BATCH}" \
   | tee -a "${PROOF}"
 if [ "${batch_982_rc}" -ne 0 ] && [ "${CREATES_982B}" -eq 0 ] \
-  && echo "${ATTEMPT_982BATCH}" | grep -q 'result=UNAVAIL' \
+  && echo "${ATTEMPT_982BATCH}" | grep -q 'result=CONFIRM' \
+  && echo "${ATTEMPT_982BATCH}" | grep -q 'reason=empty_confirm' \
   && echo "${ERR_982B}" | grep -Eqi 'confirm missing or not ok|empty/EOF'; then
-  ok "#982 batch empty reply → UNAVAIL + 0 creates + typed confirm error"
+  ok "#982 batch empty reply → CONFIRM + 0 creates + typed confirm error (#1011)"
 else
-  fail "#982 batch expected UNAVAIL+0 creates+typed err (rc=${batch_982_rc} creates=${CREATES_982B}): ${ATTEMPT_982BATCH} / ${ERR_982B}"
+  fail "#982 batch expected CONFIRM+0 creates+typed err (rc=${batch_982_rc} creates=${CREATES_982B}): ${ATTEMPT_982BATCH} / ${ERR_982B}"
 fi
 stop_stub
 restore_conf

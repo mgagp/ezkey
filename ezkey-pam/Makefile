@@ -14,11 +14,11 @@ INSTALL_DIR = /lib64/security
 OBJECTS = $(BUILD_DIR)/pam_ezkey.o $(BUILD_DIR)/ezkey_filelog.o \
 	$(BUILD_DIR)/ezkey_sanitize.o $(BUILD_DIR)/ezkey_challenge.o \
 	$(BUILD_DIR)/ezkey_budget.o $(BUILD_DIR)/ezkey_session.o \
-	$(BUILD_DIR)/ezkey_conf.o
+	$(BUILD_DIR)/ezkey_conf.o $(BUILD_DIR)/ezkey_diag.o
 
 .PHONY: all debug install uninstall clean check-pam check-source lint help \
 	test test-filelog test-sanitize test-challenge test-conf test-budget \
-	test-session test-install-sshd-warn
+	test-session test-diag test-install-sshd-warn
 
 all: $(BUILD_DIR)/$(MODULE_NAME)
 
@@ -28,8 +28,13 @@ $(BUILD_DIR):
 $(BUILD_DIR)/pam_ezkey.o: $(SRC_DIR)/pam_ezkey.c $(SRC_DIR)/ezkey_config.h \
 		$(SRC_DIR)/ezkey_conf.h $(SRC_DIR)/ezkey_filelog.h \
 		$(SRC_DIR)/ezkey_sanitize.h $(SRC_DIR)/ezkey_challenge.h \
-		$(SRC_DIR)/ezkey_budget.h $(SRC_DIR)/ezkey_session.h | $(BUILD_DIR)
+		$(SRC_DIR)/ezkey_budget.h $(SRC_DIR)/ezkey_session.h \
+		$(SRC_DIR)/ezkey_diag.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/pam_ezkey.c -o $(BUILD_DIR)/pam_ezkey.o
+
+$(BUILD_DIR)/ezkey_diag.o: $(SRC_DIR)/ezkey_diag.c $(SRC_DIR)/ezkey_diag.h \
+		$(SRC_DIR)/ezkey_config.h $(SRC_DIR)/ezkey_sanitize.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_diag.c -o $(BUILD_DIR)/ezkey_diag.o
 
 $(BUILD_DIR)/ezkey_conf.o: $(SRC_DIR)/ezkey_conf.c $(SRC_DIR)/ezkey_conf.h \
 		$(SRC_DIR)/ezkey_config.h $(SRC_DIR)/ezkey_budget.h | $(BUILD_DIR)
@@ -107,6 +112,13 @@ check-source:
 		$(SRC_DIR)/ezkey_conf.c
 	@grep -qE '^challenge_requested=true$$' config/pam_ezkey.conf
 	@grep -qE '^challenge_requested=true$$' docker-entrypoint.sh
+	# #1011: sample conf comment must say default true (not the pre-#995 false).
+	@grep -qE 'challenge_requested[[:space:]].*default true' config/pam_ezkey.conf
+	@if grep -nE 'challenge_requested[[:space:]].*default false' config/pam_ezkey.conf; then \
+		echo "error: challenge_requested comment still says default false (#1011)" >&2; exit 1; \
+	fi
+	@grep -q 'stage=' $(SRC_DIR)/ezkey_diag.c
+	@grep -q 'ezkey_diag_emit_signal_safe' $(SRC_DIR)/pam_ezkey.c
 	# Patrick B2 (#982): match the real pam_prompt call — comments alone must not pass.
 	@grep -qE 'pam_prompt[[:space:]]*\([^)]*PAM_PROMPT_ECHO_ON' $(SRC_DIR)/pam_ezkey.c
 	@if grep -nE 'pam_prompt[[:space:]]*\([^)]*PAM_PROMPT_ECHO_OFF' $(SRC_DIR)/pam_ezkey.c; then \
@@ -155,6 +167,14 @@ test-session: $(BUILD_DIR)/ezkey_session.o $(TEST_DIR)/test_session_harness.c | 
 		$(BUILD_DIR)/ezkey_session.o -o $(BUILD_DIR)/test_session_harness
 	$(BUILD_DIR)/test_session_harness
 
+# Harness: attempt-line fields + signal-safe emit gate (#1011).
+test-diag: $(BUILD_DIR)/ezkey_diag.o $(BUILD_DIR)/ezkey_sanitize.o \
+		$(TEST_DIR)/test_diag_harness.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_diag_harness.c \
+		$(BUILD_DIR)/ezkey_diag.o $(BUILD_DIR)/ezkey_sanitize.o \
+		-o $(BUILD_DIR)/test_diag_harness
+	$(BUILD_DIR)/test_diag_harness
+
 # Host-side: shared sshd-warn-global-maxauthtries-1.awk (Patrick #908 / #934 B1).
 test-install-sshd-warn:
 	./scripts/test-install-sshd-warn.sh
@@ -164,9 +184,9 @@ $(BUILD_DIR)/test_no_conv_client: $(TEST_DIR)/test_no_conv_client.c | $(BUILD_DI
 		-o $(BUILD_DIR)/test_no_conv_client
 
 test: check-source all test-filelog test-sanitize test-challenge test-conf \
-		test-budget test-session test-install-sshd-warn \
+		test-budget test-session test-diag test-install-sshd-warn \
 		$(BUILD_DIR)/test_no_conv_client
-	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog + sanitize + challenge + conf + budget + session + install-sshd-warn OK"
+	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog + sanitize + challenge + conf + budget + session + diag + install-sshd-warn OK"
 
 help:
 	@echo "Available targets:"
@@ -183,6 +203,7 @@ help:
 	@echo "  test-conf     - Conf default + bool typo fallback (#995 B1/m1)"
 	@echo "  test-budget   - AUTH_BUDGET 105 + rem-too-small planned-wait harness"
 	@echo "  test-session  - final-verdict + interrupt cancel harness (#907)"
+	@echo "  test-diag     - attempt-line fields + signal-safe emit (#1011)"
 	@echo "  test-install-sshd-warn - shared MaxAuthTries 1 awk (#908 / #934 B1)"
-	@echo "  test          - check-source + compile + harnesses (incl. session)"
+	@echo "  test          - check-source + compile + harnesses (incl. session/diag)"
 	@echo "  lint          - Run static code analysis"

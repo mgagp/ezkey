@@ -7,7 +7,7 @@
 
 /* Module identification */
 #define EZKEY_MODULE_NAME "pam_ezkey"
-#define EZKEY_VERSION "2.2.14"
+#define EZKEY_VERSION "2.2.15"
 
 /*
  * Cancel outcome on the authpriv attempt summary line (Patrick #897 M2;
