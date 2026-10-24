@@ -134,6 +134,8 @@ class KeysetBlobOnlyInvariantTest {
 
       when(repository.save(any(KeysetBlob.class)))
           .thenThrow(new DataAccessResourceFailureException("simulated CAS/persist failure"));
+      when(repository.saveAndFlush(any(KeysetBlob.class)))
+          .thenThrow(new DataAccessResourceFailureException("simulated CAS/persist failure"));
 
       IllegalStateException thrown = assertThrows(IllegalStateException.class, manager::rotateKey);
       assertTrue(
@@ -167,16 +169,17 @@ class KeysetBlobOnlyInvariantTest {
       PeerBlob peer = peerNativeBlob(masterKey, "CAS_PEER_WIN");
       AtomicBoolean peerInstalled = new AtomicBoolean(false);
 
-      when(repository.save(any(KeysetBlob.class)))
-          .thenAnswer(
-              invocation -> {
-                // Peer CAS wins: replace blob, then fail this writer's save.
-                long nextVersion = storedBlob.get().getVersion() + 1;
-                peer.blob().setVersion(nextVersion);
-                storedBlob.set(peer.blob());
-                peerInstalled.set(true);
-                throw new OptimisticLockingFailureException("simulated concurrent CAS loss");
-              });
+      org.mockito.stubbing.Answer<KeysetBlob> peerWinsCas =
+          invocation -> {
+            // Peer CAS wins: replace blob, then fail this writer's save.
+            long nextVersion = storedBlob.get().getVersion() + 1;
+            peer.blob().setVersion(nextVersion);
+            storedBlob.set(peer.blob());
+            peerInstalled.set(true);
+            throw new OptimisticLockingFailureException("simulated concurrent CAS loss");
+          };
+      when(repository.save(any(KeysetBlob.class))).thenAnswer(peerWinsCas);
+      when(repository.saveAndFlush(any(KeysetBlob.class))).thenAnswer(peerWinsCas);
 
       assertThrows(IllegalStateException.class, manager::rotateKey);
       assertTrue(peerInstalled.get(), "peer blob must be present for the post-CAS reload");
@@ -391,12 +394,13 @@ class KeysetBlobOnlyInvariantTest {
     try {
       long primaryBefore = manager.getCurrentPrimaryKeyId();
       AtomicBoolean saveAttempted = new AtomicBoolean(false);
-      when(repository.save(any(KeysetBlob.class)))
-          .thenAnswer(
-              invocation -> {
-                saveAttempted.set(true);
-                throw new DataAccessResourceFailureException("simulated CAS persist failure");
-              });
+      org.mockito.stubbing.Answer<KeysetBlob> casPersistFails =
+          invocation -> {
+            saveAttempted.set(true);
+            throw new DataAccessResourceFailureException("simulated CAS persist failure");
+          };
+      when(repository.save(any(KeysetBlob.class))).thenAnswer(casPersistFails);
+      when(repository.saveAndFlush(any(KeysetBlob.class))).thenAnswer(casPersistFails);
       when(repository.findKeyset())
           .thenAnswer(
               invocation -> {
@@ -920,26 +924,26 @@ class KeysetBlobOnlyInvariantTest {
             });
     when(repository.findVersion())
         .thenAnswer(_ -> Optional.ofNullable(storedBlob.get()).map(KeysetBlob::getVersion));
-    when(repository.save(any(KeysetBlob.class)))
-        .thenAnswer(
-            invocation -> {
-              // Hibernate-realistic: @Version matches the entity's version to the row.
-              // A fresh findKeyset() before save loads the peer version, so @Version alone
-              // does not protect against a peer commit between re-read and save (probe B).
-              KeysetBlob blob = invocation.getArgument(0);
-              KeysetBlob current = storedBlob.get();
-              if (current != null
-                  && blob.getVersion() != null
-                  && current.getVersion() != null
-                  && !blob.getVersion().equals(current.getVersion())) {
-                throw new OptimisticLockingFailureException(
-                    "simulated Hibernate @Version conflict");
-              }
-              long version = current == null ? 1L : current.getVersion() + 1;
-              blob.setVersion(version);
-              storedBlob.set(blob);
-              return blob;
-            });
+    org.mockito.stubbing.Answer<KeysetBlob> hibernateRealisticSave =
+        invocation -> {
+          // Hibernate-realistic: @Version matches the entity's version to the row.
+          // A fresh findKeyset() before save loads the peer version, so @Version alone
+          // does not protect against a peer commit between re-read and save (probe B).
+          KeysetBlob blob = invocation.getArgument(0);
+          KeysetBlob current = storedBlob.get();
+          if (current != null
+              && blob.getVersion() != null
+              && current.getVersion() != null
+              && !blob.getVersion().equals(current.getVersion())) {
+            throw new OptimisticLockingFailureException("simulated Hibernate @Version conflict");
+          }
+          long version = current == null ? 1L : current.getVersion() + 1;
+          blob.setVersion(version);
+          storedBlob.set(blob);
+          return blob;
+        };
+    when(repository.save(any(KeysetBlob.class))).thenAnswer(hibernateRealisticSave);
+    when(repository.saveAndFlush(any(KeysetBlob.class))).thenAnswer(hibernateRealisticSave);
     return repository;
   }
 

@@ -378,6 +378,8 @@ class KeysetStorageCharacterizationTest {
 
       when(repository.save(any(KeysetBlob.class)))
           .thenThrow(new DataAccessResourceFailureException("simulated rotation save failure"));
+      when(repository.saveAndFlush(any(KeysetBlob.class)))
+          .thenThrow(new DataAccessResourceFailureException("simulated rotation save failure"));
 
       assertThrows(IllegalStateException.class, manager::rotateKey);
 
@@ -537,15 +539,16 @@ class KeysetStorageCharacterizationTest {
             });
     when(repository.findVersion())
         .thenAnswer(_ -> Optional.ofNullable(storedBlob.get()).map(KeysetBlob::getVersion));
-    when(repository.save(any(KeysetBlob.class)))
-        .thenAnswer(
-            invocation -> {
-              KeysetBlob blob = invocation.getArgument(0);
-              long version = storedBlob.get() == null ? 1L : storedBlob.get().getVersion() + 1;
-              blob.setVersion(version);
-              storedBlob.set(blob);
-              return blob;
-            });
+    org.mockito.stubbing.Answer<KeysetBlob> bumpVersion =
+        invocation -> {
+          KeysetBlob blob = invocation.getArgument(0);
+          long version = storedBlob.get() == null ? 1L : storedBlob.get().getVersion() + 1;
+          blob.setVersion(version);
+          storedBlob.set(blob);
+          return blob;
+        };
+    when(repository.save(any(KeysetBlob.class))).thenAnswer(bumpVersion);
+    when(repository.saveAndFlush(any(KeysetBlob.class))).thenAnswer(bumpVersion);
     return repository;
   }
 

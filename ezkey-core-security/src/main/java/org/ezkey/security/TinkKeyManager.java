@@ -36,6 +36,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Central manager for Tink keyset lifecycle: load/create, provide primitives, and online rotation.
@@ -45,8 +47,10 @@ import org.springframework.stereotype.Component;
  * file/secret used to unwrap the Tink encrypted-keyset envelope.
  *
  * <p><b>CAS rotation protocol:</b> mutations stage a candidate handle, persist via Hibernate
- * {@code @Version} CAS, and install the live primary only after a successful save. CAS losers
- * discard the staging handle, reload the blob, and fail closed.
+ * {@code @Version} CAS ({@code saveAndFlush}) plus an application version pre-check, and install
+ * the live primary only after the surrounding transaction commits when one is active (otherwise
+ * immediately after a successful flush). CAS losers discard the staging handle, reload the blob,
+ * and fail closed.
  *
  * <p><b>Security properties:</b>
  *
@@ -966,8 +970,13 @@ public class TinkKeyManager implements KeyManagementOperations {
   }
 
   /**
-   * CAS-persists a staging handle and installs it as the live primary only after a successful save
-   * (invariants 2–3 / Q4).
+   * CAS-persists a staging handle and installs it as the live primary only after a successful flush
+   * (invariants 2–3 / Q4), deferred until afterCommit when a Spring transaction is active.
+   *
+   * <p>Callers such as {@code KeyRotationService} mutate the blob inside {@code @Transactional}
+   * methods that also write encryption-key metadata / audit. Installing the live handle before
+   * commit would leave an in-memory primary that is absent from the blob if that outer transaction
+   * rolls back (#961 R2).
    *
    * @param stagingHandle candidate keyset (not yet live)
    * @param updatedBy audit label for the blob row
@@ -983,9 +992,11 @@ public class TinkKeyManager implements KeyManagementOperations {
     KeysetHandle previousLive = this.keysetHandle;
     long expectedVersion = databaseKeysetVersion;
     try {
-      saveKeysetToDatabaseUnlocked(stagingHandle, updatedBy);
-      // Invariant 2: install only after successful CAS (never before).
-      this.keysetHandle = stagingHandle;
+      long flushedVersion = saveKeysetToDatabaseUnlocked(stagingHandle, updatedBy);
+      // Invariant 2: install only after successful CAS flush; when an outer TX is active, wait
+      // until afterCommit so a later metadata/audit failure cannot leave an orphan live primary.
+      scheduleLiveInstallAfterSuccessfulCas(
+          stagingHandle, flushedVersion, previousLive, expectedVersion, updatedBy);
     } catch (DataAccessException | IllegalStateException e) {
       // Invariant 3 / Q4: discard staging, reload blob, fail closed — no orphan primary.
       // OptimisticLockingFailureException is a DataAccessException subclass.
@@ -1002,6 +1013,7 @@ public class TinkKeyManager implements KeyManagementOperations {
                   + " (updatedBy={})",
               updatedBy);
           this.keysetHandle = previousLive;
+          this.databaseKeysetVersion = expectedVersion;
         }
       } catch (DataAccessException | IllegalStateException reloadError) {
         logger.error(
@@ -1010,6 +1022,7 @@ public class TinkKeyManager implements KeyManagementOperations {
             updatedBy,
             reloadError.getMessage());
         this.keysetHandle = previousLive;
+        this.databaseKeysetVersion = expectedVersion;
       }
       throw new IllegalStateException(
           "Keyset mutation CAS failed (updatedBy="
@@ -1017,6 +1030,59 @@ public class TinkKeyManager implements KeyManagementOperations {
               + "); staging discarded and blob reloaded",
           e);
     }
+  }
+
+  /**
+   * Installs the staging handle as live primary immediately when no Spring transaction is active;
+   * otherwise defers install (and version publish) until afterCommit and restores the prior live
+   * handle on rollback.
+   *
+   * @param stagingHandle flushed candidate keyset
+   * @param flushedVersion blob version after successful flush
+   * @param previousLive pre-mutation live handle
+   * @param previousVersion pre-mutation cached version
+   * @param updatedBy audit label for logs
+   */
+  private void scheduleLiveInstallAfterSuccessfulCas(
+      KeysetHandle stagingHandle,
+      long flushedVersion,
+      KeysetHandle previousLive,
+      long previousVersion,
+      String updatedBy) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      this.keysetHandle = stagingHandle;
+      this.databaseKeysetVersion = flushedVersion;
+      return;
+    }
+
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            keysetHandle = stagingHandle;
+            databaseKeysetVersion = flushedVersion;
+            logger.info(
+                "✅ Live keyset installed after commit (updatedBy={}, version={}, primary kid={})",
+                updatedBy,
+                flushedVersion,
+                Long.toUnsignedString(getUnsignedPrimaryKeyId(stagingHandle)));
+          }
+
+          @Override
+          public void afterCompletion(int status) {
+            if (status == STATUS_COMMITTED) {
+              return;
+            }
+            // Outer TX rolled back: blob row is gone; never keep the staging primary live.
+            keysetHandle = previousLive;
+            databaseKeysetVersion = previousVersion;
+            logger.error(
+                "Keyset mutation rolled back after CAS flush; restored pre-mutation live handle"
+                    + " (updatedBy={}, version={})",
+                updatedBy,
+                previousVersion);
+          }
+        });
   }
 
   private int toSignedInt(long unsignedKeyId) {
@@ -1136,7 +1202,8 @@ public class TinkKeyManager implements KeyManagementOperations {
       if (keysetHandle == null) {
         throw new IllegalStateException("No keyset loaded, cannot save to database");
       }
-      saveKeysetToDatabaseUnlocked(keysetHandle, updatedBy);
+      // Non-mutation persist of the already-live handle: publish version immediately (no staging).
+      this.databaseKeysetVersion = saveKeysetToDatabaseUnlocked(keysetHandle, updatedBy);
     } finally {
       keysetLock.readLock().unlock();
     }
@@ -1145,18 +1212,19 @@ public class TinkKeyManager implements KeyManagementOperations {
   /**
    * Serializes and CAS-saves the given handle to {@code ezkey_keyset_blob}.
    *
-   * <p>Does <b>not</b> assign {@link #keysetHandle}; callers that mutate must install only after
-   * this method returns successfully (invariant 2).
+   * <p>Does <b>not</b> assign {@link #keysetHandle}; callers that mutate must install only after a
+   * successful flush (and afterCommit when a transaction is active) (invariant 2).
    *
    * @param handle keyset to persist (live or staging)
    * @param updatedBy audit label for the blob row
+   * @return flushed blob version (caller publishes it with the live install)
    * @throws GeneralSecurityException if serialization fails
    * @throws IOException if persistence fails
    * @throws OptimisticLockingFailureException on Hibernate {@code @Version} conflict
    * @throws DataAccessException on other persistence failures
    * @throws IllegalStateException when the repository returns null or master AEAD is missing
    */
-  private void saveKeysetToDatabaseUnlocked(KeysetHandle handle, String updatedBy)
+  private long saveKeysetToDatabaseUnlocked(KeysetHandle handle, String updatedBy)
       throws GeneralSecurityException, IOException {
     if (handle == null) {
       throw new IllegalStateException("No keyset handle provided, cannot save to database");
@@ -1204,12 +1272,15 @@ public class TinkKeyManager implements KeyManagementOperations {
     keysetBlob.setUpdatedBy(updatedBy);
     keysetBlob.setLastUpdatedAt(OffsetDateTime.now());
 
+    long flushedVersion;
     try {
-      KeysetBlob saved = keysetBlobRepository.save(keysetBlob);
+      // Flush so Hibernate @Version CAS conflicts surface before the outer TX commits, and so
+      // concurrent writers see the winner under READ COMMITTED (#961 R1 / R2).
+      KeysetBlob saved = keysetBlobRepository.saveAndFlush(keysetBlob);
       if (saved == null) {
         throw new IllegalStateException("Keyset repository returned null on save");
       }
-      this.databaseKeysetVersion = saved.getVersion() != null ? saved.getVersion() : 0;
+      flushedVersion = saved.getVersion() != null ? saved.getVersion() : 0;
     } catch (DataAccessException | IllegalStateException e) {
       // Restore prior envelope if we mutated a shared/managed entity before save failed
       // (keeps in-memory mock / persistence-context state consistent with fail-closed CAS).
@@ -1222,10 +1293,11 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
 
     logger.info(
-        "✅ Keyset saved to database (version: {}, updated by: {}, primary kid: {})",
-        databaseKeysetVersion,
+        "✅ Keyset flushed to database (version: {}, updated by: {}, primary kid: {})",
+        flushedVersion,
         updatedBy,
         Long.toUnsignedString(getUnsignedPrimaryKeyId(handle)));
+    return flushedVersion;
   }
 
   /**

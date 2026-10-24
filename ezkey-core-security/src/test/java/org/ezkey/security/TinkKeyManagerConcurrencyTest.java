@@ -367,15 +367,16 @@ class TinkKeyManagerConcurrencyTest {
             });
     when(repository.findVersion())
         .thenAnswer(_ -> Optional.ofNullable(storedBlob.get()).map(KeysetBlob::getVersion));
-    when(repository.save(any(KeysetBlob.class)))
-        .thenAnswer(
-            invocation -> {
-              KeysetBlob blob = invocation.getArgument(0);
-              long version = storedBlob.get() == null ? 1L : storedBlob.get().getVersion() + 1;
-              blob.setVersion(version);
-              storedBlob.set(blob);
-              return blob;
-            });
+    org.mockito.stubbing.Answer<KeysetBlob> bumpVersion =
+        invocation -> {
+          KeysetBlob blob = invocation.getArgument(0);
+          long version = storedBlob.get() == null ? 1L : storedBlob.get().getVersion() + 1;
+          blob.setVersion(version);
+          storedBlob.set(blob);
+          return blob;
+        };
+    when(repository.save(any(KeysetBlob.class))).thenAnswer(bumpVersion);
+    when(repository.saveAndFlush(any(KeysetBlob.class))).thenAnswer(bumpVersion);
     return repository;
   }
 
@@ -485,6 +486,7 @@ class TinkKeyManagerConcurrencyTest {
     when(repository.insertSingletonIfAbsent(any(), any(), any())).thenReturn(1);
     when(repository.findVersion()).thenReturn(Optional.of(1L));
     when(repository.save(any(KeysetBlob.class))).thenReturn(null);
+    when(repository.saveAndFlush(any(KeysetBlob.class))).thenReturn(null);
 
     TinkKeyManager manager =
         initializeManager(

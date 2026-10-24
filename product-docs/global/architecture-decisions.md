@@ -1117,6 +1117,10 @@ divergence between file and blob (blockers B2, B5, B6). Real deployments already
 
 - Characterization suite flipped to post-cutover assertions (`KeysetStorageCharacterizationTest`).
 - Mutation-probed tests for all eight invariants (`KeysetBlobOnlyInvariantTest`).
+- Real-Postgres CAS (`KeysetBlobCasPostgresTest`, retargets [#938](https://github.com/mgagp/ezkey/issues/938):
+  Hibernate `@Version` + app pre-check, not `updateKeysetIfVersionMatches`).
+- Transactional install boundary (`KeyRotationTransactionalInstallPostgresTest`): live handle
+  installs only afterCommit when `KeyRotationService` `@Transactional` is active.
 - Host ladder: Mac → Windows → community in-place upgrade
   ([`community-upgrade-impact.md`](decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md)).
 

@@ -137,14 +137,14 @@ Target protocol:
 
 1. Under write lock (or equivalent exclusive mutation section): **re-read** blob version (invariant 1).
 2. Mutate candidate keyset in a **staging** handle / serialized envelope — do **not** publish as the live primary yet.
-3. **CAS** persist: update row only if version matches expected; **only after** successful CAS install in-memory handle and version (invariant 2). Install-before-CAS is **neutralized** (not eliminated) by restoring the pre-mutation live handle when CAS+reload fails (probe A / B1); probes assert the live primary stays unchanged.
+3. **CAS** persist: Hibernate `@Version` plus application `version==read-version` pre-check (not the obsolete `#938` `updateKeysetIfVersionMatches` helper); **`saveAndFlush`** so conflicts surface before outer commit. Install the live in-memory handle **only afterCommit** when a Spring transaction is active (otherwise immediately after a successful flush) (invariant 2 / #961 R2). Install-before-CAS is **neutralized** (not eliminated) by restoring the pre-mutation live handle when CAS+reload fails (probe A / B1).
 4. On CAS loss: **discard** candidate, reload blob, do not keep orphan local kids (invariant 3).
 5. Periodic tick remains **shorter than any sync window** operators rely on (keep ≤ 5 s unless redesign justifies change) (invariant 4 — carried from #936).
 6. Unknown kid on decrypt → **fail closed** (invariant 5) — see §2.7.
 7. DB errors during load/save → **never** generate a new keyset (invariant 6).
 8. Legacy / unloadable envelope → **fail startup** with clear error; **no overwrite** (invariant 8).
 
-**Today’s gap (characterized):** `rotateKey` installs the rotated handle at `TinkKeyManager.java:1007` then attempts DB save `:1014-1025`; on save failure it only logs — orphan in-memory primary remains. See `rotateKey_whenDbSaveFails_keepsOrphanInMemoryPrimary` (EXPECTED TO CHANGE).
+**R1 / R2 proofs (Postgres Testcontainers):** `KeysetBlobCasPostgresTest` (stale version fails closed; successful write bumps version; concurrent writers → one winner, loser reloads) and `KeyRotationTransactionalInstallPostgresTest` (forced audit failure after blob flush rolls back TX without leaving an orphan live primary; CAS failure inside a Spring TX fails closed).
 
 Admin remains sole writer (`keyset.writer=true`, ADR-0012).
 
