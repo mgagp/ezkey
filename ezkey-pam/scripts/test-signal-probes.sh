@@ -14,8 +14,8 @@ SSH_USER="${EZKEY_SSH_USER:-${SSH_USER:-testuser}}"
 CONF="/etc/security/pam_ezkey.conf"
 BACKUP="/tmp/pam_ezkey.conf.signal-probes.bak"
 STUB_PORT=18080
-STUB_PID_FILE="/tmp/ezkey-stub.pid"
-STUB_REQ_LOG="/tmp/ezkey-stub-requests.log"
+STUB_PID_FILE="/tmp/ezkey-pam-stub-signal.pid"
+STUB_REQ_LOG="/tmp/ezkey-pam-stub-signal-reqs.log"
 ARTIFACT_DIR="${EZKEY_PAM_ARTIFACT_DIR:-/opt/cursor/artifacts}"
 mkdir -p "${ARTIFACT_DIR}"
 PROOF="${ARTIFACT_DIR}/pam-signal-probes.log"
@@ -48,8 +48,13 @@ restore_conf() {
     >/dev/null 2>&1 || true
 }
 stop_stub() {
+  # Kill by pidfile and by port (CLI args are not supported by the stub —
+  # it uses EZKEY_STUB_* env vars, same as test-timeouts.sh).
   docker exec "${CONTAINER}" sh -c \
-    "if [ -f '${STUB_PID_FILE}' ]; then kill \"\$(cat '${STUB_PID_FILE}')\" 2>/dev/null || true; rm -f '${STUB_PID_FILE}'; fi" \
+    "if [ -f '${STUB_PID_FILE}' ]; then kill \"\$(cat '${STUB_PID_FILE}')\" 2>/dev/null || true; rm -f '${STUB_PID_FILE}'; fi
+     fuser -k ${STUB_PORT}/tcp >/dev/null 2>&1 || true
+     pkill -f 'integration-api-stub.py' 2>/dev/null || true
+     sleep 0.15" \
     >/dev/null 2>&1 || true
 }
 cleanup() {
@@ -60,14 +65,14 @@ trap cleanup EXIT
 
 start_stub() {
   local mode="$1"
-  local extra="${2:-}"
+  local slow="${2:-3}"
   stop_stub
   docker exec "${CONTAINER}" sh -c "rm -f '${STUB_REQ_LOG}'; : >'${STUB_REQ_LOG}'" || true
   docker exec -d "${CONTAINER}" sh -c \
-    "python3 /opt/pam-ezkey/scripts/integration-api-stub.py \
-      --bind 127.0.0.1 --port ${STUB_PORT} --mode ${mode} ${extra} \
-      --request-log '${STUB_REQ_LOG}' --pid-file '${STUB_PID_FILE}' \
-      >/tmp/ezkey-stub.out 2>/tmp/ezkey-stub.err"
+    "EZKEY_STUB_MODE='${mode}' EZKEY_STUB_PORT='${STUB_PORT}' EZKEY_STUB_SLOW_SECS='${slow}' \
+     EZKEY_STUB_REQ_LOG='${STUB_REQ_LOG}' \
+     python3 /opt/pam-ezkey/scripts/integration-api-stub.py \
+     >/tmp/ezkey-pam-stub-signal.log 2>&1 & echo \$! >'${STUB_PID_FILE}'"
   local i
   for i in $(seq 1 50); do
     docker exec "${CONTAINER}" sh -c "ss -ltn | grep -q ':${STUB_PORT}'" 2>/dev/null && return 0
@@ -308,7 +313,7 @@ probe_kill_at_challenge() {
 probe_term_during_create() {
   echo "" | tee -a "${PROOF}"
   echo "--- Probe 3: SIGTERM during POST create ---" | tee -a "${PROOF}"
-  start_stub slow_create 8
+  start_stub slow_create 12
   point_conf 30 false
   local before_n
   before_n="$(count_attempt_matches 'pam_ezkey: attempt ')"
