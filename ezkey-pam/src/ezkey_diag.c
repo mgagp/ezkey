@@ -27,8 +27,13 @@ void ezkey_diag_init(EzkeyDiag *diag, const char *username, int lab_http) {
     diag->auth_attempt_id = -1;
     diag->result = "UNAVAIL";
     diag->cancel_status = EZKEY_CANCEL_SKIPPED;
-    diag->pam_rc = 9; /* PAM_AUTHINFO_UNAVAIL on Linux */
-    diag->latency_ms = 0;
+    /*
+     * PAM_AUTHINFO_UNAVAIL is 9 on Linux. Kept numeric here so ezkey_diag.c
+     * does not pull in pam.h; pam_ezkey.c overwrites with PAM_AUTHINFO_UNAVAIL
+     * on the SIGNAL snapshot and final summary paths.
+     */
+    diag->pam_rc = EZKEY_PAM_AUTHINFO_UNAVAIL;
+    diag->latency_ms = -1; /* unknown until measured (#1011 N3) */
     diag->lab_http = lab_http ? 1 : 0;
     diag->timeout_seconds = -1;
     diag->stage = "init";
@@ -63,11 +68,11 @@ int ezkey_diag_format_attempt(char *dest, size_t dest_size,
     char http_buf[32];
     char confirm_buf[32];
     char api_buf[32];
+    char latency_buf[32];
     const char *result;
     const char *cancel_status;
     const char *stage;
     const char *reason;
-    long latency_ms;
     int n;
 
     if (dest == NULL || dest_size == 0 || diag == NULL) {
@@ -99,7 +104,8 @@ int ezkey_diag_format_attempt(char *dest, size_t dest_size,
     } else {
         snprintf(timeout_buf, sizeof(timeout_buf), "-");
     }
-    latency_ms = diag->latency_ms < 0 ? 0 : diag->latency_ms;
+    /* latency_ms < 0 → "-" (unknown); never invent 0 (#1011 N3). */
+    fmt_dash_long(latency_buf, sizeof(latency_buf), diag->latency_ms);
     fmt_dash_int(curl_buf, sizeof(curl_buf), diag->curl_rc);
     fmt_dash_long(http_buf, sizeof(http_buf), diag->http);
     fmt_dash_long(confirm_buf, sizeof(confirm_buf), diag->confirm_ms);
@@ -108,10 +114,10 @@ int ezkey_diag_format_attempt(char *dest, size_t dest_size,
     n = snprintf(
         dest, dest_size,
         "%s: attempt user=%s authAttemptId=%s result=%s pam_code=%d "
-        "latency_ms=%ld lab_http=%s cancel=%s timeoutSeconds=%s "
+        "latency_ms=%s lab_http=%s cancel=%s timeoutSeconds=%s "
         "stage=%s reason=%s curl_rc=%s http=%s confirm_ms=%s api_ms=%s",
         EZKEY_MODULE_NAME, diag->user[0] != '\0' ? diag->user : "-", id_buf,
-        result, diag->pam_rc, latency_ms, diag->lab_http ? "true" : "false",
+        result, diag->pam_rc, latency_buf, diag->lab_http ? "true" : "false",
         cancel_status, timeout_buf, stage, reason, curl_buf, http_buf,
         confirm_buf, api_buf);
     if (n < 0 || (size_t)n >= dest_size) {

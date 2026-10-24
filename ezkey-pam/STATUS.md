@@ -449,21 +449,26 @@ pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n>
 | `authAttemptId` | Numeric id from create, or `-` if never created |
 | `result` | `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `MAXTRIES` \| `UNAVAIL` \| `CONFIRM` \| `SIGNAL` \| `ERROR` \| `UNKNOWN_USER` |
 | `pam_code` | Integer PAM return code |
-| `latency_ms` | Monotonic elapsed ms for the authenticate call |
+| `latency_ms` | Monotonic elapsed ms for the authenticate call, or `-` if unknown (never invent `0`) |
 | `lab_http` | Conf `lab_http` as `true` or `false` (Christophe) |
 | `cancel` | Exactly one of `ok` \| `fail` \| `skipped` \| `final` (`EZKEY_CANCEL_*`; Patrick #897 M2 + Christophe observability) |
 | `timeoutSeconds` | Planned wait on `start` (before create); applied TTL on `attempt` (or `-`) (#907) |
 | `stage` | Fixed vocab: `init` \| `conf` \| `confirm` \| `create` \| `challenge` \| `wait` (#1011) |
 | `reason` | Fixed vocab (e.g. `empty_confirm`, `curl`, `http`, `budget`, `signal`, `challenge_missing`, `-`) — never free-form secrets |
-| `curl_rc` | libcurl code on the failing call, or `-` |
-| `http` | Last HTTP status on the failing call, or `-` |
-| `confirm_ms` | Pre-create `ok` prompt duration (ms), or `-` |
+| `curl_rc` | libcurl code from the last create/wait call (including SUCCESS), or `-` |
+| `http` | HTTP status from the last create/wait call (including SUCCESS), or `-` |
+| `confirm_ms` | Pre-create `ok` prompt duration (ms), or `-` if unknown |
 | `api_ms` | Cumulative create/wait HTTP time (ms), or `-` |
 
-**#1011 notes:** `CONFIRM` = empty/wrong pre-create `ok` (still `pam_code=9`).
-`SIGNAL` = best-effort authpriv line when sshd SIGTERMs the PAM child during a
-blocking `pam_prompt` (async-signal-safe `write` to `/dev/log`). Wait-path
-SIGTERM still uses abort → cancel → normal summary (#1012 behaviour unchanged).
+**#1011 notes:** `CONFIRM` = empty/wrong pre-create `ok` (`pam_code` =
+`PAM_AUTHINFO_UNAVAIL` / Linux `9`; `EZKEY_PAM_AUTHINFO_UNAVAIL` in diag init).
+`SIGNAL` = best-effort authpriv line when SIGTERM arrives **outside** `/wait`
+(prompts or create): async-signal-safe `write` to `/dev/log`, then `SIG_DFL` +
+`raise(SIGTERM)` so the child exits (no hung `[pam]` under OpenSSH atomicio).
+Wait-path SIGTERM still uses abort → cancel → normal summary
+(`reason=signal`, often `cancel=ok`) — #1012 unchanged. SIGNAL lines use real
+`latency_ms` when the auth clock is known; otherwise `latency_ms=-` /
+`confirm_ms=-`. `EZKEY_DIAG_LINE_MAX` 768 (measured worst case ~416).
 Experimental / never released: no log-format compatibility promise.
 
 **#907 F9 / R5 (option A — Patrick/Christophe review):** Under OpenSSH portable, each

@@ -73,10 +73,10 @@
 /* Non-heap marker for pam_set_data(EZKEY_PAM_DATA_FINAL) — same process only. */
 static char ezkey_final_marker = 1;
 
-/* Set by SIGTERM handler; curl xferinfo aborts the in-flight /wait (#907 R5). */
+/* Set by SIGTERM handler during /wait; curl xferinfo aborts (#907 R5). */
 static volatile sig_atomic_t ezkey_wait_abort = 0;
-/* Set around pam_prompt so a kill mid-prompt can emit a final attempt line. */
-static volatile sig_atomic_t ezkey_in_blocking_prompt = 0;
+/* Non-zero only while chunked /wait is armed — handler aborts curl then. */
+static volatile sig_atomic_t ezkey_in_wait = 0;
 /* Set after authpriv attempt line is emitted (normal path or signal-safe). */
 static volatile sig_atomic_t ezkey_diag_emitted = 0;
 
@@ -85,6 +85,9 @@ static EzkeyDiag ezkey_diag;
 static int ezkey_diag_log_fd = -1;
 static char ezkey_diag_syslog_buf[EZKEY_DIAG_LINE_MAX];
 static size_t ezkey_diag_syslog_len = 0;
+/* Auth start clock for SIGNAL latency_ms (updated outside the handler). */
+static struct timespec ezkey_auth_started_ts;
+static int ezkey_auth_started_valid = 0;
 
 typedef struct {
     char *data;
@@ -358,8 +361,9 @@ static void log_attempt_summary(void) {
 }
 
 /**
- * Rebuild the SIGNAL snapshot written if sshd kills us mid-prompt (#1011).
+ * Rebuild the SIGNAL snapshot for a kill outside /wait (#1011).
  * Must run outside the signal handler (snprintf is not async-signal-safe).
+ * latency_ms uses the real auth elapsed when known; otherwise `-`.
  */
 static void ezkey_diag_refresh_signal_snapshot(const char *stage) {
     EzkeyDiag snap = ezkey_diag;
@@ -371,25 +375,45 @@ static void ezkey_diag_refresh_signal_snapshot(const char *stage) {
     snap.reason = "signal";
     snap.pam_rc = PAM_AUTHINFO_UNAVAIL;
     snap.cancel_status = EZKEY_CANCEL_SKIPPED;
+    if (ezkey_auth_started_valid) {
+        snap.latency_ms = elapsed_ms(&ezkey_auth_started_ts);
+    } else {
+        snap.latency_ms = -1;
+    }
     ezkey_diag_syslog_len = 0;
     (void)ezkey_diag_format_syslog(ezkey_diag_syslog_buf,
                                    sizeof(ezkey_diag_syslog_buf), &snap,
                                    &ezkey_diag_syslog_len);
 }
 
+/**
+ * SIGTERM: during /wait only set abort (curl xferinfo + cancel path).
+ * Everywhere else emit best-effort SIGNAL then restore SIG_DFL and re-raise
+ * so OpenSSH does not leave a hung [pam] child (atomicio retries EINTR).
+ * errno is saved/restored (async-signal-safe ops only).
+ */
 static void ezkey_sigterm_handler(int signo) {
+    int saved_errno = errno;
+
     (void)signo;
-    ezkey_wait_abort = 1;
-    /*
-     * Best-effort final attempt line only while blocked in pam_prompt.
-     * Wait-path SIGTERM keeps the existing abort → cancel → summary flow
-     * (#1012 cancel-on-disconnect behaviour unchanged).
-     */
-    if (ezkey_in_blocking_prompt != 0) {
-        (void)ezkey_diag_emit_signal_safe(ezkey_diag_log_fd, ezkey_diag_syslog_buf,
-                                          ezkey_diag_syslog_len,
-                                          &ezkey_diag_emitted);
+    if (ezkey_in_wait != 0) {
+        ezkey_wait_abort = 1;
+        errno = saved_errno;
+        return;
     }
+    (void)ezkey_diag_emit_signal_safe(ezkey_diag_log_fd, ezkey_diag_syslog_buf,
+                                      ezkey_diag_syslog_len,
+                                      &ezkey_diag_emitted);
+    {
+        struct sigaction sa_dfl;
+
+        sa_dfl.sa_handler = SIG_DFL;
+        sa_dfl.sa_flags = 0;
+        sigemptyset(&sa_dfl.sa_mask);
+        (void)sigaction(SIGTERM, &sa_dfl, NULL);
+    }
+    errno = saved_errno;
+    raise(SIGTERM);
 }
 
 static void ezkey_sig_install(struct sigaction *old_out, int *installed_out) {
@@ -490,28 +514,16 @@ static int prompt_echo_on(pam_handle_t *pamh, const EzkeyConfig *cfg,
         ezkey_secure_wipe(msg, msg_len);
         return -4;
     }
+    /* Snapshot before prompt: SIGTERM here emits SIGNAL then re-raises (B1). */
     ezkey_diag_refresh_signal_snapshot(ezkey_diag.stage);
     clock_gettime(CLOCK_MONOTONIC, &enter_started);
-    ezkey_in_blocking_prompt = 1;
     prc = pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &resp, "%s", msg);
-    ezkey_in_blocking_prompt = 0;
     enter_elapsed_ms = elapsed_ms(&enter_started);
     enter_elapsed_s = enter_elapsed_ms / 1000L;
     if (require_ok) {
         ezkey_diag.confirm_ms = enter_elapsed_ms;
     }
     ezkey_secure_wipe(msg, msg_len);
-    if (ezkey_diag_emitted != 0) {
-        if (resp != NULL) {
-            ezkey_secure_wipe(resp, strlen(resp));
-            free(resp);
-        }
-        if (interrupted_out != NULL) {
-            *interrupted_out = 1;
-        }
-        ezkey_diag.reason = "signal";
-        return -1;
-    }
     if (!ezkey_challenge_display_ok(prc)) {
         if (resp != NULL) {
             ezkey_secure_wipe(resp, strlen(resp));
@@ -936,6 +948,8 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
     applied_ttl = planned_wait;
 
     ezkey_diag.stage = "create";
+    /* Snapshot before POST: SIGTERM during create must not be absorbed (B2). */
+    ezkey_diag_refresh_signal_snapshot("create");
     post_body = build_create_body(cfg, username, planned_wait);
     if (post_body == NULL) {
         ezkey_diag.reason = "oom";
@@ -1164,16 +1178,26 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
      * Chunked /wait (#907 R5): OpenSSH portable runs PAM in a forked child that
      * _exit's — pam_end cleanup never runs. Slice wait so SIGTERM on client
      * disconnect can abort curl via xferinfo and cancel in this process.
-     * SIGTERM handler is already installed for the whole authenticate (#1011);
-     * do not replace it here — wait abort flag is shared.
+     * Handler absorbs SIGTERM only while ezkey_in_wait=1 (#1011 B1/B2); do not
+     * clear ezkey_wait_abort if it was already raised before wait entry.
      */
     {
         int wait_left = effective_wait;
 
-        ezkey_wait_abort = 0;
         pam_rc = PAM_AUTH_ERR;
         summary = "TIMEOUT";
 
+        if (ezkey_wait_abort != 0) {
+            interrupted = 1;
+            ezkey_diag.reason = "signal";
+            pam_rc = PAM_AUTHINFO_UNAVAIL;
+            summary = "UNAVAIL";
+            log_pam_error_debug(pamh, cfg,
+                                "SIGTERM observed before /wait; skipping wait");
+            goto after_wait;
+        }
+
+        ezkey_in_wait = 1;
         while (wait_left > 0) {
             int chunk = wait_left;
 
@@ -1367,8 +1391,10 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
             /* PENDING/READ (or chunk timeoutReached): continue next chunk. */
         }
 
-        ezkey_wait_abort = 0;
+        ezkey_in_wait = 0;
     }
+after_wait:
+    ezkey_in_wait = 0;
 
 cleanup:
     if (ezkey_should_cancel_attempt(do_cancel && auth_attempt_id > 0,
@@ -1425,11 +1451,15 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     parse_module_args(argc, argv, &cfg);
 
     ezkey_wait_abort = 0;
-    ezkey_in_blocking_prompt = 0;
+    ezkey_in_wait = 0;
     ezkey_diag_emitted = 0;
     ezkey_diag_syslog_len = 0;
+    ezkey_auth_started_ts = started;
+    ezkey_auth_started_valid = 1;
     ezkey_diag_log_fd = ezkey_diag_open_log_fd();
     ezkey_diag_init(&ezkey_diag, NULL, cfg.lab_http);
+    ezkey_diag.latency_ms = -1;
+    ezkey_diag_refresh_signal_snapshot("init");
     ezkey_sig_install(&sa_old, &sig_installed);
 
     openlog(EZKEY_MODULE_NAME, LOG_PID, LOG_AUTHPRIV);

@@ -67,7 +67,8 @@ wait_new_attempt() {
 assert_one_clean_line() {
   local before="$1"
   local expect_result="$2"
-  local label="$3"
+  local expect_reason="$3"
+  local label="$4"
   local lines count line
 
   wait_new_attempt "${before}" || true
@@ -89,8 +90,13 @@ assert_one_clean_line() {
     fail "${label}: expected result=${expect_result} in: ${line}"
     return 0
   fi
-  if ! echo "${line}" | grep -Eq 'user=[^ ]+ authAttemptId=[^ ]+ result=[^ ]+ pam_code=[0-9]+ latency_ms=[0-9]+ lab_http=(true|false) cancel=(ok|fail|skipped|final) timeoutSeconds=(-|[0-9]+) stage=[^ ]+ reason=[^ ]+ curl_rc=(-|[0-9]+) http=(-|[0-9]+) confirm_ms=(-|[0-9]+) api_ms=(-|[0-9]+)'; then
-    fail "${label}: line missing required fields (incl. #1011 stage/reason/timings): ${line}"
+  # N1: assert the expected reason (not merely "any reason= token").
+  if ! echo "${line}" | grep -Eq " reason=${expect_reason}( |$)"; then
+    fail "${label}: expected reason=${expect_reason} in: ${line}"
+    return 0
+  fi
+  if ! echo "${line}" | grep -Eq 'user=[^ ]+ authAttemptId=[^ ]+ result=[^ ]+ pam_code=[0-9]+ latency_ms=(-|[0-9]+) lab_http=(true|false) cancel=(ok|fail|skipped|final) timeoutSeconds=(-|[0-9]+) stage=(init|conf|confirm|create|challenge|wait) reason=([-a-z0-9_]+) curl_rc=(-|[0-9]+) http=(-|[0-9]+) confirm_ms=(-|[0-9]+) api_ms=(-|[0-9]+)$'; then
+    fail "${label}: line missing required fields (incl. #1011 stage/reason/timings, \$ anchored): ${line}"
     return 0
   fi
   if echo "${line}" | grep -Eiq 'secret|proof|token|Authorization|body=\{'; then
@@ -105,7 +111,7 @@ assert_one_clean_line() {
     fail "${label}: integration_key leaked"
     return 0
   fi
-  ok "${label}: one clean line (${expect_result})"
+  ok "${label}: one clean line (${expect_result} reason=${expect_reason})"
   echo "  ${line}"
 }
 
@@ -169,7 +175,7 @@ else
   fail "success path did not print PAM_SSH_OK"
   tail -n 40 "${LOG}" || true
 fi
-assert_one_clean_line "${BEFORE}" "SUCCESS" "success"
+assert_one_clean_line "${BEFORE}" "SUCCESS" "-" "success"
 
 # --- reject ---
 BEFORE="$(attempt_count)"
@@ -184,7 +190,7 @@ if [ "${RC}" != "0" ] && ! grep -q SHOULD_NOT "${LOG}"; then
 else
   fail "reject path unexpectedly succeeded (rc=${RC})"
 fi
-assert_one_clean_line "${BEFORE}" "DENIED" "reject"
+assert_one_clean_line "${BEFORE}" "DENIED" "-" "reject"
 
 # --- timeout (short wait, no approve) → result=TIMEOUT (#895) ---
 BEFORE="$(attempt_count)"
@@ -200,7 +206,7 @@ if [ "${RC}" != "0" ]; then
 else
   fail "timeout path unexpectedly succeeded"
 fi
-assert_one_clean_line "${BEFORE}" "TIMEOUT" "timeout"
+assert_one_clean_line "${BEFORE}" "TIMEOUT" "-" "timeout"
 
 # --- network error (unreachable Integration API) ---
 BEFORE="$(attempt_count)"
@@ -216,7 +222,7 @@ if [ "${RC}" != "0" ]; then
 else
   fail "network-error path unexpectedly succeeded"
 fi
-assert_one_clean_line "${BEFORE}" "UNAVAIL" "network-error"
+assert_one_clean_line "${BEFORE}" "UNAVAIL" "curl" "network-error"
 
 assert_no_secret_in_logs
 

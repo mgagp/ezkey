@@ -154,7 +154,9 @@ echo "=== PAM timeout inventory tests (#895 PR-B) ===" | tee "${PROOF}"
   echo "  wait effective              min(conf, applied_ttl, rem-CURL_SLACK); chunked ≤5s (#907)"
   echo "  curl /wait slack 15         EZKEY_CURL_WAIT_SLACK (cancel margin inside)"
   echo "  Enter measure               pre-create EZKEY_MAX_ENTER_SECS 25; challenge=rem budget (#982 B1)"
-  echo "  wait SIGTERM                absorbed only during /wait (flag); restore after"
+  echo "  wait SIGTERM                absorbed only while ezkey_in_wait=1 (flag→cancel)"
+  echo "  non-wait SIGTERM            SIGNAL emit + SIG_DFL + raise (prompts/create) #1011"
+  echo "  EZKEY_DIAG_LINE_MAX 768     ezkey_diag.h (worst-case attempt line ~416)"
   echo "  LoginGraceTime 120          sshd_config (runbook: >= 120 s)"
   echo "  Auth /pending rate          10/min (ezkey.rate-limit.pending.*)"
 } | tee -a "${PROOF}"
@@ -1693,10 +1695,13 @@ if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'EZKEY_WAIT_CHUNK_SECS 5' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_INTERRUPT_CANCEL_MAX 5' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_AUTH_BUDGET_SECS 105' "${SCRIPT_DIR}/../src/ezkey_config.h" \
-  && grep -q 'cancel=%s' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
-  && grep -q 'stage=%s' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
-  && grep -q 'ezkey_sigterm_handler' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
-  && grep -q 'ezkey_diag_emit_signal_safe' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -qE '"cancel=%s' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -qE '"stage=%s' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -qE 'LOG_AUTHPRIV[[:space:]]*\|[[:space:]]*LOG_INFO' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -qE 'ezkey_sigterm_handler' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -qE 'ezkey_diag_emit_signal_safe[[:space:]]*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -qE 'ezkey_in_wait[[:space:]]*!=' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -qE 'raise[[:space:]]*\([[:space:]]*SIGTERM[[:space:]]*\)' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_format_waiting_prompt' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_challenge_display_ok' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_prewait_prompt_mode' "${SCRIPT_DIR}/../src/pam_ezkey.c" \

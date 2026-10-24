@@ -117,8 +117,13 @@ check-source:
 	@if grep -nE 'challenge_requested[[:space:]].*default false' config/pam_ezkey.conf; then \
 		echo "error: challenge_requested comment still says default false (#1011)" >&2; exit 1; \
 	fi
-	@grep -q 'stage=' $(SRC_DIR)/ezkey_diag.c
-	@grep -q 'ezkey_diag_emit_signal_safe' $(SRC_DIR)/pam_ezkey.c
+	# #1011 B3: format/call sites must be real statements (comment-only fails).
+	@grep -qE '"stage=%s' $(SRC_DIR)/ezkey_diag.c
+	@grep -qE 'LOG_AUTHPRIV[[:space:]]*\|[[:space:]]*LOG_INFO' $(SRC_DIR)/ezkey_diag.c
+	@grep -qE 'ezkey_diag_emit_signal_safe[[:space:]]*\(' $(SRC_DIR)/pam_ezkey.c
+	@grep -qE 'ezkey_in_wait[[:space:]]*!=' $(SRC_DIR)/pam_ezkey.c
+	@grep -qE 'raise[[:space:]]*\([[:space:]]*SIGTERM[[:space:]]*\)' $(SRC_DIR)/pam_ezkey.c
+	@grep -qE 'saved_errno' $(SRC_DIR)/pam_ezkey.c
 	# Patrick B2 (#982): match the real pam_prompt call — comments alone must not pass.
 	@grep -qE 'pam_prompt[[:space:]]*\([^)]*PAM_PROMPT_ECHO_ON' $(SRC_DIR)/pam_ezkey.c
 	@if grep -nE 'pam_prompt[[:space:]]*\([^)]*PAM_PROMPT_ECHO_OFF' $(SRC_DIR)/pam_ezkey.c; then \

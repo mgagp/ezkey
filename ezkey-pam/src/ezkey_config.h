@@ -10,6 +10,12 @@
 #define EZKEY_VERSION "2.2.15"
 
 /*
+ * Linux PAM_AUTHINFO_UNAVAIL value (security/pam_constants.h). Used by
+ * ezkey_diag when pam.h is not included; keep in sync with the host PAM.
+ */
+#define EZKEY_PAM_AUTHINFO_UNAVAIL 9
+
+/*
  * Cancel outcome on the authpriv attempt summary line (Patrick #897 M2;
  * Christophe observability: FINAL for HTTP 409 already-final).
  * Only these literals — never free-form HTTP text.

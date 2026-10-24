@@ -13,6 +13,18 @@ tags honest.
 > **[isa]** Isabelle on ezkey-pam-test, **[inf]** OpenSSH/PAM inference.
 > Paths relative to the repo root. `pam.c` = `ezkey-pam/src/pam_ezkey.c`.
 
+### What changed in 2.2.15 (#1011)
+
+- Authpriv attempt lines gain `stage` / `reason` / `curl_rc` / `http` /
+  `confirm_ms` / `api_ms`. Empty pre-create `ok` → `result=CONFIRM`.
+- **SIGTERM outside `/wait`:** best-effort `result=SIGNAL` (async-signal-safe
+  `/dev/log` write), restore `SIG_DFL`, `raise(SIGTERM)` — no hung `[pam]` at
+  the `ok` or challenge prompt. During `/wait` only the abort flag is set
+  (cancel path unchanged).
+- Unknown timings print `-` (`latency_ms=-`, `confirm_ms=-`), never a false `0`.
+- Execution probes: `scripts/test-signal-probes.sh` [test] (client kill /
+  SIGTERM at prompt, create, wait).
+
 ### Decision — challenge default (#995)
 
 **Decision by Alex, confirmed by Marc on 2026-10-22:** the PAM connector
@@ -57,18 +69,18 @@ enrollment flags is **not covered today** — tracked as
 ## 0. The model in one paragraph
 
 One SSH login under `Match … MaxAuthTries 1` gives one `pam_sm_authenticate`
-call in sshd's PAM child. That call (2.2.14):
+call in sshd's PAM child. That call (2.2.15):
 
 1. Shows a **pre-create** `PAM_PROMPT_ECHO_ON` confirm
    ("SSH login for user… / Type ok … to request device approval") and
    requires trimmed case-insensitive **`ok`** (echo visible — #982 tier 0 /
    M1: no “Approve on your phone” before the request exists).
    Empty / EOF / wrong token → authpriv `result=CONFIRM` `reason=empty_confirm`
-   (`PAM_AUTHINFO_UNAVAIL`) with **zero** Integration API creates; Ctrl-C /
-   conversation error / sshd kill mid-prompt → `UNAVAIL` or best-effort
-   `SIGNAL` (#1011) [code][test]. Batch clients and Windows hang before create
-   leave no phone noise. The `ok` token is an anti-accident filter, not a
-   security defense (#995).
+   (`PAM_AUTHINFO_UNAVAIL`) with **zero** Integration API creates; conversation
+   error → `UNAVAIL`; sshd SIGTERM mid-prompt / during create → best-effort
+   `result=SIGNAL` then child exit (#1011) [code][test]
+   (`scripts/test-signal-probes.sh`). Batch clients leave no phone noise. The
+   `ok` token is an anti-accident filter, not a security defense (#995).
 2. Only then `POST /auth-attempts` with `userIdentifier=<linux user>`,
    `challengeRequested=<conf>` (default **true** since #995),
    `ttlSeconds=<planned>`.

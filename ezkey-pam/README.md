@@ -35,6 +35,21 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
 
+## What changed in 2.2.15 (#1011 — diagnostics + SIGTERM safety)
+
+- Authpriv attempt lines carry `stage` / `reason` / `curl_rc` / `http` /
+  `confirm_ms` / `api_ms`. Empty pre-create `ok` → `result=CONFIRM`.
+- **SIGTERM outside `/wait`:** emit best-effort `result=SIGNAL` (async-signal-safe
+  write to `/dev/log`), restore `SIG_DFL`, then `raise(SIGTERM)` so OpenSSH does
+  not leave a hung `[pam]` child at the `ok` or challenge prompt. During `/wait`
+  only the abort flag is set (cancel path unchanged — #1012).
+- `latency_ms` / `confirm_ms` print `-` when unknown (never a false `0`).
+- Runbook: LoginGraceTime 120 vs applied wait (~75 s), MaxAuthTries 1 misleading
+  message, `ok` prompt, `challenge_requested` / `debug` toggles.
+- Sample conf comment: `challenge_requested` default **true**.
+- Probes: `scripts/test-signal-probes.sh` (client kill / TERM at prompt, create,
+  wait) in CI M1.
+
 ## What changed in 2.2.14 (#995 — challenge requested by default)
 
 - **`challenge_requested=true`** is the connector default in
@@ -178,7 +193,10 @@ On top of 2.1 slices 1–3 ([`STATUS.md`](STATUS.md) § M1):
     sshd SIGTERMs during a blocking prompt; `MAXTRIES` is same-handle only —
     not effective across OpenSSH kbdint forks)
   - `stage` / `reason` / `curl_rc` / `http` / `confirm_ms` / `api_ms`: diagnose
-    UNAVAIL without `debug=true` (values `-` when N/A; never secrets/tokens/IPs)
+    UNAVAIL without `debug=true` (`-` when unknown; `curl_rc`/`http` reflect the
+    last create/wait HTTP call including SUCCESS; never secrets/tokens/IPs)
+  - `latency_ms` / `confirm_ms`: real ms when measured; `-` when unknown (SIGNAL
+    before a clock exists uses `-`, not a false `0`)
   - `cancel` (only these four literals — `EZKEY_CANCEL_*`):
     | Value | Meaning |
     |---|---|
@@ -300,7 +318,7 @@ ssh -p 2223 \
 | `lab_http` | `false` | Allow `http://` Integration API URL (Docker entrypoint sets `true`) |
 | `context_title` | `SSH login` | Title shown on the device |
 | `context_message` | *(generated)* | Message shown on the device |
-| `debug` | `false` | Extra filelog `/var/log/ezkey-pam/debug.{out,err}` (Docker lab entrypoint sets `true`). Prefer authpriv `stage`/`reason` first (#1011) |
+| `debug` | `false` | Extra filelog `/var/log/ezkey-pam/debug.{out,err}` (Docker lab entrypoint sets `true`). Lab/temporary only — not for production; delete debug logs afterwards. Prefer authpriv `stage`/`reason` first (#1011) |
 
 **Default `wait_timeout` is 90 s** (`EZKEY_DEFAULT_WAIT_TIMEOUT` in `ezkey_config.h`). Override it via:
 
@@ -390,9 +408,9 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
   values keep the prior default + authpriv warning.
 - **`debug` toggle:** sample default **`false`**. When `true`, extra transcripts
   go to `/var/log/ezkey-pam/debug.{out,err}` only — not authpriv. Docker lab
-  entrypoint sets `true`. Use `debug=true` to see prompt/curl detail; authpriv
-  `stage=` / `reason=` / `curl_rc=` / `http=` / `confirm_ms=` / `api_ms=` are
-  enough for most UNAVAIL diagnosis without debug (#1011).
+  entrypoint sets `true`. **Lab/temporary only — not for production;** delete
+  `/var/log/ezkey-pam/debug.*` afterwards. Prefer authpriv `stage=` / `reason=` /
+  `curl_rc=` / `http=` / `confirm_ms=` / `api_ms=` for UNAVAIL diagnosis (#1011).
 - **`MaxAuthTries 1` misleading client message:** with Match `MaxAuthTries 1`,
   a single failed PAM round (including empty `ok` → CONFIRM/UNAVAIL) can surface
   to the SSH client as **“Too many authentication failures”**. That string is
