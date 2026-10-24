@@ -484,16 +484,24 @@ normative table × privilege matrix is
 | `ezkey_admin` | Admin API + schedulers |
 | `ezkey_auth` | Auth API |
 | `ezkey_integration` | Integration API |
+| `ezkey_crypto` | crypto-api lab stack only — `SELECT` on `ezkey_keyset_blob` (ADR-0016) |
 
 **Docker / clean-start:** roles are created on first Postgres init
 (`docker/postgres/init/01-create-roles.sh`); DML grants are applied after
 Flyway by `scripts/db/apply-grants.sh` (Compose service `db-grants`).
+
+**Existing volume upgrade (main → blob-only):** `docker-entrypoint-initdb.d` does **not**
+re-run. `apply-grants.sh` therefore **ensures** `ezkey_crypto` exists before applying grants
+(`ensure-crypto-role.sql`). `EZKEY_DB_CRYPTO_PASSWORD` is **required** on that path (no
+default). Smoke: `./scripts/db/test-upgrade-crypto-role.sh`. See also
+`community-upgrade-impact.md` §2.1a.
 
 **Local IDE:**
 
 ```bash
 ./scripts/db/create-roles.sh
 # run Flyway as ezkey_migrate
+export EZKEY_DB_CRYPTO_PASSWORD=...   # required by apply-grants.sh
 ./scripts/db/apply-grants.sh
 ./scripts/db/verify-grants.sh   # optional smoke
 ```

@@ -364,9 +364,14 @@ public class AuditHmacService {
   /**
    * Restricts the HMAC key file to owner read/write only on POSIX filesystems.
    *
+   * <p>Fail-closed on POSIX {@link IOException}: the key file is deleted and the error rethrown so
+   * a world-readable HMAC key is never left on disk after a failed chmod (#961 Patrick m4). Windows
+   * (no POSIX permissions) skips with a debug log — operators apply an ACL equivalent.
+   *
    * @param path the key file path
+   * @throws IOException when POSIX mode {@code 600} cannot be applied
    */
-  private void applyOwnerReadWriteOnly(Path path) {
+  void applyOwnerReadWriteOnly(Path path) throws IOException {
     try {
       Set<PosixFilePermission> perms =
           EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
@@ -377,7 +382,16 @@ public class AuditHmacService {
           "POSIX permissions not supported for audit HMAC key at {} (Windows ACL equivalent)",
           path);
     } catch (IOException e) {
-      logger.warn("Could not set mode 600 on audit HMAC key {}: {}", path, e.getMessage());
+      try {
+        Files.deleteIfExists(path);
+      } catch (IOException deleteFailure) {
+        logger.error(
+            "Failed to remove audit HMAC key after chmod failure at {}: {}",
+            path,
+            deleteFailure.getMessage());
+      }
+      throw new IOException(
+          "Refusing to keep audit HMAC key without mode 600 at " + path + ": " + e.getMessage(), e);
     }
   }
 }

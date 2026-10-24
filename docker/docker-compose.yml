@@ -69,7 +69,7 @@ services:
       - ezkey-network
     restart: "no"
 
-  # Apply DML grants after Flyway (idempotent). See scripts/db/apply-grants.sql
+  # Apply DML grants after Flyway (idempotent). Ensures ezkey_crypto when missing (B1).
   db-grants:
     image: postgres:18-alpine
     container_name: ezkey-db-grants
@@ -79,22 +79,14 @@ services:
     environment:
       <<: *container-tz
       PGPASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      PGHOST: postgres
+      PGDATABASE: ezkey_db
+      PGUSER: postgres
+      # Required on grants path — no implicit default inside apply-grants.sh (Patrick B1).
+      EZKEY_DB_CRYPTO_PASSWORD: ${EZKEY_DB_CRYPTO_PASSWORD:-ezkey_crypto}
     volumes:
       - ../scripts/db:/scripts:ro
-    entrypoint:
-      [
-        "psql",
-        "-h",
-        "postgres",
-        "-U",
-        "postgres",
-        "-d",
-        "ezkey_db",
-        "-v",
-        "ON_ERROR_STOP=1",
-        "-f",
-        "/scripts/apply-grants.sql",
-      ]
+    entrypoint: ["/bin/sh", "/scripts/apply-grants.sh", "--in-container"]
     networks:
       - ezkey-network
     restart: "no"

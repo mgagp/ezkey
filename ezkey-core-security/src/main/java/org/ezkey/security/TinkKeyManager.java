@@ -31,6 +31,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.ezkey.config.TinkProperties;
 import org.ezkey.security.domain.entity.KeysetBlob;
 import org.ezkey.security.domain.repository.KeysetBlobRepository;
+import org.ezkey.security.exception.KeysetCasConflictException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
@@ -1024,7 +1025,7 @@ public class TinkKeyManager implements KeyManagementOperations {
         this.keysetHandle = previousLive;
         this.databaseKeysetVersion = expectedVersion;
       }
-      throw new IllegalStateException(
+      throw new KeysetCasConflictException(
           "Keyset mutation CAS failed (updatedBy="
               + updatedBy
               + "); staging discarded and blob reloaded",
@@ -1050,8 +1051,7 @@ public class TinkKeyManager implements KeyManagementOperations {
       long previousVersion,
       String updatedBy) {
     if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      this.keysetHandle = stagingHandle;
-      this.databaseKeysetVersion = flushedVersion;
+      publishLiveKeysetHandleThenVersion(stagingHandle, flushedVersion);
       return;
     }
 
@@ -1059,8 +1059,9 @@ public class TinkKeyManager implements KeyManagementOperations {
         new TransactionSynchronization() {
           @Override
           public void afterCommit() {
-            keysetHandle = stagingHandle;
-            databaseKeysetVersion = flushedVersion;
+            // Order is load-bearing (Patrick B2): handle before version so readers never observe a
+            // bumped version with a stale primary.
+            publishLiveKeysetHandleThenVersion(stagingHandle, flushedVersion);
             logger.info(
                 "✅ Live keyset installed after commit (updatedBy={}, version={}, primary kid={})",
                 updatedBy,
@@ -1073,16 +1074,61 @@ public class TinkKeyManager implements KeyManagementOperations {
             if (status == STATUS_COMMITTED) {
               return;
             }
-            // Outer TX rolled back: blob row is gone; never keep the staging primary live.
-            keysetHandle = previousLive;
-            databaseKeysetVersion = previousVersion;
-            logger.error(
-                "Keyset mutation rolled back after CAS flush; restored pre-mutation live handle"
-                    + " (updatedBy={}, version={})",
-                updatedBy,
-                previousVersion);
+            // Defense in depth if a future path installs before commit; on the deferred path this
+            // is a no-op (handle/version were never published). Covered by package-visible restore
+            // test (Patrick m1).
+            restorePreMutationLive(previousLive, previousVersion, updatedBy);
           }
         });
+  }
+
+  /**
+   * Optional test probe invoked after the live handle is published and before the version is
+   * published (Patrick B2 order). Null in production.
+   */
+  private volatile Runnable betweenHandleAndVersionPublish;
+
+  /**
+   * Test-only: registers a probe between handle and version publish (Patrick B2).
+   *
+   * @param probe runnable invoked mid-publish; {@code null} clears the probe
+   */
+  void setBetweenHandleAndVersionPublishForTests(Runnable probe) {
+    this.betweenHandleAndVersionPublish = probe;
+  }
+
+  /**
+   * Publishes the live handle, then the cached blob version.
+   *
+   * <p>Order is intentional: a reader that sees the new version must also see the new primary.
+   *
+   * @param handle committed keyset handle
+   * @param version committed blob version
+   */
+  void publishLiveKeysetHandleThenVersion(KeysetHandle handle, long version) {
+    this.keysetHandle = handle;
+    Runnable probe = betweenHandleAndVersionPublish;
+    if (probe != null) {
+      probe.run();
+    }
+    this.databaseKeysetVersion = version;
+  }
+
+  /**
+   * Restores the pre-mutation live handle and version (transaction rollback / CAS defense).
+   *
+   * @param previousLive handle to restore
+   * @param previousVersion version to restore
+   * @param updatedBy audit label for logs
+   */
+  void restorePreMutationLive(KeysetHandle previousLive, long previousVersion, String updatedBy) {
+    this.keysetHandle = previousLive;
+    this.databaseKeysetVersion = previousVersion;
+    logger.error(
+        "Keyset mutation rolled back after CAS flush; restored pre-mutation live handle"
+            + " (updatedBy={}, version={})",
+        updatedBy,
+        previousVersion);
   }
 
   private int toSignedInt(long unsignedKeyId) {

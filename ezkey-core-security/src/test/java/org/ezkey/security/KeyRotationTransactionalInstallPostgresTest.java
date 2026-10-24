@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.config.TinkProperties;
@@ -222,6 +223,104 @@ class KeyRotationTransactionalInstallPostgresTest {
         1,
         encryptionKeyRepository.findByKeyStatus(EncryptionKey.KeyStatus.PRIMARY).size(),
         "metadata demotion/promotion must roll back with the TX");
+  }
+
+  @Test
+  @DisplayName(
+      "B2: TransactionTemplate nominal path — during TX old handle/version; after COMMIT new"
+          + " handle then version (Patrick B2)")
+  void afterCommit_nominalPath_publishesHandleThenVersion() throws Exception {
+    long primaryBefore = tinkKeyManager.getCurrentPrimaryKeyId();
+    long versionBefore = tinkKeyManager.getDatabaseKeysetVersion();
+
+    AtomicLong midPrimary = new AtomicLong();
+    AtomicLong midVersion = new AtomicLong();
+
+    TransactionTemplate tx = new TransactionTemplate(transactionManager);
+    Long newPrimary =
+        tx.execute(
+            _ -> {
+              try {
+                long id = tinkKeyManager.rotateKey();
+                midPrimary.set(tinkKeyManager.getCurrentPrimaryKeyId());
+                midVersion.set(tinkKeyManager.getDatabaseKeysetVersion());
+                return id;
+              } catch (RuntimeException runtimeException) {
+                throw runtimeException;
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
+            });
+
+    assertEquals(
+        primaryBefore,
+        midPrimary.get(),
+        "B2: during TX live primary must stay pre-mutation (afterCommit not yet run)");
+    assertEquals(
+        versionBefore, midVersion.get(), "B2: during TX cached version must stay pre-mutation");
+    assertEquals(
+        newPrimary,
+        tinkKeyManager.getCurrentPrimaryKeyId(),
+        "B2: after COMMIT live primary must be the new key");
+    assertEquals(
+        versionBefore + 1,
+        tinkKeyManager.getDatabaseKeysetVersion(),
+        "B2: after COMMIT cached version must be published");
+    assertTrue(
+        tinkKeyManager.getAllKeyIds().contains(primaryBefore)
+            && tinkKeyManager.getAllKeyIds().contains(newPrimary),
+        "B2: committed live keyset must keep boot kid + new kid");
+
+    // Order unit: between handle and version publish, version must still be the old sentinel.
+    // Mutants: empty afterCommit / version-only → mid-TX or post-COMMIT asserts above;
+    // version-before-handle → orderMidVersion == publishedVersion while primary still old.
+    com.google.crypto.tink.KeysetHandle live =
+        (com.google.crypto.tink.KeysetHandle)
+            org.springframework.test.util.ReflectionTestUtils.getField(
+                tinkKeyManager, "keysetHandle");
+    long publishedVersion = tinkKeyManager.getDatabaseKeysetVersion();
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        tinkKeyManager, "databaseKeysetVersion", -1L);
+    AtomicLong orderMidVersion = new AtomicLong();
+    AtomicLong orderMidPrimary = new AtomicLong();
+    tinkKeyManager.setBetweenHandleAndVersionPublishForTests(
+        () -> {
+          orderMidVersion.set(tinkKeyManager.getDatabaseKeysetVersion());
+          orderMidPrimary.set(tinkKeyManager.getCurrentPrimaryKeyId());
+        });
+    try {
+      tinkKeyManager.publishLiveKeysetHandleThenVersion(live, publishedVersion);
+      assertEquals(
+          -1L,
+          orderMidVersion.get(),
+          "B2: version must not publish before handle (mid-probe still sees sentinel)");
+      assertEquals(
+          newPrimary, orderMidPrimary.get(), "B2: handle must already be live at the mid-probe");
+      assertEquals(publishedVersion, tinkKeyManager.getDatabaseKeysetVersion());
+    } finally {
+      tinkKeyManager.setBetweenHandleAndVersionPublishForTests(null);
+    }
+  }
+
+  @Test
+  @DisplayName("m1: restorePreMutationLive independently undoes a premature live install")
+  void restorePreMutationLive_independentlyUndoesPrematureInstall() throws Exception {
+    assertTrue(tinkKeyManager.forceReloadFromDatabase());
+    long primaryBefore = tinkKeyManager.getCurrentPrimaryKeyId();
+    long versionBefore = tinkKeyManager.getDatabaseKeysetVersion();
+    com.google.crypto.tink.KeysetHandle previousLive =
+        (com.google.crypto.tink.KeysetHandle)
+            org.springframework.test.util.ReflectionTestUtils.getField(
+                tinkKeyManager, "keysetHandle");
+
+    // Premature install: advance version cache without a matching commit semantic.
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        tinkKeyManager, "databaseKeysetVersion", versionBefore + 99);
+    assertEquals(versionBefore + 99, tinkKeyManager.getDatabaseKeysetVersion());
+
+    tinkKeyManager.restorePreMutationLive(previousLive, versionBefore, "M1_RESTORE");
+    assertEquals(versionBefore, tinkKeyManager.getDatabaseKeysetVersion());
+    assertEquals(primaryBefore, tinkKeyManager.getCurrentPrimaryKeyId());
   }
 
   @Test

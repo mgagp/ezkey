@@ -5,8 +5,10 @@ Canonical matrix: [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../../docs/DATABA
 | Script | Purpose |
 |--------|---------|
 | [`create-roles.sh`](create-roles.sh) | Bootstrap/rotate LOGIN roles on an existing Postgres; requires `postgres` or equivalent role-management authority |
-| [`apply-grants.sql`](apply-grants.sql) | Idempotent runtime DML grants and default privileges; also used by Compose `db-grants` |
-| [`apply-grants.sh`](apply-grants.sh) | Superuser wrapper for the grant policy; `--docker` uses `docker exec` |
+| [`ensure-crypto-role.sql`](ensure-crypto-role.sql) | Idempotent `ezkey_crypto` create for upgrade volumes (invoked by `apply-grants.sh`; password via `set_config`, no default) |
+| [`apply-grants.sql`](apply-grants.sql) | Idempotent runtime DML grants and default privileges |
+| [`apply-grants.sh`](apply-grants.sh) | Superuser wrapper: ensure crypto role + grants; `--docker` / `--in-container`; **requires** `EZKEY_DB_CRYPTO_PASSWORD` |
+| [`test-upgrade-crypto-role.sh`](test-upgrade-crypto-role.sh) | Ephemeral Docker proof: pre-PR volume (no crypto role) → grants succeed (#961 B1) |
 | [`verify-grants.sh`](verify-grants.sh) | Connect as each application role and smoke-check allowed/denied privileges; `--docker` supported |
 
 Docker first-boot role creation: [`docker/postgres/init/01-create-roles.sh`](../../docker/postgres/init/01-create-roles.sh).
@@ -47,5 +49,6 @@ The role bootstrap recognizes:
 - `EZKEY_DB_ADMIN_PASSWORD`
 - `EZKEY_DB_AUTH_PASSWORD`
 - `EZKEY_DB_INTEGRATION_PASSWORD`
+- `EZKEY_DB_CRYPTO_PASSWORD` — **required** by `apply-grants.sh` (no default on the grants/upgrade path)
 
 Do not use runtime API credentials for Flyway. Do not use `ezkey_migrate` as an API datasource.

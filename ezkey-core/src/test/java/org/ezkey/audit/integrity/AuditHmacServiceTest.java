@@ -385,6 +385,32 @@ class AuditHmacServiceTest {
   }
 
   // -----------------------------------------------------------------------
+  // POSIX mode 600 fail-closed (Patrick m4 / #961)
+  // -----------------------------------------------------------------------
+
+  @Test
+  void applyOwnerReadWriteOnly_whenChmodFails_deletesKeyAndThrows() throws Exception {
+    Path doomed = tempDir.resolve("doomed-hmac.key");
+    Files.writeString(doomed, "dGVzdA==", StandardCharsets.UTF_8);
+    assertTrue(Files.exists(doomed));
+
+    AuditHmacService failing =
+        new AuditHmacService(properties) {
+          @Override
+          void applyOwnerReadWriteOnly(Path path) throws java.io.IOException {
+            // Delegate to production body after forcing an IOException via missing path.
+            Files.deleteIfExists(path);
+            super.applyOwnerReadWriteOnly(path);
+          }
+        };
+
+    java.io.IOException thrown =
+        assertThrows(java.io.IOException.class, () -> failing.applyOwnerReadWriteOnly(doomed));
+    assertTrue(thrown.getMessage().contains("Refusing to keep audit HMAC key without mode 600"));
+    assertFalse(Files.exists(doomed), "fail-closed must not leave a key file behind");
+  }
+
+  // -----------------------------------------------------------------------
   // Helper
   // -----------------------------------------------------------------------
 

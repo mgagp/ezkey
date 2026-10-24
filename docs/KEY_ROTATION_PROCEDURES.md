@@ -111,15 +111,21 @@ INTRODUCED → ENABLED → PRIMARY → ENABLED → DISABLED
 4. **Key Rotation (CAS on blob)**
    - Under write lock: re-read `ezkey_keyset_blob` version
    - Stage a candidate keyset (new key + primary) without publishing the live handle yet
-   - CAS-persist the envelope; **install the in-memory primary only after successful CAS**
-   - On CAS loss: discard staging, reload blob, fail closed (no orphan primary)
+   - CAS-persist the envelope with Hibernate `@Version` + app version pre-check (`saveAndFlush`)
+   - **Install the in-memory primary only after successful CAS**, and when called inside
+     `KeyRotationService`'s outer `@Transactional` boundary, **only in
+     `TransactionSynchronization.afterCommit`** (handle first, then cached version). A rollback of
+     metadata/audit after flush must not leave an orphan live primary (#961 R2 / Patrick B2)
+   - On CAS loss: discard staging, reload blob, fail closed with `KeysetCasConflictException`
+     (no orphan primary)
 
-5. **Database metadata synchronization**
+5. **Database metadata synchronization** (same outer transaction as the blob flush when using
+   `KeyRotationService.introduceNewKey` / promote paths)
    - Create `EncryptionKey` record for new key (status: PRIMARY / PENDING per sync window)
    - Update old key record (status: PRIMARY → ENABLED)
    - Update timestamps (`promoted_primary_at` for new key)
 
-6. **Audit Logging**
+6. **Audit Logging** (same outer transaction — failure rolls back blob flush + metadata)
    - Log `KEY_INTRODUCED` event
    - Log `KEY_PROMOTED_PRIMARY` event
    - Log `KEY_DEMOTED` event (for old primary)

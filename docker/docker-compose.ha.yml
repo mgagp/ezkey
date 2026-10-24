@@ -68,22 +68,13 @@ services:
     environment:
       <<: *container-tz
       PGPASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      PGHOST: postgres
+      PGDATABASE: ezkey_db
+      PGUSER: postgres
+      EZKEY_DB_CRYPTO_PASSWORD: ${EZKEY_DB_CRYPTO_PASSWORD:-ezkey_crypto}
     volumes:
       - ../scripts/db:/scripts:ro
-    entrypoint:
-      [
-        "psql",
-        "-h",
-        "postgres",
-        "-U",
-        "postgres",
-        "-d",
-        "ezkey_db",
-        "-v",
-        "ON_ERROR_STOP=1",
-        "-f",
-        "/scripts/apply-grants.sql",
-      ]
+    entrypoint: ["/bin/sh", "/scripts/apply-grants.sh", "--in-container"]
     networks:
       - ezkey-network-ha
     restart: "no"
