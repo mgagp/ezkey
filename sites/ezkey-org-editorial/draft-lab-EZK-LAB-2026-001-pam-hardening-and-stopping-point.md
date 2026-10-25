@@ -65,7 +65,7 @@ Ezkey is a lab project, not promised to anyone. The realistic niche we see is pa
 
 Two further reasons shaped the experiment. First, Marc has the impression that autonomous agents have become visibly faster at finding and fixing vulnerabilities. This is his personal observation; we cite no outside source and did not measure it. It made us curious about the balance between budget, time, effort and value when several agents examine a small module, and about where to stop. Second, we wanted to see how much of that work agents could carry with little human intervention (§6.4).
 
-This paper says what happened and what was measured, not what it means. Nothing here is a security guarantee.
+This paper says what happened and what was measured, not what it means.
 
 ## 2. Hypotheses
 
@@ -92,7 +92,7 @@ By September 2025 the platform already had most parts of an approval flow (Table
 
 *Table 1. Context around the first PAM commit.*
 
-Marc recalls that in summer 2025 the protocol was simpler, with a simulator at first, no Admin UI and a simpler database. The simulator is visible in the history (`988ef115`, 2025-08-19); the database remark is not checked `[TO VERIFY: database schema in summer 2025]`. Some early commits were authored by an automated agent account, not by Marc `[TO VERIFY: authorship of each commit in Table 1]`.
+Marc recalls that in summer 2025 the protocol was simpler: a simulator at first, no Admin UI, a simpler database. The simulator is visible in the history (`988ef115`, 2025-08-19); the database remark is not checked `[TO VERIFY: database schema in summer 2025]`. Some early commits were authored by an automated agent account, not by Marc `[TO VERIFY: authorship of each commit in Table 1]`.
 
 ## 4. Protocol
 
@@ -114,7 +114,7 @@ Marc recalls that in summer 2025 the protocol was simpler, with a simulator at f
 
 The first PAM commit, `04d339b7` (2025-09-03, 9 files, 919 added lines), describes itself as a basic hard-coded module in Rocky Linux under Docker, where after the SSH password the demo device must confirm access. According to Marc it was also run on a VM and validated by hand only `[TO VERIFY: VM test; no automated evidence in git]`.
 
-Then came a one-year pause, with no trace in the repository of functional work on PAM. The folder received only four mechanical commits: a port change (`07746bb8`), a move to Rocky Linux 10 (`90b16e57`), file permissions (`83758319`) and documentation hygiene (`b19eca7d`). We make no claim about what Marc did or thought in that period beyond what git shows.
+Then came a one-year pause, with no trace in the repository of functional work on PAM. The folder received only four mechanical commits: a port change (`07746bb8`), a move to Rocky Linux 10 (`90b16e57`), file permissions (`83758319`) and documentation hygiene (`b19eca7d`). We claim nothing about that period beyond what git shows.
 
 ### 5.2 Modernisation and a first milestone
 
@@ -157,17 +157,17 @@ Eleven issues were open on 2026-10-25 (checked on GitHub), plus PR #1014: #858, 
 
 ### 6.4 Agent autonomy: aimed at, and limits observed
 
-Part of the experiment aimed at letting agents do more of the work with less human intervention. Table 3 lists what we did toward that and where a limit appeared. Sources are the co-authors' retrospectives; it is a list of observations, not a measurement of autonomy.
+Part of the experiment aimed at letting agents do more of the work with less human intervention. Table 3 lists what we did and where a limit appeared. Sources are the co-authors' retrospectives; these are observations, not a measurement of autonomy.
 
 | Aimed at | Limit observed | Source |
 | --- | --- | --- |
-| Approval without a person's physical phone: the Demo Device (`e532ce95`) instead of a Pixel `[TO VERIFY: that the Demo Device replaced a Pixel in these tests]` | The 2.2.14 campaign still needed Marc at the SSH keyboard and on the Demo Device; Isabelle says she could not have gone on without Marc on the phone | Isabelle |
+| Tests run without a person's phone: Isabelle's Demo Device for almost all tests; Marc's Pixel only for a few exploratory tests of his own, as a preliminary validation (Marc's statement) | The 2.2.14 campaign still needed Marc at the SSH keyboard and on the Demo Device; Isabelle says she could not have gone on without Marc on the phone | Marc; Isabelle |
 | Reviews of a frozen head (a given SHA, one batch of fixes per review) | Re-reviews after about the second head brought mostly minor points | Patrick, Christophe |
 | Tests replayed by the agents themselves: retests (#908), signal probes against a real sshd, a cloud agent executing predictions (#1014) | Patrick had no Docker or Java on his own machine, so each proof went through a cloud agent, slowly; some CI guards proved nothing (#996, #1014) | Patrick, Edgar |
 | Bounded GOs: a standing permission on the test VM (snapshot, `sshd -t`, report, one bot at a time) | A relayed "Marc agrees" is not a GO; the test VM's maintenance path stayed outside MFA (principle in #955) | Edgar, Isabelle |
 | Findings written where they live (PR or issue) | Messages that do not wake an agent (hence read acknowledgements on blocking requests); a finding set from #961 lost in chat `[TO VERIFY]` | Christophe |
 | Retests without a person in the loop | The human round trip (about 77 s) exceeded the 75 s attempt TTL, so some trials were invalid; an automated approval pilot was missing | Isabelle |
-| Agents posting their own reviews | Reviews reach GitHub through Marc's account and are relayed by Mathieu (#1016); nothing is posted without Marc `[TO VERIFY: Mathieu's draft retrospective only]` | #1016; Mathieu (draft) |
+| Agents composing and relaying texts and reviews | Nothing is published without Marc, here and on ezkey.org generally: he gives material and direction, agents compose, he revises and frames, with review and preview before publication. Reviews reach GitHub through his account, relayed by Mathieu (#1016) | Marc (statement); #1016 |
 
 *Table 3. Autonomy aims and observed limits.*
 
@@ -177,7 +177,7 @@ In short, the agents could review, replay and diagnose, but each stage still pas
 
 ### 7.1 A fractal image
 
-The closer we looked, the finer the edge cases, and each fix opened a smaller question: a missing URL falling back silently (#610); retries multiplying requests (#908); OpenSSH holding back informational text (#941); the challenge default (#995); approval fatigue (#992, documented, not mitigated server-side); a killed process, a hang and a late SUCCESS (#1014); then a test a mutation could survive (#1016). This sequence is our interpretation; the causal links were not tested. In our reading, the last items concern the strength of tests and diagnostics more than the module's overall approach.
+The closer we looked, the finer the edge cases, and each fix opened a smaller question: a missing URL falling back silently (#610); retries multiplying requests (#908); OpenSSH holding back informational text (#941); the challenge default (#995); approval fatigue (#992, documented, not mitigated server-side); a killed process, a hang and a late SUCCESS (#1014); then a test a mutation could survive (#1016). This sequence is our interpretation; the causal links were not tested. In our reading, the last items concern test strength and diagnostics more than the module's overall approach.
 
 ### 7.2 Budget, time, effort and value
 
@@ -246,7 +246,7 @@ Each co-author answered the same questions through Mathieu (what landed, a turni
 
 ## 11. Next steps
 
-None is a commitment. The open items of §6.3 remain. Before any move to the community instance, the assessment would have to be redone, and Marc's host validation (sshd cutover, TLS slices) is still outstanding.
+None is a commitment; the open items of §6.3 remain. Before any move to the community instance, the assessment would have to be redone, and Marc's host validation (sshd cutover, TLS slices) is still outstanding.
 
 ## Who did what
 
@@ -330,9 +330,9 @@ LEDGER OF [TO VERIFY] / [MISSING DATA] ITEMS
 12. Seb's contribution to #1011 (reported by Isabelle only).
 13. Co-author notes: condensed by the editor from retrospectives; each author to validate wording.
 14. Redactions: host names and one key-file permission remark (Edgar) removed from the raw block; ask Marc whether the key-file permission remark must be handled as an ops issue.
-15. NEW. Table 3, row 1: that the Demo Device replaced a Pixel (physical phone) in these tests; "Pixel" appears in no source I read (Marc's wording via Mathieu).
+15. RESOLVED (Marc, 2026-10-25 19:44). Table 3, row 1: Demo Device used for almost all tests, Pixel only for a few exploratory tests by Marc; attributed to Marc's statement; no marker left, and the Pixel appears nowhere else in the body.
 16. NEW. Table 3, row 5: finding set of #961 "lost in chat" (Christophe's retro mentions M1/M2/M3 of #961 lost to the cloud agent; PR #961 not re-read).
-17. NEW. Table 3, row 7: "nothing is posted without Marc" rests on Mathieu's unvalidated draft; only the "relayed by Mathieu" wording of #1016 is verified.
+17. RESOLVED (Marc, 2026-10-25 19:44). Table 3, row 7: principle confirmed by Marc (nothing published without him; he provides material and direction, agents compose, he revises, review and preview before publication); marker removed. The #1016 "relayed by Mathieu" wording is verified.
 18. NEW. Table 3 as a whole: assembled from retrospectives, not measured. Mathieu-draft-only items left out: "Marc merges himself", "ready only if CI green, 0 threads", "a go from Marc in the agent's own thread", "status syncs that changed nothing".
 19. NEW. §1 second reason (wanting to see how much agents could carry with little human intervention) comes from Marc's request via Mathieu, not from a pre-2026-10-25 document; Marc to confirm the wording.
 20. NEW. "Reading time ~15 min" is an estimate.

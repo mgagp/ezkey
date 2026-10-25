@@ -64,7 +64,7 @@ Ezkey est un projet de laboratoire, qui n'est promis à personne. Le créneau r�
 
 Deux autres raisons ont façonné l'expérience. D'abord, Marc a l'impression que les agents autonomes sont devenus visiblement plus rapides à trouver et à corriger des vulnérabilités. C'est son observation personnelle ; nous ne citons aucune source externe et ne l'avons pas mesurée. Elle nous a rendus curieux de l'équilibre entre budget, temps, effort et valeur quand plusieurs agents examinent un petit module, et de l'endroit où il est raisonnable de s'arrêter. Ensuite, nous voulions voir quelle part de ce travail les agents pouvaient porter avec peu d'intervention humaine (§6.4).
 
-Ce papier dit ce qui s'est passé et ce qui a été mesuré, pas ce que cela signifie. Rien ici n'est une garantie de sécurité.
+Ce papier dit ce qui s'est passé et ce qui a été mesuré, pas ce que cela signifie.
 
 ## 2. Hypothèses
 
@@ -91,7 +91,7 @@ En septembre 2025, la plateforme avait déjà la plupart des pièces d'un flux d
 
 *Tableau 1. Contexte autour du premier commit PAM.*
 
-Marc se souvient qu'à l'été 2025 le protocole était plus simple, avec un simulateur au départ, pas d'Admin UI et une base de données plus simple. Le simulateur est visible dans l'historique (`988ef115`, 2025-08-19) ; la remarque sur la base de données n'est pas vérifiée `[À VÉRIFIER : schéma de la base à l'été 2025]`. Certains des premiers commits ont été signés par un compte d'agent automatisé, pas par Marc `[À VÉRIFIER : auteur de chaque commit du tableau 1]`.
+Marc se souvient qu'à l'été 2025 le protocole était plus simple : un simulateur au départ, pas d'Admin UI, une base de données plus simple. Le simulateur est visible dans l'historique (`988ef115`, 2025-08-19) ; la remarque sur la base de données n'est pas vérifiée `[À VÉRIFIER : schéma de la base à l'été 2025]`. Certains des premiers commits ont été signés par un compte d'agent automatisé, pas par Marc `[À VÉRIFIER : auteur de chaque commit du tableau 1]`.
 
 ## 4. Protocole
 
@@ -113,7 +113,7 @@ Marc se souvient qu'à l'été 2025 le protocole était plus simple, avec un sim
 
 Le premier commit PAM, `04d339b7` (2025-09-03, 9 fichiers, 919 lignes ajoutées), se décrit comme un module de base codé en dur, dans Rocky Linux sous Docker, où, après le mot de passe SSH, l'appareil de démo doit confirmer l'accès. Selon Marc, il a aussi été exécuté sur une VM et validé seulement à la main `[À VÉRIFIER : essai sur VM ; aucune preuve automatisée dans git]`.
 
-Ensuite, une pause d'un an, sans trace dans le dépôt de travail fonctionnel sur PAM. Le dossier n'a reçu que quatre commits mécaniques : un changement de port (`07746bb8`), le passage à Rocky Linux 10 (`90b16e57`), des permissions de fichiers (`83758319`) et de l'hygiène documentaire (`b19eca7d`). Nous n'affirmons rien sur ce que Marc a fait ou pensé pendant cette période au-delà de ce que montre git.
+Ensuite, une pause d'un an, sans trace dans le dépôt de travail fonctionnel sur PAM. Le dossier n'a reçu que quatre commits mécaniques : un changement de port (`07746bb8`), le passage à Rocky Linux 10 (`90b16e57`), des permissions de fichiers (`83758319`) et de l'hygiène documentaire (`b19eca7d`). Nous n'affirmons rien sur cette période au-delà de ce que montre git.
 
 ### 5.2 Modernisation et premier jalon
 
@@ -156,17 +156,17 @@ Onze issues étaient ouvertes le 2026-10-25 (vérifié sur GitHub), plus la PR #
 
 ### 6.4 Autonomie des agents : visée et limites observées
 
-Une partie de l'expérience visait à laisser les agents faire plus du travail avec moins d'intervention humaine. Le tableau 3 liste ce que nous avons fait en ce sens et où une limite est apparue. Les sources sont les rétrospectives des co-auteurs ; c'est une liste d'observations, pas une mesure de l'autonomie.
+Une partie de l'expérience visait à laisser les agents faire plus du travail avec moins d'intervention humaine. Le tableau 3 liste ce que nous avons fait et où une limite est apparue. Les sources sont les rétrospectives des co-auteurs ; ce sont des observations, pas une mesure de l'autonomie.
 
 | Visée | Limite observée | Source |
 | --- | --- | --- |
-| Approbation sans le téléphone physique d'une personne : le Demo Device (`e532ce95`) plutôt qu'un Pixel `[À VÉRIFIER : que le Demo Device ait remplacé un Pixel dans ces tests]` | La campagne sur la 2.2.14 a quand même eu besoin de Marc au clavier SSH et sur le Demo Device ; Isabelle dit qu'elle n'aurait pas pu avancer sans Marc au téléphone | Isabelle |
+| Tests menés sans le téléphone d'une personne : le Demo Device d'Isabelle pour presque tous les tests ; le Pixel de Marc seulement pour quelques tests exploratoires à lui, en validation préliminaire (déclaration de Marc) | La campagne sur la 2.2.14 a quand même eu besoin de Marc au clavier SSH et sur le Demo Device ; Isabelle dit qu'elle n'aurait pas pu avancer sans Marc au téléphone | Marc ; Isabelle |
 | Revues sur une tête figée (un SHA précis, un seul lot de correctifs par revue) | Les re-revues à partir de la deuxième tête environ n'ont apporté surtout que des points mineurs | Patrick, Christophe |
 | Tests rejoués par les agents eux-mêmes : contre-tests (#908), sondes de signaux contre un vrai sshd, agent infonuagique qui exécute les prédictions (#1014) | Patrick n'avait ni Docker ni Java sur sa propre machine, donc chaque preuve passait par un agent infonuagique, lentement ; certains garde-fous de CI ne prouvaient rien (#996, #1014) | Patrick, Edgar |
 | GO bornés : permission permanente sur la VM de test (snapshot, `sshd -t`, rapport, un seul bot à la fois) | Un « Marc est d'accord » relayé n'est pas un GO ; le chemin de maintenance de la VM de test est resté hors du MFA (principe dans #955) | Edgar, Isabelle |
 | Constats écrits là où ils vivent (PR ou issue) | Messages qui ne réveillent pas un agent (d'où l'accusé de lecture sur les demandes bloquantes) ; un lot de constats de #961 perdu dans le clavardage `[À VÉRIFIER]` | Christophe |
 | Recontre-tests sans humain dans la boucle | L'aller-retour humain (environ 77 s) dépassait le TTL de 75 s de la tentative, donc certains essais étaient invalides ; il manquait un pilote d'approbation automatisé | Isabelle |
-| Agents qui publient eux-mêmes leurs revues | Les revues arrivent sur GitHub par le compte de Marc et sont relayées par Mathieu (#1016) ; rien n'est publié sans Marc `[À VÉRIFIER : brouillon de rétrospective de Mathieu seulement]` | #1016 ; Mathieu (brouillon) |
+| Agents qui composent et relaient textes et revues | Rien n'est publié sans Marc, ici et sur ezkey.org en général : il donne la matière et l'orientation, les agents composent, il révise et cadre, avec relecture et aperçu avant publication. Les revues arrivent sur GitHub par son compte, relayées par Mathieu (#1016) | Marc (déclaration) ; #1016 |
 
 *Tableau 3. Visées d'autonomie et limites observées.*
 
@@ -245,7 +245,7 @@ Chaque co-auteur a répondu aux mêmes questions par Mathieu (ce qui a été liv
 
 ## 11. Suites
 
-Aucune n'est un engagement. Les éléments ouverts du §6.3 demeurent. Avant tout passage à l'instance communautaire, il faudrait refaire l'évaluation, et la validation de Marc sur un hôte (bascule du sshd, tranches TLS) reste à faire.
+Aucune n'est un engagement ; les éléments ouverts du §6.3 demeurent. Avant tout passage à l'instance communautaire, il faudrait refaire l'évaluation, et la validation de Marc sur un hôte (bascule du sshd, tranches TLS) reste à faire.
 
 ## Qui a fait quoi
 
@@ -329,9 +329,9 @@ REGISTRE DES ÉLÉMENTS [À VÉRIFIER] / [DONNÉE MANQUANTE] (même liste que le
 12. Contribution de Seb à #1011 (rapportée par Isabelle seulement).
 13. Notes de co-auteurs : condensées par l'éditeur ; chaque auteur valide la formulation.
 14. Expurgations : noms d'hôtes et une remarque sur une permission de fichier de clé (Edgar) retirés du bloc brut ; demander à Marc si cette remarque doit être traitée comme un enjeu d'exploitation.
-15. NOUVEAU. Tableau 3, ligne 1 : que le Demo Device ait remplacé un Pixel (téléphone physique) dans ces tests ; « Pixel » n'apparaît dans aucune source lue (formulation de Marc via Mathieu).
+15. RÉSOLU (Marc, 2026-10-25 19:44). Tableau 3, ligne 1 : Demo Device pour presque tous les tests, Pixel seulement pour quelques tests exploratoires de Marc ; attribué à sa déclaration ; plus de marqueur, et le Pixel n'apparaît nulle part ailleurs dans le corps.
 16. NOUVEAU. Tableau 3, ligne 5 : lot de constats de #961 « perdu dans le clavardage » (la rétro de Christophe mentionne M1/M2/M3 de #961 perdus vers l'agent infonuagique ; PR #961 non relue).
-17. NOUVEAU. Tableau 3, ligne 7 : « rien n'est publié sans Marc » repose sur le brouillon non validé de Mathieu ; seule la mention « relayed by Mathieu » de #1016 est vérifiée.
+17. RÉSOLU (Marc, 2026-10-25 19:44). Tableau 3, ligne 7 : principe confirmé par Marc (rien n'est publié sans lui ; il fournit la matière et l'orientation, les agents composent, il révise, relecture et aperçu avant publication) ; marqueur retiré. La mention « relayed by Mathieu » de #1016 est vérifiée.
 18. NOUVEAU. Tableau 3 dans son ensemble : assemblé à partir des rétrospectives, pas mesuré. Éléments tirés seulement du brouillon de Mathieu et laissés de côté : « Marc fusionne lui-même », « prête seulement si CI verte, 0 fil de revue », « un go de Marc dans le fil de l'agent concerné », « synchronisations de statut sans effet ».
 19. NOUVEAU. §1, deuxième raison (voir quelle part du travail les agents peuvent porter avec peu d'intervention humaine) : vient de la demande de Marc via Mathieu, pas d'un document antérieur au 2026-10-25 ; Marc à confirmer la formulation.
 20. NOUVEAU. « Temps de lecture ~15 min » est une estimation.
