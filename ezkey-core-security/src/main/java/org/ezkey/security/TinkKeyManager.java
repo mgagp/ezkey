@@ -1025,7 +1025,8 @@ public class TinkKeyManager implements KeyManagementOperations {
     } catch (DataAccessException | IllegalStateException e) {
       // Invariant 3 / Q4: discard staging, reload blob, fail closed — no orphan primary.
       // OptimisticLockingFailureException is a DataAccessException subclass.
-      logger.error(
+      // Ordinary concurrent loser under Hibernate @Version — WARN, not ERROR (#961 Lot 3).
+      logger.warn(
           "CAS failed for keyset mutation ({}). Discarding staging handle and reloading blob."
               + " Expected version was {}. Error: {}",
           updatedBy,
