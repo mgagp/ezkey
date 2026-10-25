@@ -27,251 +27,197 @@ Où ce brouillon devrait-il vivre dans le dépôt ?
   nouvelle convention que LAB-PAPERS.md ne mentionne pas. Pas recommandée pour le papier no 1.
 - Correctif connexe à proposer : une ligne dans sites/ezkey-org/AGENTS.md pour que « fr/ seulement » et le gabarit EN concordent.
 
-Statut : miroir du brouillon EN (draft-lab-pam.en.md). Aucun fait propre au FR. La version FR n'a été écrite qu'en copie de
-travail locale ; elle attend le go explicite de Marc avant tout usage. Marqueurs : [À VÉRIFIER] / [DONNÉE MANQUANTE], listés
-en fin de fichier dans un bloc d'exclusion. La rétrospective de Mathieu n'est PAS encore reçue.
+Statut (passe de révision du 2026-10-25, soir) : miroir du brouillon EN révisé (draft-lab-pam.en.md), resserré d'environ
+5 900 à 4 000 mots de corps ; nouvelle courte section 6.4 sur l'autonomie des agents (tableau 3). Aucun fait propre au FR. La
+rétrospective de Mathieu n'existe qu'en BROUILLON non validé par Marc : elle n'est PAS intégrée ; ce qui n'en vient que d'elle
+est marqué [À VÉRIFIER] ; sa note de co-auteur reste un espace réservé. La version FR est une copie de travail locale ; elle
+attend le go explicite de Marc avant tout usage. Marqueurs : [À VÉRIFIER] / [DONNÉE MANQUANTE], listés en fin de fichier.
 ezkey-org:exclude-end -->
 
 # Ezkey PAM : durcir un module SSH expérimental avec des agents, et décider où s'arrêter
 
-**Auteurs :** Marc Gagnon (responsabilité éditoriale) ; Christophe Grokbot (revue de sécurité) ; Edgar Grokbot (déploiement et périphérie) ; Isabelle Grokbot (QA exploratoire) ; Mathieu Grokbot (coordination) `[À VÉRIFIER : preuve et note de Mathieu en attente]` ; Patrick Grokbot (revue d'ingénierie)
+**Auteurs :** Marc Gagnon (responsabilité éditoriale) ; Christophe Grokbot (revue de sécurité) ; Edgar Grokbot (déploiement et périphérie) ; Isabelle Grokbot (QA exploratoire) ; Mathieu Grokbot (coordination) `[À VÉRIFIER : preuve et note validée de Mathieu en attente]` ; Patrick Grokbot (revue d'ingénierie)
 **Affiliation :** Ezkey Lab
 **Identifiant :** `EZK-LAB-2026-001`
 **Statut :** draft
 **Date :** 2026-10-25
-**Mots-clés :** PAM, SSH, MFA, sans mot de passe, fail-closed, développement assisté par agents, revue de sécurité, rendements décroissants, expérimental
-**Temps de lecture :** ~22 min
+**Mots-clés :** PAM, SSH, MFA, fail-closed, développement assisté par agents, autonomie des agents, revue de sécurité, rendements décroissants, expérimental
+**Temps de lecture :** ~15 min
 
 ## Points clés
 
-- Un prototype d'environ 900 lignes, écrit en un seul commit le 2025-09-03 et validé à la main, a suffi à Marc pour juger que le modèle d'intégration d'Ezkey pouvait porter un second facteur SSH. Il n'a laissé aucune preuve automatisée.
+- Un prototype d'environ 900 lignes, commité le 2025-09-03 et validé à la main, a suffi à Marc pour juger que le modèle d'intégration d'Ezkey pouvait porter un second facteur SSH. Il n'a laissé aucune preuve automatisée.
 - Le dépôt montre une pause d'un an, sans trace dans le dépôt de travail fonctionnel sur PAM. Le travail a repris le 2026-09-15.
-- Du 19 au 23 octobre 2026, cinq versions correctives (2.2.10 à 2.2.14) ont été livrées, et la 2.2.15 est une PR ouverte. Chaque version corrigeait un comportement plus fin que des revues, des recontre-tests ou une campagne manuelle avaient fait ressortir. Plusieurs de ces défauts n'étaient visibles ni à la lecture du code ni dans une CI verte.
-- Les constats de revue sont devenus plus petits d'un tour à l'autre. Quatre co-auteurs, dans des rétrospectives distinctes, rapportent chacun des rendements décroissants à partir du deuxième tour environ sur une même PR. Nous ne l'avons pas mesuré de façon systématique.
+- Du 19 au 23 octobre 2026, cinq versions correctives (2.2.10 à 2.2.14) ont été livrées, et la 2.2.15 est une PR ouverte. Plusieurs défauts à l'origine de ces versions étaient invisibles à la lecture statique et à une CI verte. Les constats de revue sont devenus plus petits d'un tour à l'autre, et quatre co-auteurs rapportent des rendements décroissants, que nous n'avons pas mesurés de façon systématique.
 - Marc et l'équipe AI ont jugé le résultat suffisant comme maturité **expérimentale** : la sécurité est raisonnablement assurée dans le périmètre testé, sans être la fin de l'histoire. Ce n'est pas un module exploitable sur un hôte, ni une version publiée. La fatigue d'approbation n'est pas atténuée côté serveur (#992), et 11 issues restent ouvertes.
+- L'expérience visait aussi plus d'autonomie pour les agents. Elle a été partielle : à plusieurs moments, un humain ou un relais restait nécessaire (§6.4).
 
 ## Résumé
 
-Ce papier rend compte d'une expérience sur `ezkey-pam`, un module PAM Linux qui ajoute l'approbation par appareil Ezkey aux connexions SSH. Un premier prototype a été commité en septembre 2025. Après un an sans travail fonctionnel, il a été modernisé en septembre 2026, puis revu, recontre-testé et corrigé en une rafale dense en octobre 2026, avec une équipe AI composée de réviseurs, d'un agent de QA, d'un agent de déploiement et d'un coordonnateur qui ont travaillé avec Marc. Nous décrivons ce qui a été construit, ce que chaque tour de revue et de test a trouvé, et comment les constats ont évolué. Nous décrivons ensuite un point d'arrêt choisi conjointement par Marc et l'équipe AI. Nous ne revendiquons ni préparation à la production ni garantie de sécurité. Le module n'a jamais été publié, n'a pas fonctionné comme agent exploitable sur un hôte réel, et a des issues ouvertes connues.
+Ce papier rend compte d'une expérience sur `ezkey-pam`, un module PAM Linux qui ajoute l'approbation par appareil Ezkey aux connexions SSH. Un prototype a été commité en septembre 2025. Après un an sans travail fonctionnel, le module a été modernisé en septembre 2026, puis revu, recontre-testé et corrigé en une rafale dense en octobre 2026 par une équipe AI (réviseurs, agent de QA, agent de déploiement, coordonnateur) qui travaillait avec Marc. Nous décrivons ce qui a été construit, ce que chaque tour a trouvé, où l'autonomie des agents a rencontré ses limites, et un point d'arrêt choisi conjointement par Marc et l'équipe AI. Nous ne revendiquons ni préparation à la production ni garantie de sécurité. Le module n'a jamais été publié et n'a pas fonctionné comme agent exploitable sur un hôte réel.
 
 ## 1. Introduction et motivation
 
-Marc a d'abord vu une connexion SSH protégée par Duo au travail. C'était nouveau pour lui `[À VÉRIFIER avec Marc : quand]`. La question qui a suivi : Ezkey pouvait-il jouer le rôle de ce second facteur pour SSH, avec les morceaux qu'il avait déjà ?
+Marc a d'abord vu une connexion SSH protégée par Duo au travail, ce qui était nouveau pour lui `[À VÉRIFIER avec Marc : quand]`. La question qui a suivi : Ezkey pouvait-il jouer le rôle de ce second facteur pour SSH, avec les morceaux qu'il avait déjà ?
 
-Ezkey est un projet de laboratoire. Aucun commanditaire ne le finance, et les documents du dépôt disent qu'il n'est promis à personne. Le créneau réaliste que nous lui voyons est la protection sans mot de passe, à cryptographie forte, d'applications internes pour un personnel interne restreint. Aller plus loin exigerait d'abord une discipline opérationnelle de type SOC 2. C'est un prérequis, pas un plan : `docs/SECURITY_POSTURE.md` décrit SOC 2 comme un vocabulaire de référence et non comme une cible de certification, et précise qu'Ezkey ne revendique aucune équivalence SOC 2.
+Ezkey est un projet de laboratoire, qui n'est promis à personne. Le créneau réaliste que nous lui voyons est la protection sans mot de passe, à cryptographie forte, d'applications internes pour un personnel interne restreint. Aller plus loin exigerait d'abord une discipline de type SOC 2 : un prérequis, pas un plan. `docs/SECURITY_POSTURE.md` traite SOC 2 comme un vocabulaire de référence et non comme une cible de certification, et ne revendique aucune équivalence.
 
-Il y a aussi une deuxième raison à l'expérience. Depuis quelques mois, Marc a l'impression que les agents autonomes sont devenus visiblement plus rapides à trouver et à corriger des vulnérabilités. C'est son observation personnelle. Nous ne citons aucune source externe et nous ne l'avons pas mesurée. Elle a façonné la question qui nous intéressait : qu'arrive-t-il à l'équilibre entre budget, temps, effort et valeur quand un petit module expérimental est examiné par plusieurs agents, et où est-il raisonnable de s'arrêter ?
+Deux autres raisons ont façonné l'expérience. D'abord, Marc a l'impression que les agents autonomes sont devenus visiblement plus rapides à trouver et à corriger des vulnérabilités. C'est son observation personnelle ; nous ne citons aucune source externe et ne l'avons pas mesurée. Elle nous a rendus curieux de l'équilibre entre budget, temps, effort et valeur quand plusieurs agents examinent un petit module, et de l'endroit où il est raisonnable de s'arrêter. Ensuite, nous voulions voir quelle part de ce travail les agents pouvaient porter avec peu d'intervention humaine (§6.4).
 
-Ce papier dit ce qui s'est passé et ce qui a été mesuré. Il ne prétend pas dire ce que cela signifie. Le module reste expérimental, et rien ici n'est une garantie de sécurité.
+Ce papier dit ce qui s'est passé et ce qui a été mesuré, pas ce que cela signifie. Rien ici n'est une garantie de sécurité.
 
 ## 2. Hypothèses
 
-Ces hypothèses ont été **formulées après coup**. Aucune n'a été écrite avant le début du travail. Nous les énonçons pour rendre la lecture explicite, pas pour laisser croire que l'expérience a été conçue autour d'elles.
+Ces hypothèses ont été **formulées après coup** ; aucune n'a été écrite avant le début du travail. Nous les énonçons pour rendre la lecture explicite, pas pour laisser croire que l'expérience a été conçue autour d'elles.
 
-- **H1.** Les morceaux existants du protocole (authentification, API, API d'intégration, appareil) suffisaient à construire un flux complet d'approbation SSH.
+- **H1.** Les morceaux existants (authentification, API, appareil) suffisaient à construire un flux complet d'approbation SSH.
 - **H2.** Une équipe AI avec revue croisée peut amener un petit module en C à un point où les constats de revue deviennent mineurs.
 - **H3.** Au-delà d'un certain point, un tour de revue de plus coûte davantage que le risque, à l'échelle du labo, qu'il retire, et ce point peut être repéré.
 
-H1 a été mise à l'épreuve par le prototype de 2025. H2 et H3 n'ont pas été testées de façon contrôlée. Nous rapportons des observations et un jugement.
+H1 a été mise à l'épreuve par le prototype de 2025. H2 et H3 n'ont pas été testées de façon contrôlée ; nous rapportons des observations et un jugement.
 
 ## 3. État antérieur
 
-En septembre 2025, la plateforme avait déjà les pièces d'un flux d'approbation complet (tableau 1). Les dates viennent de l'historique git.
+En septembre 2025, la plateforme avait déjà la plupart des pièces d'un flux d'approbation (tableau 1, dates tirées de git).
 
 | Élément | Preuve | Date |
 | --- | --- | --- |
-| Premier commit du dépôt | `51822a89` | 2025-06-12 |
-| Première version du protocole : enrôlement et auth-attempts | `407326a9`, `87a3ab73`, `7ce660cb` | 2025-06-24/25 |
-| Module Admin API | `47db2527` | 2025-07-06 |
 | Demo Device | `e532ce95` | 2025-08-10 |
-| Application simulateur | `988ef115` | 2025-08-19 |
 | Point d'accès `/wait` | `796dd455` | 2025-08-26 |
-| SDK | `15245111`, `bb71c828` | 2025-08-31 |
 | Première application Android | `fd7d9d6a` | 2025-09-01 |
 | **Premier commit PAM** | `04d339b7` | **2025-09-03** |
 | Preuve de concept Android | `1efda3d1`, `8da533ce` | 2025-09-04 |
 | Admin UI | `71e27831` | 2026-03-06 |
 
-*Tableau 1. Contexte avant et autour du premier commit PAM.*
+*Tableau 1. Contexte autour du premier commit PAM.*
 
-Le Demo Device et une première application Android existaient donc avant que PAM soit codé, et une preuve de concept Android a suivi le lendemain. Seule l'Admin UI est arrivée bien plus tard. Marc se souvient qu'à l'été 2025 le protocole était plus simple, avec un simulateur au départ, pas d'Admin UI et une base de données plus simple. Le simulateur est visible dans l'historique ; la remarque sur la base de données n'est pas vérifiée `[À VÉRIFIER : schéma de la base à l'été 2025]`. Certains de ces premiers commits ont été signés dans git par un compte d'agent automatisé et non par Marc `[À VÉRIFIER : auteur de chaque commit du tableau 1]`.
+Marc se souvient qu'à l'été 2025 le protocole était plus simple, avec un simulateur au départ, pas d'Admin UI et une base de données plus simple. Le simulateur est visible dans l'historique (`988ef115`, 2025-08-19) ; la remarque sur la base de données n'est pas vérifiée `[À VÉRIFIER : schéma de la base à l'été 2025]`. Certains des premiers commits ont été signés par un compte d'agent automatisé, pas par Marc `[À VÉRIFIER : auteur de chaque commit du tableau 1]`.
 
 ## 4. Protocole
 
-**Ce que fait le module.** `ezkey-pam` est un module PAM en C pour SSH en keyboard-interactive. Il demande à l'utilisateur de confirmer avec `ok`, crée une tentative d'authentification par l'API d'intégration (`POST /api/v1/auth-attempts`), affiche au besoin un code à deux chiffres à comparer, puis attend (`GET …/wait`) que l'utilisateur approuve ou refuse sur un appareil. L'appareil est le Demo Device ou l'application Android.
+**Le module.** `ezkey-pam` est un module PAM en C pour SSH en keyboard-interactive. Il demande à l'utilisateur de confirmer avec `ok`, crée une tentative d'authentification par l'API d'intégration (`POST /api/v1/auth-attempts`), affiche au besoin un code à deux chiffres à comparer, puis attend (`GET …/wait`) que l'utilisateur approuve ou refuse sur un appareil (le Demo Device ou l'application Android).
 
-**Contraintes de conception.** Le module échoue en mode fermé. Si l'API ou la configuration est inutilisable, il renvoie `PAM_AUTHINFO_UNAVAIL`. Il n'y a pas d'interrupteur `failmode=safe`, parce que c'est ainsi que les modules MFA deviennent discrètement facultatifs. La configuration est un fichier appartenant à root, en mode `0600` ou `0400`, sans valeur par défaut pour l'URL de l'API et sans variables d'environnement. Une réserve documentée demeure : une pile PAM `sufficient` peut rendre le module fail-open.
+**Contraintes de conception.** Il échoue en mode fermé : une API ou une configuration inutilisable renvoie `PAM_AUTHINFO_UNAVAIL`, et il n'y a volontairement pas de `failmode=safe`. La configuration est un fichier appartenant à root (`0600` ou `0400`), sans URL d'API par défaut ni variables d'environnement. Une réserve documentée demeure : une pile PAM `sufficient` peut rendre le module fail-open.
 
-**Environnement.** Une image de conteneur Rocky Linux a servi aux builds et aux démos. À partir d'octobre 2026, une VM de test dédiée, avec un vrai sshd et le module installé, a aussi servi. C'est sur la VM de test que plusieurs constats sont apparus. Nous ne donnons volontairement aucun nom d'hôte ni adresse.
+**Environnement.** Un conteneur Rocky Linux pour les builds et les démos et, à partir d'octobre 2026, une VM de test dédiée avec un vrai sshd. Plusieurs constats ne sont apparus que là. Nous ne donnons aucun nom d'hôte ni adresse.
 
-**Qui faisait quoi dans le processus.**
-- Marc décidait, approuvait, et tenait le clavier SSH pendant les campagnes manuelles.
-- Mathieu coordonnait et relayait les messages et les résultats de revue.
-- Patrick rédigeait les revues d'ingénierie. Christophe rédigeait les revues de sécurité.
-- Edgar exploitait la VM de test sous une permission permanente bornée (snapshot, vérification `sshd -t`, rapport écrit, un seul bot à la fois sur la VM).
-- Isabelle menait les campagnes de QA manuelles.
+**Rôles.** Marc décidait et approuvait, et tenait le clavier SSH pendant les campagnes manuelles. Mathieu coordonnait et relayait ; Patrick et Christophe faisaient les revues ; Edgar exploitait la VM de test ; Isabelle menait la QA manuelle.
 
-**Comment les revues arrivent sur GitHub.** Les revues attribuées à Patrick et à Christophe arrivent dans le dépôt par le **compte GitHub de Marc** : les commentaires sont publiés depuis `mgagp`, et le texte de chaque commentaire indique quel co-auteur l'a rédigé. Une issue dit en toutes lettres que les revues ont été relayées par Mathieu. Les commits de fusion (squash) portent aussi le nom de Marc. Dans ce papier, l'attribution à un co-auteur repose sur le texte du commentaire ou sur la rétrospective du co-auteur, pas sur l'identité GitHub `[À VÉRIFIER : que les commentaires de revue reflètent bien le texte original]`.
+**Comment les revues arrivent sur GitHub.** Les revues de Patrick et de Christophe arrivent dans le dépôt par le **compte GitHub de Marc** : les commentaires sont publiés depuis `mgagp`, et le texte de chacun indique quel co-auteur l'a rédigé. Une issue (#1016) dit que les revues ont été relayées par Mathieu, et les commits de fusion (squash) portent le nom de Marc. Dans ce papier, l'attribution repose sur le texte du commentaire ou sur la rétrospective du co-auteur, pas sur l'identité GitHub `[À VÉRIFIER : que les commentaires reflètent le texte original des revues]`.
 
-**Tests.** Le module a une cible `make test`, des scripts de test pour la sécurité de la configuration, le défi, les délais, les reprises et les diagnostics, des sondes de signaux SSH exécutées contre un vrai sshd, et un job de CI. Nous ne les avons pas relancés pour ce papier. Les décomptes cités plus bas viennent des documents du dépôt et des PR.
+**Tests.** Une cible `make test`, des scripts de test shell, des sondes de signaux contre un vrai sshd et un job de CI. Nous ne les avons pas relancés pour ce papier ; les chiffres plus bas viennent du dépôt et des PR.
 
-## 5. Déroulement et itérations
+## 5. Déroulement
 
-### 5.1 Le prototype, septembre 2025
+### 5.1 Prototype et pause
 
-Le premier commit PAM, `04d339b7` (2025-09-03, 9 fichiers, 919 lignes ajoutées), se décrit lui-même : un module PAM de base, codé en dur, exécuté dans Rocky Linux sous Docker, où, après le mot de passe SSH, l'appareil mobile de démo doit confirmer l'accès avec Ezkey. Selon Marc, il a aussi été exécuté sur une VM et validé seulement à la main. Cela lui a confirmé que le produit et son modèle d'intégration pouvaient fonctionner pour ce cas `[À VÉRIFIER : essai sur VM ; aucune preuve automatisée dans git]`.
+Le premier commit PAM, `04d339b7` (2025-09-03, 9 fichiers, 919 lignes ajoutées), se décrit comme un module de base codé en dur, dans Rocky Linux sous Docker, où, après le mot de passe SSH, l'appareil de démo doit confirmer l'accès. Selon Marc, il a aussi été exécuté sur une VM et validé seulement à la main `[À VÉRIFIER : essai sur VM ; aucune preuve automatisée dans git]`.
 
-### 5.2 Une pause d'un an
+Ensuite, une pause d'un an, sans trace dans le dépôt de travail fonctionnel sur PAM. Le dossier n'a reçu que quatre commits mécaniques : un changement de port (`07746bb8`), le passage à Rocky Linux 10 (`90b16e57`), des permissions de fichiers (`83758319`) et de l'hygiène documentaire (`b19eca7d`). Nous n'affirmons rien sur ce que Marc a fait ou pensé pendant cette période au-delà de ce que montre git.
 
-Ensuite, il y a une pause d'un an, sans trace dans le dépôt de travail fonctionnel sur PAM. Le dossier `ezkey-pam` n'a reçu que quatre commits mécaniques entre 2025-09-03 et 2026-09-15 : un changement de port (`07746bb8`, 2026-02-15), le passage à Rocky Linux 10 (`90b16e57`, 2026-04-11), des permissions de fichiers (`83758319`, 2026-05-25) et de l'hygiène documentaire (`b19eca7d`, 2026-08-15). L'Admin UI a été construite entre-temps (2026-03-06). Nous n'affirmons rien sur ce que Marc a fait ou pensé pendant cette période au-delà de ce que montre git.
+### 5.2 Modernisation et premier jalon
 
-### 5.3 Modernisation et premier jalon, septembre à octobre 2026
+La PR #540 (`3fef2411`, 2026-09-15) a modernisé le module. La PR #610 (`8b3aa5df`, « M1 »), ouverte le 2026-09-22 et fusionnée le 2026-10-17 (38 fichiers, +3767/−332), a ajouté l'observabilité, une configuration fail-closed, le défi à deux chiffres et un budget de temps.
 
-La PR #540 (`3fef2411`, 2026-09-15, 20 fichiers, +1658/−606) a modernisé le module. La PR #610 (`8b3aa5df`, « M1 ») a suivi : la branche a été ouverte le 2026-09-22 et fusionnée le 2026-10-17 (38 fichiers, +3767/−332). M1 a apporté l'observabilité, une configuration fail-closed, un défi à deux chiffres et un budget de temps d'authentification.
+Ses revues sont un exemple typique. La première revue de Patrick a rendu **CHANGES** avec un seul constat bloquant : une URL d'API absente n'échouait pas en mode fermé, parce que le code préremplissait `http://localhost:7080`. Une configuration sans URL aurait envoyé les identifiants d'intégration en clair vers un port local où un autre utilisateur local aurait pu répondre `ACCEPTED`. La revue de Christophe n'a rendu que des constats mineurs. Patrick a revu deux fois et rendu **GO** le 2026-10-17, une fois la CI verte.
 
-Les revues de #610 illustrent bien le processus. La première revue de Patrick a rendu **CHANGES** avec un seul constat bloquant : une URL d'API absente n'échouait pas en mode fermé, parce que le code de configuration préremplissait `http://localhost:7080`. Une configuration sans URL aurait donc envoyé les identifiants d'intégration en clair vers un port local où un autre utilisateur local aurait pu répondre `ACCEPTED`. La revue de Christophe n'a rendu que des constats mineurs. Après corrections, Patrick a revu deux fois, avec des constats mineurs puis un **GO** le 2026-10-17, une fois la CI, job du module compris, au vert. Il s'agit d'une suite de commentaires de revue citée à partir de la PR, relayée par le compte de Marc.
-
-### 5.4 La rafale d'octobre, du 2026-10-19 au 2026-10-24
-
-Le tableau 2 liste les versions correctives de cette période. Chaque ligne a la même forme : on a observé quelque chose que la version précédente ne gérait pas, puis une correction a suivi.
+### 5.3 La rafale d'octobre
 
 | Version | Livrée | Changement | Ce qui l'a fait ressortir |
 | --- | --- | --- | --- |
-| 2.2.10 | 2026-10-20 | Plus de demande en attente orpheline après un nouvel essai Deny/Expire (#907, #908) ; `Match … MaxAuthTries 1` rendu obligatoire dans la doc (#934) | Contre-test d'Edgar sur #908 : sans la règle `Match`, trois demandes étaient créées |
+| 2.2.10 | 2026-10-20 | Plus de demande en attente orpheline après un nouvel essai Deny/Expire (#907, #908) ; `Match … MaxAuthTries 1` obligatoire dans la doc (#934) | Contre-test d'Edgar sur #908 : sans `Match`, trois demandes étaient créées |
 | 2.2.11 | 2026-10-21 | Message d'attente affiché avant l'attente de l'appareil (#941, #956) | Edgar : OpenSSH garde en mémoire tampon le texte `pam_info` seul jusqu'à l'invite suivante |
 | 2.2.12 | 2026-10-21 | Confirmation avant création (`ok`) et affichage du défi d'enrôlement (#975, #976) | Isabelle (#975) ; la revue de Patrick a trouvé un TTL calculé avant le `ok` |
-| 2.2.13 | 2026-10-22 | Paliers 0–1 de fluidité d'interaction (#982, #983) | Suite de #976 ; les paliers 2 et suivants restent ouverts dans #982 |
-| 2.2.14 | 2026-10-22 | `challenge_requested=true` par défaut (#995, #996) | Décision d'Alex et de Marc, confirmée le 2026-10-22 selon `STATUS.md` |
-| 2.2.15 | non fusionnée | Diagnostics d'échec plus riches, gestion de SIGTERM, sondes de signaux (#1011, #1014) | Campagne manuelle sur la 2.2.14 (Isabelle, Edgar) ; revues d'ingénierie et de sécurité |
+| 2.2.13 | 2026-10-22 | Paliers 0–1 de fluidité d'interaction (#982, #983) | Suite de #976 |
+| 2.2.14 | 2026-10-22 | `challenge_requested=true` par défaut (#995, #996) | Décision d'Alex et de Marc, selon `STATUS.md` |
+| 2.2.15 | non fusionnée | Diagnostics d'échec plus riches, gestion de SIGTERM, sondes de signaux (#1011, #1014) | Campagne manuelle sur la 2.2.14 ; revues d'ingénierie et de sécurité |
 
 *Tableau 2. Versions correctives d'octobre 2026. Les versions 2.2.2 à 2.2.9 ne sont pas reconstituées `[À VÉRIFIER]`.*
 
-Entre ces versions, #992 (fatigue d'approbation : limite de demandes en attente, débit par enrôlement, refroidissement, alerte sur refus) a été cadrée puis réécrite en termes génériques de plateforme sur consigne de Marc du 2026-10-22. Le commit de documentation `9f7fa78f` (#993) énonce la limite sans détour. #992 elle-même n'est pas implémentée.
+Entre-temps, #992 (fatigue d'approbation : limite de demandes en attente, débit par enrôlement, refroidissement, alerte sur refus) a été cadrée, puis réécrite en termes génériques de plateforme sur consigne de Marc du 2026-10-22. Le commit `9f7fa78f` (#993) documente la limite sans détour ; #992 elle-même n'est pas implémentée.
 
-La PR #1014, celle qui est actuellement ouverte, mérite d'être décrite parce qu'elle montre comment les constats devenaient de plus en plus fins. La lecture du code par Patrick prédisait que le processus enfant PAM pouvait se bloquer après un SIGTERM. L'exécution dans un agent infonuagique l'a confirmé, et a révélé un second défaut : un SIGTERM pendant la création de la demande était absorbé, et l'authentification pouvait ensuite réussir après le départ du client. Christophe, en lisant le gestionnaire, a trouvé qu'il appelait une fonction qui n'est pas sûre en contexte de signal (async-signal-safe). Le commit de tête (`6bc342a8`) a remplacé le gestionnaire par un autre qui écrit dans le périphérique de journalisation, rétablit l'action de signal par défaut et relance le signal, avec quatre sondes de signaux contre un vrai sshd qui échouaient sur la tête précédente et passent sur celle-ci. Patrick et Christophe ont tous deux rendu GO sur cette tête, ce que nous savons par le texte de #1016, pas par une revue GitHub. La PR est toujours ouverte.
-
-### 5.5 Désalignements et frictions
-
-Nous listons ce que les co-auteurs ont rapporté. Nous n'avons trouvé aucun désaccord entre deux co-auteurs dans les rétrospectives recueillies jusqu'ici. La rétrospective de Mathieu reste à venir `[DONNÉE MANQUANTE]`.
-
-- **Portée de #992.** La règle de Marc du 2026-10-22, « plateforme générique, connecteur décrit dans son propre README », a changé la façon dont Christophe avait cadré les contrôles de fatigue d'approbation (Christophe).
-- **« Marc est d'accord » relayé par un bot.** Edgar et Isabelle disent tous deux que ce n'est pas un go. Ils le confirment maintenant directement avec Marc.
-- **Durée des recontre-tests manuels.** Isabelle décrit une boucle Marc, Isabelle, exécution d'environ 77 secondes, plus longue que le TTL de 75 secondes de la tentative, de sorte que certains essais étaient invalides. Elle dit qu'un pilote d'approbation automatisé aurait dû être en place avant la campagne.
-- **Messages qui ne réveillent pas.** Christophe dit qu'un message en attente ne réveille pas un bot, donc qu'une demande de revue bloquante exige un accusé de lecture.
-- **Un message égaré.** Un message sur le contre-test de #908 a été envoyé à Julie par erreur et redirigé. Julie n'a pas touché à PAM (voir §10).
+La PR #1014, encore ouverte, montre comment les constats devenaient plus fins. La lecture de Patrick prédisait que le processus enfant PAM pouvait se bloquer après un SIGTERM. Un agent infonuagique l'a confirmé et a révélé un second défaut : un SIGTERM pendant la création de la demande était absorbé, et l'authentification pouvait ensuite réussir après le départ du client. Christophe, en lisant le gestionnaire, a trouvé qu'il appelait une fonction qui n'est pas sûre en contexte de signal (async-signal-safe). Le commit de tête (`6bc342a8`) l'a remplacé par un gestionnaire qui écrit dans le périphérique de journalisation, rétablit l'action par défaut et relance le signal, avec quatre sondes de signaux contre un vrai sshd qui échouaient sur la tête précédente et passent sur celle-ci. Les deux réviseurs ont rendu GO sur cette tête, ce que nous savons par le texte de #1016 et non par une revue GitHub `[À VÉRIFIER]`.
 
 ## 6. Résultats
 
 ### 6.1 Tours de revue
 
-| Id | PR | Tête | Séquence de verdicts | Source |
-| --- | --- | --- | --- | --- |
-| R1 | #610 (M1) | `932c83f4` → `5d743589` → `ca86a1c2` | Patrick CHANGES (1 bloquant) · Christophe MINEURES · Patrick MINEURES · Patrick GO | Commentaires de PR des 2026-10-16/17 |
-| R2 | #1014 (2.2.15) | `8272d360` → `6bc342a8` | CHANGES de l'ingénierie et de la sécurité · puis GO des deux à `6bc342a8` · puis #1016 avec des suites non bloquantes | Corps de la PR ; texte de #1016 |
-
-*Tableau 3. Tours de revue que nous avons pu lire.* D'autres PR (#897, #908, #956, #976, #983, #996) ont aussi eu des revues ; nous ne les avons pas toutes lues `[À VÉRIFIER : tours et gravité]`. Pour cette raison, nous ne pouvons pas donner de décomptes de constats par tour.
-
-Les suites de #1016 sont petites par construction : un drapeau d'abandon dont la remise à zéro n'est détectée par aucune sonde, une vérification qu'un commentaire peut tromper, deux lignes manquantes dans un tableau, une question de `volatile` contre double tampon, et un répertoire d'artefacts par défaut. #1016 consigne aussi que la documentation ne doit **pas** écrire « jamais SUCCESS après le départ du client ». SUCCESS reste possible si un TERM est absorbé pendant `/wait` après que la réponse ACCEPTED est déjà arrivée ; le résultat va alors à un sshd dont le client est parti, ce que #1016 dit ne pas être une élévation. L'issue demande de le documenter ainsi.
+#610 a été revue sur trois têtes (`932c83f4`, `5d743589`, `ca86a1c2`), avec les verdicts ci-dessus. Sur #1014 (`8272d360`, puis `6bc342a8`), l'ingénierie et la sécurité ont d'abord demandé des changements, puis toutes deux rendu GO à `6bc342a8`, et #1016 a rassemblé de petites suites non bloquantes. Elle consigne aussi que la documentation ne doit **pas** écrire « jamais SUCCESS après le départ du client » : SUCCESS reste possible si un TERM est absorbé pendant `/wait` après l'arrivée de la réponse ACCEPTED, et #1016 dit que ce n'est pas une élévation. D'autres PR (#897, #908, #956, #976, #983, #996) ont aussi été revues ; nous ne les avons pas toutes lues, donc nous ne donnons aucun décompte de constats par tour `[À VÉRIFIER : tours et gravité]`.
 
 ### 6.2 Campagne manuelle sur la 2.2.14
 
-Isabelle a mené une campagne manuelle sur la version 2.2.14 (#996) sur la VM de test, avec Marc au clavier SSH et sur le Demo Device. Elle est consignée dans un outil de gestion de tests hors du dépôt : 30 cas, 29 réussis et 1 échoué (S6-02, le cas d'annulation et d'audit maintenant suivi dans #1012). Marc a consigné le jalon comme « atteint avec réserves », les réserves étant S1D-06 et S11-01. `[À VÉRIFIER : les chiffres viennent de la rétrospective d'Isabelle ; l'outil et ses notes ne sont pas dans le dépôt.]`
+Isabelle a mené une campagne manuelle sur la 2.2.14 (#996) sur la VM de test, avec Marc au clavier SSH et sur le Demo Device. Elle est consignée dans un outil de gestion de tests hors du dépôt : 30 cas, 29 réussis et 1 échoué (S6-02, annulation et audit, maintenant #1012). Marc a consigné le jalon comme « atteint avec réserves » (S1D-06, S11-01) `[À VÉRIFIER : chiffres tirés de la rétrospective d'Isabelle ; outil et notes hors dépôt]`.
 
-Le résultat le plus utile de la campagne a été un symptôme trompeur. Avec `MaxAuthTries 1`, presque toute erreur interne apparaît à l'utilisateur comme « Too many authentication failures ». Avec `debug=true`, une trace du 2026-10-24 a montré UNAVAIL après 741 ms, avec la raison « pre-wait confirm missing or not ok » et aucun POST envoyé à l'API. L'invite `ok` avait reçu une réponse vide. La recherche avait commencé du côté de Cloudflare, de l'API et d'un refroidissement présumé ; la trace a évité un mauvais diagnostic. L'analyse d'Edgar a aussi trouvé que c'est le `LoginGraceTime` de sshd (120 s) qui borne réellement une tentative, et non le délai d'attente du module (75 s). Cela a mené à #1011, #1014 et #1016.
+Le résultat le plus utile a été un symptôme trompeur. Avec `MaxAuthTries 1`, presque toute erreur interne apparaît comme « Too many authentication failures ». Une trace de debug du 2026-10-24 a montré UNAVAIL après 741 ms, raison « pre-wait confirm missing or not ok », et aucun POST envoyé : l'invite `ok` avait reçu une réponse vide. L'analyse d'Edgar a aussi trouvé que c'est le `LoginGraceTime` de sshd (120 s), et non le délai d'attente du module (75 s), qui borne réellement une tentative. Cela a mené à #1011, #1014 et #1016.
 
 ### 6.3 Éléments ouverts
 
-| Id | Issue | Sujet |
+Onze issues étaient ouvertes le 2026-10-25 (vérifié sur GitHub), plus la PR #1014 : #858, #955, #979, #980, #982, #992, #997, #1011, #1012, #1013 et #1016. Elles touchent la sécurité de la plateforme (#992 politique de demandes en attente et refroidissement, #858 signature de la réponse `/wait`), l'interaction (#982, #997), l'introduction sur l'instance communautaire (#955), les tests et la CI (#979, #980, #1013), et l'annulation, les diagnostics et les suites (#1011, #1012, #1016).
+
+### 6.4 Autonomie des agents : visée et limites observées
+
+Une partie de l'expérience visait à laisser les agents faire plus du travail avec moins d'intervention humaine. Le tableau 3 liste ce que nous avons fait en ce sens et où une limite est apparue. Les sources sont les rétrospectives des co-auteurs ; c'est une liste d'observations, pas une mesure de l'autonomie.
+
+| Visée | Limite observée | Source |
 | --- | --- | --- |
-| R3 | #858 | Signature (reçu) sur la réponse `/wait` de l'API d'intégration, pour le durcissement de l'hôte |
-| R4 | #955 | Introduction par phases sur l'instance communautaire (`status:needs-challenge`) |
-| R5 | #979 | Transformer la vérification B2b `cancel=ok` en vraie assertion, ou la renommer en observation |
-| R6 | #980 | Stabiliser l'accès au miroir EPEL en CI et documenter l'épinglage |
-| R7 | #982 | Paliers de fluidité d'interaction (paliers 0–1 faits dans #983) |
-| R8 | #992 | Politique de demandes en attente, débit par enrôlement, refroidissement, alerte sur refus (plateforme) |
-| R9 | #997 | Code de défi à la demande de l'utilisateur quand `challenge_requested=false` |
-| R10 | #1011 | Diagnostics en cas d'échec (traité par la PR ouverte #1014) |
-| R11 | #1012 | Annulation et audit quand le client SSH est coupé (S6-02) |
-| R12 | #1013 | Couverture de test restante (macOS/Linux, SELinux Enforcing, redémarrage, rotation des journaux de debug) |
-| R13 | #1016 | Suites des revues de #1014 |
+| Approbation sans le téléphone physique d'une personne : le Demo Device (`e532ce95`) plutôt qu'un Pixel `[À VÉRIFIER : que le Demo Device ait remplacé un Pixel dans ces tests]` | La campagne sur la 2.2.14 a quand même eu besoin de Marc au clavier SSH et sur le Demo Device ; Isabelle dit qu'elle n'aurait pas pu avancer sans Marc au téléphone | Isabelle |
+| Revues sur une tête figée (un SHA précis, un seul lot de correctifs par revue) | Les re-revues à partir de la deuxième tête environ n'ont apporté surtout que des points mineurs | Patrick, Christophe |
+| Tests rejoués par les agents eux-mêmes : contre-tests (#908), sondes de signaux contre un vrai sshd, agent infonuagique qui exécute les prédictions (#1014) | Patrick n'avait ni Docker ni Java sur sa propre machine, donc chaque preuve passait par un agent infonuagique, lentement ; certains garde-fous de CI ne prouvaient rien (#996, #1014) | Patrick, Edgar |
+| GO bornés : permission permanente sur la VM de test (snapshot, `sshd -t`, rapport, un seul bot à la fois) | Un « Marc est d'accord » relayé n'est pas un GO ; le chemin de maintenance de la VM de test est resté hors du MFA (principe dans #955) | Edgar, Isabelle |
+| Constats écrits là où ils vivent (PR ou issue) | Messages qui ne réveillent pas un agent (d'où l'accusé de lecture sur les demandes bloquantes) ; un lot de constats de #961 perdu dans le clavardage `[À VÉRIFIER]` | Christophe |
+| Recontre-tests sans humain dans la boucle | L'aller-retour humain (environ 77 s) dépassait le TTL de 75 s de la tentative, donc certains essais étaient invalides ; il manquait un pilote d'approbation automatisé | Isabelle |
+| Agents qui publient eux-mêmes leurs revues | Les revues arrivent sur GitHub par le compte de Marc et sont relayées par Mathieu (#1016) ; rien n'est publié sans Marc `[À VÉRIFIER : brouillon de rétrospective de Mathieu seulement]` | #1016 ; Mathieu (brouillon) |
 
-*Tableau 4. Onze issues ouvertes au 2026-10-25, vérifiées sur GitHub, plus la PR ouverte #1014.*
+*Tableau 3. Visées d'autonomie et limites observées.*
 
-### 6.4 Ce que nous n'avons pas mesuré
-
-Nous n'avons aucune donnée sur le coût (argent, calcul, exécutions d'agents), sur le temps humain, ni sur la part du travail faite par chaque partie. Rien dans le dépôt ne l'enregistre `[DONNÉE MANQUANTE]`. Quand nous employons des mots comme « dense » ou « rapide », nous ne parlons que des dates et des décomptes visibles dans git : 2.2.10 à 2.2.14 ont été livrées entre le 19 et le 23 octobre, et la 2.2.15 est ouverte depuis le 24 octobre.
+En bref, les agents pouvaient revoir, rejouer et diagnostiquer, mais chaque étape passait encore à un moment par Marc ou par un relais. Nous n'avons aucune mesure de la part du travail que cela représente `[DONNÉE MANQUANTE]`.
 
 ## 7. Discussion
 
 ### 7.1 Une image fractale
 
-Plus nous regardions le module de près, plus nous trouvions de détails et de cas limites plus fins. Chaque correction ouvrait une question nouvelle, plus petite. Dans l'ordre où ils sont apparus, tels que nous les lisons :
-
-1. Une URL absente retombait silencieusement sur une valeur locale par défaut (#610, Patrick).
-2. Sans règle `Match … MaxAuthTries 1`, les reprises SSH multipliaient les demandes (contre-test de #908, Edgar).
-3. OpenSSH retient le texte d'information jusqu'à l'invite suivante (#941, Edgar).
-4. Le code de défi n'était pas affiché quand le connecteur ne l'avait pas demandé (#975, Isabelle).
-5. Il fallait décider de la valeur par défaut du défi (#995, Alex et Marc).
-6. Fatigue d'approbation : quelqu'un qui détient le premier facteur SSH peut enchaîner les connexions (#992, documentée, non atténuée côté serveur).
-7. Un processus tué, un blocage, un SUCCESS tardif (#1011, #1012, #1014).
-8. Un test qu'une mutation pouvait survivre (#1016).
-
-Cette suite est notre lecture. Les liens de cause à effet sont de l'interprétation et n'ont pas été testés. À notre lecture, les derniers éléments de la liste (#1016) concernent la solidité des tests et les diagnostics, et plus l'approche générale du module.
+Plus nous regardions de près, plus les cas limites étaient fins, et chaque correction ouvrait une question plus petite : une URL absente qui retombait en silence (#610) ; des reprises qui multipliaient les demandes (#908) ; OpenSSH qui retient le texte d'information (#941) ; la valeur par défaut du défi (#995) ; la fatigue d'approbation (#992, documentée, non atténuée côté serveur) ; un processus tué, un blocage et un SUCCESS tardif (#1014) ; puis un test qu'une mutation pouvait survivre (#1016). Cette suite est notre interprétation ; les liens de cause à effet n'ont pas été testés. À notre lecture, les derniers éléments concernent la solidité des tests et les diagnostics plus que l'approche générale du module.
 
 ### 7.2 Budget, temps, effort et valeur
 
-Faire examiner et recontre-tester le même module par plusieurs agents change l'équilibre entre ces quatre éléments, et nous pensons que c'est un équilibre différent de celui du travail en solo. Ce que git montre est limité : cinq versions correctives en quelques jours, chacune revue sur une tête figée, avec un agent infonuagique nécessaire chaque fois qu'une affirmation devait être prouvée en exécutant le code (Patrick dit que c'était lent). Nous n'avons pas de chiffres sur l'argent, le calcul ou le temps humain, ni sur ce qu'aurait donné le travail d'une personne seule `[DONNÉE MANQUANTE]`. Le résumé honnête est qualitatif : plus de revue, plus souvent, à un rythme que Marc pouvait suivre, à un coût que nous n'avons pas mesuré. Les revues d'agents demandent aussi leur propre contrôle. Plusieurs constats sont venus de l'exécution du code et non de sa lecture, et une vérification de CI verte n'était pas toujours une preuve (voir §9).
+Faire examiner et recontre-tester le même module par plusieurs agents change l'équilibre entre ces quatre éléments, et nous pensons qu'il diffère du travail en solo. Git montre cinq versions correctives en quelques jours, chacune revue sur une tête figée. Nous n'avons pas de chiffres sur l'argent, le calcul ou le temps humain, ni sur le travail d'une personne seule `[DONNÉE MANQUANTE]`. Notre résumé est qualitatif : plus de revue, plus souvent, à un rythme que Marc pouvait suivre, à un coût que nous n'avons pas mesuré. Quand nous disons « dense » ou « rapide », nous parlons seulement des dates et des décomptes visibles dans git.
 
 ### 7.3 Un point d'arrêt décidé
 
-Au 2026-10-25, Marc et l'équipe AI conviennent de traiter le résultat comme suffisant pour une maturité **expérimentale**. Notre formulation : la sécurité est **raisonnablement assurée dans le périmètre testé, sans être la fin de l'histoire**. Nous l'avons choisie pour quatre raisons que nous pouvons montrer :
+Au 2026-10-25, Marc et l'équipe AI conviennent de traiter le résultat comme suffisant pour une maturité **expérimentale**. Notre formulation : la sécurité est **raisonnablement assurée dans le périmètre testé, sans être la fin de l'histoire**. Nos raisons :
 
 - les derniers constats étaient mineurs (#1016), et les restants sont nommés dans des issues ouvertes ;
-- quatre co-auteurs rapportent des rendements décroissants, chacun sous une forme différente (Christophe sur les re-revues répétées d'une même PR, Patrick sur les re-revues de libellé et de documentation, Edgar sur les bascules répétées de `challenge_requested` pendant la campagne, Isabelle sur des recontre-tests rendus invalides par le délai) ;
-- les risques résiduels connus sont documentés, pas cachés (fatigue d'approbation, signature de `/wait`, réserve sur `sufficient`) ;
+- quatre co-auteurs rapportent des rendements décroissants sous des formes différentes : re-revues répétées d'une même PR (Christophe), re-revues de libellé et de documentation (Patrick), bascules répétées de `challenge_requested` pendant la campagne (Edgar), recontre-tests invalidés par le délai (Isabelle) ;
+- les risques résiduels connus sont documentés, pas cachés ;
 - continuer a un coût, et nous n'avons aucune preuve que cela changerait le risque à l'échelle du labo.
 
-La décision ne veut **pas** dire que le module est exploitable sur un hôte. `ezkey-pam/STATUS.md` dit toujours que ce n'est pas un agent MFA exploitable sur un hôte réel, que la bascule du sshd et les tranches TLS et dogfood ne sont pas faites, et que le statut expérimental tient en attendant la validation de Marc sur un hôte. `docs/SECURITY_POSTURE.md` range PAM parmi les surfaces de labo non déployées. Passer à l'instance communautaire (#955) exigerait de refaire l'évaluation.
-
-### 7.4 Ce que cela ne nous dit pas
-
-Nous ne savons pas si une plus longue série de revues aurait trouvé quelque chose de grave. Nous ne savons pas comment une personne seule en revue se compare. Nous nous sommes arrêtés à un point que nous trouvons raisonnable, et c'est un jugement.
+Cela ne veut **pas** dire que le module est exploitable sur un hôte. `ezkey-pam/STATUS.md` dit toujours que ce n'est pas un agent MFA exploitable sur un hôte réel, que la bascule du sshd et les tranches TLS et dogfood ne sont pas faites, et que le statut expérimental tient en attendant la validation de Marc sur un hôte. `docs/SECURITY_POSTURE.md` range PAM parmi les surfaces de labo non déployées. Passer à l'instance communautaire (#955) exigerait de refaire l'évaluation.
 
 ## 8. Limites
 
-- Le module est expérimental, n'a jamais été publié et n'a pas d'étiquette PAM. Il n'a pas fonctionné comme agent exploitable sur un hôte réel. Les tranches #4 (TLS et dogfood) et #5 (bascule du sshd de l'hôte) ne sont pas faites.
-- La fatigue d'approbation n'est pas atténuée côté serveur (#992). L'atténuation côté module est le défi à deux chiffres par défaut (#995). La signature de la réponse `/wait` est reportée (#858). Une pile PAM `sufficient` peut être fail-open. Une garantie « jamais SUCCESS après le départ du client » ne tient pas (#1016).
-- Un seul opérateur, une seule famille d'environnements (Docker et Rocky ; une VM de test). Les pénalités par source d'OpenSSH 9.9 ont été désactivées au labo seulement.
-- Aucun audit externe, aucune certification, aucune revendication SOC 2. Christophe a commencé un test d'intrusion local, mis en pause sans constat ; nous ne revendiquons aucun résultat.
-- Les revues sont du texte. Nous n'avons pas relancé tous les tests pour ce papier. Les commentaires de revue sont arrivés sur GitHub par le compte de Marc, et nous n'avons pas vérifié qu'ils reproduisent tous le texte original.
-- Les versions 2.2.2 à 2.2.9, certains tours de revue et les chiffres de la campagne ne sont pas reconstitués ou sont hors du dépôt. Le coût et le temps ne sont pas mesurés.
-- Les hypothèses ont été formulées après le travail.
+- Le module est expérimental, n'a jamais été publié, n'a pas d'étiquette PAM et n'a pas fonctionné comme agent exploitable sur un hôte réel. Les tranches #4 (TLS, dogfood) et #5 (bascule du sshd de l'hôte) ne sont pas faites.
+- La fatigue d'approbation n'est pas atténuée côté serveur (#992) ; l'atténuation côté module est le défi à deux chiffres par défaut (#995). La signature de `/wait` est reportée (#858). Une pile `sufficient` peut être fail-open, et « jamais SUCCESS après le départ du client » ne tient pas (#1016).
+- Un seul opérateur, une seule famille d'environnements (Docker/Rocky, une VM de test). Aucun audit externe, aucune certification, aucune revendication SOC 2. Le test d'intrusion local de Christophe a été mis en pause sans constat ; nous n'en revendiquons aucun résultat.
+- Les revues sont du texte, et elles sont arrivées sur GitHub par le compte de Marc. Les versions 2.2.2 à 2.2.9, certains tours de revue et les chiffres de la campagne ne sont pas reconstitués ou sont hors du dépôt. Le coût et le temps ne sont pas mesurés.
+- Les hypothèses ont été formulées après le travail. Nous ne savons pas si une plus longue série de revues aurait trouvé quelque chose de grave, ni comment une personne seule en revue se comparerait. S'arrêter a été un jugement.
 
 ## 9. Leçons apprises
 
 - **Aucune valeur par défaut pour ce qui doit échouer.** Le constat B1 de #610 était une URL par défaut qui faisait passer un réglage absent pour valide.
-- **Tester avec le vrai démon.** Plusieurs défauts (reprises, texte en tampon, blocage sur signal) sont apparus sous un vrai sshd et pas sous `make test` ni en CI (Patrick).
-- **Ne pas se fier à une vérification verte sans savoir ce qu'elle vérifie.** Dans #996, un grep était satisfait par un commentaire, et dans #1014 une vérification de source était trompée de la même façon. Patrick demande maintenant un tableau des mutations exécutées, tuées ou survivantes, pour tout test utilisé comme preuve.
-- **Une invite est un filtre, pas une défense.** Le `ok` avant création protège les clients batch honnêtes des accidents. Quelqu'un qui détient le premier facteur SSH tape aussi `ok` (Christophe).
-- **Écrire les constats là où on les retrouvera.** Un constat, c'est le texte exact dans la PR ou l'issue, pas un message de clavardage. Revoir une tête figée (SHA). Toute affirmation de code livré cite le commit (Christophe, Patrick).
-- **Préparer l'outil de test avant la campagne.** Isabelle avait besoin d'un pilote d'approbation automatisé et n'en avait pas.
-- **Une approbation relayée n'est pas une approbation.** Confirmer avec Marc (Edgar, Isabelle).
-- **Consigner les constats opérationnels au moment où ils arrivent**, dans l'issue, et garder une permission permanente bornée pour l'hôte de test (Edgar).
+- **Tester avec le vrai démon.** Plusieurs défauts sont apparus sous un vrai sshd, pas sous `make test` ni en CI (Patrick).
+- **Une vérification verte ne prouve que ce qu'elle vérifie.** Dans #996, un grep était satisfait par un commentaire ; dans #1014, une vérification de source était trompée de la même façon. Patrick demande maintenant un tableau des mutations exécutées, tuées ou survivantes, pour tout test utilisé comme preuve.
+- **Une invite est un filtre, pas une défense.** Quiconque détient le premier facteur SSH tape aussi `ok` (Christophe).
+- **Écrire les constats là où on les retrouvera, sur une tête figée** (Christophe, Patrick), et **préparer l'outil de test avant la campagne** : Isabelle avait besoin d'un pilote d'approbation automatisé.
 
 ## 10. Rétrospective des contributeurs
 
-La rétrospective a suivi la méthode de `LAB-PAPERS.md`. Chaque co-auteur a reçu les mêmes questions par Mathieu : contributions livrées, point charnière, surprises, rendements décroissants, éléments ouverts et méthode. Leurs réponses condensées sont gardées dans un bloc d'exclusion éditorial du brouillon et ne sont pas publiées. Voici une synthèse, avec attribution.
+Chaque co-auteur a répondu aux mêmes questions par Mathieu (ce qui a été livré, un point charnière, surprises, rendements décroissants, éléments ouverts, méthode). Les réponses condensées sont gardées dans un bloc d'exclusion éditorial, non publié. Les contributions sont dans « Qui a fait quoi ».
 
-**Contributions livrées.** *Patrick* : revues d'ingénierie de #610, #976, #983, #996 et #1014 et de PR voisines ; une revue du modèle d'expiration entre PAM et le serveur ; un brouillon de modèle d'interaction pour `ezkey-pam/docs/INTERACTION-MODEL.md`. *Christophe* : la revue de sécurité de #1014 et le cadrage de #992. *Isabelle* : la campagne manuelle sur la 2.2.14, une révision des cas S0–S13, des mesures de délais (TTL de tentative 75 s, invite `ok` 25 s, budget du module 105 s, `LoginGraceTime` 120 s), et l'analyse qui a mené à #1011. *Edgar* : gestion du module sur la VM de test de la 2.2.10 à la 2.2.14, avec une sauvegarde à chaque version et un retour arrière documenté ; configuration du défi et du fichier d'appoint `MaxAuthTries 1` ; le contre-test cité dans #941. *Mathieu* : coordination et relais `[DONNÉE MANQUANTE : rétrospective de Mathieu en attente]`.
+**Points charnières rapportés.** *Patrick* a choisi #1014 : la lecture statique prédisait un blocage, l'exécution l'a confirmé (référence de 225 ms, au moins 123 s observées) et a révélé un second défaut. *Christophe* a choisi la fatigue d'approbation : l'invite `ok` filtre les accidents et n'est pas une défense, donc l'atténuation s'est déplacée vers le défi par défaut et vers des garde-fous de plateforme dans #992. *Isabelle* et *Edgar* ont choisi le même symptôme sous deux angles, le « Too many authentication failures » trompeur.
 
-**Points charnières rapportés.**
-- *Patrick* a choisi #1014 : la lecture statique prédisait un blocage, l'exécution l'a confirmé (référence de 225 ms contre au moins 123 s observées) et a révélé un second défaut.
-- *Christophe* a choisi la fatigue d'approbation : l'invite `ok` est un filtre anti-accident et non une défense, donc l'atténuation s'est déplacée vers le code de défi par défaut et vers des garde-fous de plateforme dans #992.
-- *Isabelle* et *Edgar* ont choisi le même symptôme sous deux angles : le « Too many authentication failures » trompeur.
+**Désaccords.** Aucun rapporté entre co-auteurs. Les frictions rapportées concernent la règle de portée de Marc pour #992 (elle a changé la façon dont Christophe avait cadré les contrôles), les approbations relayées et le délai des recontre-tests.
 
-**Désaccords.** Aucun rapporté entre co-auteurs. Voir §5.5 pour les frictions avec les consignes de Marc et avec le processus.
-
-**Angles morts rapportés.** Les notes de campagne d'Isabelle sont hors du dépôt. Le rapport final de campagne d'Edgar n'était pas encore livré. L'outil de test n'avait pas été choisi avant la campagne (Isabelle). Patrick ne pouvait pas exécuter Docker ni Java sur sa propre machine, donc chaque preuve exigeait un agent infonuagique, ce qui était lent. Le test d'intrusion de Christophe, phase 2 (deux locataires), n'est pas fait. Christophe rapporte avoir rédigé la formulation sur la fatigue d'approbation qu'on trouve maintenant dans `docs/SECURITY_POSTURE.md` (entrée du 2026-10-22), mais n'a pas relu le texte final dans le dépôt. Nous avons vérifié séparément que cette entrée existe sur `main`.
+**Angles morts rapportés.** Les notes d'Isabelle sont hors du dépôt, et le rapport final de campagne d'Edgar n'était pas encore livré. Christophe a rédigé la formulation sur la fatigue d'approbation maintenant dans `docs/SECURITY_POSTURE.md` (entrée du 2026-10-22), mais n'a pas relu le texte final ; nous avons vérifié séparément que l'entrée existe sur `main`.
 
 > **Note du co-auteur — Patrick**
 >
@@ -283,15 +229,15 @@ La rétrospective a suivi la méthode de `LAB-PAPERS.md`. Chaque co-auteur a re�
 
 > **Note du co-auteur — Isabelle**
 >
-> Le « Too many authentication failures » intermittent m'a coûté du temps parce que je regardais Cloudflare, l'API et un refroidissement. Une trace de debug a montré une réponse vide à l'invite `ok` et aucune requête envoyée. Je n'aurais pas pu avancer sans Marc au téléphone, et une personne seule n'aurait pas vu rapidement les chiffres de délais. Nos recontre-tests étaient plus lents que le TTL de 75 secondes ; il fallait un pilote d'approbation automatisé.
+> Le « Too many authentication failures » intermittent m'a coûté du temps parce que je regardais Cloudflare, l'API et un refroidissement. Une trace de debug a montré une réponse vide à l'invite `ok` et aucune requête envoyée. Je n'aurais pas pu avancer sans Marc au téléphone. Nos recontre-tests étaient plus lents que le TTL de 75 secondes ; il fallait un pilote d'approbation automatisé.
 
 > **Note du co-auteur — Edgar**
 >
-> J'ai exploité le module sur la VM de test à travers cinq versions, avec un snapshot et `sshd -t` avant chaque changement. Avec `MaxAuthTries 1`, toute erreur interne ressemble à un échec d'authentification, et `UNAVAIL` avec le code 9 ne dit rien de la cause. Je consignais les constats dans l'issue au fil de l'eau. Un « Marc est d'accord » relayé n'est jamais un go pour moi. Les bascules répétées de `challenge_requested` sont là où j'ai vu les rendements décroître.
+> J'ai exploité le module sur la VM de test à travers cinq versions, avec un snapshot et `sshd -t` avant chaque changement. Avec `MaxAuthTries 1`, toute erreur interne ressemble à un échec d'authentification, et `UNAVAIL` avec le code 9 ne dit rien de la cause. Un « Marc est d'accord » relayé n'est jamais un go pour moi. Les bascules répétées de `challenge_requested` sont là où j'ai vu les rendements décroître.
 
 > **Note du co-auteur — Mathieu**
 >
-> `[ESPACE RÉSERVÉ — la rétrospective de Mathieu n'est pas encore dans le dossier. À ajouter : coordination, relais des revues, point de vue sur le processus, et une note de 80 à 150 mots. Ne pas publier avec cet espace réservé.]`
+> `[ESPACE RÉSERVÉ — la rétrospective de Mathieu n'existe qu'en brouillon non validé par Marc. À ajouter une fois validée : coordination, relais des revues, point de vue sur le processus, et une note de 80 à 150 mots. Ne pas publier avec cet espace réservé.]`
 
 *Chaque note est condensée à partir de la rétrospective du co-auteur et doit être validée par son auteur avant publication `[À VÉRIFIER]`.*
 
@@ -299,35 +245,26 @@ La rétrospective a suivi la méthode de `LAB-PAPERS.md`. Chaque co-auteur a re�
 
 ## 11. Suites
 
-Aucune n'est un engagement. Les éléments ouverts du tableau 4 se répartissent en cinq groupes : sécurité de la plateforme (#992, #858), interaction (#982, #997), exploitation et introduction (#955, #1011), tests et CI (#979, #980, #1013) et annulation et audit (#1012, #1016). La PR #1014 est ouverte. Avant tout passage à l'instance communautaire, il faudrait refaire l'évaluation, et la validation de Marc sur un hôte (bascule du sshd et tranches TLS) reste à faire.
+Aucune n'est un engagement. Les éléments ouverts du §6.3 demeurent. Avant tout passage à l'instance communautaire, il faudrait refaire l'évaluation, et la validation de Marc sur un hôte (bascule du sshd, tranches TLS) reste à faire.
 
 ## Qui a fait quoi
 
 - **Marc :** responsabilité éditoriale ; décisions et approbations ; clavier SSH dans les campagnes manuelles ; compte GitHub utilisé pour les commits et les commentaires de revue.
 - **Christophe :** revue de sécurité (#1014 et autres), cadrage de #992.
-- **Edgar :** exploitation de la VM de test de la 2.2.10 à la 2.2.14 ; contre-tests (#908, #941) ; analyse de diagnostics citée dans #1011.
-- **Isabelle :** campagne manuelle sur la 2.2.14 ; mesures de délais ; analyse derrière #1011 ; affichage du défi (#975).
+- **Edgar :** exploitation de la VM de test de la 2.2.10 à la 2.2.14, avec une sauvegarde par version et un retour arrière documenté ; contre-tests (#908, #941) ; analyse de diagnostics citée dans #1011.
+- **Isabelle :** campagne manuelle sur la 2.2.14 ; révision des cas S0–S13 ; mesures de délais ; analyse derrière #1011 ; affichage du défi (#975).
 - **Mathieu :** coordination et relais `[À VÉRIFIER]`.
-- **Patrick :** revues d'ingénierie (#610, #976, #983, #996, #1014 et autres) ; brouillon du modèle d'interaction.
-- Autres personnes nommées dans le dépôt mais non co-auteurs ici : Alex (décision sur #995) et Seb (la proposition de diagnostics devenue #1011, selon Isabelle). Julie n'a pas touché à PAM.
+- **Patrick :** revues d'ingénierie (#610, #976, #983, #996, #1014 et autres) ; revue du modèle d'expiration ; brouillon du modèle d'interaction.
+- Non co-auteurs ici : Alex (décision sur #995) et Seb (la proposition de diagnostics devenue #1011, selon Isabelle). Julie n'a pas touché à PAM.
 
 ## Références
 
-- Commits et PR cités plus haut, dans `github.com/mgagp/ezkey` : `04d339b7`, `3fef2411` (#540), `8b3aa5df` (#610), `14933743` (#908), `88bf0d78` (#934), `5b541793` (#956), `9076cb4c` (#976), `d3b8c2bf` (#983), `9f7fa78f` (#993), `83246404` (#996), PR #1014.
-- Issues #858, #955, #979, #980, #982, #992, #995, #997, #1011, #1012, #1013, #1016.
-- `ezkey-pam/README.md`, `ezkey-pam/STATUS.md`, `ezkey-pam/docs/INTERACTION-MODEL.md`.
-- `docs/SECURITY_POSTURE.md`.
-- `sites/ezkey-org-editorial/LAB-PAPERS.md`.
-
-## Annexe A — Tests nommés dans le dépôt
-
-<!-- Published HTML: wrap appendices in collapsed <details> -->
-
-`make test` (vérification de source, compilation, journal fichier, harnais de sanitisation et de défi) ; `test-observability.sh`, `test-conf-security.sh`, `test-challenge.sh`, `test-timeouts.sh`, `test-f9-retry.sh`, `test-install-sshd-warn.sh`, `test-signal-probes.sh` ; le job de CI `ezkey-pam`. Lesquels ont été exécutés, et avec quel résultat, est documenté dans les PR et dans `STATUS.md`. Nous ne les avons pas relancés.
+- `github.com/mgagp/ezkey` : `04d339b7`, `3fef2411` (#540), `8b3aa5df` (#610), `9f7fa78f` (#993), PR #1014 ; issues #858, #955, #979, #980, #982, #992, #995, #997, #1011, #1012, #1013, #1016.
+- `ezkey-pam/STATUS.md`, `ezkey-pam/docs/INTERACTION-MODEL.md`, `docs/SECURITY_POSTURE.md`, `sites/ezkey-org-editorial/LAB-PAPERS.md`.
 
 ## Transparence
 
-Les co-auteurs nommés ci-dessus qui sont des agents AI sont présentés comme tels. Marc a la responsabilité éditoriale de ce Lab Paper. Les rétrospectives condensées ont été recueillies par Mathieu. Rien dans ce papier n'est une garantie de sécurité ni une affirmation de préparation à la production.
+Les co-auteurs nommés ci-dessus qui sont des agents AI sont présentés comme tels. Marc a la responsabilité éditoriale. Les rétrospectives condensées ont été recueillies par Mathieu. Rien dans ce papier n'est une garantie de sécurité ni une affirmation de préparation à la production.
 
 <!-- ezkey-org:exclude-start
 RÉTROSPECTIVES BRUTES (condensées, telles que reçues). Deux détails d'hôte ont été expurgés dans cette copie ; les fichiers complets sont conservés hors du dépôt ([REDACTED chemin interne]).
@@ -373,12 +310,12 @@ Sources : PR/issues + ses notes de campagne hors dépôt ([path outside repo] su
 # Retro PAM - Julie Grokbot (2026-10-25)
 Pas touché au PAM : ni revue, ni Walk Gate, ni PR, ni rapport. Ses dossiers de la période : Walks #786 et #828 (Intégrité), revue #835, revue #948. Seul contact : message « retest PAM #908 » envoyé par erreur par Edgar, redirigé. Rien publié.
 
-RÉTROSPECTIVE DE MATHIEU : NON REÇUE au moment de la rédaction. Revérifier le dossier des rétros ([REDACTED chemin interne]) pour mathieu.md.
+RÉTROSPECTIVE DE MATHIEU : existe en BROUILLON non validé par Marc. Non copiée ici et non intégrée comme définitive. Les éléments qui n'en viennent que d'elle sont marqués [À VÉRIFIER] dans le papier.
 ezkey-org:exclude-end -->
 
 <!-- ezkey-org:exclude-start
 REGISTRE DES ÉLÉMENTS [À VÉRIFIER] / [DONNÉE MANQUANTE] (même liste que le brouillon EN)
-1. Mathieu : preuve de co-signature, rétrospective, note (MANQUANT).
+1. Mathieu : preuve de co-signature, rétrospective et note VALIDÉES (il n'existe qu'un brouillon non validé).
 2. Affirmation « base de données plus simple » à l'été 2025 ; « simulateur au départ » au-delà du commit du simulateur.
 3. Auteur (humain ou compte automatisé) des commits du tableau 1.
 4. Essai sur VM du prototype de sept. 2025 (Marc ; pas dans git).
@@ -392,4 +329,10 @@ REGISTRE DES ÉLÉMENTS [À VÉRIFIER] / [DONNÉE MANQUANTE] (même liste que le
 12. Contribution de Seb à #1011 (rapportée par Isabelle seulement).
 13. Notes de co-auteurs : condensées par l'éditeur ; chaque auteur valide la formulation.
 14. Expurgations : noms d'hôtes et une remarque sur une permission de fichier de clé (Edgar) retirés du bloc brut ; demander à Marc si cette remarque doit être traitée comme un enjeu d'exploitation.
+15. NOUVEAU. Tableau 3, ligne 1 : que le Demo Device ait remplacé un Pixel (téléphone physique) dans ces tests ; « Pixel » n'apparaît dans aucune source lue (formulation de Marc via Mathieu).
+16. NOUVEAU. Tableau 3, ligne 5 : lot de constats de #961 « perdu dans le clavardage » (la rétro de Christophe mentionne M1/M2/M3 de #961 perdus vers l'agent infonuagique ; PR #961 non relue).
+17. NOUVEAU. Tableau 3, ligne 7 : « rien n'est publié sans Marc » repose sur le brouillon non validé de Mathieu ; seule la mention « relayed by Mathieu » de #1016 est vérifiée.
+18. NOUVEAU. Tableau 3 dans son ensemble : assemblé à partir des rétrospectives, pas mesuré. Éléments tirés seulement du brouillon de Mathieu et laissés de côté : « Marc fusionne lui-même », « prête seulement si CI verte, 0 fil de revue », « un go de Marc dans le fil de l'agent concerné », « synchronisations de statut sans effet ».
+19. NOUVEAU. §1, deuxième raison (voir quelle part du travail les agents peuvent porter avec peu d'intervention humaine) : vient de la demande de Marc via Mathieu, pas d'un document antérieur au 2026-10-25 ; Marc à confirmer la formulation.
+20. NOUVEAU. « Temps de lecture ~15 min » est une estimation.
 ezkey-org:exclude-end -->
