@@ -60,7 +60,7 @@ class TinkKeyManagerConcurrencyTest {
   @DisplayName("getAeadPrimitive concurrent calls do not block on slow database version check")
   void getAeadPrimitive_concurrentReaders_completeWithoutSerializingOnDbCheck(@TempDir Path tempDir)
       throws Exception {
-    TinkFixture fixture = TinkFixture.hybridWithRepository(tempDir, slowVersionRepository(400));
+    TinkFixture fixture = TinkFixture.databaseWithRepository(tempDir, slowVersionRepository(400));
 
     int threadCount = 12;
     int iterationsPerThread = 25;
@@ -115,14 +115,13 @@ class TinkKeyManagerConcurrencyTest {
 
     TinkKeyManager manager =
         initializeManager(
-            masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.HYBRID, repository);
+            masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.DATABASE, repository);
     long primaryAtStartup = manager.getCurrentPrimaryKeyId();
 
     manager.saveKeysetToDatabase("TEST_INIT");
     KeysetBlob stalePrimaryBlob = copyBlob(storedBlob.get());
 
     long rotatedPrimary = manager.rotateKey();
-    manager.saveKeysetToDatabase("TEST_ROTATE");
     KeysetBlob rotatedBlob = copyBlob(storedBlob.get());
 
     assertNotEquals(primaryAtStartup, rotatedPrimary);
@@ -143,7 +142,9 @@ class TinkKeyManagerConcurrencyTest {
   @DisplayName("addKeyWithoutPromotion allows concurrent getAeadPrimitive readers")
   void addKeyWithoutPromotion_whileConcurrentReaders_allSucceed(@TempDir Path tempDir)
       throws Exception {
-    TinkFixture fixture = TinkFixture.fileOnly(tempDir);
+    AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>();
+    TinkFixture fixture =
+        TinkFixture.databaseWithRepository(tempDir, versionedRepository(storedBlob));
 
     int readerCount = 8;
     CountDownLatch startLatch = new CountDownLatch(1);
@@ -235,9 +236,9 @@ class TinkKeyManagerConcurrencyTest {
   }
 
   @Test
-  @DisplayName("tampered database encrypted-keyset envelope is rejected")
-  void loadKeysetFromDatabase_whenEncryptedEnvelopeIsTampered_keepsCurrentKeyset(
-      @TempDir Path tempDir) throws Exception {
+  @DisplayName("tampered database encrypted-keyset envelope fails closed (invariant 8)")
+  void loadKeysetFromDatabase_whenEncryptedEnvelopeIsTampered_throws(@TempDir Path tempDir)
+      throws Exception {
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
     writeMasterKey(masterKeyPath);
@@ -258,7 +259,8 @@ class TinkKeyManagerConcurrencyTest {
       tamperedBlob.setKeysetData(tamperedJson.getBytes(StandardCharsets.UTF_8));
       storedBlob.set(tamperedBlob);
 
-      assertFalse(manager.loadKeysetFromDatabase());
+      assertThrows(IllegalStateException.class, manager::loadKeysetFromDatabase);
+      // Live primary unchanged until a successful load replaces it.
       assertEquals(primaryKeyId, manager.getCurrentPrimaryKeyId());
     } finally {
       manager.shutdownKeysetCheckExecutor();
@@ -266,46 +268,67 @@ class TinkKeyManagerConcurrencyTest {
   }
 
   @Test
-  @DisplayName("new encrypted keyset reader loads legacy JSON encrypted files")
-  void initialize_whenLegacyEncryptedKeysetFileExists_loadsIt(@TempDir Path tempDir)
+  @DisplayName("legacy keyset file alone does not initialize without a database blob")
+  void initialize_whenOnlyLegacyKeysetFileExists_doesNotInitialize(@TempDir Path tempDir)
       throws Exception {
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
     byte[] masterKey = writeMasterKey(masterKeyPath);
-    long expectedPrimaryKeyId = writeLegacyEncryptedKeyset(keysetPath, masterKey);
+    writeLegacyEncryptedKeyset(keysetPath, masterKey);
 
-    TinkKeyManager manager =
-        initializeManager(masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.FILE, null);
+    KeysetBlobRepository repository = Mockito.mock(KeysetBlobRepository.class);
+    when(repository.findKeyset()).thenReturn(Optional.empty());
+    when(repository.keysetExists()).thenReturn(false);
+    when(repository.insertSingletonIfAbsent(any(), any(), any())).thenReturn(1);
+    when(repository.findVersion()).thenReturn(Optional.of(1L));
 
+    TinkProperties properties = new TinkProperties();
+    properties.setEnabled(true);
+    properties.setRequired(false);
+    properties.setMasterKeyFile(masterKeyPath.toString());
+    properties.setKeysetFile(keysetPath.toString());
+    properties.getKeyset().setStorageMode(TinkProperties.Keyset.StorageMode.DATABASE);
+    properties.getKeyset().setWriter(false);
+    properties.getKeyset().setBootstrapWait(Duration.ZERO);
+
+    TinkKeyManager manager = new TinkKeyManager(properties, fixedProvider(repository));
     try {
-      assertEquals(expectedPrimaryKeyId, manager.getCurrentPrimaryKeyId());
+      manager.initialize();
+      assertFalse(
+          manager.isInitialized(),
+          "non-writer must not adopt a leftover keyset file; blob is sole SOOT");
     } finally {
       manager.shutdownKeysetCheckExecutor();
     }
   }
 
   @Test
-  @DisplayName("database keyset reader no longer treats legacy outer-encrypted blobs as current")
-  void initialize_whenLegacyDatabaseKeysetBlobExists_createsTinkNativeBlob(@TempDir Path tempDir)
+  @DisplayName("legacy outer-encrypted database blob fails startup without overwrite (invariant 8)")
+  void initialize_whenLegacyDatabaseKeysetBlobExists_failsWithoutOverwrite(@TempDir Path tempDir)
       throws Exception {
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
     byte[] masterKey = writeMasterKey(masterKeyPath);
     LegacyDatabaseKeyset legacyKeyset = legacyEncryptedDatabaseKeyset(masterKey);
+    byte[] originalBytes = legacyKeyset.blob().getKeysetData().clone();
     AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>(legacyKeyset.blob());
 
-    TinkKeyManager manager =
-        initializeManager(
-            masterKeyPath,
-            keysetPath,
-            TinkProperties.Keyset.StorageMode.DATABASE,
-            versionedRepository(storedBlob));
+    TinkProperties properties = new TinkProperties();
+    properties.setEnabled(true);
+    properties.setRequired(true);
+    properties.setMasterKeyFile(masterKeyPath.toString());
+    properties.setKeysetFile(keysetPath.toString());
+    properties.getKeyset().setStorageMode(TinkProperties.Keyset.StorageMode.DATABASE);
+    properties.getKeyset().setWriter(true);
 
+    TinkKeyManager manager =
+        new TinkKeyManager(properties, fixedProvider(versionedRepository(storedBlob)));
     try {
-      assertNotEquals(legacyKeyset.primaryKeyId(), manager.getCurrentPrimaryKeyId());
-      String blobJson = new String(storedBlob.get().getKeysetData(), StandardCharsets.UTF_8);
-      assertTrue(blobJson.contains("\"encryptedKeyset\""));
-      assertTrue(blobJson.contains("\"keysetInfo\""));
+      assertThrows(IllegalStateException.class, manager::initialize);
+      assertFalse(manager.isInitialized());
+      assertTrue(
+          java.util.Arrays.equals(originalBytes, storedBlob.get().getKeysetData()),
+          "legacy blob row must not be overwritten");
     } finally {
       manager.shutdownKeysetCheckExecutor();
     }
@@ -344,15 +367,16 @@ class TinkKeyManagerConcurrencyTest {
             });
     when(repository.findVersion())
         .thenAnswer(_ -> Optional.ofNullable(storedBlob.get()).map(KeysetBlob::getVersion));
-    when(repository.save(any(KeysetBlob.class)))
-        .thenAnswer(
-            invocation -> {
-              KeysetBlob blob = invocation.getArgument(0);
-              long version = storedBlob.get() == null ? 1L : storedBlob.get().getVersion() + 1;
-              blob.setVersion(version);
-              storedBlob.set(blob);
-              return blob;
-            });
+    org.mockito.stubbing.Answer<KeysetBlob> bumpVersion =
+        invocation -> {
+          KeysetBlob blob = invocation.getArgument(0);
+          long version = storedBlob.get() == null ? 1L : storedBlob.get().getVersion() + 1;
+          blob.setVersion(version);
+          storedBlob.set(blob);
+          return blob;
+        };
+    when(repository.save(any(KeysetBlob.class))).thenAnswer(bumpVersion);
+    when(repository.saveAndFlush(any(KeysetBlob.class))).thenAnswer(bumpVersion);
     return repository;
   }
 
@@ -462,6 +486,7 @@ class TinkKeyManagerConcurrencyTest {
     when(repository.insertSingletonIfAbsent(any(), any(), any())).thenReturn(1);
     when(repository.findVersion()).thenReturn(Optional.of(1L));
     when(repository.save(any(KeysetBlob.class))).thenReturn(null);
+    when(repository.saveAndFlush(any(KeysetBlob.class))).thenReturn(null);
 
     TinkKeyManager manager =
         initializeManager(
@@ -482,23 +507,14 @@ class TinkKeyManagerConcurrencyTest {
   private record LegacyDatabaseKeyset(KeysetBlob blob, long primaryKeyId) {}
 
   private record TinkFixture(TinkKeyManager manager) {
-    static TinkFixture hybridWithRepository(Path tempDir, KeysetBlobRepository repository)
+    static TinkFixture databaseWithRepository(Path tempDir, KeysetBlobRepository repository)
         throws Exception {
       Path masterKeyPath = tempDir.resolve("master.key");
       Path keysetPath = tempDir.resolve("keyset.json.encrypted");
       writeMasterKey(masterKeyPath);
       return new TinkFixture(
           initializeManager(
-              masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.HYBRID, repository));
-    }
-
-    static TinkFixture fileOnly(Path tempDir) throws Exception {
-      Path masterKeyPath = tempDir.resolve("master.key");
-      Path keysetPath = tempDir.resolve("keyset.json.encrypted");
-      writeMasterKey(masterKeyPath);
-      return new TinkFixture(
-          initializeManager(
-              masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.FILE, null));
+              masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.DATABASE, repository));
     }
 
     void close() {

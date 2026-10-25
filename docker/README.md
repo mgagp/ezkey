@@ -164,7 +164,7 @@ Compose passes `TZ: ${TZ:-UTC}` into services; if `TZ` is unset, behavior stays 
 - **Port**: `9090`
 - **Purpose**: Cryptographic services for testing (key generation, signing, validation)
 - **Depends on**: PostgreSQL (healthy), Migration (completed)
-- **Health Check**: http://localhost:9091/actuator/health (management port; business port remains `9090`)
+- **Health Check (liveness)**: http://localhost:9091/actuator/health/liveness (encryption readiness: `/actuator/health/encryption`; business port remains `9090`)
 - **Note**: No database required, but included in stack for consistency
 
 ### Demo Device (demo-device)

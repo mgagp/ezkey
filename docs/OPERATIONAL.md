@@ -13,7 +13,7 @@ Spring profile **`docker`** (used by the community Lightsail host and `clean-sta
 | Property | Docker / community | Notes |
 |----------|--------------------|-------|
 | `ezkey.rate-limit.enabled` | `true` | Auth API pending/respond/bind/verify (SEC-005). `docker-test` turns this off for churn tests only. |
-| `ezkey.encryption.required` | `true` | Fail startup if Tink cannot initialize (SEC-002). |
+| `ezkey.encryption.required` | `true` (Java default + base/docker props) | Fail startup if Tink cannot initialize (SEC-002 / #961 C-M1). |
 | `ezkey.audit.integrity.required` | `true` | Fail startup if HMAC signing is inactive (SEC-008). |
 | `ezkey.trusted-proxies.required` | `true` when behind Caddy | Via `EZKEY_TRUSTED_PROXIES_REQUIRED` on Lightsail and `./docker/start.sh --with-proxy`. Leave `false` for direct-port local stacks (no reverse proxy). |
 | `ezkey.trusted-proxies.cidrs` | set on proxy stacks | `EZKEY_TRUSTED_PROXIES_CIDRS` — must cover the Docker/Caddy network. |
@@ -484,16 +484,24 @@ normative table × privilege matrix is
 | `ezkey_admin` | Admin API + schedulers |
 | `ezkey_auth` | Auth API |
 | `ezkey_integration` | Integration API |
+| `ezkey_crypto` | crypto-api lab stack only — `SELECT` on `ezkey_keyset_blob` (ADR-0016) |
 
 **Docker / clean-start:** roles are created on first Postgres init
 (`docker/postgres/init/01-create-roles.sh`); DML grants are applied after
 Flyway by `scripts/db/apply-grants.sh` (Compose service `db-grants`).
+
+**Existing volume upgrade (main → blob-only):** `docker-entrypoint-initdb.d` does **not**
+re-run. `apply-grants.sh` therefore **ensures** `ezkey_crypto` exists before applying grants
+(`ensure-crypto-role.sql`). `EZKEY_DB_CRYPTO_PASSWORD` is **required** on that path (no
+default). Smoke: `./scripts/db/test-upgrade-crypto-role.sh`. See also
+`community-upgrade-impact.md` §2.1a.
 
 **Local IDE:**
 
 ```bash
 ./scripts/db/create-roles.sh
 # run Flyway as ezkey_migrate
+export EZKEY_DB_CRYPTO_PASSWORD=...   # required by apply-grants.sh
 ./scripts/db/apply-grants.sh
 ./scripts/db/verify-grants.sh   # optional smoke
 ```
@@ -789,11 +797,30 @@ public class SecurityConfig {
 
 ## Backup and Recovery
 
+### What constitutes a restore set (ADR-0016)
+
+After the blob-only keyset cutover, a recoverable backup is:
+
+1. **Database dump** (`pg_dump` of the Ezkey database, including `ezkey_keyset_blob`)
+2. **`master.key`** (file/secret that wraps the Tink keyset envelope)
+
+There is **no keyset-file primary**. Leftover keyset files on a secrets volume (if any) are not a
+supported restore path. Encrypted off-host backup / KMS escrow is tracked separately
+([#953](https://github.com/mgagp/ezkey/issues/953)).
+
+### Community host honesty
+
+The community public-alpha host (`<static-ip ezkey-online-community>`, also known as ezkey.online)
+has **no guaranteed backup**. Operators must not assume `pg_dump` or `master.key` escrow exists
+there unless they have verified a backup they themselves control. Prefer in-place upgrade over
+full reinstall when possible; see
+[`product-docs/global/decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md`](../product-docs/global/decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md).
+
 ### Database Backup
 
 ```bash
 #!/bin/bash
-# backup-ezkey-db.sh
+# backup-ezkey-db.sh — restore set part 1 (pg_dump includes ezkey_keyset_blob)
 
 BACKUP_DIR="/var/backups/ezkey"
 DATE=$(date +%Y%m%d_%H%M%S)
@@ -812,17 +839,22 @@ find $BACKUP_DIR -name "ezkey_*.sql.gz" -mtime +30 -delete
 gunzip -t $BACKUP_DIR/ezkey_$DATE.sql.gz
 ```
 
-### Application Backup
+### Master key (restore set part 2)
+
+Escrow `master.key` (and `audit-hmac.key` when integrity is enabled) with the same care as the
+database dump. Without the master key, the keyset blob in a restored dump cannot be opened.
+
+### Application configuration backup
 
 ```bash
 #!/bin/bash
-# backup-ezkey-app.sh
+# backup-ezkey-app.sh — config/systemd only (not a keyset restore path)
 
 APP_DIR="/opt/ezkey"
 BACKUP_DIR="/var/backups/ezkey/app"
 DATE=$(date +%Y%m%d_%H%M%S)
 
-# Backup application configuration
+# Backup application configuration (not keyset authority)
 tar -czf $BACKUP_DIR/ezkey_config_$DATE.tar.gz \
     $APP_DIR/config/ \
     $APP_DIR/application.properties \

@@ -5,8 +5,8 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: KeysetStorageCharacterizationTest
- * Description: Pins current main keyset load/startup/rotation/failure behavior before the
- *              DB-only refactor (#952 / ADR-0016).
+ * Description: Post-cutover assertions for blob-only keyset behavior (#952 / ADR-0016).
+ *              Mutation-probed invariants 1–8 live in KeysetBlobOnlyInvariantTest.
  */
 package org.ezkey.security;
 
@@ -55,46 +55,48 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataAccessResourceFailureException;
 
 /**
- * Characterization of keyset storage behavior on {@code main} before the DB-blob-only cutover.
+ * Post-cutover keyset storage assertions for the DB-blob-only cutover (ADR-0016 / #952).
  *
  * <p>Decision pack: {@code
- * product-docs/global/decisions/2026-10-21-keyset-storage-strategy/design.md}. Methods that pin
- * behavior the refactor will invert are marked {@code EXPECTED TO CHANGE} with the design section
- * that owns the target.
+ * product-docs/global/decisions/2026-10-21-keyset-storage-strategy/design.md}. Suite methods that
+ * formerly pinned pre-refactor behavior have been flipped to target post-cutover semantics.
+ * Mutation-probed invariants 1–8 are in {@link KeysetBlobOnlyInvariantTest}. The remaining {@code
+ * EXPECTED TO CHANGE} marker is deferred to GitHub issue 942 ({@code required=false} purge).
  *
  * @since 2026
  */
 class KeysetStorageCharacterizationTest {
 
   @Test
-  @DisplayName("StorageMode enum currently exposes FILE, DATABASE, and HYBRID")
-  void storageModeEnum_includesFileDatabaseAndHybrid() {
-    // EXPECTED TO CHANGE — design §2.2 / §4 (FILE and HYBRID removed)
+  @DisplayName("StorageMode enum exposes only DATABASE after blob-only cutover")
+  void storageModeEnum_databaseOnly() {
+    // Flipped — design §2.2 / §4 (FILE and HYBRID removed)
     Set<String> names =
         Arrays.stream(TinkProperties.Keyset.StorageMode.values())
             .map(Enum::name)
             .collect(Collectors.toSet());
-    assertTrue(names.contains("FILE"));
     assertTrue(names.contains("DATABASE"));
-    assertTrue(names.contains("HYBRID"));
-    assertEquals(3, names.size());
+    assertFalse(names.contains("FILE"));
+    assertFalse(names.contains("HYBRID"));
+    assertEquals(1, names.size());
   }
 
   @Test
   @DisplayName(
-      "version-check throttle constant is 5000 ms (tick shorter than typical sync windows)")
-  void databaseCheckIntervalMs_isFiveSeconds() throws Exception {
-    // Pins invariant-4 baseline (design §3 #4); implementation may keep or bound this value.
+      "version-check throttle upper bound is 5000 ms (tick shorter than typical sync windows)")
+  void databaseCheckIntervalMs_isAtMostFiveSeconds() throws Exception {
+    // Pins invariant-4 baseline (design §3 #4 / Q5); hard upper bound ≤ 5 s.
     Field field = TinkKeyManager.class.getDeclaredField("DATABASE_CHECK_INTERVAL_MS");
     field.setAccessible(true);
     assertEquals(5000L, field.getLong(null));
+    assertTrue(field.getLong(null) <= 5000L, "DATABASE_CHECK_INTERVAL_MS must be ≤ 5000 ms");
   }
 
   @Test
-  @DisplayName("writer DATABASE boot with existing keyset file syncs blob via STARTUP_FILE_SYNC")
-  void initialize_writerDatabase_existingFile_syncsBlobFromFile(@TempDir Path tempDir)
+  @DisplayName("writer DATABASE boot ignores leftover keyset file and claims a new blob")
+  void initialize_writerDatabase_existingFile_ignoresFileAndClaimsBlob(@TempDir Path tempDir)
       throws Exception {
-    // EXPECTED TO CHANGE — design §2.1 / §4 (no file authority; STARTUP_FILE_SYNC removed)
+    // Flipped — design §2.1 / §4 (no file authority; STARTUP_FILE_SYNC removed)
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
     byte[] masterKey = TestMasterKeys.write(masterKeyPath);
@@ -113,19 +115,20 @@ class KeysetStorageCharacterizationTest {
 
     try {
       assertTrue(manager.isInitialized());
-      assertTrue(Files.exists(keysetPath));
-      assertTrue(storedBlob.get() != null, "STARTUP_FILE_SYNC must persist a blob today");
-      verify(repository, times(1)).save(any(KeysetBlob.class));
+      assertTrue(Files.exists(keysetPath), "leftover file may remain on disk");
+      assertTrue(storedBlob.get() != null, "writer must claim a blob without file sync");
+      verify(repository, times(1)).insertSingletonIfAbsent(any(), any(), any());
+      verify(repository, never()).save(any(KeysetBlob.class));
     } finally {
       manager.shutdownKeysetCheckExecutor();
     }
   }
 
   @Test
-  @DisplayName("writer DATABASE boot generates a keyset file when blob and file are both missing")
-  void initialize_writerDatabase_empty_generatesFileAndClaimsBlob(@TempDir Path tempDir)
+  @DisplayName("writer DATABASE boot claims a blob without writing a keyset file")
+  void initialize_writerDatabase_empty_claimsBlobWithoutFile(@TempDir Path tempDir)
       throws Exception {
-    // EXPECTED TO CHANGE — design §2.1 (generate blob without writing a keyset file)
+    // Flipped — design §2.1 (generate blob without writing a keyset file)
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
     TestMasterKeys.write(masterKeyPath);
@@ -143,7 +146,7 @@ class KeysetStorageCharacterizationTest {
 
     try {
       assertTrue(manager.isInitialized());
-      assertTrue(Files.exists(keysetPath), "today the writer still materializes a keyset file");
+      assertFalse(Files.exists(keysetPath), "blob-only writer must not materialize a keyset file");
       assertTrue(storedBlob.get() != null);
     } finally {
       manager.shutdownKeysetCheckExecutor();
@@ -207,24 +210,49 @@ class KeysetStorageCharacterizationTest {
   }
 
   @Test
-  @DisplayName("FILE mode non-writer loads an existing keyset file without touching the repository")
-  void initialize_fileMode_nonWriter_loadsExistingFile(@TempDir Path tempDir) throws Exception {
-    // EXPECTED TO CHANGE — design §2.2 / §4 (FILE mode removed)
+  @DisplayName("enabled encryption without repository fails when required=true (FILE mode removed)")
+  void initialize_requiredWithoutRepository_failsClosed(@TempDir Path tempDir) throws Exception {
+    // Flipped — design §2.2 / §4 (FILE mode removed)
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
-    byte[] masterKey = TestMasterKeys.write(masterKeyPath);
-    long expectedPrimary = writeNativeEncryptedKeysetFile(keysetPath, masterKey);
+    TestMasterKeys.write(masterKeyPath);
 
     TinkProperties properties = baseProperties(masterKeyPath, keysetPath);
     properties.setRequired(true);
-    properties.getKeyset().setStorageMode(TinkProperties.Keyset.StorageMode.FILE);
+    properties.getKeyset().setStorageMode(TinkProperties.Keyset.StorageMode.DATABASE);
     properties.getKeyset().setWriter(false);
 
     TinkKeyManager manager = new TinkKeyManager(properties, fixedProvider(null));
     try {
-      manager.initialize();
-      assertTrue(manager.isInitialized());
-      assertEquals(expectedPrimary, manager.getCurrentPrimaryKeyId());
+      assertThrows(IllegalStateException.class, manager::initialize);
+      assertFalse(manager.isInitialized());
+    } finally {
+      manager.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  @Test
+  @DisplayName("legacy outer-encrypted DB blob fails writer boot without overwrite (invariant 8)")
+  void initialize_legacyDatabaseBlob_failsWithoutOverwrite(@TempDir Path tempDir) throws Exception {
+    // Flipped — design §3 invariant #8 / §2.3 (legacy fails startup; no overwrite)
+    Path masterKeyPath = tempDir.resolve("master.key");
+    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
+    byte[] masterKey = TestMasterKeys.write(masterKeyPath);
+    LegacyDatabaseKeyset legacy = legacyEncryptedDatabaseKeyset(masterKey);
+    byte[] originalBytes = legacy.blob().getKeysetData().clone();
+    AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>(legacy.blob());
+
+    TinkProperties properties = baseProperties(masterKeyPath, keysetPath);
+    properties.setRequired(true);
+    properties.getKeyset().setStorageMode(TinkProperties.Keyset.StorageMode.DATABASE);
+    properties.getKeyset().setWriter(true);
+
+    TinkKeyManager manager =
+        new TinkKeyManager(properties, fixedProvider(versionedRepository(storedBlob)));
+    try {
+      assertThrows(IllegalStateException.class, manager::initialize);
+      assertFalse(manager.isInitialized());
+      assertTrue(java.util.Arrays.equals(originalBytes, storedBlob.get().getKeysetData()));
     } finally {
       manager.shutdownKeysetCheckExecutor();
     }
@@ -232,40 +260,10 @@ class KeysetStorageCharacterizationTest {
 
   @Test
   @DisplayName(
-      "legacy outer-encrypted DB blob is overwritten with a Tink-native envelope on writer boot")
-  void initialize_legacyDatabaseBlob_overwritesWithNativeEnvelope(@TempDir Path tempDir)
+      "unloadable blob fails closed and does not delete leftover keyset file (invariant 7)")
+  void initialize_tamperedBlob_failsClosedWithoutDeletingFile(@TempDir Path tempDir)
       throws Exception {
-    // EXPECTED TO CHANGE — design §3 invariant #8 / §2.3 (legacy fails startup; no overwrite)
-    Path masterKeyPath = tempDir.resolve("master.key");
-    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
-    byte[] masterKey = TestMasterKeys.write(masterKeyPath);
-    LegacyDatabaseKeyset legacy = legacyEncryptedDatabaseKeyset(masterKey);
-    AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>(legacy.blob());
-
-    TinkKeyManager manager =
-        initializeManager(
-            masterKeyPath,
-            keysetPath,
-            TinkProperties.Keyset.StorageMode.DATABASE,
-            versionedRepository(storedBlob),
-            true);
-
-    try {
-      assertTrue(manager.isInitialized());
-      assertNotEquals(legacy.primaryKeyId(), manager.getCurrentPrimaryKeyId());
-      String blobJson = new String(storedBlob.get().getKeysetData(), StandardCharsets.UTF_8);
-      assertTrue(blobJson.contains("\"encryptedKeyset\""));
-      assertTrue(blobJson.contains("\"keysetInfo\""));
-    } finally {
-      manager.shutdownKeysetCheckExecutor();
-    }
-  }
-
-  @Test
-  @DisplayName("failed DB load leaves an existing keyset file on disk (no B6 delete on main)")
-  void initialize_tamperedBlob_doesNotDeleteExistingKeysetFile(@TempDir Path tempDir)
-      throws Exception {
-    // Pins invariant-7 baseline on main (design §3 #7); B6 clearKeysetHandleFailClosed is absent.
+    // Flipped — design §3 #7 / #8: fail closed on unloadable blob; never unlink key material files.
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
     byte[] masterKey = TestMasterKeys.write(masterKeyPath);
@@ -276,52 +274,48 @@ class KeysetStorageCharacterizationTest {
     tampered.setVersion(1L);
     AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>(tampered);
 
-    TinkKeyManager manager =
-        initializeManager(
-            masterKeyPath,
-            keysetPath,
-            TinkProperties.Keyset.StorageMode.DATABASE,
-            versionedRepository(storedBlob),
-            true);
+    TinkProperties properties = baseProperties(masterKeyPath, keysetPath);
+    properties.setRequired(true);
+    properties.getKeyset().setStorageMode(TinkProperties.Keyset.StorageMode.DATABASE);
+    properties.getKeyset().setWriter(true);
 
+    TinkKeyManager manager =
+        new TinkKeyManager(properties, fixedProvider(versionedRepository(storedBlob)));
     try {
-      assertTrue(Files.exists(keysetPath), "runtime must not delete the keyset file today");
-      assertTrue(
-          manager.isInitialized(), "writer falls back to the existing file after unloadable blob");
+      assertThrows(IllegalStateException.class, manager::initialize);
+      assertTrue(Files.exists(keysetPath), "runtime must not delete leftover keyset files");
+      assertFalse(manager.isInitialized());
     } finally {
       manager.shutdownKeysetCheckExecutor();
     }
   }
 
   @Test
-  @DisplayName(
-      "DataAccessException on findKeyset does not invent a second blob when a file already exists")
-  void initialize_writer_dbFindThrows_fallsBackToExistingFile(@TempDir Path tempDir)
-      throws Exception {
-    // EXPECTED TO CHANGE — design §3 invariant #6 (DB error must never generate; also no file
-    // fallback)
+  @DisplayName("DataAccessException on findKeyset never generates a new keyset (invariant 6)")
+  void initialize_writer_dbFindThrows_leavesUninitialized(@TempDir Path tempDir) throws Exception {
+    // Flipped — design §3 invariant #6 (DB error must never generate; also no file fallback)
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
     byte[] masterKey = TestMasterKeys.write(masterKeyPath);
-    long expectedPrimary = writeNativeEncryptedKeysetFile(keysetPath, masterKey);
+    writeNativeEncryptedKeysetFile(keysetPath, masterKey);
 
     KeysetBlobRepository repository = Mockito.mock(KeysetBlobRepository.class);
     when(repository.findKeyset())
         .thenThrow(new DataAccessResourceFailureException("simulated DB outage"));
     when(repository.keysetExists()).thenReturn(false);
 
-    TinkKeyManager manager =
-        initializeManager(
-            masterKeyPath,
-            keysetPath,
-            TinkProperties.Keyset.StorageMode.DATABASE,
-            repository,
-            true);
+    TinkProperties properties = baseProperties(masterKeyPath, keysetPath);
+    properties.setRequired(false);
+    properties.getKeyset().setStorageMode(TinkProperties.Keyset.StorageMode.DATABASE);
+    properties.getKeyset().setWriter(true);
 
+    TinkKeyManager manager = new TinkKeyManager(properties, fixedProvider(repository));
     try {
-      assertTrue(manager.isInitialized());
-      assertEquals(expectedPrimary, manager.getCurrentPrimaryKeyId());
-      assertTrue(Files.exists(keysetPath));
+      manager.initialize();
+      assertFalse(manager.isInitialized(), "DB find error must leave encryption uninitialized");
+      verify(repository, never()).insertSingletonIfAbsent(any(), any(), any());
+      verify(repository, never()).save(any(KeysetBlob.class));
+      assertTrue(Files.exists(keysetPath), "leftover file must not be deleted");
     } finally {
       manager.shutdownKeysetCheckExecutor();
     }
@@ -330,7 +324,7 @@ class KeysetStorageCharacterizationTest {
   @Test
   @DisplayName("rotateKey persists a new blob version and updates the in-memory primary kid")
   void rotateKey_persistsNewBlobVersion(@TempDir Path tempDir) throws Exception {
-    // Preserve intent of design §2.3 online rotation; CAS loser semantics still to be hardened.
+    // Post-cutover: design §2.3 online rotation via CAS (see KeysetBlobOnlyInvariantTest).
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
     TestMasterKeys.write(masterKeyPath);
@@ -359,12 +353,10 @@ class KeysetStorageCharacterizationTest {
   }
 
   @Test
-  @DisplayName(
-      "rotateKey keeps the new in-memory primary when database save fails (orphan primary today)")
-  void rotateKey_whenDbSaveFails_keepsOrphanInMemoryPrimary(@TempDir Path tempDir)
+  @DisplayName("rotateKey discards staging and keeps prior primary when database save fails (CAS)")
+  void rotateKey_whenDbSaveFails_discardsStagingAndKeepsPriorPrimary(@TempDir Path tempDir)
       throws Exception {
-    // EXPECTED TO CHANGE — design §2.3 / Q4 (NEW CAS: install only after successful CAS;
-    // TinkKeyManager.java:1007-1025 installs before save and swallows DB errors)
+    // Flipped — design §2.3 / Q4 (NEW CAS: install only after successful CAS; fail closed)
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
     TestMasterKeys.write(masterKeyPath);
@@ -386,14 +378,15 @@ class KeysetStorageCharacterizationTest {
 
       when(repository.save(any(KeysetBlob.class)))
           .thenThrow(new DataAccessResourceFailureException("simulated rotation save failure"));
+      when(repository.saveAndFlush(any(KeysetBlob.class)))
+          .thenThrow(new DataAccessResourceFailureException("simulated rotation save failure"));
 
-      long after = manager.rotateKey();
+      assertThrows(IllegalStateException.class, manager::rotateKey);
 
-      assertNotEquals(
+      assertEquals(
           before,
-          after,
-          "today rotateKey still returns/installs the new primary after DB save fails");
-      assertEquals(after, manager.getCurrentPrimaryKeyId());
+          manager.getCurrentPrimaryKeyId(),
+          "CAS failure must not install an orphan in-memory primary");
       assertEquals(
           versionBefore,
           storedBlob.get().getVersion(),
@@ -404,16 +397,9 @@ class KeysetStorageCharacterizationTest {
   }
 
   @Test
-  @DisplayName("HYBRID mode reloads when the database blob version advances")
-  void hybrid_databaseVersionBump_reloadsKeyset(@TempDir Path tempDir) throws Exception {
-    // EXPECTED TO CHANGE — design §4 (HYBRID removed; DB-only reload remains)
-    assertDatabaseVersionBumpReloads(tempDir, TinkProperties.Keyset.StorageMode.HYBRID);
-  }
-
-  @Test
   @DisplayName("DATABASE mode reloads when the database blob version advances")
   void database_databaseVersionBump_reloadsKeyset(@TempDir Path tempDir) throws Exception {
-    // Preserve: design §2.3 / §3 invariant #4 tick + DB reload (DATABASE twin of HYBRID char)
+    // Preserve: design §2.3 / §3 invariant #4 tick + DB reload (HYBRID removed)
     assertDatabaseVersionBumpReloads(tempDir, TinkProperties.Keyset.StorageMode.DATABASE);
   }
 
@@ -434,7 +420,6 @@ class KeysetStorageCharacterizationTest {
     KeysetBlob stalePrimaryBlob = copyBlob(storedBlob.get());
 
     long rotatedPrimary = manager.rotateKey();
-    manager.saveKeysetToDatabase("TEST_ROTATE");
     KeysetBlob rotatedBlob = copyBlob(storedBlob.get());
 
     assertNotEquals(primaryAtStartup, rotatedPrimary);
@@ -452,13 +437,13 @@ class KeysetStorageCharacterizationTest {
   }
 
   @Test
-  @DisplayName("EncryptionService.decrypt returns the original ciphertext when AEAD decrypt fails")
-  void decrypt_whenAeadFails_returnsOriginalCiphertext() throws Exception {
-    // EXPECTED TO CHANGE — design §2.7 / §3 invariant #5 (fail closed on unknown kid / AEAD
-    // failure)
+  @DisplayName("EncryptionService.decrypt fails closed when AEAD decrypt fails (invariant 5)")
+  void decrypt_whenAeadFails_throwsIllegalStateException() throws Exception {
+    // Flipped — design §2.7 / §3 invariant #5 (fail closed on unknown kid / AEAD failure)
     TinkKeyManager keyManager = Mockito.mock(TinkKeyManager.class);
     Aead aead = Mockito.mock(Aead.class);
     when(keyManager.isInitialized()).thenReturn(true);
+    when(keyManager.isDatabaseStorageAvailable()).thenReturn(false);
     when(keyManager.getAeadPrimitive()).thenReturn(aead);
     when(aead.decrypt(any(byte[].class), any()))
         .thenThrow(new GeneralSecurityException("unknown key id / AEAD failure"));
@@ -477,7 +462,7 @@ class KeysetStorageCharacterizationTest {
             .encodeToString("dummy-ciphertext-20b+".getBytes(StandardCharsets.UTF_8));
     String encryptedValue = "ENC:424242:" + ciphertextBase64;
 
-    assertEquals(encryptedValue, encryptionService.decrypt(encryptedValue));
+    assertThrows(IllegalStateException.class, () -> encryptionService.decrypt(encryptedValue));
   }
 
   private static TinkProperties baseProperties(Path masterKeyPath, Path keysetPath) {
@@ -554,15 +539,16 @@ class KeysetStorageCharacterizationTest {
             });
     when(repository.findVersion())
         .thenAnswer(_ -> Optional.ofNullable(storedBlob.get()).map(KeysetBlob::getVersion));
-    when(repository.save(any(KeysetBlob.class)))
-        .thenAnswer(
-            invocation -> {
-              KeysetBlob blob = invocation.getArgument(0);
-              long version = storedBlob.get() == null ? 1L : storedBlob.get().getVersion() + 1;
-              blob.setVersion(version);
-              storedBlob.set(blob);
-              return blob;
-            });
+    org.mockito.stubbing.Answer<KeysetBlob> bumpVersion =
+        invocation -> {
+          KeysetBlob blob = invocation.getArgument(0);
+          long version = storedBlob.get() == null ? 1L : storedBlob.get().getVersion() + 1;
+          blob.setVersion(version);
+          storedBlob.set(blob);
+          return blob;
+        };
+    when(repository.save(any(KeysetBlob.class))).thenAnswer(bumpVersion);
+    when(repository.saveAndFlush(any(KeysetBlob.class))).thenAnswer(bumpVersion);
     return repository;
   }
 

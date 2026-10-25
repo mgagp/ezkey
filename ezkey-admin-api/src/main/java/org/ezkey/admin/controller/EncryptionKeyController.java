@@ -42,6 +42,7 @@ import org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
 import org.ezkey.security.exception.EncryptionLifecycleDisabledException;
+import org.ezkey.security.exception.KeysetCasConflictException;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -287,8 +288,8 @@ public class EncryptionKeyController {
     @ApiResponse(
         responseCode = "409",
         description =
-            "A PENDING encryption key already exists, or key rotation is inactive on this"
-                + " instance",
+            "A PENDING encryption key already exists, key rotation is inactive on this instance,"
+                + " or the keyset was modified concurrently (CAS loss — retry is safe)",
         content =
             @io.swagger.v3.oas.annotations.media.Content(
                 schema =
@@ -345,6 +346,16 @@ public class EncryptionKeyController {
                       .toJson())
               .build());
       throw e;
+    } catch (KeysetCasConflictException e) {
+      // HA multi-admin race: loser must surface as 409 via ValidationExceptionHandler
+      // (IllegalStateException → state-conflict). No REENCRYPTION_FAILED/ERROR audit — ordinary
+      // lost race, not an operational failure (#961 Lot 3). No fitting low-severity EventType.
+      logger.warn(
+          "Manual key rotation lost keyset CAS race (adminId={}): {}", adminId, e.getMessage());
+      throw new KeysetCasConflictException(
+          "The encryption keyset was modified concurrently; no key was added by this request."
+              + " Retry is safe.",
+          e);
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Manual key rotation failed", e);
       auditLogService.log(

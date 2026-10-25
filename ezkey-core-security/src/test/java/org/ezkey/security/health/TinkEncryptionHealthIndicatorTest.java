@@ -64,4 +64,22 @@ class TinkEncryptionHealthIndicatorTest {
     assertThat(health.getStatus()).isEqualTo(Status.UP);
     assertThat(health.getDetails()).containsEntry("status", "DISABLED_BY_CONFIG");
   }
+
+  @Test
+  @DisplayName("health is DOWN with KEYSET_RELOAD_DEGRADED when tick found unloadable peer blob")
+  void health_reloadDegraded_isDown() {
+    TinkProperties properties = new TinkProperties();
+    properties.setEnabled(true);
+    when(keyManager.isInitialized()).thenReturn(true);
+    when(keyManager.isKeysetReloadDegraded()).thenReturn(true);
+
+    TinkEncryptionHealthIndicator indicator =
+        new TinkEncryptionHealthIndicator(properties, keyManager);
+
+    Health health = indicator.health();
+
+    assertThat(health.getStatus()).isEqualTo(Status.DOWN);
+    assertThat(health.getDetails()).containsEntry("status", "KEYSET_RELOAD_DEGRADED");
+    assertThat(health.getDetails()).containsEntry("keysetReloadDegraded", true);
+  }
 }

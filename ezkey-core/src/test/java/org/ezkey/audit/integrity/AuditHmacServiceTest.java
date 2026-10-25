@@ -385,6 +385,33 @@ class AuditHmacServiceTest {
   }
 
   // -----------------------------------------------------------------------
+  // POSIX mode 600 fail-closed (Patrick m4 / #961)
+  // -----------------------------------------------------------------------
+
+  @Test
+  void applyOwnerReadWriteOnly_whenChmodFails_deletesKeyAndThrows() throws Exception {
+    Path doomed = tempDir.resolve("doomed-hmac.key");
+    Files.writeString(doomed, "dGVzdA==", StandardCharsets.UTF_8);
+    assertTrue(Files.exists(doomed));
+
+    AuditHmacService failing =
+        new AuditHmacService(properties) {
+          @Override
+          void applyPosixOwnerReadWrite(Path path) throws java.io.IOException {
+            // File must still exist when chmod fails — proves deleteIfExists is load-bearing
+            // (#961 P-M4). Mutant that removes deleteIfExists leaves the key on disk.
+            assertTrue(Files.exists(path), "chmod failure must be simulated with file present");
+            throw new java.io.IOException("simulated chmod failure");
+          }
+        };
+
+    java.io.IOException thrown =
+        assertThrows(java.io.IOException.class, () -> failing.applyOwnerReadWriteOnly(doomed));
+    assertTrue(thrown.getMessage().contains("Refusing to keep audit HMAC key without mode 600"));
+    assertFalse(Files.exists(doomed), "fail-closed must delete the key after chmod failure");
+  }
+
+  // -----------------------------------------------------------------------
   // Helper
   // -----------------------------------------------------------------------
 

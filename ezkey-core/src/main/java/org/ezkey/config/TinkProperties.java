@@ -20,14 +20,21 @@ public class TinkProperties {
 
   /**
    * When true, the application fails to start if encryption is enabled in configuration but Tink
-   * cannot initialize (SEC-002). Default false preserves backward-compatible degraded mode.
+   * cannot initialize (SEC-002). Default true: fail startup when encryption is enabled but Tink
+   * cannot initialize.
    */
-  private boolean required = false;
+  private boolean required = true;
 
   /** Path to the master key file (Base64-encoded 256-bit key). */
   private String masterKeyFile;
 
-  /** Path to the encrypted keyset file used by Tink. */
+  /**
+   * Path to a legacy encrypted keyset file.
+   *
+   * <p><b>Unused at runtime</b> after the DB-blob-only cutover (ADR-0016 / #952). The sole source
+   * of truth is {@code ezkey_keyset_blob}. Retained only so existing configuration files continue
+   * to bind without error; API processes neither read nor write this path.
+   */
   private String keysetFile;
 
   /** Selected algorithm for AEAD (e.g., AES256_GCM or CHACHA20_POLY1305). */
@@ -391,15 +398,18 @@ public class TinkProperties {
   public static class Keyset {
 
     /**
-     * Keyset storage mode: FILE, DATABASE, or HYBRID.
+     * Hard upper bound for {@link #versionCheckInterval} (design Q5 / ADR-0016).
      *
-     * <ul>
-     *   <li><b>FILE:</b> Keyset stored only in file (original behavior)
-     *   <li><b>DATABASE:</b> Keyset stored in database as source of truth, file as cache
-     *   <li><b>HYBRID:</b> Keyset stored in both, database preferred for reads
-     * </ul>
+     * <p>Operators may configure a shorter tick; values above five seconds are clamped.
+     */
+    private static final Duration MAX_VERSION_CHECK_INTERVAL = Duration.ofSeconds(5);
+
+    /**
+     * Keyset storage mode. Only {@link StorageMode#DATABASE} remains after the blob-only cutover
+     * (ADR-0016 / #952). The database blob is the sole runtime source of truth; keyset-file is
+     * unused at runtime.
      *
-     * <p>Default: DATABASE (recommended for distributed deployments).
+     * <p>Default: DATABASE.
      */
     private StorageMode storageMode = StorageMode.DATABASE;
 
@@ -432,13 +442,21 @@ public class TinkProperties {
     private boolean writer = false;
 
     /**
-     * How long a non-writer waits for {@code ezkey_keyset_blob} on DATABASE/HYBRID boot before
-     * failing required encryption.
+     * How long a non-writer waits for {@code ezkey_keyset_blob} on boot before failing required
+     * encryption.
      */
     private Duration bootstrapWait = Duration.ofSeconds(90);
 
     /** Sleep between blob polls while waiting. Tests may set a millisecond interval. */
     private Duration bootstrapPollInterval = Duration.ofSeconds(1);
+
+    /**
+     * Interval between asynchronous database keyset version checks.
+     *
+     * <p>Default: 5 seconds. Hard upper bound is also 5 seconds (design Q5); {@link
+     * #getVersionCheckInterval()} clamps longer values.
+     */
+    private Duration versionCheckInterval = Duration.ofSeconds(5);
 
     public StorageMode getStorageMode() {
       return storageMode;
@@ -488,16 +506,37 @@ public class TinkProperties {
       this.bootstrapPollInterval = bootstrapPollInterval;
     }
 
-    /** Enum for keyset storage modes. */
+    /**
+     * Returns the configured version-check interval, clamped to at most five seconds.
+     *
+     * @return interval between DB version ticks (never longer than {@link
+     *     #MAX_VERSION_CHECK_INTERVAL})
+     */
+    public Duration getVersionCheckInterval() {
+      Duration configured =
+          versionCheckInterval == null ? Duration.ofSeconds(5) : versionCheckInterval;
+      if (configured.isNegative() || configured.isZero()) {
+        return MAX_VERSION_CHECK_INTERVAL;
+      }
+      if (configured.compareTo(MAX_VERSION_CHECK_INTERVAL) > 0) {
+        return MAX_VERSION_CHECK_INTERVAL;
+      }
+      return configured;
+    }
+
+    /**
+     * Sets the version-check interval (clamped on read via {@link #getVersionCheckInterval()}).
+     *
+     * @param versionCheckInterval desired tick interval
+     */
+    public void setVersionCheckInterval(Duration versionCheckInterval) {
+      this.versionCheckInterval = versionCheckInterval;
+    }
+
+    /** Enum for keyset storage modes (DATABASE only after ADR-0016). */
     public enum StorageMode {
-      /** Keyset stored only in file (original behavior). */
-      FILE,
-
-      /** Keyset stored in database as source of truth, file as cache. */
-      DATABASE,
-
-      /** Keyset stored in both, database preferred for reads. */
-      HYBRID
+      /** Keyset stored in {@code ezkey_keyset_blob} as the sole runtime source of truth. */
+      DATABASE
     }
   }
 }
