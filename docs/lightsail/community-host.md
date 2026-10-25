@@ -148,6 +148,8 @@ Do these **after** VM create → ports → Docker bootstrap (below). No secrets 
    - `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED=true`
    - UI build: `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true`  
    Recreate Admin API after changing these. Do not leave credentials/cookie flags at `false` for the community cookie path.
+
+   **Operator laptop copy:** the community-host operator environment lives in [`experimental-hybrid/lightsail/.local/`](../../experimental-hybrid/lightsail/) (gitignored, operator-only, never committed). Example: `env.ezkey-online` is the local file to `scp` onto the VM as `.env`. If the local copy may be older than the live VM file, treat the **live `.env` on the VM as source of truth** — compare variable **names** only; never print or log values.
 6. **Images** — export with optional demo:
    ```bash
    ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --include-demo-acme
