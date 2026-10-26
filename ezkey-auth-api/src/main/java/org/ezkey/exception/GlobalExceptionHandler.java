@@ -73,8 +73,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   public ResponseEntity<Void> handleNoPendingAuthAttempt(
       NoPendingAuthAttemptException ex, WebRequest request) {
     LOG.debug(
-        "No pending auth attempt: {}",
-        LogSanitizer.sanitizeForLog(request.getDescription(false)));
+        "No pending auth attempt: {}", LogSanitizer.sanitizeForLog(request.getDescription(false)));
     return ResponseEntity.noContent().build();
   }
 
@@ -118,8 +117,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(EnrollmentIntegrationNotFoundException.class)
   public ResponseEntity<ProblemDetail> handleEnrollmentIntegrationNotFound(
       EnrollmentIntegrationNotFoundException ex, WebRequest request) {
-    LOG.error(
-        "Enrollment integration missing: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
+    LOG.error("Enrollment integration missing: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.NOT_FOUND,
         AuthApiProblemCatalog.TYPE_ENROLLMENT_INTEGRATION_NOT_FOUND,
@@ -155,8 +153,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(EnrollmentInstanceInfoFailedException.class)
   public ResponseEntity<ProblemDetail> handleEnrollmentInstanceInfoFailed(
       EnrollmentInstanceInfoFailedException ex, WebRequest request) {
-    LOG.warn(
-        "Enrollment instance-info rejected: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
+    LOG.warn("Enrollment instance-info rejected: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.BAD_REQUEST,
         AuthApiProblemCatalog.TYPE_ENROLLMENT_INSTANCE_INFO_FAILED,
@@ -246,8 +243,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(IntegrationSigningUnavailableException.class)
   public ResponseEntity<ProblemDetail> handleIntegrationSigningUnavailable(
       IntegrationSigningUnavailableException ex, WebRequest request) {
-    LOG.error(
-        "Integration signing unavailable: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
+    LOG.error("Integration signing unavailable: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.SERVICE_UNAVAILABLE,
         AuthApiProblemCatalog.TYPE_INTEGRATION_SIGNING_UNAVAILABLE,
