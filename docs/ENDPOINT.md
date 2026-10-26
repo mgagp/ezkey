@@ -1911,6 +1911,7 @@ Content-Type: application/json
 - Lost secret keys cannot be recovered - create new key instead
 - Expiration date optional but recommended (enforces rotation)
 - IP whitelist optional but recommended for production
+- Response includes `Cache-Control: no-store` (controller + Spring Security defaults) so intermediaries do not cache the one-time secret
 
 ---
 
