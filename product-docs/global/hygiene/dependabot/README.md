@@ -145,6 +145,10 @@ still pending (next Play AAB after `#650`/`#651`) — see [`2026-10-05-pass-1.md
 **2026-10-12 Monday full (trial-week review):** merged `#732`/`#733`/`#734` + hygiene `#759`
 (supersedes `#735` license-snapshot companion); held `#717`/`#718` (post-`#702`) and T4/gates;
 `#627` Pixel smoke still pending — see [`2026-10-12-pass-1.md`](2026-10-12-pass-1.md).
+**2026-10-26 Monday full:** merged `#1001`/`#1002`/`#1003`/`#1004` + hygiene `#1026`
+(supersedes `#1005`/`#1006` license-snapshot companion); held `#1007` (eslint 10) and standing
+T4/crypto/gates (`#870`/`#878`/`#929`/`#767`/`#653`); Boot 4.1.2 HITL; `#917` DRAFT residual;
+`#627` Pixel smoke still pending — see [`2026-10-26-pass-1.md`](2026-10-26-pass-1.md).
 
 Routine peel still skips any PR labeled `deferred:rn-upgrade`. To park *future* RN-coupled mobile
 deps until a line bump: comment + `gh pr edit <n> --add-label deferred:rn-upgrade`.
