@@ -1832,7 +1832,7 @@ def _report_orphan_api_key(api_key_id) -> None:
 @click.option('--description', help='Description of the API key (e.g., "Production Server")')
 @click.option(
     '--expires-at',
-    help='Expiration date in ISO 8601 format (e.g., <EXPIRY_ISO8601>)',
+    help='Expiration date in ISO 8601 format (e.g., "<EXPIRY_ISO8601>")',
 )
 @click.option('--ip-whitelist', multiple=True, help='IP addresses or CIDR ranges (can be specified multiple times)')
 @click.option('--save-key', is_flag=True, help='Save API key credentials to config')
@@ -1860,11 +1860,11 @@ def create_api_key(
 
     Example:
       ezkey admin api-key create --integration-id 123 --description "Production Server" \\
-        --expires-at <EXPIRY_ISO8601> --ip-whitelist "192.168.1.0/24"
+        --expires-at "<EXPIRY_ISO8601>" --ip-whitelist "192.168.1.0/24"
 
       ezkey admin api-key create --integration-id 123 \\
         --out-file ~/.config/ezkey-qa/api-key.env \\
-        --expires-at <EXPIRY_ISO8601>
+        --expires-at "<EXPIRY_ISO8601>"
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
@@ -1959,9 +1959,6 @@ def create_api_key(
                     OutputUtils.error(f"Failed to write credentials file: {exc}")
                     ctx.exit(1)
                     return
-            except BaseException:
-                # KeyboardInterrupt / SystemExit / unexpected: fall through to finally.
-                raise
             finally:
                 if not committed:
                     out_slot.abort()

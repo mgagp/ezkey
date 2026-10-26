@@ -27,7 +27,7 @@ chmod 700 ~/.config/ezkey-qa
 ezkey admin api-key create \
   --integration-id <INTEGRATION_ID> \
   --description "qa-agent-placeholder" \
-  --expires-at <EXPIRY_ISO8601> \
+  --expires-at "<EXPIRY_ISO8601>" \
   --ip-whitelist "<CAMPAIGN_CIDR>" \
   --out-file ~/.config/ezkey-qa/api-key.env
 ```

@@ -129,7 +129,7 @@ ezkey admin auth logout
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
-  --expires-at <EXPIRY_ISO8601> \
+  --expires-at "<EXPIRY_ISO8601>" \
   --ip-whitelist "192.168.1.0/24" \
   --save-key
 
@@ -138,7 +138,7 @@ mkdir -p ~/.config/ezkey-qa && chmod 700 ~/.config/ezkey-qa
 ezkey admin api-key create \
   --integration-id 123 \
   --description "qa-agent-placeholder" \
-  --expires-at <EXPIRY_ISO8601> \
+  --expires-at "<EXPIRY_ISO8601>" \
   --ip-whitelist "203.0.113.0/24" \
   --out-file ~/.config/ezkey-qa/api-key.env
 
@@ -276,13 +276,13 @@ ezkey admin auth logout
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
-  --expires-at <EXPIRY_ISO8601> \
+  --expires-at "<EXPIRY_ISO8601>" \
   --ip-whitelist "192.168.1.0/24"
 
 # Create and write credentials to a mode-600 .env file outside the repo
 ezkey admin api-key create \
   --integration-id 123 \
-  --expires-at <EXPIRY_ISO8601> \
+  --expires-at "<EXPIRY_ISO8601>" \
   --out-file ~/.config/ezkey-qa/api-key.env
 
 # List API keys for integration
@@ -452,7 +452,7 @@ ezkey admin auth login --username admin
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
-  --expires-at <EXPIRY_ISO8601> \
+  --expires-at "<EXPIRY_ISO8601>" \
   --ip-whitelist "10.0.0.0/8" \
   --save-key
 
@@ -513,7 +513,7 @@ ezkey admin auth login --username admin
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server - New Key" \
-  --expires-at <EXPIRY_ISO8601>
+  --expires-at "<EXPIRY_ISO8601>"
 
 # 3. Update application configuration with new key
 # (Deploy changes to production)
