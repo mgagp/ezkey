@@ -842,6 +842,103 @@ class KeysetBlobOnlyInvariantTest {
     verify(mockManager, times(1)).forceReloadFromDatabase();
   }
 
+  @Test
+  @DisplayName(
+      "invariant 5: reload budget exhaustion stays fail-closed even when degraded mode is on")
+  void decrypt_reloadBudgetExhausted_staysFailClosedWhenDegradedModeEnabled() throws Exception {
+    TinkProperties props = reloadProps(2, true);
+    TinkKeyManager mockManager = mockInitializedManager(true);
+    Aead aead = Mockito.mock(Aead.class);
+    when(mockManager.getAeadPrimitive()).thenReturn(aead);
+    when(aead.decrypt(any(), any())).thenThrow(new GeneralSecurityException("aeAD fail"));
+
+    EncryptionService service = newEncryptionService(props, mockManager);
+    String forged = forgedEncValue();
+
+    IllegalStateException thrown =
+        assertThrows(IllegalStateException.class, () -> service.decrypt(forged));
+
+    assertTrue(thrown.getMessage().contains("fail-closed"), thrown.getMessage());
+    assertFalse(
+        thrown.getMessage().contains(forged), "fail-closed error must not echo the ENC ciphertext");
+    assertInstanceOf(GeneralSecurityException.class, thrown.getCause());
+    verify(mockManager, times(2)).forceReloadFromDatabase();
+    verify(aead, times(3)).decrypt(any(), any());
+  }
+
+  @Test
+  @DisplayName("invariant 5: failed blob reload still fail-closes and does not return ciphertext")
+  void decrypt_reloadReturnsFalse_staysFailClosed() throws Exception {
+    TinkProperties props = reloadProps(2, false);
+    TinkKeyManager mockManager = mockInitializedManager(false);
+    Aead aead = Mockito.mock(Aead.class);
+    when(mockManager.getAeadPrimitive()).thenReturn(aead);
+    when(aead.decrypt(any(), any())).thenThrow(new GeneralSecurityException("aeAD fail"));
+
+    EncryptionService service = newEncryptionService(props, mockManager);
+    String forged = forgedEncValue();
+
+    IllegalStateException thrown =
+        assertThrows(IllegalStateException.class, () -> service.decrypt(forged));
+
+    assertTrue(thrown.getMessage().contains("fail-closed"), thrown.getMessage());
+    assertFalse(thrown.getMessage().contains(forged));
+    assertInstanceOf(GeneralSecurityException.class, thrown.getCause());
+    verify(mockManager, times(2)).forceReloadFromDatabase();
+    verify(aead, times(1)).decrypt(any(), any());
+  }
+
+  @Test
+  @DisplayName("invariant 5: IllegalStateException from AEAD is rethrown without blob reload")
+  void decrypt_illegalStateFromAead_doesNotReload() throws Exception {
+    TinkProperties props = reloadProps(2, true);
+    TinkKeyManager mockManager = mockInitializedManager(true);
+    Aead aead = Mockito.mock(Aead.class);
+    when(mockManager.getAeadPrimitive()).thenReturn(aead);
+    when(aead.decrypt(any(), any())).thenThrow(new IllegalStateException("primitive unavailable"));
+
+    EncryptionService service = newEncryptionService(props, mockManager);
+
+    IllegalStateException thrown =
+        assertThrows(IllegalStateException.class, () -> service.decrypt(forgedEncValue()));
+
+    assertEquals("primitive unavailable", thrown.getMessage());
+    verify(mockManager, never()).forceReloadFromDatabase();
+  }
+
+  private static TinkProperties reloadProps(int maxReloadRetries, boolean degradedModeEnabled) {
+    TinkProperties props = new TinkProperties();
+    props.setEnabled(true);
+    props.getKeyset().setMaxReloadRetries(maxReloadRetries);
+    props.getKeyset().setDegradedModeEnabled(degradedModeEnabled);
+    return props;
+  }
+
+  private static TinkKeyManager mockInitializedManager(boolean reloadSucceeds) {
+    TinkKeyManager mockManager = Mockito.mock(TinkKeyManager.class);
+    when(mockManager.isInitialized()).thenReturn(true);
+    when(mockManager.isDatabaseStorageAvailable()).thenReturn(true);
+    when(mockManager.forceReloadFromDatabase()).thenReturn(reloadSucceeds);
+    return mockManager;
+  }
+
+  private static EncryptionService newEncryptionService(
+      TinkProperties props, TinkKeyManager mockManager) {
+    ObjectProvider<TinkProperties> propertiesProvider = Mockito.mock(ObjectProvider.class);
+    ObjectProvider<EncryptionKeyRepository> keyRepositoryProvider =
+        Mockito.mock(ObjectProvider.class);
+    when(propertiesProvider.getIfAvailable()).thenReturn(props);
+    when(keyRepositoryProvider.getIfAvailable()).thenReturn(null);
+    return new EncryptionService(mockManager, propertiesProvider, keyRepositoryProvider);
+  }
+
+  private static String forgedEncValue() {
+    byte[] ct =
+        "cipher-payload-long-enough-for-tink-aead-min-size-check-0123456789"
+            .getBytes(StandardCharsets.UTF_8);
+    return "ENC:1234567:" + Base64.getEncoder().encodeToString(ct);
+  }
+
   private static TinkProperties baseProperties(Path masterKeyPath, Path keysetPath) {
     TinkProperties properties = new TinkProperties();
     properties.setEnabled(true);
