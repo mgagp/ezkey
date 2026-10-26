@@ -27,8 +27,15 @@ from .tls import (
     ssl_verify_from_config,
 )
 from .secure_file import (
+    ApiKeyCredentialFormatError,
     SecureFileExistsError,
+    SecureFileParentError,
+    SecureFileSymlinkError,
+    absolute_path_no_follow,
+    ensure_owner_only_dir,
     format_api_key_env,
+    prepare_secret_file,
+    validate_api_key_credentials,
     write_secret_file,
 )
 
@@ -48,7 +55,14 @@ __all__ = [
     "InsecureTlsNotAllowedError",
     "resolve_ssl_verify",
     "ssl_verify_from_config",
+    "ApiKeyCredentialFormatError",
     "SecureFileExistsError",
+    "SecureFileParentError",
+    "SecureFileSymlinkError",
+    "absolute_path_no_follow",
+    "ensure_owner_only_dir",
     "format_api_key_env",
+    "prepare_secret_file",
+    "validate_api_key_credentials",
     "write_secret_file",
 ]

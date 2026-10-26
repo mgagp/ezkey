@@ -1,5 +1,9 @@
 # Ezkey CLI Version 2.0 - Changelog
 
+## Status
+
+- **2026-10-26 (#1043):** `ezkey admin api-key create --out-file` writes ikey/skey to a mode-600 `.env` outside the repo without printing the secret; pre-opens the file before POST; rejects symlinks; hardens `--save-key` config save to 0600 / `~/.ezkey` 0700.
+
 ## Release Date: October 2025
 
 ## Overview

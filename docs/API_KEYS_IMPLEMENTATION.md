@@ -149,10 +149,10 @@ ezkey.admin.api-key.max-active-per-integration=5
 **Rationale:**
 1. Clear separation between public identifier and secret
 2. Integration key can be safely logged
-3. Secret key shown once, then BCrypt hashed (CLI `--out-file` can write it to a mode-600 `.env` without printing it; see `docs/lab/API_KEY_CLI_AGENT_WORKFLOW.md`)
+3. Secret key shown once, then BCrypt hashed (CLI `--out-file` can write it to a mode-600 `.env` outside the repo without printing it; see `docs/lab/API_KEY_CLI_AGENT_WORKFLOW.md`)
 4. Industry standard (Duo, Twilio use similar approach)
 5. Compatible with HTTP Basic Auth
-6. `POST /api/v1/api-keys` responds with `Cache-Control: no-store` so intermediaries do not cache the one-time secret
+6. `POST /api/v1/api-keys` includes `Cache-Control: no-store` on the controller response (defense in depth alongside Spring Security default headers)
 
 ### Why HTTP Basic Auth?
 

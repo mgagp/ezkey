@@ -98,19 +98,22 @@ curl -X POST http://localhost:9080/api/v1/api-keys \
 
 **Why shown once:** Ezkey stores only a BCrypt hash of the secret. There is no API to retrieve plaintext later. Rotate (create + revoke) if a secret is lost. For agent/QA handoff without printing the secret on the terminal, use the CLI `--out-file` path (mode `600` `.env` file). See [`docs/lab/API_KEY_CLI_AGENT_WORKFLOW.md`](lab/API_KEY_CLI_AGENT_WORKFLOW.md).
 
-**CLI (recommended for agents):**
+**CLI (recommended for agents):** write outside the repo; operator runs create with their admin credentials; agent loads the file into a subprocess env and never prints the secret (see [`docs/lab/API_KEY_CLI_AGENT_WORKFLOW.md`](lab/API_KEY_CLI_AGENT_WORKFLOW.md)). Mode `600` is POSIX best-effort (Windows inherits folder ACLs).
 ```bash
+mkdir -p ~/.config/ezkey-qa && chmod 700 ~/.config/ezkey-qa
 ezkey admin api-key create \
   --integration-id 123 \
-  --description "Production Server" \
-  --out-file ./api-key.env
+  --description "qa-agent-placeholder" \
+  --expires-at "2025-12-31T23:59:59Z" \
+  --ip-whitelist "203.0.113.0/24" \
+  --out-file ~/.config/ezkey-qa/api-key.env
 ```
-Stdout prints only the integration key and the file path. The file contains:
+Stdout prints the API Key ID, integration key, and file path (never the secret). The file contains:
 ```bash
 EZKEY_INTEGRATION_KEY=ezkey_ikey_a1b2c3d4e5f6g7h8i9j0
 EZKEY_SECRET_KEY=ezkey_skey_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0
 ```
-Use `--force` only when intentionally replacing an existing file.
+Use `--force` only when intentionally replacing an existing non-symlink file.
 
 ### Step 2: Store Keys Securely
 
@@ -119,7 +122,7 @@ Use `--force` only when intentionally replacing an existing file.
 export EZKEY_INTEGRATION_KEY="ezkey_ikey_a1b2c3d4e5f6g7h8i9j0"
 export EZKEY_SECRET_KEY="ezkey_skey_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0"
 ```
-Or: `set -a && source ./api-key.env && set +a` after a CLI `--out-file` create.
+Or: `set -a && source ~/.config/ezkey-qa/api-key.env && set +a` after a CLI `--out-file` create (do not `cat` the file into agent/tool output).
 
 **Configuration File (Encrypted):**
 ```yaml

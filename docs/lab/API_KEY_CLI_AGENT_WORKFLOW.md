@@ -8,31 +8,44 @@
 
 Ezkey stores only a BCrypt hash of the API secret. The plaintext `secretKey` appears in the `POST /api/v1/api-keys` **201** response exactly once. There is no retrieve-secret API. That is intentional: lost secrets are rotated (create a new key, revoke the old one), never recovered.
 
+## Hand-off model
+
+The **operator** runs `ezkey admin api-key create … --out-file …` on the agent’s host using the operator’s own admin credentials. The agent must **not** hold those admin credentials. After create, the agent loads the credentials file into a **subprocess environment** (for Integration API calls) and must **never** print the secret: no `cat`, no shell `set -x` / command trace that echoes the value, and no tool output that would put the secret into the model context.
+
+Mode `600` is a **POSIX best-effort**. On Windows the file inherits folder ACLs; treat the destination directory as the access boundary.
+
 ## Create → use → revoke (CLI)
 
-Placeholders only below — substitute your own integration id and a local path outside the repo.
+Placeholders only below — use a path **outside the repository** (never commit credentials; root `.gitignore` also ignores `api-key*.env`).
 
 ### 1. Create (secret never on stdout)
 
 ```bash
+mkdir -p ~/.config/ezkey-qa
+chmod 700 ~/.config/ezkey-qa
+
 ezkey admin api-key create \
   --integration-id <INTEGRATION_ID> \
   --description "qa-agent-placeholder" \
-  --out-file ./api-key.env
+  --expires-at "2025-12-31T23:59:59Z" \
+  --ip-whitelist "<CAMPAIGN_CIDR>" \
+  --out-file ~/.config/ezkey-qa/api-key.env
 ```
 
-Stdout shows only the integration key (ikey) and the file path. The file is created with mode `600` (owner read/write). Format is minimal `.env`:
+Prefer `--expires-at` and `--ip-whitelist` for a campaign key so blast radius stays bounded.
+
+Stdout shows the **API Key ID** (non-secret, needed for revoke), the integration key (ikey), and the file path. The file is created with mode `600` when POSIX permissions are available. Format is minimal `.env`:
 
 ```bash
 EZKEY_INTEGRATION_KEY=ezkey_ikey_PLACEHOLDER
 EZKEY_SECRET_KEY=ezkey_skey_PLACEHOLDER
 ```
 
-If the path already exists, the command refuses to overwrite unless you pass `--force` (atomic replace).
+If the path already exists, the command refuses to overwrite unless you pass `--force` (atomic replace of a non-symlink file). Symbolic links are always refused. The out-file slot is reserved **before** the create POST so a local path failure cannot leave an orphan key with a lost secret.
 
 ### 2. Use
 
-Source or load the file in the agent/runtime that calls Integration API (HTTP Basic: ikey as username, skey as password). Do not paste the secret into chat or commit the file.
+Load the file into the agent/runtime that calls Integration API (HTTP Basic: ikey as username, skey as password) without printing it. Do not paste the secret into chat or commit the file.
 
 Optional: also persist into the CLI global config with `--save-key` on create (same secret, never printed when `--out-file` is set). Prefer a dedicated out-file for agent handoff.
 

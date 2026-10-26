@@ -121,12 +121,15 @@ ezkey admin api-key create \
   --expires-at "2025-12-31T23:59:59Z" \
   --save-key
 
-# Agent/QA: write ikey+skey to a mode-600 .env file; stdout shows ikey + path only
+# Agent/QA: write ikey+skey to a mode-600 .env outside the repo (never print the secret)
 ezkey admin api-key create \
   --integration-id 123 \
-  --out-file ./api-key.env
+  --expires-at "2025-12-31T23:59:59Z" \
+  --ip-whitelist "203.0.113.0/24" \
+  --out-file ~/.config/ezkey-qa/api-key.env
 
 # ⚠️ Without --out-file: save the secret key immediately — it is shown only once.
+# Mode 600 is POSIX best-effort; on Windows the file inherits folder ACLs.
 
 # List API keys
 ezkey admin api-key list --integration-id 123
