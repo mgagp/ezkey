@@ -216,10 +216,11 @@ Dependabot list as "Java is current."**
    lot (SemVer patch, closeout as T3 runtime because the BOM is shipped). Provenance example:
    `hygiene/spring-boot-4.1.1` / campaign `2026-08-21-pass-1`.
 4. After any accepted Boot bump (Dependabot or manual), review the SEC-019 overrides in the parent
-   `dependencyManagement` (`postgresql.version`, `logback.version`, `tomcat.version`,
-   `jackson-bom.version`, `jackson-2-bom.version`, and the Caffeine pin when present). **Drop** an
-   override when Boot has caught up. **Keep** it only when Ezkey is still intentionally ahead
-   (CVE or compatibility). Record the keep/drop table in the campaign note.
+   `dependencyManagement` (`logback.version`, `jackson-bom.version`, `jackson-2-bom.version`, and
+   the Caffeine pin when present; `postgresql.version` / `tomcat.version` were dropped with Boot
+   4.1.2 — BOM manages those lines, see hygiene README + #1031 / #939). **Drop** an override when
+   Boot has caught up. **Keep** it only when Ezkey is still intentionally ahead (CVE or
+   compatibility). Record the keep/drop table in the campaign note.
 5. **Nested pin Dependabot typically misses:** `google-java-format.version` in the root
    `pom.xml` (Spotless `<googleJavaFormat>`). Check Maven Central in this same pulse — do
    **not** invent a weekly lot if unchanged. Bump only when Spotless itself moved, JDK
