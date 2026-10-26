@@ -125,6 +125,7 @@ ezkey admin auth logout
 **Create API Key:**
 
 ```bash
+# Interactive / operator: secret printed once on stdout
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
@@ -132,7 +133,17 @@ ezkey admin api-key create \
   --ip-whitelist "192.168.1.0/24" \
   --save-key
 
-# ⚠️ IMPORTANT: Save the secret key displayed - it's shown only once!
+# Agent / QA: write credentials to a mode-600 .env file; never print the secret
+ezkey admin api-key create \
+  --integration-id 123 \
+  --description "qa-agent-placeholder" \
+  --out-file ./api-key.env
+
+# Overwrite an existing out-file only with an explicit flag:
+#   --out-file ./api-key.env --force
+
+# ⚠️ Without --out-file: save the secret key displayed — it is shown only once
+#    (BCrypt hash only is stored; there is no retrieve-secret API).
 ```
 
 **Use API Key:**
@@ -144,6 +155,9 @@ ezkey admin api-key create \
 #   "integrationKey": "ezkey_ikey_...",
 #   "secretKey": "ezkey_skey_..."
 # }
+#
+# Or source a --out-file .env (EZKEY_INTEGRATION_KEY / EZKEY_SECRET_KEY).
+# Agent create → use → revoke: ../../docs/lab/API_KEY_CLI_AGENT_WORKFLOW.md
 ```
 
 **Revoke API Key:**
@@ -254,12 +268,17 @@ ezkey admin auth logout
 #### API Keys
 
 ```bash
-# Create API key
+# Create API key (secret on stdout once)
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
   --expires-at "2025-12-31T23:59:59Z" \
   --ip-whitelist "192.168.1.0/24"
+
+# Create and write credentials to a mode-600 .env file (secret never on stdout)
+ezkey admin api-key create \
+  --integration-id 123 \
+  --out-file ./api-key.env
 
 # List API keys for integration
 ezkey admin api-key list --integration-id 123

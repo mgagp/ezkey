@@ -26,6 +26,11 @@ from .tls import (
     resolve_ssl_verify,
     ssl_verify_from_config,
 )
+from .secure_file import (
+    SecureFileExistsError,
+    format_api_key_env,
+    write_secret_file,
+)
 
 __all__ = [
     "HttpClient",
@@ -43,4 +48,7 @@ __all__ = [
     "InsecureTlsNotAllowedError",
     "resolve_ssl_verify",
     "ssl_verify_from_config",
+    "SecureFileExistsError",
+    "format_api_key_env",
+    "write_secret_file",
 ]

@@ -141,6 +141,12 @@ class ConfigManager:
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(persistable, f, indent=2)
 
+        # Config may hold bearer tokens and API secret keys; keep owner-only when POSIX.
+        try:
+            os.chmod(config_path, 0o600)
+        except (AttributeError, NotImplementedError, OSError):
+            pass
+
     def get_all(self) -> Dict[str, Any]:
         """Get all configuration values."""
         return self._config.copy()

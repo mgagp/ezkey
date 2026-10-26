@@ -96,6 +96,22 @@ curl -X POST http://localhost:9080/api/v1/api-keys \
 
 **⚠️ CRITICAL:** Save the `secretKey` immediately! It will never be shown again.
 
+**Why shown once:** Ezkey stores only a BCrypt hash of the secret. There is no API to retrieve plaintext later. Rotate (create + revoke) if a secret is lost. For agent/QA handoff without printing the secret on the terminal, use the CLI `--out-file` path (mode `600` `.env` file). See [`docs/lab/API_KEY_CLI_AGENT_WORKFLOW.md`](lab/API_KEY_CLI_AGENT_WORKFLOW.md).
+
+**CLI (recommended for agents):**
+```bash
+ezkey admin api-key create \
+  --integration-id 123 \
+  --description "Production Server" \
+  --out-file ./api-key.env
+```
+Stdout prints only the integration key and the file path. The file contains:
+```bash
+EZKEY_INTEGRATION_KEY=ezkey_ikey_a1b2c3d4e5f6g7h8i9j0
+EZKEY_SECRET_KEY=ezkey_skey_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0
+```
+Use `--force` only when intentionally replacing an existing file.
+
 ### Step 2: Store Keys Securely
 
 **Environment Variables (Recommended):**
@@ -103,6 +119,7 @@ curl -X POST http://localhost:9080/api/v1/api-keys \
 export EZKEY_INTEGRATION_KEY="ezkey_ikey_a1b2c3d4e5f6g7h8i9j0"
 export EZKEY_SECRET_KEY="ezkey_skey_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0"
 ```
+Or: `set -a && source ./api-key.env && set +a` after a CLI `--out-file` create.
 
 **Configuration File (Encrypted):**
 ```yaml

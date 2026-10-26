@@ -18,9 +18,12 @@ from ..utils import (
     HttpClient,
     JsonUtils,
     OutputUtils,
+    SecureFileExistsError,
     build_pagination_params,
     display_page_summary,
+    format_api_key_env,
     validate_pagination_options,
+    write_secret_file,
 )
 
 
@@ -1817,22 +1820,43 @@ def api_key_group(ctx):
 @click.option('--expires-at', help='Expiration date in ISO 8601 format (e.g., "2025-12-31T23:59:59Z")')
 @click.option('--ip-whitelist', multiple=True, help='IP addresses or CIDR ranges (can be specified multiple times)')
 @click.option('--save-key', is_flag=True, help='Save API key credentials to config')
+@click.option(
+    '--out-file',
+    type=click.Path(dir_okay=False, writable=True, path_type=str),
+    help='Write ikey/skey to this file as .env (mode 600); never print the secret',
+)
+@click.option(
+    '--force',
+    is_flag=True,
+    help='With --out-file: overwrite an existing file (atomic replace)',
+)
 @click.pass_context
-def create_api_key(ctx, integration_id, description, expires_at, ip_whitelist, save_key):
+def create_api_key(
+    ctx, integration_id, description, expires_at, ip_whitelist, save_key, out_file, force
+):
     """
     Create a new API key for machine-to-machine authentication.
 
-    The secret key is shown ONLY ONCE and cannot be retrieved later.
-    Save it immediately in a secure location.
+    The secret key is returned by the API ONLY ONCE and cannot be retrieved later.
+    Without --out-file, the secret is printed once on stdout. With --out-file,
+    only the integration key and the file path are printed; the secret is written
+    to the file (mode 600, .env format) and never appears on stdout/stderr.
 
     Example:
       ezkey admin api-key create --integration-id 123 --description "Production Server" \\
         --expires-at "2025-12-31T23:59:59Z" --ip-whitelist "192.168.1.0/24"
+
+      ezkey admin api-key create --integration-id 123 --out-file ./api-key.env
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
+
+    if force and not out_file:
+        OutputUtils.error("--force requires --out-file")
+        ctx.exit(2)
+        return
 
     admin_url = config.get('adminUrl')
     if not admin_url:
@@ -1861,13 +1885,55 @@ def create_api_key(ctx, integration_id, description, expires_at, ip_whitelist, s
 
     if response.success and response.data:
         data = response.data
+        integration_key = data.get('integrationKey')
+        secret_key = data.get('secretKey')
+
+        if out_file:
+            if not integration_key or not secret_key:
+                OutputUtils.error(
+                    "API key created but response is missing credentials; "
+                    "refusing to write --out-file"
+                )
+                ctx.exit(1)
+                return
+
+            try:
+                written = write_secret_file(
+                    out_file,
+                    format_api_key_env(integration_key, secret_key),
+                    overwrite=force,
+                )
+            except SecureFileExistsError as exc:
+                # Never echo secret_key; path-only message is safe.
+                OutputUtils.error(str(exc))
+                OutputUtils.info("Re-run with --force to overwrite, or choose another path.")
+                ctx.exit(1)
+                return
+            except OSError as exc:
+                OutputUtils.error(f"Failed to write credentials file: {exc}")
+                ctx.exit(1)
+                return
+
+            OutputUtils.success("API key created successfully")
+            OutputUtils.info(f"Integration Key: {integration_key}")
+            OutputUtils.info(f"Credentials written to: {written}")
+            OutputUtils.warning(
+                "Secret key was written to the file only (mode 600). "
+                "It will not be shown again."
+            )
+
+            if save_key:
+                config.set_api_key(integration_key, secret_key)
+                config.save(global_config=True)
+                OutputUtils.success("API key saved to config")
+            return
 
         OutputUtils.success("✅ API key created successfully!")
         OutputUtils.warning("⚠️  IMPORTANT: Save the secret key now. It will not be shown again.")
         OutputUtils.info("")
         OutputUtils.info(f"API Key ID: {data.get('apiKeyId')}")
-        OutputUtils.info(f"Integration Key: {data.get('integrationKey')}")
-        OutputUtils.info(f"Secret Key: {data.get('secretKey')}")
+        OutputUtils.info(f"Integration Key: {integration_key}")
+        OutputUtils.info(f"Secret Key: {secret_key}")
         OutputUtils.info(f"Description: {data.get('description')}")
         OutputUtils.info(f"Created: {data.get('createdAt')}")
         if data.get('expiresAt'):
@@ -1877,7 +1943,7 @@ def create_api_key(ctx, integration_id, description, expires_at, ip_whitelist, s
 
         # Save API key to config if requested
         if save_key:
-            config.set_api_key(data['integrationKey'], data['secretKey'])
+            config.set_api_key(integration_key, secret_key)
             config.save(global_config=True)
             OutputUtils.success("API key saved to config")
 

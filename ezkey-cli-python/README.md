@@ -114,14 +114,19 @@ ezkey admin auth logout
 API keys provide authentication for server-to-server integrations without interactive login.
 
 ```bash
-# Create API key
+# Create API key (secret printed once on stdout)
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
   --expires-at "2025-12-31T23:59:59Z" \
   --save-key
 
-# ⚠️ IMPORTANT: Save the secret key immediately - it's shown only once!
+# Agent/QA: write ikey+skey to a mode-600 .env file; stdout shows ikey + path only
+ezkey admin api-key create \
+  --integration-id 123 \
+  --out-file ./api-key.env
+
+# ⚠️ Without --out-file: save the secret key immediately — it is shown only once.
 
 # List API keys
 ezkey admin api-key list --integration-id 123
@@ -129,6 +134,8 @@ ezkey admin api-key list --integration-id 123
 # Revoke API key
 ezkey admin api-key revoke --id 42
 ```
+
+Agent create → use → revoke notes: [`docs/lab/API_KEY_CLI_AGENT_WORKFLOW.md`](../docs/lab/API_KEY_CLI_AGENT_WORKFLOW.md).
 
 ### 3. No Authentication
 

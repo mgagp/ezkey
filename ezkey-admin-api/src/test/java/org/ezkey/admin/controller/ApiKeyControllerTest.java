@@ -201,6 +201,9 @@ class ApiKeyControllerTest {
       assertEquals(
           "IMPORTANT: Save the secret key now. It will not be shown again.",
           responseBody.warning());
+      // One-time secret in body must not be cacheable (#1043).
+      assertNotNull(response.getHeaders().getCacheControl());
+      assertTrue(response.getHeaders().getCacheControl().contains("no-store"));
 
       verify(apiKeyService)
           .createApiKey(eq(123), any(EzkeyAdmin.class), eq("Test API Key"), any(), any());
