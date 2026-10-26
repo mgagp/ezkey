@@ -228,3 +228,19 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
 - Red-CI evidence: none for actionable queue (both Dependabot CIs green before merge)
 - Validation: T1-only shortcut — `./scripts/build.sh` BUILD SUCCESS on `main` @ `d81e069a` (pre-#991); after #991, mobile `yarn validate` jest **323/323** (42 suites; eslint 0 errors / 5 pre-existing warnings). Stack/Playwright deferred (T1-only).
 - Residual: phone smoke for #991 tracked on #627 (gates next Play AAB; non-blocking). Nothing deployed.
+
+## 2026-10-26
+
+- Pass: afternoon low-risk lots (Marc go 2026-10-26); concurrency: clear (no other Dependabot/hygiene owning pass in prior ~30 min; morning Monday full #1027 already merged)
+- GitHub write: `GH_TOKEN as mgagp`
+- Merged (squash):
+  - Mobile hygiene **#1041** `40a43ec7` (branch `hygiene/dependabot-mobile-2026-10-26b`) — `react-i18next` 17.1.4 + `zustand` 5.0.16 + `i18next` 26.5.6 + `yarn license:app-data` (supersedes #1036/#1037/#1038; Dependabot CI red only on stale `thirdPartyLicenses.json`)
+  - Mobile Orval **#1039** 8.43.0→8.44.0 (**O0** — codegen 8.43≡8.44 on same Auth OpenAPI; Dependabot pin+lock only) `6c059500`
+  - Maven T1/T2: #1028 surefire 3.6.0→3.6.1 `14f70f7a`; #1029 failsafe 3.6.0→3.6.1 `ecb0339c`; #1033 rest-assured 6.2.0→6.3.0 `528b1d07` (CodeQL Analyze re-triggered via empty commit after transient failed-SARIF upload; `ci-gate` already green)
+  - Admin UI: #1035 react-i18next 17.1.0→17.1.4 `427d9a25`; #1030 vite 8.3.4→8.3.5 `caf7f13e`; #1032 Orval 8.43.0→8.44.0 (**O0** — `src/generated/` bit-identical base vs bump) `ff391cf7`
+- Closed as superseded: #1037, #1038 (comment); #1036 already closed by GitHub after #1041
+- Held / not touched (operator leave-alone): #870, #878, #929, #1007, #1031, #1034, #767, #653, #498, #337, #347, #917, #1025, #1014
+- Note: Orval pin lines in Admin UI / mobile `AGENTS.md` still say `8.43.0` — sync deferred to draft #917 (out of this lot)
+- Code-scanning alerts API: PAT 403 (`actions`/security-events); relied on PR CodeQL checks SUCCESS + `mergeStateStatus` CLEAN + 0 unresolved review threads
+- Validation: mobile Node 24 — `yarn install --immutable`, `yarn validate:ci` (42 suites / 323 tests), `yarn license:ci`; Orval O0 diffs saved under artifacts; Dependabot/`ci-gate` green per PR before squash. No deploy.
+- Residual: phone smoke for mobile bumps tracked on #627 (gates next Play AAB). Nothing deployed.
