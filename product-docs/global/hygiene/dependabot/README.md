@@ -83,8 +83,12 @@ Evidence: 2026-10-05 Admin Orval 8.32→8.39 (#658) — empty codegen diff, 112 
 
 - **Crypto-adjacent** (e.g. `js-sha256`, keystore / crypto / proof-token): never autonomous on a
   **major**; route to security owner (Christophe). *If it ain't broken, don't fix it.*
-- **Unchanged gates:** Jest 30 / ESLint 10 mobile (RN presets), TypeScript 7
-  (`deferred:later-train`), RN-core / vision-camera coupled slice → HITL / defer as today.
+- **Unchanged gates:** ESLint 10 mobile (RN lint plugins; `#1007` trial 2026-10-26 stopped —
+  `eslint-plugin-react` + `eslint-plugin-react-native` still call removed ESLint 10 APIs; see
+  [`ezkey_mobile/docs/MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md`](../../../../ezkey_mobile/docs/MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md)),
+  TypeScript 7 (`deferred:later-train`), RN-core / vision-camera coupled slice → HITL / defer as
+  today. **Jest 30 mobile:** gate lifted 2026-10-26 after green `yarn test` on RN 0.87.1 (Dependabot
+  `#653` integrated via hygiene PR; preset still *declares* Jest 29 deps — trust runtime evidence).
 
 ## Majeures / Major upgrades
 
@@ -149,6 +153,10 @@ still pending (next Play AAB after `#650`/`#651`) — see [`2026-10-05-pass-1.md
 (supersedes `#1005`/`#1006` license-snapshot companion); held `#1007` (eslint 10) and standing
 T4/crypto/gates (`#870`/`#878`/`#929`/`#767`/`#653`); Boot 4.1.2 HITL; `#917` DRAFT residual;
 `#627` Pixel smoke still pending — see [`2026-10-26-pass-1.md`](2026-10-26-pass-1.md).
+**2026-10-26 Marc go (mobile tooling hygiene):** ESLint 10 (`#1007`) **stopped** — key plugins
+`eslint-plugin-react` / `eslint-plugin-react-native` incompatible; Jest 30 + `@types/jest` 30
+(`#653`) **landed** after 42/323 green without test rewrites — memo
+[`MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md`](../../../../ezkey_mobile/docs/MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md).
 
 **2026-10-19 Monday full (rerun):** merged Maven #868/#853, Admin UI #869/#871/#873/#875/#855 + Orval #872 (O0) + #874/#876/#822/#885, mobile lot via hygiene #913 (supersedes #879–#884); held #870 (Tink → Christophe), #877 (react without react-dom), #878 (RN 0.88 line), #767, #717 (post-#702 decision), gates #779/#653; `#627` Pixel smoke still pending — see [`2026-10-19-pass-1.md`](2026-10-19-pass-1.md).
 
@@ -270,7 +278,10 @@ replace the mobile stack inventory. Groups:
 
 **`orval` is not grouped** — solo PRs, classified by the **Orval risk grid**, exact pin (no caret).
 
-**Standing policy — mobile ESLint / Jest:** leave them ungrouped. `deps:monitor` ecosystem gates (`ESLint 10`, `Jest 30`) mean those majors are not clear T1–T3 tooling-only; batching them inside `mobile-tooling` hides the gate and invites false autonomy.
+**Standing policy — mobile ESLint / Jest:** leave them ungrouped. ESLint 10 remains an
+ecosystem gate (RN lint plugins; `#1007` stopped 2026-10-26). Jest 30 is landed on the app
+(`#653`); keep Jest ungrouped so further majors stay visible — do not fold eslint/jest into
+`mobile-tooling`.
 
 On every Monday-full `dependabot-curated` pass the agent must:
 
