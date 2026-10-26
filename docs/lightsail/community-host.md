@@ -621,7 +621,7 @@ Use `$C` for F, H, and any recreate (including the separate postgres window). A 
 
 - Change **images** and **operator scripts**; never wipe the data volume.
 - **Forbidden:** `docker compose down -v`, Lightsail `clean-start.sh` / export `--clean-start`, deleting named volumes, replacing the live Caddyfile or `.env` without an operator `diff` and explicit human go.
-- **Human go gate:** one **explicit human go** on the **announced full plan** covers the API window (A–G as announced). Separate human go is required for: the **postgres recreation** window, an **`audit-hmac.key` mode/owner fix**, and **any rollback** (H). Another bot’s go does **not** count. A human performs the final Admin UI login and MFA on their own device. If the executor cannot warn the human in real time, announce a **precise start time** before beginning.
+- **Human go gate:** one **explicit human go** on the **announced full plan** covers the API window (A–G as announced). Beyond that plan, require a **distinct go per item** (postgres recreation, `audit-hmac.key` chmod, any rollback), which **may be given in a single message as long as each item is named**. Another bot’s go does **not** count. A human performs the final Admin UI login and MFA on their own device. If the executor cannot warn the human in real time, announce a **precise start time** before beginning.
 - Success is declared by the **report (I)** after checks (G), not by a second “go to declare success.”
 - After a successful upgrade, update [`community/DEPLOYED.md`](community/DEPLOYED.md).
 
@@ -633,18 +633,19 @@ A **follow-up issue (to be created)** should track a non-destructive script mode
 
 **Postgres container recreate is out of band:** leaving `postgres` on the prior container configuration (as for #961) avoids a database outage during the API window. Recreating `postgres` with the new compose config is a **separate deliberate window** (database outage ⇒ all APIs) — **explicit human go**, backups (C) redone before, checks (G) after. Do **not** fold it into the API window. There is **no technical reason** to group an `audit-hmac.key` mode fix with that postgres window (separate go either way).
 
-**Postgres recreate (when deliberate):**
+**Postgres recreate (when deliberate):** announce the **precise outage time** before starting.
 
 1. Backups first (C): `pg_dump -Fc` verified with `pg_restore --list`.
 2. `$C up -d --no-deps --force-recreate postgres` — data volume kept. Measured ~**6–9 s** for the recreate itself; APIs usually reconnect on their own. Restart one API alone if it does not become healthy.
 3. A probe that only hits `/` does **not** prove absence of errors on database-reading requests — finish with **human Admin UI login + MFA**.
+4. Checks **G** afterwards, including **verify-grants** with the environment variables described in G.1.
 
 ### A. Preconditions
 
 Covered by the plan go (unless a pre-check needs its own touch of the live host — then ask).
 
 1. No test or evaluation campaign in flight on the instance.
-2. Announce the maintenance window and a **precise start time** if needed. Reference timings (2026-10-25 / #961): about **20–30 s per API** (~**90 s** in four windows), about **25 s** for a single API restart, **6–9 s** for postgres recreate; **plan for up to ~2 min** of operator attention per API step.
+2. Announce the maintenance window and a **precise start time** if needed. Reference timings (2026-10-25 / #961): about **18 to 27 s** measured per API (four windows for #961; ~**90 s** total), about **25 s** for a single API restart, **6–9 s** for postgres recreate; **plan for up to ~2 min** of operator attention per API step.
 3. All stack containers healthy (`$C ps` from `<compose-dir>`).
 4. Note current image IDs / tags for admin-api, auth-api, integration-api, demo-app-acme, migration.
 5. Read release notes: if a **Flyway** migration is required, rollback becomes schema-aware (see H) and migration must run before APIs (see F).
@@ -654,7 +655,7 @@ Covered by the plan go (unless a pre-check needs its own touch of the live host 
 Presence, mode, and metadata only — **never** print key material, blob bytes, or `.env` values.
 
 1. On named volume `<encryption-secrets-volume>`: if using a throwaway container, **mount the volume read-only**. Confirm `master.key` and `audit-hmac.key` exist; record **mode and owner only** (e.g. `stat` / `ls -l` — never `cat`, never `docker cp` of secret files into tickets or `/tmp` reports). Align with [`docs/OPERATIONAL.md`](../OPERATIONAL.md) post-upgrade hygiene.
-2. **`audit-hmac.key` (read-only first):** expect POSIX mode **600** and owner = **API runtime user** (`spring` / **UID 100**, **GID 101** — same as `master.key` from [`docker/generate-encryption-keys.sh`](../../docker/generate-encryption-keys.sh)). Report `compliant` or `needs-fix` (mode/owner observed → expected) — **never** content or absolute paths. On the 2026-10-25 community instance the mode was **644**; fixed to **600** with that owner (separate human go; restart one API and require the HMAC init log line in G). Wrong owner with mode 600 can **fail open silently** (signing disabled) — mode/owner fix alone is not enough without the log check.
+2. **`audit-hmac.key` (read-only first):** expect POSIX mode **600** and owner = **API runtime user** (`spring` / **UID 100**, **GID 101** — same as `master.key` from [`docker/generate-encryption-keys.sh`](../../docker/generate-encryption-keys.sh)). Report `compliant` or `needs-fix` (mode/owner observed → expected) — **never** content or absolute paths. On the 2026-10-25 community instance the mode was **644**; fixed to **600** with that owner (distinct go; restart one API and require the HMAC init log line in G). Wrong owner with mode 600 **can fail silently** (signing disabled); confirm in [`AuditHmacService`](../../ezkey-core/src/main/java/org/ezkey/audit/integrity/AuditHmacService.java) — mode/owner fix alone is not enough without the log check.
 3. Database metadata only — **exact** read-only query (column names from Flyway `V3__…` / `ezkey_keyset_blob`):
 
    ```sql
@@ -676,8 +677,8 @@ Presence, mode, and metadata only — **never** print key material, blob bytes, 
 
 1. If the release adds a **new mandatory** `.env` variable (example for #961 / ADR-0016: `EZKEY_DB_CRYPTO_PASSWORD` — **no default**, compose fails closed if unset), generate it **on the VM** without displaying it or putting it on a command line (shell history / `ps`). Keep the live file mode **600**. Also add the new variable to the **operator copy** of `.env` (gitignored) when introduced — never paste the value into chat/tickets/git.
 2. No blind replacement of Caddyfile or `.env`.
-3. No blind `--sync-operator-files` (see script gap above). Diff first; apply only after human go.
-4. **Benign noise:** a direct `source` of the live `.env` may emit harmless warnings when values are unquoted and contain spaces or cron-like patterns. The Docker warning that a **volume already exists but was not created by Docker Compose** is pre-existing and harmless.
+3. No blind `--sync-operator-files` (see script gap above). Diff first; apply only after human go. The **announced plan must list the files to change** (from that diff) **and the backup destination**; any file **outside** the announced diff needs a **separate go**.
+4. Load `.env` in a **subshell** only — e.g. `( set -a; . ./.env; set +a; … )` — or pass `--env-file`; **never** under `set -x`, and **do not** leave values in the session shell environment. The Docker warning that a **volume already exists but was not created by Docker Compose** is pre-existing and harmless.
 
 ### E. Code and images
 
@@ -690,13 +691,13 @@ Presence, mode, and metadata only — **never** print key material, blob bytes, 
 
 Wait for healthy before the next recreate. Use `$C` (base + JavaMelody overlay).
 
-1. Run **`db-grants`** first:
+1. Run **`db-grants`** first. Lightsail compose defines it as a one-shot (`restart: "no"`, entrypoint `apply-grants.sh`):
 
    ```bash
    $C up --no-deps db-grants
    ```
 
-   Expect exit **0** and log line **“Grants applied”**. On volumes from before ADR-0016, `apply-grants.sh` creates `ezkey_crypto` idempotently when missing (`EZKEY_DB_CRYPTO_PASSWORD` required — #961 B1).
+   Expect exit **0** and a **“Grants applied”** log line. If a future compose no longer treats the service as a completing one-shot, use `$C run --rm --no-deps db-grants` (or equivalent). On volumes from before ADR-0016, `apply-grants.sh` creates `ezkey_crypto` idempotently when missing (`EZKEY_DB_CRYPTO_PASSWORD` required — #961 B1).
 2. If release notes announce a Flyway migration: run **`migration`** to completion **before** APIs.
 3. Recreate **one API at a time** with:
 
@@ -704,7 +705,7 @@ Wait for healthy before the next recreate. Use `$C` (base + JavaMelody overlay).
    $C up -d --no-deps --no-build --force-recreate <service>
    ```
 
-   Order: **admin-api** first (sole keyset writer under ADR-0016), then **auth-api**, **integration-api**, **demo-app-acme**. Wait until healthy after each (~20–30 s typical).
+   Order: **admin-api** first (sole keyset writer under ADR-0016), then **auth-api**, **integration-api**, **demo-app-acme**. Wait until healthy after each (about **18 to 27 s** measured; four windows for #961).
 4. **Do not** recreate **postgres**, **caddy**, or the JavaMelody **collector** in this API window (postgres: separate window above).
 
 ### G. Checks
@@ -712,8 +713,8 @@ Wait for healthy before the next recreate. Use `$C` (base + JavaMelody overlay).
 Final login/MFA: **human on their device** (not a bot). Success is recorded in **I**, not by an extra go.
 
 1. `./scripts/db/verify-grants.sh --docker` does **not** work as-is on the community VM (default container name `ezkey-postgres`, default role passwords). Pass **`EZKEY_POSTGRES_CONTAINER=<postgres-container>`** (Lightsail compose: `ezkey-exp-postgres`) and role / superuser credentials **from the live `.env` through the environment** — never display them. Success using the **default** superuser password means **rotate it**. Confirm `ezkey_crypto` is **SELECT-only** on `ezkey_keyset_blob` (ADR-0016 / #961).
-2. Logs show **“Keyset loaded from database”** (or equivalent) with the **same kid and version** recorded in B. Any **“Materializing new keyset”**, **“Generating new keyset”**, or a **refused API start** (fail-closed) → **stop immediately** and roll back (H). **Never** set `ezkey.encryption.required=false` to get past a start. As a **precaution** (unless validated by Patrick or Christophe): treat accidental new-keyset materialize as “stop and restore” — do not assume encrypted fields are still readable under a new authority.
-3. After any `audit-hmac.key` mode/owner fix (or when verifying compliance): the restarted API’s log **must** show **“Audit HMAC integrity signing initialized”** (mandatory — wrong owner with 600 fails open silently). Report mode/owner only, never content or exact path.
+2. Logs show **“Keyset loaded from database”** (or equivalent) with the **same kid and version** recorded in B. Any **“Materializing new keyset”**, **“Generating new keyset”**, or a **refused API start** (fail-closed) → **stop immediately**. **Never** set `ezkey.encryption.required=false` to get past a start. **If a new keyset was created:** stop, do not start any more API, and decide with the project owner between image rollback and database restore (H.5); do not assume encrypted fields stay readable under a new authority.
+3. After any `audit-hmac.key` mode/owner fix (or when verifying compliance): the restarted API’s log **must** show **“Audit HMAC integrity signing initialized”** (mandatory — wrong owner with 600 can fail silently; confirm in `AuditHmacService`). Report mode/owner only, never content or exact path.
 4. Containers healthy; `org.opencontainers.image.revision` matches the target SHA.
 5. Same HTTPS status codes on each public API/demo base (`<admin-api-public-base>`, …) as before the window (spot-check only — `/` alone is not enough; see human login below).
 6. Admin UI login + MFA completed by a human (proves database-reading paths).
@@ -732,7 +733,7 @@ Final login/MFA: **human on their device** (not a bot). Success is recorded in *
 
 Record in operator notes / [`community/DEPLOYED.md`](community/DEPLOYED.md) (public ledger: no secrets, no origin IPs):
 
-- Exact commands and target SHA
+- Exact commands and target SHA (**placeholders only**)
 - Times (**ET**); measured outage per window and total (use A.2 reference timings as a baseline)
 - Public ledger: **kid unchanged (yes/no)** and **version N** — exact kid values stay in operator notes only
 - `verify-grants` result, HTTP codes, `audit-hmac.key` compliant/fixed (mode/owner only)
