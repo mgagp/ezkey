@@ -150,6 +150,8 @@ still pending (next Play AAB after `#650`/`#651`) — see [`2026-10-05-pass-1.md
 T4/crypto/gates (`#870`/`#878`/`#929`/`#767`/`#653`); Boot 4.1.2 HITL; `#917` DRAFT residual;
 `#627` Pixel smoke still pending — see [`2026-10-26-pass-1.md`](2026-10-26-pass-1.md).
 
+**2026-10-19 Monday full (rerun):** merged Maven #868/#853, Admin UI #869/#871/#873/#875/#855 + Orval #872 (O0) + #874/#876/#822/#885, mobile lot via hygiene #913 (supersedes #879–#884); held #870 (Tink → Christophe), #877 (react without react-dom), #878 (RN 0.88 line), #767, #717 (post-#702 decision), gates #779/#653; `#627` Pixel smoke still pending — see [`2026-10-19-pass-1.md`](2026-10-19-pass-1.md).
+
 Routine peel still skips any PR labeled `deferred:rn-upgrade`. To park *future* RN-coupled mobile
 deps until a line bump: comment + `gh pr edit <n> --add-label deferred:rn-upgrade`.
 
