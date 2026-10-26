@@ -25,6 +25,7 @@ The CLI is **not** started by `./ezkey-tests/clean-start.sh`. After the Docker s
 
 - **Python >= 3.12** — see the [major-upgrades Python policy](../product-docs/global/hygiene/major-upgrades/README.md#python)
 - Runtime dependency floors in `setup.py` / `requirements.txt` are **tested minimums** (not merely the latest known-good).
+- **textual >= 8.2.8** — TUI floor raised from `>=0.38.0` after validation on Python 3.12/3.14 (no CLI API adapters required for imports/widgets/CSS/App/Screen used here); Dependabot [#767](https://github.com/mgagp/ezkey/pull/767).
 
 ## Installation
 
