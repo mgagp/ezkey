@@ -13,6 +13,7 @@ from __future__ import annotations
 import os
 import stat
 from pathlib import Path
+import subprocess
 from unittest.mock import patch
 
 import pytest
@@ -21,6 +22,7 @@ from click.testing import CliRunner
 from ezkey_cli.commands.admin import create_api_key
 from ezkey_cli.config.config_manager import ConfigManager
 from ezkey_cli.utils.http_client import ApiResponse
+from ezkey_cli.utils import secure_file as secure_file_mod
 from ezkey_cli.utils.secure_file import (
   ApiKeyCredentialFormatError,
   SecureFileExistsError,
@@ -112,6 +114,19 @@ class TestSecureFileWriter:
 
     with pytest.raises(SecureFileSymlinkError):
       prepare_secret_file(link, overwrite=False)
+
+  def test_prepare_allows_symlink_parent_directory(self, tmp_path):
+    real_parent = tmp_path / "real-parent"
+    real_parent.mkdir()
+    link_parent = tmp_path / "link-parent"
+    link_parent.symlink_to(real_parent)
+    dest = link_parent / "creds.env"
+
+    slot = prepare_secret_file(dest, overwrite=False)
+    body = format_api_key_env(PLACEHOLDER_IKEY, PLACEHOLDER_SKEY)
+    written = slot.commit(body)
+    assert Path(written).is_file()
+    assert (real_parent / "creds.env").is_file()
 
   def test_prepare_rejects_missing_parent(self, tmp_path):
     dest = tmp_path / "missing-parent" / "creds.env"
@@ -289,17 +304,24 @@ class TestCreateApiKeyOutFile:
       mock_http.post.return_value = ApiResponse(
           success=True, data=_creation_payload(), status=201
       )
-      result = runner.invoke(
-          create_api_key,
-          ["--integration-id", "1", "--out-file", str(out)],
-          obj=self._runner_ctx(tmp_path),
-          catch_exceptions=False,
-      )
+      with patch(
+          "ezkey_cli.commands.admin.prepare_secret_file",
+          wraps=prepare_secret_file,
+      ) as wrapped_prepare:
+        result = runner.invoke(
+            create_api_key,
+            ["--integration-id", "1", "--out-file", str(out)],
+            obj=self._runner_ctx(tmp_path),
+            catch_exceptions=True,
+        )
 
     assert result.exit_code == 1
     combined = _combined(result)
     assert PLACEHOLDER_SKEY not in combined
     assert mock_http.post.call_count == 0
+    assert wrapped_prepare.called
+    with pytest.raises(SecureFileSymlinkError):
+      prepare_secret_file(out, overwrite=False)
 
   def test_symlink_to_existing_with_force_skips_post(self, tmp_path):
     target = tmp_path / "real.env"
@@ -325,6 +347,72 @@ class TestCreateApiKeyOutFile:
     assert PLACEHOLDER_SKEY not in combined
     assert mock_http.post.call_count == 0
     assert target.read_text(encoding="utf-8") == "keep-target\n"
+
+  def test_parent_symlink_out_file_succeeds(self, tmp_path):
+    real_parent = tmp_path / "real-parent"
+    real_parent.mkdir()
+    link_parent = tmp_path / "link-parent"
+    link_parent.symlink_to(real_parent)
+    out = link_parent / "api-key.env"
+    payload = _creation_payload()
+
+    runner = CliRunner()
+    with patch("ezkey_cli.commands.admin.HttpClient") as mock_http_cls:
+      mock_http = mock_http_cls.return_value
+      mock_http.post.return_value = ApiResponse(success=True, data=payload, status=201)
+      result = runner.invoke(
+          create_api_key,
+          ["--integration-id", "1", "--out-file", str(out)],
+          obj=self._runner_ctx(tmp_path),
+          catch_exceptions=False,
+      )
+
+    assert result.exit_code == 0, result.output
+    combined = _combined(result)
+    assert PLACEHOLDER_SKEY not in combined
+    assert (real_parent / "api-key.env").is_file()
+    assert mock_http.post.call_count == 1
+
+  def test_keyboard_interrupt_after_post_reports_orphan(self, tmp_path):
+    out = tmp_path / "api-key.env"
+    payload = _creation_payload()
+
+    runner = CliRunner()
+    with patch("ezkey_cli.commands.admin.HttpClient") as mock_http_cls:
+      mock_http = mock_http_cls.return_value
+      mock_http.post.return_value = ApiResponse(success=True, data=payload, status=201)
+
+      real_prepare = prepare_secret_file
+
+      def prepare_then_interrupt(path, *, overwrite=False, warn_chmod=True):
+        slot = real_prepare(path, overwrite=overwrite, warn_chmod=warn_chmod)
+
+        def boom(_content):
+          raise KeyboardInterrupt()
+
+        slot.commit = boom  # type: ignore[method-assign]
+        return slot
+
+      with patch(
+          "ezkey_cli.commands.admin.prepare_secret_file",
+          side_effect=prepare_then_interrupt,
+      ):
+        result = runner.invoke(
+            create_api_key,
+            ["--integration-id", "1", "--out-file", str(out)],
+            obj=self._runner_ctx(tmp_path),
+            catch_exceptions=True,
+        )
+
+    # Click maps KeyboardInterrupt to Abort/SystemExit(1); still must not succeed.
+    assert result.exit_code != 0
+    assert result.exception is not None
+    combined = _combined(result)
+    assert PLACEHOLDER_SKEY not in combined
+    assert f"API Key ID: {PLACEHOLDER_API_KEY_ID}" in combined
+    assert "revoke" in combined.lower()
+    assert mock_http.post.call_count == 1
+    assert not out.exists()
 
   def test_bad_credential_charset_after_post_shows_api_key_id(self, tmp_path):
     out = tmp_path / "api-key.env"
@@ -360,15 +448,32 @@ class TestConfigSavePermissions:
 
     config = ConfigManager()
     config.set_api_key(PLACEHOLDER_IKEY, PLACEHOLDER_SKEY)
-    config.save(global_config=True)
+
+    observed_modes = []
+    real_write = secure_file_mod.write_secret_file
+
+    def spy_write(path, content, *, overwrite=False, warn_chmod=True):
+      # Assert mode at creation time (kills open('w')+chmod-later regressions).
+      result = real_write(path, content, overwrite=overwrite, warn_chmod=warn_chmod)
+      if os.name == "posix":
+        mode = _posix_mode(Path(result))
+        observed_modes.append(mode)
+        assert mode == 0o600
+      return result
+
+    # ConfigManager lazy-imports write_secret_file inside save().
+    with patch.object(secure_file_mod, "write_secret_file", side_effect=spy_write):
+      config.save(global_config=True)
 
     path = home / ".ezkey" / "ezkey.json"
     assert path.is_file()
+    assert not path.is_symlink()
     raw = path.read_text(encoding="utf-8")
     assert PLACEHOLDER_IKEY in raw
     if os.name == "posix":
       assert _posix_mode(path) == 0o600
       assert _posix_mode(home / ".ezkey") == 0o700
+      assert observed_modes == [0o600]
 
   def test_save_mode_600_under_umask_zero(self, tmp_path, monkeypatch):
     if os.name != "posix":
@@ -389,3 +494,41 @@ class TestConfigSavePermissions:
     path = home / ".ezkey" / "ezkey.json"
     assert _posix_mode(path) == 0o600
     assert _posix_mode(home / ".ezkey") == 0o700
+
+  def test_save_refuses_symlink_ezkey_json(self, tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(Path, "home", lambda: home)
+
+    config_dir = home / ".ezkey"
+    config_dir.mkdir(mode=0o700)
+    target = tmp_path / "elsewhere.json"
+    target.write_text("{}\n", encoding="utf-8")
+    link = config_dir / "ezkey.json"
+    link.symlink_to(target)
+
+    config = ConfigManager()
+    config.set_api_key(PLACEHOLDER_IKEY, PLACEHOLDER_SKEY)
+
+    with pytest.raises(SecureFileSymlinkError, match="symbolic link"):
+      config.save(global_config=True)
+
+    assert link.is_symlink()
+    assert target.read_text(encoding="utf-8") == "{}\n"
+
+
+class TestGitignoreApiKeyEnv:
+  """Credentials filename pattern must stay out of git."""
+
+  def test_api_key_env_is_gitignored(self):
+    repo_root = Path(__file__).resolve().parents[3]
+    probe = repo_root / "api-key-placeholder.env"
+    result = subprocess.run(
+        ["git", "check-ignore", "-v", str(probe)],
+        cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "api-key*.env" in result.stdout

@@ -73,7 +73,7 @@ Complete CRUD operations for machine-to-machine authentication.
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
-  --expires-at "2025-12-31T23:59:59Z" \
+  --expires-at <EXPIRY_ISO8601> \
   --ip-whitelist "192.168.1.0/24" \
   --save-key
 

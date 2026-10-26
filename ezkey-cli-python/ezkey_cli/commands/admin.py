@@ -1830,7 +1830,10 @@ def _report_orphan_api_key(api_key_id) -> None:
 @api_key_group.command('create')
 @click.option('--integration-id', required=True, type=int, help='Integration ID for the API key')
 @click.option('--description', help='Description of the API key (e.g., "Production Server")')
-@click.option('--expires-at', help='Expiration date in ISO 8601 format (e.g., "2025-12-31T23:59:59Z")')
+@click.option(
+    '--expires-at',
+    help='Expiration date in ISO 8601 format (e.g., <EXPIRY_ISO8601>)',
+)
 @click.option('--ip-whitelist', multiple=True, help='IP addresses or CIDR ranges (can be specified multiple times)')
 @click.option('--save-key', is_flag=True, help='Save API key credentials to config')
 @click.option(
@@ -1857,11 +1860,11 @@ def create_api_key(
 
     Example:
       ezkey admin api-key create --integration-id 123 --description "Production Server" \\
-        --expires-at "2025-12-31T23:59:59Z" --ip-whitelist "192.168.1.0/24"
+        --expires-at <EXPIRY_ISO8601> --ip-whitelist "192.168.1.0/24"
 
       ezkey admin api-key create --integration-id 123 \\
         --out-file ~/.config/ezkey-qa/api-key.env \\
-        --expires-at "2025-12-31T23:59:59Z"
+        --expires-at <EXPIRY_ISO8601>
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
@@ -1934,31 +1937,35 @@ def create_api_key(
         api_key_id = data.get('apiKeyId')
 
         if out_slot is not None:
-            if not integration_key or not secret_key:
-                out_slot.abort()
-                OutputUtils.error(
-                    "API key created but response is missing credentials; "
-                    "refusing to write --out-file"
-                )
-                _report_orphan_api_key(api_key_id)
-                ctx.exit(1)
-                return
-
+            committed = False
             try:
-                body = format_api_key_env(integration_key, secret_key)
-                written = out_slot.commit(body)
-            except ApiKeyCredentialFormatError as exc:
-                out_slot.abort()
-                OutputUtils.error(str(exc))
-                _report_orphan_api_key(api_key_id)
-                ctx.exit(1)
-                return
-            except OSError as exc:
-                # commit() already aborts/unlinks on failure
-                OutputUtils.error(f"Failed to write credentials file: {exc}")
-                _report_orphan_api_key(api_key_id)
-                ctx.exit(1)
-                return
+                if not integration_key or not secret_key:
+                    OutputUtils.error(
+                        "API key created but response is missing credentials; "
+                        "refusing to write --out-file"
+                    )
+                    ctx.exit(1)
+                    return
+
+                try:
+                    body = format_api_key_env(integration_key, secret_key)
+                    written = out_slot.commit(body)
+                    committed = True
+                except ApiKeyCredentialFormatError as exc:
+                    OutputUtils.error(str(exc))
+                    ctx.exit(1)
+                    return
+                except OSError as exc:
+                    OutputUtils.error(f"Failed to write credentials file: {exc}")
+                    ctx.exit(1)
+                    return
+            except BaseException:
+                # KeyboardInterrupt / SystemExit / unexpected: fall through to finally.
+                raise
+            finally:
+                if not committed:
+                    out_slot.abort()
+                    _report_orphan_api_key(api_key_id)
 
             OutputUtils.success("API key created successfully")
             OutputUtils.info(f"API Key ID: {api_key_id}")
@@ -1971,8 +1978,11 @@ def create_api_key(
 
             if save_key:
                 config.set_api_key(integration_key, secret_key)
-                config.save(global_config=True)
-                OutputUtils.success("API key saved to config")
+                try:
+                    config.save(global_config=True)
+                    OutputUtils.success("API key saved to config")
+                except SecureFileSymlinkError as exc:
+                    OutputUtils.error(str(exc))
             return
 
         OutputUtils.success("✅ API key created successfully!")
@@ -1991,8 +2001,11 @@ def create_api_key(
         # Save API key to config if requested
         if save_key:
             config.set_api_key(integration_key, secret_key)
-            config.save(global_config=True)
-            OutputUtils.success("API key saved to config")
+            try:
+                config.save(global_config=True)
+                OutputUtils.success("API key saved to config")
+            except SecureFileSymlinkError as exc:
+                OutputUtils.error(str(exc))
 
         if pretty_print:
             OutputUtils.info("")

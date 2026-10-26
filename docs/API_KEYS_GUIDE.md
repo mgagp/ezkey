@@ -104,7 +104,7 @@ mkdir -p ~/.config/ezkey-qa && chmod 700 ~/.config/ezkey-qa
 ezkey admin api-key create \
   --integration-id 123 \
   --description "qa-agent-placeholder" \
-  --expires-at "2025-12-31T23:59:59Z" \
+  --expires-at <EXPIRY_ISO8601> \
   --ip-whitelist "203.0.113.0/24" \
   --out-file ~/.config/ezkey-qa/api-key.env
 ```

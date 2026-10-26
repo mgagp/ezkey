@@ -118,13 +118,13 @@ API keys provide authentication for server-to-server integrations without intera
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
-  --expires-at "2025-12-31T23:59:59Z" \
+  --expires-at <EXPIRY_ISO8601> \
   --save-key
 
 # Agent/QA: write ikey+skey to a mode-600 .env outside the repo (never print the secret)
 ezkey admin api-key create \
   --integration-id 123 \
-  --expires-at "2025-12-31T23:59:59Z" \
+  --expires-at <EXPIRY_ISO8601> \
   --ip-whitelist "203.0.113.0/24" \
   --out-file ~/.config/ezkey-qa/api-key.env
 

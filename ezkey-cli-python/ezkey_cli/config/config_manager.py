@@ -129,7 +129,11 @@ class ConfigManager:
         Permission failures warn instead of failing silently.
         """
         # Lazy import avoids circular load: config → utils → http_client → config.
-        from ..utils.secure_file import ensure_owner_only_dir, write_secret_file
+        from ..utils.secure_file import (
+            SecureFileSymlinkError,
+            ensure_owner_only_dir,
+            write_secret_file,
+        )
 
         if global_config:
             config_dir = ensure_owner_only_dir(Path.home() / self.HOME_CONFIG_DIR)
@@ -146,7 +150,14 @@ class ConfigManager:
 
         body = json.dumps(persistable, indent=2) + "\n"
         # overwrite=True: config files are updated in place; symlink targets refused.
-        write_secret_file(config_path, body, overwrite=True, warn_chmod=True)
+        try:
+            write_secret_file(config_path, body, overwrite=True, warn_chmod=True)
+        except SecureFileSymlinkError:
+            # Clear operator message; do not chain the low-level path traceback.
+            raise SecureFileSymlinkError(
+                "ezkey.json is a symbolic link; replace it with a regular file "
+                "or use --out-file"
+            ) from None
 
     def get_all(self) -> Dict[str, Any]:
         """Get all configuration values."""
