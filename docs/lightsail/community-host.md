@@ -158,7 +158,7 @@ Do these **after** VM create → ports → Docker bootstrap (below). No secrets 
      ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh \
      --target community --include-demo-acme --clean-start
    ```
-   Or run `./clean-start.sh` on the VM from `~/ezkey/experimental-hybrid/lightsail/` after files are in place (see playbook). For kept DBs use `--sync-operator-files --remote-up` / `full-exp-environment-upgrade.sh --target community rolling`.
+   Or run `./clean-start.sh` on the VM from `~/ezkey/experimental-hybrid/lightsail/` after files are in place (see playbook). For **kept** community DB upgrades, follow **[Non-destructive upgrade (checklist)](#non-destructive-upgrade-checklist)** — do **not** treat `full-exp-environment-upgrade.sh … rolling` / blind `--sync-operator-files --remote-up` as the community default (see that section’s script gap).
 8. **Pages Admin UI** — separate Cloudflare Pages project (or branch) for `admin-ui.ezkey.online` with `VITE_API_BASE_URL=https://admin-api.ezkey.online` and Mode B UI flag above. Not automated by `scripts/lightsail/`.
 
 ---
@@ -395,6 +395,8 @@ agent only — cloud agents have no SSH route). Live Host OS fields:
 - [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md) -- Public alpha claim + git-SHA identity
 - [`community/DEPLOYED.md`](community/DEPLOYED.md) -- live state ledger for ezkey.online (update after successful publish)
 - [`product-docs/global/hygiene/host-os/README.md`](../../product-docs/global/hygiene/host-os/README.md) -- Host OS hygiene lane H1/H2/H3 (#909)
+- [ADR-0016](../../product-docs/global/architecture-decisions.md#adr-0016-keyset-blob-single-source-of-truth) + [`community-upgrade-impact.md`](../../product-docs/global/decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md) -- blob-only keyset authority; community in-place upgrade impact (#961)
+- **[Non-destructive upgrade (checklist)](#non-destructive-upgrade-checklist)** -- kept-DB community upgrade runbook (#1020)
 
 ## Observability (JavaMelody) — #846 / memory bounds #749
 
@@ -599,6 +601,121 @@ exists is refused by the export guard.
 
 ---
 
+## Non-destructive upgrade (checklist)
+
+Controlled in-place upgrade for the **already commissioned** community instance (images and scripts change; the data volume does not). Proven on the 2026-10-25 cutover to `92717a40` ([#961](https://github.com/mgagp/ezkey/issues/961), [ADR-0016](../../product-docs/global/architecture-decisions.md#adr-0016-keyset-blob-single-source-of-truth)). Design companion: [`community-upgrade-impact.md`](../../product-docs/global/decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md).
+
+**Placeholders only in this section** — do not paste origin IPs, public hostnames, absolute VM paths, secret values, or `.env` contents into tickets, chat, or git. Use markers such as `<ssh-host>`, `<compose-dir>`, `<admin-api-public-base>`, `<encryption-secrets-volume>`.
+
+### Principle
+
+- Change **images** and **operator scripts**; never wipe the data volume.
+- **Forbidden:** `docker compose down -v`, Lightsail `clean-start.sh` / export `--clean-start`, deleting named volumes, replacing the live Caddyfile or `.env` without an operator `diff` and explicit human go.
+- **Human go gate:** every step below needs an **explicit human go** before it runs. Another bot’s go does **not** count. A human performs the final Admin UI login and MFA request on their own device.
+- After a successful upgrade, update [`community/DEPLOYED.md`](community/DEPLOYED.md).
+
+### When the rolling-update script is inappropriate
+
+`./experimental-hybrid/scripts/full-exp-environment-upgrade.sh … rolling` (and export `--sync-operator-files --remote-up`) can **overwrite** the live community **Caddyfile** from the repo and, if misused, community **`.env`** / operator files **without** a mandatory operator `diff`. That is inappropriate when the community instance must keep curated live config (the path used for #961). Use **this checklist** instead.
+
+A **follow-up issue (to be created)** should track a non-destructive script mode: mandatory pre-check and backups (B, C), refuse to replace `.env` or Caddyfile without a `diff`, one API at a time with wait-for-healthy, and a keyset log check with automatic stop. Confirm against the script’s current code before implementing that mode.
+
+**Postgres container recreate is out of band:** leaving `postgres` on the prior container configuration (as for #961) avoids a database outage during the API window. The next `docker compose up -d` **without** `--no-deps` can recreate `postgres` with the new compose config — that is a **separate deliberate window** (database outage ⇒ all APIs), needing **explicit human go**, backups (C) redone before, and full checks (G) after. Do **not** fold it into the API rolling window. Grouping with an `audit-hmac.key` mode fix (below) is optional and still needs that same human go.
+
+### A. Preconditions
+
+Human go required before any pre-check that touches the live host.
+
+1. No test or evaluation campaign in flight on the instance.
+2. Announce the maintenance window (about **2 min per API**, one API at a time).
+3. All stack containers healthy (`docker compose ps` from `<compose-dir>`).
+4. Note current image IDs / tags for admin-api, auth-api, integration-api, demo-app-acme, migration.
+5. Read release notes: if a **Flyway** migration is required, rollback becomes schema-aware (see H) and migration must run before APIs (see F).
+
+### B. Read-only pre-check
+
+Human go required. Presence, mode, and metadata only — **never** print key material, blob bytes, or `.env` values.
+
+1. On named volume `<encryption-secrets-volume>`: confirm `master.key` and `audit-hmac.key` exist; record **mode and owner only** (e.g. `stat` / `ls -l` style — never `cat`, never `docker cp` of secret files into tickets or `/tmp` reports). Align with [`docs/OPERATIONAL.md`](../OPERATIONAL.md) post-upgrade hygiene (read-only in-volume checks).
+2. **`audit-hmac.key` mode (read-only first):** expect POSIX mode **600** and a sensible owner (same bar as `master.key` / ADR-0016 design § `audit-hmac.key`). Report `compliant` or `needs-fix` (mode observed → expected `600`) — **never** content or absolute paths in reports. If not `600`, fixing (`chmod 600`, keep owner, restart one API to confirm healthy) is a **production-window** change: **explicit human go** required; may be grouped with the separate postgres recreate window above.
+3. Database metadata only: `ezkey_keyset_blob` exists with `version >= 1` (e.g. `SELECT version, length(keyset_data), last_updated_at FROM ezkey_keyset_blob` — **never** select or paste `keyset_data`). ADR-0016: the blob row is the sole keyset authority; `master.key` wraps the Tink envelope.
+4. From current API logs, note **kid** (primary key id) and blob **version** for post-upgrade comparison. Logs may carry kids/versions only — never key material ([`docs/SECURITY_POSTURE.md`](../SECURITY_POSTURE.md)).
+
+### C. Backups before any change
+
+Human go required before each backup and before copying artefacts off the VM.
+
+1. Timestamped `pg_dump -Fc` of the Ezkey database; verify with `pg_restore --list` (non-destructive list).
+2. Restricted archive of key files from `<encryption-secrets-volume>` (archive permissions tight; never unpack into the git worktree).
+3. Copy dump + archive **off the VM** to the operator machine, **outside the repo**, restricted ACL.
+4. Backup live `.env` and compose files on the VM (local copies with a timestamp suffix — do not commit).
+5. Tag current images as `:rollback-pre-<n>` (or `:rollback-pre-<short-sha>`) for: admin-api, auth-api, integration-api, demo-app-acme, migration.
+
+### D. Secrets and configuration
+
+Human go required before generating or editing any live config.
+
+1. If the release adds a **new mandatory** `.env` variable (example for #961 / ADR-0016: `EZKEY_DB_CRYPTO_PASSWORD` — **no default**, compose fails closed if unset), generate it **on the VM**, keep the file mode **600**, never display or copy the value into chat/tickets/git.
+2. No blind replacement of Caddyfile or `.env`.
+3. No blind `--sync-operator-files` (see script gap above). Diff first; apply only after human go.
+
+### E. Code and images
+
+Human go required before build/load and before installing any file on the VM.
+
+1. Build on the operator machine or in CI — **no git clone / build on the VM**.
+2. `docker load` images on the VM; verify label `org.opencontainers.image.revision` matches the intended SHA.
+3. Install only files required by the delta (compose snippets, scripts) after `diff` against the live copies.
+4. `diff` the candidate compose against the VM’s; then `docker compose config -q` from `<compose-dir>`.
+
+### F. Deployment, one step at a time
+
+Human go required **before each** recreate. Prefer about 2 min per API; wait for healthy before the next.
+
+1. Run **`db-grants`** first (`docker compose run` / one-shot as used on this stack). Expect exit **0** and log line confirming grants applied (e.g. “Grants applied”). On volumes from before ADR-0016, `apply-grants.sh` creates `ezkey_crypto` idempotently when missing (`EZKEY_DB_CRYPTO_PASSWORD` required — #961 B1).
+2. If release notes announce a Flyway migration: run **`migration`** to completion **before** APIs.
+3. Recreate **one API at a time** with:
+
+   ```bash
+   docker compose up -d --no-deps --no-build --force-recreate <service>
+   ```
+
+   Order: **admin-api** first (sole keyset writer under ADR-0016), then **auth-api**, **integration-api**, **demo-app-acme**. Wait until healthy after each.
+4. **Do not** recreate **postgres**, **caddy**, or the JavaMelody **collector** in this API window (postgres: separate window above).
+
+### G. Checks
+
+Human go required before declaring success. Final login/MFA: **human on their device** (not a bot).
+
+1. `./scripts/db/verify-grants.sh --docker` passes; `ezkey_crypto` is **SELECT-only** on `ezkey_keyset_blob` (ADR-0016 / #961).
+2. Logs show **“Keyset loaded from database”** (or equivalent) with the **same kid and version** recorded in B. Any **“Materializing new keyset”** or **“Generating new keyset”** → **stop immediately** and roll back (H). Accidental materialize would mint a new authority and break existing `ENC:{kid}:…` ciphertext.
+3. Containers healthy; `org.opencontainers.image.revision` matches the target SHA.
+4. Same HTTPS status codes on each public API/demo base (`<admin-api-public-base>`, …) as before the window (spot-check only — no secrets in URLs).
+5. Admin UI login + MFA completed by a human.
+6. Optional: `audit-hmac.key` still `compliant` at mode 600 (mode/owner only).
+
+### H. Rollback (no schema change, database intact)
+
+Human go required before every rollback action. If a Flyway migration **did** run, do **not** use image-only rollback without a schema plan — stop and get explicit human direction.
+
+1. Restore compose and `.env` backups from C.
+2. Retag `:rollback-pre-<n>` images to the tags compose expects (e.g. `:latest`).
+3. `docker compose up -d --no-deps --no-build --force-recreate` each service that was upgraded (same order discipline as F if Admin must lead).
+4. The `ezkey_crypto` role and grants **may stay** (idempotent / safe to leave).
+5. `pg_restore` is **last resort**, destructive to current DB state — **explicit human approval** required; community has **no guaranteed backup** ([`docs/OPERATIONAL.md`](../OPERATIONAL.md)).
+
+### I. Report
+
+Record in operator notes / [`community/DEPLOYED.md`](community/DEPLOYED.md) (public ledger: no secrets, no origin IPs):
+
+- Exact commands and target SHA
+- Times (**ET**)
+- Measured outage (per window and total)
+- Observed values: kid, blob version, `verify-grants` result, HTTP codes, `audit-hmac.key` compliant/fixed
+- Deviations from this checklist
+
+---
+
 ## Deploy pitfalls (community host)
 
 Short operator checklist verified against repo scripts/compose (not live VM observation):
@@ -619,8 +736,10 @@ Short operator checklist verified against repo scripts/compose (not live VM obse
    it (`condition: service_completed_successfully`). Do not skip or remove it on a fresh bring-up.
 3. **Never `--clean-start` on a kept community DB** — `--clean-start` / `full` are destructive
    (`docker compose down -v`). Community requires `EZKEY_CONFIRM_WIPE=ezkey-online` and is for
-   **first commissioning only**. For upgrades: `--target community rolling` (or
-   `--sync-operator-files` + `--remote-up`).
+   **first commissioning only**. For upgrades on a kept DB: follow
+   **[Non-destructive upgrade (checklist)](#non-destructive-upgrade-checklist)** (not blind
+   `rolling` / `--sync-operator-files --remote-up` — that path can overwrite live Caddyfile /
+   `.env`).
 4. **Static IP attach / detach changes the instance public IPv4** — attaching or detaching
    `ezkey-online-community` (or any Lightsail static IP) immediately changes the address the
    instance presents. Update the four proxied Cloudflare **A** records
