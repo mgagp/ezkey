@@ -228,6 +228,14 @@ On every Monday-full `dependabot-curated` pass the agent must:
 4. Check `google-java-format.version` (Spotless nested pin; Dependabot typically misses it).
    Bump only when Spotless, JDK compatibility, or a real formatter bug requires it (T2 tooling).
 
+**Boot 4.1.2 (2026-10-26, replaces Dependabot [#1031](https://github.com/mgagp/ezkey/pull/1031)):**
+dropped parent `postgresql.version` / `tomcat.version` SEC-019 overrides — Boot BOM already
+manages **42.7.14** / **11.0.27**. Kept `logback` 1.6.5 (and jackson / caffeine ahead pins).
+Dependabot `#1031` `backend` failed resolving Spotless plugin transitive
+`commons-codec:1.22.1` (`PluginResolutionException`) — same Maven Central flake family as
+[#939](https://github.com/mgagp/ezkey/issues/939); hygiene PR retries the bump without pinning
+codec. Provenance: Monday pulse [`2026-10-26-pass-1.md`](2026-10-26-pass-1.md).
+
 Do **not** add Docker image tags to this pulse unless the operator asks. Tink / ShedLock /
 ipaddress now follow parent properties (see
 [`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md)).
