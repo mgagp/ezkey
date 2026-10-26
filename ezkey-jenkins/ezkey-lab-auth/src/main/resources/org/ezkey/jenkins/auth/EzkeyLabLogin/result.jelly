@@ -1,0 +1,21 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+  <l:layout title="Ezkey login — ${it.resultStateLabel}" norefresh="true">
+    <l:main-panel>
+      <div data-testid="ezkey-lab-state" data-ezkey-lab-state="${it.resultState}">
+        <p style="margin:0 0 0.5rem;color:#666;font-size:0.9rem;">State: ${it.resultStateLabel}</p>
+        <h1 data-testid="ezkey-lab-result-title">${it.resultTitle}</h1>
+        <p data-testid="ezkey-lab-result-message">${it.resultMessage}</p>
+        <p>
+          <j:if test="${it.resultState == 'approved'}">
+            <a href="${rootURL}/" data-testid="ezkey-lab-continue">Continue to Jenkins</a>
+            ·
+          </j:if>
+          <a href="." data-testid="ezkey-lab-try-again">Start over</a>
+          ·
+          <a href="${rootURL}/login">Jenkins login</a>
+        </p>
+      </div>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>

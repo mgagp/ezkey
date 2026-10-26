@@ -1,0 +1,87 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+  <l:layout title="Ezkey login — Waiting" norefresh="true">
+    <l:main-panel>
+      <div data-testid="ezkey-lab-state" data-ezkey-lab-state="waiting"
+           id="ezkey-lab-wait-config"
+           data-poll-ms="${it.waitPagePollIntervalMs}"
+           data-poll-error-ms="${it.waitPagePollErrorIntervalMs}"
+           data-timeout-seconds="${it.pendingTimeoutSeconds}">
+        <p style="margin:0 0 0.5rem;color:#666;font-size:0.9rem;">State: Challenge · Waiting</p>
+        <h1>Awaiting device approval</h1>
+        <p>User: <strong data-testid="ezkey-lab-username">${it.pendingUsername}</strong></p>
+        <j:if test="${it.pendingChallengeFormatted != null}">
+          <div data-testid="ezkey-lab-challenge" data-ezkey-lab-state="challenge"
+               style="margin:1rem 0;padding:1rem;border:1px solid #ccc;max-width:20rem;">
+            <div style="font-size:0.85rem;color:#666;">Challenge code</div>
+            <strong style="font-size: 1.75rem; letter-spacing: 0.15em;">${it.pendingChallengeFormatted}</strong>
+            <p style="margin:0.5rem 0 0;">Match this code on your Ezkey device, then approve or deny.</p>
+          </div>
+        </j:if>
+        <j:if test="${it.pendingChallengeFormatted == null}">
+          <p data-testid="ezkey-lab-no-challenge">No challenge code for this attempt — approve or deny on your device.</p>
+        </j:if>
+        <p id="status" data-testid="ezkey-lab-status">Waiting for device response…</p>
+        <form method="post" action="cancel" style="margin-top: 1rem;">
+          <j:set var="crumbIssuer" value="${app.getCrumbIssuer()}"/>
+          <j:if test="${crumbIssuer != null}">
+            <input type="hidden" name="${crumbIssuer.crumbRequestField}" value="${crumbIssuer.crumb}"/>
+          </j:if>
+          <button type="submit" data-testid="ezkey-lab-cancel">Cancel</button>
+        </form>
+      </div>
+      <script><![CDATA[
+        (function () {
+          var cfg = document.getElementById('ezkey-lab-wait-config');
+          var pollMs = parseInt(cfg.getAttribute('data-poll-ms'), 10) || 1500;
+          var errorMs = parseInt(cfg.getAttribute('data-poll-error-ms'), 10) || 2000;
+          var timeoutSec = parseInt(cfg.getAttribute('data-timeout-seconds'), 10) || 60;
+          var deadlineMs = Date.now() + (timeoutSec * 1000);
+          var statusEl = document.getElementById('status');
+          var stopped = false;
+          function go(state) {
+            stopped = true;
+            window.location.href = 'result?state=' + encodeURIComponent(state);
+          }
+          function pastDeadline() {
+            return Date.now() > deadlineMs;
+          }
+          function poll() {
+            if (stopped) return;
+            if (pastDeadline()) { go('expired'); return; }
+            fetch('poll', { credentials: 'same-origin' })
+              .then(function (r) {
+                return r.text().then(function (t) {
+                  return { ok: r.ok, status: r.status, text: t.trim() };
+                });
+              })
+              .then(function (res) {
+                if (stopped) return;
+                var t = res.text;
+                // Server-authoritative terminals: !res.ok (401/410/5xx). 410 EXPIRED → expired page.
+                if (!res.ok) {
+                  if (t === 'EXPIRED') { go('expired'); return; }
+                  go('error');
+                  return;
+                }
+                if (t === 'ACCEPTED') { go('approved'); return; }
+                if (t === 'REJECTED') { go('denied'); return; }
+                if (t === 'EXPIRED') { go('expired'); return; }
+                if (t === 'CANCELLED' || t === 'INVALID') { go('cancelled'); return; }
+                if (pastDeadline()) { go('expired'); return; }
+                statusEl.textContent = 'Waiting… (' + (t || 'PENDING') + ')';
+                setTimeout(poll, pollMs);
+              })
+              .catch(function () {
+                if (stopped) return;
+                // Network errors retry only until SESSION_TIMEOUT deadline.
+                if (pastDeadline()) { go('expired'); return; }
+                setTimeout(poll, errorMs);
+              });
+          }
+          poll();
+        })();
+      ]]></script>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>

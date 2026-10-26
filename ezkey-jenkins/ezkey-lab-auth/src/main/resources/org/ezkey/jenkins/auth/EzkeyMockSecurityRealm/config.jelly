@@ -1,0 +1,25 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+  <f:section title="Ezkey Integration API (SDK)">
+    <f:entry title="Integration API base URL" field="ezkeyBaseUrl">
+      <f:textbox/>
+    </f:entry>
+    <f:entry title="Integration key" field="integrationKey">
+      <f:textbox/>
+    </f:entry>
+    <f:entry title="Integration secret" field="ezkeySecret">
+      <f:password/>
+    </f:entry>
+    <f:entry title="Force challenge code" field="forceChallenge">
+      <f:checkbox/>
+    </f:entry>
+  </f:section>
+  <f:section title="Break-glass admin (anti-lockout)">
+    <f:entry title="Break-glass username" field="breakGlassUsername">
+      <f:textbox default="admin"/>
+    </f:entry>
+    <f:entry title="Break-glass password" field="breakGlassPassword">
+      <f:password/>
+    </f:entry>
+  </f:section>
+</j:jelly>

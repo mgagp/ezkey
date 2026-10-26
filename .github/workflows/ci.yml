@@ -39,6 +39,7 @@ jobs:
       ezkey-pam: ${{ steps.resolve.outputs.ezkey-pam }}
       lightsail: ${{ steps.resolve.outputs.lightsail }}
       dart-sdk: ${{ steps.resolve.outputs.dart-sdk }}
+      ezkey-jenkins: ${{ steps.resolve.outputs.ezkey-jenkins }}
       workflows: ${{ steps.resolve.outputs.workflows }}
     steps:
       - name: Checkout
@@ -118,6 +119,8 @@ jobs:
               - 'docs/LOCAL_STACK_PORTS.md'
             dart-sdk:
               - 'ezkey_dart/**'
+            ezkey-jenkins:
+              - 'ezkey-jenkins/**'
 
       # Manual runs must exercise every suite; path filters alone would skip all
       # and leave ci-gate green with nothing checked.
@@ -133,6 +136,7 @@ jobs:
             echo "ezkey-pam=true" >> "$GITHUB_OUTPUT"
             echo "lightsail=true" >> "$GITHUB_OUTPUT"
             echo "dart-sdk=true" >> "$GITHUB_OUTPUT"
+            echo "ezkey-jenkins=true" >> "$GITHUB_OUTPUT"
             echo "workflows=true" >> "$GITHUB_OUTPUT"
             echo "Forced all suites (workflow_dispatch)"
           else
@@ -143,6 +147,7 @@ jobs:
             echo "ezkey-pam=${{ steps.filter.outputs.ezkey-pam }}" >> "$GITHUB_OUTPUT"
             echo "lightsail=${{ steps.filter.outputs.lightsail }}" >> "$GITHUB_OUTPUT"
             echo "dart-sdk=${{ steps.filter.outputs.dart-sdk }}" >> "$GITHUB_OUTPUT"
+            echo "ezkey-jenkins=${{ steps.filter.outputs.ezkey-jenkins }}" >> "$GITHUB_OUTPUT"
             echo "workflows=${{ steps.filter.outputs.workflows }}" >> "$GITHUB_OUTPUT"
           fi
 
@@ -369,7 +374,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.ezkey-pam == 'true' || needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    # Stub suites (Docker image + conf-security/timeouts/f9-retry) routinely need >30m on GHA.
+    timeout-minutes: 50
     defaults:
       run:
         working-directory: ezkey-pam
@@ -450,11 +456,27 @@ jobs:
       - name: Format, analyze, unit tests (Docker)
         run: ./ezkey_dart/scripts/test.sh
 
+  # Experimental Jenkins lab plugins (#972): Docker Temurin 21 + mvn test.
+  ezkey-jenkins:
+    name: ezkey-jenkins
+    needs: changes
+    if: needs.changes.outputs.ezkey-jenkins == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: ezkey-lab-auth mvn test (Docker maven:3.9-eclipse-temurin-21)
+        run: ./ezkey-jenkins/scripts/ci-plugin-test.sh
+
   # Single required-check candidate. Skipped path jobs count as success for the gate;
   # failure or cancellation of any needed job fails the gate.
   ci-gate:
     name: ci-gate
-    needs: [changes, admin-ui, backend, ha-smoke, mobile, cli-python, ezkey-pam, lightsail, dart-sdk]
+    needs: [changes, admin-ui, backend, ha-smoke, mobile, cli-python, ezkey-pam, lightsail, dart-sdk, ezkey-jenkins]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -471,6 +493,7 @@ jobs:
           echo "ezkey-pam=${{ needs.ezkey-pam.result }}"
           echo "lightsail=${{ needs.lightsail.result }}"
           echo "dart-sdk=${{ needs.dart-sdk.result }}"
+          echo "ezkey-jenkins=${{ needs.ezkey-jenkins.result }}"
 
           if [[ "${{ needs.changes.result }}" != "success" ]]; then
             echo "::error::changes job did not succeed (${{ needs.changes.result }})"
@@ -485,7 +508,8 @@ jobs:
             "cli-python:${{ needs.cli-python.result }}" \
             "ezkey-pam:${{ needs.ezkey-pam.result }}" \
             "lightsail:${{ needs.lightsail.result }}" \
-            "dart-sdk:${{ needs.dart-sdk.result }}"; do
+            "dart-sdk:${{ needs.dart-sdk.result }}" \
+            "ezkey-jenkins:${{ needs.ezkey-jenkins.result }}"; do
             name="${pair%%:*}"
             result="${pair#*:}"
             case "$result" in
