@@ -159,7 +159,7 @@ lightsail_require_community_wipe_confirm() {
     return 0
   fi
   if [[ "${EZKEY_CONFIRM_WIPE:-}" != "${LIGHTSAIL_SSH_HOST_COMMUNITY}" ]]; then
-    lightsail_die "refusing community wipe (--clean-start / full). Set EZKEY_CONFIRM_WIPE=${LIGHTSAIL_SSH_HOST_COMMUNITY} for first commissioning only (wipes Postgres). Prefer --target community rolling for upgrades (#812)."
+    lightsail_die "refusing community wipe (--clean-start / full). Set EZKEY_CONFIRM_WIPE=${LIGHTSAIL_SSH_HOST_COMMUNITY} for first commissioning only (wipes Postgres). For kept-DB community upgrades use docs/lightsail/community-host.md non-destructive checklist (not blind rolling / --sync-operator-files --remote-up) (#812 / #1020)."
   fi
 }
 
