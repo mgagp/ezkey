@@ -3547,25 +3547,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/query-core@npm:5.104.4":
-  version: 5.104.4
-  resolution: "@tanstack/query-core@npm:5.104.4"
-  checksum: 10c0/059587b4eec5abc186e9361b23ede4b5ecf0b0899e0e10154d70793f2b00ce4fd168e5d9636cdacabca464bb6c882372d2866a4bfd354ec3d2fd4b0ba6ef1110
+"@tanstack/query-core@npm:5.104.5":
+  version: 5.104.5
+  resolution: "@tanstack/query-core@npm:5.104.5"
+  checksum: 10c0/bc2f0626e33ccb1c881343e2b351168d6c07df01f42ed0b4f679d4ecc753af5864678f3e09f57bef500a02de5fc52cfef13aa7c3f2d3be6b62297bac024acaed
   languageName: node
   linkType: hard
 
-"@tanstack/react-query@npm:5.104.4":
-  version: 5.104.4
-  resolution: "@tanstack/react-query@npm:5.104.4"
+"@tanstack/react-query@npm:5.104.5":
+  version: 5.104.5
+  resolution: "@tanstack/react-query@npm:5.104.5"
   dependencies:
-    "@tanstack/query-core": "npm:5.104.4"
+    "@tanstack/query-core": "npm:5.104.5"
   peerDependencies:
     "@types/react": ^18 || ^19
     react: ^18 || ^19
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/c4999d44e59de7849dcb9e54ecff5670e9bbfb31f4eba82d4dcac6855171e1dce64e436a0192dddc669a9e2aa1f658bb836b1cd9026074268a4c28197dad54a3
+  checksum: 10c0/eaff9dd4cec0cc43cf835d780efeaf0a2603b792cc2f5f5800a73b4f62b4562cce54b88885f74be72ea0fa7fc721636884ec4bae152b24aea9ce49544fb4c5d1
   languageName: node
   linkType: hard
 
@@ -6174,7 +6174,7 @@ __metadata:
     "@react-navigation/native-stack": "npm:7.21.0"
     "@react-navigation/stack": "npm:7.12.1"
     "@rnx-kit/third-party-notices": "npm:3.0.4"
-    "@tanstack/react-query": "npm:5.104.4"
+    "@tanstack/react-query": "npm:5.104.5"
     "@types/jest": "npm:29.5.14"
     "@types/react": "npm:19.3.0"
     "@types/react-test-renderer": "npm:19.3.0"
@@ -6182,7 +6182,7 @@ __metadata:
     eslint: "npm:9.39.4"
     eslint-config-prettier: "npm:10.1.8"
     husky: "npm:9.1.7"
-    i18next: "npm:26.5.2"
+    i18next: "npm:26.5.3"
     jest: "npm:29.7.0"
     js-sha256: "npm:1.0.0"
     lint-staged: "npm:17.6.0"
@@ -6925,15 +6925,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"i18next@npm:26.5.2":
-  version: 26.5.2
-  resolution: "i18next@npm:26.5.2"
+"i18next@npm:26.5.3":
+  version: 26.5.3
+  resolution: "i18next@npm:26.5.3"
   peerDependencies:
     typescript: ^5 || ^6 || ^7
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/b2edaba4af8f907d685bb133b8878cc1f03a7eaac3e76937da736b819d6d9500a82f516441b272994e9988c227bbcbbbc38fd185b4a2f67ab6bf9884ecf31167
+  checksum: 10c0/85b8f7b45b9eb5a90e396f5a8270f45d4cb0a1add3da21253a3211ed892ffdc0d1c32dbb50124199db3ef279133c19edfeaeaf3278ce8326c447d65d5f33e05c
   languageName: node
   linkType: hard
 
