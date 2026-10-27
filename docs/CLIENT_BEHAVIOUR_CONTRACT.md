@@ -6,23 +6,35 @@
 
 # Client behaviour contract (application-independent)
 
-> Status: normative companion for any Auth API client (third-party Flutter, React Native
-> reference app, Demo Device, or other). Protocol wire formats remain in
-> [`MOBILE_DEVELOPER_GUIDE.md`](MOBILE_DEVELOPER_GUIDE.md), [`ENDPOINT.md`](ENDPOINT.md), and the
-> signature payload docs. The React Native finite-state model is
-> [`ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md`](../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md).
-> Flutter SDK surface:
-> [`ezkey_dart/README.md`](../ezkey_dart/README.md).
+| | |
+| --- | --- |
+| **Version** | 2026-10-27 |
+| **Status** | Normative companion for any Auth API client (third-party Flutter, React Native reference app, Demo Device, or other) |
 
-This document states **client behaviour** using [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119)
-keywords. Each rule cites the state-machine topic and the
-[#834](https://github.com/mgagp/ezkey/issues/834) question number (**Q*n***). Rationales live in those
-sources; do not duplicate them here.
+Protocol wire formats remain in [`MOBILE_DEVELOPER_GUIDE.md`](MOBILE_DEVELOPER_GUIDE.md),
+[`ENDPOINT.md`](ENDPOINT.md), and the signature payload docs. The React Native finite-state model is
+[`ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md`](../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md).
+Flutter SDK surface: [`ezkey_dart/README.md`](../ezkey_dart/README.md).
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT",
+"RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in
+[RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119) and
+[RFC 8174](https://datatracker.ietf.org/doc/html/rfc8174) when, and only when, they appear in all
+capitals, as shown here.
+
+Each rule cites the state-machine topic and the [#834](https://github.com/mgagp/ezkey/issues/834)
+question number (**Q*n***). Rationales live in those sources; do not duplicate them here. Each rule
+also carries a **Basis** label:
+
+| Basis | Meaning |
+| --- | --- |
+| **server** | Enforced by Auth API / core service behaviour (citeable in Java). A non-conforming client still cannot defeat the server guarantee. |
+| **client invariant** | Required for a correct, honest client UX or local trust posture. The wire protocol alone does not force it; omitting it yields a broken or misleading client. |
 
 | Keyword | Meaning here |
 | --- | --- |
-| **MUST** | Required for a correct client relative to Auth API / protocol behaviour (verified in server code or protocol docs). |
-| **SHOULD** | Strong recommendation proven by the reference app / decided #834 answers; not strictly imposed by the wire protocol. |
+| **MUST** / **MUST NOT** | Required: either **server**-enforced, or a **client invariant** explicitly labelled as such. |
+| **SHOULD** / **SHOULD NOT** | Strong recommendation proven by the reference app / decided #834 answers; not strictly imposed by the wire protocol. |
 | **MAY** | Reference-app product choice (navigation, layout, copy placement). Other clients may differ. |
 
 When uncertain whether the protocol forces a behaviour, this contract uses **SHOULD** and says why.
@@ -33,12 +45,14 @@ When uncertain whether the protocol forces a behaviour, this contract uses **SHO
 
 1. **MUST** treat `POST /api/v1/auth-attempts/pending` as a one-shot claim: a successful `200` with a
    verified integration signature moves the attempt to `READ` and will not be delivered again.
-   State machine: claim sub-machine. Protocol: [`ENDPOINT.md`](ENDPOINT.md) § pending.
+   **Basis: server** (`AuthAttemptPendingService` claim path). State machine: claim sub-machine.
+   Protocol: [`ENDPOINT.md`](ENDPOINT.md) § pending.
 2. **MUST NOT** show pending context (`contextTitle` / `contextMessage` / challenge flag) until the
    pending integration signature verifies. On fail-closed, **MUST NOT** send a refusal for that
-   claim. State machine: Detail `fail_closed`. **Q4**.
+   claim. **Basis: client invariant**. State machine: Detail `fail_closed`. **Q4**.
 3. **MUST NOT** use a device-local countdown or an invented `expiresAt` as a security control. The
-   device pending body does not carry expiry fields. State machine: Timers / TTL. **Q1**, **Q14**.
+   device pending body does not carry expiry fields. **Basis: client invariant**. State machine:
+   Timers / TTL. **Q1**, **Q14**.
 4. **SHOULD** leave remaining-time display to the integrating application’s create/wait UI.
    **Q1**.
 5. **MAY** omit any phone-side timer chrome entirely (reference app choice). **Q1**.
@@ -47,32 +61,50 @@ When uncertain whether the protocol forces a behaviour, this contract uses **SHO
 
 ## 2. Decision lock (Q2, Q10, Q13)
 
+**Server guarantee (stated once):** the Auth API already ensures at most one successful
+approve/deny transition for an attempt (conditional `UPDATE … WHERE status = READ`, plus terminal
+409 on a second respond). A client that sends a second decision does not create a second accept; it
+gets **409**. The **client lock** below is therefore a **client invariant**: it avoids a misleading
+UI (Retry / leave-as-deny that looks actionable) and an unnecessary second HTTP call — it does
+**not** create the single-decision guarantee.
+
 1. **MUST** remember the `authAttemptId` after any `respond` exchange that completed or became
    undecidable at the HTTP layer, and **MUST NOT** send a second approve/deny for that same id
-   (including leave-as-deny). State machine: `serverDecisionAttemptIdRef` / Pending Auth FSM.
-   **Q2**, **Q10**, **Q13**.
+   (including leave-as-deny). **Basis: client invariant**. State machine:
+   `serverDecisionAttemptIdRef` / Pending Auth FSM. **Q2**, **Q10**, **Q13**.
 2. **MUST** set that lock when `respond` returns HTTP `200`, **before** local verification of the
-   result integration signature. State machine: Approve / Deny table. **Q2**.
+   result integration signature (including malformed bodies and failed integrity checks on that
+   200). **Basis: client invariant**. State machine: Approve / Deny table. **Q2**, **Q9**.
 3. **MUST** treat a `respond` call that was sent but produced **no HTTP response** (timeout,
    transport cut, undecidable) as an **UNKNOWN** outcome: lock the attempt id, show an uncertain
    result (not a failure), offer Back only, and **MUST NOT** send another decision for that id.
-   State machine: `UncertainDecision`. **Q10**.
-4. **SHOULD** treat an ambiguous **5xx** on `respond` the same as UNKNOWN when the problem `type`
-   does not prove the server rolled back. Exception: **503**
-   `integration-signing-unavailable` is explicitly retryable (transaction rolled back; #844) and
-   **MUST NOT** be locked as UNKNOWN. Classified **SHOULD** for other 5xx because the server may
-   or may not have committed depending on failure timing; the protocol does not expose a single
-   “committed?” signal. **Q10**.
-5. **MUST** scope the lock per `authAttemptId` so a later pending attempt with a different id is
-   not blocked. **Q13**.
+   **Basis: client invariant**. State machine: `UncertainDecision`. **Q10**.
+4. **SHOULD** treat an ambiguous **5xx** on `respond` the same as UNKNOWN (lock; Back only; no
+   second decision). This is an **extension of Q10** (the state machine’s Q10 text covers “no HTTP
+   response” only; ambiguous 5xx after send has the same client uncertainty). **503**
+   `integration-signing-unavailable` remains **retryable**, but a retry **MAY** then return
+   terminal **409** (for example when a wrong challenge already committed `INVALID` before signing
+   failed — `AuthAttemptRespondService` FAILED-response path). Do **not** treat 503 as proof that
+   no server-side commitment occurred. Classified **SHOULD** because the protocol does not expose a
+   single “committed?” signal for every 5xx.
+5. After `respond` was sent, HTTP **4xx** or **429** **with a problem/empty body the client can
+   classify** keep catalog retryability (not UNKNOWN): for example validation **400** or rate-limit
+   **429**. Pre-send failures (biometric cancel, local validation) stay retryable without lock.
+   State machine: Approve / Deny table.
+6. **MUST** scope the lock per `authAttemptId` so a later pending attempt with a different id is
+   not blocked. **Basis: client invariant**. **Q13**.
 
-### Known gap (SDK — code follow-up, not this docs PR)
+### Known gap (code follow-up, not this docs PR)
 
-The Dart SDK (`ezkey_dart`) currently maps lost `respond` transport failures to
-`EzkeyNetworkException` with `retryable: true`, and treats many 5xx classifications as retryable.
-That contradicts rules 2.3–2.4. Integrators reading only the SDK error flags today can be misled
-into answering again. Docs state the contract; SDK behaviour change is a separate code follow-up
-(see issue #1052 plan).
+Neither current client fully implements rules 2.3–2.4:
+
+- **Dart SDK** (`ezkey_dart`): lost `respond` transport → `EzkeyNetworkException` with
+  `retryable: true`; many 5xx kinds also `retryable`.
+- **React Native reference app** (`usePendingAuth.ts`): locks on transport-without-HTTP-response
+  (Q10) and on non-retryable catalog errors, but does **not** lock on retryable 5xx (including
+  ambiguous 5xx after send).
+
+Docs state the contract; SDK and app behaviour changes are separate code follow-ups (#1052 plan).
 
 ---
 
@@ -84,8 +116,9 @@ into answering again. Docs state the contract; SDK behaviour change is a separat
    API does not require a device-initiated cancel; an abandoned `READ` row expires by server TTL.
 2. **SHOULD** keep a permanent, always-visible line that leaving declines the request (no
    confirmation dialog). **Q5**. Classified **SHOULD**: UX honesty, not a wire requirement.
-3. **SHOULD** still allow navigation if leave-as-deny fails (network), with one short message and
-   **MUST NOT** auto-retry leave-deny in a loop. **Q3**.
+3. **SHOULD** still allow navigation if leave-as-deny fails (network), with one short message.
+   Inside that recommendation, clients **MUST NOT** auto-retry leave-deny in a loop (**Basis:
+   client invariant** nested under SHOULD). **Q3**.
 4. **MAY** choose how navigation stacks return to enrollment detail after leave or complete.
    Reference app choice.
 
@@ -94,13 +127,15 @@ into answering again. Docs state the contract; SDK behaviour change is a separat
 ## 4. Protected local confirmation (Q11)
 
 1. **SHOULD** prompt for biometric or device credential on **Approve only** when protected mode
-   applies (enrollment policy and/or device preference). **MUST NOT** require that prompt for
-   Deny or leave-as-deny once Q11 is implemented. State machine: Approve / Deny; Leave screen.
-   **Q11**. Classified **SHOULD**: app-enforced presence, not Keystore-bound proof to the server
-   (see developer guide Android notes).
-2. **Status:** **Q11 is decided** (#834, 2026-10-15). The reference React Native app may still
-   prompt on Deny until the code follow-up ships; clients **SHOULD** follow approve-only now.
-   Do not treat “prompt on deny” as protocol-required.
+   applies (enrollment policy and/or device preference). Once Q11 is implemented, clients
+   **MUST NOT** require that prompt for Deny or leave-as-deny (**Basis: client invariant** nested
+   under SHOULD). State machine: Approve / Deny; Leave screen. **Q11**. Classified **SHOULD**:
+   app-enforced presence, not Keystore-bound proof to the server (see developer guide Android
+   notes).
+2. **Status:** **Q11 is decided** (#834, 2026-10-15). The reference React Native app still prompts
+   on Deny today (`usePendingAuth.ts` passes `requiresProtectedApproval` into `signForRespond` for
+   both accept and reject) until the code follow-up ships; clients **SHOULD** follow approve-only
+   now. Do not treat “prompt on deny” as protocol-required.
 
 ---
 
@@ -109,33 +144,39 @@ into answering again. Docs state the contract; SDK behaviour change is a separat
 1. **MUST** treat HTTP **409** `auth-attempt-state-conflict` as final for that attempt: one
    “no longer active” (or equivalent) sentence, Back only, no Retry that sends another decision.
    Covers not-found, still `PENDING`, terminal, cancelled, superseded, and non-owner signature
-   cases per server catalog. State machine: `NoLongerActive`. **Q8** (+ #844 m1).
+   cases per server catalog. **Basis: server** (`AuthAttemptRespondService` state gates /
+   conditional update). State machine: `NoLongerActive`. **Q8** (+ #844 m1).
 2. **MUST** treat HTTP **409** `auth-attempt-expired` as final (wall-clock expiry after ownership
    proof; #895). Clients **MAY** use distinct “expired” copy; they **MUST NOT** offer a Retry that
-   re-sends a decision for that id. **Q8** amended by #895.
-3. **MUST NOT** split `auth-attempt-state-conflict` into multiple user-visible causes for
-   anti-enumeration. **Q8**.
+   re-sends a decision for that id. **Basis: server**. **Q8** amended by #895.
+3. Presentation note (not a separate protocol obligation): the server already collapses many
+   inactive causes into a **single** `auth-attempt-state-conflict` type. Clients **SHOULD** show
+   one sentence for that type. They need not invent further cause-splitting UX for causes the
+   server already unified. Distinct copy for `auth-attempt-expired` remains **MAY** (rule 5.2).
 
 ---
 
 ## 6. Result signature after HTTP 200 (Q2, Q9)
 
 1. **MUST** verify `authAttemptProofTokenResultSignedByIntegration` before showing approved or
-   denied. On failure after HTTP 200: **MUST NOT** display APPROVED/DENIED, **MUST** keep the
-   decision lock, **MUST NOT** send another decision, Back only. Sentence **SHOULD** point at the
-   sign-in where the request was started, without naming a tenant. **Q2**, **Q9**.
+   denied. On missing signature, malformed body, or failed integrity check after HTTP 200:
+   **MUST NOT** display APPROVED/DENIED, **MUST** keep the decision lock, **MUST NOT** send another
+   decision, Back only. Sentence **SHOULD** point at the sign-in where the request was started,
+   without naming a tenant. **Basis: client invariant**. **Q2**, **Q9**.
 
 ---
 
 ## 7. Error presentation (G5)
 
 1. **MUST** branch client behaviour on HTTP **status** and RFC 9457 problem **`type`** (under
-   `https://ezkey.io/problems/…` when present).
-2. **MUST NOT** display problem `detail` (or `title`) verbatim to end users. Map `type` (and
-   status) to local / localized copy. `detail` remains operator-safe catalog text for logs and
-   diagnostics only.
+   `https://ezkey.io/problems/…` when present). **Basis: client invariant**.
+2. **MUST NOT** display problem `detail` or `title` verbatim to end users. Map `type` (and status)
+   to local / localized copy. Catalog strings are operator-safe and may be labelled client-facing
+   in server Javadoc, but **the client must not depend on that text** (the same `type` can carry
+   different `title`/`detail` across handlers) and **must not display it**. **Basis: client
+   invariant**.
 3. **MUST NOT** treat non-Ezkey Problem Details (for example edge/WAF JSON) as Auth API domain
-   copy. Use a generic unreachable / request-failed string.
+   copy. Use a generic unreachable / request-failed string. **Basis: client invariant**.
 
 Full type table: [`MOBILE_DEVELOPER_GUIDE.md`](MOBILE_DEVELOPER_GUIDE.md) § Auth API problem types.
 
@@ -143,9 +184,20 @@ Full type table: [`MOBILE_DEVELOPER_GUIDE.md`](MOBILE_DEVELOPER_GUIDE.md) § Aut
 
 ## 8. Attempt lifetime (server facts clients rely on)
 
-1. **MUST** assume applied attempt lifetime is **15–120 seconds** per create (`ttlSeconds` floor
-   15; effective `min(request|default, 120)` since #895). Default configured property remains
-   `ezkey.core.auth-attempt.ttl-seconds` (default **120**).
+State the three numbers separately; do not collapse them into one range:
+
+| Quantity | Value | Source |
+| --- | --- | --- |
+| Per-request `ttlSeconds` floor | **15** (below → 400) | `AuthAttemptService.REQUEST_TTL_MIN_SECONDS` |
+| Hard ceiling (request clamp + applied create) | **120** | `REQUEST_TTL_MAX_SECONDS`; `min(request\|default, 120)` |
+| Configured property `ezkey.core.auth-attempt.ttl-seconds` | Bean Validation **30–600**; default **120**; startup clamp **>120 → 120** | `EzkeyCoreProperties` + `#895` M2 |
+
+Effective **configured default** after startup clamp therefore lies in **30–120**. Applied lifetime
+for a create is always in **15–120** when a request supplies `ttlSeconds`, or the clamped default
+when omitted.
+
+1. **MUST** assume those bounds when reasoning about stranded `READ` windows and wait timeouts.
+   **Basis: server**.
 2. **SHOULD** document stranded `READ` after process death / background during respond as an
    accepted limit until expiry. **Q12**.
 
@@ -153,19 +205,22 @@ Full type table: [`MOBILE_DEVELOPER_GUIDE.md`](MOBILE_DEVELOPER_GUIDE.md) § Aut
 
 ## 9. Quick citation index
 
-| Topic | Keywords | State machine | #834 |
-| --- | --- | --- | --- |
-| No phone expiry field / no security countdown | MUST / SHOULD / MAY | Timers / TTL; claim sub-machine | Q1, Q14 |
-| Fail-closed pending | MUST | Detail `fail_closed` | Q4 |
-| Lock on HTTP 200 before result-sig check | MUST | Approve / Deny | Q2 |
-| Lost respond / UNKNOWN | MUST | `UncertainDecision` | Q10 |
-| Lock per `authAttemptId` | MUST | Cross-cutting locks | Q13 |
-| Leave-as-deny + permanent line | SHOULD | Leave screen | Q5 |
-| Failed leave-deny still exits | SHOULD / MUST NOT loop | Leave screen | Q3 |
-| Biometric / credential on Approve only | SHOULD (decided; app code may lag) | Approve / Deny | Q11 |
-| 409 state-conflict / expired | MUST | `NoLongerActive` | Q8 (+ #895) |
-| Bad result signature after 200 | MUST | Approve / Deny | Q2, Q9 |
-| Never display `detail` | MUST | Error handling (guide) | G5 / #1052 |
+| Topic | Keywords | Basis | State machine | #834 |
+| --- | --- | --- | --- | --- |
+| One-shot pending claim | MUST | server | claim sub-machine | — |
+| Fail-closed pending display | MUST NOT | client invariant | Detail `fail_closed` | Q4 |
+| No security countdown on phone | MUST NOT | client invariant | Timers / TTL | Q1, Q14 |
+| Lock on HTTP 200 before result-sig check | MUST | client invariant | Approve / Deny | Q2 |
+| Lost respond / UNKNOWN | MUST | client invariant | `UncertainDecision` | Q10 |
+| Ambiguous 5xx after send | SHOULD (extension of Q10) | — | — | Q10 ext. |
+| Lock per `authAttemptId` | MUST | client invariant | Cross-cutting locks | Q13 |
+| Leave-as-deny + permanent line | SHOULD | — | Leave screen | Q5 |
+| Failed leave-deny still exits | SHOULD / MUST NOT loop | client invariant (MUST NOT) | Leave screen | Q3 |
+| Biometric / credential on Approve only | SHOULD (decided; app code may lag) | — | Approve / Deny | Q11 |
+| 409 state-conflict / expired | MUST | server | `NoLongerActive` | Q8 (+ #895) |
+| Bad / missing result signature after 200 | MUST | client invariant | Approve / Deny | Q2, Q9 |
+| Do not depend on / display `detail` | MUST NOT | client invariant | Error handling | G5 / #1052 |
+| TTL 15 / 120 / property 30–600 | MUST | server | Timers / TTL | Q12 |
 
 ---
 

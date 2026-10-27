@@ -54,7 +54,7 @@ note (Questions 5, 6, and 8). Application-independent rules:
 | **Event** | User action, navigation event, or async completion. |
 | **Guard** | Condition that must hold for the transition (or that blocks it). |
 | **Effect** | Side effect: Auth API call, crypto, local storage, navigation. |
-| **TTL** | Server auth-attempt **applied** lifetime: **15–120 s** per create (`ttlSeconds` floor 15; effective `min(request\|default, 120)` since #895). Property `ezkey.core.auth-attempt.ttl-seconds` default **120** (Bean Validation still allows 30–600; values above 120 clamp to 120 at startup). “120 seconds” in this review means that default / ceiling. |
+| **TTL** | Three numbers: per-request floor **15**; hard ceiling **120** (`min(request\|default, 120)` since #895); property `ezkey.core.auth-attempt.ttl-seconds` default **120** (Bean Validation **30–600**, startup clamp **>120 → 120**, so effective configured default **30–120**). “120 seconds” means that default / ceiling. |
 
 Server auth-attempt statuses (backend): `PENDING` → (device claims) `READ` → `ACCEPTED` |
 `REJECTED` | `INVALID` | `EXPIRED`. Mobile does not model those as local enums; it holds an
@@ -197,7 +197,7 @@ Implementation today is scattered React state + refs (`attempt`, `loading`, `isP
 | `Ready` | `attempt` set, `!isProcessing` | Context card; Approve / Deny; leave-declines hint (Q5); optional 2-digit challenge |
 | `Responding` | `isProcessing` / `respondInFlightRef` | Buttons disabled; “Sending…” on approve |
 | `UncertainDecision` | **Decided** ([#834](https://github.com/mgagp/ezkey/issues/834) Question 10); **delivered on #833** | After `respond` HTTP was sent: timeout / transport / undecidable. Catalog: result uncertain; check the sign-in where it was started; not a failure; Back only; lock `authAttemptId` (blocks leave-as-deny and a second decision). No idempotent respond. |
-| `SigningUnavailable` | HTTP **503** `integration-signing-unavailable` (#844) | Local catalog; **retryable** (server transaction rolled back). Not a Q8/Q10 Back-only state. |
+| `SigningUnavailable` | HTTP **503** `integration-signing-unavailable` (#844) | Local catalog; **retryable**. A retry **may** then return terminal **409** (for example wrong challenge already committed `INVALID` before signing failed). Not a Q8/Q10 Back-only state by itself. |
 | `Completed` | After verified respond result + `setRecentAuthResult` | Navigates back to Detail |
 
 Internal refs (#833):
@@ -222,9 +222,9 @@ Internal refs (#833):
 | Approve / Deny press | `enrollment`, `attempt`, `!hasSubmittedServerDecision()`, `!respondInFlightRef` | Else skip (duplicate / in-flight / locked id). Buttons also `disabled={isProcessing}` (UI only). |
 | Approve only | If `challengeRequired`, challenge length === 2 (`AUTH_CHALLENGE_LENGTH`) | Else form error; no API |
 | Deny | Challenge **not** required locally; server also skips challenge on reject | Same `respond` path with `accepted=false` |
-| Protected mode | `requiresProtectedApproval` (enrollment policy **or** device preference) | **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Question 11):** biometric or device credential on **Approve only**, then `signForRespond`. Deny and leave-as-deny sign the refusal without that prompt. |
+| Protected mode | `requiresProtectedApproval` (enrollment policy **or** device preference) | **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Question 11):** biometric or device credential on **Approve only**, then `signForRespond`. Deny and leave-as-deny **SHOULD** sign without that prompt (**not yet shipped in the app code** — Deny may still prompt). |
 | HTTP `respond` 200 | — | Set `serverDecisionAttemptIdRef` **before** the result-signature check (**decided**, [#834](https://github.com/mgagp/ezkey/issues/834) Question 2); on success `setRecentAuthResult` + navigate. Body outcome may be `APPROVED` / `DENIED` / **`FAILED`**. |
-| Timeout / transport cut after send (no HTTP response) | — | **`UncertainDecision` (Q10, #833):** lock id; Back only; no leave-as-deny. HTTP **400**/**429** with a body keep catalog retryability (not UncertainDecision). Pre-send failures (e.g. biometric cancel) stay retryable without lock. **503** signing unavailable stays retryable without lock (#844); Try again dismisses error and keeps the loaded attempt (does not re-claim pending → empty). |
+| Timeout / transport cut after send (no HTTP response) | — | **`UncertainDecision` (Q10):** lock id; Back only; no leave-as-deny. HTTP **400**/**429** with a body keep catalog retryability (not UncertainDecision). Pre-send failures (e.g. biometric cancel) stay retryable without lock. **503** `integration-signing-unavailable` stays catalog-retryable (#844); a retry may return terminal **409**. Ambiguous other **5xx** after send: contract **SHOULD** treat as UNKNOWN (extension of Q10; not yet locked in app/SDK). |
 | Result sig fail after HTTP 200 | — | **Decided (Questions 2 and 9):** stay; do not display approved or denied; hide Approve/Deny; leave will **not** re-deny. Sentence: response sent, confirmation could not be verified, check the sign-in where it was started. No tenant name. Back only. |
 | Buttons while processing | `disabled={isProcessing}` | UI lock; refs close the sync gap before re-render |
 
@@ -234,7 +234,8 @@ cancelled / superseded / non-owner signature; `…/auth-attempt-expired` (**409*
 expiry after ownership proof (#895). **Decided (Question 8 + #844 m1; amended #895):** mobile shows
 “no longer active” (and **MAY** use distinct expired copy for `auth-attempt-expired`) and Back only.
 It does not split `auth-attempt-state-conflict` into multiple causes. **503**
-`integration-signing-unavailable` is a separate retryable catalog path.
+`integration-signing-unavailable` is a separate retryable catalog path (retry may then hit
+terminal 409).
 
 ### Leave screen (post-#833 on `main`) — critical
 
@@ -244,7 +245,7 @@ It does not split `auth-attempt-state-conflict` into multiple causes. **503**
 | --- | --- |
 | No `attempt` (empty / error / still loading / fail-closed) | Allow leave; **no** respond — server may still be `READ` until TTL |
 | `isProcessing` or `isRespondInFlight()` or `hasSubmittedServerDecision()` | Allow leave; **no** second deny (in-flight success may still `goBack` → double pop risk) |
-| Else (`Ready` with loaded attempt) | `preventDefault` → `handleRespond(false)` (identical Deny). **Decided (Question 11):** no biometric prompt. |
+| Else (`Ready` with loaded attempt) | `preventDefault` → `handleRespond(false)` (identical Deny). **Decided (Question 11):** no biometric prompt (**not yet shipped in the app code**). |
 | Deny succeeds | Hook already navigates via `handleReturnToEnrollmentDetail` |
 | Deny fails (network) | **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Question 3):** still leave (do not trap). One short message. No automatic retry. The person checks the integrating application: refusal arrived, or the countdown is still running and they let it finish or cancel there. |
 | Deny HTTP 200 then result-sig fail | User **stays** on screen (leave is not dispatched) |
@@ -263,14 +264,14 @@ line stays readable.
 | --- | --- |
 | New attempt on same screen after lock | **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Question 13); delivered on #833:** `serverDecisionAttemptIdRef` stores the attempt id. A new pending attempt with a different id is not locked. A later 409 uses the Question 8 sentence, not a new “already decided” line. |
 | Lost response after server processed | **Decided (Question 10); delivered on #833:** uncertain sentence pointing at the sign-in screen. Not a failure. No retry that sends another decision. Lock blocks leave-as-deny. Idempotent `respond` deferred, not specified. |
-| App killed / background during respond or Approve biometric | **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Question 12):** `beforeRemove` may not run → no leave-deny → `READ` until the applied lifetime (default / ceiling **120 s**; per-request **15–120** since #895). Accepted limit. No release protocol unless a real incident requires it. |
+| App killed / background during respond or Approve biometric | **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Question 12):** `beforeRemove` may not run → no leave-deny → `READ` until applied lifetime (per-request **15–120**; configured default effective **30–120**; ceiling **120**). Accepted limit. No release protocol unless a real incident requires it. |
 | Lifetime ends during Approve biometric | Later respond → **409**, Question 8 sentence. Same accepted limit. |
 
 ### Timers / TTL
 
 | Layer | Behavior |
 | --- | --- |
-| Server | Attempt `expiresAt` from applied TTL (**15–120 s** since #895; default / ceiling **120**). Property `ezkey.core.auth-attempt.ttl-seconds` default 120 (Bean Validation 30–600; clamp to 120 at startup). Scheduler marks `EXPIRED`. Cloudflare Free on the public hosts cuts the origin at **100 s** (HTTP 524); a blocking wait can end at the proxy while a 120 s attempt is still valid. Deployment note for the community instance (Question 12). Not changed here. |
+| Server | Attempt `expiresAt` from applied TTL (per-request floor **15**, ceiling **120** since #895; property default **120**, Bean Validation **30–600**, startup clamp to 120 → effective configured default **30–120**). Scheduler marks `EXPIRED`. Cloudflare Free on the public hosts cuts the origin at **100 s** (HTTP 524); a blocking wait can end at the proxy while a 120 s attempt is still valid. Deployment note for the community instance (Question 12). Not changed here. |
 | Mobile pending wire | **No** `expiresAt`, `expiresInSeconds`, or `serverNow` on the pending body. **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Questions 1 and 14):** do not add them, unsigned or inside the signed payload. |
 | Mobile UI | **No countdown, by design.** The person watches remaining time on the integrating application (create/wait `expiresAt`). A second timer on the phone would duplicate that clock and drift. No countdown on mobile: the initiator watches the integrating app's login dialog, which owns the timer; a second timer would be redundant and drift (team retro 2026-10-19). |
 | Respond after server expiry | **Decided (Question 8 + #844 m1; amended #895):** **409** `auth-attempt-expired` after ownership proof. Other inactive causes stay **409** `auth-attempt-state-conflict`. Back only; **MAY** use distinct expired copy. |
@@ -332,7 +333,7 @@ stateDiagram-v2
 | Second deny after respond HTTP 200 | `serverDecisionAttemptIdRef` (per `authAttemptId`, **delivered** Q13 / #833) | #833 / #831 |
 | Uncertain after timeout / disconnect | Lock id + Q10 catalog; leave-as-deny skipped | #833 / #844 |
 | Unusable enrollment | No Check pending | MOB-015 Detail / Home |
-| Protected approve **only** (**Q11** decided) | Local biometric / device-credential before `signForRespond` on **Approve** when policy/preference requires; Deny and leave-as-deny sign without that prompt. **Not yet shipped** in reference app code (may still prompt on Deny — code follow-up). | `requiresProtectedApproval` |
+| Protected approve **only** (**Q11** decided; **not yet shipped in the app code**) | Local biometric / device-credential before `signForRespond` on **Approve** when policy/preference requires; Deny and leave-as-deny **SHOULD** sign without that prompt (app may still prompt on Deny — code follow-up). | `requiresProtectedApproval` |
 
 ---
 

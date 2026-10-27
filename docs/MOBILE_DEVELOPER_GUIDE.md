@@ -791,11 +791,16 @@ Client implication (see also [`CLIENT_BEHAVIOUR_CONTRACT.md`](CLIENT_BEHAVIOUR_C
 - Do **not** build UX that assumes the user can retry `respond` on the same attempt after the HTTP
   call was sent.
 - A `respond` with **no HTTP response** (timeout / transport cut) is an **UNKNOWN** outcome: lock
-  the `authAttemptId`, never send a second decision, point the user at the integrating application.
-  The same UNKNOWN posture **SHOULD** apply to ambiguous **5xx** on `respond` unless the problem
-  `type` proves a rollback (notably **503** `integration-signing-unavailable`).
-- **Known gap:** the Dart SDK currently classifies lost `respond` transport errors (and many 5xx)
-  as `retryable`; that contradicts this contract and is a code follow-up (#1052).
+  the `authAttemptId`, never send a second decision, point the user at the integrating application
+  (**Q10**).
+- Ambiguous **5xx** after `respond` was sent **SHOULD** use the same UNKNOWN posture (**extension
+  of Q10**). **503** `integration-signing-unavailable` remains **retryable**, but a retry **may**
+  return terminal **409** (for example wrong challenge already committed `INVALID` before signing
+  failed). Do not treat 503 as proof that nothing was committed.
+- After send, classified **4xx** / **429** with a body keep catalog retryability (not UNKNOWN).
+- **Known gap:** neither the Dart SDK nor the RN reference app fully implements UNKNOWN for
+  ambiguous 5xx; the SDK also marks lost `respond` transport as `retryable`. Code follow-up
+  (#1052 plan).
 - Surface final failures clearly and let the integrating system initiate a new auth attempt.
 
 ## Request And Response Canonicalization Checklist
@@ -895,10 +900,10 @@ guidance for authenticator UIs; always prefer local copy keyed by `type`.
 | `auth/auth-attempt-state-conflict` | 409 | Attempt no longer actionable; Back only (**Q8**) | `authAttemptStateConflict` |
 | `auth/auth-attempt-expired` | 409 | Expired; Back only (**Q8** / #895) | `authAttemptExpired` |
 | `auth/auth-attempt-respond-failed` | 400† | Respond could not be processed; do not assume retry | `authAttemptRespondFailed` |
-| `auth/integration-signing-unavailable` | 503 | Retryable; server rolled back (#844) | `integrationSigningUnavailable` |
+| `auth/integration-signing-unavailable` | 503 | Retryable (#844); a retry may return terminal **409** (e.g. `INVALID` already committed) | `integrationSigningUnavailable` |
 | `auth/validation-failed` | 400 | Fix request fields | `validationFailed` |
 | `auth/invalid-request-body` | 400 | Fix JSON body | `validationFailed` |
-| `auth/internal-error` | 500 | Generic failure; **SHOULD** treat mid-`respond` as UNKNOWN if a decision may have been sent | `internalError` (SDK marks retryable — known gap) |
+| `auth/internal-error` | 500 | Generic failure; after `respond` was sent, **SHOULD** treat as UNKNOWN (extension of Q10; SDK marks retryable — known gap) | `internalError` |
 | `system/audit-chain-heartbeat-degraded` | 503 | Retry later (`Retry-After`); new pending claims blocked | `auditChainDegraded` |
 
 † `auth-attempt-respond-failed` is in the catalog; no dedicated handler emits it on current `main` —

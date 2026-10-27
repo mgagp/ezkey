@@ -150,7 +150,9 @@ missing device public key (expired or not) or an invalid device signature keeps 
 409 types to one sentence until the typed-expiry UI slice lands. A lost approve/deny response after the HTTP call was sent (timeout /
 transport), where a session may already exist, is a separate mobile case (orientation Question 10 /
 `UncertainDecision`), not a new problem type. Missing integration signing key remains **503**
-(retryable; transaction rolled back).
+`integration-signing-unavailable` (**retryable**; a retry may then return terminal **409**, for
+example when a wrong challenge already committed `INVALID` before signing failed — see
+`AuthAttemptRespondService` FAILED-response notes).
 
 ### Public instance metadata (unauthenticated)
 
@@ -684,7 +686,7 @@ The client should use `detail` (then `title`) for user-facing messages, not assu
 - `waiterSecret` capability token prevents replay and session hijacking by requiring the unguessable CSPRNG secret returned only to the initial `/login` caller.
 - Atomic CAS guarantees a session is issued at most once per authentication attempt; replays after session issuance are rejected with generic 401 and cannot trigger token rotation or mint survivor tokens.
 - `challengeCode` prevents enumeration attacks (proof of legitimate login initiation)
-- Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). **Applied** attempt lifetime is always capped at **120 s** (`min(request|default, 120)` since #895; per-request floor **15**). The configured property `ezkey.core.auth-attempt.ttl-seconds` still accepts Bean Validation **30–600**, but values above 120 are clamped to 120 at startup (WARN) and at create. On Cloudflare Free (`ezkey.org`, `ezkey.online`, including the community instance) the origin is cut at **100 seconds** (HTTP **524**, not raisable; see `product-docs/global/product-intent.md`). A blocking wait can therefore end at the proxy while a default 120-second attempt is still valid. Noted for that deployment (#834 Question 12); the default is not changed here.
+- Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). **Applied** create TTL: per-request floor **15**, hard ceiling **120** (`min(request|default, 120)` since #895). Property `ezkey.core.auth-attempt.ttl-seconds` default **120** (Bean Validation **30–600**; startup clamp **>120 → 120**, so effective configured default **30–120**). On Cloudflare Free (`ezkey.org`, `ezkey.online`, including the community instance) the origin is cut at **100 seconds** (HTTP **524**, not raisable; see `product-docs/global/product-intent.md`). A blocking wait can therefore end at the proxy while a default 120-second attempt is still valid. Noted for that deployment (#834 Question 12); the default is not changed here.
 - Device must enter matching challenge code before approval
 - Invalid challenge on device marks attempt as INVALID
 
@@ -2195,7 +2197,7 @@ Content-Type: application/json
 **Response Fields:**
 - `authAttemptId`: Unique identifier of the created authentication attempt
 - `authAttemptChallenge`: Optional challenge code (2 digits) if challenge was requested. Null if no challenge was requested.
-- `timeoutSeconds`: Maximum time in seconds the user has to respond to the authentication request (currently 120 seconds)
+- `timeoutSeconds`: Applied attempt lifetime in seconds (per-request floor 15, hard ceiling 120; when omitted, the clamped configured default — typically **120**)
 - `expiresAt`: Absolute expiration timestamp when the authentication attempt will expire (UTC format)
 - `contextTitle`, `contextMessage`: Context fields echoed back for confirmation (null if not provided)
 

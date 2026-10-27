@@ -36,7 +36,7 @@ text that still shows an old option is the path that was considered.
 | Method | Observed behavior (file:line) → signal → impact → options → recommendation (or open disagreement). |
 | FSM nature | The FSM is **descriptive of current hooks/flags**, not an implemented state machine in code (Patrick). |
 | Repo-as-memory | Behavior locks land in `MOBILE_APP_STATE_MACHINE.md` + `MOBILE_FUNCTIONAL_FLOWS.md` + [`docs/CLIENT_BEHAVIOUR_CONTRACT.md`](../../docs/CLIENT_BEHAVIOUR_CONTRACT.md); 409 / pending expiry wire semantics in `docs/ENDPOINT.md`. |
-| TTL (post-#895) | Applied attempt lifetime **15–120 s** (120 clamp). Property default 120; Bean Validation still allows 30–600 before startup clamp. |
+| TTL (post-#895) | Per-request floor **15**, hard ceiling **120**; property default **120** (Bean Validation 30–600, startup clamp → effective configured default **30–120**). |
 
 ---
 
@@ -268,15 +268,20 @@ declined. They are not part of the set.
 
 **Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
 
-`POST /api/v1/auth-attempts/respond` returns **409** with one problem type,
-`auth-attempt-state-conflict`, when the attempt is not found, still `PENDING`, has expired, was
-cancelled, is already decided, or was superseded (#844 Marc m1 on #833 — same wire type; server
-logs keep the cause). That collapse is intentional (also anti-enumeration of sequential ids). The
-phone maps that type to one sentence: the request is no longer active. Back only. No Try again.
+`POST /api/v1/auth-attempts/respond` returns **409** with problem type
+`auth-attempt-state-conflict` when the attempt is not found, still `PENDING`, was cancelled, is
+already decided, or was superseded (#844 Marc m1 on #833 — same wire type; server logs keep the
+cause). That collapse is intentional (also anti-enumeration of sequential ids). The phone maps that
+type to one sentence: the request is no longer active. Back only. No Try again.
+
+**Amended #895:** wall-clock expiry after ownership proof uses a **distinct** type
+`auth-attempt-expired` (still **409**, still Back only; clients **MAY** use distinct “expired”
+copy). Do not reopen splitting of the remaining `auth-attempt-state-conflict` causes.
 
 The person sees which cause it was on the integrating application: the countdown finished, they
-cancelled, the sign-in already completed, or the request never became actionable. Splitting the
-problem type so the phone can retell that would duplicate the other screen.
+cancelled, the sign-in already completed, or the request never became actionable. Splitting
+`auth-attempt-state-conflict` so the phone can retell those causes would duplicate the other
+screen.
 
 A lost approve response, where a session may already exist, is not this case. That stays
 Question 10. This sentence ships with the confirmed honesty set before testers are widened
@@ -284,10 +289,11 @@ Question 10. This sentence ships with the confirmed honesty set before testers a
 
 **Locked**
 
-- Keep a single problem type for not-found, still `PENDING`, expired, cancelled, already decided,
-  and superseded (#844 m1 / #833).
-- One user sentence. Back only. Not a retryable error.
-- Do not add distinct problem types for those causes.
+- Keep a single problem type for not-found, still `PENDING`, cancelled, already decided, and
+  superseded (#844 m1 / #833).
+- **Amended #895:** expiry is `auth-attempt-expired`, not folded into state-conflict.
+- One user sentence for state-conflict. Back only. Not a retryable error.
+- Do not add further distinct problem types for the collapsed state-conflict causes.
 
 ### Decision — Question 9 — Point at the sign-in screen, not at a tenant name
 
@@ -577,8 +583,9 @@ once Marc decides; land semantics in `docs/ENDPOINT.md`).
 ### Recommendation
 
 **Decided** in [Decision — Question 8](#decision--question-8--one-sentence-when-the-request-is-no-longer-active).
-Map the existing problem type. One sentence: the request is no longer active. Back only. Do not
-split types. The lost-response case stays Question 10.
+Map `auth-attempt-state-conflict`. One sentence: the request is no longer active. Back only. Do not
+split that type’s collapsed causes. **Amended #895:** wall-clock expiry is
+`auth-attempt-expired` (distinct type; still Back only). The lost-response case stays Question 10.
 
 ---
 
@@ -716,7 +723,7 @@ decided share it.
 5. **Decided.** A permanent line under Approve and Deny: leaving this screen declines the request. No dialog. The live approval screen has room for it. See [Decision — Question 5](#decision--question-5--a-permanent-line-under-the-actions). It ships with the confirmed set before #711 widens (Question 6).
 6. **Decided.** No deadline on internal testers. Implement the full set of practices this review confirms, properly, before widening #711. Do not cut that set down. Declined options stay declined. See [Decision — Question 6](#decision--question-6--ship-the-confirmed-honesty-set-before-widening-testers).
 7. **Closed by Question 1.** There is no mobile timer, so neither an always-on line nor a near-expiry line.
-8. **Decided.** One sentence for `auth-attempt-state-conflict`: the request is no longer active. Back only. Do not split not-found / PENDING / expired / cancelled / already-decided / superseded into separate problem types (#844 m1). See [Decision — Question 8](#decision--question-8--one-sentence-when-the-request-is-no-longer-active). A lost approve response stays Question 10. Missing integration signing key is **503** retryable (rollback), documented on #833/#844 — not a Q8 split.
+8. **Decided.** One sentence for `auth-attempt-state-conflict`: the request is no longer active. Back only. Do not split not-found / PENDING / cancelled / already-decided / superseded into separate problem types (#844 m1). **Amended #895:** wall-clock expiry is distinct `auth-attempt-expired` (still Back only). See [Decision — Question 8](#decision--question-8--one-sentence-when-the-request-is-no-longer-active). A lost approve response stays Question 10. Missing integration signing key is **503** retryable (a later retry may hit terminal 409), documented on #833/#844 — not a Q8 split.
 9. **Decided.** The unverified-confirmation sentence may say to check the sign-in where it was started. It does not name a tenant or an organization. Back only. See [Decision — Question 9](#decision--question-9--point-at-the-sign-in-screen-not-at-a-tenant-name).
 10. **Decided.** A lost `respond` response shows that the result is uncertain and points at the sign-in screen. Not a failure. No retry that sends another decision. Idempotent `respond` is deferred and not specified. See [Decision — Question 10](#decision--question-10--uncertain-result-then-look-at-the-sign-in-screen).
 11. **Decided.** Protected mode asks for biometric or device credential on Approve only. Deny and leave-as-deny sign the refusal without that prompt. See [Decision — Question 11](#decision--question-11--biometric-only-when-approving).

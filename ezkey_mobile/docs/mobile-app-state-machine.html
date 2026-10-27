@@ -178,9 +178,10 @@
     Describes current <strong>main</strong> behavior after PR
     <a href="https://github.com/mgagp/ezkey/pull/833">#833</a> merged <strong>2026-10-16</strong>:
     leave <code>PendingAuthScreen</code> with a loaded attempt = Deny via Auth API
-    <code>respond(accepted=false)</code>. Applied attempt lifetime is <strong>15–120 s</strong>
-    (120 clamp since #895). Biometric / device credential on <strong>Approve only</strong> (Q11 decided;
-    reference app code may still prompt on Deny until the code follow-up).
+    <code>respond(accepted=false)</code>. TTL: per-request floor <strong>15</strong>, ceiling
+    <strong>120</strong> (#895); property default 120 (effective configured default 30–120).
+    Biometric / device credential on <strong>Approve only</strong> (Q11 decided;
+    <strong>not yet shipped in the app code</strong> — Deny may still prompt).
   </div>
   <main>
     <section class="machine">
@@ -285,7 +286,7 @@
           { id: "p9", from: "Responding", to: "Completed", label: "respond OK + sig",
             detail: "serverDecisionAttemptIdRef set after HTTP OK; navigate to Detail." },
           { id: "p10", from: "Responding", to: "UncertainDecision", label: "timeout / transport after send",
-            detail: "Q10: lock authAttemptId; Back only; no leave-as-deny. 503 signing-unavailable stays retryable GlobalError." },
+            detail: "Q10: lock authAttemptId; Back only; no leave-as-deny. 503 signing-unavailable stays retryable (retry may then 409). Ambiguous other 5xx: contract SHOULD UNKNOWN (extension of Q10)." },
           { id: "p10b", from: "Responding", to: "NoLongerActive", label: "409 conflict / expired",
             detail: "Q8 + #895: auth-attempt-state-conflict or auth-attempt-expired; Back only; lock id." },
           { id: "p11", from: "Ready", to: "Left", label: "leave (no attempt path)",
@@ -297,8 +298,8 @@
           EnrollmentLoading: { guards: "isEnrollmentLoading", effects: "Hydrate enrollment", notes: "—" },
           LoadingPending: { guards: "loading", effects: "POST auth-attempts/pending", notes: "Pull model; no background poll." },
           Empty: { guards: "showEmptyState", effects: "—", notes: "No deny on leave." },
-          GlobalError: { guards: "globalError + retryable", effects: "Optional debug panel", notes: "Try again for 503 / pre-send; not for Q8/Q9/Q10." },
-          Ready: { guards: "attempt set", effects: "leaveDeclinesHint (Q5)", notes: "Leave → deny (post-#833). Challenge length 2 for approve. Q11 approve-only biometric." },
+          GlobalError: { guards: "globalError + retryable", effects: "Optional debug panel", notes: "Try again for 503 / 4xx/429 / pre-send; not for Q8/Q9/Q10. Ambiguous 5xx not locked yet in app." },
+          Ready: { guards: "attempt set", effects: "leaveDeclinesHint (Q5)", notes: "Leave → deny (post-#833). Challenge length 2 for approve. Q11 approve-only biometric (not yet shipped in app code)." },
           Responding: { guards: "respondInFlightRef + isProcessing", effects: "POST respond", notes: "Duplicate taps skipped." },
           UncertainDecision: { guards: "serverDecisionAttemptIdRef", effects: "Q10 catalog", notes: "Back only; no leave-deny." },
           NoLongerActive: { guards: "serverDecisionAttemptIdRef", effects: "Q8 catalog", notes: "409 state-conflict (#844 m1) or auth-attempt-expired (#895)." },

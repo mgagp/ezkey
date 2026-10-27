@@ -3,7 +3,7 @@
 **Status: experimental lab module** (version 0.2.0, `publish_to: none`). This repository's
 production authenticator is the React Native app in `../ezkey_mobile/`. This package reimplements
 that app's protocol logic in pure Dart, so a **Flutter** authenticator app can act as an Ezkey
-device. It is tested against the real server stack (see [Running the tests](#running-the-tests)).
+device. It is tested against the real server stack (see [§6 Running the tests](#6-running-the-tests)).
 
 This README is self-contained: you can integrate Ezkey into a Flutter app with only this file and
 the code in this folder. For application-independent **client behaviour** (decision lock, unknown
@@ -11,7 +11,7 @@ the code in this folder. For application-independent **client behaviour** (decis
 [`../docs/CLIENT_BEHAVIOUR_CONTRACT.md`](../docs/CLIENT_BEHAVIOUR_CONTRACT.md). Deeper protocol
 references in `../docs/` (`MOBILE_DEVELOPER_GUIDE.md`, `CRYPTO.md`,
 `ENROLLMENT_SIGNATURE_PAYLOAD.md`, `AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`) remain optional for wire
-detail.
+detail. Test commands: [§6 Running the tests](#6-running-the-tests).
 
 ---
 
@@ -127,10 +127,11 @@ Server rules:
   is never returned again. If your app loses it (crash, process death), the user must restart the
   login. Keep the claimed `PendingAuthAttempt` in memory until the user decides.
 - **Only the newest attempt is delivered.** Creating a new attempt supersedes older open ones.
-- **Expiry.** Attempts live 15–120 s (`ttlSeconds`, clamped server-side). The device API does not
-  expose `expiresAt`. The SDK therefore gives an advisory upper bound
-  (`PendingAuthAttempt.latestPossibleExpiry` = claim time + 120 s). Expired attempts are not
-  delivered; responding to one gives HTTP 409 `auth-attempt-expired`.
+- **Expiry.** Per-request applied lifetime is 15–120 s (`ttlSeconds` floor 15, hard clamp 120);
+  configured property default is typically 120 (Bean Validation 30–600, startup clamp → effective
+  configured default 30–120). The device API does not expose `expiresAt`. The SDK therefore gives
+  an advisory upper bound (`PendingAuthAttempt.latestPossibleExpiry` = claim time + 120 s).
+  Expired attempts are not delivered; responding to one gives HTTP 409 `auth-attempt-expired`.
 - **Cancel.** The integrating application may cancel at any time. Before the claim, the phone
   simply sees nothing (204). After the claim, respond returns 409 `auth-attempt-state-conflict`,
   the same answer as "superseded" or "already answered". All three are final: show "This request
@@ -302,17 +303,18 @@ EncryptedSharedPreferences), keyed by `localId`. Never put records in plain
    - `failed`: "Wrong code. Start the login again on your computer".
    - `EzkeyApiException.isAttemptNoLongerActionable`: "This request is no longer active" or
      "expired" (`kind == authAttemptExpired`). Offer Back only, never Retry.
-   - **UNKNOWN outcome (contract MUST):** if `respond` was **sent** but you get **no HTTP
-     response** (timeout / transport cut), or an ambiguous **5xx** that does not prove rollback,
-     treat the result as unknown: **lock that `authAttemptId`**, never send a second decision,
-     point the user at the integrating application, Back only. Do **not** offer “answer again”.
-     Exception: **503** `integrationSigningUnavailable` is retryable (server rolled back).
-   - **Known SDK gap:** today a lost `respond` surfaces as `EzkeyNetworkException` with
-     `retryable: true`, and many 5xx kinds are also `retryable`. That contradicts the contract
-     above — do not follow the flag for post-send `respond` uncertainty; a code follow-up will add
-     an explicit uncertain-outcome path (#1052).
-   - Other pre-send `retryable` errors (for example biometric cancel, or 503 signing unavailable):
-     offer Retry without locking.
+   - **UNKNOWN outcome:** if `respond` was **sent** but you get **no HTTP response** (timeout /
+     transport cut), treat as unknown (**contract MUST**, **Q10**): **lock that `authAttemptId`**,
+     never send a second decision, point the user at the integrating application, Back only.
+   - Ambiguous **5xx** after send **SHOULD** use the same UNKNOWN posture (**extension of Q10**).
+     **503** `integrationSigningUnavailable` remains **retryable**, but a retry **may** return
+     terminal **409** (e.g. wrong challenge already committed `INVALID` before signing failed).
+     Do **not** offer “answer again” for UNKNOWN cases.
+   - **Known gap (SDK and RN app):** today a lost `respond` surfaces as `EzkeyNetworkException`
+     with `retryable: true`, and many 5xx kinds are also `retryable` / unlocked. Do not follow
+     those flags for post-send uncertainty; code follow-up (#1052 plan).
+   - Pre-send `retryable` errors and classified **4xx** / **429** with a body: offer Retry per
+     catalog without treating them as UNKNOWN.
 7. **Settings.** Use `fetchInstanceInfo` for "About this server", and `forget` to remove an
    enrollment locally (tell the user an administrator must also revoke it server-side).
 
