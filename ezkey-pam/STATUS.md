@@ -45,7 +45,8 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.14** (#995: connector default `challenge_requested=true`). Prior
+Version **2.2.15** (#1011: richer UNAVAIL/CONFIRM/SIGNAL diagnostics + runbook).
+Prior **2.2.14** (#995: connector default `challenge_requested=true`). Prior
 **2.2.13** (#982 tiers 0–1 on #976: ECHO_ON confirm + challenge Enter-only
 wait). Prior **2.2.12** (#975 / PR #976: **confirm-before-create** + display
 server-provided challenge even when host `challenge_requested=false`; builds on
@@ -439,19 +440,43 @@ Format (stable; parse with `grep 'pam_ezkey: attempt '` or `pam_ezkey: start `):
 
 ```text
 pam_ezkey: start user=<linuxUser> authAttemptId=<id> timeoutSeconds=<n>
-pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms> lab_http=<true|false> cancel=<ok|fail|skipped|final> timeoutSeconds=<n|->
+pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms> lab_http=<true|false> cancel=<ok|fail|skipped|final> timeoutSeconds=<n|-> stage=<S> reason=<R> curl_rc=<n|-> http=<n|-> confirm_ms=<n|-> api_ms=<n|->
 ```
 
 | Field | Meaning |
 |---|---|
 | `user` | Linux username (sanitized); `-` if unavailable |
 | `authAttemptId` | Numeric id from create, or `-` if never created |
-| `result` | `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `MAXTRIES` \| `UNAVAIL` \| `ERROR` \| `UNKNOWN_USER` |
+| `result` | `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `MAXTRIES` \| `UNAVAIL` \| `CONFIRM` \| `SIGNAL` \| `ERROR` \| `UNKNOWN_USER` |
 | `pam_code` | Integer PAM return code |
-| `latency_ms` | Monotonic elapsed ms for the authenticate call |
+| `latency_ms` | Monotonic elapsed ms for the authenticate call, or `-` if unknown (never invent `0`) |
 | `lab_http` | Conf `lab_http` as `true` or `false` (Christophe) |
 | `cancel` | Exactly one of `ok` \| `fail` \| `skipped` \| `final` (`EZKEY_CANCEL_*`; Patrick #897 M2 + Christophe observability) |
 | `timeoutSeconds` | Planned wait on `start` (before create); applied TTL on `attempt` (or `-`) (#907) |
+| `stage` | Fixed vocab: `init` \| `conf` \| `confirm` \| `create` \| `challenge` \| `wait` (#1011) |
+| `reason` | Fixed vocab (e.g. `empty_confirm`, `curl`, `http`, `budget`, `signal`, `challenge_missing`, `-`) — never free-form secrets |
+| `curl_rc` | libcurl code from the last create/wait call (including SUCCESS), or `-` |
+| `http` | HTTP status from the last create/wait call (including SUCCESS), or `-` |
+| `confirm_ms` | Pre-create `ok` prompt duration (ms), or `-` if unknown |
+| `api_ms` | Cumulative create/wait HTTP time (ms), or `-` |
+
+**#1011 notes:** `CONFIRM` = empty/wrong pre-create `ok` (`pam_code` =
+`PAM_AUTHINFO_UNAVAIL` / Linux `9`; `EZKEY_PAM_AUTHINFO_UNAVAIL` in diag init).
+`SIGNAL` = best-effort authpriv line when SIGTERM arrives **outside** `/wait`
+(prompts or create): async-signal-safe non-blocking `write` to `/dev/log`
+(`SOCK_NONBLOCK`; full queue → drop the line), then `SIG_DFL` +
+`raise(SIGTERM)` so the child exits (no hung `[pam]` under OpenSSH atomicio).
+The SIGNAL line is a **best-effort snapshot**: `stage` may be stale,
+`authAttemptId=-` and `cancel=skipped` are expected outside `/wait` (no cancel
+is attempted there — the Integration API attempt stays pending on the device
+until TTL). A SIGTERM during snapshot rebuild can lose the line entirely —
+observability only, never a security issue. Wait-path SIGTERM still uses
+abort → cancel → normal summary (`reason=signal`, often `cancel=ok`) — #1012
+unchanged. Residual window: SIGTERM between `/wait` ACCEPTED and clearing
+`ezkey_in_wait` is still absorbed as abort (doc only; no code change). SIGNAL
+lines use real `latency_ms` when the auth clock is known; otherwise
+`latency_ms=-` / `confirm_ms=-`. Experimental / never released: no log-format
+compatibility promise.
 
 **#907 F9 / R5 (option A — Patrick/Christophe review):** Under OpenSSH portable, each
 keyboard-interactive **prompt round** runs in a forked child that `_exit`s and
@@ -598,8 +623,8 @@ create under `Match … MaxAuthTries 1`. Username controls sanitized
 | Client situation | Pre-2.2.12 | 2.2.12 |
 |---|---|---|
 | No `PAM_CONV` / `PAM_CONV_ERR` | UNAVAIL | UNAVAIL (0 creates) |
-| `ssh -T </dev/null` (empty EOF) | **SUCCESS if device approved** | **UNAVAIL + 0 creates** |
-| Interactive bare Enter | SUCCESS path continued | **UNAVAIL + 0 creates** |
+| `ssh -T </dev/null` (empty EOF) | **SUCCESS if device approved** | **CONFIRM + 0 creates** (#1011) |
+| Interactive bare Enter | SUCCESS path continued | **CONFIRM + 0 creates** (#1011) |
 | `BatchMode` + pubkey outside MFA Match | unchanged | unchanged |
 
 **D1 (known):** some Windows OpenSSH clients without a console hang until
@@ -678,6 +703,8 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 
 | Knob | Where (path:line) | Lab default / bound | Beyond-threshold proof |
 |---|---|---|---|
+| Authpriv line max | `ezkey_diag.h` **`EZKEY_DIAG_LINE_MAX` 768** | ≥ measured worst ~416 | `test_diag_harness` worst-case format fits (proven) |
+| Attempt `user[]` | `EzkeyDiag.user[128]` (`ezkey_diag.h`) | sanitize + truncate | `test_diag_harness` huge user → `&lt;128` incl NUL (proven) |
 | Auth budget | `ezkey_config.h` **105**; rem helper `remaining_budget_secs` | 105 s (&lt; grace 120) | Delayed Enter 8s shrinks `?timeout=` (proven). Challenge Enter **>88 s** → UNAVAIL + cancel (B3 rem-exhaust proven) |
 | `api_timeout` | clamp / `EZKEY_MAX_API_TIMEOUT` **10**; POST curl | max **10** s | stub sleep 3 + conf `1` → UNAVAIL; conf **60** + stub sleep 12 → UNAVAIL in ≪60s (cap proven) |
 | Enter (pre-create) | `prompt_echo_on(require_ok=1)`; `EZKEY_MAX_ENTER_SECS` **25** | duration bound (no signals) | Enter **>25 s** → UNAVAIL + 0 creates (proven) |

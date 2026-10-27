@@ -6,12 +6,24 @@ client during one keyboard-interactive login. Maintained with the module
 `challenge_requested`, or the sshd recipe updates §2 and keeps the evidence
 tags honest.
 
-> Origin: Patrick craft draft (2026-10-21). State below is **ezkey-pam 2.2.14**
-> (#995 connector default `challenge_requested=true` on top of #982 tiers 0–1 /
-> #976 confirm-before-create + enrollment challenge).
+> Origin: Patrick craft draft (2026-10-21). State below is **ezkey-pam 2.2.15**
+> (#1011 diagnostics on top of #995 connector default `challenge_requested=true`,
+> #982 tiers 0–1 / #976 confirm-before-create + enrollment challenge).
 > Evidence tags: **[code]** verified in source, **[test]** automated assert,
 > **[isa]** Isabelle on ezkey-pam-test, **[inf]** OpenSSH/PAM inference.
 > Paths relative to the repo root. `pam.c` = `ezkey-pam/src/pam_ezkey.c`.
+
+### What changed in 2.2.15 (#1011)
+
+- Authpriv attempt lines gain `stage` / `reason` / `curl_rc` / `http` /
+  `confirm_ms` / `api_ms`. Empty pre-create `ok` → `result=CONFIRM`.
+- **SIGTERM outside `/wait`:** best-effort `result=SIGNAL` (async-signal-safe
+  `/dev/log` write), restore `SIG_DFL`, `raise(SIGTERM)` — no hung `[pam]` at
+  the `ok` or challenge prompt. During `/wait` only the abort flag is set
+  (cancel path unchanged).
+- Unknown timings print `-` (`latency_ms=-`, `confirm_ms=-`), never a false `0`.
+- Execution probes: `scripts/test-signal-probes.sh` [test] (client kill /
+  SIGTERM at prompt, create, wait).
 
 ### Decision — challenge default (#995)
 
@@ -57,16 +69,18 @@ enrollment flags is **not covered today** — tracked as
 ## 0. The model in one paragraph
 
 One SSH login under `Match … MaxAuthTries 1` gives one `pam_sm_authenticate`
-call in sshd's PAM child. That call (2.2.14):
+call in sshd's PAM child. That call (2.2.15):
 
 1. Shows a **pre-create** `PAM_PROMPT_ECHO_ON` confirm
    ("SSH login for user… / Type ok … to request device approval") and
    requires trimmed case-insensitive **`ok`** (echo visible — #982 tier 0 /
    M1: no “Approve on your phone” before the request exists).
-   Empty / EOF / wrong token / Ctrl-C / conversation error →
-   `PAM_AUTHINFO_UNAVAIL` with **zero** Integration API creates (batch clients
-   and Windows hang before create leave no phone noise) [code][test].
-   The `ok` token is an anti-accident filter, not a security defense (#995).
+   Empty / EOF / wrong token → authpriv `result=CONFIRM` `reason=empty_confirm`
+   (`PAM_AUTHINFO_UNAVAIL`) with **zero** Integration API creates; conversation
+   error → `UNAVAIL`; sshd SIGTERM mid-prompt / during create → best-effort
+   `result=SIGNAL` then child exit (#1011) [code][test]
+   (`scripts/test-signal-probes.sh`). Batch clients leave no phone noise. The
+   `ok` token is an anti-accident filter, not a security defense (#995).
 2. Only then `POST /auth-attempts` with `userIdentifier=<linux user>`,
    `challengeRequested=<conf>` (default **true** since #995),
    `ttlSeconds=<planned>`.
@@ -335,12 +349,12 @@ Common preconditions: ezkey-pam-test VM with 2.2.12+ (#976 or later); `Match Gro
 | PAM-S0-01 | S0 approve (opt-out) | host `challenge_requested=false` (opt-out of default true); enrollment challenge off | 1. `ssh testuser@host`. 2. Read pre-create prompt. 3. Type `ok`. 4. Approve on the device. | "SSH login… request device approval" **before** create; shell; `result=SUCCESS`; **exactly 1** create; no challenge prompt |
 | PAM-S0-02 | S0 deny | same | steps 1-3, then Deny | Access denied; `result=DENIED`; 1 attempt |
 | PAM-S0-03 | S0 expire | same | steps 1-3, no device action | Denied at ≈ applied TTL; `result=EXPIRED`; 1 attempt |
-| PAM-S0-04 | S0 wrong confirm | same | step 1, Enter (empty) or type `x` | `UNAVAIL`; debug "confirm"; **no attempt created** |
+| PAM-S0-04 | S0 wrong confirm | same | step 1, Enter (empty) or type `x` | `CONFIRM` `reason=empty_confirm`; **no attempt created** |
 | PAM-S1H-01 | S1-H code (default) | host `challenge_requested=true` (sample/entrypoint default since #995) | `ssh`, `ok` (create), read code on 2nd prompt, Enter, enter code on device, Approve | Code visible; SUCCESS; code **not** in `/var/log/secure` |
 | PAM-S1H-02 | S1-H wrong code | same | wrong code on device | `result=DENIED` (INVALID); 1 attempt |
 | PAM-S1E-01 | S1-E enrollment challenge | host **false**; enrollment challenge **on** | as S1H-01 | Code visible (#975); SUCCESS |
 | PAM-S1E-02 | S1-E deny | same | Deny without code | `result=DENIED` (REJECTED) |
-| PAM-S2-01 | S2 batch no tty | host false | `ssh -T testuser@host whoami </dev/null` | Denied; `UNAVAIL`; **0 creates**; approval must not open a shell |
+| PAM-S2-01 | S2 batch no tty | host false | `ssh -T testuser@host whoami </dev/null` | Denied; `CONFIRM`; **0 creates**; approval must not open a shell |
 | PAM-S2-02 | S2 scp from cron | same | `scp file testuser@host:` from cron | Fails; no PENDING attempt |
 | PAM-S3-01 | S3 Marc's case | host false; enrollment challenge on | as S2-01 | Denied; **0 creates**; code never shown |
 | PAM-S4-01 | S4 BatchMode | any | `ssh -o BatchMode=yes testuser@host` | Immediate denial; **no** attempt |

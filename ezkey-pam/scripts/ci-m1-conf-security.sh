@@ -71,4 +71,8 @@ echo "== CI M1: test-timeouts.sh (stub) =="
 echo "== CI M1: test-f9-retry.sh (stub) =="
 "${SCRIPT_DIR}/test-f9-retry.sh"
 
-echo "== CI M1 conf-security + timeouts + f9-retry: OK =="
+# #1011 B3: client-kill / SIGTERM probes (must fail on hang/SUCCESS regressions).
+echo "== CI M1: test-signal-probes.sh (stub) =="
+"${SCRIPT_DIR}/test-signal-probes.sh"
+
+echo "== CI M1 conf-security + timeouts + f9-retry + signal-probes: OK =="
