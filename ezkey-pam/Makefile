@@ -50,7 +50,8 @@ $(BUILD_DIR)/ezkey_http.o: $(SRC_DIR)/ezkey_http.c $(SRC_DIR)/ezkey_http.h \
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_http.c -o $(BUILD_DIR)/ezkey_http.o
 
 $(BUILD_DIR)/ezkey_conf.o: $(SRC_DIR)/ezkey_conf.c $(SRC_DIR)/ezkey_conf.h \
-		$(SRC_DIR)/ezkey_config.h $(SRC_DIR)/ezkey_budget.h | $(BUILD_DIR)
+		$(SRC_DIR)/ezkey_config.h $(SRC_DIR)/ezkey_budget.h \
+		$(SRC_DIR)/ezkey_sanitize.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_conf.c -o $(BUILD_DIR)/ezkey_conf.o
 
 $(BUILD_DIR)/ezkey_filelog.o: $(SRC_DIR)/ezkey_filelog.c $(SRC_DIR)/ezkey_filelog.h \
@@ -209,30 +210,56 @@ check-source:
 		(echo "error: ACCEPTED strcmp must remain visible (#1016 P1)" >&2; exit 1)
 	@grep -qE 'ezkey_pam_rc_for_http|ezkey_api_url_allowed_url' $(SRC_DIR)/ezkey_decision.h || \
 		(echo "error: ezkey_decision.h missing HTTP/URL helpers (#1016 P1)" >&2; exit 1)
-	@grep -qE 'S_ISREG' $(SRC_DIR)/pam_ezkey.c || \
-		(echo "error: conf load must check S_ISREG (#1016 P1)" >&2; exit 1)
-	@grep -qE 'st_uid[[:space:]]*!=[[:space:]]*0' $(SRC_DIR)/pam_ezkey.c || \
-		(echo "error: conf load must check root uid (#1016 P1)" >&2; exit 1)
-	@grep -qE 'mode[[:space:]]*!=[[:space:]]*0600' $(SRC_DIR)/pam_ezkey.c || \
-		(echo "error: conf load must require 0600/0400 (#1016 P1)" >&2; exit 1)
+	# #1054: statement-form guards (comments / `0 &&` must not satisfy).
+	# Presence stays on pam_ezkey.c; forbid-`0 &&` spans all $(SRC_DIR)/*.c.
+	@grep -qE '^[[:space:]]*if[[:space:]]*\([[:space:]]*!S_ISREG[[:space:]]*\(' \
+		$(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: live if (!S_ISREG(...)) required (#1016 P1 / #1054)" >&2; exit 1)
+	@if grep -nE '(^|[^0-9])0[[:space:]]*&&[[:space:]]*!S_ISREG|(^|[^0-9])0[[:space:]]*&&[[:space:]]*S_ISREG' \
+		$(SRC_DIR)/*.c; then \
+		echo "error: S_ISREG must not be gated by 0 && (#1054)" >&2; exit 1; \
+	fi
+	@grep -qE '^[[:space:]]*if[[:space:]]*\([[:space:]]*st\.st_uid[[:space:]]*!=[[:space:]]*0' \
+		$(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: live if (st.st_uid != 0) required (#1016 P1 / #1054)" >&2; exit 1)
+	@if grep -nE '(^|[^0-9])0[[:space:]]*&&[[:space:]]*st\.st_uid' $(SRC_DIR)/*.c; then \
+		echo "error: st_uid check must not be gated by 0 && (#1054)" >&2; exit 1; \
+	fi
+	@grep -qE '^[[:space:]]*if[[:space:]]*\([[:space:]]*mode[[:space:]]*!=[[:space:]]*0600' \
+		$(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: live if (mode != 0600…) required (#1016 P1 / #1054)" >&2; exit 1)
+	@if grep -nE '(^|[^0-9])0[[:space:]]*&&[[:space:]]*mode[[:space:]]*!=' $(SRC_DIR)/*.c; then \
+		echo "error: mode check must not be gated by 0 && (#1054)" >&2; exit 1; \
+	fi
+	# #1054: conf open must be non-blocking (FIFO with no writer).
+	@grep -qE 'O_NOFOLLOW[[:space:]]*\|[[:space:]]*O_NONBLOCK|O_NONBLOCK[[:space:]]*\|[[:space:]]*O_NOFOLLOW' \
+		$(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: conf open must include O_NONBLOCK with O_NOFOLLOW (#1054)" >&2; exit 1)
 	@grep -qE 'CURLOPT_TIMEOUT[[:space:]]*,[[:space:]]*timeout_seconds' $(SRC_DIR)/pam_ezkey.c || \
 		(echo "error: CURLOPT_TIMEOUT must use timeout_seconds (#1016 P1)" >&2; exit 1)
 	@grep -qE 'do_cancel[[:space:]]*=[[:space:]]*1' $(SRC_DIR)/pam_ezkey.c || \
 		(echo "error: do_cancel=1 after create required (#1016 P1)" >&2; exit 1)
 	@grep -qE 'ezkey_prewait_response_confirmed' $(SRC_DIR)/pam_ezkey.c || \
 		(echo "error: confirm ok step must remain (#1016 P1)" >&2; exit 1)
-	@grep -qE 'CURLOPT_SSL_VERIFYPEER[[:space:]]*,[[:space:]]*1L' $(SRC_DIR)/ezkey_http.c || \
+	# #1054: tolerate multi-line curl_easy_setopt(… VERIFYPEER/HOST …).
+	@tr '\n' ' ' < $(SRC_DIR)/ezkey_http.c | \
+		grep -qE 'CURLOPT_SSL_VERIFYPEER[[:space:]]*,[[:space:]]*1L' || \
 		(echo "error: CURLOPT_SSL_VERIFYPEER 1L required (#1016 P3)" >&2; exit 1)
-	@grep -qE 'CURLOPT_SSL_VERIFYHOST[[:space:]]*,[[:space:]]*2L' $(SRC_DIR)/ezkey_http.c || \
+	@tr '\n' ' ' < $(SRC_DIR)/ezkey_http.c | \
+		grep -qE 'CURLOPT_SSL_VERIFYHOST[[:space:]]*,[[:space:]]*2L' || \
 		(echo "error: CURLOPT_SSL_VERIFYHOST 2L required (#1016 P3)" >&2; exit 1)
-	@if grep -nE 'CURLOPT_SSL_VERIFYPEER[[:space:]]*,[[:space:]]*0' $(SRC_DIR)/*.c; then \
-		echo "error: CURLOPT_SSL_VERIFYPEER 0 forbidden (#1016 P3)" >&2; exit 1; \
-	fi
-	@if grep -nE 'CURLOPT_SSL_VERIFYHOST[[:space:]]*,[[:space:]]*0' $(SRC_DIR)/*.c; then \
-		echo "error: CURLOPT_SSL_VERIFYHOST 0 forbidden (#1016 P3)" >&2; exit 1; \
-	fi
-	@grep -qE 'cfg->lab_http[[:space:]]*=[[:space:]]*0' $(SRC_DIR)/ezkey_conf.c || \
-		(echo "error: lab_http default must assign 0 (#1016 P4)" >&2; exit 1)
+	# #1054 review: forbid VERIFYPEER/VERIFYHOST 0 across ALL src/*.c (not only ezkey_http.c).
+	@for f in $(SRC_DIR)/*.c; do \
+		if tr '\n' ' ' <"$$f" | grep -nE 'CURLOPT_SSL_VERIFYPEER[[:space:]]*,[[:space:]]*0([^0-9]|$$)'; then \
+			echo "error: CURLOPT_SSL_VERIFYPEER 0 forbidden in $$f (#1016 P3 / #1054)" >&2; exit 1; \
+		fi; \
+		if tr '\n' ' ' <"$$f" | grep -nE 'CURLOPT_SSL_VERIFYHOST[[:space:]]*,[[:space:]]*0([^0-9]|$$)'; then \
+			echo "error: CURLOPT_SSL_VERIFYHOST 0 forbidden in $$f (#1016 P3 / #1054)" >&2; exit 1; \
+		fi; \
+	done
+	@grep -qE '^[[:space:]]*cfg->lab_http[[:space:]]*=[[:space:]]*0[[:space:]]*;' \
+		$(SRC_DIR)/ezkey_conf.c || \
+		(echo "error: live cfg->lab_http = 0; required (#1016 P4 / #1054)" >&2; exit 1)
 	@grep -qE 'ezkey_config_wipe_secrets|explicit_bzero' $(SRC_DIR)/ezkey_conf.c || \
 		(echo "error: wipe secrets / explicit_bzero missing (#1016 P5)" >&2; exit 1)
 	@grep -qE 'conf_unknown_key' $(SRC_DIR)/ezkey_conf.c || \
@@ -289,9 +316,10 @@ test-challenge: $(BUILD_DIR)/ezkey_challenge.o $(BUILD_DIR)/ezkey_sanitize.o \
 
 # Harness: conf missing challenge_requested key + bool typo fallback (#995 B1/m1).
 test-conf: $(BUILD_DIR)/ezkey_conf.o $(BUILD_DIR)/ezkey_budget.o \
-		$(TEST_DIR)/test_conf_harness.c | $(BUILD_DIR)
+		$(BUILD_DIR)/ezkey_sanitize.o $(TEST_DIR)/test_conf_harness.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_conf_harness.c \
 		$(BUILD_DIR)/ezkey_conf.o $(BUILD_DIR)/ezkey_budget.o \
+		$(BUILD_DIR)/ezkey_sanitize.o \
 		-o $(BUILD_DIR)/test_conf_harness
 	$(BUILD_DIR)/test_conf_harness
 

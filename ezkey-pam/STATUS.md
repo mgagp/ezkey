@@ -45,14 +45,17 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.19** (#1016 cycle 2b: decision harness, TLS pin, conf unknown-key
-warn, `#` in values, mutation re-kill). Prior **2.2.18** (#1016 cycle 2). Prior
-**2.2.17** (cycle 1b). Prior **2.2.16** (snapshot/probes). Prior **2.2.15**.
+Version **2.2.20** (#1054 cycle 3: conf `O_NONBLOCK`, probe-4 harness FIFO
+fix, TLS runtime guard, check-source statement form). Prior **2.2.19**
+(#1016 cycle 2b: decision harness, TLS pin, conf unknown-key warn, `#` in
+values, mutation re-kill). Prior **2.2.18** (#1016 cycle 2). Prior **2.2.17**
+(cycle 1b). Prior **2.2.16** (snapshot/probes). Prior **2.2.15**.
 
-**Conf comments (#1016 P6):** `#` starts a comment only at line start or after
-whitespace. A value may contain `#` (e.g. `secret_key=ab#cd`). Prefer not to put
-`#` inside credentials without need. Unknown keys log
-`reason=conf_unknown_key key=<name>` (never the value).
+**Conf comments (#1016 P6 / #1054):** `#` starts a comment only at line start or
+after whitespace. A value may contain `#` (e.g. `secret_key=ab#cd`). Prefer not
+to put `#` inside credentials without need. Unknown keys log
+`reason=conf_unknown_key key=<sanitized-name>` (never the value). Unrecognized
+boolean values keep the prior setting and do **not** log the raw value.
 Prior **2.2.14** (#995: connector default `challenge_requested=true`). Prior
 **2.2.13** (#982 tiers 0–1 on #976: ECHO_ON confirm + challenge Enter-only
 wait). Prior **2.2.12** (#975 / PR #976: **confirm-before-create** + display
@@ -137,10 +140,18 @@ reach a caller-controlled proxy in `lab_http` `http://` mode. **Exception
 (#1016 S1):** libcurl/OpenSSL honour `SSLKEYLOGFILE` — with it set, a root PAM
 child would create the caller-chosen path (typically mode `0644`) and write TLS
 session keys. The module refuses authenticate early (`UNAVAIL`, `reason=env`,
-no network call) when `getenv("SSLKEYLOGFILE")` is non-NULL. On the measured
-build, `SSL_CERT_FILE` / `SSL_CERT_DIR` / `CURL_CA_BUNDLE` are **not** honoured;
-that is a build-specific observation and is **not** guaranteed on other libcurl
-builds — do not treat those names as a complete ENV surface.
+no network call) when `getenv("SSLKEYLOGFILE")` is non-NULL. **Denial-of-service
+tradeoff (#1054):** that refuse-closed path is intentional — availability is
+denied for the login rather than writing session keys to a caller-chosen path.
+An ENV injector who can set `SSLKEYLOGFILE` on the PAM child can force UNAVAIL
+for every attempt; that is preferred to a key-exfiltration side channel.
+**Remedy:** remove `SSLKEYLOGFILE` from the service environment; an UNAVAIL
+caused by a caller-set variable is harmless only when the stack uses
+`required` / `[default=die]` — not with `sufficient` / `[default=ignore]`
+(`su`/`sudo`: the caller controls its environment). On the
+measured build, `SSL_CERT_FILE` / `SSL_CERT_DIR` / `CURL_CA_BUNDLE` are **not**
+honoured; that is a build-specific observation and is **not** guaranteed on
+other libcurl builds — do not treat those names as a complete ENV surface.
 
 **Verdict:** the current parameter set is **enough for the demo** and is the right *shape* for
 v1 operable use. It is not missing a second config system. Remaining gaps for a non-lab host are
@@ -150,6 +161,12 @@ operational (TLS, live sshd cutover), not “more keys.”
 
 - **HTTP** to `integration-api:7080` only with **`lab_http=true`** (entrypoint sets it). Outside
   lab, `http://` → `PAM_AUTHINFO_UNAVAIL`. No TLS verify knobs yet. (Slice #4+ / non-lab HTTPS)
+- **No client-disconnect detection during `/wait` (#1054 / #1067):** the module does **not**
+  detect that the SSH client has left while waiting. The attempt expires at the applied TTL
+  (about **75 s** by default under the demo budget), and the pre-auth PAM process is held
+  until then, bounded by sshd `LoginGraceTime`; sshd `MaxStartups` also applies. Operators
+  should restrict allowed sources on the SSH port. Do **not** expect fast disconnect
+  detection — POLLHUP monitoring is intentionally out of scope.
 - **Demo PAM stack is Ezkey-only** (`pam_ezkey` + `pam_permit`). Host-oriented sketch lives in
   [`sshd.host-sketch`](sshd.host-sketch) — not applied to any live host by this repo.
 - **`install.sh` can still build on the host.** Prefer image-matched extract for real hosts
@@ -701,10 +718,11 @@ until applied TTL (≤ 90 s). Arming SIGTERM during `pam_prompt` was declined
 ### Timeouts (Patrick / #726 / P3 budget) — path:line inventory
 
 Single deadline: `pam_ezkey.c:917` `clock_gettime(CLOCK_MONOTONIC, &started)`.
-Wall budget `ezkey_config.h:36` **`EZKEY_AUTH_BUDGET_SECS` 105** — **15 s margin** under
-demo `LoginGraceTime` 120 (`sshd_config:20`). Effective `/wait` =
-`min(conf, rem − CURL_SLACK)` at `pam_ezkey.c:814-825`; too little left →
-`UNAVAIL` **with** attempt line (`pam_sm_authenticate` `done:` / `log_attempt_summary`).
+Wall budget symbol **`EZKEY_AUTH_BUDGET_SECS` 105** (in `ezkey_config.h`) —
+**15 s margin** under demo `LoginGraceTime` 120 (`sshd_config`). Effective
+`/wait` = `min(conf, rem − CURL_SLACK)` in `pam_ezkey.c` (planned-wait helper);
+too little left → `UNAVAIL` **with** attempt line (`pam_sm_authenticate` `done:`
+/ `log_attempt_summary`).
 
 **Craft rule (amended #907 B2a / Marc; R5 best-effort):** no `alarm` and no
 global `sigaction`. **Exception — wait-scoped `SIGTERM` only:** installed solely
