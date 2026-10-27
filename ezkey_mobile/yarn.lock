@@ -6816,14 +6816,14 @@ __metadata:
     eslint: "npm:9.39.4"
     eslint-config-prettier: "npm:10.1.8"
     husky: "npm:9.1.7"
-    i18next: "npm:26.5.6"
+    i18next: "npm:26.5.10"
     jest: "npm:30.5.2"
     js-sha256: "npm:1.0.0"
     lint-staged: "npm:17.6.0"
     orval: "npm:8.44.0"
     prettier: "npm:3.9.10"
     react: "npm:19.3.0"
-    react-i18next: "npm:17.1.4"
+    react-i18next: "npm:17.1.8"
     react-native: "npm:0.87.1"
     react-native-config: "npm:1.7.2"
     react-native-gesture-handler: "npm:3.4.0"
@@ -7595,15 +7595,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"i18next@npm:26.5.6":
-  version: 26.5.6
-  resolution: "i18next@npm:26.5.6"
+"i18next@npm:26.5.10":
+  version: 26.5.10
+  resolution: "i18next@npm:26.5.10"
   peerDependencies:
     typescript: ^5 || ^6 || ^7
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/0c7d2a54c7259b86632545e28efe3c0baeb4d9b1b7360bf43055c8ac8d522740c3216ddeeac25be67b16ec9c0f7ef7060bd3039ed579f6485a02da01fb358dd0
+  checksum: 10c0/8377a89144f0c94997410a68f3219b5d516c5e98235a8213fbbc0fffc1f67663680bbd76c6053bf50ad52ee967c269f4c07c97514a01ddc838919a935be1ac72
   languageName: node
   linkType: hard
 
@@ -10420,9 +10420,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-i18next@npm:17.1.4":
-  version: 17.1.4
-  resolution: "react-i18next@npm:17.1.4"
+"react-i18next@npm:17.1.8":
+  version: 17.1.8
+  resolution: "react-i18next@npm:17.1.8"
   dependencies:
     "@babel/runtime": "npm:^7.29.7"
     html-parse-stringify: "npm:^4.0.1"
@@ -10438,7 +10438,7 @@ __metadata:
       optional: true
     typescript:
       optional: true
-  checksum: 10c0/22f64db17fa42bd4d86e931b93b06f42f1f9b482d2442c6a801ed0fa84b503a66e0bc1527bf36c5c061e7e167c129db3a75256e5373948de719001eb4f9588eb
+  checksum: 10c0/3caa62c1d1ee9227abdbce68bbce9c7504ed3729d0924a6ff7714e960e04ca2b4f61d53cf01385c81bdfcc4f68bcd1bf56d08ededccdc4ff14f8e4bae8fa3a1e
   languageName: node
   linkType: hard
 
