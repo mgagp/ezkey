@@ -8,7 +8,9 @@ screen implementations rather than an idealized future UX.
 
 It focuses on Home, Enrollment Wizard, Enrollment Detail, and Pending Authentication first, then captures the
 secondary Settings, What's new, About, Danger Zone, and Licenses screens. Decision limits and state transitions
-are canonical in [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) (including post-#833 leave-as-deny).
+are canonical in [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) (leave-as-deny on `main`
+since #833 merged 2026-10-16). Application-independent rules:
+[`docs/CLIENT_BEHAVIOUR_CONTRACT.md`](../../docs/CLIENT_BEHAVIOUR_CONTRACT.md).
 
 ## Navigation Model Overview
 
@@ -178,7 +180,7 @@ for request context and respond submission, then returns control to Enrollment D
 | Tap `Check again` | Repeats `pending` load cycle | Remains on screen |
 | Enter challenge | Satisfies local precondition for approve | Remains on screen |
 | Tap approve | In protected mode, biometric or device credential, then signs and submits an accepted respond | Returns to Enrollment Detail with latest response summary |
-| Tap deny | Signs and submits a denied respond. No biometric prompt, including in protected mode (Question 11) | Returns to Enrollment Detail with latest response summary |
+| Tap deny | Signs and submits a denied respond. **Q11 decided:** no biometric prompt (approve-only). Reference app code may still prompt on Deny until the code follow-up ships | Returns to Enrollment Detail with latest response summary |
 | Leave with loaded attempt (back / gesture) | Same as Deny via `respond(accepted=false)`. A permanent line under the buttons says so before the gesture (Question 5). | Returns to Enrollment Detail when deny succeeds; on deny failure still allows leave |
 
 | State type | How it appears | User consequence |

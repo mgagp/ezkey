@@ -40,6 +40,7 @@ Installing a **host JDK** to build Java modules from a fresh clone is a differen
 - [ADMIN_UI.md](ADMIN_UI.md): Admin UI purpose, role split, workflow boundaries, and operator-facing scope.
 - [../ezkey-admin-ui/README.md](../ezkey-admin-ui/README.md): Admin UI module-specific setup and local development.
 - [MOBILE_DEVELOPER_GUIDE.md](MOBILE_DEVELOPER_GUIDE.md): shared protocol guide for third-party or alternative mobile clients.
+- [CLIENT_BEHAVIOUR_CONTRACT.md](CLIENT_BEHAVIOUR_CONTRACT.md): application-independent MUST/SHOULD/MAY client behaviour (RFC 2119), derived from the mobile state machine and #834.
 - [../ezkey_mobile/docs/README.md](../ezkey_mobile/docs/README.md): primary mobile documentation corpus for the React Native reference app.
 - [LOCAL_STACK_PORTS.md](LOCAL_STACK_PORTS.md): local stack ports, proxy mapping, and testing entry points.
 

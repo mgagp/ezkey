@@ -20,11 +20,12 @@ reference mobile app.
 1. [MOBILE_API_MAPPINGS.md](MOBILE_API_MAPPINGS.md)
 2. [MOBILE_FUNCTIONAL_FLOWS.md](MOBILE_FUNCTIONAL_FLOWS.md)
 3. [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) — canonical FSM (states, guards, leave-as-deny)
-4. [MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md) — intent from FSM open questions (phased backlog)
-5. [MOBILE_DATA_MODEL.md](MOBILE_DATA_MODEL.md)
-6. [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md)
-7. [MOBILE_STACK_AND_ARCHITECTURE.md](MOBILE_STACK_AND_ARCHITECTURE.md)
-8. [MOBILE_POSITIONING.md](MOBILE_POSITIONING.md)
+4. [../../docs/CLIENT_BEHAVIOUR_CONTRACT.md](../../docs/CLIENT_BEHAVIOUR_CONTRACT.md) — application-independent MUST/SHOULD/MAY client behaviour
+5. [MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md) — intent from FSM open questions (phased backlog)
+6. [MOBILE_DATA_MODEL.md](MOBILE_DATA_MODEL.md)
+7. [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md)
+8. [MOBILE_STACK_AND_ARCHITECTURE.md](MOBILE_STACK_AND_ARCHITECTURE.md)
+9. [MOBILE_POSITIONING.md](MOBILE_POSITIONING.md)
 
 ## Which Document Answers Which Question
 
@@ -32,7 +33,8 @@ reference mobile app.
 | --- | --- | --- |
 | Which Auth API fields does the mobile app send, store, or display? | [MOBILE_API_MAPPINGS.md](MOBILE_API_MAPPINGS.md) | Primary mapping reference for `bind`, `verify`, `pending`, and `respond`. |
 | How do enrollment and authentication run end to end? | [MOBILE_FUNCTIONAL_FLOWS.md](MOBILE_FUNCTIONAL_FLOWS.md) | Includes nominal and exception paths plus trust checks. |
-| What are the explicit states, events, guards, TTL, and leave/deny rules? | [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) | Canonical FSM from code; Mermaid + optional [HTML](mobile-app-state-machine.html). Post-#833 leave-as-deny. |
+| What are the explicit states, events, guards, TTL, and leave/deny rules? | [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) | Canonical FSM from code; Mermaid + optional [HTML](mobile-app-state-machine.html). Leave-as-deny on `main` (#833 merged 2026-10-16). |
+| What MUST/SHOULD/MAY rules apply to any authenticator client? | [../../docs/CLIENT_BEHAVIOUR_CONTRACT.md](../../docs/CLIENT_BEHAVIOUR_CONTRACT.md) | RFC 2119 contract citing FSM + #834 Q-numbers. |
 | What product/UX/security intent do the FSM open questions imply, and what phased backlog? | [MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md) | Orientation from the eight FSM findings; phased proposals; Questions pour Marc; collaborator review slots. |
 | What internal concepts and persisted structures exist in the app? | [MOBILE_DATA_MODEL.md](MOBILE_DATA_MODEL.md) | Start at **Cornerstone** (installation trust zone + Keystore/seal split); then local entities and source-of-truth rules. |
 | What does each primary screen show and do? | [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md) | Screen-level responsibilities and navigation model. |
@@ -51,6 +53,7 @@ reference mobile app.
 | [../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md) | Canonical pending/respond signed payload formats | Exact signature rules are shared protocol truth. |
 | [../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md](../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md) | Canonical bind/verify signed payload formats | Exact signature rules are shared protocol truth. |
 | [../../docs/MOBILE_DEVELOPER_GUIDE.md](../../docs/MOBILE_DEVELOPER_GUIDE.md) | Third-party mobile protocol implementation guidance | Broader than the reference app and intentionally rooted at the repository level. |
+| [../../docs/CLIENT_BEHAVIOUR_CONTRACT.md](../../docs/CLIENT_BEHAVIOUR_CONTRACT.md) | Application-independent client behaviour (MUST/SHOULD/MAY) | Shared by Flutter SDK, RN reference app, and other authenticators. |
 
 ## Quality and Continuous Improvement
 

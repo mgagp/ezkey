@@ -111,14 +111,14 @@ Approve in protected mode asks for biometric or device credential before signing
 the screen sign the refusal without that prompt. Decided in the same note (Question 11, #834).
 
 If the app is killed or backgrounded during `respond`, or the attempt lifetime ends during Approve
-biometric, the row may stay `READ` until it expires. That window is an accepted limit. “120
-seconds” means the default of `ezkey.core.auth-attempt.ttl-seconds` (range 30–600). On Cloudflare
-Free, including the community instance, the proxy cuts the origin at 100 seconds (HTTP 524); take
-that into account at deploy time. Decided in the same note (Question 12, #834).
+biometric, the row may stay `READ` until it expires. That window is an accepted limit. Applied
+lifetime is **15–120 s** (default / ceiling **120**; #895). “120 seconds” means that default.
+On Cloudflare Free, including the community instance, the proxy cuts the origin at 100 seconds
+(HTTP 524); take that into account at deploy time. Decided in the same note (Question 12, #834).
 
 The “decision already sent” lock follows `authAttemptId`, so a new attempt on the same screen is
-not stuck behind the previous one. The fix is tracked on pull request #833 and is not duplicated
-here. Decided in the same note (Question 13, #834).
+not stuck behind the previous one (delivered with #833, merged 2026-10-16). Decided in the same
+note (Question 13, #834).
 
 If leaving the screen fails to send the refusal, the person still leaves. The phone shows one short
 message and does not retry. They look back at the integrating application and either see a finished
@@ -131,8 +131,10 @@ countdown finish on the integrating application, or cancels there. Decided in th
 (Question 4, #834).
 
 If `respond` returns **409** `auth-attempt-state-conflict`, the phone shows one sentence: the
-request is no longer active. Back only. The same sentence covers expiry, cancellation, and an
-already decided attempt. Decided in the same note (Question 8, #834).
+request is no longer active. Back only. That type covers cancellation, already decided, superseded,
+and related inactive causes (#844 m1). Wall-clock expiry after ownership proof returns **409**
+`auth-attempt-expired` (#895); the phone **MAY** use distinct “expired” copy and still offers Back
+only. Decided in the same note (Question 8, #834; amended #895).
 
 While a request is on screen, a permanent line under Approve and Deny says that leaving declines
 it. No confirmation dialog. Decided in the same note (Question 5, #834).
