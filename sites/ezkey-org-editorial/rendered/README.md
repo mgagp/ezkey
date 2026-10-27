@@ -7,3 +7,5 @@ Open `EZK-LAB-2026-001.en.html` or `EZK-LAB-2026-001.fr.html` in a browser (doub
 The markdown drafts one level up, and under `fr/`, stay the source. These HTML files are a preview of that revision. If the drafts change, the HTML does not update by itself.
 
 The public site sample at `sites/ezkey-org/lab-paper-template-example.html` is a different layout and is not used for this preview.
+
+The noindex site pages, still a draft and not linked from the hub, are `sites/ezkey-org/lab-EZK-LAB-2026-001-pam-hardening-and-stopping-point.html` and `sites/ezkey-org/fr/lab-EZK-LAB-2026-001-pam-hardening-and-stopping-point.html`. Those pages omit the editorial exclude blocks. These local files keep the open-points ledger so it can be reviewed beside the draft.
