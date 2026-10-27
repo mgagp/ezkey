@@ -407,6 +407,9 @@ expect_ghost_unavail_fast "ghost conf: directory" directory
 # Expect UNAVAIL + zero requests handled by the TLS stub (peer verify active).
 # Cert SAN must match conf host (IP:127.0.0.1) so ONLY VERIFYPEER rejects —
 # VERIFYHOST alone must not fail the handshake (Patrick #1067 review).
+# HOST=0 alone is held by check-source, not this runtime case — a runtime kill
+# would need a trusted test CA in the image (disproportionate for a lab).
+# CN-mismatch case intentionally dropped (Patrick #1067: no longer required).
 TLS_PORT=18443
 TLS_PID_FILE="/tmp/ezkey-pam-tls-stub.pid"
 TLS_REQ_LOG="/tmp/ezkey-pam-tls-stub-reqs.log"

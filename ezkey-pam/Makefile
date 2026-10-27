@@ -211,23 +211,24 @@ check-source:
 	@grep -qE 'ezkey_pam_rc_for_http|ezkey_api_url_allowed_url' $(SRC_DIR)/ezkey_decision.h || \
 		(echo "error: ezkey_decision.h missing HTTP/URL helpers (#1016 P1)" >&2; exit 1)
 	# #1054: statement-form guards (comments / `0 &&` must not satisfy).
+	# Presence stays on pam_ezkey.c; forbid-`0 &&` spans all $(SRC_DIR)/*.c.
 	@grep -qE '^[[:space:]]*if[[:space:]]*\([[:space:]]*!S_ISREG[[:space:]]*\(' \
 		$(SRC_DIR)/pam_ezkey.c || \
 		(echo "error: live if (!S_ISREG(...)) required (#1016 P1 / #1054)" >&2; exit 1)
 	@if grep -nE '(^|[^0-9])0[[:space:]]*&&[[:space:]]*!S_ISREG|(^|[^0-9])0[[:space:]]*&&[[:space:]]*S_ISREG' \
-		$(SRC_DIR)/pam_ezkey.c; then \
+		$(SRC_DIR)/*.c; then \
 		echo "error: S_ISREG must not be gated by 0 && (#1054)" >&2; exit 1; \
 	fi
 	@grep -qE '^[[:space:]]*if[[:space:]]*\([[:space:]]*st\.st_uid[[:space:]]*!=[[:space:]]*0' \
 		$(SRC_DIR)/pam_ezkey.c || \
 		(echo "error: live if (st.st_uid != 0) required (#1016 P1 / #1054)" >&2; exit 1)
-	@if grep -nE '(^|[^0-9])0[[:space:]]*&&[[:space:]]*st\.st_uid' $(SRC_DIR)/pam_ezkey.c; then \
+	@if grep -nE '(^|[^0-9])0[[:space:]]*&&[[:space:]]*st\.st_uid' $(SRC_DIR)/*.c; then \
 		echo "error: st_uid check must not be gated by 0 && (#1054)" >&2; exit 1; \
 	fi
 	@grep -qE '^[[:space:]]*if[[:space:]]*\([[:space:]]*mode[[:space:]]*!=[[:space:]]*0600' \
 		$(SRC_DIR)/pam_ezkey.c || \
 		(echo "error: live if (mode != 0600…) required (#1016 P1 / #1054)" >&2; exit 1)
-	@if grep -nE '(^|[^0-9])0[[:space:]]*&&[[:space:]]*mode[[:space:]]*!=' $(SRC_DIR)/pam_ezkey.c; then \
+	@if grep -nE '(^|[^0-9])0[[:space:]]*&&[[:space:]]*mode[[:space:]]*!=' $(SRC_DIR)/*.c; then \
 		echo "error: mode check must not be gated by 0 && (#1054)" >&2; exit 1; \
 	fi
 	# #1054: conf open must be non-blocking (FIFO with no writer).
