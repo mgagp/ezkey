@@ -247,14 +247,15 @@ check-source:
 	@tr '\n' ' ' < $(SRC_DIR)/ezkey_http.c | \
 		grep -qE 'CURLOPT_SSL_VERIFYHOST[[:space:]]*,[[:space:]]*2L' || \
 		(echo "error: CURLOPT_SSL_VERIFYHOST 2L required (#1016 P3)" >&2; exit 1)
-	@if tr '\n' ' ' < $(SRC_DIR)/ezkey_http.c | \
-		grep -nE 'CURLOPT_SSL_VERIFYPEER[[:space:]]*,[[:space:]]*0([^0-9]|$$)'; then \
-		echo "error: CURLOPT_SSL_VERIFYPEER 0 forbidden (#1016 P3)" >&2; exit 1; \
-	fi
-	@if tr '\n' ' ' < $(SRC_DIR)/ezkey_http.c | \
-		grep -nE 'CURLOPT_SSL_VERIFYHOST[[:space:]]*,[[:space:]]*0([^0-9]|$$)'; then \
-		echo "error: CURLOPT_SSL_VERIFYHOST 0 forbidden (#1016 P3)" >&2; exit 1; \
-	fi
+	# #1054 review: forbid VERIFYPEER/VERIFYHOST 0 across ALL src/*.c (not only ezkey_http.c).
+	@for f in $(SRC_DIR)/*.c; do \
+		if tr '\n' ' ' <"$$f" | grep -nE 'CURLOPT_SSL_VERIFYPEER[[:space:]]*,[[:space:]]*0([^0-9]|$$)'; then \
+			echo "error: CURLOPT_SSL_VERIFYPEER 0 forbidden in $$f (#1016 P3 / #1054)" >&2; exit 1; \
+		fi; \
+		if tr '\n' ' ' <"$$f" | grep -nE 'CURLOPT_SSL_VERIFYHOST[[:space:]]*,[[:space:]]*0([^0-9]|$$)'; then \
+			echo "error: CURLOPT_SSL_VERIFYHOST 0 forbidden in $$f (#1016 P3 / #1054)" >&2; exit 1; \
+		fi; \
+	done
 	@grep -qE '^[[:space:]]*cfg->lab_http[[:space:]]*=[[:space:]]*0[[:space:]]*;' \
 		$(SRC_DIR)/ezkey_conf.c || \
 		(echo "error: live cfg->lab_http = 0; required (#1016 P4 / #1054)" >&2; exit 1)

@@ -144,7 +144,11 @@ no network call) when `getenv("SSLKEYLOGFILE")` is non-NULL. **Denial-of-service
 tradeoff (#1054):** that refuse-closed path is intentional — availability is
 denied for the login rather than writing session keys to a caller-chosen path.
 An ENV injector who can set `SSLKEYLOGFILE` on the PAM child can force UNAVAIL
-for every attempt; that is preferred to a key-exfiltration side channel. On the
+for every attempt; that is preferred to a key-exfiltration side channel.
+**Remedy:** remove `SSLKEYLOGFILE` from the service environment; an UNAVAIL
+caused by a caller-set variable is harmless only when the stack uses
+`required` / `[default=die]` — not with `sufficient` / `[default=ignore]`
+(`su`/`sudo`: the caller controls its environment). On the
 measured build, `SSL_CERT_FILE` / `SSL_CERT_DIR` / `CURL_CA_BUNDLE` are **not**
 honoured; that is a build-specific observation and is **not** guaranteed on
 other libcurl builds — do not treat those names as a complete ENV surface.
@@ -157,6 +161,12 @@ operational (TLS, live sshd cutover), not “more keys.”
 
 - **HTTP** to `integration-api:7080` only with **`lab_http=true`** (entrypoint sets it). Outside
   lab, `http://` → `PAM_AUTHINFO_UNAVAIL`. No TLS verify knobs yet. (Slice #4+ / non-lab HTTPS)
+- **No client-disconnect detection during `/wait` (#1054 / #1067):** the module does **not**
+  detect that the SSH client has left while waiting. The attempt expires at the applied TTL
+  (about **75 s** by default under the demo budget), and the pre-auth PAM process is held
+  until then, bounded by sshd `LoginGraceTime`; sshd `MaxStartups` also applies. Operators
+  should restrict allowed sources on the SSH port. Do **not** expect fast disconnect
+  detection — POLLHUP monitoring is intentionally out of scope.
 - **Demo PAM stack is Ezkey-only** (`pam_ezkey` + `pam_permit`). Host-oriented sketch lives in
   [`sshd.host-sketch`](sshd.host-sketch) — not applied to any live host by this repo.
 - **`install.sh` can still build on the host.** Prefer image-matched extract for real hosts

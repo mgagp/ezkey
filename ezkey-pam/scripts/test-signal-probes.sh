@@ -10,6 +10,10 @@
 # already be gone; writing "quit" with a blocking O_WRONLY open on the control
 # FIFO hangs until an external timeout. Use ezkey_ctrl_write (bounded) and
 # force-kill pam + capture after the wall budget.
+# FIFO residue (#1067 nit): with a blocking-write mutant the probe wall guard
+# fires, but harness bash can still sit on the FIFO until the *external*
+# `timeout` (that outer timeout is authoritative for this class — we do not
+# kill the script process group).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

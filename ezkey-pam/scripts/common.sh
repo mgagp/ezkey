@@ -255,6 +255,9 @@ ezkey_mk_ctrl_fifo() {
 # Write a control command to a capture fifo without hanging when the reader
 # (ssh-pty-capture.py) has already exited (#1054 probe 4 flake: O_WRONLY open
 # on a FIFO with no reader blocks forever).
+# #1067 nit: a mutant that drops this timeout can leave harness bash stuck on
+# the FIFO after the probe wall fires — the external suite `timeout` is then
+# authoritative (smaller fix than killing the script process group).
 ezkey_ctrl_write() {
   local fifo="$1"
   local msg="$2"

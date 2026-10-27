@@ -64,6 +64,9 @@ exercised here.
 
 - **S1:** Refuse authenticate when `SSLKEYLOGFILE` is set (`reason=env`);
   STATUS names that variable (CA-bundle ENV not honoured on the measured build).
+  Remedy: remove it from the service environment; caller-caused UNAVAIL is
+  harmless only with `required` / `[default=die]`, not `sufficient` /
+  `[default=ignore]` (`su`/`sudo` — caller controls ENV).
 - **S2:** Wipe conf `line[]` before return; honest memory-wipe wording.
 - **S3:** Any `@` in `api_url` → debug logs `scheme://-` (no password prefix).
 - **S4:** `-l` libs moved to `LDLIBS` after objects; `DT_NEEDED` asserts curl/cjson.

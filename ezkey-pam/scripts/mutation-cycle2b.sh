@@ -88,6 +88,14 @@ run_mut M_wipe "wipe_secrets no-op" src/ezkey_conf.c test-conf \
 run_mut M_tls "VERIFYPEER 0" src/ezkey_http.c check-source \
   's/CURLOPT_SSL_VERIFYPEER, 1L/CURLOPT_SSL_VERIFYPEER, 0L/'
 
+# #1054 review: VERIFYHOST-only and both-zero must also die (check-source).
+run_mut M_tls_host "VERIFYHOST 0 alone" src/ezkey_http.c check-source \
+  's/CURLOPT_SSL_VERIFYHOST, 2L/CURLOPT_SSL_VERIFYHOST, 0L/'
+
+run_mut M_tls_both "VERIFYPEER 0 + VERIFYHOST 0" src/ezkey_http.c check-source \
+  's/CURLOPT_SSL_VERIFYPEER, 1L/CURLOPT_SSL_VERIFYPEER, 0L/' \
+  's/CURLOPT_SSL_VERIFYHOST, 2L/CURLOPT_SSL_VERIFYHOST, 0L/'
+
 run_mut M_mode "remove conf mode check" src/pam_ezkey.c check-source \
   '/mode != 0600 && mode != 0400/,/return -2;/{s/.*/    \/* mutated *\//}'
 

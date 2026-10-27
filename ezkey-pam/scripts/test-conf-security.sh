@@ -405,6 +405,8 @@ expect_ghost_unavail_fast "ghost conf: directory" directory
 
 # --- #1054 TLS runtime regression (not a grep): self-signed https, no lab_http ---
 # Expect UNAVAIL + zero requests handled by the TLS stub (peer verify active).
+# Cert SAN must match conf host (IP:127.0.0.1) so ONLY VERIFYPEER rejects —
+# VERIFYHOST alone must not fail the handshake (Patrick #1067 review).
 TLS_PORT=18443
 TLS_PID_FILE="/tmp/ezkey-pam-tls-stub.pid"
 TLS_REQ_LOG="/tmp/ezkey-pam-tls-stub-reqs.log"
@@ -416,9 +418,24 @@ mkdir -p "${TLS_HOST_DIR}"
 start_tls_stub() {
   stop_tls_stub
   require_cmd openssl
+  # SAN IP matches integration_api_url=https://127.0.0.1:… so VERIFYHOST=2
+  # succeeds; only VERIFYPEER rejects the untrusted self-signed chain.
+  cat >"${TLS_HOST_DIR}/san.cnf" <<'EOF'
+[req]
+distinguished_name = dn
+x509_extensions = v3_req
+prompt = no
+[dn]
+CN = 127.0.0.1
+[v3_req]
+subjectAltName = @alt
+[alt]
+IP.1 = 127.0.0.1
+EOF
   openssl req -x509 -newkey rsa:2048 \
     -keyout "${TLS_HOST_DIR}/stub.key" -out "${TLS_HOST_DIR}/stub.crt" \
-    -days 1 -nodes -subj '/CN=localhost' >/dev/null 2>&1
+    -days 1 -nodes -config "${TLS_HOST_DIR}/san.cnf" -extensions v3_req \
+    >/dev/null 2>&1
   docker cp "${TLS_HOST_DIR}/stub.crt" "${CONTAINER}:${TLS_CERT}"
   docker cp "${TLS_HOST_DIR}/stub.key" "${CONTAINER}:${TLS_KEY}"
   docker cp "${SCRIPT_DIR}/ezkey-pam-tls-stub.py" \
@@ -440,6 +457,20 @@ start_tls_stub() {
 }
 
 if start_tls_stub; then
+  # Positive witness: stub must actually accept TLS (not die after listen).
+  # curl -k skips peer verify; expect exactly 1 counted request (#1067 MINOR3).
+  docker exec "${CONTAINER}" sh -c ": >'${TLS_REQ_LOG}'" || true
+  docker exec "${CONTAINER}" sh -c \
+    "curl -sk --max-time 5 'https://127.0.0.1:${TLS_PORT}/' >/dev/null 2>&1" || true
+  witness_reqs="$(docker exec "${CONTAINER}" sh -c \
+    "wc -l <'${TLS_REQ_LOG}' 2>/dev/null || echo 0" | tr -d ' \r')"
+  witness_reqs="${witness_reqs:-0}"
+  if [ "${witness_reqs}" -eq 1 ]; then
+    ok "TLS stub witness: curl -k → exactly 1 counted request"
+  else
+    fail "TLS stub witness expected exactly 1 req (got ${witness_reqs}) — stub may be dead"
+  fi
+
   restore_conf
   docker exec "${CONTAINER}" sh -c \
     "sed -i 's/^lab_http=.*/lab_http=false/' '${CONF}'; \
@@ -463,7 +494,7 @@ if start_tls_stub; then
   if [ "${ssh_rc}" -ne 0 ] && [ "${new}" -ge 1 ] \
     && echo "${attempt}" | grep -q 'result=UNAVAIL' \
     && [ "${reqs}" -eq 0 ]; then
-    ok "https self-signed without lab_http → UNAVAIL + 0 TLS stub requests (runtime TLS guard)"
+    ok "https self-signed (SAN IP:127.0.0.1) without lab_http → UNAVAIL + 0 TLS stub requests (VERIFYPEER alone)"
   else
     fail "https self-signed expected UNAVAIL + 0 reqs (ssh_rc=${ssh_rc} new=${new} reqs=${reqs} line='${attempt}')"
   fi
