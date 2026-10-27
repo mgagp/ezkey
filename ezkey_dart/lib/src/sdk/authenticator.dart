@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:http/http.dart' as http;
 
+import '../ec_p256.dart';
 import '../ed25519.dart';
 import '../encoding.dart';
 import '../payload.dart';
@@ -172,7 +173,7 @@ class EzkeyAuthenticator {
         enrollmentChallenge,
         devicePublicKey,
       );
-      final signed = await keyStore.sign(alias, devicePayload);
+      final signed = await _signLowS(alias, devicePayload);
       final response = await _api(bound.authApiBaseUrl).verify(
         EnrollmentVerifyRequest(
           enrollmentId: bind.enrollmentId,
@@ -306,10 +307,7 @@ class EzkeyAuthenticator {
   /// Each call signs a fresh random device proof token (replays are rejected server-side).
   Future<PendingAuthAttempt?> checkPending(EzkeyEnrollment enrollment) async {
     final deviceProofToken = generateProofToken();
-    final signed = await keyStore.sign(
-      enrollment.deviceKeyAlias,
-      deviceProofToken,
-    );
+    final signed = await _signLowS(enrollment.deviceKeyAlias, deviceProofToken);
     final response = await _api(enrollment.authApiBaseUrl).pending(
       PendingAuthRequest(
         enrollmentId: enrollment.enrollmentId,
@@ -459,7 +457,7 @@ class EzkeyAuthenticator {
 
     final String signed;
     try {
-      signed = await keyStore.sign(
+      signed = await _signLowS(
         enrollment.deviceKeyAlias,
         buildRespondPayload(attempt.authAttemptProofToken, accepted),
       );
@@ -542,6 +540,22 @@ class EzkeyAuthenticator {
       result: result,
       message: response.authAttemptMessage,
     );
+  }
+
+  /// Signs [payload] with the device key [alias] and normalizes the result to low-S DER.
+  ///
+  /// Platform keystores (Android Keystore) return high-S for about half of all signatures, and the
+  /// Auth API rejects those (SEC-012). Normalizing here means no key-store implementation has to.
+  /// A malformed signature from the key store is a local-state problem: nothing is sent.
+  Future<String> _signLowS(String alias, String payload) async {
+    final signature = await keyStore.sign(alias, payload);
+    try {
+      return normalizeEcdsaDerSignatureLowS(signature);
+    } on FormatException {
+      throw const EzkeyLocalStateException(
+        'Device key store returned a malformed signature',
+      );
+    }
   }
 
   EzkeyRespondOutcomeUnknownException _outcomeUnknown(

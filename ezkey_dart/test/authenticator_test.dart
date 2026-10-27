@@ -6,6 +6,7 @@ import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 import 'support/fake_ezkey_server.dart';
+import 'support/high_s.dart';
 
 Matcher _integrity(EzkeyIntegrityCheck check) => throwsA(
   isA<EzkeyIntegrityException>().having((e) => e.check, 'check', check),
@@ -281,6 +282,73 @@ void main() {
         _integrity(EzkeyIntegrityCheck.instanceInfoSignature),
       );
     });
+  });
+
+  group('platform key store returning high-S signatures (SEC-012)', () {
+    late HighSKeyStore highS;
+    late EzkeyAuthenticator platformLike;
+
+    setUp(() {
+      highS = HighSKeyStore();
+      platformLike = EzkeyAuthenticator(
+        keyStore: highS,
+        enrollmentStore: InMemoryEnrollmentStore(),
+        httpClient: server.client,
+        clock: () => server.now,
+      );
+    });
+
+    test(
+      'enroll, claim and approve succeed: every signature is normalized',
+      () async {
+        final invitation = server.invite();
+        final enrollment = await platformLike.enroll(
+          codeFor(invitation),
+          enrollmentChallenge: invitation.challenge,
+        );
+        final created = server.createAttempt(invitation.id);
+        final attempt = (await platformLike.checkPending(enrollment))!;
+        final outcome = await platformLike.approve(enrollment, attempt);
+        expect(outcome.result, AuthAttemptResult.approved);
+        expect(created.state, 'ACCEPTED');
+        expect(highS.signCount, 3);
+        for (final body in server.requestBodies) {
+          for (final field in <String>[
+            'enrollmentProofTokenSigned',
+            'deviceProofTokenSigned',
+            'authAttemptProofTokenSignedByDevice',
+          ]) {
+            if (body[field] is String) {
+              expect(
+                isLowSEcdsaDerSignature(body[field] as String),
+                isTrue,
+                reason: field,
+              );
+            }
+          }
+        }
+      },
+    );
+
+    test(
+      'a malformed key-store signature is a local error and sends nothing',
+      () async {
+        final invitation = server.invite();
+        final enrollment = await platformLike.enroll(
+          codeFor(invitation),
+          enrollmentChallenge: invitation.challenge,
+        );
+        server.createAttempt(invitation.id);
+        final attempt = (await platformLike.checkPending(enrollment))!;
+        highS.overrideSignature = 'not-a-signature';
+        await expectLater(
+          platformLike.deny(enrollment, attempt),
+          throwsA(isA<EzkeyLocalStateException>()),
+        );
+        expect(attempt.decisionState, AuthAttemptDecisionState.open);
+        expect(server.countRequests(AuthApiPaths.respond), 0);
+      },
+    );
   });
 
   group('auth attempts', () {
