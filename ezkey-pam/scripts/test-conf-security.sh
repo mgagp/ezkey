@@ -32,8 +32,14 @@ ok()   { echo "[PASS] $1"; PASS=$((PASS+1)); }
 fail() { echo "[FAIL] $1"; FAIL=$((FAIL+1)); }
 
 restore_conf() {
+  # Always unlink first — a leftover symlink would make cp write through to .real.
   docker exec "${CONTAINER}" sh -c \
-    "if [ -f '${PRISTINE}' ]; then cp -a '${PRISTINE}' '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'; fi" \
+    "rm -rf '${CONF}' '${CONF}.real' 2>/dev/null || true
+     if [ -f '${PRISTINE}' ]; then
+       cp -a '${PRISTINE}' '${CONF}'
+       chown root:root '${CONF}'
+       chmod 600 '${CONF}'
+     fi" \
     || true
 }
 
