@@ -40,9 +40,17 @@ that owns the API key.
 - Authpriv attempt lines carry `stage` / `reason` / `curl_rc` / `http` /
   `confirm_ms` / `api_ms`. Empty pre-create `ok` → `result=CONFIRM`.
 - **SIGTERM outside `/wait`:** emit best-effort `result=SIGNAL` (async-signal-safe
-  write to `/dev/log`), restore `SIG_DFL`, then `raise(SIGTERM)` so OpenSSH does
-  not leave a hung `[pam]` child at the `ok` or challenge prompt. During `/wait`
-  only the abort flag is set (cancel path unchanged — #1012).
+  non-blocking write to `/dev/log`), restore `SIG_DFL`, then `raise(SIGTERM)` so
+  OpenSSH does not leave a hung `[pam]` child at the `ok` or challenge prompt.
+  During `/wait` only the abort flag is set (cancel path unchanged — #1012).
+  SIGNAL is a snapshot (`stage` may be stale; outside `/wait` no cancel — attempt
+  stays pending until TTL). `/dev/log` is opened `SOCK_NONBLOCK` so a full queue
+  drops the line instead of blocking until LoginGraceTime.
+- **SIGTERM disposition:** for the whole `pam_sm_authenticate`, the module
+  replaces any prior `SIGTERM` disposition and ends non-wait kills with
+  **`SIG_DFL` + `raise`**. Under sshd this matches what the monitor already does;
+  note it if embedding the module under another host PAM stack that relied on a
+  custom `SIGTERM` handler around authenticate.
 - `latency_ms` / `confirm_ms` print `-` when unknown (never a false `0`).
 - Runbook: LoginGraceTime 120 vs applied wait (~75 s), MaxAuthTries 1 misleading
   message, `ok` prompt, `challenge_requested` / `debug` toggles.

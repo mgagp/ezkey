@@ -122,10 +122,27 @@ check-source:
 	@grep -qE 'cancel=%s timeoutSeconds=%s' $(SRC_DIR)/ezkey_diag.c
 	@grep -qE '"stage=%s reason=%s' $(SRC_DIR)/ezkey_diag.c
 	@grep -qE 'LOG_AUTHPRIV[[:space:]]*\|[[:space:]]*LOG_INFO' $(SRC_DIR)/ezkey_diag.c
-	@grep -qE 'ezkey_diag_emit_signal_safe[[:space:]]*\(' $(SRC_DIR)/pam_ezkey.c
+	@grep -qE 'SOCK_DGRAM[[:space:]]*\|[[:space:]]*SOCK_CLOEXEC[[:space:]]*\|[[:space:]]*SOCK_NONBLOCK' \
+		$(SRC_DIR)/ezkey_diag.c
+	# Patrick m2: statement-form "(void)ezkey_diag_emit_signal_safe(" only —
+	# a comment that merely names the symbol (or `* ezkey_diag_emit…`) must fail.
+	@grep -qE '^[[:space:]]*\(void\)ezkey_diag_emit_signal_safe[[:space:]]*\(' \
+		$(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: live (void)ezkey_diag_emit_signal_safe( call missing (Patrick m2)" >&2; exit 1)
 	@grep -qE 'ezkey_in_wait[[:space:]]*!=' $(SRC_DIR)/pam_ezkey.c
 	@grep -qE 'raise[[:space:]]*\([[:space:]]*SIGTERM[[:space:]]*\)' $(SRC_DIR)/pam_ezkey.c
 	@grep -qE 'saved_errno' $(SRC_DIR)/pam_ezkey.c
+	# Patrick m1: wait entry must observe abort without clearing it.
+	# End pattern uses trailing ';' so the comment "ezkey_in_wait=1" does not end the range.
+	@awk '/Chunked \/wait/,/^[[:space:]]*ezkey_in_wait[[:space:]]*=[[:space:]]*1[[:space:]]*;/' \
+		$(SRC_DIR)/pam_ezkey.c | \
+		grep -qE 'ezkey_wait_abort[[:space:]]*!=[[:space:]]*0' || \
+		(echo "error: wait entry must check ezkey_wait_abort != 0 before ezkey_in_wait=1" >&2; exit 1)
+	@if awk '/Chunked \/wait/,/^[[:space:]]*ezkey_in_wait[[:space:]]*=[[:space:]]*1[[:space:]]*;/' \
+		$(SRC_DIR)/pam_ezkey.c | \
+		grep -nE 'ezkey_wait_abort[[:space:]]*=[[:space:]]*0'; then \
+		echo "error: must not clear ezkey_wait_abort at wait entry (Patrick m1)" >&2; exit 1; \
+	fi
 	# Patrick B2 (#982): match the real pam_prompt call — comments alone must not pass.
 	@grep -qE 'pam_prompt[[:space:]]*\([^)]*PAM_PROMPT_ECHO_ON' $(SRC_DIR)/pam_ezkey.c
 	@if grep -nE 'pam_prompt[[:space:]]*\([^)]*PAM_PROMPT_ECHO_OFF' $(SRC_DIR)/pam_ezkey.c; then \

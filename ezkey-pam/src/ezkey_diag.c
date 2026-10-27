@@ -152,7 +152,11 @@ int ezkey_diag_open_log_fd(void) {
     int fd;
     struct sockaddr_un addr;
 
-    fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+    /*
+     * SOCK_NONBLOCK: signal-handler write must never block if /dev/log's
+     * datagram queue is full (EAGAIN → drop the SIGNAL line, best-effort).
+     */
+    fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
     if (fd < 0) {
         return -1;
     }
@@ -186,7 +190,10 @@ int ezkey_diag_emit_signal_safe(int fd, const char *msg, size_t len,
     if (fd >= 0 && msg != NULL && len > 0) {
         ssize_t wrote = write(fd, msg, len);
         if (wrote < 0) {
-            /* Best-effort only — ignore errno in signal context. */
+            /*
+             * Best-effort only — ignore errno in signal context
+             * (including EAGAIN/EWOULDBLOCK on a full non-blocking queue).
+             */
         }
     }
     return 1;

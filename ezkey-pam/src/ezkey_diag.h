@@ -78,8 +78,10 @@ int ezkey_diag_format_syslog(char *dest, size_t dest_size, const EzkeyDiag *diag
 
 /**
  * Open /dev/log for signal-safe emit. Fail-open (returns -1).
+ * Socket is SOCK_DGRAM|SOCK_CLOEXEC|SOCK_NONBLOCK so a full queue yields
+ * EAGAIN instead of blocking the SIGTERM handler until LoginGraceTime.
  *
- * @return connected SOCK_DGRAM fd, or -1
+ * @return connected non-blocking SOCK_DGRAM fd, or -1
  */
 int ezkey_diag_open_log_fd(void);
 

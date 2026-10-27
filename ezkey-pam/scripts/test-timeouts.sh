@@ -1698,10 +1698,17 @@ if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -qE 'cancel=%s timeoutSeconds=%s' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
   && grep -qE '"stage=%s reason=%s' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
   && grep -qE 'LOG_AUTHPRIV[[:space:]]*\|[[:space:]]*LOG_INFO' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -qE 'SOCK_DGRAM[[:space:]]*\|[[:space:]]*SOCK_CLOEXEC[[:space:]]*\|[[:space:]]*SOCK_NONBLOCK' \
+       "${SCRIPT_DIR}/../src/ezkey_diag.c" \
   && grep -qE 'ezkey_sigterm_handler' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
-  && grep -qE 'ezkey_diag_emit_signal_safe[[:space:]]*\(' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -qE '^[[:space:]]*\(void\)ezkey_diag_emit_signal_safe[[:space:]]*\(' \
+       "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -qE 'ezkey_in_wait[[:space:]]*!=' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -qE 'raise[[:space:]]*\([[:space:]]*SIGTERM[[:space:]]*\)' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && awk '/Chunked \/wait/,/^[[:space:]]*ezkey_in_wait[[:space:]]*=[[:space:]]*1[[:space:]]*;/' \
+       "${SCRIPT_DIR}/../src/pam_ezkey.c" | grep -qE 'ezkey_wait_abort[[:space:]]*!=[[:space:]]*0' \
+  && ! awk '/Chunked \/wait/,/^[[:space:]]*ezkey_in_wait[[:space:]]*=[[:space:]]*1[[:space:]]*;/' \
+       "${SCRIPT_DIR}/../src/pam_ezkey.c" | grep -qE 'ezkey_wait_abort[[:space:]]*=[[:space:]]*0' \
   && grep -q 'ezkey_format_waiting_prompt' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_challenge_display_ok' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_prewait_prompt_mode' "${SCRIPT_DIR}/../src/pam_ezkey.c" \

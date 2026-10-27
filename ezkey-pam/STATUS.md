@@ -463,13 +463,20 @@ pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n>
 **#1011 notes:** `CONFIRM` = empty/wrong pre-create `ok` (`pam_code` =
 `PAM_AUTHINFO_UNAVAIL` / Linux `9`; `EZKEY_PAM_AUTHINFO_UNAVAIL` in diag init).
 `SIGNAL` = best-effort authpriv line when SIGTERM arrives **outside** `/wait`
-(prompts or create): async-signal-safe `write` to `/dev/log`, then `SIG_DFL` +
+(prompts or create): async-signal-safe non-blocking `write` to `/dev/log`
+(`SOCK_NONBLOCK`; full queue → drop the line), then `SIG_DFL` +
 `raise(SIGTERM)` so the child exits (no hung `[pam]` under OpenSSH atomicio).
-Wait-path SIGTERM still uses abort → cancel → normal summary
-(`reason=signal`, often `cancel=ok`) — #1012 unchanged. SIGNAL lines use real
-`latency_ms` when the auth clock is known; otherwise `latency_ms=-` /
-`confirm_ms=-`. `EZKEY_DIAG_LINE_MAX` 768 (measured worst case ~416).
-Experimental / never released: no log-format compatibility promise.
+The SIGNAL line is a **best-effort snapshot**: `stage` may be stale,
+`authAttemptId=-` and `cancel=skipped` are expected outside `/wait` (no cancel
+is attempted there — the Integration API attempt stays pending on the device
+until TTL). A SIGTERM during snapshot rebuild can lose the line entirely —
+observability only, never a security issue. Wait-path SIGTERM still uses
+abort → cancel → normal summary (`reason=signal`, often `cancel=ok`) — #1012
+unchanged. Residual window: SIGTERM between `/wait` ACCEPTED and clearing
+`ezkey_in_wait` is still absorbed as abort (doc only; no code change). SIGNAL
+lines use real `latency_ms` when the auth clock is known; otherwise
+`latency_ms=-` / `confirm_ms=-`. Experimental / never released: no log-format
+compatibility promise.
 
 **#907 F9 / R5 (option A — Patrick/Christophe review):** Under OpenSSH portable, each
 keyboard-interactive **prompt round** runs in a forked child that `_exit`s and
@@ -696,6 +703,8 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 
 | Knob | Where (path:line) | Lab default / bound | Beyond-threshold proof |
 |---|---|---|---|
+| Authpriv line max | `ezkey_diag.h` **`EZKEY_DIAG_LINE_MAX` 768** | ≥ measured worst ~416 | `test_diag_harness` worst-case format fits (proven) |
+| Attempt `user[]` | `EzkeyDiag.user[128]` (`ezkey_diag.h`) | sanitize + truncate | `test_diag_harness` huge user → `&lt;128` incl NUL (proven) |
 | Auth budget | `ezkey_config.h` **105**; rem helper `remaining_budget_secs` | 105 s (&lt; grace 120) | Delayed Enter 8s shrinks `?timeout=` (proven). Challenge Enter **>88 s** → UNAVAIL + cancel (B3 rem-exhaust proven) |
 | `api_timeout` | clamp / `EZKEY_MAX_API_TIMEOUT` **10**; POST curl | max **10** s | stub sleep 3 + conf `1` → UNAVAIL; conf **60** + stub sleep 12 → UNAVAIL in ≪60s (cap proven) |
 | Enter (pre-create) | `prompt_echo_on(require_ok=1)`; `EZKEY_MAX_ENTER_SECS` **25** | duration bound (no signals) | Enter **>25 s** → UNAVAIL + 0 creates (proven) |

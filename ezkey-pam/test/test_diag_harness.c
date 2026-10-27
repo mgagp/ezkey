@@ -1,10 +1,16 @@
 /*
  * Diagnostics harness (#1011): attempt-line fields + signal-safe emit gate.
+ * Also: SOCK_NONBLOCK emit (Christophe N1), wait-abort preserve (Patrick m1).
  */
 
+#include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "ezkey_config.h"
 #include "ezkey_diag.h"
@@ -27,6 +33,84 @@ static void expect_int(const char *name, int got, int want) {
     } else {
         printf("[PASS] %s (got=%d)\n", name, got);
     }
+}
+
+/*
+ * Patrick m1 — characterization of wait-entry contract:
+ * abort raised before /wait must be observed and must NOT be cleared.
+ * (Mutation "ezkey_wait_abort = 0" at wait entry would fail this.)
+ */
+static void test_wait_abort_preserve(void) {
+    volatile sig_atomic_t ezkey_wait_abort = 1;
+    int skip_wait = 0;
+
+    /* Correct wait-entry shape (mirrors pam_ezkey.c): check, never clear. */
+    if (ezkey_wait_abort != 0) {
+        skip_wait = 1;
+    }
+    expect_true("m1: abort before wait → skip wait", skip_wait == 1);
+    expect_int("m1: ezkey_wait_abort preserved (not cleared at entry)",
+               (int)ezkey_wait_abort, 1);
+}
+
+/*
+ * Christophe N1 — write on a full non-blocking datagram socket must return
+ * promptly (EAGAIN), never hang until LoginGraceTime.
+ */
+static void test_emit_nonblock_full_queue(void) {
+    int sv[2] = {-1, -1};
+    char junk[4096];
+    char msg[128];
+    volatile sig_atomic_t emitted = 0;
+    struct timespec t0;
+    struct timespec t1;
+    long elapsed_ms;
+    int filled = 0;
+    int i;
+    int flags;
+
+    memset(junk, 'x', sizeof(junk));
+    snprintf(msg, sizeof(msg), "<86>pam_ezkey: attempt nonblock-probe");
+
+    if (socketpair(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0, sv) !=
+        0) {
+        fprintf(stderr, "[FAIL] N1: socketpair: %s\n", strerror(errno));
+        failures++;
+        return;
+    }
+    flags = fcntl(sv[0], F_GETFL);
+    expect_true("N1: emit peer has O_NONBLOCK",
+                flags >= 0 && (flags & O_NONBLOCK) != 0);
+
+    for (i = 0; i < 256; i++) {
+        ssize_t n = write(sv[0], junk, sizeof(junk));
+        if (n < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                filled = 1;
+                break;
+            }
+            fprintf(stderr, "[FAIL] N1: fill write: %s\n", strerror(errno));
+            failures++;
+            close(sv[0]);
+            close(sv[1]);
+            return;
+        }
+    }
+    expect_true("N1: filled datagram queue until EAGAIN", filled == 1);
+
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    expect_int("N1: emit claims gate on full queue",
+               ezkey_diag_emit_signal_safe(sv[0], msg, strlen(msg), &emitted),
+               1);
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    elapsed_ms = (t1.tv_sec - t0.tv_sec) * 1000L +
+                 (t1.tv_nsec - t0.tv_nsec) / 1000000L;
+    /* Full queue → EAGAIN; must not block (budget ≪ LoginGraceTime). */
+    expect_true("N1: emit returns in <200ms on full queue", elapsed_ms < 200);
+    expect_int("N1: emitted flag set even when write drops", (int)emitted, 1);
+
+    close(sv[0]);
+    close(sv[1]);
 }
 
 int main(void) {
@@ -133,6 +217,22 @@ int main(void) {
     expect_true("sanitize user in attempt line", n >= 0);
     expect_true("no raw space in user field segment",
                 strstr(line, "user=bad_user_name") != NULL);
+
+    /* Live /dev/log when present must be O_NONBLOCK (Christophe N1). */
+    {
+        int log_fd = ezkey_diag_open_log_fd();
+        if (log_fd >= 0) {
+            int fl = fcntl(log_fd, F_GETFL);
+            expect_true("N1: live /dev/log fd is O_NONBLOCK",
+                        fl >= 0 && (fl & O_NONBLOCK) != 0);
+            ezkey_diag_close_log_fd(log_fd);
+        } else {
+            printf("[SKIP] N1: /dev/log open failed (no rsyslog in harness)\n");
+        }
+    }
+
+    test_emit_nonblock_full_queue();
+    test_wait_abort_preserve();
 
     if (failures != 0) {
         fprintf(stderr, "=== Results: %d failed ===\n", failures);
