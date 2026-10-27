@@ -189,6 +189,47 @@ bool verifyEcdsaSha256(
   );
 }
 
+/// Returns [signatureBase64Std] (standard Base64 ASN.1 DER ECDSA P-256) with `s` normalized to
+/// the lower half of the curve order, re-encoded as minimal DER.
+///
+/// The Auth API rejects high-S signatures (malleability, SEC-012), and platform keystores such as
+/// Android Keystore return high-S for about half of all signatures. `(r, n - s)` is the same valid
+/// signature, so normalizing never needs the private key. Throws [FormatException] on malformed
+/// input.
+String normalizeEcdsaDerSignatureLowS(String signatureBase64Std) {
+  final EcdsaDerSignature decoded;
+  try {
+    decoded = decodeEcdsaDerSignature(base64StdDecode(signatureBase64Std));
+  } on RangeError {
+    throw const FormatException('Malformed ECDSA DER signature');
+  }
+  final n = _domainParameters.n;
+  if (decoded.r <= BigInt.zero ||
+      decoded.r >= n ||
+      decoded.s <= BigInt.zero ||
+      decoded.s >= n) {
+    throw const FormatException('ECDSA signature component out of range');
+  }
+  return base64StdEncodeBytes(
+    _encodeEcdsaDer(decoded.r, _normalizeLowS(decoded.s, n)),
+  );
+}
+
+/// Whether the standard Base64 DER ECDSA P-256 signature has `s` in the lower half of the curve
+/// order (what the Auth API accepts). Returns `false` for malformed input.
+bool isLowSEcdsaDerSignature(String signatureBase64Std) {
+  try {
+    final decoded = decodeEcdsaDerSignature(
+      base64StdDecode(signatureBase64Std),
+    );
+    return decoded.s <= _domainParameters.n >> 1;
+  } on FormatException {
+    return false;
+  } on RangeError {
+    return false;
+  }
+}
+
 /// Decodes an ASN.1 DER `SEQUENCE { INTEGER r, INTEGER s }`.
 EcdsaDerSignature decodeEcdsaDerSignature(List<int> der) {
   final sequence = _DerReader(der).expect(0x30);

@@ -206,6 +206,9 @@ final authenticator = EzkeyAuthenticator(
 
 - `EzkeyDeviceKeyStore` has `storageTier`, `generateKeyPair(alias)` → SPKI Base64,
   `sign(alias, payload)` → DER Base64, `publicKey(alias)`, `deleteKeyPair(alias)`.
+  `sign` may return high-S signatures: the SDK normalizes every key-store signature to low-S
+  before sending it (the Auth API rejects high-S, SEC-012), and a malformed signature becomes
+  `EzkeyLocalStateException` with nothing sent.
   The bundled `SoftwareDeviceKeyStore` is for tests only (tier `NONE`, keys in Dart memory).
 - `EzkeyEnrollmentStore` has `save`, `load(localId)`, `list`, `delete(localId)`.
   `InMemoryEnrollmentStore` is for tests only.
@@ -227,6 +230,7 @@ contains tokens, keys, signatures or response bodies.
 ### 3.5 Low-level crypto (usually not needed)
 
 `generateEcP256KeyPair`, `signEcdsaSha256` (RFC 6979 deterministic, low-S), `verifyEcdsaSha256`,
+`normalizeEcdsaDerSignatureLowS` / `isLowSEcdsaDerSignature`,
 `ecPublicKeyToSpkiBase64`, `ecKeyPairFromPkcs8Base64` / `ecPrivateKeyToPkcs8Base64`,
 `verifyEd25519`, `generateProofToken` / `generateSecureRandomBytes` (backed by `Random.secure()`),
 and the payload builders `buildEnrollmentBindPayload`, `buildEnrollmentVerifyDevicePayload`,
@@ -261,7 +265,8 @@ that exposes P-256 sign-only keys):
   `.setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))` and `.setDigests(DIGEST_SHA256)`.
   Try `.setIsStrongBoxBacked(true)` first and fall back if `StrongBoxUnavailableException`
   (report `strong` vs `standard`). Sign with `Signature.getInstance("SHA256withECDSA")`; the
-  output is already DER. `publicKey.encoded` is already SPKI DER: Base64-encode it with
+  output is already DER, and about half of the signatures are high-S: return them as they are,
+  the SDK normalizes them. `publicKey.encoded` is already SPKI DER: Base64-encode it with
   `Base64.NO_WRAP` (standard alphabet, with padding).
 - **iOS:** use `SecKeyCreateRandomKey` with `kSecAttrKeyTypeECSECPrimeRandom`, 256 bits,
   `kSecAttrTokenIDSecureEnclave` and `kSecAttrIsPermanent`. Sign with

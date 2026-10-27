@@ -16,6 +16,12 @@ Aligns the SDK with `docs/CLIENT_BEHAVIOUR_CONTRACT.md` (#1052 code follow-up).
 - **Breaking:** `EzkeyException` has a new sealed subtype; exhaustive `switch` statements over
   it need a new case. A second `approve` / `deny` on the same attempt object now throws
   `EzkeyValidationException` locally instead of reaching the server's 409.
+- **Low-S normalization of key-store signatures** (SEC-012): the Auth API rejects high-S ECDSA
+  signatures, and Android Keystore returns high-S about half of the time. Every signature from
+  `EzkeyDeviceKeyStore.sign` is now normalized before it is sent (verify, pending, respond); a
+  malformed one throws `EzkeyLocalStateException` and nothing is sent. New public helpers
+  `normalizeEcdsaDerSignatureLowS` and `isLowSEcdsaDerSignature`. The test fake server now
+  rejects high-S like the real one.
 - `EzkeyProblemKind.resourceNotFound` and `methodNotAllowed`: all 19 Auth API problem types are
   now mapped, with a test pinning the count to the server catalog.
 - README: decision lock, unknown outcome and leave-as-deny guidance; removed the known-gap note.

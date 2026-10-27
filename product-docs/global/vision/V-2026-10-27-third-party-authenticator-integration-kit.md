@@ -84,6 +84,7 @@ Read-only review on 2026-10-27, re-verified and filed as
 | G5 | Error copy: branch on `type` and status, never display `detail`. | Done (contract §7) | none |
 | G6 | Problem catalog: 17 of 19 types mapped (`resource-not-found`, `method-not-allowed` missing). | Done (developer guide type table) | Done in `ezkey_dart` 0.3.0: both types mapped, test pins 19 types (pending PR) |
 | G7 | FSM drift (#833 merged; lifetime 15–120 s per #895). | Done (FSM + HTML twin, contract §8) | none |
+| G8 | Found while designing the Open Authenticator key store (2026-10-27): Android Keystore returns high-S ECDSA about half of the time and the Auth API rejects high-S (SEC-012); the SDK normalized only its own software signatures, and README §4.2 did not mention it, so an integration following the guide would fail at random. | Done (README §3.3, §4.2) | Done in `ezkey_dart` 0.3.0: every key-store signature normalized to low-S (pending PR) |
 
 ## Stack fit for the first consumer (Open Authenticator, Flutter)
 

@@ -1,9 +1,48 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
 import 'package:test/test.dart';
 
+import 'support/high_s.dart';
 import 'support/jvm_fixtures.dart';
 
 void main() {
+  group('low-S normalization (SEC-012)', () {
+    test('high-S twin verifies, is detected, and normalizes back', () {
+      final keyPair = generateEcP256KeyPair();
+      const data = 'payload|true';
+      final low = signEcdsaSha256(keyPair.privateKey, data);
+      final high = toHighS(low);
+      expect(high, isNot(low));
+      expect(verifyEcdsaSha256(keyPair.publicKey, data, high), isTrue);
+      expect(isLowSEcdsaDerSignature(low), isTrue);
+      expect(isLowSEcdsaDerSignature(high), isFalse);
+      expect(normalizeEcdsaDerSignatureLowS(high), low);
+      expect(normalizeEcdsaDerSignatureLowS(low), low);
+    });
+
+    test('rejects malformed and out-of-range signatures', () {
+      // SEQUENCE { INTEGER 0, INTEGER 1 }: well-formed DER, but r = 0 is not a valid signature.
+      final zeroR = base64StdEncodeBytes(<int>[
+        0x30,
+        0x06,
+        0x02,
+        0x01,
+        0x00,
+        0x02,
+        0x01,
+        0x01,
+      ]);
+      for (final bad in <String>['', 'AAAA', zeroR]) {
+        expect(
+          () => normalizeEcdsaDerSignatureLowS(bad),
+          throwsFormatException,
+          reason: bad,
+        );
+      }
+      expect(isLowSEcdsaDerSignature(''), isFalse);
+      expect(isLowSEcdsaDerSignature('AAAA'), isFalse);
+    });
+  });
+
   group('EC P-256 / ECDSA-SHA256 (device)', () {
     test('SPKI export/import roundtrip', () {
       final keyPair = generateEcP256KeyPair();
