@@ -35,6 +35,22 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
 
+## What changed in 2.2.17 (#1016 cycle 1b — transport / conf / hardening)
+
+- **C1:** Response body capped at 64 KiB (`ezkey_http_write_cb` +
+  `CURLOPT_MAXFILESIZE`); oversize → curl abort → UNAVAIL.
+- **C2:** Every easy handle sets `CURLOPT_PROXY ""` so `http_proxy` /
+  `https_proxy` cannot steal Basic auth; docs corrected.
+- **C3:** Overlong conf lines (no newline before buffer fill) → `bad_conf`
+  UNAVAIL (no comment-tail `lab_http=true` fail-open).
+- **C4:** `authAttemptId` / `authAttemptChallenge` validated before
+  double→long cast (reject 1e300 / negative / fractional).
+- **C5 / C7:** STATUS notes — only SIGTERM handled; orphan without id is
+  server-TTL-only.
+- **C6:** `-fstack-protector-strong`, `_FORTIFY_SOURCE=2`,
+  `-Wl,-z,relro,-z,now` + `readelf` BIND_NOW / stack-chk guard.
+- **C8:** Debug `api_url` logs scheme://host only (strips userinfo/path).
+
 ## What changed in 2.2.16 (#1016 — probe/guard follow-ups)
 
 - **N5:** SIGNAL syslog snapshot is double-buffered; a TERM mid-refresh no
@@ -237,8 +253,12 @@ On top of 2.1 slices 1–3 ([`STATUS.md`](STATUS.md) § M1):
 - **Conf credentials** (`integration_api_url`, `integration_key`, `secret_key`) only from
   the conf file; must be `root:root` with mode exactly `0600` or `0400` or the module
   returns `PAM_AUTHINFO_UNAVAIL`. No compiled-in URL default (empty URL → `UNAVAIL`).
-- **No process-ENV overrides** inside the `.so` (conf path / debug / timeouts). Docker
-  compose ENV is applied only by `docker-entrypoint.sh` when writing the conf file.
+- **No process-ENV overrides** inside the `.so` for conf path / credentials /
+  debug / timeouts. Docker compose ENV is applied only by `docker-entrypoint.sh`
+  when writing the conf file. **Proxy env is also disabled:** every libcurl easy
+  handle sets `CURLOPT_PROXY ""` so `http_proxy` / `https_proxy` / `ALL_PROXY`
+  cannot redirect Integration API traffic (and Basic auth) to a
+  caller-controlled proxy (#1016 C2).
 - **Demo rsyslog:** entrypoint enables `imuxsock` so authpriv reaches `/var/log/secure`.
 - Tests: `./scripts/test-observability.sh`, `./scripts/test-conf-security.sh`.
 
@@ -364,9 +384,10 @@ written at container start (`docker-entrypoint.sh`):
 | `EZKEY_WAIT_TIMEOUT` / `EZKEY_WAIT_POLLING` / `EZKEY_API_TIMEOUT` / `EZKEY_DEBUG` | `wait_timeout` / `wait_polling` / `api_timeout` / `debug` |
 | optional `EZKEY_CONFIG_FILE` | path the entrypoint writes (not a conf key) |
 
-The module ignores process ENV so `su`/`sudo` cannot redirect conf path, debug,
-or timeouts. Host installs edit the conf file directly — there is no env→conf
-bridge outside the demo entrypoint.
+The module ignores process ENV for conf path, credentials, debug, and timeouts
+so `su`/`sudo` cannot redirect those. Host installs edit the conf file directly
+— there is no env→conf bridge outside the demo entrypoint. Proxy-related ENV
+is cleared per request (`CURLOPT_PROXY ""`); see STATUS § configuration.
 
 PAM arguments (root-owned `pam.d`): `debug`, `conf=/path/to/file`, and optional `wait_timeout=N`.
 

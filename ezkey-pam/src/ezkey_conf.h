@@ -71,10 +71,14 @@ void ezkey_conf_apply_key(EzkeyConfig *cfg, const char *key, const char *value);
 /**
  * Parse key=value lines from an open stream into cfg (comments and blanks
  * skipped). Does not enforce ownership/mode — caller must.
+ * A physical line longer than {@code EZKEY_CONF_LINE_MAX-1} (no newline before
+ * the buffer fills, and not EOF) returns -3 after draining to the next
+ * newline — avoids a truncated comment tail being applied as a live key
+ * (#1016 C3). Duplicate keys: last assignment wins.
  *
  * @param fp open text stream
  * @param cfg config already initialized (missing keys keep defaults)
- * @return 0 on success, -1 on I/O error
+ * @return 0 on success, -1 on I/O error, -3 on overlong line
  */
 int ezkey_conf_load_fp(FILE *fp, EzkeyConfig *cfg);
 

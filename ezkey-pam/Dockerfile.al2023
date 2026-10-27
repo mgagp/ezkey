@@ -13,7 +13,7 @@ ARG CJSON_VERSION=1.7.18
 FROM ${AL2023_IMAGE} AS builder-al2023
 
 LABEL org.ezkey.component="pam-builder-al2023"
-LABEL org.ezkey.version="2.2.16"
+LABEL org.ezkey.version="2.2.17"
 
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
@@ -49,7 +49,7 @@ RUN make clean && make all \
 FROM ${AL2023_IMAGE} AS smoke-al2023
 
 LABEL org.ezkey.component="pam-smoke-al2023"
-LABEL org.ezkey.version="2.2.16"
+LABEL org.ezkey.version="2.2.17"
 
 # Base image already ships libcurl-minimal (conflicts with full libcurl package).
 RUN dnf -y install pam binutils gcc \
@@ -72,7 +72,7 @@ CMD ["/opt/pam-ezkey/test/smoke_al2023.sh"]
 FROM ${AL2023_IMAGE} AS runtime-al2023
 
 LABEL org.ezkey.component="pam-ssh-demo-al2023"
-LABEL org.ezkey.version="2.2.16"
+LABEL org.ezkey.version="2.2.17"
 LABEL description="Amazon Linux 2023 SSH mirror authenticated by Ezkey PAM"
 
 ENV LANG=C.UTF-8

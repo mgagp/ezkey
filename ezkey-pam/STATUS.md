@@ -45,10 +45,12 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.16** (#1016: SIGNAL snapshot double-buffer, portable artifacts,
-`test-diag` watchdog, `SOCK_NONBLOCK` fcntl fallback, wait-entry real helper,
-live `/dev/log` CI path, SUCCESS-after-client-gone + host runbook notes). Prior
-**2.2.15** (#1011: richer UNAVAIL/CONFIRM/SIGNAL diagnostics + runbook).
+Version **2.2.17** (#1016 cycle 1b: HTTP body cap, empty CURLOPT_PROXY,
+overlong-conf refuse, safe JSON longs, hardening flags, URL redact, signal /
+orphan docs). Prior **2.2.16** (#1016: SIGNAL snapshot double-buffer, portable
+artifacts, `test-diag` watchdog, `SOCK_NONBLOCK` fcntl fallback, wait-entry
+real helper, live `/dev/log` CI path, SUCCESS-after-client-gone + host runbook
+notes). Prior **2.2.15** (#1011 diagnostics).
 Prior **2.2.14** (#995: connector default `challenge_requested=true`). Prior
 **2.2.13** (#982 tiers 0–1 on #976: ECHO_ON confirm + challenge Enter-only
 wait). Prior **2.2.12** (#975 / PR #976: **confirm-before-create** + display
@@ -119,13 +121,19 @@ owner `root:root` in the demo image. That path and style match Linux-PAM convent
 
 PAM args (root-owned `pam.d` only): `debug`, `conf=/path`, optional `wait_timeout=N` (overrides conf).
 
-**Process ENV is not read by `pam_ezkey.so`.** Compose may still set
-`EZKEY_INTEGRATION_*`, `EZKEY_WAIT_*`, `EZKEY_DEBUG`, and optionally
-`EZKEY_CONFIG_FILE` for **`docker-entrypoint.sh` only** — the entrypoint writes the
-root-owned conf via `mktemp` under `/etc/security` (never `/tmp`) +
-`install -m 600 -o root -g root`. That bridge exists because sshd does not pass
-Docker ENV into PAM. A caller-controlled environment (e.g. `su`/`sudo`) cannot
-redirect conf path, debug, or timeouts inside the `.so`.
+**Process ENV is not read by `pam_ezkey.so` for conf path, credentials, debug,
+or timeouts.** Compose may still set `EZKEY_INTEGRATION_*`, `EZKEY_WAIT_*`,
+`EZKEY_DEBUG`, and optionally `EZKEY_CONFIG_FILE` for **`docker-entrypoint.sh`
+only** — the entrypoint writes the root-owned conf via `mktemp` under
+`/etc/security` (never `/tmp`) + `install -m 600 -o root -g root`. That bridge
+exists because sshd does not pass Docker ENV into PAM. A caller-controlled
+environment (e.g. `su`/`sudo`) cannot redirect conf path, debug, or timeouts
+inside the `.so`. **Exception (#1016 C2):** libcurl would honour
+`http_proxy` / `https_proxy` / `ALL_PROXY` unless the module clears the proxy
+(`CURLOPT_PROXY ""` on every easy handle). Without that guard, Basic auth could
+reach a caller-controlled proxy in `lab_http` `http://` mode. HTTPS trust store
+env vars (`CURL_CA_BUNDLE` / `SSL_CERT_FILE`) remain a libcurl platform concern;
+the module does not read them itself.
 
 **Verdict:** the current parameter set is **enough for the demo** and is the right *shape* for
 v1 operable use. It is not missing a second config system. Remaining gaps for a non-lab host are
@@ -153,6 +161,9 @@ operational (TLS, live sshd cutover), not “more keys.”
   from create (`timeoutSeconds`, ≤ **90 s** for PAM). A late device approval then marks an
   orphan attempt `ACCEPTED` while nobody is waiting on that id — SSH already failed closed.
   Residual risk is **approval fatigue** (operator/device sees a prompt that grants nothing).
+  **Without an id only the server TTL bounds the request** (#1016 C7): if create times out
+  or the response is lost before `authAttemptId` is known, PAM cannot cancel and a phone
+  may still receive a request nobody waits for. An idempotency key is out of scope.
 
 ### Slices #1–#3 done (this eval)
 
@@ -465,6 +476,12 @@ pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n>
 
 **#1011 notes:** `CONFIRM` = empty/wrong pre-create `ok` (`pam_code` =
 `PAM_AUTHINFO_UNAVAIL` / Linux `9`; `EZKEY_PAM_AUTHINFO_UNAVAIL` in diag init).
+Only **SIGTERM** is handled during authenticate (abort during `/wait`, or
+best-effort SIGNAL + `SIG_DFL` + re-raise outside `/wait`). Other signals
+(HUP, USR1, ALRM, PIPE, INT, QUIT, …) keep the process default action: the
+PAM child dies with no cancel and no SIGNAL line, never SUCCESS, and a
+created attempt stays pending until its TTL (#1016 C5).
+
 `SIGNAL` = best-effort authpriv line when SIGTERM arrives **outside** `/wait`
 (prompts or create): async-signal-safe non-blocking `write` to `/dev/log`
 (`SOCK_NONBLOCK` or `fcntl O_NONBLOCK`; full queue → drop the line), then

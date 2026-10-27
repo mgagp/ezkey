@@ -3,8 +3,11 @@
 # when gcc, pam, libcurl, and cJSON development packages are installed.
 
 CC = gcc
-CFLAGS = -fPIC -Wall -Wextra -O2 -std=c99 -D_POSIX_C_SOURCE=200809L
-LDFLAGS = -shared -lpam -lcurl -lcjson
+# #1016 C6: stack protector + fortified libc + full RELRO for a root PAM module.
+# _FORTIFY_SOURCE requires -O1 or higher (we use -O2).
+CFLAGS = -fPIC -Wall -Wextra -O2 -std=c99 -D_POSIX_C_SOURCE=200809L \
+	-fstack-protector-strong -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2
+LDFLAGS = -shared -Wl,-z,relro,-z,now -lpam -lcurl -lcjson -lm
 MODULE_NAME = pam_ezkey.so
 SRC_DIR = src
 BUILD_DIR = build
@@ -14,11 +17,12 @@ INSTALL_DIR = /lib64/security
 OBJECTS = $(BUILD_DIR)/pam_ezkey.o $(BUILD_DIR)/ezkey_filelog.o \
 	$(BUILD_DIR)/ezkey_sanitize.o $(BUILD_DIR)/ezkey_challenge.o \
 	$(BUILD_DIR)/ezkey_budget.o $(BUILD_DIR)/ezkey_session.o \
-	$(BUILD_DIR)/ezkey_conf.o $(BUILD_DIR)/ezkey_diag.o
+	$(BUILD_DIR)/ezkey_conf.o $(BUILD_DIR)/ezkey_diag.o \
+	$(BUILD_DIR)/ezkey_http.o
 
-.PHONY: all debug install uninstall clean check-pam check-source lint help \
-	test test-filelog test-sanitize test-challenge test-conf test-budget \
-	test-session test-diag test-install-sshd-warn
+.PHONY: all debug install uninstall clean check-pam check-source check-hardening \
+	lint help test test-filelog test-sanitize test-challenge test-conf \
+	test-budget test-session test-diag test-http test-install-sshd-warn
 
 all: $(BUILD_DIR)/$(MODULE_NAME)
 
@@ -29,12 +33,17 @@ $(BUILD_DIR)/pam_ezkey.o: $(SRC_DIR)/pam_ezkey.c $(SRC_DIR)/ezkey_config.h \
 		$(SRC_DIR)/ezkey_conf.h $(SRC_DIR)/ezkey_filelog.h \
 		$(SRC_DIR)/ezkey_sanitize.h $(SRC_DIR)/ezkey_challenge.h \
 		$(SRC_DIR)/ezkey_budget.h $(SRC_DIR)/ezkey_session.h \
-		$(SRC_DIR)/ezkey_diag.h | $(BUILD_DIR)
+		$(SRC_DIR)/ezkey_diag.h $(SRC_DIR)/ezkey_http.h \
+		$(SRC_DIR)/ezkey_wait_entry.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/pam_ezkey.c -o $(BUILD_DIR)/pam_ezkey.o
 
 $(BUILD_DIR)/ezkey_diag.o: $(SRC_DIR)/ezkey_diag.c $(SRC_DIR)/ezkey_diag.h \
 		$(SRC_DIR)/ezkey_config.h $(SRC_DIR)/ezkey_sanitize.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_diag.c -o $(BUILD_DIR)/ezkey_diag.o
+
+$(BUILD_DIR)/ezkey_http.o: $(SRC_DIR)/ezkey_http.c $(SRC_DIR)/ezkey_http.h \
+		$(SRC_DIR)/ezkey_sanitize.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_http.c -o $(BUILD_DIR)/ezkey_http.o
 
 $(BUILD_DIR)/ezkey_conf.o: $(SRC_DIR)/ezkey_conf.c $(SRC_DIR)/ezkey_conf.h \
 		$(SRC_DIR)/ezkey_config.h $(SRC_DIR)/ezkey_budget.h | $(BUILD_DIR)
@@ -166,7 +175,41 @@ check-source:
 	@grep -qE '^[[:space:]]*timeout[[:space:]].*test_diag_harness' $(MAKEFILE_LIST) || \
 		grep -qE 'timeout --foreground.*test_diag_harness' $(MAKEFILE_LIST) || \
 		(echo "error: test-diag must run under timeout (#1016 P-a)" >&2; exit 1)
+	# #1016 C1/C2: body cap + empty PROXY + NETRC ignored (statement form).
+	@grep -qE 'EZKEY_HTTP_BODY_MAX' $(SRC_DIR)/ezkey_http.h || \
+		(echo "error: EZKEY_HTTP_BODY_MAX missing (#1016 C1)" >&2; exit 1)
+	@grep -qE 'CURLOPT_MAXFILESIZE' $(SRC_DIR)/ezkey_http.c || \
+		(echo "error: CURLOPT_MAXFILESIZE missing (#1016 C1)" >&2; exit 1)
+	@grep -qE 'CURLOPT_PROXY[[:space:]]*,[[:space:]]*""' $(SRC_DIR)/ezkey_http.c || \
+		(echo "error: CURLOPT_PROXY \"\" missing (#1016 C2)" >&2; exit 1)
+	@grep -qE 'CURL_NETRC_IGNORED' $(SRC_DIR)/ezkey_http.c || \
+		(echo "error: CURLOPT_NETRC IGNORED missing (#1016 extra)" >&2; exit 1)
+	@grep -qE 'ezkey_http_apply_transport_guards' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: pam_ezkey must call ezkey_http_apply_transport_guards" >&2; exit 1)
+	@grep -qE 'ezkey_json_double_to_long' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: authAttemptId/challenge must use ezkey_json_double_to_long (#1016 C4)" >&2; exit 1)
+	@grep -qE 'ezkey_url_for_log' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: debug api_url must use ezkey_url_for_log (#1016 C8)" >&2; exit 1)
+	@grep -qE 'return -3' $(SRC_DIR)/ezkey_conf.c || \
+		(echo "error: overlong conf line must return -3 (#1016 C3)" >&2; exit 1)
+	# #1016 C6: hardening flags present in Makefile.
+	@grep -qE 'fstack-protector-strong' $(MAKEFILE_LIST) || \
+		(echo "error: -fstack-protector-strong missing (#1016 C6)" >&2; exit 1)
+	@grep -qE '_FORTIFY_SOURCE=2' $(MAKEFILE_LIST) || \
+		(echo "error: -D_FORTIFY_SOURCE=2 missing (#1016 C6)" >&2; exit 1)
+	@grep -qE '\-z,relro,\-z,now|\-z relro.*\-z now' $(MAKEFILE_LIST) || \
+		(echo "error: -Wl,-z,relro,-z,now missing (#1016 C6)" >&2; exit 1)
 	@echo "check-source: openat/O_NOFOLLOW/O_NONBLOCK + sanitize + #941/#975/#982/#995/#1016 guards"
+
+# #1016 C6: binary must show BIND_NOW and a stack-protector symbol (post-link).
+check-hardening: $(BUILD_DIR)/$(MODULE_NAME)
+	@command -v readelf >/dev/null 2>&1 || \
+		(echo "error: readelf required for check-hardening (#1016 C6)" >&2; exit 1)
+	@readelf -d $(BUILD_DIR)/$(MODULE_NAME) | grep -q 'BIND_NOW' || \
+		(echo "error: pam_ezkey.so missing BIND_NOW (old LDFLAGS without -z now)" >&2; exit 1)
+	@readelf -s $(BUILD_DIR)/$(MODULE_NAME) | grep -qE '__stack_chk_(fail|guard)' || \
+		(echo "error: pam_ezkey.so missing stack protector symbol (old CFLAGS)" >&2; exit 1)
+	@echo "check-hardening: BIND_NOW + stack protector OK"
 
 # Harness: 0644→0600, hardlink refused, FIFO non-blocking (#818 m2).
 test-filelog: $(SRC_DIR)/ezkey_filelog.c $(TEST_DIR)/test_filelog_harness.c | $(BUILD_DIR)
@@ -218,6 +261,17 @@ test-diag: $(BUILD_DIR)/ezkey_diag.o $(BUILD_DIR)/ezkey_sanitize.o \
 		(echo "error: coreutils timeout required for test-diag watchdog (#1016 P-a)" >&2; exit 1)
 	timeout --foreground $(TEST_DIAG_TIMEOUT_SECS)s $(BUILD_DIR)/test_diag_harness
 
+# Harness: body cap / PROXY "" / json long / URL redact (#1016 C1/C2/C4/C8).
+TEST_HTTP_TIMEOUT_SECS ?= 30
+test-http: $(BUILD_DIR)/ezkey_http.o $(BUILD_DIR)/ezkey_sanitize.o \
+		$(TEST_DIR)/test_http_harness.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_http_harness.c \
+		$(BUILD_DIR)/ezkey_http.o $(BUILD_DIR)/ezkey_sanitize.o \
+		-lcurl -lm -o $(BUILD_DIR)/test_http_harness
+	@command -v timeout >/dev/null 2>&1 || \
+		(echo "error: timeout required for test-http" >&2; exit 1)
+	timeout --foreground $(TEST_HTTP_TIMEOUT_SECS)s $(BUILD_DIR)/test_http_harness
+
 # Host-side: shared sshd-warn-global-maxauthtries-1.awk (Patrick #908 / #934 B1).
 test-install-sshd-warn:
 	./scripts/test-install-sshd-warn.sh
@@ -226,10 +280,10 @@ $(BUILD_DIR)/test_no_conv_client: $(TEST_DIR)/test_no_conv_client.c | $(BUILD_DI
 	$(CC) $(CFLAGS) $(TEST_DIR)/test_no_conv_client.c -lpam \
 		-o $(BUILD_DIR)/test_no_conv_client
 
-test: check-source all test-filelog test-sanitize test-challenge test-conf \
-		test-budget test-session test-diag test-install-sshd-warn \
-		$(BUILD_DIR)/test_no_conv_client
-	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + filelog + sanitize + challenge + conf + budget + session + diag + install-sshd-warn OK"
+test: check-source all check-hardening test-filelog test-sanitize test-challenge \
+		test-conf test-budget test-session test-diag test-http \
+		test-install-sshd-warn $(BUILD_DIR)/test_no_conv_client
+	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + harnesses + hardening OK"
 
 help:
 	@echo "Available targets:"
@@ -240,13 +294,15 @@ help:
 	@echo "  clean         - Remove build files"
 	@echo "  check-pam     - Check if module is configured in PAM"
 	@echo "  check-source  - Guard against /tmp debug logs (#818)"
+	@echo "  check-hardening - readelf BIND_NOW + stack protector (#1016 C6)"
 	@echo "  test-filelog  - Mode/hardlink/FIFO harness (#818 m2)"
 	@echo "  test-sanitize - Sanitize space/=/high-byte harness (M1)"
 	@echo "  test-challenge - Challenge 0..99 + display_ok harness"
-	@echo "  test-conf     - Conf default + bool typo fallback (#995 B1/m1)"
+	@echo "  test-conf     - Conf default + bool typo + overlong line (#1016 C3)"
 	@echo "  test-budget   - AUTH_BUDGET 105 + rem-too-small planned-wait harness"
 	@echo "  test-session  - final-verdict + interrupt cancel harness (#907)"
 	@echo "  test-diag     - diag harness under timeout (#1011 / #1016 N5/T1/T2/P-a)"
+	@echo "  test-http     - body cap / PROXY / json long / URL redact (#1016 C1–C8)"
 	@echo "  test-install-sshd-warn - shared MaxAuthTries 1 awk (#908 / #934 B1)"
-	@echo "  test          - check-source + compile + harnesses (incl. session/diag)"
+	@echo "  test          - check-source + compile + harnesses + hardening"
 	@echo "  lint          - Run static code analysis"

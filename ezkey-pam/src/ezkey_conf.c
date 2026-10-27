@@ -183,6 +183,24 @@ int ezkey_conf_load_fp(FILE *fp, EzkeyConfig *cfg) {
         char *eq;
         char *key;
         char *value;
+        char *nl;
+
+        /*
+         * #1016 C3: a line longer than EZKEY_CONF_LINE_MAX-1 is split by
+         * fgets; the tail would be parsed as a new line (e.g. a long comment
+         * whose continuation is `lab_http=true` → fail-open). Refuse and
+         * drain to the next newline / EOF.
+         */
+        nl = strchr(line, '\n');
+        if (nl == NULL && !feof(fp)) {
+            int ch;
+
+            while ((ch = fgetc(fp)) != EOF && ch != '\n') {
+                /* drain */
+            }
+            errno = EMSGSIZE;
+            return -3;
+        }
 
         hash = strchr(line, '#');
         if (hash != NULL) {
