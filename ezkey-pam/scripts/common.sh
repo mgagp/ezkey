@@ -223,9 +223,9 @@ ezkey_ssh_kbdint_autoenter() {
       last_chal_n="${last_chal_n:-0}"
       last_ok_n="${last_ok_n:-0}"
       if [ "${last_chal_n}" -gt "${last_ok_n}" ]; then
-        printf 'enter\n' >"${ctrl}" 2>/dev/null || true
+        ezkey_ctrl_write "${ctrl}" "enter"
       else
-        printf 'ok\n' >"${ctrl}" 2>/dev/null || true
+        ezkey_ctrl_write "${ctrl}" "ok"
       fi
       since_enter=0
     fi
@@ -250,4 +250,18 @@ ezkey_mk_ctrl_fifo() {
   fifo="${dir}/enter.fifo"
   mkfifo "${fifo}"
   printf '%s\n' "${fifo}"
+}
+
+# Write a control command to a capture fifo without hanging when the reader
+# (ssh-pty-capture.py) has already exited (#1054 probe 4 flake: O_WRONLY open
+# on a FIFO with no reader blocks forever).
+ezkey_ctrl_write() {
+  local fifo="$1"
+  local msg="$2"
+  if [ -z "${fifo}" ] || [ ! -p "${fifo}" ]; then
+    return 0
+  fi
+  # timeout bounds the open(2); printf failure is non-fatal.
+  timeout 1s sh -c 'printf "%s\n" "$1" >"$2"' _ "${msg}" "${fifo}" \
+    >/dev/null 2>&1 || true
 }

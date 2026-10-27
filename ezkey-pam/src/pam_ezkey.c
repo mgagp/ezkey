@@ -188,7 +188,11 @@ static int load_config_file(const char *path, EzkeyConfig *cfg) {
         errno = EINVAL;
         return -1;
     }
-    fd = open(path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+    /*
+     * O_NONBLOCK: a FIFO with no writer must not block open() before S_ISREG
+     * (#1054 / Christophe). O_NOFOLLOW still refuses symlinks first.
+     */
+    fd = open(path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
     if (fd < 0) {
         return -1;
     }

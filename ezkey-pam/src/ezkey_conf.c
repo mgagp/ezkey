@@ -17,6 +17,7 @@
 
 #include "ezkey_budget.h"
 #include "ezkey_config.h"
+#include "ezkey_sanitize.h"
 
 static void ezkey_conf_secure_wipe(void *ptr, size_t len) {
     if (ptr == NULL || len == 0) {
@@ -169,10 +170,10 @@ void ezkey_conf_apply_key(EzkeyConfig *cfg, const char *key,
         parsed =
             ezkey_parse_bool(value, cfg->challenge_requested, &unrecognized);
         if (unrecognized) {
+            /* #1054: never log the boolean key's value (may be hostile). */
             syslog(LOG_AUTHPRIV | LOG_WARNING,
-                   "pam_ezkey: challenge_requested value unrecognized "
-                   "(%s); keeping %s",
-                   (value != NULL && value[0] != '\0') ? value : "(empty)",
+                   "pam_ezkey: challenge_requested value unrecognized; "
+                   "keeping %s",
                    cfg->challenge_requested ? "true" : "false");
         }
         cfg->challenge_requested = parsed;
@@ -180,8 +181,7 @@ void ezkey_conf_apply_key(EzkeyConfig *cfg, const char *key,
         parsed = ezkey_parse_bool(value, cfg->lab_http, &unrecognized);
         if (unrecognized) {
             syslog(LOG_AUTHPRIV | LOG_WARNING,
-                   "pam_ezkey: lab_http value unrecognized (%s); keeping %s",
-                   (value != NULL && value[0] != '\0') ? value : "(empty)",
+                   "pam_ezkey: lab_http value unrecognized; keeping %s",
                    cfg->lab_http ? "true" : "false");
         }
         cfg->lab_http = parsed;
@@ -193,18 +193,20 @@ void ezkey_conf_apply_key(EzkeyConfig *cfg, const char *key,
         parsed = ezkey_parse_bool(value, cfg->debug, &unrecognized);
         if (unrecognized) {
             syslog(LOG_AUTHPRIV | LOG_WARNING,
-                   "pam_ezkey: debug value unrecognized (%s); keeping %s",
-                   (value != NULL && value[0] != '\0') ? value : "(empty)",
+                   "pam_ezkey: debug value unrecognized; keeping %s",
                    cfg->debug ? "true" : "false");
         }
         cfg->debug = parsed;
     } else {
         known = 0;
     }
-    /* #1016 P6: warn on unknown keys — key name only, never the value. */
+    /* #1016 P6 / #1054: warn on unknown keys — sanitized name only, never value. */
     if (!known) {
+        char key_safe[96];
+
+        ezkey_sanitize_for_log(key_safe, sizeof(key_safe), key);
         syslog(LOG_AUTHPRIV | LOG_WARNING,
-               "pam_ezkey: reason=conf_unknown_key key=%s", key);
+               "pam_ezkey: reason=conf_unknown_key key=%s", key_safe);
     }
 }
 

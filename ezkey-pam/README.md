@@ -35,6 +35,22 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
 
+## What changed in 2.2.20 (#1054 cycle 3 — probe flake / conf / TLS)
+
+- Conf `open(..., O_NONBLOCK)` so a FIFO with no writer cannot hang sshd login;
+  stub ghost cases (symlink / FIFO / directory) expect UNAVAIL in under 1 s.
+- TLS peer-verify guarded by a **runtime** stub-suite test (self-signed https
+  without `lab_http` → UNAVAIL + 0 stub requests), not by grep alone.
+- Signal probe 4 harness: bounded control-fifo writes + force-kill after wall.
+- `wait_timeout=0` unit case; check-source statement form + `0 &&` reject;
+  `.gitattributes` LF for `*.conf` / `Makefile` / `docker-entrypoint.sh`.
+- Unknown conf key name sanitized before log; boolean keys never log values.
+- STATUS cites `EZKEY_AUTH_BUDGET_SECS` by symbol (not a stale line number).
+
+**Platform note:** Linux CI (Ubuntu + Rocky containers) is the reference for
+`make check-source` and the stub suites. macOS/BSD `sed -i` differences are not
+exercised here.
+
 ## What changed in 2.2.19 (#1016 cycle 2b — decisions / mutations)
 
 - Decision harness pins wait/HTTP/URL/xferinfo/confirm contracts (kills M20).

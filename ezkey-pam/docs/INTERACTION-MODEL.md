@@ -6,13 +6,19 @@ client during one keyboard-interactive login. Maintained with the module
 `challenge_requested`, or the sshd recipe updates §2 and keeps the evidence
 tags honest.
 
-> Origin: Patrick craft draft (2026-10-21). State below is **ezkey-pam 2.2.19**
-> (#1016 cycle 2b decision harness / mutation re-kill on cycle 2; #995 connector
-> default `challenge_requested=true`, #982 tiers 0–1 / #976 confirm-before-create
+> Origin: Patrick craft draft (2026-10-21). State below is **ezkey-pam 2.2.20**
+> (#1054 cycle 3 conf `O_NONBLOCK` / TLS runtime guard / probe-4 harness;
+> #1016 cycle 2b decision harness; #995 connector default
+> `challenge_requested=true`, #982 tiers 0–1 / #976 confirm-before-create
 > + enrollment challenge).
 > Evidence tags: **[code]** verified in source, **[test]** automated assert,
 > **[isa]** Isabelle on ezkey-pam-test, **[inf]** OpenSSH/PAM inference.
 > Paths relative to the repo root. `pam.c` = `ezkey-pam/src/pam_ezkey.c`.
+
+### What changed in 2.2.20 (#1054 cycle 3)
+
+- Conf load `O_NONBLOCK` + ghost-file stub cases; TLS verify proven by runtime
+  self-signed test (0 stub requests); probe-4 FIFO write hang fixed in harness.
 
 ### What changed in 2.2.19 (#1016 cycle 2b)
 

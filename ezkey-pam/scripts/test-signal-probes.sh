@@ -5,6 +5,11 @@
 # if TERM is absorbed during /wait after ACCEPTED already arrived in the same
 # chunk (result reaches an sshd whose client has left — not an elevation).
 # Must FAIL on broken head 8272d360 (hang at prompt).
+#
+# #1054 probe 4 flake (harness): after a fast pam exit the capture helper may
+# already be gone; writing "quit" with a blocking O_WRONLY open on the control
+# FIFO hangs until an external timeout. Use ezkey_ctrl_write (bounded) and
+# force-kill pam + capture after the wall budget.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -107,6 +112,46 @@ pam_pids() {
     2>/dev/null | tr -d '\r' || true
 }
 
+# #1054: dump state BEFORE force-kill so a flake can be classified product vs harness.
+capture_stuck_state() {
+  local label="$1"
+  local dump="${ARTIFACT_DIR}/pam-signal-${label}-stuck.txt"
+  {
+    echo "=== stuck state label=${label} epoch=$(date +%s) ==="
+    echo "--- host: capture helpers ---"
+    ps -eo pid=,args= 2>/dev/null | grep -E 'ssh-pty-capture|test-signal' | grep -v grep || true
+    echo "--- container: processes ---"
+    docker exec "${CONTAINER}" sh -c 'ps -eo pid,ppid,stat,etime,args' 2>/dev/null || true
+    echo "--- container: listeners ---"
+    docker exec "${CONTAINER}" sh -c 'ss -ltnp 2>/dev/null || ss -ltn' 2>/dev/null || true
+    echo "--- container: pam children /proc summary ---"
+    docker exec "${CONTAINER}" sh -c '
+      for p in $(ps -eo pid=,args= | grep -E "\[pam\]" | grep -v grep | awk "{print \$1}"); do
+        echo "pam_pid=$p"
+        ls -l /proc/$p/fd 2>/dev/null | head -n 40 || true
+        tr "\0" " " < /proc/$p/cmdline 2>/dev/null; echo
+        cat /proc/$p/wchan 2>/dev/null; echo
+        cat /proc/$p/stack 2>/dev/null | head -n 20 || true
+      done
+    ' 2>/dev/null || true
+    echo "--- container: last attempt lines ---"
+    docker exec "${CONTAINER}" sh -c \
+      "grep 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null | tail -n 5" || true
+    echo "--- stub req log ---"
+    docker exec "${CONTAINER}" sh -c "tail -n 30 '${STUB_REQ_LOG}' 2>/dev/null" || true
+  } >"${dump}" 2>&1 || true
+  echo "stuck state written: ${dump}" | tee -a "${PROOF}"
+}
+
+force_kill_probe_residue() {
+  # SIGKILL — TERM is absorbed during /wait (product); harness must not stall.
+  pkill -9 -f 'ssh-pty-capture.py' 2>/dev/null || true
+  docker exec "${CONTAINER}" sh -c \
+    "ps -eo pid=,args= | grep -E '\\[pam\\]' | grep -v grep | awk '{print \$1}' | xargs -r kill -KILL
+     pkill -9 -f 'ssh ' 2>/dev/null || true" \
+    2>/dev/null || true
+}
+
 wait_pam_gone() {
   local before_pids="$1"
   local start_ms="$2"
@@ -147,7 +192,7 @@ wait_pam_gone() {
   done
 }
 
-# Run one probe function under a sibling wall watchdog (#1016 P11).
+# Run one probe function under a sibling wall watchdog (#1016 P11 / #1054).
 run_probe() {
   local label="$1"
   local fn="$2"
@@ -159,10 +204,8 @@ run_probe() {
     sleep "${PROBE_WALL_SECS}"
     echo "[FAIL] ${label}: exceeded ${PROBE_WALL_SECS}s wall budget (pam may be stuck)" \
       | tee -a "${PROOF}" >&2
-    pkill -f 'ssh-pty-capture.py' 2>/dev/null || true
-    docker exec "${CONTAINER}" sh -c \
-      "ps -eo pid=,args= | grep -E '\\[pam\\]' | grep -v grep | awk '{print \$1}' | xargs -r kill -TERM" \
-      2>/dev/null || true
+    capture_stuck_state "${label}"
+    force_kill_probe_residue
   ) &
   watch=$!
   set +e
@@ -224,7 +267,7 @@ probe_kill_at_ok() {
   pids="$(pam_pids)"
   echo "probe1 pam_pids=${pids:-none}" | tee -a "${PROOF}"
   if [ -z "${pids}" ]; then
-    printf 'quit\n' >"${ctrl}" 2>/dev/null || true
+    ezkey_ctrl_write "${ctrl}" "quit"
     kill "${ssh_pid}" 2>/dev/null || true
     wait "${ssh_pid}" 2>/dev/null || true
     rm -rf "${ctrl_dir}"
@@ -295,7 +338,7 @@ probe_kill_at_challenge() {
   local i
   for i in $(seq 1 80); do
     if ezkey_ssh_capture_has_prewait_prompt "${log}"; then
-      printf 'ok\n' >"${ctrl}" 2>/dev/null || true
+      ezkey_ctrl_write "${ctrl}" "ok"
       break
     fi
     sleep 0.1
@@ -312,7 +355,7 @@ probe_kill_at_challenge() {
   pids="$(pam_pids)"
   echo "probe2 pam_pids=${pids:-none}" | tee -a "${PROOF}"
   if [ -z "${pids}" ]; then
-    printf 'quit\n' >"${ctrl}" 2>/dev/null || true
+    ezkey_ctrl_write "${ctrl}" "quit"
     kill "${ssh_pid}" 2>/dev/null || true
     wait "${ssh_pid}" 2>/dev/null || true
     rm -rf "${ctrl_dir}"
@@ -383,7 +426,7 @@ probe_term_during_create() {
   local i
   for i in $(seq 1 80); do
     if ezkey_ssh_capture_has_prewait_prompt "${log}"; then
-      printf 'ok\n' >"${ctrl}" 2>/dev/null || true
+      ezkey_ctrl_write "${ctrl}" "ok"
       break
     fi
     sleep 0.1
@@ -401,7 +444,7 @@ probe_term_during_create() {
   pids="$(pam_pids)"
   echo "probe3 pam_pids=${pids:-none}" | tee -a "${PROOF}"
   if [ -z "${pids}" ]; then
-    printf 'quit\n' >"${ctrl}" 2>/dev/null || true
+    ezkey_ctrl_write "${ctrl}" "quit"
     kill "${ssh_pid}" 2>/dev/null || true
     wait "${ssh_pid}" 2>/dev/null || true
     rm -rf "${ctrl_dir}"
@@ -415,7 +458,7 @@ probe_term_during_create() {
   docker exec "${CONTAINER}" kill -TERM "${first_pid}" 2>/dev/null || true
   local gone
   gone="$(wait_pam_gone "${pids}" "${t0}" || true)"
-  printf 'quit\n' >"${ctrl}" 2>/dev/null || true
+  ezkey_ctrl_write "${ctrl}" "quit"
   kill "${ssh_pid}" 2>/dev/null || true
   wait "${ssh_pid}" 2>/dev/null || true
   rm -rf "${ctrl_dir}"
@@ -477,7 +520,7 @@ probe_term_during_wait() {
   local i
   for i in $(seq 1 80); do
     if ezkey_ssh_capture_has_prewait_prompt "${log}"; then
-      printf 'ok\n' >"${ctrl}" 2>/dev/null || true
+      ezkey_ctrl_write "${ctrl}" "ok"
       break
     fi
     sleep 0.1
@@ -494,7 +537,7 @@ probe_term_during_wait() {
   pids="$(pam_pids)"
   echo "probe4 pam_pids=${pids:-none}" | tee -a "${PROOF}"
   if [ -z "${pids}" ]; then
-    printf 'quit\n' >"${ctrl}" 2>/dev/null || true
+    ezkey_ctrl_write "${ctrl}" "quit"
     kill "${ssh_pid}" 2>/dev/null || true
     wait "${ssh_pid}" 2>/dev/null || true
     rm -rf "${ctrl_dir}"
@@ -508,8 +551,17 @@ probe_term_during_wait() {
   docker exec "${CONTAINER}" kill -TERM "${first_pid}" 2>/dev/null || true
   local gone
   gone="$(wait_pam_gone "${pids}" "${t0}" || true)"
-  printf 'quit\n' >"${ctrl}" 2>/dev/null || true
+  # Bounded write: capture may already have exited after a fast pam return (#1054).
+  ezkey_ctrl_write "${ctrl}" "quit"
   kill "${ssh_pid}" 2>/dev/null || true
+  # Bound reaping: timeout(1) cannot wait(1) a parent-shell child.
+  for i in $(seq 1 50); do
+    if ! kill -0 "${ssh_pid}" 2>/dev/null; then
+      break
+    fi
+    sleep 0.1
+  done
+  kill -KILL "${ssh_pid}" 2>/dev/null || true
   wait "${ssh_pid}" 2>/dev/null || true
   rm -rf "${ctrl_dir}"
 

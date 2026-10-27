@@ -177,6 +177,20 @@ int main(void) {
         }
     }
 
+    /* #1054 M21: wait_timeout=0 must keep prior (parse_positive_int rejects 0). */
+    ezkey_config_init(&cfg);
+    {
+        int prior = cfg.wait_timeout;
+
+        ezkey_conf_apply_key(&cfg, "wait_timeout", "0");
+        expect_eq("M21: wait_timeout=0 keeps prior (rejects 0)", cfg.wait_timeout,
+                  prior);
+        ezkey_conf_apply_key(&cfg, "wait_timeout", "30");
+        expect_eq("M21: wait_timeout=30 applied", cfg.wait_timeout, 30);
+        ezkey_conf_apply_key(&cfg, "wait_timeout", "0");
+        expect_eq("M21: wait_timeout=0 after 30 keeps 30", cfg.wait_timeout, 30);
+    }
+
     /* P10: apply arms for keys + api_timeout clamp + lab_http typo keep. */
     ezkey_config_init(&cfg);
     ezkey_conf_apply_key(&cfg, "integration_key", "ikey-test");
