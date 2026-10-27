@@ -106,8 +106,6 @@ import type {
   ArchiveSealResult,
   GapDeclarationResult,
   ListLifecycleIncidentsParams,
-  PagedModelAuditChainCheckpointResponseDto,
-  PagedModelAuditChainIncidentResponseDto,
   RetroactiveIntegrityValidationRunResponse,
 } from '@/generated/admin-api/model';
 import {
@@ -781,10 +779,7 @@ function IntegrityPanel({
   } = usePaginatedFromOrval<AuditChainIncidentResponseDto, Record<string, never>>({
     queryKey: [...queryKeys.auditChainIncidents],
     baseParams: {},
-    fetchPage: (params) =>
-      listLifecycleIncidents(params as ListLifecycleIncidentsParams) as Promise<
-        PagedModelAuditChainIncidentResponseDto
-      >,
+    fetchPage: (params) => listLifecycleIncidents(params as ListLifecycleIncidentsParams),
     defaultSize: 20,
     defaultSort: 'createdAt,DESC',
   });
@@ -864,8 +859,7 @@ function IntegrityPanel({
       checkpointApiParams.checkpointType ?? '',
     ],
     baseParams: checkpointApiParams,
-    fetchPage: (params) =>
-      getChainCheckpoints(params as GetChainCheckpointsParams) as Promise<PagedModelAuditChainCheckpointResponseDto>,
+    fetchPage: (params) => getChainCheckpoints(params as GetChainCheckpointsParams),
     /** ~12 windows/hour × several hours on one page; newest-first so Verify does not open on oldest history. */
     defaultSize: 50,
     defaultSort: 'windowStart,DESC',

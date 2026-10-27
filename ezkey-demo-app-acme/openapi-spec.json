@@ -1562,7 +1562,7 @@
             }
           },
           "409": {
-            "description": "A PENDING encryption key already exists, or key rotation is inactive on this instance",
+            "description": "A PENDING encryption key already exists, key rotation is inactive on this instance, or the keyset was modified concurrently (CAS loss — retry is safe)",
             "content": {
               "*/*": {
                 "schema": {
@@ -9294,7 +9294,13 @@
             "type": "integer",
             "format": "int64"
           }
-        }
+        },
+        "required": [
+          "number",
+          "size",
+          "totalElements",
+          "totalPages"
+        ]
       },
       "PagedModelTenantResponseDto": {
         "type": "object",
@@ -9308,7 +9314,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "PublicInstanceInfoResponseDto": {
         "type": "object",
@@ -9426,7 +9436,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "PagedModelEnrollmentResponseDto": {
         "type": "object",
@@ -9440,7 +9454,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "EncryptionKeyResponse": {
         "type": "object",
@@ -9542,7 +9560,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "PagedModelReencryptionBatchResponse": {
         "type": "object",
@@ -9556,7 +9578,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "ReencryptionBatchResponse": {
         "type": "object",
@@ -9987,7 +10013,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "AuthAttemptWaitResponseDto": {
         "type": "object",
@@ -10220,7 +10250,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "EntryIntegrityConciliationSummary": {
         "type": "object",
@@ -10367,7 +10401,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "ArchiveEligibilityResult": {
         "type": "object",
@@ -10625,7 +10663,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "PagedModelApiKeyResponseDto": {
         "type": "object",
@@ -10639,7 +10681,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "AlertResponseDto": {
         "type": "object",
@@ -10722,7 +10768,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "PagedModelAdminResponseDto": {
         "type": "object",
@@ -10736,7 +10786,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "AdminSessionResponseDto": {
         "type": "object",
