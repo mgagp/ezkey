@@ -79,6 +79,13 @@ only), Node engines pre-flight, and AGENTS pin sync always apply.
 
 Evidence: 2026-10-05 Admin Orval 8.32→8.39 (#658) — empty codegen diff, 112 vitest green → O0.
 
+**springdoc-openapi 3.2.0+:** live Admin `/api-docs` marks `PagedModel*` / `PageMetadata`
+properties as `required`. After `./scripts/update-specs.sh` + Admin UI `npm run generate:api`,
+list call sites that cast Orval envelope unions to `PagedModel*` hit TS2352 — use
+`orvalPagedBody` / `asOrvalPagedBody` in `ezkey-admin-ui` (mutator returns the page JSON body).
+Companion hygiene for Dependabot `#1055`: see the springdoc 3.2.0 companion PR (do not merge
+`#1055` alone without that Admin UI + spec refresh). Mobile Auth Orval path stays **O0**.
+
 ## Crypto-adjacent and ecosystem gates
 
 - **Crypto-adjacent** (e.g. `js-sha256`, keystore / crypto / proof-token): never autonomous on a

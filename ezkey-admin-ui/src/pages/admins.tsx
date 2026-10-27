@@ -29,7 +29,7 @@ import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { useToast } from '@/context/use-toast';
 import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
-import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
+import { asOrvalPagedBody, usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { fetchApi, fetchBlobUrl } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { isEvaluatorTempSession } from '@/lib/auth';
@@ -53,8 +53,6 @@ import type {
   AdminCreateRequestDto,
   AdminUpdateRequestDto,
   AdminResponseDto,
-  PagedModelAdminResponseDto,
-  PagedModelTenantResponseDto,
   TenantResponseDto,
 } from '@/generated/admin-api/model';
 
@@ -1233,7 +1231,7 @@ function CreateAdminDialog({
 
   const { data: tenantsData } = useListTenants({ page: 0, size: 100, sort: ['tenantName,asc'] });
   const allTenants = useMemo(
-    () => (tenantsData as PagedModelTenantResponseDto | undefined)?.content ?? [],
+    () => asOrvalPagedBody<TenantResponseDto>(tenantsData)?.content ?? [],
     [tenantsData],
   );
   const eligibleTenants = useMemo(
@@ -1707,7 +1705,7 @@ export default function AdminsPage() {
   const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AdminResponseDto, Record<string, never>>({
     queryKey: ['admins'],
     baseParams: {},
-    fetchPage: (params) => listAdmins(params) as Promise<PagedModelAdminResponseDto>,
+    fetchPage: (params) => listAdmins(params),
   });
 
   const selectedAdmin = selectedIndex !== null ? data[selectedIndex] ?? null : null;

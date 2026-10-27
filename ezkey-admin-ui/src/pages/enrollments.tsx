@@ -23,7 +23,7 @@ import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { useAuth } from '@/context/use-auth';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIntegrations } from '@/hooks/use-integrations';
-import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
+import { orvalPagedBody, usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { ENROLLMENT_BUCKET_PARAM, type EnrollmentDrilldownBucket } from '@/lib/dashboard-drilldown-links';
 import { ApiError, fetchBlobUrl } from '@/lib/api-client';
 import { enrollmentDemoPresets, isDemoMode } from '@/lib/demo-mode';
@@ -38,7 +38,6 @@ import type {
   EnrollmentCreateRequestDto,
   EnrollmentCreateResponseDto,
   EnrollmentResponseDto,
-  PagedModelEnrollmentResponseDto,
   Search1Params,
 } from '@/generated/admin-api/model';
 
@@ -531,75 +530,87 @@ export default function EnrollmentsPage() {
       {
         queryKey: ['enrollments', 'bucket', 'CREATED', integrationFilter],
         queryFn: () =>
-          search1({
-            status: 'CREATED',
-            page: 0,
-            size: 500,
-            sort: ['createdAt,DESC'],
-            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
-          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+          orvalPagedBody<EnrollmentResponseDto>(
+            search1({
+              status: 'CREATED',
+              page: 0,
+              size: 500,
+              sort: ['createdAt,DESC'],
+              integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+            } as Search1Params),
+          ),
         enabled: enrollmentBucket === 'inProgress',
       },
       {
         queryKey: ['enrollments', 'bucket', 'BOUND', integrationFilter],
         queryFn: () =>
-          search1({
-            status: 'BOUND',
-            page: 0,
-            size: 500,
-            sort: ['createdAt,DESC'],
-            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
-          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+          orvalPagedBody<EnrollmentResponseDto>(
+            search1({
+              status: 'BOUND',
+              page: 0,
+              size: 500,
+              sort: ['createdAt,DESC'],
+              integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+            } as Search1Params),
+          ),
         enabled: enrollmentBucket === 'inProgress',
       },
       {
         queryKey: ['enrollments', 'bucket', 'INVALID', integrationFilter],
         queryFn: () =>
-          search1({
-            status: 'INVALID',
-            active: true,
-            page: 0,
-            size: 500,
-            sort: ['createdAt,DESC'],
-            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
-          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+          orvalPagedBody<EnrollmentResponseDto>(
+            search1({
+              status: 'INVALID',
+              active: true,
+              page: 0,
+              size: 500,
+              sort: ['createdAt,DESC'],
+              integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+            } as Search1Params),
+          ),
         enabled: enrollmentBucket === 'unavailable',
       },
       {
         queryKey: ['enrollments', 'bucket', 'REVOKED', integrationFilter],
         queryFn: () =>
-          search1({
-            status: 'REVOKED',
-            active: true,
-            page: 0,
-            size: 500,
-            sort: ['createdAt,DESC'],
-            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
-          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+          orvalPagedBody<EnrollmentResponseDto>(
+            search1({
+              status: 'REVOKED',
+              active: true,
+              page: 0,
+              size: 500,
+              sort: ['createdAt,DESC'],
+              integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+            } as Search1Params),
+          ),
         enabled: enrollmentBucket === 'unavailable',
       },
       {
         queryKey: ['enrollments', 'bucket', 'invalid', integrationFilter],
         queryFn: () =>
-          search1({
-            status: 'INVALID',
-            page: 0,
-            size: 500,
-            sort: ['createdAt,DESC'],
-            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
-          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+          orvalPagedBody<EnrollmentResponseDto>(
+            search1({
+              status: 'INVALID',
+              page: 0,
+              size: 500,
+              sort: ['createdAt,DESC'],
+              integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+            } as Search1Params),
+          ),
         enabled: enrollmentBucket === 'invalid',
       },
       {
         queryKey: ['enrollments', 'bucket', 'revoked', integrationFilter],
         queryFn: () =>
-          search1({
-            status: 'REVOKED',
-            page: 0,
-            size: 500,
-            sort: ['createdAt,DESC'],
-            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
-          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+          orvalPagedBody<EnrollmentResponseDto>(
+            search1({
+              status: 'REVOKED',
+              page: 0,
+              size: 500,
+              sort: ['createdAt,DESC'],
+              integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+            } as Search1Params),
+          ),
         enabled: enrollmentBucket === 'revoked',
       },
     ],
@@ -670,7 +681,7 @@ export default function EnrollmentsPage() {
       integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
       active: activeFilter === '' ? undefined : activeFilter === 'true' ? true : activeFilter === 'false' ? false : undefined,
     },
-    fetchPage: (params) => search1(params as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+    fetchPage: (params) => search1(params as Search1Params),
     enabled: !enrollmentBucket,
   });
 

@@ -19,7 +19,6 @@ import type {
   AlertResponseDtoSeverity,
   AlertResponseDtoStatus,
   ListAlertsParams,
-  PagedModelAlertResponseDto,
 } from '@/generated/admin-api/model';
 
 type StatusFilter = AlertResponseDtoStatus | '';
@@ -69,8 +68,7 @@ export default function AlertsPage() {
   >({
     queryKey: ['alerts', statusFilter, severityFilter, typeFilter],
     baseParams,
-    fetchPage: (params) =>
-      listAlerts(params as ListAlertsParams) as Promise<PagedModelAlertResponseDto>,
+    fetchPage: (params) => listAlerts(params as ListAlertsParams),
     defaultSort: 'createdAt,DESC',
   });
 
