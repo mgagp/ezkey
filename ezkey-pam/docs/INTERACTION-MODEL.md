@@ -6,13 +6,18 @@ client during one keyboard-interactive login. Maintained with the module
 `challenge_requested`, or the sshd recipe updates §2 and keeps the evidence
 tags honest.
 
-> Origin: Patrick craft draft (2026-10-21). State below is **ezkey-pam 2.2.18**
-> (#1016 cycle 2 ENV/wipe/link/URL on cycle 1b; #995 connector default
-> `challenge_requested=true`, #982 tiers 0–1 / #976 confirm-before-create +
-> enrollment challenge).
+> Origin: Patrick craft draft (2026-10-21). State below is **ezkey-pam 2.2.19**
+> (#1016 cycle 2b decision harness / mutation re-kill on cycle 2; #995 connector
+> default `challenge_requested=true`, #982 tiers 0–1 / #976 confirm-before-create
+> + enrollment challenge).
 > Evidence tags: **[code]** verified in source, **[test]** automated assert,
 > **[isa]** Isabelle on ezkey-pam-test, **[inf]** OpenSSH/PAM inference.
 > Paths relative to the repo root. `pam.c` = `ezkey-pam/src/pam_ezkey.c`.
+
+### What changed in 2.2.19 (#1016 cycle 2b)
+
+- `ezkey_decision.h` + `test-decision` kill ACCEPTED/REJECTED/HTTP/URL mutations;
+  TLS verify pin; conf unknown-key warn; `#` in values; pinned 25/768/65536.
 
 ### What changed in 2.2.18 (#1016 cycle 2)
 
