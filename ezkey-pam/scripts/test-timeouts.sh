@@ -19,7 +19,7 @@ PORT="${SSH_PORT}"
 STUB_PORT="${EZKEY_STUB_PORT:-18081}"
 STUB_PID_FILE="/tmp/ezkey-pam-stub-tmo.pid"
 STUB_REQ_LOG="/tmp/ezkey-pam-stub-reqs.log"
-ARTIFACT_DIR="${EZKEY_PAM_ARTIFACT_DIR:-/opt/cursor/artifacts}"
+ARTIFACT_DIR="$(ezkey_pam_artifact_dir)"
 mkdir -p "${ARTIFACT_DIR}"
 PROOF="${ARTIFACT_DIR}/pam-timeouts.log"
 PASS=0
@@ -1706,9 +1706,14 @@ if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -qE 'ezkey_in_wait[[:space:]]*!=' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -qE 'raise[[:space:]]*\([[:space:]]*SIGTERM[[:space:]]*\)' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && awk '/Chunked \/wait/,/^[[:space:]]*ezkey_in_wait[[:space:]]*=[[:space:]]*1[[:space:]]*;/' \
-       "${SCRIPT_DIR}/../src/pam_ezkey.c" | grep -qE 'ezkey_wait_abort[[:space:]]*!=[[:space:]]*0' \
+       "${SCRIPT_DIR}/../src/pam_ezkey.c" | grep -qE 'ezkey_wait_entry_abort_raised[[:space:]]*\(' \
+  && grep -qE 'abort_flag[[:space:]]*!=[[:space:]]*0' \
+       "${SCRIPT_DIR}/../src/ezkey_wait_entry.h" \
   && ! awk '/Chunked \/wait/,/^[[:space:]]*ezkey_in_wait[[:space:]]*=[[:space:]]*1[[:space:]]*;/' \
        "${SCRIPT_DIR}/../src/pam_ezkey.c" | grep -qE 'ezkey_wait_abort[[:space:]]*=[[:space:]]*0' \
+  && grep -qE 'fcntl[[:space:]]*\([^,]+,[[:space:]]*F_SETFL[[:space:]]*,.*O_NONBLOCK' \
+       "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -qE 'ezkey_diag_syslog_snap_publish' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_format_waiting_prompt' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_challenge_display_ok' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_prewait_prompt_mode' "${SCRIPT_DIR}/../src/pam_ezkey.c" \

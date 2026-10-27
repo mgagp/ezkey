@@ -124,6 +124,15 @@ check-source:
 	@grep -qE 'LOG_AUTHPRIV[[:space:]]*\|[[:space:]]*LOG_INFO' $(SRC_DIR)/ezkey_diag.c
 	@grep -qE 'SOCK_DGRAM[[:space:]]*\|[[:space:]]*SOCK_CLOEXEC[[:space:]]*\|[[:space:]]*SOCK_NONBLOCK' \
 		$(SRC_DIR)/ezkey_diag.c
+	# #1016 P-b: fcntl O_NONBLOCK fallback must remain (portable path).
+	@grep -qE 'fcntl[[:space:]]*\([^,]+,[[:space:]]*F_SETFL[[:space:]]*,.*O_NONBLOCK' \
+		$(SRC_DIR)/ezkey_diag.c || \
+		(echo "error: ezkey_diag_open_log_fd must fcntl O_NONBLOCK (#1016 P-b)" >&2; exit 1)
+	# #1016 N5: double-buffer publish (never zero active SIGNAL length mid-refresh).
+	@grep -qE 'ezkey_diag_syslog_snap_publish' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: SIGNAL refresh must use ezkey_diag_syslog_snap_publish (#1016 N5)" >&2; exit 1)
+	@grep -qE 'ezkey_diag_syslog_snap_read' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: SIGTERM handler must ezkey_diag_syslog_snap_read (#1016 N5)" >&2; exit 1)
 	# Patrick m2: statement-form "(void)ezkey_diag_emit_signal_safe(" only —
 	# a comment that merely names the symbol (or `* ezkey_diag_emit…`) must fail.
 	@grep -qE '^[[:space:]]*\(void\)ezkey_diag_emit_signal_safe[[:space:]]*\(' \
@@ -132,12 +141,14 @@ check-source:
 	@grep -qE 'ezkey_in_wait[[:space:]]*!=' $(SRC_DIR)/pam_ezkey.c
 	@grep -qE 'raise[[:space:]]*\([[:space:]]*SIGTERM[[:space:]]*\)' $(SRC_DIR)/pam_ezkey.c
 	@grep -qE 'saved_errno' $(SRC_DIR)/pam_ezkey.c
-	# Patrick m1: wait entry must observe abort without clearing it.
+	# Patrick m1 / #1016 T1: wait entry uses shared helper; never clear abort.
 	# End pattern uses trailing ';' so the comment "ezkey_in_wait=1" does not end the range.
 	@awk '/Chunked \/wait/,/^[[:space:]]*ezkey_in_wait[[:space:]]*=[[:space:]]*1[[:space:]]*;/' \
 		$(SRC_DIR)/pam_ezkey.c | \
-		grep -qE 'ezkey_wait_abort[[:space:]]*!=[[:space:]]*0' || \
-		(echo "error: wait entry must check ezkey_wait_abort != 0 before ezkey_in_wait=1" >&2; exit 1)
+		grep -qE 'ezkey_wait_entry_abort_raised[[:space:]]*\(' || \
+		(echo "error: wait entry must call ezkey_wait_entry_abort_raised before ezkey_in_wait=1" >&2; exit 1)
+	@grep -qE 'abort_flag[[:space:]]*!=[[:space:]]*0' $(SRC_DIR)/ezkey_wait_entry.h || \
+		(echo "error: ezkey_wait_entry.h must observe abort_flag != 0 (#1016 T1)" >&2; exit 1)
 	@if awk '/Chunked \/wait/,/^[[:space:]]*ezkey_in_wait[[:space:]]*=[[:space:]]*1[[:space:]]*;/' \
 		$(SRC_DIR)/pam_ezkey.c | \
 		grep -nE 'ezkey_wait_abort[[:space:]]*=[[:space:]]*0'; then \
@@ -151,7 +162,11 @@ check-source:
 	@if grep -nE '(^|[^_[:alnum:]])pam_info[[:space:]]*\(' $(SRC_DIR)/pam_ezkey.c; then \
 		echo "error: pam_info() must not appear in pam_ezkey.c (#941 — use pam_prompt)" >&2; exit 1; \
 	fi
-	@echo "check-source: openat/O_NOFOLLOW/O_NONBLOCK + sanitize + #941/#975/#982/#995 prompt guards"
+	# #1016 P-a: test-diag must keep an external timeout watchdog.
+	@grep -qE '^[[:space:]]*timeout[[:space:]].*test_diag_harness' $(MAKEFILE_LIST) || \
+		grep -qE 'timeout --foreground.*test_diag_harness' $(MAKEFILE_LIST) || \
+		(echo "error: test-diag must run under timeout (#1016 P-a)" >&2; exit 1)
+	@echo "check-source: openat/O_NOFOLLOW/O_NONBLOCK + sanitize + #941/#975/#982/#995/#1016 guards"
 
 # Harness: 0644→0600, hardlink refused, FIFO non-blocking (#818 m2).
 test-filelog: $(SRC_DIR)/ezkey_filelog.c $(TEST_DIR)/test_filelog_harness.c | $(BUILD_DIR)
@@ -192,12 +207,16 @@ test-session: $(BUILD_DIR)/ezkey_session.o $(TEST_DIR)/test_session_harness.c | 
 	$(BUILD_DIR)/test_session_harness
 
 # Harness: attempt-line fields + signal-safe emit gate (#1011).
+# #1016 P-a: external timeout so a blocking /dev/log write cannot hang CI.
+TEST_DIAG_TIMEOUT_SECS ?= 15
 test-diag: $(BUILD_DIR)/ezkey_diag.o $(BUILD_DIR)/ezkey_sanitize.o \
 		$(TEST_DIR)/test_diag_harness.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_diag_harness.c \
 		$(BUILD_DIR)/ezkey_diag.o $(BUILD_DIR)/ezkey_sanitize.o \
 		-o $(BUILD_DIR)/test_diag_harness
-	$(BUILD_DIR)/test_diag_harness
+	@command -v timeout >/dev/null 2>&1 || \
+		(echo "error: coreutils timeout required for test-diag watchdog (#1016 P-a)" >&2; exit 1)
+	timeout --foreground $(TEST_DIAG_TIMEOUT_SECS)s $(BUILD_DIR)/test_diag_harness
 
 # Host-side: shared sshd-warn-global-maxauthtries-1.awk (Patrick #908 / #934 B1).
 test-install-sshd-warn:
@@ -227,7 +246,7 @@ help:
 	@echo "  test-conf     - Conf default + bool typo fallback (#995 B1/m1)"
 	@echo "  test-budget   - AUTH_BUDGET 105 + rem-too-small planned-wait harness"
 	@echo "  test-session  - final-verdict + interrupt cancel harness (#907)"
-	@echo "  test-diag     - attempt-line fields + signal-safe emit (#1011)"
+	@echo "  test-diag     - diag harness under timeout (#1011 / #1016 N5/T1/T2/P-a)"
 	@echo "  test-install-sshd-warn - shared MaxAuthTries 1 awk (#908 / #934 B1)"
 	@echo "  test          - check-source + compile + harnesses (incl. session/diag)"
 	@echo "  lint          - Run static code analysis"

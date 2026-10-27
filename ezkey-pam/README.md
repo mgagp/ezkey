@@ -35,6 +35,19 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
 
+## What changed in 2.2.16 (#1016 — probe/guard follow-ups)
+
+- **N5:** SIGNAL syslog snapshot is double-buffered; a TERM mid-refresh no
+  longer publishes a zero length.
+- **N6:** script artifact default is `ezkey-pam/runtime/artifacts` (override
+  with `EZKEY_PAM_ARTIFACT_DIR`) — not a host-specific path.
+- **P-a / P-b:** `make test-diag` runs under `timeout`; `/dev/log` open falls
+  back to `fcntl(O_NONBLOCK)` when `SOCK_NONBLOCK` is unavailable.
+- **T1 / T2:** wait-entry harness uses shared `ezkey_wait_entry.h`; CI Rocky
+  runtime requires a live `/dev/log` path (`EZKEY_PAM_REQUIRE_DEVLOG=1`).
+- Docs: SUCCESS-after-client-gone caveat (D1), SIGTERM disposition wording
+  (D2), observability ENV isolation (D3), host runbook H1/H2/H4 + H3 note.
+
 ## What changed in 2.2.15 (#1011 — diagnostics + SIGTERM safety)
 
 - Authpriv attempt lines carry `stage` / `reason` / `curl_rc` / `http` /
@@ -44,13 +57,19 @@ that owns the API key.
   OpenSSH does not leave a hung `[pam]` child at the `ok` or challenge prompt.
   During `/wait` only the abort flag is set (cancel path unchanged — #1012).
   SIGNAL is a snapshot (`stage` may be stale; outside `/wait` no cancel — attempt
-  stays pending until TTL). `/dev/log` is opened `SOCK_NONBLOCK` so a full queue
-  drops the line instead of blocking until LoginGraceTime.
+  stays pending until TTL). `/dev/log` is opened non-blocking (`SOCK_NONBLOCK`
+  or `fcntl O_NONBLOCK`) so a full queue drops the line instead of blocking
+  until LoginGraceTime.
 - **SIGTERM disposition:** for the whole `pam_sm_authenticate`, the module
-  replaces any prior `SIGTERM` disposition and ends non-wait kills with
-  **`SIG_DFL` + `raise`**. Under sshd this matches what the monitor already does;
-  note it if embedding the module under another host PAM stack that relied on a
-  custom `SIGTERM` handler around authenticate.
+  installs its own `SIGTERM` handler and ends non-wait kills with
+  **`SIG_DFL` + `raise`**. That is intentional under OpenSSH (so a kill at the
+  `ok` / challenge prompt does not leave a hung `[pam]` child). Other host PAM
+  stacks that wrap authenticate with a custom `SIGTERM` handler lose that
+  disposition for the duration of the call.
+- **D1 caveat — do not claim “never SUCCESS after client gone”:** if a TERM is
+  absorbed during `/wait` after the ACCEPTED answer already arrived in the same
+  chunk, PAM can still return `SUCCESS` to an sshd whose client has already
+  left. That is not an elevation (no session for a gone client).
 - `latency_ms` / `confirm_ms` print `-` when unknown (never a false `0`).
 - Runbook: LoginGraceTime 120 vs applied wait (~75 s), MaxAuthTries 1 misleading
   message, `ok` prompt, `challenge_requested` / `debug` toggles.
@@ -334,11 +353,20 @@ ssh -p 2223 \
 - `/etc/security/pam_ezkey.conf` key `wait_timeout=…`, or
 - Docker/lab env `EZKEY_WAIT_TIMEOUT` (applied only when `docker-entrypoint.sh` writes the conf — the `.so` does not read process ENV).
 
-**Docker entrypoint only** (not read by `pam_ezkey.so`): `EZKEY_INTEGRATION_API_URL`
-(legacy `EZKEY_M2M_API_URL`), `EZKEY_INTEGRATION_KEY`, `EZKEY_SECRET_KEY`,
-`EZKEY_WAIT_TIMEOUT`, `EZKEY_WAIT_POLLING`, `EZKEY_API_TIMEOUT`, `EZKEY_DEBUG`,
-optional `EZKEY_CONFIG_FILE` (path the entrypoint writes). The module ignores process
-ENV so `su`/`sudo` cannot redirect conf path, debug, or timeouts.
+**Docker entrypoint only** (not read by `pam_ezkey.so`): env → conf mapping
+written at container start (`docker-entrypoint.sh`):
+
+| Env (entrypoint / `.env`) | Conf key (`/etc/security/pam_ezkey.conf`) |
+|---|---|
+| `EZKEY_INTEGRATION_API_URL` (legacy `EZKEY_M2M_API_URL`) | `integration_api_url` |
+| `EZKEY_INTEGRATION_KEY` | `integration_key` |
+| `EZKEY_SECRET_KEY` | `secret_key` |
+| `EZKEY_WAIT_TIMEOUT` / `EZKEY_WAIT_POLLING` / `EZKEY_API_TIMEOUT` / `EZKEY_DEBUG` | `wait_timeout` / `wait_polling` / `api_timeout` / `debug` |
+| optional `EZKEY_CONFIG_FILE` | path the entrypoint writes (not a conf key) |
+
+The module ignores process ENV so `su`/`sudo` cannot redirect conf path, debug,
+or timeouts. Host installs edit the conf file directly — there is no env→conf
+bridge outside the demo entrypoint.
 
 PAM arguments (root-owned `pam.d`): `debug`, `conf=/path/to/file`, and optional `wait_timeout=N`.
 
@@ -406,10 +434,17 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
     auth budget after the pre-create `ok` (and optional challenge Enter). The
     device card TTL is this **applied** value — **not** LoginGraceTime 120 and
     **not** “always 90”. Lab QA often sees ~75 s on the phone; that is expected.
-- **Pre-create `ok` prompt:** the first keyboard-interactive line asks for
-  trimmed **`ok`** (visible, 25 s Enter cap). Empty / bare Enter / EOF /
-  `ssh -T </dev/null` → `result=CONFIRM` `reason=empty_confirm` with **zero**
-  Integration API creates. This is an anti-accident filter, not the MFA factor.
+- **Pre-create `ok` prompt needs a real TTY (H1).** The first
+  keyboard-interactive line asks for trimmed **`ok`** (visible, 25 s Enter
+  cap). A non-interactive launcher (no TTY / no conversation answers) returns
+  `UNAVAIL` / `CONFIRM` with **zero** Integration API calls — there is nothing
+  to approve on the device. Empty / bare Enter / EOF / `ssh -T </dev/null` →
+  `result=CONFIRM` `reason=empty_confirm`. This is an anti-accident filter, not
+  the MFA factor. Prefer `ssh -tt` for lab checks.
+- **Challenge code is SSH-terminal only (H4).** Digits appear on the SSH
+  keyboard-interactive prompt; they are never written to authpriv (#750) and
+  are not shown on the Demo Device / mobile card beyond the usual
+  number-matching UI when the enrollment requires it.
 - **`challenge_requested` toggle:** sample/default **`true`** (#995). Set
   `false` only to opt out of *connector-requested* challenge; enrollment
   `authAttemptChallengeRequired` still forces a code on the server. Unknown
@@ -486,13 +521,26 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
 - **Auth API `/pending` rate limit: 10/min** (`ezkey.rate-limit.pending.requests=10`,
   `window-minutes=1`). Rapid SSH retries plus Demo Device / mobile pending checks share that
   budget — back off when testing EXPIRER / abandon loops.
-- **SSH client keepalive / disconnect (R5 — best-effort).** Prefer keepalive that
-  covers at least `wait_timeout` + margin for MFA tests. The module installs a
+- **No client keepalive during authentication (H2).** Do **not** set
+  `ServerAliveInterval` (or similar client keepalives) while the MFA prompt /
+  `/wait` is in progress — on real-host dogfood a client keepalive has been
+  observed to cut the authentication during the approval wait. After the
+  session is established, post-auth keepalives (`ClientAliveInterval` on the
+  server, or client keepalives for the shell) are a separate concern.
+- **SSH client disconnect (R5 — best-effort).** The module installs a
   wait-scoped `SIGTERM` handler (`auth-pam.c:164-168` path when delivered): absorb
   → flag → abort chunked curl → best-effort cancel within `min(api_timeout, 5)`.
   On OpenSSH 9.9 pre-auth kill, that SIGTERM often never arrives; cancel is then
   skipped and the **applied TTL** from create is the residual bound — not via
-  `pam_end`. Residual: hard `SIGKILL` also skips cancel.
+  `pam_end`. Residual: hard `SIGKILL` also skips cancel. **D1:** SUCCESS is
+  still possible if TERM is absorbed during `/wait` after ACCEPTED already
+  arrived in the same chunk (sshd may see SUCCESS after the client left — not
+  an elevation).
+- **Observed ~30 s delay before the attempt appears on the device (H3).** On
+  Amazon Linux 2023 dogfood with 2.2.15, both tries showed about 30 s between
+  attempt creation and the card appearing on the simulated device. Cause not
+  established — note only; see [#982](https://github.com/mgagp/ezkey/issues/982).
+  Do not treat this as a PAM timeout bug without further measurement.
 - After abandon (Ctrl-C, wait timeout, Enter over-limit), PAM **best-effort** cancels the
   attempt so a new create is not blocked by a stale PENDING/READ card. Cancel is **not
   guaranteed when the wait timeout is reached** (remaining monotonic budget may be too

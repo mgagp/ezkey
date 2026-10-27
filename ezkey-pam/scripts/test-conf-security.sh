@@ -18,7 +18,7 @@ PRISTINE="/etc/security/pam_ezkey.conf.m1pristine"
 PORT="${SSH_PORT}"
 STUB_PORT="${EZKEY_STUB_PORT:-18080}"
 STUB_PID_FILE="/tmp/ezkey-pam-stub.pid"
-ARTIFACT_DIR="${EZKEY_PAM_ARTIFACT_DIR:-/opt/cursor/artifacts}"
+ARTIFACT_DIR="$(ezkey_pam_artifact_dir)"
 mkdir -p "${ARTIFACT_DIR}"
 
 if ! docker ps --format '{{.Names}}' | grep -qx "${CONTAINER}"; then
@@ -131,7 +131,7 @@ ssh_once() {
 }
 
 ssh_success_once() {
-  local log="${ARTIFACT_DIR:-/opt/cursor/artifacts}/pam-conf-security-success.log"
+  local log="${ARTIFACT_DIR}/pam-conf-security-success.log"
   mkdir -p "$(dirname "${log}")"
   # #941: waiting prompt requires Enter before /wait.
   ezkey_ssh_kbdint_autoenter "${log}" 'echo PAM_STUB_OK; exit 0' 15 \
@@ -154,7 +154,7 @@ expect_unavail_reason() {
   before="${before:-0}"
   ssh_rc=0
   if [ "${need_ok}" = "need_ok" ]; then
-    log="${ARTIFACT_DIR:-/opt/cursor/artifacts}/pam-conf-security-need-ok.log"
+    log="${ARTIFACT_DIR}/pam-conf-security-need-ok.log"
     mkdir -p "$(dirname "${log}")"
     ezkey_ssh_kbdint_autoenter "${log}" 'echo SHOULD_NOT_AUTH; exit 0' 8 \
       || ssh_rc=$?

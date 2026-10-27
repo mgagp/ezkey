@@ -62,6 +62,7 @@
 #include "ezkey_filelog.h"
 #include "ezkey_sanitize.h"
 #include "ezkey_session.h"
+#include "ezkey_wait_entry.h"
 
 #define EZKEY_URL_MAX EZKEY_CONF_URL_MAX
 #define EZKEY_KEY_MAX EZKEY_CONF_KEY_MAX
@@ -83,8 +84,8 @@ static volatile sig_atomic_t ezkey_diag_emitted = 0;
 /* Per-authenticate diagnostics (PAM child is single-threaded). */
 static EzkeyDiag ezkey_diag;
 static int ezkey_diag_log_fd = -1;
-static char ezkey_diag_syslog_buf[EZKEY_DIAG_LINE_MAX];
-static size_t ezkey_diag_syslog_len = 0;
+/* Double-buffered SIGNAL snapshot — never zero active len mid-refresh (#1016 N5). */
+static EzkeyDiagSyslogSnap ezkey_diag_syslog_snap;
 /* Auth start clock for SIGNAL latency_ms (updated outside the handler). */
 static struct timespec ezkey_auth_started_ts;
 static int ezkey_auth_started_valid = 0;
@@ -380,10 +381,7 @@ static void ezkey_diag_refresh_signal_snapshot(const char *stage) {
     } else {
         snap.latency_ms = -1;
     }
-    ezkey_diag_syslog_len = 0;
-    (void)ezkey_diag_format_syslog(ezkey_diag_syslog_buf,
-                                   sizeof(ezkey_diag_syslog_buf), &snap,
-                                   &ezkey_diag_syslog_len);
+    (void)ezkey_diag_syslog_snap_publish(&ezkey_diag_syslog_snap, &snap);
 }
 
 /**
@@ -401,9 +399,14 @@ static void ezkey_sigterm_handler(int signo) {
         errno = saved_errno;
         return;
     }
-    (void)ezkey_diag_emit_signal_safe(ezkey_diag_log_fd, ezkey_diag_syslog_buf,
-                                      ezkey_diag_syslog_len,
-                                      &ezkey_diag_emitted);
+    {
+        const char *msg = "";
+        size_t len = 0;
+
+        ezkey_diag_syslog_snap_read(&ezkey_diag_syslog_snap, &msg, &len);
+        (void)ezkey_diag_emit_signal_safe(ezkey_diag_log_fd, msg, len,
+                                          &ezkey_diag_emitted);
+    }
     {
         struct sigaction sa_dfl;
 
@@ -1187,7 +1190,7 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
         pam_rc = PAM_AUTH_ERR;
         summary = "TIMEOUT";
 
-        if (ezkey_wait_abort != 0) {
+        if (ezkey_wait_entry_abort_raised(&ezkey_wait_abort)) {
             interrupted = 1;
             ezkey_diag.reason = "signal";
             pam_rc = PAM_AUTHINFO_UNAVAIL;
@@ -1453,7 +1456,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     ezkey_wait_abort = 0;
     ezkey_in_wait = 0;
     ezkey_diag_emitted = 0;
-    ezkey_diag_syslog_len = 0;
+    ezkey_diag_syslog_snap_clear(&ezkey_diag_syslog_snap);
     ezkey_auth_started_ts = started;
     ezkey_auth_started_valid = 1;
     ezkey_diag_log_fd = ezkey_diag_open_log_fd();

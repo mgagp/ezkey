@@ -13,7 +13,7 @@ ARG ROCKY_IMAGE=rockylinux/rockylinux:10
 FROM ${ROCKY_IMAGE} AS builder
 
 LABEL org.ezkey.component="pam-builder"
-LABEL org.ezkey.version="2.2.6"
+LABEL org.ezkey.version="2.2.16"
 
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
@@ -58,7 +58,7 @@ RUN make clean && make all test \
 FROM ${ROCKY_IMAGE} AS runtime
 
 LABEL org.ezkey.component="pam-ssh-demo"
-LABEL org.ezkey.version="2.2.6"
+LABEL org.ezkey.version="2.2.16"
 LABEL description="Rocky Linux SSH demo VM authenticated by Ezkey PAM"
 
 ENV LANG=C.UTF-8
@@ -102,8 +102,10 @@ RUN useradd -m -s /bin/bash "${EZKEY_SSH_USER}" \
 
 COPY --from=builder /src/build/pam_ezkey.so /lib64/security/pam_ezkey.so
 COPY --from=builder /src/build/test_no_conv_client /opt/pam-ezkey/test/test_no_conv_client
+COPY --from=builder /src/build/test_diag_harness /opt/pam-ezkey/test/test_diag_harness
 RUN chmod 755 /lib64/security/pam_ezkey.so \
-    && chmod 755 /opt/pam-ezkey/test/test_no_conv_client
+    && chmod 755 /opt/pam-ezkey/test/test_no_conv_client \
+    && chmod 755 /opt/pam-ezkey/test/test_diag_harness
 
 COPY config/pam_ezkey.conf /etc/security/pam_ezkey.conf
 RUN chmod 600 /etc/security/pam_ezkey.conf

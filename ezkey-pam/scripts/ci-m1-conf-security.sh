@@ -60,6 +60,11 @@ for i in $(seq 1 60); do
 done
 docker exec "${CONTAINER}" /opt/pam-ezkey/test/test_pam.sh || true
 
+# #1016 T2: Rocky runtime has rsyslog → /dev/log; require the live path (no SKIP).
+echo "== CI M1: test_diag_harness with EZKEY_PAM_REQUIRE_DEVLOG=1 (T2) =="
+docker exec -e EZKEY_PAM_REQUIRE_DEVLOG=1 "${CONTAINER}" \
+  /opt/pam-ezkey/test/test_diag_harness
+
 echo "== CI M1: test-conf-security.sh =="
 "${SCRIPT_DIR}/test-conf-security.sh"
 

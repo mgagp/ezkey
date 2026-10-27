@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # #1011 B3 — sshd-level SIGTERM / client-kill probes (real Rocky sshd + stub).
-# Asserts the PAM child exits quickly and authpriv never records SUCCESS after
-# the client/process is gone. Must FAIL on broken head 8272d360 (hang / SUCCESS).
+# Asserts the PAM child exits quickly on non-wait kills (SIGNAL) and that the
+# wait-path abort path does not hang. #1016 D1 caveat: SUCCESS remains possible
+# if TERM is absorbed during /wait after ACCEPTED already arrived in the same
+# chunk (result reaches an sshd whose client has left — not an elevation).
+# Must FAIL on broken head 8272d360 (hang at prompt).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,7 +19,7 @@ BACKUP="/tmp/pam_ezkey.conf.signal-probes.bak"
 STUB_PORT=18080
 STUB_PID_FILE="/tmp/ezkey-pam-stub-signal.pid"
 STUB_REQ_LOG="/tmp/ezkey-pam-stub-signal-reqs.log"
-ARTIFACT_DIR="${EZKEY_PAM_ARTIFACT_DIR:-/opt/cursor/artifacts}"
+ARTIFACT_DIR="$(ezkey_pam_artifact_dir)"
 mkdir -p "${ARTIFACT_DIR}"
 PROOF="${ARTIFACT_DIR}/pam-signal-probes.log"
 
@@ -389,7 +392,7 @@ probe_term_during_create() {
   success_n="${success_n:-0}"
   echo "probe3 gone_ms=${gone} signal_n=${signal_n} success_n=${success_n} attempt=${attempt}" \
     | tee -a "${PROOF}"
-  echo "probe3 NOTE: SUCCESS-after-client-gone case — after fix expect SIGNAL, not SUCCESS" \
+  echo "probe3 NOTE: TERM during create (outside /wait) expects SIGNAL, not SUCCESS. Separate D1 caveat: SUCCESS remains possible if TERM is absorbed during /wait after ACCEPTED in the same chunk (not an elevation)." \
     | tee -a "${PROOF}"
 
   if [ "${gone}" != "-1" ] && [ "${gone}" -lt "${PAM_GONE_MAX_MS}" ] \

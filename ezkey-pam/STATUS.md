@@ -45,7 +45,10 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.15** (#1011: richer UNAVAIL/CONFIRM/SIGNAL diagnostics + runbook).
+Version **2.2.16** (#1016: SIGNAL snapshot double-buffer, portable artifacts,
+`test-diag` watchdog, `SOCK_NONBLOCK` fcntl fallback, wait-entry real helper,
+live `/dev/log` CI path, SUCCESS-after-client-gone + host runbook notes). Prior
+**2.2.15** (#1011: richer UNAVAIL/CONFIRM/SIGNAL diagnostics + runbook).
 Prior **2.2.14** (#995: connector default `challenge_requested=true`). Prior
 **2.2.13** (#982 tiers 0–1 on #976: ECHO_ON confirm + challenge Enter-only
 wait). Prior **2.2.12** (#975 / PR #976: **confirm-before-create** + display
@@ -464,19 +467,28 @@ pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n>
 `PAM_AUTHINFO_UNAVAIL` / Linux `9`; `EZKEY_PAM_AUTHINFO_UNAVAIL` in diag init).
 `SIGNAL` = best-effort authpriv line when SIGTERM arrives **outside** `/wait`
 (prompts or create): async-signal-safe non-blocking `write` to `/dev/log`
-(`SOCK_NONBLOCK`; full queue → drop the line), then `SIG_DFL` +
-`raise(SIGTERM)` so the child exits (no hung `[pam]` under OpenSSH atomicio).
-The SIGNAL line is a **best-effort snapshot**: `stage` may be stale,
+(`SOCK_NONBLOCK` or `fcntl O_NONBLOCK`; full queue → drop the line), then
+`SIG_DFL` + `raise(SIGTERM)` so the child exits (no hung `[pam]` under OpenSSH
+atomicio). The SIGNAL line is a **best-effort snapshot**: `stage` may be stale,
 `authAttemptId=-` and `cancel=skipped` are expected outside `/wait` (no cancel
 is attempted there — the Integration API attempt stays pending on the device
-until TTL). A SIGTERM during snapshot rebuild can lose the line entirely —
-observability only, never a security issue. Wait-path SIGTERM still uses
-abort → cancel → normal summary (`reason=signal`, often `cancel=ok`) — #1012
-unchanged. Residual window: SIGTERM between `/wait` ACCEPTED and clearing
-`ezkey_in_wait` is still absorbed as abort (doc only; no code change). SIGNAL
-lines use real `latency_ms` when the auth clock is known; otherwise
-`latency_ms=-` / `confirm_ms=-`. Experimental / never released: no log-format
-compatibility promise.
+until TTL). Snapshot length is double-buffered (#1016 N5): a TERM mid-refresh
+still emits the previous complete line (never a zeroed active length). Wait-path
+SIGTERM still uses abort → cancel → normal summary (`reason=signal`, often
+`cancel=ok`) — #1012 unchanged. **D1 — do not document “never SUCCESS after
+client gone”:** if TERM is absorbed during `/wait` after the ACCEPTED answer
+already arrived in the same chunk, PAM can return `SUCCESS` to an sshd whose
+client has left; that is not an elevation. Residual window: SIGTERM between
+`/wait` ACCEPTED and clearing `ezkey_in_wait` is still absorbed as abort (doc
+only). SIGNAL lines use real `latency_ms` when the auth clock is known;
+otherwise `latency_ms=-` / `confirm_ms=-`. Experimental / never released: no
+log-format compatibility promise.
+
+**#1016 T2 `/dev/log` coverage:** host `make test` without a log-daemon socket
+(dangling `/dev/log`, no journald/rsyslog) **skips** the live path. CI Rocky
+runtime (rsyslog up) runs `test_diag_harness` with
+`EZKEY_PAM_REQUIRE_DEVLOG=1` so the real `/dev/log` O_NONBLOCK path is
+required, not skipped.
 
 **#907 F9 / R5 (option A — Patrick/Christophe review):** Under OpenSSH portable, each
 keyboard-interactive **prompt round** runs in a forked child that `_exit`s and

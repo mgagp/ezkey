@@ -1,6 +1,7 @@
 /*
- * Diagnostics harness (#1011): attempt-line fields + signal-safe emit gate.
- * Also: SOCK_NONBLOCK emit (Christophe N1), wait-abort preserve (Patrick m1).
+ * Diagnostics harness (#1011 / #1016): attempt-line fields, signal-safe emit,
+ * SOCK_NONBLOCK (+ fcntl fallback), double-buffer SIGNAL snapshot (N5),
+ * wait-entry helper from real source (T1), live /dev/log when present (T2).
  */
 
 #include <errno.h>
@@ -14,6 +15,7 @@
 
 #include "ezkey_config.h"
 #include "ezkey_diag.h"
+#include "ezkey_wait_entry.h"
 
 static int failures = 0;
 
@@ -36,21 +38,99 @@ static void expect_int(const char *name, int got, int want) {
 }
 
 /*
- * Patrick m1 — characterization of wait-entry contract:
- * abort raised before /wait must be observed and must NOT be cleared.
- * (Mutation "ezkey_wait_abort = 0" at wait entry would fail this.)
+ * #1016 T1 — exercise the real wait-entry helper (ezkey_wait_entry.h), the
+ * same source pam_ezkey.c calls. check-source awk remains the mutation gate
+ * against clearing ezkey_wait_abort at wait entry.
  */
-static void test_wait_abort_preserve(void) {
+static void test_wait_abort_real_helper(void) {
     volatile sig_atomic_t ezkey_wait_abort = 1;
     int skip_wait = 0;
 
-    /* Correct wait-entry shape (mirrors pam_ezkey.c): check, never clear. */
-    if (ezkey_wait_abort != 0) {
+    if (ezkey_wait_entry_abort_raised(&ezkey_wait_abort)) {
         skip_wait = 1;
     }
-    expect_true("m1: abort before wait → skip wait", skip_wait == 1);
-    expect_int("m1: ezkey_wait_abort preserved (not cleared at entry)",
+    expect_true("T1: abort before wait → skip wait (real helper)",
+                skip_wait == 1);
+    expect_int("T1: ezkey_wait_abort preserved (not cleared by helper)",
                (int)ezkey_wait_abort, 1);
+    ezkey_wait_abort = 0;
+    expect_int("T1: abort clear → helper returns 0",
+               ezkey_wait_entry_abort_raised(&ezkey_wait_abort), 0);
+    expect_int("T1: NULL abort_flag → 0",
+               ezkey_wait_entry_abort_raised(NULL), 0);
+}
+
+/*
+ * #1016 N5 — double-buffer publish must never expose a zero length while a
+ * prior non-empty snapshot is the only complete one. The old pattern
+ * (active_len = 0; format; active_len = n) fails this characterization.
+ */
+static void test_syslog_snap_no_zero_window(void) {
+    EzkeyDiagSyslogSnap snap;
+    EzkeyDiag diag;
+    const char *msg = NULL;
+    size_t len = 0;
+    int next;
+    size_t n = 0;
+
+    ezkey_diag_init(&diag, "snapuser", 0);
+    diag.result = "SIGNAL";
+    diag.reason = "signal";
+    diag.stage = "confirm";
+    ezkey_diag_syslog_snap_clear(&snap);
+    expect_int("N5: first publish ok",
+               ezkey_diag_syslog_snap_publish(&snap, &diag), 0);
+    ezkey_diag_syslog_snap_read(&snap, &msg, &len);
+    expect_true("N5: published len > 0", len > 0);
+    expect_true("N5: published body has SIGNAL",
+                msg != NULL && strstr(msg, "result=SIGNAL") != NULL);
+
+    /*
+     * Simulate a mid-refresh into the inactive slot without flipping yet.
+     * Reader must still see the previous complete snapshot (never len=0).
+     */
+    next = snap.slot != 0 ? 0 : 1;
+    diag.stage = "challenge";
+    expect_int("N5: format into inactive slot",
+               ezkey_diag_format_syslog(snap.buf[next], sizeof(snap.buf[next]),
+                                        &diag, &n),
+               0);
+    /* Deliberately do NOT set len[next] / flip slot yet. */
+    ezkey_diag_syslog_snap_read(&snap, &msg, &len);
+    expect_true("N5: mid-refresh still has prior len > 0", len > 0);
+    expect_true("N5: mid-refresh still prior stage=confirm",
+                msg != NULL && strstr(msg, "stage=confirm") != NULL);
+
+    /*
+     * Old single-buffer pattern (would fail this suite if used as the live
+     * publish): zero the *active* length first → handler observes len=0.
+     */
+    {
+        EzkeyDiagSyslogSnap bad;
+        const char *bad_msg = NULL;
+        size_t bad_len = 0;
+        size_t tmp_n = 0;
+
+        ezkey_diag_syslog_snap_clear(&bad);
+        expect_int("N5: seed old-pattern snap",
+                   ezkey_diag_syslog_snap_publish(&bad, &diag), 0);
+        ezkey_diag_syslog_snap_read(&bad, &bad_msg, &bad_len);
+        expect_true("N5: old-pattern seed len > 0", bad_len > 0);
+        /* Buggy refresh: zero active length before rewrite. */
+        bad.len[bad.slot != 0 ? 1 : 0] = 0;
+        ezkey_diag_syslog_snap_read(&bad, &bad_msg, &bad_len);
+        expect_true(
+            "N5: old zero-first pattern exposes len=0 (bug this PR kills)",
+            bad_len == 0);
+        (void)tmp_n;
+    }
+
+    snap.len[next] = n;
+    snap.slot = (sig_atomic_t)next;
+    ezkey_diag_syslog_snap_read(&snap, &msg, &len);
+    expect_true("N5: after publish flip stage=challenge",
+                msg != NULL && strstr(msg, "stage=challenge") != NULL);
+    expect_true("N5: after flip len > 0", len > 0);
 }
 
 /*
@@ -83,8 +163,8 @@ static void test_emit_nonblock_full_queue(void) {
                 flags >= 0 && (flags & O_NONBLOCK) != 0);
 
     for (i = 0; i < 256; i++) {
-        ssize_t n = write(sv[0], junk, sizeof(junk));
-        if (n < 0) {
+        ssize_t nw = write(sv[0], junk, sizeof(junk));
+        if (nw < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 filled = 1;
                 break;
@@ -105,12 +185,64 @@ static void test_emit_nonblock_full_queue(void) {
     clock_gettime(CLOCK_MONOTONIC, &t1);
     elapsed_ms = (t1.tv_sec - t0.tv_sec) * 1000L +
                  (t1.tv_nsec - t0.tv_nsec) / 1000000L;
-    /* Full queue → EAGAIN; must not block (budget ≪ LoginGraceTime). */
     expect_true("N1: emit returns in <200ms on full queue", elapsed_ms < 200);
     expect_int("N1: emitted flag set even when write drops", (int)emitted, 1);
 
     close(sv[0]);
     close(sv[1]);
+}
+
+/*
+ * #1016 T2 — real /dev/log when a log daemon socket exists.
+ * Set EZKEY_PAM_REQUIRE_DEVLOG=1 (CI Rocky runtime) to fail instead of skip.
+ */
+static void test_live_devlog(void) {
+    const char *require = getenv("EZKEY_PAM_REQUIRE_DEVLOG");
+    int log_fd = ezkey_diag_open_log_fd();
+
+    if (log_fd >= 0) {
+        int fl = fcntl(log_fd, F_GETFL);
+        expect_true("T2/N1: live /dev/log fd is O_NONBLOCK",
+                    fl >= 0 && (fl & O_NONBLOCK) != 0);
+        {
+            /* Best-effort write must not block (P-a / N1). */
+            const char *probe =
+                "<86>pam_ezkey: attempt user=- authAttemptId=- result=SIGNAL "
+                "pam_code=9 latency_ms=- lab_http=false cancel=skipped "
+                "timeoutSeconds=- stage=init reason=signal curl_rc=- http=- "
+                "confirm_ms=- api_ms=-";
+            struct timespec t0;
+            struct timespec t1;
+            long elapsed_ms;
+            volatile sig_atomic_t emitted = 0;
+
+            clock_gettime(CLOCK_MONOTONIC, &t0);
+            (void)ezkey_diag_emit_signal_safe(log_fd, probe, strlen(probe),
+                                              &emitted);
+            clock_gettime(CLOCK_MONOTONIC, &t1);
+            elapsed_ms = (t1.tv_sec - t0.tv_sec) * 1000L +
+                         (t1.tv_nsec - t0.tv_nsec) / 1000000L;
+            expect_true("T2: live /dev/log emit returns in <200ms",
+                        elapsed_ms < 200);
+        }
+        ezkey_diag_close_log_fd(log_fd);
+        return;
+    }
+
+    if (require != NULL && require[0] != '\0' && strcmp(require, "0") != 0) {
+        fprintf(stderr,
+                "[FAIL] T2: EZKEY_PAM_REQUIRE_DEVLOG set but /dev/log open "
+                "failed: %s\n",
+                strerror(errno));
+        failures++;
+        return;
+    }
+    printf(
+        "[SKIP] T2/N1: /dev/log open failed (%s) — no log-daemon socket on "
+        "this host. Gap: host `make test` without journald/rsyslog cannot "
+        "exercise the real path; CI Rocky runtime sets "
+        "EZKEY_PAM_REQUIRE_DEVLOG=1 after rsyslog is up (#1016 T2).\n",
+        strerror(errno));
 }
 
 int main(void) {
@@ -121,7 +253,7 @@ int main(void) {
     volatile sig_atomic_t emitted = 0;
     int n;
 
-    printf("=== ezkey_diag harness (#1011) ===\n");
+    printf("=== ezkey_diag harness (#1011 / #1016) ===\n");
 
     ezkey_diag_init(&diag, "testuser", 1);
     expect_int("init latency_ms unknown (-1)", (int)diag.latency_ms, -1);
@@ -218,21 +350,10 @@ int main(void) {
     expect_true("no raw space in user field segment",
                 strstr(line, "user=bad_user_name") != NULL);
 
-    /* Live /dev/log when present must be O_NONBLOCK (Christophe N1). */
-    {
-        int log_fd = ezkey_diag_open_log_fd();
-        if (log_fd >= 0) {
-            int fl = fcntl(log_fd, F_GETFL);
-            expect_true("N1: live /dev/log fd is O_NONBLOCK",
-                        fl >= 0 && (fl & O_NONBLOCK) != 0);
-            ezkey_diag_close_log_fd(log_fd);
-        } else {
-            printf("[SKIP] N1: /dev/log open failed (no rsyslog in harness)\n");
-        }
-    }
-
+    test_syslog_snap_no_zero_window();
+    test_live_devlog();
     test_emit_nonblock_full_queue();
-    test_wait_abort_preserve();
+    test_wait_abort_real_helper();
 
     if (failures != 0) {
         fprintf(stderr, "=== Results: %d failed ===\n", failures);

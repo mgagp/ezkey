@@ -24,7 +24,7 @@ PORT="${SSH_PORT}"
 STUB_PORT="${EZKEY_STUB_PORT:-18082}"
 STUB_PID_FILE="/tmp/ezkey-pam-stub-f9.pid"
 STUB_REQ_LOG="/tmp/ezkey-pam-stub-f9-reqs.log"
-ARTIFACT_DIR="${EZKEY_PAM_ARTIFACT_DIR:-/opt/cursor/artifacts}"
+ARTIFACT_DIR="$(ezkey_pam_artifact_dir)"
 mkdir -p "${ARTIFACT_DIR}"
 PROOF="${ARTIFACT_DIR}/pam-f9-retry.log"
 PASS=0
