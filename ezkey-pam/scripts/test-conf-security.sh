@@ -347,11 +347,23 @@ stop_stub
 # Runtime proof: O_NONBLOCK + S_ISREG (grep alone is not the proof).
 expect_ghost_unavail_fast() {
   local label="$1"
-  local setup_cmd="$2"
+  local kind="$2"
   local before ssh_rc after new elapsed
   local t0 t1
-  restore_conf
-  docker exec "${CONTAINER}" sh -c "${setup_cmd}"
+  # Replace live conf with a ghost; keep a regular copy at CONF.real for restore.
+  docker exec "${CONTAINER}" sh -c "
+    set -e
+    if [ -f '${PRISTINE}' ]; then cp -a '${PRISTINE}' '${CONF}.real'
+    elif [ -f '${CONF}' ] && [ ! -L '${CONF}' ]; then cp -a '${CONF}' '${CONF}.real'
+    fi
+    rm -rf '${CONF}'
+    case '${kind}' in
+      symlink) ln -s '${CONF}.real' '${CONF}' ;;
+      fifo) mkfifo '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}' ;;
+      directory) mkdir '${CONF}'; chown root:root '${CONF}'; chmod 700 '${CONF}' ;;
+      *) echo \"unknown ghost kind ${kind}\" >&2; exit 2 ;;
+    esac
+  "
   settle_sshd
   clear_debug_err
   before="$(attempt_count)"; before="${before:-0}"
@@ -364,9 +376,8 @@ expect_ghost_unavail_fast() {
   after="$(attempt_count)"; after="${after:-0}"
   new=$((after - before))
   attempt="$(last_attempt)"
-  # Always restore a regular conf before the next case.
   docker exec "${CONTAINER}" sh -c \
-    "rm -rf '${CONF}' '${CONF}.real' 2>/dev/null || true; true" >/dev/null 2>&1 || true
+    "rm -rf '${CONF}' '${CONF}.real' 2>/dev/null || true" >/dev/null 2>&1 || true
   restore_conf
   if [ "${ssh_rc}" -ne 0 ] && [ "${new}" -ge 1 ] \
     && echo "${attempt}" | grep -q 'result=UNAVAIL' \
@@ -378,19 +389,13 @@ expect_ghost_unavail_fast() {
 }
 
 # Symlink: O_NOFOLLOW → open fails (RC path bad_conf).
-expect_ghost_unavail_fast "ghost conf: symlink" \
-  "cp -a '${CONF}' '${CONF}.real'; rm -f '${CONF}'; \
-   ln -s '${CONF}.real' '${CONF}'"
+expect_ghost_unavail_fast "ghost conf: symlink" symlink
 
 # FIFO no writer: without O_NONBLOCK open() blocks; with it → !S_ISREG fast.
-expect_ghost_unavail_fast "ghost conf: FIFO no writer" \
-  "cp -a '${CONF}' '${CONF}.real'; rm -f '${CONF}'; \
-   mkfifo '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}'"
+expect_ghost_unavail_fast "ghost conf: FIFO no writer" fifo
 
 # Directory at conf path: open may succeed; S_ISREG rejects.
-expect_ghost_unavail_fast "ghost conf: directory" \
-  "cp -a '${CONF}' '${CONF}.real'; rm -f '${CONF}'; \
-   mkdir '${CONF}'; chown root:root '${CONF}'; chmod 700 '${CONF}'"
+expect_ghost_unavail_fast "ghost conf: directory" directory
 
 # --- #1054 TLS runtime regression (not a grep): self-signed https, no lab_http ---
 # Expect UNAVAIL + zero requests handled by the TLS stub (peer verify active).
