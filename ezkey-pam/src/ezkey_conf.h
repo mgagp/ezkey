@@ -71,10 +71,12 @@ void ezkey_conf_apply_key(EzkeyConfig *cfg, const char *key, const char *value);
 /**
  * Parse key=value lines from an open stream into cfg (comments and blanks
  * skipped). Does not enforce ownership/mode — caller must.
- * A physical line longer than {@code EZKEY_CONF_LINE_MAX-1} (no newline before
- * the buffer fills, and not EOF) returns -3 after draining to the next
- * newline — avoids a truncated comment tail being applied as a live key
- * (#1016 C3). Duplicate keys: last assignment wins.
+ * A physical line longer than {@code EZKEY_CONF_LINE_MAX-2} payload characters
+ * (1022 when {@code EZKEY_CONF_LINE_MAX} is 1024) — i.e. fgets fills the
+ * buffer with no newline and more input remains — returns -3 after draining
+ * to the next newline (#1016 C3/S5). Duplicate keys: last assignment wins.
+ * The stack line buffer is wiped ({@code explicit_bzero}) before return
+ * (#1016 S2).
  *
  * @param fp open text stream
  * @param cfg config already initialized (missing keys keep defaults)

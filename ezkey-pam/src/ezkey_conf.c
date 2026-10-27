@@ -2,6 +2,9 @@
  * ezkey_conf.c — conf defaults, bool parse with fallback, key apply, load.
  */
 
+#define _DEFAULT_SOURCE
+#define _POSIX_C_SOURCE 200809L
+
 #include "ezkey_conf.h"
 
 #include <ctype.h>
@@ -14,6 +17,22 @@
 
 #include "ezkey_budget.h"
 #include "ezkey_config.h"
+
+static void ezkey_conf_wipe_line(char *line, size_t len) {
+    if (line == NULL || len == 0) {
+        return;
+    }
+#if defined(__GLIBC__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+    explicit_bzero(line, len);
+#else
+    {
+        volatile unsigned char *p = (volatile unsigned char *)line;
+        while (len-- > 0) {
+            *p++ = 0;
+        }
+    }
+#endif
+}
 
 static void set_cfg_str(char *dest, size_t dest_size, const char *src) {
     if (dest == NULL || dest_size == 0) {
@@ -173,6 +192,7 @@ void ezkey_conf_apply_key(EzkeyConfig *cfg, const char *key,
 
 int ezkey_conf_load_fp(FILE *fp, EzkeyConfig *cfg) {
     char line[EZKEY_CONF_LINE_MAX];
+    int rc = 0;
 
     if (fp == NULL || cfg == NULL) {
         errno = EINVAL;
@@ -186,10 +206,12 @@ int ezkey_conf_load_fp(FILE *fp, EzkeyConfig *cfg) {
         char *nl;
 
         /*
-         * #1016 C3: a line longer than EZKEY_CONF_LINE_MAX-1 is split by
-         * fgets; the tail would be parsed as a new line (e.g. a long comment
-         * whose continuation is `lab_http=true` → fail-open). Refuse and
-         * drain to the next newline / EOF.
+         * #1016 C3/S5: fgets(size=EZKEY_CONF_LINE_MAX) stores at most
+         * EZKEY_CONF_LINE_MAX-1 payload bytes. A physical line of 1023 chars
+         * without a newline fills the buffer and is rejected when more input
+         * remains; the largest accepted line body is therefore 1022 chars
+         * (plus newline). Drain and return -3 so a truncated comment tail
+         * cannot become a live key (e.g. lab_http=true).
          */
         nl = strchr(line, '\n');
         if (nl == NULL && !feof(fp)) {
@@ -199,7 +221,8 @@ int ezkey_conf_load_fp(FILE *fp, EzkeyConfig *cfg) {
                 /* drain */
             }
             errno = EMSGSIZE;
-            return -3;
+            rc = -3;
+            goto out;
         }
 
         hash = strchr(line, '#');
@@ -225,7 +248,12 @@ int ezkey_conf_load_fp(FILE *fp, EzkeyConfig *cfg) {
         ezkey_conf_apply_key(cfg, key, value);
     }
     if (ferror(fp)) {
-        return -1;
+        rc = -1;
+        goto out;
     }
-    return 0;
+    rc = 0;
+out:
+    /* #1016 S2: wipe stack line buffer (may have held secret_key=…). */
+    ezkey_conf_wipe_line(line, sizeof(line));
+    return rc;
 }

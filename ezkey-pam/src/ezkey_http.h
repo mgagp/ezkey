@@ -55,6 +55,15 @@ size_t ezkey_http_write_cb(void *contents, size_t size, size_t nmemb,
                            void *userp);
 
 /**
+ * True when process ENV would let libcurl/OpenSSL write TLS key material to a
+ * caller-chosen path ({@code SSLKEYLOGFILE}). Callers must refuse authenticate
+ * with UNAVAIL / reason=env before any network call (#1016 S1).
+ *
+ * @return 1 if {@code getenv("SSLKEYLOGFILE")} is non-NULL, else 0
+ */
+int ezkey_env_sslkeylogfile_set(void);
+
+/**
  * Apply fail-closed transport guards on a curl easy handle:
  * CURLOPT_PROXY "" (ignore http_proxy/https_proxy/ALL_PROXY),
  * CURLOPT_MAXFILESIZE EZKEY_HTTP_BODY_MAX,
@@ -80,8 +89,11 @@ int ezkey_http_apply_transport_guards(CURL *curl);
 int ezkey_json_double_to_long(double d, long lo, long hi, long *out);
 
 /**
- * Format scheme://host[:port] for debug logs — strips userinfo and path/query.
- * Output is also passed through control-char neutralization.
+ * Format a URL for debug logs. If the URL contains {@code '@'} anywhere
+ * (userinfo, or a password with unencoded {@code /}?{@code #} that would
+ * truncate host parsing), log only {@code scheme://-} so no credential prefix
+ * can leak (#1016 S3). Otherwise log {@code scheme://host[:port]} (no path).
+ * Output is control-char neutralized.
  *
  * @param dest destination
  * @param dest_size capacity

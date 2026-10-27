@@ -7,7 +7,10 @@ CC = gcc
 # _FORTIFY_SOURCE requires -O1 or higher (we use -O2).
 CFLAGS = -fPIC -Wall -Wextra -O2 -std=c99 -D_POSIX_C_SOURCE=200809L \
 	-fstack-protector-strong -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2
-LDFLAGS = -shared -Wl,-z,relro,-z,now -lpam -lcurl -lcjson -lm
+# #1016 S4: keep -l* in LDLIBS AFTER objects so --as-needed linkers still
+# record libcurl / libcjson in DT_NEEDED (required with -z now + dlopen).
+LDFLAGS = -shared -Wl,-z,relro,-z,now
+LDLIBS = -lpam -lcurl -lcjson -lm
 MODULE_NAME = pam_ezkey.so
 SRC_DIR = src
 BUILD_DIR = build
@@ -69,7 +72,7 @@ $(BUILD_DIR)/ezkey_session.o: $(SRC_DIR)/ezkey_session.c $(SRC_DIR)/ezkey_sessio
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/ezkey_session.c -o $(BUILD_DIR)/ezkey_session.o
 
 $(BUILD_DIR)/$(MODULE_NAME): $(OBJECTS)
-	$(CC) $(LDFLAGS) $(OBJECTS) -o $(BUILD_DIR)/$(MODULE_NAME)
+	$(CC) $(LDFLAGS) -o $(BUILD_DIR)/$(MODULE_NAME) $(OBJECTS) $(LDLIBS)
 
 debug: CFLAGS += -DDEBUG -g
 debug: all
@@ -190,26 +193,45 @@ check-source:
 		(echo "error: authAttemptId/challenge must use ezkey_json_double_to_long (#1016 C4)" >&2; exit 1)
 	@grep -qE 'ezkey_url_for_log' $(SRC_DIR)/pam_ezkey.c || \
 		(echo "error: debug api_url must use ezkey_url_for_log (#1016 C8)" >&2; exit 1)
-	@grep -qE 'return -3' $(SRC_DIR)/ezkey_conf.c || \
+	@grep -qE 'rc = -3|return -3' $(SRC_DIR)/ezkey_conf.c || \
 		(echo "error: overlong conf line must return -3 (#1016 C3)" >&2; exit 1)
-	# #1016 C6: hardening flags present in Makefile.
+	@grep -qE 'ezkey_conf_wipe_line|explicit_bzero' $(SRC_DIR)/ezkey_conf.c || \
+		(echo "error: conf line buffer must be wiped (#1016 S2)" >&2; exit 1)
+	@grep -qE 'ezkey_env_sslkeylogfile_set' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: pam_ezkey must refuse SSLKEYLOGFILE (#1016 S1)" >&2; exit 1)
+	@grep -qE 'reason = "env"' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: SSLKEYLOGFILE refuse must set reason=env (#1016 S1)" >&2; exit 1)
+	# #1016 C6/S4: hardening flags + LDLIBS after objects.
 	@grep -qE 'fstack-protector-strong' $(MAKEFILE_LIST) || \
 		(echo "error: -fstack-protector-strong missing (#1016 C6)" >&2; exit 1)
 	@grep -qE '_FORTIFY_SOURCE=2' $(MAKEFILE_LIST) || \
 		(echo "error: -D_FORTIFY_SOURCE=2 missing (#1016 C6)" >&2; exit 1)
 	@grep -qE '\-z,relro,\-z,now|\-z relro.*\-z now' $(MAKEFILE_LIST) || \
 		(echo "error: -Wl,-z,relro,-z,now missing (#1016 C6)" >&2; exit 1)
+	@grep -qE '^LDLIBS[[:space:]]*=' $(MAKEFILE_LIST) || \
+		(echo "error: LDLIBS must hold -l libs after objects (#1016 S4)" >&2; exit 1)
+	@grep -qF '$$(OBJECTS) $$(LDLIBS)' Makefile || \
+		(echo "error: link line must be OBJECTS then LDLIBS (#1016 S4)" >&2; exit 1)
 	@echo "check-source: openat/O_NOFOLLOW/O_NONBLOCK + sanitize + #941/#975/#982/#995/#1016 guards"
 
-# #1016 C6: binary must show BIND_NOW and a stack-protector symbol (post-link).
+# #1016 C6/S4/S5: BIND_NOW, RELRO, stack protector, FORTIFY _chk, DT_NEEDED.
 check-hardening: $(BUILD_DIR)/$(MODULE_NAME)
 	@command -v readelf >/dev/null 2>&1 || \
 		(echo "error: readelf required for check-hardening (#1016 C6)" >&2; exit 1)
 	@readelf -d $(BUILD_DIR)/$(MODULE_NAME) | grep -q 'BIND_NOW' || \
 		(echo "error: pam_ezkey.so missing BIND_NOW (old LDFLAGS without -z now)" >&2; exit 1)
+	@readelf -l $(BUILD_DIR)/$(MODULE_NAME) | grep -q 'GNU_RELRO' || \
+		(echo "error: pam_ezkey.so missing GNU_RELRO (need -z relro)" >&2; exit 1)
 	@readelf -s $(BUILD_DIR)/$(MODULE_NAME) | grep -qE '__stack_chk_(fail|guard)' || \
 		(echo "error: pam_ezkey.so missing stack protector symbol (old CFLAGS)" >&2; exit 1)
-	@echo "check-hardening: BIND_NOW + stack protector OK"
+	# Require a FORTIFY libc _chk other than stack_chk (stack-protector alone is not enough).
+	@readelf -s $(BUILD_DIR)/$(MODULE_NAME) | grep -E '_chk(@|$$)' | grep -qvE 'stack_chk' || \
+		(echo "error: pam_ezkey.so missing FORTIFY _chk symbols (need -D_FORTIFY_SOURCE=2)" >&2; exit 1)
+	@readelf -d $(BUILD_DIR)/$(MODULE_NAME) | grep NEEDED | grep -q 'libcurl\.so' || \
+		(echo "error: pam_ezkey.so DT_NEEDED missing libcurl (LDLIBS order / --as-needed)" >&2; exit 1)
+	@readelf -d $(BUILD_DIR)/$(MODULE_NAME) | grep NEEDED | grep -q 'libcjson\.so' || \
+		(echo "error: pam_ezkey.so DT_NEEDED missing libcjson (LDLIBS order / --as-needed)" >&2; exit 1)
+	@echo "check-hardening: BIND_NOW + GNU_RELRO + stack/_chk + DT_NEEDED curl/cjson OK"
 
 # Harness: 0644→0600, hardlink refused, FIFO non-blocking (#818 m2).
 test-filelog: $(SRC_DIR)/ezkey_filelog.c $(TEST_DIR)/test_filelog_harness.c | $(BUILD_DIR)

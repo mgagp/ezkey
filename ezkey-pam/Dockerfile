@@ -13,7 +13,7 @@ ARG ROCKY_IMAGE=rockylinux/rockylinux:10
 FROM ${ROCKY_IMAGE} AS builder
 
 LABEL org.ezkey.component="pam-builder"
-LABEL org.ezkey.version="2.2.17"
+LABEL org.ezkey.version="2.2.18"
 
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
@@ -58,7 +58,7 @@ RUN make clean && make all test \
 FROM ${ROCKY_IMAGE} AS runtime
 
 LABEL org.ezkey.component="pam-ssh-demo"
-LABEL org.ezkey.version="2.2.17"
+LABEL org.ezkey.version="2.2.18"
 LABEL description="Rocky Linux SSH demo VM authenticated by Ezkey PAM"
 
 ENV LANG=C.UTF-8

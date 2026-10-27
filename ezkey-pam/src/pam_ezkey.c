@@ -646,6 +646,12 @@ static int ezkey_http(const char *url, const char *userpwd, const char *post_bod
         return CURLE_FAILED_INIT;
     }
     curl_easy_setopt(curl, CURLOPT_URL, url);
+    /*
+     * CURLOPT_USERPWD lets libcurl keep an internal copy of ikey:skey until
+     * easy cleanup (freed without wiping — #1016 S2). Building Authorization
+     * ourselves would still leave a Base64 header copy in curl_slist. Keep
+     * USERPWD; module buffers are wiped; curl-internal copies are not.
+     */
     curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
     curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, ezkey_http_write_cb);
@@ -1444,6 +1450,22 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     openlog(EZKEY_MODULE_NAME, LOG_PID, LOG_AUTHPRIV);
 
     /*
+     * #1016 S1: libcurl/OpenSSL honour SSLKEYLOGFILE — as root that writes
+     * TLS key material to a caller-chosen path (mode 0644). Refuse before
+     * any network call (and before loading secrets into curl).
+     */
+    if (ezkey_env_sslkeylogfile_set()) {
+        retval = PAM_AUTHINFO_UNAVAIL;
+        summary_result = "UNAVAIL";
+        cancel_status = EZKEY_CANCEL_SKIPPED;
+        ezkey_diag.stage = "init";
+        ezkey_diag.reason = "env";
+        log_pam_error_debug(pamh, &cfg,
+                            "SSLKEYLOGFILE is set; refusing authenticate");
+        goto done;
+    }
+
+    /*
      * In-process fail-closed only: if this PAM handle already saw a final
      * verdict, refuse recreate. Under OpenSSH portable this does NOT span
      * keyboard-interactive rounds (each forks and _exit's) — host Match
@@ -1479,7 +1501,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     if (conf_rc == -3) {
         snprintf(user_msg, sizeof(user_msg),
                  "Config file %s rejected: line exceeds %d characters",
-                 cfg.config_file, EZKEY_CONF_LINE_MAX - 1);
+                 cfg.config_file, EZKEY_CONF_LINE_MAX - 2);
         log_pam_error_debug(pamh, &cfg, user_msg);
         retval = PAM_AUTHINFO_UNAVAIL;
         summary_result = "UNAVAIL";

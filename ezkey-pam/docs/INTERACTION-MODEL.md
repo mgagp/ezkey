@@ -6,13 +6,19 @@ client during one keyboard-interactive login. Maintained with the module
 `challenge_requested`, or the sshd recipe updates §2 and keeps the evidence
 tags honest.
 
-> Origin: Patrick craft draft (2026-10-21). State below is **ezkey-pam 2.2.17**
-> (#1016 cycle 1b transport/conf/hardening on #1011 diagnostics; #995 connector
-> default `challenge_requested=true`, #982 tiers 0–1 / #976 confirm-before-create
-> + enrollment challenge).
+> Origin: Patrick craft draft (2026-10-21). State below is **ezkey-pam 2.2.18**
+> (#1016 cycle 2 ENV/wipe/link/URL on cycle 1b; #995 connector default
+> `challenge_requested=true`, #982 tiers 0–1 / #976 confirm-before-create +
+> enrollment challenge).
 > Evidence tags: **[code]** verified in source, **[test]** automated assert,
 > **[isa]** Isabelle on ezkey-pam-test, **[inf]** OpenSSH/PAM inference.
 > Paths relative to the repo root. `pam.c` = `ezkey-pam/src/pam_ezkey.c`.
+
+### What changed in 2.2.18 (#1016 cycle 2)
+
+- Refuse when `SSLKEYLOGFILE` set (S1); wipe conf line buffer (S2); URL with
+  `@` logs `scheme://-` (S3); LDLIBS after objects + DT_NEEDED (S4); RELRO /
+  FORTIFY `_chk` + 1022-char conf message (S5).
 
 ### What changed in 2.2.17 (#1016 cycle 1b)
 

@@ -45,12 +45,10 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.17** (#1016 cycle 1b: HTTP body cap, empty CURLOPT_PROXY,
-overlong-conf refuse, safe JSON longs, hardening flags, URL redact, signal /
-orphan docs). Prior **2.2.16** (#1016: SIGNAL snapshot double-buffer, portable
-artifacts, `test-diag` watchdog, `SOCK_NONBLOCK` fcntl fallback, wait-entry
-real helper, live `/dev/log` CI path, SUCCESS-after-client-gone + host runbook
-notes). Prior **2.2.15** (#1011 diagnostics).
+Version **2.2.18** (#1016 cycle 2: SSLKEYLOGFILE refuse, conf-line wipe,
+URL `@` → `scheme://-`, LDLIBS after objects, FORTIFY/RELRO/DT_NEEDED
+guards). Prior **2.2.17** (#1016 cycle 1b transport/conf/hardening). Prior
+**2.2.16** (#1016 snapshot/probes). Prior **2.2.15** (#1011 diagnostics).
 Prior **2.2.14** (#995: connector default `challenge_requested=true`). Prior
 **2.2.13** (#982 tiers 0–1 on #976: ECHO_ON confirm + challenge Enter-only
 wait). Prior **2.2.12** (#975 / PR #976: **confirm-before-create** + display
@@ -131,9 +129,14 @@ environment (e.g. `su`/`sudo`) cannot redirect conf path, debug, or timeouts
 inside the `.so`. **Exception (#1016 C2):** libcurl would honour
 `http_proxy` / `https_proxy` / `ALL_PROXY` unless the module clears the proxy
 (`CURLOPT_PROXY ""` on every easy handle). Without that guard, Basic auth could
-reach a caller-controlled proxy in `lab_http` `http://` mode. HTTPS trust store
-env vars (`CURL_CA_BUNDLE` / `SSL_CERT_FILE`) remain a libcurl platform concern;
-the module does not read them itself.
+reach a caller-controlled proxy in `lab_http` `http://` mode. **Exception
+(#1016 S1):** libcurl/OpenSSL honour `SSLKEYLOGFILE` — with it set, a root PAM
+child would create the caller-chosen path (typically mode `0644`) and write TLS
+session keys. The module refuses authenticate early (`UNAVAIL`, `reason=env`,
+no network call) when `getenv("SSLKEYLOGFILE")` is non-NULL. On the measured
+build, `SSL_CERT_FILE` / `SSL_CERT_DIR` / `CURL_CA_BUNDLE` are **not** honoured;
+that is a build-specific observation and is **not** guaranteed on other libcurl
+builds — do not treat those names as a complete ENV surface.
 
 **Verdict:** the current parameter set is **enough for the demo** and is the right *shape* for
 v1 operable use. It is not missing a second config system. Remaining gaps for a non-lab host are
@@ -571,7 +574,7 @@ authpriv goes to journald — use `journalctl -t pam_ezkey` (not `/var/log/secur
 | File mode | Exactly `0600` or `0400` (rejects `0000`, `0644`, etc.; root bypasses DAC) |
 | Timeouts / debug / conf path | Conf file and/or `pam.d` module args only — not process ENV |
 | Violation / missing field / unreadable | `PAM_AUTHINFO_UNAVAIL` (fail-closed) |
-| Secrets in memory | Wiped (`explicit_bzero`) on every exit path |
+| Secrets in memory | Module buffers wiped (`explicit_bzero` on conf line, `userpwd`, `integration_key` / `secret_key`); libcurl-internal and residual stack copies are **not** guaranteed (#1016 S2) |
 
 Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/security`
 (not `/tmp`) + `install -m 600 -o root -g root` (rejects newline injection in ENV values).

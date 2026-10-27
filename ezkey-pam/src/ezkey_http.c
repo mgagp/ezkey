@@ -70,6 +70,12 @@ size_t ezkey_http_write_cb(void *contents, size_t size, size_t nmemb,
     return realsize;
 }
 
+int ezkey_env_sslkeylogfile_set(void) {
+    const char *v = getenv("SSLKEYLOGFILE");
+
+    return (v != NULL) ? 1 : 0;
+}
+
 int ezkey_http_apply_transport_guards(CURL *curl) {
     CURLcode rc;
 
@@ -151,17 +157,27 @@ int ezkey_url_for_log(char *dest, size_t dest_size, const char *url) {
         return -1;
     }
     scheme_len = (size_t)(scheme_end - url);
+    /*
+     * #1016 S3: any '@' means userinfo (or a password containing unencoded
+     * / ? # that truncates authority parsing and leaks a password prefix).
+     * Log only scheme://- — never attempt to recover host from userinfo URLs.
+     */
+    if (strchr(url, '@') != NULL) {
+        if (scheme_len + 4 >= sizeof(raw)) {
+            ezkey_sanitize_for_log(dest, dest_size, "-");
+            return -1;
+        }
+        memcpy(raw, url, scheme_len);
+        memcpy(raw + scheme_len, "://-", 5); /* includes NUL */
+        ezkey_sanitize_for_log(dest, dest_size, raw);
+        return 0;
+    }
     auth = scheme_end + 3;
     host = auth;
-    /* Strip userinfo (anything before '@' in the authority). */
     path = auth;
     while (*path != '\0' && *path != '/' && *path != '?' && *path != '#') {
-        if (*path == '@') {
-            host = path + 1;
-        }
         path++;
     }
-    /* path now at first / ? # or NUL — host runs from host to path. */
     host_len = (size_t)(path - host);
     if (scheme_len == 0 || host_len == 0 ||
         scheme_len + 3 + host_len >= sizeof(raw)) {

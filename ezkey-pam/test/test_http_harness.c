@@ -334,22 +334,30 @@ static void test_json_double_to_long(void) {
                ezkey_json_double_to_long(100.0, 0, 99, &out), -1);
 }
 
-/* C8: URL redaction strips userinfo. */
+/* C8/S3: any '@' → scheme://- (no password-prefix leak on unencoded /). */
 static void test_url_for_log(void) {
     char dest[256];
 
-    expect_int("C8: redact userinfo",
+    expect_int("C8/S3: userinfo → scheme://-",
                ezkey_url_for_log(
                    dest, sizeof(dest),
                    "https://ikey:s3cret@integration.example:8443/api/v1"),
                0);
-    expect_true("C8: scheme+host kept",
-                strstr(dest, "https://integration.example:8443") != NULL);
-    expect_true("C8: no userinfo", strstr(dest, "ikey") == NULL);
-    expect_true("C8: no secret", strstr(dest, "s3cret") == NULL);
-    expect_true("C8: no path", strstr(dest, "/api") == NULL);
+    expect_true("C8/S3: scheme://- only", strcmp(dest, "https://-") == 0);
+    expect_true("C8/S3: no userinfo", strstr(dest, "ikey") == NULL);
+    expect_true("C8/S3: no secret", strstr(dest, "s3cret") == NULL);
 
-    expect_int("C8: plain http",
+    /* Old parser truncated at '/' in password → leaked "http://bob:SUPER". */
+    expect_int("S3: password with unencoded /",
+               ezkey_url_for_log(dest, sizeof(dest),
+                                 "http://bob:SUPER/SECRETPW@h/path"),
+               0);
+    expect_true("S3: result is http://-", strcmp(dest, "http://-") == 0);
+    expect_true("S3: no bob", strstr(dest, "bob") == NULL);
+    expect_true("S3: no SUPER prefix", strstr(dest, "SUPER") == NULL);
+    expect_true("S3: no SECRETPW", strstr(dest, "SECRETPW") == NULL);
+
+    expect_int("C8: plain http (no @)",
                ezkey_url_for_log(dest, sizeof(dest),
                                  "http://integration-api:7080/"),
                0);
@@ -357,14 +365,26 @@ static void test_url_for_log(void) {
                 strcmp(dest, "http://integration-api:7080") == 0);
 }
 
+/* S1: SSLKEYLOGFILE detection (pam_sm refuses before network when set). */
+static void test_sslkeylogfile_env(void) {
+    unsetenv("SSLKEYLOGFILE");
+    expect_int("S1: unset → 0", ezkey_env_sslkeylogfile_set(), 0);
+    setenv("SSLKEYLOGFILE", "/tmp/ezkey-should-not-create.keys", 1);
+    expect_int("S1: set → 1 (old: would write TLS keys as root)",
+               ezkey_env_sslkeylogfile_set(), 1);
+    unsetenv("SSLKEYLOGFILE");
+    expect_int("S1: cleared → 0", ezkey_env_sslkeylogfile_set(), 0);
+}
+
 int main(void) {
-    printf("=== ezkey_http harness (#1016 C1/C2/C4/C8) ===\n");
+    printf("=== ezkey_http harness (#1016 C1/C2/C4/C8 + S1/S3) ===\n");
     curl_global_init(CURL_GLOBAL_DEFAULT);
     test_write_cb_cap();
     test_hostile_endless_body();
     test_proxy_ignored();
     test_json_double_to_long();
     test_url_for_log();
+    test_sslkeylogfile_env();
     curl_global_cleanup();
     if (failures != 0) {
         fprintf(stderr, "=== Results: %d failed ===\n", failures);
