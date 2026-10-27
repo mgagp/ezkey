@@ -50,7 +50,10 @@ def main() -> int:
             self.wfile.write(b"{}")
 
     httpd = HTTPServer(("127.0.0.1", port), Handler)
+    # TLS 1.2+ only — CodeQL flags PROTOCOL_TLS_SERVER defaults that still
+    # allow TLS 1.0/1.1 (test stub; not a production listener).
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     ctx.load_cert_chain(certfile=cert, keyfile=key)
     httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
     with open(pid_file, "w", encoding="utf-8") as fh:

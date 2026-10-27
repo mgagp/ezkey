@@ -356,15 +356,15 @@ expect_ghost_unavail_fast() {
   local kind="$2"
   local before ssh_rc after new elapsed
   local t0 t1
-  # Replace live conf with a ghost; keep a regular copy at CONF.real for restore.
+  # Replace live conf with a ghost; keep a regular copy at CONF.real for content.
   docker exec "${CONTAINER}" sh -c "
     set -e
-    if [ -f '${PRISTINE}' ]; then cp -a '${PRISTINE}' '${CONF}.real'
-    elif [ -f '${CONF}' ] && [ ! -L '${CONF}' ]; then cp -a '${CONF}' '${CONF}.real'
-    fi
-    rm -rf '${CONF}'
+    rm -rf '${CONF}' '${CONF}.real'
+    cp -a '${PRISTINE}' '${CONF}.real'
+    chown root:root '${CONF}.real'
+    chmod 600 '${CONF}.real'
     case '${kind}' in
-      symlink) ln -s '${CONF}.real' '${CONF}' ;;
+      symlink) ln -sfn '${CONF}.real' '${CONF}' ;;
       fifo) mkfifo '${CONF}'; chown root:root '${CONF}'; chmod 600 '${CONF}' ;;
       directory) mkdir '${CONF}'; chown root:root '${CONF}'; chmod 700 '${CONF}' ;;
       *) echo \"unknown ghost kind ${kind}\" >&2; exit 2 ;;
