@@ -404,6 +404,13 @@ class EzkeyAuthenticator {
   /// [AuthAttemptResult.failed] when the code was wrong (the attempt is then invalid). Throws
   /// [EzkeyApiException] with [EzkeyApiException.isAttemptNoLongerActionable] when the attempt was
   /// cancelled, superseded, already answered or expired.
+  ///
+  /// Decision lock (client behaviour contract §2): while the call runs, [attempt] is
+  /// [AuthAttemptDecisionState.sending]; afterwards it is `locked` once the server answered, the
+  /// outcome is unknown ([EzkeyRespondOutcomeUnknownException]) or the error is final. It goes back
+  /// to `open` only when nothing was sent (signing failed) or the server refused with a retryable,
+  /// classified error (429, 503 `integration-signing-unavailable`). A decision on an attempt that is
+  /// not [PendingAuthAttempt.canDecide] throws [EzkeyValidationException] and sends nothing.
   Future<AuthAttemptOutcome> approve(
     EzkeyEnrollment enrollment,
     PendingAuthAttempt attempt, {
@@ -441,18 +448,57 @@ class EzkeyAuthenticator {
         'Attempt belongs to another enrollment',
       );
     }
-    final signed = await keyStore.sign(
-      enrollment.deviceKeyAlias,
-      buildRespondPayload(attempt.authAttemptProofToken, accepted),
-    );
-    final response = await _api(enrollment.authApiBaseUrl).respond(
-      RespondAuthRequest(
-        authAttemptId: attempt.authAttemptId,
-        authAttemptAccepted: accepted,
-        authAttemptProofTokenSignedByDevice: signed,
-        authAttemptChallengeResponse: accepted ? challengeResponse : null,
-      ),
-    );
+    if (!attempt.canDecide) {
+      throw const EzkeyValidationException(
+        'A decision for this attempt was already sent or is in progress',
+      );
+    }
+    // Set synchronously, before the first await, so a second tap or a leave-as-deny that races
+    // this call is refused above.
+    setAuthAttemptDecisionState(attempt, AuthAttemptDecisionState.sending);
+
+    final String signed;
+    try {
+      signed = await keyStore.sign(
+        enrollment.deviceKeyAlias,
+        buildRespondPayload(attempt.authAttemptProofToken, accepted),
+      );
+    } catch (_) {
+      // Nothing was sent: the user may decide again.
+      setAuthAttemptDecisionState(attempt, AuthAttemptDecisionState.open);
+      rethrow;
+    }
+
+    final RespondAuthResponse response;
+    try {
+      response = await _api(enrollment.authApiBaseUrl).respond(
+        RespondAuthRequest(
+          authAttemptId: attempt.authAttemptId,
+          authAttemptAccepted: accepted,
+          authAttemptProofTokenSignedByDevice: signed,
+          authAttemptChallengeResponse: accepted ? challengeResponse : null,
+        ),
+      );
+    } on EzkeyNetworkException catch (error) {
+      // The request was handed to the transport; the server may have recorded it (Q10).
+      throw _outcomeUnknown(attempt, accepted, error);
+    } on EzkeyApiException catch (error) {
+      if (_isAmbiguousServerError(error)) {
+        throw _outcomeUnknown(attempt, accepted, error);
+      }
+      setAuthAttemptDecisionState(
+        attempt,
+        error.retryable
+            ? AuthAttemptDecisionState.open
+            : AuthAttemptDecisionState.locked,
+      );
+      rethrow;
+    } catch (_) {
+      setAuthAttemptDecisionState(attempt, AuthAttemptDecisionState.locked);
+      rethrow;
+    }
+    // HTTP 200: lock before checking the result signature (contract §2.2, Q2).
+    setAuthAttemptDecisionState(attempt, AuthAttemptDecisionState.locked);
 
     final signature = response.authAttemptProofTokenResultSignedByIntegration;
     if (signature == null) {
@@ -497,6 +543,27 @@ class EzkeyAuthenticator {
       message: response.authAttemptMessage,
     );
   }
+
+  EzkeyRespondOutcomeUnknownException _outcomeUnknown(
+    PendingAuthAttempt attempt,
+    bool accepted,
+    EzkeyException cause,
+  ) {
+    setAuthAttemptDecisionState(attempt, AuthAttemptDecisionState.locked);
+    return EzkeyRespondOutcomeUnknownException(
+      authAttemptId: attempt.authAttemptId,
+      accepted: accepted,
+      cause: cause,
+    );
+  }
+
+  /// A 5xx after respond was sent may follow a committed decision (contract §2.4). The two typed
+  /// 503s are not ambiguous: `integration-signing-unavailable` rolls the transaction back (#844),
+  /// and `audit-chain-heartbeat-degraded` rejects the request before it is processed.
+  static bool _isAmbiguousServerError(EzkeyApiException error) =>
+      error.statusCode >= 500 &&
+      error.kind != EzkeyProblemKind.integrationSigningUnavailable &&
+      error.kind != EzkeyProblemKind.auditChainDegraded;
 
   EzkeyAuthApi _api(String baseUrl) =>
       _apis.putIfAbsent(baseUrl, () => _apiFactory(Uri.parse(baseUrl)));

@@ -79,6 +79,38 @@ final class EzkeyLocalStateException extends EzkeyException {
   bool get retryable => false;
 }
 
+/// A respond (approve or deny) was sent, but its outcome cannot be known: the transport failed
+/// after the request was handed over (timeout, connection cut), or the server answered with an
+/// ambiguous 5xx. The server may or may not have recorded the decision.
+///
+/// Client behaviour contract §2.3–2.4 (Q10): show an uncertain result (not a failure), point the
+/// user at the sign-in where the request started, offer Back only, and never send another
+/// decision for this attempt. The SDK has already locked the attempt
+/// ([PendingAuthAttempt.decisionState] is `locked`).
+final class EzkeyRespondOutcomeUnknownException extends EzkeyException {
+  const EzkeyRespondOutcomeUnknownException({
+    required this.authAttemptId,
+    required this.accepted,
+    required this.cause,
+  }) : super('Respond outcome unknown');
+
+  final int authAttemptId;
+
+  /// What the device tried to send (`true` = approve).
+  final bool accepted;
+
+  /// The underlying [EzkeyNetworkException] or [EzkeyApiException] (5xx).
+  final EzkeyException cause;
+
+  @override
+  bool get retryable => false;
+
+  @override
+  String toString() =>
+      'EzkeyRespondOutcomeUnknownException(authAttemptId: $authAttemptId, accepted: $accepted): '
+      '$cause';
+}
+
 /// Stable classification of Auth API RFC 9457 problem types (`https://ezkey.io/problems/...`).
 enum EzkeyProblemKind {
   /// Respond refused: attempt unknown, not yet claimed, already decided, cancelled by the
@@ -129,6 +161,12 @@ enum EzkeyProblemKind {
   /// HTTP 429.
   rateLimited,
 
+  /// HTTP 404 on an unknown path: wrong Auth API base URL or path prefix. Do not retry blindly.
+  resourceNotFound,
+
+  /// HTTP 405: the client called a path with the wrong method (client bug or wrong base URL).
+  methodNotAllowed,
+
   /// Audit-chain supervision degraded (fail-closed server mode); retry later.
   auditChainDegraded,
 
@@ -172,6 +210,10 @@ const Map<String, EzkeyProblemKind> _kindsByType = <String, EzkeyProblemKind>{
       EzkeyProblemKind.validationFailed,
   'https://ezkey.io/problems/auth/internal-error':
       EzkeyProblemKind.internalError,
+  'https://ezkey.io/problems/auth/resource-not-found':
+      EzkeyProblemKind.resourceNotFound,
+  'https://ezkey.io/problems/auth/method-not-allowed':
+      EzkeyProblemKind.methodNotAllowed,
   'https://ezkey.io/problems/system/audit-chain-heartbeat-degraded':
       EzkeyProblemKind.auditChainDegraded,
 };
