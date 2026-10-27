@@ -45,10 +45,14 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.18** (#1016 cycle 2: SSLKEYLOGFILE refuse, conf-line wipe,
-URL `@` → `scheme://-`, LDLIBS after objects, FORTIFY/RELRO/DT_NEEDED
-guards). Prior **2.2.17** (#1016 cycle 1b transport/conf/hardening). Prior
-**2.2.16** (#1016 snapshot/probes). Prior **2.2.15** (#1011 diagnostics).
+Version **2.2.19** (#1016 cycle 2b: decision harness, TLS pin, conf unknown-key
+warn, `#` in values, mutation re-kill). Prior **2.2.18** (#1016 cycle 2). Prior
+**2.2.17** (cycle 1b). Prior **2.2.16** (snapshot/probes). Prior **2.2.15**.
+
+**Conf comments (#1016 P6):** `#` starts a comment only at line start or after
+whitespace. A value may contain `#` (e.g. `secret_key=ab#cd`). Prefer not to put
+`#` inside credentials without need. Unknown keys log
+`reason=conf_unknown_key key=<name>` (never the value).
 Prior **2.2.14** (#995: connector default `challenge_requested=true`). Prior
 **2.2.13** (#982 tiers 0–1 on #976: ECHO_ON confirm + challenge Enter-only
 wait). Prior **2.2.12** (#975 / PR #976: **confirm-before-create** + display
@@ -108,7 +112,7 @@ owner `root:root` in the demo image. That path and style match Linux-PAM convent
 
 | Key | Role | Demo-adequate? |
 |---|---|---|
-| `integration_api_url` | Integration API base URL (**required**; no compiled-in default) | Yes for Docker DNS; non-lab / host installs need HTTPS |
+| `integration_api_url` | Integration API base URL (**required**; no compiled-in default). Alias: `api_url` (#1016 P7) | Yes for Docker DNS; non-lab / host installs need HTTPS |
 | `integration_key` / `secret_key` | Basic auth | Yes; file perms are the control |
 | `wait_timeout` / `wait_polling` / `api_timeout` | HTTP waits | Yes |
 | `challenge_requested` | Two-digit number-matching challenge | **Default `true` (#995)**. Connector owns the default (safer for SSH). Operator types **`ok` before create** (confirm-before-create; anti-accident; 25 s Enter cap). Create asks for a challenge unless conf opts out with `false`; when the **enrollment** has `authAttemptChallengeRequired` the server still forces a code. Unknown/empty conf values keep the prior default + warning. Valid challenge in the response → **second** `pam_prompt` (#975; challenge Enter = rem-budget / #982). `true` + missing/out-of-range → UNAVAIL. See [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) |

@@ -18,15 +18,15 @@
 #include "ezkey_budget.h"
 #include "ezkey_config.h"
 
-static void ezkey_conf_wipe_line(char *line, size_t len) {
-    if (line == NULL || len == 0) {
+static void ezkey_conf_secure_wipe(void *ptr, size_t len) {
+    if (ptr == NULL || len == 0) {
         return;
     }
 #if defined(__GLIBC__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-    explicit_bzero(line, len);
+    explicit_bzero(ptr, len);
 #else
     {
-        volatile unsigned char *p = (volatile unsigned char *)line;
+        volatile unsigned char *p = (volatile unsigned char *)ptr;
         while (len-- > 0) {
             *p++ = 0;
         }
@@ -95,6 +95,7 @@ void ezkey_config_init(EzkeyConfig *cfg) {
     cfg->wait_polling = EZKEY_DEFAULT_WAIT_POLLING;
     cfg->api_timeout = EZKEY_DEFAULT_API_TIMEOUT;
     cfg->challenge_requested = EZKEY_DEFAULT_CHALLENGE_REQUESTED;
+    /* #1016 P4: lab_http default must stay 0 (http:// fail-closed). */
     cfg->lab_http = 0;
     cfg->debug = 0;
     strncpy(cfg->context_title, "SSH login", sizeof(cfg->context_title) - 1);
@@ -103,6 +104,14 @@ void ezkey_config_init(EzkeyConfig *cfg) {
 #if EZKEY_DEBUG
     cfg->debug = 1;
 #endif
+}
+
+void ezkey_config_wipe_secrets(EzkeyConfig *cfg) {
+    if (cfg == NULL) {
+        return;
+    }
+    ezkey_conf_secure_wipe(cfg->integration_key, sizeof(cfg->integration_key));
+    ezkey_conf_secure_wipe(cfg->secret_key, sizeof(cfg->secret_key));
 }
 
 int ezkey_parse_bool(const char *value, int fallback, int *unrecognized) {
@@ -133,12 +142,14 @@ void ezkey_conf_apply_key(EzkeyConfig *cfg, const char *key,
                           const char *value) {
     int unrecognized = 0;
     int parsed;
+    int known = 1;
 
     if (cfg == NULL || key == NULL) {
         return;
     }
     if (strcmp(key, "integration_api_url") == 0 ||
         strcmp(key, "api_url") == 0) {
+        /* api_url is a documented alias of integration_api_url (#1016 P7). */
         set_cfg_str(cfg->api_url, sizeof(cfg->api_url), value);
     } else if (strcmp(key, "integration_key") == 0) {
         set_cfg_str(cfg->integration_key, sizeof(cfg->integration_key), value);
@@ -187,6 +198,13 @@ void ezkey_conf_apply_key(EzkeyConfig *cfg, const char *key,
                    cfg->debug ? "true" : "false");
         }
         cfg->debug = parsed;
+    } else {
+        known = 0;
+    }
+    /* #1016 P6: warn on unknown keys — key name only, never the value. */
+    if (!known) {
+        syslog(LOG_AUTHPRIV | LOG_WARNING,
+               "pam_ezkey: reason=conf_unknown_key key=%s", key);
     }
 }
 
@@ -225,9 +243,18 @@ int ezkey_conf_load_fp(FILE *fp, EzkeyConfig *cfg) {
             goto out;
         }
 
-        hash = strchr(line, '#');
-        if (hash != NULL) {
-            *hash = '\0';
+        /*
+         * #1016 P6: '#' starts a comment only at line start or after
+         * whitespace, so secret_key=ab#cd is not silently truncated. Full-line
+         * comments (# ...) still work. Values must not rely on mid-token '#'.
+         */
+        hash = line;
+        while ((hash = strchr(hash, '#')) != NULL) {
+            if (hash == line || isspace((unsigned char)*(hash - 1))) {
+                *hash = '\0';
+                break;
+            }
+            hash++;
         }
         trim_inplace(line);
         if (line[0] == '\0') {
@@ -254,6 +281,6 @@ int ezkey_conf_load_fp(FILE *fp, EzkeyConfig *cfg) {
     rc = 0;
 out:
     /* #1016 S2: wipe stack line buffer (may have held secret_key=…). */
-    ezkey_conf_wipe_line(line, sizeof(line));
+    ezkey_conf_secure_wipe(line, sizeof(line));
     return rc;
 }

@@ -35,6 +35,15 @@ Linux PAM module that calls the **Integration API** (port 7080, Docker service
 The Linux username must match a **verified** enrollment `userIdentifier` on the integration
 that owns the API key.
 
+## What changed in 2.2.19 (#1016 cycle 2b — decisions / mutations)
+
+- Decision harness pins wait/HTTP/URL/xferinfo/confirm contracts (kills M20).
+- Explicit `CURLOPT_SSL_VERIFYPEER 1` / `VERIFYHOST 2` + forbid `0` in check-source.
+- `lab_http` default assert; `ezkey_config_wipe_secrets` unit-tested.
+- Unknown conf keys warn (`conf_unknown_key`); `#` in values kept when not a comment.
+- Documented `api_url` alias; pinned Enter=25 / LINE_MAX=768 literals.
+- Signal-probes per-probe wall timeout; CI comment lists signal-probes.
+
 ## What changed in 2.2.18 (#1016 cycle 2 — ENV / wipe / link / URL)
 
 - **S1:** Refuse authenticate when `SSLKEYLOGFILE` is set (`reason=env`);
@@ -365,7 +374,7 @@ ssh -p 2223 \
 
 | Key | Default | Description |
 |---|---|---|
-| `integration_api_url` | *(required; no default)* | Integration API base URL |
+| `integration_api_url` | *(required; no default)* | Integration API base URL (alias: `api_url`) |
 | `integration_key` | *(required)* | API integration key |
 | `secret_key` | *(required)* | API secret key |
 | `wait_timeout` | `90` | Seconds to wait for device approval (clamped **15–90**). Sent as create `ttlSeconds`; `/wait?timeout=` aligns on create response `timeoutSeconds` (PR-A) when present |

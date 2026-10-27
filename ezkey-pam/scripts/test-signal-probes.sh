@@ -26,6 +26,8 @@ PROOF="${ARTIFACT_DIR}/pam-signal-probes.log"
 PASS=0
 FAIL=0
 PAM_GONE_MAX_MS="${EZKEY_PAM_GONE_MAX_MS:-2000}"
+# #1016 P11: per-probe wall budget (loud fail if pam child / probe hangs).
+PROBE_WALL_SECS="${EZKEY_PAM_PROBE_WALL_SECS:-90}"
 
 ok() {
   echo "[PASS] $*" | tee -a "${PROOF}"
@@ -111,12 +113,21 @@ wait_pam_gone() {
   local deadline_ms=$((start_ms + PAM_GONE_MAX_MS))
   local now_ms pam_gone_ms=-1
   local p
+  local wall_deadline_s
 
+  wall_deadline_s=$(($(date +%s) + PROBE_WALL_SECS))
   while true; do
     now_ms="$(date +%s%3N)"
+    if [ "$(date +%s)" -ge "${wall_deadline_s}" ]; then
+      echo "[FAIL] wait_pam_gone: probe wall ${PROBE_WALL_SECS}s exceeded while pam_pids still live (${before_pids})" \
+        | tee -a "${PROOF}" >&2
+      echo "-1"
+      return 1
+    fi
     local still=0
     for p in ${before_pids}; do
-      if docker exec "${CONTAINER}" sh -c "kill -0 ${p} 2>/dev/null"; then
+      # Bound each docker exec so a stuck daemon cannot hang the probe forever.
+      if timeout 2s docker exec "${CONTAINER}" sh -c "kill -0 ${p} 2>/dev/null"; then
         still=1
         break
       fi
@@ -127,11 +138,42 @@ wait_pam_gone() {
       return 0
     fi
     if [ "${now_ms}" -ge "${deadline_ms}" ]; then
+      echo "[FAIL] wait_pam_gone: pam pid did not exit within ${PAM_GONE_MAX_MS}ms (pids=${before_pids})" \
+        | tee -a "${PROOF}" >&2
       echo "-1"
       return 1
     fi
     sleep 0.05
   done
+}
+
+# Run one probe function under a sibling wall watchdog (#1016 P11).
+run_probe() {
+  local label="$1"
+  local fn="$2"
+  local rc=0
+  local watch
+
+  echo "run_probe ${label} wall=${PROBE_WALL_SECS}s" | tee -a "${PROOF}"
+  (
+    sleep "${PROBE_WALL_SECS}"
+    echo "[FAIL] ${label}: exceeded ${PROBE_WALL_SECS}s wall budget (pam may be stuck)" \
+      | tee -a "${PROOF}" >&2
+    pkill -f 'ssh-pty-capture.py' 2>/dev/null || true
+    docker exec "${CONTAINER}" sh -c \
+      "ps -eo pid=,args= | grep -E '\\[pam\\]' | grep -v grep | awk '{print \$1}' | xargs -r kill -TERM" \
+      2>/dev/null || true
+  ) &
+  watch=$!
+  set +e
+  "${fn}"
+  rc=$?
+  set -e
+  kill "${watch}" 2>/dev/null || true
+  wait "${watch}" 2>/dev/null || true
+  if [ "${rc}" -ne 0 ]; then
+    fail "${label}: probe function exit ${rc}"
+  fi
 }
 
 count_attempt_matches() {
@@ -494,10 +536,10 @@ probe_term_during_wait() {
   stop_stub
 }
 
-probe_kill_at_ok
-probe_kill_at_challenge
-probe_term_during_create
-probe_term_during_wait
+run_probe "probe1-ok" probe_kill_at_ok
+run_probe "probe2-challenge" probe_kill_at_challenge
+run_probe "probe3-create" probe_term_during_create
+run_probe "probe4-wait" probe_term_during_wait
 
 echo "" | tee -a "${PROOF}"
 echo "=== Results: ${PASS} passed, ${FAIL} failed ===" | tee -a "${PROOF}"

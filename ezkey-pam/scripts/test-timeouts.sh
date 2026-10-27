@@ -703,14 +703,16 @@ OUT="$(docker exec "${CONTAINER}" sh -c 'cat /var/log/ezkey-pam/debug.out' || tr
 WAIT_LEFT="$(echo "${OUT}" | grep -oE 'wait_left_[0-9]+' | tail -n1 | cut -d_ -f3 || true)"
 echo "nochal-delayed-enter chunk=${GOT_TO} wait_left=${WAIT_LEFT} sent_ttl=${GOT_TTL} ssh_rc=${SSH_RC} attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
-# B1: TTL is computed after ok, so ~8s typing shrinks both wait_left and sent ttl.
-if echo "${ATTEMPT}" | grep -Eq 'result=(SUCCESS|UNAVAIL|DENIED|TIMEOUT|EXPIRED)' \
+# B1 / #1016 P2: TTL shrinks after ok; require real SUCCESS (ACCEPTED branch
+# inverted must fail — do not accept UNAVAIL|DENIED|TIMEOUT|EXPIRED here).
+if echo "${ATTEMPT}" | grep -q 'result=SUCCESS' \
+  && [ "${SSH_RC}" -eq 0 ] \
   && [ -n "${WAIT_LEFT}" ] && [ "${WAIT_LEFT}" -lt 90 ] && [ "${WAIT_LEFT}" -ge 70 ] \
   && [ -n "${GOT_TTL}" ] && [ "${GOT_TTL}" -le 85 ] && [ "${GOT_TTL}" -ge 70 ] \
   && [ -n "${GOT_TO}" ] && [ "${GOT_TO}" -le 5 ]; then
-  ok "no-challenge delayed Enter ${DELAY_SECS}s → wait_left=${WAIT_LEFT} sent_ttl=${GOT_TTL} (both shrunk) + chunk≤5"
+  ok "no-challenge delayed Enter ${DELAY_SECS}s → SUCCESS ssh_rc=0 wait_left=${WAIT_LEFT} sent_ttl=${GOT_TTL} + chunk≤5"
 else
-  fail "no-challenge delayed Enter expected wait_left/ttl in [70,85] + chunk≤5, got wait_left='${WAIT_LEFT}' ttl='${GOT_TTL}' chunk='${GOT_TO}' ${ATTEMPT}"
+  fail "no-challenge delayed Enter expected SUCCESS+ssh_rc=0 + wait_left/ttl in [70,85] + chunk≤5, got ssh_rc=${SSH_RC} wait_left='${WAIT_LEFT}' ttl='${GOT_TTL}' chunk='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf

@@ -104,6 +104,15 @@ int ezkey_http_apply_transport_guards(CURL *curl) {
     if (rc != CURLE_OK) {
         return -1;
     }
+    /* #1016 P3: pin TLS verify (do not rely on libcurl defaults alone). */
+    rc = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    if (rc != CURLE_OK) {
+        return -1;
+    }
+    rc = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+    if (rc != CURLE_OK) {
+        return -1;
+    }
     return 0;
 }
 

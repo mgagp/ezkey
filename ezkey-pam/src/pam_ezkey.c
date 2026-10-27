@@ -58,6 +58,7 @@
 #include "ezkey_challenge.h"
 #include "ezkey_conf.h"
 #include "ezkey_config.h"
+#include "ezkey_decision.h"
 #include "ezkey_diag.h"
 #include "ezkey_filelog.h"
 #include "ezkey_http.h"
@@ -257,11 +258,7 @@ static int compute_planned_wait(const EzkeyConfig *cfg,
 }
 
 static void wipe_cfg_secrets(EzkeyConfig *cfg) {
-    if (cfg == NULL) {
-        return;
-    }
-    ezkey_secure_wipe(cfg->secret_key, sizeof(cfg->secret_key));
-    ezkey_secure_wipe(cfg->integration_key, sizeof(cfg->integration_key));
+    ezkey_config_wipe_secrets(cfg);
 }
 
 /**
@@ -440,16 +437,11 @@ static void ezkey_sig_restore(const struct sigaction *old, int installed) {
 static int ezkey_xferinfo_abort(void *clientp, curl_off_t dltotal,
                                 curl_off_t dlnow, curl_off_t ultotal,
                                 curl_off_t ulnow) {
-    volatile sig_atomic_t *flag = (volatile sig_atomic_t *)clientp;
-
     (void)dltotal;
     (void)dlnow;
     (void)ultotal;
     (void)ulnow;
-    if (flag != NULL && *flag != 0) {
-        return 1;
-    }
-    return 0;
+    return ezkey_xferinfo_should_abort(clientp);
 }
 
 static long elapsed_ms(const struct timespec *start) {
@@ -737,33 +729,20 @@ static const char *ezkey_cancel_best_effort(pam_handle_t *pamh,
 }
 
 /**
- * Map unexpected HTTP status to PAM. Transport/config failures are UNAVAIL
- * (not AUTH_ERR): 401/404/5xx all deny under required/requisite the same way,
- * but UNAVAIL signals “MFA service unavailable” to the stack (Christophe nit).
+ * Map unexpected HTTP status to PAM (shared with decision harness — #1016 P1).
  */
 static int pam_rc_for_http(long http_code, long expected) {
-    if (http_code == expected) {
-        return PAM_SUCCESS;
-    }
-    (void)http_code;
-    return PAM_AUTHINFO_UNAVAIL;
+    return ezkey_pam_rc_for_http(http_code, expected);
 }
 
 /**
- * Scheme gate (Patrick): https always OK (case-insensitive); http only when
- * lab_http=true. Rejects empty and non-http(s) schemes.
+ * Scheme gate (Patrick): https always OK; http only when lab_http=true.
  */
 static int ezkey_api_url_allowed(const EzkeyConfig *cfg) {
-    if (cfg == NULL || cfg->api_url[0] == '\0') {
+    if (cfg == NULL) {
         return 0;
     }
-    if (strncasecmp(cfg->api_url, "https://", 8) == 0) {
-        return 1;
-    }
-    if (cfg->lab_http && strncasecmp(cfg->api_url, "http://", 7) == 0) {
-        return 1;
-    }
-    return 0;
+    return ezkey_api_url_allowed_url(cfg->api_url, cfg->lab_http);
 }
 
 static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
@@ -1311,51 +1290,29 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, EzkeyConfig *cfg,
             }
             ezkey_sanitize_for_log(status_safe, sizeof(status_safe),
                                    status_str != NULL ? status_str : "missing");
+            /*
+             * Decision helper pins ACCEPTED→SUCCESS and REJECTED→DENIED
+             * (#1016 P1 / M20). Keep strcmp("ACCEPTED") visible for check-source.
+             */
             accepted =
                 (status_str != NULL && strcmp(status_str, "ACCEPTED") == 0);
-            if (accepted) {
-                pam_rc = PAM_SUCCESS;
-                summary = "SUCCESS";
+            if (ezkey_wait_status_decide(status_str, &pam_rc, &summary)) {
                 ezkey_diag.reason = "-";
-                do_cancel = 0;
-                cJSON_Delete(root);
-                break;
-            }
-            if (status_str != NULL && strcmp(status_str, "EXPIRED") == 0) {
-                pam_rc = PAM_AUTH_ERR;
-                summary = "EXPIRED";
-                ezkey_diag.reason = "-";
-                snprintf(msg, sizeof(msg),
-                         "Authentication expired (authAttemptId=%ld status=%s)",
-                         auth_attempt_id, status_safe);
-                log_pam_error_debug(pamh, cfg, msg);
-                cJSON_Delete(root);
-                break;
-            }
-            if (status_str != NULL &&
-                (strcmp(status_str, "REJECTED") == 0 ||
-                 strcmp(status_str, "INVALID") == 0)) {
-                pam_rc = PAM_AUTH_ERR;
-                summary = "DENIED";
-                ezkey_diag.reason = "-";
-                snprintf(msg, sizeof(msg),
-                         "Authentication not accepted (authAttemptId=%ld "
-                         "status=%s)",
-                         auth_attempt_id, status_safe);
-                log_pam_error_debug(pamh, cfg, msg);
-                cJSON_Delete(root);
-                break;
-            }
-            if (status_str != NULL && strcmp(status_str, "PENDING") != 0 &&
-                strcmp(status_str, "READ") != 0) {
-                pam_rc = PAM_AUTH_ERR;
-                summary = "DENIED";
-                ezkey_diag.reason = "-";
-                snprintf(msg, sizeof(msg),
-                         "Authentication not accepted (authAttemptId=%ld "
-                         "status=%s)",
-                         auth_attempt_id, status_safe);
-                log_pam_error_debug(pamh, cfg, msg);
+                if (accepted) {
+                    do_cancel = 0;
+                } else {
+                    snprintf(msg, sizeof(msg),
+                             "Authentication not accepted "
+                             "(authAttemptId=%ld status=%s)",
+                             auth_attempt_id, status_safe);
+                    if (summary != NULL && strcmp(summary, "EXPIRED") == 0) {
+                        snprintf(msg, sizeof(msg),
+                                 "Authentication expired "
+                                 "(authAttemptId=%ld status=%s)",
+                                 auth_attempt_id, status_safe);
+                    }
+                    log_pam_error_debug(pamh, cfg, msg);
+                }
                 cJSON_Delete(root);
                 break;
             }

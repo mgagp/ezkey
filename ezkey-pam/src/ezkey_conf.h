@@ -41,11 +41,19 @@ typedef struct {
 
 /**
  * Zero the struct and apply compiled-in defaults (including
- * EZKEY_DEFAULT_CHALLENGE_REQUESTED).
+ * EZKEY_DEFAULT_CHALLENGE_REQUESTED). {@code lab_http} defaults to 0.
  *
  * @param cfg destination (must not be NULL)
  */
 void ezkey_config_init(EzkeyConfig *cfg);
+
+/**
+ * Wipe credential fields ({@code integration_key}, {@code secret_key}) with
+ * {@code explicit_bzero}. Does not clear api_url / timeouts.
+ *
+ * @param cfg config (may be NULL)
+ */
+void ezkey_config_wipe_secrets(EzkeyConfig *cfg);
 
 /**
  * Parse a conf boolean. Known true: true/1/yes/on. Known false: false/0/no/off.

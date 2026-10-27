@@ -56,6 +56,10 @@ static void test_write_cb_cap(void) {
     size_t accepted = 0;
     size_t n;
 
+    /* Pin STATUS/contract 64 KiB — mutating the macro alone must fail. */
+    expect_true("C1: EZKEY_HTTP_BODY_MAX is 65536",
+                EZKEY_HTTP_BODY_MAX == 65536u);
+
     memset(chunk, 'A', sizeof(chunk));
     ezkey_http_buf_init(&buf);
     expect_true("C1: buf init", buf.data != NULL);

@@ -306,6 +306,10 @@ int main(void) {
         n = ezkey_diag_format_attempt(line, sizeof(line), &diag);
         expect_true("worst-case format fits EZKEY_DIAG_LINE_MAX", n >= 0);
         expect_true("worst-case under 768", (size_t)n < EZKEY_DIAG_LINE_MAX);
+        /* P9: pin STATUS literal 768 — mutating the macro alone must fail. */
+        expect_int("P9: EZKEY_DIAG_LINE_MAX literal 768", EZKEY_DIAG_LINE_MAX,
+                   768);
+        expect_true("P9: worst-case under literal 768", (size_t)n < 768);
         expect_int("dest_size=20 → -1",
                    ezkey_diag_format_attempt(line, 20, &diag), -1);
     }

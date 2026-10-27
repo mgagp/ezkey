@@ -25,7 +25,8 @@ OBJECTS = $(BUILD_DIR)/pam_ezkey.o $(BUILD_DIR)/ezkey_filelog.o \
 
 .PHONY: all debug install uninstall clean check-pam check-source check-hardening \
 	lint help test test-filelog test-sanitize test-challenge test-conf \
-	test-budget test-session test-diag test-http test-install-sshd-warn
+	test-budget test-session test-diag test-http test-decision \
+	test-install-sshd-warn
 
 all: $(BUILD_DIR)/$(MODULE_NAME)
 
@@ -201,6 +202,41 @@ check-source:
 		(echo "error: pam_ezkey must refuse SSLKEYLOGFILE (#1016 S1)" >&2; exit 1)
 	@grep -qE 'reason = "env"' $(SRC_DIR)/pam_ezkey.c || \
 		(echo "error: SSLKEYLOGFILE refuse must set reason=env (#1016 S1)" >&2; exit 1)
+	# #1016 P1/P3/P4/P5 decision + TLS + lab_http + wipe guards.
+	@grep -qE 'ezkey_wait_status_decide' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: wait path must call ezkey_wait_status_decide (#1016 P1)" >&2; exit 1)
+	@grep -qE 'strcmp[[:space:]]*\([^)]*"ACCEPTED"' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: ACCEPTED strcmp must remain visible (#1016 P1)" >&2; exit 1)
+	@grep -qE 'ezkey_pam_rc_for_http|ezkey_api_url_allowed_url' $(SRC_DIR)/ezkey_decision.h || \
+		(echo "error: ezkey_decision.h missing HTTP/URL helpers (#1016 P1)" >&2; exit 1)
+	@grep -qE 'S_ISREG' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: conf load must check S_ISREG (#1016 P1)" >&2; exit 1)
+	@grep -qE 'st_uid[[:space:]]*!=[[:space:]]*0' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: conf load must check root uid (#1016 P1)" >&2; exit 1)
+	@grep -qE 'mode[[:space:]]*!=[[:space:]]*0600' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: conf load must require 0600/0400 (#1016 P1)" >&2; exit 1)
+	@grep -qE 'CURLOPT_TIMEOUT[[:space:]]*,[[:space:]]*timeout_seconds' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: CURLOPT_TIMEOUT must use timeout_seconds (#1016 P1)" >&2; exit 1)
+	@grep -qE 'do_cancel[[:space:]]*=[[:space:]]*1' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: do_cancel=1 after create required (#1016 P1)" >&2; exit 1)
+	@grep -qE 'ezkey_prewait_response_confirmed' $(SRC_DIR)/pam_ezkey.c || \
+		(echo "error: confirm ok step must remain (#1016 P1)" >&2; exit 1)
+	@grep -qE 'CURLOPT_SSL_VERIFYPEER[[:space:]]*,[[:space:]]*1L' $(SRC_DIR)/ezkey_http.c || \
+		(echo "error: CURLOPT_SSL_VERIFYPEER 1L required (#1016 P3)" >&2; exit 1)
+	@grep -qE 'CURLOPT_SSL_VERIFYHOST[[:space:]]*,[[:space:]]*2L' $(SRC_DIR)/ezkey_http.c || \
+		(echo "error: CURLOPT_SSL_VERIFYHOST 2L required (#1016 P3)" >&2; exit 1)
+	@if grep -nE 'CURLOPT_SSL_VERIFYPEER[[:space:]]*,[[:space:]]*0' $(SRC_DIR)/*.c; then \
+		echo "error: CURLOPT_SSL_VERIFYPEER 0 forbidden (#1016 P3)" >&2; exit 1; \
+	fi
+	@if grep -nE 'CURLOPT_SSL_VERIFYHOST[[:space:]]*,[[:space:]]*0' $(SRC_DIR)/*.c; then \
+		echo "error: CURLOPT_SSL_VERIFYHOST 0 forbidden (#1016 P3)" >&2; exit 1; \
+	fi
+	@grep -qE 'cfg->lab_http[[:space:]]*=[[:space:]]*0' $(SRC_DIR)/ezkey_conf.c || \
+		(echo "error: lab_http default must assign 0 (#1016 P4)" >&2; exit 1)
+	@grep -qE 'ezkey_config_wipe_secrets|explicit_bzero' $(SRC_DIR)/ezkey_conf.c || \
+		(echo "error: wipe secrets / explicit_bzero missing (#1016 P5)" >&2; exit 1)
+	@grep -qE 'conf_unknown_key' $(SRC_DIR)/ezkey_conf.c || \
+		(echo "error: unknown conf key must warn (#1016 P6)" >&2; exit 1)
 	# #1016 C6/S4: hardening flags + LDLIBS after objects.
 	@grep -qE 'fstack-protector-strong' $(MAKEFILE_LIST) || \
 		(echo "error: -fstack-protector-strong missing (#1016 C6)" >&2; exit 1)
@@ -294,6 +330,14 @@ test-http: $(BUILD_DIR)/ezkey_http.o $(BUILD_DIR)/ezkey_sanitize.o \
 		(echo "error: timeout required for test-http" >&2; exit 1)
 	timeout --foreground $(TEST_HTTP_TIMEOUT_SECS)s $(BUILD_DIR)/test_http_harness
 
+# Harness: wait/HTTP/URL decision contracts (#1016 cycle 2b P1).
+test-decision: $(BUILD_DIR)/ezkey_challenge.o $(BUILD_DIR)/ezkey_sanitize.o \
+		$(TEST_DIR)/test_decision_harness.c $(SRC_DIR)/ezkey_decision.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_decision_harness.c \
+		$(BUILD_DIR)/ezkey_challenge.o $(BUILD_DIR)/ezkey_sanitize.o \
+		-lpam -o $(BUILD_DIR)/test_decision_harness
+	$(BUILD_DIR)/test_decision_harness
+
 # Host-side: shared sshd-warn-global-maxauthtries-1.awk (Patrick #908 / #934 B1).
 test-install-sshd-warn:
 	./scripts/test-install-sshd-warn.sh
@@ -303,7 +347,7 @@ $(BUILD_DIR)/test_no_conv_client: $(TEST_DIR)/test_no_conv_client.c | $(BUILD_DI
 		-o $(BUILD_DIR)/test_no_conv_client
 
 test: check-source all check-hardening test-filelog test-sanitize test-challenge \
-		test-conf test-budget test-session test-diag test-http \
+		test-conf test-budget test-session test-diag test-http test-decision \
 		test-install-sshd-warn $(BUILD_DIR)/test_no_conv_client
 	@echo "test: compiled $(BUILD_DIR)/$(MODULE_NAME) + harnesses + hardening OK"
 

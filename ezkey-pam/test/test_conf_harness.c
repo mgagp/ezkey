@@ -50,6 +50,7 @@ int main(void) {
     ezkey_config_init(&cfg);
     expect_eq("ezkey_config_init → challenge_requested true",
               cfg.challenge_requested, 1);
+    expect_eq("P4: lab_http default 0 after init", cfg.lab_http, 0);
 
     /* Prefer B1: load conf without the key; default must stick. */
     {
@@ -171,6 +172,75 @@ int main(void) {
                           ezkey_conf_load_fp(fp, &cfg), 0);
                 fclose(fp);
                 expect_eq("C3: lab_http=false applied", cfg.lab_http, 0);
+            }
+            unlink(path);
+        }
+    }
+
+    /* P10: apply arms for keys + api_timeout clamp + lab_http typo keep. */
+    ezkey_config_init(&cfg);
+    ezkey_conf_apply_key(&cfg, "integration_key", "ikey-test");
+    expect_true("P10: integration_key applied",
+                strcmp(cfg.integration_key, "ikey-test") == 0);
+    ezkey_conf_apply_key(&cfg, "secret_key", "skey-test");
+    expect_true("P10: secret_key applied",
+                strcmp(cfg.secret_key, "skey-test") == 0);
+    ezkey_conf_apply_key(&cfg, "api_url", "https://alias.example");
+    expect_true("P7/P10: api_url alias applied",
+                strcmp(cfg.api_url, "https://alias.example") == 0);
+    ezkey_conf_apply_key(&cfg, "api_timeout", "99");
+    expect_eq("P10: api_timeout clamped to EZKEY_MAX_API_TIMEOUT",
+              cfg.api_timeout, EZKEY_MAX_API_TIMEOUT);
+    ezkey_conf_apply_key(&cfg, "api_timeout", "5");
+    expect_eq("P10: api_timeout 5 applied", cfg.api_timeout, 5);
+    cfg.lab_http = 0;
+    ezkey_conf_apply_key(&cfg, "lab_http", "maybe");
+    expect_eq("P10: lab_http typo keeps prior 0", cfg.lab_http, 0);
+
+    /* P5: wipe_secrets zeros credentials. */
+    ezkey_config_wipe_secrets(&cfg);
+    expect_true("P5: integration_key wiped", cfg.integration_key[0] == '\0');
+    expect_true("P5: secret_key wiped", cfg.secret_key[0] == '\0');
+    {
+        size_t i;
+        int all_zero = 1;
+
+        for (i = 0; i < sizeof(cfg.secret_key); i++) {
+            if (cfg.secret_key[i] != '\0') {
+                all_zero = 0;
+                break;
+            }
+        }
+        expect_true("P5: secret_key fully zeroed", all_zero);
+    }
+
+    /* P6: '#' inside value is kept; unknown key does not change lab_http. */
+    {
+        char path[] = "/tmp/ezkey-conf-hashval-XXXXXX";
+        int fd = mkstemp(path);
+        const char *body =
+            "secret_key=ab#cd\n"
+            "lab_http=false\n"
+            "not_a_real_key=1\n"
+            "# full line comment\n"
+            "debug=false # trailing comment\n";
+
+        expect_true("P6: mkstemp hash-value", fd >= 0);
+        if (fd >= 0) {
+            (void)write(fd, body, strlen(body));
+            close(fd);
+            ezkey_config_init(&cfg);
+            fp = fopen(path, "r");
+            if (fp != NULL) {
+                expect_eq("P6: load with hash-in-value",
+                          ezkey_conf_load_fp(fp, &cfg), 0);
+                fclose(fp);
+                expect_true("P6: secret keeps ab#cd (not truncated at #)",
+                            strcmp(cfg.secret_key, "ab#cd") == 0);
+                expect_eq("P6: trailing comment still works for debug",
+                          cfg.debug, 0);
+                expect_eq("P6: unknown key ignored (lab_http still 0)",
+                          cfg.lab_http, 0);
             }
             unlink(path);
         }
