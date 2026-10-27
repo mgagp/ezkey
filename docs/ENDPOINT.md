@@ -132,7 +132,7 @@ HTTP-level outcomes for respond (RFC 9457 Problem Details unless noted):
 | Attempt or enrollment not found, still `PENDING`, or terminal (`ACCEPTED`, `REJECTED`, `EXPIRED`, `INVALID`) / cancel-win / superseded | **409** | `auth-attempt-state-conflict` (unified client surface; distinction only in server logs — #844 Marc m1) |
 | Invalid device signature or missing device public key (before proof of possession) | **409** | `auth-attempt-state-conflict` (no status transition; audit `AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED` for invalid signature — #912) |
 | Wall-clock expiry after ownership proof (`expiresAt` reached; conditional UPDATE refused) | **409** | `auth-attempt-expired` (#895; only after device-signature verification — Christophe) |
-| Per-enrollment integration private key missing/blank when signing is required (runtime; transaction rolls back; no JVM startup gate) | **503** | `integration-signing-unavailable` |
+| Per-enrollment integration private key missing/blank when signing is required (runtime; transaction rolls back — except FAILED on a wrong challenge: INVALID is already committed, a retry gets a 409; no JVM startup gate) | **503** | `integration-signing-unavailable` |
 
 A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`).
 
@@ -679,6 +679,7 @@ Errors use `Content-Type: application/problem+json` (or JSON with the same field
 ```
 
 The client should use `detail` (then `title`) for user-facing messages, not assume a transport failure.
+(**Admin / Integration API only; device clients: contract section 7.**)
 
 **Audit:** Each call to `/passwordless-wait` that reaches a terminal outcome writes an `ADMIN_LOGIN` audit row with a distinct `event_action` (for example `login_mfa_session_issued`, `login_mfa_expired`, `login_mfa_rejected`). See [AUDIT_ADMIN_LOGIN_ACTIONS.md](AUDIT_ADMIN_LOGIN_ACTIONS.md) for the full list and SIEM notes.
 

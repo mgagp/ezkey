@@ -282,7 +282,7 @@
           { id: "p7", from: "GlobalError", to: "LoadingPending", label: "Try again",
             detail: "Retries claim pending." },
           { id: "p8", from: "Ready", to: "Responding", label: "Approve / Deny / Leave",
-            detail: "Leave-as-deny (merged #833) calls handleRespond(false). Guards: refs + isProcessing. Q11: biometric on Approve only." },
+            detail: "Leave-as-deny (merged #833) calls handleRespond(false). Guards: refs + isProcessing. Q11: biometric on Approve only (not yet shipped in the app code)." },
           { id: "p9", from: "Responding", to: "Completed", label: "respond OK + sig",
             detail: "serverDecisionAttemptIdRef set after HTTP OK; navigate to Detail." },
           { id: "p10", from: "Responding", to: "UncertainDecision", label: "timeout / transport after send",

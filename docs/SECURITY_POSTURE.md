@@ -38,8 +38,9 @@ meant to be linked from trust-facing material without inflating the top-level pi
   non signé est refusé, le serveur ne l'émet jamais). **Decision (#844 / #833, lived loop):**
   **409** `auth-attempt-state-conflict` et **200** dont la signature résultat n'est pas vérifiable
   → état neutre Back-only (catalogue local ; pas d'effacement, deny ni retry d'approbation) ;
-  **503** `integration-signing-unavailable` (clé manquante, transaction annulée, **pas de corps
-  signé**) → **retryable** (exception au chemin neutre Back-only) ;
+  **503** `integration-signing-unavailable` (clé manquante, transaction annulée — sauf FAILED
+  sur un mauvais challenge : INVALID est déjà commité, un nouvel essai reçoit un 409 ; **pas de
+  corps signé**) → **retryable** (exception au chemin neutre Back-only) ;
   coupure / timeout **après** que le `respond` HTTP a été envoyé → `UncertainDecision` (Q10 :
   résultat incertain, pas un échec, regarder l'écran de connexion d'origine, verrou
   `authAttemptId`, pas de leave-as-deny ni seconde décision — pas d'idempotent respond). Un MITM

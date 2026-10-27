@@ -23,8 +23,8 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 capitals, as shown here.
 
 Each rule cites the state-machine topic and the [#834](https://github.com/mgagp/ezkey/issues/834)
-question number (**Q*n***). Rationales live in those sources; do not duplicate them here. Each rule
-also carries a **Basis** label:
+question number (**Q*n***). Rationales live in those sources; do not duplicate them here. Each
+MUST / MUST NOT rule carries a **Basis** label:
 
 | Basis | Meaning |
 | --- | --- |
@@ -144,11 +144,13 @@ Docs state the contract; SDK and app behaviour changes are separate code follow-
 1. **MUST** treat HTTP **409** `auth-attempt-state-conflict` as final for that attempt: one
    “no longer active” (or equivalent) sentence, Back only, no Retry that sends another decision.
    Covers not-found, still `PENDING`, terminal, cancelled, superseded, and non-owner signature
-   cases per server catalog. **Basis: server** (`AuthAttemptRespondService` state gates /
-   conditional update). State machine: `NoLongerActive`. **Q8** (+ #844 m1).
+   cases per server catalog. **Basis: server (finality) / client invariant (no Retry)**
+   (`AuthAttemptRespondService` state gates / conditional update). State machine: `NoLongerActive`.
+   **Q8** (+ #844 m1).
 2. **MUST** treat HTTP **409** `auth-attempt-expired` as final (wall-clock expiry after ownership
    proof; #895). Clients **MAY** use distinct “expired” copy; they **MUST NOT** offer a Retry that
-   re-sends a decision for that id. **Basis: server**. **Q8** amended by #895.
+   re-sends a decision for that id. **Basis: server (finality) / client invariant (no Retry)**.
+   **Q8** amended by #895.
 3. Presentation note (not a separate protocol obligation): the server already collapses many
    inactive causes into a **single** `auth-attempt-state-conflict` type. Clients **SHOULD** show
    one sentence for that type. They need not invent further cause-splitting UX for causes the
@@ -172,8 +174,8 @@ Docs state the contract; SDK and app behaviour changes are separate code follow-
    `https://ezkey.io/problems/…` when present). **Basis: client invariant**.
 2. **MUST NOT** display problem `detail` or `title` verbatim to end users. Map `type` (and status)
    to local / localized copy. Catalog strings are operator-safe and may be labelled client-facing
-   in server Javadoc, but **the client must not depend on that text** (the same `type` can carry
-   different `title`/`detail` across handlers) and **must not display it**. **Basis: client
+   in server Javadoc, but the client **MUST NOT** depend on that text (the same `type` can carry
+   different `title`/`detail` across handlers) and **MUST NOT** display it. **Basis: client
    invariant**.
 3. **MUST NOT** treat non-Ezkey Problem Details (for example edge/WAF JSON) as Auth API domain
    copy. Use a generic unreachable / request-failed string. **Basis: client invariant**.
