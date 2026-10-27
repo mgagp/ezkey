@@ -48,6 +48,16 @@ load_env_file "${ENV_FILE}"
 SSH_USER="${EZKEY_SSH_USER:-${SSH_USER}}"
 SSH_PORT="${EZKEY_PAM_SSH_PORT:-${SSH_PORT}}"
 
+# #1016 N6: portable artifact default (not a host-specific /opt/cursor path).
+# Override with EZKEY_PAM_ARTIFACT_DIR when a campaign host wants another dir.
+ezkey_pam_artifact_dir() {
+  if [ -n "${EZKEY_PAM_ARTIFACT_DIR:-}" ]; then
+    printf '%s' "${EZKEY_PAM_ARTIFACT_DIR}"
+    return
+  fi
+  printf '%s' "${PAM_ROOT}/runtime/artifacts"
+}
+
 json_get() {
   local json="$1"
   local path="$2"

@@ -7,7 +7,7 @@
 
 /* Module identification */
 #define EZKEY_MODULE_NAME "pam_ezkey"
-#define EZKEY_VERSION "2.2.15"
+#define EZKEY_VERSION "2.2.19"
 
 /*
  * Linux PAM_AUTHINFO_UNAVAIL value (security/pam_constants.h). Used by

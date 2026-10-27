@@ -7,6 +7,7 @@
 #include "ezkey_diag.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -148,17 +149,92 @@ int ezkey_diag_format_syslog(char *dest, size_t dest_size, const EzkeyDiag *diag
     return 0;
 }
 
+void ezkey_diag_syslog_snap_clear(EzkeyDiagSyslogSnap *snap) {
+    if (snap == NULL) {
+        return;
+    }
+    memset(snap->buf[0], 0, sizeof(snap->buf[0]));
+    memset(snap->buf[1], 0, sizeof(snap->buf[1]));
+    snap->len[0] = 0;
+    snap->len[1] = 0;
+    snap->slot = 0;
+}
+
+int ezkey_diag_syslog_snap_publish(EzkeyDiagSyslogSnap *snap,
+                                   const EzkeyDiag *diag) {
+    int next;
+    size_t n = 0;
+
+    if (snap == NULL || diag == NULL) {
+        return -1;
+    }
+    /*
+     * #1016 N5: never zero the *active* length. Format into the inactive
+     * slot; flip slot only after buf+len are complete. A TERM mid-refresh
+     * still reads the previous complete snapshot.
+     */
+    next = snap->slot != 0 ? 0 : 1;
+    if (ezkey_diag_format_syslog(snap->buf[next], sizeof(snap->buf[next]),
+                                 diag, &n) != 0) {
+        return -1;
+    }
+    snap->len[next] = n;
+    snap->slot = (sig_atomic_t)next;
+    return 0;
+}
+
+void ezkey_diag_syslog_snap_read(const EzkeyDiagSyslogSnap *snap,
+                                 const char **msg_out, size_t *len_out) {
+    int slot;
+
+    if (msg_out == NULL || len_out == NULL) {
+        return;
+    }
+    if (snap == NULL) {
+        *msg_out = "";
+        *len_out = 0;
+        return;
+    }
+    slot = snap->slot != 0 ? 1 : 0;
+    *msg_out = snap->buf[slot];
+    *len_out = snap->len[slot];
+}
+
 int ezkey_diag_open_log_fd(void) {
-    int fd;
+    int fd = -1;
     struct sockaddr_un addr;
+    int fl;
 
     /*
-     * SOCK_NONBLOCK: signal-handler write must never block if /dev/log's
-     * datagram queue is full (EAGAIN → drop the SIGNAL line, best-effort).
+     * Prefer SOCK_NONBLOCK|SOCK_CLOEXEC on the socket() call. Fall back to
+     * plain SOCK_DGRAM + fcntl when those flags are unavailable (#1016 P-b).
+     * Either path must end non-blocking: a full /dev/log queue must yield
+     * EAGAIN (drop the SIGNAL line) instead of blocking until LoginGraceTime.
      */
+#if defined(SOCK_NONBLOCK) && defined(SOCK_CLOEXEC)
     fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
+#endif
     if (fd < 0) {
-        return -1;
+        fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+        if (fd < 0) {
+            return -1;
+        }
+        fl = fcntl(fd, F_GETFD);
+        if (fl >= 0) {
+            (void)fcntl(fd, F_SETFD, fl | FD_CLOEXEC);
+        }
+    }
+    fl = fcntl(fd, F_GETFL);
+    if (fl < 0 || (fl & O_NONBLOCK) == 0) {
+        if (fl < 0) {
+            fl = 0;
+        }
+        if (fcntl(fd, F_SETFL, fl | O_NONBLOCK) != 0) {
+            int saved = errno;
+            close(fd);
+            errno = saved;
+            return -1;
+        }
     }
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;

@@ -397,8 +397,9 @@ jobs:
       # E1 (#956 / #941): stub suites must run in CI — make test alone does not
       # catch pam_info-on-default-path or a neutered display_ok call site.
       # ci-m1-conf-security.sh builds the runtime image and runs:
-      #   test-conf-security.sh · test-timeouts.sh · test-f9-retry.sh
-      - name: Stub suites in CI (conf-security + timeouts + f9-retry, #941)
+      #   test-conf-security.sh · test-timeouts.sh · test-f9-retry.sh ·
+      #   test-signal-probes.sh (#1011 B3 / #1016 P12)
+      - name: Stub suites in CI (conf-security + timeouts + f9 + signal-probes)
         run: ./scripts/ci-m1-conf-security.sh
 
   lightsail:

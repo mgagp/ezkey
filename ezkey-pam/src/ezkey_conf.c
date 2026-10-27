@@ -2,6 +2,9 @@
  * ezkey_conf.c — conf defaults, bool parse with fallback, key apply, load.
  */
 
+#define _DEFAULT_SOURCE
+#define _POSIX_C_SOURCE 200809L
+
 #include "ezkey_conf.h"
 
 #include <ctype.h>
@@ -14,6 +17,22 @@
 
 #include "ezkey_budget.h"
 #include "ezkey_config.h"
+
+static void ezkey_conf_secure_wipe(void *ptr, size_t len) {
+    if (ptr == NULL || len == 0) {
+        return;
+    }
+#if defined(__GLIBC__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+    explicit_bzero(ptr, len);
+#else
+    {
+        volatile unsigned char *p = (volatile unsigned char *)ptr;
+        while (len-- > 0) {
+            *p++ = 0;
+        }
+    }
+#endif
+}
 
 static void set_cfg_str(char *dest, size_t dest_size, const char *src) {
     if (dest == NULL || dest_size == 0) {
@@ -76,6 +95,7 @@ void ezkey_config_init(EzkeyConfig *cfg) {
     cfg->wait_polling = EZKEY_DEFAULT_WAIT_POLLING;
     cfg->api_timeout = EZKEY_DEFAULT_API_TIMEOUT;
     cfg->challenge_requested = EZKEY_DEFAULT_CHALLENGE_REQUESTED;
+    /* #1016 P4: lab_http default must stay 0 (http:// fail-closed). */
     cfg->lab_http = 0;
     cfg->debug = 0;
     strncpy(cfg->context_title, "SSH login", sizeof(cfg->context_title) - 1);
@@ -84,6 +104,14 @@ void ezkey_config_init(EzkeyConfig *cfg) {
 #if EZKEY_DEBUG
     cfg->debug = 1;
 #endif
+}
+
+void ezkey_config_wipe_secrets(EzkeyConfig *cfg) {
+    if (cfg == NULL) {
+        return;
+    }
+    ezkey_conf_secure_wipe(cfg->integration_key, sizeof(cfg->integration_key));
+    ezkey_conf_secure_wipe(cfg->secret_key, sizeof(cfg->secret_key));
 }
 
 int ezkey_parse_bool(const char *value, int fallback, int *unrecognized) {
@@ -114,12 +142,14 @@ void ezkey_conf_apply_key(EzkeyConfig *cfg, const char *key,
                           const char *value) {
     int unrecognized = 0;
     int parsed;
+    int known = 1;
 
     if (cfg == NULL || key == NULL) {
         return;
     }
     if (strcmp(key, "integration_api_url") == 0 ||
         strcmp(key, "api_url") == 0) {
+        /* api_url is a documented alias of integration_api_url (#1016 P7). */
         set_cfg_str(cfg->api_url, sizeof(cfg->api_url), value);
     } else if (strcmp(key, "integration_key") == 0) {
         set_cfg_str(cfg->integration_key, sizeof(cfg->integration_key), value);
@@ -168,11 +198,19 @@ void ezkey_conf_apply_key(EzkeyConfig *cfg, const char *key,
                    cfg->debug ? "true" : "false");
         }
         cfg->debug = parsed;
+    } else {
+        known = 0;
+    }
+    /* #1016 P6: warn on unknown keys — key name only, never the value. */
+    if (!known) {
+        syslog(LOG_AUTHPRIV | LOG_WARNING,
+               "pam_ezkey: reason=conf_unknown_key key=%s", key);
     }
 }
 
 int ezkey_conf_load_fp(FILE *fp, EzkeyConfig *cfg) {
     char line[EZKEY_CONF_LINE_MAX];
+    int rc = 0;
 
     if (fp == NULL || cfg == NULL) {
         errno = EINVAL;
@@ -183,10 +221,40 @@ int ezkey_conf_load_fp(FILE *fp, EzkeyConfig *cfg) {
         char *eq;
         char *key;
         char *value;
+        char *nl;
 
-        hash = strchr(line, '#');
-        if (hash != NULL) {
-            *hash = '\0';
+        /*
+         * #1016 C3/S5: fgets(size=EZKEY_CONF_LINE_MAX) stores at most
+         * EZKEY_CONF_LINE_MAX-1 payload bytes. A physical line of 1023 chars
+         * without a newline fills the buffer and is rejected when more input
+         * remains; the largest accepted line body is therefore 1022 chars
+         * (plus newline). Drain and return -3 so a truncated comment tail
+         * cannot become a live key (e.g. lab_http=true).
+         */
+        nl = strchr(line, '\n');
+        if (nl == NULL && !feof(fp)) {
+            int ch;
+
+            while ((ch = fgetc(fp)) != EOF && ch != '\n') {
+                /* drain */
+            }
+            errno = EMSGSIZE;
+            rc = -3;
+            goto out;
+        }
+
+        /*
+         * #1016 P6: '#' starts a comment only at line start or after
+         * whitespace, so secret_key=ab#cd is not silently truncated. Full-line
+         * comments (# ...) still work. Values must not rely on mid-token '#'.
+         */
+        hash = line;
+        while ((hash = strchr(hash, '#')) != NULL) {
+            if (hash == line || isspace((unsigned char)*(hash - 1))) {
+                *hash = '\0';
+                break;
+            }
+            hash++;
         }
         trim_inplace(line);
         if (line[0] == '\0') {
@@ -207,7 +275,12 @@ int ezkey_conf_load_fp(FILE *fp, EzkeyConfig *cfg) {
         ezkey_conf_apply_key(cfg, key, value);
     }
     if (ferror(fp)) {
-        return -1;
+        rc = -1;
+        goto out;
     }
-    return 0;
+    rc = 0;
+out:
+    /* #1016 S2: wipe stack line buffer (may have held secret_key=…). */
+    ezkey_conf_secure_wipe(line, sizeof(line));
+    return rc;
 }

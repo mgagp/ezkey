@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # M1 observability: exactly one authpriv attempt line per scenario in /var/log/secure.
 # Scenarios: success, reject, timeout, network error. Never secrets in any log sink.
+# #1016 D3: isolate from caller ENV (CI stub keys → Integration API http=401).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,7 +10,24 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 require_cmd docker
 require_cmd ssh
+
+# D3: drop caller/CI stub keys, then reload provisioned .env only.
+unset EZKEY_INTEGRATION_KEY EZKEY_SECRET_KEY EZKEY_INTEGRATION_API_URL \
+  EZKEY_M2M_API_URL
+load_env_file "${ENV_FILE}"
 require_integration_keys
+case "${EZKEY_INTEGRATION_KEY}" in
+  *ci_dummy*|*not_a_secret*)
+    echo "test-observability needs provisioned .env keys (got CI stub pattern in EZKEY_INTEGRATION_KEY)" >&2
+    exit 1
+    ;;
+esac
+case "${EZKEY_SECRET_KEY}" in
+  *ci_dummy*|*not_a_secret*)
+    echo "test-observability needs provisioned .env keys (got CI stub pattern in EZKEY_SECRET_KEY)" >&2
+    exit 1
+    ;;
+esac
 
 CONTAINER="${EZKEY_PAM_CONTAINER:-ezkey-pam-ssh}"
 CONF="/etc/security/pam_ezkey.conf"
@@ -32,6 +50,47 @@ restore_conf() {
     || true
 }
 trap restore_conf EXIT
+
+# Sync provisioned .env credentials into the running container conf so a prior
+# CI-stub start cannot leave http=401 keys in place (#1016 D3).
+docker exec "${CONTAINER}" cp -a "${CONF}" "${BACKUP}"
+# Values from .env (validated non-empty / non-stub). Pass via env; rewrite in
+# container Python so the host shell never interpolates secrets into argv.
+docker exec -i \
+  -e "OBS_IKEY=${EZKEY_INTEGRATION_KEY}" \
+  -e "OBS_SKEY=${EZKEY_SECRET_KEY}" \
+  -e "OBS_URL=${EZKEY_INTEGRATION_API_URL:-http://integration-api:7080}" \
+  -e "OBS_CONF=${CONF}" \
+  "${CONTAINER}" python3 - <<'PY'
+import os, pathlib, tempfile
+conf = pathlib.Path(os.environ["OBS_CONF"])
+ikey, skey, url = os.environ["OBS_IKEY"], os.environ["OBS_SKEY"], os.environ["OBS_URL"]
+for label, val in (("ikey", ikey), ("skey", skey), ("url", url)):
+    if any(c in val for c in "\n\r"):
+        raise SystemExit(f"refusing conf rewrite: {label} contains newline")
+lines = conf.read_text(encoding="utf-8").splitlines()
+out = []
+for line in lines:
+    if line.startswith("integration_api_url="):
+        out.append(f"integration_api_url={url}")
+    elif line.startswith("integration_key="):
+        out.append(f"integration_key={ikey}")
+    elif line.startswith("secret_key="):
+        out.append(f"secret_key={skey}")
+    else:
+        out.append(line)
+text = "\n".join(out) + "\n"
+fd, tmp_name = tempfile.mkstemp(prefix="pam_ezkey.obs.", dir=str(conf.parent))
+os.close(fd)
+tmp = pathlib.Path(tmp_name)
+tmp.write_text(text, encoding="utf-8")
+tmp.chmod(0o600)
+os.chown(tmp, 0, 0)
+tmp.replace(conf)
+print("obs: synced conf keys from provisioned .env")
+PY
+# EXIT restore should return to provisioned keys, not a prior stub conf.
+docker exec "${CONTAINER}" cp -a "${CONF}" "${BACKUP}"
 
 attempt_count() {
   # GNU grep -c prints 0 and exits 1 when there are no matches — do not append another 0.

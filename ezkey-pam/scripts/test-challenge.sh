@@ -20,7 +20,7 @@ BACKUP="/etc/security/pam_ezkey.conf.chalbak"
 PORT="${SSH_PORT}"
 PASS=0
 FAIL=0
-ARTIFACT_DIR="${EZKEY_PAM_ARTIFACT_DIR:-/opt/cursor/artifacts}"
+ARTIFACT_DIR="$(ezkey_pam_artifact_dir)"
 mkdir -p "${ARTIFACT_DIR}"
 SSH_LOG="${ARTIFACT_DIR}/pam-challenge-ssh.log"
 PROOF_LOG="${ARTIFACT_DIR}/pam-challenge-proof.log"
@@ -161,7 +161,7 @@ start_ssh_capture() {
   local log="${1:-${SSH_LOG}}"
   : >"${log}"
   close_ssh_ctrl
-  # /opt/cursor/artifacts may be a FUSE mount that cannot host fifos.
+  # Artifact dirs on some hosts (FUSE) cannot host fifos — use /tmp for ctrl.
   SSH_CTRL="$(mktemp -u /tmp/pam-chal-ctrl.XXXXXX)"
   mkfifo "${SSH_CTRL}"
 

@@ -77,9 +77,52 @@ int ezkey_diag_format_syslog(char *dest, size_t dest_size, const EzkeyDiag *diag
                              size_t *out_len);
 
 /**
+ * Double-buffered SIGNAL syslog snapshot (#1016 N5).
+ *
+ * Publish writes the inactive slot to completion, then flips {@code slot}.
+ * A SIGTERM mid-refresh still observes the previous complete snapshot
+ * (never a zeroed length on the active slot).
+ */
+typedef struct {
+    char buf[2][EZKEY_DIAG_LINE_MAX];
+    /** Published byte counts; read only after observing {@code slot}. */
+    volatile size_t len[2];
+    /** Active slot: 0 or 1. */
+    volatile sig_atomic_t slot;
+} EzkeyDiagSyslogSnap;
+
+/**
+ * Zero both slots (call at authenticate entry).
+ *
+ * @param snap snapshot pair (must not be NULL)
+ */
+void ezkey_diag_syslog_snap_clear(EzkeyDiagSyslogSnap *snap);
+
+/**
+ * Format {@code diag} into the inactive slot, then publish by flipping slot.
+ *
+ * @param snap snapshot pair
+ * @param diag source fields
+ * @return 0 on success, -1 on format error (active slot unchanged)
+ */
+int ezkey_diag_syslog_snap_publish(EzkeyDiagSyslogSnap *snap,
+                                   const EzkeyDiag *diag);
+
+/**
+ * Read the currently published snapshot (async-signal-safe).
+ *
+ * @param snap snapshot pair
+ * @param msg_out receives pointer to published bytes (never NULL if snap ok)
+ * @param len_out receives published length
+ */
+void ezkey_diag_syslog_snap_read(const EzkeyDiagSyslogSnap *snap,
+                                 const char **msg_out, size_t *len_out);
+
+/**
  * Open /dev/log for signal-safe emit. Fail-open (returns -1).
- * Socket is SOCK_DGRAM|SOCK_CLOEXEC|SOCK_NONBLOCK so a full queue yields
- * EAGAIN instead of blocking the SIGTERM handler until LoginGraceTime.
+ * Prefers SOCK_DGRAM|SOCK_CLOEXEC|SOCK_NONBLOCK; falls back to socket()
+ * plus fcntl(O_NONBLOCK) / FD_CLOEXEC when those flags are absent (#1016 P-b).
+ * A full queue yields EAGAIN instead of blocking the SIGTERM handler.
  *
  * @return connected non-blocking SOCK_DGRAM fd, or -1
  */

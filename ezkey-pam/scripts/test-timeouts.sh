@@ -19,7 +19,7 @@ PORT="${SSH_PORT}"
 STUB_PORT="${EZKEY_STUB_PORT:-18081}"
 STUB_PID_FILE="/tmp/ezkey-pam-stub-tmo.pid"
 STUB_REQ_LOG="/tmp/ezkey-pam-stub-reqs.log"
-ARTIFACT_DIR="${EZKEY_PAM_ARTIFACT_DIR:-/opt/cursor/artifacts}"
+ARTIFACT_DIR="$(ezkey_pam_artifact_dir)"
 mkdir -p "${ARTIFACT_DIR}"
 PROOF="${ARTIFACT_DIR}/pam-timeouts.log"
 PASS=0
@@ -703,14 +703,16 @@ OUT="$(docker exec "${CONTAINER}" sh -c 'cat /var/log/ezkey-pam/debug.out' || tr
 WAIT_LEFT="$(echo "${OUT}" | grep -oE 'wait_left_[0-9]+' | tail -n1 | cut -d_ -f3 || true)"
 echo "nochal-delayed-enter chunk=${GOT_TO} wait_left=${WAIT_LEFT} sent_ttl=${GOT_TTL} ssh_rc=${SSH_RC} attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
-# B1: TTL is computed after ok, so ~8s typing shrinks both wait_left and sent ttl.
-if echo "${ATTEMPT}" | grep -Eq 'result=(SUCCESS|UNAVAIL|DENIED|TIMEOUT|EXPIRED)' \
+# B1 / #1016 P2: TTL shrinks after ok; require real SUCCESS (ACCEPTED branch
+# inverted must fail — do not accept UNAVAIL|DENIED|TIMEOUT|EXPIRED here).
+if echo "${ATTEMPT}" | grep -q 'result=SUCCESS' \
+  && [ "${SSH_RC}" -eq 0 ] \
   && [ -n "${WAIT_LEFT}" ] && [ "${WAIT_LEFT}" -lt 90 ] && [ "${WAIT_LEFT}" -ge 70 ] \
   && [ -n "${GOT_TTL}" ] && [ "${GOT_TTL}" -le 85 ] && [ "${GOT_TTL}" -ge 70 ] \
   && [ -n "${GOT_TO}" ] && [ "${GOT_TO}" -le 5 ]; then
-  ok "no-challenge delayed Enter ${DELAY_SECS}s → wait_left=${WAIT_LEFT} sent_ttl=${GOT_TTL} (both shrunk) + chunk≤5"
+  ok "no-challenge delayed Enter ${DELAY_SECS}s → SUCCESS ssh_rc=0 wait_left=${WAIT_LEFT} sent_ttl=${GOT_TTL} + chunk≤5"
 else
-  fail "no-challenge delayed Enter expected wait_left/ttl in [70,85] + chunk≤5, got wait_left='${WAIT_LEFT}' ttl='${GOT_TTL}' chunk='${GOT_TO}' ${ATTEMPT}"
+  fail "no-challenge delayed Enter expected SUCCESS+ssh_rc=0 + wait_left/ttl in [70,85] + chunk≤5, got ssh_rc=${SSH_RC} wait_left='${WAIT_LEFT}' ttl='${GOT_TTL}' chunk='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -1706,9 +1708,14 @@ if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -qE 'ezkey_in_wait[[:space:]]*!=' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -qE 'raise[[:space:]]*\([[:space:]]*SIGTERM[[:space:]]*\)' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && awk '/Chunked \/wait/,/^[[:space:]]*ezkey_in_wait[[:space:]]*=[[:space:]]*1[[:space:]]*;/' \
-       "${SCRIPT_DIR}/../src/pam_ezkey.c" | grep -qE 'ezkey_wait_abort[[:space:]]*!=[[:space:]]*0' \
+       "${SCRIPT_DIR}/../src/pam_ezkey.c" | grep -qE 'ezkey_wait_entry_abort_raised[[:space:]]*\(' \
+  && grep -qE 'abort_flag[[:space:]]*!=[[:space:]]*0' \
+       "${SCRIPT_DIR}/../src/ezkey_wait_entry.h" \
   && ! awk '/Chunked \/wait/,/^[[:space:]]*ezkey_in_wait[[:space:]]*=[[:space:]]*1[[:space:]]*;/' \
        "${SCRIPT_DIR}/../src/pam_ezkey.c" | grep -qE 'ezkey_wait_abort[[:space:]]*=[[:space:]]*0' \
+  && grep -qE 'fcntl[[:space:]]*\([^,]+,[[:space:]]*F_SETFL[[:space:]]*,.*O_NONBLOCK' \
+       "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -qE 'ezkey_diag_syslog_snap_publish' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_format_waiting_prompt' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_challenge_display_ok' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_prewait_prompt_mode' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
