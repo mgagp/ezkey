@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.3.0
+
+Aligns the SDK with `docs/CLIENT_BEHAVIOUR_CONTRACT.md` (#1052 code follow-up).
+
+- **Decision lock owned by the SDK** (contract §2, Q2/Q10/Q13): `PendingAuthAttempt` carries
+  `decisionState` (`AuthAttemptDecisionState.open` / `sending` / `locked`) and `canDecide`.
+  `approve` / `deny` refuse locally (nothing sent) when the attempt cannot be decided, which
+  also covers racing taps and leave-as-deny after a decision.
+- **Unknown respond outcome** (contract §2.3–2.4): a transport failure after the request was
+  sent, or an ambiguous 5xx, now throws `EzkeyRespondOutcomeUnknownException` (not retryable,
+  attempt locked) instead of a retryable `EzkeyNetworkException` / `EzkeyApiException`. The
+  typed 503s (`integration-signing-unavailable`, `audit-chain-heartbeat-degraded`) and 429 stay
+  retryable and reopen the attempt.
+- **Breaking:** `EzkeyException` has a new sealed subtype; exhaustive `switch` statements over
+  it need a new case. A second `approve` / `deny` on the same attempt object now throws
+  `EzkeyValidationException` locally instead of reaching the server's 409.
+- `EzkeyProblemKind.resourceNotFound` and `methodNotAllowed`: all 19 Auth API problem types are
+  now mapped, with a test pinning the count to the server catalog.
+- README: decision lock, unknown outcome and leave-as-deny guidance; removed the known-gap note.
+- E2E: the second-decision case now proves both the local lock and the server's 409.
+
 ## 0.2.0
 
 Protocol refresh against the current Auth API and mobile app; the module is now a device-side SDK.

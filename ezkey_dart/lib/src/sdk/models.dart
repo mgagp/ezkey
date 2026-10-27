@@ -292,6 +292,20 @@ class EzkeyEnrollment {
 ///
 /// Claiming is one-shot: the server moved the attempt from `PENDING` to `READ`, and the next
 /// `pending` call will not return it again. Keep this object until the user decides.
+/// Where a claimed attempt stands with respect to the device's decision (client behaviour
+/// contract §2, decision lock).
+enum AuthAttemptDecisionState {
+  /// No decision sent yet: approve, deny or leave-as-deny may be sent.
+  open,
+
+  /// A respond call is in progress. Do not send another decision, including leave-as-deny.
+  sending,
+
+  /// A decision reached the server, its outcome is unknown, or the attempt is final. Never send
+  /// another decision for this attempt; offer Back only.
+  locked,
+}
+
 class PendingAuthAttempt {
   PendingAuthAttempt({
     required this.enrollmentLocalId,
@@ -326,6 +340,16 @@ class PendingAuthAttempt {
   DateTime get latestPossibleExpiry => receivedAt.add(maxAuthAttemptTtl);
 
   bool isCertainlyExpired(DateTime now) => now.isAfter(latestPossibleExpiry);
+
+  AuthAttemptDecisionState _decisionState = AuthAttemptDecisionState.open;
+
+  /// Decision lock maintained by [EzkeyAuthenticator.approve] / [EzkeyAuthenticator.deny]. It is
+  /// per attempt object, so a newly claimed attempt starts [AuthAttemptDecisionState.open] (Q13).
+  AuthAttemptDecisionState get decisionState => _decisionState;
+
+  /// Whether a decision may be sent now. Check it before leave-as-deny: when `false`, leaving the
+  /// screen must not send anything.
+  bool get canDecide => _decisionState == AuthAttemptDecisionState.open;
 
   @override
   String toString() =>
@@ -404,4 +428,12 @@ class EzkeyInstanceInfo {
   @override
   String toString() =>
       'EzkeyInstanceInfo(instanceName: $instanceName, authApiPublicBaseUrl: $authApiPublicBaseUrl)';
+}
+
+/// Sets the decision lock of [attempt]. SDK-internal: hidden from `package:ezkey_dart/ezkey_dart.dart`.
+void setAuthAttemptDecisionState(
+  PendingAuthAttempt attempt,
+  AuthAttemptDecisionState state,
+) {
+  attempt._decisionState = state;
 }

@@ -15,6 +15,6 @@ export 'src/sdk/authenticator.dart';
 export 'src/sdk/enrollment_store.dart';
 export 'src/sdk/errors.dart';
 export 'src/sdk/key_store.dart';
-export 'src/sdk/models.dart';
+export 'src/sdk/models.dart' hide setAuthAttemptDecisionState;
 export 'src/sdk/url_policy.dart';
 export 'src/secure_random.dart';

@@ -2,7 +2,7 @@ name: ezkey_dart
 description: >-
   Experimental pure-Dart device-side SDK for the Ezkey protocol (enrollment, auth-attempt
   approval, request signing and response verification), plus lab CLIs for end-to-end tests.
-version: 0.2.0
+version: 0.3.0
 publish_to: none
 
 executables:

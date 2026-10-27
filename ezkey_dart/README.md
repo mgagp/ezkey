@@ -1,6 +1,6 @@
 # ezkey_dart — Ezkey device-side protocol SDK for Dart / Flutter
 
-**Status: experimental lab module** (version 0.2.0, `publish_to: none`). This repository's
+**Status: experimental lab module** (version 0.3.0, `publish_to: none`). This repository's
 production authenticator is the React Native app in `../ezkey_mobile/`. This package reimplements
 that app's protocol logic in pure Dart, so a **Flutter** authenticator app can act as an Ezkey
 device. It is tested against the real server stack (see [§6 Running the tests](#6-running-the-tests)).
@@ -174,8 +174,8 @@ final authenticator = EzkeyAuthenticator(
 | `checkPending(enrollment)` → `PendingAuthAttempt?` | One `pending` call with a fresh signed device proof token. `null` means nothing pending. A non-null result is **claimed** (one-shot). | API `authAttemptBindingFailed` (enrollment revoked / bad proof); integrity `pendingSignature`; network |
 | `pollPending(enrollment, {interval: 2 s, timeout: 60 s})` | Repeats `checkPending` until an attempt arrives or the timeout passes (then `null`). Network errors are retried; other errors are thrown. | same |
 | `watchPending(enrollment, {interval})` → `Stream<PendingAuthAttempt>` | Polls while listened to; cancel the subscription to stop. | same |
-| `approve(enrollment, attempt, {int? challengeResponse})` → `AuthAttemptOutcome` | Signs and sends approve. Throws locally (sends nothing) if a challenge is required and missing. | API `authAttemptStateConflict` / `authAttemptExpired` (`isAttemptNoLongerActionable`), `integrationSigningUnavailable` (retryable); integrity `respondSignature`, `respondConsistency` |
-| `deny(enrollment, attempt)` → `AuthAttemptOutcome` | Signs and sends deny. | same |
+| `approve(enrollment, attempt, {int? challengeResponse})` → `AuthAttemptOutcome` | Signs and sends approve, under the attempt's decision lock (§3.2). Throws locally (sends nothing) if a challenge is required and missing, or if the attempt cannot be decided (`canDecide` is false). | `EzkeyRespondOutcomeUnknownException` (sent, outcome unknown); API `authAttemptStateConflict` / `authAttemptExpired` (`isAttemptNoLongerActionable`), `integrationSigningUnavailable` (retryable); integrity `respondSignature`, `respondConsistency` |
+| `deny(enrollment, attempt)` → `AuthAttemptOutcome` | Signs and sends deny (also used for leave-as-deny). | same |
 
 `AuthAttemptOutcome.result` is an `AuthAttemptResult` (`approved`, `denied`, `failed`,
 `expired`); `failed` after an approve means "wrong challenge code, the attempt is now invalid".
@@ -191,7 +191,13 @@ final authenticator = EzkeyAuthenticator(
   the enrollment proof token, so **store it as a secret**.
 - `PendingAuthAttempt` holds `authAttemptId`, `challengeRequired`, `contextTitle`,
   `contextMessage` (all authenticated), `receivedAt`, `latestPossibleExpiry`,
-  `isCertainlyExpired(now)`.
+  `isCertainlyExpired(now)`, and the **decision lock** (client behaviour contract §2):
+  `decisionState` (`AuthAttemptDecisionState.open` / `sending` / `locked`) and `canDecide`.
+  `approve` / `deny` move it to `sending` before their first `await`, then to `locked` once
+  the server answered, the outcome is unknown, or the error is final. It returns to `open`
+  only when nothing was sent (signing failed) or the server refused with a retryable,
+  classified error (429, 503 `integration-signing-unavailable`). The lock lives on the attempt
+  object, so a newly claimed attempt starts `open` (**Q13**).
 - `DevicePrivateKeyStorageTier` is `none` / `standard` / `strong` (sent to the server as
   self-reported metadata).
 - `maxAuthAttemptTtl` = 120 s.
@@ -214,7 +220,8 @@ contains tokens, keys, signatures or response bodies.
 | `EzkeyValidationException` | Bad local input (malformed QR, bad URL, missing challenge, already enrolled). Nothing was sent. | Show an input error. |
 | `EzkeyApiException` | Non-2xx answer. `statusCode`, `kind` (`EzkeyProblemKind`, from the RFC 9457 `type`), `problem`, `isAttemptNoLongerActionable`, `retryable`. | Map `kind` to your own localized copy. Do not show `problem.detail` to end users. |
 | `EzkeyIntegrityException` | Signature or consistency check failed (`check` names which one). | Fail closed: show "Security check failed", do not display server text, approve nothing, persist nothing. |
-| `EzkeyNetworkException` | Timeout, DNS, TLS or connection failure (`cause`). Retryable. | "Can't reach the server"; offer Retry. |
+| `EzkeyNetworkException` | Timeout, DNS, TLS or connection failure (`cause`). Retryable. Never thrown by `approve` / `deny` once the request was handed to the transport (see next row). | "Can't reach the server"; offer Retry. |
+| `EzkeyRespondOutcomeUnknownException` | `approve` / `deny` was sent but its outcome is unknown: transport failure after send, or an ambiguous 5xx (any 5xx except the typed 503s `integration-signing-unavailable` and `audit-chain-heartbeat-degraded`). `authAttemptId`, `accepted`, `cause`. Not retryable; the attempt is `locked`. | Uncertain result, not a failure: "Check the sign-in where you started". Back only, never Retry, no leave-as-deny (contract §2.3–2.4, **Q10**). |
 | `EzkeyLocalStateException` | Stored record or key missing / corrupt. | Offer to remove the enrollment and re-enroll. |
 
 ### 3.5 Low-level crypto (usually not needed)
@@ -303,18 +310,19 @@ EncryptedSharedPreferences), keyed by `localId`. Never put records in plain
    - `failed`: "Wrong code. Start the login again on your computer".
    - `EzkeyApiException.isAttemptNoLongerActionable`: "This request is no longer active" or
      "expired" (`kind == authAttemptExpired`). Offer Back only, never Retry.
-   - **UNKNOWN outcome:** if `respond` was **sent** but you get **no HTTP response** (timeout /
-     transport cut), treat as unknown (**contract MUST**, **Q10**): **lock that `authAttemptId`**,
-     never send a second decision, point the user at the integrating application, Back only.
-   - Ambiguous **5xx** after send **SHOULD** use the same UNKNOWN posture (**extension of Q10**).
-     **503** `integrationSigningUnavailable` remains **retryable**, but a retry **may** return
-     terminal **409** (e.g. wrong challenge already committed `INVALID` before signing failed).
-     Do **not** offer “answer again” for UNKNOWN cases.
-   - **Known gap (SDK and RN app):** today a lost `respond` surfaces as `EzkeyNetworkException`
-     with `retryable: true`, and many 5xx kinds are also `retryable` / unlocked. Do not follow
-     those flags for post-send uncertainty; code follow-up (#1052 plan).
-   - Pre-send `retryable` errors and classified **4xx** / **429** with a body: offer Retry per
-     catalog without treating them as UNKNOWN.
+   - `EzkeyRespondOutcomeUnknownException`: the decision was **sent** but its outcome is
+     unknown (no HTTP response, or an ambiguous 5xx). Show an uncertain result (not a
+     failure) pointing at the sign-in where the request started; Back only (**contract MUST**
+     §2.3, **SHOULD** §2.4, **Q10**). The SDK has already locked the attempt.
+   - **503** `integrationSigningUnavailable` and **429** are retryable: the attempt is `open`
+     again and the same decision may be sent. A retry after 503 **may** return terminal
+     **409** (e.g. a wrong challenge already committed `INVALID` before signing failed).
+   - Other `retryable` errors happen before anything is sent (signing failed): offer Retry.
+   - Gate every button and leave-as-deny on `attempt.canDecide`. A second tap while a
+     decision is in flight is refused locally (`EzkeyValidationException`, nothing sent).
+   - **Leave-as-deny (contract §3, SHOULD):** when the user leaves the prompt screen and
+     `attempt.canDecide` is true, call `deny(...)` once; if it fails, let the user leave
+     anyway with one short message, and never retry it in a loop.
 7. **Settings.** Use `fetchInstanceInfo` for "About this server", and `forget` to remove an
    enrollment locally (tell the user an administrator must also revoke it server-side).
 
@@ -361,9 +369,10 @@ for widget and unit tests. Then run `bin/ezkey_e2e.dart` against a real stack (�
 - **Error copy.** Map `EzkeyProblemKind` / problem `type` and HTTP status to local strings. **Never
   display** `problem.detail`, `title`, or exception `message` to end users (same rule as
   [`CLIENT_BEHAVIOUR_CONTRACT.md`](../docs/CLIENT_BEHAVIOUR_CONTRACT.md) §7).
-- **Decision lock.** After any `respond` that completed or became undecidable at the HTTP layer,
-  lock that attempt id and do not send another approve/deny for it (including leave-as-deny).
-  See contract §§2–3 (**Q2**, **Q5**, **Q10**, **Q13**).
+- **Decision lock.** The SDK locks each claimed attempt after any `respond` that completed or
+  became undecidable at the HTTP layer (`PendingAuthAttempt.decisionState`). Keep using the
+  same `PendingAuthAttempt` object for the whole decision: a copy rebuilt by the app starts
+  `open` and bypasses the lock. See contract §§2–3 (**Q2**, **Q5**, **Q10**, **Q13**).
 
 ---
 
@@ -383,7 +392,7 @@ This runs `dart pub get`, `dart format --set-exit-if-changed`, `dart analyze --f
 
 | File | Coverage |
 |------|----------|
-| `authenticator_test.dart` | Full SDK flows against the fake server: enrollment (happy path, two-step, URL override / policy, local duplicate, rebind, tampered bind fields, key substitution, wrong algorithm, id echo, wrong challenge → key deleted, verify tamper, `active=false`, network failure), forget, instance-info, pending (fresh proof per poll, one-shot claim, NFC context, tampered title / challenge flag), approve / deny, respond tamper / missing signature / id mismatch / unknown result / 503 retryable / double respond, enrollment-level and per-attempt challenge (local refusal, wrong code → FAILED, deny without code), cancel before / after claim, supersede, expiry, `pollPending` / `watchPending` including network retries, `toString` redaction |
+| `authenticator_test.dart` | Full SDK flows against the fake server: enrollment (happy path, two-step, URL override / policy, local duplicate, rebind, tampered bind fields, key substitution, wrong algorithm, id echo, wrong challenge → key deleted, verify tamper, `active=false`, network failure), forget, instance-info, pending (fresh proof per poll, one-shot claim, NFC context, tampered title / challenge flag), approve / deny, respond tamper / missing signature / id mismatch / unknown result / 503 retryable, decision lock (starts open, racing second decision refused, second decision refused locally while the server also refuses a copy, connection cut after the server recorded the decision, transport failure and ambiguous 5xx → unknown outcome, 503 / 429 reopen, final 409 and post-200 integrity failure lock, signing failure stays open, newer attempt not blocked), enrollment-level and per-attempt challenge (local refusal, wrong code → FAILED, deny without code), cancel before / after claim, supersede, expiry, `pollPending` / `watchPending` including network retries, `toString` redaction |
 | `crypto_test.dart` | P-256 keys, PKCS#8 round trip, RFC 6979 determinism, low-S, DER/SPKI formats, JVM interop vectors (ECDSA verify, Ed25519 byte-for-byte), tamper rejection |
 | `payload_test.dart` | Golden canonical strings for all eight payloads (shared with the mobile app's tests), NFC normalization, null / boolean encoding |
 | `models_test.dart`, `errors_test.dart` | QR parsing, challenge parsing, record JSON round trip, URL policy, RFC 9457 classification, retryability |
@@ -424,8 +433,8 @@ passwordless login with the imported Demo Device key. It then provisions a throw
 - Enrollment: plain, challenge-required, `TENANT_ADMIN` onboarding (system integration), wrong
   challenge (invitation burnt), rebind refused.
 - Instance-info, empty pending, device proof token single-use after a claim.
-- Approve with NFC context (integration sees ACCEPTED), deny (REJECTED), double respond
-  (conflict).
+- Approve with NFC context (integration sees ACCEPTED), deny (REJECTED), second decision
+  (refused locally by the decision lock; a copy of the attempt gets the server's conflict).
 - Challenge: local refusal without a code, wrong code (FAILED / INVALID), right code (ACCEPTED),
   per-attempt `challengeRequested`.
 - Cancel after claim (conflict), cancel before claim (nothing delivered), supersede.
