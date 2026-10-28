@@ -680,5 +680,76 @@ grep -q 'INCONCLUSIVE: skipped phase(s)' "$SKIP_OUT.log" \
   && echo "ok - all-skip → OVERALL INCONCLUSIVE" && pass=$((pass+1)) \
   || { echo "not ok - all-skip → OVERALL INCONCLUSIVE"; fail=$((fail+1)); grep -E 'OVERALL|overall' "$SKIP_OUT.log" || true; }
 
+# 11) --no-clean-start must not call `docker compose … down` (#915 defect 3).
+# Recording fake-docker on PATH; run preflight only (other phases skipped).
+REC_BIN="$TMP/bin-record"
+REC_LOG="$TMP/docker-calls.log"
+mkdir -p "$REC_BIN"
+: >"$REC_LOG"
+cat >"$REC_BIN/docker" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+# Record every invocation (space-joined) for down/rm assertions.
+printf '%s\n' "$*" >>"${FAKE_DOCKER_CALL_LOG:?}"
+cmd="${1:-}"
+case "$cmd" in
+  compose|rm) exit 0 ;;
+  info) echo 17179869184; exit 0 ;;
+  events|logs|inspect) exit 0 ;;
+  *) echo "record-docker: unsupported $cmd" >&2; exit 1 ;;
+esac
+EOF
+chmod +x "$REC_BIN/docker"
+
+NCS_OUT="$TMP/no-clean-start-run"
+set +e
+(
+  cd "$ROOT"
+  FAKE_DOCKER_CALL_LOG="$REC_LOG" PATH="$REC_BIN:$PATH" \
+    ./scripts/quality-gate.sh --no-clean-start \
+      --skip functional-tests --skip elective-tests --skip playwright \
+      --skip churn-init --skip churn --skip health \
+      >"$NCS_OUT.log" 2>&1
+)
+ncs_ec=$?
+set -e
+assert_eq "$ncs_ec" "4" "--no-clean-start → exit 4 (INCONCLUSIVE)"
+NCS_RUN_DIR="$(sed -n 's/.*run dir: //p' "$NCS_OUT.log" | head -1)"
+[[ -n "$NCS_RUN_DIR" && -f "$NCS_RUN_DIR/preflight.txt" ]] \
+  && grep -q 'reusing running stack' "$NCS_RUN_DIR/preflight.txt" \
+  && echo "ok - --no-clean-start logs reusing running stack" && pass=$((pass+1)) \
+  || { echo "not ok - --no-clean-start logs reusing running stack"; fail=$((fail+1)); \
+       echo "run_dir=${NCS_RUN_DIR:-missing}"; cat "$NCS_OUT.log" || true; }
+# unit-tests / clean-start / post-clean-health are skipped by the flag.
+grep -E $'^unit-tests\tSKIP\t' "$NCS_RUN_DIR/phases.tsv" >/dev/null 2>&1 \
+  && echo "ok - --no-clean-start skips unit-tests" && pass=$((pass+1)) \
+  || { echo "not ok - --no-clean-start skips unit-tests"; fail=$((fail+1)); }
+grep -E '(^|[[:space:]])down([[:space:]]|$)' "$REC_LOG" >/dev/null \
+  && { echo "not ok - --no-clean-start must not invoke compose down"; fail=$((fail+1)); cat "$REC_LOG"; } \
+  || { echo "ok - --no-clean-start → no docker down"; pass=$((pass+1)); }
+grep -q 'rm -f' "$REC_LOG" >/dev/null 2>&1 \
+  && { echo "not ok - --no-clean-start must not docker rm collectors"; fail=$((fail+1)); } \
+  || { echo "ok - --no-clean-start → no docker rm"; pass=$((pass+1)); }
+
+# Control: without the flag, preflight still runs stop_stacks (down present).
+: >"$REC_LOG"
+STOP_OUT="$TMP/with-stop-stacks-run"
+set +e
+(
+  cd "$ROOT"
+  FAKE_DOCKER_CALL_LOG="$REC_LOG" PATH="$REC_BIN:$PATH" \
+    ./scripts/quality-gate.sh \
+      --skip unit-tests --skip clean-start --skip post-clean-health \
+      --skip functional-tests --skip elective-tests --skip playwright \
+      --skip churn-init --skip churn --skip health \
+      >"$STOP_OUT.log" 2>&1
+)
+stop_ec=$?
+set -e
+assert_eq "$stop_ec" "4" "preflight-only (no --no-clean-start) → exit 4"
+grep -E '(^|[[:space:]])down([[:space:]]|$)' "$REC_LOG" >/dev/null \
+  && echo "ok - default preflight still invokes compose down" && pass=$((pass+1)) \
+  || { echo "not ok - default preflight still invokes compose down"; fail=$((fail+1)); cat "$REC_LOG"; }
+
 echo "passes=$pass fails=$fail"
 [[ "$fail" -eq 0 ]]

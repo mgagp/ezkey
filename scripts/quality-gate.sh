@@ -66,7 +66,8 @@ Usage: ./scripts/quality-gate.sh [options]
 
   --churn-minutes N   Minutes per concurrent churn shell (default: 5)
   --skip PHASE        Skip a phase (repeatable)
-  --no-clean-start    Skip clean-start (reuse running stack)
+  --no-clean-start    Reuse running stack (no compose down -v); skip
+                      unit-tests, clean-start, post-clean-health (exit 4)
   -h, --help          Show this help
 
 Docs: product-docs/global/hygiene/quality-gate/README.md
@@ -77,7 +78,8 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --churn-minutes) CHURN_MINUTES="${2:-}"; shift 2 ;;
     --skip) SKIP_PHASES="${SKIP_PHASES} ${2:-}"; shift 2 ;;
-    --no-clean-start) NO_CLEAN_START=1; SKIP_PHASES="${SKIP_PHASES} clean-start post-clean-health"; shift ;;
+    # Skip unit-tests too: stack stays up and gate RAM headroom is tight (#915).
+    --no-clean-start) NO_CLEAN_START=1; SKIP_PHASES="${SKIP_PHASES} unit-tests clean-start post-clean-health"; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -236,7 +238,13 @@ run_phase_preflight() {
     echo "=== preflight ==="
     echo "git_sha: $FULL_SHA"
     echo "date_utc: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-    stop_stacks
+    # --no-clean-start must not destroy volumes (#915 defect 3).
+    if [[ "$NO_CLEAN_START" -eq 1 ]]; then
+      echo "reusing running stack"
+      note="tip + docker MemTotal vs gate memory budget; reusing running stack"
+    else
+      stop_stacks
+    fi
     local mem_total budget
     mem_total="$(docker_mem_total_mib)"
     budget="$(gate_memory_budget_mib)"
@@ -251,7 +259,11 @@ run_phase_preflight() {
     fi
     command -v docker >/dev/null || { echo FATAL: docker missing; code=1; verdict=RED; }
     command -v node >/dev/null || { echo FATAL: node missing; code=1; verdict=RED; }
-    echo "phase_order: unit-tests before stack (intentional RAM headroom)"
+    if [[ "$NO_CLEAN_START" -eq 1 ]]; then
+      echo "phase_order: unit-tests skipped (--no-clean-start; stack-up RAM)"
+    else
+      echo "phase_order: unit-tests before stack (intentional RAM headroom)"
+    fi
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
   [[ "$code" -ne 0 ]] && verdict=RED
