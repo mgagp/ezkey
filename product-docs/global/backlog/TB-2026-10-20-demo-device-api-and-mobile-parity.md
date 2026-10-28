@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `TB-2026-10-20-demo-device-api-and-mobile-parity`
-- **Status:** `under-review` → implementation on PR `#948`
+- **Status:** `decided` (F1 + F4 on PR `#948`; Walk Gate not claimed — Isabelle)
 - **Related idea:** `I-2026-10-20-demo-device-api-and-mobile-parity`
 - **GitHub issue:** `#943` (single owner; duplicate `#1081` closed)
 - **GitHub PR:** `#948`

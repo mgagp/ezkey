@@ -95,7 +95,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 
 | ID | Title | Status | Related idea |
 |----|-------|--------|--------------|
-| `TB-2026-10-20-demo-device-api-and-mobile-parity` | Demo Device API + mobile FSM parity (F1+F4 budget locked) | `under-review` | `I-2026-10-20-demo-device-api-and-mobile-parity` (#943 / #948) |
+| `TB-2026-10-20-demo-device-api-and-mobile-parity` | Demo Device API + mobile FSM parity (F1+F4 decided on #948) | `decided` | `I-2026-10-20-demo-device-api-and-mobile-parity` (#943 / #948) |
 | `TB-2026-08-29-admin-api-remove-m2m-hatch` | Remove Admin API API-key M2M hatch | `done` | `I-2026-08-29-admin-api-remove-m2m-hatch` |
 | `TB-2026-08-28-admin-first-keyset-bootstrap` | Admin-first keyset bootstrap | `implemented` | `I-2026-07-17-keyset-blob-admin-first-bootstrap` |
 | `TB-2026-08-14-mobile-exit-experimental-messaging` | Exit experimental in-app messaging | `under-review` | `I-2026-08-02-mobile-exit-experimental-messaging` |

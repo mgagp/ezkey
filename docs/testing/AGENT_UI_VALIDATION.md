@@ -192,6 +192,25 @@ Canonical agent path — do **not** invent a parallel protocol:
 
 Optional: open **New Enrollment** dialog on Enrollments to confirm create workflow still loads.
 
+### Expiry / cancel variants (Demo Device — after step 8)
+
+Reconcile with the **do not poll after expiry** rule above: once Tab A countdown is gone, stop
+reloading Tab B for Approve/Deny. These variants are for intentional late-action checks (Walk Gate
+or manual lab), not for the default smoke loop.
+
+1. **Late Approve on an already-displayed pending page:** leave Tab B on Approve/Deny until after
+   the attempt TTL (or until Tab A shows expired/cancelled). Click **Approve**. Expect Demo Device
+   **expired** (`demo-device-result-expired`) for wall-clock typed 409, or **Request no longer
+   active** (`demo-device-result-inactive`) for initiator cancel / state-conflict — Back only; no
+   Approve/Deny on the result card. Do not treat Integration wait status labels as the device
+   screen.
+2. **Cancel variant:** on Tab A click **Cancel** while Tab B still shows Approve/Deny, then Approve
+   on Tab B. Expect **no longer active** (not the expired copy). Same Back-only terminal.
+
+Human Walk Gate (Approve at ~5 s and Approve after the TTL): template
+[`product-docs/templates/ui-walk-gate.template.md`](../product-docs/templates/ui-walk-gate.template.md).
+Isabelle runs the Walk after the #943 implementation PR — agents must not claim Walk done.
+
 ### Empty pending while Admin UI still waits (rare)
 
 If Tab A still shows a live countdown but Tab B shows no pending after a few reloads: **Cancel** on
@@ -261,5 +280,8 @@ Prefer `data-testid` on pages being touched in the operator-lists program:
 
 - [`.cursor/rules/agent-ui-closeout-validation.mdc`](../.cursor/rules/agent-ui-closeout-validation.mdc) — closeout trigger for agents
 - [`ezkey-admin-ui/AGENTS.md`](../ezkey-admin-ui/AGENTS.md) — Playwright, MCP notes
+- [`ezkey-demo-device/AGENTS.md`](../ezkey-demo-device/AGENTS.md) — Demo Device outcome catalog, claim TTL, durable UI rules (#943)
+- [`product-docs/global/backlog/TB-2026-10-20-demo-device-api-and-mobile-parity.md`](../product-docs/global/backlog/TB-2026-10-20-demo-device-api-and-mobile-parity.md) — #943 analysis / TB (single owner)
+- [`product-docs/templates/ui-walk-gate.template.md`](../product-docs/templates/ui-walk-gate.template.md) — Walk Gate template
 - [`ezkey-tests/AGENTS.md`](../ezkey-tests/AGENTS.md) — functional test philosophy
 - [`product-docs/global/admin-ui-paginated-screens-matrix.md`](../product-docs/global/admin-ui-paginated-screens-matrix.md) — operator list targets
