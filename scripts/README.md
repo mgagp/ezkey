@@ -130,7 +130,9 @@ under `pipefail`; HA `5e` proves SIGPIPE with `seq` after the signature); `now_m
 validates GNU `date +%s%3N` digits before falling back to `python3` / `node` / whole
 seconds (BSD `date` on macOS). `#915` lot 1: portable `sed '$d'` for phase rewrite,
 Surefire summary excludes `Time elapsed` class lines, compose bound uses
-`timeout`/`gtimeout` or warns unbound. CI job `quality-gate` runs the HA helper tests.
+`timeout`/`gtimeout` or warns unbound. `#915` defect 3: `--no-clean-start` does not
+`docker compose down -v` (reuses stack) and skips `unit-tests` for stack-up RAM.
+CI job `quality-gate` runs the HA helper tests.
 
 ```bash
 ./scripts/quality-gate.sh
