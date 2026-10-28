@@ -1,9 +1,29 @@
 # quality-gate HA helpers — sourced by quality-gate.sh and quality-gate-ha.test.sh.
-# Cloud agent tooling; portable Bash (Linux, Git Bash, macOS).
+# Requires Bash >= 4 (associative arrays / declare -A). On macOS: brew install bash,
+# then launch via #!/usr/bin/env bash or `bash` from PATH — not /bin/bash (system 3.2).
+# Cloud agent tooling (Linux, Git Bash, Homebrew bash on macOS).
 #
 # Expected globals: KEYWORD HA_REPLICAS PREV_RESTARTS HA_INVALID OVERALL_AMBER
 #   OVERALL_RED RUN_DIR REPLICAS_TSV RESTARTS_TSV SHEDLOCK_* GATE_STARTED_AT
 #   QUALITY_GATE_RESTORE_TIMEOUT_S
+
+# Bash >= 4 guard — must parse and run under Bash 3.2 (macOS /bin/bash).
+# Override QUALITY_GATE_BASH_MAJOR for tests only (simulate an old major).
+# Exit 2 matches quality-gate usage / bad-args convention.
+quality_gate_require_bash4() {
+  # No declare -A, no [[ ]], no other Bash 4+ syntax in this function.
+  local maj
+  maj="${QUALITY_GATE_BASH_MAJOR:-${BASH_VERSINFO[0]}}"
+  if [ -z "${maj}" ] || [ "${maj}" -lt 4 ]; then
+    echo "quality-gate: Bash 4 or newer is required (found ${maj:-unknown})." >&2
+    echo "On macOS: brew install bash, then launch via #!/usr/bin/env bash or" >&2
+    echo "\`bash\` from PATH — not /bin/bash (system Bash is 3.2)." >&2
+    return 2
+  fi
+  return 0
+}
+
+quality_gate_require_bash4 || exit $?
 
 QUALITY_GATE_RESTORE_TIMEOUT_S="${QUALITY_GATE_RESTORE_TIMEOUT_S:-180}"
 QUALITY_GATE_RESTORE_POLL_S="${QUALITY_GATE_RESTORE_POLL_S:-5}"
