@@ -409,6 +409,7 @@ run_maven_phase() {
 
 run_phase_playwright() {
   local log="$RUN_DIR/phases/playwright.log" start end code=0 results="$RUN_DIR/playwright-results"
+  local note="Admin UI e2e (Orval generate:api then Playwright)"
   mkdir -p "$results"
   start="$(now_ms)"
   {
@@ -417,14 +418,24 @@ run_phase_playwright() {
       local pids; pids="$(lsof -t -i:4173 2>/dev/null || true)"
       [[ -n "$pids" ]] && kill $pids 2>/dev/null || true
     fi
-    EZKEY_BROWSER_TEST_RESULTS_DIR="$results" ./ezkey-admin-ui/scripts/run-ui-tests.sh
+    # Orval client under src/generated/ is gitignored; only build:cloudflare
+    # regenerates it. A stale local client caused false RED Playwright results
+    # (#915 defect 6). Fail closed: never run UI tests after a failed generate.
+    echo "=== Orval generate:api ==="
+    if (cd ezkey-admin-ui && npm run generate:api); then
+      EZKEY_BROWSER_TEST_RESULTS_DIR="$results" ./ezkey-admin-ui/scripts/run-ui-tests.sh
+    else
+      echo "FATAL: npm run generate:api failed — refusing Playwright with a stale Orval client (#915)"
+      note="Orval generate:api failed; Playwright not run"
+      false
+    fi
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
   local counts="-"
   grep -Eq '[0-9]+ passed' "$log" 2>/dev/null \
     && counts="$(grep -E '[0-9]+ (passed|failed|skipped|flaky)' "$log" | tail -3 | tr '\n' ' ')"
   record_phase playwright "$([[ $code -eq 0 ]] && echo GREEN || echo RED)" "$code" \
-    "$(duration_ms "$start" "$end")" "$log" "$counts" "Admin UI e2e"
+    "$(duration_ms "$start" "$end")" "$log" "$counts" "$note"
   return "$code"
 }
 
