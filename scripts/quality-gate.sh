@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
 # quality-gate — on-demand full-suite gate.
-# Cloud agent tooling; portable Bash (Linux, Git Bash, macOS).
+# Requires Bash >= 4 (associative arrays / declare -A). On macOS: brew install bash,
+# then launch via #!/usr/bin/env bash or `bash` from PATH — not /bin/bash (system 3.2).
+# Cloud agent tooling (Linux, Git Bash, Homebrew bash on macOS).
 #
 # Phase order (unit tests before stack — memory headroom on ~16Gi VMs):
 #   preflight → unit-tests → clean-start HA+JM (+gate memory overlay)
@@ -13,7 +15,7 @@
 #   1 = NO-GO (any RED)
 #   3 = GO with reservations (AMBER only; HA valid; no skipped phases)
 #   4 = INCONCLUSIVE (HA invalid and/or any skipped phase)
-#   2 = usage / bad args
+#   2 = usage / bad args (also Bash < 4)
 # API replica check covers the 7 HA API JVMs (admin/auth/integration ×2 + crypto).
 # demo-device / demo-app-acme are excluded: not LB replicas; mem-sampled only.
 #
@@ -23,6 +25,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Bash >= 4 guard (must parse under Bash 3.2). Same check auto-runs when the HA
+# lib is sourced alone; QUALITY_GATE_BASH_MAJOR overrides the detected major for tests.
 # shellcheck source=lib/quality-gate-ha.sh
 source "$SCRIPT_DIR/lib/quality-gate-ha.sh"
 

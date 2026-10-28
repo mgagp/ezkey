@@ -1,11 +1,25 @@
 #!/usr/bin/env bash
 # Fake-docker HA helper tests (~Patrick C1-bis / restore / C2).
+# Requires Bash >= 4 (associative arrays / declare -A). On macOS: brew install bash,
+# then launch via #!/usr/bin/env bash or `bash` from PATH — not /bin/bash (system 3.2).
 # Run: ./scripts/quality-gate-ha.test.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
+
+# Early Bash >= 4 guard (must run before declare -A; parses under Bash 3.2).
+# Same check lives in scripts/lib/quality-gate-ha.sh (auto-runs when sourced alone).
+# QUALITY_GATE_BASH_MAJOR overrides the detected major for tests only.
+_qg_bash_major="${QUALITY_GATE_BASH_MAJOR:-${BASH_VERSINFO[0]}}"
+if [ -z "${_qg_bash_major}" ] || [ "${_qg_bash_major}" -lt 4 ]; then
+  echo "quality-gate: Bash 4 or newer is required (found ${_qg_bash_major:-unknown})." >&2
+  echo "On macOS: brew install bash, then launch via #!/usr/bin/env bash or" >&2
+  echo "\`bash\` from PATH — not /bin/bash (system Bash is 3.2)." >&2
+  exit 2
+fi
+unset _qg_bash_major
 
 # --- fake docker ---
 mkdir -p "$TMP/bin" "$TMP/state"
@@ -151,6 +165,38 @@ assert_eq() {
   if [[ "$got" == "$want" ]]; then echo "ok - $msg"; pass=$((pass+1))
   else echo "not ok - $msg (got=$got want=$want)"; fail=$((fail+1)); fi
 }
+
+# 0) Bash >= 4 guard — simulate old major via QUALITY_GATE_BASH_MAJOR (no bash 3.2 install)
+set +e
+QUALITY_GATE_BASH_MAJOR=3 "$ROOT/scripts/quality-gate.sh" --help \
+  >"$TMP/bash-guard-qg.log" 2>&1
+guard_qg_ec=$?
+QUALITY_GATE_BASH_MAJOR=3 bash -c 'source "$1"' _ "$ROOT/scripts/lib/quality-gate-ha.sh" \
+  >"$TMP/bash-guard-lib.log" 2>&1
+guard_lib_ec=$?
+QUALITY_GATE_BASH_MAJOR=3 bash "$ROOT/scripts/quality-gate-ha.test.sh" \
+  >"$TMP/bash-guard-ha.log" 2>&1
+guard_ha_ec=$?
+QUALITY_GATE_BASH_MAJOR=4 "$ROOT/scripts/quality-gate.sh" --help \
+  >"$TMP/bash-guard-ok.log" 2>&1
+guard_ok_ec=$?
+set -e
+assert_eq "$guard_qg_ec" "2" "bash major 3 → quality-gate.sh exit 2"
+assert_eq "$guard_lib_ec" "2" "bash major 3 → lib sourced alone exit 2"
+assert_eq "$guard_ha_ec" "2" "bash major 3 → quality-gate-ha.test.sh exit 2"
+assert_eq "$guard_ok_ec" "0" "bash major 4 override → quality-gate.sh --help ok"
+grep -q 'brew install bash' "$TMP/bash-guard-qg.log" \
+  && echo "ok - quality-gate.sh guard mentions brew install bash" && pass=$((pass+1)) \
+  || { echo "not ok - quality-gate.sh guard mentions brew install bash"; fail=$((fail+1)); }
+grep -q 'not /bin/bash' "$TMP/bash-guard-qg.log" \
+  && echo "ok - quality-gate.sh guard warns against /bin/bash" && pass=$((pass+1)) \
+  || { echo "not ok - quality-gate.sh guard warns against /bin/bash"; fail=$((fail+1)); }
+grep -q 'brew install bash' "$TMP/bash-guard-lib.log" \
+  && echo "ok - lib guard mentions brew install bash" && pass=$((pass+1)) \
+  || { echo "not ok - lib guard mentions brew install bash"; fail=$((fail+1)); }
+grep -q 'brew install bash' "$TMP/bash-guard-ha.log" \
+  && echo "ok - HA test guard mentions brew install bash" && pass=$((pass+1)) \
+  || { echo "not ok - HA test guard mentions brew install bash"; fail=$((fail+1)); }
 
 # 1) restore OK
 all_healthy

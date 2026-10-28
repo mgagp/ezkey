@@ -7,7 +7,10 @@ Cloud-agent gate between merge batches. Exit **0** GO · **1** NO-GO · **2** us
 Artifacts under `logs/quality-gate/<UTC>-<shortsha>/` (gitignored).
 
 **Not** a CI gate. A phase that can show GREEN wrongly is worse than no gate.
-Cloud agent tooling; portable Bash (Linux, Git Bash, macOS).
+Requires **Bash >= 4** (associative arrays / `declare -A`). On macOS install Homebrew
+bash (`brew install bash`) and launch via `#!/usr/bin/env bash` or `bash` from PATH —
+not `/bin/bash` (system Bash is 3.2). Cloud agent tooling (Linux, Git Bash, Homebrew
+bash on macOS).
 
 ## Command
 
@@ -24,7 +27,7 @@ node scripts/lib/quality-gate-secrets.test.mjs
 | --- | --- |
 | **0** | GO — all phases ran; no RED; no AMBER; HA valid |
 | **1** | NO-GO — any RED check/phase |
-| **2** | Bad args / usage |
+| **2** | Bad args / usage (also Bash older than 4) |
 | **3** | GO with reservations — AMBER only (HA valid; no skipped phases) |
 | **4** | INCONCLUSIVE — HA invalid and/or any `--skip` phase (never GO) |
 
