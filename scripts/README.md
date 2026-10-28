@@ -122,11 +122,13 @@ Campaign notes: [`product-docs/global/hygiene/javamelody/`](../product-docs/glob
 Keyword: **`quality-gate`**. On-demand cloud-agent orchestrator for tip health between merge
 batches. Runs clean-start HA + JavaMelody, unit/functional/elective/Playwright, operational churn,
 then [`stack-health-check.sh`](stack-health-check.sh). Not a CI gate. See root
-[`AGENTS.md`](../AGENTS.md) § Quality gate. Portable Bash (Linux, Git Bash, macOS): `#747`
-retry scans admin-api logs with `docker logs --since` (phase start − 5 s backoff; no `tail`
-cap; `grep -F` without `-q` under `pipefail`; HA `5e` proves SIGPIPE with `seq` after the
-signature); `now_ms` validates GNU `date +%s%3N` digits before falling back to `python3` /
-`node` / whole seconds (BSD `date` on macOS). CI job `quality-gate` runs the HA helper tests.
+[`AGENTS.md`](../AGENTS.md) § Quality gate. Requires **Bash >= 4** (associative arrays);
+on macOS use Homebrew bash (`brew install bash`) via `#!/usr/bin/env bash` or `bash` from
+PATH — not `/bin/bash` (system 3.2). `#747` retry scans admin-api logs with
+`docker logs --since` (phase start − 5 s backoff; no `tail` cap; `grep -F` without `-q`
+under `pipefail`; HA `5e` proves SIGPIPE with `seq` after the signature); `now_ms`
+validates GNU `date +%s%3N` digits before falling back to `python3` / `node` / whole
+seconds (BSD `date` on macOS). CI job `quality-gate` runs the HA helper tests.
 
 ```bash
 ./scripts/quality-gate.sh
