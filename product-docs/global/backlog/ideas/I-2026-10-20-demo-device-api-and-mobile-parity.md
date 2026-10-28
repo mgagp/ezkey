@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-10-20-demo-device-api-and-mobile-parity`
-- **Status:** `ready`
+- **Status:** `done` (F1 + F4 on `#948`; Walk Gate pending Isabelle)
 - **Priority:** `P2`
 - **Created at:** `2026-10-20`
-- **Updated at:** `2026-10-20`
-- **Last reviewed at:** `2026-10-20`
+- **Updated at:** `2026-10-28`
+- **Last reviewed at:** `2026-10-28`
 - **Component tags:** `demo-device`, `auth-api`, `integration-api`, `mobile`, `docs`
 - **Lane:** `D` (post-delivery correction — contract and FSM drift after #895 / #844 / #833)
 - **Captured by:** Marc
@@ -61,8 +61,9 @@ that operators and agents trust simulator behaviour, without cloning full mobile
 
 ## Promotion notes
 
-Marc locked budget **F1 + F4** (2026-10-20) after Alex / Julie / Patrick review. Implementation
-follow-up: error catalog + 503 claim reorder + docs; leave-as-deny **out**. See TB decisions table.
+Marc locked budget **F1 + F4** (2026-10-20) after Alex / Julie / Patrick review. Implemented on
+PR `#948` (spec + F1 + F4). Leave-as-deny **omitted for good**. Walk Gate not claimed in that PR —
+Isabelle. See TB (`decided`).
 
 ## Links
 
