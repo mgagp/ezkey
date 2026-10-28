@@ -130,6 +130,17 @@ public class EzkeyAppController {
   /** Generic non-leaking fallback (no status code, URL, host, or method). */
   static final String MSG_AUTH_GENERIC = "Something went wrong. Try again.";
 
+  /** Phase-1 integration signing algorithm (mobile parity; fail-closed at bind) (#943). */
+  static final String INTEGRATION_KEY_ALGORITHM_PHASE1 = "ed25519";
+
+  /** Fail-closed bind when {@code integrationKeyAlgorithm} is not ed25519 (#943). */
+  static final String MSG_UNSUPPORTED_INTEGRATION_KEY_ALGORITHM =
+      "Unsupported integration key algorithm. This app requires ed25519.";
+
+  /** Verify failure without leaking exception text (#943). */
+  static final String MSG_VERIFY_FAILED_START_OVER =
+      "Verification failed. Please start over from the beginning.";
+
   /**
    * Creates the controller.
    *
@@ -205,6 +216,14 @@ public class EzkeyAppController {
               .bind(enrollmentId, enrollmentProofToken, bindResolution.apiBaseUrl())
               .block();
       if (bindResponse != null) {
+        // Fail-closed: phase-1 requires ed25519 (mobile parity; one comparison) (#943).
+        if (!INTEGRATION_KEY_ALGORITHM_PHASE1.equals(bindResponse.getIntegrationKeyAlgorithm())) {
+          logger.warn(
+              "Bind refused for enrollment {}: unsupported integrationKeyAlgorithm", enrollmentId);
+          model.addAttribute("error", MSG_UNSUPPORTED_INTEGRATION_KEY_ALGORITHM);
+          return "phone/ezkey/bind_enrollment";
+        }
+
         // Generate device keys
         ECP256DeviceKeyPair keyPair = cryptoService.generateDeviceKeyPair();
         String devicePublicKeyB64 = keyPair.base64PublicKey();
@@ -273,17 +292,17 @@ public class EzkeyAppController {
       }
     } catch (WebClientResponseException e) {
       // Log status (+ ProblemDetail type when parseable) only — never the raw error body (#754 S4)
+      String problemType = problemTypeFromError(e);
       logger.warn(
           "Bind API error for enrollment {}: status={}, problemType={}",
           enrollmentId,
           e.getStatusCode().value(),
-          problemTypeFromError(e));
-      String userMessage =
-          toBindErrorMessage(e.getStatusCode().value(), e.getResponseBodyAsString());
-      model.addAttribute("error", userMessage);
+          problemType != null ? problemType : "-");
+      model.addAttribute(
+          "error", toBindErrorMessage(e.getStatusCode().value(), problemType));
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Bind failed for enrollment {}", enrollmentId, e);
-      model.addAttribute("error", "Bind failed: " + e.getMessage());
+      model.addAttribute("error", MSG_AUTH_GENERIC);
     }
     return "phone/ezkey/bind_enrollment";
   }
@@ -362,8 +381,15 @@ public class EzkeyAppController {
     return cleaned;
   }
 
-  /** Maps bind API error status and optional body to a clear, actionable message for the user. */
-  private static String toBindErrorMessage(int statusCode, String responseBody) {
+  /**
+   * Maps bind API HTTP status to a lab-actionable message — never status codes, body, URL, host, or
+   * method (#943 / #754).
+   *
+   * @param statusCode HTTP status from Auth API
+   * @param problemType sanitized ProblemDetail type, or {@code null}
+   * @return user-facing message
+   */
+  static String toBindErrorMessage(int statusCode, String problemType) {
     if (statusCode == 409) {
       return "This enrollment is already bound to a device. Create a new enrollment in the Admin UI"
           + " and use its ID and proof token to bind.";
@@ -373,9 +399,24 @@ public class EzkeyAppController {
           + " exact proof token from the Admin UI. If the invitation has expired, create a"
           + " new enrollment.";
     }
-    return "Bind failed: server returned "
-        + statusCode
-        + (responseBody != null && !responseBody.isBlank() ? " — " + responseBody : "");
+    return safePreRespondHttpMessage(statusCode, problemType);
+  }
+
+  /**
+   * User message for bind / verify / pending HTTP errors. Uses Julie 429/503 copy; never Q9
+   * unconfirmed (that is respond-after-send only) and never codes/body/URL/host/method (#943).
+   *
+   * @param statusCode HTTP status
+   * @param problemType sanitized type, or {@code null}
+   * @return safe on-screen text
+   */
+  static String safePreRespondHttpMessage(int statusCode, String problemType) {
+    AuthApiOutcome outcome = classify(statusCode, problemType);
+    if (outcome == AuthApiOutcome.RATE_LIMITED
+        || outcome == AuthApiOutcome.SIGNING_UNAVAILABLE) {
+      return messageFor(outcome);
+    }
+    return MSG_AUTH_GENERIC;
   }
 
   @PostMapping("/enrollment/verify")
@@ -487,18 +528,25 @@ public class EzkeyAppController {
             "Removed enrollment {} from store due to failed verification (no response)",
             enrollmentId);
         model.addAttribute("enrollmentId", enrollmentId);
-        model.addAttribute(
-            "error",
-            "Verification failed: No response from server. Please start over from the beginning.");
+        model.addAttribute("error", MSG_VERIFY_FAILED_START_OVER);
       }
+    } catch (WebClientResponseException e) {
+      storeService.delete(enrollmentId);
+      String problemType = problemTypeFromError(e);
+      logger.warn(
+          "Verify API error for enrollment {}: status={}, problemType={}",
+          enrollmentId,
+          e.getStatusCode().value(),
+          problemType != null ? problemType : "-");
+      model.addAttribute("enrollmentId", enrollmentId);
+      model.addAttribute(
+          "error", safePreRespondHttpMessage(e.getStatusCode().value(), problemType));
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       // Verification failed - remove enrollment from store
       storeService.delete(enrollmentId);
       logger.error("Verify failed for enrollment {} - removed from store", enrollmentId, e);
       model.addAttribute("enrollmentId", enrollmentId);
-      model.addAttribute(
-          "error",
-          "Verification failed: " + e.getMessage() + ". Please start over from the beginning.");
+      model.addAttribute("error", MSG_VERIFY_FAILED_START_OVER);
     }
     return "phone/ezkey/bind_enrollment";
   }
@@ -609,18 +657,41 @@ public class EzkeyAppController {
         model.addAttribute("hasPendingAuth", false);
         return "phone/ezkey/auth";
       }
+    } catch (WebClientResponseException e) {
+      return handlePendingHttpError(enrollmentId, e, model);
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Authentication check failed for enrollment {}", enrollmentId, e);
-
-      // Check if it's an expired authentication attempt
-      if (e.getMessage() != null && e.getMessage().contains("No pending authentication request")) {
-        model.addAttribute("message", MSG_AUTH_EXPIRED);
-      } else {
-        model.addAttribute("error", "Authentication check failed: " + e.getMessage());
+      Throwable cause = e.getCause();
+      if (cause instanceof WebClientResponseException wcre) {
+        return handlePendingHttpError(enrollmentId, wcre, model);
       }
+      model.addAttribute("error", MSG_AUTH_GENERIC);
       model.addAttribute("hasPendingAuth", false);
       return "phone/ezkey/auth";
     }
+  }
+
+  /**
+   * Maps pending HTTP errors to a safe model error — never {@code detail}, URL, host, or method
+   * (#943).
+   *
+   * @param enrollmentId enrollment id
+   * @param error Auth API WebClient error
+   * @param model Thymeleaf model
+   * @return {@code phone/ezkey/auth}
+   */
+  private String handlePendingHttpError(
+      Integer enrollmentId, WebClientResponseException error, Model model) {
+    String problemType = problemTypeFromError(error);
+    int status = error.getStatusCode().value();
+    logger.warn(
+        "Pending API error for enrollment {}: status={}, problemType={}",
+        enrollmentId,
+        status,
+        problemType != null ? problemType : "-");
+    model.addAttribute("error", safePreRespondHttpMessage(status, problemType));
+    model.addAttribute("hasPendingAuth", false);
+    return "phone/ezkey/auth";
   }
 
   @PostMapping("/enrollments/{enrollmentId}/auth/respond")
