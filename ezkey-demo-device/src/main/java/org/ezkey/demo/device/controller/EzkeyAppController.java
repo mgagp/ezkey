@@ -298,8 +298,7 @@ public class EzkeyAppController {
           enrollmentId,
           e.getStatusCode().value(),
           problemType != null ? problemType : "-");
-      model.addAttribute(
-          "error", toBindErrorMessage(e.getStatusCode().value(), problemType));
+      model.addAttribute("error", toBindErrorMessage(e.getStatusCode().value(), problemType));
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Bind failed for enrollment {}", enrollmentId, e);
       model.addAttribute("error", MSG_AUTH_GENERIC);
@@ -412,8 +411,7 @@ public class EzkeyAppController {
    */
   static String safePreRespondHttpMessage(int statusCode, String problemType) {
     AuthApiOutcome outcome = classify(statusCode, problemType);
-    if (outcome == AuthApiOutcome.RATE_LIMITED
-        || outcome == AuthApiOutcome.SIGNING_UNAVAILABLE) {
+    if (outcome == AuthApiOutcome.RATE_LIMITED || outcome == AuthApiOutcome.SIGNING_UNAVAILABLE) {
       return messageFor(outcome);
     }
     return MSG_AUTH_GENERIC;
@@ -771,7 +769,8 @@ public class EzkeyAppController {
                     : null,
                 respondResponse.getAuthAttemptMessage());
         String respondSig = respondResponse.getAuthAttemptProofTokenResultSignedByIntegration();
-        if (respondSig == null || respondSig.isBlank()
+        if (respondSig == null
+            || respondSig.isBlank()
             || !cryptoService.validateSignature(
                 resultPayload, respondSig, rec.integrationPublicKey())) {
           PendingAuthClaimSession.clear(session, enrollmentId);

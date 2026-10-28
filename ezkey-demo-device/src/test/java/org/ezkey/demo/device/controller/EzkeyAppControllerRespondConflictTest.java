@@ -86,8 +86,9 @@ class EzkeyAppControllerRespondConflictTest {
     assertThat(model.getAttribute("inactive")).isEqualTo(false);
     assertThat(model.getAttribute("message")).isEqualTo(EzkeyAppController.MSG_AUTH_EXPIRED);
     assertNoLeak(model);
-    assertThat(PendingAuthClaimSession.findOpen(
-            session, ENROLLMENT_ID, Instant.now(), PendingAuthClaimSession.DEFAULT_TTL))
+    assertThat(
+            PendingAuthClaimSession.findOpen(
+                session, ENROLLMENT_ID, Instant.now(), PendingAuthClaimSession.DEFAULT_TTL))
         .isEmpty();
   }
 
@@ -237,10 +238,12 @@ class EzkeyAppControllerRespondConflictTest {
   @Test
   @DisplayName("classify maps status+type; messageFor never leaks codes")
   void classifyAndMessageFor() {
-    assertThat(EzkeyAppController.classify(409, "https://ezkey.io/problems/auth/auth-attempt-expired"))
+    assertThat(
+            EzkeyAppController.classify(409, "https://ezkey.io/problems/auth/auth-attempt-expired"))
         .isEqualTo(AuthApiOutcome.EXPIRED);
     assertThat(EzkeyAppController.classify(409, null)).isEqualTo(AuthApiOutcome.NO_LONGER_ACTIVE);
-    assertThat(EzkeyAppController.classify(503, null)).isEqualTo(AuthApiOutcome.SIGNING_UNAVAILABLE);
+    assertThat(EzkeyAppController.classify(503, null))
+        .isEqualTo(AuthApiOutcome.SIGNING_UNAVAILABLE);
     assertThat(EzkeyAppController.classify(429, null)).isEqualTo(AuthApiOutcome.RATE_LIMITED);
     assertThat(EzkeyAppController.classify(500, null)).isEqualTo(AuthApiOutcome.UNCONFIRMED);
 
@@ -284,18 +287,11 @@ class EzkeyAppControllerRespondConflictTest {
   }
 
   private static WebClientResponseException problem(int status, String typeSuffix, String detail) {
-    String type =
-        typeSuffix == null
-            ? null
-            : "https://ezkey.io/problems/auth/" + typeSuffix;
+    String type = typeSuffix == null ? null : "https://ezkey.io/problems/auth/" + typeSuffix;
     String body =
         type == null
             ? "{\"title\":\"err\",\"detail\":\"" + detail + "\"}"
-            : "{\"type\":\""
-                + type
-                + "\",\"title\":\"err\",\"detail\":\""
-                + detail
-                + "\"}";
+            : "{\"type\":\"" + type + "\",\"title\":\"err\",\"detail\":\"" + detail + "\"}";
     return WebClientResponseException.create(
         status,
         "Err",

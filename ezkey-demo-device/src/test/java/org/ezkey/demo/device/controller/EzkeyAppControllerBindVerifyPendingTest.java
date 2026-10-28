@@ -260,16 +260,11 @@ class EzkeyAppControllerBindVerifyPendingTest {
   }
 
   private static WebClientResponseException problem(int status, String typeSuffix, String detail) {
-    String type =
-        typeSuffix == null ? null : "https://ezkey.io/problems/auth/" + typeSuffix;
+    String type = typeSuffix == null ? null : "https://ezkey.io/problems/auth/" + typeSuffix;
     String body =
         type == null
             ? "{\"title\":\"err\",\"detail\":\"" + detail + "\"}"
-            : "{\"type\":\""
-                + type
-                + "\",\"title\":\"err\",\"detail\":\""
-                + detail
-                + "\"}";
+            : "{\"type\":\"" + type + "\",\"title\":\"err\",\"detail\":\"" + detail + "\"}";
     return WebClientResponseException.create(
         status,
         "Err",
