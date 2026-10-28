@@ -185,18 +185,6 @@ health_env() {
   export COMPOSE_RETRY_FIRED
 }
 
-parse_surefire_counts() {
-  local log="$1" run=0 failed=0 errors=0 skipped=0 line sum_run=0 sum_f=0 sum_e=0 sum_s=0 found=0
-  while IFS= read -r line; do
-    if [[ "$line" =~ Tests\ run:\ *([0-9]+),\ *Failures:\ *([0-9]+),\ *Errors:\ *([0-9]+),\ *Skipped:\ *([0-9]+) ]]; then
-      sum_run=$((sum_run + BASH_REMATCH[1])); sum_f=$((sum_f + BASH_REMATCH[2]))
-      sum_e=$((sum_e + BASH_REMATCH[3])); sum_s=$((sum_s + BASH_REMATCH[4])); found=1
-      run="${BASH_REMATCH[1]}"; failed="${BASH_REMATCH[2]}"; errors="${BASH_REMATCH[3]}"; skipped="${BASH_REMATCH[4]}"
-    fi
-  done < <(grep -E 'Tests run:' "$log" 2>/dev/null || true)
-  if [[ $found -eq 1 && $sum_run -ge $run ]]; then echo "$sum_run $sum_f $sum_e $sum_s"; else echo "$run $failed $errors $skipped"; fi
-}
-
 stack_up() {
   curl -sf http://127.0.0.1:9080/api/v1/public/instance-info >/dev/null 2>&1 \
     && curl -sf http://127.0.0.1:8084/actuator/health >/dev/null 2>&1
@@ -217,26 +205,6 @@ stop_stacks() {
   $ha down -v --remove-orphans 2>/dev/null || true
   docker compose -f docker/docker-compose.yml down -v --remove-orphans 2>/dev/null || true
   docker rm -f ezkey-javamelody-collector ezkey-javamelody-collector-ha >/dev/null 2>&1 || true
-}
-
-# Rewrite last phases.tsv row: optional new verdict + note.
-rewrite_last_phase() {
-  local new_verdict="${1:-}" note="${2:-}"
-  local tmp last name ver code dur log counts
-  tmp="$(mktemp)"
-  head -n -1 "$PHASE_TSV" >"$tmp"
-  last="$(tail -1 "$PHASE_TSV")"
-  name="$(echo "$last" | cut -f1)"
-  ver="$(echo "$last" | cut -f2)"
-  code="$(echo "$last" | cut -f3)"
-  dur="$(echo "$last" | cut -f4)"
-  log="$(echo "$last" | cut -f5)"
-  counts="$(echo "$last" | cut -f6)"
-  [[ -n "$new_verdict" ]] && ver="$new_verdict"
-  [[ -z "$note" ]] && note="$(echo "$last" | cut -f7)"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$name" "$ver" "$code" "$dur" "$log" "$counts" "$note" >>"$tmp"
-  mv "$tmp" "$PHASE_TSV"
 }
 
 docker_mem_total_mib() {
@@ -307,7 +275,8 @@ run_phase_unit_tests() {
 }
 
 ha_compose_retry() {
-  # Only for #747 encryption_key_pkey race. Bound compose up with timeout.
+  # Only for #747 encryption_key_pkey race. Bound compose up when timeout/gtimeout
+  # exists (stock macOS has neither — #915); else warn and run unbound.
   COMPOSE_RETRY_FIRED=1
   local compose i h1 h2
   compose="$(ha_compose_cmd)"
@@ -317,7 +286,8 @@ ha_compose_retry() {
     echo "HA compose retry $i (#747): admin-1=$h1 admin-2=$h2"
     if [[ "$h1" == "healthy" && "$h2" == "healthy" ]]; then
       echo "Resuming compose up -d (timeout 180s) — AMBER #747"
-      timeout 180 env SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}" \
+      # shellcheck disable=SC2086
+      quality_gate_run_bounded 180 env SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}" \
         EZKEY_ENABLE_JAVA_MELODY=true $compose up -d || return 1
       return 0
     fi

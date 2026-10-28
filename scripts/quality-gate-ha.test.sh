@@ -386,6 +386,141 @@ grep -Fq 'falling back to whole-second precision' "$ms_sec_err" \
   && echo "ok - now_ms seconds fallback warns on stderr" && pass=$((pass+1)) \
   || { echo "not ok - now_ms seconds fallback warns on stderr"; fail=$((fail+1)); cat "$ms_sec_err" || true; }
 
+# 5f) rewrite_last_phase — portable sed '$d' (BSD head rejects head -n -1; #915 defect 2)
+PHASE_TSV="$TMP/phases-rewrite.tsv"
+printf '%s\n' \
+  $'preflight\tGREEN\t0\t10\tpreflight.log\t-\tok' \
+  $'unit-tests\tGREEN\t0\t20\tunit.log\t5 0 0 0\tok' \
+  $'clean-start\tGREEN\t0\t30\tclean.log\t-\tclean' \
+  >"$PHASE_TSV"
+rewrite_last_phase "AMBER" "HA invalid: restore failed"
+row1="$(sed -n '1p' "$PHASE_TSV")"
+row2="$(sed -n '2p' "$PHASE_TSV")"
+row3="$(sed -n '3p' "$PHASE_TSV")"
+assert_eq "$row1" $'preflight\tGREEN\t0\t10\tpreflight.log\t-\tok' \
+  "rewrite_last_phase leaves row 1 untouched"
+assert_eq "$row2" $'unit-tests\tGREEN\t0\t20\tunit.log\t5 0 0 0\tok' \
+  "rewrite_last_phase leaves row 2 untouched"
+assert_eq "$row3" $'clean-start\tAMBER\t0\t30\tclean.log\t-\tHA invalid: restore failed' \
+  "rewrite_last_phase AMBER-downgrades last row only"
+# Stub head that rejects negative counts (BSD macOS). Must still succeed via sed.
+mkdir -p "$TMP/bin-bsd-head"
+cat >"$TMP/bin-bsd-head/head" <<'BSDHEAD'
+#!/bin/bash
+args=("$@")
+for ((i = 0; i < ${#args[@]}; i++)); do
+  if [[ "${args[$i]}" == "-n" && "${args[$((i + 1))]:-}" =~ ^- ]]; then
+    echo "head: illegal line count -- ${args[$((i + 1))]}" >&2
+    exit 1
+  fi
+  if [[ "${args[$i]}" =~ ^-n- ]]; then
+    echo "head: illegal line count -- ${args[$i]#-n}" >&2
+    exit 1
+  fi
+done
+exec /usr/bin/head "$@"
+BSDHEAD
+chmod +x "$TMP/bin-bsd-head/head"
+printf '%s\n' \
+  $'a\tGREEN\t0\t1\ta.log\t-\tok' \
+  $'b\tGREEN\t0\t2\tb.log\t-\tok' \
+  $'c\tGREEN\t0\t3\tc.log\t-\tok' \
+  >"$PHASE_TSV"
+PATH="$TMP/bin-bsd-head:$PATH" /bin/bash -c '
+  source "'"$ROOT"'/scripts/lib/quality-gate-ha.sh"
+  PHASE_TSV="'"$PHASE_TSV"'"
+  rewrite_last_phase "AMBER" "under-bsd-head-stub"
+'
+row_last="$(tail -1 "$PHASE_TSV")"
+assert_eq "$(sed -n '1p' "$PHASE_TSV")" $'a\tGREEN\t0\t1\ta.log\t-\tok' \
+  "rewrite under BSD-head stub leaves row 1"
+assert_eq "$(sed -n '2p' "$PHASE_TSV")" $'b\tGREEN\t0\t2\tb.log\t-\tok' \
+  "rewrite under BSD-head stub leaves row 2"
+assert_eq "$row_last" $'c\tAMBER\t0\t3\tc.log\t-\tunder-bsd-head-stub' \
+  "rewrite under BSD-head stub AMBER-downgrades last row"
+
+# 5g) parse_surefire_counts — exclude Time elapsed class lines (#915 defect 5)
+SF_LOG="$TMP/surefire-sample.log"
+cat >"$SF_LOG" <<'SF'
+[INFO] Running org.ezkey.FooTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.512 s -- in org.ezkey.FooTest
+[INFO] Running org.ezkey.BarTest
+Tests run: 2, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.301 s -- in org.ezkey.BarTest
+[INFO] Results:
+[INFO] Tests run: 5, Failures: 1, Errors: 0, Skipped: 0
+[INFO] Running org.ezkey.OtherModuleTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 0.200 s -- in org.ezkey.OtherModuleTest
+[INFO] Results:
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 1
+SF
+sf_counts="$(parse_surefire_counts "$SF_LOG")"
+assert_eq "$sf_counts" "9 1 0 1" \
+  "surefire multi-module: class lines excluded, module totals summed"
+# Single-module: only module total counts (not class + total).
+SF_ONE="$TMP/surefire-one.log"
+cat >"$SF_ONE" <<'SF'
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.0 s -- in org.ezkey.OnlyTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+SF
+assert_eq "$(parse_surefire_counts "$SF_ONE")" "7 0 0 0" \
+  "surefire single-module: exact module total (no double-count)"
+
+# 5h) timeout/gtimeout resolve (#915) — gtimeout-only PATH, and neither
+mkdir -p "$TMP/bin-gtimeout-only" "$TMP/bin-empty"
+cat >"$TMP/bin-gtimeout-only/gtimeout" <<'GTO'
+#!/bin/bash
+# Marker only — resolve uses command -v; run_bounded tests exercise the warn path.
+exit 0
+GTO
+chmod +x "$TMP/bin-gtimeout-only/gtimeout"
+gt_path="$(
+  PATH="$TMP/bin-gtimeout-only" /bin/bash -c '
+    source "'"$ROOT"'/scripts/lib/quality-gate-ha.sh"
+    quality_gate_resolve_timeout_cmd
+  '
+)"
+[[ "$gt_path" == *gtimeout ]] \
+  && echo "ok - resolve prefers gtimeout when timeout absent" && pass=$((pass+1)) \
+  || { echo "not ok - resolve prefers gtimeout when timeout absent (got=$gt_path)"; fail=$((fail+1)); }
+set +e
+neither_out="$(
+  PATH="$TMP/bin-empty" /bin/bash -c '
+    source "'"$ROOT"'/scripts/lib/quality-gate-ha.sh"
+    quality_gate_resolve_timeout_cmd
+  ' 2>/dev/null
+)"
+neither_ec=$?
+set -e
+assert_eq "$neither_ec" "1" "resolve returns 1 when neither timeout nor gtimeout"
+assert_eq "$neither_out" "" "resolve prints nothing when neither exists"
+# run_bounded with neither: warns on stderr and still runs the command.
+bound_err="$TMP/run-bounded.err"
+bound_out="$(
+  PATH="$TMP/bin-empty" /bin/bash -c '
+    source "'"$ROOT"'/scripts/lib/quality-gate-ha.sh"
+    quality_gate_run_bounded 1 /bin/echo ran-unbound
+  ' 2>"$bound_err"
+)"
+assert_eq "$bound_out" "ran-unbound" "run_bounded without timeout still runs command"
+grep -Fq 'neither timeout nor gtimeout' "$bound_err" \
+  && echo "ok - run_bounded warns on stderr when unbound" && pass=$((pass+1)) \
+  || { echo "not ok - run_bounded warns on stderr when unbound"; fail=$((fail+1)); cat "$bound_err" || true; }
+# gtimeout-only: run_bounded must invoke gtimeout (not hang / silent skip).
+cat >"$TMP/bin-gtimeout-only/gtimeout" <<'GTO'
+#!/bin/bash
+# Consume secs then exec remaining argv (like real gtimeout without a clock).
+shift
+exec "$@"
+GTO
+chmod +x "$TMP/bin-gtimeout-only/gtimeout"
+gt_run="$(
+  PATH="$TMP/bin-gtimeout-only" /bin/bash -c '
+    source "'"$ROOT"'/scripts/lib/quality-gate-ha.sh"
+    quality_gate_run_bounded 180 /bin/echo via-gtimeout
+  '
+)"
+assert_eq "$gt_run" "via-gtimeout" "run_bounded uses gtimeout when only gtimeout on PATH"
+
 # 6) Missing ShedLock kill (failover skipped / unresolved / no kill in 30s) → INCONCLUSIVE
 all_healthy
 : >"$RUN_DIR/phases/elective-tests.log"
