@@ -52,7 +52,7 @@ Dependabot alone cannot prove current:
 | Admin UI | `npm` at `/ezkey-admin-ui` (daily + cooldown) | Orval via **Orval risk grid** (skill); evaluate **separately** from mobile |
 | Ezkey Mobile (Yarn 4) | `npm` at `/ezkey_mobile` (daily + cooldown) | **Mobile RN pulse** Monday full; Orval via **Orval risk grid** (separate from Admin UI) |
 | SDK JS | `npm` at `/ezkey-sdk/javascript` (daily + cooldown) | — |
-| GitHub Actions | `github-actions` at `/` (weekly) | — |
+| GitHub Actions | `github-actions` at `/` (weekly); group `codeql-action` (`github/codeql-action/*`) so init/analyze bump together (#1061/#1063 failed alone; fixed by #1072) | — |
 | Python CLI | `pip` at `/ezkey-cli-python` (weekly) | — |
 
 **Maven dependency graph:** Dependabot PR updates are separate from GitHub’s Insights dependency

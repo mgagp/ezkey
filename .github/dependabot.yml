@@ -144,6 +144,11 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
+    # CodeQL init/analyze must share one version — split PRs fail Analyze.
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action/*"
 
   - package-ecosystem: "pip"
     directory: "/ezkey-cli-python"
