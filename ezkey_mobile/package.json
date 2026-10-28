@@ -94,7 +94,7 @@
     "husky": "9.1.7",
     "jest": "30.5.2",
     "lint-staged": "17.6.0",
-    "orval": "8.44.0",
+    "orval": "8.45.0",
     "prettier": "3.9.10",
     "react-native-svg-transformer": "1.5.3",
     "react-test-renderer": "19.3.0",
